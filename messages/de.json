@@ -1,0 +1,17 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "clients": "Kunden",
+    "allClients": "Alle Kunden",
+    "addClient": "Kunde hinzufügen",
+    "projects": "Projekte",
+    "allProjects": "Alle Projekte",
+    "addProject": "Projekt hinzufügen",
+    "content": "Inhalte",
+    "browseContent": "Inhalte durchsuchen",
+    "settings": "Einstellungen",
+    "posts": "Beiträge",
+    "leads": "Anfragen",
+    "analytics": "Statistiken"
+  }
+}
