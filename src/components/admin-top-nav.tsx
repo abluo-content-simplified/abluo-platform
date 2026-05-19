@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { useTranslations } from "next-intl"
 import {
   PanelLeft,
@@ -29,6 +30,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { CommandSearch } from "@/components/command-search"
 
 type HealthStatus = "healthy" | "degraded" | "critical"
 
@@ -55,6 +57,7 @@ export function AdminTopNav({
 }: AdminTopNavProps) {
   const t = useTranslations()
   const { toggleSidebar } = useSidebar()
+  const [searchOpen, setSearchOpen] = useState(false)
 
   const getInitials = (name: string) => {
     return name
@@ -66,54 +69,63 @@ export function AdminTopNav({
   }
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4">
-      {/* Left side - Panel toggle */}
-      <div className="flex items-center">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-              className="size-9 text-muted-foreground hover:text-foreground"
-              aria-label={t("topNav.togglePanel")}
+    <>
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 shadow-sm">
+        {/* Left side - Panel toggle */}
+        <div className="flex items-center">
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleSidebar}
+                  className="size-10 text-muted-foreground hover:text-foreground"
+                  aria-label={t("topNav.togglePanel")}
+                />
+              }
             >
-              <PanelLeft />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            {t("topNav.togglePanel")}
-          </TooltipContent>
-        </Tooltip>
-      </div>
+              <PanelLeft className="size-5" />
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {t("topNav.togglePanel")}
+            </TooltipContent>
+          </Tooltip>
+        </div>
 
-      {/* Right side - Actions */}
-      <div className="flex items-center gap-1">
-        {/* Search */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-9 text-muted-foreground hover:text-foreground"
-              aria-label={t("topNav.search")}
+        {/* Right side - Actions */}
+        <div className="flex items-center gap-1">
+          {/* Search */}
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSearchOpen(true)}
+                  className="size-9 text-muted-foreground hover:text-foreground"
+                  aria-label={t("topNav.search")}
+                />
+              }
             >
-              <Search />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">{t("topNav.search")}</TooltipContent>
-        </Tooltip>
+              <Search className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{t("topNav.search")}</TooltipContent>
+          </Tooltip>
 
-        {/* Notifications */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative size-9 text-muted-foreground hover:text-foreground"
-              aria-label={t("topNav.notifications")}
+          {/* Notifications */}
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative size-9 text-muted-foreground hover:text-foreground"
+                  aria-label={t("topNav.notifications")}
+                />
+              }
             >
-              <Bell />
+              <Bell className="size-4" />
               {notificationCount > 0 && (
                 <Badge
                   variant="destructive"
@@ -122,41 +134,50 @@ export function AdminTopNav({
                   {notificationCount > 99 ? "99+" : notificationCount}
                 </Badge>
               )}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            {t("topNav.notifications")}
-          </TooltipContent>
-        </Tooltip>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {t("topNav.notifications")}
+            </TooltipContent>
+          </Tooltip>
 
-        {/* Health Status */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-9 text-muted-foreground hover:text-foreground"
-              aria-label={t(`topNav.health.${healthStatus}`)}
+          {/* Health Status with label */}
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  className="h-9 gap-2 px-2.5 text-muted-foreground hover:text-foreground"
+                  aria-label={t(`topNav.health.${healthStatus}`)}
+                />
+              }
             >
               <span
                 className={cn(
-                  "size-2.5 rounded-full",
+                  "size-2 rounded-full",
                   healthStatusColors[healthStatus]
                 )}
               />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            {t(`topNav.health.${healthStatus}`)}
-          </TooltipContent>
-        </Tooltip>
+              <span className="text-xs font-medium">
+                {t(`topNav.health.${healthStatus}Label`)}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {t(`topNav.health.${healthStatus}`)}
+            </TooltipContent>
+          </Tooltip>
 
-        {/* User Menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="ml-1 flex h-9 items-center gap-2 px-2 text-muted-foreground hover:text-foreground"
+          {/* Spacer between icons and user */}
+          <div className="mx-2" />
+
+          {/* User Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  className="flex h-9 items-center gap-2 px-2 text-muted-foreground hover:text-foreground"
+                />
+              }
             >
               <Avatar className="size-7">
                 <AvatarImage src={user.avatarUrl} alt={user.name} />
@@ -167,31 +188,34 @@ export function AdminTopNav({
               <span className="hidden text-sm font-medium text-foreground sm:inline-block">
                 {user.name}
               </span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <User data-icon="inline-start" />
-                {t("topNav.menu.account")}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuGroup>
+                <DropdownMenuItem>
+                  <User data-icon="inline-start" />
+                  {t("topNav.menu.account")}
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <UserCog data-icon="inline-start" />
+                  {t("topNav.menu.impersonate")}
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Settings2 data-icon="inline-start" />
+                  {t("topNav.menu.customerPreferences")}
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive focus:text-destructive">
+                <LogOut data-icon="inline-start" />
+                {t("topNav.menu.logOut")}
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <UserCog data-icon="inline-start" />
-                {t("topNav.menu.impersonate")}
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings2 data-icon="inline-start" />
-                {t("topNav.menu.customerPreferences")}
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive focus:text-destructive">
-              <LogOut data-icon="inline-start" />
-              {t("topNav.menu.logOut")}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </header>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+
+      {/* Command Search Dialog */}
+      <CommandSearch open={searchOpen} onOpenChange={setSearchOpen} />
+    </>
   )
 }
