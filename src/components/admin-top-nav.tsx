@@ -31,6 +31,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { CommandSearch } from "@/components/command-search"
+import { ThemeSwitcher } from "@/components/theme-switcher"
 
 type HealthStatus = "healthy" | "degraded" | "critical"
 
@@ -165,6 +166,9 @@ export function AdminTopNav({
               {t(`topNav.health.${healthStatus}`)}
             </TooltipContent>
           </Tooltip>
+
+          {/* Theme Switcher */}
+          <ThemeSwitcher />
 
           {/* Spacer between icons and user */}
           <div className="mx-2" />
