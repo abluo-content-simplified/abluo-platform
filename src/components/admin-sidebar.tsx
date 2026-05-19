@@ -11,12 +11,9 @@ import {
   FolderPlus,
   FileText,
   Settings,
-  ChevronLeft,
 } from "lucide-react"
 
-import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import {
   Sidebar,
   SidebarContent,
@@ -30,7 +27,6 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarRail,
-  useSidebar,
 } from "@/components/ui/sidebar"
 
 interface NavItem {
@@ -104,31 +100,9 @@ const settingsItem: NavItem = {
   href: "/admin/settings",
 }
 
-function SidebarCollapseButton() {
-  const { toggleSidebar, state } = useSidebar()
-  const t = useTranslations()
-
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={toggleSidebar}
-      className={cn(
-        "size-8 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        "transition-transform duration-200",
-        state === "collapsed" && "rotate-180"
-      )}
-      aria-label={t("nav.toggleSidebar")}
-    >
-      <ChevronLeft className="size-4" />
-    </Button>
-  )
-}
-
 export function AdminSidebar() {
   const pathname = usePathname()
   const t = useTranslations()
-  const { state } = useSidebar()
 
   const isActive = (href: string) => {
     if (href === "/admin") {
@@ -145,12 +119,7 @@ export function AdminSidebar() {
           <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <span className="text-sm font-semibold">A</span>
           </div>
-          <span
-            className={cn(
-              "text-lg font-semibold tracking-tight text-sidebar-foreground transition-opacity duration-200",
-              state === "collapsed" && "opacity-0"
-            )}
-          >
+          <span className="text-lg font-semibold tracking-tight text-sidebar-foreground transition-opacity duration-200 group-data-[collapsible=icon]:opacity-0">
             Abluo
           </span>
         </div>
@@ -212,9 +181,6 @@ export function AdminSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        <div className="flex items-center justify-end px-2 py-1">
-          <SidebarCollapseButton />
-        </div>
       </SidebarFooter>
 
       {/* Rail for hover expand */}

@@ -11,5 +11,44 @@
     "browseContent": "Browse Content",
     "settings": "Settings",
     "toggleSidebar": "Toggle Sidebar"
+  },
+  "topNav": {
+    "togglePanel": "Toggle Panel",
+    "search": "Search",
+    "notifications": "Notifications",
+    "health": {
+      "healthy": "System Healthy",
+      "healthyLabel": "Healthy",
+      "degraded": "System Degraded",
+      "degradedLabel": "Degraded",
+      "critical": "System Critical",
+      "criticalLabel": "Critical"
+    },
+    "menu": {
+      "account": "Account",
+      "impersonate": "Impersonate",
+      "customerPreferences": "Customer Preferences",
+      "logOut": "Log Out"
+    }
+  },
+  "commandSearch": {
+    "title": "Search",
+    "placeholder": "Search...",
+    "searchFilter": "Search {filter}...",
+    "clear": "Clear search",
+    "noResults": "No results found",
+    "startTyping": "Start typing to search",
+    "filters": {
+      "all": "All",
+      "clients": "Clients",
+      "projects": "Projects",
+      "content": "Content",
+      "leads": "Leads"
+    },
+    "actions": {
+      "open": "Open",
+      "openNewTab": "Open in new tab",
+      "navigate": "Navigate"
+    }
   }
 }
