@@ -11,5 +11,21 @@
     "browseContent": "Browse Content",
     "settings": "Settings",
     "toggleSidebar": "Toggle Sidebar"
+  },
+  "topNav": {
+    "togglePanel": "Toggle Panel",
+    "search": "Search",
+    "notifications": "Notifications",
+    "health": {
+      "healthy": "System Healthy",
+      "degraded": "System Degraded",
+      "critical": "System Critical"
+    },
+    "menu": {
+      "account": "Account",
+      "impersonate": "Impersonate",
+      "customerPreferences": "Customer Preferences",
+      "logOut": "Log Out"
+    }
   }
 }
