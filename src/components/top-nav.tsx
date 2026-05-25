@@ -23,11 +23,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuPortal,
   DropdownMenuPositioner,
   DropdownMenuTrigger,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
 
 interface TopNavProps {
@@ -102,29 +102,29 @@ export function TopNav({ className }: TopNavProps) {
             <Sun className="size-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
             <Moon className="absolute size-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           </DropdownMenuTrigger>
-          <DropdownMenuPositioner side="bottom" align="end">
-            <DropdownMenuContent className="min-w-[140px]">
-              <DropdownMenuLabel>{t("theme")}</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuRadioGroup
-                value={theme}
-                onValueChange={(value) => setTheme(value as string)}
-              >
-                <DropdownMenuRadioItem value="system">
-                  <Monitor className="mr-2 size-4" />
-                  {t("system")}
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="light">
-                  <Sun className="mr-2 size-4" />
-                  {t("light")}
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="dark">
-                  <Moon className="mr-2 size-4" />
-                  {t("dark")}
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenuPositioner>
+          <DropdownMenuPortal>
+            <DropdownMenuPositioner side="bottom" align="end">
+              <DropdownMenuContent className="min-w-[140px]">
+                <DropdownMenuRadioGroup
+                  value={theme}
+                  onValueChange={(value) => setTheme(value as string)}
+                >
+                  <DropdownMenuRadioItem value="system">
+                    <Monitor className="mr-2 size-4" />
+                    {t("system")}
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="light">
+                    <Sun className="mr-2 size-4" />
+                    {t("light")}
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="dark">
+                    <Moon className="mr-2 size-4" />
+                    {t("dark")}
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenuPositioner>
+          </DropdownMenuPortal>
         </DropdownMenu>
 
         {/* User Menu */}
@@ -143,27 +143,29 @@ export function TopNav({ className }: TopNavProps) {
               John Doe
             </span>
           </DropdownMenuTrigger>
-          <DropdownMenuPositioner side="bottom" align="end">
-            <DropdownMenuContent className="min-w-[200px]">
-              <DropdownMenuItem>
-                <User className="mr-2 size-4" />
-                {t("account")}
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Users className="mr-2 size-4" />
-                {t("impersonate")}
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="mr-2 size-4" />
-                {t("customerPreferences")}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive focus:text-destructive">
-                <LogOut className="mr-2 size-4" />
-                {t("logOut")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenuPositioner>
+          <DropdownMenuPortal>
+            <DropdownMenuPositioner side="bottom" align="end">
+              <DropdownMenuContent className="min-w-[200px]">
+                <DropdownMenuItem>
+                  <User className="mr-2 size-4" />
+                  {t("account")}
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Users className="mr-2 size-4" />
+                  {t("impersonate")}
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Settings className="mr-2 size-4" />
+                  {t("customerPreferences")}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive focus:text-destructive">
+                  <LogOut className="mr-2 size-4" />
+                  {t("logOut")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenuPositioner>
+          </DropdownMenuPortal>
         </DropdownMenu>
       </div>
     </header>
