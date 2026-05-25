@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
+import { DensityProvider } from "@/components/density-provider";
 import "./globals.css";
 
 const inter = Inter({
@@ -48,9 +49,11 @@ export default async function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <TooltipProvider>
-              {children}
-            </TooltipProvider>
+            <DensityProvider>
+              <TooltipProvider>
+                {children}
+              </TooltipProvider>
+            </DensityProvider>
           </ThemeProvider>
         </NextIntlClientProvider>
       </body>

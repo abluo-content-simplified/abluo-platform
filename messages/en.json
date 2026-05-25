@@ -14,16 +14,28 @@
   },
   "topNav": {
     "search": "Search",
+    "searchPlaceholder": "Search...",
     "notifications": "Notifications",
     "healthy": "Healthy",
+    "toggleSidebar": "Toggle Sidebar",
+    "findCustomer": "Find customer...",
+    "allCustomers": "All Customers",
+    "addCustomer": "Add Customer",
+    "findProject": "Find project...",
+    "allProjects": "All Projects",
+    "addProject": "Add Project"
+  },
+  "userMenu": {
+    "account": "Account",
+    "preferences": "Preferences",
     "theme": "Theme",
     "system": "System",
     "light": "Light",
     "dark": "Dark",
-    "account": "Account",
-    "impersonate": "Impersonate",
-    "customerPreferences": "Customer Preferences",
-    "logOut": "Log Out",
-    "toggleSidebar": "Toggle Sidebar"
+    "density": "Density",
+    "compact": "Compact",
+    "comfortable": "Comfortable",
+    "large": "Large",
+    "logOut": "Log Out"
   }
 }
