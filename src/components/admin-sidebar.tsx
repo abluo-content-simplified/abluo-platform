@@ -11,12 +11,10 @@ import {
   FolderPlus,
   FileText,
   Settings,
-  ChevronLeft,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import {
   Sidebar,
   SidebarContent,
@@ -104,27 +102,6 @@ const settingsItem: NavItem = {
   href: "/admin/settings",
 }
 
-function SidebarCollapseButton() {
-  const { toggleSidebar, state } = useSidebar()
-  const t = useTranslations()
-
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={toggleSidebar}
-      className={cn(
-        "size-8 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        "transition-transform duration-200",
-        state === "collapsed" && "rotate-180"
-      )}
-      aria-label={t("nav.toggleSidebar")}
-    >
-      <ChevronLeft className="size-4" />
-    </Button>
-  )
-}
-
 export function AdminSidebar() {
   const pathname = usePathname()
   const t = useTranslations()
@@ -140,7 +117,7 @@ export function AdminSidebar() {
   return (
     <Sidebar variant="floating" collapsible="icon">
       {/* Header with logo */}
-      <SidebarHeader className="border-b border-sidebar-border">
+      <SidebarHeader>
         <div className="flex h-12 items-center gap-2 px-2">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <span className="text-sm font-semibold">A</span>
@@ -157,7 +134,7 @@ export function AdminSidebar() {
       </SidebarHeader>
 
       {/* Main navigation content */}
-      <SidebarContent>
+      <SidebarContent className="pt-4">
         {navigationGroups.map((group, groupIndex) => (
           <SidebarGroup key={groupIndex}>
             {group.labelKey && (
@@ -199,7 +176,7 @@ export function AdminSidebar() {
       </SidebarContent>
 
       {/* Footer with settings */}
-      <SidebarFooter className="border-t border-sidebar-border">
+      <SidebarFooter className="mt-auto">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -212,9 +189,6 @@ export function AdminSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        <div className="flex items-center justify-end px-2 py-1">
-          <SidebarCollapseButton />
-        </div>
       </SidebarFooter>
 
       {/* Rail for hover expand */}

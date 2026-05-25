@@ -23,6 +23,7 @@
     "account": "Account",
     "impersonate": "Impersonate",
     "customerPreferences": "Customer Preferences",
-    "logOut": "Log Out"
+    "logOut": "Log Out",
+    "toggleSidebar": "Toggle Sidebar"
   }
 }

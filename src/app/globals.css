@@ -29,11 +29,11 @@
   --chart-4: oklch(0.42 0.18 265.55);
   --chart-5: oklch(0.38 0.14 265.59);
   --sidebar: oklch(0.98 0 0);
-  --sidebar-foreground: oklch(0.14 0 0);
+  --sidebar-foreground: oklch(0.45 0 0);
   --sidebar-primary: oklch(0.20 0 0);
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.20 0 0);
+  --sidebar-accent: oklch(0.94 0.02 260);
+  --sidebar-accent-foreground: oklch(0.25 0 0);
   --sidebar-border: oklch(0.92 0 0);
   --sidebar-ring: oklch(0.71 0 0);
 
