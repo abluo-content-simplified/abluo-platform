@@ -3,6 +3,7 @@ import { Inter, Source_Serif_4, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const inter = Inter({
@@ -37,12 +38,20 @@ export default async function RootLayout({
     <html
       lang={locale}
       className={`${inter.variable} ${sourceSerif.variable} ${geistMono.variable} h-full antialiased bg-background`}
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
         <NextIntlClientProvider messages={messages}>
-          <TooltipProvider>
-            {children}
-          </TooltipProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <TooltipProvider>
+              {children}
+            </TooltipProvider>
+          </ThemeProvider>
         </NextIntlClientProvider>
       </body>
     </html>

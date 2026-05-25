@@ -11,5 +11,18 @@
     "browseContent": "Browse Content",
     "settings": "Settings",
     "toggleSidebar": "Toggle Sidebar"
+  },
+  "topNav": {
+    "search": "Search",
+    "notifications": "Notifications",
+    "healthy": "Healthy",
+    "theme": "Theme",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark",
+    "account": "Account",
+    "impersonate": "Impersonate",
+    "customerPreferences": "Customer Preferences",
+    "logOut": "Log Out"
   }
 }
