@@ -38,7 +38,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${inter.variable} ${sourceSerif.variable} ${geistMono.variable} h-full antialiased bg-background`}
+      className={`${inter.variable} ${sourceSerif.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
