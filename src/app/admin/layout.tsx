@@ -30,7 +30,7 @@ export default function AdminLayout({
       />
       
       <AdminSidebar />
-      <SidebarInset className="flex flex-col gap-2 p-2 pl-4 transition-[margin-left] duration-[220ms] ease-out delay-[40ms]">
+      <SidebarInset className="flex flex-col gap-2 p-2 pl-4 transition-[margin-left] duration-(--sidebar-shrink-duration) ease-out delay-(--sidebar-content-delay)">
         <TopNav />
         <div className="flex flex-1 flex-col overflow-hidden rounded-lg bg-[var(--surface-content)] backdrop-blur-sm shadow-sm ring-1 ring-border/50">
           {children}

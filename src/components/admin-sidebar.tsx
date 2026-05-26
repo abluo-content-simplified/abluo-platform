@@ -151,7 +151,7 @@ export function AdminSidebar() {
           {/* Logotype - with smooth fade/slide animation synced to sidebar transition */}
           <div
             className={cn(
-              "ml-1 overflow-hidden transition-all duration-[220ms] ease-out",
+              "ml-1 overflow-hidden transition-all duration-(--sidebar-shrink-duration) ease-out",
               state === "collapsed"
                 ? "w-0 opacity-0 -translate-x-2"
                 : "w-[100px] opacity-100 translate-x-0"

@@ -159,7 +159,7 @@ function SearchOverlay({
           className={cn(
             "relative w-full max-w-2xl mx-4",
             "rounded-xl border border-border bg-background/80 backdrop-blur-sm shadow-2xl",
-            "animate-in fade-in-0 zoom-in-95 duration-200"
+            "animate-in fade-in-0 zoom-in-95 duration-(--motion-normal)"
           )}
         >
           {/* Search Input */}
@@ -194,7 +194,7 @@ function SearchOverlay({
             ))}
             {/* Animated underline indicator - 2px height, 85% width, 80% opacity */}
             <span
-              className="absolute bottom-0 h-0.5 rounded-full bg-foreground/80 transition-all duration-[180ms] ease-out"
+              className="absolute bottom-0 h-0.5 rounded-full bg-foreground/80 transition-all duration-(--motion-fast) ease-out"
               style={{
                 left: indicatorStyle.left,
                 width: indicatorStyle.width,
