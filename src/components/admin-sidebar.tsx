@@ -300,16 +300,18 @@ export function AdminSidebar() {
       <SidebarHeader>
         <button
           onClick={handleLogoClick}
-          className="flex h-12 items-center gap-1 px-2 transition-colors hover:opacity-80"
+          className="flex h-12 items-center gap-1 px-2 transition-opacity hover:opacity-80"
         >
-          {/* Logo icon - always visible, aligned with nav icons below */}
-          <Image
-            src="/logo.svg"
-            alt="Abluo"
-            width={32}
-            height={32}
-            className="size-8 shrink-0"
-          />
+          {/* Logo icon - always visible, with smooth size transition */}
+          <div className="shrink-0 transition-all duration-[220ms] ease-out">
+            <Image
+              src="/logo.svg"
+              alt="Abluo"
+              width={32}
+              height={32}
+              className="size-8"
+            />
+          </div>
           {/* Logotype - only when expanded, with fade/slide animation */}
           <div
             className={cn(

@@ -76,6 +76,8 @@ function SearchOverlay({
   const [query, setQuery] = React.useState("")
   const [filter, setFilter] = React.useState<SearchFilter>("all")
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const tabsContainerRef = React.useRef<HTMLDivElement>(null)
+  const [indicatorStyle, setIndicatorStyle] = React.useState({ left: 0, width: 0 })
   const { isMac, shortcut } = useKeyboardShortcut()
 
   const filters: { key: SearchFilter; label: string }[] = [
@@ -101,6 +103,22 @@ function SearchOverlay({
         return t("placeholder")
     }
   }
+
+  // Update indicator position when filter changes
+  React.useEffect(() => {
+    if (tabsContainerRef.current) {
+      const activeButton = tabsContainerRef.current.querySelector(
+        `[data-filter="${filter}"]`
+      ) as HTMLButtonElement
+      if (activeButton) {
+        const containerRect = tabsContainerRef.current.getBoundingClientRect()
+        const buttonRect = activeButton.getBoundingClientRect()
+        const buttonWidth = buttonRect.width * 0.85 // 15% narrower
+        const buttonLeft = buttonRect.left - containerRect.left + (buttonRect.width * 0.075) // Center the narrower line
+        setIndicatorStyle({ left: buttonLeft, width: buttonWidth })
+      }
+    }
+  }, [filter, open])
 
   // Focus input when opened
   React.useEffect(() => {
@@ -159,26 +177,31 @@ function SearchOverlay({
           </div>
 
           {/* Filter Tabs with underline indicator */}
-          <div className="relative flex items-center gap-1 px-4 py-1.5">
+          <div ref={tabsContainerRef} className="relative flex items-center gap-1 px-4 py-1.5">
             {filters.map((f) => (
               <button
                 key={f.key}
+                data-filter={f.key}
                 onClick={() => setFilter(f.key)}
                 className={cn(
-                  "relative px-3 py-1 text-sm font-medium transition-colors",
+                  "relative px-3 py-1 text-sm transition-colors",
                   filter === f.key
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "font-semibold text-foreground"
+                    : "font-medium text-muted-foreground hover:text-foreground"
                 )}
               >
                 {f.label}
-                {/* Active indicator line - 4px height, same color as text */}
-                {filter === f.key && (
-                  <span className="absolute -bottom-1.5 left-0 right-0 h-1 rounded-full bg-foreground" />
-                )}
               </button>
             ))}
-            {/* Separator line below tabs - closer to labels */}
+            {/* Animated underline indicator - 2px height, 85% width, 80% opacity */}
+            <span
+              className="absolute bottom-0 h-0.5 rounded-full bg-foreground/80 transition-all duration-[180ms] ease-out"
+              style={{
+                left: indicatorStyle.left,
+                width: indicatorStyle.width,
+              }}
+            />
+            {/* Separator line below tabs */}
             <div className="absolute bottom-0 left-0 right-0 h-px bg-border" />
           </div>
 

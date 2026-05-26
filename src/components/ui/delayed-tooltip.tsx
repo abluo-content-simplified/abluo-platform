@@ -94,10 +94,10 @@ export function DelayedTooltip({
           {children}
         </BaseTooltip.Trigger>
         <BaseTooltip.Portal>
-          <BaseTooltip.Positioner side={side} alignment={align} sideOffset={4}>
+          <BaseTooltip.Positioner side={side} alignment={align} sideOffset={4} className="z-[9999]">
             <BaseTooltip.Popup
               className={cn(
-                "z-[100] overflow-hidden rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground",
+                "overflow-hidden rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground",
                 "animate-in fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
                 className
               )}
