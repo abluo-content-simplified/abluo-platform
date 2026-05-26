@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useTheme } from "next-themes"
@@ -28,11 +29,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { useDensity } from "@/components/density-provider"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { DelayedTooltip } from "@/components/ui/delayed-tooltip"
 import {
   Sidebar,
   SidebarContent,
@@ -110,8 +107,8 @@ function SidebarBehaviorToggle({
     <div className="flex items-center justify-between px-2 py-1.5">
       <span className="text-sm text-sidebar-foreground/70">{t("sidebar")}</span>
       <div className="flex items-center gap-0.5 rounded-full bg-sidebar-accent/50 p-0.5">
-        <Tooltip>
-          <TooltipTrigger
+        <DelayedTooltip content={t("expanded")} side="top">
+          <button
             onClick={() => onBehaviorChange("expanded")}
             className={cn(
               "flex size-7 items-center justify-center rounded-full transition-colors",
@@ -121,11 +118,10 @@ function SidebarBehaviorToggle({
             )}
           >
             <PanelLeft className="size-4" />
-          </TooltipTrigger>
-          <TooltipContent side="top">{t("expanded")}</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger
+          </button>
+        </DelayedTooltip>
+        <DelayedTooltip content={t("collapsed")} side="top">
+          <button
             onClick={() => onBehaviorChange("collapsed")}
             className={cn(
               "flex size-7 items-center justify-center rounded-full transition-colors",
@@ -135,11 +131,10 @@ function SidebarBehaviorToggle({
             )}
           >
             <PanelLeftClose className="size-4" />
-          </TooltipTrigger>
-          <TooltipContent side="top">{t("collapsed")}</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger
+          </button>
+        </DelayedTooltip>
+        <DelayedTooltip content={t("expandOnHover")} side="top">
+          <button
             onClick={() => onBehaviorChange("hover")}
             className={cn(
               "flex size-7 items-center justify-center rounded-full transition-colors",
@@ -149,9 +144,8 @@ function SidebarBehaviorToggle({
             )}
           >
             <Columns2 className="size-4" />
-          </TooltipTrigger>
-          <TooltipContent side="top">{t("expandOnHover")}</TooltipContent>
-        </Tooltip>
+          </button>
+        </DelayedTooltip>
       </div>
     </div>
   )
@@ -166,8 +160,8 @@ function ThemeToggle() {
     <div className="flex items-center justify-between px-2 py-1.5">
       <span className="text-sm text-sidebar-foreground/70">{t("theme")}</span>
       <div className="flex items-center gap-0.5 rounded-full bg-sidebar-accent/50 p-0.5">
-        <Tooltip>
-          <TooltipTrigger
+        <DelayedTooltip content={t("system")} side="top">
+          <button
             onClick={() => setTheme("system")}
             className={cn(
               "flex size-7 items-center justify-center rounded-full transition-colors",
@@ -177,11 +171,10 @@ function ThemeToggle() {
             )}
           >
             <Monitor className="size-4" />
-          </TooltipTrigger>
-          <TooltipContent side="top">{t("system")}</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger
+          </button>
+        </DelayedTooltip>
+        <DelayedTooltip content={t("light")} side="top">
+          <button
             onClick={() => setTheme("light")}
             className={cn(
               "flex size-7 items-center justify-center rounded-full transition-colors",
@@ -191,11 +184,10 @@ function ThemeToggle() {
             )}
           >
             <Sun className="size-4" />
-          </TooltipTrigger>
-          <TooltipContent side="top">{t("light")}</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger
+          </button>
+        </DelayedTooltip>
+        <DelayedTooltip content={t("dark")} side="top">
+          <button
             onClick={() => setTheme("dark")}
             className={cn(
               "flex size-7 items-center justify-center rounded-full transition-colors",
@@ -205,9 +197,8 @@ function ThemeToggle() {
             )}
           >
             <Moon className="size-4" />
-          </TooltipTrigger>
-          <TooltipContent side="top">{t("dark")}</TooltipContent>
-        </Tooltip>
+          </button>
+        </DelayedTooltip>
       </div>
     </div>
   )
@@ -222,8 +213,8 @@ function DensityToggle() {
     <div className="flex items-center justify-between px-2 py-1.5">
       <span className="text-sm text-sidebar-foreground/70">{t("density")}</span>
       <div className="flex items-center gap-0.5 rounded-full bg-sidebar-accent/50 p-0.5">
-        <Tooltip>
-          <TooltipTrigger
+        <DelayedTooltip content={t("compact")} side="top">
+          <button
             onClick={() => setDensity("compact")}
             className={cn(
               "flex size-7 items-center justify-center rounded-full transition-colors",
@@ -233,11 +224,10 @@ function DensityToggle() {
             )}
           >
             <Minus className="size-4" />
-          </TooltipTrigger>
-          <TooltipContent side="top">{t("compact")}</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger
+          </button>
+        </DelayedTooltip>
+        <DelayedTooltip content={t("comfortable")} side="top">
+          <button
             onClick={() => setDensity("comfortable")}
             className={cn(
               "flex size-7 items-center justify-center rounded-full transition-colors",
@@ -247,11 +237,10 @@ function DensityToggle() {
             )}
           >
             <Equal className="size-4" />
-          </TooltipTrigger>
-          <TooltipContent side="top">{t("comfortable")}</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger
+          </button>
+        </DelayedTooltip>
+        <DelayedTooltip content={t("large")} side="top">
+          <button
             onClick={() => setDensity("large")}
             className={cn(
               "flex size-7 items-center justify-center rounded-full transition-colors",
@@ -261,9 +250,8 @@ function DensityToggle() {
             )}
           >
             <Menu className="size-4" />
-          </TooltipTrigger>
-          <TooltipContent side="top">{t("large")}</TooltipContent>
-        </Tooltip>
+          </button>
+        </DelayedTooltip>
       </div>
     </div>
   )
@@ -295,12 +283,36 @@ export function AdminSidebar() {
 
   return (
     <Sidebar variant="floating" collapsible="icon">
-      {/* Header with logo icon only */}
+      {/* Header with logo */}
       <SidebarHeader>
-        <div className="flex h-12 items-center px-2">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <span className="text-sm font-semibold">A</span>
-          </div>
+        <div className="flex h-12 items-center gap-2 px-2">
+          {/* Logo icon - always visible, aligned with nav icons below */}
+          <Image
+            src="/logo.svg"
+            alt="Abluo"
+            width={32}
+            height={32}
+            className="size-8 shrink-0"
+          />
+          {/* Logotype - only when expanded */}
+          {state !== "collapsed" && (
+            <>
+              <Image
+                src="/abluo.svg"
+                alt="Abluo"
+                width={100}
+                height={24}
+                className="h-6 w-auto dark:hidden"
+              />
+              <Image
+                src="/abluo-inv.svg"
+                alt="Abluo"
+                width={100}
+                height={24}
+                className="hidden h-6 w-auto dark:block"
+              />
+            </>
+          )}
         </div>
       </SidebarHeader>
 

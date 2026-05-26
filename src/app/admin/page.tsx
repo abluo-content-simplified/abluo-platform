@@ -1,10 +1,11 @@
 export default function AdminDashboard() {
   return (
     <div className="flex flex-1 flex-col">
-      <header className="flex h-14 items-center gap-4 bg-background px-6">
-        <h1 className="text-lg font-semibold text-foreground">Dashboard</h1>
+      <header className="flex flex-col gap-1 bg-background px-6 pt-6 pb-4">
+        <h1 className="text-[32px] font-semibold leading-tight text-foreground">Dashboard</h1>
+        <p className="text-[16px] text-muted-foreground">Overview of your projects and recent activity</p>
       </header>
-      <main className="flex-1 p-6">
+      <main className="flex-1 p-6 pt-0">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <DashboardCard
             title="Total Clients"
