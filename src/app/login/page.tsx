@@ -3,18 +3,22 @@
 import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ClearableInput } from "@/components/ui/clearable-input"
 import {
   Sheet,
   SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
+  SheetClose,
 } from "@/components/ui/sheet"
+
+// Simple email validation
+const isValidEmail = (email: string) => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
 
 export default function LoginPage() {
   const [sheetOpen, setSheetOpen] = React.useState(false)
@@ -22,8 +26,14 @@ export default function LoginPage() {
   const [email, setEmail] = React.useState("")
   const [password, setPassword] = React.useState("")
 
+  // Form validation
+  const emailValid = isValidEmail(email)
+  const passwordValid = password.length >= 1
+  const canSubmit = emailValid && passwordValid
+
   const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!canSubmit) return
     // TODO: Implement actual sign in logic
     console.log("Sign in attempt:", { email, password })
   }
@@ -106,10 +116,17 @@ export default function LoginPage() {
 
       {/* Sign In Sheet/Side Panel */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md">
-          <SheetHeader className="gap-4 pb-6">
-            {/* Logo in sheet */}
-            <div className="flex items-center gap-2">
+        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
+          {/* Close button stays at top */}
+          <SheetClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+            <X className="size-4" />
+            <span className="sr-only">Close</span>
+          </SheetClose>
+
+          {/* Content pushed down with top padding */}
+          <div className="flex flex-col pt-12">
+            {/* Logo in sheet - aligned left */}
+            <div className="flex items-center gap-2 px-4">
               <Image
                 src="/logo.svg"
                 alt="Abluo"
@@ -132,111 +149,117 @@ export default function LoginPage() {
                 className="hidden h-5 w-auto dark:block"
               />
             </div>
-            <div>
-              <SheetTitle className="text-xl">Sign in to Abluo</SheetTitle>
-              <SheetDescription>
+            
+            {/* Content Simplified - aligned with Abluo text */}
+            <div className="mt-1 px-4 pl-[52px]">
+              <span className="text-xs text-muted-foreground">Content Simplified</span>
+            </div>
+
+            {/* Sign in title - with spacing from logo section */}
+            <div className="mt-8 px-4">
+              <h2 className="text-xl font-semibold">Sign in to Abluo</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
                 Enter your credentials to access your account.
-              </SheetDescription>
-            </div>
-          </SheetHeader>
-
-          {/* Sign In Form */}
-          <form onSubmit={handleSignIn} className="flex flex-col gap-5 px-4">
-            {/* Email Field */}
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="email"
-                className="text-sm font-medium text-foreground"
-              >
-                Email address
-              </label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="h-10"
-              />
-            </div>
-
-            {/* Password Field */}
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="password"
-                className="text-sm font-medium text-foreground"
-              >
-                Password
-              </label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="h-10 pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? (
-                    <EyeOff className="size-4" />
-                  ) : (
-                    <Eye className="size-4" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Forgot Password Link */}
-            <div className="flex justify-end">
-              <Link
-                href="/forgot-password"
-                className="text-sm text-muted-foreground hover:text-foreground hover:underline"
-              >
-                Forgot your password?
-              </Link>
-            </div>
-
-            {/* Sign In Button */}
-            <Button type="submit" size="lg" className="w-full">
-              Sign In
-            </Button>
-
-            {/* Footer Links */}
-            <div className="flex flex-col items-center gap-3 pt-4 text-center text-sm">
-              <p className="text-muted-foreground">
-                New on Abluo?{" "}
-                <Link
-                  href="/register"
-                  className="font-medium text-foreground hover:underline"
-                >
-                  Create an account
-                </Link>
               </p>
-              <div className="flex items-center gap-3 text-muted-foreground">
-                <Link
-                  href="/contact"
-                  className="hover:text-foreground hover:underline"
+            </div>
+
+            {/* Sign In Form - with spacing from title */}
+            <form onSubmit={handleSignIn} className="mt-6 flex flex-col gap-5 px-4">
+              {/* Email Field with clearable input */}
+              <div className="flex flex-col gap-2">
+                <label
+                  htmlFor="email"
+                  className="text-sm font-medium text-foreground"
                 >
-                  Contact us
-                </Link>
-                <span className="text-border">|</span>
-                <Link
-                  href="/about"
-                  className="hover:text-foreground hover:underline"
+                  Email address
+                </label>
+                <ClearableInput
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email address"
+                  value={email}
+                  onChange={setEmail}
+                  clearThreshold={3}
+                  className="h-10"
+                />
+              </div>
+
+              {/* Password Field */}
+              <div className="flex flex-col gap-2">
+                <label
+                  htmlFor="password"
+                  className="text-sm font-medium text-foreground"
                 >
-                  Contact Abluo
+                  Password
+                </label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="h-10 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="size-4" />
+                    ) : (
+                      <Eye className="size-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Forgot Password Link - reduced emphasis */}
+              <div className="flex justify-end">
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-muted-foreground/70 hover:text-muted-foreground hover:underline"
+                >
+                  Forgot your password?
                 </Link>
               </div>
-            </div>
-          </form>
+
+              {/* Sign In Button - disabled until valid */}
+              <Button 
+                type="submit" 
+                size="lg" 
+                className="w-full"
+                disabled={!canSubmit}
+              >
+                Sign In
+              </Button>
+
+              {/* Footer Links */}
+              <div className="flex flex-col items-center gap-3 pt-4 text-center text-sm">
+                <p className="text-muted-foreground">
+                  New to Abluo?{" "}
+                  <Link
+                    href="/register"
+                    className="font-medium text-foreground hover:underline"
+                  >
+                    Create an Account
+                  </Link>
+                </p>
+                <p className="text-muted-foreground">
+                  Need help?{" "}
+                  <Link
+                    href="/contact"
+                    className="font-medium text-foreground hover:underline"
+                  >
+                    Contact Abluo
+                  </Link>
+                </p>
+              </div>
+            </form>
+          </div>
         </SheetContent>
       </Sheet>
     </div>
