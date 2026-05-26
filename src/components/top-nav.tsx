@@ -340,14 +340,18 @@ export function TopNav({ className }: TopNavProps) {
             )}
           </button>
 
-          {/* Separator */}
-          <div className="mx-1 h-5 w-px bg-sidebar-border" />
+          {/* Separator - hidden on mobile */}
+          <div className="mx-1 hidden h-5 w-px bg-sidebar-border md:block" />
 
-          {/* Customer Switcher */}
-          <CustomerSwitcher />
+          {/* Customer Switcher - hidden on mobile (use MobileNav instead) */}
+          <div className="hidden md:flex">
+            <CustomerSwitcher />
+          </div>
 
-          {/* Project Switcher (shows if customer has projects) */}
-          <ProjectSwitcher customerId={selectedCustomerId} />
+          {/* Project Switcher (shows if customer has projects) - hidden on mobile */}
+          <div className="hidden md:flex">
+            <ProjectSwitcher customerId={selectedCustomerId} />
+          </div>
         </div>
 
         {/* Right side - Search + Actions */}

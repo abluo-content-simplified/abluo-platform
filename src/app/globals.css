@@ -43,6 +43,10 @@
 
   --radius: 0.8rem;
   
+  /* Brand color (orange from logo) */
+  --brand: oklch(0.70 0.19 41);
+  --brand-foreground: oklch(1.00 0 0);
+  
   /* Surface transparency tokens - Light mode */
   --surface-sidebar: oklch(0.98 0 0 / 85%);
   --surface-topnav: oklch(0.98 0 0 / 85%);

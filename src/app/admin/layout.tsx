@@ -2,6 +2,7 @@ import Image from "next/image";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin-sidebar";
 import { TopNav } from "@/components/top-nav";
+import { MobileNav } from "@/components/mobile-nav";
 
 export default function AdminLayout({
   children,
@@ -36,6 +37,9 @@ export default function AdminLayout({
           {children}
         </div>
       </SidebarInset>
+      
+      {/* Mobile Navigation - FAB + slide-over panel */}
+      <MobileNav />
     </SidebarProvider>
   );
 }
