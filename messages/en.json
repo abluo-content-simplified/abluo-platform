@@ -28,7 +28,8 @@
     "project": "Project",
     "menu": "Menu",
     "close": "Close",
-    "back": "Back"
+    "back": "Back",
+    "language": "Language"
   },
   "search": {
     "placeholder": "Search...",
@@ -62,5 +63,35 @@
     "comfortable": "Comfortable",
     "large": "Large",
     "logOut": "Log Out"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signInToAbluo": "Sign in to Abluo",
+    "email": "Email",
+    "emailPlaceholder": "Enter your email address",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "forgotPassword": "Forgot your password?",
+    "newToAbluo": "New to Abluo?",
+    "createAccount": "Create an Account",
+    "needHelp": "Need help?",
+    "contactAbluo": "Contact Abluo",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
+  },
+  "validation": {
+    "emailRequired": "Email is required",
+    "emailInvalid": "Invalid email address",
+    "passwordRequired": "Password is required",
+    "passwordMinLength": "Password must be at least {min} characters"
+  },
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "clear": "Clear"
   }
 }

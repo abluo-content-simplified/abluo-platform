@@ -18,6 +18,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { useSidebar } from "@/components/ui/sidebar"
+import { LanguageSwitcher } from "@/components/language-switcher"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -373,6 +374,9 @@ export function TopNav({ className }: TopNavProps) {
               <span className="relative inline-flex size-2 rounded-full bg-destructive" />
             </span>
           </button>
+
+          {/* Language Switcher */}
+          <LanguageSwitcher />
 
           {/* Healthy Status - Subtle circular treatment */}
           <div
