@@ -8,15 +8,17 @@ import { useTranslations } from "next-intl"
 import {
   Menu,
   X,
-  ChevronRight,
-  ChevronLeft,
+  ChevronDown,
   Check,
+  Plus,
   LayoutDashboard,
   Users,
   FolderKanban,
   FileText,
   Settings,
   Building2,
+  User,
+  LogOut,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -46,24 +48,23 @@ const navigationItems = [
   { titleKey: "nav.settings", icon: Settings, href: "/admin/settings" },
 ]
 
-type NavScreen = "main" | "company" | "project"
+type ExpandedSection = "none" | "user" | "company" | "project"
 
 export function MobileNav() {
   const pathname = usePathname()
   const t = useTranslations()
   const [isOpen, setIsOpen] = React.useState(false)
-  const [screen, setScreen] = React.useState<NavScreen>("main")
+  const [expandedSection, setExpandedSection] = React.useState<ExpandedSection>("none")
   const [selectedCompany, setSelectedCompany] = React.useState(mockCustomers[0])
   const [selectedProject, setSelectedProject] = React.useState(mockProjects[0])
 
   // Get projects for selected company
   const companyProjects = mockProjects.filter((p) => p.customerId === selectedCompany.id)
 
-  // Reset screen when closing
+  // Reset expanded section when closing
   React.useEffect(() => {
     if (!isOpen) {
-      // Delay reset to allow close animation
-      const timer = setTimeout(() => setScreen("main"), 250)
+      const timer = setTimeout(() => setExpandedSection("none"), 250)
       return () => clearTimeout(timer)
     }
   }, [isOpen])
@@ -90,6 +91,10 @@ export function MobileNav() {
     return pathname.startsWith(href)
   }
 
+  const toggleSection = (section: ExpandedSection) => {
+    setExpandedSection((current) => (current === section ? "none" : section))
+  }
+
   const handleCompanySelect = (company: typeof mockCustomers[0]) => {
     setSelectedCompany(company)
     // Reset project to first of new company
@@ -97,12 +102,12 @@ export function MobileNav() {
     if (newProjects.length > 0) {
       setSelectedProject(newProjects[0])
     }
-    setScreen("main")
+    setExpandedSection("none")
   }
 
   const handleProjectSelect = (project: typeof mockProjects[0]) => {
     setSelectedProject(project)
-    setScreen("main")
+    setExpandedSection("none")
   }
 
   return (
@@ -155,197 +160,243 @@ export function MobileNav() {
           "transition-transform duration-(--motion-normal) ease-out",
           "md:hidden",
           "flex flex-col",
-          "safe-bottom",
           isOpen ? "translate-x-0" : "translate-x-full"
         )}
       >
-        {/* Screen Container for stack navigation */}
-        <div className="relative flex-1 overflow-hidden">
-          {/* Main Screen */}
-          <div
-            className={cn(
-              "absolute inset-0 flex flex-col transition-transform duration-(--motion-normal) ease-out",
-              screen === "main" ? "translate-x-0" : "-translate-x-full"
-            )}
-          >
-            {/* Header */}
-            <div className="flex flex-col gap-1 px-6 pt-6 pb-4">
-              <div className="flex items-center gap-2">
-                <Image src="/logo.svg" alt="Abluo" width={28} height={28} className="size-7" />
-                <Image
-                  src="/abluo.svg"
-                  alt="Abluo"
-                  width={80}
-                  height={20}
-                  className="h-5 w-auto dark:hidden"
-                />
-                <Image
-                  src="/abluo-inv.svg"
-                  alt="Abluo"
-                  width={80}
-                  height={20}
-                  className="hidden h-5 w-auto dark:block"
-                />
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                <div>Content Simplified</div>
-                <div className="mt-0.5 opacity-60">Version 0.1.0 &middot; Admin Console</div>
-              </div>
-            </div>
-
-            {/* Company & Project Switchers */}
-            <div className="px-4 py-2">
-              <button
-                onClick={() => setScreen("company")}
-                className="flex w-full items-center justify-between rounded-lg px-3 py-3 text-sm transition-colors hover:bg-sidebar-accent"
-              >
-                <div className="flex items-center gap-3">
-                  <Building2 className="size-4 text-muted-foreground" />
-                  <div className="text-left">
-                    <div className="text-xs text-muted-foreground">{t("topNav.company")}</div>
-                    <div className="font-medium">{selectedCompany.name}</div>
-                  </div>
-                </div>
-                <ChevronRight className="size-4 text-muted-foreground" />
-              </button>
-
-              <button
-                onClick={() => setScreen("project")}
-                className="flex w-full items-center justify-between rounded-lg px-3 py-3 text-sm transition-colors hover:bg-sidebar-accent"
-              >
-                <div className="flex items-center gap-3">
-                  <FolderKanban className="size-4 text-muted-foreground" />
-                  <div className="text-left">
-                    <div className="text-xs text-muted-foreground">{t("topNav.project")}</div>
-                    <div className="font-medium">{selectedProject?.name || "Select project"}</div>
-                  </div>
-                </div>
-                <ChevronRight className="size-4 text-muted-foreground" />
-              </button>
-            </div>
-
-            {/* Divider */}
-            <div className="mx-4 my-2 h-px bg-border" />
-
-            {/* Main Navigation - positioned for thumb reach */}
-            <nav className="flex-1 px-4 py-2">
-              <div className="flex h-full flex-col justify-center">
-                {navigationItems.map((item) => {
-                  const Icon = item.icon
-                  const active = isActive(item.href)
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors",
-                        "min-h-[48px]",
-                        active
-                          ? "bg-sidebar-accent text-[var(--brand)]"
-                          : "text-sidebar-foreground hover:bg-sidebar-accent"
-                      )}
-                    >
-                      <Icon className={cn("size-5", active && "text-[var(--brand)]")} />
-                      <span>{t(item.titleKey)}</span>
-                      {item.badge && (
-                        <span className="ml-auto flex size-5 items-center justify-center rounded-full bg-[var(--brand)] text-[10px] font-semibold text-[var(--brand-foreground)]">
-                          {item.badge}
-                        </span>
-                      )}
-                    </Link>
-                  )
-                })}
-              </div>
-            </nav>
-
-            {/* User Section */}
-            <div className="mt-auto border-t border-border px-4 py-4">
-              <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-sidebar-accent">
-                <Avatar className="size-9">
-                  <AvatarFallback className="bg-[var(--brand)] text-[var(--brand-foreground)]">JD</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 text-left">
-                  <div className="text-sm font-medium">John Doe</div>
-                  <div className="text-xs text-muted-foreground">john@abluo.com</div>
-                </div>
-                <ChevronRight className="size-4 text-muted-foreground" />
-              </button>
-            </div>
+        {/* Header - Logo & Version */}
+        <div className="flex flex-col gap-1 px-6 pt-6 pb-3">
+          <div className="flex items-center gap-2">
+            <Image src="/logo.svg" alt="Abluo" width={28} height={28} className="size-7" />
+            <Image
+              src="/abluo.svg"
+              alt="Abluo"
+              width={80}
+              height={20}
+              className="h-5 w-auto dark:hidden"
+            />
+            <Image
+              src="/abluo-inv.svg"
+              alt="Abluo"
+              width={80}
+              height={20}
+              className="hidden h-5 w-auto dark:block"
+            />
           </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            <div>Content Simplified</div>
+            <div className="mt-0.5 opacity-60">Version 0.1.0</div>
+          </div>
+        </div>
 
-          {/* Company Selection Screen */}
-          <div
-            className={cn(
-              "absolute inset-0 flex flex-col bg-[var(--surface-sidebar)] transition-transform duration-(--motion-normal) ease-out",
-              screen === "company" ? "translate-x-0" : "translate-x-full"
-            )}
-          >
-            <div className="flex items-center gap-2 border-b border-border px-4 py-4">
-              <button
-                onClick={() => setScreen("main")}
-                className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <ChevronLeft className="size-4" />
-                Back
-              </button>
-            </div>
-            <div className="px-6 py-4">
-              <h2 className="text-lg font-semibold">Select company</h2>
-            </div>
-            <div className="flex-1 overflow-y-auto px-4">
-              {mockCustomers.map((company) => (
-                <button
-                  key={company.id}
-                  onClick={() => handleCompanySelect(company)}
-                  className="flex w-full items-center justify-between rounded-lg px-3 py-3 text-sm transition-colors hover:bg-sidebar-accent"
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto">
+          {/* User Section - Expandable */}
+          <div className="px-4 py-2">
+            <button
+              onClick={() => toggleSection("user")}
+              className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-sidebar-accent"
+            >
+              <Avatar className="size-5 mt-0.5">
+                <AvatarFallback className="bg-[var(--brand)] text-[var(--brand-foreground)] text-[10px]">JD</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 text-left">
+                <div className="font-medium leading-tight">John Doe</div>
+                <div className="text-xs text-muted-foreground">john@abluo.com</div>
+              </div>
+              <ChevronDown
+                className={cn(
+                  "size-4 mt-0.5 text-muted-foreground transition-transform duration-(--motion-fast)",
+                  expandedSection === "user" && "rotate-180"
+                )}
+              />
+            </button>
+
+            {/* User Expanded Content */}
+            <div
+              className={cn(
+                "overflow-hidden transition-all duration-(--motion-normal) ease-out",
+                expandedSection === "user" ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+              )}
+            >
+              <div className="ml-8 space-y-1 py-1">
+                <Link
+                  href="/admin/profile"
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
                 >
-                  <span className={cn(selectedCompany.id === company.id && "font-medium")}>
-                    {company.name}
-                  </span>
-                  {selectedCompany.id === company.id && (
-                    <Check className="size-4 text-[var(--brand)]" />
-                  )}
+                  <User className="size-4" />
+                  Profile
+                </Link>
+                <Link
+                  href="/admin/settings/account"
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+                >
+                  <Settings className="size-4" />
+                  Account settings
+                </Link>
+                <button
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+                >
+                  <LogOut className="size-4" />
+                  Sign out
                 </button>
-              ))}
+              </div>
             </div>
           </div>
 
-          {/* Project Selection Screen */}
-          <div
-            className={cn(
-              "absolute inset-0 flex flex-col bg-[var(--surface-sidebar)] transition-transform duration-(--motion-normal) ease-out",
-              screen === "project" ? "translate-x-0" : "translate-x-full"
-            )}
-          >
-            <div className="flex items-center gap-2 border-b border-border px-4 py-4">
-              <button
-                onClick={() => setScreen("main")}
-                className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <ChevronLeft className="size-4" />
-                Back
-              </button>
-            </div>
-            <div className="px-6 py-4">
-              <h2 className="text-lg font-semibold">Select project</h2>
-            </div>
-            <div className="flex-1 overflow-y-auto px-4">
-              {companyProjects.map((project) => (
-                <button
-                  key={project.id}
-                  onClick={() => handleProjectSelect(project)}
-                  className="flex w-full items-center justify-between rounded-lg px-3 py-3 text-sm transition-colors hover:bg-sidebar-accent"
+          {/* Divider */}
+          <div className="mx-4 my-1 h-px bg-border" />
+
+          {/* Company Switcher - Expandable */}
+          <div className="px-4 py-1">
+            <button
+              onClick={() => toggleSection("company")}
+              className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-sidebar-accent"
+            >
+              <Building2 className="size-5 mt-0.5 text-muted-foreground" />
+              <div className="flex-1 text-left">
+                <div className="text-xs text-muted-foreground leading-tight">Company</div>
+                <div className="font-medium">{selectedCompany.name}</div>
+              </div>
+              <ChevronDown
+                className={cn(
+                  "size-4 mt-0.5 text-muted-foreground transition-transform duration-(--motion-fast)",
+                  expandedSection === "company" && "rotate-180"
+                )}
+              />
+            </button>
+
+            {/* Company Expanded Content */}
+            <div
+              className={cn(
+                "overflow-hidden transition-all duration-(--motion-normal) ease-out",
+                expandedSection === "company" ? "max-h-80 opacity-100" : "max-h-0 opacity-0"
+              )}
+            >
+              <div className="ml-8 space-y-0.5 py-1">
+                {mockCustomers.map((company) => (
+                  <button
+                    key={company.id}
+                    onClick={() => handleCompanySelect(company)}
+                    className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-sidebar-accent"
+                  >
+                    <span className={cn(selectedCompany.id === company.id && "font-medium")}>
+                      {company.name}
+                    </span>
+                    {selectedCompany.id === company.id && (
+                      <Check className="size-4 text-[var(--brand)]" />
+                    )}
+                  </button>
+                ))}
+                <div className="my-1 h-px bg-border/50" />
+                <Link
+                  href="/admin/clients"
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
                 >
-                  <span className={cn(selectedProject?.id === project.id && "font-medium")}>
-                    {project.name}
-                  </span>
-                  {selectedProject?.id === project.id && (
-                    <Check className="size-4 text-[var(--brand)]" />
-                  )}
-                </button>
-              ))}
+                  <Building2 className="size-4" />
+                  View all companies
+                </Link>
+                <Link
+                  href="/admin/clients/new"
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+                >
+                  <Plus className="size-4" />
+                  Add company
+                </Link>
+              </div>
             </div>
           </div>
+
+          {/* Project Switcher - Expandable */}
+          <div className="px-4 py-1">
+            <button
+              onClick={() => toggleSection("project")}
+              className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-sidebar-accent"
+            >
+              <FolderKanban className="size-5 mt-0.5 text-muted-foreground" />
+              <div className="flex-1 text-left">
+                <div className="text-xs text-muted-foreground leading-tight">Project</div>
+                <div className="font-medium">{selectedProject?.name || "Select project"}</div>
+              </div>
+              <ChevronDown
+                className={cn(
+                  "size-4 mt-0.5 text-muted-foreground transition-transform duration-(--motion-fast)",
+                  expandedSection === "project" && "rotate-180"
+                )}
+              />
+            </button>
+
+            {/* Project Expanded Content */}
+            <div
+              className={cn(
+                "overflow-hidden transition-all duration-(--motion-normal) ease-out",
+                expandedSection === "project" ? "max-h-80 opacity-100" : "max-h-0 opacity-0"
+              )}
+            >
+              <div className="ml-8 space-y-0.5 py-1">
+                {companyProjects.map((project) => (
+                  <button
+                    key={project.id}
+                    onClick={() => handleProjectSelect(project)}
+                    className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-sidebar-accent"
+                  >
+                    <span className={cn(selectedProject?.id === project.id && "font-medium")}>
+                      {project.name}
+                    </span>
+                    {selectedProject?.id === project.id && (
+                      <Check className="size-4 text-[var(--brand)]" />
+                    )}
+                  </button>
+                ))}
+                <div className="my-1 h-px bg-border/50" />
+                <Link
+                  href="/admin/projects"
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+                >
+                  <FolderKanban className="size-4" />
+                  View all projects
+                </Link>
+                <Link
+                  href="/admin/projects/new"
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+                >
+                  <Plus className="size-4" />
+                  Add project
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="mx-4 my-2 h-px bg-border" />
+
+          {/* Main Navigation */}
+          <nav className="px-4 py-2">
+            {navigationItems.map((item) => {
+              const Icon = item.icon
+              const active = isActive(item.href)
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors",
+                    "min-h-[48px]",
+                    active
+                      ? "bg-sidebar-accent text-[var(--brand)]"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent"
+                  )}
+                >
+                  <Icon className={cn("size-5", active && "text-[var(--brand)]")} />
+                  <span>{t(item.titleKey)}</span>
+                  {item.badge && (
+                    <span className="ml-auto flex size-5 items-center justify-center rounded-full bg-[var(--brand)] text-[10px] font-semibold text-[var(--brand-foreground)]">
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              )
+            })}
+          </nav>
         </div>
 
         {/* Safe area padding for iOS */}
