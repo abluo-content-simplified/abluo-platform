@@ -7,11 +7,6 @@ import { usePathname, useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useTheme } from "next-themes"
 import {
-  LayoutDashboard,
-  Users,
-  FolderKanban,
-  FileText,
-  Settings,
   User,
   LogOut,
   Monitor,
@@ -24,11 +19,13 @@ import {
   PanelLeft,
   PanelLeftClose,
   Columns2,
+  Settings,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { useDensity } from "@/components/density-provider"
+import { navigationItems } from "@/config/navigation"
 import {
   Sidebar,
   SidebarContent,
@@ -53,42 +50,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { PillToggle } from "@/components/ui/pill-toggle"
-
-interface NavItem {
-  titleKey: string
-  icon: React.ComponentType<{ className?: string }>
-  href: string
-  badge?: number
-}
-
-const navigationItems: NavItem[] = [
-  {
-    titleKey: "nav.dashboard",
-    icon: LayoutDashboard,
-    href: "/admin",
-    badge: 3,
-  },
-  {
-    titleKey: "nav.clients",
-    icon: Users,
-    href: "/admin/clients",
-  },
-  {
-    titleKey: "nav.projects",
-    icon: FolderKanban,
-    href: "/admin/projects",
-  },
-  {
-    titleKey: "nav.content",
-    icon: FileText,
-    href: "/admin/content",
-  },
-  {
-    titleKey: "nav.settings",
-    icon: Settings,
-    href: "/admin/settings",
-  },
-]
 
 // Sidebar behavior options
 type SidebarBehavior = "expanded" | "collapsed" | "hover"

@@ -11,48 +11,31 @@ import {
   ChevronDown,
   Check,
   Plus,
-  LayoutDashboard,
-  Users,
-  FolderKanban,
-  FileText,
-  Settings,
   Building2,
   User,
   LogOut,
+  Monitor,
+  Sun,
+  Moon,
+  Minus,
+  Equal,
+  Settings,
+  FolderKanban,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-
-// Mock data - same as top-nav
-const mockCustomers = [
-  { id: "1", name: "Acme Corp" },
-  { id: "2", name: "Globex Inc" },
-  { id: "3", name: "Initech" },
-]
-
-const mockProjects = [
-  { id: "1", name: "Website Redesign", customerId: "1" },
-  { id: "2", name: "Mobile App", customerId: "1" },
-  { id: "3", name: "Marketing Campaign", customerId: "1" },
-  { id: "4", name: "Brand Identity", customerId: "2" },
-  { id: "5", name: "Product Launch", customerId: "3" },
-  { id: "6", name: "Annual Report", customerId: "3" },
-]
-
-// Navigation items - same as admin-sidebar
-const navigationItems = [
-  { titleKey: "nav.dashboard", icon: LayoutDashboard, href: "/admin", badge: 3 },
-  { titleKey: "nav.clients", icon: Users, href: "/admin/clients" },
-  { titleKey: "nav.projects", icon: FolderKanban, href: "/admin/projects" },
-  { titleKey: "nav.content", icon: FileText, href: "/admin/content" },
-  { titleKey: "nav.settings", icon: Settings, href: "/admin/settings" },
-]
+import { useTheme } from "next-themes"
+import { useDensity } from "@/components/density-provider"
+import { PillToggle } from "@/components/ui/pill-toggle"
+import { navigationItems, mockCustomers, mockProjects } from "@/config/navigation"
 
 type ExpandedSection = "none" | "user" | "company" | "project"
 
 export function MobileNav() {
   const pathname = usePathname()
   const t = useTranslations()
+  const { theme, setTheme } = useTheme()
+  const { density, setDensity } = useDensity()
   const [isOpen, setIsOpen] = React.useState(false)
   const [expandedSection, setExpandedSection] = React.useState<ExpandedSection>("none")
   const [selectedCompany, setSelectedCompany] = React.useState(mockCustomers[0])
@@ -215,7 +198,7 @@ export function MobileNav() {
             <div
               className={cn(
                 "overflow-hidden transition-all duration-(--motion-normal) ease-out",
-                expandedSection === "user" ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+                expandedSection === "user" ? "max-h-80 opacity-100" : "max-h-0 opacity-0"
               )}
             >
               <div className="ml-8 space-y-1 py-1">
@@ -224,20 +207,51 @@ export function MobileNav() {
                   className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
                 >
                   <User className="size-4" />
-                  Profile
+                  {t("userMenu.account")}
                 </Link>
                 <Link
-                  href="/admin/settings/account"
+                  href="/admin/settings"
                   className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
                 >
                   <Settings className="size-4" />
-                  Account settings
+                  {t("userMenu.preferences")}
                 </Link>
+                
+                {/* Appearance (Theme) Toggle - mobile only */}
+                <div className="px-1 py-1">
+                  <PillToggle
+                    label={t("userMenu.theme")}
+                    value={theme ?? "system"}
+                    onChange={setTheme}
+                    options={[
+                      { value: "system", icon: <Monitor className="size-4" />, tooltip: t("userMenu.system") },
+                      { value: "light", icon: <Sun className="size-4" />, tooltip: t("userMenu.light") },
+                      { value: "dark", icon: <Moon className="size-4" />, tooltip: t("userMenu.dark") },
+                    ]}
+                  />
+                </div>
+                
+                {/* Density Toggle - mobile only */}
+                <div className="px-1 py-1">
+                  <PillToggle
+                    label={t("userMenu.density")}
+                    value={density}
+                    onChange={setDensity}
+                    options={[
+                      { value: "compact", icon: <Minus className="size-4" />, tooltip: t("userMenu.compact") },
+                      { value: "comfortable", icon: <Equal className="size-4" />, tooltip: t("userMenu.comfortable") },
+                      { value: "large", icon: <Menu className="size-4" />, tooltip: t("userMenu.large") },
+                    ]}
+                  />
+                </div>
+                
+                <div className="my-1 h-px bg-border/50" />
+                
                 <button
-                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive transition-colors hover:bg-sidebar-accent"
                 >
                   <LogOut className="size-4" />
-                  Sign out
+                  {t("userMenu.logOut")}
                 </button>
               </div>
             </div>

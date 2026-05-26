@@ -28,26 +28,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { EntitySwitcher } from "@/components/ui/entity-switcher"
+import { mockCustomers, mockProjects } from "@/config/navigation"
 
 interface TopNavProps {
   className?: string
 }
-
-// Mock data for customers and projects
-const mockCustomers = [
-  { id: "1", name: "Acme Corp", projectCount: 3 },
-  { id: "2", name: "Globex Inc", projectCount: 1 },
-  { id: "3", name: "Initech", projectCount: 2 },
-]
-
-const mockProjects = [
-  { id: "1", name: "Website Redesign", customerId: "1" },
-  { id: "2", name: "Mobile App", customerId: "1" },
-  { id: "3", name: "Marketing Campaign", customerId: "1" },
-  { id: "4", name: "Brand Identity", customerId: "2" },
-  { id: "5", name: "Product Launch", customerId: "3" },
-  { id: "6", name: "Annual Report", customerId: "3" },
-]
 
 // Search filter types
 type SearchFilter = "all" | "clients" | "projects" | "content" | "leads"
@@ -324,11 +309,11 @@ export function TopNav({ className }: TopNavProps) {
       >
         {/* Left side - Sidebar toggle + Customer/Project switchers */}
         <div className="flex items-center gap-1">
-          {/* Sidebar Toggle */}
+          {/* Sidebar Toggle - hidden on mobile (use FAB navigation instead) */}
           <button
             onClick={toggleSidebar}
             className={cn(
-              "flex size-8 items-center justify-center rounded-md transition-colors",
+              "hidden md:flex size-8 items-center justify-center rounded-md transition-colors",
               "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             )}
             aria-label={t("toggleSidebar")}
