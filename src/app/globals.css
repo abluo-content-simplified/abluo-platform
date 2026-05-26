@@ -56,6 +56,11 @@
   --sidebar-shrink-duration: 220ms;
   --sidebar-content-delay: 40ms;
   
+  /* Sidebar dimensions */
+  --sidebar-width: 16rem;
+  --sidebar-width-mobile: 18rem;
+  --sidebar-width-collapsed: 3rem;
+  
   /* Motion timing tokens */
   --motion-fast: 180ms;
   --motion-normal: 200ms;
