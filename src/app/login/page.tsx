@@ -29,37 +29,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background">
-      {/* Blurred logo background - using gradient radial glows */}
-      <div className="fixed inset-0 -z-10 overflow-hidden">
-        {/* Large blurred orange glow - top left */}
-        <div
-          className="absolute -top-48 -left-48 size-[600px]"
-          style={{
-            background: "radial-gradient(circle, rgba(232, 106, 51, 0.4) 0%, rgba(232, 106, 51, 0) 70%)",
-          }}
-          aria-hidden="true"
-        />
-        {/* Medium blurred orange glow - center right */}
-        <div
-          className="absolute top-1/4 right-0 size-[450px]"
-          style={{
-            background: "radial-gradient(circle, rgba(232, 106, 51, 0.25) 0%, rgba(232, 106, 51, 0) 70%)",
-          }}
-          aria-hidden="true"
-        />
-        {/* Small blurred orange glow - bottom */}
-        <div
-          className="absolute -bottom-24 left-1/3 size-[400px]"
-          style={{
-            background: "radial-gradient(circle, rgba(232, 106, 51, 0.2) 0%, rgba(232, 106, 51, 0) 70%)",
-          }}
-          aria-hidden="true"
-        />
-      </div>
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden">
+      {/* Blurred logo background image */}
+      <Image
+        src="/bkg.png"
+        alt=""
+        fill
+        className="object-cover"
+        aria-hidden="true"
+        priority
+      />
 
-      {/* Centered content */}
-      <div className="flex flex-col items-center gap-8 px-4">
+      {/* Centered content - above background */}
+      <div className="relative z-10 flex flex-col items-center gap-8 px-4">
         {/* Logo */}
         <div className="flex items-center gap-2">
           <Image
