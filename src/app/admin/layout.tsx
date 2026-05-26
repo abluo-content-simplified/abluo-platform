@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin-sidebar";
 import { TopNav } from "@/components/top-nav";
@@ -12,29 +11,28 @@ export default function AdminLayout({
     <SidebarProvider>
       {/* Blurred logo background - positioned behind everything */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
-        {/* Large blurred logo elements */}
-        <Image
-          src="/logo.svg"
-          alt=""
-          width={600}
-          height={600}
-          className="absolute -top-32 -left-32 size-[500px] opacity-30 blur-[100px]"
+        {/* Large blurred orange glow - top left */}
+        <div
+          className="absolute -top-48 -left-48 size-[600px]"
+          style={{
+            background: "radial-gradient(circle, rgba(232, 106, 51, 0.4) 0%, rgba(232, 106, 51, 0) 70%)",
+          }}
           aria-hidden="true"
         />
-        <Image
-          src="/logo.svg"
-          alt=""
-          width={400}
-          height={400}
-          className="absolute top-1/3 left-1/2 size-[350px] opacity-20 blur-[80px]"
+        {/* Medium blurred orange glow - center right */}
+        <div
+          className="absolute top-1/4 right-0 size-[450px]"
+          style={{
+            background: "radial-gradient(circle, rgba(232, 106, 51, 0.25) 0%, rgba(232, 106, 51, 0) 70%)",
+          }}
           aria-hidden="true"
         />
-        <Image
-          src="/logo.svg"
-          alt=""
-          width={300}
-          height={300}
-          className="absolute bottom-0 right-1/4 size-[280px] opacity-15 blur-[70px]"
+        {/* Small blurred orange glow - bottom */}
+        <div
+          className="absolute -bottom-24 left-1/3 size-[400px]"
+          style={{
+            background: "radial-gradient(circle, rgba(232, 106, 51, 0.2) 0%, rgba(232, 106, 51, 0) 70%)",
+          }}
           aria-hidden="true"
         />
       </div>
