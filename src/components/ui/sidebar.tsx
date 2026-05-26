@@ -127,7 +127,13 @@ function SidebarProvider({
     <SidebarContext.Provider value={contextValue}>
       <div
         data-slot="sidebar-wrapper"
-        style={style}
+        style={
+          {
+            "--sidebar-width": "16rem",
+            "--sidebar-width-collapsed": "3rem",
+            ...style,
+          } as React.CSSProperties
+        }
         className={cn(
           "group/sidebar-wrapper flex min-h-svh w-full",
           className
