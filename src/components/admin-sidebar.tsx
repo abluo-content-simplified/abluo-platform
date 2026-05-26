@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useTheme } from "next-themes"
 import {
@@ -259,6 +259,7 @@ function DensityToggle() {
 
 export function AdminSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const t = useTranslations()
   const { state, setOpen } = useSidebar()
   const [sidebarBehavior, setSidebarBehavior] = React.useState<SidebarBehavior>("expanded")
@@ -281,11 +282,26 @@ export function AdminSidebar() {
     return pathname.startsWith(href)
   }
 
+  // Handle logo click - go to dashboard or scroll to top if already there
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (pathname === "/admin") {
+      // Already on dashboard, smooth scroll to top
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    } else {
+      // Navigate to dashboard
+      router.push("/admin")
+    }
+  }
+
   return (
     <Sidebar variant="floating" collapsible="icon">
       {/* Header with logo */}
       <SidebarHeader>
-        <div className="flex h-12 items-center gap-2 px-2">
+        <button
+          onClick={handleLogoClick}
+          className="flex h-12 items-center gap-1 px-2 transition-colors hover:opacity-80"
+        >
           {/* Logo icon - always visible, aligned with nav icons below */}
           <Image
             src="/logo.svg"
@@ -294,9 +310,16 @@ export function AdminSidebar() {
             height={32}
             className="size-8 shrink-0"
           />
-          {/* Logotype - only when expanded */}
-          {state !== "collapsed" && (
-            <>
+          {/* Logotype - only when expanded, with fade/slide animation */}
+          <div
+            className={cn(
+              "overflow-hidden transition-all duration-[120ms] ease-out",
+              state === "collapsed"
+                ? "w-0 opacity-0 -translate-x-2"
+                : "w-auto opacity-100 translate-x-0"
+            )}
+          >
+            <div className="pl-1">
               <Image
                 src="/abluo.svg"
                 alt="Abluo"
@@ -311,9 +334,9 @@ export function AdminSidebar() {
                 height={24}
                 className="hidden h-6 w-auto dark:block"
               />
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        </button>
       </SidebarHeader>
 
       {/* Main navigation content */}

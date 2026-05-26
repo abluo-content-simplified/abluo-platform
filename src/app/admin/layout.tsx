@@ -10,7 +10,7 @@ export default function AdminLayout({
   return (
     <SidebarProvider>
       <AdminSidebar />
-      <SidebarInset className="flex flex-col gap-2 p-2 pl-4">
+      <SidebarInset className="flex flex-col gap-2 p-2 pl-4 transition-[margin-left] duration-[220ms] ease-out delay-[40ms]">
         <TopNav />
         <div className="flex flex-1 flex-col overflow-hidden rounded-lg bg-background shadow-sm ring-1 ring-border">
           {children}

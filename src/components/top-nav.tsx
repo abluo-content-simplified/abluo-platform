@@ -159,26 +159,26 @@ function SearchOverlay({
           </div>
 
           {/* Filter Tabs with underline indicator */}
-          <div className="relative flex items-center gap-1 px-4 py-2">
+          <div className="relative flex items-center gap-1 px-4 py-1.5">
             {filters.map((f) => (
               <button
                 key={f.key}
                 onClick={() => setFilter(f.key)}
                 className={cn(
-                  "relative px-3 py-1.5 text-sm font-medium transition-colors",
+                  "relative px-3 py-1 text-sm font-medium transition-colors",
                   filter === f.key
-                    ? "text-sidebar-accent-foreground"
+                    ? "text-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {f.label}
-                {/* Active indicator line */}
+                {/* Active indicator line - 4px height, same color as text */}
                 {filter === f.key && (
-                  <span className="absolute -bottom-2 left-0 right-0 h-0.5 rounded-full bg-primary" />
+                  <span className="absolute -bottom-1.5 left-0 right-0 h-1 rounded-full bg-foreground" />
                 )}
               </button>
             ))}
-            {/* Separator line below tabs */}
+            {/* Separator line below tabs - closer to labels */}
             <div className="absolute bottom-0 left-0 right-0 h-px bg-border" />
           </div>
 
