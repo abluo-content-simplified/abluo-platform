@@ -43,6 +43,14 @@
 
   --radius: 0.8rem;
   
+  /* Surface transparency tokens - Light mode */
+  --surface-sidebar: oklch(0.98 0 0 / 85%);
+  --surface-topnav: oklch(0.98 0 0 / 85%);
+  --surface-content: oklch(1.00 0 0 / 75%);
+  --surface-card: oklch(1.00 0 0 / 95%);
+  --surface-popover: oklch(1.00 0 0 / 95%);
+  --surface-dialog: oklch(1.00 0 0 / 95%);
+  
   /* Sidebar animation timing */
   --sidebar-text-duration: 120ms;
   --sidebar-shrink-duration: 220ms;
@@ -144,6 +152,14 @@
   --sidebar-accent-foreground: oklch(0.99 0 0);
   --sidebar-border: oklch(1.00 0 0 / 10%);
   --sidebar-ring: oklch(0.55 0.02 285.76);
+  
+  /* Surface transparency tokens - Dark mode */
+  --surface-sidebar: oklch(0.21 0.01 285.56 / 80%);
+  --surface-topnav: oklch(0.21 0.01 285.56 / 80%);
+  --surface-content: oklch(0.20 0 0 / 70%);
+  --surface-card: oklch(0.27 0 0 / 90%);
+  --surface-popover: oklch(0.27 0 0 / 95%);
+  --surface-dialog: oklch(0.27 0 0 / 95%);
   
   --shadow-2xs: 0 1px 8px 0px oklch(0.00 0 0 / 0.05);
   --shadow-xs: 0 1px 8px 0px oklch(0.00 0 0 / 0.05);

@@ -30,12 +30,21 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden">
-      {/* Blurred logo background image */}
+      {/* Blurred logo background image - light mode */}
       <Image
         src="/bkg.png"
         alt=""
         fill
-        className="object-cover"
+        className="object-cover dark:hidden"
+        aria-hidden="true"
+        priority
+      />
+      {/* Blurred logo background image - dark mode */}
+      <Image
+        src="/bkg-inv.png"
+        alt=""
+        fill
+        className="object-cover hidden dark:block"
         aria-hidden="true"
         priority
       />
