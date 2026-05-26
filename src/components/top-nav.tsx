@@ -430,7 +430,7 @@ export function TopNav({ className }: TopNavProps) {
     <>
       <header
         className={cn(
-          "flex h-14 items-center justify-between gap-4 rounded-lg bg-sidebar px-3 shadow-sm ring-1 ring-sidebar-border",
+          "flex h-14 items-center justify-between gap-4 rounded-lg bg-sidebar/90 backdrop-blur-sm px-3 shadow-sm ring-1 ring-sidebar-border/50",
           className
         )}
       >
