@@ -8,8 +8,6 @@ import {
   Bell,
   Building2,
   FolderKanban,
-  ChevronsUpDown,
-  Check,
   Plus,
   PanelLeftOpen,
   PanelLeftClose,
@@ -29,6 +27,7 @@ import {
   DropdownMenuPositioner,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { EntitySwitcher } from "@/components/ui/entity-switcher"
 
 interface TopNavProps {
   className?: string
@@ -242,85 +241,29 @@ function SearchOverlay({
 function CustomerSwitcher() {
   const t = useTranslations("topNav")
   const [selectedCustomer, setSelectedCustomer] = React.useState(mockCustomers[0])
-  const [searchQuery, setSearchQuery] = React.useState("")
-
-  const filteredCustomers = mockCustomers.filter((customer) =>
-    customer.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
 
   return (
-    <div className="flex items-center">
-      {/* Clickable icon + name - navigates to customer dashboard */}
-      <Link
-        href={`/admin/clients/${selectedCustomer.id}`}
-        className={cn(
-          "flex items-center gap-2 rounded-md px-2 py-1 text-sm transition-colors",
-          "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-        )}
-      >
-        <Building2 className="size-4 text-sidebar-foreground/60" />
-        <span className="max-w-[120px] truncate font-medium">
-          {selectedCustomer.name}
-        </span>
-      </Link>
-
-      {/* Dropdown trigger - separate chevron */}
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          className={cn(
-            "flex size-6 items-center justify-center rounded-md transition-colors",
-            "text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-            "focus-visible:ring-2 focus-visible:ring-sidebar-ring outline-none"
-          )}
-        >
-          <ChevronsUpDown className="size-3.5" />
-        </DropdownMenuTrigger>
-        <DropdownMenuPortal>
-          <DropdownMenuPositioner side="bottom" align="start" sideOffset={8}>
-            <DropdownMenuContent className="w-[240px]">
-              {/* Search */}
-              <div className="flex items-center gap-2 px-2 py-2">
-                <Search className="size-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder={t("findCustomer")}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                />
-              </div>
-              <DropdownMenuSeparator />
-
-              {/* Customer list */}
-              {filteredCustomers.map((customer) => (
-                <DropdownMenuItem
-                  key={customer.id}
-                  onClick={() => setSelectedCustomer(customer)}
-                  className="flex items-center justify-between"
-                >
-                  <span>{customer.name}</span>
-                  {customer.id === selectedCustomer.id && (
-                    <Check className="size-4" />
-                  )}
-                </DropdownMenuItem>
-              ))}
-
-              <DropdownMenuSeparator />
-
-              {/* Actions */}
-              <DropdownMenuItem>
-                <Building2 className="mr-2 size-4" />
-                {t("allCustomers")}
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Plus className="mr-2 size-4" />
-                {t("addCustomer")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenuPositioner>
-        </DropdownMenuPortal>
-      </DropdownMenu>
-    </div>
+    <EntitySwitcher
+      icon={<Building2 className="size-4" />}
+      selected={selectedCustomer}
+      items={mockCustomers}
+      onSelect={setSelectedCustomer}
+      linkPattern="/admin/clients/{id}"
+      searchPlaceholder={t("findCustomer")}
+      maxWidth="120px"
+      actions={[
+        {
+          icon: <Building2 className="size-4" />,
+          label: t("allCustomers"),
+          href: "/admin/clients",
+        },
+        {
+          icon: <Plus className="size-4" />,
+          label: t("addCustomer"),
+          href: "/admin/clients/new",
+        },
+      ]}
+    />
   )
 }
 
@@ -329,90 +272,35 @@ function ProjectSwitcher({ customerId }: { customerId: string }) {
   const t = useTranslations("topNav")
   const customerProjects = mockProjects.filter((p) => p.customerId === customerId)
   const [selectedProject, setSelectedProject] = React.useState(customerProjects[0])
-  const [searchQuery, setSearchQuery] = React.useState("")
 
   // Don't render if customer has no projects
   if (customerProjects.length === 0) return null
 
-  const filteredProjects = customerProjects.filter((project) =>
-    project.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
   return (
     <>
       <span className="text-sidebar-foreground/30">/</span>
-      <div className="flex items-center">
-        {/* Clickable icon + name - navigates to project page */}
-        <Link
-          href={`/admin/projects/${selectedProject?.id}`}
-          className={cn(
-            "flex items-center gap-2 rounded-md px-2 py-1 text-sm transition-colors",
-            "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          )}
-        >
-          <FolderKanban className="size-4 text-sidebar-foreground/60" />
-          <span className="max-w-[140px] truncate font-medium">
-            {selectedProject?.name || "Select Project"}
-          </span>
-        </Link>
-
-        {/* Dropdown trigger - separate chevron */}
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            className={cn(
-              "flex size-6 items-center justify-center rounded-md transition-colors",
-              "text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-              "focus-visible:ring-2 focus-visible:ring-sidebar-ring outline-none"
-            )}
-          >
-            <ChevronsUpDown className="size-3.5" />
-          </DropdownMenuTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuPositioner side="bottom" align="start" sideOffset={8}>
-              <DropdownMenuContent className="w-[240px]">
-                {/* Search */}
-                <div className="flex items-center gap-2 px-2 py-2">
-                  <Search className="size-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    placeholder={t("findProject")}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                  />
-                </div>
-                <DropdownMenuSeparator />
-
-                {/* Project list */}
-                {filteredProjects.map((project) => (
-                  <DropdownMenuItem
-                    key={project.id}
-                    onClick={() => setSelectedProject(project)}
-                    className="flex items-center justify-between"
-                  >
-                    <span>{project.name}</span>
-                    {project.id === selectedProject?.id && (
-                      <Check className="size-4" />
-                    )}
-                  </DropdownMenuItem>
-                ))}
-
-                <DropdownMenuSeparator />
-
-                {/* Actions */}
-                <DropdownMenuItem>
-                  <FolderKanban className="mr-2 size-4" />
-                  {t("allProjects")}
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Plus className="mr-2 size-4" />
-                  {t("addProject")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenuPositioner>
-          </DropdownMenuPortal>
-        </DropdownMenu>
-      </div>
+      <EntitySwitcher
+        icon={<FolderKanban className="size-4" />}
+        selected={selectedProject}
+        items={customerProjects}
+        onSelect={setSelectedProject}
+        linkPattern="/admin/projects/{id}"
+        searchPlaceholder={t("findProject")}
+        maxWidth="140px"
+        fallbackText="Select Project"
+        actions={[
+          {
+            icon: <FolderKanban className="size-4" />,
+            label: t("allProjects"),
+            href: "/admin/projects",
+          },
+          {
+            icon: <Plus className="size-4" />,
+            label: t("addProject"),
+            href: "/admin/projects/new",
+          },
+        ]}
+      />
     </>
   )
 }
