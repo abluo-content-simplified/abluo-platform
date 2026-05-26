@@ -86,6 +86,22 @@ function SearchOverlay({
     { key: "leads", label: t("leads") },
   ]
 
+  // Get dynamic placeholder based on filter
+  const getPlaceholder = () => {
+    switch (filter) {
+      case "clients":
+        return t("searchClients")
+      case "projects":
+        return t("searchProjects")
+      case "content":
+        return t("searchContent")
+      case "leads":
+        return t("searchLeads")
+      default:
+        return t("placeholder")
+    }
+  }
+
   // Focus input when opened
   React.useEffect(() => {
     if (open) {
@@ -114,9 +130,9 @@ function SearchOverlay({
 
   return (
     <div className="fixed inset-0 z-50">
-      {/* Backdrop with subtle blur */}
+      {/* Backdrop with very subtle blur - content should remain visible */}
       <div
-        className="absolute inset-0 bg-background/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-background/40 backdrop-blur-[2px]"
         onClick={() => onOpenChange(false)}
       />
 
@@ -125,17 +141,17 @@ function SearchOverlay({
         <div
           className={cn(
             "relative w-full max-w-2xl mx-4",
-            "rounded-xl border border-border/50 bg-background/95 backdrop-blur-md shadow-2xl",
+            "rounded-xl border border-border bg-background/80 backdrop-blur-sm shadow-2xl",
             "animate-in fade-in-0 zoom-in-95 duration-200"
           )}
         >
           {/* Search Input */}
-          <div className="flex items-center gap-3 border-b border-border/50 px-4 py-3">
+          <div className="flex items-center gap-3 border-b border-border px-4 py-3">
             <Search className="size-5 text-muted-foreground" />
             <input
               ref={inputRef}
               type="text"
-              placeholder={t("placeholder")}
+              placeholder={getPlaceholder()}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
@@ -143,7 +159,7 @@ function SearchOverlay({
           </div>
 
           {/* Filter Tabs */}
-          <div className="flex items-center gap-1 border-b border-border/50 px-4 py-2">
+          <div className="flex items-center gap-1 border-b border-border px-4 py-2">
             {filters.map((f) => (
               <button
                 key={f.key}
@@ -151,7 +167,7 @@ function SearchOverlay({
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                   filter === f.key
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
@@ -161,14 +177,14 @@ function SearchOverlay({
           </div>
 
           {/* Results Area */}
-          <div className="min-h-[200px] p-4">
-            <p className="text-center text-sm text-muted-foreground">
-              {t("startTyping")}
+          <div className="min-h-[200px] flex items-center justify-center p-8">
+            <p className="text-sm text-muted-foreground/60">
+              {t("emptyState")}
             </p>
           </div>
 
           {/* Footer with keyboard shortcuts */}
-          <div className="flex items-center justify-between border-t border-border/50 px-4 py-2">
+          <div className="flex items-center justify-end border-t border-border px-4 py-2">
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <CornerDownLeft className="size-3" />
@@ -182,10 +198,10 @@ function SearchOverlay({
                 <ArrowUpDown className="size-3" />
                 {t("navigate")}
               </span>
+              <kbd className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                {shortcut}
+              </kbd>
             </div>
-            <kbd className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-              {shortcut}
-            </kbd>
           </div>
         </div>
       </div>

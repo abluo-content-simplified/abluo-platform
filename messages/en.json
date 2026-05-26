@@ -27,12 +27,16 @@
   },
   "search": {
     "placeholder": "Search...",
+    "searchClients": "Search clients...",
+    "searchProjects": "Search projects...",
+    "searchContent": "Search content...",
+    "searchLeads": "Search leads...",
     "all": "All",
     "clients": "Clients",
     "projects": "Projects",
     "content": "Content",
     "leads": "Leads",
-    "startTyping": "Start typing to search",
+    "emptyState": "Search clients, projects, and content",
     "open": "Open",
     "openNewTab": "Open in new tab",
     "navigate": "Navigate"

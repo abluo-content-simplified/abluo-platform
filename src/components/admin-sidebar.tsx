@@ -29,6 +29,11 @@ import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { useDensity } from "@/components/density-provider"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -105,45 +110,48 @@ function SidebarBehaviorToggle({
     <div className="flex items-center justify-between px-2 py-1.5">
       <span className="text-sm text-sidebar-foreground/70">{t("sidebar")}</span>
       <div className="flex items-center gap-0.5 rounded-full bg-sidebar-accent/50 p-0.5">
-        <button
-          onClick={() => onBehaviorChange("expanded")}
-          className={cn(
-            "flex size-7 items-center justify-center rounded-full transition-colors",
-            behavior === "expanded"
-              ? "bg-sidebar text-sidebar-foreground shadow-sm"
-              : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
-          )}
-          aria-label={t("expanded")}
-          title={t("expanded")}
-        >
-          <PanelLeft className="size-4" />
-        </button>
-        <button
-          onClick={() => onBehaviorChange("collapsed")}
-          className={cn(
-            "flex size-7 items-center justify-center rounded-full transition-colors",
-            behavior === "collapsed"
-              ? "bg-sidebar text-sidebar-foreground shadow-sm"
-              : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
-          )}
-          aria-label={t("collapsed")}
-          title={t("collapsed")}
-        >
-          <PanelLeftClose className="size-4" />
-        </button>
-        <button
-          onClick={() => onBehaviorChange("hover")}
-          className={cn(
-            "flex size-7 items-center justify-center rounded-full transition-colors",
-            behavior === "hover"
-              ? "bg-sidebar text-sidebar-foreground shadow-sm"
-              : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
-          )}
-          aria-label={t("expandOnHover")}
-          title={t("expandOnHover")}
-        >
-          <Columns2 className="size-4" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger
+            onClick={() => onBehaviorChange("expanded")}
+            className={cn(
+              "flex size-7 items-center justify-center rounded-full transition-colors",
+              behavior === "expanded"
+                ? "bg-sidebar text-sidebar-foreground shadow-sm"
+                : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
+            )}
+          >
+            <PanelLeft className="size-4" />
+          </TooltipTrigger>
+          <TooltipContent side="top">{t("expanded")}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger
+            onClick={() => onBehaviorChange("collapsed")}
+            className={cn(
+              "flex size-7 items-center justify-center rounded-full transition-colors",
+              behavior === "collapsed"
+                ? "bg-sidebar text-sidebar-foreground shadow-sm"
+                : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
+            )}
+          >
+            <PanelLeftClose className="size-4" />
+          </TooltipTrigger>
+          <TooltipContent side="top">{t("collapsed")}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger
+            onClick={() => onBehaviorChange("hover")}
+            className={cn(
+              "flex size-7 items-center justify-center rounded-full transition-colors",
+              behavior === "hover"
+                ? "bg-sidebar text-sidebar-foreground shadow-sm"
+                : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
+            )}
+          >
+            <Columns2 className="size-4" />
+          </TooltipTrigger>
+          <TooltipContent side="top">{t("expandOnHover")}</TooltipContent>
+        </Tooltip>
       </div>
     </div>
   )
@@ -158,42 +166,48 @@ function ThemeToggle() {
     <div className="flex items-center justify-between px-2 py-1.5">
       <span className="text-sm text-sidebar-foreground/70">{t("theme")}</span>
       <div className="flex items-center gap-0.5 rounded-full bg-sidebar-accent/50 p-0.5">
-        <button
-          onClick={() => setTheme("system")}
-          className={cn(
-            "flex size-7 items-center justify-center rounded-full transition-colors",
-            theme === "system"
-              ? "bg-sidebar text-sidebar-foreground shadow-sm"
-              : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
-          )}
-          aria-label={t("system")}
-        >
-          <Monitor className="size-4" />
-        </button>
-        <button
-          onClick={() => setTheme("light")}
-          className={cn(
-            "flex size-7 items-center justify-center rounded-full transition-colors",
-            theme === "light"
-              ? "bg-sidebar text-sidebar-foreground shadow-sm"
-              : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
-          )}
-          aria-label={t("light")}
-        >
-          <Sun className="size-4" />
-        </button>
-        <button
-          onClick={() => setTheme("dark")}
-          className={cn(
-            "flex size-7 items-center justify-center rounded-full transition-colors",
-            theme === "dark"
-              ? "bg-sidebar text-sidebar-foreground shadow-sm"
-              : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
-          )}
-          aria-label={t("dark")}
-        >
-          <Moon className="size-4" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger
+            onClick={() => setTheme("system")}
+            className={cn(
+              "flex size-7 items-center justify-center rounded-full transition-colors",
+              theme === "system"
+                ? "bg-sidebar text-sidebar-foreground shadow-sm"
+                : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
+            )}
+          >
+            <Monitor className="size-4" />
+          </TooltipTrigger>
+          <TooltipContent side="top">{t("system")}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger
+            onClick={() => setTheme("light")}
+            className={cn(
+              "flex size-7 items-center justify-center rounded-full transition-colors",
+              theme === "light"
+                ? "bg-sidebar text-sidebar-foreground shadow-sm"
+                : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
+            )}
+          >
+            <Sun className="size-4" />
+          </TooltipTrigger>
+          <TooltipContent side="top">{t("light")}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger
+            onClick={() => setTheme("dark")}
+            className={cn(
+              "flex size-7 items-center justify-center rounded-full transition-colors",
+              theme === "dark"
+                ? "bg-sidebar text-sidebar-foreground shadow-sm"
+                : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
+            )}
+          >
+            <Moon className="size-4" />
+          </TooltipTrigger>
+          <TooltipContent side="top">{t("dark")}</TooltipContent>
+        </Tooltip>
       </div>
     </div>
   )
@@ -208,42 +222,48 @@ function DensityToggle() {
     <div className="flex items-center justify-between px-2 py-1.5">
       <span className="text-sm text-sidebar-foreground/70">{t("density")}</span>
       <div className="flex items-center gap-0.5 rounded-full bg-sidebar-accent/50 p-0.5">
-        <button
-          onClick={() => setDensity("compact")}
-          className={cn(
-            "flex size-7 items-center justify-center rounded-full transition-colors",
-            density === "compact"
-              ? "bg-sidebar text-sidebar-foreground shadow-sm"
-              : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
-          )}
-          aria-label={t("compact")}
-        >
-          <Minus className="size-4" />
-        </button>
-        <button
-          onClick={() => setDensity("comfortable")}
-          className={cn(
-            "flex size-7 items-center justify-center rounded-full transition-colors",
-            density === "comfortable"
-              ? "bg-sidebar text-sidebar-foreground shadow-sm"
-              : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
-          )}
-          aria-label={t("comfortable")}
-        >
-          <Equal className="size-4" />
-        </button>
-        <button
-          onClick={() => setDensity("large")}
-          className={cn(
-            "flex size-7 items-center justify-center rounded-full transition-colors",
-            density === "large"
-              ? "bg-sidebar text-sidebar-foreground shadow-sm"
-              : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
-          )}
-          aria-label={t("large")}
-        >
-          <Menu className="size-4" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger
+            onClick={() => setDensity("compact")}
+            className={cn(
+              "flex size-7 items-center justify-center rounded-full transition-colors",
+              density === "compact"
+                ? "bg-sidebar text-sidebar-foreground shadow-sm"
+                : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
+            )}
+          >
+            <Minus className="size-4" />
+          </TooltipTrigger>
+          <TooltipContent side="top">{t("compact")}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger
+            onClick={() => setDensity("comfortable")}
+            className={cn(
+              "flex size-7 items-center justify-center rounded-full transition-colors",
+              density === "comfortable"
+                ? "bg-sidebar text-sidebar-foreground shadow-sm"
+                : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
+            )}
+          >
+            <Equal className="size-4" />
+          </TooltipTrigger>
+          <TooltipContent side="top">{t("comfortable")}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger
+            onClick={() => setDensity("large")}
+            className={cn(
+              "flex size-7 items-center justify-center rounded-full transition-colors",
+              density === "large"
+                ? "bg-sidebar text-sidebar-foreground shadow-sm"
+                : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
+            )}
+          >
+            <Menu className="size-4" />
+          </TooltipTrigger>
+          <TooltipContent side="top">{t("large")}</TooltipContent>
+        </Tooltip>
       </div>
     </div>
   )
@@ -300,7 +320,8 @@ export function AdminSidebar() {
                       tooltip={t(item.titleKey)}
                       render={<Link href={item.href} />}
                       className={cn(
-                        !active && "text-sidebar-foreground/70 [&>svg]:text-sidebar-foreground/60"
+                        !active && "text-sidebar-foreground/70 [&>svg]:text-sidebar-foreground/60",
+                        !active && "hover:text-sidebar-foreground hover:[&>svg]:text-sidebar-foreground"
                       )}
                     >
                       <Icon />
