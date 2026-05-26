@@ -25,6 +25,12 @@ export function LanguageSwitcher() {
   const locale = useLocale()
   const t = useTranslations("topNav")
   const [isPending, startTransition] = React.useTransition()
+  const [mounted, setMounted] = React.useState(false)
+
+  // Prevent hydration mismatch by only rendering after mount
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const currentLanguage = languages.find((lang) => lang.code === locale) || languages[0]
 
@@ -38,22 +44,36 @@ export function LanguageSwitcher() {
     })
   }
 
+  // Show skeleton/placeholder during SSR and initial hydration
+  if (!mounted) {
+    return (
+      <div
+        className={cn(
+          "flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm",
+          "text-sidebar-foreground/60"
+        )}
+        aria-label="Language"
+      >
+        <Globe className="size-4" />
+        <span className="hidden sm:inline text-xs font-medium w-12" />
+      </div>
+    )
+  }
+
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          className={cn(
-            "flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm transition-colors",
-            "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-            isPending && "opacity-50 pointer-events-none"
-          )}
-          aria-label={t("language")}
-        >
-          <Globe className="size-4" />
-          <span className="hidden sm:inline text-xs font-medium">
-            {currentLanguage.name}
-          </span>
-        </button>
+      <DropdownMenuTrigger
+        className={cn(
+          "flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm transition-colors",
+          "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+          isPending && "opacity-50 pointer-events-none"
+        )}
+        aria-label={t("language")}
+      >
+        <Globe className="size-4" />
+        <span className="hidden sm:inline text-xs font-medium">
+          {currentLanguage.name}
+        </span>
       </DropdownMenuTrigger>
       <DropdownMenuPortal>
         <DropdownMenuPositioner align="end" sideOffset={8}>
