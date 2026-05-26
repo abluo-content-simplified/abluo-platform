@@ -19,7 +19,7 @@ import {
   Building2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 // Mock data - same as top-nav
 const mockCustomers = [
@@ -262,8 +262,7 @@ export function MobileNav() {
             <div className="mt-auto border-t border-border px-4 py-4">
               <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-sidebar-accent">
                 <Avatar className="size-9">
-                  <AvatarImage src="/placeholder-user.jpg" alt="User" />
-                  <AvatarFallback>JD</AvatarFallback>
+                  <AvatarFallback className="bg-[var(--brand)] text-[var(--brand-foreground)]">JD</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 text-left">
                   <div className="text-sm font-medium">John Doe</div>

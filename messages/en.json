@@ -23,7 +23,12 @@
     "addCustomer": "Add Customer",
     "findProject": "Find project...",
     "allProjects": "All Projects",
-    "addProject": "Add Project"
+    "addProject": "Add Project",
+    "company": "Company",
+    "project": "Project",
+    "menu": "Menu",
+    "close": "Close",
+    "back": "Back"
   },
   "search": {
     "placeholder": "Search...",
