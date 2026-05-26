@@ -76,8 +76,8 @@ export function EntitySwitcher<T extends EntityItem>({
           "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         )}
       >
-        <span className="text-sidebar-foreground/60">{icon}</span>
-        <span className={cn("truncate font-medium", `max-w-[${maxWidth}]`)}>
+        <span className="shrink-0 text-sidebar-foreground/60">{icon}</span>
+        <span className={cn("min-w-0 truncate font-medium")} style={{ maxWidth }}>
           {selected?.name || fallbackText}
         </span>
       </Link>
@@ -98,13 +98,13 @@ export function EntitySwitcher<T extends EntityItem>({
             <DropdownMenuContent className="w-[240px]">
               {/* Search */}
               <div className="flex items-center gap-2 px-2 py-2">
-                <Search className="size-4 text-muted-foreground" />
+                <Search className="size-4 shrink-0 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder={searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 />
               </div>
               <DropdownMenuSeparator />
@@ -114,10 +114,10 @@ export function EntitySwitcher<T extends EntityItem>({
                 <DropdownMenuItem
                   key={item.id}
                   onClick={() => onSelect(item)}
-                  className="flex items-center justify-between"
+                  className="flex items-center justify-between gap-2"
                 >
-                  <span>{item.name}</span>
-                  {item.id === selected?.id && <Check className="size-4" />}
+                  <span className="min-w-0 truncate">{item.name}</span>
+                  {item.id === selected?.id && <Check className="size-4 shrink-0" />}
                 </DropdownMenuItem>
               ))}
 
@@ -131,15 +131,15 @@ export function EntitySwitcher<T extends EntityItem>({
                   asChild={!!action.href}
                 >
                   {action.href ? (
-                    <Link href={action.href}>
-                      <span className="mr-2">{action.icon}</span>
-                      {action.label}
+                    <Link href={action.href} className="flex items-center gap-2">
+                      <span className="shrink-0">{action.icon}</span>
+                      <span className="min-w-0 truncate">{action.label}</span>
                     </Link>
                   ) : (
-                    <>
-                      <span className="mr-2">{action.icon}</span>
-                      {action.label}
-                    </>
+                    <div className="flex items-center gap-2">
+                      <span className="shrink-0">{action.icon}</span>
+                      <span className="min-w-0 truncate">{action.label}</span>
+                    </div>
                   )}
                 </DropdownMenuItem>
               ))}
