@@ -1,7 +1,7 @@
 export default function AdminDashboard() {
   return (
     <div className="flex flex-1 flex-col">
-      <header className="flex flex-col gap-1 bg-background px-6 pt-6 pb-4">
+      <header className="flex flex-col gap-1 px-6 pt-6 pb-4">
         <h1 className="text-[32px] font-semibold leading-tight text-foreground">Dashboard</h1>
         <p className="text-[16px] text-muted-foreground">Overview of your projects and recent activity</p>
       </header>
