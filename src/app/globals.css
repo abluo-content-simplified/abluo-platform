@@ -29,11 +29,11 @@
   --chart-4: oklch(0.42 0.18 265.55);
   --chart-5: oklch(0.38 0.14 265.59);
   --sidebar: oklch(0.98 0 0);
-  --sidebar-foreground: oklch(0.14 0 0);
+  --sidebar-foreground: oklch(0.45 0 0);
   --sidebar-primary: oklch(0.20 0 0);
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.20 0 0);
+  --sidebar-accent: oklch(0.94 0.02 260);
+  --sidebar-accent-foreground: oklch(0.25 0 0);
   --sidebar-border: oklch(0.92 0 0);
   --sidebar-ring: oklch(0.71 0 0);
 
@@ -42,6 +42,35 @@
   --font-mono: Geist Mono, Geist Mono Fallback, monospace;
 
   --radius: 0.8rem;
+  
+  /* Brand color (orange from logo) */
+  --brand: oklch(0.70 0.19 41);
+  --brand-foreground: oklch(1.00 0 0);
+  
+  /* Surface transparency tokens - Light mode */
+  --surface-sidebar: oklch(0.98 0 0 / 85%);
+  --surface-topnav: oklch(0.98 0 0 / 85%);
+  --surface-content: oklch(1.00 0 0 / 75%);
+  --surface-card: oklch(1.00 0 0 / 95%);
+  --surface-popover: oklch(1.00 0 0 / 95%);
+  --surface-dialog: oklch(1.00 0 0 / 95%);
+  
+  /* Sidebar animation timing */
+  --sidebar-text-duration: 120ms;
+  --sidebar-shrink-duration: 220ms;
+  --sidebar-content-delay: 40ms;
+  
+  /* Sidebar dimensions */
+  --sidebar-width: 16rem;
+  --sidebar-width-mobile: 18rem;
+  --sidebar-width-collapsed: 3rem;
+  
+  /* Motion timing tokens */
+  --motion-fast: 180ms;
+  --motion-normal: 200ms;
+  
+  /* Shell containment - max readable width for ultra-wide screens */
+  --shell-max-width: 1700px;
   
   --shadow-2xs: 0 1px 8px 0px oklch(0.00 0 0 / 0.05);
   --shadow-xs: 0 1px 8px 0px oklch(0.00 0 0 / 0.05);
@@ -53,6 +82,58 @@
   --shadow-2xl: 0 1px 8px 0px oklch(0.00 0 0 / 0.25);
   
   --tracking-normal: 0.025em;
+
+  /* Density System - Default: Comfortable */
+  --density-text-base: 0.9375rem; /* 15px */
+  --density-text-sm: 0.8125rem; /* 13px */
+  --density-text-lg: 1.0625rem; /* 17px */
+  --density-input-height: 2.5rem; /* 40px */
+  --density-row-height: 3rem; /* 48px */
+  --density-spacing-xs: 0.25rem; /* 4px */
+  --density-spacing-sm: 0.5rem; /* 8px */
+  --density-spacing-md: 0.75rem; /* 12px */
+  --density-spacing-lg: 1rem; /* 16px */
+  --density-spacing-xl: 1.5rem; /* 24px */
+  --density-card-padding: 1rem; /* 16px */
+  --density-form-gap: 1rem; /* 16px */
+  --density-table-cell-padding-y: 0.75rem; /* 12px */
+  --density-table-cell-padding-x: 1rem; /* 16px */
+}
+
+/* Density: Compact */
+.density-compact {
+  --density-text-base: 0.875rem; /* 14px */
+  --density-text-sm: 0.75rem; /* 12px */
+  --density-text-lg: 1rem; /* 16px */
+  --density-input-height: 2.25rem; /* 36px */
+  --density-row-height: 2.5rem; /* 40px */
+  --density-spacing-xs: 0.125rem; /* 2px */
+  --density-spacing-sm: 0.375rem; /* 6px */
+  --density-spacing-md: 0.5rem; /* 8px */
+  --density-spacing-lg: 0.75rem; /* 12px */
+  --density-spacing-xl: 1rem; /* 16px */
+  --density-card-padding: 0.75rem; /* 12px */
+  --density-form-gap: 0.75rem; /* 12px */
+  --density-table-cell-padding-y: 0.5rem; /* 8px */
+  --density-table-cell-padding-x: 0.75rem; /* 12px */
+}
+
+/* Density: Large */
+.density-large {
+  --density-text-base: 1.0625rem; /* 17px */
+  --density-text-sm: 0.9375rem; /* 15px */
+  --density-text-lg: 1.125rem; /* 18px */
+  --density-input-height: 3rem; /* 48px */
+  --density-row-height: 3.5rem; /* 56px */
+  --density-spacing-xs: 0.375rem; /* 6px */
+  --density-spacing-sm: 0.625rem; /* 10px */
+  --density-spacing-md: 1rem; /* 16px */
+  --density-spacing-lg: 1.25rem; /* 20px */
+  --density-spacing-xl: 2rem; /* 32px */
+  --density-card-padding: 1.5rem; /* 24px */
+  --density-form-gap: 1.25rem; /* 20px */
+  --density-table-cell-padding-y: 1rem; /* 16px */
+  --density-table-cell-padding-x: 1.25rem; /* 20px */
 }
 
 .dark {
@@ -87,6 +168,14 @@
   --sidebar-accent-foreground: oklch(0.99 0 0);
   --sidebar-border: oklch(1.00 0 0 / 10%);
   --sidebar-ring: oklch(0.55 0.02 285.76);
+  
+  /* Surface transparency tokens - Dark mode */
+  --surface-sidebar: oklch(0.21 0.01 285.56 / 80%);
+  --surface-topnav: oklch(0.21 0.01 285.56 / 80%);
+  --surface-content: oklch(0.20 0 0 / 70%);
+  --surface-card: oklch(0.27 0 0 / 90%);
+  --surface-popover: oklch(0.27 0 0 / 95%);
+  --surface-dialog: oklch(0.27 0 0 / 95%);
   
   --shadow-2xs: 0 1px 8px 0px oklch(0.00 0 0 / 0.05);
   --shadow-xs: 0 1px 8px 0px oklch(0.00 0 0 / 0.05);
@@ -155,6 +244,18 @@
   --tracking-wide: calc(var(--tracking-normal) + 0.025em);
   --tracking-wider: calc(var(--tracking-normal) + 0.05em);
   --tracking-widest: calc(var(--tracking-normal) + 0.1em);
+
+  /* Density utilities */
+  --text-density-base: var(--density-text-base);
+  --text-density-sm: var(--density-text-sm);
+  --text-density-lg: var(--density-text-lg);
+  --spacing-density-xs: var(--density-spacing-xs);
+  --spacing-density-sm: var(--density-spacing-sm);
+  --spacing-density-md: var(--density-spacing-md);
+  --spacing-density-lg: var(--density-spacing-lg);
+  --spacing-density-xl: var(--density-spacing-xl);
+  --height-density-input: var(--density-input-height);
+  --height-density-row: var(--density-row-height);
 }
 
 body {
