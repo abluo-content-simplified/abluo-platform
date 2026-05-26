@@ -300,43 +300,39 @@ export function AdminSidebar() {
       <SidebarHeader>
         <button
           onClick={handleLogoClick}
-          className="flex h-12 items-center gap-1 px-2 transition-opacity hover:opacity-80"
+          className="flex h-12 items-center px-2 transition-opacity hover:opacity-80"
         >
-          {/* Logo icon - always visible, with smooth size transition */}
-          <div className="shrink-0 transition-all duration-[220ms] ease-out">
-            <Image
-              src="/logo.svg"
-              alt="Abluo"
-              width={32}
-              height={32}
-              className="size-8"
-            />
-          </div>
-          {/* Logotype - only when expanded, with fade/slide animation */}
+          {/* Logo icon - always visible, fixed size */}
+          <Image
+            src="/logo.svg"
+            alt="Abluo"
+            width={32}
+            height={32}
+            className="size-8 shrink-0"
+          />
+          {/* Logotype - with smooth fade/slide animation synced to sidebar transition */}
           <div
             className={cn(
-              "overflow-hidden transition-all duration-[120ms] ease-out",
+              "ml-1 overflow-hidden transition-all duration-[220ms] ease-out",
               state === "collapsed"
                 ? "w-0 opacity-0 -translate-x-2"
-                : "w-auto opacity-100 translate-x-0"
+                : "w-[100px] opacity-100 translate-x-0"
             )}
           >
-            <div className="pl-1">
-              <Image
-                src="/abluo.svg"
-                alt="Abluo"
-                width={100}
-                height={24}
-                className="h-6 w-auto dark:hidden"
-              />
-              <Image
-                src="/abluo-inv.svg"
-                alt="Abluo"
-                width={100}
-                height={24}
-                className="hidden h-6 w-auto dark:block"
-              />
-            </div>
+            <Image
+              src="/abluo.svg"
+              alt="Abluo"
+              width={100}
+              height={24}
+              className="h-6 w-auto dark:hidden"
+            />
+            <Image
+              src="/abluo-inv.svg"
+              alt="Abluo"
+              width={100}
+              height={24}
+              className="hidden h-6 w-auto dark:block"
+            />
           </div>
         </button>
       </SidebarHeader>
