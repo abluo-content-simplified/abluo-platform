@@ -29,7 +29,6 @@ import {
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { useDensity } from "@/components/density-provider"
-import { DelayedTooltip } from "@/components/ui/delayed-tooltip"
 import {
   Sidebar,
   SidebarContent,
@@ -53,6 +52,7 @@ import {
   DropdownMenuPositioner,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { PillToggle } from "@/components/ui/pill-toggle"
 
 interface NavItem {
   titleKey: string
@@ -93,175 +93,13 @@ const navigationItems: NavItem[] = [
 // Sidebar behavior options
 type SidebarBehavior = "expanded" | "collapsed" | "hover"
 
-// Sidebar behavior toggle component
-function SidebarBehaviorToggle({
-  behavior,
-  onBehaviorChange,
-}: {
-  behavior: SidebarBehavior
-  onBehaviorChange: (behavior: SidebarBehavior) => void
-}) {
-  const t = useTranslations("userMenu")
-
-  return (
-    <div className="flex items-center justify-between px-2 py-1.5">
-      <span className="text-sm text-sidebar-foreground/70">{t("sidebar")}</span>
-      <div className="flex items-center gap-0.5 rounded-full bg-sidebar-accent/50 p-0.5">
-        <DelayedTooltip content={t("expanded")} side="top">
-          <button
-            onClick={() => onBehaviorChange("expanded")}
-            className={cn(
-              "flex size-7 items-center justify-center rounded-full transition-colors",
-              behavior === "expanded"
-                ? "bg-sidebar text-sidebar-foreground shadow-sm"
-                : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
-            )}
-          >
-            <PanelLeft className="size-4" />
-          </button>
-        </DelayedTooltip>
-        <DelayedTooltip content={t("collapsed")} side="top">
-          <button
-            onClick={() => onBehaviorChange("collapsed")}
-            className={cn(
-              "flex size-7 items-center justify-center rounded-full transition-colors",
-              behavior === "collapsed"
-                ? "bg-sidebar text-sidebar-foreground shadow-sm"
-                : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
-            )}
-          >
-            <PanelLeftClose className="size-4" />
-          </button>
-        </DelayedTooltip>
-        <DelayedTooltip content={t("expandOnHover")} side="top">
-          <button
-            onClick={() => onBehaviorChange("hover")}
-            className={cn(
-              "flex size-7 items-center justify-center rounded-full transition-colors",
-              behavior === "hover"
-                ? "bg-sidebar text-sidebar-foreground shadow-sm"
-                : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
-            )}
-          >
-            <Columns2 className="size-4" />
-          </button>
-        </DelayedTooltip>
-      </div>
-    </div>
-  )
-}
-
-// Theme toggle component with pill style
-function ThemeToggle() {
-  const { theme, setTheme } = useTheme()
-  const t = useTranslations("userMenu")
-
-  return (
-    <div className="flex items-center justify-between px-2 py-1.5">
-      <span className="text-sm text-sidebar-foreground/70">{t("theme")}</span>
-      <div className="flex items-center gap-0.5 rounded-full bg-sidebar-accent/50 p-0.5">
-        <DelayedTooltip content={t("system")} side="top">
-          <button
-            onClick={() => setTheme("system")}
-            className={cn(
-              "flex size-7 items-center justify-center rounded-full transition-colors",
-              theme === "system"
-                ? "bg-sidebar text-sidebar-foreground shadow-sm"
-                : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
-            )}
-          >
-            <Monitor className="size-4" />
-          </button>
-        </DelayedTooltip>
-        <DelayedTooltip content={t("light")} side="top">
-          <button
-            onClick={() => setTheme("light")}
-            className={cn(
-              "flex size-7 items-center justify-center rounded-full transition-colors",
-              theme === "light"
-                ? "bg-sidebar text-sidebar-foreground shadow-sm"
-                : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
-            )}
-          >
-            <Sun className="size-4" />
-          </button>
-        </DelayedTooltip>
-        <DelayedTooltip content={t("dark")} side="top">
-          <button
-            onClick={() => setTheme("dark")}
-            className={cn(
-              "flex size-7 items-center justify-center rounded-full transition-colors",
-              theme === "dark"
-                ? "bg-sidebar text-sidebar-foreground shadow-sm"
-                : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
-            )}
-          >
-            <Moon className="size-4" />
-          </button>
-        </DelayedTooltip>
-      </div>
-    </div>
-  )
-}
-
-// Density toggle component with pill style
-function DensityToggle() {
-  const { density, setDensity } = useDensity()
-  const t = useTranslations("userMenu")
-
-  return (
-    <div className="flex items-center justify-between px-2 py-1.5">
-      <span className="text-sm text-sidebar-foreground/70">{t("density")}</span>
-      <div className="flex items-center gap-0.5 rounded-full bg-sidebar-accent/50 p-0.5">
-        <DelayedTooltip content={t("compact")} side="top">
-          <button
-            onClick={() => setDensity("compact")}
-            className={cn(
-              "flex size-7 items-center justify-center rounded-full transition-colors",
-              density === "compact"
-                ? "bg-sidebar text-sidebar-foreground shadow-sm"
-                : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
-            )}
-          >
-            <Minus className="size-4" />
-          </button>
-        </DelayedTooltip>
-        <DelayedTooltip content={t("comfortable")} side="top">
-          <button
-            onClick={() => setDensity("comfortable")}
-            className={cn(
-              "flex size-7 items-center justify-center rounded-full transition-colors",
-              density === "comfortable"
-                ? "bg-sidebar text-sidebar-foreground shadow-sm"
-                : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
-            )}
-          >
-            <Equal className="size-4" />
-          </button>
-        </DelayedTooltip>
-        <DelayedTooltip content={t("large")} side="top">
-          <button
-            onClick={() => setDensity("large")}
-            className={cn(
-              "flex size-7 items-center justify-center rounded-full transition-colors",
-              density === "large"
-                ? "bg-sidebar text-sidebar-foreground shadow-sm"
-                : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
-            )}
-          >
-            <Menu className="size-4" />
-          </button>
-        </DelayedTooltip>
-      </div>
-    </div>
-  )
-}
-
 export function AdminSidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const t = useTranslations()
   const { state, setOpen } = useSidebar()
+  const { theme, setTheme } = useTheme()
+  const { density, setDensity } = useDensity()
   const [sidebarBehavior, setSidebarBehavior] = React.useState<SidebarBehavior>("expanded")
 
   // Handle sidebar behavior changes
@@ -438,16 +276,40 @@ export function AdminSidebar() {
                     <DropdownMenuSeparator />
 
                     {/* Sidebar Behavior Toggle */}
-                    <SidebarBehaviorToggle
-                      behavior={sidebarBehavior}
-                      onBehaviorChange={handleBehaviorChange}
+                    <PillToggle
+                      label={t("userMenu.sidebar")}
+                      value={sidebarBehavior}
+                      onChange={handleBehaviorChange}
+                      options={[
+                        { value: "expanded", icon: <PanelLeft className="size-4" />, tooltip: t("userMenu.expanded") },
+                        { value: "collapsed", icon: <PanelLeftClose className="size-4" />, tooltip: t("userMenu.collapsed") },
+                        { value: "hover", icon: <Columns2 className="size-4" />, tooltip: t("userMenu.expandOnHover") },
+                      ]}
                     />
 
                     {/* Theme Toggle */}
-                    <ThemeToggle />
+                    <PillToggle
+                      label={t("userMenu.theme")}
+                      value={theme ?? "system"}
+                      onChange={setTheme}
+                      options={[
+                        { value: "system", icon: <Monitor className="size-4" />, tooltip: t("userMenu.system") },
+                        { value: "light", icon: <Sun className="size-4" />, tooltip: t("userMenu.light") },
+                        { value: "dark", icon: <Moon className="size-4" />, tooltip: t("userMenu.dark") },
+                      ]}
+                    />
 
                     {/* Density Toggle */}
-                    <DensityToggle />
+                    <PillToggle
+                      label={t("userMenu.density")}
+                      value={density}
+                      onChange={setDensity}
+                      options={[
+                        { value: "compact", icon: <Minus className="size-4" />, tooltip: t("userMenu.compact") },
+                        { value: "comfortable", icon: <Equal className="size-4" />, tooltip: t("userMenu.comfortable") },
+                        { value: "large", icon: <Menu className="size-4" />, tooltip: t("userMenu.large") },
+                      ]}
+                    />
 
                     <DropdownMenuSeparator />
 
