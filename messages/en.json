@@ -25,9 +25,25 @@
     "allProjects": "All Projects",
     "addProject": "Add Project"
   },
+  "search": {
+    "placeholder": "Search...",
+    "all": "All",
+    "clients": "Clients",
+    "projects": "Projects",
+    "content": "Content",
+    "leads": "Leads",
+    "startTyping": "Start typing to search",
+    "open": "Open",
+    "openNewTab": "Open in new tab",
+    "navigate": "Navigate"
+  },
   "userMenu": {
     "account": "Account",
     "preferences": "Preferences",
+    "sidebar": "Sidebar",
+    "expanded": "Expanded",
+    "collapsed": "Collapsed",
+    "expandOnHover": "Expand on hover",
     "theme": "Theme",
     "system": "System",
     "light": "Light",

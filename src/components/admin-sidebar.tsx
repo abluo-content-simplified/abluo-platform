@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
@@ -18,7 +19,10 @@ import {
   Minus,
   Equal,
   Menu,
-  ChevronDown,
+  ChevronsUpDown,
+  PanelLeft,
+  PanelLeftClose,
+  Columns2,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -83,6 +87,67 @@ const navigationItems: NavItem[] = [
     href: "/admin/settings",
   },
 ]
+
+// Sidebar behavior options
+type SidebarBehavior = "expanded" | "collapsed" | "hover"
+
+// Sidebar behavior toggle component
+function SidebarBehaviorToggle({
+  behavior,
+  onBehaviorChange,
+}: {
+  behavior: SidebarBehavior
+  onBehaviorChange: (behavior: SidebarBehavior) => void
+}) {
+  const t = useTranslations("userMenu")
+
+  return (
+    <div className="flex items-center justify-between px-2 py-1.5">
+      <span className="text-sm text-sidebar-foreground/70">{t("sidebar")}</span>
+      <div className="flex items-center gap-0.5 rounded-full bg-sidebar-accent/50 p-0.5">
+        <button
+          onClick={() => onBehaviorChange("expanded")}
+          className={cn(
+            "flex size-7 items-center justify-center rounded-full transition-colors",
+            behavior === "expanded"
+              ? "bg-sidebar text-sidebar-foreground shadow-sm"
+              : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
+          )}
+          aria-label={t("expanded")}
+          title={t("expanded")}
+        >
+          <PanelLeft className="size-4" />
+        </button>
+        <button
+          onClick={() => onBehaviorChange("collapsed")}
+          className={cn(
+            "flex size-7 items-center justify-center rounded-full transition-colors",
+            behavior === "collapsed"
+              ? "bg-sidebar text-sidebar-foreground shadow-sm"
+              : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
+          )}
+          aria-label={t("collapsed")}
+          title={t("collapsed")}
+        >
+          <PanelLeftClose className="size-4" />
+        </button>
+        <button
+          onClick={() => onBehaviorChange("hover")}
+          className={cn(
+            "flex size-7 items-center justify-center rounded-full transition-colors",
+            behavior === "hover"
+              ? "bg-sidebar text-sidebar-foreground shadow-sm"
+              : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
+          )}
+          aria-label={t("expandOnHover")}
+          title={t("expandOnHover")}
+        >
+          <Columns2 className="size-4" />
+        </button>
+      </div>
+    </div>
+  )
+}
 
 // Theme toggle component with pill style
 function ThemeToggle() {
@@ -187,7 +252,19 @@ function DensityToggle() {
 export function AdminSidebar() {
   const pathname = usePathname()
   const t = useTranslations()
-  const { state } = useSidebar()
+  const { state, setOpen } = useSidebar()
+  const [sidebarBehavior, setSidebarBehavior] = React.useState<SidebarBehavior>("expanded")
+
+  // Handle sidebar behavior changes
+  const handleBehaviorChange = (behavior: SidebarBehavior) => {
+    setSidebarBehavior(behavior)
+    if (behavior === "expanded") {
+      setOpen(true)
+    } else if (behavior === "collapsed") {
+      setOpen(false)
+    }
+    // "hover" behavior is handled by the SidebarRail component
+  }
 
   const isActive = (href: string) => {
     if (href === "/admin") {
@@ -222,6 +299,9 @@ export function AdminSidebar() {
                       isActive={active}
                       tooltip={t(item.titleKey)}
                       render={<Link href={item.href} />}
+                      className={cn(
+                        !active && "text-sidebar-foreground/70 [&>svg]:text-sidebar-foreground/60"
+                      )}
                     >
                       <Icon />
                       <span>{t(item.titleKey)}</span>
@@ -270,13 +350,13 @@ export function AdminSidebar() {
                         john@abluo.com
                       </span>
                     </div>
-                    <ChevronDown className="size-4 text-sidebar-foreground/50" />
+                    <ChevronsUpDown className="size-4 text-sidebar-foreground/50" />
                   </>
                 )}
               </DropdownMenuTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuPositioner side="top" align="start" sideOffset={8}>
-                  <DropdownMenuContent className="w-[240px]">
+                  <DropdownMenuContent className="w-[260px]">
                     {/* User info header */}
                     <div className="flex items-center gap-2 px-2 py-2">
                       <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -302,6 +382,12 @@ export function AdminSidebar() {
                     </DropdownMenuItem>
 
                     <DropdownMenuSeparator />
+
+                    {/* Sidebar Behavior Toggle */}
+                    <SidebarBehaviorToggle
+                      behavior={sidebarBehavior}
+                      onBehaviorChange={handleBehaviorChange}
+                    />
 
                     {/* Theme Toggle */}
                     <ThemeToggle />
