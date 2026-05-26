@@ -303,12 +303,14 @@ export function TopNav({ className }: TopNavProps) {
     <>
       <header
         className={cn(
-          "flex h-14 items-center justify-between gap-4 rounded-lg bg-[var(--surface-topnav)] backdrop-blur-sm px-3 shadow-sm ring-1 ring-sidebar-border/50",
+          "flex h-14 items-center rounded-lg bg-[var(--surface-topnav)] backdrop-blur-sm px-3 shadow-sm ring-1 ring-sidebar-border/50",
           className
         )}
       >
-        {/* Left side - Sidebar toggle + Customer/Project switchers */}
-        <div className="flex items-center gap-1">
+        {/* Inner container - left-anchored max-width for ultra-wide screens */}
+        <div className="flex w-full max-w-(--shell-max-width) mr-auto items-center justify-between gap-4">
+          {/* Left side - Sidebar toggle + Customer/Project switchers */}
+          <div className="flex items-center gap-1">
           {/* Sidebar Toggle - hidden on mobile (use FAB navigation instead) */}
           <button
             onClick={toggleSidebar}
@@ -384,6 +386,7 @@ export function TopNav({ className }: TopNavProps) {
               {t("healthy")}
             </span>
           </div>
+        </div>
         </div>
       </header>
 

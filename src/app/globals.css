@@ -69,6 +69,9 @@
   --motion-fast: 180ms;
   --motion-normal: 200ms;
   
+  /* Shell containment - max readable width for ultra-wide screens */
+  --shell-max-width: 1700px;
+  
   --shadow-2xs: 0 1px 8px 0px oklch(0.00 0 0 / 0.05);
   --shadow-xs: 0 1px 8px 0px oklch(0.00 0 0 / 0.05);
   --shadow-sm: 0 1px 8px 0px oklch(0.00 0 0 / 0.10), 0 1px 2px -1px oklch(0.00 0 0 / 0.10);
