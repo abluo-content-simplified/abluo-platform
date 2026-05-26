@@ -31,6 +31,7 @@ import { navigationItems, mockCustomers, mockProjects } from "@/config/navigatio
 
 type ExpandedSection = "none" | "user" | "company" | "project"
 
+// MobileNav - FAB + slide-over for mobile navigation
 export function MobileNav() {
   const pathname = usePathname()
   const t = useTranslations()
