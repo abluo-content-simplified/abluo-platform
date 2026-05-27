@@ -14,21 +14,67 @@ export default defineConfig({
 
   plugins: [
     structureTool({
-      structure: (S) =>
-        S.list()
-          .title('Content')
-          .items([
-            S.listItem()
-              .title('Site Configs')
-              .child(S.documentTypeList('siteConfig').title('Site Configs')),
-            S.listItem()
-              .title('Home Pages')
-              .child(S.documentTypeList('homePage').title('Home Pages')),
-            S.divider(),
-            S.listItem()
-              .title('Blog Posts')
-              .child(S.documentTypeList('post').title('Blog Posts')),
-          ]),
+      structure: async (S, context) => {
+        // Fetch all tenants from their siteConfig documents
+        const tenants = await context
+          .getClient({ apiVersion: '2026-05-21' })
+          .fetch<{ tenantSlug: string; siteName?: string }[]>(
+            `*[_type == "siteConfig"] | order(siteName asc) { tenantSlug, siteName }`
+          )
+
+        const tenantItems = tenants.map((tenant) => {
+          const label = tenant.siteName ?? tenant.tenantSlug
+          const slug = tenant.tenantSlug
+
+          return S.listItem()
+            .title(label)
+            .id(slug)
+            .child(
+              S.list()
+                .title(label)
+                .items([
+                  // Settings — the siteConfig for this tenant
+                  S.listItem()
+                    .title('Settings')
+                    .id(`${slug}-settings`)
+                    .child(
+                      S.documentList()
+                        .title('Settings')
+                        .filter(`_type == "siteConfig" && tenantSlug == $slug`)
+                        .params({ slug })
+                    ),
+
+                  // Home Page
+                  S.listItem()
+                    .title('Home Page')
+                    .id(`${slug}-home`)
+                    .child(
+                      S.documentList()
+                        .title('Home Page')
+                        .filter(`_type == "homePage" && tenantSlug == $slug`)
+                        .params({ slug })
+                    ),
+
+                  S.divider(),
+
+                  // Blog Posts
+                  S.listItem()
+                    .title('Blog Posts')
+                    .id(`${slug}-posts`)
+                    .child(
+                      S.documentList()
+                        .title('Blog Posts')
+                        .filter(`_type == "post" && tenantSlug == $slug`)
+                        .params({ slug })
+                    ),
+                ])
+            )
+        })
+
+        return S.list()
+          .title('Clients')
+          .items(tenantItems)
+      },
     }),
   ],
 

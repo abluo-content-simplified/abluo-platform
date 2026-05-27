@@ -5,24 +5,29 @@
  * - Every query MUST filter by tenantId — no unscoped queries ever.
  * - Use `tenantClient('slug').fetchForTenant(query, params)` to execute.
  * - $tenantId is always injected by tenantClient — do not pass it manually.
+ *
+ * Multilingual fields:
+ * - Text fields are stored as { it: "...", en: "..." } objects in Sanity.
+ * - GROQ resolves them: coalesce(field[$locale], field.it, field)
+ *   → requested locale → Italian fallback → plain string (legacy data safety)
+ * - Components receive plain strings — unaware of localization.
+ * - Pass $locale in params (e.g. { locale: 'it' }). Defaults to 'it' via fallback.
  */
 
-// Resolve tenant config from slug (used in middleware / server components)
+// ─── Locale resolver helper ───────────────────────────────────────────────────
+const loc = (field: string) =>
+  `coalesce(${field}[$locale], ${field}.it, ${field})`
+
+// ─── Shared queries ───────────────────────────────────────────────────────────
+
 export const siteConfigQuery = /* groq */ `
   *[_type == "siteConfig" && tenantSlug == $tenantId][0] {
     tenantSlug,
     siteName,
-    tagline,
+    "tagline": ${loc('tagline')},
     primaryColor,
     navigation,
-    enabledFeatures,
-    "tenant": tenant-> {
-      displayName,
-      slug,
-      domain,
-      locales,
-      status,
-    }
+    enabledFeatures
   }
 `
 
@@ -31,9 +36,9 @@ export const postsQuery = /* groq */ `
   *[_type == "post" && tenantSlug == $tenantId && defined(publishedAt)]
   | order(publishedAt desc) [$offset...$offset + $limit] {
     _id,
-    title,
+    "title": ${loc('title')},
     slug,
-    excerpt,
+    "excerpt": ${loc('excerpt')},
     publishedAt,
     coverImage,
     seoMetadata,
@@ -44,23 +49,13 @@ export const postsQuery = /* groq */ `
 export const postBySlugQuery = /* groq */ `
   *[_type == "post" && tenantSlug == $tenantId && slug.current == $slug][0] {
     _id,
-    title,
+    "title": ${loc('title')},
     slug,
-    excerpt,
-    body,
+    "excerpt": ${loc('excerpt')},
+    "body": ${loc('body')},
     coverImage,
     publishedAt,
     seoMetadata,
-  }
-`
-
-// Page by slug
-export const pageBySlugQuery = /* groq */ `
-  *[_type == "page" && tenantSlug == $tenantId && slug.current == $slug][0] {
-    _id,
-    title,
-    slug,
-    sections,
   }
 `
 
@@ -71,7 +66,7 @@ export const websiteSiteConfigQuery = /* groq */ `
   *[_type == "siteConfig" && tenantSlug == $tenantId][0] {
     tenantSlug,
     siteName,
-    tagline,
+    "tagline": ${loc('tagline')},
     phone,
     email,
     address,
@@ -79,32 +74,55 @@ export const websiteSiteConfigQuery = /* groq */ `
   }
 `
 
-// Full homepage with all sections
+// Full homepage with all sections — locale-resolved
 export const homePageQuery = /* groq */ `
   *[_type == "homePage" && tenantSlug == $tenantId][0] {
     tenantSlug,
     sections[] {
       _type,
       _key,
+
       // heroSection
-      headline,
-      subheadline,
-      ctaLabel,
+      "headline": ${loc('headline')},
+      "subheadline": ${loc('subheadline')},
+      "ctaLabel": ${loc('ctaLabel')},
       ctaHref,
+
       // contentSection
-      title,
-      body[] { _type, _key, style, markDefs, children[] { _type, _key, marks, text } },
+      "title": ${loc('title')},
+      "body": ${loc('body')},
       imagePosition,
+
       // treatmentsSection
-      eyebrow,
-      intro,
-      treatments[] { _type, _key, name, tagline, description },
+      "eyebrow": ${loc('eyebrow')},
+      "intro": ${loc('intro')},
+      treatments[] {
+        _type, _key,
+        "name": ${loc('name')},
+        "tagline": ${loc('tagline')},
+        "description": ${loc('description')},
+      },
+
       // teamSection
-      subtitle,
-      members[] { _type, _key, name, role, bio },
+      "subtitle": ${loc('subtitle')},
+      members[] {
+        _type, _key,
+        name,
+        "role": ${loc('role')},
+        "bio": ${loc('bio')},
+      },
+
       // textSection
-      content[] { _type, _key, style, listItem, level, markDefs, children[] { _type, _key, marks, text } },
+      "content": ${loc('content')},
       backgroundColor,
+
+      // faqSection
+      items[] {
+        _key,
+        "question": ${loc('question')},
+        "answer": ${loc('answer')},
+      },
+
       // contactSection
       mapEmbedUrl
     }

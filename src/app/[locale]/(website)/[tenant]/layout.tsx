@@ -1,6 +1,7 @@
 import { tenantClient } from '@/lib/sanity/client'
 import { websiteSiteConfigQuery } from '@/lib/sanity/queries'
 import type { WebsiteSiteConfig } from '@/lib/sanity/types'
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -8,9 +9,9 @@ interface LayoutProps {
 }
 
 export default async function WebsiteLayout({ children, params }: LayoutProps) {
-  const { tenant: tenantId } = await params
+  const { tenant: tenantId, locale } = await params
   const { fetchForTenant } = tenantClient(tenantId)
-  const config = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery)
+  const config = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale })
 
   return (
     <>
@@ -19,14 +20,17 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         <span className="text-sm font-medium tracking-wide text-zinc-900">
           {config?.siteName ?? tenantId}
         </span>
-        {config?.phone && (
-          <a
-            href={`tel:${config.phone}`}
-            className="text-xs font-medium tracking-wide text-zinc-500 transition-colors hover:text-zinc-900"
-          >
-            {config.phone}
-          </a>
-        )}
+        <div className="flex items-center gap-4">
+          <LanguageSwitcher currentLocale={locale} />
+          {config?.phone && (
+            <a
+              href={`tel:${config.phone}`}
+              className="text-xs font-medium tracking-wide text-zinc-500 transition-colors hover:text-zinc-900"
+            >
+              {config.phone}
+            </a>
+          )}
+        </div>
       </header>
 
       {/* Page offset for fixed header */}

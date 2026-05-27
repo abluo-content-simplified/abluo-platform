@@ -1,3 +1,12 @@
+// ─── Localized primitives ──────────────────────────────────────────────────────
+// GROQ resolves these before they reach the frontend — components receive plain
+// strings/arrays. These types are only used if you ever query the raw document.
+
+export interface LocalizedString {
+  it?: string
+  en?: string
+}
+
 // ─── Portable Text ────────────────────────────────────────────────────────────
 
 export interface PortableTextSpan {
@@ -28,6 +37,7 @@ export interface SanityImage {
 }
 
 // ─── Section types ────────────────────────────────────────────────────────────
+// All string fields are already locale-resolved by GROQ before arriving here.
 
 export interface HeroSection {
   _type: 'heroSection'
@@ -91,6 +101,20 @@ export interface TreatmentsSection {
   treatments?: TreatmentCard[]
 }
 
+export interface FAQItem {
+  _key: string
+  question?: string
+  answer?: string
+}
+
+export interface FAQSection {
+  _type: 'faqSection'
+  _key: string
+  eyebrow?: string
+  title?: string
+  items?: FAQItem[]
+}
+
 export interface ContactSection {
   _type: 'contactSection'
   _key: string
@@ -105,6 +129,7 @@ export type PageSection =
   | TreatmentsSection
   | TeamSection
   | TextSection
+  | FAQSection
   | ContactSection
 
 // ─── Documents ────────────────────────────────────────────────────────────────
