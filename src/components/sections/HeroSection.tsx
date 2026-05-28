@@ -5,7 +5,7 @@ interface Props {
 }
 
 export function HeroSection({ section }: Props) {
-  const { headline, subheadline, ctaLabel, ctaHref } = section
+  const { eyebrow, headline, subheadline, ctaLabel, ctaHref } = section
 
   // Split headline on newline for visual line control
   const headlineLines = headline?.split('\n') ?? []
@@ -20,9 +20,11 @@ export function HeroSection({ section }: Props) {
 
       <div className="mx-auto w-full max-w-5xl">
         {/* Eyebrow label */}
-        <p className="mb-8 text-xs font-medium uppercase tracking-[0.2em] text-zinc-400">
-          Studio Dentistico
-        </p>
+        {eyebrow && (
+          <p className="mb-8 text-xs font-medium uppercase tracking-[0.2em] text-zinc-400">
+            {eyebrow}
+          </p>
+        )}
 
         {/* Headline */}
         <h1 className="mb-8 text-5xl font-semibold leading-[1.1] tracking-tight text-zinc-900 md:text-6xl lg:text-7xl">

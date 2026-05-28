@@ -36,7 +36,7 @@ interface Props {
 }
 
 export function ContentSection({ section }: Props) {
-  const { title, body } = section
+  const { eyebrow, title, body } = section
 
   return (
     <section className="bg-zinc-50 px-6 py-24 md:px-16 lg:px-24">
@@ -44,9 +44,11 @@ export function ContentSection({ section }: Props) {
         <div className="grid gap-12 md:grid-cols-2 md:gap-20 lg:gap-28">
           {/* Left: label + title */}
           <div className="flex flex-col justify-center">
-            <p className="mb-4 text-xs font-medium uppercase tracking-[0.2em] text-zinc-400">
-              Chi siamo
-            </p>
+            {eyebrow && (
+              <p className="mb-4 text-xs font-medium uppercase tracking-[0.2em] text-zinc-400">
+                {eyebrow}
+              </p>
+            )}
             {title && (
               <h2 className="text-3xl font-semibold leading-snug tracking-tight text-zinc-900 md:text-4xl">
                 {title}

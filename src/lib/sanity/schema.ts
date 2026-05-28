@@ -61,6 +61,7 @@ const heroSectionType = defineType({
   title: 'Hero Section',
   type: 'object',
   fields: [
+    defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString' }),
     defineField({ name: 'headline', title: 'Headline', type: 'localizedText' }),
     defineField({ name: 'subheadline', title: 'Subheadline', type: 'localizedText' }),
     defineField({ name: 'ctaLabel', title: 'CTA Button Label', type: 'localizedString' }),
@@ -77,6 +78,7 @@ const contentSectionType = defineType({
   title: 'Content Section',
   type: 'object',
   fields: [
+    defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString' }),
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
     defineField({ name: 'body', title: 'Body', type: 'localizedPortableText' }),
     defineField({

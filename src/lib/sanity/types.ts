@@ -42,6 +42,7 @@ export interface SanityImage {
 export interface HeroSection {
   _type: 'heroSection'
   _key: string
+  eyebrow?: string
   headline?: string
   subheadline?: string
   ctaLabel?: string
@@ -52,6 +53,7 @@ export interface HeroSection {
 export interface ContentSection {
   _type: 'contentSection'
   _key: string
+  eyebrow?: string
   title?: string
   body?: PortableTextContent
   image?: SanityImage
