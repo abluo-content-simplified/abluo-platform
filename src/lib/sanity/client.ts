@@ -1,12 +1,11 @@
 import { createClient } from '@sanity/client'
 
-// NEXT_PUBLIC_ vars are inlined at build time by Next.js/Turbopack.
-// Using a non-empty fallback ('unconfigured') prevents createClient from
-// throwing at module-evaluation time when the var is not yet in the build
-// environment. Real requests will simply fail at runtime if projectId is wrong.
+// Credentials are hardcoded — they are not secrets (NEXT_PUBLIC_ values end up
+// in the client bundle regardless). This removes any dependency on Vercel env
+// var state, which proved unreliable during initial setup.
 export const sanityClient = createClient({
-  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || 'unconfigured',
-  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
+  projectId: '3n7t84j3',
+  dataset: 'production',
   apiVersion: '2026-05-21',
   useCdn: process.env.NODE_ENV === 'production',
 })
