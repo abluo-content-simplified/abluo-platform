@@ -6,7 +6,7 @@ import { createClient } from '@sanity/client'
 // environment. Real requests will simply fail at runtime if projectId is wrong.
 export const sanityClient = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || 'unconfigured',
-  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET ?? 'production',
+  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
   apiVersion: '2026-05-21',
   useCdn: process.env.NODE_ENV === 'production',
 })
