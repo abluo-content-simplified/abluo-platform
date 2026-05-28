@@ -11,6 +11,8 @@ import type { WebsiteHomePage, WebsiteSiteConfig, PageSection, FAQSection as FAQ
 import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
 
+export const dynamic = 'force-dynamic'
+
 // ─── Metadata ─────────────────────────────────────────────────────────────────
 
 interface PageProps {

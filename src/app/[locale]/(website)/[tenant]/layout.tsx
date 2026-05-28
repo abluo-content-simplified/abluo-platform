@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { tenantClient } from '@/lib/sanity/client'
 import { websiteSiteConfigQuery } from '@/lib/sanity/queries'
 import type { WebsiteSiteConfig } from '@/lib/sanity/types'
