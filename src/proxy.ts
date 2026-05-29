@@ -6,17 +6,25 @@ import { routing } from './i18n/routing'
 const intlMiddleware = createMiddleware(routing)
 
 /**
- * Resolve the tenant slug from the request hostname.
+ * Resolve the project slug from the request hostname.
  *
- * Production:  livener.net            → "livener"
- * Dev/preview: livener.localhost:3000 → "livener"
- * Fallback:    localhost:3000          → null (admin / landing)
+ * Production domains:  studiomartegani.com        → "studiomartegani"
+ * Abluo preview URLs:  studiomartegani.preview.abluo.app → "studiomartegani"
+ * Dev convention:      studiomartegani.localhost:3000    → "studiomartegani"
+ * Platform/admin:      abluo-platform.vercel.app        → null
  */
 function resolveTenant(hostname: string): string | null {
   // Strip port
   const host = hostname.split(':')[0]
 
-  // Production domains — map known domains to tenant slugs
+  // Abluo managed preview — *.preview.abluo.app
+  // studiomartegani.preview.abluo.app → "studiomartegani"
+  if (host.endsWith('.preview.abluo.app')) {
+    const slug = host.slice(0, -'.preview.abluo.app'.length)
+    if (slug && slug !== 'www') return slug
+  }
+
+  // Production custom domains — map known domains to project slugs
   const domainMap: Record<string, string> = {
     'livener.net': 'livener',
     'studiomartegani.com': 'studiomartegani',
@@ -24,13 +32,26 @@ function resolveTenant(hostname: string): string | null {
 
   if (domainMap[host]) return domainMap[host]
 
-  // Dev convention: <tenant>.localhost
+  // Dev convention: <project>.localhost
   if (host.endsWith('.localhost')) {
     const sub = host.replace('.localhost', '')
     if (sub && sub !== 'www') return sub
   }
 
   return null
+}
+
+/**
+ * Resolve the default display locale for a project.
+ * Used when routing from a domain root — no locale in the URL yet.
+ * Keep in sync with the projects table in Supabase.
+ */
+function resolveDefaultLocale(projectSlug: string): string {
+  const localeMap: Record<string, string> = {
+    'studiomartegani': 'it',
+    'livener': 'it',
+  }
+  return localeMap[projectSlug] ?? 'it'
 }
 
 /**
@@ -152,7 +173,8 @@ export async function proxy(request: NextRequest) {
 
     if (!alreadyRewritten) {
       const subPath = path === '/' ? '' : path
-      url.pathname = `/it/${tenantId}${subPath}`
+      const locale = resolveDefaultLocale(tenantId)
+      url.pathname = `/${locale}/${tenantId}${subPath}`
       return NextResponse.rewrite(url)
     }
 
