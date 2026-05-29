@@ -91,12 +91,40 @@ function isAdminPath(pathname: string): boolean {
 
 export async function proxy(request: NextRequest) {
   const hostname = request.headers.get('host') ?? ''
+  const host = hostname.split(':')[0]
   const tenantId = resolveTenant(hostname)
   const { pathname } = request.nextUrl
 
   // ── Sanity Studio — bypass all middleware ─────────────────────────────────
   if (pathname.startsWith('/studio')) {
     return NextResponse.next()
+  }
+
+  // ── Abluo preview platform — preview.abluo.app/[project-slug] ────────────
+  // preview.abluo.app/studiomartegani       → /it/studiomartegani
+  // preview.abluo.app/studiomartegani/blog  → /it/studiomartegani/blog
+  if (host === 'preview.abluo.app') {
+    const segments = pathname.split('/').filter(Boolean)
+    const slug = segments[0]
+
+    // Only rewrite if the first segment looks like a project slug
+    // (not a locale prefix, not /studio, not empty)
+    const isLocale = slug && (routing.locales as readonly string[]).includes(slug)
+    if (slug && !isLocale && slug !== 'studio') {
+      const alreadyRewritten = (routing.locales as readonly string[]).some(
+        (l) => pathname === `/${l}/${slug}` || pathname.startsWith(`/${l}/${slug}/`)
+      )
+      if (!alreadyRewritten) {
+        const locale = resolveDefaultLocale(slug)
+        const subPath = segments.slice(1).join('/')
+        const url = request.nextUrl.clone()
+        url.pathname = `/${locale}/${slug}${subPath ? '/' + subPath : ''}`
+        return NextResponse.rewrite(url)
+      }
+      return NextResponse.next()
+    }
+    // Root or unrecognised path on preview domain — fall through to intl
+    return intlMiddleware(request)
   }
 
   // ── Auth guard ────────────────────────────────────────────────────────────
