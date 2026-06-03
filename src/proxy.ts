@@ -105,6 +105,20 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // ── Admin subdomain — admin.abluo.app → /[locale]/admin ──────────────────
+  // admin.abluo.app           → /en/admin/dashboard
+  // admin.abluo.app/clients   → /en/admin/clients
+  if (host === 'admin.abluo.app') {
+    const url = request.nextUrl.clone()
+    const alreadyAdminPath = pathname.startsWith('/en/admin') || pathname.startsWith('/it/admin')
+    if (!alreadyAdminPath) {
+      const subPath = pathname === '/' ? '/dashboard' : pathname
+      url.pathname = `/en/admin${subPath}`
+      return NextResponse.rewrite(url)
+    }
+    return NextResponse.next()
+  }
+
   // ── Abluo preview platform — preview.abluo.app/[project-slug] ────────────
   // preview.abluo.app/studiomartegani       → /it/studiomartegani
   // preview.abluo.app/studiomartegani/blog  → /it/studiomartegani/blog
