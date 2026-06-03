@@ -110,10 +110,10 @@ export async function proxy(request: NextRequest) {
   // admin.abluo.app/clients   → /en/admin/clients
   if (host === 'admin.abluo.app') {
     const url = request.nextUrl.clone()
-    const alreadyAdminPath = pathname.startsWith('/en/admin') || pathname.startsWith('/it/admin')
-    if (!alreadyAdminPath) {
+    const alreadyLocaled = /^\/(en|it|de)(\/|$)/.test(pathname)
+    if (!alreadyLocaled) {
       const subPath = pathname === '/' ? '/dashboard' : pathname
-      url.pathname = `/en/admin${subPath}`
+      url.pathname = `/en${subPath}`
       return NextResponse.rewrite(url)
     }
     return NextResponse.next()

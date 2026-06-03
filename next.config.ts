@@ -16,16 +16,16 @@ const nextConfig: NextConfig = {
           destination: '/it/:slug',
           has: [{ type: 'host', value: 'preview.abluo.app' }],
         },
-        // admin.abluo.app/ → /en/admin/dashboard
+        // admin.abluo.app/ → /en/dashboard
         {
           source: '/',
-          destination: '/en/admin/dashboard',
+          destination: '/en/dashboard',
           has: [{ type: 'host', value: 'admin.abluo.app' }],
         },
-        // admin.abluo.app/[path] → /en/admin/[path]
+        // admin.abluo.app/[path] → /en/[path]
         {
           source: '/:path((?!en(?:/|$)|it(?:/|$)|de(?:/|$)|api(?:/|$)|_next|favicon\\.ico).*)',
-          destination: '/en/admin/:path',
+          destination: '/en/:path',
           has: [{ type: 'host', value: 'admin.abluo.app' }],
         },
       ],
