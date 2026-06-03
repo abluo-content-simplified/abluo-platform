@@ -3,28 +3,10 @@ import createNextIntlPlugin from 'next-intl/plugin'
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 
-const nextConfig: NextConfig = {
-  async rewrites() {
-    return {
-      // Run before Next.js route matching.
-      // preview.abluo.app/studiomartegani → /it/studiomartegani
-      // preview.abluo.app/studiomartegani/blog → /it/studiomartegani/blog
-      beforeFiles: [
-        // preview.abluo.app/[slug] → /it/[slug]
-        {
-          source: '/:slug((?!it(?:/|$)|en(?:/|$)|de(?:/|$)|studio(?:/|$)|api(?:/|$)|_next|favicon\\.ico).*)',
-          destination: '/it/:slug',
-          has: [{ type: 'host', value: 'preview.abluo.app' }],
-        },
-        // admin.abluo.app/ → /en/dashboard
-        {
-          source: '/',
-          destination: '/en/dashboard',
-          has: [{ type: 'host', value: 'admin.abluo.app' }],
-        },
-      ],
-    }
-  },
-}
+// All domain-based routing is handled in proxy.ts (middleware).
+// next.config.ts rewrites are avoided because the has:[{type:'host'}]
+// condition is unreliable — it applies to all domains regardless of the
+// host filter, causing /studio to be rewritten to /it/studio everywhere.
+const nextConfig: NextConfig = {}
 
 export default withNextIntl(nextConfig)
