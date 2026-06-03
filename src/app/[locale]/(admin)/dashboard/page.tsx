@@ -60,7 +60,7 @@ export default async function DashboardPage() {
         <div className="divide-y divide-zinc-100 rounded-lg border border-zinc-200 bg-white overflow-hidden">
           {(projects as Project[]).map((project) => {
             const previewUrl = `https://preview.abluo.app/${project.slug}`
-            const studioUrl  = `https://admin.abluo.app/studio`
+            const studioUrl  = `/studio`
 
             return (
               <div

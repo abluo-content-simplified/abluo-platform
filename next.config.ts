@@ -22,12 +22,6 @@ const nextConfig: NextConfig = {
           destination: '/en/dashboard',
           has: [{ type: 'host', value: 'admin.abluo.app' }],
         },
-        // admin.abluo.app/[path] → /en/[path]
-        {
-          source: '/:path((?!en(?:/|$)|it(?:/|$)|de(?:/|$)|studio(?:/|$)|api(?:/|$)|_next|favicon\\.ico).*)',
-          destination: '/en/:path',
-          has: [{ type: 'host', value: 'admin.abluo.app' }],
-        },
       ],
     }
   },
