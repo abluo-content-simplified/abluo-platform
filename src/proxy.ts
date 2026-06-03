@@ -148,8 +148,10 @@ export async function proxy(request: NextRequest) {
 
   // ── Auth guard ────────────────────────────────────────────────────────────
   // Protected routes (/admin, /client) require a valid Supabase session.
+  // TODO: Re-enable for /admin when login page is built.
+  // Currently only enforced for /client routes.
   // ─────────────────────────────────────────────────────────────────────────
-  if (isProtectedPath(pathname)) {
+  if (isProtectedPath(pathname) && !pathname.includes('/admin')) {
     // This response object may be mutated by setAll() below to carry
     // refreshed session cookies back to the browser.
     let supabaseResponse = NextResponse.next({ request })
