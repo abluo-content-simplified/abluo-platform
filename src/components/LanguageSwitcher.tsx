@@ -7,16 +7,21 @@ const locales = ['it', 'en'] as const
 
 interface Props {
   currentLocale: string
+  tenant: string
 }
 
-export function LanguageSwitcher({ currentLocale }: Props) {
+export function LanguageSwitcher({ currentLocale, tenant }: Props) {
   const pathname = usePathname()
 
   const switchLocale = (locale: string) => {
-    const segments = pathname.split('/')
-    // segments[0] is '', segments[1] is the locale
-    segments[1] = locale
-    return segments.join('/')
+    // Always build URL from the tenant slug — works on any domain or URL
+    // structure (preview.abluo.app/slug, studiomartegani.com, /it/slug, etc.)
+    const segments = pathname.split('/').filter(Boolean)
+    const tenantIndex = segments.findIndex(s => s === tenant)
+    const afterTenant = tenantIndex >= 0
+      ? segments.slice(tenantIndex + 1).join('/')
+      : ''
+    return `/${locale}/${tenant}${afterTenant ? '/' + afterTenant : ''}`
   }
 
   return (

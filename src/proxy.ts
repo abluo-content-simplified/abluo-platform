@@ -46,12 +46,17 @@ function resolveTenant(hostname: string): string | null {
  * Used when routing from a domain root — no locale in the URL yet.
  * Keep in sync with the projects table in Supabase.
  */
-function resolveDefaultLocale(projectSlug: string): string {
+/**
+ * Returns the default locale for a known project slug, or null if unknown.
+ * Only known project slugs get preview routing — prevents false rewrites
+ * on paths like /login, /unauthorized, etc.
+ */
+function resolveDefaultLocale(projectSlug: string): string | null {
   const localeMap: Record<string, string> = {
     'studiomartegani': 'it',
     'livener': 'it',
   }
-  return localeMap[projectSlug] ?? 'it'
+  return localeMap[projectSlug] ?? null
 }
 
 /**
@@ -188,25 +193,43 @@ export async function proxy(request: NextRequest) {
   }
 
   // ── Tenant routes — rewrite to [locale]/(website)/[tenant] ───────────────
-  // Client websites use content from Sanity; locale is Italian by default.
-  // Future: resolve default locale per tenant from Supabase config.
+  // Handles custom production domains (studiomartegani.com → /it/studiomartegani)
   if (tenantId) {
     const url = request.nextUrl.clone()
     const path = url.pathname
 
-    // Avoid double-rewriting if the path is already in /[locale]/[tenantId] form
     const alreadyRewritten = routing.locales.some(
       (l) => path === `/${l}/${tenantId}` || path.startsWith(`/${l}/${tenantId}/`)
     )
 
     if (!alreadyRewritten) {
       const subPath = path === '/' ? '' : path
-      const locale = resolveDefaultLocale(tenantId)
+      const locale = resolveDefaultLocale(tenantId) ?? 'it'
       url.pathname = `/${locale}/${tenantId}${subPath}`
       return NextResponse.rewrite(url)
     }
 
     return NextResponse.next()
+  }
+
+  // ── Project slug routing ───────────────────────────────────────────────────
+  // Handles preview.abluo.app/[slug] and any platform URL where the first
+  // path segment is a known project slug — no host header dependency.
+  // preview.abluo.app/studiomartegani → /it/studiomartegani
+  const segments = pathname.split('/').filter(Boolean)
+  const firstSegment = segments[0]
+  const defaultLocale = firstSegment ? resolveDefaultLocale(firstSegment) : null
+
+  if (firstSegment && defaultLocale && !routing.locales.includes(firstSegment as 'en' | 'it' | 'de')) {
+    const alreadyRewritten = routing.locales.some(
+      (l) => pathname === `/${l}/${firstSegment}` || pathname.startsWith(`/${l}/${firstSegment}/`)
+    )
+    if (!alreadyRewritten) {
+      const subPath = segments.slice(1).join('/')
+      const url = request.nextUrl.clone()
+      url.pathname = `/${defaultLocale}/${firstSegment}${subPath ? '/' + subPath : ''}`
+      return NextResponse.rewrite(url)
+    }
   }
 
   // ── Platform routes (no tenant) — apply i18n middleware ───────────────────

@@ -23,7 +23,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
           {config?.siteName ?? tenantId}
         </span>
         <div className="flex items-center gap-4">
-          <LanguageSwitcher currentLocale={locale} />
+          <LanguageSwitcher currentLocale={locale} tenant={tenantId} />
           {config?.phone && (
             <a
               href={`tel:${config.phone}`}
