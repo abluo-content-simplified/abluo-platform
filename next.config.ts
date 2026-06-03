@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
       // preview.abluo.app/studiomartegani/blog → /it/studiomartegani/blog
       beforeFiles: [
         {
-          source: '/:slug((?!it|en|de|studio|api|_next|favicon\\.ico).*)',
+          source: '/:slug((?!it(?:/|$)|en(?:/|$)|de(?:/|$)|studio(?:/|$)|api(?:/|$)|_next|favicon\\.ico).*)',
           destination: '/it/:slug',
           has: [{ type: 'host', value: 'preview.abluo.app' }],
         },
