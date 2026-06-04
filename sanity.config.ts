@@ -2,7 +2,8 @@ import { defineConfig } from 'sanity'
 import { structureTool } from 'sanity/structure'
 import { schemaTypes } from './src/lib/sanity/schema'
 
-const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID!
+// Hardcoded to match src/lib/sanity/client.ts — avoids env var dependency in the Studio
+const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ?? '3n7t84j3'
 const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET ?? 'production'
 
 export default defineConfig({
@@ -56,6 +57,18 @@ export default defineConfig({
                     ),
 
                   S.divider(),
+
+                  // Events (Livener and any future tenant that uses them)
+                  S.listItem()
+                    .title('Events')
+                    .id(`${slug}-events`)
+                    .child(
+                      S.documentList()
+                        .title('Events')
+                        .filter(`_type == "event" && tenantSlug == $slug`)
+                        .params({ slug })
+                        .defaultOrdering([{ field: 'startDate', direction: 'desc' }])
+                    ),
 
                   // Blog Posts
                   S.listItem()

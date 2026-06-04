@@ -1,0 +1,190 @@
+/**
+ * Livener Design System — CSS Tokens
+ * Source: livener.net/live (extracted directly from Webflow CSS)
+ * Fonts: Barlow Condensed (headings) · Poppins (body)
+ * Colors: OKLCH (perceptually uniform) with hex fallbacks for older browsers
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,600;1,700&family=Poppins:wght@300;400;500;600;700&display=swap');
+
+:root {
+
+  /* ─── BRAND COLORS (OKLCH + hex fallbacks) ───────── */
+
+  /* Primary orange — CTA, buttons, links, highlights */
+  --livener-orange:           #ffa22b;
+  --livener-orange:           oklch(0.7886 0.1630 66.32deg);
+
+  /* Deep indigo — nav bar, CTA section background */
+  --livener-dark-slate-blue:  #363366;
+  --livener-dark-slate-blue:  oklch(0.3515 0.0866 283.66deg);
+
+  /* Light grey — primary text on dark backgrounds */
+  --livener-light-grey:       #f2f2f2;
+  --livener-light-grey:       oklch(0.9612 0.0000 89.88deg);
+
+  /* Off white — light section backgrounds */
+  --livener-off-white:        #f5f3f2;
+  --livener-off-white:        oklch(0.9654 0.0025 48.72deg);
+
+  /* Mid grey — borders, dividers on light surfaces */
+  --livener-grey:             #d9d9d9;
+  --livener-grey:             oklch(0.8853 0.0000 89.88deg);
+
+  /* Dark grey — muted text */
+  --livener-dark-grey:        #595959;
+  --livener-dark-grey:        oklch(0.4640 0.0000 89.88deg);
+
+  /* Turquoise — soft accent, gradient endpoint */
+  --livener-turquoise:        #c1dedc;
+  --livener-turquoise:        oklch(0.8788 0.0308 191.53deg);
+
+  /* Soft purple — subtle tint backgrounds */
+  --livener-purple-soft:      #e6def0;
+  --livener-purple-soft:      oklch(0.9122 0.0256 305.84deg);
+
+  /* ─── SURFACE COLORS ─────────────────────────────── */
+
+  /* /live page background */
+  --color-bg-dark:            #161d2b;
+  --color-bg-dark:            oklch(0.2309 0.0292 263.75deg);
+
+  /* Secondary dark surface — cards, section variants */
+  --color-bg-dark-2:          #24232f;
+  --color-bg-dark-2:          oklch(0.2626 0.0223 288.58deg);
+
+  /* Nav + CTA bg (same as dark-slate-blue) */
+  --color-bg-nav:             #363366;
+  --color-bg-nav:             oklch(0.3515 0.0866 283.66deg);
+
+  /* Near-black base */
+  --color-bg-black:           #080808;
+  --color-bg-black:           oklch(0.1344 0.0000 89.88deg);
+
+  /* ─── ACCENT COLORS ──────────────────────────────── */
+
+  /* Red — logo gradient start, error states */
+  --color-accent-red:         #ee2139;
+  --color-accent-red:         oklch(0.6091 0.2316 23.11deg);
+
+  --color-accent-red-2:       #ea384c;
+  --color-accent-red-2:       oklch(0.6192 0.2123 20.43deg);
+
+  /* Cyan — streaming indicators, accent */
+  --color-accent-cyan:        #00ccde;
+  --color-accent-cyan:        oklch(0.7719 0.1321 206.05deg);
+
+  /* Blue — interactive elements, links */
+  --color-accent-blue:        #2895f7;
+  --color-accent-blue:        oklch(0.6596 0.1734 250.81deg);
+
+  --color-accent-blue-2:      #0082f3;
+  --color-accent-blue-2:      oklch(0.6109 0.1938 253.89deg);
+
+  /* Indigo — decorative, mid-blue */
+  --color-accent-indigo:      #4255bd;
+  --color-accent-indigo:      oklch(0.4939 0.1640 271.31deg);
+
+  /* Green — live status, success */
+  --color-accent-green:       #47dca5;
+  --color-accent-green:       oklch(0.8023 0.1486 164.26deg);
+
+  /* ─── TEXT COLORS ────────────────────────────────── */
+  --color-text-primary:       var(--livener-light-grey);
+  --color-text-white:         #ffffff;
+  --color-text-orange:        var(--livener-orange);
+  --color-text-muted:         rgba(242, 242, 242, 0.5);
+  --color-text-dark:          #1a1a1a;
+
+  /* ─── GRADIENTS ──────────────────────────────────── */
+  /* Logo: red → orange (matches the actual Livener play icon) */
+  --gradient-logo:            linear-gradient(135deg,
+                                oklch(0.6091 0.2316 23.11deg) 0%,
+                                oklch(0.7886 0.1630 66.32deg) 100%);
+
+  /* Page background: dark navy → slightly lighter */
+  --gradient-dark-bg:         linear-gradient(160deg,
+                                oklch(0.2309 0.0292 263.75deg) 0%,
+                                oklch(0.2626 0.0223 288.58deg) 100%);
+
+  /* Purple section gradient */
+  --gradient-purple:          linear-gradient(160deg,
+                                oklch(0.3515 0.0866 283.66deg) 0%,
+                                oklch(0.2800 0.0700 283.66deg) 100%);
+
+  /* Hero section (home): orange → turquoise */
+  --gradient-hero:            linear-gradient(to bottom,
+                                oklch(0.7886 0.1630 66.32deg) 5%,
+                                oklch(0.8788 0.0308 191.53deg) 95%);
+
+  /* Streaming: cyan → blue */
+  --gradient-cyan-blue:       linear-gradient(135deg,
+                                oklch(0.7719 0.1321 206.05deg) 0%,
+                                oklch(0.6596 0.1734 250.81deg) 100%);
+
+  /* ─── TYPOGRAPHY ─────────────────────────────────── */
+  --font-heading:   'Barlow Condensed', sans-serif;
+  --font-body:      'Poppins', sans-serif;
+
+  /* Type scale — exact values from Webflow source */
+  --text-h1:        68px;   --text-h1-lh:  72px;
+  --text-h2:        50px;   --text-h2-lh:  64px;
+  --text-h3:        32px;   --text-h3-lh:  40px;
+  --text-h4:        24px;   --text-h4-lh:  32px;
+  --text-body:      16px;   --text-body-lh: 26px;
+  --text-small:     14px;
+  --text-xs:        12px;
+
+  --font-light:    300;
+  --font-regular:  400;
+  --font-medium:   500;
+  --font-semibold: 600;
+  --font-bold:     700;
+
+  --tracking-tight:   -0.02em;
+  --tracking-normal:   0em;
+  --tracking-wide:     0.04em;
+
+  /* ─── SPACING ────────────────────────────────────── */
+  --space-1:  4px;   --space-2:  8px;   --space-3:  12px;
+  --space-4:  16px;  --space-5:  20px;  --space-6:  24px;
+  --space-8:  32px;  --space-10: 40px;  --space-12: 48px;
+  --space-16: 64px;  --space-20: 80px;  --space-24: 96px;
+  --space-32: 128px;
+
+  /* ─── LAYOUT ─────────────────────────────────────── */
+  --container-max:      1280px;
+  --container-large:    1440px;
+  --nav-height:         72px;
+  --section-padding-x:  40px;
+
+  /* ─── BORDER RADIUS ──────────────────────────────── */
+  --radius-sm:    4px;
+  --radius-md:    8px;
+  --radius-btn:   12px;   /* exact from Webflow button */
+  --radius-lg:    16px;
+  --radius-xl:    24px;
+  --radius-full:  9999px;
+
+  /* ─── BUTTON EXACT VALUES (from Webflow) ─────────── */
+  --btn-padding:       10px 24px;
+  --btn-padding-nav:   8px 20px;
+  --btn-padding-large: 10px 30px;
+  --btn-border-width:  2px;
+  --btn-radius:        12px;
+
+  /* ─── SHADOWS ────────────────────────────────────── */
+  --shadow-sm:          0 1px 3px oklch(0 0 0 / 0.3);
+  --shadow-md:          0 4px 16px oklch(0 0 0 / 0.4);
+  --shadow-lg:          0 8px 32px oklch(0 0 0 / 0.5);
+  --shadow-glow-orange: 0 0 24px oklch(0.7886 0.1630 66.32deg / 0.4);
+  --shadow-glow-cyan:   0 0 24px oklch(0.7719 0.1321 206.05deg / 0.35);
+
+  /* ─── MOTION ─────────────────────────────────────── */
+  --ease-default:  cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out:      cubic-bezier(0, 0, 0.2, 1);
+  --ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast:    150ms;
+  --duration-normal:  300ms;
+  --duration-slow:    500ms;
+}

@@ -1,0 +1,694 @@
+[
+  {
+    "fields": [
+      {
+        "name": "it",
+        "type": "string",
+        "title": "Italian"
+      },
+      {
+        "name": "en",
+        "type": "string",
+        "title": "English"
+      }
+    ],
+    "name": "localizedString",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "rows": 3,
+        "name": "it",
+        "type": "text",
+        "title": "Italian"
+      },
+      {
+        "rows": 3,
+        "name": "en",
+        "type": "text",
+        "title": "English"
+      }
+    ],
+    "name": "localizedText",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "of": [
+          {
+            "marks": {
+              "annotations": [
+                {
+                  "i18nTitleKey": "inputs.portable-text.annotation.link",
+                  "options": {
+                    "modal": {
+                      "type": "popover"
+                    }
+                  },
+                  "fields": [
+                    {
+                      "validation": [
+                        {
+                          "rules": [
+                            {
+                              "flag": "uri",
+                              "constraint": {
+                                "options": {
+                                  "scheme": [
+                                    "/^http$/",
+                                    "/^https$/",
+                                    "/^tel$/",
+                                    "/^mailto$/"
+                                  ],
+                                  "allowRelative": true,
+                                  "relativeOnly": false,
+                                  "allowCredentials": false
+                                }
+                              }
+                            }
+                          ],
+                          "level": "error"
+                        }
+                      ],
+                      "description": "A valid web, email, phone, or relative link.",
+                      "name": "href",
+                      "type": "url",
+                      "title": "Link"
+                    }
+                  ],
+                  "name": "link",
+                  "type": "object"
+                }
+              ],
+              "decorators": [
+                {
+                  "value": "strong",
+                  "title": "Strong"
+                },
+                {
+                  "value": "em",
+                  "title": "Italic"
+                },
+                {
+                  "value": "code",
+                  "title": "Code"
+                },
+                {
+                  "value": "underline",
+                  "title": "Underline"
+                },
+                {
+                  "value": "strike-through",
+                  "title": "Strike"
+                }
+              ]
+            },
+            "lists": [
+              {
+                "value": "bullet",
+                "title": "Bulleted list"
+              },
+              {
+                "value": "number",
+                "title": "Numbered list"
+              }
+            ],
+            "styles": [
+              {
+                "value": "normal",
+                "title": "Normal"
+              },
+              {
+                "value": "h1",
+                "title": "Heading 1"
+              },
+              {
+                "value": "h2",
+                "title": "Heading 2"
+              },
+              {
+                "value": "h3",
+                "title": "Heading 3"
+              },
+              {
+                "value": "h4",
+                "title": "Heading 4"
+              },
+              {
+                "value": "h5",
+                "title": "Heading 5"
+              },
+              {
+                "value": "h6",
+                "title": "Heading 6"
+              },
+              {
+                "value": "blockquote",
+                "title": "Quote"
+              }
+            ],
+            "of": [],
+            "type": "block"
+          }
+        ],
+        "name": "it",
+        "type": "array",
+        "title": "Italian"
+      },
+      {
+        "of": [
+          {
+            "marks": {
+              "annotations": [
+                {
+                  "i18nTitleKey": "inputs.portable-text.annotation.link",
+                  "options": {
+                    "modal": {
+                      "type": "popover"
+                    }
+                  },
+                  "fields": [
+                    {
+                      "validation": [
+                        {
+                          "rules": [
+                            {
+                              "flag": "uri",
+                              "constraint": {
+                                "options": {
+                                  "scheme": [
+                                    "/^http$/",
+                                    "/^https$/",
+                                    "/^tel$/",
+                                    "/^mailto$/"
+                                  ],
+                                  "allowRelative": true,
+                                  "relativeOnly": false,
+                                  "allowCredentials": false
+                                }
+                              }
+                            }
+                          ],
+                          "level": "error"
+                        }
+                      ],
+                      "description": "A valid web, email, phone, or relative link.",
+                      "name": "href",
+                      "type": "url",
+                      "title": "Link"
+                    }
+                  ],
+                  "name": "link",
+                  "type": "object"
+                }
+              ],
+              "decorators": [
+                {
+                  "value": "strong",
+                  "title": "Strong"
+                },
+                {
+                  "value": "em",
+                  "title": "Italic"
+                },
+                {
+                  "value": "code",
+                  "title": "Code"
+                },
+                {
+                  "value": "underline",
+                  "title": "Underline"
+                },
+                {
+                  "value": "strike-through",
+                  "title": "Strike"
+                }
+              ]
+            },
+            "lists": [
+              {
+                "value": "bullet",
+                "title": "Bulleted list"
+              },
+              {
+                "value": "number",
+                "title": "Numbered list"
+              }
+            ],
+            "styles": [
+              {
+                "value": "normal",
+                "title": "Normal"
+              },
+              {
+                "value": "h1",
+                "title": "Heading 1"
+              },
+              {
+                "value": "h2",
+                "title": "Heading 2"
+              },
+              {
+                "value": "h3",
+                "title": "Heading 3"
+              },
+              {
+                "value": "h4",
+                "title": "Heading 4"
+              },
+              {
+                "value": "h5",
+                "title": "Heading 5"
+              },
+              {
+                "value": "h6",
+                "title": "Heading 6"
+              },
+              {
+                "value": "blockquote",
+                "title": "Quote"
+              }
+            ],
+            "of": [],
+            "type": "block"
+          }
+        ],
+        "name": "en",
+        "type": "array",
+        "title": "English"
+      }
+    ],
+    "name": "localizedPortableText",
+    "type": "object",
+    "title": "Localized Rich Text"
+  },
+  {
+    "fields": [
+      {
+        "name": "headline",
+        "type": "localizedText"
+      },
+      {
+        "name": "subheadline",
+        "type": "localizedText"
+      },
+      {
+        "name": "ctaLabel",
+        "type": "localizedString",
+        "title": "CTA Button Label"
+      },
+      {
+        "name": "ctaHref",
+        "type": "string",
+        "title": "CTA Button Link"
+      }
+    ],
+    "name": "heroSection",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "name": "title",
+        "type": "localizedString"
+      },
+      {
+        "name": "body",
+        "type": "localizedPortableText"
+      },
+      {
+        "options": {
+          "list": [
+            "left",
+            "right"
+          ]
+        },
+        "name": "imagePosition",
+        "type": "string"
+      }
+    ],
+    "name": "contentSection",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "name": "name",
+        "type": "localizedString"
+      },
+      {
+        "name": "tagline",
+        "type": "localizedString"
+      },
+      {
+        "name": "description",
+        "type": "localizedText"
+      }
+    ],
+    "name": "treatmentCard",
+    "type": "object",
+    "title": "Treatment"
+  },
+  {
+    "fields": [
+      {
+        "name": "eyebrow",
+        "type": "localizedString",
+        "title": "Eyebrow Label"
+      },
+      {
+        "name": "title",
+        "type": "localizedString"
+      },
+      {
+        "name": "intro",
+        "type": "localizedText",
+        "title": "Intro Text"
+      },
+      {
+        "of": [
+          {
+            "type": "treatmentCard",
+            "title": "Treatment"
+          }
+        ],
+        "name": "treatments",
+        "type": "array"
+      }
+    ],
+    "name": "treatmentsSection",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "role",
+        "type": "localizedString"
+      },
+      {
+        "name": "bio",
+        "type": "localizedText"
+      }
+    ],
+    "name": "teamMemberObject",
+    "type": "object",
+    "title": "Team Member"
+  },
+  {
+    "fields": [
+      {
+        "name": "title",
+        "type": "localizedString"
+      },
+      {
+        "name": "subtitle",
+        "type": "localizedText"
+      },
+      {
+        "of": [
+          {
+            "type": "teamMemberObject",
+            "title": "Team Member"
+          }
+        ],
+        "name": "members",
+        "type": "array"
+      }
+    ],
+    "name": "teamSection",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "name": "eyebrow",
+        "type": "localizedString",
+        "title": "Eyebrow Label"
+      },
+      {
+        "name": "title",
+        "type": "localizedString"
+      },
+      {
+        "name": "content",
+        "type": "localizedPortableText"
+      },
+      {
+        "options": {
+          "list": [
+            "white",
+            "grey",
+            "dark"
+          ]
+        },
+        "initialValue": "white",
+        "name": "backgroundColor",
+        "type": "string",
+        "title": "Background"
+      }
+    ],
+    "name": "textSection",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "name": "title",
+        "type": "localizedString"
+      },
+      {
+        "name": "subtitle",
+        "type": "localizedText"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "uri",
+                "constraint": {
+                  "options": {
+                    "scheme": [
+                      "/^http$/",
+                      "/^https$/"
+                    ],
+                    "allowRelative": false,
+                    "relativeOnly": false,
+                    "allowCredentials": false
+                  }
+                }
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "Paste the src URL from a Google Maps embed iframe",
+        "name": "mapEmbedUrl",
+        "type": "url",
+        "title": "Google Maps Embed URL"
+      }
+    ],
+    "name": "contactSection",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "name": "question",
+        "type": "localizedString"
+      },
+      {
+        "name": "answer",
+        "type": "localizedText"
+      }
+    ],
+    "name": "faqItem",
+    "type": "object",
+    "title": "FAQ Item"
+  },
+  {
+    "fields": [
+      {
+        "name": "eyebrow",
+        "type": "localizedString",
+        "title": "Eyebrow Label"
+      },
+      {
+        "name": "title",
+        "type": "localizedString"
+      },
+      {
+        "of": [
+          {
+            "type": "faqItem",
+            "title": "FAQ Item"
+          }
+        ],
+        "name": "items",
+        "type": "array",
+        "title": "Questions"
+      }
+    ],
+    "name": "faqSection",
+    "type": "object",
+    "title": "FAQ Section"
+  },
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "Which client this document belongs to (e.g. studiomartegani)",
+        "name": "tenantSlug",
+        "type": "string",
+        "title": "Tenant"
+      },
+      {
+        "name": "siteName",
+        "type": "string"
+      },
+      {
+        "name": "tagline",
+        "type": "localizedString"
+      },
+      {
+        "name": "phone",
+        "type": "string"
+      },
+      {
+        "name": "email",
+        "type": "string"
+      },
+      {
+        "rows": 2,
+        "name": "address",
+        "type": "text"
+      }
+    ],
+    "name": "siteConfig",
+    "type": "document"
+  },
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "Which client this document belongs to (e.g. studiomartegani)",
+        "name": "tenantSlug",
+        "type": "string",
+        "title": "Tenant"
+      },
+      {
+        "of": [
+          {
+            "type": "heroSection"
+          },
+          {
+            "type": "contentSection"
+          },
+          {
+            "type": "treatmentsSection"
+          },
+          {
+            "type": "teamSection"
+          },
+          {
+            "type": "textSection"
+          },
+          {
+            "type": "faqSection",
+            "title": "FAQ Section"
+          },
+          {
+            "type": "contactSection"
+          }
+        ],
+        "name": "sections",
+        "type": "array"
+      }
+    ],
+    "name": "homePage",
+    "type": "document"
+  },
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "Which client this document belongs to (e.g. studiomartegani)",
+        "name": "tenantSlug",
+        "type": "string",
+        "title": "Tenant"
+      },
+      {
+        "name": "title",
+        "type": "localizedString"
+      },
+      {
+        "options": {
+          "source": "title.it"
+        },
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "custom"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "slug",
+        "type": "slug"
+      },
+      {
+        "name": "excerpt",
+        "type": "localizedText"
+      },
+      {
+        "name": "body",
+        "type": "localizedPortableText"
+      },
+      {
+        "name": "publishedAt",
+        "type": "datetime"
+      }
+    ],
+    "name": "post",
+    "type": "document",
+    "title": "Blog Post"
+  }
+]

@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Livener — Design System Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,600;1,700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+/* ══════════════════════════════════════════════════
+   TOKENS
+══════════════════════════════════════════════════ */
+:root {
+  /* Brand invariant */
+  --orange:      #ffa22b; --orange: oklch(0.7886 0.1630 66.32deg);
+  --red:         #ee2139; --red:    oklch(0.6091 0.2316 23.11deg);
+  --cyan:        #00ccde; --cyan:   oklch(0.7719 0.1321 206.05deg);
+  --blue:        #2895f7; --blue:   oklch(0.6596 0.1734 250.81deg);
+  --green:       #47dca5; --green:  oklch(0.8023 0.1486 164.26deg);
+  --indigo:      #363366; --indigo: oklch(0.3515 0.0866 283.66deg);
+  --turquoise:   #c1dedc;
+
+  /* Semantic — dark defaults */
+  --bg:            oklch(0.2309 0.0292 263.75deg);
+  --bg-2:          oklch(0.2626 0.0223 288.58deg);
+  --bg-nav:        oklch(0.2309 0.0292 263.75deg);
+  --text:          oklch(0.9612 0.0000 89.88deg);
+  --text-muted:    oklch(0.9612 0.0000 89.88deg / 0.55);
+  --accent-text:   var(--orange);   /* WCAG safe text accent — orange on dark ✓ 7.9:1 */
+  --border:        rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.14);
+  --card-bg:       rgba(255,255,255,0.05);
+  --input-bg:      rgba(255,255,255,0.07);
+  --input-border:  rgba(255,255,255,0.13);
+  --ghost-bg:      rgba(255,255,255,0.07);
+  --ghost-border:  rgba(255,255,255,0.12);
+  --ghost-hover:   rgba(255,255,255,0.13);
+  --bkg-svg:       url("bkg.svg");
+  --drawer-bg:     rgba(22,29,43,0.88);
+  --nav-shadow:    none;
+  --section-meta:  rgba(255,255,255,0.28);
+  --swatch-meta:   rgba(255,255,255,0.04);
+  --type-meta:     rgba(255,255,255,0.3);
+  --logo-show-dark: block;
+  --logo-show-light: none;
+
+  --font-heading: 'Barlow Condensed', sans-serif;
+  --font-body:    'Poppins', sans-serif;
+}
+
+[data-theme="light"] {
+  --bg:            oklch(0.9654 0.0025 48.72deg);
+  --bg-2:          #ffffff;
+  --bg-nav:        #ffffff;
+  --text:          oklch(0.2309 0.0292 263.75deg);
+  --text-muted:    oklch(0.2309 0.0292 263.75deg / 0.5);
+  --accent-text:   var(--indigo); /* WCAG safe text accent — indigo on light ✓ 9.8:1 */
+  --border:        rgba(22,29,43,0.08);
+  --border-strong: rgba(22,29,43,0.14);
+  --card-bg:       #ffffff;
+  --input-bg:      #ffffff;
+  --input-border:  rgba(22,29,43,0.15);
+  --ghost-bg:      rgba(22,29,43,0.05);
+  --ghost-border:  rgba(22,29,43,0.12);
+  --ghost-hover:   rgba(22,29,43,0.09);
+  --bkg-svg:       url("bkg-light.svg");
+  --drawer-bg:     rgba(255,255,255,0.88);
+  --nav-shadow:    0 1px 0 rgba(22,29,43,0.08), 0 2px 10px rgba(22,29,43,0.05);
+  --section-meta:  rgba(22,29,43,0.3);
+  --swatch-meta:   rgba(22,29,43,0.04);
+  --type-meta:     rgba(22,29,43,0.35);
+}
+
+/* ══════════════════════════════════════════════════
+   BASE
+══════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: var(--font-body); background: var(--bg); color: var(--text); font-size: 16px; line-height: 1.5; transition: background 0.25s, color 0.25s; }
+
+.ds-inner { max-width: 1200px; margin: 0 auto; }
+.ds-section { padding: 64px 40px; border-bottom: 1px solid var(--border); }
+.ds-section-title { font-family: var(--font-body); font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--section-meta); margin-bottom: 40px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.ds-label { font-family: var(--font-body); font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-text); margin-bottom: 12px; display: block; }
+
+/* ══════════════════════════════════════════════════
+   NAV — z-index 400 so it always sits above overlay+drawer
+══════════════════════════════════════════════════ */
+.nav {
+  background: var(--bg-nav);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--nav-shadow);
+  height: 72px;
+  display: flex;
+  align-items: center;
+  padding: 0 40px;
+  position: sticky;
+  top: 0;
+  z-index: 400;
+  transition: background 0.25s, box-shadow 0.25s, border-color 0.25s;
+}
+.nav-inner { display: flex; align-items: center; width: 100%; max-width: 1200px; margin: 0 auto; }
+
+/* Logo */
+.nav-logo { display: flex; align-items: center; text-decoration: none; flex-shrink: 0; }
+.nav-logo .logo-dark  { height: 36px; width: auto; display: block; }
+.nav-logo .logo-light { height: 36px; width: auto; display: none; }
+[data-theme="light"] .nav-logo .logo-dark  { display: none; }
+[data-theme="light"] .nav-logo .logo-light { display: block; }
+
+/* Right group */
+.nav-right { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+
+.nav-links { display: flex; align-items: center; gap: 2px; list-style: none; margin-right: 6px; }
+.nav-links a { font-family: var(--font-body); font-size: 14px; font-weight: 500; color: var(--text); opacity: 0.72; padding: 6px 12px; border-radius: 8px; text-decoration: none; transition: opacity 0.2s, background 0.2s; }
+.nav-links a:hover { opacity: 1; background: var(--ghost-bg); }
+
+.nav-divider { width: 1px; height: 20px; background: var(--border-strong); margin: 0 6px; flex-shrink: 0; }
+
+/* ── Language switcher (desktop, no flags) ── */
+.lang-switch { position: relative; }
+.lang-btn {
+  display: flex; align-items: center; gap: 5px;
+  font-family: var(--font-body); font-size: 13px; font-weight: 600;
+  color: var(--text); opacity: 0.72; background: none; border: none; cursor: pointer;
+  padding: 6px 10px; border-radius: 8px; letter-spacing: 0.05em;
+  transition: opacity 0.2s, background 0.2s;
+}
+.lang-btn:hover { opacity: 1; background: var(--ghost-bg); }
+.lang-btn svg { width: 11px; height: 11px; transition: transform 0.2s; stroke: currentColor; }
+.lang-switch.open .lang-btn svg { transform: rotate(180deg); }
+.lang-dropdown {
+  display: none; position: absolute; top: calc(100% + 8px); right: 0;
+  background: var(--bg-nav); border: 1px solid var(--border-strong);
+  border-radius: 10px; padding: 5px; min-width: 110px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18); z-index: 500;
+}
+.lang-switch.open .lang-dropdown { display: block; }
+.lang-option {
+  display: block; font-family: var(--font-body); font-size: 13px; font-weight: 500;
+  color: var(--text); padding: 8px 12px; border-radius: 6px; cursor: pointer;
+  text-decoration: none; transition: background 0.15s; opacity: 0.8;
+}
+.lang-option:hover { background: var(--ghost-bg); opacity: 1; }
+.lang-option.active { color: var(--orange); font-weight: 700; opacity: 1; }
+
+/* ── Theme switcher (desktop, dropdown with Lucide icons) ── */
+.theme-switch { position: relative; }
+.theme-trigger {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--font-body); font-size: 13px; font-weight: 500;
+  color: var(--text); opacity: 0.72; background: none; border: none; cursor: pointer;
+  padding: 6px 10px; border-radius: 8px;
+  transition: opacity 0.2s, background 0.2s;
+}
+.theme-trigger:hover { opacity: 1; background: var(--ghost-bg); }
+.theme-trigger i, .theme-trigger svg { width: 15px; height: 15px; }
+.theme-trigger .chevron { width: 11px; height: 11px; transition: transform 0.2s; stroke: currentColor; }
+.theme-switch.open .theme-trigger .chevron { transform: rotate(180deg); }
+.theme-dropdown {
+  display: none; position: absolute; top: calc(100% + 8px); right: 0;
+  background: var(--bg-nav); border: 1px solid var(--border-strong);
+  border-radius: 10px; padding: 5px; min-width: 140px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18); z-index: 500;
+}
+.theme-switch.open .theme-dropdown { display: block; }
+.theme-option {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-body); font-size: 13px; font-weight: 500;
+  color: var(--text); padding: 8px 12px; border-radius: 6px; cursor: pointer;
+  border: none; background: none; width: 100%; text-align: left; opacity: 0.75;
+  transition: background 0.15s, opacity 0.15s;
+}
+.theme-option:hover { background: var(--ghost-bg); opacity: 1; }
+.theme-option.active { color: var(--orange); font-weight: 600; opacity: 1; }
+.theme-option i, .theme-option svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+/* CTA */
+.nav-cta {
+  font-family: var(--font-body); font-size: 14px; font-weight: 600;
+  color: #fff; background: var(--orange); border: 2px solid var(--orange);
+  border-radius: 12px; padding: 8px 20px; cursor: pointer; text-decoration: none;
+  white-space: nowrap; flex-shrink: 0; margin-left: 6px;
+  transition: background 0.25s, border-color 0.25s;
+}
+.nav-cta:hover { background: var(--indigo); border-color: var(--indigo); }
+
+/* ══════════════════════════════════════════════════
+   HAMBURGER — lives inside nav (z-index 400), stays
+   above overlay (z-index 300) and drawer (z-index 350)
+══════════════════════════════════════════════════ */
+.hamburger {
+  display: none; flex-direction: column; justify-content: center; align-items: center;
+  width: 40px; height: 40px; border: none; background: none; cursor: pointer;
+  padding: 4px; border-radius: 8px; margin-left: auto; flex-shrink: 0;
+  transition: background 0.2s;
+  /* inherits z-index 400 from nav */
+}
+.hamburger:hover { background: var(--ghost-bg); }
+.hamburger span {
+  display: block; width: 22px; height: 2px; background: var(--text);
+  border-radius: 2px;
+  transition: transform 0.32s cubic-bezier(0.34,1.56,0.64,1), opacity 0.22s, width 0.28s;
+  transform-origin: center;
+}
+.hamburger span:nth-child(2) { margin: 5px 0; }
+/* → X */
+.hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.hamburger.open span:nth-child(2) { opacity: 0; width: 0; }
+.hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* ══════════════════════════════════════════════════
+   OVERLAY
+══════════════════════════════════════════════════ */
+.drawer-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  z-index: 300; opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+}
+.drawer-overlay.open { opacity: 1; pointer-events: all; }
+
+/* ══════════════════════════════════════════════════
+   MOBILE DRAWER — glass effect, slides from right
+══════════════════════════════════════════════════ */
+.mobile-drawer {
+  position: fixed; top: 0; right: 0;
+  width: min(320px, 85vw); height: 100dvh;
+  /* Glass background — slightly transparent + blur */
+  background: var(--drawer-bg);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border-left: 1px solid var(--border-strong);
+  z-index: 350;
+  padding: 88px 24px 40px;
+  display: flex; flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+  box-shadow: -8px 0 40px rgba(0,0,0,0.22);
+  overflow-y: auto;
+}
+.mobile-drawer.open { transform: translateX(0); }
+
+/* Drawer nav links */
+.drawer-nav-links { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
+.drawer-nav-links a {
+  font-family: var(--font-body); font-size: 16px; font-weight: 500;
+  color: var(--text); text-decoration: none; padding: 11px 14px;
+  border-radius: 10px; opacity: 0.8;
+  transition: background 0.18s, opacity 0.18s;
+}
+.drawer-nav-links a:hover { background: var(--ghost-bg); opacity: 1; }
+
+.drawer-divider { height: 1px; background: var(--border); margin: 12px 0; }
+
+/* Drawer section label */
+.drawer-section-label {
+  font-family: var(--font-body); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--section-meta); margin-bottom: 10px; display: block;
+}
+
+/* Language buttons (no flags, open, no dropdown) */
+.drawer-lang-row { display: flex; gap: 8px; margin-bottom: 20px; }
+.drawer-lang-btn {
+  flex: 1; font-family: var(--font-body); font-size: 13px; font-weight: 600;
+  padding: 9px 12px; border-radius: 9px;
+  border: 1px solid var(--border-strong); background: transparent;
+  color: var(--text); cursor: pointer; letter-spacing: 0.05em;
+  transition: all 0.2s; opacity: 0.65;
+}
+.drawer-lang-btn:hover { opacity: 0.9; background: var(--ghost-bg); }
+.drawer-lang-btn.active {
+  opacity: 1; border-color: var(--orange); color: var(--orange);
+  background: oklch(0.7886 0.1630 66.32deg / 0.1);
+}
+
+/* Theme buttons (open, Lucide icons) */
+.drawer-theme-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 24px; }
+.drawer-theme-btn {
+  display: flex; align-items: center; gap: 12px;
+  font-family: var(--font-body); font-size: 14px; font-weight: 500;
+  padding: 10px 14px; border-radius: 9px;
+  border: 1px solid transparent; background: transparent;
+  color: var(--text); cursor: pointer; text-align: left; width: 100%;
+  transition: all 0.2s; opacity: 0.7;
+}
+.drawer-theme-btn:hover { background: var(--ghost-bg); opacity: 1; }
+.drawer-theme-btn.active {
+  opacity: 1; border-color: var(--orange); color: var(--orange);
+  background: oklch(0.7886 0.1630 66.32deg / 0.08);
+}
+.drawer-theme-btn i, .drawer-theme-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+/* Drawer CTA */
+.drawer-cta {
+  margin-top: auto; padding-top: 16px;
+}
+.drawer-cta .nav-cta {
+  display: block; text-align: center; margin-left: 0;
+  padding: 13px 24px; font-size: 15px; border-radius: 12px;
+}
+
+/* ══════════════════════════════════════════════════
+   HERO
+══════════════════════════════════════════════════ */
+.hero {
+  background-color: var(--bg); background-image: var(--bkg-svg);
+  background-position: 50% 0; background-repeat: no-repeat; background-size: 121%;
+  padding: 80px 40px 100px; min-height: 480px; display: flex; align-items: center;
+  position: relative; overflow: hidden;
+}
+.hero-inner { position: relative; z-index: 2; max-width: 680px; }
+.hero-eyebrow { font-family: var(--font-body); font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-text); margin-bottom: 16px; display: block; }
+.hero-title { font-family: var(--font-heading); font-size: 68px; font-weight: 700; line-height: 72px; color: var(--text); margin-bottom: 16px; }
+.hero-subtitle { font-family: var(--font-heading); font-size: 32px; font-weight: 600; line-height: 40px; color: var(--accent-text); margin-bottom: 24px; }
+.hero-body { font-family: var(--font-body); font-size: 16px; line-height: 26px; color: var(--text-muted); max-width: 480px; margin-bottom: 40px; }
+.hero-actions { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+
+/* ══════════════════════════════════════════════════
+   BUTTONS
+══════════════════════════════════════════════════ */
+.btn { font-family: var(--font-body); font-size: 15px; font-weight: 600; border-radius: 12px; padding: 10px 24px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: all 0.25s cubic-bezier(0.4,0,0.2,1); border: 2px solid transparent; line-height: 1; }
+.btn-primary { background: var(--orange); color: #fff; border-color: var(--orange); } /* white on orange: 3.1:1 → AA UI ✓ */
+.btn-primary:hover { background: var(--indigo); border-color: var(--indigo); }
+.btn-outline { background: transparent; color: var(--accent-text); border-color: var(--accent-text); }
+.btn-outline:hover { background: var(--accent-text); color: #fff; }
+.btn-ghost { background: var(--ghost-bg); color: var(--text); border-color: var(--ghost-border); }
+.btn-ghost:hover { background: var(--ghost-hover); }
+.btn-sm { font-size: 13px; padding: 7px 16px; border-radius: 8px; }
+.btn-lg { font-size: 17px; padding: 14px 32px; }
+
+/* ══════════════════════════════════════════════════
+   COLOUR SWATCHES
+══════════════════════════════════════════════════ */
+.swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 16px; }
+.swatch { border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+.swatch-color { height: 64px; width: 100%; }
+.swatch-info { padding: 8px 10px; background: var(--swatch-meta); }
+.swatch-name { font-family: var(--font-body); font-size: 11px; font-weight: 600; color: var(--text); display: block; }
+.swatch-hex { font-family: monospace; font-size: 10px; color: var(--text-muted); display: block; margin-top: 2px; }
+
+/* ══════════════════════════════════════════════════
+   TYPOGRAPHY
+══════════════════════════════════════════════════ */
+.type-row { margin-bottom: 32px; }
+.type-meta { font-family: var(--font-body); font-size: 11px; color: var(--type-meta); display: block; margin-top: 4px; }
+
+/* ══════════════════════════════════════════════════
+   BADGES
+══════════════════════════════════════════════════ */
+.badge { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-body); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 12px; border-radius: 9999px; }
+.badge-live { background: oklch(0.6091 0.2316 23.11deg / 0.15); color: #ff4a63; border: 1px solid oklch(0.6091 0.2316 23.11deg / 0.3); }
+.badge-live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--red); animation: pulse 1.5s infinite; flex-shrink: 0; }
+.badge-cyan { background: oklch(0.7719 0.1321 206.05deg / 0.12); color: var(--cyan); border: 1px solid oklch(0.7719 0.1321 206.05deg / 0.25); }
+.badge-orange { background: oklch(0.7886 0.1630 66.32deg / 0.12); color: var(--accent-text); border: 1px solid oklch(0.7886 0.1630 66.32deg / 0.25); }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ══════════════════════════════════════════════════
+   CARDS
+══════════════════════════════════════════════════ */
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+.card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 28px; transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s; }
+.card:hover { border-color: var(--orange); transform: translateY(-3px); box-shadow: 0 8px 24px oklch(0.7886 0.1630 66.32deg / 0.12); }
+.card-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--orange); margin-bottom: 20px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.card-title { font-family: var(--font-heading); font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+.card-body { font-family: var(--font-body); font-size: 14px; line-height: 22px; color: var(--text-muted); }
+.card.cyan .card-icon { background: var(--cyan); }
+.card.blue .card-icon { background: var(--blue); }
+
+/* ══════════════════════════════════════════════════
+   FORM
+══════════════════════════════════════════════════ */
+.form-field { font-family: var(--font-body); font-size: 15px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 12px; padding: 12px 16px; color: var(--text); width: 100%; outline: none; transition: border-color 0.25s; }
+.form-field::placeholder { color: var(--text-muted); }
+.form-field:focus { border-color: var(--orange); box-shadow: 0 0 0 3px oklch(0.7886 0.1630 66.32deg / 0.15); }
+.form-row { display: flex; gap: 12px; align-items: center; max-width: 520px; }
+.form-row .form-field { flex: 1; }
+
+/* ══════════════════════════════════════════════════
+   SECTION VARIANTS
+══════════════════════════════════════════════════ */
+.section-alt { background: var(--bg-2); padding: 64px 40px; border-bottom: 1px solid var(--border); }
+.section-purple { background: var(--indigo); padding: 64px 40px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+.section-h2 { font-family: var(--font-heading); font-size: 50px; font-weight: 700; line-height: 64px; color: var(--text); margin-bottom: 16px; }
+.section-h3 { font-family: var(--font-heading); font-size: 32px; font-weight: 600; line-height: 40px; color: var(--accent-text); margin-bottom: 24px; }
+.section-p { font-family: var(--font-body); font-size: 16px; line-height: 26px; color: var(--text-muted); max-width: 640px; }
+
+/* ══════════════════════════════════════════════════
+   FOOTER — always dark/indigo
+══════════════════════════════════════════════════ */
+.footer { background: var(--indigo); padding: 64px 40px 40px; }
+.footer-title { font-family: var(--font-heading); font-size: 50px; font-weight: 700; line-height: 64px; color: #fff; margin-bottom: 12px; }
+.footer-sub { font-family: var(--font-body); font-size: 15px; color: rgba(255,255,255,0.7); margin-bottom: 28px; }
+.footer-divider { border: none; border-top: 1px solid rgba(255,255,255,0.12); margin: 40px 0 24px; }
+.footer-bottom { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+.footer-copy { font-family: var(--font-body); font-size: 13px; color: rgba(255,255,255,0.45); }
+.footer-links { display: flex; gap: 24px; list-style: none; }
+.footer-links a { font-family: var(--font-body); font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.6); text-decoration: none; transition: color 0.2s; }
+.footer-links a:hover { color: #fff; }
+.footer-legal { font-family: var(--font-body); font-size: 11px; color: rgba(255,255,255,0.25); margin-top: 16px; line-height: 1.7; }
+
+/* ══════════════════════════════════════════════════
+   DS META HEADER
+══════════════════════════════════════════════════ */
+.ds-header { background: var(--bg-2); padding: 48px 40px; border-bottom: 1px solid var(--border); }
+.ds-header-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 24px; }
+.ds-title { font-family: var(--font-heading); font-size: 48px; font-weight: 700; color: var(--text); line-height: 1; margin-bottom: 8px; }
+.ds-subtitle { font-family: var(--font-body); font-size: 14px; color: var(--text-muted); }
+.ds-meta-item { font-family: var(--font-body); font-size: 11px; color: var(--text-muted); display: block; line-height: 1.8; text-align: right; }
+.ds-meta-item strong { color: var(--text); }
+
+/* WCAG note */
+.wcag-note { font-family: var(--font-body); font-size: 13px; padding: 12px 16px; border-radius: 8px; margin-bottom: 24px; display: flex; align-items: flex-start; gap: 10px; }
+.wcag-pass { background: oklch(0.8023 0.1486 164.26deg / 0.12); border: 1px solid oklch(0.8023 0.1486 164.26deg / 0.25); color: var(--text); }
+.wcag-warn { background: oklch(0.7886 0.1630 66.32deg / 0.12); border: 1px solid oklch(0.7886 0.1630 66.32deg / 0.25); color: var(--text); }
+.wcag-note i, .wcag-note svg { width: 15px; height: 15px; flex-shrink: 0; margin-top: 1px; }
+
+/* ══════════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .nav { padding: 0 20px; }
+  .nav-right { display: none; }
+  .hamburger { display: flex; }
+  .ds-section, .section-alt, .section-purple, .footer, .ds-header { padding-left: 20px; padding-right: 20px; }
+  .hero { padding: 60px 20px 80px; }
+  .hero-title { font-size: 48px; line-height: 52px; }
+  .hero-subtitle { font-size: 26px; line-height: 34px; }
+  .section-h2 { font-size: 36px; line-height: 44px; }
+  .footer-title { font-size: 36px; line-height: 44px; }
+  .form-row { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<!-- Overlay -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+
+<!-- Mobile Drawer -->
+<div class="mobile-drawer" id="mobileDrawer">
+
+  <div class="drawer-nav-links">
+    <a href="https://www.livener.net/live">Live</a>
+    <a href="#">About</a>
+    <a href="#">Investors</a>
+  </div>
+
+  <div class="drawer-divider"></div>
+
+  <!-- Language — no flags, no dropdown, all buttons visible -->
+  <span class="drawer-section-label">Language</span>
+  <div class="drawer-lang-row">
+    <button class="drawer-lang-btn active" id="mob-lang-en" onclick="setLang('en')">EN</button>
+    <button class="drawer-lang-btn" id="mob-lang-it" onclick="setLang('it')">IT</button>
+  </div>
+
+  <!-- Theme — open, Lucide icons -->
+  <span class="drawer-section-label">Appearance</span>
+  <div class="drawer-theme-row">
+    <button class="drawer-theme-btn" id="mob-theme-light" onclick="setTheme('light')">
+      <i data-lucide="sun"></i> Light
+    </button>
+    <button class="drawer-theme-btn active" id="mob-theme-dark" onclick="setTheme('dark')">
+      <i data-lucide="moon"></i> Dark
+    </button>
+    <button class="drawer-theme-btn" id="mob-theme-system" onclick="setTheme('system')">
+      <i data-lucide="monitor-cog"></i> System
+    </button>
+  </div>
+
+  <div class="drawer-cta">
+    <a href="#" class="nav-cta">Get Early Access</a>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+
+    <a href="https://www.livener.net" class="nav-logo" title="Livener">
+      <img class="logo-dark"  src="data:image/png;base64,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"  alt="Livener"/>
+      <img class="logo-light" src="data:image/png;base64,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" alt="Livener"/>
+    </a>
+
+    <!-- Desktop right -->
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="https://www.livener.net/live">Live</a></li>
+        <li><a href="#">About</a></li>
+        <li><a href="#">Investors</a></li>
+      </ul>
+
+      <div class="nav-divider"></div>
+
+      <!-- Language — no flags -->
+      <div class="lang-switch" id="langSwitch">
+        <button class="lang-btn" onclick="toggleLangDD()" aria-haspopup="listbox">
+          <span id="currentLang">EN</span>
+          <svg viewBox="0 0 12 12" fill="none" stroke-width="1.8"><path d="M2 4l4 4 4-4"/></svg>
+        </button>
+        <div class="lang-dropdown" role="listbox">
+          <a class="lang-option active" id="desk-lang-en" href="#" onclick="setLangDesktop('en','EN');return false;">English</a>
+          <a class="lang-option" id="desk-lang-it" href="#" onclick="setLangDesktop('it','IT');return false;">Italiano</a>
+        </div>
+      </div>
+
+      <div class="nav-divider"></div>
+
+      <!-- Theme — dropdown with Lucide icons -->
+      <div class="theme-switch" id="themeSwitch">
+        <button class="theme-trigger" onclick="toggleThemeDD()" aria-haspopup="listbox">
+          <i data-lucide="moon" id="themeIcon"></i>
+          <svg class="chevron" viewBox="0 0 12 12" fill="none" stroke-width="1.8"><path d="M2 4l4 4 4-4"/></svg>
+        </button>
+        <div class="theme-dropdown" role="listbox">
+          <button class="theme-option" id="desk-theme-light" onclick="setTheme('light')">
+            <i data-lucide="sun"></i> Light
+          </button>
+          <button class="theme-option active" id="desk-theme-dark" onclick="setTheme('dark')">
+            <i data-lucide="moon"></i> Dark
+          </button>
+          <button class="theme-option" id="desk-theme-system" onclick="setTheme('system')">
+            <i data-lucide="monitor-cog"></i> System
+          </button>
+        </div>
+      </div>
+
+      <a href="#" class="nav-cta">Get Early Access</a>
+    </div>
+
+    <!-- Hamburger -->
+    <button class="hamburger" id="hamburger" onclick="toggleDrawer()" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+
+  </div>
+</nav>
+
+<!-- DS META -->
+<div class="ds-header">
+  <div class="ds-header-inner">
+    <div>
+      <span class="ds-label">Design System</span>
+      <h1 class="ds-title">Livener</h1>
+      <p class="ds-subtitle">Barlow Condensed + Poppins · OKLCH · Lucide Icons · Light / Dark / System</p>
+    </div>
+    <div>
+      <span class="ds-meta-item"><strong>Heading</strong> Barlow Condensed</span>
+      <span class="ds-meta-item"><strong>Body</strong> Poppins</span>
+      <span class="ds-meta-item"><strong>Icons</strong> Lucide</span>
+      <span class="ds-meta-item"><strong>Orange</strong> oklch(0.7886 0.1630 66.32)</span>
+      <span class="ds-meta-item"><strong>Indigo</strong> oklch(0.3515 0.0866 283.66)</span>
+    </div>
+  </div>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <span class="hero-eyebrow">Currently in beta — tested live, in real environments</span>
+    <h1 class="hero-title">Welcome to Livener</h1>
+    <h3 class="hero-subtitle">Live video streaming, in the palm of your hands</h3>
+    <p class="hero-body">All you need to edit, mix and broadcast live content in one easy-to-use app, from the palm of your hand.</p>
+    <div class="hero-actions">
+      <a href="#" class="btn btn-primary btn-lg">Get Early Access</a>
+      <a href="#" class="btn btn-outline">Watch Demo</a>
+      <span class="badge badge-live">Live</span>
+    </div>
+  </div>
+</section>
+
+<!-- WCAG CONTRAST -->
+<div class="ds-section">
+  <div class="ds-inner">
+    <p class="ds-section-title">WCAG Contrast Audit</p>
+    <div class="wcag-note wcag-pass"><i data-lucide="check-circle"></i><span><strong>Dark theme text on bg:</strong> ~14:1 — AAA ✓</span></div>
+    <div class="wcag-note wcag-pass"><i data-lucide="check-circle"></i><span><strong>Orange on dark bg (#161d2b):</strong> ~7.9:1 — AAA ✓ (safe for body text)</span></div>
+    <div class="wcag-note wcag-pass"><i data-lucide="check-circle"></i><span><strong>Light theme dark text on off-white:</strong> ~14:1 — AAA ✓</span></div>
+    <div class="wcag-note wcag-pass"><i data-lucide="check-circle"></i><span><strong>White on orange button:</strong> ~3.1:1 — AA for UI components ✓</span></div>
+    <div class="wcag-note wcag-pass"><i data-lucide="check-circle"></i><span><strong>Indigo on light bg (--accent-text, light theme):</strong> ~9.8:1 — AAA ✓</span></div>
+    <div class="wcag-note wcag-warn"><i data-lucide="alert-triangle"></i><span><strong>Orange as text on light surfaces:</strong> ~1.9:1 — FAIL ✗. Fixed via <code>--accent-text</code> token: switches to indigo on light theme automatically.</span></div>
+  </div>
+</div>
+
+<!-- COLOURS -->
+<div class="ds-section">
+  <div class="ds-inner">
+    <p class="ds-section-title">Colour Palette — OKLCH</p>
+    <span class="ds-label">Brand</span>
+    <div class="swatch-grid" style="margin-bottom:32px">
+      <div class="swatch"><div class="swatch-color" style="background:oklch(0.7886 0.1630 66.32deg)"></div><div class="swatch-info"><span class="swatch-name">Orange</span><span class="swatch-hex">oklch(.7886 .1630 66.32)</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:oklch(0.3515 0.0866 283.66deg)"></div><div class="swatch-info"><span class="swatch-name">Indigo</span><span class="swatch-hex">oklch(.3515 .0866 283.66)</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:oklch(0.6091 0.2316 23.11deg)"></div><div class="swatch-info"><span class="swatch-name">Red</span><span class="swatch-hex">oklch(.6091 .2316 23.11)</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:oklch(0.7719 0.1321 206.05deg)"></div><div class="swatch-info"><span class="swatch-name">Cyan</span><span class="swatch-hex">oklch(.7719 .1321 206.05)</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:oklch(0.6596 0.1734 250.81deg)"></div><div class="swatch-info"><span class="swatch-name">Blue</span><span class="swatch-hex">oklch(.6596 .1734 250.81)</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:oklch(0.8023 0.1486 164.26deg)"></div><div class="swatch-info"><span class="swatch-name">Green</span><span class="swatch-hex">oklch(.8023 .1486 164.26)</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:oklch(0.8788 0.0308 191.53deg)"></div><div class="swatch-info"><span class="swatch-name">Turquoise</span><span class="swatch-hex">oklch(.8788 .0308 191.53)</span></div></div>
+    </div>
+    <span class="ds-label">Surfaces</span>
+    <div class="swatch-grid">
+      <div class="swatch"><div class="swatch-color" style="background:oklch(0.2309 0.0292 263.75deg)"></div><div class="swatch-info"><span class="swatch-name">BG Dark</span><span class="swatch-hex">oklch(.2309 .0292 263.75)</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:oklch(0.2626 0.0223 288.58deg)"></div><div class="swatch-info"><span class="swatch-name">BG Dark 2</span><span class="swatch-hex">oklch(.2626 .0223 288.58)</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:oklch(0.9654 0.0025 48.72deg);border:1px solid rgba(0,0,0,0.07)"></div><div class="swatch-info"><span class="swatch-name">Off White</span><span class="swatch-hex">oklch(.9654 .0025 48.72)</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#fff;border:1px solid rgba(0,0,0,0.07)"></div><div class="swatch-info"><span class="swatch-name">White</span><span class="swatch-hex">#ffffff</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:oklch(0.9612 0.0000 89.88deg);border:1px solid rgba(0,0,0,0.07)"></div><div class="swatch-info"><span class="swatch-name">Light Grey</span><span class="swatch-hex">oklch(.9612 0 89.88)</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:oklch(0.4640 0.0000 89.88deg)"></div><div class="swatch-info"><span class="swatch-name">Dark Grey</span><span class="swatch-hex">oklch(.4640 0 89.88)</span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- TYPOGRAPHY -->
+<div class="ds-section">
+  <div class="ds-inner">
+    <p class="ds-section-title">Typography</p>
+    <span class="ds-label">Barlow Condensed — Headings</span>
+    <div class="type-row"><span style="font-family:var(--font-heading);font-size:68px;font-weight:700;line-height:72px;color:var(--text);display:block">Welcome to Livener</span><span class="type-meta">H1 · Bold 700 · 68px / 72px</span></div>
+    <div class="type-row"><span style="font-family:var(--font-heading);font-size:50px;font-weight:700;line-height:64px;color:var(--text);display:block">Live video streaming platform</span><span class="type-meta">H2 · Bold 700 · 50px / 64px</span></div>
+    <div class="type-row"><span style="font-family:var(--font-heading);font-size:32px;font-weight:600;line-height:40px;color:var(--accent-text);display:block">In the palm of your hands</span><span class="type-meta">H3 · SemiBold 600 · 32px / 40px · accent-text</span></div>
+    <div class="type-row"><span style="font-family:var(--font-heading);font-size:24px;font-weight:600;line-height:32px;color:var(--text);display:block">Streaming Schedule Today</span><span class="type-meta">H4 · SemiBold 600 · 24px / 32px</span></div>
+    <span class="ds-label" style="margin-top:40px;display:block">Poppins — Body</span>
+    <div class="type-row"><span style="font-family:var(--font-body);font-size:16px;font-weight:400;line-height:26px;color:var(--text);display:block">Body — All you need to edit, mix and broadcast live content in one easy-to-use app, from the palm of your hand.</span><span class="type-meta">Regular 400 · 16px / 26px</span></div>
+    <div class="type-row"><span style="font-family:var(--font-body);font-size:14px;font-weight:400;line-height:22px;color:var(--text-muted);display:block">Small — Surrounded by cutting-edge innovation.</span><span class="type-meta">Regular 400 · 14px · muted</span></div>
+    <div class="type-row"><span style="font-family:var(--font-body);font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent-text);display:block">Caption — Currently in beta</span><span class="type-meta">SemiBold 600 · 12px · uppercase · accent-text</span></div>
+  </div>
+</div>
+
+<!-- BUTTONS -->
+<div class="ds-section">
+  <div class="ds-inner">
+    <p class="ds-section-title">Buttons · radius 12px · border 2px</p>
+    <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:20px">
+      <a href="#" class="btn btn-primary btn-lg">Primary Large</a>
+      <a href="#" class="btn btn-primary">Primary</a>
+      <a href="#" class="btn btn-primary btn-sm">Small</a>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:20px">
+      <a href="#" class="btn btn-outline btn-lg">Outline Large</a>
+      <a href="#" class="btn btn-outline">Outline</a>
+      <a href="#" class="btn btn-outline btn-sm">Small</a>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center">
+      <a href="#" class="btn btn-ghost btn-lg">Ghost Large</a>
+      <a href="#" class="btn btn-ghost">Ghost</a>
+      <a href="#" class="btn btn-ghost btn-sm">Small</a>
+    </div>
+  </div>
+</div>
+
+<!-- BADGES -->
+<div class="ds-section">
+  <div class="ds-inner">
+    <p class="ds-section-title">Badges</p>
+    <div style="display:flex;flex-wrap:wrap;gap:12px">
+      <span class="badge badge-live">Live</span>
+      <span class="badge badge-cyan">Streaming</span>
+      <span class="badge badge-orange">Beta</span>
+    </div>
+  </div>
+</div>
+
+<!-- CARDS -->
+<div class="ds-section">
+  <div class="ds-inner">
+    <p class="ds-section-title">Cards</p>
+    <div class="card-grid">
+      <div class="card"><div class="card-icon">▶</div><h4 class="card-title">Live Streaming</h4><p class="card-body">Stream from multiple phone cameras from a single smartphone.</p></div>
+      <div class="card cyan"><div class="card-icon">📡</div><h4 class="card-title">Multi-Camera</h4><p class="card-body">Edit, mix and broadcast live from the palm of your hand.</p></div>
+      <div class="card blue"><div class="card-icon">⚡</div><h4 class="card-title">Real Environments</h4><p class="card-body">Tested live at MIR Multimedia Integration Expo, Rimini.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION ALT -->
+<div class="section-alt">
+  <div class="ds-inner">
+    <p class="ds-section-title" style="color:var(--section-meta)">Section — BG Alt</p>
+    <h2 class="section-h2">Livener launches at MIR Expo</h2>
+    <h3 class="section-h3">Multimedia Integration Expo, Rimini</h3>
+    <p class="section-p">Surrounded by cutting-edge innovation and the best in broadcast and event tech across Europe.</p>
+  </div>
+</div>
+
+<!-- SECTION PURPLE -->
+<div class="section-purple">
+  <div class="ds-inner">
+    <p class="ds-section-title" style="color:rgba(255,255,255,0.3)">Section — Indigo (always dark)</p>
+    <h2 class="section-h2" style="color:#fff">Request Early Access</h2>
+    <p class="section-p" style="color:rgba(255,255,255,0.75);margin-bottom:32px">Enter your email and you'll be the first to know when Livener launches.</p>
+    <div class="form-row">
+      <input class="form-field" style="background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.15);color:#fff" type="email" placeholder="Your email"/>
+      <button class="btn btn-primary">Get Access</button>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="ds-inner">
+    <h2 class="footer-title">Request early access</h2>
+    <p class="footer-sub">Enter your email below and you'll be the first to know when Livener launches.</p>
+    <div class="form-row">
+      <input class="form-field" style="background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.15);color:#fff" type="email" placeholder="Your email"/>
+      <button class="btn btn-primary">Request Early Access</button>
+    </div>
+    <hr class="footer-divider"/>
+    <div class="footer-bottom">
+      <span class="footer-copy">© 2021–2026 Livener Ltd</span>
+      <ul class="footer-links">
+        <li><a href="#">Investors</a></li>
+        <li><a href="#">Privacy Policy</a></li>
+        <li><a href="#">Cookie Policy</a></li>
+      </ul>
+    </div>
+    <p class="footer-legal">Registered in England and Wales, company number: 12917008.<br/>
+    Celixir House, Stratford Business &amp; Technology Park, Innovation Way, Banbury Road, Stratford-upon-Avon CV37 7GZ</p>
+  </div>
+</footer>
+
+<script>
+/* Init Lucide */
+lucide.createIcons();
+
+/* ── Theme ── */
+const THEME_ICONS = { light: 'sun', dark: 'moon', system: 'monitor-cog' };
+
+function applyTheme(t) {
+  const resolved = t === 'system'
+    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    : t;
+  document.documentElement.setAttribute('data-theme', resolved);
+
+  /* Desktop: update trigger icon */
+  const ti = document.getElementById('themeIcon');
+  if (ti) { ti.setAttribute('data-lucide', THEME_ICONS[t]); lucide.createIcons(); }
+
+  /* Desktop: active state */
+  ['light','dark','system'].forEach(v => {
+    document.getElementById('desk-theme-'+v)?.classList.toggle('active', v === t);
+  });
+  /* Mobile: active state */
+  ['light','dark','system'].forEach(v => {
+    document.getElementById('mob-theme-'+v)?.classList.toggle('active', v === t);
+  });
+
+  /* Close dropdown */
+  document.getElementById('themeSwitch')?.classList.remove('open');
+}
+
+function setTheme(t) {
+  localStorage.setItem('livener-theme', t);
+  applyTheme(t);
+}
+
+function toggleThemeDD() {
+  document.getElementById('themeSwitch').classList.toggle('open');
+  document.getElementById('langSwitch').classList.remove('open');
+}
+
+/* ── Language ── */
+function toggleLangDD() {
+  document.getElementById('langSwitch').classList.toggle('open');
+  document.getElementById('themeSwitch').classList.remove('open');
+}
+
+function setLangDesktop(code, label) {
+  document.getElementById('currentLang').textContent = label;
+  ['en','it'].forEach(c => document.getElementById('desk-lang-'+c)?.classList.toggle('active', c === code));
+  document.getElementById('langSwitch').classList.remove('open');
+  syncMobileLang(code);
+}
+
+function setLang(code) {
+  ['en','it'].forEach(c => document.getElementById('mob-lang-'+c)?.classList.toggle('active', c === code));
+  document.getElementById('currentLang').textContent = code.toUpperCase();
+  ['en','it'].forEach(c => document.getElementById('desk-lang-'+c)?.classList.toggle('active', c === code));
+}
+
+function syncMobileLang(code) {
+  ['en','it'].forEach(c => document.getElementById('mob-lang-'+c)?.classList.toggle('active', c === code));
+}
+
+/* ── Drawer ── */
+function toggleDrawer() {
+  const open = document.getElementById('mobileDrawer').classList.toggle('open');
+  document.getElementById('drawerOverlay').classList.toggle('open', open);
+  document.getElementById('hamburger').classList.toggle('open', open);
+  document.getElementById('hamburger').setAttribute('aria-expanded', String(open));
+  document.body.style.overflow = open ? 'hidden' : '';
+}
+function closeDrawer() {
+  document.getElementById('mobileDrawer').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('open');
+  document.getElementById('hamburger').classList.remove('open');
+  document.getElementById('hamburger').setAttribute('aria-expanded', 'false');
+  document.body.style.overflow = '';
+}
+
+/* Close dropdowns on outside click */
+document.addEventListener('click', e => {
+  if (!e.target.closest('#langSwitch'))  document.getElementById('langSwitch').classList.remove('open');
+  if (!e.target.closest('#themeSwitch')) document.getElementById('themeSwitch').classList.remove('open');
+});
+
+/* System theme listener */
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (localStorage.getItem('livener-theme') === 'system') applyTheme('system');
+});
+
+/* Init */
+applyTheme(localStorage.getItem('livener-theme') || 'system');
+</script>
+</body>
+</html>

@@ -1,11 +1,14 @@
 // ─── Localized primitives ──────────────────────────────────────────────────────
 // GROQ resolves these before they reach the frontend — components receive plain
-// strings/arrays. These types are only used if you ever query the raw document.
+// strings/arrays. These raw types are only used if you query the unresolved document.
 
 export interface LocalizedString {
   it?: string
   en?: string
+  de?: string
 }
+
+export type SupportedLocale = 'en' | 'it' | 'de'
 
 // ─── Portable Text ────────────────────────────────────────────────────────────
 
@@ -30,14 +33,124 @@ export type PortableTextContent = PortableTextBlock[]
 
 // ─── Sanity Image ─────────────────────────────────────────────────────────────
 
-export interface SanityImage {
-  _type: 'image'
-  asset: { _ref: string; _type: 'reference' }
-  hotspot?: { x: number; y: number; height: number; width: number }
+export interface SanityImageAsset {
+  _ref: string
+  _type: 'reference'
 }
 
-// ─── Section types ────────────────────────────────────────────────────────────
-// All string fields are already locale-resolved by GROQ before arriving here.
+export interface SanityHotspot {
+  x: number
+  y: number
+  height: number
+  width: number
+}
+
+export interface SanityCrop {
+  top: number
+  bottom: number
+  left: number
+  right: number
+}
+
+// Raw Sanity image (unresolved)
+export interface SanityImage {
+  _type: 'image'
+  asset: SanityImageAsset
+  hotspot?: SanityHotspot
+  crop?: SanityCrop
+}
+
+// Resolved localized image (after GROQ projection)
+export interface ResolvedImage {
+  asset: SanityImageAsset
+  hotspot?: SanityHotspot
+  crop?: SanityCrop
+  alt?: string
+  caption?: string
+}
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+
+export interface NavLink {
+  label: string
+  href: string
+  external?: boolean
+}
+
+export interface SocialLink {
+  platform: 'youtube' | 'instagram' | 'linkedin' | 'facebook' | 'x' | 'tiktok' | 'threads'
+  url: string
+}
+
+// ─── Site Config (resolved — all strings already locale-resolved by GROQ) ─────
+
+export interface WebsiteSiteConfig {
+  tenantSlug: string
+  siteName?: string
+  defaultLocale: SupportedLocale
+  supportedLocales: SupportedLocale[]
+  showLangSwitcherInNav?: boolean
+  tagline?: string
+  logo?: ResolvedImage
+  logoLight?: ResolvedImage
+  navLinks?: NavLink[]
+  ctaLabel?: string
+  ctaHref?: string
+  footerLinks?: NavLink[]
+  footerCtaHeading?: string
+  footerCtaSubtext?: string
+  footerCtaInputPlaceholder?: string
+  footerCtaButtonLabel?: string
+  legalName?: string
+  legalAddress?: string
+  registrationInfo?: string
+  foundedYear?: number
+  youtubeChannelUrl?: string
+  socialLinks?: SocialLink[]
+  phone?: string
+  email?: string
+  address?: string
+}
+
+// Locale config subset — fetched first to get $defaultLocale for subsequent queries
+export interface LocaleConfig {
+  defaultLocale: SupportedLocale
+  supportedLocales: SupportedLocale[]
+}
+
+// ─── Event ───────────────────────────────────────────────────────────────────
+
+export type EventStatus = 'upcoming' | 'live' | 'past'
+
+export interface ScheduleItem {
+  _key: string
+  time: string
+  title?: string
+  description?: string
+}
+
+export interface Event {
+  _id: string
+  title?: string
+  slug: { current: string }
+  status: EventStatus
+  isCurrentLiveEvent?: boolean
+  startDate: string
+  endDate?: string
+  location?: string
+  shortDescription?: string
+  fullDescription?: PortableTextContent
+  heroImage?: ResolvedImage
+  gallery?: ResolvedImage[]
+  schedule?: ScheduleItem[]
+  youtubeUrl?: string
+  youtubeChannelUrl?: string
+  ctaLabel?: string
+  seoTitle?: string
+  seoDescription?: string
+}
+
+// ─── Section types (studiomartegani — all strings locale-resolved) ─────────────
 
 export interface HeroSection {
   _type: 'heroSection'
@@ -133,18 +246,6 @@ export type PageSection =
   | TextSection
   | FAQSection
   | ContactSection
-
-// ─── Documents ────────────────────────────────────────────────────────────────
-
-export interface WebsiteSiteConfig {
-  tenantSlug: string
-  siteName?: string
-  tagline?: string
-  phone?: string
-  email?: string
-  address?: string
-  logo?: SanityImage
-}
 
 export interface WebsiteHomePage {
   tenantSlug: string
