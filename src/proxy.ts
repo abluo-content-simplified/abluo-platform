@@ -100,8 +100,8 @@ export async function proxy(request: NextRequest) {
   const tenantId = resolveTenant(hostname)
   const { pathname } = request.nextUrl
 
-  // ── Sanity Studio — bypass all middleware ─────────────────────────────────
-  if (pathname.startsWith('/studio')) {
+  // ── Bypass routes — no middleware processing ─────────────────────────────
+  if (pathname.startsWith('/studio') || pathname.startsWith('/login')) {
     return NextResponse.next()
   }
 
@@ -151,7 +151,7 @@ export async function proxy(request: NextRequest) {
   // TODO: Re-enable for /admin when login page is built.
   // Currently only enforced for /client routes.
   // ─────────────────────────────────────────────────────────────────────────
-  if (isProtectedPath(pathname) && !pathname.includes('/admin')) {
+  if (isProtectedPath(pathname)) {
     // This response object may be mutated by setAll() below to carry
     // refreshed session cookies back to the browser.
     let supabaseResponse = NextResponse.next({ request })
