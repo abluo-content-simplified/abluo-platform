@@ -21,13 +21,19 @@ export function HeroSection({ section }: Props) {
       <div className="mx-auto w-full max-w-5xl">
         {/* Eyebrow label */}
         {eyebrow && (
-          <p className="mb-8 text-xs font-medium uppercase tracking-[0.2em] text-zinc-400">
+          <p
+            className="mb-8 animate-fade-slide-up text-xs font-medium uppercase tracking-[0.2em] text-zinc-400"
+            style={{ animationDelay: '0s' }}
+          >
             {eyebrow}
           </p>
         )}
 
         {/* Headline */}
-        <h1 className="mb-8 text-5xl font-semibold leading-[1.1] tracking-tight text-zinc-900 md:text-6xl lg:text-7xl">
+        <h1
+          className="mb-8 animate-fade-slide-up text-5xl font-semibold leading-[1.1] tracking-tight text-zinc-900 md:text-6xl lg:text-7xl"
+          style={{ animationDelay: eyebrow ? '0.1s' : '0s' }}
+        >
           {headlineLines.length > 1 ? (
             headlineLines.map((line, i) => (
               <span key={i} className="block">
@@ -40,11 +46,17 @@ export function HeroSection({ section }: Props) {
         </h1>
 
         {/* Divider */}
-        <div className="mb-8 h-[1px] w-16 bg-zinc-300" />
+        <div
+          className="mb-8 h-[1px] w-16 animate-fade-slide-up bg-zinc-300"
+          style={{ animationDelay: eyebrow ? '0.2s' : '0.1s' }}
+        />
 
         {/* Subheadline */}
         {subheadline && (
-          <p className="mb-12 max-w-xl text-lg leading-relaxed text-zinc-500">
+          <p
+            className="mb-12 max-w-xl animate-fade-slide-up text-lg leading-relaxed text-zinc-500"
+            style={{ animationDelay: eyebrow ? '0.3s' : '0.2s' }}
+          >
             {subheadline}
           </p>
         )}
@@ -53,7 +65,8 @@ export function HeroSection({ section }: Props) {
         {ctaLabel && (
           <a
             href={ctaHref ?? '#'}
-            className="inline-flex h-12 items-center gap-2 bg-zinc-900 px-8 text-sm font-medium tracking-wide text-white transition-colors hover:bg-zinc-700"
+            className="inline-flex h-12 animate-fade-slide-up items-center gap-2 bg-zinc-900 px-8 text-sm font-medium tracking-wide text-white transition-colors hover:bg-zinc-700"
+            style={{ animationDelay: eyebrow ? '0.4s' : '0.3s' }}
           >
             {ctaLabel}
             <span aria-hidden="true" className="text-zinc-400">
