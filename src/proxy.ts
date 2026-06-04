@@ -105,10 +105,39 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // ── Admin subdomain — admin.abluo.app → /[locale]/admin ──────────────────
-  // admin.abluo.app           → /en/admin/dashboard
-  // admin.abluo.app/clients   → /en/admin/clients
+  // ── Admin subdomain — admin.abluo.app ────────────────────────────────────
+  // All requests to admin.abluo.app require a valid session.
+  // Auth is checked here (before rewrite) because the rewrite changes
+  // the pathname and the generic auth guard would never see it.
   if (host === 'admin.abluo.app') {
+    let supabaseResponse = NextResponse.next({ request })
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return request.cookies.getAll() },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+            supabaseResponse = NextResponse.next({ request })
+            cookiesToSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, options)
+            )
+          },
+        },
+      }
+    )
+
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('next', pathname)
+      return NextResponse.redirect(loginUrl)
+    }
+
+    // Authenticated — apply subdomain rewrite
     const url = request.nextUrl.clone()
     const alreadyLocaled = /^\/(en|it|de)(\/|$)/.test(pathname)
     if (!alreadyLocaled) {
@@ -116,7 +145,7 @@ export async function proxy(request: NextRequest) {
       url.pathname = `/en${subPath}`
       return NextResponse.rewrite(url)
     }
-    return NextResponse.next()
+    return supabaseResponse
   }
 
   // ── Abluo preview platform — preview.abluo.app/[project-slug] ────────────
