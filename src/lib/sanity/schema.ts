@@ -83,6 +83,35 @@ const scheduleItemType = defineType({
   },
 })
 
+// WhatsApp subject — used in siteConfig.whatsappSubjects
+const whatsappSubjectType = defineType({
+  name: 'whatsappSubject',
+  title: 'WhatsApp Subject',
+  type: 'object',
+  fields: [
+    defineField({ name: 'subject', title: 'Subject', type: 'localizedString' }),
+  ],
+  preview: {
+    select: { title: 'subject.en' },
+    prepare: ({ title }) => ({ title: title ?? '—' }),
+  },
+})
+
+// Email subject — used in siteConfig.emailSubjects
+const emailSubjectType = defineType({
+  name: 'emailSubject',
+  title: 'Email Subject',
+  type: 'object',
+  fields: [
+    defineField({ name: 'subject', title: 'Subject Line', type: 'localizedString' }),
+    defineField({ name: 'firstLine', title: 'First Line of Email Body', type: 'localizedText' }),
+  ],
+  preview: {
+    select: { title: 'subject.en' },
+    prepare: ({ title }) => ({ title: title ?? '—' }),
+  },
+})
+
 const tenantSlugField = defineField({
   name: 'tenantSlug',
   title: 'Tenant',
@@ -457,6 +486,45 @@ const siteConfigType = defineType({
     defineField({ name: 'phone', title: 'Phone', type: 'string', group: 'contact' }),
     defineField({ name: 'email', title: 'Email', type: 'string', group: 'contact' }),
     defineField({ name: 'address', title: 'Address', type: 'text', rows: 2, group: 'contact' }),
+    defineField({
+      name: 'contactEmail',
+      title: 'Contact Form Recipient Email',
+      type: 'string',
+      group: 'contact',
+      description: 'Email address where contact form submissions are sent',
+    }),
+    defineField({
+      name: 'mobileNumber',
+      title: 'Mobile Number',
+      type: 'string',
+      group: 'contact',
+      description: 'Mobile/cell phone number for direct contact',
+    }),
+    defineField({
+      name: 'whatsappNumber',
+      title: 'WhatsApp Number',
+      type: 'string',
+      group: 'contact',
+      description: 'WhatsApp contact number (with country code, e.g. +39...)',
+    }),
+    defineField({
+      name: 'whatsappSubjects',
+      title: 'WhatsApp Subject Options',
+      type: 'array',
+      group: 'contact',
+      of: [defineArrayMember({ type: 'whatsappSubject' })],
+      description: 'Up to 5 predefined subjects for WhatsApp contact (e.g. "Book a visit", "Information on treatments")',
+      validation: (Rule) => Rule.max(5),
+    }),
+    defineField({
+      name: 'emailSubjects',
+      title: 'Email Subject Options',
+      type: 'array',
+      group: 'contact',
+      of: [defineArrayMember({ type: 'emailSubject' })],
+      description: 'Up to 5 predefined email subjects with opening lines',
+      validation: (Rule) => Rule.max(5),
+    }),
 
     // ── Footer ──
     defineField({
@@ -777,6 +845,8 @@ export const schemaTypes = [
   navigationLinkType,
   socialLinkType,
   scheduleItemType,
+  whatsappSubjectType,
+  emailSubjectType,
   // Section object types (studiomartegani)
   heroSectionType,
   contentSectionType,
