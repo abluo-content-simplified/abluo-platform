@@ -369,6 +369,20 @@ const siteConfigType = defineType({
       group: 'identity',
       description: 'Logo for use on light/white backgrounds',
     }),
+    defineField({
+      name: 'faviconSvg',
+      title: 'Favicon (SVG)',
+      type: 'image',
+      group: 'identity',
+      description: 'Favicon in SVG format (preferred for all devices)',
+    }),
+    defineField({
+      name: 'faviconPng',
+      title: 'Favicon (PNG)',
+      type: 'image',
+      group: 'identity',
+      description: 'Favicon in PNG format (fallback)',
+    }),
 
     // ── Language & locale ──
     defineField({
