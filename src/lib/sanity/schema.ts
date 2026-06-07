@@ -367,38 +367,161 @@ const projectType = defineType({
 
 // ─── Design System ────────────────────────────────────────────────────────────
 
+const colorThemeType = defineType({
+  name: 'colorTheme',
+  title: 'Color Theme',
+  type: 'object',
+  fields: [
+    defineField({ name: 'background', title: 'Background', type: 'string' }),
+    defineField({ name: 'backgroundAlt', title: 'Background Alt', type: 'string' }),
+    defineField({ name: 'primary', title: 'Primary', type: 'string' }),
+    defineField({ name: 'secondary', title: 'Secondary', type: 'string' }),
+    defineField({ name: 'accent', title: 'Accent', type: 'string' }),
+    defineField({ name: 'textPrimary', title: 'Text Primary', type: 'string' }),
+    defineField({ name: 'textSecondary', title: 'Text Secondary', type: 'string' }),
+    defineField({ name: 'border', title: 'Border', type: 'string' }),
+    defineField({ name: 'success', title: 'Success', type: 'string' }),
+    defineField({ name: 'warning', title: 'Warning', type: 'string' }),
+    defineField({ name: 'danger', title: 'Danger', type: 'string' }),
+  ],
+})
+
+const typescaleType = defineType({
+  name: 'typescale',
+  title: 'Type Scale',
+  type: 'object',
+  fields: [
+    defineField({ name: 'size', title: 'Size (px)', type: 'number' }),
+    defineField({ name: 'weight', title: 'Weight', type: 'number' }),
+    defineField({ name: 'lineHeight', title: 'Line Height', type: 'number' }),
+  ],
+})
+
+const buttonStyleType = defineType({
+  name: 'buttonStyle',
+  title: 'Button Style',
+  type: 'object',
+  fields: [
+    defineField({ name: 'background', title: 'Background', type: 'string' }),
+    defineField({ name: 'text', title: 'Text Color', type: 'string' }),
+    defineField({ name: 'borderRadius', title: 'Border Radius (px)', type: 'number' }),
+  ],
+})
+
 const designSystemType = defineType({
   name: 'designSystem',
   title: 'Design System',
   type: 'document',
   groups: [
+    { name: 'meta', title: 'Info' },
+    { name: 'branding', title: 'Branding' },
     { name: 'colors', title: 'Colors' },
     { name: 'typography', title: 'Typography' },
     { name: 'shape', title: 'Shape & Spacing' },
+    { name: 'components', title: 'Components' },
   ],
   fields: [
     projectSlugField,
-    defineField({ name: 'colorBackground', title: 'Background', type: 'string', group: 'colors' }),
-    defineField({ name: 'colorForeground', title: 'Foreground (text)', type: 'string', group: 'colors' }),
-    defineField({ name: 'colorPrimary', title: 'Primary', type: 'string', group: 'colors' }),
-    defineField({ name: 'colorPrimaryForeground', title: 'Primary Foreground', type: 'string', group: 'colors' }),
-    defineField({ name: 'colorAccent', title: 'Accent', type: 'string', group: 'colors' }),
-    defineField({ name: 'colorMuted', title: 'Muted', type: 'string', group: 'colors' }),
-    defineField({ name: 'colorBorder', title: 'Border', type: 'string', group: 'colors' }),
-    defineField({ name: 'colorSurface', title: 'Surface (cards)', type: 'string', group: 'colors' }),
-    defineField({ name: 'fontDisplay', title: 'Display Font', type: 'string', group: 'typography' }),
-    defineField({ name: 'fontBody', title: 'Body Font', type: 'string', group: 'typography' }),
-    defineField({ name: 'fontMono', title: 'Mono Font', type: 'string', group: 'typography' }),
-    defineField({ name: 'radiusSm', title: 'Radius Small', type: 'string', group: 'shape' }),
-    defineField({ name: 'radiusMd', title: 'Radius Medium', type: 'string', group: 'shape' }),
-    defineField({ name: 'radiusLg', title: 'Radius Large', type: 'string', group: 'shape' }),
-    defineField({ name: 'radiusFull', title: 'Radius Full (pill)', type: 'string', group: 'shape' }),
-    defineField({ name: 'sectionPaddingY', title: 'Section Vertical Padding', type: 'string', group: 'shape' }),
-    defineField({ name: 'containerMaxWidth', title: 'Container Max Width', type: 'string', group: 'shape' }),
+    defineField({ name: 'name', title: 'Name', type: 'string', group: 'meta' }),
+    defineField({ name: 'description', title: 'Description', type: 'text', rows: 2, group: 'meta' }),
+
+    // Branding
+    defineField({
+      name: 'branding',
+      title: 'Branding',
+      type: 'object',
+      group: 'branding',
+      fields: [
+        defineField({ name: 'logo', title: 'Logo (dark background)', type: 'image', options: { hotspot: false } }),
+        defineField({ name: 'logoLight', title: 'Logo (light background)', type: 'image', options: { hotspot: false } }),
+        defineField({ name: 'favicon', title: 'Favicon', type: 'image', options: { hotspot: false } }),
+      ],
+    }),
+
+    // Colors
+    defineField({
+      name: 'colors',
+      title: 'Colors',
+      type: 'object',
+      group: 'colors',
+      fields: [
+        defineField({ name: 'lightTheme', title: 'Light Theme', type: 'colorTheme' }),
+        defineField({ name: 'darkTheme', title: 'Dark Theme', type: 'colorTheme' }),
+      ],
+    }),
+
+    // Typography
+    defineField({
+      name: 'typography',
+      title: 'Typography',
+      type: 'object',
+      group: 'typography',
+      fields: [
+        defineField({ name: 'headingFont', title: 'Heading Font', type: 'string' }),
+        defineField({ name: 'bodyFont', title: 'Body Font', type: 'string' }),
+        defineField({ name: 'h1', title: 'H1', type: 'typescale' }),
+        defineField({ name: 'h2', title: 'H2', type: 'typescale' }),
+        defineField({ name: 'h3', title: 'H3', type: 'typescale' }),
+        defineField({ name: 'body', title: 'Body', type: 'typescale' }),
+        defineField({ name: 'small', title: 'Small', type: 'typescale' }),
+      ],
+    }),
+
+    // Radius
+    defineField({
+      name: 'radius',
+      title: 'Border Radius',
+      type: 'object',
+      group: 'shape',
+      fields: [
+        defineField({ name: 'small', title: 'Small (px)', type: 'number' }),
+        defineField({ name: 'medium', title: 'Medium (px)', type: 'number' }),
+        defineField({ name: 'large', title: 'Large (px)', type: 'number' }),
+      ],
+    }),
+
+    // Spacing
+    defineField({
+      name: 'spacing',
+      title: 'Spacing',
+      type: 'object',
+      group: 'shape',
+      fields: [
+        defineField({ name: 'xs', title: 'XS (px)', type: 'number' }),
+        defineField({ name: 's', title: 'S (px)', type: 'number' }),
+        defineField({ name: 'm', title: 'M (px)', type: 'number' }),
+        defineField({ name: 'l', title: 'L (px)', type: 'number' }),
+        defineField({ name: 'xl', title: 'XL (px)', type: 'number' }),
+      ],
+    }),
+
+    // Buttons
+    defineField({
+      name: 'buttons',
+      title: 'Buttons',
+      type: 'object',
+      group: 'components',
+      fields: [
+        defineField({ name: 'primary', title: 'Primary Button', type: 'buttonStyle' }),
+        defineField({ name: 'secondary', title: 'Secondary Button', type: 'buttonStyle' }),
+      ],
+    }),
+
+    // Cards
+    defineField({
+      name: 'cards',
+      title: 'Cards',
+      type: 'object',
+      group: 'components',
+      fields: [
+        defineField({ name: 'background', title: 'Background', type: 'string' }),
+        defineField({ name: 'border', title: 'Border', type: 'string' }),
+      ],
+    }),
   ],
   preview: {
-    select: { slug: 'projectSlug' },
-    prepare: ({ slug }) => ({ title: `Design System — ${slug ?? '?'}` }),
+    select: { title: 'name', slug: 'projectSlug' },
+    prepare: ({ title, slug }) => ({ title: title ?? `Design System — ${slug ?? '?'}`, subtitle: slug }),
   },
 })
 
@@ -591,6 +714,9 @@ export const schemaTypes = [
   faqSectionType,
   clientType,
   projectType,
+  colorThemeType,
+  typescaleType,
+  buttonStyleType,
   designSystemType,
   siteConfigType,
   homePageType,
