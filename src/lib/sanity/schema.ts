@@ -141,7 +141,8 @@ const projectSlugField = defineField({
   name: 'projectSlug',
   title: 'Project',
   type: 'string',
-  description: 'Which project this document belongs to (e.g. livener-main)',
+  description: 'Which project this document belongs to — set by platform, do not edit',
+  readOnly: true,
   validation: (Rule) => Rule.required(),
 })
 

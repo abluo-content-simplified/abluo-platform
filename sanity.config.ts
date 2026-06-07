@@ -1,6 +1,7 @@
 import { defineConfig } from 'sanity'
 import { structureTool } from 'sanity/structure'
 import { schemaTypes } from './src/lib/sanity/schema'
+import { DesignSystemPreview } from './src/sanity/components/DesignSystemPreview'
 
 // Hardcoded to match src/lib/sanity/client.ts — avoids env var dependency in the Studio
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ?? '3n7t84j3'
@@ -22,7 +23,7 @@ export default defineConfig({
           _id: string
           displayName: string
           tenantSlug: string
-          projects: { _id: string; projectName: string; projectSlug: string }[]
+          projects: { _id: string; projectName: string; projectSlug: string; designSystemId?: string }[]
         }[]>(
           `*[_type == "client" && !(_id in path("drafts.**"))] | order(displayName asc) {
             _id,
@@ -32,6 +33,7 @@ export default defineConfig({
               _id,
               projectName,
               projectSlug,
+              "designSystemId": *[_type == "designSystem" && !(_id in path("drafts.**")) && projectSlug == ^.projectSlug][0]._id,
             }
           }`
         )
@@ -43,6 +45,8 @@ export default defineConfig({
           const projectItems = clientDoc.projects.map((project) => {
             const slug = project.projectSlug
             const projectLabel = project.projectName ?? slug
+
+            const designSystemId = project.designSystemId
 
             return S.listItem()
               .id(`project-${slug}`)
@@ -67,11 +71,19 @@ export default defineConfig({
                       .id(`${slug}-design`)
                       .title('Design System')
                       .child(
-                        S.documentList()
-                          .title('Design System')
-                          .apiVersion('2026-05-21')
-                          .filter(`_type == "designSystem" && projectSlug == $slug`)
-                          .params({ slug })
+                        designSystemId
+                          ? S.document()
+                              .documentId(designSystemId)
+                              .schemaType('designSystem')
+                              .views([
+                                S.view.form().title('Edit'),
+                                S.view.component(DesignSystemPreview).title('Preview'),
+                              ])
+                          : S.documentList()
+                              .title('Design System')
+                              .apiVersion('2026-05-21')
+                              .filter(`_type == "designSystem" && projectSlug == $slug`)
+                              .params({ slug })
                       ),
 
                     S.listItem()
