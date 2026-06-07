@@ -19,13 +19,13 @@ export default defineConfig({
         // Fetch all tenants from their siteConfig documents
         const tenants = await context
           .getClient({ apiVersion: '2026-05-21' })
-          .fetch<{ tenantSlug: string; siteName?: string }[]>(
-            `*[_type == "siteConfig"] | order(siteName asc) { tenantSlug, siteName }`
+          .fetch<{ projectSlug: string; siteName?: string }[]>(
+            `*[_type == "siteConfig"] | order(siteName asc) { projectSlug, siteName }`
           )
 
         const tenantItems = tenants.map((tenant) => {
-          const label = tenant.siteName ?? tenant.tenantSlug
-          const slug = tenant.tenantSlug
+          const label = tenant.siteName ?? tenant.projectSlug
+          const slug = tenant.projectSlug
 
           return S.listItem()
             .title(label)
@@ -41,7 +41,7 @@ export default defineConfig({
                     .child(
                       S.documentList()
                         .title('Settings')
-                        .filter(`_type == "siteConfig" && tenantSlug == $slug`)
+                        .filter(`_type == "siteConfig" && projectSlug == $slug`)
                         .params({ slug })
                     ),
 
@@ -52,7 +52,7 @@ export default defineConfig({
                     .child(
                       S.documentList()
                         .title('Home Page')
-                        .filter(`_type == "homePage" && tenantSlug == $slug`)
+                        .filter(`_type == "homePage" && projectSlug == $slug`)
                         .params({ slug })
                     ),
 
@@ -65,7 +65,7 @@ export default defineConfig({
                     .child(
                       S.documentList()
                         .title('Events')
-                        .filter(`_type == "event" && tenantSlug == $slug`)
+                        .filter(`_type == "event" && projectSlug == $slug`)
                         .params({ slug })
                         .defaultOrdering([{ field: 'startDate', direction: 'desc' }])
                     ),
@@ -77,7 +77,7 @@ export default defineConfig({
                     .child(
                       S.documentList()
                         .title('Blog Posts')
-                        .filter(`_type == "post" && tenantSlug == $slug`)
+                        .filter(`_type == "post" && projectSlug == $slug`)
                         .params({ slug })
                     ),
                 ])
