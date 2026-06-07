@@ -8,7 +8,6 @@ interface FooterProps {
   tenantId: string
   locale: SupportedLocale
   defaultLocale: SupportedLocale
-  /** 'full' shows the CTA section. 'minimal' shows links + copyright only. */
   variant?: 'full' | 'minimal'
 }
 
@@ -37,33 +36,48 @@ export async function Footer({
     (config.footerCtaHeading || config.footerCtaButtonLabel)
 
   return (
-    <footer className="bg-[#363366]">
+    <footer style={{ backgroundColor: 'var(--color-secondary)' }}>
 
-      {/* ── CTA section (FooterFull only) ──────────────────────── */}
+      {/* ── CTA section ────────────────────────────────────────── */}
       {hasCta && (
-        <div className="border-b border-white/10 px-5 py-16 md:px-10">
+        <div
+          className="border-b px-5 py-16 md:px-10"
+          style={{ borderColor: 'color-mix(in oklch, var(--color-text-primary) 10%, transparent)' }}
+        >
           <div className="mx-auto max-w-[1200px]">
             {config.footerCtaHeading && (
-              <h2 className="mb-3 font-['Barlow_Condensed'] text-[50px] font-bold leading-[64px] text-white">
+              <h2
+                className="mb-3 text-[50px] font-bold leading-[64px]"
+                style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
+              >
                 {config.footerCtaHeading}
               </h2>
             )}
             {config.footerCtaSubtext && (
-              <p className="mb-7 text-[15px] text-white/70">{config.footerCtaSubtext}</p>
+              <p className="mb-7 text-[15px]" style={{ color: 'var(--color-text-primary)', opacity: 0.7 }}>
+                {config.footerCtaSubtext}
+              </p>
             )}
-            <form
-              className="flex max-w-[520px] flex-col gap-3 sm:flex-row"
-              onSubmit={(e) => e.preventDefault()}
-            >
+            <form className="flex max-w-[520px] flex-col gap-3 sm:flex-row">
               <input
                 type="email"
                 required
                 placeholder={config.footerCtaInputPlaceholder ?? 'Your email'}
-                className="flex-1 rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-[15px] text-white placeholder-white/35 outline-none transition-colors focus:border-[#ffa22b] focus:ring-2 focus:ring-[#ffa22b]/15"
+                className="flex-1 rounded-xl border px-4 py-3 text-[15px] outline-none transition-colors"
+                style={{
+                  borderColor: 'var(--color-border)',
+                  backgroundColor: 'color-mix(in oklch, var(--color-text-primary) 10%, transparent)',
+                  color: 'var(--color-text-primary)',
+                }}
               />
               <button
                 type="submit"
-                className="shrink-0 rounded-xl border-2 border-[#ffa22b] bg-[#ffa22b] px-6 py-3 text-sm font-semibold text-white transition-all hover:border-white/30 hover:bg-transparent"
+                className="shrink-0 rounded-xl border-2 px-6 py-3 text-sm font-semibold transition-all"
+                style={{
+                  borderColor: 'var(--color-primary)',
+                  backgroundColor: 'var(--color-primary)',
+                  color: '#fff',
+                }}
               >
                 {config.footerCtaButtonLabel ?? 'Submit'}
               </button>
@@ -77,8 +91,11 @@ export async function Footer({
         <div className="mx-auto max-w-[1200px]">
 
           {/* Top row: copyright + links */}
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/12 pb-6">
-            <span className="text-sm text-white/45">
+          <div
+            className="flex flex-wrap items-center justify-between gap-4 border-b pb-6"
+            style={{ borderColor: 'color-mix(in oklch, var(--color-text-primary) 12%, transparent)' }}
+          >
+            <span className="text-sm" style={{ color: 'var(--color-text-primary)', opacity: 0.45 }}>
               © {copyrightYears} {config.legalName ?? config.siteName}
             </span>
 
@@ -90,7 +107,8 @@ export async function Footer({
                       href={link.href}
                       target={link.external ? '_blank' : undefined}
                       rel={link.external ? 'noopener noreferrer' : undefined}
-                      className="text-sm font-medium text-white/55 transition-colors hover:text-white"
+                      className="text-sm font-medium transition-colors"
+                      style={{ color: 'var(--color-text-primary)', opacity: 0.55 }}
                     >
                       {link.label}
                     </Link>
@@ -104,10 +122,14 @@ export async function Footer({
           <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
             <div>
               {config.registrationInfo && (
-                <p className="text-xs text-white/25">{config.registrationInfo}</p>
+                <p className="text-xs" style={{ color: 'var(--color-text-primary)', opacity: 0.25 }}>
+                  {config.registrationInfo}
+                </p>
               )}
               {config.legalAddress && (
-                <p className="mt-1 text-xs text-white/25">{config.legalAddress}</p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--color-text-primary)', opacity: 0.25 }}>
+                  {config.legalAddress}
+                </p>
               )}
             </div>
 
@@ -123,9 +145,6 @@ export async function Footer({
   )
 }
 
-/**
- * FooterMinimal — convenience export for pages that don't need the CTA.
- */
 export async function FooterMinimal({
   tenantId,
   locale,

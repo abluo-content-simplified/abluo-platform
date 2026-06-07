@@ -71,7 +71,10 @@ export const websiteSiteConfigQuery = /* groq */ `
     socialLinks[] { platform, url },
     phone,
     email,
-    address
+    address,
+    "livePageHeadline": ${loc('livePageHeadline')},
+    "livePageSubheadline": ${loc('livePageSubheadline')},
+    "livePageBetaNotice": ${loc('livePageBetaNotice')}
   }
 `
 
@@ -224,3 +227,21 @@ export const homePageQuery = /* groq */ `
 `
 
 export const siteConfigQuery = websiteSiteConfigQuery
+
+// ─── Design System ────────────────────────────────────────────────────────────
+
+export const designSystemQuery = /* groq */ `
+  *[_type == "designSystem" && projectSlug == $projectSlug][0] {
+    colors {
+      darkTheme { background, backgroundAlt, primary, secondary, accent, textPrimary, textSecondary, border },
+      lightTheme { background, backgroundAlt, primary, secondary, accent, textPrimary, textSecondary, border }
+    },
+    typography { headingFont, bodyFont },
+    radius { small, medium, large },
+    buttons {
+      primary { background, text, borderRadius },
+      secondary { background, text, borderRadius }
+    },
+    cards { background, border }
+  }
+`

@@ -54,7 +54,7 @@ function resolveTenant(hostname: string): string | null {
 function resolveDefaultLocale(projectSlug: string): string | null {
   const localeMap: Record<string, string> = {
     'studiomartegani': 'it',
-    'livener': 'it',
+    'livener': 'en',
   }
   return localeMap[projectSlug] ?? null
 }

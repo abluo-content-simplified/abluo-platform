@@ -82,6 +82,49 @@ export interface SocialLink {
   url: string
 }
 
+// ─── Design System ────────────────────────────────────────────────────────────
+
+export interface ColorTheme {
+  background?: string
+  backgroundAlt?: string
+  primary?: string
+  secondary?: string
+  accent?: string
+  textPrimary?: string
+  textSecondary?: string
+  border?: string
+}
+
+export interface ButtonStyle {
+  background?: string
+  text?: string
+  borderRadius?: number
+}
+
+export interface DesignSystem {
+  colors?: {
+    darkTheme?: ColorTheme
+    lightTheme?: ColorTheme
+  }
+  typography?: {
+    headingFont?: string
+    bodyFont?: string
+  }
+  radius?: {
+    small?: number
+    medium?: number
+    large?: number
+  }
+  buttons?: {
+    primary?: ButtonStyle
+    secondary?: ButtonStyle
+  }
+  cards?: {
+    background?: string
+    border?: string
+  }
+}
+
 // ─── Site Config (resolved — all strings already locale-resolved by GROQ) ─────
 
 export interface WebsiteSiteConfig {
@@ -110,6 +153,10 @@ export interface WebsiteSiteConfig {
   phone?: string
   email?: string
   address?: string
+  // Live page welcome text (managed in Sanity)
+  livePageHeadline?: string
+  livePageSubheadline?: string
+  livePageBetaNotice?: string
 }
 
 // Locale config subset — fetched first to get $defaultLocale for subsequent queries
