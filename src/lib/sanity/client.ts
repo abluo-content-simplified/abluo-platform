@@ -4,7 +4,9 @@ export const sanityClient = createClient({
   projectId: '3n7t84j3',
   dataset: 'production',
   apiVersion: '2026-05-21',
-  useCdn: process.env.NODE_ENV === 'production',
+  // CDN disabled: the CDN caches empty GROQ results when a query field (projectSlug)
+  // didn't exist at cache-warm time. Direct API always reflects the current dataset.
+  useCdn: false,
 })
 
 // ─── Tenant → Project slug mapping ───────────────────────────────────────────

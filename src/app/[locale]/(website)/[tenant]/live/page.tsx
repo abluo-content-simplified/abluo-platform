@@ -4,9 +4,9 @@ import { currentLiveEventQuery, localeConfigQuery } from '@/lib/sanity/queries'
 import type { Event, LocaleConfig, SupportedLocale } from '@/lib/sanity/types'
 import { LivePageContent } from '@/components/livener/live/LivePageContent'
 
-// ISR: revalidate every 60 seconds so status changes (upcoming → live → past)
-// propagate quickly without requiring a full redeploy
-export const revalidate = 60
+// force-dynamic: always render server-side so event status changes are immediate.
+// (ISR can permanently cache a failed initial generation if Sanity returns null at build time.)
+export const dynamic = 'force-dynamic'
 
 interface PageProps {
   params: Promise<{ tenant: string; locale: string }>
