@@ -20,10 +20,14 @@ export default defineConfig({
         const tenants = await context
           .getClient({ apiVersion: '2026-05-21' })
           .fetch<{ projectSlug: string; siteName?: string }[]>(
-            `*[_type == "siteConfig"] | order(siteName asc) { projectSlug, siteName }`
+            `*[_type == "siteConfig" && !(_id in path("drafts.**"))] | order(siteName asc) { projectSlug, siteName }`
           )
 
-        const tenantItems = tenants.map((tenant) => {
+        // Deduplicate by projectSlug — Studio client resolves drafts transparently,
+        // so the same projectSlug can appear twice (published + draft overlay).
+        const unique = Array.from(new Map(tenants.map(t => [t.projectSlug, t])).values())
+
+        const tenantItems = unique.map((tenant) => {
           const label = tenant.siteName ?? tenant.projectSlug
           const slug = tenant.projectSlug
 
