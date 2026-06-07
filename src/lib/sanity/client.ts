@@ -1,8 +1,5 @@
 import { createClient } from '@sanity/client'
 
-// Credentials are hardcoded — they are not secrets (NEXT_PUBLIC_ values end up
-// in the client bundle regardless). This removes any dependency on Vercel env
-// var state, which proved unreliable during initial setup.
 export const sanityClient = createClient({
   projectId: '3n7t84j3',
   dataset: 'production',
@@ -10,23 +7,39 @@ export const sanityClient = createClient({
   useCdn: process.env.NODE_ENV === 'production',
 })
 
-/**
- * Returns a tenant-scoped fetch helper.
- * Every query MUST include a `$tenantId` parameter — this enforces
- * the multi-tenant isolation rule at the call site.
- *
- * Usage:
- *   const { fetchForTenant } = tenantClient('livener')
- *   const posts = await fetchForTenant(postsQuery, { limit: 10 })
- */
-export function tenantClient(tenantId: string) {
-  if (!tenantId) {
-    throw new Error('tenantId is required — never query Sanity without a tenant scope')
+// ─── Tenant → Project slug mapping ───────────────────────────────────────────
+// Maps the URL tenant slug (e.g. "livener") to the Sanity project slug
+// (e.g. "livener-main"). Add a new entry when onboarding a new client.
+const TENANT_TO_PROJECT: Record<string, string> = {
+  livener: 'livener-main',
+  studiomartegani: 'studiomartegani-main',
+}
+
+export function tenantToProjectSlug(tenantSlug: string): string {
+  const projectSlug = TENANT_TO_PROJECT[tenantSlug]
+  if (!projectSlug) {
+    throw new Error(
+      `No project mapping for tenant "${tenantSlug}". Add it to TENANT_TO_PROJECT in client.ts.`
+    )
   }
+  return projectSlug
+}
+
+/**
+ * Returns a project-scoped fetch helper.
+ * Accepts the URL tenant slug (e.g. "livener") and resolves it to the
+ * Sanity projectSlug (e.g. "livener-main") before injecting into queries.
+ */
+export function tenantClient(tenantSlug: string) {
+  if (!tenantSlug) {
+    throw new Error('tenantSlug is required — never query Sanity without a tenant scope')
+  }
+
+  const projectSlug = tenantToProjectSlug(tenantSlug)
 
   return {
     fetchForTenant<T>(query: string, params: Record<string, unknown> = {}): Promise<T> {
-      return sanityClient.fetch<T>(query, { ...params, tenantId })
+      return sanityClient.fetch<T>(query, { ...params, projectSlug })
     },
   }
 }

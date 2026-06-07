@@ -2,26 +2,24 @@
  * Sanity GROQ queries for the Abluo platform.
  *
  * Rules:
- * - Every query MUST filter by tenantId — no unscoped queries ever.
+ * - Every query MUST filter by projectSlug — no unscoped queries ever.
  * - Use `tenantClient('slug').fetchForTenant(query, params)` to execute.
- * - $tenantId is always injected by tenantClient — do not pass it manually.
+ *   tenantClient resolves the URL tenant slug (e.g. "livener") to the
+ *   Sanity projectSlug (e.g. "livener-main") and injects it as $projectSlug.
  *
  * Multilingual fields:
  * - Text fields are stored as { it: "...", en: "..." } objects in Sanity.
- * - GROQ resolves with tenant-aware fallback chain:
+ * - GROQ resolves with locale-aware fallback chain:
  *     coalesce(field[$locale], field[$defaultLocale], field.en, field)
  *     → requested locale → tenant default → English → raw value
- * - $locale      = current UI locale (e.g. 'de')
- * - $defaultLocale = tenant's primary language from siteConfig (e.g. 'it' for Martegani, 'en' for Livener)
+ * - $locale        = current UI locale (e.g. 'de')
+ * - $defaultLocale = tenant's primary language from siteConfig (e.g. 'it' for Martegani)
  * - Components receive plain strings — unaware of localization internals.
  */
 
-// ─── Locale resolver helper ───────────────────────────────────────────────────
-// Tenant-aware fallback: requested locale → tenant default → English → raw
 const loc = (field: string) =>
   `coalesce(${field}[$locale], ${field}[$defaultLocale], ${field}.en, ${field})`
 
-// Localized image projection — resolves alt and caption
 const locImage = (field: string) => /* groq */ `
   ${field} {
     asset,
@@ -32,23 +30,16 @@ const locImage = (field: string) => /* groq */ `
   }
 `
 
-// ─── Locale config query (must be fetched first to get $defaultLocale) ────────
-// Run this once per request in the layout to get the tenant's locale config.
-// Then pass defaultLocale + supportedLocales down to all child queries.
 export const localeConfigQuery = /* groq */ `
-  *[_type == "siteConfig" && tenantSlug == $tenantId][0] {
+  *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
     defaultLocale,
     supportedLocales
   }
 `
 
-// ─── Shared queries ───────────────────────────────────────────────────────────
-
-// Full siteConfig for nav + footer rendering
-// Requires: $tenantId, $locale, $defaultLocale
 export const websiteSiteConfigQuery = /* groq */ `
-  *[_type == "siteConfig" && tenantSlug == $tenantId][0] {
-    tenantSlug,
+  *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
+    projectSlug,
     siteName,
     defaultLocale,
     supportedLocales,
@@ -84,10 +75,8 @@ export const websiteSiteConfigQuery = /* groq */ `
   }
 `
 
-// ─── Post queries ─────────────────────────────────────────────────────────────
-
 export const postsQuery = /* groq */ `
-  *[_type == "post" && tenantSlug == $tenantId && defined(publishedAt)]
+  *[_type == "post" && projectSlug == $projectSlug && defined(publishedAt)]
   | order(publishedAt desc) [$offset...$offset + $limit] {
     _id,
     "title": ${loc('title')},
@@ -100,7 +89,7 @@ export const postsQuery = /* groq */ `
 `
 
 export const postBySlugQuery = /* groq */ `
-  *[_type == "post" && tenantSlug == $tenantId && slug.current == $slug][0] {
+  *[_type == "post" && projectSlug == $projectSlug && slug.current == $slug][0] {
     _id,
     "title": ${loc('title')},
     slug,
@@ -112,14 +101,11 @@ export const postBySlugQuery = /* groq */ `
   }
 `
 
-// ─── Event queries ────────────────────────────────────────────────────────────
-
-// /live page: event flagged as current, or next upcoming event as fallback
 export const currentLiveEventQuery = /* groq */ `
   coalesce(
-    *[_type == "event" && tenantSlug == $tenantId && isCurrentLiveEvent == true][0],
-    *[_type == "event" && tenantSlug == $tenantId && status == "live"][0],
-    *[_type == "event" && tenantSlug == $tenantId && status == "upcoming"]
+    *[_type == "event" && projectSlug == $projectSlug && isCurrentLiveEvent == true][0],
+    *[_type == "event" && projectSlug == $projectSlug && status == "live"][0],
+    *[_type == "event" && projectSlug == $projectSlug && status == "upcoming"]
       | order(startDate asc)[0]
   ) {
     _id,
@@ -147,9 +133,8 @@ export const currentLiveEventQuery = /* groq */ `
   }
 `
 
-// /events listing: all events ordered by date
 export const eventsQuery = /* groq */ `
-  *[_type == "event" && tenantSlug == $tenantId]
+  *[_type == "event" && projectSlug == $projectSlug]
   | order(startDate desc) {
     _id,
     "title": ${loc('title')},
@@ -164,9 +149,8 @@ export const eventsQuery = /* groq */ `
   }
 `
 
-// /events/[slug]: single event full detail
 export const eventBySlugQuery = /* groq */ `
-  *[_type == "event" && tenantSlug == $tenantId && slug.current == $slug][0] {
+  *[_type == "event" && projectSlug == $projectSlug && slug.current == $slug][0] {
     _id,
     "title": ${loc('title')},
     slug,
@@ -199,11 +183,9 @@ export const eventBySlugQuery = /* groq */ `
   }
 `
 
-// ─── Homepage query (studiomartegani and future tenants with sections) ─────────
-
 export const homePageQuery = /* groq */ `
-  *[_type == "homePage" && tenantSlug == $tenantId][0] {
-    tenantSlug,
+  *[_type == "homePage" && projectSlug == $projectSlug][0] {
+    projectSlug,
     sections[] {
       _type,
       _key,
@@ -241,5 +223,4 @@ export const homePageQuery = /* groq */ `
   }
 `
 
-// Legacy alias — keep for backward compatibility
 export const siteConfigQuery = websiteSiteConfigQuery

@@ -1,128 +1,6 @@
 import { defineType, defineField, defineArrayMember } from 'sanity'
 
-// ─── Shared fields ────────────────────────────────────────────────────────────
-
-// Localized image — reusable across all tenants
-// Includes hotspot, alt text (localized), and optional caption (localized)
-const localizedImageType = defineType({
-  name: 'localizedImage',
-  title: 'Image',
-  type: 'image',
-  options: { hotspot: true },
-  fields: [
-    defineField({
-      name: 'alt',
-      title: 'Alt Text',
-      type: 'localizedString',
-      description: 'Describe the image for screen readers and SEO',
-    }),
-    defineField({
-      name: 'caption',
-      title: 'Caption (optional)',
-      type: 'localizedString',
-    }),
-  ],
-})
-
-// Navigation link — used in navLinks and footerLinks arrays
-const navigationLinkType = defineType({
-  name: 'navigationLink',
-  title: 'Navigation Link',
-  type: 'object',
-  fields: [
-    defineField({ name: 'label', title: 'Label', type: 'localizedString' }),
-    defineField({ name: 'href', title: 'URL or Path', type: 'string' }),
-    defineField({
-      name: 'external',
-      title: 'Open in new tab',
-      type: 'boolean',
-      initialValue: false,
-    }),
-  ],
-  preview: {
-    select: { title: 'label.en', subtitle: 'href' },
-    prepare: ({ title, subtitle }) => ({ title: title ?? '—', subtitle }),
-  },
-})
-
-// Social link — platform + URL
-const socialLinkType = defineType({
-  name: 'socialLink',
-  title: 'Social Link',
-  type: 'object',
-  fields: [
-    defineField({
-      name: 'platform',
-      title: 'Platform',
-      type: 'string',
-      options: {
-        list: ['youtube', 'instagram', 'linkedin', 'facebook', 'x', 'tiktok', 'threads'],
-      },
-    }),
-    defineField({ name: 'url', title: 'URL', type: 'url' }),
-  ],
-  preview: {
-    select: { title: 'platform', subtitle: 'url' },
-    prepare: ({ title, subtitle }) => ({ title: title ?? 'Social', subtitle }),
-  },
-})
-
-// Schedule item — used inside event.schedule
-const scheduleItemType = defineType({
-  name: 'scheduleItem',
-  title: 'Schedule Item',
-  type: 'object',
-  fields: [
-    defineField({ name: 'time', title: 'Time', type: 'string', description: 'e.g. 11:00' }),
-    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
-    defineField({ name: 'description', title: 'Description', type: 'localizedText' }),
-  ],
-  preview: {
-    select: { title: 'time', subtitle: 'title.en' },
-    prepare: ({ title, subtitle }) => ({ title: title ?? '—', subtitle }),
-  },
-})
-
-// WhatsApp subject — used in siteConfig.whatsappSubjects
-const whatsappSubjectType = defineType({
-  name: 'whatsappSubject',
-  title: 'WhatsApp Subject',
-  type: 'object',
-  fields: [
-    defineField({ name: 'subject', title: 'Subject', type: 'localizedString' }),
-  ],
-  preview: {
-    select: { title: 'subject.en' },
-    prepare: ({ title }) => ({ title: title ?? '—' }),
-  },
-})
-
-// Email subject — used in siteConfig.emailSubjects
-const emailSubjectType = defineType({
-  name: 'emailSubject',
-  title: 'Email Subject',
-  type: 'object',
-  fields: [
-    defineField({ name: 'subject', title: 'Subject Line', type: 'localizedString' }),
-    defineField({ name: 'firstLine', title: 'First Line of Email Body', type: 'localizedText' }),
-  ],
-  preview: {
-    select: { title: 'subject.en' },
-    prepare: ({ title }) => ({ title: title ?? '—' }),
-  },
-})
-
-const tenantSlugField = defineField({
-  name: 'tenantSlug',
-  title: 'Tenant',
-  type: 'string',
-  description: 'Which client this document belongs to (e.g. studiomartegani)',
-  validation: (Rule) => Rule.required(),
-})
-
-// ─── Localized primitive types ────────────────────────────────────────────────
-// Each text field has an Italian (it) and English (en) version.
-// The frontend always falls back to Italian if English is missing.
+// ─── Shared primitive types ───────────────────────────────────────────────────
 
 const localizedStringType = defineType({
   name: 'localizedString',
@@ -162,6 +40,109 @@ const localizedPortableTextType = defineType({
       of: [defineArrayMember({ type: 'block' })],
     }),
   ],
+})
+
+// ─── Shared object types ──────────────────────────────────────────────────────
+
+const localizedImageType = defineType({
+  name: 'localizedImage',
+  title: 'Image',
+  type: 'image',
+  options: { hotspot: true },
+  fields: [
+    defineField({
+      name: 'alt',
+      title: 'Alt Text',
+      type: 'localizedString',
+      description: 'Describe the image for screen readers and SEO',
+    }),
+    defineField({ name: 'caption', title: 'Caption (optional)', type: 'localizedString' }),
+  ],
+})
+
+const navigationLinkType = defineType({
+  name: 'navigationLink',
+  title: 'Navigation Link',
+  type: 'object',
+  fields: [
+    defineField({ name: 'label', title: 'Label', type: 'localizedString' }),
+    defineField({ name: 'href', title: 'URL or Path', type: 'string' }),
+    defineField({ name: 'external', title: 'Open in new tab', type: 'boolean', initialValue: false }),
+  ],
+  preview: {
+    select: { title: 'label.en', subtitle: 'href' },
+    prepare: ({ title, subtitle }) => ({ title: title ?? '—', subtitle }),
+  },
+})
+
+const socialLinkType = defineType({
+  name: 'socialLink',
+  title: 'Social Link',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'platform',
+      title: 'Platform',
+      type: 'string',
+      options: { list: ['youtube', 'instagram', 'linkedin', 'facebook', 'x', 'tiktok', 'threads'] },
+    }),
+    defineField({ name: 'url', title: 'URL', type: 'url' }),
+  ],
+  preview: {
+    select: { title: 'platform', subtitle: 'url' },
+    prepare: ({ title, subtitle }) => ({ title: title ?? 'Social', subtitle }),
+  },
+})
+
+const scheduleItemType = defineType({
+  name: 'scheduleItem',
+  title: 'Schedule Item',
+  type: 'object',
+  fields: [
+    defineField({ name: 'time', title: 'Time', type: 'string', description: 'e.g. 11:00' }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    defineField({ name: 'description', title: 'Description', type: 'localizedText' }),
+  ],
+  preview: {
+    select: { title: 'time', subtitle: 'title.en' },
+    prepare: ({ title, subtitle }) => ({ title: title ?? '—', subtitle }),
+  },
+})
+
+const whatsappSubjectType = defineType({
+  name: 'whatsappSubject',
+  title: 'WhatsApp Subject',
+  type: 'object',
+  fields: [
+    defineField({ name: 'subject', title: 'Subject', type: 'localizedString' }),
+  ],
+  preview: {
+    select: { title: 'subject.en' },
+    prepare: ({ title }) => ({ title: title ?? '—' }),
+  },
+})
+
+const emailSubjectType = defineType({
+  name: 'emailSubject',
+  title: 'Email Subject',
+  type: 'object',
+  fields: [
+    defineField({ name: 'subject', title: 'Subject Line', type: 'localizedString' }),
+    defineField({ name: 'firstLine', title: 'First Line of Email Body', type: 'localizedText' }),
+  ],
+  preview: {
+    select: { title: 'subject.en' },
+    prepare: ({ title }) => ({ title: title ?? '—' }),
+  },
+})
+
+// ─── projectSlug — the shared linking field ───────────────────────────────────
+const projectSlugField = defineField({
+  name: 'projectSlug',
+  title: 'Project',
+  type: 'string',
+  description: 'Which project this document belongs to (e.g. livener-main)',
+  validation: (Rule) => Rule.required(),
 })
 
 // ─── Section object types ─────────────────────────────────────────────────────
@@ -292,11 +273,8 @@ const textSectionType = defineType({
     }),
   ],
   preview: {
-    select: { title: 'title.it', eyebrow: 'eyebrow.it' },
-    prepare: ({ title, eyebrow }) => ({
-      title: title ?? eyebrow ?? 'Text',
-      subtitle: 'Text Section',
-    }),
+    select: { title: 'title.it' },
+    prepare: ({ title }) => ({ title: title ?? 'Text', subtitle: 'Text Section' }),
   },
 })
 
@@ -307,12 +285,7 @@ const contactSectionType = defineType({
   fields: [
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
     defineField({ name: 'subtitle', title: 'Subtitle', type: 'localizedText' }),
-    defineField({
-      name: 'mapEmbedUrl',
-      title: 'Google Maps Embed URL',
-      type: 'url',
-      description: 'Paste the src URL from a Google Maps embed iframe',
-    }),
+    defineField({ name: 'mapEmbedUrl', title: 'Google Maps Embed URL', type: 'url' }),
   ],
   preview: {
     select: { title: 'title.it' },
@@ -354,7 +327,82 @@ const faqSectionType = defineType({
   },
 })
 
-// ─── Document types ───────────────────────────────────────────────────────────
+// ─── Platform document types (admin-only) ─────────────────────────────────────
+
+const clientType = defineType({
+  name: 'client',
+  title: 'Client',
+  type: 'document',
+  fields: [
+    defineField({ name: 'displayName', title: 'Display Name', type: 'string', validation: (Rule) => Rule.required() }),
+    defineField({ name: 'tenantSlug', title: 'Tenant Slug', type: 'string', description: 'URL slug (e.g. livener)', validation: (Rule) => Rule.required() }),
+    defineField({ name: 'tenantId', title: 'Tenant ID', type: 'string', description: 'UUID from Supabase' }),
+    defineField({ name: 'plan', title: 'Plan', type: 'string', options: { list: ['starter', 'pro', 'enterprise'] }, initialValue: 'starter' }),
+    defineField({ name: 'status', title: 'Status', type: 'string', options: { list: ['active', 'inactive', 'suspended'] }, initialValue: 'active' }),
+  ],
+  preview: {
+    select: { title: 'displayName', subtitle: 'tenantSlug' },
+    prepare: ({ title, subtitle }) => ({ title: title ?? '—', subtitle }),
+  },
+})
+
+const projectType = defineType({
+  name: 'project',
+  title: 'Project',
+  type: 'document',
+  fields: [
+    defineField({ name: 'clientRef', title: 'Client', type: 'reference', to: [{ type: 'client' }], validation: (Rule) => Rule.required() }),
+    defineField({ name: 'projectName', title: 'Project Name', type: 'string', validation: (Rule) => Rule.required() }),
+    defineField({ name: 'projectSlug', title: 'Project Slug', type: 'string', description: 'Used to link all content (e.g. livener-main)', validation: (Rule) => Rule.required() }),
+    defineField({ name: 'projectId', title: 'Project ID', type: 'string', description: 'UUID from Supabase' }),
+    defineField({ name: 'customDomain', title: 'Custom Domain', type: 'string' }),
+    defineField({ name: 'defaultLocale', title: 'Default Locale', type: 'string', options: { list: [{ title: 'English', value: 'en' }, { title: 'Italian', value: 'it' }], layout: 'radio' }, initialValue: 'en' }),
+    defineField({ name: 'status', title: 'Status', type: 'string', options: { list: ['active', 'inactive', 'archived'] }, initialValue: 'active' }),
+  ],
+  preview: {
+    select: { title: 'projectName', subtitle: 'projectSlug' },
+    prepare: ({ title, subtitle }) => ({ title: title ?? '—', subtitle }),
+  },
+})
+
+// ─── Design System ────────────────────────────────────────────────────────────
+
+const designSystemType = defineType({
+  name: 'designSystem',
+  title: 'Design System',
+  type: 'document',
+  groups: [
+    { name: 'colors', title: 'Colors' },
+    { name: 'typography', title: 'Typography' },
+    { name: 'shape', title: 'Shape & Spacing' },
+  ],
+  fields: [
+    projectSlugField,
+    defineField({ name: 'colorBackground', title: 'Background', type: 'string', group: 'colors' }),
+    defineField({ name: 'colorForeground', title: 'Foreground (text)', type: 'string', group: 'colors' }),
+    defineField({ name: 'colorPrimary', title: 'Primary', type: 'string', group: 'colors' }),
+    defineField({ name: 'colorPrimaryForeground', title: 'Primary Foreground', type: 'string', group: 'colors' }),
+    defineField({ name: 'colorAccent', title: 'Accent', type: 'string', group: 'colors' }),
+    defineField({ name: 'colorMuted', title: 'Muted', type: 'string', group: 'colors' }),
+    defineField({ name: 'colorBorder', title: 'Border', type: 'string', group: 'colors' }),
+    defineField({ name: 'colorSurface', title: 'Surface (cards)', type: 'string', group: 'colors' }),
+    defineField({ name: 'fontDisplay', title: 'Display Font', type: 'string', group: 'typography' }),
+    defineField({ name: 'fontBody', title: 'Body Font', type: 'string', group: 'typography' }),
+    defineField({ name: 'fontMono', title: 'Mono Font', type: 'string', group: 'typography' }),
+    defineField({ name: 'radiusSm', title: 'Radius Small', type: 'string', group: 'shape' }),
+    defineField({ name: 'radiusMd', title: 'Radius Medium', type: 'string', group: 'shape' }),
+    defineField({ name: 'radiusLg', title: 'Radius Large', type: 'string', group: 'shape' }),
+    defineField({ name: 'radiusFull', title: 'Radius Full (pill)', type: 'string', group: 'shape' }),
+    defineField({ name: 'sectionPaddingY', title: 'Section Vertical Padding', type: 'string', group: 'shape' }),
+    defineField({ name: 'containerMaxWidth', title: 'Container Max Width', type: 'string', group: 'shape' }),
+  ],
+  preview: {
+    select: { slug: 'projectSlug' },
+    prepare: ({ slug }) => ({ title: `Design System — ${slug ?? '?'}` }),
+  },
+})
+
+// ─── Site Config ──────────────────────────────────────────────────────────────
 
 const siteConfigType = defineType({
   name: 'siteConfig',
@@ -369,65 +417,19 @@ const siteConfigType = defineType({
     { name: 'social', title: 'Social' },
   ],
   fields: [
-    tenantSlugField,
-
-    // ── Identity ──
-    defineField({
-      name: 'siteName',
-      title: 'Site Name',
-      type: 'string',
-      group: 'identity',
-    }),
-    defineField({
-      name: 'tagline',
-      title: 'Tagline',
-      type: 'localizedString',
-      group: 'identity',
-    }),
-    defineField({
-      name: 'logo',
-      title: 'Logo',
-      type: 'localizedImage',
-      group: 'identity',
-      description: 'Primary logo (used on dark backgrounds)',
-    }),
-    defineField({
-      name: 'logoLight',
-      title: 'Logo (Light variant)',
-      type: 'localizedImage',
-      group: 'identity',
-      description: 'Logo for use on light/white backgrounds',
-    }),
-    defineField({
-      name: 'faviconSvg',
-      title: 'Favicon (SVG)',
-      type: 'image',
-      group: 'identity',
-      description: 'Favicon in SVG format (preferred for all devices)',
-    }),
-    defineField({
-      name: 'faviconPng',
-      title: 'Favicon (PNG)',
-      type: 'image',
-      group: 'identity',
-      description: 'Favicon in PNG format (fallback)',
-    }),
-
-    // ── Language & locale ──
+    projectSlugField,
+    defineField({ name: 'siteName', title: 'Site Name', type: 'string', group: 'identity' }),
+    defineField({ name: 'tagline', title: 'Tagline', type: 'localizedString', group: 'identity' }),
+    defineField({ name: 'logo', title: 'Logo', type: 'localizedImage', group: 'identity' }),
+    defineField({ name: 'logoLight', title: 'Logo (Light variant)', type: 'localizedImage', group: 'identity' }),
+    defineField({ name: 'faviconSvg', title: 'Favicon (SVG)', type: 'image', group: 'identity' }),
+    defineField({ name: 'faviconPng', title: 'Favicon (PNG)', type: 'image', group: 'identity' }),
     defineField({
       name: 'defaultLocale',
       title: 'Default Language',
       type: 'string',
       group: 'locales',
-      description: 'Primary language for this site. Used as fallback in GROQ queries.',
-      options: {
-        list: [
-          { title: 'English', value: 'en' },
-          { title: 'Italian', value: 'it' },
-          { title: 'German', value: 'de' },
-        ],
-        layout: 'radio',
-      },
+      options: { list: [{ title: 'English', value: 'en' }, { title: 'Italian', value: 'it' }, { title: 'German', value: 'de' }], layout: 'radio' },
       initialValue: 'en',
       validation: (Rule) => Rule.required(),
     }),
@@ -436,184 +438,40 @@ const siteConfigType = defineType({
       title: 'Supported Languages',
       type: 'array',
       group: 'locales',
-      description: 'All languages available on this site (order matters — first is default).',
-      of: [
-        defineArrayMember({
-          type: 'string',
-          options: {
-            list: [
-              { title: 'English', value: 'en' },
-              { title: 'Italian', value: 'it' },
-              { title: 'German', value: 'de' },
-            ],
-          },
-        }),
-      ],
+      of: [defineArrayMember({ type: 'string', options: { list: [{ title: 'English', value: 'en' }, { title: 'Italian', value: 'it' }, { title: 'German', value: 'de' }] } })],
       validation: (Rule) => Rule.required().min(1),
     }),
-
-    // ── Navigation ──
-    defineField({
-      name: 'navLinks',
-      title: 'Navigation Links',
-      type: 'array',
-      group: 'navigation',
-      of: [defineArrayMember({ type: 'navigationLink' })],
-      description: 'Links shown in the main navigation bar',
-    }),
-    defineField({
-      name: 'showLangSwitcherInNav',
-      title: 'Show language switcher in nav',
-      type: 'boolean',
-      group: 'navigation',
-      initialValue: false,
-      description: 'If off, the language switcher appears in the footer only',
-    }),
-    defineField({
-      name: 'ctaLabel',
-      title: 'Nav CTA Button Label',
-      type: 'localizedString',
-      group: 'navigation',
-    }),
-    defineField({
-      name: 'ctaHref',
-      title: 'Nav CTA Button URL',
-      type: 'string',
-      group: 'navigation',
-    }),
-
-    // ── Contact ──
+    defineField({ name: 'navLinks', title: 'Navigation Links', type: 'array', group: 'navigation', of: [defineArrayMember({ type: 'navigationLink' })] }),
+    defineField({ name: 'showLangSwitcherInNav', title: 'Show language switcher in nav', type: 'boolean', group: 'navigation', initialValue: false }),
+    defineField({ name: 'ctaLabel', title: 'Nav CTA Button Label', type: 'localizedString', group: 'navigation' }),
+    defineField({ name: 'ctaHref', title: 'Nav CTA Button URL', type: 'string', group: 'navigation' }),
     defineField({ name: 'phone', title: 'Phone', type: 'string', group: 'contact' }),
     defineField({ name: 'email', title: 'Email', type: 'string', group: 'contact' }),
     defineField({ name: 'address', title: 'Address', type: 'text', rows: 2, group: 'contact' }),
-    defineField({
-      name: 'contactEmail',
-      title: 'Contact Form Recipient Email',
-      type: 'string',
-      group: 'contact',
-      description: 'Email address where contact form submissions are sent',
-    }),
-    defineField({
-      name: 'mobileNumber',
-      title: 'Mobile Number',
-      type: 'string',
-      group: 'contact',
-      description: 'Mobile/cell phone number for direct contact',
-    }),
-    defineField({
-      name: 'whatsappNumber',
-      title: 'WhatsApp Number',
-      type: 'string',
-      group: 'contact',
-      description: 'WhatsApp contact number (with country code, e.g. +39...)',
-    }),
-    defineField({
-      name: 'whatsappSubjects',
-      title: 'WhatsApp Subject Options',
-      type: 'array',
-      group: 'contact',
-      of: [defineArrayMember({ type: 'whatsappSubject' })],
-      description: 'Up to 5 predefined subjects for WhatsApp contact (e.g. "Book a visit", "Information on treatments")',
-      validation: (Rule) => Rule.max(5),
-    }),
-    defineField({
-      name: 'emailSubjects',
-      title: 'Email Subject Options',
-      type: 'array',
-      group: 'contact',
-      of: [defineArrayMember({ type: 'emailSubject' })],
-      description: 'Up to 5 predefined email subjects with opening lines',
-      validation: (Rule) => Rule.max(5),
-    }),
-
-    // ── Footer ──
-    defineField({
-      name: 'footerLinks',
-      title: 'Footer Links',
-      type: 'array',
-      group: 'footer',
-      of: [defineArrayMember({ type: 'navigationLink' })],
-      description: 'Links shown in the footer (Privacy Policy, Cookie Policy, etc.)',
-    }),
-    defineField({
-      name: 'footerCtaHeading',
-      title: 'Footer CTA Heading',
-      type: 'localizedString',
-      group: 'footer',
-      description: 'e.g. "Request early access" — leave empty to use FooterMinimal',
-    }),
-    defineField({
-      name: 'footerCtaSubtext',
-      title: 'Footer CTA Subtext',
-      type: 'localizedString',
-      group: 'footer',
-    }),
-    defineField({
-      name: 'footerCtaInputPlaceholder',
-      title: 'Footer CTA Input Placeholder',
-      type: 'localizedString',
-      group: 'footer',
-    }),
-    defineField({
-      name: 'footerCtaButtonLabel',
-      title: 'Footer CTA Button Label',
-      type: 'localizedString',
-      group: 'footer',
-    }),
-    defineField({
-      name: 'legalName',
-      title: 'Legal Company Name',
-      type: 'string',
-      group: 'footer',
-      description: 'e.g. "Livener Ltd" — shown in footer copyright',
-    }),
-    defineField({
-      name: 'legalAddress',
-      title: 'Legal Address',
-      type: 'text',
-      rows: 2,
-      group: 'footer',
-    }),
-    defineField({
-      name: 'registrationInfo',
-      title: 'Registration Info',
-      type: 'string',
-      group: 'footer',
-      description: 'e.g. "Registered in England and Wales, company number: 12917008"',
-    }),
-    defineField({
-      name: 'foundedYear',
-      title: 'Founded Year',
-      type: 'number',
-      group: 'footer',
-      description: 'Used in copyright line: © {foundedYear}–{currentYear}',
-    }),
-
-    // ── Social ──
-    defineField({
-      name: 'youtubeChannelUrl',
-      title: 'YouTube Channel URL',
-      type: 'url',
-      group: 'social',
-    }),
-    defineField({
-      name: 'socialLinks',
-      title: 'Social Links',
-      type: 'array',
-      group: 'social',
-      of: [defineArrayMember({ type: 'socialLink' })],
-    }),
+    defineField({ name: 'contactEmail', title: 'Contact Form Recipient Email', type: 'string', group: 'contact' }),
+    defineField({ name: 'mobileNumber', title: 'Mobile Number', type: 'string', group: 'contact' }),
+    defineField({ name: 'whatsappNumber', title: 'WhatsApp Number', type: 'string', group: 'contact' }),
+    defineField({ name: 'whatsappSubjects', title: 'WhatsApp Subject Options', type: 'array', group: 'contact', of: [defineArrayMember({ type: 'whatsappSubject' })], validation: (Rule) => Rule.max(5) }),
+    defineField({ name: 'emailSubjects', title: 'Email Subject Options', type: 'array', group: 'contact', of: [defineArrayMember({ type: 'emailSubject' })], validation: (Rule) => Rule.max(5) }),
+    defineField({ name: 'footerLinks', title: 'Footer Links', type: 'array', group: 'footer', of: [defineArrayMember({ type: 'navigationLink' })] }),
+    defineField({ name: 'footerCtaHeading', title: 'Footer CTA Heading', type: 'localizedString', group: 'footer' }),
+    defineField({ name: 'footerCtaSubtext', title: 'Footer CTA Subtext', type: 'localizedString', group: 'footer' }),
+    defineField({ name: 'footerCtaInputPlaceholder', title: 'Footer CTA Input Placeholder', type: 'localizedString', group: 'footer' }),
+    defineField({ name: 'footerCtaButtonLabel', title: 'Footer CTA Button Label', type: 'localizedString', group: 'footer' }),
+    defineField({ name: 'legalName', title: 'Legal Company Name', type: 'string', group: 'footer' }),
+    defineField({ name: 'legalAddress', title: 'Legal Address', type: 'text', rows: 2, group: 'footer' }),
+    defineField({ name: 'registrationInfo', title: 'Registration Info', type: 'string', group: 'footer' }),
+    defineField({ name: 'foundedYear', title: 'Founded Year', type: 'number', group: 'footer' }),
+    defineField({ name: 'youtubeChannelUrl', title: 'YouTube Channel URL', type: 'url', group: 'social' }),
+    defineField({ name: 'socialLinks', title: 'Social Links', type: 'array', group: 'social', of: [defineArrayMember({ type: 'socialLink' })] }),
   ],
   preview: {
-    select: { title: 'siteName', slug: 'tenantSlug', locale: 'defaultLocale' },
-    prepare: ({ title, slug, locale }) => ({
-      title: title ?? slug ?? 'Site Config',
-      subtitle: `${slug} · default: ${locale ?? '?'}`,
-    }),
+    select: { title: 'siteName', slug: 'projectSlug' },
+    prepare: ({ title, slug }) => ({ title: title ?? slug ?? 'Site Config', subtitle: slug }),
   },
 })
 
-// ─── Event document type ──────────────────────────────────────────────────────
+// ─── Event ────────────────────────────────────────────────────────────────────
 
 const eventType = defineType({
   name: 'event',
@@ -627,173 +485,47 @@ const eventType = defineType({
     { name: 'meta', title: 'SEO / Meta' },
   ],
   fields: [
-    tenantSlugField,
-
-    // ── Identity ──
-    defineField({
-      name: 'title',
-      title: 'Title',
-      type: 'localizedString',
-      group: 'content',
-      validation: (Rule) => Rule.required(),
-    }),
-    defineField({
-      name: 'slug',
-      title: 'Slug',
-      type: 'slug',
-      group: 'content',
-      options: { source: 'title.en', maxLength: 96 },
-      validation: (Rule) => Rule.required(),
-    }),
+    projectSlugField,
+    defineField({ name: 'title', title: 'Title', type: 'localizedString', group: 'content', validation: (Rule) => Rule.required() }),
+    defineField({ name: 'slug', title: 'Slug', type: 'slug', group: 'content', options: { source: 'title.en', maxLength: 96 }, validation: (Rule) => Rule.required() }),
     defineField({
       name: 'status',
       title: 'Status',
       type: 'string',
       group: 'content',
-      options: {
-        list: [
-          { title: '🟡 Upcoming', value: 'upcoming' },
-          { title: '🔴 Live', value: 'live' },
-          { title: '⚫ Past', value: 'past' },
-        ],
-        layout: 'radio',
-      },
+      options: { list: [{ title: '🟡 Upcoming', value: 'upcoming' }, { title: '🔴 Live', value: 'live' }, { title: '⚫ Past', value: 'past' }], layout: 'radio' },
       initialValue: 'upcoming',
       validation: (Rule) => Rule.required(),
     }),
-    defineField({
-      name: 'isCurrentLiveEvent',
-      title: 'Feature on /live page',
-      type: 'boolean',
-      group: 'content',
-      initialValue: false,
-      description: 'Editorial override: show this event on the /live page regardless of status',
-    }),
-
-    // ── Dates & location ──
-    defineField({
-      name: 'startDate',
-      title: 'Start Date & Time',
-      type: 'datetime',
-      group: 'content',
-      validation: (Rule) => Rule.required(),
-    }),
-    defineField({
-      name: 'endDate',
-      title: 'End Date & Time',
-      type: 'datetime',
-      group: 'content',
-    }),
-    defineField({
-      name: 'location',
-      title: 'Location',
-      type: 'localizedString',
-      group: 'content',
-      description: 'e.g. "Rimini Expo Centre, Italy"',
-    }),
-
-    // ── Content ──
-    defineField({
-      name: 'shortDescription',
-      title: 'Short Description',
-      type: 'localizedText',
-      group: 'content',
-      description: 'Used on /events listing page',
-    }),
-    defineField({
-      name: 'fullDescription',
-      title: 'Full Description',
-      type: 'localizedPortableText',
-      group: 'content',
-    }),
-
-    // ── Schedule ──
-    defineField({
-      name: 'schedule',
-      title: 'Schedule',
-      type: 'array',
-      group: 'schedule',
-      of: [defineArrayMember({ type: 'scheduleItem' })],
-    }),
-
-    // ── Media ──
-    defineField({
-      name: 'heroImage',
-      title: 'Hero Image',
-      type: 'localizedImage',
-      group: 'media',
-    }),
-    defineField({
-      name: 'gallery',
-      title: 'Gallery',
-      type: 'array',
-      group: 'media',
-      of: [defineArrayMember({ type: 'localizedImage' })],
-    }),
-
-    // ── Streaming ──
-    defineField({
-      name: 'youtubeUrl',
-      title: 'YouTube Stream / Video URL',
-      type: 'url',
-      group: 'streaming',
-      description: 'Direct video or stream URL (for embed)',
-    }),
-    defineField({
-      name: 'youtubeChannelUrl',
-      title: 'YouTube Channel URL',
-      type: 'url',
-      group: 'streaming',
-    }),
-    defineField({
-      name: 'ctaLabel',
-      title: 'CTA Button Label',
-      type: 'localizedString',
-      group: 'streaming',
-      description: 'e.g. "Watch Live" or "See Recording"',
-    }),
-
-    // ── SEO ──
-    defineField({
-      name: 'seoTitle',
-      title: 'SEO Title',
-      type: 'localizedString',
-      group: 'meta',
-    }),
-    defineField({
-      name: 'seoDescription',
-      title: 'SEO Description',
-      type: 'localizedText',
-      group: 'meta',
-    }),
-  ],
-  orderings: [
-    {
-      title: 'Start Date (newest first)',
-      name: 'startDateDesc',
-      by: [{ field: 'startDate', direction: 'desc' }],
-    },
+    defineField({ name: 'isCurrentLiveEvent', title: 'Feature on /live page', type: 'boolean', group: 'content', initialValue: false }),
+    defineField({ name: 'startDate', title: 'Start Date & Time', type: 'datetime', group: 'content', validation: (Rule) => Rule.required() }),
+    defineField({ name: 'endDate', title: 'End Date & Time', type: 'datetime', group: 'content' }),
+    defineField({ name: 'location', title: 'Location', type: 'localizedString', group: 'content' }),
+    defineField({ name: 'shortDescription', title: 'Short Description', type: 'localizedText', group: 'content' }),
+    defineField({ name: 'fullDescription', title: 'Full Description', type: 'localizedPortableText', group: 'content' }),
+    defineField({ name: 'schedule', title: 'Schedule', type: 'array', group: 'schedule', of: [defineArrayMember({ type: 'scheduleItem' })] }),
+    defineField({ name: 'heroImage', title: 'Hero Image', type: 'localizedImage', group: 'media' }),
+    defineField({ name: 'gallery', title: 'Gallery', type: 'array', group: 'media', of: [defineArrayMember({ type: 'localizedImage' })] }),
+    defineField({ name: 'youtubeUrl', title: 'YouTube Stream / Video URL', type: 'url', group: 'streaming' }),
+    defineField({ name: 'youtubeChannelUrl', title: 'YouTube Channel URL', type: 'url', group: 'streaming' }),
+    defineField({ name: 'ctaLabel', title: 'CTA Button Label', type: 'localizedString', group: 'streaming' }),
+    defineField({ name: 'seoTitle', title: 'SEO Title', type: 'localizedString', group: 'meta' }),
+    defineField({ name: 'seoDescription', title: 'SEO Description', type: 'localizedText', group: 'meta' }),
   ],
   preview: {
-    select: {
-      title: 'title.en',
-      subtitle: 'status',
-      slug: 'tenantSlug',
-      media: 'heroImage',
-    },
-    prepare: ({ title, subtitle, slug }) => ({
-      title: title ?? 'Untitled Event',
-      subtitle: `${slug} · ${subtitle ?? '?'}`,
-    }),
+    select: { title: 'title.en', subtitle: 'status', slug: 'projectSlug' },
+    prepare: ({ title, subtitle, slug }) => ({ title: title ?? 'Untitled Event', subtitle: `${slug} · ${subtitle ?? '?'}` }),
   },
 })
+
+// ─── Home Page ────────────────────────────────────────────────────────────────
 
 const homePageType = defineType({
   name: 'homePage',
   title: 'Home Page',
   type: 'document',
   fields: [
-    tenantSlugField,
+    projectSlugField,
     defineField({
       name: 'sections',
       title: 'Sections',
@@ -810,17 +542,19 @@ const homePageType = defineType({
     }),
   ],
   preview: {
-    select: { slug: 'tenantSlug' },
+    select: { slug: 'projectSlug' },
     prepare: ({ slug }) => ({ title: `Home — ${slug ?? '?'}` }),
   },
 })
+
+// ─── Blog Post ────────────────────────────────────────────────────────────────
 
 const postType = defineType({
   name: 'post',
   title: 'Blog Post',
   type: 'document',
   fields: [
-    tenantSlugField,
+    projectSlugField,
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
     defineField({ name: 'slug', title: 'Slug', type: 'slug', options: { source: 'title.it' } }),
     defineField({ name: 'excerpt', title: 'Excerpt', type: 'localizedText' }),
@@ -828,7 +562,7 @@ const postType = defineType({
     defineField({ name: 'publishedAt', title: 'Published At', type: 'datetime' }),
   ],
   preview: {
-    select: { title: 'title.it', slug: 'tenantSlug' },
+    select: { title: 'title.it', slug: 'projectSlug' },
     prepare: ({ title, slug }) => ({ title: title ?? 'Untitled', subtitle: slug }),
   },
 })
@@ -836,18 +570,15 @@ const postType = defineType({
 // ─── Export ───────────────────────────────────────────────────────────────────
 
 export const schemaTypes = [
-  // Localized primitive types
   localizedStringType,
   localizedTextType,
   localizedPortableTextType,
-  // Shared object types
   localizedImageType,
   navigationLinkType,
   socialLinkType,
   scheduleItemType,
   whatsappSubjectType,
   emailSubjectType,
-  // Section object types (studiomartegani)
   heroSectionType,
   contentSectionType,
   treatmentCardType,
@@ -858,7 +589,9 @@ export const schemaTypes = [
   contactSectionType,
   faqItemType,
   faqSectionType,
-  // Document types
+  clientType,
+  projectType,
+  designSystemType,
   siteConfigType,
   homePageType,
   postType,
