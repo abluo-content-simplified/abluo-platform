@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { tenantClient } from '@/lib/sanity/client'
-import { currentLiveEventQuery, localeConfigQuery } from '@/lib/sanity/queries'
-import type { Event, LocaleConfig, SupportedLocale } from '@/lib/sanity/types'
+import { currentLiveEventQuery, localeConfigQuery, websiteSiteConfigQuery } from '@/lib/sanity/queries'
+import type { Event, LocaleConfig, SupportedLocale, WebsiteSiteConfig } from '@/lib/sanity/types'
 import { LivePageContent } from '@/components/livener/live/LivePageContent'
 
 // force-dynamic: always render server-side so event status changes are immediate.
@@ -39,16 +39,26 @@ export default async function LivePage({ params }: PageProps) {
   const { tenant: tenantId, locale } = await params
   const { fetchForTenant } = tenantClient(tenantId)
 
-  // Get the tenant's default locale for proper GROQ fallback resolution
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  // Fetch the current or next live event
-  // Priority: isCurrentLiveEvent flag → status "live" → next upcoming by startDate
-  const event = await fetchForTenant<Event>(currentLiveEventQuery, {
-    locale: locale as SupportedLocale,
-    defaultLocale,
-  })
+  // Fetch event and siteConfig in parallel
+  const [event, siteConfig] = await Promise.all([
+    fetchForTenant<Event>(currentLiveEventQuery, {
+      locale: locale as SupportedLocale,
+      defaultLocale,
+    }),
+    fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, {
+      locale: locale as SupportedLocale,
+      defaultLocale,
+    }),
+  ])
 
-  return <LivePageContent event={event} locale={locale as SupportedLocale} />
+  return (
+    <LivePageContent
+      event={event}
+      siteConfig={siteConfig}
+      locale={locale as SupportedLocale}
+    />
+  )
 }

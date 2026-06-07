@@ -1,5 +1,5 @@
 import { tenantClient } from '@/lib/sanity/client'
-import { homePageQuery, websiteSiteConfigQuery } from '@/lib/sanity/queries'
+import { homePageQuery, localeConfigQuery, websiteSiteConfigQuery } from '@/lib/sanity/queries'
 import { HeroSection } from '@/components/sections/HeroSection'
 import { ContentSection } from '@/components/sections/ContentSection'
 import { TreatmentsSection } from '@/components/sections/TreatmentsSection'
@@ -7,7 +7,7 @@ import { TeamSection } from '@/components/sections/TeamSection'
 import { TextSection } from '@/components/sections/TextSection'
 import { FAQSection } from '@/components/sections/FAQSection'
 import { ContactSection } from '@/components/sections/ContactSection'
-import type { WebsiteHomePage, WebsiteSiteConfig, PageSection, FAQSection as FAQSectionType } from '@/lib/sanity/types'
+import type { WebsiteHomePage, WebsiteSiteConfig, LocaleConfig, PageSection, FAQSection as FAQSectionType, SupportedLocale } from '@/lib/sanity/types'
 import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
 
@@ -22,7 +22,9 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { tenant: tenantId, locale } = await params
   const { fetchForTenant } = tenantClient(tenantId)
-  const config = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale })
+  const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
+  const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
+  const config = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? ''
   const canonical = `${baseUrl}/${locale}/${tenantId}`
@@ -83,9 +85,12 @@ export default async function WebsitePage({ params }: PageProps) {
   const { tenant: tenantId, locale } = await params
   const { fetchForTenant } = tenantClient(tenantId)
 
+  const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
+  const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
+
   const [homePage, siteConfig] = await Promise.all([
-    fetchForTenant<WebsiteHomePage>(homePageQuery, { locale }),
-    fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale }),
+    fetchForTenant<WebsiteHomePage>(homePageQuery, { locale, defaultLocale }),
+    fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale }),
   ])
 
   if (!homePage) {

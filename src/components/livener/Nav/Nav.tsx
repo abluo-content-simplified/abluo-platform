@@ -11,15 +11,6 @@ interface NavProps {
   variant?: 'full' | 'landing'
 }
 
-/**
- * Nav (Full variant) — server component.
- * Fetches siteConfig from Sanity, passes resolved data to NavClient.
- *
- * Usage in layout.tsx:
- *   <Nav tenantId={tenantId} locale={locale} defaultLocale={defaultLocale} />
- *
- * Use variant="landing" for pages without nav links (e.g. campaign landing pages).
- */
 export async function Nav({ tenantId, locale, defaultLocale, variant = 'full' }: NavProps) {
   const { fetchForTenant } = tenantClient(tenantId)
   const config = await fetchForTenant<WebsiteSiteConfig>(
@@ -31,13 +22,11 @@ export async function Nav({ tenantId, locale, defaultLocale, variant = 'full' }:
 
   return (
     <header
-      className={[
-        // z-index 400 — always above the overlay (300) and drawer (350)
-        'sticky top-0 z-[400] flex h-[72px] items-center px-5 md:px-10',
-        'border-b border-white/8 bg-[#161d2b] transition-all',
-        // Light theme override
-        'data-[theme=light]:border-black/8 data-[theme=light]:bg-white data-[theme=light]:shadow-sm',
-      ].join(' ')}
+      className="sticky top-0 z-[400] flex h-[72px] items-center px-5 md:px-10 border-b transition-all"
+      style={{
+        backgroundColor: 'var(--color-background)',
+        borderColor: 'var(--color-border)',
+      }}
     >
       <NavClient
         logoSrc={imageUrl(config.logo, 480)}
@@ -55,10 +44,6 @@ export async function Nav({ tenantId, locale, defaultLocale, variant = 'full' }:
   )
 }
 
-/**
- * NavLanding — same as Nav but forces variant="landing" (no page links).
- * Convenience export for landing page layouts.
- */
 export async function NavLanding({
   tenantId,
   locale,

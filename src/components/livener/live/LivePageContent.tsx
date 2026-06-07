@@ -1,12 +1,14 @@
-import Image from 'next/image'
+'use client'
+
 import Link from 'next/link'
 import { PlayCircle } from 'lucide-react'
-import { SlideUp, FadeIn, StaggerChildren } from '@/components/animation'
+import { SlideUp, FadeIn } from '@/components/animation'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
-import type { Event, SupportedLocale } from '@/lib/sanity/types'
+import type { Event, SupportedLocale, WebsiteSiteConfig } from '@/lib/sanity/types'
 
 interface LivePageContentProps {
   event: Event | null
+  siteConfig: WebsiteSiteConfig | null
   locale: SupportedLocale
 }
 
@@ -16,10 +18,15 @@ function NoLiveEvent() {
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-10">
       <div className="text-center">
-        <p className="font-['Barlow_Condensed'] text-2xl font-semibold text-white/40">
+        <p
+          className="text-2xl font-semibold"
+          style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)', opacity: 0.4 }}
+        >
           No live event scheduled right now.
         </p>
-        <p className="mt-2 text-sm text-white/25">Check back soon.</p>
+        <p className="mt-2 text-sm" style={{ color: 'var(--color-text-primary)', opacity: 0.25 }}>
+          Check back soon.
+        </p>
       </div>
     </div>
   )
@@ -38,7 +45,14 @@ function StatusBadge({ status }: { status: Event['status'] }) {
   }
   if (status === 'upcoming') {
     return (
-      <span className="inline-flex items-center gap-2 rounded-full border border-[#ffa22b]/25 bg-[#ffa22b]/12 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[#ffa22b]">
+      <span
+        className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-widest"
+        style={{
+          borderColor: 'color-mix(in oklch, var(--color-primary) 25%, transparent)',
+          backgroundColor: 'color-mix(in oklch, var(--color-primary) 12%, transparent)',
+          color: 'var(--color-primary)',
+        }}
+      >
         Upcoming
       </span>
     )
@@ -48,7 +62,7 @@ function StatusBadge({ status }: { status: Event['status'] }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function LivePageContent({ event, locale }: LivePageContentProps) {
+export function LivePageContent({ event, siteConfig, locale }: LivePageContentProps) {
   if (!event) return <NoLiveEvent />
 
   const heroSrc = imageUrl(event.heroImage, 1600)
@@ -56,7 +70,7 @@ export function LivePageContent({ event, locale }: LivePageContentProps) {
   const gallerySrc = event.gallery?.[0] ? imageUrl(event.gallery[0], 1600) : undefined
   const gallerySrcSet = event.gallery?.[0] ? imageSrcSet(event.gallery[0], [800, 1200, 1600]) : undefined
 
-  // Format date range for display
+  // Format date range
   const startDate = event.startDate
     ? new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', year: '2-digit' }).format(new Date(event.startDate))
     : null
@@ -66,10 +80,16 @@ export function LivePageContent({ event, locale }: LivePageContentProps) {
 
   const channelUrl = event.youtubeChannelUrl ?? 'https://www.youtube.com/@livener-net'
 
+  // Welcome text — from Sanity siteConfig, with fallbacks
+  const headline = siteConfig?.livePageHeadline ?? 'Welcome to Livener'
+  const subheadline = siteConfig?.livePageSubheadline ?? 'Live video streaming, in the palm of your hands'
+  const betaNotice = siteConfig?.livePageBetaNotice ?? 'Currently in beta — tested live, in real environments.'
+
   return (
     <div
-      className="min-h-screen bg-[#161d2b]"
       style={{
+        minHeight: '100vh',
+        backgroundColor: 'var(--color-background)',
         backgroundImage: 'url(/livener/bkg.svg)',
         backgroundPosition: '50% 0',
         backgroundRepeat: 'no-repeat',
@@ -78,22 +98,28 @@ export function LivePageContent({ event, locale }: LivePageContentProps) {
     >
       <div className="mx-auto max-w-[900px] px-5 pb-24 pt-12 md:px-10">
 
-        {/* ── Page hero ────────────────────────────────────────────── */}
+        {/* ── Page welcome ─────────────────────────────────────────── */}
         <SlideUp duration={0.6}>
-          <h1 className="font-['Barlow_Condensed'] text-[clamp(48px,8vw,68px)] font-bold leading-[1.05] text-[#f2f2f2]">
-            Welcome to Livener
+          <h1
+            className="text-[clamp(48px,8vw,68px)] font-bold leading-[1.05]"
+            style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
+          >
+            {headline}
           </h1>
         </SlideUp>
 
         <SlideUp delay={0.1} duration={0.6}>
-          <h2 className="mt-3 font-['Barlow_Condensed'] text-[clamp(22px,4vw,32px)] font-semibold leading-tight text-[#ffa22b]">
-            Live video streaming, in the palm of your hands
+          <h2
+            className="mt-3 text-[clamp(22px,4vw,32px)] font-semibold leading-tight"
+            style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-primary)' }}
+          >
+            {subheadline}
           </h2>
         </SlideUp>
 
         <SlideUp delay={0.18} duration={0.5}>
-          <p className="mt-4 text-sm font-medium text-[#f2f2f2]/60">
-            Currently in beta — tested live, in real environments.
+          <p className="mt-4 text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
+            {betaNotice}
           </p>
         </SlideUp>
 
@@ -106,20 +132,37 @@ export function LivePageContent({ event, locale }: LivePageContentProps) {
           </SlideUp>
 
           <SlideUp delay={0.12}>
-            <h2 className="mt-4 font-['Barlow_Condensed'] text-[clamp(28px,5vw,46px)] font-bold leading-tight text-[#f2f2f2]">
+            <h2
+              className="mt-4 text-[clamp(28px,5vw,46px)] font-bold leading-tight"
+              style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
+            >
               {event.title}
             </h2>
           </SlideUp>
 
           {(startDate || event.location) && (
             <SlideUp delay={0.2}>
-              <p className="mt-2 font-['Barlow_Condensed'] text-xl font-semibold text-[#ffa22b]">
+              <p
+                className="mt-2 text-xl font-semibold"
+                style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-primary)' }}
+              >
                 {startDate && endDate
                   ? `${startDate} — ${endDate}`
                   : startDate}
                 {event.location && (
-                  <span className="ml-2 text-[#f2f2f2]/50">· {event.location}</span>
+                  <span style={{ color: 'var(--color-text-muted)' }} className="ml-2">
+                    · {event.location}
+                  </span>
                 )}
+              </p>
+            </SlideUp>
+          )}
+
+          {/* ── Short description — ABOVE hero image ─────────────────── */}
+          {event.shortDescription && (
+            <SlideUp delay={0.25} className="mt-6">
+              <p className="text-base leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+                {event.shortDescription}
               </p>
             </SlideUp>
           )}
@@ -139,24 +182,32 @@ export function LivePageContent({ event, locale }: LivePageContentProps) {
           </FadeIn>
         )}
 
-        {/* ── Body content ─────────────────────────────────────────── */}
-        {event.shortDescription && (
-          <SlideUp delay={0.05} className="mt-10">
-            <p className="text-base leading-relaxed text-[#f2f2f2]/75">
-              {event.shortDescription}
-            </p>
+        {/* ── Full description — BELOW hero image ──────────────────── */}
+        {event.fullDescription && Array.isArray(event.fullDescription) && event.fullDescription.length > 0 && (
+          <SlideUp delay={0.08} className="mt-10">
+            <div
+              className="space-y-4 text-base leading-relaxed"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
+              {(event.fullDescription as any[]).map((block: any) => {
+                if (block._type !== 'block') return null
+                const text = block.children?.map((c: any) => c.text).join('') ?? ''
+                return <p key={block._key}>{text}</p>
+              })}
+            </div>
           </SlideUp>
         )}
 
-        {/* ── YouTube link ─────────────────────────────────────────── */}
+        {/* ── YouTube channel link ─────────────────────────────────── */}
         <SlideUp delay={0.1} className="mt-8">
-          <p className="text-base leading-relaxed text-[#f2f2f2]/75">
+          <p className="text-base leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
             Visit{' '}
             <Link
               href={channelUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-[#ffa22b] underline-offset-2 hover:underline"
+              className="font-medium underline-offset-2 hover:underline"
+              style={{ color: 'var(--color-primary)' }}
             >
               {channelUrl.replace('https://', '')}
             </Link>{' '}
@@ -170,7 +221,23 @@ export function LivePageContent({ event, locale }: LivePageContentProps) {
             href={event.youtubeUrl ?? channelUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="group inline-flex items-center gap-3 rounded-xl border-2 border-[#ffa22b] bg-[#ffa22b] px-6 py-3.5 font-['Poppins'] text-sm font-semibold text-white transition-all hover:border-[#363366] hover:bg-[#363366]"
+            className="group inline-flex items-center gap-3 rounded-[var(--radius-btn)] px-6 py-3.5 text-sm font-semibold transition-all"
+            style={{
+              fontFamily: 'var(--font-body)',
+              border: '2px solid var(--color-primary)',
+              backgroundColor: 'var(--color-primary)',
+              color: '#fff',
+            }}
+            onMouseEnter={(e) => {
+              const el = e.currentTarget as HTMLElement
+              el.style.backgroundColor = 'var(--color-secondary)'
+              el.style.borderColor = 'var(--color-secondary)'
+            }}
+            onMouseLeave={(e) => {
+              const el = e.currentTarget as HTMLElement
+              el.style.backgroundColor = 'var(--color-primary)'
+              el.style.borderColor = 'var(--color-primary)'
+            }}
           >
             <PlayCircle size={18} />
             {event.ctaLabel ?? 'Watch on YouTube'}

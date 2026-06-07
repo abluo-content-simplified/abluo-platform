@@ -18,19 +18,17 @@ export default defineConfig({
       structure: async (S, context) => {
         const client = context.getClient({ apiVersion: '2026-05-21' })
 
-        // Fetch all clients with their projects
-        // Studio resolves drafts transparently — deduplicate by _id
-        const rawClients = await client.fetch<{
+        const clients = await client.fetch<{
           _id: string
           displayName: string
           tenantSlug: string
           projects: { _id: string; projectName: string; projectSlug: string }[]
         }[]>(
-          `*[_type == "client"] | order(displayName asc) {
+          `*[_type == "client" && !(_id in path("drafts.**"))] | order(displayName asc) {
             _id,
             displayName,
             tenantSlug,
-            "projects": *[_type == "project" && clientRef._ref == ^._id] | order(projectName asc) {
+            "projects": *[_type == "project" && !(_id in path("drafts.**")) && clientRef._ref == ^._id] | order(projectName asc) {
               _id,
               projectName,
               projectSlug,
@@ -38,87 +36,84 @@ export default defineConfig({
           }`
         )
 
-        // Deduplicate clients by _id (drafts overlay)
-        const clients = Array.from(new Map(rawClients.map(c => [c._id, c])).values())
-
         const clientItems = clients.map((clientDoc) => {
           const clientLabel = clientDoc.displayName ?? clientDoc.tenantSlug
-          const clientId = clientDoc._id.replace('drafts.', '')
+          const clientId = clientDoc._id
 
-          // Deduplicate projects by _id
-          const projects = Array.from(
-            new Map(clientDoc.projects.map(p => [p._id, p])).values()
-          )
-
-          const projectItems = projects.map((project) => {
+          const projectItems = clientDoc.projects.map((project) => {
             const slug = project.projectSlug
             const projectLabel = project.projectName ?? slug
 
             return S.listItem()
-              .title(projectLabel)
               .id(`project-${slug}`)
+              .title(projectLabel)
               .child(
                 S.list()
+                  .id(`project-${slug}-list`)
                   .title(projectLabel)
                   .items([
                     S.listItem()
-                      .title('Settings')
                       .id(`${slug}-settings`)
+                      .title('Settings')
                       .child(
                         S.documentList()
                           .title('Settings')
+                          .apiVersion('2026-05-21')
                           .filter(`_type == "siteConfig" && projectSlug == $slug`)
                           .params({ slug })
                       ),
 
                     S.listItem()
-                      .title('Design System')
                       .id(`${slug}-design`)
+                      .title('Design System')
                       .child(
                         S.documentList()
                           .title('Design System')
+                          .apiVersion('2026-05-21')
                           .filter(`_type == "designSystem" && projectSlug == $slug`)
                           .params({ slug })
                       ),
 
                     S.listItem()
-                      .title('Pages')
                       .id(`${slug}-pages`)
+                      .title('Pages')
                       .child(
                         S.list()
+                          .id(`${slug}-pages-list`)
                           .title('Pages')
                           .items([
                             S.listItem()
-                              .title('Home Page')
                               .id(`${slug}-home`)
+                              .title('Home Page')
                               .child(
                                 S.documentList()
                                   .title('Home Page')
+                                  .apiVersion('2026-05-21')
                                   .filter(`_type == "homePage" && projectSlug == $slug`)
                                   .params({ slug })
                               ),
                           ])
                       ),
 
-                    S.divider(),
-
                     S.listItem()
-                      .title('Events')
                       .id(`${slug}-events`)
+                      .title('Events')
                       .child(
                         S.documentList()
                           .title('Events')
+                          .apiVersion('2026-05-21')
                           .filter(`_type == "event" && projectSlug == $slug`)
                           .params({ slug })
                           .defaultOrdering([{ field: 'startDate', direction: 'desc' }])
                       ),
 
                     S.listItem()
-                      .title('Blog Posts')
                       .id(`${slug}-posts`)
+                      .title('Blog Posts')
                       .child(
                         S.documentList()
                           .title('Blog Posts')
+                          .apiVersion('2026-05-21')
                           .filter(`_type == "post" && projectSlug == $slug`)
                           .params({ slug })
                       ),
@@ -127,16 +122,18 @@ export default defineConfig({
           })
 
           return S.listItem()
-            .title(clientLabel)
             .id(`client-${clientId}`)
+            .title(clientLabel)
             .child(
               S.list()
+                .id(`client-${clientId}-list`)
                 .title(clientLabel)
                 .items(projectItems)
             )
         })
 
         return S.list()
+          .id('root')
           .title('Clients')
           .items(clientItems)
       },

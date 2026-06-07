@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter, usePathname } from '@/i18n/navigation'
 import type { SupportedLocale } from '@/lib/sanity/types'
 
 interface LanguageSwitcherProps {
@@ -14,10 +14,6 @@ const LOCALE_LABELS: Record<SupportedLocale, string> = {
   de: 'Deutsch',
 }
 
-/**
- * Footer language switcher — always visible in the footer (no dropdown).
- * Shows all supported locales as discrete buttons.
- */
 export function FooterLanguageSwitcher({
   currentLocale,
   supportedLocales,
@@ -26,25 +22,24 @@ export function FooterLanguageSwitcher({
   const pathname = usePathname()
 
   function switchLocale(locale: SupportedLocale) {
-    const segments = pathname.split('/')
-    segments[1] = locale
-    router.push(segments.join('/'))
+    // next-intl's router.replace handles locale prefix correctly
+    router.replace(pathname, { locale })
   }
 
   if (supportedLocales.length <= 1) return null
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-4">
       {supportedLocales.map((locale) => (
         <button
           key={locale}
           onClick={() => switchLocale(locale)}
-          className={[
-            'rounded-lg border px-3.5 py-1.5 text-sm font-medium transition-all',
-            locale === currentLocale
-              ? 'border-white/30 bg-white/10 text-white'
-              : 'border-white/12 bg-transparent text-white/50 hover:border-white/25 hover:text-white/80',
-          ].join(' ')}
+          className="bg-transparent border-none p-0 cursor-pointer text-xs font-medium transition-opacity"
+          style={{
+            color: 'var(--color-text-primary)',
+            opacity: locale === currentLocale ? 0.7 : 0.3,
+            fontWeight: locale === currentLocale ? 600 : 400,
+          }}
         >
           {LOCALE_LABELS[locale]}
         </button>
