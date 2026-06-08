@@ -87,12 +87,30 @@ export interface SocialLink {
 export interface ColorTheme {
   background?: string
   backgroundAlt?: string
+  surface?: string
   primary?: string
   secondary?: string
   accent?: string
   textPrimary?: string
   textSecondary?: string
+  textMuted?: string
   border?: string
+  success?: string
+  warning?: string
+  danger?: string
+}
+
+export interface FontDefinition {
+  source?: 'library' | 'google'
+  libraryFont?: string
+  googleFont?: string
+}
+
+export interface Typescale {
+  size?: number
+  weight?: number
+  lineHeight?: number
+  letterSpacing?: number
 }
 
 export interface ButtonStyle {
@@ -107,13 +125,27 @@ export interface DesignSystem {
     lightTheme?: ColorTheme
   }
   typography?: {
-    headingFont?: string
-    bodyFont?: string
+    headingFont?: FontDefinition
+    bodyFont?: FontDefinition
+    h1?: Typescale
+    h2?: Typescale
+    h3?: Typescale
+    h4?: Typescale
+    bodyLarge?: Typescale
+    body?: Typescale
+    small?: Typescale
   }
   radius?: {
     small?: number
     medium?: number
     large?: number
+  }
+  spacing?: {
+    xs?: number
+    s?: number
+    m?: number
+    l?: number
+    xl?: number
   }
   buttons?: {
     primary?: ButtonStyle

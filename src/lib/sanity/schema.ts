@@ -377,15 +377,60 @@ const colorThemeType = defineType({
   fields: [
     defineField({ name: 'background', title: 'Background', type: 'string' }),
     defineField({ name: 'backgroundAlt', title: 'Background Alt', type: 'string' }),
+    defineField({ name: 'surface', title: 'Surface', type: 'string' }),
     defineField({ name: 'primary', title: 'Primary', type: 'string' }),
     defineField({ name: 'secondary', title: 'Secondary', type: 'string' }),
     defineField({ name: 'accent', title: 'Accent', type: 'string' }),
     defineField({ name: 'textPrimary', title: 'Text Primary', type: 'string' }),
     defineField({ name: 'textSecondary', title: 'Text Secondary', type: 'string' }),
+    defineField({ name: 'textMuted', title: 'Text Muted', type: 'string' }),
     defineField({ name: 'border', title: 'Border', type: 'string' }),
     defineField({ name: 'success', title: 'Success', type: 'string' }),
     defineField({ name: 'warning', title: 'Warning', type: 'string' }),
     defineField({ name: 'danger', title: 'Danger', type: 'string' }),
+  ],
+})
+
+const LIBRARY_FONTS = [
+  { title: 'Geist', value: 'Geist' },
+  { title: 'Inter', value: 'Inter' },
+  { title: 'Poppins', value: 'Poppins' },
+  { title: 'Manrope', value: 'Manrope' },
+  { title: 'Barlow Condensed', value: 'Barlow Condensed' },
+  { title: 'Roboto', value: 'Roboto' },
+  { title: 'Montserrat', value: 'Montserrat' },
+  { title: 'Open Sans', value: 'Open Sans' },
+  { title: 'Playfair Display', value: 'Playfair Display' },
+  { title: 'Lora', value: 'Lora' },
+]
+
+const fontDefinitionType = defineType({
+  name: 'fontDefinition',
+  title: 'Font',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'source',
+      title: 'Font Source',
+      type: 'string',
+      options: { list: [{ title: 'Library Font', value: 'library' }, { title: 'Google Font', value: 'google' }], layout: 'radio' },
+      initialValue: 'library',
+    }),
+    defineField({
+      name: 'libraryFont',
+      title: 'Library Font',
+      type: 'string',
+      description: 'Select from the curated font library',
+      options: { list: LIBRARY_FONTS },
+      hidden: ({ parent }: { parent?: { source?: string } }) => parent?.source !== 'library',
+    }),
+    defineField({
+      name: 'googleFont',
+      title: 'Google Font Family Name',
+      type: 'string',
+      description: 'Exact family name from Google Fonts — e.g. "Space Grotesk", "DM Sans"',
+      hidden: ({ parent }: { parent?: { source?: string } }) => parent?.source !== 'google',
+    }),
   ],
 })
 
@@ -397,6 +442,7 @@ const typescaleType = defineType({
     defineField({ name: 'size', title: 'Size (px)', type: 'number' }),
     defineField({ name: 'weight', title: 'Weight', type: 'number' }),
     defineField({ name: 'lineHeight', title: 'Line Height', type: 'number' }),
+    defineField({ name: 'letterSpacing', title: 'Letter Spacing (px)', type: 'number' }),
   ],
 })
 
@@ -426,6 +472,21 @@ const designSystemType = defineType({
   fields: [
     projectSlugField,
     defineField({ name: 'name', title: 'Name', type: 'string', group: 'meta' }),
+    defineField({
+      name: 'role',
+      title: 'Role',
+      type: 'string',
+      group: 'meta',
+      description: 'Active = assigned to a project and in use. Template = not assigned, used as a base for future systems.',
+      options: {
+        list: [
+          { title: 'Active — in use', value: 'active' },
+          { title: 'Template — not assigned', value: 'template' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'active',
+    }),
     defineField({ name: 'description', title: 'Description', type: 'text', rows: 2, group: 'meta' }),
 
     // Branding
@@ -460,13 +521,15 @@ const designSystemType = defineType({
       type: 'object',
       group: 'typography',
       fields: [
-        defineField({ name: 'headingFont', title: 'Heading Font', type: 'string' }),
-        defineField({ name: 'bodyFont', title: 'Body Font', type: 'string' }),
+        defineField({ name: 'headingFont', title: 'Heading Font', type: 'fontDefinition' }),
+        defineField({ name: 'bodyFont', title: 'Body Font', type: 'fontDefinition' }),
         defineField({ name: 'h1', title: 'H1', type: 'typescale' }),
         defineField({ name: 'h2', title: 'H2', type: 'typescale' }),
         defineField({ name: 'h3', title: 'H3', type: 'typescale' }),
+        defineField({ name: 'h4', title: 'H4', type: 'typescale' }),
+        defineField({ name: 'bodyLarge', title: 'Body Large', type: 'typescale' }),
         defineField({ name: 'body', title: 'Body', type: 'typescale' }),
-        defineField({ name: 'small', title: 'Small', type: 'typescale' }),
+        defineField({ name: 'small', title: 'Small Text', type: 'typescale' }),
       ],
     }),
 
@@ -722,6 +785,7 @@ export const schemaTypes = [
   clientType,
   projectType,
   colorThemeType,
+  fontDefinitionType,
   typescaleType,
   buttonStyleType,
   designSystemType,

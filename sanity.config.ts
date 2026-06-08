@@ -19,11 +19,17 @@ export default defineConfig({
       structure: async (S, context) => {
         const client = context.getClient({ apiVersion: '2026-05-21' })
 
+        // ── Fetch clients + projects ───────────────────────────────────────────
         const clients = await client.fetch<{
           _id: string
           displayName: string
           tenantSlug: string
-          projects: { _id: string; projectName: string; projectSlug: string; designSystemId?: string }[]
+          projects: {
+            _id: string
+            projectName: string
+            projectSlug: string
+            designSystemId?: string
+          }[]
         }[]>(
           `*[_type == "client" && !(_id in path("drafts.**"))] | order(displayName asc) {
             _id,
@@ -38,6 +44,30 @@ export default defineConfig({
           }`
         )
 
+        // ── Fetch all design systems ───────────────────────────────────────────
+        const designSystems = await client.fetch<{
+          _id: string
+          name?: string
+          projectSlug?: string
+          role?: string
+        }[]>(
+          `*[_type == "designSystem" && !(_id in path("drafts.**"))] | order(name asc) {
+            _id, name, projectSlug, role
+          }`
+        )
+
+        // ── Design system pane builder ────────────────────────────────────────
+        function designSystemPane(documentId: string) {
+          return S.document()
+            .documentId(documentId)
+            .schemaType('designSystem')
+            .views([
+              S.view.form().title('Edit'),
+              S.view.component(DesignSystemPreview).title('Preview'),
+            ])
+        }
+
+        // ── Client items ──────────────────────────────────────────────────────
         const clientItems = clients.map((clientDoc) => {
           const clientLabel = clientDoc.displayName ?? clientDoc.tenantSlug
           const clientId = clientDoc._id
@@ -45,7 +75,6 @@ export default defineConfig({
           const projectItems = clientDoc.projects.map((project) => {
             const slug = project.projectSlug
             const projectLabel = project.projectName ?? slug
-
             const designSystemId = project.designSystemId
 
             return S.listItem()
@@ -72,13 +101,7 @@ export default defineConfig({
                       .title('Design System')
                       .child(
                         designSystemId
-                          ? S.document()
-                              .documentId(designSystemId)
-                              .schemaType('designSystem')
-                              .views([
-                                S.view.form().title('Edit'),
-                                S.view.component(DesignSystemPreview).title('Preview'),
-                              ])
+                          ? designSystemPane(designSystemId)
                           : S.documentList()
                               .title('Design System')
                               .apiVersion('2026-05-21')
@@ -144,10 +167,67 @@ export default defineConfig({
             )
         })
 
+        // ── Design system items ───────────────────────────────────────────────
+        const designSystemItems = designSystems.map((ds) => {
+          const isTemplate = ds.role === 'template'
+          const label = ds.name ?? ds.projectSlug ?? 'Untitled'
+          const subtitle = isTemplate ? 'Template · Not assigned' : `Active · ${ds.projectSlug ?? ''}`
+
+          return S.listItem()
+            .id(`ds-${ds._id}`)
+            .title(`${label} — ${subtitle}`)
+            .child(designSystemPane(ds._id))
+        })
+
+        // ── Root structure ────────────────────────────────────────────────────
         return S.list()
           .id('root')
-          .title('Clients')
-          .items(clientItems)
+          .title('Abluo')
+          .items([
+
+            S.listItem()
+              .id('section-clients')
+              .title('Clients')
+              .child(
+                S.list()
+                  .id('clients-root')
+                  .title('Clients')
+                  .items(clientItems)
+              ),
+
+            S.divider(),
+
+            S.listItem()
+              .id('section-design-systems')
+              .title('Design Systems')
+              .child(
+                S.list()
+                  .id('design-systems-root')
+                  .title('Design Systems')
+                  .items(designSystemItems)
+              ),
+
+            S.listItem()
+              .id('section-media-library')
+              .title('Media Library')
+              .child(
+                S.list()
+                  .id('media-library-root')
+                  .title('Media Library')
+                  .items([
+                    S.listItem()
+                      .id('media-placeholder')
+                      .title('Coming soon')
+                      .child(
+                        S.documentList()
+                          .title('Media Library')
+                          .apiVersion('2026-05-21')
+                          .filter('_type == "sanity.imageAsset" && false')
+                      ),
+                  ])
+              ),
+
+          ])
       },
     }),
   ],
