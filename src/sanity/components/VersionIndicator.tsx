@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface VersionInfo {
   version: string
@@ -44,46 +43,54 @@ export function VersionIndicator() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 right-4 z-40 px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors cursor-pointer"
+        className="fixed bottom-4 right-4 z-40 px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors cursor-pointer font-mono"
         title="Click to see version details"
       >
         Abluo CMS v{versionInfo.version} • {versionInfo.commit}
       </button>
 
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Abluo CMS Version Info</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm font-semibold text-gray-600">Version</p>
-              <p className="text-sm font-mono">{versionInfo.version}</p>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Abluo CMS Version Info</h2>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-600">Commit</p>
-              <p className="text-sm font-mono">{versionInfo.commitLong}</p>
-              <p className="text-xs text-gray-500">(short: {versionInfo.commit})</p>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-600">Environment</p>
-              <p className="text-sm">{versionInfo.environment}</p>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-600">Branch</p>
-              <p className="text-sm font-mono">{versionInfo.branch}</p>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-600">Dataset</p>
-              <p className="text-sm font-mono">{versionInfo.dataset}</p>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-600">Build Date</p>
-              <p className="text-sm">{versionInfo.buildDate}</p>
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-semibold text-gray-600 uppercase">Version</p>
+                <p className="text-sm font-mono mt-1">{versionInfo.version}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-600 uppercase">Commit</p>
+                <p className="text-sm font-mono mt-1">{versionInfo.commitLong}</p>
+                <p className="text-xs text-gray-500">(short: {versionInfo.commit})</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-600 uppercase">Environment</p>
+                <p className="text-sm mt-1">{versionInfo.environment}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-600 uppercase">Branch</p>
+                <p className="text-sm font-mono mt-1">{versionInfo.branch}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-600 uppercase">Dataset</p>
+                <p className="text-sm font-mono mt-1">{versionInfo.dataset}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-600 uppercase">Build Date</p>
+                <p className="text-sm mt-1">{versionInfo.buildDate}</p>
+              </div>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </>
   )
 }
