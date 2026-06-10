@@ -19,34 +19,45 @@ export default defineConfig({
       structure: async (S, context) => {
         const client = context.getClient({ apiVersion: '2026-05-21' })
 
+        // ── Debugging: Log runtime configuration ─────────────────────────────
+        console.log('[Abluo Studio] Structure resolver starting...')
+        console.log('[Abluo Studio] projectId:', projectId)
+        console.log('[Abluo Studio] dataset:', dataset)
+
         // ── Fetch clients + projects ───────────────────────────────────────────
-        // TODO: Temporarily disabled along with clientItems to debug structure error
-        // const clients = await client.fetch<{
-        //   _id: string
-        //   displayName: string
-        //   tenantSlug: string
-        //   projects: {
-        //     _id: string
-        //     projectName: string
-        //     projectSlug: string
-        //     designSystemId?: string
-        //   }[]
-        // }[]>(
-        //   `*[_type == "client" && !(_id in path("drafts.**"))] | order(displayName asc) {
-        //     _id,
-        //     displayName,
-        //     tenantSlug,
-        //     "projects": *[_type == "project" && !(_id in path("drafts.**")) && clientRef._ref == ^._id] | order(projectName asc) {
-        //       _id,
-        //       projectName,
-        //       projectSlug,
-        //       "designSystemId": coalesce(
-        //         designSystemRef._ref,
-        //         *[_type == "designSystem" && !(_id in path("drafts.**")) && projectSlug == ^.projectSlug][0]._id
-        //       )
-        //     }
-        //   }`
-        // )
+        const clients = await client.fetch<{
+          _id: string
+          displayName: string
+          tenantSlug: string
+          projects: {
+            _id: string
+            projectName: string
+            projectSlug: string
+            designSystemId?: string
+          }[]
+        }[]>(
+          `*[_type == "client" && !(_id in path("drafts.**"))] | order(displayName asc) {
+            _id,
+            displayName,
+            tenantSlug,
+            "projects": *[_type == "project" && !(_id in path("drafts.**")) && clientRef._ref == ^._id] | order(projectName asc) {
+              _id,
+              projectName,
+              projectSlug,
+              "designSystemId": coalesce(
+                designSystemRef._ref,
+                *[_type == "designSystem" && !(_id in path("drafts.**")) && projectSlug == ^.projectSlug][0]._id
+              )
+            }
+          }`
+        )
+
+        // ── Debugging: Log clients data ──────────────────────────────────────
+        console.log('[Abluo Studio] Clients fetched:', clients.length)
+        if (clients.length > 0) {
+          console.log('[Abluo Studio] First client _id:', clients[0]._id)
+          console.log('[Abluo Studio] First client displayName:', clients[0].displayName)
+        }
 
         // ── Fetch all design systems ───────────────────────────────────────────
         const designSystems = await client.fetch<{
