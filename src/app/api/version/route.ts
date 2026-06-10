@@ -17,7 +17,8 @@ export async function GET() {
         version = version.slice(1)
       }
     } catch {
-      version = 'v0.0.0'
+      // Fallback for production: use "production" or "preview" as version
+      version = environment === 'production' ? 'production' : environment
     }
 
     // Get short commit hash
@@ -27,8 +28,9 @@ export async function GET() {
       commit = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim()
       commitLong = execSync('git rev-parse HEAD', { encoding: 'utf-8' }).trim()
     } catch {
-      commit = 'unknown'
-      commitLong = 'unknown'
+      // Fallback for production: use Vercel env vars
+      commitLong = process.env.VERCEL_GIT_COMMIT_SHA || 'unknown'
+      commit = commitLong.substring(0, 7) // Take first 7 chars as short hash
     }
 
     // Get current branch
@@ -36,7 +38,8 @@ export async function GET() {
     try {
       branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim()
     } catch {
-      branch = 'unknown'
+      // Fallback for production: use Vercel env var
+      branch = process.env.VERCEL_GIT_COMMIT_REF || 'unknown'
     }
 
     // Get build date
