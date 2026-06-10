@@ -71,116 +71,118 @@ export default defineConfig({
         }
 
         // ── Client items ──────────────────────────────────────────────────────
-        const clientItems = clients.map((clientDoc) => {
-          const clientLabel = clientDoc.displayName ?? clientDoc.tenantSlug
-          const clientId = clientDoc._id
-
-          const projectItems = (clientDoc.projects || []).map((project) => {
-            const slug = project.projectSlug
-            const projectLabel = project.projectName ?? slug
-            const designSystemId = project.designSystemId
-
-            return S.listItem()
-              .id(`project-${slug}`)
-              .title(projectLabel)
-              .child(
-                S.list()
-                  .id(`project-${slug}-list`)
-                  .title(projectLabel)
-                  .items([
-                    S.listItem()
-                      .id(`${slug}-settings`)
-                      .title('Settings')
-                      .child(
-                        S.documentList()
-                          .title('Settings')
-                          .apiVersion('2026-05-21')
-                          .filter(`_type == "siteConfig" && projectSlug == $slug`)
-                          .params({ slug })
-                          .initialValueTemplates([
-                            S.initialValueTemplateItem('siteConfig_template', { projectSlug: slug })
-                          ])
-                      ),
-
-                    S.listItem()
-                      .id(`${slug}-design`)
-                      .title('Design System')
-                      .child(
-                        designSystemId
-                          ? designSystemPane(designSystemId)
-                          : S.documentList()
-                              .title('Design System')
-                              .apiVersion('2026-05-21')
-                              .filter(`_type == "designSystem" && projectSlug == $slug`)
-                              .params({ slug })
-                      ),
-
-                    S.listItem()
-                      .id(`${slug}-pages`)
-                      .title('Pages')
-                      .child(
-                        S.list()
-                          .id(`${slug}-pages-list`)
-                          .title('Pages')
-                          .items([
-                            S.listItem()
-                              .id(`${slug}-home`)
-                              .title('Home Page')
-                              .child(
-                                S.documentList()
-                                  .title('Home Page')
-                                  .apiVersion('2026-05-21')
-                                  .filter(`_type == "homePage" && projectSlug == $slug`)
-                                  .params({ slug })
-                                  .initialValueTemplates([
-                                    S.initialValueTemplateItem('homePage_template', { projectSlug: slug })
-                                  ])
-                              ),
-                          ])
-                      ),
-
-                    S.listItem()
-                      .id(`${slug}-events`)
-                      .title('Events')
-                      .child(
-                        S.documentList()
-                          .title('Events')
-                          .apiVersion('2026-05-21')
-                          .filter(`_type == "event" && projectSlug == $slug`)
-                          .params({ slug })
-                          .defaultOrdering([{ field: 'startDate', direction: 'desc' }])
-                          .initialValueTemplates([
-                            S.initialValueTemplateItem('event_template', { projectSlug: slug })
-                          ])
-                      ),
-
-                    S.listItem()
-                      .id(`${slug}-posts`)
-                      .title('Blog Posts')
-                      .child(
-                        S.documentList()
-                          .title('Blog Posts')
-                          .apiVersion('2026-05-21')
-                          .filter(`_type == "post" && projectSlug == $slug`)
-                          .params({ slug })
-                          .initialValueTemplates([
-                            S.initialValueTemplateItem('post_template', { projectSlug: slug })
-                          ])
-                      ),
-                  ])
-              )
-          })
-
-          return S.listItem()
-            .id(`client-${clientId}`)
-            .title(clientLabel)
-            .child(
-              S.list()
-                .id(`client-${clientId}-list`)
-                .title(clientLabel)
-                .items(projectItems)
-            )
-        })
+        // TODO: Temporarily disabled to debug "id is required for list items" error
+        // This entire section was causing the error during Studio initialization
+        // const clientItems = clients.map((clientDoc) => {
+        //   const clientLabel = clientDoc.displayName ?? clientDoc.tenantSlug
+        //   const clientId = clientDoc._id
+        //
+        //   const projectItems = (clientDoc.projects || []).map((project) => {
+        //     const slug = project.projectSlug
+        //     const projectLabel = project.projectName ?? slug
+        //     const designSystemId = project.designSystemId
+        //
+        //     return S.listItem()
+        //       .id(`project-${slug}`)
+        //       .title(projectLabel)
+        //       .child(
+        //         S.list()
+        //           .id(`project-${slug}-list`)
+        //           .title(projectLabel)
+        //           .items([
+        //             S.listItem()
+        //               .id(`${slug}-settings`)
+        //               .title('Settings')
+        //               .child(
+        //                 S.documentList()
+        //                   .title('Settings')
+        //                   .apiVersion('2026-05-21')
+        //                   .filter(`_type == "siteConfig" && projectSlug == $slug`)
+        //                   .params({ slug })
+        //                   .initialValueTemplates([
+        //                     S.initialValueTemplateItem('siteConfig_template', { projectSlug: slug })
+        //                   ])
+        //               ),
+        //
+        //             S.listItem()
+        //               .id(`${slug}-design`)
+        //               .title('Design System')
+        //               .child(
+        //                 designSystemId
+        //                   ? designSystemPane(designSystemId)
+        //                   : S.documentList()
+        //                       .title('Design System')
+        //                       .apiVersion('2026-05-21')
+        //                       .filter(`_type == "designSystem" && projectSlug == $slug`)
+        //                       .params({ slug })
+        //               ),
+        //
+        //             S.listItem()
+        //               .id(`${slug}-pages`)
+        //               .title('Pages')
+        //               .child(
+        //                 S.list()
+        //                   .id(`${slug}-pages-list`)
+        //                   .title('Pages')
+        //                   .items([
+        //                     S.listItem()
+        //                       .id(`${slug}-home`)
+        //                       .title('Home Page')
+        //                       .child(
+        //                         S.documentList()
+        //                           .title('Home Page')
+        //                           .apiVersion('2026-05-21')
+        //                           .filter(`_type == "homePage" && projectSlug == $slug`)
+        //                           .params({ slug })
+        //                           .initialValueTemplates([
+        //                             S.initialValueTemplateItem('homePage_template', { projectSlug: slug })
+        //                           ])
+        //                       ),
+        //                   ])
+        //               ),
+        //
+        //             S.listItem()
+        //               .id(`${slug}-events`)
+        //               .title('Events')
+        //               .child(
+        //                 S.documentList()
+        //                   .title('Events')
+        //                   .apiVersion('2026-05-21')
+        //                   .filter(`_type == "event" && projectSlug == $slug`)
+        //                   .params({ slug })
+        //                   .defaultOrdering([{ field: 'startDate', direction: 'desc' }])
+        //                   .initialValueTemplates([
+        //                     S.initialValueTemplateItem('event_template', { projectSlug: slug })
+        //                   ])
+        //               ),
+        //
+        //             S.listItem()
+        //               .id(`${slug}-posts`)
+        //               .title('Blog Posts')
+        //               .child(
+        //                 S.documentList()
+        //                   .title('Blog Posts')
+        //                   .apiVersion('2026-05-21')
+        //                   .filter(`_type == "post" && projectSlug == $slug`)
+        //                   .params({ slug })
+        //                   .initialValueTemplates([
+        //                     S.initialValueTemplateItem('post_template', { projectSlug: slug })
+        //                   ])
+        //               ),
+        //           ])
+        //       )
+        //   })
+        //
+        //   return S.listItem()
+        //     .id(`client-${clientId}`)
+        //     .title(clientLabel)
+        //     .child(
+        //       S.list()
+        //         .id(`client-${clientId}-list`)
+        //         .title(clientLabel)
+        //         .items(projectItems)
+        //     )
+        // })
 
         // ── Design system items ───────────────────────────────────────────────
         const designSystemItems = designSystems.map((ds) => {
