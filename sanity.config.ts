@@ -11,24 +11,21 @@ console.log('[Abluo Studio] sanity.config.ts LOADED')
 
 export default defineConfig({
   name: 'abluo',
-  title: 'Abluo Studio',
+  title: 'ABLUO STUDIO BUILD TEST 001',
 
   projectId,
   dataset,
 
   plugins: [
     structureTool({
-      structure: (S) => {
-        console.log('[Abluo Studio] structure callback running')
-
-        return S.list()
-          .title('Test')
+      structure: (S) =>
+        S.list()
+          .title('TEST STRUCTURE')
           .items([
             S.listItem()
-              .id('test-item')
-              .title('Test Item'),
-          ])
-      },
+              .id('banana')
+              .title('🍌 BANANA TEST'),
+          ]),
     }),
   ],
 
