@@ -1,6 +1,6 @@
 import { defineConfig } from 'sanity'
 import { structureTool } from 'sanity/structure'
-import { schemaTypes } from './src/lib/sanity/schema'
+import { schemaTypes, initialValueTemplates } from './src/lib/sanity/schema'
 import { DesignSystemPreview } from './src/sanity/components/DesignSystemPreview'
 
 // Hardcoded to match src/lib/sanity/client.ts — avoids env var dependency in the Studio
@@ -39,7 +39,10 @@ export default defineConfig({
               _id,
               projectName,
               projectSlug,
-              "designSystemId": *[_type == "designSystem" && !(_id in path("drafts.**")) && projectSlug == ^.projectSlug][0]._id,
+              "designSystemId": coalesce(
+                designSystemRef._ref,
+                *[_type == "designSystem" && !(_id in path("drafts.**")) && projectSlug == ^.projectSlug][0]._id
+              )
             }
           }`
         )
@@ -72,7 +75,7 @@ export default defineConfig({
           const clientLabel = clientDoc.displayName ?? clientDoc.tenantSlug
           const clientId = clientDoc._id
 
-          const projectItems = clientDoc.projects.map((project) => {
+          const projectItems = (clientDoc.projects || []).map((project) => {
             const slug = project.projectSlug
             const projectLabel = project.projectName ?? slug
             const designSystemId = project.designSystemId
@@ -94,6 +97,9 @@ export default defineConfig({
                           .apiVersion('2026-05-21')
                           .filter(`_type == "siteConfig" && projectSlug == $slug`)
                           .params({ slug })
+                          .initialValueTemplates([
+                            S.initialValueTemplateItem('siteConfig_template', { projectSlug: slug })
+                          ])
                       ),
 
                     S.listItem()
@@ -126,6 +132,9 @@ export default defineConfig({
                                   .apiVersion('2026-05-21')
                                   .filter(`_type == "homePage" && projectSlug == $slug`)
                                   .params({ slug })
+                                  .initialValueTemplates([
+                                    S.initialValueTemplateItem('homePage_template', { projectSlug: slug })
+                                  ])
                               ),
                           ])
                       ),
@@ -140,6 +149,9 @@ export default defineConfig({
                           .filter(`_type == "event" && projectSlug == $slug`)
                           .params({ slug })
                           .defaultOrdering([{ field: 'startDate', direction: 'desc' }])
+                          .initialValueTemplates([
+                            S.initialValueTemplateItem('event_template', { projectSlug: slug })
+                          ])
                       ),
 
                     S.listItem()
@@ -151,6 +163,9 @@ export default defineConfig({
                           .apiVersion('2026-05-21')
                           .filter(`_type == "post" && projectSlug == $slug`)
                           .params({ slug })
+                          .initialValueTemplates([
+                            S.initialValueTemplateItem('post_template', { projectSlug: slug })
+                          ])
                       ),
                   ])
               )
@@ -185,15 +200,16 @@ export default defineConfig({
           .title('Abluo')
           .items([
 
-            S.listItem()
-              .id('section-clients')
-              .title('Clients')
-              .child(
-                S.list()
-                  .id('clients-root')
-                  .title('Clients')
-                  .items(clientItems)
-              ),
+            // TODO: Temporarily disabled to debug structure error
+            // S.listItem()
+            //   .id('section-clients')
+            //   .title('Clients')
+            //   .child(
+            //     S.list()
+            //       .id('clients-root')
+            //       .title('Clients')
+            //       .items(clientItems)
+            //   ),
 
             S.divider(),
 
@@ -234,5 +250,6 @@ export default defineConfig({
 
   schema: {
     types: schemaTypes,
+    templates: initialValueTemplates,
   },
 })
