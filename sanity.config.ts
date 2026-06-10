@@ -20,32 +20,33 @@ export default defineConfig({
         const client = context.getClient({ apiVersion: '2026-05-21' })
 
         // ── Fetch clients + projects ───────────────────────────────────────────
-        const clients = await client.fetch<{
-          _id: string
-          displayName: string
-          tenantSlug: string
-          projects: {
-            _id: string
-            projectName: string
-            projectSlug: string
-            designSystemId?: string
-          }[]
-        }[]>(
-          `*[_type == "client" && !(_id in path("drafts.**"))] | order(displayName asc) {
-            _id,
-            displayName,
-            tenantSlug,
-            "projects": *[_type == "project" && !(_id in path("drafts.**")) && clientRef._ref == ^._id] | order(projectName asc) {
-              _id,
-              projectName,
-              projectSlug,
-              "designSystemId": coalesce(
-                designSystemRef._ref,
-                *[_type == "designSystem" && !(_id in path("drafts.**")) && projectSlug == ^.projectSlug][0]._id
-              )
-            }
-          }`
-        )
+        // TODO: Temporarily disabled along with clientItems to debug structure error
+        // const clients = await client.fetch<{
+        //   _id: string
+        //   displayName: string
+        //   tenantSlug: string
+        //   projects: {
+        //     _id: string
+        //     projectName: string
+        //     projectSlug: string
+        //     designSystemId?: string
+        //   }[]
+        // }[]>(
+        //   `*[_type == "client" && !(_id in path("drafts.**"))] | order(displayName asc) {
+        //     _id,
+        //     displayName,
+        //     tenantSlug,
+        //     "projects": *[_type == "project" && !(_id in path("drafts.**")) && clientRef._ref == ^._id] | order(projectName asc) {
+        //       _id,
+        //       projectName,
+        //       projectSlug,
+        //       "designSystemId": coalesce(
+        //         designSystemRef._ref,
+        //         *[_type == "designSystem" && !(_id in path("drafts.**")) && projectSlug == ^.projectSlug][0]._id
+        //       )
+        //     }
+        //   }`
+        // )
 
         // ── Fetch all design systems ───────────────────────────────────────────
         const designSystems = await client.fetch<{
