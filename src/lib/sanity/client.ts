@@ -1,8 +1,8 @@
 import { createClient } from '@sanity/client'
 
 export const sanityClient = createClient({
-  projectId: '3n7t84j3',
-  dataset: 'production',
+  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || '3n7t84j3',
+  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
   apiVersion: '2026-05-21',
   // CDN disabled: the CDN caches empty GROQ results when a query field (projectSlug)
   // didn't exist at cache-warm time. Direct API always reflects the current dataset.

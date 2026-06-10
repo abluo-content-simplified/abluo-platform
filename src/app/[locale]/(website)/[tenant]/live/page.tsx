@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { tenantClient } from '@/lib/sanity/client'
-import { currentLiveEventQuery, localeConfigQuery, websiteSiteConfigQuery } from '@/lib/sanity/queries'
-import type { Event, LocaleConfig, SupportedLocale, WebsiteSiteConfig } from '@/lib/sanity/types'
+import { currentLiveEventQuery, localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, pastEventsQuery } from '@/lib/sanity/queries'
+import type { Event, LocaleConfig, SupportedLocale, WebsiteSiteConfig, DesignSystem } from '@/lib/sanity/types'
 import { LivePageContent } from '@/components/livener/live/LivePageContent'
 
 // force-dynamic: always render server-side so event status changes are immediate.
@@ -42,13 +42,18 @@ export default async function LivePage({ params }: PageProps) {
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  // Fetch event and siteConfig in parallel
-  const [event, siteConfig] = await Promise.all([
+  // Fetch event, siteConfig, designSystem, and past events in parallel
+  const [event, siteConfig, designSystem, pastEvents] = await Promise.all([
     fetchForTenant<Event>(currentLiveEventQuery, {
       locale: locale as SupportedLocale,
       defaultLocale,
     }),
     fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, {
+      locale: locale as SupportedLocale,
+      defaultLocale,
+    }),
+    fetchForTenant<DesignSystem>(designSystemQuery, {}),
+    fetchForTenant<Event[]>(pastEventsQuery, {
       locale: locale as SupportedLocale,
       defaultLocale,
     }),
@@ -58,6 +63,8 @@ export default async function LivePage({ params }: PageProps) {
     <LivePageContent
       event={event}
       siteConfig={siteConfig}
+      designSystem={designSystem}
+      pastEvents={pastEvents ?? []}
       locale={locale as SupportedLocale}
     />
   )

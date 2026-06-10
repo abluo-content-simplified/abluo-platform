@@ -4,11 +4,14 @@ import Link from 'next/link'
 import { PlayCircle } from 'lucide-react'
 import { SlideUp, FadeIn } from '@/components/animation'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
-import type { Event, SupportedLocale, WebsiteSiteConfig } from '@/lib/sanity/types'
+import { getBackgroundAssetUrl } from '@/lib/sanity/assets'
+import type { Event, SupportedLocale, WebsiteSiteConfig, DesignSystem } from '@/lib/sanity/types'
 
 interface LivePageContentProps {
   event: Event | null
   siteConfig: WebsiteSiteConfig | null
+  designSystem: DesignSystem | null
+  pastEvents?: Event[]
   locale: SupportedLocale
 }
 
@@ -62,7 +65,7 @@ function StatusBadge({ status }: { status: Event['status'] }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function LivePageContent({ event, siteConfig, locale }: LivePageContentProps) {
+export function LivePageContent({ event, siteConfig, designSystem, pastEvents = [], locale }: LivePageContentProps) {
   if (!event) return <NoLiveEvent />
 
   const heroSrc = imageUrl(event.heroImage, 1600)
@@ -85,12 +88,15 @@ export function LivePageContent({ event, siteConfig, locale }: LivePageContentPr
   const subheadline = siteConfig?.livePageSubheadline ?? 'Live video streaming, in the palm of your hands'
   const betaNotice = siteConfig?.livePageBetaNotice ?? 'Currently in beta — tested live, in real environments.'
 
+  // Resolve background asset — first attempts 'logotype', falls back to undefined (no background)
+  const backgroundAssetUrl = getBackgroundAssetUrl(designSystem, 'logotype', 'light')
+
   return (
     <div
       style={{
         minHeight: '100vh',
         backgroundColor: 'var(--color-background)',
-        backgroundImage: 'url(/livener/bkg.svg)',
+        backgroundImage: backgroundAssetUrl ? `url(${backgroundAssetUrl})` : undefined,
         backgroundPosition: '50% 0',
         backgroundRepeat: 'no-repeat',
         backgroundSize: '121%',
@@ -256,6 +262,76 @@ export function LivePageContent({ event, siteConfig, locale }: LivePageContentPr
               loading="lazy"
             />
           </FadeIn>
+        )}
+
+        {/* ── Past Live Events ──────────────────────────────────────── */}
+        {pastEvents && pastEvents.length > 0 && (
+          <div className="mt-20 border-t pt-20" style={{ borderColor: 'var(--color-border)' }}>
+            <SlideUp duration={0.6}>
+              <h2
+                className="text-[clamp(28px,5vw,46px)] font-bold leading-tight mb-10"
+                style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
+              >
+                Past Live Events
+              </h2>
+            </SlideUp>
+
+            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {pastEvents.map((pastEvent, idx) => {
+                const pastHeroSrc = imageUrl(pastEvent.heroImage, 400)
+                return (
+                  <SlideUp key={pastEvent._id} delay={0.05 + idx * 0.08} duration={0.6}>
+                    <Link
+                      href={`/${locale}/livener/events/${pastEvent.slug.current}`}
+                      className="group flex flex-col overflow-hidden rounded-xl transition-all hover:shadow-lg"
+                      style={{
+                        backgroundColor: 'var(--color-surface)',
+                        border: '1px solid',
+                        borderColor: 'var(--color-border)',
+                      }}
+                    >
+                      {pastHeroSrc && (
+                        <div className="overflow-hidden" style={{ maxHeight: '180px' }}>
+                          <img
+                            src={pastHeroSrc}
+                            alt={pastEvent.heroImage?.alt ?? pastEvent.title}
+                            className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-300"
+                            style={{ maxHeight: '180px', objectFit: 'cover' }}
+                            loading="lazy"
+                          />
+                        </div>
+                      )}
+
+                      <div className="flex flex-col flex-1 p-4">
+                        <h3
+                          className="font-semibold mb-2 line-clamp-2 group-hover:opacity-75 transition-opacity"
+                          style={{ color: 'var(--color-text-primary)' }}
+                        >
+                          {pastEvent.title}
+                        </h3>
+
+                        {pastEvent.location && (
+                          <p className="text-xs mb-3 flex items-center gap-1.5" style={{ color: 'var(--color-text-secondary)' }}>
+                            📍 {pastEvent.location}
+                          </p>
+                        )}
+
+                        {pastEvent.shortDescription && (
+                          <p className="text-xs line-clamp-2 mb-4 flex-1" style={{ color: 'var(--color-text-muted)' }}>
+                            {pastEvent.shortDescription}
+                          </p>
+                        )}
+
+                        <div className="flex items-center gap-2 text-xs font-medium" style={{ color: 'var(--color-primary)' }}>
+                          View Details →
+                        </div>
+                      </div>
+                    </Link>
+                  </SlideUp>
+                )
+              })}
+            </div>
+          </div>
         )}
 
       </div>

@@ -119,6 +119,13 @@ export interface ButtonStyle {
   borderRadius?: number
 }
 
+export interface BackgroundAsset {
+  key: string
+  name: string
+  lightImage?: { asset?: { url: string } }
+  darkImage?: { asset?: { url: string } }
+}
+
 export interface DesignSystem {
   colors?: {
     darkTheme?: ColorTheme
@@ -155,6 +162,12 @@ export interface DesignSystem {
     background?: string
     border?: string
   }
+  branding?: {
+    logo?: { asset?: { _ref: string } }
+    logoLight?: { asset?: { _ref: string } }
+    favicon?: { asset?: { _ref: string } }
+  }
+  backgroundAssets?: BackgroundAsset[]
 }
 
 // ─── Site Config (resolved — all strings already locale-resolved by GROQ) ─────

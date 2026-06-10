@@ -106,9 +106,9 @@ export const postBySlugQuery = /* groq */ `
 
 export const currentLiveEventQuery = /* groq */ `
   coalesce(
-    *[_type == "event" && projectSlug == $projectSlug && isCurrentLiveEvent == true][0],
-    *[_type == "event" && projectSlug == $projectSlug && status == "live"][0],
-    *[_type == "event" && projectSlug == $projectSlug && status == "upcoming"]
+    *[_type == "event" && projectSlug == $projectSlug && isCurrentLiveEvent == true && now() <= endDate][0],
+    *[_type == "event" && projectSlug == $projectSlug && status == "live" && now() <= endDate][0],
+    *[_type == "event" && projectSlug == $projectSlug && status == "upcoming" && now() < startDate]
       | order(startDate asc)[0]
   ) {
     _id,
@@ -149,6 +149,20 @@ export const eventsQuery = /* groq */ `
     "shortDescription": ${loc('shortDescription')},
     ${locImage('heroImage')},
     youtubeChannelUrl
+  }
+`
+
+export const pastEventsQuery = /* groq */ `
+  *[_type == "event" && projectSlug == $projectSlug && (status == "past" || now() > endDate)]
+  | order(startDate desc) [0..4] {
+    _id,
+    "title": ${loc('title')},
+    slug,
+    "location": ${loc('location')},
+    "shortDescription": ${loc('shortDescription')},
+    ${locImage('heroImage')},
+    startDate,
+    endDate
   }
 `
 
@@ -230,18 +244,51 @@ export const siteConfigQuery = websiteSiteConfigQuery
 
 // ─── Design System ────────────────────────────────────────────────────────────
 
+// Fetches the design system for a project.
+// Primary path:  project.designSystemRef -> design system document
+// Fallback path: design system where projectSlug matches (legacy / unmigrated projects)
 export const designSystemQuery = /* groq */ `
-  *[_type == "designSystem" && projectSlug == $projectSlug][0] {
+  coalesce(
+    *[_type == "project" && projectSlug == $projectSlug][0].designSystemRef->,
+    *[_type == "designSystem" && projectSlug == $projectSlug][0]
+  ) {
     colors {
-      darkTheme { background, backgroundAlt, primary, secondary, accent, textPrimary, textSecondary, border },
-      lightTheme { background, backgroundAlt, primary, secondary, accent, textPrimary, textSecondary, border }
+      darkTheme {
+        background, backgroundAlt, surface,
+        primary, secondary, accent,
+        textPrimary, textSecondary, textMuted,
+        border,
+        success, warning, danger
+      },
+      lightTheme {
+        background, backgroundAlt, surface,
+        primary, secondary, accent,
+        textPrimary, textSecondary, textMuted,
+        border,
+        success, warning, danger
+      }
     },
-    typography { headingFont, bodyFont },
+    typography {
+      headingFont { source, libraryFont, googleFont },
+      bodyFont { source, libraryFont, googleFont }
+    },
     radius { small, medium, large },
+    spacing { xs, s, m, l, xl },
     buttons {
       primary { background, text, borderRadius },
       secondary { background, text, borderRadius }
     },
-    cards { background, border }
+    cards { background, border },
+    branding {
+      logo { asset },
+      logoLight { asset },
+      favicon { asset }
+    },
+    backgroundAssets[] {
+      key,
+      name,
+      lightImage { asset-> },
+      darkImage { asset-> }
+    }
   }
 `

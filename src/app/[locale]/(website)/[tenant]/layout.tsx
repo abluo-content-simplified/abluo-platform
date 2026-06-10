@@ -1,11 +1,14 @@
 export const dynamic = 'force-dynamic'
 
+import type { Metadata } from 'next'
 import { tenantClient } from '@/lib/sanity/client'
 import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery } from '@/lib/sanity/queries'
 import type { LocaleConfig, SupportedLocale, DesignSystem, FontDefinition } from '@/lib/sanity/types'
+import { imageUrl } from '@/lib/sanity/image'
 import { Nav } from '@/components/livener/Nav'
 import { Footer } from '@/components/livener/Footer'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -124,6 +127,9 @@ function buildCssVars(ds: DesignSystem | null): string {
       --radius-md: ${D.radiusMd}px;
       --radius-lg: ${D.radiusLg}px;
       --radius-btn: 12px;
+      /* Bridge: wire Tailwind/shadcn tokens to our design system so bg-background etc. work */
+      --background: ${D.bg};
+      --foreground: ${D.textPrimary};
 ${typoVars}
     }
     html.light {
@@ -136,6 +142,8 @@ ${typoVars}
       --color-text-secondary: ${L.textSecondary};
       --color-text-muted: ${L.textMuted};
       --color-border: ${L.border};
+      --background: ${L.bg};
+      --foreground: ${L.textPrimary};
     }
   `.trim()
 }
@@ -148,36 +156,61 @@ function buildGoogleFontsUrl(headingFont: string, bodyFont: string): string {
   return `https://fonts.googleapis.com/css2?${families.map((f) => `family=${f}`).join('&')}&display=swap`
 }
 
+// ─── Shared design system tokens ──────────────────────────────────────────────
+
+function DesignSystemHead({ cssVars, fontsUrl }: { cssVars: string; fontsUrl: string }) {
+  return (
+    <>
+      {/* Design system CSS variables — applies to all tenants */}
+      <style dangerouslySetInnerHTML={{ __html: cssVars }} />
+      {fontsUrl && <link rel="preconnect" href="https://fonts.googleapis.com" />}
+      {fontsUrl && <link rel="stylesheet" href={fontsUrl} />}
+    </>
+  )
+}
+
+// ─── Metadata (favicon) ───────────────────────────────────────────────────────
+
+export async function generateMetadata({ params }: { params: Promise<{ tenant: string; locale: string }> }): Promise<Metadata> {
+  const { tenant: tenantId } = await params
+  const { fetchForTenant } = tenantClient(tenantId)
+  const designSystem = await fetchForTenant<DesignSystem>(designSystemQuery, {})
+  const faviconAsset = designSystem?.branding?.favicon
+  const faviconSrc = faviconAsset?.asset ? imageUrl(faviconAsset as any, 64) : undefined
+  return {
+    ...(faviconSrc ? { icons: { icon: faviconSrc } } : {}),
+  }
+}
+
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
 export default async function WebsiteLayout({ children, params }: LayoutProps) {
   const { tenant: tenantId, locale } = await params
   const { fetchForTenant } = tenantClient(tenantId)
 
-  // Fetch locale config first — needed as $defaultLocale in all subsequent queries
+  // ── Shared: locale config ────────────────────────────────────────────────────
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  // ── Livener ──────────────────────────────────────────────────────────────────
-  if (tenantId === 'livener') {
-    // Fetch design system for CSS variable injection
-    const designSystem = await fetchForTenant<DesignSystem>(designSystemQuery, {})
-    const cssVars = buildCssVars(designSystem)
-    const headingFont = getFontName(designSystem?.typography?.headingFont, 'Barlow Condensed')
-    const bodyFont = getFontName(designSystem?.typography?.bodyFont, 'Poppins')
-    const fontsUrl = buildGoogleFontsUrl(headingFont, bodyFont)
+  // ── Shared: design system — runs for ALL tenants ─────────────────────────────
+  // Fetched via project.designSystemRef -> design system document
+  const designSystem = await fetchForTenant<DesignSystem>(designSystemQuery, {})
+  const cssVars = buildCssVars(designSystem)
+  const headingFont = getFontName(designSystem?.typography?.headingFont, 'Geist')
+  const bodyFont = getFontName(designSystem?.typography?.bodyFont, 'Geist')
+  const fontsUrl = buildGoogleFontsUrl(headingFont, bodyFont)
 
+  // ── Branding assets from design system ───────────────────────────────────────
+  const logoAsset = designSystem?.branding?.logo
+  const logoLightAsset = designSystem?.branding?.logoLight
+  const logoDarkSrc = logoAsset?.asset ? imageUrl(logoAsset as any, 320) : undefined
+  const logoLightSrc = logoLightAsset?.asset ? imageUrl(logoLightAsset as any, 320) : logoDarkSrc
+
+  // ── Livener — custom nav + footer ────────────────────────────────────────────
+  if (tenantId === 'livener') {
     return (
       <>
-        {/* Inject design system CSS variables for this tenant */}
-        <style dangerouslySetInnerHTML={{ __html: cssVars }} />
-        {/* Google Fonts — loaded dynamically from design system */}
-        {fontsUrl && (
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-        )}
-        {fontsUrl && (
-          <link rel="stylesheet" href={fontsUrl} />
-        )}
+        <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
         <Nav tenantId={tenantId} locale={locale as SupportedLocale} defaultLocale={defaultLocale} />
         <main>{children}</main>
         <Footer tenantId={tenantId} locale={locale as SupportedLocale} defaultLocale={defaultLocale} />
@@ -185,38 +218,96 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
     )
   }
 
-  // ── Generic fallback (studiomartegani and future tenants) ─────────────────────
+  // ── Generic layout (studiomartegani and future tenants) ──────────────────────
   const config = await fetchForTenant<any>(websiteSiteConfigQuery, { locale, defaultLocale })
 
   return (
     <>
-      <header className="fixed left-0 right-0 top-0 z-50 flex h-16 items-center justify-between bg-white/90 px-6 backdrop-blur-sm md:px-16 lg:px-24">
-        <span className="text-sm font-medium tracking-wide text-zinc-900">
-          {config?.siteName ?? tenantId}
-        </span>
-        <div className="flex items-center gap-4">
-          <LanguageSwitcher currentLocale={locale} tenant={tenantId} />
+      <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
+      <header
+        className="fixed left-0 right-0 top-0 z-50 flex h-16 items-center justify-between px-6 backdrop-blur-sm md:px-16 lg:px-24"
+        style={{
+          backgroundColor: 'color-mix(in oklch, var(--color-background) 90%, transparent)',
+          borderBottom: '1px solid var(--color-border)',
+        }}
+      >
+        {/* Logo — dark version by default, light version shown in light theme via CSS */}
+        {logoDarkSrc ? (
+          <a href="/" className="flex items-center" style={{ lineHeight: 0 }}>
+            {logoLightSrc && logoLightSrc !== logoDarkSrc && (
+              <img
+                src={logoLightSrc}
+                alt={config?.siteName ?? tenantId}
+                height={36}
+                style={{ height: '36px', width: 'auto', display: 'none' }}
+                className="logo-light"
+              />
+            )}
+            <img
+              src={logoDarkSrc}
+              alt={config?.siteName ?? tenantId}
+              height={36}
+              style={{ height: '36px', width: 'auto' }}
+              className="logo-dark"
+            />
+          </a>
+        ) : (
+          <span
+            className="text-sm font-medium tracking-wide"
+            style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
+          >
+            {config?.siteName ?? tenantId}
+          </span>
+        )}
+        <div className="flex items-center gap-3">
           {config?.phone && (
             <a
               href={`tel:${config.phone}`}
-              className="text-xs font-medium tracking-wide text-zinc-500 transition-colors hover:text-zinc-900"
+              className="hidden text-xs font-medium tracking-wide transition-opacity hover:opacity-100 md:block"
+              style={{ color: 'var(--color-text-muted)', opacity: 0.75 }}
             >
               {config.phone}
             </a>
           )}
+          <LanguageSwitcher currentLocale={locale} tenant={tenantId} />
+          <ThemeSwitcher />
         </div>
       </header>
       <div className="h-16" />
       <main>{children}</main>
-      <footer className="border-t border-zinc-100 bg-white px-6 py-10 md:px-16 lg:px-24">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-zinc-400">{config?.siteName}</p>
-          {config?.address && <p className="text-xs text-zinc-400">{config.address}</p>}
-          {config?.email && (
-            <a href={`mailto:${config.email}`} className="text-xs text-zinc-400 transition-colors hover:text-zinc-900">
-              {config.email}
-            </a>
+      <footer
+        className="px-6 py-10 md:px-16 lg:px-24"
+        style={{
+          backgroundColor: 'var(--color-background-alt)',
+          borderTop: '1px solid var(--color-border)',
+        }}
+      >
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+          {/* Logo in footer */}
+          {logoDarkSrc ? (
+            <img
+              src={logoDarkSrc}
+              alt={config?.siteName ?? tenantId}
+              height={28}
+              style={{ height: '28px', width: 'auto', opacity: 0.6 }}
+            />
+          ) : (
+            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{config?.siteName}</p>
           )}
+          <div className="flex flex-col gap-1 sm:items-end">
+            {config?.address && (
+              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{config.address}</p>
+            )}
+            {config?.email && (
+              <a
+                href={`mailto:${config.email}`}
+                className="text-xs transition-opacity hover:opacity-100"
+                style={{ color: 'var(--color-text-muted)', opacity: 0.75 }}
+              >
+                {config.email}
+              </a>
+            )}
+          </div>
         </div>
       </footer>
     </>

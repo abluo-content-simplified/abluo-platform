@@ -52,20 +52,20 @@ function useTheme() {
   const [theme, setThemeState] = useState<Theme>('dark')
 
   useEffect(() => {
-    const stored = (localStorage.getItem('livener-theme') as Theme) ?? 'dark'
+    const stored = (localStorage.getItem('abluo-theme') as Theme) ?? 'dark'
     setThemeState(stored)
     applyTheme(stored)
 
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     const handler = () => {
-      if ((localStorage.getItem('livener-theme') as Theme) === 'system') applyTheme('system')
+      if ((localStorage.getItem('abluo-theme') as Theme) === 'system') applyTheme('system')
     }
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
   }, [])
 
   function setTheme(t: Theme) {
-    localStorage.setItem('livener-theme', t)
+    localStorage.setItem('abluo-theme', t)
     setThemeState(t)
     applyTheme(t)
   }

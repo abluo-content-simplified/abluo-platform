@@ -361,6 +361,13 @@ const projectType = defineType({
     defineField({ name: 'customDomain', title: 'Custom Domain', type: 'string' }),
     defineField({ name: 'defaultLocale', title: 'Default Locale', type: 'string', options: { list: [{ title: 'English', value: 'en' }, { title: 'Italian', value: 'it' }], layout: 'radio' }, initialValue: 'en' }),
     defineField({ name: 'status', title: 'Status', type: 'string', options: { list: ['active', 'inactive', 'archived'] }, initialValue: 'active' }),
+    defineField({
+      name: 'designSystemRef',
+      title: 'Design System',
+      type: 'reference',
+      to: [{ type: 'designSystem' }],
+      description: 'The design system this project uses for colors, typography, and spacing',
+    }),
   ],
   preview: {
     select: { title: 'projectName', subtitle: 'projectSlug' },
@@ -457,6 +464,46 @@ const buttonStyleType = defineType({
   ],
 })
 
+const backgroundAssetType = defineType({
+  name: 'backgroundAsset',
+  title: 'Background Asset',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'key',
+      title: 'Key / Slug',
+      type: 'string',
+      description: 'Unique identifier for this asset (e.g. "logotype", "pattern-dark") — used in components to reference this asset',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'name',
+      title: 'Display Name',
+      type: 'string',
+      description: 'Human-readable name for Studio',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'lightImage',
+      title: 'Light Theme Image',
+      type: 'image',
+      description: 'Image for light theme',
+      options: { hotspot: false },
+    }),
+    defineField({
+      name: 'darkImage',
+      title: 'Dark Theme Image',
+      type: 'image',
+      description: 'Image for dark theme',
+      options: { hotspot: false },
+    }),
+  ],
+  preview: {
+    select: { title: 'name', subtitle: 'key' },
+    prepare: ({ title, subtitle }) => ({ title: title ?? '—', subtitle }),
+  },
+})
+
 const designSystemType = defineType({
   name: 'designSystem',
   title: 'Design System',
@@ -470,7 +517,14 @@ const designSystemType = defineType({
     { name: 'components', title: 'Components' },
   ],
   fields: [
-    projectSlugField,
+    defineField({
+      name: 'projectSlug',
+      title: 'Project',
+      type: 'string',
+      group: 'meta',
+      description: 'Which project this design system belongs to — leave empty for templates',
+      readOnly: true,
+    }),
     defineField({ name: 'name', title: 'Name', type: 'string', group: 'meta' }),
     defineField({
       name: 'role',
@@ -500,6 +554,16 @@ const designSystemType = defineType({
         defineField({ name: 'logoLight', title: 'Logo (light background)', type: 'image', options: { hotspot: false } }),
         defineField({ name: 'favicon', title: 'Favicon', type: 'image', options: { hotspot: false } }),
       ],
+    }),
+
+    // Background Assets
+    defineField({
+      name: 'backgroundAssets',
+      title: 'Background Assets',
+      type: 'array',
+      group: 'branding',
+      description: 'Reusable background images for pages and sections (light/dark variants)',
+      of: [defineArrayMember({ type: 'backgroundAsset' })],
     }),
 
     // Colors
@@ -760,6 +824,49 @@ const postType = defineType({
   },
 })
 
+// ─── Initial Value Templates ──────────────────────────────────────────────────
+
+export const initialValueTemplates = [
+  {
+    id: 'siteConfig_template',
+    title: 'Site Config',
+    schemaType: 'siteConfig',
+    value: ({ projectSlug }: { projectSlug: string }) => ({
+      projectSlug,
+    }),
+  },
+  {
+    id: 'homePage_template',
+    title: 'Home Page',
+    schemaType: 'homePage',
+    value: ({ projectSlug }: { projectSlug: string }) => ({
+      projectSlug,
+      sections: [],
+    }),
+  },
+  {
+    id: 'event_template',
+    title: 'Event',
+    schemaType: 'event',
+    value: ({ projectSlug }: { projectSlug: string }) => ({
+      projectSlug,
+      slug: { _type: 'slug', current: '' },
+      status: 'upcoming',
+      startDate: new Date().toISOString(),
+    }),
+  },
+  {
+    id: 'post_template',
+    title: 'Blog Post',
+    schemaType: 'post',
+    value: ({ projectSlug }: { projectSlug: string }) => ({
+      projectSlug,
+      slug: { _type: 'slug', current: '' },
+      publishedAt: new Date().toISOString(),
+    }),
+  },
+]
+
 // ─── Export ───────────────────────────────────────────────────────────────────
 
 export const schemaTypes = [
@@ -788,6 +895,7 @@ export const schemaTypes = [
   fontDefinitionType,
   typescaleType,
   buttonStyleType,
+  backgroundAssetType,
   designSystemType,
   siteConfigType,
   homePageType,

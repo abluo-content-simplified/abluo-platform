@@ -42,6 +42,18 @@ function resolveTenant(hostname: string): string | null {
 }
 
 /**
+ * Map URL tenant slug to actual Sanity projectSlug.
+ * URL slugs are shorter (e.g., "livener"), Sanity projectSlugs have suffixes (e.g., "livener-main")
+ */
+function resolveSanityProjectSlug(urlTenant: string): string | null {
+  const projectMap: Record<string, string> = {
+    'livener': 'livener-main',
+    'studiomartegani': 'studiomartegani-main',
+  }
+  return projectMap[urlTenant] ?? null
+}
+
+/**
  * Resolve the default display locale for a project.
  * Used when routing from a domain root — no locale in the URL yet.
  * Keep in sync with the projects table in Supabase.
@@ -102,6 +114,15 @@ export async function proxy(request: NextRequest) {
 
   // ── Bypass routes — no middleware processing ─────────────────────────────
   if (pathname.startsWith('/studio') || pathname.startsWith('/login')) {
+    return NextResponse.next()
+  }
+
+  // ── Bypass static assets and favicons ──────────────────────────────────────
+  if (pathname.match(/\.(png|ico|svg|webp|jpg|jpeg|gif|txt|xml|json|woff|woff2)$/i) ||
+      pathname.includes('apple-touch-icon') ||
+      pathname.includes('favicon') ||
+      pathname.includes('robots.txt') ||
+      pathname.includes('sitemap')) {
     return NextResponse.next()
   }
 

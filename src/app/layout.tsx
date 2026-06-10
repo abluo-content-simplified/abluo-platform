@@ -24,6 +24,12 @@ export const metadata: Metadata = {
   description: "Content. Simplified.",
 };
 
+// ─── FOUC prevention script ───────────────────────────────────────────────────
+// Runs synchronously before first paint.
+// Dark-first: `:root` = dark (no class). `html.light` = light override.
+// Reads `abluo-theme` from localStorage; falls back to system preference.
+const themeScript = `(function(){try{var t=localStorage.getItem('abluo-theme');if(t==='light'){document.documentElement.classList.add('light');}else if(t==='dark'){/* default — no class needed */}else{if(!window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.classList.add('light');}}}catch(e){}})();`
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -34,6 +40,10 @@ export default function RootLayout({
       lang="en"
       className={`${geistMono.variable} ${barlowCondensed.variable} ${poppins.variable} h-full antialiased`}
     >
+      <head>
+        {/* Theme preference applied before paint to prevent flash */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
