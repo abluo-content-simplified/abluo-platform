@@ -504,6 +504,76 @@ const backgroundAssetType = defineType({
   },
 })
 
+const mediaAssetType = defineType({
+  name: 'mediaAsset',
+  title: 'Media Asset',
+  type: 'document',
+  fields: [
+    defineField({
+      name: 'image',
+      title: 'Image',
+      type: 'image',
+      description: 'Max 4000px / 10MB recommended',
+      options: { hotspot: false },
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'tenant',
+      title: 'Tenant',
+      type: 'reference',
+      to: [{ type: 'client' }],
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'project',
+      title: 'Project',
+      type: 'reference',
+      to: [{ type: 'project' }],
+    }),
+    defineField({
+      name: 'projectSlug',
+      title: 'Project Slug',
+      type: 'string',
+      description: 'Denormalized from project reference — set by API',
+      readOnly: true,
+      hidden: true,
+    }),
+    defineField({
+      name: 'tags',
+      title: 'Tags',
+      type: 'array',
+      of: [defineArrayMember({ type: 'string' })],
+      options: { layout: 'tags' },
+    }),
+    defineField({
+      name: 'altText',
+      title: 'Alt Text',
+      type: 'string',
+      description: 'Describe the image for screen readers and accessibility',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'description',
+      title: 'Description',
+      type: 'text',
+      rows: 2,
+      description: 'Optional details about this image',
+    }),
+  ],
+  preview: {
+    select: {
+      title: 'altText',
+      media: 'image',
+      subtitle: 'tags.0',
+    },
+    prepare: ({ title, media, subtitle }) => ({
+      title: title ?? 'Untitled',
+      media,
+      subtitle: subtitle ?? 'No tags',
+    }),
+  },
+})
+
 const designSystemType = defineType({
   name: 'designSystem',
   title: 'Design System',
@@ -553,6 +623,8 @@ const designSystemType = defineType({
         defineField({ name: 'logo', title: 'Logo (dark background)', type: 'image', options: { hotspot: false } }),
         defineField({ name: 'logoLight', title: 'Logo (light background)', type: 'image', options: { hotspot: false } }),
         defineField({ name: 'favicon', title: 'Favicon', type: 'image', options: { hotspot: false } }),
+        defineField({ name: 'openGraphImage', title: 'Open Graph Image', type: 'image', description: 'Social Sharing Image • 1200 x 630 pixels • Aspect ratio: 1.91:1 • JPG preferred', options: { hotspot: false } }),
+        defineField({ name: 'appleTouchIcon', title: 'Apple Touch Icon', type: 'image', description: 'Used when saved to iPhone/iPad home screen • 180 x 180 pixels • PNG', options: { hotspot: false } }),
       ],
     }),
 
@@ -896,6 +968,7 @@ export const schemaTypes = [
   typescaleType,
   buttonStyleType,
   backgroundAssetType,
+  mediaAssetType,
   designSystemType,
   siteConfigType,
   homePageType,

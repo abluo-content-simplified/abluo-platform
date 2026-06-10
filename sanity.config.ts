@@ -163,7 +163,22 @@ export default defineConfig({
               S.list()
                 .id(`client-${clientId}-list`)
                 .title(clientLabel)
-                .items(projectItems)
+                .items([
+                  ...projectItems,
+
+                  S.divider(),
+
+                  S.listItem()
+                    .id(`${clientDoc.tenantSlug}-media`)
+                    .title('Media Library')
+                    .child(
+                      S.documentList()
+                        .title('Media Library')
+                        .apiVersion('2026-05-21')
+                        .filter(`_type == "mediaAsset" && tenant._ref == $clientId`)
+                        .params({ clientId })
+                    ),
+                ])
             )
         })
 
@@ -211,20 +226,10 @@ export default defineConfig({
               .id('section-media-library')
               .title('Media Library')
               .child(
-                S.list()
-                  .id('media-library-root')
-                  .title('Media Library')
-                  .items([
-                    S.listItem()
-                      .id('media-placeholder')
-                      .title('Coming soon')
-                      .child(
-                        S.documentList()
-                          .title('Media Library')
-                          .apiVersion('2026-05-21')
-                          .filter('_type == "sanity.imageAsset" && false')
-                      ),
-                  ])
+                S.documentList()
+                  .title('All Media Assets')
+                  .apiVersion('2026-05-21')
+                  .filter('_type == "mediaAsset"')
               ),
 
           ])
