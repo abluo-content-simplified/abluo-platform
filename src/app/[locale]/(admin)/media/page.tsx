@@ -450,7 +450,7 @@ export default function MediaPage() {
                     >
                       <img
                         src={`${asset.image.asset.url}?w=80&h=80&fit=crop`}
-                        alt={asset.altText}
+                        alt={typeof asset.altText === 'string' ? asset.altText : ''}
                         className="h-12 w-12 rounded object-cover"
                       />
                     </td>
