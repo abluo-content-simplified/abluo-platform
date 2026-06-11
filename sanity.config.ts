@@ -1,6 +1,6 @@
 import { defineConfig } from 'sanity'
 import { structureTool } from 'sanity/structure'
-import { schemaTypes } from './src/lib/sanity/schema'
+import { schemaTypes, initialValueTemplates } from './src/lib/sanity/schema'
 import { DesignSystemPreview } from './src/sanity/components/DesignSystemPreview'
 
 // Hardcoded to match src/lib/sanity/client.ts — avoids env var dependency in the Studio
@@ -77,6 +77,7 @@ export default defineConfig({
             const projectLabel = project.projectName ?? slug
             const designSystemId = project.designSystemId
 
+
             return S.listItem()
               .id(`project-${slug}`)
               .title(projectLabel)
@@ -91,9 +92,13 @@ export default defineConfig({
                       .child(
                         S.documentList()
                           .title('Settings')
+                          .schemaType('siteConfig')
                           .apiVersion('2026-05-21')
                           .filter(`_type == "siteConfig" && projectSlug == $slug`)
                           .params({ slug })
+                          .initialValueTemplates([
+                            S.initialValueTemplateItem('siteConfigProjectOwned', { projectSlug: slug }),
+                          ])
                       ),
 
                     S.listItem()
@@ -104,9 +109,13 @@ export default defineConfig({
                           ? designSystemPane(designSystemId)
                           : S.documentList()
                               .title('Design System')
+                              .schemaType('designSystem')
                               .apiVersion('2026-05-21')
                               .filter(`_type == "designSystem" && projectSlug == $slug`)
                               .params({ slug })
+                              .initialValueTemplates([
+                                S.initialValueTemplateItem('designSystemProjectOwned', { projectSlug: slug }),
+                              ])
                       ),
 
                     S.listItem()
@@ -123,9 +132,13 @@ export default defineConfig({
                               .child(
                                 S.documentList()
                                   .title('Home Page')
+                                  .schemaType('homePage')
                                   .apiVersion('2026-05-21')
                                   .filter(`_type == "homePage" && projectSlug == $slug`)
                                   .params({ slug })
+                                  .initialValueTemplates([
+                                    S.initialValueTemplateItem('homePageProjectOwned', { projectSlug: slug }),
+                                  ])
                               ),
                           ])
                       ),
@@ -136,10 +149,14 @@ export default defineConfig({
                       .child(
                         S.documentList()
                           .title('Events')
+                          .schemaType('event')
                           .apiVersion('2026-05-21')
                           .filter(`_type == "event" && projectSlug == $slug`)
                           .params({ slug })
                           .defaultOrdering([{ field: 'startDate', direction: 'desc' }])
+                          .initialValueTemplates([
+                            S.initialValueTemplateItem('eventProjectOwned', { projectSlug: slug }),
+                          ])
                       ),
 
                     S.listItem()
@@ -148,9 +165,13 @@ export default defineConfig({
                       .child(
                         S.documentList()
                           .title('Blog Posts')
+                          .schemaType('post')
                           .apiVersion('2026-05-21')
                           .filter(`_type == "post" && projectSlug == $slug`)
                           .params({ slug })
+                          .initialValueTemplates([
+                            S.initialValueTemplateItem('postProjectOwned', { projectSlug: slug }),
+                          ])
                       ),
                   ])
               )
@@ -232,6 +253,55 @@ export default defineConfig({
                   .filter('_type == "mediaAsset"')
               ),
 
+            S.divider(),
+
+            S.listItem()
+              .id('section-unassigned')
+              .title('Unassigned Content')
+              .child(
+                S.list()
+                  .id('unassigned-root')
+                  .title('Unassigned Content')
+                  .items([
+                    S.listItem()
+                      .id('unassigned-homepages')
+                      .title('Home Pages without Project')
+                      .child(
+                        S.documentList()
+                          .title('Unassigned Home Pages')
+                          .apiVersion('2026-05-21')
+                          .filter('_type == "homePage" && (projectSlug == null || projectSlug == "")')
+                      ),
+                    S.listItem()
+                      .id('unassigned-posts')
+                      .title('Posts without Project')
+                      .child(
+                        S.documentList()
+                          .title('Unassigned Posts')
+                          .apiVersion('2026-05-21')
+                          .filter('_type == "post" && (projectSlug == null || projectSlug == "")')
+                      ),
+                    S.listItem()
+                      .id('unassigned-events')
+                      .title('Events without Project')
+                      .child(
+                        S.documentList()
+                          .title('Unassigned Events')
+                          .apiVersion('2026-05-21')
+                          .filter('_type == "event" && (projectSlug == null || projectSlug == "")')
+                      ),
+                    S.listItem()
+                      .id('unassigned-siteconfigs')
+                      .title('Site Configs without Project')
+                      .child(
+                        S.documentList()
+                          .title('Unassigned Site Configs')
+                          .apiVersion('2026-05-21')
+                          .filter('_type == "siteConfig" && (projectSlug == null || projectSlug == "")')
+                      ),
+                  ])
+              ),
+
           ])
       },
     }),
@@ -239,5 +309,6 @@ export default defineConfig({
 
   schema: {
     types: schemaTypes,
+    templates: initialValueTemplates,
   },
 })

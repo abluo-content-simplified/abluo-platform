@@ -137,11 +137,76 @@ const emailSubjectType = defineType({
 })
 
 // ─── projectSlug — the shared linking field ───────────────────────────────────
+//
+// PATTERN FOR PROJECT-SCOPED CONTENT TYPES:
+//
+// Every project-owned document type (Event, Post, Page, FAQ, Service, etc.) must follow this pattern:
+//
+// 1. IN SCHEMA (src/lib/sanity/schema.ts):
+//    - Add projectSlugField as the first field in fields array
+//    - Ensure the type is exported in schemaTypes array
+//
+//    const myType = defineType({
+//      name: 'myType',
+//      title: 'My Type',
+//      type: 'document',
+//      fields: [
+//        projectSlugField,  // ← REQUIRED, handles read-only + required validation
+//        ... other fields
+//      ],
+//    })
+//
+// 2. IN INITIAL VALUE TEMPLATES (src/lib/sanity/schema.ts):
+//    - Add template with id matching the schema type name
+//    - Declare parameters array with projectSlug parameter
+//    - Receive and set projectSlug in value function
+//
+//    {
+//      id: 'myType',  // ← id MUST match schemaType
+//      title: 'My Type',
+//      schemaType: 'myType',
+//      parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+//      value: ({ projectSlug }: { projectSlug: string }) => ({
+//        projectSlug,  // ← MUST set projectSlug from parameter
+//        ... other initial values
+//      }),
+//    }
+//
+// 3. IN STRUCTURE TOOL (sanity.config.ts):
+//    - Add .schemaType('myType') to the documentList
+//    - Call .initialValueTemplates([S.initialValueTemplateItem('myType', { projectSlug: slug })])
+//    - Pass the projectSlug from the structure context
+//
+//    S.documentList()
+//      .title('My Type')
+//      .schemaType('myType')  // ← REQUIRED
+//      .filter(`_type == "myType" && projectSlug == $slug`)
+//      .params({ slug })
+//      .initialValueTemplates([
+//        S.initialValueTemplateItem('myType', { projectSlug: slug })  // ← REQUIRED
+//      ])
+//
+// How it works:
+// - User navigates to Project → My Type
+// - User clicks "+" to create new document
+// - Sanity calls the template's value() function with { projectSlug: slug }
+// - Template sets projectSlug in the initial document value
+// - Document is created with projectSlug pre-filled
+// - Document automatically appears in correct project folder
+// - Document does NOT appear in Unassigned Content
+//
+// Result:
+// - ✓ New documents are automatically assigned to the project they're created in
+// - ✓ projectSlug is visible, read-only, and required
+// - ✓ No duplicate create menu entries (id matches schemaType)
+// - ✓ Unassigned Content is a safety net for orphaned documents
+// - ✓ Pattern scales to any future project-scoped type
+//
 const projectSlugField = defineField({
   name: 'projectSlug',
   title: 'Project',
   type: 'string',
-  description: 'Which project this document belongs to — set by platform, do not edit',
+  description: 'Which project this document belongs to — automatically set from project context',
   readOnly: true,
   validation: (Rule) => Rule.required(),
 })
@@ -510,6 +575,12 @@ const mediaAssetType = defineType({
   type: 'document',
   fields: [
     defineField({
+      name: 'name',
+      title: 'Name',
+      type: 'string',
+      description: 'Friendly name for this asset (e.g. "Hero Image", "Team Photo")',
+    }),
+    defineField({
       name: 'image',
       title: 'Image',
       type: 'image',
@@ -548,16 +619,41 @@ const mediaAssetType = defineType({
     defineField({
       name: 'altText',
       title: 'Alt Text',
-      type: 'string',
-      description: 'Describe the image for screen readers and accessibility',
+      type: 'object',
+      description: 'Alt text for screen readers and accessibility (multilingual)',
+      fields: [
+        defineField({ name: 'en', title: 'English', type: 'string' }),
+        defineField({ name: 'it', title: 'Italian', type: 'string' }),
+        defineField({ name: 'de', title: 'German', type: 'string' }),
+      ],
       validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'description',
       title: 'Description',
-      type: 'text',
-      rows: 2,
-      description: 'Optional details about this image',
+      type: 'object',
+      description: 'Optional details about this image (multilingual)',
+      fields: [
+        defineField({ name: 'en', title: 'English', type: 'text', rows: 2 }),
+        defineField({ name: 'it', title: 'Italian', type: 'text', rows: 2 }),
+        defineField({ name: 'de', title: 'German', type: 'text', rows: 2 }),
+      ],
+    }),
+    defineField({
+      name: 'uploadedBy',
+      title: 'Uploaded By (User ID)',
+      type: 'string',
+      description: 'User ID who uploaded this asset — auto-populated when user management is ready',
+      readOnly: true,
+      hidden: true,
+    }),
+    defineField({
+      name: 'uploadedByName',
+      title: 'Uploaded By (User Name)',
+      type: 'string',
+      description: 'User name/email who uploaded this asset — auto-populated when user management is ready',
+      readOnly: true,
+      hidden: true,
     }),
   ],
   preview: {
@@ -897,44 +993,79 @@ const postType = defineType({
 })
 
 // ─── Initial Value Templates ──────────────────────────────────────────────────
+//
+// PARAMETERIZED TEMPLATES FOR PROJECT-OWNED DOCUMENTS
+//
+// Each template declares:
+// - parameters: array with projectSlug parameter definition
+// - value: function that receives the projectSlug from the structure tool
+//
+// The structure tool passes projectSlug via .initialValueTemplateItem('typeId', {projectSlug: slug})
+//
 
+/**
+ * Initial Value Templates for Project-Owned Content Types
+ *
+ * IMPORTANT: Template ids must NOT match their schemaType. This prevents Sanity's template
+ * resolution from bypassing parameterized templates. Each project-owned type has a template
+ * with id: `{schemaType}ProjectOwned` and schemaType: `{schemaType}`.
+ *
+ * Pattern: When a document is created within a project context, the structure tool calls:
+ *   S.initialValueTemplateItem('{schemaType}ProjectOwned', { projectSlug: slug })
+ *
+ * This passes the slug as a parameter to the template's value() function, which sets
+ * the projectSlug field automatically.
+ */
 export const initialValueTemplates = [
   {
-    id: 'siteConfig_template',
+    id: 'siteConfigProjectOwned',
     title: 'Site Config',
     schemaType: 'siteConfig',
-    value: ({ projectSlug }: { projectSlug: string }) => ({
-      projectSlug,
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
     }),
   },
   {
-    id: 'homePage_template',
+    id: 'homePageProjectOwned',
     title: 'Home Page',
     schemaType: 'homePage',
-    value: ({ projectSlug }: { projectSlug: string }) => ({
-      projectSlug,
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
       sections: [],
     }),
   },
   {
-    id: 'event_template',
+    id: 'eventProjectOwned',
     title: 'Event',
     schemaType: 'event',
-    value: ({ projectSlug }: { projectSlug: string }) => ({
-      projectSlug,
-      slug: { _type: 'slug', current: '' },
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
       status: 'upcoming',
       startDate: new Date().toISOString(),
     }),
   },
   {
-    id: 'post_template',
+    id: 'postProjectOwned',
     title: 'Blog Post',
     schemaType: 'post',
-    value: ({ projectSlug }: { projectSlug: string }) => ({
-      projectSlug,
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
       slug: { _type: 'slug', current: '' },
       publishedAt: new Date().toISOString(),
+    }),
+  },
+  {
+    id: 'designSystemProjectOwned',
+    title: 'Design System',
+    schemaType: 'designSystem',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+      role: 'active',
     }),
   },
 ]
