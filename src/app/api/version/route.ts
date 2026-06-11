@@ -1,4 +1,6 @@
 import { execSync } from 'child_process'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -8,17 +10,14 @@ export async function GET() {
     const environment = process.env.VERCEL_ENV || 'localhost'
     const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || 'production'
 
-    // Get latest git tag (version)
+    // Get version from package.json (always available, works on production)
     let version = 'unknown'
     try {
-      version = execSync('git describe --tags --abbrev=0', { encoding: 'utf-8' }).trim()
-      // Remove 'v' prefix if present
-      if (version.startsWith('v')) {
-        version = version.slice(1)
-      }
+      const packageJsonPath = join(process.cwd(), 'package.json')
+      const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'))
+      version = packageJson.version
     } catch {
-      // Fallback for production: use "production" or "preview" as version
-      version = environment === 'production' ? 'production' : environment
+      version = 'unknown'
     }
 
     // Get short commit hash

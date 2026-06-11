@@ -47,10 +47,45 @@ export const websiteSiteConfigQuery = /* groq */ `
     "tagline": ${loc('tagline')},
     ${locImage('logo')},
     ${locImage('logoLight')},
+    backgroundGraphic {
+      enabled,
+      ${locImage('asset')},
+      opacity,
+      scale,
+      mobileScale,
+      rotation,
+      positionPreset,
+      offsetX,
+      offsetY,
+      mobileOffsetX,
+      mobileOffsetY,
+      scrollBehavior,
+      scope
+    },
+    headerAppearance {
+      stickyHeader,
+      initialStyle,
+      scrolledStyle,
+      backgroundOpacity,
+      blurEffect,
+      shadow,
+      headerHeight,
+      customHeight,
+      zIndex,
+      borderStyle
+    },
+    languageSwitcherPlacement,
+    themeMode,
+    themeSwitcherPlacement,
     navLinks[] {
       "label": ${loc('label')},
       href,
-      external
+      external,
+      children[] {
+        "label": ${loc('label')},
+        href,
+        external
+      }
     },
     "ctaLabel": ${loc('ctaLabel')},
     ctaHref,
@@ -203,9 +238,11 @@ export const eventBySlugQuery = /* groq */ `
 export const homePageQuery = /* groq */ `
   *[_type == "homePage" && projectSlug == $projectSlug][0] {
     projectSlug,
+    backgroundPattern,
     sections[] {
       _type,
       _key,
+      background,
       "eyebrow": ${loc('eyebrow')},
       "headline": ${loc('headline')},
       "subheadline": ${loc('subheadline')},
@@ -229,7 +266,6 @@ export const homePageQuery = /* groq */ `
         "bio": ${loc('bio')},
       },
       "content": ${loc('content')},
-      backgroundColor,
       items[] {
         _key,
         "question": ${loc('question')},
@@ -279,6 +315,18 @@ export const designSystemQuery = /* groq */ `
       secondary { background, text, borderRadius }
     },
     cards { background, border },
+    sectionSurfaces {
+      surface1,
+      surface2,
+      surface3,
+      brandSurface,
+      glass {
+        backgroundOklch,
+        backdropBlur,
+        borderColor,
+        borderWidth
+      }
+    },
     branding {
       logo { asset },
       logoLight { asset },

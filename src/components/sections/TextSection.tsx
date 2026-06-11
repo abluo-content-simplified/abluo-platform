@@ -1,4 +1,6 @@
-import type { TextSection, PortableTextContent } from '@/lib/sanity/types'
+import type { TextSection, PortableTextContent, DesignSystem } from '@/lib/sanity/types'
+import { getSurfaceStyles } from '@/lib/sanity/surfaces'
+import type { SurfaceType } from '@/lib/sanity/surfaces'
 
 function RichText({ blocks }: { blocks: PortableTextContent }) {
   const elements: React.ReactNode[] = []
@@ -66,28 +68,20 @@ function RichText({ blocks }: { blocks: PortableTextContent }) {
   return <div className="space-y-4">{elements}</div>
 }
 
-// Background colours: 'white' → background, 'grey' → background-alt, 'dark' → surface
-const BG_TOKEN: Record<string, string> = {
-  white: 'var(--color-background)',
-  grey: 'var(--color-background-alt)',
-  dark: 'var(--color-surface)',
-}
-
 interface Props {
   section: TextSection
+  surface: SurfaceType
+  designSystem: DesignSystem | null
 }
 
-export function TextSection({ section }: Props) {
-  const { eyebrow, title, content, backgroundColor = 'white' } = section
-  const bgToken = BG_TOKEN[backgroundColor] ?? BG_TOKEN.white
-
-  // In 'dark' sections, text tokens stay the same — they're already dynamic.
-  // The surface token is the darkest background, so text will naturally stand out.
+export function TextSection({ section, surface, designSystem }: Props) {
+  const { eyebrow, title, content } = section
+  const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
   return (
     <section
       className="px-6 py-24 md:px-16 lg:px-24"
-      style={{ backgroundColor: bgToken }}
+      style={surfaceStyles}
     >
       <div className="mx-auto w-full max-w-3xl">
         {eyebrow && (

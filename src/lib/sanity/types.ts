@@ -73,8 +73,22 @@ export interface ResolvedImage {
 
 export interface NavLink {
   label: string
-  href: string
+  linkType?: 'internal' | 'external'
+  internalPage?: 'homepage' | 'live'
+  externalUrl?: string
+  openInNewTab?: boolean
+  // Legacy fields for backward compatibility
+  href?: string
   external?: boolean
+  children?: NavLink[]
+}
+
+// Helper type for resolved links (after URL computation)
+export interface ResolvedNavLink {
+  label: string
+  href: string
+  external: boolean
+  children?: ResolvedNavLink[]
 }
 
 export interface SocialLink {
@@ -126,6 +140,56 @@ export interface BackgroundAsset {
   darkImage?: { asset?: { url: string } }
 }
 
+export interface BackgroundGraphic {
+  enabled?: boolean
+  asset?: ResolvedImage
+  opacity?: number
+  scale?: number
+  mobileScale?: number
+  rotation?: number
+  positionPreset?: 'center' | 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight'
+  offsetX?: number
+  offsetY?: number
+  mobileOffsetX?: number
+  mobileOffsetY?: number
+  scrollBehavior?: 'fixed' | 'scroll' | 'parallax'
+  scope?: 'entire' | 'homepage' | 'hero'
+}
+
+export interface HeaderAppearance {
+  stickyHeader?: boolean
+  initialStyle?: 'transparent' | 'solid' | 'glass'
+  scrolledStyle?: 'transparent' | 'solid' | 'glass'
+  backgroundOpacity?: number
+  blurEffect?: boolean
+  shadow?: 'none' | 'small' | 'medium'
+  headerHeight?: 'compact' | 'normal' | 'large'
+  customHeight?: number
+  zIndex?: number
+  borderStyle?: 'always' | 'onScroll' | 'never'
+}
+
+// ─── Section Surface System ───────────────────────────────────────────────────
+
+export interface GlassStyle {
+  backgroundOklch?: string
+  backdropBlur?: number
+  borderColor?: string
+  borderWidth?: number
+}
+
+export interface SectionSurfaces {
+  surface1?: string
+  surface2?: string
+  surface3?: string
+  brandSurface?: string
+  glass?: GlassStyle
+}
+
+export interface PageSection {
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+}
+
 export interface DesignSystem {
   colors?: {
     darkTheme?: ColorTheme
@@ -162,6 +226,7 @@ export interface DesignSystem {
     background?: string
     border?: string
   }
+  sectionSurfaces?: SectionSurfaces
   branding?: {
     logo?: { asset?: { _ref: string } }
     logoLight?: { asset?: { _ref: string } }
@@ -181,6 +246,11 @@ export interface WebsiteSiteConfig {
   tagline?: string
   logo?: ResolvedImage
   logoLight?: ResolvedImage
+  backgroundGraphic?: BackgroundGraphic
+  headerAppearance?: HeaderAppearance
+  languageSwitcherPlacement?: 'header' | 'footer' | 'both'
+  themeMode?: 'lightOnly' | 'darkOnly' | 'toggle' | 'system'
+  themeSwitcherPlacement?: 'header' | 'footer' | 'both'
   navLinks?: NavLink[]
   ctaLabel?: string
   ctaHref?: string
@@ -247,6 +317,7 @@ export interface Event {
 export interface HeroSection {
   _type: 'heroSection'
   _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
   eyebrow?: string
   headline?: string
   subheadline?: string
@@ -258,6 +329,7 @@ export interface HeroSection {
 export interface ContentSection {
   _type: 'contentSection'
   _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
   eyebrow?: string
   title?: string
   body?: PortableTextContent
@@ -277,6 +349,7 @@ export interface TeamMember {
 export interface TeamSection {
   _type: 'teamSection'
   _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
   title?: string
   subtitle?: string
   members?: TeamMember[]
@@ -285,10 +358,10 @@ export interface TeamSection {
 export interface TextSection {
   _type: 'textSection'
   _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
   eyebrow?: string
   title?: string
   content?: PortableTextContent
-  backgroundColor?: 'white' | 'grey' | 'dark'
 }
 
 export interface TreatmentCard {
@@ -302,6 +375,7 @@ export interface TreatmentCard {
 export interface TreatmentsSection {
   _type: 'treatmentsSection'
   _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
   eyebrow?: string
   title?: string
   intro?: string
@@ -317,6 +391,7 @@ export interface FAQItem {
 export interface FAQSection {
   _type: 'faqSection'
   _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
   eyebrow?: string
   title?: string
   items?: FAQItem[]
@@ -325,6 +400,7 @@ export interface FAQSection {
 export interface ContactSection {
   _type: 'contactSection'
   _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
   title?: string
   subtitle?: string
   mapEmbedUrl?: string
@@ -341,5 +417,6 @@ export type PageSection =
 
 export interface WebsiteHomePage {
   tenantSlug: string
+  backgroundPattern?: 'none' | 'alternate1-2' | 'alternate1-2-3'
   sections?: PageSection[]
 }

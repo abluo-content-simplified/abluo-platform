@@ -1,18 +1,23 @@
-import type { ContactSection, WebsiteSiteConfig } from '@/lib/sanity/types'
+import type { ContactSection, WebsiteSiteConfig, DesignSystem } from '@/lib/sanity/types'
+import { getSurfaceStyles } from '@/lib/sanity/surfaces'
+import type { SurfaceType } from '@/lib/sanity/surfaces'
 
 interface Props {
   section: ContactSection
+  surface: SurfaceType
+  designSystem: DesignSystem | null
   siteConfig?: WebsiteSiteConfig | null
 }
 
-export function ContactSection({ section, siteConfig }: Props) {
+export function ContactSection({ section, surface, designSystem, siteConfig }: Props) {
   const { title, subtitle, mapEmbedUrl } = section
+  const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
   return (
     <section
       id="contatti"
       className="px-6 py-24 md:px-16 lg:px-24"
-      style={{ backgroundColor: 'var(--color-background-alt)' }}
+      style={surfaceStyles}
     >
       <div className="mx-auto w-full max-w-5xl">
         <div className="grid gap-16 md:grid-cols-2">

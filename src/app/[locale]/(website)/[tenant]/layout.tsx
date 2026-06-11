@@ -3,12 +3,14 @@ export const dynamic = 'force-dynamic'
 import type { Metadata } from 'next'
 import { tenantClient } from '@/lib/sanity/client'
 import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery } from '@/lib/sanity/queries'
-import type { LocaleConfig, SupportedLocale, DesignSystem, FontDefinition } from '@/lib/sanity/types'
+import type { LocaleConfig, SupportedLocale, DesignSystem, FontDefinition, WebsiteSiteConfig, BackgroundGraphic } from '@/lib/sanity/types'
 import { imageUrl } from '@/lib/sanity/image'
-import { Nav } from '@/components/livener/Nav'
+import { resolveNavLinks } from '@/lib/sanity/nav-links'
 import { Footer } from '@/components/livener/Footer'
-import { LanguageSwitcher } from '@/components/LanguageSwitcher'
-import { ThemeSwitcher } from '@/components/ThemeSwitcher'
+import { NavClient } from '@/components/livener/Nav/NavClient'
+import { LanguageSwitcher } from '@/components/SiteControls/LanguageSwitcher'
+import { ThemeSwitcher } from '@/components/SiteControls/ThemeSwitcher'
+import { HeaderAppearanceWrapper } from '@/components/HeaderAppearanceWrapper'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -156,6 +158,75 @@ function buildGoogleFontsUrl(headingFont: string, bodyFont: string): string {
   return `https://fonts.googleapis.com/css2?${families.map((f) => `family=${f}`).join('&')}&display=swap`
 }
 
+// ─── Background Graphic Utilities ─────────────────────────────────────────────
+
+/** Map position presets to CSS background-position values. */
+function getBackgroundPosition(preset?: string): string {
+  switch (preset) {
+    case 'topLeft':
+      return '0% 0%'
+    case 'topRight':
+      return '100% 0%'
+    case 'bottomLeft':
+      return '0% 100%'
+    case 'bottomRight':
+      return '100% 100%'
+    case 'center':
+    default:
+      return '50% 50%'
+  }
+}
+
+/** Build CSS transform string from scale, rotation, and offsets. */
+function buildBackgroundTransform(
+  scale?: number,
+  rotation?: number,
+  offsetX?: number,
+  offsetY?: number
+): string {
+  const transforms: string[] = []
+  if (scale && scale !== 100) transforms.push(`scale(${scale / 100})`)
+  if (rotation && rotation !== 0) transforms.push(`rotate(${rotation}deg)`)
+  if (offsetX && offsetX !== 0) transforms.push(`translateX(${offsetX}%)`)
+  if (offsetY && offsetY !== 0) transforms.push(`translateY(${offsetY}%)`)
+  return transforms.length > 0 ? transforms.join(' ') : 'none'
+}
+
+/** Build inline styles for the background graphic wrapper. */
+function buildBackgroundGraphicStyles(
+  bg: BackgroundGraphic | undefined,
+  imageUrl: string | undefined,
+  isMobile: boolean
+): React.CSSProperties | undefined {
+  if (!bg?.enabled || !imageUrl) return undefined
+
+  const scale = isMobile && bg.mobileScale ? bg.mobileScale : bg.scale ?? 100
+  const offsetX = isMobile && bg.mobileOffsetX !== undefined ? bg.mobileOffsetX : bg.offsetX ?? 0
+  const offsetY = isMobile && bg.mobileOffsetY !== undefined ? bg.mobileOffsetY : bg.offsetY ?? 0
+  const opacity = (bg.opacity ?? 5) / 100
+  const scrollBehavior = bg.scrollBehavior ?? 'scroll'
+
+  // Determine positioning based on scroll behavior
+  const isFixed = scrollBehavior === 'fixed' || scrollBehavior === 'parallax'
+
+  return {
+    position: (isFixed ? 'fixed' : 'absolute') as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    pointerEvents: 'none' as const,
+    zIndex: 0,
+    backgroundImage: `url('${imageUrl}')`,
+    backgroundPosition: getBackgroundPosition(bg.positionPreset),
+    backgroundSize: 'contain',
+    backgroundRepeat: 'no-repeat',
+    backgroundAttachment: scrollBehavior === 'scroll' ? 'scroll' : 'fixed',
+    opacity,
+    transform: buildBackgroundTransform(scale, bg.rotation, offsetX, offsetY),
+  } as React.CSSProperties
+}
+
 // ─── Shared design system tokens ──────────────────────────────────────────────
 
 function DesignSystemHead({ cssVars, fontsUrl }: { cssVars: string; fontsUrl: string }) {
@@ -206,12 +277,51 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   const logoDarkSrc = logoAsset?.asset ? imageUrl(logoAsset as any, 320) : undefined
   const logoLightSrc = logoLightAsset?.asset ? imageUrl(logoLightAsset as any, 320) : logoDarkSrc
 
-  // ── Livener — custom nav + footer ────────────────────────────────────────────
+  // ── Livener — header appearance system + nav client + footer ─────────────────
   if (tenantId === 'livener') {
+    const livenerConfig = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
+    const livenerBgGraphic = livenerConfig?.backgroundGraphic
+    const livenerBgImageUrl = livenerBgGraphic?.asset?.asset ? imageUrl(livenerBgGraphic.asset as any, 1920) : undefined
+    const livenerBgStyles = buildBackgroundGraphicStyles(livenerBgGraphic, livenerBgImageUrl, false)
+
     return (
       <>
         <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
-        <Nav tenantId={tenantId} locale={locale as SupportedLocale} defaultLocale={defaultLocale} />
+        {livenerBgStyles && livenerBgGraphic?.scope === 'entire' && (
+          <div style={livenerBgStyles} aria-hidden="true" />
+        )}
+        <HeaderAppearanceWrapper config={livenerConfig?.headerAppearance}>
+          <NavClient
+            logoSrc={livenerConfig?.logo ? imageUrl(livenerConfig.logo as any, 480) : undefined}
+            logoLightSrc={livenerConfig?.logoLight ? imageUrl(livenerConfig.logoLight as any, 480) : undefined}
+            logoAlt={livenerConfig?.siteName ?? 'Livener'}
+            navLinks={resolveNavLinks(livenerConfig?.navLinks, locale as SupportedLocale, 'livener')}
+            ctaLabel={livenerConfig?.ctaLabel ?? 'Get Early Access'}
+            ctaHref={livenerConfig?.ctaHref ?? '#'}
+            currentLocale={locale as SupportedLocale}
+            supportedLocales={livenerConfig?.supportedLocales ?? [locale as SupportedLocale]}
+            showLangSwitcherInNav={livenerConfig?.showLangSwitcherInNav ?? false}
+            tenantId="livener"
+            themeMode={livenerConfig?.themeMode}
+            variant="full"
+          />
+        </HeaderAppearanceWrapper>
+        <div
+          style={{
+            height: livenerConfig?.headerAppearance?.customHeight
+              ? `${livenerConfig.headerAppearance.customHeight}px`
+              : undefined,
+          }}
+          className={
+            livenerConfig?.headerAppearance?.customHeight
+              ? undefined
+              : {
+                  compact: 'h-12',
+                  normal: 'h-16',
+                  large: 'h-20',
+                }[livenerConfig?.headerAppearance?.headerHeight ?? 'normal']
+          }
+        />
         <main>{children}</main>
         <Footer tenantId={tenantId} locale={locale as SupportedLocale} defaultLocale={defaultLocale} />
       </>
@@ -219,21 +329,23 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   }
 
   // ── Generic layout (studiomartegani and future tenants) ──────────────────────
-  const config = await fetchForTenant<any>(websiteSiteConfigQuery, { locale, defaultLocale })
+  const config = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
+
+  // ── Background graphic rendering ─────────────────────────────────────────────
+  const bgGraphic = config?.backgroundGraphic
+  const bgImageUrl = bgGraphic?.asset?.asset ? imageUrl(bgGraphic.asset as any, 1920) : undefined
+  const bgStyles = buildBackgroundGraphicStyles(bgGraphic, bgImageUrl, false)
 
   return (
     <>
       <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
-      <header
-        className="fixed left-0 right-0 top-0 z-50 flex h-16 items-center justify-between px-6 backdrop-blur-sm md:px-16 lg:px-24"
-        style={{
-          backgroundColor: 'color-mix(in oklch, var(--color-background) 90%, transparent)',
-          borderBottom: '1px solid var(--color-border)',
-        }}
-      >
+      {bgStyles && bgGraphic?.scope === 'entire' && (
+        <div style={bgStyles} aria-hidden="true" />
+      )}
+      <HeaderAppearanceWrapper config={config?.headerAppearance}>
         {/* Logo — dark version by default, light version shown in light theme via CSS */}
         {logoDarkSrc ? (
-          <a href="/" className="flex items-center" style={{ lineHeight: 0 }}>
+          <a href={`/${locale}/${tenantId}`} className="flex items-center" style={{ lineHeight: 0 }}>
             {logoLightSrc && logoLightSrc !== logoDarkSrc && (
               <img
                 src={logoLightSrc}
@@ -269,11 +381,34 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
               {config.phone}
             </a>
           )}
-          <LanguageSwitcher currentLocale={locale} tenant={tenantId} />
-          <ThemeSwitcher />
+          {(config?.languageSwitcherPlacement === 'header' || config?.languageSwitcherPlacement === 'both') && (
+            <LanguageSwitcher
+              currentLocale={locale as SupportedLocale}
+              supportedLocales={config?.supportedLocales ?? []}
+              appearance="header"
+            />
+          )}
+          {(config?.themeSwitcherPlacement === 'header' || config?.themeSwitcherPlacement === 'both') && (
+            <ThemeSwitcher themeMode={config?.themeMode} appearance="header" />
+          )}
         </div>
-      </header>
-      <div className="h-16" />
+      </HeaderAppearanceWrapper>
+      <div
+        style={{
+          height: config?.headerAppearance?.customHeight
+            ? `${config.headerAppearance.customHeight}px`
+            : undefined,
+        }}
+        className={
+          config?.headerAppearance?.customHeight
+            ? undefined
+            : {
+                compact: 'h-12',
+                normal: 'h-16',
+                large: 'h-20',
+              }[config?.headerAppearance?.headerHeight ?? 'normal']
+        }
+      />
       <main>{children}</main>
       <footer
         className="px-6 py-10 md:px-16 lg:px-24"
@@ -285,14 +420,18 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           {/* Logo in footer */}
           {logoDarkSrc ? (
-            <img
-              src={logoDarkSrc}
-              alt={config?.siteName ?? tenantId}
-              height={28}
-              style={{ height: '28px', width: 'auto', opacity: 0.6 }}
-            />
+            <a href={`/${locale}/${tenantId}`} className="transition-opacity hover:opacity-100">
+              <img
+                src={logoDarkSrc}
+                alt={config?.siteName ?? tenantId}
+                height={28}
+                style={{ height: '28px', width: 'auto', opacity: 0.6 }}
+              />
+            </a>
           ) : (
-            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{config?.siteName}</p>
+            <a href={`/${locale}/${tenantId}`} className="text-xs transition-opacity hover:opacity-100" style={{ color: 'var(--color-text-muted)' }}>
+              {config?.siteName}
+            </a>
           )}
           <div className="flex flex-col gap-1 sm:items-end">
             {config?.address && (

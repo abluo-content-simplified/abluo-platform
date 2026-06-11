@@ -1,5 +1,5 @@
 import { tenantClient } from '@/lib/sanity/client'
-import { homePageQuery, localeConfigQuery, websiteSiteConfigQuery } from '@/lib/sanity/queries'
+import { homePageQuery, localeConfigQuery, websiteSiteConfigQuery, designSystemQuery } from '@/lib/sanity/queries'
 import { HeroSection } from '@/components/sections/HeroSection'
 import { ContentSection } from '@/components/sections/ContentSection'
 import { TreatmentsSection } from '@/components/sections/TreatmentsSection'
@@ -7,9 +7,10 @@ import { TeamSection } from '@/components/sections/TeamSection'
 import { TextSection } from '@/components/sections/TextSection'
 import { FAQSection } from '@/components/sections/FAQSection'
 import { ContactSection } from '@/components/sections/ContactSection'
-import type { WebsiteHomePage, WebsiteSiteConfig, LocaleConfig, PageSection, FAQSection as FAQSectionType, SupportedLocale } from '@/lib/sanity/types'
+import type { WebsiteHomePage, WebsiteSiteConfig, LocaleConfig, PageSection, FAQSection as FAQSectionType, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
 import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
+import { computeSectionSurface } from '@/lib/sanity/surfaces'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,25 +56,33 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 function SectionRenderer({
   section,
   siteConfig,
+  designSystem,
+  backgroundPattern,
+  sectionIndex,
 }: {
   section: PageSection
   siteConfig: WebsiteSiteConfig | null
+  designSystem: DesignSystem | null
+  backgroundPattern: string | undefined
+  sectionIndex: number
 }) {
+  const surface = computeSectionSurface(section.background, backgroundPattern as any, sectionIndex)
+
   switch (section._type) {
     case 'heroSection':
-      return <HeroSection section={section} />
+      return <HeroSection section={section} surface={surface} designSystem={designSystem} />
     case 'contentSection':
-      return <ContentSection section={section} />
+      return <ContentSection section={section} surface={surface} designSystem={designSystem} />
     case 'treatmentsSection':
-      return <TreatmentsSection section={section} />
+      return <TreatmentsSection section={section} surface={surface} designSystem={designSystem} />
     case 'teamSection':
-      return <TeamSection section={section} />
+      return <TeamSection section={section} surface={surface} designSystem={designSystem} />
     case 'textSection':
-      return <TextSection section={section} />
+      return <TextSection section={section} surface={surface} designSystem={designSystem} />
     case 'faqSection':
-      return <FAQSection section={section} />
+      return <FAQSection section={section} surface={surface} designSystem={designSystem} />
     case 'contactSection':
-      return <ContactSection section={section} siteConfig={siteConfig} />
+      return <ContactSection section={section} surface={surface} designSystem={designSystem} siteConfig={siteConfig} />
     default:
       return null
   }
@@ -88,9 +97,10 @@ export default async function WebsitePage({ params }: PageProps) {
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  const [homePage, siteConfig] = await Promise.all([
+  const [homePage, siteConfig, designSystem] = await Promise.all([
     fetchForTenant<WebsiteHomePage>(homePageQuery, { locale, defaultLocale }),
     fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale }),
+    fetchForTenant<DesignSystem>(designSystemQuery, {}),
   ])
 
   if (!homePage) {
@@ -113,8 +123,15 @@ export default async function WebsitePage({ params }: PageProps) {
         locale={locale}
         tenantId={tenantId}
       />
-      {homePage.sections?.map((section) => (
-        <SectionRenderer key={section._key} section={section} siteConfig={siteConfig} />
+      {homePage.sections?.map((section, index) => (
+        <SectionRenderer
+          key={section._key}
+          section={section}
+          siteConfig={siteConfig}
+          designSystem={designSystem}
+          backgroundPattern={homePage.backgroundPattern}
+          sectionIndex={index}
+        />
       ))}
     </>
   )

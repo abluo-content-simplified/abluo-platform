@@ -1,17 +1,22 @@
-import type { TreatmentsSection } from '@/lib/sanity/types'
+import type { TreatmentsSection, DesignSystem } from '@/lib/sanity/types'
+import { getSurfaceStyles } from '@/lib/sanity/surfaces'
+import type { SurfaceType } from '@/lib/sanity/surfaces'
 
 interface Props {
   section: TreatmentsSection
+  surface: SurfaceType
+  designSystem: DesignSystem | null
 }
 
-export function TreatmentsSection({ section }: Props) {
+export function TreatmentsSection({ section, surface, designSystem }: Props) {
   const { eyebrow, title, intro, treatments } = section
+  const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
   return (
     <section
       id="trattamenti"
       className="px-6 py-24 md:px-16 lg:px-24"
-      style={{ backgroundColor: 'var(--color-background)' }}
+      style={surfaceStyles}
     >
       <div className="mx-auto w-full max-w-5xl">
         {/* Header */}

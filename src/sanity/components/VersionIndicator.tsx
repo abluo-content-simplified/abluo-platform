@@ -43,7 +43,7 @@ export function VersionIndicator() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 right-4 z-40 px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors cursor-pointer font-mono"
+        className="fixed bottom-4 left-4 z-40 px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors cursor-pointer font-mono"
         title="Click to see version details"
       >
         Abluo CMS V{versionInfo.version} • {versionInfo.commit}

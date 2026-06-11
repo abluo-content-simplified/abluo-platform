@@ -1,4 +1,6 @@
-import type { ContentSection, PortableTextContent } from '@/lib/sanity/types'
+import type { ContentSection, PortableTextContent, DesignSystem } from '@/lib/sanity/types'
+import { getSurfaceStyles } from '@/lib/sanity/surfaces'
+import type { SurfaceType } from '@/lib/sanity/surfaces'
 
 function RichText({ blocks }: { blocks: PortableTextContent }) {
   return (
@@ -32,15 +34,18 @@ function RichText({ blocks }: { blocks: PortableTextContent }) {
 
 interface Props {
   section: ContentSection
+  surface: SurfaceType
+  designSystem: DesignSystem | null
 }
 
-export function ContentSection({ section }: Props) {
+export function ContentSection({ section, surface, designSystem }: Props) {
   const { eyebrow, title, body } = section
+  const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
   return (
     <section
       className="px-6 py-24 md:px-16 lg:px-24"
-      style={{ backgroundColor: 'var(--color-background-alt)' }}
+      style={surfaceStyles}
     >
       <div className="mx-auto w-full max-w-5xl">
         <div className="grid gap-12 md:grid-cols-2 md:gap-20 lg:gap-28">

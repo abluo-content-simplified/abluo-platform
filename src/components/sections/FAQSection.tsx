@@ -1,10 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import type { FAQSection } from '@/lib/sanity/types'
+import type { FAQSection, DesignSystem } from '@/lib/sanity/types'
+import { getSurfaceStyles } from '@/lib/sanity/surfaces'
+import type { SurfaceType } from '@/lib/sanity/surfaces'
 
 interface Props {
   section: FAQSection
+  surface: SurfaceType
+  designSystem: DesignSystem | null
 }
 
 function FAQItem({ question, answer }: { question?: string; answer?: string }) {
@@ -45,15 +49,16 @@ function FAQItem({ question, answer }: { question?: string; answer?: string }) {
   )
 }
 
-export function FAQSection({ section }: Props) {
+export function FAQSection({ section, surface, designSystem }: Props) {
   const { eyebrow, title, items } = section
+  const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
   if (!items?.length) return null
 
   return (
     <section
       className="px-6 py-24 md:px-16 lg:px-24"
-      style={{ backgroundColor: 'var(--color-background)' }}
+      style={surfaceStyles}
     >
       <div className="mx-auto w-full max-w-3xl">
         {eyebrow && (

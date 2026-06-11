@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { PlayCircle } from 'lucide-react'
 import { SlideUp, FadeIn } from '@/components/animation'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
-import { getBackgroundAssetUrl } from '@/lib/sanity/assets'
 import type { Event, SupportedLocale, WebsiteSiteConfig, DesignSystem } from '@/lib/sanity/types'
 
 interface LivePageContentProps {
@@ -88,18 +87,11 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
   const subheadline = siteConfig?.livePageSubheadline ?? 'Live video streaming, in the palm of your hands'
   const betaNotice = siteConfig?.livePageBetaNotice ?? 'Currently in beta — tested live, in real environments.'
 
-  // Resolve background asset — first attempts 'logotype', falls back to undefined (no background)
-  const backgroundAssetUrl = getBackgroundAssetUrl(designSystem, 'logotype', 'light')
-
   return (
     <div
       style={{
         minHeight: '100vh',
         backgroundColor: 'var(--color-background)',
-        backgroundImage: backgroundAssetUrl ? `url(${backgroundAssetUrl})` : undefined,
-        backgroundPosition: '50% 0',
-        backgroundRepeat: 'no-repeat',
-        backgroundSize: '121%',
       }}
     >
       <div className="mx-auto max-w-[900px] px-5 pb-24 pt-12 md:px-10">

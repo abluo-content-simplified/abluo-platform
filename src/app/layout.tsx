@@ -38,6 +38,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistMono.variable} ${barlowCondensed.variable} ${poppins.variable} h-full antialiased`}
     >
       <head>

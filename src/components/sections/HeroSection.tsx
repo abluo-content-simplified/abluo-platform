@@ -1,18 +1,23 @@
-import type { HeroSection } from '@/lib/sanity/types'
+import type { HeroSection, DesignSystem } from '@/lib/sanity/types'
+import { getSurfaceStyles } from '@/lib/sanity/surfaces'
+import type { SurfaceType } from '@/lib/sanity/surfaces'
 
 interface Props {
   section: HeroSection
+  surface: SurfaceType
+  designSystem: DesignSystem | null
 }
 
-export function HeroSection({ section }: Props) {
+export function HeroSection({ section, surface, designSystem }: Props) {
   const { eyebrow, headline, subheadline, ctaLabel, ctaHref } = section
 
   const headlineLines = headline?.split('\n') ?? []
+  const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
   return (
     <section
       className="relative flex min-h-[88vh] flex-col justify-center px-6 py-24 md:px-16 lg:px-24"
-      style={{ backgroundColor: 'var(--color-background)' }}
+      style={surfaceStyles}
     >
       {/* Decorative left border accent */}
       <div

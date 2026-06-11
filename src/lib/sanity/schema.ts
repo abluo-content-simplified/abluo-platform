@@ -66,12 +66,81 @@ const navigationLinkType = defineType({
   type: 'object',
   fields: [
     defineField({ name: 'label', title: 'Label', type: 'localizedString' }),
-    defineField({ name: 'href', title: 'URL or Path', type: 'string' }),
-    defineField({ name: 'external', title: 'Open in new tab', type: 'boolean', initialValue: false }),
+    defineField({
+      name: 'linkType',
+      title: 'Link Type',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Internal Page', value: 'internal' },
+          { title: 'External URL', value: 'external' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'external',
+    }),
+    defineField({
+      name: 'internalPage',
+      title: 'Select Page',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Homepage', value: 'homepage' },
+          { title: 'Live Events', value: 'live' },
+        ],
+      },
+      hidden: ({ parent }: { parent?: { linkType?: string } }) => parent?.linkType !== 'internal',
+      description: 'Select an internal page to link to',
+    }),
+    defineField({
+      name: 'externalUrl',
+      title: 'URL',
+      type: 'url',
+      hidden: ({ parent }: { parent?: { linkType?: string } }) => parent?.linkType !== 'external',
+      validation: (Rule) =>
+        Rule.custom((url, context) => {
+          const parent = context.parent as any
+          if (parent?.linkType === 'external' && !url) {
+            return 'URL is required for external links'
+          }
+          return true
+        }),
+    }),
+    defineField({
+      name: 'openInNewTab',
+      title: 'Open in New Tab',
+      type: 'boolean',
+      initialValue: false,
+    }),
+    // Keep href for backward compatibility — populated by a computed field or hook
+    defineField({
+      name: 'href',
+      title: 'Computed URL (auto-populated)',
+      type: 'string',
+      readOnly: true,
+      description: 'Auto-computed from linkType. Do not edit directly.',
+      hidden: true,
+    }),
+    defineField({
+      name: 'external',
+      title: 'External (legacy, use openInNewTab instead)',
+      type: 'boolean',
+      hidden: true,
+    }),
+    defineField({
+      name: 'children',
+      title: 'Child Items (for future dropdown support)',
+      type: 'array',
+      of: [defineArrayMember({ type: 'navigationLink' })],
+      description: 'Leave empty for now. Reserved for nested navigation in v2.',
+    }),
   ],
   preview: {
-    select: { title: 'label.en', subtitle: 'href' },
-    prepare: ({ title, subtitle }) => ({ title: title ?? '—', subtitle }),
+    select: { title: 'label.en', linkType: 'linkType', internalPage: 'internalPage', externalUrl: 'externalUrl' },
+    prepare: ({ title, linkType, internalPage, externalUrl }) => ({
+      title: title ?? '—',
+      subtitle: linkType === 'internal' ? `📄 ${internalPage}` : `🔗 ${externalUrl}`,
+    }),
   },
 })
 
@@ -218,6 +287,23 @@ const heroSectionType = defineType({
   title: 'Hero Section',
   type: 'object',
   fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
     defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString' }),
     defineField({ name: 'headline', title: 'Headline', type: 'localizedText' }),
     defineField({ name: 'subheadline', title: 'Subheadline', type: 'localizedText' }),
@@ -235,6 +321,23 @@ const contentSectionType = defineType({
   title: 'Content Section',
   type: 'object',
   fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
     defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString' }),
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
     defineField({ name: 'body', title: 'Body', type: 'localizedPortableText' }),
@@ -271,6 +374,23 @@ const treatmentsSectionType = defineType({
   title: 'Treatments Section',
   type: 'object',
   fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
     defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString' }),
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
     defineField({ name: 'intro', title: 'Intro Text', type: 'localizedText' }),
@@ -307,6 +427,23 @@ const teamSectionType = defineType({
   title: 'Team Section',
   type: 'object',
   fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
     defineField({ name: 'subtitle', title: 'Subtitle', type: 'localizedText' }),
     defineField({
@@ -327,16 +464,26 @@ const textSectionType = defineType({
   title: 'Text Section',
   type: 'object',
   fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
     defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString' }),
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
     defineField({ name: 'content', title: 'Content', type: 'localizedPortableText' }),
-    defineField({
-      name: 'backgroundColor',
-      title: 'Background',
-      type: 'string',
-      options: { list: ['white', 'grey', 'dark'] },
-      initialValue: 'white',
-    }),
   ],
   preview: {
     select: { title: 'title.it' },
@@ -349,6 +496,23 @@ const contactSectionType = defineType({
   title: 'Contact Section',
   type: 'object',
   fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
     defineField({ name: 'subtitle', title: 'Subtitle', type: 'localizedText' }),
     defineField({ name: 'mapEmbedUrl', title: 'Google Maps Embed URL', type: 'url' }),
@@ -378,6 +542,23 @@ const faqSectionType = defineType({
   title: 'FAQ Section',
   type: 'object',
   fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
     defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString' }),
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
     defineField({
@@ -526,6 +707,81 @@ const buttonStyleType = defineType({
     defineField({ name: 'background', title: 'Background', type: 'string' }),
     defineField({ name: 'text', title: 'Text Color', type: 'string' }),
     defineField({ name: 'borderRadius', title: 'Border Radius (px)', type: 'number' }),
+  ],
+})
+
+// ─── Section Surface System ───────────────────────────────────────────────────
+
+const glassStyleType = defineType({
+  name: 'glassStyle',
+  title: 'Glass Style',
+  type: 'object',
+  description: 'Semi-transparent surface with optional backdrop blur',
+  fields: [
+    defineField({
+      name: 'backgroundOklch',
+      title: 'Background (OKLCH with alpha)',
+      type: 'string',
+      description: 'OKLCH color with transparency — e.g. "oklch(0.8 0.1 200 / 0.75)"',
+    }),
+    defineField({
+      name: 'backdropBlur',
+      title: 'Backdrop Blur (px)',
+      type: 'number',
+      description: 'Blur amount — 0 for no blur, 10-20 typical for premium effect',
+      initialValue: 12,
+    }),
+    defineField({
+      name: 'borderColor',
+      title: 'Border Color (OKLCH)',
+      type: 'string',
+      description: 'Border color in OKLCH — e.g. "oklch(1 0 0 / 0.1)"',
+    }),
+    defineField({
+      name: 'borderWidth',
+      title: 'Border Width (px)',
+      type: 'number',
+      initialValue: 1,
+    }),
+  ],
+})
+
+const sectionSurfacesType = defineType({
+  name: 'sectionSurfaces',
+  title: 'Section Surfaces',
+  type: 'object',
+  description: 'Define the reusable background surfaces for page sections',
+  fields: [
+    defineField({
+      name: 'surface1',
+      title: 'Surface 1 (Primary Background)',
+      type: 'string',
+      description: 'Usually var(--color-background) or equivalent OKLCH',
+    }),
+    defineField({
+      name: 'surface2',
+      title: 'Surface 2 (Secondary Background)',
+      type: 'string',
+      description: 'Usually var(--color-background-alt) or equivalent OKLCH',
+    }),
+    defineField({
+      name: 'surface3',
+      title: 'Surface 3 (Tertiary Background)',
+      type: 'string',
+      description: 'Optional tertiary surface for advanced rhythms',
+    }),
+    defineField({
+      name: 'brandSurface',
+      title: 'Brand Surface',
+      type: 'string',
+      description: 'Brand color surface — draws from tenant branding',
+    }),
+    defineField({
+      name: 'glass',
+      title: 'Glass Surface',
+      type: 'glassStyle',
+      description: 'Semi-transparent surface for premium sections',
+    }),
   ],
 })
 
@@ -816,6 +1072,15 @@ const designSystemType = defineType({
         defineField({ name: 'border', title: 'Border', type: 'string' }),
       ],
     }),
+
+    // Section Surfaces
+    defineField({
+      name: 'sectionSurfaces',
+      title: 'Section Surfaces',
+      type: 'sectionSurfaces',
+      group: 'components',
+      description: 'Define the reusable background surfaces for page sections',
+    }),
   ],
   preview: {
     select: { title: 'name', slug: 'projectSlug' },
@@ -830,7 +1095,8 @@ const siteConfigType = defineType({
   title: 'Site Config',
   type: 'document',
   groups: [
-    { name: 'identity', title: 'Identity' },
+    { name: 'branding', title: 'Branding' },
+    { name: 'siteControls', title: 'Site Controls' },
     { name: 'locales', title: 'Languages' },
     { name: 'navigation', title: 'Navigation' },
     { name: 'live', title: 'Live Page' },
@@ -840,12 +1106,126 @@ const siteConfigType = defineType({
   ],
   fields: [
     projectSlugField,
-    defineField({ name: 'siteName', title: 'Site Name', type: 'string', group: 'identity' }),
-    defineField({ name: 'tagline', title: 'Tagline', type: 'localizedString', group: 'identity' }),
-    defineField({ name: 'logo', title: 'Logo', type: 'localizedImage', group: 'identity' }),
-    defineField({ name: 'logoLight', title: 'Logo (Light variant)', type: 'localizedImage', group: 'identity' }),
-    defineField({ name: 'faviconSvg', title: 'Favicon (SVG)', type: 'image', group: 'identity' }),
-    defineField({ name: 'faviconPng', title: 'Favicon (PNG)', type: 'image', group: 'identity' }),
+    defineField({ name: 'siteName', title: 'Site Name', type: 'string', group: 'branding' }),
+    defineField({ name: 'tagline', title: 'Tagline', type: 'localizedString', group: 'branding' }),
+    defineField({ name: 'logo', title: 'Logo', type: 'localizedImage', group: 'branding' }),
+    defineField({ name: 'logoLight', title: 'Logo (Light variant)', type: 'localizedImage', group: 'branding' }),
+    defineField({ name: 'faviconSvg', title: 'Favicon (SVG)', type: 'image', group: 'branding' }),
+    defineField({ name: 'faviconPng', title: 'Favicon (PNG)', type: 'image', group: 'branding' }),
+    defineField({
+      name: 'backgroundGraphic',
+      title: 'Brand Watermark',
+      type: 'object',
+      group: 'branding',
+      fields: [
+        defineField({ name: 'enabled', title: 'Enable Background Graphic', type: 'boolean', initialValue: false }),
+        defineField({ name: 'asset', title: 'Background Asset', type: 'image' }),
+        defineField({ name: 'opacity', title: 'Opacity (%)', type: 'number', initialValue: 5, validation: (Rule) => Rule.min(0).max(100) }),
+        defineField({ name: 'scale', title: 'Scale (%)', type: 'number', initialValue: 100, validation: (Rule) => Rule.min(10).max(500) }),
+        defineField({ name: 'mobileScale', title: 'Mobile Scale (%)', type: 'number', validation: (Rule) => Rule.min(10).max(500) }),
+        defineField({ name: 'rotation', title: 'Rotation (°)', type: 'number', initialValue: 0, validation: (Rule) => Rule.min(0).max(360) }),
+        defineField({
+          name: 'positionPreset',
+          title: 'Position',
+          type: 'string',
+          options: { list: [{ title: 'Center', value: 'center' }, { title: 'Top Left', value: 'topLeft' }, { title: 'Top Right', value: 'topRight' }, { title: 'Bottom Left', value: 'bottomLeft' }, { title: 'Bottom Right', value: 'bottomRight' }], layout: 'radio' },
+          initialValue: 'center',
+        }),
+        defineField({ name: 'offsetX', title: 'Offset X (%)', type: 'number', initialValue: 0, validation: (Rule) => Rule.min(-100).max(100) }),
+        defineField({ name: 'offsetY', title: 'Offset Y (%)', type: 'number', initialValue: 0, validation: (Rule) => Rule.min(-100).max(100) }),
+        defineField({ name: 'mobileOffsetX', title: 'Mobile Offset X (%)', type: 'number', validation: (Rule) => Rule.min(-100).max(100) }),
+        defineField({ name: 'mobileOffsetY', title: 'Mobile Offset Y (%)', type: 'number', validation: (Rule) => Rule.min(-100).max(100) }),
+        defineField({
+          name: 'scrollBehavior',
+          title: 'Scroll Behavior',
+          type: 'string',
+          options: { list: [{ title: 'Fixed', value: 'fixed' }, { title: 'Scroll With Content', value: 'scroll' }, { title: 'Parallax', value: 'parallax' }], layout: 'radio' },
+          initialValue: 'scroll',
+        }),
+        defineField({
+          name: 'scope',
+          title: 'Scope',
+          type: 'string',
+          options: { list: [{ title: 'Entire Site', value: 'entire' }, { title: 'Homepage Only', value: 'homepage' }, { title: 'Hero Only', value: 'hero' }], layout: 'radio' },
+          initialValue: 'entire',
+        }),
+      ],
+    }),
+    defineField({
+      name: 'headerAppearance',
+      title: 'Header Appearance',
+      type: 'object',
+      group: 'branding',
+      fields: [
+        defineField({ name: 'stickyHeader', title: 'Sticky Header', type: 'boolean', initialValue: true }),
+        defineField({
+          name: 'initialStyle',
+          title: 'Initial Style (top of page)',
+          type: 'string',
+          options: { list: [{ title: 'Transparent', value: 'transparent' }, { title: 'Solid', value: 'solid' }, { title: 'Glass', value: 'glass' }], layout: 'radio' },
+          initialValue: 'transparent',
+        }),
+        defineField({
+          name: 'scrolledStyle',
+          title: 'Scrolled Style (after scrolling)',
+          type: 'string',
+          options: { list: [{ title: 'Transparent', value: 'transparent' }, { title: 'Solid', value: 'solid' }, { title: 'Glass', value: 'glass' }], layout: 'radio' },
+          initialValue: 'glass',
+        }),
+        defineField({ name: 'backgroundOpacity', title: 'Background Opacity (%)', type: 'number', initialValue: 85, validation: (Rule) => Rule.min(0).max(100) }),
+        defineField({ name: 'blurEffect', title: 'Blur Effect', type: 'boolean', initialValue: true }),
+        defineField({
+          name: 'shadow',
+          title: 'Shadow',
+          type: 'string',
+          options: { list: [{ title: 'None', value: 'none' }, { title: 'Small', value: 'small' }, { title: 'Medium', value: 'medium' }], layout: 'radio' },
+          initialValue: 'small',
+        }),
+        defineField({
+          name: 'headerHeight',
+          title: 'Header Height',
+          type: 'string',
+          options: { list: [{ title: 'Compact', value: 'compact' }, { title: 'Normal', value: 'normal' }, { title: 'Large', value: 'large' }], layout: 'radio' },
+          initialValue: 'normal',
+        }),
+        defineField({ name: 'customHeight', title: 'Custom Height (px)', type: 'number', description: 'Leave empty to use preset height' }),
+        defineField({ name: 'zIndex', title: 'Z-Index', type: 'number', initialValue: 50 }),
+        defineField({
+          name: 'borderStyle',
+          title: 'Border Style',
+          type: 'string',
+          options: { list: [{ title: 'Always', value: 'always' }, { title: 'On Scroll', value: 'onScroll' }, { title: 'Never', value: 'never' }], layout: 'radio' },
+          initialValue: 'onScroll',
+        }),
+      ],
+    }),
+    defineField({
+      name: 'languageSwitcherPlacement',
+      title: 'Language Switcher Placement',
+      type: 'string',
+      group: 'siteControls',
+      options: { list: [{ title: 'Header', value: 'header' }, { title: 'Footer', value: 'footer' }, { title: 'Both', value: 'both' }], layout: 'radio' },
+      initialValue: 'header',
+      description: 'Visibility is automatic: hidden if only 1 language, shown if 2+',
+    }),
+    defineField({
+      name: 'themeMode',
+      title: 'Theme Mode',
+      type: 'string',
+      group: 'siteControls',
+      options: { list: [{ title: 'Light Only', value: 'lightOnly' }, { title: 'Dark Only', value: 'darkOnly' }, { title: 'Light + Dark Toggle + System', value: 'toggle' }, { title: 'Follow System', value: 'system' }], layout: 'radio' },
+      initialValue: 'toggle',
+      description: 'Controls whether theme switcher appears and which options are available',
+    }),
+    defineField({
+      name: 'themeSwitcherPlacement',
+      title: 'Theme Switcher Placement',
+      type: 'string',
+      group: 'siteControls',
+      options: { list: [{ title: 'Header', value: 'header' }, { title: 'Footer', value: 'footer' }, { title: 'Both', value: 'both' }], layout: 'radio' },
+      initialValue: 'header',
+      description: 'Visibility determined by Theme Mode setting',
+    }),
     defineField({
       name: 'defaultLocale',
       title: 'Default Language',
@@ -951,6 +1331,21 @@ const homePageType = defineType({
   type: 'document',
   fields: [
     projectSlugField,
+    defineField({
+      name: 'backgroundPattern',
+      title: 'Section Background Pattern',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'None (Manual section overrides only)', value: 'none' },
+          { title: 'Alternate Surface 1 ↔ Surface 2', value: 'alternate1-2' },
+          { title: 'Alternate Surface 1 ↔ 2 ↔ 3', value: 'alternate1-2-3' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'none',
+      description: 'Automatically assign surfaces to sections. Sections can override individually.',
+    }),
     defineField({
       name: 'sections',
       title: 'Sections',
@@ -1098,6 +1493,8 @@ export const schemaTypes = [
   fontDefinitionType,
   typescaleType,
   buttonStyleType,
+  glassStyleType,
+  sectionSurfacesType,
   backgroundAssetType,
   mediaAssetType,
   designSystemType,

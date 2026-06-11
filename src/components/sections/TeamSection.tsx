@@ -1,16 +1,21 @@
-import type { TeamSection } from '@/lib/sanity/types'
+import type { TeamSection, DesignSystem } from '@/lib/sanity/types'
+import { getSurfaceStyles } from '@/lib/sanity/surfaces'
+import type { SurfaceType } from '@/lib/sanity/surfaces'
 
 interface Props {
   section: TeamSection
+  surface: SurfaceType
+  designSystem: DesignSystem | null
 }
 
-export function TeamSection({ section }: Props) {
+export function TeamSection({ section, surface, designSystem }: Props) {
   const { title, subtitle, members } = section
+  const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
   return (
     <section
       className="px-6 py-24 md:px-16 lg:px-24"
-      style={{ backgroundColor: 'var(--color-background-alt)' }}
+      style={surfaceStyles}
     >
       <div className="mx-auto w-full max-w-5xl">
         {/* Section header */}
