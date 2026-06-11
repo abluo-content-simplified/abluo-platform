@@ -658,14 +658,14 @@ export default function MediaPage() {
               <div className="space-y-2">
                 <img
                   src={`${hoveredAsset.image.asset.url}?w=400`}
-                  alt={hoveredAsset.altText}
+                  alt={typeof hoveredAsset.altText === 'string' ? hoveredAsset.altText : ''}
                   className="w-full rounded object-cover max-h-72"
                 />
                 <div className="text-xs space-y-1">
                   <p className="font-medium text-zinc-900 truncate">
                     {hoveredAsset.name || hoveredAsset.image.asset.originalFilename}
                   </p>
-                  <p className="text-zinc-600 truncate">{hoveredAsset.altText}</p>
+                  <p className="text-zinc-600 truncate">{typeof hoveredAsset.altText === 'string' ? hoveredAsset.altText : ''}</p>
                   {hoveredAsset.tags && hoveredAsset.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 pt-1">
                       {hoveredAsset.tags.slice(0, 3).map((tag) => (

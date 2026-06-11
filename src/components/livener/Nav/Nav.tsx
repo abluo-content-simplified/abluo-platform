@@ -2,6 +2,7 @@ import { tenantClient } from '@/lib/sanity/client'
 import { websiteSiteConfigQuery } from '@/lib/sanity/queries'
 import type { WebsiteSiteConfig, SupportedLocale } from '@/lib/sanity/types'
 import { imageUrl } from '@/lib/sanity/image'
+import { resolveNavLinks } from '@/lib/sanity/nav-links'
 import { NavClient } from './NavClient'
 
 interface NavProps {
@@ -32,12 +33,13 @@ export async function Nav({ tenantId, locale, defaultLocale, variant = 'full' }:
         logoSrc={imageUrl(config.logo, 480)}
         logoLightSrc={imageUrl(config.logoLight, 480)}
         logoAlt={config.siteName ?? 'Livener'}
-        navLinks={config.navLinks ?? []}
+        navLinks={resolveNavLinks(config.navLinks, locale, tenantId)}
         ctaLabel={config.ctaLabel ?? 'Get Early Access'}
         ctaHref={config.ctaHref ?? '#'}
         currentLocale={locale}
         supportedLocales={config.supportedLocales ?? [locale]}
         showLangSwitcherInNav={config.showLangSwitcherInNav ?? false}
+        tenantId={tenantId}
         variant={variant}
       />
     </header>

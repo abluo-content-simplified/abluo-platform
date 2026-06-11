@@ -210,7 +210,7 @@ function buildBackgroundGraphicStyles(
   const isFixed = scrollBehavior === 'fixed' || scrollBehavior === 'parallax'
 
   return {
-    position: (isFixed ? 'fixed' : 'absolute') as const,
+    position: (isFixed ? 'fixed' : 'absolute') as 'fixed' | 'absolute',
     top: 0,
     left: 0,
     right: 0,

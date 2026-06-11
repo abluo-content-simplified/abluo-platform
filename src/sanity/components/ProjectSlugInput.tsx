@@ -10,6 +10,7 @@ import { StringInputProps } from 'sanity'
 export function ProjectSlugInput(props: StringInputProps) {
   const { value, onChange } = props
   const [debugInfo, setDebugInfo] = useState<any>(null)
+  const extractedSlug = value
 
   useEffect(() => {
     console.log('[TRACE STEP 5A] ProjectSlugInput component mounted/updated')

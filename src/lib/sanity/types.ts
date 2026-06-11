@@ -186,10 +186,6 @@ export interface SectionSurfaces {
   glass?: GlassStyle
 }
 
-export interface PageSection {
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
-}
-
 export interface DesignSystem {
   colors?: {
     darkTheme?: ColorTheme

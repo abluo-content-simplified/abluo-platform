@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { tenantClient } from '@/lib/sanity/client'
 import { websiteSiteConfigQuery } from '@/lib/sanity/queries'
 import type { WebsiteSiteConfig, SupportedLocale } from '@/lib/sanity/types'
+import { resolveNavLinks } from '@/lib/sanity/nav-links'
 import { FooterLanguageSwitcher } from './FooterClient'
 
 interface FooterProps {
@@ -101,7 +102,7 @@ export async function Footer({
 
             {config.footerLinks && config.footerLinks.length > 0 && (
               <ul className="flex flex-wrap gap-5 list-none">
-                {config.footerLinks.map((link) => (
+                {resolveNavLinks(config.footerLinks, locale, tenantId).map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
