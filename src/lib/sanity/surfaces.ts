@@ -1,7 +1,17 @@
-import type { DesignSystem, SectionSurfaces, GlassStyle } from './types'
+import type { DesignSystem, SectionSurfaces, SectionSurfacesTheme, GlassStyle } from './types'
 
 export type SurfaceType = 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass' | 'usePagePattern'
 export type PagePattern = 'none' | 'alternate1-2' | 'alternate1-2-3'
+export type ThemeMode = 'light' | 'dark'
+
+/**
+ * Detect the current theme from the document element
+ * @returns The current theme: 'light' or 'dark'
+ */
+export function getCurrentTheme(): ThemeMode {
+  if (typeof window === 'undefined') return 'light'
+  return document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+}
 
 /**
  * Get the resolved surface for a section based on page pattern and section index
@@ -39,22 +49,33 @@ export function computeSectionSurface(
  * Get the CSS background color for a given surface
  * @param designSystem - The design system
  * @param surface - The surface type
+ * @param theme - (Optional) Theme to use — defaults to current theme
  * @returns CSS string for background-color, or undefined if surface should be transparent
  */
-export function getSurfaceColor(designSystem: DesignSystem | null | undefined, surface: SurfaceType): string | undefined {
+export function getSurfaceColor(
+  designSystem: DesignSystem | null | undefined,
+  surface: SurfaceType,
+  theme?: ThemeMode
+): string | undefined {
   if (!designSystem?.sectionSurfaces) return undefined
 
-  const surfaces = designSystem.sectionSurfaces
+  const currentTheme = theme ?? getCurrentTheme()
+  const themeSurfaces: SectionSurfacesTheme | undefined =
+    currentTheme === 'dark'
+      ? designSystem.sectionSurfaces.darkTheme
+      : designSystem.sectionSurfaces.lightTheme
+
+  if (!themeSurfaces) return undefined
 
   switch (surface) {
     case 'surface1':
-      return surfaces.surface1
+      return themeSurfaces.surface1
     case 'surface2':
-      return surfaces.surface2
+      return themeSurfaces.surface2
     case 'surface3':
-      return surfaces.surface3
+      return themeSurfaces.surface3
     case 'brandSurface':
-      return surfaces.brandSurface
+      return themeSurfaces.brandSurface
     case 'transparent':
     case 'usePagePattern':
       return undefined
@@ -69,14 +90,24 @@ export function getSurfaceColor(designSystem: DesignSystem | null | undefined, s
 /**
  * Get the full CSS object for a glass surface
  * @param designSystem - The design system
+ * @param theme - (Optional) Theme to use — defaults to current theme
  * @returns React.CSSProperties for glass surface, or undefined if glass not defined
  */
 export function getGlassStyles(
-  designSystem: DesignSystem | null | undefined
+  designSystem: DesignSystem | null | undefined,
+  theme?: ThemeMode
 ): React.CSSProperties | undefined {
-  if (!designSystem?.sectionSurfaces?.glass) return undefined
+  if (!designSystem?.sectionSurfaces) return undefined
 
-  const glass = designSystem.sectionSurfaces.glass
+  const currentTheme = theme ?? getCurrentTheme()
+  const themeSurfaces =
+    currentTheme === 'dark'
+      ? designSystem.sectionSurfaces.darkTheme
+      : designSystem.sectionSurfaces.lightTheme
+
+  if (!themeSurfaces?.glass) return undefined
+
+  const glass = themeSurfaces.glass
 
   return {
     backgroundColor: glass.backgroundOklch,
@@ -91,16 +122,18 @@ export function getGlassStyles(
  * Get inline styles for a section based on its surface type
  * @param designSystem - The design system
  * @param surface - The surface type
+ * @param theme - (Optional) Theme to use — defaults to current theme
  * @returns React.CSSProperties or undefined
  */
 export function getSurfaceStyles(
   designSystem: DesignSystem | null | undefined,
-  surface: SurfaceType
+  surface: SurfaceType,
+  theme?: ThemeMode
 ): React.CSSProperties | undefined {
   if (surface === 'glass') {
-    return getGlassStyles(designSystem)
+    return getGlassStyles(designSystem, theme)
   }
 
-  const bgColor = getSurfaceColor(designSystem, surface)
+  const bgColor = getSurfaceColor(designSystem, surface, theme)
   return bgColor ? { backgroundColor: bgColor } : undefined
 }

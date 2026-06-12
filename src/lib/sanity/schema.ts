@@ -710,6 +710,74 @@ const buttonStyleType = defineType({
   ],
 })
 
+const buttonStyleThemeType = defineType({
+  name: 'buttonStyleTheme',
+  title: 'Button Style (Theme)',
+  type: 'object',
+  description: 'Theme-specific button styling — explicit tokens, not derived',
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background',
+      type: 'string',
+      description: 'Explicit token — e.g. var(--primary) or OKLCH color',
+    }),
+    defineField({
+      name: 'text',
+      title: 'Text Color',
+      type: 'string',
+      description: 'Explicit token — text color for this button',
+    }),
+    defineField({
+      name: 'borderRadius',
+      title: 'Border Radius (px)',
+      type: 'number',
+      description: 'Optional — can override theme default',
+    }),
+    defineField({
+      name: 'hover',
+      title: 'Hover State (Optional Override)',
+      type: 'object',
+      description: 'Leave empty to use default hover behavior',
+      fields: [
+        defineField({
+          name: 'background',
+          title: 'Hover Background',
+          type: 'string',
+          description: 'Optional explicit override',
+        }),
+        defineField({
+          name: 'text',
+          title: 'Hover Text Color',
+          type: 'string',
+          description: 'Optional explicit override',
+        }),
+      ],
+    }),
+  ],
+})
+
+const cardStyleThemeType = defineType({
+  name: 'cardStyleTheme',
+  title: 'Card Style (Theme)',
+  type: 'object',
+  description: 'Theme-specific card styling — explicit tokens, not derived',
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background',
+      type: 'string',
+      description: 'Explicit token — e.g. var(--surface) or OKLCH color',
+    }),
+    defineField({
+      name: 'border',
+      title: 'Border Color',
+      type: 'string',
+      description: 'Explicit token — border color for this card',
+    }),
+  ],
+})
+
 // ─── Section Surface System ───────────────────────────────────────────────────
 
 const glassStyleType = defineType({
@@ -746,41 +814,62 @@ const glassStyleType = defineType({
   ],
 })
 
-const sectionSurfacesType = defineType({
-  name: 'sectionSurfaces',
-  title: 'Section Surfaces',
+const sectionSurfacesThemeType = defineType({
+  name: 'sectionSurfacesTheme',
+  title: 'Section Surfaces (Theme)',
   type: 'object',
-  description: 'Define the reusable background surfaces for page sections',
+  description: 'Theme-specific section surfaces — explicit tokens, not derived',
   fields: [
     defineField({
       name: 'surface1',
       title: 'Surface 1 (Primary Background)',
       type: 'string',
-      description: 'Usually var(--color-background) or equivalent OKLCH',
+      description: 'Explicit token — usually var(--color-background) or OKLCH',
     }),
     defineField({
       name: 'surface2',
       title: 'Surface 2 (Secondary Background)',
       type: 'string',
-      description: 'Usually var(--color-background-alt) or equivalent OKLCH',
+      description: 'Explicit token — usually var(--color-background-alt) or OKLCH',
     }),
     defineField({
       name: 'surface3',
       title: 'Surface 3 (Tertiary Background)',
       type: 'string',
-      description: 'Optional tertiary surface for advanced rhythms',
+      description: 'Explicit token — optional tertiary surface for advanced rhythms',
     }),
     defineField({
       name: 'brandSurface',
       title: 'Brand Surface',
       type: 'string',
-      description: 'Brand color surface — draws from tenant branding',
+      description: 'Explicit token — brand color surface drawn from tenant branding',
     }),
     defineField({
       name: 'glass',
       title: 'Glass Surface',
       type: 'glassStyle',
       description: 'Semi-transparent surface for premium sections',
+    }),
+  ],
+})
+
+const sectionSurfacesType = defineType({
+  name: 'sectionSurfaces',
+  title: 'Section Surfaces',
+  type: 'object',
+  description: 'Define the reusable background surfaces for page sections — theme-aware',
+  fields: [
+    defineField({
+      name: 'lightTheme',
+      title: 'Light Theme',
+      type: 'sectionSurfacesTheme',
+      description: 'Surfaces for light theme',
+    }),
+    defineField({
+      name: 'darkTheme',
+      title: 'Dark Theme',
+      type: 'sectionSurfacesTheme',
+      description: 'Surfaces for dark theme',
     }),
   ],
 })
@@ -1049,27 +1138,69 @@ const designSystemType = defineType({
       ],
     }),
 
-    // Buttons
+    // Buttons (theme-aware)
     defineField({
       name: 'buttons',
       title: 'Buttons',
       type: 'object',
       group: 'components',
+      description: 'Button styles per variant and theme',
       fields: [
-        defineField({ name: 'primary', title: 'Primary Button', type: 'buttonStyle' }),
-        defineField({ name: 'secondary', title: 'Secondary Button', type: 'buttonStyle' }),
+        defineField({
+          name: 'primary',
+          title: 'Primary Button',
+          type: 'object',
+          fields: [
+            defineField({
+              name: 'lightTheme',
+              title: 'Light Theme',
+              type: 'buttonStyleTheme',
+            }),
+            defineField({
+              name: 'darkTheme',
+              title: 'Dark Theme',
+              type: 'buttonStyleTheme',
+            }),
+          ],
+        }),
+        defineField({
+          name: 'secondary',
+          title: 'Secondary Button',
+          type: 'object',
+          fields: [
+            defineField({
+              name: 'lightTheme',
+              title: 'Light Theme',
+              type: 'buttonStyleTheme',
+            }),
+            defineField({
+              name: 'darkTheme',
+              title: 'Dark Theme',
+              type: 'buttonStyleTheme',
+            }),
+          ],
+        }),
       ],
     }),
 
-    // Cards
+    // Cards (theme-aware)
     defineField({
       name: 'cards',
       title: 'Cards',
       type: 'object',
       group: 'components',
+      description: 'Card styles per theme',
       fields: [
-        defineField({ name: 'background', title: 'Background', type: 'string' }),
-        defineField({ name: 'border', title: 'Border', type: 'string' }),
+        defineField({
+          name: 'lightTheme',
+          title: 'Light Theme',
+          type: 'cardStyleTheme',
+        }),
+        defineField({
+          name: 'darkTheme',
+          title: 'Dark Theme',
+          type: 'cardStyleTheme',
+        }),
       ],
     }),
 
@@ -1493,7 +1624,10 @@ export const schemaTypes = [
   fontDefinitionType,
   typescaleType,
   buttonStyleType,
+  buttonStyleThemeType,
+  cardStyleThemeType,
   glassStyleType,
+  sectionSurfacesThemeType,
   sectionSurfacesType,
   backgroundAssetType,
   mediaAssetType,

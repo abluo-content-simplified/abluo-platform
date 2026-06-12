@@ -311,20 +311,43 @@ export const designSystemQuery = /* groq */ `
     radius { small, medium, large },
     spacing { xs, s, m, l, xl },
     buttons {
-      primary { background, text, borderRadius },
-      secondary { background, text, borderRadius }
+      primary {
+        lightTheme { background, text, borderRadius, hover { background, text } },
+        darkTheme { background, text, borderRadius, hover { background, text } }
+      },
+      secondary {
+        lightTheme { background, text, borderRadius, hover { background, text } },
+        darkTheme { background, text, borderRadius, hover { background, text } }
+      }
     },
-    cards { background, border },
+    cards {
+      lightTheme { background, border },
+      darkTheme { background, border }
+    },
     sectionSurfaces {
-      surface1,
-      surface2,
-      surface3,
-      brandSurface,
-      glass {
-        backgroundOklch,
-        backdropBlur,
-        borderColor,
-        borderWidth
+      lightTheme {
+        surface1,
+        surface2,
+        surface3,
+        brandSurface,
+        glass {
+          backgroundOklch,
+          backdropBlur,
+          borderColor,
+          borderWidth
+        }
+      },
+      darkTheme {
+        surface1,
+        surface2,
+        surface3,
+        brandSurface,
+        glass {
+          backgroundOklch,
+          backdropBlur,
+          borderColor,
+          borderWidth
+        }
       }
     },
     branding {

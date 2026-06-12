@@ -133,6 +133,21 @@ export interface ButtonStyle {
   borderRadius?: number
 }
 
+export interface ButtonStyleTheme {
+  background?: string
+  text?: string
+  borderRadius?: number
+  hover?: {
+    background?: string
+    text?: string
+  }
+}
+
+export interface CardStyleTheme {
+  background?: string
+  border?: string
+}
+
 export interface BackgroundAsset {
   key: string
   name: string
@@ -178,12 +193,17 @@ export interface GlassStyle {
   borderWidth?: number
 }
 
-export interface SectionSurfaces {
+export interface SectionSurfacesTheme {
   surface1?: string
   surface2?: string
   surface3?: string
   brandSurface?: string
   glass?: GlassStyle
+}
+
+export interface SectionSurfaces {
+  lightTheme?: SectionSurfacesTheme
+  darkTheme?: SectionSurfacesTheme
 }
 
 export interface DesignSystem {
@@ -215,12 +235,18 @@ export interface DesignSystem {
     xl?: number
   }
   buttons?: {
-    primary?: ButtonStyle
-    secondary?: ButtonStyle
+    primary?: {
+      lightTheme?: ButtonStyleTheme
+      darkTheme?: ButtonStyleTheme
+    }
+    secondary?: {
+      lightTheme?: ButtonStyleTheme
+      darkTheme?: ButtonStyleTheme
+    }
   }
   cards?: {
-    background?: string
-    border?: string
+    lightTheme?: CardStyleTheme
+    darkTheme?: CardStyleTheme
   }
   sectionSurfaces?: SectionSurfaces
   branding?: {
