@@ -283,11 +283,17 @@ export const siteConfigQuery = websiteSiteConfigQuery
 // Fetches the design system for a project.
 // Primary path:  project.designSystemRef -> design system document
 // Fallback path: design system where projectSlug matches (legacy / unmigrated projects)
+// Includes parentDesignSystem reference for inheritance resolution.
 export const designSystemQuery = /* groq */ `
   coalesce(
     *[_type == "project" && projectSlug == $projectSlug][0].designSystemRef->,
     *[_type == "designSystem" && projectSlug == $projectSlug][0]
   ) {
+    _id,
+    name,
+    role,
+    description,
+    parentDesignSystem,
     colors {
       darkTheme {
         background, backgroundAlt, surface,

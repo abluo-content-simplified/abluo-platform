@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Geist_Mono, Barlow_Condensed, Poppins } from "next/font/google";
 import "./globals.css";
 
@@ -43,7 +44,7 @@ export default function RootLayout({
     >
       <head>
         {/* Theme preference applied before paint to prevent flash */}
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <Script id="theme-script" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

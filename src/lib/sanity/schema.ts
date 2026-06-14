@@ -1,4 +1,5 @@
 import { defineType, defineField, defineArrayMember } from 'sanity'
+import { TenantLinker } from '@/lib/sanity/fields/TenantLinker'
 
 // ─── Shared primitive types ───────────────────────────────────────────────────
 
@@ -581,16 +582,32 @@ const clientType = defineType({
   title: 'Client',
   type: 'document',
   fields: [
-    defineField({ name: 'displayName', title: 'Display Name', type: 'string', validation: (Rule) => Rule.required() }),
-    defineField({ name: 'tenantSlug', title: 'Tenant Slug', type: 'string', description: 'URL slug (e.g. livener) — set by platform, do not edit', readOnly: true, validation: (Rule) => Rule.required() }),
-    defineField({ name: 'tenantId', title: 'Tenant ID', type: 'string', description: 'UUID from Supabase — set by platform, do not edit', readOnly: true }),
-    defineField({ name: 'createdAt', title: 'Created At', type: 'datetime', description: 'Set by platform on creation', readOnly: true }),
-    defineField({ name: 'plan', title: 'Plan', type: 'string', options: { list: ['starter', 'pro', 'enterprise'] }, initialValue: 'starter' }),
-    defineField({ name: 'status', title: 'Status', type: 'string', options: { list: ['active', 'inactive', 'suspended'] }, initialValue: 'active' }),
+    defineField({
+      name: 'tenantId',
+      title: 'Tenant',
+      type: 'string',
+      validation: (Rule) => Rule.required(),
+      components: { input: TenantLinker },
+    }),
+    defineField({
+      name: 'tenantSlug',
+      title: 'Tenant Slug',
+      type: 'string',
+      hidden: true,
+    }),
+    defineField({
+      name: 'displayName',
+      title: 'Display Name',
+      type: 'string',
+      hidden: true,
+    }),
   ],
   preview: {
     select: { title: 'displayName', subtitle: 'tenantSlug' },
-    prepare: ({ title, subtitle }) => ({ title: title ?? '—', subtitle }),
+    prepare: ({ title, subtitle }) => ({
+      title: title ?? 'Untitled',
+      subtitle: subtitle ?? '—',
+    }),
   },
 })
 
@@ -599,10 +616,23 @@ const projectType = defineType({
   title: 'Project',
   type: 'document',
   fields: [
-    defineField({ name: 'clientRef', title: 'Client', type: 'reference', to: [{ type: 'client' }], readOnly: true, validation: (Rule) => Rule.required() }),
+    defineField({ name: 'clientRef', title: 'Client', type: 'reference', to: [{ type: 'client' }], validation: (Rule) => Rule.required() }),
+    defineField({
+      name: 'tenantId',
+      title: 'Tenant ID (auto-populated from Client)',
+      type: 'string',
+      description: 'Auto-filled when you select a Client',
+      readOnly: true,
+    }),
     defineField({ name: 'projectName', title: 'Project Name', type: 'string', validation: (Rule) => Rule.required() }),
     defineField({ name: 'projectSlug', title: 'Project Slug', type: 'string', description: 'Used to link all content (e.g. livener-main) — set by platform, do not edit', readOnly: true, validation: (Rule) => Rule.required() }),
-    defineField({ name: 'projectId', title: 'Project ID', type: 'string', description: 'UUID from Supabase — set by platform, do not edit', readOnly: true }),
+    defineField({
+      name: 'projectId',
+      title: 'Project ID',
+      type: 'string',
+      validation: (Rule) => Rule.required(),
+      description: 'UUID from Supabase',
+    }),
     defineField({ name: 'createdAt', title: 'Created At', type: 'datetime', description: 'Set by platform on creation', readOnly: true }),
     defineField({ name: 'customDomain', title: 'Custom Domain', type: 'string' }),
     defineField({ name: 'defaultLocale', title: 'Default Locale', type: 'string', options: { list: [{ title: 'English', value: 'en' }, { title: 'Italian', value: 'it' }], layout: 'radio' }, initialValue: 'en' }),

@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { tenantClient } from '@/lib/sanity/client'
 import { eventBySlugQuery, eventsQuery, localeConfigQuery, designSystemQuery } from '@/lib/sanity/queries'
+import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
+import { fetchDesignSystemById } from '@/lib/sanity/client'
 import type { Event, LocaleConfig, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
 import { SlideUp, FadeIn } from '@/components/animation'
@@ -56,7 +58,7 @@ export default async function EventDetailPage({ params }: PageProps) {
   // Fetch event and design system in parallel
   const [event, designSystem, allEvents] = await Promise.all([
     fetchForTenant<Event>(eventBySlugQuery, { slug, locale: locale as SupportedLocale, defaultLocale }),
-    fetchForTenant<DesignSystem>(designSystemQuery, {}),
+    (async () => { const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {}); return resolveDesignSystemInheritance(raw, fetchDesignSystemById); })(),
     fetchForTenant<Event[]>(eventsQuery, { locale: locale as SupportedLocale, defaultLocale }),
   ])
 

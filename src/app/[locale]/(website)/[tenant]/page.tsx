@@ -1,5 +1,7 @@
 import { tenantClient } from '@/lib/sanity/client'
 import { homePageQuery, localeConfigQuery, websiteSiteConfigQuery, designSystemQuery } from '@/lib/sanity/queries'
+import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
+import { fetchDesignSystemById } from '@/lib/sanity/client'
 import { HeroSection } from '@/components/sections/HeroSection'
 import { ContentSection } from '@/components/sections/ContentSection'
 import { TreatmentsSection } from '@/components/sections/TreatmentsSection'
@@ -100,7 +102,7 @@ export default async function WebsitePage({ params }: PageProps) {
   const [homePage, siteConfig, designSystem] = await Promise.all([
     fetchForTenant<WebsiteHomePage>(homePageQuery, { locale, defaultLocale }),
     fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale }),
-    fetchForTenant<DesignSystem>(designSystemQuery, {}),
+    (async () => { const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {}); return resolveDesignSystemInheritance(raw, fetchDesignSystemById); })(),
   ])
 
   if (!homePage) {

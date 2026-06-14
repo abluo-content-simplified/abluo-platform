@@ -1,11 +1,12 @@
 export const dynamic = 'force-dynamic'
 
 import type { Metadata } from 'next'
-import { tenantClient } from '@/lib/sanity/client'
+import { tenantClient, fetchDesignSystemById } from '@/lib/sanity/client'
 import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery } from '@/lib/sanity/queries'
 import type { LocaleConfig, SupportedLocale, DesignSystem, FontDefinition, WebsiteSiteConfig, BackgroundGraphic } from '@/lib/sanity/types'
 import { imageUrl } from '@/lib/sanity/image'
 import { resolveNavLinks } from '@/lib/sanity/nav-links'
+import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { Footer } from '@/components/livener/Footer'
 import { NavClient } from '@/components/livener/Nav/NavClient'
 import { LanguageSwitcher } from '@/components/SiteControls/LanguageSwitcher'
@@ -245,7 +246,8 @@ function DesignSystemHead({ cssVars, fontsUrl }: { cssVars: string; fontsUrl: st
 export async function generateMetadata({ params }: { params: Promise<{ tenant: string; locale: string }> }): Promise<Metadata> {
   const { tenant: tenantId } = await params
   const { fetchForTenant } = tenantClient(tenantId)
-  const designSystem = await fetchForTenant<DesignSystem>(designSystemQuery, {})
+  const rawDesignSystem = await fetchForTenant<DesignSystem>(designSystemQuery, {})
+  const designSystem = await resolveDesignSystemInheritance(rawDesignSystem, fetchDesignSystemById)
   const faviconAsset = designSystem?.branding?.favicon
   const faviconSrc = faviconAsset?.asset ? imageUrl(faviconAsset as any, 64) : undefined
   return {
@@ -265,7 +267,8 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
 
   // ── Shared: design system — runs for ALL tenants ─────────────────────────────
   // Fetched via project.designSystemRef -> design system document
-  const designSystem = await fetchForTenant<DesignSystem>(designSystemQuery, {})
+  const rawDesignSystem = await fetchForTenant<DesignSystem>(designSystemQuery, {})
+  const designSystem = await resolveDesignSystemInheritance(rawDesignSystem, fetchDesignSystemById)
   const cssVars = buildCssVars(designSystem)
   const headingFont = getFontName(designSystem?.typography?.headingFont, 'Geist')
   const bodyFont = getFontName(designSystem?.typography?.bodyFont, 'Geist')

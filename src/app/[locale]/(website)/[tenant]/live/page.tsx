@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { tenantClient } from '@/lib/sanity/client'
 import { currentLiveEventQuery, localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, pastEventsQuery } from '@/lib/sanity/queries'
+import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
+import { fetchDesignSystemById } from '@/lib/sanity/client'
 import type { Event, LocaleConfig, SupportedLocale, WebsiteSiteConfig, DesignSystem } from '@/lib/sanity/types'
 import { LivePageContent } from '@/components/livener/live/LivePageContent'
 
@@ -52,7 +54,7 @@ export default async function LivePage({ params }: PageProps) {
       locale: locale as SupportedLocale,
       defaultLocale,
     }),
-    fetchForTenant<DesignSystem>(designSystemQuery, {}),
+    (async () => { const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {}); return resolveDesignSystemInheritance(raw, fetchDesignSystemById); })(),
     fetchForTenant<Event[]>(pastEventsQuery, {
       locale: locale as SupportedLocale,
       defaultLocale,
