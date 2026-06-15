@@ -319,7 +319,9 @@ export default defineConfig({
     // Export / Import / Duplicate actions — scoped to designSystem documents only.
     actions: (prev, context) => {
       if (context.schemaType === 'designSystem') {
-        return [...prev, ExportDesignSystemAction, ImportDesignSystemAction, DuplicateDesignSystemAction]
+        // Remove the built-in Duplicate — our custom one always creates unassigned copies.
+        const filtered = prev.filter((action) => action.action !== 'duplicate')
+        return [...filtered, ExportDesignSystemAction, ImportDesignSystemAction, DuplicateDesignSystemAction]
       }
       return prev
     },

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { DocumentActionProps, DocumentActionComponent, useClient } from 'sanity'
+import { DownloadIcon } from '@sanity/icons'
 import { buildExportPayload, downloadJson, exportFilename } from './designSystemUtils'
 
 export const ExportDesignSystemAction: DocumentActionComponent = (
@@ -13,6 +14,7 @@ export const ExportDesignSystemAction: DocumentActionComponent = (
 
   return {
     label: isExporting ? 'Exporting…' : 'Export JSON',
+    icon: DownloadIcon,
     disabled: !doc || isExporting,
     onHandle: async () => {
       setIsExporting(true)

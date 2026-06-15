@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { DocumentActionProps, DocumentActionComponent, useClient } from 'sanity'
+import { CopyIcon } from '@sanity/icons'
 import { stripMetadata } from './designSystemUtils'
 
 export const DuplicateDesignSystemAction: DocumentActionComponent = (
@@ -104,6 +105,7 @@ export const DuplicateDesignSystemAction: DocumentActionComponent = (
 
   return {
     label: 'Duplicate',
+    icon: CopyIcon,
     disabled: !doc,
     onHandle: () => setDialogOpen(true),
     dialog: dialogOpen

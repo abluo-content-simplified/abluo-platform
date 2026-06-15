@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback } from 'react'
 import { DocumentActionProps, DocumentActionComponent, useClient } from 'sanity'
+import { UploadIcon } from '@sanity/icons'
 import { validateImport, stripMetadata } from './designSystemUtils'
 
 type ImportMode = 'create' | 'overwrite' | 'preview'
@@ -244,6 +245,7 @@ export const ImportDesignSystemAction: DocumentActionComponent = (
 
   return {
     label: 'Import JSON',
+    icon: UploadIcon,
     disabled: !currentDoc,
     onHandle: handleOpen,
     dialog: dialog.step !== 'closed'
