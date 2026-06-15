@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     // Fetch projects for the tenant
     const { data: projects, error } = await supabase
       .from('projects')
-      .select('id, slug, name')
+      .select('id, slug, name, domain, created_at')
       .eq('tenant_id', tenantId)
       .order('name', { ascending: true })
 
@@ -41,6 +41,8 @@ export async function GET(request: Request) {
         id: project.id,
         slug: project.slug,
         name: project.name,
+        domain: project.domain ?? null,
+        createdAt: project.created_at,
       })) || []
     )
   } catch (error) {

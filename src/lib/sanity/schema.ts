@@ -1,5 +1,6 @@
 import { defineType, defineField, defineArrayMember } from 'sanity'
 import { TenantLinker } from '@/lib/sanity/fields/TenantLinker'
+import { ProjectLinker } from '@/lib/sanity/fields/ProjectLinker'
 
 // ─── Shared primitive types ───────────────────────────────────────────────────
 
@@ -581,13 +582,13 @@ const clientType = defineType({
   name: 'client',
   title: 'Client',
   type: 'document',
+  components: { input: TenantLinker },
   fields: [
     defineField({
       name: 'tenantId',
-      title: 'Tenant',
+      title: 'Tenant ID',
       type: 'string',
       validation: (Rule) => Rule.required(),
-      components: { input: TenantLinker },
     }),
     defineField({
       name: 'tenantSlug',
@@ -605,7 +606,7 @@ const clientType = defineType({
   preview: {
     select: { title: 'displayName', subtitle: 'tenantSlug' },
     prepare: ({ title, subtitle }) => ({
-      title: title ?? 'Untitled',
+      title: title ?? 'Link Tenant',
       subtitle: subtitle ?? '—',
     }),
   },
@@ -615,28 +616,30 @@ const projectType = defineType({
   name: 'project',
   title: 'Project',
   type: 'document',
+  components: { input: ProjectLinker },
   fields: [
-    defineField({ name: 'clientRef', title: 'Client', type: 'reference', to: [{ type: 'client' }], validation: (Rule) => Rule.required() }),
+    // ── Auto-populated by ProjectLinker (hidden from default form) ──────────
+    defineField({ name: 'clientRef',    title: 'Client',       type: 'reference', to: [{ type: 'client' }], hidden: true }),
+    defineField({ name: 'projectId',    title: 'Project ID',   type: 'string',    hidden: true, validation: (Rule) => Rule.required() }),
+    defineField({ name: 'projectSlug',  title: 'Project Slug', type: 'string',    hidden: true }),
+    defineField({ name: 'projectName',  title: 'Project Name', type: 'string',    hidden: true }),
+    defineField({ name: 'tenantId',     title: 'Tenant ID',    type: 'string',    hidden: true }),
+    defineField({ name: 'customDomain', title: 'Custom Domain',type: 'string',    hidden: true }),
+    // ── Sanity-only fields (visible, editor fills these after linking) ──────
     defineField({
-      name: 'tenantId',
-      title: 'Tenant ID (auto-populated from Client)',
+      name: 'defaultLocale',
+      title: 'Default Locale',
       type: 'string',
-      description: 'Auto-filled when you select a Client',
-      readOnly: true,
+      options: { list: [{ title: 'English', value: 'en' }, { title: 'Italian', value: 'it' }], layout: 'radio' },
+      initialValue: 'en',
     }),
-    defineField({ name: 'projectName', title: 'Project Name', type: 'string', validation: (Rule) => Rule.required() }),
-    defineField({ name: 'projectSlug', title: 'Project Slug', type: 'string', description: 'Used to link all content (e.g. livener-main) — set by platform, do not edit', readOnly: true, validation: (Rule) => Rule.required() }),
     defineField({
-      name: 'projectId',
-      title: 'Project ID',
+      name: 'status',
+      title: 'Status',
       type: 'string',
-      validation: (Rule) => Rule.required(),
-      description: 'UUID from Supabase',
+      options: { list: ['active', 'inactive', 'archived'] },
+      initialValue: 'active',
     }),
-    defineField({ name: 'createdAt', title: 'Created At', type: 'datetime', description: 'Set by platform on creation', readOnly: true }),
-    defineField({ name: 'customDomain', title: 'Custom Domain', type: 'string' }),
-    defineField({ name: 'defaultLocale', title: 'Default Locale', type: 'string', options: { list: [{ title: 'English', value: 'en' }, { title: 'Italian', value: 'it' }], layout: 'radio' }, initialValue: 'en' }),
-    defineField({ name: 'status', title: 'Status', type: 'string', options: { list: ['active', 'inactive', 'archived'] }, initialValue: 'active' }),
     defineField({
       name: 'designSystemRef',
       title: 'Design System',
@@ -647,7 +650,10 @@ const projectType = defineType({
   ],
   preview: {
     select: { title: 'projectName', subtitle: 'projectSlug' },
-    prepare: ({ title, subtitle }) => ({ title: title ?? '—', subtitle }),
+    prepare: ({ title, subtitle }) => ({
+      title: title ?? 'Link Project',
+      subtitle: subtitle ?? '—',
+    }),
   },
 })
 
