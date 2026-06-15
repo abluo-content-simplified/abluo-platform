@@ -442,3 +442,12 @@ export interface WebsiteHomePage {
   backgroundPattern?: 'none' | 'alternate1-2' | 'alternate1-2-3'
   sections?: PageSection[]
 }
+
+export interface WebsitePage {
+  _id: string
+  pageType: 'home' | 'about' | 'contact' | 'team' | 'services' | 'landing' | 'legal'
+  title?: string
+  slug: { current: string }
+  backgroundPattern?: 'none' | 'alternate1-2' | 'alternate1-2-3'
+  sections?: PageSection[]
+}

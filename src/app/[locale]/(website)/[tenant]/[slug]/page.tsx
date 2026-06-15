@@ -1,5 +1,5 @@
 import { tenantClient } from '@/lib/sanity/client'
-import { pageHomeQuery, localeConfigQuery, websiteSiteConfigQuery, designSystemQuery } from '@/lib/sanity/queries'
+import { pageBySlugQuery, localeConfigQuery, websiteSiteConfigQuery, designSystemQuery } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
 import { HeroSection } from '@/components/sections/HeroSection'
@@ -13,38 +13,48 @@ import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, PageSection, FAQSect
 import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
 import { computeSectionSurface } from '@/lib/sanity/surfaces'
+import { notFound } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
 // ─── Metadata ─────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  params: Promise<{ tenant: string; locale: string }>
+  params: Promise<{ tenant: string; locale: string; slug: string }>
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { tenant: tenantId, locale } = await params
+  const { tenant: tenantId, locale, slug } = await params
   const { fetchForTenant } = tenantClient(tenantId)
+
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
-  const config = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
+
+  const [page, config] = await Promise.all([
+    fetchForTenant<WebsitePage>(pageBySlugQuery, { locale, defaultLocale, slug }),
+    fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale }),
+  ])
+
+  if (!page) return {}
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? ''
-  const canonical = `${baseUrl}/${locale}/${tenantId}`
+  const canonical = `${baseUrl}/${locale}/${tenantId}/${slug}`
+
+  const pageTitle = page.title
+    ? `${page.title} — ${config?.siteName ?? tenantId}`
+    : config?.siteName ?? tenantId
 
   return {
-    title: config?.siteName ?? tenantId,
-    description: config?.tagline,
+    title: pageTitle,
     alternates: {
       canonical,
       languages: {
-        it: `${baseUrl}/it/${tenantId}`,
-        en: `${baseUrl}/en/${tenantId}`,
+        it: `${baseUrl}/it/${tenantId}/${slug}`,
+        en: `${baseUrl}/en/${tenantId}/${slug}`,
       },
     },
     openGraph: {
-      title: config?.siteName ?? tenantId,
-      description: config?.tagline ?? undefined,
+      title: pageTitle,
       url: canonical,
       siteName: config?.siteName ?? tenantId,
       locale: locale === 'it' ? 'it_IT' : 'en_US',
@@ -92,28 +102,25 @@ function SectionRenderer({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default async function WebsitePage({ params }: PageProps) {
-  const { tenant: tenantId, locale } = await params
+export default async function WebsitePageRoute({ params }: PageProps) {
+  const { tenant: tenantId, locale, slug } = await params
   const { fetchForTenant } = tenantClient(tenantId)
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  const [homePage, siteConfig, designSystem] = await Promise.all([
-    fetchForTenant<WebsitePage>(pageHomeQuery, { locale, defaultLocale }),
+  const [page, siteConfig, designSystem] = await Promise.all([
+    fetchForTenant<WebsitePage>(pageBySlugQuery, { locale, defaultLocale, slug }),
     fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale }),
-    (async () => { const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {}); return resolveDesignSystemInheritance(raw, fetchDesignSystemById); })(),
+    (async () => {
+      const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {})
+      return resolveDesignSystemInheritance(raw, fetchDesignSystemById)
+    })(),
   ])
 
-  if (!homePage) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-sm text-zinc-400">No home page found for: {tenantId}</p>
-      </div>
-    )
-  }
+  if (!page) return notFound()
 
-  const faqSection = homePage.sections?.find(
+  const faqSection = page.sections?.find(
     (s): s is FAQSectionType => s._type === 'faqSection'
   ) ?? null
 
@@ -125,13 +132,13 @@ export default async function WebsitePage({ params }: PageProps) {
         locale={locale}
         tenantId={tenantId}
       />
-      {homePage.sections?.map((section, index) => (
+      {page.sections?.map((section, index) => (
         <SectionRenderer
           key={section._key}
           section={section}
           siteConfig={siteConfig}
           designSystem={designSystem}
-          backgroundPattern={homePage.backgroundPattern}
+          backgroundPattern={page.backgroundPattern}
           sectionIndex={index}
         />
       ))}

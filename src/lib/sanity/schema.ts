@@ -1520,6 +1520,17 @@ const pageType = defineType({
     }),
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
     defineField({
+      name: 'slug',
+      title: 'URL Slug',
+      type: 'slug',
+      description: 'The URL path for this page, e.g. "about" → /en/livener/about',
+      options: {
+        source: 'title.en',
+        maxLength: 96,
+      },
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
       name: 'backgroundPattern',
       title: 'Section Background Pattern',
       type: 'string',
@@ -1549,12 +1560,16 @@ const pageType = defineType({
     }),
   ],
   preview: {
-    select: { title: 'title.en', pageType: 'pageType', slug: 'projectSlug' },
+    select: { title: 'title.en', pageType: 'pageType', slug: 'slug.current' },
     prepare: ({ title, pageType, slug }) => {
-      const label = pageType
+      const typeLabel = pageType
         ? pageType.charAt(0).toUpperCase() + pageType.slice(1)
         : 'Page'
-      return { title: title ?? label, subtitle: slug ?? '—' }
+      const slugLabel = slug ? `/${slug}` : '— no slug'
+      return {
+        title: title ?? typeLabel,
+        subtitle: `${typeLabel} · ${slugLabel}`,
+      }
     },
   },
 })

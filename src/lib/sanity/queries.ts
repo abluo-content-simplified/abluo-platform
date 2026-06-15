@@ -235,9 +235,99 @@ export const eventBySlugQuery = /* groq */ `
   }
 `
 
+// Legacy — kept for backward compat. New tenants use pageHomeQuery below.
 export const homePageQuery = /* groq */ `
   *[_type == "homePage" && projectSlug == $projectSlug][0] {
     projectSlug,
+    backgroundPattern,
+    sections[] {
+      _type,
+      _key,
+      background,
+      "eyebrow": ${loc('eyebrow')},
+      "headline": ${loc('headline')},
+      "subheadline": ${loc('subheadline')},
+      "ctaLabel": ${loc('ctaLabel')},
+      ctaHref,
+      "title": ${loc('title')},
+      "body": ${loc('body')},
+      imagePosition,
+      "intro": ${loc('intro')},
+      treatments[] {
+        _type, _key,
+        "name": ${loc('name')},
+        "tagline": ${loc('tagline')},
+        "description": ${loc('description')},
+      },
+      "subtitle": ${loc('subtitle')},
+      members[] {
+        _type, _key,
+        name,
+        "role": ${loc('role')},
+        "bio": ${loc('bio')},
+      },
+      "content": ${loc('content')},
+      items[] {
+        _key,
+        "question": ${loc('question')},
+        "answer": ${loc('answer')},
+      },
+      mapEmbedUrl
+    }
+  }
+`
+
+// Fetches the homepage from the new page system (pageType == "home").
+export const pageHomeQuery = /* groq */ `
+  *[_type == "page" && projectSlug == $projectSlug && pageType == "home"][0] {
+    _id,
+    pageType,
+    "title": ${loc('title')},
+    slug,
+    backgroundPattern,
+    sections[] {
+      _type,
+      _key,
+      background,
+      "eyebrow": ${loc('eyebrow')},
+      "headline": ${loc('headline')},
+      "subheadline": ${loc('subheadline')},
+      "ctaLabel": ${loc('ctaLabel')},
+      ctaHref,
+      "title": ${loc('title')},
+      "body": ${loc('body')},
+      imagePosition,
+      "intro": ${loc('intro')},
+      treatments[] {
+        _type, _key,
+        "name": ${loc('name')},
+        "tagline": ${loc('tagline')},
+        "description": ${loc('description')},
+      },
+      "subtitle": ${loc('subtitle')},
+      members[] {
+        _type, _key,
+        name,
+        "role": ${loc('role')},
+        "bio": ${loc('bio')},
+      },
+      "content": ${loc('content')},
+      items[] {
+        _key,
+        "question": ${loc('question')},
+        "answer": ${loc('answer')},
+      },
+      mapEmbedUrl
+    }
+  }
+`
+
+export const pageBySlugQuery = /* groq */ `
+  *[_type == "page" && projectSlug == $projectSlug && slug.current == $slug][0] {
+    _id,
+    pageType,
+    "title": ${loc('title')},
+    slug,
     backgroundPattern,
     sections[] {
       _type,
