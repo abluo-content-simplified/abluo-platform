@@ -2,6 +2,9 @@ import { defineConfig } from 'sanity'
 import { structureTool } from 'sanity/structure'
 import { schemaTypes, initialValueTemplates } from './src/lib/sanity/schema'
 import { DesignSystemPreview } from './src/sanity/components/DesignSystemPreview'
+import { ExportDesignSystemAction } from './src/sanity/actions/ExportDesignSystemAction'
+import { ImportDesignSystemAction } from './src/sanity/actions/ImportDesignSystemAction'
+import { DuplicateDesignSystemAction } from './src/sanity/actions/DuplicateDesignSystemAction'
 
 // Hardcoded to match src/lib/sanity/client.ts — avoids env var dependency in the Studio
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ?? '3n7t84j3'
@@ -122,24 +125,14 @@ export default defineConfig({
                       .id(`${slug}-pages`)
                       .title('Pages')
                       .child(
-                        S.list()
-                          .id(`${slug}-pages-list`)
+                        S.documentList()
                           .title('Pages')
-                          .items([
-                            S.listItem()
-                              .id(`${slug}-home`)
-                              .title('Home Page')
-                              .child(
-                                S.documentList()
-                                  .title('Home Page')
-                                  .schemaType('homePage')
-                                  .apiVersion('2026-05-21')
-                                  .filter(`_type == "homePage" && projectSlug == $slug`)
-                                  .params({ slug })
-                                  .initialValueTemplates([
-                                    S.initialValueTemplateItem('homePageProjectOwned', { projectSlug: slug }),
-                                  ])
-                              ),
+                          .schemaType('page')
+                          .apiVersion('2026-05-21')
+                          .filter(`_type == "page" && projectSlug == $slug`)
+                          .params({ slug })
+                          .initialValueTemplates([
+                            S.initialValueTemplateItem('pageProjectOwned', { projectSlug: slug }),
                           ])
                       ),
 
@@ -264,13 +257,22 @@ export default defineConfig({
                   .title('Unassigned Content')
                   .items([
                     S.listItem()
-                      .id('unassigned-homepages')
-                      .title('Home Pages without Project')
+                      .id('unassigned-pages')
+                      .title('Pages without Project')
                       .child(
                         S.documentList()
-                          .title('Unassigned Home Pages')
+                          .title('Unassigned Pages')
                           .apiVersion('2026-05-21')
-                          .filter('_type == "homePage" && (projectSlug == null || projectSlug == "")')
+                          .filter('_type == "page" && (projectSlug == null || projectSlug == "")')
+                      ),
+                    S.listItem()
+                      .id('unassigned-homepages')
+                      .title('Legacy Home Pages')
+                      .child(
+                        S.documentList()
+                          .title('Legacy Home Pages')
+                          .apiVersion('2026-05-21')
+                          .filter('_type == "homePage"')
                       ),
                     S.listItem()
                       .id('unassigned-posts')
@@ -310,5 +312,22 @@ export default defineConfig({
   schema: {
     types: schemaTypes,
     templates: initialValueTemplates,
+  },
+
+  // ── Document config ───────────────────────────────────────────────────────────
+  document: {
+    // Export / Import / Duplicate actions — scoped to designSystem documents only.
+    actions: (prev, context) => {
+      if (context.schemaType === 'designSystem') {
+        return [...prev, ExportDesignSystemAction, ImportDesignSystemAction, DuplicateDesignSystemAction]
+      }
+      return prev
+    },
+
+    // Plus menu: hide legacy/internal types.
+    // Note: Sanity always re-sorts the menu alphabetically in the UI layer —
+    // custom ordering via newDocumentOptions is not possible. Filter only.
+    newDocumentOptions: (prev) =>
+      prev.filter((opt) => !['homePage', 'mediaAsset', 'homePageProjectOwned'].includes(opt.templateId)),
   },
 })

@@ -1,6 +1,7 @@
 import { defineType, defineField, defineArrayMember } from 'sanity'
 import { TenantLinker } from '@/lib/sanity/fields/TenantLinker'
 import { ProjectLinker } from '@/lib/sanity/fields/ProjectLinker'
+import { ProjectSlugPicker } from '@/lib/sanity/fields/ProjectSlugPicker'
 
 // ─── Shared primitive types ───────────────────────────────────────────────────
 
@@ -277,9 +278,10 @@ const projectSlugField = defineField({
   name: 'projectSlug',
   title: 'Project',
   type: 'string',
-  description: 'Which project this document belongs to — automatically set from project context',
-  readOnly: true,
   validation: (Rule) => Rule.required(),
+  components: {
+    input: ProjectSlugPicker,
+  },
 })
 
 // ─── Section object types ─────────────────────────────────────────────────────
@@ -1490,7 +1492,74 @@ const eventType = defineType({
   },
 })
 
-// ─── Home Page ────────────────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+const pageType = defineType({
+  name: 'page',
+  title: 'Page',
+  type: 'document',
+  fields: [
+    projectSlugField,
+    defineField({
+      name: 'pageType',
+      title: 'Page Type',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Home', value: 'home' },
+          { title: 'About', value: 'about' },
+          { title: 'Contact', value: 'contact' },
+          { title: 'Team', value: 'team' },
+          { title: 'Services', value: 'services' },
+          { title: 'Landing Page', value: 'landing' },
+          { title: 'Legal', value: 'legal' },
+        ],
+        layout: 'radio',
+      },
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    defineField({
+      name: 'backgroundPattern',
+      title: 'Section Background Pattern',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'None (Manual section overrides only)', value: 'none' },
+          { title: 'Alternate Surface 1 ↔ Surface 2', value: 'alternate1-2' },
+          { title: 'Alternate Surface 1 ↔ 2 ↔ 3', value: 'alternate1-2-3' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'none',
+    }),
+    defineField({
+      name: 'sections',
+      title: 'Sections',
+      type: 'array',
+      of: [
+        defineArrayMember({ type: 'heroSection' }),
+        defineArrayMember({ type: 'contentSection' }),
+        defineArrayMember({ type: 'treatmentsSection' }),
+        defineArrayMember({ type: 'teamSection' }),
+        defineArrayMember({ type: 'textSection' }),
+        defineArrayMember({ type: 'faqSection' }),
+        defineArrayMember({ type: 'contactSection' }),
+      ],
+    }),
+  ],
+  preview: {
+    select: { title: 'title.en', pageType: 'pageType', slug: 'projectSlug' },
+    prepare: ({ title, pageType, slug }) => {
+      const label = pageType
+        ? pageType.charAt(0).toUpperCase() + pageType.slice(1)
+        : 'Page'
+      return { title: title ?? label, subtitle: slug ?? '—' }
+    },
+  },
+})
+
+// ─── Home Page (legacy — kept for backward compat, replaced by Page) ──────────
 
 const homePageType = defineType({
   name: 'homePage',
@@ -1589,6 +1658,16 @@ export const initialValueTemplates = [
     }),
   },
   {
+    id: 'pageProjectOwned',
+    title: 'Page',
+    schemaType: 'page',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+      sections: [],
+    }),
+  },
+  {
     id: 'homePageProjectOwned',
     title: 'Home Page',
     schemaType: 'homePage',
@@ -1669,6 +1748,7 @@ export const schemaTypes = [
   mediaAssetType,
   designSystemType,
   siteConfigType,
+  pageType,
   homePageType,
   postType,
   eventType,
