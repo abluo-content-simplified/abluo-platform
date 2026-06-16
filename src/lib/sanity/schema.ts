@@ -1002,25 +1002,21 @@ const mediaAssetType = defineType({
     defineField({
       name: 'altText',
       title: 'Alt Text',
-      type: 'object',
+      type: 'localizedString',
       description: 'Alt text for screen readers and accessibility (multilingual)',
-      fields: [
-        defineField({ name: 'en', title: 'English', type: 'string' }),
-        defineField({ name: 'it', title: 'Italian', type: 'string' }),
-        defineField({ name: 'de', title: 'German', type: 'string' }),
-      ],
       validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'caption',
+      title: 'Caption',
+      type: 'localizedString',
+      description: 'Optional caption displayed beneath the image (multilingual)',
     }),
     defineField({
       name: 'description',
       title: 'Description',
-      type: 'object',
-      description: 'Optional details about this image (multilingual)',
-      fields: [
-        defineField({ name: 'en', title: 'English', type: 'text', rows: 2 }),
-        defineField({ name: 'it', title: 'Italian', type: 'text', rows: 2 }),
-        defineField({ name: 'de', title: 'German', type: 'text', rows: 2 }),
-      ],
+      type: 'localizedText',
+      description: 'Optional internal notes about this image (multilingual)',
     }),
     defineField({
       name: 'uploadedBy',
@@ -1041,12 +1037,13 @@ const mediaAssetType = defineType({
   ],
   preview: {
     select: {
-      title: 'altText',
+      title: 'name',
+      altTextEn: 'altText.en',
       media: 'image',
       subtitle: 'tags.0',
     },
-    prepare: ({ title, media, subtitle }) => ({
-      title: title ?? 'Untitled',
+    prepare: ({ title, altTextEn, media, subtitle }: { title?: string; altTextEn?: string; media?: unknown; subtitle?: string }) => ({
+      title: title ?? altTextEn ?? 'Untitled',
       media,
       subtitle: subtitle ?? 'No tags',
     }),

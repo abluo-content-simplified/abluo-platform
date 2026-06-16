@@ -5,10 +5,9 @@
 export interface LocalizedString {
   it?: string
   en?: string
-  de?: string
 }
 
-export type SupportedLocale = 'en' | 'it' | 'de'
+export type SupportedLocale = 'en' | 'it'
 
 // ─── Portable Text ────────────────────────────────────────────────────────────
 

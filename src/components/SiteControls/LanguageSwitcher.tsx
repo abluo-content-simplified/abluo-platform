@@ -14,13 +14,11 @@ interface LanguageSwitcherProps {
 const LOCALE_LABELS: Record<SupportedLocale, string> = {
   en: 'EN',
   it: 'IT',
-  de: 'DE',
 }
 
 const LOCALE_NAMES: Record<SupportedLocale, string> = {
   en: 'English',
   it: 'Italiano',
-  de: 'Deutsch',
 }
 
 export function LanguageSwitcher({ currentLocale, supportedLocales, appearance = 'header' }: LanguageSwitcherProps) {
