@@ -157,25 +157,6 @@
   --tracking-widest: calc(var(--tracking-normal) + 0.1em);
 }
 
-/* ── Abluo motion primitives ──────────────────────────────────────────────
-   Animations belong to components, not content.
-   Principle: fade + subtle upward motion. Never distracting.
-   ──────────────────────────────────────────────────────────────────────── */
-
-@keyframes fade-slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@theme inline {
-  --animate-fade-slide-up: fade-slide-up 0.6s ease-out both;
-}
 
 @layer base {
   * {

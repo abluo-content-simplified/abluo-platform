@@ -992,6 +992,100 @@ const backgroundAssetType = defineType({
   },
 })
 
+// ─── Form Field System ────────────────────────────────────────────────────────
+
+const formInputThemeType = defineType({
+  name: 'formInputTheme',
+  title: 'Form Input (Theme)',
+  type: 'object',
+  description: 'Theme-specific styling for a form element',
+  fields: [
+    defineField({ name: 'background', title: 'Background', type: 'string', description: 'Input background — e.g. var(--color-surface) or OKLCH' }),
+    defineField({ name: 'border', title: 'Border Color', type: 'string', description: 'Default border color' }),
+    defineField({ name: 'text', title: 'Text Color', type: 'string' }),
+    defineField({ name: 'placeholder', title: 'Placeholder Color', type: 'string' }),
+    defineField({ name: 'focusBorder', title: 'Focus Border Color', type: 'string', description: 'Border color when the input is focused' }),
+    defineField({ name: 'errorBorder', title: 'Error Border Color', type: 'string', description: 'Border color in error state' }),
+    defineField({ name: 'successBorder', title: 'Success Border Color', type: 'string', description: 'Border color in success state' }),
+    defineField({ name: 'disabledOpacity', title: 'Disabled Opacity', type: 'number', description: '0–1 — e.g. 0.4', initialValue: 0.4, validation: (Rule) => Rule.min(0).max(1) }),
+  ],
+})
+
+const formInputType = defineType({
+  name: 'formInput',
+  title: 'Form Input',
+  type: 'object',
+  fields: [
+    defineField({ name: 'lightTheme', title: 'Light Theme', type: 'formInputTheme' }),
+    defineField({ name: 'darkTheme', title: 'Dark Theme', type: 'formInputTheme' }),
+  ],
+})
+
+// ─── Card Variant System ───────────────────────────────────────────────────────
+
+const cardVariantType = defineType({
+  name: 'cardVariant',
+  title: 'Card Variant',
+  type: 'object',
+  fields: [
+    defineField({ name: 'key', title: 'Key', type: 'string', description: 'Unique identifier — e.g. "default", "elevated", "glass", "testimonial"', validation: (Rule) => Rule.required() }),
+    defineField({ name: 'label', title: 'Label', type: 'string', description: 'Human-readable name for Studio', validation: (Rule) => Rule.required() }),
+    defineField({ name: 'lightTheme', title: 'Light Theme', type: 'cardStyleTheme' }),
+    defineField({ name: 'darkTheme', title: 'Dark Theme', type: 'cardStyleTheme' }),
+  ],
+  preview: {
+    select: { title: 'label', subtitle: 'key' },
+    prepare: ({ title, subtitle }) => ({ title: title ?? '—', subtitle }),
+  },
+})
+
+/**
+ * motionType — flat token object for all animation timing and easing.
+ *
+ * Stored as: durations in ms (numbers), easings as CSS cubic-bezier strings.
+ * Consumers divide duration by 1000 for motion/react; pass easing string directly.
+ * mergeShallowObject handles inheritance automatically — no custom merge needed.
+ */
+const motionType = defineType({
+  name: 'motion',
+  title: 'Motion',
+  type: 'object',
+  fields: [
+    defineField({ name: 'durationFast',   title: 'Duration — Fast (ms)',   type: 'number', description: 'Micro-interactions, icon state changes — e.g. 120ms', initialValue: 120 }),
+    defineField({ name: 'durationBase',   title: 'Duration — Base (ms)',   type: 'number', description: 'Standard transitions, hover effects — e.g. 200ms', initialValue: 200 }),
+    defineField({ name: 'durationSlow',   title: 'Duration — Slow (ms)',   type: 'number', description: 'Reveal animations, panel slides — e.g. 350ms', initialValue: 350 }),
+    defineField({ name: 'durationSlower', title: 'Duration — Slower (ms)', type: 'number', description: 'Hero entrances, page-level transitions — e.g. 600ms', initialValue: 600 }),
+    defineField({
+      name: 'easingStandard',
+      title: 'Easing — Standard',
+      type: 'string',
+      description: 'General-purpose easing for most transitions',
+      initialValue: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    }),
+    defineField({
+      name: 'easingDecelerate',
+      title: 'Easing — Decelerate (enter)',
+      type: 'string',
+      description: 'Elements entering the screen — start fast, slow to stop',
+      initialValue: 'cubic-bezier(0, 0, 0.2, 1)',
+    }),
+    defineField({
+      name: 'easingAccelerate',
+      title: 'Easing — Accelerate (exit)',
+      type: 'string',
+      description: 'Elements leaving the screen — start slow, exit quickly',
+      initialValue: 'cubic-bezier(0.4, 0, 1, 1)',
+    }),
+    defineField({
+      name: 'easingEmphasized',
+      title: 'Easing — Emphasized',
+      type: 'string',
+      description: 'Important transitions that need extra attention — hero reveals, dialogs',
+      initialValue: 'cubic-bezier(0.2, 0, 0, 1)',
+    }),
+  ],
+})
+
 const mediaAssetType = defineType({
   name: 'mediaAsset',
   title: 'Media Asset',
@@ -1101,6 +1195,8 @@ const designSystemType = defineType({
     { name: 'colors', title: 'Colors' },
     { name: 'typography', title: 'Typography' },
     { name: 'shape', title: 'Shape & Spacing' },
+    { name: 'layout', title: 'Layout' },
+    { name: 'motion', title: 'Motion' },
     { name: 'components', title: 'Components' },
   ],
   fields: [
@@ -1139,6 +1235,8 @@ const designSystemType = defineType({
       fields: [
         defineField({ name: 'logo', title: 'Logo (dark background)', type: 'image', options: { hotspot: false } }),
         defineField({ name: 'logoLight', title: 'Logo (light background)', type: 'image', options: { hotspot: false } }),
+        defineField({ name: 'logoHeightDesktop', title: 'Logo Height — Desktop (px)', type: 'number', description: 'Max height of the logo in the header on desktop. Typical: 28–40px.', initialValue: 32 }),
+        defineField({ name: 'logoHeightMobile', title: 'Logo Height — Mobile (px)', type: 'number', description: 'Max height of the logo in the header on mobile. Typical: 24–32px.', initialValue: 28 }),
         defineField({ name: 'favicon', title: 'Favicon', type: 'image', options: { hotspot: false } }),
         defineField({ name: 'openGraphImage', title: 'Open Graph Image', type: 'image', description: 'Social Sharing Image • 1200 x 630 pixels • Aspect ratio: 1.91:1 • JPG preferred', options: { hotspot: false } }),
         defineField({ name: 'appleTouchIcon', title: 'Apple Touch Icon', type: 'image', description: 'Used when saved to iPhone/iPad home screen • 180 x 180 pixels • PNG', options: { hotspot: false } }),
@@ -1287,6 +1385,102 @@ const designSystemType = defineType({
       type: 'sectionSurfaces',
       group: 'components',
       description: 'Define the reusable background surfaces for page sections',
+    }),
+
+    // Glass — global reusable token for header, cards, modals, dropdowns
+    defineField({
+      name: 'glass',
+      title: 'Glass Effect',
+      type: 'glassStyle',
+      group: 'components',
+      description: 'Global glass token — consumed by the header, navigation dropdown, cards, and modals. Individual components reference this instead of defining their own glass styles.',
+    }),
+
+    // Forms
+    defineField({
+      name: 'forms',
+      title: 'Forms',
+      type: 'object',
+      group: 'components',
+      description: 'Form element styling — consumed by contact, newsletter, and booking forms',
+      fields: [
+        defineField({ name: 'input', title: 'Input', type: 'formInput' }),
+        defineField({ name: 'textarea', title: 'Textarea', type: 'formInput' }),
+        defineField({ name: 'select', title: 'Select', type: 'formInput' }),
+        defineField({ name: 'checkbox', title: 'Checkbox', type: 'formInput' }),
+        defineField({ name: 'radio', title: 'Radio', type: 'formInput' }),
+      ],
+    }),
+
+    // Navigation tokens
+    defineField({
+      name: 'navigation',
+      title: 'Navigation',
+      type: 'object',
+      group: 'components',
+      description: 'Navigation and menu styling tokens',
+      fields: [
+        defineField({ name: 'menuRadius', title: 'Menu Item Radius (px)', type: 'number', description: 'Border radius of individual nav items / pills', initialValue: 8 }),
+        defineField({ name: 'menuGap', title: 'Menu Gap (px)', type: 'number', description: 'Spacing between top-level nav items', initialValue: 4 }),
+        defineField({ name: 'dropdownRadius', title: 'Dropdown Radius (px)', type: 'number', description: 'Border radius of the dropdown panel', initialValue: 12 }),
+        defineField({
+          name: 'dropdownStyle',
+          title: 'Dropdown Style',
+          type: 'string',
+          options: { list: [{ title: 'Solid', value: 'solid' }, { title: 'Glass', value: 'glass' }, { title: 'Surface', value: 'surface' }], layout: 'radio' },
+          initialValue: 'glass',
+          description: 'Visual treatment of the dropdown panel — glass uses the global glass token',
+        }),
+      ],
+    }),
+
+    // Motion tokens — timing and easing for all animations
+    defineField({
+      name: 'motion',
+      title: 'Motion',
+      type: 'motion',
+      group: 'motion',
+      description: 'Animation timing and easing tokens — inherited by all components',
+    }),
+
+    // Card variants (extensible array — add pricing, testimonial, team, etc. as needed)
+    defineField({
+      name: 'cardVariants',
+      title: 'Card Variants',
+      type: 'array',
+      group: 'components',
+      description: 'Named card variants — reference by key in components. Add any variant you need (default, elevated, glass, testimonial, etc.).',
+      of: [defineArrayMember({ type: 'cardVariant' })],
+    }),
+
+    // Shadows (semantic names — designers think in context, not sizes)
+    defineField({
+      name: 'shadows',
+      title: 'Shadows',
+      type: 'object',
+      group: 'components',
+      description: 'Semantic shadow tokens — used by cards, dropdowns, and modals',
+      fields: [
+        defineField({ name: 'card', title: 'Card Shadow', type: 'string', description: 'CSS box-shadow value for cards — e.g. "0 1px 3px oklch(0 0 0 / 0.08), 0 4px 12px oklch(0 0 0 / 0.06)"' }),
+        defineField({ name: 'dropdown', title: 'Dropdown Shadow', type: 'string', description: 'CSS box-shadow value for dropdowns and popovers' }),
+        defineField({ name: 'modal', title: 'Modal Shadow', type: 'string', description: 'CSS box-shadow value for modals and dialogs' }),
+      ],
+    }),
+
+    // Layout tokens — section rhythm and reading width
+    defineField({
+      name: 'layout',
+      title: 'Layout',
+      type: 'object',
+      group: 'layout',
+      description: 'Layout tokens — control page rhythm across all sections',
+      fields: [
+        defineField({ name: 'maxContentWidth', title: 'Max Content Width (px)', type: 'number', description: 'Maximum width of the page container — typically 1280–1440px', initialValue: 1280 }),
+        defineField({ name: 'maxTextWidth', title: 'Max Text Width (px)', type: 'number', description: 'Maximum width for reading-width text blocks — typically 680–780px', initialValue: 720 }),
+        defineField({ name: 'sectionPaddingY', title: 'Section Padding Y — Normal (px)', type: 'number', description: 'Standard vertical padding for sections — top and bottom', initialValue: 96 }),
+        defineField({ name: 'sectionPaddingYCompact', title: 'Section Padding Y — Compact (px)', type: 'number', description: 'Compact vertical padding for tight sections', initialValue: 56 }),
+        defineField({ name: 'sectionPaddingYLarge', title: 'Section Padding Y — Large (px)', type: 'number', description: 'Large vertical padding for spacious hero-style sections', initialValue: 144 }),
+      ],
     }),
   ],
   preview: {
@@ -1499,7 +1693,8 @@ const eventType = defineType({
   fields: [
     projectSlugField,
     defineField({ name: 'title', title: 'Title', type: 'localizedString', group: 'content', validation: (Rule) => Rule.required() }),
-    defineField({ name: 'slug', title: 'Slug', type: 'slug', group: 'content', options: { source: 'title.en', maxLength: 96 }, validation: (Rule) => Rule.required() }),
+    defineField({ name: 'slug', title: 'Slug', type: 'localizedSlug', group: 'content', validation: (Rule) => Rule.required() }),
+    defineField({ name: 'redirectFrom', title: 'Old Slugs (Redirects)', type: 'redirectFrom', group: 'content' }),
     defineField({
       name: 'status',
       title: 'Status',
@@ -1799,6 +1994,10 @@ export const schemaTypes = [
   buttonStyleType,
   buttonStyleThemeType,
   cardStyleThemeType,
+  cardVariantType,
+  motionType,
+  formInputThemeType,
+  formInputType,
   glassStyleType,
   sectionSurfacesThemeType,
   sectionSurfacesType,

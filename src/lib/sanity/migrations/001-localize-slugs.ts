@@ -1,5 +1,5 @@
 /**
- * Migration 001 — Localize page and post slugs
+ * Migration 001 — Localize page, post, and event slugs
  *
  * Converts the flat slug format:
  *   { slug: { _type: 'slug', current: 'servizi' } }
@@ -83,9 +83,9 @@ async function run() {
     console.log(`  ${slug} → defaultLocale: ${locale}`)
   }
 
-  // 2. Fetch all page and post documents that still have the OLD slug format
+  // 2. Fetch all page, post, and event documents that still have the OLD slug format
   const docs = await client.fetch<OldDocument[]>(
-    `*[_type in ["page", "post"] && defined(slug.current)] {
+    `*[_type in ["page", "post", "event"] && defined(slug.current)] {
       _id,
       _type,
       projectSlug,

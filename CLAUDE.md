@@ -169,6 +169,104 @@ The set of locales in `routing.ts` must cover every content locale any tenant mi
 
 ---
 
+---
+
+## Publicly Routable Content Pattern
+
+Any Sanity document type that generates a public URL **must** satisfy all five requirements below. This is a closed, non-negotiable checklist — not a set of guidelines.
+
+Currently routable types and their status:
+
+| Type | Route | Status |
+|---|---|---|
+| `page` | `/[locale]/[tenant]/[slug]` | ✅ Complete |
+| `event` | `/[locale]/[tenant]/events/[slug]` | ✅ Complete |
+| `post` | `/[locale]/[tenant]/posts/[slug]` (planned) | ⚠️ Schema done, no route yet |
+| `homePage` | `/[locale]/[tenant]` | N/A — always at root, no slug |
+
+Non-routable types (never get a public URL): `client`, `project`, `designSystem`, `siteConfig`, `mediaAsset`, all embedded section and object types.
+
+---
+
+### Requirement 1 — Schema
+
+```ts
+defineField({ name: 'slug', type: 'localizedSlug', ... })
+defineField({ name: 'redirectFrom', type: 'redirectFrom', ... })
+```
+
+Never use `type: 'slug'` for a routable document. The `localizedSlug` type stores one Sanity slug object per locale: `{ en: { _type: 'slug', current: '...' }, it: { _type: 'slug', current: '...' } }`.
+
+---
+
+### Requirement 2 — GROQ Queries
+
+Three queries are required for each routable type:
+
+**Primary lookup** — strict, no locale fallback:
+```groq
+*[_type == "thing" && projectSlug == $projectSlug && slug[$locale].current == $slug][0] {
+  "slugMap": slug,
+  "redirectFrom": redirectFrom,
+  ...other fields...
+}
+```
+
+**Redirect lookup** — finds old slug in redirectFrom array:
+```groq
+*[_type == "thing" && projectSlug == $projectSlug && $slug in redirectFrom[$locale]][0] {
+  "currentSlug": slug[$locale].current
+}
+```
+
+**List queries** — return a resolved slug string for the active locale (backwards-compatible shape):
+```groq
+"slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) }
+```
+
+Content fields still use `coalesce(field[$locale], field[$defaultLocale], field.en)` — the no-fallback rule applies only to URL routing, not content display.
+
+---
+
+### Requirement 3 — Route (Next.js page.tsx)
+
+```ts
+// 1. Primary fetch
+const thing = await fetchForTenant(thingBySlugQuery, { slug, locale, defaultLocale })
+
+// 2. On miss, check redirect
+if (!thing) {
+  const r = await fetchForTenant(thingByOldSlugQuery, { slug, locale })
+  if (r?.currentSlug) redirect(`/${locale}/${tenantId}/things/${r.currentSlug}`)
+  notFound()
+}
+
+// 3. Build slug map and wrap render
+const slugMap: SlugMap = {}
+if (thing.slugMap) {
+  for (const [loc, slugObj] of Object.entries(thing.slugMap)) {
+    if (slugObj?.current) slugMap[loc as SupportedLocale] = slugObj.current
+  }
+}
+return <SlugMapProvider slugMap={slugMap}>...</SlugMapProvider>
+```
+
+`generateMetadata` must include hreflang alternates built from `siteConfig.supportedLocales` + `thing.slugMap`. Only include locales where a slug is actually set.
+
+---
+
+### Requirement 4 — Sitemap
+
+Add entries to `src/app/sitemap.ts`. Query the type's slug field alongside pages and events. Generate one URL per locale, only where `slug[locale].current` is set. Use the route prefix (e.g. `events/`) in the URL.
+
+---
+
+### Requirement 5 — Migration
+
+If the type has existing documents with the old flat `slug.current` format, extend `src/lib/sanity/migrations/001-localize-slugs.ts` to include the type in the `_type in [...]` filter. The migration uses the tenant's `siteConfig.defaultLocale`, never a hardcoded locale.
+
+---
+
 ## GitHub
 
 Organization: `abluo-content-simplified`

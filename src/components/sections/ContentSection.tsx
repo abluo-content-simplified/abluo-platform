@@ -1,6 +1,7 @@
 import type { ContentSection, PortableTextContent, DesignSystem } from '@/lib/sanity/types'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
+import { SlideUp } from '@/components/animation/SlideUp'
 
 function RichText({ blocks }: { blocks: PortableTextContent }) {
   return (
@@ -42,6 +43,11 @@ export function ContentSection({ section, surface, designSystem }: Props) {
   const { eyebrow, title, body } = section
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
+  // Motion tokens — durationSlow for content sections; divide ms → seconds for motion/react
+  const m = designSystem?.motion
+  const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
+  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+
   return (
     <section
       className="px-6 py-24 md:px-16 lg:px-24"
@@ -50,7 +56,7 @@ export function ContentSection({ section, surface, designSystem }: Props) {
       <div className="mx-auto w-full max-w-5xl">
         <div className="grid gap-12 md:grid-cols-2 md:gap-20 lg:gap-28">
           {/* Left: label + title */}
-          <div className="flex flex-col justify-center">
+          <SlideUp duration={duration} ease={ease} delay={0} className="flex flex-col justify-center">
             {eyebrow && (
               <p
                 className="mb-4 text-xs font-medium uppercase tracking-[0.2em]"
@@ -67,12 +73,12 @@ export function ContentSection({ section, surface, designSystem }: Props) {
                 {title}
               </h2>
             )}
-          </div>
+          </SlideUp>
 
           {/* Right: body text */}
-          <div className="flex flex-col justify-center">
+          <SlideUp duration={duration} ease={ease} delay={0.1} className="flex flex-col justify-center">
             {body && <RichText blocks={body} />}
-          </div>
+          </SlideUp>
         </div>
       </div>
     </section>

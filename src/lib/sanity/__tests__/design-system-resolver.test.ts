@@ -1,0 +1,538 @@
+/**
+ * Design System Inheritance Resolver — Tests
+ *
+ * Covers the inheritance scenarios for the Abluo multi-tenant platform.
+ * No Sanity connection needed — these test pure merge logic only.
+ *
+ * Tenant hierarchy used in tests:
+ *   Abluo Base  →  Livener    (inherits everything, overrides colors)
+ *   Abluo Base  →  Martegani  (inherits everything, overrides colors + heading font)
+ *
+ * `any` is used intentionally throughout: test fixtures are partial/extended
+ * DesignSystem shapes that don't satisfy the full TS interface — that's fine
+ * for unit tests. The resolver itself is fully typed.
+ */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { describe, it, expect, vi } from 'vitest'
+import { resolveDesignSystemInheritance } from '../design-system-resolver'
+import type { DesignSystem } from '../types'
+
+// ─── Fixtures ────────────────────────────────────────────────────────────────
+
+const abluo_base: DesignSystem & { _id: string; parentDesignSystem: null } = {
+  _id: 'abluo-base-ds',
+  parentDesignSystem: null,
+  name: 'Abluo Base',
+  role: 'base',
+  colors: {
+    lightTheme: {
+      background:    'oklch(1 0 0)',
+      primary:       'oklch(0.5 0.2 260)',
+      textPrimary:   'oklch(0.1 0 0)',
+      textSecondary: 'oklch(0.4 0 0)',
+    },
+    darkTheme: {
+      background: 'oklch(0.1 0 0)',
+      primary:    'oklch(0.7 0.2 260)',
+    },
+  },
+  typography: {
+    headingFont: { source: 'library', libraryFont: 'Inter' },
+    bodyFont:    { source: 'library', libraryFont: 'Inter' },
+    h1: { size: 48, weight: 700, lineHeight: 1.1 },
+    h2: { size: 36, weight: 600, lineHeight: 1.2 },
+  },
+  radius: { small: 4, medium: 8, large: 16 },
+  spacing: { xs: 4, s: 8, m: 16, l: 32, xl: 64 },
+  buttons: {
+    primary: {
+      lightTheme: { background: 'oklch(0.5 0.2 260)', text: 'white', borderRadius: 8 },
+      darkTheme:  { background: 'oklch(0.7 0.2 260)', text: 'black', borderRadius: 8 },
+    },
+    secondary: {
+      lightTheme: { background: 'transparent', text: 'oklch(0.5 0.2 260)', borderRadius: 8 },
+      darkTheme:  { background: 'transparent', text: 'oklch(0.7 0.2 260)', borderRadius: 8 },
+    },
+  },
+  cards: {
+    lightTheme: { background: 'oklch(0.97 0 0)', border: 'oklch(0.9 0 0)' },
+    darkTheme:  { background: 'oklch(0.15 0 0)', border: 'oklch(0.2 0 0)' },
+  },
+  sectionSurfaces: {
+    lightTheme: { surface1: 'oklch(1 0 0)', surface2: 'oklch(0.97 0 0)', surface3: 'oklch(0.94 0 0)', brandSurface: 'oklch(0.5 0.2 260)' },
+    darkTheme:  { surface1: 'oklch(0.1 0 0)', surface2: 'oklch(0.13 0 0)', surface3: 'oklch(0.16 0 0)', brandSurface: 'oklch(0.3 0.2 260)' },
+  },
+  glass: {
+    backgroundOklch: 'oklch(1 0 0 / 0.7)',
+    backdropBlur: 12,
+    borderColor: 'oklch(0.9 0 0 / 0.5)',
+    borderWidth: 1,
+  },
+  forms: {
+    input: {
+      lightTheme: {
+        background:    'oklch(1 0 0)',
+        border:        'oklch(0.85 0 0)',
+        text:          'oklch(0.1 0 0)',
+        placeholder:   'oklch(0.6 0 0)',
+        focusBorder:   'oklch(0.5 0.2 260)',
+        errorBorder:   'oklch(0.5 0.2 30)',
+        successBorder: 'oklch(0.5 0.2 140)',
+        disabledOpacity: 0.5,
+      },
+      darkTheme: {
+        background:  'oklch(0.15 0 0)',
+        border:      'oklch(0.25 0 0)',
+        text:        'oklch(0.95 0 0)',
+        focusBorder: 'oklch(0.7 0.2 260)',
+        disabledOpacity: 0.4,
+      },
+    },
+    textarea: {
+      lightTheme: { background: 'oklch(1 0 0)', border: 'oklch(0.85 0 0)', text: 'oklch(0.1 0 0)' },
+    },
+  },
+  navigation: {
+    menuRadius: 8,
+    menuGap: 4,
+    dropdownRadius: 12,
+    dropdownStyle: 'solid',
+  },
+  cardVariants: [
+    { key: 'default', label: 'Default', lightTheme: { background: 'oklch(1 0 0)', border: 'oklch(0.9 0 0)' }, darkTheme: { background: 'oklch(0.15 0 0)', border: 'oklch(0.2 0 0)' } },
+    { key: 'elevated', label: 'Elevated', lightTheme: { background: 'oklch(1 0 0)', border: 'none' }, darkTheme: { background: 'oklch(0.18 0 0)', border: 'none' } },
+  ],
+  shadows: {
+    card:     '0 1px 3px oklch(0 0 0 / 0.1)',
+    dropdown: '0 4px 16px oklch(0 0 0 / 0.12)',
+    modal:    '0 8px 32px oklch(0 0 0 / 0.2)',
+  },
+  layout: {
+    maxContentWidth:    1280,
+    maxTextWidth:       720,
+    sectionPaddingY:    96,
+    sectionPaddingYCompact: 56,
+    sectionPaddingYLarge:   144,
+  },
+  branding: {
+    logo:    { asset: { _ref: 'abluo-base-logo' } },
+    logoLight: { asset: { _ref: 'abluo-base-logo-light' } },
+    favicon: { asset: { _ref: 'abluo-base-favicon' } },
+    logoHeightDesktop: 32,
+    logoHeightMobile:  28,
+  },
+  backgroundAssets: [
+    { key: 'waves', name: 'Waves', lightImage: { asset: { url: '/waves-light.svg' } }, darkImage: { asset: { url: '/waves-dark.svg' } } },
+    { key: 'dots',  name: 'Dots',  lightImage: { asset: { url: '/dots-light.svg' } },  darkImage: { asset: { url: '/dots-dark.svg' } } },
+  ],
+  motion: {
+    durationFast:    120,
+    durationBase:    200,
+    durationSlow:    350,
+    durationSlower:  600,
+    easingStandard:   'cubic-bezier(0.4, 0, 0.2, 1)',
+    easingDecelerate: 'cubic-bezier(0, 0, 0.2, 1)',
+    easingAccelerate: 'cubic-bezier(0.4, 0, 1, 1)',
+    easingEmphasized: 'cubic-bezier(0.2, 0, 0, 1)',
+  },
+}
+
+const livener_ds: DesignSystem & { _id: string; parentDesignSystem: { _ref: string; _type: string } } = {
+  _id: 'livener-ds',
+  parentDesignSystem: { _ref: 'abluo-base-ds', _type: 'reference' },
+  name: 'Livener',
+  role: 'child',
+  // Override colors only — everything else should come from Base
+  colors: {
+    lightTheme: { primary: 'oklch(0.55 0.2 140)' }, // Livener green
+    darkTheme:  { primary: 'oklch(0.7 0.2 140)' },
+  },
+  // No logo set — should stay undefined after merge (not inherit Base logo)
+  branding: {},
+}
+
+const martegani_ds: DesignSystem & { _id: string; parentDesignSystem: { _ref: string; _type: string } } = {
+  _id: 'martegani-ds',
+  parentDesignSystem: { _ref: 'abluo-base-ds', _type: 'reference' },
+  name: 'Studio Martegani',
+  role: 'child',
+  colors: {
+    lightTheme: {
+      primary:       'oklch(0.4 0.1 30)',   // Martegani terracotta
+      textSecondary: 'oklch(0.45 0.05 30)',
+    },
+  },
+  typography: {
+    headingFont: { source: 'google', googleFont: 'Playfair Display' }, // Override heading font
+  },
+  branding: {
+    logo: { asset: { _ref: 'martegani-logo' } },
+    logoHeightDesktop: 48, // override Base's 32
+  },
+  cardVariants: [
+    { key: 'elevated', label: 'Elevated (Martegani)', lightTheme: { background: 'oklch(0.98 0.01 30)', border: 'none' } }, // override Base's elevated
+    { key: 'artwork',  label: 'Artwork Card',         lightTheme: { background: 'oklch(0.95 0.02 30)', border: 'oklch(0.9 0 0)' } }, // new variant
+  ],
+}
+
+// ─── Mock fetch function ──────────────────────────────────────────────────────
+
+function makeFetchFn(map: Record<string, any>) {
+  return vi.fn(async (id: string) => map[id] ?? null)
+}
+
+// ─── Tests ───────────────────────────────────────────────────────────────────
+
+describe('resolveDesignSystemInheritance', () => {
+
+  // ── Null / edge cases ──────────────────────────────────────────────────────
+
+  it('returns null when ds is null', async () => {
+    const fetch = makeFetchFn({})
+    const result = await resolveDesignSystemInheritance(null, fetch)
+    expect(result).toBeNull()
+  })
+
+  it('returns ds as-is when there is no parent', async () => {
+    const fetch = makeFetchFn({})
+    const result = await resolveDesignSystemInheritance(abluo_base as any, fetch)
+    expect(fetch).not.toHaveBeenCalled()
+    expect(result?.name).toBe('Abluo Base')
+  })
+
+  it('returns ds as-is when maxDepth is 0', async () => {
+    const fetch = makeFetchFn({ 'abluo-base-ds': abluo_base })
+    const result = await resolveDesignSystemInheritance(livener_ds as any, fetch, 0)
+    expect(result?.name).toBe('Livener')
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  // ── Abluo Base → Livener ───────────────────────────────────────────────────
+
+  describe('Abluo Base → Livener', () => {
+    async function resolve() {
+      const fetch = makeFetchFn({ 'abluo-base-ds': abluo_base })
+      return resolveDesignSystemInheritance(livener_ds as any, fetch)
+    }
+
+    it('calls fetchFn with the parent _ref', async () => {
+      const fetch = makeFetchFn({ 'abluo-base-ds': abluo_base })
+      await resolveDesignSystemInheritance(livener_ds as any, fetch)
+      expect(fetch).toHaveBeenCalledWith('abluo-base-ds')
+    })
+
+    it('child name wins', async () => {
+      const result = await resolve()
+      expect(result?.name).toBe('Livener')
+    })
+
+    // Colors — child primary overrides, parent background inherits
+    it('inherits parent background color (not set in child)', async () => {
+      const result = await resolve()
+      expect(result?.colors?.lightTheme?.background).toBe('oklch(1 0 0)')
+    })
+
+    it('uses child primary color', async () => {
+      const result = await resolve()
+      expect(result?.colors?.lightTheme?.primary).toBe('oklch(0.55 0.2 140)')
+    })
+
+    it('inherits parent textPrimary (not set in child)', async () => {
+      const result = await resolve()
+      expect(result?.colors?.lightTheme?.textPrimary).toBe('oklch(0.1 0 0)')
+    })
+
+    // Typography — fully inherited
+    it('inherits parent headingFont', async () => {
+      const result = await resolve()
+      expect(result?.typography?.headingFont?.libraryFont).toBe('Inter')
+    })
+
+    it('inherits parent h1 typescale', async () => {
+      const result = await resolve()
+      expect(result?.typography?.h1?.size).toBe(48)
+    })
+
+    // Spacing and radius — fully inherited
+    it('inherits parent radius', async () => {
+      const result = await resolve()
+      expect(result?.radius?.medium).toBe(8)
+    })
+
+    it('inherits parent spacing', async () => {
+      const result = await resolve()
+      expect(result?.spacing?.xl).toBe(64)
+    })
+
+    // Buttons — fully inherited
+    it('inherits parent button primary style', async () => {
+      const result = await resolve()
+      expect(result?.buttons?.primary?.lightTheme?.background).toBe('oklch(0.5 0.2 260)')
+    })
+
+    // Glass — fully inherited
+    it('inherits parent global glass token', async () => {
+      const result = await resolve()
+      expect(result?.glass?.backdropBlur).toBe(12)
+      expect(result?.glass?.backgroundOklch).toBe('oklch(1 0 0 / 0.7)')
+    })
+
+    // Forms — fully inherited
+    it('inherits parent forms.input lightTheme', async () => {
+      const result = await resolve()
+      expect(result?.forms?.input?.lightTheme?.focusBorder).toBe('oklch(0.5 0.2 260)')
+      expect(result?.forms?.input?.lightTheme?.disabledOpacity).toBe(0.5)
+    })
+
+    it('inherits parent forms.textarea', async () => {
+      const result = await resolve()
+      expect(result?.forms?.textarea?.lightTheme?.background).toBe('oklch(1 0 0)')
+    })
+
+    // Navigation — fully inherited
+    it('inherits parent navigation tokens', async () => {
+      const result = await resolve()
+      expect(result?.navigation?.menuRadius).toBe(8)
+      expect(result?.navigation?.dropdownStyle).toBe('solid')
+    })
+
+    // Shadows — fully inherited
+    it('inherits parent shadow tokens', async () => {
+      const result = await resolve()
+      expect(result?.shadows?.card).toBe('0 1px 3px oklch(0 0 0 / 0.1)')
+      expect(result?.shadows?.modal).toBe('0 8px 32px oklch(0 0 0 / 0.2)')
+    })
+
+    // Layout — fully inherited
+    it('inherits parent layout tokens', async () => {
+      const result = await resolve()
+      expect(result?.layout?.maxContentWidth).toBe(1280)
+      expect(result?.layout?.sectionPaddingY).toBe(96)
+    })
+
+    // cardVariants — array merged, both base variants present
+    it('inherits both base cardVariants', async () => {
+      const result = await resolve()
+      const keys = result?.cardVariants?.map(v => v.key)
+      expect(keys).toContain('default')
+      expect(keys).toContain('elevated')
+    })
+
+    // backgroundAssets — array merged
+    it('inherits parent backgroundAssets', async () => {
+      const result = await resolve()
+      const keys = result?.backgroundAssets?.map(a => a.key)
+      expect(keys).toContain('waves')
+      expect(keys).toContain('dots')
+    })
+
+    // Branding — LOCAL ONLY
+    it('does NOT inherit parent logo (LOCAL ONLY)', async () => {
+      const result = await resolve()
+      expect(result?.branding?.logo).toBeUndefined()
+    })
+
+    it('does NOT inherit parent logoLight (LOCAL ONLY)', async () => {
+      const result = await resolve()
+      expect(result?.branding?.logoLight).toBeUndefined()
+    })
+
+    it('does NOT inherit parent favicon (LOCAL ONLY)', async () => {
+      const result = await resolve()
+      expect(result?.branding?.favicon).toBeUndefined()
+    })
+
+    // logoHeight — INHERIT (sizing token, not identity asset)
+    it('inherits parent logoHeightDesktop', async () => {
+      const result = await resolve()
+      expect(result?.branding?.logoHeightDesktop).toBe(32)
+    })
+
+    it('inherits parent logoHeightMobile', async () => {
+      const result = await resolve()
+      expect(result?.branding?.logoHeightMobile).toBe(28)
+    })
+  })
+
+  // ── Abluo Base → Martegani ─────────────────────────────────────────────────
+
+  describe('Abluo Base → Martegani', () => {
+    async function resolve() {
+      const fetch = makeFetchFn({ 'abluo-base-ds': abluo_base })
+      return resolveDesignSystemInheritance(martegani_ds as any, fetch)
+    }
+
+    it('uses child heading font override (Playfair Display)', async () => {
+      const result = await resolve()
+      expect(result?.typography?.headingFont?.googleFont).toBe('Playfair Display')
+      expect(result?.typography?.headingFont?.source).toBe('google')
+    })
+
+    it('inherits parent body font (not overridden)', async () => {
+      const result = await resolve()
+      expect(result?.typography?.bodyFont?.libraryFont).toBe('Inter')
+    })
+
+    it('uses child primary color (terracotta)', async () => {
+      const result = await resolve()
+      expect(result?.colors?.lightTheme?.primary).toBe('oklch(0.4 0.1 30)')
+    })
+
+    it('inherits parent background color', async () => {
+      const result = await resolve()
+      expect(result?.colors?.lightTheme?.background).toBe('oklch(1 0 0)')
+    })
+
+    it('uses own logo (not Base logo)', async () => {
+      const result = await resolve()
+      expect(result?.branding?.logo?.asset?._ref).toBe('martegani-logo')
+    })
+
+    it('does not inherit Base logo even when tenant sets its own', async () => {
+      // The tenant logo is its own, not inherited — the _ref should be tenant's
+      const result = await resolve()
+      expect(result?.branding?.logo?.asset?._ref).not.toBe('abluo-base-logo')
+    })
+
+    it('uses child logoHeightDesktop override (48)', async () => {
+      const result = await resolve()
+      expect(result?.branding?.logoHeightDesktop).toBe(48)
+    })
+
+    it('inherits parent logoHeightMobile (not set in Martegani)', async () => {
+      const result = await resolve()
+      expect(result?.branding?.logoHeightMobile).toBe(28)
+    })
+
+    // cardVariants array merge
+    it('keeps base "default" variant (not overridden by Martegani)', async () => {
+      const result = await resolve()
+      const defaultVariant = result?.cardVariants?.find(v => v.key === 'default')
+      expect(defaultVariant).toBeDefined()
+      expect(defaultVariant?.lightTheme?.background).toBe('oklch(1 0 0)')
+    })
+
+    it('uses Martegani override of "elevated" variant', async () => {
+      const result = await resolve()
+      const elevated = result?.cardVariants?.find(v => v.key === 'elevated')
+      expect(elevated?.label).toBe('Elevated (Martegani)')
+      expect(elevated?.lightTheme?.background).toBe('oklch(0.98 0.01 30)')
+    })
+
+    it('adds Martegani-specific "artwork" variant', async () => {
+      const result = await resolve()
+      const artwork = result?.cardVariants?.find(v => v.key === 'artwork')
+      expect(artwork).toBeDefined()
+      expect(artwork?.label).toBe('Artwork Card')
+    })
+
+    it('result has 3 cardVariants total (default + elevated + artwork)', async () => {
+      const result = await resolve()
+      expect(result?.cardVariants?.length).toBe(3)
+    })
+
+    // shadows and layout still inherited
+    it('inherits parent shadow tokens', async () => {
+      const result = await resolve()
+      expect(result?.shadows?.dropdown).toBe('0 4px 16px oklch(0 0 0 / 0.12)')
+    })
+
+    it('inherits parent layout tokens', async () => {
+      const result = await resolve()
+      expect(result?.layout?.maxTextWidth).toBe(720)
+    })
+  })
+
+  // ── logoHeight = 0 is a valid override ────────────────────────────────────
+
+  it('treats logoHeightDesktop = 0 as a valid override (not inherits parent)', async () => {
+    const tenantWithZero: any = {
+      _id: 'tenant-zero',
+      parentDesignSystem: { _ref: 'abluo-base-ds', _type: 'reference' },
+      branding: { logoHeightDesktop: 0 },
+    }
+    const fetch = makeFetchFn({ 'abluo-base-ds': abluo_base })
+    const result = await resolveDesignSystemInheritance(tenantWithZero, fetch)
+    expect(result?.branding?.logoHeightDesktop).toBe(0)
+  })
+
+  // ── Fetch fallback when parent not found ──────────────────────────────────
+
+  it('returns child as-is when parent fetch returns null', async () => {
+    const fetch = makeFetchFn({}) // no parent in store
+    const result = await resolveDesignSystemInheritance(livener_ds as any, fetch)
+    expect(result?.name).toBe('Livener')
+  })
+
+  // ── Motion token inheritance ───────────────────────────────────────────────
+
+  describe('motion token inheritance', () => {
+    it('Base → Livener: inherits all motion tokens when child sets none', async () => {
+      const fetch = makeFetchFn({ 'abluo-base-ds': abluo_base })
+      const result = await resolveDesignSystemInheritance(livener_ds as any, fetch)
+      expect(result?.motion?.durationFast).toBe(120)
+      expect(result?.motion?.durationBase).toBe(200)
+      expect(result?.motion?.durationSlow).toBe(350)
+      expect(result?.motion?.durationSlower).toBe(600)
+      expect(result?.motion?.easingStandard).toBe('cubic-bezier(0.4, 0, 0.2, 1)')
+      expect(result?.motion?.easingDecelerate).toBe('cubic-bezier(0, 0, 0.2, 1)')
+    })
+
+    it('child overrides single motion token, rest inherited from Base', async () => {
+      const tenantWithSlowerMotion: any = {
+        _id: 'calm-tenant',
+        parentDesignSystem: { _ref: 'abluo-base-ds', _type: 'reference' },
+        motion: {
+          durationSlower: 900,  // calmer hero transitions
+          easingEmphasized: 'cubic-bezier(0.1, 0, 0, 1)',
+        },
+      }
+      const fetch = makeFetchFn({ 'abluo-base-ds': abluo_base })
+      const result = await resolveDesignSystemInheritance(tenantWithSlowerMotion, fetch)
+      // Overridden tokens
+      expect(result?.motion?.durationSlower).toBe(900)
+      expect(result?.motion?.easingEmphasized).toBe('cubic-bezier(0.1, 0, 0, 1)')
+      // Inherited tokens (unchanged)
+      expect(result?.motion?.durationFast).toBe(120)
+      expect(result?.motion?.durationBase).toBe(200)
+      expect(result?.motion?.durationSlow).toBe(350)
+      expect(result?.motion?.easingStandard).toBe('cubic-bezier(0.4, 0, 0.2, 1)')
+      expect(result?.motion?.easingDecelerate).toBe('cubic-bezier(0, 0, 0.2, 1)')
+    })
+
+    it('child with no motion field inherits entire parent motion object', async () => {
+      const tenantNoMotion: any = {
+        _id: 'no-motion-tenant',
+        parentDesignSystem: { _ref: 'abluo-base-ds', _type: 'reference' },
+        colors: { lightTheme: { primary: 'oklch(0.6 0.2 200)' } },
+      }
+      const fetch = makeFetchFn({ 'abluo-base-ds': abluo_base })
+      const result = await resolveDesignSystemInheritance(tenantNoMotion, fetch)
+      expect(result?.motion).toBeDefined()
+      expect(result?.motion?.durationFast).toBe(120)
+      expect(result?.motion?.easingAccelerate).toBe('cubic-bezier(0.4, 0, 1, 1)')
+    })
+  })
+
+  // ── backgroundAssets deduplication ────────────────────────────────────────
+
+  it('child backgroundAsset overrides parent asset with same key', async () => {
+    const tenantWithAssetOverride: any = {
+      _id: 'tenant-asset',
+      parentDesignSystem: { _ref: 'abluo-base-ds', _type: 'reference' },
+      backgroundAssets: [
+        { key: 'waves', name: 'Waves (Custom)', lightImage: { asset: { url: '/custom-waves.svg' } } },
+        { key: 'circles', name: 'Circles', lightImage: { asset: { url: '/circles.svg' } } },
+      ],
+    }
+    const fetch = makeFetchFn({ 'abluo-base-ds': abluo_base })
+    const result = await resolveDesignSystemInheritance(tenantWithAssetOverride, fetch)
+    const waves = result?.backgroundAssets?.find(a => a.key === 'waves')
+    expect(waves?.name).toBe('Waves (Custom)')
+    expect(result?.backgroundAssets?.find(a => a.key === 'dots')).toBeDefined()
+    expect(result?.backgroundAssets?.find(a => a.key === 'circles')).toBeDefined()
+    expect(result?.backgroundAssets?.length).toBe(3) // waves + dots + circles
+  })
+
+})

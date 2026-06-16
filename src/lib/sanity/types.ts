@@ -218,7 +218,66 @@ export interface SectionSurfaces {
   darkTheme?: SectionSurfacesTheme
 }
 
+/**
+ * Motion tokens — timing and easing for all animation components.
+ *
+ * Durations are stored in ms (integers). Divide by 1000 for motion/react's
+ * `duration` prop. Easing strings are valid CSS cubic-bezier values and can
+ * be passed directly to motion/react's `ease` prop or to `transition-timing-function`.
+ *
+ * Inheritance: INHERIT WITH OVERRIDE via mergeShallowObject (no custom merge needed).
+ */
+export interface MotionTokens {
+  /** Micro-interactions, icon state changes — e.g. 120 */
+  durationFast?: number
+  /** Standard transitions, hover effects — e.g. 200 */
+  durationBase?: number
+  /** Reveal animations, panel slides — e.g. 350 */
+  durationSlow?: number
+  /** Hero entrances, page-level transitions — e.g. 600 */
+  durationSlower?: number
+  /** General-purpose easing — e.g. cubic-bezier(0.4, 0, 0.2, 1) */
+  easingStandard?: string
+  /** Elements entering the screen — e.g. cubic-bezier(0, 0, 0.2, 1) */
+  easingDecelerate?: string
+  /** Elements leaving the screen — e.g. cubic-bezier(0.4, 0, 1, 1) */
+  easingAccelerate?: string
+  /** Important transitions — e.g. cubic-bezier(0.2, 0, 0, 1) */
+  easingEmphasized?: string
+}
+
+export interface FormInputTheme {
+  background?: string
+  border?: string
+  text?: string
+  placeholder?: string
+  focusBorder?: string
+  errorBorder?: string
+  successBorder?: string
+  disabledOpacity?: number
+}
+
+export interface FormInput {
+  lightTheme?: FormInputTheme
+  darkTheme?: FormInputTheme
+}
+
+export interface CardVariant {
+  key: string
+  label?: string
+  lightTheme?: CardStyleTheme
+  darkTheme?: CardStyleTheme
+}
+
 export interface DesignSystem {
+  /** Sanity document ID — present after GROQ fetch, absent in partial/merged objects */
+  _id?: string
+  /** Human-readable name for this design system */
+  name?: string
+  /** Role in the inheritance hierarchy — e.g. "base" | "child" */
+  role?: string
+  /** Optional description shown in Studio */
+  description?: string
   colors?: {
     darkTheme?: ColorTheme
     lightTheme?: ColorTheme
@@ -256,15 +315,52 @@ export interface DesignSystem {
       darkTheme?: ButtonStyleTheme
     }
   }
+  /** Legacy single-variant card — kept for backward compat. Prefer cardVariants. */
   cards?: {
     lightTheme?: CardStyleTheme
     darkTheme?: CardStyleTheme
   }
+  cardVariants?: CardVariant[]
   sectionSurfaces?: SectionSurfaces
+  /** Global glass token — consumed by header, navigation dropdown, cards, modals. */
+  glass?: GlassStyle
+  forms?: {
+    input?: FormInput
+    textarea?: FormInput
+    select?: FormInput
+    checkbox?: FormInput
+    radio?: FormInput
+  }
+  navigation?: {
+    menuRadius?: number
+    menuGap?: number
+    dropdownRadius?: number
+    dropdownStyle?: 'solid' | 'glass' | 'surface'
+  }
+  shadows?: {
+    card?: string
+    dropdown?: string
+    modal?: string
+  }
+  layout?: {
+    maxContentWidth?: number
+    maxTextWidth?: number
+    sectionPaddingY?: number
+    sectionPaddingYCompact?: number
+    sectionPaddingYLarge?: number
+  }
+  /** Animation timing and easing — INHERIT WITH OVERRIDE via mergeShallowObject */
+  motion?: MotionTokens
   branding?: {
     logo?: { asset?: { _ref: string } }
     logoLight?: { asset?: { _ref: string } }
+    logoHeightDesktop?: number
+    logoHeightMobile?: number
     favicon?: { asset?: { _ref: string } }
+    /** LOCAL ONLY — never inherited */
+    openGraphImage?: { asset?: { _ref: string } }
+    /** LOCAL ONLY — never inherited */
+    appleTouchIcon?: { asset?: { _ref: string } }
   }
   backgroundAssets?: BackgroundAsset[]
 }
@@ -328,7 +424,11 @@ export interface ScheduleItem {
 export interface Event {
   _id: string
   title?: string
+  /** List queries return a resolved { current: string } for the active locale. */
   slug: { current: string }
+  /** Detail query (eventBySlugQuery) returns the full per-locale slug map. */
+  slugMap?: LocalizedSlugMap
+  redirectFrom?: Partial<Record<SupportedLocale, string[]>>
   status: EventStatus
   isCurrentLiveEvent?: boolean
   startDate: string

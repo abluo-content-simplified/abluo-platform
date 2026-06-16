@@ -17,6 +17,11 @@ interface PageSitemapData {
   slug: Record<string, { current: string } | undefined>
 }
 
+interface EventSitemapData {
+  projectSlug: string
+  slug: Record<string, { current: string } | undefined>
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
 
@@ -34,20 +39,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }`
     )
 
-    // Fetch all published pages with their per-locale slugs.
-    const pages = await sanityClient.fetch<PageSitemapData[]>(
-      `*[_type == "page" && defined(projectSlug)] {
-        projectSlug,
-        slug
-      }`
-    )
+    // Fetch all published pages and events with their per-locale slugs.
+    const [pages, events] = await Promise.all([
+      sanityClient.fetch<PageSitemapData[]>(
+        `*[_type == "page" && defined(projectSlug)] { projectSlug, slug }`
+      ),
+      sanityClient.fetch<EventSitemapData[]>(
+        `*[_type == "event" && defined(projectSlug)] { projectSlug, slug }`
+      ),
+    ])
 
-    // Build a projectSlug → pages map for quick lookup.
+    // Build projectSlug → items maps for quick lookup.
     const pagesByProject = new Map<string, PageSitemapData[]>()
     for (const page of pages) {
       const list = pagesByProject.get(page.projectSlug) ?? []
       list.push(page)
       pagesByProject.set(page.projectSlug, list)
+    }
+
+    const eventsByProject = new Map<string, EventSitemapData[]>()
+    for (const event of events) {
+      const list = eventsByProject.get(event.projectSlug) ?? []
+      list.push(event)
+      eventsByProject.set(event.projectSlug, list)
     }
 
     const entries: MetadataRoute.Sitemap = []
@@ -67,7 +81,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         })
       }
 
-      // Per-page entries — only for locales that have a slug set
+      // Per-page entries — only for locales that have a slug set.
       const projectPages = pagesByProject.get(projectSlug) ?? []
       for (const page of projectPages) {
         for (const locale of locales) {
@@ -78,6 +92,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
               lastModified: new Date(),
               changeFrequency: 'weekly',
               priority: locale === primaryLocale ? 0.8 : 0.7,
+            })
+          }
+        }
+      }
+
+      // Per-event entries — only for locales that have a slug set.
+      const projectEvents = eventsByProject.get(projectSlug) ?? []
+      for (const event of projectEvents) {
+        for (const locale of locales) {
+          const slugObj = event.slug?.[locale]
+          if (slugObj?.current) {
+            entries.push({
+              url: `${baseUrl}/${locale}/${tenantSlug}/events/${slugObj.current}`,
+              lastModified: new Date(),
+              changeFrequency: 'weekly',
+              priority: locale === primaryLocale ? 0.7 : 0.6,
             })
           }
         }

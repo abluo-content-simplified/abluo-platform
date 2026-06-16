@@ -1,0 +1,4588 @@
+[
+  {
+    "fields": [
+      {
+        "name": "en",
+        "type": "string",
+        "title": "English"
+      },
+      {
+        "name": "it",
+        "type": "string",
+        "title": "Italiano"
+      },
+      {
+        "name": "de",
+        "type": "string",
+        "title": "Deutsch"
+      },
+      {
+        "name": "fr",
+        "type": "string",
+        "title": "Français"
+      },
+      {
+        "name": "es",
+        "type": "string",
+        "title": "Español"
+      },
+      {
+        "name": "pt",
+        "type": "string",
+        "title": "Português"
+      },
+      {
+        "name": "nl",
+        "type": "string",
+        "title": "Nederlands"
+      }
+    ],
+    "name": "localizedString",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "rows": 3,
+        "name": "en",
+        "type": "text",
+        "title": "English"
+      },
+      {
+        "rows": 3,
+        "name": "it",
+        "type": "text",
+        "title": "Italiano"
+      },
+      {
+        "rows": 3,
+        "name": "de",
+        "type": "text",
+        "title": "Deutsch"
+      },
+      {
+        "rows": 3,
+        "name": "fr",
+        "type": "text",
+        "title": "Français"
+      },
+      {
+        "rows": 3,
+        "name": "es",
+        "type": "text",
+        "title": "Español"
+      },
+      {
+        "rows": 3,
+        "name": "pt",
+        "type": "text",
+        "title": "Português"
+      },
+      {
+        "rows": 3,
+        "name": "nl",
+        "type": "text",
+        "title": "Nederlands"
+      }
+    ],
+    "name": "localizedText",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "of": [
+          {
+            "marks": {
+              "annotations": [
+                {
+                  "i18nTitleKey": "inputs.portable-text.annotation.link",
+                  "options": {
+                    "modal": {
+                      "type": "popover"
+                    }
+                  },
+                  "fields": [
+                    {
+                      "validation": [
+                        {
+                          "rules": [
+                            {
+                              "flag": "uri",
+                              "constraint": {
+                                "options": {
+                                  "scheme": [
+                                    "/^http$/",
+                                    "/^https$/",
+                                    "/^tel$/",
+                                    "/^mailto$/"
+                                  ],
+                                  "allowRelative": true,
+                                  "relativeOnly": false,
+                                  "allowCredentials": false
+                                }
+                              }
+                            }
+                          ],
+                          "level": "error"
+                        }
+                      ],
+                      "description": "A valid web, email, phone, or relative link.",
+                      "name": "href",
+                      "type": "url",
+                      "title": "Link"
+                    }
+                  ],
+                  "name": "link",
+                  "type": "object"
+                }
+              ],
+              "decorators": [
+                {
+                  "value": "strong",
+                  "title": "Strong"
+                },
+                {
+                  "value": "em",
+                  "title": "Italic"
+                },
+                {
+                  "value": "code",
+                  "title": "Code"
+                },
+                {
+                  "value": "underline",
+                  "title": "Underline"
+                },
+                {
+                  "value": "strike-through",
+                  "title": "Strike"
+                }
+              ]
+            },
+            "lists": [
+              {
+                "value": "bullet",
+                "title": "Bulleted list"
+              },
+              {
+                "value": "number",
+                "title": "Numbered list"
+              }
+            ],
+            "styles": [
+              {
+                "value": "normal",
+                "title": "Normal"
+              },
+              {
+                "value": "h1",
+                "title": "Heading 1"
+              },
+              {
+                "value": "h2",
+                "title": "Heading 2"
+              },
+              {
+                "value": "h3",
+                "title": "Heading 3"
+              },
+              {
+                "value": "h4",
+                "title": "Heading 4"
+              },
+              {
+                "value": "h5",
+                "title": "Heading 5"
+              },
+              {
+                "value": "h6",
+                "title": "Heading 6"
+              },
+              {
+                "value": "blockquote",
+                "title": "Quote"
+              }
+            ],
+            "of": [],
+            "type": "block"
+          }
+        ],
+        "name": "en",
+        "type": "array",
+        "title": "English"
+      },
+      {
+        "of": [
+          {
+            "marks": {
+              "annotations": [
+                {
+                  "i18nTitleKey": "inputs.portable-text.annotation.link",
+                  "options": {
+                    "modal": {
+                      "type": "popover"
+                    }
+                  },
+                  "fields": [
+                    {
+                      "validation": [
+                        {
+                          "rules": [
+                            {
+                              "flag": "uri",
+                              "constraint": {
+                                "options": {
+                                  "scheme": [
+                                    "/^http$/",
+                                    "/^https$/",
+                                    "/^tel$/",
+                                    "/^mailto$/"
+                                  ],
+                                  "allowRelative": true,
+                                  "relativeOnly": false,
+                                  "allowCredentials": false
+                                }
+                              }
+                            }
+                          ],
+                          "level": "error"
+                        }
+                      ],
+                      "description": "A valid web, email, phone, or relative link.",
+                      "name": "href",
+                      "type": "url",
+                      "title": "Link"
+                    }
+                  ],
+                  "name": "link",
+                  "type": "object"
+                }
+              ],
+              "decorators": [
+                {
+                  "value": "strong",
+                  "title": "Strong"
+                },
+                {
+                  "value": "em",
+                  "title": "Italic"
+                },
+                {
+                  "value": "code",
+                  "title": "Code"
+                },
+                {
+                  "value": "underline",
+                  "title": "Underline"
+                },
+                {
+                  "value": "strike-through",
+                  "title": "Strike"
+                }
+              ]
+            },
+            "lists": [
+              {
+                "value": "bullet",
+                "title": "Bulleted list"
+              },
+              {
+                "value": "number",
+                "title": "Numbered list"
+              }
+            ],
+            "styles": [
+              {
+                "value": "normal",
+                "title": "Normal"
+              },
+              {
+                "value": "h1",
+                "title": "Heading 1"
+              },
+              {
+                "value": "h2",
+                "title": "Heading 2"
+              },
+              {
+                "value": "h3",
+                "title": "Heading 3"
+              },
+              {
+                "value": "h4",
+                "title": "Heading 4"
+              },
+              {
+                "value": "h5",
+                "title": "Heading 5"
+              },
+              {
+                "value": "h6",
+                "title": "Heading 6"
+              },
+              {
+                "value": "blockquote",
+                "title": "Quote"
+              }
+            ],
+            "of": [],
+            "type": "block"
+          }
+        ],
+        "name": "it",
+        "type": "array",
+        "title": "Italiano"
+      },
+      {
+        "of": [
+          {
+            "marks": {
+              "annotations": [
+                {
+                  "i18nTitleKey": "inputs.portable-text.annotation.link",
+                  "options": {
+                    "modal": {
+                      "type": "popover"
+                    }
+                  },
+                  "fields": [
+                    {
+                      "validation": [
+                        {
+                          "rules": [
+                            {
+                              "flag": "uri",
+                              "constraint": {
+                                "options": {
+                                  "scheme": [
+                                    "/^http$/",
+                                    "/^https$/",
+                                    "/^tel$/",
+                                    "/^mailto$/"
+                                  ],
+                                  "allowRelative": true,
+                                  "relativeOnly": false,
+                                  "allowCredentials": false
+                                }
+                              }
+                            }
+                          ],
+                          "level": "error"
+                        }
+                      ],
+                      "description": "A valid web, email, phone, or relative link.",
+                      "name": "href",
+                      "type": "url",
+                      "title": "Link"
+                    }
+                  ],
+                  "name": "link",
+                  "type": "object"
+                }
+              ],
+              "decorators": [
+                {
+                  "value": "strong",
+                  "title": "Strong"
+                },
+                {
+                  "value": "em",
+                  "title": "Italic"
+                },
+                {
+                  "value": "code",
+                  "title": "Code"
+                },
+                {
+                  "value": "underline",
+                  "title": "Underline"
+                },
+                {
+                  "value": "strike-through",
+                  "title": "Strike"
+                }
+              ]
+            },
+            "lists": [
+              {
+                "value": "bullet",
+                "title": "Bulleted list"
+              },
+              {
+                "value": "number",
+                "title": "Numbered list"
+              }
+            ],
+            "styles": [
+              {
+                "value": "normal",
+                "title": "Normal"
+              },
+              {
+                "value": "h1",
+                "title": "Heading 1"
+              },
+              {
+                "value": "h2",
+                "title": "Heading 2"
+              },
+              {
+                "value": "h3",
+                "title": "Heading 3"
+              },
+              {
+                "value": "h4",
+                "title": "Heading 4"
+              },
+              {
+                "value": "h5",
+                "title": "Heading 5"
+              },
+              {
+                "value": "h6",
+                "title": "Heading 6"
+              },
+              {
+                "value": "blockquote",
+                "title": "Quote"
+              }
+            ],
+            "of": [],
+            "type": "block"
+          }
+        ],
+        "name": "de",
+        "type": "array",
+        "title": "Deutsch"
+      },
+      {
+        "of": [
+          {
+            "marks": {
+              "annotations": [
+                {
+                  "i18nTitleKey": "inputs.portable-text.annotation.link",
+                  "options": {
+                    "modal": {
+                      "type": "popover"
+                    }
+                  },
+                  "fields": [
+                    {
+                      "validation": [
+                        {
+                          "rules": [
+                            {
+                              "flag": "uri",
+                              "constraint": {
+                                "options": {
+                                  "scheme": [
+                                    "/^http$/",
+                                    "/^https$/",
+                                    "/^tel$/",
+                                    "/^mailto$/"
+                                  ],
+                                  "allowRelative": true,
+                                  "relativeOnly": false,
+                                  "allowCredentials": false
+                                }
+                              }
+                            }
+                          ],
+                          "level": "error"
+                        }
+                      ],
+                      "description": "A valid web, email, phone, or relative link.",
+                      "name": "href",
+                      "type": "url",
+                      "title": "Link"
+                    }
+                  ],
+                  "name": "link",
+                  "type": "object"
+                }
+              ],
+              "decorators": [
+                {
+                  "value": "strong",
+                  "title": "Strong"
+                },
+                {
+                  "value": "em",
+                  "title": "Italic"
+                },
+                {
+                  "value": "code",
+                  "title": "Code"
+                },
+                {
+                  "value": "underline",
+                  "title": "Underline"
+                },
+                {
+                  "value": "strike-through",
+                  "title": "Strike"
+                }
+              ]
+            },
+            "lists": [
+              {
+                "value": "bullet",
+                "title": "Bulleted list"
+              },
+              {
+                "value": "number",
+                "title": "Numbered list"
+              }
+            ],
+            "styles": [
+              {
+                "value": "normal",
+                "title": "Normal"
+              },
+              {
+                "value": "h1",
+                "title": "Heading 1"
+              },
+              {
+                "value": "h2",
+                "title": "Heading 2"
+              },
+              {
+                "value": "h3",
+                "title": "Heading 3"
+              },
+              {
+                "value": "h4",
+                "title": "Heading 4"
+              },
+              {
+                "value": "h5",
+                "title": "Heading 5"
+              },
+              {
+                "value": "h6",
+                "title": "Heading 6"
+              },
+              {
+                "value": "blockquote",
+                "title": "Quote"
+              }
+            ],
+            "of": [],
+            "type": "block"
+          }
+        ],
+        "name": "fr",
+        "type": "array",
+        "title": "Français"
+      },
+      {
+        "of": [
+          {
+            "marks": {
+              "annotations": [
+                {
+                  "i18nTitleKey": "inputs.portable-text.annotation.link",
+                  "options": {
+                    "modal": {
+                      "type": "popover"
+                    }
+                  },
+                  "fields": [
+                    {
+                      "validation": [
+                        {
+                          "rules": [
+                            {
+                              "flag": "uri",
+                              "constraint": {
+                                "options": {
+                                  "scheme": [
+                                    "/^http$/",
+                                    "/^https$/",
+                                    "/^tel$/",
+                                    "/^mailto$/"
+                                  ],
+                                  "allowRelative": true,
+                                  "relativeOnly": false,
+                                  "allowCredentials": false
+                                }
+                              }
+                            }
+                          ],
+                          "level": "error"
+                        }
+                      ],
+                      "description": "A valid web, email, phone, or relative link.",
+                      "name": "href",
+                      "type": "url",
+                      "title": "Link"
+                    }
+                  ],
+                  "name": "link",
+                  "type": "object"
+                }
+              ],
+              "decorators": [
+                {
+                  "value": "strong",
+                  "title": "Strong"
+                },
+                {
+                  "value": "em",
+                  "title": "Italic"
+                },
+                {
+                  "value": "code",
+                  "title": "Code"
+                },
+                {
+                  "value": "underline",
+                  "title": "Underline"
+                },
+                {
+                  "value": "strike-through",
+                  "title": "Strike"
+                }
+              ]
+            },
+            "lists": [
+              {
+                "value": "bullet",
+                "title": "Bulleted list"
+              },
+              {
+                "value": "number",
+                "title": "Numbered list"
+              }
+            ],
+            "styles": [
+              {
+                "value": "normal",
+                "title": "Normal"
+              },
+              {
+                "value": "h1",
+                "title": "Heading 1"
+              },
+              {
+                "value": "h2",
+                "title": "Heading 2"
+              },
+              {
+                "value": "h3",
+                "title": "Heading 3"
+              },
+              {
+                "value": "h4",
+                "title": "Heading 4"
+              },
+              {
+                "value": "h5",
+                "title": "Heading 5"
+              },
+              {
+                "value": "h6",
+                "title": "Heading 6"
+              },
+              {
+                "value": "blockquote",
+                "title": "Quote"
+              }
+            ],
+            "of": [],
+            "type": "block"
+          }
+        ],
+        "name": "es",
+        "type": "array",
+        "title": "Español"
+      },
+      {
+        "of": [
+          {
+            "marks": {
+              "annotations": [
+                {
+                  "i18nTitleKey": "inputs.portable-text.annotation.link",
+                  "options": {
+                    "modal": {
+                      "type": "popover"
+                    }
+                  },
+                  "fields": [
+                    {
+                      "validation": [
+                        {
+                          "rules": [
+                            {
+                              "flag": "uri",
+                              "constraint": {
+                                "options": {
+                                  "scheme": [
+                                    "/^http$/",
+                                    "/^https$/",
+                                    "/^tel$/",
+                                    "/^mailto$/"
+                                  ],
+                                  "allowRelative": true,
+                                  "relativeOnly": false,
+                                  "allowCredentials": false
+                                }
+                              }
+                            }
+                          ],
+                          "level": "error"
+                        }
+                      ],
+                      "description": "A valid web, email, phone, or relative link.",
+                      "name": "href",
+                      "type": "url",
+                      "title": "Link"
+                    }
+                  ],
+                  "name": "link",
+                  "type": "object"
+                }
+              ],
+              "decorators": [
+                {
+                  "value": "strong",
+                  "title": "Strong"
+                },
+                {
+                  "value": "em",
+                  "title": "Italic"
+                },
+                {
+                  "value": "code",
+                  "title": "Code"
+                },
+                {
+                  "value": "underline",
+                  "title": "Underline"
+                },
+                {
+                  "value": "strike-through",
+                  "title": "Strike"
+                }
+              ]
+            },
+            "lists": [
+              {
+                "value": "bullet",
+                "title": "Bulleted list"
+              },
+              {
+                "value": "number",
+                "title": "Numbered list"
+              }
+            ],
+            "styles": [
+              {
+                "value": "normal",
+                "title": "Normal"
+              },
+              {
+                "value": "h1",
+                "title": "Heading 1"
+              },
+              {
+                "value": "h2",
+                "title": "Heading 2"
+              },
+              {
+                "value": "h3",
+                "title": "Heading 3"
+              },
+              {
+                "value": "h4",
+                "title": "Heading 4"
+              },
+              {
+                "value": "h5",
+                "title": "Heading 5"
+              },
+              {
+                "value": "h6",
+                "title": "Heading 6"
+              },
+              {
+                "value": "blockquote",
+                "title": "Quote"
+              }
+            ],
+            "of": [],
+            "type": "block"
+          }
+        ],
+        "name": "pt",
+        "type": "array",
+        "title": "Português"
+      },
+      {
+        "of": [
+          {
+            "marks": {
+              "annotations": [
+                {
+                  "i18nTitleKey": "inputs.portable-text.annotation.link",
+                  "options": {
+                    "modal": {
+                      "type": "popover"
+                    }
+                  },
+                  "fields": [
+                    {
+                      "validation": [
+                        {
+                          "rules": [
+                            {
+                              "flag": "uri",
+                              "constraint": {
+                                "options": {
+                                  "scheme": [
+                                    "/^http$/",
+                                    "/^https$/",
+                                    "/^tel$/",
+                                    "/^mailto$/"
+                                  ],
+                                  "allowRelative": true,
+                                  "relativeOnly": false,
+                                  "allowCredentials": false
+                                }
+                              }
+                            }
+                          ],
+                          "level": "error"
+                        }
+                      ],
+                      "description": "A valid web, email, phone, or relative link.",
+                      "name": "href",
+                      "type": "url",
+                      "title": "Link"
+                    }
+                  ],
+                  "name": "link",
+                  "type": "object"
+                }
+              ],
+              "decorators": [
+                {
+                  "value": "strong",
+                  "title": "Strong"
+                },
+                {
+                  "value": "em",
+                  "title": "Italic"
+                },
+                {
+                  "value": "code",
+                  "title": "Code"
+                },
+                {
+                  "value": "underline",
+                  "title": "Underline"
+                },
+                {
+                  "value": "strike-through",
+                  "title": "Strike"
+                }
+              ]
+            },
+            "lists": [
+              {
+                "value": "bullet",
+                "title": "Bulleted list"
+              },
+              {
+                "value": "number",
+                "title": "Numbered list"
+              }
+            ],
+            "styles": [
+              {
+                "value": "normal",
+                "title": "Normal"
+              },
+              {
+                "value": "h1",
+                "title": "Heading 1"
+              },
+              {
+                "value": "h2",
+                "title": "Heading 2"
+              },
+              {
+                "value": "h3",
+                "title": "Heading 3"
+              },
+              {
+                "value": "h4",
+                "title": "Heading 4"
+              },
+              {
+                "value": "h5",
+                "title": "Heading 5"
+              },
+              {
+                "value": "h6",
+                "title": "Heading 6"
+              },
+              {
+                "value": "blockquote",
+                "title": "Quote"
+              }
+            ],
+            "of": [],
+            "type": "block"
+          }
+        ],
+        "name": "nl",
+        "type": "array",
+        "title": "Nederlands"
+      }
+    ],
+    "name": "localizedPortableText",
+    "type": "object",
+    "title": "Localized Rich Text"
+  },
+  {
+    "fields": [
+      {
+        "options": {
+          "maxLength": 96
+        },
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "custom"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "en",
+        "type": "slug",
+        "title": "English"
+      },
+      {
+        "options": {
+          "maxLength": 96
+        },
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "custom"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "it",
+        "type": "slug",
+        "title": "Italiano"
+      },
+      {
+        "options": {
+          "maxLength": 96
+        },
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "custom"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "de",
+        "type": "slug",
+        "title": "Deutsch"
+      },
+      {
+        "options": {
+          "maxLength": 96
+        },
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "custom"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "fr",
+        "type": "slug",
+        "title": "Français"
+      },
+      {
+        "options": {
+          "maxLength": 96
+        },
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "custom"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "es",
+        "type": "slug",
+        "title": "Español"
+      },
+      {
+        "options": {
+          "maxLength": 96
+        },
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "custom"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "pt",
+        "type": "slug",
+        "title": "Português"
+      },
+      {
+        "options": {
+          "maxLength": 96
+        },
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "custom"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "nl",
+        "type": "slug",
+        "title": "Nederlands"
+      }
+    ],
+    "name": "localizedSlug",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "description": "Old English slugs that should redirect to the current slug",
+        "of": [
+          {
+            "type": "string"
+          }
+        ],
+        "name": "en",
+        "type": "array",
+        "title": "English"
+      },
+      {
+        "description": "Old Italiano slugs that should redirect to the current slug",
+        "of": [
+          {
+            "type": "string"
+          }
+        ],
+        "name": "it",
+        "type": "array",
+        "title": "Italiano"
+      },
+      {
+        "description": "Old Deutsch slugs that should redirect to the current slug",
+        "of": [
+          {
+            "type": "string"
+          }
+        ],
+        "name": "de",
+        "type": "array",
+        "title": "Deutsch"
+      },
+      {
+        "description": "Old Français slugs that should redirect to the current slug",
+        "of": [
+          {
+            "type": "string"
+          }
+        ],
+        "name": "fr",
+        "type": "array",
+        "title": "Français"
+      },
+      {
+        "description": "Old Español slugs that should redirect to the current slug",
+        "of": [
+          {
+            "type": "string"
+          }
+        ],
+        "name": "es",
+        "type": "array",
+        "title": "Español"
+      },
+      {
+        "description": "Old Português slugs that should redirect to the current slug",
+        "of": [
+          {
+            "type": "string"
+          }
+        ],
+        "name": "pt",
+        "type": "array",
+        "title": "Português"
+      },
+      {
+        "description": "Old Nederlands slugs that should redirect to the current slug",
+        "of": [
+          {
+            "type": "string"
+          }
+        ],
+        "name": "nl",
+        "type": "array",
+        "title": "Nederlands"
+      }
+    ],
+    "name": "redirectFrom",
+    "type": "object",
+    "title": "Redirect From (old URLs)"
+  },
+  {
+    "options": {
+      "hotspot": true
+    },
+    "fields": [
+      {
+        "description": "Describe the image for screen readers and SEO",
+        "name": "alt",
+        "type": "localizedString",
+        "title": "Alt Text"
+      },
+      {
+        "name": "caption",
+        "type": "localizedString",
+        "title": "Caption (optional)"
+      }
+    ],
+    "name": "localizedImage",
+    "type": "image",
+    "title": "Image"
+  },
+  {
+    "fields": [
+      {
+        "name": "label",
+        "type": "localizedString"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "Internal Page",
+              "value": "internal"
+            },
+            {
+              "title": "External URL",
+              "value": "external"
+            }
+          ],
+          "layout": "radio"
+        },
+        "initialValue": "external",
+        "name": "linkType",
+        "type": "string"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "Homepage",
+              "value": "homepage"
+            },
+            {
+              "title": "Live Events",
+              "value": "live"
+            }
+          ]
+        },
+        "description": "Select an internal page to link to",
+        "hidden": "conditional",
+        "name": "internalPage",
+        "type": "string",
+        "title": "Select Page"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "uri",
+                "constraint": {
+                  "options": {
+                    "scheme": [
+                      "/^http$/",
+                      "/^https$/"
+                    ],
+                    "allowRelative": false,
+                    "relativeOnly": false,
+                    "allowCredentials": false
+                  }
+                }
+              },
+              {
+                "flag": "custom"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "hidden": "conditional",
+        "name": "externalUrl",
+        "type": "url",
+        "title": "URL"
+      },
+      {
+        "initialValue": false,
+        "name": "openInNewTab",
+        "type": "boolean",
+        "title": "Open in New Tab"
+      },
+      {
+        "description": "Auto-computed from linkType. Do not edit directly.",
+        "readOnly": true,
+        "hidden": true,
+        "name": "href",
+        "type": "string",
+        "title": "Computed URL (auto-populated)"
+      },
+      {
+        "hidden": true,
+        "name": "external",
+        "type": "boolean",
+        "title": "External (legacy, use openInNewTab instead)"
+      },
+      {
+        "description": "Leave empty for now. Reserved for nested navigation in v2.",
+        "of": [
+          {
+            "type": "navigationLink"
+          }
+        ],
+        "name": "children",
+        "type": "array",
+        "title": "Child Items (for future dropdown support)"
+      }
+    ],
+    "name": "navigationLink",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "options": {
+          "list": [
+            "youtube",
+            "instagram",
+            "linkedin",
+            "facebook",
+            "x",
+            "tiktok",
+            "threads"
+          ]
+        },
+        "name": "platform",
+        "type": "string"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "uri",
+                "constraint": {
+                  "options": {
+                    "scheme": [
+                      "/^http$/",
+                      "/^https$/"
+                    ],
+                    "allowRelative": false,
+                    "relativeOnly": false,
+                    "allowCredentials": false
+                  }
+                }
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "url",
+        "type": "url",
+        "title": "URL"
+      }
+    ],
+    "name": "socialLink",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "description": "e.g. 11:00",
+        "name": "time",
+        "type": "string"
+      },
+      {
+        "name": "title",
+        "type": "localizedString"
+      },
+      {
+        "name": "description",
+        "type": "localizedText"
+      }
+    ],
+    "name": "scheduleItem",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "name": "subject",
+        "type": "localizedString"
+      }
+    ],
+    "name": "whatsappSubject",
+    "type": "object",
+    "title": "WhatsApp Subject"
+  },
+  {
+    "fields": [
+      {
+        "name": "subject",
+        "type": "localizedString",
+        "title": "Subject Line"
+      },
+      {
+        "name": "firstLine",
+        "type": "localizedText",
+        "title": "First Line of Email Body"
+      }
+    ],
+    "name": "emailSubject",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "options": {
+          "list": [
+            {
+              "title": "⬜ Use Page Pattern",
+              "value": "usePagePattern"
+            },
+            {
+              "title": "⬜ Surface 1",
+              "value": "surface1"
+            },
+            {
+              "title": "⬜ Surface 2",
+              "value": "surface2"
+            },
+            {
+              "title": "🟦 Surface 3",
+              "value": "surface3"
+            },
+            {
+              "title": "🟢 Brand Surface",
+              "value": "brandSurface"
+            },
+            {
+              "title": "◻ Transparent",
+              "value": "transparent"
+            },
+            {
+              "title": "🔲 Glass",
+              "value": "glass"
+            }
+          ]
+        },
+        "initialValue": "usePagePattern",
+        "name": "background",
+        "type": "string",
+        "title": "Background Surface"
+      },
+      {
+        "name": "eyebrow",
+        "type": "localizedString",
+        "title": "Eyebrow Label"
+      },
+      {
+        "name": "headline",
+        "type": "localizedText"
+      },
+      {
+        "name": "subheadline",
+        "type": "localizedText"
+      },
+      {
+        "name": "ctaLabel",
+        "type": "localizedString",
+        "title": "CTA Button Label"
+      },
+      {
+        "name": "ctaHref",
+        "type": "string",
+        "title": "CTA Button Link"
+      }
+    ],
+    "name": "heroSection",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "options": {
+          "list": [
+            {
+              "title": "⬜ Use Page Pattern",
+              "value": "usePagePattern"
+            },
+            {
+              "title": "⬜ Surface 1",
+              "value": "surface1"
+            },
+            {
+              "title": "⬜ Surface 2",
+              "value": "surface2"
+            },
+            {
+              "title": "🟦 Surface 3",
+              "value": "surface3"
+            },
+            {
+              "title": "🟢 Brand Surface",
+              "value": "brandSurface"
+            },
+            {
+              "title": "◻ Transparent",
+              "value": "transparent"
+            },
+            {
+              "title": "🔲 Glass",
+              "value": "glass"
+            }
+          ]
+        },
+        "initialValue": "usePagePattern",
+        "name": "background",
+        "type": "string",
+        "title": "Background Surface"
+      },
+      {
+        "name": "eyebrow",
+        "type": "localizedString",
+        "title": "Eyebrow Label"
+      },
+      {
+        "name": "title",
+        "type": "localizedString"
+      },
+      {
+        "name": "body",
+        "type": "localizedPortableText"
+      },
+      {
+        "options": {
+          "list": [
+            "left",
+            "right"
+          ]
+        },
+        "name": "imagePosition",
+        "type": "string"
+      }
+    ],
+    "name": "contentSection",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "name": "name",
+        "type": "localizedString"
+      },
+      {
+        "name": "tagline",
+        "type": "localizedString"
+      },
+      {
+        "name": "description",
+        "type": "localizedText"
+      }
+    ],
+    "name": "treatmentCard",
+    "type": "object",
+    "title": "Treatment"
+  },
+  {
+    "fields": [
+      {
+        "options": {
+          "list": [
+            {
+              "title": "⬜ Use Page Pattern",
+              "value": "usePagePattern"
+            },
+            {
+              "title": "⬜ Surface 1",
+              "value": "surface1"
+            },
+            {
+              "title": "⬜ Surface 2",
+              "value": "surface2"
+            },
+            {
+              "title": "🟦 Surface 3",
+              "value": "surface3"
+            },
+            {
+              "title": "🟢 Brand Surface",
+              "value": "brandSurface"
+            },
+            {
+              "title": "◻ Transparent",
+              "value": "transparent"
+            },
+            {
+              "title": "🔲 Glass",
+              "value": "glass"
+            }
+          ]
+        },
+        "initialValue": "usePagePattern",
+        "name": "background",
+        "type": "string",
+        "title": "Background Surface"
+      },
+      {
+        "name": "eyebrow",
+        "type": "localizedString",
+        "title": "Eyebrow Label"
+      },
+      {
+        "name": "title",
+        "type": "localizedString"
+      },
+      {
+        "name": "intro",
+        "type": "localizedText",
+        "title": "Intro Text"
+      },
+      {
+        "of": [
+          {
+            "type": "treatmentCard",
+            "title": "Treatment"
+          }
+        ],
+        "name": "treatments",
+        "type": "array"
+      }
+    ],
+    "name": "treatmentsSection",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "role",
+        "type": "localizedString"
+      },
+      {
+        "name": "bio",
+        "type": "localizedText"
+      }
+    ],
+    "name": "teamMemberObject",
+    "type": "object",
+    "title": "Team Member"
+  },
+  {
+    "fields": [
+      {
+        "options": {
+          "list": [
+            {
+              "title": "⬜ Use Page Pattern",
+              "value": "usePagePattern"
+            },
+            {
+              "title": "⬜ Surface 1",
+              "value": "surface1"
+            },
+            {
+              "title": "⬜ Surface 2",
+              "value": "surface2"
+            },
+            {
+              "title": "🟦 Surface 3",
+              "value": "surface3"
+            },
+            {
+              "title": "🟢 Brand Surface",
+              "value": "brandSurface"
+            },
+            {
+              "title": "◻ Transparent",
+              "value": "transparent"
+            },
+            {
+              "title": "🔲 Glass",
+              "value": "glass"
+            }
+          ]
+        },
+        "initialValue": "usePagePattern",
+        "name": "background",
+        "type": "string",
+        "title": "Background Surface"
+      },
+      {
+        "name": "title",
+        "type": "localizedString"
+      },
+      {
+        "name": "subtitle",
+        "type": "localizedText"
+      },
+      {
+        "of": [
+          {
+            "type": "teamMemberObject",
+            "title": "Team Member"
+          }
+        ],
+        "name": "members",
+        "type": "array"
+      }
+    ],
+    "name": "teamSection",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "options": {
+          "list": [
+            {
+              "title": "⬜ Use Page Pattern",
+              "value": "usePagePattern"
+            },
+            {
+              "title": "⬜ Surface 1",
+              "value": "surface1"
+            },
+            {
+              "title": "⬜ Surface 2",
+              "value": "surface2"
+            },
+            {
+              "title": "🟦 Surface 3",
+              "value": "surface3"
+            },
+            {
+              "title": "🟢 Brand Surface",
+              "value": "brandSurface"
+            },
+            {
+              "title": "◻ Transparent",
+              "value": "transparent"
+            },
+            {
+              "title": "🔲 Glass",
+              "value": "glass"
+            }
+          ]
+        },
+        "initialValue": "usePagePattern",
+        "name": "background",
+        "type": "string",
+        "title": "Background Surface"
+      },
+      {
+        "name": "eyebrow",
+        "type": "localizedString",
+        "title": "Eyebrow Label"
+      },
+      {
+        "name": "title",
+        "type": "localizedString"
+      },
+      {
+        "name": "content",
+        "type": "localizedPortableText"
+      }
+    ],
+    "name": "textSection",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "options": {
+          "list": [
+            {
+              "title": "⬜ Use Page Pattern",
+              "value": "usePagePattern"
+            },
+            {
+              "title": "⬜ Surface 1",
+              "value": "surface1"
+            },
+            {
+              "title": "⬜ Surface 2",
+              "value": "surface2"
+            },
+            {
+              "title": "🟦 Surface 3",
+              "value": "surface3"
+            },
+            {
+              "title": "🟢 Brand Surface",
+              "value": "brandSurface"
+            },
+            {
+              "title": "◻ Transparent",
+              "value": "transparent"
+            },
+            {
+              "title": "🔲 Glass",
+              "value": "glass"
+            }
+          ]
+        },
+        "initialValue": "usePagePattern",
+        "name": "background",
+        "type": "string",
+        "title": "Background Surface"
+      },
+      {
+        "name": "title",
+        "type": "localizedString"
+      },
+      {
+        "name": "subtitle",
+        "type": "localizedText"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "uri",
+                "constraint": {
+                  "options": {
+                    "scheme": [
+                      "/^http$/",
+                      "/^https$/"
+                    ],
+                    "allowRelative": false,
+                    "relativeOnly": false,
+                    "allowCredentials": false
+                  }
+                }
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "mapEmbedUrl",
+        "type": "url",
+        "title": "Google Maps Embed URL"
+      }
+    ],
+    "name": "contactSection",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "name": "question",
+        "type": "localizedString"
+      },
+      {
+        "name": "answer",
+        "type": "localizedText"
+      }
+    ],
+    "name": "faqItem",
+    "type": "object",
+    "title": "FAQ Item"
+  },
+  {
+    "fields": [
+      {
+        "options": {
+          "list": [
+            {
+              "title": "⬜ Use Page Pattern",
+              "value": "usePagePattern"
+            },
+            {
+              "title": "⬜ Surface 1",
+              "value": "surface1"
+            },
+            {
+              "title": "⬜ Surface 2",
+              "value": "surface2"
+            },
+            {
+              "title": "🟦 Surface 3",
+              "value": "surface3"
+            },
+            {
+              "title": "🟢 Brand Surface",
+              "value": "brandSurface"
+            },
+            {
+              "title": "◻ Transparent",
+              "value": "transparent"
+            },
+            {
+              "title": "🔲 Glass",
+              "value": "glass"
+            }
+          ]
+        },
+        "initialValue": "usePagePattern",
+        "name": "background",
+        "type": "string",
+        "title": "Background Surface"
+      },
+      {
+        "name": "eyebrow",
+        "type": "localizedString",
+        "title": "Eyebrow Label"
+      },
+      {
+        "name": "title",
+        "type": "localizedString"
+      },
+      {
+        "of": [
+          {
+            "type": "faqItem",
+            "title": "FAQ Item"
+          }
+        ],
+        "name": "items",
+        "type": "array",
+        "title": "Questions"
+      }
+    ],
+    "name": "faqSection",
+    "type": "object",
+    "title": "FAQ Section"
+  },
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "tenantId",
+        "type": "string",
+        "title": "Tenant ID"
+      },
+      {
+        "hidden": true,
+        "name": "tenantSlug",
+        "type": "string"
+      },
+      {
+        "hidden": true,
+        "name": "displayName",
+        "type": "string"
+      }
+    ],
+    "name": "client",
+    "type": "document"
+  },
+  {
+    "fields": [
+      {
+        "to": [
+          {
+            "type": "client"
+          }
+        ],
+        "hidden": true,
+        "name": "clientRef",
+        "type": "reference",
+        "title": "Client"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "hidden": true,
+        "name": "projectId",
+        "type": "string",
+        "title": "Project ID"
+      },
+      {
+        "hidden": true,
+        "name": "projectSlug",
+        "type": "string"
+      },
+      {
+        "hidden": true,
+        "name": "projectName",
+        "type": "string"
+      },
+      {
+        "hidden": true,
+        "name": "tenantId",
+        "type": "string",
+        "title": "Tenant ID"
+      },
+      {
+        "hidden": true,
+        "name": "customDomain",
+        "type": "string"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "English",
+              "value": "en"
+            },
+            {
+              "title": "Italiano",
+              "value": "it"
+            },
+            {
+              "title": "Deutsch",
+              "value": "de"
+            },
+            {
+              "title": "Français",
+              "value": "fr"
+            },
+            {
+              "title": "Español",
+              "value": "es"
+            },
+            {
+              "title": "Português",
+              "value": "pt"
+            },
+            {
+              "title": "Nederlands",
+              "value": "nl"
+            }
+          ],
+          "layout": "radio"
+        },
+        "initialValue": "en",
+        "name": "defaultLocale",
+        "type": "string"
+      },
+      {
+        "options": {
+          "list": [
+            "active",
+            "inactive",
+            "archived"
+          ]
+        },
+        "initialValue": "active",
+        "name": "status",
+        "type": "string"
+      },
+      {
+        "description": "The design system this project uses for colors, typography, and spacing",
+        "to": [
+          {
+            "type": "designSystem"
+          }
+        ],
+        "name": "designSystemRef",
+        "type": "reference",
+        "title": "Design System"
+      }
+    ],
+    "name": "project",
+    "type": "document"
+  },
+  {
+    "fields": [
+      {
+        "name": "background",
+        "type": "string"
+      },
+      {
+        "name": "backgroundAlt",
+        "type": "string"
+      },
+      {
+        "name": "surface",
+        "type": "string"
+      },
+      {
+        "name": "primary",
+        "type": "string"
+      },
+      {
+        "name": "secondary",
+        "type": "string"
+      },
+      {
+        "name": "accent",
+        "type": "string"
+      },
+      {
+        "name": "textPrimary",
+        "type": "string"
+      },
+      {
+        "name": "textSecondary",
+        "type": "string"
+      },
+      {
+        "name": "textMuted",
+        "type": "string"
+      },
+      {
+        "name": "border",
+        "type": "string"
+      },
+      {
+        "name": "success",
+        "type": "string"
+      },
+      {
+        "name": "warning",
+        "type": "string"
+      },
+      {
+        "name": "danger",
+        "type": "string"
+      }
+    ],
+    "name": "colorTheme",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "options": {
+          "list": [
+            {
+              "title": "Library Font",
+              "value": "library"
+            },
+            {
+              "title": "Google Font",
+              "value": "google"
+            }
+          ],
+          "layout": "radio"
+        },
+        "initialValue": "library",
+        "name": "source",
+        "type": "string",
+        "title": "Font Source"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "Geist",
+              "value": "Geist"
+            },
+            {
+              "title": "Inter",
+              "value": "Inter"
+            },
+            {
+              "title": "Poppins",
+              "value": "Poppins"
+            },
+            {
+              "title": "Manrope",
+              "value": "Manrope"
+            },
+            {
+              "title": "Barlow Condensed",
+              "value": "Barlow Condensed"
+            },
+            {
+              "title": "Roboto",
+              "value": "Roboto"
+            },
+            {
+              "title": "Montserrat",
+              "value": "Montserrat"
+            },
+            {
+              "title": "Open Sans",
+              "value": "Open Sans"
+            },
+            {
+              "title": "Playfair Display",
+              "value": "Playfair Display"
+            },
+            {
+              "title": "Lora",
+              "value": "Lora"
+            }
+          ]
+        },
+        "description": "Select from the curated font library",
+        "hidden": "conditional",
+        "name": "libraryFont",
+        "type": "string"
+      },
+      {
+        "description": "Exact family name from Google Fonts — e.g. \"Space Grotesk\", \"DM Sans\"",
+        "hidden": "conditional",
+        "name": "googleFont",
+        "type": "string",
+        "title": "Google Font Family Name"
+      }
+    ],
+    "name": "fontDefinition",
+    "type": "object",
+    "title": "Font"
+  },
+  {
+    "fields": [
+      {
+        "name": "size",
+        "type": "number",
+        "title": "Size (px)"
+      },
+      {
+        "name": "weight",
+        "type": "number"
+      },
+      {
+        "name": "lineHeight",
+        "type": "number"
+      },
+      {
+        "name": "letterSpacing",
+        "type": "number",
+        "title": "Letter Spacing (px)"
+      }
+    ],
+    "name": "typescale",
+    "type": "object",
+    "title": "Type Scale"
+  },
+  {
+    "fields": [
+      {
+        "name": "background",
+        "type": "string"
+      },
+      {
+        "name": "text",
+        "type": "string",
+        "title": "Text Color"
+      },
+      {
+        "name": "borderRadius",
+        "type": "number",
+        "title": "Border Radius (px)"
+      }
+    ],
+    "name": "buttonStyle",
+    "type": "object"
+  },
+  {
+    "description": "Theme-specific button styling — explicit tokens, not derived",
+    "fields": [
+      {
+        "description": "Explicit token — e.g. var(--primary) or OKLCH color",
+        "name": "background",
+        "type": "string"
+      },
+      {
+        "description": "Explicit token — text color for this button",
+        "name": "text",
+        "type": "string",
+        "title": "Text Color"
+      },
+      {
+        "description": "Optional — can override theme default",
+        "name": "borderRadius",
+        "type": "number",
+        "title": "Border Radius (px)"
+      },
+      {
+        "description": "Leave empty to use default hover behavior",
+        "fields": [
+          {
+            "description": "Optional explicit override",
+            "name": "background",
+            "type": "string",
+            "title": "Hover Background"
+          },
+          {
+            "description": "Optional explicit override",
+            "name": "text",
+            "type": "string",
+            "title": "Hover Text Color"
+          }
+        ],
+        "name": "hover",
+        "type": "object",
+        "title": "Hover State (Optional Override)"
+      }
+    ],
+    "name": "buttonStyleTheme",
+    "type": "object",
+    "title": "Button Style (Theme)"
+  },
+  {
+    "description": "Theme-specific card styling — explicit tokens, not derived",
+    "fields": [
+      {
+        "description": "Explicit token — e.g. var(--surface) or OKLCH color",
+        "name": "background",
+        "type": "string"
+      },
+      {
+        "description": "Explicit token — border color for this card",
+        "name": "border",
+        "type": "string",
+        "title": "Border Color"
+      }
+    ],
+    "name": "cardStyleTheme",
+    "type": "object",
+    "title": "Card Style (Theme)"
+  },
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "Unique identifier — e.g. \"default\", \"elevated\", \"glass\", \"testimonial\"",
+        "name": "key",
+        "type": "string"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "Human-readable name for Studio",
+        "name": "label",
+        "type": "string"
+      },
+      {
+        "description": "Theme-specific card styling — explicit tokens, not derived",
+        "name": "lightTheme",
+        "type": "cardStyleTheme"
+      },
+      {
+        "description": "Theme-specific card styling — explicit tokens, not derived",
+        "name": "darkTheme",
+        "type": "cardStyleTheme"
+      }
+    ],
+    "name": "cardVariant",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "initialValue": 120,
+        "description": "Micro-interactions, icon state changes — e.g. 120ms",
+        "name": "durationFast",
+        "type": "number",
+        "title": "Duration — Fast (ms)"
+      },
+      {
+        "initialValue": 200,
+        "description": "Standard transitions, hover effects — e.g. 200ms",
+        "name": "durationBase",
+        "type": "number",
+        "title": "Duration — Base (ms)"
+      },
+      {
+        "initialValue": 350,
+        "description": "Reveal animations, panel slides — e.g. 350ms",
+        "name": "durationSlow",
+        "type": "number",
+        "title": "Duration — Slow (ms)"
+      },
+      {
+        "initialValue": 600,
+        "description": "Hero entrances, page-level transitions — e.g. 600ms",
+        "name": "durationSlower",
+        "type": "number",
+        "title": "Duration — Slower (ms)"
+      },
+      {
+        "initialValue": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "description": "General-purpose easing for most transitions",
+        "name": "easingStandard",
+        "type": "string",
+        "title": "Easing — Standard"
+      },
+      {
+        "initialValue": "cubic-bezier(0, 0, 0.2, 1)",
+        "description": "Elements entering the screen — start fast, slow to stop",
+        "name": "easingDecelerate",
+        "type": "string",
+        "title": "Easing — Decelerate (enter)"
+      },
+      {
+        "initialValue": "cubic-bezier(0.4, 0, 1, 1)",
+        "description": "Elements leaving the screen — start slow, exit quickly",
+        "name": "easingAccelerate",
+        "type": "string",
+        "title": "Easing — Accelerate (exit)"
+      },
+      {
+        "initialValue": "cubic-bezier(0.2, 0, 0, 1)",
+        "description": "Important transitions that need extra attention — hero reveals, dialogs",
+        "name": "easingEmphasized",
+        "type": "string",
+        "title": "Easing — Emphasized"
+      }
+    ],
+    "name": "motion",
+    "type": "object"
+  },
+  {
+    "description": "Theme-specific styling for a form element",
+    "fields": [
+      {
+        "description": "Input background — e.g. var(--color-surface) or OKLCH",
+        "name": "background",
+        "type": "string"
+      },
+      {
+        "description": "Default border color",
+        "name": "border",
+        "type": "string",
+        "title": "Border Color"
+      },
+      {
+        "name": "text",
+        "type": "string",
+        "title": "Text Color"
+      },
+      {
+        "name": "placeholder",
+        "type": "string",
+        "title": "Placeholder Color"
+      },
+      {
+        "description": "Border color when the input is focused",
+        "name": "focusBorder",
+        "type": "string",
+        "title": "Focus Border Color"
+      },
+      {
+        "description": "Border color in error state",
+        "name": "errorBorder",
+        "type": "string",
+        "title": "Error Border Color"
+      },
+      {
+        "description": "Border color in success state",
+        "name": "successBorder",
+        "type": "string",
+        "title": "Success Border Color"
+      },
+      {
+        "initialValue": 0.4,
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "min",
+                "constraint": 0
+              },
+              {
+                "flag": "max",
+                "constraint": 1
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "0–1 — e.g. 0.4",
+        "name": "disabledOpacity",
+        "type": "number"
+      }
+    ],
+    "name": "formInputTheme",
+    "type": "object",
+    "title": "Form Input (Theme)"
+  },
+  {
+    "fields": [
+      {
+        "description": "Theme-specific styling for a form element",
+        "name": "lightTheme",
+        "type": "formInputTheme"
+      },
+      {
+        "description": "Theme-specific styling for a form element",
+        "name": "darkTheme",
+        "type": "formInputTheme"
+      }
+    ],
+    "name": "formInput",
+    "type": "object"
+  },
+  {
+    "description": "Semi-transparent surface with optional backdrop blur",
+    "fields": [
+      {
+        "description": "OKLCH color with transparency — e.g. \"oklch(0.8 0.1 200 / 0.75)\"",
+        "name": "backgroundOklch",
+        "type": "string",
+        "title": "Background (OKLCH with alpha)"
+      },
+      {
+        "initialValue": 12,
+        "description": "Blur amount — 0 for no blur, 10-20 typical for premium effect",
+        "name": "backdropBlur",
+        "type": "number",
+        "title": "Backdrop Blur (px)"
+      },
+      {
+        "description": "Border color in OKLCH — e.g. \"oklch(1 0 0 / 0.1)\"",
+        "name": "borderColor",
+        "type": "string",
+        "title": "Border Color (OKLCH)"
+      },
+      {
+        "initialValue": 1,
+        "name": "borderWidth",
+        "type": "number",
+        "title": "Border Width (px)"
+      }
+    ],
+    "name": "glassStyle",
+    "type": "object"
+  },
+  {
+    "description": "Theme-specific section surfaces — explicit tokens, not derived",
+    "fields": [
+      {
+        "description": "Explicit token — usually var(--color-background) or OKLCH",
+        "name": "surface1",
+        "type": "string",
+        "title": "Surface 1 (Primary Background)"
+      },
+      {
+        "description": "Explicit token — usually var(--color-background-alt) or OKLCH",
+        "name": "surface2",
+        "type": "string",
+        "title": "Surface 2 (Secondary Background)"
+      },
+      {
+        "description": "Explicit token — optional tertiary surface for advanced rhythms",
+        "name": "surface3",
+        "type": "string",
+        "title": "Surface 3 (Tertiary Background)"
+      },
+      {
+        "description": "Explicit token — brand color surface drawn from tenant branding",
+        "name": "brandSurface",
+        "type": "string"
+      },
+      {
+        "description": "Semi-transparent surface for premium sections",
+        "name": "glass",
+        "type": "glassStyle",
+        "title": "Glass Surface"
+      }
+    ],
+    "name": "sectionSurfacesTheme",
+    "type": "object",
+    "title": "Section Surfaces (Theme)"
+  },
+  {
+    "description": "Define the reusable background surfaces for page sections — theme-aware",
+    "fields": [
+      {
+        "description": "Surfaces for light theme",
+        "name": "lightTheme",
+        "type": "sectionSurfacesTheme"
+      },
+      {
+        "description": "Surfaces for dark theme",
+        "name": "darkTheme",
+        "type": "sectionSurfacesTheme"
+      }
+    ],
+    "name": "sectionSurfaces",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "Unique identifier for this asset (e.g. \"logotype\", \"pattern-dark\") — used in components to reference this asset",
+        "name": "key",
+        "type": "string",
+        "title": "Key / Slug"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "Human-readable name for Studio",
+        "name": "name",
+        "type": "string",
+        "title": "Display Name"
+      },
+      {
+        "options": {
+          "hotspot": false
+        },
+        "description": "Image for light theme",
+        "name": "lightImage",
+        "type": "image",
+        "title": "Light Theme Image"
+      },
+      {
+        "options": {
+          "hotspot": false
+        },
+        "description": "Image for dark theme",
+        "name": "darkImage",
+        "type": "image",
+        "title": "Dark Theme Image"
+      }
+    ],
+    "name": "backgroundAsset",
+    "type": "object"
+  },
+  {
+    "fields": [
+      {
+        "description": "Friendly name for this asset (e.g. \"Hero Image\", \"Team Photo\")",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "options": {
+          "hotspot": false
+        },
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "Max 4000px / 10MB recommended",
+        "name": "image",
+        "type": "image"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "to": [
+          {
+            "type": "client"
+          }
+        ],
+        "name": "tenant",
+        "type": "reference"
+      },
+      {
+        "to": [
+          {
+            "type": "project"
+          }
+        ],
+        "name": "project",
+        "type": "reference"
+      },
+      {
+        "description": "Denormalized from project reference — set by API",
+        "readOnly": true,
+        "hidden": true,
+        "name": "projectSlug",
+        "type": "string"
+      },
+      {
+        "options": {
+          "layout": "tags"
+        },
+        "of": [
+          {
+            "type": "string"
+          }
+        ],
+        "name": "tags",
+        "type": "array"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "Alt text for screen readers and accessibility (multilingual)",
+        "name": "altText",
+        "type": "localizedString"
+      },
+      {
+        "description": "Optional caption displayed beneath the image (multilingual)",
+        "name": "caption",
+        "type": "localizedString"
+      },
+      {
+        "description": "Optional internal notes about this image (multilingual)",
+        "name": "description",
+        "type": "localizedText"
+      },
+      {
+        "description": "User ID who uploaded this asset — auto-populated when user management is ready",
+        "readOnly": true,
+        "hidden": true,
+        "name": "uploadedBy",
+        "type": "string",
+        "title": "Uploaded By (User ID)"
+      },
+      {
+        "description": "User name/email who uploaded this asset — auto-populated when user management is ready",
+        "readOnly": true,
+        "hidden": true,
+        "name": "uploadedByName",
+        "type": "string",
+        "title": "Uploaded By (User Name)"
+      }
+    ],
+    "name": "mediaAsset",
+    "type": "document"
+  },
+  {
+    "fields": [
+      {
+        "description": "Which project this design system belongs to — leave empty for templates",
+        "readOnly": true,
+        "name": "projectSlug",
+        "type": "string",
+        "title": "Project"
+      },
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "Active — in use",
+              "value": "active"
+            },
+            {
+              "title": "Template — not assigned",
+              "value": "template"
+            }
+          ],
+          "layout": "radio"
+        },
+        "initialValue": "active",
+        "description": "Active = assigned to a project and in use. Template = not assigned, used as a base for future systems.",
+        "name": "role",
+        "type": "string"
+      },
+      {
+        "rows": 2,
+        "name": "description",
+        "type": "text"
+      },
+      {
+        "fields": [
+          {
+            "options": {
+              "hotspot": false
+            },
+            "name": "logo",
+            "type": "image",
+            "title": "Logo (dark background)"
+          },
+          {
+            "options": {
+              "hotspot": false
+            },
+            "name": "logoLight",
+            "type": "image",
+            "title": "Logo (light background)"
+          },
+          {
+            "initialValue": 32,
+            "description": "Max height of the logo in the header on desktop. Typical: 28–40px.",
+            "name": "logoHeightDesktop",
+            "type": "number",
+            "title": "Logo Height — Desktop (px)"
+          },
+          {
+            "initialValue": 28,
+            "description": "Max height of the logo in the header on mobile. Typical: 24–32px.",
+            "name": "logoHeightMobile",
+            "type": "number",
+            "title": "Logo Height — Mobile (px)"
+          },
+          {
+            "options": {
+              "hotspot": false
+            },
+            "name": "favicon",
+            "type": "image"
+          },
+          {
+            "options": {
+              "hotspot": false
+            },
+            "description": "Social Sharing Image • 1200 x 630 pixels • Aspect ratio: 1.91:1 • JPG preferred",
+            "name": "openGraphImage",
+            "type": "image"
+          },
+          {
+            "options": {
+              "hotspot": false
+            },
+            "description": "Used when saved to iPhone/iPad home screen • 180 x 180 pixels • PNG",
+            "name": "appleTouchIcon",
+            "type": "image"
+          }
+        ],
+        "name": "branding",
+        "type": "object"
+      },
+      {
+        "description": "Reusable background images for pages and sections (light/dark variants)",
+        "of": [
+          {
+            "type": "backgroundAsset"
+          }
+        ],
+        "name": "backgroundAssets",
+        "type": "array"
+      },
+      {
+        "fields": [
+          {
+            "name": "lightTheme",
+            "type": "colorTheme"
+          },
+          {
+            "name": "darkTheme",
+            "type": "colorTheme"
+          }
+        ],
+        "name": "colors",
+        "type": "object"
+      },
+      {
+        "fields": [
+          {
+            "name": "headingFont",
+            "type": "fontDefinition"
+          },
+          {
+            "name": "bodyFont",
+            "type": "fontDefinition"
+          },
+          {
+            "name": "h1",
+            "type": "typescale",
+            "title": "H1"
+          },
+          {
+            "name": "h2",
+            "type": "typescale",
+            "title": "H2"
+          },
+          {
+            "name": "h3",
+            "type": "typescale",
+            "title": "H3"
+          },
+          {
+            "name": "h4",
+            "type": "typescale",
+            "title": "H4"
+          },
+          {
+            "name": "bodyLarge",
+            "type": "typescale"
+          },
+          {
+            "name": "body",
+            "type": "typescale"
+          },
+          {
+            "name": "small",
+            "type": "typescale",
+            "title": "Small Text"
+          }
+        ],
+        "name": "typography",
+        "type": "object"
+      },
+      {
+        "fields": [
+          {
+            "name": "small",
+            "type": "number",
+            "title": "Small (px)"
+          },
+          {
+            "name": "medium",
+            "type": "number",
+            "title": "Medium (px)"
+          },
+          {
+            "name": "large",
+            "type": "number",
+            "title": "Large (px)"
+          }
+        ],
+        "name": "radius",
+        "type": "object",
+        "title": "Border Radius"
+      },
+      {
+        "fields": [
+          {
+            "name": "xs",
+            "type": "number",
+            "title": "XS (px)"
+          },
+          {
+            "name": "s",
+            "type": "number",
+            "title": "S (px)"
+          },
+          {
+            "name": "m",
+            "type": "number",
+            "title": "M (px)"
+          },
+          {
+            "name": "l",
+            "type": "number",
+            "title": "L (px)"
+          },
+          {
+            "name": "xl",
+            "type": "number",
+            "title": "XL (px)"
+          }
+        ],
+        "name": "spacing",
+        "type": "object"
+      },
+      {
+        "description": "Button styles per variant and theme",
+        "fields": [
+          {
+            "fields": [
+              {
+                "description": "Theme-specific button styling — explicit tokens, not derived",
+                "name": "lightTheme",
+                "type": "buttonStyleTheme"
+              },
+              {
+                "description": "Theme-specific button styling — explicit tokens, not derived",
+                "name": "darkTheme",
+                "type": "buttonStyleTheme"
+              }
+            ],
+            "name": "primary",
+            "type": "object",
+            "title": "Primary Button"
+          },
+          {
+            "fields": [
+              {
+                "description": "Theme-specific button styling — explicit tokens, not derived",
+                "name": "lightTheme",
+                "type": "buttonStyleTheme"
+              },
+              {
+                "description": "Theme-specific button styling — explicit tokens, not derived",
+                "name": "darkTheme",
+                "type": "buttonStyleTheme"
+              }
+            ],
+            "name": "secondary",
+            "type": "object",
+            "title": "Secondary Button"
+          }
+        ],
+        "name": "buttons",
+        "type": "object"
+      },
+      {
+        "description": "Card styles per theme",
+        "fields": [
+          {
+            "description": "Theme-specific card styling — explicit tokens, not derived",
+            "name": "lightTheme",
+            "type": "cardStyleTheme"
+          },
+          {
+            "description": "Theme-specific card styling — explicit tokens, not derived",
+            "name": "darkTheme",
+            "type": "cardStyleTheme"
+          }
+        ],
+        "name": "cards",
+        "type": "object"
+      },
+      {
+        "description": "Define the reusable background surfaces for page sections",
+        "name": "sectionSurfaces",
+        "type": "sectionSurfaces"
+      },
+      {
+        "description": "Global glass token — consumed by the header, navigation dropdown, cards, and modals. Individual components reference this instead of defining their own glass styles.",
+        "name": "glass",
+        "type": "glassStyle",
+        "title": "Glass Effect"
+      },
+      {
+        "description": "Form element styling — consumed by contact, newsletter, and booking forms",
+        "fields": [
+          {
+            "name": "input",
+            "type": "formInput"
+          },
+          {
+            "name": "textarea",
+            "type": "formInput"
+          },
+          {
+            "name": "select",
+            "type": "formInput"
+          },
+          {
+            "name": "checkbox",
+            "type": "formInput"
+          },
+          {
+            "name": "radio",
+            "type": "formInput"
+          }
+        ],
+        "name": "forms",
+        "type": "object"
+      },
+      {
+        "description": "Navigation and menu styling tokens",
+        "fields": [
+          {
+            "initialValue": 8,
+            "description": "Border radius of individual nav items / pills",
+            "name": "menuRadius",
+            "type": "number",
+            "title": "Menu Item Radius (px)"
+          },
+          {
+            "initialValue": 4,
+            "description": "Spacing between top-level nav items",
+            "name": "menuGap",
+            "type": "number",
+            "title": "Menu Gap (px)"
+          },
+          {
+            "initialValue": 12,
+            "description": "Border radius of the dropdown panel",
+            "name": "dropdownRadius",
+            "type": "number",
+            "title": "Dropdown Radius (px)"
+          },
+          {
+            "options": {
+              "list": [
+                {
+                  "title": "Solid",
+                  "value": "solid"
+                },
+                {
+                  "title": "Glass",
+                  "value": "glass"
+                },
+                {
+                  "title": "Surface",
+                  "value": "surface"
+                }
+              ],
+              "layout": "radio"
+            },
+            "initialValue": "glass",
+            "description": "Visual treatment of the dropdown panel — glass uses the global glass token",
+            "name": "dropdownStyle",
+            "type": "string"
+          }
+        ],
+        "name": "navigation",
+        "type": "object"
+      },
+      {
+        "description": "Animation timing and easing tokens — inherited by all components",
+        "name": "motion",
+        "type": "motion"
+      },
+      {
+        "description": "Named card variants — reference by key in components. Add any variant you need (default, elevated, glass, testimonial, etc.).",
+        "of": [
+          {
+            "type": "cardVariant"
+          }
+        ],
+        "name": "cardVariants",
+        "type": "array"
+      },
+      {
+        "description": "Semantic shadow tokens — used by cards, dropdowns, and modals",
+        "fields": [
+          {
+            "description": "CSS box-shadow value for cards — e.g. \"0 1px 3px oklch(0 0 0 / 0.08), 0 4px 12px oklch(0 0 0 / 0.06)\"",
+            "name": "card",
+            "type": "string",
+            "title": "Card Shadow"
+          },
+          {
+            "description": "CSS box-shadow value for dropdowns and popovers",
+            "name": "dropdown",
+            "type": "string",
+            "title": "Dropdown Shadow"
+          },
+          {
+            "description": "CSS box-shadow value for modals and dialogs",
+            "name": "modal",
+            "type": "string",
+            "title": "Modal Shadow"
+          }
+        ],
+        "name": "shadows",
+        "type": "object"
+      },
+      {
+        "description": "Layout tokens — control page rhythm across all sections",
+        "fields": [
+          {
+            "initialValue": 1280,
+            "description": "Maximum width of the page container — typically 1280–1440px",
+            "name": "maxContentWidth",
+            "type": "number",
+            "title": "Max Content Width (px)"
+          },
+          {
+            "initialValue": 720,
+            "description": "Maximum width for reading-width text blocks — typically 680–780px",
+            "name": "maxTextWidth",
+            "type": "number",
+            "title": "Max Text Width (px)"
+          },
+          {
+            "initialValue": 96,
+            "description": "Standard vertical padding for sections — top and bottom",
+            "name": "sectionPaddingY",
+            "type": "number",
+            "title": "Section Padding Y — Normal (px)"
+          },
+          {
+            "initialValue": 56,
+            "description": "Compact vertical padding for tight sections",
+            "name": "sectionPaddingYCompact",
+            "type": "number",
+            "title": "Section Padding Y — Compact (px)"
+          },
+          {
+            "initialValue": 144,
+            "description": "Large vertical padding for spacious hero-style sections",
+            "name": "sectionPaddingYLarge",
+            "type": "number",
+            "title": "Section Padding Y — Large (px)"
+          }
+        ],
+        "name": "layout",
+        "type": "object"
+      }
+    ],
+    "name": "designSystem",
+    "type": "document"
+  },
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "projectSlug",
+        "type": "string",
+        "title": "Project"
+      },
+      {
+        "name": "siteName",
+        "type": "string"
+      },
+      {
+        "name": "tagline",
+        "type": "localizedString"
+      },
+      {
+        "options": {
+          "hotspot": true
+        },
+        "name": "logo",
+        "type": "localizedImage"
+      },
+      {
+        "options": {
+          "hotspot": true
+        },
+        "name": "logoLight",
+        "type": "localizedImage",
+        "title": "Logo (Light variant)"
+      },
+      {
+        "name": "faviconSvg",
+        "type": "image",
+        "title": "Favicon (SVG)"
+      },
+      {
+        "name": "faviconPng",
+        "type": "image",
+        "title": "Favicon (PNG)"
+      },
+      {
+        "fields": [
+          {
+            "initialValue": false,
+            "name": "enabled",
+            "type": "boolean",
+            "title": "Enable Background Graphic"
+          },
+          {
+            "name": "asset",
+            "type": "image",
+            "title": "Background Asset"
+          },
+          {
+            "initialValue": 5,
+            "validation": [
+              {
+                "rules": [
+                  {
+                    "flag": "min",
+                    "constraint": 0
+                  },
+                  {
+                    "flag": "max",
+                    "constraint": 100
+                  }
+                ],
+                "level": "error"
+              }
+            ],
+            "name": "opacity",
+            "type": "number",
+            "title": "Opacity (%)"
+          },
+          {
+            "initialValue": 100,
+            "validation": [
+              {
+                "rules": [
+                  {
+                    "flag": "min",
+                    "constraint": 10
+                  },
+                  {
+                    "flag": "max",
+                    "constraint": 500
+                  }
+                ],
+                "level": "error"
+              }
+            ],
+            "name": "scale",
+            "type": "number",
+            "title": "Scale (%)"
+          },
+          {
+            "validation": [
+              {
+                "rules": [
+                  {
+                    "flag": "min",
+                    "constraint": 10
+                  },
+                  {
+                    "flag": "max",
+                    "constraint": 500
+                  }
+                ],
+                "level": "error"
+              }
+            ],
+            "name": "mobileScale",
+            "type": "number",
+            "title": "Mobile Scale (%)"
+          },
+          {
+            "initialValue": 0,
+            "validation": [
+              {
+                "rules": [
+                  {
+                    "flag": "min",
+                    "constraint": 0
+                  },
+                  {
+                    "flag": "max",
+                    "constraint": 360
+                  }
+                ],
+                "level": "error"
+              }
+            ],
+            "name": "rotation",
+            "type": "number",
+            "title": "Rotation (°)"
+          },
+          {
+            "options": {
+              "list": [
+                {
+                  "title": "Center",
+                  "value": "center"
+                },
+                {
+                  "title": "Top Left",
+                  "value": "topLeft"
+                },
+                {
+                  "title": "Top Right",
+                  "value": "topRight"
+                },
+                {
+                  "title": "Bottom Left",
+                  "value": "bottomLeft"
+                },
+                {
+                  "title": "Bottom Right",
+                  "value": "bottomRight"
+                }
+              ],
+              "layout": "radio"
+            },
+            "initialValue": "center",
+            "name": "positionPreset",
+            "type": "string",
+            "title": "Position"
+          },
+          {
+            "initialValue": 0,
+            "validation": [
+              {
+                "rules": [
+                  {
+                    "flag": "min",
+                    "constraint": -100
+                  },
+                  {
+                    "flag": "max",
+                    "constraint": 100
+                  }
+                ],
+                "level": "error"
+              }
+            ],
+            "name": "offsetX",
+            "type": "number",
+            "title": "Offset X (%)"
+          },
+          {
+            "initialValue": 0,
+            "validation": [
+              {
+                "rules": [
+                  {
+                    "flag": "min",
+                    "constraint": -100
+                  },
+                  {
+                    "flag": "max",
+                    "constraint": 100
+                  }
+                ],
+                "level": "error"
+              }
+            ],
+            "name": "offsetY",
+            "type": "number",
+            "title": "Offset Y (%)"
+          },
+          {
+            "validation": [
+              {
+                "rules": [
+                  {
+                    "flag": "min",
+                    "constraint": -100
+                  },
+                  {
+                    "flag": "max",
+                    "constraint": 100
+                  }
+                ],
+                "level": "error"
+              }
+            ],
+            "name": "mobileOffsetX",
+            "type": "number",
+            "title": "Mobile Offset X (%)"
+          },
+          {
+            "validation": [
+              {
+                "rules": [
+                  {
+                    "flag": "min",
+                    "constraint": -100
+                  },
+                  {
+                    "flag": "max",
+                    "constraint": 100
+                  }
+                ],
+                "level": "error"
+              }
+            ],
+            "name": "mobileOffsetY",
+            "type": "number",
+            "title": "Mobile Offset Y (%)"
+          },
+          {
+            "options": {
+              "list": [
+                {
+                  "title": "Fixed",
+                  "value": "fixed"
+                },
+                {
+                  "title": "Scroll With Content",
+                  "value": "scroll"
+                },
+                {
+                  "title": "Parallax",
+                  "value": "parallax"
+                }
+              ],
+              "layout": "radio"
+            },
+            "initialValue": "scroll",
+            "name": "scrollBehavior",
+            "type": "string"
+          },
+          {
+            "options": {
+              "list": [
+                {
+                  "title": "Entire Site",
+                  "value": "entire"
+                },
+                {
+                  "title": "Homepage Only",
+                  "value": "homepage"
+                },
+                {
+                  "title": "Hero Only",
+                  "value": "hero"
+                }
+              ],
+              "layout": "radio"
+            },
+            "initialValue": "entire",
+            "name": "scope",
+            "type": "string"
+          }
+        ],
+        "name": "backgroundGraphic",
+        "type": "object",
+        "title": "Brand Watermark"
+      },
+      {
+        "fields": [
+          {
+            "initialValue": true,
+            "name": "stickyHeader",
+            "type": "boolean"
+          },
+          {
+            "options": {
+              "list": [
+                {
+                  "title": "Transparent",
+                  "value": "transparent"
+                },
+                {
+                  "title": "Solid",
+                  "value": "solid"
+                },
+                {
+                  "title": "Glass",
+                  "value": "glass"
+                }
+              ],
+              "layout": "radio"
+            },
+            "initialValue": "transparent",
+            "name": "initialStyle",
+            "type": "string",
+            "title": "Initial Style (top of page)"
+          },
+          {
+            "options": {
+              "list": [
+                {
+                  "title": "Transparent",
+                  "value": "transparent"
+                },
+                {
+                  "title": "Solid",
+                  "value": "solid"
+                },
+                {
+                  "title": "Glass",
+                  "value": "glass"
+                }
+              ],
+              "layout": "radio"
+            },
+            "initialValue": "glass",
+            "name": "scrolledStyle",
+            "type": "string",
+            "title": "Scrolled Style (after scrolling)"
+          },
+          {
+            "initialValue": 85,
+            "validation": [
+              {
+                "rules": [
+                  {
+                    "flag": "min",
+                    "constraint": 0
+                  },
+                  {
+                    "flag": "max",
+                    "constraint": 100
+                  }
+                ],
+                "level": "error"
+              }
+            ],
+            "name": "backgroundOpacity",
+            "type": "number",
+            "title": "Background Opacity (%)"
+          },
+          {
+            "initialValue": true,
+            "name": "blurEffect",
+            "type": "boolean"
+          },
+          {
+            "options": {
+              "list": [
+                {
+                  "title": "None",
+                  "value": "none"
+                },
+                {
+                  "title": "Small",
+                  "value": "small"
+                },
+                {
+                  "title": "Medium",
+                  "value": "medium"
+                }
+              ],
+              "layout": "radio"
+            },
+            "initialValue": "small",
+            "name": "shadow",
+            "type": "string"
+          },
+          {
+            "options": {
+              "list": [
+                {
+                  "title": "Compact",
+                  "value": "compact"
+                },
+                {
+                  "title": "Normal",
+                  "value": "normal"
+                },
+                {
+                  "title": "Large",
+                  "value": "large"
+                }
+              ],
+              "layout": "radio"
+            },
+            "initialValue": "normal",
+            "name": "headerHeight",
+            "type": "string"
+          },
+          {
+            "description": "Leave empty to use preset height",
+            "name": "customHeight",
+            "type": "number",
+            "title": "Custom Height (px)"
+          },
+          {
+            "initialValue": 50,
+            "name": "zIndex",
+            "type": "number",
+            "title": "Z-Index"
+          },
+          {
+            "options": {
+              "list": [
+                {
+                  "title": "Always",
+                  "value": "always"
+                },
+                {
+                  "title": "On Scroll",
+                  "value": "onScroll"
+                },
+                {
+                  "title": "Never",
+                  "value": "never"
+                }
+              ],
+              "layout": "radio"
+            },
+            "initialValue": "onScroll",
+            "name": "borderStyle",
+            "type": "string"
+          }
+        ],
+        "name": "headerAppearance",
+        "type": "object"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "Header",
+              "value": "header"
+            },
+            {
+              "title": "Footer",
+              "value": "footer"
+            },
+            {
+              "title": "Both",
+              "value": "both"
+            }
+          ],
+          "layout": "radio"
+        },
+        "initialValue": "header",
+        "description": "Visibility is automatic: hidden if only 1 language, shown if 2+",
+        "name": "languageSwitcherPlacement",
+        "type": "string"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "Light Only",
+              "value": "lightOnly"
+            },
+            {
+              "title": "Dark Only",
+              "value": "darkOnly"
+            },
+            {
+              "title": "Light + Dark Toggle + System",
+              "value": "toggle"
+            },
+            {
+              "title": "Follow System",
+              "value": "system"
+            }
+          ],
+          "layout": "radio"
+        },
+        "initialValue": "toggle",
+        "description": "Controls whether theme switcher appears and which options are available",
+        "name": "themeMode",
+        "type": "string"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "Header",
+              "value": "header"
+            },
+            {
+              "title": "Footer",
+              "value": "footer"
+            },
+            {
+              "title": "Both",
+              "value": "both"
+            }
+          ],
+          "layout": "radio"
+        },
+        "initialValue": "header",
+        "description": "Visibility determined by Theme Mode setting",
+        "name": "themeSwitcherPlacement",
+        "type": "string"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "English",
+              "value": "en"
+            },
+            {
+              "title": "Italiano",
+              "value": "it"
+            },
+            {
+              "title": "Deutsch",
+              "value": "de"
+            },
+            {
+              "title": "Français",
+              "value": "fr"
+            },
+            {
+              "title": "Español",
+              "value": "es"
+            },
+            {
+              "title": "Português",
+              "value": "pt"
+            },
+            {
+              "title": "Nederlands",
+              "value": "nl"
+            }
+          ],
+          "layout": "radio"
+        },
+        "initialValue": "en",
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "valid",
+                "constraint": [
+                  "en",
+                  "it",
+                  "de",
+                  "fr",
+                  "es",
+                  "pt",
+                  "nl"
+                ]
+              },
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "defaultLocale",
+        "type": "string",
+        "title": "Default Language"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              },
+              {
+                "flag": "min",
+                "constraint": 1
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "of": [
+          {
+            "options": {
+              "list": [
+                {
+                  "title": "English",
+                  "value": "en"
+                },
+                {
+                  "title": "Italiano",
+                  "value": "it"
+                },
+                {
+                  "title": "Deutsch",
+                  "value": "de"
+                },
+                {
+                  "title": "Français",
+                  "value": "fr"
+                },
+                {
+                  "title": "Español",
+                  "value": "es"
+                },
+                {
+                  "title": "Português",
+                  "value": "pt"
+                },
+                {
+                  "title": "Nederlands",
+                  "value": "nl"
+                }
+              ]
+            },
+            "type": "string"
+          }
+        ],
+        "name": "supportedLocales",
+        "type": "array",
+        "title": "Supported Languages"
+      },
+      {
+        "of": [
+          {
+            "type": "navigationLink"
+          }
+        ],
+        "name": "navLinks",
+        "type": "array",
+        "title": "Navigation Links"
+      },
+      {
+        "initialValue": false,
+        "name": "showLangSwitcherInNav",
+        "type": "boolean",
+        "title": "Show language switcher in nav"
+      },
+      {
+        "name": "ctaLabel",
+        "type": "localizedString",
+        "title": "Nav CTA Button Label"
+      },
+      {
+        "name": "ctaHref",
+        "type": "string",
+        "title": "Nav CTA Button URL"
+      },
+      {
+        "description": "e.g. \"Welcome to Livener\"",
+        "name": "livePageHeadline",
+        "type": "localizedString"
+      },
+      {
+        "description": "e.g. \"Live video streaming, in the palm of your hands\"",
+        "name": "livePageSubheadline",
+        "type": "localizedString"
+      },
+      {
+        "description": "e.g. \"Currently in beta — tested live, in real environments.\"",
+        "name": "livePageBetaNotice",
+        "type": "localizedString"
+      },
+      {
+        "name": "phone",
+        "type": "string"
+      },
+      {
+        "name": "email",
+        "type": "string"
+      },
+      {
+        "rows": 2,
+        "name": "address",
+        "type": "text"
+      },
+      {
+        "name": "contactEmail",
+        "type": "string",
+        "title": "Contact Form Recipient Email"
+      },
+      {
+        "name": "mobileNumber",
+        "type": "string"
+      },
+      {
+        "name": "whatsappNumber",
+        "type": "string",
+        "title": "WhatsApp Number"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "max",
+                "constraint": 5
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "of": [
+          {
+            "type": "whatsappSubject",
+            "title": "WhatsApp Subject"
+          }
+        ],
+        "name": "whatsappSubjects",
+        "type": "array",
+        "title": "WhatsApp Subject Options"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "max",
+                "constraint": 5
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "of": [
+          {
+            "type": "emailSubject"
+          }
+        ],
+        "name": "emailSubjects",
+        "type": "array",
+        "title": "Email Subject Options"
+      },
+      {
+        "of": [
+          {
+            "type": "navigationLink"
+          }
+        ],
+        "name": "footerLinks",
+        "type": "array"
+      },
+      {
+        "name": "footerCtaHeading",
+        "type": "localizedString",
+        "title": "Footer CTA Heading"
+      },
+      {
+        "name": "footerCtaSubtext",
+        "type": "localizedString",
+        "title": "Footer CTA Subtext"
+      },
+      {
+        "name": "footerCtaInputPlaceholder",
+        "type": "localizedString",
+        "title": "Footer CTA Input Placeholder"
+      },
+      {
+        "name": "footerCtaButtonLabel",
+        "type": "localizedString",
+        "title": "Footer CTA Button Label"
+      },
+      {
+        "name": "legalName",
+        "type": "string",
+        "title": "Legal Company Name"
+      },
+      {
+        "rows": 2,
+        "name": "legalAddress",
+        "type": "text"
+      },
+      {
+        "name": "registrationInfo",
+        "type": "string"
+      },
+      {
+        "name": "foundedYear",
+        "type": "number"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "uri",
+                "constraint": {
+                  "options": {
+                    "scheme": [
+                      "/^http$/",
+                      "/^https$/"
+                    ],
+                    "allowRelative": false,
+                    "relativeOnly": false,
+                    "allowCredentials": false
+                  }
+                }
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "youtubeChannelUrl",
+        "type": "url",
+        "title": "YouTube Channel URL"
+      },
+      {
+        "of": [
+          {
+            "type": "socialLink"
+          }
+        ],
+        "name": "socialLinks",
+        "type": "array"
+      }
+    ],
+    "name": "siteConfig",
+    "type": "document"
+  },
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "projectSlug",
+        "type": "string",
+        "title": "Project"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "Home",
+              "value": "home"
+            },
+            {
+              "title": "About",
+              "value": "about"
+            },
+            {
+              "title": "Contact",
+              "value": "contact"
+            },
+            {
+              "title": "Team",
+              "value": "team"
+            },
+            {
+              "title": "Services",
+              "value": "services"
+            },
+            {
+              "title": "Landing Page",
+              "value": "landing"
+            },
+            {
+              "title": "Legal",
+              "value": "legal"
+            }
+          ],
+          "layout": "radio"
+        },
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "valid",
+                "constraint": [
+                  "home",
+                  "about",
+                  "contact",
+                  "team",
+                  "services",
+                  "landing",
+                  "legal"
+                ]
+              },
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "pageType",
+        "type": "string"
+      },
+      {
+        "name": "title",
+        "type": "localizedString"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "description": "The URL path per language, e.g. \"about\" (EN) / \"chi-siamo\" (IT)",
+        "name": "slug",
+        "type": "localizedSlug",
+        "title": "URL Slug"
+      },
+      {
+        "description": "Old slugs that redirect here with a 301. Fill these when renaming a page.",
+        "name": "redirectFrom",
+        "type": "redirectFrom"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "None (Manual section overrides only)",
+              "value": "none"
+            },
+            {
+              "title": "Alternate Surface 1 ↔ Surface 2",
+              "value": "alternate1-2"
+            },
+            {
+              "title": "Alternate Surface 1 ↔ 2 ↔ 3",
+              "value": "alternate1-2-3"
+            }
+          ],
+          "layout": "radio"
+        },
+        "initialValue": "none",
+        "name": "backgroundPattern",
+        "type": "string",
+        "title": "Section Background Pattern"
+      },
+      {
+        "of": [
+          {
+            "type": "heroSection"
+          },
+          {
+            "type": "contentSection"
+          },
+          {
+            "type": "treatmentsSection"
+          },
+          {
+            "type": "teamSection"
+          },
+          {
+            "type": "textSection"
+          },
+          {
+            "type": "faqSection",
+            "title": "FAQ Section"
+          },
+          {
+            "type": "contactSection"
+          }
+        ],
+        "name": "sections",
+        "type": "array"
+      }
+    ],
+    "name": "page",
+    "type": "document"
+  },
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "projectSlug",
+        "type": "string",
+        "title": "Project"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "None (Manual section overrides only)",
+              "value": "none"
+            },
+            {
+              "title": "Alternate Surface 1 ↔ Surface 2",
+              "value": "alternate1-2"
+            },
+            {
+              "title": "Alternate Surface 1 ↔ 2 ↔ 3",
+              "value": "alternate1-2-3"
+            }
+          ],
+          "layout": "radio"
+        },
+        "initialValue": "none",
+        "description": "Automatically assign surfaces to sections. Sections can override individually.",
+        "name": "backgroundPattern",
+        "type": "string",
+        "title": "Section Background Pattern"
+      },
+      {
+        "of": [
+          {
+            "type": "heroSection"
+          },
+          {
+            "type": "contentSection"
+          },
+          {
+            "type": "treatmentsSection"
+          },
+          {
+            "type": "teamSection"
+          },
+          {
+            "type": "textSection"
+          },
+          {
+            "type": "faqSection",
+            "title": "FAQ Section"
+          },
+          {
+            "type": "contactSection"
+          }
+        ],
+        "name": "sections",
+        "type": "array"
+      }
+    ],
+    "name": "homePage",
+    "type": "document"
+  },
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "projectSlug",
+        "type": "string",
+        "title": "Project"
+      },
+      {
+        "name": "title",
+        "type": "localizedString"
+      },
+      {
+        "name": "slug",
+        "type": "localizedSlug"
+      },
+      {
+        "name": "redirectFrom",
+        "type": "redirectFrom"
+      },
+      {
+        "name": "excerpt",
+        "type": "localizedText"
+      },
+      {
+        "name": "body",
+        "type": "localizedPortableText"
+      },
+      {
+        "name": "publishedAt",
+        "type": "datetime"
+      }
+    ],
+    "name": "post",
+    "type": "document",
+    "title": "Blog Post"
+  },
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "projectSlug",
+        "type": "string",
+        "title": "Project"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "title",
+        "type": "localizedString"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "slug",
+        "type": "localizedSlug"
+      },
+      {
+        "name": "redirectFrom",
+        "type": "redirectFrom",
+        "title": "Old Slugs (Redirects)"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "🟡 Upcoming",
+              "value": "upcoming"
+            },
+            {
+              "title": "🔴 Live",
+              "value": "live"
+            },
+            {
+              "title": "⚫ Past",
+              "value": "past"
+            }
+          ],
+          "layout": "radio"
+        },
+        "initialValue": "upcoming",
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "valid",
+                "constraint": [
+                  "upcoming",
+                  "live",
+                  "past"
+                ]
+              },
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "status",
+        "type": "string"
+      },
+      {
+        "initialValue": false,
+        "name": "isCurrentLiveEvent",
+        "type": "boolean",
+        "title": "Feature on /live page"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "startDate",
+        "type": "datetime",
+        "title": "Start Date & Time"
+      },
+      {
+        "name": "endDate",
+        "type": "datetime",
+        "title": "End Date & Time"
+      },
+      {
+        "name": "location",
+        "type": "localizedString"
+      },
+      {
+        "name": "shortDescription",
+        "type": "localizedText"
+      },
+      {
+        "name": "fullDescription",
+        "type": "localizedPortableText"
+      },
+      {
+        "of": [
+          {
+            "type": "scheduleItem"
+          }
+        ],
+        "name": "schedule",
+        "type": "array"
+      },
+      {
+        "options": {
+          "hotspot": true
+        },
+        "name": "heroImage",
+        "type": "localizedImage"
+      },
+      {
+        "of": [
+          {
+            "options": {
+              "hotspot": true
+            },
+            "type": "localizedImage",
+            "title": "Image"
+          }
+        ],
+        "name": "gallery",
+        "type": "array"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "uri",
+                "constraint": {
+                  "options": {
+                    "scheme": [
+                      "/^http$/",
+                      "/^https$/"
+                    ],
+                    "allowRelative": false,
+                    "relativeOnly": false,
+                    "allowCredentials": false
+                  }
+                }
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "youtubeUrl",
+        "type": "url",
+        "title": "YouTube Stream / Video URL"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "uri",
+                "constraint": {
+                  "options": {
+                    "scheme": [
+                      "/^http$/",
+                      "/^https$/"
+                    ],
+                    "allowRelative": false,
+                    "relativeOnly": false,
+                    "allowCredentials": false
+                  }
+                }
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "youtubeChannelUrl",
+        "type": "url",
+        "title": "YouTube Channel URL"
+      },
+      {
+        "name": "ctaLabel",
+        "type": "localizedString",
+        "title": "CTA Button Label"
+      },
+      {
+        "name": "seoTitle",
+        "type": "localizedString",
+        "title": "SEO Title"
+      },
+      {
+        "name": "seoDescription",
+        "type": "localizedText",
+        "title": "SEO Description"
+      }
+    ],
+    "name": "event",
+    "type": "document"
+  }
+]

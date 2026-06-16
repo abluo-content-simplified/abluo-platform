@@ -67,6 +67,14 @@ function StatusBadge({ status }: { status: Event['status'] }) {
 export function LivePageContent({ event, siteConfig, designSystem, pastEvents = [], locale }: LivePageContentProps) {
   if (!event) return <NoLiveEvent />
 
+  // ─── Motion tokens from resolved design system ─────────────────────────────
+  const m = designSystem?.motion
+  // Durations — convert ms to seconds for motion/react
+  const durationSlower = m?.durationSlower !== undefined ? m.durationSlower / 1000 : 0.6
+  const durationSlow   = m?.durationSlow   !== undefined ? m.durationSlow   / 1000 : 0.35
+  // Easing — easingDecelerate for reveals (elements entering the screen)
+  const easeReveal: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+
   const heroSrc = imageUrl(event.heroImage, 1600)
   const heroSrcSet = imageSrcSet(event.heroImage, [800, 1200, 1600, 2400])
   const gallerySrc = event.gallery?.[0] ? imageUrl(event.gallery[0], 1600) : undefined
@@ -97,7 +105,7 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
       <div className="mx-auto max-w-[900px] px-5 pb-24 pt-12 md:px-10">
 
         {/* ── Page welcome ─────────────────────────────────────────── */}
-        <SlideUp duration={0.6}>
+        <SlideUp duration={durationSlower} ease={easeReveal}>
           <h1
             className="text-[clamp(48px,8vw,68px)] font-bold leading-[1.05]"
             style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
@@ -106,7 +114,7 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
           </h1>
         </SlideUp>
 
-        <SlideUp delay={0.1} duration={0.6}>
+        <SlideUp delay={0.1} duration={durationSlower} ease={easeReveal}>
           <h2
             className="mt-3 text-[clamp(22px,4vw,32px)] font-semibold leading-tight"
             style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-primary)' }}
@@ -115,7 +123,7 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
           </h2>
         </SlideUp>
 
-        <SlideUp delay={0.18} duration={0.5}>
+        <SlideUp delay={0.18} duration={durationSlow} ease={easeReveal}>
           <p className="mt-4 text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
             {betaNotice}
           </p>
@@ -123,13 +131,13 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
 
         {/* ── Event announcement ────────────────────────────────────── */}
         <div className="mt-14">
-          <SlideUp delay={0.05}>
+          <SlideUp delay={0.05} ease={easeReveal}>
             <div className="flex items-center gap-3">
               <StatusBadge status={event.status} />
             </div>
           </SlideUp>
 
-          <SlideUp delay={0.12}>
+          <SlideUp delay={0.12} ease={easeReveal}>
             <h2
               className="mt-4 text-[clamp(28px,5vw,46px)] font-bold leading-tight"
               style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
@@ -139,7 +147,7 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
           </SlideUp>
 
           {(startDate || event.location) && (
-            <SlideUp delay={0.2}>
+            <SlideUp delay={0.2} ease={easeReveal}>
               <p
                 className="mt-2 text-xl font-semibold"
                 style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-primary)' }}
@@ -158,7 +166,7 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
 
           {/* ── Short description — ABOVE hero image ─────────────────── */}
           {event.shortDescription && (
-            <SlideUp delay={0.25} className="mt-6">
+            <SlideUp delay={0.25} ease={easeReveal} className="mt-6">
               <p className="text-base leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
                 {event.shortDescription}
               </p>
@@ -168,7 +176,7 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
 
         {/* ── Hero image ───────────────────────────────────────────── */}
         {heroSrc && (
-          <FadeIn delay={0.1} className="mt-10 overflow-hidden rounded-2xl">
+          <FadeIn delay={0.1} duration={durationSlow} ease={easeReveal} className="mt-10 overflow-hidden rounded-2xl">
             <img
               src={heroSrc}
               srcSet={heroSrcSet}
@@ -182,7 +190,7 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
 
         {/* ── Full description — BELOW hero image ──────────────────── */}
         {event.fullDescription && Array.isArray(event.fullDescription) && event.fullDescription.length > 0 && (
-          <SlideUp delay={0.08} className="mt-10">
+          <SlideUp delay={0.08} ease={easeReveal} className="mt-10">
             <div
               className="space-y-4 text-base leading-relaxed"
               style={{ color: 'var(--color-text-muted)' }}
@@ -197,7 +205,7 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
         )}
 
         {/* ── YouTube channel link ─────────────────────────────────── */}
-        <SlideUp delay={0.1} className="mt-8">
+        <SlideUp delay={0.1} ease={easeReveal} className="mt-8">
           <p className="text-base leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
             Visit{' '}
             <Link
@@ -214,7 +222,7 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
         </SlideUp>
 
         {/* ── Watch on YouTube CTA ──────────────────────────────────── */}
-        <SlideUp delay={0.15} className="mt-10">
+        <SlideUp delay={0.15} ease={easeReveal} className="mt-10">
           <Link
             href={event.youtubeUrl ?? channelUrl}
             target="_blank"
@@ -244,7 +252,7 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
 
         {/* ── Gallery image ─────────────────────────────────────────── */}
         {gallerySrc && (
-          <FadeIn delay={0.1} className="mt-14 overflow-hidden rounded-2xl">
+          <FadeIn delay={0.1} duration={durationSlow} ease={easeReveal} className="mt-14 overflow-hidden rounded-2xl">
             <img
               src={gallerySrc}
               srcSet={gallerySrcSet}
@@ -259,7 +267,7 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
         {/* ── Past Live Events ──────────────────────────────────────── */}
         {pastEvents && pastEvents.length > 0 && (
           <div className="mt-20 border-t pt-20" style={{ borderColor: 'var(--color-border)' }}>
-            <SlideUp duration={0.6}>
+            <SlideUp duration={durationSlower} ease={easeReveal}>
               <h2
                 className="text-[clamp(28px,5vw,46px)] font-bold leading-tight mb-10"
                 style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
@@ -272,7 +280,7 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
               {pastEvents.map((pastEvent, idx) => {
                 const pastHeroSrc = imageUrl(pastEvent.heroImage, 400)
                 return (
-                  <SlideUp key={pastEvent._id} delay={0.05 + idx * 0.08} duration={0.6}>
+                  <SlideUp key={pastEvent._id} delay={0.05 + idx * 0.08} duration={durationSlower} ease={easeReveal}>
                     <Link
                       href={`/${locale}/livener/events/${pastEvent.slug.current}`}
                       className="group flex flex-col overflow-hidden rounded-xl transition-all hover:shadow-lg"

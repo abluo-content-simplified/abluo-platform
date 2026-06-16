@@ -1,6 +1,7 @@
 import type { TextSection, PortableTextContent, DesignSystem } from '@/lib/sanity/types'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
+import { SlideUp } from '@/components/animation/SlideUp'
 
 function RichText({ blocks }: { blocks: PortableTextContent }) {
   const elements: React.ReactNode[] = []
@@ -78,29 +79,40 @@ export function TextSection({ section, surface, designSystem }: Props) {
   const { eyebrow, title, content } = section
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
+  // Motion tokens — durationSlow for content sections; divide ms → seconds for motion/react
+  const m = designSystem?.motion
+  const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
+  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+
   return (
     <section
       className="px-6 py-24 md:px-16 lg:px-24"
       style={surfaceStyles}
     >
       <div className="mx-auto w-full max-w-3xl">
-        {eyebrow && (
-          <p
-            className="mb-4 text-xs font-medium uppercase tracking-[0.2em]"
-            style={{ color: 'var(--color-text-muted)' }}
-          >
-            {eyebrow}
-          </p>
+        <SlideUp duration={duration} ease={ease} delay={0}>
+          {eyebrow && (
+            <p
+              className="mb-4 text-xs font-medium uppercase tracking-[0.2em]"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
+              {eyebrow}
+            </p>
+          )}
+          {title && (
+            <h2
+              className="mb-10 text-3xl font-semibold leading-snug tracking-tight md:text-4xl"
+              style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
+            >
+              {title}
+            </h2>
+          )}
+        </SlideUp>
+        {content && (
+          <SlideUp duration={duration} ease={ease} delay={0.1}>
+            <RichText blocks={content} />
+          </SlideUp>
         )}
-        {title && (
-          <h2
-            className="mb-10 text-3xl font-semibold leading-snug tracking-tight md:text-4xl"
-            style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
-          >
-            {title}
-          </h2>
-        )}
-        {content && <RichText blocks={content} />}
       </div>
     </section>
   )

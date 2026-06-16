@@ -104,7 +104,6 @@ function LocalizedInputWrapper({
       {!loading && showBadge && isFiltered && <LanguageBadge locales={locales} />}
       {filteredMembers.map((member) => {
         const renderProps = {
-          key: member.key,
           renderAnnotation: props.renderAnnotation,
           renderBlock: props.renderBlock,
           renderField: props.renderField,
@@ -113,9 +112,9 @@ function LocalizedInputWrapper({
           renderItem: props.renderItem,
           renderPreview: props.renderPreview,
         }
-        if (member.kind === 'field') return <MemberField {...renderProps} member={member} />
-        if (member.kind === 'fieldSet') return <MemberFieldSet {...renderProps} member={member} />
-        if (member.kind === 'error') return <MemberFieldError {...renderProps} member={member} />
+        if (member.kind === 'field') return <MemberField key={member.key} {...renderProps} member={member} />
+        if (member.kind === 'fieldSet') return <MemberFieldSet key={member.key} {...renderProps} member={member} />
+        if (member.kind === 'error') return <MemberFieldError key={member.key} {...renderProps} member={member} />
         return null
       })}
     </div>

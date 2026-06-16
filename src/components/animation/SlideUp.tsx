@@ -8,6 +8,8 @@ interface SlideUpProps {
   className?: string
   delay?: number
   duration?: number
+  /** Easing — CSS cubic-bezier string or [x1,y1,x2,y2] array. Defaults to easingDecelerate. */
+  ease?: string | number[]
   /** How many pixels to slide up from (default 40) */
   distance?: number
   once?: boolean
@@ -27,6 +29,7 @@ export function SlideUp({
   className,
   delay = 0,
   duration = 0.6,
+  ease = [0.0, 0.0, 0.2, 1],
   distance = 40,
   once = true,
 }: SlideUpProps) {
@@ -42,7 +45,8 @@ export function SlideUp({
       whileInView="visible"
       viewport={{ once, margin: '-10% 0px' }}
       variants={variants}
-      transition={{ duration, delay, ease: [0.4, 0, 0.2, 1] }}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      transition={{ duration, delay, ease: ease as any }}
     >
       {children}
     </motion.div>

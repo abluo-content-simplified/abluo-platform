@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "createdAt": "2026-06-03T08:18:07.572Z",
+  "createdAt": "2026-06-16T13:08:33.392Z",
   "workspaces": [
     {
       "name": "abluo",
@@ -12,7 +12,7 @@
       "mediaLibrary": {
         "enabled": false
       },
-      "schema": "a8b9f5c9.create-schema.json",
+      "schema": "59d5146f.create-schema.json",
       "tools": "e523f8b0.create-tools.json"
     }
   ]

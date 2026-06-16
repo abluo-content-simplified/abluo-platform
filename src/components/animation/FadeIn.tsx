@@ -10,6 +10,8 @@ interface FadeInProps {
   delay?: number
   /** Duration in seconds */
   duration?: number
+  /** Easing — CSS cubic-bezier string or [x1,y1,x2,y2] array. Defaults to easingStandard. */
+  ease?: string | number[]
   /** Animate once (default) or every time it enters the viewport */
   once?: boolean
 }
@@ -32,6 +34,7 @@ export function FadeIn({
   className,
   delay = 0,
   duration = 0.5,
+  ease = [0.4, 0, 0.2, 1],
   once = true,
 }: FadeInProps) {
   return (
@@ -41,7 +44,8 @@ export function FadeIn({
       whileInView="visible"
       viewport={{ once, margin: '-10% 0px' }}
       variants={variants}
-      transition={{ duration, delay, ease: [0.4, 0, 0.2, 1] }}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      transition={{ duration, delay, ease: ease as any }}
     >
       {children}
     </motion.div>

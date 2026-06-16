@@ -149,7 +149,7 @@ export const currentLiveEventQuery = /* groq */ `
   ) {
     _id,
     "title": ${loc('title')},
-    slug,
+    "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
     status,
     isCurrentLiveEvent,
     startDate,
@@ -177,7 +177,7 @@ export const eventsQuery = /* groq */ `
   | order(startDate desc) {
     _id,
     "title": ${loc('title')},
-    slug,
+    "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
     status,
     startDate,
     endDate,
@@ -193,7 +193,7 @@ export const pastEventsQuery = /* groq */ `
   | order(startDate desc) [0..4] {
     _id,
     "title": ${loc('title')},
-    slug,
+    "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
     "location": ${loc('location')},
     "shortDescription": ${loc('shortDescription')},
     ${locImage('heroImage')},
@@ -202,11 +202,18 @@ export const pastEventsQuery = /* groq */ `
   }
 `
 
+export const eventByOldSlugQuery = /* groq */ `
+  *[_type == "event" && projectSlug == $projectSlug && $slug in redirectFrom[$locale]][0] {
+    "currentSlug": slug[$locale].current
+  }
+`
+
 export const eventBySlugQuery = /* groq */ `
-  *[_type == "event" && projectSlug == $projectSlug && slug.current == $slug][0] {
+  *[_type == "event" && projectSlug == $projectSlug && slug[$locale].current == $slug][0] {
     _id,
     "title": ${loc('title')},
-    slug,
+    "slugMap": slug,
+    "redirectFrom": redirectFrom,
     status,
     isCurrentLiveEvent,
     startDate,
@@ -380,6 +387,120 @@ export const siteConfigQuery = websiteSiteConfigQuery
 
 // ─── Design System ────────────────────────────────────────────────────────────
 
+/**
+ * Canonical GROQ field selection for a design system document.
+ *
+ * This is the SINGLE SOURCE OF TRUTH for which fields are fetched.
+ * Used in both designSystemQuery (primary tenant fetch) and
+ * fetchDesignSystemById (parent fetch during inheritance resolution).
+ *
+ * Adding a new design system field? Do it here — both query paths
+ * update automatically. Then add the merge logic in design-system-resolver.ts.
+ */
+export const DS_FIELDS_SELECTION = /* groq */ `{
+  _id,
+  name,
+  role,
+  description,
+  parentDesignSystem,
+
+  colors {
+    darkTheme {
+      background, backgroundAlt, surface,
+      primary, secondary, accent,
+      textPrimary, textSecondary, textMuted,
+      border,
+      success, warning, danger
+    },
+    lightTheme {
+      background, backgroundAlt, surface,
+      primary, secondary, accent,
+      textPrimary, textSecondary, textMuted,
+      border,
+      success, warning, danger
+    }
+  },
+
+  typography {
+    headingFont { source, libraryFont, googleFont },
+    bodyFont { source, libraryFont, googleFont }
+  },
+
+  radius { small, medium, large },
+  spacing { xs, s, m, l, xl },
+
+  buttons {
+    primary {
+      lightTheme { background, text, borderRadius, hover { background, text } },
+      darkTheme { background, text, borderRadius, hover { background, text } }
+    },
+    secondary {
+      lightTheme { background, text, borderRadius, hover { background, text } },
+      darkTheme { background, text, borderRadius, hover { background, text } }
+    }
+  },
+
+  cards {
+    lightTheme { background, border },
+    darkTheme { background, border }
+  },
+
+  sectionSurfaces {
+    lightTheme {
+      surface1, surface2, surface3, brandSurface,
+      glass { backgroundOklch, backdropBlur, borderColor, borderWidth }
+    },
+    darkTheme {
+      surface1, surface2, surface3, brandSurface,
+      glass { backgroundOklch, backdropBlur, borderColor, borderWidth }
+    }
+  },
+
+  branding {
+    logo { asset },
+    logoLight { asset },
+    logoHeightDesktop,
+    logoHeightMobile,
+    favicon { asset }
+  },
+
+  backgroundAssets[] {
+    key, name,
+    lightImage { asset-> },
+    darkImage { asset-> }
+  },
+
+  glass { backgroundOklch, backdropBlur, borderColor, borderWidth },
+
+  forms {
+    input    { lightTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity }, darkTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity } },
+    textarea { lightTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity }, darkTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity } },
+    select   { lightTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity }, darkTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity } },
+    checkbox { lightTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity }, darkTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity } },
+    radio    { lightTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity }, darkTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity } }
+  },
+
+  navigation { menuRadius, menuGap, dropdownRadius, dropdownStyle },
+
+  cardVariants[] {
+    key, label,
+    lightTheme { background, border },
+    darkTheme { background, border }
+  },
+
+  shadows { card, dropdown, modal },
+
+  layout {
+    maxContentWidth, maxTextWidth,
+    sectionPaddingY, sectionPaddingYCompact, sectionPaddingYLarge
+  },
+
+  motion {
+    durationFast, durationBase, durationSlow, durationSlower,
+    easingStandard, easingDecelerate, easingAccelerate, easingEmphasized
+  }
+}`
+
 // Fetches the design system for a project.
 // Primary path:  project.designSystemRef -> design system document
 // Fallback path: design system where projectSlug matches (legacy / unmigrated projects)
@@ -388,84 +509,5 @@ export const designSystemQuery = /* groq */ `
   coalesce(
     *[_type == "project" && projectSlug == $projectSlug][0].designSystemRef->,
     *[_type == "designSystem" && projectSlug == $projectSlug][0]
-  ) {
-    _id,
-    name,
-    role,
-    description,
-    parentDesignSystem,
-    colors {
-      darkTheme {
-        background, backgroundAlt, surface,
-        primary, secondary, accent,
-        textPrimary, textSecondary, textMuted,
-        border,
-        success, warning, danger
-      },
-      lightTheme {
-        background, backgroundAlt, surface,
-        primary, secondary, accent,
-        textPrimary, textSecondary, textMuted,
-        border,
-        success, warning, danger
-      }
-    },
-    typography {
-      headingFont { source, libraryFont, googleFont },
-      bodyFont { source, libraryFont, googleFont }
-    },
-    radius { small, medium, large },
-    spacing { xs, s, m, l, xl },
-    buttons {
-      primary {
-        lightTheme { background, text, borderRadius, hover { background, text } },
-        darkTheme { background, text, borderRadius, hover { background, text } }
-      },
-      secondary {
-        lightTheme { background, text, borderRadius, hover { background, text } },
-        darkTheme { background, text, borderRadius, hover { background, text } }
-      }
-    },
-    cards {
-      lightTheme { background, border },
-      darkTheme { background, border }
-    },
-    sectionSurfaces {
-      lightTheme {
-        surface1,
-        surface2,
-        surface3,
-        brandSurface,
-        glass {
-          backgroundOklch,
-          backdropBlur,
-          borderColor,
-          borderWidth
-        }
-      },
-      darkTheme {
-        surface1,
-        surface2,
-        surface3,
-        brandSurface,
-        glass {
-          backgroundOklch,
-          backdropBlur,
-          borderColor,
-          borderWidth
-        }
-      }
-    },
-    branding {
-      logo { asset },
-      logoLight { asset },
-      favicon { asset }
-    },
-    backgroundAssets[] {
-      key,
-      name,
-      lightImage { asset-> },
-      darkImage { asset-> }
-    }
-  }
+  ) ${DS_FIELDS_SELECTION}
 `

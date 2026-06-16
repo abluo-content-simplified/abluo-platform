@@ -54,6 +54,7 @@ function buildCssVars(ds: DesignSystem | null): string {
   const light = ds?.colors?.lightTheme
   const typo = ds?.typography
   const radius = ds?.radius
+  const motion = ds?.motion
 
   const D = {
     bg: dark?.background ?? 'oklch(0.2309 0.0292 263.75deg)',
@@ -130,6 +131,14 @@ function buildCssVars(ds: DesignSystem | null): string {
       --radius-md: ${D.radiusMd}px;
       --radius-lg: ${D.radiusLg}px;
       --radius-btn: 12px;
+      --motion-duration-fast: ${motion?.durationFast ?? 120}ms;
+      --motion-duration-base: ${motion?.durationBase ?? 200}ms;
+      --motion-duration-slow: ${motion?.durationSlow ?? 350}ms;
+      --motion-duration-slower: ${motion?.durationSlower ?? 600}ms;
+      --motion-easing-standard: ${motion?.easingStandard ?? 'cubic-bezier(0.4, 0, 0.2, 1)'};
+      --motion-easing-decelerate: ${motion?.easingDecelerate ?? 'cubic-bezier(0, 0, 0.2, 1)'};
+      --motion-easing-accelerate: ${motion?.easingAccelerate ?? 'cubic-bezier(0.4, 0, 1, 1)'};
+      --motion-easing-emphasized: ${motion?.easingEmphasized ?? 'cubic-bezier(0.2, 0, 0, 1)'};
       /* Bridge: wire Tailwind/shadcn tokens to our design system so bg-background etc. work */
       --background: ${D.bg};
       --foreground: ${D.textPrimary};

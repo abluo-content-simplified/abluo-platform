@@ -1,6 +1,7 @@
 import type { ContactSection, WebsiteSiteConfig, DesignSystem } from '@/lib/sanity/types'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
+import { SlideUp } from '@/components/animation/SlideUp'
 
 interface Props {
   section: ContactSection
@@ -13,6 +14,11 @@ export function ContactSection({ section, surface, designSystem, siteConfig }: P
   const { title, subtitle, mapEmbedUrl } = section
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
+  // Motion tokens — durationSlow for content sections; divide ms → seconds for motion/react
+  const m = designSystem?.motion
+  const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
+  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+
   return (
     <section
       id="contatti"
@@ -22,7 +28,7 @@ export function ContactSection({ section, surface, designSystem, siteConfig }: P
       <div className="mx-auto w-full max-w-5xl">
         <div className="grid gap-16 md:grid-cols-2">
           {/* Left: contact details */}
-          <div>
+          <SlideUp duration={duration} ease={ease} delay={0}>
             {title && (
               <h2
                 className="mb-6 text-3xl font-semibold leading-snug tracking-tight md:text-4xl"
@@ -89,10 +95,10 @@ export function ContactSection({ section, surface, designSystem, siteConfig }: P
                 </div>
               )}
             </div>
-          </div>
+          </SlideUp>
 
           {/* Right: map */}
-          <div className="flex flex-col">
+          <SlideUp duration={duration} ease={ease} delay={0.1}>
             <p
               className="mb-3 text-xs font-medium uppercase tracking-[0.2em]"
               style={{ color: 'var(--color-text-muted)' }}
@@ -136,7 +142,7 @@ export function ContactSection({ section, surface, designSystem, siteConfig }: P
                 </p>
               </a>
             )}
-          </div>
+          </SlideUp>
         </div>
       </div>
     </section>
