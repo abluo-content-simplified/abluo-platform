@@ -126,6 +126,49 @@ Keep asking: *"What is the simplest version that proves the concept?"*
 
 ---
 
+## Localization Architecture
+
+There are two completely separate localization concerns. They must never be conflated.
+
+### 1. Interface Localization
+
+**What it is:** The language of the Abluo platform UI itself — admin dashboard labels, buttons, error messages, navigation, etc.
+
+**Scope:** Platform-wide. Applies to all users of Abluo regardless of which tenant they belong to.
+
+**Mechanism:** `next-intl` translation files in `/messages/` (e.g. `en.json`, `it.json`). The locale is determined by the URL prefix (`/en/`, `/it/`) and controlled by `src/i18n/routing.ts`.
+
+**Who controls it:** The Abluo platform team (Tom). Adding a new interface language means adding a `messages/xx.json` file and adding the locale to `routing.ts`.
+
+**TypeScript type:** `SupportedLocale` in `types.ts` — the union of all locales the platform UI is translated into.
+
+---
+
+### 2. Content Localization
+
+**What it is:** The language(s) in which a tenant's website content is written — page text, blog posts, section copy, alt text, etc.
+
+**Scope:** Per-tenant. Each tenant independently chooses which languages their site supports.
+
+**Mechanism:** `siteConfig.supportedLocales` stored in Sanity per tenant. GROQ queries receive `$locale` and `$defaultLocale` as parameters and resolve content using `coalesce(field[$locale], field[$defaultLocale], field.en)`.
+
+**Who controls it:** The Abluo admin, per client, in the `siteConfig` document for that tenant. The client's `LanguageSwitcher` component reads this prop — it renders only the locales the tenant has enabled.
+
+**Schema:** `localizedString`, `localizedText`, and `localizedPortableText` shared types contain fields for every language the platform supports. Tenants only fill in the ones they use; unused fields are simply left empty.
+
+---
+
+### The Rule
+
+> **Interface Localization = platform-wide, next-intl, `routing.ts`**
+> **Content Localization = per-tenant, Sanity, `siteConfig.supportedLocales`**
+
+Never derive one from the other. A tenant can publish content in German (`siteConfig.supportedLocales: ['en', 'de']`) even if the Abluo admin dashboard has no German UI translation. Conversely, the platform UI can support French without any tenant website being in French.
+
+The set of locales in `routing.ts` must cover every content locale any tenant might use, because next-intl parses the URL prefix (`/de/tenant/...`) before the tenant config is fetched. If a locale appears in a tenant's `siteConfig.supportedLocales` but not in `routing.ts`, its URLs will 404.
+
+---
+
 ## GitHub
 
 Organization: `abluo-content-simplified`

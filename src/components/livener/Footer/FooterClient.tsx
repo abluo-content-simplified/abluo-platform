@@ -1,17 +1,12 @@
 'use client'
 
 import { useRouter, usePathname } from '@/i18n/navigation'
-import type { SupportedLocale } from '@/lib/sanity/types'
+import type { SupportedLocale } from '@/lib/i18n/locales'
+import { LOCALE_NATIVE_NAMES } from '@/lib/i18n/locales'
 
 interface LanguageSwitcherProps {
   currentLocale: SupportedLocale
   supportedLocales: SupportedLocale[]
-}
-
-const LOCALE_LABELS: Record<SupportedLocale, string> = {
-  en: 'English',
-  it: 'Italiano',
-  de: 'Deutsch',
 }
 
 export function FooterLanguageSwitcher({
@@ -41,7 +36,7 @@ export function FooterLanguageSwitcher({
             fontWeight: locale === currentLocale ? 600 : 400,
           }}
         >
-          {LOCALE_LABELS[locale]}
+          {LOCALE_NATIVE_NAMES[locale]}
         </button>
       ))}
     </div>

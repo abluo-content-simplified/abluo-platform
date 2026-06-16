@@ -5,6 +5,7 @@ import { createClient } from '@sanity/client'
 import { Search, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { UploadDialog } from '@/components/media/UploadDialog'
 import { EditSheet } from '@/components/media/EditSheet'
+import { LOCALE_CODES } from '@/lib/i18n/locales'
 
 interface Tenant {
   _id: string
@@ -94,7 +95,8 @@ export default function MediaPage() {
   const [bulkLoading, setBulkLoading] = useState(false)
   const [hoveredAssetId, setHoveredAssetId] = useState<string | null>(null)
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
-  const [languages, setLanguages] = useState<string[]>(['en', 'it'])
+  // Default to all platform locales; narrows to tenant's supportedLocales once a tenant is selected.
+  const [languages, setLanguages] = useState<string[]>(LOCALE_CODES)
 
   const limit = 20
   const offset = currentPage * limit
@@ -120,7 +122,7 @@ export default function MediaPage() {
   useEffect(() => {
     if (!selectedTenant) {
       setProjects([])
-      setLanguages(['en', 'it']) // Default to en, it
+      setLanguages(LOCALE_CODES) // Reset to all platform locales when no tenant selected
       return
     }
 
@@ -128,15 +130,15 @@ export default function MediaPage() {
       try {
         const data = await sanityClient.fetch<Project[]>(
           `*[_type == "project" && clientRef._ref == $tenantId && !(_id in path("drafts.**"))] | order(projectName asc) {
-            _id, projectName, projectSlug, supportedLocales
+            _id, projectName, projectSlug,
+            "supportedLocales": siteConfig->supportedLocales
           }`,
           { tenantId: selectedTenant }
         )
         setProjects(data)
-        // Set languages from first project if available
-        if (data[0]?.supportedLocales) {
-          setLanguages(data[0].supportedLocales)
-        }
+        // Narrow to this tenant's enabled locales; fall back to all platform locales.
+        const tenantLocales = data[0]?.supportedLocales
+        setLanguages(tenantLocales && tenantLocales.length > 0 ? tenantLocales : LOCALE_CODES)
       } catch (err) {
         console.error('Failed to fetch projects:', err)
       }

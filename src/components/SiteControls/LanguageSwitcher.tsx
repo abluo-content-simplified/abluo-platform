@@ -3,22 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from '@/i18n/navigation'
 import { ChevronDown } from 'lucide-react'
-import type { SupportedLocale } from '@/lib/sanity/types'
+import type { SupportedLocale } from '@/lib/i18n/locales'
+import { LOCALE_LABELS, LOCALE_NATIVE_NAMES } from '@/lib/i18n/locales'
 
 interface LanguageSwitcherProps {
   currentLocale: SupportedLocale
   supportedLocales: SupportedLocale[]
   appearance?: 'header' | 'footer' | 'drawer'
-}
-
-const LOCALE_LABELS: Record<SupportedLocale, string> = {
-  en: 'EN',
-  it: 'IT',
-}
-
-const LOCALE_NAMES: Record<SupportedLocale, string> = {
-  en: 'English',
-  it: 'Italiano',
 }
 
 export function LanguageSwitcher({ currentLocale, supportedLocales, appearance = 'header' }: LanguageSwitcherProps) {
@@ -119,7 +110,7 @@ export function LanguageSwitcher({ currentLocale, supportedLocales, appearance =
                 opacity: locale === currentLocale ? 1 : 0.75,
               }}
             >
-              {LOCALE_NAMES[locale]}
+              {LOCALE_NATIVE_NAMES[locale]}
             </button>
           ))}
         </div>

@@ -2,12 +2,25 @@
 // GROQ resolves these before they reach the frontend — components receive plain
 // strings/arrays. These raw types are only used if you query the unresolved document.
 
-export interface LocalizedString {
-  it?: string
-  en?: string
-}
+// SupportedLocale is derived from the Platform Locale Registry.
+// To add a new language, edit src/lib/i18n/locales.ts — not this file.
+import type { SupportedLocale as _SupportedLocale } from '@/lib/i18n/locales'
+export type { SupportedLocale } from '@/lib/i18n/locales'
+// Local alias so references later in this file resolve correctly.
+type SupportedLocale = _SupportedLocale
 
-export type SupportedLocale = 'en' | 'it'
+// LocalizedString covers all platform-supported languages.
+// Tenants only fill the fields matching their siteConfig.supportedLocales;
+// all other fields are left empty and ignored by GROQ queries.
+export interface LocalizedString {
+  en?: string
+  it?: string
+  de?: string
+  fr?: string
+  es?: string
+  pt?: string
+  nl?: string
+}
 
 // ─── Portable Text ────────────────────────────────────────────────────────────
 

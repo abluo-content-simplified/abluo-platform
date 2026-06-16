@@ -286,7 +286,7 @@ export async function proxy(request: NextRequest) {
   const firstSegment = segments[0]
   const defaultLocale = firstSegment ? resolveDefaultLocale(firstSegment) : null
 
-  if (firstSegment && defaultLocale && !routing.locales.includes(firstSegment as 'en' | 'it' | 'de')) {
+  if (firstSegment && defaultLocale && !routing.locales.includes(firstSegment as (typeof routing.locales)[number])) {
     const alreadyRewritten = routing.locales.some(
       (l) => pathname === `/${l}/${firstSegment}` || pathname.startsWith(`/${l}/${firstSegment}/`)
     )

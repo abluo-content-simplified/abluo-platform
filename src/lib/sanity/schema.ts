@@ -2,47 +2,42 @@ import { defineType, defineField, defineArrayMember } from 'sanity'
 import { TenantLinker } from '@/lib/sanity/fields/TenantLinker'
 import { ProjectLinker } from '@/lib/sanity/fields/ProjectLinker'
 import { ProjectSlugPicker } from '@/lib/sanity/fields/ProjectSlugPicker'
+import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
 
 // ─── Shared primitive types ───────────────────────────────────────────────────
+// Fields are generated from the Platform Locale Registry (src/lib/i18n/locales.ts).
+// To add a language, add it to PLATFORM_LOCALES — these types update automatically.
 
 const localizedStringType = defineType({
   name: 'localizedString',
   title: 'Localized String',
   type: 'object',
-  fields: [
-    defineField({ name: 'it', title: 'Italian', type: 'string' }),
-    defineField({ name: 'en', title: 'English', type: 'string' }),
-  ],
+  fields: LOCALE_CODES.map((code) =>
+    defineField({ name: code, title: PLATFORM_LOCALES[code].nativeName, type: 'string' })
+  ),
 })
 
 const localizedTextType = defineType({
   name: 'localizedText',
   title: 'Localized Text',
   type: 'object',
-  fields: [
-    defineField({ name: 'it', title: 'Italian', type: 'text', rows: 3 }),
-    defineField({ name: 'en', title: 'English', type: 'text', rows: 3 }),
-  ],
+  fields: LOCALE_CODES.map((code) =>
+    defineField({ name: code, title: PLATFORM_LOCALES[code].nativeName, type: 'text', rows: 3 })
+  ),
 })
 
 const localizedPortableTextType = defineType({
   name: 'localizedPortableText',
   title: 'Localized Rich Text',
   type: 'object',
-  fields: [
+  fields: LOCALE_CODES.map((code) =>
     defineField({
-      name: 'it',
-      title: 'Italian',
+      name: code,
+      title: PLATFORM_LOCALES[code].nativeName,
       type: 'array',
       of: [defineArrayMember({ type: 'block' })],
-    }),
-    defineField({
-      name: 'en',
-      title: 'English',
-      type: 'array',
-      of: [defineArrayMember({ type: 'block' })],
-    }),
-  ],
+    })
+  ),
 })
 
 // ─── Shared object types ──────────────────────────────────────────────────────
@@ -1042,7 +1037,8 @@ const mediaAssetType = defineType({
       media: 'image',
       subtitle: 'tags.0',
     },
-    prepare: ({ title, altTextEn, media, subtitle }: { title?: string; altTextEn?: string; media?: unknown; subtitle?: string }) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    prepare: ({ title, altTextEn, media, subtitle }: { title?: string; altTextEn?: string; media?: any; subtitle?: string }) => ({
       title: title ?? altTextEn ?? 'Untitled',
       media,
       subtitle: subtitle ?? 'No tags',
