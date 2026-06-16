@@ -2,6 +2,7 @@ import { defineType, defineField, defineArrayMember } from 'sanity'
 import { TenantLinker } from '@/lib/sanity/fields/TenantLinker'
 import { ProjectLinker } from '@/lib/sanity/fields/ProjectLinker'
 import { ProjectSlugPicker } from '@/lib/sanity/fields/ProjectSlugPicker'
+import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput } from '@/lib/sanity/fields/LocalizedInput'
 import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
 
 // ─── Shared primitive types ───────────────────────────────────────────────────
@@ -12,6 +13,7 @@ const localizedStringType = defineType({
   name: 'localizedString',
   title: 'Localized String',
   type: 'object',
+  components: { input: LocalizedStringInput },
   fields: LOCALE_CODES.map((code) =>
     defineField({ name: code, title: PLATFORM_LOCALES[code].nativeName, type: 'string' })
   ),
@@ -21,6 +23,7 @@ const localizedTextType = defineType({
   name: 'localizedText',
   title: 'Localized Text',
   type: 'object',
+  components: { input: LocalizedTextInput },
   fields: LOCALE_CODES.map((code) =>
     defineField({ name: code, title: PLATFORM_LOCALES[code].nativeName, type: 'text', rows: 3 })
   ),
@@ -30,6 +33,7 @@ const localizedPortableTextType = defineType({
   name: 'localizedPortableText',
   title: 'Localized Rich Text',
   type: 'object',
+  components: { input: LocalizedPortableTextInput },
   fields: LOCALE_CODES.map((code) =>
     defineField({
       name: code,
@@ -627,7 +631,7 @@ const projectType = defineType({
       name: 'defaultLocale',
       title: 'Default Locale',
       type: 'string',
-      options: { list: [{ title: 'English', value: 'en' }, { title: 'Italian', value: 'it' }], layout: 'radio' },
+      options: { list: LOCALE_CODES.map((code) => ({ title: PLATFORM_LOCALES[code].nativeName, value: code })), layout: 'radio' },
       initialValue: 'en',
     }),
     defineField({
@@ -1393,7 +1397,7 @@ const siteConfigType = defineType({
       title: 'Default Language',
       type: 'string',
       group: 'locales',
-      options: { list: [{ title: 'English', value: 'en' }, { title: 'Italian', value: 'it' }, { title: 'German', value: 'de' }], layout: 'radio' },
+      options: { list: LOCALE_CODES.map((code) => ({ title: PLATFORM_LOCALES[code].nativeName, value: code })), layout: 'radio' },
       initialValue: 'en',
       validation: (Rule) => Rule.required(),
     }),
@@ -1402,7 +1406,7 @@ const siteConfigType = defineType({
       title: 'Supported Languages',
       type: 'array',
       group: 'locales',
-      of: [defineArrayMember({ type: 'string', options: { list: [{ title: 'English', value: 'en' }, { title: 'Italian', value: 'it' }, { title: 'German', value: 'de' }] } })],
+      of: [defineArrayMember({ type: 'string', options: { list: LOCALE_CODES.map((code) => ({ title: PLATFORM_LOCALES[code].nativeName, value: code })) } })],
       validation: (Rule) => Rule.required().min(1),
     }),
     defineField({ name: 'navLinks', title: 'Navigation Links', type: 'array', group: 'navigation', of: [defineArrayMember({ type: 'navigationLink' })] }),
