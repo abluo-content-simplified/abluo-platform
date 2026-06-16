@@ -2,7 +2,7 @@ import { defineType, defineField, defineArrayMember } from 'sanity'
 import { TenantLinker } from '@/lib/sanity/fields/TenantLinker'
 import { ProjectLinker } from '@/lib/sanity/fields/ProjectLinker'
 import { ProjectSlugPicker } from '@/lib/sanity/fields/ProjectSlugPicker'
-import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput } from '@/lib/sanity/fields/LocalizedInput'
+import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, LocalizedSlugInput } from '@/lib/sanity/fields/LocalizedInput'
 import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
 
 // ─── Shared primitive types ───────────────────────────────────────────────────
@@ -40,6 +40,47 @@ const localizedPortableTextType = defineType({
       title: PLATFORM_LOCALES[code].nativeName,
       type: 'array',
       of: [defineArrayMember({ type: 'block' })],
+    })
+  ),
+})
+
+// Each locale field is a proper Sanity slug — keeps slug generation, validation,
+// and uniqueness checks. Source auto-generates from the matching locale's title.
+// Tenant-aware: only the project's supportedLocales are shown in Studio (Phase 2).
+const localizedSlugType = defineType({
+  name: 'localizedSlug',
+  title: 'Localized Slug',
+  type: 'object',
+  components: { input: LocalizedSlugInput },
+  fields: LOCALE_CODES.map((code) =>
+    defineField({
+      name: code,
+      title: PLATFORM_LOCALES[code].nativeName,
+      type: 'slug',
+      options: {
+        source: (doc: Record<string, unknown>) => {
+          const title = doc.title as Record<string, string> | undefined
+          return title?.[code] ?? title?.en ?? ''
+        },
+        maxLength: 96,
+      },
+    })
+  ),
+})
+
+// Per-locale arrays of old slugs that should 301-redirect to the current slug.
+// Editors populate these whenever they rename a page slug.
+const redirectFromType = defineType({
+  name: 'redirectFrom',
+  title: 'Redirect From (old URLs)',
+  type: 'object',
+  fields: LOCALE_CODES.map((code) =>
+    defineField({
+      name: code,
+      title: PLATFORM_LOCALES[code].nativeName,
+      type: 'array',
+      of: [defineArrayMember({ type: 'string' })],
+      description: `Old ${PLATFORM_LOCALES[code].nativeName} slugs that should redirect to the current slug`,
     })
   ),
 })
@@ -1519,13 +1560,15 @@ const pageType = defineType({
     defineField({
       name: 'slug',
       title: 'URL Slug',
-      type: 'slug',
-      description: 'The URL path for this page, e.g. "about" → /en/livener/about',
-      options: {
-        source: 'title.en',
-        maxLength: 96,
-      },
+      type: 'localizedSlug',
+      description: 'The URL path per language, e.g. "about" (EN) / "chi-siamo" (IT)',
       validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'redirectFrom',
+      title: 'Redirect From',
+      type: 'redirectFrom',
+      description: 'Old slugs that redirect here with a 301. Fill these when renaming a page.',
     }),
     defineField({
       name: 'backgroundPattern',
@@ -1557,11 +1600,12 @@ const pageType = defineType({
     }),
   ],
   preview: {
-    select: { title: 'title.en', pageType: 'pageType', slug: 'slug.current' },
-    prepare: ({ title, pageType, slug }) => {
+    select: { title: 'title.en', pageType: 'pageType', slugEn: 'slug.en.current', slugIt: 'slug.it.current' },
+    prepare: ({ title, pageType, slugEn, slugIt }: { title?: string; pageType?: string; slugEn?: string; slugIt?: string }) => {
       const typeLabel = pageType
         ? pageType.charAt(0).toUpperCase() + pageType.slice(1)
         : 'Page'
+      const slug = slugEn ?? slugIt
       const slugLabel = slug ? `/${slug}` : '— no slug'
       return {
         title: title ?? typeLabel,
@@ -1624,7 +1668,8 @@ const postType = defineType({
   fields: [
     projectSlugField,
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
-    defineField({ name: 'slug', title: 'Slug', type: 'slug', options: { source: 'title.it' } }),
+    defineField({ name: 'slug', title: 'Slug', type: 'localizedSlug' }),
+    defineField({ name: 'redirectFrom', title: 'Redirect From', type: 'redirectFrom' }),
     defineField({ name: 'excerpt', title: 'Excerpt', type: 'localizedText' }),
     defineField({ name: 'body', title: 'Body', type: 'localizedPortableText' }),
     defineField({ name: 'publishedAt', title: 'Published At', type: 'datetime' }),
@@ -1707,7 +1752,6 @@ export const initialValueTemplates = [
     parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
     value: (params: any) => ({
       projectSlug: params?.projectSlug,
-      slug: { _type: 'slug', current: '' },
       publishedAt: new Date().toISOString(),
     }),
   },
@@ -1729,6 +1773,8 @@ export const schemaTypes = [
   localizedStringType,
   localizedTextType,
   localizedPortableTextType,
+  localizedSlugType,
+  redirectFromType,
   localizedImageType,
   navigationLinkType,
   socialLinkType,

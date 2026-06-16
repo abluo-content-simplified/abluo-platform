@@ -455,11 +455,18 @@ export interface WebsiteHomePage {
   sections?: PageSection[]
 }
 
+// LocalizedSlugMap — the raw Sanity structure for a localizedSlug field.
+// Each locale holds a proper Sanity slug object. Used as "slugMap": slug in GROQ projections.
+export type LocalizedSlugMap = Partial<Record<SupportedLocale, { _type: 'slug'; current: string }>>
+
 export interface WebsitePage {
   _id: string
   pageType: 'home' | 'about' | 'contact' | 'team' | 'services' | 'landing' | 'legal'
   title?: string
-  slug: { current: string }
+  /** Full per-locale slug map, returned as "slugMap": slug in pageBySlugQuery */
+  slugMap?: LocalizedSlugMap
+  /** Per-locale arrays of old slugs — used for 301 redirects */
+  redirectFrom?: Partial<Record<SupportedLocale, string[]>>
   backgroundPattern?: 'none' | 'alternate1-2' | 'alternate1-2-3'
   sections?: PageSection[]
 }

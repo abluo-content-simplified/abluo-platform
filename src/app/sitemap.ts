@@ -9,6 +9,12 @@ const PROJECT_TO_TENANT: Record<string, string> = {
 interface TenantSitemapData {
   projectSlug: string
   supportedLocales?: string[]
+  defaultLocale?: string
+}
+
+interface PageSitemapData {
+  projectSlug: string
+  slug: Record<string, { current: string } | undefined>
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -20,28 +26,65 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const { sanityClient } = await import('@/lib/sanity/client')
 
     // Fetch active projects with their tenant-specific supportedLocales.
-    // Each project's siteConfig.supportedLocales determines which locale URLs to generate —
-    // never all platform locales.
     const projects = await sanityClient.fetch<TenantSitemapData[]>(
       `*[_type == "project" && status == "active"] | order(projectName asc) {
         projectSlug,
-        "supportedLocales": siteConfig->supportedLocales
+        "supportedLocales": siteConfig->supportedLocales,
+        "defaultLocale": siteConfig->defaultLocale
       }`
     )
 
-    return projects.flatMap(({ projectSlug, supportedLocales }) => {
-      const tenantSlug = PROJECT_TO_TENANT[projectSlug] ?? projectSlug
-      // Fall back to English only if the tenant has no locales configured yet.
-      const locales = supportedLocales && supportedLocales.length > 0 ? supportedLocales : ['en']
-      const defaultLocale = locales[0]
+    // Fetch all published pages with their per-locale slugs.
+    const pages = await sanityClient.fetch<PageSitemapData[]>(
+      `*[_type == "page" && defined(projectSlug)] {
+        projectSlug,
+        slug
+      }`
+    )
 
-      return locales.map((locale) => ({
-        url: `${baseUrl}/${locale}/${tenantSlug}`,
-        lastModified: new Date(),
-        changeFrequency: 'weekly' as const,
-        priority: locale === defaultLocale ? 1.0 : 0.9,
-      }))
-    })
+    // Build a projectSlug → pages map for quick lookup.
+    const pagesByProject = new Map<string, PageSitemapData[]>()
+    for (const page of pages) {
+      const list = pagesByProject.get(page.projectSlug) ?? []
+      list.push(page)
+      pagesByProject.set(page.projectSlug, list)
+    }
+
+    const entries: MetadataRoute.Sitemap = []
+
+    for (const { projectSlug, supportedLocales, defaultLocale } of projects) {
+      const tenantSlug = PROJECT_TO_TENANT[projectSlug] ?? projectSlug
+      const locales = supportedLocales && supportedLocales.length > 0 ? supportedLocales : ['en']
+      const primaryLocale = defaultLocale ?? locales[0]
+
+      // Tenant homepage — one URL per locale
+      for (const locale of locales) {
+        entries.push({
+          url: `${baseUrl}/${locale}/${tenantSlug}`,
+          lastModified: new Date(),
+          changeFrequency: 'weekly',
+          priority: locale === primaryLocale ? 1.0 : 0.9,
+        })
+      }
+
+      // Per-page entries — only for locales that have a slug set
+      const projectPages = pagesByProject.get(projectSlug) ?? []
+      for (const page of projectPages) {
+        for (const locale of locales) {
+          const slugObj = page.slug?.[locale]
+          if (slugObj?.current) {
+            entries.push({
+              url: `${baseUrl}/${locale}/${tenantSlug}/${slugObj.current}`,
+              lastModified: new Date(),
+              changeFrequency: 'weekly',
+              priority: locale === primaryLocale ? 0.8 : 0.7,
+            })
+          }
+        }
+      }
+    }
+
+    return entries
   } catch {
     return []
   }

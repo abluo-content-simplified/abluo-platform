@@ -136,3 +136,9 @@ export function LocalizedPortableTextInput(props: ObjectInputProps) {
   // Rich text fields are tall — skip the badge; field titles show the language names.
   return <LocalizedInputWrapper props={props} showBadge={false} />
 }
+
+export function LocalizedSlugInput(props: ObjectInputProps) {
+  // Each locale field is a Sanity slug (with its own Generate button).
+  // The badge would sit awkwardly above the slug inputs — skip it.
+  return <LocalizedInputWrapper props={props} showBadge={false} />
+}

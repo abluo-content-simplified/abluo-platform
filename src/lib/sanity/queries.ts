@@ -127,10 +127,11 @@ export const postsQuery = /* groq */ `
 `
 
 export const postBySlugQuery = /* groq */ `
-  *[_type == "post" && projectSlug == $projectSlug && slug.current == $slug][0] {
+  *[_type == "post" && projectSlug == $projectSlug && slug[$locale].current == $slug][0] {
     _id,
     "title": ${loc('title')},
-    slug,
+    "slugMap": slug,
+    "redirectFrom": redirectFrom,
     "excerpt": ${loc('excerpt')},
     "body": ${loc('body')},
     coverImage,
@@ -323,11 +324,12 @@ export const pageHomeQuery = /* groq */ `
 `
 
 export const pageBySlugQuery = /* groq */ `
-  *[_type == "page" && projectSlug == $projectSlug && slug.current == $slug][0] {
+  *[_type == "page" && projectSlug == $projectSlug && slug[$locale].current == $slug][0] {
     _id,
     pageType,
     "title": ${loc('title')},
-    slug,
+    "slugMap": slug,
+    "redirectFrom": redirectFrom,
     backgroundPattern,
     sections[] {
       _type,
@@ -363,6 +365,14 @@ export const pageBySlugQuery = /* groq */ `
       },
       mapEmbedUrl
     }
+  }
+`
+
+// Used for 301 redirects: find the page that has $slug in its redirectFrom[$locale] array.
+// Returns just the current slug for the locale so we can redirect to it.
+export const pageByOldSlugQuery = /* groq */ `
+  *[_type == "page" && projectSlug == $projectSlug && $slug in redirectFrom[$locale]][0] {
+    "currentSlug": slug[$locale].current
   }
 `
 

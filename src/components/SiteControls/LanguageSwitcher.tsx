@@ -5,23 +5,34 @@ import { useRouter, usePathname } from '@/i18n/navigation'
 import { ChevronDown } from 'lucide-react'
 import type { SupportedLocale } from '@/lib/i18n/locales'
 import { LOCALE_LABELS, LOCALE_NATIVE_NAMES } from '@/lib/i18n/locales'
+import { useSlugMap } from '@/components/SlugMapContext'
 
 interface LanguageSwitcherProps {
   currentLocale: SupportedLocale
   supportedLocales: SupportedLocale[]
+  tenantId?: string
   appearance?: 'header' | 'footer' | 'drawer'
 }
 
-export function LanguageSwitcher({ currentLocale, supportedLocales, appearance = 'header' }: LanguageSwitcherProps) {
+export function LanguageSwitcher({ currentLocale, supportedLocales, tenantId, appearance = 'header' }: LanguageSwitcherProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const slugMap = useSlugMap()
   const [langOpen, setLangOpen] = useState(false)
 
   // Auto-hide if only one locale
   if (supportedLocales.length <= 1) return null
 
   const switchLocale = (locale: SupportedLocale) => {
-    router.replace(pathname, { locale })
+    const targetSlug = slugMap[locale]
+    if (targetSlug && tenantId) {
+      // Navigate directly to the locale-specific slug URL.
+      // router.push handles the locale prefix via next-intl.
+      router.push(`/${tenantId}/${targetSlug}`, { locale })
+    } else {
+      // Fallback: same path, different locale prefix (homepage or non-page routes).
+      router.replace(pathname, { locale })
+    }
     setLangOpen(false)
   }
 
