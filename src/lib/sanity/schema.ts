@@ -688,6 +688,7 @@ const projectType = defineType({
       type: 'reference',
       to: [{ type: 'designSystem' }],
       description: 'The design system this project uses for colors, typography, and spacing',
+      hidden: true, // managed by ProjectLinker UI, not the default form
     }),
   ],
   preview: {

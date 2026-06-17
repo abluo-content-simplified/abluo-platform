@@ -2,9 +2,11 @@ import { defineConfig } from 'sanity'
 import { structureTool } from 'sanity/structure'
 import { schemaTypes, initialValueTemplates } from './src/lib/sanity/schema'
 import { DesignSystemPreview } from './src/sanity/components/DesignSystemPreview'
+import { DesignSystemAssignPane } from './src/sanity/components/DesignSystemAssignPane'
 import { ExportDesignSystemAction } from './src/sanity/actions/ExportDesignSystemAction'
 import { ImportDesignSystemAction } from './src/sanity/actions/ImportDesignSystemAction'
 import { DuplicateDesignSystemAction } from './src/sanity/actions/DuplicateDesignSystemAction'
+import { AutoCreateSiteConfigAction } from './src/sanity/actions/AutoCreateSiteConfigAction'
 
 // Hardcoded to match src/lib/sanity/client.ts — avoids env var dependency in the Studio
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ?? '3n7t84j3'
@@ -42,7 +44,7 @@ export default defineConfig({
               _id,
               projectName,
               projectSlug,
-              "designSystemId": *[_type == "designSystem" && !(_id in path("drafts.**")) && projectSlug == ^.projectSlug][0]._id,
+              "designSystemId": designSystemRef._ref,
             }
           }`
         )
@@ -110,16 +112,23 @@ export default defineConfig({
                       .child(
                         designSystemId
                           ? designSystemPane(designSystemId)
-                          : S.documentList()
-                              .title('Design System')
-                              .schemaType('designSystem')
-                              .apiVersion('2026-05-21')
-                              .filter(`_type == "designSystem" && projectSlug == $slug`)
-                              .params({ slug })
-                              .initialValueTemplates([
-                                S.initialValueTemplateItem('designSystemProjectOwned', { projectSlug: slug }),
-                              ])
+                          : S.component(DesignSystemAssignPane)
+                              .id(`${slug}-design-assign`)
+                              .title('Assign Design System')
+                              .options({ projectId: project._id, projectSlug: slug })
                       ),
+
+                    ...(designSystemId ? [
+                      S.listItem()
+                        .id(`${slug}-design-change`)
+                        .title('Change Design System')
+                        .child(
+                          S.component(DesignSystemAssignPane)
+                            .id(`${slug}-design-change-pane`)
+                            .title('Change Design System')
+                            .options({ projectId: project._id, projectSlug: slug, currentDSId: designSystemId })
+                        ),
+                    ] : []),
 
                     S.listItem()
                       .id(`${slug}-pages`)
@@ -322,6 +331,13 @@ export default defineConfig({
         // Remove the built-in Duplicate — our custom one always creates unassigned copies.
         const filtered = prev.filter((action) => action.action !== 'duplicate')
         return [...filtered, ExportDesignSystemAction, ImportDesignSystemAction, DuplicateDesignSystemAction]
+      }
+      if (context.schemaType === 'project') {
+        // Replace the built-in Publish with our wrapper that auto-bootstraps
+        // a minimal siteConfig on first publish of a linked project.
+        return prev.map((action) =>
+          action.action === 'publish' ? AutoCreateSiteConfigAction : action
+        )
       }
       return prev
     },

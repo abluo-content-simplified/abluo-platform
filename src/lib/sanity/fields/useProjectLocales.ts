@@ -45,6 +45,19 @@ function fetchLocalesForProject(
   return cache.get(projectSlug)!
 }
 
+/**
+ * Bust the cache for a specific projectSlug (or the entire cache if omitted).
+ * Call this after programmatically creating a siteConfig so the next render
+ * picks up the real supportedLocales instead of the all-platform fallback.
+ */
+export function clearLocalesCache(projectSlug?: string): void {
+  if (projectSlug) {
+    cache.delete(projectSlug)
+  } else {
+    cache.clear()
+  }
+}
+
 export function useProjectLocales(): {
   locales: SupportedLocale[]
   loading: boolean

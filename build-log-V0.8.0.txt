@@ -1,0 +1,60 @@
+V0.8.0 — Design System Assignment Flow + siteConfig Bootstrap
+==============================================================
+Date: 2026-06-17
+Branch: main
+Tag: V0.8.0
+TypeScript: clean (npx tsc --noEmit)
+Tests: 46/46 passed (npx vitest run)
+
+─── Changes ──────────────────────────────────────────────────────────────────
+
+Design System Assignment Flow
+  - New: src/lib/sanity/fields/DesignSystemPicker.tsx
+      Standalone DS picker component with grouped list (Assigned Here /
+      Templates / Unassigned / Assigned Elsewhere), search, reassign
+      confirmation, and best-effort projectSlug sync on the DS document.
+  - New: src/sanity/components/DesignSystemAssignPane.tsx
+      UserComponent for the Sanity structure builder. Receives project info
+      via props.options, patches project.designSystemRef on selection.
+  - Modified: src/lib/sanity/fields/ProjectLinker.tsx
+      Added DesignSystemPicker section to the linked-state UI.
+      designSystemRef field on project is now hidden (managed by picker).
+  - Modified: sanity.config.ts
+      Structure builder now uses designSystemRef._ref directly (no projectSlug
+      lookup needed). DS list item: no DS → DesignSystemAssignPane; DS
+      assigned → direct editor. "Change Design System" sibling item added
+      when a DS is assigned.
+
+siteConfig Auto-Bootstrap
+  - New: src/sanity/actions/AutoCreateSiteConfigAction.tsx
+      Replaces the built-in Publish action on project documents. On first
+      publish of a linked project, idempotently creates a minimal siteConfig
+      with projectSlug, defaultLocale, and supportedLocales: [defaultLocale]
+      drawn from project.defaultLocale at publish time.
+      Calls clearLocalesCache(projectSlug) to bust the module-level locale
+      cache so useProjectLocales picks up the new siteConfig immediately.
+  - Modified: src/lib/sanity/fields/useProjectLocales.ts
+      Exported clearLocalesCache(projectSlug?) for use by the action.
+  - Modified: sanity.config.ts
+      Registered AutoCreateSiteConfigAction replacing built-in Publish for
+      project schema type.
+
+Bug Fixes
+  - src/app/layout.tsx: Replaced <Script strategy="beforeInteractive"> with
+      plain <script dangerouslySetInnerHTML> in a Server Component. Eliminates
+      React 19 "Encountered a script tag while rendering" console warning.
+  - src/lib/sanity/client.ts: Added 'abluo-the-tiny-cms' → 'abluo' entry to
+      TENANT_TO_PROJECT. Fixes runtime error when previewing the Abluo site
+      at localhost:3000/it/abluo-the-tiny-cms.
+
+─── Notes ────────────────────────────────────────────────────────────────────
+
+- Memory files had a parallel v0.8/v0.9 numbering from prior sessions that
+  was never committed to git. V0.7.0 remains the true previous release.
+  Memory files updated to stay in sync with git going forward.
+- siteConfig auto-creation fires at publish time, so existing projects
+  (e.g. Abluo) must have their siteConfig created manually via the Settings
+  section in Studio (the siteConfigProjectOwned template pre-fills projectSlug).
+- Structure sidebar reactivity (auto-refresh after new project publish) is
+  deferred — a manual Studio refresh is still required after creating a new
+  project.

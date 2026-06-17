@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { Geist_Mono, Barlow_Condensed, Poppins } from "next/font/google";
 import "./globals.css";
 
@@ -42,11 +41,12 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${geistMono.variable} ${barlowCondensed.variable} ${poppins.variable} h-full antialiased`}
     >
-      <head>
+      <body className="min-h-full flex flex-col">
         {/* Theme preference applied before paint to prevent flash */}
-        <Script id="theme-script" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+        {/* eslint-disable-next-line @next/next/no-before-interactive-script-outside-document */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {children}
+      </body>
     </html>
   );
 }

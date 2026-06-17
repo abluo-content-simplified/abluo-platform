@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { ObjectInputProps, PatchEvent, set, unset, useClient } from 'sanity'
+import { DesignSystemPicker, type DSDoc } from './DesignSystemPicker'
 
 interface SanityClientDoc {
   _id: string
@@ -26,6 +27,7 @@ interface ProjectDocument {
   tenantId?: string
   clientRef?: { _type: 'reference'; _ref: string }
   customDomain?: string
+  designSystemRef?: { _type: 'reference'; _ref: string }
 }
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
@@ -165,6 +167,17 @@ export function ProjectLinker(props: ObjectInputProps) {
     )
   }, [onChange])
 
+  const handleAssignDS = useCallback(
+    (ds: DSDoc) => {
+      onChange(PatchEvent.from(set({ _type: 'reference', _ref: ds._id }, ['designSystemRef'])))
+    },
+    [onChange]
+  )
+
+  const handleRemoveDS = useCallback(() => {
+    onChange(PatchEvent.from(unset(['designSystemRef'])))
+  }, [onChange])
+
   // ── Sub-components ────────────────────────────────────────────────────────
 
   function InfoPanel({ project }: { project: SupabaseProject }) {
@@ -285,6 +298,28 @@ export function ProjectLinker(props: ObjectInputProps) {
         >
           Relink Project
         </button>
+
+        <Divider />
+
+        {/* ── Design System ─────────────────────────────────────── */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{
+            fontSize: 12,
+            color: '#666',
+            fontWeight: 500,
+            marginBottom: 8,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          }}>
+            Design System
+          </div>
+          <DesignSystemPicker
+            projectSlug={doc.projectSlug}
+            currentDSRef={doc.designSystemRef?._ref}
+            onAssign={handleAssignDS}
+            onRemove={handleRemoveDS}
+          />
+        </div>
 
         <Divider />
         {renderDefault(props)}

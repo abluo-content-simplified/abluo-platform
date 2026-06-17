@@ -16,6 +16,7 @@ export const sanityClient = createClient({
 const TENANT_TO_PROJECT: Record<string, string> = {
   livener: 'livener-main',
   studiomartegani: 'studiomartegani-main',
+  'abluo-the-tiny-cms': 'abluo',
 }
 
 export function tenantToProjectSlug(tenantSlug: string): string {

@@ -1,0 +1,57 @@
+
+> abluo-platform@0.7.0 build
+> next build
+
+▲ Next.js 16.2.6 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 16.9s
+  Running TypeScript ...
+  Finished TypeScript in 7.2s ...
+  Collecting page data using 3 workers ...
+  Generating static pages using 3 workers (0/79) ...
+  Generating static pages using 3 workers (19/79)
+  Generating static pages using 3 workers (39/79)
+  Generating static pages using 3 workers (59/79)
+✓ Generating static pages using 3 workers (79/79) in 432ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /[locale]/[tenant]
+├ ƒ /[locale]/[tenant]/[slug]
+├ ● /[locale]/[tenant]/events/[slug]
+├ ƒ /[locale]/[tenant]/live
+├ ƒ /[locale]/analytics
+├ ƒ /[locale]/clients
+├ ƒ /[locale]/content
+├ ƒ /[locale]/dashboard
+├ ƒ /[locale]/leads
+├ ƒ /[locale]/media
+├ ƒ /[locale]/posts
+├ ƒ /[locale]/projects
+├ ƒ /[locale]/settings
+├ ƒ /api/fix-colors
+├ ƒ /api/media
+├ ƒ /api/media/[id]
+├ ƒ /api/media/migrate
+├ ƒ /api/media/tags
+├ ƒ /api/media/verify-token
+├ ƒ /api/sanity/document
+├ ƒ /api/sanity/projects
+├ ƒ /api/sanity/tenant
+├ ƒ /api/sanity/tenants
+├ ƒ /api/version
+├ ○ /login
+├ ○ /robots.txt
+├ ○ /sitemap.xml
+└ ƒ /studio/[[...tool]]
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
