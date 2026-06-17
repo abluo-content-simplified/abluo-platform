@@ -28,6 +28,7 @@ function resolveTenant(hostname: string): string | null {
   const domainMap: Record<string, string> = {
     'livener.net': 'livener',
     'studiomartegani.com': 'studiomartegani',
+    'abluo.app': 'abluo-the-tiny-cms',
   }
 
   if (domainMap[host]) return domainMap[host]
@@ -67,6 +68,7 @@ function resolveDefaultLocale(projectSlug: string): string | null {
   const localeMap: Record<string, string> = {
     'studiomartegani': 'it',
     'livener': 'en',
+    'abluo-the-tiny-cms': 'en',
   }
   return localeMap[projectSlug] ?? null
 }

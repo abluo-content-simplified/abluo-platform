@@ -1750,7 +1750,22 @@ const pageType = defineType({
         ],
         layout: 'radio',
       },
-      validation: (Rule) => Rule.required(),
+      validation: (Rule) => [
+        Rule.required(),
+        Rule.custom(async (value, context) => {
+          if (value !== 'home') return true
+          const doc = context.document as { _id?: string; projectSlug?: string } | undefined
+          if (!doc?.projectSlug) return true
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const client = (context as any).getClient({ apiVersion: '2026-05-21' })
+          const docId = (doc._id ?? '').replace(/^drafts\./, '')
+          const count = await client.fetch(
+            `count(*[_type == "page" && pageType == "home" && projectSlug == $projectSlug && !(_id in [$id, $draftId])])`,
+            { projectSlug: doc.projectSlug, id: docId, draftId: `drafts.${docId}` }
+          )
+          return count === 0 || 'A home page already exists for this project. Only one home page is allowed per project.'
+        }),
+      ],
     }),
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
     defineField({
