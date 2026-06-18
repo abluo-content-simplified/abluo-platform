@@ -198,7 +198,7 @@ export default async function EventsListPage({ params }: PageProps) {
                 : null
 
               return (
-                <SlideUp key={event._id} delay={0.05 + idx * 0.06} duration={durationSlower} ease={easeReveal}>
+                <SlideUp key={event._id} delay={0.05 + idx * 0.06} duration={durationSlower} ease={easeReveal} className="h-full">
                   <Link
                     href={`/${locale}/${tenantId}/events/${event.slug.current}`}
                     className="group flex flex-col overflow-hidden rounded-2xl transition-all hover:shadow-xl h-full"
@@ -208,7 +208,7 @@ export default async function EventsListPage({ params }: PageProps) {
                       borderColor: 'var(--color-border)',
                     }}
                   >
-                    {/* Image — fixed height, always covers */}
+                    {/* Image — fixed height, object-cover */}
                     <div className="overflow-hidden shrink-0" style={{ height: '200px' }}>
                       {eventHeroSrc ? (
                         <img
@@ -222,33 +222,33 @@ export default async function EventsListPage({ params }: PageProps) {
                       )}
                     </div>
 
-                    {/* Content — flex column, CTA pinned to bottom */}
+                    {/* Content — flex column, CTA pinned via mt-auto */}
                     <div className="flex flex-col flex-1 p-5">
                       <div className="mb-3 shrink-0">
                         <StatusBadge status={event.status} />
                       </div>
 
                       <h2
-                        className="font-semibold text-base leading-snug mb-2 line-clamp-2 shrink-0 group-hover:opacity-75 transition-opacity"
+                        className="font-semibold text-base leading-snug mb-2 line-clamp-2 group-hover:opacity-75 transition-opacity"
                         style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
                       >
                         {event.title}
                       </h2>
 
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs mb-3 shrink-0" style={{ color: 'var(--color-text-secondary)' }}>
-                        {startDate && <span>📅 {startDate}</span>}
-                        {event.location && <span>📍 {event.location}</span>}
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+                        {startDate && <span>{startDate}</span>}
+                        {event.location && <span>{event.location}</span>}
                       </div>
 
                       <p
-                        className="text-sm line-clamp-3 flex-1"
+                        className="text-sm line-clamp-3 overflow-hidden"
                         style={{ color: 'var(--color-text-muted)' }}
                       >
                         {event.shortDescription ?? ''}
                       </p>
 
-                      {/* CTA — always at bottom */}
-                      <div className="mt-4 pt-4 shrink-0" style={{ borderTop: '1px solid var(--color-border)' }}>
+                      {/* CTA — mt-auto always pins to bottom regardless of content height */}
+                      <div className="mt-auto pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
                         <span className="text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>
                           View Details →
                         </span>
