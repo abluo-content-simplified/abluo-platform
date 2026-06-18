@@ -398,10 +398,6 @@ export interface WebsiteSiteConfig {
   phone?: string
   email?: string
   address?: string
-  // Live page welcome text (managed in Sanity)
-  livePageHeadline?: string
-  livePageSubheadline?: string
-  livePageBetaNotice?: string
 }
 
 // Locale config subset — fetched first to get $defaultLocale for subsequent queries
@@ -569,4 +565,33 @@ export interface WebsitePage {
   redirectFrom?: Partial<Record<SupportedLocale, string[]>>
   backgroundPattern?: 'none' | 'alternate1-2' | 'alternate1-2-3'
   sections?: PageSection[]
+}
+
+// ─── Live Page ────────────────────────────────────────────────────────────────
+// Resolved by livePageQuery — all string fields are locale-resolved by GROQ.
+
+export interface LivePage {
+  _id: string
+  heroTitle?: string
+  heroSubtitle?: string
+  betaNotice?: string
+  introText?: string
+  /** Cloudflare Stream video ID (e.g. "abc123xyz"). Frontend generates embed URL. */
+  cloudflareVideoId?: string
+  /** Expanded event references — locale-resolved by GROQ dereference */
+  featuredEvents?: Event[]
+  seoTitle?: string
+  seoDescription?: string
+}
+
+// ─── Events Page ──────────────────────────────────────────────────────────────
+
+export interface EventsPage {
+  _id: string
+  heroTitle?: string
+  heroSubtitle?: string
+  introText?: string
+  heroImage?: ResolvedImage
+  seoTitle?: string
+  seoDescription?: string
 }

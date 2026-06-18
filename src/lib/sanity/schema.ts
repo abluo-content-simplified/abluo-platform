@@ -1501,7 +1501,6 @@ const siteConfigType = defineType({
     { name: 'siteControls', title: 'Site Controls' },
     { name: 'locales', title: 'Languages' },
     { name: 'navigation', title: 'Navigation' },
-    { name: 'live', title: 'Live Page' },
     { name: 'contact', title: 'Contact' },
     { name: 'footer', title: 'Footer' },
     { name: 'social', title: 'Social' },
@@ -1649,9 +1648,6 @@ const siteConfigType = defineType({
     defineField({ name: 'showLangSwitcherInNav', title: 'Show language switcher in nav', type: 'boolean', group: 'navigation', initialValue: false }),
     defineField({ name: 'ctaLabel', title: 'Nav CTA Button Label', type: 'localizedString', group: 'navigation' }),
     defineField({ name: 'ctaHref', title: 'Nav CTA Button URL', type: 'string', group: 'navigation' }),
-    defineField({ name: 'livePageHeadline', title: 'Live Page Headline', type: 'localizedString', group: 'live', description: 'e.g. "Welcome to Livener"' }),
-    defineField({ name: 'livePageSubheadline', title: 'Live Page Subheadline', type: 'localizedString', group: 'live', description: 'e.g. "Live video streaming, in the palm of your hands"' }),
-    defineField({ name: 'livePageBetaNotice', title: 'Live Page Beta Notice', type: 'localizedString', group: 'live', description: 'e.g. "Currently in beta — tested live, in real environments."' }),
     defineField({ name: 'phone', title: 'Phone', type: 'string', group: 'contact' }),
     defineField({ name: 'email', title: 'Email', type: 'string', group: 'contact' }),
     defineField({ name: 'address', title: 'Address', type: 'text', rows: 2, group: 'contact' }),
@@ -1675,6 +1671,74 @@ const siteConfigType = defineType({
   preview: {
     select: { title: 'siteName', slug: 'projectSlug' },
     prepare: ({ title, slug }) => ({ title: title ?? slug ?? 'Site Config', subtitle: slug }),
+  },
+})
+
+// ─── Live Page ────────────────────────────────────────────────────────────────
+
+const livePageType = defineType({
+  name: 'livePage',
+  title: 'Live Page',
+  type: 'document',
+  groups: [
+    { name: 'content', title: 'Content', default: true },
+    { name: 'video', title: 'Video' },
+    { name: 'events', title: 'Featured Events' },
+    { name: 'meta', title: 'SEO / Meta' },
+  ],
+  fields: [
+    projectSlugField,
+    defineField({ name: 'heroTitle', title: 'Hero Title', type: 'localizedString', group: 'content', description: 'e.g. "Welcome to Livener"' }),
+    defineField({ name: 'heroSubtitle', title: 'Hero Subtitle', type: 'localizedString', group: 'content', description: 'e.g. "Live video streaming, in the palm of your hands"' }),
+    defineField({ name: 'betaNotice', title: 'Beta Notice', type: 'localizedString', group: 'content', description: 'e.g. "Currently in beta — tested live, in real environments."' }),
+    defineField({ name: 'introText', title: 'Intro Text', type: 'localizedText', group: 'content' }),
+    defineField({
+      name: 'cloudflareVideoId',
+      title: 'Cloudflare Video ID',
+      type: 'string',
+      group: 'video',
+      description: 'The video ID from Cloudflare Stream (e.g. "abc123xyz"). The embed URL is generated automatically.',
+    }),
+    defineField({
+      name: 'featuredEvents',
+      title: 'Featured Events',
+      type: 'array',
+      group: 'events',
+      of: [defineArrayMember({ type: 'reference', to: [{ type: 'event' }] })],
+      description: 'Events to show in the past events grid. If empty, past events are shown automatically.',
+    }),
+    defineField({ name: 'seoTitle', title: 'SEO Title', type: 'localizedString', group: 'meta' }),
+    defineField({ name: 'seoDescription', title: 'SEO Description', type: 'localizedText', group: 'meta' }),
+  ],
+  preview: {
+    select: { slug: 'projectSlug' },
+    prepare: ({ slug }) => ({ title: 'Live Page', subtitle: slug }),
+  },
+})
+
+// ─── Events Page ──────────────────────────────────────────────────────────────
+
+const eventsPageType = defineType({
+  name: 'eventsPage',
+  title: 'Events Page',
+  type: 'document',
+  groups: [
+    { name: 'content', title: 'Content', default: true },
+    { name: 'media', title: 'Media' },
+    { name: 'meta', title: 'SEO / Meta' },
+  ],
+  fields: [
+    projectSlugField,
+    defineField({ name: 'heroTitle', title: 'Hero Title', type: 'localizedString', group: 'content', description: 'e.g. "Events"' }),
+    defineField({ name: 'heroSubtitle', title: 'Hero Subtitle', type: 'localizedString', group: 'content' }),
+    defineField({ name: 'introText', title: 'Intro Text', type: 'localizedText', group: 'content' }),
+    defineField({ name: 'heroImage', title: 'Hero Image', type: 'localizedImage', group: 'media' }),
+    defineField({ name: 'seoTitle', title: 'SEO Title', type: 'localizedString', group: 'meta' }),
+    defineField({ name: 'seoDescription', title: 'SEO Description', type: 'localizedText', group: 'meta' }),
+  ],
+  preview: {
+    select: { slug: 'projectSlug' },
+    prepare: ({ slug }) => ({ title: 'Events Page', subtitle: slug }),
   },
 })
 
@@ -1976,6 +2040,24 @@ export const initialValueTemplates = [
       role: 'active',
     }),
   },
+  {
+    id: 'livePageProjectOwned',
+    title: 'Live Page',
+    schemaType: 'livePage',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+    }),
+  },
+  {
+    id: 'eventsPageProjectOwned',
+    title: 'Events Page',
+    schemaType: 'eventsPage',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+    }),
+  },
 ]
 
 // ─── Export ───────────────────────────────────────────────────────────────────
@@ -2025,4 +2107,6 @@ export const schemaTypes = [
   homePageType,
   postType,
   eventType,
+  livePageType,
+  eventsPageType,
 ]

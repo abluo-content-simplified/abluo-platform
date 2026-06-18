@@ -134,14 +134,52 @@ export default defineConfig({
                       .id(`${slug}-pages`)
                       .title('Pages')
                       .child(
-                        S.documentList()
+                        S.list()
+                          .id(`${slug}-pages-list`)
                           .title('Pages')
-                          .schemaType('page')
-                          .apiVersion('2026-05-21')
-                          .filter(`_type == "page" && projectSlug == $slug`)
-                          .params({ slug })
-                          .initialValueTemplates([
-                            S.initialValueTemplateItem('pageProjectOwned', { projectSlug: slug }),
+                          .items([
+                            S.listItem()
+                              .id(`${slug}-pages-all`)
+                              .title('Pages')
+                              .child(
+                                S.documentList()
+                                  .title('Pages')
+                                  .schemaType('page')
+                                  .apiVersion('2026-05-21')
+                                  .filter(`_type == "page" && projectSlug == $slug`)
+                                  .params({ slug })
+                                  .initialValueTemplates([
+                                    S.initialValueTemplateItem('pageProjectOwned', { projectSlug: slug }),
+                                  ])
+                              ),
+                            S.listItem()
+                              .id(`${slug}-live-page`)
+                              .title('Live Page')
+                              .child(
+                                S.documentList()
+                                  .title('Live Page')
+                                  .schemaType('livePage')
+                                  .apiVersion('2026-05-21')
+                                  .filter(`_type == "livePage" && projectSlug == $slug`)
+                                  .params({ slug })
+                                  .initialValueTemplates([
+                                    S.initialValueTemplateItem('livePageProjectOwned', { projectSlug: slug }),
+                                  ])
+                              ),
+                            S.listItem()
+                              .id(`${slug}-events-page`)
+                              .title('Events Page')
+                              .child(
+                                S.documentList()
+                                  .title('Events Page')
+                                  .schemaType('eventsPage')
+                                  .apiVersion('2026-05-21')
+                                  .filter(`_type == "eventsPage" && projectSlug == $slug`)
+                                  .params({ slug })
+                                  .initialValueTemplates([
+                                    S.initialValueTemplateItem('eventsPageProjectOwned', { projectSlug: slug }),
+                                  ])
+                              ),
                           ])
                       ),
 
@@ -310,6 +348,24 @@ export default defineConfig({
                           .apiVersion('2026-05-21')
                           .filter('_type == "siteConfig" && (projectSlug == null || projectSlug == "")')
                       ),
+                    S.listItem()
+                      .id('unassigned-livepages')
+                      .title('Live Pages without Project')
+                      .child(
+                        S.documentList()
+                          .title('Unassigned Live Pages')
+                          .apiVersion('2026-05-21')
+                          .filter('_type == "livePage" && (projectSlug == null || projectSlug == "")')
+                      ),
+                    S.listItem()
+                      .id('unassigned-eventspages')
+                      .title('Events Pages without Project')
+                      .child(
+                        S.documentList()
+                          .title('Unassigned Events Pages')
+                          .apiVersion('2026-05-21')
+                          .filter('_type == "eventsPage" && (projectSlug == null || projectSlug == "")')
+                      ),
                   ])
               ),
 
@@ -346,6 +402,6 @@ export default defineConfig({
     // Note: Sanity always re-sorts the menu alphabetically in the UI layer —
     // custom ordering via newDocumentOptions is not possible. Filter only.
     newDocumentOptions: (prev) =>
-      prev.filter((opt) => !['homePage', 'mediaAsset', 'homePageProjectOwned'].includes(opt.templateId)),
+      prev.filter((opt) => !['homePage', 'mediaAsset', 'homePageProjectOwned', 'livePageProjectOwned', 'eventsPageProjectOwned'].includes(opt.templateId)),
   },
 })

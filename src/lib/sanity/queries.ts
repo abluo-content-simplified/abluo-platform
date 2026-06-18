@@ -106,10 +106,7 @@ export const websiteSiteConfigQuery = /* groq */ `
     socialLinks[] { platform, url },
     phone,
     email,
-    address,
-    "livePageHeadline": ${loc('livePageHeadline')},
-    "livePageSubheadline": ${loc('livePageSubheadline')},
-    "livePageBetaNotice": ${loc('livePageBetaNotice')}
+    address
   }
 `
 
@@ -142,8 +139,8 @@ export const postBySlugQuery = /* groq */ `
 
 export const currentLiveEventQuery = /* groq */ `
   coalesce(
-    *[_type == "event" && projectSlug == $projectSlug && isCurrentLiveEvent == true && now() <= endDate][0],
-    *[_type == "event" && projectSlug == $projectSlug && status == "live" && now() <= endDate][0],
+    *[_type == "event" && projectSlug == $projectSlug && isCurrentLiveEvent == true && (endDate == null || now() <= endDate)][0],
+    *[_type == "event" && projectSlug == $projectSlug && status == "live" && (endDate == null || now() <= endDate)][0],
     *[_type == "event" && projectSlug == $projectSlug && status == "upcoming" && now() < startDate]
       | order(startDate asc)[0]
   ) {
@@ -384,6 +381,46 @@ export const pageByOldSlugQuery = /* groq */ `
 `
 
 export const siteConfigQuery = websiteSiteConfigQuery
+
+// ─── Live Page ────────────────────────────────────────────────────────────────
+
+export const livePageQuery = /* groq */ `
+  *[_type == "livePage" && projectSlug == $projectSlug][0] {
+    _id,
+    "heroTitle": ${loc('heroTitle')},
+    "heroSubtitle": ${loc('heroSubtitle')},
+    "betaNotice": ${loc('betaNotice')},
+    "introText": ${loc('introText')},
+    cloudflareVideoId,
+    featuredEvents[]-> {
+      _id,
+      "title": ${loc('title')},
+      "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
+      status,
+      startDate,
+      endDate,
+      "location": ${loc('location')},
+      "shortDescription": ${loc('shortDescription')},
+      ${locImage('heroImage')}
+    },
+    "seoTitle": ${loc('seoTitle')},
+    "seoDescription": ${loc('seoDescription')}
+  }
+`
+
+// ─── Events Page ──────────────────────────────────────────────────────────────
+
+export const eventsPageQuery = /* groq */ `
+  *[_type == "eventsPage" && projectSlug == $projectSlug][0] {
+    _id,
+    "heroTitle": ${loc('heroTitle')},
+    "heroSubtitle": ${loc('heroSubtitle')},
+    "introText": ${loc('introText')},
+    ${locImage('heroImage')},
+    "seoTitle": ${loc('seoTitle')},
+    "seoDescription": ${loc('seoDescription')}
+  }
+`
 
 // ─── Design System ────────────────────────────────────────────────────────────
 

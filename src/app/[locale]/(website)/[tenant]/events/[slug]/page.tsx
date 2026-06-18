@@ -140,7 +140,7 @@ export default async function EventDetailPage({ params }: PageProps) {
           {/* ── Back link ─────────────────────────────────────────── */}
           <SlideUp duration={0.5}>
             <Link
-              href={`/${locale}/livener/live`}
+              href={`/${locale}/${tenantId}/live`}
               className="inline-flex items-center gap-2 text-sm font-medium mb-8 px-3 py-2 rounded-lg transition-all"
               style={{
                 color: 'var(--color-primary)',

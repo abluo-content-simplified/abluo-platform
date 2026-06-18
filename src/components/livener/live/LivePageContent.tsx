@@ -4,14 +4,24 @@ import Link from 'next/link'
 import { PlayCircle } from 'lucide-react'
 import { SlideUp, FadeIn } from '@/components/animation'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
-import type { Event, SupportedLocale, WebsiteSiteConfig, DesignSystem } from '@/lib/sanity/types'
+import type { Event, LivePage, SupportedLocale, WebsiteSiteConfig, DesignSystem } from '@/lib/sanity/types'
+
+// Cloudflare Stream account subdomain for Livener.
+// To generate an embed URL: https://${CLOUDFLARE_ACCOUNT}.cloudflarestream.com/${videoId}/iframe
+const CLOUDFLARE_ACCOUNT = 'customer-aayaptcudal3r1fx'
+
+function cloudflareEmbedUrl(videoId: string): string {
+  return `https://${CLOUDFLARE_ACCOUNT}.cloudflarestream.com/${videoId}/iframe`
+}
 
 interface LivePageContentProps {
   event: Event | null
+  livePage: LivePage | null
   siteConfig: WebsiteSiteConfig | null
   designSystem: DesignSystem | null
   pastEvents?: Event[]
   locale: SupportedLocale
+  tenantId: string
 }
 
 // ─── No event fallback ────────────────────────────────────────────────────────
@@ -64,15 +74,21 @@ function StatusBadge({ status }: { status: Event['status'] }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function LivePageContent({ event, siteConfig, designSystem, pastEvents = [], locale }: LivePageContentProps) {
+export function LivePageContent({
+  event,
+  livePage,
+  siteConfig,
+  designSystem,
+  pastEvents = [],
+  locale,
+  tenantId,
+}: LivePageContentProps) {
   if (!event) return <NoLiveEvent />
 
   // ─── Motion tokens from resolved design system ─────────────────────────────
   const m = designSystem?.motion
-  // Durations — convert ms to seconds for motion/react
   const durationSlower = m?.durationSlower !== undefined ? m.durationSlower / 1000 : 0.6
   const durationSlow   = m?.durationSlow   !== undefined ? m.durationSlow   / 1000 : 0.35
-  // Easing — easingDecelerate for reveals (elements entering the screen)
   const easeReveal: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
 
   const heroSrc = imageUrl(event.heroImage, 1600)
@@ -88,12 +104,17 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
     ? new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', year: '2-digit' }).format(new Date(event.endDate))
     : null
 
-  const channelUrl = event.youtubeChannelUrl ?? 'https://www.youtube.com/@livener-net'
+  const channelUrl = event.youtubeChannelUrl ?? siteConfig?.youtubeChannelUrl ?? 'https://www.youtube.com/@livener-net'
 
-  // Welcome text — from Sanity siteConfig, with fallbacks
-  const headline = siteConfig?.livePageHeadline ?? 'Welcome to Livener'
-  const subheadline = siteConfig?.livePageSubheadline ?? 'Live video streaming, in the palm of your hands'
-  const betaNotice = siteConfig?.livePageBetaNotice ?? 'Currently in beta — tested live, in real environments.'
+  // Editorial content from livePage document, with fallbacks
+  const headline    = livePage?.heroTitle    ?? 'Welcome to Livener'
+  const subheadline = livePage?.heroSubtitle ?? 'Live video streaming, in the palm of your hands'
+  const betaNotice  = livePage?.betaNotice   ?? 'Currently in beta — tested live, in real environments.'
+
+  // Cloudflare video embed URL
+  const embedUrl = livePage?.cloudflareVideoId
+    ? cloudflareEmbedUrl(livePage.cloudflareVideoId)
+    : null
 
   return (
     <div
@@ -128,6 +149,29 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
             {betaNotice}
           </p>
         </SlideUp>
+
+        {/* ── Cloudflare video embed ────────────────────────────────── */}
+        {embedUrl && (
+          <FadeIn delay={0.25} duration={durationSlow} ease={easeReveal} className="mt-10 overflow-hidden rounded-2xl">
+            <div style={{ position: 'relative', paddingTop: '56.25%' }}>
+              <iframe
+                src={embedUrl}
+                loading="lazy"
+                style={{
+                  border: 'none',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  height: '100%',
+                  width: '100%',
+                  borderRadius: 'var(--radius-card, 16px)',
+                }}
+                allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </FadeIn>
+        )}
 
         {/* ── Event announcement ────────────────────────────────────── */}
         <div className="mt-14">
@@ -164,7 +208,7 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
             </SlideUp>
           )}
 
-          {/* ── Short description — ABOVE hero image ─────────────────── */}
+          {/* ── Short description ────────────────────────────────────── */}
           {event.shortDescription && (
             <SlideUp delay={0.25} ease={easeReveal} className="mt-6">
               <p className="text-base leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
@@ -188,7 +232,7 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
           </FadeIn>
         )}
 
-        {/* ── Full description — BELOW hero image ──────────────────── */}
+        {/* ── Full description ────────────────────────────────────── */}
         {event.fullDescription && Array.isArray(event.fullDescription) && event.fullDescription.length > 0 && (
           <SlideUp delay={0.08} ease={easeReveal} className="mt-10">
             <div
@@ -264,7 +308,7 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
           </FadeIn>
         )}
 
-        {/* ── Past Live Events ──────────────────────────────────────── */}
+        {/* ── Past / Featured Events ────────────────────────────────── */}
         {pastEvents && pastEvents.length > 0 && (
           <div className="mt-20 border-t pt-20" style={{ borderColor: 'var(--color-border)' }}>
             <SlideUp duration={durationSlower} ease={easeReveal}>
@@ -282,7 +326,7 @@ export function LivePageContent({ event, siteConfig, designSystem, pastEvents = 
                 return (
                   <SlideUp key={pastEvent._id} delay={0.05 + idx * 0.08} duration={durationSlower} ease={easeReveal}>
                     <Link
-                      href={`/${locale}/livener/events/${pastEvent.slug.current}`}
+                      href={`/${locale}/${tenantId}/events/${pastEvent.slug.current}`}
                       className="group flex flex-col overflow-hidden rounded-xl transition-all hover:shadow-lg"
                       style={{
                         backgroundColor: 'var(--color-surface)',

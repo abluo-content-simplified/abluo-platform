@@ -1,9 +1,16 @@
 import type { Metadata } from 'next'
 import { tenantClient } from '@/lib/sanity/client'
-import { currentLiveEventQuery, localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, pastEventsQuery } from '@/lib/sanity/queries'
+import {
+  currentLiveEventQuery,
+  localeConfigQuery,
+  websiteSiteConfigQuery,
+  designSystemQuery,
+  pastEventsQuery,
+  livePageQuery,
+} from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
-import type { Event, LocaleConfig, SupportedLocale, WebsiteSiteConfig, DesignSystem } from '@/lib/sanity/types'
+import type { Event, LocaleConfig, LivePage, SupportedLocale, WebsiteSiteConfig, DesignSystem } from '@/lib/sanity/types'
 import { LivePageContent } from '@/components/livener/live/LivePageContent'
 
 // force-dynamic: always render server-side so event status changes are immediate.
@@ -23,15 +30,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  const event = await fetchForTenant<Event>(currentLiveEventQuery, { locale, defaultLocale })
+  const [event, livePage] = await Promise.all([
+    fetchForTenant<Event>(currentLiveEventQuery, { locale, defaultLocale }),
+    fetchForTenant<LivePage>(livePageQuery, { locale, defaultLocale }),
+  ])
+
+  const title = livePage?.seoTitle ?? event?.seoTitle ?? event?.title ?? 'Live — Livener'
+  const description = livePage?.seoDescription ?? event?.seoDescription ?? event?.shortDescription ?? 'Live video streaming from Livener.'
 
   return {
-    title: event?.seoTitle ?? event?.title ?? 'Live — Livener',
-    description: event?.seoDescription ?? event?.shortDescription ?? 'Live video streaming from Livener.',
-    openGraph: {
-      title: event?.seoTitle ?? event?.title ?? 'Live — Livener',
-      description: event?.seoDescription ?? event?.shortDescription ?? undefined,
-    },
+    title,
+    description,
+    openGraph: { title, description },
   }
 }
 
@@ -44,9 +54,12 @@ export default async function LivePage({ params }: PageProps) {
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  // Fetch event, siteConfig, designSystem, and past events in parallel
-  const [event, siteConfig, designSystem, pastEvents] = await Promise.all([
+  const [event, livePage, siteConfig, designSystem, pastEvents] = await Promise.all([
     fetchForTenant<Event>(currentLiveEventQuery, {
+      locale: locale as SupportedLocale,
+      defaultLocale,
+    }),
+    fetchForTenant<LivePage>(livePageQuery, {
       locale: locale as SupportedLocale,
       defaultLocale,
     }),
@@ -54,20 +67,30 @@ export default async function LivePage({ params }: PageProps) {
       locale: locale as SupportedLocale,
       defaultLocale,
     }),
-    (async () => { const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {}); return resolveDesignSystemInheritance(raw, fetchDesignSystemById); })(),
+    (async () => {
+      const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {})
+      return resolveDesignSystemInheritance(raw, fetchDesignSystemById)
+    })(),
     fetchForTenant<Event[]>(pastEventsQuery, {
       locale: locale as SupportedLocale,
       defaultLocale,
     }),
   ])
 
+  // Featured events from livePage take precedence over auto past events
+  const displayEvents = (livePage?.featuredEvents && livePage.featuredEvents.length > 0)
+    ? livePage.featuredEvents
+    : (pastEvents ?? [])
+
   return (
     <LivePageContent
       event={event}
+      livePage={livePage}
       siteConfig={siteConfig}
       designSystem={designSystem}
-      pastEvents={pastEvents ?? []}
+      pastEvents={displayEvents}
       locale={locale as SupportedLocale}
+      tenantId={tenantId}
     />
   )
 }
