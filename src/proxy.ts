@@ -266,18 +266,52 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone()
     const path = url.pathname
 
+    // Already correctly rewritten — pass through.
     const alreadyRewritten = routing.locales.some(
       (l) => path === `/${l}/${tenantId}` || path.startsWith(`/${l}/${tenantId}/`)
     )
+    if (alreadyRewritten) return NextResponse.next()
 
-    if (!alreadyRewritten) {
-      const subPath = path === '/' ? '' : path
-      const locale = resolveDefaultLocale(tenantId) ?? 'it'
-      url.pathname = `/${locale}/${tenantId}${subPath}`
+    // Detect a locale-prefix path (e.g. /it or /it/some-page).
+    // This happens when the LanguageSwitcher calls router.replace(pathname, { locale })
+    // on a custom domain where the visible browser path doesn't include the tenant slug.
+    const localePrefix = (routing.locales as readonly string[]).find(
+      (l) => path === `/${l}` || path.startsWith(`/${l}/`)
+    )
+
+    if (localePrefix) {
+      // /it               → /it/abluo-the-tiny-cms
+      // /it/some-page     → /it/abluo-the-tiny-cms/some-page
+      const subPath = path === `/${localePrefix}` ? '' : path.slice(`/${localePrefix}`.length)
+      url.pathname = `/${localePrefix}/${tenantId}${subPath}`
       return NextResponse.rewrite(url)
     }
 
-    return NextResponse.next()
+    // Root path — determine locale from NEXT_LOCALE cookie, then Accept-Language,
+    // then fall back to the project default.
+    const defaultLocale = resolveDefaultLocale(tenantId) ?? 'en'
+    let locale = defaultLocale
+
+    if (path === '/') {
+      // 1. Honour a previously persisted locale preference (written by next-intl).
+      const cookieLocale = request.cookies.get('NEXT_LOCALE')?.value
+      if (cookieLocale && (routing.locales as readonly string[]).includes(cookieLocale)) {
+        locale = cookieLocale
+      } else {
+        // 2. Negotiate from Accept-Language header.
+        const acceptLanguage = request.headers.get('accept-language') ?? ''
+        const preferred = acceptLanguage
+          .split(',')
+          .map((part) => part.split(';')[0].trim().slice(0, 2))
+          .find((code) => (routing.locales as readonly string[]).includes(code))
+        if (preferred) locale = preferred
+      }
+    }
+
+    // All other paths (e.g. /about): use tenant default locale.
+    const subPath = path === '/' ? '' : path
+    url.pathname = `/${locale}/${tenantId}${subPath}`
+    return NextResponse.rewrite(url)
   }
 
   // ── Project slug routing ───────────────────────────────────────────────────

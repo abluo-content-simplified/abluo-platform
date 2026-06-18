@@ -32,22 +32,33 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? ''
   const canonical = `${baseUrl}/${locale}/${tenantId}`
 
+  // Build hreflang alternates dynamically from siteConfig.supportedLocales.
+  // Only emit entries for locales the site actually supports.
+  const supportedLocales = config?.supportedLocales ?? [locale as SupportedLocale]
+  const languages: Record<string, string> = {}
+  for (const loc of supportedLocales) {
+    languages[loc] = `${baseUrl}/${loc}/${tenantId}`
+  }
+
+  // OG locale tag — maps 2-letter code to IETF format
+  const ogLocaleMap: Record<string, string> = {
+    en: 'en_US', it: 'it_IT', de: 'de_DE', fr: 'fr_FR',
+    es: 'es_ES', pt: 'pt_PT', nl: 'nl_NL',
+  }
+
   return {
     title: config?.siteName ?? tenantId,
     description: config?.tagline,
     alternates: {
       canonical,
-      languages: {
-        it: `${baseUrl}/it/${tenantId}`,
-        en: `${baseUrl}/en/${tenantId}`,
-      },
+      languages: Object.keys(languages).length > 0 ? languages : undefined,
     },
     openGraph: {
       title: config?.siteName ?? tenantId,
       description: config?.tagline ?? undefined,
       url: canonical,
       siteName: config?.siteName ?? tenantId,
-      locale: locale === 'it' ? 'it_IT' : 'en_US',
+      locale: ogLocaleMap[locale] ?? locale,
       type: 'website',
     },
   }

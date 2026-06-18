@@ -313,10 +313,54 @@ Any change to `design-system-resolver.ts` requires a corresponding test. Any new
 
 ---
 
+## Deployment Workflow
+
+Abluo uses a three-stage deployment pipeline. **Never push unreviewed changes directly to `main`.**
+
+### Branches
+
+| Branch | Environment | Domain |
+|---|---|---|
+| `dev` | Developer testing | `dev.abluo.app` |
+| `preview` | Client / tenant review | `preview.abluo.app` |
+| `main` | Production | `abluo.app` |
+
+### Release Process
+
+1. Implement and test changes on `dev`.
+2. Verify on `https://dev.abluo.app`.
+3. Merge `dev → preview`.
+4. Verify on `https://preview.abluo.app`.
+5. Obtain approval if tenant-facing changes are involved.
+6. Merge `preview → main` and tag the release.
+7. Verify production on `https://abluo.app`.
+
+### Git Commands (default pattern)
+
+```bash
+# Commit to dev
+git checkout dev
+git add <files>
+git commit -m "V{version}: description"
+git push origin dev
+
+# Promote to preview after verification
+git checkout preview && git merge dev && git push origin preview
+
+# Promote to production after approval
+git checkout main && git merge preview
+git tag V{version}
+git push origin main --tags
+```
+
+When suggesting git commands, always default to the `dev → preview → main` flow unless explicitly instructed otherwise.
+
+---
+
 ## Versioning and Deployment
 
-- **Versioning:** semver. Tag format: `v{major}.{minor}.{patch}`
-- **Build logs:** one file per release — `build-log-v{version}.txt` in the repo root. Never overwrite an existing log.
+- **Versioning:** semver. Tag format: `V{major}.{minor}.{patch}` (capital V)
+- **Build logs:** one file per release — `build-log-V{version}.txt` in the repo root. Never overwrite an existing log.
 - **Pre-commit checklist:**
   1. `npx tsc --noEmit` — must be clean
   2. `npx vitest run` — all tests must pass

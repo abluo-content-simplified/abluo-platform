@@ -4,6 +4,7 @@ import type { MetadataRoute } from 'next'
 const PROJECT_TO_TENANT: Record<string, string> = {
   'livener-main': 'livener',
   'studiomartegani-main': 'studiomartegani',
+  'abluo': 'abluo-the-tiny-cms',
 }
 
 interface TenantSitemapData {
