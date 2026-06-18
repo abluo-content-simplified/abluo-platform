@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { tenantClient } from '@/lib/sanity/client'
 import {
   eventsPageQuery,
@@ -12,6 +11,7 @@ import { fetchDesignSystemById } from '@/lib/sanity/client'
 import type { Event, EventsPage, LocaleConfig, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
 import { imageUrl } from '@/lib/sanity/image'
 import { SlideUp, FadeIn } from '@/components/animation'
+import { EventCard } from '@/components/events/EventCard'
 
 // Cloudflare Stream account subdomain — shared with LivePageContent
 const CLOUDFLARE_ACCOUNT = 'customer-aayaptcudal3r1fx'
@@ -41,41 +41,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: eventsPage?.seoTitle ?? eventsPage?.heroTitle ?? 'Events',
     description: eventsPage?.seoDescription ?? eventsPage?.heroSubtitle ?? 'All events',
   }
-}
-
-// ─── Status badge ─────────────────────────────────────────────────────────────
-
-function StatusBadge({ status }: { status: Event['status'] }) {
-  if (status === 'live') {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-widest text-red-400">
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
-        Live
-      </span>
-    )
-  }
-  if (status === 'upcoming') {
-    return (
-      <span
-        className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-widest"
-        style={{
-          borderColor: 'color-mix(in oklch, var(--color-primary) 25%, transparent)',
-          backgroundColor: 'color-mix(in oklch, var(--color-primary) 12%, transparent)',
-          color: 'var(--color-primary)',
-        }}
-      >
-        Upcoming
-      </span>
-    )
-  }
-  return (
-    <span
-      className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-widest"
-      style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}
-    >
-      Past
-    </span>
-  )
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -190,74 +155,18 @@ export default async function EventsListPage({ params }: PageProps) {
             </p>
           </SlideUp>
         ) : (
-          <div className="mt-14 grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {events.map((event, idx) => {
-              const eventHeroSrc = imageUrl(event.heroImage, 600)
-              const startDate = event.startDate
-                ? new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(event.startDate))
-                : null
-
-              return (
-                <SlideUp key={event._id} delay={0.05 + idx * 0.06} duration={durationSlower} ease={easeReveal} className="h-full">
-                  <Link
-                    href={`/${locale}/${tenantId}/events/${event.slug.current}`}
-                    className="group flex flex-col overflow-hidden rounded-2xl transition-all hover:shadow-xl h-full"
-                    style={{
-                      backgroundColor: 'var(--color-surface)',
-                      border: '1px solid',
-                      borderColor: 'var(--color-border)',
-                    }}
-                  >
-                    {/* Image — fixed height, object-cover */}
-                    <div className="overflow-hidden shrink-0" style={{ height: '200px' }}>
-                      {eventHeroSrc ? (
-                        <img
-                          src={eventHeroSrc}
-                          alt={event.heroImage?.alt ?? event.title ?? ''}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full h-full" style={{ backgroundColor: 'var(--color-border)' }} />
-                      )}
-                    </div>
-
-                    {/* Content — flex column, CTA pinned via mt-auto */}
-                    <div className="flex flex-col flex-1 p-5">
-                      <div className="mb-3 shrink-0">
-                        <StatusBadge status={event.status} />
-                      </div>
-
-                      <h2
-                        className="font-semibold text-base leading-snug mb-2 line-clamp-2 group-hover:opacity-75 transition-opacity"
-                        style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
-                      >
-                        {event.title}
-                      </h2>
-
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs mb-3" style={{ color: 'var(--color-text-secondary)' }}>
-                        {startDate && <span>{startDate}</span>}
-                        {event.location && <span>{event.location}</span>}
-                      </div>
-
-                      <p
-                        className="text-sm line-clamp-3 overflow-hidden"
-                        style={{ color: 'var(--color-text-muted)' }}
-                      >
-                        {event.shortDescription ?? ''}
-                      </p>
-
-                      {/* CTA — mt-auto always pins to bottom regardless of content height */}
-                      <div className="mt-auto pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
-                        <span className="text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>
-                          View Details →
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                </SlideUp>
-              )
-            })}
+          <div className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {events.map((event, idx) => (
+              <EventCard
+                key={event._id}
+                event={event}
+                locale={locale}
+                tenantId={tenantId}
+                delay={0.05 + idx * 0.06}
+                duration={durationSlower}
+                ease={easeReveal}
+              />
+            ))}
           </div>
         )}
       </div>

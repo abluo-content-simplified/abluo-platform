@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { PlayCircle } from 'lucide-react'
 import { SlideUp, FadeIn } from '@/components/animation'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
+import { EventCard } from '@/components/events/EventCard'
 import type { Event, LivePage, SupportedLocale, WebsiteSiteConfig, DesignSystem } from '@/lib/sanity/types'
 
 // Cloudflare Stream account subdomain for Livener.
@@ -320,60 +321,18 @@ export function LivePageContent({
               </h2>
             </SlideUp>
 
-            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {pastEvents.map((pastEvent, idx) => {
-                const pastHeroSrc = imageUrl(pastEvent.heroImage, 400)
-                return (
-                  <SlideUp key={pastEvent._id} delay={0.05 + idx * 0.08} duration={durationSlower} ease={easeReveal}>
-                    <Link
-                      href={`/${locale}/${tenantId}/events/${pastEvent.slug.current}`}
-                      className="group flex flex-col overflow-hidden rounded-xl transition-all hover:shadow-lg"
-                      style={{
-                        backgroundColor: 'var(--color-surface)',
-                        border: '1px solid',
-                        borderColor: 'var(--color-border)',
-                      }}
-                    >
-                      {pastHeroSrc && (
-                        <div className="overflow-hidden" style={{ maxHeight: '180px' }}>
-                          <img
-                            src={pastHeroSrc}
-                            alt={pastEvent.heroImage?.alt ?? pastEvent.title}
-                            className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-300"
-                            style={{ maxHeight: '180px', objectFit: 'cover' }}
-                            loading="lazy"
-                          />
-                        </div>
-                      )}
-
-                      <div className="flex flex-col flex-1 p-4">
-                        <h3
-                          className="font-semibold mb-2 line-clamp-2 group-hover:opacity-75 transition-opacity"
-                          style={{ color: 'var(--color-text-primary)' }}
-                        >
-                          {pastEvent.title}
-                        </h3>
-
-                        {pastEvent.location && (
-                          <p className="text-xs mb-3 flex items-center gap-1.5" style={{ color: 'var(--color-text-secondary)' }}>
-                            📍 {pastEvent.location}
-                          </p>
-                        )}
-
-                        {pastEvent.shortDescription && (
-                          <p className="text-xs line-clamp-2 mb-4 flex-1" style={{ color: 'var(--color-text-muted)' }}>
-                            {pastEvent.shortDescription}
-                          </p>
-                        )}
-
-                        <div className="flex items-center gap-2 text-xs font-medium" style={{ color: 'var(--color-primary)' }}>
-                          View Details →
-                        </div>
-                      </div>
-                    </Link>
-                  </SlideUp>
-                )
-              })}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {pastEvents.map((pastEvent, idx) => (
+                <EventCard
+                  key={pastEvent._id}
+                  event={pastEvent}
+                  locale={locale}
+                  tenantId={tenantId}
+                  delay={0.05 + idx * 0.08}
+                  duration={durationSlower}
+                  ease={easeReveal}
+                />
+              ))}
             </div>
           </div>
         )}
