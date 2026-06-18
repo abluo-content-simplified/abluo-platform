@@ -4,7 +4,7 @@
 //
 // Values are baked in at build time via next.config.ts env block:
 //   NEXT_PUBLIC_VERCEL_ENV       — "production" | "preview" | "development"
-//   NEXT_PUBLIC_APP_VERSION      — from package.json
+//   NEXT_PUBLIC_GIT_RELEASE      — latest git tag at build time (e.g. V0.8.7)
 //   NEXT_PUBLIC_GIT_COMMIT_SHA   — from VERCEL_GIT_COMMIT_SHA
 //   NEXT_PUBLIC_GIT_COMMIT_REF   — from VERCEL_GIT_COMMIT_REF (branch name)
 //   NEXT_PUBLIC_BUILD_TIME       — ISO timestamp at build time
@@ -15,7 +15,7 @@
 
 export const deployment = {
   env:       process.env.NEXT_PUBLIC_VERCEL_ENV          ?? 'development',
-  version:   process.env.NEXT_PUBLIC_APP_VERSION         ?? 'unknown',
+  release:   process.env.NEXT_PUBLIC_GIT_RELEASE         ?? 'unknown',
   commitSha: (process.env.NEXT_PUBLIC_GIT_COMMIT_SHA     ?? 'local').slice(0, 7),
   branch:    process.env.NEXT_PUBLIC_GIT_COMMIT_REF      ?? 'local',
   buildTime: process.env.NEXT_PUBLIC_BUILD_TIME          ?? '',

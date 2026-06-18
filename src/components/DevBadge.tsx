@@ -20,7 +20,7 @@ export function DevBadge() {
   if (!label) return null
 
   const accentColor = label === 'PREVIEW' ? '#f59e0b' : '#6366f1'
-  const badgeText = `${label} • ${deployment.version} • ${deployment.commitSha}`
+  const badgeText = `${label} • ${deployment.release} • ${deployment.commitSha}`
 
   return (
     <>
@@ -55,7 +55,7 @@ export function DevBadge() {
       >
         <span style={{ color: accentColor, fontWeight: 700 }}>{label}</span>
         <span style={{ opacity: 0.5 }}>•</span>
-        <span style={{ opacity: 0.85 }}>{deployment.version}</span>
+        <span style={{ opacity: 0.85 }}>{deployment.release}</span>
         <span style={{ opacity: 0.5 }}>•</span>
         <span style={{ opacity: 0.65 }}>{deployment.commitSha}</span>
       </button>
@@ -98,7 +98,7 @@ export function DevBadge() {
             </p>
             {[
               ['Environment', label],
-              ['Version',     deployment.version],
+              ['Release',     deployment.release],
               ['Commit',      deployment.commitSha],
               ['Branch',      deployment.branch],
               ['Built',       deployment.buildTime ? new Date(deployment.buildTime).toUTCString() : '—'],
