@@ -9,6 +9,8 @@ function resolveInternalPage(page: string | undefined): string {
       return ''
     case 'live':
       return 'live'
+    case 'events':
+      return 'events'
     default:
       return ''
   }

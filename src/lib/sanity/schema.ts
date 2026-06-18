@@ -129,7 +129,8 @@ const navigationLinkType = defineType({
       options: {
         list: [
           { title: 'Homepage', value: 'homepage' },
-          { title: 'Live Events', value: 'live' },
+          { title: 'Live', value: 'live' },
+          { title: 'Events', value: 'events' },
         ],
       },
       hidden: ({ parent }: { parent?: { linkType?: string } }) => parent?.linkType !== 'internal',

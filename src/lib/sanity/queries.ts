@@ -79,10 +79,18 @@ export const websiteSiteConfigQuery = /* groq */ `
     themeSwitcherPlacement,
     navLinks[] {
       "label": ${loc('label')},
+      linkType,
+      internalPage,
+      externalUrl,
+      openInNewTab,
       href,
       external,
       children[] {
         "label": ${loc('label')},
+        linkType,
+        internalPage,
+        externalUrl,
+        openInNewTab,
         href,
         external
       }
@@ -91,6 +99,10 @@ export const websiteSiteConfigQuery = /* groq */ `
     ctaHref,
     footerLinks[] {
       "label": ${loc('label')},
+      linkType,
+      internalPage,
+      externalUrl,
+      openInNewTab,
       href,
       external
     },

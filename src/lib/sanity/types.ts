@@ -86,7 +86,7 @@ export interface ResolvedImage {
 export interface NavLink {
   label: string
   linkType?: 'internal' | 'external'
-  internalPage?: 'homepage' | 'live'
+  internalPage?: 'homepage' | 'live' | 'events'
   externalUrl?: string
   openInNewTab?: boolean
   // Legacy fields for backward compatibility
