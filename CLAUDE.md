@@ -328,12 +328,15 @@ Abluo uses a three-stage deployment pipeline. **Never push unreviewed changes di
 ### Release Process
 
 1. Implement and test changes on `dev`.
-2. Verify on `https://dev.abluo.app`.
-3. Merge `dev → preview`.
-4. Verify on `https://preview.abluo.app`.
-5. Obtain approval if tenant-facing changes are involved.
-6. Merge `preview → main` and tag the release.
-7. Verify production on `https://abluo.app`.
+2. Run `npx tsc --noEmit`, `npx vitest run`, and `npm run build` — all must pass.
+3. Commit to `dev` and push.
+4. **Stop. Wait for Tom to verify on `https://dev.abluo.app`.**
+5. Only after explicit approval: merge `dev → preview` and push.
+6. **Stop. Wait for Tom to verify on `https://preview.abluo.app`.**
+7. Only after explicit approval: merge `preview → main`, tag the release, push.
+8. Verify production on `https://abluo.app`.
+
+**The word "Stop" above is literal.** Do not proceed to the next stage without confirmation, even if the changes seem trivially safe.
 
 ### Git Commands (default pattern)
 
@@ -344,16 +347,48 @@ git add <files>
 git commit -m "V{version}: description"
 git push origin dev
 
-# Promote to preview after verification
-git checkout preview && git merge dev && git push origin preview
+# Promote to preview — only after Tom confirms dev.abluo.app is working
+git checkout preview && git merge dev --no-edit && git push origin preview
 
-# Promote to production after approval
-git checkout main && git merge preview
+# Promote to production — only after Tom confirms preview.abluo.app is working
+git checkout main && git merge preview --no-edit
 git tag V{version}
 git push origin main --tags
+
+# Always return to dev after a promotion
+git checkout dev
 ```
 
 When suggesting git commands, always default to the `dev → preview → main` flow unless explicitly instructed otherwise.
+
+### What Caused V0.8.2 to Bypass the Workflow
+
+In session on 2026-06-17, the merge sequence became tangled during a context-limited conversation:
+
+- `dev` had uncommitted V0.8.2 changes
+- A `git stash` failed silently, so changes carried through a branch switch
+- The session then ran `git checkout preview && git merge dev` without pausing for dev verification
+- This triggered Vercel to build `preview`, which then got merged to `main` — skipping the explicit hold points
+- Result: a broken build (middleware conflict) landed on production
+
+**Lessons encoded here:**
+
+1. Each stage now has an explicit **Stop** instruction — no implicit continuation.
+2. `--no-edit` is added to all merge commands to prevent vim/editor prompts from disrupting the flow.
+3. The pre-commit build check (`npm run build`) is now part of the release process, not just tsc + vitest.
+4. If `git stash` fails for any reason, stop and diagnose before switching branches.
+
+### Middleware Convention (Next.js 16)
+
+Next.js 16 uses **`src/proxy.ts`** as the middleware entrypoint — not `middleware.ts`. This is a Next.js 16 convention change. `proxy.ts` must export:
+
+```ts
+export async function proxy(request: NextRequest) { ... }
+export const config = { matcher: [...] }
+```
+
+**Never create `src/middleware.ts`.** If both files exist, Next.js 16 will refuse to build with:
+> "Both middleware file and proxy file are detected. Please use proxy.ts only."
 
 ---
 

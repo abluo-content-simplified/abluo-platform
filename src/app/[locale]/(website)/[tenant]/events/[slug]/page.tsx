@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
+import { isProduction, isDev } from '@/lib/deployment'
 import { tenantClient } from '@/lib/sanity/client'
 import {
   eventBySlugQuery,
@@ -52,7 +53,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: event?.seoTitle ?? event?.title ?? 'Event',
     description: event?.seoDescription ?? event?.shortDescription ?? 'Event details',
-    alternates: Object.keys(alternates).length > 0 ? { languages: alternates } : undefined,
+    alternates: {
+      canonical: isProduction() ? `${baseUrl}/${locale}/${tenantId}/events/${event?.slugMap?.[locale as SupportedLocale]?.current ?? ''}` : undefined,
+      languages: !isDev() && Object.keys(alternates).length > 0 ? alternates : undefined,
+    },
     openGraph: {
       title: event?.seoTitle ?? event?.title,
       description: event?.seoDescription ?? event?.shortDescription ?? undefined,

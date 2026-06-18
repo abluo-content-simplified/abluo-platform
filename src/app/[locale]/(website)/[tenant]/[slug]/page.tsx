@@ -15,6 +15,7 @@ import { JsonLd } from '@/components/JsonLd'
 import { computeSectionSurface } from '@/lib/sanity/surfaces'
 import { notFound, redirect } from 'next/navigation'
 import { SlugMapProvider } from '@/components/SlugMapContext'
+import { isProduction, isDev } from '@/lib/deployment'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,8 +66,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: pageTitle,
     alternates: {
-      canonical,
-      languages: Object.keys(languages).length > 0 ? languages : undefined,
+      canonical: isProduction() ? canonical : undefined,
+      languages: !isDev() && Object.keys(languages).length > 0 ? languages : undefined,
     },
     openGraph: {
       title: pageTitle,

@@ -12,6 +12,8 @@ import { NavClient } from '@/components/livener/Nav/NavClient'
 import { LanguageSwitcher } from '@/components/SiteControls/LanguageSwitcher'
 import { ThemeSwitcher } from '@/components/SiteControls/ThemeSwitcher'
 import { HeaderAppearanceWrapper } from '@/components/HeaderAppearanceWrapper'
+import { DevBadge } from '@/components/DevBadge'
+import { isProduction } from '@/lib/deployment'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -261,6 +263,10 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
   const faviconSrc = faviconAsset?.asset ? imageUrl(faviconAsset as any, 64) : undefined
   return {
     ...(faviconSrc ? { icons: { icon: faviconSrc } } : {}),
+    // Suppress indexing on all non-production environments.
+    // Vercel already sends x-robots-tag: noindex on preview deployments,
+    // but this ensures the meta tag is also present for belt-and-suspenders.
+    ...(!isProduction() ? { robots: { index: false, follow: false } } : {}),
   }
 }
 
@@ -336,6 +342,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         />
         <main>{children}</main>
         <Footer tenantId={tenantId} locale={locale as SupportedLocale} defaultLocale={defaultLocale} />
+        <DevBadge />
       </>
     )
   }
@@ -461,6 +468,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
           </div>
         </div>
       </footer>
+      <DevBadge />
     </>
   )
 }

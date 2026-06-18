@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next'
+import { isProduction } from '@/lib/deployment'
 
 // Reverse of TENANT_TO_PROJECT in client.ts — projectSlug → URL tenant slug
 const PROJECT_TO_TENANT: Record<string, string> = {
@@ -24,6 +25,9 @@ interface EventSitemapData {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Never expose a sitemap on non-production environments.
+  if (!isProduction()) return []
+
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
 
   if (!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID) return []

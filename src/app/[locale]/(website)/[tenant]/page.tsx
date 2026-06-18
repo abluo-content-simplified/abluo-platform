@@ -13,6 +13,7 @@ import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, PageSection, FAQSect
 import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
 import { computeSectionSurface } from '@/lib/sanity/surfaces'
+import { isProduction, isDev } from '@/lib/deployment'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,8 +51,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: config?.siteName ?? tenantId,
     description: config?.tagline,
     alternates: {
-      canonical,
-      languages: Object.keys(languages).length > 0 ? languages : undefined,
+      // Canonical: production only
+      canonical: isProduction() ? canonical : undefined,
+      // hreflang: production + preview (for pre-launch multilingual validation)
+      languages: !isDev() && Object.keys(languages).length > 0 ? languages : undefined,
     },
     openGraph: {
       title: config?.siteName ?? tenantId,
