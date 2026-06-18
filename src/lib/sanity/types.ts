@@ -576,6 +576,7 @@ export interface LivePage {
   heroSubtitle?: string
   betaNotice?: string
   introText?: string
+  heroImage?: ResolvedImage
   /** Cloudflare Stream video ID (e.g. "abc123xyz"). Frontend generates embed URL. */
   cloudflareVideoId?: string
   /** Expanded event references — locale-resolved by GROQ dereference */
@@ -592,6 +593,8 @@ export interface EventsPage {
   heroSubtitle?: string
   introText?: string
   heroImage?: ResolvedImage
+  /** Cloudflare Stream video ID (e.g. "abc123xyz"). Frontend generates embed URL. */
+  cloudflareVideoId?: string
   seoTitle?: string
   seoDescription?: string
 }

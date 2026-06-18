@@ -403,6 +403,7 @@ export const livePageQuery = /* groq */ `
     "heroSubtitle": ${loc('heroSubtitle')},
     "betaNotice": ${loc('betaNotice')},
     "introText": ${loc('introText')},
+    ${locImage('heroImage')},
     cloudflareVideoId,
     featuredEvents[]-> {
       _id,
@@ -429,6 +430,7 @@ export const eventsPageQuery = /* groq */ `
     "heroSubtitle": ${loc('heroSubtitle')},
     "introText": ${loc('introText')},
     ${locImage('heroImage')},
+    cloudflareVideoId,
     "seoTitle": ${loc('seoTitle')},
     "seoDescription": ${loc('seoDescription')}
   }

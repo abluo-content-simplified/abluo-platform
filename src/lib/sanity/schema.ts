@@ -1693,6 +1693,7 @@ const livePageType = defineType({
     defineField({ name: 'heroSubtitle', title: 'Hero Subtitle', type: 'localizedString', group: 'content', description: 'e.g. "Live video streaming, in the palm of your hands"' }),
     defineField({ name: 'betaNotice', title: 'Beta Notice', type: 'localizedString', group: 'content', description: 'e.g. "Currently in beta — tested live, in real environments."' }),
     defineField({ name: 'introText', title: 'Intro Text', type: 'localizedText', group: 'content' }),
+    defineField({ name: 'heroImage', title: 'Hero Image', type: 'localizedImage', group: 'video' }),
     defineField({
       name: 'cloudflareVideoId',
       title: 'Cloudflare Video ID',
@@ -1734,6 +1735,13 @@ const eventsPageType = defineType({
     defineField({ name: 'heroSubtitle', title: 'Hero Subtitle', type: 'localizedString', group: 'content' }),
     defineField({ name: 'introText', title: 'Intro Text', type: 'localizedText', group: 'content' }),
     defineField({ name: 'heroImage', title: 'Hero Image', type: 'localizedImage', group: 'media' }),
+    defineField({
+      name: 'cloudflareVideoId',
+      title: 'Cloudflare Video ID',
+      type: 'string',
+      group: 'media',
+      description: 'The video ID from Cloudflare Stream (e.g. "abc123xyz"). The embed URL is generated automatically.',
+    }),
     defineField({ name: 'seoTitle', title: 'SEO Title', type: 'localizedString', group: 'meta' }),
     defineField({ name: 'seoDescription', title: 'SEO Description', type: 'localizedText', group: 'meta' }),
   ],

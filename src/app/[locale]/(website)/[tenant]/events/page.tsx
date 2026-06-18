@@ -13,6 +13,13 @@ import type { Event, EventsPage, LocaleConfig, SupportedLocale, DesignSystem } f
 import { imageUrl } from '@/lib/sanity/image'
 import { SlideUp, FadeIn } from '@/components/animation'
 
+// Cloudflare Stream account subdomain — shared with LivePageContent
+const CLOUDFLARE_ACCOUNT = 'customer-aayaptcudal3r1fx'
+
+function cloudflareEmbedUrl(videoId: string): string {
+  return `https://${CLOUDFLARE_ACCOUNT}.cloudflarestream.com/${videoId}/iframe`
+}
+
 export const dynamic = 'force-dynamic'
 
 interface PageProps {
@@ -64,10 +71,7 @@ function StatusBadge({ status }: { status: Event['status'] }) {
   return (
     <span
       className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-widest"
-      style={{
-        borderColor: 'var(--color-border)',
-        color: 'var(--color-text-muted)',
-      }}
+      style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}
     >
       Past
     </span>
@@ -98,6 +102,7 @@ export default async function EventsListPage({ params }: PageProps) {
     })(),
   ])
 
+  // ─── Motion tokens ──────────────────────────────────────────────────────────
   const m = designSystem?.motion
   const durationSlower = m?.durationSlower !== undefined ? m.durationSlower / 1000 : 0.6
   const durationSlow   = m?.durationSlow   !== undefined ? m.durationSlow   / 1000 : 0.35
@@ -105,6 +110,9 @@ export default async function EventsListPage({ params }: PageProps) {
 
   const headline    = eventsPage?.heroTitle    ?? 'Events'
   const subheadline = eventsPage?.heroSubtitle ?? null
+  const introText   = eventsPage?.introText    ?? null
+  const embedUrl    = eventsPage?.cloudflareVideoId ? cloudflareEmbedUrl(eventsPage.cloudflareVideoId) : null
+  const heroSrc     = eventsPage?.heroImage ? imageUrl(eventsPage.heroImage, 1600) : null
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
@@ -113,7 +121,7 @@ export default async function EventsListPage({ params }: PageProps) {
         {/* ── Page header ──────────────────────────────────────────── */}
         <SlideUp duration={durationSlower} ease={easeReveal}>
           <h1
-            className="text-[clamp(40px,7vw,64px)] font-bold leading-[1.05]"
+            className="text-[clamp(48px,8vw,68px)] font-bold leading-[1.05]"
             style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
           >
             {headline}
@@ -121,27 +129,70 @@ export default async function EventsListPage({ params }: PageProps) {
         </SlideUp>
 
         {subheadline && (
-          <SlideUp delay={0.1} duration={durationSlow} ease={easeReveal}>
-            <p
-              className="mt-3 text-lg font-medium"
-              style={{ color: 'var(--color-text-muted)' }}
+          <SlideUp delay={0.1} duration={durationSlower} ease={easeReveal}>
+            <h2
+              className="mt-3 text-[clamp(22px,4vw,32px)] font-semibold leading-tight"
+              style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-primary)' }}
             >
               {subheadline}
+            </h2>
+          </SlideUp>
+        )}
+
+        {introText && (
+          <SlideUp delay={0.18} duration={durationSlow} ease={easeReveal}>
+            <p className="mt-4 text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
+              {introText}
             </p>
           </SlideUp>
         )}
 
+        {/* ── Hero image ───────────────────────────────────────────── */}
+        {heroSrc && (
+          <FadeIn delay={0.2} duration={durationSlow} ease={easeReveal} className="mt-10 overflow-hidden rounded-2xl">
+            <img
+              src={heroSrc}
+              alt={eventsPage?.heroImage?.alt ?? headline}
+              className="w-full object-cover"
+              loading="eager"
+            />
+          </FadeIn>
+        )}
+
+        {/* ── Video embed ───────────────────────────────────────────── */}
+        {embedUrl && (
+          <FadeIn delay={0.25} duration={durationSlow} ease={easeReveal} className="mt-10 overflow-hidden rounded-2xl">
+            <div style={{ position: 'relative', paddingTop: '56.25%' }}>
+              <iframe
+                src={embedUrl}
+                loading="lazy"
+                style={{
+                  border: 'none',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  height: '100%',
+                  width: '100%',
+                  borderRadius: 'var(--radius-card, 16px)',
+                }}
+                allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </FadeIn>
+        )}
+
         {/* ── Events grid ──────────────────────────────────────────── */}
         {(!events || events.length === 0) ? (
-          <SlideUp delay={0.15} duration={durationSlow} ease={easeReveal} className="mt-16">
+          <SlideUp delay={0.2} duration={durationSlow} ease={easeReveal} className="mt-16">
             <p className="text-base" style={{ color: 'var(--color-text-muted)' }}>
               No events yet. Check back soon.
             </p>
           </SlideUp>
         ) : (
-          <div className="mt-12 grid gap-6 grid-cols-1 md:grid-cols-2">
+          <div className="mt-14 grid gap-6 grid-cols-1 md:grid-cols-2">
             {events.map((event, idx) => {
-              const heroSrc = imageUrl(event.heroImage, 600)
+              const eventHeroSrc = imageUrl(event.heroImage, 600)
               const startDate = event.startDate
                 ? new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(event.startDate))
                 : null
@@ -157,10 +208,10 @@ export default async function EventsListPage({ params }: PageProps) {
                       borderColor: 'var(--color-border)',
                     }}
                   >
-                    {heroSrc && (
+                    {eventHeroSrc && (
                       <div className="overflow-hidden" style={{ height: '220px' }}>
                         <img
-                          src={heroSrc}
+                          src={eventHeroSrc}
                           alt={event.heroImage?.alt ?? event.title ?? ''}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                           loading="lazy"
