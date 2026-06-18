@@ -232,12 +232,14 @@ export default defineConfig({
                   S.listItem()
                     .id(`${clientDoc.tenantSlug}-media`)
                     .title('Media Library')
+                    .schemaType('mediaAsset')
                     .child(
                       S.documentList()
                         .title('Media Library')
                         .apiVersion('2026-05-21')
                         .filter(`_type == "mediaAsset" && tenant._ref == $clientId`)
                         .params({ clientId })
+                        .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
                     ),
                 ])
             )
@@ -402,6 +404,6 @@ export default defineConfig({
     // Note: Sanity always re-sorts the menu alphabetically in the UI layer —
     // custom ordering via newDocumentOptions is not possible. Filter only.
     newDocumentOptions: (prev) =>
-      prev.filter((opt) => !['homePage', 'mediaAsset', 'homePageProjectOwned', 'livePageProjectOwned', 'eventsPageProjectOwned'].includes(opt.templateId)),
+      prev.filter((opt) => !['homePage', 'homePageProjectOwned', 'livePageProjectOwned', 'eventsPageProjectOwned'].includes(opt.templateId)),
   },
 })
