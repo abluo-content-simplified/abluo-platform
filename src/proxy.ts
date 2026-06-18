@@ -161,10 +161,11 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(loginUrl)
     }
 
-    // Authenticated — apply subdomain rewrite
+    // Authenticated — apply subdomain rewrite (skip API and static paths)
     const url = request.nextUrl.clone()
     const alreadyLocaled = /^\/(en|it|de)(\/|$)/.test(pathname)
-    if (!alreadyLocaled) {
+    const isApiOrStatic = pathname.startsWith('/api/') || pathname.startsWith('/_next/') || pathname.startsWith('/studio')
+    if (!alreadyLocaled && !isApiOrStatic) {
       const subPath = pathname === '/' ? '/dashboard' : pathname
       url.pathname = `/en${subPath}`
       return NextResponse.rewrite(url)
