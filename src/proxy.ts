@@ -29,6 +29,7 @@ function resolveTenant(hostname: string): string | null {
     'livener.net': 'livener',
     'studiomartegani.com': 'studiomartegani',
     'abluo.app': 'abluo-the-tiny-cms',
+    'dev.abluo.app': 'abluo-the-tiny-cms',
   }
 
   if (domainMap[host]) return domainMap[host]
