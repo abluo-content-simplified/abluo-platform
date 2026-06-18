@@ -1,0 +1,89 @@
+V0.8.2 — Middleware Restore + Locale Switch Fix + SEO Fixes
+============================================================
+Date: 2026-06-17
+Branch: main
+Tag: V0.8.2
+TypeScript: clean (npx tsc --noEmit)
+Tests: 46/46 passed (npx vitest run)
+
+─── Critical Fix: Middleware was not running ─────────────────────────────────
+
+Root cause discovered: src/middleware.ts was deleted in commit 383aca8
+("fix: remove middleware.ts — proxy.ts is the Next.js 16 middleware convention").
+This was incorrect. Next.js has always required the middleware entry point to be
+named middleware.ts (or middleware.js). The filename proxy.ts is not recognised
+by the Next.js build system. Without middleware.ts:
+
+  - Domain-to-tenant routing not running
+  - Auth guard not running
+  - Locale negotiation not running
+  - All custom domain routing broken
+
+Fix:
+  - Created: src/middleware.ts
+      Re-exports proxy as middleware and config from ./proxy.
+      Exactly three lines — the file had existed before and been
+      incorrectly deleted.
+
+─── Locale Switch Bug (custom domains) ──────────────────────────────────────
+
+Problem: On a custom domain (e.g. abluo.app), the browser URL is / (the tenant
+rewrite is transparent). When the LanguageSwitcher called router.replace(pathname,
+{ locale: 'it' }), next-intl generated /it as the navigation target. Middleware
+saw /it on abluo.app, misread it as a sub-path, and rewrote to
+/en/abluo-the-tiny-cms/it → 404.
+
+Fix:
+  - Modified: src/proxy.ts — tenant block
+      Added locale-prefix detection: if path starts with a valid locale code
+      (e.g. /it or /it/some-page), treat it as a locale-switch navigation
+      and rewrite to /{detectedLocale}/{tenantId}{subPath}.
+      This handles both homepage switches (/it → /it/abluo-the-tiny-cms)
+      and inner page switches (/it/some-page → /it/abluo-the-tiny-cms/some-page).
+
+─── Language Persistence ─────────────────────────────────────────────────────
+
+  - Modified: src/proxy.ts — tenant block (root path only)
+      On root visit (/), middleware now reads:
+        1. NEXT_LOCALE cookie (written automatically by next-intl on locale switch)
+        2. Accept-Language request header (browser language preference)
+        3. Fallback: tenant default locale
+      On subsequent visits after a language switch, the user sees their
+      preferred language immediately without manual re-selection.
+
+─── Dynamic hreflang ─────────────────────────────────────────────────────────
+
+  - Modified: src/app/[locale]/(website)/[tenant]/page.tsx — generateMetadata
+      Replaced hardcoded { it: ..., en: ... } hreflang with a dynamic loop
+      over config?.supportedLocales. Now matches the correct pattern already
+      used in [slug]/page.tsx and events/[slug]/page.tsx. Single-language
+      sites no longer incorrectly advertise a second hreflang.
+
+─── Sitemap ──────────────────────────────────────────────────────────────────
+
+  - Modified: src/app/sitemap.ts
+      Added missing 'abluo' → 'abluo-the-tiny-cms' to PROJECT_TO_TENANT.
+      The Abluo homepage and all its pages now appear in the sitemap.
+
+─── Canonical URL Note ───────────────────────────────────────────────────────
+
+Canonical URLs currently use process.env.NEXT_PUBLIC_BASE_URL which is only
+set in .env.local (http://localhost:3000). In production this resolves to an
+empty string, producing relative canonical URLs (e.g. /en/abluo-the-tiny-cms).
+Relative canonicals are technically valid but not recommended. A proper fix
+using headers() to detect the production host will be scoped to V0.8.3 or
+a separate PR after explicit approval of the before/after approach.
+
+─── Notes ────────────────────────────────────────────────────────────────────
+
+- The proxy.ts tenant block now handles these cases correctly:
+    /                        → /{NEXT_LOCALE cookie or Accept-Language or default}/{tenantId}
+    /it                      → /it/{tenantId}
+    /it/some-page            → /it/{tenantId}/some-page
+    /en/{tenantId}           → pass through (alreadyRewritten)
+    /en/{tenantId}/some-page → pass through (alreadyRewritten)
+- This fix applies equally to all custom domains: abluo.app, livener.net,
+  studiomartegani.com, and any future tenant domains.
+- Language persistence via NEXT_LOCALE cookie is automatically maintained
+  by next-intl client-side on every locale switch. Middleware reads it on
+  the server to honour the preference on the very first request.

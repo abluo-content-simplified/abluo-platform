@@ -1,0 +1,63 @@
+V0.8.1 — Homepage Routing + Uniqueness Validation
+==================================================
+Date: 2026-06-17
+Branch: main
+Tag: V0.8.1
+TypeScript: clean (npx tsc --noEmit)
+Tests: 46/46 passed (npx vitest run)
+
+─── Changes ──────────────────────────────────────────────────────────────────
+
+Homepage Routing — abluo.app
+  - Modified: src/proxy.ts
+      Added 'abluo.app' → 'abluo-the-tiny-cms' to domainMap.
+      Added 'abluo-the-tiny-cms' → 'en' to resolveDefaultLocale().
+      abluo.app now resolves to the abluo-the-tiny-cms tenant and renders
+      the home page document (projectSlug: "abluo") via the standard
+      section renderer pipeline. All three production domains are now
+      fully routed: livener.net, studiomartegani.com, abluo.app.
+
+Home Page Uniqueness Validation
+  - Modified: src/lib/sanity/schema.ts
+      Added async custom validation rule to the pageType field on the
+      page document type. When pageType is set to "home", the rule queries
+      Sanity to check whether another page with pageType == "home" already
+      exists for the same projectSlug (excluding the current document's
+      draft and published versions). If a duplicate is found, Studio
+      blocks the change with: "A home page already exists for this project.
+      Only one home page is allowed per project."
+
+─── Infrastructure ───────────────────────────────────────────────────────────
+
+dev Branch Setup (Vercel)
+  - Created git branch: dev (from main at same SHA)
+  - Triggered first build with an empty commit (Vercel skips identical SHAs)
+  - Vercel deployment READY at: abluo-platform-git-dev-abluo.vercel.app
+  - x-robots-tag: noindex automatically applied by Vercel on non-production
+    deployments.
+  - Pending (manual): add dev.abluo.app custom domain in Vercel dashboard
+    (requires login as hello@abluo.app), add CNAME in DNS.
+
+─── Routing Architecture Audit ──────────────────────────────────────────────
+
+Full end-to-end routing verified for all projects:
+
+  livener.net         → livener → livener-main → homePage ✅
+  studiomartegani.com → studiomartegani → studiomartegani-main → homePage ✅
+  abluo.app           → abluo-the-tiny-cms → abluo → homePage ✅ (fixed this release)
+
+Root cause of abluo.app 404 (pre-fix):
+  abluo.app was not in proxy.ts domainMap → fell to intlMiddleware →
+  redirected / to /en → no [locale]/page.tsx handler → 404.
+  The Sanity home page document for projectSlug "abluo" already existed;
+  only the two proxy.ts entries were missing.
+
+─── Notes ────────────────────────────────────────────────────────────────────
+
+- The home page uniqueness validation fires in Studio on field change and
+  on publish. Direct API writes bypass it — acceptable for now.
+- pageType == "home" pages do not require a slug for routing (the tenant
+  root always serves the home page). A slug field is present and optional
+  for reference/SEO purposes.
+- Preview branch setup deferred — validate dev.abluo.app first per the
+  agreed incremental deployment strategy.
