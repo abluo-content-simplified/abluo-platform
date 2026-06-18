@@ -109,7 +109,7 @@ export function NavClient({
         <div className="mx-6 my-4 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
 
         {/* Shared Language Switcher */}
-        <LanguageSwitcher currentLocale={currentLocale} supportedLocales={supportedLocales} appearance="drawer" />
+        <LanguageSwitcher currentLocale={currentLocale} supportedLocales={supportedLocales} tenantId={tenantId} appearance="drawer" />
 
         <div className="mx-6 my-4 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
 
@@ -195,7 +195,7 @@ export function NavClient({
           {/* Shared Language Switcher */}
           {(showLangSwitcherInNav || variant === 'landing') && (
             <>
-              <LanguageSwitcher currentLocale={currentLocale} supportedLocales={supportedLocales} appearance="header" />
+              <LanguageSwitcher currentLocale={currentLocale} supportedLocales={supportedLocales} tenantId={tenantId} appearance="header" />
               <div className="h-5 w-px mx-1" style={{ backgroundColor: 'var(--color-border)' }} />
             </>
           )}

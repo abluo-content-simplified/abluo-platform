@@ -26,11 +26,16 @@ export function LanguageSwitcher({ currentLocale, supportedLocales, tenantId, ap
   const switchLocale = (locale: SupportedLocale) => {
     const targetSlug = slugMap[locale]
     if (targetSlug && tenantId) {
-      // Navigate directly to the locale-specific slug URL.
-      // router.push handles the locale prefix via next-intl.
+      // Slug page: navigate directly to the locale-specific slug URL.
       router.push(`/${tenantId}/${targetSlug}`, { locale })
+    } else if (tenantId) {
+      // Homepage or non-slug route on a tenant custom domain.
+      // Use the explicit tenant path so the URL is always in the stable
+      // /{locale}/{tenantId} form — never a bare /{locale} that the proxy
+      // would rewrite transparently and cause usePathname() timing issues.
+      router.replace(`/${tenantId}`, { locale })
     } else {
-      // Fallback: same path, different locale prefix (homepage or non-page routes).
+      // Platform route (no tenant): same path, different locale prefix.
       router.replace(pathname, { locale })
     }
     setLangOpen(false)

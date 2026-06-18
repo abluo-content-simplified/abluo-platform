@@ -137,6 +137,7 @@ export async function Footer({
             <FooterLanguageSwitcher
               currentLocale={locale}
               supportedLocales={config.supportedLocales ?? [locale]}
+              tenantId={tenantId}
             />
           </div>
 

@@ -404,6 +404,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
             <LanguageSwitcher
               currentLocale={locale as SupportedLocale}
               supportedLocales={config?.supportedLocales ?? []}
+              tenantId={tenantId}
               appearance="header"
             />
           )}
