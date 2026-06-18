@@ -12,8 +12,8 @@
 -- continue to work exactly as before.
 --
 -- What changes:
---   - New function: public.get_my_owned_tenant_ids() [SECURITY DEFINER]
 --   - New table:    public.tenant_members
+--   - New function: public.get_my_owned_tenant_ids() [SECURITY DEFINER]
 --   - Existing profiles are backfilled into tenant_members
 --     with role = 'owner'
 --   - RLS is enabled on tenant_members with five policies
@@ -38,39 +38,14 @@
 --   "tenant_members". The fix is a SECURITY DEFINER helper function.
 --   Because the function runs under the owner's privileges (bypassrls),
 --   the inner query skips RLS entirely, breaking the recursion.
+--   The table must be created before the helper function because
+--   PostgreSQL validates LANGUAGE SQL function bodies at creation time.
 -- ============================================================
 
 
--- ── Helper function ───────────────────────────────────────────────────────────
---
--- Returns the set of tenant_ids where the current user is an owner.
--- Declared SECURITY DEFINER so the inner query bypasses RLS, preventing
--- the infinite recursion that would occur if a tenant_members policy
--- directly queried tenant_members.
---
--- set search_path = '' forces fully-qualified names inside the function,
--- preventing search_path injection attacks.
-
-create or replace function public.get_my_owned_tenant_ids()
-returns setof uuid
-language sql
-security definer
-stable
-set search_path = ''
-as $$
-  select tenant_id
-  from   public.tenant_members
-  where  user_id = auth.uid()
-  and    role    = 'owner'
-$$;
-
-comment on function public.get_my_owned_tenant_ids() is
-  'Returns tenant_ids where auth.uid() has role = ''owner''. '
-  'SECURITY DEFINER so it bypasses RLS on tenant_members, preventing '
-  'infinite recursion in self-referential policies.';
-
-
 -- ── Table ─────────────────────────────────────────────────────────────────────
+-- Created first so the SECURITY DEFINER helper function below can
+-- reference it (PostgreSQL validates LANGUAGE SQL bodies at creation time).
 
 create table public.tenant_members (
   id          uuid        primary key default gen_random_uuid(),
@@ -103,6 +78,40 @@ create index tenant_members_tenant_id_idx on public.tenant_members (tenant_id);
 -- ── Row Level Security ────────────────────────────────────────────────────────
 
 alter table public.tenant_members enable row level security;
+
+
+-- ── Helper function ───────────────────────────────────────────────────────────
+--
+-- Must be created after the table so PostgreSQL can validate the body.
+--
+-- Returns the set of tenant_ids where the current user is an owner.
+-- Declared SECURITY DEFINER so the inner query bypasses RLS, preventing
+-- the infinite recursion that would occur if a tenant_members policy
+-- directly queried tenant_members.
+--
+-- set search_path = '' forces fully-qualified names inside the function,
+-- preventing search_path injection attacks.
+
+create or replace function public.get_my_owned_tenant_ids()
+returns setof uuid
+language sql
+security definer
+stable
+set search_path = ''
+as $$
+  select tenant_id
+  from   public.tenant_members
+  where  user_id = auth.uid()
+  and    role    = 'owner'
+$$;
+
+comment on function public.get_my_owned_tenant_ids() is
+  'Returns tenant_ids where auth.uid() has role = ''owner''. '
+  'SECURITY DEFINER so it bypasses RLS on tenant_members, preventing '
+  'infinite recursion in self-referential policies.';
+
+
+-- ── Policies ──────────────────────────────────────────────────────────────────
 
 -- Any user can see their own membership rows.
 -- Simple equality check — no subquery, no recursion risk.
