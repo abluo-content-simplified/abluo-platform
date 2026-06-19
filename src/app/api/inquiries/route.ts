@@ -33,7 +33,6 @@ export async function POST(request: Request) {
 
     if (spamResult.blocked) {
       // Silent 200 — do not reveal which check fired or that we blocked
-      console.info('[inquiries] blocked submission:', spamResult.reason, { ip })
       return NextResponse.json({ id: null, ok: true })
     }
 
@@ -70,7 +69,7 @@ export async function POST(request: Request) {
     let projectId: string | null = null
 
     if (body.tenantSlug) {
-      const { data: tenant } = await supabase
+      const { data: tenant, error: tenantError } = await supabase
         .from('tenants')
         .select('id')
         .eq('slug', body.tenantSlug)
@@ -134,7 +133,7 @@ export async function POST(request: Request) {
       .single()
 
     if (error) {
-      console.error('[inquiries] insert error:', error)
+      console.error('[inquiries POST] Supabase insert error:', error.code, error.message)
       return NextResponse.json(
         { error: 'Failed to save inquiry' },
         { status: 500 }

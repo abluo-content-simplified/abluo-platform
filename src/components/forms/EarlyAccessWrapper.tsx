@@ -22,13 +22,15 @@ import { EarlyAccessModal } from './EarlyAccessModal'
 interface EarlyAccessWrapperProps {
   children: ReactNode
   tenantSlug: string
+  /** Sanity/Supabase project slug — resolved to project_id by the API */
+  projectSlug?: string
   /** Current page locale — forwarded to context so form components can localise */
   locale: string
 }
 
-export function EarlyAccessWrapper({ children, tenantSlug, locale }: EarlyAccessWrapperProps) {
+export function EarlyAccessWrapper({ children, tenantSlug, projectSlug, locale }: EarlyAccessWrapperProps) {
   return (
-    <EarlyAccessProvider tenantSlug={tenantSlug} locale={locale}>
+    <EarlyAccessProvider tenantSlug={tenantSlug} projectSlug={projectSlug} locale={locale}>
       {children}
       <EarlyAccessModal />
     </EarlyAccessProvider>

@@ -60,17 +60,14 @@ export async function PATCH(
       : (existingData.gdprConsentAt as string | undefined) ?? null
 
     // ── Update ───────────────────────────────────────────────────────────────
+    const updatePayload = { data: updatedData, gdpr_consent: gdprConsent, gdpr_consent_at: gdprConsentAt }
     const { error: updateError } = await supabase
       .from('inquiries')
-      .update({
-        data:            updatedData,
-        gdpr_consent:    gdprConsent,
-        gdpr_consent_at: gdprConsentAt,
-      })
+      .update(updatePayload)
       .eq('id', id)
 
     if (updateError) {
-      console.error('[inquiries/patch] update error:', updateError)
+      console.error('[inquiries PATCH] Supabase update error:', updateError.code, updateError.message)
       return NextResponse.json(
         { error: 'Failed to update inquiry' },
         { status: 500 }
@@ -88,7 +85,7 @@ export async function PATCH(
 
     return NextResponse.json({ ok: true })
   } catch (err) {
-    console.error('[inquiries/patch] unexpected error:', err)
+    console.error('[inquiries PATCH] unexpected error:', err)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

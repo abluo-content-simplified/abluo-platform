@@ -400,7 +400,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
     const livenerBgStyles = buildBackgroundGraphicStyles(livenerBgGraphic, livenerBgImageUrl, false)
 
     return (
-      <EarlyAccessWrapper tenantSlug="livener" locale={locale}>
+      <EarlyAccessWrapper tenantSlug="livener" projectSlug="livener" locale={locale}>
         <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
         {livenerBgStyles && livenerBgGraphic?.scope === 'entire' && (
           <div style={livenerBgStyles} aria-hidden="true" />

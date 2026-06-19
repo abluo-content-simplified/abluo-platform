@@ -39,6 +39,8 @@ interface EarlyAccessContextValue {
   isOpen: boolean
   options: EarlyAccessOpenOptions | null
   tenantSlug: string
+  /** Sanity/Supabase project slug — used to resolve project_id server-side */
+  projectSlug?: string
   /** Current locale — used by components to look up localised messages */
   locale: string
   open: (opts: EarlyAccessOpenOptions) => void
@@ -60,6 +62,8 @@ export function useEarlyAccess(): EarlyAccessContextValue {
 interface EarlyAccessProviderProps {
   children: ReactNode
   tenantSlug: string
+  /** Sanity/Supabase project slug — resolved to project_id by the API */
+  projectSlug?: string
   /** Current page locale — passed through to components for message lookup */
   locale: string
 }
@@ -67,6 +71,7 @@ interface EarlyAccessProviderProps {
 export function EarlyAccessProvider({
   children,
   tenantSlug,
+  projectSlug,
   locale,
 }: EarlyAccessProviderProps) {
   const [isOpen, setIsOpen]   = useState(false)
@@ -84,7 +89,7 @@ export function EarlyAccessProvider({
   }, [])
 
   return (
-    <EarlyAccessContext.Provider value={{ isOpen, options, tenantSlug, locale, open, close }}>
+    <EarlyAccessContext.Provider value={{ isOpen, options, tenantSlug, projectSlug, locale, open, close }}>
       {children}
     </EarlyAccessContext.Provider>
   )
