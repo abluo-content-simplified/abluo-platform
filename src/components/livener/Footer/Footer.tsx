@@ -4,6 +4,7 @@ import { websiteSiteConfigQuery } from '@/lib/sanity/queries'
 import type { WebsiteSiteConfig, SupportedLocale } from '@/lib/sanity/types'
 import { resolveNavLinks } from '@/lib/sanity/nav-links'
 import { FooterLanguageSwitcher } from './FooterClient'
+import { EarlyAccessFooterCta } from '@/components/forms/EarlyAccessFooterCta'
 
 interface FooterProps {
   tenantId: string
@@ -59,30 +60,12 @@ export async function Footer({
                 {config.footerCtaSubtext}
               </p>
             )}
-            <form className="flex max-w-[520px] flex-col gap-3 sm:flex-row">
-              <input
-                type="email"
-                required
-                placeholder={config.footerCtaInputPlaceholder ?? 'Your email'}
-                className="flex-1 rounded-xl border px-4 py-3 text-[15px] outline-none transition-colors"
-                style={{
-                  borderColor: 'var(--color-border)',
-                  backgroundColor: 'color-mix(in oklch, var(--color-text-primary) 10%, transparent)',
-                  color: 'var(--color-text-primary)',
-                }}
+            <div className="max-w-[520px]">
+              <EarlyAccessFooterCta
+                emailPlaceholder={config.footerCtaInputPlaceholder ?? undefined}
+                buttonLabel={config.footerCtaButtonLabel ?? undefined}
               />
-              <button
-                type="submit"
-                className="shrink-0 rounded-xl border-2 px-6 py-3 text-sm font-semibold transition-all"
-                style={{
-                  borderColor: 'var(--color-primary)',
-                  backgroundColor: 'var(--color-primary)',
-                  color: '#fff',
-                }}
-              >
-                {config.footerCtaButtonLabel ?? 'Submit'}
-              </button>
-            </form>
+            </div>
           </div>
         </div>
       )}

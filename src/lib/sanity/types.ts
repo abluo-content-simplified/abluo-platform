@@ -262,6 +262,50 @@ export interface FormInput {
   darkTheme?: FormInputTheme
 }
 
+/**
+ * FormTypography — typographic tokens for form chrome elements.
+ * Colors are CSS strings (OKLCH, hex, or var() references).
+ * Sizes are in px; buildCssVars() converts to rem.
+ * Not theme-split — fallbacks reference theme-aware DS color vars.
+ */
+export interface FormTypography {
+  /** Label text color */
+  labelColor?: string
+  /** Label font size (px) */
+  labelSize?: number
+  /** Label font weight (e.g. 500) */
+  labelWeight?: number
+  /** Help text color */
+  helpTextColor?: string
+  /** Help text font size (px) */
+  helpTextSize?: number
+  /** Inline error message color */
+  errorTextColor?: string
+  /** Inline error message font size (px) */
+  errorTextSize?: number
+  /** Color of the required * marker */
+  requiredColor?: string
+}
+
+/**
+ * FormGeometry — spacing and shape tokens shared by all input types.
+ * All values are px numbers; buildCssVars() converts to appropriate units.
+ */
+export interface FormGeometry {
+  /** Standardised height for single-line inputs (text, email, select, date) */
+  inputHeight?: number
+  /** Horizontal padding inside inputs */
+  paddingX?: number
+  /** Vertical padding inside inputs */
+  paddingY?: number
+  /** Vertical gap between label and input element */
+  labelGap?: number
+  /** Vertical gap between fields in a form */
+  fieldGap?: number
+  /** Border radius for inputs — overrides global --radius-md */
+  borderRadius?: number
+}
+
 export interface CardVariant {
   key: string
   label?: string
@@ -330,6 +374,10 @@ export interface DesignSystem {
     select?: FormInput
     checkbox?: FormInput
     radio?: FormInput
+    /** Typography tokens for labels, help text, and error messages */
+    typography?: FormTypography
+    /** Spacing and shape tokens shared across all input types */
+    geometry?: FormGeometry
   }
   navigation?: {
     menuRadius?: number
@@ -442,6 +490,67 @@ export interface Event {
   seoDescription?: string
 }
 
+// ─── Blog ─────────────────────────────────────────────────────────────────────
+
+export interface PostAuthor {
+  _id?: string
+  name: string
+  role?: string
+  bio?: string
+  avatar?: ResolvedImage
+}
+
+export interface BlogCategory {
+  _id: string
+  title?: string
+  /** Locale-resolved slug — coalesced from $locale → $defaultLocale */
+  slug?: string
+  color?: string
+}
+
+export interface PostVideo {
+  provider: 'youtube' | 'cloudflare'
+  youtubeUrl?: string
+  cloudflareVideoId?: string
+}
+
+/** Resolved blog post — all string fields are locale-resolved by GROQ */
+export interface Post {
+  _id: string
+  title?: string
+  /** List queries: resolved { current: string }. Detail query: full per-locale slug map. */
+  slug: { current: string }
+  /** Detail query only — full per-locale slug map for hreflang */
+  slugMap?: LocalizedSlugMap
+  /** Per-locale arrays of old slugs — used for 301 redirects */
+  redirectFrom?: Partial<Record<SupportedLocale, string[]>>
+  excerpt?: string
+  body?: PortableTextContent
+  publishedAt?: string
+  expiresAt?: string
+  featured?: boolean
+  coverImage?: ResolvedImage
+  featuredVideo?: PostVideo
+  /** Computed in GROQ from body word count. Minimum 1. */
+  readingTimeMinutes?: number
+  author?: PostAuthor
+  categories?: BlogCategory[]
+  relatedEvent?: {
+    _id: string
+    title?: string
+    slug: { current: string }
+    status?: string
+    startDate?: string
+    endDate?: string
+    location?: string
+    shortDescription?: string
+    heroImage?: ResolvedImage
+  }
+  seoTitle?: string
+  seoDescription?: string
+  seoImage?: ResolvedImage
+}
+
 // ─── Section types (studiomartegani — all strings locale-resolved) ─────────────
 
 export interface HeroSection {
@@ -536,6 +645,33 @@ export interface ContactSection {
   mapEmbedUrl?: string
 }
 
+export interface BlogListingSection {
+  _type: 'blogListingSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  title?: string
+  /** Locale-resolved by GROQ */
+  subtitle?: string
+  filterMode?: 'latest' | 'featured' | 'byCategory' | 'byEvent' | 'manual'
+  sortOrder?: 'newest' | 'oldest' | 'manual'
+  layout?: 'grid' | 'featured' | 'magazine'
+  maxItems?: number
+  /** Locale-resolved by GROQ */
+  viewAllLabel?: string
+  viewAllHref?: string
+  /** Resolved from category->._id in GROQ */
+  categoryId?: string
+  /** Resolved from event->._id in GROQ */
+  eventId?: string
+  /** Resolved from posts[]->._id in GROQ — used for manual selection */
+  postIds?: string[]
+  /** Hydrated server-side in page.tsx — not stored in Sanity */
+  posts?: Post[]
+}
+
 export type PageSection =
   | HeroSection
   | ContentSection
@@ -544,6 +680,7 @@ export type PageSection =
   | TextSection
   | FAQSection
   | ContactSection
+  | BlogListingSection
 
 export interface WebsiteHomePage {
   tenantSlug: string

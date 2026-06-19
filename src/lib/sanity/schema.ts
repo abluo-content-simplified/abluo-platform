@@ -2,7 +2,7 @@ import { defineType, defineField, defineArrayMember } from 'sanity'
 import { TenantLinker } from '@/lib/sanity/fields/TenantLinker'
 import { ProjectLinker } from '@/lib/sanity/fields/ProjectLinker'
 import { ProjectSlugPicker } from '@/lib/sanity/fields/ProjectSlugPicker'
-import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, LocalizedSlugInput } from '@/lib/sanity/fields/LocalizedInput'
+import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, LocalizedSlugInput, LocalizedRedirectFromInput } from '@/lib/sanity/fields/LocalizedInput'
 import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
 
 // ─── Shared primitive types ───────────────────────────────────────────────────
@@ -74,6 +74,7 @@ const redirectFromType = defineType({
   name: 'redirectFrom',
   title: 'Redirect From (old URLs)',
   type: 'object',
+  components: { input: LocalizedRedirectFromInput },
   fields: LOCALE_CODES.map((code) =>
     defineField({
       name: code,
@@ -619,6 +620,154 @@ const faqSectionType = defineType({
   },
 })
 
+// ─── Blog Listing Section ─────────────────────────────────────────────────────
+
+const blogListingSectionType = defineType({
+  name: 'blogListingSection',
+  title: 'Blog Listing',
+  type: 'object',
+  groups: [
+    { name: 'content', title: 'Content', default: true },
+    { name: 'filter', title: 'Filter & Sort' },
+    { name: 'display', title: 'Display' },
+  ],
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
+    // ── Content ──────────────────────────────────────────────────────────────
+    defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString', group: 'content' }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString', group: 'content' }),
+    defineField({ name: 'subtitle', title: 'Subtitle / Description', type: 'localizedString', group: 'content' }),
+    // ── Filter & Sort ─────────────────────────────────────────────────────────
+    defineField({
+      name: 'filterMode',
+      title: 'Filter',
+      type: 'string',
+      group: 'filter',
+      options: {
+        list: [
+          { title: 'Latest', value: 'latest' },
+          { title: 'Featured only', value: 'featured' },
+          { title: 'By Category', value: 'byCategory' },
+          { title: 'By Event', value: 'byEvent' },
+          { title: 'Manual selection', value: 'manual' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'latest',
+    }),
+    defineField({
+      name: 'sortOrder',
+      title: 'Sort Order',
+      type: 'string',
+      group: 'filter',
+      options: {
+        list: [
+          { title: 'Newest first', value: 'newest' },
+          { title: 'Oldest first', value: 'oldest' },
+          { title: 'Manual order', value: 'manual' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'newest',
+      description: '"Manual order" preserves the hand-picked array order below — only meaningful with "Manual selection" filter.',
+    }),
+    defineField({
+      name: 'category',
+      title: 'Category',
+      type: 'reference',
+      to: [{ type: 'blogCategory' }],
+      group: 'filter',
+      description: 'Choose a category to show only posts in that category.',
+      hidden: ({ parent }) => parent?.filterMode !== 'byCategory',
+    }),
+    defineField({
+      name: 'event',
+      title: 'Event',
+      type: 'reference',
+      to: [{ type: 'event' }],
+      group: 'filter',
+      description: 'Show posts linked to this event.',
+      hidden: ({ parent }) => parent?.filterMode !== 'byEvent',
+    }),
+    defineField({
+      name: 'posts',
+      title: 'Posts',
+      type: 'array',
+      of: [defineArrayMember({ type: 'reference', to: [{ type: 'post' }] })],
+      group: 'filter',
+      description: 'Hand-pick posts. Drag to reorder for manual sort order.',
+      hidden: ({ parent }) => parent?.filterMode !== 'manual',
+    }),
+    // ── Display ───────────────────────────────────────────────────────────────
+    defineField({
+      name: 'layout',
+      title: 'Layout',
+      type: 'string',
+      group: 'display',
+      options: {
+        list: [
+          { title: 'Grid', value: 'grid' },
+          { title: 'Featured', value: 'featured' },
+          { title: 'Magazine', value: 'magazine' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'grid',
+      description: 'Grid: responsive card grid. Featured: one large card, always. Magazine: big card left + small cards right.',
+    }),
+    defineField({
+      name: 'maxItems',
+      title: 'Max Articles',
+      type: 'number',
+      group: 'display',
+      initialValue: 3,
+      description: 'Maximum number of articles to display (1–12). Default: 3.',
+      validation: (Rule) => Rule.min(1).max(12).integer(),
+    }),
+    defineField({
+      name: 'viewAllLabel',
+      title: '"View All" Button Label',
+      type: 'localizedString',
+      group: 'display',
+      description: 'Leave empty to hide the button. Shown when there are more articles than Max Articles.',
+    }),
+    defineField({
+      name: 'viewAllHref',
+      title: '"View All" Button URL',
+      type: 'string',
+      group: 'display',
+      description: 'Where the "View All" button links to — e.g. /blog',
+    }),
+  ],
+  preview: {
+    select: {
+      titleEn: 'title.en',
+      filterMode: 'filterMode',
+      layout: 'layout',
+    },
+    prepare: ({ titleEn, filterMode, layout }: { titleEn?: string; filterMode?: string; layout?: string }) => ({
+      title: titleEn ?? 'Blog Listing',
+      subtitle: `${layout ?? 'grid'} · ${filterMode ?? 'latest'}`,
+    }),
+  },
+})
+
 // ─── Platform document types (admin-only) ─────────────────────────────────────
 
 const clientType = defineType({
@@ -1023,6 +1172,40 @@ const formInputType = defineType({
   ],
 })
 
+// ─── Form Typography & Geometry ──────────────────────────────────────────────
+
+const formTypographyType = defineType({
+  name: 'formTypography',
+  title: 'Form Typography',
+  type: 'object',
+  description: 'Typographic tokens for labels, help text, and error messages',
+  fields: [
+    defineField({ name: 'labelColor',    title: 'Label Color',          type: 'string', description: 'CSS color string for field labels' }),
+    defineField({ name: 'labelSize',     title: 'Label Size (px)',      type: 'number', description: 'Label font size in px — e.g. 12', initialValue: 12 }),
+    defineField({ name: 'labelWeight',   title: 'Label Weight',         type: 'number', description: 'Label font weight — e.g. 500', initialValue: 500 }),
+    defineField({ name: 'helpTextColor', title: 'Help Text Color',      type: 'string', description: 'CSS color string for help/hint text below fields' }),
+    defineField({ name: 'helpTextSize',  title: 'Help Text Size (px)',  type: 'number', description: 'Help text font size in px — e.g. 12', initialValue: 12 }),
+    defineField({ name: 'errorTextColor',title: 'Error Text Color',     type: 'string', description: 'CSS color string for inline error messages' }),
+    defineField({ name: 'errorTextSize', title: 'Error Text Size (px)', type: 'number', description: 'Error text font size in px — e.g. 12', initialValue: 12 }),
+    defineField({ name: 'requiredColor', title: 'Required * Color',     type: 'string', description: 'Color of the required field asterisk' }),
+  ],
+})
+
+const formGeometryType = defineType({
+  name: 'formGeometry',
+  title: 'Form Geometry',
+  type: 'object',
+  description: 'Spacing and shape tokens shared by all input types',
+  fields: [
+    defineField({ name: 'inputHeight',  title: 'Input Height (px)',    type: 'number', description: 'Standardised height for single-line inputs — e.g. 44', initialValue: 44 }),
+    defineField({ name: 'paddingX',     title: 'Padding X (px)',       type: 'number', description: 'Horizontal padding inside inputs — e.g. 14', initialValue: 14 }),
+    defineField({ name: 'paddingY',     title: 'Padding Y (px)',       type: 'number', description: 'Vertical padding inside inputs — e.g. 10', initialValue: 10 }),
+    defineField({ name: 'labelGap',     title: 'Label → Input Gap (px)',type: 'number', description: 'Vertical space between label and input — e.g. 6', initialValue: 6 }),
+    defineField({ name: 'fieldGap',     title: 'Field Gap (px)',       type: 'number', description: 'Vertical space between form fields — e.g. 20', initialValue: 20 }),
+    defineField({ name: 'borderRadius', title: 'Border Radius (px)',   type: 'number', description: 'Input border radius — overrides global --radius-md', initialValue: 8 }),
+  ],
+})
+
 // ─── Card Variant System ───────────────────────────────────────────────────────
 
 const cardVariantType = defineType({
@@ -1406,11 +1589,13 @@ const designSystemType = defineType({
       group: 'components',
       description: 'Form element styling — consumed by contact, newsletter, and booking forms',
       fields: [
-        defineField({ name: 'input', title: 'Input', type: 'formInput' }),
-        defineField({ name: 'textarea', title: 'Textarea', type: 'formInput' }),
-        defineField({ name: 'select', title: 'Select', type: 'formInput' }),
-        defineField({ name: 'checkbox', title: 'Checkbox', type: 'formInput' }),
-        defineField({ name: 'radio', title: 'Radio', type: 'formInput' }),
+        defineField({ name: 'input',      title: 'Input',      type: 'formInput' }),
+        defineField({ name: 'textarea',   title: 'Textarea',   type: 'formInput' }),
+        defineField({ name: 'select',     title: 'Select',     type: 'formInput' }),
+        defineField({ name: 'checkbox',   title: 'Checkbox',   type: 'formInput' }),
+        defineField({ name: 'radio',      title: 'Radio',      type: 'formInput' }),
+        defineField({ name: 'typography', title: 'Typography', type: 'formTypography', description: 'Labels, help text, error messages, required marker' }),
+        defineField({ name: 'geometry',   title: 'Geometry',   type: 'formGeometry',   description: 'Input height, padding, gaps, border radius' }),
       ],
     }),
 
@@ -1763,12 +1948,19 @@ const eventType = defineType({
     { name: 'media', title: 'Media' },
     { name: 'streaming', title: 'Streaming' },
     { name: 'meta', title: 'SEO / Meta' },
+    { name: 'redirects', title: 'Redirects' },
   ],
   fields: [
     projectSlugField,
     defineField({ name: 'title', title: 'Title', type: 'localizedString', group: 'content', validation: (Rule) => Rule.required() }),
     defineField({ name: 'slug', title: 'Slug', type: 'localizedSlug', group: 'content', validation: (Rule) => Rule.required() }),
-    defineField({ name: 'redirectFrom', title: 'Old Slugs (Redirects)', type: 'redirectFrom', group: 'content' }),
+    defineField({
+      name: 'redirectFrom',
+      title: 'Old Slugs (Redirects)',
+      type: 'redirectFrom',
+      group: 'redirects',
+      description: 'Fill these only when you rename a slug. Old URLs here will 301-redirect to the current slug.',
+    }),
     defineField({
       name: 'status',
       title: 'Status',
@@ -1805,6 +1997,10 @@ const pageType = defineType({
   name: 'page',
   title: 'Page',
   type: 'document',
+  groups: [
+    { name: 'content', title: 'Content', default: true },
+    { name: 'redirects', title: 'Redirects' },
+  ],
   fields: [
     projectSlugField,
     defineField({
@@ -1850,9 +2046,10 @@ const pageType = defineType({
     }),
     defineField({
       name: 'redirectFrom',
-      title: 'Redirect From',
+      title: 'Old Slugs (Redirects)',
       type: 'redirectFrom',
-      description: 'Old slugs that redirect here with a 301. Fill these when renaming a page.',
+      group: 'redirects',
+      description: 'Fill these only when you rename a slug. Old URLs here will 301-redirect to the current slug.',
     }),
     defineField({
       name: 'backgroundPattern',
@@ -1880,6 +2077,7 @@ const pageType = defineType({
         defineArrayMember({ type: 'textSection' }),
         defineArrayMember({ type: 'faqSection' }),
         defineArrayMember({ type: 'contactSection' }),
+        defineArrayMember({ type: 'blogListingSection' }),
       ],
     }),
   ],
@@ -1934,6 +2132,7 @@ const homePageType = defineType({
         defineArrayMember({ type: 'textSection' }),
         defineArrayMember({ type: 'faqSection' }),
         defineArrayMember({ type: 'contactSection' }),
+        defineArrayMember({ type: 'blogListingSection' }),
       ],
     }),
   ],
@@ -1943,24 +2142,279 @@ const homePageType = defineType({
   },
 })
 
+// ─── Blog — Author ────────────────────────────────────────────────────────────
+
+const postAuthorType = defineType({
+  name: 'postAuthor',
+  title: 'Author',
+  type: 'document',
+  fields: [
+    projectSlugField,
+    defineField({
+      name: 'name',
+      title: 'Name',
+      type: 'string',
+      validation: (Rule) => Rule.required(),
+      description: 'e.g. "Thomas", "Livener Team", "Studio Martegani"',
+    }),
+    defineField({
+      name: 'role',
+      title: 'Role / Title',
+      type: 'localizedString',
+      description: 'e.g. "Editor", "Founder", "Content Team"',
+    }),
+    defineField({ name: 'bio', title: 'Bio', type: 'localizedText' }),
+    defineField({
+      name: 'avatar',
+      title: 'Avatar',
+      type: 'image',
+      options: { hotspot: true },
+    }),
+    defineField({
+      name: 'supabaseUserId',
+      title: 'Supabase User ID',
+      type: 'string',
+      readOnly: true,
+      hidden: true,
+      description: 'Linked Supabase profile — auto-populated by the platform when user management is connected',
+    }),
+  ],
+  preview: {
+    select: { title: 'name', subtitle: 'role.en', media: 'avatar' },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    prepare: ({ title, subtitle, media }: { title?: string; subtitle?: string; media?: any }) => ({
+      title: title ?? '—',
+      subtitle: subtitle ?? 'Author',
+      media,
+    }),
+  },
+})
+
+// ─── Blog — Category ──────────────────────────────────────────────────────────
+
+const blogCategoryType = defineType({
+  name: 'blogCategory',
+  title: 'Category',
+  type: 'document',
+  fields: [
+    projectSlugField,
+    defineField({
+      name: 'title',
+      title: 'Title',
+      type: 'localizedString',
+      validation: (Rule) => Rule.required(),
+      description: 'e.g. "Events", "News", "Insights", "Product Updates"',
+    }),
+    defineField({
+      name: 'slug',
+      title: 'Slug',
+      type: 'localizedSlug',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({ name: 'description', title: 'Description', type: 'localizedText' }),
+    defineField({
+      name: 'color',
+      title: 'Badge Color',
+      type: 'string',
+      description: 'Label color for category badges — e.g. "blue", "green", "#e94e1b"',
+    }),
+  ],
+  preview: {
+    select: { title: 'title.en', slugEn: 'slug.en.current', slugIt: 'slug.it.current' },
+    prepare: ({ title, slugEn, slugIt }: { title?: string; slugEn?: string; slugIt?: string }) => ({
+      title: title ?? '—',
+      subtitle: slugEn ?? slugIt ? `/${slugEn ?? slugIt}` : '—',
+    }),
+  },
+})
+
 // ─── Blog Post ────────────────────────────────────────────────────────────────
 
 const postType = defineType({
   name: 'post',
   title: 'Blog Post',
   type: 'document',
+  groups: [
+    { name: 'content', title: 'Content', default: true },
+    { name: 'media', title: 'Media' },
+    { name: 'relations', title: 'Relations' },
+    { name: 'seo', title: 'SEO' },
+    { name: 'settings', title: 'Settings' },
+    { name: 'redirects', title: 'Redirects' },
+  ],
   fields: [
     projectSlugField,
-    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
-    defineField({ name: 'slug', title: 'Slug', type: 'localizedSlug' }),
-    defineField({ name: 'redirectFrom', title: 'Redirect From', type: 'redirectFrom' }),
-    defineField({ name: 'excerpt', title: 'Excerpt', type: 'localizedText' }),
-    defineField({ name: 'body', title: 'Body', type: 'localizedPortableText' }),
-    defineField({ name: 'publishedAt', title: 'Published At', type: 'datetime' }),
+
+    // ── Content ───────────────────────────────────────────────────────────────
+    defineField({
+      name: 'title',
+      title: 'Title',
+      type: 'localizedString',
+      group: 'content',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'slug',
+      title: 'Slug',
+      type: 'localizedSlug',
+      group: 'content',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'redirectFrom',
+      title: 'Old Slugs (Redirects)',
+      type: 'redirectFrom',
+      group: 'redirects',
+      description: 'Fill these only when you rename a slug. Old URLs here will 301-redirect to the current slug.',
+    }),
+    defineField({
+      name: 'excerpt',
+      title: 'Excerpt',
+      type: 'localizedText',
+      group: 'content',
+      description: 'Short summary shown in article listings and as the default SEO description',
+    }),
+    defineField({ name: 'body', title: 'Body', type: 'localizedPortableText', group: 'content' }),
+    defineField({
+      name: 'publishedAt',
+      title: 'Go Live Date',
+      type: 'datetime',
+      group: 'content',
+      description: 'The post becomes visible on the website at this date and time. Leave empty to keep it as a draft.',
+    }),
+
+    // ── Media ─────────────────────────────────────────────────────────────────
+    defineField({
+      name: 'coverImage',
+      title: 'Cover Image',
+      type: 'localizedImage',
+      group: 'media',
+      description: 'Used in article listings, the article hero, and social sharing. Falls back to the global OG image if not set.',
+    }),
+    defineField({
+      name: 'featuredVideo',
+      title: 'Featured Video',
+      type: 'object',
+      group: 'media',
+      description: 'Optional video for video-focused articles — important for Livener and future video customers',
+      fields: [
+        defineField({
+          name: 'provider',
+          title: 'Video Provider',
+          type: 'string',
+          options: {
+            list: [
+              { title: 'YouTube', value: 'youtube' },
+              { title: 'Cloudflare Stream', value: 'cloudflare' },
+            ],
+            layout: 'radio',
+          },
+          initialValue: 'youtube',
+        }),
+        defineField({
+          name: 'youtubeUrl',
+          title: 'YouTube URL',
+          type: 'url',
+          hidden: ({ parent }: { parent?: { provider?: string } }) => parent?.provider !== 'youtube',
+        }),
+        defineField({
+          name: 'cloudflareVideoId',
+          title: 'Cloudflare Video ID',
+          type: 'string',
+          description: 'The video ID from Cloudflare Stream — e.g. "abc123xyz"',
+          hidden: ({ parent }: { parent?: { provider?: string } }) => parent?.provider !== 'cloudflare',
+        }),
+      ],
+    }),
+
+    // ── Relations ─────────────────────────────────────────────────────────────
+    defineField({
+      name: 'author',
+      title: 'Author',
+      type: 'reference',
+      to: [{ type: 'postAuthor' }],
+      group: 'relations',
+    }),
+    defineField({
+      name: 'categories',
+      title: 'Categories',
+      type: 'array',
+      group: 'relations',
+      of: [defineArrayMember({ type: 'reference', to: [{ type: 'blogCategory' }] })],
+    }),
+    defineField({
+      name: 'relatedEvent',
+      title: 'Related Event',
+      type: 'reference',
+      to: [{ type: 'event' }],
+      group: 'relations',
+      description: 'Link this post to an event — e.g. event preview, live recap, or post-event summary',
+    }),
+
+    // ── SEO ───────────────────────────────────────────────────────────────────
+    defineField({
+      name: 'seoTitle',
+      title: 'SEO Title',
+      type: 'localizedString',
+      group: 'seo',
+      description: 'Overrides the article title in search results. Leave empty to use the article title.',
+    }),
+    defineField({
+      name: 'seoDescription',
+      title: 'SEO Description',
+      type: 'localizedText',
+      group: 'seo',
+      description: 'Overrides the excerpt in search results. Leave empty to use the excerpt.',
+    }),
+    defineField({
+      name: 'seoImage',
+      title: 'SEO / Open Graph Image',
+      type: 'image',
+      group: 'seo',
+      options: { hotspot: false },
+      description: 'Social sharing image — 1200 × 630px recommended. Falls back to Cover Image, then to the global OG image.',
+    }),
+
+    // ── Settings ──────────────────────────────────────────────────────────────
+    defineField({
+      name: 'expiresAt',
+      title: 'Expiry Date',
+      type: 'datetime',
+      group: 'settings',
+      description: 'Optional. The post is automatically hidden from the website after this date. Leave empty to keep it live indefinitely.',
+    }),
+    defineField({
+      name: 'featured',
+      title: 'Featured Article',
+      type: 'boolean',
+      group: 'settings',
+      initialValue: false,
+      description: 'Pin this article at the top of the homepage, blog overview, and landing pages',
+    }),
   ],
   preview: {
-    select: { title: 'title.it', slug: 'projectSlug' },
-    prepare: ({ title, slug }) => ({ title: title ?? 'Untitled', subtitle: slug }),
+    select: {
+      titleEn: 'title.en',
+      titleIt: 'title.it',
+      slug: 'projectSlug',
+      publishedAt: 'publishedAt',
+      media: 'coverImage',
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    prepare: ({ titleEn, titleIt, slug, publishedAt, media }: {
+      titleEn?: string
+      titleIt?: string
+      slug?: string
+      publishedAt?: string
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      media?: any
+    }) => {
+      const title = titleEn ?? titleIt ?? 'Untitled'
+      const date = publishedAt
+        ? new Date(publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+        : 'Draft'
+      return { title, subtitle: `${slug ?? '?'} · ${date}`, media }
+    },
   },
 })
 
@@ -2037,6 +2491,25 @@ export const initialValueTemplates = [
     value: (params: any) => ({
       projectSlug: params?.projectSlug,
       publishedAt: new Date().toISOString(),
+      featured: false,
+    }),
+  },
+  {
+    id: 'postAuthorProjectOwned',
+    title: 'Author',
+    schemaType: 'postAuthor',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+    }),
+  },
+  {
+    id: 'blogCategoryProjectOwned',
+    title: 'Category',
+    schemaType: 'blogCategory',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
     }),
   },
   {
@@ -2093,6 +2566,7 @@ export const schemaTypes = [
   contactSectionType,
   faqItemType,
   faqSectionType,
+  blogListingSectionType,
   clientType,
   projectType,
   colorThemeType,
@@ -2105,6 +2579,8 @@ export const schemaTypes = [
   motionType,
   formInputThemeType,
   formInputType,
+  formTypographyType,
+  formGeometryType,
   glassStyleType,
   sectionSurfacesThemeType,
   sectionSurfacesType,
@@ -2114,6 +2590,8 @@ export const schemaTypes = [
   siteConfigType,
   pageType,
   homePageType,
+  postAuthorType,
+  blogCategoryType,
   postType,
   eventType,
   livePageType,

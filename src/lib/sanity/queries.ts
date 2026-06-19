@@ -123,15 +123,38 @@ export const websiteSiteConfigQuery = /* groq */ `
 `
 
 export const postsQuery = /* groq */ `
-  *[_type == "post" && projectSlug == $projectSlug && defined(publishedAt)]
-  | order(publishedAt desc) [$offset...$offset + $limit] {
+  *[
+    _type == "post"
+    && projectSlug == $projectSlug
+    && defined(publishedAt)
+    && publishedAt <= now()
+    && (!defined(expiresAt) || expiresAt > now())
+  ]
+  | order(featured desc, publishedAt desc) [$offset...$offset + $limit] {
     _id,
     "title": ${loc('title')},
-    slug,
+    "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
     "excerpt": ${loc('excerpt')},
     publishedAt,
-    coverImage,
-    seoMetadata,
+    expiresAt,
+    featured,
+    ${locImage('coverImage')},
+    "readingTimeMinutes": math::max([1, round(
+      length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / 1200
+    )]),
+    "author": author-> {
+      name,
+      "role": ${loc('role')},
+      avatar { asset, hotspot, crop }
+    },
+    "categories": categories[]-> {
+      _id,
+      "title": ${loc('title')},
+      "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
+      color
+    },
+    "seoTitle": ${loc('seoTitle')},
+    "seoDescription": ${loc('seoDescription')},
   }
 `
 
@@ -143,10 +166,130 @@ export const postBySlugQuery = /* groq */ `
     "redirectFrom": redirectFrom,
     "excerpt": ${loc('excerpt')},
     "body": ${loc('body')},
-    coverImage,
     publishedAt,
-    seoMetadata,
+    featured,
+    ${locImage('coverImage')},
+    featuredVideo {
+      provider,
+      youtubeUrl,
+      cloudflareVideoId
+    },
+    "readingTimeMinutes": math::max([1, round(
+      length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / 1200
+    )]),
+    "author": author-> {
+      _id,
+      name,
+      "role": ${loc('role')},
+      "bio": ${loc('bio')},
+      avatar { asset, hotspot, crop }
+    },
+    "categories": categories[]-> {
+      _id,
+      "title": ${loc('title')},
+      "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
+      color
+    },
+    "relatedEvent": relatedEvent-> {
+      _id,
+      "title": ${loc('title')},
+      "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
+      status,
+      startDate,
+      endDate,
+      "location": ${loc('location')},
+      "shortDescription": ${loc('shortDescription')},
+      ${locImage('heroImage')}
+    },
+    "seoTitle": coalesce(${loc('seoTitle')}, ${loc('title')}),
+    "seoDescription": coalesce(${loc('seoDescription')}, ${loc('excerpt')}),
+    seoImage { asset, hotspot, crop },
   }
+`
+
+export const postByOldSlugQuery = /* groq */ `
+  *[_type == "post" && projectSlug == $projectSlug && $slug in redirectFrom[$locale]][0] {
+    "currentSlug": slug[$locale].current
+  }
+`
+
+// ─── Blog Listing Section ─────────────────────────────────────────────────────
+//
+// Shared post card fields used by the blog listing section component.
+// Separate query exports for each sort order — GROQ does not support
+// dynamic sort direction via parameters, so we select the right query
+// in the page server component based on section.sortOrder.
+
+const blogListingCardFields = /* groq */ `
+  _id,
+  "title": coalesce(title[$locale], title[$defaultLocale], title.en, title),
+  "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
+  "excerpt": coalesce(excerpt[$locale], excerpt[$defaultLocale], excerpt.en, excerpt),
+  publishedAt,
+  featured,
+  coverImage {
+    asset,
+    hotspot,
+    crop,
+    "alt": coalesce(alt[$locale], alt[$defaultLocale], alt.en, alt),
+    "caption": coalesce(caption[$locale], caption[$defaultLocale], caption.en, caption)
+  },
+  "readingTimeMinutes": math::max([1, round(
+    length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / 1200
+  )]),
+  "author": author-> {
+    name,
+    "role": coalesce(role[$locale], role[$defaultLocale], role.en, role),
+    avatar { asset, hotspot, crop }
+  },
+  "categories": categories[]-> {
+    _id,
+    "title": coalesce(title[$locale], title[$defaultLocale], title.en, title),
+    "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
+    color
+  }
+`
+
+// Core filter — applied by all three blog listing queries.
+// filterMode is injected as a GROQ parameter. Conditional logic:
+//   latest       → no extra filter
+//   featured     → featured == true
+//   byCategory   → $categoryId in categories[]._ref
+//   byEvent      → relatedEvent._ref == $eventId
+const blogListingFilter = /* groq */ `
+  _type == "post"
+  && projectSlug == $projectSlug
+  && defined(publishedAt)
+  && publishedAt <= now()
+  && (!defined(expiresAt) || expiresAt > now())
+  && (
+    $filterMode == "latest"
+    || ($filterMode == "featured" && featured == true)
+    || ($filterMode == "byCategory" && $categoryId in categories[]._ref)
+    || ($filterMode == "byEvent" && relatedEvent._ref == $eventId)
+  )
+`
+
+// Fetch up to $maxItems posts — newest first.
+// Also fetches one extra ($maxItems + 1) so the page component can detect
+// whether a "View All" button is warranted without a separate count query.
+export const blogListingPostsNewestQuery = /* groq */ `
+  *[${blogListingFilter}]
+  | order(featured desc, publishedAt desc)
+  [0...$maxItems] { ${blogListingCardFields} }
+`
+
+// Oldest first variant (identical filter, ascending sort).
+export const blogListingPostsOldestQuery = /* groq */ `
+  *[${blogListingFilter}]
+  | order(publishedAt asc)
+  [0...$maxItems] { ${blogListingCardFields} }
+`
+
+// Manual selection — fetch by explicit post IDs.
+// The page component re-orders the result to match the original $postIds array order.
+export const blogListingManualPostsQuery = /* groq */ `
+  *[_type == "post" && _id in $postIds] { ${blogListingCardFields} }
 `
 
 export const currentLiveEventQuery = /* groq */ `
@@ -334,7 +477,17 @@ export const pageHomeQuery = /* groq */ `
         "question": ${loc('question')},
         "answer": ${loc('answer')},
       },
-      mapEmbedUrl
+      mapEmbedUrl,
+      // Blog listing section fields — null on all other section types
+      filterMode,
+      sortOrder,
+      layout,
+      maxItems,
+      "viewAllLabel": ${loc('viewAllLabel')},
+      viewAllHref,
+      "categoryId": category->._id,
+      "eventId": event->._id,
+      "postIds": posts[]->._id
     }
   }
 `
@@ -379,7 +532,17 @@ export const pageBySlugQuery = /* groq */ `
         "question": ${loc('question')},
         "answer": ${loc('answer')},
       },
-      mapEmbedUrl
+      mapEmbedUrl,
+      // Blog listing section fields — null on all other section types
+      filterMode,
+      sortOrder,
+      layout,
+      maxItems,
+      "viewAllLabel": ${loc('viewAllLabel')},
+      viewAllHref,
+      "categoryId": category->._id,
+      "eventId": event->._id,
+      "postIds": posts[]->._id
     }
   }
 `
@@ -528,7 +691,9 @@ export const DS_FIELDS_SELECTION = /* groq */ `{
     textarea { lightTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity }, darkTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity } },
     select   { lightTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity }, darkTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity } },
     checkbox { lightTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity }, darkTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity } },
-    radio    { lightTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity }, darkTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity } }
+    radio    { lightTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity }, darkTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity } },
+    typography { labelColor, labelSize, labelWeight, helpTextColor, helpTextSize, errorTextColor, errorTextSize, requiredColor },
+    geometry   { inputHeight, paddingX, paddingY, labelGap, fieldGap, borderRadius }
   },
 
   navigation { menuRadius, menuGap, dropdownRadius, dropdownStyle },

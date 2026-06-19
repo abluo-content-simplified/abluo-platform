@@ -11,9 +11,11 @@ import { Footer } from '@/components/livener/Footer'
 import { NavClient } from '@/components/livener/Nav/NavClient'
 import { LanguageSwitcher } from '@/components/SiteControls/LanguageSwitcher'
 import { ThemeSwitcher } from '@/components/SiteControls/ThemeSwitcher'
+import { getThemeSwitcherMessages } from '@/lib/i18n/theme-switcher-messages'
 import { HeaderAppearanceWrapper } from '@/components/HeaderAppearanceWrapper'
 import { DevBadge } from '@/components/DevBadge'
 import { isProduction } from '@/lib/deployment'
+import { EarlyAccessWrapper } from '@/components/forms/EarlyAccessWrapper'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -57,6 +59,10 @@ function buildCssVars(ds: DesignSystem | null): string {
   const typo = ds?.typography
   const radius = ds?.radius
   const motion = ds?.motion
+  const formTypo = ds?.forms?.typography
+  const formGeo = ds?.forms?.geometry
+  const fDark = ds?.forms   // form input dark theme (used via .input?.darkTheme etc.)
+  const fLight = ds?.forms  // form input light theme
 
   const D = {
     bg: dark?.background ?? 'oklch(0.2309 0.0292 263.75deg)',
@@ -116,6 +122,84 @@ function buildCssVars(ds: DesignSystem | null): string {
     t?.small?.size ? `      --font-size-small: ${pxToRem(t.small.size)};` : '',
   ].filter(Boolean).join('\n')
 
+  // ─── Form input helpers ────────────────────────────────────────────────────
+  // Emit per-element-type CSS vars for a given theme (dark = :root, light = html.light)
+  function formInputVars(
+    prefix: string,
+    theme: import('@/lib/sanity/types').FormInputTheme | undefined,
+    defaults: {
+      bg: string; border: string; text: string; placeholder: string
+      focusBorder: string; errorBorder: string; successBorder: string
+    }
+  ): string {
+    return [
+      `      --form-${prefix}-bg: ${theme?.background ?? defaults.bg};`,
+      `      --form-${prefix}-border: ${theme?.border ?? defaults.border};`,
+      `      --form-${prefix}-text: ${theme?.text ?? defaults.text};`,
+      `      --form-${prefix}-placeholder: ${theme?.placeholder ?? defaults.placeholder};`,
+      `      --form-${prefix}-focus-border: ${theme?.focusBorder ?? defaults.focusBorder};`,
+      `      --form-${prefix}-error-border: ${theme?.errorBorder ?? defaults.errorBorder};`,
+      `      --form-${prefix}-success-border: ${theme?.successBorder ?? defaults.successBorder};`,
+      `      --form-${prefix}-disabled-opacity: ${theme?.disabledOpacity ?? 0.4};`,
+    ].join('\n')
+  }
+
+  const darkFormDefaults = {
+    bg:            D.surface,
+    border:        D.border,
+    text:          D.textPrimary,
+    placeholder:   D.textMuted,
+    focusBorder:   D.primary,
+    errorBorder:   'oklch(0.6 0.22 25)',
+    successBorder: 'oklch(0.62 0.18 145)',
+  }
+
+  const lightFormDefaults = {
+    bg:            L.surface,
+    border:        L.border,
+    text:          L.textPrimary,
+    placeholder:   L.textMuted,
+    focusBorder:   L.primary,
+    errorBorder:   'oklch(0.55 0.22 25)',
+    successBorder: 'oklch(0.55 0.18 145)',
+  }
+
+  const darkFormVars = [
+    formInputVars('input',    fDark?.input?.darkTheme,    darkFormDefaults),
+    formInputVars('textarea', fDark?.textarea?.darkTheme, darkFormDefaults),
+    formInputVars('select',   fDark?.select?.darkTheme,   darkFormDefaults),
+    formInputVars('check',    fDark?.checkbox?.darkTheme, darkFormDefaults),
+    formInputVars('radio',    fDark?.radio?.darkTheme,    darkFormDefaults),
+  ].join('\n')
+
+  const lightFormVars = [
+    formInputVars('input',    fLight?.input?.lightTheme,    lightFormDefaults),
+    formInputVars('textarea', fLight?.textarea?.lightTheme, lightFormDefaults),
+    formInputVars('select',   fLight?.select?.lightTheme,   lightFormDefaults),
+    formInputVars('check',    fLight?.checkbox?.lightTheme, lightFormDefaults),
+    formInputVars('radio',    fLight?.radio?.lightTheme,    lightFormDefaults),
+  ].join('\n')
+
+  // ─── Form typography + geometry — theme-independent ────────────────────────
+  const formMetaVars = [
+    // Typography (colors are CSS strings — no unit conversion)
+    `      --form-label-color: ${formTypo?.labelColor ?? D.textSecondary};`,
+    `      --form-label-size: ${pxToRem(formTypo?.labelSize ?? 12)};`,
+    `      --form-label-weight: ${formTypo?.labelWeight ?? 500};`,
+    `      --form-help-color: ${formTypo?.helpTextColor ?? D.textMuted};`,
+    `      --form-help-size: ${pxToRem(formTypo?.helpTextSize ?? 12)};`,
+    `      --form-error-color: ${formTypo?.errorTextColor ?? 'oklch(0.6 0.22 25)'};`,
+    `      --form-error-size: ${pxToRem(formTypo?.errorTextSize ?? 12)};`,
+    `      --form-required-color: ${formTypo?.requiredColor ?? 'oklch(0.6 0.22 25)'};`,
+    // Geometry
+    `      --form-input-height: ${formGeo?.inputHeight ?? 44}px;`,
+    `      --form-padding-x: ${pxToRem(formGeo?.paddingX ?? 14)};`,
+    `      --form-padding-y: ${pxToRem(formGeo?.paddingY ?? 10)};`,
+    `      --form-label-gap: ${formGeo?.labelGap ?? 6}px;`,
+    `      --form-field-gap: ${formGeo?.fieldGap ?? 20}px;`,
+    `      --form-border-radius: ${formGeo?.borderRadius ?? D.radiusMd}px;`,
+  ].join('\n')
+
   return `
     :root {
       --font-heading: '${D.headingFont}', sans-serif;
@@ -129,6 +213,9 @@ function buildCssVars(ds: DesignSystem | null): string {
       --color-text-secondary: ${D.textSecondary};
       --color-text-muted: ${D.textMuted};
       --color-border: ${D.border};
+      --color-success: ${dark?.success ?? 'oklch(0.62 0.18 145)'};
+      --color-warning: ${dark?.warning ?? 'oklch(0.75 0.15 80)'};
+      --color-danger: ${dark?.danger ?? 'oklch(0.6 0.22 25)'};
       --radius-sm: ${D.radiusSm}px;
       --radius-md: ${D.radiusMd}px;
       --radius-lg: ${D.radiusLg}px;
@@ -145,6 +232,9 @@ function buildCssVars(ds: DesignSystem | null): string {
       --background: ${D.bg};
       --foreground: ${D.textPrimary};
 ${typoVars}
+      /* ── Form tokens (dark theme / :root) ── */
+${darkFormVars}
+${formMetaVars}
     }
     html.light {
       --color-background: ${L.bg};
@@ -156,8 +246,15 @@ ${typoVars}
       --color-text-secondary: ${L.textSecondary};
       --color-text-muted: ${L.textMuted};
       --color-border: ${L.border};
+      --color-success: ${light?.success ?? 'oklch(0.55 0.18 145)'};
+      --color-warning: ${light?.warning ?? 'oklch(0.65 0.15 80)'};
+      --color-danger: ${light?.danger ?? 'oklch(0.55 0.22 25)'};
       --background: ${L.bg};
       --foreground: ${L.textPrimary};
+      /* ── Form tokens (light theme) ── */
+${lightFormVars}
+      --form-label-color: ${formTypo?.labelColor ?? L.textSecondary};
+      --form-help-color: ${formTypo?.helpTextColor ?? L.textMuted};
     }
   `.trim()
 }
@@ -303,7 +400,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
     const livenerBgStyles = buildBackgroundGraphicStyles(livenerBgGraphic, livenerBgImageUrl, false)
 
     return (
-      <>
+      <EarlyAccessWrapper tenantSlug="livener" locale={locale}>
         <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
         {livenerBgStyles && livenerBgGraphic?.scope === 'entire' && (
           <div style={livenerBgStyles} aria-hidden="true" />
@@ -316,6 +413,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
             navLinks={resolveNavLinks(livenerConfig?.navLinks, locale as SupportedLocale, 'livener')}
             ctaLabel={livenerConfig?.ctaLabel ?? 'Get Early Access'}
             ctaHref={livenerConfig?.ctaHref ?? '#'}
+            ctaMode="modal"
             currentLocale={locale as SupportedLocale}
             supportedLocales={livenerConfig?.supportedLocales ?? [locale as SupportedLocale]}
             showLangSwitcherInNav={livenerConfig?.showLangSwitcherInNav ?? false}
@@ -343,7 +441,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         <main>{children}</main>
         <Footer tenantId={tenantId} locale={locale as SupportedLocale} defaultLocale={defaultLocale} />
         <DevBadge />
-      </>
+      </EarlyAccessWrapper>
     )
   }
 
@@ -409,7 +507,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
             />
           )}
           {(config?.themeSwitcherPlacement === 'header' || config?.themeSwitcherPlacement === 'both') && (
-            <ThemeSwitcher themeMode={config?.themeMode} appearance="header" />
+            <ThemeSwitcher themeMode={config?.themeMode} appearance="header" messages={getThemeSwitcherMessages(locale)} />
           )}
         </div>
       </HeaderAppearanceWrapper>

@@ -1,7 +1,20 @@
 'use client'
 
+/**
+ * ThemeSwitcher — Site Controls
+ *
+ * LOCALIZATION: all user-facing labels come from the `messages` prop.
+ * Use `getThemeSwitcherMessages(locale)` from `@/lib/i18n/theme-switcher-messages`
+ * to build a localized messages object before rendering this component.
+ * Defaults to English via `defaultThemeSwitcherMessages` if the prop is omitted.
+ */
+
 import { useState, useEffect } from 'react'
 import { Sun, Moon, MonitorCog, ChevronDown } from 'lucide-react'
+import {
+  defaultThemeSwitcherMessages,
+  type ThemeSwitcherMessages,
+} from '@/lib/i18n/theme-switcher-messages'
 
 type Theme = 'light' | 'dark' | 'system'
 type ThemeMode = 'lightOnly' | 'darkOnly' | 'toggle' | 'system'
@@ -9,6 +22,11 @@ type ThemeMode = 'lightOnly' | 'darkOnly' | 'toggle' | 'system'
 interface ThemeSwitcherProps {
   themeMode?: ThemeMode
   appearance?: 'header' | 'footer' | 'drawer'
+  /**
+   * Localized UI labels.
+   * Defaults to English. Pass `getThemeSwitcherMessages(locale)` for full i18n.
+   */
+  messages?: ThemeSwitcherMessages
 }
 
 function applyTheme(t: Theme) {
@@ -46,7 +64,11 @@ function useTheme() {
   return { theme, setTheme }
 }
 
-export function ThemeSwitcher({ themeMode = 'toggle', appearance = 'header' }: ThemeSwitcherProps) {
+export function ThemeSwitcher({
+  themeMode = 'toggle',
+  appearance = 'header',
+  messages = defaultThemeSwitcherMessages,
+}: ThemeSwitcherProps) {
   const { theme, setTheme } = useTheme()
   const [themeOpen, setThemeOpen] = useState(false)
 
@@ -81,14 +103,14 @@ export function ThemeSwitcher({ themeMode = 'toggle', appearance = 'header' }: T
           className="mb-2.5 text-[10px] font-semibold uppercase tracking-widest"
           style={{ color: 'var(--color-text-primary)', opacity: 0.3 }}
         >
-          Appearance
+          {messages.appearanceLabel}
         </p>
         <div className="flex flex-col gap-1">
           {availableThemes.map((t) => (
             <button
               key={t}
               onClick={() => setTheme(t)}
-              className="flex w-full items-center gap-3 rounded-[9px] border px-4 py-2.5 text-sm font-medium capitalize transition-all"
+              className="flex w-full items-center gap-3 rounded-[9px] border px-4 py-2.5 text-sm font-medium transition-all"
               style={
                 theme === t
                   ? {
@@ -105,7 +127,7 @@ export function ThemeSwitcher({ themeMode = 'toggle', appearance = 'header' }: T
               }
             >
               {getThemeIcon(t)}
-              {t}
+              {messages.themes[t]}
             </button>
           ))}
         </div>
@@ -120,7 +142,7 @@ export function ThemeSwitcher({ themeMode = 'toggle', appearance = 'header' }: T
         onClick={() => setThemeOpen(!themeOpen)}
         className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-all"
         style={{ color: 'var(--color-text-primary)', opacity: 0.72 }}
-        aria-label="Colour scheme"
+        aria-label={messages.ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={themeOpen}
       >
@@ -145,7 +167,7 @@ export function ThemeSwitcher({ themeMode = 'toggle', appearance = 'header' }: T
                 setTheme(t)
                 setThemeOpen(false)
               }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium capitalize transition-colors"
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
               style={{
                 color: theme === t ? 'var(--color-primary)' : 'var(--color-text-primary)',
                 fontWeight: theme === t ? 600 : 500,
@@ -153,7 +175,7 @@ export function ThemeSwitcher({ themeMode = 'toggle', appearance = 'header' }: T
               }}
             >
               {getThemeIcon(t)}
-              {t}
+              {messages.themes[t]}
             </button>
           ))}
         </div>

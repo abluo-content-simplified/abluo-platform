@@ -7,6 +7,7 @@
 --   002  projects table
 --   003  tenant_members table + get_my_owned_tenant_ids()
 --   004  profiles identity-only, new helper functions, updated RLS
+--   005  inquiries table, set_updated_at() trigger function
 --
 -- For an existing database, run the numbered migration files in order
 -- rather than re-applying this file.
@@ -410,3 +411,58 @@ select
   'it',
   'draft'
 from public.tenants where slug = 'livener';
+
+
+-- ============================================================
+-- 6. SET_UPDATED_AT TRIGGER FUNCTION (Migration 005)
+-- ============================================================
+
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+
+-- ============================================================
+-- 7. INQUIRIES (Migration 005)
+-- Platform-wide generic table for all form submissions.
+-- ============================================================
+
+create table public.inquiries (
+  id              uuid        primary key default gen_random_uuid(),
+  tenant_id       uuid        references public.tenants  (id) on delete set null,
+  project_id      uuid        references public.projects (id) on delete set null,
+  inquiry_type    text        not null default 'early_access',
+  status          text        not null default 'new'
+                                check (status in ('new', 'contacted', 'archived', 'spam')),
+  name            text        not null,
+  email           text        not null,
+  phone           text,
+  gdpr_consent    boolean     not null default false,
+  gdpr_consent_at timestamptz,
+  data            jsonb       not null default '{}',
+  source          text,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+
+create index inquiries_tenant_id_idx     on public.inquiries (tenant_id);
+create index inquiries_project_id_idx    on public.inquiries (project_id);
+create index inquiries_email_idx         on public.inquiries (email);
+create index inquiries_inquiry_type_idx  on public.inquiries (inquiry_type);
+create index inquiries_status_idx        on public.inquiries (status);
+create index inquiries_created_at_idx    on public.inquiries (created_at desc);
+create index inquiries_data_ip_idx
+  on public.inquiries ((data->>'ip'))
+  where data->>'ip' is not null;
+
+create trigger inquiries_set_updated_at
+  before update on public.inquiries
+  for each row execute function public.set_updated_at();
+
+alter table public.inquiries enable row level security;

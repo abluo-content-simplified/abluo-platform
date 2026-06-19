@@ -33,6 +33,8 @@ import type {
   DesignSystem,
   FormInput,
   FormInputTheme,
+  FormTypography,
+  FormGeometry,
 } from '@/lib/sanity/types'
 
 interface DesignSystemWithRef extends DesignSystem {
@@ -178,12 +180,15 @@ function mergeDesignSystems(
 
     // ─── Forms: INHERIT WITH OVERRIDE ────────────────────────────────────────
     // Each element type (input, textarea, etc.) inherits independently.
+    // typography and geometry are flat objects — mergeShallowObject handles them.
     forms: {
-      input:    mergeFormInput(parent.forms?.input,    child.forms?.input),
-      textarea: mergeFormInput(parent.forms?.textarea, child.forms?.textarea),
-      select:   mergeFormInput(parent.forms?.select,   child.forms?.select),
-      checkbox: mergeFormInput(parent.forms?.checkbox, child.forms?.checkbox),
-      radio:    mergeFormInput(parent.forms?.radio,    child.forms?.radio),
+      input:      mergeFormInput(parent.forms?.input,    child.forms?.input),
+      textarea:   mergeFormInput(parent.forms?.textarea, child.forms?.textarea),
+      select:     mergeFormInput(parent.forms?.select,   child.forms?.select),
+      checkbox:   mergeFormInput(parent.forms?.checkbox, child.forms?.checkbox),
+      radio:      mergeFormInput(parent.forms?.radio,    child.forms?.radio),
+      typography: mergeShallowObject<FormTypography>(parent.forms?.typography, child.forms?.typography),
+      geometry:   mergeShallowObject<FormGeometry>(parent.forms?.geometry,    child.forms?.geometry),
     },
 
     // ─── Navigation: INHERIT WITH OVERRIDE ───────────────────────────────────

@@ -141,3 +141,8 @@ export function LocalizedSlugInput(props: ObjectInputProps) {
   // The badge would sit awkwardly above the slug inputs — skip it.
   return <LocalizedInputWrapper props={props} showBadge={false} />
 }
+
+export function LocalizedRedirectFromInput(props: ObjectInputProps) {
+  // Redirect arrays are rarely edited — skip the badge to keep the UI clean.
+  return <LocalizedInputWrapper props={props} showBadge={false} />
+}

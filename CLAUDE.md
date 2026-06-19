@@ -189,6 +189,95 @@ Animations belong to section components. Sanity stores content — not timing, e
 
 ---
 
+## Multilingual-First Principle
+
+Abluo is multilingual by default.
+
+**Never assume a website, page, form, component, CTA, modal, email, notification, success message, validation message, or content type is single-language unless explicitly documented otherwise.**
+
+### When implementing new functionality
+
+- Keep all user-facing text localization-ready.
+- Do not hardcode English strings directly into components.
+- Store text in locale dictionaries, configuration objects, or Sanity content.
+- Do not hide, disable, or alter locale switching based on tenant-specific assumptions.
+- Do not assume a tenant currently using one language will remain single-language.
+- Any new content model must be evaluated for multilingual requirements before implementation.
+
+### Examples
+
+**Correct**
+- CTA labels are localized.
+- Form field labels are localized.
+- Validation messages are localized.
+- Success and error messages are localized.
+- Blog categories support localization.
+- Navigation labels support localization.
+
+**Incorrect**
+- Hardcoded English strings inside React components.
+- Hiding the language switcher because one tenant currently uses one language.
+- Creating form schemas that cannot be translated later.
+- Building content structures that require migrations to become multilingual.
+
+**When in doubt, choose the multilingual-ready solution.**
+
+### Rule: No hardcoded user-facing strings in components
+
+User-facing strings must never be hardcoded inside React components.
+
+All user-facing text must come from:
+1. Sanity content
+2. Locale dictionaries
+3. Configuration objects specifically designed for localization
+
+**Exceptions** (hardcoding is acceptable):
+- Developer-only debug messages
+- Internal logging
+- Database status values (`'new'`, `'contacted'`, `'archived'`, etc.)
+- API field names
+
+### Rule: Reusable components must be language-agnostic
+
+New reusable components may not contain hardcoded user-facing text.
+
+User-facing text must come from:
+- Localized dictionaries
+- Sanity content
+- Explicitly injected configuration objects
+
+Reusable components should be language-agnostic.
+
+### Localization Requirements — complete checklist
+
+Abluo is multilingual by default. All user-facing text must be localizable.
+
+Reusable components must not contain hardcoded:
+- Labels
+- Placeholders
+- Button text
+- Validation messages
+- Success messages
+- Error messages
+- Helper text
+- Empty states
+- Aria labels
+
+Text must come from:
+- Locale dictionaries (`getXMessages(locale)` pattern)
+- Sanity content
+- Configuration objects
+
+**Exceptions** — hardcoding is acceptable in:
+- Admin-only interfaces
+- Sanity Studio utilities
+- Developer tooling
+- Test fixtures
+
+When building new features, multilingual support is the **default assumption** unless explicitly documented otherwise.
+
+---
+
 ## Localization Architecture
 
 There are two completely separate localization concerns. They must never be conflated.
