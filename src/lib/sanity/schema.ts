@@ -768,6 +768,174 @@ const blogListingSectionType = defineType({
   },
 })
 
+// ─── Form System ──────────────────────────────────────────────────────────────
+
+const FORM_FIELD_TYPES = [
+  { title: 'Text', value: 'text' },
+  { title: 'Email', value: 'email' },
+  { title: 'Phone', value: 'phone' },
+  { title: 'Textarea', value: 'textarea' },
+  { title: 'Select', value: 'select' },
+  { title: 'Radio Group', value: 'radio-group' },
+  { title: 'Checkbox', value: 'checkbox' },
+  { title: 'Checkbox Group', value: 'checkbox-group' },
+]
+
+const formOptionItemType = defineType({
+  name: 'formOptionItem',
+  title: 'Option',
+  type: 'object',
+  fields: [
+    defineField({ name: 'value', title: 'Value', type: 'string', description: 'Stored in the database — no spaces, e.g. "dental_care"', validation: (Rule) => Rule.required() }),
+    defineField({ name: 'label', title: 'Label', type: 'localizedString', description: 'Displayed to the user' }),
+  ],
+  preview: {
+    select: { title: 'value', subtitle: 'label.en' },
+    prepare: ({ title, subtitle }: { title?: string; subtitle?: string }) => ({
+      title: subtitle ?? title ?? 'Option',
+      subtitle: title ?? '',
+    }),
+  },
+})
+
+const formFieldItemType = defineType({
+  name: 'formFieldItem',
+  title: 'Form Field',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'id',
+      title: 'Field ID',
+      type: 'string',
+      description: 'Unique key for this field — no spaces, e.g. "patient_name". Used as the key in the submission payload.',
+      validation: (Rule) => Rule.required().regex(/^[a-z][a-z0-9_]*$/, { name: 'snake_case', invert: false }).error('Must be snake_case — lowercase letters, digits, and underscores only'),
+    }),
+    defineField({
+      name: 'type',
+      title: 'Field Type',
+      type: 'string',
+      options: { list: FORM_FIELD_TYPES, layout: 'radio' },
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({ name: 'label', title: 'Label', type: 'localizedString' }),
+    defineField({ name: 'placeholder', title: 'Placeholder', type: 'localizedString' }),
+    defineField({ name: 'helpText', title: 'Help Text', type: 'localizedString' }),
+    defineField({ name: 'checkboxLabel', title: 'Checkbox Label', type: 'localizedString', description: 'Text shown next to the checkbox (for checkbox type only)', hidden: ({ parent }: { parent?: { type?: string } }) => parent?.type !== 'checkbox' }),
+    defineField({ name: 'required', title: 'Required', type: 'boolean', initialValue: false }),
+    defineField({
+      name: 'width',
+      title: 'Width',
+      type: 'string',
+      options: { list: [{ title: 'Full width', value: '100%' }, { title: 'Half width', value: '50%' }], layout: 'radio' },
+      initialValue: '100%',
+    }),
+    defineField({
+      name: 'rows',
+      title: 'Rows',
+      type: 'number',
+      description: 'Number of rows for textarea (default: 4)',
+      initialValue: 4,
+      hidden: ({ parent }: { parent?: { type?: string } }) => parent?.type !== 'textarea',
+    }),
+    defineField({
+      name: 'options',
+      title: 'Options',
+      type: 'array',
+      of: [defineArrayMember({ type: 'formOptionItem' })],
+      description: 'Options for select, radio-group, or checkbox-group fields',
+      hidden: ({ parent }: { parent?: { type?: string } }) =>
+        !['select', 'radio-group', 'checkbox-group'].includes(parent?.type ?? ''),
+    }),
+  ],
+  preview: {
+    select: { id: 'id', type: 'type', labelEn: 'label.en' },
+    prepare: ({ id, type, labelEn }: { id?: string; type?: string; labelEn?: string }) => ({
+      title: labelEn ?? id ?? 'Field',
+      subtitle: `${type ?? '?'} · ${id ?? ''}`,
+    }),
+  },
+})
+
+const formType = defineType({
+  name: 'form',
+  title: 'Form',
+  type: 'document',
+  fields: [
+    projectSlugField,
+    defineField({ name: 'title', title: 'Internal Title', type: 'localizedString', description: 'Used in Studio only — not shown on the website', validation: (Rule) => Rule.required() }),
+    defineField({ name: 'description', title: 'Description', type: 'localizedString', description: 'Optional text shown above the form fields' }),
+    defineField({ name: 'submitLabel', title: 'Submit Button Label', type: 'localizedString', description: 'Defaults to "Submit" if empty' }),
+    defineField({ name: 'successMessage', title: 'Success Message', type: 'localizedString', description: 'Shown after successful submission' }),
+    defineField({
+      name: 'inquiryType',
+      title: 'Inquiry Type',
+      type: 'string',
+      description: 'Tag stored in the database to categorise submissions — e.g. "contact", "appointment", "quote"',
+      initialValue: 'contact',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'recipientEmail',
+      title: 'Recipient Email (future)',
+      type: 'string',
+      description: '⏳ Not yet implemented. When email notifications are enabled, new submissions will be sent here. Leave empty for now.',
+    }),
+    defineField({
+      name: 'fields',
+      title: 'Fields',
+      type: 'array',
+      of: [defineArrayMember({ type: 'formFieldItem' })],
+    }),
+  ],
+  preview: {
+    select: { titleEn: 'title.en', projectSlug: 'projectSlug', inquiryType: 'inquiryType' },
+    prepare: ({ titleEn, projectSlug, inquiryType }: { titleEn?: string; projectSlug?: string; inquiryType?: string }) => ({
+      title: titleEn ?? 'Form',
+      subtitle: `${projectSlug ?? '—'} · ${inquiryType ?? '—'}`,
+    }),
+  },
+})
+
+const formSectionType = defineType({
+  name: 'formSection',
+  title: 'Form Section',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({
+      name: 'form',
+      title: 'Form',
+      type: 'reference',
+      to: [{ type: 'form' }],
+      description: 'The form to render in this section',
+      validation: (Rule) => Rule.required(),
+    }),
+  ],
+  preview: {
+    select: { titleEn: 'form.title.en', projectSlug: 'form.projectSlug' },
+    prepare: ({ titleEn, projectSlug }: { titleEn?: string; projectSlug?: string }) => ({
+      title: titleEn ?? 'Form Section',
+      subtitle: projectSlug ?? '—',
+    }),
+  },
+})
+
 // ─── Platform document types (admin-only) ─────────────────────────────────────
 
 const clientType = defineType({
@@ -2078,6 +2246,7 @@ const pageType = defineType({
         defineArrayMember({ type: 'faqSection' }),
         defineArrayMember({ type: 'contactSection' }),
         defineArrayMember({ type: 'blogListingSection' }),
+        defineArrayMember({ type: 'formSection' }),
       ],
     }),
   ],
@@ -2133,6 +2302,7 @@ const homePageType = defineType({
         defineArrayMember({ type: 'faqSection' }),
         defineArrayMember({ type: 'contactSection' }),
         defineArrayMember({ type: 'blogListingSection' }),
+        defineArrayMember({ type: 'formSection' }),
       ],
     }),
   ],
@@ -2567,6 +2737,10 @@ export const schemaTypes = [
   faqItemType,
   faqSectionType,
   blogListingSectionType,
+  formOptionItemType,
+  formFieldItemType,
+  formType,
+  formSectionType,
   clientType,
   projectType,
   colorThemeType,

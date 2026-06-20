@@ -9,7 +9,8 @@ import { TeamSection } from '@/components/sections/TeamSection'
 import { TextSection } from '@/components/sections/TextSection'
 import { FAQSection } from '@/components/sections/FAQSection'
 import { ContactSection } from '@/components/sections/ContactSection'
-import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, PageSection, FAQSection as FAQSectionType, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
+import { FormSection } from '@/components/sections/FormSection'
+import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, PageSection, FAQSection as FAQSectionType, FormSection as FormSectionType, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
 import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
 import { computeSectionSurface } from '@/lib/sanity/surfaces'
@@ -87,12 +88,16 @@ function SectionRenderer({
   designSystem,
   backgroundPattern,
   sectionIndex,
+  locale,
+  tenantSlug,
 }: {
   section: PageSection
   siteConfig: WebsiteSiteConfig | null
   designSystem: DesignSystem | null
   backgroundPattern: string | undefined
   sectionIndex: number
+  locale: string
+  tenantSlug: string
 }) {
   const surface = computeSectionSurface(section.background, backgroundPattern as any, sectionIndex)
 
@@ -110,7 +115,9 @@ function SectionRenderer({
     case 'faqSection':
       return <FAQSection section={section} surface={surface} designSystem={designSystem} />
     case 'contactSection':
-      return <ContactSection section={section} surface={surface} designSystem={designSystem} siteConfig={siteConfig} />
+      return <ContactSection section={section} surface={surface} designSystem={designSystem} siteConfig={siteConfig} locale={locale} />
+    case 'formSection':
+      return <FormSection section={section as FormSectionType} surface={surface} designSystem={designSystem} locale={locale} tenantSlug={tenantSlug} />
     default:
       return null
   }
@@ -179,6 +186,8 @@ export default async function WebsitePageRoute({ params }: PageProps) {
           designSystem={designSystem}
           backgroundPattern={page.backgroundPattern}
           sectionIndex={index}
+          locale={locale}
+          tenantSlug={tenantId}
         />
       ))}
     </SlugMapProvider>

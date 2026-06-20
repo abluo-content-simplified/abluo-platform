@@ -672,6 +672,45 @@ export interface BlogListingSection {
   posts?: Post[]
 }
 
+// ─── Form System ──────────────────────────────────────────────────────────────
+// All string fields are locale-resolved by GROQ — no raw localizedString objects here.
+
+export interface SanityFormOption {
+  value: string
+  label: string
+}
+
+export interface SanityFormField {
+  id: string
+  type: 'text' | 'email' | 'phone' | 'textarea' | 'select' | 'radio-group' | 'checkbox' | 'checkbox-group'
+  label?: string
+  placeholder?: string
+  helpText?: string
+  checkboxLabel?: string
+  required?: boolean
+  width?: '50%' | '100%'
+  rows?: number
+  options?: SanityFormOption[]
+}
+
+export interface SanityForm {
+  _id: string
+  projectSlug?: string
+  description?: string
+  submitLabel?: string
+  successMessage?: string
+  inquiryType?: string
+  fields?: SanityFormField[]
+}
+
+export interface FormSection {
+  _type: 'formSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Dereferenced form document — null if form is not set or not published */
+  form?: SanityForm | null
+}
+
 export type PageSection =
   | HeroSection
   | ContentSection
@@ -681,6 +720,7 @@ export type PageSection =
   | FAQSection
   | ContactSection
   | BlogListingSection
+  | FormSection
 
 export interface WebsiteHomePage {
   tenantSlug: string

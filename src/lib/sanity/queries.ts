@@ -432,7 +432,23 @@ export const homePageQuery = /* groq */ `
         "question": ${loc('question')},
         "answer": ${loc('answer')},
       },
-      mapEmbedUrl
+      mapEmbedUrl,
+      "form": form->{
+        _id,
+        projectSlug,
+        "description": ${loc('description')},
+        "submitLabel": ${loc('submitLabel')},
+        "successMessage": ${loc('successMessage')},
+        inquiryType,
+        fields[] {
+          id, type, required, width, rows,
+          "label": ${loc('label')},
+          "placeholder": ${loc('placeholder')},
+          "helpText": ${loc('helpText')},
+          "checkboxLabel": ${loc('checkboxLabel')},
+          options[] { value, "label": ${loc('label')} }
+        }
+      }
     }
   }
 `
@@ -487,7 +503,24 @@ export const pageHomeQuery = /* groq */ `
       viewAllHref,
       "categoryId": category->._id,
       "eventId": event->._id,
-      "postIds": posts[]->._id
+      "postIds": posts[]->._id,
+      // formSection fields
+      "form": form->{
+        _id,
+        projectSlug,
+        "description": ${loc('description')},
+        "submitLabel": ${loc('submitLabel')},
+        "successMessage": ${loc('successMessage')},
+        inquiryType,
+        fields[] {
+          id, type, required, width, rows,
+          "label": ${loc('label')},
+          "placeholder": ${loc('placeholder')},
+          "helpText": ${loc('helpText')},
+          "checkboxLabel": ${loc('checkboxLabel')},
+          options[] { value, "label": ${loc('label')} }
+        }
+      }
     }
   }
 `
@@ -542,7 +575,24 @@ export const pageBySlugQuery = /* groq */ `
       viewAllHref,
       "categoryId": category->._id,
       "eventId": event->._id,
-      "postIds": posts[]->._id
+      "postIds": posts[]->._id,
+      // formSection fields
+      "form": form->{
+        _id,
+        projectSlug,
+        "description": ${loc('description')},
+        "submitLabel": ${loc('submitLabel')},
+        "successMessage": ${loc('successMessage')},
+        inquiryType,
+        fields[] {
+          id, type, required, width, rows,
+          "label": ${loc('label')},
+          "placeholder": ${loc('placeholder')},
+          "helpText": ${loc('helpText')},
+          "checkboxLabel": ${loc('checkboxLabel')},
+          options[] { value, "label": ${loc('label')} }
+        }
+      }
     }
   }
 `

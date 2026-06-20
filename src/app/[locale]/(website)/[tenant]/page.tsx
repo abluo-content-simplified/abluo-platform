@@ -10,7 +10,8 @@ import { TextSection } from '@/components/sections/TextSection'
 import { FAQSection } from '@/components/sections/FAQSection'
 import { ContactSection } from '@/components/sections/ContactSection'
 import { BlogListingSection } from '@/components/sections/BlogListingSection'
-import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, PageSection, FAQSection as FAQSectionType, BlogListingSection as BlogListingSectionType, SupportedLocale, DesignSystem, Post } from '@/lib/sanity/types'
+import { FormSection } from '@/components/sections/FormSection'
+import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, PageSection, FAQSection as FAQSectionType, BlogListingSection as BlogListingSectionType, FormSection as FormSectionType, SupportedLocale, DesignSystem, Post } from '@/lib/sanity/types'
 import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
 import { computeSectionSurface } from '@/lib/sanity/surfaces'
@@ -135,6 +136,7 @@ function SectionRenderer({
   backgroundPattern,
   sectionIndex,
   locale,
+  tenantSlug,
 }: {
   section: PageSection
   siteConfig: WebsiteSiteConfig | null
@@ -142,6 +144,7 @@ function SectionRenderer({
   backgroundPattern: string | undefined
   sectionIndex: number
   locale: string
+  tenantSlug: string
 }) {
   const surface = computeSectionSurface(section.background, backgroundPattern as any, sectionIndex)
 
@@ -162,6 +165,8 @@ function SectionRenderer({
       return <ContactSection section={section} surface={surface} designSystem={designSystem} siteConfig={siteConfig} locale={locale} />
     case 'blogListingSection':
       return <BlogListingSection section={section} surface={surface} designSystem={designSystem} />
+    case 'formSection':
+      return <FormSection section={section as FormSectionType} surface={surface} designSystem={designSystem} locale={locale} tenantSlug={tenantSlug} />
     default:
       return null
   }
@@ -224,6 +229,7 @@ export default async function WebsitePage({ params }: PageProps) {
           backgroundPattern={homePage.backgroundPattern}
           sectionIndex={index}
           locale={locale}
+          tenantSlug={tenantId}
         />
       ))}
     </>
