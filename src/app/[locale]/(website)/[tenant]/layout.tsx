@@ -411,7 +411,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
             logoLightSrc={livenerConfig?.logoLight ? imageUrl(livenerConfig.logoLight as any, 480) : undefined}
             logoAlt={livenerConfig?.siteName ?? 'Livener'}
             navLinks={resolveNavLinks(livenerConfig?.navLinks, locale as SupportedLocale, 'livener')}
-            ctaLabel={livenerConfig?.ctaLabel ?? 'Get Early Access'}
+            ctaLabel={livenerConfig?.ctaLabel || (locale === 'it' ? 'Richiedi accesso anticipato' : 'Get Early Access')}
             ctaHref={livenerConfig?.ctaHref ?? '#'}
             ctaMode="modal"
             currentLocale={locale as SupportedLocale}

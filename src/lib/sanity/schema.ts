@@ -121,7 +121,10 @@ const navigationLinkType = defineType({
         ],
         layout: 'radio',
       },
-      initialValue: 'external',
+      // Default to internal — most nav links point to pages within the site.
+      // Previously 'external' which caused every new link to default to '#'
+      // when the URL field was left blank.
+      initialValue: 'internal',
     }),
     defineField({
       name: 'internalPage',
@@ -134,6 +137,7 @@ const navigationLinkType = defineType({
           { title: 'Events', value: 'events' },
         ],
       },
+      initialValue: 'homepage',
       hidden: ({ parent }: { parent?: { linkType?: string } }) => parent?.linkType !== 'internal',
       description: 'Select an internal page to link to',
     }),
@@ -359,6 +363,190 @@ const heroSectionType = defineType({
   preview: {
     select: { title: 'headline.it' },
     prepare: ({ title }) => ({ title: title ?? 'Hero', subtitle: 'Hero Section' }),
+  },
+})
+
+/**
+ * heroLiveCaptureSection — two-column hero with live event circle + animated phone mockup.
+ *
+ * Visual concept: Layer 1 = large circular event image (football, church, concert…)
+ *                 Layer 2 = hand holding phone with Livener streaming interface
+ *
+ * Reusable: swap eyebrow/title/subtitle/images for any industry vertical.
+ */
+const heroLiveCaptureSectionType = defineType({
+  name: 'heroLiveCaptureSection',
+  title: 'Hero — Live Capture',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({
+      name: 'eyebrow',
+      title: 'Eyebrow Label',
+      type: 'localizedString',
+      description: 'Short overline above the headline — e.g. "Livener for Investors"',
+    }),
+    defineField({
+      name: 'title',
+      title: 'Headline',
+      type: 'localizedText',
+      description: 'Main headline. Use newlines to control line breaks.',
+    }),
+    defineField({
+      name: 'subtitle',
+      title: 'Subtitle',
+      type: 'localizedText',
+      description: 'Supporting paragraph below the headline.',
+    }),
+    defineField({ name: 'primaryCtaLabel', title: 'Primary CTA Label', type: 'localizedString' }),
+    defineField({ name: 'primaryCtaHref', title: 'Primary CTA Link', type: 'string' }),
+    defineField({ name: 'secondaryCtaLabel', title: 'Secondary CTA Label', type: 'localizedString' }),
+    defineField({ name: 'secondaryCtaHref', title: 'Secondary CTA Link', type: 'string' }),
+    defineField({
+      name: 'backgroundImage',
+      title: 'Event Background Image',
+      type: 'image',
+      options: { hotspot: true },
+      description: 'Large circular image representing the real-world event being captured (football match, church service, concert…)',
+    }),
+    defineField({
+      name: 'phoneScreenImage',
+      title: 'Phone Screen Image',
+      type: 'image',
+      options: { hotspot: true },
+      description: 'Image shown inside the phone as the live video feed. Falls back to the Event Background Image if not set.',
+    }),
+    defineField({
+      name: 'circleSize',
+      title: 'Circle Size',
+      type: 'string',
+      initialValue: 'md',
+      options: {
+        list: [
+          { title: 'Small (320 px)', value: 'sm' },
+          { title: 'Medium (400 px)', value: 'md' },
+          { title: 'Large (480 px)', value: 'lg' },
+        ],
+        layout: 'radio',
+      },
+    }),
+    defineField({
+      name: 'animationIntensity',
+      title: 'Animation Intensity',
+      type: 'string',
+      initialValue: 'moderate',
+      options: {
+        list: [
+          { title: 'Subtle', value: 'subtle' },
+          { title: 'Moderate', value: 'moderate' },
+          { title: 'Expressive', value: 'expressive' },
+        ],
+        layout: 'radio',
+      },
+    }),
+  ],
+  preview: {
+    select: { title: 'title.it', titleEn: 'title.en' },
+    prepare: ({ title, titleEn }) => ({
+      title: title ?? titleEn ?? 'Live Capture Hero',
+      subtitle: 'Hero — Live Capture',
+    }),
+  },
+})
+
+/**
+ * heroLensSection — story-driven two-column hero for the "filming a live event" concept.
+ *
+ * Visual concept:
+ *   Layer 1 — large circular background image (the event being filmed)
+ *   Layer 2 — foreground PNG rendered as-is (a hand holding a phone with content inside)
+ *
+ * No phone is generated. The foreground image must be supplied by the editor.
+ * Animation: subtle mouse parallax, slow drift, gentle float, very slight scroll tilt.
+ */
+const heroLensSectionType = defineType({
+  name: 'heroLensSection',
+  title: 'Hero — Lens',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({
+      name: 'eyebrow',
+      title: 'Eyebrow Label',
+      type: 'localizedString',
+      description: 'Short overline above the headline — e.g. "Capture the moment"',
+    }),
+    defineField({
+      name: 'title',
+      title: 'Headline',
+      type: 'localizedText',
+      description: 'Main headline. Use newlines to control line breaks.',
+    }),
+    defineField({
+      name: 'subtitle',
+      title: 'Subtitle',
+      type: 'localizedText',
+      description: 'Supporting paragraph below the headline.',
+    }),
+    defineField({ name: 'primaryCtaLabel', title: 'Primary CTA Label', type: 'localizedString' }),
+    defineField({ name: 'primaryCtaHref', title: 'Primary CTA Link', type: 'string' }),
+    defineField({ name: 'secondaryCtaLabel', title: 'Secondary CTA Label', type: 'localizedString' }),
+    defineField({ name: 'secondaryCtaHref', title: 'Secondary CTA Link', type: 'string' }),
+    defineField({
+      name: 'backgroundImage',
+      title: 'Background Image (Circle)',
+      type: 'image',
+      options: { hotspot: true },
+      description:
+        'The event image displayed inside the large background circle — e.g. a football pitch, concert stage, church interior.',
+    }),
+    defineField({
+      name: 'foregroundImage',
+      title: 'Foreground Image (Hand + Phone)',
+      type: 'image',
+      options: { hotspot: true },
+      description:
+        'Complete PNG of a hand holding a smartphone. The phone screen content must already be visible inside the image — it will be rendered exactly as uploaded, without any masking or modification.',
+    }),
+  ],
+  preview: {
+    select: { title: 'title.it', titleEn: 'title.en' },
+    prepare: ({ title, titleEn }) => ({
+      title: title ?? titleEn ?? 'Lens Hero',
+      subtitle: 'Hero — Lens',
+    }),
   },
 })
 
@@ -2239,6 +2427,8 @@ const pageType = defineType({
       type: 'array',
       of: [
         defineArrayMember({ type: 'heroSection' }),
+        defineArrayMember({ type: 'heroLiveCaptureSection' }),
+        defineArrayMember({ type: 'heroLensSection' }),
         defineArrayMember({ type: 'contentSection' }),
         defineArrayMember({ type: 'treatmentsSection' }),
         defineArrayMember({ type: 'teamSection' }),
@@ -2295,6 +2485,8 @@ const homePageType = defineType({
       type: 'array',
       of: [
         defineArrayMember({ type: 'heroSection' }),
+        defineArrayMember({ type: 'heroLiveCaptureSection' }),
+        defineArrayMember({ type: 'heroLensSection' }),
         defineArrayMember({ type: 'contentSection' }),
         defineArrayMember({ type: 'treatmentsSection' }),
         defineArrayMember({ type: 'teamSection' }),
@@ -2727,6 +2919,8 @@ export const schemaTypes = [
   whatsappSubjectType,
   emailSubjectType,
   heroSectionType,
+  heroLiveCaptureSectionType,
+  heroLensSectionType,
   contentSectionType,
   treatmentCardType,
   treatmentsSectionType,

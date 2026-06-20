@@ -31,7 +31,8 @@ export function resolveNavLink(
   tenantId: string
 ): ResolvedNavLink {
   // Use new linkType-based resolution first
-  if (link.linkType === 'internal' && link.internalPage) {
+  if (link.linkType === 'internal') {
+    // internalPage may be unset on brand-new documents — default to homepage
     const pagePath = resolveInternalPage(link.internalPage)
     const href = pagePath ? `/${locale}/${tenantId}/${pagePath}` : `/${locale}/${tenantId}`
 

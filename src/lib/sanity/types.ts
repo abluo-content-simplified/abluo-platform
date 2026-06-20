@@ -565,6 +565,99 @@ export interface HeroSection {
   backgroundImage?: SanityImage
 }
 
+/**
+ * HeroLiveCaptureSection — premium two-column hero with circular event image
+ * and an animated phone mockup showing the Livener streaming interface.
+ *
+ * Reusable across any Abluo tenant whose product centres on live capture
+ * (investors page, church page, sports club, festival, community).
+ *
+ * Visual layers:
+ *   1. Large circle — the real-world event being captured (backgroundImage)
+ *   2. Phone mockup — the Livener interface streaming the same event (phoneScreenImage)
+ *
+ * Animation:
+ *   - Idle: phone floats up/down, circle drifts
+ *   - Mouse: phone tilts in 3D (rotateX/Y), circle moves opposite at ~25%
+ *   - Scroll: circle moves upward, phone rotates slightly (max 2°)
+ *   - Respects prefers-reduced-motion
+ */
+export interface HeroLiveCaptureSection {
+  _type: 'heroLiveCaptureSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Short overline above the headline — e.g. "Livener for Investors" */
+  eyebrow?: string
+  /** Main headline — supports newlines for line breaks */
+  title?: string
+  /** Supporting paragraph below the headline */
+  subtitle?: string
+  /** Primary CTA button label */
+  primaryCtaLabel?: string
+  /** Primary CTA button href */
+  primaryCtaHref?: string
+  /** Secondary CTA link label */
+  secondaryCtaLabel?: string
+  /** Secondary CTA link href */
+  secondaryCtaHref?: string
+  /**
+   * Large circular background image representing the event being captured
+   * (football pitch, church, concert stage, etc.).
+   * GROQ-resolved to ResolvedImage via sections[] projection.
+   */
+  backgroundImage?: ResolvedImage
+  /**
+   * Image displayed inside the phone screen as the live video feed.
+   * Falls back to backgroundImage if not set.
+   * GROQ-resolved to ResolvedImage via sections[] projection.
+   */
+  phoneScreenImage?: ResolvedImage
+  /** Diameter of the circular event image — default 'md' (400px) */
+  circleSize?: 'sm' | 'md' | 'lg'
+  /** Controls tilt/float amplitude — default 'moderate' */
+  animationIntensity?: 'subtle' | 'moderate' | 'expressive'
+}
+
+/**
+ * HeroLensSection — two-column hero built around the story of filming a live event.
+ *
+ * Visual concept:
+ *   Layer 1: Large circular background image — the real-world event (backgroundImage)
+ *   Layer 2: Foreground PNG — a hand holding a smartphone, rendered exactly as uploaded.
+ *            The phone screen content is part of the supplied image. No phone is generated.
+ *
+ * Animation (subtle, premium):
+ *   - Idle: background circle drifts slowly; foreground floats gently (vertical only)
+ *   - Mouse: background moves 15–20px; foreground at ~20% of that intensity
+ *   - Scroll: background parallaxes up; foreground tilts very subtly (max 1.5°)
+ *   - Respects prefers-reduced-motion
+ */
+export interface HeroLensSection {
+  _type: 'heroLensSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Short overline above the headline */
+  eyebrow?: string
+  /** Main headline — supports newlines for line breaks */
+  title?: string
+  /** Supporting paragraph below the headline */
+  subtitle?: string
+  primaryCtaLabel?: string
+  primaryCtaHref?: string
+  secondaryCtaLabel?: string
+  secondaryCtaHref?: string
+  /**
+   * Image displayed inside the large background circle.
+   * Represents the real-world event being filmed.
+   */
+  backgroundImage?: ResolvedImage
+  /**
+   * Complete foreground PNG — a hand holding a smartphone.
+   * Rendered exactly as supplied. The phone screen content is part of this image.
+   */
+  foregroundImage?: ResolvedImage
+}
+
 export interface ContentSection {
   _type: 'contentSection'
   _key: string
@@ -713,6 +806,8 @@ export interface FormSection {
 
 export type PageSection =
   | HeroSection
+  | HeroLiveCaptureSection
+  | HeroLensSection
   | ContentSection
   | TreatmentsSection
   | TeamSection

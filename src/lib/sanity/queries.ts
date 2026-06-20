@@ -520,7 +520,18 @@ export const pageHomeQuery = /* groq */ `
           "checkboxLabel": ${loc('checkboxLabel')},
           options[] { value, "label": ${loc('label')} }
         }
-      }
+      },
+      // heroLiveCaptureSection fields
+      "primaryCtaLabel": ${loc('primaryCtaLabel')},
+      primaryCtaHref,
+      "secondaryCtaLabel": ${loc('secondaryCtaLabel')},
+      secondaryCtaHref,
+      backgroundImage { asset, hotspot, crop },
+      phoneScreenImage { asset, hotspot, crop },
+      circleSize,
+      animationIntensity,
+      // heroLensSection fields
+      foregroundImage { asset, hotspot, crop }
     }
   }
 `
@@ -592,7 +603,18 @@ export const pageBySlugQuery = /* groq */ `
           "checkboxLabel": ${loc('checkboxLabel')},
           options[] { value, "label": ${loc('label')} }
         }
-      }
+      },
+      // heroLiveCaptureSection fields
+      "primaryCtaLabel": ${loc('primaryCtaLabel')},
+      primaryCtaHref,
+      "secondaryCtaLabel": ${loc('secondaryCtaLabel')},
+      secondaryCtaHref,
+      backgroundImage { asset, hotspot, crop },
+      phoneScreenImage { asset, hotspot, crop },
+      circleSize,
+      animationIntensity,
+      // heroLensSection fields
+      foregroundImage { asset, hotspot, crop }
     }
   }
 `

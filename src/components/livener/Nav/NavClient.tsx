@@ -119,7 +119,7 @@ export function NavClient({
         <div className="flex flex-col gap-1 px-6 pt-[88px]">
           {variant === 'full' && navLinks.map((link) => (
             <Link
-              key={link.href}
+              key={`${link.label}-${link.href}`}
               href={link.href}
               target={link.external ? '_blank' : undefined}
               rel={link.external ? 'noopener noreferrer' : undefined}
@@ -209,7 +209,7 @@ export function NavClient({
                 {navLinks.map((link) => {
                   const isActive = pathname.includes(link.href)
                   return (
-                    <li key={link.href}>
+                    <li key={`${link.label}-${link.href}`}>
                       <Link
                         href={link.href}
                         target={link.external ? '_blank' : undefined}

@@ -3,6 +3,8 @@ import { pageHomeQuery, localeConfigQuery, websiteSiteConfigQuery, designSystemQ
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
 import { HeroSection } from '@/components/sections/HeroSection'
+import { HeroLiveCaptureSection } from '@/components/sections/HeroLiveCaptureSection'
+import { HeroLensSection } from '@/components/sections/HeroLensSection'
 import { ContentSection } from '@/components/sections/ContentSection'
 import { TreatmentsSection } from '@/components/sections/TreatmentsSection'
 import { TeamSection } from '@/components/sections/TeamSection'
@@ -11,7 +13,7 @@ import { FAQSection } from '@/components/sections/FAQSection'
 import { ContactSection } from '@/components/sections/ContactSection'
 import { BlogListingSection } from '@/components/sections/BlogListingSection'
 import { FormSection } from '@/components/sections/FormSection'
-import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, PageSection, FAQSection as FAQSectionType, BlogListingSection as BlogListingSectionType, FormSection as FormSectionType, SupportedLocale, DesignSystem, Post } from '@/lib/sanity/types'
+import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, PageSection, FAQSection as FAQSectionType, BlogListingSection as BlogListingSectionType, FormSection as FormSectionType, HeroLiveCaptureSection as HeroLiveCaptureSectionType, HeroLensSection as HeroLensSectionType, SupportedLocale, DesignSystem, Post } from '@/lib/sanity/types'
 import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
 import { computeSectionSurface } from '@/lib/sanity/surfaces'
@@ -151,6 +153,10 @@ function SectionRenderer({
   switch (section._type) {
     case 'heroSection':
       return <HeroSection section={section} surface={surface} designSystem={designSystem} />
+    case 'heroLiveCaptureSection':
+      return <HeroLiveCaptureSection section={section as HeroLiveCaptureSectionType} surface={surface} designSystem={designSystem} />
+    case 'heroLensSection':
+      return <HeroLensSection section={section as HeroLensSectionType} surface={surface} designSystem={designSystem} />
     case 'contentSection':
       return <ContentSection section={section} surface={surface} designSystem={designSystem} />
     case 'treatmentsSection':
