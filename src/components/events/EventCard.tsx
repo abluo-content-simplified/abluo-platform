@@ -52,6 +52,12 @@ interface EventCardProps {
   duration?: number
   /** Easing — CSS cubic-bezier string or [x1,y1,x2,y2] array */
   ease?: string | number[]
+  /**
+   * Origin context — appended as `?from=<value>` so the Event Detail page
+   * can route the back button correctly.
+   * e.g. "events" | "live"
+   */
+  from?: string
 }
 
 /**
@@ -75,6 +81,7 @@ export function EventCard({
   delay = 0,
   duration = 0.6,
   ease = [0.0, 0.0, 0.2, 1],
+  from,
 }: EventCardProps) {
   const heroSrc = imageUrl(event.heroImage, 600)
 
@@ -86,10 +93,14 @@ export function EventCard({
       }).format(new Date(event.startDate))
     : null
 
+  const href = from
+    ? `/${locale}/${tenantId}/events/${event.slug.current}?from=${from}`
+    : `/${locale}/${tenantId}/events/${event.slug.current}`
+
   return (
     <SlideUp delay={delay} duration={duration} ease={ease} className="h-full">
       <Link
-        href={`/${locale}/${tenantId}/events/${event.slug.current}`}
+        href={href}
         className="group flex h-full flex-col overflow-hidden rounded-2xl transition-all hover:shadow-xl"
         style={{
           backgroundColor: 'var(--color-surface)',

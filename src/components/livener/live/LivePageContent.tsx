@@ -331,6 +331,7 @@ export function LivePageContent({
                   delay={0.05 + idx * 0.08}
                   duration={durationSlower}
                   ease={easeReveal}
+                  from="live"
                 />
               ))}
             </div>

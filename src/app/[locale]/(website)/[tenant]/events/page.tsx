@@ -165,6 +165,7 @@ export default async function EventsListPage({ params }: PageProps) {
                 delay={0.05 + idx * 0.06}
                 duration={durationSlower}
                 ease={easeReveal}
+                from="events"
               />
             ))}
           </div>
