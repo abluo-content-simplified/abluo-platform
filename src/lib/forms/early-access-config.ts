@@ -8,10 +8,6 @@
  * All strings are keyed by locale here. Components never import string
  * literals directly — they call getEarlyAccessMessages(locale) and receive
  * a fully-typed EarlyAccessMessages object.
- *
- * When a `form` Sanity document type is eventually built, or when next-intl
- * message files are extended, replace getEarlyAccessMessages() with a
- * CMS/i18n fetch — components need zero changes.
  * ─────────────────────────────────────────────────────────────────────────────
  *
  * TODO [COPY REVIEW — EN]: review and finalize English copy before launch.
@@ -31,11 +27,9 @@ export interface EarlyAccessMessages {
   modalTitle: string
 
   // ── Progress labels ───────────────────────────────────────────────────────
-  /** Short name shown in step header, e.g. "Contact" */
   step1Name: string
   step2Name: string
   step3Name: string
-  /** e.g. "Step 1 of 3" */
   stepOfLabel: (current: number, total: number) => string
 
   // ── Step 1 — Contact ──────────────────────────────────────────────────────
@@ -53,8 +47,13 @@ export interface EarlyAccessMessages {
   organizationLabel: string
   organizationPlaceholder: string
   roleLabel: string
+  /** Helper text rendered under the Role section heading */
+  roleHelpText: string
   roleOptions: EarlyAccessOptionItem[]
   orgTypeLabel: string
+  /** Helper text rendered under the Organisation Type section heading */
+  orgTypeHelpText: string
+  /** @deprecated Not used since orgType moved to card grid — kept for interface stability */
   orgTypePlaceholder: string
   orgTypeOptions: EarlyAccessOptionItem[]
   step2NextLabel: string
@@ -73,8 +72,7 @@ export interface EarlyAccessMessages {
   referralSourceLabel: string
   referralSourcePlaceholder: string
   referralOptions: EarlyAccessOptionItem[]
-  gdprFieldLabel: string
-  /** Full GDPR consent text. TODO [LEGAL REVIEW] before launch. */
+  /** Short GDPR consent text — max 2–3 lines. TODO [LEGAL REVIEW] before launch. */
   gdprConsentText: string
   step3SubmitLabel: string
 
@@ -84,9 +82,9 @@ export interface EarlyAccessMessages {
   closeLabel: string
 
   // ── Success state ─────────────────────────────────────────────────────────
-  successTitle: string
-  /** Called with the submitter's name. */
-  successBody: (name: string) => string
+  /** Called with the submitter's first name — name is the primary visual element. */
+  successTitle: (name: string) => string
+  successBody: string
   successCloseLabel: string
 
   // ── Footer CTA mini-form ──────────────────────────────────────────────────
@@ -101,6 +99,9 @@ export interface EarlyAccessMessages {
   submitError: string
   roleRequiredError: string
   orgTypeRequiredError: string
+  orgNameMinLengthError: string
+  orgNameInvalidError: string
+  gdprRequiredError: string
 }
 
 // ─── English ──────────────────────────────────────────────────────────────────
@@ -126,6 +127,7 @@ const en: EarlyAccessMessages = {
   organizationLabel: 'Organisation Name',
   organizationPlaceholder: 'Your organisation',
   roleLabel: 'Your Role',
+  roleHelpText: 'Choose the role that best describes you.',
   roleOptions: [
     { value: 'founder',     label: 'Founder / Owner' },
     { value: 'manager',     label: 'Manager' },
@@ -137,24 +139,26 @@ const en: EarlyAccessMessages = {
     { value: 'other',       label: 'Other' },
   ],
   orgTypeLabel: 'Organisation Type',
+  orgTypeHelpText: 'Choose the type of organisation you represent.',
   orgTypePlaceholder: 'Select type…',
+  // Church / Parish is first — it is one of Livener's clearest use cases
   orgTypeOptions: [
-    { value: 'individual',  label: 'Individual' },
-    { value: 'association', label: 'Association / Non-profit' },
-    { value: 'company',     label: 'Company' },
-    { value: 'agency',      label: 'Agency' },
-    { value: 'school',      label: 'School / Education' },
-    { value: 'sports_club', label: 'Sports Club' },
-    { value: 'religious',   label: 'Religious Organisation' },
-    { value: 'venue',       label: 'Venue' },
-    { value: 'other',       label: 'Other' },
+    { value: 'church_parish', label: 'Church / Parish' },
+    { value: 'individual',    label: 'Individual' },
+    { value: 'company',       label: 'Company' },
+    { value: 'association',   label: 'Association / Non-profit' },
+    { value: 'agency',        label: 'Agency' },
+    { value: 'school',        label: 'School / Education' },
+    { value: 'sports_club',   label: 'Sports Club' },
+    { value: 'government',    label: 'Government / Municipality' },
+    { value: 'other',         label: 'Other' },
   ],
   step2NextLabel: 'Continue',
 
   step3Title: 'Your streaming needs',
   step3Subtitle: 'This helps us prepare the right setup for you.',
   useCasesLabel: 'What would you like to stream?',
-  useCasesHelpText: 'Select all that apply',
+  useCasesHelpText: 'Select all that apply.',
   useCaseOptions: [
     { value: 'religious',    label: 'Religious Services' },
     { value: 'sports',       label: 'Sports Events' },
@@ -191,19 +195,17 @@ const en: EarlyAccessMessages = {
     { value: 'customer',   label: 'Existing Customer' },
     { value: 'other',      label: 'Other' },
   ],
-  gdprFieldLabel: 'Privacy Consent',
   // TODO [LEGAL REVIEW]: replace with reviewed copy before launch
   gdprConsentText:
-    'I agree to the processing of my personal data for the purpose of evaluating my early access request. I understand that my data will be stored securely and not shared with third parties without my consent. I can withdraw my consent at any time by contacting support.',
+    'I agree to the processing of my personal data for evaluating my early access request. My data will be handled according to Livener\'s Privacy Policy.',
   step3SubmitLabel: 'Request Early Access',
 
   submittingLabel: 'Sending…',
   backLabel: 'Back',
   closeLabel: 'Close',
 
-  successTitle: "You're on the list!",
-  successBody: (name) =>
-    `Thank you, ${name}! We received your early access request. We'll keep you informed about new developments and reach out as soon as we're ready.`,
+  successTitle: (name) => `${name}, you're on the list!`,
+  successBody: "We've received your early access request and will keep you informed as Livener evolves.",
   successCloseLabel: 'Close',
 
   footerNamePlaceholder: 'Your name',
@@ -216,6 +218,9 @@ const en: EarlyAccessMessages = {
   submitError: 'Something went wrong. Please try again.',
   roleRequiredError: 'Please select your role.',
   orgTypeRequiredError: 'Please select an organisation type.',
+  orgNameMinLengthError: 'Please enter at least 2 characters.',
+  orgNameInvalidError: 'Please enter a valid organisation name.',
+  gdprRequiredError: 'Please accept the privacy consent to continue.',
 }
 
 // ─── Italian ──────────────────────────────────────────────────────────────────
@@ -225,8 +230,8 @@ const it: EarlyAccessMessages = {
   modalTitle: 'Richiedi Accesso Anticipato',
 
   step1Name: 'Contatto',
-  step2Name: 'La Tua Organizzazione',
-  step3Name: 'Esigenze di Streaming',
+  step2Name: 'Organizzazione',
+  step3Name: 'Streaming',
   stepOfLabel: (current, total) => `Passo ${current} di ${total}`,
 
   step1Title: 'Iniziamo',
@@ -242,6 +247,7 @@ const it: EarlyAccessMessages = {
   organizationLabel: 'Nome Organizzazione',
   organizationPlaceholder: 'La tua organizzazione',
   roleLabel: 'Il Tuo Ruolo',
+  roleHelpText: 'Scegli il ruolo che ti descrive meglio.',
   roleOptions: [
     { value: 'founder',     label: 'Fondatore / Titolare' },
     { value: 'manager',     label: 'Manager' },
@@ -253,24 +259,25 @@ const it: EarlyAccessMessages = {
     { value: 'other',       label: 'Altro' },
   ],
   orgTypeLabel: 'Tipo di Organizzazione',
+  orgTypeHelpText: "Scegli il tipo di organizzazione che rappresenti.",
   orgTypePlaceholder: 'Seleziona tipo…',
   orgTypeOptions: [
-    { value: 'individual',  label: 'Individuale' },
-    { value: 'association', label: 'Associazione / Non profit' },
-    { value: 'company',     label: 'Azienda' },
-    { value: 'agency',      label: 'Agenzia' },
-    { value: 'school',      label: 'Scuola / Istruzione' },
-    { value: 'sports_club', label: 'Associazione Sportiva' },
-    { value: 'religious',   label: 'Organizzazione Religiosa' },
-    { value: 'venue',       label: 'Spazio / Venue' },
-    { value: 'other',       label: 'Altro' },
+    { value: 'church_parish', label: 'Chiesa / Parrocchia' },
+    { value: 'individual',    label: 'Individuale' },
+    { value: 'company',       label: 'Azienda' },
+    { value: 'association',   label: 'Associazione / Non profit' },
+    { value: 'agency',        label: 'Agenzia' },
+    { value: 'school',        label: 'Scuola / Istruzione' },
+    { value: 'sports_club',   label: 'Associazione Sportiva' },
+    { value: 'government',    label: 'Ente Pubblico / Comune' },
+    { value: 'other',         label: 'Altro' },
   ],
   step2NextLabel: 'Continua',
 
   step3Title: 'Le tue esigenze di streaming',
   step3Subtitle: 'Questo ci aiuta a prepararci al meglio per te.',
   useCasesLabel: 'Cosa vorresti trasmettere?',
-  useCasesHelpText: 'Seleziona tutto ciò che si applica',
+  useCasesHelpText: 'Seleziona tutto ciò che si applica.',
   useCaseOptions: [
     { value: 'religious',    label: 'Servizi Religiosi' },
     { value: 'sports',       label: 'Eventi Sportivi' },
@@ -294,10 +301,10 @@ const it: EarlyAccessMessages = {
     { value: '1001_5000',  label: '1.001 – 5.000' },
     { value: '5000_plus',  label: '5.000+' },
   ],
-  websiteLabel: 'Sito Web dell\'Organizzazione',
+  websiteLabel: "Sito Web dell'Organizzazione",
   websitePlaceholder: 'https://iltuosito.com',
   referralSourceLabel: 'Come ci hai conosciuto?',
-  referralSourcePlaceholder: 'Scegli un\'opzione',
+  referralSourcePlaceholder: "Scegli un'opzione",
   referralOptions: [
     { value: 'search',     label: 'Motore di Ricerca' },
     { value: 'linkedin',   label: 'LinkedIn' },
@@ -307,19 +314,17 @@ const it: EarlyAccessMessages = {
     { value: 'customer',   label: 'Cliente Esistente' },
     { value: 'other',      label: 'Altro' },
   ],
-  gdprFieldLabel: 'Consenso Privacy',
   // TODO [LEGAL REVIEW]: testo da revisionare con il legale prima del lancio
   gdprConsentText:
-    'Acconsento al trattamento dei miei dati personali ai fini della valutazione della mia richiesta di accesso anticipato. Comprendo che i miei dati saranno conservati in modo sicuro e non condivisi con terze parti senza il mio consenso. Posso revocare il consenso in qualsiasi momento contattando il supporto.',
+    "Acconsento al trattamento dei miei dati personali per la valutazione della mia richiesta di accesso anticipato. I miei dati saranno gestiti secondo la Privacy Policy di Livener.",
   step3SubmitLabel: 'Richiedi Accesso Anticipato',
 
   submittingLabel: 'Invio in corso…',
   backLabel: 'Indietro',
   closeLabel: 'Chiudi',
 
-  successTitle: 'Sei nella lista!',
-  successBody: (name) =>
-    `Grazie, ${name}! Abbiamo ricevuto la tua richiesta di accesso anticipato. Ti terremo informato sulle novità e ti contatteremo non appena saremo pronti.`,
+  successTitle: (name) => `${name}, sei nella lista!`,
+  successBody: 'Abbiamo ricevuto la tua richiesta di accesso anticipato e ti terremo informato su come Livener si evolve.',
   successCloseLabel: 'Chiudi',
 
   footerNamePlaceholder: 'Il tuo nome',
@@ -332,16 +337,15 @@ const it: EarlyAccessMessages = {
   submitError: 'Qualcosa è andato storto. Riprova.',
   roleRequiredError: 'Seleziona il tuo ruolo.',
   orgTypeRequiredError: 'Seleziona il tipo di organizzazione.',
+  orgNameMinLengthError: 'Inserisci almeno 2 caratteri.',
+  orgNameInvalidError: "Inserisci un nome organizzazione valido.",
+  gdprRequiredError: 'Accetta il consenso privacy per continuare.',
 }
 
 // ─── Registry + lookup ────────────────────────────────────────────────────────
 
 const MESSAGES: Record<string, EarlyAccessMessages> = { en, it }
 
-/**
- * Returns localised messages for the given locale.
- * Falls back to English if the locale is not yet translated.
- */
 export function getEarlyAccessMessages(locale: string): EarlyAccessMessages {
   return MESSAGES[locale] ?? MESSAGES.en
 }

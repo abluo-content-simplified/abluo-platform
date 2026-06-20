@@ -8,10 +8,10 @@
  * Step 1 — Contact (name + email)
  *   POST /api/inquiries → partial record → get inquiryId → advance to step 2
  *
- * Step 2 — Organisation (name, role cards, org type)
+ * Step 2 — Organisation (name, role cards, org type cards)
  *   Data collected locally → advance to step 3
  *
- * Step 3 — Streaming Needs (use cases chips, audience size, website, referral, GDPR)
+ * Step 3 — Streaming Needs (use cases chips, audience size dropdown, website, referral, GDPR)
  *   PATCH /api/inquiries/[id] with all step 2+3 data → show success state
  *
  * When opened from footer CTA with startAtStep2=true, step 1 is already
@@ -19,6 +19,15 @@
  *
  * LOCALIZATION: all user-facing text comes from getEarlyAccessMessages(locale).
  * No English literals appear in this component.
+ *
+ * ACCESSIBILITY: focus is trapped within the modal while open. Tab/Shift+Tab
+ * cycles through interactive elements. Escape closes. Backdrop click does NOT
+ * close (multi-step flow — users must not lose progress accidentally).
+ *
+ * GLASS: modal panel uses the same glass recipe as the Livener nav drawer:
+ *   backdrop-blur-[24px] saturate-150 shadow-2xl
+ *   backgroundColor: color-mix(in oklch, var(--color-background) 90%, transparent)
+ *   borderColor: var(--color-border)
  */
 
 import { useState, useEffect, useRef, useId, useCallback, Fragment } from 'react'
@@ -32,27 +41,141 @@ import { useEarlyAccess } from './EarlyAccessContext'
 import { getEarlyAccessMessages } from '@/lib/forms/early-access-config'
 import type { EarlyAccessMessages, EarlyAccessOptionItem } from '@/lib/forms/early-access-config'
 
-// ─── Custom primitives ────────────────────────────────────────────────────────
+// ─── Focus trap ───────────────────────────────────────────────────────────────
 
-/** Card-grid single-select (role picker). */
-function RoleCards({
+const FOCUSABLE_SELECTORS = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ')
+
+function useFocusTrap(containerRef: React.RefObject<HTMLElement | null>, isActive: boolean) {
+  useEffect(() => {
+    if (!isActive || !containerRef.current) return
+
+    const container = containerRef.current
+
+    const getFocusables = () =>
+      Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS)).filter(
+        (el) => !el.closest('[aria-hidden="true"]'),
+      )
+
+    const firstFocusable = getFocusables()[0]
+    ;(firstFocusable ?? container).focus()
+
+    const handleKeydown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return
+      const elements = getFocusables()
+      if (!elements.length) return
+      const first = elements[0]
+      const last  = elements[elements.length - 1]
+      if (e.shiftKey) {
+        if (document.activeElement === first || document.activeElement === container) {
+          e.preventDefault()
+          last.focus()
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeydown)
+    return () => document.removeEventListener('keydown', handleKeydown)
+  }, [isActive, containerRef])
+}
+
+// ─── PillStepper ─────────────────────────────────────────────────────────────
+
+/**
+ * Horizontal pill stepper.
+ * Completed steps show a checkmark. Active step is highlighted in orange.
+ * Upcoming steps are muted. Pills wrap on narrow screens.
+ */
+function PillStepper({
+  step,
+  stepOfLabel,
+  stepNames,
+}: {
+  step: 1 | 2 | 3
+  stepOfLabel: string
+  stepNames: string[]
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {stepNames.map((name, i) => {
+          const s = i + 1
+          const isCompleted = step > s
+          const isActive    = step === s
+          return (
+            <div
+              key={s}
+              className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all duration-200"
+              style={{
+                backgroundColor: isActive
+                  ? 'var(--color-primary)'
+                  : isCompleted
+                    ? 'color-mix(in oklch, var(--color-primary) 10%, transparent)'
+                    : 'transparent',
+                borderColor: isActive || isCompleted
+                  ? 'var(--color-primary)'
+                  : 'var(--color-border)',
+                color: isActive
+                  ? '#fff'
+                  : isCompleted
+                    ? 'var(--color-primary)'
+                    : 'var(--color-text-muted)',
+              }}
+            >
+              {isCompleted && <Check size={10} strokeWidth={2.5} aria-hidden="true" />}
+              {name}
+            </div>
+          )
+        })}
+      </div>
+
+      <p className="text-[11px] leading-none" style={{ color: 'var(--color-text-muted)' }}>
+        {stepOfLabel}
+      </p>
+    </div>
+  )
+}
+
+// ─── SelectionCards ───────────────────────────────────────────────────────────
+
+/**
+ * Single-select card grid. Used for both Role and Organisation Type.
+ * Cards are keyboard-navigable via Space/Enter (native button behaviour).
+ * Accepts an optional helpText rendered under the section label.
+ */
+function SelectionCards({
   options,
   value,
   onChange,
   label,
+  helpText,
   error,
   required,
+  columns = 2,
 }: {
   options: EarlyAccessOptionItem[]
   value: string
   onChange: (v: string) => void
   label: string
+  helpText?: string
   error?: string
   required?: boolean
+  columns?: 2 | 3
 }) {
   return (
     <div>
-      <p className="mb-2 text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+      <p className="mb-1 text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
         {label}
         {required && (
           <span style={{ color: 'var(--color-danger)', marginLeft: '3px' }} aria-hidden="true">
@@ -60,14 +183,37 @@ function RoleCards({
           </span>
         )}
       </p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+
+      {helpText && (
+        <p className="mb-2.5 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+          {helpText}
+        </p>
+      )}
+
+      <div
+        role="radiogroup"
+        aria-label={label}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${columns}, 1fr)`,
+          gap: '8px',
+        }}
+      >
         {options.map((opt) => {
           const active = value === opt.value
           return (
             <button
               key={opt.value}
               type="button"
+              role="radio"
+              aria-checked={active}
               onClick={() => onChange(opt.value)}
+              onKeyDown={(e) => {
+                if (e.key === ' ' || e.key === 'Enter') {
+                  e.preventDefault()
+                  onChange(opt.value)
+                }
+              }}
               className="rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-all"
               style={{
                 borderColor: active
@@ -88,6 +234,7 @@ function RoleCards({
           )
         })}
       </div>
+
       {error && (
         <p className="mt-1.5 text-xs" style={{ color: 'var(--color-danger)' }} role="alert">
           {error}
@@ -97,7 +244,8 @@ function RoleCards({
   )
 }
 
-/** Chip-grid multi-select (use cases). */
+// ─── ChipGrid ─────────────────────────────────────────────────────────────────
+
 function ChipGrid({
   options,
   value,
@@ -118,7 +266,7 @@ function ChipGrid({
 
   return (
     <div>
-      <p className="mb-1 text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+      <p className="mb-1 text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
         {label}
       </p>
       {helpText && (
@@ -133,6 +281,7 @@ function ChipGrid({
             <button
               key={opt.value}
               type="button"
+              aria-pressed={active}
               onClick={() => toggle(opt.value)}
               className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-all"
               style={{
@@ -154,13 +303,11 @@ function ChipGrid({
   )
 }
 
+// ─── CustomSelect (Step 3 dropdowns only) ─────────────────────────────────────
+
 /**
- * CustomSelect — portal-based dropdown.
- *
- * Renders the dropdown panel into document.body (via React portal) so it is
- * never clipped by the modal's overflow:auto container. Position is computed
- * from the trigger button's getBoundingClientRect and is recalculated on open.
- * The panel flips upward when there is not enough space below the trigger.
+ * Portal-based dropdown for Step 3 (audience size, referral source).
+ * Renders into document.body to avoid overflow clipping by the modal scroll container.
  */
 function CustomSelect({
   options,
@@ -168,16 +315,12 @@ function CustomSelect({
   onChange,
   label,
   placeholder,
-  error,
-  required,
 }: {
   options: EarlyAccessOptionItem[]
   value: string
   onChange: (v: string) => void
   label: string
   placeholder: string
-  error?: string
-  required?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -186,24 +329,19 @@ function CustomSelect({
   const menuRef = useRef<HTMLUListElement>(null)
   const selected = options.find((o) => o.value === value)
 
-  // Avoid SSR portal mismatch — only render portal after hydration
   useEffect(() => { setMounted(true) }, [])
 
   const computeMenuPosition = useCallback(() => {
     if (!triggerRef.current) return
     const rect = triggerRef.current.getBoundingClientRect()
-    const viewportHeight = window.innerHeight
-    const spaceBelow = viewportHeight - rect.bottom
-    const estimatedMenuHeight = Math.min(options.length * 42 + 12, 228)
-    const openUpward = spaceBelow < estimatedMenuHeight + 8 && rect.top > estimatedMenuHeight + 8
-
+    const spaceBelow = window.innerHeight - rect.bottom
+    const estimatedHeight = Math.min(options.length * 42 + 12, 228)
+    const openUpward = spaceBelow < estimatedHeight + 8 && rect.top > estimatedHeight + 8
     setMenuStyle({
       position: 'fixed' as const,
       left: rect.left,
       width: rect.width,
-      ...(openUpward
-        ? { bottom: viewportHeight - rect.top + 4 }
-        : { top: rect.bottom + 4 }),
+      ...(openUpward ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.bottom + 4 }),
     })
   }, [options.length])
 
@@ -212,23 +350,16 @@ function CustomSelect({
     setOpen((v) => !v)
   }
 
-  // Close on outside click — checks both trigger and portal menu
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (
-        !triggerRef.current?.contains(target) &&
-        !menuRef.current?.contains(target)
-      ) {
-        setOpen(false)
-      }
+      const t = e.target as Node
+      if (!triggerRef.current?.contains(t) && !menuRef.current?.contains(t)) setOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  // Close when viewport scrolls or resizes so fixed panel does not drift
   useEffect(() => {
     if (!open) return
     const close = () => setOpen(false)
@@ -240,23 +371,12 @@ function CustomSelect({
     }
   }, [open])
 
-  const selectOption = (v: string) => {
-    onChange(v)
-    setOpen(false)
-  }
-
   return (
     <div>
       <p className="mb-2 text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
         {label}
-        {required && (
-          <span style={{ color: 'var(--color-danger)', marginLeft: '3px' }} aria-hidden="true">
-            *
-          </span>
-        )}
       </p>
 
-      {/* Trigger */}
       <button
         ref={triggerRef}
         type="button"
@@ -265,11 +385,7 @@ function CustomSelect({
         aria-expanded={open}
         className="flex w-full items-center justify-between rounded-xl border px-4 py-2.5 text-sm transition-all"
         style={{
-          borderColor: error
-            ? 'var(--form-input-error-border)'
-            : open
-              ? 'var(--color-primary)'
-              : 'var(--color-border)',
+          borderColor: open ? 'var(--color-primary)' : 'var(--color-border)',
           backgroundColor: 'var(--form-input-bg)',
           color: selected ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
           cursor: 'pointer',
@@ -287,7 +403,6 @@ function CustomSelect({
         />
       </button>
 
-      {/* Portal dropdown — escapes modal overflow containment */}
       {mounted &&
         createPortal(
           <AnimatePresence>
@@ -306,11 +421,10 @@ function CustomSelect({
                   maxHeight: '228px',
                   overflowY: 'auto',
                   borderRadius: '14px',
-                  border: '1px solid color-mix(in oklch, var(--color-border) 80%, transparent)',
+                  border: '1px solid var(--color-border)',
                   backgroundColor: 'color-mix(in oklch, var(--color-background) 90%, transparent)',
-                  backdropFilter: 'blur(20px) saturate(180%)',
-                  WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.08)',
+                  backdropFilter: 'blur(24px) saturate(1.5)',
+                  boxShadow: '0 8px 32px color-mix(in oklch, var(--color-border) 150%, transparent)',
                   padding: '6px 0',
                   listStyle: 'none',
                   margin: 0,
@@ -323,7 +437,7 @@ function CustomSelect({
                       key={opt.value}
                       role="option"
                       aria-selected={isSelected}
-                      onClick={() => selectOption(opt.value)}
+                      onClick={() => { onChange(opt.value); setOpen(false) }}
                       className="flex cursor-pointer items-center gap-2 px-4 py-2.5 text-sm transition-colors"
                       style={{
                         color: isSelected ? 'var(--color-primary)' : 'var(--color-text-primary)',
@@ -333,23 +447,17 @@ function CustomSelect({
                         fontWeight: isSelected ? 600 : 400,
                       }}
                       onMouseEnter={(e) => {
-                        if (!isSelected) {
-                          ;(e.currentTarget as HTMLElement).style.backgroundColor =
+                        if (!isSelected)
+                          (e.currentTarget as HTMLElement).style.backgroundColor =
                             'color-mix(in oklch, var(--color-text-primary) 5%, transparent)'
-                        }
                       }}
                       onMouseLeave={(e) => {
-                        if (!isSelected) {
-                          ;(e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
-                        }
+                        if (!isSelected)
+                          (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
                       }}
                     >
                       {isSelected ? (
-                        <Check
-                          size={13}
-                          strokeWidth={2.5}
-                          style={{ color: 'var(--color-primary)', flexShrink: 0 }}
-                        />
+                        <Check size={13} strokeWidth={2.5} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
                       ) : (
                         <span style={{ width: 13, flexShrink: 0 }} />
                       )}
@@ -362,63 +470,93 @@ function CustomSelect({
           </AnimatePresence>,
           document.body,
         )}
-
-      {error && (
-        <p className="mt-1.5 text-xs" style={{ color: 'var(--color-danger)' }} role="alert">
-          {error}
-        </p>
-      )}
     </div>
   )
 }
 
-// ─── Numbered step indicator ──────────────────────────────────────────────────
+// ─── AnimatedCheck ────────────────────────────────────────────────────────────
 
-function StepIndicator({ step, names }: { step: 1 | 2 | 3; names: string[] }) {
-  const total = 3
+/**
+ * Large animated checkmark for the success screen.
+ * Scales in, then the path draws itself.
+ * Uses only existing design tokens — no hardcoded colours.
+ */
+function AnimatedCheck() {
   return (
-    <div className="flex flex-col gap-1.5">
-      {/* Circles + connecting lines */}
-      <div className="flex items-center">
-        {Array.from({ length: total }, (_, i) => i + 1).map((s, i) => (
-          <Fragment key={s}>
-            <div
-              className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold transition-all duration-300"
-              style={{
-                backgroundColor:
-                  step > s
-                    ? 'color-mix(in oklch, var(--color-primary) 60%, transparent)'
-                    : step === s
-                      ? 'var(--color-primary)'
-                      : 'transparent',
-                border: step >= s ? 'none' : '1.5px solid var(--color-border)',
-                color: step >= s ? '#fff' : 'var(--color-text-muted)',
-              }}
-            >
-              {step > s ? <Check size={10} strokeWidth={3} /> : s}
-            </div>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.65 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.4, ease: [0, 0, 0.2, 1] }}
+      className="flex shrink-0 items-center justify-center rounded-full"
+      style={{
+        width: 80,
+        height: 80,
+        backgroundColor: 'color-mix(in oklch, var(--color-primary) 12%, transparent)',
+        boxShadow: '0 0 48px color-mix(in oklch, var(--color-primary) 22%, transparent)',
+      }}
+    >
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <motion.path
+          d="M 8 20 L 17 29 L 32 12"
+          strokeWidth={3}
+          stroke="var(--color-primary)"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: 1, opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.22, ease: 'easeOut' }}
+        />
+      </svg>
+    </motion.div>
+  )
+}
 
-            {i < total - 1 && (
-              <div
-                className="h-px shrink-0 transition-all duration-300"
-                style={{
-                  width: '28px',
-                  backgroundColor: step > s
-                    ? 'color-mix(in oklch, var(--color-primary) 60%, transparent)'
-                    : 'var(--color-border)',
-                }}
-              />
-            )}
-          </Fragment>
-        ))}
+// ─── SuccessScreen ────────────────────────────────────────────────────────────
+
+/**
+ * Layout:  [body text + Close button]    [large animated check]
+ * The check acts as a visual counterweight on the right side.
+ */
+function SuccessScreen({
+  body,
+  closeLabel,
+  onClose,
+}: {
+  body: string
+  closeLabel: string
+  onClose: () => void
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.3, ease: [0, 0, 0.2, 1] }}
+    >
+      <div className="flex items-start justify-between gap-6 pt-1">
+        {/* Text + action — left side */}
+        <div className="flex flex-col gap-5">
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+            {body}
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="self-start rounded-xl px-7 py-2.5 text-sm font-semibold transition-opacity"
+            style={{
+              backgroundColor: 'var(--color-primary)',
+              color: '#fff',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            {closeLabel}
+          </button>
+        </div>
+
+        {/* Animated check — right side, visual counterweight */}
+        <AnimatedCheck />
       </div>
-
-      {/* "Step N of 3 — Name" */}
-      <p className="text-[11px] leading-none" style={{ color: 'var(--color-text-muted)' }}>
-        {`Step ${step} of ${total}`}
-        <span style={{ opacity: 0.6 }}>{' — '}{names[step - 1]}</span>
-      </p>
-    </div>
+    </motion.div>
   )
 }
 
@@ -485,7 +623,6 @@ function buildStep1Fields(m: EarlyAccessMessages): FieldConfig[] {
       placeholder: m.namePlaceholder,
       required: true,
       width: '100%',
-      // Locale-specific message baked in so validateStep shows it inline
       validation: [{ type: 'required', message: m.nameRequiredError }],
     },
     {
@@ -496,7 +633,7 @@ function buildStep1Fields(m: EarlyAccessMessages): FieldConfig[] {
       required: true,
       width: '100%',
       // Both rules carry locale-specific messages — invalid email shows as
-      // an inline field error, never collapsed into the generic banner
+      // an inline field error, never collapsed into the generic banner.
       validation: [
         { type: 'required', message: m.emailRequiredError },
         { type: 'email',    message: m.emailInvalidError  },
@@ -505,25 +642,16 @@ function buildStep1Fields(m: EarlyAccessMessages): FieldConfig[] {
   ]
 }
 
-function buildStep3TextFields(m: EarlyAccessMessages): FieldConfig[] {
-  return [
-    {
-      id: 'website',
-      type: 'url',
-      label: m.websiteLabel,
-      placeholder: m.websitePlaceholder,
-      required: false,
-      width: '100%',
-    },
-    {
-      id: 'gdprConsent',
-      type: 'checkbox',
-      label: m.gdprFieldLabel,
-      checkboxLabel: m.gdprConsentText,
-      required: true,
-      width: '100%',
-    },
-  ]
+/** Website field — used for both validation and rendering in Step 3. */
+function buildStep3WebsiteField(m: EarlyAccessMessages): FieldConfig {
+  return {
+    id: 'website',
+    type: 'url',
+    label: m.websiteLabel,
+    placeholder: m.websitePlaceholder,
+    required: false,
+    width: '100%',
+  }
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -541,11 +669,32 @@ function getInitialStep3Values(): FormValues {
 function validateStep(fields: FieldConfig[], values: FormValues): Record<string, string> {
   const errors: Record<string, string> = {}
   for (const field of fields) {
-    // rule.message overrides locale defaults — set by buildStep1Fields / buildStep3TextFields
     const result = validateField(field, values[field.id])
     if (!result.valid && result.error) errors[field.id] = result.error
   }
   return errors
+}
+
+function validateOrgName(value: string, m: EarlyAccessMessages): string | null {
+  const trimmed = value.trim()
+  if (trimmed.length < 2)    return m.orgNameMinLengthError
+  if (/^\d+$/.test(trimmed)) return m.orgNameInvalidError
+  return null
+}
+
+// ─── SectionDivider ───────────────────────────────────────────────────────────
+
+function SectionDivider() {
+  return (
+    <div
+      className="my-1"
+      style={{
+        height: '1px',
+        backgroundColor: 'color-mix(in oklch, var(--color-border) 60%, transparent)',
+      }}
+      aria-hidden="true"
+    />
+  )
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -555,9 +704,13 @@ export function EarlyAccessModal() {
   const m = getEarlyAccessMessages(locale)
   const formStartedAt = useRef<number>(Date.now())
   const dialogId = useId()
+  const panelRef = useRef<HTMLDivElement>(null)
 
-  const step1Fields     = buildStep1Fields(m)
-  const step3TextFields = buildStep3TextFields(m)
+  // Focus trap
+  useFocusTrap(panelRef, isOpen)
+
+  const step1Fields    = buildStep1Fields(m)
+  const websiteField   = buildStep3WebsiteField(m)
 
   const [step, setStep]               = useState<1 | 2 | 3>(1)
   const [inquiryId, setInquiryId]     = useState<string | null>(null)
@@ -594,7 +747,7 @@ export function EarlyAccessModal() {
     }
   }, [isOpen, options])
 
-  // ── Keyboard close ───────────────────────────────────────────────────────────
+  // ── Keyboard close (Escape only) ─────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
     if (isOpen) window.addEventListener('keydown', onKey)
@@ -611,27 +764,25 @@ export function EarlyAccessModal() {
   async function handleStep1Submit(e: React.FormEvent) {
     e.preventDefault()
     setSubmitError(null)
-
     const errs = validateStep(step1Fields, step1Values)
     if (Object.keys(errs).length) { setErrors(errs); return }
 
     setSubmitting(true)
     try {
-      const payload = {
-        name:            step1Values.name,
-        email:           step1Values.email,
-        source:          options?.source ?? 'header_cta',
-        tenantSlug,
-        projectSlug,
-        partial:         true,
-        openedAt:        formStartedAt.current,
-        company_website: '',
-        inquiryType:     'early_access',
-      }
       const res  = await fetch('/api/inquiries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          name:            step1Values.name,
+          email:           step1Values.email,
+          source:          options?.source ?? 'header_cta',
+          tenantSlug,
+          projectSlug,
+          partial:         true,
+          openedAt:        formStartedAt.current,
+          company_website: '',
+          inquiryType:     'early_access',
+        }),
       })
       const data = await res.json()
       if (!res.ok) { setSubmitError(m.submitError); return }
@@ -650,9 +801,13 @@ export function EarlyAccessModal() {
   function handleStep2Next(e: React.FormEvent) {
     e.preventDefault()
     const errs: Record<string, string> = {}
-    if (!String(step2Values.organization ?? '').trim()) errs.organization = m.nameRequiredError
+
+    const orgErr = validateOrgName(String(step2Values.organization ?? ''), m)
+    if (orgErr) errs.organization = orgErr
+
     if (!step2Values.role)    errs.role    = m.roleRequiredError
     if (!step2Values.orgType) errs.orgType = m.orgTypeRequiredError
+
     if (Object.keys(errs).length) { setErrors(errs); return }
     setErrors({})
     setStep(3)
@@ -663,7 +818,12 @@ export function EarlyAccessModal() {
     e.preventDefault()
     setSubmitError(null)
 
-    const errs = validateStep(step3TextFields, step3Values)
+    // Validate the website field via the shared validator
+    const errs = validateStep([websiteField], step3Values)
+
+    // GDPR consent is required — validate explicitly
+    if (!step3Values.gdprConsent) errs.gdprConsent = m.gdprRequiredError
+
     if (Object.keys(errs).length) { setErrors(errs); return }
 
     setSubmitting(true)
@@ -702,7 +862,6 @@ export function EarlyAccessModal() {
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('earlyAccessInquiryId')
       }
-
       setSuccess(true)
       setErrors({})
     } catch {
@@ -717,6 +876,7 @@ export function EarlyAccessModal() {
   const STEP_NAMES  = [m.step1Name,     m.step2Name,     m.step3Name]
   const STEP_TITLES = [m.step1Title,    m.step2Title,    m.step3Title]
   const STEP_SUBS   = [m.step1Subtitle, m.step2Subtitle, m.step3Subtitle]
+  const submitterName = String(step1Values.name ?? '').split(' ')[0] ?? ''
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -724,49 +884,47 @@ export function EarlyAccessModal() {
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
+          {/* ── Backdrop — matches Livener nav overlay. Does NOT close the modal. ── */}
           <motion.div
             key="backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[500] bg-black/50 backdrop-blur-sm"
-            onClick={close}
+            className="fixed inset-0 z-[500] bg-black/45 backdrop-blur-sm"
             aria-hidden="true"
           />
 
-          {/* Panel */}
+          {/* ── Panel — glass recipe from Livener nav drawer ────────────────── */}
           <motion.div
+            ref={panelRef}
             key="panel"
             role="dialog"
             aria-modal="true"
             aria-labelledby={`${dialogId}-title`}
+            tabIndex={-1}
             initial={{ opacity: 0, y: 20, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 14, scale: 0.97 }}
             transition={{ duration: 0.25, ease: [0, 0, 0.2, 1] }}
-            className="fixed inset-x-4 top-[50%] z-[510] mx-auto max-w-lg -translate-y-1/2 rounded-2xl md:inset-x-auto md:left-1/2 md:-translate-x-1/2"
+            className="fixed inset-x-4 top-[50%] z-[510] mx-auto max-w-lg -translate-y-1/2 rounded-2xl shadow-2xl backdrop-blur-[24px] saturate-150 md:inset-x-auto md:left-1/2 md:-translate-x-1/2"
             style={{
-              backgroundColor: 'var(--color-background)',
-              backdropFilter: 'blur(16px) saturate(160%)',
-              WebkitBackdropFilter: 'blur(16px) saturate(160%)',
-              border: '1px solid color-mix(in oklch, var(--color-border) 80%, transparent)',
-              boxShadow:
-                '0 24px 64px rgba(0,0,0,0.18), 0 6px 24px rgba(0,0,0,0.1), 0 0 0 0.5px color-mix(in oklch, var(--color-border) 40%, transparent)',
+              backgroundColor: 'color-mix(in oklch, var(--color-background) 90%, transparent)',
+              border: '1px solid var(--color-border)',
               maxHeight: 'calc(100dvh - 2rem)',
               overflowY: 'auto',
+              outline: 'none',
             }}
           >
-            {/* ── Header ─────────────────────────────────────────────── */}
+            {/* ── Header ─────────────────────────────────────────────────────── */}
             <div
-              className="sticky top-0 z-10 flex items-start justify-between px-6 pt-6 pb-5"
+              className="sticky top-0 z-10 flex items-start justify-between px-6 pt-6 pb-5 backdrop-blur-[24px] saturate-150"
               style={{
-                backgroundColor: 'var(--color-background)',
-                borderBottom: '1px solid color-mix(in oklch, var(--color-border) 40%, transparent)',
+                backgroundColor: 'color-mix(in oklch, var(--color-background) 88%, transparent)',
+                borderBottom: '1px solid color-mix(in oklch, var(--color-border) 50%, transparent)',
               }}
             >
-              <div className="flex flex-col gap-2.5 pr-4">
+              <div className="flex flex-col gap-3 pr-4">
                 <p
                   className="text-[10px] font-bold uppercase tracking-[0.12em]"
                   style={{ color: 'var(--color-primary)' }}
@@ -774,7 +932,13 @@ export function EarlyAccessModal() {
                   {m.modalTitle}
                 </p>
 
-                {!success && <StepIndicator step={step} names={STEP_NAMES} />}
+                {!success && (
+                  <PillStepper
+                    step={step}
+                    stepOfLabel={m.stepOfLabel(step, 3)}
+                    stepNames={STEP_NAMES}
+                  />
+                )}
               </div>
 
               <button
@@ -783,14 +947,14 @@ export function EarlyAccessModal() {
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors"
                 style={{
                   color: 'var(--color-text-muted)',
-                  backgroundColor: 'color-mix(in oklch, var(--color-text-primary) 5%, transparent)',
+                  backgroundColor: 'color-mix(in oklch, var(--color-border) 50%, transparent)',
                 }}
               >
                 <X size={16} />
               </button>
             </div>
 
-            {/* ── Body ───────────────────────────────────────────────── */}
+            {/* ── Body ───────────────────────────────────────────────────────── */}
             <div className="px-6 pb-8 pt-5">
 
               <h2
@@ -798,24 +962,25 @@ export function EarlyAccessModal() {
                 className="mb-1.5 text-xl font-semibold"
                 style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
               >
-                {success ? m.successTitle : STEP_TITLES[step - 1]}
+                {success ? m.successTitle(submitterName) : STEP_TITLES[step - 1]}
               </h2>
-              <p className="mb-6 text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                {success
-                  ? m.successBody(String(step1Values.name ?? ''))
-                  : STEP_SUBS[step - 1]}
-              </p>
 
-              {/* ── Success ──────────────────────────────────────────── */}
-              {success && (
-                <div className="flex justify-end pt-2">
-                  <PrimaryBtn type="button" onClick={close} className="px-6">
-                    {m.successCloseLabel}
-                  </PrimaryBtn>
-                </div>
+              {!success && (
+                <p className="mb-6 text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                  {STEP_SUBS[step - 1]}
+                </p>
               )}
 
-              {/* ── Step 1 — Contact ─────────────────────────────────── */}
+              {/* ── Success ─────────────────────────────────────────────────── */}
+              {success && (
+                <SuccessScreen
+                  body={m.successBody}
+                  closeLabel={m.successCloseLabel}
+                  onClose={close}
+                />
+              )}
+
+              {/* ── Step 1 — Contact ────────────────────────────────────────── */}
               {!success && step === 1 && (
                 <form onSubmit={handleStep1Submit} noValidate>
                   {/* Honeypot — real input, visually hidden */}
@@ -852,10 +1017,11 @@ export function EarlyAccessModal() {
                 </form>
               )}
 
-              {/* ── Step 2 — Organisation ────────────────────────────── */}
+              {/* ── Step 2 — Organisation ───────────────────────────────────── */}
               {!success && step === 2 && (
                 <form onSubmit={handleStep2Next} noValidate>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--form-field-gap, 16px)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* Organisation name — field label is implicitly strong via FormField */}
                     <FormField
                       config={{
                         id: 'organization',
@@ -870,21 +1036,24 @@ export function EarlyAccessModal() {
                       error={errors.organization}
                     />
 
-                    <RoleCards
+                    {/* Role — card grid with section heading + helper text */}
+                    <SelectionCards
                       options={m.roleOptions}
                       value={String(step2Values.role ?? '')}
                       onChange={(v) => setStep2Values((prev) => ({ ...prev, role: v }))}
                       label={m.roleLabel}
+                      helpText={m.roleHelpText}
                       error={errors.role}
                       required
                     />
 
-                    <CustomSelect
+                    {/* Organisation Type — same pattern */}
+                    <SelectionCards
                       options={m.orgTypeOptions}
                       value={String(step2Values.orgType ?? '')}
                       onChange={(v) => setStep2Values((prev) => ({ ...prev, orgType: v }))}
                       label={m.orgTypeLabel}
-                      placeholder={m.orgTypePlaceholder}
+                      helpText={m.orgTypeHelpText}
                       error={errors.orgType}
                       required
                     />
@@ -901,10 +1070,12 @@ export function EarlyAccessModal() {
                 </form>
               )}
 
-              {/* ── Step 3 — Streaming Needs ─────────────────────────── */}
+              {/* ── Step 3 — Streaming Needs ────────────────────────────────── */}
               {!success && step === 3 && (
                 <form onSubmit={handleStep3Submit} noValidate>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--form-field-gap, 16px)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+                    {/* Use cases — primary field, sits at top */}
                     <ChipGrid
                       options={m.useCaseOptions}
                       value={(step3Values.useCases as string[]) ?? []}
@@ -913,26 +1084,15 @@ export function EarlyAccessModal() {
                       helpText={m.useCasesHelpText}
                     />
 
+                    <SectionDivider />
+
+                    {/* Audience + referral — operational pair */}
                     <CustomSelect
                       options={m.audienceSizeOptions}
                       value={String(step3Values.audienceSize ?? '')}
                       onChange={(v) => setStep3Values((prev) => ({ ...prev, audienceSize: v }))}
                       label={m.audienceSizeLabel}
                       placeholder={m.audienceSizePlaceholder}
-                    />
-
-                    <FormField
-                      config={{
-                        id: 'website',
-                        type: 'url',
-                        label: m.websiteLabel,
-                        placeholder: m.websitePlaceholder,
-                        required: false,
-                        width: '100%',
-                      }}
-                      value={String(step3Values.website ?? '')}
-                      onChange={(v) => setStep3Values((prev) => ({ ...prev, website: v }))}
-                      error={errors.website}
                     />
 
                     <CustomSelect
@@ -943,19 +1103,59 @@ export function EarlyAccessModal() {
                       placeholder={m.referralSourcePlaceholder}
                     />
 
+                    <SectionDivider />
+
+                    {/* Website — optional, less prominent */}
                     <FormField
-                      config={{
-                        id: 'gdprConsent',
-                        type: 'checkbox',
-                        label: m.gdprFieldLabel,
-                        checkboxLabel: m.gdprConsentText,
-                        required: true,
-                        width: '100%',
-                      }}
-                      value={step3Values.gdprConsent ?? false}
-                      onChange={(v) => setStep3Values((prev) => ({ ...prev, gdprConsent: v }))}
-                      error={errors.gdprConsent}
+                      config={websiteField}
+                      value={String(step3Values.website ?? '')}
+                      onChange={(v) => setStep3Values((prev) => ({ ...prev, website: v }))}
+                      error={errors.website}
                     />
+
+                    {/* GDPR — custom premium checkbox, intentionally lighter */}
+                    <div>
+                      <label
+                        className="flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors"
+                        style={{
+                          borderColor: errors.gdprConsent
+                            ? 'var(--form-input-error-border, var(--color-danger))'
+                            : 'var(--color-border)',
+                          backgroundColor: 'color-mix(in oklch, var(--color-border) 25%, transparent)',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={Boolean(step3Values.gdprConsent)}
+                          onChange={(e) =>
+                            setStep3Values((prev) => ({ ...prev, gdprConsent: e.target.checked }))
+                          }
+                          style={{
+                            marginTop: 2,
+                            flexShrink: 0,
+                            accentColor: 'var(--color-primary)',
+                            width: 15,
+                            height: 15,
+                          }}
+                        />
+                        <span
+                          className="text-sm leading-relaxed"
+                          style={{ color: 'var(--color-text-secondary)' }}
+                        >
+                          {m.gdprConsentText}
+                        </span>
+                      </label>
+                      {errors.gdprConsent && (
+                        <p
+                          className="mt-1.5 text-xs"
+                          role="alert"
+                          style={{ color: 'var(--color-danger)' }}
+                        >
+                          {errors.gdprConsent}
+                        </p>
+                      )}
+                    </div>
+
                   </div>
 
                   {submitError && (
