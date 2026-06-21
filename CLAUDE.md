@@ -8,6 +8,44 @@ Abluo is NOT trying to be WordPress, HubSpot, Webflow, or a full marketing suite
 
 ---
 
+## Configuration Over Hardcoding
+
+Abluo is a reusable multi-tenant platform. Avoid hardcoded values whenever a value may vary by client, project, locale, environment, design system, or deployment.
+
+Prefer: configuration, schema fields, design system tokens, environment variables, and reusable abstractions.
+
+Never hardcode: project slugs, tenant names, domains, locales, navigation structures, design system values, or feature availability by tenant.
+
+If a value may reasonably change in the future, it should be configurable. Hardcoding is acceptable only when the value is truly platform-wide, introducing configuration would add unnecessary complexity, or there is a documented architectural reason.
+
+**Correct**
+- Reading supported locales from configuration
+- Reading design tokens from the design system
+- Using project metadata to determine routing
+- Using environment variables for environment-specific behavior
+
+**Incorrect**
+- Hardcoding `"livener"` or `"studiomartegani"` inside application logic
+- Hardcoding locale lists inside reusable components
+- Hardcoding domains inside routing logic
+- Creating tenant-specific code paths when a reusable solution is possible
+
+---
+
+## Platform Before Tenant
+
+Abluo is a platform, not a collection of custom websites. When implementing a feature: (1) design the platform solution, (2) verify it works for the current tenant, (3) avoid tenant-specific implementations whenever a reusable solution is practical.
+
+Always ask: *"How would this work for the next ten tenants?"* before finalizing an implementation.
+
+Prefer: reusable abstractions, configuration-driven behavior, shared components, shared content models, and design system inheritance.
+
+Avoid: tenant-specific conditionals, duplicated components for individual tenants, custom routing logic for individual tenants, and special-case implementations that cannot scale across projects.
+
+If a tenant-specific solution is temporarily required, document it clearly and treat it as technical debt to be removed later.
+
+---
+
 ## Architectural Principles
 
 These are non-negotiable. A future session that violates any of these is building something wrong.
