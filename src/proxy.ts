@@ -14,8 +14,9 @@ const intlMiddleware = createMiddleware(routing)
  * Platform/admin:      abluo-platform.vercel.app        → null
  */
 function resolveTenant(hostname: string): string | null {
-  // Strip port
-  const host = hostname.split(':')[0]
+  // Strip port, then normalize www. prefix so studiomartegani.com and
+  // www.studiomartegani.com both resolve via the same domainMap entry.
+  const host = hostname.split(':')[0].replace(/^www\./, '')
 
   // Abluo managed preview — *.preview.abluo.app
   // studiomartegani.preview.abluo.app → "studiomartegani"
