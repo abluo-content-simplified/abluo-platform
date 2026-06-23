@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import type { Metadata } from 'next'
-import { tenantClient, fetchDesignSystemById } from '@/lib/sanity/client'
+import { tenantClient, tenantToProjectSlug, fetchDesignSystemById } from '@/lib/sanity/client'
 import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery } from '@/lib/sanity/queries'
 import type { LocaleConfig, SupportedLocale, DesignSystem, FontDefinition, WebsiteSiteConfig, BackgroundGraphic } from '@/lib/sanity/types'
 import { imageUrl } from '@/lib/sanity/image'
@@ -16,6 +16,7 @@ import { HeaderAppearanceWrapper } from '@/components/HeaderAppearanceWrapper'
 import { DevBadge } from '@/components/DevBadge'
 import { isProduction } from '@/lib/deployment'
 import { EarlyAccessWrapper } from '@/components/forms/EarlyAccessWrapper'
+import { SlugMapRoot } from '@/components/SlugMapContext'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -400,7 +401,8 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
     const livenerBgStyles = buildBackgroundGraphicStyles(livenerBgGraphic, livenerBgImageUrl, false)
 
     return (
-      <EarlyAccessWrapper tenantSlug="livener" projectSlug="livener" locale={locale}>
+      <SlugMapRoot>
+      <EarlyAccessWrapper tenantSlug={tenantId} projectSlug={tenantToProjectSlug(tenantId)} locale={locale}>
         <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
         {livenerBgStyles && livenerBgGraphic?.scope === 'entire' && (
           <div style={livenerBgStyles} aria-hidden="true" />
@@ -442,6 +444,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         <Footer tenantId={tenantId} locale={locale as SupportedLocale} defaultLocale={defaultLocale} />
         <DevBadge />
       </EarlyAccessWrapper>
+      </SlugMapRoot>
     )
   }
 
@@ -454,6 +457,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   const bgStyles = buildBackgroundGraphicStyles(bgGraphic, bgImageUrl, false)
 
   return (
+    <SlugMapRoot>
     <>
       <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
       {bgStyles && bgGraphic?.scope === 'entire' && (
@@ -569,5 +573,6 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
       </footer>
       <DevBadge />
     </>
+    </SlugMapRoot>
   )
 }

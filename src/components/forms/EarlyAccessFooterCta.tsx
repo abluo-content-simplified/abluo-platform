@@ -85,6 +85,9 @@ export function EarlyAccessFooterCta({
     // ── Create partial inquiry ─────────────────────────────────────────────────
     setSubmitting(true)
     try {
+      const pathParts = typeof window !== 'undefined'
+        ? window.location.pathname.split('/').filter(Boolean)
+        : []
       const res = await fetch('/api/inquiries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -97,6 +100,10 @@ export function EarlyAccessFooterCta({
           openedAt:        openedAt.current,
           company_website: '',   // honeypot — always empty from real users
           inquiryType:     'early_access',
+          // Page attribution — auto-captured; no CTA object for footer forms
+          page_slug:       pathParts.length >= 3 ? pathParts[2] : null,
+          referrer_url:    typeof window !== 'undefined' ? window.location.href : null,
+          locale,
         }),
       })
 

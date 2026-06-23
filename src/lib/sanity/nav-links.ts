@@ -1,7 +1,11 @@
 import type { NavLink, ResolvedNavLink, SupportedLocale } from './types'
 
 /**
- * Resolve internal page to URL path (without locale prefix)
+ * Resolve internal page to URL path (without locale prefix).
+ *
+ * These cases match the `internalPage` values in the `navigationLink` schema.
+ * Any new built-in route (a coded page with no Sanity page document) must be
+ * added here AND to the schema's `internalPage` options list.
  */
 function resolveInternalPage(page: string | undefined): string {
   switch (page) {
@@ -11,6 +15,8 @@ function resolveInternalPage(page: string | undefined): string {
       return 'live'
     case 'events':
       return 'events'
+    case 'blog':
+      return 'blog'
     default:
       return ''
   }
@@ -30,12 +36,23 @@ export function resolveNavLink(
   locale: SupportedLocale,
   tenantId: string
 ): ResolvedNavLink {
-  // Use new linkType-based resolution first
+  // Internal page — two resolution paths:
+  //   1. pageRef (preferred): links to any page document by its slug
+  //   2. internalPage (legacy): links to special routes (homepage, live, events)
   if (link.linkType === 'internal') {
-    // internalPage may be unset on brand-new documents — default to homepage
+    // Path 1: page document reference — slug resolved by GROQ
+    if (link.pageSlug) {
+      return {
+        label: link.label,
+        href: `/${locale}/${tenantId}/${link.pageSlug}`,
+        external: false,
+        children: link.children?.map((child) => resolveNavLink(child, locale, tenantId)),
+      }
+    }
+
+    // Path 2: special section (Live, Events, Homepage)
     const pagePath = resolveInternalPage(link.internalPage)
     const href = pagePath ? `/${locale}/${tenantId}/${pagePath}` : `/${locale}/${tenantId}`
-
     return {
       label: link.label,
       href,

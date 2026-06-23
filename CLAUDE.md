@@ -574,3 +574,107 @@ Static pages (About, Services, Contact, etc.) are managed by the Abluo admin in 
 Organization: `abluo-content-simplified`
 - `abluo-platform` — main platform codebase
 - `abluo-playground` — experiments and UI prototypes (never deployed)
+
+---
+
+## Schema Evolution Rules
+
+Before changing the type of an existing Sanity field, you must check whether documents already exist with that field populated. Changing a field type without migrating existing content causes Studio validation errors and may silently break GROQ queries.
+
+**Required steps before any field type change:**
+
+1. Query Sanity to check whether documents exist: `*[defined(field)][0..5]`
+2. Inspect the actual stored data shape — not what you expect, what is actually there.
+3. If no documents exist with that field, the change is safe.
+4. If documents exist, you must either write a migration or create a new field and deprecate the old one.
+5. Document the migration strategy before implementing the change.
+
+**Field type changes that always require migration planning:**
+
+- `string` → `localizedString`
+- `string` → `reference`
+- `reference` → `array(reference)`
+- `number` → `string`
+- `localizedString` → `string`
+- Any object type → a different object type
+
+**What a type mismatch causes:**
+
+- Studio shows validation errors ("Expected type X, got Y") on documents with the old format.
+- GROQ queries may silently return `null` if the accessor pattern does not match the stored shape.
+- Published documents are never automatically migrated — they retain the old format until republished.
+
+**Migration pattern for `string` → `localizedString`:**
+
+Check the stored data first:
+```
+*[_type == "myType" && defined(myField) && _type(myField) == "string"] { _id, myField }
+```
+If any documents are found, patch them to convert the string value into a localizedString object before deploying the schema change.
+
+**Root cause of the June 2026 MetricsSection incident:**
+
+The `value` field in `metricItem` was initially created as `type: 'string'`. Content was entered and published. The field was then changed to `type: 'localizedString'` without checking whether published documents existed. The published document retained the old string format, causing a Studio type mismatch. The draft was already correct (the user had re-entered values in the new format), so the fix was to publish the draft rather than run a migration. This could have been avoided by querying Sanity before changing the type.
+
+---
+
+## Localization Rules
+
+Abluo is multilingual-first. Any user-visible content field should be assumed to require localization unless there is a documented specific reason it does not.
+
+**Decide at field creation time** whether a field should be:
+- `localizedString` — short text that may differ by locale (labels, titles, headlines, values, CTAs)
+- `localizedText` — longer text (descriptions, intros, body copy)
+- `localizedPortableText` — rich text
+- Non-localized — only for fields that are inherently language-neutral
+
+**Non-localized fields are those that are genuinely locale-independent:**
+- Numeric settings (grid columns, animation duration, z-index)
+- Boolean flags (animateNumber, featured, required)
+- Enum selectors (background surface, layout, imagePosition)
+- Internal identifiers and keys
+- URLs and slugs (slugs use the `localizedSlug` type — not a plain string)
+- Technical references
+
+**Do not create a field as `string` and convert it to `localizedString` later.** Content entered in the string format will be invalid against the new schema and will require migration. The cost of deciding at creation time is zero; the cost of migrating after content exists is non-trivial.
+
+**Examples of fields that must be localized:**
+
+- Section eyebrow, headline, description
+- Card labels, values, captions
+- Button labels and CTA text
+- Form field labels, placeholders, validation messages
+- Navigation labels
+- Any metric value that could differ by region (e.g. `£10bn+` vs `€10bn+`)
+- Any string that could be translated
+
+**Examples of fields that must NOT be localized:**
+
+- `animateNumber` (boolean)
+- `background` (surface selector)
+- `imagePosition` (enum)
+- `maxItems` (number)
+- `filterMode` (enum)
+
+---
+
+## New Section Checklist
+
+Every new Sanity section type must be verified across all six locations before it is considered complete. A section that renders in one route but not the other is incomplete.
+
+| Location | What to check |
+|---|---|
+| `schema.ts` — type definition | `defineType` with all fields, validation, preview |
+| `schema.ts` — sections arrays | Added to both the `page` type and the legacy `homePage` type |
+| `schema.ts` — type export | Added to the `export default` types array |
+| `types.ts` | Interface defined, added to `PageSection` union |
+| `queries.ts` | Fields projected in `homePageQuery`, `pageHomeQuery`, and `pageBySlugQuery` |
+| `[tenant]/page.tsx` | Component imported, `case` added to `SectionRenderer` |
+| `[tenant]/[slug]/page.tsx` | Component imported, `case` added to `SectionRenderer` |
+| Studio preview | `preview.prepare` returns a meaningful title and subtitle |
+
+**If a section requires server-side data hydration** (e.g. `blogListingSection` fetches posts), the hydration logic must be duplicated in both `page.tsx` and `[slug]/page.tsx`. A hydration function in only one route is a bug.
+
+**Root cause of the June 2026 routing gap:**
+
+`MetricsSection` and `BlogListingSection` were both wired into `[tenant]/page.tsx` but not into `[tenant]/[slug]/page.tsx`. The Investors page renders via the slug route, so neither section appeared. The GROQ query already included the fields — only the SectionRenderer cases were missing. This would have been caught immediately by the checklist.

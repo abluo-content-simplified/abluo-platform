@@ -767,21 +767,37 @@ export function EarlyAccessModal() {
     const errs = validateStep(step1Fields, step1Values)
     if (Object.keys(errs).length) { setErrors(errs); return }
 
+    // Capture page attribution at submission time.
+    // Path pattern: /{locale}/{tenant}/{pageSlug} — index [2] is the page slug.
+    const pathParts = typeof window !== 'undefined'
+      ? window.location.pathname.split('/').filter(Boolean)
+      : []
+    const referrerUrl = typeof window !== 'undefined' ? window.location.href : null
+    const pageSlug    = pathParts.length >= 3 ? pathParts[2] : null
+
     setSubmitting(true)
     try {
       const res  = await fetch('/api/inquiries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name:            step1Values.name,
-          email:           step1Values.email,
-          source:          options?.source ?? 'header_cta',
+          name:               step1Values.name,
+          email:              step1Values.email,
+          source:             options?.source ?? 'header_cta',
           tenantSlug,
           projectSlug,
-          partial:         true,
-          openedAt:        formStartedAt.current,
-          company_website: '',
-          inquiryType:     'early_access',
+          partial:            true,
+          openedAt:           formStartedAt.current,
+          company_website:    '',
+          inquiryType:        'early_access',
+          // CTA attribution — from the button that opened this modal
+          cta_internal_name:  options?.ctaInternalName  ?? null,
+          cta_label_snapshot: options?.ctaLabelSnapshot ?? null,
+          // Page attribution — auto-captured from window.location
+          page_slug:          pageSlug,
+          referrer_url:       referrerUrl,
+          // Locale — which language version the user was viewing
+          locale,
         }),
       })
       const data = await res.json()
@@ -838,19 +854,27 @@ export function EarlyAccessModal() {
         })
         if (!res.ok) { setSubmitError(m.submitError); return }
       } else {
+        const pathParts = typeof window !== 'undefined'
+          ? window.location.pathname.split('/').filter(Boolean)
+          : []
         const res  = await fetch('/api/inquiries', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name:            step1Values.name,
-            email:           step1Values.email,
-            source:          options?.source ?? 'header_cta',
+            name:               step1Values.name,
+            email:              step1Values.email,
+            source:             options?.source ?? 'header_cta',
             tenantSlug,
             projectSlug,
-            partial:         false,
-            openedAt:        formStartedAt.current,
-            company_website: '',
-            inquiryType:     'early_access',
+            partial:            false,
+            openedAt:           formStartedAt.current,
+            company_website:    '',
+            inquiryType:        'early_access',
+            cta_internal_name:  options?.ctaInternalName  ?? null,
+            cta_label_snapshot: options?.ctaLabelSnapshot ?? null,
+            page_slug:          pathParts.length >= 3 ? pathParts[2] : null,
+            referrer_url:       typeof window !== 'undefined' ? window.location.href : null,
+            locale,
             ...qualificationData,
           }),
         })

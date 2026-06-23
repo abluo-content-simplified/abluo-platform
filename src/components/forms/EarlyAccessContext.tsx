@@ -33,6 +33,18 @@ export interface EarlyAccessOpenOptions {
   inquiryId?: string
   /** Start at step 2 (footer already captured name + email) */
   startAtStep2?: boolean
+  /**
+   * CTA internal name — stable identifier for attribution and A/B testing.
+   * Comes from the `internalName` field on the Sanity CTA object.
+   * Example: 'hero-investors-a', 'hero-investors-b', 'footer-contact'
+   */
+  ctaInternalName?: string
+  /**
+   * Exact CTA label text shown to the user at the moment of click.
+   * Captured as a snapshot for historical analysis and A/B testing.
+   * Example: 'Get Early Access', 'Join the Beta', 'Request Early Access'
+   */
+  ctaLabelSnapshot?: string
 }
 
 interface EarlyAccessContextValue {
@@ -55,6 +67,14 @@ export function useEarlyAccess(): EarlyAccessContextValue {
   const ctx = useContext(EarlyAccessContext)
   if (!ctx) throw new Error('useEarlyAccess must be used within EarlyAccessProvider')
   return ctx
+}
+
+/**
+ * Null-safe variant — returns null when called outside EarlyAccessProvider.
+ * Use in reusable section components that may or may not be wrapped by the provider.
+ */
+export function useEarlyAccessSafe(): EarlyAccessContextValue | null {
+  return useContext(EarlyAccessContext)
 }
 
 // ─── Provider ─────────────────────────────────────────────────────────────────

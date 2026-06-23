@@ -26,14 +26,16 @@ export function LanguageSwitcher({ currentLocale, supportedLocales, tenantId, ap
   const switchLocale = (locale: SupportedLocale) => {
     const targetSlug = slugMap[locale]
     if (targetSlug && tenantId) {
-      // Slug page: navigate directly to the locale-specific slug URL.
+      // Slug page with a locale-specific slug (e.g. /investors → /investitori).
+      // Navigate to the slug for the target locale.
       router.push(`/${tenantId}/${targetSlug}`, { locale })
     } else if (tenantId) {
-      // Homepage or non-slug route on a tenant custom domain.
-      // Use the explicit tenant path so the URL is always in the stable
-      // /{locale}/{tenantId} form — never a bare /{locale} that the proxy
-      // would rewrite transparently and cause usePathname() timing issues.
-      router.replace(`/${tenantId}`, { locale })
+      // Non-slug tenant route (homepage, /live, /events, /investors with same slug, etc.)
+      // Preserve the sub-path so switching language stays on the same page.
+      // pathname from next-intl strips the locale prefix, e.g. /livener/live
+      const tenantPrefix = `/${tenantId}`
+      const subPath = pathname.startsWith(tenantPrefix) ? pathname.slice(tenantPrefix.length) : ''
+      router.replace(`/${tenantId}${subPath}`, { locale })
     } else {
       // Platform route (no tenant): same path, different locale prefix.
       router.replace(pathname, { locale })

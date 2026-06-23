@@ -80,17 +80,18 @@ function PostMeta({ post, size = 'sm' }: { post: Post; size?: 'sm' | 'base' }) {
 
 // ─── Post Card — Standard (used in Grid layout) ───────────────────────────────
 
-function PostCard({ post, priority = false }: { post: Post; priority?: boolean }) {
-  // Note: individual post routes not yet implemented. Cards are non-interactive for now.
+function PostCard({ post, href, priority = false }: { post: Post; href: string; priority?: boolean }) {
   const coverSrc = imageUrl(post.coverImage, 800)
 
   return (
-    <article
-      className="group flex flex-col h-full overflow-hidden rounded-2xl"
+    <a
+      href={href}
+      className="group flex flex-col h-full overflow-hidden rounded-2xl transition-shadow hover:shadow-lg"
       style={{
         backgroundColor: 'var(--color-surface)',
         border: '1px solid',
         borderColor: 'var(--color-border)',
+        textDecoration: 'none',
       }}
     >
       {/* Cover image */}
@@ -128,22 +129,24 @@ function PostCard({ post, priority = false }: { post: Post; priority?: boolean }
           <PostMeta post={post} />
         </div>
       </div>
-    </article>
+    </a>
   )
 }
 
 // ─── Post Card — Large (used in Featured layout + Magazine main card) ─────────
 
-function PostCardLarge({ post }: { post: Post }) {
+function PostCardLarge({ post, href }: { post: Post; href: string }) {
   const coverSrc = imageUrl(post.coverImage, 1200)
 
   return (
-    <article
-      className="group flex flex-col h-full overflow-hidden rounded-2xl"
+    <a
+      href={href}
+      className="group flex flex-col h-full overflow-hidden rounded-2xl transition-shadow hover:shadow-lg"
       style={{
         backgroundColor: 'var(--color-surface)',
         border: '1px solid',
         borderColor: 'var(--color-border)',
+        textDecoration: 'none',
       }}
     >
       {/* Cover image — taller aspect ratio for impact */}
@@ -181,22 +184,24 @@ function PostCardLarge({ post }: { post: Post }) {
           <PostMeta post={post} size="base" />
         </div>
       </div>
-    </article>
+    </a>
   )
 }
 
 // ─── Post Card — Mini (used in Magazine right column) ─────────────────────────
 
-function PostCardMini({ post }: { post: Post }) {
+function PostCardMini({ post, href }: { post: Post; href: string }) {
   const coverSrc = imageUrl(post.coverImage, 240)
 
   return (
-    <article
-      className="group flex gap-4 p-4 rounded-xl overflow-hidden"
+    <a
+      href={href}
+      className="group flex gap-4 p-4 rounded-xl overflow-hidden transition-shadow hover:shadow-md"
       style={{
         backgroundColor: 'var(--color-surface)',
         border: '1px solid',
         borderColor: 'var(--color-border)',
+        textDecoration: 'none',
       }}
     >
       {/* Thumbnail */}
@@ -239,18 +244,30 @@ function PostCardMini({ post }: { post: Post }) {
           )}
         </div>
       </div>
-    </article>
+    </a>
   )
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Build a blog post href, optionally appending ?from= for back-button context. */
+function postHref(blogBase: string, slug: string, fromParam?: string): string {
+  const base = `${blogBase}/${slug}`
+  return fromParam ? `${base}?from=${fromParam}` : base
 }
 
 // ─── Grid Layout ──────────────────────────────────────────────────────────────
 
 function GridLayout({
   posts,
+  blogBase,
+  fromParam,
   duration,
   ease,
 }: {
   posts: Post[]
+  blogBase: string
+  fromParam?: string
   duration: number
   ease: string | number[]
 }) {
@@ -266,7 +283,7 @@ function GridLayout({
     <div className={`grid gap-6 ${gridCols}`}>
       {posts.map((post, i) => (
         <SlideUp key={post._id} duration={duration} ease={ease} delay={i * 0.08} className="h-full">
-          <PostCard post={post} priority={i === 0} />
+          <PostCard post={post} href={postHref(blogBase, post.slug.current, fromParam)} priority={i === 0} />
         </SlideUp>
       ))}
     </div>
@@ -277,10 +294,14 @@ function GridLayout({
 
 function FeaturedLayout({
   posts,
+  blogBase,
+  fromParam,
   duration,
   ease,
 }: {
   posts: Post[]
+  blogBase: string
+  fromParam?: string
   duration: number
   ease: string | number[]
 }) {
@@ -291,7 +312,7 @@ function FeaturedLayout({
     <div className="flex flex-col gap-6">
       {/* Primary — always large */}
       <SlideUp duration={duration} ease={ease} delay={0}>
-        <PostCardLarge post={first} />
+        <PostCardLarge post={first} href={postHref(blogBase, first.slug.current, fromParam)} />
       </SlideUp>
 
       {/* Secondary cards below — if any */}
@@ -307,7 +328,7 @@ function FeaturedLayout({
         >
           {rest.map((post, i) => (
             <SlideUp key={post._id} duration={duration} ease={ease} delay={0.1 + i * 0.08} className="h-full">
-              <PostCard post={post} />
+              <PostCard post={post} href={postHref(blogBase, post.slug.current, fromParam)} />
             </SlideUp>
           ))}
         </div>
@@ -320,10 +341,14 @@ function FeaturedLayout({
 
 function MagazineLayout({
   posts,
+  blogBase,
+  fromParam,
   duration,
   ease,
 }: {
   posts: Post[]
+  blogBase: string
+  fromParam?: string
   duration: number
   ease: string | number[]
 }) {
@@ -334,7 +359,7 @@ function MagazineLayout({
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
       {/* Main card — 3/5 width on large screens */}
       <SlideUp duration={duration} ease={ease} delay={0} className="lg:col-span-3 h-full">
-        <PostCardLarge post={first} />
+        <PostCardLarge post={first} href={postHref(blogBase, first.slug.current, fromParam)} />
       </SlideUp>
 
       {/* Secondary cards — 2/5 width, stacked */}
@@ -342,7 +367,7 @@ function MagazineLayout({
         <div className="lg:col-span-2 flex flex-col gap-4">
           {rest.map((post, i) => (
             <SlideUp key={post._id} duration={duration} ease={ease} delay={0.12 + i * 0.1}>
-              <PostCardMini post={post} />
+              <PostCardMini post={post} href={postHref(blogBase, post.slug.current, fromParam)} />
             </SlideUp>
           ))}
         </div>
@@ -357,9 +382,17 @@ interface Props {
   section: BlogListingSectionType
   surface: SurfaceType
   designSystem: DesignSystem | null
+  locale: string
+  tenantId: string
+  /**
+   * When set, appended as ?from=${fromParam} to every card link.
+   * The blog detail page reads this to show the correct back-button label.
+   * e.g. "home" → "Back to Home", "investors" → "Back to Investors"
+   */
+  fromParam?: string
 }
 
-export function BlogListingSection({ section, surface, designSystem }: Props) {
+export function BlogListingSection({ section, surface, designSystem, locale, tenantId, fromParam }: Props) {
   const {
     eyebrow,
     title,
@@ -371,6 +404,9 @@ export function BlogListingSection({ section, surface, designSystem }: Props) {
 
   const posts = section.posts ?? []
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
+
+  // Base URL for post detail links: /[locale]/[tenant]/blog
+  const blogBase = `/${locale}/${tenantId}/blog`
 
   // Motion tokens — durationSlow for content sections
   const m = designSystem?.motion
@@ -415,11 +451,11 @@ export function BlogListingSection({ section, surface, designSystem }: Props) {
 
         {/* Posts — layout variant */}
         {layout === 'featured' ? (
-          <FeaturedLayout posts={posts} duration={duration} ease={ease} />
+          <FeaturedLayout posts={posts} blogBase={blogBase} fromParam={fromParam} duration={duration} ease={ease} />
         ) : layout === 'magazine' ? (
-          <MagazineLayout posts={posts} duration={duration} ease={ease} />
+          <MagazineLayout posts={posts} blogBase={blogBase} fromParam={fromParam} duration={duration} ease={ease} />
         ) : (
-          <GridLayout posts={posts} duration={duration} ease={ease} />
+          <GridLayout posts={posts} blogBase={blogBase} fromParam={fromParam} duration={duration} ease={ease} />
         )}
 
         {/* View All button — shown when label + href are both set */}

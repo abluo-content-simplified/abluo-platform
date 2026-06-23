@@ -13,6 +13,8 @@ import { FAQSection } from '@/components/sections/FAQSection'
 import { ContactSection } from '@/components/sections/ContactSection'
 import { BlogListingSection } from '@/components/sections/BlogListingSection'
 import { FormSection } from '@/components/sections/FormSection'
+import { StatementSection } from '@/components/sections/StatementSection'
+import { MetricsSection } from '@/components/sections/MetricsSection'
 import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, PageSection, FAQSection as FAQSectionType, BlogListingSection as BlogListingSectionType, FormSection as FormSectionType, HeroLiveCaptureSection as HeroLiveCaptureSectionType, HeroLensSection as HeroLensSectionType, SupportedLocale, DesignSystem, Post } from '@/lib/sanity/types'
 import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
@@ -139,6 +141,7 @@ function SectionRenderer({
   sectionIndex,
   locale,
   tenantSlug,
+  fromParam,
 }: {
   section: PageSection
   siteConfig: WebsiteSiteConfig | null
@@ -147,6 +150,7 @@ function SectionRenderer({
   sectionIndex: number
   locale: string
   tenantSlug: string
+  fromParam?: string
 }) {
   const surface = computeSectionSurface(section.background, backgroundPattern as any, sectionIndex)
 
@@ -159,6 +163,8 @@ function SectionRenderer({
       return <HeroLensSection section={section as HeroLensSectionType} surface={surface} designSystem={designSystem} />
     case 'contentSection':
       return <ContentSection section={section} surface={surface} designSystem={designSystem} />
+    case 'statementSection':
+      return <StatementSection section={section} surface={surface} designSystem={designSystem} />
     case 'treatmentsSection':
       return <TreatmentsSection section={section} surface={surface} designSystem={designSystem} />
     case 'teamSection':
@@ -170,9 +176,11 @@ function SectionRenderer({
     case 'contactSection':
       return <ContactSection section={section} surface={surface} designSystem={designSystem} siteConfig={siteConfig} locale={locale} />
     case 'blogListingSection':
-      return <BlogListingSection section={section} surface={surface} designSystem={designSystem} />
+      return <BlogListingSection section={section} surface={surface} designSystem={designSystem} locale={locale} tenantId={tenantSlug} fromParam={fromParam} />
     case 'formSection':
       return <FormSection section={section as FormSectionType} surface={surface} designSystem={designSystem} locale={locale} tenantSlug={tenantSlug} />
+    case 'metricsSection':
+      return <MetricsSection section={section} surface={surface} designSystem={designSystem} />
     default:
       return null
   }
@@ -236,6 +244,7 @@ export default async function WebsitePage({ params }: PageProps) {
           sectionIndex={index}
           locale={locale}
           tenantSlug={tenantId}
+          fromParam="home"
         />
       ))}
     </>
