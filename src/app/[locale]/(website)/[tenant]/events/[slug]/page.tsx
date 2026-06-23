@@ -18,6 +18,7 @@ import { SlideUp } from '@/components/animation'
 import { SlugMapProvider, type SlugMap } from '@/components/SlugMapContext'
 import { EventCard } from '@/components/events/EventCard'
 import { BackButton } from '@/components/events/BackButton'
+import { PlayCircle } from 'lucide-react'
 
 interface PageProps {
   params: Promise<{ tenant: string; locale: string; slug: string }>
@@ -302,11 +303,26 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
                       href={event.youtubeUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex h-11 items-center gap-2 px-6 text-sm font-medium tracking-wide transition-opacity hover:opacity-80"
-                      style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-background)' }}
+                      className="inline-flex items-center gap-3 rounded-[var(--radius-btn)] px-6 py-3.5 text-sm font-semibold transition-all"
+                      style={{
+                        fontFamily: 'var(--font-body)',
+                        border: '2px solid var(--color-primary)',
+                        backgroundColor: 'var(--color-primary)',
+                        color: '#fff',
+                      }}
+                      onMouseEnter={(e) => {
+                        const el = e.currentTarget as HTMLElement
+                        el.style.backgroundColor = 'var(--color-secondary)'
+                        el.style.borderColor = 'var(--color-secondary)'
+                      }}
+                      onMouseLeave={(e) => {
+                        const el = e.currentTarget as HTMLElement
+                        el.style.backgroundColor = 'var(--color-primary)'
+                        el.style.borderColor = 'var(--color-primary)'
+                      }}
                     >
+                      <PlayCircle size={18} />
                       {event.ctaLabel}
-                      <span aria-hidden="true" style={{ opacity: 0.7 }}>↗</span>
                     </a>
                   </div>
                 )}
