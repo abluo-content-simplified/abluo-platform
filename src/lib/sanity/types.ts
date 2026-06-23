@@ -81,11 +81,69 @@ export interface ResolvedImage {
   caption?: string
 }
 
+// ─── CTA ──────────────────────────────────────────────────────────────────────
+
+/**
+ * Raw CTA object as returned from Sanity via CTA_FIELDS projection.
+ * The GROQ query resolves pageSlug and fileUrl so the frontend never
+ * needs to dereference Sanity references at runtime.
+ */
+export interface Cta {
+  label?: string
+  internalName: string
+  actionType?: 'page' | 'form' | 'fileDownload' | 'externalUrl'
+  // Resolved from pageRef->slug by GROQ
+  pageSlug?: string
+  // Resolved from formRef by GROQ
+  formId?: string
+  formInquiryType?: string
+  // Resolved from file.asset by GROQ
+  fileUrl?: string
+  fileName?: string
+  // External URL fields
+  externalUrl?: string
+  openInNewTab?: boolean
+}
+
+/**
+ * Discriminated union returned by resolveCta().
+ * The consuming component switches on `type` to render the right element.
+ */
+export type ResolvedCta =
+  | {
+      type: 'link'
+      label: string
+      internalName: string
+      href: string
+      external: boolean
+    }
+  | {
+      type: 'download'
+      label: string
+      internalName: string
+      href: string
+      fileName?: string
+    }
+  | {
+      type: 'form'
+      label: string
+      internalName: string
+      formId: string
+      formInquiryType?: string
+    }
+  | {
+      type: 'none'
+      label: string
+      internalName: string
+    }
+
 // ─── Navigation ───────────────────────────────────────────────────────────────
 
 export interface NavLink {
   label: string
   linkType?: 'internal' | 'external'
+  // Resolved slug from pageRef — set by GROQ query, not stored directly
+  pageSlug?: string
   internalPage?: 'homepage' | 'live' | 'events'
   externalUrl?: string
   openInNewTab?: boolean
@@ -556,13 +614,27 @@ export interface Post {
 export interface HeroSection {
   _type: 'heroSection'
   _key: string
+  // Content
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
   eyebrow?: string
   headline?: string
   subheadline?: string
   ctaLabel?: string
   ctaHref?: string
-  backgroundImage?: SanityImage
+  // Media
+  mediaType?: 'image' | 'video'
+  heroImage?: SanityImage
+  heroVideo?: string
+  posterImage?: SanityImage
+  // Layout
+  heroHeight?: 'small' | 'medium' | 'large' | 'fullscreen'
+  contentWidth?: 'standard' | 'wide' | 'full'
+  contentAlignment?: 'left' | 'center' | 'right'
+  verticalAlignment?: 'top' | 'center' | 'bottom'
+  // Style
+  overlayOpacity?: number
+  blur?: number
+  brightness?: number
 }
 
 /**
@@ -592,14 +664,8 @@ export interface HeroLiveCaptureSection {
   title?: string
   /** Supporting paragraph below the headline */
   subtitle?: string
-  /** Primary CTA button label */
-  primaryCtaLabel?: string
-  /** Primary CTA button href */
-  primaryCtaHref?: string
-  /** Secondary CTA link label */
-  secondaryCtaLabel?: string
-  /** Secondary CTA link href */
-  secondaryCtaHref?: string
+  /** CTAs — resolved from ctas[] array via CTA_FIELDS projection */
+  ctas?: Cta[]
   /**
    * Large circular background image representing the event being captured
    * (football pitch, church, concert stage, etc.).
@@ -642,10 +708,8 @@ export interface HeroLensSection {
   title?: string
   /** Supporting paragraph below the headline */
   subtitle?: string
-  primaryCtaLabel?: string
-  primaryCtaHref?: string
-  secondaryCtaLabel?: string
-  secondaryCtaHref?: string
+  /** CTAs — resolved from ctas[] array via CTA_FIELDS projection */
+  ctas?: Cta[]
   /**
    * Image displayed inside the large background circle.
    * Represents the real-world event being filmed.
@@ -804,11 +868,55 @@ export interface FormSection {
   form?: SanityForm | null
 }
 
+export interface StatementSection {
+  _type: 'statementSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  headline?: string
+  /** Locale-resolved by GROQ */
+  description?: string
+  alignment?: 'left' | 'center'
+  image?: SanityImage
+  imagePosition?: 'left' | 'right'
+}
+
+// ─── Metrics Section ──────────────────────────────────────────────────────────
+
+export interface MetricItem {
+  _type: 'metricItem'
+  _key: string
+  /** Not localized — values like "£10bn+", "2025", "Innovate UK" */
+  value: string
+  /** Locale-resolved by GROQ */
+  label?: string
+  /** Locale-resolved by GROQ */
+  description?: string
+  /** Reserved for future count-up animation. Has no effect yet. */
+  animateNumber?: boolean
+}
+
+export interface MetricsSection {
+  _type: 'metricsSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  headline?: string
+  /** Locale-resolved by GROQ */
+  description?: string
+  metrics?: MetricItem[]
+}
+
 export type PageSection =
   | HeroSection
   | HeroLiveCaptureSection
   | HeroLensSection
   | ContentSection
+  | StatementSection
   | TreatmentsSection
   | TeamSection
   | TextSection
@@ -816,6 +924,7 @@ export type PageSection =
   | ContactSection
   | BlogListingSection
   | FormSection
+  | MetricsSection
 
 export interface WebsiteHomePage {
   tenantSlug: string

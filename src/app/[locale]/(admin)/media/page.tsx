@@ -631,7 +631,11 @@ export default function MediaPage() {
           allTags={allTags}
           languages={languages}
           onClose={() => setSelectedAsset(null)}
-          onSave={() => {
+          onSave={(updatedAsset) => {
+            // Immediately patch the asset in the list so reopening it
+            // shows the saved data without waiting for the async re-fetch.
+            setAssets((prev) => prev.map((a) => a._id === updatedAsset._id ? updatedAsset : a))
+            // Also trigger a background list refresh for consistency.
             setRefreshKey((prev) => prev + 1)
           }}
           onDelete={() => {

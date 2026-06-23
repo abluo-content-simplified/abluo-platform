@@ -30,6 +30,32 @@ const locImage = (field: string) => /* groq */ `
   }
 `
 
+// ─── CTA fields projection ────────────────────────────────────────────────────
+// Reusable GROQ inline fragment for the cta object type.
+// Include it in any section projection that uses a CTA field.
+//
+// Usage in a section query:
+//   primaryCta { ${CTA_FIELDS} },
+//   secondaryCta { ${CTA_FIELDS} },
+//
+// The fragment resolves all references so the frontend receives plain values —
+// no Sanity reference objects, no URL construction needed.
+export const CTA_FIELDS = /* groq */ `
+  "label": ${loc('label')},
+  internalName,
+  actionType,
+  "pageSlug": coalesce(
+    pageRef->slug[$locale].current,
+    pageRef->slug[$defaultLocale].current
+  ),
+  "formId": formRef._ref,
+  "formInquiryType": formRef->inquiryType,
+  "fileUrl": file.asset->url,
+  "fileName": file.asset->originalFilename,
+  externalUrl,
+  openInNewTab
+`
+
 export const localeConfigQuery = /* groq */ `
   *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
     defaultLocale,
@@ -80,6 +106,7 @@ export const websiteSiteConfigQuery = /* groq */ `
     navLinks[] {
       "label": ${loc('label')},
       linkType,
+      "pageSlug": coalesce(pageRef->slug[$locale].current, pageRef->slug[$defaultLocale].current),
       internalPage,
       externalUrl,
       openInNewTab,
@@ -88,6 +115,7 @@ export const websiteSiteConfigQuery = /* groq */ `
       children[] {
         "label": ${loc('label')},
         linkType,
+        "pageSlug": coalesce(pageRef->slug[$locale].current, pageRef->slug[$defaultLocale].current),
         internalPage,
         externalUrl,
         openInNewTab,
@@ -210,6 +238,48 @@ export const postBySlugQuery = /* groq */ `
 export const postByOldSlugQuery = /* groq */ `
   *[_type == "post" && projectSlug == $projectSlug && $slug in redirectFrom[$locale]][0] {
     "currentSlug": slug[$locale].current
+  }
+`
+
+// Fetches up to 3 related posts for the blog detail page.
+// Prioritises posts that share at least one category with the current post,
+// then falls back to featured / most recent from the same project.
+// $excludeId prevents the current post from appearing in the results.
+// $categoryIds should be the array of _ref strings from the current post's categories.
+export const relatedPostsQuery = /* groq */ `
+  *[
+    _type == "post"
+    && projectSlug == $projectSlug
+    && _id != $excludeId
+    && defined(publishedAt)
+    && publishedAt <= now()
+    && (!defined(expiresAt) || expiresAt > now())
+  ] | order(
+    count((categories[]._ref)[@ in $categoryIds]) desc,
+    featured desc,
+    publishedAt desc
+  ) [0...3] {
+    _id,
+    "title": ${loc('title')},
+    "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
+    "excerpt": ${loc('excerpt')},
+    publishedAt,
+    featured,
+    ${locImage('coverImage')},
+    "readingTimeMinutes": math::max([1, round(
+      length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / 1200
+    )]),
+    "author": author-> {
+      name,
+      "role": ${loc('role')},
+      avatar { asset, hotspot, crop }
+    },
+    "categories": categories[]-> {
+      _id,
+      "title": ${loc('title')},
+      "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
+      color
+    }
   }
 `
 
@@ -412,6 +482,10 @@ export const homePageQuery = /* groq */ `
       "title": ${loc('title')},
       "body": ${loc('body')},
       imagePosition,
+      // statementSection fields
+      "description": ${loc('description')},
+      alignment,
+      image { asset, hotspot, crop },
       "intro": ${loc('intro')},
       treatments[] {
         _type, _key,
@@ -448,6 +522,26 @@ export const homePageQuery = /* groq */ `
           "checkboxLabel": ${loc('checkboxLabel')},
           options[] { value, "label": ${loc('label')} }
         }
+      },
+      // heroSection media / layout / style fields
+      mediaType,
+      heroImage { asset, hotspot, crop },
+      heroVideo,
+      posterImage { asset, hotspot, crop },
+      heroHeight,
+      contentWidth,
+      contentAlignment,
+      verticalAlignment,
+      overlayOpacity,
+      blur,
+      brightness,
+      // metricsSection fields
+      metrics[] {
+        _type, _key,
+        "value": ${loc('value')},
+        animateNumber,
+        "label": ${loc('label')},
+        "description": ${loc('description')},
       }
     }
   }
@@ -473,6 +567,10 @@ export const pageHomeQuery = /* groq */ `
       "title": ${loc('title')},
       "body": ${loc('body')},
       imagePosition,
+      // statementSection fields
+      "description": ${loc('description')},
+      alignment,
+      image { asset, hotspot, crop },
       "intro": ${loc('intro')},
       treatments[] {
         _type, _key,
@@ -521,17 +619,34 @@ export const pageHomeQuery = /* groq */ `
           options[] { value, "label": ${loc('label')} }
         }
       },
-      // heroLiveCaptureSection fields
-      "primaryCtaLabel": ${loc('primaryCtaLabel')},
-      primaryCtaHref,
-      "secondaryCtaLabel": ${loc('secondaryCtaLabel')},
-      secondaryCtaHref,
+      // heroSection media / layout / style fields
+      mediaType,
+      heroImage { asset, hotspot, crop },
+      heroVideo,
+      posterImage { asset, hotspot, crop },
+      heroHeight,
+      contentWidth,
+      contentAlignment,
+      verticalAlignment,
+      overlayOpacity,
+      blur,
+      brightness,
+      // heroLiveCaptureSection + heroLensSection CTA array
+      ctas[] { ${CTA_FIELDS} },
       backgroundImage { asset, hotspot, crop },
       phoneScreenImage { asset, hotspot, crop },
       circleSize,
       animationIntensity,
       // heroLensSection fields
-      foregroundImage { asset, hotspot, crop }
+      foregroundImage { asset, hotspot, crop },
+      // metricsSection fields
+      metrics[] {
+        _type, _key,
+        "value": ${loc('value')},
+        animateNumber,
+        "label": ${loc('label')},
+        "description": ${loc('description')},
+      }
     }
   }
 `
@@ -556,6 +671,10 @@ export const pageBySlugQuery = /* groq */ `
       "title": ${loc('title')},
       "body": ${loc('body')},
       imagePosition,
+      // statementSection fields
+      "description": ${loc('description')},
+      alignment,
+      image { asset, hotspot, crop },
       "intro": ${loc('intro')},
       treatments[] {
         _type, _key,
@@ -604,17 +723,34 @@ export const pageBySlugQuery = /* groq */ `
           options[] { value, "label": ${loc('label')} }
         }
       },
-      // heroLiveCaptureSection fields
-      "primaryCtaLabel": ${loc('primaryCtaLabel')},
-      primaryCtaHref,
-      "secondaryCtaLabel": ${loc('secondaryCtaLabel')},
-      secondaryCtaHref,
+      // heroSection media / layout / style fields
+      mediaType,
+      heroImage { asset, hotspot, crop },
+      heroVideo,
+      posterImage { asset, hotspot, crop },
+      heroHeight,
+      contentWidth,
+      contentAlignment,
+      verticalAlignment,
+      overlayOpacity,
+      blur,
+      brightness,
+      // heroLiveCaptureSection + heroLensSection CTA array
+      ctas[] { ${CTA_FIELDS} },
       backgroundImage { asset, hotspot, crop },
       phoneScreenImage { asset, hotspot, crop },
       circleSize,
       animationIntensity,
       // heroLensSection fields
-      foregroundImage { asset, hotspot, crop }
+      foregroundImage { asset, hotspot, crop },
+      // metricsSection fields
+      metrics[] {
+        _type, _key,
+        "value": ${loc('value')},
+        animateNumber,
+        "label": ${loc('label')},
+        "description": ${loc('description')},
+      }
     }
   }
 `

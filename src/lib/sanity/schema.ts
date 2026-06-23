@@ -5,6 +5,28 @@ import { ProjectSlugPicker } from '@/lib/sanity/fields/ProjectSlugPicker'
 import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, LocalizedSlugInput, LocalizedRedirectFromInput } from '@/lib/sanity/fields/LocalizedInput'
 import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
 
+// ─── Project-scoped reference filter ─────────────────────────────────────────
+//
+// Use this as `options.filter` on any reference field whose target documents
+// are tenant-specific (posts, events, authors, categories, pages, forms, etc.).
+//
+// Behaviour:
+//   • Document has a projectSlug  → only shows documents from that project
+//   • Document has no projectSlug → shows nothing (prevents cross-project picks)
+//
+// Works for both top-level document fields (e.g. post.author) and references
+// nested inside embedded objects (e.g. blogListingSection.category inside a
+// page), because Sanity's `document` callback always refers to the root document.
+const scopedRef = ({ document }: { document: Record<string, unknown> }) => {
+  const projectSlug = (document as any)?.projectSlug as string | undefined
+  // No project selected yet → return a filter that matches no documents
+  if (!projectSlug) return { filter: '_id == "@@no-project-selected@@"' }
+  return {
+    filter: 'projectSlug == $projectSlug',
+    params: { projectSlug },
+  }
+}
+
 // ─── Shared primitive types ───────────────────────────────────────────────────
 // Fields are generated from the Platform Locale Registry (src/lib/i18n/locales.ts).
 // To add a language, add it to PLATFORM_LOCALES — these types update automatically.
@@ -104,6 +126,125 @@ const localizedImageType = defineType({
   ],
 })
 
+// ─── CTA Object ───────────────────────────────────────────────────────────────
+// Reusable CTA object used across hero sections, cards, feature sections,
+// landing pages, footer, and any future component that needs a call-to-action.
+//
+// Editors answer one question: "What should happen when the user clicks?"
+// Styling (button variant, size) is always controlled by the consuming component.
+const ctaType = defineType({
+  name: 'cta',
+  title: 'CTA',
+  type: 'object',
+  fields: [
+    // ── Label ────────────────────────────────────────────────────────────────
+    defineField({
+      name: 'label',
+      title: 'Label',
+      type: 'localizedString',
+      description: 'Button text shown to the visitor (e.g. "Get Early Access", "Download PDF")',
+    }),
+
+    // ── Internal Name ────────────────────────────────────────────────────────
+    defineField({
+      name: 'internalName',
+      title: 'Internal Name',
+      type: 'string',
+      description: 'Internal identifier for analytics, reporting, A/B testing and audits. Be specific (e.g. "Hero Primary CTA", "Investor Deck Download").',
+      validation: (Rule) => Rule.required().min(3).max(80),
+    }),
+
+    // ── Action Type ──────────────────────────────────────────────────────────
+    defineField({
+      name: 'actionType',
+      title: 'Action',
+      type: 'string',
+      options: {
+        list: [
+          { title: '📄 Go to a page', value: 'page' },
+          { title: '📋 Open a form', value: 'form' },
+          { title: '⬇️ Download a file', value: 'fileDownload' },
+          { title: '🔗 External URL', value: 'externalUrl' },
+        ],
+        layout: 'radio',
+      },
+      validation: (Rule) => Rule.required(),
+    }),
+
+    // ── Page reference (shown when actionType === 'page') ────────────────────
+    defineField({
+      name: 'pageRef',
+      title: 'Page',
+      type: 'reference',
+      to: [{ type: 'page' }],
+      hidden: ({ parent }: { parent?: { actionType?: string } }) => parent?.actionType !== 'page',
+      description: 'Pick any page from this project. Never type a URL.',
+      options: { filter: scopedRef, disableNew: true },
+    }),
+
+    // ── Form reference (shown when actionType === 'form') ────────────────────
+    // Stores the reference now; modal trigger wired in a future session.
+    defineField({
+      name: 'formRef',
+      title: 'Form',
+      type: 'reference',
+      to: [{ type: 'form' }],
+      hidden: ({ parent }: { parent?: { actionType?: string } }) => parent?.actionType !== 'form',
+      description: 'Select the form to open when clicked.',
+      options: { filter: scopedRef, disableNew: true },
+    }),
+
+    // ── File download (shown when actionType === 'fileDownload') ─────────────
+    defineField({
+      name: 'file',
+      title: 'File',
+      type: 'file',
+      hidden: ({ parent }: { parent?: { actionType?: string } }) => parent?.actionType !== 'fileDownload',
+      description: 'Upload a PDF, deck, or any downloadable asset.',
+    }),
+
+    // ── External URL (shown when actionType === 'externalUrl') ───────────────
+    defineField({
+      name: 'externalUrl',
+      title: 'URL',
+      type: 'url',
+      hidden: ({ parent }: { parent?: { actionType?: string } }) => parent?.actionType !== 'externalUrl',
+      validation: (Rule) =>
+        Rule.custom((url, context) => {
+          const parent = context.parent as { actionType?: string }
+          if (parent?.actionType === 'externalUrl' && !url) return 'URL is required'
+          return true
+        }),
+    }),
+    defineField({
+      name: 'openInNewTab',
+      title: 'Open in new tab',
+      type: 'boolean',
+      initialValue: true,
+      hidden: ({ parent }: { parent?: { actionType?: string } }) => parent?.actionType !== 'externalUrl',
+    }),
+  ],
+  preview: {
+    select: {
+      label: 'label.en',
+      internalName: 'internalName',
+      actionType: 'actionType',
+    },
+    prepare: ({ label, internalName, actionType }: { label?: string; internalName?: string; actionType?: string }) => {
+      const icon: Record<string, string> = {
+        page: '📄',
+        form: '📋',
+        fileDownload: '⬇️',
+        externalUrl: '🔗',
+      }
+      return {
+        title: label ?? internalName ?? '—',
+        subtitle: `${icon[actionType ?? ''] ?? '?'} ${internalName ?? ''}`,
+      }
+    },
+  },
+})
+
 const navigationLinkType = defineType({
   name: 'navigationLink',
   title: 'Navigation Link',
@@ -126,20 +267,37 @@ const navigationLinkType = defineType({
       // when the URL field was left blank.
       initialValue: 'internal',
     }),
+    // Primary way to link to a page — reference to any page document in this project.
+    // Studio shows only pages that belong to the same projectSlug as the siteConfig.
+    defineField({
+      name: 'pageRef',
+      title: 'Page',
+      type: 'reference',
+      to: [{ type: 'page' }],
+      hidden: ({ parent }: { parent?: { linkType?: string } }) => parent?.linkType !== 'internal',
+      description: 'Pick any page from this project',
+      options: { filter: scopedRef, disableNew: true },
+    }),
+    // Special built-in sections that are coded routes with no corresponding
+    // Sanity page document (Homepage, Live, Events, Blog).
+    // These will never appear in the Page picker above because they are not
+    // page documents — use this dropdown for them instead.
+    // Hidden when pageRef is already set.
     defineField({
       name: 'internalPage',
-      title: 'Select Page',
+      title: 'Special section',
       type: 'string',
       options: {
         list: [
           { title: 'Homepage', value: 'homepage' },
           { title: 'Live', value: 'live' },
           { title: 'Events', value: 'events' },
+          { title: 'News & Announcements (Blog)', value: 'blog' },
         ],
       },
-      initialValue: 'homepage',
-      hidden: ({ parent }: { parent?: { linkType?: string } }) => parent?.linkType !== 'internal',
-      description: 'Select an internal page to link to',
+      hidden: ({ parent }: { parent?: { linkType?: string; pageRef?: unknown } }) =>
+        parent?.linkType !== 'internal' || !!parent?.pageRef,
+      description: 'Use for special built-in sections (Live, Events, Blog) that are not in the page picker above.',
     }),
     defineField({
       name: 'externalUrl',
@@ -185,10 +343,12 @@ const navigationLinkType = defineType({
     }),
   ],
   preview: {
-    select: { title: 'label.en', linkType: 'linkType', internalPage: 'internalPage', externalUrl: 'externalUrl' },
-    prepare: ({ title, linkType, internalPage, externalUrl }) => ({
+    select: { title: 'label.en', linkType: 'linkType', internalPage: 'internalPage', externalUrl: 'externalUrl', pageTitle: 'pageRef.title.en', pageSlug: 'pageRef.slug.en.current' },
+    prepare: ({ title, linkType, internalPage, externalUrl, pageTitle, pageSlug }) => ({
       title: title ?? '—',
-      subtitle: linkType === 'internal' ? `📄 ${internalPage}` : `🔗 ${externalUrl}`,
+      subtitle: linkType === 'internal'
+        ? (pageTitle ? `📄 ${pageTitle} (/${pageSlug})` : `📄 ${internalPage}`)
+        : `🔗 ${externalUrl}`,
     }),
   },
 })
@@ -336,11 +496,19 @@ const heroSectionType = defineType({
   name: 'heroSection',
   title: 'Hero Section',
   type: 'object',
+  groups: [
+    { name: 'content', title: 'Content' },
+    { name: 'media', title: 'Media' },
+    { name: 'layout', title: 'Layout' },
+    { name: 'style', title: 'Style' },
+  ],
   fields: [
+    // ── Content ───────────────────────────────────────────────────────────────
     defineField({
       name: 'background',
       title: 'Background Surface',
       type: 'string',
+      group: 'content',
       options: {
         list: [
           { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
@@ -353,16 +521,161 @@ const heroSectionType = defineType({
         ],
       },
       initialValue: 'usePagePattern',
+      description: 'Used when no media background is set.',
     }),
-    defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString' }),
-    defineField({ name: 'headline', title: 'Headline', type: 'localizedText' }),
-    defineField({ name: 'subheadline', title: 'Subheadline', type: 'localizedText' }),
-    defineField({ name: 'ctaLabel', title: 'CTA Button Label', type: 'localizedString' }),
-    defineField({ name: 'ctaHref', title: 'CTA Button Link', type: 'string' }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString', group: 'content' }),
+    defineField({ name: 'headline', title: 'Headline', type: 'localizedText', group: 'content' }),
+    defineField({ name: 'subheadline', title: 'Subheadline', type: 'localizedText', group: 'content' }),
+    defineField({ name: 'ctaLabel', title: 'CTA Button Label', type: 'localizedString', group: 'content' }),
+    defineField({ name: 'ctaHref', title: 'CTA Button Link', type: 'string', group: 'content' }),
+
+    // ── Media ─────────────────────────────────────────────────────────────────
+    defineField({
+      name: 'mediaType',
+      title: 'Media Type',
+      type: 'string',
+      group: 'media',
+      options: {
+        list: [
+          { title: '🖼 Image', value: 'image' },
+          { title: '🎬 Video', value: 'video' },
+        ],
+        layout: 'radio',
+      },
+      description: 'Choose image or video as the hero background. Leave unset for a solid surface background.',
+    }),
+    defineField({
+      name: 'heroImage',
+      title: 'Hero Image',
+      type: 'image',
+      group: 'media',
+      options: { hotspot: true },
+      hidden: ({ parent }: { parent?: { mediaType?: string } }) => parent?.mediaType === 'video',
+      description: 'Full-bleed background image.',
+    }),
+    defineField({
+      name: 'heroVideo',
+      title: 'Hero Video (Cloudflare Stream ID)',
+      type: 'string',
+      group: 'media',
+      hidden: ({ parent }: { parent?: { mediaType?: string } }) => parent?.mediaType !== 'video',
+      description: 'Cloudflare Stream video ID (e.g. "abc123def456"). Autoplays muted and looped with no controls.',
+    }),
+    defineField({
+      name: 'posterImage',
+      title: 'Poster Image',
+      type: 'image',
+      group: 'media',
+      options: { hotspot: true },
+      hidden: ({ parent }: { parent?: { mediaType?: string } }) => parent?.mediaType !== 'video',
+      description: 'Fallback image shown while the video loads.',
+    }),
+
+    // ── Layout ────────────────────────────────────────────────────────────────
+    defineField({
+      name: 'heroHeight',
+      title: 'Height',
+      type: 'string',
+      group: 'layout',
+      options: {
+        list: [
+          { title: 'Small — 50vh', value: 'small' },
+          { title: 'Medium — 70vh', value: 'medium' },
+          { title: 'Large — 90vh', value: 'large' },
+          { title: 'Full Screen — 100vh', value: 'fullscreen' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'large',
+    }),
+    defineField({
+      name: 'contentWidth',
+      title: 'Content Width',
+      type: 'string',
+      group: 'layout',
+      options: {
+        list: [
+          { title: 'Standard', value: 'standard' },
+          { title: 'Wide', value: 'wide' },
+          { title: 'Full Width', value: 'full' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'standard',
+    }),
+    defineField({
+      name: 'contentAlignment',
+      title: 'Content Alignment',
+      type: 'string',
+      group: 'layout',
+      options: {
+        list: [
+          { title: 'Left', value: 'left' },
+          { title: 'Center', value: 'center' },
+          { title: 'Right', value: 'right' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'left',
+    }),
+    defineField({
+      name: 'verticalAlignment',
+      title: 'Vertical Alignment',
+      type: 'string',
+      group: 'layout',
+      options: {
+        list: [
+          { title: 'Top', value: 'top' },
+          { title: 'Center', value: 'center' },
+          { title: 'Bottom', value: 'bottom' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'center',
+    }),
+
+    // ── Style ─────────────────────────────────────────────────────────────────
+    defineField({
+      name: 'overlayOpacity',
+      title: 'Overlay Opacity',
+      type: 'number',
+      group: 'style',
+      validation: (Rule) => Rule.min(0).max(100),
+      initialValue: 40,
+      description: 'Dark overlay on top of the media (0–100). Improves text readability.',
+    }),
+    defineField({
+      name: 'blur',
+      title: 'Background Blur',
+      type: 'number',
+      group: 'style',
+      validation: (Rule) => Rule.min(0).max(20),
+      initialValue: 0,
+      description: 'Blur the media background (0–20px).',
+    }),
+    defineField({
+      name: 'brightness',
+      title: 'Background Brightness',
+      type: 'number',
+      group: 'style',
+      validation: (Rule) => Rule.min(50).max(150),
+      initialValue: 100,
+      description: 'Adjust media brightness (50–150%). Lower darkens, higher brightens.',
+    }),
   ],
   preview: {
-    select: { title: 'headline.it' },
-    prepare: ({ title }) => ({ title: title ?? 'Hero', subtitle: 'Hero Section' }),
+    select: {
+      headlineIt: 'headline.it',
+      headlineEn: 'headline.en',
+      mediaType: 'mediaType',
+      heroHeight: 'heroHeight',
+    },
+    prepare: ({ headlineIt, headlineEn, mediaType, heroHeight }: {
+      headlineIt?: string; headlineEn?: string; mediaType?: string; heroHeight?: string
+    }) => ({
+      title: headlineIt ?? headlineEn ?? 'Hero',
+      subtitle: ['Hero Section', mediaType ? `· ${mediaType}` : '', heroHeight ? `· ${heroHeight}` : ''].filter(Boolean).join(' '),
+    }),
   },
 })
 
@@ -414,10 +727,13 @@ const heroLiveCaptureSectionType = defineType({
       type: 'localizedText',
       description: 'Supporting paragraph below the headline.',
     }),
-    defineField({ name: 'primaryCtaLabel', title: 'Primary CTA Label', type: 'localizedString' }),
-    defineField({ name: 'primaryCtaHref', title: 'Primary CTA Link', type: 'string' }),
-    defineField({ name: 'secondaryCtaLabel', title: 'Secondary CTA Label', type: 'localizedString' }),
-    defineField({ name: 'secondaryCtaHref', title: 'Secondary CTA Link', type: 'string' }),
+    defineField({
+      name: 'ctas',
+      title: 'CTAs',
+      type: 'array',
+      of: [defineArrayMember({ type: 'cta' })],
+      description: 'Add one or more calls-to-action. First is rendered as primary, second as secondary.',
+    }),
     defineField({
       name: 'backgroundImage',
       title: 'Event Background Image',
@@ -520,10 +836,13 @@ const heroLensSectionType = defineType({
       type: 'localizedText',
       description: 'Supporting paragraph below the headline.',
     }),
-    defineField({ name: 'primaryCtaLabel', title: 'Primary CTA Label', type: 'localizedString' }),
-    defineField({ name: 'primaryCtaHref', title: 'Primary CTA Link', type: 'string' }),
-    defineField({ name: 'secondaryCtaLabel', title: 'Secondary CTA Label', type: 'localizedString' }),
-    defineField({ name: 'secondaryCtaHref', title: 'Secondary CTA Link', type: 'string' }),
+    defineField({
+      name: 'ctas',
+      title: 'CTAs',
+      type: 'array',
+      of: [defineArrayMember({ type: 'cta' })],
+      description: 'Add one or more calls-to-action. First is rendered as primary, second as secondary.',
+    }),
     defineField({
       name: 'backgroundImage',
       title: 'Background Image (Circle)',
@@ -585,6 +904,73 @@ const contentSectionType = defineType({
   preview: {
     select: { title: 'title.it' },
     prepare: ({ title }) => ({ title: title ?? 'Content', subtitle: 'Content Section' }),
+  },
+})
+
+const statementSectionType = defineType({
+  name: 'statementSection',
+  title: 'Statement Section',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
+    defineField({ name: 'headline', title: 'Headline', type: 'localizedString' }),
+    defineField({ name: 'description', title: 'Description', type: 'localizedText' }),
+    defineField({
+      name: 'alignment',
+      title: 'Text Alignment',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Left', value: 'left' },
+          { title: 'Center', value: 'center' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'left',
+    }),
+    defineField({
+      name: 'image',
+      title: 'Image (optional)',
+      type: 'image',
+      options: { hotspot: true },
+    }),
+    defineField({
+      name: 'imagePosition',
+      title: 'Image Position',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Right', value: 'right' },
+          { title: 'Left', value: 'left' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'right',
+    }),
+  ],
+  preview: {
+    select: { headline_it: 'headline.it', headline_en: 'headline.en' },
+    prepare: ({ headline_it, headline_en }: { headline_it?: string; headline_en?: string }) => ({
+      title: headline_it ?? headline_en ?? 'Statement',
+      subtitle: 'Statement Section',
+    }),
   },
 })
 
@@ -771,6 +1157,91 @@ const faqItemType = defineType({
   },
 })
 
+// ─── Metrics Section ──────────────────────────────────────────────────────────
+
+const metricItemType = defineType({
+  name: 'metricItem',
+  title: 'Metric',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'value',
+      title: 'Value',
+      type: 'localizedString',
+      description: 'The headline figure, e.g. "£10bn+" (EN) / "€10bn+" (IT), or a phrase like "Fundraising Round Open"',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'label',
+      title: 'Label',
+      type: 'localizedString',
+      description: 'Short supporting label, e.g. "Estimated Addressable Market"',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'description',
+      title: 'Description (optional)',
+      type: 'localizedText',
+    }),
+    defineField({
+      name: 'animateNumber',
+      title: 'Animate Number',
+      type: 'boolean',
+      description: 'Reserved for future count-up animation. Has no effect yet.',
+      initialValue: false,
+    }),
+  ],
+  preview: {
+    select: { value_en: 'value.en', value_it: 'value.it', label_en: 'label.en', label_it: 'label.it' },
+    prepare: ({ value_en, value_it, label_en, label_it }: { value_en?: string; value_it?: string; label_en?: string; label_it?: string }) => ({
+      title: value_en ?? value_it ?? 'Metric',
+      subtitle: label_en ?? label_it ?? '',
+    }),
+  },
+})
+
+const BACKGROUND_SURFACE_OPTIONS = [
+  { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+  { title: '⬜ Surface 1', value: 'surface1' },
+  { title: '⬜ Surface 2', value: 'surface2' },
+  { title: '🟦 Surface 3', value: 'surface3' },
+  { title: '🟢 Brand Surface', value: 'brandSurface' },
+  { title: '◻ Transparent', value: 'transparent' },
+  { title: '🔲 Glass', value: 'glass' },
+]
+
+const metricsSectionType = defineType({
+  name: 'metricsSection',
+  title: 'Metrics Section',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: { list: BACKGROUND_SURFACE_OPTIONS },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
+    defineField({ name: 'headline', title: 'Headline', type: 'localizedString' }),
+    defineField({ name: 'description', title: 'Description', type: 'localizedText' }),
+    defineField({
+      name: 'metrics',
+      title: 'Metrics',
+      type: 'array',
+      of: [defineArrayMember({ type: 'metricItem' })],
+      validation: (Rule) => Rule.min(1).max(8),
+    }),
+  ],
+  preview: {
+    select: { headline_en: 'headline.en', headline_it: 'headline.it' },
+    prepare: ({ headline_en, headline_it }: { headline_en?: string; headline_it?: string }) => ({
+      title: headline_en ?? headline_it ?? 'Metrics',
+      subtitle: 'Metrics Section',
+    }),
+  },
+})
+
 const faqSectionType = defineType({
   name: 'faqSection',
   title: 'FAQ Section',
@@ -883,6 +1354,7 @@ const blogListingSectionType = defineType({
       group: 'filter',
       description: 'Choose a category to show only posts in that category.',
       hidden: ({ parent }) => parent?.filterMode !== 'byCategory',
+      options: { filter: scopedRef },
     }),
     defineField({
       name: 'event',
@@ -892,12 +1364,13 @@ const blogListingSectionType = defineType({
       group: 'filter',
       description: 'Show posts linked to this event.',
       hidden: ({ parent }) => parent?.filterMode !== 'byEvent',
+      options: { filter: scopedRef },
     }),
     defineField({
       name: 'posts',
       title: 'Posts',
       type: 'array',
-      of: [defineArrayMember({ type: 'reference', to: [{ type: 'post' }] })],
+      of: [defineArrayMember({ type: 'reference', to: [{ type: 'post' }], options: { filter: scopedRef } })],
       group: 'filter',
       description: 'Hand-pick posts. Drag to reorder for manual sort order.',
       hidden: ({ parent }) => parent?.filterMode !== 'manual',
@@ -2247,7 +2720,7 @@ const livePageType = defineType({
       title: 'Featured Events',
       type: 'array',
       group: 'events',
-      of: [defineArrayMember({ type: 'reference', to: [{ type: 'event' }] })],
+      of: [defineArrayMember({ type: 'reference', to: [{ type: 'event' }], options: { filter: scopedRef } })],
       description: 'Events to show in the past events grid. If empty, past events are shown automatically.',
     }),
     defineField({ name: 'seoTitle', title: 'SEO Title', type: 'localizedString', group: 'meta' }),
@@ -2430,6 +2903,7 @@ const pageType = defineType({
         defineArrayMember({ type: 'heroLiveCaptureSection' }),
         defineArrayMember({ type: 'heroLensSection' }),
         defineArrayMember({ type: 'contentSection' }),
+        defineArrayMember({ type: 'statementSection' }),
         defineArrayMember({ type: 'treatmentsSection' }),
         defineArrayMember({ type: 'teamSection' }),
         defineArrayMember({ type: 'textSection' }),
@@ -2437,6 +2911,7 @@ const pageType = defineType({
         defineArrayMember({ type: 'contactSection' }),
         defineArrayMember({ type: 'blogListingSection' }),
         defineArrayMember({ type: 'formSection' }),
+        defineArrayMember({ type: 'metricsSection' }),
       ],
     }),
   ],
@@ -2488,6 +2963,7 @@ const homePageType = defineType({
         defineArrayMember({ type: 'heroLiveCaptureSection' }),
         defineArrayMember({ type: 'heroLensSection' }),
         defineArrayMember({ type: 'contentSection' }),
+        defineArrayMember({ type: 'statementSection' }),
         defineArrayMember({ type: 'treatmentsSection' }),
         defineArrayMember({ type: 'teamSection' }),
         defineArrayMember({ type: 'textSection' }),
@@ -2495,6 +2971,7 @@ const homePageType = defineType({
         defineArrayMember({ type: 'contactSection' }),
         defineArrayMember({ type: 'blogListingSection' }),
         defineArrayMember({ type: 'formSection' }),
+        defineArrayMember({ type: 'metricsSection' }),
       ],
     }),
   ],
@@ -2696,13 +3173,14 @@ const postType = defineType({
       type: 'reference',
       to: [{ type: 'postAuthor' }],
       group: 'relations',
+      options: { filter: scopedRef },
     }),
     defineField({
       name: 'categories',
       title: 'Categories',
       type: 'array',
       group: 'relations',
-      of: [defineArrayMember({ type: 'reference', to: [{ type: 'blogCategory' }] })],
+      of: [defineArrayMember({ type: 'reference', to: [{ type: 'blogCategory' }], options: { filter: scopedRef } })],
     }),
     defineField({
       name: 'relatedEvent',
@@ -2711,6 +3189,7 @@ const postType = defineType({
       to: [{ type: 'event' }],
       group: 'relations',
       description: 'Link this post to an event — e.g. event preview, live recap, or post-event summary',
+      options: { filter: scopedRef },
     }),
 
     // ── SEO ───────────────────────────────────────────────────────────────────
@@ -2913,6 +3392,7 @@ export const schemaTypes = [
   localizedSlugType,
   redirectFromType,
   localizedImageType,
+  ctaType,
   navigationLinkType,
   socialLinkType,
   scheduleItemType,
@@ -2922,6 +3402,7 @@ export const schemaTypes = [
   heroLiveCaptureSectionType,
   heroLensSectionType,
   contentSectionType,
+  statementSectionType,
   treatmentCardType,
   treatmentsSectionType,
   teamMemberType,
@@ -2931,6 +3412,8 @@ export const schemaTypes = [
   faqItemType,
   faqSectionType,
   blogListingSectionType,
+  metricItemType,
+  metricsSectionType,
   formOptionItemType,
   formFieldItemType,
   formType,
