@@ -15,6 +15,9 @@ import type { SurfaceType } from '@/lib/sanity/surfaces'
 import type { HeroLiveCaptureSection as HeroLiveCaptureSectionType, DesignSystem } from '@/lib/sanity/types'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { imageUrl } from '@/lib/sanity/image'
+import { resolveCta } from '@/lib/sanity/cta'
+import { CtaButton } from '@/components/ui/CtaButton'
+import { useEarlyAccessSafe } from '@/components/forms/EarlyAccessContext'
 
 interface Props {
   section: HeroLiveCaptureSectionType
@@ -468,15 +471,28 @@ function VisualColumn({ section, animationIntensity }: VisualColumnProps) {
 // ── Main section ──────────────────────────────────────────────────────────────
 
 export function HeroLiveCaptureSection({ section, surface, designSystem }: Props) {
+  const earlyAccess = useEarlyAccessSafe()
   const {
     eyebrow,
     title,
     subtitle,
-    primaryCtaLabel,
-    primaryCtaHref,
-    secondaryCtaLabel,
-    secondaryCtaHref,
+    ctas,
   } = section
+  const [primaryCta, secondaryCta] = (ctas ?? []).map(resolveCta)
+
+  // Bridge form CTAs to the correct modal handler.
+  // Currently only earlyAccess is wired. Future types will route via FormModalProvider.
+  function makeFormHandler(cta: ReturnType<typeof resolveCta> | undefined): (() => void) | undefined {
+    if (!cta || cta.type !== 'form') return undefined
+    if (cta.formInquiryType === 'earlyAccess') {
+      return () => earlyAccess?.open({
+        source: 'header_cta',
+        ctaInternalName: cta.internalName,
+        ctaLabelSnapshot: cta.label,
+      })
+    }
+    return undefined
+  }
 
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
@@ -583,12 +599,13 @@ export function HeroLiveCaptureSection({ section, surface, designSystem }: Props
             )}
 
             {/* CTAs */}
-            {(primaryCtaLabel || secondaryCtaLabel) && (
+            {(primaryCta || secondaryCta) && (
               <SlideUp duration={duration} ease={ease} delay={d4}>
                 <div className="flex flex-wrap items-center gap-4">
-                  {primaryCtaLabel && (
-                    <a
-                      href={primaryCtaHref ?? '#'}
+                  {primaryCta && (
+                    <CtaButton
+                      cta={primaryCta}
+                      onFormClick={makeFormHandler(primaryCta)}
                       className="inline-flex h-12 items-center gap-2.5 px-8 text-sm font-semibold tracking-wide transition-all duration-200 hover:opacity-90 hover:shadow-lg"
                       style={{
                         backgroundColor: 'var(--color-primary)',
@@ -597,24 +614,23 @@ export function HeroLiveCaptureSection({ section, surface, designSystem }: Props
                         boxShadow: '0 4px 24px -4px var(--color-primary, rgba(220,38,38,0.4))',
                       }}
                     >
-                      {primaryCtaLabel}
+                      {primaryCta.label}
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                         <path d="M2 7H12M8 3L12 7L8 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
-                    </a>
+                    </CtaButton>
                   )}
-                  {secondaryCtaLabel && (
-                    <a
-                      href={secondaryCtaHref ?? '#'}
+                  {secondaryCta && (
+                    <CtaButton
+                      cta={secondaryCta}
+                      onFormClick={makeFormHandler(secondaryCta)}
                       className="inline-flex h-12 items-center gap-2 px-6 text-sm font-medium transition-opacity duration-150 hover:opacity-70"
                       style={{
                         color: 'var(--color-text-secondary)',
                         borderBottom: '1px solid var(--color-border)',
                         borderRadius: 0,
                       }}
-                    >
-                      {secondaryCtaLabel}
-                    </a>
+                    />
                   )}
                 </div>
               </SlideUp>
