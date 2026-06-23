@@ -296,6 +296,20 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
                     allowFullScreen
                   />
                 </div>
+                {event.ctaLabel && (
+                  <div className="mt-4">
+                    <a
+                      href={event.youtubeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-11 items-center gap-2 px-6 text-sm font-medium tracking-wide transition-opacity hover:opacity-80"
+                      style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-background)' }}
+                    >
+                      {event.ctaLabel}
+                      <span aria-hidden="true" style={{ opacity: 0.7 }}>↗</span>
+                    </a>
+                  </div>
+                )}
               </div>
             </SlideUp>
           )}
