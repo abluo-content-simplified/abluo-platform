@@ -1,9 +1,11 @@
 import type { MetadataRoute } from 'next'
+import { isProduction } from '@/lib/deployment'
 
 // Reverse of TENANT_TO_PROJECT in client.ts — projectSlug → URL tenant slug
 const PROJECT_TO_TENANT: Record<string, string> = {
   'livener-main': 'livener',
   'studiomartegani-main': 'studiomartegani',
+  'abluo': 'abluo-the-tiny-cms',
 }
 
 interface TenantSitemapData {
@@ -22,7 +24,15 @@ interface EventSitemapData {
   slug: Record<string, { current: string } | undefined>
 }
 
+interface PostSitemapData {
+  projectSlug: string
+  slug: Record<string, { current: string } | undefined>
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Never expose a sitemap on non-production environments.
+  if (!isProduction()) return []
+
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
 
   if (!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID) return []
@@ -39,13 +49,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }`
     )
 
-    // Fetch all published pages and events with their per-locale slugs.
-    const [pages, events] = await Promise.all([
+    // Fetch all published pages, events, and posts with their per-locale slugs.
+    const [pages, events, posts] = await Promise.all([
       sanityClient.fetch<PageSitemapData[]>(
         `*[_type == "page" && defined(projectSlug)] { projectSlug, slug }`
       ),
       sanityClient.fetch<EventSitemapData[]>(
         `*[_type == "event" && defined(projectSlug)] { projectSlug, slug }`
+      ),
+      sanityClient.fetch<PostSitemapData[]>(
+        `*[_type == "post" && defined(projectSlug) && defined(publishedAt) && publishedAt <= now()] { projectSlug, slug }`
       ),
     ])
 
@@ -62,6 +75,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const list = eventsByProject.get(event.projectSlug) ?? []
       list.push(event)
       eventsByProject.set(event.projectSlug, list)
+    }
+
+    const postsByProject = new Map<string, PostSitemapData[]>()
+    for (const post of posts) {
+      const list = postsByProject.get(post.projectSlug) ?? []
+      list.push(post)
+      postsByProject.set(post.projectSlug, list)
     }
 
     const entries: MetadataRoute.Sitemap = []
@@ -108,6 +128,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
               lastModified: new Date(),
               changeFrequency: 'weekly',
               priority: locale === primaryLocale ? 0.7 : 0.6,
+            })
+          }
+        }
+      }
+
+      // Per-post entries — only for locales that have a slug set.
+      const projectPosts = postsByProject.get(projectSlug) ?? []
+      for (const post of projectPosts) {
+        for (const locale of locales) {
+          const slugObj = post.slug?.[locale]
+          if (slugObj?.current) {
+            entries.push({
+              url: `${baseUrl}/${locale}/${tenantSlug}/blog/${slugObj.current}`,
+              lastModified: new Date(),
+              changeFrequency: 'monthly',
+              priority: locale === primaryLocale ? 0.6 : 0.5,
             })
           }
         }

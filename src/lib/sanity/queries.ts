@@ -30,6 +30,32 @@ const locImage = (field: string) => /* groq */ `
   }
 `
 
+// ─── CTA fields projection ────────────────────────────────────────────────────
+// Reusable GROQ inline fragment for the cta object type.
+// Include it in any section projection that uses a CTA field.
+//
+// Usage in a section query:
+//   primaryCta { ${CTA_FIELDS} },
+//   secondaryCta { ${CTA_FIELDS} },
+//
+// The fragment resolves all references so the frontend receives plain values —
+// no Sanity reference objects, no URL construction needed.
+export const CTA_FIELDS = /* groq */ `
+  "label": ${loc('label')},
+  internalName,
+  actionType,
+  "pageSlug": coalesce(
+    pageRef->slug[$locale].current,
+    pageRef->slug[$defaultLocale].current
+  ),
+  "formId": formRef._ref,
+  "formInquiryType": formRef->inquiryType,
+  "fileUrl": file.asset->url,
+  "fileName": file.asset->originalFilename,
+  externalUrl,
+  openInNewTab
+`
+
 export const localeConfigQuery = /* groq */ `
   *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
     defaultLocale,
@@ -79,10 +105,20 @@ export const websiteSiteConfigQuery = /* groq */ `
     themeSwitcherPlacement,
     navLinks[] {
       "label": ${loc('label')},
+      linkType,
+      "pageSlug": coalesce(pageRef->slug[$locale].current, pageRef->slug[$defaultLocale].current),
+      internalPage,
+      externalUrl,
+      openInNewTab,
       href,
       external,
       children[] {
         "label": ${loc('label')},
+        linkType,
+        "pageSlug": coalesce(pageRef->slug[$locale].current, pageRef->slug[$defaultLocale].current),
+        internalPage,
+        externalUrl,
+        openInNewTab,
         href,
         external
       }
@@ -91,6 +127,10 @@ export const websiteSiteConfigQuery = /* groq */ `
     ctaHref,
     footerLinks[] {
       "label": ${loc('label')},
+      linkType,
+      internalPage,
+      externalUrl,
+      openInNewTab,
       href,
       external
     },
@@ -106,23 +146,43 @@ export const websiteSiteConfigQuery = /* groq */ `
     socialLinks[] { platform, url },
     phone,
     email,
-    address,
-    "livePageHeadline": ${loc('livePageHeadline')},
-    "livePageSubheadline": ${loc('livePageSubheadline')},
-    "livePageBetaNotice": ${loc('livePageBetaNotice')}
+    address
   }
 `
 
 export const postsQuery = /* groq */ `
-  *[_type == "post" && projectSlug == $projectSlug && defined(publishedAt)]
-  | order(publishedAt desc) [$offset...$offset + $limit] {
+  *[
+    _type == "post"
+    && projectSlug == $projectSlug
+    && defined(publishedAt)
+    && publishedAt <= now()
+    && (!defined(expiresAt) || expiresAt > now())
+  ]
+  | order(featured desc, publishedAt desc) [$offset...$offset + $limit] {
     _id,
     "title": ${loc('title')},
-    slug,
+    "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
     "excerpt": ${loc('excerpt')},
     publishedAt,
-    coverImage,
-    seoMetadata,
+    expiresAt,
+    featured,
+    ${locImage('coverImage')},
+    "readingTimeMinutes": math::max([1, round(
+      length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / 1200
+    )]),
+    "author": author-> {
+      name,
+      "role": ${loc('role')},
+      avatar { asset, hotspot, crop }
+    },
+    "categories": categories[]-> {
+      _id,
+      "title": ${loc('title')},
+      "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
+      color
+    },
+    "seoTitle": ${loc('seoTitle')},
+    "seoDescription": ${loc('seoDescription')},
   }
 `
 
@@ -134,16 +194,178 @@ export const postBySlugQuery = /* groq */ `
     "redirectFrom": redirectFrom,
     "excerpt": ${loc('excerpt')},
     "body": ${loc('body')},
-    coverImage,
     publishedAt,
-    seoMetadata,
+    featured,
+    ${locImage('coverImage')},
+    featuredVideo {
+      provider,
+      youtubeUrl,
+      cloudflareVideoId
+    },
+    "readingTimeMinutes": math::max([1, round(
+      length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / 1200
+    )]),
+    "author": author-> {
+      _id,
+      name,
+      "role": ${loc('role')},
+      "bio": ${loc('bio')},
+      avatar { asset, hotspot, crop }
+    },
+    "categories": categories[]-> {
+      _id,
+      "title": ${loc('title')},
+      "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
+      color
+    },
+    "relatedEvent": relatedEvent-> {
+      _id,
+      "title": ${loc('title')},
+      "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
+      status,
+      startDate,
+      endDate,
+      "location": ${loc('location')},
+      "shortDescription": ${loc('shortDescription')},
+      ${locImage('heroImage')}
+    },
+    "seoTitle": coalesce(${loc('seoTitle')}, ${loc('title')}),
+    "seoDescription": coalesce(${loc('seoDescription')}, ${loc('excerpt')}),
+    seoImage { asset, hotspot, crop },
   }
+`
+
+export const postByOldSlugQuery = /* groq */ `
+  *[_type == "post" && projectSlug == $projectSlug && $slug in redirectFrom[$locale]][0] {
+    "currentSlug": slug[$locale].current
+  }
+`
+
+// Fetches up to 3 related posts for the blog detail page.
+// Prioritises posts that share at least one category with the current post,
+// then falls back to featured / most recent from the same project.
+// $excludeId prevents the current post from appearing in the results.
+// $categoryIds should be the array of _ref strings from the current post's categories.
+export const relatedPostsQuery = /* groq */ `
+  *[
+    _type == "post"
+    && projectSlug == $projectSlug
+    && _id != $excludeId
+    && defined(publishedAt)
+    && publishedAt <= now()
+    && (!defined(expiresAt) || expiresAt > now())
+  ] | order(
+    count((categories[]._ref)[@ in $categoryIds]) desc,
+    featured desc,
+    publishedAt desc
+  ) [0...3] {
+    _id,
+    "title": ${loc('title')},
+    "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
+    "excerpt": ${loc('excerpt')},
+    publishedAt,
+    featured,
+    ${locImage('coverImage')},
+    "readingTimeMinutes": math::max([1, round(
+      length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / 1200
+    )]),
+    "author": author-> {
+      name,
+      "role": ${loc('role')},
+      avatar { asset, hotspot, crop }
+    },
+    "categories": categories[]-> {
+      _id,
+      "title": ${loc('title')},
+      "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
+      color
+    }
+  }
+`
+
+// ─── Blog Listing Section ─────────────────────────────────────────────────────
+//
+// Shared post card fields used by the blog listing section component.
+// Separate query exports for each sort order — GROQ does not support
+// dynamic sort direction via parameters, so we select the right query
+// in the page server component based on section.sortOrder.
+
+const blogListingCardFields = /* groq */ `
+  _id,
+  "title": coalesce(title[$locale], title[$defaultLocale], title.en, title),
+  "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
+  "excerpt": coalesce(excerpt[$locale], excerpt[$defaultLocale], excerpt.en, excerpt),
+  publishedAt,
+  featured,
+  coverImage {
+    asset,
+    hotspot,
+    crop,
+    "alt": coalesce(alt[$locale], alt[$defaultLocale], alt.en, alt),
+    "caption": coalesce(caption[$locale], caption[$defaultLocale], caption.en, caption)
+  },
+  "readingTimeMinutes": math::max([1, round(
+    length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / 1200
+  )]),
+  "author": author-> {
+    name,
+    "role": coalesce(role[$locale], role[$defaultLocale], role.en, role),
+    avatar { asset, hotspot, crop }
+  },
+  "categories": categories[]-> {
+    _id,
+    "title": coalesce(title[$locale], title[$defaultLocale], title.en, title),
+    "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
+    color
+  }
+`
+
+// Core filter — applied by all three blog listing queries.
+// filterMode is injected as a GROQ parameter. Conditional logic:
+//   latest       → no extra filter
+//   featured     → featured == true
+//   byCategory   → $categoryId in categories[]._ref
+//   byEvent      → relatedEvent._ref == $eventId
+const blogListingFilter = /* groq */ `
+  _type == "post"
+  && projectSlug == $projectSlug
+  && defined(publishedAt)
+  && publishedAt <= now()
+  && (!defined(expiresAt) || expiresAt > now())
+  && (
+    $filterMode == "latest"
+    || ($filterMode == "featured" && featured == true)
+    || ($filterMode == "byCategory" && $categoryId in categories[]._ref)
+    || ($filterMode == "byEvent" && relatedEvent._ref == $eventId)
+  )
+`
+
+// Fetch up to $maxItems posts — newest first.
+// Also fetches one extra ($maxItems + 1) so the page component can detect
+// whether a "View All" button is warranted without a separate count query.
+export const blogListingPostsNewestQuery = /* groq */ `
+  *[${blogListingFilter}]
+  | order(featured desc, publishedAt desc)
+  [0...$maxItems] { ${blogListingCardFields} }
+`
+
+// Oldest first variant (identical filter, ascending sort).
+export const blogListingPostsOldestQuery = /* groq */ `
+  *[${blogListingFilter}]
+  | order(publishedAt asc)
+  [0...$maxItems] { ${blogListingCardFields} }
+`
+
+// Manual selection — fetch by explicit post IDs.
+// The page component re-orders the result to match the original $postIds array order.
+export const blogListingManualPostsQuery = /* groq */ `
+  *[_type == "post" && _id in $postIds] { ${blogListingCardFields} }
 `
 
 export const currentLiveEventQuery = /* groq */ `
   coalesce(
-    *[_type == "event" && projectSlug == $projectSlug && isCurrentLiveEvent == true && now() <= endDate][0],
-    *[_type == "event" && projectSlug == $projectSlug && status == "live" && now() <= endDate][0],
+    *[_type == "event" && projectSlug == $projectSlug && isCurrentLiveEvent == true && (endDate == null || now() <= endDate)][0],
+    *[_type == "event" && projectSlug == $projectSlug && status == "live" && (endDate == null || now() <= endDate)][0],
     *[_type == "event" && projectSlug == $projectSlug && status == "upcoming" && now() < startDate]
       | order(startDate asc)[0]
   ) {
@@ -260,6 +482,10 @@ export const homePageQuery = /* groq */ `
       "title": ${loc('title')},
       "body": ${loc('body')},
       imagePosition,
+      // statementSection fields
+      "description": ${loc('description')},
+      alignment,
+      image { asset, hotspot, crop },
       "intro": ${loc('intro')},
       treatments[] {
         _type, _key,
@@ -280,7 +506,43 @@ export const homePageQuery = /* groq */ `
         "question": ${loc('question')},
         "answer": ${loc('answer')},
       },
-      mapEmbedUrl
+      mapEmbedUrl,
+      "form": form->{
+        _id,
+        projectSlug,
+        "description": ${loc('description')},
+        "submitLabel": ${loc('submitLabel')},
+        "successMessage": ${loc('successMessage')},
+        inquiryType,
+        fields[] {
+          id, type, required, width, rows,
+          "label": ${loc('label')},
+          "placeholder": ${loc('placeholder')},
+          "helpText": ${loc('helpText')},
+          "checkboxLabel": ${loc('checkboxLabel')},
+          options[] { value, "label": ${loc('label')} }
+        }
+      },
+      // heroSection media / layout / style fields
+      mediaType,
+      heroImage { asset, hotspot, crop },
+      heroVideo,
+      posterImage { asset, hotspot, crop },
+      heroHeight,
+      contentWidth,
+      contentAlignment,
+      verticalAlignment,
+      overlayOpacity,
+      blur,
+      brightness,
+      // metricsSection fields
+      metrics[] {
+        _type, _key,
+        "value": ${loc('value')},
+        animateNumber,
+        "label": ${loc('label')},
+        "description": ${loc('description')},
+      }
     }
   }
 `
@@ -305,6 +567,10 @@ export const pageHomeQuery = /* groq */ `
       "title": ${loc('title')},
       "body": ${loc('body')},
       imagePosition,
+      // statementSection fields
+      "description": ${loc('description')},
+      alignment,
+      image { asset, hotspot, crop },
       "intro": ${loc('intro')},
       treatments[] {
         _type, _key,
@@ -325,7 +591,62 @@ export const pageHomeQuery = /* groq */ `
         "question": ${loc('question')},
         "answer": ${loc('answer')},
       },
-      mapEmbedUrl
+      mapEmbedUrl,
+      // Blog listing section fields — null on all other section types
+      filterMode,
+      sortOrder,
+      layout,
+      maxItems,
+      "viewAllLabel": ${loc('viewAllLabel')},
+      viewAllHref,
+      "categoryId": category->._id,
+      "eventId": event->._id,
+      "postIds": posts[]->._id,
+      // formSection fields
+      "form": form->{
+        _id,
+        projectSlug,
+        "description": ${loc('description')},
+        "submitLabel": ${loc('submitLabel')},
+        "successMessage": ${loc('successMessage')},
+        inquiryType,
+        fields[] {
+          id, type, required, width, rows,
+          "label": ${loc('label')},
+          "placeholder": ${loc('placeholder')},
+          "helpText": ${loc('helpText')},
+          "checkboxLabel": ${loc('checkboxLabel')},
+          options[] { value, "label": ${loc('label')} }
+        }
+      },
+      // heroSection media / layout / style fields
+      mediaType,
+      heroImage { asset, hotspot, crop },
+      heroVideo,
+      posterImage { asset, hotspot, crop },
+      heroHeight,
+      contentWidth,
+      contentAlignment,
+      verticalAlignment,
+      overlayOpacity,
+      blur,
+      brightness,
+      // heroLiveCaptureSection + heroLensSection CTA array
+      ctas[] { ${CTA_FIELDS} },
+      backgroundImage { asset, hotspot, crop },
+      phoneScreenImage { asset, hotspot, crop },
+      circleSize,
+      animationIntensity,
+      // heroLensSection fields
+      foregroundImage { asset, hotspot, crop },
+      // metricsSection fields
+      metrics[] {
+        _type, _key,
+        "value": ${loc('value')},
+        animateNumber,
+        "label": ${loc('label')},
+        "description": ${loc('description')},
+      }
     }
   }
 `
@@ -350,6 +671,10 @@ export const pageBySlugQuery = /* groq */ `
       "title": ${loc('title')},
       "body": ${loc('body')},
       imagePosition,
+      // statementSection fields
+      "description": ${loc('description')},
+      alignment,
+      image { asset, hotspot, crop },
       "intro": ${loc('intro')},
       treatments[] {
         _type, _key,
@@ -370,7 +695,62 @@ export const pageBySlugQuery = /* groq */ `
         "question": ${loc('question')},
         "answer": ${loc('answer')},
       },
-      mapEmbedUrl
+      mapEmbedUrl,
+      // Blog listing section fields — null on all other section types
+      filterMode,
+      sortOrder,
+      layout,
+      maxItems,
+      "viewAllLabel": ${loc('viewAllLabel')},
+      viewAllHref,
+      "categoryId": category->._id,
+      "eventId": event->._id,
+      "postIds": posts[]->._id,
+      // formSection fields
+      "form": form->{
+        _id,
+        projectSlug,
+        "description": ${loc('description')},
+        "submitLabel": ${loc('submitLabel')},
+        "successMessage": ${loc('successMessage')},
+        inquiryType,
+        fields[] {
+          id, type, required, width, rows,
+          "label": ${loc('label')},
+          "placeholder": ${loc('placeholder')},
+          "helpText": ${loc('helpText')},
+          "checkboxLabel": ${loc('checkboxLabel')},
+          options[] { value, "label": ${loc('label')} }
+        }
+      },
+      // heroSection media / layout / style fields
+      mediaType,
+      heroImage { asset, hotspot, crop },
+      heroVideo,
+      posterImage { asset, hotspot, crop },
+      heroHeight,
+      contentWidth,
+      contentAlignment,
+      verticalAlignment,
+      overlayOpacity,
+      blur,
+      brightness,
+      // heroLiveCaptureSection + heroLensSection CTA array
+      ctas[] { ${CTA_FIELDS} },
+      backgroundImage { asset, hotspot, crop },
+      phoneScreenImage { asset, hotspot, crop },
+      circleSize,
+      animationIntensity,
+      // heroLensSection fields
+      foregroundImage { asset, hotspot, crop },
+      // metricsSection fields
+      metrics[] {
+        _type, _key,
+        "value": ${loc('value')},
+        animateNumber,
+        "label": ${loc('label')},
+        "description": ${loc('description')},
+      }
     }
   }
 `
@@ -384,6 +764,48 @@ export const pageByOldSlugQuery = /* groq */ `
 `
 
 export const siteConfigQuery = websiteSiteConfigQuery
+
+// ─── Live Page ────────────────────────────────────────────────────────────────
+
+export const livePageQuery = /* groq */ `
+  *[_type == "livePage" && projectSlug == $projectSlug][0] {
+    _id,
+    "heroTitle": ${loc('heroTitle')},
+    "heroSubtitle": ${loc('heroSubtitle')},
+    "betaNotice": ${loc('betaNotice')},
+    "introText": ${loc('introText')},
+    ${locImage('heroImage')},
+    cloudflareVideoId,
+    featuredEvents[]-> {
+      _id,
+      "title": ${loc('title')},
+      "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
+      status,
+      startDate,
+      endDate,
+      "location": ${loc('location')},
+      "shortDescription": ${loc('shortDescription')},
+      ${locImage('heroImage')}
+    },
+    "seoTitle": ${loc('seoTitle')},
+    "seoDescription": ${loc('seoDescription')}
+  }
+`
+
+// ─── Events Page ──────────────────────────────────────────────────────────────
+
+export const eventsPageQuery = /* groq */ `
+  *[_type == "eventsPage" && projectSlug == $projectSlug][0] {
+    _id,
+    "heroTitle": ${loc('heroTitle')},
+    "heroSubtitle": ${loc('heroSubtitle')},
+    "introText": ${loc('introText')},
+    ${locImage('heroImage')},
+    cloudflareVideoId,
+    "seoTitle": ${loc('seoTitle')},
+    "seoDescription": ${loc('seoDescription')}
+  }
+`
 
 // ─── Design System ────────────────────────────────────────────────────────────
 
@@ -477,7 +899,9 @@ export const DS_FIELDS_SELECTION = /* groq */ `{
     textarea { lightTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity }, darkTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity } },
     select   { lightTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity }, darkTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity } },
     checkbox { lightTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity }, darkTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity } },
-    radio    { lightTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity }, darkTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity } }
+    radio    { lightTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity }, darkTheme { background, border, text, placeholder, focusBorder, errorBorder, successBorder, disabledOpacity } },
+    typography { labelColor, labelSize, labelWeight, helpTextColor, helpTextSize, errorTextColor, errorTextSize, requiredColor },
+    geometry   { inputHeight, paddingX, paddingY, labelGap, fieldGap, borderRadius }
   },
 
   navigation { menuRadius, menuGap, dropdownRadius, dropdownStyle },

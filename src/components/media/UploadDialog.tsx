@@ -99,7 +99,7 @@ export function UploadDialog({
       if (description) formData.append('description', description)
       formData.append('tags', JSON.stringify(tags))
 
-      const response = await fetch('/api/media/upload', {
+      const response = await fetch('/api/media', {
         method: 'POST',
         body: formData,
       })

@@ -1,0 +1,148 @@
+V0.9.1 — Multi-Tenant Membership Foundation
+============================================
+Date: 2026-06-18
+Branch: dev
+Tag: v0.9.1-membership-phase1
+TypeScript: not re-run (database-only changes — no application code modified)
+Tests: 46/46 passed (existing suite unaffected)
+
+This release completes the two-phase transition from the single-tenant profile
+model to a proper multi-tenant membership architecture. No application code was
+changed — this is entirely a database layer change.
+
+─── Overview ─────────────────────────────────────────────────────────────────
+
+Before: profiles(id, tenant_id, role, full_name, created_at)
+        One user → one tenant → one role (admin or client)
+
+After:  profiles(id, full_name, avatar_url, created_at)          ← identity only
+        tenant_members(id, tenant_id, user_id, role, created_at) ← membership
+        One user → many tenants → one role per tenant (owner, editor, viewer)
+
+─── Migration 003: tenant_members (additive) ─────────────────────────────────
+
+File: supabase/migrations/003_tenant_members.sql
+
+New table: public.tenant_members
+  - id          uuid PK
+  - tenant_id   uuid → tenants(id) ON DELETE CASCADE
+  - user_id     uuid → auth.users(id) ON DELETE CASCADE
+  - role        text CHECK('owner','editor','viewer') DEFAULT 'owner'
+  - created_at  timestamptz
+  - UNIQUE(tenant_id, user_id)
+
+Indexes: tenant_members_user_id_idx, tenant_members_tenant_id_idx
+
+New SECURITY DEFINER function: public.get_my_owned_tenant_ids()
+  Returns tenant_ids where auth.uid() has role = 'owner'.
+  SECURITY DEFINER breaks self-referential RLS recursion on tenant_members.
+  set search_path = '' prevents search_path injection.
+
+5 RLS policies on tenant_members:
+  - Users can read their own memberships    (user_id = auth.uid())
+  - Owners can read members of their tenants
+  - Owners can add members to their tenants
+  - Owners can update members of their tenants
+  - Owners can remove members from their tenants
+
+Backfill: all existing profiles inserted into tenant_members as role='owner'.
+profiles.tenant_id and profiles.role left intact in this phase (additive-only).
+
+─── Migration 004: profiles identity-only ────────────────────────────────────
+
+File: supabase/migrations/004_profiles_identity_only.sql
+
+New SECURITY DEFINER functions:
+  public.get_my_tenant_ids()
+    → owner, editor, viewer — all tenant members
+    → Used by: tenants SELECT, leads SELECT, projects SELECT
+
+  public.get_my_writable_tenant_ids()
+    → owner, editor only — viewer intentionally excluded
+    → Used by: leads INSERT, leads UPDATE
+    → Viewer is read-only at the DATABASE layer (not just application layer)
+    → Reason: Supabase exposes PostgREST directly — a viewer with a valid JWT
+      could otherwise bypass the frontend and write to the database.
+
+Dropped 6 old policies (all referenced profiles.tenant_id or profiles.role):
+  - "Users can read their own tenant"       on tenants
+  - "Users can read leads for their tenant" on leads
+  - "Users can insert leads for their tenant" on leads
+  - "Users can update leads for their tenant" on leads
+  - "Users can read their own projects"     on projects
+  - "Admins can manage their own projects"  on projects
+
+New policies:
+  tenants:
+    SELECT → get_my_tenant_ids()     (any member)
+
+  leads:
+    SELECT → get_my_tenant_ids()          (any member)
+    INSERT → get_my_writable_tenant_ids() (owner + editor only)
+    UPDATE → get_my_writable_tenant_ids() (owner + editor only)
+    DELETE → none (service role only)
+
+  projects:
+    SELECT → get_my_tenant_ids()      (any member)
+    ALL    → get_my_owned_tenant_ids() (owner only)
+
+  profiles (unchanged):
+    SELECT → id = auth.uid()
+    UPDATE → id = auth.uid()
+
+Replaced handle_new_user() trigger:
+  Old: inserted into profiles with tenant_id + role from metadata
+  New: always inserts into profiles (id, full_name) for identity;
+       conditionally inserts into tenant_members if tenant_id in metadata.
+       ON CONFLICT DO NOTHING on both inserts — idempotent.
+
+Column changes on profiles:
+  ADD COLUMN avatar_url text (nullable)
+  DROP COLUMN tenant_id
+  DROP COLUMN role
+
+─── New file: src/lib/permissions.ts ─────────────────────────────────────────
+
+Application-layer permission helpers. Rule: never compare role strings inline
+— always call a helper. Adding a new role requires changes only in this file.
+
+  TenantRole = 'owner' | 'editor' | 'viewer'
+  isValidTenantRole(role)
+  canEditContent(role)    → owner, editor
+  canManageMedia(role)    → owner, editor
+  canViewLeads(role)      → owner, editor, viewer
+  canUpdateLeads(role)    → owner, editor
+  canViewAnalytics(role)  → owner, editor, viewer
+  canViewSettings(role)   → owner
+  canManageSettings(role) → owner
+  canInviteUsers(role)    → owner
+  canManageUsers(role)    → owner
+  canViewBilling(role)    → owner
+
+─── Helper function inventory (complete) ─────────────────────────────────────
+
+  get_my_tenant_ids()          → owner, editor, viewer
+  get_my_writable_tenant_ids() → owner, editor
+  get_my_owned_tenant_ids()    → owner only
+
+All three: LANGUAGE SQL, SECURITY DEFINER, STABLE, set search_path = ''.
+
+─── Pre-execution audit ──────────────────────────────────────────────────────
+
+Zero references to profiles.tenant_id or profiles.role in application code.
+proxy.ts:254 reads user_role from JWT (separate known issue, out of scope).
+No application code changes were needed or made.
+
+─── Role model ───────────────────────────────────────────────────────────────
+
+  owner  — full control: content, settings, users, billing, leads
+  editor — content + media + leads (no settings, no user management)
+  viewer — read-only: leads and analytics
+
+─── What is NOT done (deferred to next phase) ────────────────────────────────
+
+  - JWT user_role claim in proxy.ts:254 is broken — no hook writes this
+    claim, making the admin route guard non-functional. Out of scope here.
+  - Invitation flow — not started
+  - Members management UI — not started
+  - Wiring tenant_members into dashboard role checks — not started

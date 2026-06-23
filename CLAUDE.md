@@ -8,6 +8,44 @@ Abluo is NOT trying to be WordPress, HubSpot, Webflow, or a full marketing suite
 
 ---
 
+## Configuration Over Hardcoding
+
+Abluo is a reusable multi-tenant platform. Avoid hardcoded values whenever a value may vary by client, project, locale, environment, design system, or deployment.
+
+Prefer: configuration, schema fields, design system tokens, environment variables, and reusable abstractions.
+
+Never hardcode: project slugs, tenant names, domains, locales, navigation structures, design system values, or feature availability by tenant.
+
+If a value may reasonably change in the future, it should be configurable. Hardcoding is acceptable only when the value is truly platform-wide, introducing configuration would add unnecessary complexity, or there is a documented architectural reason.
+
+**Correct**
+- Reading supported locales from configuration
+- Reading design tokens from the design system
+- Using project metadata to determine routing
+- Using environment variables for environment-specific behavior
+
+**Incorrect**
+- Hardcoding `"livener"` or `"studiomartegani"` inside application logic
+- Hardcoding locale lists inside reusable components
+- Hardcoding domains inside routing logic
+- Creating tenant-specific code paths when a reusable solution is possible
+
+---
+
+## Platform Before Tenant
+
+Abluo is a platform, not a collection of custom websites. When implementing a feature: (1) design the platform solution, (2) verify it works for the current tenant, (3) avoid tenant-specific implementations whenever a reusable solution is practical.
+
+Always ask: *"How would this work for the next ten tenants?"* before finalizing an implementation.
+
+Prefer: reusable abstractions, configuration-driven behavior, shared components, shared content models, and design system inheritance.
+
+Avoid: tenant-specific conditionals, duplicated components for individual tenants, custom routing logic for individual tenants, and special-case implementations that cannot scale across projects.
+
+If a tenant-specific solution is temporarily required, document it clearly and treat it as technical debt to be removed later.
+
+---
+
 ## Architectural Principles
 
 These are non-negotiable. A future session that violates any of these is building something wrong.
@@ -189,6 +227,95 @@ Animations belong to section components. Sanity stores content — not timing, e
 
 ---
 
+## Multilingual-First Principle
+
+Abluo is multilingual by default.
+
+**Never assume a website, page, form, component, CTA, modal, email, notification, success message, validation message, or content type is single-language unless explicitly documented otherwise.**
+
+### When implementing new functionality
+
+- Keep all user-facing text localization-ready.
+- Do not hardcode English strings directly into components.
+- Store text in locale dictionaries, configuration objects, or Sanity content.
+- Do not hide, disable, or alter locale switching based on tenant-specific assumptions.
+- Do not assume a tenant currently using one language will remain single-language.
+- Any new content model must be evaluated for multilingual requirements before implementation.
+
+### Examples
+
+**Correct**
+- CTA labels are localized.
+- Form field labels are localized.
+- Validation messages are localized.
+- Success and error messages are localized.
+- Blog categories support localization.
+- Navigation labels support localization.
+
+**Incorrect**
+- Hardcoded English strings inside React components.
+- Hiding the language switcher because one tenant currently uses one language.
+- Creating form schemas that cannot be translated later.
+- Building content structures that require migrations to become multilingual.
+
+**When in doubt, choose the multilingual-ready solution.**
+
+### Rule: No hardcoded user-facing strings in components
+
+User-facing strings must never be hardcoded inside React components.
+
+All user-facing text must come from:
+1. Sanity content
+2. Locale dictionaries
+3. Configuration objects specifically designed for localization
+
+**Exceptions** (hardcoding is acceptable):
+- Developer-only debug messages
+- Internal logging
+- Database status values (`'new'`, `'contacted'`, `'archived'`, etc.)
+- API field names
+
+### Rule: Reusable components must be language-agnostic
+
+New reusable components may not contain hardcoded user-facing text.
+
+User-facing text must come from:
+- Localized dictionaries
+- Sanity content
+- Explicitly injected configuration objects
+
+Reusable components should be language-agnostic.
+
+### Localization Requirements — complete checklist
+
+Abluo is multilingual by default. All user-facing text must be localizable.
+
+Reusable components must not contain hardcoded:
+- Labels
+- Placeholders
+- Button text
+- Validation messages
+- Success messages
+- Error messages
+- Helper text
+- Empty states
+- Aria labels
+
+Text must come from:
+- Locale dictionaries (`getXMessages(locale)` pattern)
+- Sanity content
+- Configuration objects
+
+**Exceptions** — hardcoding is acceptable in:
+- Admin-only interfaces
+- Sanity Studio utilities
+- Developer tooling
+- Test fixtures
+
+When building new features, multilingual support is the **default assumption** unless explicitly documented otherwise.
+
+---
+
 ## Localization Architecture
 
 There are two completely separate localization concerns. They must never be conflated.
@@ -313,10 +440,89 @@ Any change to `design-system-resolver.ts` requires a corresponding test. Any new
 
 ---
 
+## Deployment Workflow
+
+Abluo uses a three-stage deployment pipeline. **Never push unreviewed changes directly to `main`.**
+
+### Branches
+
+| Branch | Environment | Domain |
+|---|---|---|
+| `dev` | Developer testing | `dev.abluo.app` |
+| `preview` | Client / tenant review | `preview.abluo.app` |
+| `main` | Production | `abluo.app` |
+
+### Release Process
+
+1. Implement and test changes on `dev`.
+2. Run `npx tsc --noEmit`, `npx vitest run`, and `npm run build` — all must pass.
+3. Commit to `dev` and push.
+4. **Stop. Wait for Tom to verify on `https://dev.abluo.app`.**
+5. Only after explicit approval: merge `dev → preview` and push.
+6. **Stop. Wait for Tom to verify on `https://preview.abluo.app`.**
+7. Only after explicit approval: merge `preview → main`, tag the release, push.
+8. Verify production on `https://abluo.app`.
+
+**The word "Stop" above is literal.** Do not proceed to the next stage without confirmation, even if the changes seem trivially safe.
+
+### Git Commands (default pattern)
+
+```bash
+# Commit to dev
+git checkout dev
+git add <files>
+git commit -m "V{version}: description"
+git push origin dev
+
+# Promote to preview — only after Tom confirms dev.abluo.app is working
+git checkout preview && git merge dev --no-edit && git push origin preview
+
+# Promote to production — only after Tom confirms preview.abluo.app is working
+git checkout main && git merge preview --no-edit
+git tag V{version}
+git push origin main --tags
+
+# Always return to dev after a promotion
+git checkout dev
+```
+
+When suggesting git commands, always default to the `dev → preview → main` flow unless explicitly instructed otherwise.
+
+### What Caused V0.8.2 to Bypass the Workflow
+
+In session on 2026-06-17, the merge sequence became tangled during a context-limited conversation:
+
+- `dev` had uncommitted V0.8.2 changes
+- A `git stash` failed silently, so changes carried through a branch switch
+- The session then ran `git checkout preview && git merge dev` without pausing for dev verification
+- This triggered Vercel to build `preview`, which then got merged to `main` — skipping the explicit hold points
+- Result: a broken build (middleware conflict) landed on production
+
+**Lessons encoded here:**
+
+1. Each stage now has an explicit **Stop** instruction — no implicit continuation.
+2. `--no-edit` is added to all merge commands to prevent vim/editor prompts from disrupting the flow.
+3. The pre-commit build check (`npm run build`) is now part of the release process, not just tsc + vitest.
+4. If `git stash` fails for any reason, stop and diagnose before switching branches.
+
+### Middleware Convention (Next.js 16)
+
+Next.js 16 uses **`src/proxy.ts`** as the middleware entrypoint — not `middleware.ts`. This is a Next.js 16 convention change. `proxy.ts` must export:
+
+```ts
+export async function proxy(request: NextRequest) { ... }
+export const config = { matcher: [...] }
+```
+
+**Never create `src/middleware.ts`.** If both files exist, Next.js 16 will refuse to build with:
+> "Both middleware file and proxy file are detected. Please use proxy.ts only."
+
+---
+
 ## Versioning and Deployment
 
-- **Versioning:** semver. Tag format: `v{major}.{minor}.{patch}`
-- **Build logs:** one file per release — `build-log-v{version}.txt` in the repo root. Never overwrite an existing log.
+- **Versioning:** semver. Tag format: `V{major}.{minor}.{patch}` (capital V)
+- **Build logs:** one file per release — `build-log-V{version}.txt` in the repo root. Never overwrite an existing log.
 - **Pre-commit checklist:**
   1. `npx tsc --noEmit` — must be clean
   2. `npx vitest run` — all tests must pass
@@ -368,3 +574,107 @@ Static pages (About, Services, Contact, etc.) are managed by the Abluo admin in 
 Organization: `abluo-content-simplified`
 - `abluo-platform` — main platform codebase
 - `abluo-playground` — experiments and UI prototypes (never deployed)
+
+---
+
+## Schema Evolution Rules
+
+Before changing the type of an existing Sanity field, you must check whether documents already exist with that field populated. Changing a field type without migrating existing content causes Studio validation errors and may silently break GROQ queries.
+
+**Required steps before any field type change:**
+
+1. Query Sanity to check whether documents exist: `*[defined(field)][0..5]`
+2. Inspect the actual stored data shape — not what you expect, what is actually there.
+3. If no documents exist with that field, the change is safe.
+4. If documents exist, you must either write a migration or create a new field and deprecate the old one.
+5. Document the migration strategy before implementing the change.
+
+**Field type changes that always require migration planning:**
+
+- `string` → `localizedString`
+- `string` → `reference`
+- `reference` → `array(reference)`
+- `number` → `string`
+- `localizedString` → `string`
+- Any object type → a different object type
+
+**What a type mismatch causes:**
+
+- Studio shows validation errors ("Expected type X, got Y") on documents with the old format.
+- GROQ queries may silently return `null` if the accessor pattern does not match the stored shape.
+- Published documents are never automatically migrated — they retain the old format until republished.
+
+**Migration pattern for `string` → `localizedString`:**
+
+Check the stored data first:
+```
+*[_type == "myType" && defined(myField) && _type(myField) == "string"] { _id, myField }
+```
+If any documents are found, patch them to convert the string value into a localizedString object before deploying the schema change.
+
+**Root cause of the June 2026 MetricsSection incident:**
+
+The `value` field in `metricItem` was initially created as `type: 'string'`. Content was entered and published. The field was then changed to `type: 'localizedString'` without checking whether published documents existed. The published document retained the old string format, causing a Studio type mismatch. The draft was already correct (the user had re-entered values in the new format), so the fix was to publish the draft rather than run a migration. This could have been avoided by querying Sanity before changing the type.
+
+---
+
+## Localization Rules
+
+Abluo is multilingual-first. Any user-visible content field should be assumed to require localization unless there is a documented specific reason it does not.
+
+**Decide at field creation time** whether a field should be:
+- `localizedString` — short text that may differ by locale (labels, titles, headlines, values, CTAs)
+- `localizedText` — longer text (descriptions, intros, body copy)
+- `localizedPortableText` — rich text
+- Non-localized — only for fields that are inherently language-neutral
+
+**Non-localized fields are those that are genuinely locale-independent:**
+- Numeric settings (grid columns, animation duration, z-index)
+- Boolean flags (animateNumber, featured, required)
+- Enum selectors (background surface, layout, imagePosition)
+- Internal identifiers and keys
+- URLs and slugs (slugs use the `localizedSlug` type — not a plain string)
+- Technical references
+
+**Do not create a field as `string` and convert it to `localizedString` later.** Content entered in the string format will be invalid against the new schema and will require migration. The cost of deciding at creation time is zero; the cost of migrating after content exists is non-trivial.
+
+**Examples of fields that must be localized:**
+
+- Section eyebrow, headline, description
+- Card labels, values, captions
+- Button labels and CTA text
+- Form field labels, placeholders, validation messages
+- Navigation labels
+- Any metric value that could differ by region (e.g. `£10bn+` vs `€10bn+`)
+- Any string that could be translated
+
+**Examples of fields that must NOT be localized:**
+
+- `animateNumber` (boolean)
+- `background` (surface selector)
+- `imagePosition` (enum)
+- `maxItems` (number)
+- `filterMode` (enum)
+
+---
+
+## New Section Checklist
+
+Every new Sanity section type must be verified across all six locations before it is considered complete. A section that renders in one route but not the other is incomplete.
+
+| Location | What to check |
+|---|---|
+| `schema.ts` — type definition | `defineType` with all fields, validation, preview |
+| `schema.ts` — sections arrays | Added to both the `page` type and the legacy `homePage` type |
+| `schema.ts` — type export | Added to the `export default` types array |
+| `types.ts` | Interface defined, added to `PageSection` union |
+| `queries.ts` | Fields projected in `homePageQuery`, `pageHomeQuery`, and `pageBySlugQuery` |
+| `[tenant]/page.tsx` | Component imported, `case` added to `SectionRenderer` |
+| `[tenant]/[slug]/page.tsx` | Component imported, `case` added to `SectionRenderer` |
+| Studio preview | `preview.prepare` returns a meaningful title and subtitle |
+
+**If a section requires server-side data hydration** (e.g. `blogListingSection` fetches posts), the hydration logic must be duplicated in both `page.tsx` and `[slug]/page.tsx`. A hydration function in only one route is a bug.
+
+**Root cause of the June 2026 routing gap:**
+
+`MetricsSection` and `BlogListingSection` were both wired into `[tenant]/page.tsx` but not into `[tenant]/[slug]/page.tsx`. The Investors page renders via the slug route, so neither section appeared. The GROQ query already included the fields — only the SectionRenderer cases were missing. This would have been caught immediately by the checklist.

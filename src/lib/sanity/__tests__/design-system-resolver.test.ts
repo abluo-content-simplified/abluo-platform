@@ -535,4 +535,170 @@ describe('resolveDesignSystemInheritance', () => {
     expect(result?.backgroundAssets?.length).toBe(3) // waves + dots + circles
   })
 
+  // ── forms.typography inheritance ──────────────────────────────────────────
+
+  describe('forms.typography inheritance', () => {
+    const baseWithFormTypo: any = {
+      ...abluo_base,
+      forms: {
+        ...abluo_base.forms,
+        typography: {
+          labelColor:     'oklch(0.2 0 0)',
+          labelSize:      12,
+          labelWeight:    500,
+          helpTextColor:  'oklch(0.5 0 0)',
+          helpTextSize:   12,
+          errorTextColor: 'oklch(0.5 0.2 30)',
+          errorTextSize:  12,
+          requiredColor:  'oklch(0.5 0.2 30)',
+        },
+      },
+    }
+
+    it('child inherits all form typography tokens when none are set', async () => {
+      const child: any = {
+        _id: 'child-no-form-typo',
+        parentDesignSystem: { _ref: 'parent-ds', _type: 'reference' },
+      }
+      const fetch = makeFetchFn({ 'parent-ds': baseWithFormTypo })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.forms?.typography?.labelColor).toBe('oklch(0.2 0 0)')
+      expect(result?.forms?.typography?.labelSize).toBe(12)
+      expect(result?.forms?.typography?.labelWeight).toBe(500)
+      expect(result?.forms?.typography?.helpTextColor).toBe('oklch(0.5 0 0)')
+      expect(result?.forms?.typography?.errorTextColor).toBe('oklch(0.5 0.2 30)')
+      expect(result?.forms?.typography?.requiredColor).toBe('oklch(0.5 0.2 30)')
+    })
+
+    it('child overrides single form typography token, rest inherited', async () => {
+      const child: any = {
+        _id: 'child-override-typo',
+        parentDesignSystem: { _ref: 'parent-ds', _type: 'reference' },
+        forms: {
+          typography: {
+            labelColor: 'oklch(0.1 0 0)',  // darker label
+            labelSize:  14,                // larger label
+          },
+        },
+      }
+      const fetch = makeFetchFn({ 'parent-ds': baseWithFormTypo })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      // Overridden
+      expect(result?.forms?.typography?.labelColor).toBe('oklch(0.1 0 0)')
+      expect(result?.forms?.typography?.labelSize).toBe(14)
+      // Inherited
+      expect(result?.forms?.typography?.labelWeight).toBe(500)
+      expect(result?.forms?.typography?.helpTextColor).toBe('oklch(0.5 0 0)')
+      expect(result?.forms?.typography?.errorTextColor).toBe('oklch(0.5 0.2 30)')
+    })
+
+    it('child with no forms field at all still inherits form typography', async () => {
+      const child: any = {
+        _id: 'child-no-forms',
+        parentDesignSystem: { _ref: 'parent-ds', _type: 'reference' },
+        colors: { lightTheme: { primary: 'oklch(0.6 0.2 200)' } },
+      }
+      const fetch = makeFetchFn({ 'parent-ds': baseWithFormTypo })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.forms?.typography?.labelColor).toBe('oklch(0.2 0 0)')
+      expect(result?.forms?.typography?.errorTextSize).toBe(12)
+    })
+  })
+
+  // ── forms.geometry inheritance ────────────────────────────────────────────
+
+  describe('forms.geometry inheritance', () => {
+    const baseWithFormGeo: any = {
+      ...abluo_base,
+      forms: {
+        ...abluo_base.forms,
+        geometry: {
+          inputHeight:  44,
+          paddingX:     14,
+          paddingY:     10,
+          labelGap:      6,
+          fieldGap:     20,
+          borderRadius:  8,
+        },
+      },
+    }
+
+    it('child inherits all form geometry tokens when none are set', async () => {
+      const child: any = {
+        _id: 'child-no-geo',
+        parentDesignSystem: { _ref: 'parent-ds', _type: 'reference' },
+      }
+      const fetch = makeFetchFn({ 'parent-ds': baseWithFormGeo })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.forms?.geometry?.inputHeight).toBe(44)
+      expect(result?.forms?.geometry?.paddingX).toBe(14)
+      expect(result?.forms?.geometry?.paddingY).toBe(10)
+      expect(result?.forms?.geometry?.labelGap).toBe(6)
+      expect(result?.forms?.geometry?.fieldGap).toBe(20)
+      expect(result?.forms?.geometry?.borderRadius).toBe(8)
+    })
+
+    it('child overrides single geometry token, rest inherited', async () => {
+      const child: any = {
+        _id: 'child-compact',
+        parentDesignSystem: { _ref: 'parent-ds', _type: 'reference' },
+        forms: {
+          geometry: {
+            inputHeight: 36,  // compact variant
+            paddingY:     7,
+          },
+        },
+      }
+      const fetch = makeFetchFn({ 'parent-ds': baseWithFormGeo })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      // Overridden
+      expect(result?.forms?.geometry?.inputHeight).toBe(36)
+      expect(result?.forms?.geometry?.paddingY).toBe(7)
+      // Inherited
+      expect(result?.forms?.geometry?.paddingX).toBe(14)
+      expect(result?.forms?.geometry?.labelGap).toBe(6)
+      expect(result?.forms?.geometry?.fieldGap).toBe(20)
+      expect(result?.forms?.geometry?.borderRadius).toBe(8)
+    })
+
+    it('borderRadius: 0 is treated as a valid override (not inherits parent)', async () => {
+      const child: any = {
+        _id: 'child-square',
+        parentDesignSystem: { _ref: 'parent-ds', _type: 'reference' },
+        forms: {
+          geometry: { borderRadius: 0 },
+        },
+      }
+      const fetch = makeFetchFn({ 'parent-ds': baseWithFormGeo })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.forms?.geometry?.borderRadius).toBe(0)
+    })
+
+    it('child with typography override does not reset geometry', async () => {
+      const baseWithBoth: any = {
+        ...abluo_base,
+        forms: {
+          ...abluo_base.forms,
+          typography: { labelColor: 'oklch(0.2 0 0)', labelSize: 12 },
+          geometry:   { inputHeight: 44, paddingX: 14, paddingY: 10, labelGap: 6, fieldGap: 20, borderRadius: 8 },
+        },
+      }
+      const child: any = {
+        _id: 'child-typo-only',
+        parentDesignSystem: { _ref: 'parent-ds', _type: 'reference' },
+        forms: {
+          typography: { labelColor: 'oklch(0.1 0 0)' }, // override only typography
+        },
+      }
+      const fetch = makeFetchFn({ 'parent-ds': baseWithBoth })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      // Typography override applied
+      expect(result?.forms?.typography?.labelColor).toBe('oklch(0.1 0 0)')
+      expect(result?.forms?.typography?.labelSize).toBe(12)
+      // Geometry fully inherited (not reset by typography override)
+      expect(result?.forms?.geometry?.inputHeight).toBe(44)
+      expect(result?.forms?.geometry?.borderRadius).toBe(8)
+    })
+  })
+
 })

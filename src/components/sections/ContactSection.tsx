@@ -2,22 +2,26 @@ import type { ContactSection, WebsiteSiteConfig, DesignSystem } from '@/lib/sani
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
+import { getContactSectionMessages } from '@/lib/i18n/contact-section-messages'
 
 interface Props {
   section: ContactSection
   surface: SurfaceType
   designSystem: DesignSystem | null
   siteConfig?: WebsiteSiteConfig | null
+  /** BCP 47 locale string — used to resolve UI chrome labels */
+  locale?: string
 }
 
-export function ContactSection({ section, surface, designSystem, siteConfig }: Props) {
+export function ContactSection({ section, surface, designSystem, siteConfig, locale = 'en' }: Props) {
   const { title, subtitle, mapEmbedUrl } = section
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
+  const m = getContactSectionMessages(locale)
 
   // Motion tokens — durationSlow for content sections; divide ms → seconds for motion/react
-  const m = designSystem?.motion
-  const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
-  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const mot = designSystem?.motion
+  const duration = mot?.durationSlow !== undefined ? mot.durationSlow / 1000 : 0.35
+  const ease: string | number[] = mot?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
 
   return (
     <section
@@ -53,7 +57,7 @@ export function ContactSection({ section, surface, designSystem, siteConfig }: P
                     className="mb-1 text-xs font-medium uppercase tracking-[0.2em]"
                     style={{ color: 'var(--color-text-muted)' }}
                   >
-                    Indirizzo
+                    {m.addressLabel}
                   </p>
                   <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                     {siteConfig.address}
@@ -66,7 +70,7 @@ export function ContactSection({ section, surface, designSystem, siteConfig }: P
                     className="mb-1 text-xs font-medium uppercase tracking-[0.2em]"
                     style={{ color: 'var(--color-text-muted)' }}
                   >
-                    Telefono
+                    {m.phoneLabel}
                   </p>
                   <a
                     href={`tel:${siteConfig.phone}`}
@@ -83,7 +87,7 @@ export function ContactSection({ section, surface, designSystem, siteConfig }: P
                     className="mb-1 text-xs font-medium uppercase tracking-[0.2em]"
                     style={{ color: 'var(--color-text-muted)' }}
                   >
-                    Email
+                    {m.emailLabel}
                   </p>
                   <a
                     href={`mailto:${siteConfig.email}`}
@@ -103,7 +107,7 @@ export function ContactSection({ section, surface, designSystem, siteConfig }: P
               className="mb-3 text-xs font-medium uppercase tracking-[0.2em]"
               style={{ color: 'var(--color-text-muted)' }}
             >
-              Come arrivare
+              {m.directionsLabel}
             </p>
             {mapEmbedUrl ? (
               <iframe
@@ -111,11 +115,11 @@ export function ContactSection({ section, surface, designSystem, siteConfig }: P
                 className="h-72 w-full border-0 grayscale"
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
-                title="Mappa dello studio"
+                title={m.mapTitle}
               />
             ) : (
               <a
-                href={`https://maps.google.com/?q=${encodeURIComponent(siteConfig?.address ?? 'Via Cascina Sirone 12, Azzate VA')}`}
+                href={`https://maps.google.com/?q=${encodeURIComponent(siteConfig?.address ?? '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex h-72 w-full flex-col items-center justify-center gap-3 transition-opacity hover:opacity-90"
@@ -138,7 +142,7 @@ export function ContactSection({ section, surface, designSystem, siteConfig }: P
                   </svg>
                 </div>
                 <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                  Apri in Google Maps
+                  {m.openInMapsLabel}
                 </p>
               </a>
             )}

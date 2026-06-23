@@ -26,11 +26,18 @@ export function LanguageSwitcher({ currentLocale, supportedLocales, tenantId, ap
   const switchLocale = (locale: SupportedLocale) => {
     const targetSlug = slugMap[locale]
     if (targetSlug && tenantId) {
-      // Navigate directly to the locale-specific slug URL.
-      // router.push handles the locale prefix via next-intl.
+      // Slug page with a locale-specific slug (e.g. /investors → /investitori).
+      // Navigate to the slug for the target locale.
       router.push(`/${tenantId}/${targetSlug}`, { locale })
+    } else if (tenantId) {
+      // Non-slug tenant route (homepage, /live, /events, /investors with same slug, etc.)
+      // Preserve the sub-path so switching language stays on the same page.
+      // pathname from next-intl strips the locale prefix, e.g. /livener/live
+      const tenantPrefix = `/${tenantId}`
+      const subPath = pathname.startsWith(tenantPrefix) ? pathname.slice(tenantPrefix.length) : ''
+      router.replace(`/${tenantId}${subPath}`, { locale })
     } else {
-      // Fallback: same path, different locale prefix (homepage or non-page routes).
+      // Platform route (no tenant): same path, different locale prefix.
       router.replace(pathname, { locale })
     }
     setLangOpen(false)

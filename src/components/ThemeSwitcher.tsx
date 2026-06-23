@@ -1,5 +1,10 @@
 'use client'
 
+/**
+ * @deprecated Use `@/components/SiteControls/ThemeSwitcher` instead.
+ * This legacy file is unreferenced and will be removed in a future cleanup pass.
+ */
+
 import { useState, useEffect, useRef } from 'react'
 import { Sun, Moon, Monitor } from 'lucide-react'
 
@@ -82,7 +87,7 @@ export function ThemeSwitcher() {
           color: 'var(--color-text-muted)',
           backgroundColor: open ? 'var(--color-background-alt)' : 'transparent',
         }}
-        aria-label="Colour scheme"
+        aria-label="Theme switcher" /* TODO: localize via getThemeSwitcherMessages when this component is activated */
         aria-haspopup="listbox"
         aria-expanded={open}
       >

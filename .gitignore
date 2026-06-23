@@ -11,5 +11,7 @@ out/
 *.tsbuildinfo
 # macOS
 .DS_Store
+# Sanity Studio build artifacts
+dist/static/*.json
 # vercel
 .vercel/

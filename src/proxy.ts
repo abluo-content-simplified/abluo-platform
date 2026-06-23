@@ -14,8 +14,9 @@ const intlMiddleware = createMiddleware(routing)
  * Platform/admin:      abluo-platform.vercel.app        → null
  */
 function resolveTenant(hostname: string): string | null {
-  // Strip port
-  const host = hostname.split(':')[0]
+  // Strip port, then normalize www. prefix so studiomartegani.com and
+  // www.studiomartegani.com both resolve via the same domainMap entry.
+  const host = hostname.split(':')[0].replace(/^www\./, '')
 
   // Abluo managed preview — *.preview.abluo.app
   // studiomartegani.preview.abluo.app → "studiomartegani"
@@ -28,6 +29,8 @@ function resolveTenant(hostname: string): string | null {
   const domainMap: Record<string, string> = {
     'livener.net': 'livener',
     'studiomartegani.com': 'studiomartegani',
+    'abluo.app': 'abluo-the-tiny-cms',
+    'dev.abluo.app': 'abluo-the-tiny-cms',
   }
 
   if (domainMap[host]) return domainMap[host]
@@ -67,6 +70,7 @@ function resolveDefaultLocale(projectSlug: string): string | null {
   const localeMap: Record<string, string> = {
     'studiomartegani': 'it',
     'livener': 'en',
+    'abluo-the-tiny-cms': 'en',
   }
   return localeMap[projectSlug] ?? null
 }
@@ -158,10 +162,11 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(loginUrl)
     }
 
-    // Authenticated — apply subdomain rewrite
+    // Authenticated — apply subdomain rewrite (skip API and static paths)
     const url = request.nextUrl.clone()
     const alreadyLocaled = /^\/(en|it|de)(\/|$)/.test(pathname)
-    if (!alreadyLocaled) {
+    const isApiOrStatic = pathname.startsWith('/api/') || pathname.startsWith('/_next/') || pathname.startsWith('/studio')
+    if (!alreadyLocaled && !isApiOrStatic) {
       const subPath = pathname === '/' ? '/dashboard' : pathname
       url.pathname = `/en${subPath}`
       return NextResponse.rewrite(url)
@@ -258,24 +263,98 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse
   }
 
+  // ── Dev platform — dev.abluo.app/[project-slug] ──────────────────────────
+  // Mirrors preview.abluo.app path-based routing for full platform testing.
+  //
+  // dev.abluo.app/livener           → /en/livener
+  // dev.abluo.app/studiomartegani   → /it/studiomartegani
+  // dev.abluo.app/de/livener        → pass through (language switch on livener)
+  // dev.abluo.app (root / unknown)  → falls through to domainMap → abluo-the-tiny-cms
+  if (host === 'dev.abluo.app') {
+    const segments = pathname.split('/').filter(Boolean)
+    const slug = segments[0]
+    const isLocale = slug && (routing.locales as readonly string[]).includes(slug)
+
+    if (isLocale) {
+      // Path is already in /{locale}/... form — happens after a language switch.
+      // If the second segment is a known project slug, pass straight through to
+      // the App Router (e.g. /de/livener). Otherwise fall through so the
+      // domainMap block can inject abluo-the-tiny-cms (e.g. /de → /de/abluo-the-tiny-cms).
+      const secondSegment = segments[1]
+      if (secondSegment && resolveDefaultLocale(secondSegment)) {
+        return NextResponse.next()
+      }
+    } else if (slug && slug !== 'studio') {
+      // First segment is a project slug — prefix with the tenant's default locale.
+      const slugLocale = resolveDefaultLocale(slug)
+      if (slugLocale) {
+        const alreadyRewritten = (routing.locales as readonly string[]).some(
+          (l) => pathname === `/${l}/${slug}` || pathname.startsWith(`/${l}/${slug}/`)
+        )
+        if (!alreadyRewritten) {
+          const subPath = segments.slice(1).join('/')
+          const url = request.nextUrl.clone()
+          url.pathname = `/${slugLocale}/${slug}${subPath ? '/' + subPath : ''}`
+          return NextResponse.rewrite(url)
+        }
+        return NextResponse.next()
+      }
+    }
+    // Root or unrecognised path — fall through to domainMap → abluo-the-tiny-cms
+  }
+
   // ── Tenant routes — rewrite to [locale]/(website)/[tenant] ───────────────
   // Handles custom production domains (studiomartegani.com → /it/studiomartegani)
   if (tenantId) {
     const url = request.nextUrl.clone()
     const path = url.pathname
 
+    // Already correctly rewritten — pass through.
     const alreadyRewritten = routing.locales.some(
       (l) => path === `/${l}/${tenantId}` || path.startsWith(`/${l}/${tenantId}/`)
     )
+    if (alreadyRewritten) return NextResponse.next()
 
-    if (!alreadyRewritten) {
-      const subPath = path === '/' ? '' : path
-      const locale = resolveDefaultLocale(tenantId) ?? 'it'
-      url.pathname = `/${locale}/${tenantId}${subPath}`
+    // Detect a locale-prefix path (e.g. /it or /it/some-page).
+    // This happens when the LanguageSwitcher calls router.replace(pathname, { locale })
+    // on a custom domain where the visible browser path doesn't include the tenant slug.
+    const localePrefix = (routing.locales as readonly string[]).find(
+      (l) => path === `/${l}` || path.startsWith(`/${l}/`)
+    )
+
+    if (localePrefix) {
+      // /it               → /it/abluo-the-tiny-cms
+      // /it/some-page     → /it/abluo-the-tiny-cms/some-page
+      const subPath = path === `/${localePrefix}` ? '' : path.slice(`/${localePrefix}`.length)
+      url.pathname = `/${localePrefix}/${tenantId}${subPath}`
       return NextResponse.rewrite(url)
     }
 
-    return NextResponse.next()
+    // Root path — determine locale from NEXT_LOCALE cookie, then Accept-Language,
+    // then fall back to the project default.
+    const defaultLocale = resolveDefaultLocale(tenantId) ?? 'en'
+    let locale = defaultLocale
+
+    if (path === '/') {
+      // 1. Honour a previously persisted locale preference (written by next-intl).
+      const cookieLocale = request.cookies.get('NEXT_LOCALE')?.value
+      if (cookieLocale && (routing.locales as readonly string[]).includes(cookieLocale)) {
+        locale = cookieLocale
+      } else {
+        // 2. Negotiate from Accept-Language header.
+        const acceptLanguage = request.headers.get('accept-language') ?? ''
+        const preferred = acceptLanguage
+          .split(',')
+          .map((part) => part.split(';')[0].trim().slice(0, 2))
+          .find((code) => (routing.locales as readonly string[]).includes(code))
+        if (preferred) locale = preferred
+      }
+    }
+
+    // All other paths (e.g. /about): use tenant default locale.
+    const subPath = path === '/' ? '' : path
+    url.pathname = `/${locale}/${tenantId}${subPath}`
+    return NextResponse.rewrite(url)
   }
 
   // ── Project slug routing ───────────────────────────────────────────────────

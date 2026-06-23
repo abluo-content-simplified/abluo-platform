@@ -81,12 +81,70 @@ export interface ResolvedImage {
   caption?: string
 }
 
+// ─── CTA ──────────────────────────────────────────────────────────────────────
+
+/**
+ * Raw CTA object as returned from Sanity via CTA_FIELDS projection.
+ * The GROQ query resolves pageSlug and fileUrl so the frontend never
+ * needs to dereference Sanity references at runtime.
+ */
+export interface Cta {
+  label?: string
+  internalName: string
+  actionType?: 'page' | 'form' | 'fileDownload' | 'externalUrl'
+  // Resolved from pageRef->slug by GROQ
+  pageSlug?: string
+  // Resolved from formRef by GROQ
+  formId?: string
+  formInquiryType?: string
+  // Resolved from file.asset by GROQ
+  fileUrl?: string
+  fileName?: string
+  // External URL fields
+  externalUrl?: string
+  openInNewTab?: boolean
+}
+
+/**
+ * Discriminated union returned by resolveCta().
+ * The consuming component switches on `type` to render the right element.
+ */
+export type ResolvedCta =
+  | {
+      type: 'link'
+      label: string
+      internalName: string
+      href: string
+      external: boolean
+    }
+  | {
+      type: 'download'
+      label: string
+      internalName: string
+      href: string
+      fileName?: string
+    }
+  | {
+      type: 'form'
+      label: string
+      internalName: string
+      formId: string
+      formInquiryType?: string
+    }
+  | {
+      type: 'none'
+      label: string
+      internalName: string
+    }
+
 // ─── Navigation ───────────────────────────────────────────────────────────────
 
 export interface NavLink {
   label: string
   linkType?: 'internal' | 'external'
-  internalPage?: 'homepage' | 'live'
+  // Resolved slug from pageRef — set by GROQ query, not stored directly
+  pageSlug?: string
+  internalPage?: 'homepage' | 'live' | 'events'
   externalUrl?: string
   openInNewTab?: boolean
   // Legacy fields for backward compatibility
@@ -262,6 +320,50 @@ export interface FormInput {
   darkTheme?: FormInputTheme
 }
 
+/**
+ * FormTypography — typographic tokens for form chrome elements.
+ * Colors are CSS strings (OKLCH, hex, or var() references).
+ * Sizes are in px; buildCssVars() converts to rem.
+ * Not theme-split — fallbacks reference theme-aware DS color vars.
+ */
+export interface FormTypography {
+  /** Label text color */
+  labelColor?: string
+  /** Label font size (px) */
+  labelSize?: number
+  /** Label font weight (e.g. 500) */
+  labelWeight?: number
+  /** Help text color */
+  helpTextColor?: string
+  /** Help text font size (px) */
+  helpTextSize?: number
+  /** Inline error message color */
+  errorTextColor?: string
+  /** Inline error message font size (px) */
+  errorTextSize?: number
+  /** Color of the required * marker */
+  requiredColor?: string
+}
+
+/**
+ * FormGeometry — spacing and shape tokens shared by all input types.
+ * All values are px numbers; buildCssVars() converts to appropriate units.
+ */
+export interface FormGeometry {
+  /** Standardised height for single-line inputs (text, email, select, date) */
+  inputHeight?: number
+  /** Horizontal padding inside inputs */
+  paddingX?: number
+  /** Vertical padding inside inputs */
+  paddingY?: number
+  /** Vertical gap between label and input element */
+  labelGap?: number
+  /** Vertical gap between fields in a form */
+  fieldGap?: number
+  /** Border radius for inputs — overrides global --radius-md */
+  borderRadius?: number
+}
+
 export interface CardVariant {
   key: string
   label?: string
@@ -330,6 +432,10 @@ export interface DesignSystem {
     select?: FormInput
     checkbox?: FormInput
     radio?: FormInput
+    /** Typography tokens for labels, help text, and error messages */
+    typography?: FormTypography
+    /** Spacing and shape tokens shared across all input types */
+    geometry?: FormGeometry
   }
   navigation?: {
     menuRadius?: number
@@ -398,10 +504,6 @@ export interface WebsiteSiteConfig {
   phone?: string
   email?: string
   address?: string
-  // Live page welcome text (managed in Sanity)
-  livePageHeadline?: string
-  livePageSubheadline?: string
-  livePageBetaNotice?: string
 }
 
 // Locale config subset — fetched first to get $defaultLocale for subsequent queries
@@ -446,18 +548,178 @@ export interface Event {
   seoDescription?: string
 }
 
+// ─── Blog ─────────────────────────────────────────────────────────────────────
+
+export interface PostAuthor {
+  _id?: string
+  name: string
+  role?: string
+  bio?: string
+  avatar?: ResolvedImage
+}
+
+export interface BlogCategory {
+  _id: string
+  title?: string
+  /** Locale-resolved slug — coalesced from $locale → $defaultLocale */
+  slug?: string
+  color?: string
+}
+
+export interface PostVideo {
+  provider: 'youtube' | 'cloudflare'
+  youtubeUrl?: string
+  cloudflareVideoId?: string
+}
+
+/** Resolved blog post — all string fields are locale-resolved by GROQ */
+export interface Post {
+  _id: string
+  title?: string
+  /** List queries: resolved { current: string }. Detail query: full per-locale slug map. */
+  slug: { current: string }
+  /** Detail query only — full per-locale slug map for hreflang */
+  slugMap?: LocalizedSlugMap
+  /** Per-locale arrays of old slugs — used for 301 redirects */
+  redirectFrom?: Partial<Record<SupportedLocale, string[]>>
+  excerpt?: string
+  body?: PortableTextContent
+  publishedAt?: string
+  expiresAt?: string
+  featured?: boolean
+  coverImage?: ResolvedImage
+  featuredVideo?: PostVideo
+  /** Computed in GROQ from body word count. Minimum 1. */
+  readingTimeMinutes?: number
+  author?: PostAuthor
+  categories?: BlogCategory[]
+  relatedEvent?: {
+    _id: string
+    title?: string
+    slug: { current: string }
+    status?: string
+    startDate?: string
+    endDate?: string
+    location?: string
+    shortDescription?: string
+    heroImage?: ResolvedImage
+  }
+  seoTitle?: string
+  seoDescription?: string
+  seoImage?: ResolvedImage
+}
+
 // ─── Section types (studiomartegani — all strings locale-resolved) ─────────────
 
 export interface HeroSection {
   _type: 'heroSection'
   _key: string
+  // Content
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
   eyebrow?: string
   headline?: string
   subheadline?: string
   ctaLabel?: string
   ctaHref?: string
-  backgroundImage?: SanityImage
+  // Media
+  mediaType?: 'image' | 'video'
+  heroImage?: SanityImage
+  heroVideo?: string
+  posterImage?: SanityImage
+  // Layout
+  heroHeight?: 'small' | 'medium' | 'large' | 'fullscreen'
+  contentWidth?: 'standard' | 'wide' | 'full'
+  contentAlignment?: 'left' | 'center' | 'right'
+  verticalAlignment?: 'top' | 'center' | 'bottom'
+  // Style
+  overlayOpacity?: number
+  blur?: number
+  brightness?: number
+}
+
+/**
+ * HeroLiveCaptureSection — premium two-column hero with circular event image
+ * and an animated phone mockup showing the Livener streaming interface.
+ *
+ * Reusable across any Abluo tenant whose product centres on live capture
+ * (investors page, church page, sports club, festival, community).
+ *
+ * Visual layers:
+ *   1. Large circle — the real-world event being captured (backgroundImage)
+ *   2. Phone mockup — the Livener interface streaming the same event (phoneScreenImage)
+ *
+ * Animation:
+ *   - Idle: phone floats up/down, circle drifts
+ *   - Mouse: phone tilts in 3D (rotateX/Y), circle moves opposite at ~25%
+ *   - Scroll: circle moves upward, phone rotates slightly (max 2°)
+ *   - Respects prefers-reduced-motion
+ */
+export interface HeroLiveCaptureSection {
+  _type: 'heroLiveCaptureSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Short overline above the headline — e.g. "Livener for Investors" */
+  eyebrow?: string
+  /** Main headline — supports newlines for line breaks */
+  title?: string
+  /** Supporting paragraph below the headline */
+  subtitle?: string
+  /** CTAs — resolved from ctas[] array via CTA_FIELDS projection */
+  ctas?: Cta[]
+  /**
+   * Large circular background image representing the event being captured
+   * (football pitch, church, concert stage, etc.).
+   * GROQ-resolved to ResolvedImage via sections[] projection.
+   */
+  backgroundImage?: ResolvedImage
+  /**
+   * Image displayed inside the phone screen as the live video feed.
+   * Falls back to backgroundImage if not set.
+   * GROQ-resolved to ResolvedImage via sections[] projection.
+   */
+  phoneScreenImage?: ResolvedImage
+  /** Diameter of the circular event image — default 'md' (400px) */
+  circleSize?: 'sm' | 'md' | 'lg'
+  /** Controls tilt/float amplitude — default 'moderate' */
+  animationIntensity?: 'subtle' | 'moderate' | 'expressive'
+}
+
+/**
+ * HeroLensSection — two-column hero built around the story of filming a live event.
+ *
+ * Visual concept:
+ *   Layer 1: Large circular background image — the real-world event (backgroundImage)
+ *   Layer 2: Foreground PNG — a hand holding a smartphone, rendered exactly as uploaded.
+ *            The phone screen content is part of the supplied image. No phone is generated.
+ *
+ * Animation (subtle, premium):
+ *   - Idle: background circle drifts slowly; foreground floats gently (vertical only)
+ *   - Mouse: background moves 15–20px; foreground at ~20% of that intensity
+ *   - Scroll: background parallaxes up; foreground tilts very subtly (max 1.5°)
+ *   - Respects prefers-reduced-motion
+ */
+export interface HeroLensSection {
+  _type: 'heroLensSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Short overline above the headline */
+  eyebrow?: string
+  /** Main headline — supports newlines for line breaks */
+  title?: string
+  /** Supporting paragraph below the headline */
+  subtitle?: string
+  /** CTAs — resolved from ctas[] array via CTA_FIELDS projection */
+  ctas?: Cta[]
+  /**
+   * Image displayed inside the large background circle.
+   * Represents the real-world event being filmed.
+   */
+  backgroundImage?: ResolvedImage
+  /**
+   * Complete foreground PNG — a hand holding a smartphone.
+   * Rendered exactly as supplied. The phone screen content is part of this image.
+   */
+  foregroundImage?: ResolvedImage
 }
 
 export interface ContentSection {
@@ -540,14 +802,129 @@ export interface ContactSection {
   mapEmbedUrl?: string
 }
 
+export interface BlogListingSection {
+  _type: 'blogListingSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  title?: string
+  /** Locale-resolved by GROQ */
+  subtitle?: string
+  filterMode?: 'latest' | 'featured' | 'byCategory' | 'byEvent' | 'manual'
+  sortOrder?: 'newest' | 'oldest' | 'manual'
+  layout?: 'grid' | 'featured' | 'magazine'
+  maxItems?: number
+  /** Locale-resolved by GROQ */
+  viewAllLabel?: string
+  viewAllHref?: string
+  /** Resolved from category->._id in GROQ */
+  categoryId?: string
+  /** Resolved from event->._id in GROQ */
+  eventId?: string
+  /** Resolved from posts[]->._id in GROQ — used for manual selection */
+  postIds?: string[]
+  /** Hydrated server-side in page.tsx — not stored in Sanity */
+  posts?: Post[]
+}
+
+// ─── Form System ──────────────────────────────────────────────────────────────
+// All string fields are locale-resolved by GROQ — no raw localizedString objects here.
+
+export interface SanityFormOption {
+  value: string
+  label: string
+}
+
+export interface SanityFormField {
+  id: string
+  type: 'text' | 'email' | 'phone' | 'textarea' | 'select' | 'radio-group' | 'checkbox' | 'checkbox-group'
+  label?: string
+  placeholder?: string
+  helpText?: string
+  checkboxLabel?: string
+  required?: boolean
+  width?: '50%' | '100%'
+  rows?: number
+  options?: SanityFormOption[]
+}
+
+export interface SanityForm {
+  _id: string
+  projectSlug?: string
+  description?: string
+  submitLabel?: string
+  successMessage?: string
+  inquiryType?: string
+  fields?: SanityFormField[]
+}
+
+export interface FormSection {
+  _type: 'formSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Dereferenced form document — null if form is not set or not published */
+  form?: SanityForm | null
+}
+
+export interface StatementSection {
+  _type: 'statementSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  headline?: string
+  /** Locale-resolved by GROQ */
+  description?: string
+  alignment?: 'left' | 'center'
+  image?: SanityImage
+  imagePosition?: 'left' | 'right'
+}
+
+// ─── Metrics Section ──────────────────────────────────────────────────────────
+
+export interface MetricItem {
+  _type: 'metricItem'
+  _key: string
+  /** Not localized — values like "£10bn+", "2025", "Innovate UK" */
+  value: string
+  /** Locale-resolved by GROQ */
+  label?: string
+  /** Locale-resolved by GROQ */
+  description?: string
+  /** Reserved for future count-up animation. Has no effect yet. */
+  animateNumber?: boolean
+}
+
+export interface MetricsSection {
+  _type: 'metricsSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  headline?: string
+  /** Locale-resolved by GROQ */
+  description?: string
+  metrics?: MetricItem[]
+}
+
 export type PageSection =
   | HeroSection
+  | HeroLiveCaptureSection
+  | HeroLensSection
   | ContentSection
+  | StatementSection
   | TreatmentsSection
   | TeamSection
   | TextSection
   | FAQSection
   | ContactSection
+  | BlogListingSection
+  | FormSection
+  | MetricsSection
 
 export interface WebsiteHomePage {
   tenantSlug: string
@@ -569,4 +946,36 @@ export interface WebsitePage {
   redirectFrom?: Partial<Record<SupportedLocale, string[]>>
   backgroundPattern?: 'none' | 'alternate1-2' | 'alternate1-2-3'
   sections?: PageSection[]
+}
+
+// ─── Live Page ────────────────────────────────────────────────────────────────
+// Resolved by livePageQuery — all string fields are locale-resolved by GROQ.
+
+export interface LivePage {
+  _id: string
+  heroTitle?: string
+  heroSubtitle?: string
+  betaNotice?: string
+  introText?: string
+  heroImage?: ResolvedImage
+  /** Cloudflare Stream video ID (e.g. "abc123xyz"). Frontend generates embed URL. */
+  cloudflareVideoId?: string
+  /** Expanded event references — locale-resolved by GROQ dereference */
+  featuredEvents?: Event[]
+  seoTitle?: string
+  seoDescription?: string
+}
+
+// ─── Events Page ──────────────────────────────────────────────────────────────
+
+export interface EventsPage {
+  _id: string
+  heroTitle?: string
+  heroSubtitle?: string
+  introText?: string
+  heroImage?: ResolvedImage
+  /** Cloudflare Stream video ID (e.g. "abc123xyz"). Frontend generates embed URL. */
+  cloudflareVideoId?: string
+  seoTitle?: string
+  seoDescription?: string
 }

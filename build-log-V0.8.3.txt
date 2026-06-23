@@ -1,0 +1,90 @@
+V0.8.3 — Environment-Aware SEO + Deployment Badge
+===================================================
+Date: 2026-06-18
+Branch: dev → preview → main
+Tag: V0.8.3
+TypeScript: clean (npx tsc --noEmit)
+Tests: 46/46 passed (npx vitest run)
+
+─── New: src/lib/deployment.ts ───────────────────────────────────────────────
+
+Single source of truth for all deployment and environment metadata.
+Exports:
+
+  deployment        object — env, version, commitSha, branch, buildTime
+  isProduction()    boolean — true on main/production Vercel deployments
+  isPreview()       boolean — true on preview Vercel deployments
+  isDev()           boolean — true in local development
+  environmentLabel() 'DEV' | 'PREVIEW' | null
+
+  environmentLabel() logic:
+    - production                     → null (badge hidden)
+    - branch === "preview"           → "PREVIEW"
+    - everything else (dev, feature) → "DEV"
+  This ensures feature branches (fix/*, feature/*) always show as DEV
+  rather than inventing new names.
+
+Reusable in: footer, admin diagnostics, support screens, any future
+environment-sensitive logic.
+
+─── Modified: next.config.ts ─────────────────────────────────────────────────
+
+Added env block that bakes Vercel's server-only variables into NEXT_PUBLIC_*
+at build time so client components can read them:
+
+  NEXT_PUBLIC_VERCEL_ENV       ← process.env.VERCEL_ENV (production/preview/development)
+  NEXT_PUBLIC_APP_VERSION      ← package.json version (0.7.0)
+  NEXT_PUBLIC_GIT_COMMIT_SHA   ← VERCEL_GIT_COMMIT_SHA (7-char slice used in badge)
+  NEXT_PUBLIC_GIT_COMMIT_REF   ← VERCEL_GIT_COMMIT_REF (branch name)
+  NEXT_PUBLIC_BUILD_TIME       ← new Date().toISOString() at build time
+
+No manual updates required for future releases. Version always matches
+package.json; commit/branch info always matches the deployment.
+
+─── New: src/components/DevBadge.tsx ─────────────────────────────────────────
+
+Client component. Renders nothing in production (isProduction() → null).
+
+Badge format:  DEV • V0.8.3 • 383aca8
+               PREVIEW • V0.8.3 • 383aca8
+
+- Fixed bottom-right corner, z-index 99999
+- Monospace font, glass background, accent colour per environment
+  (indigo for DEV, amber for PREVIEW)
+- Click opens a diagnostics panel showing:
+    Environment, Version, Commit, Branch, Built (UTC)
+- Click outside closes the panel
+- Plain inline styles only — no Tailwind/design-system dependency,
+  renders identically across all tenant themes
+
+─── Modified: layout.tsx (tenant website) ────────────────────────────────────
+
+- generateMetadata: added robots: { index: false, follow: false } on
+  non-production environments (belt-and-suspenders alongside Vercel's
+  own x-robots-tag: noindex on preview deployments)
+- Both return paths (Livener layout + generic layout) now include <DevBadge />
+
+─── SEO tag matrix ───────────────────────────────────────────────────────────
+
+              Production   Preview   Dev
+  noindex        ❌           ✅       ✅
+  canonical      ✅           ❌       ❌
+  sitemap        ✅           ❌       ❌
+  hreflang       ✅           ✅       ❌
+
+hreflang kept on preview: preview is where multilingual routing and
+language switching are validated before production. Google won't index
+preview (noindex), so keeping hreflang there is SEO-safe.
+
+─── Modified: 3 page files ───────────────────────────────────────────────────
+
+  src/app/[locale]/(website)/[tenant]/page.tsx
+  src/app/[locale]/(website)/[tenant]/[slug]/page.tsx
+  src/app/[locale]/(website)/[tenant]/events/[slug]/page.tsx
+
+Each: canonical wrapped in isProduction(), hreflang wrapped in !isDev().
+
+─── Modified: src/app/sitemap.ts ─────────────────────────────────────────────
+
+Early return [] if !isProduction(). Sitemap is never exposed on dev or
+preview deployments.

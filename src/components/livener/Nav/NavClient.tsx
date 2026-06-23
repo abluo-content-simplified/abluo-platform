@@ -7,6 +7,8 @@ import { Menu, X } from 'lucide-react'
 import type { ResolvedNavLink, SupportedLocale } from '@/lib/sanity/types'
 import { LanguageSwitcher } from '@/components/SiteControls/LanguageSwitcher'
 import { ThemeSwitcher } from '@/components/SiteControls/ThemeSwitcher'
+import { getThemeSwitcherMessages } from '@/lib/i18n/theme-switcher-messages'
+import { useEarlyAccess } from '@/components/forms/EarlyAccessContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -17,6 +19,12 @@ interface NavClientProps {
   navLinks: ResolvedNavLink[]
   ctaLabel: string
   ctaHref: string
+  /**
+   * 'link' (default) renders <Link href={ctaHref}>.
+   * 'modal' renders a <button> that opens the EarlyAccessModal via context.
+   * Requires EarlyAccessProvider to be present in the tree.
+   */
+  ctaMode?: 'link' | 'modal'
   currentLocale: SupportedLocale
   supportedLocales: SupportedLocale[]
   showLangSwitcherInNav: boolean
@@ -35,6 +43,7 @@ export function NavClient({
   navLinks,
   ctaLabel,
   ctaHref,
+  ctaMode = 'link',
   currentLocale,
   supportedLocales,
   showLangSwitcherInNav,
@@ -42,6 +51,23 @@ export function NavClient({
   themeMode = 'toggle',
   variant = 'full',
 }: NavClientProps) {
+  // When ctaMode='modal', we use EarlyAccessContext to open the modal.
+  // useEarlyAccess() throws if the provider isn't present, so we only call
+  // it when ctaMode='modal' — but hooks can't be conditional. Instead we
+  // call it and handle the error gracefully below.
+  let earlyAccessCtx: ReturnType<typeof useEarlyAccess> | null = null
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    earlyAccessCtx = useEarlyAccess()
+  } catch {
+    // Provider not in tree — ctaMode='modal' won't work but won't crash
+  }
+
+  const handleCtaClick = () => {
+    if (ctaMode === 'modal' && earlyAccessCtx) {
+      earlyAccessCtx.open({ source: 'header_cta' })
+    }
+  }
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [isLight, setIsLight] = useState(false)
   const pathname = usePathname()
@@ -93,7 +119,7 @@ export function NavClient({
         <div className="flex flex-col gap-1 px-6 pt-[88px]">
           {variant === 'full' && navLinks.map((link) => (
             <Link
-              key={link.href}
+              key={`${link.label}-${link.href}`}
               href={link.href}
               target={link.external ? '_blank' : undefined}
               rel={link.external ? 'noopener noreferrer' : undefined}
@@ -109,26 +135,41 @@ export function NavClient({
         <div className="mx-6 my-4 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
 
         {/* Shared Language Switcher */}
-        <LanguageSwitcher currentLocale={currentLocale} supportedLocales={supportedLocales} appearance="drawer" />
+        <LanguageSwitcher currentLocale={currentLocale} supportedLocales={supportedLocales} tenantId={tenantId} appearance="drawer" />
 
         <div className="mx-6 my-4 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
 
         {/* Shared Theme Switcher */}
-        <ThemeSwitcher themeMode={themeMode} appearance="drawer" />
+        <ThemeSwitcher themeMode={themeMode} appearance="drawer" messages={getThemeSwitcherMessages(currentLocale)} />
 
         {/* CTA */}
         <div className="mt-auto px-6 pb-10">
-          <Link
-            href={ctaHref}
-            onClick={closeDrawer}
-            className="block rounded-xl px-6 py-3.5 text-center text-[15px] font-semibold transition-colors"
-            style={{
-              backgroundColor: 'var(--color-primary)',
-              color: '#fff',
-            }}
-          >
-            {ctaLabel}
-          </Link>
+          {ctaMode === 'modal' ? (
+            <button
+              onClick={() => { handleCtaClick(); closeDrawer() }}
+              className="block w-full rounded-xl px-6 py-3.5 text-center text-[15px] font-semibold transition-colors"
+              style={{
+                backgroundColor: 'var(--color-primary)',
+                color: '#fff',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              {ctaLabel}
+            </button>
+          ) : (
+            <Link
+              href={ctaHref}
+              onClick={closeDrawer}
+              className="block rounded-xl px-6 py-3.5 text-center text-[15px] font-semibold transition-colors"
+              style={{
+                backgroundColor: 'var(--color-primary)',
+                color: '#fff',
+              }}
+            >
+              {ctaLabel}
+            </Link>
+          )}
         </div>
       </div>
 
@@ -168,7 +209,7 @@ export function NavClient({
                 {navLinks.map((link) => {
                   const isActive = pathname.includes(link.href)
                   return (
-                    <li key={link.href}>
+                    <li key={`${link.label}-${link.href}`}>
                       <Link
                         href={link.href}
                         target={link.external ? '_blank' : undefined}
@@ -192,29 +233,45 @@ export function NavClient({
             </>
           )}
 
-          {/* Shared Language Switcher */}
+          {/* Shared Language Switcher — visibility depends only on locale config, not CTA mode */}
           {(showLangSwitcherInNav || variant === 'landing') && (
             <>
-              <LanguageSwitcher currentLocale={currentLocale} supportedLocales={supportedLocales} appearance="header" />
+              <LanguageSwitcher currentLocale={currentLocale} supportedLocales={supportedLocales} tenantId={tenantId} appearance="header" />
               <div className="h-5 w-px mx-1" style={{ backgroundColor: 'var(--color-border)' }} />
             </>
           )}
 
           {/* Shared Theme Switcher */}
-          <ThemeSwitcher themeMode={themeMode} appearance="header" />
+          <ThemeSwitcher themeMode={themeMode} appearance="header" messages={getThemeSwitcherMessages(currentLocale)} />
 
           {/* CTA */}
-          <Link
-            href={ctaHref}
-            className="ml-2 rounded-xl border-2 px-5 py-2 text-sm font-semibold transition-all"
-            style={{
-              borderColor: 'var(--color-primary)',
-              backgroundColor: 'var(--color-primary)',
-              color: '#fff',
-            }}
-          >
-            {ctaLabel}
-          </Link>
+          {ctaMode === 'modal' ? (
+            <button
+              onClick={handleCtaClick}
+              className="ml-2 rounded-xl border-2 px-5 py-2 text-sm font-semibold transition-all"
+              style={{
+                borderColor: 'var(--color-primary)',
+                backgroundColor: 'var(--color-primary)',
+                color: '#fff',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              {ctaLabel}
+            </button>
+          ) : (
+            <Link
+              href={ctaHref}
+              className="ml-2 rounded-xl border-2 px-5 py-2 text-sm font-semibold transition-all"
+              style={{
+                borderColor: 'var(--color-primary)',
+                backgroundColor: 'var(--color-primary)',
+                color: '#fff',
+              }}
+            >
+              {ctaLabel}
+            </Link>
+          )}
         </div>
 
         {/* Hamburger — mobile only */}

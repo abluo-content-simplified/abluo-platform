@@ -24,6 +24,8 @@ export function FooterLanguageSwitcher({
     const targetSlug = slugMap[locale]
     if (targetSlug && tenantId) {
       router.push(`/${tenantId}/${targetSlug}`, { locale })
+    } else if (tenantId) {
+      router.replace(`/${tenantId}`, { locale })
     } else {
       router.replace(pathname, { locale })
     }

@@ -1,0 +1,94 @@
+V0.8.6 — Livener Events Architecture Refactor
+Build date: 2026-06-18
+Branch: dev
+
+─── Summary ────────────────────────────────────────────────────────────────────
+
+Full architectural separation of three concepts that were previously conflated:
+1. Live Page (/live)    — editorial hero + Cloudflare video + featured events
+2. Events Page (/events) — collection listing with all events
+3. Event Detail (/events/[slug]) — existing route, verified and fixed
+
+─── New Sanity document types ──────────────────────────────────────────────────
+
+livePageType
+  Fields: projectSlug, heroTitle, heroSubtitle, betaNotice, introText,
+          cloudflareVideoId (string, not iframe HTML), featuredEvents (ref array),
+          seoTitle, seoDescription
+
+eventsPageType
+  Fields: projectSlug, heroTitle, heroSubtitle, introText, heroImage, seoTitle, seoDescription
+
+─── Removed ────────────────────────────────────────────────────────────────────
+
+- livePageHeadline / livePageSubheadline / livePageBetaNotice from siteConfigType
+- 'live' group from siteConfigType
+- videoEmbedUrl from eventType (added in V0.8.5, superseded by cloudflareVideoId on livePage)
+
+─── Files changed ──────────────────────────────────────────────────────────────
+
+src/lib/sanity/schema.ts
+  + livePageType definition (line ~1682)
+  + eventsPageType definition
+  - live group + 3 live fields from siteConfigType
+  - videoEmbedUrl from eventType
+  + livePageProjectOwned, eventsPageProjectOwned templates
+  + livePageType, eventsPageType in schemaTypes
+
+src/lib/sanity/types.ts
+  + LivePage interface
+  + EventsPage interface
+  - livePageHeadline, livePageSubheadline, livePageBetaNotice from WebsiteSiteConfig
+  - videoEmbedUrl from Event
+
+src/lib/sanity/queries.ts
+  - livePageHeadline/Subheadline/BetaNotice from websiteSiteConfigQuery
+  + livePageQuery (with featuredEvents[]-> dereference)
+  + eventsPageQuery
+  ~ currentLiveEventQuery: fixed endDate null guard
+    was: now() <= endDate  (false when endDate is null → events missed)
+    now: (endDate == null || now() <= endDate)
+
+sanity.config.ts
+  ~ Pages pane: flat list → sub-list (Pages / Live Page / Events Page)
+  + Unassigned: Live Pages without Project, Events Pages without Project
+  + newDocumentOptions filter: added livePageProjectOwned, eventsPageProjectOwned
+
+src/app/[locale]/(website)/[tenant]/live/page.tsx
+  ~ Now fetches livePageQuery in parallel with other queries
+  ~ Passes livePage + tenantId to LivePageContent
+  ~ Featured events from livePage.featuredEvents take priority over pastEventsQuery
+
+src/components/livener/live/LivePageContent.tsx
+  ~ New props: livePage, tenantId (replaces siteConfig.livePageHeadline etc.)
+  ~ CLOUDFLARE_ACCOUNT constant: customer-aayaptcudal3r1fx
+  ~ cloudflareEmbedUrl(videoId) function: generates iframe src from ID
+  ~ event card href: /${locale}/${tenantId}/events/... (was livener-hardcoded)
+
+src/app/[locale]/(website)/[tenant]/events/page.tsx   [NEW]
+  New events listing page. Fetches eventsPageQuery + eventsQuery in parallel.
+  Shows editorial hero from eventsPage document + all events in a 2-col grid.
+
+src/app/[locale]/(website)/[tenant]/events/[slug]/page.tsx
+  ~ Back-link: /${locale}/${tenantId}/live (was /${locale}/livener/live)
+
+─── Pre-commit checks ──────────────────────────────────────────────────────────
+
+npx tsc --noEmit     ✅ clean (no output)
+npx vitest run       ✅ 46/46 tests passed
+npm run build        ✅ successful
+
+─── Next steps ─────────────────────────────────────────────────────────────────
+
+In Sanity Studio for Livener project:
+1. Open Clients → Livener → livener-main → Pages → Live Page → Create
+2. Set heroTitle, heroSubtitle, betaNotice
+3. Set cloudflareVideoId (just the ID, e.g. "abcxyz123", not the full URL)
+4. Optionally add featuredEvents references
+5. Open Pages → Events Page → Create
+6. Set heroTitle, heroSubtitle
+
+Then verify:
+- dev.abluo.app/livener/live    shows new livePage editorial content + video
+- dev.abluo.app/livener/events  shows events listing
+- Event cards link correctly to /events/[slug]

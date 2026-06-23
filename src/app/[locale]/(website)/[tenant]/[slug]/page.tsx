@@ -1,22 +1,79 @@
 import { tenantClient } from '@/lib/sanity/client'
-import { pageBySlugQuery, pageByOldSlugQuery, localeConfigQuery, websiteSiteConfigQuery, designSystemQuery } from '@/lib/sanity/queries'
+import { pageBySlugQuery, pageByOldSlugQuery, localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, blogListingPostsNewestQuery, blogListingPostsOldestQuery, blogListingManualPostsQuery } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
 import { HeroSection } from '@/components/sections/HeroSection'
+import { HeroLiveCaptureSection } from '@/components/sections/HeroLiveCaptureSection'
+import { HeroLensSection } from '@/components/sections/HeroLensSection'
 import { ContentSection } from '@/components/sections/ContentSection'
 import { TreatmentsSection } from '@/components/sections/TreatmentsSection'
 import { TeamSection } from '@/components/sections/TeamSection'
 import { TextSection } from '@/components/sections/TextSection'
 import { FAQSection } from '@/components/sections/FAQSection'
 import { ContactSection } from '@/components/sections/ContactSection'
-import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, PageSection, FAQSection as FAQSectionType, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
+import { BlogListingSection } from '@/components/sections/BlogListingSection'
+import { FormSection } from '@/components/sections/FormSection'
+import { StatementSection } from '@/components/sections/StatementSection'
+import { MetricsSection } from '@/components/sections/MetricsSection'
+import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, PageSection, FAQSection as FAQSectionType, BlogListingSection as BlogListingSectionType, FormSection as FormSectionType, HeroLiveCaptureSection as HeroLiveCaptureSectionType, HeroLensSection as HeroLensSectionType, SupportedLocale, DesignSystem, Post } from '@/lib/sanity/types'
 import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
 import { computeSectionSurface } from '@/lib/sanity/surfaces'
 import { notFound, redirect } from 'next/navigation'
 import { SlugMapProvider } from '@/components/SlugMapContext'
+import { isProduction, isDev } from '@/lib/deployment'
 
 export const dynamic = 'force-dynamic'
+
+// ─── Blog listing post fetcher ────────────────────────────────────────────────
+
+async function fetchBlogListingPosts(
+  section: BlogListingSectionType,
+  fetchForTenant: ReturnType<typeof tenantClient>['fetchForTenant'],
+  locale: SupportedLocale,
+  defaultLocale: SupportedLocale,
+): Promise<Post[]> {
+  const {
+    filterMode = 'latest',
+    sortOrder = 'newest',
+    maxItems = 3,
+    categoryId,
+    eventId,
+    postIds,
+  } = section
+
+  if (filterMode === 'manual' && postIds?.length) {
+    const posts = await fetchForTenant<Post[]>(blogListingManualPostsQuery, {
+      locale,
+      defaultLocale,
+      postIds,
+    })
+    if (sortOrder === 'manual') {
+      const indexMap: Record<string, number> = Object.fromEntries(
+        postIds.map((id, i) => [id, i])
+      )
+      return [...posts].sort((a, b) => (indexMap[a._id] ?? 999) - (indexMap[b._id] ?? 999))
+    }
+    if (sortOrder === 'oldest') {
+      return posts.sort((a, b) =>
+        (a.publishedAt ?? '').localeCompare(b.publishedAt ?? '')
+      )
+    }
+    return posts.sort((a, b) =>
+      (b.publishedAt ?? '').localeCompare(a.publishedAt ?? '')
+    )
+  }
+
+  const query = sortOrder === 'oldest' ? blogListingPostsOldestQuery : blogListingPostsNewestQuery
+  return fetchForTenant<Post[]>(query, {
+    locale,
+    defaultLocale,
+    filterMode,
+    categoryId: categoryId ?? null,
+    eventId: eventId ?? null,
+    maxItems: maxItems + 1,
+  })
+}
 
 // ─── Metadata ─────────────────────────────────────────────────────────────────
 
@@ -65,8 +122,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: pageTitle,
     alternates: {
-      canonical,
-      languages: Object.keys(languages).length > 0 ? languages : undefined,
+      canonical: isProduction() ? canonical : undefined,
+      languages: !isDev() && Object.keys(languages).length > 0 ? languages : undefined,
     },
     openGraph: {
       title: pageTitle,
@@ -86,20 +143,32 @@ function SectionRenderer({
   designSystem,
   backgroundPattern,
   sectionIndex,
+  locale,
+  tenantSlug,
+  fromParam,
 }: {
   section: PageSection
   siteConfig: WebsiteSiteConfig | null
   designSystem: DesignSystem | null
   backgroundPattern: string | undefined
   sectionIndex: number
+  locale: string
+  tenantSlug: string
+  fromParam?: string
 }) {
   const surface = computeSectionSurface(section.background, backgroundPattern as any, sectionIndex)
 
   switch (section._type) {
     case 'heroSection':
       return <HeroSection section={section} surface={surface} designSystem={designSystem} />
+    case 'heroLiveCaptureSection':
+      return <HeroLiveCaptureSection section={section as HeroLiveCaptureSectionType} surface={surface} designSystem={designSystem} />
+    case 'heroLensSection':
+      return <HeroLensSection section={section as HeroLensSectionType} surface={surface} designSystem={designSystem} />
     case 'contentSection':
       return <ContentSection section={section} surface={surface} designSystem={designSystem} />
+    case 'statementSection':
+      return <StatementSection section={section} surface={surface} designSystem={designSystem} />
     case 'treatmentsSection':
       return <TreatmentsSection section={section} surface={surface} designSystem={designSystem} />
     case 'teamSection':
@@ -109,7 +178,13 @@ function SectionRenderer({
     case 'faqSection':
       return <FAQSection section={section} surface={surface} designSystem={designSystem} />
     case 'contactSection':
-      return <ContactSection section={section} surface={surface} designSystem={designSystem} siteConfig={siteConfig} />
+      return <ContactSection section={section} surface={surface} designSystem={designSystem} siteConfig={siteConfig} locale={locale} />
+    case 'formSection':
+      return <FormSection section={section as FormSectionType} surface={surface} designSystem={designSystem} locale={locale} tenantSlug={tenantSlug} />
+    case 'blogListingSection':
+      return <BlogListingSection section={section} surface={surface} designSystem={designSystem} locale={locale} tenantId={tenantSlug} fromParam={fromParam} />
+    case 'metricsSection':
+      return <MetricsSection section={section} surface={surface} designSystem={designSystem} />
     default:
       return null
   }
@@ -147,6 +222,18 @@ export default async function WebsitePageRoute({ params }: PageProps) {
     return notFound()
   }
 
+  // ── Hydrate blogListingSection posts server-side ────────────────────────────
+  if (page.sections) {
+    await Promise.all(
+      page.sections.map(async (section) => {
+        if (section._type !== 'blogListingSection') return
+        const bls = section as BlogListingSectionType
+        const posts = await fetchBlogListingPosts(bls, fetchForTenant, locale as SupportedLocale, defaultLocale)
+        bls.posts = posts.slice(0, bls.maxItems ?? 3)
+      })
+    )
+  }
+
   // ── Slug map — passed to the language switcher via context ──────────────────
   // Maps each locale to its current slug for this page.
   const slugMap: Partial<Record<SupportedLocale, string>> = {}
@@ -178,6 +265,9 @@ export default async function WebsitePageRoute({ params }: PageProps) {
           designSystem={designSystem}
           backgroundPattern={page.backgroundPattern}
           sectionIndex={index}
+          locale={locale}
+          tenantSlug={tenantId}
+          fromParam={slug}
         />
       ))}
     </SlugMapProvider>

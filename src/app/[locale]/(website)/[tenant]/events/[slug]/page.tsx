@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
+import { isProduction, isDev } from '@/lib/deployment'
 import { tenantClient } from '@/lib/sanity/client'
 import {
   eventBySlugQuery,
@@ -15,9 +16,12 @@ import type { Event, LocaleConfig, SupportedLocale, DesignSystem } from '@/lib/s
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
 import { SlideUp } from '@/components/animation'
 import { SlugMapProvider, type SlugMap } from '@/components/SlugMapContext'
+import { EventCard } from '@/components/events/EventCard'
+import { BackButton } from '@/components/events/BackButton'
 
 interface PageProps {
   params: Promise<{ tenant: string; locale: string; slug: string }>
+  searchParams?: Promise<{ from?: string }>
 }
 
 // ─── Metadata ─────────────────────────────────────────────────────────────────
@@ -52,7 +56,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: event?.seoTitle ?? event?.title ?? 'Event',
     description: event?.seoDescription ?? event?.shortDescription ?? 'Event details',
-    alternates: Object.keys(alternates).length > 0 ? { languages: alternates } : undefined,
+    alternates: {
+      canonical: isProduction() ? `${baseUrl}/${locale}/${tenantId}/events/${event?.slugMap?.[locale as SupportedLocale]?.current ?? ''}` : undefined,
+      languages: !isDev() && Object.keys(alternates).length > 0 ? alternates : undefined,
+    },
     openGraph: {
       title: event?.seoTitle ?? event?.title,
       description: event?.seoDescription ?? event?.shortDescription ?? undefined,
@@ -74,8 +81,10 @@ export async function generateStaticParams() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default async function EventDetailPage({ params }: PageProps) {
+export default async function EventDetailPage({ params, searchParams }: PageProps) {
   const { tenant: tenantId, locale, slug } = await params
+  const resolvedSearch = await searchParams
+  const from = resolvedSearch?.from
   const { fetchForTenant } = tenantClient(tenantId)
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
@@ -133,18 +142,16 @@ export default async function EventDetailPage({ params }: PageProps) {
       <div style={{ backgroundColor: 'var(--color-background)' }}>
         <div className="mx-auto max-w-[900px] px-5 py-12 md:px-10">
 
-          {/* ── Back link ─────────────────────────────────────────── */}
+          {/* ── Back button — returns to origin context ────────────── */}
           <SlideUp duration={0.5}>
-            <Link
-              href={`/${locale}/livener/live`}
-              className="inline-flex items-center gap-2 text-sm font-medium mb-8 px-3 py-2 rounded-lg transition-all"
-              style={{
-                color: 'var(--color-primary)',
-                backgroundColor: 'color-mix(in oklch, var(--color-primary) 10%, transparent)',
-              }}
-            >
-              ← Back to Live
-            </Link>
+            <BackButton
+              fallbackUrl={
+                from === 'events'
+                  ? `/${locale}/${tenantId}/events`
+                  : `/${locale}/${tenantId}/live`
+              }
+              label={from === 'events' ? 'Back to Events' : 'Back to Live'}
+            />
           </SlideUp>
 
           {/* ── Hero image ────────────────────────────────────────── */}
@@ -304,50 +311,16 @@ export default async function EventDetailPage({ params }: PageProps) {
                   Related Events
                 </h2>
                 <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
-                  {relatedEvents.map((relEvent: Event) => {
-                    const relHeroSrc = imageUrl(relEvent.heroImage, 400)
-                    return (
-                      <Link
-                        key={relEvent.slug.current}
-                        href={`/${locale}/${tenantId}/events/${relEvent.slug.current}`}
-                        className="group rounded-lg overflow-hidden transition-all hover:shadow-lg"
-                        style={{
-                          backgroundColor: 'var(--color-surface)',
-                          border: '1px solid',
-                          borderColor: 'var(--color-border)',
-                        }}
-                      >
-                        {relHeroSrc && (
-                          <div className="overflow-hidden" style={{ maxHeight: '200px' }}>
-                            <img
-                              src={relHeroSrc}
-                              alt={relEvent.heroImage?.alt ?? relEvent.title}
-                              className="w-full h-auto object-cover group-hover:scale-105 transition-transform"
-                              style={{ maxHeight: '200px', objectFit: 'cover' }}
-                            />
-                          </div>
-                        )}
-                        <div className="p-4">
-                          <h3
-                            className="font-semibold mb-2 line-clamp-2 group-hover:text-blue-400 transition-colors"
-                            style={{ color: 'var(--color-text-primary)' }}
-                          >
-                            {relEvent.title}
-                          </h3>
-                          {relEvent.location && (
-                            <p className="text-xs mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-                              📍 {relEvent.location}
-                            </p>
-                          )}
-                          {relEvent.shortDescription && (
-                            <p className="text-xs line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>
-                              {relEvent.shortDescription}
-                            </p>
-                          )}
-                        </div>
-                      </Link>
-                    )
-                  })}
+                  {relatedEvents.map((relEvent: Event, idx: number) => (
+                    <EventCard
+                      key={relEvent._id ?? relEvent.slug.current}
+                      event={relEvent}
+                      locale={locale}
+                      tenantId={tenantId}
+                      delay={0.05 + idx * 0.06}
+                      from={from === 'live' ? 'live' : 'events'}
+                    />
+                  ))}
                 </div>
               </div>
             </SlideUp>
