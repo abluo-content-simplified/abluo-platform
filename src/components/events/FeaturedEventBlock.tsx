@@ -4,16 +4,21 @@ import Link from 'next/link'
 import { PlayCircle, ArrowRight } from 'lucide-react'
 import { SlideUp, FadeIn } from '@/components/animation'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
+import { getEventMessages } from '@/lib/i18n/event-messages'
 import type { Event, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
-function StatusBadge({ status }: { status: Event['status'] }) {
+function StatusBadge({ status, liveLabel, upcomingLabel }: {
+  status: Event['status']
+  liveLabel: string
+  upcomingLabel: string
+}) {
   if (status === 'live') {
     return (
       <span className="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-red-400">
         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
-        Live
+        {liveLabel}
       </span>
     )
   }
@@ -27,7 +32,7 @@ function StatusBadge({ status }: { status: Event['status'] }) {
           color: 'var(--color-primary)',
         }}
       >
-        Upcoming
+        {upcomingLabel}
       </span>
     )
   }
@@ -82,6 +87,8 @@ export function FeaturedEventBlock({ event, designSystem, locale, tenantId }: Fe
   const durationSlow = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
   const easeReveal: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
 
+  const msg = getEventMessages(locale)
+
   const heroSrc    = imageUrl(event.heroImage, 1600)
   const heroSrcSet = imageSrcSet(event.heroImage, [800, 1200, 1600, 2400])
 
@@ -105,7 +112,7 @@ export function FeaturedEventBlock({ event, designSystem, locale, tenantId }: Fe
       {/* ── Status + title ────────────────────────────────────────── */}
       <SlideUp delay={0.05} ease={easeReveal}>
         <div className="flex items-center gap-3">
-          <StatusBadge status={event.status} />
+          <StatusBadge status={event.status} liveLabel={msg.statusLive} upcomingLabel={msg.statusUpcoming} />
         </div>
       </SlideUp>
 
@@ -183,7 +190,7 @@ export function FeaturedEventBlock({ event, designSystem, locale, tenantId }: Fe
               border: '2px solid color-mix(in oklch, var(--color-text-primary) 20%, transparent)',
             }}
           >
-            View Event Details
+            {msg.viewEventDetails}
             <ArrowRight size={16} />
           </Link>
         </div>

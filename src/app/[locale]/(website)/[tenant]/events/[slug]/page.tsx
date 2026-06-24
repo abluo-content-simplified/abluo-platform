@@ -12,6 +12,8 @@ import {
 } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
+import { resolveEmbedUrl } from '@/lib/embed'
+import { getEventMessages } from '@/lib/i18n/event-messages'
 import type { Event, LocaleConfig, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
 import { SlideUp } from '@/components/animation'
@@ -127,8 +129,11 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
     .filter(e => e.slug?.current !== slug)
     .slice(0, 3)
 
+  const msg = getEventMessages(locale)
+
   const heroSrc = imageUrl(event.heroImage, 1600)
   const heroSrcSet = imageSrcSet(event.heroImage, [800, 1200, 1600, 2400])
+  const embedSrc = event.embedPlayerEnabled ? resolveEmbedUrl(event.embedVideoUrl) : null
 
   const startDate = event.startDate
     ? new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(event.startDate))
@@ -150,7 +155,7 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
                   ? `/${locale}/${tenantId}/events`
                   : `/${locale}/${tenantId}/live`
               }
-              label={from === 'events' ? 'Back to Events' : 'Back to Live'}
+              label={from === 'events' ? msg.backToEvents : msg.backToLive}
             />
           </SlideUp>
 
@@ -224,7 +229,7 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
                   className="text-2xl font-bold mb-6"
                   style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
                 >
-                  Schedule
+                  {msg.scheduleHeading}
                 </h2>
                 <div className="space-y-4">
                   {event.schedule.map((item: any) => (
@@ -259,7 +264,7 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
                   className="text-2xl font-bold mb-6"
                   style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
                 >
-                  Gallery
+                  {msg.galleryHeading}
                 </h2>
                 <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
                   {event.gallery.map((image: any, idx: number) => (
@@ -277,25 +282,58 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
             </SlideUp>
           )}
 
-          {/* ── YouTube ────────────────────────────────────────────── */}
-          {event.youtubeUrl && (
+          {/* ── Embedded player + stream CTAs ─────────────────────── */}
+          {(embedSrc || event.primaryStreamUrl || event.secondaryStreamUrl) && (
             <SlideUp delay={0.4} duration={0.5}>
               <div className="mb-12">
-                <h2
-                  className="text-2xl font-bold mb-6"
-                  style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
-                >
-                  Watch
-                </h2>
-                <div className="relative aspect-video overflow-hidden rounded-lg bg-black">
-                  <iframe
-                    src={event.youtubeUrl.replace(/watch\?v=/, 'embed/')}
-                    title={event.title}
-                    className="w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                </div>
+                {/* Embedded player — only rendered when URL resolves to a known embeddable format */}
+                {embedSrc && (
+                  <div className="relative aspect-video overflow-hidden rounded-xl bg-black mb-6">
+                    <iframe
+                      src={embedSrc}
+                      title={event.title}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                )}
+
+                {/* External stream CTAs */}
+                {(event.primaryStreamUrl || event.secondaryStreamUrl) && (
+                  <div className="flex flex-wrap gap-3">
+                    {event.primaryStreamUrl && (
+                      <Link
+                        href={event.primaryStreamUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-[var(--radius-btn)] px-5 py-3 text-sm font-semibold transition-opacity hover:opacity-80"
+                        style={{
+                          backgroundColor: 'var(--color-primary)',
+                          color: '#fff',
+                          fontFamily: 'var(--font-body)',
+                        }}
+                      >
+                        {event.primaryStreamLabel ?? msg.watchFallback}
+                      </Link>
+                    )}
+                    {event.secondaryStreamUrl && (
+                      <Link
+                        href={event.secondaryStreamUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-[var(--radius-btn)] px-5 py-3 text-sm font-semibold transition-opacity hover:opacity-80"
+                        style={{
+                          border: '2px solid var(--color-primary)',
+                          color: 'var(--color-primary)',
+                          fontFamily: 'var(--font-body)',
+                        }}
+                      >
+                        {event.secondaryStreamLabel ?? msg.watchFallback}
+                      </Link>
+                    )}
+                  </div>
+                )}
               </div>
             </SlideUp>
           )}
@@ -308,7 +346,7 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
                   className="text-2xl font-bold mb-6"
                   style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
                 >
-                  Related Events
+                  {msg.relatedEventsHeading}
                 </h2>
                 <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
                   {relatedEvents.map((relEvent: Event, idx: number) => (
