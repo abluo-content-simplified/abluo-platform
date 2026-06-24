@@ -96,15 +96,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
   const config = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? ''
-  const canonical = `${baseUrl}/${locale}/${tenantId}`
+  // Canonical base from Sanity project.customDomain — single source of truth.
+  // Null when the project has no custom domain (new/unlaunched tenants).
+  const canonicalBase = config?.customDomain ? `https://${config.customDomain}` : null
+  const canonical = canonicalBase ? `${canonicalBase}/${locale}/${tenantId}` : undefined
 
   // Build hreflang alternates dynamically from siteConfig.supportedLocales.
-  // Only emit entries for locales the site actually supports.
   const supportedLocales = config?.supportedLocales ?? [locale as SupportedLocale]
   const languages: Record<string, string> = {}
-  for (const loc of supportedLocales) {
-    languages[loc] = `${baseUrl}/${loc}/${tenantId}`
+  if (canonicalBase) {
+    for (const loc of supportedLocales) {
+      languages[loc] = `${canonicalBase}/${loc}/${tenantId}`
+    }
   }
 
   // OG locale tag — maps 2-letter code to IETF format
@@ -117,9 +120,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: config?.siteName ?? tenantId,
     description: config?.tagline,
     alternates: {
-      // Canonical: production only
       canonical: isProduction() ? canonical : undefined,
-      // hreflang: production + preview (for pre-launch multilingual validation)
       languages: !isDev() && Object.keys(languages).length > 0 ? languages : undefined,
     },
     openGraph: {

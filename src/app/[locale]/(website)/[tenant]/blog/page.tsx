@@ -56,14 +56,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const config = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
   const msg = getNewsPageMessages(locale)
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? ''
-  const canonical = `${baseUrl}/${locale}/${tenantId}/blog`
+  const canonicalBase = config?.customDomain ? `https://${config.customDomain}` : null
+  const canonical = canonicalBase ? `${canonicalBase}/${locale}/${tenantId}/blog` : undefined
 
-  // hreflang: /blog is locale-invariant in path, so every supported locale
-  // maps to the same pattern with only the locale prefix swapped.
+  // hreflang: /blog is locale-invariant in path.
   const languages: Record<string, string> = {}
-  for (const loc of supportedLocales) {
-    languages[loc] = `${baseUrl}/${loc}/${tenantId}/blog`
+  if (canonicalBase) {
+    for (const loc of supportedLocales) {
+      languages[loc] = `${canonicalBase}/${loc}/${tenantId}/blog`
+    }
   }
 
   const pageTitle = config?.siteName
