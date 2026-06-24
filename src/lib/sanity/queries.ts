@@ -364,8 +364,18 @@ export const blogListingManualPostsQuery = /* groq */ `
 
 export const currentLiveEventQuery = /* groq */ `
   coalesce(
-    *[_type == "event" && projectSlug == $projectSlug && isCurrentLiveEvent == true && (endDate == null || now() <= endDate)][0],
+    // Explicitly featured on live page, within optional scheduling window
+    *[
+      _type == "event"
+      && projectSlug == $projectSlug
+      && (featuredOnLivePage == true || isCurrentLiveEvent == true)
+      && (livePageFeatureStartDate == null || now() >= livePageFeatureStartDate)
+      && (livePageFeatureEndDate == null || now() <= livePageFeatureEndDate)
+      && (endDate == null || now() <= endDate)
+    ][0],
+    // Fallback: any live-status event
     *[_type == "event" && projectSlug == $projectSlug && status == "live" && (endDate == null || now() <= endDate)][0],
+    // Fallback: next upcoming event
     *[_type == "event" && projectSlug == $projectSlug && status == "upcoming" && now() < startDate]
       | order(startDate asc)[0]
   ) {
@@ -373,6 +383,7 @@ export const currentLiveEventQuery = /* groq */ `
     "title": ${loc('title')},
     "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
     status,
+    featuredOnLivePage,
     isCurrentLiveEvent,
     startDate,
     endDate,
@@ -386,12 +397,61 @@ export const currentLiveEventQuery = /* groq */ `
       "title": ${loc('title')},
       "description": ${loc('description')}
     },
-    youtubeUrl,
+    "primaryStreamLabel": ${loc('primaryStreamLabel')},
+    primaryStreamUrl,
+    "secondaryStreamLabel": ${loc('secondaryStreamLabel')},
+    secondaryStreamUrl,
     youtubeChannelUrl,
+    youtubeUrl,
     "ctaLabel": ${loc('ctaLabel')},
     "seoTitle": ${loc('seoTitle')},
     "seoDescription": ${loc('seoDescription')}
   }
+`
+
+// ─── Homepage Featured Event ───────────────────────────────────────────────────
+// Returns the single active homepage-featured event, or null if none qualifies.
+// Sorting: live events first, then upcoming by nearest start date.
+const homepageFeaturedEventFields = /* groq */ `
+  _id,
+  "title": ${loc('title')},
+  "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
+  status,
+  featuredOnHomePage,
+  startDate,
+  endDate,
+  "location": ${loc('location')},
+  "shortDescription": ${loc('shortDescription')},
+  ${locImage('heroImage')},
+  "primaryStreamLabel": ${loc('primaryStreamLabel')},
+  primaryStreamUrl,
+  "secondaryStreamLabel": ${loc('secondaryStreamLabel')},
+  secondaryStreamUrl,
+  youtubeUrl,
+  "ctaLabel": ${loc('ctaLabel')}
+`
+
+export const homepageFeaturedEventQuery = /* groq */ `
+  coalesce(
+    // Live events that are featured on homepage (within date window)
+    *[
+      _type == "event"
+      && projectSlug == $projectSlug
+      && featuredOnHomePage == true
+      && status == "live"
+      && (homePageFeatureStartDate == null || now() >= homePageFeatureStartDate)
+      && (homePageFeatureEndDate == null || now() <= homePageFeatureEndDate)
+    ] | order(startDate asc)[0] { ${homepageFeaturedEventFields} },
+    // Upcoming events that are featured on homepage (within date window)
+    *[
+      _type == "event"
+      && projectSlug == $projectSlug
+      && featuredOnHomePage == true
+      && status == "upcoming"
+      && (homePageFeatureStartDate == null || now() >= homePageFeatureStartDate)
+      && (homePageFeatureEndDate == null || now() <= homePageFeatureEndDate)
+    ] | order(startDate asc)[0] { ${homepageFeaturedEventFields} }
+  )
 `
 
 export const eventsQuery = /* groq */ `
@@ -437,7 +497,11 @@ export const eventBySlugQuery = /* groq */ `
     "slugMap": slug,
     "redirectFrom": redirectFrom,
     status,
+    featuredOnLivePage,
     isCurrentLiveEvent,
+    featuredOnHomePage,
+    homePageFeatureStartDate,
+    homePageFeatureEndDate,
     startDate,
     endDate,
     "location": ${loc('location')},
@@ -457,8 +521,12 @@ export const eventBySlugQuery = /* groq */ `
       "title": ${loc('title')},
       "description": ${loc('description')}
     },
-    youtubeUrl,
+    "primaryStreamLabel": ${loc('primaryStreamLabel')},
+    primaryStreamUrl,
+    "secondaryStreamLabel": ${loc('secondaryStreamLabel')},
+    secondaryStreamUrl,
     youtubeChannelUrl,
+    youtubeUrl,
     "ctaLabel": ${loc('ctaLabel')},
     "seoTitle": ${loc('seoTitle')},
     "seoDescription": ${loc('seoDescription')}

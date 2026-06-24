@@ -1,5 +1,5 @@
 import { tenantClient } from '@/lib/sanity/client'
-import { pageHomeQuery, localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, blogListingPostsNewestQuery, blogListingPostsOldestQuery, blogListingManualPostsQuery } from '@/lib/sanity/queries'
+import { pageHomeQuery, localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, blogListingPostsNewestQuery, blogListingPostsOldestQuery, blogListingManualPostsQuery, homepageFeaturedEventQuery } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
 import { HeroSection } from '@/components/sections/HeroSection'
@@ -15,7 +15,8 @@ import { BlogListingSection } from '@/components/sections/BlogListingSection'
 import { FormSection } from '@/components/sections/FormSection'
 import { StatementSection } from '@/components/sections/StatementSection'
 import { MetricsSection } from '@/components/sections/MetricsSection'
-import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, PageSection, FAQSection as FAQSectionType, BlogListingSection as BlogListingSectionType, FormSection as FormSectionType, HeroLiveCaptureSection as HeroLiveCaptureSectionType, HeroLensSection as HeroLensSectionType, SupportedLocale, DesignSystem, Post } from '@/lib/sanity/types'
+import { FeaturedEventBlock } from '@/components/events/FeaturedEventBlock'
+import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, PageSection, FAQSection as FAQSectionType, BlogListingSection as BlogListingSectionType, FormSection as FormSectionType, HeroLiveCaptureSection as HeroLiveCaptureSectionType, HeroLensSection as HeroLensSectionType, SupportedLocale, DesignSystem, Post, Event } from '@/lib/sanity/types'
 import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
 import { computeSectionSurface } from '@/lib/sanity/surfaces'
@@ -195,10 +196,11 @@ export default async function WebsitePage({ params }: PageProps) {
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  const [homePage, siteConfig, designSystem] = await Promise.all([
+  const [homePage, siteConfig, designSystem, featuredEvent] = await Promise.all([
     fetchForTenant<WebsitePage>(pageHomeQuery, { locale, defaultLocale }),
     fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale }),
     (async () => { const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {}); return resolveDesignSystemInheritance(raw, fetchDesignSystemById); })(),
+    fetchForTenant<Event>(homepageFeaturedEventQuery, { locale, defaultLocale }),
   ])
 
   if (!homePage) {
@@ -226,6 +228,14 @@ export default async function WebsitePage({ params }: PageProps) {
     (s): s is FAQSectionType => s._type === 'faqSection'
   ) ?? null
 
+  // Split sections so the featured event lands between the hero and the rest.
+  // Hero types are always the first section; everything else follows.
+  const heroTypes = new Set(['heroSection', 'heroLiveCaptureSection', 'heroLensSection'])
+  const allSections = homePage.sections ?? []
+  const firstIsHero = allSections.length > 0 && heroTypes.has(allSections[0]._type)
+  const heroSections = firstIsHero ? allSections.slice(0, 1) : []
+  const bodySections = firstIsHero ? allSections.slice(1) : allSections
+
   return (
     <>
       <JsonLd
@@ -234,7 +244,9 @@ export default async function WebsitePage({ params }: PageProps) {
         locale={locale}
         tenantId={tenantId}
       />
-      {homePage.sections?.map((section, index) => (
+
+      {/* ── Hero section (always first) ──────────────────────────── */}
+      {heroSections.map((section, index) => (
         <SectionRenderer
           key={section._key}
           section={section}
@@ -242,6 +254,35 @@ export default async function WebsitePage({ params }: PageProps) {
           designSystem={designSystem}
           backgroundPattern={homePage.backgroundPattern}
           sectionIndex={index}
+          locale={locale}
+          tenantSlug={tenantId}
+          fromParam="home"
+        />
+      ))}
+
+      {/* ── Featured event — collapses when no active event ─────── */}
+      {featuredEvent && (
+        <section className="px-6 py-16 md:px-16 lg:px-24">
+          <div className="mx-auto w-full max-w-6xl">
+            <FeaturedEventBlock
+              event={featuredEvent}
+              designSystem={designSystem}
+              locale={locale as SupportedLocale}
+              tenantId={tenantId}
+            />
+          </div>
+        </section>
+      )}
+
+      {/* ── Remaining page sections ──────────────────────────────── */}
+      {bodySections.map((section, index) => (
+        <SectionRenderer
+          key={section._key}
+          section={section}
+          siteConfig={siteConfig}
+          designSystem={designSystem}
+          backgroundPattern={homePage.backgroundPattern}
+          sectionIndex={firstIsHero ? index + 1 : index}
           locale={locale}
           tenantSlug={tenantId}
           fromParam="home"

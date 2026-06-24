@@ -1,10 +1,9 @@
 'use client'
 
-import Link from 'next/link'
-import { PlayCircle } from 'lucide-react'
 import { SlideUp, FadeIn } from '@/components/animation'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
 import { EventCard } from '@/components/events/EventCard'
+import { FeaturedEventBlock } from '@/components/events/FeaturedEventBlock'
 import type { Event, LivePage, SupportedLocale, WebsiteSiteConfig, DesignSystem } from '@/lib/sanity/types'
 
 // Cloudflare Stream account subdomain for Livener.
@@ -45,34 +44,6 @@ function NoLiveEvent() {
   )
 }
 
-// ─── Status badge ─────────────────────────────────────────────────────────────
-
-function StatusBadge({ status }: { status: Event['status'] }) {
-  if (status === 'live') {
-    return (
-      <span className="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-red-400">
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
-        Live
-      </span>
-    )
-  }
-  if (status === 'upcoming') {
-    return (
-      <span
-        className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-widest"
-        style={{
-          borderColor: 'color-mix(in oklch, var(--color-primary) 25%, transparent)',
-          backgroundColor: 'color-mix(in oklch, var(--color-primary) 12%, transparent)',
-          color: 'var(--color-primary)',
-        }}
-      >
-        Upcoming
-      </span>
-    )
-  }
-  return null
-}
-
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function LivePageContent({
@@ -92,20 +63,8 @@ export function LivePageContent({
   const durationSlow   = m?.durationSlow   !== undefined ? m.durationSlow   / 1000 : 0.35
   const easeReveal: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
 
-  const heroSrc = imageUrl(event.heroImage, 1600)
-  const heroSrcSet = imageSrcSet(event.heroImage, [800, 1200, 1600, 2400])
   const gallerySrc = event.gallery?.[0] ? imageUrl(event.gallery[0], 1600) : undefined
   const gallerySrcSet = event.gallery?.[0] ? imageSrcSet(event.gallery[0], [800, 1200, 1600]) : undefined
-
-  // Format date range
-  const startDate = event.startDate
-    ? new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', year: '2-digit' }).format(new Date(event.startDate))
-    : null
-  const endDate = event.endDate
-    ? new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', year: '2-digit' }).format(new Date(event.endDate))
-    : null
-
-  const channelUrl = event.youtubeChannelUrl ?? siteConfig?.youtubeChannelUrl ?? 'https://www.youtube.com/@livener-net'
 
   // Editorial content from livePage document, with fallbacks
   const headline    = livePage?.heroTitle    ?? 'Welcome to Livener'
@@ -174,64 +133,15 @@ export function LivePageContent({
           </FadeIn>
         )}
 
-        {/* ── Event announcement ────────────────────────────────────── */}
+        {/* ── Event announcement (status, title, date, image, CTA) ──── */}
         <div className="mt-14">
-          <SlideUp delay={0.05} ease={easeReveal}>
-            <div className="flex items-center gap-3">
-              <StatusBadge status={event.status} />
-            </div>
-          </SlideUp>
-
-          <SlideUp delay={0.12} ease={easeReveal}>
-            <h2
-              className="mt-4 text-[clamp(28px,5vw,46px)] font-bold leading-tight"
-              style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
-            >
-              {event.title}
-            </h2>
-          </SlideUp>
-
-          {(startDate || event.location) && (
-            <SlideUp delay={0.2} ease={easeReveal}>
-              <p
-                className="mt-2 text-xl font-semibold"
-                style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-primary)' }}
-              >
-                {startDate && endDate
-                  ? `${startDate} — ${endDate}`
-                  : startDate}
-                {event.location && (
-                  <span style={{ color: 'var(--color-text-muted)' }} className="ml-2">
-                    · {event.location}
-                  </span>
-                )}
-              </p>
-            </SlideUp>
-          )}
-
-          {/* ── Short description ────────────────────────────────────── */}
-          {event.shortDescription && (
-            <SlideUp delay={0.25} ease={easeReveal} className="mt-6">
-              <p className="text-base leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                {event.shortDescription}
-              </p>
-            </SlideUp>
-          )}
+          <FeaturedEventBlock
+            event={event}
+            designSystem={designSystem}
+            locale={locale}
+            tenantId={tenantId}
+          />
         </div>
-
-        {/* ── Hero image ───────────────────────────────────────────── */}
-        {heroSrc && (
-          <FadeIn delay={0.1} duration={durationSlow} ease={easeReveal} className="mt-10 overflow-hidden rounded-2xl">
-            <img
-              src={heroSrc}
-              srcSet={heroSrcSet}
-              sizes="(max-width: 900px) 100vw, 900px"
-              alt={event.heroImage?.alt ?? event.title ?? ''}
-              className="w-full object-cover"
-              loading="eager"
-            />
-          </FadeIn>
-        )}
 
         {/* ── Full description ────────────────────────────────────── */}
         {event.fullDescription && Array.isArray(event.fullDescription) && event.fullDescription.length > 0 && (
@@ -248,52 +158,6 @@ export function LivePageContent({
             </div>
           </SlideUp>
         )}
-
-        {/* ── YouTube channel link ─────────────────────────────────── */}
-        <SlideUp delay={0.1} ease={easeReveal} className="mt-8">
-          <p className="text-base leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-            Visit{' '}
-            <Link
-              href={channelUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium underline-offset-2 hover:underline"
-              style={{ color: 'var(--color-primary)' }}
-            >
-              {channelUrl.replace('https://', '')}
-            </Link>{' '}
-            to see the future of live streaming.
-          </p>
-        </SlideUp>
-
-        {/* ── Watch on YouTube CTA ──────────────────────────────────── */}
-        <SlideUp delay={0.15} ease={easeReveal} className="mt-10">
-          <Link
-            href={event.youtubeUrl ?? channelUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group inline-flex items-center gap-3 rounded-[var(--radius-btn)] px-6 py-3.5 text-sm font-semibold transition-all"
-            style={{
-              fontFamily: 'var(--font-body)',
-              border: '2px solid var(--color-primary)',
-              backgroundColor: 'var(--color-primary)',
-              color: '#fff',
-            }}
-            onMouseEnter={(e) => {
-              const el = e.currentTarget as HTMLElement
-              el.style.backgroundColor = 'var(--color-secondary)'
-              el.style.borderColor = 'var(--color-secondary)'
-            }}
-            onMouseLeave={(e) => {
-              const el = e.currentTarget as HTMLElement
-              el.style.backgroundColor = 'var(--color-primary)'
-              el.style.borderColor = 'var(--color-primary)'
-            }}
-          >
-            <PlayCircle size={18} />
-            {event.ctaLabel ?? 'Watch on YouTube'}
-          </Link>
-        </SlideUp>
 
         {/* ── Gallery image ─────────────────────────────────────────── */}
         {gallerySrc && (
