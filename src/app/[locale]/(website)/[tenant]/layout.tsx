@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import type { Metadata } from 'next'
 import { tenantClient, tenantToProjectSlug, fetchDesignSystemById } from '@/lib/sanity/client'
-import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery } from '@/lib/sanity/queries'
+import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, siteConfigFaviconQuery } from '@/lib/sanity/queries'
 import type { LocaleConfig, SupportedLocale, DesignSystem, FontDefinition, WebsiteSiteConfig, BackgroundGraphic } from '@/lib/sanity/types'
 import { imageUrl } from '@/lib/sanity/image'
 import { resolveNavLinks } from '@/lib/sanity/nav-links'
@@ -364,14 +364,36 @@ function DesignSystemHead({ cssVars, fontsUrl }: { cssVars: string; fontsUrl: st
 }
 
 // ─── Metadata (favicon) ───────────────────────────────────────────────────────
+//
+// Precedence:
+//   1. siteConfig.faviconSvg  — tenant brand favicon (SVG, preferred)
+//   2. siteConfig.faviconPng  — tenant brand favicon (PNG fallback)
+//   3. designSystem.branding.favicon — DS-level favicon
+//   4. /favicon.ico           — Abluo platform default (implicit, no override needed)
+//
+// favicon is LOCAL ONLY in DS resolver — it is never inherited from the parent
+// design system. This guarantees tenants never accidentally show Abluo's favicon.
 
 export async function generateMetadata({ params }: { params: Promise<{ tenant: string; locale: string }> }): Promise<Metadata> {
   const { tenant: tenantId } = await params
   const { fetchForTenant } = tenantClient(tenantId)
-  const rawDesignSystem = await fetchForTenant<DesignSystem>(designSystemQuery, {})
+
+  const [siteConfigFavicon, rawDesignSystem] = await Promise.all([
+    fetchForTenant<{ faviconSvg?: { asset?: { _ref: string } }; faviconPng?: { asset?: { _ref: string } } }>(
+      siteConfigFaviconQuery, {}
+    ),
+    fetchForTenant<DesignSystem>(designSystemQuery, {}),
+  ])
+
   const designSystem = await resolveDesignSystemInheritance(rawDesignSystem, fetchDesignSystemById)
-  const faviconAsset = designSystem?.branding?.favicon
-  const faviconSrc = faviconAsset?.asset ? imageUrl(faviconAsset as any, 64) : undefined
+
+  // Apply precedence — first non-null URL wins.
+  const faviconSrc =
+    (siteConfigFavicon?.faviconSvg?.asset ? imageUrl(siteConfigFavicon.faviconSvg as any, 64) : null) ??
+    (siteConfigFavicon?.faviconPng?.asset ? imageUrl(siteConfigFavicon.faviconPng as any, 64) : null) ??
+    (designSystem?.branding?.favicon?.asset ? imageUrl(designSystem.branding.favicon as any, 64) : null) ??
+    undefined
+
   return {
     ...(faviconSrc ? { icons: { icon: faviconSrc } } : {}),
     // Suppress indexing on all non-production environments.
