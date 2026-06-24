@@ -160,7 +160,8 @@ export const websiteSiteConfigQuery = /* groq */ `
     socialLinks[] { platform, url },
     phone,
     email,
-    address
+    address,
+    openGraphImage { asset }
   }
 `
 
