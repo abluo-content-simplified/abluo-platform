@@ -15,8 +15,8 @@ interface Props {
  * Both scripts are invisible to users but read by search engines.
  */
 export function JsonLd({ siteConfig, faqSection, locale, tenantId }: Props) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? ''
-  const url = `${baseUrl}/${locale}/${tenantId}`
+  const canonicalBase = siteConfig?.customDomain ? `https://${siteConfig.customDomain}` : null
+  const url = canonicalBase ? `${canonicalBase}/${locale}/${tenantId}` : undefined
 
   // ── Dentist / LocalBusiness ───────────────────────────────────────────────
   const dentistSchema: Record<string, unknown> = {

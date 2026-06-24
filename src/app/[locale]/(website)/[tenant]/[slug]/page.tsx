@@ -95,23 +95,27 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!page) return {}
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? ''
-  const canonical = `${baseUrl}/${locale}/${tenantId}/${slug}`
+  const canonicalBase = config?.customDomain ? `https://${config.customDomain}` : null
 
   const pageTitle = page.title
     ? `${page.title} — ${config?.siteName ?? tenantId}`
     : config?.siteName ?? tenantId
 
   // Build hreflang alternates from the page's per-locale slug map.
-  // Only include locales that have an actual slug set (not empty).
   const supportedLocales = config?.supportedLocales ?? [locale as SupportedLocale]
   const languages: Record<string, string> = {}
-  for (const loc of supportedLocales) {
-    const locSlug = page.slugMap?.[loc]?.current
-    if (locSlug) {
-      languages[loc] = `${baseUrl}/${loc}/${tenantId}/${locSlug}`
+  if (canonicalBase) {
+    for (const loc of supportedLocales) {
+      const locSlug = page.slugMap?.[loc]?.current
+      if (locSlug) {
+        languages[loc] = `${canonicalBase}/${loc}/${tenantId}/${locSlug}`
+      }
     }
   }
+
+  const canonical = canonicalBase
+    ? `${canonicalBase}/${locale}/${tenantId}/${slug}`
+    : undefined
 
   // OG locale tag — maps 2-letter code to IETF format
   const ogLocaleMap: Record<string, string> = {

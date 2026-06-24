@@ -10,6 +10,7 @@ const PROJECT_TO_TENANT: Record<string, string> = {
 
 interface TenantSitemapData {
   projectSlug: string
+  customDomain?: string
   supportedLocales?: string[]
   defaultLocale?: string
 }
@@ -33,8 +34,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Never expose a sitemap on non-production environments.
   if (!isProduction()) return []
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
-
   if (!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID) return []
 
   try {
@@ -44,6 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const projects = await sanityClient.fetch<TenantSitemapData[]>(
       `*[_type == "project" && status == "active"] | order(projectName asc) {
         projectSlug,
+        customDomain,
         "supportedLocales": siteConfig->supportedLocales,
         "defaultLocale": siteConfig->defaultLocale
       }`
@@ -86,15 +86,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     const entries: MetadataRoute.Sitemap = []
 
-    for (const { projectSlug, supportedLocales, defaultLocale } of projects) {
+    for (const { projectSlug, customDomain, supportedLocales, defaultLocale } of projects) {
+      // Skip tenants without a custom domain — no canonical URL to emit.
+      if (!customDomain) continue
+
       const tenantSlug = PROJECT_TO_TENANT[projectSlug] ?? projectSlug
       const locales = supportedLocales && supportedLocales.length > 0 ? supportedLocales : ['en']
       const primaryLocale = defaultLocale ?? locales[0]
+      const tenantBase = `https://${customDomain}`
 
       // Tenant homepage — one URL per locale
       for (const locale of locales) {
         entries.push({
-          url: `${baseUrl}/${locale}/${tenantSlug}`,
+          url: `${tenantBase}/${locale}/${tenantSlug}`,
           lastModified: new Date(),
           changeFrequency: 'weekly',
           priority: locale === primaryLocale ? 1.0 : 0.9,
@@ -108,7 +112,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           const slugObj = page.slug?.[locale]
           if (slugObj?.current) {
             entries.push({
-              url: `${baseUrl}/${locale}/${tenantSlug}/${slugObj.current}`,
+              url: `${tenantBase}/${locale}/${tenantSlug}/${slugObj.current}`,
               lastModified: new Date(),
               changeFrequency: 'weekly',
               priority: locale === primaryLocale ? 0.8 : 0.7,
@@ -124,7 +128,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           const slugObj = event.slug?.[locale]
           if (slugObj?.current) {
             entries.push({
-              url: `${baseUrl}/${locale}/${tenantSlug}/events/${slugObj.current}`,
+              url: `${tenantBase}/${locale}/${tenantSlug}/events/${slugObj.current}`,
               lastModified: new Date(),
               changeFrequency: 'weekly',
               priority: locale === primaryLocale ? 0.7 : 0.6,
@@ -140,7 +144,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           const slugObj = post.slug?.[locale]
           if (slugObj?.current) {
             entries.push({
-              url: `${baseUrl}/${locale}/${tenantSlug}/blog/${slugObj.current}`,
+              url: `${tenantBase}/${locale}/${tenantSlug}/blog/${slugObj.current}`,
               lastModified: new Date(),
               changeFrequency: 'monthly',
               priority: locale === primaryLocale ? 0.6 : 0.5,

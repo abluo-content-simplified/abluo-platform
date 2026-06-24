@@ -161,8 +161,17 @@ export const websiteSiteConfigQuery = /* groq */ `
     phone,
     email,
     address,
-    openGraphImage { asset }
+    openGraphImage { asset },
+    "customDomain": *[_type == "project" && projectSlug == $projectSlug && defined(customDomain)][0].customDomain
   }
+`
+
+// ─── Minimal query for canonical URL resolution ───────────────────────────────
+// Used by generateMetadata in pages that don't fetch websiteSiteConfigQuery
+// (blog/[slug], events/[slug], live). Source of truth: project.customDomain,
+// synced from Supabase via ProjectLinker.
+export const projectDomainQuery = /* groq */ `
+  *[_type == "project" && projectSlug == $projectSlug && defined(customDomain)][0].customDomain
 `
 
 export const postsQuery = /* groq */ `
