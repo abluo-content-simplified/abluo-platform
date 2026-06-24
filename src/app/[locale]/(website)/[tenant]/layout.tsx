@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import type { Metadata } from 'next'
 import { tenantClient, tenantToProjectSlug, fetchDesignSystemById } from '@/lib/sanity/client'
 import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, siteConfigFaviconQuery } from '@/lib/sanity/queries'
+import { ogImageUrl } from '@/lib/sanity/image'
 import type { LocaleConfig, SupportedLocale, DesignSystem, FontDefinition, WebsiteSiteConfig, BackgroundGraphic } from '@/lib/sanity/types'
 import { imageUrl } from '@/lib/sanity/image'
 import { resolveNavLinks } from '@/lib/sanity/nav-links'
@@ -379,23 +380,41 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
   const { fetchForTenant } = tenantClient(tenantId)
 
   const [siteConfigFavicon, rawDesignSystem] = await Promise.all([
-    fetchForTenant<{ faviconSvg?: { asset?: { _ref: string } }; faviconPng?: { asset?: { _ref: string } } }>(
-      siteConfigFaviconQuery, {}
-    ),
+    fetchForTenant<{
+      faviconSvg?:      { asset?: { _ref: string } }
+      faviconPng?:      { asset?: { _ref: string } }
+      openGraphImage?:  { asset?: { _ref: string } }
+    }>(siteConfigFaviconQuery, {}),
     fetchForTenant<DesignSystem>(designSystemQuery, {}),
   ])
 
   const designSystem = await resolveDesignSystemInheritance(rawDesignSystem, fetchDesignSystemById)
 
-  // Apply precedence — first non-null URL wins.
+  // ── Favicon — first available wins ──────────────────────────────────────────
+  // Precedence: siteConfig.faviconSvg → siteConfig.faviconPng → DS.branding.favicon
   const faviconSrc =
     (siteConfigFavicon?.faviconSvg?.asset ? imageUrl(siteConfigFavicon.faviconSvg as any, 64) : null) ??
     (siteConfigFavicon?.faviconPng?.asset ? imageUrl(siteConfigFavicon.faviconPng as any, 64) : null) ??
     (designSystem?.branding?.favicon?.asset ? imageUrl(designSystem.branding.favicon as any, 64) : null) ??
     undefined
 
+  // ── Open Graph image — first available wins ──────────────────────────────────
+  // Precedence: siteConfig.openGraphImage → DS.branding.openGraphImage → none
+  // Forced to JPG (1200×630) — social crawlers (WhatsApp, LinkedIn, FB, X) may
+  // not accept WebP/AVIF returned by auto('format').
+  // This image is the default for ALL pages in this tenant. Page-level metadata
+  // (events, blog posts) overrides it with their own specific image.
+  const ogSrc =
+    (siteConfigFavicon?.openGraphImage?.asset ? ogImageUrl(siteConfigFavicon.openGraphImage as any) : null) ??
+    (designSystem?.branding?.openGraphImage?.asset ? ogImageUrl(designSystem.branding.openGraphImage as any) : null) ??
+    undefined
+
   return {
     ...(faviconSrc ? { icons: { icon: faviconSrc } } : {}),
+    ...(ogSrc ? {
+      openGraph: { images: [{ url: ogSrc, width: 1200, height: 630 }] },
+      twitter:   { card: 'summary_large_image', images: [ogSrc] },
+    } : {}),
     // Suppress indexing on all non-production environments.
     // Vercel already sends x-robots-tag: noindex on preview deployments,
     // but this ensures the meta tag is also present for belt-and-suspenders.

@@ -15,7 +15,7 @@ import { fetchDesignSystemById } from '@/lib/sanity/client'
 import { resolveEmbedUrl } from '@/lib/embed'
 import { getEventMessages } from '@/lib/i18n/event-messages'
 import type { Event, LocaleConfig, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
-import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
+import { imageUrl, imageSrcSet, ogImageUrl } from '@/lib/sanity/image'
 import { SlideUp } from '@/components/animation'
 import { SlugMapProvider, type SlugMap } from '@/components/SlugMapContext'
 import { EventCard } from '@/components/events/EventCard'
@@ -67,10 +67,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description: event?.seoDescription ?? event?.shortDescription ?? undefined,
       images: event?.heroImage?.asset
         ? (() => {
-            const url = imageUrl(event.heroImage, 1200)
-            return url ? [url] : undefined
+            const url = ogImageUrl(event.heroImage)
+            return url ? [{ url, width: 1200, height: 630 }] : undefined
           })()
         : undefined,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: event?.seoTitle ?? event?.title,
+      description: event?.seoDescription ?? event?.shortDescription ?? undefined,
+      images: event?.heroImage?.asset ? [ogImageUrl(event.heroImage)].filter(Boolean) as string[] : undefined,
     },
   }
 }

@@ -11,6 +11,7 @@ import {
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
 import type { Event, LocaleConfig, LivePage, SupportedLocale, WebsiteSiteConfig, DesignSystem } from '@/lib/sanity/types'
+import { ogImageUrl } from '@/lib/sanity/image'
 import { LivePageContent } from '@/components/livener/live/LivePageContent'
 
 // force-dynamic: always render server-side so event status changes are immediate.
@@ -38,10 +39,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const title = livePage?.seoTitle ?? event?.seoTitle ?? event?.title ?? 'Live — Livener'
   const description = livePage?.seoDescription ?? event?.seoDescription ?? event?.shortDescription ?? 'Live video streaming from Livener.'
 
+  // Use the current event's hero image for OG when available — more relevant
+  // than the generic site OG image. Falls back to the layout-level default.
+  const ogImg = event?.heroImage?.asset ? ogImageUrl(event.heroImage) : undefined
+  const ogImages = ogImg ? [{ url: ogImg, width: 1200, height: 630 }] : undefined
+
   return {
     title,
     description,
-    openGraph: { title, description },
+    ...(ogImages ? {
+      openGraph: { title, description, images: ogImages },
+      twitter:   { card: 'summary_large_image' as const, title, description, images: [ogImg!] },
+    } : {
+      openGraph: { title, description },
+    }),
   }
 }
 
