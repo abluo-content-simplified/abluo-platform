@@ -2528,6 +2528,7 @@ const siteConfigType = defineType({
     defineField({ name: 'logoLight', title: 'Logo (Light variant)', type: 'localizedImage', group: 'branding' }),
     defineField({ name: 'faviconSvg', title: 'Favicon (SVG)', type: 'image', group: 'branding' }),
     defineField({ name: 'faviconPng', title: 'Favicon (PNG)', type: 'image', group: 'branding' }),
+    defineField({ name: 'openGraphImage', title: 'Open Graph Image', type: 'image', group: 'branding', description: 'Social sharing image • 1200 × 630 px • JPG preferred. Used as the default og:image on all pages that do not have a page-specific image.' }),
     defineField({
       name: 'backgroundGraphic',
       title: 'Brand Watermark',
