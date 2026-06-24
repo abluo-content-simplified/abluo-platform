@@ -2856,7 +2856,23 @@ const eventType = defineType({
     defineField({ name: 'schedule', title: 'Schedule', type: 'array', group: 'schedule', of: [defineArrayMember({ type: 'scheduleItem' })] }),
     defineField({ name: 'heroImage', title: 'Hero Image', type: 'localizedImage', group: 'media' }),
     defineField({ name: 'gallery', title: 'Gallery', type: 'array', group: 'media', of: [defineArrayMember({ type: 'localizedImage' })] }),
-    // ── Streaming CTAs ─────────────────────────────────────────────────────────
+    // ── Embedded Player ────────────────────────────────────────────────────────
+    defineField({
+      name: 'embedPlayerEnabled',
+      title: 'Enable Embedded Player',
+      type: 'boolean',
+      group: 'streaming',
+      initialValue: false,
+    }),
+    defineField({
+      name: 'embedVideoUrl',
+      title: 'Video URL',
+      type: 'string',
+      group: 'streaming',
+      description:
+        'Paste a YouTube or Cloudflare Stream URL. The following formats are accepted:\n\n• youtube.com/watch?v=VIDEO_ID\n• youtu.be/VIDEO_ID\n• *.cloudflarestream.com/VIDEO_ID/watch\n\nChannel URLs and playlist URLs are not supported.',
+    }),
+    // ── External Stream CTAs ───────────────────────────────────────────────────
     defineField({
       name: 'primaryStreamLabel',
       title: 'Primary Stream Label',

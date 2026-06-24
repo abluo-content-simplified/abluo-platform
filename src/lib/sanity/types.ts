@@ -550,7 +550,10 @@ export interface Event {
   heroImage?: ResolvedImage
   gallery?: ResolvedImage[]
   schedule?: ScheduleItem[]
-  // Streaming CTAs
+  // Embedded player
+  embedPlayerEnabled?: boolean
+  embedVideoUrl?: string
+  // External stream CTAs
   primaryStreamLabel?: string
   primaryStreamUrl?: string
   secondaryStreamLabel?: string

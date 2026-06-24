@@ -397,6 +397,8 @@ export const currentLiveEventQuery = /* groq */ `
       "title": ${loc('title')},
       "description": ${loc('description')}
     },
+    embedPlayerEnabled,
+    embedVideoUrl,
     "primaryStreamLabel": ${loc('primaryStreamLabel')},
     primaryStreamUrl,
     "secondaryStreamLabel": ${loc('secondaryStreamLabel')},
@@ -521,6 +523,8 @@ export const eventBySlugQuery = /* groq */ `
       "title": ${loc('title')},
       "description": ${loc('description')}
     },
+    embedPlayerEnabled,
+    embedVideoUrl,
     "primaryStreamLabel": ${loc('primaryStreamLabel')},
     primaryStreamUrl,
     "secondaryStreamLabel": ${loc('secondaryStreamLabel')},
