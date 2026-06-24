@@ -12,7 +12,7 @@ import {
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
 import type { Post, LocaleConfig, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
-import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
+import { imageUrl, imageSrcSet, ogImageUrl } from '@/lib/sanity/image'
 import { SlideUp } from '@/components/animation'
 import { SlugMapProvider, type SlugMap } from '@/components/SlugMapContext'
 import { BackButton } from '@/components/events/BackButton'
@@ -68,10 +68,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description: post?.seoDescription ?? post?.excerpt ?? undefined,
       images: post?.coverImage?.asset
         ? (() => {
-            const url = imageUrl(post.seoImage ?? post.coverImage, 1200)
-            return url ? [url] : undefined
+            const url = ogImageUrl(post.seoImage ?? post.coverImage)
+            return url ? [{ url, width: 1200, height: 630 }] : undefined
           })()
         : undefined,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: post?.seoTitle ?? post?.title,
+      description: post?.seoDescription ?? post?.excerpt ?? undefined,
+      images: post?.coverImage?.asset ? [ogImageUrl(post.seoImage ?? post.coverImage)].filter(Boolean) as string[] : undefined,
     },
   }
 }

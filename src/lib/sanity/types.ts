@@ -482,6 +482,7 @@ export interface WebsiteSiteConfig {
   tagline?: string
   logo?: ResolvedImage
   logoLight?: ResolvedImage
+  openGraphImage?: { asset?: { _ref: string } }
   backgroundGraphic?: BackgroundGraphic
   headerAppearance?: HeaderAppearance
   languageSwitcherPlacement?: 'header' | 'footer' | 'both'
