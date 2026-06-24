@@ -1,4 +1,7 @@
 {
+  "live": {
+    "moreLiveProductions": "Weitere Live-Produktionen"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "clients": "Kunden",

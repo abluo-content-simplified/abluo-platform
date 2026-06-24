@@ -35,7 +35,7 @@ interface EditSheetProps {
   allTags: string[]
   languages: string[]
   onClose: () => void
-  onSave: () => void
+  onSave: (updatedAsset: MediaAsset) => void
   onDelete: () => void
 }
 
@@ -113,7 +113,16 @@ export function EditSheet({
         })
         setError(`${data.error}${data.details ? ' — ' + JSON.stringify(data.details).substring(0, 100) : ''}`)
       } else {
-        onSave()
+        // Build the updated asset from current form state rather than relying on
+        // the API response, which may reflect a Sanity read-after-write delay.
+        const updatedAsset: MediaAsset = {
+          ...asset,
+          name: name || undefined,
+          altText,
+          description,
+          tags,
+        }
+        onSave(updatedAsset)
         onClose()
       }
     } catch (err) {

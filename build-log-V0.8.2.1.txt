@@ -1,0 +1,41 @@
+V0.8.2.1 — Middleware Conflict Hotfix
+======================================
+Date: 2026-06-18
+Branch: dev (awaiting Tom's verification on dev.abluo.app before promotion)
+Tag: (none — to be applied after promotion to main)
+TypeScript: clean (npx tsc --noEmit)
+Tests: 46/46 passed (npx vitest run)
+Build: succeeded — "ƒ Proxy (Middleware)" confirmed in build output
+
+─── Problem ──────────────────────────────────────────────────────────────────
+
+V0.8.2 introduced `src/middleware.ts` based on incorrect analysis that Next.js 16
+no longer recognised it as the middleware entrypoint. In fact, Next.js 16 uses
+`src/proxy.ts` as the new middleware convention. Both files existing simultaneously
+caused a build failure on all branches that contained V0.8.2 (dev + main).
+
+Error on Vercel:
+  "Both middleware file './src/src/middleware.ts' and proxy file './src/src/proxy.ts'
+   are detected. Please use './src/src/proxy.ts' only."
+
+─── Fix ──────────────────────────────────────────────────────────────────────
+
+Deleted: src/middleware.ts (the incorrectly added wrapper file)
+
+No changes to src/proxy.ts — all locale-switch logic, language persistence,
+tenant routing, auth guards, and the config matcher remain intact and correct.
+
+─── Also Included ────────────────────────────────────────────────────────────
+
+Updated: CLAUDE.md — Deployment Workflow section
+  - Explicit "Stop" instructions between each promotion stage
+  - Added npm run build to the pre-promote checklist
+  - Added --no-edit to merge commands to prevent editor prompts
+  - Documented the V0.8.2 bypass post-mortem
+  - Documented the Next.js 16 proxy.ts middleware convention
+
+─── Workflow Note ────────────────────────────────────────────────────────────
+
+V0.8.2 reached production without dev or preview verification — a workflow
+violation. This fix corrects the build on dev. Promotion to preview and main
+will only proceed after Tom verifies dev.abluo.app.

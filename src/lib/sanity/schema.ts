@@ -2,8 +2,30 @@ import { defineType, defineField, defineArrayMember } from 'sanity'
 import { TenantLinker } from '@/lib/sanity/fields/TenantLinker'
 import { ProjectLinker } from '@/lib/sanity/fields/ProjectLinker'
 import { ProjectSlugPicker } from '@/lib/sanity/fields/ProjectSlugPicker'
-import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, LocalizedSlugInput } from '@/lib/sanity/fields/LocalizedInput'
+import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, LocalizedSlugInput, LocalizedRedirectFromInput } from '@/lib/sanity/fields/LocalizedInput'
 import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
+
+// ─── Project-scoped reference filter ─────────────────────────────────────────
+//
+// Use this as `options.filter` on any reference field whose target documents
+// are tenant-specific (posts, events, authors, categories, pages, forms, etc.).
+//
+// Behaviour:
+//   • Document has a projectSlug  → only shows documents from that project
+//   • Document has no projectSlug → shows nothing (prevents cross-project picks)
+//
+// Works for both top-level document fields (e.g. post.author) and references
+// nested inside embedded objects (e.g. blogListingSection.category inside a
+// page), because Sanity's `document` callback always refers to the root document.
+const scopedRef = ({ document }: { document: Record<string, unknown> }) => {
+  const projectSlug = (document as any)?.projectSlug as string | undefined
+  // No project selected yet → return a filter that matches no documents
+  if (!projectSlug) return { filter: '_id == "@@no-project-selected@@"' }
+  return {
+    filter: 'projectSlug == $projectSlug',
+    params: { projectSlug },
+  }
+}
 
 // ─── Shared primitive types ───────────────────────────────────────────────────
 // Fields are generated from the Platform Locale Registry (src/lib/i18n/locales.ts).
@@ -74,6 +96,7 @@ const redirectFromType = defineType({
   name: 'redirectFrom',
   title: 'Redirect From (old URLs)',
   type: 'object',
+  components: { input: LocalizedRedirectFromInput },
   fields: LOCALE_CODES.map((code) =>
     defineField({
       name: code,
@@ -103,6 +126,125 @@ const localizedImageType = defineType({
   ],
 })
 
+// ─── CTA Object ───────────────────────────────────────────────────────────────
+// Reusable CTA object used across hero sections, cards, feature sections,
+// landing pages, footer, and any future component that needs a call-to-action.
+//
+// Editors answer one question: "What should happen when the user clicks?"
+// Styling (button variant, size) is always controlled by the consuming component.
+const ctaType = defineType({
+  name: 'cta',
+  title: 'CTA',
+  type: 'object',
+  fields: [
+    // ── Label ────────────────────────────────────────────────────────────────
+    defineField({
+      name: 'label',
+      title: 'Label',
+      type: 'localizedString',
+      description: 'Button text shown to the visitor (e.g. "Get Early Access", "Download PDF")',
+    }),
+
+    // ── Internal Name ────────────────────────────────────────────────────────
+    defineField({
+      name: 'internalName',
+      title: 'Internal Name',
+      type: 'string',
+      description: 'Internal identifier for analytics, reporting, A/B testing and audits. Be specific (e.g. "Hero Primary CTA", "Investor Deck Download").',
+      validation: (Rule) => Rule.required().min(3).max(80),
+    }),
+
+    // ── Action Type ──────────────────────────────────────────────────────────
+    defineField({
+      name: 'actionType',
+      title: 'Action',
+      type: 'string',
+      options: {
+        list: [
+          { title: '📄 Go to a page', value: 'page' },
+          { title: '📋 Open a form', value: 'form' },
+          { title: '⬇️ Download a file', value: 'fileDownload' },
+          { title: '🔗 External URL', value: 'externalUrl' },
+        ],
+        layout: 'radio',
+      },
+      validation: (Rule) => Rule.required(),
+    }),
+
+    // ── Page reference (shown when actionType === 'page') ────────────────────
+    defineField({
+      name: 'pageRef',
+      title: 'Page',
+      type: 'reference',
+      to: [{ type: 'page' }],
+      hidden: ({ parent }: { parent?: { actionType?: string } }) => parent?.actionType !== 'page',
+      description: 'Pick any page from this project. Never type a URL.',
+      options: { filter: scopedRef, disableNew: true },
+    }),
+
+    // ── Form reference (shown when actionType === 'form') ────────────────────
+    // Stores the reference now; modal trigger wired in a future session.
+    defineField({
+      name: 'formRef',
+      title: 'Form',
+      type: 'reference',
+      to: [{ type: 'form' }],
+      hidden: ({ parent }: { parent?: { actionType?: string } }) => parent?.actionType !== 'form',
+      description: 'Select the form to open when clicked.',
+      options: { filter: scopedRef, disableNew: true },
+    }),
+
+    // ── File download (shown when actionType === 'fileDownload') ─────────────
+    defineField({
+      name: 'file',
+      title: 'File',
+      type: 'file',
+      hidden: ({ parent }: { parent?: { actionType?: string } }) => parent?.actionType !== 'fileDownload',
+      description: 'Upload a PDF, deck, or any downloadable asset.',
+    }),
+
+    // ── External URL (shown when actionType === 'externalUrl') ───────────────
+    defineField({
+      name: 'externalUrl',
+      title: 'URL',
+      type: 'url',
+      hidden: ({ parent }: { parent?: { actionType?: string } }) => parent?.actionType !== 'externalUrl',
+      validation: (Rule) =>
+        Rule.custom((url, context) => {
+          const parent = context.parent as { actionType?: string }
+          if (parent?.actionType === 'externalUrl' && !url) return 'URL is required'
+          return true
+        }),
+    }),
+    defineField({
+      name: 'openInNewTab',
+      title: 'Open in new tab',
+      type: 'boolean',
+      initialValue: true,
+      hidden: ({ parent }: { parent?: { actionType?: string } }) => parent?.actionType !== 'externalUrl',
+    }),
+  ],
+  preview: {
+    select: {
+      label: 'label.en',
+      internalName: 'internalName',
+      actionType: 'actionType',
+    },
+    prepare: ({ label, internalName, actionType }: { label?: string; internalName?: string; actionType?: string }) => {
+      const icon: Record<string, string> = {
+        page: '📄',
+        form: '📋',
+        fileDownload: '⬇️',
+        externalUrl: '🔗',
+      }
+      return {
+        title: label ?? internalName ?? '—',
+        subtitle: `${icon[actionType ?? ''] ?? '?'} ${internalName ?? ''}`,
+      }
+    },
+  },
+})
+
 const navigationLinkType = defineType({
   name: 'navigationLink',
   title: 'Navigation Link',
@@ -120,20 +262,42 @@ const navigationLinkType = defineType({
         ],
         layout: 'radio',
       },
-      initialValue: 'external',
+      // Default to internal — most nav links point to pages within the site.
+      // Previously 'external' which caused every new link to default to '#'
+      // when the URL field was left blank.
+      initialValue: 'internal',
     }),
+    // Primary way to link to a page — reference to any page document in this project.
+    // Studio shows only pages that belong to the same projectSlug as the siteConfig.
+    defineField({
+      name: 'pageRef',
+      title: 'Page',
+      type: 'reference',
+      to: [{ type: 'page' }],
+      hidden: ({ parent }: { parent?: { linkType?: string } }) => parent?.linkType !== 'internal',
+      description: 'Pick any page from this project',
+      options: { filter: scopedRef, disableNew: true },
+    }),
+    // Special built-in sections that are coded routes with no corresponding
+    // Sanity page document (Homepage, Live, Events, Blog).
+    // These will never appear in the Page picker above because they are not
+    // page documents — use this dropdown for them instead.
+    // Hidden when pageRef is already set.
     defineField({
       name: 'internalPage',
-      title: 'Select Page',
+      title: 'Special section',
       type: 'string',
       options: {
         list: [
           { title: 'Homepage', value: 'homepage' },
-          { title: 'Live Events', value: 'live' },
+          { title: 'Live', value: 'live' },
+          { title: 'Events', value: 'events' },
+          { title: 'News & Announcements (Blog)', value: 'blog' },
         ],
       },
-      hidden: ({ parent }: { parent?: { linkType?: string } }) => parent?.linkType !== 'internal',
-      description: 'Select an internal page to link to',
+      hidden: ({ parent }: { parent?: { linkType?: string; pageRef?: unknown } }) =>
+        parent?.linkType !== 'internal' || !!parent?.pageRef,
+      description: 'Use for special built-in sections (Live, Events, Blog) that are not in the page picker above.',
     }),
     defineField({
       name: 'externalUrl',
@@ -179,10 +343,12 @@ const navigationLinkType = defineType({
     }),
   ],
   preview: {
-    select: { title: 'label.en', linkType: 'linkType', internalPage: 'internalPage', externalUrl: 'externalUrl' },
-    prepare: ({ title, linkType, internalPage, externalUrl }) => ({
+    select: { title: 'label.en', linkType: 'linkType', internalPage: 'internalPage', externalUrl: 'externalUrl', pageTitle: 'pageRef.title.en', pageSlug: 'pageRef.slug.en.current' },
+    prepare: ({ title, linkType, internalPage, externalUrl, pageTitle, pageSlug }) => ({
       title: title ?? '—',
-      subtitle: linkType === 'internal' ? `📄 ${internalPage}` : `🔗 ${externalUrl}`,
+      subtitle: linkType === 'internal'
+        ? (pageTitle ? `📄 ${pageTitle} (/${pageSlug})` : `📄 ${internalPage}`)
+        : `🔗 ${externalUrl}`,
     }),
   },
 })
@@ -330,6 +496,201 @@ const heroSectionType = defineType({
   name: 'heroSection',
   title: 'Hero Section',
   type: 'object',
+  groups: [
+    { name: 'content', title: 'Content' },
+    { name: 'media', title: 'Media' },
+    { name: 'layout', title: 'Layout' },
+    { name: 'style', title: 'Style' },
+  ],
+  fields: [
+    // ── Content ───────────────────────────────────────────────────────────────
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      group: 'content',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+      description: 'Used when no media background is set.',
+    }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString', group: 'content' }),
+    defineField({ name: 'headline', title: 'Headline', type: 'localizedText', group: 'content' }),
+    defineField({ name: 'subheadline', title: 'Subheadline', type: 'localizedText', group: 'content' }),
+    defineField({ name: 'ctaLabel', title: 'CTA Button Label', type: 'localizedString', group: 'content' }),
+    defineField({ name: 'ctaHref', title: 'CTA Button Link', type: 'string', group: 'content' }),
+
+    // ── Media ─────────────────────────────────────────────────────────────────
+    defineField({
+      name: 'mediaType',
+      title: 'Media Type',
+      type: 'string',
+      group: 'media',
+      options: {
+        list: [
+          { title: '🖼 Image', value: 'image' },
+          { title: '🎬 Video', value: 'video' },
+        ],
+        layout: 'radio',
+      },
+      description: 'Choose image or video as the hero background. Leave unset for a solid surface background.',
+    }),
+    defineField({
+      name: 'heroImage',
+      title: 'Hero Image',
+      type: 'image',
+      group: 'media',
+      options: { hotspot: true },
+      hidden: ({ parent }: { parent?: { mediaType?: string } }) => parent?.mediaType === 'video',
+      description: 'Full-bleed background image.',
+    }),
+    defineField({
+      name: 'heroVideo',
+      title: 'Hero Video (Cloudflare Stream ID)',
+      type: 'string',
+      group: 'media',
+      hidden: ({ parent }: { parent?: { mediaType?: string } }) => parent?.mediaType !== 'video',
+      description: 'Cloudflare Stream video ID (e.g. "abc123def456"). Autoplays muted and looped with no controls.',
+    }),
+    defineField({
+      name: 'posterImage',
+      title: 'Poster Image',
+      type: 'image',
+      group: 'media',
+      options: { hotspot: true },
+      hidden: ({ parent }: { parent?: { mediaType?: string } }) => parent?.mediaType !== 'video',
+      description: 'Fallback image shown while the video loads.',
+    }),
+
+    // ── Layout ────────────────────────────────────────────────────────────────
+    defineField({
+      name: 'heroHeight',
+      title: 'Height',
+      type: 'string',
+      group: 'layout',
+      options: {
+        list: [
+          { title: 'Small — 50vh', value: 'small' },
+          { title: 'Medium — 70vh', value: 'medium' },
+          { title: 'Large — 90vh', value: 'large' },
+          { title: 'Full Screen — 100vh', value: 'fullscreen' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'large',
+    }),
+    defineField({
+      name: 'contentWidth',
+      title: 'Content Width',
+      type: 'string',
+      group: 'layout',
+      options: {
+        list: [
+          { title: 'Standard', value: 'standard' },
+          { title: 'Wide', value: 'wide' },
+          { title: 'Full Width', value: 'full' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'standard',
+    }),
+    defineField({
+      name: 'contentAlignment',
+      title: 'Content Alignment',
+      type: 'string',
+      group: 'layout',
+      options: {
+        list: [
+          { title: 'Left', value: 'left' },
+          { title: 'Center', value: 'center' },
+          { title: 'Right', value: 'right' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'left',
+    }),
+    defineField({
+      name: 'verticalAlignment',
+      title: 'Vertical Alignment',
+      type: 'string',
+      group: 'layout',
+      options: {
+        list: [
+          { title: 'Top', value: 'top' },
+          { title: 'Center', value: 'center' },
+          { title: 'Bottom', value: 'bottom' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'center',
+    }),
+
+    // ── Style ─────────────────────────────────────────────────────────────────
+    defineField({
+      name: 'overlayOpacity',
+      title: 'Overlay Opacity',
+      type: 'number',
+      group: 'style',
+      validation: (Rule) => Rule.min(0).max(100),
+      initialValue: 40,
+      description: 'Dark overlay on top of the media (0–100). Improves text readability.',
+    }),
+    defineField({
+      name: 'blur',
+      title: 'Background Blur',
+      type: 'number',
+      group: 'style',
+      validation: (Rule) => Rule.min(0).max(20),
+      initialValue: 0,
+      description: 'Blur the media background (0–20px).',
+    }),
+    defineField({
+      name: 'brightness',
+      title: 'Background Brightness',
+      type: 'number',
+      group: 'style',
+      validation: (Rule) => Rule.min(50).max(150),
+      initialValue: 100,
+      description: 'Adjust media brightness (50–150%). Lower darkens, higher brightens.',
+    }),
+  ],
+  preview: {
+    select: {
+      headlineIt: 'headline.it',
+      headlineEn: 'headline.en',
+      mediaType: 'mediaType',
+      heroHeight: 'heroHeight',
+    },
+    prepare: ({ headlineIt, headlineEn, mediaType, heroHeight }: {
+      headlineIt?: string; headlineEn?: string; mediaType?: string; heroHeight?: string
+    }) => ({
+      title: headlineIt ?? headlineEn ?? 'Hero',
+      subtitle: ['Hero Section', mediaType ? `· ${mediaType}` : '', heroHeight ? `· ${heroHeight}` : ''].filter(Boolean).join(' '),
+    }),
+  },
+})
+
+/**
+ * heroLiveCaptureSection — two-column hero with live event circle + animated phone mockup.
+ *
+ * Visual concept: Layer 1 = large circular event image (football, church, concert…)
+ *                 Layer 2 = hand holding phone with Livener streaming interface
+ *
+ * Reusable: swap eyebrow/title/subtitle/images for any industry vertical.
+ */
+const heroLiveCaptureSectionType = defineType({
+  name: 'heroLiveCaptureSection',
+  title: 'Hero — Live Capture',
+  type: 'object',
   fields: [
     defineField({
       name: 'background',
@@ -348,15 +709,163 @@ const heroSectionType = defineType({
       },
       initialValue: 'usePagePattern',
     }),
-    defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString' }),
-    defineField({ name: 'headline', title: 'Headline', type: 'localizedText' }),
-    defineField({ name: 'subheadline', title: 'Subheadline', type: 'localizedText' }),
-    defineField({ name: 'ctaLabel', title: 'CTA Button Label', type: 'localizedString' }),
-    defineField({ name: 'ctaHref', title: 'CTA Button Link', type: 'string' }),
+    defineField({
+      name: 'eyebrow',
+      title: 'Eyebrow Label',
+      type: 'localizedString',
+      description: 'Short overline above the headline — e.g. "Livener for Investors"',
+    }),
+    defineField({
+      name: 'title',
+      title: 'Headline',
+      type: 'localizedText',
+      description: 'Main headline. Use newlines to control line breaks.',
+    }),
+    defineField({
+      name: 'subtitle',
+      title: 'Subtitle',
+      type: 'localizedText',
+      description: 'Supporting paragraph below the headline.',
+    }),
+    defineField({
+      name: 'ctas',
+      title: 'CTAs',
+      type: 'array',
+      of: [defineArrayMember({ type: 'cta' })],
+      description: 'Add one or more calls-to-action. First is rendered as primary, second as secondary.',
+    }),
+    defineField({
+      name: 'backgroundImage',
+      title: 'Event Background Image',
+      type: 'image',
+      options: { hotspot: true },
+      description: 'Large circular image representing the real-world event being captured (football match, church service, concert…)',
+    }),
+    defineField({
+      name: 'phoneScreenImage',
+      title: 'Phone Screen Image',
+      type: 'image',
+      options: { hotspot: true },
+      description: 'Image shown inside the phone as the live video feed. Falls back to the Event Background Image if not set.',
+    }),
+    defineField({
+      name: 'circleSize',
+      title: 'Circle Size',
+      type: 'string',
+      initialValue: 'md',
+      options: {
+        list: [
+          { title: 'Small (320 px)', value: 'sm' },
+          { title: 'Medium (400 px)', value: 'md' },
+          { title: 'Large (480 px)', value: 'lg' },
+        ],
+        layout: 'radio',
+      },
+    }),
+    defineField({
+      name: 'animationIntensity',
+      title: 'Animation Intensity',
+      type: 'string',
+      initialValue: 'moderate',
+      options: {
+        list: [
+          { title: 'Subtle', value: 'subtle' },
+          { title: 'Moderate', value: 'moderate' },
+          { title: 'Expressive', value: 'expressive' },
+        ],
+        layout: 'radio',
+      },
+    }),
   ],
   preview: {
-    select: { title: 'headline.it' },
-    prepare: ({ title }) => ({ title: title ?? 'Hero', subtitle: 'Hero Section' }),
+    select: { title: 'title.it', titleEn: 'title.en' },
+    prepare: ({ title, titleEn }) => ({
+      title: title ?? titleEn ?? 'Live Capture Hero',
+      subtitle: 'Hero — Live Capture',
+    }),
+  },
+})
+
+/**
+ * heroLensSection — story-driven two-column hero for the "filming a live event" concept.
+ *
+ * Visual concept:
+ *   Layer 1 — large circular background image (the event being filmed)
+ *   Layer 2 — foreground PNG rendered as-is (a hand holding a phone with content inside)
+ *
+ * No phone is generated. The foreground image must be supplied by the editor.
+ * Animation: subtle mouse parallax, slow drift, gentle float, very slight scroll tilt.
+ */
+const heroLensSectionType = defineType({
+  name: 'heroLensSection',
+  title: 'Hero — Lens',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({
+      name: 'eyebrow',
+      title: 'Eyebrow Label',
+      type: 'localizedString',
+      description: 'Short overline above the headline — e.g. "Capture the moment"',
+    }),
+    defineField({
+      name: 'title',
+      title: 'Headline',
+      type: 'localizedText',
+      description: 'Main headline. Use newlines to control line breaks.',
+    }),
+    defineField({
+      name: 'subtitle',
+      title: 'Subtitle',
+      type: 'localizedText',
+      description: 'Supporting paragraph below the headline.',
+    }),
+    defineField({
+      name: 'ctas',
+      title: 'CTAs',
+      type: 'array',
+      of: [defineArrayMember({ type: 'cta' })],
+      description: 'Add one or more calls-to-action. First is rendered as primary, second as secondary.',
+    }),
+    defineField({
+      name: 'backgroundImage',
+      title: 'Background Image (Circle)',
+      type: 'image',
+      options: { hotspot: true },
+      description:
+        'The event image displayed inside the large background circle — e.g. a football pitch, concert stage, church interior.',
+    }),
+    defineField({
+      name: 'foregroundImage',
+      title: 'Foreground Image (Hand + Phone)',
+      type: 'image',
+      options: { hotspot: true },
+      description:
+        'Complete PNG of a hand holding a smartphone. The phone screen content must already be visible inside the image — it will be rendered exactly as uploaded, without any masking or modification.',
+    }),
+  ],
+  preview: {
+    select: { title: 'title.it', titleEn: 'title.en' },
+    prepare: ({ title, titleEn }) => ({
+      title: title ?? titleEn ?? 'Lens Hero',
+      subtitle: 'Hero — Lens',
+    }),
   },
 })
 
@@ -395,6 +904,73 @@ const contentSectionType = defineType({
   preview: {
     select: { title: 'title.it' },
     prepare: ({ title }) => ({ title: title ?? 'Content', subtitle: 'Content Section' }),
+  },
+})
+
+const statementSectionType = defineType({
+  name: 'statementSection',
+  title: 'Statement Section',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
+    defineField({ name: 'headline', title: 'Headline', type: 'localizedString' }),
+    defineField({ name: 'description', title: 'Description', type: 'localizedText' }),
+    defineField({
+      name: 'alignment',
+      title: 'Text Alignment',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Left', value: 'left' },
+          { title: 'Center', value: 'center' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'left',
+    }),
+    defineField({
+      name: 'image',
+      title: 'Image (optional)',
+      type: 'image',
+      options: { hotspot: true },
+    }),
+    defineField({
+      name: 'imagePosition',
+      title: 'Image Position',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Right', value: 'right' },
+          { title: 'Left', value: 'left' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'right',
+    }),
+  ],
+  preview: {
+    select: { headline_it: 'headline.it', headline_en: 'headline.en' },
+    prepare: ({ headline_it, headline_en }: { headline_it?: string; headline_en?: string }) => ({
+      title: headline_it ?? headline_en ?? 'Statement',
+      subtitle: 'Statement Section',
+    }),
   },
 })
 
@@ -581,6 +1157,91 @@ const faqItemType = defineType({
   },
 })
 
+// ─── Metrics Section ──────────────────────────────────────────────────────────
+
+const metricItemType = defineType({
+  name: 'metricItem',
+  title: 'Metric',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'value',
+      title: 'Value',
+      type: 'localizedString',
+      description: 'The headline figure, e.g. "£10bn+" (EN) / "€10bn+" (IT), or a phrase like "Fundraising Round Open"',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'label',
+      title: 'Label',
+      type: 'localizedString',
+      description: 'Short supporting label, e.g. "Estimated Addressable Market"',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'description',
+      title: 'Description (optional)',
+      type: 'localizedText',
+    }),
+    defineField({
+      name: 'animateNumber',
+      title: 'Animate Number',
+      type: 'boolean',
+      description: 'Reserved for future count-up animation. Has no effect yet.',
+      initialValue: false,
+    }),
+  ],
+  preview: {
+    select: { value_en: 'value.en', value_it: 'value.it', label_en: 'label.en', label_it: 'label.it' },
+    prepare: ({ value_en, value_it, label_en, label_it }: { value_en?: string; value_it?: string; label_en?: string; label_it?: string }) => ({
+      title: value_en ?? value_it ?? 'Metric',
+      subtitle: label_en ?? label_it ?? '',
+    }),
+  },
+})
+
+const BACKGROUND_SURFACE_OPTIONS = [
+  { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+  { title: '⬜ Surface 1', value: 'surface1' },
+  { title: '⬜ Surface 2', value: 'surface2' },
+  { title: '🟦 Surface 3', value: 'surface3' },
+  { title: '🟢 Brand Surface', value: 'brandSurface' },
+  { title: '◻ Transparent', value: 'transparent' },
+  { title: '🔲 Glass', value: 'glass' },
+]
+
+const metricsSectionType = defineType({
+  name: 'metricsSection',
+  title: 'Metrics Section',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: { list: BACKGROUND_SURFACE_OPTIONS },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
+    defineField({ name: 'headline', title: 'Headline', type: 'localizedString' }),
+    defineField({ name: 'description', title: 'Description', type: 'localizedText' }),
+    defineField({
+      name: 'metrics',
+      title: 'Metrics',
+      type: 'array',
+      of: [defineArrayMember({ type: 'metricItem' })],
+      validation: (Rule) => Rule.min(1).max(8),
+    }),
+  ],
+  preview: {
+    select: { headline_en: 'headline.en', headline_it: 'headline.it' },
+    prepare: ({ headline_en, headline_it }: { headline_en?: string; headline_it?: string }) => ({
+      title: headline_en ?? headline_it ?? 'Metrics',
+      subtitle: 'Metrics Section',
+    }),
+  },
+})
+
 const faqSectionType = defineType({
   name: 'faqSection',
   title: 'FAQ Section',
@@ -615,6 +1276,324 @@ const faqSectionType = defineType({
   preview: {
     select: { title: 'title.it' },
     prepare: ({ title }) => ({ title: title ?? 'FAQ', subtitle: 'FAQ Section' }),
+  },
+})
+
+// ─── Blog Listing Section ─────────────────────────────────────────────────────
+
+const blogListingSectionType = defineType({
+  name: 'blogListingSection',
+  title: 'Blog Listing',
+  type: 'object',
+  groups: [
+    { name: 'content', title: 'Content', default: true },
+    { name: 'filter', title: 'Filter & Sort' },
+    { name: 'display', title: 'Display' },
+  ],
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
+    // ── Content ──────────────────────────────────────────────────────────────
+    defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString', group: 'content' }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString', group: 'content' }),
+    defineField({ name: 'subtitle', title: 'Subtitle / Description', type: 'localizedString', group: 'content' }),
+    // ── Filter & Sort ─────────────────────────────────────────────────────────
+    defineField({
+      name: 'filterMode',
+      title: 'Filter',
+      type: 'string',
+      group: 'filter',
+      options: {
+        list: [
+          { title: 'Latest', value: 'latest' },
+          { title: 'Featured only', value: 'featured' },
+          { title: 'By Category', value: 'byCategory' },
+          { title: 'By Event', value: 'byEvent' },
+          { title: 'Manual selection', value: 'manual' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'latest',
+    }),
+    defineField({
+      name: 'sortOrder',
+      title: 'Sort Order',
+      type: 'string',
+      group: 'filter',
+      options: {
+        list: [
+          { title: 'Newest first', value: 'newest' },
+          { title: 'Oldest first', value: 'oldest' },
+          { title: 'Manual order', value: 'manual' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'newest',
+      description: '"Manual order" preserves the hand-picked array order below — only meaningful with "Manual selection" filter.',
+    }),
+    defineField({
+      name: 'category',
+      title: 'Category',
+      type: 'reference',
+      to: [{ type: 'blogCategory' }],
+      group: 'filter',
+      description: 'Choose a category to show only posts in that category.',
+      hidden: ({ parent }) => parent?.filterMode !== 'byCategory',
+      options: { filter: scopedRef },
+    }),
+    defineField({
+      name: 'event',
+      title: 'Event',
+      type: 'reference',
+      to: [{ type: 'event' }],
+      group: 'filter',
+      description: 'Show posts linked to this event.',
+      hidden: ({ parent }) => parent?.filterMode !== 'byEvent',
+      options: { filter: scopedRef },
+    }),
+    defineField({
+      name: 'posts',
+      title: 'Posts',
+      type: 'array',
+      of: [defineArrayMember({ type: 'reference', to: [{ type: 'post' }], options: { filter: scopedRef } })],
+      group: 'filter',
+      description: 'Hand-pick posts. Drag to reorder for manual sort order.',
+      hidden: ({ parent }) => parent?.filterMode !== 'manual',
+    }),
+    // ── Display ───────────────────────────────────────────────────────────────
+    defineField({
+      name: 'layout',
+      title: 'Layout',
+      type: 'string',
+      group: 'display',
+      options: {
+        list: [
+          { title: 'Grid', value: 'grid' },
+          { title: 'Featured', value: 'featured' },
+          { title: 'Magazine', value: 'magazine' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'grid',
+      description: 'Grid: responsive card grid. Featured: one large card, always. Magazine: big card left + small cards right.',
+    }),
+    defineField({
+      name: 'maxItems',
+      title: 'Max Articles',
+      type: 'number',
+      group: 'display',
+      initialValue: 3,
+      description: 'Maximum number of articles to display (1–12). Default: 3.',
+      validation: (Rule) => Rule.min(1).max(12).integer(),
+    }),
+    defineField({
+      name: 'viewAllLabel',
+      title: '"View All" Button Label',
+      type: 'localizedString',
+      group: 'display',
+      description: 'Leave empty to hide the button. Shown when there are more articles than Max Articles.',
+    }),
+    defineField({
+      name: 'viewAllHref',
+      title: '"View All" Button URL',
+      type: 'string',
+      group: 'display',
+      description: 'Where the "View All" button links to — e.g. /blog',
+    }),
+  ],
+  preview: {
+    select: {
+      titleEn: 'title.en',
+      filterMode: 'filterMode',
+      layout: 'layout',
+    },
+    prepare: ({ titleEn, filterMode, layout }: { titleEn?: string; filterMode?: string; layout?: string }) => ({
+      title: titleEn ?? 'Blog Listing',
+      subtitle: `${layout ?? 'grid'} · ${filterMode ?? 'latest'}`,
+    }),
+  },
+})
+
+// ─── Form System ──────────────────────────────────────────────────────────────
+
+const FORM_FIELD_TYPES = [
+  { title: 'Text', value: 'text' },
+  { title: 'Email', value: 'email' },
+  { title: 'Phone', value: 'phone' },
+  { title: 'Textarea', value: 'textarea' },
+  { title: 'Select', value: 'select' },
+  { title: 'Radio Group', value: 'radio-group' },
+  { title: 'Checkbox', value: 'checkbox' },
+  { title: 'Checkbox Group', value: 'checkbox-group' },
+]
+
+const formOptionItemType = defineType({
+  name: 'formOptionItem',
+  title: 'Option',
+  type: 'object',
+  fields: [
+    defineField({ name: 'value', title: 'Value', type: 'string', description: 'Stored in the database — no spaces, e.g. "dental_care"', validation: (Rule) => Rule.required() }),
+    defineField({ name: 'label', title: 'Label', type: 'localizedString', description: 'Displayed to the user' }),
+  ],
+  preview: {
+    select: { title: 'value', subtitle: 'label.en' },
+    prepare: ({ title, subtitle }: { title?: string; subtitle?: string }) => ({
+      title: subtitle ?? title ?? 'Option',
+      subtitle: title ?? '',
+    }),
+  },
+})
+
+const formFieldItemType = defineType({
+  name: 'formFieldItem',
+  title: 'Form Field',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'id',
+      title: 'Field ID',
+      type: 'string',
+      description: 'Unique key for this field — no spaces, e.g. "patient_name". Used as the key in the submission payload.',
+      validation: (Rule) => Rule.required().regex(/^[a-z][a-z0-9_]*$/, { name: 'snake_case', invert: false }).error('Must be snake_case — lowercase letters, digits, and underscores only'),
+    }),
+    defineField({
+      name: 'type',
+      title: 'Field Type',
+      type: 'string',
+      options: { list: FORM_FIELD_TYPES, layout: 'radio' },
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({ name: 'label', title: 'Label', type: 'localizedString' }),
+    defineField({ name: 'placeholder', title: 'Placeholder', type: 'localizedString' }),
+    defineField({ name: 'helpText', title: 'Help Text', type: 'localizedString' }),
+    defineField({ name: 'checkboxLabel', title: 'Checkbox Label', type: 'localizedString', description: 'Text shown next to the checkbox (for checkbox type only)', hidden: ({ parent }: { parent?: { type?: string } }) => parent?.type !== 'checkbox' }),
+    defineField({ name: 'required', title: 'Required', type: 'boolean', initialValue: false }),
+    defineField({
+      name: 'width',
+      title: 'Width',
+      type: 'string',
+      options: { list: [{ title: 'Full width', value: '100%' }, { title: 'Half width', value: '50%' }], layout: 'radio' },
+      initialValue: '100%',
+    }),
+    defineField({
+      name: 'rows',
+      title: 'Rows',
+      type: 'number',
+      description: 'Number of rows for textarea (default: 4)',
+      initialValue: 4,
+      hidden: ({ parent }: { parent?: { type?: string } }) => parent?.type !== 'textarea',
+    }),
+    defineField({
+      name: 'options',
+      title: 'Options',
+      type: 'array',
+      of: [defineArrayMember({ type: 'formOptionItem' })],
+      description: 'Options for select, radio-group, or checkbox-group fields',
+      hidden: ({ parent }: { parent?: { type?: string } }) =>
+        !['select', 'radio-group', 'checkbox-group'].includes(parent?.type ?? ''),
+    }),
+  ],
+  preview: {
+    select: { id: 'id', type: 'type', labelEn: 'label.en' },
+    prepare: ({ id, type, labelEn }: { id?: string; type?: string; labelEn?: string }) => ({
+      title: labelEn ?? id ?? 'Field',
+      subtitle: `${type ?? '?'} · ${id ?? ''}`,
+    }),
+  },
+})
+
+const formType = defineType({
+  name: 'form',
+  title: 'Form',
+  type: 'document',
+  fields: [
+    projectSlugField,
+    defineField({ name: 'title', title: 'Internal Title', type: 'localizedString', description: 'Used in Studio only — not shown on the website', validation: (Rule) => Rule.required() }),
+    defineField({ name: 'description', title: 'Description', type: 'localizedString', description: 'Optional text shown above the form fields' }),
+    defineField({ name: 'submitLabel', title: 'Submit Button Label', type: 'localizedString', description: 'Defaults to "Submit" if empty' }),
+    defineField({ name: 'successMessage', title: 'Success Message', type: 'localizedString', description: 'Shown after successful submission' }),
+    defineField({
+      name: 'inquiryType',
+      title: 'Inquiry Type',
+      type: 'string',
+      description: 'Tag stored in the database to categorise submissions — e.g. "contact", "appointment", "quote"',
+      initialValue: 'contact',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'recipientEmail',
+      title: 'Recipient Email (future)',
+      type: 'string',
+      description: '⏳ Not yet implemented. When email notifications are enabled, new submissions will be sent here. Leave empty for now.',
+    }),
+    defineField({
+      name: 'fields',
+      title: 'Fields',
+      type: 'array',
+      of: [defineArrayMember({ type: 'formFieldItem' })],
+    }),
+  ],
+  preview: {
+    select: { titleEn: 'title.en', projectSlug: 'projectSlug', inquiryType: 'inquiryType' },
+    prepare: ({ titleEn, projectSlug, inquiryType }: { titleEn?: string; projectSlug?: string; inquiryType?: string }) => ({
+      title: titleEn ?? 'Form',
+      subtitle: `${projectSlug ?? '—'} · ${inquiryType ?? '—'}`,
+    }),
+  },
+})
+
+const formSectionType = defineType({
+  name: 'formSection',
+  title: 'Form Section',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({
+      name: 'form',
+      title: 'Form',
+      type: 'reference',
+      to: [{ type: 'form' }],
+      description: 'The form to render in this section',
+      validation: (Rule) => Rule.required(),
+    }),
+  ],
+  preview: {
+    select: { titleEn: 'form.title.en', projectSlug: 'form.projectSlug' },
+    prepare: ({ titleEn, projectSlug }: { titleEn?: string; projectSlug?: string }) => ({
+      title: titleEn ?? 'Form Section',
+      subtitle: projectSlug ?? '—',
+    }),
   },
 })
 
@@ -1022,6 +2001,40 @@ const formInputType = defineType({
   ],
 })
 
+// ─── Form Typography & Geometry ──────────────────────────────────────────────
+
+const formTypographyType = defineType({
+  name: 'formTypography',
+  title: 'Form Typography',
+  type: 'object',
+  description: 'Typographic tokens for labels, help text, and error messages',
+  fields: [
+    defineField({ name: 'labelColor',    title: 'Label Color',          type: 'string', description: 'CSS color string for field labels' }),
+    defineField({ name: 'labelSize',     title: 'Label Size (px)',      type: 'number', description: 'Label font size in px — e.g. 12', initialValue: 12 }),
+    defineField({ name: 'labelWeight',   title: 'Label Weight',         type: 'number', description: 'Label font weight — e.g. 500', initialValue: 500 }),
+    defineField({ name: 'helpTextColor', title: 'Help Text Color',      type: 'string', description: 'CSS color string for help/hint text below fields' }),
+    defineField({ name: 'helpTextSize',  title: 'Help Text Size (px)',  type: 'number', description: 'Help text font size in px — e.g. 12', initialValue: 12 }),
+    defineField({ name: 'errorTextColor',title: 'Error Text Color',     type: 'string', description: 'CSS color string for inline error messages' }),
+    defineField({ name: 'errorTextSize', title: 'Error Text Size (px)', type: 'number', description: 'Error text font size in px — e.g. 12', initialValue: 12 }),
+    defineField({ name: 'requiredColor', title: 'Required * Color',     type: 'string', description: 'Color of the required field asterisk' }),
+  ],
+})
+
+const formGeometryType = defineType({
+  name: 'formGeometry',
+  title: 'Form Geometry',
+  type: 'object',
+  description: 'Spacing and shape tokens shared by all input types',
+  fields: [
+    defineField({ name: 'inputHeight',  title: 'Input Height (px)',    type: 'number', description: 'Standardised height for single-line inputs — e.g. 44', initialValue: 44 }),
+    defineField({ name: 'paddingX',     title: 'Padding X (px)',       type: 'number', description: 'Horizontal padding inside inputs — e.g. 14', initialValue: 14 }),
+    defineField({ name: 'paddingY',     title: 'Padding Y (px)',       type: 'number', description: 'Vertical padding inside inputs — e.g. 10', initialValue: 10 }),
+    defineField({ name: 'labelGap',     title: 'Label → Input Gap (px)',type: 'number', description: 'Vertical space between label and input — e.g. 6', initialValue: 6 }),
+    defineField({ name: 'fieldGap',     title: 'Field Gap (px)',       type: 'number', description: 'Vertical space between form fields — e.g. 20', initialValue: 20 }),
+    defineField({ name: 'borderRadius', title: 'Border Radius (px)',   type: 'number', description: 'Input border radius — overrides global --radius-md', initialValue: 8 }),
+  ],
+})
+
 // ─── Card Variant System ───────────────────────────────────────────────────────
 
 const cardVariantType = defineType({
@@ -1405,11 +2418,13 @@ const designSystemType = defineType({
       group: 'components',
       description: 'Form element styling — consumed by contact, newsletter, and booking forms',
       fields: [
-        defineField({ name: 'input', title: 'Input', type: 'formInput' }),
-        defineField({ name: 'textarea', title: 'Textarea', type: 'formInput' }),
-        defineField({ name: 'select', title: 'Select', type: 'formInput' }),
-        defineField({ name: 'checkbox', title: 'Checkbox', type: 'formInput' }),
-        defineField({ name: 'radio', title: 'Radio', type: 'formInput' }),
+        defineField({ name: 'input',      title: 'Input',      type: 'formInput' }),
+        defineField({ name: 'textarea',   title: 'Textarea',   type: 'formInput' }),
+        defineField({ name: 'select',     title: 'Select',     type: 'formInput' }),
+        defineField({ name: 'checkbox',   title: 'Checkbox',   type: 'formInput' }),
+        defineField({ name: 'radio',      title: 'Radio',      type: 'formInput' }),
+        defineField({ name: 'typography', title: 'Typography', type: 'formTypography', description: 'Labels, help text, error messages, required marker' }),
+        defineField({ name: 'geometry',   title: 'Geometry',   type: 'formGeometry',   description: 'Input height, padding, gaps, border radius' }),
       ],
     }),
 
@@ -1501,7 +2516,6 @@ const siteConfigType = defineType({
     { name: 'siteControls', title: 'Site Controls' },
     { name: 'locales', title: 'Languages' },
     { name: 'navigation', title: 'Navigation' },
-    { name: 'live', title: 'Live Page' },
     { name: 'contact', title: 'Contact' },
     { name: 'footer', title: 'Footer' },
     { name: 'social', title: 'Social' },
@@ -1649,9 +2663,6 @@ const siteConfigType = defineType({
     defineField({ name: 'showLangSwitcherInNav', title: 'Show language switcher in nav', type: 'boolean', group: 'navigation', initialValue: false }),
     defineField({ name: 'ctaLabel', title: 'Nav CTA Button Label', type: 'localizedString', group: 'navigation' }),
     defineField({ name: 'ctaHref', title: 'Nav CTA Button URL', type: 'string', group: 'navigation' }),
-    defineField({ name: 'livePageHeadline', title: 'Live Page Headline', type: 'localizedString', group: 'live', description: 'e.g. "Welcome to Livener"' }),
-    defineField({ name: 'livePageSubheadline', title: 'Live Page Subheadline', type: 'localizedString', group: 'live', description: 'e.g. "Live video streaming, in the palm of your hands"' }),
-    defineField({ name: 'livePageBetaNotice', title: 'Live Page Beta Notice', type: 'localizedString', group: 'live', description: 'e.g. "Currently in beta — tested live, in real environments."' }),
     defineField({ name: 'phone', title: 'Phone', type: 'string', group: 'contact' }),
     defineField({ name: 'email', title: 'Email', type: 'string', group: 'contact' }),
     defineField({ name: 'address', title: 'Address', type: 'text', rows: 2, group: 'contact' }),
@@ -1678,6 +2689,82 @@ const siteConfigType = defineType({
   },
 })
 
+// ─── Live Page ────────────────────────────────────────────────────────────────
+
+const livePageType = defineType({
+  name: 'livePage',
+  title: 'Live Page',
+  type: 'document',
+  groups: [
+    { name: 'content', title: 'Content', default: true },
+    { name: 'video', title: 'Video' },
+    { name: 'events', title: 'Featured Events' },
+    { name: 'meta', title: 'SEO / Meta' },
+  ],
+  fields: [
+    projectSlugField,
+    defineField({ name: 'heroTitle', title: 'Hero Title', type: 'localizedString', group: 'content', description: 'e.g. "Welcome to Livener"' }),
+    defineField({ name: 'heroSubtitle', title: 'Hero Subtitle', type: 'localizedString', group: 'content', description: 'e.g. "Live video streaming, in the palm of your hands"' }),
+    defineField({ name: 'betaNotice', title: 'Beta Notice', type: 'localizedString', group: 'content', description: 'e.g. "Currently in beta — tested live, in real environments."' }),
+    defineField({ name: 'introText', title: 'Intro Text', type: 'localizedText', group: 'content' }),
+    defineField({ name: 'heroImage', title: 'Hero Image', type: 'localizedImage', group: 'video' }),
+    defineField({
+      name: 'cloudflareVideoId',
+      title: 'Cloudflare Video ID',
+      type: 'string',
+      group: 'video',
+      description: 'The video ID from Cloudflare Stream (e.g. "abc123xyz"). The embed URL is generated automatically.',
+    }),
+    defineField({
+      name: 'featuredEvents',
+      title: 'Featured Events',
+      type: 'array',
+      group: 'events',
+      of: [defineArrayMember({ type: 'reference', to: [{ type: 'event' }], options: { filter: scopedRef } })],
+      description: 'Events to show in the past events grid. If empty, past events are shown automatically.',
+    }),
+    defineField({ name: 'seoTitle', title: 'SEO Title', type: 'localizedString', group: 'meta' }),
+    defineField({ name: 'seoDescription', title: 'SEO Description', type: 'localizedText', group: 'meta' }),
+  ],
+  preview: {
+    select: { slug: 'projectSlug' },
+    prepare: ({ slug }) => ({ title: 'Live Page', subtitle: slug }),
+  },
+})
+
+// ─── Events Page ──────────────────────────────────────────────────────────────
+
+const eventsPageType = defineType({
+  name: 'eventsPage',
+  title: 'Events Page',
+  type: 'document',
+  groups: [
+    { name: 'content', title: 'Content', default: true },
+    { name: 'media', title: 'Media' },
+    { name: 'meta', title: 'SEO / Meta' },
+  ],
+  fields: [
+    projectSlugField,
+    defineField({ name: 'heroTitle', title: 'Hero Title', type: 'localizedString', group: 'content', description: 'e.g. "Events"' }),
+    defineField({ name: 'heroSubtitle', title: 'Hero Subtitle', type: 'localizedString', group: 'content' }),
+    defineField({ name: 'introText', title: 'Intro Text', type: 'localizedText', group: 'content' }),
+    defineField({ name: 'heroImage', title: 'Hero Image', type: 'localizedImage', group: 'media' }),
+    defineField({
+      name: 'cloudflareVideoId',
+      title: 'Cloudflare Video ID',
+      type: 'string',
+      group: 'media',
+      description: 'The video ID from Cloudflare Stream (e.g. "abc123xyz"). The embed URL is generated automatically.',
+    }),
+    defineField({ name: 'seoTitle', title: 'SEO Title', type: 'localizedString', group: 'meta' }),
+    defineField({ name: 'seoDescription', title: 'SEO Description', type: 'localizedText', group: 'meta' }),
+  ],
+  preview: {
+    select: { slug: 'projectSlug' },
+    prepare: ({ slug }) => ({ title: 'Events Page', subtitle: slug }),
+  },
+})
+
 // ─── Event ────────────────────────────────────────────────────────────────────
 
 const eventType = defineType({
@@ -1690,12 +2777,19 @@ const eventType = defineType({
     { name: 'media', title: 'Media' },
     { name: 'streaming', title: 'Streaming' },
     { name: 'meta', title: 'SEO / Meta' },
+    { name: 'redirects', title: 'Redirects' },
   ],
   fields: [
     projectSlugField,
     defineField({ name: 'title', title: 'Title', type: 'localizedString', group: 'content', validation: (Rule) => Rule.required() }),
     defineField({ name: 'slug', title: 'Slug', type: 'localizedSlug', group: 'content', validation: (Rule) => Rule.required() }),
-    defineField({ name: 'redirectFrom', title: 'Old Slugs (Redirects)', type: 'redirectFrom', group: 'content' }),
+    defineField({
+      name: 'redirectFrom',
+      title: 'Old Slugs (Redirects)',
+      type: 'redirectFrom',
+      group: 'redirects',
+      description: 'Fill these only when you rename a slug. Old URLs here will 301-redirect to the current slug.',
+    }),
     defineField({
       name: 'status',
       title: 'Status',
@@ -1732,6 +2826,10 @@ const pageType = defineType({
   name: 'page',
   title: 'Page',
   type: 'document',
+  groups: [
+    { name: 'content', title: 'Content', default: true },
+    { name: 'redirects', title: 'Redirects' },
+  ],
   fields: [
     projectSlugField,
     defineField({
@@ -1777,9 +2875,10 @@ const pageType = defineType({
     }),
     defineField({
       name: 'redirectFrom',
-      title: 'Redirect From',
+      title: 'Old Slugs (Redirects)',
       type: 'redirectFrom',
-      description: 'Old slugs that redirect here with a 301. Fill these when renaming a page.',
+      group: 'redirects',
+      description: 'Fill these only when you rename a slug. Old URLs here will 301-redirect to the current slug.',
     }),
     defineField({
       name: 'backgroundPattern',
@@ -1801,12 +2900,18 @@ const pageType = defineType({
       type: 'array',
       of: [
         defineArrayMember({ type: 'heroSection' }),
+        defineArrayMember({ type: 'heroLiveCaptureSection' }),
+        defineArrayMember({ type: 'heroLensSection' }),
         defineArrayMember({ type: 'contentSection' }),
+        defineArrayMember({ type: 'statementSection' }),
         defineArrayMember({ type: 'treatmentsSection' }),
         defineArrayMember({ type: 'teamSection' }),
         defineArrayMember({ type: 'textSection' }),
         defineArrayMember({ type: 'faqSection' }),
         defineArrayMember({ type: 'contactSection' }),
+        defineArrayMember({ type: 'blogListingSection' }),
+        defineArrayMember({ type: 'formSection' }),
+        defineArrayMember({ type: 'metricsSection' }),
       ],
     }),
   ],
@@ -1855,12 +2960,18 @@ const homePageType = defineType({
       type: 'array',
       of: [
         defineArrayMember({ type: 'heroSection' }),
+        defineArrayMember({ type: 'heroLiveCaptureSection' }),
+        defineArrayMember({ type: 'heroLensSection' }),
         defineArrayMember({ type: 'contentSection' }),
+        defineArrayMember({ type: 'statementSection' }),
         defineArrayMember({ type: 'treatmentsSection' }),
         defineArrayMember({ type: 'teamSection' }),
         defineArrayMember({ type: 'textSection' }),
         defineArrayMember({ type: 'faqSection' }),
         defineArrayMember({ type: 'contactSection' }),
+        defineArrayMember({ type: 'blogListingSection' }),
+        defineArrayMember({ type: 'formSection' }),
+        defineArrayMember({ type: 'metricsSection' }),
       ],
     }),
   ],
@@ -1870,24 +2981,281 @@ const homePageType = defineType({
   },
 })
 
+// ─── Blog — Author ────────────────────────────────────────────────────────────
+
+const postAuthorType = defineType({
+  name: 'postAuthor',
+  title: 'Author',
+  type: 'document',
+  fields: [
+    projectSlugField,
+    defineField({
+      name: 'name',
+      title: 'Name',
+      type: 'string',
+      validation: (Rule) => Rule.required(),
+      description: 'e.g. "Thomas", "Livener Team", "Studio Martegani"',
+    }),
+    defineField({
+      name: 'role',
+      title: 'Role / Title',
+      type: 'localizedString',
+      description: 'e.g. "Editor", "Founder", "Content Team"',
+    }),
+    defineField({ name: 'bio', title: 'Bio', type: 'localizedText' }),
+    defineField({
+      name: 'avatar',
+      title: 'Avatar',
+      type: 'image',
+      options: { hotspot: true },
+    }),
+    defineField({
+      name: 'supabaseUserId',
+      title: 'Supabase User ID',
+      type: 'string',
+      readOnly: true,
+      hidden: true,
+      description: 'Linked Supabase profile — auto-populated by the platform when user management is connected',
+    }),
+  ],
+  preview: {
+    select: { title: 'name', subtitle: 'role.en', media: 'avatar' },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    prepare: ({ title, subtitle, media }: { title?: string; subtitle?: string; media?: any }) => ({
+      title: title ?? '—',
+      subtitle: subtitle ?? 'Author',
+      media,
+    }),
+  },
+})
+
+// ─── Blog — Category ──────────────────────────────────────────────────────────
+
+const blogCategoryType = defineType({
+  name: 'blogCategory',
+  title: 'Category',
+  type: 'document',
+  fields: [
+    projectSlugField,
+    defineField({
+      name: 'title',
+      title: 'Title',
+      type: 'localizedString',
+      validation: (Rule) => Rule.required(),
+      description: 'e.g. "Events", "News", "Insights", "Product Updates"',
+    }),
+    defineField({
+      name: 'slug',
+      title: 'Slug',
+      type: 'localizedSlug',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({ name: 'description', title: 'Description', type: 'localizedText' }),
+    defineField({
+      name: 'color',
+      title: 'Badge Color',
+      type: 'string',
+      description: 'Label color for category badges — e.g. "blue", "green", "#e94e1b"',
+    }),
+  ],
+  preview: {
+    select: { title: 'title.en', slugEn: 'slug.en.current', slugIt: 'slug.it.current' },
+    prepare: ({ title, slugEn, slugIt }: { title?: string; slugEn?: string; slugIt?: string }) => ({
+      title: title ?? '—',
+      subtitle: slugEn ?? slugIt ? `/${slugEn ?? slugIt}` : '—',
+    }),
+  },
+})
+
 // ─── Blog Post ────────────────────────────────────────────────────────────────
 
 const postType = defineType({
   name: 'post',
   title: 'Blog Post',
   type: 'document',
+  groups: [
+    { name: 'content', title: 'Content', default: true },
+    { name: 'media', title: 'Media' },
+    { name: 'relations', title: 'Relations' },
+    { name: 'seo', title: 'SEO' },
+    { name: 'settings', title: 'Settings' },
+    { name: 'redirects', title: 'Redirects' },
+  ],
   fields: [
     projectSlugField,
-    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
-    defineField({ name: 'slug', title: 'Slug', type: 'localizedSlug' }),
-    defineField({ name: 'redirectFrom', title: 'Redirect From', type: 'redirectFrom' }),
-    defineField({ name: 'excerpt', title: 'Excerpt', type: 'localizedText' }),
-    defineField({ name: 'body', title: 'Body', type: 'localizedPortableText' }),
-    defineField({ name: 'publishedAt', title: 'Published At', type: 'datetime' }),
+
+    // ── Content ───────────────────────────────────────────────────────────────
+    defineField({
+      name: 'title',
+      title: 'Title',
+      type: 'localizedString',
+      group: 'content',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'slug',
+      title: 'Slug',
+      type: 'localizedSlug',
+      group: 'content',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'redirectFrom',
+      title: 'Old Slugs (Redirects)',
+      type: 'redirectFrom',
+      group: 'redirects',
+      description: 'Fill these only when you rename a slug. Old URLs here will 301-redirect to the current slug.',
+    }),
+    defineField({
+      name: 'excerpt',
+      title: 'Excerpt',
+      type: 'localizedText',
+      group: 'content',
+      description: 'Short summary shown in article listings and as the default SEO description',
+    }),
+    defineField({ name: 'body', title: 'Body', type: 'localizedPortableText', group: 'content' }),
+    defineField({
+      name: 'publishedAt',
+      title: 'Go Live Date',
+      type: 'datetime',
+      group: 'content',
+      description: 'The post becomes visible on the website at this date and time. Leave empty to keep it as a draft.',
+    }),
+
+    // ── Media ─────────────────────────────────────────────────────────────────
+    defineField({
+      name: 'coverImage',
+      title: 'Cover Image',
+      type: 'localizedImage',
+      group: 'media',
+      description: 'Used in article listings, the article hero, and social sharing. Falls back to the global OG image if not set.',
+    }),
+    defineField({
+      name: 'featuredVideo',
+      title: 'Featured Video',
+      type: 'object',
+      group: 'media',
+      description: 'Optional video for video-focused articles — important for Livener and future video customers',
+      fields: [
+        defineField({
+          name: 'provider',
+          title: 'Video Provider',
+          type: 'string',
+          options: {
+            list: [
+              { title: 'YouTube', value: 'youtube' },
+              { title: 'Cloudflare Stream', value: 'cloudflare' },
+            ],
+            layout: 'radio',
+          },
+          initialValue: 'youtube',
+        }),
+        defineField({
+          name: 'youtubeUrl',
+          title: 'YouTube URL',
+          type: 'url',
+          hidden: ({ parent }: { parent?: { provider?: string } }) => parent?.provider !== 'youtube',
+        }),
+        defineField({
+          name: 'cloudflareVideoId',
+          title: 'Cloudflare Video ID',
+          type: 'string',
+          description: 'The video ID from Cloudflare Stream — e.g. "abc123xyz"',
+          hidden: ({ parent }: { parent?: { provider?: string } }) => parent?.provider !== 'cloudflare',
+        }),
+      ],
+    }),
+
+    // ── Relations ─────────────────────────────────────────────────────────────
+    defineField({
+      name: 'author',
+      title: 'Author',
+      type: 'reference',
+      to: [{ type: 'postAuthor' }],
+      group: 'relations',
+      options: { filter: scopedRef },
+    }),
+    defineField({
+      name: 'categories',
+      title: 'Categories',
+      type: 'array',
+      group: 'relations',
+      of: [defineArrayMember({ type: 'reference', to: [{ type: 'blogCategory' }], options: { filter: scopedRef } })],
+    }),
+    defineField({
+      name: 'relatedEvent',
+      title: 'Related Event',
+      type: 'reference',
+      to: [{ type: 'event' }],
+      group: 'relations',
+      description: 'Link this post to an event — e.g. event preview, live recap, or post-event summary',
+      options: { filter: scopedRef },
+    }),
+
+    // ── SEO ───────────────────────────────────────────────────────────────────
+    defineField({
+      name: 'seoTitle',
+      title: 'SEO Title',
+      type: 'localizedString',
+      group: 'seo',
+      description: 'Overrides the article title in search results. Leave empty to use the article title.',
+    }),
+    defineField({
+      name: 'seoDescription',
+      title: 'SEO Description',
+      type: 'localizedText',
+      group: 'seo',
+      description: 'Overrides the excerpt in search results. Leave empty to use the excerpt.',
+    }),
+    defineField({
+      name: 'seoImage',
+      title: 'SEO / Open Graph Image',
+      type: 'image',
+      group: 'seo',
+      options: { hotspot: false },
+      description: 'Social sharing image — 1200 × 630px recommended. Falls back to Cover Image, then to the global OG image.',
+    }),
+
+    // ── Settings ──────────────────────────────────────────────────────────────
+    defineField({
+      name: 'expiresAt',
+      title: 'Expiry Date',
+      type: 'datetime',
+      group: 'settings',
+      description: 'Optional. The post is automatically hidden from the website after this date. Leave empty to keep it live indefinitely.',
+    }),
+    defineField({
+      name: 'featured',
+      title: 'Featured Article',
+      type: 'boolean',
+      group: 'settings',
+      initialValue: false,
+      description: 'Pin this article at the top of the homepage, blog overview, and landing pages',
+    }),
   ],
   preview: {
-    select: { title: 'title.it', slug: 'projectSlug' },
-    prepare: ({ title, slug }) => ({ title: title ?? 'Untitled', subtitle: slug }),
+    select: {
+      titleEn: 'title.en',
+      titleIt: 'title.it',
+      slug: 'projectSlug',
+      publishedAt: 'publishedAt',
+      media: 'coverImage',
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    prepare: ({ titleEn, titleIt, slug, publishedAt, media }: {
+      titleEn?: string
+      titleIt?: string
+      slug?: string
+      publishedAt?: string
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      media?: any
+    }) => {
+      const title = titleEn ?? titleIt ?? 'Untitled'
+      const date = publishedAt
+        ? new Date(publishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+        : 'Draft'
+      return { title, subtitle: `${slug ?? '?'} · ${date}`, media }
+    },
   },
 })
 
@@ -1964,6 +3332,25 @@ export const initialValueTemplates = [
     value: (params: any) => ({
       projectSlug: params?.projectSlug,
       publishedAt: new Date().toISOString(),
+      featured: false,
+    }),
+  },
+  {
+    id: 'postAuthorProjectOwned',
+    title: 'Author',
+    schemaType: 'postAuthor',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+    }),
+  },
+  {
+    id: 'blogCategoryProjectOwned',
+    title: 'Category',
+    schemaType: 'blogCategory',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
     }),
   },
   {
@@ -1974,6 +3361,24 @@ export const initialValueTemplates = [
     value: (params: any) => ({
       projectSlug: params?.projectSlug,
       role: 'active',
+    }),
+  },
+  {
+    id: 'livePageProjectOwned',
+    title: 'Live Page',
+    schemaType: 'livePage',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+    }),
+  },
+  {
+    id: 'eventsPageProjectOwned',
+    title: 'Events Page',
+    schemaType: 'eventsPage',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
     }),
   },
 ]
@@ -1987,13 +3392,17 @@ export const schemaTypes = [
   localizedSlugType,
   redirectFromType,
   localizedImageType,
+  ctaType,
   navigationLinkType,
   socialLinkType,
   scheduleItemType,
   whatsappSubjectType,
   emailSubjectType,
   heroSectionType,
+  heroLiveCaptureSectionType,
+  heroLensSectionType,
   contentSectionType,
+  statementSectionType,
   treatmentCardType,
   treatmentsSectionType,
   teamMemberType,
@@ -2002,6 +3411,13 @@ export const schemaTypes = [
   contactSectionType,
   faqItemType,
   faqSectionType,
+  blogListingSectionType,
+  metricItemType,
+  metricsSectionType,
+  formOptionItemType,
+  formFieldItemType,
+  formType,
+  formSectionType,
   clientType,
   projectType,
   colorThemeType,
@@ -2014,6 +3430,8 @@ export const schemaTypes = [
   motionType,
   formInputThemeType,
   formInputType,
+  formTypographyType,
+  formGeometryType,
   glassStyleType,
   sectionSurfacesThemeType,
   sectionSurfacesType,
@@ -2023,6 +3441,10 @@ export const schemaTypes = [
   siteConfigType,
   pageType,
   homePageType,
+  postAuthorType,
+  blogCategoryType,
   postType,
   eventType,
+  livePageType,
+  eventsPageType,
 ]
