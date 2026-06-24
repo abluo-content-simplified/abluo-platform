@@ -21,6 +21,7 @@ import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
 import { computeSectionSurface } from '@/lib/sanity/surfaces'
 import { isProduction, isDev } from '@/lib/deployment'
+import { ogImageUrl } from '@/lib/sanity/image'
 
 export const dynamic = 'force-dynamic'
 
@@ -128,6 +129,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       siteName: config?.siteName ?? tenantId,
       locale: ogLocaleMap[locale] ?? locale,
       type: 'website',
+      images: (() => {
+        const url = config?.openGraphImage?.asset ? ogImageUrl(config.openGraphImage as any) : undefined
+        return url ? [{ url, width: 1200, height: 630 }] : undefined
+      })(),
     },
   }
 }
