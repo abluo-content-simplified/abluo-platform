@@ -21,8 +21,16 @@ interface LivePageContentProps {
   siteConfig: WebsiteSiteConfig | null
   designSystem: DesignSystem | null
   pastEvents?: Event[]
+  additionalLiveEvents?: Event[]
   locale: SupportedLocale
   tenantId: string
+}
+
+// Section title lookup — matches next-intl messages/[locale].json live.moreLiveProductions
+const moreLiveTitles: Record<string, string> = {
+  en: 'More Live Productions',
+  it: 'Altre Produzioni Live',
+  de: 'Weitere Live-Produktionen',
 }
 
 // ─── No event fallback ────────────────────────────────────────────────────────
@@ -81,6 +89,7 @@ export function LivePageContent({
   siteConfig,
   designSystem,
   pastEvents = [],
+  additionalLiveEvents = [],
   locale,
   tenantId,
 }: LivePageContentProps) {
@@ -307,6 +316,35 @@ export function LivePageContent({
               loading="lazy"
             />
           </FadeIn>
+        )}
+
+        {/* ── More Live Productions ────────────────────────────────── */}
+        {additionalLiveEvents.length > 0 && (
+          <div className="mt-20 border-t pt-20" style={{ borderColor: 'var(--color-border)' }}>
+            <SlideUp duration={durationSlower} ease={easeReveal}>
+              <h2
+                className="text-[clamp(28px,5vw,46px)] font-bold leading-tight mb-10"
+                style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
+              >
+                {moreLiveTitles[locale] ?? moreLiveTitles.en}
+              </h2>
+            </SlideUp>
+
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {additionalLiveEvents.map((liveEvent, idx) => (
+                <EventCard
+                  key={liveEvent._id}
+                  event={liveEvent}
+                  locale={locale}
+                  tenantId={tenantId}
+                  delay={0.05 + idx * 0.08}
+                  duration={durationSlower}
+                  ease={easeReveal}
+                  from="live"
+                />
+              ))}
+            </div>
+          </div>
         )}
 
         {/* ── Past / Featured Events ────────────────────────────────── */}

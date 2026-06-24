@@ -416,6 +416,24 @@ export const pastEventsQuery = /* groq */ `
     _id,
     "title": ${loc('title')},
     "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
+    status,
+    "location": ${loc('location')},
+    "shortDescription": ${loc('shortDescription')},
+    ${locImage('heroImage')},
+    startDate,
+    endDate
+  }
+`
+
+// Additional live events — all events with status "live" except the featured one.
+// $featuredEventId should be the _id of the currently featured live event (or "" if none).
+export const additionalLiveEventsQuery = /* groq */ `
+  *[_type == "event" && projectSlug == $projectSlug && status == "live" && _id != $featuredEventId && (endDate == null || now() <= endDate)]
+  | order(startDate asc) {
+    _id,
+    "title": ${loc('title')},
+    "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
+    status,
     "location": ${loc('location')},
     "shortDescription": ${loc('shortDescription')},
     ${locImage('heroImage')},

@@ -6,6 +6,7 @@ import {
   websiteSiteConfigQuery,
   designSystemQuery,
   pastEventsQuery,
+  additionalLiveEventsQuery,
   livePageQuery,
 } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
@@ -54,11 +55,14 @@ export default async function LivePage({ params }: PageProps) {
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  const [event, livePage, siteConfig, designSystem, pastEvents] = await Promise.all([
-    fetchForTenant<Event>(currentLiveEventQuery, {
-      locale: locale as SupportedLocale,
-      defaultLocale,
-    }),
+  // Phase 1 — fetch featured event first so we can exclude its _id from additional live events
+  const event = await fetchForTenant<Event>(currentLiveEventQuery, {
+    locale: locale as SupportedLocale,
+    defaultLocale,
+  })
+
+  // Phase 2 — fetch everything else in parallel
+  const [livePage, siteConfig, designSystem, pastEvents, additionalLiveEvents] = await Promise.all([
     fetchForTenant<LivePage>(livePageQuery, {
       locale: locale as SupportedLocale,
       defaultLocale,
@@ -75,6 +79,11 @@ export default async function LivePage({ params }: PageProps) {
       locale: locale as SupportedLocale,
       defaultLocale,
     }),
+    fetchForTenant<Event[]>(additionalLiveEventsQuery, {
+      locale: locale as SupportedLocale,
+      defaultLocale,
+      featuredEventId: event?._id ?? '',
+    }),
   ])
 
   // Featured events from livePage take precedence over auto past events
@@ -89,6 +98,7 @@ export default async function LivePage({ params }: PageProps) {
       siteConfig={siteConfig}
       designSystem={designSystem}
       pastEvents={displayEvents}
+      additionalLiveEvents={additionalLiveEvents ?? []}
       locale={locale as SupportedLocale}
       tenantId={tenantId}
     />

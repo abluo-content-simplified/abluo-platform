@@ -110,7 +110,8 @@ export function getGlassStyles(
   const glass = themeSurfaces.glass
 
   return {
-    backgroundColor: glass.backgroundOklch,
+    // Use CSS var for bg so dark/light toggle works in RSC context
+    backgroundColor: 'var(--color-section-glass-bg)',
     backdropFilter: glass.backdropBlur ? `blur(${glass.backdropBlur}px)` : undefined,
     border: glass.borderWidth && glass.borderColor
       ? `${glass.borderWidth}px solid ${glass.borderColor}`
@@ -119,10 +120,16 @@ export function getGlassStyles(
 }
 
 /**
- * Get inline styles for a section based on its surface type
- * @param designSystem - The design system
+ * Get inline styles for a section based on its surface type.
+ *
+ * Uses CSS custom properties (--color-section-surface1 etc.) instead of
+ * hardcoded color values so that dark/light theme switching via the
+ * `html.dark` / `html.light` class is respected even in RSC contexts where
+ * `getCurrentTheme()` always returns 'light'.
+ *
+ * @param designSystem - The design system (still used for glass blur/border)
  * @param surface - The surface type
- * @param theme - (Optional) Theme to use — defaults to current theme
+ * @param theme - Unused for non-glass surfaces; kept for glass border/blur fallback
  * @returns React.CSSProperties or undefined
  */
 export function getSurfaceStyles(
@@ -130,10 +137,20 @@ export function getSurfaceStyles(
   surface: SurfaceType,
   theme?: ThemeMode
 ): React.CSSProperties | undefined {
-  if (surface === 'glass') {
-    return getGlassStyles(designSystem, theme)
+  switch (surface) {
+    case 'surface1':
+      return { backgroundColor: 'var(--color-section-surface1)' }
+    case 'surface2':
+      return { backgroundColor: 'var(--color-section-surface2)' }
+    case 'surface3':
+      return { backgroundColor: 'var(--color-section-surface3)' }
+    case 'brandSurface':
+      return { backgroundColor: 'var(--color-section-brand-surface)' }
+    case 'glass':
+      return getGlassStyles(designSystem, theme)
+    case 'transparent':
+    case 'usePagePattern':
+    default:
+      return undefined
   }
-
-  const bgColor = getSurfaceColor(designSystem, surface, theme)
-  return bgColor ? { backgroundColor: bgColor } : undefined
 }

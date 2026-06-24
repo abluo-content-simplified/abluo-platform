@@ -303,22 +303,12 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
                       href={event.youtubeUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-3 rounded-[var(--radius-btn)] px-6 py-3.5 text-sm font-semibold transition-all"
+                      className="inline-flex items-center gap-3 rounded-[var(--radius-btn)] px-6 py-3.5 text-sm font-semibold transition-opacity hover:opacity-80"
                       style={{
                         fontFamily: 'var(--font-body)',
                         border: '2px solid var(--color-primary)',
                         backgroundColor: 'var(--color-primary)',
                         color: '#fff',
-                      }}
-                      onMouseEnter={(e) => {
-                        const el = e.currentTarget as HTMLElement
-                        el.style.backgroundColor = 'var(--color-secondary)'
-                        el.style.borderColor = 'var(--color-secondary)'
-                      }}
-                      onMouseLeave={(e) => {
-                        const el = e.currentTarget as HTMLElement
-                        el.style.backgroundColor = 'var(--color-primary)'
-                        el.style.borderColor = 'var(--color-primary)'
                       }}
                     >
                       <PlayCircle size={18} />
