@@ -532,6 +532,15 @@ export interface Event {
   slugMap?: LocalizedSlugMap
   redirectFrom?: Partial<Record<SupportedLocale, string[]>>
   status: EventStatus
+  // Placement — Live Page
+  featuredOnLivePage?: boolean
+  livePageFeatureStartDate?: string
+  livePageFeatureEndDate?: string
+  // Placement — Home Page
+  featuredOnHomePage?: boolean
+  homePageFeatureStartDate?: string
+  homePageFeatureEndDate?: string
+  // Deprecated placement flag — kept for backward compat
   isCurrentLiveEvent?: boolean
   startDate: string
   endDate?: string
@@ -541,8 +550,17 @@ export interface Event {
   heroImage?: ResolvedImage
   gallery?: ResolvedImage[]
   schedule?: ScheduleItem[]
-  youtubeUrl?: string
+  // Embedded player
+  embedPlayerEnabled?: boolean
+  embedVideoUrl?: string
+  // External stream CTAs
+  primaryStreamLabel?: string
+  primaryStreamUrl?: string
+  secondaryStreamLabel?: string
+  secondaryStreamUrl?: string
   youtubeChannelUrl?: string
+  // Deprecated streaming fields — kept for backward compat
+  youtubeUrl?: string
   ctaLabel?: string
   seoTitle?: string
   seoDescription?: string

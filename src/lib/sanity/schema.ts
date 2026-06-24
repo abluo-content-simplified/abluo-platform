@@ -2773,6 +2773,7 @@ const eventType = defineType({
   type: 'document',
   groups: [
     { name: 'content', title: 'Content', default: true },
+    { name: 'placement', title: 'Placement' },
     { name: 'schedule', title: 'Schedule' },
     { name: 'media', title: 'Media' },
     { name: 'streaming', title: 'Streaming' },
@@ -2799,7 +2800,54 @@ const eventType = defineType({
       initialValue: 'upcoming',
       validation: (Rule) => Rule.required(),
     }),
-    defineField({ name: 'isCurrentLiveEvent', title: 'Feature on /live page', type: 'boolean', group: 'content', initialValue: false }),
+    // ── Placement ──────────────────────────────────────────────────────────────
+    // Live Page
+    defineField({
+      name: 'featuredOnLivePage',
+      title: 'Feature on Live Page',
+      type: 'boolean',
+      group: 'placement',
+      initialValue: false,
+    }),
+    defineField({
+      name: 'livePageFeatureStartDate',
+      title: 'Live Page Feature Start Date',
+      type: 'datetime',
+      group: 'placement',
+      description: 'Leave empty to feature immediately when toggled on.',
+    }),
+    defineField({
+      name: 'livePageFeatureEndDate',
+      title: 'Live Page Feature End Date',
+      type: 'datetime',
+      group: 'placement',
+      description: 'Leave empty to feature indefinitely.',
+    }),
+    // Home Page
+    defineField({
+      name: 'featuredOnHomePage',
+      title: 'Feature on Home Page',
+      type: 'boolean',
+      group: 'placement',
+      initialValue: false,
+    }),
+    defineField({
+      name: 'homePageFeatureStartDate',
+      title: 'Homepage Feature Start Date',
+      type: 'datetime',
+      group: 'placement',
+      description: 'Leave empty to feature immediately when toggled on.',
+    }),
+    defineField({
+      name: 'homePageFeatureEndDate',
+      title: 'Homepage Feature End Date',
+      type: 'datetime',
+      group: 'placement',
+      description: 'Leave empty to feature indefinitely.',
+    }),
+    // Deprecated — kept for backward compatibility with existing published documents.
+    // Use featuredOnLivePage instead. Hidden from Studio UI.
+    defineField({ name: 'isCurrentLiveEvent', title: 'Feature on /live page (deprecated)', type: 'boolean', hidden: true, initialValue: false }),
     defineField({ name: 'startDate', title: 'Start Date & Time', type: 'datetime', group: 'content', validation: (Rule) => Rule.required() }),
     defineField({ name: 'endDate', title: 'End Date & Time', type: 'datetime', group: 'content' }),
     defineField({ name: 'location', title: 'Location', type: 'localizedString', group: 'content' }),
@@ -2808,9 +2856,53 @@ const eventType = defineType({
     defineField({ name: 'schedule', title: 'Schedule', type: 'array', group: 'schedule', of: [defineArrayMember({ type: 'scheduleItem' })] }),
     defineField({ name: 'heroImage', title: 'Hero Image', type: 'localizedImage', group: 'media' }),
     defineField({ name: 'gallery', title: 'Gallery', type: 'array', group: 'media', of: [defineArrayMember({ type: 'localizedImage' })] }),
-    defineField({ name: 'youtubeUrl', title: 'YouTube Stream / Video URL', type: 'url', group: 'streaming' }),
-    defineField({ name: 'youtubeChannelUrl', title: 'YouTube Channel URL', type: 'url', group: 'streaming' }),
-    defineField({ name: 'ctaLabel', title: 'CTA Button Label', type: 'localizedString', group: 'streaming' }),
+    // ── Embedded Player ────────────────────────────────────────────────────────
+    defineField({
+      name: 'embedPlayerEnabled',
+      title: 'Enable Embedded Player',
+      type: 'boolean',
+      group: 'streaming',
+      initialValue: false,
+    }),
+    defineField({
+      name: 'embedVideoUrl',
+      title: 'Video URL',
+      type: 'string',
+      group: 'streaming',
+      description:
+        'Paste a YouTube or Cloudflare Stream URL. The following formats are accepted:\n\n• youtube.com/watch?v=VIDEO_ID\n• youtu.be/VIDEO_ID\n• *.cloudflarestream.com/VIDEO_ID/watch\n\nChannel URLs and playlist URLs are not supported.',
+    }),
+    // ── External Stream CTAs ───────────────────────────────────────────────────
+    defineField({
+      name: 'primaryStreamLabel',
+      title: 'Primary Stream Label',
+      type: 'localizedString',
+      group: 'streaming',
+      description: 'e.g. "Watch Main Stage"',
+    }),
+    defineField({
+      name: 'primaryStreamUrl',
+      title: 'Primary Stream URL',
+      type: 'url',
+      group: 'streaming',
+    }),
+    defineField({
+      name: 'secondaryStreamLabel',
+      title: 'Secondary Stream Label',
+      type: 'localizedString',
+      group: 'streaming',
+      description: 'e.g. "Watch Startup Stage"',
+    }),
+    defineField({
+      name: 'secondaryStreamUrl',
+      title: 'Secondary Stream URL',
+      type: 'url',
+      group: 'streaming',
+    }),
+    defineField({ name: 'youtubeChannelUrl', title: 'YouTube Channel URL', type: 'url', group: 'streaming', description: 'Used for the channel promotional link on the Live page.' }),
+    // Deprecated — replaced by primaryStreamLabel/URL. Hidden from Studio UI.
+    defineField({ name: 'youtubeUrl', title: 'YouTube Stream URL (deprecated)', type: 'url', hidden: true }),
+    defineField({ name: 'ctaLabel', title: 'CTA Button Label (deprecated)', type: 'localizedString', hidden: true }),
     defineField({ name: 'seoTitle', title: 'SEO Title', type: 'localizedString', group: 'meta' }),
     defineField({ name: 'seoDescription', title: 'SEO Description', type: 'localizedText', group: 'meta' }),
   ],
