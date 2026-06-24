@@ -110,7 +110,6 @@ export function getGlassStyles(
   const glass = themeSurfaces.glass
 
   return {
-    // Use CSS var for bg so dark/light toggle works in RSC context
     backgroundColor: 'var(--color-section-glass-bg)',
     backdropFilter: glass.backdropBlur ? `blur(${glass.backdropBlur}px)` : undefined,
     border: glass.borderWidth && glass.borderColor

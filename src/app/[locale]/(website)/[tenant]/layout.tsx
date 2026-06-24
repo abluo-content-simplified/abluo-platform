@@ -238,10 +238,10 @@ ${typoVars}
 ${darkFormVars}
 ${formMetaVars}
       /* ── Section surface tokens (dark theme) ── */
-      --color-section-surface1: ${sectionSurfaces?.darkTheme?.surface1 ?? D.bg};
-      --color-section-surface2: ${sectionSurfaces?.darkTheme?.surface2 ?? D.bgAlt};
-      --color-section-surface3: ${sectionSurfaces?.darkTheme?.surface3 ?? D.surface};
-      --color-section-brand-surface: ${sectionSurfaces?.darkTheme?.brandSurface ?? D.primary};
+      --color-section-surface1: ${sectionSurfaces?.darkTheme?.surface1 ?? 'transparent'};
+      --color-section-surface2: ${sectionSurfaces?.darkTheme?.surface2 ?? 'transparent'};
+      --color-section-surface3: ${sectionSurfaces?.darkTheme?.surface3 ?? 'transparent'};
+      --color-section-brand-surface: ${sectionSurfaces?.darkTheme?.brandSurface ?? 'transparent'};
       --color-section-glass-bg: ${sectionSurfaces?.darkTheme?.glass?.backgroundOklch ?? 'oklch(0.3 0.02 270 / 0.4)'};
     }
     html.light {
@@ -264,10 +264,10 @@ ${lightFormVars}
       --form-label-color: ${formTypo?.labelColor ?? L.textSecondary};
       --form-help-color: ${formTypo?.helpTextColor ?? L.textMuted};
       /* ── Section surface tokens (light theme) ── */
-      --color-section-surface1: ${sectionSurfaces?.lightTheme?.surface1 ?? L.bg};
-      --color-section-surface2: ${sectionSurfaces?.lightTheme?.surface2 ?? L.bgAlt};
-      --color-section-surface3: ${sectionSurfaces?.lightTheme?.surface3 ?? L.surface};
-      --color-section-brand-surface: ${sectionSurfaces?.lightTheme?.brandSurface ?? L.primary};
+      --color-section-surface1: ${sectionSurfaces?.lightTheme?.surface1 ?? 'transparent'};
+      --color-section-surface2: ${sectionSurfaces?.lightTheme?.surface2 ?? 'transparent'};
+      --color-section-surface3: ${sectionSurfaces?.lightTheme?.surface3 ?? 'transparent'};
+      --color-section-brand-surface: ${sectionSurfaces?.lightTheme?.brandSurface ?? 'transparent'};
       --color-section-glass-bg: ${sectionSurfaces?.lightTheme?.glass?.backgroundOklch ?? 'oklch(0.97 0 0 / 0.6)'};
     }
   `.trim()
