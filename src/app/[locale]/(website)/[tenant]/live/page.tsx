@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { isProduction } from '@/lib/deployment'
 import { tenantClient } from '@/lib/sanity/client'
 import {
   currentLiveEventQuery,
@@ -7,6 +8,7 @@ import {
   designSystemQuery,
   pastEventsQuery,
   livePageQuery,
+  projectDomainQuery,
 } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
@@ -31,27 +33,33 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  const [event, livePage] = await Promise.all([
+  const [event, livePage, customDomain] = await Promise.all([
     fetchForTenant<Event>(currentLiveEventQuery, { locale, defaultLocale }),
     fetchForTenant<LivePage>(livePageQuery, { locale, defaultLocale }),
+    fetchForTenant<string | null>(projectDomainQuery, {}),
   ])
 
   const title = livePage?.seoTitle ?? event?.seoTitle ?? event?.title ?? 'Live — Livener'
   const description = livePage?.seoDescription ?? event?.seoDescription ?? event?.shortDescription ?? 'Live video streaming from Livener.'
 
-  // Use the current event's hero image for OG when available — more relevant
-  // than the generic site OG image. Falls back to the layout-level default.
+  const canonicalBase = customDomain ? `https://${customDomain}` : null
+  const canonical = canonicalBase && isProduction()
+    ? `${canonicalBase}/${locale}/${tenantId}/live`
+    : undefined
+
+  // Use the current event's hero image for OG when available.
   const ogImg = event?.heroImage?.asset ? ogImageUrl(event.heroImage) : undefined
   const ogImages = ogImg ? [{ url: ogImg, width: 1200, height: 630 }] : undefined
 
   return {
     title,
     description,
+    alternates: { canonical },
     ...(ogImages ? {
-      openGraph: { title, description, images: ogImages },
+      openGraph: { title, description, url: canonical, images: ogImages },
       twitter:   { card: 'summary_large_image' as const, title, description, images: [ogImg!] },
     } : {
-      openGraph: { title, description },
+      openGraph: { title, description, url: canonical },
     }),
   }
 }

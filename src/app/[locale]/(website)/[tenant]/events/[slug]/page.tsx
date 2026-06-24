@@ -9,6 +9,7 @@ import {
   eventsQuery,
   localeConfigQuery,
   designSystemQuery,
+  projectDomainQuery,
 } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
@@ -36,21 +37,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
   const supportedLocales: SupportedLocale[] = localeConfig?.supportedLocales ?? [defaultLocale]
 
-  const event = await fetchForTenant<Event>(eventBySlugQuery, {
-    slug,
-    locale: locale as SupportedLocale,
-    defaultLocale,
-  })
+  const [event, customDomain] = await Promise.all([
+    fetchForTenant<Event>(eventBySlugQuery, { slug, locale: locale as SupportedLocale, defaultLocale }),
+    fetchForTenant<string | null>(projectDomainQuery, {}),
+  ])
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
+  const canonicalBase = customDomain ? `https://${customDomain}` : null
+  const currentSlug = event?.slugMap?.[locale as SupportedLocale]?.current ?? ''
 
   // Build hreflang alternates from per-locale slugs in slugMap.
   const alternates: Record<string, string> = {}
-  if (event?.slugMap) {
+  if (canonicalBase && event?.slugMap) {
     for (const loc of supportedLocales) {
       const locSlug = event.slugMap[loc as SupportedLocale]?.current
       if (locSlug) {
-        alternates[loc] = `${baseUrl}/${loc}/${tenantId}/events/${locSlug}`
+        alternates[loc] = `${canonicalBase}/${loc}/${tenantId}/events/${locSlug}`
       }
     }
   }
@@ -59,7 +60,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: event?.seoTitle ?? event?.title ?? 'Event',
     description: event?.seoDescription ?? event?.shortDescription ?? 'Event details',
     alternates: {
-      canonical: isProduction() ? `${baseUrl}/${locale}/${tenantId}/events/${event?.slugMap?.[locale as SupportedLocale]?.current ?? ''}` : undefined,
+      canonical: isProduction() && canonicalBase && currentSlug
+        ? `${canonicalBase}/${locale}/${tenantId}/events/${currentSlug}`
+        : undefined,
       languages: !isDev() && Object.keys(alternates).length > 0 ? alternates : undefined,
     },
     openGraph: {

@@ -505,6 +505,8 @@ export interface WebsiteSiteConfig {
   phone?: string
   email?: string
   address?: string
+  /** Canonical domain for this tenant, e.g. "livener.net". Derived from project.customDomain via GROQ join. */
+  customDomain?: string
 }
 
 // Locale config subset — fetched first to get $defaultLocale for subsequent queries

@@ -8,6 +8,7 @@ import {
   relatedPostsQuery,
   localeConfigQuery,
   designSystemQuery,
+  projectDomainQuery,
 } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
@@ -36,20 +37,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
   const supportedLocales: SupportedLocale[] = localeConfig?.supportedLocales ?? [defaultLocale]
 
-  const post = await fetchForTenant<Post>(postBySlugQuery, {
-    slug,
-    locale: locale as SupportedLocale,
-    defaultLocale,
-  })
+  const [post, customDomain] = await Promise.all([
+    fetchForTenant<Post>(postBySlugQuery, { slug, locale: locale as SupportedLocale, defaultLocale }),
+    fetchForTenant<string | null>(projectDomainQuery, {}),
+  ])
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
+  const canonicalBase = customDomain ? `https://${customDomain}` : null
+  const currentSlug = post?.slugMap?.[locale as SupportedLocale]?.current ?? slug
 
   const alternates: Record<string, string> = {}
-  if (post?.slugMap) {
+  if (canonicalBase && post?.slugMap) {
     for (const loc of supportedLocales) {
       const locSlug = post.slugMap[loc as SupportedLocale]?.current
       if (locSlug) {
-        alternates[loc] = `${baseUrl}/${loc}/${tenantId}/blog/${locSlug}`
+        alternates[loc] = `${canonicalBase}/${loc}/${tenantId}/blog/${locSlug}`
       }
     }
   }
@@ -58,8 +59,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: post?.seoTitle ?? post?.title ?? 'Article',
     description: post?.seoDescription ?? post?.excerpt ?? 'Article',
     alternates: {
-      canonical: isProduction()
-        ? `${baseUrl}/${locale}/${tenantId}/blog/${post?.slugMap?.[locale as SupportedLocale]?.current ?? slug}`
+      canonical: isProduction() && canonicalBase
+        ? `${canonicalBase}/${locale}/${tenantId}/blog/${currentSlug}`
         : undefined,
       languages: !isDev() && Object.keys(alternates).length > 0 ? alternates : undefined,
     },
