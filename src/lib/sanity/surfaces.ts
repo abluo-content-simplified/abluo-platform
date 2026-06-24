@@ -110,7 +110,7 @@ export function getGlassStyles(
   const glass = themeSurfaces.glass
 
   return {
-    backgroundColor: glass.backgroundOklch,
+    backgroundColor: 'var(--color-section-glass-bg)',
     backdropFilter: glass.backdropBlur ? `blur(${glass.backdropBlur}px)` : undefined,
     border: glass.borderWidth && glass.borderColor
       ? `${glass.borderWidth}px solid ${glass.borderColor}`
@@ -130,10 +130,22 @@ export function getSurfaceStyles(
   surface: SurfaceType,
   theme?: ThemeMode
 ): React.CSSProperties | undefined {
-  if (surface === 'glass') {
-    return getGlassStyles(designSystem, theme)
+  // Use CSS custom properties so dark/light theme switching works in RSC context
+  // where getCurrentTheme() always returns 'light' (no window object).
+  switch (surface) {
+    case 'surface1':
+      return { backgroundColor: 'var(--color-section-surface1)' }
+    case 'surface2':
+      return { backgroundColor: 'var(--color-section-surface2)' }
+    case 'surface3':
+      return { backgroundColor: 'var(--color-section-surface3)' }
+    case 'brandSurface':
+      return { backgroundColor: 'var(--color-section-brand-surface)' }
+    case 'glass':
+      return getGlassStyles(designSystem, theme)
+    case 'transparent':
+    case 'usePagePattern':
+    default:
+      return undefined
   }
-
-  const bgColor = getSurfaceColor(designSystem, surface, theme)
-  return bgColor ? { backgroundColor: bgColor } : undefined
 }
