@@ -1,5 +1,10 @@
 # Config Architecture — Field Register
 
+This document describes the platform **as it exists today** — field ownership, inheritance model, active vs legacy fields, and known bugs.
+For the history of *why* decisions were made, see [`docs/architecture-decisions.md`](./architecture-decisions.md).
+
+---
+
 This document is the living record of the Abluo configuration architecture.
 It tracks every field in `siteConfig` and `designSystem`, how it is used,
 and the migration plan for fields that are in the wrong place.
