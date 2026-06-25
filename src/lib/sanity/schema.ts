@@ -1672,20 +1672,23 @@ const projectType = defineType({
     // ── Module configuration (admin-managed) ────────────────────────────────
     // Controls which modules are visible in Studio for this project.
     // Set by the platform admin — never exposed to clients.
+    //
+    // Hidden from the default form: displayed via the dedicated Modules section
+    // in ProjectLinker, which is the future entry point for ADR-011 (Module
+    // Management). Editing is currently done via MCP or direct API patch.
     defineField({
       name: 'enabledModules',
-      title: 'Enabled Modules',
+      title: 'Modules',
       type: 'array',
       of: [defineArrayMember({ type: 'string' })],
       options: {
         list: [
-          { title: 'Blog (Blog Page + Posts, Categories, Authors)', value: 'blog' },
-          { title: 'Events (Events Page + Events collection)', value: 'events' },
-          { title: 'Live (Live Page — no collections)', value: 'live' },
+          { title: 'Blog', value: 'blog' },
+          { title: 'Events', value: 'events' },
+          { title: 'Live', value: 'live' },
         ],
-        layout: 'tags',
       },
-      description: 'Modules visible in the Studio navigation for this project.',
+      hidden: true, // rendered via custom Modules section in ProjectLinker
     }),
   ],
   preview: {

@@ -28,6 +28,17 @@ interface ProjectDocument {
   clientRef?: { _type: 'reference'; _ref: string }
   customDomain?: string
   designSystemRef?: { _type: 'reference'; _ref: string }
+  enabledModules?: string[]
+}
+
+// ── Module registry (display only) ────────────────────────────────────────────
+// Maps module IDs to human-readable labels for the Modules section.
+// Keep in sync with MODULE_REGISTRY in sanity.config.ts.
+// ADR-011 will replace this read-only display with full module management.
+const MODULE_LABELS: Record<string, string> = {
+  blog: 'Blog',
+  events: 'Events',
+  live: 'Live',
 }
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
@@ -319,6 +330,48 @@ export function ProjectLinker(props: ObjectInputProps) {
             onAssign={handleAssignDS}
             onRemove={handleRemoveDS}
           />
+        </div>
+
+        <Divider />
+
+        {/* ── Modules ───────────────────────────────────────────── */}
+        {/* ADR-011 entry point: module management UI will replace this section. */}
+        {/* For now, this is a read-only display of the project's enabled modules. */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{
+            fontSize: 12,
+            color: '#666',
+            fontWeight: 500,
+            marginBottom: 8,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          }}>
+            Modules
+          </div>
+          {doc.enabledModules && doc.enabledModules.length > 0 ? (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {doc.enabledModules.map((mod) => (
+                <span
+                  key={mod}
+                  style={{
+                    padding: '4px 12px',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    borderRadius: 4,
+                    background: '#f0f0f0',
+                    color: '#333',
+                    border: '1px solid #e0e0e0',
+                  }}
+                >
+                  {MODULE_LABELS[mod] ?? mod}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: '#999' }}>
+              No modules enabled
+            </div>
+          )}
         </div>
 
         <Divider />
