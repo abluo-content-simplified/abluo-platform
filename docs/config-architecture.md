@@ -11,6 +11,80 @@ and the migration plan for fields that are in the wrong place.
 
 ---
 
+## Core CMS Principles
+
+> **Pages own presentation. Collections own data. Modules own capabilities.**
+
+These four rules govern how content is modelled in Sanity. They apply to every document type, every route, and every new module. See ADR-009 for the full rationale.
+
+### Rule 1 — Every public route has exactly one singleton Page document
+
+A route that renders content but has no corresponding editable Sanity document is a gap.
+
+Every public URL must have a document that controls its hero, intro text, and SEO:
+
+| Route | Document type |
+|---|---|
+| `/` | `page` (Home) |
+| `/blog` | `blogPage` |
+| `/events` | `eventsPage` |
+| `/live` | `livePage` |
+| `/privacy-policy` | `page` |
+| `/terms` | `page` |
+| `/about` | `page` |
+| `/contact` | `page` |
+
+When you add a new public route, create its Page document before shipping the route.
+
+### Rule 2 — Pages and Collections are different concepts
+
+**Pages** are website routes. Each one maps to a URL.
+
+**Collections** are reusable content that pages display.
+
+```
+Pages
+  Home, Blog, Events, Live, Privacy Policy, Terms, Contact, About
+
+Collections
+  Posts, Categories, Authors, Events, …
+```
+
+Collections are never pages. Pages may display one or more collections. The Studio navigation reflects this split directly — every project has a **Pages** section and a **Collections** section.
+
+### Rule 3 — Every public page has exactly one page query
+
+Hero content, intro text, and SEO fields are never sourced from hardcoded TypeScript files.
+
+Each page type has its own named GROQ query:
+
+| Page | Query |
+|---|---|
+| Home | `homePageQuery` (via `pageHomeQuery`) |
+| Blog | `blogPageQuery` |
+| Events | `eventsPageQuery` |
+| Live | `livePageQuery` |
+
+Hardcoded strings are acceptable **only** as a graceful fallback while a new Sanity document is being created for a tenant. They must never be the primary source of page content.
+
+### Rule 4 — Collections are grouped by module
+
+A *module* is a self-contained capability that owns its pages, collections, queries, frontend behaviour, and future permissions.
+
+Collections in the Studio are organised under their owning module:
+
+| Module | Pages | Collections |
+|---|---|---|
+| Blog | Blog Page | Posts, Categories, Authors |
+| Events | Events Page | Events |
+| Live | Live Page | — |
+
+Future modules follow the same pattern. Adding a new module means adding a module sub-group to Collections — not expanding a flat list.
+
+See ADR-009 for the future module provisioning workflow.
+
+---
+
 ## Architectural Boundary
 
 | Concern | Document | Who manages |

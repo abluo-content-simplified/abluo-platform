@@ -91,45 +91,10 @@ export default defineConfig({
                   .id(`project-${slug}-list`)
                   .title(projectLabel)
                   .items([
-                    S.listItem()
-                      .id(`${slug}-settings`)
-                      .title('Settings')
-                      .child(
-                        S.documentList()
-                          .title('Settings')
-                          .schemaType('siteConfig')
-                          .apiVersion('2026-05-21')
-                          .filter(`_type == "siteConfig" && projectSlug == $slug`)
-                          .params({ slug })
-                          .initialValueTemplates([
-                            S.initialValueTemplateItem('siteConfigProjectOwned', { projectSlug: slug }),
-                          ])
-                      ),
 
-                    S.listItem()
-                      .id(`${slug}-design`)
-                      .title('Design System')
-                      .child(
-                        designSystemId
-                          ? designSystemPane(designSystemId)
-                          : S.component(DesignSystemAssignPane)
-                              .id(`${slug}-design-assign`)
-                              .title('Assign Design System')
-                              .options({ projectId: project._id, projectSlug: slug })
-                      ),
-
-                    ...(designSystemId ? [
-                      S.listItem()
-                        .id(`${slug}-design-change`)
-                        .title('Change Design System')
-                        .child(
-                          S.component(DesignSystemAssignPane)
-                            .id(`${slug}-design-change-pane`)
-                            .title('Change Design System')
-                            .options({ projectId: project._id, projectSlug: slug, currentDSId: designSystemId })
-                        ),
-                    ] : []),
-
+                    // ── Pages ────────────────────────────────────────────────
+                    // One entry per public route. Singletons (Live, Events, Blog)
+                    // sit alongside the general page list so every URL is one click away.
                     S.listItem()
                       .id(`${slug}-pages`)
                       .title('Pages')
@@ -140,10 +105,10 @@ export default defineConfig({
                           .items([
                             S.listItem()
                               .id(`${slug}-pages-all`)
-                              .title('Pages')
+                              .title('All Pages')
                               .child(
                                 S.documentList()
-                                  .title('Pages')
+                                  .title('All Pages')
                                   .schemaType('page')
                                   .apiVersion('2026-05-21')
                                   .filter(`_type == "page" && projectSlug == $slug`)
@@ -152,6 +117,7 @@ export default defineConfig({
                                     S.initialValueTemplateItem('pageProjectOwned', { projectSlug: slug }),
                                   ])
                               ),
+                            S.divider(),
                             S.listItem()
                               .id(`${slug}-live-page`)
                               .title('Live Page')
@@ -180,81 +146,189 @@ export default defineConfig({
                                     S.initialValueTemplateItem('eventsPageProjectOwned', { projectSlug: slug }),
                                   ])
                               ),
+                            S.listItem()
+                              .id(`${slug}-blog-page`)
+                              .title('Blog Page')
+                              .child(
+                                S.documentList()
+                                  .title('Blog Page')
+                                  .schemaType('blogPage')
+                                  .apiVersion('2026-05-21')
+                                  .filter(`_type == "blogPage" && projectSlug == $slug`)
+                                  .params({ slug })
+                                  .initialValueTemplates([
+                                    S.initialValueTemplateItem('blogPageProjectOwned', { projectSlug: slug }),
+                                  ])
+                              ),
                           ])
                       ),
 
-                    S.listItem()
-                      .id(`${slug}-events`)
-                      .title('Events')
-                      .child(
-                        S.documentList()
-                          .title('Events')
-                          .schemaType('event')
-                          .apiVersion('2026-05-21')
-                          .filter(`_type == "event" && projectSlug == $slug`)
-                          .params({ slug })
-                          .defaultOrdering([{ field: 'startDate', direction: 'desc' }])
-                          .initialValueTemplates([
-                            S.initialValueTemplateItem('eventProjectOwned', { projectSlug: slug }),
-                          ])
-                      ),
+                    S.divider(),
 
+                    // ── Collections ──────────────────────────────────────────
+                    // Reusable content displayed by pages. Not pages themselves.
+                    // Organised by module: Blog, Events.
+                    // Add new modules (Shop, Booking, CRM, …) as additional sub-lists.
                     S.listItem()
-                      .id(`${slug}-blog`)
-                      .title('Blog')
+                      .id(`${slug}-collections`)
+                      .title('Collections')
                       .child(
                         S.list()
-                          .id(`${slug}-blog-list`)
-                          .title('Blog')
+                          .id(`${slug}-collections-list`)
+                          .title('Collections')
                           .items([
+
+                            // ── Blog module ──────────────────────────────────
                             S.listItem()
-                              .id(`${slug}-posts`)
-                              .title('Posts')
+                              .id(`${slug}-blog-module`)
+                              .title('Blog')
                               .child(
-                                S.documentList()
-                                  .title('Blog Posts')
-                                  .schemaType('post')
-                                  .apiVersion('2026-05-21')
-                                  .filter(`_type == "post" && projectSlug == $slug`)
-                                  .params({ slug })
-                                  .defaultOrdering([
-                                    { field: 'featured', direction: 'desc' },
-                                    { field: 'publishedAt', direction: 'desc' },
-                                  ])
-                                  .initialValueTemplates([
-                                    S.initialValueTemplateItem('postProjectOwned', { projectSlug: slug }),
+                                S.list()
+                                  .id(`${slug}-blog-module-list`)
+                                  .title('Blog')
+                                  .items([
+                                    S.listItem()
+                                      .id(`${slug}-posts`)
+                                      .title('Posts')
+                                      .child(
+                                        S.documentList()
+                                          .title('Posts')
+                                          .schemaType('post')
+                                          .apiVersion('2026-05-21')
+                                          .filter(`_type == "post" && projectSlug == $slug`)
+                                          .params({ slug })
+                                          .defaultOrdering([
+                                            { field: 'featured', direction: 'desc' },
+                                            { field: 'publishedAt', direction: 'desc' },
+                                          ])
+                                          .initialValueTemplates([
+                                            S.initialValueTemplateItem('postProjectOwned', { projectSlug: slug }),
+                                          ])
+                                      ),
+                                    S.listItem()
+                                      .id(`${slug}-categories`)
+                                      .title('Categories')
+                                      .child(
+                                        S.documentList()
+                                          .title('Categories')
+                                          .schemaType('blogCategory')
+                                          .apiVersion('2026-05-21')
+                                          .filter(`_type == "blogCategory" && projectSlug == $slug`)
+                                          .params({ slug })
+                                          .initialValueTemplates([
+                                            S.initialValueTemplateItem('blogCategoryProjectOwned', { projectSlug: slug }),
+                                          ])
+                                      ),
+                                    S.listItem()
+                                      .id(`${slug}-authors`)
+                                      .title('Authors')
+                                      .child(
+                                        S.documentList()
+                                          .title('Authors')
+                                          .schemaType('postAuthor')
+                                          .apiVersion('2026-05-21')
+                                          .filter(`_type == "postAuthor" && projectSlug == $slug`)
+                                          .params({ slug })
+                                          .initialValueTemplates([
+                                            S.initialValueTemplateItem('postAuthorProjectOwned', { projectSlug: slug }),
+                                          ])
+                                      ),
                                   ])
                               ),
+
+                            S.divider(),
+
+                            // ── Events module ────────────────────────────────
                             S.listItem()
-                              .id(`${slug}-categories`)
-                              .title('Categories')
+                              .id(`${slug}-events-module`)
+                              .title('Events')
                               .child(
-                                S.documentList()
-                                  .title('Categories')
-                                  .schemaType('blogCategory')
-                                  .apiVersion('2026-05-21')
-                                  .filter(`_type == "blogCategory" && projectSlug == $slug`)
-                                  .params({ slug })
-                                  .initialValueTemplates([
-                                    S.initialValueTemplateItem('blogCategoryProjectOwned', { projectSlug: slug }),
+                                S.list()
+                                  .id(`${slug}-events-module-list`)
+                                  .title('Events')
+                                  .items([
+                                    S.listItem()
+                                      .id(`${slug}-events`)
+                                      .title('Events')
+                                      .child(
+                                        S.documentList()
+                                          .title('Events')
+                                          .schemaType('event')
+                                          .apiVersion('2026-05-21')
+                                          .filter(`_type == "event" && projectSlug == $slug`)
+                                          .params({ slug })
+                                          .defaultOrdering([{ field: 'startDate', direction: 'desc' }])
+                                          .initialValueTemplates([
+                                            S.initialValueTemplateItem('eventProjectOwned', { projectSlug: slug }),
+                                          ])
+                                      ),
                                   ])
                               ),
-                            S.listItem()
-                              .id(`${slug}-authors`)
-                              .title('Authors')
-                              .child(
-                                S.documentList()
-                                  .title('Authors')
-                                  .schemaType('postAuthor')
-                                  .apiVersion('2026-05-21')
-                                  .filter(`_type == "postAuthor" && projectSlug == $slug`)
-                                  .params({ slug })
-                                  .initialValueTemplates([
-                                    S.initialValueTemplateItem('postAuthorProjectOwned', { projectSlug: slug }),
-                                  ])
-                              ),
+
                           ])
                       ),
+
+                    S.divider(),
+
+                    // ── Media ────────────────────────────────────────────────
+                    S.listItem()
+                      .id(`${slug}-media`)
+                      .title('Media')
+                      .schemaType('mediaAsset')
+                      .child(
+                        S.documentList()
+                          .title('Media')
+                          .apiVersion('2026-05-21')
+                          .filter(`_type == "mediaAsset" && tenant._ref == $clientId`)
+                          .params({ clientId })
+                          .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
+                      ),
+
+                    S.divider(),
+
+                    // ── Design System ────────────────────────────────────────
+                    S.listItem()
+                      .id(`${slug}-design`)
+                      .title('Design System')
+                      .child(
+                        designSystemId
+                          ? designSystemPane(designSystemId)
+                          : S.component(DesignSystemAssignPane)
+                              .id(`${slug}-design-assign`)
+                              .title('Assign Design System')
+                              .options({ projectId: project._id, projectSlug: slug })
+                      ),
+
+                    ...(designSystemId ? [
+                      S.listItem()
+                        .id(`${slug}-design-change`)
+                        .title('Change Design System')
+                        .child(
+                          S.component(DesignSystemAssignPane)
+                            .id(`${slug}-design-change-pane`)
+                            .title('Change Design System')
+                            .options({ projectId: project._id, projectSlug: slug, currentDSId: designSystemId })
+                        ),
+                    ] : []),
+
+                    S.divider(),
+
+                    // ── Settings ─────────────────────────────────────────────
+                    S.listItem()
+                      .id(`${slug}-settings`)
+                      .title('Settings')
+                      .child(
+                        S.documentList()
+                          .title('Settings')
+                          .schemaType('siteConfig')
+                          .apiVersion('2026-05-21')
+                          .filter(`_type == "siteConfig" && projectSlug == $slug`)
+                          .params({ slug })
+                          .initialValueTemplates([
+                            S.initialValueTemplateItem('siteConfigProjectOwned', { projectSlug: slug }),
+                          ])
+                      ),
+
                   ])
               )
           })
@@ -266,24 +340,7 @@ export default defineConfig({
               S.list()
                 .id(`client-${clientId}-list`)
                 .title(clientLabel)
-                .items([
-                  ...projectItems,
-
-                  S.divider(),
-
-                  S.listItem()
-                    .id(`${clientDoc.tenantSlug}-media`)
-                    .title('Media Library')
-                    .schemaType('mediaAsset')
-                    .child(
-                      S.documentList()
-                        .title('Media Library')
-                        .apiVersion('2026-05-21')
-                        .filter(`_type == "mediaAsset" && tenant._ref == $clientId`)
-                        .params({ clientId })
-                        .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
-                    ),
-                ])
+                .items(projectItems)
             )
         })
 
@@ -428,6 +485,15 @@ export default defineConfig({
                           .apiVersion('2026-05-21')
                           .filter('_type == "eventsPage" && (projectSlug == null || projectSlug == "")')
                       ),
+                    S.listItem()
+                      .id('unassigned-blogpages')
+                      .title('Blog Pages without Project')
+                      .child(
+                        S.documentList()
+                          .title('Unassigned Blog Pages')
+                          .apiVersion('2026-05-21')
+                          .filter('_type == "blogPage" && (projectSlug == null || projectSlug == "")')
+                      ),
                   ])
               ),
 
@@ -464,6 +530,6 @@ export default defineConfig({
     // Note: Sanity always re-sorts the menu alphabetically in the UI layer —
     // custom ordering via newDocumentOptions is not possible. Filter only.
     newDocumentOptions: (prev) =>
-      prev.filter((opt) => !['homePage', 'homePageProjectOwned', 'livePageProjectOwned', 'eventsPageProjectOwned'].includes(opt.templateId)),
+      prev.filter((opt) => !['homePage', 'homePageProjectOwned', 'livePageProjectOwned', 'eventsPageProjectOwned', 'blogPageProjectOwned'].includes(opt.templateId)),
   },
 })

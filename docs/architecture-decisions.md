@@ -371,3 +371,113 @@ The deployment pipeline is: `feature branch → dev → preview → main`. Each 
 
 **Negative:**
 - Cannot split a refactor across commits if the intermediate state is broken — must design phases so each one is independently complete
+
+---
+
+## ADR-009 — Pages, Collections, and Modules
+
+**Status:** Accepted
+**Date:** 2026-06-25
+**Supersedes:** —
+**Superseded By:** —
+
+### Context
+
+The Sanity Studio navigation grew organically as new document types were added. By mid-2026, the per-project navigation mixed page-level singletons (livePage, eventsPage) with content collections (Events, Blog Posts) inside a single "Pages" section, and duplicated the word "Pages" across two nesting levels.
+
+Concretely:
+- Reaching a page required: click project → click Pages → click Pages (again) → click the document
+- The `/blog` route had no editable Sanity document; its hero and SEO content was hardcoded in a TypeScript file (`news-page-messages.ts`), violating the principle that page content belongs in the CMS
+- The `navigationLink` schema used a special `internalPage` enum to reference routes like `/live`, `/events`, and `/blog` precisely because those routes lacked Page documents
+- Collections (Events, Blog Posts) were categorised alongside Pages, hiding the distinction between "things that are website routes" and "things that are content displayed by routes"
+- Collections were listed in a flat structure with no grouping, making the Studio harder to scale as new modules are added
+
+### Alternatives Considered
+
+- Keep the current structure and improve labels only — reduces confusion slightly but does not fix the routing gap or eliminate the extra click layer
+- Make every page a section-composed `page` document — would make `livePage`, `eventsPage` unnecessary; inconsistent with their fixed rendering contracts (a blog listing page is not section-composed)
+- Enumerate page documents as individual top-level Studio nav items — only works for singletons; `page` documents are dynamic and cannot be pre-enumerated
+- Group collections by document type rather than by module — flat, does not scale, and obscures the relationship between a page and the collections it displays
+
+### Decision
+
+**Core principle: Pages own presentation. Collections own data. Modules own capabilities.**
+
+Four rules formalised:
+
+**Rule 1 — Every public route has exactly one singleton Page document.**
+A route that renders content but has no corresponding editable Sanity document is a gap. Every public URL (`/`, `/blog`, `/events`, `/live`, `/privacy-policy`, etc.) must have a document that controls its hero, intro text, and SEO.
+
+**Rule 2 — Pages and Collections are different concepts.**
+*Pages* are website routes — each one maps to a URL. *Collections* are reusable content that pages may display. Collections are never pages. Pages may display one or more collections.
+
+Studio navigation reflects this separation. The per-project structure is:
+
+```
+[Project]
+  Pages       → all singleton page documents
+  Collections → reusable content, grouped by module
+  Media
+  Design System
+  Settings
+```
+
+**Rule 3 — Every public page has exactly one page query.**
+Hero content, intro text, and SEO fields are never sourced from hardcoded TypeScript files. Each page type has its own named GROQ query (`homePageQuery`, `blogPageQuery`, `eventsPageQuery`, `livePageQuery`). Hardcoded strings are acceptable only as a graceful fallback while a new Sanity document is being created for a tenant.
+
+**Rule 4 — Collections are grouped by module.**
+A *module* is a self-contained capability that owns its pages, collections, queries, frontend behaviour, and future permissions. Collections inside the Studio are organised under their owning module, not flattened into a single list.
+
+Current modules:
+
+| Module | Pages | Collections |
+|---|---|---|
+| Blog | Blog Page | Posts, Categories, Authors |
+| Events | Events Page | Events |
+| Live | Live Page | — |
+
+Future modules follow the same pattern:
+
+| Module | Pages | Collections |
+|---|---|---|
+| Shop | Shop Page | Products, Categories |
+| Booking | Booking Page | Reservations |
+| CRM | — | Contacts |
+
+### Module Provisioning (future workflow)
+
+Today, all modules are visible to every project in Studio regardless of which modules the client actually uses. The long-term provisioning model is:
+
+1. Create Tenant (Supabase)
+2. Create Project (Supabase)
+3. Link Project ↔ Sanity
+4. Enable Modules for the project
+5. Provision only the Pages and Collections required by the enabled modules
+
+Under this model, a project's Studio navigation is generated from its module configuration — it never shows modules the client has not enabled.
+
+Example configurations:
+
+| Tenant | Blog | Events | Live | Shop |
+|---|---|---|---|---|
+| Dentist | ✓ | ✗ | ✗ | ✗ |
+| Livener | ✓ | ✓ | ✓ | ✗ |
+| Future ecommerce | ✓ | ✗ | ✗ | ✓ |
+
+This provisioning model is not yet implemented. The Studio currently shows all modules for all projects. The module grouping in the Collections section is the foundation for this future capability.
+
+### Consequences
+
+**Positive:**
+- Every public URL is editable in Studio without special-casing
+- Studio navigation reflects the semantic structure of the website rather than the order in which modules were built
+- The `internalPage` special enum in `navigationLink` can eventually be removed — all routes will have Page documents reachable via `pageRef`
+- New modules have a clear home in the information architecture
+- Hardcoded page content is eliminated as a pattern
+- Collections grouped by module scale naturally — adding a Shop module means adding a Shop sub-group, not expanding a flat list
+
+**Negative:**
+- Each new public route requires a new singleton document type (schema + query + type + initial value template), rather than just a Next.js route file
+- Tenants that have not yet created a Page document for a route must rely on fallback content until they do
+- The `blogPage` singleton introduced by this ADR follows the `livePage`/`eventsPage` pattern (fixed fields) rather than section composition — this is intentional given the fixed rendering contract of a listing page, but it means adding new content blocks to the blog listing requires a schema change
+- Module provisioning is documented but not yet implemented — all modules are currently visible to all projects
