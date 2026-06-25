@@ -2772,6 +2772,52 @@ const eventsPageType = defineType({
   },
 })
 
+// ─── Blog Page ────────────────────────────────────────────────────────────────
+// Singleton document — one per project.
+// Controls the hero, intro text, and SEO of the /blog listing route.
+// Never section-composed: the page has a fixed rendering contract.
+// Managed by Abluo admin; hidden from the "New Document" menu (ADR-009).
+
+const blogPageType = defineType({
+  name: 'blogPage',
+  title: 'Blog Page',
+  type: 'document',
+  groups: [
+    { name: 'content', title: 'Content', default: true },
+    { name: 'meta', title: 'SEO / Meta' },
+  ],
+  fields: [
+    projectSlugField,
+    defineField({
+      name: 'eyebrow',
+      title: 'Eyebrow',
+      type: 'localizedString',
+      group: 'content',
+      description: 'Small label above the headline (e.g. "Latest Updates")',
+    }),
+    defineField({
+      name: 'heroTitle',
+      title: 'Title',
+      type: 'localizedString',
+      group: 'content',
+      description: 'Page headline (e.g. "News & Announcements")',
+    }),
+    defineField({
+      name: 'heroSubtitle',
+      title: 'Subtitle',
+      type: 'localizedText',
+      group: 'content',
+      description: 'Short intro beneath the headline',
+    }),
+    defineField({ name: 'seoTitle', title: 'SEO Title', type: 'localizedString', group: 'meta' }),
+    defineField({ name: 'seoDescription', title: 'SEO Description', type: 'localizedText', group: 'meta' }),
+  ],
+  preview: {
+    select: { slug: 'projectSlug' },
+    prepare: ({ slug }) => ({ title: 'Blog Page', subtitle: slug }),
+  },
+})
+
 // ─── Event ────────────────────────────────────────────────────────────────────
 
 const eventType = defineType({
@@ -3480,6 +3526,15 @@ export const initialValueTemplates = [
       projectSlug: params?.projectSlug,
     }),
   },
+  {
+    id: 'blogPageProjectOwned',
+    title: 'Blog Page',
+    schemaType: 'blogPage',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+    }),
+  },
 ]
 
 // ─── Export ───────────────────────────────────────────────────────────────────
@@ -3546,4 +3601,5 @@ export const schemaTypes = [
   eventType,
   livePageType,
   eventsPageType,
+  blogPageType,
 ]

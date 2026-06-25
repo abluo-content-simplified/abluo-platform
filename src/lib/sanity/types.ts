@@ -1005,3 +1005,16 @@ export interface EventsPage {
   seoTitle?: string
   seoDescription?: string
 }
+
+// ─── Blog Page ────────────────────────────────────────────────────────────────
+// Resolved by blogPageQuery — all string fields are locale-resolved by GROQ.
+// Singleton per project — controls the /blog listing route hero and SEO.
+
+export interface BlogPage {
+  _id: string
+  eyebrow?: string
+  heroTitle?: string
+  heroSubtitle?: string
+  seoTitle?: string
+  seoDescription?: string
+}

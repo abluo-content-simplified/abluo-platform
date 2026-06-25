@@ -908,6 +908,19 @@ export const eventsPageQuery = /* groq */ `
   }
 `
 
+// ─── Blog Page ────────────────────────────────────────────────────────────────
+
+export const blogPageQuery = /* groq */ `
+  *[_type == "blogPage" && projectSlug == $projectSlug][0] {
+    _id,
+    "eyebrow": ${loc('eyebrow')},
+    "heroTitle": ${loc('heroTitle')},
+    "heroSubtitle": ${loc('heroSubtitle')},
+    "seoTitle": ${loc('seoTitle')},
+    "seoDescription": ${loc('seoDescription')}
+  }
+`
+
 // ─── Design System ────────────────────────────────────────────────────────────
 
 /**
