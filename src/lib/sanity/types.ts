@@ -480,6 +480,10 @@ export interface WebsiteSiteConfig {
   supportedLocales: SupportedLocale[]
   showLangSwitcherInNav?: boolean
   tagline?: string
+  seoDefaultTitle?: string
+  seoDefaultDescription?: string
+  logoHeightDesktop?: number
+  logoHeightMobile?: number
   logo?: ResolvedImage
   logoLight?: ResolvedImage
   openGraphImage?: { asset?: { _ref: string } }

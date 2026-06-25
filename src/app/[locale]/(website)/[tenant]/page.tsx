@@ -116,16 +116,24 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     es: 'es_ES', pt: 'pt_PT', nl: 'nl_NL',
   }
 
+  // SEO title/description fallback chain:
+  //   page-level seoTitle (set per-page in Sanity) → seoDefaultTitle → siteName
+  //   page-level seoDescription → seoDefaultDescription → tagline
+  // The page-level fields are not available here (this is the home/slug metadata),
+  // so we use siteConfig defaults. Per-page overrides happen in [slug]/page.tsx.
+  const metaTitle = config?.seoDefaultTitle ?? config?.siteName ?? tenantId
+  const metaDescription = config?.seoDefaultDescription ?? config?.tagline
+
   return {
-    title: config?.siteName ?? tenantId,
-    description: config?.tagline,
+    title: metaTitle,
+    description: metaDescription,
     alternates: {
       canonical: isProduction() ? canonical : undefined,
       languages: !isDev() && Object.keys(languages).length > 0 ? languages : undefined,
     },
     openGraph: {
-      title: config?.siteName ?? tenantId,
-      description: config?.tagline ?? undefined,
+      title: metaTitle,
+      description: metaDescription ?? undefined,
       url: canonical,
       siteName: config?.siteName ?? tenantId,
       locale: ogLocaleMap[locale] ?? locale,

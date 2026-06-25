@@ -55,7 +55,7 @@ function fontToGoogleParam(name: string): string {
   return `${name.replace(/ /g, '+')}:${params}`
 }
 
-function buildCssVars(ds: DesignSystem | null): string {
+function buildCssVars(ds: DesignSystem | null, logoHeightOverride?: { desktop?: number; mobile?: number }): string {
   const dark = ds?.colors?.darkTheme
   const light = ds?.colors?.lightTheme
   const typo = ds?.typography
@@ -232,8 +232,8 @@ function buildCssVars(ds: DesignSystem | null): string {
       --motion-easing-decelerate: ${motion?.easingDecelerate ?? 'cubic-bezier(0, 0, 0.2, 1)'};
       --motion-easing-accelerate: ${motion?.easingAccelerate ?? 'cubic-bezier(0.4, 0, 1, 1)'};
       --motion-easing-emphasized: ${motion?.easingEmphasized ?? 'cubic-bezier(0.2, 0, 0, 1)'};
-      --logo-height-desktop: ${branding?.logoHeightDesktop ?? 36}px;
-      --logo-height-mobile: ${branding?.logoHeightMobile ?? 28}px;
+      --logo-height-desktop: ${logoHeightOverride?.desktop ?? branding?.logoHeightDesktop ?? 36}px;
+      --logo-height-mobile: ${logoHeightOverride?.mobile ?? branding?.logoHeightMobile ?? 28}px;
       /* Bridge: wire Tailwind/shadcn tokens to our design system so bg-background etc. work */
       --background: ${D.bg};
       --foreground: ${D.textPrimary};
@@ -386,6 +386,7 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
     fetchForTenant<{
       faviconSvg?:      { asset?: { _ref: string } }
       faviconPng?:      { asset?: { _ref: string } }
+      appleTouchIcon?:  { asset?: { _ref: string } }
       openGraphImage?:  { asset?: { _ref: string } }
     }>(siteConfigFaviconQuery, {}),
     fetchForTenant<DesignSystem>(designSystemQuery, {}),
@@ -401,6 +402,11 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
     (designSystem?.branding?.favicon?.asset ? imageUrl(designSystem.branding.favicon as any, 64) : null) ??
     undefined
 
+  // ── Apple Touch Icon — siteConfig only ──────────────────────────────────────
+  const appleTouchIconSrc = siteConfigFavicon?.appleTouchIcon?.asset
+    ? imageUrl(siteConfigFavicon.appleTouchIcon as any, 180)
+    : undefined
+
   // ── Open Graph image — first available wins ──────────────────────────────────
   // Precedence: siteConfig.openGraphImage → DS.branding.openGraphImage → none
   // Forced to JPG (1200×630) — social crawlers (WhatsApp, LinkedIn, FB, X) may
@@ -413,7 +419,12 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
     undefined
 
   return {
-    ...(faviconSrc ? { icons: { icon: faviconSrc } } : {}),
+    ...(faviconSrc || appleTouchIconSrc ? {
+      icons: {
+        ...(faviconSrc ? { icon: faviconSrc } : {}),
+        ...(appleTouchIconSrc ? { apple: appleTouchIconSrc } : {}),
+      },
+    } : {}),
     ...(ogSrc ? {
       openGraph: { images: [{ url: ogSrc, width: 1200, height: 630 }] },
       twitter:   { card: 'summary_large_image', images: [ogSrc] },
@@ -435,11 +446,21 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  // ── Shared: design system — runs for ALL tenants ─────────────────────────────
-  // Fetched via project.designSystemRef -> design system document
-  const rawDesignSystem = await fetchForTenant<DesignSystem>(designSystemQuery, {})
+  // ── Shared: design system + siteConfig logo heights — runs for ALL tenants ─────
+  // Fetched in parallel. Logo heights from siteConfig take precedence over DS
+  // branding tokens (siteConfig is the intended source of truth for brand sizing).
+  const [rawDesignSystem, siteLogoHeights] = await Promise.all([
+    fetchForTenant<DesignSystem>(designSystemQuery, {}),
+    fetchForTenant<{ logoHeightDesktop?: number; logoHeightMobile?: number }>(
+      `*[_type == "siteConfig" && projectSlug == $projectSlug][0] { logoHeightDesktop, logoHeightMobile }`,
+      {}
+    ),
+  ])
   const designSystem = await resolveDesignSystemInheritance(rawDesignSystem, fetchDesignSystemById)
-  const cssVars = buildCssVars(designSystem)
+  const cssVars = buildCssVars(designSystem, {
+    desktop: siteLogoHeights?.logoHeightDesktop,
+    mobile:  siteLogoHeights?.logoHeightMobile,
+  })
   const headingFont = getFontName(designSystem?.typography?.headingFont, 'Geist')
   const bodyFont = getFontName(designSystem?.typography?.bodyFont, 'Geist')
   const fontsUrl = buildGoogleFontsUrl(headingFont, bodyFont)
