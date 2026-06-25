@@ -437,13 +437,15 @@ export default defineConfig({
 
                     S.divider(),
 
-                    // ── Settings ─────────────────────────────────────────────
+                    // ── Website Settings ─────────────────────────────────────
+                    // siteConfig: website-specific configuration — identity, SEO,
+                    // contact info, locales, nav, social links, website behaviour.
                     S.listItem()
-                      .id(`${slug}-settings`)
-                      .title('Settings')
+                      .id(`${slug}-website-settings`)
+                      .title('Website Settings')
                       .child(
                         S.documentList()
-                          .title('Settings')
+                          .title('Website Settings')
                           .schemaType('siteConfig')
                           .apiVersion('2026-05-21')
                           .filter(`_type == "siteConfig" && projectSlug == $slug`)
@@ -451,6 +453,20 @@ export default defineConfig({
                           .initialValueTemplates([
                             S.initialValueTemplateItem('siteConfigProjectOwned', { projectSlug: slug }),
                           ])
+                      ),
+
+                    // ── Project Settings ─────────────────────────────────────
+                    // project document: platform-level configuration — modules,
+                    // design system, tenant relationship, domains, project status.
+                    // Future home for billing and module management (ADR-011).
+                    S.listItem()
+                      .id(`${slug}-project-settings`)
+                      .title('Project Settings')
+                      .child(
+                        S.document()
+                          .documentId(project._id)
+                          .schemaType('project')
+                          .title('Project Settings')
                       ),
 
                   ])
