@@ -1,5 +1,10 @@
 # Config Architecture — Field Register
 
+This document describes the platform **as it exists today** — field ownership, inheritance model, active vs legacy fields, and known bugs.
+For the history of *why* decisions were made, see [`docs/architecture-decisions.md`](./architecture-decisions.md).
+
+---
+
 This document is the living record of the Abluo configuration architecture.
 It tracks every field in `siteConfig` and `designSystem`, how it is used,
 and the migration plan for fields that are in the wrong place.
@@ -19,6 +24,33 @@ and the migration plan for fields that are in the wrong place.
 > **If a field describes how the site looks → `designSystem`.**
 
 Fields that violate this boundary are tracked in the Duplication Register below.
+
+---
+
+## Design System Inheritance Categories
+
+All DS fields belong to exactly one inheritance category (ADR-008). The category determines the merge strategy in `mergeDesignSystems()`. When adding a new field, pick the correct category first — the canonical helper follows automatically.
+
+| Category | Merge strategy | Canonical helper | Examples |
+|---|---|---|---|
+| **LOCAL ONLY** | Never inherited — parent value permanently ignored | None (assign child value directly) | `branding.logo`, `branding.favicon`, `branding.openGraphImage` |
+| **PRIMITIVE STRING** | Child non-empty string wins; else parent | `\|\|` | Color values, easing strings, DS `name`/`role` |
+| **PRIMITIVE NUMBER** | Child non-undefined wins (`0` is a valid override) | `!== undefined` ternary | Radius, spacing, durations, `logoHeightDesktop` |
+| **DISCRIMINATED** | Validity guard before treating object as "set" | `isFontDefined()` | `typography.headingFont`, `typography.bodyFont` |
+| **FLAT MERGE** | Field-by-field — each primitive field inherits independently | `mergeShallowObject<T>` | Typescale (h1–small), ColorTheme, GlassStyle, FormInputTheme |
+| **THEME PAIR** | Apply FLAT MERGE to `lightTheme` and `darkTheme` independently | Dedicated wrapper calling `mergeShallowObject` | `colors`, `buttons.primary`, `sectionSurfaces`, all form inputs |
+| **KEYED ARRAY** | Parent baseline; child overrides by `.key` or appends | `mergeArrayByKey<T>` | `backgroundAssets`, `cardVariants` |
+
+**The overarching rule:** A partial child object must not shadow a complete parent object. Object-typed fields must never use `||` at the object level — any truthy child object (even incomplete) would discard the parent's full definition.
+
+### Adding a new DS field — category checklist
+
+1. Decide the category (table above)
+2. Add field to `designSystem` type in `schema.ts`
+3. Add field to `DS_FIELDS_SELECTION` in `queries.ts`
+4. Add merge logic in `mergeDesignSystems()` using the canonical helper for the category
+5. Add CSS variable output in `buildCssVars()` in `layout.tsx` (or document it as `🚧 Planned`)
+6. Add inheritance test in `design-system-resolver.test.ts`
 
 ---
 
@@ -187,11 +219,12 @@ Fields that violate this boundary are tracked in the Duplication Register below.
 
 ## Known Bugs
 
-| Bug | Severity | Location | Fix |
-|---|---|---|---|
-| `--radius-btn` hardcoded to `12px` | Medium | `buildCssVars()` in `layout.tsx` | Wire to `buttons.primary.borderRadius` |
-| Glass border requires both `borderWidth` + `borderColor` | Low | `getGlassStyles()` in `surfaces.ts` | Make border optional — width alone should work |
-| Typography partial stubs shadow parent font | Medium | DS resolver `mergeDesignSystems()` line 125 | Stub `{ source: 'library' }` (no font name) is truthy → blocks parent inheritance |
+| Bug | Severity | Location | Status | Fix |
+|---|---|---|---|---|
+| Typography partial stubs shadow parent font | Medium | DS resolver `mergeDesignSystems()` | ✅ Fixed Phase 1.1 | `isFontDefined()` guard — stub `{ source: 'library' }` with no name falls through to parent |
+| `--radius-btn` hardcoded to `12px` | Medium | `buildCssVars()` in `layout.tsx` | Pending Phase 1.2 | Wire to `buttons.primary.borderRadius` |
+| Glass border requires both `borderWidth` + `borderColor` | Low | `getGlassStyles()` in `surfaces.ts` | ✅ Fixed Phase 1.3 | `borderWidth` alone now works — `borderColor` falls back to `currentColor` |
+| OG image in parent DS not inherited by child | Medium | DS resolver `mergeDesignSystems()` | Pending Phase 1.4 | siteConfig is the correct home — upload OG image to siteConfig |
 
 ---
 
@@ -213,8 +246,8 @@ Fields that violate this boundary are tracked in the Duplication Register below.
 
 | Phase | Goal | Status |
 |---|---|---|
-| 0 | Baseline commit — siteConfig logoHeight, appleTouchIcon, SEO defaults | 🚧 In progress |
-| 1 | Data fixes — typography stubs, glass border, OG image upload, radius-btn | Pending |
+| 0 | Baseline commit — siteConfig logoHeight, appleTouchIcon, SEO defaults | ✅ Complete |
+| 1 | Data fixes — typography stubs ✅, glass border ✅, radius-btn, OG image upload | 🚧 In progress |
 | 2 | Identity migration — logo/favicon from DS → siteConfig | Pending |
 | 3 | DS visibility contract — hide unused fields, document active fields | Pending |
 | 4 | Inheritance UI — show resolved values in Studio | Pending |
@@ -230,6 +263,10 @@ Fields that violate this boundary are tracked in the Duplication Register below.
 | 2026-06 | `openGraphImage` added to `DS_FIELDS_SELECTION` | queries.ts |
 | 2026-06 | `logoHeightDesktop/Mobile` added to DS branding | schema.ts, queries.ts, types.ts, resolver.ts |
 | 2026-06 | `appleTouchIcon`, `logoHeightDesktop/Mobile`, `seoDefaultTitle/Description` added to siteConfig | schema.ts, queries.ts, types.ts, layout.tsx |
+| 2026-06 | Phase 1.1: `isFontDefined()` guard in DS resolver prevents incomplete font stubs from shadowing parent fonts | design-system-resolver.ts, resolver.test.ts |
+| 2026-06 | Phase 1.2: `mergeShallowObject<Typescale>` replaces object-level `\|\|` for h1–small typescale fields | design-system-resolver.ts, resolver.test.ts |
+| 2026-06 | Phase 1.3: Glass border validation fixed — `borderWidth` alone now sufficient; `borderColor` falls back to `currentColor` | surfaces.ts |
+| 2026-06 | Inheritance Categories Reference added to config-architecture.md (ADR-008) | docs/config-architecture.md |
 
 ---
 

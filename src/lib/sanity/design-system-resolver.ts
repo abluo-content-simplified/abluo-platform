@@ -35,6 +35,7 @@ import type {
   FormInputTheme,
   FormTypography,
   FormGeometry,
+  Typescale,
 } from '@/lib/sanity/types'
 
 interface DesignSystemWithRef extends DesignSystem {
@@ -121,16 +122,25 @@ function mergeDesignSystems(
     },
 
     // ─── Typography: INHERIT WITH OVERRIDE ───────────────────────────────────
+    // Font fields use isFontDefined() instead of || to guard against incomplete
+    // stubs (e.g. { source: 'library' } with no libraryFont). A truthy but
+    // incomplete object must not shadow the parent's fully-specified font.
+    //
+    // Typescale fields (h1–small) use mergeShallowObject — FLAT MERGE category
+    // (ADR-008). A child typescale with only `size` set must inherit `weight`,
+    // `lineHeight`, `letterSpacing` from parent. Object-level `||` was incorrect
+    // here: any truthy child typescale (even `{ size: 60 }`) would discard the
+    // parent's full definition.
     typography: {
-      headingFont: child.typography?.headingFont || parent.typography?.headingFont,
-      bodyFont:    child.typography?.bodyFont    || parent.typography?.bodyFont,
-      h1:          child.typography?.h1          || parent.typography?.h1,
-      h2:          child.typography?.h2          || parent.typography?.h2,
-      h3:          child.typography?.h3          || parent.typography?.h3,
-      h4:          child.typography?.h4          || parent.typography?.h4,
-      bodyLarge:   child.typography?.bodyLarge   || parent.typography?.bodyLarge,
-      body:        child.typography?.body        || parent.typography?.body,
-      small:       child.typography?.small       || parent.typography?.small,
+      headingFont: isFontDefined(child.typography?.headingFont) ? child.typography!.headingFont : parent.typography?.headingFont,
+      bodyFont:    isFontDefined(child.typography?.bodyFont)    ? child.typography!.bodyFont    : parent.typography?.bodyFont,
+      h1:        mergeShallowObject<Typescale>(parent.typography?.h1,        child.typography?.h1),
+      h2:        mergeShallowObject<Typescale>(parent.typography?.h2,        child.typography?.h2),
+      h3:        mergeShallowObject<Typescale>(parent.typography?.h3,        child.typography?.h3),
+      h4:        mergeShallowObject<Typescale>(parent.typography?.h4,        child.typography?.h4),
+      bodyLarge: mergeShallowObject<Typescale>(parent.typography?.bodyLarge, child.typography?.bodyLarge),
+      body:      mergeShallowObject<Typescale>(parent.typography?.body,      child.typography?.body),
+      small:     mergeShallowObject<Typescale>(parent.typography?.small,     child.typography?.small),
     },
 
     // ─── Shape & Spacing: INHERIT WITH OVERRIDE ──────────────────────────────
@@ -210,6 +220,22 @@ function mergeDesignSystems(
     // without touching the rest.
     motion: mergeShallowObject(parent.motion, child.motion),
   }
+}
+
+// ─── Font helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * Returns true only when a FontDefinition has a usable font name.
+ *
+ * An incomplete stub like `{ source: 'library' }` (no libraryFont) is NOT
+ * considered defined — it should fall through to the parent's value.
+ * This prevents partial Sanity objects from silently discarding inherited fonts.
+ */
+function isFontDefined(font: { source?: string; libraryFont?: string; googleFont?: string } | undefined): boolean {
+  if (!font) return false
+  if (font.source === 'library') return !!font.libraryFont?.trim()
+  if (font.source === 'google') return !!font.googleFont?.trim()
+  return false
 }
 
 // ─── Generic helpers ─────────────────────────────────────────────────────────
