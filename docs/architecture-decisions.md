@@ -279,6 +279,61 @@ Added `isFontDefined(font)` to `design-system-resolver.ts`. A font is considered
 
 ---
 
+## ADR-008 — Design System Inheritance Categories
+
+**Status:** Accepted
+**Date:** 2026-06-25
+**Supersedes:** —
+**Superseded By:** —
+
+### Context
+
+The `mergeDesignSystems()` function in `design-system-resolver.ts` had grown organically — each new field category introduced its own merge pattern without a shared model. Three different patterns were in use (`||`, `!== undefined`, `mergeShallowObject`), applied inconsistently across fields of the same semantic type. The font stub bug (ADR-006) and the typescale shadowing bug were both symptoms of the same root cause: object-typed fields using `||`, which treats any truthy object as a complete override.
+
+The inheritance engine needed a formal model so that any developer adding a field can determine the correct merge strategy without judgment calls.
+
+### Alternatives Considered
+
+- Field-by-field case analysis — correct in the short term, does not scale; each new field adds a new bespoke decision
+- Single generic deep-merge — over-engineered; many DS fields are intentionally NOT deeply merged (LOCAL ONLY, DISCRIMINATED)
+- Categorised model with canonical helpers — requires upfront design work, but produces a stable, auditable engine
+
+### Decision
+
+All Design System fields are classified into one of seven inheritance categories. Each category has a canonical merge strategy:
+
+| Category | Merge strategy | Examples |
+|---|---|---|
+| **LOCAL ONLY** | Never inherited — parent value is permanently ignored | `branding.logo`, `branding.favicon`, `branding.openGraphImage` |
+| **PRIMITIVE STRING** | `\|\|` — child non-empty string wins, else parent | All color values, easing strings |
+| **PRIMITIVE NUMBER** | `!== undefined` — child wins if not undefined (0 is a valid override) | Radius, spacing, durations, logoHeight |
+| **DISCRIMINATED** | Validity guard before treating object as "set" | `typography.headingFont`, `typography.bodyFont` — guarded by `isFontDefined()` |
+| **FLAT MERGE** | `mergeShallowObject<T>` — field-by-field; each primitive field inherits independently | ColorTheme, Typescale (h1–small), GlassStyle, FormInputTheme |
+| **THEME PAIR** | Apply FLAT MERGE to `lightTheme` and `darkTheme` independently | `colors`, `buttons.primary`, `sectionSurfaces`, all form inputs |
+| **KEYED ARRAY** | `mergeArrayByKey<T>` — parent baseline, child overrides by `.key` or appends | `backgroundAssets`, `cardVariants` |
+
+**The overarching rule:**
+
+> **A partial child object must not shadow a complete parent object unless the field is explicitly LOCAL ONLY.**
+>
+> This means: object-typed fields must never use `||` at the object level. A child object that is truthy but incomplete (e.g. a Typescale with only `size` set, a FontDefinition with only `source` set) must be merged at the field level, not treated as a whole-object replacement.
+
+The DISCRIMINATED category is a refinement of FLAT MERGE for objects where field-level merge alone is insufficient — a partial stub can pass field-level merge but still be semantically unusable. `isFontDefined()` implements the validity guard.
+
+### Consequences
+
+**Positive:**
+- Every field in `mergeDesignSystems()` maps to a named category and a canonical helper
+- Adding a new DS field is a lookup, not a judgment call
+- The typescale bug, the font stub bug, and any future partial-object shadowing bugs are all addressed by the same principle
+- Redundant one-off merge functions (`mergeColorTheme`, `mergeGlassStyle`, `mergeCardStyleTheme`, `mergeFormInputTheme`) can be removed in a cleanup phase — they are all FLAT MERGE objects that `mergeShallowObject` already handles correctly
+
+**Negative:**
+- The redundant functions are correct today and removing them is a separate phase — the code has more functions than the model requires until cleanup is complete
+- NESTED MERGE objects (`ButtonStyleTheme` with `hover`, `SectionSurfacesTheme` with `glass`) require dedicated functions that are not yet unified under a single `mergeNestedObject` helper
+
+---
+
 ## ADR-007 — Each phase and each commit must leave the project in a deployable state
 
 **Status:** Accepted
