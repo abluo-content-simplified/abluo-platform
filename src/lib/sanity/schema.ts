@@ -1669,6 +1669,24 @@ const projectType = defineType({
       description: 'The design system this project uses for colors, typography, and spacing',
       hidden: true, // managed by ProjectLinker UI, not the default form
     }),
+    // ── Module configuration (admin-managed) ────────────────────────────────
+    // Controls which modules are visible in Studio for this project.
+    // Set by the platform admin — never exposed to clients.
+    defineField({
+      name: 'enabledModules',
+      title: 'Enabled Modules',
+      type: 'array',
+      of: [defineArrayMember({ type: 'string' })],
+      options: {
+        list: [
+          { title: 'Blog (Blog Page + Posts, Categories, Authors)', value: 'blog' },
+          { title: 'Events (Events Page + Events collection)', value: 'events' },
+          { title: 'Live (Live Page — no collections)', value: 'live' },
+        ],
+        layout: 'tags',
+      },
+      description: 'Modules visible in the Studio navigation for this project.',
+    }),
   ],
   preview: {
     select: { title: 'projectName', subtitle: 'projectSlug' },

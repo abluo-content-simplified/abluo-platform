@@ -481,3 +481,110 @@ This provisioning model is not yet implemented. The Studio currently shows all m
 - Tenants that have not yet created a Page document for a route must rely on fallback content until they do
 - The `blogPage` singleton introduced by this ADR follows the `livePage`/`eventsPage` pattern (fixed fields) rather than section composition — this is intentional given the fixed rendering contract of a listing page, but it means adding new content blocks to the blog listing requires a schema change
 - Module provisioning is documented but not yet implemented — all modules are currently visible to all projects
+
+---
+
+## ADR-010 — Module-Driven Studio Navigation
+
+**Status:** Accepted
+**Date:** 2026-06-25
+**Supersedes:** —
+**Superseded By:** —
+
+### Context
+
+ADR-009 established the conceptual model: Pages, Collections, and Modules. The Studio implementation that followed correctly introduced the separation between Pages and Collections, and grouped Collections by module. However, two problems remained:
+
+**Problem 1 — All modules shown to all projects.** Martegani (a dental studio using only the Blog module) saw Live Page, Events Page, and the Events collection in its Studio navigation. These belong to Livener's modules. A Martegani editor opening the Studio sees functionality that does not belong to their project.
+
+**Problem 2 — Schema type names exposed as navigation folders.** The Pages section presented an intermediate "All Pages" folder, plus separate "Blog Page", "Events Page", and "Live Page" sub-folders. These names mirror internal Sanity document types (`blogPage`, `eventsPage`, `livePage`) — implementation details that have no meaning to a website editor. Reaching any page required at least one extra click through a folder that served no editorial purpose.
+
+These two problems share a root cause: the Studio structure was generated from the schema, not from each project's actual configuration.
+
+### Alternatives Considered
+
+- **Infer enabled modules from the existence of published documents** — fragile; a project could have a lingering document from a module it no longer uses, or not yet have a document for a module it does use. Module enablement should be declared, not inferred.
+- **Store module configuration in Supabase** — authoritative long-term, but the Structure Builder runs inside Sanity Studio and has no Supabase connection without additional credential wiring. Adds complexity that buys nothing at this stage. Revisit when billing or runtime gating require it.
+- **Generate a separate Studio deployment per project** — complete isolation but eliminates the single-admin-sees-all-projects capability that makes the platform manageable.
+- **Keep schema-type folders but rename them** — reduces confusion slightly but does not fix the extra click, does not hide schema names, and does not solve project-specific navigation.
+
+### Decision
+
+**Phase 1 — Studio navigation only. No Module Manager, no provisioning UI, no frontend changes.**
+
+#### 1. `enabledModules` on the `project` document
+
+A new `enabledModules: string[]` field is added to the Sanity `project` document. Values are drawn from a fixed set of module IDs (`blog`, `events`, `live`, …). This is the single source of truth for which modules belong to a project.
+
+The field is managed by the Abluo platform admin directly in Studio. No client ever sees or edits it. Module management UI (install, remove, version, license) is a future ADR.
+
+#### 2. `MODULE_REGISTRY` as the canonical source of Studio labels
+
+A `MODULE_REGISTRY` constant in `sanity.config.ts` is the single definition of every module. Each entry declares:
+
+- `id` — machine identifier (`'blog'`, `'events'`, `'live'`)
+- `label` — canonical Studio label for the module's singleton page
+- `pageType` — the Sanity document type for the singleton page
+- `collectionItems` — the collection sub-list items this module contributes
+
+Adding a new module means adding one entry to `MODULE_REGISTRY`. Nothing else changes.
+
+#### 3. Flat Pages section
+
+The Pages section is rebuilt as a flat list of individual document items — no intermediate folders, no schema-type labels. Two categories of items, in order:
+
+1. **General pages** (`page` documents) — one item per published document, in creation order. The item label is the page's `title` field (see *Studio Label Concepts* below).
+2. **Module singleton pages** — one item per enabled module that has a page type, in module registry order. The item label is the module's canonical Studio label from `MODULE_REGISTRY`.
+
+Each item uses `S.document().documentId(id).schemaType(type)` to open the document directly — one click from the project nav to the document editor.
+
+#### 4. Module-filtered Collections section
+
+The Collections section renders only the collection groups for modules in `project.enabledModules`. Projects with no collection-bearing modules omit the Collections section entirely.
+
+### Studio Label Concepts
+
+The Studio uses three distinct label concepts that must never be conflated:
+
+| Concept | What it is | Source | Example |
+|---|---|---|---|
+| **Studio label** | The name shown in the Admin UI navigation | `MODULE_REGISTRY` (singletons) or document `title` (general pages) | "Blog", "Home", "Contact" |
+| **Navigation label** | The link text shown in the website's nav menu | `siteConfig.navLinks[].label` (localised) | "Blog", "Notizie" |
+| **Page title** | The H1 / hero heading on the website | Page document content field | "Latest news from Livener" |
+
+These are three different values and can differ independently. Changing the hero title of the Blog page does not and must not change its Studio navigation label.
+
+#### System pages (module singletons)
+
+System pages exist because the module exists, not because an editor named them. Their Studio label is a system fact — it comes from `MODULE_REGISTRY`, not from any content field. The Studio label for `blogPage` is always "Blog", regardless of what `heroTitle.en` contains.
+
+#### General pages
+
+General `page` documents are created by editors. Their Studio label is currently derived from their `title` content field. This is an implementation choice, not an architectural requirement. If Abluo later introduces an internal page label (for example `internalTitle` or `studioLabel`), the Studio should derive the label from that field instead.
+
+The subtle but important distinction is that the Studio derives its label from the title today. The title is not inherently the Studio label. The code comment at the relevant location documents this intent.
+
+#### Admin UI language
+
+Studio labels belong to the Admin UI, not to website content. They are resolved using the Admin UI language, which is currently English. The structure builder resolves general page titles as `coalesce(title.en, title.it)` — English first.
+
+Today the reference implementation resolves English first. This reflects the current implementation, not the architecture. In the future, the Admin UI language will be user-configurable (for example English, Italian, or German) and completely independent of the project's content locales. Studio labels must always be resolved using the current Admin UI language rather than the website's content language.
+
+When the Admin UI language becomes user-configurable, the title resolution should switch to `coalesce(title[$adminLocale], title.en, title.it)`. The English-first fallback is the correct interim behaviour, not a hardcoded constraint.
+
+Studio labels must never be resolved using the project's content locales (`siteConfig.supportedLocales`). A Livener editor switching between English and Italian content views must see the same Studio navigation labels throughout.
+
+### Consequences
+
+**Positive:**
+- Martegani editors see only Blog Pages and Blog Collections — no Events, no Live
+- Livener editors see all three modules — Blog, Events, Live — because all three are in `enabledModules`
+- No schema type name (`blogPage`, `eventsPage`, `livePage`) is visible anywhere in the Studio navigation
+- Adding a new module requires one entry in `MODULE_REGISTRY` — no other changes to the structure builder
+- The Pages section is one click flat — no intermediate folders
+- The three label concepts (Studio / Navigation / Page title) are explicitly separated and documented
+
+**Negative:**
+- The Structure Builder now makes two async Sanity fetches per structure render (client/project data + page documents). This is negligible in practice — the structure renders once on navigation, not per keystroke
+- `enabledModules` is currently managed manually via Studio or MCP. There is no provisioning UI yet — adding a new project requires a manual patch to set `enabledModules`. Module management UI is a future ADR
+- New projects with no `enabledModules` set show only their general `page` documents and no Collections section. This is the correct default (empty = no modules), but requires the admin to explicitly configure modules for every new project
