@@ -1,0 +1,132 @@
+V0.9.9 — Canonical URLs from project.customDomain
+=================================================
+Date: 2026-06-24
+Branch: dev → preview → main
+Tag: V0.9.9
+Commit: a7ac85b
+TypeScript: clean (npx tsc --noEmit)
+Tests: 46/46 passed (npx vitest run)
+
+─── Problem ──────────────────────────────────────────────────────────────────
+
+Canonical URLs, og:url, hreflang alternates, sitemap URLs, and JSON-LD @id
+were all derived from NEXT_PUBLIC_BASE_URL — a single environment variable
+that cannot vary per tenant. On multi-tenant deployments this meant either:
+  a) All tenants shared the same canonical base (wrong), or
+  b) Each Vercel project needed a separate env var configured manually (fragile)
+
+Additionally, the Live page (/live) had no canonical tag at all.
+
+─── Architectural decision ───────────────────────────────────────────────────
+
+Source of truth: `project.customDomain` in Sanity.
+
+`customDomain` is already stored on the `project` document (synced from
+Supabase via ProjectLinker). Values: livener.net, studiomartegani.com,
+abluo.app. Tenants without a launched domain have null.
+
+Access pattern: GROQ subquery joining on the shared $projectSlug parameter —
+no new Sanity schema fields, no new Supabase helpers, no request host header.
+
+  "customDomain": *[_type == "project" && projectSlug == $projectSlug
+                    && defined(customDomain)][0].customDomain
+
+─── Two fetch strategies ─────────────────────────────────────────────────────
+
+Pages that already fetch siteConfig (homepage, [slug], blog listing):
+  customDomain subquery embedded directly in websiteSiteConfigQuery.
+  Zero additional GROQ round-trips.
+
+Pages that do not fetch siteConfig (blog/[slug], events/[slug], live):
+  New standalone projectDomainQuery added to queries.ts.
+  Fetched in parallel with the existing page query via Promise.all.
+
+─── New: projectDomainQuery — src/lib/sanity/queries.ts ──────────────────────
+
+  export const projectDomainQuery = /* groq */ `
+    *[_type == "project" && projectSlug == $projectSlug
+      && defined(customDomain)][0].customDomain
+  `
+
+Returns a string | null. Null-safe throughout — tenants without a custom
+domain (Amélie) are silently skipped rather than emitting broken canonicals.
+
+─── Modified: src/lib/sanity/types.ts ────────────────────────────────────────
+
+WebsiteSiteConfig interface extended:
+  customDomain?   string   — canonical domain, e.g. "livener.net"
+
+─── Canonical URL pattern (all page types) ───────────────────────────────────
+
+  const canonicalBase = customDomain ? `https://${customDomain}` : null
+  const canonical = canonicalBase && isProduction()
+    ? `${canonicalBase}/${locale}/${tenantId}/...`
+    : undefined
+
+  alternates: { canonical }
+  openGraph:  { url: canonical }
+
+canonical and og:url are always in sync. On non-production environments
+(isProduction() → false) both are undefined — no canonical emitted, no og:url.
+This preserves the existing SEO matrix from V0.8.3.
+
+─── Hreflang (homepage + [slug] pages) ───────────────────────────────────────
+
+Hreflang alternates are built only when canonicalBase is set. Each alternate
+uses the per-locale slug from the document's slugMap. Locales without a slug
+are omitted (never emit a broken alternate).
+
+─── Modified: src/app/sitemap.ts ─────────────────────────────────────────────
+
+TenantSitemapData extended with customDomain.
+GROQ project query now fetches customDomain alongside supportedLocales.
+
+Tenants without a custom domain are skipped entirely:
+  if (!customDomain) continue
+
+All URL construction uses:
+  const tenantBase = `https://${customDomain}`
+
+Removed global NEXT_PUBLIC_BASE_URL reference from sitemap.
+
+─── Modified: src/components/JsonLd.tsx ──────────────────────────────────────
+
+Schema.org url field now derived from siteConfig.customDomain:
+  const canonicalBase = siteConfig?.customDomain
+    ? `https://${siteConfig.customDomain}` : null
+  const url = canonicalBase
+    ? `${canonicalBase}/${locale}/${tenantId}` : undefined
+
+Dentist / LocalBusiness @id and url fields are undefined for tenants without
+a custom domain rather than defaulting to an incorrect base URL.
+
+─── Live page canonical (new in this release) ────────────────────────────────
+
+/live had no canonical tag before this release.
+
+live/page.tsx now:
+  1. Fetches customDomain via projectDomainQuery in the existing Promise.all
+  2. Emits alternates.canonical and openGraph.url when in production
+
+─── Verification ─────────────────────────────────────────────────────────────
+
+Production sites verified after deployment:
+
+livener.net:
+  canonical   https://livener.net/en/livener        ✅
+  og:url      https://livener.net/en/livener        ✅
+  og:image    Sanity CDN, JPG 1200×630              ✅
+  twitter     summary_large_image                   ✅
+
+studiomartegani.com:
+  canonical   https://studiomartegani.com/it/studiomartegani  ✅
+  og:url      https://studiomartegani.com/it/studiomartegani  ✅
+  og:image    not set (no openGraphImage in siteConfig)       ✅
+  twitter     summary (correct — no image)                    ✅
+
+─── Known follow-up ──────────────────────────────────────────────────────────
+
+livener.net HTTP-redirects to www.livener.net at the DNS/Vercel level, but
+the canonical emits the non-www form. This is a DNS/Vercel setting, not a
+code issue. Google will consolidate them, but www consistency is worth
+addressing in a future DNS configuration pass.

@@ -1,0 +1,64 @@
+V0.9.5 — Embedded Player, Auto URL Conversion, Localised Event UI Strings
+==========================================================================
+Date: 2026-06-24
+Branch: dev → preview → main
+Tag: V0.9.5
+Commit: e9c0769
+TypeScript: clean (npx tsc --noEmit)
+Tests: 46/46 passed (npx vitest run)
+
+─── New: src/lib/embed.ts ────────────────────────────────────────────────────
+
+Platform-agnostic embed URL converter. Takes any supported streaming platform
+URL (watch URL, share URL, or already-converted embed URL) and returns a
+canonical embed URL suitable for use in an <iframe>.
+
+Supported platforms:
+  YouTube     https://youtube.com/watch?v=ID  →  https://www.youtube.com/embed/ID
+  Vimeo       https://vimeo.com/ID            →  https://player.vimeo.com/video/ID
+  Cloudflare  https://customer-*.cloudflarestream.com/ID/watch
+              →  https://customer-*.cloudflarestream.com/ID/iframe
+
+The function is idempotent: passing an already-converted embed URL returns it
+unchanged. Unknown URLs are returned as-is so unknown platforms degrade
+gracefully (URL shown, no crash).
+
+─── Schema changes: src/lib/sanity/schema.ts ─────────────────────────────────
+
+New fields on the `event` document type:
+
+  embedPlayerEnabled   boolean — toggles the in-page embedded player
+  embedVideoUrl        string  — raw video URL (any supported format)
+
+Sanity editors paste any URL from their platform; embed.ts converts it at
+render time. Editors never need to know or find embed URL formats.
+
+─── Modified: src/lib/sanity/queries.ts ──────────────────────────────────────
+
+embedPlayerEnabled and embedVideoUrl added to the event detail query
+(eventBySlugQuery). Required for the Watch section on the event detail page.
+
+─── Modified: src/lib/sanity/types.ts ────────────────────────────────────────
+
+Event interface extended:
+  embedPlayerEnabled?   boolean
+  embedVideoUrl?        string
+
+─── Event detail page — Watch section ────────────────────────────────────────
+
+Event detail page (events/[slug]/page.tsx) Watch section rewritten:
+
+Before: hardcoded YouTube iframe using cloudflareVideoId
+After:  uses embedVideoUrl → embed.ts → generic iframe, or falls back to
+        streaming CTA links if no embed is configured
+
+The Watch section renders only when embedPlayerEnabled is true and
+embedVideoUrl is set. If both streamingCtas and embed are configured,
+the embed takes precedence and CTAs appear below it as supplementary links.
+
+─── Streaming CTA strings localised ──────────────────────────────────────────
+
+All user-visible strings in streaming CTA buttons (Watch Live, Watch on …,
+etc.) moved from hardcoded English into the locale dictionary. Italian and
+German entries added. Strings are injected into FeaturedEventBlock and the
+event detail page Watch section from the locale-aware dictionary.

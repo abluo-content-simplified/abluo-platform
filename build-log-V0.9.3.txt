@@ -1,0 +1,51 @@
+V0.9.3 — Section Surface Theme Fix (CSS Vars for Dark/Light Backgrounds)
+========================================================================
+Date: 2026-06-24
+Branch: dev → preview → main
+Tag: V0.9.3
+Commit: a6d9026
+TypeScript: clean (npx tsc --noEmit)
+Tests: 46/46 passed (npx vitest run)
+
+─── Problem ──────────────────────────────────────────────────────────────────
+
+Sections with `surface: 'solid'` or `surface: 'glass'` were not adapting their
+text and icon colours correctly in dark vs. light themes. Background tokens were
+being resolved at build time rather than at render time via CSS variables, which
+meant theme switching (or a dark-background section on a light page) produced
+wrong foreground colours — white text on light backgrounds or vice versa.
+
+─── Modified: src/lib/sanity/surfaces.ts ─────────────────────────────────────
+
+Rewrote the surface token resolution to emit CSS variable references rather
+than resolved colour values. Each surface now returns a set of CSS custom
+property references:
+
+  transparent  — inherits from the page background
+  solid        — uses --surface-solid-bg, --surface-solid-fg, etc.
+  glass        — uses --surface-glass-bg, --surface-glass-fg, etc.
+
+Values are resolved at paint time in the browser, allowing the design system's
+theme (light/dark) to drive the correct colour without a re-render.
+
+─── Modified: src/app/[locale]/(website)/[tenant]/layout.tsx ─────────────────
+
+Extended `buildCssVars()` to emit the surface CSS variables alongside the
+existing design system token output:
+
+  --surface-solid-bg      solid section background
+  --surface-solid-fg      solid section foreground (text)
+  --surface-glass-bg      glass section background
+  --surface-glass-fg      glass section foreground
+  --surface-glass-border  glass section border / ring
+
+Values sourced from the resolved design system (after inheritance). The
+variables are scoped to the tenant wrapper, so different tenants on the same
+page shell get independent surface colours.
+
+─── Architectural note ───────────────────────────────────────────────────────
+
+This fix aligns surfaces with the existing motion and colour token pipeline:
+design system values flow from Sanity → resolveDesignSystemInheritance() →
+buildCssVars() → CSS custom properties → component styles. Surfaces now follow
+the same pattern instead of being the only token category resolved in JS.

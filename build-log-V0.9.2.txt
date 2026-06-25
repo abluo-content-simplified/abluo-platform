@@ -1,0 +1,67 @@
+V0.9.2 — HeroLensSection, HeroLiveCaptureSection, Nav Link Fixes, CTA Label
+===========================================================================
+Date: 2026-06-20
+Branch: dev → preview → main
+Tag: V0.9.2
+Commit: 1bf76ed
+TypeScript: clean (npx tsc --noEmit)
+Tests: 46/46 passed (npx vitest run)
+
+─── New: src/components/sections/HeroLiveCaptureSection.tsx ──────────────────
+
+Two-column hero section for the "live capture" concept. Left column carries
+the headline, tagline, and primary/secondary CTA buttons. Right column renders
+an animated phone mockup overlaid with a live event status circle.
+
+Schema fields:
+  eyebrow, headline, subheading         — localizedString
+  primaryCtaLabel, primaryCtaHref       — localizedString / string
+  secondaryCtaLabel, secondaryCtaHref   — localizedString / string
+  phoneMedia                            — image asset
+
+Both CTA fields are optional. CTAs render only when their label is set.
+Section is animation-aware: entrance via SlideUp with motion tokens from DS.
+
+─── New: src/components/sections/HeroLensSection.tsx ─────────────────────────
+
+Story-driven two-column hero for the "filming a live event" concept. Left
+column is a large-format image (the "lens" — footage or event imagery). Right
+column carries headline, description, and CTA pair.
+
+Schema fields mirror HeroLiveCaptureSection with an added image field for the
+left-column visual. Designed for event-adjacent or product landing contexts
+where the visual is the primary hook.
+
+─── Modified: src/lib/sanity/schema.ts ───────────────────────────────────────
+
+Added heroLiveCaptureSection and heroLensSection type definitions:
+  - Both types added to the page sections array
+  - Both types added to the homePage sections array
+  - Both types exported in the schema default array
+
+─── Modified: src/lib/sanity/types.ts ────────────────────────────────────────
+
+Added TypeScript interfaces:
+  HeroLiveCaptureSection — matches Sanity schema fields
+  HeroLensSection        — matches Sanity schema fields
+Both added to the PageSection union type.
+
+─── Modified: src/lib/sanity/queries.ts ──────────────────────────────────────
+
+Both new section types projected in:
+  homePageQuery     (homepage route)
+  pageHomeQuery     (homepage route — alternate)
+  pageBySlugQuery   (slug-based page route)
+All three are required by the New Section Checklist.
+
+─── Modified: src/components/livener/Nav/NavClient.tsx ───────────────────────
+
+Fixed nav link rendering: links now correctly use the configured href from
+siteConfig rather than falling back to placeholder values.
+
+─── Modified: page.tsx files (homepage + slug route) ─────────────────────────
+
+Both SectionRenderer functions updated to include cases for:
+  heroLiveCaptureSection → <HeroLiveCaptureSection>
+  heroLensSection        → <HeroLensSection>
+Completes the New Section Checklist requirement for both route types.

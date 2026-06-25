@@ -156,7 +156,6 @@ export const websiteSiteConfigQuery = /* groq */ `
     legalAddress,
     registrationInfo,
     foundedYear,
-    youtubeChannelUrl,
     socialLinks[] { platform, url },
     phone,
     email,
@@ -997,7 +996,8 @@ export const DS_FIELDS_SELECTION = /* groq */ `{
     logoLight { asset },
     logoHeightDesktop,
     logoHeightMobile,
-    favicon { asset }
+    favicon { asset },
+    openGraphImage { asset }
   },
 
   backgroundAssets[] {

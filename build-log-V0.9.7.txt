@@ -1,0 +1,91 @@
+V0.9.7 — Tenant-Aware OG Image, Twitter Cards, JPG Format for Crawlers
+=======================================================================
+Date: 2026-06-24
+Branch: dev → preview → main
+Tag: V0.9.7
+Commit: e8517a0
+TypeScript: clean (npx tsc --noEmit)
+Tests: 46/46 passed (npx vitest run)
+
+─── Overview ─────────────────────────────────────────────────────────────────
+
+Open Graph images are now resolved per-tenant with a three-level precedence
+and consistently formatted as JPEG for social crawlers. Twitter card type is
+set automatically based on whether an image is available.
+
+─── New: ogImageUrl() — src/lib/sanity/image.ts ──────────────────────────────
+
+New export alongside the existing urlFor() and imageUrl() helpers.
+
+  export function ogImageUrl(source): string | undefined
+
+Forces JPEG output. Social crawlers (WhatsApp, LinkedIn, Facebook, X/Twitter)
+do not reliably accept WebP or AVIF — auto('format') can return those formats,
+breaking unfurls. JPG is universally supported.
+
+Crops to 1200 × 630 (1.91:1 ratio) — the OG spec recommended size.
+Quality set to 85 — good visual quality with reasonable file size for crawlers.
+
+Returns undefined (not an empty string) when source is null or has no asset
+reference, so callers can use a clean null-check.
+
+─── New field: openGraphImage — siteConfig schema ────────────────────────────
+
+Added to the siteConfig schema:
+  openGraphImage   image   — tenant-level fallback OG image
+
+Sanity editors can upload one image per tenant that applies to all pages
+without a more specific OG image set. Projected in websiteSiteConfigQuery
+and in the new standalone projectOgImageQuery for pages that need it without
+the full siteConfig payload.
+
+─── Modified: src/app/[locale]/(website)/[tenant]/layout.tsx ─────────────────
+
+Layout-level generateMetadata resolves OG image with three-level precedence:
+
+  1. Page-level openGraphImage (passed in from page generateMetadata)
+  2. siteConfig.openGraphImage (tenant fallback)
+  3. designSystem.branding.logoHorizontal (logo as last resort)
+
+The resolved image is formatted via ogImageUrl() and injected into:
+  - openGraph.images  (Facebook, LinkedIn, WhatsApp, etc.)
+  - twitter.images    (X/Twitter card)
+
+Twitter card type is set dynamically:
+  - 'summary_large_image'  when an OG image is resolved
+  - 'summary'              when no image is available
+
+─── Modified: per-page generateMetadata functions ────────────────────────────
+
+All four page types updated to resolve and pass their page-level OG image down
+to the layout or to set it directly in the returned metadata object:
+
+  [tenant]/page.tsx (homepage)
+    Fetches siteConfig (which now includes openGraphImage). Injects resolved
+    ogImageUrl into openGraph.images explicitly — Next.js metadata merging
+    replaces the layout's openGraph block entirely at page level, so the image
+    must be re-declared here.
+
+  [tenant]/[slug]/page.tsx
+    Page-level openGraphImage resolved from the page document itself if present,
+    falls back to siteConfig.openGraphImage. Twitter card set accordingly.
+
+  [tenant]/events/[slug]/page.tsx
+    Event coverImage used as OG image when present (via ogImageUrl()).
+    Falls back to siteConfig.openGraphImage. Twitter card set accordingly.
+
+  [tenant]/blog/[slug]/page.tsx
+    Post coverImage used as OG image when present.
+    Falls back to siteConfig.openGraphImage. Twitter card set accordingly.
+
+  [tenant]/live/page.tsx
+    Event coverImage used as OG image when present.
+    Falls back to siteConfig.openGraphImage. Twitter card set accordingly.
+
+─── Next.js metadata merging note ───────────────────────────────────────────
+
+Next.js App Router REPLACES (does not merge) a page-level openGraph block over
+the layout's openGraph block. Any page that returns its own openGraph must
+re-declare all fields it wants to preserve (title, description, images), not
+rely on the layout providing them. This is why the homepage explicitly injects
+openGraph.images even though the layout also sets it.

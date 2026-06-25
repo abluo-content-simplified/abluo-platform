@@ -1,0 +1,79 @@
+V0.9.4 — Featured Event System (Scheduling, Multi-Stream CTAs, Homepage Placement)
+==================================================================================
+Date: 2026-06-24
+Branch: dev → preview → main
+Tag: V0.9.4
+Commit: 5afd56c
+TypeScript: clean (npx tsc --noEmit)
+Tests: 46/46 passed (npx vitest run)
+
+─── Overview ─────────────────────────────────────────────────────────────────
+
+Introduces a scheduled featured event block on the tenant homepage. An event
+can be marked to appear on the homepage for a defined time window, independent
+of the Live Page. Multiple streaming platform CTAs are supported. The component
+is extracted from LivePageContent, making it the single source of truth for
+event card layout.
+
+─── Schema changes: src/lib/sanity/schema.ts ─────────────────────────────────
+
+New fields on the `event` document type:
+
+  featuredOnHomePage          boolean  — toggles homepage visibility
+  homePageFeatureStartDate    datetime — start of the visibility window
+  homePageFeatureEndDate      datetime — end of the visibility window
+
+  streamingCtas               array of objects:
+    label                     localizedString  — button label
+    url                       string           — streaming platform URL
+    icon                      string (enum)    — platform icon identifier
+
+These fields are additive. Existing events without them continue to work.
+
+─── New query: featuredEventQuery — src/lib/sanity/queries.ts ────────────────
+
+Selects the first event matching all three conditions simultaneously:
+  1. featuredOnHomePage == true
+  2. homePageFeatureStartDate <= now()
+  3. homePageFeatureEndDate >= now()
+
+Ordered by homePageFeatureStartDate. Projects all fields needed by
+FeaturedEventBlock: title, tagline, date, location, coverImage,
+streamingCtas, localizedSlug.
+
+─── New component: src/components/events/FeaturedEventBlock.tsx ──────────────
+
+Standalone card component for the featured event. Renders:
+  - Cover image (full-width, Sanity CDN)
+  - Event title and tagline
+  - Date and location
+  - One button per streamingCta (label localised, icon resolved from enum)
+  - "View Event Details" link → event detail page slug
+
+Replaces the duplicated event card code that previously lived inside
+LivePageContent. LivePageContent is refactored to import and use this
+component, eliminating the duplication.
+
+─── Modified: src/app/[locale]/(website)/[tenant]/page.tsx ───────────────────
+
+Homepage now fetches the featured event in parallel with siteConfig, design
+system, and sections:
+
+  const [siteConfig, designSystem, pageData, featuredEvent] = await Promise.all([...])
+
+FeaturedEventBlock is rendered above the section array when a featured event
+is returned. Container width matches the homepage section layout (max-w-5xl,
+consistent horizontal padding) so the block visually aligns with the page.
+
+─── Modified: src/lib/sanity/types.ts ────────────────────────────────────────
+
+Added to Event interface:
+  featuredOnHomePage?          boolean
+  homePageFeatureStartDate?    string
+  homePageFeatureEndDate?      string
+  streamingCtas?               StreamingCta[]
+
+New interface StreamingCta:
+  label      LocalizedString
+  url        string
+  icon       string

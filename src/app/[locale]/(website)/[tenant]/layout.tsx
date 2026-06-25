@@ -66,6 +66,7 @@ function buildCssVars(ds: DesignSystem | null): string {
   const formGeo = ds?.forms?.geometry
   const fDark = ds?.forms   // form input dark theme (used via .input?.darkTheme etc.)
   const fLight = ds?.forms  // form input light theme
+  const branding = ds?.branding
 
   const D = {
     bg: dark?.background ?? 'oklch(0.2309 0.0292 263.75deg)',
@@ -231,6 +232,8 @@ function buildCssVars(ds: DesignSystem | null): string {
       --motion-easing-decelerate: ${motion?.easingDecelerate ?? 'cubic-bezier(0, 0, 0.2, 1)'};
       --motion-easing-accelerate: ${motion?.easingAccelerate ?? 'cubic-bezier(0.4, 0, 1, 1)'};
       --motion-easing-emphasized: ${motion?.easingEmphasized ?? 'cubic-bezier(0.2, 0, 0, 1)'};
+      --logo-height-desktop: ${branding?.logoHeightDesktop ?? 36}px;
+      --logo-height-mobile: ${branding?.logoHeightMobile ?? 28}px;
       /* Bridge: wire Tailwind/shadcn tokens to our design system so bg-background etc. work */
       --background: ${D.bg};
       --foreground: ${D.textPrimary};
@@ -525,16 +528,14 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
               <img
                 src={logoLightSrc}
                 alt={config?.siteName ?? tenantId}
-                height={36}
-                style={{ height: '36px', width: 'auto', display: 'none' }}
+                style={{ height: 'var(--logo-height-desktop)', width: 'auto', display: 'none' }}
                 className="logo-light"
               />
             )}
             <img
               src={logoDarkSrc}
               alt={config?.siteName ?? tenantId}
-              height={36}
-              style={{ height: '36px', width: 'auto' }}
+              style={{ height: 'var(--logo-height-desktop)', width: 'auto' }}
               className="logo-dark"
             />
           </a>
@@ -600,8 +601,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
               <img
                 src={logoDarkSrc}
                 alt={config?.siteName ?? tenantId}
-                height={28}
-                style={{ height: '28px', width: 'auto', opacity: 0.6 }}
+                style={{ height: 'var(--logo-height-mobile)', width: 'auto', opacity: 0.6 }}
               />
             </a>
           ) : (

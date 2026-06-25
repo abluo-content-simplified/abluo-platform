@@ -1,0 +1,55 @@
+V0.9.6 — Tenant-Aware Favicon (Three-Level Precedence)
+=======================================================
+Date: 2026-06-24
+Branch: dev → preview → main
+Tag: V0.9.6
+Commit: 2d99537
+TypeScript: clean (npx tsc --noEmit)
+Tests: 46/46 passed (npx vitest run)
+
+─── Overview ─────────────────────────────────────────────────────────────────
+
+Favicons are now resolved per-tenant with a documented three-level precedence.
+Each client's site gets its own favicon without any change to the platform
+defaults or the design system template.
+
+─── New query: siteConfigFaviconQuery — src/lib/sanity/queries.ts ────────────
+
+Lightweight query that fetches only the two favicon fields from siteConfig.
+Kept separate from the heavier websiteSiteConfigQuery so the layout's
+generateMetadata can run the favicon fetch in parallel with the design system
+fetch without dragging in full siteConfig data.
+
+  *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
+    faviconSvg { asset },
+    faviconPng { asset }
+  }
+
+─── Modified: src/app/[locale]/(website)/[tenant]/layout.tsx ─────────────────
+
+generateMetadata now resolves the favicon via a parallel fetch:
+
+  const [siteConfigFavicon, rawDesignSystem] = await Promise.all([
+    fetchForTenant(siteConfigFaviconQuery, {}),
+    fetchForTenant(designSystemQuery, {}),
+  ])
+
+Precedence (first non-null URL wins):
+
+  1. siteConfig.faviconSvg    — tenant brand SVG favicon (preferred)
+  2. siteConfig.faviconPng    — tenant brand PNG favicon (raster fallback)
+  3. designSystem.branding.favicon — design system favicon
+  4. /favicon.ico             — Abluo platform default (implicit, no code needed)
+
+Design system favicon is intentionally NOT inherited from the parent DS.
+`resolveDesignSystemInheritance()` excludes `branding.favicon` from the merge
+so tenants can never accidentally display another tenant's or Abluo's favicon.
+
+When a favicon URL is resolved, it is set as both `icon` and `apple` in the
+metadata icons block, covering browsers and iOS home-screen bookmarks.
+
+─── Schema note ──────────────────────────────────────────────────────────────
+
+faviconSvg and faviconPng fields were added to the siteConfig schema in an
+earlier release. This release wires them into the metadata pipeline for the
+first time.

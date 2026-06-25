@@ -1,0 +1,50 @@
+V0.9.8 — Fix OG Image on Homepage (Inject into openGraph.images Block)
+=======================================================================
+Date: 2026-06-24
+Branch: dev → preview → main
+Tag: V0.9.8
+Commit: c6d88ad
+TypeScript: clean (npx tsc --noEmit)
+Tests: 46/46 passed (npx vitest run)
+
+─── Problem ──────────────────────────────────────────────────────────────────
+
+After V0.9.7, the homepage was missing its OG image in social shares.
+Root cause: the homepage's generateMetadata returns its own openGraph block,
+which causes Next.js App Router to replace (not merge) the layout's openGraph
+block entirely. The layout set openGraph.images; the homepage's openGraph block
+did not, so the image was dropped.
+
+This was documented as a known behaviour in the V0.9.7 build log but the fix
+was not applied to the homepage at that time.
+
+─── Fix ──────────────────────────────────────────────────────────────────────
+
+Modified: src/app/[locale]/(website)/[tenant]/page.tsx
+
+  1. websiteSiteConfigQuery now includes openGraphImage in its projection.
+     (Previously only the layout fetched openGraphImage via siteConfig.)
+
+  2. Homepage generateMetadata resolves ogImageUrl() from siteConfig.openGraphImage
+     and injects it explicitly into the returned openGraph.images array:
+
+       openGraph: {
+         title: ...,
+         description: ...,
+         images: ogImage ? [{ url: ogImage, width: 1200, height: 630 }] : [],
+       }
+
+─── Modified: src/lib/sanity/queries.ts ──────────────────────────────────────
+
+openGraphImage { asset } added to the websiteSiteConfigQuery projection so the
+homepage receives the field from the same query it already runs. No additional
+fetch required.
+
+─── Result ───────────────────────────────────────────────────────────────────
+
+Homepage now correctly emits:
+  <meta property="og:image" content="https://cdn.sanity.io/…jpg" />
+  <meta name="twitter:image" content="https://cdn.sanity.io/…jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+Consistent with all other page types as of V0.9.7.

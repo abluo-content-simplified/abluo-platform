@@ -500,7 +500,6 @@ export interface WebsiteSiteConfig {
   legalAddress?: string
   registrationInfo?: string
   foundedYear?: number
-  youtubeChannelUrl?: string
   socialLinks?: SocialLink[]
   phone?: string
   email?: string

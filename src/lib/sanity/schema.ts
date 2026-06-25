@@ -2681,7 +2681,6 @@ const siteConfigType = defineType({
     defineField({ name: 'legalAddress', title: 'Legal Address', type: 'text', rows: 2, group: 'footer' }),
     defineField({ name: 'registrationInfo', title: 'Registration Info', type: 'string', group: 'footer' }),
     defineField({ name: 'foundedYear', title: 'Founded Year', type: 'number', group: 'footer' }),
-    defineField({ name: 'youtubeChannelUrl', title: 'YouTube Channel URL', type: 'url', group: 'social' }),
     defineField({ name: 'socialLinks', title: 'Social Links', type: 'array', group: 'social', of: [defineArrayMember({ type: 'socialLink' })] }),
   ],
   preview: {
