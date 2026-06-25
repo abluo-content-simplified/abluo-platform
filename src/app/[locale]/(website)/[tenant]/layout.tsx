@@ -55,7 +55,7 @@ function fontToGoogleParam(name: string): string {
   return `${name.replace(/ /g, '+')}:${params}`
 }
 
-function buildCssVars(ds: DesignSystem | null): string {
+function buildCssVars(ds: DesignSystem | null, logoHeightOverride?: { desktop?: number; mobile?: number }): string {
   const dark = ds?.colors?.darkTheme
   const light = ds?.colors?.lightTheme
   const typo = ds?.typography
@@ -223,6 +223,8 @@ function buildCssVars(ds: DesignSystem | null): string {
       --radius-md: ${D.radiusMd}px;
       --radius-lg: ${D.radiusLg}px;
       --radius-btn: 12px;
+      --logo-height-desktop: ${logoHeightOverride?.desktop ?? ds?.branding?.logoHeightDesktop ?? 36}px;
+      --logo-height-mobile: ${logoHeightOverride?.mobile ?? ds?.branding?.logoHeightMobile ?? 28}px;
       --motion-duration-fast: ${motion?.durationFast ?? 120}ms;
       --motion-duration-base: ${motion?.durationBase ?? 200}ms;
       --motion-duration-slow: ${motion?.durationSlow ?? 350}ms;
@@ -384,6 +386,7 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
       faviconSvg?:      { asset?: { _ref: string } }
       faviconPng?:      { asset?: { _ref: string } }
       openGraphImage?:  { asset?: { _ref: string } }
+      appleTouchIcon?:  { asset?: { _ref: string } }
     }>(siteConfigFaviconQuery, {}),
     fetchForTenant<DesignSystem>(designSystemQuery, {}),
   ])
@@ -409,8 +412,17 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
     (designSystem?.branding?.openGraphImage?.asset ? ogImageUrl(designSystem.branding.openGraphImage as any) : null) ??
     undefined
 
+  const appleTouchIconSrc = siteConfigFavicon?.appleTouchIcon?.asset
+    ? imageUrl(siteConfigFavicon.appleTouchIcon as any, 180)
+    : undefined
+
   return {
-    ...(faviconSrc ? { icons: { icon: faviconSrc } } : {}),
+    ...(faviconSrc || appleTouchIconSrc ? {
+      icons: {
+        ...(faviconSrc ? { icon: faviconSrc } : {}),
+        ...(appleTouchIconSrc ? { apple: appleTouchIconSrc } : {}),
+      },
+    } : {}),
     ...(ogSrc ? {
       openGraph: { images: [{ url: ogSrc, width: 1200, height: 630 }] },
       twitter:   { card: 'summary_large_image', images: [ogSrc] },
@@ -436,7 +448,6 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   // Fetched via project.designSystemRef -> design system document
   const rawDesignSystem = await fetchForTenant<DesignSystem>(designSystemQuery, {})
   const designSystem = await resolveDesignSystemInheritance(rawDesignSystem, fetchDesignSystemById)
-  const cssVars = buildCssVars(designSystem)
   const headingFont = getFontName(designSystem?.typography?.headingFont, 'Geist')
   const bodyFont = getFontName(designSystem?.typography?.bodyFont, 'Geist')
   const fontsUrl = buildGoogleFontsUrl(headingFont, bodyFont)
@@ -450,6 +461,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   // ── Livener — header appearance system + nav client + footer ─────────────────
   if (tenantId === 'livener') {
     const livenerConfig = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
+    const cssVars = buildCssVars(designSystem, { desktop: livenerConfig?.logoHeightDesktop, mobile: livenerConfig?.logoHeightMobile })
     const livenerBgGraphic = livenerConfig?.backgroundGraphic
     const livenerBgImageUrl = livenerBgGraphic?.asset?.asset ? imageUrl(livenerBgGraphic.asset as any, 1920) : undefined
     const livenerBgStyles = buildBackgroundGraphicStyles(livenerBgGraphic, livenerBgImageUrl, false)
@@ -504,6 +516,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
 
   // ── Generic layout (studiomartegani and future tenants) ──────────────────────
   const config = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
+  const cssVars = buildCssVars(designSystem, { desktop: config?.logoHeightDesktop, mobile: config?.logoHeightMobile })
 
   // ── Background graphic rendering ─────────────────────────────────────────────
   const bgGraphic = config?.backgroundGraphic
@@ -525,16 +538,14 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
               <img
                 src={logoLightSrc}
                 alt={config?.siteName ?? tenantId}
-                height={36}
-                style={{ height: '36px', width: 'auto', display: 'none' }}
+                style={{ height: 'var(--logo-height-desktop)', width: 'auto', display: 'none' }}
                 className="logo-light"
               />
             )}
             <img
               src={logoDarkSrc}
               alt={config?.siteName ?? tenantId}
-              height={36}
-              style={{ height: '36px', width: 'auto' }}
+              style={{ height: 'var(--logo-height-desktop)', width: 'auto' }}
               className="logo-dark"
             />
           </a>
@@ -600,8 +611,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
               <img
                 src={logoDarkSrc}
                 alt={config?.siteName ?? tenantId}
-                height={28}
-                style={{ height: '28px', width: 'auto', opacity: 0.6 }}
+                style={{ height: 'var(--logo-height-mobile)', width: 'auto', opacity: 0.6 }}
               />
             </a>
           ) : (

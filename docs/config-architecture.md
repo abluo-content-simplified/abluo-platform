@@ -1,0 +1,239 @@
+# Config Architecture — Field Register
+
+This document is the living record of the Abluo configuration architecture.
+It tracks every field in `siteConfig` and `designSystem`, how it is used,
+and the migration plan for fields that are in the wrong place.
+
+---
+
+## Architectural Boundary
+
+| Concern | Document | Who manages |
+|---|---|---|
+| Business identity | `siteConfig` | Abluo admin + client |
+| Visual language | `designSystem` | Abluo admin only |
+
+### Rule
+
+> **If a field describes who the client is → `siteConfig`.**
+> **If a field describes how the site looks → `designSystem`.**
+
+Fields that violate this boundary are tracked in the Duplication Register below.
+
+---
+
+## siteConfig Field Register
+
+### Branding group
+
+| Field | Type | Status | Notes |
+|---|---|---|---|
+| `siteName` | string | ✅ Active | Site name, shown in nav fallback and metadata |
+| `tagline` | localizedString | ✅ Active | Fallback for meta description |
+| `logo` | localizedImage | ✅ Active | Header logo (dark theme) |
+| `logoLight` | localizedImage | ✅ Active | Header logo (light theme) |
+| `faviconSvg` | image | ✅ Active | Favicon — SVG preferred |
+| `faviconPng` | image | ✅ Active | Favicon — PNG fallback |
+| `openGraphImage` | image | ✅ Active | Default og:image for all pages |
+| `appleTouchIcon` | image | ✅ Active | iPhone/iPad home screen icon |
+| `logoHeightDesktop` | number | ✅ Active | CSS var `--logo-height-desktop` |
+| `logoHeightMobile` | number | ✅ Active | CSS var `--logo-height-mobile` |
+| `backgroundGraphic` | object | ✅ Active | Brand watermark behind page content |
+
+### SEO Defaults group
+
+| Field | Type | Status | Notes |
+|---|---|---|---|
+| `seoDefaultTitle` | localizedString | ✅ Active | Overrides `siteName` in `<title>` |
+| `seoDefaultDescription` | localizedText | ✅ Active | Overrides `tagline` in meta description |
+
+### Site Controls group
+
+| Field | Type | Status | Notes |
+|---|---|---|---|
+| `headerAppearance` | object | ✅ Active | Sticky, scroll style, height, blur, etc. |
+| `languageSwitcherPlacement` | string | ✅ Active | header / footer / both |
+| `themeMode` | string | ✅ Active | lightOnly / darkOnly / toggle / system |
+| `themeSwitcherPlacement` | string | ✅ Active | header / footer / both |
+| `showLangSwitcherInNav` | boolean | ✅ Active | Livener-specific nav control |
+
+### Languages group
+
+| Field | Type | Status | Notes |
+|---|---|---|---|
+| `defaultLocale` | string | ✅ Active | Drives GROQ `$defaultLocale` |
+| `supportedLocales` | array | ✅ Active | Drives locale switcher and hreflang |
+
+### Navigation group
+
+| Field | Type | Status | Notes |
+|---|---|---|---|
+| `navLinks` | array | ✅ Active | Top-level nav items |
+| `ctaLabel` | localizedString | ✅ Active | Primary nav CTA label |
+| `ctaHref` | string | ✅ Active | Primary nav CTA href |
+
+### Contact group
+
+| Field | Type | Status | Notes |
+|---|---|---|---|
+| `phone` | string | ✅ Active | Shown in header and footer |
+| `email` | string | ✅ Active | Shown in footer |
+| `address` | string | ✅ Active | Shown in footer |
+| `legalName` | string | ✅ Active | For JSON-LD and footer |
+| `legalAddress` | string | ✅ Active | For JSON-LD |
+| `registrationInfo` | string | ✅ Active | Company registration number |
+| `foundedYear` | number | ✅ Active | For JSON-LD |
+
+### Footer group
+
+| Field | Type | Status | Notes |
+|---|---|---|---|
+| `footerLinks` | array | ✅ Active | Footer navigation links |
+| `footerCtaHeading` | localizedString | ✅ Active | Footer CTA block heading |
+| `footerCtaSubtext` | localizedString | ✅ Active | Footer CTA block subtext |
+| `footerCtaInputPlaceholder` | localizedString | ✅ Active | Email input placeholder |
+| `footerCtaButtonLabel` | localizedString | ✅ Active | CTA button label |
+
+### Social group
+
+| Field | Type | Status | Notes |
+|---|---|---|---|
+| `socialLinks` | array | ✅ Active | `[{ platform, url }]` — replaces legacy `youtubeChannelUrl` |
+| `youtubeChannelUrl` | string | ⚠️ Legacy | Replaced by `socialLinks`. Remove after migration confirmed. |
+
+---
+
+## designSystem Field Register
+
+### Branding
+
+| Field | Type | Inheritance | CSS Output | Status |
+|---|---|---|---|---|
+| `logo` | image | LOCAL ONLY | none (layout reads directly) | ✅ Active |
+| `logoLight` | image | LOCAL ONLY | none | ✅ Active |
+| `logoHeightDesktop` | number | INHERIT | `--logo-height-desktop` (via siteConfig override) | ✅ Active |
+| `logoHeightMobile` | number | INHERIT | `--logo-height-mobile` (via siteConfig override) | ✅ Active |
+| `favicon` | image | LOCAL ONLY | none | ✅ Active |
+| `openGraphImage` | image | LOCAL ONLY | none | ✅ Active |
+| `appleTouchIcon` | image | LOCAL ONLY | none | ✅ Active |
+
+### Colors
+
+| Field | Status | CSS Output |
+|---|---|---|
+| `colors.lightTheme.*` | ✅ Active | `--color-*` in `html.light` |
+| `colors.darkTheme.*` | ✅ Active | `--color-*` in `:root` |
+
+### Typography
+
+| Field | Status | CSS Output |
+|---|---|---|
+| `typography.headingFont` | ✅ Active | `--font-heading`, Google Fonts URL |
+| `typography.bodyFont` | ✅ Active | `--font-body`, Google Fonts URL |
+| `typography.h1–h4` | ✅ Active | `--typo-h1` etc. |
+| `typography.bodyLarge` | ✅ Active | `--typo-body-large` |
+| `typography.body` | ✅ Active | `--typo-body` |
+| `typography.small` | ✅ Active | `--typo-small` |
+
+### Shape & Spacing
+
+| Field | Status | CSS Output |
+|---|---|---|
+| `radius.small/medium/large` | ✅ Active | `--radius-sm/md/lg` |
+| `spacing.*` | 🚧 Planned | No CSS output yet |
+
+### Motion
+
+| Field | Status | CSS Output |
+|---|---|---|
+| `motion.durationFast/Base/Slow/Slower` | ✅ Active | `--motion-duration-*` |
+| `motion.easingStandard/Decelerate/Accelerate/Emphasized` | ✅ Active | `--motion-easing-*` |
+
+### Buttons
+
+| Field | Status | CSS Output |
+|---|---|---|
+| `buttons.primary.*` | ✅ Active | Consumed by `ButtonDS` component |
+| `buttons.secondary.*` | ✅ Active | Consumed by `ButtonDS` component |
+| `buttons.primary.borderRadius` | ⚠️ Bug | `--radius-btn` hardcoded to `12px` — not reading this field |
+
+### Section Surfaces
+
+| Field | Status | CSS Output |
+|---|---|---|
+| `sectionSurfaces.lightTheme.*` | ✅ Active | `--color-section-*` in `html.light` |
+| `sectionSurfaces.darkTheme.*` | ✅ Active | `--color-section-*` in `:root` |
+| `sectionSurfaces.*.glass` | ⚠️ Partial | Requires BOTH `borderWidth` AND `borderColor` — see known bugs |
+
+### Forms
+
+| Field | Status | CSS Output |
+|---|---|---|
+| `forms.input/textarea/select/checkbox/radio` | ✅ Active | `--form-*` per element type |
+| `forms.typography` | ✅ Active | `--form-label-*`, `--form-help-*` etc. |
+| `forms.geometry` | ✅ Active | `--form-input-height`, `--form-padding-*` etc. |
+
+### Dead / Unused Fields
+
+| Field | Status | Notes |
+|---|---|---|
+| `shadows.card/dropdown/modal` | 🗑️ Candidate | Resolved by resolver, no CSS var emitted, no component reads |
+| `navigation.*` | 🗑️ Candidate | Resolved, no CSS var, no component reads |
+| `glass` (top-level) | 🗑️ Candidate | Different from `sectionSurfaces.*.glass` — no consumer |
+| `cards.lightTheme/darkTheme` | ⚠️ Legacy | Single-variant; replaced by `cardVariants` |
+| `cardVariants` | 🚧 Planned | Defined, no component reads it yet |
+
+---
+
+## Known Bugs
+
+| Bug | Severity | Location | Fix |
+|---|---|---|---|
+| `--radius-btn` hardcoded to `12px` | Medium | `buildCssVars()` in `layout.tsx` | Wire to `buttons.primary.borderRadius` |
+| Glass border requires both `borderWidth` + `borderColor` | Low | `getGlassStyles()` in `surfaces.ts` | Make border optional — width alone should work |
+| Typography partial stubs shadow parent font | Medium | DS resolver `mergeDesignSystems()` line 125 | Stub `{ source: 'library' }` (no font name) is truthy → blocks parent inheritance |
+
+---
+
+## Duplication Register
+
+| Field | In siteConfig? | In designSystem? | Correct home | Action |
+|---|---|---|---|---|
+| `logo` | ✅ (localizedImage) | ✅ (image) | siteConfig | Migrate DS logo → siteConfig in Phase 2 |
+| `logoLight` | ✅ (localizedImage) | ✅ (image) | siteConfig | Migrate DS logoLight → siteConfig in Phase 2 |
+| `logoHeightDesktop` | ✅ (new) | ✅ (exists) | siteConfig (override) | siteConfig takes precedence via `buildCssVars` |
+| `logoHeightMobile` | ✅ (new) | ✅ (exists) | siteConfig (override) | siteConfig takes precedence via `buildCssVars` |
+| `favicon` | ✅ (faviconSvg/Png) | ✅ | siteConfig | DS favicon kept for legacy, siteConfig takes precedence |
+| `openGraphImage` | ✅ | ✅ | siteConfig | DS field kept as fallback, siteConfig takes precedence |
+| `appleTouchIcon` | ✅ (new) | ✅ (exists in DS) | siteConfig | DS field is unused in metadata — siteConfig is correct home |
+
+---
+
+## Phase Status
+
+| Phase | Goal | Status |
+|---|---|---|
+| 0 | Baseline commit — siteConfig logoHeight, appleTouchIcon, SEO defaults | 🚧 In progress |
+| 1 | Data fixes — typography stubs, glass border, OG image upload, radius-btn | Pending |
+| 2 | Identity migration — logo/favicon from DS → siteConfig | Pending |
+| 3 | DS visibility contract — hide unused fields, document active fields | Pending |
+| 4 | Inheritance UI — show resolved values in Studio | Pending |
+| 5 | Cleanup — remove dead fields, consolidate duplicates | Pending |
+
+---
+
+## Migration Log
+
+| Date | Change | Files |
+|---|---|---|
+| 2026-06 | `youtubeChannelUrl` → `socialLinks[]` in Livener Sanity data | schema.ts, queries.ts |
+| 2026-06 | `openGraphImage` added to `DS_FIELDS_SELECTION` | queries.ts |
+| 2026-06 | `logoHeightDesktop/Mobile` added to DS branding | schema.ts, queries.ts, types.ts, resolver.ts |
+| 2026-06 | `appleTouchIcon`, `logoHeightDesktop/Mobile`, `seoDefaultTitle/Description` added to siteConfig | schema.ts, queries.ts, types.ts, layout.tsx |
+
+---
+
+## Rollback Notes
+
+All Phase 0 changes are additive — new fields with no required validation.
+Rollback: revert the 5 changed files. No Sanity data migration required.

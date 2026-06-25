@@ -73,7 +73,8 @@ export const siteConfigFaviconQuery = /* groq */ `
   *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
     faviconSvg { asset },
     faviconPng { asset },
-    openGraphImage { asset }
+    openGraphImage { asset },
+    appleTouchIcon { asset }
   }
 `
 
@@ -162,6 +163,10 @@ export const websiteSiteConfigQuery = /* groq */ `
     email,
     address,
     openGraphImage { asset },
+    logoHeightDesktop,
+    logoHeightMobile,
+    "seoDefaultTitle": ${loc('seoDefaultTitle')},
+    "seoDefaultDescription": ${loc('seoDefaultDescription')},
     "customDomain": *[_type == "project" && projectSlug == $projectSlug && defined(customDomain)][0].customDomain
   }
 `

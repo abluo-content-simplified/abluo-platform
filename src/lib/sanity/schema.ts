@@ -2513,6 +2513,7 @@ const siteConfigType = defineType({
   type: 'document',
   groups: [
     { name: 'branding', title: 'Branding' },
+    { name: 'seo', title: 'SEO Defaults' },
     { name: 'siteControls', title: 'Site Controls' },
     { name: 'locales', title: 'Languages' },
     { name: 'navigation', title: 'Navigation' },
@@ -2529,6 +2530,11 @@ const siteConfigType = defineType({
     defineField({ name: 'faviconSvg', title: 'Favicon (SVG)', type: 'image', group: 'branding' }),
     defineField({ name: 'faviconPng', title: 'Favicon (PNG)', type: 'image', group: 'branding' }),
     defineField({ name: 'openGraphImage', title: 'Open Graph Image', type: 'image', group: 'branding', description: 'Social sharing image • 1200 × 630 px • JPG preferred. Used as the default og:image on all pages that do not have a page-specific image.' }),
+    defineField({ name: 'appleTouchIcon', title: 'Apple Touch Icon', type: 'image', group: 'branding', description: 'Shown when the site is saved to an iPhone/iPad home screen • 180 × 180 px • PNG' }),
+    defineField({ name: 'logoHeightDesktop', title: 'Logo Height — Desktop (px)', type: 'number', group: 'branding', description: 'Max height of the logo in the header on desktop. Default: 36px.', initialValue: 36 }),
+    defineField({ name: 'logoHeightMobile', title: 'Logo Height — Mobile (px)', type: 'number', group: 'branding', description: 'Max height of the logo in the header on mobile. Default: 28px.', initialValue: 28 }),
+    defineField({ name: 'seoDefaultTitle', title: 'Default Page Title', type: 'localizedString', group: 'seo', description: 'Used as the <title> on pages that do not have a page-specific title. Falls back to Site Name.' }),
+    defineField({ name: 'seoDefaultDescription', title: 'Default Meta Description', type: 'localizedText', group: 'seo', description: 'Used as the meta description on pages that do not have a page-specific description. Falls back to Tagline.' }),
     defineField({
       name: 'backgroundGraphic',
       title: 'Brand Watermark',

@@ -505,6 +505,11 @@ export interface WebsiteSiteConfig {
   phone?: string
   email?: string
   address?: string
+  logoHeightDesktop?: number
+  logoHeightMobile?: number
+  seoDefaultTitle?: string
+  seoDefaultDescription?: string
+  appleTouchIcon?: { asset?: { _ref: string } }
   /** Canonical domain for this tenant, e.g. "livener.net". Derived from project.customDomain via GROQ join. */
   customDomain?: string
 }
