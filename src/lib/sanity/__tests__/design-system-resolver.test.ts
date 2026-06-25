@@ -701,4 +701,91 @@ describe('resolveDesignSystemInheritance', () => {
     })
   })
 
+  // ── Font stub inheritance guard (isFontDefined) ───────────────────────────
+  //
+  // A Sanity document can contain a partial font object such as
+  // { source: 'library' } with no libraryFont name set. This happens when a
+  // user opens the Studio font picker, selects a source, and saves without
+  // completing the selection. The object is truthy, so a naive `||` check
+  // treats it as a valid override and silently discards the parent font.
+  //
+  // isFontDefined() guards against this by requiring an actual usable name.
+
+  describe('font stub guard — incomplete font objects do not shadow parent', () => {
+    const parentWithFonts: any = {
+      ...abluo_base,
+      _id: 'parent-with-fonts',
+      parentDesignSystem: null,
+      typography: {
+        headingFont: { source: 'library', libraryFont: 'Geist' },
+        bodyFont:    { source: 'library', libraryFont: 'Geist' },
+      },
+    }
+
+    it('child with { source: "library" } stub (no libraryFont) inherits parent headingFont', async () => {
+      const child: any = {
+        _id: 'child-stub',
+        parentDesignSystem: { _ref: 'parent-with-fonts', _type: 'reference' },
+        typography: {
+          headingFont: { source: 'library' }, // stub — no libraryFont
+        },
+      }
+      const fetch = makeFetchFn({ 'parent-with-fonts': parentWithFonts })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.typography?.headingFont?.libraryFont).toBe('Geist')
+      expect(result?.typography?.headingFont?.source).toBe('library')
+    })
+
+    it('child with { source: "google" } stub (no googleFont) inherits parent bodyFont', async () => {
+      const child: any = {
+        _id: 'child-google-stub',
+        parentDesignSystem: { _ref: 'parent-with-fonts', _type: 'reference' },
+        typography: {
+          bodyFont: { source: 'google' }, // stub — no googleFont
+        },
+      }
+      const fetch = makeFetchFn({ 'parent-with-fonts': parentWithFonts })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.typography?.bodyFont?.libraryFont).toBe('Geist')
+    })
+
+    it('child with empty string libraryFont inherits parent headingFont', async () => {
+      const child: any = {
+        _id: 'child-empty-str',
+        parentDesignSystem: { _ref: 'parent-with-fonts', _type: 'reference' },
+        typography: {
+          headingFont: { source: 'library', libraryFont: '' },
+        },
+      }
+      const fetch = makeFetchFn({ 'parent-with-fonts': parentWithFonts })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.typography?.headingFont?.libraryFont).toBe('Geist')
+    })
+
+    it('child with a complete font definition overrides parent', async () => {
+      const child: any = {
+        _id: 'child-complete',
+        parentDesignSystem: { _ref: 'parent-with-fonts', _type: 'reference' },
+        typography: {
+          headingFont: { source: 'google', googleFont: 'Playfair Display' },
+        },
+      }
+      const fetch = makeFetchFn({ 'parent-with-fonts': parentWithFonts })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.typography?.headingFont?.googleFont).toBe('Playfair Display')
+      expect(result?.typography?.headingFont?.source).toBe('google')
+    })
+
+    it('child with undefined typography inherits both parent fonts', async () => {
+      const child: any = {
+        _id: 'child-no-typo',
+        parentDesignSystem: { _ref: 'parent-with-fonts', _type: 'reference' },
+      }
+      const fetch = makeFetchFn({ 'parent-with-fonts': parentWithFonts })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.typography?.headingFont?.libraryFont).toBe('Geist')
+      expect(result?.typography?.bodyFont?.libraryFont).toBe('Geist')
+    })
+  })
+
 })

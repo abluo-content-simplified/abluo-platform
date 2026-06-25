@@ -187,11 +187,12 @@ Fields that violate this boundary are tracked in the Duplication Register below.
 
 ## Known Bugs
 
-| Bug | Severity | Location | Fix |
-|---|---|---|---|
-| `--radius-btn` hardcoded to `12px` | Medium | `buildCssVars()` in `layout.tsx` | Wire to `buttons.primary.borderRadius` |
-| Glass border requires both `borderWidth` + `borderColor` | Low | `getGlassStyles()` in `surfaces.ts` | Make border optional — width alone should work |
-| Typography partial stubs shadow parent font | Medium | DS resolver `mergeDesignSystems()` line 125 | Stub `{ source: 'library' }` (no font name) is truthy → blocks parent inheritance |
+| Bug | Severity | Location | Status | Fix |
+|---|---|---|---|---|
+| Typography partial stubs shadow parent font | Medium | DS resolver `mergeDesignSystems()` | ✅ Fixed Phase 1.1 | `isFontDefined()` guard — stub `{ source: 'library' }` with no name falls through to parent |
+| `--radius-btn` hardcoded to `12px` | Medium | `buildCssVars()` in `layout.tsx` | Pending Phase 1.2 | Wire to `buttons.primary.borderRadius` |
+| Glass border requires both `borderWidth` + `borderColor` | Low | `getGlassStyles()` in `surfaces.ts` | Pending Phase 1.3 | Make border optional — width alone should work |
+| OG image in parent DS not inherited by child | Medium | DS resolver `mergeDesignSystems()` | Pending Phase 1.4 | siteConfig is the correct home — upload OG image to siteConfig |
 
 ---
 
@@ -230,6 +231,7 @@ Fields that violate this boundary are tracked in the Duplication Register below.
 | 2026-06 | `openGraphImage` added to `DS_FIELDS_SELECTION` | queries.ts |
 | 2026-06 | `logoHeightDesktop/Mobile` added to DS branding | schema.ts, queries.ts, types.ts, resolver.ts |
 | 2026-06 | `appleTouchIcon`, `logoHeightDesktop/Mobile`, `seoDefaultTitle/Description` added to siteConfig | schema.ts, queries.ts, types.ts, layout.tsx |
+| 2026-06 | Phase 1.1: `isFontDefined()` guard in DS resolver prevents incomplete font stubs from shadowing parent fonts | design-system-resolver.ts, resolver.test.ts |
 
 ---
 
