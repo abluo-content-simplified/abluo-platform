@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { ObjectInputProps, PatchEvent, set, unset, useClient } from 'sanity'
 import { DesignSystemPicker, type DSDoc } from './DesignSystemPicker'
+import { MODULE_REGISTRY } from '../../modules'
 
 interface SanityClientDoc {
   _id: string
@@ -28,6 +29,7 @@ interface ProjectDocument {
   clientRef?: { _type: 'reference'; _ref: string }
   customDomain?: string
   designSystemRef?: { _type: 'reference'; _ref: string }
+  enabledModules?: string[]
 }
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
@@ -319,6 +321,48 @@ export function ProjectLinker(props: ObjectInputProps) {
             onAssign={handleAssignDS}
             onRemove={handleRemoveDS}
           />
+        </div>
+
+        <Divider />
+
+        {/* ── Modules ───────────────────────────────────────────── */}
+        {/* ADR-011 entry point: module management UI will replace this section. */}
+        {/* For now, this is a read-only display of the project's enabled modules. */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{
+            fontSize: 12,
+            color: '#666',
+            fontWeight: 500,
+            marginBottom: 8,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          }}>
+            Modules
+          </div>
+          {doc.enabledModules && doc.enabledModules.length > 0 ? (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {doc.enabledModules.map((mod) => (
+                <span
+                  key={mod}
+                  style={{
+                    padding: '4px 12px',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    borderRadius: 4,
+                    background: '#f0f0f0',
+                    color: '#333',
+                    border: '1px solid #e0e0e0',
+                  }}
+                >
+                  {MODULE_REGISTRY.find((m) => m.id === mod)?.label ?? mod}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: '#999' }}>
+              No modules enabled
+            </div>
+          )}
         </div>
 
         <Divider />

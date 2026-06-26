@@ -1,6 +1,7 @@
 import { defineConfig } from 'sanity'
 import { structureTool } from 'sanity/structure'
 import { schemaTypes, initialValueTemplates } from './src/lib/sanity/schema'
+import { MODULE_REGISTRY } from './src/lib/modules'
 import { DesignSystemPreview } from './src/sanity/components/DesignSystemPreview'
 import { DesignSystemAssignPane } from './src/sanity/components/DesignSystemAssignPane'
 import { ExportDesignSystemAction } from './src/sanity/actions/ExportDesignSystemAction'
@@ -24,7 +25,7 @@ export default defineConfig({
       structure: async (S, context) => {
         const client = context.getClient({ apiVersion: '2026-05-21' })
 
-        // ── Fetch clients + projects ───────────────────────────────────────────
+        // ── Fetch clients + projects (with enabled modules) ───────────────────
         const clients = await client.fetch<{
           _id: string
           displayName: string
@@ -34,6 +35,7 @@ export default defineConfig({
             projectName: string
             projectSlug: string
             designSystemId?: string
+            enabledModules: string[]
           }[]
         }[]>(
           `*[_type == "client" && !(_id in path("drafts.**"))] | order(displayName asc) {
@@ -45,9 +47,55 @@ export default defineConfig({
               projectName,
               projectSlug,
               "designSystemId": designSystemRef._ref,
+              "enabledModules": coalesce(enabledModules, [])
             }
           }`
         )
+
+        // ── Fetch all page-type documents (for flat Pages section) ─────────────
+        // Includes page, blogPage, eventsPage, livePage across all projects.
+        // Used to build individual S.document() items — no intermediate folders.
+        //
+        // ADMIN UI LANGUAGE (ADR-010):
+        // displayTitle is resolved English-first (coalesce en → it). This is the
+        // Admin UI language, not the project's content locale. Studio navigation
+        // labels must remain stable regardless of which content language the editor
+        // is currently editing — they are not website content.
+        //
+        // English is the current Admin UI language. When the Admin UI language
+        // becomes user-configurable, this coalesce should become:
+        //   coalesce(title[$adminLocale], title.en, title.it, …)
+        // The English-first fallback is correct interim behaviour, not a hardcoded
+        // permanent constraint.
+        //
+        // NOTE: displayTitle is used only for general `page` documents. Module
+        // singleton pages (blogPage, eventsPage, livePage) use MODULE_REGISTRY
+        // labels and ignore displayTitle entirely.
+        const allPageDocs = await client.fetch<{
+          _id: string
+          _type: string
+          displayTitle: string | null
+          projectSlug: string
+        }[]>(
+          `*[
+            _type in ["page", "blogPage", "eventsPage", "livePage"]
+            && !(_id in path("drafts.**"))
+            && defined(projectSlug)
+          ] | order(_createdAt asc) {
+            _id,
+            _type,
+            "displayTitle": coalesce(title.en, title.it, heroTitle.en, heroTitle.it),
+            projectSlug
+          }`
+        )
+
+        // Index page docs by projectSlug for O(1) lookup per project
+        const pageDocsByProject = new Map<string, typeof allPageDocs>()
+        for (const doc of allPageDocs) {
+          const list = pageDocsByProject.get(doc.projectSlug) ?? []
+          list.push(doc)
+          pageDocsByProject.set(doc.projectSlug, list)
+        }
 
         // ── Fetch all design systems ───────────────────────────────────────────
         const designSystems = await client.fetch<{
@@ -61,6 +109,11 @@ export default defineConfig({
           }`
         )
 
+        // ── Module registry ───────────────────────────────────────────────────
+        // Imported from src/lib/modules/registry.ts (ADR-011 Phase A1).
+        // MODULE_REGISTRY is now a platform-level export accessible to all surfaces.
+        // See registry.ts for the full definition and documentation.
+
         // ── Design system pane builder ────────────────────────────────────────
         function designSystemPane(documentId: string) {
           return S.document()
@@ -72,6 +125,103 @@ export default defineConfig({
             ])
         }
 
+        // ── Pages section builder ─────────────────────────────────────────────
+        // Produces a flat list of individual document items — no folders, no
+        // document-type labels. Schema types are an implementation detail.
+        //
+        // Layout:
+        //   1. General pages (schema type: "page") — in creation order
+        //   2. Module singleton pages — in module registry order, enabled modules only
+        //
+        // Each item uses S.document() with the actual document ID so the editor
+        // lands directly on the document with a single click.
+        //
+        // Fallback for a module page that has no published document yet:
+        //   S.documentList() scoped to that type — shows a "Create new" button.
+        function buildPagesItems(
+          slug: string,
+          enabledModules: string[],
+          pageDocs: typeof allPageDocs
+        ) {
+          const items: ReturnType<typeof S.listItem>[] = []
+
+          // 1. General pages
+          // STUDIO LABEL FOR GENERAL PAGES (ADR-010):
+          // General `page` documents are created by editors and currently use
+          // their `title` content field as the Studio navigation label. This is
+          // an intentional choice — the editor named the page "Contact", so
+          // the Studio nav shows "Contact".
+          //
+          // This is NOT a permanent architectural rule. If Abluo introduces an
+          // `internalTitle` or `studioLabel` field on `page` documents (to decouple
+          // the Studio label from the website H1), switch to using that field here
+          // instead of displayTitle. The comment is the signal to future implementors.
+          const generalPages = pageDocs.filter((d) => d._type === 'page')
+          for (const p of generalPages) {
+            items.push(
+              S.listItem()
+                .id(`page-${p._id}`)
+                .title(p.displayTitle ?? 'Untitled')
+                .child(S.document().documentId(p._id).schemaType('page'))
+            )
+          }
+
+          // 2. Module singleton pages (enabled modules only)
+          const enabledDefs = MODULE_REGISTRY.filter((m) => enabledModules.includes(m.id))
+          for (const mod of enabledDefs) {
+            const pageType = mod.platformContract.pageType
+            if (!pageType) continue
+            const doc = pageDocs.find((d) => d._type === pageType)
+            if (doc) {
+              // Document exists — open directly (one click)
+              items.push(
+                S.listItem()
+                  .id(`${slug}-${mod.id}-page`)
+                  .title(mod.label)
+                  .child(S.document().documentId(doc._id).schemaType(pageType))
+              )
+            } else {
+              // Document not yet created — show a list that offers "New document"
+              items.push(
+                S.listItem()
+                  .id(`${slug}-${mod.id}-page`)
+                  .title(mod.label)
+                  .child(
+                    S.documentList()
+                      .title(mod.label)
+                      .schemaType(pageType)
+                      .apiVersion('2026-05-21')
+                      .filter(`_type == "${pageType}" && projectSlug == $slug`)
+                      .params({ slug })
+                      .initialValueTemplates([
+                        S.initialValueTemplateItem(`${mod.id}PageProjectOwned`, { projectSlug: slug }),
+                      ])
+                  )
+              )
+            }
+          }
+
+          return items
+        }
+
+        // ── Collections section builder ───────────────────────────────────────
+        // Only includes collection groups for enabled modules.
+        // Inserts dividers between groups automatically.
+        function buildCollectionsItems(slug: string, enabledModules: string[]) {
+          const enabledDefs = MODULE_REGISTRY.filter((m) => enabledModules.includes(m.id))
+          const groups: ReturnType<typeof S.listItem>[][] = enabledDefs
+            .map((m) => m.platformContract.collectionItems({ slug, S }))
+            .filter((g) => g.length > 0)
+
+          // Interleave dividers between groups
+          const items: (ReturnType<typeof S.listItem> | ReturnType<typeof S.divider>)[] = []
+          for (let i = 0; i < groups.length; i++) {
+            if (i > 0) items.push(S.divider())
+            items.push(...groups[i])
+          }
+          return items
+        }
+
         // ── Client items ──────────────────────────────────────────────────────
         const clientItems = clients.map((clientDoc) => {
           const clientLabel = clientDoc.displayName ?? clientDoc.tenantSlug
@@ -81,7 +231,10 @@ export default defineConfig({
             const slug = project.projectSlug
             const projectLabel = project.projectName ?? slug
             const designSystemId = project.designSystemId
+            const enabledModules = project.enabledModules
+            const projectPageDocs = pageDocsByProject.get(slug) ?? []
 
+            const collectionItems = buildCollectionsItems(slug, enabledModules)
 
             return S.listItem()
               .id(`project-${slug}`)
@@ -91,21 +244,54 @@ export default defineConfig({
                   .id(`project-${slug}-list`)
                   .title(projectLabel)
                   .items([
+
+                    // ── Pages ────────────────────────────────────────────────
+                    // Flat list: every page in one place, no schema-type folders.
                     S.listItem()
-                      .id(`${slug}-settings`)
-                      .title('Settings')
+                      .id(`${slug}-pages`)
+                      .title('Pages')
                       .child(
-                        S.documentList()
-                          .title('Settings')
-                          .schemaType('siteConfig')
-                          .apiVersion('2026-05-21')
-                          .filter(`_type == "siteConfig" && projectSlug == $slug`)
-                          .params({ slug })
-                          .initialValueTemplates([
-                            S.initialValueTemplateItem('siteConfigProjectOwned', { projectSlug: slug }),
-                          ])
+                        S.list()
+                          .id(`${slug}-pages-list`)
+                          .title('Pages')
+                          .items(buildPagesItems(slug, enabledModules, projectPageDocs))
                       ),
 
+                    S.divider(),
+
+                    // ── Collections ──────────────────────────────────────────
+                    // Only modules enabled for this project.
+                    // Grouped by module — add new modules to MODULE_REGISTRY above.
+                    ...(collectionItems.length > 0 ? [
+                      S.listItem()
+                        .id(`${slug}-collections`)
+                        .title('Collections')
+                        .child(
+                          S.list()
+                            .id(`${slug}-collections-list`)
+                            .title('Collections')
+                            .items(collectionItems)
+                        ),
+                      S.divider(),
+                    ] : []),
+
+                    // ── Media ────────────────────────────────────────────────
+                    S.listItem()
+                      .id(`${slug}-media`)
+                      .title('Media')
+                      .schemaType('mediaAsset')
+                      .child(
+                        S.documentList()
+                          .title('Media')
+                          .apiVersion('2026-05-21')
+                          .filter(`_type == "mediaAsset" && tenant._ref == $clientId`)
+                          .params({ clientId })
+                          .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
+                      ),
+
+                    S.divider(),
+
+                    // ── Design System ────────────────────────────────────────
                     S.listItem()
                       .id(`${slug}-design`)
                       .title('Design System')
@@ -130,131 +316,40 @@ export default defineConfig({
                         ),
                     ] : []),
 
-                    S.listItem()
-                      .id(`${slug}-pages`)
-                      .title('Pages')
-                      .child(
-                        S.list()
-                          .id(`${slug}-pages-list`)
-                          .title('Pages')
-                          .items([
-                            S.listItem()
-                              .id(`${slug}-pages-all`)
-                              .title('Pages')
-                              .child(
-                                S.documentList()
-                                  .title('Pages')
-                                  .schemaType('page')
-                                  .apiVersion('2026-05-21')
-                                  .filter(`_type == "page" && projectSlug == $slug`)
-                                  .params({ slug })
-                                  .initialValueTemplates([
-                                    S.initialValueTemplateItem('pageProjectOwned', { projectSlug: slug }),
-                                  ])
-                              ),
-                            S.listItem()
-                              .id(`${slug}-live-page`)
-                              .title('Live Page')
-                              .child(
-                                S.documentList()
-                                  .title('Live Page')
-                                  .schemaType('livePage')
-                                  .apiVersion('2026-05-21')
-                                  .filter(`_type == "livePage" && projectSlug == $slug`)
-                                  .params({ slug })
-                                  .initialValueTemplates([
-                                    S.initialValueTemplateItem('livePageProjectOwned', { projectSlug: slug }),
-                                  ])
-                              ),
-                            S.listItem()
-                              .id(`${slug}-events-page`)
-                              .title('Events Page')
-                              .child(
-                                S.documentList()
-                                  .title('Events Page')
-                                  .schemaType('eventsPage')
-                                  .apiVersion('2026-05-21')
-                                  .filter(`_type == "eventsPage" && projectSlug == $slug`)
-                                  .params({ slug })
-                                  .initialValueTemplates([
-                                    S.initialValueTemplateItem('eventsPageProjectOwned', { projectSlug: slug }),
-                                  ])
-                              ),
-                          ])
-                      ),
+                    S.divider(),
 
+                    // ── Website Settings ─────────────────────────────────────
+                    // siteConfig: website-specific configuration — identity, SEO,
+                    // contact info, locales, nav, social links, website behaviour.
                     S.listItem()
-                      .id(`${slug}-events`)
-                      .title('Events')
+                      .id(`${slug}-website-settings`)
+                      .title('Website Settings')
                       .child(
                         S.documentList()
-                          .title('Events')
-                          .schemaType('event')
+                          .title('Website Settings')
+                          .schemaType('siteConfig')
                           .apiVersion('2026-05-21')
-                          .filter(`_type == "event" && projectSlug == $slug`)
+                          .filter(`_type == "siteConfig" && projectSlug == $slug`)
                           .params({ slug })
-                          .defaultOrdering([{ field: 'startDate', direction: 'desc' }])
                           .initialValueTemplates([
-                            S.initialValueTemplateItem('eventProjectOwned', { projectSlug: slug }),
+                            S.initialValueTemplateItem('siteConfigProjectOwned', { projectSlug: slug }),
                           ])
                       ),
 
+                    // ── Project Settings ─────────────────────────────────────
+                    // project document: platform-level configuration — modules,
+                    // design system, tenant relationship, domains, project status.
+                    // Future home for billing and module management (ADR-011).
                     S.listItem()
-                      .id(`${slug}-blog`)
-                      .title('Blog')
+                      .id(`${slug}-project-settings`)
+                      .title('Project Settings')
                       .child(
-                        S.list()
-                          .id(`${slug}-blog-list`)
-                          .title('Blog')
-                          .items([
-                            S.listItem()
-                              .id(`${slug}-posts`)
-                              .title('Posts')
-                              .child(
-                                S.documentList()
-                                  .title('Blog Posts')
-                                  .schemaType('post')
-                                  .apiVersion('2026-05-21')
-                                  .filter(`_type == "post" && projectSlug == $slug`)
-                                  .params({ slug })
-                                  .defaultOrdering([
-                                    { field: 'featured', direction: 'desc' },
-                                    { field: 'publishedAt', direction: 'desc' },
-                                  ])
-                                  .initialValueTemplates([
-                                    S.initialValueTemplateItem('postProjectOwned', { projectSlug: slug }),
-                                  ])
-                              ),
-                            S.listItem()
-                              .id(`${slug}-categories`)
-                              .title('Categories')
-                              .child(
-                                S.documentList()
-                                  .title('Categories')
-                                  .schemaType('blogCategory')
-                                  .apiVersion('2026-05-21')
-                                  .filter(`_type == "blogCategory" && projectSlug == $slug`)
-                                  .params({ slug })
-                                  .initialValueTemplates([
-                                    S.initialValueTemplateItem('blogCategoryProjectOwned', { projectSlug: slug }),
-                                  ])
-                              ),
-                            S.listItem()
-                              .id(`${slug}-authors`)
-                              .title('Authors')
-                              .child(
-                                S.documentList()
-                                  .title('Authors')
-                                  .schemaType('postAuthor')
-                                  .apiVersion('2026-05-21')
-                                  .filter(`_type == "postAuthor" && projectSlug == $slug`)
-                                  .params({ slug })
-                                  .initialValueTemplates([
-                                    S.initialValueTemplateItem('postAuthorProjectOwned', { projectSlug: slug }),
-                                  ])
-                              ),
-                          ])
+                        S.document()
+                          .documentId(project._id)
+                          .schemaType('project')
+                          .title('Project Settings')
                       ),
+
                   ])
               )
           })
@@ -266,24 +361,7 @@ export default defineConfig({
               S.list()
                 .id(`client-${clientId}-list`)
                 .title(clientLabel)
-                .items([
-                  ...projectItems,
-
-                  S.divider(),
-
-                  S.listItem()
-                    .id(`${clientDoc.tenantSlug}-media`)
-                    .title('Media Library')
-                    .schemaType('mediaAsset')
-                    .child(
-                      S.documentList()
-                        .title('Media Library')
-                        .apiVersion('2026-05-21')
-                        .filter(`_type == "mediaAsset" && tenant._ref == $clientId`)
-                        .params({ clientId })
-                        .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
-                    ),
-                ])
+                .items(projectItems)
             )
         })
 
@@ -428,6 +506,15 @@ export default defineConfig({
                           .apiVersion('2026-05-21')
                           .filter('_type == "eventsPage" && (projectSlug == null || projectSlug == "")')
                       ),
+                    S.listItem()
+                      .id('unassigned-blogpages')
+                      .title('Blog Pages without Project')
+                      .child(
+                        S.documentList()
+                          .title('Unassigned Blog Pages')
+                          .apiVersion('2026-05-21')
+                          .filter('_type == "blogPage" && (projectSlug == null || projectSlug == "")')
+                      ),
                   ])
               ),
 
@@ -464,6 +551,6 @@ export default defineConfig({
     // Note: Sanity always re-sorts the menu alphabetically in the UI layer —
     // custom ordering via newDocumentOptions is not possible. Filter only.
     newDocumentOptions: (prev) =>
-      prev.filter((opt) => !['homePage', 'homePageProjectOwned', 'livePageProjectOwned', 'eventsPageProjectOwned'].includes(opt.templateId)),
+      prev.filter((opt) => !['homePage', 'homePageProjectOwned', 'livePageProjectOwned', 'eventsPageProjectOwned', 'blogPageProjectOwned'].includes(opt.templateId)),
   },
 })

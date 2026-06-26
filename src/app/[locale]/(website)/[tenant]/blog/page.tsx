@@ -27,10 +27,11 @@ import {
   localeConfigQuery,
   websiteSiteConfigQuery,
   designSystemQuery,
+  blogPageQuery,
 } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
-import type { Post, LocaleConfig, SupportedLocale, DesignSystem, WebsiteSiteConfig } from '@/lib/sanity/types'
+import type { Post, LocaleConfig, SupportedLocale, DesignSystem, WebsiteSiteConfig, BlogPage } from '@/lib/sanity/types'
 import { imageUrl } from '@/lib/sanity/image'
 import { SlideUp, FadeIn } from '@/components/animation'
 import { PostCard } from '@/components/blog/PostCard'
@@ -53,8 +54,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
   const supportedLocales = localeConfig?.supportedLocales ?? [defaultLocale]
 
-  const config = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
+  const [config, blogPage] = await Promise.all([
+    fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale }),
+    fetchForTenant<BlogPage>(blogPageQuery, { locale, defaultLocale }),
+  ])
+
+  // Fallback to hardcoded strings while a blogPage document is being created.
   const msg = getNewsPageMessages(locale)
+  const pageHeading = blogPage?.heroTitle ?? msg.title
+  const pageDescription = blogPage?.seoDescription ?? blogPage?.heroSubtitle ?? msg.subtitle
 
   const canonicalBase = config?.customDomain ? `https://${config.customDomain}` : null
   const canonical = canonicalBase ? `${canonicalBase}/${locale}/${tenantId}/blog` : undefined
@@ -67,20 +75,19 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }
   }
 
-  const pageTitle = config?.siteName
-    ? `${msg.title} — ${config.siteName}`
-    : msg.title
+  const metaTitle = blogPage?.seoTitle
+    ?? (config?.siteName ? `${pageHeading} — ${config.siteName}` : pageHeading)
 
   return {
-    title: pageTitle,
-    description: msg.subtitle,
+    title: metaTitle,
+    description: pageDescription,
     alternates: {
       canonical: isProduction() ? canonical : undefined,
       languages: !isDev() && Object.keys(languages).length > 0 ? languages : undefined,
     },
     openGraph: {
-      title: pageTitle,
-      description: msg.subtitle,
+      title: metaTitle,
+      description: pageDescription,
       url: canonical,
       siteName: config?.siteName ?? tenantId,
       type: 'website',
@@ -232,10 +239,10 @@ export default async function NewsListingPage({ params }: PageProps) {
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  // Fetch all posts + design system in parallel.
+  // Fetch posts, design system, and blogPage in parallel.
   // limit=1000 / offset=0 effectively fetches all posts in V1.
   // When pagination is needed, pass limit/offset from searchParams.
-  const [allPosts, designSystem] = await Promise.all([
+  const [allPosts, designSystem, blogPage] = await Promise.all([
     fetchForTenant<Post[]>(postsQuery, {
       locale: locale as SupportedLocale,
       defaultLocale,
@@ -246,10 +253,20 @@ export default async function NewsListingPage({ params }: PageProps) {
       const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {})
       return resolveDesignSystemInheritance(raw, fetchDesignSystemById)
     })(),
+    fetchForTenant<BlogPage>(blogPageQuery, { locale, defaultLocale }),
   ])
 
   const posts = allPosts ?? []
+
+  // Hardcoded strings are the fallback while a blogPage document has not yet
+  // been created for this tenant. Once a document exists, Sanity is the source.
+  // @see news-page-messages.ts — marked deprecated; remove when all tenants have a blogPage document.
   const msg = getNewsPageMessages(locale)
+
+  // Prefer Sanity content; fall back to hardcoded locale strings.
+  const heroEyebrow  = blogPage?.eyebrow      ?? msg.eyebrow
+  const heroTitle    = blogPage?.heroTitle    ?? msg.title
+  const heroSubtitle = blogPage?.heroSubtitle ?? msg.subtitle
 
   // Motion tokens
   const m = designSystem?.motion
@@ -272,13 +289,13 @@ export default async function NewsListingPage({ params }: PageProps) {
             className="mb-4 text-xs font-semibold uppercase tracking-[0.2em]"
             style={{ color: 'var(--color-text-muted)' }}
           >
-            {msg.eyebrow}
+            {heroEyebrow}
           </p>
           <h1
             className="text-[clamp(40px,7vw,64px)] font-bold leading-[1.05] tracking-tight"
             style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
           >
-            {msg.title}
+            {heroTitle}
           </h1>
         </SlideUp>
 
@@ -287,7 +304,7 @@ export default async function NewsListingPage({ params }: PageProps) {
             className="mt-4 max-w-xl text-base leading-relaxed"
             style={{ color: 'var(--color-text-secondary)' }}
           >
-            {msg.subtitle}
+            {heroSubtitle}
           </p>
         </SlideUp>
 

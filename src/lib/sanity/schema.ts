@@ -1669,6 +1669,27 @@ const projectType = defineType({
       description: 'The design system this project uses for colors, typography, and spacing',
       hidden: true, // managed by ProjectLinker UI, not the default form
     }),
+    // ── Module configuration (admin-managed) ────────────────────────────────
+    // Controls which modules are visible in Studio for this project.
+    // Set by the platform admin — never exposed to clients.
+    //
+    // Hidden from the default form: displayed via the dedicated Modules section
+    // in ProjectLinker, which is the future entry point for ADR-011 (Module
+    // Management). Editing is currently done via MCP or direct API patch.
+    defineField({
+      name: 'enabledModules',
+      title: 'Modules',
+      type: 'array',
+      of: [defineArrayMember({ type: 'string' })],
+      options: {
+        list: [
+          { title: 'Blog', value: 'blog' },
+          { title: 'Events', value: 'events' },
+          { title: 'Live', value: 'live' },
+        ],
+      },
+      hidden: true, // rendered via custom Modules section in ProjectLinker
+    }),
   ],
   preview: {
     select: { title: 'projectName', subtitle: 'projectSlug' },
@@ -2513,6 +2534,7 @@ const siteConfigType = defineType({
   type: 'document',
   groups: [
     { name: 'branding', title: 'Branding' },
+    { name: 'seo', title: 'SEO Defaults' },
     { name: 'siteControls', title: 'Site Controls' },
     { name: 'locales', title: 'Languages' },
     { name: 'navigation', title: 'Navigation' },
@@ -2529,6 +2551,11 @@ const siteConfigType = defineType({
     defineField({ name: 'faviconSvg', title: 'Favicon (SVG)', type: 'image', group: 'branding' }),
     defineField({ name: 'faviconPng', title: 'Favicon (PNG)', type: 'image', group: 'branding' }),
     defineField({ name: 'openGraphImage', title: 'Open Graph Image', type: 'image', group: 'branding', description: 'Social sharing image • 1200 × 630 px • JPG preferred. Used as the default og:image on all pages that do not have a page-specific image.' }),
+    defineField({ name: 'appleTouchIcon', title: 'Apple Touch Icon', type: 'image', group: 'branding', description: 'Shown when the site is saved to an iPhone/iPad home screen • 180 × 180 px • PNG' }),
+    defineField({ name: 'logoHeightDesktop', title: 'Logo Height — Desktop (px)', type: 'number', group: 'branding', description: 'Max height of the logo in the header on desktop. Default: 36px.', initialValue: 36 }),
+    defineField({ name: 'logoHeightMobile', title: 'Logo Height — Mobile (px)', type: 'number', group: 'branding', description: 'Max height of the logo in the header on mobile. Default: 28px.', initialValue: 28 }),
+    defineField({ name: 'seoDefaultTitle', title: 'Default Page Title', type: 'localizedString', group: 'seo', description: 'Used as the <title> on pages that do not have a page-specific title. Falls back to Site Name.' }),
+    defineField({ name: 'seoDefaultDescription', title: 'Default Meta Description', type: 'localizedText', group: 'seo', description: 'Used as the meta description on pages that do not have a page-specific description. Falls back to Tagline.' }),
     defineField({
       name: 'backgroundGraphic',
       title: 'Brand Watermark',
@@ -2763,6 +2790,52 @@ const eventsPageType = defineType({
   preview: {
     select: { slug: 'projectSlug' },
     prepare: ({ slug }) => ({ title: 'Events Page', subtitle: slug }),
+  },
+})
+
+// ─── Blog Page ────────────────────────────────────────────────────────────────
+// Singleton document — one per project.
+// Controls the hero, intro text, and SEO of the /blog listing route.
+// Never section-composed: the page has a fixed rendering contract.
+// Managed by Abluo admin; hidden from the "New Document" menu (ADR-009).
+
+const blogPageType = defineType({
+  name: 'blogPage',
+  title: 'Blog Page',
+  type: 'document',
+  groups: [
+    { name: 'content', title: 'Content', default: true },
+    { name: 'meta', title: 'SEO / Meta' },
+  ],
+  fields: [
+    projectSlugField,
+    defineField({
+      name: 'eyebrow',
+      title: 'Eyebrow',
+      type: 'localizedString',
+      group: 'content',
+      description: 'Small label above the headline (e.g. "Latest Updates")',
+    }),
+    defineField({
+      name: 'heroTitle',
+      title: 'Title',
+      type: 'localizedString',
+      group: 'content',
+      description: 'Page headline (e.g. "News & Announcements")',
+    }),
+    defineField({
+      name: 'heroSubtitle',
+      title: 'Subtitle',
+      type: 'localizedText',
+      group: 'content',
+      description: 'Short intro beneath the headline',
+    }),
+    defineField({ name: 'seoTitle', title: 'SEO Title', type: 'localizedString', group: 'meta' }),
+    defineField({ name: 'seoDescription', title: 'SEO Description', type: 'localizedText', group: 'meta' }),
+  ],
+  preview: {
+    select: { slug: 'projectSlug' },
+    prepare: ({ slug }) => ({ title: 'Blog Page', subtitle: slug }),
   },
 })
 
@@ -3474,6 +3547,15 @@ export const initialValueTemplates = [
       projectSlug: params?.projectSlug,
     }),
   },
+  {
+    id: 'blogPageProjectOwned',
+    title: 'Blog Page',
+    schemaType: 'blogPage',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+    }),
+  },
 ]
 
 // ─── Export ───────────────────────────────────────────────────────────────────
@@ -3540,4 +3622,5 @@ export const schemaTypes = [
   eventType,
   livePageType,
   eventsPageType,
+  blogPageType,
 ]

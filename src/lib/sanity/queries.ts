@@ -73,7 +73,8 @@ export const siteConfigFaviconQuery = /* groq */ `
   *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
     faviconSvg { asset },
     faviconPng { asset },
-    openGraphImage { asset }
+    openGraphImage { asset },
+    appleTouchIcon { asset }
   }
 `
 
@@ -162,6 +163,10 @@ export const websiteSiteConfigQuery = /* groq */ `
     email,
     address,
     openGraphImage { asset },
+    logoHeightDesktop,
+    logoHeightMobile,
+    "seoDefaultTitle": ${loc('seoDefaultTitle')},
+    "seoDefaultDescription": ${loc('seoDefaultDescription')},
     "customDomain": *[_type == "project" && projectSlug == $projectSlug && defined(customDomain)][0].customDomain
   }
 `
@@ -916,6 +921,19 @@ export const eventsPageQuery = /* groq */ `
     "introText": ${loc('introText')},
     ${locImage('heroImage')},
     cloudflareVideoId,
+    "seoTitle": ${loc('seoTitle')},
+    "seoDescription": ${loc('seoDescription')}
+  }
+`
+
+// ─── Blog Page ────────────────────────────────────────────────────────────────
+
+export const blogPageQuery = /* groq */ `
+  *[_type == "blogPage" && projectSlug == $projectSlug][0] {
+    _id,
+    "eyebrow": ${loc('eyebrow')},
+    "heroTitle": ${loc('heroTitle')},
+    "heroSubtitle": ${loc('heroSubtitle')},
     "seoTitle": ${loc('seoTitle')},
     "seoDescription": ${loc('seoDescription')}
   }

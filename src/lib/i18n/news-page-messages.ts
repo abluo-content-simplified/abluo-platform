@@ -1,12 +1,14 @@
 /**
- * NewsPage UI Messages
+ * NewsPage UI Messages — DEPRECATED
  *
- * Locale-aware strings for the News & Announcements listing page.
- * These are page-level UI strings, not tenant content, so they live
- * in locale dictionaries rather than Sanity.
+ * @deprecated
+ * These strings are the fallback for tenants that do not yet have a `blogPage`
+ * Sanity document. Once a `blogPage` document exists for a tenant, Sanity is
+ * the source of truth for eyebrow, title, and subtitle (ADR-009, Rule 3).
  *
- * FUTURE: replace with next-intl `getTranslations` once the messages/
- * directory is the authoritative source for all UI strings.
+ * Remove this file when all tenants have a published `blogPage` document.
+ * The remaining UI chrome (countLabel, readArticle, emptyHeading, emptyBody,
+ * latestArticles) should migrate to next-intl locale dictionaries at that point.
  */
 
 export interface NewsPageMessages {

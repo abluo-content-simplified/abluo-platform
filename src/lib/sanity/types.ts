@@ -505,6 +505,11 @@ export interface WebsiteSiteConfig {
   phone?: string
   email?: string
   address?: string
+  logoHeightDesktop?: number
+  logoHeightMobile?: number
+  seoDefaultTitle?: string
+  seoDefaultDescription?: string
+  appleTouchIcon?: { asset?: { _ref: string } }
   /** Canonical domain for this tenant, e.g. "livener.net". Derived from project.customDomain via GROQ join. */
   customDomain?: string
 }
@@ -997,6 +1002,19 @@ export interface EventsPage {
   heroImage?: ResolvedImage
   /** Cloudflare Stream video ID (e.g. "abc123xyz"). Frontend generates embed URL. */
   cloudflareVideoId?: string
+  seoTitle?: string
+  seoDescription?: string
+}
+
+// ─── Blog Page ────────────────────────────────────────────────────────────────
+// Resolved by blogPageQuery — all string fields are locale-resolved by GROQ.
+// Singleton per project — controls the /blog listing route hero and SEO.
+
+export interface BlogPage {
+  _id: string
+  eyebrow?: string
+  heroTitle?: string
+  heroSubtitle?: string
   seoTitle?: string
   seoDescription?: string
 }

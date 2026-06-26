@@ -112,8 +112,10 @@ export function getGlassStyles(
   return {
     backgroundColor: 'var(--color-section-glass-bg)',
     backdropFilter: glass.backdropBlur ? `blur(${glass.backdropBlur}px)` : undefined,
-    border: glass.borderWidth && glass.borderColor
-      ? `${glass.borderWidth}px solid ${glass.borderColor}`
+    // Border: width alone is sufficient — color falls back to currentColor when not set.
+    // Previously required both fields; a DS with borderWidth but no borderColor got no border.
+    border: glass.borderWidth
+      ? `${glass.borderWidth}px solid ${glass.borderColor ?? 'currentColor'}`
       : undefined,
   } as React.CSSProperties
 }

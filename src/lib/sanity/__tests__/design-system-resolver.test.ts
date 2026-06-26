@@ -701,4 +701,225 @@ describe('resolveDesignSystemInheritance', () => {
     })
   })
 
+  // ── Font stub inheritance guard (isFontDefined) ───────────────────────────
+  //
+  // A Sanity document can contain a partial font object such as
+  // { source: 'library' } with no libraryFont name set. This happens when a
+  // user opens the Studio font picker, selects a source, and saves without
+  // completing the selection. The object is truthy, so a naive `||` check
+  // treats it as a valid override and silently discards the parent font.
+  //
+  // isFontDefined() guards against this by requiring an actual usable name.
+
+  describe('font stub guard — incomplete font objects do not shadow parent', () => {
+    const parentWithFonts: any = {
+      ...abluo_base,
+      _id: 'parent-with-fonts',
+      parentDesignSystem: null,
+      typography: {
+        headingFont: { source: 'library', libraryFont: 'Geist' },
+        bodyFont:    { source: 'library', libraryFont: 'Geist' },
+      },
+    }
+
+    it('child with { source: "library" } stub (no libraryFont) inherits parent headingFont', async () => {
+      const child: any = {
+        _id: 'child-stub',
+        parentDesignSystem: { _ref: 'parent-with-fonts', _type: 'reference' },
+        typography: {
+          headingFont: { source: 'library' }, // stub — no libraryFont
+        },
+      }
+      const fetch = makeFetchFn({ 'parent-with-fonts': parentWithFonts })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.typography?.headingFont?.libraryFont).toBe('Geist')
+      expect(result?.typography?.headingFont?.source).toBe('library')
+    })
+
+    it('child with { source: "google" } stub (no googleFont) inherits parent bodyFont', async () => {
+      const child: any = {
+        _id: 'child-google-stub',
+        parentDesignSystem: { _ref: 'parent-with-fonts', _type: 'reference' },
+        typography: {
+          bodyFont: { source: 'google' }, // stub — no googleFont
+        },
+      }
+      const fetch = makeFetchFn({ 'parent-with-fonts': parentWithFonts })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.typography?.bodyFont?.libraryFont).toBe('Geist')
+    })
+
+    it('child with empty string libraryFont inherits parent headingFont', async () => {
+      const child: any = {
+        _id: 'child-empty-str',
+        parentDesignSystem: { _ref: 'parent-with-fonts', _type: 'reference' },
+        typography: {
+          headingFont: { source: 'library', libraryFont: '' },
+        },
+      }
+      const fetch = makeFetchFn({ 'parent-with-fonts': parentWithFonts })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.typography?.headingFont?.libraryFont).toBe('Geist')
+    })
+
+    it('child with a complete font definition overrides parent', async () => {
+      const child: any = {
+        _id: 'child-complete',
+        parentDesignSystem: { _ref: 'parent-with-fonts', _type: 'reference' },
+        typography: {
+          headingFont: { source: 'google', googleFont: 'Playfair Display' },
+        },
+      }
+      const fetch = makeFetchFn({ 'parent-with-fonts': parentWithFonts })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.typography?.headingFont?.googleFont).toBe('Playfair Display')
+      expect(result?.typography?.headingFont?.source).toBe('google')
+    })
+
+    it('child with undefined typography inherits both parent fonts', async () => {
+      const child: any = {
+        _id: 'child-no-typo',
+        parentDesignSystem: { _ref: 'parent-with-fonts', _type: 'reference' },
+      }
+      const fetch = makeFetchFn({ 'parent-with-fonts': parentWithFonts })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.typography?.headingFont?.libraryFont).toBe('Geist')
+      expect(result?.typography?.bodyFont?.libraryFont).toBe('Geist')
+    })
+  })
+
+  // ── Typescale field-level inheritance — FLAT MERGE (ADR-008) ─────────────
+  //
+  // Typescale fields (h1–small) are FLAT MERGE objects: { size?, weight?,
+  // lineHeight?, letterSpacing? }. A child that sets only one field must
+  // inherit the rest from parent.
+  //
+  // Before this fix, these fields used object-level `||`. Any non-null child
+  // typescale (even `{ size: 60 }`) replaced the parent's full definition,
+  // discarding inherited weight, lineHeight, and letterSpacing.
+
+  describe('typescale inheritance — partial child must not shadow full parent (FLAT MERGE)', () => {
+    const parentWithTypescale: any = {
+      ...abluo_base,
+      _id: 'parent-typo',
+      parentDesignSystem: null,
+      typography: {
+        ...abluo_base.typography,
+        h1: { size: 48, weight: 700, lineHeight: 1.1, letterSpacing: -0.5 },
+        body: { size: 16, weight: 400, lineHeight: 1.6 },
+      },
+    }
+
+    it('child overrides only size — inherits weight, lineHeight, letterSpacing from parent', async () => {
+      const child: any = {
+        _id: 'child-size-only',
+        parentDesignSystem: { _ref: 'parent-typo', _type: 'reference' },
+        typography: {
+          h1: { size: 60 },
+        },
+      }
+      const fetch = makeFetchFn({ 'parent-typo': parentWithTypescale })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.typography?.h1?.size).toBe(60)              // child override
+      expect(result?.typography?.h1?.weight).toBe(700)           // inherited
+      expect(result?.typography?.h1?.lineHeight).toBe(1.1)       // inherited
+      expect(result?.typography?.h1?.letterSpacing).toBe(-0.5)   // inherited
+    })
+
+    it('child overrides only weight — inherits size, lineHeight, letterSpacing', async () => {
+      const child: any = {
+        _id: 'child-weight-only',
+        parentDesignSystem: { _ref: 'parent-typo', _type: 'reference' },
+        typography: {
+          h1: { weight: 900 },
+        },
+      }
+      const fetch = makeFetchFn({ 'parent-typo': parentWithTypescale })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.typography?.h1?.weight).toBe(900)            // child override
+      expect(result?.typography?.h1?.size).toBe(48)              // inherited
+      expect(result?.typography?.h1?.lineHeight).toBe(1.1)       // inherited
+      expect(result?.typography?.h1?.letterSpacing).toBe(-0.5)   // inherited
+    })
+
+    it('child overrides lineHeight — inherits size and weight', async () => {
+      const child: any = {
+        _id: 'child-lineheight',
+        parentDesignSystem: { _ref: 'parent-typo', _type: 'reference' },
+        typography: {
+          h1: { lineHeight: 1.3 },
+        },
+      }
+      const fetch = makeFetchFn({ 'parent-typo': parentWithTypescale })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.typography?.h1?.lineHeight).toBe(1.3)       // child override
+      expect(result?.typography?.h1?.size).toBe(48)              // inherited
+      expect(result?.typography?.h1?.weight).toBe(700)           // inherited
+    })
+
+    it('child overrides letterSpacing — inherits size, weight, lineHeight', async () => {
+      const child: any = {
+        _id: 'child-letterspacing',
+        parentDesignSystem: { _ref: 'parent-typo', _type: 'reference' },
+        typography: {
+          h1: { letterSpacing: -1.0 },
+        },
+      }
+      const fetch = makeFetchFn({ 'parent-typo': parentWithTypescale })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.typography?.h1?.letterSpacing).toBe(-1.0)   // child override
+      expect(result?.typography?.h1?.size).toBe(48)              // inherited
+      expect(result?.typography?.h1?.weight).toBe(700)           // inherited
+      expect(result?.typography?.h1?.lineHeight).toBe(1.1)       // inherited
+    })
+
+    it('child with empty typescale object {} inherits full parent typescale', async () => {
+      const child: any = {
+        _id: 'child-empty-typescale',
+        parentDesignSystem: { _ref: 'parent-typo', _type: 'reference' },
+        typography: {
+          h1: {},  // empty object — all fields should be inherited
+        },
+      }
+      const fetch = makeFetchFn({ 'parent-typo': parentWithTypescale })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.typography?.h1?.size).toBe(48)
+      expect(result?.typography?.h1?.weight).toBe(700)
+      expect(result?.typography?.h1?.lineHeight).toBe(1.1)
+      expect(result?.typography?.h1?.letterSpacing).toBe(-0.5)
+    })
+
+    it('child with no h1 set inherits full parent h1 typescale', async () => {
+      const child: any = {
+        _id: 'child-no-h1',
+        parentDesignSystem: { _ref: 'parent-typo', _type: 'reference' },
+        typography: {
+          // h1 not set — should be fully inherited from parent
+          headingFont: { source: 'google', googleFont: 'Playfair Display' },
+        },
+      }
+      const fetch = makeFetchFn({ 'parent-typo': parentWithTypescale })
+      const result = await resolveDesignSystemInheritance(child, fetch)
+      expect(result?.typography?.h1?.size).toBe(48)
+      expect(result?.typography?.h1?.weight).toBe(700)
+      expect(result?.typography?.h1?.lineHeight).toBe(1.1)
+      expect(result?.typography?.h1?.letterSpacing).toBe(-0.5)
+    })
+
+    it('standalone DS (no parent): typescale fields work as-is', async () => {
+      const standalone: any = {
+        _id: 'standalone',
+        parentDesignSystem: null,
+        typography: {
+          h1: { size: 56, weight: 800 },
+        },
+      }
+      const fetch = makeFetchFn({})
+      const result = await resolveDesignSystemInheritance(standalone, fetch)
+      expect(result?.typography?.h1?.size).toBe(56)
+      expect(result?.typography?.h1?.weight).toBe(800)
+      expect(result?.typography?.h1?.lineHeight).toBeUndefined()
+    })
+  })
+
 })
