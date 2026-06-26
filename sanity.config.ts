@@ -26,6 +26,10 @@ export default defineConfig({
         const client = context.getClient({ apiVersion: '2026-05-21' })
 
         // ── Fetch clients + projects (with enabled modules) ───────────────────
+        // ADR-011 Phase B1: enabledModuleIds is a unified string[] projection.
+        // For migrated projects: derived from moduleInstallations[enabled != false].moduleId.
+        // For unmigrated projects: falls back to coalesce(enabledModules, []).
+        // The structure builder never needs to know which source was used.
         const clients = await client.fetch<{
           _id: string
           displayName: string
@@ -35,7 +39,7 @@ export default defineConfig({
             projectName: string
             projectSlug: string
             designSystemId?: string
-            enabledModules: string[]
+            enabledModuleIds: string[]
           }[]
         }[]>(
           `*[_type == "client" && !(_id in path("drafts.**"))] | order(displayName asc) {
@@ -47,7 +51,10 @@ export default defineConfig({
               projectName,
               projectSlug,
               "designSystemId": designSystemRef._ref,
-              "enabledModules": coalesce(enabledModules, [])
+              "enabledModuleIds": select(
+                defined(moduleInstallations) && count(moduleInstallations) > 0 => moduleInstallations[enabled != false].moduleId,
+                coalesce(enabledModules, [])
+              )
             }
           }`
         )
@@ -140,7 +147,7 @@ export default defineConfig({
         //   S.documentList() scoped to that type — shows a "Create new" button.
         function buildPagesItems(
           slug: string,
-          enabledModules: string[],
+          enabledModuleIds: string[],
           pageDocs: typeof allPageDocs
         ) {
           const items: ReturnType<typeof S.listItem>[] = []
@@ -167,7 +174,7 @@ export default defineConfig({
           }
 
           // 2. Module singleton pages (enabled modules only)
-          const enabledDefs = MODULE_REGISTRY.filter((m) => enabledModules.includes(m.id))
+          const enabledDefs = MODULE_REGISTRY.filter((m) => enabledModuleIds.includes(m.id))
           for (const mod of enabledDefs) {
             const pageType = mod.platformContract.pageType
             if (!pageType) continue
@@ -207,8 +214,8 @@ export default defineConfig({
         // ── Collections section builder ───────────────────────────────────────
         // Only includes collection groups for enabled modules.
         // Inserts dividers between groups automatically.
-        function buildCollectionsItems(slug: string, enabledModules: string[]) {
-          const enabledDefs = MODULE_REGISTRY.filter((m) => enabledModules.includes(m.id))
+        function buildCollectionsItems(slug: string, enabledModuleIds: string[]) {
+          const enabledDefs = MODULE_REGISTRY.filter((m) => enabledModuleIds.includes(m.id))
           const groups: ReturnType<typeof S.listItem>[][] = enabledDefs
             .map((m) => m.platformContract.collectionItems({ slug, S }))
             .filter((g) => g.length > 0)
@@ -231,10 +238,10 @@ export default defineConfig({
             const slug = project.projectSlug
             const projectLabel = project.projectName ?? slug
             const designSystemId = project.designSystemId
-            const enabledModules = project.enabledModules
+            const enabledModuleIds = project.enabledModuleIds
             const projectPageDocs = pageDocsByProject.get(slug) ?? []
 
-            const collectionItems = buildCollectionsItems(slug, enabledModules)
+            const collectionItems = buildCollectionsItems(slug, enabledModuleIds)
 
             return S.listItem()
               .id(`project-${slug}`)
@@ -254,7 +261,7 @@ export default defineConfig({
                         S.list()
                           .id(`${slug}-pages-list`)
                           .title('Pages')
-                          .items(buildPagesItems(slug, enabledModules, projectPageDocs))
+                          .items(buildPagesItems(slug, enabledModuleIds, projectPageDocs))
                       ),
 
                     S.divider(),

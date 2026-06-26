@@ -14,11 +14,11 @@
 
 | Field | Value |
 |---|---|
-| **Current milestone** | Milestone A |
-| **Current phase** | A3 — Build-time Manifest Validation |
+| **Current milestone** | Milestone B |
+| **Current phase** | B1 — Installation Type & Schema Migration |
 | **Overall status** | In Progress |
-| **Baseline version** | V0.9.20 |
-| **Next version** | V0.9.21 |
+| **Baseline version** | V0.9.21 |
+| **Next version** | V0.9.22 |
 
 ---
 
@@ -29,8 +29,8 @@
 | Phase 0 | Architecture Audit | V0.9.18 | Complete | 2026-06-26 | 2026-06-26 | 9 hidden-coupling findings; no code changed |
 | A1 | Registry Relocation | V0.9.19 | Complete | 2026-06-26 | 2026-06-26 | CollectionItemsContext context object API; ProjectLinker.tsx included |
 | A2 | Full ModuleManifest Type | V0.9.20 | Complete | 2026-06-26 | 2026-06-26 | TenantRole → src/lib/types/roles.ts; CollectionItemsContext moved to types.ts |
-| A3 | Build-time Manifest Validation | V0.9.21 | In Progress | 2026-06-26 | — | 44 tests; collect-all errors; RA-001 candidate (self-dependency) |
-| B1 | Installation Type & Schema Migration | V0.9.22 | Waiting | — | — | Query Sanity before starting |
+| A3 | Build-time Manifest Validation | V0.9.21 | Complete | 2026-06-26 | 2026-06-26 | 44 tests; collect-all errors; RA-001 candidate (self-dependency) |
+| B1 | Installation Type & Schema Migration | V0.9.22 | In Progress | 2026-06-26 | — | ModuleInstallation type; schema + GROQ; migration script; queries.ts zero consumers confirmed |
 | B2 | Installation Persistence Decision | V0.9.23 | Waiting | — | — | Documentation only |
 | C1 | Project Settings Shell | V0.9.24 | Waiting | — | — | |
 | D1 | Schema Derivation | V0.9.25 | Waiting | — | — | High risk — use Phase 0 §4 |
@@ -71,6 +71,61 @@ _No amendments recorded._
 **Change:** [Exactly what is different from the roadmap specification.]  
 **Impact on other phases:** [Any downstream effects.]
 ```
+
+---
+
+## Phase B1 — Implementation Notes
+
+> These are implementation-level decisions recorded before coding began. They do not change the roadmap, architecture, sequencing, or acceptance criteria.
+
+**Pre-flight Sanity query results**
+
+Query run before any schema change: `*[_type == "project" && defined(enabledModules)]{_id, projectSlug, enabledModules}`
+
+Results (2026-06-26):
+- `livener-main` → `["blog", "events", "live"]`
+- `studiomartegani-main` → `["blog"]`
+
+Both sets contain only valid `MODULE_REGISTRY` IDs. No unknown modules — migration can proceed without any skip logic being exercised.
+
+**GROQ coalesce strategy — unified `enabledModuleIds` projection (Option A)**
+
+Rather than returning both `moduleInstallations` and `enabledModules` from the structure builder GROQ query and coalescing in TypeScript, the coalesce is done entirely in GROQ:
+
+```groq
+"enabledModuleIds": select(
+  defined(moduleInstallations) && count(moduleInstallations) > 0 => moduleInstallations[enabled != false].moduleId,
+  coalesce(enabledModules, [])
+)
+```
+
+This returns a unified `string[]` regardless of migration state. The TypeScript structure builder code (`buildPagesItems`, `buildCollectionsItems`) receives the same type it always did — only the GROQ field name changes from `enabledModules` to `enabledModuleIds`. This contains the coalesce logic at the data boundary and leaves the structure builder unchanged in shape.
+
+**Migration script — versions hardcoded**
+
+Module versions in `002-module-installations.ts` are hardcoded to `'1.0.0'` for all three current modules rather than importing from `MODULE_REGISTRY`. Rationale: a migration captures state at the time it ran — importing the live registry would carry forward whatever version the registry declares at runtime rather than what was installed when the migration ran. Hardcoded values are correct and conventional for one-time migrations.
+
+**`queries.ts` — confirmed zero consumers**
+
+Phase 0 §2 confirmed that `src/lib/sanity/queries.ts` has zero `enabledModules` references. This was re-verified by grep on the V0.9.22 codebase: no matches found. No changes to `queries.ts` were required for B1.
+
+**Migration script — idempotency verified**
+
+Running `002-module-installations.ts` a second time against already-migrated projects produces zero writes. Execution path traced:
+
+The GROQ query fetches all projects with `defined(enabledModules)` — this includes already-migrated projects because `enabledModules` is never removed (it is kept as a bridge). For each project, the guard at line 124 evaluates `project.moduleInstallations && project.moduleInstallations.length > 0`. After a successful first run, both projects have `moduleInstallations` records (length 3 and 1 respectively). Both hit `continue` before reaching `installations.push()` or `client.patch().commit()`. The `migrated` counter (incremented only after the guard, at line 166) stays 0. Expected summary on second run:
+
+```
+Projects to migrate:          0
+Already migrated (skipped):   2
+Unknown module IDs (skipped): 0
+```
+
+Zero Sanity API writes. Safe to re-run at any time.
+
+**`ModuleDef` deprecation alias retained**
+
+`ModuleDef` was not removed in B1 per the approved implementation decisions. It remains with its `@deprecated` comment. Removal is deferred to the next cleanup phase after B1.
 
 ---
 

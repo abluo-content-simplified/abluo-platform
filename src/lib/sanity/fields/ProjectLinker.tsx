@@ -20,6 +20,14 @@ interface SupabaseProject {
   createdAt: string
 }
 
+// Minimal shape of a moduleInstallations entry for display purposes.
+// config is intentionally omitted (Record<string, unknown>, unused here).
+interface ModuleInstallationDisplay {
+  moduleId: string
+  version?: string
+  enabled?: boolean
+}
+
 interface ProjectDocument {
   _id?: string
   projectId?: string
@@ -29,6 +37,9 @@ interface ProjectDocument {
   clientRef?: { _type: 'reference'; _ref: string }
   customDomain?: string
   designSystemRef?: { _type: 'reference'; _ref: string }
+  /** ADR-011 Phase B1 — first-class installation records. */
+  moduleInstallations?: ModuleInstallationDisplay[]
+  /** Legacy — migration bridge. Read only if moduleInstallations is absent. */
   enabledModules?: string[]
 }
 
@@ -326,8 +337,8 @@ export function ProjectLinker(props: ObjectInputProps) {
         <Divider />
 
         {/* ── Modules ───────────────────────────────────────────── */}
-        {/* ADR-011 entry point: module management UI will replace this section. */}
-        {/* For now, this is a read-only display of the project's enabled modules. */}
+        {/* ADR-011 entry point: module management UI will replace this section in C2. */}
+        {/* Phase B1: reads from moduleInstallations first; falls back to enabledModules. */}
         <div style={{ marginBottom: 24 }}>
           <div style={{
             fontSize: 12,
@@ -339,7 +350,29 @@ export function ProjectLinker(props: ObjectInputProps) {
           }}>
             Modules
           </div>
-          {doc.enabledModules && doc.enabledModules.length > 0 ? (
+          {doc.moduleInstallations && doc.moduleInstallations.length > 0 ? (
+            // Migrated project — read from moduleInstallations
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {doc.moduleInstallations.map((inst) => (
+                <span
+                  key={inst.moduleId}
+                  style={{
+                    padding: '4px 12px',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    borderRadius: 4,
+                    background: inst.enabled === false ? '#f5f5f5' : '#f0f0f0',
+                    color: inst.enabled === false ? '#aaa' : '#333',
+                    border: `1px solid ${inst.enabled === false ? '#e8e8e8' : '#e0e0e0'}`,
+                  }}
+                >
+                  {MODULE_REGISTRY.find((m) => m.id === inst.moduleId)?.label ?? inst.moduleId}
+                  {inst.enabled === false && ' (disabled)'}
+                </span>
+              ))}
+            </div>
+          ) : doc.enabledModules && doc.enabledModules.length > 0 ? (
+            // Unmigrated project — fall back to legacy enabledModules
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {doc.enabledModules.map((mod) => (
                 <span
