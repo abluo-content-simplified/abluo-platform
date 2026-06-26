@@ -15,10 +15,10 @@
 | Field | Value |
 |---|---|
 | **Current milestone** | Milestone A |
-| **Current phase** | A1 — Registry Relocation |
-| **Overall status** | Waiting |
-| **Baseline version** | V0.9.18 |
-| **Next version** | V0.9.19 |
+| **Current phase** | A3 — Build-time Manifest Validation |
+| **Overall status** | In Progress |
+| **Baseline version** | V0.9.20 |
+| **Next version** | V0.9.21 |
 
 ---
 
@@ -27,9 +27,9 @@
 | Phase | Name | Version | Status | Started | Completed | Notes |
 |---|---|---|---|---|---|---|
 | Phase 0 | Architecture Audit | V0.9.18 | Complete | 2026-06-26 | 2026-06-26 | 9 hidden-coupling findings; no code changed |
-| A1 | Registry Relocation | V0.9.19 | In Progress | 2026-06-26 | — | |
-| A2 | Full ModuleManifest Type | V0.9.20 | Waiting | — | — | |
-| A3 | Build-time Manifest Validation | V0.9.21 | Waiting | — | — | |
+| A1 | Registry Relocation | V0.9.19 | Complete | 2026-06-26 | 2026-06-26 | CollectionItemsContext context object API; ProjectLinker.tsx included |
+| A2 | Full ModuleManifest Type | V0.9.20 | Complete | 2026-06-26 | 2026-06-26 | TenantRole → src/lib/types/roles.ts; CollectionItemsContext moved to types.ts |
+| A3 | Build-time Manifest Validation | V0.9.21 | In Progress | 2026-06-26 | — | 44 tests; collect-all errors; RA-001 candidate (self-dependency) |
 | B1 | Installation Type & Schema Migration | V0.9.22 | Waiting | — | — | Query Sanity before starting |
 | B2 | Installation Persistence Decision | V0.9.23 | Waiting | — | — | Documentation only |
 | C1 | Project Settings Shell | V0.9.24 | Waiting | — | — | |
@@ -43,15 +43,25 @@
 
 ---
 
+## Roadmap Amendment Candidates
+
+Ideas discovered during implementation that may become Roadmap Amendments but have not yet been approved. Approved amendments move to the section below.
+
+| ID | Phase | Status | Description |
+|---|---|---|---|
+| RA-001 | A3 | Proposed | Reject module self-dependencies (`requires` / `integratesWith` referencing the module itself). Consider adding as Rule 10 before B1. |
+
+---
+
 ## Roadmap Amendments
 
 _No amendments recorded._
 
-> When an amendment is raised, append it here using the format below.
+> Only approved amendments belong here. When an amendment is approved, append it using the format below.
 > Do not edit the roadmap. Do not edit completed phase entries above.
 
 ```
-### RA-001 — [Title]
+### RA-NNN — [Title]
 
 **Date:** YYYY-MM-DD  
 **Affects:** Phase [X]  
@@ -61,6 +71,33 @@ _No amendments recorded._
 **Change:** [Exactly what is different from the roadmap specification.]  
 **Impact on other phases:** [Any downstream effects.]
 ```
+
+---
+
+## Phase A3 — Implementation Notes
+
+> These are implementation-level decisions recorded before coding began. They do not change the roadmap, architecture, sequencing, or acceptance criteria.
+
+**Collect-all error format with compiler-style diagnostics**
+
+Rather than throwing on the first violation, `validateRegistry` accumulates all `ManifestError` entries — one per rule violation — and throws once at the end with a formatted multi-line message. Each error names the module (`[module-id]` prefix), the rule number, the actual invalid value, and a Fix line. Registry-level rules (6, 7, 8) omit the module prefix since multiple modules are implicated.
+
+Example output:
+```
+MODULE_REGISTRY validation failed (2 errors):
+
+  [Blog] Rule 2 — id "Blog" is not lowercase kebab-case.
+                  Fix: use only lowercase letters (a–z), digits, and hyphens (e.g. "my-module").
+
+  Rule 6 — sectionType "heroSection" is declared by both "live" and "new-module".
+            Fix: each sectionType must be owned by exactly one module.
+```
+
+Fix-line indentation is computed dynamically to align with the start of the message text after the ` — ` separator. A fourth module next year produces diagnostics of identical quality — the formatter is data-driven.
+
+**Self-dependency — deferred to Completion Review**
+
+The user requested evaluation of whether `requires` or `integratesWith` referencing the module's own id should be rejected. Analysis: a module referencing its own id in `requires` passes Rule 8 as written (the id *is* present in the registry). `integratesWith` is not checked by Rule 8 at all. Self-dependency detection is therefore not covered by any of the nine rules — it would be Rule 10. Raising this in the Completion Review per the user's instruction rather than silently expanding scope.
 
 ---
 

@@ -1,4 +1,5 @@
 import type { ModuleManifest, CollectionItemsContext } from './types'
+import { validateRegistry } from './validate'
 
 // Re-export CollectionItemsContext for callers that previously imported it from
 // this file. Remove after all import sites migrate to importing from ./types.
@@ -261,3 +262,9 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   },
 
 ]
+
+// ── Build-time validation ─────────────────────────────────────────────────────
+// Runs at module load time. Throws with a human-readable diagnostic if any
+// manifest violates the nine structural rules defined in validate.ts.
+// A throw here propagates as a build error in Next.js and Sanity Studio.
+validateRegistry(MODULE_REGISTRY)
