@@ -27,7 +27,7 @@
 | Phase | Name | Version | Status | Started | Completed | Notes |
 |---|---|---|---|---|---|---|
 | Phase 0 | Architecture Audit | V0.9.18 | Complete | 2026-06-26 | 2026-06-26 | 9 hidden-coupling findings; no code changed |
-| A1 | Registry Relocation | V0.9.19 | Waiting | — | — | |
+| A1 | Registry Relocation | V0.9.19 | In Progress | 2026-06-26 | — | |
 | A2 | Full ModuleManifest Type | V0.9.20 | Waiting | — | — | |
 | A3 | Build-time Manifest Validation | V0.9.21 | Waiting | — | — | |
 | B1 | Installation Type & Schema Migration | V0.9.22 | Waiting | — | — | Query Sanity before starting |
@@ -64,6 +64,28 @@ _No amendments recorded._
 
 ---
 
+## Phase A1 — Implementation Notes
+
+> These are implementation-level decisions recorded before coding began. They do not change the roadmap, architecture, sequencing, or acceptance criteria.
+
+**`collectionItems` context object API**
+
+The `collectionItems` lambda cannot close over Sanity's `StructureBuilder (S)` once `MODULE_REGISTRY` is extracted from `sanity.config.ts` — `S` is only available as a callback parameter inside the `structure:` function and is not exported as a static singleton by Sanity 3.99.0.
+
+Rather than adding `S` as a positional parameter (`collectionItems(slug, S)`), the API is designed as a context object:
+
+```typescript
+collectionItems({ slug, S })
+```
+
+The context object is preferred over positional parameters because additional values — project metadata, installation state, permissions, feature flags — can be added to the context in future phases without changing the function signature. This is an implementation detail. It does not affect the roadmap, the logical behaviour of the registry, or any downstream phase.
+
+**`ProjectLinker.tsx` included in A1 scope**
+
+`ProjectLinker.tsx` is included in this phase although it is not explicitly listed in the roadmap file list. Phase 0 §7 Finding 1 identified `MODULE_LABELS` in `ProjectLinker.tsx` as a parallel copy of registry labels, maintained with a "Keep in sync" comment. Updating it in A1 — at the moment the importable registry is created — eliminates the duplicate source of truth at the earliest opportunity.
+
+---
+
 ## Notes & Decisions Log
 
 _Record here any implementation decisions, findings, or deviations that are too small for a formal amendment but worth preserving for future sessions._
@@ -73,3 +95,4 @@ _Record here any implementation decisions, findings, or deviations that are too 
 | 2026-06-26 | — | Roadmap frozen at Revision 2. Progress tracker initialised. |
 | 2026-06-26 | Phase 0 | Audit document written: `docs/adr-011-current-state.md`. Nine hidden-coupling findings recorded (§7). Three Phase Review findings all confirmed in full. No code changed. |
 | 2026-06-26 | Phase 0 | Finding noted for A1 phase lead: `ProjectLinker.tsx` must be updated in Phase A1 (imports `MODULE_LABELS` copy; cannot consume extracted registry until A1 runs). File not in A1 roadmap file-list — raise at A1 Phase Review. |
+| 2026-06-26 | A1 | Phase Review approved. Context object API chosen for `collectionItems` (`{ slug, S }`). `ProjectLinker.tsx` included per §7 Finding 1. No Roadmap Amendment required. |

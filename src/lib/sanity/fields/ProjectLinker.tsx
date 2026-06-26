@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { ObjectInputProps, PatchEvent, set, unset, useClient } from 'sanity'
 import { DesignSystemPicker, type DSDoc } from './DesignSystemPicker'
+import { MODULE_REGISTRY } from '../../modules'
 
 interface SanityClientDoc {
   _id: string
@@ -29,16 +30,6 @@ interface ProjectDocument {
   customDomain?: string
   designSystemRef?: { _type: 'reference'; _ref: string }
   enabledModules?: string[]
-}
-
-// ── Module registry (display only) ────────────────────────────────────────────
-// Maps module IDs to human-readable labels for the Modules section.
-// Keep in sync with MODULE_REGISTRY in sanity.config.ts.
-// ADR-011 will replace this read-only display with full module management.
-const MODULE_LABELS: Record<string, string> = {
-  blog: 'Blog',
-  events: 'Events',
-  live: 'Live',
 }
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
@@ -363,7 +354,7 @@ export function ProjectLinker(props: ObjectInputProps) {
                     border: '1px solid #e0e0e0',
                   }}
                 >
-                  {MODULE_LABELS[mod] ?? mod}
+                  {MODULE_REGISTRY.find((m) => m.id === mod)?.label ?? mod}
                 </span>
               ))}
             </div>
