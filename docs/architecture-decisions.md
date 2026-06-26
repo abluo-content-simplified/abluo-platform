@@ -588,3 +588,63 @@ Studio labels must never be resolved using the project's content locales (`siteC
 - The Structure Builder now makes two async Sanity fetches per structure render (client/project data + page documents). This is negligible in practice — the structure renders once on navigation, not per keystroke
 - `enabledModules` is currently managed manually via Studio or MCP. There is no provisioning UI yet — adding a new project requires a manual patch to set `enabledModules`. Module management UI is a future ADR
 - New projects with no `enabledModules` set show only their general `page` documents and no Collections section. This is the correct default (empty = no modules), but requires the admin to explicitly configure modules for every new project
+
+---
+
+## ADR-011 — Module Management Architecture
+
+**Status:** Accepted
+**Date:** 2026-06-26
+**Supersedes:** —
+**Superseded By:** —
+
+> Full architecture: [`docs/ADR-011-module-management-architecture.md`](./ADR-011-module-management-architecture.md)
+> Implementation roadmap: [`docs/ADR-011-implementation-roadmap.md`](./ADR-011-implementation-roadmap.md)
+
+ADR-011 defines the five-layer Module Management Architecture (Definition → Manifest → Registry → Installation → Runtime) and its phased implementation plan. The full ADR is stored as a standalone document.
+
+This entry records implementation-level decisions made during ADR-011 execution that rise to the level of architectural commitments — decisions that are not covered by the original ADR, that constrain future phases, or that a future maintainer would need to understand to work safely in this area.
+
+---
+
+### Sub-decision B2 — `ModuleInstallation` Persistence Model
+
+**Date:** 2026-06-26
+**Phase:** B2 — Installation Persistence Decision (V0.9.23)
+
+#### Context
+
+ADR-011 Phase B1 (V0.9.22) introduced `ModuleInstallation` — a first-class installation record carrying `moduleId`, `version`, `enabled`, `installedAt`, `config`, and `provenance`. Before Phase C1 builds a Project Settings UI on top of this data, the persistence model must be committed: should `ModuleInstallation` records live as an array field on the `project` document (co-located, simple) or as a first-class Sanity document type (`moduleInstallation`) related to the project (independent lifecycle, queryable across projects)?
+
+Phase B2 is the designated pause to make and record this decision before the Phase C2 UI is built against it.
+
+#### Alternatives Considered
+
+**First-class `moduleInstallation` document type** — Each installation is an independent Sanity document with a `projectRef` relation. Supports cross-project queries, independent lifecycle management, and eventual billing/entitlement attachment per installation. Rejected for this stage: no cross-project installation views exist in the current roadmap; no billing or entitlement requirement is attached to individual installations; querying a project's installations would require an additional GROQ join; and B1's working implementation would need to be undone and re-migrated as a B2a phase with no present benefit.
+
+**Array field on `project` document (chosen)** — `moduleInstallations: ModuleInstallation[]` is a field on the existing `project` document, co-located with all other project metadata. Reads require no join. Writes are atomic with the project document. Schema is already live from B1.
+
+#### Decision
+
+Keep `moduleInstallations` as an array field on the `project` Sanity document. Revisit at Milestone E if any of the following conditions emerge:
+
+- Installation count per project regularly exceeds 20
+- A billing or entitlement system requires per-installation record lifecycle
+- The Administration UI requires listing or filtering installations across multiple projects simultaneously
+- The client CMS dashboard needs installation state without fetching the full project document
+
+**Evidence supporting this decision:** Phase B1 implemented the array model and deployed it successfully to both current projects (`livener-main` and `studiomartegani-main`) with no schema, query, or performance issues. The unified GROQ `enabledModuleIds` projection (a `select()` expression that reads `moduleInstallations` for migrated projects and falls back to legacy `enabledModules` for unmigrated ones) is clean and adds no measurable overhead.
+
+**No B2a is required.** The B1 implementation is the correct and complete persistence layer for the current platform stage.
+
+#### Consequences
+
+**Positive:**
+- No additional migration is required — B1's array model is already live and validated
+- Project data is self-contained in a single document fetch — no cross-document joins needed by the Studio structure builder or Project Settings UI
+- The `config: Record<string, unknown>` field provides an escape valve for lightweight per-installation configuration without requiring a document type change
+- C1 and C2 can build directly on the B1 schema without any preparatory data work
+
+**Negative:**
+- If cross-project installation views are required in the future, a migration from array-on-project to a first-class document type will be non-trivial — C2 builds a UI over this data, so migration must be coordinated with a C2 update
+- The `config` field is untyped until modules declare config schemas — type safety is deferred to a future phase

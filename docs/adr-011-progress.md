@@ -15,10 +15,10 @@
 | Field | Value |
 |---|---|
 | **Current milestone** | Milestone B |
-| **Current phase** | B1 — Installation Type & Schema Migration |
+| **Current phase** | B2 — Installation Persistence Decision |
 | **Overall status** | In Progress |
-| **Baseline version** | V0.9.21 |
-| **Next version** | V0.9.22 |
+| **Baseline version** | V0.9.22 |
+| **Next version** | V0.9.23 |
 
 ---
 
@@ -30,8 +30,8 @@
 | A1 | Registry Relocation | V0.9.19 | Complete | 2026-06-26 | 2026-06-26 | CollectionItemsContext context object API; ProjectLinker.tsx included |
 | A2 | Full ModuleManifest Type | V0.9.20 | Complete | 2026-06-26 | 2026-06-26 | TenantRole → src/lib/types/roles.ts; CollectionItemsContext moved to types.ts |
 | A3 | Build-time Manifest Validation | V0.9.21 | Complete | 2026-06-26 | 2026-06-26 | 44 tests; collect-all errors; RA-001 candidate (self-dependency) |
-| B1 | Installation Type & Schema Migration | V0.9.22 | In Progress | 2026-06-26 | — | ModuleInstallation type; schema + GROQ; migration script; queries.ts zero consumers confirmed |
-| B2 | Installation Persistence Decision | V0.9.23 | Waiting | — | — | Documentation only |
+| B1 | Installation Type & Schema Migration | V0.9.22 | Complete | 2026-06-26 | 2026-06-26 | ModuleInstallation type; schema + GROQ; migration script; queries.ts zero consumers confirmed |
+| B2 | Installation Persistence Decision | V0.9.23 | In Progress | 2026-06-26 | — | Array-on-project confirmed; ADR-011 sub-decision in architecture-decisions.md |
 | C1 | Project Settings Shell | V0.9.24 | Waiting | — | — | |
 | D1 | Schema Derivation | V0.9.25 | Waiting | — | — | High risk — use Phase 0 §4 |
 | D2 | Section Map Derivation | V0.9.26 | Waiting | — | — | High risk — use Phase 0 §3 |
