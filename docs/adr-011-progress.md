@@ -1,0 +1,75 @@
+# ADR-011 — Execution Progress
+
+**Roadmap:** `docs/ADR-011-implementation-roadmap.md` (frozen — do not modify)  
+**Checklist:** `docs/implementation-checklist.md`  
+**Last updated:** 2026-06-26
+
+> This document records execution progress only. It is the only ADR-011 document
+> that changes during implementation. The roadmap and checklist are never edited
+> to reflect progress — this file is.
+
+---
+
+## Current State
+
+| Field | Value |
+|---|---|
+| **Current milestone** | Milestone A |
+| **Current phase** | A1 — Registry Relocation |
+| **Overall status** | Waiting |
+| **Baseline version** | V0.9.18 |
+| **Next version** | V0.9.19 |
+
+---
+
+## Phase Execution Log
+
+| Phase | Name | Version | Status | Started | Completed | Notes |
+|---|---|---|---|---|---|---|
+| Phase 0 | Architecture Audit | V0.9.18 | Complete | 2026-06-26 | 2026-06-26 | 9 hidden-coupling findings; no code changed |
+| A1 | Registry Relocation | V0.9.19 | Waiting | — | — | |
+| A2 | Full ModuleManifest Type | V0.9.20 | Waiting | — | — | |
+| A3 | Build-time Manifest Validation | V0.9.21 | Waiting | — | — | |
+| B1 | Installation Type & Schema Migration | V0.9.22 | Waiting | — | — | Query Sanity before starting |
+| B2 | Installation Persistence Decision | V0.9.23 | Waiting | — | — | Documentation only |
+| C1 | Project Settings Shell | V0.9.24 | Waiting | — | — | |
+| D1 | Schema Derivation | V0.9.25 | Waiting | — | — | High risk — use Phase 0 §4 |
+| D2 | Section Map Derivation | V0.9.26 | Waiting | — | — | High risk — use Phase 0 §3 |
+| D3 | Navigation Derivation | V0.9.27 | Waiting | — | — | Use Phase 0 §5 |
+| D4 | Permission Derivation | V0.9.28 → V1.0.0 | Waiting | — | — | V1.0.0 tagged on production verify |
+| C2 | Module Management UI + Service | V1.0.1 | Waiting | — | — | Begins after V1.0.0 |
+| E1 | Version Tracking | V1.0.2 | Waiting | — | — | |
+| E2 | Update Workflow | V1.0.3 | Waiting | — | — | Highest risk — backup before testing |
+
+---
+
+## Roadmap Amendments
+
+_No amendments recorded._
+
+> When an amendment is raised, append it here using the format below.
+> Do not edit the roadmap. Do not edit completed phase entries above.
+
+```
+### RA-001 — [Title]
+
+**Date:** YYYY-MM-DD  
+**Affects:** Phase [X]  
+**Approved by:** Tom  
+
+**Why:** [What was discovered; what assumption failed.]  
+**Change:** [Exactly what is different from the roadmap specification.]  
+**Impact on other phases:** [Any downstream effects.]
+```
+
+---
+
+## Notes & Decisions Log
+
+_Record here any implementation decisions, findings, or deviations that are too small for a formal amendment but worth preserving for future sessions._
+
+| Date | Phase | Note |
+|---|---|---|
+| 2026-06-26 | — | Roadmap frozen at Revision 2. Progress tracker initialised. |
+| 2026-06-26 | Phase 0 | Audit document written: `docs/adr-011-current-state.md`. Nine hidden-coupling findings recorded (§7). Three Phase Review findings all confirmed in full. No code changed. |
+| 2026-06-26 | Phase 0 | Finding noted for A1 phase lead: `ProjectLinker.tsx` must be updated in Phase A1 (imports `MODULE_LABELS` copy; cannot consume extracted registry until A1 runs). File not in A1 roadmap file-list — raise at A1 Phase Review. |
