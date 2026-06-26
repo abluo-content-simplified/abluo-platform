@@ -160,6 +160,34 @@ export type ModuleManifest = {
   changelog: string
 }
 
+// ── Module installation ───────────────────────────────────────────────────────
+// A record of one module's installation on a specific project.
+// Stored as moduleInstallations: ModuleInstallation[] on the project document
+// in Sanity (ADR-011 Phase B1).
+//
+// moduleId references ModuleManifest.id.
+// version captures the manifest version at install time — not the live registry
+// version. Bumping the manifest version without running an update is intentional:
+// it signals that the project's content conforms to the old version until
+// an admin-triggered update is applied (Phase E1–E2).
+//
+// config is intentionally Record<string, unknown> for now. No module declares
+// a config schema yet. Type-narrowing is deferred until Phase C2.
+export type ModuleInstallation = {
+  /** References ModuleManifest.id — the module being installed. */
+  moduleId: string
+  /** Semver version of the manifest when this installation was created. */
+  version: string
+  /** Whether this module is currently active for the project. */
+  enabled: boolean
+  /** ISO 8601 datetime when the installation record was created. */
+  installedAt: string
+  /** Module-specific configuration. Empty object until modules declare config schemas. */
+  config: Record<string, unknown>
+  /** How this installation record was created — 'admin' (manual) or 'auto' (migration). */
+  provenance: 'admin' | 'auto'
+}
+
 // ── Deprecated alias ──────────────────────────────────────────────────────────
 /** @deprecated Use ModuleManifest. This alias will be removed after Phase B1. */
 export type ModuleDef = ModuleManifest

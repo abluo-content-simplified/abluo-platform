@@ -1669,16 +1669,55 @@ const projectType = defineType({
       description: 'The design system this project uses for colors, typography, and spacing',
       hidden: true, // managed by ProjectLinker UI, not the default form
     }),
-    // ── Module configuration (admin-managed) ────────────────────────────────
-    // Controls which modules are visible in Studio for this project.
-    // Set by the platform admin — never exposed to clients.
+    // ── Module installations (ADR-011 Phase B1) ─────────────────────────────
+    // First-class installation records — replaces enabledModules[] string array.
+    // Each entry is one module installed on this project, carrying version,
+    // enabled state, install timestamp, config, and provenance.
     //
-    // Hidden from the default form: displayed via the dedicated Modules section
-    // in ProjectLinker, which is the future entry point for ADR-011 (Module
-    // Management). Editing is currently done via MCP or direct API patch.
+    // Read by: sanity.config.ts structure builder (via enabledModuleIds GROQ
+    //          projection) and ProjectLinker display.
+    // Written by: migration 002-module-installations.ts; future Phase C2 UI.
+    //
+    // Hidden from the Studio form — managed programmatically.
+    defineField({
+      name: 'moduleInstallations',
+      title: 'Module Installations',
+      type: 'array',
+      of: [
+        defineArrayMember({
+          type: 'object',
+          fields: [
+            defineField({ name: 'moduleId', title: 'Module ID', type: 'string' }),
+            defineField({ name: 'version', title: 'Version', type: 'string' }),
+            defineField({ name: 'enabled', title: 'Enabled', type: 'boolean', initialValue: true }),
+            defineField({ name: 'installedAt', title: 'Installed At', type: 'string' }),
+            defineField({ name: 'provenance', title: 'Provenance', type: 'string' }),
+            // config: Record<string, unknown> — not declared in schema until modules
+            // define config schemas. Written directly via API (always {} in B1).
+          ],
+          preview: {
+            select: { title: 'moduleId', subtitle: 'version' },
+            prepare: ({ title, subtitle }: { title?: string; subtitle?: string }) => ({
+              title: title ?? 'Unknown module',
+              subtitle: subtitle ?? '',
+            }),
+          },
+        }),
+      ],
+      hidden: true, // managed programmatically; displayed via ProjectLinker
+    }),
+
+    // ── Migration bridge — do not remove ────────────────────────────────────
+    // enabledModules: string[] is the legacy installation mechanism. It is kept
+    // present in the schema as a data bridge during the migration window.
+    // sanity.config.ts reads moduleInstallations first via a GROQ select(),
+    // with a coalesce fallback to enabledModules for any unmigrated project.
+    //
+    // Do not remove this field until all project documents are migrated and
+    // the coalesce fallback in sanity.config.ts is removed (post-B1 cleanup).
     defineField({
       name: 'enabledModules',
-      title: 'Modules',
+      title: 'Modules (legacy)',
       type: 'array',
       of: [defineArrayMember({ type: 'string' })],
       options: {
@@ -1688,7 +1727,7 @@ const projectType = defineType({
           { title: 'Live', value: 'live' },
         ],
       },
-      hidden: true, // rendered via custom Modules section in ProjectLinker
+      hidden: true, // migration bridge — superseded by moduleInstallations
     }),
   ],
   preview: {
