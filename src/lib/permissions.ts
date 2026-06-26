@@ -10,14 +10,16 @@
  *   owner  — full control: content, media, leads, settings, users, billing
  *   editor — content + media + leads. No settings, no user management.
  *   viewer — read-only: leads and analytics only.
+ *
+ * TenantRole and isValidTenantRole live in src/lib/types/roles.ts (extracted in
+ * ADR-011 Phase A2 to avoid a circular dependency with the modules layer in D4).
+ * Re-exported here so all existing import paths continue to work.
  */
 
-export type TenantRole = 'owner' | 'editor' | 'viewer'
+export type { TenantRole } from './types/roles'
+export { isValidTenantRole } from './types/roles'
 
-/** True if the role string is a valid TenantRole. */
-export function isValidTenantRole(role: string): role is TenantRole {
-  return role === 'owner' || role === 'editor' || role === 'viewer'
-}
+import type { TenantRole } from './types/roles'
 
 // ── Content ───────────────────────────────────────────────────────────────────
 

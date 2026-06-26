@@ -64,6 +64,34 @@ _No amendments recorded._
 
 ---
 
+## Phase A2 — Implementation Notes
+
+> These are implementation-level decisions recorded before coding began. They do not change the roadmap, architecture, sequencing, or acceptance criteria.
+
+**`TenantRole` extracted to `src/lib/types/roles.ts`**
+
+Rather than importing `TenantRole` from `permissions.ts` into `modules/types.ts` (creating a `modules → permissions` dependency that Phase D4 would need to reverse), `TenantRole` and its type guard `isValidTenantRole` are extracted to a neutral shared file:
+
+```
+src/lib/types/roles.ts
+```
+
+Both `permissions.ts` and `modules/types.ts` import from there. `permissions.ts` re-exports `TenantRole` and `isValidTenantRole` for backward compatibility — no existing import paths break. This resolves the D4 circular dependency risk pre-emptively rather than deferring it.
+
+**`CollectionItemsContext` moved from `registry.ts` to `types.ts`**
+
+`CollectionItemsContext` is referenced in `ModuleManifest.platformContract.collectionItems`. Keeping it in `registry.ts` while `ModuleManifest` lives in `types.ts` would create a circular import (`types.ts` → `registry.ts` → `types.ts`). Moving `CollectionItemsContext` into `types.ts` resolves this cleanly. The barrel (`index.ts`) re-exports it — no external import paths change.
+
+**`sanity.config.ts` included in A2 scope**
+
+`pageType` and `collectionItems` move from top-level `ModuleDef` fields into `platformContract`. Five access sites in `sanity.config.ts` update accordingly:
+- `mod.pageType` → `mod.platformContract.pageType` (×4 in `buildPagesItems`)
+- `m.collectionItems({ slug, S })` → `m.platformContract.collectionItems({ slug, S })` (×1 in `buildCollectionsItems`)
+
+Not in the roadmap file list; included per scope policy. No behavioural change.
+
+---
+
 ## Phase A1 — Implementation Notes
 
 > These are implementation-level decisions recorded before coding began. They do not change the roadmap, architecture, sequencing, or acceptance criteria.

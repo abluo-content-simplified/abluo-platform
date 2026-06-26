@@ -169,14 +169,16 @@ export default defineConfig({
           // 2. Module singleton pages (enabled modules only)
           const enabledDefs = MODULE_REGISTRY.filter((m) => enabledModules.includes(m.id))
           for (const mod of enabledDefs) {
-            const doc = pageDocs.find((d) => d._type === mod.pageType)
+            const pageType = mod.platformContract.pageType
+            if (!pageType) continue
+            const doc = pageDocs.find((d) => d._type === pageType)
             if (doc) {
               // Document exists — open directly (one click)
               items.push(
                 S.listItem()
                   .id(`${slug}-${mod.id}-page`)
                   .title(mod.label)
-                  .child(S.document().documentId(doc._id).schemaType(mod.pageType))
+                  .child(S.document().documentId(doc._id).schemaType(pageType))
               )
             } else {
               // Document not yet created — show a list that offers "New document"
@@ -187,9 +189,9 @@ export default defineConfig({
                   .child(
                     S.documentList()
                       .title(mod.label)
-                      .schemaType(mod.pageType)
+                      .schemaType(pageType)
                       .apiVersion('2026-05-21')
-                      .filter(`_type == "${mod.pageType}" && projectSlug == $slug`)
+                      .filter(`_type == "${pageType}" && projectSlug == $slug`)
                       .params({ slug })
                       .initialValueTemplates([
                         S.initialValueTemplateItem(`${mod.id}PageProjectOwned`, { projectSlug: slug }),
@@ -208,7 +210,7 @@ export default defineConfig({
         function buildCollectionsItems(slug: string, enabledModules: string[]) {
           const enabledDefs = MODULE_REGISTRY.filter((m) => enabledModules.includes(m.id))
           const groups: ReturnType<typeof S.listItem>[][] = enabledDefs
-            .map((m) => m.collectionItems({ slug, S }))
+            .map((m) => m.platformContract.collectionItems({ slug, S }))
             .filter((g) => g.length > 0)
 
           // Interleave dividers between groups
