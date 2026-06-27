@@ -6,10 +6,11 @@
 //           TenantRole extracted to src/lib/types/roles.ts.
 // Phase A3: build-time manifest validation.
 // Phase B1: ModuleInstallation type; moduleInstallations field on project doc.
+// Phase D1: schemaDefinitions on ModuleManifest; buildSchema(); module schema files;
+//           ModuleDef alias removed.
 
 export {
   type ModuleManifest,
-  type ModuleDef,           // @deprecated — use ModuleManifest; removed after B1
   type CollectionItemsContext,
   type ModuleCategory,
   type ModulePermissionDef,
@@ -18,3 +19,5 @@ export {
 } from './types'
 
 export { MODULE_REGISTRY } from './registry'
+
+export { buildSchema } from './schema'

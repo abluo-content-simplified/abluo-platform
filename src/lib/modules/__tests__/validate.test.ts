@@ -18,6 +18,7 @@ function makeManifest(id = 'test-module'): ModuleManifest {
       collectionItems: () => [],
       sectionTypes: [`${id}-section`],
       schemaTypes: [`${id}-doc`],
+      schemaDefinitions: () => [],
       permissions: [],
     },
     publicContract: {},

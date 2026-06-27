@@ -2,7 +2,7 @@
 
 **Roadmap:** `docs/ADR-011-implementation-roadmap.md` (frozen — do not modify)  
 **Checklist:** `docs/implementation-checklist.md`  
-**Last updated:** 2026-06-26
+**Last updated:** 2026-06-27
 
 > This document records execution progress only. It is the only ADR-011 document
 > that changes during implementation. The roadmap and checklist are never edited
@@ -14,11 +14,11 @@
 
 | Field | Value |
 |---|---|
-| **Current milestone** | Milestone C |
-| **Current phase** | C1 — Project Settings Shell |
+| **Current milestone** | Milestone D |
+| **Current phase** | D1 — Schema Derivation |
 | **Overall status** | In Progress |
-| **Baseline version** | V0.9.23 |
-| **Next version** | V0.9.24 |
+| **Baseline version** | V0.9.24 |
+| **Next version** | V0.9.25 |
 
 ---
 
@@ -32,8 +32,8 @@
 | A3 | Build-time Manifest Validation | V0.9.21 | Complete | 2026-06-26 | 2026-06-26 | 44 tests; collect-all errors; RA-001 candidate (self-dependency) |
 | B1 | Installation Type & Schema Migration | V0.9.22 | Complete | 2026-06-26 | 2026-06-26 | ModuleInstallation type; schema + GROQ; migration script; queries.ts zero consumers confirmed |
 | B2 | Installation Persistence Decision | V0.9.23 | Complete | 2026-06-26 | 2026-06-26 | Array-on-project confirmed; ADR-011 sub-decision in architecture-decisions.md |
-| C1 | Project Settings Shell | V0.9.24 | In Progress | 2026-06-26 | — | General + Modules + Locales + 4 stubs; ModuleList.tsx + StubPane.tsx |
-| D1 | Schema Derivation | V0.9.25 | Waiting | — | — | High risk — use Phase 0 §4 |
+| C1 | Project Settings Shell | V0.9.24 | Complete | 2026-06-26 | 2026-06-26 | General + Modules + Locales + 4 stubs; ModuleList.tsx + StubPane.tsx |
+| D1 | Schema Derivation | V0.9.25 | In Progress | 2026-06-27 | — | 8 types moved; buildSchema(); shared.ts; platform-distributed sections principle |
 | D2 | Section Map Derivation | V0.9.26 | Waiting | — | — | High risk — use Phase 0 §3 |
 | D3 | Navigation Derivation | V0.9.27 | Waiting | — | — | Use Phase 0 §5 |
 | D4 | Permission Derivation | V0.9.28 → V1.0.0 | Waiting | — | — | V1.0.0 tagged on production verify |
@@ -71,6 +71,56 @@ _No amendments recorded._
 **Change:** [Exactly what is different from the roadmap specification.]  
 **Impact on other phases:** [Any downstream effects.]
 ```
+
+---
+
+## Phase D1 — Implementation Notes
+
+> Design decisions and findings from Phase D1 — Schema Derivation (V0.9.25).
+
+**Platform-distributed section templates — design principle**
+
+`heroLiveCaptureSection` and `heroLensSection` are globally available section templates. Their availability in SectionRenderer is not conditioned on Live module installation. This principle was established in D1 at Tom's direction (2026-06-27).
+
+The Live module introduced these sections, but the platform distributes them. Consequences:
+- Schema definitions remain in `src/lib/sanity/schema.ts` as platform-owned types.
+- They are absent from `live.platformContract.schemaTypes` and `live.platformContract.sectionTypes`.
+- `modules/live/schema.ts` exports only `livePageType`.
+- D2's section map derivation must not infer that these sections are Live-module-gated.
+- This principle is documented in a comment in `registry.ts` and in the module schema file.
+
+**`types.ts` not in roadmap file list — required change**
+
+Adding `schemaDefinitions: () => SchemaTypeDefinition[]` to `platformContract` required modifying `src/lib/modules/types.ts`, which the roadmap's D1 file list omitted. This is the implementation of the stated convention ("manifests carry a direct import reference"). Not a Roadmap Amendment.
+
+**`shared.ts` created to prevent circular imports**
+
+`projectSlugField` and `scopedRef` moved from `schema.ts` to `src/lib/sanity/fields/shared.ts`. Both module schema files and `schema.ts` import from this shared location. Without it:
+`schema.ts → modules/schema.ts → registry.ts → modules/blog/schema.ts → schema.ts` would be a build-breaking cycle.
+
+**8 types moved, not 10**
+
+Phase 0 §4 listed 10 module-owned types. The two hero sections are now classified as platform-owned (see above), so only 8 moved:
+- Blog: `blogListingSection`, `blogPage`, `postAuthor`, `blogCategory`, `post`
+- Events: `eventsPage`, `event`
+- Live: `livePage`
+
+**`ModuleDef` deprecated alias removed**
+
+`ModuleDef` alias removed from `types.ts` and `index.ts`. Long-deferred from B1. Zero consumers in the codebase confirmed before removal.
+
+**`initialValueTemplates` unchanged**
+
+7 module-related templates stay in `schema.ts`. `buildSchema()` returns `SchemaTypeDefinition[]` only. No templates are in module files. No Sanity behavior change.
+
+**`schemaTypes` / `schemaDefinitions` sync is manual**
+
+Both fields must stay in sync. No automated check enforces this yet. A future Rule 10 in `validate.ts` could call `schemaDefinitions()` and verify every name in `schemaTypes` appears in the output. Deferred.
+
+**tsc + vitest results**
+
+- `tsc --noEmit` → clean (one test fixture fix required: `makeManifest()` in `validate.test.ts` needed `schemaDefinitions: () => []`)
+- `vitest run` → 109 tests, all passing
 
 ---
 

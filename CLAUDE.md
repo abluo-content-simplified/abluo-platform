@@ -56,6 +56,7 @@ These are non-negotiable. A future session that violates any of these is buildin
 4. **Clients never see Sanity.** The client dashboard is their only interface.
 5. **Content Localization ≠ Interface Localization.** They are separate systems. Never derive one from the other.
 6. **Routable document types obey the five-requirement checklist.** No shortcuts. See *Publicly Routable Content Pattern*.
+7. **Sections and Modules are orthogonal. Never couple them.** A section is a presentation component. A module owns content, business logic, filtering, permissions, and management UI. A section may render inline content or module-managed content — it never owns business data itself. Proposing a new "section that stores its own managed data" is the wrong abstraction: split it into a section (presentation) + module (data). See *Section Library vs Modules* below.
 
 ---
 
@@ -224,6 +225,51 @@ Derived from `siteConfig.backgroundPattern` + optional per-section `background` 
 ### Rule
 
 Animations belong to section components. Sanity stores content — not timing, easing, motion, or animation logic.
+
+---
+
+## Section Library vs Modules
+
+Sections and Modules are orthogonal layers. **Never couple them.**
+
+### Sections — presentation layer
+
+A section is a presentation component. It decides how and where content is displayed. A section may contain:
+- **Inline content** — fields stored directly on the section object in Sanity (suitable for small or one-off content)
+- **Module-managed content** — rendered from data owned by a module (posts, events, FAQs, team members, etc.)
+
+A section never owns business data, manages collections, or enforces permissions.
+
+### Modules — content and business layer
+
+A module owns: document types, editorial collections, filtering logic, permissions, categories, Studio management UI, and APIs. It does not decide where its content appears on a page — that is the section's job.
+
+### Examples
+
+| Section | What it does |
+|---|---|
+| Hero Section | Inline content — platform section template |
+| Blog Listing Section | Renders content from the Blog Module |
+| Events Section | Renders content from the Events Module |
+| FAQ Section | Inline FAQs or content from a future FAQ Module |
+| Team Section | Inline team members or content from a future Team Module |
+| Gallery Section | Inline images or content from a future Media Library Module |
+
+### Platform Section Library
+
+Some sections are platform assets — available to every tenant regardless of which modules are installed:
+- `heroLensSection`
+- `heroLiveCaptureSection`
+
+These live in `src/lib/sanity/schema.ts` as platform-owned types. Their availability is never gated by any module's installation state. Installing or uninstalling a module must not affect which platform sections are available to SectionRenderer.
+
+Module `platformContract.sectionTypes` declares sections that belong to the module. Platform sections are not listed in any module manifest.
+
+### When proposing new features
+
+If a proposed "section" would also own and manage a collection of documents, it is the wrong abstraction. Split it:
+1. A **Module** to own the data (documents, collections, filtering, permissions, Studio UI)
+2. A **Section** to present that data on a page
 
 ---
 
