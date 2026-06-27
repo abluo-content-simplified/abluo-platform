@@ -8,6 +8,8 @@
 // Phase B1: ModuleInstallation type; moduleInstallations field on project doc.
 // Phase D1: schemaDefinitions on ModuleManifest; buildSchema(); module schema files;
 //           ModuleDef alias removed.
+// Phase D2: SECTION_MAP + ModuleSectionProps; blog/sections.tsx; registry remains
+//           purely declarative — no React components in ModuleManifest.
 
 export {
   type ModuleManifest,
@@ -21,3 +23,5 @@ export {
 export { MODULE_REGISTRY } from './registry'
 
 export { buildSchema } from './schema'
+
+export { SECTION_MAP, type ModuleSectionProps, type SectionComponentMap } from './sections'

@@ -15,10 +15,10 @@
 | Field | Value |
 |---|---|
 | **Current milestone** | Milestone D |
-| **Current phase** | D1 — Schema Derivation |
+| **Current phase** | D2 Complete — D3 next |
 | **Overall status** | In Progress |
-| **Baseline version** | V0.9.24 |
-| **Next version** | V0.9.25 |
+| **Baseline version** | V0.9.25 |
+| **Next version** | V0.9.27 |
 
 ---
 
@@ -33,8 +33,8 @@
 | B1 | Installation Type & Schema Migration | V0.9.22 | Complete | 2026-06-26 | 2026-06-26 | ModuleInstallation type; schema + GROQ; migration script; queries.ts zero consumers confirmed |
 | B2 | Installation Persistence Decision | V0.9.23 | Complete | 2026-06-26 | 2026-06-26 | Array-on-project confirmed; ADR-011 sub-decision in architecture-decisions.md |
 | C1 | Project Settings Shell | V0.9.24 | Complete | 2026-06-26 | 2026-06-26 | General + Modules + Locales + 4 stubs; ModuleList.tsx + StubPane.tsx |
-| D1 | Schema Derivation | V0.9.25 | In Progress | 2026-06-27 | — | 8 types moved; buildSchema(); shared.ts; platform-distributed sections principle |
-| D2 | Section Map Derivation | V0.9.26 | Waiting | — | — | High risk — use Phase 0 §3 |
+| D1 | Schema Derivation | V0.9.25 | Complete | 2026-06-27 | 2026-06-27 | 8 types moved; buildSchema(); shared.ts; platform-distributed sections principle |
+| D2 | Section Map Derivation | V0.9.26 | Complete | 2026-06-27 | 2026-06-27 | RA-002 applied; 1 module section; SECTION_MAP; registry stays declarative |
 | D3 | Navigation Derivation | V0.9.27 | Waiting | — | — | Use Phase 0 §5 |
 | D4 | Permission Derivation | V0.9.28 → V1.0.0 | Waiting | — | — | V1.0.0 tagged on production verify |
 | C2 | Module Management UI + Service | V1.0.1 | Waiting | — | — | Begins after V1.0.0 |
@@ -55,8 +55,6 @@ Ideas discovered during implementation that may become Roadmap Amendments but ha
 
 ## Roadmap Amendments
 
-_No amendments recorded._
-
 > Only approved amendments belong here. When an amendment is approved, append it using the format below.
 > Do not edit the roadmap. Do not edit completed phase entries above.
 
@@ -71,6 +69,66 @@ _No amendments recorded._
 **Change:** [Exactly what is different from the roadmap specification.]  
 **Impact on other phases:** [Any downstream effects.]
 ```
+
+### RA-002 — D2 Scope Reduction and Manifest Declarativity
+
+**Date:** 2026-06-27  
+**Affects:** Phase D2  
+**Approved by:** Tom  
+
+**Why (RA-002a — scope):** The roadmap's acceptance criterion stated "neither SectionRenderer file contains a hand-maintained case list for any section type." This conflicts with the Sections vs Modules design principle established in D1: platform-owned sections (heroSection, contentSection, etc.) are not module-gated and must remain in the SectionRenderer switch under the platform's control. Applying the criterion literally would require reclassifying platform sections as module sections, violating the principle.
+
+**Change (RA-002a):** Revised acceptance criterion: all module-owned sections (as declared in `platformContract.sectionTypes`) are rendered via `SECTION_MAP`. Platform-owned sections remain in explicit SectionRenderer switch cases. Both SectionRenderer files are identical in section coverage. New module sections can be added without modifying either SectionRenderer file.
+
+**Why (RA-002b — manifest declarativity):** The roadmap specified adding `platformContract.sectionComponents: Record<string, React.ComponentType<SectionProps>>` to `ModuleManifest`. This would pull Next.js-specific React components into `registry.ts`, which is imported by `sanity.config.ts` (Sanity Studio). The Studio would transitively depend on `next/image`, `next/link`, and other Next.js rendering primitives — a potential Studio bundle failure. Tom confirmed: "Keep the registry purely declarative. Do not allow it to become a runtime dependency on frontend rendering components."
+
+**Change (RA-002b):** `sectionComponents` is NOT added to `ModuleManifest`. The manifest declares `sectionTypes: string[]` only (already present from A2). The section component map lives entirely in `src/lib/modules/sections.ts`, which imports module section files directly and is never imported by `registry.ts` or `sanity.config.ts`. `ModuleManifest.platformContract` is unchanged.
+
+**Impact on other phases:** None. D3 and D4 are unaffected. The `sectionTypes: string[]` declaration already on the manifest is the stable declarative surface; D2's runtime composition is a separate layer.
+
+---
+
+## Phase D2 — Implementation Notes
+
+> Design decisions and findings from Phase D2 — Section Map Derivation (V0.9.26).
+
+**RA-002 applied — see Roadmap Amendments section above**
+
+Two amendments were raised and approved during the Phase Review. RA-002a reduced scope (platform sections stay in switch); RA-002b removed `sectionComponents` from the manifest to protect Studio bundle integrity.
+
+**One module-owned section after platform principle**
+
+After classifying sections per the Sections vs Modules principle:
+- Blog: `blogListingSection` — module-owned (1)
+- Events: no sections (0)
+- Live: no sections (0) — heroLens/heroLiveCapture are platform sections
+
+`SECTION_MAP` contains exactly one entry at V0.9.26. The value of D2 is the pattern, not the count: future modules add a `sections.tsx` file and their entries appear in `SECTION_MAP` automatically, without modifying either page file.
+
+**Circular import avoided without shared type file**
+
+`blog/sections.tsx` does not import `ModuleSectionProps` from `../sections` (avoiding a module-init cycle). Instead it defines a local `LocalSectionProps` type with the same shape. TypeScript validates compatibility at the call site in `sections.ts` where the spread is typed as `SectionComponentMap`. No shared type file needed.
+
+**Studio bundle protection — two-layer separation**
+
+`registry.ts` → `sanity.config.ts` (Studio). `sections.ts` → page route files only. These two import chains never intersect. The development cross-check in `sections.ts` (dynamic `import('./registry')`) is guarded behind `process.env.NODE_ENV !== 'production'` and uses a lazy import so even in development the Studio bundle is never affected.
+
+**`blogListingSection` data hydration unchanged**
+
+The pre-render hydration in both page files (fetching posts and mutating the section object) remains exactly as-is. `SECTION_MAP`'s `BlogListingSection` wrapper receives the already-hydrated section. No data-fetching logic was moved into module infrastructure.
+
+**Prop name adaptation — `tenantSlug` → `tenantId`**
+
+`ModuleSectionProps` uses `tenantSlug` (consistent with SectionRenderer's parameter name). `BlogListingSection` uses `tenantId` internally. The wrapper in `blog/sections.tsx` adapts the name. Neither the component nor the SectionRenderer needed renaming.
+
+**Canonical section order established**
+
+Both SectionRenderer switch bodies now have identical ordering for all 12 platform sections: hero types → content sections → contact/form/metrics. The Phase 0 §3 note about `blogListingSection`/`formSection` order discrepancy is resolved by the section's removal from the switch.
+
+**tsc + vitest results**
+
+- `tsc --noEmit` → clean (zero errors)
+- `vitest run` → 109 tests, all passing
 
 ---
 

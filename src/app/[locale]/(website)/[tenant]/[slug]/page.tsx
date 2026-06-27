@@ -11,10 +11,10 @@ import { TeamSection } from '@/components/sections/TeamSection'
 import { TextSection } from '@/components/sections/TextSection'
 import { FAQSection } from '@/components/sections/FAQSection'
 import { ContactSection } from '@/components/sections/ContactSection'
-import { BlogListingSection } from '@/components/sections/BlogListingSection'
 import { FormSection } from '@/components/sections/FormSection'
 import { StatementSection } from '@/components/sections/StatementSection'
 import { MetricsSection } from '@/components/sections/MetricsSection'
+import { SECTION_MAP } from '@/lib/modules/sections'
 import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, PageSection, FAQSection as FAQSectionType, BlogListingSection as BlogListingSectionType, FormSection as FormSectionType, HeroLiveCaptureSection as HeroLiveCaptureSectionType, HeroLensSection as HeroLensSectionType, SupportedLocale, DesignSystem, Post } from '@/lib/sanity/types'
 import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
@@ -162,6 +162,18 @@ function SectionRenderer({
 }) {
   const surface = computeSectionSurface(section.background, backgroundPattern as any, sectionIndex)
 
+  // ── Module-owned sections ────────────────────────────────────────────────
+  // Derived from MODULE_REGISTRY via SECTION_MAP. New module sections are
+  // registered in their module's sections.tsx file; no changes here required.
+  const ModuleSection = SECTION_MAP[section._type]
+  if (ModuleSection) {
+    return <>{ModuleSection({ section, surface, designSystem, siteConfig, locale, tenantSlug, fromParam })}</>
+  }
+
+  // ── Platform-owned sections ──────────────────────────────────────────────
+  // These sections are platform assets available to every tenant regardless
+  // of which modules are installed. They are registered here explicitly and
+  // must not be moved to module files (Sections vs Modules principle, ADR-011).
   switch (section._type) {
     case 'heroSection':
       return <HeroSection section={section} surface={surface} designSystem={designSystem} />
@@ -185,8 +197,6 @@ function SectionRenderer({
       return <ContactSection section={section} surface={surface} designSystem={designSystem} siteConfig={siteConfig} locale={locale} />
     case 'formSection':
       return <FormSection section={section as FormSectionType} surface={surface} designSystem={designSystem} locale={locale} tenantSlug={tenantSlug} />
-    case 'blogListingSection':
-      return <BlogListingSection section={section} surface={surface} designSystem={designSystem} locale={locale} tenantId={tenantSlug} fromParam={fromParam} />
     case 'metricsSection':
       return <MetricsSection section={section} surface={surface} designSystem={designSystem} />
     default:
