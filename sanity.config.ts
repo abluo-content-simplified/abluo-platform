@@ -2,6 +2,7 @@ import { defineConfig } from 'sanity'
 import { structureTool } from 'sanity/structure'
 import { schemaTypes, initialValueTemplates } from './src/lib/sanity/schema'
 import { MODULE_REGISTRY } from './src/lib/modules'
+import { buildCollectionItems } from './src/lib/modules/navigation'
 import { DesignSystemPreview } from './src/sanity/components/DesignSystemPreview'
 import { DesignSystemAssignPane } from './src/sanity/components/DesignSystemAssignPane'
 import { ExportDesignSystemAction } from './src/sanity/actions/ExportDesignSystemAction'
@@ -217,10 +218,12 @@ export default defineConfig({
         // ── Collections section builder ───────────────────────────────────────
         // Only includes collection groups for enabled modules.
         // Inserts dividers between groups automatically.
+        // buildCollectionItems() (from navigation.ts) converts each module's
+        // declarative `collections` array into Studio structure items.
         function buildCollectionsItems(slug: string, enabledModuleIds: string[]) {
           const enabledDefs = MODULE_REGISTRY.filter((m) => enabledModuleIds.includes(m.id))
           const groups: ReturnType<typeof S.listItem>[][] = enabledDefs
-            .map((m) => m.platformContract.collectionItems({ slug, S }))
+            .map((m) => buildCollectionItems(slug, S, m))
             .filter((g) => g.length > 0)
 
           // Interleave dividers between groups
