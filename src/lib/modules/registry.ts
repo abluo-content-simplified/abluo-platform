@@ -1,5 +1,8 @@
 import type { ModuleManifest, CollectionItemsContext } from './types'
 import { validateRegistry } from './validate'
+import { blogSchemaTypes } from './blog/schema'
+import { eventsSchemaTypes } from './events/schema'
+import { liveSchemaTypes } from './live/schema'
 
 // Re-export CollectionItemsContext for callers that previously imported it from
 // this file. Remove after all import sites migrate to importing from ./types.
@@ -104,6 +107,8 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         'post',
       ],
 
+      schemaDefinitions: () => blogSchemaTypes,
+
       permissions: [
         {
           id: 'blog.post.write',
@@ -186,6 +191,8 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         'event',
       ],
 
+      schemaDefinitions: () => eventsSchemaTypes,
+
       permissions: [
         {
           id: 'events.event.write',
@@ -229,13 +236,19 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
 
       collectionItems: () => [], // Live module has no collections
 
-      sectionTypes: ['heroLiveCaptureSection', 'heroLensSection'],
+      // heroLiveCaptureSection and heroLensSection are platform-distributed
+      // section templates — globally available regardless of whether this module
+      // is installed. Their schema definitions live in src/lib/sanity/schema.ts
+      // and their SectionRenderer registration is a platform concern.
+      // Installing or uninstalling the Live module must not affect their availability.
+      // ADR-011 Phase D1 — design principle established.
+      sectionTypes: [],
 
       schemaTypes: [
-        'heroLiveCaptureSection',
-        'heroLensSection',
         'livePage',
       ],
+
+      schemaDefinitions: () => liveSchemaTypes,
 
       permissions: [
         {

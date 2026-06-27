@@ -15,6 +15,7 @@
 // routing TenantRole through a shared file, neither modules nor permissions
 // imports from the other.
 
+import type { SchemaTypeDefinition } from 'sanity'
 import type { StructureBuilder } from 'sanity/structure'
 import type { TenantRole } from '../types/roles'
 
@@ -117,9 +118,24 @@ export type ModuleManifest = {
     /**
      * All Sanity schema type names this module owns (document types and
      * embedded object types). Declared here; consumed by Phase D1 (Schema
-     * Derivation).
+     * Derivation) for validation and tooling.
+     *
+     * Must stay in sync with schemaDefinitions — every name here must have a
+     * corresponding type returned by schemaDefinitions(). No automated check
+     * enforces this yet; it is a manual invariant until a future validation rule
+     * is added.
      */
     schemaTypes: string[]
+    /**
+     * Returns the actual Sanity type definition objects this module contributes.
+     * Called by buildSchema() in src/lib/modules/schema.ts to compose the
+     * platform schema. This is the import reference the roadmap specifies:
+     * a function rather than a path-based lookup, so the module is statically
+     * importable and tree-shakeable.
+     *
+     * Consumed by Phase D1 (Schema Derivation).
+     */
+    schemaDefinitions: () => SchemaTypeDefinition[]
     /**
      * Permission declarations for this module.
      * Consumed by Phase D4 (Permission Derivation).
@@ -188,6 +204,4 @@ export type ModuleInstallation = {
   provenance: 'admin' | 'auto'
 }
 
-// ── Deprecated alias ──────────────────────────────────────────────────────────
-/** @deprecated Use ModuleManifest. This alias will be removed after Phase B1. */
-export type ModuleDef = ModuleManifest
+// ModuleDef alias removed in Phase D1 — use ModuleManifest.
