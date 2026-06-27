@@ -1,7 +1,8 @@
 // ── Build-time manifest validation ───────────────────────────────────────────
-// ADR-011 Phase A3.
+// ADR-011 Phase A3 — initial nine rules.
+// ADR-011 Phase D3 — extended to validate the `collections` structure.
 //
-// Validates every entry in MODULE_REGISTRY against nine structural rules.
+// Validates every entry in MODULE_REGISTRY against all structural rules.
 // Called at module load time from registry.ts — a failure throws immediately,
 // which propagates as a build error in Next.js and Sanity Studio.
 //
@@ -69,18 +70,19 @@ function formatErrors(errors: ManifestError[]): string {
 // ── validateRegistry ──────────────────────────────────────────────────────────
 
 /**
- * Validates all entries in MODULE_REGISTRY against nine structural rules.
+ * Validates all entries in MODULE_REGISTRY against all structural rules.
  *
  * Rules:
- *   1. All id values are unique.
- *   2. All id values are lowercase kebab-case.
- *   3. version is a valid semver string.
- *   4. status is one of: released, deprecated, archived.
- *   5. platformContract.pageType, if set, is a non-empty string.
- *   6. platformContract.sectionTypes contains no duplicates across the registry.
- *   7. platformContract.schemaTypes contains no duplicates across the registry.
- *   8. dependencies.requires references IDs present in the registry.
- *   9. dataStore.primary is one of: content, operational, hybrid.
+ *   1.  All id values are unique.
+ *   2.  All id values are lowercase kebab-case.
+ *   3.  version is a valid semver string.
+ *   4.  status is one of: released, deprecated, archived.
+ *   5.  platformContract.pageType, if set, is a non-empty string.
+ *   6.  platformContract.sectionTypes contains no duplicates across the registry.
+ *   7.  platformContract.schemaTypes contains no duplicates across the registry.
+ *   8.  dependencies.requires references IDs present in the registry.
+ *   9.  dataStore.primary is one of: content, operational, hybrid.
+ *   10. platformContract.collections structure is valid (Phase D3).
  *
  * @throws {Error} If any rule is violated. The message lists all violations.
  */
@@ -204,6 +206,75 @@ export function validateRegistry(manifests: ModuleManifest[]): void {
         message: `dataStore.primary "${m.dataStore.primary}" is not a valid value.`,
         fix: `Set dataStore.primary to one of: "content", "operational", "hybrid".`,
       })
+    }
+
+    // ── Rule 10: collections structure validity ───────────────────────────────
+    // Added in Phase D3 (Navigation Derivation). Validates the declarative
+    // collections array that replaced the imperative collectionItems() lambda.
+    const seenGroupIds = new Set<string>()
+    for (const group of m.platformContract.collections) {
+      if (!group.id || group.id.trim().length === 0) {
+        errors.push({
+          moduleId: mid,
+          rule: 10,
+          message: `platformContract.collections contains a group with an empty id.`,
+          fix: `Each collection group must have a non-empty id string.`,
+        })
+        continue
+      }
+      if (!group.label || group.label.trim().length === 0) {
+        errors.push({
+          moduleId: mid,
+          rule: 10,
+          message: `platformContract.collections group "${group.id}" has an empty label.`,
+          fix: `Set a non-empty label on group "${group.id}".`,
+        })
+      }
+      if (seenGroupIds.has(group.id)) {
+        errors.push({
+          moduleId: mid,
+          rule: 10,
+          message: `platformContract.collections group id "${group.id}" is declared more than once.`,
+          fix: `Each group id must be unique within a module's collections.`,
+        })
+      } else {
+        seenGroupIds.add(group.id)
+      }
+      for (const item of group.items) {
+        if (!item.id || item.id.trim().length === 0) {
+          errors.push({
+            moduleId: mid,
+            rule: 10,
+            message: `platformContract.collections group "${group.id}" contains an item with an empty id.`,
+            fix: `Each collection item must have a non-empty id string.`,
+          })
+          continue
+        }
+        if (!item.label || item.label.trim().length === 0) {
+          errors.push({
+            moduleId: mid,
+            rule: 10,
+            message: `platformContract.collections group "${group.id}" item "${item.id}" has an empty label.`,
+            fix: `Set a non-empty label on item "${item.id}".`,
+          })
+        }
+        if (!item.schemaType || item.schemaType.trim().length === 0) {
+          errors.push({
+            moduleId: mid,
+            rule: 10,
+            message: `platformContract.collections group "${group.id}" item "${item.id}" has an empty schemaType.`,
+            fix: `Set a non-empty Sanity document type name on item "${item.id}".`,
+          })
+        }
+        if (!item.filter || item.filter.trim().length === 0) {
+          errors.push({
+            moduleId: mid,
+            rule: 10,
+            message: `platformContract.collections group "${group.id}" item "${item.id}" has an empty filter.`,
+            fix: `Set a non-empty GROQ filter string on item "${item.id}".`,
+          })
+        }
+      }
     }
   }
 

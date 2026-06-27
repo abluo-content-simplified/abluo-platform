@@ -1,19 +1,15 @@
-import type { ModuleManifest, CollectionItemsContext } from './types'
+import type { ModuleManifest } from './types'
 import { validateRegistry } from './validate'
 import { blogSchemaTypes } from './blog/schema'
 import { eventsSchemaTypes } from './events/schema'
 import { liveSchemaTypes } from './live/schema'
-
-// Re-export CollectionItemsContext for callers that previously imported it from
-// this file. Remove after all import sites migrate to importing from ./types.
-export type { CollectionItemsContext }
 
 // ── Module registry ───────────────────────────────────────────────────────────
 // The single authoritative definition of every module available on the platform.
 //
 // Each entry is a complete ModuleManifest declaring:
 //   - Identity: id, label, version, status
-//   - Platform contract: pageType, collectionItems, sectionTypes, schemaTypes,
+//   - Platform contract: pageType, collections, sectionTypes, schemaTypes,
 //     permissions (declared here; consumed by derivation phases D1–D4)
 //   - Public contract: empty stub (Phase A2)
 //   - Dependencies: requires (hard), integratesWith (optional)
@@ -25,6 +21,9 @@ export type { CollectionItemsContext }
 //
 // ADR-011 Phase A1 — registry relocated from sanity.config.ts inline closure.
 // ADR-011 Phase A2 — entries migrated from minimal ModuleDef to full ModuleManifest.
+// ADR-011 Phase D3 — collectionItems() lambdas replaced with declarative collections arrays.
+//   The registry is now fully declarative. No imperative Studio-building logic lives here.
+//   buildCollectionItems() in navigation.ts converts declarations to Studio structure items.
 export const MODULE_REGISTRY: ModuleManifest[] = [
 
   // ── Blog ───────────────────────────────────────────────────────────────────
@@ -38,63 +37,38 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
     platformContract: {
       pageType: 'blogPage',
 
-      collectionItems: ({ slug, S }: CollectionItemsContext) => [
-        S.listItem()
-          .id(`${slug}-blog-module`)
-          .title('Blog')
-          .child(
-            S.list()
-              .id(`${slug}-blog-module-list`)
-              .title('Blog')
-              .items([
-                S.listItem()
-                  .id(`${slug}-posts`)
-                  .title('Posts')
-                  .child(
-                    S.documentList()
-                      .title('Posts')
-                      .schemaType('post')
-                      .apiVersion('2026-05-21')
-                      .filter(`_type == "post" && projectSlug == $slug`)
-                      .params({ slug })
-                      .defaultOrdering([
-                        { field: 'featured', direction: 'desc' },
-                        { field: 'publishedAt', direction: 'desc' },
-                      ])
-                      .initialValueTemplates([
-                        S.initialValueTemplateItem('postProjectOwned', { projectSlug: slug }),
-                      ])
-                  ),
-                S.listItem()
-                  .id(`${slug}-categories`)
-                  .title('Categories')
-                  .child(
-                    S.documentList()
-                      .title('Categories')
-                      .schemaType('blogCategory')
-                      .apiVersion('2026-05-21')
-                      .filter(`_type == "blogCategory" && projectSlug == $slug`)
-                      .params({ slug })
-                      .initialValueTemplates([
-                        S.initialValueTemplateItem('blogCategoryProjectOwned', { projectSlug: slug }),
-                      ])
-                  ),
-                S.listItem()
-                  .id(`${slug}-authors`)
-                  .title('Authors')
-                  .child(
-                    S.documentList()
-                      .title('Authors')
-                      .schemaType('postAuthor')
-                      .apiVersion('2026-05-21')
-                      .filter(`_type == "postAuthor" && projectSlug == $slug`)
-                      .params({ slug })
-                      .initialValueTemplates([
-                        S.initialValueTemplateItem('postAuthorProjectOwned', { projectSlug: slug }),
-                      ])
-                  ),
-              ])
-          ),
+      collections: [
+        {
+          id: 'blog-module',
+          label: 'Blog',
+          items: [
+            {
+              id: 'posts',
+              label: 'Posts',
+              schemaType: 'post',
+              filter: `_type == "post" && projectSlug == $slug`,
+              ordering: [
+                { field: 'featured', direction: 'desc' as const },
+                { field: 'publishedAt', direction: 'desc' as const },
+              ],
+              initialValueTemplate: 'postProjectOwned',
+            },
+            {
+              id: 'categories',
+              label: 'Categories',
+              schemaType: 'blogCategory',
+              filter: `_type == "blogCategory" && projectSlug == $slug`,
+              initialValueTemplate: 'blogCategoryProjectOwned',
+            },
+            {
+              id: 'authors',
+              label: 'Authors',
+              schemaType: 'postAuthor',
+              filter: `_type == "postAuthor" && projectSlug == $slug`,
+              initialValueTemplate: 'postAuthorProjectOwned',
+            },
+          ],
+        },
       ],
 
       sectionTypes: ['blogListingSection'],
@@ -156,32 +130,23 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
     platformContract: {
       pageType: 'eventsPage',
 
-      collectionItems: ({ slug, S }: CollectionItemsContext) => [
-        S.listItem()
-          .id(`${slug}-events-module`)
-          .title('Events')
-          .child(
-            S.list()
-              .id(`${slug}-events-module-list`)
-              .title('Events')
-              .items([
-                S.listItem()
-                  .id(`${slug}-events`)
-                  .title('Events')
-                  .child(
-                    S.documentList()
-                      .title('Events')
-                      .schemaType('event')
-                      .apiVersion('2026-05-21')
-                      .filter(`_type == "event" && projectSlug == $slug`)
-                      .params({ slug })
-                      .defaultOrdering([{ field: 'startDate', direction: 'desc' }])
-                      .initialValueTemplates([
-                        S.initialValueTemplateItem('eventProjectOwned', { projectSlug: slug }),
-                      ])
-                  ),
-              ])
-          ),
+      collections: [
+        {
+          id: 'events-module',
+          label: 'Events',
+          items: [
+            {
+              id: 'events',
+              label: 'Events',
+              schemaType: 'event',
+              filter: `_type == "event" && projectSlug == $slug`,
+              ordering: [
+                { field: 'startDate', direction: 'desc' as const },
+              ],
+              initialValueTemplate: 'eventProjectOwned',
+            },
+          ],
+        },
       ],
 
       sectionTypes: [],
@@ -234,7 +199,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
     platformContract: {
       pageType: 'livePage',
 
-      collectionItems: () => [], // Live module has no collections
+      collections: [], // Live module has no collections
 
       // heroLiveCaptureSection and heroLensSection are platform-distributed
       // section templates — globally available regardless of whether this module
@@ -278,6 +243,6 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
 
 // ── Build-time validation ─────────────────────────────────────────────────────
 // Runs at module load time. Throws with a human-readable diagnostic if any
-// manifest violates the nine structural rules defined in validate.ts.
+// manifest violates the structural rules defined in validate.ts.
 // A throw here propagates as a build error in Next.js and Sanity Studio.
 validateRegistry(MODULE_REGISTRY)

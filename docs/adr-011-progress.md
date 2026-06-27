@@ -15,10 +15,10 @@
 | Field | Value |
 |---|---|
 | **Current milestone** | Milestone D |
-| **Current phase** | D2 Complete — D3 next |
+| **Current phase** | D3 Complete — D4 next |
 | **Overall status** | In Progress |
 | **Baseline version** | V0.9.25 |
-| **Next version** | V0.9.27 |
+| **Next version** | V0.9.28 |
 
 ---
 
@@ -35,7 +35,7 @@
 | C1 | Project Settings Shell | V0.9.24 | Complete | 2026-06-26 | 2026-06-26 | General + Modules + Locales + 4 stubs; ModuleList.tsx + StubPane.tsx |
 | D1 | Schema Derivation | V0.9.25 | Complete | 2026-06-27 | 2026-06-27 | 8 types moved; buildSchema(); shared.ts; platform-distributed sections principle |
 | D2 | Section Map Derivation | V0.9.26 | Complete | 2026-06-27 | 2026-06-27 | RA-002 applied; 1 module section; SECTION_MAP; registry stays declarative |
-| D3 | Navigation Derivation | V0.9.27 | Waiting | — | — | Use Phase 0 §5 |
+| D3 | Navigation Derivation | V0.9.27 | Complete | 2026-06-27 | 2026-06-27 | RA-003 applied; declarative collections; navigation.ts; 138 tests |
 | D4 | Permission Derivation | V0.9.28 → V1.0.0 | Waiting | — | — | V1.0.0 tagged on production verify |
 | C2 | Module Management UI + Service | V1.0.1 | Waiting | — | — | Begins after V1.0.0 |
 | E1 | Version Tracking | V1.0.2 | Waiting | — | — | |
@@ -85,6 +85,109 @@ Ideas discovered during implementation that may become Roadmap Amendments but ha
 **Change (RA-002b):** `sectionComponents` is NOT added to `ModuleManifest`. The manifest declares `sectionTypes: string[]` only (already present from A2). The section component map lives entirely in `src/lib/modules/sections.ts`, which imports module section files directly and is never imported by `registry.ts` or `sanity.config.ts`. `ModuleManifest.platformContract` is unchanged.
 
 **Impact on other phases:** None. D3 and D4 are unaffected. The `sectionTypes: string[]` declaration already on the manifest is the stable declarative surface; D2's runtime composition is a separate layer.
+
+### RA-003 — D3 Group Wrapper Type and No Escape Hatch
+
+**Date:** 2026-06-27  
+**Affects:** Phase D3  
+**Approved by:** Tom  
+
+**Why (RA-003a — flat type inadequate):** The roadmap specified a flat `ModuleCollectionDef { id, label, schemaType, filter, ordering?, initialValueTemplate? }` as a single document-list descriptor. Both active modules (Blog, Events) use a two-level nested structure: a named group (S.listItem → S.list) containing one or more sub-lists (S.listItem → S.documentList). A flat type cannot express this. Phase 0 §5 noted this explicitly and flagged the escape hatch as a fallback.
+
+**Why (RA-003b — no escape hatch needed):** The roadmap's proposed `customCollectionItems?: (slug: string) => ListItem[]` escape hatch would be `collectionItems` renamed — still an imperative lambda carrying Studio code into the manifest. Both Blog and Events map cleanly to a two-level group type, so the escape hatch is unnecessary and would constitute permanent technical debt with no current consumer.
+
+**Change:** `ModuleCollectionDef` replaced by:
+- `ModuleCollectionGroupDef { id, label, items: ModuleCollectionItemDef[] }` — the group wrapper  
+- `ModuleCollectionItemDef { id, label, schemaType, filter, ordering?, initialValueTemplate? }` — the sub-list (fields identical to the original flat type)  
+- `platformContract.collections: ModuleCollectionGroupDef[]` replaces `collectionItems()`  
+- `CollectionItemsContext` removed — no longer needed; `StructureBuilder` import removed from `types.ts`  
+- `buildCollectionItems(slug, S, manifest)` in `navigation.ts` is the Studio builder — not in the manifest  
+- Escape hatch: not implemented  
+
+**Impact on other phases:** D4 (Permission Derivation) is unaffected — permissions field is unchanged. `StructureBuilder` import removed from `types.ts` cleans up a latent bundler concern. No other phases touch collections.
+
+---
+
+## Phase D3 — Implementation Notes
+
+> Design decisions and findings from Phase D3 — Navigation Derivation (V0.9.27).
+
+**RA-003 applied — see Roadmap Amendments section above**
+
+The flat `ModuleCollectionDef` was replaced by a two-level group type. The escape hatch was not implemented. Both decisions were approved during the Phase Review.
+
+**Core architectural principle**
+
+> Module manifests are declarative descriptions of capabilities. Builder layers consume those descriptions to construct runtime structures. Runtime behaviour belongs in builders, never inside the manifest.
+
+This principle now explains the full architectural evolution from A1 through D3:
+
+- A1 removed imperative labels.
+- A2 introduced declarative manifests.
+- D1 moved schema construction into `buildSchema()`.
+- D2 moved section rendering into `SECTION_MAP`.
+- D3 moved Studio navigation into `buildCollectionItems()`.
+
+The manifest now describes capabilities only.
+
+**Builder pattern**
+
+Builders are responsible for translating declarative module metadata into runtime structures. Current builders:
+
+- `buildSchema()` — Sanity schema types from `schemaDefinitions`
+- `SECTION_MAP` — React rendering from `sectionTypes`
+- `buildCollectionItems()` — Studio navigation from `collections`
+
+Future builders may cover pages, settings, permissions, commands, and APIs as those capabilities are introduced in later phases.
+
+**Registry is now fully declarative**
+
+`registry.ts` no longer contains any imperative code. The `collectionItems` lambdas (the last function fields in `platformContract`) have been replaced by plain `collections: ModuleCollectionGroupDef[]` arrays. The registry now carries only data declarations.
+
+**Inverse isolation principle established**
+
+Two isolation boundaries now govern the modules layer:
+- `sections.ts` → Next.js page routes only (never Studio/sanity.config.ts)  
+- `navigation.ts` → sanity.config.ts only (never Next.js page routes)
+
+`sanity.config.ts` imports `buildCollectionItems` directly from `./src/lib/modules/navigation` (not through the barrel) to make this boundary explicit and prevent accidental inversion.
+
+**`CollectionItemsContext` fully retired**
+
+`CollectionItemsContext` is removed from `types.ts`. The `StructureBuilder` import is removed from `types.ts`. The re-export from `registry.ts` is removed. The A1/A2 debt marker (`// Remove after all import sites migrate`) is resolved. `types.ts` is now free of all Studio-specific imports.
+
+**ID convention preserved exactly**
+
+`buildCollectionItems()` generates IDs that match the values previously hard-coded in the `collectionItems` lambdas:
+- `${slug}-${group.id}` — group list item
+- `${slug}-${group.id}-list` — group inner list
+- `${slug}-${item.id}` — sub-list item
+
+Navigation tests assert these IDs for both Blog (all three collections) and Events against the live `MODULE_REGISTRY`. Sanity Studio caches state by list item ID — a mismatch resets sidebar state.
+
+**`platformContract` evolution — future observation**
+
+`platformContract` intentionally remains a single flat interface for now. As additional capabilities arrive after V1.0 (pages, settings, permissions, commands, APIs), watch for the natural inflection point where grouping becomes beneficial:
+
+```ts
+platformContract: {
+  schema: { schemaTypes, schemaDefinitions },
+  navigation: { collections },
+  rendering: { sectionTypes },
+  installation: { permissions },
+}
+```
+
+This is not a D4 task and not a Roadmap Amendment. It is an architectural observation to prevent `platformContract` from growing indefinitely as a single flat interface.
+
+**Manifest validator extended**
+
+The manifest validator now covers `collections` structure (Rule 10): group id and label non-empty, no duplicate group ids within a module, item id/label/schemaType/filter non-empty. Tests expanded from 44 → 58 in `validate.test.ts`. `navigation.test.ts` adds 15 tests for `buildCollectionItems()`.
+
+**tsc + vitest results**
+
+- `tsc --noEmit` → clean (zero errors)
+- `vitest run` → 138 tests, all passing (up from 109)
 
 ---
 

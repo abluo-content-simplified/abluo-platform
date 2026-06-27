@@ -1,13 +1,14 @@
 // ── Module manifest types ─────────────────────────────────────────────────────
 // ADR-011 Phase A2 — full ModuleManifest type.
+// ADR-011 Phase D3 — Navigation Derivation.
 //
 // Design notes:
 //
-// CollectionItemsContext is defined here (not in registry.ts) to avoid a
-// circular import: ModuleManifest.platformContract.collectionItems references
-// CollectionItemsContext, and registry.ts types MODULE_REGISTRY as
-// ModuleManifest[] — both files need the type. Defining it here breaks the
-// potential cycle.
+// CollectionItemsContext has been removed (Phase D3). The imperative
+// collectionItems() lambda has been replaced by a declarative `collections`
+// array of ModuleCollectionGroupDef. buildCollectionItems() in navigation.ts
+// turns these declarations into Studio structure items at config-build time.
+// This removes the StructureBuilder import from this file entirely.
 //
 // TenantRole is imported from src/lib/types/roles.ts — a neutral shared
 // location that avoids a circular dependency with permissions.ts. In Phase D4,
@@ -16,23 +17,57 @@
 // imports from the other.
 
 import type { SchemaTypeDefinition } from 'sanity'
-import type { StructureBuilder } from 'sanity/structure'
 import type { TenantRole } from '../types/roles'
 
-// ── Collection items context ──────────────────────────────────────────────────
-// Passed to each module's collectionItems function instead of relying on a
-// closure over the Sanity structure callback parameter S.
+// ── Collection types ──────────────────────────────────────────────────────────
+// Declarative description of the Studio document-list collections a module
+// contributes. buildCollectionItems() in navigation.ts reads these and builds
+// the actual Sanity structure items — no imperative builder code belongs here.
 //
-// The context object API is preferred over positional parameters: additional
-// values — project metadata, installation state, permissions, feature flags —
-// can be added here in future phases without changing the collectionItems
-// function signature.
-//
-// ADR-011 Phase A1 — introduced with registry relocation.
-// ADR-011 Phase A2 — moved here from registry.ts to prevent a circular import.
-export type CollectionItemsContext = {
-  slug: string
-  S: StructureBuilder
+// ADR-011 Phase D3 — introduced to replace the imperative collectionItems lambda.
+
+/**
+ * A single document-list sub-collection within a module's Studio group.
+ * Maps to one S.listItem() → S.documentList() entry inside the group's child list.
+ */
+export type ModuleCollectionItemDef = {
+  /** Unique within this group. Combined with the project slug: "${slug}-${id}". */
+  id: string
+  /** Studio display label for this document list. */
+  label: string
+  /** The Sanity document type this list displays. */
+  schemaType: string
+  /**
+   * GROQ filter fragment. Use `$slug` to reference the project slug.
+   * Example: `_type == "post" && projectSlug == $slug`
+   */
+  filter: string
+  /**
+   * Default sort ordering for the document list.
+   * Each entry: `{ field: string; direction: 'asc' | 'desc' }`.
+   * Omit if no default ordering is needed.
+   */
+  ordering?: { field: string; direction: 'asc' | 'desc' }[]
+  /**
+   * Initial value template ID for new documents created from this list.
+   * Corresponds to a template defined in initialValueTemplates in schema.ts.
+   * Omit if no initial value template is needed.
+   */
+  initialValueTemplate?: string
+}
+
+/**
+ * A named group of document-list collections in the Studio sidebar.
+ * Maps to one S.listItem() → S.list() → [items] structure.
+ * Groups with zero items are excluded from the Studio structure at build time.
+ */
+export type ModuleCollectionGroupDef = {
+  /** Unique within this module. Combined with the project slug: "${slug}-${id}". */
+  id: string
+  /** Studio display label for the group and its inner list. */
+  label: string
+  /** The document lists inside this group. Must be non-empty for the group to appear. */
+  items: ModuleCollectionItemDef[]
 }
 
 // ── Module category ───────────────────────────────────────────────────────────
@@ -104,12 +139,13 @@ export type ModuleManifest = {
      */
     pageType?: string
     /**
-     * Returns the Studio collection list items this module contributes.
-     * Called at structure build time with the project slug and StructureBuilder.
-     * Returns an empty array for modules with no collections.
-     * Consumed directly by sanity.config.ts structure builder.
+     * Declarative description of the Studio document-list groups this module
+     * contributes. Read by buildCollectionItems() in navigation.ts to produce
+     * the actual Sanity structure items at config-build time.
+     * Empty array for modules with no collections (e.g. Live module).
+     * Consumed by Phase D3 (Navigation Derivation).
      */
-    collectionItems: (ctx: CollectionItemsContext) => ReturnType<StructureBuilder['listItem']>[]
+    collections: ModuleCollectionGroupDef[]
     /**
      * Sanity section _type values this module contributes to SectionRenderer.
      * Declared here; consumed by Phase D2 (Section Map Derivation).

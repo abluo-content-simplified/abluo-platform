@@ -15,7 +15,7 @@ function makeManifest(id = 'test-module'): ModuleManifest {
     status: 'released',
     platformContract: {
       pageType: 'testPage',
-      collectionItems: () => [],
+      collections: [],
       sectionTypes: [`${id}-section`],
       schemaTypes: [`${id}-doc`],
       schemaDefinitions: () => [],
@@ -334,13 +334,141 @@ describe('Rule 9 — valid dataStore.primary', () => {
   })
 })
 
+// ── Collections validation (Phase D3) ────────────────────────────────────────
+// Extension of the manifest validator to cover the declarative `collections`
+// structure introduced in D3. Tests are grouped by what they check — not as a
+// separate rule number in the diagnostic API, but as extensions of validateRegistry.
+
+import type { ModuleCollectionGroupDef } from '../types'
+
+function makeGroup(overrides: Partial<ModuleCollectionGroupDef> = {}): ModuleCollectionGroupDef {
+  return {
+    id: 'test-group',
+    label: 'Test Group',
+    items: [
+      { id: 'test-item', label: 'Test Item', schemaType: 'testDoc', filter: '_type == "testDoc"' },
+    ],
+    ...overrides,
+  }
+}
+
+describe('manifest validator — collections structure (Phase D3)', () => {
+  it('passes when collections is empty', () => {
+    const m = makeManifest()
+    m.platformContract.collections = []
+    expect(() => validateRegistry([m])).not.toThrow()
+  })
+
+  it('passes a valid single collection group', () => {
+    const m = makeManifest()
+    m.platformContract.collections = [makeGroup()]
+    expect(() => validateRegistry([m])).not.toThrow()
+  })
+
+  it('passes multiple valid groups', () => {
+    const m = makeManifest()
+    m.platformContract.collections = [
+      makeGroup({ id: 'group-a', label: 'Group A' }),
+      makeGroup({ id: 'group-b', label: 'Group B' }),
+    ]
+    expect(() => validateRegistry([m])).not.toThrow()
+  })
+
+  it('passes a group with an empty items array', () => {
+    // Empty items are valid declarations — buildCollectionItems() silently skips them.
+    const m = makeManifest()
+    m.platformContract.collections = [makeGroup({ items: [] })]
+    expect(() => validateRegistry([m])).not.toThrow()
+  })
+
+  it('fails when a group has an empty id', () => {
+    const m = makeManifest()
+    m.platformContract.collections = [makeGroup({ id: '' })]
+    expect(() => validateRegistry([m])).toThrow(/Rule 10/)
+  })
+
+  it('fails when a group has a whitespace-only id', () => {
+    const m = makeManifest()
+    m.platformContract.collections = [makeGroup({ id: '   ' })]
+    expect(() => validateRegistry([m])).toThrow(/Rule 10/)
+  })
+
+  it('fails when a group has an empty label', () => {
+    const m = makeManifest()
+    m.platformContract.collections = [makeGroup({ label: '' })]
+    expect(() => validateRegistry([m])).toThrow(/Rule 10/)
+  })
+
+  it('fails when two groups share the same id within a module', () => {
+    const m = makeManifest()
+    m.platformContract.collections = [
+      makeGroup({ id: 'duplicate' }),
+      makeGroup({ id: 'duplicate' }),
+    ]
+    expect(() => validateRegistry([m])).toThrow(/Rule 10/)
+  })
+
+  it('error message names the duplicate group id', () => {
+    const m = makeManifest()
+    m.platformContract.collections = [makeGroup({ id: 'dup-group' }), makeGroup({ id: 'dup-group' })]
+    expect(() => validateRegistry([m])).toThrow(/"dup-group"/)
+  })
+
+  it('fails when an item has an empty id', () => {
+    const m = makeManifest()
+    m.platformContract.collections = [
+      makeGroup({ items: [{ id: '', label: 'Item', schemaType: 'doc', filter: '_type == "doc"' }] }),
+    ]
+    expect(() => validateRegistry([m])).toThrow(/Rule 10/)
+  })
+
+  it('fails when an item has an empty label', () => {
+    const m = makeManifest()
+    m.platformContract.collections = [
+      makeGroup({ items: [{ id: 'item', label: '', schemaType: 'doc', filter: '_type == "doc"' }] }),
+    ]
+    expect(() => validateRegistry([m])).toThrow(/Rule 10/)
+  })
+
+  it('fails when an item has an empty schemaType', () => {
+    const m = makeManifest()
+    m.platformContract.collections = [
+      makeGroup({ items: [{ id: 'item', label: 'Item', schemaType: '', filter: '_type == "doc"' }] }),
+    ]
+    expect(() => validateRegistry([m])).toThrow(/Rule 10/)
+  })
+
+  it('fails when an item has an empty filter', () => {
+    const m = makeManifest()
+    m.platformContract.collections = [
+      makeGroup({ items: [{ id: 'item', label: 'Item', schemaType: 'doc', filter: '' }] }),
+    ]
+    expect(() => validateRegistry([m])).toThrow(/Rule 10/)
+  })
+
+  it('error message identifies the offending group and item', () => {
+    const m = makeManifest('my-module')
+    m.platformContract.collections = [
+      makeGroup({ id: 'my-group', items: [{ id: 'bad-item', label: 'Bad', schemaType: '', filter: '_type == "x"' }] }),
+    ]
+    try {
+      validateRegistry([m])
+      expect.fail('expected validateRegistry to throw')
+    } catch (err) {
+      const msg = (err as Error).message
+      expect(msg).toMatch(/my-group/)
+      expect(msg).toMatch(/bad-item/)
+    }
+  })
+})
+
 // ── Live MODULE_REGISTRY ──────────────────────────────────────────────────────
-// Explicit confirmation that the production registry passes all nine rules.
+// Explicit confirmation that the production registry passes all structural rules.
 // Note: importing registry.ts also runs validateRegistry as a side effect —
 // this test makes the passing check visible and documents the intent.
 
 describe('live MODULE_REGISTRY', () => {
-  it('passes all nine rules without throwing', async () => {
+  it('passes all structural rules without throwing', async () => {
     const { MODULE_REGISTRY } = await import('../registry')
     expect(() => validateRegistry(MODULE_REGISTRY)).not.toThrow()
   })
