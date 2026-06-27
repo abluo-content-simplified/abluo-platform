@@ -648,3 +648,73 @@ Keep `moduleInstallations` as an array field on the `project` Sanity document. R
 **Negative:**
 - If cross-project installation views are required in the future, a migration from array-on-project to a first-class document type will be non-trivial — C2 builds a UI over this data, so migration must be coordinated with a C2 update
 - The `config` field is untyped until modules declare config schemas — type safety is deferred to a future phase
+
+---
+
+### Sub-decision D4 — Future-proof Permission Model
+
+**Date:** 2026-06-27
+**Phase:** D4 — Permission Derivation (V0.9.28)
+
+#### Context
+
+Phase D4 introduces the permission infrastructure: `MODULE_PERMISSION_MAP`, `buildModulePermissions()`, and `canPerformModuleAction()`. Before this infrastructure is committed, the relationship between module-declared permissions and platform authorization policy must be made explicit and recorded as an architectural constraint.
+
+The immediate implementation uses three roles (`owner`, `editor`, `viewer`) with `defaultRoles` declared on each permission. Without a recorded architectural decision, a future maintainer could reasonably read `defaultRoles` as a fixed contract between a module and the role model — causing module manifests to be modified whenever authorization policy changes, or blocking the introduction of new roles.
+
+#### Decision
+
+**Module permissions describe capabilities. They do not represent authorization policy.**
+
+The following principles govern all future work in this area:
+
+**1. Separation of concerns**
+
+- A module declares the permissions it *introduces* — what actions it makes available on the platform (`blog.post.write`, `events.event.write`, etc.).
+- Roles *grant* those permissions — which role can perform which action.
+- Users *receive* roles — which user has which role on a given project.
+
+These three concerns are independent. A module has no knowledge of which roles a specific tenant has defined, and must not be modified when roles change.
+
+**2. `defaultRoles` are platform defaults, not fixed contracts**
+
+`defaultRoles` on each `ModulePermissionDef` is a convenience default — the platform's best-guess assignment when a module is first installed and no tenant-specific configuration exists. It is not a binding contract between the module and any role. A future multi-role system may ignore `defaultRoles` entirely, or treat it as an install-time suggestion that is immediately overridable.
+
+**3. Tenant-defined custom roles are an explicit design goal**
+
+The architecture must support tenants defining custom roles without requiring any changes to module manifests or module implementations. Future roles — such as:
+
+- Blog Editor
+- Event Manager
+- Live Producer
+- Marketing
+- Support
+- or any tenant-defined custom combination
+
+— must be achievable by assigning existing module permissions to new role definitions. A module that declares `blog.post.write` need not know whether the role holding that permission is called `editor`, `content-team`, or `blog-specialist`.
+
+**4. Module manifests must remain policy-agnostic**
+
+A module manifest declares what permissions exist. It never declares which users, which tenants, or which custom roles hold those permissions. Authorization policy belongs to the platform's role assignment layer — not to module declarations.
+
+**5. Future extensibility without manifest modification**
+
+Any future work that replaces or extends the role model — adding roles, making roles configurable per tenant, implementing ABAC, or supporting role inheritance — must be achievable without modifying existing module manifests. A change to authorization policy must not require touching `blog/registry.ts`, `events/registry.ts`, or `live/registry.ts`.
+
+#### Implementation in Phase D4
+
+`canPerformModuleAction()` is implemented as a pure function that accepts `modulePermissionMap` as a parameter rather than importing it directly. This keeps the platform permission layer (`src/lib/permissions.ts`) decoupled from the registry. `defaultRoles` is used as the sole grant check in D4's implementation — this is the platform default, not a permanent design ceiling.
+
+Tenant-defined custom roles are intentionally out of scope for ADR-011. They will be addressed in a later milestone. The D4 infrastructure is designed to accommodate them without requiring changes to any module declaration.
+
+#### Consequences
+
+**Positive:**
+- Module manifests are stable under authorization policy changes — adding, removing, or reconfiguring roles requires no module-level modifications
+- Custom roles for any tenant are achievable by assigning existing module permissions to new role definitions
+- `canPerformModuleAction()` can be extended to accept a tenant-specific permission overrides map without changing its callers or any module manifest
+- The permission model scales to arbitrarily many roles — the module layer is fully role-count-agnostic
+
+**Negative:**
+- `defaultRoles` on each permission must be maintained as sensible platform defaults even though they are not authoritative — a poorly chosen default creates extra configuration work for every new tenant installation
+- A multi-role implementation (Blog Editor, Event Manager, etc.) requires a separate platform layer to define role-to-permission mappings, which does not yet exist — tenants cannot configure custom roles until that layer is built

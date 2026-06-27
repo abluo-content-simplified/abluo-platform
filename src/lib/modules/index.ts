@@ -12,10 +12,14 @@
 // Phase D3: ModuleCollectionGroupDef + ModuleCollectionItemDef; declarative collections
 //           array replaces imperative collectionItems() lambda; CollectionItemsContext
 //           removed; buildCollectionItems() in navigation.ts is the Studio builder.
+// Phase D4: ModulePermissionMap; buildModulePermissions(); MODULE_PERMISSION_MAP;
+//           canPerformModuleAction() in src/lib/permissions.ts (platform layer).
+//           Manifest validator extended for permission ID validation.
 //
 // Isolation boundaries (must be maintained):
 //   sections.ts  — imported by Next.js routes only (never by sanity.config.ts / Studio)
 //   navigation.ts — imported by sanity.config.ts only (never by Next.js routes)
+//   permissions.ts (this layer) — no isolation constraint; safe in all contexts
 
 export {
   type ModuleManifest,
@@ -23,6 +27,7 @@ export {
   type ModuleCollectionItemDef,
   type ModuleCategory,
   type ModulePermissionDef,
+  type ModulePermissionMap,
   type ModuleDependency,
   type ModuleInstallation,
 } from './types'
@@ -36,3 +41,5 @@ export { SECTION_MAP, type ModuleSectionProps, type SectionComponentMap } from '
 // buildCollectionItems — Studio-only. Imported directly by sanity.config.ts.
 // Do NOT import this from Next.js page routes (pulls in sanity/structure).
 export { buildCollectionItems } from './navigation'
+
+export { buildModulePermissions, MODULE_PERMISSION_MAP } from './permissions'

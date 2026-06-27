@@ -462,6 +462,116 @@ describe('manifest validator — collections structure (Phase D3)', () => {
   })
 })
 
+// ── Permission ID validation (Phase D4) ──────────────────────────────────────
+// Extension of the manifest validator to cover permission ID correctness.
+// Tests are grouped by what they check — not as a separate rule number in the
+// diagnostic API, but as extensions of validateRegistry.
+
+import type { ModulePermissionDef } from '../types'
+
+function makePermission(overrides: Partial<ModulePermissionDef> = {}): ModulePermissionDef {
+  return {
+    id: 'test-module.noun.verb',
+    label: 'Test Permission',
+    description: 'Does something.',
+    defaultRoles: ['owner'],
+    ...overrides,
+  }
+}
+
+describe('manifest validator — permission IDs (Phase D4)', () => {
+  it('passes when permissions is empty', () => {
+    const m = makeManifest()
+    m.platformContract.permissions = []
+    expect(() => validateRegistry([m])).not.toThrow()
+  })
+
+  it('passes a correctly namespaced permission', () => {
+    const m = makeManifest('test-module')
+    m.platformContract.permissions = [makePermission({ id: 'test-module.post.write' })]
+    expect(() => validateRegistry([m])).not.toThrow()
+  })
+
+  it('passes multiple correctly namespaced permissions on the same module', () => {
+    const m = makeManifest('blog')
+    m.platformContract.permissions = [
+      makePermission({ id: 'blog.post.write' }),
+      makePermission({ id: 'blog.post.delete' }),
+      makePermission({ id: 'blog.taxonomy.write' }),
+    ]
+    // Override sectionTypes and schemaTypes to avoid Rule 6/7 conflicts with id='blog'
+    m.platformContract.sectionTypes = []
+    m.platformContract.schemaTypes = []
+    expect(() => validateRegistry([m])).not.toThrow()
+  })
+
+  it('fails when a permission has an empty id', () => {
+    const m = makeManifest('test-module')
+    m.platformContract.permissions = [makePermission({ id: '' })]
+    expect(() => validateRegistry([m])).toThrow(/Rule 11/)
+  })
+
+  it('fails when a permission id does not start with the module id', () => {
+    const m = makeManifest('blog')
+    m.platformContract.sectionTypes = []
+    m.platformContract.schemaTypes = []
+    m.platformContract.permissions = [
+      makePermission({ id: 'events.post.write' }), // wrong module prefix
+    ]
+    expect(() => validateRegistry([m])).toThrow(/Rule 11/)
+  })
+
+  it('error message names the offending permission id and module', () => {
+    const m = makeManifest('blog')
+    m.platformContract.sectionTypes = []
+    m.platformContract.schemaTypes = []
+    m.platformContract.permissions = [makePermission({ id: 'events.post.write' })]
+    try {
+      validateRegistry([m])
+      expect.fail('expected validateRegistry to throw')
+    } catch (err) {
+      const msg = (err as Error).message
+      expect(msg).toMatch(/events\.post\.write/)
+      expect(msg).toMatch(/blog/)
+    }
+  })
+
+  it('fails when two modules declare the same permission id', () => {
+    const a = makeManifest('alpha')
+    const b = makeManifest('beta')
+    // Both claim "alpha.shared.action" — alpha owns it, beta is wrong
+    a.platformContract.permissions = [makePermission({ id: 'alpha.shared.action' })]
+    b.platformContract.permissions = [makePermission({ id: 'alpha.shared.action' })]
+    expect(() => validateRegistry([a, b])).toThrow(/Rule 11/)
+  })
+
+  it('duplicate cross-registry error has moduleId: null (registry-level diagnostic)', () => {
+    const a = makeManifest('alpha')
+    const b = makeManifest('beta')
+    a.platformContract.permissions = [makePermission({ id: 'alpha.thing.do' })]
+    b.platformContract.permissions = [makePermission({ id: 'alpha.thing.do' })]
+    try {
+      validateRegistry([a, b])
+      expect.fail('expected validateRegistry to throw')
+    } catch (err) {
+      // Registry-level diagnostics have no [module-id] prefix
+      const msg = (err as Error).message
+      expect(msg).toMatch(/alpha\.thing\.do/)
+    }
+  })
+
+  it('accepts both "blog.post.write" and "blog.posts.write" — naming semantics not validated', () => {
+    const m = makeManifest('blog')
+    m.platformContract.sectionTypes = []
+    m.platformContract.schemaTypes = []
+    m.platformContract.permissions = [
+      makePermission({ id: 'blog.post.write' }),
+      makePermission({ id: 'blog.posts.write' }), // plural noun — both are valid
+    ]
+    expect(() => validateRegistry([m])).not.toThrow()
+  })
+})
+
 // ── Live MODULE_REGISTRY ──────────────────────────────────────────────────────
 // Explicit confirmation that the production registry passes all structural rules.
 // Note: importing registry.ts also runs validateRegistry as a side effect —

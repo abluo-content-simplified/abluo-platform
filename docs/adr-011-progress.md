@@ -14,11 +14,11 @@
 
 | Field | Value |
 |---|---|
-| **Current milestone** | Milestone D |
-| **Current phase** | D3 Complete — D4 next |
+| **Current milestone** | Milestone D — Complete |
+| **Current phase** | D4 Complete — awaiting production verify for V1.0.0 tag |
 | **Overall status** | In Progress |
 | **Baseline version** | V0.9.25 |
-| **Next version** | V0.9.28 |
+| **Next version** | V1.0.1 (after V1.0.0 production verify) |
 
 ---
 
@@ -36,7 +36,7 @@
 | D1 | Schema Derivation | V0.9.25 | Complete | 2026-06-27 | 2026-06-27 | 8 types moved; buildSchema(); shared.ts; platform-distributed sections principle |
 | D2 | Section Map Derivation | V0.9.26 | Complete | 2026-06-27 | 2026-06-27 | RA-002 applied; 1 module section; SECTION_MAP; registry stays declarative |
 | D3 | Navigation Derivation | V0.9.27 | Complete | 2026-06-27 | 2026-06-27 | RA-003 applied; declarative collections; navigation.ts; 138 tests |
-| D4 | Permission Derivation | V0.9.28 → V1.0.0 | Waiting | — | — | V1.0.0 tagged on production verify |
+| D4 | Permission Derivation | V0.9.28 → V1.0.0 | Complete | 2026-06-27 | 2026-06-27 | RA-004 applied; ModulePermissionMap; MODULE_PERMISSION_MAP; canPerformModuleAction (4-param); validator extended; tsc clean |
 | C2 | Module Management UI + Service | V1.0.1 | Waiting | — | — | Begins after V1.0.0 |
 | E1 | Version Tracking | V1.0.2 | Waiting | — | — | |
 | E2 | Update Workflow | V1.0.3 | Waiting | — | — | Highest risk — backup before testing |
@@ -105,6 +105,104 @@ Ideas discovered during implementation that may become Roadmap Amendments but ha
 - Escape hatch: not implemented  
 
 **Impact on other phases:** D4 (Permission Derivation) is unaffected — permissions field is unchanged. `StructureBuilder` import removed from `types.ts` cleans up a latent bundler concern. No other phases touch collections.
+
+### RA-004 — Add `modulePermissionMap` as 4th parameter to `canPerformModuleAction`
+
+**Date:** 2026-06-27
+**Affects:** Phase D4
+**Approved by:** Tom
+
+**Why:** The roadmap specified a 3-parameter signature `canPerformModuleAction(role, permissionId, moduleInstallations)`. This signature cannot check "role has the declared permission" without access to `defaultRoles`, which lives in the registry — not in `ModuleInstallation`. The function would require importing the registry directly into `src/lib/permissions.ts`, making the platform permission layer a runtime dependency of the modules layer. This contradicts the D1–D3 pattern where builders receive data rather than importing it.
+
+**Change:** Signature amended to:
+```typescript
+canPerformModuleAction(
+  role: TenantRole,
+  permissionId: string,
+  moduleInstallations: ModuleInstallation[],
+  modulePermissionMap: ModulePermissionMap
+): boolean
+```
+`src/lib/permissions.ts` imports `ModuleInstallation` and `ModulePermissionMap` as type-only from `./modules/types` — zero runtime cost, no registry coupling. `MODULE_PERMISSION_MAP` from `src/lib/modules/permissions.ts` is the standard value to pass. Callers with tenant-specific overrides may supply a custom map without changing this function.
+
+**Impact on other phases:** None. D4 is the final derivation phase. C2 and E1/E2 do not call `canPerformModuleAction` directly.
+
+---
+
+## Phase D4 — Implementation Notes
+
+> Design decisions and findings from Phase D4 — Permission Derivation (V0.9.28).
+
+**RA-004 applied — see Roadmap Amendments section above**
+
+The 3-parameter roadmap signature was amended to 4 parameters. The platform permission layer (`src/lib/permissions.ts`) remains independent of the modules layer at import time.
+
+**Architectural principle — Modules declare capabilities. Roles assign permissions. Users receive roles.**
+
+> Modules declare the permissions they introduce.
+> Roles grant those permissions.
+> Users receive roles.
+
+`defaultRoles` on each `ModulePermissionDef` is a platform default — a convenience starting point when a module is first installed. It is not a fixed contract between the module and any role set.
+
+Tenant-defined custom roles (Blog Editor, Event Manager, Live Producer, Marketing, SEO, etc.) are an explicit future design goal. Nothing implemented in D4 assumes a fixed set of roles. Future roles are achievable by assigning existing module permissions to new role definitions — no module manifest needs modification when authorization policies evolve. This principle is also recorded in `docs/architecture-decisions.md` (ADR-011 Sub-decision D4).
+
+**Files added or changed**
+
+| File | Change |
+|---|---|
+| `src/lib/modules/types.ts` | Added `ModulePermissionMap` type; expanded `defaultRoles` JSDoc |
+| `src/lib/modules/permissions.ts` | **New.** `buildModulePermissions()` + `MODULE_PERMISSION_MAP` |
+| `src/lib/permissions.ts` | Added `canPerformModuleAction()` (4 params) + expanded architectural doc above it |
+| `src/lib/modules/validate.ts` | Extended to validate permission IDs: non-empty, module-prefixed, unique across registry |
+| `src/lib/modules/index.ts` | Added `ModulePermissionMap`, `buildModulePermissions`, `MODULE_PERMISSION_MAP` exports |
+| `src/lib/modules/__tests__/permissions.test.ts` | **New.** Comprehensive builder, invariant, authorization, and regression tests |
+| `src/lib/modules/__tests__/validate.test.ts` | Added permission ID validation describe block |
+| `docs/architecture-decisions.md` | Sub-decision D4 — Future-proof Permission Model |
+| `docs/adr-011-progress.md` | This file |
+
+**Registry unchanged**
+
+All `permissions` arrays in `registry.ts` remain exactly as set in Phase A2. D4 only adds the consumption layer.
+
+**Manifest validator extended — permission IDs**
+
+Three checks, described as "extending the manifest validator" (no external rule number):
+- Permission ID is non-empty.
+- Permission ID starts with the declaring module's ID (ownership check). Naming semantics beyond the prefix are not validated — `blog.post.write` and `blog.posts.write` are both valid.
+- Permission ID is unique across the entire registry (cross-module uniqueness, same pattern as sectionTypes and schemaTypes).
+
+**`MODULE_PERMISSION_MAP` invariant**
+
+`expect(Object.keys(MODULE_PERMISSION_MAP)).toHaveLength(6)` guards against accidental permission removal in future registry edits. Current breakdown: blog (3), events (2), live (1).
+
+**`canPerformModuleAction` — pure function, extensible**
+
+The function evaluates three conditions in order: module installed and enabled → permission in map → role in `defaultRoles`. Returning `false` at the first failing condition keeps the logic fast and explicit. The custom map parameter demonstrates future extensibility — a test verifies that a viewer can be granted `blog.post.write` by passing a custom map, without touching any module manifest.
+
+**No enforcement call sites**
+
+D4 is infrastructure only. No application code calls `canPerformModuleAction` yet. This is intentional and correct per the approved scope.
+
+**tsc + vitest results**
+
+- `tsc --noEmit` → clean (zero errors)
+- Complete test suite passes locally.
+
+---
+
+## Milestone D — Complete
+
+Milestone D completes the transition to a fully declarative module architecture.
+
+The module registry is now the single source of truth for:
+
+- Schema derivation
+- Section derivation
+- Studio navigation derivation
+- Permission derivation
+
+Future platform capabilities build on this foundation rather than introducing new registry concepts. Subsequent phases focus on consuming this architecture (module management, installation UI, tenant permissions, custom roles, and future modules) rather than redesigning it.
 
 ---
 
@@ -453,6 +551,7 @@ _Record here any implementation decisions, findings, or deviations that are too 
 
 | Date | Phase | Note |
 |---|---|---|
+| 2026-06-27 | D4 | Future-proof Permission Model recorded in `docs/architecture-decisions.md` (ADR-011 Sub-decision D4) before implementation. Modules declare capabilities; roles grant permissions; users receive roles. `defaultRoles` are platform defaults only. Tenant-defined custom roles are an explicit future design goal — D4 infrastructure is built with this extensibility in mind. |
 | 2026-06-26 | — | Roadmap frozen at Revision 2. Progress tracker initialised. |
 | 2026-06-26 | Phase 0 | Audit document written: `docs/adr-011-current-state.md`. Nine hidden-coupling findings recorded (§7). Three Phase Review findings all confirmed in full. No code changed. |
 | 2026-06-26 | Phase 0 | Finding noted for A1 phase lead: `ProjectLinker.tsx` must be updated in Phase A1 (imports `MODULE_LABELS` copy; cannot consume extracted registry until A1 runs). File not in A1 roadmap file-list — raise at A1 Phase Review. |

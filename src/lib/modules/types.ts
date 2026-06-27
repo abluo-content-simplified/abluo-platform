@@ -1,6 +1,7 @@
 // ── Module manifest types ─────────────────────────────────────────────────────
 // ADR-011 Phase A2 — full ModuleManifest type.
 // ADR-011 Phase D3 — Navigation Derivation.
+// ADR-011 Phase D4 — ModulePermissionMap added.
 //
 // Design notes:
 //
@@ -92,9 +93,24 @@ export type ModulePermissionDef = {
   label: string
   /** What this permission allows — shown in role management UI. */
   description: string
-  /** Which roles receive this permission by default. */
+  /**
+   * Which roles receive this permission by default.
+   * These are platform defaults only — not a fixed contract.
+   * Future tenant-defined custom roles may override or extend these mappings
+   * without requiring any change to module manifests.
+   */
   defaultRoles: TenantRole[]
 }
+
+/**
+ * A flat map of all module-declared permissions keyed by permission ID.
+ * Built at module load time by buildModulePermissions() in
+ * src/lib/modules/permissions.ts. Consumers should use the MODULE_PERMISSION_MAP
+ * constant rather than rebuilding the map on every call.
+ *
+ * ADR-011 Phase D4 — Permission Derivation.
+ */
+export type ModulePermissionMap = Record<string, ModulePermissionDef>
 
 // ── Module dependency ─────────────────────────────────────────────────────────
 // A hard dependency on another module. If a module lists a required dependency,

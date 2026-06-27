@@ -1,6 +1,7 @@
 // ── Build-time manifest validation ───────────────────────────────────────────
 // ADR-011 Phase A3 — initial nine rules.
 // ADR-011 Phase D3 — extended to validate the `collections` structure.
+// ADR-011 Phase D4 — extended to validate permission IDs.
 //
 // Validates every entry in MODULE_REGISTRY against all structural rules.
 // Called at module load time from registry.ts — a failure throws immediately,
@@ -83,6 +84,8 @@ function formatErrors(errors: ManifestError[]): string {
  *   8.  dependencies.requires references IDs present in the registry.
  *   9.  dataStore.primary is one of: content, operational, hybrid.
  *   10. platformContract.collections structure is valid (Phase D3).
+ *   11. platformContract.permissions IDs are non-empty, unique across the
+ *       registry, and start with the declaring module's id (Phase D4).
  *
  * @throws {Error} If any rule is violated. The message lists all violations.
  */
@@ -98,6 +101,9 @@ export function validateRegistry(manifests: ModuleManifest[]): void {
   // Track type owners for Rules 6 and 7.
   const sectionTypeOwners = new Map<string, string>()
   const schemaTypeOwners = new Map<string, string>()
+
+  // Track permission ID owners for cross-registry uniqueness (Phase D4).
+  const permissionIdOwners = new Map<string, string>()
 
   for (let i = 0; i < manifests.length; i++) {
     const m = manifests[i]
@@ -274,6 +280,54 @@ export function validateRegistry(manifests: ModuleManifest[]): void {
             fix: `Set a non-empty GROQ filter string on item "${item.id}".`,
           })
         }
+      }
+    }
+
+    // ── Permission ID validation ────────────────────────────────────────────
+    // Extended in Phase D4 (Permission Derivation).
+    //
+    // Three checks per permission:
+    //   1. ID is non-empty.
+    //   2. ID starts with the declaring module's id — enforces the ownership
+    //      convention "{moduleId}.{noun}.{verb}" and prevents cross-module
+    //      permission collisions at declaration time.
+    //   3. ID is unique across the entire registry.
+    //
+    // Naming semantics beyond ownership are not validated — both
+    // "blog.post.write" and "blog.posts.write" are accepted.
+    for (const perm of m.platformContract.permissions) {
+      if (!perm.id || perm.id.trim().length === 0) {
+        errors.push({
+          moduleId: mid,
+          rule: 11,
+          message: `platformContract.permissions contains an entry with an empty id.`,
+          fix: `Every permission must have a non-empty id string.`,
+        })
+        continue
+      }
+
+      // Ownership: permission id must begin with "{moduleId}."
+      const expectedPrefix = `${m.id}.`
+      if (!perm.id.startsWith(expectedPrefix)) {
+        errors.push({
+          moduleId: mid,
+          rule: 11,
+          message: `permission id "${perm.id}" does not start with the module id "${m.id}".`,
+          fix: `Permission IDs must begin with the owning module's id followed by a dot. ` +
+               `Rename this permission to start with "${expectedPrefix}" (e.g. "${expectedPrefix}noun.verb").`,
+        })
+      }
+
+      // Cross-registry uniqueness.
+      if (permissionIdOwners.has(perm.id)) {
+        errors.push({
+          moduleId: null,
+          rule: 11,
+          message: `permission id "${perm.id}" is declared by both "${permissionIdOwners.get(perm.id)}" and "${mid}".`,
+          fix: `Each permission id must be unique across the entire registry.`,
+        })
+      } else {
+        permissionIdOwners.set(perm.id, mid)
       }
     }
   }
