@@ -8,6 +8,9 @@ import { ExportDesignSystemAction } from './src/sanity/actions/ExportDesignSyste
 import { ImportDesignSystemAction } from './src/sanity/actions/ImportDesignSystemAction'
 import { DuplicateDesignSystemAction } from './src/sanity/actions/DuplicateDesignSystemAction'
 import { AutoCreateSiteConfigAction } from './src/sanity/actions/AutoCreateSiteConfigAction'
+// ADR-011 Phase C1 — Project Settings Shell
+import { ModuleList } from './src/lib/sanity/studio/ModuleList'
+import { StubPane } from './src/lib/sanity/studio/StubPane'
 
 // Hardcoded to match src/lib/sanity/client.ts — avoids env var dependency in the Studio
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ?? '3n7t84j3'
@@ -344,17 +347,113 @@ export default defineConfig({
                       ),
 
                     // ── Project Settings ─────────────────────────────────────
-                    // project document: platform-level configuration — modules,
-                    // design system, tenant relationship, domains, project status.
-                    // Future home for billing and module management (ADR-011).
+                    // ADR-011 Phase C1: dedicated settings pane per project.
+                    // Flat list of named sections — adding a future section
+                    // requires only appending another list item here.
                     S.listItem()
                       .id(`${slug}-project-settings`)
                       .title('Project Settings')
                       .child(
-                        S.document()
-                          .documentId(project._id)
-                          .schemaType('project')
+                        S.list()
+                          .id(`${slug}-project-settings-list`)
                           .title('Project Settings')
+                          .items([
+
+                            // General — raw project document form.
+                            // Hosts ProjectLinker (client link, DS assignment,
+                            // Supabase link). Must remain accessible here to
+                            // avoid a regression. (Phase Review Finding 1.)
+                            S.listItem()
+                              .id(`${slug}-settings-general`)
+                              .title('General')
+                              .child(
+                                S.document()
+                                  .documentId(project._id)
+                                  .schemaType('project')
+                                  .title('General')
+                              ),
+
+                            S.divider(),
+
+                            // Modules — read-only installation state.
+                            // Cross-references MODULE_REGISTRY with
+                            // moduleInstallations (B1 persistence model).
+                            // Mutations (install / uninstall) arrive in C2.
+                            S.listItem()
+                              .id(`${slug}-settings-modules`)
+                              .title('Modules')
+                              .child(
+                                S.component(ModuleList)
+                                  .id(`${slug}-settings-modules-pane`)
+                                  .title('Modules')
+                                  .options({ projectSlug: slug })
+                              ),
+
+                            S.divider(),
+
+                            // Locales — stub navigating to siteConfig.
+                            // Replace with a dedicated locale management
+                            // pane when locale settings warrant their own UI.
+                            S.listItem()
+                              .id(`${slug}-settings-locales`)
+                              .title('Locales')
+                              .child(
+                                S.documentList()
+                                  .title('Locales')
+                                  .schemaType('siteConfig')
+                                  .apiVersion('2026-05-21')
+                                  .filter(`_type == "siteConfig" && projectSlug == $slug`)
+                                  .params({ slug })
+                                  .initialValueTemplates([
+                                    S.initialValueTemplateItem('siteConfigProjectOwned', { projectSlug: slug }),
+                                  ])
+                              ),
+
+                            // Domains — placeholder (C1 stub).
+                            S.listItem()
+                              .id(`${slug}-settings-domains`)
+                              .title('Domains')
+                              .child(
+                                S.component(StubPane)
+                                  .id(`${slug}-settings-domains-pane`)
+                                  .title('Domains')
+                                  .options({ label: 'Domains', message: 'Domain management is coming in a future release.' })
+                              ),
+
+                            // Analytics — placeholder (C1 stub).
+                            S.listItem()
+                              .id(`${slug}-settings-analytics`)
+                              .title('Analytics')
+                              .child(
+                                S.component(StubPane)
+                                  .id(`${slug}-settings-analytics-pane`)
+                                  .title('Analytics')
+                                  .options({ label: 'Analytics', message: 'Analytics configuration is coming in a future release.' })
+                              ),
+
+                            // Billing — placeholder (C1 stub).
+                            S.listItem()
+                              .id(`${slug}-settings-billing`)
+                              .title('Billing')
+                              .child(
+                                S.component(StubPane)
+                                  .id(`${slug}-settings-billing-pane`)
+                                  .title('Billing')
+                                  .options({ label: 'Billing', message: 'Billing management is coming in a future release.' })
+                              ),
+
+                            // Integrations — placeholder (C1 stub).
+                            S.listItem()
+                              .id(`${slug}-settings-integrations`)
+                              .title('Integrations')
+                              .child(
+                                S.component(StubPane)
+                                  .id(`${slug}-settings-integrations-pane`)
+                                  .title('Integrations')
+                                  .options({ label: 'Integrations', message: 'Integrations configuration is coming in a future release.' })
+                              ),
+
+                          ])
                       ),
 
                   ])

@@ -14,11 +14,11 @@
 
 | Field | Value |
 |---|---|
-| **Current milestone** | Milestone B |
-| **Current phase** | B2 — Installation Persistence Decision |
+| **Current milestone** | Milestone C |
+| **Current phase** | C1 — Project Settings Shell |
 | **Overall status** | In Progress |
-| **Baseline version** | V0.9.22 |
-| **Next version** | V0.9.23 |
+| **Baseline version** | V0.9.23 |
+| **Next version** | V0.9.24 |
 
 ---
 
@@ -31,8 +31,8 @@
 | A2 | Full ModuleManifest Type | V0.9.20 | Complete | 2026-06-26 | 2026-06-26 | TenantRole → src/lib/types/roles.ts; CollectionItemsContext moved to types.ts |
 | A3 | Build-time Manifest Validation | V0.9.21 | Complete | 2026-06-26 | 2026-06-26 | 44 tests; collect-all errors; RA-001 candidate (self-dependency) |
 | B1 | Installation Type & Schema Migration | V0.9.22 | Complete | 2026-06-26 | 2026-06-26 | ModuleInstallation type; schema + GROQ; migration script; queries.ts zero consumers confirmed |
-| B2 | Installation Persistence Decision | V0.9.23 | In Progress | 2026-06-26 | — | Array-on-project confirmed; ADR-011 sub-decision in architecture-decisions.md |
-| C1 | Project Settings Shell | V0.9.24 | Waiting | — | — | |
+| B2 | Installation Persistence Decision | V0.9.23 | Complete | 2026-06-26 | 2026-06-26 | Array-on-project confirmed; ADR-011 sub-decision in architecture-decisions.md |
+| C1 | Project Settings Shell | V0.9.24 | In Progress | 2026-06-26 | — | General + Modules + Locales + 4 stubs; ModuleList.tsx + StubPane.tsx |
 | D1 | Schema Derivation | V0.9.25 | Waiting | — | — | High risk — use Phase 0 §4 |
 | D2 | Section Map Derivation | V0.9.26 | Waiting | — | — | High risk — use Phase 0 §3 |
 | D3 | Navigation Derivation | V0.9.27 | Waiting | — | — | Use Phase 0 §5 |
@@ -71,6 +71,36 @@ _No amendments recorded._
 **Change:** [Exactly what is different from the roadmap specification.]  
 **Impact on other phases:** [Any downstream effects.]
 ```
+
+---
+
+## Phase C1 — Implementation Notes
+
+> These are implementation-level decisions recorded during implementation. They do not change the roadmap, architecture, sequencing, or acceptance criteria.
+
+**Project Settings item already existed (Phase Review Finding)**
+
+The `${slug}-project-settings` list item was already present in `sanity.config.ts` from B1's structure builder additions, pointing directly to `S.document()` for the raw project form. C1 replaced its `.child()` with the structured `S.list()` sub-pane rather than adding a new list item. No duplicate IDs introduced.
+
+**General section added (Phase Review Finding 1)**
+
+The roadmap did not mention preserving access to the raw `project` document form. Without a `General` sub-section, `ProjectLinker.tsx` (client link, DS assignment, Supabase link) becomes unreachable from Studio navigation. A `General` section was added as the first item in the pane, opening `S.document().documentId(project._id).schemaType('project')`. This is within C1 scope and prevents a regression.
+
+**Flat ordering — user's preferred information architecture**
+
+Section order: General → Modules → Locales → Domains → Analytics → Billing → Integrations. Reflects a natural progression: project config → installed functionality → website config → business/platform services. No nested groups. Adding a future section requires only appending a new `S.listItem()` to the array.
+
+**`ModuleList.tsx` options typing — all-optional fields**
+
+Sanity's `S.component()` types `options` as `Record<string, unknown>`. The component interface must use optional fields (`projectSlug?: string`) to satisfy the assignment, matching the `DesignSystemAssignPane` precedent. The `projectSlug` undefined case is handled in the component with a "No project selected" empty state.
+
+**`StubPane.tsx` — shared placeholder component**
+
+A single shared `StubPane` handles all four future sections (Domains, Analytics, Billing, Integrations). Each receives a `label` and `message` via `.options()`. Replacing a stub with a real implementation requires only swapping `S.component(StubPane)` for the new component — no structural change to the pane.
+
+**TypeScript — tsc clean after options interface fix**
+
+Initial `tsc` failed: `Record<string, unknown>` could not be assigned to `{ projectSlug: string }` (required field). Fixed by making all options fields optional. tsc clean on second run.
 
 ---
 
