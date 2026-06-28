@@ -2,6 +2,7 @@ import type { MetricsSection, DesignSystem } from '@/lib/sanity/types'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
+import { SectionContainer } from './SectionContainer'
 
 interface Props {
   section: MetricsSection
@@ -32,12 +33,7 @@ export function MetricsSection({ section, surface, designSystem }: Props) {
   })()
 
   return (
-    <section
-      className="px-6 py-24 md:px-16 lg:px-24"
-      style={surfaceStyles}
-    >
-      <div className="mx-auto w-full max-w-6xl">
-
+      <SectionContainer style={surfaceStyles}>
         {/* Optional header */}
         {hasHeader && (
           <SlideUp duration={duration} ease={ease} delay={0} className="mb-16 max-w-2xl">
@@ -134,7 +130,7 @@ export function MetricsSection({ section, surface, designSystem }: Props) {
             ))}
           </div>
         )}
-      </div>
-    </section>
+      </SectionContainer>
+
   )
 }

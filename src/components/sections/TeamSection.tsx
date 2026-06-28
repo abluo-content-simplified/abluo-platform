@@ -2,6 +2,7 @@ import type { TeamSection, DesignSystem } from '@/lib/sanity/types'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
+import { SectionContainer } from './SectionContainer'
 
 interface Props {
   section: TeamSection
@@ -19,11 +20,7 @@ export function TeamSection({ section, surface, designSystem }: Props) {
   const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
 
   return (
-    <section
-      className="px-6 py-24 md:px-16 lg:px-24"
-      style={surfaceStyles}
-    >
-      <div className="mx-auto w-full max-w-5xl">
+      <SectionContainer style={surfaceStyles}>
         {/* Section header */}
         <SlideUp duration={duration} ease={ease} delay={0} className="mb-16">
           <p
@@ -104,7 +101,7 @@ export function TeamSection({ section, surface, designSystem }: Props) {
             ))}
           </div>
         )}
-      </div>
-    </section>
+      </SectionContainer>
+
   )
 }

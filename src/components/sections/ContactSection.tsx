@@ -2,6 +2,7 @@ import type { ContactSection, WebsiteSiteConfig, DesignSystem } from '@/lib/sani
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
+import { SectionContainer } from './SectionContainer'
 import { getContactSectionMessages } from '@/lib/i18n/contact-section-messages'
 
 interface Props {
@@ -24,12 +25,7 @@ export function ContactSection({ section, surface, designSystem, siteConfig, loc
   const ease: string | number[] = mot?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
 
   return (
-    <section
-      id="contatti"
-      className="px-6 py-24 md:px-16 lg:px-24"
-      style={surfaceStyles}
-    >
-      <div className="mx-auto w-full max-w-5xl">
+      <SectionContainer id="contatti" style={surfaceStyles}>
         <div className="grid gap-16 md:grid-cols-2">
           {/* Left: contact details */}
           <SlideUp duration={duration} ease={ease} delay={0}>
@@ -148,7 +144,7 @@ export function ContactSection({ section, surface, designSystem, siteConfig, loc
             )}
           </SlideUp>
         </div>
-      </div>
-    </section>
+      </SectionContainer>
+
   )
 }

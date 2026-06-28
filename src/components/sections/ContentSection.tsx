@@ -2,6 +2,7 @@ import type { ContentSection, PortableTextContent, DesignSystem } from '@/lib/sa
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
+import { SectionContainer } from './SectionContainer'
 
 function RichText({ blocks }: { blocks: PortableTextContent }) {
   return (
@@ -49,11 +50,7 @@ export function ContentSection({ section, surface, designSystem }: Props) {
   const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
 
   return (
-    <section
-      className="px-6 py-24 md:px-16 lg:px-24"
-      style={surfaceStyles}
-    >
-      <div className="mx-auto w-full max-w-5xl">
+      <SectionContainer style={surfaceStyles}>
         <div className="grid gap-12 md:grid-cols-2 md:gap-20 lg:gap-28">
           {/* Left: label + title */}
           <SlideUp duration={duration} ease={ease} delay={0} className="flex flex-col justify-center">
@@ -80,7 +77,7 @@ export function ContentSection({ section, surface, designSystem }: Props) {
             {body && <RichText blocks={body} />}
           </SlideUp>
         </div>
-      </div>
-    </section>
+      </SectionContainer>
+
   )
 }

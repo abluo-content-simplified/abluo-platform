@@ -2,6 +2,7 @@ import type { StatementSection, DesignSystem } from '@/lib/sanity/types'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
+import { SectionContainer } from './SectionContainer'
 import { FadeIn } from '@/components/animation/FadeIn'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
 import type { ResolvedImage } from '@/lib/sanity/types'
@@ -82,11 +83,7 @@ export function StatementSection({ section, surface, designSystem }: Props) {
   ) : null
 
   return (
-    <section
-      className="px-6 py-24 md:px-16 lg:px-24"
-      style={surfaceStyles}
-    >
-      <div className="mx-auto w-full max-w-6xl">
+      <SectionContainer style={surfaceStyles}>
         {hasImage ? (
           /* Two-column layout: text + image */
           <div
@@ -110,7 +107,7 @@ export function StatementSection({ section, surface, designSystem }: Props) {
             {textBlock}
           </div>
         )}
-      </div>
-    </section>
+      </SectionContainer>
+
   )
 }

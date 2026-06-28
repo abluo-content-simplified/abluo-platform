@@ -2,6 +2,7 @@ import type { TextSection, PortableTextContent, DesignSystem } from '@/lib/sanit
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
+import { SectionContainer } from './SectionContainer'
 
 function RichText({ blocks }: { blocks: PortableTextContent }) {
   const elements: React.ReactNode[] = []
@@ -85,11 +86,8 @@ export function TextSection({ section, surface, designSystem }: Props) {
   const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
 
   return (
-    <section
-      className="px-6 py-24 md:px-16 lg:px-24"
-      style={surfaceStyles}
-    >
-      <div className="mx-auto w-full max-w-3xl">
+      <SectionContainer style={surfaceStyles}>
+        <div className="max-w-[680px]">
         <SlideUp duration={duration} ease={ease} delay={0}>
           {eyebrow && (
             <p
@@ -113,7 +111,8 @@ export function TextSection({ section, surface, designSystem }: Props) {
             <RichText blocks={content} />
           </SlideUp>
         )}
-      </div>
-    </section>
+        </div>
+      </SectionContainer>
+
   )
 }

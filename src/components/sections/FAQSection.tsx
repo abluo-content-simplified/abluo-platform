@@ -6,6 +6,7 @@ import type { FAQSection, DesignSystem } from '@/lib/sanity/types'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
+import { SectionContainer } from './SectionContainer'
 
 interface Props {
   section: FAQSection
@@ -91,11 +92,8 @@ export function FAQSection({ section, surface, designSystem }: Props) {
   if (!items?.length) return null
 
   return (
-    <section
-      className="px-6 py-24 md:px-16 lg:px-24"
-      style={surfaceStyles}
-    >
-      <div className="mx-auto w-full max-w-3xl">
+      <SectionContainer style={surfaceStyles}>
+        <div className="max-w-[680px]">
         {/* Section header — SlideUp, consistent with all other sections */}
         <SlideUp duration={entranceDuration} ease={ease} delay={0}>
           {eyebrow && (
@@ -130,7 +128,8 @@ export function FAQSection({ section, surface, designSystem }: Props) {
             ))}
           </div>
         </SlideUp>
-      </div>
-    </section>
+        </div>
+      </SectionContainer>
+
   )
 }

@@ -2,6 +2,7 @@ import type { BlogListingSection as BlogListingSectionType, Post, DesignSystem }
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
+import { SectionContainer } from './SectionContainer'
 import { imageUrl } from '@/lib/sanity/image'
 
 // ─── Date formatting ──────────────────────────────────────────────────────────
@@ -417,8 +418,7 @@ export function BlogListingSection({ section, surface, designSystem, locale, ten
   if (posts.length === 0) return null
 
   return (
-    <section className="px-6 py-24 md:px-16 lg:px-24" style={surfaceStyles}>
-      <div className="mx-auto w-full max-w-6xl">
+      <SectionContainer style={surfaceStyles}>
         {/* Section header */}
         {(eyebrow || title || subtitle) && (
           <SlideUp duration={duration} ease={ease} delay={0} className="mb-12">
@@ -489,7 +489,7 @@ export function BlogListingSection({ section, surface, designSystem, locale, ten
             </a>
           </SlideUp>
         )}
-      </div>
-    </section>
+      </SectionContainer>
+
   )
 }
