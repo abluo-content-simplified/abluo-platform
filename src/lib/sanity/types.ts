@@ -471,6 +471,16 @@ export interface DesignSystem {
   backgroundAssets?: BackgroundAsset[]
 }
 
+// ─── Business Location ────────────────────────────────────────────────────────
+
+export interface BusinessLocation {
+  street?: string
+  postalCode?: string
+  city?: string
+  state?: string
+  country?: string
+}
+
 // ─── Site Config (resolved — all strings already locale-resolved by GROQ) ─────
 
 export interface WebsiteSiteConfig {
@@ -504,6 +514,9 @@ export interface WebsiteSiteConfig {
   socialLinks?: SocialLink[]
   phone?: string
   email?: string
+  /** Structured business location — primary source for map generation */
+  location?: BusinessLocation
+  /** Legacy flat address string — fallback when location is not yet populated */
   address?: string
   logoHeightDesktop?: number
   logoHeightMobile?: number
@@ -825,7 +838,12 @@ export interface ContactSection {
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
   title?: string
   subtitle?: string
-  mapEmbedUrl?: string
+  /** Whether to render the interactive map. Default true. */
+  showMap?: boolean
+  /** Map iframe height in pixels. Default 400. */
+  mapHeight?: number
+  /** Map colour theme. 'dark' is reserved for a future Maps JS API migration; v1 always renders the standard map. */
+  mapTheme?: 'auto' | 'light' | 'dark'
 }
 
 export interface BlogListingSection {

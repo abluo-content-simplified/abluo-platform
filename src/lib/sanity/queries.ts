@@ -161,6 +161,7 @@ export const websiteSiteConfigQuery = /* groq */ `
     socialLinks[] { platform, url },
     phone,
     email,
+    location { street, postalCode, city, state, country },
     address,
     openGraphImage { asset },
     logoHeightDesktop,
@@ -625,7 +626,7 @@ export const homePageQuery = /* groq */ `
         "question": ${loc('question')},
         "answer": ${loc('answer')},
       },
-      mapEmbedUrl,
+      showMap, mapHeight, mapTheme,
       "form": form->{
         _id,
         projectSlug,
@@ -710,7 +711,7 @@ export const pageHomeQuery = /* groq */ `
         "question": ${loc('question')},
         "answer": ${loc('answer')},
       },
-      mapEmbedUrl,
+      showMap, mapHeight, mapTheme,
       // Blog listing section fields — null on all other section types
       filterMode,
       sortOrder,
@@ -814,7 +815,7 @@ export const pageBySlugQuery = /* groq */ `
         "question": ${loc('question')},
         "answer": ${loc('answer')},
       },
-      mapEmbedUrl,
+      showMap, mapHeight, mapTheme,
       // Blog listing section fields — null on all other section types
       filterMode,
       sortOrder,

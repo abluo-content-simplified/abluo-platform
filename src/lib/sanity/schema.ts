@@ -1110,7 +1110,38 @@ const contactSectionType = defineType({
     }),
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
     defineField({ name: 'subtitle', title: 'Subtitle', type: 'localizedText' }),
-    defineField({ name: 'mapEmbedUrl', title: 'Google Maps Embed URL', type: 'url' }),
+    // ── Map presentation ──────────────────────────────────────────────────────
+    defineField({
+      name: 'showMap',
+      title: 'Show Map',
+      type: 'boolean',
+      initialValue: true,
+      description: 'Display an interactive Google Map. The map is generated automatically from the business address in Site Configuration — no embed code needed.',
+    }),
+    defineField({
+      name: 'mapHeight',
+      title: 'Map Height (px)',
+      type: 'number',
+      initialValue: 400,
+      description: 'Height of the map in pixels. Default: 400.',
+      validation: (Rule) => Rule.min(200).max(800),
+    }),
+    defineField({
+      name: 'mapTheme',
+      title: 'Map Theme',
+      type: 'string',
+      initialValue: 'auto',
+      options: {
+        list: [
+          { title: 'Automatic', value: 'auto' },
+          { title: 'Light', value: 'light' },
+          { title: 'Dark', value: 'dark' },
+        ],
+        layout: 'radio',
+        direction: 'horizontal',
+      },
+      description: 'Dark mode is reserved for a future Maps JavaScript API integration. In v1, all themes render the standard interactive Google Map.',
+    }),
   ],
   preview: {
     select: { title: 'title.it' },
@@ -2392,6 +2423,30 @@ const designSystemType = defineType({
   },
 })
 
+// ─── Business Location ────────────────────────────────────────────────────────
+// Structured address stored once in siteConfig.
+// The Contact Section reads this to generate the Google Maps embed URL
+// automatically — editors never paste embed code.
+
+const businessLocationType = defineType({
+  name: 'businessLocation',
+  title: 'Business Location',
+  type: 'object',
+  fields: [
+    defineField({ name: 'street', title: 'Street', type: 'string', description: 'Street name and number, e.g. "Via Cascina Sirone 12"' }),
+    defineField({ name: 'postalCode', title: 'Postal Code', type: 'string' }),
+    defineField({ name: 'city', title: 'City', type: 'string' }),
+    defineField({ name: 'state', title: 'State / Province', type: 'string', description: 'Optional. Only needed when city name is ambiguous.' }),
+    defineField({ name: 'country', title: 'Country', type: 'string' }),
+  ],
+  preview: {
+    select: { street: 'street', city: 'city' },
+    prepare: ({ street, city }) => ({
+      title: [street, city].filter(Boolean).join(', ') || 'Business Location',
+    }),
+  },
+})
+
 // ─── Site Config ──────────────────────────────────────────────────────────────
 
 const siteConfigType = defineType({
@@ -2559,7 +2614,22 @@ const siteConfigType = defineType({
     defineField({ name: 'ctaHref', title: 'Nav CTA Button URL', type: 'string', group: 'navigation' }),
     defineField({ name: 'phone', title: 'Phone', type: 'string', group: 'contact' }),
     defineField({ name: 'email', title: 'Email', type: 'string', group: 'contact' }),
-    defineField({ name: 'address', title: 'Address', type: 'text', rows: 2, group: 'contact' }),
+    defineField({
+      name: 'location',
+      title: 'Business Location',
+      type: 'businessLocation',
+      group: 'contact',
+      description: 'Structured address used to generate the Google Map automatically. Fill this in and the Contact Section map will work with no further setup.',
+    }),
+    defineField({
+      name: 'address',
+      title: 'Address (legacy)',
+      type: 'text',
+      rows: 2,
+      group: 'contact',
+      readOnly: true,
+      description: '⚠️ Legacy flat text field. Migrate content to Business Location above, then this field can be removed.',
+    }),
     defineField({ name: 'contactEmail', title: 'Contact Form Recipient Email', type: 'string', group: 'contact' }),
     defineField({ name: 'mobileNumber', title: 'Mobile Number', type: 'string', group: 'contact' }),
     defineField({ name: 'whatsappNumber', title: 'WhatsApp Number', type: 'string', group: 'contact' }),
@@ -2910,6 +2980,7 @@ export const schemaTypes = [
   teamMemberType,
   teamSectionType,
   textSectionType,
+  businessLocationType,
   contactSectionType,
   faqItemType,
   faqSectionType,
