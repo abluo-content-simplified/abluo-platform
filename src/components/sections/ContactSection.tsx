@@ -16,7 +16,10 @@ interface Props {
 }
 
 export function ContactSection({ section, surface, designSystem, siteConfig, locale = 'en' }: Props) {
-  const { title, subtitle, showMap = true, mapHeight = 400, mapTheme = 'auto' } = section
+  const { title, subtitle } = section
+  const showMap = section.showMap ?? true
+  const mapHeight = section.mapHeight ?? 400
+  const mapTheme = section.mapTheme ?? 'auto'
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
   const m = getContactSectionMessages(locale)
 
