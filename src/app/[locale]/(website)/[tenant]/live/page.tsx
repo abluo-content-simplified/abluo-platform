@@ -105,10 +105,21 @@ export default async function LivePage({ params }: PageProps) {
     }),
   ])
 
-  // Featured events from livePage take precedence over auto past events
-  const displayEvents = (livePage?.featuredEvents && livePage.featuredEvents.length > 0)
+  // Choose the event source: manual curation takes precedence over the auto-query.
+  // The defensive filter below always removes the featured/current event and any
+  // duplicates — so editors can include the live event in the manual list without
+  // causing it to appear twice on the page.
+  const rawDisplayEvents = livePage?.featuredEvents?.length
     ? livePage.featuredEvents
     : (pastEvents ?? [])
+
+  const seenIds = new Set<string>()
+  const displayEvents = rawDisplayEvents.filter(e => {
+    if (e._id === event?._id) return false   // never show the featured event again
+    if (seenIds.has(e._id)) return false      // deduplicate
+    seenIds.add(e._id)
+    return true
+  })
 
   return (
     <LivePageContent
