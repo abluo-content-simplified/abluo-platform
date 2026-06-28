@@ -48,7 +48,13 @@ usage() {
   cat >&2 <<EOF
 ${C_BOLD}Usage:${C_RESET} ./scripts/release.sh <phase|version> [message] [options]
 
-  ${C_BOLD}Phase mode (preferred)${C_RESET}
+  ${C_BOLD}Engineering mode (default post-milestone workflow)${C_RESET}
+    ./scripts/release.sh eng "Release Automation 1.2"
+      Releases the engineering version from release.json (auto-advancing the
+      4th segment if the current one is already tagged). For platform milestones
+      (V1.1.0, …) use ./scripts/milestone.sh instead.
+
+  ${C_BOLD}Phase mode (roadmap-driven)${C_RESET}
     ./scripts/release.sh A2
       Reads $ROADMAP_FILE, resolves the version and title for phase A2,
       and proposes a commit message you can accept or edit.
@@ -105,10 +111,13 @@ done
 [ -n "$POSITIONAL" ] || { log_error "Missing phase or version argument."; usage; }
 
 # --- Mode detection ---------------------------------------------------------
-# If arg1 looks like a version tag, run the legacy explicit-version path.
-# Otherwise treat it as a roadmap phase id.
+#   eng              -> engineering iteration (version from release.json)
+#   V1.2.3 "msg"     -> explicit version (backward compatible)
+#   A2               -> roadmap phase id
 MODE="phase"
-if is_version_tag "$POSITIONAL"; then
+if [ "$(printf '%s' "$POSITIONAL" | tr '[:upper:]' '[:lower:]')" = "eng" ]; then
+  MODE="eng"
+elif is_version_tag "$POSITIONAL"; then
   MODE="version"
 fi
 
@@ -243,7 +252,29 @@ VERSION=""
 PHASE_TITLE=""
 DEFAULT_MSG=""
 
-if [ "$MODE" = "version" ]; then
+if [ "$MODE" = "eng" ]; then
+  # Engineering iteration. Target = release.json engineeringVersion; if that
+  # version is already tagged, auto-advance to the next (4th-segment bump).
+  [ -f "$(release_json_path)" ] || die "release.json not found — cannot resolve engineering version."
+  _base="$(release_get engineeringVersion)"
+  [ -n "$_base" ] || die "release.json has no engineeringVersion."
+  if tag_exists_local "$_base" || tag_exists_remote "$_base"; then
+    VERSION="$(engineering_next "$_base")"
+    log_info "Engineering $_base is already released — advancing to $VERSION"
+  else
+    VERSION="$_base"
+  fi
+  is_version_tag "$VERSION" || die "Computed engineering version '$VERSION' is not a valid tag."
+  _relname="$(release_get releaseName)"
+  if [ "$HAVE_CUSTOM_MSG" -eq 1 ]; then
+    DEFAULT_MSG="$VERSION — $CUSTOM_MSG"
+  elif [ -n "$POSITIONAL2" ]; then
+    DEFAULT_MSG="$VERSION — $POSITIONAL2"
+  else
+    DEFAULT_MSG="$VERSION${_relname:+ — $_relname}"
+  fi
+  log_title "Abluo release — $VERSION (engineering iteration)"
+elif [ "$MODE" = "version" ]; then
   VERSION="$POSITIONAL"
   if [ "$HAVE_CUSTOM_MSG" -eq 1 ]; then
     DEFAULT_MSG="$VERSION: $CUSTOM_MSG"
@@ -287,6 +318,13 @@ else
   if [ "$PHASE_STATUS" = "Complete" ]; then
     log_warn "Roadmap marks phase $PHASE as 'Complete' — its version may already be released."
   fi
+fi
+
+# Platform milestones are created by milestone.sh, never here.
+if is_milestone_version "$VERSION"; then
+  log_error "'$VERSION' is a platform-milestone version (X.Y.0)."
+  printf '\n  Use the milestone tool instead:\n  %s\n\n' "${C_BOLD}./scripts/milestone.sh $VERSION${C_RESET}" >&2
+  die "release.sh handles engineering iterations only."
 fi
 
 [ "$DRY_RUN" -eq 1 ] && log_warn "DRY RUN — no commit, tag, or push will be made."
@@ -338,10 +376,44 @@ else
   log_ok "Commit message: $MESSAGE"
 fi
 
+# --- Step 4b: update version metadata (release.json + package.json) ----------
+# Done BEFORE the build so the badge bakes the correct version, and staged into
+# this same release commit. Engineering releases advance engineeringVersion;
+# platformVersion is owned by milestone.sh and left untouched here.
+PLATFORM_VERSION="$(release_get platformVersion 2>/dev/null || true)"
+log_step "Step 4b — Updating version metadata"
+if [ "$DRY_RUN" -eq 1 ]; then
+  log_info "[dry-run] would set release.json engineeringVersion=$VERSION, releasedAt=$(today_iso)"
+  log_info "[dry-run] would sync package.json version=${PLATFORM_VERSION#[Vv]}"
+else
+  release_set engineeringVersion "$VERSION"
+  release_set releasedAt "$(today_iso)"
+  [ -n "$PLATFORM_VERSION" ] && sync_package_version "$PLATFORM_VERSION"
+  git add release.json package.json 2>/dev/null || true
+  log_ok "release.json → engineeringVersion $VERSION; package.json → ${PLATFORM_VERSION#[Vv]}"
+fi
+
 # --- Step 5: build gate -----------------------------------------------------
 # Runs in dry-run too: a release that wouldn't build is the thing most worth
 # catching. The build writes only to gitignored output, never to tracked files.
+#
+# Always start from a clean .next directory. A release build must never depend on
+# previous artifacts: building over an existing .next has produced
+# "ENOTEMPTY: ... rmdir .next/server" failures (exact internal cause in
+# Next.js/Turbopack unproven). Removing .next first eliminates it and makes the
+# build deterministic. This clean step is part of the release tooling, not an
+# application workaround.
 log_step "Step 5 — Build gate ($BUILD_CMD)"
+if [ -d ".next" ]; then
+  rm -rf .next || die "Could not remove .next. Delete it manually (rm -rf .next) and retry."
+  log_info "Removed existing .next (deterministic clean build)"
+fi
+# Guarantee the build starts from a genuinely empty state. If anything (an editor,
+# a dev server, a file lock) recreated .next between the removal and now, abort
+# rather than build on a dirty directory.
+if [ -e ".next" ]; then
+  die ".next still exists after cleanup. Stop any running 'npm run dev', then retry."
+fi
 if ! sh -c "$BUILD_CMD" >&2; then
   die "Build failed. No commit, tag, or push was made."
 fi
@@ -352,6 +424,9 @@ if [ "$DRY_RUN" -eq 1 ]; then
   log_warn "${C_BOLD}DRY RUN — the following would now run:${C_RESET}"
   cat >&2 <<EOF
 
+  release.json → engineeringVersion=$VERSION, releasedAt=$(today_iso)
+  package.json → version=${PLATFORM_VERSION#[Vv]}
+  git add release.json package.json
   git commit -m "$MESSAGE"
   git tag -a "$VERSION" -m "$MESSAGE"
   git push origin $RELEASE_BRANCH
@@ -431,40 +506,41 @@ fi
 
 [ "$VERIFY_FAIL" -eq 0 ] || die "Post-release verification failed. Inspect the repository before promoting."
 
-# --- Step 11: summary + next-phase reminder ---------------------------------
+# --- Step 11: structured release summary ------------------------------------
 REMOTE_URL="$(git remote get-url origin 2>/dev/null || echo 'origin')"
+PLATFORM_VERSION="$(release_get platformVersion 2>/dev/null || echo '—')"
 printf '\n%s\n' "${C_DIM}--------------------------------------------------${C_RESET}" >&2
 log_ok "${C_BOLD}Release $VERSION complete and verified.${C_RESET}"
 cat >&2 <<EOF
 
-  ${C_BOLD}Tag${C_RESET}      $VERSION  (annotated)
-  ${C_BOLD}Commit${C_RESET}   ${HEAD_SHA:0:9}  $MESSAGE
-  ${C_BOLD}Branch${C_RESET}   $RELEASE_BRANCH (pushed, in sync with origin)
-  ${C_BOLD}Files${C_RESET}    $STAGED_COUNT changed
-  ${C_BOLD}Remote${C_RESET}   $REMOTE_URL
+  ${C_BOLD}Environment${C_RESET}          dev (localhost → dev)
+  ${C_BOLD}Branch${C_RESET}               $RELEASE_BRANCH (pushed, in sync with origin)
+  ${C_BOLD}Commit${C_RESET}               ${HEAD_SHA:0:9}  $MESSAGE
+  ${C_BOLD}Engineering version${C_RESET}  $VERSION  (annotated tag)
+  ${C_BOLD}Platform version${C_RESET}     $PLATFORM_VERSION  (unchanged — milestones use milestone.sh)
+  ${C_BOLD}Deployment${C_RESET}           Vercel will build $RELEASE_BRANCH → https://dev.abluo.app
+  ${C_BOLD}Files${C_RESET}                $STAGED_COUNT changed
+  ${C_BOLD}Remote${C_RESET}               $REMOTE_URL
 EOF
 
 # Next-phase reminder (phase mode only — needs the roadmap).
 if [ "$MODE" = "phase" ]; then
   NEXT="$(roadmap_next_phase "$ROADMAP_FILE" "$PHASE" || true)"
-  printf '\n' >&2
   if [ -n "$NEXT" ]; then
     NP="$(printf '%s' "$NEXT" | cut -f1)"
     NV="$(printf '%s' "$NEXT" | cut -f2)"
     NT="$(printf '%s' "$NEXT" | cut -f3)"
-    printf '  %s %s\n' "${C_BOLD}Next phase${C_RESET}" "$NP — $NT" >&2
-    printf '  %s %s\n' "${C_BOLD}Next ver. ${C_RESET}" "$NV" >&2
-  else
-    log_info "This was the final phase in the roadmap."
+    printf '\n  %s %s\n' "${C_BOLD}Next roadmap phase${C_RESET}" "$NP ($NV) — $NT" >&2
   fi
 fi
 
 cat >&2 <<EOF
 
-  ${C_BOLD}Next steps${C_RESET}
+  ${C_BOLD}Next recommended actions${C_RESET}
     1. Verify this release on ${C_BOLD}https://dev.abluo.app${C_RESET}
-    2. After approval, promote ${C_BOLD}dev → preview${C_RESET} and verify on https://preview.abluo.app
-    3. After preview verification, promote ${C_BOLD}preview → production${C_RESET}
+    2. After approval, promote ${C_BOLD}dev → preview${C_RESET} (manual) and verify on https://preview.abluo.app
+    3. After preview verification, promote ${C_BOLD}preview → production${C_RESET} (manual)
 
-  ${C_DIM}Promotion is manual until Release Automation v2 (promote.sh).${C_RESET}
+  ${C_DIM}Promotion automation arrives in Release Automation 1.3 (promote.sh).${C_RESET}
+  ${C_DIM}Platform milestones (V1.1.0, …) are cut with ./scripts/milestone.sh${C_RESET}
 EOF

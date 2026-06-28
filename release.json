@@ -1,0 +1,7 @@
+{
+  "_comment": "Authoritative version SSOT for Abluo. Machine-readable. Edited by scripts/release.sh and scripts/milestone.sh. Humans read CHANGELOG.md. See docs/release-automation.md. Do not hand-edit unless correcting drift.",
+  "platformVersion": "V1.0.0",
+  "engineeringVersion": "V1.0.0.1",
+  "releaseName": "Release Automation 1.2",
+  "releasedAt": "2026-06-28"
+}

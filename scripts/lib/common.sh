@@ -111,6 +111,96 @@ is_version_tag() {
   printf '%s' "$1" | grep -Eq '^[Vv][0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.]+)?$'
 }
 
+# --- Version model (platform / engineering) --------------------------------
+# Abluo runs two independent version axes:
+#   * Platform version  — customer-facing milestone, e.g. V1.0.0  (X.Y.0)
+#   * Engineering version — developer-facing iteration, e.g. V1.0.0.1
+# They are NOT derived from each other (the engineering line can sit numerically
+# below the milestone line). release.json is the authoritative source for both.
+
+# Is this a platform-milestone version?  Milestones are V<major>.<minor>.0.
+is_milestone_version() {
+  printf '%s' "$1" | grep -Eq '^[Vv][0-9]+\.[0-9]+\.0$'
+}
+
+# Compute the next engineering version from a base.
+#   4-segment (V1.0.0.1) -> increment the 4th segment  -> V1.0.0.2
+#   3-segment (V1.0.0)   -> append a 4th segment        -> V1.0.0.1
+# engineering_next <version>
+#
+# Canonical rule: the engineering version always belongs to the CURRENT platform
+# milestone. At a milestone, the base is reset to that milestone (a 3-segment
+# version), so the first iteration becomes <milestone>.1. Within a milestone the
+# 4th segment simply increments.
+engineering_next() {
+  _v="${1#[Vv]}"
+  case "$_v" in
+    *.*.*.*) _last="${_v##*.}"; _head="${_v%.*}"; printf 'V%s.%s' "$_head" "$((_last + 1))" ;;
+    *.*.*)   printf 'V%s.1' "$_v" ;;
+    *)       return 1 ;;
+  esac
+}
+
+# --- release.json (authoritative version SSOT) -----------------------------
+# All access goes through these helpers — never grep release.json elsewhere.
+# Requires node (already a hard dependency of this repo).
+
+RELEASE_JSON_FILE="${RELEASE_JSON_FILE:-release.json}"
+
+node_present() { command -v node >/dev/null 2>&1; }
+
+# Absolute path to release.json (resolved against repo root).
+release_json_path() {
+  _root="$(repo_root)"
+  printf '%s/%s' "${_root:-.}" "$RELEASE_JSON_FILE"
+}
+
+# Read a top-level string key. Empty output if missing; non-zero if file absent.
+# release_get <key>
+release_get() {
+  node_present || { log_error "node is required to read release.json" >&2; return 2; }
+  node -e '
+    const fs = require("fs");
+    try {
+      const j = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+      const v = j[process.argv[2]];
+      process.stdout.write(v == null ? "" : String(v));
+    } catch (e) { process.exit(3); }
+  ' "$(release_json_path)" "$1"
+}
+
+# Set a top-level string key, preserving 2-space indentation + trailing newline.
+# release_set <key> <value>
+release_set() {
+  node_present || { log_error "node is required to write release.json" >&2; return 2; }
+  node -e '
+    const fs = require("fs");
+    const p = process.argv[1];
+    const j = JSON.parse(fs.readFileSync(p, "utf8"));
+    j[process.argv[2]] = process.argv[3];
+    fs.writeFileSync(p, JSON.stringify(j, null, 2) + "\n");
+  ' "$(release_json_path)" "$1" "$2"
+}
+
+# Sync package.json "version" from a platform version (strips leading V).
+# package.json tracks the PLATFORM version (valid semver); the 4-segment
+# engineering version is not valid semver and never goes here.
+# sync_package_version <platformVersion>
+sync_package_version() {
+  node_present || { log_error "node is required to sync package.json" >&2; return 2; }
+  _pv="${1#[Vv]}"
+  node -e '
+    const fs = require("fs");
+    const p = process.argv[1];
+    const j = JSON.parse(fs.readFileSync(p, "utf8"));
+    j.version = process.argv[2];
+    fs.writeFileSync(p, JSON.stringify(j, null, 2) + "\n");
+  ' "$(repo_root)/package.json" "$_pv"
+}
+
+# Today's date as YYYY-MM-DD (release stamp).
+today_iso() { date -u +%Y-%m-%d; }
+
 # --- Roadmap / progress parsing --------------------------------------------
 # These read the "Phase Execution Log" table from the ADR progress document
 # (docs/adr-011-progress.md by default). The table columns are, by position:

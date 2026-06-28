@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react'
 
 interface VersionInfo {
-  version: string
+  platformVersion: string
+  engineeringVersion: string
+  releaseName: string
   commit: string
   commitLong: string
   branch: string
@@ -43,10 +45,15 @@ export function VersionIndicator() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 left-4 z-40 px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors cursor-pointer font-mono"
+        className="fixed bottom-4 left-4 z-40 flex flex-col items-start gap-0.5 px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors cursor-pointer font-mono leading-tight"
         title="Click to see version details"
       >
-        Abluo CMS V{versionInfo.version} • {versionInfo.commit}
+        <span>
+          <span className="text-gray-500">Platform</span> {versionInfo.platformVersion}
+        </span>
+        <span className="text-[10px] text-gray-500">
+          Engineering {versionInfo.engineeringVersion} • {versionInfo.commit}
+        </span>
       </button>
 
       {isOpen && (
@@ -63,8 +70,18 @@ export function VersionIndicator() {
             </div>
             <div className="space-y-4">
               <div>
-                <p className="text-xs font-semibold text-gray-600 uppercase">Version</p>
-                <p className="text-sm font-mono mt-1">{versionInfo.version}</p>
+                <p className="text-xs font-semibold text-gray-600 uppercase">Platform Version</p>
+                <p className="text-sm font-mono mt-1">{versionInfo.platformVersion}</p>
+                <p className="text-xs text-gray-500">customer-facing milestone</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-600 uppercase">Engineering Version</p>
+                <p className="text-sm font-mono mt-1">{versionInfo.engineeringVersion}</p>
+                {versionInfo.releaseName ? (
+                  <p className="text-xs text-gray-500">{versionInfo.releaseName}</p>
+                ) : (
+                  <p className="text-xs text-gray-500">developer-facing iteration</p>
+                )}
               </div>
               <div>
                 <p className="text-xs font-semibold text-gray-600 uppercase">Commit</p>

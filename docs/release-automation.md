@@ -6,10 +6,88 @@ This is **platform developer tooling**, not part of ADR-011. It exists to replac
 the error-prone manual release steps that previously had to be run by hand (and
 which caused incidents such as the V0.8.2 production break).
 
-**The current version (v1.1) automates only the `localhost → dev` workflow.** It
-derives the version from the roadmap, gates on a successful build, commits, tags,
-pushes to `dev`, and verifies the result. It does **not** promote to Preview or
-Production — those remain manual until [Release Automation v2](#future-roadmap).
+**Release Automation 1.2 automates the `localhost → dev` workflow and platform
+milestone tagging.** It derives the engineering version from `release.json` (or
+the roadmap), gates on a successful build, commits, tags, pushes to `dev`, and
+verifies the result. Promotion (`dev → preview → production`) remains manual
+until [Release Automation 1.3](#future-roadmap) (`promote.sh`).
+
+> Release Automation itself is **not** part of ADR-011 (which is complete). It is
+> post-milestone engineering tooling, versioned on the engineering axis (see
+> [Version model](#version-model)).
+
+---
+
+## Version model
+
+Abluo runs **two independent version axes**. Neither is derived from the other —
+the engineering line can sit numerically *below* the platform line.
+
+| Axis | Audience | Example | Advances when | Tagged by |
+|---|---|---|---|---|
+| **Platform version** | Customers | `V1.0.0` (`X.Y.0`) | A product milestone ships | `milestone.sh` |
+| **Engineering version** | Developers | `V1.0.0.1` | Each engineering iteration | `release.sh` |
+
+The engineering version **always belongs to the current platform milestone** —
+it is an iteration counter within that milestone, never a continuation of the
+previous one. Within a milestone the 4th segment increments
+(`V1.0.0.1 → V1.0.0.2 → …`). When a new milestone ships, the engineering base
+inherits **that** milestone — e.g. after `V1.1.0`, the next engineering iteration
+is `V1.1.0.1` (not `V1.0.0.x`). This keeps engineering from ever looking older
+than the platform it belongs to.
+
+`release.json` is the **single machine-readable source of truth** for both axes;
+`CHANGELOG.md` is the human-readable history. The version badge, `/api/version`,
+`package.json`, and the release scripts all consume `release.json`.
+
+### Engineering version philosophy
+
+Engineering versions are **scoped to the current platform milestone**. They do
+**not** represent product maturity, customer releases, or the overall evolution
+of the platform. Their sole purpose is to identify engineering iterations that
+belong to a specific platform release.
+
+```
+Platform              Engineering
+V1.0.0                V1.0.0.1
+                      V1.0.0.2
+                      V1.0.0.3
+```
+
+When the next platform milestone is released, a new engineering cycle begins:
+
+```
+Platform              Engineering
+V1.1.0                V1.1.0.1
+                      V1.1.0.2
+```
+
+This intentionally keeps the engineering version visually associated with the
+platform version it belongs to, and avoids situations where the engineering
+version appears numerically older than the deployed platform.
+
+For the current milestone (`V1.0.0`), the engineering line is initialized at
+`V1.0.0.1` — i.e. the engineering line is being *initialized* for the current
+platform milestone, not continued from a prior one.
+
+### release.json
+
+```json
+{
+  "platformVersion": "V1.0.0",
+  "engineeringVersion": "V1.0.0.1",
+  "releaseName": "Release Automation 1.2",
+  "releasedAt": "2026-06-27"
+}
+```
+
+It holds **version identity only** (declarative intent). Build provenance —
+commit SHA, branch, environment, build time — stays in build-time env vars
+(`next.config.ts` → `/api/version`), because a committed file cannot contain its
+own commit SHA. `package.json.version` is auto-synced to the *platform* version
+(valid semver, no leading `V`); the 4-segment engineering version never goes
+there. Access `release.json` only through the `release_*` / version helpers in
+`lib/common.sh` — never grep it elsewhere.
 
 ---
 
@@ -17,51 +95,26 @@ Production — those remain manual until [Release Automation v2](#future-roadmap
 
 ```
 scripts/
-  doctor.sh        # repository health checks
-  release.sh       # the command you normally run
+  doctor.sh        # repository health checks + version-consistency checks
+  release.sh       # engineering releases (localhost → dev)
+  milestone.sh     # platform milestone tagging
   lib/
-    common.sh      # shared helpers: colours, logging, git + roadmap utilities
+    common.sh      # shared helpers: colours, logging, git, roadmap, version SSOT
 ```
 
-All three are POSIX-friendly shell scripts. `doctor.sh` and `release.sh` use
-`set -euo pipefail` and source `lib/common.sh`, so future scripts (`promote.sh`,
-`verify.sh`) reuse the same helpers without duplication.
+All are POSIX-friendly shell scripts using `set -euo pipefail` and sourcing
+`lib/common.sh`, so future scripts (`promote.sh`, `verify.sh`) reuse the same
+helpers without duplication. `release.json` access uses `node` (already a repo
+dependency).
 
 ---
 
-## Quick start
+## Scope of this document
 
-```bash
-# 1. Stage the changes you want to release
-git add <files>
-
-# 2. Cut the release for a roadmap phase — no version number needed
-./scripts/release.sh A2
-```
-
-`A2` is a phase id from the Phase Execution Log in `docs/adr-011-progress.md`.
-The script looks up the version (`V0.9.20`) and title ("Full ModuleManifest
-Type"), proposes a commit message, runs the build, and releases.
-
-Preview exactly what would happen, changing nothing:
-
-```bash
-./scripts/release.sh A2 --dry-run
-```
-
-Ask the tooling what to release next, or check current state — no changes, no
-build:
-
-```bash
-./scripts/release.sh next      # what to release next + the command to run
-./scripts/release.sh status    # branch, HEAD, last release, roadmap state, drift
-```
-
-Run the health checks on their own at any time:
-
-```bash
-./scripts/doctor.sh
-```
+This document explains **how the tooling works** — the version model, each
+script's behaviour, and configuration. For the step-by-step **release procedure**
+(what to run, in what order, where the `STOP` points are), follow the operations
+runbook: [`release-workflow.md`](./release-workflow.md).
 
 ---
 
@@ -75,8 +128,15 @@ Run the health checks on their own at any time:
 
 | Form | Example | Notes |
 |---|---|---|
-| **Phase mode** (preferred) | `./scripts/release.sh A2` | Version + message derived from the roadmap |
+| **Engineering mode** (default now) | `./scripts/release.sh eng "Release Automation 1.2"` | Version from `release.json`; auto-advances the 4th segment if already tagged |
+| **Phase mode** (roadmap-driven) | `./scripts/release.sh A2` | Version + message derived from the roadmap |
 | **Explicit-version mode** | `./scripts/release.sh V0.9.20 "ADR-011 A2 ModuleManifest"` | Backward compatible — message required |
+
+Engineering and explicit modes refuse platform-milestone versions (`X.Y.0`) and
+redirect you to `milestone.sh`. Every release updates `release.json`
+(`engineeringVersion`, `releasedAt`), syncs `package.json`, and stages both into
+the release commit *before* the build gate, so the badge bakes the correct
+version.
 
 | Option | Effect |
 |---|---|
@@ -171,6 +231,47 @@ release immediately — nothing is committed. **This is mandatory and runs in
 worth catching, and dry-run is most useful when it actually validates. The build
 writes only to gitignored output, never to tracked files.
 
+**Deterministic clean build.** Immediately before running `$BUILD_CMD`, the script
+removes the local Next.js build directory and then verifies it is actually gone:
+
+```sh
+rm -rf .next || die "Could not remove .next."
+[ -e .next ] && die ".next still exists after cleanup. Release aborted."
+```
+
+A release build must never depend on previous artifacts. This is part of the
+release tooling, not an application workaround. **Any future `verify.sh` must
+follow exactly the same clean-build policy** (`rm -rf .next` + existence check
+before building).
+
+#### Root cause of the original `ENOTEMPTY` incident
+
+The reported sequence was: `rm -rf .next` → `npm run build` (succeeds) →
+`release.sh eng` → fails at the build gate with
+`ENOTEMPTY: directory not empty, rmdir '.next/server'`.
+
+Investigation findings:
+
+- The release script runs the build **identically** to a manual run — same
+  command (`npm run build`), same working directory (the repo root). It does not
+  build under different conditions.
+- No step in the script creates or touches `.next` before the build; the script
+  leaves no filesystem state of its own behind.
+- The failure only occurs when **building over an existing `.next` directory**.
+  The manual `npm run build` succeeded because it was preceded by `rm -rf .next`,
+  so it started clean; the script then ran a **second** build over that
+  now-populated `.next` and hit the failed `rmdir '.next/server'`.
+
+The existing `.next` directory contained macOS `.DS_Store` files (this repo's
+`.next/` and `.next/server/` both have one), which are a plausible contributing
+factor to a directory-removal step failing with `ENOTEMPTY`. However, the exact
+internal cause within Next.js/Turbopack cannot be proven from our investigation.
+
+Conclusion: regardless of the underlying implementation, the failure is tied to
+reusing a non-empty `.next` between builds. Starting every release build from a
+freshly removed `.next` directory eliminates the failure and guarantees a
+deterministic release build. No further complexity is warranted.
+
 The build command can be overridden with `BUILD_CMD` (used by the test suite to
 stub the gate); leave it unset for normal releases.
 
@@ -202,6 +303,32 @@ the standard promotion path:
 The script runs `git push origin refs/tags/<tag>` — **never `git push --tags`**.
 Pushing all tags can publish local or experimental tags never meant for the
 remote. Releases push exactly one tag: the one derived for this release.
+
+---
+
+## `milestone.sh` — platform milestones
+
+Tags a customer-facing platform milestone (`X.Y.0`). A milestone is never tied to
+a roadmap phase; it tags an already-released, verified production commit.
+
+```bash
+./scripts/milestone.sh V1.1.0 -m "Module Installation"
+./scripts/milestone.sh V1.1.0 --dry-run
+```
+
+Steps: verify branch is `main`, verify a clean tree, verify no unpushed commits,
+**verify production is serving this commit via `/api/version`**, verify the tag is
+unused, create + push an annotated tag (that tag only), then update `release.json`
+(`platformVersion` + reset the engineering base to **this** milestone) and sync
+`package.json`.
+
+The production check polls `$PROD_URL/api/version` (default `https://abluo.app`)
+and compares the served commit to local `HEAD` — no Vercel API or token. Use
+`--skip-prod-check` to bypass it (not advised).
+
+After `V1.1.0`, the engineering base becomes `V1.1.0`, so the next
+`release.sh eng` produces `V1.1.0.1`. Commit the `release.json`/`package.json`
+changes on `main`, merge back to `dev`, and add a `CHANGELOG.md` entry.
 
 ---
 
@@ -293,31 +420,14 @@ tenant-specific is hardcoded.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `RELEASE_BRANCH` | `dev` | Branch the workflow operates on |
+| `RELEASE_BRANCH` | `dev` | Branch `release.sh` operates on |
+| `MILESTONE_BRANCH` | `main` | Branch `milestone.sh` tags from |
 | `ROADMAP_FILE` | `docs/adr-011-progress.md` | Progress doc parsed for phase → version |
+| `RELEASE_JSON_FILE` | `release.json` | Version SSOT path |
+| `PROD_URL` | `https://abluo.app` | Base URL for the milestone production check |
 | `BUILD_CMD` | `npm run build` | The build gate command |
 | `INITIATIVE_LABEL` | _(derived from doc H1)_ | Suffix in the default commit message |
 | `NO_COLOR` | _(unset)_ | Set to disable coloured output |
-
----
-
-## Expected workflow
-
-```
-┌───────────┐  git add   ┌──────────────┐  release.sh A2  ┌────────────┐
-│ localhost │ ─────────▶ │ staged change│ ──────────────▶ │ origin/dev │
-└───────────┘            └──────────────┘                 └────────────┘
-                          (build gate must pass)                 │
-                                                        Vercel builds dev
-                                                                 ▼
-                                                     https://dev.abluo.app
-```
-
-1. Develop and test locally.
-2. `git add` the changes for the release.
-3. `./scripts/release.sh <phase>` (the build gate enforces `npm run build`).
-4. Verify the deploy at **https://dev.abluo.app**.
-5. Promote `dev → preview → main` manually per `CLAUDE.md` (until v2).
 
 ---
 
@@ -356,27 +466,31 @@ sandbox cannot authenticate to GitHub over HTTPS.
 
 Built in modular stages; each reuses `lib/common.sh`.
 
-### Release Automation v2 — `promote.sh`
-Automate `dev → preview → main`:
+### Release Automation 1.3 — `promote.sh` (next)
+Automate `dev → preview → main`, **one hop at a time, never cascading**:
 
 - Promote `dev → preview`, push, pause for verification at `preview.abluo.app`.
-- Promote `preview → main`, tag the release (incl. the production version such as
-  D4's `V1.0.0`), and push.
+- Promote `preview → main`, push, pause for production verification.
+- Use the `/api/version` poll to refuse a promotion when the previous environment
+  isn't actually serving the expected commit.
 - Enforce the explicit **Stop** hold points so a promotion can never skip a
-  verification stage (root cause of the V0.8.2 incident).
+  verification stage (root cause of the V0.8.2 incident). This is why promotion
+  was deliberately deferred out of 1.2.
+- Auto-generate a release-notes draft from git history for `CHANGELOG.md`.
 
-### Release Automation v3 — `verify.sh`
-A standalone quality gate, runnable on its own and reused by `release.sh`:
+### Later — `verify.sh`
+A standalone quality gate, runnable on its own and reused by the other scripts:
+`npx tsc --noEmit`, `npx vitest run`, `npm run build`, and `build-log` generation.
 
-- `npx tsc --noEmit`
-- `npx vitest run`
-- `npm run build`
-- generate / append the `build-log-V{version}.txt` entry.
+### Delivered in 1.2
+`release.json` SSOT, dual platform/engineering version model, `release.sh eng`
+mode, `milestone.sh`, two-tier version badge, `package.json` auto-sync, and
+doctor version-consistency checks.
 
-### Candidate for v1.2
-Auto-update `docs/adr-011-progress.md` after a successful release (mark the phase
-`Complete`, advance Current/Next phase). v1.1 reads the tracker but never writes
-it.
+### Candidate for a later iteration
+Auto-update `docs/adr-011-progress.md` after a roadmap-phase release (mark the
+phase `Complete`, advance Current/Next). The tooling reads the tracker but never
+writes it.
 
 ---
 
