@@ -2,7 +2,7 @@ import type { TextSection, PortableTextContent, DesignSystem } from '@/lib/sanit
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
-import { SectionContainer } from './SectionContainer'
+import { SectionContainer } from '@/components/layout/SectionContainer'
 
 function RichText({ blocks }: { blocks: PortableTextContent }) {
   const elements: React.ReactNode[] = []

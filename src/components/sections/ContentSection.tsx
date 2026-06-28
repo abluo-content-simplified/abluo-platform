@@ -2,7 +2,7 @@ import type { ContentSection, PortableTextContent, DesignSystem } from '@/lib/sa
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
-import { SectionContainer } from './SectionContainer'
+import { SectionContainer } from '@/components/layout/SectionContainer'
 
 function RichText({ blocks }: { blocks: PortableTextContent }) {
   return (

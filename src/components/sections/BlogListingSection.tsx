@@ -2,7 +2,7 @@ import type { BlogListingSection as BlogListingSectionType, Post, DesignSystem }
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
-import { SectionContainer } from './SectionContainer'
+import { SectionContainer } from '@/components/layout/SectionContainer'
 import { imageUrl } from '@/lib/sanity/image'
 
 // ─── Date formatting ──────────────────────────────────────────────────────────

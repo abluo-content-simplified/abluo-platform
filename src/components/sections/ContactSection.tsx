@@ -2,7 +2,7 @@ import type { ContactSection, WebsiteSiteConfig, DesignSystem } from '@/lib/sani
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
-import { SectionContainer } from './SectionContainer'
+import { SectionContainer } from '@/components/layout/SectionContainer'
 import { getContactSectionMessages } from '@/lib/i18n/contact-section-messages'
 
 interface Props {
