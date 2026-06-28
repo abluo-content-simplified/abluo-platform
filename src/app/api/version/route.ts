@@ -7,27 +7,21 @@ export async function GET() {
     const environment = process.env.NEXT_PUBLIC_VERCEL_ENV || 'development'
     const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || 'production'
 
-    // All values baked in at build time via next.config.ts — no git/fs at runtime.
-    // Two independent version axes (Release Automation 1.2):
-    const platformVersion    = process.env.NEXT_PUBLIC_PLATFORM_VERSION    || 'unknown'
-    const engineeringVersion = process.env.NEXT_PUBLIC_ENGINEERING_VERSION
-      || process.env.NEXT_PUBLIC_GIT_RELEASE
-      || 'unknown'
-    const releaseName = process.env.NEXT_PUBLIC_RELEASE_NAME || ''
+    // Single version (Release Automation v2). All values baked at build time via
+    // next.config.ts — no git/fs at runtime. The build is uniquely identified by
+    // commit + branch + environment + build time (there is no engineering version).
+    const platformVersion = process.env.NEXT_PUBLIC_PLATFORM_VERSION || 'unknown'
+    const releaseTitle    = process.env.NEXT_PUBLIC_RELEASE_TITLE || ''
 
     const commitSha = process.env.NEXT_PUBLIC_GIT_COMMIT_SHA || 'unknown'
     const commit    = commitSha.slice(0, 7)
     const branch    = process.env.NEXT_PUBLIC_GIT_COMMIT_REF || 'unknown'
-    const buildDate = process.env.NEXT_PUBLIC_BUILD_TIME
-      ? new Date(process.env.NEXT_PUBLIC_BUILD_TIME).toUTCString()
-      : new Date().toUTCString()
+    // ISO timestamp — the client formats it in the user's local timezone.
+    const buildDate = process.env.NEXT_PUBLIC_BUILD_TIME || new Date().toISOString()
 
     return NextResponse.json({
       platformVersion,
-      engineeringVersion,
-      releaseName,
-      // `release` kept for backward compatibility (== engineeringVersion).
-      release: engineeringVersion,
+      releaseTitle,
       commit,
       commitLong: commitSha,
       branch,
@@ -40,9 +34,7 @@ export async function GET() {
     return NextResponse.json(
       {
         platformVersion: 'unknown',
-        engineeringVersion: 'unknown',
-        releaseName: '',
-        release: 'unknown',
+        releaseTitle: '',
         commit: 'unknown',
         commitLong: 'unknown',
         branch: 'unknown',

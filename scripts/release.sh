@@ -1,36 +1,27 @@
 #!/usr/bin/env bash
 # ---------------------------------------------------------------------------
-# Abluo Release Automation v1.1 — release.sh
+# Abluo Release Automation v2 — release.sh
 #
-# The standard Abluo release command. Cuts a release to the 'dev' branch with
-# the version number derived from the ADR roadmap, so you never type it by hand.
+# Cuts a release. There is ONE version concept — the Platform Version — carried
+# by an annotated git tag (the single source of truth). No engineering version.
 #
-#   ./scripts/release.sh A2                 # roadmap-driven (preferred)
-#   ./scripts/release.sh A2 --dry-run       # show every step, change nothing
-#   ./scripts/release.sh A2 -m "message"    # override the commit message
-#   ./scripts/release.sh A2 --yes           # accept default message, no prompt
+#   ./scripts/release.sh v1.0.2 "Location Platform"   # version + title
+#   ./scripts/release.sh v1.0.2                        # title optional
+#   ./scripts/release.sh                               # interactive prompts
+#   ./scripts/release.sh v1.0.2 --dry-run             # show steps, change nothing
 #
-# Backward compatible — an explicit version still works:
-#   ./scripts/release.sh V0.9.20 "ADR-011 A2 ModuleManifest"
+# What it does:
+#   1. Validate the version (lowercase vX.Y.Z) and that the tag is unused
+#   2. Health checks (doctor) + deterministic build gate (rm -rf .next + build)
+#   3. Regenerate release.json + sync package.json (build-time fallbacks)
+#   4. Create a release-marker commit:  release: v1.0.2 - Location Platform
+#   5. Create the annotated tag (message = title)
+#   6. Push the branch and ONLY the new tag (never --tags)
+#   7. Verify, then print a structured summary
 #
-# This version automates only localhost → dev. Promotion to Preview / Production
-# remains manual until Release Automation v2 (promote.sh).
-#
-# Pipeline:
-#   1. doctor.sh (health checks)
-#   2. Resolve version + title from the roadmap (phase mode)
-#   3. Verify the tag is unused (local + remote)
-#   4. Verify staged changes exist
-#   5. Confirm the commit message (default from roadmap, or your own)
-#   6. Build gate — npm run build (abort on failure; runs in dry-run too)
-#   7. Commit
-#   8. Annotated tag
-#   9. Push 'dev'
-#  10. Push ONLY the new tag (never --tags)
-#  11. Post-release verification
-#  12. Summary + next-phase reminder
-#
-# Fail-fast: any error stops the run. Steps 1–6 make no git changes.
+# The deployment pipeline (localhost -> dev -> preview -> production) is
+# unchanged: cut the release on dev, then promote as usual.
+# Fail-fast: any error stops the run. Steps 1-3 make no git commits.
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
@@ -38,385 +29,117 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=lib/common.sh
 . "$SCRIPT_DIR/lib/common.sh"
 
-# --- Configuration (override via env; nothing tenant/initiative specific is hardcoded) ---
 RELEASE_BRANCH="${RELEASE_BRANCH:-dev}"
-ROADMAP_FILE="${ROADMAP_FILE:-docs/adr-011-progress.md}"   # resolved against repo root
-BUILD_CMD="${BUILD_CMD:-npm run build}"                    # the build gate command
-INITIATIVE_LABEL="${INITIATIVE_LABEL:-}"                   # e.g. ADR-011; derived if empty
+BUILD_CMD="${BUILD_CMD:-npm run build}"
 
 usage() {
   cat >&2 <<EOF
-${C_BOLD}Usage:${C_RESET} ./scripts/release.sh <phase|version> [message] [options]
+${C_BOLD}Usage:${C_RESET} ./scripts/release.sh [version] [title] [--dry-run]
 
-  ${C_BOLD}Engineering mode (default post-milestone workflow)${C_RESET}
-    ./scripts/release.sh eng "Release Automation 1.2"
-      Releases the engineering version from release.json (auto-advancing the
-      4th segment if the current one is already tagged). For platform milestones
-      (V1.1.0, …) use ./scripts/milestone.sh instead.
+  ${C_BOLD}version${C_RESET}   Platform Version — lowercase, e.g. ${C_BOLD}v1.0.2${C_RESET}
+            (must be vX.Y.Z; uppercase V and four-segment forms are rejected)
+  ${C_BOLD}title${C_RESET}     Release title — optional, e.g. "Location Platform"
 
-  ${C_BOLD}Phase mode (roadmap-driven)${C_RESET}
-    ./scripts/release.sh A2
-      Reads $ROADMAP_FILE, resolves the version and title for phase A2,
-      and proposes a commit message you can accept or edit.
-
-  ${C_BOLD}Explicit-version mode (backward compatible)${C_RESET}
-    ./scripts/release.sh V0.9.20 "ADR-011 A2 ModuleManifest"
-
-  ${C_BOLD}Read-only info commands${C_RESET}
-    ./scripts/release.sh next     What to release next (+ the command to run)
-    ./scripts/release.sh status   Branch, HEAD, last release, roadmap state, drift
+  If arguments are omitted you'll be prompted. Title may be left blank.
 
   ${C_BOLD}Options${C_RESET}
-    -m, --message <msg>   Use this commit message (skips the prompt)
-    -y, --yes             Accept the default message without prompting
-        --dry-run         Show every step without changing the repository
-                          (the build gate still runs)
-    -h, --help            Show this help
+    --dry-run   Show every step (incl. the build) without changing the repo
+    -h, --help  Show this help
 EOF
   exit 2
 }
 
-# --- Argument parsing -------------------------------------------------------
+# --- Parse arguments --------------------------------------------------------
 DRY_RUN=0
-ASSUME_YES=0
-CUSTOM_MSG=""
-HAVE_CUSTOM_MSG=0
-POSITIONAL=""
-POSITIONAL2=""
-POS_COUNT=0
-
+VERSION=""
+TITLE=""
+TITLE_SET=0
+POS=0
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    -m|--message)
-      [ "$#" -ge 2 ] || { log_error "$1 requires a value"; usage; }
-      CUSTOM_MSG="$2"; HAVE_CUSTOM_MSG=1; shift 2 ;;
-    --message=*) CUSTOM_MSG="${1#*=}"; HAVE_CUSTOM_MSG=1; shift ;;
-    -y|--yes)    ASSUME_YES=1; shift ;;
-    --dry-run)   DRY_RUN=1; shift ;;
-    -h|--help)   usage ;;
-    --)          shift; while [ "$#" -gt 0 ]; do
-                   POS_COUNT=$((POS_COUNT+1))
-                   [ "$POS_COUNT" -eq 1 ] && POSITIONAL="$1"
-                   [ "$POS_COUNT" -eq 2 ] && POSITIONAL2="$1"
-                   shift
-                 done ;;
-    -*)          log_error "Unknown option: $1"; usage ;;
-    *)           POS_COUNT=$((POS_COUNT+1))
-                 [ "$POS_COUNT" -eq 1 ] && POSITIONAL="$1"
-                 [ "$POS_COUNT" -eq 2 ] && POSITIONAL2="$1"
-                 shift ;;
+    --dry-run) DRY_RUN=1; shift ;;
+    -h|--help) usage ;;
+    -*)        log_error "Unknown option: $1"; usage ;;
+    *)
+      POS=$((POS + 1))
+      if [ "$POS" -eq 1 ]; then VERSION="$1"; else TITLE="$1"; TITLE_SET=1; fi
+      shift ;;
   esac
 done
 
-[ -n "$POSITIONAL" ] || { log_error "Missing phase or version argument."; usage; }
-
-# --- Mode detection ---------------------------------------------------------
-#   eng              -> engineering iteration (version from release.json)
-#   V1.2.3 "msg"     -> explicit version (backward compatible)
-#   A2               -> roadmap phase id
-MODE="phase"
-if [ "$(printf '%s' "$POSITIONAL" | tr '[:upper:]' '[:lower:]')" = "eng" ]; then
-  MODE="eng"
-elif is_version_tag "$POSITIONAL"; then
-  MODE="version"
-fi
-
-# Move to repo root so ROADMAP_FILE and the build command resolve consistently.
-ROOT="$(repo_root)"
-[ -n "$ROOT" ] || die "Not inside a git repository."
+ROOT="$(repo_root)"; [ -n "$ROOT" ] || die "Not inside a git repository."
 cd "$ROOT"
 
-# --- Read-only subcommands: next / status -----------------------------------
-# These derive state by cross-referencing the roadmap against actual git tags,
-# so they stay correct even if the progress tracker's status column is stale.
-# "current" = last phase whose version tag exists; "next" = first whose tag does
-# not. Roadmap status is shown for context and drift is reported, not trusted.
-
-TAB="$(printf '\t')"
-
-# Walk the roadmap and split phases into released (tag exists) vs not.
-# Sets globals: CUR_PHASE/CUR_VER/CUR_NAME (last released),
-#               NXT_PHASE/NXT_VER/NXT_NAME/NXT_STATUS (first unreleased).
-roadmap_resolve_state() {
-  CUR_PHASE="" CUR_VER="" CUR_NAME=""
-  NXT_PHASE="" NXT_VER="" NXT_NAME="" NXT_STATUS=""
-  _found_next=0
-  while IFS="$TAB" read -r _ph _ver _name _status; do
-    [ -n "$_ph" ] || continue
-    if [ -n "$_ver" ] && tag_exists_local "$_ver"; then
-      CUR_PHASE="$_ph"; CUR_VER="$_ver"; CUR_NAME="$_name"
-    elif [ "$_found_next" -eq 0 ]; then
-      NXT_PHASE="$_ph"; NXT_VER="$_ver"; NXT_NAME="$_name"; NXT_STATUS="$_status"
-      _found_next=1
-    fi
-  done <<EOF
-$(roadmap_phases_tsv "$ROADMAP_FILE")
-EOF
-}
-
-# Report any disagreement between git tags and the roadmap status column.
-# Returns the number of drift items via the global DRIFT_COUNT.
-roadmap_report_drift() {
-  DRIFT_COUNT=0
-  while IFS="$TAB" read -r _ph _ver _name _status; do
-    [ -n "$_ph" ] || continue
-    [ -n "$_ver" ] || continue
-    _lc="$(printf '%s' "$_status" | tr '[:upper:]' '[:lower:]')"
-    if tag_exists_local "$_ver"; then
-      if [ "$_lc" != "complete" ]; then
-        log_warn "Drift: $_ph $_ver is tagged but roadmap status is '$_status' (expected Complete)"
-        DRIFT_COUNT=$((DRIFT_COUNT + 1))
-      fi
-    else
-      if [ "$_lc" = "complete" ]; then
-        log_warn "Drift: $_ph is marked Complete but tag $_ver does not exist"
-        DRIFT_COUNT=$((DRIFT_COUNT + 1))
-      fi
-    fi
-  done <<EOF
-$(roadmap_phases_tsv "$ROADMAP_FILE")
-EOF
-}
-
-cmd_next() {
-  [ -f "$ROADMAP_FILE" ] || die "Roadmap file not found: $ROADMAP_FILE (set ROADMAP_FILE to override)."
-  git fetch --tags --quiet origin 2>/dev/null || true
-  roadmap_resolve_state
-  printf '\n' >&2
-  printf '  %-15s %s\n' "Current phase" "${CUR_PHASE:-—}${CUR_NAME:+ ($CUR_NAME)}" >&2
-  if [ -n "$NXT_PHASE" ]; then
-    printf '  %-15s %s\n' "Next phase"  "$NXT_PHASE" >&2
-    printf '  %-15s %s\n' "Version"     "$NXT_VER" >&2
-    printf '  %-15s %s\n' "Title"       "$NXT_NAME" >&2
-    printf '  %-15s %s\n' "Roadmap"     "$NXT_STATUS" >&2
-    printf '\n  %s\n    %s\n' "Run:" "${C_BOLD}./scripts/release.sh $NXT_PHASE${C_RESET}" >&2
-  else
-    printf '\n' >&2
-    log_ok "All roadmap phases are released."
+# --- Interactive prompts (only when not supplied / not a pipe) --------------
+if [ -z "$VERSION" ]; then
+  if [ -t 0 ]; then
+    printf '%s' "${C_BOLD}Platform Version${C_RESET} (e.g. v1.0.2): " >&2
+    IFS= read -r VERSION || VERSION=""
   fi
-  roadmap_report_drift
-  [ "${DRIFT_COUNT:-0}" -gt 0 ] && log_warn "Update $ROADMAP_FILE to clear the drift above."
-  exit 0
-}
+  [ -n "$VERSION" ] || { log_error "A Platform Version is required."; usage; }
+fi
+if [ "$TITLE_SET" -eq 0 ] && [ -t 0 ]; then
+  printf '%s' "${C_BOLD}Release Title${C_RESET} (optional, Enter to skip): " >&2
+  IFS= read -r TITLE || TITLE=""
+fi
 
-cmd_status() {
-  [ -f "$ROADMAP_FILE" ] || die "Roadmap file not found: $ROADMAP_FILE (set ROADMAP_FILE to override)."
-  git fetch --tags --quiet origin 2>/dev/null || true
-  _branch="$(current_branch)"
-  _head="$(rev HEAD 2>/dev/null || echo '—')"
-  # Most recent tag reachable from HEAD. Robust against the mixed-case tag
-  # prefixes in this repo's history (which break `--sort=v:refname`).
-  _last_tag="$(git describe --tags --abbrev=0 2>/dev/null || true)"
-  roadmap_resolve_state
+# --- Validate version -------------------------------------------------------
+if ! is_release_version "$VERSION"; then
+  log_error "'$VERSION' is not a valid release version."
+  printf '\n  Use a lowercase semantic version: %s\n' "${C_BOLD}vX.Y.Z${C_RESET} (e.g. v1.0.2)" >&2
+  printf '  Uppercase V and four-segment versions (v1.0.0.2) are not allowed.\n\n' >&2
+  usage
+fi
 
-  # Roadmap-reported status of the current (last released) phase.
-  _cur_status=""
-  if [ -n "$CUR_PHASE" ]; then
-    _cur_status="$(roadmap_lookup "$ROADMAP_FILE" "$CUR_PHASE" 2>/dev/null | cut -f3)"
-  fi
-
-  printf '\n' >&2
-  printf '  %-22s %s\n' "Current branch" "${_branch:-—}" >&2
-  printf '  %-22s %s\n' "HEAD"           "$(printf '%s' "$_head" | cut -c1-7)" >&2
-  printf '  %-22s %s\n' "Last release"   "${_last_tag:-—}" >&2
-  printf '  %-22s %s\n' "Current roadmap phase" "${CUR_PHASE:-—}${_cur_status:+ $_cur_status}" >&2
-  if [ -n "$NXT_PHASE" ]; then
-    printf '  %-22s %s\n' "Next phase"    "$NXT_PHASE ($NXT_VER) — ${NXT_STATUS:-?}" >&2
-  else
-    printf '  %-22s %s\n' "Next phase"    "— (all released)" >&2
-  fi
-  if work_tree_clean; then
-    printf '  %-22s %s\n' "Working tree"  "clean" >&2
-  else
-    _staged="$(git diff --cached --name-only | wc -l | tr -d ' ')"
-    _dirty="$(git status --porcelain | wc -l | tr -d ' ')"
-    printf '  %-22s %s\n' "Working tree"  "$_dirty change(s), $_staged staged" >&2
-  fi
-  printf '\n' >&2
-  roadmap_report_drift
-  if [ "${DRIFT_COUNT:-0}" -eq 0 ]; then
-    log_ok "Roadmap and git tags are consistent."
-  else
-    log_warn "Update $ROADMAP_FILE to clear the drift above."
-  fi
-  exit 0
-}
-
-case "$(printf '%s' "$POSITIONAL" | tr '[:upper:]' '[:lower:]')" in
-  next)   cmd_next ;;
-  status) cmd_status ;;
-esac
-
-PHASE=""
-VERSION=""
-PHASE_TITLE=""
-DEFAULT_MSG=""
-
-if [ "$MODE" = "eng" ]; then
-  # Engineering iteration. Target = release.json engineeringVersion; if that
-  # version is already tagged, auto-advance to the next (4th-segment bump).
-  [ -f "$(release_json_path)" ] || die "release.json not found — cannot resolve engineering version."
-  _base="$(release_get engineeringVersion)"
-  [ -n "$_base" ] || die "release.json has no engineeringVersion."
-  if tag_exists_local "$_base" || tag_exists_remote "$_base"; then
-    VERSION="$(engineering_next "$_base")"
-    log_info "Engineering $_base is already released — advancing to $VERSION"
-  else
-    VERSION="$_base"
-  fi
-  is_version_tag "$VERSION" || die "Computed engineering version '$VERSION' is not a valid tag."
-  _relname="$(release_get releaseName)"
-  if [ "$HAVE_CUSTOM_MSG" -eq 1 ]; then
-    DEFAULT_MSG="$VERSION — $CUSTOM_MSG"
-  elif [ -n "$POSITIONAL2" ]; then
-    DEFAULT_MSG="$VERSION — $POSITIONAL2"
-  else
-    DEFAULT_MSG="$VERSION${_relname:+ — $_relname}"
-  fi
-  log_title "Abluo release — $VERSION (engineering iteration)"
-elif [ "$MODE" = "version" ]; then
-  VERSION="$POSITIONAL"
-  if [ "$HAVE_CUSTOM_MSG" -eq 1 ]; then
-    DEFAULT_MSG="$VERSION: $CUSTOM_MSG"
-  elif [ -n "$POSITIONAL2" ]; then
-    DEFAULT_MSG="$VERSION: $POSITIONAL2"
-  else
-    log_error "Explicit-version mode needs a message:"
-    printf '\n  %s\n\n' "${C_BOLD}./scripts/release.sh $VERSION \"description\"${C_RESET}" >&2
-    usage
-  fi
-  log_title "Abluo release — $VERSION (explicit version)"
+# Compose the release-marker commit message and the tag message (title).
+if [ -n "$TITLE" ]; then
+  COMMIT_MSG="release: $VERSION - $TITLE"
+  TAG_MSG="$TITLE"
 else
-  PHASE="$POSITIONAL"
-  log_title "Abluo release — phase $PHASE (roadmap-driven)"
-  [ -f "$ROADMAP_FILE" ] || die "Roadmap file not found: $ROADMAP_FILE (set ROADMAP_FILE to override)."
-
-  if ! ROW="$(roadmap_lookup "$ROADMAP_FILE" "$PHASE")"; then
-    log_error "Phase '$PHASE' not found in $ROADMAP_FILE."
-    log_info "Available phases: $(roadmap_list_phases "$ROADMAP_FILE")"
-    exit 1
-  fi
-  VERSION="$(printf '%s' "$ROW" | cut -f1)"
-  PHASE_TITLE="$(printf '%s' "$ROW" | cut -f2)"
-  PHASE_STATUS="$(printf '%s' "$ROW" | cut -f3)"
-
-  [ -n "$VERSION" ] || die "No version found for phase '$PHASE' in the roadmap (check the Version column)."
-  is_version_tag "$VERSION" || die "Roadmap version '$VERSION' for phase '$PHASE' is not a valid tag."
-
-  # Derive the initiative label if not provided.
-  if [ -z "$INITIATIVE_LABEL" ]; then
-    INITIATIVE_LABEL="$(roadmap_initiative "$ROADMAP_FILE")"
-  fi
-  SUFFIX=""
-  [ -n "$INITIATIVE_LABEL" ] && SUFFIX=" ($INITIATIVE_LABEL)"
-
-  # Suggested message, e.g. "V0.9.20 A2 — Full ModuleManifest Type (ADR-011)"
-  DEFAULT_MSG="$VERSION $PHASE — $PHASE_TITLE$SUFFIX"
-
-  log_info "Phase    $PHASE — $PHASE_TITLE"
-  log_info "Version  $VERSION   (status in roadmap: $PHASE_STATUS)"
-  if [ "$PHASE_STATUS" = "Complete" ]; then
-    log_warn "Roadmap marks phase $PHASE as 'Complete' — its version may already be released."
-  fi
+  COMMIT_MSG="release: $VERSION"
+  TAG_MSG="$VERSION"
 fi
 
-# Platform milestones are created by milestone.sh, never here.
-if is_milestone_version "$VERSION"; then
-  log_error "'$VERSION' is a platform-milestone version (X.Y.0)."
-  printf '\n  Use the milestone tool instead:\n  %s\n\n' "${C_BOLD}./scripts/milestone.sh $VERSION${C_RESET}" >&2
-  die "release.sh handles engineering iterations only."
-fi
-
+log_title "Abluo release — $VERSION"
+[ -n "$TITLE" ] && log_info "Title: $TITLE" || log_info "Title: (none)"
 [ "$DRY_RUN" -eq 1 ] && log_warn "DRY RUN — no commit, tag, or push will be made."
 
-# --- Step 1: doctor ---------------------------------------------------------
+# --- Step 1: health checks --------------------------------------------------
 log_step "Step 1 — Repository health checks (doctor.sh)"
-if ! "$SCRIPT_DIR/doctor.sh"; then
-  die "doctor.sh reported problems. Resolve them and try again. Nothing was changed."
-fi
+"$SCRIPT_DIR/doctor.sh" || die "doctor.sh reported problems. Resolve them and retry. Nothing changed."
 
-# --- Step 2: tag must not already exist -------------------------------------
+# --- Step 2: tag must be unused ---------------------------------------------
 log_step "Step 2 — Checking that tag '$VERSION' is unused"
-if tag_exists_local "$VERSION"; then
-  die "Tag '$VERSION' already exists locally. Nothing changed."
-fi
-if tag_exists_remote "$VERSION"; then
-  die "Tag '$VERSION' already exists on origin. Nothing changed."
-fi
+tag_exists_local "$VERSION"  && die "Tag '$VERSION' already exists locally. Choose a new version."
+tag_exists_remote "$VERSION" && die "Tag '$VERSION' already exists on origin. Choose a new version."
 log_ok "Tag '$VERSION' is available"
 
-# --- Step 3: staged changes -------------------------------------------------
-log_step "Step 3 — Verifying staged changes"
-if ! has_staged_changes; then
-  log_error "No staged changes found. Stage what you want to release first:"
-  printf '\n  %s\n\n' "${C_BOLD}git add <files>${C_RESET}" >&2
-  die "Nothing to commit (nothing changed)."
-fi
-STAGED_COUNT="$(git diff --cached --name-only | wc -l | tr -d ' ')"
-log_ok "$STAGED_COUNT file(s) staged"
-git diff --cached --stat >&2
-
-# --- Step 4: resolve the commit message -------------------------------------
-log_step "Step 4 — Commit message"
-if [ "$HAVE_CUSTOM_MSG" -eq 1 ] && [ "$MODE" = "phase" ]; then
-  MESSAGE="$CUSTOM_MSG"
-  log_ok "Using provided message: $MESSAGE"
-elif [ "$ASSUME_YES" -eq 1 ] || [ "$DRY_RUN" -eq 1 ] || [ ! -t 0 ]; then
-  MESSAGE="$DEFAULT_MSG"
-  log_ok "Using default message: $MESSAGE"
-else
-  printf '%s\n' "${C_DIM}Proposed:${C_RESET} ${C_BOLD}$DEFAULT_MSG${C_RESET}" >&2
-  printf '%s' "Press Enter to accept, or type a different message: " >&2
-  IFS= read -r REPLY_MSG || REPLY_MSG=""
-  if [ -n "$REPLY_MSG" ]; then
-    MESSAGE="$REPLY_MSG"
-  else
-    MESSAGE="$DEFAULT_MSG"
-  fi
-  log_ok "Commit message: $MESSAGE"
-fi
-
-# --- Step 4b: update version metadata (release.json + package.json) ----------
-# Done BEFORE the build so the badge bakes the correct version, and staged into
-# this same release commit. Engineering releases advance engineeringVersion;
-# platformVersion is owned by milestone.sh and left untouched here.
-PLATFORM_VERSION="$(release_get platformVersion 2>/dev/null || true)"
-log_step "Step 4b — Updating version metadata"
+# --- Step 3: regenerate version metadata (release.json + package.json) -------
+# Generated from the version/title BEFORE the build so the bundle bakes the
+# correct version, and staged into the release-marker commit. The git tag (made
+# in Step 5) remains the source of truth; these files are build-time fallbacks.
+log_step "Step 3 — Generating version metadata"
 if [ "$DRY_RUN" -eq 1 ]; then
-  log_info "[dry-run] would set release.json engineeringVersion=$VERSION, releasedAt=$(today_iso)"
-  log_info "[dry-run] would sync package.json version=${PLATFORM_VERSION#[Vv]}"
+  log_info "[dry-run] would write release.json: version=$VERSION, title=${TITLE:-<none>}"
+  log_info "[dry-run] would sync package.json version=${VERSION#v}"
 else
-  release_set engineeringVersion "$VERSION"
-  release_set releasedAt "$(today_iso)"
-  [ -n "$PLATFORM_VERSION" ] && sync_package_version "$PLATFORM_VERSION"
-  git add release.json package.json 2>/dev/null || true
-  log_ok "release.json → engineeringVersion $VERSION; package.json → ${PLATFORM_VERSION#[Vv]}"
+  generate_release_json "$VERSION" "$TITLE"
+  sync_package_version "$VERSION"
+  git add release.json package.json
+  log_ok "release.json + package.json regenerated for $VERSION"
 fi
 
-# --- Step 5: build gate -----------------------------------------------------
-# Runs in dry-run too: a release that wouldn't build is the thing most worth
-# catching. The build writes only to gitignored output, never to tracked files.
-#
-# Always start from a clean .next directory. A release build must never depend on
-# previous artifacts: building over an existing .next has produced
-# "ENOTEMPTY: ... rmdir .next/server" failures (exact internal cause in
-# Next.js/Turbopack unproven). Removing .next first eliminates it and makes the
-# build deterministic. This clean step is part of the release tooling, not an
-# application workaround.
-log_step "Step 5 — Build gate ($BUILD_CMD)"
+# --- Step 4: build gate (deterministic clean build) -------------------------
+# Always start from a clean .next directory; building over an existing .next has
+# produced "ENOTEMPTY: ... rmdir .next/server" failures (internal cause in
+# Next.js/Turbopack unproven). Removing .next first makes the build deterministic.
+log_step "Step 4 — Build gate ($BUILD_CMD)"
 if [ -d ".next" ]; then
   rm -rf .next || die "Could not remove .next. Delete it manually (rm -rf .next) and retry."
   log_info "Removed existing .next (deterministic clean build)"
 fi
-# Guarantee the build starts from a genuinely empty state. If anything (an editor,
-# a dev server, a file lock) recreated .next between the removal and now, abort
-# rather than build on a dirty directory.
-if [ -e ".next" ]; then
-  die ".next still exists after cleanup. Stop any running 'npm run dev', then retry."
-fi
-if ! sh -c "$BUILD_CMD" >&2; then
-  die "Build failed. No commit, tag, or push was made."
-fi
+[ -e ".next" ] && die ".next still exists after cleanup. Stop any running 'npm run dev', then retry."
+sh -c "$BUILD_CMD" >&2 || die "Build failed. No commit, tag, or push was made."
 log_ok "Build succeeded"
 
 if [ "$DRY_RUN" -eq 1 ]; then
@@ -424,123 +147,66 @@ if [ "$DRY_RUN" -eq 1 ]; then
   log_warn "${C_BOLD}DRY RUN — the following would now run:${C_RESET}"
   cat >&2 <<EOF
 
-  release.json → engineeringVersion=$VERSION, releasedAt=$(today_iso)
-  package.json → version=${PLATFORM_VERSION#[Vv]}
   git add release.json package.json
-  git commit -m "$MESSAGE"
-  git tag -a "$VERSION" -m "$MESSAGE"
+  git commit -m "$COMMIT_MSG"
+  git tag -a "$VERSION" -m "$TAG_MSG"
   git push origin $RELEASE_BRANCH
   git push origin refs/tags/$VERSION
 
-  ${C_DIM}then verify: commit, annotated tag, tag→HEAD, origin/$RELEASE_BRANCH→HEAD, remote tag${C_RESET}
+  ${C_DIM}then promote $RELEASE_BRANCH -> preview -> production as usual.${C_RESET}
 EOF
   log_ok "Dry run complete — repository unchanged."
   exit 0
 fi
 
-# Point of no return: everything above made no git changes.
-log_info "Pre-flight complete — beginning release operations."
+# Point of no return — everything above made no commit.
+log_info "Pre-flight complete — creating the release."
 
-# --- Step 6: commit ---------------------------------------------------------
-log_step "Step 6 — Creating commit"
-git commit -m "$MESSAGE"
+# --- Step 5: release-marker commit ------------------------------------------
+# A single commit titled "release: <version> - <title>" so Vercel deployments
+# read as releases. --allow-empty covers the case where metadata didn't change.
+log_step "Step 5 — Creating release-marker commit"
+git commit --allow-empty -m "$COMMIT_MSG"
 HEAD_SHA="$(rev HEAD)"
-log_ok "Committed ${HEAD_SHA:0:9} — \"$MESSAGE\""
+log_ok "Committed ${HEAD_SHA:0:9} — \"$COMMIT_MSG\""
 
-# --- Step 7: annotated tag --------------------------------------------------
-log_step "Step 7 — Creating annotated tag '$VERSION'"
-git tag -a "$VERSION" -m "$MESSAGE"
-log_ok "Tagged $VERSION"
+# --- Step 6: annotated tag --------------------------------------------------
+log_step "Step 6 — Creating annotated tag '$VERSION'"
+git tag -a "$VERSION" -m "$TAG_MSG"
+log_ok "Tagged $VERSION (message: \"$TAG_MSG\")"
 
-# --- Step 8: push branch ----------------------------------------------------
-log_step "Step 8 — Pushing '$RELEASE_BRANCH'"
+# --- Step 7: push branch, then ONLY the new tag -----------------------------
+log_step "Step 7 — Pushing '$RELEASE_BRANCH' and tag '$VERSION'"
 git push origin "$RELEASE_BRANCH"
-log_ok "Pushed $RELEASE_BRANCH"
-
-# --- Step 9: push ONLY the new tag ------------------------------------------
-log_step "Step 9 — Pushing tag '$VERSION' (this tag only)"
 git push origin "refs/tags/$VERSION"
-log_ok "Pushed tag $VERSION"
+log_ok "Pushed $RELEASE_BRANCH and tag $VERSION"
 
-# --- Step 10: post-release verification -------------------------------------
-log_step "Step 10 — Post-release verification"
+# --- Step 8: verification ---------------------------------------------------
+log_step "Step 8 — Post-release verification"
 VERIFY_FAIL=0
-
-# commit exists
-if git cat-file -e "${HEAD_SHA}^{commit}" 2>/dev/null; then
-  log_ok "Commit exists (${HEAD_SHA:0:9})"
-else
-  log_error "Commit ${HEAD_SHA:0:9} not found"; VERIFY_FAIL=1
-fi
-
-# annotated tag exists
-if [ "$(git cat-file -t "$VERSION" 2>/dev/null)" = "tag" ]; then
-  log_ok "Annotated tag '$VERSION' exists"
-else
-  log_error "Tag '$VERSION' is missing or not annotated"; VERIFY_FAIL=1
-fi
-
-# tag points to HEAD
-TAG_SHA="$(rev "$VERSION^{commit}")"
-if [ "$TAG_SHA" = "$HEAD_SHA" ]; then
-  log_ok "Tag points to HEAD"
-else
-  log_error "Tag '$VERSION' ($TAG_SHA) does not point to HEAD ($HEAD_SHA)"; VERIFY_FAIL=1
-fi
-
-# remote dev matches HEAD
+[ "$(git cat-file -t "$VERSION" 2>/dev/null)" = "tag" ] || { log_error "Tag is missing or not annotated"; VERIFY_FAIL=1; }
+[ "$(rev "$VERSION^{commit}")" = "$HEAD_SHA" ] || { log_error "Tag does not point to HEAD"; VERIFY_FAIL=1; }
 git fetch --quiet origin "$RELEASE_BRANCH"
-REMOTE_SHA="$(rev "origin/$RELEASE_BRANCH")"
-if [ "$REMOTE_SHA" = "$HEAD_SHA" ]; then
-  log_ok "origin/$RELEASE_BRANCH matches HEAD"
-else
-  log_error "origin/$RELEASE_BRANCH ($REMOTE_SHA) != HEAD ($HEAD_SHA)"; VERIFY_FAIL=1
-fi
+[ "$(rev "origin/$RELEASE_BRANCH")" = "$HEAD_SHA" ] || { log_error "origin/$RELEASE_BRANCH != HEAD"; VERIFY_FAIL=1; }
+tag_exists_remote "$VERSION" || { log_error "Remote tag '$VERSION' not found"; VERIFY_FAIL=1; }
+[ "$VERIFY_FAIL" -eq 0 ] || die "Post-release verification failed. Inspect before promoting."
+log_ok "Commit, annotated tag, and remote are all consistent"
 
-# remote tag exists
-if tag_exists_remote "$VERSION"; then
-  log_ok "Remote tag '$VERSION' exists"
-else
-  log_error "Remote tag '$VERSION' not found on origin"; VERIFY_FAIL=1
-fi
-
-[ "$VERIFY_FAIL" -eq 0 ] || die "Post-release verification failed. Inspect the repository before promoting."
-
-# --- Step 11: structured release summary ------------------------------------
-REMOTE_URL="$(git remote get-url origin 2>/dev/null || echo 'origin')"
-PLATFORM_VERSION="$(release_get platformVersion 2>/dev/null || echo '—')"
+# --- Step 9: summary --------------------------------------------------------
+REMOTE_URL="$(git remote get-url origin 2>/dev/null || echo origin)"
 printf '\n%s\n' "${C_DIM}--------------------------------------------------${C_RESET}" >&2
 log_ok "${C_BOLD}Release $VERSION complete and verified.${C_RESET}"
 cat >&2 <<EOF
 
-  ${C_BOLD}Environment${C_RESET}          dev (localhost → dev)
-  ${C_BOLD}Branch${C_RESET}               $RELEASE_BRANCH (pushed, in sync with origin)
-  ${C_BOLD}Commit${C_RESET}               ${HEAD_SHA:0:9}  $MESSAGE
-  ${C_BOLD}Engineering version${C_RESET}  $VERSION  (annotated tag)
-  ${C_BOLD}Platform version${C_RESET}     $PLATFORM_VERSION  (unchanged — milestones use milestone.sh)
-  ${C_BOLD}Deployment${C_RESET}           Vercel will build $RELEASE_BRANCH → https://dev.abluo.app
-  ${C_BOLD}Files${C_RESET}                $STAGED_COUNT changed
-  ${C_BOLD}Remote${C_RESET}               $REMOTE_URL
-EOF
+  ${C_BOLD}Version${C_RESET}      $VERSION  (annotated tag — source of truth)
+  ${C_BOLD}Title${C_RESET}        ${TITLE:-(none)}
+  ${C_BOLD}Commit${C_RESET}       ${HEAD_SHA:0:9}  $COMMIT_MSG
+  ${C_BOLD}Branch${C_RESET}       $RELEASE_BRANCH (pushed)
+  ${C_BOLD}Remote${C_RESET}       $REMOTE_URL
 
-# Next-phase reminder (phase mode only — needs the roadmap).
-if [ "$MODE" = "phase" ]; then
-  NEXT="$(roadmap_next_phase "$ROADMAP_FILE" "$PHASE" || true)"
-  if [ -n "$NEXT" ]; then
-    NP="$(printf '%s' "$NEXT" | cut -f1)"
-    NV="$(printf '%s' "$NEXT" | cut -f2)"
-    NT="$(printf '%s' "$NEXT" | cut -f3)"
-    printf '\n  %s %s\n' "${C_BOLD}Next roadmap phase${C_RESET}" "$NP ($NV) — $NT" >&2
-  fi
-fi
-
-cat >&2 <<EOF
-
-  ${C_BOLD}Next recommended actions${C_RESET}
-    1. Verify this release on ${C_BOLD}https://dev.abluo.app${C_RESET}
-    2. After approval, promote ${C_BOLD}dev → preview${C_RESET} (manual) and verify on https://preview.abluo.app
-    3. After preview verification, promote ${C_BOLD}preview → production${C_RESET} (manual)
-
-  ${C_DIM}Promotion automation arrives in Release Automation 1.3 (promote.sh).${C_RESET}
-  ${C_DIM}Platform milestones (V1.1.0, …) are cut with ./scripts/milestone.sh${C_RESET}
+  ${C_BOLD}Next${C_RESET}
+    1. Verify on ${C_BOLD}https://dev.abluo.app${C_RESET}
+    2. Promote ${C_BOLD}dev → preview${C_RESET} (ff), verify on https://preview.abluo.app
+    3. Promote ${C_BOLD}preview → production${C_RESET} (ff), verify on https://abluo.app
+  ${C_DIM}Vercel will show this deploy as: "$COMMIT_MSG"${C_RESET}
 EOF

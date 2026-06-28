@@ -155,54 +155,34 @@ else
   log_info "No tags found in this repository yet"
 fi
 
-# 10. version SSOT consistency (release.json ↔ git tags ↔ package.json) -------
+# 10. version consistency (git tag = source of truth) ------------------------
 # Warnings only: drift is informational, not a release blocker on its own.
-RELEASE_JSON="$(release_json_path)"
-if [ -f "$RELEASE_JSON" ]; then
-  RJ_PLATFORM="$(release_get platformVersion 2>/dev/null || true)"
-  RJ_ENG="$(release_get engineeringVersion 2>/dev/null || true)"
-
-  # platformVersion should be a milestone tag that exists.
-  if [ -n "$RJ_PLATFORM" ]; then
-    if ! is_milestone_version "$RJ_PLATFORM"; then
-      warn "release.json platformVersion '$RJ_PLATFORM' is not a milestone version (X.Y.0)"
-    elif tag_exists_local "$RJ_PLATFORM"; then
-      pass "release.json platformVersion '$RJ_PLATFORM' matches an existing tag"
+CURR_VER="$(current_release_version 2>/dev/null || true)"
+if [ -n "$CURR_VER" ]; then
+  log_info "Current release version (nearest lowercase tag): $CURR_VER"
+  # release.json is a generated cache — it should match the current tag.
+  RELEASE_JSON="$(release_json_path)"
+  if [ -f "$RELEASE_JSON" ]; then
+    RJ_VER="$(release_get version 2>/dev/null || true)"
+    if [ "$RJ_VER" = "$CURR_VER" ]; then
+      pass "release.json ($RJ_VER) matches the current tag"
     else
-      warn "release.json platformVersion '$RJ_PLATFORM' has no matching git tag"
+      warn "release.json version ($RJ_VER) != current tag ($CURR_VER) — it is regenerated on next release"
     fi
   else
-    warn "release.json has no platformVersion"
+    log_info "No release.json cache (build falls back to git describe)"
   fi
-
-  # engineeringVersion is the current/target iteration; it's fine for its tag to
-  # not exist yet (work in progress), but it must be a valid version string.
-  if [ -n "$RJ_ENG" ]; then
-    if is_version_tag "$RJ_ENG"; then
-      if tag_exists_local "$RJ_ENG"; then
-        log_info "release.json engineeringVersion '$RJ_ENG' is already tagged (next: $(engineering_next "$RJ_ENG"))"
-      else
-        pass "release.json engineeringVersion '$RJ_ENG' (not yet tagged — in progress)"
-      fi
-    else
-      warn "release.json engineeringVersion '$RJ_ENG' is not a valid version"
-    fi
-  else
-    warn "release.json has no engineeringVersion"
-  fi
-
-  # package.json should track the platform version (semver, no leading V).
-  if [ -n "$RJ_PLATFORM" ] && node_present; then
+  # package.json mirrors the version without the leading 'v'.
+  if node_present; then
     PKG_VER="$(node -e 'try{process.stdout.write(String(require(process.argv[1]).version||""))}catch(e){}' "$(repo_root)/package.json" 2>/dev/null || true)"
-    EXPECT="${RJ_PLATFORM#[Vv]}"
-    if [ "$PKG_VER" = "$EXPECT" ]; then
-      pass "package.json version ($PKG_VER) is in sync with platformVersion"
+    if [ "$PKG_VER" = "${CURR_VER#v}" ]; then
+      pass "package.json version ($PKG_VER) matches the current tag"
     else
-      warn "package.json version ($PKG_VER) != platformVersion ($EXPECT) — run a release/milestone to sync"
+      warn "package.json version ($PKG_VER) != ${CURR_VER#v} — run a release to sync"
     fi
   fi
 else
-  log_info "No release.json yet (Release Automation 1.2 SSOT not initialised)"
+  log_info "No lowercase release tag yet (v2 baseline is v1.0.1)"
 fi
 
 # --- Summary ----------------------------------------------------------------
