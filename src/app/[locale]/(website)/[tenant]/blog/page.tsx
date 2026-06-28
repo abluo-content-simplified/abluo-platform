@@ -35,6 +35,7 @@ import type { Post, LocaleConfig, SupportedLocale, DesignSystem, WebsiteSiteConf
 import { imageUrl } from '@/lib/sanity/image'
 import { SlideUp, FadeIn } from '@/components/animation'
 import { PostCard } from '@/components/blog/PostCard'
+import { PageContainer } from '@/components/layout/PageContainer'
 import { getNewsPageMessages } from '@/lib/i18n/news-page-messages'
 import { isProduction, isDev } from '@/lib/deployment'
 
@@ -280,8 +281,7 @@ export default async function NewsListingPage({ params }: PageProps) {
   const blogBase = `/${locale}/${tenantId}/blog`
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
-      <div className="mx-auto max-w-[900px] px-5 pb-24 pt-12 md:px-10">
+    <PageContainer>
 
         {/* ── Hero ─────────────────────────────────────────────────── */}
         <SlideUp duration={durationSlower} ease={easeReveal}>
@@ -393,7 +393,6 @@ export default async function NewsListingPage({ params }: PageProps) {
           </div>
         )}
 
-      </div>
-    </div>
+    </PageContainer>
   )
 }

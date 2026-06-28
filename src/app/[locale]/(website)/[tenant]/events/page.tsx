@@ -12,6 +12,7 @@ import type { Event, EventsPage, LocaleConfig, SupportedLocale, DesignSystem } f
 import { imageUrl } from '@/lib/sanity/image'
 import { SlideUp, FadeIn } from '@/components/animation'
 import { EventCard } from '@/components/events/EventCard'
+import { PageContainer } from '@/components/layout/PageContainer'
 
 // Cloudflare Stream account subdomain — shared with LivePageContent
 const CLOUDFLARE_ACCOUNT = 'customer-aayaptcudal3r1fx'
@@ -80,8 +81,7 @@ export default async function EventsListPage({ params }: PageProps) {
   const heroSrc     = eventsPage?.heroImage ? imageUrl(eventsPage.heroImage, 1600) : null
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
-      <div className="mx-auto max-w-[900px] px-5 pb-24 pt-12 md:px-10">
+    <PageContainer>
 
         {/* ── Page header ──────────────────────────────────────────── */}
         <SlideUp duration={durationSlower} ease={easeReveal}>
@@ -170,7 +170,6 @@ export default async function EventsListPage({ params }: PageProps) {
             ))}
           </div>
         )}
-      </div>
-    </div>
+    </PageContainer>
   )
 }

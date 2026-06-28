@@ -5,6 +5,7 @@ import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
 import { EventCard } from '@/components/events/EventCard'
 import { FeaturedEventBlock } from '@/components/events/FeaturedEventBlock'
 import type { Event, LivePage, SupportedLocale, WebsiteSiteConfig, DesignSystem } from '@/lib/sanity/types'
+import { PageContainer } from '@/components/layout/PageContainer'
 
 // Cloudflare Stream account subdomain for Livener.
 // To generate an embed URL: https://${CLOUDFLARE_ACCOUNT}.cloudflarestream.com/${videoId}/iframe
@@ -86,13 +87,7 @@ export function LivePageContent({
     : null
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        backgroundColor: 'var(--color-background)',
-      }}
-    >
-      <div className="mx-auto max-w-[900px] px-5 pb-24 pt-12 md:px-10">
+    <PageContainer>
 
         {/* ── Page welcome ─────────────────────────────────────────── */}
         <SlideUp duration={durationSlower} ease={easeReveal}>
@@ -240,7 +235,6 @@ export function LivePageContent({
           </div>
         )}
 
-      </div>
-    </div>
+    </PageContainer>
   )
 }

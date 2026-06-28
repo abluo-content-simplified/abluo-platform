@@ -16,6 +16,7 @@ import { StatementSection } from '@/components/sections/StatementSection'
 import { MetricsSection } from '@/components/sections/MetricsSection'
 import { SECTION_MAP } from '@/lib/modules/sections'
 import { FeaturedEventBlock } from '@/components/events/FeaturedEventBlock'
+import { SectionContainer } from '@/components/sections/SectionContainer'
 import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, PageSection, FAQSection as FAQSectionType, BlogListingSection as BlogListingSectionType, FormSection as FormSectionType, HeroLiveCaptureSection as HeroLiveCaptureSectionType, HeroLensSection as HeroLensSectionType, SupportedLocale, DesignSystem, Post, Event } from '@/lib/sanity/types'
 import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
@@ -281,16 +282,14 @@ export default async function WebsitePage({ params }: PageProps) {
 
       {/* ── Featured event — collapses when no active event ─────── */}
       {featuredEvent && (
-        <section className="px-6 py-16 md:px-16 lg:px-24">
-          <div className="mx-auto w-full max-w-6xl">
-            <FeaturedEventBlock
-              event={featuredEvent}
-              designSystem={designSystem}
-              locale={locale as SupportedLocale}
-              tenantId={tenantId}
-            />
-          </div>
-        </section>
+        <SectionContainer>
+          <FeaturedEventBlock
+            event={featuredEvent}
+            designSystem={designSystem}
+            locale={locale as SupportedLocale}
+            tenantId={tenantId}
+          />
+        </SectionContainer>
       )}
 
       {/* ── Remaining page sections ──────────────────────────────── */}
