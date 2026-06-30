@@ -35,6 +35,7 @@ import type { Post, LocaleConfig, SupportedLocale, DesignSystem, WebsiteSiteConf
 import { imageUrl } from '@/lib/sanity/image'
 import { SlideUp, FadeIn } from '@/components/animation'
 import { PostCard } from '@/components/blog/PostCard'
+import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { getNewsPageMessages } from '@/lib/i18n/news-page-messages'
 import { isProduction, isDev } from '@/lib/deployment'
@@ -135,13 +136,13 @@ function FeaturedPostCard({
           textDecoration: 'none',
         }}
       >
-        {/* Cover image — 16/9, full width */}
+        {/* Cover image — 16/9, full width via padding-top trick (avoids aspect-ratio + maxHeight reflow) */}
         {coverSrc && (
-          <div className="overflow-hidden" style={{ aspectRatio: '16/9', maxHeight: '480px' }}>
+          <div className="relative w-full overflow-hidden" style={{ paddingTop: '56.25%' }}>
             <img
               src={coverSrc}
               alt={post.coverImage?.alt ?? post.title ?? ''}
-              className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+              className={`absolute inset-0 h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
               loading="eager"
             />
           </div>
