@@ -27,6 +27,7 @@ import { SectionContainer } from '@/components/layout/SectionContainer'
 import { imageUrl } from '@/lib/sanity/image'
 import { resolveCta } from '@/lib/sanity/cta'
 import { CtaButton } from '@/components/ui/CtaButton'
+import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 
 // ─── Default media styles ─────────────────────────────────────────────────────
 // Fallback style definitions used when the Design System has no mediaStyles array.
@@ -194,8 +195,9 @@ export function MediaContentSection({ section, surface, designSystem }: Props) {
   const hasFixedAspect = resolvedStyle.aspectRatio && resolvedStyle.aspectRatio !== 'auto'
   const imgContainerStyle: React.CSSProperties = {
     borderRadius: resolvedStyle.borderRadius ? `${resolvedStyle.borderRadius}px` : undefined,
-    // Always clip corners when borderRadius is set — required whether or not aspect ratio is fixed
-    overflow: resolvedStyle.borderRadius ? 'hidden' : undefined,
+    // overflow: hidden is always required so the hover zoom doesn't bleed outside the container
+    // and so borderRadius clips the image corners correctly
+    overflow: 'hidden',
     aspectRatio: hasFixedAspect ? resolvedStyle.aspectRatio : undefined,
   }
   const imgStyle: React.CSSProperties = {
@@ -236,14 +238,17 @@ export function MediaContentSection({ section, surface, designSystem }: Props) {
   )
 
   // ── Media block ───────────────────────────────────────────────────────────
+  // The container div carries the "group" class so the hover zoom on the <img>
+  // triggers when the user hovers the image area — not the whole section column.
   const mediaBlock = imageSrc ? (
     <SlideUp duration={duration} ease={ease} delay={0.1} className="flex items-center justify-center">
-      <div style={imgContainerStyle} className="w-full">
+      <div style={imgContainerStyle} className="group w-full">
         <img
           src={imageSrc}
           alt={title ?? ''}
           loading="lazy"
           style={imgStyle}
+          className={IMAGE_HOVER_CLASSES}
         />
       </div>
     </SlideUp>

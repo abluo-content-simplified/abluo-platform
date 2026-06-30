@@ -337,20 +337,23 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
           {/* ── Cover image ───────────────────────────────────────── */}
           {coverSrc && (
             <SlideUp delay={0.15} duration={0.6}>
-              <div className="mb-10 overflow-hidden rounded-xl">
-                <img
-                  src={coverSrc}
-                  srcSet={coverSrcSet}
-                  alt={post.coverImage?.alt ?? post.title ?? ''}
-                  className="w-full h-auto object-cover"
-                  style={{ maxHeight: '520px', objectFit: 'cover' }}
-                />
+              <figure className="mb-10">
+                {/* Fixed 16:9 container — image always fills with object-cover, no gaps */}
+                <div className="overflow-hidden rounded-xl" style={{ aspectRatio: '16 / 9' }}>
+                  <img
+                    src={coverSrc}
+                    srcSet={coverSrcSet}
+                    alt={post.coverImage?.alt ?? post.title ?? ''}
+                    className="block h-full w-full object-cover"
+                    loading="eager"
+                  />
+                </div>
                 {post.coverImage?.caption && (
-                  <p className="mt-2 text-xs text-center" style={{ color: 'var(--color-text-muted)' }}>
+                  <figcaption className="mt-2 text-xs text-center" style={{ color: 'var(--color-text-muted)' }}>
                     {post.coverImage.caption}
-                  </p>
+                  </figcaption>
                 )}
-              </div>
+              </figure>
             </SlideUp>
           )}
 
