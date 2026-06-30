@@ -267,7 +267,7 @@ export default async function NewsListingPage({ params }: PageProps) {
   // Prefer Sanity content; fall back to hardcoded locale strings.
   const heroEyebrow  = blogPage?.eyebrow      ?? msg.eyebrow
   const heroTitle    = blogPage?.heroTitle    ?? msg.title
-  const heroSubtitle = blogPage?.heroSubtitle ?? msg.subtitle
+  const heroSubtitle = blogPage?.heroSubtitle ?? null
 
   // Motion tokens
   const m = designSystem?.motion
@@ -299,14 +299,16 @@ export default async function NewsListingPage({ params }: PageProps) {
           </h1>
         </SlideUp>
 
-        <SlideUp delay={0.1} duration={durationSlow} ease={easeReveal}>
-          <p
-            className="mt-4 max-w-xl text-base leading-relaxed"
-            style={{ color: 'var(--color-text-secondary)' }}
-          >
-            {heroSubtitle}
-          </p>
-        </SlideUp>
+        {heroSubtitle && (
+          <SlideUp delay={0.1} duration={durationSlow} ease={easeReveal}>
+            <p
+              className="mt-4 max-w-xl text-base leading-relaxed"
+              style={{ color: 'var(--color-text-secondary)' }}
+            >
+              {heroSubtitle}
+            </p>
+          </SlideUp>
+        )}
 
         {/* ── Article count ─────────────────────────────────────────── */}
         {posts.length > 0 && (
