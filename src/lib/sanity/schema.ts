@@ -870,10 +870,24 @@ const contentSectionType = defineType({
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
     defineField({ name: 'body', title: 'Body', type: 'localizedPortableText' }),
     defineField({
+      name: 'image',
+      title: 'Image',
+      type: 'localizedImage',
+      description: 'Optional image shown alongside the text content.',
+    }),
+    defineField({
       name: 'imagePosition',
       title: 'Image Position',
       type: 'string',
-      options: { list: ['left', 'right'] },
+      options: {
+        list: [
+          { title: 'Left', value: 'left' },
+          { title: 'Right', value: 'right' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'right',
+      hidden: ({ parent }: { parent?: { image?: unknown } }) => !parent?.image,
     }),
   ],
   preview: {

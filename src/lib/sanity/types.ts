@@ -768,7 +768,7 @@ export interface ContentSection {
   eyebrow?: string
   title?: string
   body?: PortableTextContent
-  image?: SanityImage
+  image?: ResolvedImage
   imagePosition?: 'left' | 'right'
 }
 
