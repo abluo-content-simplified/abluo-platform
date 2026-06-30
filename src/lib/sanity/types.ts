@@ -778,7 +778,8 @@ export interface TeamMember {
   name: string
   role?: string
   bio?: string
-  photo?: SanityImage
+  // GROQ projects photo { asset, hotspot, crop } — no _type field — so ResolvedImage, not SanityImage
+  photo?: ResolvedImage
 }
 
 export interface TeamSection {
@@ -787,6 +788,7 @@ export interface TeamSection {
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
   title?: string
   subtitle?: string
+  intro?: PortableTextContent
   members?: TeamMember[]
 }
 
@@ -955,6 +957,65 @@ export interface MetricsSection {
   metrics?: MetricItem[]
 }
 
+// ─── Gallery Module ────────────────────────────────────────────────────────────
+
+export interface GalleryMediaAsset {
+  _id: string
+  mediaType?: 'image' | 'video'
+  /** Locale-resolved image reference */
+  image?: ResolvedImage
+  videoUrl?: string
+  /** Locale-resolved by GROQ */
+  altText?: string
+  /** Locale-resolved by GROQ */
+  title?: string
+  /** Locale-resolved by GROQ */
+  caption?: string
+}
+
+export interface GalleryItem {
+  _key: string
+  mediaAsset?: GalleryMediaAsset
+  titleOverrideEnabled?: boolean
+  /** Locale-resolved by GROQ — only set when titleOverrideEnabled */
+  titleOverride?: string
+  captionOverrideEnabled?: boolean
+  /** Locale-resolved by GROQ — only set when captionOverrideEnabled */
+  captionOverride?: string
+  /** Effective display title: override if set, else Media Library title */
+  displayTitle?: string
+  /** Effective caption: override if set, else Media Library caption */
+  displayCaption?: string
+}
+
+export interface Gallery {
+  _id: string
+  _type: 'gallery'
+  projectSlug: string
+  internalName: string
+  slug?: { current: string }
+  /** Locale-resolved by GROQ */
+  description?: string
+  items?: GalleryItem[]
+}
+
+export interface PhotoGallerySection {
+  _type: 'photoGallerySection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  headline?: string
+  /** Locale-resolved by GROQ */
+  description?: string
+  gallery?: Gallery
+  columns?: 2 | 3 | 4
+  imageRatio?: 'square' | 'landscape' | 'portrait' | 'auto'
+  spacing?: 'tight' | 'normal' | 'loose'
+  showCaptions?: boolean
+}
+
 export type PageSection =
   | HeroSection
   | HeroLiveCaptureSection
@@ -969,6 +1030,7 @@ export type PageSection =
   | BlogListingSection
   | FormSection
   | MetricsSection
+  | PhotoGallerySection
 
 export interface WebsiteHomePage {
   tenantSlug: string

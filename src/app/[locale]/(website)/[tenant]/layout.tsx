@@ -10,9 +10,6 @@ import { resolveNavLinks } from '@/lib/sanity/nav-links'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { Footer } from '@/components/livener/Footer'
 import { NavClient } from '@/components/livener/Nav/NavClient'
-import { LanguageSwitcher } from '@/components/SiteControls/LanguageSwitcher'
-import { ThemeSwitcher } from '@/components/SiteControls/ThemeSwitcher'
-import { getThemeSwitcherMessages } from '@/lib/i18n/theme-switcher-messages'
 import { HeaderAppearanceWrapper } from '@/components/HeaderAppearanceWrapper'
 import { DevBadge } from '@/components/DevBadge'
 import { isProduction } from '@/lib/deployment'
@@ -531,54 +528,20 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         <div style={bgStyles} aria-hidden="true" />
       )}
       <HeaderAppearanceWrapper config={config?.headerAppearance}>
-        {/* Logo — dark version by default, light version shown in light theme via CSS */}
-        {logoDarkSrc ? (
-          <a href={`/${locale}/${tenantId}`} className="flex items-center" style={{ lineHeight: 0 }}>
-            {logoLightSrc && logoLightSrc !== logoDarkSrc && (
-              <img
-                src={logoLightSrc}
-                alt={config?.siteName ?? tenantId}
-                style={{ height: 'var(--logo-height-desktop)', width: 'auto', display: 'none' }}
-                className="logo-light"
-              />
-            )}
-            <img
-              src={logoDarkSrc}
-              alt={config?.siteName ?? tenantId}
-              style={{ height: 'var(--logo-height-desktop)', width: 'auto' }}
-              className="logo-dark"
-            />
-          </a>
-        ) : (
-          <span
-            className="text-sm font-medium tracking-wide"
-            style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
-          >
-            {config?.siteName ?? tenantId}
-          </span>
-        )}
-        <div className="flex items-center gap-3">
-          {config?.phone && (
-            <a
-              href={`tel:${config.phone}`}
-              className="hidden text-xs font-medium tracking-wide transition-opacity hover:opacity-100 md:block"
-              style={{ color: 'var(--color-text-muted)', opacity: 0.75 }}
-            >
-              {config.phone}
-            </a>
-          )}
-          {(config?.languageSwitcherPlacement === 'header' || config?.languageSwitcherPlacement === 'both') && (
-            <LanguageSwitcher
-              currentLocale={locale as SupportedLocale}
-              supportedLocales={config?.supportedLocales ?? []}
-              tenantId={tenantId}
-              appearance="header"
-            />
-          )}
-          {(config?.themeSwitcherPlacement === 'header' || config?.themeSwitcherPlacement === 'both') && (
-            <ThemeSwitcher themeMode={config?.themeMode} appearance="header" messages={getThemeSwitcherMessages(locale)} />
-          )}
-        </div>
+        <NavClient
+          logoSrc={logoDarkSrc}
+          logoLightSrc={logoLightSrc ?? logoDarkSrc}
+          logoAlt={config?.siteName ?? tenantId}
+          navLinks={resolveNavLinks(config?.navLinks, locale as SupportedLocale, tenantId)}
+          ctaLabel={config?.ctaLabel ?? undefined}
+          ctaHref={config?.ctaHref ?? undefined}
+          currentLocale={locale as SupportedLocale}
+          supportedLocales={config?.supportedLocales ?? [locale as SupportedLocale]}
+          showLangSwitcherInNav={config?.showLangSwitcherInNav ?? false}
+          tenantId={tenantId}
+          themeMode={config?.themeMode}
+          variant="full"
+        />
       </HeaderAppearanceWrapper>
       <div
         style={{

@@ -17,8 +17,9 @@ interface NavClientProps {
   logoLightSrc: string | undefined
   logoAlt: string
   navLinks: ResolvedNavLink[]
-  ctaLabel: string
-  ctaHref: string
+  /** When omitted the CTA button is hidden entirely. */
+  ctaLabel?: string
+  ctaHref?: string
   /**
    * 'link' (default) renders <Link href={ctaHref}>.
    * 'modal' renders a <button> that opens the EarlyAccessModal via context.
@@ -142,35 +143,37 @@ export function NavClient({
         {/* Shared Theme Switcher */}
         <ThemeSwitcher themeMode={themeMode} appearance="drawer" messages={getThemeSwitcherMessages(currentLocale)} />
 
-        {/* CTA */}
-        <div className="mt-auto px-6 pb-10">
-          {ctaMode === 'modal' ? (
-            <button
-              onClick={() => { handleCtaClick(); closeDrawer() }}
-              className="block w-full rounded-xl px-6 py-3.5 text-center text-[15px] font-semibold transition-colors"
-              style={{
-                backgroundColor: 'var(--color-primary)',
-                color: '#fff',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              {ctaLabel}
-            </button>
-          ) : (
-            <Link
-              href={ctaHref}
-              onClick={closeDrawer}
-              className="block rounded-xl px-6 py-3.5 text-center text-[15px] font-semibold transition-colors"
-              style={{
-                backgroundColor: 'var(--color-primary)',
-                color: '#fff',
-              }}
-            >
-              {ctaLabel}
-            </Link>
-          )}
-        </div>
+        {/* CTA — hidden when ctaLabel is not set */}
+        {ctaLabel && (
+          <div className="mt-auto px-6 pb-10">
+            {ctaMode === 'modal' ? (
+              <button
+                onClick={() => { handleCtaClick(); closeDrawer() }}
+                className="block w-full rounded-xl px-6 py-3.5 text-center text-[15px] font-semibold transition-colors"
+                style={{
+                  backgroundColor: 'var(--color-primary)',
+                  color: '#fff',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                {ctaLabel}
+              </button>
+            ) : (
+              <Link
+                href={ctaHref ?? '#'}
+                onClick={closeDrawer}
+                className="block rounded-xl px-6 py-3.5 text-center text-[15px] font-semibold transition-colors"
+                style={{
+                  backgroundColor: 'var(--color-primary)',
+                  color: '#fff',
+                }}
+              >
+                {ctaLabel}
+              </Link>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Nav inner content ────────────────────────────────────── */}
@@ -244,8 +247,8 @@ export function NavClient({
           {/* Shared Theme Switcher */}
           <ThemeSwitcher themeMode={themeMode} appearance="header" messages={getThemeSwitcherMessages(currentLocale)} />
 
-          {/* CTA */}
-          {ctaMode === 'modal' ? (
+          {/* CTA — hidden when ctaLabel is not set */}
+          {ctaLabel && (ctaMode === 'modal' ? (
             <button
               onClick={handleCtaClick}
               className="ml-2 rounded-xl border-2 px-5 py-2 text-sm font-semibold transition-all"
@@ -261,7 +264,7 @@ export function NavClient({
             </button>
           ) : (
             <Link
-              href={ctaHref}
+              href={ctaHref ?? '#'}
               className="ml-2 rounded-xl border-2 px-5 py-2 text-sm font-semibold transition-all"
               style={{
                 borderColor: 'var(--color-primary)',
@@ -271,7 +274,7 @@ export function NavClient({
             >
               {ctaLabel}
             </Link>
-          )}
+          ))}
         </div>
 
         {/* Hamburger — mobile only */}

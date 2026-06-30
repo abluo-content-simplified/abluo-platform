@@ -14,6 +14,7 @@ import { ContactSection } from '@/components/sections/ContactSection'
 import { FormSection } from '@/components/sections/FormSection'
 import { StatementSection } from '@/components/sections/StatementSection'
 import { MetricsSection } from '@/components/sections/MetricsSection'
+import { PhotoGallerySection } from '@/components/sections/PhotoGallerySection'
 import { SECTION_MAP } from '@/lib/modules/sections'
 import { FeaturedEventBlock } from '@/components/events/FeaturedEventBlock'
 import { SectionContainer } from '@/components/layout/SectionContainer'
@@ -202,6 +203,8 @@ function SectionRenderer({
       return <FormSection section={section as FormSectionType} surface={surface} designSystem={designSystem} locale={locale} tenantSlug={tenantSlug} />
     case 'metricsSection':
       return <MetricsSection section={section} surface={surface} designSystem={designSystem} />
+    case 'photoGallerySection':
+      return <PhotoGallerySection section={section} surface={surface} designSystem={designSystem} />
     default:
       return null
   }

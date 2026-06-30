@@ -1007,13 +1007,19 @@ const teamMemberType = defineType({
   title: 'Team Member',
   type: 'object',
   fields: [
+    defineField({
+      name: 'photo',
+      title: 'Photo',
+      type: 'image',
+      options: { hotspot: true },
+    }),
     defineField({ name: 'name', title: 'Name', type: 'string' }),
-    defineField({ name: 'role', title: 'Role', type: 'localizedString' }),
-    defineField({ name: 'bio', title: 'Bio', type: 'localizedText' }),
+    defineField({ name: 'role', title: 'Role / Job Title', type: 'localizedString' }),
+    defineField({ name: 'bio', title: 'Short Description', type: 'localizedText' }),
   ],
   preview: {
-    select: { title: 'name', subtitle: 'role.it' },
-    prepare: ({ title, subtitle }) => ({ title: title ?? 'Team Member', subtitle }),
+    select: { title: 'name', subtitle: 'role.it', media: 'photo' },
+    prepare: ({ title, subtitle, media }) => ({ title: title ?? 'Team Member', subtitle, media }),
   },
 })
 
@@ -1040,7 +1046,8 @@ const teamSectionType = defineType({
       initialValue: 'usePagePattern',
     }),
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
-    defineField({ name: 'subtitle', title: 'Subtitle', type: 'localizedText' }),
+    defineField({ name: 'subtitle', title: 'Subtitle / Eyebrow', type: 'localizedString' }),
+    defineField({ name: 'intro', title: 'Introduction', type: 'localizedPortableText' }),
     defineField({
       name: 'members',
       title: 'Members',
@@ -1286,6 +1293,203 @@ const faqSectionType = defineType({
 })
 
 // blogListingSection moved to src/lib/modules/blog/schema.ts (ADR-011 Phase D1)
+
+// ─── Gallery Module ────────────────────────────────────────────────────────────
+
+const galleryItemType = defineType({
+  name: 'galleryItem',
+  title: 'Gallery Item',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'mediaAsset',
+      title: 'Media Asset',
+      type: 'reference',
+      to: [{ type: 'mediaAsset' }],
+      validation: (Rule) => Rule.required(),
+      description: 'Select a Media Asset from the Media Library.',
+    }),
+    // ── Title override ──────────────────────────────────────────────────────
+    defineField({
+      name: 'titleOverrideEnabled',
+      title: 'Override Display Title',
+      type: 'boolean',
+      initialValue: false,
+      description: 'Enable to use a custom title for this item instead of the Media Library title.',
+    }),
+    defineField({
+      name: 'titleOverride',
+      title: 'Custom Display Title',
+      type: 'localizedString',
+      description: 'Replaces the Media Library title in this gallery only.',
+      hidden: ({ parent }) => !parent?.titleOverrideEnabled,
+    }),
+    // ── Caption override ────────────────────────────────────────────────────
+    defineField({
+      name: 'captionOverrideEnabled',
+      title: 'Override Caption',
+      type: 'boolean',
+      initialValue: false,
+      description: 'Enable to use a custom caption for this item instead of the Media Library caption.',
+    }),
+    defineField({
+      name: 'captionOverride',
+      title: 'Custom Caption',
+      type: 'localizedString',
+      description: 'Replaces the Media Library caption in this gallery only.',
+      hidden: ({ parent }) => !parent?.captionOverrideEnabled,
+    }),
+  ],
+  preview: {
+    select: {
+      assetName: 'mediaAsset.name',
+      assetAltEn: 'mediaAsset.altText.en',
+      assetTitleEn: 'mediaAsset.title.en',
+      media: 'mediaAsset.image',
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    prepare: ({ assetName, assetAltEn, assetTitleEn, media }: { assetName?: string; assetAltEn?: string; assetTitleEn?: string; media?: any }) => ({
+      title: assetName ?? assetTitleEn ?? assetAltEn ?? 'Media Asset',
+      media,
+    }),
+  },
+})
+
+const galleryType = defineType({
+  name: 'gallery',
+  title: 'Gallery',
+  type: 'document',
+  fields: [
+    projectSlugField,
+    defineField({
+      name: 'internalName',
+      title: 'Internal Name',
+      type: 'string',
+      description: 'Used in Studio to identify this gallery (e.g. "Hygiene", "Our Team").',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'slug',
+      title: 'Slug',
+      type: 'slug',
+      description: 'Optional identifier for future API use.',
+      options: { source: 'internalName', maxLength: 96 },
+    }),
+    defineField({
+      name: 'description',
+      title: 'Description',
+      type: 'localizedString',
+      description: 'Optional short description of this gallery.',
+    }),
+    defineField({
+      name: 'items',
+      title: 'Gallery Items',
+      type: 'array',
+      description: 'Ordered list of Media Assets in this gallery. Drag to reorder.',
+      of: [defineArrayMember({ type: 'galleryItem' })],
+      validation: (Rule) => Rule.min(1),
+    }),
+  ],
+  preview: {
+    select: {
+      title: 'internalName',
+      projectSlug: 'projectSlug',
+      count0: 'items.0',
+      count1: 'items.1',
+    },
+    prepare: ({ title, projectSlug, count0, count1 }: { title?: string; projectSlug?: string; count0?: unknown; count1?: unknown }) => ({
+      title: title ?? 'Unnamed Gallery',
+      subtitle: `${projectSlug ?? '?'} · ${[count0, count1].filter(Boolean).length}+ items`,
+    }),
+  },
+})
+
+const photoGallerySectionType = defineType({
+  name: 'photoGallerySection',
+  title: 'Photo Gallery Section',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: { list: BACKGROUND_SURFACE_OPTIONS },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
+    defineField({ name: 'headline', title: 'Headline', type: 'localizedString' }),
+    defineField({ name: 'description', title: 'Description', type: 'localizedText' }),
+    defineField({
+      name: 'gallery',
+      title: 'Gallery',
+      type: 'reference',
+      to: [{ type: 'gallery' }],
+      validation: (Rule) => Rule.required(),
+      description: 'Select the gallery to display. Manage galleries in the Gallery section.',
+    }),
+    defineField({
+      name: 'columns',
+      title: 'Columns',
+      type: 'number',
+      options: {
+        list: [
+          { title: '2 Columns', value: 2 },
+          { title: '3 Columns', value: 3 },
+          { title: '4 Columns', value: 4 },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 3,
+    }),
+    defineField({
+      name: 'imageRatio',
+      title: 'Image Ratio',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Square (1:1)', value: 'square' },
+          { title: 'Landscape (4:3)', value: 'landscape' },
+          { title: 'Portrait (3:4)', value: 'portrait' },
+          { title: 'Auto (original)', value: 'auto' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'square',
+    }),
+    defineField({
+      name: 'spacing',
+      title: 'Grid Spacing',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Tight (4px)', value: 'tight' },
+          { title: 'Normal (12px)', value: 'normal' },
+          { title: 'Loose (24px)', value: 'loose' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'normal',
+    }),
+    defineField({
+      name: 'showCaptions',
+      title: 'Show Captions',
+      type: 'boolean',
+      initialValue: false,
+      description: 'Display image captions beneath each item.',
+    }),
+  ],
+  preview: {
+    select: {
+      headline_en: 'headline.en',
+      headline_it: 'headline.it',
+      galleryName: 'gallery.internalName',
+    },
+    prepare: ({ headline_en, headline_it, galleryName }: { headline_en?: string; headline_it?: string; galleryName?: string }) => ({
+      title: headline_en ?? headline_it ?? galleryName ?? 'Photo Gallery',
+      subtitle: `Photo Gallery Section${galleryName ? ` · ${galleryName}` : ''}`,
+    }),
+  },
+})
 
 // ─── Form System ──────────────────────────────────────────────────────────────
 
@@ -2027,7 +2231,27 @@ const mediaAssetType = defineType({
       name: 'name',
       title: 'Name',
       type: 'string',
-      description: 'Friendly name for this asset (e.g. "Hero Image", "Team Photo")',
+      description: 'Internal label for this asset (e.g. "Hero Image", "Team Photo")',
+    }),
+    defineField({
+      name: 'mediaType',
+      title: 'Media Type',
+      type: 'string',
+      options: {
+        list: [
+          { title: '🖼 Image', value: 'image' },
+          { title: '🎬 Video', value: 'video' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'image',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'title',
+      title: 'Display Title',
+      type: 'localizedString',
+      description: 'Optional display title shown in galleries (e.g. "Dr. Paolo Martegani"). Galleries can override this per item.',
     }),
     defineField({
       name: 'image',
@@ -2035,7 +2259,20 @@ const mediaAssetType = defineType({
       type: 'image',
       description: 'Max 4000px / 10MB recommended',
       options: { hotspot: false },
-      validation: (Rule) => Rule.required(),
+      hidden: ({ document }) => (document?.mediaType as string) === 'video',
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          const mediaType = (context.document?.mediaType as string) ?? 'image'
+          if (mediaType !== 'video' && !value) return 'Image is required for image assets'
+          return true
+        }),
+    }),
+    defineField({
+      name: 'videoUrl',
+      title: 'Video URL',
+      type: 'string',
+      description: 'Vimeo, YouTube, or direct .mp4 URL. Used when Media Type is Video.',
+      hidden: ({ document }) => (document?.mediaType as string) !== 'video',
     }),
     defineField({
       name: 'tenant',
@@ -2751,6 +2988,7 @@ const pageType = defineType({
         defineArrayMember({ type: 'blogListingSection' }),
         defineArrayMember({ type: 'formSection' }),
         defineArrayMember({ type: 'metricsSection' }),
+        defineArrayMember({ type: 'photoGallerySection' }),
       ],
     }),
   ],
@@ -2811,6 +3049,7 @@ const homePageType = defineType({
         defineArrayMember({ type: 'blogListingSection' }),
         defineArrayMember({ type: 'formSection' }),
         defineArrayMember({ type: 'metricsSection' }),
+        defineArrayMember({ type: 'photoGallerySection' }),
       ],
     }),
   ],
@@ -3009,6 +3248,9 @@ export const schemaTypes = [
   sectionSurfacesType,
   backgroundAssetType,
   mediaAssetType,
+  galleryItemType,
+  galleryType,
+  photoGallerySectionType,
   designSystemType,
   siteConfigType,
   pageType,

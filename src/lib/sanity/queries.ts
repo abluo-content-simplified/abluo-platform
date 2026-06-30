@@ -616,6 +616,7 @@ export const homePageQuery = /* groq */ `
       "subtitle": ${loc('subtitle')},
       members[] {
         _type, _key,
+        photo { asset, hotspot, crop },
         name,
         "role": ${loc('role')},
         "bio": ${loc('bio')},
@@ -662,6 +663,32 @@ export const homePageQuery = /* groq */ `
         animateNumber,
         "label": ${loc('label')},
         "description": ${loc('description')},
+      },
+      // photoGallerySection fields
+      columns,
+      imageRatio,
+      spacing,
+      showCaptions,
+      "gallery": gallery->{
+        _id,
+        internalName,
+        "description": ${loc('description')},
+        items[] {
+          _key,
+          titleOverrideEnabled,
+          "titleOverride": select(titleOverrideEnabled == true => ${loc('titleOverride')}),
+          captionOverrideEnabled,
+          "captionOverride": select(captionOverrideEnabled == true => ${loc('captionOverride')}),
+          "mediaAsset": mediaAsset->{
+            _id,
+            mediaType,
+            image { asset, hotspot, crop },
+            videoUrl,
+            "altText": ${loc('altText')},
+            "title": ${loc('title')},
+            "caption": ${loc('caption')},
+          }
+        }
       }
     }
   }
@@ -701,6 +728,7 @@ export const pageHomeQuery = /* groq */ `
       "subtitle": ${loc('subtitle')},
       members[] {
         _type, _key,
+        photo { asset, hotspot, crop },
         name,
         "role": ${loc('role')},
         "bio": ${loc('bio')},
@@ -766,6 +794,32 @@ export const pageHomeQuery = /* groq */ `
         animateNumber,
         "label": ${loc('label')},
         "description": ${loc('description')},
+      },
+      // photoGallerySection fields
+      columns,
+      imageRatio,
+      spacing,
+      showCaptions,
+      "gallery": gallery->{
+        _id,
+        internalName,
+        "description": ${loc('description')},
+        items[] {
+          _key,
+          titleOverrideEnabled,
+          "titleOverride": select(titleOverrideEnabled == true => ${loc('titleOverride')}),
+          captionOverrideEnabled,
+          "captionOverride": select(captionOverrideEnabled == true => ${loc('captionOverride')}),
+          "mediaAsset": mediaAsset->{
+            _id,
+            mediaType,
+            image { asset, hotspot, crop },
+            videoUrl,
+            "altText": ${loc('altText')},
+            "title": ${loc('title')},
+            "caption": ${loc('caption')},
+          }
+        }
       }
     }
   }
@@ -805,6 +859,7 @@ export const pageBySlugQuery = /* groq */ `
       "subtitle": ${loc('subtitle')},
       members[] {
         _type, _key,
+        photo { asset, hotspot, crop },
         name,
         "role": ${loc('role')},
         "bio": ${loc('bio')},
@@ -870,6 +925,32 @@ export const pageBySlugQuery = /* groq */ `
         animateNumber,
         "label": ${loc('label')},
         "description": ${loc('description')},
+      },
+      // photoGallerySection fields
+      columns,
+      imageRatio,
+      spacing,
+      showCaptions,
+      "gallery": gallery->{
+        _id,
+        internalName,
+        "description": ${loc('description')},
+        items[] {
+          _key,
+          titleOverrideEnabled,
+          "titleOverride": select(titleOverrideEnabled == true => ${loc('titleOverride')}),
+          captionOverrideEnabled,
+          "captionOverride": select(captionOverrideEnabled == true => ${loc('captionOverride')}),
+          "mediaAsset": mediaAsset->{
+            _id,
+            mediaType,
+            image { asset, hotspot, crop },
+            videoUrl,
+            "altText": ${loc('altText')},
+            "title": ${loc('title')},
+            "caption": ${loc('caption')},
+          }
+        }
       }
     }
   }

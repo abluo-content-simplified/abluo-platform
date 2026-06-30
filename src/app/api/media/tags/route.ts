@@ -26,21 +26,21 @@ export async function GET(request: NextRequest) {
       filter += ` && project._ref == "${project}"`
     }
 
-    // Fetch distinct tags
-    const query = `array(
-      *[${filter}].tags[]
-    ) | unique() | sort()`
+    // Fetch all tags as a flat array, deduplicate and sort in JS.
+    // Note: GROQ does not have unique() or sort() as pipeline functions;
+    // *[filter].tags[] returns a flat array which we process here.
+    const rawTags = await client.fetch<string[]>(`*[${filter}].tags[]`)
 
-    const tags = await client.fetch<string[]>(query)
+    const uniqueSorted = [...new Set(rawTags.filter(Boolean))].sort()
 
     // Filter by search if provided
     const filtered = search
-      ? tags.filter((tag: string) => tag.toLowerCase().includes(search.toLowerCase()))
-      : tags
+      ? uniqueSorted.filter((tag: string) => tag.toLowerCase().includes(search.toLowerCase()))
+      : uniqueSorted
 
     return NextResponse.json({
       success: true,
-      data: filtered.slice(0, 20), // Limit to 20 suggestions
+      data: filtered.slice(0, 50), // Limit to 50 suggestions
     })
   } catch (error) {
     console.error('GET /api/media/tags error:', error)
