@@ -233,7 +233,7 @@ const navigationLinkType = defineType({
   title: 'Navigation Link',
   type: 'object',
   fields: [
-    defineField({ name: 'label', title: 'Label', type: 'localizedString' }),
+    defineField({ name: 'label', title: 'Label', type: 'localizedString', validation: (Rule) => Rule.required() }),
     defineField({
       name: 'linkType',
       title: 'Link Type',
