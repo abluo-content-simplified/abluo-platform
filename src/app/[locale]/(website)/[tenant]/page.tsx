@@ -5,7 +5,7 @@ import { fetchDesignSystemById } from '@/lib/sanity/client'
 import { HeroSection } from '@/components/sections/HeroSection'
 import { HeroLiveCaptureSection } from '@/components/sections/HeroLiveCaptureSection'
 import { HeroLensSection } from '@/components/sections/HeroLensSection'
-import { ContentSection } from '@/components/sections/ContentSection'
+import { MediaContentSection } from '@/components/sections/MediaContentSection'
 import { TreatmentsSection } from '@/components/sections/TreatmentsSection'
 import { TeamSection } from '@/components/sections/TeamSection'
 import { TextSection } from '@/components/sections/TextSection'
@@ -186,7 +186,7 @@ function SectionRenderer({
     case 'heroLensSection':
       return <HeroLensSection section={section as HeroLensSectionType} surface={surface} designSystem={designSystem} />
     case 'contentSection':
-      return <ContentSection section={section} surface={surface} designSystem={designSystem} />
+      return <MediaContentSection section={section} surface={surface} designSystem={designSystem} />
     case 'statementSection':
       return <StatementSection section={section} surface={surface} designSystem={designSystem} />
     case 'treatmentsSection':

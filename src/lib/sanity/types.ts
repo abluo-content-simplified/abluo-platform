@@ -457,6 +457,11 @@ export interface DesignSystem {
   }
   /** Animation timing and easing — INHERIT WITH OVERRIDE via mergeShallowObject */
   motion?: MotionTokens
+  /**
+   * Named media presentation styles — INHERIT + ARRAY_MERGE (like cardVariants).
+   * Sections reference a style by key; this array defines what each key looks like.
+   */
+  mediaStyles?: MediaStyleDefinition[]
   branding?: {
     logo?: { asset?: { _ref: string } }
     logoLight?: { asset?: { _ref: string } }
@@ -761,7 +766,22 @@ export interface HeroLensSection {
   foregroundImage?: ResolvedImage
 }
 
-export interface ContentSection {
+/**
+ * Resolved media style definition — pulled from designSystem.mediaStyles by key.
+ * The section reads this to apply CSS properties without any hardcoded visual values.
+ */
+export interface MediaStyleDefinition {
+  key: string
+  label?: string
+  /** Border radius in px. 9999 = full circle. */
+  borderRadius?: number
+  /** CSS aspect-ratio value: 'auto', '1/1', '4/3', '3/4', '16/9' */
+  aspectRatio?: string
+  objectFit?: 'cover' | 'contain'
+}
+
+/** Media Content Section (Sanity type: 'contentSection' — name kept for backward compat) */
+export interface MediaContentSection {
   _type: 'contentSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
@@ -769,8 +789,22 @@ export interface ContentSection {
   title?: string
   body?: PortableTextContent
   image?: ResolvedImage
-  imagePosition?: 'left' | 'right'
+  /** Resolved from coalesce(mediaPosition, imagePosition) — migrates old data automatically */
+  mediaPosition?: 'left' | 'right' | 'top' | 'bottom' | 'none'
+  /** DS media style key — the component looks up the style definition from designSystem.mediaStyles */
+  mediaStyle?: string
+  /** Width ratio between text and media columns — only applies for left/right positions */
+  contentRatio?: '40/60' | '50/50' | '60/40'
+  /** How to align columns vertically — only applies for left/right positions */
+  verticalAlignment?: 'top' | 'center' | 'bottom'
+  /** Show text before media on mobile regardless of desktop position */
+  reverseOnMobile?: boolean
+  primaryCta?: Cta
+  secondaryCta?: Cta
 }
+
+/** @deprecated Use MediaContentSection */
+export type ContentSection = MediaContentSection
 
 export interface TeamMember {
   _type: 'teamMemberObject'
@@ -1020,7 +1054,7 @@ export type PageSection =
   | HeroSection
   | HeroLiveCaptureSection
   | HeroLensSection
-  | ContentSection
+  | MediaContentSection
   | StatementSection
   | TreatmentsSection
   | TeamSection

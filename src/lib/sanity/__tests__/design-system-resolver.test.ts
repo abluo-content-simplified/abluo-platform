@@ -103,6 +103,11 @@ const abluo_base: DesignSystem & { _id: string; parentDesignSystem: null } = {
     { key: 'default', label: 'Default', lightTheme: { background: 'oklch(1 0 0)', border: 'oklch(0.9 0 0)' }, darkTheme: { background: 'oklch(0.15 0 0)', border: 'oklch(0.2 0 0)' } },
     { key: 'elevated', label: 'Elevated', lightTheme: { background: 'oklch(1 0 0)', border: 'none' }, darkTheme: { background: 'oklch(0.18 0 0)', border: 'none' } },
   ],
+  mediaStyles: [
+    { key: 'default',   label: 'Default',        borderRadius: 0,    aspectRatio: 'auto', objectFit: 'cover' },
+    { key: 'rounded',   label: 'Rounded',         borderRadius: 16,   aspectRatio: 'auto', objectFit: 'cover' },
+    { key: 'circle',    label: 'Circle',          borderRadius: 9999, aspectRatio: '1/1',  objectFit: 'cover' },
+  ],
   shadows: {
     card:     '0 1px 3px oklch(0 0 0 / 0.1)',
     dropdown: '0 4px 16px oklch(0 0 0 / 0.12)',
@@ -173,6 +178,10 @@ const martegani_ds: DesignSystem & { _id: string; parentDesignSystem: { _ref: st
   cardVariants: [
     { key: 'elevated', label: 'Elevated (Martegani)', lightTheme: { background: 'oklch(0.98 0.01 30)', border: 'none' } }, // override Base's elevated
     { key: 'artwork',  label: 'Artwork Card',         lightTheme: { background: 'oklch(0.95 0.02 30)', border: 'oklch(0.9 0 0)' } }, // new variant
+  ],
+  mediaStyles: [
+    { key: 'rounded',  label: 'Rounded (Martegani)', borderRadius: 24,  aspectRatio: 'auto', objectFit: 'cover' }, // override — larger radius for this DS
+    { key: 'portrait', label: 'Portrait',            borderRadius: 4,   aspectRatio: '3/4',  objectFit: 'cover' }, // new style
   ],
 }
 
@@ -430,6 +439,33 @@ describe('resolveDesignSystemInheritance', () => {
     it('result has 3 cardVariants total (default + elevated + artwork)', async () => {
       const result = await resolve()
       expect(result?.cardVariants?.length).toBe(3)
+    })
+
+    // mediaStyles — array merged by key
+    it('inherits base "default" mediaStyle (not overridden by Martegani)', async () => {
+      const result = await resolve()
+      const defaultStyle = result?.mediaStyles?.find(s => s.key === 'default')
+      expect(defaultStyle).toBeDefined()
+      expect(defaultStyle?.borderRadius).toBe(0)
+    })
+
+    it('uses Martegani override of "rounded" mediaStyle', async () => {
+      const result = await resolve()
+      const rounded = result?.mediaStyles?.find(s => s.key === 'rounded')
+      expect(rounded?.label).toBe('Rounded (Martegani)')
+      expect(rounded?.borderRadius).toBe(24)
+    })
+
+    it('adds Martegani-specific "portrait" mediaStyle', async () => {
+      const result = await resolve()
+      const portrait = result?.mediaStyles?.find(s => s.key === 'portrait')
+      expect(portrait).toBeDefined()
+      expect(portrait?.aspectRatio).toBe('3/4')
+    })
+
+    it('result has 4 mediaStyles total (default + rounded + circle + portrait)', async () => {
+      const result = await resolve()
+      expect(result?.mediaStyles?.length).toBe(4)
     })
 
     // shadows and layout still inherited

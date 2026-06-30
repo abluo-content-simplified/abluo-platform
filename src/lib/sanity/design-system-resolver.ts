@@ -35,6 +35,7 @@ import type {
   FormInputTheme,
   FormTypography,
   FormGeometry,
+  MediaStyleDefinition,
   Typescale,
 } from '@/lib/sanity/types'
 
@@ -219,6 +220,11 @@ function mergeDesignSystems(
     // A tenant can override individual tokens (e.g. slower durations for a calmer feel)
     // without touching the rest.
     motion: mergeShallowObject(parent.motion, child.motion),
+
+    // ─── Media Styles: INHERIT + ARRAY_MERGE ─────────────────────────────────
+    // Parent provides the base set of named media presentation styles (default, rounded,
+    // square, etc.). Child DS entries override by key or append new custom styles.
+    mediaStyles: mergeArrayByKey<MediaStyleDefinition>(parent.mediaStyles, child.mediaStyles),
   }
 }
 

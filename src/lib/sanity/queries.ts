@@ -601,7 +601,13 @@ export const homePageQuery = /* groq */ `
       ctaHref,
       "title": ${loc('title')},
       "body": ${loc('body')},
-      imagePosition,
+      // mediaContentSection fields — coalesce migrates old imagePosition data
+      "mediaPosition": coalesce(mediaPosition, imagePosition),
+      contentRatio,
+      reverseOnMobile,
+      mediaStyle,
+      "primaryCta": primaryCta { ${CTA_FIELDS} },
+      "secondaryCta": secondaryCta { ${CTA_FIELDS} },
       // statementSection fields
       "description": ${loc('description')},
       alignment,
@@ -713,7 +719,13 @@ export const pageHomeQuery = /* groq */ `
       ctaHref,
       "title": ${loc('title')},
       "body": ${loc('body')},
-      imagePosition,
+      // mediaContentSection fields — coalesce migrates old imagePosition data
+      "mediaPosition": coalesce(mediaPosition, imagePosition),
+      contentRatio,
+      reverseOnMobile,
+      mediaStyle,
+      "primaryCta": primaryCta { ${CTA_FIELDS} },
+      "secondaryCta": secondaryCta { ${CTA_FIELDS} },
       // statementSection fields
       "description": ${loc('description')},
       alignment,
@@ -844,7 +856,13 @@ export const pageBySlugQuery = /* groq */ `
       ctaHref,
       "title": ${loc('title')},
       "body": ${loc('body')},
-      imagePosition,
+      // mediaContentSection fields — coalesce migrates old imagePosition data
+      "mediaPosition": coalesce(mediaPosition, imagePosition),
+      contentRatio,
+      reverseOnMobile,
+      mediaStyle,
+      "primaryCta": primaryCta { ${CTA_FIELDS} },
+      "secondaryCta": secondaryCta { ${CTA_FIELDS} },
       // statementSection fields
       "description": ${loc('description')},
       alignment,
@@ -1136,7 +1154,9 @@ export const DS_FIELDS_SELECTION = /* groq */ `{
   motion {
     durationFast, durationBase, durationSlow, durationSlower,
     easingStandard, easingDecelerate, easingAccelerate, easingEmphasized
-  }
+  },
+
+  mediaStyles[] { key, label, borderRadius, aspectRatio, objectFit }
 }`
 
 // Fetches the design system for a project.

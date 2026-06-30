@@ -846,13 +846,21 @@ const heroLensSectionType = defineType({
 
 const contentSectionType = defineType({
   name: 'contentSection',
-  title: 'Content Section',
+  title: 'Media Content Section',
   type: 'object',
+  groups: [
+    { name: 'content', title: 'Content' },
+    { name: 'media', title: 'Media' },
+    { name: 'layout', title: 'Layout' },
+    { name: 'ctas', title: 'CTAs' },
+  ],
   fields: [
+    // ── Surface ───────────────────────────────────────────────────────────────
     defineField({
       name: 'background',
       title: 'Background Surface',
       type: 'string',
+      group: 'content',
       options: {
         list: [
           { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
@@ -866,33 +874,130 @@ const contentSectionType = defineType({
       },
       initialValue: 'usePagePattern',
     }),
-    defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString' }),
-    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
-    defineField({ name: 'body', title: 'Body', type: 'localizedPortableText' }),
+
+    // ── Content ───────────────────────────────────────────────────────────────
+    defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString', group: 'content' }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString', group: 'content' }),
+    defineField({ name: 'body', title: 'Body', type: 'localizedPortableText', group: 'content' }),
+
+    // ── CTAs ──────────────────────────────────────────────────────────────────
+    defineField({
+      name: 'primaryCta',
+      title: 'Primary CTA',
+      type: 'cta',
+      group: 'ctas',
+      description: 'Main call-to-action button — uses primary button style from the Design System.',
+    }),
+    defineField({
+      name: 'secondaryCta',
+      title: 'Secondary CTA',
+      type: 'cta',
+      group: 'ctas',
+      description: 'Optional secondary action — rendered as a ghost or text button.',
+    }),
+
+    // ── Media ─────────────────────────────────────────────────────────────────
     defineField({
       name: 'image',
       title: 'Image',
       type: 'localizedImage',
-      description: 'Optional image shown alongside the text content.',
+      group: 'media',
+      description: 'Optional image. Ignored when Media Position is set to None.',
     }),
     defineField({
-      name: 'imagePosition',
-      title: 'Image Position',
+      name: 'mediaPosition',
+      title: 'Media Position',
       type: 'string',
+      group: 'media',
       options: {
         list: [
-          { title: 'Left', value: 'left' },
-          { title: 'Right', value: 'right' },
+          { title: '◻ None (text only)', value: 'none' },
+          { title: '◀ Left', value: 'left' },
+          { title: '▶ Right', value: 'right' },
+          { title: '▲ Top', value: 'top' },
+          { title: '▼ Bottom', value: 'bottom' },
         ],
         layout: 'radio',
       },
       initialValue: 'right',
-      hidden: ({ parent }: { parent?: { image?: unknown } }) => !parent?.image,
+    }),
+    defineField({
+      name: 'mediaStyle',
+      title: 'Media Style',
+      type: 'string',
+      group: 'media',
+      description: 'Presentation style — defined by the Design System. Each DS can override what each style looks like.',
+      options: {
+        list: [
+          { title: 'Default', value: 'default' },
+          { title: 'Rounded', value: 'rounded' },
+          { title: 'Square (1:1)', value: 'square' },
+          { title: 'Landscape (16:9)', value: 'landscape' },
+          { title: 'Portrait (3:4)', value: 'portrait' },
+          { title: 'Circle', value: 'circle' },
+          { title: 'Full Height', value: 'fullHeight' },
+        ],
+      },
+      initialValue: 'default',
+      hidden: ({ parent }: { parent?: { mediaPosition?: string } }) => parent?.mediaPosition === 'none',
+    }),
+
+    // ── Layout ────────────────────────────────────────────────────────────────
+    defineField({
+      name: 'contentRatio',
+      title: 'Content Ratio',
+      type: 'string',
+      group: 'layout',
+      description: 'Width split between text and media columns. Only applies when media is Left or Right.',
+      options: {
+        list: [
+          { title: '40 / 60 — Emphasis on media', value: '40/60' },
+          { title: '50 / 50 — Equal split', value: '50/50' },
+          { title: '60 / 40 — Emphasis on text', value: '60/40' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: '50/50',
+      hidden: ({ parent }: { parent?: { mediaPosition?: string } }) =>
+        parent?.mediaPosition === 'none' ||
+        parent?.mediaPosition === 'top' ||
+        parent?.mediaPosition === 'bottom',
+    }),
+    defineField({
+      name: 'verticalAlignment',
+      title: 'Vertical Alignment',
+      type: 'string',
+      group: 'layout',
+      description: 'How to align columns vertically when media is Left or Right.',
+      options: {
+        list: [
+          { title: 'Top', value: 'top' },
+          { title: 'Center', value: 'center' },
+          { title: 'Bottom', value: 'bottom' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'center',
+      hidden: ({ parent }: { parent?: { mediaPosition?: string } }) =>
+        parent?.mediaPosition === 'none' ||
+        parent?.mediaPosition === 'top' ||
+        parent?.mediaPosition === 'bottom',
+    }),
+    defineField({
+      name: 'reverseOnMobile',
+      title: 'Reverse Order on Mobile',
+      type: 'boolean',
+      group: 'layout',
+      description: 'Show text before media on small screens, regardless of desktop position.',
+      initialValue: false,
     }),
   ],
   preview: {
-    select: { title: 'title.it' },
-    prepare: ({ title }) => ({ title: title ?? 'Content', subtitle: 'Content Section' }),
+    select: { title: 'title.en', mediaPosition: 'mediaPosition' },
+    prepare: ({ title, mediaPosition }: { title?: string; mediaPosition?: string }) => ({
+      title: title ?? 'Media Content Section',
+      subtitle: `Media Content Section${mediaPosition ? ` — media ${mediaPosition}` : ''}`,
+    }),
   },
 })
 
@@ -2381,6 +2486,7 @@ const designSystemType = defineType({
     { name: 'layout', title: 'Layout' },
     { name: 'motion', title: 'Motion' },
     { name: 'components', title: 'Components' },
+    { name: 'media', title: 'Media' },
   ],
   fields: [
     defineField({
@@ -2626,6 +2732,77 @@ const designSystemType = defineType({
       type: 'motion',
       group: 'motion',
       description: 'Animation timing and easing tokens — inherited by all components',
+    }),
+
+    // Media styles — named presentation presets for images across all sections.
+    // Sections (e.g. Media Content Section, Gallery) pick a style key.
+    // Each Design System defines what that key looks like — radius, aspect ratio, objectFit.
+    // Child DS entries override parent entries by key; new entries are appended.
+    defineField({
+      name: 'mediaStyles',
+      title: 'Media Styles',
+      type: 'array',
+      group: 'media',
+      description: 'Named media presentation styles. Sections reference these by key — edit here to change how images look across the entire site.',
+      of: [
+        defineArrayMember({
+          type: 'object',
+          name: 'mediaStyleDef',
+          title: 'Media Style',
+          fields: [
+            defineField({
+              name: 'key',
+              title: 'Key',
+              type: 'string',
+              description: 'Internal identifier used by sections — must match the option in the section schema (default, rounded, square, landscape, portrait, circle, fullHeight).',
+              validation: (Rule) => Rule.required(),
+            }),
+            defineField({ name: 'label', title: 'Label', type: 'string', description: 'Human-readable name shown in the design system preview.' }),
+            defineField({
+              name: 'borderRadius',
+              title: 'Border Radius (px)',
+              type: 'number',
+              description: 'Image corner radius in pixels. Use 9999 for a full circle.',
+            }),
+            defineField({
+              name: 'aspectRatio',
+              title: 'Aspect Ratio',
+              type: 'string',
+              description: 'CSS aspect-ratio value — e.g. "auto", "1/1", "4/3", "3/4", "16/9".',
+              options: {
+                list: [
+                  { title: 'Auto (natural height)', value: 'auto' },
+                  { title: '1:1 — Square', value: '1/1' },
+                  { title: '4:3 — Classic', value: '4/3' },
+                  { title: '3:4 — Portrait', value: '3/4' },
+                  { title: '16:9 — Wide', value: '16/9' },
+                ],
+              },
+            }),
+            defineField({
+              name: 'objectFit',
+              title: 'Object Fit',
+              type: 'string',
+              description: 'How the image fills its container.',
+              options: {
+                list: [
+                  { title: 'Cover (fill, crop edges)', value: 'cover' },
+                  { title: 'Contain (show full image)', value: 'contain' },
+                ],
+                layout: 'radio',
+              },
+              initialValue: 'cover',
+            }),
+          ],
+          preview: {
+            select: { key: 'key', label: 'label', aspectRatio: 'aspectRatio' },
+            prepare: ({ key, label, aspectRatio }: { key?: string; label?: string; aspectRatio?: string }) => ({
+              title: label ?? key ?? 'Style',
+              subtitle: `key: ${key ?? '?'}${aspectRatio && aspectRatio !== 'auto' ? ` · ${aspectRatio}` : ''}`,
+            }),
+          },
+        }),
+      ],
     }),
 
     // Card variants (extensible array — add pricing, testimonial, team, etc. as needed)
