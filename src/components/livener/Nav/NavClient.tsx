@@ -16,6 +16,8 @@ interface NavClientProps {
   logoSrc: string | undefined
   logoLightSrc: string | undefined
   logoAlt: string
+  /** When provided, renders the practice/site name next to the logo as part of the same clickable link. */
+  siteName?: string
   navLinks: ResolvedNavLink[]
   /** When omitted the CTA button is hidden entirely. */
   ctaLabel?: string
@@ -41,6 +43,7 @@ export function NavClient({
   logoSrc,
   logoLightSrc,
   logoAlt,
+  siteName,
   navLinks,
   ctaLabel,
   ctaHref,
@@ -179,8 +182,8 @@ export function NavClient({
       {/* ── Nav inner content ────────────────────────────────────── */}
       <div className="flex w-full max-w-[1200px] items-center mx-auto gap-4">
 
-        {/* Logo */}
-        <Link href={`/${currentLocale}/${tenantId}`} className="flex shrink-0 items-center">
+        {/* Logo (+ optional practice name) */}
+        <Link href={`/${currentLocale}/${tenantId}`} className="flex shrink-0 items-center gap-3">
           {logoSrc ? (
             <>
               {!isLight && (
@@ -191,6 +194,21 @@ export function NavClient({
               )}
               {isLight && !logoLightSrc && (
                 <img src={logoSrc} alt={logoAlt} height={36} className="h-9 w-auto" />
+              )}
+              {siteName && (
+                <>
+                  <span
+                    className="hidden h-5 w-px shrink-0 sm:block"
+                    style={{ backgroundColor: 'var(--color-border)' }}
+                    aria-hidden="true"
+                  />
+                  <span
+                    className="hidden text-[13px] font-medium leading-tight tracking-wide sm:block md:text-[14px]"
+                    style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)', opacity: 0.85 }}
+                  >
+                    {siteName}
+                  </span>
+                </>
               )}
             </>
           ) : (

@@ -532,6 +532,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
           logoSrc={logoDarkSrc}
           logoLightSrc={logoLightSrc ?? logoDarkSrc}
           logoAlt={config?.siteName ?? tenantId}
+          siteName={logoDarkSrc ? (config?.siteName ?? undefined) : undefined}
           navLinks={resolveNavLinks(config?.navLinks, locale as SupportedLocale, tenantId)}
           ctaLabel={config?.ctaLabel ?? undefined}
           ctaHref={config?.ctaHref ?? undefined}
