@@ -120,18 +120,24 @@ function CtaRow({
       {primaryCta && primaryCta.type !== 'none' && (
         <CtaButton
           cta={primaryCta}
-          className="inline-flex h-11 items-center gap-2 rounded-[var(--btn-primary-radius,8px)] px-6 text-sm font-semibold tracking-wide transition-all duration-200 hover:opacity-90"
+          className="inline-flex h-11 items-center gap-2 px-6 text-sm font-semibold tracking-wide transition-all duration-200 hover:opacity-90"
           style={{
             backgroundColor: 'var(--btn-primary-bg)',
             color: 'var(--btn-primary-text)',
+            borderRadius: 'var(--radius-btn)',
           }}
         />
       )}
       {secondaryCta && secondaryCta.type !== 'none' && (
         <CtaButton
           cta={secondaryCta}
-          className="inline-flex h-11 items-center gap-2 px-4 text-sm font-medium transition-opacity duration-150 hover:opacity-70"
-          style={{ color: 'var(--color-text-primary)' }}
+          className="inline-flex h-11 items-center gap-2 px-5 text-sm font-medium transition-all duration-150 hover:opacity-80"
+          style={{
+            color: 'var(--btn-secondary-text)',
+            backgroundColor: 'var(--btn-secondary-bg)',
+            borderRadius: 'var(--radius-btn)',
+            border: '1.5px solid var(--color-border)',
+          }}
         />
       )}
     </div>
@@ -171,15 +177,20 @@ export function MediaContentSection({ section, surface, designSystem }: Props) {
 
   // Resolve media style from DS
   const resolvedStyle = resolveMediaStyle(mediaStyleKey, designSystem?.mediaStyles)
+  const hasFixedAspect = resolvedStyle.aspectRatio && resolvedStyle.aspectRatio !== 'auto'
   const imgContainerStyle: React.CSSProperties = {
-    borderRadius: resolvedStyle.borderRadius !== undefined ? `${resolvedStyle.borderRadius}px` : undefined,
-    overflow: resolvedStyle.aspectRatio && resolvedStyle.aspectRatio !== 'auto' ? 'hidden' : undefined,
-    aspectRatio: resolvedStyle.aspectRatio !== 'auto' ? resolvedStyle.aspectRatio : undefined,
+    borderRadius: resolvedStyle.borderRadius ? `${resolvedStyle.borderRadius}px` : undefined,
+    // Always clip corners when borderRadius is set — required whether or not aspect ratio is fixed
+    overflow: resolvedStyle.borderRadius ? 'hidden' : undefined,
+    aspectRatio: hasFixedAspect ? resolvedStyle.aspectRatio : undefined,
   }
   const imgStyle: React.CSSProperties = {
     objectFit: resolvedStyle.objectFit ?? 'cover',
     width: '100%',
-    height: '100%',
+    // height: 100% only meaningful when the container has a fixed aspectRatio;
+    // for auto-height containers the image should size naturally
+    height: hasFixedAspect ? '100%' : 'auto',
+    display: 'block',
   }
 
   // ── Text block (shared across layouts) ────────────────────────────────────

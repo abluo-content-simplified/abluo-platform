@@ -155,6 +155,8 @@ const ctaType = defineType({
     }),
 
     // ── Page reference (shown when actionType === 'page') ────────────────────
+    // Filters to pages that already have a slug — prevents selecting blank drafts
+    // which would resolve to "No Slug" in the CTA picker and fail at runtime.
     defineField({
       name: 'pageRef',
       title: 'Page',
@@ -162,7 +164,18 @@ const ctaType = defineType({
       to: [{ type: 'page' }],
       hidden: ({ parent }: { parent?: { actionType?: string } }) => parent?.actionType !== 'page',
       description: 'Pick any page from this project. Never type a URL.',
-      options: { filter: scopedRef, disableNew: true },
+      options: {
+        filter: ({ document }: { document: Record<string, unknown> }) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const projectSlug = (document as any)?.projectSlug as string | undefined
+          if (!projectSlug) return { filter: '_id == "@@no-project-selected@@"' }
+          return {
+            filter: 'projectSlug == $projectSlug && defined(slug)',
+            params: { projectSlug },
+          }
+        },
+        disableNew: true,
+      },
     }),
 
     // ── Form reference (shown when actionType === 'form') ────────────────────

@@ -219,7 +219,14 @@ function buildCssVars(ds: DesignSystem | null, logoHeightOverride?: { desktop?: 
       --radius-sm: ${D.radiusSm}px;
       --radius-md: ${D.radiusMd}px;
       --radius-lg: ${D.radiusLg}px;
-      --radius-btn: 12px;
+      --radius-btn: ${ds?.buttons?.primary?.darkTheme?.borderRadius ?? ds?.buttons?.primary?.lightTheme?.borderRadius ?? D.radiusMd}px;
+      /* ── Button tokens (dark theme) ── */
+      --btn-primary-bg: ${ds?.buttons?.primary?.darkTheme?.background ?? D.primary};
+      --btn-primary-text: ${ds?.buttons?.primary?.darkTheme?.text ?? D.bg};
+      --btn-primary-hover-bg: ${ds?.buttons?.primary?.darkTheme?.hover?.background ?? D.primary};
+      --btn-secondary-bg: ${ds?.buttons?.secondary?.darkTheme?.background ?? 'transparent'};
+      --btn-secondary-text: ${ds?.buttons?.secondary?.darkTheme?.text ?? D.textPrimary};
+      --btn-secondary-hover-bg: ${ds?.buttons?.secondary?.darkTheme?.hover?.background ?? 'transparent'};
       --logo-height-desktop: ${logoHeightOverride?.desktop ?? ds?.branding?.logoHeightDesktop ?? 36}px;
       --logo-height-mobile: ${logoHeightOverride?.mobile ?? ds?.branding?.logoHeightMobile ?? 28}px;
       --motion-duration-fast: ${motion?.durationFast ?? 120}ms;
@@ -263,6 +270,13 @@ ${formMetaVars}
 ${lightFormVars}
       --form-label-color: ${formTypo?.labelColor ?? L.textSecondary};
       --form-help-color: ${formTypo?.helpTextColor ?? L.textMuted};
+      /* ── Button tokens (light theme overrides) ── */
+      --btn-primary-bg: ${ds?.buttons?.primary?.lightTheme?.background ?? L.primary};
+      --btn-primary-text: ${ds?.buttons?.primary?.lightTheme?.text ?? L.bg};
+      --btn-primary-hover-bg: ${ds?.buttons?.primary?.lightTheme?.hover?.background ?? L.primary};
+      --btn-secondary-bg: ${ds?.buttons?.secondary?.lightTheme?.background ?? 'transparent'};
+      --btn-secondary-text: ${ds?.buttons?.secondary?.lightTheme?.text ?? L.textPrimary};
+      --btn-secondary-hover-bg: ${ds?.buttons?.secondary?.lightTheme?.hover?.background ?? 'transparent'};
       /* ── Section surface tokens (light theme) ── */
       --color-section-surface1: ${sectionSurfaces?.lightTheme?.surface1 ?? 'transparent'};
       --color-section-surface2: ${sectionSurfaces?.lightTheme?.surface2 ?? 'transparent'};

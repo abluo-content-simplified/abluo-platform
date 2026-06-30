@@ -92,8 +92,11 @@ export interface Cta {
   label?: string
   internalName: string
   actionType?: 'page' | 'form' | 'fileDownload' | 'externalUrl'
-  // Resolved from pageRef->slug by GROQ
-  pageSlug?: string
+  /**
+   * Full resolved page path — /${locale}/${tenantSlug}/${slug}.
+   * Resolved by CTA_FIELDS GROQ projection. Replaces the old pageSlug field.
+   */
+  pageHref?: string
   // Resolved from formRef by GROQ
   formId?: string
   formInquiryType?: string

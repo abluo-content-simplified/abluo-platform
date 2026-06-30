@@ -44,9 +44,11 @@ export const CTA_FIELDS = /* groq */ `
   "label": ${loc('label')},
   internalName,
   actionType,
-  "pageSlug": coalesce(
-    pageRef->slug[$locale].current,
-    pageRef->slug[$defaultLocale].current
+  "pageHref": select(
+    defined(pageRef) => "/" + $locale + "/" + *[_type == "siteConfig" && projectSlug == $projectSlug][0].tenantSlug + "/" + coalesce(
+      pageRef->slug[$locale].current,
+      pageRef->slug[$defaultLocale].current
+    )
   ),
   "formId": formRef._ref,
   "formInquiryType": formRef->inquiryType,

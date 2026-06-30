@@ -33,12 +33,14 @@ export function resolveCta(cta: Cta | null | undefined): ResolvedCta {
 
   switch (cta.actionType) {
     case 'page': {
-      if (!cta.pageSlug) return { type: 'none', label, internalName }
+      // pageHref is the fully-resolved path: /${locale}/${tenantSlug}/${slug}
+      // Resolved in GROQ by CTA_FIELDS — no locale/tenant threading required here.
+      if (!cta.pageHref) return { type: 'none', label, internalName }
       return {
         type: 'link',
         label,
         internalName,
-        href: cta.pageSlug.startsWith('/') ? cta.pageSlug : `/${cta.pageSlug}`,
+        href: cta.pageHref,
         external: false,
       }
     }
