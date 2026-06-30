@@ -18,6 +18,7 @@
  * No image styles are hardcoded here.
  */
 
+import { useParams } from 'next/navigation'
 import type { MediaContentSection as MediaContentSectionType, DesignSystem, MediaStyleDefinition } from '@/lib/sanity/types'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
@@ -108,8 +109,21 @@ function CtaRow({
 }: {
   section: MediaContentSectionType
 }) {
-  const primaryCta = section.primaryCta ? resolveCta(section.primaryCta) : null
-  const secondaryCta = section.secondaryCta ? resolveCta(section.secondaryCta) : null
+  // tenantId and locale are URL params — not stored in Sanity.
+  // They're used here to build the correct full path for internal page CTA links.
+  const params = useParams()
+  const locale = params.locale as string | undefined
+  const tenantId = params.tenant as string | undefined
+
+  function withTenantPrefix(resolved: ReturnType<typeof resolveCta>) {
+    if (resolved.type !== 'link' || resolved.external || !locale || !tenantId) return resolved
+    // href from resolveCta for 'page' type is just "/slug" — prepend locale+tenant
+    const slug = resolved.href.startsWith('/') ? resolved.href.slice(1) : resolved.href
+    return { ...resolved, href: `/${locale}/${tenantId}/${slug}` }
+  }
+
+  const primaryCta = section.primaryCta ? withTenantPrefix(resolveCta(section.primaryCta)) : null
+  const secondaryCta = section.secondaryCta ? withTenantPrefix(resolveCta(section.secondaryCta)) : null
 
   if ((!primaryCta || primaryCta.type === 'none') && (!secondaryCta || secondaryCta.type === 'none')) {
     return null

@@ -33,14 +33,14 @@ export function resolveCta(cta: Cta | null | undefined): ResolvedCta {
 
   switch (cta.actionType) {
     case 'page': {
-      // pageHref is the fully-resolved path: /${locale}/${tenantSlug}/${slug}
-      // Resolved in GROQ by CTA_FIELDS — no locale/tenant threading required here.
-      if (!cta.pageHref) return { type: 'none', label, internalName }
+      if (!cta.pageSlug) return { type: 'none', label, internalName }
+      // Return just the slug — components prepend /${locale}/${tenant}/ at render time
+      // using useParams() since tenantId is a URL param, not stored in Sanity.
       return {
         type: 'link',
         label,
         internalName,
-        href: cta.pageHref,
+        href: cta.pageSlug.startsWith('/') ? cta.pageSlug : `/${cta.pageSlug}`,
         external: false,
       }
     }
