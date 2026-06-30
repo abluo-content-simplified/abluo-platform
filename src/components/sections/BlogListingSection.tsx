@@ -152,7 +152,7 @@ function PostCardLarge({ post, href }: { post: Post; href: string }) {
       }}
     >
       {/* Cover image — taller aspect ratio for impact */}
-      <div className="shrink-0 overflow-hidden" style={{ aspectRatio: '16/9' }}>
+      <div className="w-full shrink-0 overflow-hidden" style={{ aspectRatio: '16/9' }}>
         {coverSrc ? (
           <img
             src={coverSrc}
