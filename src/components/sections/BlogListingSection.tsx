@@ -151,17 +151,17 @@ function PostCardLarge({ post, href }: { post: Post; href: string }) {
         textDecoration: 'none',
       }}
     >
-      {/* Cover image — taller aspect ratio for impact */}
-      <div className="w-full shrink-0 overflow-hidden" style={{ aspectRatio: '16/9' }}>
+      {/* Cover image — 16:9 aspect ratio via padding-top trick (reliable in all flex contexts) */}
+      <div className="relative shrink-0 overflow-hidden" style={{ paddingTop: '56.25%' }}>
         {coverSrc ? (
           <img
             src={coverSrc}
             alt={post.coverImage?.alt ?? post.title ?? ''}
-            className={`h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
+            className={`absolute inset-0 h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
             loading="eager"
           />
         ) : (
-          <div className="h-full w-full" style={{ backgroundColor: 'var(--color-border)' }} />
+          <div className="absolute inset-0" style={{ backgroundColor: 'var(--color-border)' }} />
         )}
       </div>
 
