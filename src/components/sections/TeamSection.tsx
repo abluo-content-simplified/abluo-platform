@@ -4,6 +4,7 @@ import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
+import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 
 interface Props {
   section: TeamSection
@@ -28,9 +29,6 @@ function RichText({ blocks }: { blocks: PortableTextContent }) {
 }
 
 export function TeamSection({ section, surface, designSystem }: Props) {
-  // DEBUG — remove once intro + photo are confirmed working
-  console.log('[TeamSection] section:', JSON.stringify(section, null, 2))
-
   const { title, subtitle, intro, members } = section
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
@@ -80,7 +78,12 @@ export function TeamSection({ section, surface, designSystem }: Props) {
                   {/* Photo or initials placeholder */}
                   <div
                     className="relative mb-6 w-full overflow-hidden"
-                    style={{ aspectRatio: '3 / 4', backgroundColor: 'var(--color-surface)' }}
+                    style={{
+                      aspectRatio: '3 / 4',
+                      backgroundColor: 'var(--color-surface)',
+                      // Border radius uses the DS token — will become a DS media token in future
+                      borderRadius: 'var(--radius-lg)',
+                    }}
                   >
                     {src ? (
                       <img
@@ -88,7 +91,7 @@ export function TeamSection({ section, surface, designSystem }: Props) {
                         srcSet={srcSet}
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
                         alt={member.name}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                        className={`h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
                         loading="lazy"
                         decoding="async"
                       />

@@ -4,6 +4,7 @@ import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
+import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 
 interface Props {
   section: PhotoGallerySection
@@ -127,7 +128,7 @@ function GalleryImageCard({
             alt={altValue}
             loading="lazy"
             decoding="async"
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+            className={`absolute inset-0 h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
           />
         </div>
       ) : (
@@ -138,7 +139,7 @@ function GalleryImageCard({
           alt={altValue}
           loading="lazy"
           decoding="async"
-          className="w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+          className={`w-full object-cover ${IMAGE_HOVER_CLASSES}`}
         />
       )}
 

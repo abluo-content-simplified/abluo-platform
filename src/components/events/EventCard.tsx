@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { SlideUp } from '@/components/animation'
 import { imageUrl } from '@/lib/sanity/image'
 import type { Event } from '@/lib/sanity/types'
+import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
@@ -114,7 +115,7 @@ export function EventCard({
             <img
               src={heroSrc}
               alt={event.heroImage?.alt ?? event.title ?? ''}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className={`h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
               loading="lazy"
             />
           ) : (

@@ -9,6 +9,7 @@
 import type { Post } from '@/lib/sanity/types'
 import { imageUrl } from '@/lib/sanity/image'
 import { SlideUp } from '@/components/animation/SlideUp'
+import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en', {
@@ -56,7 +57,7 @@ export function PostCard({
             <img
               src={coverSrc}
               alt={post.coverImage?.alt ?? post.title ?? ''}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className={`h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
               loading="lazy"
             />
           ) : (

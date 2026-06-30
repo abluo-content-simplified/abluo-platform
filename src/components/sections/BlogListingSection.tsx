@@ -4,6 +4,7 @@ import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { imageUrl } from '@/lib/sanity/image'
+import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 
 // ─── Date formatting ──────────────────────────────────────────────────────────
 
@@ -101,7 +102,7 @@ function PostCard({ post, href, priority = false }: { post: Post; href: string; 
           <img
             src={coverSrc}
             alt={post.coverImage?.alt ?? post.title ?? ''}
-            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+            className={`h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
             loading={priority ? 'eager' : 'lazy'}
           />
         ) : (
@@ -156,7 +157,7 @@ function PostCardLarge({ post, href }: { post: Post; href: string }) {
           <img
             src={coverSrc}
             alt={post.coverImage?.alt ?? post.title ?? ''}
-            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+            className={`h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
             loading="eager"
           />
         ) : (
@@ -211,7 +212,7 @@ function PostCardMini({ post, href }: { post: Post; href: string }) {
           <img
             src={coverSrc}
             alt={post.coverImage?.alt ?? post.title ?? ''}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className={`h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
             loading="lazy"
           />
         ) : (
