@@ -1,7 +1,7 @@
 # Config Architecture — Field Register
 
 This document describes the platform **as it exists today** — field ownership, inheritance model, active vs legacy fields, and known bugs.
-For the history of *why* decisions were made, see [`docs/architecture-decisions.md`](./architecture-decisions.md).
+For the history of *why* decisions were made, see [`docs/architecture-decisions.md`](./architecture/architecture-decisions.md).
 
 ---
 

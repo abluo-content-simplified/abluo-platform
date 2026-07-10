@@ -1,5 +1,7 @@
 # Abluo — Platform Documentation
 
+> **Superseded — Historical.** As of the Engineering Playbook v1.0 (2026-07-10), this document is no longer authoritative. `CLAUDE.md` is authoritative for implementation, and `docs/engineering/engineering-playbook.md` is the highest-level engineering document. **Known factual conflict:** this file states tenants are isolated by `tenantSlug`; the current implementation and ADR-001 use `projectSlug` as the isolation key (verified in `docs/engineering/phase-1-discovery.md` §7 and `docs/engineering/phase-2a-technical-audit.md` MT-1). Retained for historical reference only — do not use as a source of truth.
+
 ## Overview
 
 Abluo is a reusable multi-tenant publishing platform for professional practices (dentists, therapists, consultants, event organizers, studios, etc.). One codebase, one Sanity project, one Supabase instance. Each tenant (client) gets their own domain, branding, and content—logically isolated by `tenantSlug` on every Sanity document.

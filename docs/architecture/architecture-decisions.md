@@ -5,7 +5,7 @@ Each entry is immutable — it is a historical record of why a decision was made
 If a decision is later reversed or superseded, a new ADR is created referencing the original.
 
 For the current state of the architecture (field ownership, inheritance model, active vs legacy fields),
-see [`docs/config-architecture.md`](./config-architecture.md).
+see [`docs/config-architecture.md`](../config-architecture.md).
 
 ---
 
