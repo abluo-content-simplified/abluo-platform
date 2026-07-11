@@ -718,3 +718,127 @@ Tenant-defined custom roles are intentionally out of scope for ADR-011. They wil
 **Negative:**
 - `defaultRoles` on each permission must be maintained as sensible platform defaults even though they are not authoritative — a poorly chosen default creates extra configuration work for every new tenant installation
 - A multi-role implementation (Blog Editor, Event Manager, etc.) requires a separate platform layer to define role-to-permission mappings, which does not yet exist — tenants cannot configure custom roles until that layer is built
+
+---
+
+## ADR-013 — Tenant tracking & verification configuration lives in siteConfig.integrations
+
+**Status:** Proposed
+**Date:** 2026-07-10
+**Supersedes:** —
+**Superseded By:** —
+
+### Context
+
+Websites require integration with third-party analytics, site verification, and custom tracking services: Google Analytics, Google Tag Manager, Meta Pixel, Bing Site Verification, Google Search Console verification tokens, and custom script injection. These are platform-managed integrations that clients never edit — they are business configuration owned by the Abluo admin, not tenant-specific content.
+
+The question: where does this configuration live?
+
+### Alternatives Considered
+
+- **Supabase** — Operational data for most auth/leads; would fragment site configuration across two stores (Sanity for identity/navigation, Supabase for integrations). Site configuration is a cohesive whole and belongs in one place.
+- **Environment variables** — Scales only to a single global deployment; Abluo is multi-tenant and per-tenant integration configuration differs by tenant, which requires a data store, not env vars.
+- **Sanity siteConfig.integrations** (chosen) — Part of site identity and business configuration (ADR-002). Stored as platform-managed-only fields; clients never see them. All site settings in one document, single source of truth per tenant.
+
+### Decision
+
+A new `integrations` object on `siteConfig` holds all third-party integrations. The structure:
+
+```typescript
+integrations: {
+  analyticsEnabled?: boolean        // Master switch, initialValue false — gates all tracking below
+  consentModeEnabled?: boolean      // Records tenant consent-mode opt-in, initialValue false
+  googleAnalyticsId?: string        // GA4, matches regex G-[A-Z0-9]+
+  googleTagManagerId?: string       // GTM-, platform-managed
+  googleSiteVerification?: string   // Search Console verification token
+  bingSiteVerification?: string     // Bing verification token (msvalidate.01)
+  metaPixelId?: string              // Numeric Meta Pixel ID
+  customScripts?: Array<{           // Client never sees this — platform-only
+    label: string                   // Internal label for admin reference
+    description: string             // Required — purpose of the script (admin reference)
+    placement: 'head' | 'bodyEnd'   // Script placement
+    code: string                    // Arbitrary JavaScript (vetted by admin)
+    consentCategory: 'necessary' | 'analytics' | 'marketing' | 'functional'  // Required, no default — forces a conscious choice
+    enabled: boolean                // initialValue false — disabled until an admin explicitly enables it
+  }>
+}
+```
+
+**Platform consumption:**
+
+1. **Script emission** (`src/components/TrackingScripts.tsx`):
+   - Emits `<script>` tags for GA4, GTM, Meta Pixel, custom scripts
+   - **Production-only**: scripts are emitted only when `isProduction()` returns true
+   - Verification meta tags emitted in all environments via `generateMetadata()`
+
+2. **Verification meta tags** (Next.js `Metadata.verification`):
+   - Google: `google-site-verification`
+   - Bing: `msvalidate.01`
+   - Emitted in all environments (dev, preview, production)
+
+3. **Component mounting**:
+   - `TrackingScripts` mounted in both tenant layout branches:
+     - `src/app/[locale]/(website)/[tenant]/layout.tsx` (Livener)
+     - Generic tenant layout (other projects)
+   - No duplication: single component, two mount points
+
+**Custom script hardening rules (Round 2):**
+
+**Access**
+Custom scripts are an Abluo-administrator-exclusive capability. They are never tenant-accessible — not surfaced in the client dashboard now, and not in the future without a superseding ADR. This is a platform feature, not a tenant feature.
+
+**Execution**
+New custom script items are disabled by default (`enabled` initialValue `false`) — an admin must consciously enable a script after review. Consistent with round 1: scripts execute production-only, never on dev or preview. `integrations.analyticsEnabled` is a tenant-level master switch (initialValue `false`): unless it is strictly `true`, `TrackingScripts` renders nothing — GA4, GTM, Meta Pixel, and custom scripts are all blocked, at both placements — fail-closed, and evaluated alongside the existing production-only gate. Verification meta tags are exempt from `analyticsEnabled`: they are not visitor tracking and continue to render in all environments regardless of the toggle.
+
+**Metadata**
+Each custom script item requires: `label` (internal reference), `description` (required — states the script's purpose), `placement` (`head` | `bodyEnd`), `enabled` (boolean, default `false`), and `consentCategory` (required, radio, no default — one of `necessary` | `analytics` | `marketing` | `functional`, forcing a conscious categorization choice at authoring time rather than defaulting to a permissive category). The Studio preview for each item shows category, placement, and disabled state so admins can audit the list at a glance.
+
+**Consent**
+`analytics`, `marketing`, and `functional` category scripts must never load before user consent has been collected. The data model (`consentCategory` field) and a pure filter, `filterCustomScripts(scripts, placement, consent?)` (`src/lib/tracking/custom-scripts.ts`), implement this. The consent-collection mechanism itself (cookie banner / consent UI) is not yet built; `integrations.consentModeEnabled` (initialValue `false`) is the interim, tenant-level opt-in that governs behavior until it does.
+
+**Tom's decided rule (Round 4 — settles the question left open in Round 3):** the absence of a consent mechanism is never itself permission to load tracking — "the consent feature ships later" does not authorize loading tracking scripts before it does. Because there is no partial-consent capture today, `consentModeEnabled === true` is treated as "no valid consent exists," and every consent-gated category fails closed — not only custom scripts:
+
+| Category | Behavior when `consentModeEnabled = true` and no valid consent exists |
+|---|---|
+| GA4, GTM (including its `bodyEnd` noscript iframe), Meta Pixel | **Blocked.** `builtInTrackingAllowed(consentModeEnabled)` (`src/lib/tracking/custom-scripts.ts`) returns `false`; `TrackingScripts.tsx` suppresses all three built-ins. |
+| Custom script, `consentCategory: analytics` | **Blocked.** `consentStateFor(true)` returns `{ analytics: false, marketing: false, functional: false }`; `filterCustomScripts` excludes it. |
+| Custom script, `consentCategory: marketing` | **Blocked** — same mechanism. |
+| Custom script, `consentCategory: functional` | **Blocked** — no consent rule currently exists that permits functional scripts to load pre-consent; only a future, explicit consent rule may change this. |
+| Custom script, `consentCategory: necessary` | **Loads.** Abluo-admin-approved by construction (admin-created, `enabled === true`, required `description` and `consentCategory`); never gated by `filterCustomScripts`. |
+
+When `consentModeEnabled` is `false` or `undefined`, `consentStateFor()` returns `undefined` and `builtInTrackingAllowed()` returns `true` — the prior interim (ungated) behavior applies, subject only to the existing `analyticsEnabled` master switch and production-only emission. Independent of consent, `enabled` remains evaluated fail-closed on every custom script regardless of category or consent state: only `enabled === true` renders.
+
+**Auditability**
+Per-script-item attribution (manual `createdBy`/`createdAt`/`modifiedBy`/`modifiedAt` fields) is not implemented. Sanity's document-level `_createdAt`/`_updatedAt` fields and revision history (which records the editing user) cover auditability at the document level for now. Per-item attribution would require custom Studio input machinery and is deferred — revisit via a superseding ADR if per-item attribution becomes a requirement.
+
+**Security**
+`customScripts.code` remains arbitrary JavaScript injected into the website; it is acceptable only because Sanity is platform-managed and clients never see Sanity. No secrets or server-side API keys may be pasted into `code`. External `src`-based scripts are preferred over large inline snippets. Only trusted third-party integrations should be added (e.g. Google, Meta, LinkedIn, Hotjar) — the array-level Studio description encodes this policy directly for admins. Any future client dashboard exposure of customScripts **requires a superseding ADR** before it can be wired into the UI.
+
+### Consequences
+
+**Positive:**
+- Site configuration is unified: all tenant identity, branding, and integrations in one siteConfig document
+- Platform-managed only: clients never see or edit integration credentials
+- Production-only emission: analytics and tracking have zero impact on development, preview, and testing environments
+- Verification meta tags work in all environments: Search Console and Bing can verify the site before production
+- Custom scripts are optional: a tenant with no custom scripts has an empty array
+- Credentials are never exposed to client dashboard (only Abluo admin in Sanity)
+- Disabled-by-default plus required `description` and `consentCategory` reduce the risk of an admin unintentionally shipping a live, uncategorized, or undocumented script
+- `analyticsEnabled` gives every tenant a single fail-closed master switch over all tracking (built-in and custom), independent of the consent question
+- The interim consent gap (see Negative, below) is now closable per-tenant: an admin can set `consentModeEnabled` to `true` to fail-close GA4/GTM/Meta Pixel and `analytics`/`marketing`/`functional` custom scripts ahead of the full consent-collection feature
+
+**Negative:**
+- `customScripts.code` remains an untyped field accepting arbitrary JavaScript; the required `description`, required `consentCategory`, disabled-by-default default, and Studio security-policy copy mitigate but do not eliminate this — admin vigilance is still required, and no static analysis or sandboxing of `code` exists
+- No per-script rate-limiting or validation inside the platform (relies on admin judgment)
+- No script performance monitoring — a slow or blocking custom script will affect page performance
+- Verification tokens in Sanity (not env vars) means they are readable by anyone with Sanity access — acceptable today (platform-managed only) but requires review if Sanity access expands
+- **Residual consent gap (narrowed, Round 4):** the gap now applies only to tenants with `consentModeEnabled` off (the default) — for those tenants, `analytics`/`marketing`/`functional` custom scripts and the built-in GA4/GTM/Meta Pixel snippets still render in production without user consent having been collected. Whether to turn `consentModeEnabled` on ahead of the full consent-collection feature is a per-tenant compliance judgment for the Abluo admin. For any tenant that sets `consentModeEnabled` to `true`, this gap is now fully closed: every consent-gated category (built-in and custom) fails closed, per the Consent section above. The residual risk is therefore tenants with both `analyticsEnabled === true` and `consentModeEnabled === false` — not consent-mode tenants, whose gap is closed
+- Inline scripts remain possible despite the "prefer external `src`" guidance — it is admin guidance, not a schema constraint
+
+### Future Considerations
+
+- If a client dashboard ever needs integration management, custom scripts must be excluded or handled via a separate, audited system (not a direct Sanity field)
+- Script performance monitoring (e.g. cumulative impact of GA + GTM + Meta + custom scripts) is not currently instrumented
+- Script versioning (e.g. pinning GA to a specific version) is not supported — scripts load from their canonical CDNs
+
+

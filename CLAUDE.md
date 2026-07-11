@@ -604,6 +604,12 @@ Static pages (About, Services, Contact, etc.) are managed by the Abluo admin in 
 
 ---
 
+## Analytics & Site Verification
+
+Third-party integrations (GA4, GTM, Meta Pixel, Bing verification) are configured in `siteConfig.integrations` — platform-managed only, never exposed to client dashboard. `integrations.analyticsEnabled` (default `false`) is the tenant master switch — unless strictly `true`, `TrackingScripts` renders nothing; verification meta tags are exempt (not visitor tracking) and always render. Scripts emit in production only via `TrackingScripts.tsx`. Custom scripts are arbitrary JS injected at head or bodyEnd placement; admin-vetted only, and disabled by default (`enabled` starts `false`). Each script requires a `description` and a `consentCategory`; `integrations.consentModeEnabled` (default `false`) fails closed on GA4, GTM, Meta Pixel, and `analytics`/`marketing`/`functional` custom scripts when no valid visitor consent exists — only `necessary` customs still load; the interim default (`consentModeEnabled` off) remains ungated. Auditability is via Sanity revision history, not manual fields. See ADR-013 for the full policy.
+
+---
+
 ## AI Features (Planned)
 
 - Generate excerpt / abstract from article

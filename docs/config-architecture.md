@@ -207,6 +207,19 @@ All DS fields belong to exactly one inheritance category (ADR-008). The category
 | `socialLinks` | array | ✅ Active | `[{ platform, url }]` — replaces legacy `youtubeChannelUrl` |
 | `youtubeChannelUrl` | string | ⚠️ Legacy | Replaced by `socialLinks`. Remove after migration confirmed. |
 
+### Integrations group
+
+| Field | Type | Status | Notes |
+|---|---|---|---|
+| `analyticsEnabled` | boolean | ✅ Active | Default `false` — master switch; unless strictly `true`, `TrackingScripts` renders nothing (GA4/GTM/Pixel/custom, both placements). Verification meta tags are exempt (see ADR-013). |
+| `consentModeEnabled` | boolean | ✅ Active | Default `false` — when `true` and no valid consent exists, fails closed on GA4/GTM/Meta Pixel and `analytics`/`marketing`/`functional` custom scripts; only `necessary` customs still load (see ADR-013). |
+| `googleAnalyticsId` | string | ✅ Active | GA4 ID (format: `G-[A-Z0-9]+`) |
+| `googleTagManagerId` | string | ✅ Active | GTM ID (format: `GTM-…`) |
+| `googleSiteVerification` | string | ✅ Active | Google Search Console verification token |
+| `bingSiteVerification` | string | ✅ Active | Bing Site Verification token (msvalidate.01) |
+| `metaPixelId` | string | ✅ Active | Meta Pixel ID (numeric) |
+| `customScripts` | array | ✅ Active | `[{ label, description, placement: head\|bodyEnd, code, consentCategory, enabled }]` — platform-managed only; `enabled` defaults to `false`; `analytics`/`marketing` `consentCategory` items are consent-gated (see ADR-013) |
+
 ---
 
 ## designSystem Field Register

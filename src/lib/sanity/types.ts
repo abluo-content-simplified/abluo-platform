@@ -486,6 +486,35 @@ export interface BusinessLocation {
   country?: string
 }
 
+// ─── Site Config — Integrations (tracking / site verification) ────────────────
+// Non-localized: technical identifiers, not user-facing content (CLAUDE.md Localization Rules).
+
+export type ConsentCategory = 'necessary' | 'analytics' | 'marketing' | 'functional'
+
+export interface CustomScript {
+  label?: string
+  /** Internal documentation — what the script does and why it exists. */
+  description?: string
+  placement?: 'head' | 'bodyEnd'
+  code?: string
+  /** Analytics/Marketing scripts will be gated behind visitor consent once the consent feature ships. */
+  consentCategory?: ConsentCategory
+  enabled?: boolean
+}
+
+export interface SiteConfigIntegrations {
+  /** Master switch — when false, GA4, GTM, Meta Pixel, and custom tracking scripts do not execute; verification meta tags are unaffected. */
+  analyticsEnabled?: boolean
+  /** Whether consent-aware loading is enabled for this tenant; when true, analytics/marketing-category scripts load only with visitor consent. */
+  consentModeEnabled?: boolean
+  googleAnalyticsId?: string
+  googleTagManagerId?: string
+  googleSiteVerification?: string
+  bingSiteVerification?: string
+  metaPixelId?: string
+  customScripts?: CustomScript[]
+}
+
 // ─── Site Config (resolved — all strings already locale-resolved by GROQ) ─────
 
 export interface WebsiteSiteConfig {
@@ -530,6 +559,8 @@ export interface WebsiteSiteConfig {
   appleTouchIcon?: { asset?: { _ref: string } }
   /** Canonical domain for this tenant, e.g. "livener.net". Derived from project.customDomain via GROQ join. */
   customDomain?: string
+  /** Platform-managed tracking / site-verification configuration. Non-localized technical identifiers. */
+  integrations?: SiteConfigIntegrations
 }
 
 // Locale config subset — fetched first to get $defaultLocale for subsequent queries

@@ -1,0 +1,908 @@
+V1.0.14
+Date: 2026-07-10
+Sprint: Sprint 1 — Analytics & Site Verification Infrastructure
+
+STATUS: NOT YET COMMITTED. This log documents a proposed release prepared on `dev`
+by the release-engineering agent (Experimental) per Playbook §5.8. No commit, tag,
+push, or deploy has been executed. Tom must run the commands in the "Proposed
+commit" section below from a local terminal.
+
+================================================================================
+CHANGES (working tree, branch dev, uncommitted)
+================================================================================
+- src/lib/sanity/schema.ts
+    Added `integrations` object + field group on the siteConfig document type.
+- src/lib/sanity/queries.ts
+    Added integrations projections to `websiteSiteConfigQuery` and
+    `siteConfigFaviconQuery`.
+- src/lib/sanity/types.ts
+    Added `CustomScript`, `SiteConfigIntegrations` types; added
+    `WebsiteSiteConfig.integrations?` field.
+- src/components/TrackingScripts.tsx (NEW FILE)
+    New component responsible for rendering tenant-configured tracking/analytics
+    scripts.
+- src/app/[locale]/(website)/[tenant]/layout.tsx
+    Mounts <TrackingScripts /> on both layout branches; adds site-verification
+    meta tag output in generateMetadata.
+- docs/architecture/architecture-decisions.md
+    ADR-013 added, status: Proposed (not yet accepted).
+- docs/config-architecture.md
+    New "Integrations" field register section.
+- CLAUDE.md
+    New "Analytics & Site Verification" handbook section.
+
+Explicitly EXCLUDED from this release (pre-existing working-tree noise, not part
+of Sprint 1, must not be staged):
+- next-env.d.ts (modified — unrelated to this sprint)
+- .claude/ (untracked)
+- docs/engineering/agent-system/ (untracked — governance docs; per orchestrator
+  note, committed governance content already landed at b78dccc, remainder is
+  scaffolding not part of this sprint, EXCEPT the 5 sprint evaluation records
+  under evaluations/, which ARE part of this release — see ROUND 2 below)
+
+================================================================================
+ROUND 2 — customScripts hardening (added 2026-07-10, all uncommitted on `dev`)
+================================================================================
+Delta on top of the ROUND 1 changes above. All ROUND 1 files remain unchanged
+in disposition (still staged) except src/lib/sanity/schema.ts, queries.ts,
+types.ts, which received additional edits described below.
+
+- src/lib/sanity/schema.ts
+    customScripts hardening: `enabled` now `initialValue: false` (fail-closed
+    by default); `description` made required; new required `consentCategory`
+    field (enum: necessary | analytics | marketing | functional); expanded
+    field description documenting the security posture; richer Studio preview
+    (title/subtitle) for customScripts list items.
+- src/lib/sanity/queries.ts
+    Projection for customScripts now includes `description, consentCategory`.
+- src/lib/sanity/types.ts
+    New `ConsentCategory` union type; `CustomScript` interface extended with
+    `description` and `consentCategory`.
+- src/lib/tracking/custom-scripts.ts (NEW FILE)
+    Pure filter function `filterCustomScripts(scripts, placement, consent?)`
+    plus `ConsentState` type. Enforces strict `enabled === true` (not merely
+    truthy) and, when a `ConsentState` is supplied, gates scripts by
+    `consentCategory` against granted consent. When no `ConsentState` is
+    passed, behaves as before (enabled + placement filtering only) — the
+    consent-gating is additive and opt-in at the call site, not yet wired to
+    an actual consent-management UI (see open item (g) below).
+- src/lib/tracking/__tests__/custom-scripts.test.ts (NEW FILE)
+    17 new tests covering: enabled/disabled filtering, placement filtering,
+    consent-category gating per category, and behavior when ConsentState is
+    omitted. All 17 pass (see Gate 2 re-run below).
+- src/components/TrackingScripts.tsx
+    Rewired to call `filterCustomScripts` instead of inline filtering logic.
+- docs/architecture/architecture-decisions.md
+    ADR-013 updated with hardening rules; the unverified P0 claim ("Livener
+    uses GTM, Martegani does not") has been REMOVED per round-1 open item (d).
+    ADR-013 status remains Proposed — round 2 did not accept it.
+- docs/config-architecture.md, CLAUDE.md
+    Updated to reflect the customScripts hardening (description/consentCategory
+    fields, fail-closed default).
+- docs/engineering/agent-system/evaluations/2026-07-10-sprint1-*.md (NEW, 5 files)
+    Orchestrator evaluation records for round 1: documentation,
+    frontend-sections, release-engineering, sanity-content-contracts, workflow.
+    These are the specific 5 files pulled into this release from the otherwise-
+    excluded docs/engineering/agent-system/ tree (see EXCLUDED note above).
+    NOTE: docs/engineering/agent-system/evaluations/2026-07-10-pilot-documentation.md
+    also exists but is NOT one of the 5 sprint records and is NOT included.
+- build-log-V1.0.14.txt (this file)
+    Updated with this ROUND 2 section.
+
+================================================================================
+GATE RESULTS — ROUND 1 (run 2026-07-10, sandbox: /sessions/bold-dazzling-curie/mnt/abluo-platform)
+================================================================================
+
+Gate 1 — Type check (npx tsc --noEmit): PASS
+    Clean run, zero errors, zero output.
+
+Gate 2 — Test suite (npx vitest run): PASS WITH KNOWN FLAKES (did not require retry,
+completed within the 45s sandbox budget)
+    Test Files: 2 failed | 2 passed (4 total)
+    Tests:      2 failed | 192 passed (194 total)
+    Failures (both pre-existing, unrelated to this sprint's diff):
+      - src/lib/modules/__tests__/validate.test.ts >
+        "live MODULE_REGISTRY > passes all structural rules without throwing"
+        — Error: Test timed out in 5000ms
+      - src/lib/modules/__tests__/navigation.test.ts >
+        "buildCollectionItems — live MODULE_REGISTRY > returns no items for the
+        Live module (no collections)" — Error: Test timed out in 5000ms
+    These two timeouts match the pack's documented known risk (I9: "2 flaky
+    timeout tests"). Neither touched file (validate.test.ts, navigation.test.ts,
+    or the live module registry) is in this sprint's changed-file list.
+    NOTE ON TEST COUNT: CLAUDE.md's Testing section states "Current count: 46
+    tests" for src/lib/sanity/__tests__/design-system-resolver.test.ts. Actual
+    observed count for that file alone in this run: 69 tests (all passing). Full
+    suite total: 194 tests across 4 files. Reporting actual, not documented, count
+    per instruction — CLAUDE.md's number appears stale.
+
+Gate 3 — Deterministic build (rm -rf .next && npx next build): NOT RUN —
+BLOCKED BY SANDBOX
+    `rm -rf .next` failed outright: every one of ~2600 files under .next/
+    returned "Operation not permitted" (e.g. `rm: cannot remove
+    '.next/trace': Operation not permitted'`), despite the invoking user
+    (bold-dazzling-curie, uid 1178) owning those files at file-permission level
+    (0600). The presence of `.next/.fuse_hidden0000033400000001`-style temp
+    files indicates the mounted directory is a FUSE-backed sync filesystem that
+    disallows unlinking cached/open files in this sandbox. Because `rm -rf .next`
+    exited non-zero, the `&&`-chained `npx next build` never started — this is
+    NOT a build failure and NOT a 45s timeout; it is a filesystem-permission
+    block specific to this sandbox mount.
+    ESCALATION: Tom must run `rm -rf .next && npx next build` locally before
+    this release can be considered build-verified. Do not treat Gates 1–2 as a
+    substitute for Gate 3.
+
+Gate 7 — Version integrity: see VERSION ANALYSIS below.
+
+Gates 4 (contract-parity), 5 (accessibility), 6 (security): NOT RUN — out of
+release-engineering's scope. Per Playbook, these are owned by other
+specialists/Tom review (see Open Tom-approval items below).
+
+================================================================================
+GATE RESULTS — ROUND 2 RE-RUN (run 2026-07-10, same sandbox, after customScripts
+hardening delta)
+================================================================================
+
+Gate 1 — Type check (npx tsc --noEmit): PASS
+    Clean run, zero errors, zero output. Re-run in full after the round 2 delta
+    (schema.ts, queries.ts, types.ts, custom-scripts.ts, TrackingScripts.tsx).
+
+Gate 2 — Test suite (npx vitest run): PASS WITH KNOWN FLAKES (same 2 pre-existing
+timeouts as round 1; no new failures)
+    Test Files: 2 failed | 3 passed (5 total)
+    Tests:      2 failed | 209 passed (211 total)
+    New in this run: src/lib/tracking/__tests__/custom-scripts.test.ts
+      — 17 tests, ALL PASS (Verified fact — confirmed present and green in the
+      round 2 run; this is the file introduced by the customScripts hardening
+      delta).
+    Failures (identical to round 1, same two tests, same error, same location):
+      - src/lib/modules/__tests__/validate.test.ts >
+        "live MODULE_REGISTRY > passes all structural rules without throwing"
+        — Error: Test timed out in 5000ms
+      - src/lib/modules/__tests__/navigation.test.ts >
+        "buildCollectionItems — live MODULE_REGISTRY > returns no items for the
+        Live module (no collections)" — Error: Test timed out in 5000ms
+    Test count went from 194 (round 1) to 211 (round 2) — delta of +17, exactly
+    matching the new custom-scripts.test.ts file. No other file's test count
+    changed. Matches the task brief's expectation of "~211 tests with the 2
+    known pre-existing module-registry timeout flakes" exactly.
+
+Gate 3 — Deterministic build: SECOND ATTEMPT, STILL NOT RUN — BLOCKED BY SANDBOX
+(different failure mechanism than round 1, same root cause)
+    Workaround attempted (as instructed, without touching next.config.ts):
+    rather than `rm -rf .next` (which round 1 showed fails outright), this
+    round removed only the stray `.next/.fuse_hidden0000033400000001` marker
+    file first (`rm -f .next/.fuse_hidden*`) and then invoked `npx next build`
+    directly, leaving Next.js's own internal build-start cleanup to handle
+    the `.next` directory rather than a manual `rm -rf`.
+    Result: the stray-file removal itself failed (`rm: cannot remove
+    '.next/.fuse_hidden0000033400000001': Operation not permitted`), and
+    `npx next build` then failed independently during its own internal
+    pre-build cleanup step:
+      Error: EPERM: operation not permitted, unlink
+      '/sessions/bold-dazzling-curie/mnt/abluo-platform/.next/.DS_Store'
+    This is new evidence, not just a repeat: it shows the EPERM/FUSE block is
+    not an artifact of our own `rm -rf .next` invocation — Next.js's build
+    command independently tries to unlink files inside `.next` at build start
+    and hits the identical FUSE permission wall. There is no distDir env-var
+    override in Next.js (distDir is next.config.ts-only, which is out of
+    bounds for this agent), so no config-free workaround exists. Gate 3
+    remains NOT RUN. ESCALATION UNCHANGED: Tom must run
+    `rm -rf .next && npx next build` locally.
+
+Gate 7 — Version integrity re-verified for round 2: NO CHANGE. `git status
+--short`, `git log --oneline -3`, and `git tag` were re-run after the round 2
+delta landed in the working tree — no new commits and no new tags exist since
+round 1 (HEAD is still b78dccc; the round 2 files are all uncommitted working-
+tree changes/additions, same as round 1). V1.0.14 remains the correct proposed
+next version — see full VERSION ANALYSIS below (unchanged from round 1).
+
+`git status --short` re-verification (round 2, full working tree):
+    M  CLAUDE.md
+    M  docs/architecture/architecture-decisions.md
+    M  docs/config-architecture.md
+    M  next-env.d.ts
+    M  src/app/[locale]/(website)/[tenant]/layout.tsx
+    M  src/lib/sanity/queries.ts
+    M  src/lib/sanity/schema.ts
+    M  src/lib/sanity/types.ts
+    ?? .claude/
+    ?? build-log-V1.0.14.txt
+    ?? docs/engineering/agent-system/
+    ?? src/components/TrackingScripts.tsx
+    ?? src/lib/tracking/
+
+  Expected-vs-unexpected assessment:
+  - EXPECTED (sprint 1, in scope for the commit): CLAUDE.md,
+    docs/architecture/architecture-decisions.md, docs/config-architecture.md,
+    src/app/[locale]/(website)/[tenant]/layout.tsx (round 1 TrackingScripts
+    wiring — left uncommitted from round 1, not a round 2 item, but correctly
+    still present), src/lib/sanity/{queries,schema,types}.ts,
+    src/components/TrackingScripts.tsx, src/lib/tracking/ (round 2, both files
+    under it), build-log-V1.0.14.txt, and the 5 evaluation records under
+    docs/engineering/agent-system/evaluations/2026-07-10-sprint1-*.md.
+  - UNEXPECTED, flagged, NOT staged in the proposed commit:
+      * next-env.d.ts — auto-generated Next.js triple-slash-reference file;
+        diff is only a path change (`.next/dev/types/routes.d.ts` ->
+        `.next/types/routes.d.ts`), almost certainly a byproduct of running
+        tsc/next tooling in this sandbox's Next.js version, not sprint content.
+        Recommend Tom leave this out of the commit (or revert it locally) —
+        release-engineering does not edit files outside its owned list, so it
+        has been left as-is, not reverted.
+      * .claude/ (agents/*.md + .DS_Store) — Engineering-OS agent-definition
+        scaffolding, not sprint 1 content. Also contains a stray .DS_Store.
+        Not staged.
+      * docs/engineering/agent-system/ MINUS the 5 evaluation records — i.e.
+        README.md, context-pack-spec.md, context-pack-template.md,
+        context-spine.md, handoff-format.md, maturity-evaluation.md, and
+        packs/*.pack.md (4 files) are all untracked and NOT part of this
+        sprint's delta as briefed. These appear to be the Engineering OS
+        framework rollout itself (separate from Sprint 1's analytics/
+        verification content). Not staged. Flagging so Tom can decide whether
+        these need their own separate commit.
+
+`git log --oneline -3` (round 2 re-verification, unchanged from round 1):
+    b78dccc Engineering Playbook v1.0: adopt governance baseline
+    136358a V1.0.13: Fix FeaturedPostCard image width — maxHeight+aspect-ratio
+             was recomputing container width to 853px
+    158ed23 V1.0.12: Fix PostCardLarge cover image width — replace aspect-ratio
+             with padding-top 56.25% (flex/aspect-ratio browser inconsistency)
+
+`git tag` (round 2 re-verification): no new tags since round 1. V1.0.13 remains
+the most recent capital-V tag; HEAD (b78dccc) is untagged (governance doc
+commit, "not a platform version bump" per its own commit message). V1.0.14
+is confirmed still correct as the next proposed version.
+
+================================================================================
+VERSION ANALYSIS (Gate 7 evidence — from round 1, reconfirmed unchanged in round 2)
+================================================================================
+Evidence gathered:
+- `git log --oneline -5`:
+    b78dccc Engineering Playbook v1.0: adopt governance baseline
+    136358a V1.0.13: Fix FeaturedPostCard image width — ...
+    158ed23 V1.0.12: Fix PostCardLarge cover image width — ...
+    7639161 V1.0.12: Fix PostCardLarge image not spanning full card width ...
+    3ba7ce9 V1.0.11: Image sizing — MediaContentSection hover + ...
+- `git tag --sort=-creatordate | head -5`: V1.0.13, V1.0.4, V1.0.5, V1.0.3, v1.0.2
+  (creatordate ordering is not chronologically reliable across annotated/lightweight
+  mixed tags; verified V1.0.13 is HEAD-most by commit graph: tag V1.0.13 ==
+  commit 136358a, which is the direct parent of HEAD b78dccc.)
+- package.json version: "1.0.2"
+- release.json: { "version": "v1.0.2", "title": "Release Automation v2",
+  "releasedAt": "2026-06-28" }
+- Last feature tag per orchestrator brief: V1.0.13 at 136358a — VERIFIED, matches
+  git tag -> commit mapping exactly.
+
+Convention evidence (patch vs minor bump for features):
+- Tags V1.0.3 through V1.0.13 (11 consecutive releases) are ALL third-number
+  (patch-position) increments, regardless of change size. This includes
+  substantive feature work tagged as patch bumps: V1.0.3 "Gallery Foundation
+  — photoGallerySection, gallery + galleryItem schema...", V1.0.7 "ContentSection
+  — add image field...", V1.0.8 "MediaContentSection — media positions, DS
+  styles, CTAs, layout tokens". No V1.1.0 or V2.0.0 tag exists anywhere in the
+  repo's tag history.
+- CONCLUSION (Verified fact): the repo's ACTUAL convention is sequential
+  patch-position increments for every release regardless of semver
+  classification (feature vs fix). This diverges from CLAUDE.md's stated rule
+  ("Versioning: semver... Tag format: V{major}.{minor}.{patch}"), which would
+  imply a minor bump (V1.1.0) for a feature sprint. Since 100% of observed
+  practice contradicts the documented semver-strict rule, I am reporting the
+  divergence rather than silently picking a scheme.
+
+PROPOSED VERSION: V1.0.14
+  Rationale: continues the repo's actual, unbroken practice (11/11 recent
+  releases patch-bump regardless of scope) rather than the documented-but-never
+  -applied semver-minor rule. This is an AI recommendation, not a unilateral
+  version-convention decision — see Open Decisions below.
+
+VERSION SPLIT-BRAIN (I2) — NEW MECHANISM EVIDENCE (Verified fact, not fixed,
+per pack's explicit "Tom decides — do not pick one" instruction):
+  next.config.ts (lines 9-19) resolves the running platform's displayed version
+  via:
+    git describe --tags --abbrev=0 --match 'v[0-9]*'
+  The code comment states this is INTENTIONAL: "matching lowercase v… tags only
+  so historical uppercase V… tags are ignored" (introduced as part of "Release
+  Automation v2", commit eef3ee0, tagged v1.0.2, 2026-06-28).
+  Effect: because all 11 tags since v1.0.2 (V1.0.3 ... V1.0.13) use capital V,
+  `git describe --match 'v[0-9]*'` cannot see them. The build silently falls
+  back to the nearest matching lowercase tag, v1.0.2, meaning the deployed
+  app's NEXT_PUBLIC_PLATFORM_VERSION / release title has been stuck reporting
+  "v1.0.2 / Release Automation v2" through 11 subsequent real releases.
+  This directly breaks the post-deploy truth-check invariant ("/api/version"
+  == tag) described in the release-engineering pack, for every release since
+  v1.0.2 — not just this one. This is a pre-existing condition, confirmed now
+  with a concrete causal mechanism (previously I2 recorded the symptom; this
+  adds the root cause). NOT introduced by this sprint. NOT fixed by this agent
+  (out of scope; tag-convention resolution is Tom decides per pack).
+  If V1.0.14 is tagged with a capital V (continuing current practice), the
+  running app will continue to silently report "v1.0.2" and the post-deploy
+  truth-check will keep failing silently until Tom resolves the tag-case
+  convention (I2).
+
+================================================================================
+OPEN "TOM APPROVES" / "TOM DECIDES" ITEMS (not resolved by this agent)
+================================================================================
+(a) Gate 5 — accessibility review of TrackingScripts.tsx / verification meta
+    output — not run, out of release-engineering scope.
+(b) Gate 6 — security review of customScripts injection (siteConfig.integrations
+    allows tenant-configured script injection into rendered pages) — not run,
+    out of release-engineering scope. Flagging explicitly given script-injection
+    surface area.
+(c) ADR-013 acceptance — currently status "Proposed" in
+    docs/architecture/architecture-decisions.md. Not yet accepted by Tom.
+(d) P0 DEFECT — ADR-013 contains an unverified claim ("Livener uses GTM,
+    Martegani does not"). To be corrected at ADR review; not verified against
+    live tenant configuration by any agent in this pipeline.
+(e) NEW — Tag-case convention (I2): V1.0.14 (capital V, continuing observed
+    practice) vs switching to lowercase v (matching next.config.ts's stated
+    intent and CLAUDE.md's capital-V documentation itself conflicts with the
+    tool's lowercase-only git describe pattern — the two sources disagree with
+    each other, not just with practice). Tom decides. Do not pick one; this
+    build log's "V1.0.14" is a recommendation only, structured to match
+    current majority practice, not a resolution of I2.
+(f) Gate 3 could not be executed in this sandbox (filesystem permission block,
+    detailed above, RE-CONFIRMED via a second, independent mechanism in round
+    2 — see GATE RESULTS — ROUND 2 RE-RUN) — Tom must run the deterministic
+    build locally before release.
+(g) NEW (round 2) — Interim consent gap: `filterCustomScripts()` in
+    src/lib/tracking/custom-scripts.ts supports consent-category gating, but
+    no consent-management UI/state currently supplies a `ConsentState` at any
+    call site in TrackingScripts.tsx — the consent parameter is optional and,
+    when omitted, the filter falls back to enabled+placement filtering only
+    (i.e. functionally equivalent to no consent gating yet). This is a known,
+    documented interim gap pending Gate 6 security review and a consent-UI
+    decision — flagged here so it is not lost, not resolved by this agent.
+
+================================================================================
+ROUND 3 — analyticsEnabled / consentModeEnabled master toggles (added
+2026-07-10, all uncommitted on `dev`)
+================================================================================
+Delta on top of ROUND 1 + ROUND 2. All prior files remain unchanged in
+disposition except schema.ts, queries.ts, types.ts, TrackingScripts.tsx,
+custom-scripts.ts, custom-scripts.test.ts, and the three doc files, which
+received additional edits described below.
+
+- src/lib/sanity/schema.ts
+    Two new booleans added first inside the `integrations` object/field group
+    on siteConfig: `analyticsEnabled` (initialValue false — tenant master
+    switch for all tracking) and `consentModeEnabled` (initialValue false —
+    records whether the tenant has opted into consent-aware script loading).
+    Verified fact — confirmed at src/lib/sanity/schema.ts:3099 (`analyticsEnabled`)
+    and :3106 (`consentModeEnabled`).
+- src/lib/sanity/queries.ts
+    Both fields projected in `websiteSiteConfigQuery` only (queries.ts:175-176).
+    Verified fact — confirmed NOT present in `siteConfigFaviconQuery` (grepped
+    the query body; no match). This is deliberate per Tom's verification-
+    independence rule: favicon/verification-tag rendering must not depend on
+    the analytics gate.
+- src/lib/sanity/types.ts
+    `SiteConfigIntegrations` extended with `analyticsEnabled?: boolean` and
+    `consentModeEnabled?: boolean` (types.ts:507, :509).
+- src/components/TrackingScripts.tsx
+    New master gate at the top of the component: `if (!integrations ||
+    !isProduction() || integrations.analyticsEnabled !== true) return null`
+    (line 67) — strict `!== true` fail-closed check, layered on top of the
+    pre-existing production-only gate, before GA4/GTM/Pixel/customScripts are
+    considered. `consentModeEnabled` is read off `integrations` and passed
+    through the new `consentStateFor(consentModeEnabled)` helper to derive the
+    `ConsentState` fed into `filterCustomScripts` (line 75). Verification meta
+    tags remain outside this gate (unchanged, still render in all
+    environments) — confirmed by inspection of the component, consistent with
+    docs/architecture/architecture-decisions.md's stated exemption.
+- src/lib/tracking/custom-scripts.ts
+    New `consentStateFor(consentModeEnabled: boolean | undefined):
+    ConsentState | undefined` helper (custom-scripts.ts:105). When
+    `consentModeEnabled` is `true`, returns a synthetic no-consent state
+    (`{ analytics: false, marketing: false }`) so `analytics`/`marketing`
+    custom scripts fail closed pre-consent; when `false`/`undefined`, returns
+    `undefined` (prior interim ungated behavior, unchanged).
+- src/lib/tracking/__tests__/custom-scripts.test.ts
+    Grew from 17 to 22 tests (+5 new, covering `consentStateFor`'s two
+    branches and their interaction with `filterCustomScripts`). Verified fact
+    — confirmed 22 `it(`/`test(` occurrences in the file and 22 tests reported
+    green in the Gate 2 re-run below.
+- docs/architecture/architecture-decisions.md, docs/config-architecture.md,
+  CLAUDE.md
+    All three updated to document the two new toggles, the fail-closed
+    master-switch behavior, the verification-tag exemption, and the interim
+    consent-gap framing (now narrowed but not closed — see open item (g),
+    unchanged wording, still applies to tenants with `consentModeEnabled`
+    off, which is the default).
+- docs/engineering/agent-system/evaluations/2026-07-10-sprint1-round2.md
+    New orchestrator round-2 evaluation record, added since this agent's
+    round-2 run. Not authored by release-engineering; included in the final
+    commit list below per the same rule applied to the 5 round-1 evaluation
+    records (sprint evaluation records under evaluations/ ARE part of this
+    release).
+- build-log-V1.0.14.txt (this file)
+    Updated with this ROUND 3 section, the revised final proposed-commit file
+    list, and the proposed commit message / release title (below).
+
+================================================================================
+GATE RESULTS — ROUND 3 RE-RUN (run 2026-07-10, same sandbox, after
+analyticsEnabled/consentModeEnabled delta)
+================================================================================
+
+Gate 1 — Type check (npx tsc --noEmit): PASS
+    Clean run, zero errors, zero output. Re-run in full after the round 3
+    delta (schema.ts, queries.ts, types.ts, TrackingScripts.tsx,
+    custom-scripts.ts).
+
+Gate 2 — Test suite (npx vitest run): PASS WITH KNOWN FLAKES (same 2
+pre-existing timeouts as rounds 1–2; no new failures)
+    Test Files: 2 failed | 3 passed (5 total)
+    Tests:      2 failed | 214 passed (216 total)
+    src/lib/tracking/__tests__/custom-scripts.test.ts: 22 tests, ALL PASS
+    (Verified fact — confirmed present and green in this run; up from 17 in
+    round 2, matching the +5 new consentStateFor tests exactly).
+    Failures (identical to rounds 1 and 2, same two tests, same error, same
+    location, both pre-existing and unrelated to this sprint's diff):
+      - src/lib/modules/__tests__/validate.test.ts >
+        "live MODULE_REGISTRY > passes all structural rules without throwing"
+        — Error: Test timed out in 5000ms
+      - src/lib/modules/__tests__/navigation.test.ts >
+        "buildCollectionItems — live MODULE_REGISTRY > returns no items for the
+        Live module (no collections)" — Error: Test timed out in 5000ms
+    Test count went from 211 (round 2) to 216 (round 3) — delta of +5,
+    exactly matching the new consentStateFor tests in custom-scripts.test.ts.
+    No other file's test count changed. Matches the task brief's expectation
+    of "~216 tests with the 2 known pre-existing module-registry timeout
+    flakes" exactly.
+
+Gate 3 — Deterministic build: NOT RE-ATTEMPTED — remains BLOCKED BY SANDBOX,
+same established reason
+    Not re-attempted this round: the task brief instructs not to burn time
+    re-attempting Gate 3 without a genuinely new idea that avoids touching
+    next.config.ts, and none has emerged since round 2. Round 1 showed
+    `rm -rf .next` fails outright (FUSE-backed mount, EPERM on every file).
+    Round 2 showed, independently, that `npx next build` itself performs an
+    internal unlink of `.next/.DS_Store` at build start and hits the same
+    EPERM/FUSE wall even when the manual `rm -rf` step is skipped in favor of
+    a narrower stray-file removal. Two independent mechanisms, same root
+    cause, both confirmed. No distDir override exists outside next.config.ts
+    (out of bounds for this agent). Gate 3 remains NOT RUN.
+    ESCALATION UNCHANGED: Tom must run `rm -rf .next && npx next build`
+    locally before this release can be considered build-verified.
+
+Gate 7 — Version integrity re-verified for round 3: NO CHANGE.
+`git status --short`, `git log --oneline -5`, `git tag --sort=-creatordate`,
+`package.json`, and `release.json` were all re-checked after the round 3
+delta landed in the working tree.
+    `git log --oneline -5`:
+      b78dccc Engineering Playbook v1.0: adopt governance baseline
+      136358a V1.0.13: Fix FeaturedPostCard image width — maxHeight+aspect-ratio
+               was recomputing container width to 853px
+      158ed23 V1.0.12: Fix PostCardLarge cover image width — replace
+               aspect-ratio with padding-top 56.25% (flex/aspect-ratio
+               browser inconsistency)
+      7639161 V1.0.12: Fix PostCardLarge image not spanning full card width
+               (missing w-full on aspect-ratio wrapper)
+      3ba7ce9 V1.0.11: Image sizing — MediaContentSection hover + always
+               overflow-hidden, blog hero 16:9 aspect ratio, remove debug log
+    HEAD is still b78dccc — no new commits, no new tags since round 1.
+    `git tag --sort=-creatordate | head -5`: V1.0.13, V1.0.4, V1.0.5, V1.0.3,
+    v1.0.2 — unchanged. `package.json` version still "1.0.2"; `release.json`
+    still `{ "version": "v1.0.2", "title": "Release Automation v2" }` —
+    unchanged. V1.0.14 remains the correct proposed next version; the I2
+    tag-case split-brain (documented in full under VERSION ANALYSIS above)
+    is unchanged and still `Tom decides`.
+
+`git status --short` re-verification (round 3, full working tree):
+    M  CLAUDE.md
+    M  docs/architecture/architecture-decisions.md
+    M  docs/config-architecture.md
+    M  next-env.d.ts
+    M  src/app/[locale]/(website)/[tenant]/layout.tsx
+    M  src/lib/sanity/queries.ts
+    M  src/lib/sanity/schema.ts
+    M  src/lib/sanity/types.ts
+    ?? .claude/
+    ?? build-log-V1.0.14.txt
+    ?? docs/engineering/agent-system/
+    ?? src/components/TrackingScripts.tsx
+    ?? src/lib/tracking/
+
+  This is identical in shape to the round 2 `git status --short` output —
+  round 3 only added lines inside already-modified/already-untracked files
+  and paths (schema.ts, queries.ts, types.ts, TrackingScripts.tsx,
+  custom-scripts.ts, custom-scripts.test.ts, the three docs files, and one
+  new file under docs/engineering/agent-system/evaluations/ which is already
+  covered by the untracked docs/engineering/agent-system/ directory entry).
+  No new top-level paths appeared. Expected-vs-unexpected assessment from
+  round 2 stands unchanged: next-env.d.ts, .claude/, and
+  docs/engineering/agent-system/ minus the (now 6) sprint evaluation records
+  remain flagged as NOT to be staged.
+
+================================================================================
+PROPOSED VERSION AND COMMIT DETAILS (Tom asked explicitly — final, round 3)
+================================================================================
+
+PROPOSED COMMIT MESSAGE:
+  V1.0.14: Analytics & Site Verification Infrastructure — siteConfig.integrations
+  (GA4/GTM/Meta Pixel/verification/custom scripts), TrackingScripts with
+  analyticsEnabled master gate + consentModeEnabled consent-ready filtering
+  (ADR-013 proposed)
+
+  Rationale: matches the observed `V{version}: description` one-line
+  convention exactly (checked against the 5 most recent commit subjects in
+  `git log --oneline -5` above — all are `V{version}: <imperative/descriptive
+  summary>`, single line, no body). The proposed message is the task's
+  suggested wording verbatim — it was checked against convention and found
+  already compliant (single line, capital V, colon-separated version prefix,
+  honest and complete description of all three rounds' scope: base
+  integrations model, the master analytics gate, and the consent-readiness
+  hardening). No changes recommended.
+
+PROPOSED RELEASE TITLE (for the eventual tag/release notes):
+  V1.0.14 — Analytics & Site Verification Infrastructure
+
+  Rationale: mirrors `release.json`'s existing `title` field convention
+  (short name, no colon-description, e.g. "Release Automation v2") while
+  keeping the version prefix consistent with the commit-message convention
+  above. Deliberately shorter than the commit message — a release title is
+  a label, not a change summary.
+
+Both are AI recommendations (`AI recommends` per spine §4) — Tom chooses
+final wording; neither has been applied anywhere (no commit exists).
+
+================================================================================
+PROPOSED COMMIT — FINAL, REVISED FOR ROUND 3 (DO NOT EXECUTE — Tom runs
+locally)
+================================================================================
+This supersedes the round 1 and round 2 proposed commits above. File list now
+covers round 1 + round 2 + round 3 + all 6 evaluation records (5 sprint-1
+round-1 records + the round-2 record) + this build log. Explicit paths
+only — never `git add -A` (per CLAUDE.md's V0.8.2 incident lesson). No file
+list changed shape between round 2 and round 3 except the addition of the
+round-2 evaluation record — schema.ts/queries.ts/types.ts/
+TrackingScripts.tsx/custom-scripts.ts/custom-scripts.test.ts were already in
+the round 2 list and only grew internally.
+
+git checkout dev
+
+git add CLAUDE.md \
+        docs/architecture/architecture-decisions.md \
+        docs/config-architecture.md \
+        src/app/\[locale\]/\(website\)/\[tenant\]/layout.tsx \
+        src/lib/sanity/queries.ts \
+        src/lib/sanity/schema.ts \
+        src/lib/sanity/types.ts \
+        src/components/TrackingScripts.tsx \
+        src/lib/tracking/custom-scripts.ts \
+        src/lib/tracking/__tests__/custom-scripts.test.ts \
+        docs/engineering/agent-system/evaluations/2026-07-10-sprint1-documentation.md \
+        docs/engineering/agent-system/evaluations/2026-07-10-sprint1-frontend-sections.md \
+        docs/engineering/agent-system/evaluations/2026-07-10-sprint1-release-engineering.md \
+        docs/engineering/agent-system/evaluations/2026-07-10-sprint1-sanity-content-contracts.md \
+        docs/engineering/agent-system/evaluations/2026-07-10-sprint1-workflow.md \
+        docs/engineering/agent-system/evaluations/2026-07-10-sprint1-round2.md \
+        build-log-V1.0.14.txt
+
+git commit -m "V1.0.14: Analytics & Site Verification Infrastructure — siteConfig.integrations (GA4/GTM/Meta Pixel/verification/custom scripts), TrackingScripts with analyticsEnabled master gate + consentModeEnabled consent-ready filtering (ADR-013 proposed)"
+
+git push origin dev
+
+# STOP. Wait for Tom to verify on https://dev.abluo.app before any further
+# action (preview/main promotion). Do not proceed past this point without
+# explicit approval, per the literal STOP gates in CLAUDE.md and the spine.
+
+Note: the following are deliberately NOT included in `git add` — confirmed
+pre-existing/unrelated working-tree noise, not part of Sprint 1 (see the
+round 2 and round 3 Gate 7 expected-vs-unexpected assessments above for the
+evidence):
+  - next-env.d.ts (auto-generated Next.js file, path-only diff)
+  - .claude/ (Engineering OS agent-definition scaffolding + .DS_Store)
+  - docs/engineering/agent-system/ MINUS the 6 evaluation records listed above
+    (README.md, context-pack-spec.md, context-pack-template.md,
+    context-spine.md, handoff-format.md, maturity-evaluation.md,
+    packs/*.pack.md — the Engineering OS framework rollout itself, not
+    sprint 1 content)
+  - docs/engineering/agent-system/evaluations/2026-07-10-pilot-documentation.md
+    (a 7th evaluation record that exists but is NOT a sprint-1 record — a
+    pilot record, out of scope for this commit)
+Do not use `git add -A`.
+
+Before this commit, Tom should also independently run:
+  rm -rf .next && npx next build
+locally, since Gate 3 could not be executed in the sandbox in any of the
+three rounds (see round 1 and round 2 Gate 3 sections above for the two
+distinct pieces of evidence; round 3 did not re-attempt per the task brief's
+explicit instruction not to burn time without a genuinely new idea).
+
+================================================================================
+ROUND 4 — fail-closed consent mode (final safety clarification, added
+2026-07-10, all uncommitted on `dev`)
+================================================================================
+Delta on top of ROUND 1 + ROUND 2 + ROUND 3. All prior files remain unchanged
+in disposition except schema.ts (descriptions only, no shape change),
+custom-scripts.ts, TrackingScripts.tsx, custom-scripts.test.ts, and the three
+doc files, which received additional edits described below. This round
+SETTLES the open item deferred at the end of round 2/3 (open item (g) /
+"ships later" gap): what should happen to the built-in GA4/GTM/Meta Pixel
+snippets when `consentModeEnabled` is on and no consent mechanism exists yet.
+
+- src/lib/sanity/schema.ts
+    Description-only changes — Verified fact, confirmed by direct inspection
+    (schema.ts:3106-3111 `consentModeEnabled`, schema.ts:3186-3200
+    `consentCategory`): no `type`, `initialValue`, `options.list`, or
+    `validation` changed. `consentModeEnabled`'s description now reads
+    "Fail-closed consent gate. When on and no valid visitor consent exists,
+    ALL tracking is blocked — GA4, GTM, Meta Pixel, and
+    Analytics/Marketing/Functional custom scripts. Only Necessary custom
+    scripts (Abluo-admin-approved) still load...". `consentCategory`'s
+    description was updated to match (mentions the same fail-closed rule and
+    now lists Functional alongside Analytics/Marketing as blocked pre-consent).
+    Because this is Studio-copy-only, it requires no migration consideration
+    under the Schema Evolution Rules (no stored-document shape is affected).
+- src/lib/tracking/custom-scripts.ts
+    `ConsentState` interface extended with a third field, `functional:
+    boolean` (previously `analytics`/`marketing` only) — Verified fact,
+    confirmed at custom-scripts.ts:22 (interface) and :102/:139
+    (`filterCustomScripts`'s functional-category gate,
+    `consentStateFor`'s three-key return).
+    `filterCustomScripts` gates `consentCategory === 'functional'` against
+    `consent.functional` identically to the analytics/marketing branches
+    (custom-scripts.ts ~line 102).
+    `consentStateFor(consentModeEnabled)`: when `true`, now returns
+    `{ analytics: false, marketing: false, functional: false }` (was
+    two-key in round 3); when `false`/`undefined`, still returns `undefined`
+    (behavior unchanged for that branch).
+    NEW `builtInTrackingAllowed(consentModeEnabled: boolean | undefined):
+    boolean` helper (custom-scripts.ts, near end of file) — returns `false`
+    when `consentModeEnabled === true`, else `true`. TSDoc states this is
+    "Tom's decided rule (Sprint 1, Round 4 — settles the question deferred in
+    Round 3)": GA4/GTM/Meta Pixel must NOT load when consent mode is on and
+    no consent exists; "the consent feature ships later" is not permission to
+    load tracking before it does.
+- src/components/TrackingScripts.tsx
+    Verified fact (read in full, custom-scripts.ts:1-156 as rendered): now
+    imports `builtInTrackingAllowed` alongside `filterCustomScripts` /
+    `consentStateFor` (line 6). Computes `const builtInsAllowed =
+    builtInTrackingAllowed(consentModeEnabled)` (line 91) and gates every
+    built-in output behind it:
+      - `bodyEnd` branch: GTM `<noscript>` iframe now `{builtInsAllowed &&
+        googleTagManagerId && (...)}` (line 96) — was previously gated on
+        `googleTagManagerId` alone.
+      - `head` branch: GA4 loader+config (`{builtInsAllowed &&
+        googleAnalyticsId && (...)}`, line 116), GTM bootstrap
+        (`{builtInsAllowed && googleTagManagerId && (...)}`, line 126), and
+        Meta Pixel bootstrap + its `<noscript>` pixel image
+        (`{builtInsAllowed && metaPixelId && (...)}`, line 133) are all now
+        gated the same way.
+    Custom scripts (`scriptsForPlacement`) are UNCHANGED in this round —
+    they were already routed through `filterCustomScripts` +
+    `consentStateFor` since round 2/3; the `functional` category is the only
+    behavioral change for them, inherited automatically via the
+    `ConsentState` type extension (no code change needed at the call site
+    for that part).
+    Header comment block rewritten (lines 9-72) to document both master
+    toggles (`analyticsEnabled` from round 3, `consentModeEnabled` fail-closed
+    behavior now covering built-ins from round 4) and to state explicitly:
+    verification meta tags remain outside both gates (unchanged, still
+    render unconditionally via `generateMetadata`).
+- src/lib/tracking/__tests__/custom-scripts.test.ts
+    Restructured; grew from 22 tests (round 3) to 26 tests (round 4) — +4 net.
+    Verified fact — confirmed 26 tests reported green in the Gate 2 run below,
+    matching the task brief's "26 tracking" expectation exactly. Covers the
+    `functional` ConsentState key and the new `builtInTrackingAllowed`
+    helper's two branches, plus restructuring of prior consentStateFor tests
+    around the three-key shape.
+- docs/architecture/architecture-decisions.md
+    ADR-013 Consent section rewritten: per-category table added, "deferred"
+    framing removed (the built-ins question is no longer open — it is
+    decided and implemented). Status remains Proposed (round 4 did not
+    accept it — acceptance is Tom's action, not this pipeline's).
+- docs/config-architecture.md, CLAUDE.md
+    Updated to describe the fail-closed consent-mode behavior now covering
+    built-in trackers, not just custom scripts.
+- docs/engineering/agent-system/evaluations/2026-07-10-sprint1-round3.md
+    New orchestrator round-3 evaluation record, added since this agent's
+    round-3 run — same treatment as the round-1 and round-2 evaluation
+    records: it IS part of this release's proposed commit (see revised file
+    list below). A round-4 evaluation record
+    (2026-07-10-sprint1-round4.md) is expected to be written by the
+    Orchestrator after this round completes; it is listed below in
+    anticipation per the task brief's explicit instruction, and Tom/the
+    Orchestrator should confirm it exists before running the proposed
+    commit.
+- build-log-V1.0.14.txt (this file)
+    Updated with this ROUND 4 section, the revised final proposed-commit
+    file list, and a re-examined commit message / release title.
+
+================================================================================
+GATE RESULTS — ROUND 4 RE-RUN (run 2026-07-10, same sandbox, after
+consent-mode fail-closed delta)
+================================================================================
+
+Gate 1 — Type check (npx tsc --noEmit): PASS
+    Clean run, zero errors, zero output.
+
+Gate 2 — Test suite (npx vitest run): PASS WITH KNOWN FLAKES (same 2
+pre-existing timeouts as rounds 1–3; no new failures)
+    Test Files: 2 failed | 3 passed (5 total)
+    Tests:      2 failed | 218 passed (220 total)
+    src/lib/tracking/__tests__/custom-scripts.test.ts: 26 tests, ALL PASS
+    (Verified fact — confirmed present and green in this run; up from 22 in
+    round 3, matching the task brief's "~220 total (26 tracking)" expectation
+    exactly).
+    Failures (identical to rounds 1–3, same two tests, same error, same
+    location, both pre-existing and unrelated to this sprint's diff):
+      - src/lib/modules/__tests__/validate.test.ts >
+        "live MODULE_REGISTRY > passes all structural rules without throwing"
+        — Error: Test timed out in 5000ms
+      - src/lib/modules/__tests__/navigation.test.ts >
+        "buildCollectionItems — live MODULE_REGISTRY > returns no items for the
+        Live module (no collections)" — Error: Test timed out in 5000ms
+    Test count went from 216 (round 3) to 220 (round 4) — delta of +4,
+    matching the custom-scripts.test.ts restructuring (22 -> 26). No other
+    file's test count changed.
+
+Gate 3 — Deterministic build: NOT RUN — remains structurally BLOCKED BY
+SANDBOX, same established reason, NOT RE-ATTEMPTED per instruction
+    Per the task brief for this round, Gate 3 was not re-attempted: it is
+    "known structurally blocked (two EPERM mechanisms, rounds 1–2)" and no
+    genuinely new workaround has emerged. Round 1 established `rm -rf .next`
+    fails outright (FUSE-backed mount, EPERM on every file under `.next/`).
+    Round 2 established, independently, that `npx next build` itself
+    performs an internal unlink of `.next/.DS_Store` at build start and hits
+    the identical EPERM/FUSE wall even when the manual `rm -rf` step is
+    narrowed to stray-file removal only. Two independent mechanisms, same
+    root cause, both previously confirmed; no distDir override exists
+    outside next.config.ts (out of bounds for this agent). Gate 3 remains
+    NOT RUN. ESCALATION UNCHANGED: Tom must run `rm -rf .next && npx next
+    build` locally before this release can be considered build-verified.
+
+Gate 7 — Version integrity re-verified for round 4: NO CHANGE.
+`git status --short` and `git log --oneline -2` were re-checked after the
+round 4 delta landed in the working tree.
+    `git log --oneline -2`:
+      b78dccc Engineering Playbook v1.0: adopt governance baseline
+      136358a V1.0.13: Fix FeaturedPostCard image width — maxHeight+aspect-ratio
+               was recomputing container width to 853px
+    HEAD is still b78dccc — no new commits, no new tags since round 1.
+    V1.0.13 remains the last real tagged release; V1.0.14 remains the
+    correct proposed next version. The I2 tag-case split-brain (documented
+    in full under VERSION ANALYSIS above, rounds 1-3) is unchanged and still
+    `Tom decides` — not re-litigated this round, no new evidence.
+
+`git status --short` re-verification (round 4, full working tree):
+    M  CLAUDE.md
+    M  docs/architecture/architecture-decisions.md
+    M  docs/config-architecture.md
+    M  next-env.d.ts
+    M  src/app/[locale]/(website)/[tenant]/layout.tsx
+    M  src/lib/sanity/queries.ts
+    M  src/lib/sanity/schema.ts
+    M  src/lib/sanity/types.ts
+    ?? .claude/
+    ?? build-log-V1.0.14.txt
+    ?? docs/engineering/agent-system/
+    ?? src/components/TrackingScripts.tsx
+    ?? src/lib/tracking/
+
+  Identical in shape to rounds 2–3: no new top-level tracked-or-untracked
+  path appeared. `src/lib/sanity/types.ts` grew earlier (round 2/3) but is
+  not re-touched by the round-4 delta description above; re-checked via
+  `git diff --stat` (8 files changed: CLAUDE.md, architecture-decisions.md,
+  config-architecture.md, next-env.d.ts, layout.tsx, queries.ts, schema.ts,
+  types.ts — 334 insertions / 3 deletions across the tracked-file diff;
+  types.ts's line count is unchanged since round 3 because `functional` was
+  added only to the `ConsentState` interface, which lives in
+  src/lib/tracking/custom-scripts.ts, not types.ts). Expected-vs-unexpected
+  assessment from rounds 2-3 stands unchanged: next-env.d.ts, .claude/, and
+  docs/engineering/agent-system/ minus the sprint evaluation records remain
+  flagged as NOT to be staged.
+
+================================================================================
+PROPOSED VERSION AND COMMIT DETAILS — RECONSIDERED FOR ROUND 4
+================================================================================
+
+The round-3 build log proposed this commit message (verbatim):
+  "V1.0.14: Analytics & Site Verification Infrastructure —
+  siteConfig.integrations (GA4/GTM/Meta Pixel/verification/custom scripts),
+  TrackingScripts with analyticsEnabled master gate + consentModeEnabled
+  consent-ready filtering (ADR-013 proposed)"
+
+Re-examined against the round 4 delta: the phrase "consentModeEnabled
+consent-ready filtering" was accurate through round 3, where
+`consentModeEnabled` only gated the CUSTOM scripts path (via
+`filterCustomScripts`/`consentStateFor`) and the built-in GA4/GTM/Meta Pixel
+question was explicitly open/deferred (open item (g)). As of round 4, that
+is no longer the shape of the feature: `consentModeEnabled` now also blocks
+GA4, GTM, and Meta Pixel outright via `builtInTrackingAllowed`. "Consent-
+ready filtering" undersells this — it reads as "prepared for a future
+consent feature" (opt-in, forward-looking), whereas the round-4 behavior is
+an active, present-tense gate that blocks real tracking today whenever a
+tenant turns `consentModeEnabled` on. A commit message that still said
+"consent-ready filtering" would not accurately describe what ships.
+
+RECOMMENDATION (AI recommends — Tom chooses final wording): the commit
+message and release title should be updated to say "fail-closed consent
+mode" (or equivalent language making clear it actively blocks tracking, not
+just "readies" for a future feature).
+
+PROPOSED COMMIT MESSAGE (revised, round 4):
+  V1.0.14: Analytics & Site Verification Infrastructure —
+  siteConfig.integrations (GA4/GTM/Meta Pixel/verification/custom scripts),
+  TrackingScripts with analyticsEnabled master gate + fail-closed consent
+  mode (consentModeEnabled blocks GA4/GTM/Meta Pixel and
+  Analytics/Marketing/Functional custom scripts pre-consent) (ADR-013
+  proposed)
+
+PROPOSED RELEASE TITLE (revised, round 4):
+  V1.0.14 — Analytics & Site Verification Infrastructure (fail-closed
+  consent mode)
+
+Rationale for both: same conventions established in round 3 (single-line,
+`V{version}:` prefix for the commit message per `git log --oneline`
+precedent; short label, no colon-description, for the release title per
+`release.json`'s `title` field precedent) — only the descriptive substance
+of the consent-mode clause changed, to keep the message honest about what
+now actually blocks tracking rather than merely "filtering."
+
+Both are AI recommendations (`AI recommends` per spine §4) — Tom chooses
+final wording; neither has been applied anywhere (no commit exists).
+
+================================================================================
+PROPOSED COMMIT — FINAL, REVISED FOR ROUND 4 (DO NOT EXECUTE — Tom runs
+locally)
+================================================================================
+This supersedes the round 1/2/3 proposed commits above. File list now covers
+rounds 1-4 + all 7 evaluation records (5 sprint-1 round-1 records + the
+round-2 record + the round-3 record) + this build log. The round-4
+evaluation record (2026-07-10-sprint1-round4.md), expected to be written by
+the Orchestrator after this round, is listed in anticipation — CONFIRM IT
+EXISTS before running this commit; if it does not yet exist, omit that one
+line and re-add it once written. Explicit paths only — never `git add -A`
+(per CLAUDE.md's V0.8.2 incident lesson).
+
+git checkout dev
+
+git add CLAUDE.md \
+        docs/architecture/architecture-decisions.md \
+        docs/config-architecture.md \
+        src/app/\[locale\]/\(website\)/\[tenant\]/layout.tsx \
+        src/lib/sanity/queries.ts \
+        src/lib/sanity/schema.ts \
+        src/lib/sanity/types.ts \
+        src/components/TrackingScripts.tsx \
+        src/lib/tracking/custom-scripts.ts \
+        src/lib/tracking/__tests__/custom-scripts.test.ts \
+        docs/engineering/agent-system/evaluations/2026-07-10-sprint1-documentation.md \
+        docs/engineering/agent-system/evaluations/2026-07-10-sprint1-frontend-sections.md \
+        docs/engineering/agent-system/evaluations/2026-07-10-sprint1-release-engineering.md \
+        docs/engineering/agent-system/evaluations/2026-07-10-sprint1-sanity-content-contracts.md \
+        docs/engineering/agent-system/evaluations/2026-07-10-sprint1-workflow.md \
+        docs/engineering/agent-system/evaluations/2026-07-10-sprint1-round2.md \
+        docs/engineering/agent-system/evaluations/2026-07-10-sprint1-round3.md \
+        docs/engineering/agent-system/evaluations/2026-07-10-sprint1-round4.md \
+        build-log-V1.0.14.txt
+
+git commit -m "V1.0.14: Analytics & Site Verification Infrastructure — siteConfig.integrations (GA4/GTM/Meta Pixel/verification/custom scripts), TrackingScripts with analyticsEnabled master gate + fail-closed consent mode (consentModeEnabled blocks GA4/GTM/Meta Pixel and Analytics/Marketing/Functional custom scripts pre-consent) (ADR-013 proposed)"
+
+git push origin dev
+
+# STOP. Wait for Tom to verify on https://dev.abluo.app before any further
+# action (preview/main promotion). Do not proceed past this point without
+# explicit approval, per the literal STOP gates in CLAUDE.md and the spine.
+
+Note: the following remain deliberately NOT included in `git add` — confirmed
+pre-existing/unrelated working-tree noise, not part of Sprint 1 (see the
+round 2/3 Gate 7 expected-vs-unexpected assessments above for the evidence):
+  - next-env.d.ts (auto-generated Next.js file, path-only diff)
+  - .claude/ (Engineering OS agent-definition scaffolding + .DS_Store)
+  - docs/engineering/agent-system/ MINUS the 7 evaluation records listed above
+    (README.md, context-pack-spec.md, context-pack-template.md,
+    context-spine.md, handoff-format.md, maturity-evaluation.md,
+    packs/*.pack.md — the Engineering OS framework rollout itself, not
+    sprint 1 content)
+  - docs/engineering/agent-system/evaluations/2026-07-10-pilot-documentation.md
+    (a pilot record, out of scope for this commit)
+Do not use `git add -A`.
+
+Before this commit, Tom should also independently run:
+  rm -rf .next && npx next build
+locally, since Gate 3 could not be executed in the sandbox in any round (see
+round 1 and round 2 Gate 3 sections for the two distinct pieces of evidence;
+rounds 3-4 did not re-attempt per each round's explicit instruction not to
+burn time without a genuinely new idea).

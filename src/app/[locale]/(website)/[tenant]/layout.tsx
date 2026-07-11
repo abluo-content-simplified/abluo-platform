@@ -15,6 +15,7 @@ import { DevBadge } from '@/components/DevBadge'
 import { isProduction } from '@/lib/deployment'
 import { EarlyAccessWrapper } from '@/components/forms/EarlyAccessWrapper'
 import { SlugMapRoot } from '@/components/SlugMapContext'
+import { TrackingScripts } from '@/components/TrackingScripts'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -398,6 +399,8 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
       faviconPng?:      { asset?: { _ref: string } }
       openGraphImage?:  { asset?: { _ref: string } }
       appleTouchIcon?:  { asset?: { _ref: string } }
+      googleSiteVerification?: string
+      bingSiteVerification?:   string
     }>(siteConfigFaviconQuery, {}),
     fetchForTenant<DesignSystem>(designSystemQuery, {}),
   ])
@@ -442,6 +445,19 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
     // Vercel already sends x-robots-tag: noindex on preview deployments,
     // but this ensures the meta tag is also present for belt-and-suspenders.
     ...(!isProduction() ? { robots: { index: false, follow: false } } : {}),
+    // Site-ownership verification meta tags — render in every environment
+    // (unlike TrackingScripts, these are not production-gated: verifying
+    // ownership on a preview/dev deployment is harmless and sometimes needed).
+    ...(siteConfigFavicon?.googleSiteVerification || siteConfigFavicon?.bingSiteVerification
+      ? {
+          verification: {
+            ...(siteConfigFavicon?.googleSiteVerification ? { google: siteConfigFavicon.googleSiteVerification } : {}),
+            ...(siteConfigFavicon?.bingSiteVerification
+              ? { other: { 'msvalidate.01': siteConfigFavicon.bingSiteVerification } }
+              : {}),
+          },
+        }
+      : {}),
   }
 }
 
@@ -481,6 +497,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
       <SlugMapRoot>
       <EarlyAccessWrapper tenantSlug={tenantId} projectSlug={tenantToProjectSlug(tenantId)} locale={locale}>
         <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
+        <TrackingScripts integrations={livenerConfig?.integrations} />
         {livenerBgStyles && livenerBgGraphic?.scope === 'entire' && (
           <div style={livenerBgStyles} aria-hidden="true" />
         )}
@@ -518,6 +535,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
           }
         />
         <main>{children}</main>
+        <TrackingScripts integrations={livenerConfig?.integrations} placement="bodyEnd" />
         <Footer tenantId={tenantId} locale={locale as SupportedLocale} defaultLocale={defaultLocale} />
         <DevBadge />
       </EarlyAccessWrapper>
@@ -538,6 +556,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
     <SlugMapRoot>
     <>
       <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
+      <TrackingScripts integrations={config?.integrations} />
       {bgStyles && bgGraphic?.scope === 'entire' && (
         <div style={bgStyles} aria-hidden="true" />
       )}
@@ -575,6 +594,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         }
       />
       <main>{children}</main>
+      <TrackingScripts integrations={config?.integrations} placement="bodyEnd" />
       <footer
         className="px-6 py-10 md:px-16 lg:px-24"
         style={{
