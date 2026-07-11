@@ -726,7 +726,7 @@ Tenant-defined custom roles are intentionally out of scope for ADR-011. They wil
 **Status:** Proposed
 **Date:** 2026-07-10
 **Supersedes:** —
-**Superseded By:** —
+**Superseded By:** ADR-014, partially — the STORAGE-LOCATION section only (`siteConfig.integrations` layout, and the Studio placement of its Studio pane). This ADR's security policy (no secrets, trusted vendors, admin-only, disabled-by-default, required `description`/`consentCategory`) and consent semantics (fail-closed under `consentModeEnabled`) remain in force, relocated onto the Integration Registry model. See ADR-014's Supersession Note for the full statement.
 
 ### Context
 
@@ -840,5 +840,142 @@ Per-script-item attribution (manual `createdBy`/`createdAt`/`modifiedBy`/`modifi
 - If a client dashboard ever needs integration management, custom scripts must be excluded or handled via a separate, audited system (not a direct Sanity field)
 - Script performance monitoring (e.g. cumulative impact of GA + GTM + Meta + custom scripts) is not currently instrumented
 - Script versioning (e.g. pinning GA to a specific version) is not supported — scripts load from their canonical CDNs
+
+---
+
+## ADR-014 — Integration Registry & the One-Configuration-Surface Principle
+
+**Status:** Proposed
+**Date:** 2026-07-11
+**Supersedes:** ADR-013, partially — the STORAGE-LOCATION section only (see Supersession Note below)
+**Superseded By:** —
+
+### Context
+
+ADR-013 placed all third-party integrations under `siteConfig.integrations` and gave Studio a single stub placeholder for them (`Project Settings → Integrations`, a `StubPane` per Phase C1 — `sanity.config.ts` ~L448–457). At the same time, `Website Settings` — the raw `siteConfig` document form (`sanity.config.ts` ~L334–350) — is where `integrations` fields actually live and are edited today, because they are a `siteConfig` object. Verification tokens (Google Search Console, Bing) live in the same object even though they are not tracking integrations at all — they are passive metadata.
+
+This produces exactly the failure mode Tom's core principle exists to prevent: a single feature (e.g. "Google Analytics") would require an admin to know that its *values* are edited in Website Settings while its *category* (Integrations) is a dead stub in Project Settings — two configuration surfaces for one concept, with the split determined by Sanity document boundaries rather than by what the feature is. `Project Settings → Analytics` (`sanity.config.ts` ~L426–435) is a second, separate stub that would duplicate the Integrations → Analytics category once built — two stubs for the same concern.
+
+The platform already has a working precedent for exactly this shape of problem: the Module Registry (ADR-010, ADR-011). `src/lib/modules/types.ts` defines `ModuleManifest` (id, label, version, `platformContract` incl. `sectionTypes`, `schemaDefinitions(): SchemaTypeDefinition[]`) and `ModuleInstallation` (per-project enable state), with `validateRegistry` guarding manifest consistency and `MODULE_REGISTRY` as the single source Studio reads from. Adding a module means writing one manifest; schema, Studio grouping, and validation all derive from it. Integrations have no equivalent — each one (GA4, GTM, Meta Pixel, Custom Scripts) is presently a hand-projected field or field-group in `siteConfig`, with no registry, no generated schema, and no shared Studio contract.
+
+Sprint 2 must decide the information architecture and registry model *before* any implementation, because it changes where fields live in Sanity (a schema/IA decision, not a code-only refactor) and because it is the gating decision for every subsequent Sprint 2 task.
+
+**Verified facts underpinning this ADR:**
+- `sanity.config.ts` ~L334–458: `Website Settings` = raw `siteConfig` document; `Project Settings` is a flat list (`General`, `Modules`, `Locales`, `Domains` stub, `Analytics` stub, `Billing` stub, `Integrations` stub), each stub built with `StubPane` and a static message.
+- `src/lib/modules/types.ts`: `ModuleManifest`, `ModuleInstallation`, `platformContract.sectionTypes`, `schemaDefinitions()`, `validateRegistry` — the pattern this ADR mirrors.
+- ADR-013 (this document, immediately above): full existing shape of `siteConfig.integrations`, its consent semantics, and its security hardening — carried over, not re-litigated, by this ADR.
+- No live integration data exists in either Sanity dataset as of 2026-07-10 (both datasets checked) — the relocation this ADR proposes is schema-and-code only; no content migration is required.
+
+### Alternatives Considered
+
+- **Status quo — keep `siteConfig.integrations` as plain fields edited in Website Settings, with the Project Settings → Integrations pane left as a permanent stub or a hand-built passthrough to those fields.** Rejected: violates the one-surface principle at scale — every new integration would again be a bespoke field group, and the split between "where you see it" (Project Settings) and "where you edit it" (Website Settings) never resolves. Storage location (Sanity object shape) leaks directly into the information architecture instead of being an implementation detail.
+- **Per-integration hand-built Studio pages** — build a dedicated custom pane for each integration (one for GA4, one for GTM, one for Meta Pixel, one for Custom Scripts, and so on for every future integration), each with its own schema fields, validation, and form. Rejected: linear cost per integration with no shared contract — N integrations means N independent implementations that will drift from each other in validation strictness, consent handling, and field layout. No registry means no `validateRegistry`-equivalent guard and no single place to audit "what integrations exist and what do they store."
+- **Split each integration's connection settings (Website Settings) from its behavioral settings (Project Settings)** — e.g. keep GA4's measurement ID in Website Settings but its enabled/disabled toggle in Project Settings. Rejected by Tom: unacceptable UX. A single integration must never require an admin to visit two Studio areas to fully configure it — this is precisely the failure ADR-013's stub-and-siteConfig split already produced and which this ADR exists to correct, not to re-introduce in a different shape.
+
+### Decision
+
+**Core principle (Tom's, verbatim in substance):** Every configurable concept in Abluo has exactly one configuration surface. Users never visit multiple locations to configure a single feature. Implementation details (Sanity vs Supabase vs env) never leak into the information architecture. Corollary: one integration = one configuration surface; one policy = one configuration surface.
+
+#### Information architecture
+
+All third-party integrations move out of Website Settings into **Project Settings → Integrations**, organized into six categories: **Analytics, Marketing, Forms, AI, Payments, Developers**. Of these, only **Analytics** (GA4, GTM, Meta Pixel) and **Developers** (Custom Scripts — relocated with its Round-2/Round-4 hardening from ADR-013 intact) are functional at launch. The remaining categories (Marketing, Forms, AI, Payments) render registry-derived coming-soon states — their presence in the category list is driven by the registry, not hardcoded per category, so a category becomes "live" the moment a manifest is registered under it, with no IA change required.
+
+The standalone `Project Settings → Analytics` stub (`sanity.config.ts` ~L426–435) is **removed** — it is now redundant under the Integrations → Analytics category.
+
+`Website Settings` keeps only genuine website-behavior fields: SEO, social, favicon, OG image, robots, sitemap, cookie-banner *appearance*, maintenance mode, header/footer. Verification tokens (Google Search Console, Bing) are **not integrations** — they carry no tracking behavior and no consent implication — and move to `siteConfig`'s `seo` field group as plain fields, alongside the site's other SEO metadata.
+
+#### Privacy — a single surface for cross-integration policy
+
+A new **Project Settings → Privacy** section is the one surface for policy that spans every integration: `consentModeEnabled`, and a global tracking kill switch that is the direct successor of ADR-013's `analyticsEnabled` — demoted from the day-to-day on/off control (that role passes to each integration's own `enabled` field) to an emergency override that can halt all tracking regardless of individual integration state. Privacy also owns the future consent-provider connection (the not-yet-built consent-collection mechanism ADR-013 flagged as missing).
+
+Every integration page shows a **read-only** consent block: *"This integration is controlled by the global Privacy settings. Open Privacy →."* No integration ever carries its own independent consent configuration — consent is a policy concept, not a per-integration field, and duplicating it per integration would immediately violate the one-surface principle for the concept of "consent."
+
+Cookie-banner *appearance* (copy, colors, position) is website behavior and stays in Website Settings; only the *policy* fields (`consentModeEnabled`, the kill switch, the future provider connection) belong to Privacy.
+
+ADR-013's fail-closed consent semantics — consent mode on + no valid consent ⇒ only `necessary`-category scripts and no built-in trackers load; "the consent feature ships later" is never itself permission to load tracking before it does — carry over **unchanged**. This ADR relocates where those settings are configured; it does not weaken, loosen, or re-litigate what they enforce.
+
+#### Integration Registry
+
+Mirrors the Module Registry (ADR-011) field-for-field in spirit:
+
+```typescript
+interface IntegrationManifest {
+  id: string
+  label: string
+  version: string
+  status: 'released' | 'beta' | 'deprecated'
+  category: 'analytics' | 'marketing' | 'forms' | 'ai' | 'payments' | 'developers'
+  icon?: string
+  docsUrl?: string
+  consentCategory: 'necessary' | 'analytics' | 'marketing' | 'functional'
+  fields: IntegrationFieldDef[]
+  storage: 'content' | 'operational'   // 'content' = Sanity, 'operational' = Supabase — per manifest for now, per field later
+  renderContract?: { component: string }
+}
+
+interface IntegrationFieldDef {
+  id: string
+  label: string
+  type: string
+  required: boolean
+  validation?: { regex: string; message: string }
+  secret: boolean
+  description: string
+}
+```
+
+Per-project state mirrors `ModuleInstallation` (ADR-011 Sub-decision B2's array-on-document model): a new `integrationConfigs` array, scoped by `projectSlug`, with entries `{ integrationId, enabled, values }`. The Sanity schema for each integration's `values` object is **generated** from its manifest's `fields` at config-build time — the same move ADR-011's `schemaDefinitions()` / `buildSchema()` already makes for modules. `validateIntegrationRegistry` guards the registry the way `validateRegistry` guards `MODULE_REGISTRY` today.
+
+Fields marked `secret: true` are the forward hook for Supabase-backed storage (e.g. a future Stripe or OpenAI integration's API key): the manifest already declares `storage`, so the pane renders identically regardless of where the value is ultimately written — only the write path differs, and only when such an integration is actually registered.
+
+**Studio:** the Integrations stub becomes an `IntegrationsPane`, built the way `ModuleList` is built for modules today — a category index showing status badges (Connected / Enabled / Consent-gated), with coming-soon categories derived from the registry (no registered manifest ⇒ coming-soon, automatically), and a per-integration self-contained page rendering `enabled`, the generated fields with validation, a docs link, and the read-only consent block described above.
+
+**Success metric:** adding a new integration is registering one manifest. Schema, validation, and the Studio form all derive from it. No new Studio page and no new schema work is required per integration — exactly the leverage ADR-011 already proved for modules.
+
+### Deferred (recorded, not scoped into this ADR)
+
+- **Per-integration environment selection.** The platform remains production-only for every integration. A manifest field is reserved for this but no UI is built.
+- **Per-field storage split.** `storage` is declared per manifest, not per field, for now — a field-level split (e.g. one field in Sanity, another in Supabase, within the same integration) is not supported until a concrete integration needs it.
+- **Client-dashboard exposure of any integration.** Still requires a superseding ADR — carried over unchanged from ADR-013's equivalent restriction on Custom Scripts, now generalized to every integration in the registry.
+
+### Supersession Note
+
+This ADR supersedes **only** ADR-013's STORAGE-LOCATION section — the description of `siteConfig.integrations` as a flat object edited in Website Settings, and the Studio placement that followed from it. It does **not** touch, weaken, or re-decide:
+
+- ADR-013's security policy: no secrets in `code`, trusted-vendor-only guidance, admin-only access, disabled-by-default, required `description` and `consentCategory` on every custom script.
+- ADR-013's consent semantics: the fail-closed behavior under `consentModeEnabled`, and Tom's Round 4 rule that the absence of a consent-collection mechanism is never itself permission to load tracking.
+
+Both carry forward unchanged, relocated onto the Integration Registry's `Developers → Custom Scripts` integration and the Privacy section respectively. ADR-013 is updated with a one-line `Superseded By` note pointing here (see above); no other content in ADR-013 is edited, consistent with the never-edit-ADRs-in-place rule — this document is the record of what changed and why.
+
+### Migration
+
+Zero live integration data exists in either Sanity dataset as of 2026-07-10 (verified, both datasets). This relocation is schema-and-code only — no content migration is required. Implementation proceeds on top of the v1.0.14 preview baseline as a new release, following the standard `dev → preview → main` STOP-gated pipeline; nothing in this ADR authorizes skipping a stage.
+
+### Phasing
+
+Each phase is independently deployable (ADR-007):
+
+| Phase | Scope |
+|---|---|
+| **A** | Integration Registry + manifests + generated schema + `validateIntegrationRegistry` |
+| **B** | Studio panes (`IntegrationsPane`, Privacy section) + IA rewire: remove `siteConfig.integrations` group, remove the `Project Settings → Analytics` stub, move verification tokens to `siteConfig.seo` |
+| **C** | Frontend consumption switch: `TrackingScripts` reads `integrationConfigs` instead of `siteConfig.integrations`; `filterCustomScripts`/consent helper semantics unchanged |
+| **D** | Docs, ADR-013 cross-references, `config-architecture.md` register update |
+
+### Consequences
+
+**Positive:**
+- Every integration has exactly one configuration surface — Tom's core principle is now structurally enforced by the registry, not just followed by convention
+- Adding an integration is a manifest, not a page — schema, validation, and Studio form all derive, matching the leverage already proven for modules (ADR-011)
+- Consent policy has exactly one home (Privacy); no integration can drift into its own bespoke consent handling
+- Storage backend (Sanity vs Supabase) is an implementation detail hidden behind `storage` and `secret` — the IA never has to change when an integration's storage needs change
+- Verification tokens are correctly classified as SEO metadata rather than tracking integrations, removing a category-confusion that existed since ADR-013
+- Zero content migration risk — the relocation is schema-and-code only
+
+**Negative:**
+- Building `IntegrationsPane` and the schema-generation pipeline is real upfront cost — a generated-form system is more work than the hand-built stub it replaces, and that cost is paid once, before any single integration benefits from it
+- The registry adds a layer of indirection: debugging "why doesn't this field validate" now means checking the manifest, the generated schema, and the render contract, rather than reading one hardcoded field definition
+- The one-time relocation (Website Settings → Project Settings → Integrations, `analyticsEnabled` → kill switch, verification tokens → `seo`) is churn for the Abluo admin's muscle memory and requires every reference to the old `siteConfig.integrations` shape (docs, any hardcoded admin bookmarks) to be updated
+- `storage` being per-manifest rather than per-field today means an integration that needs a mixed Sanity/Supabase split (unlikely at Sprint 2's scope, but plausible for a future payments integration) will require a manifest-shape change when that need arrives
 
 
