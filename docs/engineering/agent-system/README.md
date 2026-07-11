@@ -34,10 +34,10 @@ No agent may be labelled Stable or Core in this phase.
 ## How a task flows
 
 1. Tom (or a session acting for Tom) gives the task to the **orchestrator**.
-2. Orchestrator: classify decisions (§3.8) → ADR needed? → identify domains → load spine + relevant packs only → pick cheapest capable specialist → sequence (no shared-file concurrency).
+2. Orchestrator: classify decisions (§3.8) → ADR needed? → identify domains → load spine + relevant packs only → pick cheapest capable specialist → dependency & shared-file analysis: sequence dependent or file-overlapping work; fan out independent, non-overlapping work concurrently and synthesize after all handoffs return. Routine operational work (smoke tests, deployment verification, version checks) is owned by release-engineering and is delegated, not self-executed. Authoritative rules: `.claude/agents/orchestrator.md` — *Delegation ownership*, *Fan-out / fan-in*, *Delegation fallback*.
 3. Specialist: universal behaviour (spine §6) → work → gates → **Standard Handoff**.
 4. Orchestrator: accept/reject handoff → route reviews (UI→Accessibility, API/DB/auth→Security — both currently `Tom approves` escalations, see below) → verify gates → synthesize one result for Tom.
-5. Orchestrator writes evaluation records (`evaluations/`): one per participating specialist, plus a workflow record when a task involved multiple agents or review stages. The Orchestrator evaluates the engineering workflow, not only individual specialists (`maturity-evaluation.md` v1.1).
+5. Orchestrator writes evaluation records (`evaluations/`): one per participating specialist, plus a workflow record when a task involved multiple agents or review stages. The Orchestrator evaluates the engineering workflow, not only individual specialists (`maturity-evaluation.md` v1.2).
 
 ## Interim review rule
 

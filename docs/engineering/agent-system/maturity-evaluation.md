@@ -1,11 +1,12 @@
 # Agent Maturity & Evaluation
 
-**Version:** 1.1 · **Status:** Active
+**Version:** 1.2 · **Status:** Active
 **Governing Playbook section:** §3.4 (Agent maturity), §3.2 (Orchestrator synthesis & quality backstop)
 **Purpose:** Evaluation record format for Experimental agents and for engineering workflows, and the criteria for promotion, revision, merging, suspension, and retirement.
 **Owner:** Orchestrator · **Consumers:** Orchestrator, Tom
 **Update conditions:** Playbook §3.4 changes; first promotion (criteria get sharpened by real data).
 **v1.1 (2026-07-10):** promotion made explicitly evidence-based; added Evaluation Confidence, Reusability, and workflow-level evaluation. Refinements only — no change to the maturity model itself.
+**v1.2 (2026-07-11):** added five orchestration criteria to the workflow record (delegation ownership, orchestrator self-execution, parallel-delegation safety, dependency & shared-file analysis, fallback reporting) — enforcing `.claude/agents/orchestrator.md` *Delegation ownership* / *Fan-out / fan-in* / *Delegation fallback*. Triggered by the 2026-07-11 incident: the orchestrator self-executed a preview smoke test owned by release-engineering instead of fanning it out alongside an independent documentation task. No change to the maturity model or roster.
 
 ---
 
@@ -65,6 +66,11 @@ Reusability supports the system objective (Playbook §0): building persistent en
 | Review-gate coverage | | a11y/security/testing routes taken or explicitly escalated? |
 | Synthesis quality | | one coherent, evidence-backed result for Tom? |
 | End-to-end efficiency | | rework loops, redundant context across agents |
+| Delegation ownership | | routine operational work (smoke tests, deployment verification, version checks, route health, release validation) routed to its owning specialist — release-engineering — rather than self-executed? |
+| Orchestrator self-execution | | (5 = none unlabelled) any direct orchestrator execution without a valid, stated exception (specialist unavailable / tooling limitation / Tom's explicit request)? |
+| Parallel-delegation safety | | fan-out used only for independent, non-overlapping tasks; nothing dependent or file-overlapping parallelized; sequential correctly chosen when independence unproven? |
+| Dependency & shared-file analysis | | independence demonstrated (not assumed) before fan-out; overlapping file sets correctly serialized? |
+| Fallback reporting | | every bypass labelled `Delegation fallback — reason: <specific reason>` at execution AND recorded in the final synthesis? |
 
 **Evaluation Confidence:** High | Medium | Low
 **Evaluator:** Orchestrator (+ Tom where required)
