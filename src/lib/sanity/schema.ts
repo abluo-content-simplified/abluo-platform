@@ -5,6 +5,7 @@ import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, L
 import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
 import { scopedRef, projectSlugField } from '@/lib/sanity/fields/shared'
 import { buildSchema } from '@/lib/modules/schema'
+import { buildIntegrationSchemaTypes, buildIntegrationConfigsField } from '@/lib/integrations/schema'
 
 // scopedRef and projectSlugField are imported from @/lib/sanity/fields/shared.
 // They live there so module schema files can import them without creating a
@@ -1901,6 +1902,17 @@ const projectType = defineType({
       hidden: true, // managed programmatically; displayed via ProjectLinker
     }),
 
+    // ── Integration configurations (ADR-014 Phase A) ────────────────────────
+    // Mirrors moduleInstallations immediately above: a generated, per-project
+    // array of third-party integration configs (Analytics, Marketing, Forms,
+    // AI, Payments, Developers categories). The Sanity shape for each entry
+    // is generated from INTEGRATION_REGISTRY's manifests at config-build time
+    // — see src/lib/integrations/schema.ts (buildIntegrationConfigsField()).
+    //
+    // Hidden from the Studio form — managed programmatically until Phase B's
+    // IntegrationsPane exists. No Studio IA change lands in Phase A.
+    buildIntegrationConfigsField(),
+
     // ── Migration bridge — do not remove ────────────────────────────────────
     // enabledModules: string[] is the legacy installation mechanism. It is kept
     // present in the schema as a data bridge during the migration window.
@@ -3588,4 +3600,8 @@ export const schemaTypes = [
   // heroLiveCaptureSection and heroLensSection are platform-distributed section
   // templates registered above; their availability is not module-gated.
   ...buildSchema(),
+  // Integration-owned types — derived from INTEGRATION_REGISTRY via
+  // buildIntegrationSchemaTypes() (ADR-014 Phase A). Additive only: existing
+  // siteConfig.integrations fields are untouched until Phase B/C relocate them.
+  ...buildIntegrationSchemaTypes(),
 ]

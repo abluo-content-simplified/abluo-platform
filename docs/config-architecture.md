@@ -220,6 +220,16 @@ All DS fields belong to exactly one inheritance category (ADR-008). The category
 | `metaPixelId` | string | ✅ Active | Meta Pixel ID (numeric) |
 | `customScripts` | array | ✅ Active | `[{ label, description, placement: head\|bodyEnd, code, consentCategory, enabled }]` — platform-managed only; `enabled` defaults to `false`; `analytics`/`marketing` `consentCategory` items are consent-gated (see ADR-013) |
 
+### Integration Registry (ADR-014, Phase A)
+
+Per ADR-014 (Accepted), `src/lib/integrations/` is now the single source of truth for integration definitions — the table above (`siteConfig.integrations`) remains authoritative for **runtime consumption** until Phase C's frontend switchover. Sanity schema for integration values is **generated**, not hand-projected: `buildIntegrationSchemaTypes()` builds the per-integration types and `buildIntegrationConfigsField()` builds the `integrationConfigs` array field on the `project` document (hidden until Phase B's `IntegrationsPane`). `validateIntegrationRegistry` guards the registry at load time, mirroring the Module Registry pattern (ADR-011).
+
+Phase A manifests registered in `INTEGRATION_REGISTRY`: `google-analytics`, `google-tag-manager`, `meta-pixel`, `custom-scripts`.
+
+**Adding a new integration** is registering one manifest file under `src/lib/integrations/manifests/` and adding it to `INTEGRATION_REGISTRY` (`src/lib/integrations/registry.ts`) — schema, validation, and (from Phase B) the Studio form all derive from it.
+
+See ADR-014 for the full design rationale, Studio IA, and phasing — not duplicated here.
+
 ---
 
 ## designSystem Field Register

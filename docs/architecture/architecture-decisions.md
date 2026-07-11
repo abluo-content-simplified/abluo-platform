@@ -845,7 +845,7 @@ Per-script-item attribution (manual `createdBy`/`createdAt`/`modifiedBy`/`modifi
 
 ## ADR-014 — Integration Registry & the One-Configuration-Surface Principle
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-07-11
 **Supersedes:** ADR-013, partially — the STORAGE-LOCATION section only (see Supersession Note below)
 **Superseded By:** —
