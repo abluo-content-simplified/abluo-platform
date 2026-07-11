@@ -1,6 +1,6 @@
 {
   "name": "abluo-platform",
-  "version": "1.0.2",
+  "version": "1.0.14",
   "private": true,
   "scripts": {
     "dev": "next dev",
