@@ -182,6 +182,19 @@ export const projectDomainQuery = /* groq */ `
   *[_type == "project" && projectSlug == $projectSlug && defined(customDomain)][0].customDomain
 `
 
+// ─── Runtime integration configuration (ADR-014 Phase C) ──────────────────────
+// Source of truth for tracking/analytics runtime behavior: project.integrationConfigs
+// (the Integration Registry, ADR-014 Phase A) and project.privacy (Phase B). Replaces
+// the removed siteConfig.integrations block — no compatibility layer, per Tom's
+// explicit rule (the old model was already removed from the schema in Phase B).
+// Consumed by TrackingScripts.tsx via fetchForTenant, same pattern as projectDomainQuery.
+export const projectIntegrationsQuery = /* groq */ `
+  *[_type == "project" && projectSlug == $projectSlug][0] {
+    integrationConfigs[] { integrationId, enabled, values },
+    privacy { consentModeEnabled, trackingKillSwitch }
+  }
+`
+
 export const postsQuery = /* groq */ `
   *[
     _type == "post"

@@ -2,9 +2,9 @@ export const dynamic = 'force-dynamic'
 
 import type { Metadata } from 'next'
 import { tenantClient, tenantToProjectSlug, fetchDesignSystemById } from '@/lib/sanity/client'
-import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, siteConfigFaviconQuery } from '@/lib/sanity/queries'
+import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, siteConfigFaviconQuery, projectIntegrationsQuery } from '@/lib/sanity/queries'
 import { ogImageUrl } from '@/lib/sanity/image'
-import type { LocaleConfig, SupportedLocale, DesignSystem, FontDefinition, WebsiteSiteConfig, BackgroundGraphic } from '@/lib/sanity/types'
+import type { LocaleConfig, SupportedLocale, DesignSystem, FontDefinition, WebsiteSiteConfig, BackgroundGraphic, ProjectIntegrations } from '@/lib/sanity/types'
 import { imageUrl } from '@/lib/sanity/image'
 import { resolveNavLinks } from '@/lib/sanity/nav-links'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
@@ -15,6 +15,7 @@ import { DevBadge } from '@/components/DevBadge'
 import { isProduction } from '@/lib/deployment'
 import { EarlyAccessWrapper } from '@/components/forms/EarlyAccessWrapper'
 import { SlugMapRoot } from '@/components/SlugMapContext'
+import { TrackingScripts } from '@/components/TrackingScripts'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -487,6 +488,8 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   // ── Livener — header appearance system + nav client + footer ─────────────────
   if (tenantId === 'livener') {
     const livenerConfig = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
+    // ADR-014 Phase C — runtime tracking/analytics config (project.integrationConfigs + project.privacy).
+    const integrations = await fetchForTenant<ProjectIntegrations>(projectIntegrationsQuery, {})
     const cssVars = buildCssVars(designSystem, { desktop: livenerConfig?.logoHeightDesktop, mobile: livenerConfig?.logoHeightMobile })
     const livenerBgGraphic = livenerConfig?.backgroundGraphic
     const livenerBgImageUrl = livenerBgGraphic?.asset?.asset ? imageUrl(livenerBgGraphic.asset as any, 1920) : undefined
@@ -496,6 +499,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
       <SlugMapRoot>
       <EarlyAccessWrapper tenantSlug={tenantId} projectSlug={tenantToProjectSlug(tenantId)} locale={locale}>
         <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
+        <TrackingScripts data={integrations} />
         {livenerBgStyles && livenerBgGraphic?.scope === 'entire' && (
           <div style={livenerBgStyles} aria-hidden="true" />
         )}
@@ -533,6 +537,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
           }
         />
         <main>{children}</main>
+        <TrackingScripts data={integrations} placement="bodyEnd" />
         <Footer tenantId={tenantId} locale={locale as SupportedLocale} defaultLocale={defaultLocale} />
         <DevBadge />
       </EarlyAccessWrapper>
@@ -542,6 +547,8 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
 
   // ── Generic layout (studiomartegani and future tenants) ──────────────────────
   const config = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
+  // ADR-014 Phase C — runtime tracking/analytics config (project.integrationConfigs + project.privacy).
+  const integrations = await fetchForTenant<ProjectIntegrations>(projectIntegrationsQuery, {})
   const cssVars = buildCssVars(designSystem, { desktop: config?.logoHeightDesktop, mobile: config?.logoHeightMobile })
 
   // ── Background graphic rendering ─────────────────────────────────────────────
@@ -553,7 +560,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
     <SlugMapRoot>
     <>
       <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
-      {/* Tracking scripts return in ADR-014 Phase C, reading project.integrationConfigs — legacy siteConfig.integrations removed in Phase B */}
+      <TrackingScripts data={integrations} />
       {bgStyles && bgGraphic?.scope === 'entire' && (
         <div style={bgStyles} aria-hidden="true" />
       )}
@@ -591,6 +598,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         }
       />
       <main>{children}</main>
+      <TrackingScripts data={integrations} placement="bodyEnd" />
       <footer
         className="px-6 py-10 md:px-16 lg:px-24"
         style={{

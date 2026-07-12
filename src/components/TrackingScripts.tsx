@@ -1,5 +1,6 @@
-import type { SiteConfigIntegrations } from '@/lib/sanity/types'
+import type { ProjectIntegrations } from '@/lib/sanity/types'
 import { isProduction } from '@/lib/deployment'
+import { resolveTracking } from '@/lib/tracking/resolve'
 import {
   filterCustomScripts,
   consentStateFor,
@@ -8,35 +9,43 @@ import {
 
 // ─── Tracking / Analytics Scripts ──────────────────────────────────────────────
 //
-// Renders GA4, GTM, Meta Pixel, and tenant custom scripts from
-// `siteConfig.integrations` (Sanity — read-only here, owned by
-// sanity-content-contracts). Production-only: analytics from dev/preview
-// deployments would pollute tenant data (AI recommends — reversible).
+// Renders GA4, GTM, Meta Pixel, and tenant custom scripts sourced from the
+// Integration Registry runtime (ADR-014 Phase A: `project.integrationConfigs`
+// + Phase B: `project.privacy`), fetched via `projectIntegrationsQuery`
+// (`src/lib/sanity/queries.ts`) and passed in as `data`. This component is a
+// thin renderer — all "what should render" decisions are delegated to the
+// pure `resolveTracking()` helper (`src/lib/tracking/resolve.ts`).
+// Production-only: analytics from dev/preview deployments would pollute
+// tenant data (AI recommends — reversible).
 //
-// Two tenant-configurable master toggles gate this component (Sprint 1,
-// Round 3 — `Tom decides` / verbatim rule for #1; Round 4 — `Tom decides` /
-// verbatim rule settling #2, previously deferred):
-//   1. `integrations.analyticsEnabled` (fail-closed, strict `=== true`): when
-//      false or unset, GA4, GTM, Meta Pixel, AND all custom tracking scripts
-//      do not execute, in both `head` and `bodyEnd` placements. This is a
-//      single early return covering the whole component — there is no path
-//      that renders any tracking output while this flag is not `true`.
-//   2. `integrations.consentModeEnabled`: when `true` (no visitor-consent
-//      mechanism exists yet, so this is treated as "no valid consent"), the
-//      platform fails closed for EVERYTHING except Necessary custom scripts:
-//        - GA4, GTM (including its bodyEnd noscript iframe), and Meta Pixel
-//          are all suppressed via `builtInTrackingAllowed(consentModeEnabled)`.
-//        - Custom scripts with `consentCategory` `analytics`/`marketing`/
-//          `functional` are passed a fail-closed `ConsentState`
-//          (`{ analytics: false, marketing: false, functional: false }`) via
-//          `consentStateFor()`, so none of them render.
-//        - Custom scripts with `consentCategory` `necessary` are unaffected —
-//          they are Abluo-admin-approved by construction (admin-created,
-//          `enabled === true`, required description + category) and are
-//          never consent-gated.
-//      "The consent feature ships later" is not permission to load tracking
-//      without consent in the meantime — see `builtInTrackingAllowed` TSDoc
-//      (`src/lib/tracking/custom-scripts.ts`) for Tom's rule verbatim.
+// ── Model change (ADR-014 Phase C — replaces the ADR-013 Sprint-1 model) ──────
+// The old model (`siteConfig.integrations.analyticsEnabled` as a single master
+// switch, removed from the schema in Phase B) is replaced by two independent
+// gates read from `project.privacy`:
+//   1. `privacy.trackingKillSwitch === true` — emergency override. Renders
+//      NOTHING, in both `head` and `bodyEnd` placements, regardless of any
+//      individual integration's `enabled` state. This is the direct successor
+//      to the old `analyticsEnabled !== true` early return: one check, one
+//      early return, covering the whole component.
+//   2. Per-integration `enabled === true` (strict, fail-closed) — with the
+//      kill switch off, each of GA4 / GTM / Meta Pixel / custom scripts is
+//      independently gated by its own `IntegrationConfig.enabled` in
+//      `project.integrationConfigs` (the Integration Registry, ADR-014 Phase
+//      A). There is no single flag that enables "all tracking" anymore —
+//      each integration is switched on individually in Studio's
+//      IntegrationsPane.
+// `resolveTracking()` performs both checks and returns only the values that
+// passed; this component never reads `integrationConfigs`/`privacy` directly.
+//
+// `privacy.consentModeEnabled` feeds the EXISTING, unmodified helpers exactly
+// as before (Sprint 1 Round 3/4 — Tom's verbatim fail-closed rule):
+//   - `builtInTrackingAllowed(consentModeEnabled)` gates GA4, GTM (including
+//     its bodyEnd noscript iframe), and Meta Pixel.
+//   - `consentStateFor(consentModeEnabled)` derives the `ConsentState` passed
+//     to `filterCustomScripts`, which fails closed on
+//     analytics/marketing/functional-category custom scripts pre-consent;
+//     `necessary` scripts are never gated (see `custom-scripts.ts` TSDoc for
+//     Tom's rule verbatim — that module is unchanged by Phase C).
 //
 // Uses plain <script> tags, NOT next/script. Precedent: `layout.tsx` previously
 // used `<Script strategy="beforeInteractive">` in this same Server Component
@@ -45,7 +54,8 @@ import {
 // same plain-<script> + dangerouslySetInnerHTML pattern. Matching that
 // precedent here rather than reintroducing next/script.
 //
-// Placement model (two-mode, driven by the `placement` prop):
+// Placement model (two-mode, driven by the `placement` prop) — unchanged from
+// the prior model:
 //   - `head` (default): GA4 loader + config, GTM bootstrap, Meta Pixel bootstrap
 //     + its <noscript> pixel image, and any `customScripts` with
 //     `placement !== 'bodyEnd'` (i.e. 'head' or unset).
@@ -61,26 +71,28 @@ import {
 //
 // Verification meta tags (google-site-verification, msvalidate.01) are NOT
 // handled here — they render unconditionally via `generateMetadata` regardless
-// of environment. Verification is independent of `analyticsEnabled`: it is not
-// visitor tracking.
+// of environment (now sourced from siteConfig SEO fields, ADR-014 Phase B).
+// Verification is independent of tracking: it is not visitor tracking.
 //
-// Custom scripts (`integrations.customScripts`) are an Abluo-platform capability
-// for trusted, admin-vetted third-party integrations only — never exposed to
-// the client dashboard. Selection (enabled/placement/consent) is delegated to
-// the pure `filterCustomScripts` helper (`src/lib/tracking/custom-scripts.ts`).
-// The `ConsentState` passed to it is derived from `consentModeEnabled` via
-// `consentStateFor()` — see toggle #2 above.
+// Custom scripts (the 'custom-scripts' integration, `values.scripts`) are an
+// Abluo-platform capability for trusted, admin-vetted third-party integrations
+// only — never exposed to the client dashboard. Selection (enabled/placement/
+// consent) is delegated to the pure `filterCustomScripts` helper
+// (`src/lib/tracking/custom-scripts.ts`), unchanged by this rewire.
 
 interface TrackingScriptsProps {
-  integrations?: SiteConfigIntegrations
+  data?: ProjectIntegrations | null
   placement?: 'head' | 'bodyEnd'
 }
 
-export function TrackingScripts({ integrations, placement = 'head' }: TrackingScriptsProps) {
-  if (!integrations || !isProduction() || integrations.analyticsEnabled !== true) return null
+export function TrackingScripts({ data, placement = 'head' }: TrackingScriptsProps) {
+  if (!data || !isProduction()) return null
 
-  const { googleAnalyticsId, googleTagManagerId, metaPixelId, customScripts, consentModeEnabled } =
-    integrations
+  const t = resolveTracking(data.integrationConfigs, data.privacy)
+
+  if (t.killSwitched) return null
+
+  const { ga4MeasurementId, gtmContainerId, metaPixelId, customScripts, consentModeEnabled } = t
 
   const scriptsForPlacement = filterCustomScripts(
     customScripts,
@@ -93,10 +105,10 @@ export function TrackingScripts({ integrations, placement = 'head' }: TrackingSc
   if (placement === 'bodyEnd') {
     return (
       <>
-        {builtInsAllowed && googleTagManagerId && (
+        {builtInsAllowed && gtmContainerId && (
           <noscript>
             <iframe
-              src={`https://www.googletagmanager.com/ns.html?id=${googleTagManagerId}`}
+              src={`https://www.googletagmanager.com/ns.html?id=${gtmContainerId}`}
               height={0}
               width={0}
               style={{ display: 'none', visibility: 'hidden' }}
@@ -113,20 +125,20 @@ export function TrackingScripts({ integrations, placement = 'head' }: TrackingSc
 
   return (
     <>
-      {builtInsAllowed && googleAnalyticsId && (
+      {builtInsAllowed && ga4MeasurementId && (
         <>
-          <script async src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`} />
+          <script async src={`https://www.googletagmanager.com/gtag/js?id=${ga4MeasurementId}`} />
           <script
             dangerouslySetInnerHTML={{
-              __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${googleAnalyticsId}');`,
+              __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${ga4MeasurementId}');`,
             }}
           />
         </>
       )}
-      {builtInsAllowed && googleTagManagerId && (
+      {builtInsAllowed && gtmContainerId && (
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${googleTagManagerId}');`,
+            __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${gtmContainerId}');`,
           }}
         />
       )}

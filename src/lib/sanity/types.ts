@@ -486,15 +486,14 @@ export interface BusinessLocation {
   country?: string
 }
 
-// ─── Site Config — Integrations (tracking / site verification) ────────────────
+// ─── Tracking — Custom Script Contract ────────────────────────────────────────
 // Non-localized: technical identifiers, not user-facing content (CLAUDE.md Localization Rules).
 //
-// Transitional component contract (ADR-014 Phase B): siteConfig.integrations was
-// removed from the Sanity schema and GROQ projections in Phase B — it is no longer
-// sourced from siteConfig. These types are preserved only because TrackingScripts.tsx
-// and src/lib/tracking/custom-scripts.ts still declare props/helpers against this
-// shape. Phase C re-sources this contract from project.integrationConfigs (the
-// Integration Registry) and this block should be retired or repointed then.
+// Live contract (ADR-014 Phase C): consumed by TrackingScripts.tsx and
+// src/lib/tracking/custom-scripts.ts. Per-script shape matches the values stored
+// under the Integration Registry's custom-scripts manifest
+// (src/lib/integrations/manifests/custom-scripts.ts), sourced at runtime via
+// project.integrationConfigs (see ProjectIntegrations below).
 
 export type ConsentCategory = 'necessary' | 'analytics' | 'marketing' | 'functional'
 
@@ -509,15 +508,32 @@ export interface CustomScript {
   enabled?: boolean
 }
 
-export interface SiteConfigIntegrations {
-  /** Master switch — when false, GA4, GTM, Meta Pixel, and custom tracking scripts do not execute; verification meta tags are unaffected. */
-  analyticsEnabled?: boolean
-  /** Whether consent-aware loading is enabled for this tenant; when true, analytics/marketing-category scripts load only with visitor consent. */
+// ─── Project — Integration Registry runtime (ADR-014 Phase C) ────────────────
+// Result shape of projectIntegrationsQuery (queries.ts). This is the runtime
+// source for tracking/analytics behavior (GA4, GTM, Meta Pixel, custom scripts,
+// consent gating). Fields are declared optional throughout: a project document
+// may have no integrationConfigs entries yet, and an individual entry's `values`
+// is manifest-shaped (Record<string, unknown> — see IntegrationConfig in
+// src/lib/integrations/types.ts) so is not assumed present. Defined locally
+// rather than importing IntegrationConfig because the manifest type's fields
+// are non-optional (a configured integration always has integrationId/enabled/
+// values); a GROQ projection result makes no such guarantee, so this type is
+// intentionally more permissive.
+export interface ProjectPrivacy {
+  /** Fail-closed consent gate — when true and no valid visitor consent exists, all tracking is blocked except necessary custom scripts. */
   consentModeEnabled?: boolean
-  googleAnalyticsId?: string
-  googleTagManagerId?: string
-  metaPixelId?: string
-  customScripts?: CustomScript[]
+  /** Emergency override — when true, all tracking halts regardless of individual integration enabled state. */
+  trackingKillSwitch?: boolean
+}
+
+export interface ProjectIntegrations {
+  integrationConfigs?: {
+    /** References IntegrationManifest.id in the Integration Registry. */
+    integrationId?: string
+    enabled?: boolean
+    values?: Record<string, unknown>
+  }[]
+  privacy?: ProjectPrivacy
 }
 
 // ─── Site Config (resolved — all strings already locale-resolved by GROQ) ─────
