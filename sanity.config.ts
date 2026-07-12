@@ -12,6 +12,9 @@ import { AutoCreateSiteConfigAction } from './src/sanity/actions/AutoCreateSiteC
 // ADR-011 Phase C1 — Project Settings Shell
 import { ModuleList } from './src/lib/sanity/studio/ModuleList'
 import { StubPane } from './src/lib/sanity/studio/StubPane'
+// ADR-014 Phase B — Integrations & Privacy panes
+import { IntegrationsPane } from './src/lib/sanity/studio/IntegrationsPane'
+import { PrivacyPane } from './src/lib/sanity/studio/PrivacyPane'
 
 // Hardcoded to match src/lib/sanity/client.ts — avoids env var dependency in the Studio
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ?? '3n7t84j3'
@@ -423,17 +426,6 @@ export default defineConfig({
                                   .options({ label: 'Domains', message: 'Domain management is coming in a future release.' })
                               ),
 
-                            // Analytics — placeholder (C1 stub).
-                            S.listItem()
-                              .id(`${slug}-settings-analytics`)
-                              .title('Analytics')
-                              .child(
-                                S.component(StubPane)
-                                  .id(`${slug}-settings-analytics-pane`)
-                                  .title('Analytics')
-                                  .options({ label: 'Analytics', message: 'Analytics configuration is coming in a future release.' })
-                              ),
-
                             // Billing — placeholder (C1 stub).
                             S.listItem()
                               .id(`${slug}-settings-billing`)
@@ -445,15 +437,26 @@ export default defineConfig({
                                   .options({ label: 'Billing', message: 'Billing management is coming in a future release.' })
                               ),
 
-                            // Integrations — placeholder (C1 stub).
+                            // Integrations — ADR-014 Phase B.
                             S.listItem()
                               .id(`${slug}-settings-integrations`)
                               .title('Integrations')
                               .child(
-                                S.component(StubPane)
+                                S.component(IntegrationsPane)
                                   .id(`${slug}-settings-integrations-pane`)
                                   .title('Integrations')
-                                  .options({ label: 'Integrations', message: 'Integrations configuration is coming in a future release.' })
+                                  .options({ projectId: project._id, projectSlug: slug })
+                              ),
+
+                            // Privacy — ADR-014 Phase B.
+                            S.listItem()
+                              .id(`${slug}-settings-privacy`)
+                              .title('Privacy')
+                              .child(
+                                S.component(PrivacyPane)
+                                  .id(`${slug}-settings-privacy-pane`)
+                                  .title('Privacy')
+                                  .options({ projectId: project._id, projectSlug: slug })
                               ),
 
                           ])

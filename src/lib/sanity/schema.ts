@@ -1913,6 +1913,38 @@ const projectType = defineType({
     // IntegrationsPane exists. No Studio IA change lands in Phase A.
     buildIntegrationConfigsField(),
 
+    // ── Privacy controls (ADR-014 Phase B) ──────────────────────────────────
+    // Project-level privacy switches, edited via the Phase B Privacy pane.
+    // consentModeEnabled is the fail-closed consent gate (moved here from
+    // siteConfig.integrations in a future phase — for now this is the
+    // project-level counterpart used by the Privacy pane UI).
+    // trackingKillSwitch is the emergency override, successor to the
+    // day-to-day siteConfig.integrations.analyticsEnabled toggle.
+    //
+    // Hidden from the default Studio form — managed via the Privacy pane.
+    defineField({
+      name: 'privacy',
+      title: 'Privacy',
+      type: 'object',
+      hidden: true, // managed via the Phase B Privacy pane
+      fields: [
+        defineField({
+          name: 'consentModeEnabled',
+          title: 'Consent Mode Enabled',
+          type: 'boolean',
+          initialValue: false,
+          description: 'Fail-closed consent gate. When on and no valid visitor consent exists, ALL tracking is blocked except Necessary custom scripts.',
+        }),
+        defineField({
+          name: 'trackingKillSwitch',
+          title: 'Tracking Kill Switch',
+          type: 'boolean',
+          initialValue: false,
+          description: 'Emergency override — when on, ALL tracking halts for this project regardless of individual integration enabled state. Successor of the day-to-day analyticsEnabled toggle (ADR-014).',
+        }),
+      ],
+    }),
+
     // ── Migration bridge — do not remove ────────────────────────────────────
     // enabledModules: string[] is the legacy installation mechanism. It is kept
     // present in the schema as a data bridge during the migration window.
@@ -2915,7 +2947,6 @@ const siteConfigType = defineType({
     { name: 'contact', title: 'Contact' },
     { name: 'footer', title: 'Footer' },
     { name: 'social', title: 'Social' },
-    { name: 'integrations', title: 'Integrations' },
   ],
   fields: [
     projectSlugField,
@@ -2931,6 +2962,20 @@ const siteConfigType = defineType({
     defineField({ name: 'logoHeightMobile', title: 'Logo Height — Mobile (px)', type: 'number', group: 'branding', description: 'Max height of the logo in the header on mobile. Default: 28px.', initialValue: 28 }),
     defineField({ name: 'seoDefaultTitle', title: 'Default Page Title', type: 'localizedString', group: 'seo', description: 'Used as the <title> on pages that do not have a page-specific title. Falls back to Site Name.' }),
     defineField({ name: 'seoDefaultDescription', title: 'Default Meta Description', type: 'localizedText', group: 'seo', description: 'Used as the meta description on pages that do not have a page-specific description. Falls back to Tagline.' }),
+    defineField({
+      name: 'googleSiteVerification',
+      title: 'Google Search Console Verification',
+      type: 'string',
+      group: 'seo',
+      description: 'The content value of the google-site-verification meta tag — the token only, not the full meta tag.',
+    }),
+    defineField({
+      name: 'bingSiteVerification',
+      title: 'Bing Webmaster Verification',
+      type: 'string',
+      group: 'seo',
+      description: 'The content value of the msvalidate.01 meta tag.',
+    }),
     defineField({
       name: 'backgroundGraphic',
       title: 'Brand Watermark',
@@ -3100,130 +3145,6 @@ const siteConfigType = defineType({
     defineField({ name: 'foundedYear', title: 'Founded Year', type: 'number', group: 'footer' }),
     defineField({ name: 'youtubeChannelUrl', title: 'YouTube Channel URL', type: 'url', group: 'social' }),
     defineField({ name: 'socialLinks', title: 'Social Links', type: 'array', group: 'social', of: [defineArrayMember({ type: 'socialLink' })] }),
-    defineField({
-      name: 'integrations',
-      title: 'Integrations',
-      type: 'object',
-      group: 'integrations',
-      description: 'Platform-managed tracking and site-verification configuration. Values are injected verbatim into page metadata/scripts.',
-      fields: [
-        defineField({
-          name: 'analyticsEnabled',
-          title: 'Analytics Enabled',
-          type: 'boolean',
-          initialValue: false,
-          description: 'Master switch — when off, GA4, GTM, Meta Pixel, and custom tracking scripts do not execute; verification meta tags are unaffected (they are not visitor tracking).',
-        }),
-        defineField({
-          name: 'consentModeEnabled',
-          title: 'Consent Mode Enabled',
-          type: 'boolean',
-          initialValue: false,
-          description: 'Fail-closed consent gate. When on and no valid visitor consent exists, ALL tracking is blocked — GA4, GTM, Meta Pixel, and Analytics/Marketing/Functional custom scripts. Only Necessary custom scripts (Abluo-admin-approved) still load. Until the visitor-consent mechanism ships, turning this on blocks tracking rather than permitting it.',
-        }),
-        defineField({
-          name: 'googleAnalyticsId',
-          title: 'Google Analytics (GA4) Measurement ID',
-          type: 'string',
-          description: 'GA4 Measurement ID, format G-XXXXXXXXXX.',
-          validation: (Rule) => Rule.regex(/^G-[A-Z0-9]+$/, { name: 'ga4-measurement-id' }).error('Must be in the format G-XXXXXXXXXX'),
-        }),
-        defineField({
-          name: 'googleTagManagerId',
-          title: 'Google Tag Manager Container ID',
-          type: 'string',
-          description: 'GTM Container ID, format GTM-XXXXXXX.',
-          validation: (Rule) => Rule.regex(/^GTM-[A-Z0-9]+$/, { name: 'gtm-container-id' }).error('Must be in the format GTM-XXXXXXX'),
-        }),
-        defineField({
-          name: 'googleSiteVerification',
-          title: 'Google Search Console Verification',
-          type: 'string',
-          description: 'The content value of the google-site-verification meta tag — the token only, not the full meta tag.',
-        }),
-        defineField({
-          name: 'bingSiteVerification',
-          title: 'Bing Webmaster Verification',
-          type: 'string',
-          description: 'The content value of the msvalidate.01 meta tag.',
-        }),
-        defineField({
-          name: 'metaPixelId',
-          title: 'Meta Pixel ID',
-          type: 'string',
-          description: 'Numeric Meta (Facebook) Pixel ID.',
-          validation: (Rule) => Rule.regex(/^[0-9]+$/, { name: 'numeric-only' }).error('Must contain digits only'),
-        }),
-        defineField({
-          name: 'customScripts',
-          title: 'Custom Scripts',
-          type: 'array',
-          description: 'Platform feature managed exclusively by Abluo administrators — never exposed to tenants or the client dashboard. Intended only for trusted third-party integrations (Google, Meta, LinkedIn, Hotjar, etc.). Never paste secrets or server-side API keys. Prefer external src-based scripts over large inline snippets. Code is injected verbatim into the page.',
-          of: [
-            defineArrayMember({
-              type: 'object',
-              name: 'customScript',
-              fields: [
-                defineField({
-                  name: 'label',
-                  title: 'Label',
-                  type: 'string',
-                  description: 'Internal identifier for this script — not shown publicly.',
-                  validation: (Rule) => Rule.required(),
-                }),
-                defineField({
-                  name: 'description',
-                  title: 'Description / Purpose',
-                  type: 'text',
-                  rows: 3,
-                  description: 'What this script does and why it exists — internal documentation for admins.',
-                  validation: (Rule) => Rule.required(),
-                }),
-                defineField({
-                  name: 'placement',
-                  title: 'Placement',
-                  type: 'string',
-                  options: { list: [{ title: 'Head', value: 'head' }, { title: 'End of body', value: 'bodyEnd' }], layout: 'radio' },
-                  initialValue: 'head',
-                }),
-                defineField({
-                  name: 'code',
-                  title: 'Code',
-                  type: 'text',
-                  rows: 6,
-                  description: 'Raw HTML/script, injected verbatim.',
-                  validation: (Rule) => Rule.required(),
-                }),
-                defineField({
-                  name: 'consentCategory',
-                  title: 'Consent Category',
-                  type: 'string',
-                  options: {
-                    list: [
-                      { title: 'Necessary', value: 'necessary' },
-                      { title: 'Analytics', value: 'analytics' },
-                      { title: 'Marketing', value: 'marketing' },
-                      { title: 'Functional', value: 'functional' },
-                    ],
-                    layout: 'radio',
-                  },
-                  description: 'When consentModeEnabled is on and no valid visitor consent exists, only Necessary scripts load — Analytics, Marketing, and Functional scripts are blocked until the consent mechanism ships and consent is given.',
-                  validation: (Rule) => Rule.required(),
-                }),
-                defineField({ name: 'enabled', title: 'Enabled', type: 'boolean', initialValue: false }),
-              ],
-              preview: {
-                select: { title: 'label', category: 'consentCategory', placement: 'placement', enabled: 'enabled' },
-                prepare: ({ title, category, placement, enabled }) => ({
-                  title: title ?? 'Untitled script',
-                  subtitle: `${category ?? '—'} · ${placement ?? '—'}${enabled === false ? ' · disabled' : ''}`,
-                }),
-              },
-            }),
-          ],
-        }),
-      ],
-    }),
   ],
   preview: {
     select: { title: 'siteName', slug: 'projectSlug' },
@@ -3601,7 +3522,8 @@ export const schemaTypes = [
   // templates registered above; their availability is not module-gated.
   ...buildSchema(),
   // Integration-owned types — derived from INTEGRATION_REGISTRY via
-  // buildIntegrationSchemaTypes() (ADR-014 Phase A). Additive only: existing
-  // siteConfig.integrations fields are untouched until Phase B/C relocate them.
+  // buildIntegrationSchemaTypes() (ADR-014 Phase A). siteConfig.integrations
+  // was removed from the schema in Phase B; runtime tracking is unmounted
+  // until Phase C re-sources it from project.integrationConfigs.
   ...buildIntegrationSchemaTypes(),
 ]

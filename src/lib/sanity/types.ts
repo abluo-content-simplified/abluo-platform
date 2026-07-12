@@ -488,6 +488,13 @@ export interface BusinessLocation {
 
 // ─── Site Config — Integrations (tracking / site verification) ────────────────
 // Non-localized: technical identifiers, not user-facing content (CLAUDE.md Localization Rules).
+//
+// Transitional component contract (ADR-014 Phase B): siteConfig.integrations was
+// removed from the Sanity schema and GROQ projections in Phase B — it is no longer
+// sourced from siteConfig. These types are preserved only because TrackingScripts.tsx
+// and src/lib/tracking/custom-scripts.ts still declare props/helpers against this
+// shape. Phase C re-sources this contract from project.integrationConfigs (the
+// Integration Registry) and this block should be retired or repointed then.
 
 export type ConsentCategory = 'necessary' | 'analytics' | 'marketing' | 'functional'
 
@@ -509,8 +516,6 @@ export interface SiteConfigIntegrations {
   consentModeEnabled?: boolean
   googleAnalyticsId?: string
   googleTagManagerId?: string
-  googleSiteVerification?: string
-  bingSiteVerification?: string
   metaPixelId?: string
   customScripts?: CustomScript[]
 }
@@ -559,8 +564,6 @@ export interface WebsiteSiteConfig {
   appleTouchIcon?: { asset?: { _ref: string } }
   /** Canonical domain for this tenant, e.g. "livener.net". Derived from project.customDomain via GROQ join. */
   customDomain?: string
-  /** Platform-managed tracking / site-verification configuration. Non-localized technical identifiers. */
-  integrations?: SiteConfigIntegrations
 }
 
 // Locale config subset — fetched first to get $defaultLocale for subsequent queries

@@ -15,7 +15,6 @@ import { DevBadge } from '@/components/DevBadge'
 import { isProduction } from '@/lib/deployment'
 import { EarlyAccessWrapper } from '@/components/forms/EarlyAccessWrapper'
 import { SlugMapRoot } from '@/components/SlugMapContext'
-import { TrackingScripts } from '@/components/TrackingScripts'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -497,7 +496,6 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
       <SlugMapRoot>
       <EarlyAccessWrapper tenantSlug={tenantId} projectSlug={tenantToProjectSlug(tenantId)} locale={locale}>
         <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
-        <TrackingScripts integrations={livenerConfig?.integrations} />
         {livenerBgStyles && livenerBgGraphic?.scope === 'entire' && (
           <div style={livenerBgStyles} aria-hidden="true" />
         )}
@@ -535,7 +533,6 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
           }
         />
         <main>{children}</main>
-        <TrackingScripts integrations={livenerConfig?.integrations} placement="bodyEnd" />
         <Footer tenantId={tenantId} locale={locale as SupportedLocale} defaultLocale={defaultLocale} />
         <DevBadge />
       </EarlyAccessWrapper>
@@ -556,7 +553,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
     <SlugMapRoot>
     <>
       <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
-      <TrackingScripts integrations={config?.integrations} />
+      {/* Tracking scripts return in ADR-014 Phase C, reading project.integrationConfigs — legacy siteConfig.integrations removed in Phase B */}
       {bgStyles && bgGraphic?.scope === 'entire' && (
         <div style={bgStyles} aria-hidden="true" />
       )}
@@ -594,7 +591,6 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         }
       />
       <main>{children}</main>
-      <TrackingScripts integrations={config?.integrations} placement="bodyEnd" />
       <footer
         className="px-6 py-10 md:px-16 lg:px-24"
         style={{

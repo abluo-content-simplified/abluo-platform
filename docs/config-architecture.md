@@ -152,6 +152,8 @@ All DS fields belong to exactly one inheritance category (ADR-008). The category
 |---|---|---|---|
 | `seoDefaultTitle` | localizedString | ✅ Active | Overrides `siteName` in `<title>` |
 | `seoDefaultDescription` | localizedText | ✅ Active | Overrides `tagline` in meta description |
+| `googleSiteVerification` | string | ✅ Active | Google Search Console verification token. Moved from `integrations` per ADR-014 — verification is SEO metadata, not tracking. |
+| `bingSiteVerification` | string | ✅ Active | Bing Site Verification token (msvalidate.01). Moved from `integrations` per ADR-014 — verification is SEO metadata, not tracking. |
 
 ### Site Controls group
 
@@ -209,24 +211,29 @@ All DS fields belong to exactly one inheritance category (ADR-008). The category
 
 ### Integrations group
 
-| Field | Type | Status | Notes |
-|---|---|---|---|
-| `analyticsEnabled` | boolean | ✅ Active | Default `false` — master switch; unless strictly `true`, `TrackingScripts` renders nothing (GA4/GTM/Pixel/custom, both placements). Verification meta tags are exempt (see ADR-013). |
-| `consentModeEnabled` | boolean | ✅ Active | Default `false` — when `true` and no valid consent exists, fails closed on GA4/GTM/Meta Pixel and `analytics`/`marketing`/`functional` custom scripts; only `necessary` customs still load (see ADR-013). |
-| `googleAnalyticsId` | string | ✅ Active | GA4 ID (format: `G-[A-Z0-9]+`) |
-| `googleTagManagerId` | string | ✅ Active | GTM ID (format: `GTM-…`) |
-| `googleSiteVerification` | string | ✅ Active | Google Search Console verification token |
-| `bingSiteVerification` | string | ✅ Active | Bing Site Verification token (msvalidate.01) |
-| `metaPixelId` | string | ✅ Active | Meta Pixel ID (numeric) |
-| `customScripts` | array | ✅ Active | `[{ label, description, placement: head\|bodyEnd, code, consentCategory, enabled }]` — platform-managed only; `enabled` defaults to `false`; `analytics`/`marketing` `consentCategory` items are consent-gated (see ADR-013) |
+⚠️ **Removed in ADR-014 Phase B.** The `integrations` field group was removed from the `siteConfig` schema in Phase B.
 
-### Integration Registry (ADR-014, Phase A)
+**Verification tokens** (`googleSiteVerification`, `bingSiteVerification`) have been relocated to the **SEO Defaults group** (verification is SEO metadata, not tracking configuration).
 
-Per ADR-014 (Accepted), `src/lib/integrations/` is now the single source of truth for integration definitions — the table above (`siteConfig.integrations`) remains authoritative for **runtime consumption** until Phase C's frontend switchover. Sanity schema for integration values is **generated**, not hand-projected: `buildIntegrationSchemaTypes()` builds the per-integration types and `buildIntegrationConfigsField()` builds the `integrationConfigs` array field on the `project` document (hidden until Phase B's `IntegrationsPane`). `validateIntegrationRegistry` guards the registry at load time, mirroring the Module Registry pattern (ADR-011).
+**Integration configuration** now lives exclusively in the admin UI:
+- **Project Settings → Integrations** — registry-driven pane managing `project.integrationConfigs` (GA4, GTM, Meta Pixel, custom scripts)
+- **Project Settings → Privacy** — pane managing `project.privacy` (consent mode, tracking kill switch)
+
+**Runtime status:** Tracking emission is paused until Phase C, which will re-source integration state from `project.integrationConfigs` and `project.privacy`.
+
+**Known issue:** One production siteConfig document (`studiomartegani`) retains orphaned legacy `integrations` data. This data is not read by the platform and will be cleaned up after admin re-entry via the Project Settings UI.
+
+### Integration Registry (ADR-014, Phase B)
+
+Per ADR-014 (Accepted), `src/lib/integrations/` is the single source of truth for integration definitions. Sanity schema for integration values is **generated**, not hand-projected: `buildIntegrationSchemaTypes()` builds the per-integration types and `buildIntegrationConfigsField()` builds the `integrationConfigs` array field on the `project` document. `validateIntegrationRegistry` guards the registry at load time, mirroring the Module Registry pattern (ADR-011).
+
+**Phase B (completed):** `siteConfig.integrations` removed from schema and queries. Project Settings → Integrations is now a live registry-driven `IntegrationsPane`, alongside a new Privacy pane editing the hidden `project.privacy` object (`consentModeEnabled`, `trackingKillSwitch`). `getIntegrationStatus` (`src/lib/integrations/status.ts`) supports the pane.
+
+**Phase C (pending):** Frontend will re-wire tracking consumption from `project.integrationConfigs` and `project.privacy`. Runtime tracking is currently unmounted until Phase C completes.
 
 Phase A manifests registered in `INTEGRATION_REGISTRY`: `google-analytics`, `google-tag-manager`, `meta-pixel`, `custom-scripts`.
 
-**Adding a new integration** is registering one manifest file under `src/lib/integrations/manifests/` and adding it to `INTEGRATION_REGISTRY` (`src/lib/integrations/registry.ts`) — schema, validation, and (from Phase B) the Studio form all derive from it.
+**Adding a new integration** is registering one manifest file under `src/lib/integrations/manifests/` and adding it to `INTEGRATION_REGISTRY` (`src/lib/integrations/registry.ts`) — schema, validation, and the Studio form all derive from it.
 
 See ADR-014 for the full design rationale, Studio IA, and phasing — not duplicated here.
 

@@ -24,3 +24,10 @@ export {
   integrationValuesTypeName,
   integrationConfigTypeName,
 } from './schema'
+
+export {
+  getIntegrationStatus,
+  type IntegrationStatus,
+  type IntegrationStatusValue,
+  type PrivacySettings,
+} from './status'

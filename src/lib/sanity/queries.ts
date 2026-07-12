@@ -75,8 +75,8 @@ export const siteConfigFaviconQuery = /* groq */ `
     faviconPng { asset },
     openGraphImage { asset },
     appleTouchIcon { asset },
-    "googleSiteVerification": integrations.googleSiteVerification,
-    "bingSiteVerification": integrations.bingSiteVerification
+    "googleSiteVerification": googleSiteVerification,
+    "bingSiteVerification": bingSiteVerification
   }
 `
 
@@ -170,17 +170,7 @@ export const websiteSiteConfigQuery = /* groq */ `
     logoHeightMobile,
     "seoDefaultTitle": ${loc('seoDefaultTitle')},
     "seoDefaultDescription": ${loc('seoDefaultDescription')},
-    "customDomain": *[_type == "project" && projectSlug == $projectSlug && defined(customDomain)][0].customDomain,
-    integrations {
-      analyticsEnabled,
-      consentModeEnabled,
-      googleAnalyticsId,
-      googleTagManagerId,
-      googleSiteVerification,
-      bingSiteVerification,
-      metaPixelId,
-      customScripts[] { label, description, placement, code, consentCategory, enabled }
-    }
+    "customDomain": *[_type == "project" && projectSlug == $projectSlug && defined(customDomain)][0].customDomain
   }
 `
 
