@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Pack version** | 1.0 |
+| **Pack version** | 1.1 — adds Phase-end repository cleanup & handoff readiness (2026-07-12, Tom-directed) |
 | **Maturity / status** | Experimental / Active |
 | **Owner** | release-engineering agent (supervised while Experimental) |
 | **Consumers** | release-engineering agent; Orchestrator |
@@ -58,6 +58,26 @@ Own versioning, tags, release/health scripts, build logs, deploy sequencing disc
 ## Active backlog initiatives (Playbook §7)
 - **I2 — Release & Version Integrity** (Critical/S): reconcile split-brain; re-adopt `release.sh`; post-deploy truth-check. Blocked on the tag-convention decision (`Tom decides`).
 - **I9 (subset)** — make `vitest run` green (2 flaky timeout tests) so the release gate is real.
+
+## Phase-end repository cleanup & handoff readiness — owned procedure (v1.1)
+
+**Trigger:** BEFORE the orchestrator gives Tom ANY stage/commit guidance (stage, commit, push, merge, tag, deploy). The orchestrator must route the task here first; commit guidance issued without this report is a workflow defect (maturity-evaluation v1.3 criteria). This file is the single owner of the procedure — other documents reference it.
+
+**Report all items as fresh Verified facts (run the commands; never reuse cached output):**
+
+1. Current branch and HEAD SHA (`git branch --show-current`, `git log --oneline -1`).
+2. Complete `git status --short --untracked-files=all`.
+3. Whether `.git/index.lock` exists.
+4. **If the lock exists:** determine whether a genuine git process currently owns it — check file-scoped, e.g. `lsof .git/index.lock`, and inspect any owning PID. **Never delete the lock merely because it exists. Never kill processes found via broad pgrep/pkill patterns.** If (and only if) no live process holds it and its mtime predates the current operation, the lock is stale: recommend — or execute, within existing approval rules (bounded cleanup is executable in-sandbox; on Tom's machine it is issued as the single guarded command) — `test -z "$(lsof .git/index.lock 2>/dev/null)" && rm .git/index.lock || echo "LOCK IN USE — do not remove"`.
+5. `next-env.d.ts`: if modified and the diff is solely build-generated churn (path-only changes from a local `next build`), restore with `git checkout -- next-env.d.ts` (bounded, executable) and report; if the diff contains anything else, report and stop.
+6. Generated build artefacts (`.next/`, `tsconfig.tsbuildinfo`, `.DS_Store`, etc.) confirmed absent from the intended set.
+7. The exact intended changed-file list (from the phase's accepted handoffs).
+8. The exact currently staged list (`git diff --name-only --cached`) — expected empty before guidance unless staging was already approved.
+9. Explicit confirmation that intended set == actual working-tree set, naming any stray file.
+10. Gate 3 local build result where the change class requires it, or an explicit NOT RUN + who must run it before commit.
+11. **Exactly ONE safe next command** for Tom — never a chain (orchestrator interaction rule, `orchestrator.md`).
+
+**Sandbox lock prevention (root cause, verified 2026-07-12):** git on the sandbox FUSE mount creates `.git/index.lock` during status/refresh operations but is denied the unlink — every sandbox session can therefore leave a stale lock in Tom's real repository. All sandbox git invocations by any agent MUST use `git --no-optional-locks <cmd>` (or `GIT_OPTIONAL_LOCKS=0`) for read operations, and stale-lock cleanup on Tom's machine uses the guarded command in item 4 above.
 
 ## Escalation conditions (beyond spine §10)
 - Any action that would push, merge stage branches, tag, or deploy → per-action `Tom approves`, no exceptions

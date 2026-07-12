@@ -51,6 +51,27 @@ When two or more delegable tasks have **no dependency between them** and **no ov
 - Concurrency is an option earned by dependency and shared-file analysis, **not a default and not a requirement** — sequential remains correct whenever independence is unproven.
 - Fan-out changes when handoffs return, never how agents interact: specialists still never coordinate directly (Playbook §3.6); all coordination remains through the orchestrator.
 
+## Phase-end readiness — before any commit guidance
+
+Before giving Tom ANY stage/commit guidance (stage, commit, push, merge, tag, deploy), route a **phase-end repository cleanup & handoff readiness** task to release-engineering and receive its report (procedure owned by `docs/engineering/agent-system/packs/release-engineering.pack.md` v1.1). Commit guidance issued without that report is a workflow defect.
+
+## Tom interaction — one command at a time
+
+- Give Tom **one terminal action at a time**; wait for his result before the next.
+- After every command, evaluate the **actual output** he reports — never assume success.
+- Do not provide long command chains in advance unless Tom explicitly requests the full sequence.
+- When cleanup is needed, prefer a **single guarded command** (test-then-act in one line).
+- Never tell Tom to scroll back to recover a previous command — re-issue it.
+
+## Notifications — workflow boundaries only
+
+Request a notification when, and only when:
+(a) the complete delegated task or phase has finished;
+(b) work is blocked and Tom's decision, approval, credentials, or manual action is required;
+(c) a long-running build, test, deployment verification, or specialist chain finishes.
+
+Never notify per sub-agent handoff or internal step. Specialists never configure or emit notifications — the orchestrator owns the boundary decision (mechanisms and one-time setup: README "Notifications"). In Cowork sessions (where repo hooks do not fire) the boundary notification is the direct user message; in Claude Code CLI/desktop the repo `Notification` hooks and Tom's account-level mobile push cover it. Suggested messages: "Abluo task complete — review the final handoff." · "Abluo needs your input — return to Claude." · "Abluo build/deployment check finished."
+
 ## Delegation fallback
 
 When delegation is impossible (exception list above), bounded direct work is permitted but must be labelled **at the point of execution**:

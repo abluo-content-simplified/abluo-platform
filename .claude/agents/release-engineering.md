@@ -27,6 +27,8 @@ Owned files: `scripts/*` (`release.sh`, `doctor.sh`), `release.json`, version wi
 Release-readiness checks (run gates, verify version integrity) · drafting build logs · reconciling `release.json`/`package.json`/tag state (report, propose; fix on approval) · post-deploy verification — executed, not merely planned: preview/production smoke tests, `/api/version` truth-check (== tag), route-health checks (Playbook §2 Post-deploy — this agent owns it; the orchestrator delegates it here) · rollback-target verification.
 
 ## Mandatory invariants
+
+- **Phase-end repository cleanup & handoff readiness** (pack v1.1 — this agent owns it): run and report the full procedure BEFORE the orchestrator gives Tom any commit/stage guidance. Stale `.git/index.lock` handling is process-safe only: verify a live owner (file-scoped `lsof`) before any removal; never broad pgrep/pkill.
 - Version-integrity gate (gate 7): one tag format; HEAD tag == pipeline version == `package.json`.
 - Release sequence per §5.8: `doctor.sh` + deterministic build + full suite → gate 7 → tag + sync → dev push → STOP → preview → STOP → main + tag → post-deploy truth-check.
 - Build log convention: `build-log-V{version}.txt`, capital V, check `git log` for the real last version before numbering.

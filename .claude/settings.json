@@ -1,0 +1,33 @@
+{
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "idle_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v osascript >/dev/null 2>&1 && osascript -e 'display notification \"Abluo needs your input — return to Claude.\" with title \"Claude Code\"' || true"
+          }
+        ]
+      },
+      {
+        "matcher": "agent_needs_input",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v osascript >/dev/null 2>&1 && osascript -e 'display notification \"Abluo needs your input — return to Claude.\" with title \"Claude Code\"' || true"
+          }
+        ]
+      },
+      {
+        "matcher": "agent_completed",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v osascript >/dev/null 2>&1 && osascript -e 'display notification \"Abluo task complete — review the final handoff.\" with title \"Claude Code\"' || true"
+          }
+        ]
+      }
+    ]
+  }
+}

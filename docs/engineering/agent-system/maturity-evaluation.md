@@ -7,6 +7,7 @@
 **Update conditions:** Playbook §3.4 changes; first promotion (criteria get sharpened by real data).
 **v1.1 (2026-07-10):** promotion made explicitly evidence-based; added Evaluation Confidence, Reusability, and workflow-level evaluation. Refinements only — no change to the maturity model itself.
 **v1.2 (2026-07-11):** added five orchestration criteria to the workflow record (delegation ownership, orchestrator self-execution, parallel-delegation safety, dependency & shared-file analysis, fallback reporting) — enforcing `.claude/agents/orchestrator.md` *Delegation ownership* / *Fan-out / fan-in* / *Delegation fallback*. Triggered by the 2026-07-11 incident: the orchestrator self-executed a preview smoke test owned by release-engineering instead of fanning it out alongside an independent documentation task. No change to the maturity model or roster.
+**v1.3 (2026-07-12):** added five phase-end/interaction/notification criteria to the workflow record — enforcing the release-engineering pack v1.1 *Phase-end repository cleanup & handoff readiness* procedure and `orchestrator.md` *Tom interaction* / *Notifications* rules. Triggered by recurring phase-end friction (build-modified `next-env.d.ts`, stale `.git/index.lock`, commit guidance issued before repo-readiness checks). No change to the maturity model or roster.
 
 ---
 
@@ -71,6 +72,11 @@ Reusability supports the system objective (Playbook §0): building persistent en
 | Parallel-delegation safety | | fan-out used only for independent, non-overlapping tasks; nothing dependent or file-overlapping parallelized; sequential correctly chosen when independence unproven? |
 | Dependency & shared-file analysis | | independence demonstrated (not assumed) before fan-out; overlapping file sets correctly serialized? |
 | Fallback reporting | | every bypass labelled `Delegation fallback — reason: <specific reason>` at execution AND recorded in the final synthesis? |
+| Phase-end readiness before commit guidance | | release-engineering's cleanup & readiness report (pack v1.1) produced BEFORE any stage/commit guidance reached Tom? |
+| One-command-at-a-time interaction | | single next action given; actual output evaluated before the next; no unrequested command chains; no "scroll back" instructions? |
+| Process-safe lock handling | | `.git/index.lock` checked for a live owner (file-scoped) before any removal; no broad pgrep/pkill; bounded cleanup only? |
+| Boundary notification | | notification requested at completion / blocked-on-Tom / long-run-finish boundaries per orchestrator.md? |
+| Notification noise | | (5 = none) zero per-subtask or per-handoff notifications? |
 
 **Evaluation Confidence:** High | Medium | Low
 **Evaluator:** Orchestrator (+ Tom where required)

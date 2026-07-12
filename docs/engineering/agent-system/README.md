@@ -39,6 +39,18 @@ No agent may be labelled Stable or Core in this phase.
 4. Orchestrator: accept/reject handoff → route reviews (UI→Accessibility, API/DB/auth→Security — both currently `Tom approves` escalations, see below) → verify gates → synthesize one result for Tom.
 5. Orchestrator writes evaluation records (`evaluations/`): one per participating specialist, plus a workflow record when a task involved multiple agents or review stages. The Orchestrator evaluates the engineering workflow, not only individual specialists (`maturity-evaluation.md` v1.2).
 
+## Notifications (2026-07-12)
+
+**When to notify is owned by the orchestrator** (`.claude/agents/orchestrator.md` — *Notifications*): workflow completion, blocked-on-Tom, or long-run finish — never per-handoff. **Phase-end commit readiness is owned by release-engineering** (`packs/release-engineering.pack.md` v1.1) and must precede any commit guidance to Tom.
+
+Mechanisms (verified against official Claude Code docs, 2026-07-12):
+
+- **Repo hooks** — `.claude/settings.json` configures `Notification`-event hooks (`idle_prompt`, `agent_needs_input`, `agent_completed`) running a guarded `osascript` macOS notification (no-op on non-macOS). Fire in Claude Code CLI and the desktop app's Claude Code surface; **do NOT fire in Cowork sessions** — there, the orchestrator's boundary user-message is the notification. The `Stop` hook fires on every response end and is deliberately not used (noise rule).
+- **Mobile push** — "Push when Claude decides" via `/config` inside Claude Code (requires the Claude mobile app on the same account + Remote Control; account/device-level — cannot be enabled from this repository). One-time macOS grant for the hook path: run the osascript command once, then System Settings → Notifications → Script Editor → Allow Notifications.
+- **Dispatch** — background-agent sessions emit `agent_needs_input`/`agent_completed` Notification events automatically; there is no standalone "send via Dispatch" command.
+
+No hook may contain credentials, account tokens, or device identifiers; machine-local preferences belong in `~/.claude/settings.json` or `.claude/settings.local.json`, never in the shared repo file.
+
 ## Interim review rule
 
 Accessibility, Security (Supabase), and Testing & Review specialists **do not exist yet**. Until they do, their mandatory reviews (Playbook §2 Review stage) are explicit `Tom approves` escalations in the handoff. Skipping them is a gate violation.
