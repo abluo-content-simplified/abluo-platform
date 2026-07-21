@@ -397,23 +397,7 @@ export default defineConfig({
 
                             S.divider(),
 
-                            // Locales — stub navigating to siteConfig.
-                            // Replace with a dedicated locale management
-                            // pane when locale settings warrant their own UI.
-                            S.listItem()
-                              .id(`${slug}-settings-locales`)
-                              .title('Locales')
-                              .child(
-                                S.documentList()
-                                  .title('Locales')
-                                  .schemaType('siteConfig')
-                                  .apiVersion('2026-05-21')
-                                  .filter(`_type == "siteConfig" && projectSlug == $slug`)
-                                  .params({ slug })
-                                  .initialValueTemplates([
-                                    S.initialValueTemplateItem('siteConfigProjectOwned', { projectSlug: slug }),
-                                  ])
-                              ),
+                            // Locales: configured in Website Settings → Languages only (ADR-014 one-surface; stub removed as Phase B completion)
 
                             // Domains — placeholder (C1 stub).
                             S.listItem()
