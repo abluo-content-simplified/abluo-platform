@@ -219,19 +219,19 @@ All DS fields belong to exactly one inheritance category (ADR-008). The category
 - **Project Settings → Integrations** — registry-driven pane managing `project.integrationConfigs` (GA4, GTM, Meta Pixel, custom scripts)
 - **Project Settings → Privacy** — pane managing `project.privacy` (consent mode, tracking kill switch)
 
-**Runtime status:** Tracking emission is paused until Phase C, which will re-source integration state from `project.integrationConfigs` and `project.privacy`.
+**Runtime status:** Tracking emission is live. `TrackingScripts` (`src/components/TrackingScripts.tsx`) reads `project.integrationConfigs` + `project.privacy` via `projectIntegrationsQuery` (`src/lib/sanity/queries.ts`) and resolves render state through the pure `resolveTracking()` helper (`src/lib/tracking/resolve.ts`) — kill switch first, then per-integration `enabled === true`, production-only.
 
 **Known issue:** One production siteConfig document (`studiomartegani`) retains orphaned legacy `integrations` data. This data is not read by the platform and will be cleaned up after admin re-entry via the Project Settings UI.
 
-### Integration Registry (ADR-014, Phase B)
+### Integration Registry (ADR-014)
 
 Per ADR-014 (Accepted), `src/lib/integrations/` is the single source of truth for integration definitions. Sanity schema for integration values is **generated**, not hand-projected: `buildIntegrationSchemaTypes()` builds the per-integration types and `buildIntegrationConfigsField()` builds the `integrationConfigs` array field on the `project` document. `validateIntegrationRegistry` guards the registry at load time, mirroring the Module Registry pattern (ADR-011).
 
-**Phase B (completed):** `siteConfig.integrations` removed from schema and queries. Project Settings → Integrations is now a live registry-driven `IntegrationsPane`, alongside a new Privacy pane editing the hidden `project.privacy` object (`consentModeEnabled`, `trackingKillSwitch`). `getIntegrationStatus` (`src/lib/integrations/status.ts`) supports the pane.
+**Phase B:** `siteConfig.integrations` removed from schema and queries. Project Settings → Integrations is a live registry-driven `IntegrationsPane`, alongside a Privacy pane editing the hidden `project.privacy` object (`consentModeEnabled`, `trackingKillSwitch`). `getIntegrationStatus` (`src/lib/integrations/status.ts`) supports the pane.
 
-**Phase C (pending):** Frontend will re-wire tracking consumption from `project.integrationConfigs` and `project.privacy`. Runtime tracking is currently unmounted until Phase C completes.
+**Phase C:** Frontend consumption switched to `project.integrationConfigs` and `project.privacy` — see Runtime status above.
 
-Phase A manifests registered in `INTEGRATION_REGISTRY`: `google-analytics`, `google-tag-manager`, `meta-pixel`, `custom-scripts`.
+Manifests registered in `INTEGRATION_REGISTRY`: `google-analytics`, `google-tag-manager`, `meta-pixel`, `custom-scripts`.
 
 **Adding a new integration** is registering one manifest file under `src/lib/integrations/manifests/` and adding it to `INTEGRATION_REGISTRY` (`src/lib/integrations/registry.ts`) — schema, validation, and the Studio form all derive from it.
 

@@ -606,7 +606,17 @@ Static pages (About, Services, Contact, etc.) are managed by the Abluo admin in 
 
 ## Analytics & Site Verification
 
-Third-party integrations (GA4, GTM, Meta Pixel, Bing verification) are configured in `siteConfig.integrations` — platform-managed only, never exposed to client dashboard. `integrations.analyticsEnabled` (default `false`) is the tenant master switch — unless strictly `true`, `TrackingScripts` renders nothing; verification meta tags are exempt (not visitor tracking) and always render. Scripts emit in production only via `TrackingScripts.tsx`. Custom scripts are arbitrary JS injected at head or bodyEnd placement; admin-vetted only, and disabled by default (`enabled` starts `false`). Each script requires a `description` and a `consentCategory`; `integrations.consentModeEnabled` (default `false`) fails closed on GA4, GTM, Meta Pixel, and `analytics`/`marketing`/`functional` custom scripts when no valid visitor consent exists — only `necessary` customs still load; the interim default (`consentModeEnabled` off) remains ungated. Auditability is via Sanity revision history, not manual fields. See ADR-013 for the full policy.
+Third-party integrations (GA4, GTM, Meta Pixel, custom scripts) are registry-driven — `src/lib/integrations/` (manifests + `INTEGRATION_REGISTRY`) is the single source of truth; adding one is registering one manifest, never a bespoke schema field. Admins configure them in Studio **Project Settings → Integrations**, which writes `project.integrationConfigs`; each integration is independently switched on via its own `enabled` field — there is no single "all tracking" flag.
+
+Privacy policy is a separate, cross-integration surface: **Project Settings → Privacy** edits `project.privacy` — `consentModeEnabled` and a `trackingKillSwitch` (an emergency override that blanks all tracking regardless of individual integration state).
+
+At runtime, `TrackingScripts.tsx` reads `project.integrationConfigs` + `project.privacy` (fetched via `projectIntegrationsQuery`, `src/lib/sanity/queries.ts`) and resolves what renders through the pure `resolveTracking()` helper (`src/lib/tracking/resolve.ts`): kill switch first, then per-integration `enabled === true`. Scripts emit in production only. ADR-013's consent semantics (fail-closed under `consentModeEnabled`, `necessary`-category custom scripts never gated) carry over unchanged.
+
+Verification tokens (`googleSiteVerification`, `bingSiteVerification`) are not tracking — they live in `siteConfig`'s SEO group (**Website Settings → SEO**) and always render, in every environment.
+
+Custom-script security rules are unchanged: admin-vetted only, disabled by default, no secrets in `code`, and a required `description` + `consentCategory` per script.
+
+Authority: ADR-014 (Integration Registry & Studio IA) plus ADR-013's carried-over policy sections (security, consent).
 
 ---
 

@@ -723,7 +723,7 @@ Tenant-defined custom roles are intentionally out of scope for ADR-011. They wil
 
 ## ADR-013 — Tenant tracking & verification configuration lives in siteConfig.integrations
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-07-10
 **Supersedes:** —
 **Superseded By:** ADR-014, partially — the STORAGE-LOCATION section only (`siteConfig.integrations` layout, and the Studio placement of its Studio pane). This ADR's security policy (no secrets, trusted vendors, admin-only, disabled-by-default, required `description`/`consentCategory`) and consent semantics (fail-closed under `consentModeEnabled`) remain in force, relocated onto the Integration Registry model. See ADR-014's Supersession Note for the full statement.
