@@ -1,5 +1,18 @@
 # Abluo — Project Intelligence
 
+## Authority
+
+This file is the **implementation handbook** — the *how*, within the Playbook's *why/what*. It is not the highest authority. `docs/engineering/engineering-playbook.md` (v1.0) is the highest engineering authority. Governed engineering work runs through the Engineering Agent System — orchestrator + specialist agents + context packs + Standard Handoff — entry point `docs/engineering/agent-system/README.md`. Where this file conflicts with the Playbook or an accepted ADR, the Playbook/ADR wins and this file is corrected. See `docs/engineering/agent-system/context-spine.md` §1 for the full authority order.
+
+## Session conventions
+
+- `next-env.d.ts` build churn is restored, never committed: `git checkout -- next-env.d.ts`.
+- Sandboxed sessions use `git --no-optional-locks <cmd>` for all git reads (the sandbox FUSE mount cannot unlink its own lock files); stale-lock cleanup on Tom's machine follows the guarded procedure in `docs/engineering/agent-system/packs/release-engineering.pack.md` ("Phase-end repository cleanup & handoff readiness", item 4) — never delete a lock or kill a process without first confirming a git process actually owns it.
+- Before giving Tom any stage/commit/push/tag/deploy guidance, the phase-end readiness procedure in `docs/engineering/agent-system/packs/release-engineering.pack.md` runs first.
+- Terminal guidance to Tom is one command at a time; evaluate the actual output before giving the next (`.claude/agents/orchestrator.md`).
+- Every configurable concept has exactly one configuration surface (ADR-014); enforced by `src/lib/sanity/__tests__/settings-structure.test.ts`.
+- Notifications fire at workflow boundaries only — completion, blocked-on-Tom, long-run finish — never per handoff (`.claude/agents/orchestrator.md`).
+
 ## What Abluo Is
 
 Abluo is a multi-tenant website management platform for small professional practices — dentists, therapists, consultants, studios. It provides premium websites with a minimal editorial interface, AI-assisted publishing, and zero CMS complexity for clients.
@@ -500,36 +513,35 @@ Abluo uses a three-stage deployment pipeline. **Never push unreviewed changes di
 
 ### Release Process
 
-1. Implement and test changes on `dev`.
+1. Implement and test changes on `dev` — ordinary descriptive commits, no version prefix.
 2. Run `npx tsc --noEmit`, `npx vitest run`, and `npm run build` — all must pass.
-3. Commit to `dev` and push.
+3. Push `dev`. Not every commit is a release — cut a release only when shipping through to production: `./scripts/release.sh <version> "<title>"` (tags `dev` at that point; see "Versioning and Deployment" below).
 4. **Stop. Wait for Tom to verify on `https://dev.abluo.app`.**
-5. Only after explicit approval: merge `dev → preview` and push.
+5. Only after explicit approval: promote `dev → preview` (`--ff-only`) and push.
 6. **Stop. Wait for Tom to verify on `https://preview.abluo.app`.**
-7. Only after explicit approval: merge `preview → main`, tag the release, push.
-8. Verify production on `https://abluo.app`.
+7. Only after explicit approval: promote `preview → main` (`--ff-only`) and push.
+8. Verify production on `https://abluo.app`, including the `/api/version` truth-check.
 
-**The word "Stop" above is literal.** Do not proceed to the next stage without confirmation, even if the changes seem trivially safe.
+**The word "Stop" above is literal.** Do not proceed to the next stage without confirmation, even if the changes seem trivially safe. Full command sequences: `docs/release-workflow.md`.
 
 ### Git Commands (default pattern)
 
+Ordinary commits are **descriptive, no version prefix** (e.g. `git commit -m "fix: ..."`, `"feat: ..."`) — verified against commit history since `b78dccc`. Versioned releases are cut with `./scripts/release.sh <version> "<title>"` (lowercase annotated tag `vX.Y.Z`), never a hand-written `git tag`. Promotions between stage branches are `--ff-only`.
+
+The full command sequences, STOP gates, hotfix workflow, and rollback procedure are authoritative in **`docs/release-workflow.md`** — do not duplicate them here; follow that runbook. Summary only:
+
 ```bash
-# Commit to dev
-git checkout dev
-git add <files>
-git commit -m "V{version}: description"
+# Daily work on dev — descriptive commits, no version prefix
+git commit -m "feat: ..."
 git push origin dev
 
-# Promote to preview — only after Tom confirms dev.abluo.app is working
-git checkout preview && git merge dev --no-edit && git push origin preview
+# Cut a release on dev (see docs/release-workflow.md §2)
+./scripts/release.sh v1.0.2 "Release Title"
 
-# Promote to production — only after Tom confirms preview.abluo.app is working
-git checkout main && git merge preview --no-edit
-git tag V{version}
-git push origin main --tags
-
-# Always return to dev after a promotion
-git checkout dev
+# Promote — ff-only, after each STOP is cleared (see docs/release-workflow.md §3–4)
+git checkout preview && git merge --ff-only dev && git push origin preview
+git checkout main && git merge --ff-only preview && git push origin main
+git checkout dev   # always return to dev after a promotion
 ```
 
 When suggesting git commands, always default to the `dev → preview → main` flow unless explicitly instructed otherwise.
@@ -567,11 +579,12 @@ export const config = { matcher: [...] }
 
 ## Versioning and Deployment
 
-- **Versioning:** semver. Tag format: `V{major}.{minor}.{patch}` (capital V)
-- **Build logs:** one file per release — `build-log-V{version}.txt` in the repo root. Never overwrite an existing log.
-- **Pre-commit checklist:**
-  1. `npx tsc --noEmit` — must be clean
-  2. `npx vitest run` — all tests must pass
+There is **one version concept — the Platform Version** — carried by a lowercase annotated git tag `vX.Y.Z` (no capital `V`; four-segment forms are rejected). It is the single source of truth; there is no separate "engineering version." A release is cut on `dev` with `./scripts/release.sh <version> "<title>"`, which regenerates `release.json` + `package.json`, runs the deterministic build gate, creates the release-marker commit (`release: vX.Y.Z - Title`), tags, and pushes `dev` + the tag. Ordinary commits between releases stay descriptive with no version prefix.
+
+Authoritative runbook: **`docs/release-workflow.md`** (command sequences, STOP gates, hotfix, rollback). Do not duplicate its content here.
+
+- **Post-deploy truth-check:** `https://abluo.app/api/version` must report `platformVersion` equal to the tag just promoted.
+- **Pre-commit checklist:** `npx tsc --noEmit` clean, `npx vitest run` passing, `npm run build` passing (the release gate enforces the build; run it before any release-cutting commit).
 - **Git push:** must be done from the local terminal. The sandbox cannot authenticate to GitHub over HTTPS.
 
 ---
