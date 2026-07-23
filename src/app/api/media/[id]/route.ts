@@ -1,5 +1,8 @@
 import { createClient } from '@sanity/client'
 import { NextRequest, NextResponse } from 'next/server'
+import { isExpectedDocType, requireAuthenticatedUser } from '@/lib/api/auth'
+
+const MEDIA_ASSET_TYPE = 'mediaAsset'
 
 const client = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || '3n7t84j3',
@@ -15,7 +18,33 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuthenticatedUser()
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const { id } = await params
+
+    const actualType = await client.fetch<string | null>(
+      `*[_id == $id][0]._type`,
+      { id }
+    )
+    if (!actualType) {
+      return NextResponse.json(
+        { success: false, error: 'Document not found' },
+        { status: 404 }
+      )
+    }
+    if (!isExpectedDocType(actualType, MEDIA_ASSET_TYPE)) {
+      return NextResponse.json(
+        { success: false, error: 'Document is not a mediaAsset' },
+        { status: 400 }
+      )
+    }
+
     const body = await request.json()
     const { name, altText, description, tags } = body
 
@@ -128,7 +157,32 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuthenticatedUser()
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const { id } = await params
+
+    const actualType = await client.fetch<string | null>(
+      `*[_id == $id][0]._type`,
+      { id }
+    )
+    if (!actualType) {
+      return NextResponse.json(
+        { success: false, error: 'Document not found' },
+        { status: 404 }
+      )
+    }
+    if (!isExpectedDocType(actualType, MEDIA_ASSET_TYPE)) {
+      return NextResponse.json(
+        { success: false, error: 'Document is not a mediaAsset' },
+        { status: 400 }
+      )
+    }
 
     // Delete document
     await client.delete(id)
