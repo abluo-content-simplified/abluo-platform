@@ -12,6 +12,7 @@ import {
 } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
+import { resolveEmbedUrl } from '@/lib/embed'
 import type { Post, LocaleConfig, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
 import { imageUrl, imageSrcSet, ogImageUrl } from '@/lib/sanity/image'
 import { SlideUp } from '@/components/animation'
@@ -256,6 +257,7 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
     : null
 
   const authorAvatarSrc = post.author?.avatar ? imageUrl(post.author.avatar, 80) : undefined
+  const featuredVideoSrc = resolveEmbedUrl(post.featuredVideo?.youtubeUrl)
 
   return (
     <SlugMapProvider slugMap={slugMap}>
@@ -382,12 +384,12 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
           )}
 
           {/* ── Featured video ────────────────────────────────────── */}
-          {post.featuredVideo?.youtubeUrl && (
+          {featuredVideoSrc && (
             <SlideUp delay={0.25} duration={0.5}>
               <div className="mb-12">
                 <div className="relative aspect-video overflow-hidden rounded-xl bg-black">
                   <iframe
-                    src={post.featuredVideo.youtubeUrl.replace(/watch\?v=/, 'embed/')}
+                    src={featuredVideoSrc}
                     title={post.title}
                     className="w-full h-full"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

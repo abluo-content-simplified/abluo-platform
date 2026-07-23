@@ -390,6 +390,8 @@ const postType = defineType({
           name: 'youtubeUrl',
           title: 'YouTube URL',
           type: 'url',
+          description:
+            'Accepts youtube.com/watch?v=VIDEO_ID, youtu.be/VIDEO_ID, or youtube.com/playlist?list=PLAYLIST_ID.',
           hidden: ({ parent }: { parent?: { provider?: string } }) => parent?.provider !== 'youtube',
         }),
         defineField({

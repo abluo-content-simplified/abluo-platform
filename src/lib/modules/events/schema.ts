@@ -153,7 +153,7 @@ const eventType = defineType({
       type: 'string',
       group: 'streaming',
       description:
-        'Paste a YouTube or Cloudflare Stream URL. The following formats are accepted:\n\n• youtube.com/watch?v=VIDEO_ID\n• youtu.be/VIDEO_ID\n• *.cloudflarestream.com/VIDEO_ID/watch\n\nChannel URLs and playlist URLs are not supported.',
+        'Paste a YouTube or Cloudflare Stream URL. The following formats are accepted:\n\n• youtube.com/watch?v=VIDEO_ID (optionally with &list=PLAYLIST_ID)\n• youtu.be/VIDEO_ID\n• youtube.com/playlist?list=PLAYLIST_ID\n• *.cloudflarestream.com/VIDEO_ID/watch\n\nChannel URLs are not supported.',
     }),
     // ── External Stream CTAs ───────────────────────────────────────────────────
     defineField({
