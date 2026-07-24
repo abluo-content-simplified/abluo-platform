@@ -1,5 +1,7 @@
 import { createClient } from '@sanity/client'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuthenticatedUser } from '@/lib/api/auth'
+import { buildMediaFilter } from '@/lib/media/media-filter'
 
 const client = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || '3n7t84j3',
@@ -12,6 +14,16 @@ const client = createClient({
 // GET /api/media — List media assets with filters & pagination
 export async function GET(request: NextRequest) {
   try {
+    // ADR-015 interim gate: any authenticated session. Phase 1 upgrades this
+    // admin-surface route to require platform_role === 'abluo_admin'.
+    const user = await requireAuthenticatedUser()
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const searchParams = request.nextUrl.searchParams
     const tenant = searchParams.get('tenant')
     const project = searchParams.get('project')
@@ -20,31 +32,14 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100)
     const offset = parseInt(searchParams.get('offset') || '0')
 
-    // Build GROQ filter
-    let filter = '_type == "mediaAsset"'
-
-    if (tenant) {
-      filter += ` && tenant._ref == "${tenant}"`
-    }
-    if (project) {
-      filter += ` && project._ref == "${project}"`
-    }
-    if (tags.length > 0) {
-      const tagMatches = tags.map((tag) => `"${tag}" in tags`).join(' || ')
-      filter += ` && (${tagMatches})`
-    }
-    if (search) {
-      filter += ` && (
-        altText match "${search}" ||
-        description match "${search}" ||
-        image.asset->originalFilename match "${search}" ||
-        tags[] match "${search}"
-      )`
-    }
+    // Build parameterized GROQ filter (ADR-015 R2 — no interpolated request
+    // params in query strings). offset/limit are numeric (parseInt) and are the
+    // only interpolated values.
+    const { filter, params } = buildMediaFilter({ tenant, project, tags, search })
 
     // Fetch count
     const countQuery = `count(*[${filter}])`
-    const totalCount = await client.fetch<number>(countQuery)
+    const totalCount = await client.fetch<number>(countQuery, params)
 
     // Fetch paginated results with asset metadata
     const query = `*[${filter}] | order(_createdAt desc) [${offset}...${offset + limit}] {
@@ -72,7 +67,7 @@ export async function GET(request: NextRequest) {
       }
     }`
 
-    let assets = await client.fetch(query)
+    let assets = await client.fetch(query, params)
 
     // Backward compatibility: convert string altText/description to objects
     assets = assets.map((asset: any) => ({
@@ -109,6 +104,16 @@ export async function GET(request: NextRequest) {
 // POST /api/media/upload — Upload file & create mediaAsset document
 export async function POST(request: NextRequest) {
   try {
+    // ADR-015 interim gate: any authenticated session. Phase 1 upgrades this
+    // admin-surface route to require platform_role === 'abluo_admin'.
+    const user = await requireAuthenticatedUser()
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const formData = await request.formData()
     const file = formData.get('file') as File
     const tenant = formData.get('tenant') as string
@@ -150,7 +155,8 @@ export async function POST(request: NextRequest) {
     let projectSlug: string | null = null
     if (project) {
       const projectDoc = await client.fetch<{ projectSlug: string }>(
-        `*[_type == "project" && _id == "${project}"][0] { projectSlug }`
+        `*[_type == "project" && _id == $project][0] { projectSlug }`,
+        { project }
       )
       projectSlug = projectDoc?.projectSlug || null
     }
@@ -178,7 +184,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch full document with asset metadata
     let fullAsset = await client.fetch(
-      `*[_id == "${mediaAsset._id}"][0] {
+      `*[_id == $id][0] {
         _id,
         _createdAt,
         name,
@@ -201,7 +207,8 @@ export async function POST(request: NextRequest) {
             originalFilename
           }
         }
-      }`
+      }`,
+      { id: mediaAsset._id }
     )
 
     // Backward compatibility: convert string to objects

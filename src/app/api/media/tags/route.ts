@@ -1,5 +1,7 @@
 import { createClient } from '@sanity/client'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuthenticatedUser } from '@/lib/api/auth'
+import { buildMediaFilter } from '@/lib/media/media-filter'
 
 const client = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || '3n7t84j3',
@@ -12,24 +14,29 @@ const client = createClient({
 // GET /api/media/tags — Get distinct tags for autocomplete
 export async function GET(request: NextRequest) {
   try {
+    // ADR-015 interim gate: any authenticated session. Phase 1 upgrades this
+    // admin-surface route to require platform_role === 'abluo_admin'.
+    const user = await requireAuthenticatedUser()
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const searchParams = request.nextUrl.searchParams
     const tenant = searchParams.get('tenant')
     const project = searchParams.get('project')
     const search = searchParams.get('search') || ''
 
-    // Build GROQ filter
-    let filter = '_type == "mediaAsset"'
-    if (tenant) {
-      filter += ` && tenant._ref == "${tenant}"`
-    }
-    if (project) {
-      filter += ` && project._ref == "${project}"`
-    }
+    // Build parameterized GROQ filter (ADR-015 R2). `search` here is applied in
+    // JS below, not in the query, so only tenant/project enter the filter.
+    const { filter, params } = buildMediaFilter({ tenant, project })
 
     // Fetch all tags as a flat array, deduplicate and sort in JS.
     // Note: GROQ does not have unique() or sort() as pipeline functions;
     // *[filter].tags[] returns a flat array which we process here.
-    const rawTags = await client.fetch<string[]>(`*[${filter}].tags[]`)
+    const rawTags = await client.fetch<string[]>(`*[${filter}].tags[]`, params)
 
     const uniqueSorted = [...new Set(rawTags.filter(Boolean))].sort()
 

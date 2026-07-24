@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import { requireAuthenticatedUser } from '@/lib/api/auth'
 
 /**
  * GET /api/sanity/tenants
@@ -11,6 +12,14 @@ import { NextResponse } from 'next/server'
  */
 export async function GET(request: Request) {
   try {
+    // ADR-015 interim gate: any authenticated session. Phase 1 upgrades this
+    // admin-surface route to require platform_role === 'abluo_admin'. The
+    // service-role Supabase client is intentionally left as-is (RLS tranche).
+    const user = await requireAuthenticatedUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const excludeParam = searchParams.get('exclude')
     const excludeIds = excludeParam ? excludeParam.split(',') : []
