@@ -14,7 +14,7 @@
  * - No hardcoded strings — all labels come from the form document or the messages prop
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { FormField, validateForm } from '@/components/fields'
 import type { FieldConfig, OptionItem } from '@/components/fields'
 import type { SanityForm, SanityFormField } from '@/lib/sanity/types'
@@ -79,16 +79,25 @@ interface FormRendererProps {
   locale?: string
   /** Tenant slug (URL segment) — resolved server-side to tenant_id */
   tenantSlug?: string
-  /** Spam protection — timestamp when the section became visible */
-  openedAt?: number
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function FormRenderer({ form, messages, locale = 'en', tenantSlug, openedAt }: FormRendererProps) {
+export function FormRenderer({ form, messages, locale = 'en', tenantSlug }: FormRendererProps) {
   const fieldConfigs = (form.fields ?? [])
     .map(toFieldConfig)
     .filter((f): f is FieldConfig => f !== null)
+
+  // Spam protection — captured on mount, at the moment this form actually
+  // becomes visible to the visitor. Previously this came from an `openedAt`
+  // prop that no caller (FormSection) ever passed, so it silently fell back
+  // to `Date.now()` at submit time — making the elapsed time ~0ms on every
+  // submission and tripping the server's `isTooFast()` spam check 100% of
+  // the time. Every real submission was being discarded while the UI still
+  // showed a success message. Capturing it locally in this client component
+  // (same pattern as EarlyAccessFooterCta's `openedAt = useRef(Date.now())`)
+  // fixes it at the source — no prop plumbing required.
+  const openedAt = useRef(Date.now())
 
   const initialValues = Object.fromEntries(fieldConfigs.map((f) => [f.id, '']))
 
@@ -137,7 +146,7 @@ export function FormRenderer({ form, messages, locale = 'en', tenantSlug, opened
     const payload: Record<string, unknown> = {
       ...topLevel,
       inquiryType: form.inquiryType ?? 'contact',
-      openedAt: openedAt ?? Date.now(),
+      openedAt: openedAt.current,
       ...(tenantSlug ? { tenantSlug } : {}),
       ...(form.projectSlug ? { projectSlug: form.projectSlug } : {}),
       ...extraData,
