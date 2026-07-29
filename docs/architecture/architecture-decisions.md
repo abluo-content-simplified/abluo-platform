@@ -978,4 +978,211 @@ Each phase is independently deployable (ADR-007):
 - The one-time relocation (Website Settings → Project Settings → Integrations, `analyticsEnabled` → kill switch, verification tokens → `seo`) is churn for the Abluo admin's muscle memory and requires every reference to the old `siteConfig.integrations` shape (docs, any hardcoded admin bookmarks) to be updated
 - `storage` being per-manifest rather than per-field today means an integration that needs a mixed Sanity/Supabase split (unlikely at Sprint 2's scope, but plausible for a future payments integration) will require a manifest-shape change when that need arrives
 
+---
+
+## ADR-015 — Platform Authorization & Tenant Isolation
+
+**Status:** Accepted
+**Date:** 2026-07-24
+**Supersedes:** —
+**Superseded By:** —
+
+> Tom has accepted this ADR and all eight Orchestrator refinements (R1–R8) on 2026-07-24. Every decision below reflects Tom's final position; implementation proceeds from this acceptance point.
+
+### Context
+
+The Sprint 3 tenant-isolation and `/studio`-gating evidence audit (`docs/engineering/agent-system/evaluations/2026-07-24-sprint3-tenant-isolation-audit.md`, 2026-07-24) traced all three planes of the platform — Supabase, Sanity, and the API/route layer — against a single question: can an authenticated tenant user reach another tenant's data, or reach an Abluo-admin-only surface. It found that they can, structurally, because a reliable notion of "Abluo admin" does not exist anywhere in the codebase.
+
+**The pivotal finding (Verified fact):** `src/proxy.ts:255` reads a `user_role` claim off the session JWT (`decodeJwtClaim(session?.access_token, 'user_role')`) and gates `/admin`-prefixed routes on `role !== 'admin'`. Nothing in the platform ever sets that claim. `profiles.role` was dropped from Supabase in `supabase/migrations/004_profiles_identity_only.sql:244` (`alter table public.profiles drop column if exists role;`) as part of the move to per-tenant membership roles in `tenant_members`, and no Supabase custom access-token hook or `app_metadata` setter was put in its place. The consequence is not "the admin gate is weak" — it is that **no admin identity mechanism exists at all**, so every distinction between a trusted Abluo operator and an authenticated tenant user is currently unenforceable, not merely unenforced.
+
+**Structural picture from the audit (Verified fact, file-referenced):**
+- **Supabase RLS is well-built but bypassed.** `tenant_members` membership, `SECURITY DEFINER` helper functions keyed on `auth.uid()`, and per-table policies exist and are sound — but every application code path reads and writes through `createAdminClient()` (the service-role client), which bypasses RLS entirely. The isolation boundary exists in the schema and is unused in practice.
+- **Sanity private/admin paths take tenant identity from spoofable input.** Public website content is correctly scoped via `fetchForTenant`/`projectSlug`. Admin-facing API routes do not follow the same discipline: `src/app/api/sanity/document/route.ts`, `src/app/api/media/route.ts` and `src/app/api/media/[id]/route.ts`, `src/app/api/sanity/tenants/route.ts`, `src/app/api/sanity/tenant/route.ts`, `src/app/api/sanity/projects/route.ts` take tenant/project identity from request params, body, or omit scoping outright — none independently verify the requester's membership in the tenant they claim to act on.
+- **Unauthenticated P0 routes.** The audit records 8 P0-severity gaps across a 12-gap table (see the audit's handoff for the full table); confirmed present in this session: `src/app/api/sanity/document/route.ts`, `src/app/api/media/route.ts` (GET/POST), `src/app/api/media/[id]/route.ts`, `src/app/api/sanity/tenants/route.ts`, `src/app/api/sanity/tenant/route.ts`, `src/app/api/sanity/projects/route.ts`, `src/app/api/fix-colors/route.ts`, `src/app/api/inquiries/[id]/route.ts` — each reachable without the auth+ownership check the F1 hotfix (Sprint 3, `media/[id]` DELETE/PATCH) already proved as the correct per-route pattern.
+- **Dashboard routes are unguarded by the proxy.** `src/proxy.ts:94` defines `PROTECTED_PREFIXES = ['/admin', '/client']`, but the live dashboards are `/en/dashboard`, `/en/media`, `/en/leads` (per-locale, no `/admin` or `/client` prefix) — they never match the matcher and are reachable by any authenticated user, admin or not, because (per the pivotal finding) the admin/tenant distinction cannot be evaluated even where the gate does run.
+- **The client dashboard's tenant data layer is stubbed, not built.** There is no live per-tenant read path yet to retrofit — the authorization model must be decided before that layer is written, not after.
+
+**The compounding effect:** any authenticated tenant user is, today, a de-facto platform admin — not through a specific exploit, but because the mechanism that would distinguish an admin from a tenant user does not exist, and every other tenant-boundary (RLS, Sanity scoping, dashboard gating) either sits unused behind service-role or takes its tenant identity from something the requester controls.
+
+This ADR is the required prerequisite (spine §7, decision 11 below): implementation does not begin until this ADR is accepted.
+
+### Alternatives Considered
+
+- **Patch each P0 route individually, decide the admin-identity question later** — rejected as the sole path forward: the F1 hotfix already proved this pattern works per-route, but shipping it platform-wide without first fixing the admin-identity gap re-encodes "no admin distinction exists" into every patched route. Retained as the *immediate hardening tranche* (R7, below) run in parallel with — never in place of — the model work.
+- **Admin-allowlist table (`is_admin` booleman/list keyed by user id)** — considered in the audit; rejected in favor of a JWT claim because a table lookup on every request adds a query the JWT claim avoids, and because Supabase's access-token-hook mechanism already exists to solve exactly this problem in a signed, tamper-evident way.
+- **Dedicated admin tenant (treat "Abluo" as tenant zero, admins as members of it)** — rejected: conflates the platform-operator identity with the tenant-membership model, which is designed for tenant-scoped roles/permissions, not platform-wide operator status. Keeping the two identities (decision 2, below) structurally separate is simpler and matches how the routes actually need to reason about access.
+- **RLS-only enforcement, no application-layer checks** — rejected: Sanity has no RLS equivalent, so application-layer ownership enforcement is mandatory there regardless of the Supabase answer (decision 6). For Supabase itself, RLS-only (no app-layer defense in depth) was considered and rejected in favor of RLS-as-primary-boundary with application-layer checks retained as a second line (decision 5, decision 9) — belt and suspenders on the platform's most consequential invariant.
+- **Cache `TenantAuthorizationContext` in the JWT alongside `platform_role`** — considered for performance; rejected (Orchestrator refinement R1, Tom to adjudicate) because a cached membership/permission set cannot be revoked mid-session without a token-refresh mechanism, which reintroduces exactly the kind of unenforceable-until-refresh gap this ADR exists to close.
+
+### Decision
+
+The following eleven points are Tom's final, accepted decisions. They are not open for re-litigation at ADR review — only the Orchestrator refinements (below) are.
+
+**1. Signed, server-controlled `platform_role`.** A `platform_role` claim, values `abluo_admin` | `tenant_user`, lives in Supabase `app_metadata` and is exposed as a JWT claim via a server-controlled mechanism (a Supabase custom access-token hook, or equivalent server-side claim injection). Tenant users can never assign or edit their own `platform_role` — it is set exclusively by trusted server-side operations.
+
+**2. `abluo_admin` and `tenant_user` are separate platform identities.** Framing matters: the problem is not "the app lacks a reliable admin *role*" — it is that the app lacks a reliable platform-admin *identity*, so several routes today fail to distinguish trusted Abluo operators from authenticated tenant users. Authenticated tenant users are never described or treated as admins by default; `abluo_admin` is a distinct, narrowly-granted identity.
+
+**3. Multi-tenant users, from the beginning.** A user maps to one-or-more tenant memberships; each membership carries its own role and permission set. A permission granted in Tenant A's membership never applies to Tenant B — there is no cross-tenant permission inheritance. Post-login routing: exactly one membership → straight to that tenant's dashboard; more than one → a tenant selector built only from the user's own verified membership records (never a free-text or URL-supplied tenant id). Switching tenants establishes a new, independently validated authorization context — it is not a client-side state flip. Changing the tenant slug in the URL never switches the authorization context by itself; the server re-validates against memberships on every request regardless of what the URL says.
+
+**4. Roles and permissions are stored per tenant membership**, not per user. A consulting user with memberships in three tenants can hold three different roles.
+
+**5. RLS is the primary tenant-isolation boundary for Supabase.** Ordinary tenant-scoped requests are served through an authenticated-user Supabase client (a client carrying the requesting user's JWT, subject to RLS) — not the service-role client. This reverses the audit's finding that RLS exists but is universally bypassed.
+
+**6. Explicit application-layer tenant-ownership enforcement for Sanity.** Sanity has no RLS equivalent. Every Sanity read and write on tenant-owned content must independently verify, in application code, that the resource being accessed belongs to the tenant the requester is authorized for.
+
+**7. `/studio` is restricted to MFA-authenticated (AAL2) Abluo administrators.** Not "any authenticated user," and not "any admin" — an admin whose session has completed the second authentication factor.
+
+**8. Tenant accounts are invitation-only.** There is no self-service tenant signup. Every tenant user identity, membership, and initial role is created by an invitation flow, never by open registration.
+
+**9. Server-side tenant + module + permission + ownership checks on every read and every mutation.** No route is exempt because it "only reads" or because a check happened earlier in the request chain — each of the four checks runs on every request that touches tenant-owned data.
+
+**10. Cross-tenant isolation tests are release-blocking.** A release that fails any test in the required matrix (see Testing, below) does not ship — this joins the existing gates in the Deployment Workflow (CLAUDE.md), not alongside them as optional.
+
+**11. This ADR precedes implementation.** The tenant-isolation audit is the evidence base; no code implementing this model lands before this ADR is Accepted.
+
+#### Structural model
+
+**`AuthenticatedActor`**
+```ts
+type AuthenticatedActor = {
+  userId: string
+  platformRole: 'abluo_admin' | 'tenant_user'
+}
+```
+Resolved by exactly one central, server-side auth helper. No route interprets JWT claims independently — every route that needs to know who the requester is calls the same helper. This closes the exact failure mode the pivotal finding describes: a claim that different code paths read (or fail to read) inconsistently.
+
+**`TenantAuthorizationContext`**
+```ts
+type TenantAuthorizationContext = {
+  userId: string
+  tenantId: string
+  membershipId: string
+  tenantRole: string
+  enabledModules: string[]
+  permissions: string[]
+}
+```
+Tenant identity in this context comes exclusively from the user's authenticated, verified membership record. It is never trusted solely from: a URL route param, a query param, a request body field, a user-selected cookie, or a Sanity `projectSlug` supplied by the client. A requested tenant id may appear in a URL for routing purposes — the server always compares that requested id against the caller's verified memberships before treating it as authoritative, and rejects (not silently substitutes) on mismatch.
+
+**The 7-step authorization sequence**, required on every tenant request, in this order:
+1. Authenticate — resolve the `AuthenticatedActor` via the central auth helper.
+2. Resolve the requested tenant against the actor's verified memberships (not against the URL alone).
+3. Confirm the resolved membership is active (not revoked, not suspended).
+4. Confirm the module the request touches is enabled for that tenant.
+5. Confirm the membership's permissions permit the specific action.
+6. Confirm the target resource actually belongs to that tenant (ownership check on the resource itself, not just on the request's claimed tenant).
+7. Perform the action.
+
+Order matters: step 4 (module enabled) is deliberately distinct from step 5 (permission to act) — having a module enabled is never treated as blanket access to that module's documents; a disabled module short-circuits at step 4 regardless of what permissions the membership otherwise holds, and an enabled module still requires the specific permission at step 5.
+
+#### Supabase model
+
+Default: the authenticated-user client, subject to RLS, for all ordinary tenant requests. Service-role is used **only** for explicitly trusted server operations — where authentication has already happened, ownership is independently enforced through other means, and the operation is documented and auditable (e.g. system migrations, scheduled jobs, webhook-triggered writes with their own verification). Every such use is wrapped in a narrowly-named helper (e.g. `runAsTrustedSystemOperation()`), never called ad hoc as a shortcut around RLS friction.
+
+#### Sanity model
+
+The sequence: authenticate → resolve the actor's authorized membership → resolve that tenant's Sanity project configuration server-side (never from a client-supplied `projectSlug`) → validate the requested module and action against the membership's permissions → scope every query and mutation to that tenant's resources only. This ownership discipline extends through references, attached media, drafts, and linked documents — a write that would attach or reference another document must also verify that referenced document's `projectSlug` matches the acting tenant. A Tenant A document must never come to reference Tenant B content or media, directly or through a shared media library.
+
+#### Login, invitation, and MFA
+
+All tenant-user authentication happens through Abluo — never through Sanity Studio login for tenant users. The credential model: email + password, verified email required, a password reset flow, and TOTP-based MFA as the strong second factor. Email-based OTP may be offered as a convenience or account-recovery mechanism, but is explicitly **not** treated as a strong second factor when email is also the first authentication channel (an attacker who compromises the mailbox would defeat both factors at once).
+
+Invitation-only onboarding: an invite is sent by email → the recipient creates or links their identity → tenant membership(s) are created → role and permissions are assigned per membership → email is verified → MFA is enrolled where policy requires it for that role.
+
+MFA policy: mandatory for `abluo_admin` (AAL2 required for all internal routes, including `/studio`); mandatory for tenant owners, or mandatory from the first rollout of the owner role; mandatory for any user who manages other users or permissions within a tenant; encouraged (not yet enforced) for ordinary editors initially, becoming tenant-enforceable later.
+
+#### Session and revocation principles
+
+Inactivity timeouts apply to all sessions; admin sessions carry stricter timeouts than tenant-user sessions. Sensitive actions (permission changes, user removal, `/studio` access) require periodic re-authentication and AAL2, not just an unexpired session. Sessions are revoked when a tenant membership is removed, and refreshed or revoked when a role or permission changes — a permission downgrade must take effect without waiting for natural token expiry. Sign-out-all-devices is a supported action. Multi-device session handling is a named concern, not an afterthought. Exact timeout durations are deferred to implementation; the principles above are fixed now.
+
+### Orchestrator refinements (accepted 2026-07-24)
+
+These are recommendations layered on the eleven accepted decisions above. Tom has accepted all eight refinements (R1–R8) on 2026-07-24. Each refinement as stated below reflects the final, adjudicated position.
+
+**R1 — JWT carries only `platform_role`; nothing else is cached.** The full `TenantAuthorizationContext` (memberships, permissions, `enabledModules`) is resolved per-request from the database through the RLS-backed client — never embedded in or cached inside the JWT. This is what makes decision 12's revocation/permission-change principle actually immediate rather than bounded by token expiry: if memberships were cached in the token, a permission change would not take effect until the token refreshed. Hard rule proposed: no membership or permission data is ever written into the JWT payload.
+
+**R2 — Two chokepoints, not many.** Centralize both cross-tenant-capable code paths behind single, narrowly-named entry points: the service-role helper (decision 7's discipline, generalized) and a `tenantScopedSanityClient(ctx: TenantAuthorizationContext)` that is structurally incapable of operating outside `ctx`'s project. Ban user-supplied or raw GROQ entirely — every query is server-templated with `projectSlug` sourced only from the resolved context, never from string interpolation of client input. (The audit's Sanity findings included a GROQ string-interpolation path that is injectable; this refinement is the general fix, not a patch to that one route.)
+
+**R3 — Ownership enforcement recurses through references and media.** On any write that sets a reference field or attaches a media asset, the referenced document's `projectSlug` is validated independently of the parent document's — a parent-only check is insufficient, since a valid parent write could still attach a cross-tenant reference.
+
+**R4 — Consider RLS-governed admin reads instead of service-role, for the admin dashboard.** A candidate RLS policy — grant read access when `auth.jwt()->>'platform_role' = 'abluo_admin'` — would let the legitimate cross-tenant admin dashboard read through the same RLS-backed client as everything else, rather than through service-role. This shrinks service-role's remaining footprint to genuinely infrastructural operations (migrations, triggers, webhooks) and keeps even the admin path RLS-governed. Proposed as a refinement to decision 7, not a replacement for it.
+
+**R5 — Bootstrap realities to plan now, not discover at rollout.** (a) First-admin seed: a one-time, guarded server-side script or migration is needed to stamp the initial `abluo_admin` — before any admin exists, nothing can grant the first one through the normal flow (chicken-and-egg). (b) Backfill: every existing user needs a `platform_role` value (default `tenant_user`, explicitly promote Tom), and because existing issued JWTs predate the claim, a forced token refresh or re-authentication at rollout is required — an existing session's JWT will not retroactively gain the claim.
+
+**R6 — Sequencing fix: gate `/studio` on `platform_role` immediately, layer MFA later.** Gate `/studio` on `platform_role === 'abluo_admin'` at implementation step 6 (below) — this closes the "tenant user reaches Studio" hole as soon as the identity model exists, without waiting for MFA infrastructure. Layer the AAL2/MFA requirement on top at step 10, when MFA lands. `/studio` must never be left open "temporarily" while MFA is pending — the role gate alone is a strict improvement over today's no-gate state and should ship the moment it's available.
+
+**R7 — Split an immediate hardening tranche from the authorization-model tranche.** Auth-gate the live unauthenticated P0 routes now, each shippable independently, the same way the F1 hotfix shipped `media/[id]` DELETE/PATCH: `src/app/api/sanity/document/route.ts`, `src/app/api/media/route.ts` (GET/POST), `src/app/api/sanity/tenants/route.ts`, `src/app/api/sanity/tenant/route.ts`, `src/app/api/sanity/projects/route.ts`, `src/app/api/fix-colors/route.ts`, `src/app/api/inquiries/[id]/route.ts`. This tranche does not wait for the full authorization-context model — it applies the simplest available check (authenticated + role-appropriate) immediately, and is superseded by the full 7-step sequence once that lands. The model work must not be blocked on, or block, these locks.
+
+**R8 — Build the client dashboard's data layer on `TenantAuthorizationContext` from day one.** The audit found the client dashboard's per-tenant read path is currently stubbed, not built. Nothing has to be retrofitted: no `fetchForTenant`-style function should be written for the dashboard without a `TenantAuthorizationContext` parameter from its first line of code. This is a rare case where the "lucky timing" of the stub being unbuilt means the correct pattern costs nothing extra to start with.
+
+### Consequences
+
+**Positive:**
+- Closes the single largest structural exposure in the platform's history: an authenticated tenant user currently has no technical barrier preventing platform-admin-equivalent reach, because the mechanism that would distinguish the two doesn't exist
+- Supabase's already-well-designed RLS and membership model (audit: "well-designed... but bypassed everywhere") is finally exercised as intended, rather than left as unused schema
+- Multi-tenant membership is architected in from the start — no later migration from a single-tenant-per-user assumption
+- A single central auth helper and a single `TenantAuthorizationContext` shape make every future route's authorization logic reviewable against one contract, instead of ad hoc per-route reasoning
+- Cross-tenant isolation tests being release-blocking (decision 10) turns "did we break tenant isolation" from a manual-review question into a gate the pipeline enforces
+- R7's immediate-hardening split means the live P0 unauthenticated routes do not have to wait for the full model to ship — real exposure closes in parallel with the careful work
+
+**Negative:**
+- This is the largest workstream in the platform's history — implementation spans multiple sprints (see Implementation Order below), not a single release
+- Rollout forces re-authentication or token refresh for every existing user (R5b) — a one-time disruption that must be communicated, not silently absorbed
+- Moving ordinary tenant Supabase reads from service-role to an RLS-backed client is a genuine migration risk: RLS policies that are correct in isolation can still behave differently under real request patterns than the service-role bypass did, and this needs careful staged verification, not a single flip
+- Sanity's application-layer enforcement (decision 6) is structurally the weaker of the two isolation boundaries — there is no database-level backstop equivalent to RLS, so the discipline of the two chokepoints (R2) and the reference/media recursion (R3) is doing real safety work, not defense in depth on top of something already safe
+- The eight P0 routes named in R7 remain exploitable until that tranche ships, even though this ADR is accepted — acceptance of the ADR is not itself a fix
+- `/studio`'s current "any authenticated user" gate remains open until step 6 of the implementation order (below) actually ships — this ADR documents the fix, it does not apply it
+
+### Implementation Order
+
+Tom's sequencing (§14), with R6 and R7 folded in as annotations. Phase 1 is a blocking prerequisite for every subsequent phase.
+
+1. **Draft and approve this ADR.** (This document. Blocking — nothing below starts before Accepted.)
+2. **Platform-role identity model** — define `platform_role`, its values, and where it lives in `app_metadata`.
+3. **Reliable admin JWT claim** — wire the Supabase custom access-token hook (or equivalent) that actually sets `platform_role` on issued tokens; this is what `proxy.ts:255` has been missing since `profiles.role` was dropped.
+4. **Central auth helpers** — the one server-side helper that resolves `AuthenticatedActor`; no route reads JWT claims directly after this step.
+5. **Multi-tenant membership authorization context** — implement `TenantAuthorizationContext` resolution and the 7-step sequence.
+6. **Gate `/studio` and internal admin surfaces** — apply `platform_role === 'abluo_admin'` immediately (R6); do not wait for MFA to land before shipping this gate.
+   - *In parallel, not sequentially blocking:* ship the R7 immediate-hardening tranche on the 8 named P0 routes, using the simplest available authenticated + role check ahead of the full context model.
+7. **Move tenant Supabase requests to RLS-backed clients** — retire service-role from ordinary request paths; evaluate R4's admin-read RLS policy as part of this step.
+8. **Enforce tenant ownership on all Sanity and media paths** — apply decision 6 and R2/R3 (chokepoint clients, reference/media recursion) across every private Sanity route.
+9. **Enforce module entitlements and per-membership permissions** — steps 4–5 of the 7-step sequence, platform-wide.
+10. **Invitation, login, and MFA** — build the invitation flow, TOTP MFA, and layer AAL2 onto `/studio` and other admin routes (completing what step 6 started with the role gate alone).
+11. **Release-blocking cross-tenant tests** — land the full required matrix (below) as a CI gate before any further tenant-facing feature work ships.
+12. **Audit and restrict every remaining service-role use** — sweep the codebase for any service-role call that survived steps 7–8 and either eliminate it or wrap it in the named trusted-operation helper (Supabase model, above) with justification recorded.
+
+### Testing
+
+The following matrix is release-blocking (decision 10) — a release does not proceed if any of these tests fail. This joins, not replaces, the existing gates in CLAUDE.md's Deployment Workflow.
+
+**Tenant A cannot, against Tenant B's data:**
+- List Tenant B's resources
+- Retrieve a Tenant B resource directly by id
+- Reach a Tenant B resource through search
+- Update a Tenant B resource
+- Delete a Tenant B resource
+- Create a reference from a Tenant A document to a Tenant B document
+- Attach Tenant B media to a Tenant A document
+- Access Tenant B's drafts or previews
+- Access a module disabled for Tenant A even if enabled for Tenant B
+- Gain access by manipulating the URL slug, an id, or a request body to claim Tenant B's identity
+
+**Additional required cases:**
+- An unauthenticated request cannot reach any tenant-management route
+- A `tenant_user` cannot reach `/studio`
+- Changing the tenant identifier in the URL does not change the server-side authorization context
+- A multi-tenant user (e.g. a consultant with memberships in several tenants) sees only their own memberships, never another user's
+- Per-membership permission isolation holds: a user's permissions in Tenant A do not leak into their (possibly different) permissions in Tenant B
+- The service-role client cannot be used to bypass tenant authorization from an ordinary request path
+- A valid `abluo_admin` reaches only the internal surfaces intended for admins — the admin identity is not itself unbounded access to everything
+
+### Migration and Bootstrap
+
+Per R5:
+
+- **First-admin seed.** Before any `abluo_admin` exists, a one-time, guarded server-side script or migration stamps the initial admin (Tom) — this cannot go through the ordinary invitation/promotion flow because that flow requires an existing admin to grant the role.
+- **Backfill.** Every existing Supabase user needs an explicit `platform_role` value at rollout: default `tenant_user` for all, explicitly promote Tom (and any other intended admins) to `abluo_admin`. No user should be left with an undefined `platform_role`.
+- **Forced re-authentication.** JWTs issued before this rollout do not carry the `platform_role` claim and cannot retroactively gain it. Every existing session must be forced to refresh or re-authenticate at rollout so that the claim is present before any route begins relying on it. Skipping this step means the reliable-claim work of steps 2–3 (Implementation Order) is not actually reliable for already-logged-in users.
+- **Sequencing dependency.** The bootstrap steps above must complete before Implementation Order step 6 (gating `/studio`) — gating a route on a claim that most sessions don't yet carry would lock out legitimate admins, not just tenant users.
+
 
