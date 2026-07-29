@@ -1,7 +1,15 @@
 # Changelog
 
-This file tracks significant milestones and feature releases.
-For technical build details, see the corresponding `build-log-V{version}.txt` in the repo root.
+> **RETIRED — 2026-07-29**
+> This changelog is no longer maintained. The last updated entry is V0.9.17 (~18 releases ago).
+> The authoritative release record is now:
+> - Git tags: `vX.Y.Z`
+> - Auto-generated: `release.json`
+> - Architecture decisions: `docs/architecture/architecture-decisions.md`
+> - Release runbook: `docs/release-workflow.md`
+> 
+> The build-log convention (`build-log-V{version}.txt`) is also retired.
+> Historical entries below are preserved for reference only.
 
 ---
 
