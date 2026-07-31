@@ -2,6 +2,8 @@ import { createServerClient } from '@supabase/ssr'
 import createMiddleware from 'next-intl/middleware'
 import { NextRequest, NextResponse } from 'next/server'
 import { routing } from './i18n/routing'
+import { resolvePlatformRole } from '@/lib/api/auth'
+import { isAdminSurface, isStudio } from '@/lib/proxy/admin-surface'
 
 const intlMiddleware = createMiddleware(routing)
 
@@ -76,38 +78,60 @@ function resolveDefaultLocale(projectSlug: string): string | null {
 }
 
 /**
- * Decode a single claim from a JWT without verifying the signature.
- * Safe to use here because getUser() has already validated the token
- * with the Supabase server above.
+ * Local admin gate for the middleware boundary (ADR-015 R6). Builds a Supabase
+ * server client from the request cookies — reusing the exact cookie-refresh
+ * pattern the `admin.abluo.app` block uses — validates the session with
+ * `getUser()`, and returns either the cookie-refreshed continue response (admin)
+ * or a redirect. Fail-safe: no user → `/login`; authenticated non-admin →
+ * `/unauthorized`. `resolvePlatformRole` is fail-closed by construction, so only
+ * an exact `abluo_admin` platform role is allowed through.
  */
-function decodeJwtClaim(token: string | undefined, claim: string): string | null {
-  if (!token) return null
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    return payload[claim] ?? null
-  } catch {
-    return null
+async function requireAdminInProxy(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // This response may be mutated by setAll() below to carry refreshed
+  // session cookies back to the browser.
+  let supabaseResponse = NextResponse.next({ request })
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          )
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  // getUser() validates the token against the Supabase Auth server (not just
+  // decoding the cookie) and silently refreshes an expired token via setAll.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('next', pathname)
+    return NextResponse.redirect(loginUrl)
   }
-}
 
-// Dashboard routes that require a valid Supabase session
-const PROTECTED_PREFIXES = ['/admin', '/client']
-// Routes restricted to users with role = "admin"
-const ADMIN_ONLY_PREFIXES = ['/admin']
+  if (resolvePlatformRole(user.app_metadata) !== 'abluo_admin') {
+    return NextResponse.redirect(new URL('/unauthorized', request.url))
+  }
 
-/** Strip locale prefix (e.g. /en/admin → /admin) before matching. */
-function stripLocale(pathname: string): string {
-  return pathname.replace(/^\/[a-z]{2}(-[A-Z]{2})?(\/|$)/, '/')
-}
-
-function isProtectedPath(pathname: string): boolean {
-  const p = stripLocale(pathname)
-  return PROTECTED_PREFIXES.some(prefix => p === prefix || p.startsWith(prefix + '/'))
-}
-
-function isAdminPath(pathname: string): boolean {
-  const p = stripLocale(pathname)
-  return ADMIN_ONLY_PREFIXES.some(prefix => p === prefix || p.startsWith(prefix + '/'))
+  // Admin — return the (possibly cookie-refreshed) continue response.
+  return supabaseResponse
 }
 
 export async function proxy(request: NextRequest) {
@@ -117,7 +141,11 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // ── Bypass routes — no middleware processing ─────────────────────────────
-  if (pathname.startsWith('/studio') || pathname.startsWith('/login')) {
+  // /login and /unauthorized are the un-gated "escape hatch" pages: they must
+  // stay reachable without an auth/role check, otherwise the admin-host and
+  // admin-surface gates below would redirect them to themselves (a loop).
+  // /studio is intentionally NOT bypassed here — it now reaches the admin gate.
+  if (pathname.startsWith('/login') || pathname.startsWith('/unauthorized')) {
     return NextResponse.next()
   }
 
@@ -162,7 +190,14 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(loginUrl)
     }
 
-    // Authenticated — apply subdomain rewrite (skip API and static paths)
+    // Admin-only host (ADR-015 R6): upgrade "any authenticated user" to
+    // admin-only. Fail-closed — an authenticated non-admin is sent to
+    // /unauthorized, which is bypassed at the top of proxy() (no loop).
+    if (resolvePlatformRole(user.app_metadata) !== 'abluo_admin') {
+      return NextResponse.redirect(new URL('/unauthorized', request.url))
+    }
+
+    // Authenticated admin — apply subdomain rewrite (skip API and static paths)
     const url = request.nextUrl.clone()
     const alreadyLocaled = /^\/(en|it|de)(\/|$)/.test(pathname)
     const isApiOrStatic = pathname.startsWith('/api/') || pathname.startsWith('/_next/') || pathname.startsWith('/studio')
@@ -199,68 +234,6 @@ export async function proxy(request: NextRequest) {
     }
     // Root or unrecognised path on preview domain — fall through to intl
     return intlMiddleware(request)
-  }
-
-  // ── Auth guard ────────────────────────────────────────────────────────────
-  // Protected routes (/admin, /client) require a valid Supabase session.
-  // TODO: Re-enable for /admin when login page is built.
-  // Currently only enforced for /client routes.
-  // ─────────────────────────────────────────────────────────────────────────
-  if (isProtectedPath(pathname)) {
-    // This response object may be mutated by setAll() below to carry
-    // refreshed session cookies back to the browser.
-    let supabaseResponse = NextResponse.next({ request })
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll()
-          },
-          setAll(cookiesToSet) {
-            // Persist refreshed tokens onto both the request (for this
-            // handler) and the response (sent back to the browser).
-            cookiesToSet.forEach(({ name, value }) =>
-              request.cookies.set(name, value)
-            )
-            supabaseResponse = NextResponse.next({ request })
-            cookiesToSet.forEach(({ name, value, options }) =>
-              supabaseResponse.cookies.set(name, value, options)
-            )
-          },
-        },
-      }
-    )
-
-    // getUser() validates the token with the Supabase Auth server.
-    // It also silently refreshes an expired token (via setAll above).
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      // Not signed in — redirect to login, preserving the intended destination.
-      const loginUrl = new URL('/login', request.url)
-      loginUrl.searchParams.set('next', pathname)
-      return NextResponse.redirect(loginUrl)
-    }
-
-    // Admin-only routes: verify role from JWT custom claim.
-    if (isAdminPath(pathname)) {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      const role = decodeJwtClaim(session?.access_token, 'user_role')
-
-      if (role !== 'admin') {
-        return NextResponse.redirect(new URL('/unauthorized', request.url))
-      }
-    }
-
-    // Authenticated — return the (possibly cookie-refreshed) response.
-    return supabaseResponse
   }
 
   // ── Dev platform — dev.abluo.app/[project-slug] ──────────────────────────
@@ -301,6 +274,17 @@ export async function proxy(request: NextRequest) {
       }
     }
     // Root or unrecognised path — fall through to domainMap → abluo-the-tiny-cms
+  }
+
+  // ── Admin-surface gate (ADR-015 R6) ──────────────────────────────────────
+  // Admin dashboard surfaces and Sanity Studio are Abluo-admin-only. The
+  // `tenantId === null` guard is the public-site safety boundary: every public
+  // tenant website resolves a NON-null tenant, so this gate is provably INERT
+  // for every tenant host and can never touch a paying client's site. It fires
+  // only on platform/admin hosts (localhost, dev.abluo.app root, etc.) where no
+  // tenant resolves. Must run BEFORE the tenant-routes block below.
+  if (tenantId === null && (isAdminSurface(pathname) || isStudio(pathname))) {
+    return await requireAdminInProxy(request) // NextResponse (continue) or redirect
   }
 
   // ── Tenant routes — rewrite to [locale]/(website)/[tenant] ───────────────

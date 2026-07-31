@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 const nav = [
   { label: 'Projects', href: '/en/dashboard', icon: '⬡' },
@@ -12,6 +13,17 @@ const nav = [
 
 export function AdminSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+
+  // Client-side sign-out — mirrors src/app/login/page.tsx's browser client
+  // usage. Admin-only UI: label is hardcoded English, consistent with the rest
+  // of this sidebar (handbook admin-UI localization exception).
+  async function handleSignOut() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-52 bg-zinc-950 flex flex-col z-40">
@@ -45,10 +57,17 @@ export function AdminSidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-5 py-4 border-t border-zinc-800">
+      <div className="px-5 py-4 border-t border-zinc-800 space-y-2">
         <p className="text-[10px] text-zinc-600 tracking-widest uppercase">
           thomas@tmz.it
         </p>
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="text-[10px] text-zinc-500 tracking-widest uppercase transition-colors hover:text-zinc-300"
+        >
+          Sign out
+        </button>
       </div>
     </aside>
   )
