@@ -1,6 +1,6 @@
 import { createClient } from '@sanity/client'
 import { NextResponse } from 'next/server'
-import { requireAuthenticatedUser } from '@/lib/api/auth'
+import { requireAbluoAdmin } from '@/lib/api/auth'
 
 const client = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || '3n7t84j3',
@@ -15,11 +15,12 @@ const client = createClient({
  */
 export async function GET(request: Request) {
   try {
-    // ADR-015 interim gate: any authenticated session. Phase 1 upgrades this
-    // admin-surface route to require platform_role === 'abluo_admin'.
-    const user = await requireAuthenticatedUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // ADR-015 Phase 1 (slice 3b): admin-only surface. Requires
+    // platform_role === 'abluo_admin'; requireAbluoAdmin collapses unauth and
+    // authenticated-non-admin to null (single honest 403).
+    const actor = await requireAbluoAdmin()
+    if (!actor) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)

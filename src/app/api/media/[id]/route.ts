@@ -1,6 +1,6 @@
 import { createClient } from '@sanity/client'
 import { NextRequest, NextResponse } from 'next/server'
-import { isExpectedDocType, requireAuthenticatedUser } from '@/lib/api/auth'
+import { isExpectedDocType, requireAbluoAdmin } from '@/lib/api/auth'
 
 const MEDIA_ASSET_TYPE = 'mediaAsset'
 
@@ -18,11 +18,14 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireAuthenticatedUser()
-    if (!user) {
+    // ADR-015 Phase 1 (slice 3b): admin-only surface. Requires
+    // platform_role === 'abluo_admin'; requireAbluoAdmin collapses unauth and
+    // authenticated-non-admin to null (single honest 403).
+    const actor = await requireAbluoAdmin()
+    if (!actor) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
+        { success: false, error: 'Forbidden' },
+        { status: 403 }
       )
     }
 
@@ -157,11 +160,14 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireAuthenticatedUser()
-    if (!user) {
+    // ADR-015 Phase 1 (slice 3b): admin-only surface. Requires
+    // platform_role === 'abluo_admin'; requireAbluoAdmin collapses unauth and
+    // authenticated-non-admin to null (single honest 403).
+    const actor = await requireAbluoAdmin()
+    if (!actor) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
+        { success: false, error: 'Forbidden' },
+        { status: 403 }
       )
     }
 

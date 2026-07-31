@@ -1,6 +1,6 @@
 import { createClient } from '@sanity/client'
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuthenticatedUser } from '@/lib/api/auth'
+import { requireAbluoAdmin } from '@/lib/api/auth'
 import { buildMediaFilter } from '@/lib/media/media-filter'
 
 const client = createClient({
@@ -14,13 +14,14 @@ const client = createClient({
 // GET /api/media/tags — Get distinct tags for autocomplete
 export async function GET(request: NextRequest) {
   try {
-    // ADR-015 interim gate: any authenticated session. Phase 1 upgrades this
-    // admin-surface route to require platform_role === 'abluo_admin'.
-    const user = await requireAuthenticatedUser()
-    if (!user) {
+    // ADR-015 Phase 1 (slice 3b): admin-only surface. Requires
+    // platform_role === 'abluo_admin'; requireAbluoAdmin collapses unauth and
+    // authenticated-non-admin to null (single honest 403).
+    const actor = await requireAbluoAdmin()
+    if (!actor) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
+        { success: false, error: 'Forbidden' },
+        { status: 403 }
       )
     }
 
