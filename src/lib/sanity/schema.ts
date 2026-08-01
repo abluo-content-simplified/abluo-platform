@@ -3,7 +3,7 @@ import { TenantLinker } from '@/lib/sanity/fields/TenantLinker'
 import { ProjectLinker } from '@/lib/sanity/fields/ProjectLinker'
 import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, LocalizedSlugInput, LocalizedRedirectFromInput } from '@/lib/sanity/fields/LocalizedInput'
 import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
-import { scopedRef, projectSlugField } from '@/lib/sanity/fields/shared'
+import { scopedRef, projectSlugField, PAGE_SECTIONS_OF } from '@/lib/sanity/fields/shared'
 import { buildSchema } from '@/lib/modules/schema'
 import { buildIntegrationSchemaTypes, buildIntegrationConfigsField } from '@/lib/integrations/schema'
 
@@ -3236,22 +3236,7 @@ const pageType = defineType({
       name: 'sections',
       title: 'Sections',
       type: 'array',
-      of: [
-        defineArrayMember({ type: 'heroSection' }),
-        defineArrayMember({ type: 'heroLiveCaptureSection' }),
-        defineArrayMember({ type: 'heroLensSection' }),
-        defineArrayMember({ type: 'contentSection' }),
-        defineArrayMember({ type: 'statementSection' }),
-        defineArrayMember({ type: 'treatmentsSection' }),
-        defineArrayMember({ type: 'teamSection' }),
-        defineArrayMember({ type: 'textSection' }),
-        defineArrayMember({ type: 'faqSection' }),
-        defineArrayMember({ type: 'contactSection' }),
-        defineArrayMember({ type: 'blogListingSection' }),
-        defineArrayMember({ type: 'formSection' }),
-        defineArrayMember({ type: 'metricsSection' }),
-        defineArrayMember({ type: 'photoGallerySection' }),
-      ],
+      of: PAGE_SECTIONS_OF,
     }),
   ],
   preview: {
@@ -3297,22 +3282,7 @@ const homePageType = defineType({
       name: 'sections',
       title: 'Sections',
       type: 'array',
-      of: [
-        defineArrayMember({ type: 'heroSection' }),
-        defineArrayMember({ type: 'heroLiveCaptureSection' }),
-        defineArrayMember({ type: 'heroLensSection' }),
-        defineArrayMember({ type: 'contentSection' }),
-        defineArrayMember({ type: 'statementSection' }),
-        defineArrayMember({ type: 'treatmentsSection' }),
-        defineArrayMember({ type: 'teamSection' }),
-        defineArrayMember({ type: 'textSection' }),
-        defineArrayMember({ type: 'faqSection' }),
-        defineArrayMember({ type: 'contactSection' }),
-        defineArrayMember({ type: 'blogListingSection' }),
-        defineArrayMember({ type: 'formSection' }),
-        defineArrayMember({ type: 'metricsSection' }),
-        defineArrayMember({ type: 'photoGallerySection' }),
-      ],
+      of: PAGE_SECTIONS_OF,
     }),
   ],
   preview: {

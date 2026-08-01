@@ -39,6 +39,7 @@ import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { getNewsPageMessages } from '@/lib/i18n/news-page-messages'
 import { isProduction, isDev } from '@/lib/deployment'
+import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
 
 export const dynamic = 'force-dynamic'
 
@@ -244,7 +245,7 @@ export default async function NewsListingPage({ params }: PageProps) {
   // Fetch posts, design system, and blogPage in parallel.
   // limit=1000 / offset=0 effectively fetches all posts in V1.
   // When pagination is needed, pass limit/offset from searchParams.
-  const [allPosts, designSystem, blogPage] = await Promise.all([
+  const [allPosts, designSystem, blogPage, siteConfig] = await Promise.all([
     fetchForTenant<Post[]>(postsQuery, {
       locale: locale as SupportedLocale,
       defaultLocale,
@@ -256,7 +257,13 @@ export default async function NewsListingPage({ params }: PageProps) {
       return resolveDesignSystemInheritance(raw, fetchDesignSystemById)
     })(),
     fetchForTenant<BlogPage>(blogPageQuery, { locale, defaultLocale }),
+    fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale }),
   ])
+
+  // ADR-016 Phase A — hydrate any blogListingSection sections with posts
+  // fetched server-side, mutating blogPage.sections in place. Additive only:
+  // the fixed hero/featured/grid content below is untouched, sections render after it.
+  await hydrateSections(blogPage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale })
 
   const posts = allPosts ?? []
 
@@ -282,6 +289,7 @@ export default async function NewsListingPage({ params }: PageProps) {
   const blogBase = `/${locale}/${tenantId}/blog`
 
   return (
+    <>
     <PageContainer>
 
         {/* ── Hero ─────────────────────────────────────────────────── */}
@@ -397,5 +405,20 @@ export default async function NewsListingPage({ params }: PageProps) {
         )}
 
     </PageContainer>
+
+    {blogPage?.sections?.map((section, index) => (
+      <SectionRenderer
+        key={section._key}
+        section={section}
+        siteConfig={siteConfig}
+        designSystem={designSystem}
+        backgroundPattern={undefined}
+        sectionIndex={index}
+        locale={locale}
+        tenantSlug={tenantId}
+        fromParam="blog"
+      />
+    ))}
+    </>
   )
 }

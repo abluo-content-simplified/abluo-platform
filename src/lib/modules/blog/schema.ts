@@ -1,5 +1,5 @@
 import { defineType, defineField, defineArrayMember } from 'sanity'
-import { scopedRef, projectSlugField } from '@/lib/sanity/fields/shared'
+import { scopedRef, projectSlugField, PAGE_SECTIONS_OF } from '@/lib/sanity/fields/shared'
 
 // ── Blog module — Sanity schema types ─────────────────────────────────────────
 //
@@ -174,7 +174,10 @@ const blogListingSectionType = defineType({
 // ── Blog Page ─────────────────────────────────────────────────────────────────
 // Singleton document — one per project.
 // Controls the hero, intro text, and SEO of the /blog listing route.
-// Never section-composed: the page has a fixed rendering contract.
+// ADR-016 Phase A: additive `sections[]` composes below the fixed content
+// above — no migration, no visual change until a section is actually added.
+// Phase C migrates these fixed fields into equivalent sections and retires
+// this fixed shape; until then both surfaces coexist.
 // Managed by Abluo admin; hidden from the "New Document" menu (ADR-009).
 
 const blogPageType = defineType({
@@ -184,6 +187,7 @@ const blogPageType = defineType({
   groups: [
     { name: 'content', title: 'Content', default: true },
     { name: 'meta', title: 'SEO / Meta' },
+    { name: 'sections', title: 'Sections' },
   ],
   fields: [
     projectSlugField,
@@ -210,6 +214,14 @@ const blogPageType = defineType({
     }),
     defineField({ name: 'seoTitle', title: 'SEO Title', type: 'localizedString', group: 'meta' }),
     defineField({ name: 'seoDescription', title: 'SEO Description', type: 'localizedText', group: 'meta' }),
+    defineField({
+      name: 'sections',
+      title: 'Sections',
+      type: 'array',
+      group: 'sections',
+      of: PAGE_SECTIONS_OF,
+      description: 'ADR-016 Phase A: optional, additive section composition. Renders below the fixed content above.',
+    }),
   ],
   preview: {
     select: { slug: 'projectSlug' },

@@ -13,6 +13,7 @@ import { imageUrl } from '@/lib/sanity/image'
 import { SlideUp, FadeIn } from '@/components/animation'
 import { EventCard } from '@/components/events/EventCard'
 import { PageContainer } from '@/components/layout/PageContainer'
+import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
 
 // Cloudflare Stream account subdomain — shared with LivePageContent
 const CLOUDFLARE_ACCOUNT = 'customer-aayaptcudal3r1fx'
@@ -74,6 +75,11 @@ export default async function EventsListPage({ params }: PageProps) {
   const durationSlow   = m?.durationSlow   !== undefined ? m.durationSlow   / 1000 : 0.35
   const easeReveal: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
 
+  // ADR-016 Phase A — hydrate any blogListingSection sections with posts
+  // fetched server-side, mutating eventsPage.sections in place. Additive only:
+  // the fixed hero/grid content below is untouched, sections render after it.
+  await hydrateSections(eventsPage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale })
+
   const headline    = eventsPage?.heroTitle    ?? 'Events'
   const subheadline = eventsPage?.heroSubtitle ?? null
   const introText   = eventsPage?.introText    ?? null
@@ -81,6 +87,7 @@ export default async function EventsListPage({ params }: PageProps) {
   const heroSrc     = eventsPage?.heroImage ? imageUrl(eventsPage.heroImage, 1600) : null
 
   return (
+    <>
     <PageContainer>
 
         {/* ── Page header ──────────────────────────────────────────── */}
@@ -171,5 +178,20 @@ export default async function EventsListPage({ params }: PageProps) {
           </div>
         )}
     </PageContainer>
+
+    {eventsPage?.sections?.map((section, index) => (
+      <SectionRenderer
+        key={section._key}
+        section={section}
+        siteConfig={null}
+        designSystem={designSystem}
+        backgroundPattern={undefined}
+        sectionIndex={index}
+        locale={locale}
+        tenantSlug={tenantId}
+        fromParam="events"
+      />
+    ))}
+    </>
   )
 }

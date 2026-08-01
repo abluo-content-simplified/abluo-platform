@@ -1,4 +1,4 @@
-import { defineField } from 'sanity'
+import { defineField, defineArrayMember } from 'sanity'
 import { ProjectSlugPicker } from '@/lib/sanity/fields/ProjectSlugPicker'
 
 // ── Shared Sanity primitives ──────────────────────────────────────────────────
@@ -50,3 +50,35 @@ export const projectSlugField = defineField({
     input: ProjectSlugPicker,
   },
 })
+
+// ── Shared page `sections[]` member list ─────────────────────────────────────
+//
+// ADR-016 Phase A — single source of truth for the `of:` list on every
+// `sections` array field, platform-wide. `page` and `homePage` (both in
+// sanity/schema.ts) and the three composable-page singletons (`livePage`,
+// `eventsPage`, `blogPage` — one per module schema file) all reuse this exact
+// list so a new section type added once here flows to every composable page
+// automatically, with no risk of the arrays drifting apart.
+//
+// Exported here (not from sanity/schema.ts) for the same reason scopedRef and
+// projectSlugField are: module schema files import it without creating a
+// circular dependency through schema.ts. See the dependency-graph note above.
+//
+// Add a new platform or module section type to this one list — never inline
+// a second copy of the `of:` array anywhere else.
+export const PAGE_SECTIONS_OF = [
+  defineArrayMember({ type: 'heroSection' }),
+  defineArrayMember({ type: 'heroLiveCaptureSection' }),
+  defineArrayMember({ type: 'heroLensSection' }),
+  defineArrayMember({ type: 'contentSection' }),
+  defineArrayMember({ type: 'statementSection' }),
+  defineArrayMember({ type: 'treatmentsSection' }),
+  defineArrayMember({ type: 'teamSection' }),
+  defineArrayMember({ type: 'textSection' }),
+  defineArrayMember({ type: 'faqSection' }),
+  defineArrayMember({ type: 'contactSection' }),
+  defineArrayMember({ type: 'blogListingSection' }),
+  defineArrayMember({ type: 'formSection' }),
+  defineArrayMember({ type: 'metricsSection' }),
+  defineArrayMember({ type: 'photoGallerySection' }),
+]

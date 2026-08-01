@@ -1141,6 +1141,11 @@ export interface WebsitePage {
 // ─── Live Page ────────────────────────────────────────────────────────────────
 // Resolved by livePageQuery — all string fields are locale-resolved by GROQ.
 
+// ADR-016 Phase A: `sections?: PageSection[]` is additive on all three
+// singleton interfaces below — optional, so existing published documents
+// (which never populate it) remain valid. Phase C migrates the fixed fields
+// above it into equivalent sections and retires the fixed shape.
+
 export interface LivePage {
   _id: string
   heroTitle?: string
@@ -1154,6 +1159,7 @@ export interface LivePage {
   featuredEvents?: Event[]
   seoTitle?: string
   seoDescription?: string
+  sections?: PageSection[]
 }
 
 // ─── Events Page ──────────────────────────────────────────────────────────────
@@ -1168,6 +1174,7 @@ export interface EventsPage {
   cloudflareVideoId?: string
   seoTitle?: string
   seoDescription?: string
+  sections?: PageSection[]
 }
 
 // ─── Blog Page ────────────────────────────────────────────────────────────────
@@ -1181,4 +1188,5 @@ export interface BlogPage {
   heroSubtitle?: string
   seoTitle?: string
   seoDescription?: string
+  sections?: PageSection[]
 }

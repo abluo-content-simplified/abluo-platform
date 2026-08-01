@@ -56,6 +56,147 @@ export const CTA_FIELDS = /* groq */ `
   openInNewTab
 `
 
+// ─── Page sections[] projection ───────────────────────────────────────────────
+// Single source of truth for the `sections[]` GROQ projection — every field
+// any current section type (platform or module) can carry, locale-resolved
+// via the same coalesce(field[$locale], field[$defaultLocale], field.en)
+// chain as every other content field. Used verbatim (no divergent copies) by
+// pageHomeQuery, pageBySlugQuery, and — as of ADR-016 Phase A — livePageQuery,
+// eventsPageQuery, and blogPageQuery, so the three composable-page singletons
+// project sections identically to a regular `page`. A new section field added
+// here is available to every query below automatically.
+//
+// Emitted as a bare `sections[] { ... }` fragment (no leading/trailing comma)
+// — call sites splice it in as a field alongside a document's other fields.
+export const PAGE_SECTIONS_PROJECTION = /* groq */ `
+    sections[] {
+      _type,
+      _key,
+      background,
+      "eyebrow": ${loc('eyebrow')},
+      "headline": ${loc('headline')},
+      "subheadline": ${loc('subheadline')},
+      "ctaLabel": ${loc('ctaLabel')},
+      ctaHref,
+      "title": ${loc('title')},
+      "body": ${loc('body')},
+      // mediaContentSection fields — coalesce migrates old imagePosition data
+      "mediaPosition": coalesce(mediaPosition, imagePosition),
+      contentRatio,
+      reverseOnMobile,
+      mediaStyle,
+      "primaryCta": primaryCta { ${CTA_FIELDS} },
+      "secondaryCta": secondaryCta { ${CTA_FIELDS} },
+      // statementSection fields
+      "description": ${loc('description')},
+      alignment,
+      image { asset, hotspot, crop },
+      "intro": ${loc('intro')},
+      treatments[] {
+        _type, _key,
+        "name": ${loc('name')},
+        "tagline": ${loc('tagline')},
+        "description": ${loc('description')},
+      },
+      "subtitle": ${loc('subtitle')},
+      members[] {
+        _type, _key,
+        photo { asset, hotspot, crop },
+        name,
+        "role": ${loc('role')},
+        "bio": ${loc('bio')},
+      },
+      "content": ${loc('content')},
+      items[] {
+        _key,
+        "question": ${loc('question')},
+        "answer": ${loc('answer')},
+      },
+      showMap, mapHeight, mapTheme,
+      // Blog listing section fields — null on all other section types
+      filterMode,
+      sortOrder,
+      layout,
+      maxItems,
+      "viewAllLabel": ${loc('viewAllLabel')},
+      viewAllHref,
+      "categoryId": category->._id,
+      "eventId": event->._id,
+      "postIds": posts[]->._id,
+      // formSection fields
+      "form": form->{
+        _id,
+        projectSlug,
+        "description": ${loc('description')},
+        "submitLabel": ${loc('submitLabel')},
+        "successMessage": ${loc('successMessage')},
+        inquiryType,
+        fields[] {
+          id, type, required, width, rows,
+          "label": ${loc('label')},
+          "placeholder": ${loc('placeholder')},
+          "helpText": ${loc('helpText')},
+          "checkboxLabel": ${loc('checkboxLabel')},
+          options[] { value, "label": ${loc('label')} }
+        }
+      },
+      // heroSection media / layout / style fields
+      mediaType,
+      heroImage { asset, hotspot, crop },
+      heroVideo,
+      posterImage { asset, hotspot, crop },
+      heroHeight,
+      contentWidth,
+      contentAlignment,
+      verticalAlignment,
+      overlayOpacity,
+      blur,
+      brightness,
+      // heroLiveCaptureSection + heroLensSection CTA array
+      ctas[] { ${CTA_FIELDS} },
+      backgroundImage { asset, hotspot, crop },
+      phoneScreenImage { asset, hotspot, crop },
+      circleSize,
+      animationIntensity,
+      // heroLensSection fields
+      foregroundImage { asset, hotspot, crop },
+      // metricsSection fields
+      metrics[] {
+        _type, _key,
+        "value": ${loc('value')},
+        animateNumber,
+        "label": ${loc('label')},
+        "description": ${loc('description')},
+      },
+      // photoGallerySection fields
+      columns,
+      imageRatio,
+      spacing,
+      showCaptions,
+      "gallery": gallery->{
+        _id,
+        internalName,
+        "description": ${loc('description')},
+        items[] {
+          _key,
+          titleOverrideEnabled,
+          "titleOverride": select(titleOverrideEnabled == true => ${loc('titleOverride')}),
+          captionOverrideEnabled,
+          "captionOverride": select(captionOverrideEnabled == true => ${loc('captionOverride')}),
+          "mediaAsset": mediaAsset->{
+            _id,
+            mediaType,
+            image { asset, hotspot, crop },
+            videoUrl,
+            "altText": ${loc('altText')},
+            "title": ${loc('title')},
+            "caption": ${loc('caption')},
+          }
+        }
+      }
+    }
+`
+
 export const localeConfigQuery = /* groq */ `
   *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
     defaultLocale,
@@ -723,132 +864,7 @@ export const pageHomeQuery = /* groq */ `
     "title": ${loc('title')},
     slug,
     backgroundPattern,
-    sections[] {
-      _type,
-      _key,
-      background,
-      "eyebrow": ${loc('eyebrow')},
-      "headline": ${loc('headline')},
-      "subheadline": ${loc('subheadline')},
-      "ctaLabel": ${loc('ctaLabel')},
-      ctaHref,
-      "title": ${loc('title')},
-      "body": ${loc('body')},
-      // mediaContentSection fields — coalesce migrates old imagePosition data
-      "mediaPosition": coalesce(mediaPosition, imagePosition),
-      contentRatio,
-      reverseOnMobile,
-      mediaStyle,
-      "primaryCta": primaryCta { ${CTA_FIELDS} },
-      "secondaryCta": secondaryCta { ${CTA_FIELDS} },
-      // statementSection fields
-      "description": ${loc('description')},
-      alignment,
-      image { asset, hotspot, crop },
-      "intro": ${loc('intro')},
-      treatments[] {
-        _type, _key,
-        "name": ${loc('name')},
-        "tagline": ${loc('tagline')},
-        "description": ${loc('description')},
-      },
-      "subtitle": ${loc('subtitle')},
-      members[] {
-        _type, _key,
-        photo { asset, hotspot, crop },
-        name,
-        "role": ${loc('role')},
-        "bio": ${loc('bio')},
-      },
-      "content": ${loc('content')},
-      items[] {
-        _key,
-        "question": ${loc('question')},
-        "answer": ${loc('answer')},
-      },
-      showMap, mapHeight, mapTheme,
-      // Blog listing section fields — null on all other section types
-      filterMode,
-      sortOrder,
-      layout,
-      maxItems,
-      "viewAllLabel": ${loc('viewAllLabel')},
-      viewAllHref,
-      "categoryId": category->._id,
-      "eventId": event->._id,
-      "postIds": posts[]->._id,
-      // formSection fields
-      "form": form->{
-        _id,
-        projectSlug,
-        "description": ${loc('description')},
-        "submitLabel": ${loc('submitLabel')},
-        "successMessage": ${loc('successMessage')},
-        inquiryType,
-        fields[] {
-          id, type, required, width, rows,
-          "label": ${loc('label')},
-          "placeholder": ${loc('placeholder')},
-          "helpText": ${loc('helpText')},
-          "checkboxLabel": ${loc('checkboxLabel')},
-          options[] { value, "label": ${loc('label')} }
-        }
-      },
-      // heroSection media / layout / style fields
-      mediaType,
-      heroImage { asset, hotspot, crop },
-      heroVideo,
-      posterImage { asset, hotspot, crop },
-      heroHeight,
-      contentWidth,
-      contentAlignment,
-      verticalAlignment,
-      overlayOpacity,
-      blur,
-      brightness,
-      // heroLiveCaptureSection + heroLensSection CTA array
-      ctas[] { ${CTA_FIELDS} },
-      backgroundImage { asset, hotspot, crop },
-      phoneScreenImage { asset, hotspot, crop },
-      circleSize,
-      animationIntensity,
-      // heroLensSection fields
-      foregroundImage { asset, hotspot, crop },
-      // metricsSection fields
-      metrics[] {
-        _type, _key,
-        "value": ${loc('value')},
-        animateNumber,
-        "label": ${loc('label')},
-        "description": ${loc('description')},
-      },
-      // photoGallerySection fields
-      columns,
-      imageRatio,
-      spacing,
-      showCaptions,
-      "gallery": gallery->{
-        _id,
-        internalName,
-        "description": ${loc('description')},
-        items[] {
-          _key,
-          titleOverrideEnabled,
-          "titleOverride": select(titleOverrideEnabled == true => ${loc('titleOverride')}),
-          captionOverrideEnabled,
-          "captionOverride": select(captionOverrideEnabled == true => ${loc('captionOverride')}),
-          "mediaAsset": mediaAsset->{
-            _id,
-            mediaType,
-            image { asset, hotspot, crop },
-            videoUrl,
-            "altText": ${loc('altText')},
-            "title": ${loc('title')},
-            "caption": ${loc('caption')},
-          }
-        }
-      }
-    }
+    ${PAGE_SECTIONS_PROJECTION}
   }
 `
 
@@ -860,132 +876,7 @@ export const pageBySlugQuery = /* groq */ `
     "slugMap": slug,
     "redirectFrom": redirectFrom,
     backgroundPattern,
-    sections[] {
-      _type,
-      _key,
-      background,
-      "eyebrow": ${loc('eyebrow')},
-      "headline": ${loc('headline')},
-      "subheadline": ${loc('subheadline')},
-      "ctaLabel": ${loc('ctaLabel')},
-      ctaHref,
-      "title": ${loc('title')},
-      "body": ${loc('body')},
-      // mediaContentSection fields — coalesce migrates old imagePosition data
-      "mediaPosition": coalesce(mediaPosition, imagePosition),
-      contentRatio,
-      reverseOnMobile,
-      mediaStyle,
-      "primaryCta": primaryCta { ${CTA_FIELDS} },
-      "secondaryCta": secondaryCta { ${CTA_FIELDS} },
-      // statementSection fields
-      "description": ${loc('description')},
-      alignment,
-      image { asset, hotspot, crop },
-      "intro": ${loc('intro')},
-      treatments[] {
-        _type, _key,
-        "name": ${loc('name')},
-        "tagline": ${loc('tagline')},
-        "description": ${loc('description')},
-      },
-      "subtitle": ${loc('subtitle')},
-      members[] {
-        _type, _key,
-        photo { asset, hotspot, crop },
-        name,
-        "role": ${loc('role')},
-        "bio": ${loc('bio')},
-      },
-      "content": ${loc('content')},
-      items[] {
-        _key,
-        "question": ${loc('question')},
-        "answer": ${loc('answer')},
-      },
-      showMap, mapHeight, mapTheme,
-      // Blog listing section fields — null on all other section types
-      filterMode,
-      sortOrder,
-      layout,
-      maxItems,
-      "viewAllLabel": ${loc('viewAllLabel')},
-      viewAllHref,
-      "categoryId": category->._id,
-      "eventId": event->._id,
-      "postIds": posts[]->._id,
-      // formSection fields
-      "form": form->{
-        _id,
-        projectSlug,
-        "description": ${loc('description')},
-        "submitLabel": ${loc('submitLabel')},
-        "successMessage": ${loc('successMessage')},
-        inquiryType,
-        fields[] {
-          id, type, required, width, rows,
-          "label": ${loc('label')},
-          "placeholder": ${loc('placeholder')},
-          "helpText": ${loc('helpText')},
-          "checkboxLabel": ${loc('checkboxLabel')},
-          options[] { value, "label": ${loc('label')} }
-        }
-      },
-      // heroSection media / layout / style fields
-      mediaType,
-      heroImage { asset, hotspot, crop },
-      heroVideo,
-      posterImage { asset, hotspot, crop },
-      heroHeight,
-      contentWidth,
-      contentAlignment,
-      verticalAlignment,
-      overlayOpacity,
-      blur,
-      brightness,
-      // heroLiveCaptureSection + heroLensSection CTA array
-      ctas[] { ${CTA_FIELDS} },
-      backgroundImage { asset, hotspot, crop },
-      phoneScreenImage { asset, hotspot, crop },
-      circleSize,
-      animationIntensity,
-      // heroLensSection fields
-      foregroundImage { asset, hotspot, crop },
-      // metricsSection fields
-      metrics[] {
-        _type, _key,
-        "value": ${loc('value')},
-        animateNumber,
-        "label": ${loc('label')},
-        "description": ${loc('description')},
-      },
-      // photoGallerySection fields
-      columns,
-      imageRatio,
-      spacing,
-      showCaptions,
-      "gallery": gallery->{
-        _id,
-        internalName,
-        "description": ${loc('description')},
-        items[] {
-          _key,
-          titleOverrideEnabled,
-          "titleOverride": select(titleOverrideEnabled == true => ${loc('titleOverride')}),
-          captionOverrideEnabled,
-          "captionOverride": select(captionOverrideEnabled == true => ${loc('captionOverride')}),
-          "mediaAsset": mediaAsset->{
-            _id,
-            mediaType,
-            image { asset, hotspot, crop },
-            videoUrl,
-            "altText": ${loc('altText')},
-            "title": ${loc('title')},
-            "caption": ${loc('caption')},
-          }
-        }
-      }
-    }
+    ${PAGE_SECTIONS_PROJECTION}
   }
 `
 
@@ -1000,6 +891,10 @@ export const pageByOldSlugQuery = /* groq */ `
 export const siteConfigQuery = websiteSiteConfigQuery
 
 // ─── Live Page ────────────────────────────────────────────────────────────────
+// ADR-016 Phase A: projects the additive sections[] field via the shared
+// PAGE_SECTIONS_PROJECTION fragment — identical to how page queries project
+// it. Absent on documents published before this field existed; GROQ resolves
+// a missing array field to null, which the frontend already treats as empty.
 
 export const livePageQuery = /* groq */ `
   *[_type == "livePage" && projectSlug == $projectSlug][0] {
@@ -1022,11 +917,13 @@ export const livePageQuery = /* groq */ `
       ${locImage('heroImage')}
     },
     "seoTitle": ${loc('seoTitle')},
-    "seoDescription": ${loc('seoDescription')}
+    "seoDescription": ${loc('seoDescription')},
+    ${PAGE_SECTIONS_PROJECTION}
   }
 `
 
 // ─── Events Page ──────────────────────────────────────────────────────────────
+// ADR-016 Phase A: see Live Page note above — same additive sections[] wiring.
 
 export const eventsPageQuery = /* groq */ `
   *[_type == "eventsPage" && projectSlug == $projectSlug][0] {
@@ -1037,11 +934,13 @@ export const eventsPageQuery = /* groq */ `
     ${locImage('heroImage')},
     cloudflareVideoId,
     "seoTitle": ${loc('seoTitle')},
-    "seoDescription": ${loc('seoDescription')}
+    "seoDescription": ${loc('seoDescription')},
+    ${PAGE_SECTIONS_PROJECTION}
   }
 `
 
 // ─── Blog Page ────────────────────────────────────────────────────────────────
+// ADR-016 Phase A: see Live Page note above — same additive sections[] wiring.
 
 export const blogPageQuery = /* groq */ `
   *[_type == "blogPage" && projectSlug == $projectSlug][0] {
@@ -1050,7 +949,8 @@ export const blogPageQuery = /* groq */ `
     "heroTitle": ${loc('heroTitle')},
     "heroSubtitle": ${loc('heroSubtitle')},
     "seoTitle": ${loc('seoTitle')},
-    "seoDescription": ${loc('seoDescription')}
+    "seoDescription": ${loc('seoDescription')},
+    ${PAGE_SECTIONS_PROJECTION}
   }
 `
 

@@ -16,6 +16,7 @@ import { fetchDesignSystemById } from '@/lib/sanity/client'
 import type { Event, LocaleConfig, LivePage, SupportedLocale, WebsiteSiteConfig, DesignSystem } from '@/lib/sanity/types'
 import { ogImageUrl } from '@/lib/sanity/image'
 import { LivePageContent } from '@/components/livener/live/LivePageContent'
+import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
 
 // force-dynamic: always render server-side so event status changes are immediate.
 // (ISR can permanently cache a failed initial generation if Sanity returns null at build time.)
@@ -121,16 +122,37 @@ export default async function LivePage({ params }: PageProps) {
     return true
   })
 
+  // ADR-016 Phase A — hydrate any blogListingSection sections with posts
+  // fetched server-side, mutating livePage.sections in place. Additive only:
+  // the fixed LivePageContent above is untouched, sections render after it.
+  await hydrateSections(livePage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale })
+
   return (
-    <LivePageContent
-      event={event}
-      livePage={livePage}
-      siteConfig={siteConfig}
-      designSystem={designSystem}
-      pastEvents={displayEvents}
-      additionalLiveEvents={additionalLiveEvents ?? []}
-      locale={locale as SupportedLocale}
-      tenantId={tenantId}
-    />
+    <>
+      <LivePageContent
+        event={event}
+        livePage={livePage}
+        siteConfig={siteConfig}
+        designSystem={designSystem}
+        pastEvents={displayEvents}
+        additionalLiveEvents={additionalLiveEvents ?? []}
+        locale={locale as SupportedLocale}
+        tenantId={tenantId}
+      />
+
+      {livePage?.sections?.map((section, index) => (
+        <SectionRenderer
+          key={section._key}
+          section={section}
+          siteConfig={siteConfig}
+          designSystem={designSystem}
+          backgroundPattern={undefined}
+          sectionIndex={index}
+          locale={locale}
+          tenantSlug={tenantId}
+          fromParam="live"
+        />
+      ))}
+    </>
   )
 }
