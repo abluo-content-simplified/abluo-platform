@@ -1185,4 +1185,81 @@ Per R5:
 - **Forced re-authentication.** JWTs issued before this rollout do not carry the `platform_role` claim and cannot retroactively gain it. Every existing session must be forced to refresh or re-authenticate at rollout so that the claim is present before any route begins relying on it. Skipping this step means the reliable-claim work of steps 2–3 (Implementation Order) is not actually reliable for already-logged-in users.
 - **Sequencing dependency.** The bootstrap steps above must complete before Implementation Order step 6 (gating `/studio`) — gating a route on a claim that most sessions don't yet carry would lock out legitimate admins, not just tenant users.
 
+---
+
+## ADR-016 — Composable Module Pages
+
+**Status:** Accepted
+**Date:** 2026-08-01
+**Supersedes:** —
+**Superseded By:** —
+
+### Context
+
+A 2026-08-01 read-only design pass examined the `page` document type and its rendering path to evaluate whether the fixed-schema module singleton pages (`livePage`, `eventsPage`, `blogPage`) should move to the same section-composed model.
+
+**The existing composable model (Verified fact).** The regular `page` type already carries `sections[]`, rendered by a per-route `SectionRenderer` implemented identically in `src/app/[locale]/(website)/[tenant]/page.tsx` and the `[slug]/page.tsx` route: a module-contributed `SECTION_MAP` lookup (`src/lib/modules/sections.ts`) falls back to a platform `switch` for platform-owned section types, with per-section async hydration where a section needs server-side data (e.g. `fetchBlogListingPosts`). This is the model this ADR extends, not a new one.
+
+**Blog already proves the pattern out (Verified fact).** `blogListingSection` (`src/lib/modules/blog/schema.ts`) supports `filterMode` (`latest`/`featured`/`byCategory`/`byEvent`/`manual`), `sortOrder`, a `category` reference, an `event` reference, a manual `posts[]` list, `layout`, `maxItems`, and `viewAllLabel`/`viewAllHref` (`src/lib/modules/blog/schema.ts:59-169`). The Blog module declares `sectionTypes: ['blogListingSection']` (`src/lib/modules/registry.ts:74`).
+
+**Events and Live have no listing sections (Verified fact).** Both modules declare `sectionTypes: []` (`src/lib/modules/registry.ts:152,210`) — their content is reachable only through fixed-field singleton routes; nothing comparable to `blogListingSection` exists for either module yet.
+
+**The singletons are deliberately fixed, by design comment (Verified fact).** `livePage`, `eventsPage`, and `blogPage` have fixed schemas (hero/intro/etc.) with no `sections[]`. `src/lib/modules/blog/schema.ts:177` states outright: `// Never section-composed: the page has a fixed rendering contract.` This is the exact assumption ADR-009 encoded (`docs/architecture/architecture-decisions.md:398,482`) and that this ADR revisits.
+
+**Three hardcoded-English strings violate the Multilingual-First Principle (Verified fact).** `src/components/livener/live/LivePageContent.tsx:46` ("No live event scheduled right now."), `:49` ("Check back soon."), and `:217` ("Past Live Events"); `src/app/[locale]/(website)/[tenant]/events/page.tsx:154` ("No events yet. Check back soon."). By contrast, `blogPage`'s empty state already routes through a localized dictionary (`src/lib/i18n/news-page-messages.ts`) — the pattern this ADR generalizes.
+
+**Per-tenant module availability is not enforced at render time (Verified fact).** `ModuleInstallation` (`project.moduleInstallations[]`, ADR-011 sub-decision B2) is resolved only for Studio navigation. Nothing in `SectionRenderer` or either page route checks a tenant's `enabledModuleIds` before rendering a module's section — a section type belonging to an uninstalled module renders anyway if present in `sections[]`. This is a real gap distinct from anything ADR-011 closed.
+
+**Cross-module references use untyped string-refs (Verified fact).** Existing patterns such as `blogListingSection.event` (`type: 'reference', to: [{ type: 'event' }]`) show the established, if untyped, mechanism for one module's section to reference another module's content — the same mechanism this ADR's new sections reuse.
+
+**Two copies of `SectionRenderer` are known debt (Verified fact, tracked as I5).** The renderer logic is duplicated verbatim between `[tenant]/page.tsx` and `[tenant]/[slug]/page.tsx`. Converting three more singletons into section-composed routes without first collapsing this duplication would produce four copies instead of two — compounding, not just carrying forward, existing debt.
+
+### Alternatives Considered
+
+- **Option 2 — additive sections, singletons kept permanently fixed.** Add `sections[]` to the singletons alongside their fixed fields and stop there, never retiring the fixed schema. Rejected as an end state: a page type that is simultaneously described by a fixed-field content model and a sections array is two configuration surfaces for one concept, violating the platform's one-configuration-surface principle (CLAUDE.md; ADR-014's rationale for the Integration Registry rests on the same principle). Retained, however, as the *shape* of Phase A below — additive is the correct low-risk first step, just not the final destination.
+- **Keep the singletons fixed indefinitely (status quo).** Rejected: ADR-009 already flagged the fixed-contract choice as a tradeoff rather than a settled position (`docs/architecture-decisions.md:482`, "this is intentional given the fixed rendering contract... but it means adding new content blocks... requires a schema change"), and the I5 duplication debt already exists independently of this decision — leaving both unaddressed compounds rather than defers the cost.
+- **Convert the singletons to composable pages in a single pass, no phasing.** Rejected: touches published content (Livener's live page) in the same change as new schema and new section types, maximizing blast radius for a single release and giving Tom no intermediate verification point. Phased delivery (Phases 0–D, below) is preferred so each phase is independently gated and deployable (CLAUDE.md §Deployment Workflow; Playbook P6).
+
+### Decision
+
+**Singleton pages move to the composable-page model (Option 1: full conversion), phased so the riskiest step — migrating and retiring the fixed schema — is isolated and last.**
+
+1. **Fate of the singletons:** full conversion to composable pages. Phase A is additive only — `sections[]` is added to `livePage`, `eventsPage`, and `blogPage` alongside their existing fixed fields, with no migration and no visual change until content is actually added to a section. Migrating the fixed fields into sections and retiring the special schemas is a deliberate later phase (Phase C) requiring a Tom-approved migration plan for existing live content — specifically Livener's live page.
+2. **Event categories are in scope now.** Add an `eventCategory` document type mirroring `blogCategory`, add a categories reference to the `event` type, and give the new Events Listing section a `filterMode: 'byCategory'` option, matching `blogListingSection`'s existing category filter.
+3. **Model:** each content module contributes its own filterable, configurable, localized listing section(s) — Blog Listing already exists; this ADR adds `eventsListingSection` and a Live section, both built on the `blogListingSection` template (filter/sort/manual-selection/layout/max-items/view-all fields as applicable to that module's content shape). The section owns selection configuration only; the module owns the data and queries — this is the Sections-vs-Modules orthogonality rule (CLAUDE.md) applied, not relaxed, by this ADR. Any page composes any of these sections through the one `SectionRenderer`; a section's actual availability on a given tenant's page follows that tenant's installed modules (decision 7, below).
+4. **Localized empty states.** Add `emptyStateHeading: localizedString` and `emptyStateBody: localizedText` (optional) to every module-listing section type (`blogListingSection`, the new `eventsListingSection`, the new Live section). Zero-items with both fields unset renders null, preserving today's behavior exactly. Zero-items with either field set renders a localized empty-state block. This retires the three hardcoded strings identified above by giving editors a first-class, localized replacement rather than a second hardcoded fallback.
+5. **Bookings and Forum:** reference-only, in the same spirit as ADR-009's forward-looking Shop/Booking/CRM table — future modules follow this same section/module split. No stub schema, no placeholder section type, is created for either in this ADR.
+6. **I5 pulled forward as a prerequisite.** The single shared `SectionRenderer` extraction (already tracked as debt, I5) is done *before* the three singletons gain their own `sections[]` wiring — Phase 0 below. Converting singletons against two renderer copies would have produced four; extracting first keeps it at one.
+7. **Runtime module-installation gating is a phase of this ADR, not deferred further.** `SectionRenderer` checks a rendered section's `_type` against the requesting tenant's `enabledModuleIds` (already resolvable via the existing `project.moduleInstallations` / `enabledModuleIds` projection, ADR-011 sub-decision B2) and renders null for a section belonging to a module the tenant does not have installed. This closes the render-time gap identified above; Studio-side gating (ADR-010/ADR-011) is unaffected and unchanged.
+
+This ADR realizes intent already recorded in ADR-009 (Pages/Collections/Modules; specifically its Alternative Considered "make every page a section-composed page document" and its Negative "the `blogPage` singleton... follows the fixed-fields pattern... this is intentional... but means adding new content blocks requires a schema change") and ADR-011 (module-contributed platform contracts, including `sectionTypes` and `ModuleInstallation`).
+
+### Implementation Order
+
+Each phase is independently deployable and independently gated (CLAUDE.md Deployment Workflow; spine §8 STOP discipline applies at each `dev`→`preview`→`main` promotion regardless of phase).
+
+- **Phase 0 (prerequisite):** Extract the single shared `SectionRenderer` from its two current copies (`[tenant]/page.tsx`, `[tenant]/[slug]/page.tsx`) into one implementation both routes call. No schema change, no content change.
+- **Phase A (additive, non-breaking):** Add `sections[]` to the `livePage`, `eventsPage`, and `blogPage` schemas alongside their existing fixed fields. Wire the Phase 0 shared renderer into the three singleton routes so sections render if present, without touching or migrating the existing fixed-field content.
+- **Phase B:** Add `eventsListingSection` and a Live section (both on the `blogListingSection` template); add `eventCategory` document type and `event.categories` reference; add `filterMode: 'byCategory'` to the Events Listing section; add `emptyStateHeading`/`emptyStateBody` to all module-listing section types; replace the three hardcoded strings (`LivePageContent.tsx:46,49,217`; `events/page.tsx:154`) with the new localized empty-state fields.
+- **Phase C (heaviest STOP discipline — the only phase touching published content):** Migrate the singletons' fixed fields into equivalent sections; retire the fixed schemas. Requires a Tom-approved migration plan (spine §7 — migrating published content is an irreversible action, `Tom decides`) specifically for Livener's live page before any migration script runs against it.
+- **Phase D:** Runtime module-installation gating — `SectionRenderer` renders null for a section whose owning module is not installed for the requesting tenant, per decision 7.
+
+### Consequences
+
+**Positive:**
+- Events and Live gain the same filterable, localized, editor-configurable listing capability Blog already has, via a proven template rather than a new design
+- Event categorization becomes possible platform-wide, matching the existing blog category model
+- The three hardcoded English empty-state strings are retired, closing a live Multilingual-First Principle violation
+- The render-time module-gating gap is closed as part of this work rather than left open indefinitely
+- Phasing (0–D) means each step ships and is verifiable independently — no single large, high-risk release
+- Extracting the shared `SectionRenderer` (Phase 0) finally resolves I5 rather than deferring it again
+
+**Negative:**
+- Pulling I5 forward is real upfront engineering work that has to land before any singleton-facing progress is visible — a cost this ADR incurs deliberately rather than one that was already scheduled
+- Phase C is the first phase in this initiative that touches published content (Livener's live page); migration risk is real and requires a dedicated Tom-approved plan, not a routine schema change
+- Three more section types (`eventsListingSection`, the Live section, and any category-filter variants) become part of the long-term section library to maintain, test, and keep consistent with `blogListingSection` as that template evolves
+- Until Phase D ships, the render-time module-gating gap remains open exactly as documented today
+
+---
+
 
