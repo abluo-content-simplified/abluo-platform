@@ -345,6 +345,25 @@ export const projectIntegrationsQuery = /* groq */ `
   }
 `
 
+// ─── Enabled module IDs (ADR-016 Phase D) ─────────────────────────────────────
+// Single source of truth for a tenant's installed-module set at website
+// render time. Mirrors the exact select() projection used for Studio nav in
+// sanity.config.ts (the "enabledModuleIds" projection there) — do not fork
+// this logic into a second shape. For migrated projects: derived from
+// moduleInstallations[enabled != false].moduleId. For unmigrated projects:
+// falls back to coalesce(enabledModules, []). Returns the array directly
+// (not wrapped in an object) via the trailing dot-projection.
+// Consumed by hydrateSections/SectionRenderer via fetchForTenant, same
+// pattern as projectDomainQuery / projectIntegrationsQuery.
+export const enabledModuleIdsQuery = /* groq */ `
+  *[_type == "project" && projectSlug == $projectSlug][0] {
+    "enabledModuleIds": select(
+      defined(moduleInstallations) && count(moduleInstallations) > 0 => moduleInstallations[enabled != false].moduleId,
+      coalesce(enabledModules, [])
+    )
+  }.enabledModuleIds
+`
+
 export const postsQuery = /* groq */ `
   *[
     _type == "post"

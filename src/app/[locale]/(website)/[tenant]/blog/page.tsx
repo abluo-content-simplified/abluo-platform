@@ -28,6 +28,7 @@ import {
   websiteSiteConfigQuery,
   designSystemQuery,
   blogPageQuery,
+  enabledModuleIdsQuery,
 } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
@@ -245,7 +246,7 @@ export default async function NewsListingPage({ params }: PageProps) {
   // Fetch posts, design system, and blogPage in parallel.
   // limit=1000 / offset=0 effectively fetches all posts in V1.
   // When pagination is needed, pass limit/offset from searchParams.
-  const [allPosts, designSystem, blogPage, siteConfig] = await Promise.all([
+  const [allPosts, designSystem, blogPage, siteConfig, enabledModuleIds] = await Promise.all([
     fetchForTenant<Post[]>(postsQuery, {
       locale: locale as SupportedLocale,
       defaultLocale,
@@ -258,12 +259,13 @@ export default async function NewsListingPage({ params }: PageProps) {
     })(),
     fetchForTenant<BlogPage>(blogPageQuery, { locale, defaultLocale }),
     fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale }),
+    fetchForTenant<string[] | null>(enabledModuleIdsQuery, {}),
   ])
 
   // ADR-016 Phase A — hydrate any blogListingSection sections with posts
   // fetched server-side, mutating blogPage.sections in place. Additive only:
   // the fixed hero/featured/grid content below is untouched, sections render after it.
-  await hydrateSections(blogPage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale })
+  await hydrateSections(blogPage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds })
 
   const posts = allPosts ?? []
 
@@ -417,6 +419,7 @@ export default async function NewsListingPage({ params }: PageProps) {
         locale={locale}
         tenantSlug={tenantId}
         fromParam="blog"
+        enabledModuleIds={enabledModuleIds}
       />
     ))}
     </>

@@ -25,7 +25,7 @@ import { FormSection } from '@/components/sections/FormSection'
 import { StatementSection } from '@/components/sections/StatementSection'
 import { MetricsSection } from '@/components/sections/MetricsSection'
 import { PhotoGallerySection } from '@/components/sections/PhotoGallerySection'
-import { SECTION_MAP } from '@/lib/modules/sections'
+import { SECTION_MAP, isSectionTypeAvailable } from '@/lib/modules/sections'
 import type {
   WebsiteSiteConfig,
   PageSection,
@@ -172,6 +172,13 @@ async function fetchEventsListingEvents(
  * sections in `sections` with data fetched server-side, mutating each
  * section's `.posts` / `.events` / `.event` in place. Shared by all five
  * routes so there is exactly one hydration path (previously duplicated).
+ *
+ * ADR-016 Phase D — a section whose owning module is not installed for the
+ * tenant (per `ctx.enabledModuleIds`) is skipped entirely: no data fetch, no
+ * mutation. It will also render null in SectionRenderer below, so hydrating
+ * it would be wasted work. `enabledModuleIds` is optional and defaults to
+ * "unresolved" (fail-open — see isSectionTypeAvailable) so callers that have
+ * not yet been updated to pass it keep today's behaviour.
  */
 export async function hydrateSections(
   sections: PageSection[] | undefined,
@@ -179,11 +186,13 @@ export async function hydrateSections(
     fetchForTenant: ReturnType<typeof tenantClient>['fetchForTenant']
     locale: SupportedLocale
     defaultLocale: SupportedLocale
+    enabledModuleIds?: string[] | null
   }
 ): Promise<void> {
   if (!sections) return
   await Promise.all(
     sections.map(async (section) => {
+      if (!isSectionTypeAvailable(section._type, ctx.enabledModuleIds)) return
       if (section._type === 'blogListingSection') {
         const bls = section as BlogListingSectionType
         const posts = await fetchBlogListingPosts(bls, ctx.fetchForTenant, ctx.locale, ctx.defaultLocale)
@@ -221,6 +230,14 @@ export interface SectionRendererProps {
   locale: string
   tenantSlug: string
   fromParam?: string
+  /**
+   * ADR-016 Phase D — the tenant's installed module IDs, used to gate
+   * module-owned sections at render time. Optional and defaults to
+   * "unresolved" (fail-open — see isSectionTypeAvailable in
+   * src/lib/modules/sections.ts) so callers not yet updated keep rendering
+   * everything, matching pre-Phase-D behaviour.
+   */
+  enabledModuleIds?: string[] | null
 }
 
 export function SectionRenderer({
@@ -232,8 +249,19 @@ export function SectionRenderer({
   locale,
   tenantSlug,
   fromParam,
+  enabledModuleIds,
 }: SectionRendererProps) {
   const surface = computeSectionSurface(section.background, backgroundPattern as any, sectionIndex)
+
+  // ── Module-installation gating (ADR-016 Phase D) ─────────────────────────
+  // A module-owned section whose owning module is not installed for this
+  // tenant renders nothing — silently, no wrapper, no error. Platform
+  // sections (never in any manifest's sectionTypes) are never gated; see
+  // isSectionTypeAvailable for the full contract, including the safe
+  // "unresolved → available" default.
+  if (!isSectionTypeAvailable(section._type, enabledModuleIds)) {
+    return null
+  }
 
   // ── Module-owned sections ────────────────────────────────────────────────
   // Derived from MODULE_REGISTRY via SECTION_MAP. New module sections are

@@ -1,5 +1,5 @@
 import { tenantClient } from '@/lib/sanity/client'
-import { pageBySlugQuery, pageByOldSlugQuery, localeConfigQuery, websiteSiteConfigQuery, designSystemQuery } from '@/lib/sanity/queries'
+import { pageBySlugQuery, pageByOldSlugQuery, localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, enabledModuleIdsQuery } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
@@ -87,13 +87,14 @@ export default async function WebsitePageRoute({ params }: PageProps) {
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  const [page, siteConfig, designSystem] = await Promise.all([
+  const [page, siteConfig, designSystem, enabledModuleIds] = await Promise.all([
     fetchForTenant<WebsitePage>(pageBySlugQuery, { locale, defaultLocale, slug }),
     fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale }),
     (async () => {
       const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {})
       return resolveDesignSystemInheritance(raw, fetchDesignSystemById)
     })(),
+    fetchForTenant<string[] | null>(enabledModuleIdsQuery, {}),
   ])
 
   // ── Redirect check ──────────────────────────────────────────────────────────
@@ -111,7 +112,7 @@ export default async function WebsitePageRoute({ params }: PageProps) {
   }
 
   // ── Hydrate blogListingSection posts server-side ────────────────────────────
-  await hydrateSections(page.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale })
+  await hydrateSections(page.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds })
 
   // ── Slug map — passed to the language switcher via context ──────────────────
   // Maps each locale to its current slug for this page.
@@ -147,6 +148,7 @@ export default async function WebsitePageRoute({ params }: PageProps) {
           locale={locale}
           tenantSlug={tenantId}
           fromParam={slug}
+          enabledModuleIds={enabledModuleIds}
         />
       ))}
     </SlugMapProvider>

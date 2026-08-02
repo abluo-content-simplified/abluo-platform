@@ -39,6 +39,12 @@ import { blogSectionComponents } from './blog/sections'
 import { eventsSectionComponents } from './events/sections'
 import { liveSectionComponents } from './live/sections'
 
+// ── Availability gating (ADR-016 Phase D) ──────────────────────────────────────
+// MODULE_REGISTRY is safe to import statically here: this file is Next.js-route
+// only (see the isolation boundary note in ./index.ts) and registry.ts carries
+// no sanity/structure import, so nothing leaks into the Studio bundle.
+import { MODULE_REGISTRY } from './registry'
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -82,6 +88,65 @@ export const SECTION_MAP: SectionComponentMap = {
   ...eventsSectionComponents,
   ...liveSectionComponents,
   // Future modules: spread their section component maps here.
+}
+
+// ── Section-type → owning-module lookup (ADR-016 Phase D) ─────────────────────
+//
+// A section type appearing in some module's platformContract.sectionTypes is
+// module-owned; a section type appearing in NO manifest is a platform section
+// (heroLensSection, heroLiveCaptureSection, contentSection, etc.) and is never
+// gated by module installation — Section Library vs Modules principle, CLAUDE.md.
+//
+// Computed once at module initialisation, mirroring SECTION_MAP above.
+const SECTION_TYPE_TO_MODULE_ID: Record<string, string> = {}
+for (const manifest of MODULE_REGISTRY) {
+  for (const sectionType of manifest.platformContract.sectionTypes) {
+    SECTION_TYPE_TO_MODULE_ID[sectionType] = manifest.id
+  }
+}
+
+/**
+ * Pure predicate: is a section type available for render given the tenant's
+ * enabled module IDs?
+ *
+ * - Module-owned section type (found in some manifest's sectionTypes) →
+ *   available iff its owning module's ID is in enabledModuleIds.
+ * - Platform section type or any type not declared by any module manifest →
+ *   always available. This includes genuinely unknown/unmapped _type values:
+ *   SectionRenderer's platform switch statement already returns null for any
+ *   _type it doesn't recognise, so this predicate does not need to duplicate
+ *   that closed-world check — it only needs to answer the module-ownership
+ *   question. Defaulting unmapped types to "available" keeps this predicate
+ *   decoupled from the platform switch's set of cases (Sections vs Modules
+ *   orthogonality) and avoids ever hiding a platform section because of a
+ *   gating bug.
+ *
+ * Safe-default contract for enabledModuleIds — this is the load-bearing part
+ * of the predicate, not an incidental null-check:
+ *
+ * - `undefined` / `null` means "the tenant's installed-module set could not
+ *   be resolved" (fetch failed, project doc not found, resolution not wired
+ *   for this caller yet). This must FAIL OPEN — treat as available — so a
+ *   transient resolution problem never silently blanks a tenant's existing
+ *   blogListingSection / eventsListingSection / liveLatestSection content.
+ *   Hiding a section an admin expects to see is a worse failure mode here
+ *   than occasionally rendering one for a module that turns out to be
+ *   uninstalled.
+ * - `[]` (a real, successfully resolved empty array) means "this tenant has
+ *   zero modules installed" — a legitimate, common state for a fresh project
+ *   — and DOES gate module-owned sections off. Only an actually-resolved
+ *   list drives gating; the mere absence of a value never does.
+ */
+export function isSectionTypeAvailable(
+  sectionType: string,
+  enabledModuleIds: string[] | undefined | null
+): boolean {
+  const ownerModuleId = SECTION_TYPE_TO_MODULE_ID[sectionType]
+  // Platform section, or a type no module claims — never gated.
+  if (!ownerModuleId) return true
+  // Resolution unavailable — fail open rather than blank existing content.
+  if (enabledModuleIds == null) return true
+  return enabledModuleIds.includes(ownerModuleId)
 }
 
 // ── Registry cross-check ──────────────────────────────────────────────────────

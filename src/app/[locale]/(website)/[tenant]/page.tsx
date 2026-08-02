@@ -1,5 +1,5 @@
 import { tenantClient } from '@/lib/sanity/client'
-import { pageHomeQuery, localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, homepageFeaturedEventQuery } from '@/lib/sanity/queries'
+import { pageHomeQuery, localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, homepageFeaturedEventQuery, enabledModuleIdsQuery } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
@@ -82,11 +82,12 @@ export default async function WebsitePage({ params }: PageProps) {
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  const [homePage, siteConfig, designSystem, featuredEvent] = await Promise.all([
+  const [homePage, siteConfig, designSystem, featuredEvent, enabledModuleIds] = await Promise.all([
     fetchForTenant<WebsitePage>(pageHomeQuery, { locale, defaultLocale }),
     fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale }),
     (async () => { const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {}); return resolveDesignSystemInheritance(raw, fetchDesignSystemById); })(),
     fetchForTenant<Event>(homepageFeaturedEventQuery, { locale, defaultLocale }),
+    fetchForTenant<string[] | null>(enabledModuleIdsQuery, {}),
   ])
 
   if (!homePage) {
@@ -98,7 +99,7 @@ export default async function WebsitePage({ params }: PageProps) {
   }
 
   // Hydrate any blogListingSection sections with posts fetched server-side
-  await hydrateSections(homePage.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale })
+  await hydrateSections(homePage.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds })
 
   const faqSection = homePage.sections?.find(
     (s): s is FAQSectionType => s._type === 'faqSection'
@@ -133,6 +134,7 @@ export default async function WebsitePage({ params }: PageProps) {
           locale={locale}
           tenantSlug={tenantId}
           fromParam="home"
+          enabledModuleIds={enabledModuleIds}
         />
       ))}
 
@@ -160,6 +162,7 @@ export default async function WebsitePage({ params }: PageProps) {
           locale={locale}
           tenantSlug={tenantId}
           fromParam="home"
+          enabledModuleIds={enabledModuleIds}
         />
       ))}
     </>

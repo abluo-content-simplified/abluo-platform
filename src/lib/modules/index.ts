@@ -36,7 +36,7 @@ export { MODULE_REGISTRY } from './registry'
 
 export { buildSchema } from './schema'
 
-export { SECTION_MAP, type ModuleSectionProps, type SectionComponentMap } from './sections'
+export { SECTION_MAP, isSectionTypeAvailable, type ModuleSectionProps, type SectionComponentMap } from './sections'
 
 // buildCollectionItems — Studio-only. Imported directly by sanity.config.ts.
 // Do NOT import this from Next.js page routes (pulls in sanity/structure).

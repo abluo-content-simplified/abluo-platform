@@ -10,6 +10,7 @@ import {
   additionalLiveEventsQuery,
   livePageQuery,
   projectDomainQuery,
+  enabledModuleIdsQuery,
 } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
@@ -82,7 +83,7 @@ export default async function LivePage({ params }: PageProps) {
   })
 
   // Phase 2 — fetch everything else in parallel
-  const [livePage, siteConfig, designSystem, pastEvents, additionalLiveEvents] = await Promise.all([
+  const [livePage, siteConfig, designSystem, pastEvents, additionalLiveEvents, enabledModuleIds] = await Promise.all([
     fetchForTenant<LivePage>(livePageQuery, {
       locale: locale as SupportedLocale,
       defaultLocale,
@@ -104,6 +105,7 @@ export default async function LivePage({ params }: PageProps) {
       defaultLocale,
       featuredEventId: event?._id ?? '',
     }),
+    fetchForTenant<string[] | null>(enabledModuleIdsQuery, {}),
   ])
 
   // Choose the event source: manual curation takes precedence over the auto-query.
@@ -125,7 +127,7 @@ export default async function LivePage({ params }: PageProps) {
   // ADR-016 Phase A — hydrate any blogListingSection sections with posts
   // fetched server-side, mutating livePage.sections in place. Additive only:
   // the fixed LivePageContent above is untouched, sections render after it.
-  await hydrateSections(livePage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale })
+  await hydrateSections(livePage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds })
 
   return (
     <>
@@ -151,6 +153,7 @@ export default async function LivePage({ params }: PageProps) {
           locale={locale}
           tenantSlug={tenantId}
           fromParam="live"
+          enabledModuleIds={enabledModuleIds}
         />
       ))}
     </>

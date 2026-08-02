@@ -6,6 +6,7 @@ import {
   localeConfigQuery,
   designSystemQuery,
   websiteSiteConfigQuery,
+  enabledModuleIdsQuery,
 } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
@@ -56,7 +57,7 @@ export default async function EventsListPage({ params }: PageProps) {
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  const [eventsPage, events, designSystem, siteConfig] = await Promise.all([
+  const [eventsPage, events, designSystem, siteConfig, enabledModuleIds] = await Promise.all([
     fetchForTenant<EventsPage>(eventsPageQuery, {
       locale: locale as SupportedLocale,
       defaultLocale,
@@ -73,6 +74,7 @@ export default async function EventsListPage({ params }: PageProps) {
       locale: locale as SupportedLocale,
       defaultLocale,
     }),
+    fetchForTenant<string[] | null>(enabledModuleIdsQuery, {}),
   ])
 
   const msg = getEventMessages(locale)
@@ -86,7 +88,7 @@ export default async function EventsListPage({ params }: PageProps) {
   // ADR-016 Phase A — hydrate any blogListingSection sections with posts
   // fetched server-side, mutating eventsPage.sections in place. Additive only:
   // the fixed hero/grid content below is untouched, sections render after it.
-  await hydrateSections(eventsPage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale })
+  await hydrateSections(eventsPage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds })
 
   const headline    = eventsPage?.heroTitle    ?? 'Events'
   const subheadline = eventsPage?.heroSubtitle ?? null
@@ -198,6 +200,7 @@ export default async function EventsListPage({ params }: PageProps) {
         locale={locale}
         tenantSlug={tenantId}
         fromParam="events"
+        enabledModuleIds={enabledModuleIds}
       />
     ))}
     </>
