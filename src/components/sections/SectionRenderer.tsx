@@ -30,18 +30,25 @@ import type {
   WebsiteSiteConfig,
   PageSection,
   BlogListingSection as BlogListingSectionType,
+  EventsListingSection as EventsListingSectionType,
+  LiveLatestSection as LiveLatestSectionType,
   FormSection as FormSectionType,
   HeroLiveCaptureSection as HeroLiveCaptureSectionType,
   HeroLensSection as HeroLensSectionType,
   SupportedLocale,
   DesignSystem,
   Post,
+  Event,
 } from '@/lib/sanity/types'
 import { computeSectionSurface } from '@/lib/sanity/surfaces'
 import {
   blogListingPostsNewestQuery,
   blogListingPostsOldestQuery,
   blogListingManualPostsQuery,
+  eventsListingEventsNewestQuery,
+  eventsListingEventsOldestQuery,
+  eventsListingManualEventsQuery,
+  currentLiveEventQuery,
 } from '@/lib/sanity/queries'
 
 // ─── Blog listing post fetcher ────────────────────────────────────────────────
@@ -103,8 +110,67 @@ async function fetchBlogListingPosts(
 }
 
 /**
- * Hydrate any blogListingSection sections in `sections` with posts fetched
- * server-side, mutating each section's `.posts` in place. Shared by both
+ * Fetch events for a single eventsListingSection based on its filter/sort/
+ * time-window config. Mirrors fetchBlogListingPosts exactly — see that
+ * function's comment for the manual-selection vs dynamic-filter split.
+ * Returns one extra event beyond maxItems so the caller can detect "has more".
+ */
+async function fetchEventsListingEvents(
+  section: EventsListingSectionType,
+  fetchForTenant: ReturnType<typeof tenantClient>['fetchForTenant'],
+  locale: SupportedLocale,
+  defaultLocale: SupportedLocale,
+): Promise<Event[]> {
+  const {
+    filterMode = 'latest',
+    sortOrder = 'newest',
+    timeFilter = 'upcoming',
+    maxItems = 3,
+    categoryId,
+    eventIds,
+  } = section
+
+  // Manual selection: fetch by explicit event IDs then sort/reorder in JS
+  if (filterMode === 'manual' && eventIds?.length) {
+    const events = await fetchForTenant<Event[]>(eventsListingManualEventsQuery, {
+      locale,
+      defaultLocale,
+      eventIds,
+    })
+    if (sortOrder === 'manual') {
+      // Preserve the editor-defined array order
+      const indexMap: Record<string, number> = Object.fromEntries(
+        eventIds.map((id, i) => [id, i])
+      )
+      return [...events].sort((a, b) => (indexMap[a._id] ?? 999) - (indexMap[b._id] ?? 999))
+    }
+    if (sortOrder === 'oldest') {
+      return events.sort((a, b) =>
+        (a.startDate ?? '').localeCompare(b.startDate ?? '')
+      )
+    }
+    return events.sort((a, b) =>
+      (b.startDate ?? '').localeCompare(a.startDate ?? '')
+    )
+  }
+
+  // Dynamic filter (latest / featured / byCategory) — let GROQ sort
+  const query = sortOrder === 'oldest' ? eventsListingEventsOldestQuery : eventsListingEventsNewestQuery
+  return fetchForTenant<Event[]>(query, {
+    locale,
+    defaultLocale,
+    filterMode,
+    timeFilter,
+    categoryId: categoryId ?? null,
+    // Fetch one extra to detect "has more" for the View All button
+    maxItems: maxItems + 1,
+  })
+}
+
+/**
+ * Hydrate any blogListingSection, eventsListingSection, or liveLatestSection
+ * sections in `sections` with data fetched server-side, mutating each
+ * section's `.posts` / `.events` / `.event` in place. Shared by all five
  * routes so there is exactly one hydration path (previously duplicated).
  */
 export async function hydrateSections(
@@ -118,11 +184,28 @@ export async function hydrateSections(
   if (!sections) return
   await Promise.all(
     sections.map(async (section) => {
-      if (section._type !== 'blogListingSection') return
-      const bls = section as BlogListingSectionType
-      const posts = await fetchBlogListingPosts(bls, ctx.fetchForTenant, ctx.locale, ctx.defaultLocale)
-      // Slice to maxItems — we fetched one extra to detect overflow for View All
-      bls.posts = posts.slice(0, bls.maxItems ?? 3)
+      if (section._type === 'blogListingSection') {
+        const bls = section as BlogListingSectionType
+        const posts = await fetchBlogListingPosts(bls, ctx.fetchForTenant, ctx.locale, ctx.defaultLocale)
+        // Slice to maxItems — we fetched one extra to detect overflow for View All
+        bls.posts = posts.slice(0, bls.maxItems ?? 3)
+        return
+      }
+      if (section._type === 'eventsListingSection') {
+        const els = section as EventsListingSectionType
+        const events = await fetchEventsListingEvents(els, ctx.fetchForTenant, ctx.locale, ctx.defaultLocale)
+        // Slice to maxItems — we fetched one extra to detect overflow for View All
+        els.events = events.slice(0, els.maxItems ?? 3)
+        return
+      }
+      if (section._type === 'liveLatestSection') {
+        const lls = section as LiveLatestSectionType
+        lls.event = await ctx.fetchForTenant<Event | null>(currentLiveEventQuery, {
+          locale: ctx.locale,
+          defaultLocale: ctx.defaultLocale,
+        })
+        return
+      }
     })
   )
 }

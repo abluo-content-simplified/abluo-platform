@@ -4,16 +4,198 @@ import { scopedRef, projectSlugField, PAGE_SECTIONS_OF } from '@/lib/sanity/fiel
 // ── Events module — Sanity schema types ───────────────────────────────────────
 //
 // Owned by: events module (MODULE_REGISTRY id: 'events')
-// Platform contract: 2 types
-//   eventsPage — singleton document, one per project
-//   event      — collection document (routable)
+// Platform contract: 4 types
+//   eventsListingSection — section object embedded in page.sections (ADR-016 Phase B)
+//   eventsPage           — singleton document, one per project
+//   eventCategory        — collection document (taxonomy, non-routable — mirrors blogCategory)
+//   event                — collection document (routable)
 //
 // Cross-module references:
 //   event is referenced by: livePageType.featuredEvents, blogListingSection.event,
 //   postType.relatedEvent — all string-based, resolved by Sanity at runtime.
 //   No TypeScript imports are required from those modules.
+//   eventCategory is referenced by: event.categories, eventsListingSection.category —
+//   both string-based, same-module references.
 //
 // ADR-011 Phase D1 — extracted from src/lib/sanity/schema.ts.
+// ADR-016 Phase B — eventsListingSection + eventCategory added.
+
+// ── Events Listing Section ────────────────────────────────────────────────────
+// ADR-016 Phase B — modeled on blogListingSection (src/lib/modules/blog/schema.ts).
+// Adds a `timeFilter` (upcoming / past / all) alongside the shared filter/sort/
+// display fields, since events carry a date dimension blog posts don't.
+
+const eventsListingSectionType = defineType({
+  name: 'eventsListingSection',
+  title: 'Events Listing',
+  type: 'object',
+  groups: [
+    { name: 'content', title: 'Content', default: true },
+    { name: 'filter', title: 'Filter & Sort' },
+    { name: 'display', title: 'Display' },
+  ],
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
+    // ── Content ──────────────────────────────────────────────────────────────
+    defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString', group: 'content' }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString', group: 'content' }),
+    defineField({ name: 'subtitle', title: 'Subtitle / Description', type: 'localizedString', group: 'content' }),
+    // ── Filter & Sort ─────────────────────────────────────────────────────────
+    defineField({
+      name: 'timeFilter',
+      title: 'Time Window',
+      type: 'string',
+      group: 'filter',
+      options: {
+        list: [
+          { title: 'Upcoming', value: 'upcoming' },
+          { title: 'Past', value: 'past' },
+          { title: 'All', value: 'all' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'upcoming',
+      description: 'Restricts results to events whose startDate is in the future, in the past, or no restriction. Combined with the filter below.',
+    }),
+    defineField({
+      name: 'filterMode',
+      title: 'Filter',
+      type: 'string',
+      group: 'filter',
+      options: {
+        list: [
+          { title: 'Latest', value: 'latest' },
+          { title: 'Featured only', value: 'featured' },
+          { title: 'By Category', value: 'byCategory' },
+          { title: 'Manual selection', value: 'manual' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'latest',
+    }),
+    defineField({
+      name: 'sortOrder',
+      title: 'Sort Order',
+      type: 'string',
+      group: 'filter',
+      options: {
+        list: [
+          { title: 'Newest first', value: 'newest' },
+          { title: 'Oldest first', value: 'oldest' },
+          { title: 'Manual order', value: 'manual' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'newest',
+      description: '"Manual order" preserves the hand-picked array order below — only meaningful with "Manual selection" filter. "Newest"/"Oldest" sort by startDate.',
+    }),
+    defineField({
+      name: 'category',
+      title: 'Category',
+      type: 'reference',
+      to: [{ type: 'eventCategory' }],
+      group: 'filter',
+      description: 'Choose a category to show only events in that category.',
+      hidden: ({ parent }) => parent?.filterMode !== 'byCategory',
+      options: { filter: scopedRef },
+    }),
+    defineField({
+      name: 'events',
+      title: 'Events',
+      type: 'array',
+      of: [defineArrayMember({ type: 'reference', to: [{ type: 'event' }], options: { filter: scopedRef } })],
+      group: 'filter',
+      description: 'Hand-pick events. Drag to reorder for manual sort order.',
+      hidden: ({ parent }) => parent?.filterMode !== 'manual',
+    }),
+    // ── Display ───────────────────────────────────────────────────────────────
+    defineField({
+      name: 'layout',
+      title: 'Layout',
+      type: 'string',
+      group: 'display',
+      options: {
+        list: [
+          { title: 'Grid', value: 'grid' },
+          { title: 'Featured', value: 'featured' },
+          { title: 'Magazine', value: 'magazine' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'grid',
+      description: 'Grid: responsive card grid. Featured: one large card, always. Magazine: big card left + small cards right.',
+    }),
+    defineField({
+      name: 'maxItems',
+      title: 'Max Events',
+      type: 'number',
+      group: 'display',
+      initialValue: 3,
+      description: 'Maximum number of events to display (1–12). Default: 3.',
+      validation: (Rule) => Rule.min(1).max(12).integer(),
+    }),
+    defineField({
+      name: 'viewAllLabel',
+      title: '"View All" Button Label',
+      type: 'localizedString',
+      group: 'display',
+      description: 'Leave empty to hide the button. Shown when there are more events than Max Events.',
+    }),
+    defineField({
+      name: 'viewAllHref',
+      title: '"View All" Button URL',
+      type: 'string',
+      group: 'display',
+      description: 'Where the "View All" button links to — e.g. /events',
+    }),
+    // ── Empty state (ADR-016 Phase B) ───────────────────────────────────────────
+    // Semantics (frontend concern, see hydrateSections / EventsListingSection):
+    //   zero items + both fields empty → render nothing (today's behavior)
+    //   zero items + a field set       → render the localized empty block
+    defineField({
+      name: 'emptyStateHeading',
+      title: 'Empty State Heading',
+      type: 'localizedString',
+      group: 'display',
+      description: 'Shown instead of the grid when no events match the filter. Leave empty to render nothing.',
+    }),
+    defineField({
+      name: 'emptyStateBody',
+      title: 'Empty State Body',
+      type: 'localizedText',
+      group: 'display',
+      description: 'Optional supporting text below the empty state heading.',
+    }),
+  ],
+  preview: {
+    select: {
+      titleEn: 'title.en',
+      filterMode: 'filterMode',
+      timeFilter: 'timeFilter',
+      layout: 'layout',
+    },
+    prepare: ({ titleEn, filterMode, timeFilter, layout }: { titleEn?: string; filterMode?: string; timeFilter?: string; layout?: string }) => ({
+      title: titleEn ?? 'Events Listing',
+      subtitle: `${layout ?? 'grid'} · ${filterMode ?? 'latest'} · ${timeFilter ?? 'upcoming'}`,
+    }),
+  },
+})
 
 // ── Events Page ───────────────────────────────────────────────────────────────
 // ADR-016 Phase A: additive `sections[]` composes below the fixed content
@@ -149,6 +331,14 @@ const eventType = defineType({
     defineField({ name: 'location', title: 'Location', type: 'localizedString', group: 'content' }),
     defineField({ name: 'shortDescription', title: 'Short Description', type: 'localizedText', group: 'content' }),
     defineField({ name: 'fullDescription', title: 'Full Description', type: 'localizedPortableText', group: 'content' }),
+    defineField({
+      name: 'categories',
+      title: 'Categories',
+      type: 'array',
+      group: 'content',
+      of: [defineArrayMember({ type: 'reference', to: [{ type: 'eventCategory' }], options: { filter: scopedRef } })],
+      description: 'Optional. Used by eventsListingSection\'s "By Category" filter.',
+    }),
     defineField({ name: 'schedule', title: 'Schedule', type: 'array', group: 'schedule', of: [defineArrayMember({ type: 'scheduleItem' })] }),
     defineField({ name: 'heroImage', title: 'Hero Image', type: 'localizedImage', group: 'media' }),
     defineField({ name: 'gallery', title: 'Gallery', type: 'array', group: 'media', of: [defineArrayMember({ type: 'localizedImage' })] }),
@@ -208,9 +398,53 @@ const eventType = defineType({
   },
 })
 
+// ── Event Category ─────────────────────────────────────────────────────────────
+// ADR-016 Phase B — mirrors blogCategory exactly (src/lib/modules/blog/schema.ts):
+// same fields, same localization, same projectSlug scoping, same Studio treatment.
+// Non-routable taxonomy type — no slug routing, no redirectFrom (blogCategory has
+// neither). Tom's settled decision: follow blogCategory precisely.
+
+const eventCategoryType = defineType({
+  name: 'eventCategory',
+  title: 'Event Category',
+  type: 'document',
+  fields: [
+    projectSlugField,
+    defineField({
+      name: 'title',
+      title: 'Title',
+      type: 'localizedString',
+      validation: (Rule) => Rule.required(),
+      description: 'e.g. "Conferences", "Workshops", "Webinars", "Product Launches"',
+    }),
+    defineField({
+      name: 'slug',
+      title: 'Slug',
+      type: 'localizedSlug',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({ name: 'description', title: 'Description', type: 'localizedText' }),
+    defineField({
+      name: 'color',
+      title: 'Badge Color',
+      type: 'string',
+      description: 'Label color for category badges — e.g. "blue", "green", "#e94e1b"',
+    }),
+  ],
+  preview: {
+    select: { title: 'title.en', slugEn: 'slug.en.current', slugIt: 'slug.it.current' },
+    prepare: ({ title, slugEn, slugIt }: { title?: string; slugEn?: string; slugIt?: string }) => ({
+      title: title ?? '—',
+      subtitle: slugEn ?? slugIt ? `/${slugEn ?? slugIt}` : '—',
+    }),
+  },
+})
+
 // ── Exports ───────────────────────────────────────────────────────────────────
 
 export const eventsSchemaTypes = [
+  eventsListingSectionType,
   eventsPageType,
+  eventCategoryType,
   eventType,
 ]

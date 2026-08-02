@@ -5,6 +5,7 @@ import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { imageUrl } from '@/lib/sanity/image'
 import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
+import { SectionEmptyState } from '@/components/sections/shared/SectionEmptyState'
 
 // ─── Date formatting ──────────────────────────────────────────────────────────
 
@@ -402,6 +403,8 @@ export function BlogListingSection({ section, surface, designSystem, locale, ten
     layout = 'grid',
     viewAllLabel,
     viewAllHref,
+    emptyStateHeading,
+    emptyStateBody,
   } = section
 
   const posts = section.posts ?? []
@@ -415,8 +418,18 @@ export function BlogListingSection({ section, surface, designSystem, locale, ten
   const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
   const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
 
-  // Nothing to render without posts
-  if (posts.length === 0) return null
+  // ADR-016 Phase B — empty-state semantics (identical across all three
+  // listing sections): zero posts + no emptyStateHeading → render nothing
+  // (preserves pre-Phase-B behavior). Zero posts + emptyStateHeading set →
+  // render the localized empty block instead.
+  if (posts.length === 0) {
+    if (!emptyStateHeading) return null
+    return (
+      <SectionContainer style={surfaceStyles}>
+        <SectionEmptyState heading={emptyStateHeading} body={emptyStateBody} duration={duration} ease={ease} />
+      </SectionContainer>
+    )
+  }
 
   return (
       <SectionContainer style={surfaceStyles}>

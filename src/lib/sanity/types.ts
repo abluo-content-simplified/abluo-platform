@@ -599,6 +599,15 @@ export interface ScheduleItem {
   description?: string
 }
 
+/** ADR-016 Phase B — mirrors BlogCategory exactly. Non-routable taxonomy. */
+export interface EventCategory {
+  _id: string
+  title?: string
+  /** Locale-resolved slug — coalesced from $locale → $defaultLocale */
+  slug?: string
+  color?: string
+}
+
 export interface Event {
   _id: string
   title?: string
@@ -608,6 +617,8 @@ export interface Event {
   slugMap?: LocalizedSlugMap
   redirectFrom?: Partial<Record<SupportedLocale, string[]>>
   status: EventStatus
+  /** ADR-016 Phase B — resolved from categories[]-> in GROQ */
+  categories?: EventCategory[]
   // Placement — Live Page
   featuredOnLivePage?: boolean
   livePageFeatureStartDate?: string
@@ -957,6 +968,69 @@ export interface BlogListingSection {
   postIds?: string[]
   /** Hydrated server-side in page.tsx — not stored in Sanity */
   posts?: Post[]
+  /**
+   * ADR-016 Phase B — optional localized empty state. Semantics (frontend
+   * concern): zero posts + both fields undefined/empty → render nothing
+   * (preserves today's behavior). Zero posts + a field set → render the
+   * localized empty block instead of the grid.
+   */
+  emptyStateHeading?: string
+  /** Locale-resolved by GROQ */
+  emptyStateBody?: string
+}
+
+// ─── Events Listing Section ───────────────────────────────────────────────────
+// ADR-016 Phase B — modeled on BlogListingSection. Owned by the Events module.
+
+export interface EventsListingSection {
+  _type: 'eventsListingSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  title?: string
+  /** Locale-resolved by GROQ */
+  subtitle?: string
+  /** Restricts results by date relative to now() — combined with filterMode */
+  timeFilter?: 'upcoming' | 'past' | 'all'
+  filterMode?: 'latest' | 'featured' | 'byCategory' | 'manual'
+  sortOrder?: 'newest' | 'oldest' | 'manual'
+  layout?: 'grid' | 'featured' | 'magazine'
+  maxItems?: number
+  /** Locale-resolved by GROQ */
+  viewAllLabel?: string
+  viewAllHref?: string
+  /** Resolved from category->._id in GROQ */
+  categoryId?: string
+  /** Resolved from events[]->._id in GROQ — used for manual selection */
+  eventIds?: string[]
+  /** Hydrated server-side in page.tsx — not stored in Sanity */
+  events?: Event[]
+  /** ADR-016 Phase B — see BlogListingSection.emptyStateHeading for semantics */
+  emptyStateHeading?: string
+  /** Locale-resolved by GROQ */
+  emptyStateBody?: string
+}
+
+// ─── Live Latest Section ──────────────────────────────────────────────────────
+// ADR-016 Phase B — renders the current/next-upcoming live event, hero-style.
+// Owned by the Live module. Selection logic mirrors currentLiveEventQuery.
+
+export interface LiveLatestSection {
+  _type: 'liveLatestSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  title?: string
+  /** Hydrated server-side in page.tsx via currentLiveEventQuery — not stored in Sanity */
+  event?: Event | null
+  /** ADR-016 Phase B — see BlogListingSection.emptyStateHeading for semantics (applies when there is no current/upcoming event) */
+  emptyStateHeading?: string
+  /** Locale-resolved by GROQ */
+  emptyStateBody?: string
 }
 
 // ─── Form System ──────────────────────────────────────────────────────────────
@@ -1115,6 +1189,8 @@ export type PageSection =
   | FormSection
   | MetricsSection
   | PhotoGallerySection
+  | EventsListingSection
+  | LiveLatestSection
 
 export interface WebsiteHomePage {
   tenantSlug: string

@@ -43,6 +43,7 @@ describe('buildModulePermissions()', () => {
     const map = buildModulePermissions()
     expect(map).toHaveProperty('events.event.write')
     expect(map).toHaveProperty('events.event.delete')
+    expect(map).toHaveProperty('events.taxonomy.write')
   })
 
   it('contains all expected live permission IDs', () => {
@@ -81,8 +82,9 @@ describe('buildModulePermissions()', () => {
 // ── MODULE_PERMISSION_MAP ─────────────────────────────────────────────────────
 
 describe('MODULE_PERMISSION_MAP', () => {
-  it('contains exactly 6 permissions — guards against accidental registry removals', () => {
-    expect(Object.keys(MODULE_PERMISSION_MAP)).toHaveLength(6)
+  it('contains exactly 7 permissions — guards against accidental registry removals', () => {
+    // ADR-016 Phase B added events.taxonomy.write (event categories) — was 6.
+    expect(Object.keys(MODULE_PERMISSION_MAP)).toHaveLength(7)
   })
 
   it('has the same shape as buildModulePermissions()', () => {
@@ -96,13 +98,14 @@ describe('MODULE_PERMISSION_MAP', () => {
     expect(a).toBe(b)
   })
 
-  it('all 6 expected keys are present', () => {
+  it('all 7 expected keys are present', () => {
     const expectedKeys = [
       'blog.post.write',
       'blog.post.delete',
       'blog.taxonomy.write',
       'events.event.write',
       'events.event.delete',
+      'events.taxonomy.write',
       'live.page.configure',
     ]
     for (const key of expectedKeys) {

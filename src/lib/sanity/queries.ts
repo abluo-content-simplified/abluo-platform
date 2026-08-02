@@ -123,6 +123,15 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       "categoryId": category->._id,
       "eventId": event->._id,
       "postIds": posts[]->._id,
+      // eventsListingSection fields — null on all other section types
+      // (filterMode, sortOrder, layout, maxItems, viewAllLabel, viewAllHref,
+      // categoryId above are shared field names, reused verbatim)
+      timeFilter,
+      "eventIds": events[]->._id,
+      // Shared localized empty-state fields — blogListingSection,
+      // eventsListingSection, liveLatestSection (ADR-016 Phase B)
+      "emptyStateHeading": ${loc('emptyStateHeading')},
+      "emptyStateBody": ${loc('emptyStateBody')},
       // formSection fields
       "form": form->{
         _id,
@@ -546,6 +555,85 @@ export const blogListingPostsOldestQuery = /* groq */ `
 // The page component re-orders the result to match the original $postIds array order.
 export const blogListingManualPostsQuery = /* groq */ `
   *[_type == "post" && _id in $postIds] { ${blogListingCardFields} }
+`
+
+// ─── Events Listing Section (ADR-016 Phase B) ─────────────────────────────────
+//
+// Modeled on the Blog Listing Section queries above. Adds a $timeFilter
+// parameter (upcoming / past / all) compared against event.startDate via
+// now() — events carry a date dimension blog posts don't.
+//
+// Consumers (frontend-sections, hydrateSections): pick the query matching
+// section.sortOrder exactly as blogListing* is picked today. Params required
+// on all three: projectSlug (injected by fetchForTenant), locale,
+// defaultLocale, maxItems, timeFilter, filterMode, and — depending on
+// filterMode — categoryId (byCategory) or eventIds (manual, via the
+// *Manual* query's $eventIds).
+
+const eventsListingCardFields = /* groq */ `
+  _id,
+  "title": coalesce(title[$locale], title[$defaultLocale], title.en, title),
+  "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
+  status,
+  startDate,
+  endDate,
+  "location": coalesce(location[$locale], location[$defaultLocale], location.en, location),
+  "shortDescription": coalesce(shortDescription[$locale], shortDescription[$defaultLocale], shortDescription.en, shortDescription),
+  heroImage {
+    asset,
+    hotspot,
+    crop,
+    "alt": coalesce(alt[$locale], alt[$defaultLocale], alt.en, alt),
+    "caption": coalesce(caption[$locale], caption[$defaultLocale], caption.en, caption)
+  },
+  "categories": categories[]-> {
+    _id,
+    "title": coalesce(title[$locale], title[$defaultLocale], title.en, title),
+    "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
+    color
+  }
+`
+
+// Core filter — applied by all three eventsListing queries.
+// $timeFilter and $filterMode are injected as GROQ parameters.
+//   timeFilter: upcoming → startDate >= now() | past → startDate < now() | all → no restriction
+//   filterMode: latest → no extra filter | featured → featuredOnHomePage == true
+//               | byCategory → $categoryId in categories[]._ref
+const eventsListingFilter = /* groq */ `
+  _type == "event"
+  && projectSlug == $projectSlug
+  && (
+    $timeFilter == "all"
+    || ($timeFilter == "upcoming" && startDate >= now())
+    || ($timeFilter == "past" && startDate < now())
+  )
+  && (
+    $filterMode == "latest"
+    || ($filterMode == "featured" && featuredOnHomePage == true)
+    || ($filterMode == "byCategory" && $categoryId in categories[]._ref)
+  )
+`
+
+// Fetch up to $maxItems events — newest (soonest/most-recent) first.
+// Also fetches one extra ($maxItems + 1) so the page component can detect
+// whether a "View All" button is warranted, matching the blogListing pattern.
+export const eventsListingEventsNewestQuery = /* groq */ `
+  *[${eventsListingFilter}]
+  | order(startDate desc)
+  [0...$maxItems] { ${eventsListingCardFields} }
+`
+
+// Oldest first variant (identical filter, ascending sort by startDate).
+export const eventsListingEventsOldestQuery = /* groq */ `
+  *[${eventsListingFilter}]
+  | order(startDate asc)
+  [0...$maxItems] { ${eventsListingCardFields} }
+`
+
+// Manual selection — fetch by explicit event IDs.
+// The page component re-orders the result to match the original $eventIds array order.
+export const eventsListingManualEventsQuery = /* groq */ `
+  *[_type == "event" && _id in $eventIds] { ${eventsListingCardFields} }
 `
 
 export const currentLiveEventQuery = /* groq */ `

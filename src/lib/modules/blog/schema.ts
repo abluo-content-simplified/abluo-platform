@@ -157,6 +157,24 @@ const blogListingSectionType = defineType({
       group: 'display',
       description: 'Where the "View All" button links to — e.g. /blog',
     }),
+    // ── Empty state (ADR-016 Phase B) ───────────────────────────────────────────
+    // Semantics (frontend concern, see hydrateSections / BlogListingSection):
+    //   zero posts + both fields empty → render nothing (today's behavior)
+    //   zero posts + a field set       → render the localized empty block
+    defineField({
+      name: 'emptyStateHeading',
+      title: 'Empty State Heading',
+      type: 'localizedString',
+      group: 'display',
+      description: 'Shown instead of the grid when no posts match the filter. Leave empty to render nothing.',
+    }),
+    defineField({
+      name: 'emptyStateBody',
+      title: 'Empty State Body',
+      type: 'localizedText',
+      group: 'display',
+      description: 'Optional supporting text below the empty state heading.',
+    }),
   ],
   preview: {
     select: {

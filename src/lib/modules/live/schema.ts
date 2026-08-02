@@ -4,8 +4,9 @@ import { scopedRef, projectSlugField, PAGE_SECTIONS_OF } from '@/lib/sanity/fiel
 // ── Live module — Sanity schema types ─────────────────────────────────────────
 //
 // Owned by: live module (MODULE_REGISTRY id: 'live')
-// Platform contract: 1 type
-//   livePage — singleton document, one per project
+// Platform contract: 2 types
+//   liveLatestSection — section object embedded in page.sections (ADR-016 Phase B)
+//   livePage          — singleton document, one per project
 //
 // DESIGN PRINCIPLE — Platform-distributed section templates:
 //   heroLiveCaptureSection and heroLensSection are globally available section
@@ -22,6 +23,72 @@ import { scopedRef, projectSlugField, PAGE_SECTIONS_OF } from '@/lib/sanity/fiel
 //   livePage.featuredEvents → event (Events module, string ref — no TS import)
 //
 // ADR-011 Phase D1 — extracted from src/lib/sanity/schema.ts.
+// ADR-016 Phase B — liveLatestSection added.
+
+// ── Live Latest Section ───────────────────────────────────────────────────────
+// ADR-016 Phase B — renders the current/active (or next upcoming) live event,
+// hero-style. Does NOT list past events — past events are composed separately
+// via an eventsListingSection (timeFilter: 'past'). "Current" selection reuses
+// the same precedence as currentLiveEventQuery (src/lib/sanity/queries.ts):
+// explicitly featured on live page (within its scheduling window) → any
+// status: "live" event → next upcoming event.
+
+const liveLatestSectionType = defineType({
+  name: 'liveLatestSection',
+  title: 'Live — Current Event',
+  type: 'object',
+  groups: [
+    { name: 'content', title: 'Content', default: true },
+    { name: 'display', title: 'Display' },
+  ],
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
+    // ── Content ──────────────────────────────────────────────────────────────
+    defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString', group: 'content' }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString', group: 'content' }),
+    // ── Empty state (ADR-016 Phase B) ───────────────────────────────────────────
+    // Semantics (frontend concern, see hydrateSections / the Live section component):
+    //   no current/upcoming event + both fields empty → render nothing (today's behavior)
+    //   no current/upcoming event + a field set        → render the localized empty block
+    defineField({
+      name: 'emptyStateHeading',
+      title: 'Empty State Heading',
+      type: 'localizedString',
+      group: 'display',
+      description: 'Shown when there is no current or upcoming live event. Leave empty to render nothing.',
+    }),
+    defineField({
+      name: 'emptyStateBody',
+      title: 'Empty State Body',
+      type: 'localizedText',
+      group: 'display',
+      description: 'Optional supporting text below the empty state heading.',
+    }),
+  ],
+  preview: {
+    select: { titleEn: 'title.en' },
+    prepare: ({ titleEn }: { titleEn?: string }) => ({
+      title: titleEn ?? 'Live — Current Event',
+      subtitle: 'Renders the current/next live event',
+    }),
+  },
+})
 
 // ── Live Page ─────────────────────────────────────────────────────────────────
 // ADR-016 Phase A: additive `sections[]` composes below the fixed content
@@ -82,5 +149,6 @@ const livePageType = defineType({
 // ── Exports ───────────────────────────────────────────────────────────────────
 
 export const liveSchemaTypes = [
+  liveLatestSectionType,
   livePageType,
 ]

@@ -81,4 +81,6 @@ export const PAGE_SECTIONS_OF = [
   defineArrayMember({ type: 'formSection' }),
   defineArrayMember({ type: 'metricsSection' }),
   defineArrayMember({ type: 'photoGallerySection' }),
+  defineArrayMember({ type: 'eventsListingSection' }),
+  defineArrayMember({ type: 'liveLatestSection' }),
 ]

@@ -19,6 +19,10 @@ export interface EventMessages {
   galleryHeading:       string
   relatedEventsHeading: string
   watchFallback:        string
+  /** ADR-016 Phase B — events list page (/events) fixed fallback empty state */
+  noEventsYetHeading:   string
+  /** ADR-016 Phase B — events list page (/events) fixed fallback empty state */
+  noEventsYetBody:      string
 }
 
 const MESSAGES: Record<string, EventMessages> = {
@@ -32,6 +36,8 @@ const MESSAGES: Record<string, EventMessages> = {
     galleryHeading:       'Gallery',
     relatedEventsHeading: 'Related Events',
     watchFallback:        'Watch',
+    noEventsYetHeading:   'No events yet.',
+    noEventsYetBody:      'Check back soon.',
   },
   it: {
     statusLive:           'In diretta',
@@ -43,6 +49,8 @@ const MESSAGES: Record<string, EventMessages> = {
     galleryHeading:       'Galleria',
     relatedEventsHeading: 'Altri eventi',
     watchFallback:        'Guarda',
+    noEventsYetHeading:   'Nessun evento al momento.',
+    noEventsYetBody:      'Torna presto per aggiornamenti.',
   },
   de: {
     statusLive:           'Live',
@@ -54,6 +62,8 @@ const MESSAGES: Record<string, EventMessages> = {
     galleryHeading:       'Galerie',
     relatedEventsHeading: 'Weitere Events',
     watchFallback:        'Ansehen',
+    noEventsYetHeading:   'Noch keine Events.',
+    noEventsYetBody:      'Schau bald wieder vorbei.',
   },
   fr: {
     statusLive:           'En direct',
@@ -65,6 +75,8 @@ const MESSAGES: Record<string, EventMessages> = {
     galleryHeading:       'Galerie',
     relatedEventsHeading: 'Autres événements',
     watchFallback:        'Regarder',
+    noEventsYetHeading:   'Aucun événement pour le moment.',
+    noEventsYetBody:      'Revenez bientôt.',
   },
   es: {
     statusLive:           'En directo',
@@ -76,6 +88,8 @@ const MESSAGES: Record<string, EventMessages> = {
     galleryHeading:       'Galería',
     relatedEventsHeading: 'Otros eventos',
     watchFallback:        'Ver',
+    noEventsYetHeading:   'Todavía no hay eventos.',
+    noEventsYetBody:      'Vuelve pronto.',
   },
 }
 

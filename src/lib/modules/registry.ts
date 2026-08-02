@@ -145,14 +145,24 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
               ],
               initialValueTemplate: 'eventProjectOwned',
             },
+            {
+              id: 'categories',
+              label: 'Categories',
+              schemaType: 'eventCategory',
+              filter: `_type == "eventCategory" && projectSlug == $slug`,
+              initialValueTemplate: 'eventCategoryProjectOwned',
+            },
           ],
         },
       ],
 
-      sectionTypes: [],
+      // ADR-016 Phase B — eventsListingSection added.
+      sectionTypes: ['eventsListingSection'],
 
       schemaTypes: [
+        'eventsListingSection',
         'eventsPage',
+        'eventCategory',
         'event',
       ],
 
@@ -169,6 +179,12 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           id: 'events.event.delete',
           label: 'Delete events',
           description: 'Permanently delete events.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          id: 'events.taxonomy.write',
+          label: 'Manage categories',
+          description: 'Create, edit, and delete event categories.',
           defaultRoles: ['owner', 'editor'],
         },
       ],
@@ -207,9 +223,12 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
       // and their SectionRenderer registration is a platform concern.
       // Installing or uninstalling the Live module must not affect their availability.
       // ADR-011 Phase D1 — design principle established.
-      sectionTypes: [],
+      // liveLatestSection IS module-owned (ADR-016 Phase B) — unlike the two
+      // platform-distributed hero templates above, it belongs to this manifest.
+      sectionTypes: ['liveLatestSection'],
 
       schemaTypes: [
+        'liveLatestSection',
         'livePage',
       ],
 

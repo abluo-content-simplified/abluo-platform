@@ -5,15 +5,17 @@ import {
   eventsQuery,
   localeConfigQuery,
   designSystemQuery,
+  websiteSiteConfigQuery,
 } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
-import type { Event, EventsPage, LocaleConfig, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
+import type { Event, EventsPage, LocaleConfig, SupportedLocale, DesignSystem, WebsiteSiteConfig } from '@/lib/sanity/types'
 import { imageUrl } from '@/lib/sanity/image'
 import { SlideUp, FadeIn } from '@/components/animation'
 import { EventCard } from '@/components/events/EventCard'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
+import { getEventMessages } from '@/lib/i18n/event-messages'
 
 // Cloudflare Stream account subdomain — shared with LivePageContent
 const CLOUDFLARE_ACCOUNT = 'customer-aayaptcudal3r1fx'
@@ -54,7 +56,7 @@ export default async function EventsListPage({ params }: PageProps) {
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  const [eventsPage, events, designSystem] = await Promise.all([
+  const [eventsPage, events, designSystem, siteConfig] = await Promise.all([
     fetchForTenant<EventsPage>(eventsPageQuery, {
       locale: locale as SupportedLocale,
       defaultLocale,
@@ -67,7 +69,13 @@ export default async function EventsListPage({ params }: PageProps) {
       const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {})
       return resolveDesignSystemInheritance(raw, fetchDesignSystemById)
     })(),
+    fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, {
+      locale: locale as SupportedLocale,
+      defaultLocale,
+    }),
   ])
+
+  const msg = getEventMessages(locale)
 
   // ─── Motion tokens ──────────────────────────────────────────────────────────
   const m = designSystem?.motion
@@ -158,7 +166,7 @@ export default async function EventsListPage({ params }: PageProps) {
         {(!events || events.length === 0) ? (
           <SlideUp delay={0.2} duration={durationSlow} ease={easeReveal} className="mt-16">
             <p className="text-base" style={{ color: 'var(--color-text-muted)' }}>
-              No events yet. Check back soon.
+              {msg.noEventsYetHeading} {msg.noEventsYetBody}
             </p>
           </SlideUp>
         ) : (
@@ -183,7 +191,7 @@ export default async function EventsListPage({ params }: PageProps) {
       <SectionRenderer
         key={section._key}
         section={section}
-        siteConfig={null}
+        siteConfig={siteConfig}
         designSystem={designSystem}
         backgroundPattern={undefined}
         sectionIndex={index}

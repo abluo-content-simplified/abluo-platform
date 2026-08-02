@@ -3388,6 +3388,15 @@ export const initialValueTemplates = [
     }),
   },
   {
+    id: 'eventCategoryProjectOwned',
+    title: 'Event Category',
+    schemaType: 'eventCategory',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+    }),
+  },
+  {
     id: 'designSystemProjectOwned',
     title: 'Design System',
     schemaType: 'designSystem',

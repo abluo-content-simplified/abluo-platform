@@ -6,6 +6,7 @@ import { EventCard } from '@/components/events/EventCard'
 import { FeaturedEventBlock } from '@/components/events/FeaturedEventBlock'
 import type { Event, LivePage, SupportedLocale, WebsiteSiteConfig, DesignSystem } from '@/lib/sanity/types'
 import { PageContainer } from '@/components/layout/PageContainer'
+import { getLivePageMessages } from '@/lib/i18n/live-page-messages'
 
 // Cloudflare Stream account subdomain for Livener.
 // To generate an embed URL: https://${CLOUDFLARE_ACCOUNT}.cloudflarestream.com/${videoId}/iframe
@@ -35,7 +36,8 @@ const moreLiveTitles: Record<string, string> = {
 
 // ─── No event fallback ────────────────────────────────────────────────────────
 
-function NoLiveEvent() {
+function NoLiveEvent({ locale }: { locale: string }) {
+  const msg = getLivePageMessages(locale)
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-10">
       <div className="text-center">
@@ -43,10 +45,10 @@ function NoLiveEvent() {
           className="text-2xl font-semibold"
           style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)', opacity: 0.4 }}
         >
-          No live event scheduled right now.
+          {msg.noLiveEventHeading}
         </p>
         <p className="mt-2 text-sm" style={{ color: 'var(--color-text-primary)', opacity: 0.25 }}>
-          Check back soon.
+          {msg.noLiveEventBody}
         </p>
       </div>
     </div>
@@ -65,7 +67,9 @@ export function LivePageContent({
   locale,
   tenantId,
 }: LivePageContentProps) {
-  if (!event) return <NoLiveEvent />
+  const msg = getLivePageMessages(locale)
+
+  if (!event) return <NoLiveEvent locale={locale} />
 
   // ─── Motion tokens from resolved design system ─────────────────────────────
   const m = designSystem?.motion
@@ -214,7 +218,7 @@ export function LivePageContent({
                 className="text-[clamp(28px,5vw,46px)] font-bold leading-tight mb-10"
                 style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
               >
-                Past Live Events
+                {msg.pastLiveEventsHeading}
               </h2>
             </SlideUp>
 

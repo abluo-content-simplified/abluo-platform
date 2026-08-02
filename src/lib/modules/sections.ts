@@ -36,6 +36,8 @@ import type { SurfaceType } from '@/lib/sanity/surfaces'
 // ── Module section imports ────────────────────────────────────────────────────
 // One import per module that contributes sections.
 import { blogSectionComponents } from './blog/sections'
+import { eventsSectionComponents } from './events/sections'
+import { liveSectionComponents } from './live/sections'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -77,6 +79,8 @@ export type SectionComponentMap = Record<string, (props: ModuleSectionProps) => 
  */
 export const SECTION_MAP: SectionComponentMap = {
   ...blogSectionComponents,
+  ...eventsSectionComponents,
+  ...liveSectionComponents,
   // Future modules: spread their section component maps here.
 }
 
