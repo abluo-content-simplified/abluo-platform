@@ -6,8 +6,6 @@ import {
   localeConfigQuery,
   websiteSiteConfigQuery,
   designSystemQuery,
-  pastEventsQuery,
-  additionalLiveEventsQuery,
   livePageQuery,
   projectDomainQuery,
   enabledModuleIdsQuery,
@@ -16,7 +14,6 @@ import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resol
 import { fetchDesignSystemById } from '@/lib/sanity/client'
 import type { Event, LocaleConfig, LivePage, SupportedLocale, WebsiteSiteConfig, DesignSystem } from '@/lib/sanity/types'
 import { ogImageUrl } from '@/lib/sanity/image'
-import { LivePageContent } from '@/components/livener/live/LivePageContent'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
 
 // force-dynamic: always render server-side so event status changes are immediate.
@@ -76,14 +73,11 @@ export default async function LivePage({ params }: PageProps) {
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  // Phase 1 — fetch featured event first so we can exclude its _id from additional live events
-  const event = await fetchForTenant<Event>(currentLiveEventQuery, {
-    locale: locale as SupportedLocale,
-    defaultLocale,
-  })
-
-  // Phase 2 — fetch everything else in parallel
-  const [livePage, siteConfig, designSystem, pastEvents, additionalLiveEvents, enabledModuleIds] = await Promise.all([
+  // ADR-016 Phase C — the page now renders purely from sections[]. The
+  // current-event / past-events / "More Live Productions" data that used to
+  // be fetched here directly is now fetched by hydrateSections below, driven
+  // by the migrated liveLatestSection + eventsListingSection sections.
+  const [livePage, siteConfig, designSystem, enabledModuleIds] = await Promise.all([
     fetchForTenant<LivePage>(livePageQuery, {
       locale: locale as SupportedLocale,
       defaultLocale,
@@ -96,52 +90,17 @@ export default async function LivePage({ params }: PageProps) {
       const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {})
       return resolveDesignSystemInheritance(raw, fetchDesignSystemById)
     })(),
-    fetchForTenant<Event[]>(pastEventsQuery, {
-      locale: locale as SupportedLocale,
-      defaultLocale,
-    }),
-    fetchForTenant<Event[]>(additionalLiveEventsQuery, {
-      locale: locale as SupportedLocale,
-      defaultLocale,
-      featuredEventId: event?._id ?? '',
-    }),
     fetchForTenant<string[] | null>(enabledModuleIdsQuery, {}),
   ])
 
-  // Choose the event source: manual curation takes precedence over the auto-query.
-  // The defensive filter below always removes the featured/current event and any
-  // duplicates — so editors can include the live event in the manual list without
-  // causing it to appear twice on the page.
-  const rawDisplayEvents = livePage?.featuredEvents?.length
-    ? livePage.featuredEvents
-    : (pastEvents ?? [])
-
-  const seenIds = new Set<string>()
-  const displayEvents = rawDisplayEvents.filter(e => {
-    if (e._id === event?._id) return false   // never show the featured event again
-    if (seenIds.has(e._id)) return false      // deduplicate
-    seenIds.add(e._id)
-    return true
-  })
-
-  // ADR-016 Phase A — hydrate any blogListingSection sections with posts
-  // fetched server-side, mutating livePage.sections in place. Additive only:
-  // the fixed LivePageContent above is untouched, sections render after it.
+  // ADR-016 Phase A/C — hydrate blogListingSection / eventsListingSection /
+  // liveLatestSection sections with data fetched server-side, mutating
+  // livePage.sections in place. This is now the ONLY data-fetch path for the
+  // page body — there is no fixed-field rendering left.
   await hydrateSections(livePage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds })
 
   return (
     <>
-      <LivePageContent
-        event={event}
-        livePage={livePage}
-        siteConfig={siteConfig}
-        designSystem={designSystem}
-        pastEvents={displayEvents}
-        additionalLiveEvents={additionalLiveEvents ?? []}
-        locale={locale as SupportedLocale}
-        tenantId={tenantId}
-      />
-
       {livePage?.sections?.map((section, index) => (
         <SectionRenderer
           key={section._key}

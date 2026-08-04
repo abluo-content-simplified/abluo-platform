@@ -22,8 +22,19 @@ import { scopedRef, projectSlugField, PAGE_SECTIONS_OF } from '@/lib/sanity/fiel
 
 // ── Events Listing Section ────────────────────────────────────────────────────
 // ADR-016 Phase B — modeled on blogListingSection (src/lib/modules/blog/schema.ts).
-// Adds a `timeFilter` (upcoming / past / all) alongside the shared filter/sort/
-// display fields, since events carry a date dimension blog posts don't.
+// Adds a `timeFilter` (upcoming / live / past / all) alongside the shared
+// filter/sort/display fields, since events carry a date dimension blog posts
+// don't.
+//
+// ADR-016 Phase C — `timeFilter: 'live'` added so this generic section can
+// reproduce the livePage's "More Live Productions" block (previously a fixed
+// field backed by additionalLiveEventsQuery). Semantics: lists events with
+// status == "live" (see eventsListingFilter in queries.ts). Known parity
+// delta: this filter cannot know which event a co-located liveLatestSection
+// is already showing, so — unlike additionalLiveEventsQuery — it does not
+// exclude the "current" live event. At Livener's scale (rarely more than one
+// simultaneous live event), this is an accepted edge case, not a defect to
+// silently work around with cross-section coupling.
 
 const eventsListingSectionType = defineType({
   name: 'eventsListingSection',
@@ -65,13 +76,14 @@ const eventsListingSectionType = defineType({
       options: {
         list: [
           { title: 'Upcoming', value: 'upcoming' },
+          { title: 'Live now', value: 'live' },
           { title: 'Past', value: 'past' },
           { title: 'All', value: 'all' },
         ],
         layout: 'radio',
       },
       initialValue: 'upcoming',
-      description: 'Restricts results to events whose startDate is in the future, in the past, or no restriction. Combined with the filter below.',
+      description: 'Restricts results to events whose startDate is in the future, currently live (status == "live"), in the past, or no restriction. Combined with the filter below.',
     }),
     defineField({
       name: 'filterMode',
@@ -207,25 +219,23 @@ const eventsPageType = defineType({
   name: 'eventsPage',
   title: 'Events Page',
   type: 'document',
+  // ADR-016 Phase C — the fixed `media` group (heroImage, cloudflareVideoId)
+  // was retired: neither field had a remaining runtime read (the body is now
+  // fully section-driven). `heroTitle`/`heroSubtitle` are KEPT — they are
+  // still read as SEO-fallback strings by generateMetadata in
+  // src/app/[locale]/(website)/[tenant]/events/page.tsx (title/description
+  // fall back to them when seoTitle/seoDescription are unset). `introText`
+  // had no remaining read and was retired along with `media`. See migration
+  // 002 (populates equivalent sections) + 003 (unsets the retired fields).
   groups: [
     { name: 'content', title: 'Content', default: true },
-    { name: 'media', title: 'Media' },
     { name: 'meta', title: 'SEO / Meta' },
     { name: 'sections', title: 'Sections' },
   ],
   fields: [
     projectSlugField,
-    defineField({ name: 'heroTitle', title: 'Hero Title', type: 'localizedString', group: 'content', description: 'e.g. "Events"' }),
-    defineField({ name: 'heroSubtitle', title: 'Hero Subtitle', type: 'localizedString', group: 'content' }),
-    defineField({ name: 'introText', title: 'Intro Text', type: 'localizedText', group: 'content' }),
-    defineField({ name: 'heroImage', title: 'Hero Image', type: 'localizedImage', group: 'media' }),
-    defineField({
-      name: 'cloudflareVideoId',
-      title: 'Cloudflare Video ID',
-      type: 'string',
-      group: 'media',
-      description: 'The video ID from Cloudflare Stream (e.g. "abc123xyz"). The embed URL is generated automatically.',
-    }),
+    defineField({ name: 'heroTitle', title: 'Hero Title', type: 'localizedString', group: 'content', description: 'e.g. "Events". Kept as an SEO-title fallback — see generateMetadata in events/page.tsx.' }),
+    defineField({ name: 'heroSubtitle', title: 'Hero Subtitle', type: 'localizedString', group: 'content', description: 'Kept as an SEO-description fallback — see generateMetadata in events/page.tsx.' }),
     defineField({ name: 'seoTitle', title: 'SEO Title', type: 'localizedString', group: 'meta' }),
     defineField({ name: 'seoDescription', title: 'SEO Description', type: 'localizedText', group: 'meta' }),
     defineField({

@@ -75,6 +75,7 @@ export const PAGE_SECTIONS_OF = [
   defineArrayMember({ type: 'treatmentsSection' }),
   defineArrayMember({ type: 'teamSection' }),
   defineArrayMember({ type: 'textSection' }),
+  defineArrayMember({ type: 'videoSection' }),
   defineArrayMember({ type: 'faqSection' }),
   defineArrayMember({ type: 'contactSection' }),
   defineArrayMember({ type: 'blogListingSection' }),

@@ -1226,6 +1226,122 @@ const textSectionType = defineType({
   },
 })
 
+/**
+ * videoSection — platform section for a real, watchable video player.
+ *
+ * Distinct from heroSection's `heroVideo` (a muted/looping/no-controls
+ * BACKGROUND video): this section renders a video users actually watch —
+ * with controls and sound — via Cloudflare Stream, YouTube, Vimeo, or a
+ * standard embeddable/direct URL. Presentation only, owns no module data;
+ * lives in the Platform Section Library (see CLAUDE.md "Section Library vs
+ * Modules") and is never gated by module installation state.
+ *
+ * No autoplay/mute/loop knobs by design — those belong to hero background
+ * video, not this watchable-player section.
+ */
+const videoSectionType = defineType({
+  name: 'videoSection',
+  title: 'Video Section',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({
+      name: 'provider',
+      title: 'Video Provider',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Cloudflare Stream', value: 'cloudflare' },
+          { title: 'YouTube', value: 'youtube' },
+          { title: 'Vimeo', value: 'vimeo' },
+          { title: 'Standard URL (embeddable / direct video)', value: 'url' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'cloudflare',
+      validation: (Rule) => Rule.required(),
+      description: 'Where the video is hosted. Choose "Standard URL" for any other embeddable or direct video link.',
+    }),
+    defineField({
+      name: 'videoId',
+      title: 'Video ID',
+      type: 'string',
+      hidden: ({ parent }: { parent?: { provider?: string } }) => parent?.provider === 'url',
+      description: 'Paste the provider-specific ID only — not a full URL. Cloudflare Stream: the Stream video UID (e.g. "abc123def456"). YouTube: the video ID from the URL (e.g. "dQw4w9WgXcQ"). Vimeo: the numeric video ID (e.g. "76979871").',
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          const provider = (context.parent as { provider?: string } | undefined)?.provider
+          if (provider && provider !== 'url' && !value) {
+            return 'Video ID is required for this provider.'
+          }
+          return true
+        }),
+    }),
+    defineField({
+      name: 'videoUrl',
+      title: 'Video URL',
+      type: 'string',
+      hidden: ({ parent }: { parent?: { provider?: string } }) => parent?.provider !== 'url',
+      description: 'A standard embeddable or direct video URL (e.g. an MP4 file URL or an embeddable player URL). Only used when Video Provider is set to "Standard URL".',
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          const provider = (context.parent as { provider?: string } | undefined)?.provider
+          if (provider === 'url' && !value) {
+            return 'Video URL is required for the "Standard URL" provider.'
+          }
+          return true
+        }),
+    }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString' }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    defineField({ name: 'caption', title: 'Caption', type: 'localizedText' }),
+    defineField({
+      name: 'aspectRatio',
+      title: 'Aspect Ratio',
+      type: 'string',
+      options: {
+        list: [
+          { title: '16:9 (Widescreen)', value: '16:9' },
+          { title: '4:3 (Standard)', value: '4:3' },
+          { title: '9:16 (Vertical)', value: '9:16' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: '16:9',
+    }),
+  ],
+  preview: {
+    select: {
+      provider: 'provider',
+      titleIt: 'title.it',
+      titleEn: 'title.en',
+      videoId: 'videoId',
+    },
+    prepare: ({ provider, titleIt, titleEn, videoId }: {
+      provider?: string; titleIt?: string; titleEn?: string; videoId?: string
+    }) => ({
+      title: [provider, titleIt ?? titleEn ?? videoId].filter(Boolean).join(' · ') || 'Video',
+      subtitle: 'Video Section',
+    }),
+  },
+})
+
 const contactSectionType = defineType({
   name: 'contactSection',
   title: 'Contact Section',
@@ -3460,6 +3576,7 @@ export const schemaTypes = [
   teamMemberType,
   teamSectionType,
   textSectionType,
+  videoSectionType,
   businessLocationType,
   contactSectionType,
   faqItemType,

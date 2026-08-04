@@ -896,6 +896,27 @@ export interface TextSection {
   content?: PortableTextContent
 }
 
+/**
+ * VideoSection — platform section for a real, watchable video player
+ * (Cloudflare Stream, YouTube, Vimeo, or a standard embeddable/direct URL).
+ * Distinct from HeroSection's `heroVideo` (muted/looping/no-controls
+ * background video). Presentation only — no module data ownership.
+ */
+export interface VideoSection {
+  _type: 'videoSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  provider: 'cloudflare' | 'youtube' | 'vimeo' | 'url'
+  /** Provider-specific ID — Cloudflare Stream UID, YouTube video ID, or Vimeo video ID. Unused when provider is 'url'. */
+  videoId?: string
+  /** Standard embeddable or direct video URL. Only used when provider is 'url'. */
+  videoUrl?: string
+  eyebrow?: string
+  title?: string
+  caption?: string
+  aspectRatio?: '16:9' | '4:3' | '9:16'
+}
+
 export interface TreatmentCard {
   _type: 'treatmentCard'
   _key: string
@@ -992,8 +1013,8 @@ export interface EventsListingSection {
   title?: string
   /** Locale-resolved by GROQ */
   subtitle?: string
-  /** Restricts results by date relative to now() — combined with filterMode */
-  timeFilter?: 'upcoming' | 'past' | 'all'
+  /** Restricts results by date relative to now() — combined with filterMode. 'live' = status == "live" (ADR-016 Phase C) */
+  timeFilter?: 'upcoming' | 'live' | 'past' | 'all'
   filterMode?: 'latest' | 'featured' | 'byCategory' | 'manual'
   sortOrder?: 'newest' | 'oldest' | 'manual'
   layout?: 'grid' | 'featured' | 'magazine'
@@ -1183,6 +1204,7 @@ export type PageSection =
   | TreatmentsSection
   | TeamSection
   | TextSection
+  | VideoSection
   | FAQSection
   | ContactSection
   | BlogListingSection
@@ -1222,32 +1244,25 @@ export interface WebsitePage {
 // (which never populate it) remain valid. Phase C migrates the fixed fields
 // above it into equivalent sections and retires the fixed shape.
 
+// ADR-016 Phase C — heroTitle, heroSubtitle, betaNotice, introText, heroImage,
+// cloudflareVideoId, featuredEvents retired: zero remaining runtime reads
+// (the body is fully section-driven; see migration 002 + 003).
 export interface LivePage {
   _id: string
-  heroTitle?: string
-  heroSubtitle?: string
-  betaNotice?: string
-  introText?: string
-  heroImage?: ResolvedImage
-  /** Cloudflare Stream video ID (e.g. "abc123xyz"). Frontend generates embed URL. */
-  cloudflareVideoId?: string
-  /** Expanded event references — locale-resolved by GROQ dereference */
-  featuredEvents?: Event[]
   seoTitle?: string
   seoDescription?: string
   sections?: PageSection[]
 }
 
 // ─── Events Page ──────────────────────────────────────────────────────────────
+// ADR-016 Phase C — introText, heroImage, cloudflareVideoId retired (no
+// remaining reads). heroTitle/heroSubtitle are KEPT — still read as
+// SEO-fallback strings by generateMetadata in events/page.tsx.
 
 export interface EventsPage {
   _id: string
   heroTitle?: string
   heroSubtitle?: string
-  introText?: string
-  heroImage?: ResolvedImage
-  /** Cloudflare Stream video ID (e.g. "abc123xyz"). Frontend generates embed URL. */
-  cloudflareVideoId?: string
   seoTitle?: string
   seoDescription?: string
   sections?: PageSection[]
@@ -1256,10 +1271,12 @@ export interface EventsPage {
 // ─── Blog Page ────────────────────────────────────────────────────────────────
 // Resolved by blogPageQuery — all string fields are locale-resolved by GROQ.
 // Singleton per project — controls the /blog listing route hero and SEO.
+// ADR-016 Phase C — eyebrow retired (no remaining reads). heroTitle/
+// heroSubtitle are KEPT — still read as SEO-fallback strings by
+// generateMetadata in blog/page.tsx.
 
 export interface BlogPage {
   _id: string
-  eyebrow?: string
   heroTitle?: string
   heroSubtitle?: string
   seoTitle?: string

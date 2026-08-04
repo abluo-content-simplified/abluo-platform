@@ -209,26 +209,24 @@ const blogPageType = defineType({
   ],
   fields: [
     projectSlugField,
-    defineField({
-      name: 'eyebrow',
-      title: 'Eyebrow',
-      type: 'localizedString',
-      group: 'content',
-      description: 'Small label above the headline (e.g. "Latest Updates")',
-    }),
+    // ADR-016 Phase C — `eyebrow` had no remaining runtime read (the body is
+    // now section-driven) and was retired. `heroTitle`/`heroSubtitle` are
+    // KEPT — they are still read as SEO-fallback strings by generateMetadata
+    // in src/app/[locale]/(website)/[tenant]/blog/page.tsx. See migration
+    // 002 (populates equivalent sections) + 003 (unsets the retired field).
     defineField({
       name: 'heroTitle',
       title: 'Title',
       type: 'localizedString',
       group: 'content',
-      description: 'Page headline (e.g. "News & Announcements")',
+      description: 'Page headline (e.g. "News & Announcements"). Kept as an SEO-title fallback — see generateMetadata in blog/page.tsx.',
     }),
     defineField({
       name: 'heroSubtitle',
       title: 'Subtitle',
       type: 'localizedText',
       group: 'content',
-      description: 'Short intro beneath the headline',
+      description: 'Short intro beneath the headline. Kept as an SEO-description fallback — see generateMetadata in blog/page.tsx.',
     }),
     defineField({ name: 'seoTitle', title: 'SEO Title', type: 'localizedString', group: 'meta' }),
     defineField({ name: 'seoDescription', title: 'SEO Description', type: 'localizedText', group: 'meta' }),

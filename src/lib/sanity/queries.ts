@@ -169,6 +169,12 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       animationIntensity,
       // heroLensSection fields
       foregroundImage { asset, hotspot, crop },
+      // videoSection fields — eyebrow/title already projected generically above
+      provider,
+      videoId,
+      videoUrl,
+      "caption": ${loc('caption')},
+      aspectRatio,
       // metricsSection fields
       metrics[] {
         _type, _key,
@@ -576,11 +582,11 @@ export const blogListingManualPostsQuery = /* groq */ `
   *[_type == "post" && _id in $postIds] { ${blogListingCardFields} }
 `
 
-// ─── Events Listing Section (ADR-016 Phase B) ─────────────────────────────────
+// ─── Events Listing Section (ADR-016 Phase B, 'live' added Phase C) ───────────
 //
 // Modeled on the Blog Listing Section queries above. Adds a $timeFilter
-// parameter (upcoming / past / all) compared against event.startDate via
-// now() — events carry a date dimension blog posts don't.
+// parameter (upcoming / live / past / all) compared against event.startDate /
+// event.status — events carry a date + status dimension blog posts don't.
 //
 // Consumers (frontend-sections, hydrateSections): pick the query matching
 // section.sortOrder exactly as blogListing* is picked today. Params required
@@ -615,15 +621,26 @@ const eventsListingCardFields = /* groq */ `
 
 // Core filter — applied by all three eventsListing queries.
 // $timeFilter and $filterMode are injected as GROQ parameters.
-//   timeFilter: upcoming → startDate >= now() | past → startDate < now() | all → no restriction
+//   timeFilter: upcoming → startDate >= now() | live → status == "live" (mirrors
+//               additionalLiveEventsQuery/currentLiveEventQuery's live-status
+//               check, including the endDate guard) | past → startDate < now()
+//               | all → no restriction
 //   filterMode: latest → no extra filter | featured → featuredOnHomePage == true
 //               | byCategory → $categoryId in categories[]._ref
+//
+// ADR-016 Phase C — 'live' added so eventsListingSection can reproduce the
+// livePage "More Live Productions" block. Unlike additionalLiveEventsQuery,
+// this does NOT exclude any particular event (e.g. the one a co-located
+// liveLatestSection is showing) — a generic section has no way to know what
+// another section selected. See schema.ts eventsListingSectionType comment
+// for the accepted parity delta.
 const eventsListingFilter = /* groq */ `
   _type == "event"
   && projectSlug == $projectSlug
   && (
     $timeFilter == "all"
     || ($timeFilter == "upcoming" && startDate >= now())
+    || ($timeFilter == "live" && status == "live" && (endDate == null || now() <= endDate))
     || ($timeFilter == "past" && startDate < now())
   )
   && (
@@ -1003,26 +1020,13 @@ export const siteConfigQuery = websiteSiteConfigQuery
 // it. Absent on documents published before this field existed; GROQ resolves
 // a missing array field to null, which the frontend already treats as empty.
 
+// ADR-016 Phase C — heroTitle, heroSubtitle, betaNotice, introText,
+// heroImage, cloudflareVideoId, featuredEvents projections retired: zero
+// remaining runtime reads (live/page.tsx renders body + metadata entirely
+// from sections[]/seoTitle/seoDescription). See migration 002 + 003.
 export const livePageQuery = /* groq */ `
   *[_type == "livePage" && projectSlug == $projectSlug][0] {
     _id,
-    "heroTitle": ${loc('heroTitle')},
-    "heroSubtitle": ${loc('heroSubtitle')},
-    "betaNotice": ${loc('betaNotice')},
-    "introText": ${loc('introText')},
-    ${locImage('heroImage')},
-    cloudflareVideoId,
-    featuredEvents[]-> {
-      _id,
-      "title": ${loc('title')},
-      "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
-      status,
-      startDate,
-      endDate,
-      "location": ${loc('location')},
-      "shortDescription": ${loc('shortDescription')},
-      ${locImage('heroImage')}
-    },
     "seoTitle": ${loc('seoTitle')},
     "seoDescription": ${loc('seoDescription')},
     ${PAGE_SECTIONS_PROJECTION}
@@ -1030,16 +1034,15 @@ export const livePageQuery = /* groq */ `
 `
 
 // ─── Events Page ──────────────────────────────────────────────────────────────
-// ADR-016 Phase A: see Live Page note above — same additive sections[] wiring.
+// ADR-016 Phase C — introText, heroImage, cloudflareVideoId projections
+// retired (no remaining reads). heroTitle/heroSubtitle are KEPT — still
+// read as SEO-fallback strings by generateMetadata in events/page.tsx.
 
 export const eventsPageQuery = /* groq */ `
   *[_type == "eventsPage" && projectSlug == $projectSlug][0] {
     _id,
     "heroTitle": ${loc('heroTitle')},
     "heroSubtitle": ${loc('heroSubtitle')},
-    "introText": ${loc('introText')},
-    ${locImage('heroImage')},
-    cloudflareVideoId,
     "seoTitle": ${loc('seoTitle')},
     "seoDescription": ${loc('seoDescription')},
     ${PAGE_SECTIONS_PROJECTION}
@@ -1047,12 +1050,13 @@ export const eventsPageQuery = /* groq */ `
 `
 
 // ─── Blog Page ────────────────────────────────────────────────────────────────
-// ADR-016 Phase A: see Live Page note above — same additive sections[] wiring.
+// ADR-016 Phase C — eyebrow projection retired (no remaining reads).
+// heroTitle/heroSubtitle are KEPT — still read as SEO-fallback strings by
+// generateMetadata in blog/page.tsx.
 
 export const blogPageQuery = /* groq */ `
   *[_type == "blogPage" && projectSlug == $projectSlug][0] {
     _id,
-    "eyebrow": ${loc('eyebrow')},
     "heroTitle": ${loc('heroTitle')},
     "heroSubtitle": ${loc('heroSubtitle')},
     "seoTitle": ${loc('seoTitle')},

@@ -19,6 +19,7 @@ import { SlideUp } from '@/components/animation'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { SectionEmptyState } from '@/components/sections/shared/SectionEmptyState'
 import { FeaturedEventBlock } from '@/components/events/FeaturedEventBlock'
+import { getLivePageMessages } from '@/lib/i18n/live-page-messages'
 
 interface Props {
   section: LiveLatestSectionType
@@ -37,15 +38,19 @@ export function LiveLatestSection({ section, surface, designSystem, locale, tena
   const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
   const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
 
-  // ADR-016 Phase B — empty-state semantics (identical across all three
-  // listing sections): no current/upcoming event + no emptyStateHeading →
-  // render nothing. No event + emptyStateHeading set → render the localized
-  // empty block.
+  // ADR-016 Phase C — liveLatestSection intentionally overrides the generic
+  // "empty + unset → render nothing" rule used by blogListingSection /
+  // eventsListingSection: the live page must always communicate live status.
+  // Admin-authored emptyStateHeading/Body (if set) take precedence; otherwise
+  // fall back to the platform i18n dictionary (getLivePageMessages) so the
+  // message is still localized rather than silently absent.
   if (!event) {
-    if (!emptyStateHeading) return null
+    const msg = getLivePageMessages(locale)
+    const heading = emptyStateHeading ?? msg.noLiveEventHeading
+    const body = emptyStateBody ?? msg.noLiveEventBody
     return (
       <SectionContainer style={surfaceStyles}>
-        <SectionEmptyState heading={emptyStateHeading} body={emptyStateBody} duration={duration} ease={ease} />
+        <SectionEmptyState heading={heading} body={body} duration={duration} ease={ease} />
       </SectionContainer>
     )
   }

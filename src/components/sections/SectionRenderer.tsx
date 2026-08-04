@@ -25,6 +25,7 @@ import { FormSection } from '@/components/sections/FormSection'
 import { StatementSection } from '@/components/sections/StatementSection'
 import { MetricsSection } from '@/components/sections/MetricsSection'
 import { PhotoGallerySection } from '@/components/sections/PhotoGallerySection'
+import { VideoSection } from '@/components/sections/VideoSection'
 import { SECTION_MAP, isSectionTypeAvailable } from '@/lib/modules/sections'
 import type {
   WebsiteSiteConfig,
@@ -302,6 +303,8 @@ export function SectionRenderer({
       return <MetricsSection section={section} surface={surface} designSystem={designSystem} />
     case 'photoGallerySection':
       return <PhotoGallerySection section={section} surface={surface} designSystem={designSystem} />
+    case 'videoSection':
+      return <VideoSection section={section} surface={surface} designSystem={designSystem} locale={locale} />
     default:
       return null
   }
