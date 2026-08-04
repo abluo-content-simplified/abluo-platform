@@ -18,8 +18,19 @@
  * window. That removal is a later, separately-gated step (schema/query
  * retirement + a cleanup migration), owned by a follow-up task — NOT this one.
  *
- * Idempotent: any document whose sections[] is already non-empty is skipped
- * (logged, not touched again). Safe to re-run.
+ * Idempotent-and-corrective re-apply contract: every section this script
+ * writes carries a deterministic `_key` prefixed `migrated-` (e.g.
+ * `migrated-hero`). On each run, a document's EXISTING sections[] is
+ * inspected before writing:
+ *   - Empty/absent sections[]              -> CREATE (set sections: built)
+ *   - Non-empty, every _key starts with
+ *     'migrated-' (no human edits yet)      -> REPLACE (set sections: built)
+ *   - Non-empty, any _key does NOT start
+ *     with 'migrated-' (human has edited)   -> SKIP, never overwritten
+ * This means re-running --apply after a builder fix (e.g. a corrected
+ * heroHeight/maxItems default) safely overwrites a prior auto-migration with
+ * the corrected output, while any document a human has touched in Studio is
+ * left completely alone.
  *
  * Dry-run by default; run once, review carefully, then --apply:
  *   npx ts-node --project tsconfig.json src/lib/sanity/migrations/002-migrate-singleton-sections.ts
@@ -100,6 +111,29 @@
  * 10. eventsPage listing section uses timeFilter: 'all' (not 'upcoming') —
  *     verified against eventsQuery in queries.ts, which has no time filter and
  *     orders by startDate desc (sortOrder: 'newest').
+ *
+ * 11. [dev STOP-gate fix] Every migrated heroSection now sets
+ *     heroHeight: 'small' (schema.ts heroSectionType enum: small=50vh,
+ *     medium=70vh, large=90vh, fullscreen=100vh). Root cause: with no
+ *     heroHeight set, HeroSection.tsx's own component-level default ('large',
+ *     90vh) applied, rendering a near-full-screen title-only header on pages
+ *     that migrated with no heroImage/video. These four pages are listing
+ *     headers, not marketing landing heroes, so 'small' — the most compact
+ *     enum value — is correct for all of them (livePage, eventsPage,
+ *     blogPage). Applied inside buildHeroSection() so it is automatic for
+ *     every caller.
+ *
+ * 12. [dev STOP-gate fix] Every migrated eventsListingSection and
+ *     blogListingSection now sets maxItems: 12 (schema max for both types).
+ *     Root cause: with no maxItems set, hydrateSections() defaulted to 3,
+ *     so listing pages showed only 3 items regardless of how much content
+ *     existed. 12 covers current content with headroom (Livener: 7 posts /
+ *     4 events; Martegani: 3 posts) and any near-term growth; a "View All"
+ *     link is the intended mechanism for overflow beyond 12, not a small
+ *     listing cap. Applied uniformly to ALL migrated listing sections —
+ *     eventsPage's "all" listing, both blogPage listings, and livePage's
+ *     "live" and "past" listings — replacing the previous inconsistent
+ *     12/5 split with a single value across the board.
  */
 
 import { createClient } from '@sanity/client'
@@ -158,6 +192,31 @@ interface RawSingletonDoc {
 // on the app's type module and stays a self-contained, reviewable artifact.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SectionPatch = Record<string, any>
+
+/** Prefix stamped on every `_key` this script generates (see re-apply contract above). */
+const MIGRATED_KEY_PREFIX = 'migrated-'
+
+type ReapplyAction = 'CREATE' | 'REPLACE' | 'SKIP'
+
+/**
+ * Classifies how this run should treat a document's EXISTING sections[]
+ * (never the freshly-built array) per the re-apply contract documented at
+ * the top of this file:
+ *   - empty/absent                                -> CREATE
+ *   - non-empty, every _key is 'migrated-'-prefixed -> REPLACE
+ *   - non-empty, any _key is NOT 'migrated-'-prefixed -> SKIP (human-edited)
+ */
+function classifyReapplyAction(existingSections: unknown[] | undefined): ReapplyAction {
+  if (!Array.isArray(existingSections) || existingSections.length === 0) return 'CREATE'
+  const allMigrated = existingSections.every(
+    (s) =>
+      typeof s === 'object' &&
+      s !== null &&
+      typeof (s as { _key?: unknown })._key === 'string' &&
+      (s as { _key: string })._key.startsWith(MIGRATED_KEY_PREFIX)
+  )
+  return allMigrated ? 'REPLACE' : 'SKIP'
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -265,6 +324,14 @@ function buildHeroSection(input: HeroSectionInput): SectionPatch {
   const section: SectionPatch = {
     _type: 'heroSection',
     _key: input.key,
+    // heroHeight (schema.ts heroSectionType: 'small'=50vh/'medium'=70vh/
+    // 'large'=90vh/'fullscreen'=100vh) is REQUIRED here — dev STOP-gate
+    // finding #1: with no heroHeight set, HeroSection.tsx's own default
+    // ('large', 90vh) applied, rendering a near-full-screen title-only
+    // header on these listing pages. These are listing-page headers, not
+    // marketing landing heroes, so 'small' (the most compact option) is
+    // correct across all four migrated pages (livePage/eventsPage/blogPage).
+    heroHeight: 'small',
   }
 
   // heroSection field wrapper types (schema.ts: heroSectionType, lines 515-517):
@@ -339,6 +406,8 @@ function buildLiveEventsListingSection(key: string): SectionPatch {
   // _id); this generic section cannot know that ID, so it lists ALL
   // currently-live events with no exclusion. Accepted as an edge case at
   // Livener's scale (simultaneous multiple-live events are rare).
+  // maxItems: 12 (schema max — dev STOP-gate finding #2) — see design
+  // decision #11 below for the full rationale shared by all listing sections.
   return {
     _type: 'eventsListingSection',
     _key: key,
@@ -351,7 +420,9 @@ function buildLiveEventsListingSection(key: string): SectionPatch {
 }
 
 function buildPastEventsListingSection(key: string): SectionPatch {
-  // Mirrors pastEventsQuery: order(startDate desc)[0..4] -> newest first, max 5.
+  // Mirrors pastEventsQuery: order(startDate desc)[0..4] -> newest first.
+  // maxItems raised from the original 5 to 12 (schema max) for consistency —
+  // see design decision #11.
   return {
     _type: 'eventsListingSection',
     _key: key,
@@ -359,12 +430,13 @@ function buildPastEventsListingSection(key: string): SectionPatch {
     filterMode: 'latest',
     sortOrder: 'newest',
     layout: 'grid',
-    maxItems: 5,
+    maxItems: 12,
   }
 }
 
 function buildAllEventsListingSection(key: string): SectionPatch {
   // Mirrors eventsQuery: *[_type=="event"] order(startDate desc) — no time filter.
+  // maxItems: 12 (schema max) — see design decision #11.
   return {
     _type: 'eventsListingSection',
     _key: key,
@@ -372,6 +444,7 @@ function buildAllEventsListingSection(key: string): SectionPatch {
     filterMode: 'latest',
     sortOrder: 'newest',
     layout: 'grid',
+    maxItems: 12,
   }
 }
 
@@ -379,12 +452,14 @@ function buildBlogListingSection(key: string): SectionPatch {
   // Mirrors postsQuery: order(featured desc, publishedAt desc) — newest first.
   // Layout 'featured' reproduces the old /blog route's "one full-width
   // featured card above a separate grid" composite — see design decision #9.
+  // maxItems: 12 (schema max) — see design decision #11.
   return {
     _type: 'blogListingSection',
     _key: key,
     filterMode: 'latest',
     sortOrder: 'newest',
     layout: 'featured',
+    maxItems: 12,
   }
 }
 
@@ -522,12 +597,23 @@ async function run() {
     return
   }
 
-  let migrated = 0
+  let created = 0
+  let replaced = 0
   let skipped = 0
 
   for (const doc of docs) {
-    if (Array.isArray(doc.sections) && doc.sections.length > 0) {
-      console.log(`  SKIP ${doc._type} ${doc._id} (${doc.projectSlug ?? '?'}) — sections[] already populated (${doc.sections.length} item(s)).`)
+    if (doc._type !== 'livePage' && doc._type !== 'eventsPage' && doc._type !== 'blogPage') {
+      console.log(`  SKIP ${doc._id} — unrecognized _type`)
+      skipped++
+      continue
+    }
+
+    const action = classifyReapplyAction(doc.sections)
+
+    if (action === 'SKIP') {
+      console.log(
+        `  SKIP ${doc._id} — contains non-migrated sections (human-edited), not overwriting.`
+      )
       skipped++
       continue
     }
@@ -545,13 +631,11 @@ async function run() {
       case 'blogPage':
         sections = buildBlogPageSections(doc)
         break
-      default:
-        console.log(`  SKIP ${doc._id} — unrecognized _type`)
-        skipped++
-        continue
     }
 
-    console.log(`  ${DRY_RUN ? '[DRY]' : 'PATCH'} ${doc._type} ${doc._id} (${doc.projectSlug ?? '?'}):`)
+    console.log(
+      `  ${DRY_RUN ? `[DRY: ${action}]` : action} ${doc._type} ${doc._id} (${doc.projectSlug ?? '?'}):`
+    )
     console.log(JSON.stringify(sections, null, 2).split('\n').map((l) => `    ${l}`).join('\n'))
     if (warnings.length > 0) {
       console.log('    ⚠️  Warnings:')
@@ -559,17 +643,26 @@ async function run() {
     }
 
     if (!DRY_RUN) {
+      // Both CREATE and REPLACE resolve to the same terminal state: sections
+      // set to exactly the freshly-built array. setIfMissing covers CREATE's
+      // undefined-field case; set() overwrites unconditionally for REPLACE.
       await client
         .patch(doc._id)
         .setIfMissing({ sections: [] })
-        .append('sections', sections)
+        .set({ sections })
         .commit()
     }
 
-    migrated++
+    if (action === 'REPLACE') {
+      replaced++
+    } else {
+      created++
+    }
   }
 
-  console.log(`\n${DRY_RUN ? '[DRY RUN]' : '✅'} Done — ${migrated} migrated, ${skipped} skipped.`)
+  console.log(
+    `\n${DRY_RUN ? '[DRY RUN]' : '✅'} Done — ${created} created, ${replaced} replaced, ${skipped} skipped.`
+  )
   if (DRY_RUN) {
     console.log('Run with --apply to execute the migration.')
   }
