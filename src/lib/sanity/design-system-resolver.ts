@@ -14,7 +14,7 @@
  *
  * INHERIT WITH OVERRIDE — use child value if set, else fall back to parent:
  *   colors, typography, radius, spacing, buttons, cards, sectionSurfaces,
- *   glass, forms, navigation, shadows, layout,
+ *   glass, forms, navigation, shadows, layout, eyebrowAccent,
  *   branding.logoHeightDesktop, branding.logoHeightMobile
  *   (logo sizing is a design token, not a brand identity asset)
  *
@@ -93,6 +93,11 @@ function mergeDesignSystems(
     name: child.name || parent.name,
     role: child.role || parent.role,
     description: child.description || parent.description,
+
+    // ─── Eyebrow Accent: INHERIT WITH OVERRIDE ───────────────────────────────
+    // Curated enum (none/dot/square/brandMark) — flat top-level field, same
+    // pattern as name/role/description above.
+    eyebrowAccent: child.eyebrowAccent || parent.eyebrowAccent,
 
     // ─── Branding ────────────────────────────────────────────────────────────
     branding: {

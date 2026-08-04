@@ -18,6 +18,7 @@ import { imageUrl } from '@/lib/sanity/image'
 import { resolveCta } from '@/lib/sanity/cta'
 import { CtaButton } from '@/components/ui/CtaButton'
 import { useEarlyAccessSafe } from '@/components/forms/EarlyAccessContext'
+import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 interface Props {
   section: HeroLiveCaptureSectionType
@@ -536,28 +537,7 @@ export function HeroLiveCaptureSection({ section, surface, designSystem }: Props
             {/* Eyebrow */}
             {eyebrow && (
               <SlideUp duration={duration} ease={ease} delay={d0} className="mb-6">
-                <div className="flex items-center gap-3">
-                  {/* Live dot indicator */}
-                  <span
-                    className="relative inline-flex h-2 w-2"
-                    aria-hidden="true"
-                  >
-                    <span
-                      className="absolute inline-flex h-full w-full animate-ping rounded-full"
-                      style={{ backgroundColor: 'var(--color-primary)', opacity: 0.6 }}
-                    />
-                    <span
-                      className="relative inline-flex h-2 w-2 rounded-full"
-                      style={{ backgroundColor: 'var(--color-primary)' }}
-                    />
-                  </span>
-                  <p
-                    className="text-xs font-semibold uppercase tracking-[0.2em]"
-                    style={{ color: 'var(--color-text-muted)' }}
-                  >
-                    {eyebrow}
-                  </p>
-                </div>
+                <EyebrowLabel eyebrow={eyebrow} designSystem={designSystem} />
               </SlideUp>
             )}
 

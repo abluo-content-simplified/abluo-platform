@@ -53,6 +53,13 @@ function fontToGoogleParam(name: string): string {
   return `${name.replace(/ /g, '+')}:${params}`
 }
 
+// NOTE — ds.eyebrowAccent ('none' | 'dot' | 'square' | 'brandMark') and
+// ds.navigation?.dropdownStyle ('solid' | 'glass' | 'surface') are both enums
+// consumed by component render logic (which marker/panel style to draw), not
+// CSS values — following the existing dropdownStyle precedent, they are read
+// directly from the resolved `designSystem` prop by the consuming component
+// (e.g. `designSystem.eyebrowAccent`) rather than emitted as a CSS var/data
+// attribute here. No entry added to buildCssVars() for either field.
 function buildCssVars(ds: DesignSystem | null, logoHeightOverride?: { desktop?: number; mobile?: number }): string {
   const dark = ds?.colors?.darkTheme
   const light = ds?.colors?.lightTheme

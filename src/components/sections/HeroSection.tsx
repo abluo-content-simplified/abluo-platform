@@ -3,6 +3,7 @@ import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { urlFor } from '@/lib/sanity/image'
+import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 const CLOUDFLARE_ACCOUNT = 'customer-aayaptcudal3r1fx'
 
@@ -78,8 +79,8 @@ export function HeroSection({ section, surface, designSystem }: Props) {
   // Content text color: white over media, surface token otherwise
   const textPrimary = hasMedia ? '#ffffff' : 'var(--color-text-primary)'
   const textSecondary = hasMedia ? 'rgba(255,255,255,0.8)' : 'var(--color-text-secondary)'
-  const textMuted = hasMedia ? 'rgba(255,255,255,0.6)' : 'var(--color-text-muted)'
-  const dividerColor = hasMedia ? 'rgba(255,255,255,0.3)' : 'var(--color-border)'
+  const dividerColor = hasMedia ? 'rgba(255,255,255,0.3)' : 'var(--color-primary)'
+  const dividerOpacity = hasMedia ? undefined : 0.6
   const ctaBg = hasMedia ? '#ffffff' : 'var(--color-primary)'
   const ctaText = hasMedia ? '#000000' : 'var(--color-background)'
 
@@ -164,12 +165,7 @@ export function HeroSection({ section, surface, designSystem }: Props) {
         {/* Eyebrow */}
         {eyebrow && (
           <SlideUp duration={duration} ease={ease} delay={0} className="mb-8">
-            <p
-              className="text-xs font-medium uppercase tracking-[0.2em]"
-              style={{ color: textMuted }}
-            >
-              {eyebrow}
-            </p>
+            <EyebrowLabel eyebrow={eyebrow} designSystem={designSystem} onMedia={hasMedia} />
           </SlideUp>
         )}
 
@@ -189,7 +185,7 @@ export function HeroSection({ section, surface, designSystem }: Props) {
         <SlideUp duration={duration} ease={ease} delay={d2} className="mb-8">
           <div
             className={`h-[1px] w-16 ${contentAlignment === 'center' ? 'mx-auto' : contentAlignment === 'right' ? 'ml-auto' : ''}`}
-            style={{ backgroundColor: dividerColor }}
+            style={{ backgroundColor: dividerColor, opacity: dividerOpacity }}
           />
         </SlideUp>
 

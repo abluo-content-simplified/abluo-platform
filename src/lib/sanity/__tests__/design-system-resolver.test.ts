@@ -25,6 +25,7 @@ const abluo_base: DesignSystem & { _id: string; parentDesignSystem: null } = {
   parentDesignSystem: null,
   name: 'Abluo Base',
   role: 'base',
+  eyebrowAccent: 'dot',
   colors: {
     lightTheme: {
       background:    'oklch(1 0 0)',
@@ -162,6 +163,7 @@ const martegani_ds: DesignSystem & { _id: string; parentDesignSystem: { _ref: st
   parentDesignSystem: { _ref: 'abluo-base-ds', _type: 'reference' },
   name: 'Studio Martegani',
   role: 'child',
+  eyebrowAccent: 'square',
   colors: {
     lightTheme: {
       primary:       'oklch(0.4 0.1 30)',   // Martegani terracotta
@@ -304,6 +306,12 @@ describe('resolveDesignSystemInheritance', () => {
       const result = await resolve()
       expect(result?.navigation?.menuRadius).toBe(8)
       expect(result?.navigation?.dropdownStyle).toBe('solid')
+    })
+
+    // Eyebrow accent — not set on Livener, should inherit Base's 'dot'
+    it('inherits parent eyebrowAccent when unset on child', async () => {
+      const result = await resolve()
+      expect(result?.eyebrowAccent).toBe('dot')
     })
 
     // Shadows — fully inherited
@@ -477,6 +485,12 @@ describe('resolveDesignSystemInheritance', () => {
     it('inherits parent layout tokens', async () => {
       const result = await resolve()
       expect(result?.layout?.maxTextWidth).toBe(720)
+    })
+
+    // eyebrowAccent — child override
+    it('child overrides parent eyebrowAccent (square, not Base\'s dot)', async () => {
+      const result = await resolve()
+      expect(result?.eyebrowAccent).toBe('square')
     })
   })
 

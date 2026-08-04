@@ -1083,6 +1083,7 @@ export const DS_FIELDS_SELECTION = /* groq */ `{
   role,
   description,
   parentDesignSystem,
+  eyebrowAccent,
 
   colors {
     darkTheme {

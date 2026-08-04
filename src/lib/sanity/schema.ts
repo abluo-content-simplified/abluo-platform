@@ -2688,6 +2688,29 @@ const designSystemType = defineType({
     }),
     defineField({ name: 'description', title: 'Description', type: 'text', rows: 2, group: 'meta' }),
 
+    // Eyebrow accent marker — the small shape shown next to eyebrow labels (hero
+    // sections and elsewhere). Curated enum, not free-form — consistency across all
+    // eyebrows is the goal. Color always comes from the accent token (--color-primary);
+    // there is no separate color field here.
+    defineField({
+      name: 'eyebrowAccent',
+      title: 'Eyebrow Accent Marker',
+      type: 'string',
+      group: 'branding',
+      description:
+        'The marker shown next to eyebrow labels across the site (hero sections, etc). Color is always the accent token — not configurable here. Default is "Dot" because the two hero variants that currently render an accent (Live Capture, Lens) always show a dot; this preserves their current look. Choose "None" for a clean eyebrow with no marker.',
+      options: {
+        list: [
+          { title: 'None', value: 'none' },
+          { title: 'Dot', value: 'dot' },
+          { title: 'Square', value: 'square' },
+          { title: 'Brand mark', value: 'brandMark' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'dot',
+    }),
+
     // Branding
     defineField({
       name: 'branding',

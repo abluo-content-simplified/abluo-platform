@@ -380,6 +380,13 @@ export interface DesignSystem {
   role?: string
   /** Optional description shown in Studio */
   description?: string
+  /**
+   * Marker shown next to eyebrow labels (hero sections, etc). Curated enum —
+   * color always comes from the accent token (--color-primary), never a
+   * separate field. Default 'dot' preserves the current hardcoded look of
+   * heroLiveCaptureSection / heroLensSection. INHERIT WITH OVERRIDE.
+   */
+  eyebrowAccent?: 'none' | 'dot' | 'square' | 'brandMark'
   colors?: {
     darkTheme?: ColorTheme
     lightTheme?: ColorTheme
