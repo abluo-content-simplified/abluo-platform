@@ -42,6 +42,23 @@ const TEXT_ALIGN_CLASSES: Record<string, string> = {
   right: 'text-right items-end',
 }
 
+// Pure helper — builds the CSS `filter` value for hero media backgrounds.
+// GROQ returns `null` (not `undefined`) for unset numeric fields, so callers
+// must not rely on destructuring defaults here; this helper coalesces null
+// itself.
+export function buildHeroMediaFilter(
+  blur: number | null | undefined,
+  brightness: number | null | undefined
+): string | undefined {
+  const resolvedBlur = blur ?? 0
+  const resolvedBrightness = brightness ?? 100
+
+  return [
+    resolvedBlur > 0 ? `blur(${resolvedBlur}px)` : '',
+    resolvedBrightness !== 100 ? `brightness(${resolvedBrightness / 100})` : '',
+  ].filter(Boolean).join(' ') || undefined
+}
+
 export function HeroSection({ section, surface, designSystem }: Props) {
   const {
     eyebrow, headline, subheadline, ctaLabel, ctaHref,
@@ -50,10 +67,16 @@ export function HeroSection({ section, surface, designSystem }: Props) {
     contentWidth = 'standard',
     contentAlignment = 'left',
     verticalAlignment = 'center',
-    overlayOpacity = 40,
-    blur = 0,
-    brightness = 100,
   } = section
+
+  // Numeric style fields — GROQ returns `null` for unset fields, which
+  // bypasses destructuring defaults (those only trigger on `undefined`).
+  // Normalize with `??` so an unset field falls back to its intended
+  // default instead of producing `brightness(0)` / a silently-skipped
+  // overlay.
+  const overlayOpacity = section.overlayOpacity ?? 40
+  const blur = section.blur ?? 0
+  const brightness = section.brightness ?? 100
 
   const hasMedia = mediaType === 'image' ? !!heroImage?.asset : mediaType === 'video' ? !!heroVideo : false
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
@@ -100,10 +123,7 @@ export function HeroSection({ section, surface, designSystem }: Props) {
     : null
 
   // CSS filter for media background
-  const mediaFilter = [
-    blur > 0 ? `blur(${blur}px)` : '',
-    brightness !== 100 ? `brightness(${brightness / 100})` : '',
-  ].filter(Boolean).join(' ') || undefined
+  const mediaFilter = buildHeroMediaFilter(blur, brightness)
 
   return (
     <section
