@@ -740,6 +740,7 @@ export interface HeroSection {
   posterImage?: SanityImage
   // Layout
   heroHeight?: 'small' | 'medium' | 'large' | 'fullscreen'
+  mediaLayout?: 'fullBleed' | 'boxed'
   contentWidth?: 'standard' | 'wide' | 'full'
   contentAlignment?: 'left' | 'center' | 'right'
   verticalAlignment?: 'top' | 'center' | 'bottom'

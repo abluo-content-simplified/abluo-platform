@@ -578,6 +578,21 @@ const heroSectionType = defineType({
       initialValue: 'large',
     }),
     defineField({
+      name: 'mediaLayout',
+      title: 'Media Layout',
+      type: 'string',
+      group: 'layout',
+      options: {
+        list: [
+          { title: 'Full-bleed', value: 'fullBleed' },
+          { title: 'Boxed', value: 'boxed' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'fullBleed',
+      description: 'Full-bleed spans the entire section as a background with text over it (default, unchanged look). Boxed contains the media in a framed block below the text, using the design system’s corner radius and border — text renders in normal surface colors instead of white-over-media.',
+    }),
+    defineField({
       name: 'contentWidth',
       title: 'Content Width',
       type: 'string',

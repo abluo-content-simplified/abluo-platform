@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildHeroMediaFilter } from '../HeroSection'
+import { buildHeroMediaFilter, resolveHeroMediaLayout } from '../HeroSection'
 
 describe('buildHeroMediaFilter', () => {
   it('returns no filter when blur and brightness are null (GROQ unset-field shape)', () => {
@@ -32,5 +32,26 @@ describe('buildHeroMediaFilter', () => {
 
   it('combines blur and brightness clauses when both are set', () => {
     expect(buildHeroMediaFilter(4, 150)).toBe('blur(4px) brightness(1.5)')
+  })
+})
+
+describe('resolveHeroMediaLayout', () => {
+  it('defaults to fullBleed when mediaLayout is null (GROQ unset-field shape)', () => {
+    // Every hero created before this field existed has no `mediaLayout` in
+    // storage — GROQ resolves that to `null`, not `undefined`. Falling back
+    // to fullBleed here is what makes the field a no-op for existing heroes.
+    expect(resolveHeroMediaLayout(null)).toBe('fullBleed')
+  })
+
+  it('defaults to fullBleed when mediaLayout is undefined', () => {
+    expect(resolveHeroMediaLayout(undefined)).toBe('fullBleed')
+  })
+
+  it('passes through an explicit fullBleed value', () => {
+    expect(resolveHeroMediaLayout('fullBleed')).toBe('fullBleed')
+  })
+
+  it('passes through an explicit boxed value', () => {
+    expect(resolveHeroMediaLayout('boxed')).toBe('boxed')
   })
 })
