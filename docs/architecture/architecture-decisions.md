@@ -1262,4 +1262,125 @@ Each phase is independently deployable and independently gated (CLAUDE.md Deploy
 
 ---
 
+## ADR-017 — Client Authorization & Module Enablement
+
+**Status:** Accepted
+**Date:** 2026-08-05
+**Supersedes:** —
+**Superseded By:** —
+
+> Tom accepted this ADR on 2026-08-06, confirming the two items left open at drafting: tenant-owner precedence (Decision 2) and the `leads.project_id` plan (Context, Decision 6, Consequences). Every decision below reflects Tom's final position; implementation proceeds from this acceptance point, subject to the `Tom decides` gates already named for the RLS-primary flip and schema/content migrations.
+
+### Context
+
+This ADR **continues ADR-015** (Platform Authorization & Tenant Isolation, Accepted 2026-07-24) — it does not reopen or amend it. ADR-015's eleven decisions and eight Orchestrator refinements (R1–R8) stand as accepted. Phase 1 of its Implementation Order (steps 2–4) shipped in **v1.0.19**: the `platform_role` identity (`abluo_admin` | `tenant_user`), the custom-access-token hook, and the central `requireAbluoAdmin` guard applied to `/studio` and 7 admin API routes (**Verified fact:** `src/lib/api/auth.ts` defines `PlatformRole` and the central actor resolver; `platform-authorization` gating landed per task #60–61). What remains open from ADR-015 is Implementation Order steps 5 and 7–10 — the `TenantAuthorizationContext` model, the RLS-primary flip, Sanity/module enforcement, and client login/MFA — plus R8's client-dashboard prerequisite, which this ADR closes.
+
+**The pivotal fork Tom has ruled on: per-project membership, not per-tenant.** ADR-015 decision 3/4 established multi-tenant membership with per-membership roles, but left the grain of "membership" as tenant-wide. A completed read-only design pass surfaced the need to support a user who manages one project of a client's account but not another (e.g. a consulting user with limited scope inside a single tenant that runs several projects). **Tom's decision, recorded here as settled:** membership is granted **per project** (`project_id`), not per tenant. This requires a new `project_members(project_id, user_id, role)` table (roles: `owner` | `editor` | `viewer`) and rewriting RLS policies from the tenant-scoped `tenant_id in get_my_tenant_ids()` shape (ADR-015 §Supabase model, `tenant_members`) to a project-scoped `project_id in get_my_project_ids()` shape.
+
+**Design-pass findings (Verified fact, code-referenced):**
+- **`TenantAuthorizationContext` does not exist yet.** ADR-015's structural model (§Structural model) defines its shape but no implementation exists in `src/lib/api/` or elsewhere; `src/lib/api/auth.ts` currently implements only the `AuthenticatedActor`/`PlatformRole` half (admin identity), not the per-project membership half.
+- **Service-role remains the default Supabase client for tenant-scoped reads.** `createAdminClient()` (`src/lib/supabase/admin.ts`) is imported directly by route handlers, including `src/app/api/inquiries/[id]/route.ts` (PATCH), which performs an unauthenticated, unscoped update keyed only on request-supplied `id` — the exact bypass pattern ADR-015 decision 5 exists to retire. This route remains a live gap this ADR schedules a close for (Implementation Order step 6, below).
+- **`MODULE_PERMISSION_MAP` and `canPerformModuleAction`-style logic already exist** (`src/lib/modules/permissions.ts:65`, `buildModulePermissions()`), and **`enabledModuleIdsQuery`** already exists (`src/lib/sanity/queries.ts:365`) and is consumed by the Studio-side module gating built for ADR-011/ADR-016 Phase D. Both are reusable, not net-new — this ADR's entitlement guard composes them rather than re-inventing them.
+- **The `leads` table has no `project_id` column (Verified fact, schema inspected) — resolved: add `project_id` per the phased plan below.** `supabase/schema.sql:101-116` defines `public.leads` with `tenant_id uuid not null references public.tenants(id)` and no `project_id` column; `leads_tenant_id_idx` is the only tenant-facing index. Per-project RLS on `leads` (`project_id in get_my_project_ids()`) cannot be written against the current schema. **Tom's confirmed resolution (2026-08-06):** `leads` gains a `project_id` column via a phased, additive-first migration — see Decision 6 for the five-step sequence. This closes what was previously flagged as Unknown-to-resolve; the one gated step within that sequence (flipping `project_id` to `NOT NULL`) still requires `Tom decides` sign-off at execution time, per spine §7.
+- **`inquiries` already carries `project_id` (Verified fact).** `supabase/migrations/005_inquiries.sql` defines `public.inquiries` with both `tenant_id` and `project_id`, nullable for platform-level inquiries — this table is already shaped correctly for per-project RLS; `leads` is the outlier.
+- **The client dashboard's data layer is unbuilt (Verified fact, confirmed unchanged since ADR-015).** No dashboard read path exists to retrofit — R8 remains trivially satisfiable because there is still little to no dashboard code, which this ADR treats as a closing condition rather than leaving open indefinitely.
+- **No email provider is wired** — grep of the codebase and environment configuration surfaces no transactional email integration; the invitation flow (ADR-015 §Login, invitation, and MFA) cannot send an invite today. This blocks Implementation Order step 4 (client login/invite) until an email provider is selected and configured — an **Assumption** that this is provider-selection work outside this ADR's scope, tracked as a prerequisite gap rather than resolved here.
+- **MFA/AAL2 availability depends on the Supabase plan tier** — TOTP MFA enforcement (ADR-015 decision 7, R6) requires verifying the current Supabase project's plan supports AAL2 session claims before scheduling step 5 (RLS flip involving admin-read policies, R4) or step 4's MFA enrollment. **Flagged as Unknown-to-resolve before implementation**, not yet verified in this design pass.
+
+### Alternatives Considered
+
+- **Per-tenant membership (status quo shape from ADR-015 decision 3/4)** — rejected as the final grain: it cannot express "manages project1 but not project2 of the same client," which is a real, named use case (a consulting user with partial scope inside one tenant). Per-tenant membership remains correct for the tenant *identity* boundary (who belongs to a tenant at all) but is the wrong grain for *authorization* once a tenant runs multiple projects. Per-project membership is chosen instead, with tenant-level membership retained only as the ownership/invitation anchor (see Decision, tenant-owner precedence).
+- **Big-bang RLS flip (retire `createAdminClient()` everywhere in one release)** — rejected: ADR-015's own Negative consequences already flag this as "a genuine migration risk... needs careful staged verification, not a single flip." This ADR reaffirms and operationalizes that position with an explicit phased, shadow-mode rollout (Decision, below) rather than leaving "staged verification" undefined.
+- **JWT-cached `TenantAuthorizationContext` (memberships/permissions embedded in the token)** — re-rejected here for the same reason ADR-015 R1 rejected it: a cached grant set cannot be revoked mid-session without a refresh mechanism, which reopens the exact gap ADR-015's session/revocation principles (§Session and revocation principles) exist to close. Per-project membership makes this rejection stronger, not weaker — a `ProjectGrant[]` array is larger and more likely to go stale mid-session than a single tenant role would have been.
+
+### Decision
+
+**1. Per-project membership is the authorization grain.** A `project_members(project_id, user_id, role)` table is added, with `role` in `owner | editor | viewer`. RLS policies that currently read `tenant_id in get_my_tenant_ids()` (ADR-015 §Supabase model; `tenant_members`, migration 003) are rewritten to `project_id in get_my_project_ids()` wherever the underlying table is project-scoped. `tenant_members` is not removed — it remains the account/tenant-identity anchor (invitation target, billing/ownership boundary); `project_members` is the new authorization-grain table layered on top of it.
+
+**2. Tenant-owner precedence — confirmed (Tom, 2026-08-06).** `owner` is a **tenant-level** role, held in `tenant_members`: owning a tenant grants access to **all** of that tenant's projects, with no `project_members` row needed per project, and a single person can own more than one tenant. `editor` and `viewer` (and any future roles) are **project-level** grants, held in `project_members`, exactly as scoped in Decision 1. Mechanically, `tenant_members` is kept for the owner relationship and `project_members` is added for editor/viewer; `TenantAuthorizationContext` (Decision 3) **unions** the two — a caller's effective `ProjectGrant[]` is the union of (a) every project belonging to a tenant the caller owns and (b) every project the caller is explicitly granted via `project_members`. This settles what was previously a recommended default pending review; it is no longer conditional.
+
+**Identity model (confirmed, Tom, 2026-08-06).** One email is one Supabase user account, and that account can hold memberships across multiple projects — including projects under **different tenants** (e.g. a freelance editor who works across two separate clients). This is intended, first-class behavior, not an edge case requiring special-casing anywhere in the authorization model: `TenantAuthorizationContext.projects[]` (Decision 3) is scoped to the user, not to a single tenant, and its resolution logic must never assume a user belongs to at most one tenant.
+
+**3. `TenantAuthorizationContext`, resolved per-request from the database, never from the JWT (ADR-015 R1, carried forward unchanged):**
+```ts
+type TenantAuthorizationContext = {
+  userId: string
+  platformRole: PlatformRole
+  projects: ProjectGrant[]
+}
+
+type ProjectGrant = {
+  projectId: string
+  projectSlug: string        // resolved server-side; never client-supplied
+  membershipId: string
+  role: 'owner' | 'editor' | 'viewer'
+  permissions: string[]      // via MODULE_PERMISSION_MAP + role
+  enabledModuleIds: string[] // via existing enabledModuleIdsQuery
+}
+```
+`ctx.projects` is the **union** of two sources, per the confirmed tenant-owner precedence (Decision 2): every project belonging to a tenant the user owns (via `tenant_members`, role `owner`), plus every project the user is explicitly granted (via `project_members`, role `editor` or `viewer`). This union spans tenants without special-casing — a user who owns one tenant and holds an `editor` grant on a project under a different tenant sees both in the same `projects[]` array, per the confirmed identity model (Decision 2).
+
+Recommended location: a new sibling module, `src/lib/api/tenant-context.ts`, alongside the existing `src/lib/api/auth.ts` — keeping `auth.ts` single-responsibility (platform-role identity only) and the new file responsible for per-project resolution. This context is additive and inert on landing: defining and resolving it does not itself change any route's behavior until routes are migrated to consume it (Implementation Order step 1).
+
+**4. Sanity chokepoint — `tenantScopedSanityClient(ctx, projectId)` (ADR-015 R2, specialized to per-project grants):** validates `projectId ∈ ctx.projects` and **rejects** on mismatch — never silently substitutes a different project. Every query is built by spreading caller-supplied params first, then forcing `projectSlug` from the resolved `ProjectGrant` last, so a caller-supplied `projectSlug` can never override the server-resolved value. Raw GROQ string interpolation is banned at this chokepoint, per ADR-015 R2. The reference/media recursion guard (ADR-015 R3) is shared infrastructure at this same chokepoint: any write that sets a reference or attaches media re-fetches the referenced document's `projectSlug` and rejects a cross-project reference, independent of the parent document's own check.
+
+**5. Entitlement + permission guard — `assertModuleAction(ctx, projectId, permissionId)`:** checks module-installed (`ProjectGrant.enabledModuleIds`) **before** per-membership permission (`MODULE_PERMISSION_MAP` + `ProjectGrant.role`), preserving the distinct, ordered steps 4–5 of ADR-015's 7-step sequence. This builds directly on the existing `MODULE_PERMISSION_MAP` (`src/lib/modules/permissions.ts:65`) rather than introducing a parallel permission model.
+
+**6. RLS-primary rollout is phased and shadow-mode — the highest-risk piece of this ADR.** An RLS-backed, user-scoped Supabase client is built **alongside** the existing `createAdminClient()` service-role client, not as an immediate replacement. Migration proceeds route-by-route, lowest blast-radius first:
+   1. Admin-dashboard tenant/project reads
+   2. New client-dashboard `leads` SELECT
+   3. `leads` INSERT/UPDATE
+   4. Last: the live, client-facing `inquiries` / `form-submissions` paths (including closing the open `inquiries/[id]` PATCH gap named above)
+
+   Each route migrates through: **shadow-read** (the new RLS-backed path runs alongside the old service-role path, mismatches are logged, the old path keeps serving responses) → **feature-flag flip** (the new path takes over serving) → **rollback is flipping the flag** — a config change, not a redeploy. Service-role legitimately remains for migrations, webhooks, and other trusted system operations; every such use is wrapped in `runAsTrustedSystemOperation()` (ADR-015 §Supabase model, generalized per R2) with a justification comment, so the remaining service-role footprint is auditable by grep — carrying forward ADR-015 Implementation Order step 12's audit requirement.
+
+   **`leads.project_id` — confirmed phased plan (Tom, 2026-08-06), a prerequisite before slice 5.2/5.3 above reach `leads`:**
+   1. Add `project_id uuid references public.projects(id)`, **nullable**. Purely additive — no behavior change, no RLS change yet.
+   2. Backfill existing rows from each lead's `tenant_id` → its project. Trivial today because every tenant is 1:1 with exactly one project (`livener` → `livener-main`, `studiomartegani` → `studiomartegani-main`); if `leads` is empty at backfill time, this step is a no-op.
+   3. Populate `project_id` on all new lead captures going forward.
+   4. **Gated step, `Tom decides` at execution time:** only after the backfill is verified complete, flip `project_id` to `NOT NULL`, add an index on `project_id`, and add the project-scoped RLS policy (`project_id in get_my_project_ids()`).
+   5. Keep `tenant_id` alongside `project_id` — it is derivable via `projects.tenant_id` and is harmless denormalization; retire it later if desired, but nothing in this ADR requires that retirement.
+
+   Steps 1–3 are fully reversible and carry no behavior change; step 4 is the one gated, irreversible-adjacent change (spine §7) and is not executed without explicit Tom sign-off. This resolves the ADR's earlier "leads.project_id Unknown" flag (see Context).
+
+**7. Client login and invitation is a parallel track**, not blocked on the phases above and not blocking them: invite → set password → `project_members` (and, where applicable, `tenant_members`) row created → email verified → MFA enrolled where policy requires (ADR-015 §Login, invitation, and MFA). Two prerequisite gaps are stated, not resolved, by this ADR: no email provider is wired yet (blocks sending invites), and MFA/AAL2 availability depends on the Supabase plan tier (must be verified before scheduling MFA-dependent work).
+
+**8. The client dashboard's data layer takes `TenantAuthorizationContext` as its first parameter, from line one.** Per ADR-015 R8, carried forward unchanged and made concrete here: no dashboard read/write function is written without this parameter, because there is still little to no dashboard code to retrofit.
+
+**9. The cross-tenant test harness (ADR-015 decision 10) is pulled forward** to be built immediately after the context (Implementation Order step 2, below) and used as a release-blocking CI guard for every subsequent enforcement slice in this ADR — not deferred to the end of the workstream as ADR-015's original Implementation Order step 11 implied.
+
+### Implementation Order
+
+Each slice honors the `dev` → **STOP** → `preview` → **STOP** → `main` gates (spine §8; CLAUDE.md Deployment Workflow) independently.
+
+0. **Membership-grain decision** — done: per-project (this ADR, Decision 1).
+1. **`TenantAuthorizationContext` implementation** — additive, inert; lands first with no route depending on it yet.
+2. **Cross-tenant test harness** — built immediately after step 1; becomes the guard every later slice runs against.
+3a. **Sanity chokepoint** — `tenantScopedSanityClient(ctx, projectId)` + reference/media recursion guard.
+3b. **Entitlement + permission guard** — `assertModuleAction(ctx, projectId, permissionId)`.
+4. **Client login / invitation** — parallel track; blocked on email-provider selection (prerequisite gap, above).
+5. **RLS-primary flip** — last, and itself phased per Decision 6 (admin reads → leads SELECT → leads INSERT/UPDATE → inquiries/form-submissions).
+6. **Wire into the client dashboard** + close the open `inquiries/[id]` PATCH P0 (currently unauthenticated `createAdminClient()` usage, named above under Context).
+7. **Cross-tenant harness becomes a permanent CI gate** + full service-role audit (generalizes ADR-015 Implementation Order step 12 to the per-project model).
+
+### Consequences
+
+**Positive:**
+- Closes the remaining exposure ADR-015 left open (Implementation Order steps 5, 7–10) rather than leaving it as permanently deferred follow-up
+- The client dashboard is authorization-correct from its first line of code (R8), avoiding a future retrofit
+- The cross-tenant test harness becomes an operational CI gate early (step 2) rather than a step-11 afterthought, so every subsequent enforcement slice in this ADR ships against a working regression guard
+- Per-project membership expresses a real, previously unsupported use case (partial-scope consultants) without requiring a second migration later
+- The shadow-mode, route-by-route RLS rollout (Decision 6) gives explicit, reversible checkpoints instead of a single high-risk flip
+
+**Negative:**
+- The RLS migration remains genuinely risky regardless of phasing — shadow-mode reduces blast radius but does not eliminate the risk ADR-015 already flagged as its most consequential open item
+- Per-project RLS cannot be written against `leads` today (no `project_id` column) — resolved via the confirmed phased plan (Decision 6), but the plan's gated step (flipping `project_id` to `NOT NULL` and adding the RLS policy) still requires backfill verification and explicit `Tom decides` sign-off before step 5 reaches `leads`
+- Client login is blocked on an unselected email provider, and MFA/AAL2 scheduling is blocked on an unverified Supabase plan-tier capability — both are prerequisite gaps outside this ADR's authority to resolve
+- `project_members` and `tenant_members` coexisting as two membership tables is additional relational complexity to keep consistent (e.g. an owner's implicit per-project access must stay correct as projects are added to or removed from a tenant, and a user's `projects[]` union must stay correct as tenant-ownership and project-grants are added or revoked independently)
+
+---
+
+**Decision ownership note (spine §4):** acceptance of this ADR is `Tom approves` — **now done** (2026-08-06). Within it, the RLS-primary flip (Decision 6) and any schema/content migration (including the confirmed `leads.project_id` addition and its gated `NOT NULL` step) remain `Tom decides` at execution time — irreversible-adjacent actions per spine §7, planned here but never executed without explicit sign-off at the moment each is run.
+
+---
 
