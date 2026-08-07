@@ -28,13 +28,20 @@
  * placeholder blocks below exist only to keep this file's shape ready so
  * those slices add cases here rather than starting a parallel suite.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   assembleProjectGrants,
   permissionsForRole,
+  type ProjectGrant,
   type RawOwnedProject,
   type RawProjectMembership,
+  type TenantAuthorizationContext,
 } from '../tenant-context'
+import {
+  assertSameTenantReference,
+  TenantAuthorizationError,
+  tenantScopedSanityClient,
+} from '../tenant-scoped-sanity'
 import type { ModulePermissionMap } from '@/lib/modules/types'
 
 // ─── Fixture world: two tenants, five users ────────────────────────────────
@@ -254,12 +261,110 @@ describe('cross-tenant isolation invariants', () => {
 // corresponding slice lands; do not delete — they are the agreed structure
 // slices 3a/3b fill in.
 
-describe.skip('slice 3a — Sanity chokepoint: tenant-scoped Sanity client (NOT YET IMPLEMENTED)', () => {
-  // TODO(slice 3a): once a tenant-scoped Sanity client / query chokepoint
-  // exists (ADR-017 Implementation Order step 3a), add cases here for:
-  it.todo('rejects a query whose projectSlug does not match the caller\'s granted project')
-  it.todo('rejects a document reference that resolves to a different tenant\'s projectSlug')
-  it.todo('a project-only editor cannot read or write Sanity documents for a sibling project in the same tenant they are not granted on')
+describe('slice 3a — Sanity chokepoint: tenant-scoped Sanity client', () => {
+  // userEditorA1: project_members editor on A1 ("livener-main") only —
+  // deliberately NOT granted on A2 ("livener-events"), the sibling project
+  // in the same tenant, to exercise the "same tenant, no grant" case.
+  const grantA1: ProjectGrant = {
+    projectId: 'project-a1',
+    projectSlug: 'livener-main',
+    membershipId: 'pm-editor-a1',
+    role: 'editor',
+    permissions: [],
+    enabledModuleIds: [],
+  }
+  const ctxEditorA1: TenantAuthorizationContext = {
+    userId: 'user-editor-a1',
+    platformRole: 'tenant_user',
+    projects: [grantA1],
+  }
+
+  // userSpanning-equivalent grant on tenant B's project, used for the
+  // cross-tenant reference case.
+  const grantB1: ProjectGrant = {
+    projectId: 'project-b1',
+    projectSlug: 'studiomartegani-main',
+    membershipId: 'pm-viewer-b1',
+    role: 'viewer',
+    permissions: [],
+    enabledModuleIds: [],
+  }
+
+  it("rejects requesting a scoped client for a projectId not in the context", () => {
+    expect(() => tenantScopedSanityClient(ctxEditorA1, 'project-not-granted')).toThrow(
+      TenantAuthorizationError
+    )
+  })
+
+  it('overrides a caller-supplied projectSlug with the grant\'s slug — cannot read another project', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true })
+    const scoped = tenantScopedSanityClient(ctxEditorA1, 'project-a1', { fetch: mockFetch })
+
+    await scoped.fetch(`*[_type == "post" && projectSlug == $projectSlug]`, {
+      // Attempted cross-tenant read: caller supplies a different project's
+      // slug in params.
+      projectSlug: 'studiomartegani-main',
+      someOtherParam: 'unchanged',
+    })
+
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    const [, calledParams] = mockFetch.mock.calls[0]
+    // The grant's own slug wins — the caller-supplied value is never honored.
+    expect(calledParams.projectSlug).toBe('livener-main')
+    expect(calledParams.someOtherParam).toBe('unchanged')
+  })
+
+  it('rejects a query that does not reference $projectSlug', () => {
+    const mockFetch = vi.fn().mockResolvedValue(null)
+    const scoped = tenantScopedSanityClient(ctxEditorA1, 'project-a1', { fetch: mockFetch })
+
+    // The guard throws synchronously before a promise is ever constructed.
+    expect(() => scoped.fetch(`*[_type == "post"]`)).toThrow(TenantAuthorizationError)
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+
+  it('rejects a document reference that resolves to a different tenant\'s projectSlug', async () => {
+    // The referenced document actually belongs to tenant B's project, while
+    // the caller only holds a grant on tenant A's project A1.
+    const mockFetch = vi.fn().mockResolvedValue({ projectSlug: 'studiomartegani-main' })
+    const scoped = tenantScopedSanityClient(ctxEditorA1, 'project-a1', { fetch: mockFetch })
+
+    await expect(
+      assertSameTenantReference(scoped, 'some-doc-id', grantA1)
+    ).rejects.toThrow(TenantAuthorizationError)
+  })
+
+  it('accepts a document reference that resolves to the same project\'s projectSlug', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ projectSlug: 'livener-main' })
+    const scoped = tenantScopedSanityClient(ctxEditorA1, 'project-a1', { fetch: mockFetch })
+
+    await expect(assertSameTenantReference(scoped, 'some-doc-id', grantA1)).resolves.toBeUndefined()
+  })
+
+  it('a project-only editor cannot read or write Sanity documents for a sibling project in the same tenant they are not granted on', () => {
+    // A2 ("livener-events") is in the SAME tenant as A1, but ctxEditorA1
+    // holds no grant for it — sibling-project access must still be rejected.
+    expect(() => tenantScopedSanityClient(ctxEditorA1, 'project-a2')).toThrow(
+      TenantAuthorizationError
+    )
+  })
+
+  it("a caller holding grantB1 cannot use it to reference-guard project A1's documents", async () => {
+    // Independent check: passing grantB1 (a real grant, just for the wrong
+    // project) into assertSameTenantReference alongside a client scoped to
+    // A1 must still reject, since the referenced doc belongs to A1, not B1.
+    const ctxSpanning: TenantAuthorizationContext = {
+      userId: 'user-spanning',
+      platformRole: 'tenant_user',
+      projects: [grantA1, grantB1],
+    }
+    const mockFetch = vi.fn().mockResolvedValue({ projectSlug: 'livener-main' })
+    const scoped = tenantScopedSanityClient(ctxSpanning, 'project-a1', { fetch: mockFetch })
+
+    await expect(
+      assertSameTenantReference(scoped, 'some-doc-id', grantB1)
+    ).rejects.toThrow(TenantAuthorizationError)
+  })
 })
 
 describe.skip('slice 3b — entitlement + permission guard (NOT YET IMPLEMENTED)', () => {
