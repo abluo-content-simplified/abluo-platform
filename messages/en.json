@@ -16,5 +16,16 @@
     "posts": "Posts",
     "leads": "Leads",
     "analytics": "Analytics"
+  },
+  "account": {
+    "title": "Your account",
+    "subtitle": "Projects you have access to.",
+    "noProjects": "You don't have access to any projects yet.",
+    "roleLabel": "Role: {role}",
+    "roles": {
+      "owner": "Owner",
+      "editor": "Editor",
+      "viewer": "Viewer"
+    }
   }
 }

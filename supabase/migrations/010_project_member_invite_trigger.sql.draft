@@ -1,0 +1,130 @@
+-- ============================================================
+-- DRAFT — Migration 010 — project_members via handle_new_user()
+--
+-- ⚠️ NOT APPLIED. NOT RENAMED TO .sql. This file uses the
+-- `.sql.draft` extension specifically so the Supabase migration
+-- runner does not pick it up. It exists to make the design in the
+-- ADR-017 slice 4 handoff (§5.1, Invite mechanism) concrete and
+-- reviewable — Tom must decide trigger-vs-server-action (handoff
+-- §8, decision 1) before this is renamed to `010_....sql`, applied,
+-- and given a real verification pass (mirroring the format of
+-- migrations 003/004/007).
+--
+-- ── What this draft would do ────────────────────────────────────
+-- Extends `handle_new_user()` (currently defined in migration 004)
+-- so that, in addition to its existing tenant_members path (owner
+-- invites — already shipped, unchanged below), it also creates a
+-- `project_members` row when the invited user's signup metadata
+-- carries `project_id` + `role` in ('editor', 'viewer').
+--
+-- This is the natural extension of the EXISTING, already-shipped
+-- pattern: migration 004's `handle_new_user()` already reads
+-- `raw_user_meta_data->>'tenant_id'` + `raw_user_meta_data->>'role'`
+-- to create an owner's `tenant_members` row on signup. This draft
+-- adds a second, independent branch for the project-level grain
+-- ADR-017 introduced (migration 007, `project_members`). Both
+-- branches are additive and mutually exclusive in practice — an
+-- owner invite carries `tenant_id`, an editor/viewer invite carries
+-- `project_id`; a single invite is never both.
+--
+-- ── Why a trigger, not a post-login server action (recommendation) ──
+-- See handoff §5.1 for the full trade-off. Summary: the owner path
+-- already uses this exact mechanism (migration 004) — extending it
+-- for editor/viewer keeps ONE membership-creation code path instead
+-- of two (trigger for owners, server action for editor/viewer), and
+-- it closes the membership row atomically with account creation
+-- (no window where a user is authenticated but has zero grants, no
+-- second network call from client code that could fail silently
+-- after `inviteUserByEmail` already sent the email). The trade-off
+-- is debuggability — trigger logic is invisible to `grep`-ing the
+-- Next.js codebase — mitigated by keeping the branch small, pure,
+-- idempotent (ON CONFLICT DO NOTHING), and co-located with its
+-- sibling owner branch in the same function body.
+--
+-- ── Idempotency & safety (same conventions as 003/004/007) ──────
+--   - ON CONFLICT DO NOTHING on the project_members insert.
+--   - Only fires when raw_user_meta_data->>'project_id' is present
+--     AND raw_user_meta_data->>'role' is 'editor' or 'viewer' — an
+--     invite that supplies an unexpected role value is silently
+--     skipped (fails closed: no membership row, not a wrong one).
+--   - Does not touch the existing tenant_id/role (owner) branch at
+--     all — reproduced verbatim from migration 004 below, unchanged.
+--   - No RLS change. No column change. No backfill (project_members
+--     starts empty per migration 007 and stays empty until a real
+--     invite is accepted).
+-- ============================================================
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = ''
+as $$
+begin
+  -- Always create a profile row for identity data. Unchanged from
+  -- migration 004.
+  insert into public.profiles (id, full_name)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'full_name', '')
+  )
+  on conflict (id) do nothing;
+
+  -- Owner invite path — unchanged from migration 004. An Abluo
+  -- admin invites a tenant owner with { tenant_id, role: 'owner' }
+  -- in the invite's `data` metadata (ADR-017 slice 4 handoff §5.2).
+  if new.raw_user_meta_data->>'tenant_id' is not null then
+    insert into public.tenant_members (tenant_id, user_id, role)
+    values (
+      (new.raw_user_meta_data->>'tenant_id')::uuid,
+      new.id,
+      coalesce(new.raw_user_meta_data->>'role', 'owner')
+    )
+    on conflict (tenant_id, user_id) do nothing;
+  end if;
+
+  -- NEW — project-level invite path (ADR-017 Decision 1/2). A
+  -- tenant owner invites an editor/viewer to ONE of their projects
+  -- with { project_id, role: 'editor' | 'viewer' } in the invite's
+  -- `data` metadata (handoff §5.2). Deliberately does NOT accept
+  -- 'owner' here — project_members.role's check constraint (migration
+  -- 007) already rejects it at the database layer; the role filter
+  -- below just avoids a doomed insert attempt for a malformed invite.
+  if new.raw_user_meta_data->>'project_id' is not null
+     and new.raw_user_meta_data->>'role' in ('editor', 'viewer') then
+    insert into public.project_members (project_id, user_id, role)
+    values (
+      (new.raw_user_meta_data->>'project_id')::uuid,
+      new.id,
+      new.raw_user_meta_data->>'role'
+    )
+    on conflict (project_id, user_id) do nothing;
+  end if;
+
+  return new;
+end;
+$$;
+
+comment on function public.handle_new_user() is
+  'Trigger function: runs after INSERT on auth.users. '
+  'Always creates a profiles row for identity data. '
+  'Creates a tenant_members row if tenant_id is present in signup metadata (owner invites). '
+  'Creates a project_members row if project_id + role(editor|viewer) is present in signup metadata (ADR-017 slice 4 draft).';
+
+-- ── Verification (run manually after this is renamed + applied) ──
+--
+-- 1. Confirm the function body contains both branches:
+--
+--    select prosrc from pg_proc
+--    where proname = 'handle_new_user' and pronamespace = 'public'::regnamespace;
+--
+--    Expected: references both public.tenant_members and public.project_members.
+--
+-- 2. Accept a test invite carrying project_id + role='editor' in a
+--    non-production project, confirm exactly one project_members row
+--    is created, and confirm inviting the SAME email a second time
+--    (re-triggering handle_new_user, e.g. via a resend) does not
+--    duplicate the row (on conflict do nothing).
+--
+-- 3. Confirm an owner invite (tenant_id branch) still behaves exactly
+--    as it did before this migration — no regression on the existing,
+--    already-shipped path.

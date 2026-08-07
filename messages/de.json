@@ -16,5 +16,16 @@
     "posts": "Beiträge",
     "leads": "Anfragen",
     "analytics": "Statistiken"
+  },
+  "account": {
+    "title": "Dein Konto",
+    "subtitle": "Projekte, auf die du Zugriff hast.",
+    "noProjects": "Du hast noch keinen Zugriff auf Projekte.",
+    "roleLabel": "Rolle: {role}",
+    "roles": {
+      "owner": "Inhaber",
+      "editor": "Redakteur",
+      "viewer": "Betrachter"
+    }
   }
 }

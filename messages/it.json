@@ -16,5 +16,16 @@
     "posts": "Articoli",
     "leads": "Contatti",
     "analytics": "Statistiche"
+  },
+  "account": {
+    "title": "Il tuo account",
+    "subtitle": "Progetti a cui hai accesso.",
+    "noProjects": "Non hai ancora accesso a nessun progetto.",
+    "roleLabel": "Ruolo: {role}",
+    "roles": {
+      "owner": "Proprietario",
+      "editor": "Editor",
+      "viewer": "Lettore"
+    }
   }
 }
