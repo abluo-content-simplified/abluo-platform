@@ -16,17 +16,9 @@
  * is organized around isolation INVARIANTS (named so a future regression is
  * immediately legible), not around function call shape.
  *
- * Deliberately NOT covered yet (scaffolded below as skipped placeholders,
- * to be filled in by later slices — see ADR-017 Implementation Order):
- *   - slice 3a: the Sanity chokepoint (tenant-scoped Sanity client) —
- *     rejecting a cross-tenant `projectSlug` or a cross-tenant document
- *     reference at the query layer.
- *   - slice 3b: the entitlement guard — a module-disabled project blocking
- *     an action even if the role would otherwise permit it, and per-
- *     membership permission isolation once real route wiring exists.
- * Neither the chokepoint nor the guard exist in the codebase yet; the
- * placeholder blocks below exist only to keep this file's shape ready so
- * those slices add cases here rather than starting a parallel suite.
+ * Slice 3a (the Sanity chokepoint) and slice 3b (the entitlement +
+ * permission guard, `assertModuleAction`/`canModuleAction` in
+ * `../module-action-guard`) are both implemented and covered below.
  */
 import { describe, expect, it, vi } from 'vitest'
 import {
@@ -42,6 +34,7 @@ import {
   TenantAuthorizationError,
   tenantScopedSanityClient,
 } from '../tenant-scoped-sanity'
+import { assertModuleAction, canModuleAction } from '../module-action-guard'
 import type { ModulePermissionMap } from '@/lib/modules/types'
 
 // ─── Fixture world: two tenants, five users ────────────────────────────────
@@ -367,11 +360,98 @@ describe('slice 3a — Sanity chokepoint: tenant-scoped Sanity client', () => {
   })
 })
 
-describe.skip('slice 3b — entitlement + permission guard (NOT YET IMPLEMENTED)', () => {
-  // TODO(slice 3b): once the entitlement/permission enforcement guard exists
-  // in the request path (ADR-017 Implementation Order step 3b), add cases
-  // here for:
-  it.todo('a module-disabled project blocks the corresponding action even when the caller\'s role would otherwise permit it')
-  it.todo('per-membership permission isolation: an editor grant on project A does not confer any permission on project B, even within the same tenant')
-  it.todo('a viewer-role permission set can never satisfy a write-gated guard check')
+describe('slice 3b — entitlement + permission guard', () => {
+  const ctxA1Editor: TenantAuthorizationContext = {
+    userId: 'user-editor-a1',
+    platformRole: 'tenant_user',
+    projects: grantsFor({ ownedProjects: [], memberships: [membershipEditorA1] }),
+  }
+
+  const ctxOwnerA: TenantAuthorizationContext = {
+    userId: 'user-owner-a',
+    platformRole: 'tenant_user',
+    projects: grantsFor({ ownedProjects: [projectA1, projectA2], memberships: [] }),
+  }
+
+  it("blocks an action when the owning module is disabled for the project, even though the resolved grant's permission list (erroneously) includes it — proves the module-installed check runs FIRST and independently of the permission list", () => {
+    // Deliberately hand-built (not produced by assembleProjectGrants): a
+    // stale/inconsistent grant where 'events.event.write' made it into
+    // `permissions` even though 'events' is absent from `enabledModuleIds`.
+    // This is the case that proves ordering — if the guard only consulted
+    // `permissions`, this call would wrongly succeed.
+    const inconsistentGrant: ProjectGrant = {
+      projectId: 'project-a1',
+      projectSlug: 'livener-main',
+      membershipId: 'pm-editor-a1',
+      role: 'editor',
+      permissions: ['blog.post.write', 'blog.post.read', 'events.event.write'],
+      enabledModuleIds: ['blog'], // 'events' NOT installed
+    }
+    const ctx: TenantAuthorizationContext = {
+      userId: 'user-editor-a1',
+      platformRole: 'tenant_user',
+      projects: [inconsistentGrant],
+    }
+
+    expect(() => assertModuleAction(ctx, 'project-a1', 'events.event.write')).toThrow(
+      TenantAuthorizationError
+    )
+    expect(() => assertModuleAction(ctx, 'project-a1', 'events.event.write')).toThrow(
+      /module "events" is not installed/
+    )
+    expect(canModuleAction(ctx, 'project-a1', 'events.event.write')).toBe(false)
+  })
+
+  it('per-membership permission isolation: a viewer is denied a write-gated permission that an editor/owner on the same project would have', () => {
+    // project-a2 has both 'blog' and 'events' enabled (fixture world), so
+    // the module-installed check passes for both roles — isolating this
+    // case to the permission check alone (step 5).
+    const viewerGrants = grantsFor({
+      ownedProjects: [],
+      memberships: [
+        { membershipId: 'pm-viewer-a2', projectId: 'project-a2', projectSlug: 'livener-events', role: 'viewer' },
+      ],
+    })
+    const ctxViewerA2: TenantAuthorizationContext = {
+      userId: 'user-viewer-a2',
+      platformRole: 'tenant_user',
+      projects: viewerGrants,
+    }
+
+    // Owner (via ctxOwnerA, which owns A1+A2) holds the write permission...
+    expect(() => assertModuleAction(ctxOwnerA, 'project-a2', 'blog.post.write')).not.toThrow()
+    // ...but the viewer on the very same project is denied it.
+    expect(() => assertModuleAction(ctxViewerA2, 'project-a2', 'blog.post.write')).toThrow(
+      TenantAuthorizationError
+    )
+    expect(() => assertModuleAction(ctxViewerA2, 'project-a2', 'blog.post.write')).toThrow(
+      /does not grant permission/
+    )
+    expect(canModuleAction(ctxViewerA2, 'project-a2', 'blog.post.write')).toBe(false)
+    // The viewer still gets the read permission on that same project — the
+    // denial is permission-specific, not a blanket project lockout.
+    expect(canModuleAction(ctxViewerA2, 'project-a2', 'blog.post.read')).toBe(true)
+  })
+
+  it('a user acting on a project they hold no grant in is rejected, before any module/permission reasoning', () => {
+    // ctxA1Editor has a grant only on project-a1 — project-b1 is untouched.
+    expect(() => assertModuleAction(ctxA1Editor, 'project-b1', 'blog.post.write')).toThrow(
+      TenantAuthorizationError
+    )
+    expect(() => assertModuleAction(ctxA1Editor, 'project-b1', 'blog.post.write')).toThrow(
+      /no ProjectGrant for project "project-b1"/
+    )
+    expect(canModuleAction(ctxA1Editor, 'project-b1', 'blog.post.write')).toBe(false)
+  })
+
+  it('positive control: an owner/editor with the module installed and the permission granted is allowed', () => {
+    // Editor on project-a1, 'blog' installed, 'blog.post.write' granted to editor.
+    expect(() => assertModuleAction(ctxA1Editor, 'project-a1', 'blog.post.write')).not.toThrow()
+    expect(canModuleAction(ctxA1Editor, 'project-a1', 'blog.post.write')).toBe(true)
+
+    // Owner on project-a2, both 'blog' and 'events' installed, owner holds
+    // events.event.write (defaultRoles: ['owner'] only in the fixture map).
+    expect(() => assertModuleAction(ctxOwnerA, 'project-a2', 'events.event.write')).not.toThrow()
+    expect(canModuleAction(ctxOwnerA, 'project-a2', 'events.event.write')).toBe(true)
+  })
 })
