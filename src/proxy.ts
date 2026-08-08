@@ -145,7 +145,20 @@ export async function proxy(request: NextRequest) {
   // stay reachable without an auth/role check, otherwise the admin-host and
   // admin-surface gates below would redirect them to themselves (a loop).
   // /studio is intentionally NOT bypassed here — it now reaches the admin gate.
-  if (pathname.startsWith('/login') || pathname.startsWith('/unauthorized')) {
+  //
+  // /auth/callback and /invite/accept (ADR-017 slice 4, invite-acceptance
+  // flow) sit outside `[locale]` for the same reason as /login — they must
+  // reach the browser exactly as-is, without intlMiddleware rewriting the
+  // path to add a locale prefix (which would 404, since no [locale]/auth or
+  // [locale]/invite route exists) and without the admin-surface gate below
+  // (they are pre-authentication surfaces by definition: an invited user has
+  // no session yet when they land here).
+  if (
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/unauthorized') ||
+    pathname.startsWith('/auth/callback') ||
+    pathname.startsWith('/invite/accept')
+  ) {
     return NextResponse.next()
   }
 

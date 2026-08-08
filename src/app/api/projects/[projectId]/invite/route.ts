@@ -9,12 +9,13 @@ const INVITABLE_ROLES = new Set(['editor', 'viewer'])
  * POST /api/projects/[projectId]/invite — invite an EDITOR or VIEWER to a
  * single project.
  *
- * ADR-017 slice 4 (client login + invitation flow) — DESIGN, not yet
- * confirmed by Tom (see the accompanying handoff §5.2 and §8). Scaffolding
- * for the "tenant owner invites editor/viewer to one of their projects" leg.
- * Same operational caveat as the tenant-owner invite route: inert until
- * Tom configures the Supabase Auth email template / SMTP routing and the
- * redirect allowlist.
+ * ADR-017 slice 4 (client login + invitation flow). Handles the "tenant
+ * owner invites editor/viewer to one of their projects" leg. The
+ * acceptance leg (`redirectTo` target, set-password flow) is built — see
+ * src/app/invite/accept/page.tsx and src/app/auth/callback/route.ts. Same
+ * operational caveat as the tenant-owner invite route: inert until Tom
+ * configures the Supabase Auth email template / SMTP routing and the
+ * redirect allowlist (handoff §8).
  *
  * Authorization: the caller must hold `owner` on the TENANT that owns this
  * project (ADR-017 Decision 2 — ownership is tenant-level; there is no
@@ -99,9 +100,9 @@ export async function POST(
     return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
   }
 
-  // TODO(ADR-017 slice 4, pending Tom decision — handoff §8): same
-  // redirectTo caveat as the tenant-owner invite route.
-  const redirectTo = `${request.nextUrl.origin}/login`
+  // Same target and same env-aware-origin rationale as the tenant-owner
+  // invite route — see src/app/api/tenants/[tenantId]/invite/route.ts.
+  const redirectTo = `${request.nextUrl.origin}/invite/accept`
 
   const admin = createAdminClient()
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {

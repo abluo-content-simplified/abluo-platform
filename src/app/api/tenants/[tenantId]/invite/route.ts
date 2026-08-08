@@ -5,16 +5,14 @@ import { createAdminClient } from '@/lib/supabase/admin'
 /**
  * POST /api/tenants/[tenantId]/invite — invite a tenant OWNER.
  *
- * ADR-017 slice 4 (client login + invitation flow) — DESIGN, not yet
- * confirmed by Tom (see the accompanying handoff §5.2 and §8). This
- * route is scaffolding for the "Abluo admin invites a tenant owner"
- * leg of the invite mechanism. It is safe to land inert: it does
- * nothing unless called, and calling it does nothing unless Tom has
- * (a) configured Supabase Auth's "Invite user" email template /
- * confirmed it routes through the Resend SMTP integration, and (b)
- * added the deployment's `/login` URL to the redirect allowlist
- * (handoff §8) — both flagged as Tom-decisions, not assumptions made
- * here.
+ * ADR-017 slice 4 (client login + invitation flow). The acceptance leg
+ * (`redirectTo` target, set-password flow) is built — see
+ * src/app/invite/accept/page.tsx and src/app/auth/callback/route.ts. This
+ * route is still inert until Tom has (a) configured Supabase Auth's
+ * "Invite user" email template / confirmed it routes through the Resend
+ * SMTP integration, and (b) added this deployment's `/invite/accept` URL to
+ * the Supabase project's redirect allowlist (handoff §8) — both
+ * Tom-decisions, not assumptions made here.
  *
  * Authorization: abluo_admin only. Tenant owners cannot invite other
  * tenant owners for the same tenant (ownership is an Abluo-admin
@@ -54,13 +52,12 @@ export async function POST(
     return NextResponse.json({ success: false, error: 'email is required' }, { status: 400 })
   }
 
-  // TODO(ADR-017 slice 4, pending Tom decision — handoff §8): confirm the
-  // redirectTo target. Design assumes the shared `/login` route (or its
-  // successor if the login-route-sharing decision moves it under
-  // `[locale]/login`) with a `next` param pointing at the client landing
-  // placeholder (`/account`, this slice's scaffolding — see
-  // src/app/[locale]/(client)/account/page.tsx).
-  const redirectTo = `${request.nextUrl.origin}/login`
+  // Points at the invite-acceptance page (this slice — see
+  // src/app/invite/accept/page.tsx), not /login. `request.nextUrl.origin`
+  // is env-aware by construction — it resolves to whatever host actually
+  // served the request, so dev/preview/prod each get the correct origin
+  // without a hardcoded domain or a NEXT_PUBLIC_SITE_URL env var.
+  const redirectTo = `${request.nextUrl.origin}/invite/accept`
 
   const admin = createAdminClient()
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {

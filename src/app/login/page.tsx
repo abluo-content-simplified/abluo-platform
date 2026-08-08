@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const next = searchParams.get('next') ?? '/en/dashboard'
+  const explicitNext = searchParams.get('next')
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -28,7 +28,41 @@ function LoginForm() {
       return
     }
 
-    router.push(next)
+    // Role-based landing (ADR-017 slice 4). An explicit `?next=` always
+    // wins — e.g. proxy.ts's admin gate and /account both append `next` to
+    // send a signed-out user back to where they were headed, and that
+    // intent should be honored regardless of role. Absent that, land
+    // abluo_admin on the admin dashboard and every other authenticated
+    // user (tenant_user) on /account, per ADR-015's two-platform-identity
+    // model. The role check goes through /api/auth/me rather than
+    // importing `resolvePlatformRole` from `@/lib/api/auth` directly —
+    // that module pulls in `next/headers` (server-only) and cannot be
+    // imported into this client component; the route keeps
+    // `getAuthenticatedActor` the single source of truth for the mapping
+    // instead of duplicating it here.
+    if (explicitNext) {
+      router.push(explicitNext)
+      router.refresh()
+      return
+    }
+
+    let destination = '/account'
+    try {
+      const res = await fetch('/api/auth/me')
+      if (res.ok) {
+        const { platformRole } = (await res.json()) as { platformRole: string | null }
+        if (platformRole === 'abluo_admin') {
+          destination = '/en/dashboard'
+        }
+      }
+    } catch {
+      // Network hiccup right after sign-in — fall back to the non-admin
+      // destination rather than blocking the redirect. /account performs
+      // its own auth check and will bounce back to /login if the session
+      // somehow didn't stick, so this fails safe, not open.
+    }
+
+    router.push(destination)
     router.refresh()
   }
 
