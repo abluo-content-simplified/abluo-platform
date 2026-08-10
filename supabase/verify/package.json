@@ -1,0 +1,17 @@
+{
+  "name": "abluo-supabase-verify",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Live-DB RLS/grant verification harness — real local Postgres, applies real migrations, asserts real GRANT + RLS enforcement. Separate from the platform's package.json/gates on purpose. See README.md.",
+  "type": "module",
+  "scripts": {
+    "verify": "vitest run --config vitest.config.mjs",
+    "verify:keep-alive": "node keep-alive.mjs"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "embedded-postgres": "^18.4.0-beta.17",
+    "pg": "^8.23.0",
+    "vitest": "^4.1.10"
+  }
+}

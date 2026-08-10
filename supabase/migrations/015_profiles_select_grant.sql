@@ -1,0 +1,114 @@
+-- ============================================================
+-- Migration 015 — profiles: authenticated SELECT grant
+--
+-- Completes migration 012. Migration 012 granted only
+-- `update (full_name) on public.profiles to authenticated`, on the
+-- (incorrect) assumption — stated verbatim in its own header — that
+-- "No SELECT grant is added — the invite/accept write path does not
+-- .select() the result, so it is not required for this feature."
+--
+-- ── Root cause (empirically caught by the live-DB verify harness) ─────────
+-- PostgreSQL requires SELECT privilege on every column referenced in an
+-- UPDATE's WHERE clause (and in any RETURNING / value expressions) — not
+-- just on the columns being SET. The invite-acceptance name-sync write in
+-- src/app/invite/accept/page.tsx:382-385:
+--
+--     supabase.from('profiles').update({ full_name }).eq('id', freshUserId)
+--
+-- compiles to `update public.profiles set full_name = $1 where id = $2`.
+-- That WHERE references the `id` column, so Postgres demands SELECT on
+-- `profiles` before the UPDATE can run at all. `authenticated` has never
+-- been granted SELECT on `public.profiles` (migration 011's grant audit
+-- covered tenant_members / project_members / projects only; migration 012
+-- explicitly deferred the profiles SELECT grant). Under a real
+-- `authenticated` session the query therefore fails TODAY with:
+--
+--     permission denied for table profiles
+--
+-- caught by that page's own `profileError` handler (it shows a non-blocking
+-- "your name may not have saved" warning rather than crashing), so the name
+-- sync is silently a no-op in production. The live-DB harness
+-- (supabase/verify/live-rls.verify.mjs) reproduces this exact failure
+-- against the real migrations under a real authenticated role, and
+-- confirms the same UPDATE succeeds once SELECT is granted — isolating the
+-- fault to the missing SELECT grant, not the UPDATE grant or the RLS
+-- policy, both of which are already correct.
+--
+-- ── This grant does NOT widen cross-user visibility ──────────────────────
+-- Verified against the actual profiles RLS policies in supabase/schema.sql
+-- (baked in from migration 001, untouched by migration 004's profiles
+-- cleanup):
+--
+--   create policy "Users can read their own profile"
+--     on public.profiles for select
+--     using (id = auth.uid());
+--   create policy "Users can update their own profile"
+--     on public.profiles for update
+--     using (id = auth.uid());
+--
+-- RLS is enabled on public.profiles (schema.sql:
+-- `alter table public.profiles enable row level security;`). A table-level
+-- SELECT grant is only the on/off switch for reading the table at all; the
+-- "own row" SELECT policy above is what actually restricts which ROWS a
+-- caller sees — to `id = auth.uid()`, i.e. exclusively the caller's own
+-- profile. Granting SELECT here therefore lets the UPDATE ... WHERE id = $1
+-- succeed WITHOUT exposing any other user's row. This is exactly the model
+-- ADR-017 Decision 5 / migrations 011 & 012 already follow: GRANT gates
+-- table/column access; RLS is the primary row-isolation boundary.
+--
+-- ── What this migration does ─────────────────────────────────────────────
+-- One additive, idempotent `grant select ... to authenticated`. It adds no
+-- write capability and changes no policy.
+--
+-- ── What this migration does NOT do ──────────────────────────────────────
+--   - No policy is dropped, replaced, or added.
+--   - No additional column/table grant (the migration 012 UPDATE (full_name)
+--     grant is sufficient and unchanged).
+--   - Nothing outside public.profiles is touched.
+--
+-- Apply this in the Supabase SQL editor immediately after migration 014.
+-- ============================================================
+
+
+-- ── Grant ─────────────────────────────────────────────────────────────────
+
+grant select on public.profiles to authenticated;
+
+
+-- ============================================================
+-- Verification — run after applying
+-- ============================================================
+
+-- 1. Confirm the SELECT grant now exists for the authenticated role
+--    (alongside migration 012's column-scoped UPDATE (full_name) grant).
+--
+--    select privilege_type
+--    from   information_schema.role_table_grants
+--    where  table_schema = 'public'
+--    and    table_name   = 'profiles'
+--    and    grantee      = 'authenticated'
+--    order  by privilege_type;
+--
+--    Expected: SELECT, UPDATE (two rows; UPDATE is the column-scoped one
+--    from migration 012).
+
+-- 2. Confirm the pre-existing "own row" RLS policies are untouched (this
+--    migration does not modify pg_policies at all — sanity check only).
+--
+--    select tablename, policyname, cmd, qual
+--    from   pg_policies
+--    where  schemaname = 'public'
+--    and    tablename  = 'profiles'
+--    order  by policyname;
+--
+--    Expected: 2 rows — "Users can read their own profile" (select,
+--    qual: id = auth.uid()) and "Users can update their own profile"
+--    (update, qual: id = auth.uid()), both unchanged.
+
+-- 3. End-to-end: invite a fresh test email, accept the invite, enter a
+--    name, set a password. The /invite/accept "your name may not have
+--    saved" warning must NOT appear, and:
+--
+--    select id, full_name from public.profiles where id = '<new user id>';
+--
+--    Expected: full_name equals the name entered on /invite/accept.

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAbluoAdmin } from '@/lib/api/auth'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 
 /**
  * POST /api/tenants/[tenantId]/invite — invite a tenant OWNER.
@@ -59,15 +59,20 @@ export async function POST(
   // without a hardcoded domain or a NEXT_PUBLIC_SITE_URL env var.
   const redirectTo = `${request.nextUrl.origin}/invite/accept`
 
-  const admin = createAdminClient()
-  const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: {
-      tenant_id: tenantId,
-      role: 'owner',
-      invited_by: actor.userId,
-    },
-    redirectTo,
-  })
+  const { data, error } = await runAsTrustedSystemOperation(
+    `abluo_admin ${actor.userId} inviting a tenant owner (tenant ${tenantId}) — ` +
+      'auth.admin.inviteUserByEmail requires the service role; caller identity/authorization ' +
+      'was already verified above via requireAbluoAdmin() on the RLS-scoped session.',
+    (admin) =>
+      admin.auth.admin.inviteUserByEmail(email, {
+        data: {
+          tenant_id: tenantId,
+          role: 'owner',
+          invited_by: actor.userId,
+        },
+        redirectTo,
+      })
+  )
 
   if (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })

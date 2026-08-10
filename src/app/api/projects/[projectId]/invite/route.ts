@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedActor } from '@/lib/api/auth'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 
 const INVITABLE_ROLES = new Set(['editor', 'viewer'])
 
@@ -104,15 +104,20 @@ export async function POST(
   // invite route — see src/app/api/tenants/[tenantId]/invite/route.ts.
   const redirectTo = `${request.nextUrl.origin}/invite/accept`
 
-  const admin = createAdminClient()
-  const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: {
-      project_id: projectId,
-      role,
-      invited_by: actor.userId,
-    },
-    redirectTo,
-  })
+  const { data, error } = await runAsTrustedSystemOperation(
+    `tenant owner ${actor.userId} inviting a project ${role} (project ${projectId}) — ` +
+      'auth.admin.inviteUserByEmail requires the service role; caller authorization was ' +
+      'already verified above via the RLS-scoped session (project + tenant_members owner check).',
+    (admin) =>
+      admin.auth.admin.inviteUserByEmail(email, {
+        data: {
+          project_id: projectId,
+          role,
+          invited_by: actor.userId,
+        },
+        redirectTo,
+      })
+  )
 
   if (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })

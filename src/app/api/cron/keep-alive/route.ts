@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,8 +29,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createAdminClient()
-    const { error } = await supabase.from('tenants').select('id').limit(1)
+    const { error } = await runAsTrustedSystemOperation(
+      'Vercel Cron keep-alive ping — no user session exists for a scheduled job; ' +
+        'reads a single tenants.id to generate API activity and reset the free-tier pause clock.',
+      async (supabase) => supabase.from('tenants').select('id').limit(1)
+    )
 
     if (error) {
       console.error('[cron/keep-alive] Supabase ping failed:', error.message)
