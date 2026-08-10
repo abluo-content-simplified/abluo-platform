@@ -27,5 +27,23 @@
       "editor": "Editor",
       "viewer": "Viewer"
     }
+  },
+  "clientDashboard": {
+    "posts": {
+      "title": "Posts",
+      "emptyNoProjects": "You don’t have access to any projects yet.",
+      "emptyNoPosts": "No posts yet.",
+      "moduleNotInstalled": "The blog module is not enabled for this project.",
+      "untitled": "Untitled",
+      "columns": {
+        "title": "Title",
+        "status": "Status",
+        "updated": "Updated"
+      },
+      "status": {
+        "published": "Published",
+        "draft": "Draft"
+      }
+    }
   }
 }

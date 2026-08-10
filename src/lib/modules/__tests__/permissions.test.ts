@@ -34,9 +34,17 @@ describe('buildModulePermissions()', () => {
 
   it('contains all expected blog permission IDs', () => {
     const map = buildModulePermissions()
+    expect(map).toHaveProperty('blog.post.read')
     expect(map).toHaveProperty('blog.post.write')
     expect(map).toHaveProperty('blog.post.delete')
     expect(map).toHaveProperty('blog.taxonomy.write')
+  })
+
+  it('blog.post.read grants owner, editor, AND viewer by default (all roles can read)', () => {
+    const map = buildModulePermissions()
+    expect(map['blog.post.read'].defaultRoles).toContain('owner')
+    expect(map['blog.post.read'].defaultRoles).toContain('editor')
+    expect(map['blog.post.read'].defaultRoles).toContain('viewer')
   })
 
   it('contains all expected events permission IDs', () => {
@@ -82,9 +90,10 @@ describe('buildModulePermissions()', () => {
 // ── MODULE_PERMISSION_MAP ─────────────────────────────────────────────────────
 
 describe('MODULE_PERMISSION_MAP', () => {
-  it('contains exactly 7 permissions — guards against accidental registry removals', () => {
+  it('contains exactly 8 permissions — guards against accidental registry removals', () => {
     // ADR-016 Phase B added events.taxonomy.write (event categories) — was 6.
-    expect(Object.keys(MODULE_PERMISSION_MAP)).toHaveLength(7)
+    // ADR-017 slice 6 added blog.post.read (client dashboard read path) — now 8.
+    expect(Object.keys(MODULE_PERMISSION_MAP)).toHaveLength(8)
   })
 
   it('has the same shape as buildModulePermissions()', () => {
@@ -98,8 +107,9 @@ describe('MODULE_PERMISSION_MAP', () => {
     expect(a).toBe(b)
   })
 
-  it('all 7 expected keys are present', () => {
+  it('all 8 expected keys are present', () => {
     const expectedKeys = [
+      'blog.post.read',
       'blog.post.write',
       'blog.post.delete',
       'blog.taxonomy.write',

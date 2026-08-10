@@ -407,6 +407,35 @@ export const postsQuery = /* groq */ `
   }
 `
 
+// ─── Dashboard posts (ADR-017 slice 6 / ADR-015 close-out) ────────────────────
+// The client dashboard's posts list. UNLIKE postsQuery (the PUBLIC website
+// list, which filters `defined(publishedAt) && publishedAt <= now()`), this
+// query returns ALL posts for the project regardless of publish state — the
+// client needs to see drafts and scheduled posts they haven't published yet.
+//
+// A `status` field is derived so the dashboard can label each row without a
+// second pass: "published" when publishedAt is set and in the past, otherwise
+// "draft" (covers both never-published and future-scheduled posts). Ordered by
+// most-recently-touched first (publishedAt when set, else _updatedAt).
+//
+// Executed ONLY through tenantScopedSanityClient (getDashboardPosts), which
+// forces $projectSlug from the caller's ProjectGrant — this query references
+// $projectSlug (required by the chokepoint's assertQueryIsTenantScoped guard)
+// and never interpolates tenant identity.
+export const dashboardPostsQuery = /* groq */ `
+  *[_type == "post" && projectSlug == $projectSlug]
+  | order(coalesce(publishedAt, _updatedAt) desc) {
+    _id,
+    "title": ${loc('title')},
+    "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
+    "status": select(
+      defined(publishedAt) && publishedAt <= now() => "published",
+      "draft"
+    ),
+    "updatedAt": _updatedAt
+  }
+`
+
 export const postBySlugQuery = /* groq */ `
   *[_type == "post" && projectSlug == $projectSlug && slug[$locale].current == $slug][0] {
     _id,

@@ -85,6 +85,12 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
 
       permissions: [
         {
+          id: 'blog.post.read',
+          label: 'View posts',
+          description: 'View and list blog posts in the client dashboard.',
+          defaultRoles: ['owner', 'editor', 'viewer'],
+        },
+        {
           id: 'blog.post.write',
           label: 'Create and edit posts',
           description: 'Create, edit, and publish blog posts.',

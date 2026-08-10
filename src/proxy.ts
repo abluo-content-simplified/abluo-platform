@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { routing } from './i18n/routing'
 import { resolvePlatformRole } from '@/lib/api/auth'
 import { isAdminSurface, isStudio } from '@/lib/proxy/admin-surface'
+import { isClientSurface } from '@/lib/proxy/client-surface'
 
 const intlMiddleware = createMiddleware(routing)
 
@@ -131,6 +132,61 @@ async function requireAdminInProxy(request: NextRequest) {
   }
 
   // Admin — return the (possibly cookie-refreshed) continue response.
+  return supabaseResponse
+}
+
+/**
+ * Client-dashboard gate for the middleware boundary (ADR-017 slice 6 /
+ * ADR-015 close-out). Sibling to `requireAdminInProxy`: reuses the exact
+ * cookie-refresh + `getUser()` pattern, but requires only ANY authenticated
+ * session — there is deliberately NO `abluo_admin` role check. The client
+ * dashboard is the tenant client's surface, not an Abluo-admin surface.
+ *
+ * Fail-safe: no user → `/login?next=<path>`. An authenticated user is allowed
+ * through regardless of platform role; the per-project authorization decision
+ * (which projects, which role, which modules) is made downstream by
+ * `getTenantAuthorizationContext()` at the route/data layer, never here. This
+ * gate's single job is "is there a session at all" — it is a coarse
+ * authentication boundary, not the fine-grained authorization boundary.
+ */
+async function requireAuthenticatedInProxy(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  let supabaseResponse = NextResponse.next({ request })
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          )
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('next', pathname)
+    return NextResponse.redirect(loginUrl)
+  }
+
+  // Authenticated (any platform role) — return the (possibly cookie-refreshed)
+  // continue response.
   return supabaseResponse
 }
 
@@ -298,6 +354,21 @@ export async function proxy(request: NextRequest) {
   // tenant resolves. Must run BEFORE the tenant-routes block below.
   if (tenantId === null && (isAdminSurface(pathname) || isStudio(pathname))) {
     return await requireAdminInProxy(request) // NextResponse (continue) or redirect
+  }
+
+  // ── Client-dashboard-surface gate (ADR-017 slice 6 / ADR-015 close-out) ──
+  // The tenant CLIENT dashboard `(client)` route group (account/posts/leads/
+  // analytics) requires ANY authenticated session — not the abluo_admin role.
+  // The same `tenantId === null` guard as the admin gate keeps this provably
+  // INERT for every public tenant host (which always resolves a non-null
+  // tenant): it fires only on platform/admin hosts where the client dashboard
+  // actually lives. The CLIENT_SURFACE_SEGMENTS allowlist is disjoint from
+  // ADMIN_SURFACE_SEGMENTS, so this never double-gates an admin surface. Runs
+  // AFTER the admin gate and BEFORE the tenant-routes block, mirroring its
+  // placement — intl middleware ordering is undisturbed (both gates short-
+  // circuit before the intl fall-through at the end of proxy()).
+  if (tenantId === null && isClientSurface(pathname)) {
+    return await requireAuthenticatedInProxy(request) // NextResponse (continue) or redirect
   }
 
   // ── Tenant routes — rewrite to [locale]/(website)/[tenant] ───────────────

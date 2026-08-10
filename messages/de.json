@@ -27,5 +27,23 @@
       "editor": "Redakteur",
       "viewer": "Betrachter"
     }
+  },
+  "clientDashboard": {
+    "posts": {
+      "title": "Beiträge",
+      "emptyNoProjects": "Du hast noch keinen Zugriff auf Projekte.",
+      "emptyNoPosts": "Noch keine Beiträge.",
+      "moduleNotInstalled": "Das Blog-Modul ist für dieses Projekt nicht aktiviert.",
+      "untitled": "Ohne Titel",
+      "columns": {
+        "title": "Titel",
+        "status": "Status",
+        "updated": "Aktualisiert"
+      },
+      "status": {
+        "published": "Veröffentlicht",
+        "draft": "Entwurf"
+      }
+    }
   }
 }
