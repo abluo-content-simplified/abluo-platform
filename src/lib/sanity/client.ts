@@ -19,8 +19,24 @@ const TENANT_TO_PROJECT: Record<string, string> = {
   'abluo-the-tiny-cms': 'abluo',
 }
 
+/**
+ * Non-throwing lookup — resolves a URL tenant slug to its Sanity projectSlug,
+ * or returns `null` when the slug has no entry in `TENANT_TO_PROJECT`.
+ *
+ * Use this at public-website route boundaries (the `(website)/[tenant]`
+ * route group) where an unmapped/unknown tenant slug is an expected,
+ * recoverable case — e.g. a retired flat route or a typo falling through to
+ * the `[tenant]` dynamic segment — and should resolve to a clean `notFound()`
+ * rather than an unhandled throw. Callers that legitimately want a hard
+ * error for a missing mapping (internal/admin paths) should keep using
+ * `tenantToProjectSlug()` below.
+ */
+export function tryTenantToProjectSlug(tenantSlug: string): string | null {
+  return TENANT_TO_PROJECT[tenantSlug] ?? null
+}
+
 export function tenantToProjectSlug(tenantSlug: string): string {
-  const projectSlug = TENANT_TO_PROJECT[tenantSlug]
+  const projectSlug = tryTenantToProjectSlug(tenantSlug)
   if (!projectSlug) {
     throw new Error(
       `No project mapping for tenant "${tenantSlug}". Add it to TENANT_TO_PROJECT in client.ts.`

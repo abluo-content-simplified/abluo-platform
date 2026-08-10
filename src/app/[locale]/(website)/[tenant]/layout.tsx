@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic'
 
 import type { Metadata } from 'next'
-import { tenantClient, tenantToProjectSlug, fetchDesignSystemById } from '@/lib/sanity/client'
+import { notFound } from 'next/navigation'
+import { tenantClient, tenantToProjectSlug, tryTenantToProjectSlug, fetchDesignSystemById } from '@/lib/sanity/client'
 import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, siteConfigFaviconQuery, projectIntegrationsQuery } from '@/lib/sanity/queries'
 import { ogImageUrl } from '@/lib/sanity/image'
 import type { LocaleConfig, SupportedLocale, DesignSystem, FontDefinition, WebsiteSiteConfig, BackgroundGraphic, ProjectIntegrations } from '@/lib/sanity/types'
@@ -398,6 +399,10 @@ function DesignSystemHead({ cssVars, fontsUrl }: { cssVars: string; fontsUrl: st
 
 export async function generateMetadata({ params }: { params: Promise<{ tenant: string; locale: string }> }): Promise<Metadata> {
   const { tenant: tenantId } = await params
+  // Fail closed to a clean 404 for an unmapped tenant slug (retired flat
+  // routes, typos, dead links falling through to this dynamic segment)
+  // instead of letting tenantClient() throw an unhandled error.
+  if (!tryTenantToProjectSlug(tenantId)) notFound()
   const { fetchForTenant } = tenantClient(tenantId)
 
   const [siteConfigFavicon, rawDesignSystem] = await Promise.all([
@@ -472,6 +477,9 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
 
 export default async function WebsiteLayout({ children, params }: LayoutProps) {
   const { tenant: tenantId, locale } = await params
+  // Fail closed to a clean 404 for an unmapped tenant slug — see the matching
+  // guard in generateMetadata() above for the full rationale.
+  if (!tryTenantToProjectSlug(tenantId)) notFound()
   const { fetchForTenant } = tenantClient(tenantId)
 
   // ── Shared: locale config ────────────────────────────────────────────────────
