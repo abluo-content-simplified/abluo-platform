@@ -17,26 +17,50 @@
 import { stripLocale } from './admin-surface'
 
 /**
- * Tenant client-dashboard surfaces. The first path segment (after any locale
- * prefix) identifies the surface. These are the route-group folders under
- * `src/app/[locale]/(client)/`. Kept in lockstep with that directory — a new
- * client route must be added here to be gated.
+ * User-level client-dashboard surfaces — NOT scoped to a single project. The
+ * LEADING path segment (after any locale prefix) identifies the surface. These
+ * are the static route-group folders directly under `src/app/[locale]/(client)/`
+ * that list or act across all of a user's grants (currently just `account`).
+ *
+ * ADR-017 Phase 2 route restructure: the project-scoped pages (`posts`,
+ * `leads`, `analytics`) moved OUT of this leading-segment set and UNDER the
+ * `[tenant]` (projectSlug) dynamic segment — matched by
+ * `CLIENT_PROJECT_SEGMENTS` at the SECOND position below.
  */
-export const CLIENT_SURFACE_SEGMENTS = new Set([
-  'account',
-  'posts',
-  'leads',
-  'analytics',
-])
+export const CLIENT_USER_SEGMENTS = new Set(['account'])
 
 /**
- * True when `pathname` addresses a client dashboard surface. Pure: locale is
- * stripped first, then the leading segment is matched against the allowlist.
- * `/login`, `/unauthorized`, admin surfaces, and tenant paths are NOT client
- * surfaces.
+ * Project-scoped client-dashboard sub-pages. In the ADR-017 Phase 2 shape these
+ * live at `/{projectSlug}/{segment}` — i.e. the SECOND path segment (after any
+ * locale prefix), because the first segment is the dynamic projectSlug. Kept in
+ * lockstep with `src/app/[locale]/(client)/[tenant]/*` — a new project-scoped
+ * client page must be added here to be gated.
+ *
+ * These names are deliberately disjoint from the public tenant sub-routes
+ * (`blog`, `events`, `live`, and free-form page slugs under
+ * `(website)/[tenant]`), so that on the platform host the gate cannot mistake a
+ * public-style path for a client surface via a name clash.
+ */
+export const CLIENT_PROJECT_SEGMENTS = new Set(['posts', 'leads', 'analytics'])
+
+/**
+ * True when `pathname` addresses a client dashboard surface. Pure: the locale
+ * prefix is stripped first, then:
+ *   • the LEADING segment is matched against the user-level allowlist
+ *     (`/account`, `/en/account`), OR
+ *   • the SECOND segment is matched against the project-scoped allowlist
+ *     (`/{projectSlug}/posts`, `/en/{projectSlug}/leads`, …).
+ *
+ * `/login`, `/unauthorized`, admin surfaces, the bare locale root, and public
+ * tenant paths are NOT client surfaces. The proxy only ever consults this on a
+ * `tenantId === null` host (no public tenant resolves there), so a public
+ * tenant site can never reach this predicate.
  */
 export function isClientSurface(pathname: string): boolean {
   const p = stripLocale(pathname)
-  const seg = p.split('/').filter(Boolean)[0] ?? ''
-  return CLIENT_SURFACE_SEGMENTS.has(seg)
+  const segs = p.split('/').filter(Boolean)
+  if (segs.length === 0) return false
+  if (CLIENT_USER_SEGMENTS.has(segs[0])) return true
+  if (segs.length >= 2 && CLIENT_PROJECT_SEGMENTS.has(segs[1])) return true
+  return false
 }

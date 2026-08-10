@@ -29,6 +29,23 @@
     }
   },
   "clientDashboard": {
+    "nav": {
+      "blog": "Beiträge",
+      "events": "Veranstaltungen",
+      "live": "Live"
+    },
+    "shell": {
+      "brandTagline": "Dashboard",
+      "account": "Konto",
+      "signOut": "Abmelden",
+      "noModules": "Für dieses Projekt sind noch keine Module aktiviert.",
+      "entryTitle": "Dashboard",
+      "noProjects": "Du hast noch keinen Zugriff auf Projekte."
+    },
+    "projectSwitcher": {
+      "label": "Projekt",
+      "ariaLabel": "Projekt wechseln"
+    },
     "posts": {
       "title": "Beiträge",
       "emptyNoProjects": "Du hast noch keinen Zugriff auf Projekte.",
@@ -44,6 +61,14 @@
         "published": "Veröffentlicht",
         "draft": "Entwurf"
       }
+    },
+    "leads": {
+      "title": "Anfragen",
+      "comingSoon": "Die Verwaltung von Anfragen kommt bald."
+    },
+    "analytics": {
+      "title": "Statistiken",
+      "comingSoon": "Statistiken kommen bald."
     }
   }
 }

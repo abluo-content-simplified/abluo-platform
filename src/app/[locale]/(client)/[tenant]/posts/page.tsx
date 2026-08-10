@@ -1,47 +1,46 @@
-import { redirect } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
+import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { getDashboardPosts, type DashboardPost } from '@/lib/api/client-dashboard'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 
 /**
- * Client dashboard — Posts list. ADR-017 slice 6 / ADR-015 close-out.
+ * Client dashboard — Posts list. ADR-017 slice 6 (Phase 1 read path) relocated
+ * under the `[tenant]` (projectSlug) segment in Phase 2 (task #81).
  *
- * The first real client-dashboard read path. Resolves the caller's
- * `TenantAuthorizationContext`, picks their first project grant (the project
- * switcher is deferred to Phase 2), and lists that project's posts through
- * `getDashboardPosts`, which enforces the ADR-017 module-entitlement +
- * tenant-scoped-Sanity chain.
+ * The active project is now the URL's first path segment (`params.tenant`),
+ * re-validated against `ctx.projects` via `resolveProjectGrant` — the ADR-017
+ * no-silent-substitute rule (Tom's locked decision #1). An ungranted slug is a
+ * `notFound()`, never a fallback to `ctx.projects[0]` (the Phase 1 behaviour
+ * this page replaces).
  *
- * Defence in depth: the `(client)` proxy gate already guarantees an
- * authenticated session before this route renders, but this page still checks
- * `ctx` itself (redirect to /login if null) rather than trusting the gate —
- * the same belt-and-braces posture as `account/page.tsx`.
+ * Defence in depth: `[tenant]/layout.tsx` already validates the slug and the
+ * `(client)` layout already gates the session, but this page still checks both
+ * itself — the same belt-and-braces posture as the rest of the dashboard.
  *
  * All user-facing copy comes from the `clientDashboard` next-intl namespace —
  * no hardcoded strings (Multilingual-First).
  */
-export default async function PostsPage() {
+export default async function PostsPage({
+  params,
+}: {
+  params: Promise<{ tenant: string }>
+}) {
+  const { tenant: projectSlug } = await params
+
   const ctx = await getTenantAuthorizationContext()
   if (!ctx) {
-    redirect('/login?next=/posts')
+    redirect(`/login?next=/${projectSlug}/posts`)
+  }
+
+  const grant = resolveProjectGrant(ctx.projects, projectSlug)
+  if (!grant) {
+    notFound()
   }
 
   const locale = await getLocale()
   const t = await getTranslations('clientDashboard')
-
-  // No project grants — the user is authenticated but not a member of any
-  // project yet. Localized empty state; do not attempt a read.
-  if (ctx.projects.length === 0) {
-    return (
-      <Shell title={t('posts.title')}>
-        <p className="text-sm text-muted-foreground">{t('posts.emptyNoProjects')}</p>
-      </Shell>
-    )
-  }
-
-  // Phase 1: first grant only. Project switcher is Phase 2 (task #81).
-  const grant = ctx.projects[0]
 
   let posts: DashboardPost[] = []
   let moduleNotInstalled = false
@@ -94,7 +93,7 @@ export default async function PostsPage() {
   )
 }
 
-/** Minimal page frame. The real dashboard shell is Phase 2 (task #81). */
+/** Minimal page frame inside the dashboard shell. */
 function Shell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="max-w-2xl space-y-6">

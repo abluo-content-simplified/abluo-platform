@@ -357,8 +357,10 @@ export async function proxy(request: NextRequest) {
   }
 
   // ── Client-dashboard-surface gate (ADR-017 slice 6 / ADR-015 close-out) ──
-  // The tenant CLIENT dashboard `(client)` route group (account/posts/leads/
-  // analytics) requires ANY authenticated session — not the abluo_admin role.
+  // The tenant CLIENT dashboard `(client)` route group — the user-level
+  // `account` page plus the project-scoped `/{projectSlug}/{posts,leads,
+  // analytics}` pages (ADR-017 Phase 2) — requires ANY authenticated session,
+  // not the abluo_admin role.
   // The same `tenantId === null` guard as the admin gate keeps this provably
   // INERT for every public tenant host (which always resolves a non-null
   // tenant): it fires only on platform/admin hosts where the client dashboard

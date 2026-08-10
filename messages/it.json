@@ -29,6 +29,23 @@
     }
   },
   "clientDashboard": {
+    "nav": {
+      "blog": "Articoli",
+      "events": "Eventi",
+      "live": "Live"
+    },
+    "shell": {
+      "brandTagline": "Dashboard",
+      "account": "Account",
+      "signOut": "Esci",
+      "noModules": "Nessun modulo è ancora attivo per questo progetto.",
+      "entryTitle": "Dashboard",
+      "noProjects": "Non hai ancora accesso a nessun progetto."
+    },
+    "projectSwitcher": {
+      "label": "Progetto",
+      "ariaLabel": "Cambia progetto"
+    },
     "posts": {
       "title": "Articoli",
       "emptyNoProjects": "Non hai ancora accesso a nessun progetto.",
@@ -44,6 +61,14 @@
         "published": "Pubblicato",
         "draft": "Bozza"
       }
+    },
+    "leads": {
+      "title": "Contatti",
+      "comingSoon": "La gestione dei contatti arriverà presto."
+    },
+    "analytics": {
+      "title": "Statistiche",
+      "comingSoon": "Le statistiche arriveranno presto."
     }
   }
 }

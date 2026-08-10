@@ -29,6 +29,23 @@
     }
   },
   "clientDashboard": {
+    "nav": {
+      "blog": "Posts",
+      "events": "Events",
+      "live": "Live"
+    },
+    "shell": {
+      "brandTagline": "Dashboard",
+      "account": "Account",
+      "signOut": "Sign out",
+      "noModules": "No modules are enabled for this project yet.",
+      "entryTitle": "Dashboard",
+      "noProjects": "You don’t have access to any projects yet."
+    },
+    "projectSwitcher": {
+      "label": "Project",
+      "ariaLabel": "Switch project"
+    },
     "posts": {
       "title": "Posts",
       "emptyNoProjects": "You don’t have access to any projects yet.",
@@ -44,6 +61,14 @@
         "published": "Published",
         "draft": "Draft"
       }
+    },
+    "leads": {
+      "title": "Leads",
+      "comingSoon": "Leads management is coming soon."
+    },
+    "analytics": {
+      "title": "Analytics",
+      "comingSoon": "Analytics are coming soon."
     }
   }
 }
