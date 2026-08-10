@@ -982,7 +982,7 @@ Each phase is independently deployable (ADR-007):
 
 ## ADR-015 — Platform Authorization & Tenant Isolation
 
-**Status:** Accepted
+**Status:** Accepted — Phase 1 & 2 Implemented, Phase 3 Open (see Close-out, 2026-08-10)
 **Date:** 2026-07-24
 **Supersedes:** —
 **Superseded By:** —
@@ -1184,6 +1184,22 @@ Per R5:
 - **Backfill.** Every existing Supabase user needs an explicit `platform_role` value at rollout: default `tenant_user` for all, explicitly promote Tom (and any other intended admins) to `abluo_admin`. No user should be left with an undefined `platform_role`.
 - **Forced re-authentication.** JWTs issued before this rollout do not carry the `platform_role` claim and cannot retroactively gain it. Every existing session must be forced to refresh or re-authenticate at rollout so that the claim is present before any route begins relying on it. Skipping this step means the reliable-claim work of steps 2–3 (Implementation Order) is not actually reliable for already-logged-in users.
 - **Sequencing dependency.** The bootstrap steps above must complete before Implementation Order step 6 (gating `/studio`) — gating a route on a claim that most sessions don't yet carry would lock out legitimate admins, not just tenant users.
+
+### Close-out (2026-08-10)
+
+**What is enforced and tested today.** Every RLS-protected table named in the Supabase model (`tenant_members`, `projects`, `project_members`, `inquiries`, `profiles`, and — as of this close-out — `leads`) has a live-DB regression suite (`supabase/verify/live-rls.verify.mjs`, 37 checks) proving, against a real Postgres with the real migrations applied: the correct base-table GRANT exists, cross-tenant reads/writes are denied, no policy recurses, and the `abluo_admin` claim never widens row-level visibility. The pure authorization-decision logic — `ProjectGrant` assembly (owner-wins, cross-tenant union correctness), the Sanity chokepoint's projectSlug-override and reference/media recursion guard, and the module-installed-before-permission entitlement guard — has a parallel in-memory suite (`src/lib/api/__tests__/cross-tenant-isolation.test.ts`, 25 checks) covering every case in this ADR's required Testing matrix, including the literal "module disabled for Tenant A even if enabled for Tenant B" case. Together these two harnesses are the release-blocking cross-tenant isolation gate decision 10 calls for.
+
+**What remains open, named explicitly (not silently deferred):**
+
+1. **The Sanity chokepoint and entitlement guard (R2, R3, ADR-017 Decisions 4–5) are unit-tested but not wired into any route yet.** `tenantScopedSanityClient`/`assertModuleAction` are correct in isolation; no production code path calls them (only `getTenantAuthorizationContext` is consumed, by `/account`). This is the single largest gap between "the isolation model is proven correct" and "the isolation model is enforced" — closing it is route-wiring work (client-dashboard territory), not test work, and must not be read as covered by this close-out's gate-passing.
+2. **`leads` has no base-table GRANT to `authenticated` today** (a gap independent of this close-out, now proven and pinned by a regression test rather than assumed). It fails closed, not open — no live route reads `leads` yet — but the RLS-primary flip for `leads` (ADR-017 Decision 6) will need to add the grant *and* rewrite the policy to the project-grain shape, since today's tenant-grain policy silently excludes project-only members from their own project's leads.
+3. **Admin-read routes remain on service-role** (`createAdminClient()` in the admin dashboard and `/api/sanity/*`) — deprioritized follow-up; requires the R4 `abluo_admin`-scoped RLS policy plus shadow-read verification before it can flip.
+4. **The 9 `requireAbluoAdmin()`-gated admin API routes have no automated route-level test** (pre-existing debt, named "I9" in the code). Manual verification only.
+5. **`supabase/schema.sql`'s header is stale** — it claims to reflect migrations through 005; migrations 006–015 are real and applied but not reflected. A documentation-accuracy risk, not a runtime one.
+6. **`inquiries` INSERT stays service-role-only by design** (migration 014's own open decision, reaffirmed) — public form submissions never go through the `authenticated` role.
+7. **MFA/AAL2 (decision 7 / R6)** is unimplemented; Supabase plan-tier support is still unverified.
+
+**Status rationale.** The identity model (`platform_role`), the `/studio`/admin-surface gate, `TenantAuthorizationContext` resolution, and tenant/project-level RLS+GRANT isolation for every table with data flowing through it today are implemented and release-blocking-tested. What blocks a fully closed state is item 1: the Sanity and module-entitlement chokepoints are proven correct but inert. ADR-015 closes for real once at least one real route is wired through `tenantScopedSanityClient`/`assertModuleAction` (client-dashboard work), moving those boundaries from "in-memory only" to "both" in the coverage matrix.
 
 ---
 

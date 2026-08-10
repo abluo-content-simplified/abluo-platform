@@ -603,3 +603,129 @@ describe('(f) profiles SELECT grant — migration 015 (closes the invite/accept 
     expect(rowCount).toBe(0)
   })
 })
+
+// ── (g) leads — CURRENTLY ungrantable + RLS still tenant-grain-only ────────
+//
+// Filled as part of ADR-015 close-out (task #78): `leads` is the ONE
+// RLS-protected table with ZERO coverage anywhere in this suite before this
+// block — the isolation matrix audit found `schema.sql`'s original
+// migration-004-era policies (`get_my_tenant_ids()` / `get_my_writable_
+// tenant_ids()`) are still in force, but — unlike tenant_members/
+// project_members/projects (migration 011) and inquiries (migration 014)
+// and profiles (migration 015) — NO migration has ever issued a `grant
+// select/insert/update on public.leads to authenticated`. This is the exact
+// "migration 011 bug class" this file's header already names, just never
+// checked for this table specifically until now.
+//
+// Two things are proven here, in order:
+//   (1) TODAY, `authenticated` has zero grants on `leads` — this is not a
+//       security hole (it fails CLOSED, harder than intended, not open) but
+//       it does mean nobody could read/write leads through the RLS-scoped
+//       session client today even if a route tried to. This matches the
+//       platform's actual current state: the client dashboard's leads read
+//       path is unbuilt (ADR-017 Context) and every existing leads access is
+//       via service-role. Recorded here as a regression guard so a future
+//       session doesn't assume this table is already RLS-live.
+//   (2) IF the grant is added (simulated below, then reverted) — the
+//       pre-existing tenant-grain RLS policies (schema.sql, migration
+//       004-era) DO correctly isolate tenant A from tenant B, exactly like
+//       the `(b)` block proves for tenant_members/projects. This means the
+//       upcoming ADR-017 Decision 6 slice ("New client-dashboard `leads`
+//       SELECT") only needs the GRANT (plus, per that Decision, the
+//       `project_id` NOT NULL + project-grain RLS rewrite) — the tenant-grain
+//       isolation underneath is already sound, not something that slice has
+//       to build from scratch.
+//   (3) A KNOWN, DOCUMENTED FUNCTIONALITY GAP relative to ADR-017's
+//       per-project model: `leads` RLS reads `tenant_members` only
+//       (`get_my_tenant_ids()`), never `project_members`. A project_members-
+//       only grant (no tenant_members row for that project's tenant — e.g.
+//       userEditorA1) gets ZERO leads visibility for that project TODAY,
+//       even though ADR-017's model says an editor grant should see the
+//       project's leads. This is not a cross-tenant leak (it fails closed,
+//       not open) but it is a real, currently-live functional gap that the
+//       leads RLS rewrite (project_id in get_my_project_ids()) must close —
+//       flagged here so it is proven, not just asserted in prose, and so a
+//       future revert of the eventual rewrite would fail this test.
+
+describe('(g) leads — ungranted today; tenant-grain RLS proven sound once granted (ADR-017 Decision 6 groundwork)', () => {
+  const leadIds = {}
+
+  it('TODAY: authenticated has ZERO grants on leads (migration-011 bug class, never closed for this table)', async () => {
+    const { rows } = await client.query(
+      `select privilege_type from information_schema.role_table_grants
+       where table_schema = 'public' and table_name = 'leads' and grantee = 'authenticated'`
+    )
+    expect(rows).toEqual([])
+  })
+
+  it('TODAY: even the tenant owner of the row\'s own tenant cannot read leads via the authenticated role — fails CLOSED with a permission error, not an empty result', async () => {
+    await asSuperuser(async () => {
+      const lead = await client.query(
+        `insert into public.leads (tenant_id, project_id, name, email) values ($1, $2, 'Lead A', 'lead-a@verify.test') returning id`,
+        [ids.tenantA, ids.projectA1]
+      )
+      leadIds.a = lead.rows[0].id
+    })
+    await loginAs(ids.userA)
+    await expect(client.query(`select id from public.leads where id = $1`, [leadIds.a])).rejects.toThrow(
+      /permission denied for table leads/
+    )
+  })
+
+  it('IF the grant is added (simulated, then reverted): the pre-existing tenant-grain RLS policies correctly isolate tenant A from tenant B', async () => {
+    await asSuperuser(async () => {
+      const leadB = await client.query(
+        `insert into public.leads (tenant_id, project_id, name, email) values ($1, $2, 'Lead B', 'lead-b@verify.test') returning id`,
+        [ids.tenantB, ids.projectB1]
+      )
+      leadIds.b = leadB.rows[0].id
+      await client.query(`grant select, insert, update on public.leads to authenticated`)
+    })
+
+    try {
+      // Positive: tenant A owner reads exactly Lead A.
+      await loginAs(ids.userA)
+      const { rows: aRows } = await client.query(`select id from public.leads`)
+      expect(aRows.map((r) => r.id)).toEqual([leadIds.a])
+
+      // Negative: tenant A owner cannot read or write tenant B's lead.
+      const { rows: crossRead } = await client.query(`select id from public.leads where id = $1`, [leadIds.b])
+      expect(crossRead).toHaveLength(0)
+      const { rowCount: crossWrite } = await client.query(
+        `update public.leads set message = 'hijacked' where id = $1`,
+        [leadIds.b]
+      )
+      expect(crossWrite).toBe(0)
+
+      // Positive write: tenant A owner (writable role) can update their own lead.
+      const { rowCount: ownWrite } = await client.query(
+        `update public.leads set message = 'contacted by owner' where id = $1`,
+        [leadIds.a]
+      )
+      expect(ownWrite).toBe(1)
+
+      // KNOWN GAP: userEditorA1 (project_members-only editor on A1, no
+      // tenant_members row anywhere) gets ZERO leads for tenant A — leads
+      // RLS has not been migrated to the project-grain model yet. This
+      // documents the gap, it does not fix it.
+      await loginAs(ids.userEditorA1)
+      const { rows: editorRows } = await client.query(`select id from public.leads`)
+      expect(editorRows).toHaveLength(0)
+
+      // A user with zero tenant_members rows anywhere sees zero leads.
+      await loginAs(ids.userNoMemberships)
+      const { rows: noneRows } = await client.query(`select id from public.leads`)
+      expect(noneRows).toHaveLength(0)
+    } finally {
+      await asSuperuser(() => client.query(`revoke select, insert, update on public.leads from authenticated`))
+    }
+  })
+
+  it('AFTER revert: authenticated is back to zero grants on leads, confirming this block left no state behind for tests that run after it', async () => {
+    const { rows } = await client.query(
+      `select privilege_type from information_schema.role_table_grants
+       where table_schema = 'public' and table_name = 'leads' and grantee = 'authenticated'`
+    )
+    expect(rows).toEqual([])
+  })
+})

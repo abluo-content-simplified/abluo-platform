@@ -454,6 +454,35 @@ describe('slice 3b — entitlement + permission guard', () => {
     expect(() => assertModuleAction(ctxOwnerA, 'project-a2', 'events.event.write')).not.toThrow()
     expect(canModuleAction(ctxOwnerA, 'project-a2', 'events.event.write')).toBe(true)
   })
+
+  it('ADR-015 required matrix case, made explicit: a module disabled for one tenant\'s project is denied even though the SAME module is enabled for a DIFFERENT tenant\'s project — tenant B\'s enabled-module state never leaks into tenant A\'s grant, or vice versa', () => {
+    // 'events' is enabled on project-a2 (tenant A) but NOT on project-b1
+    // (tenant B) in the fixture world (enabledModuleIdsByProjectId, top of
+    // file). A single spanning user (owns tenant A, holds a viewer grant on
+    // tenant B's project) exercises both sides of the same check in one
+    // context, proving the module-installed decision is per-grant, not
+    // somehow shared or cached across the user's other memberships.
+    const spanningGrants = grantsFor({
+      ownedProjects: [projectA1, projectA2],
+      memberships: [membershipViewerB1],
+    })
+    const ctxSpanning: TenantAuthorizationContext = {
+      userId: 'user-spanning',
+      platformRole: 'tenant_user',
+      projects: spanningGrants,
+    }
+
+    // Tenant A's project A2: 'events' IS installed — the owner grant permits it.
+    expect(canModuleAction(ctxSpanning, 'project-a2', 'events.event.write')).toBe(true)
+
+    // The SAME user, on tenant B's project B1 (viewer grant, 'events' NOT
+    // installed there): denied, and denied for the MODULE reason first, not
+    // merely because a viewer lacks the permission.
+    expect(() => assertModuleAction(ctxSpanning, 'project-b1', 'events.event.write')).toThrow(
+      /module "events" is not installed/
+    )
+    expect(canModuleAction(ctxSpanning, 'project-b1', 'events.event.write')).toBe(false)
+  })
 })
 
 // ─── ADR-017 slice 5 — inquiries P0 fix: PATCH /api/inquiries/[id] ────────
