@@ -208,4 +208,33 @@ describe('assembleProjectGrants', () => {
     expect(grants[0].enabledModuleIds).toEqual([])
     expect(grants[0].permissions).toEqual([])
   })
+
+  it('still surfaces a grant (with no modules) for a project with no Sanity content mapping', () => {
+    // Regression for the getTenantAuthorizationContext resolver throwing whole-hog
+    // when a granted project (e.g. the platform's own "abluo" tenant) has no entry
+    // in TENANT_TO_PROJECT (src/lib/sanity/client.ts). The resolver's per-project
+    // Sanity fetch (fetchEnabledModuleIds) now catches that failure and degrades to
+    // an empty enabledModuleIds entry rather than throwing — this is the pure-layer
+    // shape that degradation produces: the project must still appear in ctx.projects,
+    // just with zero modules/permissions, not be dropped or take down the resolver.
+    const ownedProjects: RawOwnedProject[] = [
+      { projectId: 'project-abluo', projectSlug: 'abluo', tenantId: 'tenant-abluo' },
+    ]
+
+    const grants = assembleProjectGrants({
+      ownedProjects,
+      memberships: [],
+      enabledModuleIdsByProjectId: {}, // simulates fetchEnabledModuleIds degrading to [] and never populating a key
+      modulePermissionMap: fixturePermissionMap,
+    })
+
+    expect(grants).toHaveLength(1)
+    expect(grants[0]).toMatchObject({
+      projectId: 'project-abluo',
+      projectSlug: 'abluo',
+      role: 'owner',
+      enabledModuleIds: [],
+      permissions: [],
+    })
+  })
 })

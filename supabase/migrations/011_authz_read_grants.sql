@@ -1,0 +1,124 @@
+-- ============================================================
+-- Migration 011 — authz read grants (tenant_members, project_members, projects)
+--
+-- Fixes a LIVE bug found during ADR-017 slice 4 testing:
+--
+--   getTenantAuthorizationContext: failed to read tenant_members —
+--   permission denied for table tenant_members
+--   (src/lib/api/tenant-context.ts:236)
+--
+-- Thrown for a real invited owner (a genuine tenant_user session) loading
+-- /account. "permission denied for table" is a table-level GRANT failure —
+-- distinct from RLS filtering out rows, which would instead return an
+-- empty result set with no error.
+--
+-- ── Root cause ────────────────────────────────────────────────────────────
+-- No migration in this project's history (001–009, or supabase/schema.sql)
+-- ever issued an explicit `grant select ... to authenticated` on any table.
+-- That was invisible until now because every existing code path that reads
+-- tenant_members / project_members / projects does so via
+-- `createAdminClient()` (service_role — bypasses both grants and RLS
+-- entirely): src/app/[locale]/(admin)/dashboard/page.tsx,
+-- src/app/api/sanity/{tenants,projects}/route.ts,
+-- src/app/api/form-submissions/route.ts, src/app/api/inquiries/route.ts.
+--
+-- `getTenantAuthorizationContext()` (src/lib/api/tenant-context.ts,
+-- ADR-017 slice 1) and its sibling
+-- src/app/api/projects/[projectId]/invite/route.ts (ADR-017 slice 4, task
+-- #76, in progress) are the FIRST code paths in the codebase to issue
+-- `.from()` table reads through the request-scoped, cookie-backed client
+-- (src/lib/supabase/server.ts `createClient()`), which runs queries under
+-- the caller's own JWT — i.e. as the `authenticated` role, subject to
+-- table-level GRANTs and RLS both. The `authenticated` role's SELECT grant
+-- on these three tables was simply never issued, and nothing exercised it
+-- until a real logged-in session hit /account.
+--
+-- ── RLS-policy level: already correct, NOT the cause ─────────────────────
+-- Checked and confirmed sufficient — no policy changes in this migration:
+--   tenant_members  → "Users can read their own memberships"
+--                      using (user_id = auth.uid())            [migration 003]
+--   project_members → "Users can read their own project memberships"
+--                      using (user_id = auth.uid())            [migration 007]
+--   projects        → "Members can read their projects"
+--                      tenant_members OR project_members branch [migration 009]
+-- Once the grant below is in place, these existing policies already permit
+-- exactly the rows the resolver needs — an owner's own tenant_members row,
+-- an editor/viewer's own project_members row, and the projects rows either
+-- membership resolves to. No new policy is required or added here.
+--
+-- ── What this migration does ─────────────────────────────────────────────
+-- Three additive `grant select ... to authenticated` statements. Grants are
+-- idempotent — safe to run even if a grant already exists, and add no new
+-- write capability (SELECT only). They never widen which ROWS a user can
+-- see — that boundary is still enforced entirely by the RLS policies listed
+-- above, which are unchanged. This is exactly the "RLS is the primary
+-- tenant-isolation boundary" model ADR-017 Decision 5 calls for: the GRANT
+-- is the on/off switch for reading the table at all; RLS is what actually
+-- restricts it to the caller's own rows.
+--
+-- ── What this migration does NOT do ──────────────────────────────────────
+--   - No policy is dropped, replaced, or added.
+--   - No other table's grants are touched (tenants/leads/profiles/inquiries
+--     are unaffected — they are read only via the service-role client
+--     today, so their `authenticated` grants, present or not, are not
+--     exercised and out of this fix's scope).
+--   - No code change in src/lib/api/tenant-context.ts — its logic and
+--     error handling were already correct; the failure was purely a
+--     database-privilege gap. See the handoff for the recommendation on
+--     direct-table-reads vs. SECURITY DEFINER helpers going forward.
+-- ============================================================
+
+
+-- ── Grants ────────────────────────────────────────────────────────────────
+
+grant select on public.tenant_members  to authenticated;
+grant select on public.project_members to authenticated;
+grant select on public.projects        to authenticated;
+
+
+-- ============================================================
+-- Verification — run after applying
+-- ============================================================
+
+-- 1. Confirm all three grants now exist for the authenticated role.
+--
+--    select table_name, grantee, privilege_type
+--    from   information_schema.role_table_grants
+--    where  table_schema = 'public'
+--    and    table_name   in ('tenant_members', 'project_members', 'projects')
+--    and    grantee      = 'authenticated'
+--    and    privilege_type = 'SELECT'
+--    order  by table_name;
+--
+--    Expected: 3 rows — tenant_members, project_members, projects.
+
+-- 2. Confirm the pre-existing "own rows" RLS policies are untouched (this
+--    migration does not modify pg_policies at all — sanity check only).
+--
+--    select tablename, policyname, cmd
+--    from   pg_policies
+--    where  schemaname = 'public'
+--    and    tablename  in ('tenant_members', 'project_members', 'projects')
+--    and    policyname in (
+--             'Users can read their own memberships',
+--             'Users can read their own project memberships',
+--             'Members can read their projects'
+--           )
+--    order  by tablename;
+--
+--    Expected: 3 rows, unchanged from migrations 003/007/009.
+
+-- 3. Live end-to-end check (requires the real invited-owner session,
+--    userId 3d4e45f2-d257-4dfe-baba-8bd44b95508d): reload /account. The
+--    "permission denied for table tenant_members" error at
+--    tenant-context.ts:236 must no longer occur, and
+--    getTenantAuthorizationContext() should return a TenantAuthorizationContext
+--    with that user's owned project(s) populated.
+
+-- 4. Regression check — confirm this did not change what admin-surface
+--    routes see (they use the service-role client and were never gated by
+--    these grants either way):
+--
+--    select count(*) from public.projects;   -- via SQL editor (superuser) —
+--    -- unaffected by this migration either way; included only as a sanity
+--    -- baseline if Tom wants to diff row counts before/after.

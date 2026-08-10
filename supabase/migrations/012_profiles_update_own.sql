@@ -1,0 +1,95 @@
+-- ============================================================
+-- Migration 012 — profiles: authenticated UPDATE grant (full_name only)
+--
+-- Fixes a gap surfaced while building the invite-acceptance "Your name"
+-- field (ADR-017 slice 4 follow-up): the new /invite/accept page writes
+-- the invitee's name to public.profiles.full_name using the user's own
+-- session (src/lib/supabase/client.ts, anon key, subject to grants + RLS)
+-- — never the service-role client.
+--
+-- ── RLS-policy level: already correct, NOT the cause ─────────────────────
+-- profiles already has (schema.sql / migration 001, untouched by
+-- migration 004's profiles cleanup):
+--   "Users can update their own profile"
+--     on public.profiles for update
+--     using (id = auth.uid())
+-- No WITH CHECK clause is present, so Postgres reuses the USING qualifier
+-- as the check for UPDATE — sufficient here because id is never part of
+-- the update payload, so id = auth.uid() still holds on the new row. No
+-- policy changes are needed or made by this migration.
+--
+-- ── Root cause: same pattern as Migration 011 ─────────────────────────────
+-- Migration 011 found that `tenant_members`, `project_members`, and
+-- `projects` — plain `create table public.*` statements with no
+-- accompanying `grant ... to authenticated` anywhere in schema.sql or
+-- migrations 001–010 — had NO table-level grant for the `authenticated`
+-- role at all, because every prior code path read them exclusively via
+-- `createAdminClient()` (service_role, bypasses grants and RLS both).
+-- `public.profiles` was created the same way (migration 001 / schema.sql,
+-- no explicit grant statement, and `grep -rn "grant.*profiles"` across
+-- schema.sql and all migrations returns zero results). Every profiles read
+-- to date has also gone exclusively through the service-role client — the
+-- new invite/accept page is the FIRST code path to touch `profiles`
+-- through the request-scoped, cookie-backed client (authenticated role).
+-- By direct analogy to 011, `authenticated` almost certainly lacks UPDATE
+-- on profiles too; this migration closes that gap before it repeats 011's
+-- incident pattern.
+--
+-- ── What this migration does ─────────────────────────────────────────────
+-- One additive, minimal, column-scoped grant: UPDATE on full_name only —
+-- not id, avatar_url, or created_at. Idempotent (grants are safe to
+-- re-run). The grant is the on/off switch for writing the column at all;
+-- the existing "own row" RLS policy above is what actually restricts it to
+-- the caller's own profile — unchanged, consistent with ADR-017 Decision 5
+-- (RLS is the primary tenant/row isolation boundary; GRANT gates table/
+-- column access).
+--
+-- ── What this migration does NOT do ──────────────────────────────────────
+--   - No policy is dropped, replaced, or added.
+--   - No SELECT grant is added — the invite/accept write path does not
+--     .select() the result, so it is not required for this feature. Add it
+--     separately, deliberately, if/when a client-side profiles read is
+--     built (e.g. a future account page showing full_name).
+--   - No grant on avatar_url or any other profiles column.
+-- ============================================================
+
+
+-- ── Grant ─────────────────────────────────────────────────────────────────
+
+grant update (full_name) on public.profiles to authenticated;
+
+
+-- ============================================================
+-- Verification — run after applying
+-- ============================================================
+
+-- 1. Confirm the column-level grant now exists for the authenticated role.
+--
+--    select table_name, column_name, grantee, privilege_type
+--    from   information_schema.column_privileges
+--    where  table_schema = 'public'
+--    and    table_name   = 'profiles'
+--    and    grantee      = 'authenticated'
+--    and    privilege_type = 'UPDATE';
+--
+--    Expected: 1 row — full_name.
+
+-- 2. Confirm the pre-existing "own row" RLS policy is untouched (this
+--    migration does not modify pg_policies at all — sanity check only).
+--
+--    select tablename, policyname, cmd, qual, with_check
+--    from   pg_policies
+--    where  schemaname = 'public'
+--    and    tablename  = 'profiles'
+--    order  by policyname;
+--
+--    Expected: 2 rows — "Users can read their own profile" (select),
+--    "Users can update their own profile" (update), both unchanged.
+
+-- 3. End-to-end: invite a fresh test email, accept the invite, enter a
+--    name, set a password. Then, as the SAME user's session (or via
+--    service-role for verification convenience):
+--
+--    select id, full_name from public.profiles where id = '<new user id>';
+--
+--    Expected: full_name equals the name entered on /invite/accept.

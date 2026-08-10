@@ -363,9 +363,29 @@ export async function getTenantAuthorizationContext(): Promise<TenantAuthorizati
  * `TENANT_TO_PROJECT` (src/lib/sanity/client.ts). Returns `[]` on a missing
  * or null result rather than throwing — an unconfigured project has no
  * enabled modules, not an error.
+ *
+ * Degrades to `[]` (never throws) for ANY failure of this per-project fetch —
+ * most notably `tenantToProjectSlug()` throwing when the Supabase project
+ * slug has no entry in `TENANT_TO_PROJECT` (e.g. the platform's own `abluo`
+ * project, which has no Sanity content mapping and therefore no modules).
+ * Without this, a single unmapped project used to throw out of the
+ * `Promise.all` in `getTenantAuthorizationContext` and take down the whole
+ * resolver — 500-ing `/account` for a user who is otherwise validly granted
+ * on other, mapped projects. A project with no Sanity mapping legitimately
+ * has zero enabled modules; that is not an error condition for this
+ * resolver, so it is logged and swallowed here rather than propagated.
  */
 async function fetchEnabledModuleIds(projectSlug: string): Promise<string[]> {
-  const { fetchForTenant } = tenantClient(projectSlug)
-  const ids = await fetchForTenant<string[] | null>(enabledModuleIdsQuery, {})
-  return ids ?? []
+  try {
+    const { fetchForTenant } = tenantClient(projectSlug)
+    const ids = await fetchForTenant<string[] | null>(enabledModuleIdsQuery, {})
+    return ids ?? []
+  } catch (error) {
+    console.warn(
+      `getTenantAuthorizationContext: failed to resolve enabledModuleIds for project ` +
+        `"${projectSlug}" — treating as zero enabled modules. Reason: ` +
+        `${error instanceof Error ? error.message : String(error)}`
+    )
+    return []
+  }
 }
