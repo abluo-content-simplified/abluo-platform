@@ -32,7 +32,8 @@
     "nav": {
       "blog": "Articoli",
       "events": "Eventi",
-      "live": "Live"
+      "live": "Live",
+      "forms": "Moduli"
     },
     "shell": {
       "brandTagline": "Dashboard",

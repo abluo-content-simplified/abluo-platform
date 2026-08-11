@@ -3,6 +3,7 @@ import { validateRegistry } from './validate'
 import { blogSchemaTypes } from './blog/schema'
 import { eventsSchemaTypes } from './events/schema'
 import { liveSchemaTypes } from './live/schema'
+import { formsSchemaTypes } from './forms/schema'
 
 // ── Module registry ───────────────────────────────────────────────────────────
 // The single authoritative definition of every module available on the platform.
@@ -262,6 +263,86 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
     },
 
     changelog: 'V1.0.0 — Initial manifest. Live module in production use.',
+  },
+
+  // ── Forms ──────────────────────────────────────────────────────────────────
+  // ADR-018 slice 2 — additive + inert. Owns the tenant-owned `formDefinition`
+  // document (the reusable definition). Submissions (operational tier) + the
+  // form.submitted event contract shipped in slice 1; notification delivery in
+  // ADR-019. No route resolves a formDefinition yet — slice 3 wires validation,
+  // slice 4 the Form Section. `dataStore.primary: 'hybrid'` (definitions in
+  // Sanity, submissions in Supabase). No collections/pageType/sectionTypes this
+  // slice: definitions are tenant-owned (not projectSlug-scoped), so the Studio
+  // management pane is admin-only and arrives in slice 7 — a project-scoped
+  // collection pane would be the wrong shape here.
+  {
+    id: 'forms',
+    label: 'Forms',
+    version: '1.0.0',
+    status: 'released',
+    category: 'engagement',
+
+    platformContract: {
+      // no pageType — Forms has no singleton page.
+
+      collections: [], // tenant-owned; admin management pane is slice 7.
+
+      sectionTypes: [], // formSection is slice 4 (legacy platform formSection untouched).
+
+      schemaTypes: ['formDefinition'],
+
+      schemaDefinitions: () => formsSchemaTypes,
+
+      permissions: [
+        {
+          id: 'forms.submission.read',
+          label: 'View submissions',
+          description: 'View and list form submissions in the client dashboard.',
+          defaultRoles: ['owner', 'editor', 'viewer'],
+        },
+        {
+          id: 'forms.submission.update',
+          label: 'Update submissions',
+          description: 'Change a submission status (new → processed → archived).',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          id: 'forms.submission.delete',
+          label: 'Delete submissions',
+          description: 'Permanently delete form submissions.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          // Admin-surface capabilities. Definitions are abluo_admin-only in V1,
+          // so these are enforced by the platform admin gate (requireAbluoAdmin),
+          // not a tenant role — hence no default tenant roles (ADR-018 Decision
+          // 11; enforcement confirmed at slice 7).
+          id: 'forms.definition.manage',
+          label: 'Manage form definitions',
+          description: 'Create, edit, and publish tenant-owned form definitions and platform templates.',
+          defaultRoles: [],
+        },
+        {
+          id: 'forms.definition.clone',
+          label: 'Clone form definitions',
+          description: 'Clone a template or another tenant’s definition into a tenant (admin-only cross-tenant clone).',
+          defaultRoles: [],
+        },
+      ],
+    },
+
+    publicContract: {},
+
+    dependencies: {
+      requires: [],
+      integratesWith: [],
+    },
+
+    dataStore: {
+      primary: 'hybrid',
+    },
+
+    changelog: 'V1.0.0 — ADR-018 slice 2. Tenant-owned formDefinition type (additive, inert). Submissions + form.submitted shipped in slice 1; notifications in ADR-019.',
   },
 
 ]

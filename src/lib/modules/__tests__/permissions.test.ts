@@ -90,10 +90,11 @@ describe('buildModulePermissions()', () => {
 // ── MODULE_PERMISSION_MAP ─────────────────────────────────────────────────────
 
 describe('MODULE_PERMISSION_MAP', () => {
-  it('contains exactly 8 permissions — guards against accidental registry removals', () => {
+  it('contains exactly 13 permissions — guards against accidental registry removals', () => {
     // ADR-016 Phase B added events.taxonomy.write (event categories) — was 6.
-    // ADR-017 slice 6 added blog.post.read (client dashboard read path) — now 8.
-    expect(Object.keys(MODULE_PERMISSION_MAP)).toHaveLength(8)
+    // ADR-017 slice 6 added blog.post.read (client dashboard read path) — was 8.
+    // ADR-018 slice 2 added the forms module's 5 permissions — now 13.
+    expect(Object.keys(MODULE_PERMISSION_MAP)).toHaveLength(13)
   })
 
   it('has the same shape as buildModulePermissions()', () => {
@@ -107,7 +108,7 @@ describe('MODULE_PERMISSION_MAP', () => {
     expect(a).toBe(b)
   })
 
-  it('all 8 expected keys are present', () => {
+  it('all 13 expected keys are present', () => {
     const expectedKeys = [
       'blog.post.read',
       'blog.post.write',
@@ -117,6 +118,11 @@ describe('MODULE_PERMISSION_MAP', () => {
       'events.event.delete',
       'events.taxonomy.write',
       'live.page.configure',
+      'forms.submission.read',
+      'forms.submission.update',
+      'forms.submission.delete',
+      'forms.definition.manage',
+      'forms.definition.clone',
     ]
     for (const key of expectedKeys) {
       expect(MODULE_PERMISSION_MAP).toHaveProperty(key)

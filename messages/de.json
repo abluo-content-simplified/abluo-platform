@@ -32,7 +32,8 @@
     "nav": {
       "blog": "Beiträge",
       "events": "Veranstaltungen",
-      "live": "Live"
+      "live": "Live",
+      "forms": "Formulare"
     },
     "shell": {
       "brandTagline": "Dashboard",
