@@ -113,7 +113,10 @@ export interface SubmissionPayload {
   locale: string
   data: Record<string, unknown>
   gdprConsent: boolean
-  openedAt: number
+  /** Form-fill start time (spam timing). Omitted for machine-paced auto-advance
+   * creates (a context-satisfied step the human never interacted with), so the
+   * server's isTooFast() heuristic correctly does not apply to them. */
+  openedAt?: number
   /** Honeypot — must be empty for a human submission (see spam.ts). */
   company_website: string
   source?: Record<string, unknown>
@@ -127,7 +130,7 @@ export interface SubmissionPayload {
  */
 export function buildSubmissionPayload(
   values: Record<string, unknown>,
-  opts: { locale: string; openedAt: number; honeypot?: string; source?: Record<string, unknown> },
+  opts: { locale: string; openedAt?: number; honeypot?: string; source?: Record<string, unknown> },
 ): SubmissionPayload {
   const data: Record<string, unknown> = {}
   let gdprConsent = false

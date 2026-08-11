@@ -85,10 +85,13 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
   const endpoint = submissionEndpoint(tenantSlug, def.formId)
 
   const postCreate = useCallback(
-    async (stepData: Record<string, unknown>): Promise<StepResponse | null> => {
+    async (stepData: Record<string, unknown>, timed = true): Promise<StepResponse | null> => {
+      // `timed` false for the machine-paced auto-advance create: it omits
+      // openedAt so the server's too-fast spam heuristic does not apply to a
+      // context-satisfied step the visitor never filled.
       const base = buildSubmissionPayload(stepData, {
         locale,
-        openedAt: openedAt.current,
+        openedAt: timed ? openedAt.current : undefined,
         honeypot: honeypotRef.current?.value ?? '',
       })
       const res = await fetch(endpoint, {
@@ -126,7 +129,7 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
     }
     ;(async () => {
       try {
-        const created = await postCreate(stepValues(def.steps[0], initialContext))
+        const created = await postCreate(stepValues(def.steps[0], initialContext), false)
         if (!created?.submissionId) throw new Error('create failed')
         let sid = created.submissionId
         let tok = created.completionToken ?? null
