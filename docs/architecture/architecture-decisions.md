@@ -1400,3 +1400,281 @@ Each slice honors the `dev` → **STOP** → `preview` → **STOP** → `main` g
 
 ---
 
+
+## ADR-018 — Forms Module
+
+**Status:** Accepted
+**Date:** 2026-08-11
+**Supersedes:** —
+**Superseded By:** —
+**Related:** ADR-019 (Server-side Integration Event Consumers — V1 notification delivery for this module)
+
+> **Accepted by Tom, 2026-08-11**, after a design pass and four rounds of correction. The settled forks are recorded in the decisions below: (1) form definitions are **tenant-owned**, reusable across a tenant's projects by reference, with cross-tenant reuse delivered by an **admin-only clone** (never live sharing) and seeded from **platform templates**; (2) **versioning** is snapshot-authoritative — a monotonic integer `version` on the live definition, with `form_version` + an immutable `definition_snapshot` **pinned at submission creation** as the authoritative historical record; (3) submissions live in a new dedicated **`form_submissions`** table; (4) the submission contract ships as **slice 1**, retiring the `#88` dual-purpose-endpoint hack; (5) Forms is **decoupled from all delivery providers** — it persists submissions and emits `form.submitted`; delivery is the Integration layer's job (ADR-019). Remaining `Tom decides` gates are named under *Open Decisions* and honored at execution time per spine §7.
+
+### Context
+
+Forms today are **bespoke per-site**. The only live form (Early Access) is hand-built on the generic `inquiries` table (migration 005) with a two-step modal (`EarlyAccessModal.tsx`) that POSTs a partial record then PATCHes it. That PATCH — `src/app/api/inquiries/[id]/route.ts` — is a **single endpoint serving two callers**: the anonymous public form's step-2 completion *and* the authenticated dashboard's inquiry edits. This collision (`#88`) is the recurring root cause of form breakage: every security-hardening pass that authenticates the endpoint (as the ADR-017 P0 fix did in v1.0.22) breaks the public form, because the anonymous caller has no session. Per-site construction also violates the **Sections-vs-Modules principle** (a form owns a submissions collection, multi-step/spam/GDPR/notification logic, and leads-management permissions — textbook module concerns) and defeats *build-once-deploy-many* by multiplying that `#88` fragility across every future form.
+
+A form is a **reusable, versioned definition that is independent of the pages/CTAs/websites where it appears** (Concept Spec §2, §7, §28). This ADR makes Forms a first-class **Module** and specifies the ownership/versioning model, the placement/context model, the immutable submission contract, and the platform responsibilities (spam, validation, isolation, accessibility, i18n) the module inherits once for every form. **Notification delivery is explicitly out of this module** and specified in ADR-019.
+
+**Terminology mapping (confirmed).** The Concept Spec's *Website* is Abluo's **Project** (`projectSlug`). The conceptual hierarchy `Tenant → Website → Placement → Definition → Version → Submission` (§3) maps to `tenant → project → formSection → form(document) → form_version → form_submission`. Every submission records **both** `tenant_id` and `project_id` (§3, §16) — never `tenant_id` alone.
+
+**Architectural Principle #1 exception (called out deliberately, not accidentally).** CLAUDE.md Principle #1 states every tenant Sanity document carries `projectSlug` and all GROQ filters by it. Form **definitions are the first deliberate exception**: they are **tenant-owned** (keyed at the client/tenant level), not `projectSlug`-scoped, so one definition is reusable across a tenant's projects without duplication (Decision 1). Submissions remain fully project-scoped (`project_id`), so no isolation is weakened at the data layer. This exception is documented here and should be added to CLAUDE.md's principles when this ADR is implemented.
+
+**Substrate this ADR composes rather than reinvents (Verified fact, code-referenced):**
+
+- **Form Field Library** — 16 field-type components under `src/components/fields/` (import only via `index.ts`), `useFieldValidation` (`validateField`/`validateForm`), `FieldWrapper` chrome, `FormField` dispatcher. Leaf components read DS CSS vars directly (no `designSystem` prop). Presentation layer for fields; already exists and is DS-themed.
+- **DS token pipeline for forms** — `FormTypography`/`FormGeometry` (`src/lib/sanity/types.ts`), `formTypographyType`/`formGeometryType`, `DS_FIELDS_SELECTION`, `mergeDesignSystems()`, `buildCssVars()`. Form appearance derives from the website Design System (§20/§21) with no per-tenant work.
+- **Spam protection** — `src/lib/forms/spam.ts`: `runSpamChecks()` (honeypot → timing → per-IP rate-limit via a Supabase count) + `extractIp()`, with a documented Cloudflare Turnstile escalation hook.
+- **Generic submissions precedent** — `inquiries` (migration 005): `tenant_id`+`project_id` (both nullable for platform-level), `data jsonb`, top-level `gdpr_consent`/`gdpr_consent_at`, `source`, `status`. Shape informs `form_submissions`; not reused as the store (Decision 5).
+- **Design System template + clone precedent** — `designSystem.role` ∈ `template | active`; `ExportDesignSystemAction`/`ImportDesignSystemAction` do a **field-agnostic clone** (strip only `_id`/`_rev`/`_createdAt`/`_updatedAt`/`_type`; all content passes through). This is the exact pattern Decision 1's platform-template + admin-clone model mirrors.
+- **Module registry** — `MODULE_REGISTRY` (`src/lib/modules/registry.ts`): a `ModuleManifest` per module (`platformContract`: `pageType`/`collections`/`sectionTypes`/`schemaTypes`/`schemaDefinitions()`/`permissions`; `dataStore.primary` ∈ `content|operational|hybrid`), `moduleInstallations[]` per-project on the Sanity project doc, `MODULE_PERMISSION_MAP` derived at load (`src/lib/modules/permissions.ts`), `validateRegistry()` guardrail.
+- **Integration registry** — `INTEGRATION_REGISTRY` + `buildIntegrationSchemaTypes()` (`src/lib/integrations/`): the precedent for **generating Sanity schema from a manifest**. The form-definition schema follows the same "declare once, derive the Studio surface" leverage.
+- **Authorization stack (ADR-015/017, shipped v1.0.22)** — `getTenantAuthorizationContext()` → `TenantAuthorizationContext.projects: ProjectGrant[]` (`src/lib/api/tenant-context.ts`, per-request from DB, never JWT); `tenantScopedSanityClient(ctx, projectId)` chokepoint (bans client-supplied `projectSlug`, bans raw GROQ interpolation, forces `$projectSlug`) + `assertSameTenantReference()` (`src/lib/api/tenant-scoped-sanity.ts`); `assertModuleAction(ctx, projectId, permissionId)` (module-installed check **before** permission check, `src/lib/api/module-action-guard.ts`); `project_members` + `get_my_project_ids()`/`get_my_tenant_ids()` SECURITY DEFINER RLS; `leads.project_id` (nullable, migration 008); `runAsTrustedSystemOperation()` wrapper; `requireAbluoAdmin` platform gate.
+- **Composable Module Pages (ADR-016)** — shared `SectionRenderer`, module-owned `sectionTypes`, `isSectionTypeAvailable()` runtime install-gating (fail-open on null). A `formSection` slots straight in.
+- **Multilingual** — `localizedString`/`localizedSlug`, `useProjectLocales`, `LocalizedInput`, next-intl. Everything visitor-facing is localizable today (§9 is satisfiable, not net-new).
+
+### Alternatives Considered
+
+- **Per-site form builds (status quo)** — rejected: violates Sections-vs-Modules, defeats build-once-deploy-many, multiplies the `#88` dual-endpoint fragility per form.
+- **Definitions stored in Supabase** — rejected as the definition home: abandons the Sanity registry pattern used by every other content/config surface, and forfeits localized authoring, Studio editing, and the `moduleInstallations`/`enabledModuleIdsQuery` gating machinery. Its immutability strength is captured instead by the submission snapshot (Decision 4).
+- **Project-scoped definitions** — rejected: cannot be reused across a tenant's websites without duplication, which the concept explicitly wants to avoid (§2/§7).
+- **Live cross-tenant sharing of a definition** — rejected on isolation grounds: a single doc rendered on two tenants' sites makes editing rights, submission attribution, and RLS ambiguous. Cross-tenant reuse is an **admin-only clone** instead (Decision 1) — an independent copy, isolation never crossed at runtime.
+- **Reuse the `inquiries` table for submissions** — rejected by Tom in favor of a dedicated `form_submissions` table with first-class `form_id`/`form_version`/`context`/`definition_snapshot` columns.
+- **Version = a reference to the live definition doc; or freeze only at finish** — both rejected: a submission that dereferences mutable CMS state, or that is only pinned at completion, can complete against a definition that changed mid-session. Pin at **creation** and snapshot (Decision 4).
+- **Forms calls a delivery provider directly (Resend/WhatsApp/CRM) — even just for a V1 email** — rejected: couples the module to a channel and puts recipients/secrets inside the form's domain. Forms emits `form.submitted`; the Integration layer delivers (Decision 9, ADR-019).
+- **One shared submission endpoint with a role branch (patch `#88` in place)** — rejected: the shared endpoint is the collision. The contract separates the two paths structurally (Decision 6).
+
+### Decision
+
+**1. Forms is a Module; definitions are tenant-owned, seeded by platform templates, reused across tenants by admin clone.**
+- A new `forms` entry is added to `MODULE_REGISTRY` with `dataStore.primary: 'hybrid'`. It owns definitions (content tier), submissions (operational tier), the submission/validation/spam logic, and the submissions-management permissions. It contributes a **Form Section** (presentation). Per-project enablement already works via `moduleInstallations` keyed by `projectSlug` — Forms can be on for one project and off for another with no data-model change.
+- **Ownership:** a `form` definition is **tenant-owned** (keyed at the client/tenant level; e.g. a `client` reference / `tenantSlug`), reusable across that tenant's projects **by reference**. It does **not** carry `projectSlug` (the Principle-#1 exception above). This is the security/ownership boundary: a tenant's forms are its own.
+- **Platform templates:** platform-owned template definitions (no tenant — analogous to `designSystem.role: 'template'` and the platform section library) provide the reusable starting library.
+- **Admin cross-tenant clone:** operational "build once, reuse everywhere" is delivered by an **admin-only clone action** (`requireAbluoAdmin`), mirroring `ExportDesignSystemAction`/`ImportDesignSystemAction`: template → tenant, or tenant A → tenant B. Clone produces a **fresh definition** — new `_id`, its own `version` counter (starting at 1), owned by the **target** tenant — copies the definition only (never submissions), and strips Sanity metadata + tenant-identifying fields on the way in (field-agnostic, like the DS Import). A tenant user can never clone across tenants (that would be a cross-tenant read/write); only Abluo admins can.
+- **Consequence — references are always same-tenant.** Because cross-tenant reuse is a clone, a `formSection` on a project page only ever references its own tenant's definition. The `assertSameTenantReference` guard (ADR-015 R3) therefore needs a **same-tenant** check for these references, not the cross-`projectSlug` check it does today — a small, bounded adjustment to that shared guard.
+
+**2. Form Definition and Form Placement are separate concepts (§7).**
+- **Definition** — the tenant-owned Sanity `form` document: the reusable "what the form is" (fields, steps, validations, localized copy, success behaviour, privacy requirements). No recipients/channels (Decision 9).
+- **Placement** — a `formSection` (or a CTA/button that opens a form) that **references a form by id** and supplies static **Context**. The same definition is reused across pages, CTAs, and projects of the tenant; each placement differs only by its Context (§7's Appointment-Request-across-four-pages example).
+
+**3. Definition schema (Sanity `form` document).** Fields (localized where visitor-facing, §9):
+- Identity: `internalName`, `title` (localized), `formType` ∈ `single-step | multi-step | question-answer`, monotonic integer `version` (Decision 4), ownership scope (client/tenant reference; `role: template | active`).
+- `steps[]` — each `{ key, title (loc), description (loc), fields[] }`. Single-step forms are one step. Step count is data, never hard-coded (§4).
+- Each field extends a Field-Library `FieldConfig` (`src/components/fields/types.ts`) with: stable `internalKey` (e.g. `treatment`, `email`, `preferred_date`, `privacy_consent`), `contextMappable`, `required`, `validation`, localized `label`/`placeholder`/`help`/`options`, step assignment. The **internal key is stable across languages**; only the visible label is localized (§8).
+- `successBehavior` — `inline` (localized confirmation copy) | `redirect` (path), localized (§13).
+- `privacy` — configurable consent field(s) + localized privacy copy; consent state retained on the submission (§23).
+- `notificationTopic` — an **abstract, provider-agnostic routing tag** (a stable internal key like `appointment-request` or `contact`; optional, defaults to the form id). It is **not** recipients or channels — it rides on the emitted event for the Integration layer to route on (Decision 9). It is the only notification-related field on the definition.
+
+Schema **types are generated from a manifest-style declaration** (Integration Registry precedent, `buildIntegrationSchemaTypes()`), keeping field types in lockstep with the Field Library rather than hand-duplicated in Studio.
+
+**4. Versioning — snapshot-authoritative, pinned at creation (Tom's ruling).** The live `form` document carries a **monotonic integer `version`**, incremented on each meaningful publish (bump mechanism is an Open Decision). The **authoritative historical record is the immutable snapshot pinned when the submission row is created** (step 1, not finalization): the server resolves the fully-published definition at that instant and freezes it into `form_submissions.definition_snapshot` (jsonb) alongside `form_submissions.form_version` (the integer) and `form_id`. **These never change after creation.** A visitor who starts on v3 completes v3 even if v4 publishes mid-session — one consistent version, never a mix. Every later step of a multi-step submission is validated against the **row's own pinned snapshot**, never against live Sanity state (§10).
+
+**Snapshot boundary (Tom's ruling).** `definition_snapshot` contains **only what is needed to interpret the historical submission**: fields, steps, options, localized labels, validation rules, and consent text. It **excludes operational/secret configuration** — no recipients, channels, or (future) integration credentials, none of which live on the definition anyway (Decision 9). A `resolveDefinitionSnapshot()` projection emits exactly the interpretation subset; anything operational is resolved live, downstream, never frozen into a submission row.
+
+**5. Submission storage — new `form_submissions` table (Tom's ruling).** Conceptual columns (final DDL in slice 1):
+
+```
+form_submissions
+├── id                  uuid pk
+├── tenant_id           uuid  → tenants(id)   (nullable: platform-level forms)
+├── project_id          uuid  → projects(id)  (the Website, §3/§16)
+├── form_id             text  (Sanity form document _id)
+├── form_version        int   (monotonic; pinned at creation, Decision 4)
+├── definition_snapshot jsonb (immutable, interpretation subset; pinned at creation)
+├── locale              text  (retained per submission, §9)
+├── source              jsonb (page / url / placement / cta / campaign, §12)
+├── context             jsonb (known values passed by the placement, §6)
+├── submission_data     jsonb (submitted values keyed by internalKey)
+├── status              text  check in (new, processed, archived, spam)  (§22)
+├── gdpr_consent        bool  + gdpr_consent_at timestamptz  (top-level, §23)
+├── completion_state    text  check in (partial, complete)   (multi-step, Decision 6)
+├── created_at / updated_at
+```
+
+RLS is **project-scoped from day one** (`project_id in get_my_project_ids()` for SELECT; writable roles for UPDATE), mirroring the ADR-017 model — isolation at the data layer, not UI hiding (§16). Anonymous visitors can **create** but never **read** (§16): public INSERT goes through the API route's service-role client wrapped in `runAsTrustedSystemOperation('public form submission', …)`; all dashboard reads/writes use the RLS-backed, request-scoped client under `TenantAuthorizationContext`. `source`/`context` are populated **server-side wherever possible** (§12), not via admin-authored hidden fields.
+
+**6. Submission contract — two structurally separated write paths, rotating single-use step tokens (fixes `#88`, ships as slice 1).**
+- **Anonymous public path** (no session): `POST /api/forms/{projectSlug}/{formId}/submissions` runs spam checks + server validation, then creates a submission and **pins `form_version` + `definition_snapshot`** (Decision 4). A single-step form finalizes immediately (`completion_state = complete`, `form.submitted` emitted). A multi-step form creates a `partial` submission and returns `{ submissionId, stepToken }` — an opaque, server-stored, **single-use** token **bound to that submission** with an expiry. Completing a step calls `POST /api/forms/{projectSlug}/{formId}/submissions/{id}/steps` presenting the current token; the server accepts **only whitelisted, still-incomplete fields on a still-`partial` submission**, and — on success — **spends the presented token and issues a fresh one** (`stepToken` rotates every step). A token that is missing, already spent, expired, or bound to a finalized submission is rejected. The final step flips `completion_state = complete`, invalidates all tokens for the submission, and emits `form.submitted`.
+- **Authenticated dashboard path**: reads/updates go through `getTenantAuthorizationContext()` + RLS-backed client + `assertModuleAction(ctx, projectId, 'forms.submission.read' | '…update')`. It **never shares an endpoint** with the anonymous path.
+
+The two paths are different routes with different trust models, so authenticating the dashboard can never break the public form — this removes `#88`'s root cause by construction. A **duplicate-submission guard** (idempotency on the finalize step / rotating token) prevents network-retry double entries (§24). The **Early Access modal is migrated onto this generic anonymous contract** in slice 1, retiring its bespoke `/api/inquiries/[id]` PATCH — the concrete `#88` close.
+
+**7. Context-aware forms — first-incomplete-step from actual values (§5/§6).** A placement passes **Context** (`treatment=implantology`, `source`, `page`, `cta`, campaign values, URL params). The runtime maps Context values to fields by `internalKey`/`contextMappable`, pre-populates them, and **starts at the first step with an unsatisfied required field** — computed from known values, not a configured `startAtStep`. Homepage "Book an appointment" (no treatment) → step 1; Implantology page "Request an implantology consultation" (`treatment=implantology`) → pre-filled, opens at step 2. Context is **server-validated** (Decision 10): only `contextMappable` fields can be set from Context, and Context can **never** set `tenant_id`/`project_id` or any privileged/cross-tenant value (§18) — those are resolved server-side from the route and the placement's own project.
+
+**8. Form Section — presentation, DS-derived (§20/§21).** A `formSection` type is registered in `SectionRenderer` (module-owned `sectionType`, gated by `isSectionTypeAvailable()` per ADR-016). It references a `form` by id (same-tenant, Decision 1) and carries the placement's Context. Appearance derives **entirely from the website Design System** via the form DS token pipeline — no imposed "Abluo form style"; typography, colours, spacing, field height, buttons, focus/error/success states, container width, and responsive behaviour all come from DS tokens. Accessibility (§19) is inherited from the Field Library (semantic labels, field associations, keyboard nav, focus management, accessible error/validation announcements, multi-step progress) — solved once.
+
+**9. Forms is decoupled from delivery; it persists and emits `form.submitted`. Delivery is the Integration layer (ADR-019).** The Forms module's outbound boundary is exactly two things, in one transaction: **persist the submission** and **write an event** to an append-only outbox (`form_events`). It calls **no** provider — not Resend, not WhatsApp, not a CRM. The `form.submitted` event payload is provider-agnostic:
+
+```
+form.submitted  { eventId, tenantId, projectId, formId, formVersion,
+                  submissionId, topic (Decision 3 notificationTopic), locale, occurredAt }
+```
+
+No recipients, addresses, channel config, or secrets appear in the event or the submission. **Persistence is the source of truth and commits first**; the Integration-layer consumer (ADR-019) reads the outbox and delivers. A delivery failure can never roll back or hide a valid submission (§14/§15/§24). This is what keeps §14's "notifications in V1" true while keeping Forms free of every provider — delivery is specified and built in **ADR-019**, this module's V1 notification dependency.
+
+**10. Platform responsibilities, inherited once (§17/§18/§19).**
+- **Spam** (§17): reuse `runSpamChecks()`; escalate to the Turnstile hook if abuse appears. Baseline protection is automatic, not per-form.
+- **Server-side validation** (§18): client validation is never authoritative. The server validates every submission against the **row's pinned snapshot** — field types, required fields, permitted options, payload structure, `form_version`, the `tenant_id`/`project_id` relationship, Context legitimacy.
+- **Accessibility** (§19): from the Field Library.
+- **Isolation** (§16): project-scoped RLS at the data layer.
+- **Admin-only builder** (§1): form creation/editing/cloning is **abluo_admin-only in V1**, via a Studio pane gated like `ModuleList`/`IntegrationsPane`. Tenant users do not build forms in V1.
+
+**11. Permissions (declared on the `forms` manifest, wired into `MODULE_PERMISSION_MAP`).**
+- `forms.submission.read` — defaultRoles `owner, editor, viewer`.
+- `forms.submission.update` — defaultRoles `owner, editor` (status: new → processed → archived).
+- `forms.submission.delete` — defaultRoles `owner, editor`.
+- `forms.definition.manage` / `forms.definition.clone` — admin-surface capabilities. Because definitions are abluo_admin-only in V1, these are enforced by the platform admin gate (`requireAbluoAdmin`) rather than a tenant role (confirm at slice 8 — Open Decision). All submission actions are enforced through `assertModuleAction` (module-installed check precedes permission check).
+
+### Implementation Order
+
+Each slice honors the `dev` → **STOP** → `preview` → **STOP** → `main` gates independently (spine §8). The cross-tenant isolation harness (`src/lib/api/__tests__/cross-tenant-isolation.test.ts` + `supabase/verify`) is a release-blocking gate for every slice that touches storage or authz. The anonymous token path additionally gets dedicated token-abuse tests as a release-blocking gate.
+
+1. **Submission contract + `form_submissions` table + `form_events` outbox + `#88` retire.** New migration (`form_submissions` + `form_events` + project-scoped RLS + indexes). Build the two separated write paths (Decision 6), rotating single-use step tokens, spam + server validation, snapshot pinned at creation, and `form.submitted` written to the outbox. **Migrate the Early Access modal onto the anonymous contract**; retire the dual-purpose `/api/inquiries/[id]` PATCH. Definition is still config-driven (`early-access-config.ts`) at this slice. *This slice is the `#88` fix.*
+2. **Form definition schema + `forms` registry entry (additive, inert).** `forms` manifest, tenant-owned Sanity `form` document type generated from the manifest, `version` + `notificationTopic` + `role: template | active`, `validateRegistry()` coverage. No route depends on it yet.
+3. **Server validation against the pinned snapshot.** Submission API resolves the published definition at creation, validates against it, freezes the interpretation-subset snapshot + `form_version` (Decision 4), and validates later steps against the row's snapshot.
+4. **Form Section + runtime (single-step first).** `formSection` in `SectionRenderer`, DS-derived rendering, one real definition rendered on a page end-to-end; `assertSameTenantReference` same-tenant variant wired for the reference.
+5. **Multi-step + context-aware first-incomplete-step.** Steps, Context mapping, first-incomplete-step resolution, anonymous multi-step completion via the slice-1 rotating-token contract.
+6. **Submissions dashboard read.** Wire `form_submissions` into the `(client)` dashboard (`/[locale]/[projectSlug]/…`) on `TenantAuthorizationContext` + `assertModuleAction`, with the `status` lifecycle.
+7. **Admin form builder + clone (Studio pane).** abluo_admin-only create/edit/publish of definitions, platform templates, and the cross-tenant clone action (DS Export/Import precedent); the `version`-bump mechanism.
+
+**V1 notification delivery is ADR-019**, built in parallel against the `form.submitted` outbox this ADR emits (its own slices there). Forms does not wait on it — the dashboard inbox (slice 6) means no submission is lost before delivery exists.
+
+V2 (Concept Spec §26, out of V1): save-and-resume, draft submissions, tenant submission inbox with per-user assignment, advanced workflow states, CRM/webhook/marketing integrations, advanced analytics (starts/completion/step-drop-off/attribution), conditional field/step logic, file uploads, advanced notification routing.
+
+### Open Decisions (`Tom decides`)
+
+- **`version`-bump mechanism** — automatic on publish (Studio publish action / document-action hook) vs an explicit editor-bumped field. Slice 2/7.
+- **`notificationTopic` default** — default to the form id when unset (recommended), or require an explicit tag. Slice 2.
+- **Clone field-stripping list** — the exact set of tenant-identifying/operational fields cleared on clone, beyond Sanity metadata (mirror the DS Import list). Slice 7.
+- **`forms.definition.manage`/`clone` enforcement** — platform admin gate (`requireAbluoAdmin`) vs a real tenant permission, given definitions are admin-only in V1. Slice 7.
+- **`project_id` nullability on `form_submissions`** — mirror `inquiries` (nullable for platform-level forms like Early Access, `tenant_id` NULL) vs `NOT NULL` for tenant forms with a partial index. Slice 1; any `NOT NULL`/RLS-tightening follows ADR-017 Decision 6 discipline and is itself a gated step.
+- **RLS-primary vs service-role for the anonymous INSERT** — the public create path stays service-role (wrapped) because anonymous visitors have no JWT; confirm this matches the §16 "create-but-not-read" intent (it does) at slice 1.
+- **Early Access migration shim** — whether the two-path modal maps cleanly onto the generic rotating-token contract or needs a short-lived compatibility shim during the slice-1 cutover.
+
+### Consequences
+
+**Positive:**
+- One canonical, reusable form architecture — definition independent of placement (§2/§7/§28), reused across a tenant's projects by reference and across tenants by admin clone.
+- Tenant ownership + admin clone preserves security/isolation (no live cross-tenant sharing) while still delivering operational reuse — and eliminates cross-tenant references at runtime (simplifying the R3 guard).
+- The `#88` root cause is eliminated **by construction** (path separation + rotating single-use tokens), not patched.
+- Submissions are immutable and audit-correct (§10/§23) — pinned at creation, so no historical submission is ever reinterpreted or mixed across versions; the snapshot carries only interpretation data, no secrets.
+- Forms is provider-decoupled — it emits a clean `form.submitted` with an abstract topic; delivery, recipients, and channels live entirely in the Integration layer (ADR-019), which future CRM/webhook/marketing consumers reuse.
+- Authorization-correct from line one (ADR-017 R8): dashboard paths take `TenantAuthorizationContext` and go through `assertModuleAction` + project-scoped RLS.
+- Maximum reuse — Field Library, `spam.ts`, DS token pipeline, module + integration registry patterns, DS clone precedent, and the composable-section renderer are composed, not rebuilt.
+
+**Negative:**
+- Two new Supabase tables (`form_submissions`, `form_events`) and their RLS to keep consistent with the ADR-017 per-project model.
+- Tenant-owned definitions are a **deliberate exception to Architectural Principle #1** — it must be documented in CLAUDE.md and the `assertSameTenantReference` guard extended with a same-tenant variant, or a project page's reference to a tenant-scoped form would be mis-evaluated.
+- `definition_snapshot` denormalization increases row size — the deliberate cost of history-independence.
+- The `version`-bump discipline is effectively manual until the builder ships (slice 7); until then definitions beyond Early Access require admin authoring.
+- The anonymous rotating-token path is new public security surface — dedicated token-abuse + cross-tenant tests are a release-blocking gate.
+- V1 notifications depend on ADR-019 being delivered in parallel; if ADR-019 slips, V1 forms collect into the dashboard inbox but send nothing until it lands.
+
+---
+
+**Decision ownership note (spine §4):** acceptance of this ADR is `Tom approves` — **done (2026-08-11)**. Within it, the `form_submissions`/`form_events` migrations and any RLS-tightening (the `project_id` `NOT NULL` step, the RLS-primary flip for submission reads) are `Tom decides` at execution time — irreversible-adjacent actions per spine §7, planned here but never executed without explicit sign-off at the moment each is run.
+
+
+---
+
+## ADR-019 — Server-side Integration Event Consumers (Form Notifications)
+
+**Status:** Proposed
+**Date:** 2026-08-11
+**Supersedes:** —
+**Superseded By:** —
+**Extends:** ADR-014 (Integration Registry & the One-Configuration-Surface Principle)
+**Depends on:** ADR-018 (Forms Module — emits `form.submitted`, owns the `form_events` outbox)
+
+> Companion to ADR-018. ADR-018 makes the Forms Module provider-decoupled: it persists a submission and emits a `form.submitted` event to an append-only outbox, and calls no delivery provider. This ADR specifies the **other half of V1 notifications** — a server-side consumer, in the Integration layer, that reads those events and delivers them to a channel (email first, via Resend), with recipients and channel configuration owned by the Integration layer, never by Forms. Notifications are V1 (Concept Spec §14); this is where they are actually built.
+
+### Context
+
+ADR-018 Decision 9 fixed the Forms boundary at *persist + emit*. That leaves a real, named gap:
+
+- **ADR-014's Integration Registry is client-side only.** `INTEGRATION_REGISTRY` (`src/lib/integrations/`) describes browser-injected tracking scripts (GA4, GTM, Meta Pixel, custom scripts); `TrackingScripts.tsx` renders them at runtime via `resolveTracking()`. There is **no server-side event-consumer or channel-dispatch mechanism** anywhere in it. An integration today has a `renderContract.component` (a frontend component) — it has no notion of "consume an event and send something."
+- **Resend is wired at the wrong layer for this.** Resend is configured as Supabase custom SMTP for **auth** emails (invites/password reset, `no-reply@mail.abluo.app`). There is no application-level "send this notification" path that reads per-project recipient config and dispatches — that path does not exist yet.
+- **The concept spec makes notifications V1** (§14) and demands they be **decoupled** from submission persistence (§14/§15/§24): a notification failure must never lose or hide a valid submission, and saving vs sending are separate operations. ADR-018 satisfies the "decoupled" and "persistence is source of truth" half; this ADR satisfies the "notifications actually happen" half without recoupling.
+
+So V1 notifications require a **new server-side capability in the Integration layer** that subscribes to form events. This is an extension of ADR-014 (an integration gains a *consumer* contract alongside its *render* contract), not a new parallel system.
+
+**Substrate to reuse (Verified fact / from ADR-018):**
+- `form_events` append-only outbox (owned by ADR-018 slice 1): `{ eventId, tenantId, projectId, formId, formVersion, submissionId, topic, locale, occurredAt }` plus delivery bookkeeping columns this ADR adds.
+- The Integration Registry manifest + generated-schema pattern (`buildIntegrationSchemaTypes()`) for authoring per-project config in Studio.
+- Resend account/domain already verified — available as an application send transport, not only Supabase SMTP.
+- `runAsTrustedSystemOperation()` for the consumer's service-role reads/writes; the ADR-014 consent/privacy carry-over (kill switch, per-integration `enabled`) for governance.
+
+### Alternatives Considered
+
+- **Direct provider call inside the Forms module (even a single V1 Resend email)** — rejected by ADR-018 Decision 9: couples Forms to a channel, drags recipients/secrets into the form domain, and reintroduces the failure-coupling the spec forbids.
+- **Synchronous send inside the submission request** — rejected: ties submission latency and success to an external provider's availability; a Resend outage would fail or slow a valid submission. The outbox + async consumer decouples them.
+- **Reuse the client-side Integration Registry render path** — rejected: it injects browser scripts; notification delivery is a server-side, post-submission concern. Wrong layer.
+- **A bespoke notifications table + ad-hoc mailer, outside the Integration layer** — rejected: it would be a second integration mechanism. Tom's directive is that channels and external tools consume form events **through the Integration layer**; this ADR honors that by extending ADR-014 rather than sidestepping it.
+- **Push events straight to a third-party bus (e.g. a queue service) now** — deferred: an in-database outbox + polling consumer is sufficient at current volume and keeps the transactional guarantee simple; a real broker can replace the polling loop later without changing the emit side.
+
+### Decision
+
+**1. Emit durably (outbox), deliver asynchronously.** The transactional boundary in ADR-018 is *persist submission + insert `form_events` row* in one commit. This ADR's consumer reads unprocessed `form_events` and delivers them — never the request handler. `form_events` gains delivery bookkeeping:
+
+```
+form_events  (append-only; owned by ADR-018, delivery columns added here)
+├── event_id        uuid pk
+├── event_type      text     (e.g. 'form.submitted')
+├── tenant_id / project_id / form_id / form_version / submission_id
+├── topic           text     (abstract routing tag from the definition)
+├── locale          text
+├── payload         jsonb    (provider-agnostic; no recipients/secrets)
+├── status          text     check in (pending, delivering, delivered, failed, dead)
+├── attempts        int      default 0
+├── last_error      text
+├── occurred_at / processed_at
+```
+
+**2. A server-side consumer worker.** A scheduled runtime (Vercel Cron route or Supabase Edge Function / `pg_cron` — Open Decision) picks `pending`/retry-eligible rows, marks `delivering`, resolves config (Decision 3), dispatches via the channel provider (Decision 4), and marks `delivered` or `failed` with `attempts++` and `last_error`. Retries use capped exponential backoff; after N attempts a row goes `dead` (dead-letter, visible in the dashboard). **Idempotency:** `event_id` is the idempotency key end-to-end — a redelivered event never double-sends (the provider call is keyed on it, and `delivered` rows are skipped). Consumer failure is fully isolated from the submission, which is already committed.
+
+**3. Recipients and channels are Integration-layer config, keyed on `topic` + project.** A new **notifications integration** is registered in `INTEGRATION_REGISTRY` (extending ADR-014 with a server-side *consumer* contract alongside the existing *render* contract). Its per-project config (authored in the Studio Integrations pane, the ADR-014 one-configuration-surface) maps `topic → { channel, recipients }` — e.g. topic `appointment-request` on project `livener` → email `studio@…`. Forms never sees this config; the consumer resolves it at delivery time. This is the single place recipients/addresses/channel choices live.
+
+**4. Channel abstraction; Resend is the first channel.** Delivery goes through a `ChannelProvider` interface (`send(event, resolvedConfig, renderedContent)`), with **email via Resend** as the first implementation. WhatsApp, CRM, and webhook are future providers behind the same interface — added without touching Forms or the emit side. Message content is rendered from the event + a localized template (using the event `locale`); V1 email content is the basic submission summary + (once the dashboard host exists) a link to the submission. No provider is hard-coded anywhere except its own provider module, selected by config.
+
+**5. Governance carries over from ADR-013/014.** The consumer respects the per-integration `enabled` flag and the project kill switch (ADR-014 carry-over) — a disabled notifications integration means events accumulate `pending`/skipped, never delivered, with no error. No secrets ever appear in `form_events` or the event payload (ADR-018 Decision 9); provider credentials (Resend API key, etc.) live in environment/secret config read only by the provider module, never in Sanity or the outbox.
+
+**6. Security.** The consumer runs under `runAsTrustedSystemOperation('form notification delivery', …)` (service-role, grep-auditable). `form_events` RLS: dashboard read of delivery status is project-scoped (`project_id in get_my_project_ids()`); inserts/updates are service-role (emit side + consumer). Recipient config is admin-vetted through the Integrations pane, consistent with ADR-013's custom-script security posture.
+
+### Implementation Order
+
+Each slice honors the `dev` → **STOP** → `preview` → **STOP** → `main` gates.
+
+1. **Outbox delivery columns + consumer skeleton.** Extend `form_events` (Decision 1), build the polling consumer with idempotency, backoff, and dead-lettering — no live channel yet (log-only sink) so the loop is proven in isolation.
+2. **Resend email channel.** `ChannelProvider` interface + Resend implementation + localized email template; wire the consumer to send. First real end-to-end `form.submitted → email`.
+3. **Notifications integration manifest + config surface.** Register the notifications integration in `INTEGRATION_REGISTRY` (server-side consumer contract), generate its per-project `topic → recipients/channel` config, author it in the Studio Integrations pane.
+4. **Delivery status in the dashboard.** Surface `form_events.status`/dead-letter alongside submissions (project-scoped RLS), so an operator can see and re-drive failed deliveries.
+
+### Open Decisions (`Tom decides`)
+
+- **Consumer runtime** — Vercel Cron route vs Supabase Edge Function / `pg_cron`. Trade-offs: Vercel Cron keeps everything in the Next.js app and env; Supabase-side keeps it closer to the data and independent of app deploys. Slice 1.
+- **Emit granularity** — V1 emits on `form.submitted` (finalized submissions only). Whether partial-submission or step events are ever emitted is deferred (they are V2 analytics territory, Concept Spec §26).
+- **`form_events` retention** — archival/pruning policy for delivered events (keep for audit vs prune after N days). Slice 1.
+- **Template authoring** — V1 email templates are code-owned/localized; whether subject/body become admin-editable per project is a later enhancement, not V1.
+- **Consumer contract shape in the manifest** — the exact `IntegrationManifest` extension for a server-side consumer (a `consumerContract` sibling to `renderContract`); designed at slice 3 to stay faithful to ADR-014's manifest-derived model.
+
+### Consequences
+
+**Positive:**
+- Notifications are genuinely V1 (Concept Spec §14) yet fully decoupled — Forms stays provider-agnostic, and a provider outage never touches a submission.
+- Establishes the **reusable server-side event-consumer pattern** the platform will need anyway for CRM, webhooks, and marketing automation (Concept Spec §15/§27) — those become new `ChannelProvider`s / consumers on the same outbox, not new bespoke systems.
+- Recipients and channel config live in one governed place (the Integration layer), consistent with ADR-014's one-configuration-surface principle and ADR-013's security posture.
+- The outbox gives durable, retryable, idempotent, auditable delivery with dead-lettering — no silently dropped notifications.
+
+**Negative:**
+- Introduces an operational moving part (a scheduled consumer) that must be monitored — a stuck consumer means undelivered (but never lost) notifications.
+- Extends ADR-014's manifest model to a second contract type (server-side consumer), which must be designed carefully to avoid two divergent integration mechanisms.
+- V1 notification delivery now spans two ADRs (018 emit, 019 deliver) that must ship in the same window for §14 to be satisfied; the mitigation is ADR-018's dashboard inbox, which guarantees no submission is lost if this ADR slips.
+- Adds a channel provider's credentials/secret surface (Resend API key as an application send credential, distinct from the existing Supabase SMTP config) to manage.
+
+---
+
+**Decision ownership note (spine §4):** acceptance of this ADR is `Tom approves`. The `form_events` delivery-column migration and the consumer-runtime choice are `Tom decides` at execution time; no scheduled worker or migration is enabled without explicit sign-off at the moment it is run.
+
+
+---
