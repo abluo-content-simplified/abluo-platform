@@ -443,6 +443,19 @@ export default defineConfig({
                                   .options({ projectId: project._id, projectSlug: slug })
                               ),
 
+                            // Notifications — ADR-019. Recipient management
+                            // (project.notifications.recipients). Opens the
+                            // project doc form; the Notifications field is edited here.
+                            S.listItem()
+                              .id(`${slug}-settings-notifications`)
+                              .title('Notifications')
+                              .child(
+                                S.document()
+                                  .documentId(project._id)
+                                  .schemaType('project')
+                                  .title('Notifications')
+                              ),
+
                           ])
                       ),
 

@@ -2044,6 +2044,41 @@ const projectType = defineType({
     // IntegrationsPane exists. No Studio IA change lands in Phase A.
     buildIntegrationConfigsField(),
 
+    // ── Notification recipients (ADR-019) ───────────────────────────────────
+    // Edited in Project Settings → Notifications. The form-notification consumer
+    // reads these at send time to decide who gets a "new submission" email.
+    defineField({
+      name: 'notifications',
+      title: 'Notifications',
+      type: 'object',
+      description: 'Who gets notified when a form on this project receives a new submission.',
+      fields: [
+        defineField({
+          name: 'recipients',
+          title: 'Recipients',
+          type: 'array',
+          description: 'One group per topic. Topic "all" (or blank) matches every form.',
+          of: [
+            defineArrayMember({
+              type: 'object',
+              fields: [
+                defineField({ name: 'topic', title: 'Topic', type: 'string', description: 'e.g. "early-access", or "all" for every form.', initialValue: 'all' }),
+                defineField({ name: 'emails', title: 'Emails', type: 'array', of: [{ type: 'string' }], description: 'Recipient email addresses.' }),
+                defineField({ name: 'enabled', title: 'Enabled', type: 'boolean', initialValue: true }),
+              ],
+              preview: {
+                select: { topic: 'topic', emails: 'emails', enabled: 'enabled' },
+                prepare: ({ topic, emails, enabled }: { topic?: string; emails?: string[]; enabled?: boolean }) => ({
+                  title: `${topic ?? 'all'}${enabled === false ? ' (disabled)' : ''}`,
+                  subtitle: (emails ?? []).join(', '),
+                }),
+              },
+            }),
+          ],
+        }),
+      ],
+    }),
+
     // ── Privacy controls (ADR-014 Phase B) ──────────────────────────────────
     // Project-level privacy switches, edited via the Phase B Privacy pane.
     // consentModeEnabled is the fail-closed consent gate (moved here from

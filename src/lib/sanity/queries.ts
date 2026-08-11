@@ -1227,3 +1227,14 @@ export const designSystemQuery = /* groq */ `
     *[_type == "designSystem" && projectSlug == $projectSlug][0]
   ) ${DS_FIELDS_SELECTION}
 `
+
+
+// ── Project notification recipients (ADR-019) ─────────────────────────────────
+// Returns the project's notifications.recipients groups (topic/emails/enabled),
+// read at send time by the form-notification consumer. Same $projectSlug pattern
+// as projectIntegrationsQuery / enabledModuleIdsQuery.
+export const projectNotificationsQuery = /* groq */ `
+  *[_type == "project" && projectSlug == $projectSlug][0].notifications.recipients[]{
+    topic, emails, enabled
+  }
+`

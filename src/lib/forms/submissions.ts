@@ -13,6 +13,7 @@
  * — Forms calls no delivery provider (ADR-018 Decision 9); ADR-019 delivers.
  */
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
+import { getAppEnvironment } from '@/lib/notifications/environment'
 import { runSpamChecks } from '@/lib/forms/spam'
 import { issueStepToken, tokensMatch, isTokenExpired } from '@/lib/forms/tokens'
 import {
@@ -157,7 +158,7 @@ export async function createSubmission(input: CreateSubmissionInput): Promise<Su
 
       if (finalOnCreate) {
         await emitSubmittedEvent(supabase, {
-          tenantId, projectId, def, submissionId: inserted.id as string, locale: input.locale ?? 'en',
+          tenantId, projectId, projectSlug: input.projectSlug, def, submissionId: inserted.id as string, locale: input.locale ?? 'en',
         })
         return { ok: true, done: true, submissionId: inserted.id as string }
       }
@@ -258,6 +259,7 @@ export async function completeStep(input: CompleteStepInput): Promise<Submission
         await emitSubmittedEvent(supabase, {
           tenantId: (row.tenant_id as string) ?? null,
           projectId: (row.project_id as string) ?? null,
+          projectSlug: input.projectSlug,
           def,
           submissionId: input.submissionId,
           locale: (row.locale as string) ?? 'en',
@@ -280,7 +282,7 @@ export async function completeStep(input: CompleteStepInput): Promise<Submission
 
 async function emitSubmittedEvent(
   supabase: { from: (t: string) => any },
-  args: { tenantId: string | null; projectId: string | null; def: FormDefinition; submissionId: string; locale: string },
+  args: { tenantId: string | null; projectId: string | null; projectSlug: string; def: FormDefinition; submissionId: string; locale: string },
 ): Promise<void> {
   const { error } = await supabase.from('form_events').insert({
     event_type: 'form.submitted',
@@ -289,6 +291,8 @@ async function emitSubmittedEvent(
     form_id: args.def.formId,
     form_version: args.def.version,
     submission_id: args.submissionId,
+    project_slug: args.projectSlug,
+    environment: getAppEnvironment(),
     topic: args.def.notificationTopic ?? args.def.formId,
     locale: args.locale,
     payload: {}, // provider-agnostic; ADR-019 consumer joins the submission for content
