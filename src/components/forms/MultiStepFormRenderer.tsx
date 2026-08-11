@@ -65,6 +65,11 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
   })
   const landingIndex = firstIncompleteStepIndex(def, initialContext)
   const [stepIndex, setStepIndex] = useState(landingIndex)
+  // The first step the visitor actually sees. Steps auto-advanced by Context are
+  // "done" and excluded from the progress count (e.g. landing on step 2 of 3 →
+  // "Step 1 of 2"; landing on the only remaining step → no counter). Resets to 0
+  // if auto-advance falls back to a full run.
+  const [baseStep, setBaseStep] = useState(landingIndex)
   const [submissionId, setSubmissionId] = useState<string | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [status, setStatus] = useState<'preparing' | 'idle' | 'submitting' | 'success' | 'error'>(
@@ -144,10 +149,11 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
         setToken(tok)
         setStatus('idle')
       } catch {
-        // Fallback: start at step 1 with Context still pre-filled.
+        // Fallback: start at step 1 with Context still pre-filled — full run.
         setSubmissionId(null)
         setToken(null)
         setStepIndex(0)
+        setBaseStep(0)
         setStatus('idle')
       }
     })()
@@ -223,9 +229,13 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-0">
       <div className="mb-6">
-        <p className="text-[var(--text-secondary)] text-xs font-medium uppercase tracking-wide">
-          {messages.stepLabel.replace('{current}', String(stepIndex + 1)).replace('{total}', String(def.steps.length))}
-        </p>
+        {def.steps.length - baseStep > 1 && (
+          <p className="text-[var(--text-secondary)] text-xs font-medium uppercase tracking-wide">
+            {messages.stepLabel
+              .replace('{current}', String(stepIndex - baseStep + 1))
+              .replace('{total}', String(def.steps.length - baseStep))}
+          </p>
+        )}
         {currentStep.title && (
           <h3 className="text-[var(--text-primary)] text-lg font-medium mt-1">{currentStep.title}</h3>
         )}
