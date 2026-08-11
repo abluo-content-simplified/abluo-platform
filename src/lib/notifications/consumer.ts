@@ -104,16 +104,26 @@ export async function deliverEvent(eventId: string): Promise<{ outcome: DeliverO
         createdAt: sub?.created_at as string | undefined,
       })
 
-      const sent = await sendEmail({ to: recipients, subject: email.subject, html: email.html, text: email.text })
-      if (sent.ok) {
+      // Send a SEPARATE email per recipient — better privacy (recipients never
+      // see each other) and a cleaner single-recipient signal to strict filters.
+      const sendResults = await Promise.all(
+        recipients.map((to) =>
+          sendEmail({ to: [to], subject: email.subject, html: email.html, text: email.text }).then((res) => ({ to, res })),
+        ),
+      )
+      const failures = sendResults.filter((r) => !r.res.ok)
+      if (failures.length === 0) {
         await finalize(supabase, eventId, 'delivered', attempts, null)
         return { outcome: 'delivered' }
       }
 
+      // Partial or total failure — retry (the sweep re-sends; already-accepted
+      // recipients may get a duplicate on retry, which is acceptable vs. losing one).
+      const errMsg = failures.map((f) => `${f.to}: ${f.res.error}`).join('; ')
       const nextAttempts = attempts + 1
       const nextStatus = nextAttempts >= MAX_ATTEMPTS ? 'dead' : 'failed'
-      await finalize(supabase, eventId, nextStatus, nextAttempts, sent.error ?? 'send failed')
-      return { outcome: nextStatus, reason: sent.error }
+      await finalize(supabase, eventId, nextStatus, nextAttempts, errMsg)
+      return { outcome: nextStatus, reason: errMsg }
     },
   )
 }
