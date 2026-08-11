@@ -17,8 +17,9 @@ export interface FormSectionMessages {
   errorMessage: string
   /** Advance-to-next-step button on a non-final multi-step page. */
   continueLabel: string
-  /** Step progress label, e.g. "Step 2 of 3". */
-  stepLabel: (current: number, total: number) => string
+  /** Step progress template with {current}/{total} placeholders, e.g. "Step {current} of {total}".
+   * A plain string (not a function) so it can cross the Server→Client Component boundary. */
+  stepLabel: string
 }
 
 const MESSAGES: Record<string, FormSectionMessages> = {
@@ -28,7 +29,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     successMessage: 'Your message has been sent. Thank you!',
     errorMessage:   'Something went wrong. Please try again.',
     continueLabel:  'Continue',
-    stepLabel:      (c, t) => `Step ${c} of ${t}`,
+    stepLabel:      'Step {current} of {total}',
   },
   it: {
     submitLabel:    'Invia',
@@ -36,7 +37,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     successMessage: 'Il tuo messaggio è stato inviato. Grazie!',
     errorMessage:   'Si è verificato un problema. Riprova.',
     continueLabel:  'Continua',
-    stepLabel:      (c, t) => `Passo ${c} di ${t}`,
+    stepLabel:      'Passo {current} di {total}',
   },
   de: {
     submitLabel:    'Absenden',
@@ -44,7 +45,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     successMessage: 'Ihre Nachricht wurde gesendet. Vielen Dank!',
     errorMessage:   'Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.',
     continueLabel:  'Weiter',
-    stepLabel:      (c, t) => `Schritt ${c} von ${t}`,
+    stepLabel:      'Schritt {current} von {total}',
   },
   fr: {
     submitLabel:    'Envoyer',
@@ -52,7 +53,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     successMessage: 'Votre message a été envoyé. Merci !',
     errorMessage:   'Une erreur est survenue. Veuillez réessayer.',
     continueLabel:  'Continuer',
-    stepLabel:      (c, t) => `Étape ${c} sur ${t}`,
+    stepLabel:      'Étape {current} sur {total}',
   },
   es: {
     submitLabel:    'Enviar',
@@ -60,7 +61,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     successMessage: '¡Tu mensaje ha sido enviado. Gracias!',
     errorMessage:   'Algo salió mal. Por favor, inténtalo de nuevo.',
     continueLabel:  'Continuar',
-    stepLabel:      (c, t) => `Paso ${c} de ${t}`,
+    stepLabel:      'Paso {current} de {total}',
   },
 }
 

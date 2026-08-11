@@ -224,7 +224,7 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
     <form onSubmit={handleSubmit} noValidate className="space-y-0">
       <div className="mb-6">
         <p className="text-[var(--text-secondary)] text-xs font-medium uppercase tracking-wide">
-          {messages.stepLabel(stepIndex + 1, def.steps.length)}
+          {messages.stepLabel.replace('{current}', String(stepIndex + 1)).replace('{total}', String(def.steps.length))}
         </p>
         {currentStep.title && (
           <h3 className="text-[var(--text-primary)] text-lg font-medium mt-1">{currentStep.title}</h3>
