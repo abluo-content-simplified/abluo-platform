@@ -6,13 +6,13 @@
  * Three-step Early Access request flow.
  *
  * Step 1 — Contact (name + email)
- *   POST /api/inquiries → partial record → get inquiryId → advance to step 2
+ *   POST /api/forms/{projectSlug}/early-access/submissions → { submissionId, completionToken } → step 2
  *
  * Step 2 — Organisation (name, role cards, org type cards)
  *   Data collected locally → advance to step 3
  *
  * Step 3 — Streaming Needs (use cases chips, audience size dropdown, website, referral, GDPR)
- *   PATCH /api/inquiries/[id] with all step 2+3 data → show success state
+ *   POST …/submissions/{id}/steps (stepKey 'details') → finalize → show success state
  *
  * When opened from footer CTA with startAtStep2=true, step 1 is already
  * recorded and we jump straight to step 2.
@@ -713,7 +713,8 @@ export function EarlyAccessModal() {
   const websiteField   = buildStep3WebsiteField(m)
 
   const [step, setStep]               = useState<1 | 2 | 3>(1)
-  const [inquiryId, setInquiryId]     = useState<string | null>(null)
+  const [submissionId, setSubmissionId]       = useState<string | null>(null)
+  const [completionToken, setCompletionToken] = useState<string | null>(null)
   const [step1Values, setStep1Values] = useState<FormValues>({ name: '', email: '' })
   const [step2Values, setStep2Values] = useState<FormValues>(getInitialStep2Values())
   const [step3Values, setStep3Values] = useState<FormValues>(getInitialStep3Values())
@@ -731,15 +732,17 @@ export function EarlyAccessModal() {
       setSuccess(false)
       setSubmitError(null)
 
-      if (options.startAtStep2 && options.inquiryId) {
+      if (options.startAtStep2 && options.submissionId) {
         setStep(2)
-        setInquiryId(options.inquiryId)
+        setSubmissionId(options.submissionId)
+        setCompletionToken(options.completionToken ?? null)
         setStep1Values({ name: options.name ?? '', email: options.email ?? '' })
         setStep2Values(getInitialStep2Values())
         setStep3Values(getInitialStep3Values())
       } else {
         setStep(1)
-        setInquiryId(options.inquiryId ?? null)
+        setSubmissionId(options.submissionId ?? null)
+        setCompletionToken(options.completionToken ?? null)
         setStep1Values({ name: options.name ?? '', email: options.email ?? '' })
         setStep2Values(getInitialStep2Values())
         setStep3Values(getInitialStep3Values())
@@ -777,32 +780,27 @@ export function EarlyAccessModal() {
 
     setSubmitting(true)
     try {
-      const res  = await fetch('/api/inquiries', {
+      const res  = await fetch(`/api/forms/${projectSlug ?? tenantSlug}/early-access/submissions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name:               step1Values.name,
-          email:              step1Values.email,
-          source:             options?.source ?? 'header_cta',
-          tenantSlug,
-          projectSlug,
-          partial:            true,
-          openedAt:           formStartedAt.current,
-          company_website:    '',
-          inquiryType:        'early_access',
-          // CTA attribution — from the button that opened this modal
-          cta_internal_name:  options?.ctaInternalName  ?? null,
-          cta_label_snapshot: options?.ctaLabelSnapshot ?? null,
-          // Page attribution — auto-captured from window.location
-          page_slug:          pageSlug,
-          referrer_url:       referrerUrl,
-          // Locale — which language version the user was viewing
           locale,
+          data: { name: step1Values.name, email: step1Values.email },
+          source: {
+            source:             options?.source ?? 'header_cta',
+            cta_internal_name:  options?.ctaInternalName  ?? null,
+            cta_label_snapshot: options?.ctaLabelSnapshot ?? null,
+            page_slug:          pageSlug,
+            referrer_url:       referrerUrl,
+          },
+          openedAt:        formStartedAt.current,
+          company_website: '',
         }),
       })
       const data = await res.json()
-      if (!res.ok) { setSubmitError(m.submitError); return }
-      if (data.id) setInquiryId(data.id)
+      if (!res.ok || !data.submissionId) { setSubmitError(m.submitError); return }
+      setSubmissionId(data.submissionId)
+      setCompletionToken(data.completionToken ?? null)
       setStep(2)
       setErrors({})
     } catch (err) {
@@ -844,48 +842,29 @@ export function EarlyAccessModal() {
 
     setSubmitting(true)
     try {
-      const qualificationData = { ...step2Values, ...step3Values }
+      const detailsData = { ...step2Values, ...step3Values }
 
-      if (inquiryId) {
-        const res = await fetch(`/api/inquiries/${inquiryId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...qualificationData, partial: false }),
-        })
-        if (!res.ok) { setSubmitError(m.submitError); return }
-      } else {
-        const pathParts = typeof window !== 'undefined'
-          ? window.location.pathname.split('/').filter(Boolean)
-          : []
-        const res  = await fetch('/api/inquiries', {
+      if (!submissionId || !completionToken) {
+        setSubmitError(m.submitError)
+        return
+      }
+
+      const res = await fetch(
+        `/api/forms/${projectSlug ?? tenantSlug}/early-access/submissions/${submissionId}/steps`,
+        {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name:               step1Values.name,
-            email:              step1Values.email,
-            source:             options?.source ?? 'header_cta',
-            tenantSlug,
-            projectSlug,
-            partial:            false,
-            openedAt:           formStartedAt.current,
-            company_website:    '',
-            inquiryType:        'early_access',
-            cta_internal_name:  options?.ctaInternalName  ?? null,
-            cta_label_snapshot: options?.ctaLabelSnapshot ?? null,
-            page_slug:          pathParts.length >= 3 ? pathParts[2] : null,
-            referrer_url:       typeof window !== 'undefined' ? window.location.href : null,
-            locale,
-            ...qualificationData,
+            stepKey: 'details',
+            completionToken,
+            data: detailsData,
+            gdprConsent: step3Values.gdprConsent === true,
           }),
-        })
-        const data = await res.json()
-        if (!res.ok) { setSubmitError(m.submitError); return }
-        if (data.id) setInquiryId(data.id)
-      }
+        },
+      )
+      const data = await res.json()
+      if (!res.ok || !data.done) { setSubmitError(m.submitError); return }
 
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('earlyAccessInquiryId')
-      }
       setSuccess(true)
       setErrors({})
     } catch {

@@ -5,12 +5,13 @@
  *
  * Compact Name + Email form for the footer CTA section.
  *
- * Flow:
+ * Flow (ADR-018 slice 1 — new submission contract):
  *   1. User types name + email → submit
- *   2. POST /api/inquiries (partial: true) → get inquiryId
- *   3. Store inquiryId in sessionStorage (duplicate guard)
- *   4. Open modal at step 2 with prefilled name, email, and inquiryId
- *   5. User completes step 2 → PATCH /api/inquiries/[id]
+ *   2. POST /api/forms/{projectSlug}/early-access/submissions → { submissionId, completionToken }
+ *   3. Hold { submissionId, completionToken } in component state (in-memory duplicate guard —
+ *      replaces the old sessionStorage inquiryId hack)
+ *   4. Open modal at step 2 with prefilled name, email, submissionId, and completionToken
+ *   5. User completes step 2 → POST …/submissions/{id}/steps (handled by the modal)
  *
  * LOCALIZATION: all user-facing text is resolved via getEarlyAccessMessages(locale).
  * No English literals appear in this component. Locale is read from EarlyAccessContext.
@@ -36,17 +37,25 @@ interface EarlyAccessFooterCtaProps {
   buttonLabel?: string
 }
 
-const SESSION_KEY       = 'earlyAccessInquiryId'
-const SESSION_NAME_KEY  = 'earlyAccessName'
-const SESSION_EMAIL_KEY = 'earlyAccessEmail'
+interface CreatedSubmission {
+  submissionId: string
+  completionToken: string | null
+  name: string
+  email: string
+}
 
 export function EarlyAccessFooterCta({
   emailPlaceholder,
   buttonLabel,
 }: EarlyAccessFooterCtaProps) {
-  const { open, locale, tenantSlug } = useEarlyAccess()
+  const { open, locale, tenantSlug, projectSlug } = useEarlyAccess()
   const m = getEarlyAccessMessages(locale)
   const openedAt = useRef(Date.now())
+  // In-memory duplicate guard: once this footer has created a partial submission,
+  // resubmitting reopens the modal for the SAME submission instead of creating a new one.
+  const createdRef = useRef<CreatedSubmission | null>(null)
+
+  const scopeSlug = projectSlug ?? tenantSlug
 
   const [name, setName]             = useState('')
   const [email, setEmail]           = useState('')
@@ -67,60 +76,62 @@ export function EarlyAccessFooterCta({
     }
 
     // ── Duplicate guard ────────────────────────────────────────────────────────
-    const existingId = typeof window !== 'undefined'
-      ? sessionStorage.getItem(SESSION_KEY)
-      : null
-
-    if (existingId) {
+    const existing = createdRef.current
+    if (existing) {
       open({
-        name:         sessionStorage.getItem(SESSION_NAME_KEY)  ?? trimmedName,
-        email:        sessionStorage.getItem(SESSION_EMAIL_KEY) ?? trimmedEmail,
-        source:       'footer_cta',
-        inquiryId:    existingId,
-        startAtStep2: true,
+        name:            existing.name,
+        email:           existing.email,
+        source:          'footer_cta',
+        submissionId:    existing.submissionId,
+        completionToken: existing.completionToken ?? undefined,
+        startAtStep2:    true,
       })
       return
     }
 
-    // ── Create partial inquiry ─────────────────────────────────────────────────
+    // ── Create partial submission ──────────────────────────────────────────────
     setSubmitting(true)
     try {
       const pathParts = typeof window !== 'undefined'
         ? window.location.pathname.split('/').filter(Boolean)
         : []
-      const res = await fetch('/api/inquiries', {
+      const res = await fetch(`/api/forms/${scopeSlug}/early-access/submissions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name:            trimmedName,
-          email:           trimmedEmail,
-          source:          'footer_cta',
-          tenantSlug,
-          partial:         true,
+          locale,
+          data: { name: trimmedName, email: trimmedEmail },
+          source: {
+            source:       'footer_cta',
+            page_slug:    pathParts.length >= 3 ? pathParts[2] : null,
+            referrer_url: typeof window !== 'undefined' ? window.location.href : null,
+          },
           openedAt:        openedAt.current,
           company_website: '',   // honeypot — always empty from real users
-          inquiryType:     'early_access',
-          // Page attribution — auto-captured; no CTA object for footer forms
-          page_slug:       pathParts.length >= 3 ? pathParts[2] : null,
-          referrer_url:    typeof window !== 'undefined' ? window.location.href : null,
-          locale,
         }),
       })
 
       const data = await res.json()
 
-      if (data.id) {
-        sessionStorage.setItem(SESSION_KEY,       data.id)
-        sessionStorage.setItem(SESSION_NAME_KEY,  trimmedName)
-        sessionStorage.setItem(SESSION_EMAIL_KEY, trimmedEmail)
+      if (!res.ok || !data.submissionId) {
+        setError(m.submitError)
+        return
+      }
+
+      createdRef.current = {
+        submissionId:    data.submissionId,
+        completionToken: data.completionToken ?? null,
+        name:            trimmedName,
+        email:           trimmedEmail,
       }
 
       open({
-        name:         trimmedName,
-        email:        trimmedEmail,
-        source:       'footer_cta',
-        inquiryId:    data.id ?? undefined,
-        startAtStep2: true,
+        name:            trimmedName,
+        email:           trimmedEmail,
+        source:          'footer_cta',
+        submissionId:    data.submissionId,
+        completionToken: data.completionToken ?? undefined,
+        startAtStep2:    true,
       })
     } catch {
       setError(m.submitError)

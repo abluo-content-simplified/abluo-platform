@@ -29,8 +29,10 @@ export interface EarlyAccessOpenOptions {
   email?: string
   /** Which entry point triggered the open */
   source: 'header_cta' | 'footer_cta'
-  /** Existing inquiry ID — if the footer already created a partial record */
-  inquiryId?: string
+  /** Existing submission ID — if the footer already created a partial submission (ADR-018) */
+  submissionId?: string
+  /** One-time rotating step token for the existing partial submission (ADR-018) */
+  completionToken?: string
   /** Start at step 2 (footer already captured name + email) */
   startAtStep2?: boolean
   /**
