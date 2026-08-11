@@ -1093,12 +1093,49 @@ export interface SanityForm {
   fields?: SanityFormField[]
 }
 
+// ── Renderable form definition (ADR-018 slice 4) ──────────────────────────────
+// GROQ-resolved, locale-applied projection of a tenant-owned `formDefinition`,
+// shaped for the Field Library renderer. Field `id` is the definition's stable
+// `internalKey`. Only the visitor-facing strings are localized.
+export interface RenderableFormOption {
+  value: string
+  label: string
+}
+export interface RenderableFormField {
+  id: string
+  type: string
+  required?: boolean
+  width?: '50%' | '100%'
+  label: string
+  placeholder?: string
+  help?: string
+  options?: RenderableFormOption[]
+}
+export interface RenderableFormStep {
+  key: string
+  title?: string
+  fields: RenderableFormField[]
+}
+export interface RenderableFormDefinition {
+  _id: string
+  formId: string
+  formType?: 'single-step' | 'multi-step' | 'question-answer'
+  version?: number
+  title?: string
+  tenantSlug?: string
+  steps: RenderableFormStep[]
+  requireConsent?: boolean
+  consentText?: string
+  successTitle?: string
+  successBody?: string
+}
+
 export interface FormSection {
   _type: 'formSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
-  /** Dereferenced form document — null if form is not set or not published */
-  form?: SanityForm | null
+  /** Dereferenced formDefinition — null if not set or not published (ADR-018 slice 4). */
+  definition?: RenderableFormDefinition | null
 }
 
 export interface StatementSection {

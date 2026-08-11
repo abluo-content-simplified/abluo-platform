@@ -133,21 +133,31 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       "emptyStateHeading": ${loc('emptyStateHeading')},
       "emptyStateBody": ${loc('emptyStateBody')},
       // formSection fields
-      "form": form->{
+      "definition": form->{
         _id,
-        projectSlug,
-        "description": ${loc('description')},
-        "submitLabel": ${loc('submitLabel')},
-        "successMessage": ${loc('successMessage')},
-        inquiryType,
-        fields[] {
-          id, type, required, width, rows,
-          "label": ${loc('label')},
-          "placeholder": ${loc('placeholder')},
-          "helpText": ${loc('helpText')},
-          "checkboxLabel": ${loc('checkboxLabel')},
-          options[] { value, "label": ${loc('label')} }
-        }
+        formId,
+        formType,
+        version,
+        "title": ${loc('title')},
+        tenantSlug,
+        steps[]{
+          key,
+          "title": ${loc('title')},
+          fields[]{
+            "id": internalKey,
+            type,
+            required,
+            width,
+            "label": ${loc('label')},
+            "placeholder": ${loc('placeholder')},
+            "help": ${loc('help')},
+            options[]{ value, "label": ${loc('label')} }
+          }
+        },
+        "requireConsent": privacy.requireConsent,
+        "consentText": ${loc('privacy.consentText')},
+        "successTitle": ${loc('success.title')},
+        "successBody": ${loc('success.body')}
       },
       // heroSection media / layout / style fields
       mediaType,
@@ -944,21 +954,31 @@ export const homePageQuery = /* groq */ `
         "answer": ${loc('answer')},
       },
       showMap, mapHeight, mapTheme,
-      "form": form->{
+      "definition": form->{
         _id,
-        projectSlug,
-        "description": ${loc('description')},
-        "submitLabel": ${loc('submitLabel')},
-        "successMessage": ${loc('successMessage')},
-        inquiryType,
-        fields[] {
-          id, type, required, width, rows,
-          "label": ${loc('label')},
-          "placeholder": ${loc('placeholder')},
-          "helpText": ${loc('helpText')},
-          "checkboxLabel": ${loc('checkboxLabel')},
-          options[] { value, "label": ${loc('label')} }
-        }
+        formId,
+        formType,
+        version,
+        "title": ${loc('title')},
+        tenantSlug,
+        steps[]{
+          key,
+          "title": ${loc('title')},
+          fields[]{
+            "id": internalKey,
+            type,
+            required,
+            width,
+            "label": ${loc('label')},
+            "placeholder": ${loc('placeholder')},
+            "help": ${loc('help')},
+            options[]{ value, "label": ${loc('label')} }
+          }
+        },
+        "requireConsent": privacy.requireConsent,
+        "consentText": ${loc('privacy.consentText')},
+        "successTitle": ${loc('success.title')},
+        "successBody": ${loc('success.body')}
       },
       // heroSection media / layout / style fields
       mediaType,

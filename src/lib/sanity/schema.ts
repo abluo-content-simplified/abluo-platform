@@ -1909,16 +1909,19 @@ const formSectionType = defineType({
       name: 'form',
       title: 'Form',
       type: 'reference',
-      to: [{ type: 'form' }],
-      description: 'The form to render in this section',
+      to: [{ type: 'formDefinition' }],
+      description: 'The form definition to render in this section (ADR-018).',
       validation: (Rule) => Rule.required(),
+      // Loose picker filter (active definitions). Strict same-tenant filtering
+      // arrives with the admin surface (slice 7); runtime resolution is by tenant.
+      options: { filter: '_type == "formDefinition" && role == "active"' },
     }),
   ],
   preview: {
-    select: { titleEn: 'form.title.en', projectSlug: 'form.projectSlug' },
-    prepare: ({ titleEn, projectSlug }: { titleEn?: string; projectSlug?: string }) => ({
-      title: titleEn ?? 'Form Section',
-      subtitle: projectSlug ?? '—',
+    select: { titleEn: 'form.title.en', internalName: 'form.internalName', tenantSlug: 'form.tenantSlug' },
+    prepare: ({ titleEn, internalName, tenantSlug }: { titleEn?: string; internalName?: string; tenantSlug?: string }) => ({
+      title: titleEn ?? internalName ?? 'Form Section',
+      subtitle: tenantSlug ?? '—',
     }),
   },
 })
