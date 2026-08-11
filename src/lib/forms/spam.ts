@@ -5,7 +5,13 @@
  *
  *  1. Honeypot   — hidden text input that bots fill; humans never see it
  *  2. Timing     — reject submissions completed unrealistically fast (< 2s)
- *  3. Rate limit — per-IP cap via Supabase count query (5 submissions / hour)
+ *  3. Rate limit — per-IP cap via a Supabase count query (5 submissions / hour)
+ *
+ * ADR-018 slice 1 generalized the rate-limit store: `isRateLimited` /
+ * `runSpamChecks` accept an optional `{ table, ipColumn }` so the same helpers
+ * serve both the legacy `inquiries` table (default — `data->>ip`) and the new
+ * `form_submissions` table (`submitter_ip` column). Existing callers pass no
+ * options and are unaffected.
  *
  * TURNSTILE INTEGRATION POINT
  * ─────────────────────────────────────────────────────────────────────────────
@@ -16,18 +22,6 @@
  *   3. Receive the cf-turnstile-response token in the POST body
  *   4. Call verifyTurnstile(token) below and check result.success
  *   5. Reject the request if verification fails
- *
- * async function verifyTurnstile(token: string): Promise<boolean> {
- *   const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
- *     method: 'POST',
- *     body: new URLSearchParams({
- *       secret: process.env.TURNSTILE_SECRET_KEY!,
- *       response: token,
- *     }),
- *   })
- *   const data = await res.json()
- *   return data.success === true
- * }
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -42,11 +36,23 @@ const MIN_FORM_DURATION_MS = 2_000
 const RATE_LIMIT_MAX = 5
 const RATE_LIMIT_WINDOW_HOURS = 1
 
+/** Default rate-limit store — the legacy inquiries table, IP in the data JSONB. */
+const DEFAULT_RATE_LIMIT_STORE: RateLimitStore = { table: 'inquiries', ipColumn: 'data->>ip' }
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface SpamCheckResult {
   blocked: boolean
   reason?: 'honeypot' | 'timing' | 'rate_limit'
+}
+
+/**
+ * Where to count prior submissions for rate limiting.
+ * `ipColumn` may be a plain column (`submitter_ip`) or a JSONB path (`data->>ip`).
+ */
+export interface RateLimitStore {
+  table: string
+  ipColumn: string
 }
 
 // ─── Layer 1: Honeypot ────────────────────────────────────────────────────────
@@ -80,32 +86,32 @@ export function isTooFast(openedAt: number | undefined): boolean {
 
 /**
  * Returns true if this IP has exceeded the rate limit.
- * Uses the inquiries table itself as the rate-limit store — no Redis required.
- *
- * Queries: SELECT count(*) FROM inquiries
- *          WHERE data->>'ip' = $ip
- *          AND created_at > now() - interval '1 hour'
- *
- * The functional index on (data->>'ip') makes this fast.
- * At current traffic levels a full scan would also be fine.
+ * Uses the configured store's table as the rate-limit source — no Redis required.
+ * Defaults to the legacy `inquiries` table (IP in `data->>ip`).
  */
 export async function isRateLimited(
   ip: string,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  store: RateLimitStore = DEFAULT_RATE_LIMIT_STORE,
 ): Promise<boolean> {
   const windowStart = new Date(
-    Date.now() - RATE_LIMIT_WINDOW_HOURS * 60 * 60 * 1_000
+    Date.now() - RATE_LIMIT_WINDOW_HOURS * 60 * 60 * 1_000,
   ).toISOString()
 
-  // Use filter() for JSONB extraction — .eq() doesn't accept JSON paths
-  const { count, error } = await supabase
-    .from('inquiries')
+  let query = supabase
+    .from(store.table)
     .select('id', { count: 'exact', head: true })
-    .filter('data->>ip', 'eq', ip)
     .gte('created_at', windowStart)
 
+  // JSONB path (e.g. `data->>ip`) needs `.filter`; a plain column uses `.eq`.
+  query = store.ipColumn.includes('->')
+    ? query.filter(store.ipColumn, 'eq', ip)
+    : query.eq(store.ipColumn, ip)
+
+  const { count, error } = await query
+
   if (error) {
-    // Fail open — if the rate-limit check itself errors, don't block the user
+    // Fail open — if the rate-limit check itself errors, don't block the user.
     console.warn('[spam] rate-limit check error:', error.message)
     return false
   }
@@ -126,7 +132,8 @@ export async function runSpamChecks(
     openedAt: number | undefined
     ip: string
   },
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  store: RateLimitStore = DEFAULT_RATE_LIMIT_STORE,
 ): Promise<SpamCheckResult> {
   if (isHoneypotTriggered(params.honeypot)) {
     return { blocked: true, reason: 'honeypot' }
@@ -136,7 +143,7 @@ export async function runSpamChecks(
     return { blocked: true, reason: 'timing' }
   }
 
-  if (await isRateLimited(params.ip, supabase)) {
+  if (await isRateLimited(params.ip, supabase, store)) {
     return { blocked: true, reason: 'rate_limit' }
   }
 
