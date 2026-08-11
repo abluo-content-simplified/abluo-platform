@@ -31,6 +31,7 @@
  */
 
 import { useState, useEffect, useRef, useId, useCallback, Fragment } from 'react'
+import { collectClientSource } from '@/lib/forms/source'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { X, Check, ChevronDown } from 'lucide-react'
@@ -700,7 +701,7 @@ function SectionDivider() {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function EarlyAccessModal() {
-  const { isOpen, options, tenantSlug, projectSlug, locale, close } = useEarlyAccess()
+  const { isOpen, options, tenantSlug, locale, close } = useEarlyAccess()
   const m = getEarlyAccessMessages(locale)
   const formStartedAt = useRef<number>(Date.now())
   const dialogId = useId()
@@ -770,29 +771,19 @@ export function EarlyAccessModal() {
     const errs = validateStep(step1Fields, step1Values)
     if (Object.keys(errs).length) { setErrors(errs); return }
 
-    // Capture page attribution at submission time.
-    // Path pattern: /{locale}/{tenant}/{pageSlug} — index [2] is the page slug.
-    const pathParts = typeof window !== 'undefined'
-      ? window.location.pathname.split('/').filter(Boolean)
-      : []
-    const referrerUrl = typeof window !== 'undefined' ? window.location.href : null
-    const pageSlug    = pathParts.length >= 3 ? pathParts[2] : null
-
     setSubmitting(true)
     try {
-      const res  = await fetch(`/api/forms/${projectSlug ?? tenantSlug}/early-access/submissions`, {
+      const res  = await fetch(`/api/forms/${tenantSlug}/early-access/submissions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           locale,
           data: { name: step1Values.name, email: step1Values.email },
-          source: {
+          source: collectClientSource({
             source:             options?.source ?? 'header_cta',
             cta_internal_name:  options?.ctaInternalName  ?? null,
             cta_label_snapshot: options?.ctaLabelSnapshot ?? null,
-            page_slug:          pageSlug,
-            referrer_url:       referrerUrl,
-          },
+          }),
           openedAt:        formStartedAt.current,
           company_website: '',
         }),
@@ -850,7 +841,7 @@ export function EarlyAccessModal() {
       }
 
       const res = await fetch(
-        `/api/forms/${projectSlug ?? tenantSlug}/early-access/submissions/${submissionId}/steps`,
+        `/api/forms/${tenantSlug}/early-access/submissions/${submissionId}/steps`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

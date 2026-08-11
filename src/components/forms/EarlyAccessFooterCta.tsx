@@ -23,6 +23,7 @@
 import { useState, useRef, FormEvent } from 'react'
 import { useEarlyAccess } from './EarlyAccessContext'
 import { getEarlyAccessMessages } from '@/lib/forms/early-access-config'
+import { collectClientSource } from '@/lib/forms/source'
 
 interface EarlyAccessFooterCtaProps {
   /**
@@ -48,14 +49,14 @@ export function EarlyAccessFooterCta({
   emailPlaceholder,
   buttonLabel,
 }: EarlyAccessFooterCtaProps) {
-  const { open, locale, tenantSlug, projectSlug } = useEarlyAccess()
+  const { open, locale, tenantSlug } = useEarlyAccess()
   const m = getEarlyAccessMessages(locale)
   const openedAt = useRef(Date.now())
   // In-memory duplicate guard: once this footer has created a partial submission,
   // resubmitting reopens the modal for the SAME submission instead of creating a new one.
   const createdRef = useRef<CreatedSubmission | null>(null)
 
-  const scopeSlug = projectSlug ?? tenantSlug
+  const scopeSlug = tenantSlug
 
   const [name, setName]             = useState('')
   const [email, setEmail]           = useState('')
@@ -92,20 +93,13 @@ export function EarlyAccessFooterCta({
     // ── Create partial submission ──────────────────────────────────────────────
     setSubmitting(true)
     try {
-      const pathParts = typeof window !== 'undefined'
-        ? window.location.pathname.split('/').filter(Boolean)
-        : []
       const res = await fetch(`/api/forms/${scopeSlug}/early-access/submissions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           locale,
           data: { name: trimmedName, email: trimmedEmail },
-          source: {
-            source:       'footer_cta',
-            page_slug:    pathParts.length >= 3 ? pathParts[2] : null,
-            referrer_url: typeof window !== 'undefined' ? window.location.href : null,
-          },
+          source: collectClientSource({ source: 'footer_cta' }),
           openedAt:        openedAt.current,
           company_website: '',   // honeypot — always empty from real users
         }),
