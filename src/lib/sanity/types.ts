@@ -1110,6 +1110,14 @@ export interface RenderableFormField {
   placeholder?: string
   help?: string
   options?: RenderableFormOption[]
+  /** May a placement's Context pre-populate this field? (ADR-018 §7) */
+  contextMappable?: boolean
+}
+
+/** A placement Context key/value pair set on the Form Section (ADR-018 slice 5). */
+export interface FormSectionContextItem {
+  key: string
+  value: string
 }
 export interface RenderableFormStep {
   key: string
@@ -1136,6 +1144,8 @@ export interface FormSection {
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
   /** Dereferenced formDefinition — null if not set or not published (ADR-018 slice 4). */
   definition?: RenderableFormDefinition | null
+  /** Static placement Context — pre-fills contextMappable fields (ADR-018 slice 5). */
+  context?: FormSectionContextItem[] | null
 }
 
 export interface StatementSection {

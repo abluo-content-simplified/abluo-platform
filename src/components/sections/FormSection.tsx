@@ -1,10 +1,10 @@
 /**
  * FormSection — renders a tenant-owned formDefinition in a page section.
  *
- * ADR-018 slice 4: the section now references a `formDefinition` (not the legacy
- * `form`) and delegates to FormDefinitionRenderer, which submits to the new
- * `/api/forms/{tenantSlug}/{formId}/submissions` endpoint. Single-step only this
- * slice — a multi-step definition renders nothing (slice 5).
+ * ADR-018 slice 4: references a `formDefinition`, submits to the new endpoint.
+ * ADR-018 slice 5: routes single-step → FormDefinitionRenderer, multi-step →
+ * MultiStepFormRenderer (rotating-token flow + context-aware first step). The
+ * placement's static Context (section.context) pre-fills contextMappable fields.
  *
  * Server component: data arrives via GROQ reference dereference (section.definition).
  * Signature matches all section components: ({ section, surface, designSystem, locale }).
@@ -14,6 +14,7 @@ import type { FormSection, DesignSystem } from '@/lib/sanity/types'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { FormDefinitionRenderer } from '@/components/forms/FormDefinitionRenderer'
+import { MultiStepFormRenderer } from '@/components/forms/MultiStepFormRenderer'
 import { getFormSectionMessages } from '@/lib/i18n/form-section-messages'
 
 interface Props {
@@ -25,22 +26,39 @@ interface Props {
   tenantSlug?: string
 }
 
+/** Turns the editor's Context key/value list into a plain map for pre-fill. */
+function buildContextMap(items: FormSection['context']): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const item of items ?? []) {
+    if (item?.key) out[item.key] = item.value ?? ''
+  }
+  return out
+}
+
 export function FormSection({ section, surface, designSystem, locale = 'en', tenantSlug }: Props) {
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
   const messages = getFormSectionMessages(locale)
 
-  // No definition, or no tenant scope to submit to → render nothing.
-  if (!section.definition || !tenantSlug) return null
+  const def = section.definition
+  if (!def || !tenantSlug) return null
+
+  const isMultiStep = (def.steps?.length ?? 0) > 1
+  const context = buildContextMap(section.context)
 
   return (
     <section className="px-6 py-24 md:px-16 lg:px-24" style={surfaceStyles}>
       <div className="mx-auto w-full max-w-2xl">
-        <FormDefinitionRenderer
-          definition={section.definition}
-          messages={messages}
-          locale={locale}
-          tenantSlug={tenantSlug}
-        />
+        {isMultiStep ? (
+          <MultiStepFormRenderer
+            definition={def}
+            messages={messages}
+            locale={locale}
+            tenantSlug={tenantSlug}
+            context={context}
+          />
+        ) : (
+          <FormDefinitionRenderer definition={def} messages={messages} locale={locale} tenantSlug={tenantSlug} />
+        )}
       </div>
     </section>
   )

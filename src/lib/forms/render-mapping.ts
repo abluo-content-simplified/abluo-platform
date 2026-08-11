@@ -85,13 +85,17 @@ export function toFieldConfig(field: RenderableFormField): FieldConfig | null {
   }
 }
 
-/** Builds the ordered FieldConfig[] for a single-step definition (+ consent last). */
+/** Builds the ordered FieldConfig[] for a step (+ consent last when included). */
 export function buildFieldConfigs(
   def: RenderableFormDefinition,
   fields: RenderableFormField[],
+  includeConsent?: boolean,
 ): FieldConfig[] {
   const configs = fields.map(toFieldConfig).filter((c): c is FieldConfig => c !== null)
-  if (def.requireConsent) {
+  // Single-step: consent appended when the definition requires it (default).
+  // Multi-step: caller passes `true` only on the final step (consent lives there).
+  const withConsent = includeConsent ?? !!def.requireConsent
+  if (withConsent) {
     configs.push({
       id: CONSENT_FIELD_ID,
       type: 'checkbox',

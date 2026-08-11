@@ -1916,6 +1916,28 @@ const formSectionType = defineType({
       // arrives with the admin surface (slice 7); runtime resolution is by tenant.
       options: { filter: '_type == "formDefinition" && role == "active"' },
     }),
+    // Placement Context (ADR-018 slice 5) — pre-fills contextMappable fields and
+    // sets the opening step. Only keys matching a contextMappable field are honored.
+    defineField({
+      name: 'context',
+      title: 'Context (pre-fill)',
+      type: 'array',
+      description: 'Optional key/value pairs (e.g. treatment = implantology). Only keys matching a context-mappable field are applied.',
+      of: [
+        defineArrayMember({
+          type: 'object',
+          name: 'formSectionContextItem',
+          fields: [
+            defineField({ name: 'key', title: 'Field key', type: 'string' }),
+            defineField({ name: 'value', title: 'Value', type: 'string' }),
+          ],
+          preview: {
+            select: { key: 'key', value: 'value' },
+            prepare: ({ key, value }: { key?: string; value?: string }) => ({ title: key ?? '—', subtitle: value }),
+          },
+        }),
+      ],
+    }),
   ],
   preview: {
     select: { titleEn: 'form.title.en', internalName: 'form.internalName', tenantSlug: 'form.tenantSlug' },

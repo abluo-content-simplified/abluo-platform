@@ -148,6 +148,7 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
             type,
             required,
             width,
+            contextMappable,
             "label": ${loc('label')},
             "placeholder": ${loc('placeholder')},
             "help": ${loc('help')},
@@ -159,6 +160,7 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
         "successTitle": ${loc('success.title')},
         "successBody": ${loc('success.body')}
       },
+      "context": context[]{ key, value },
       // heroSection media / layout / style fields
       mediaType,
       heroImage { asset, hotspot, crop },
@@ -969,6 +971,7 @@ export const homePageQuery = /* groq */ `
             type,
             required,
             width,
+            contextMappable,
             "label": ${loc('label')},
             "placeholder": ${loc('placeholder')},
             "help": ${loc('help')},
@@ -980,6 +983,7 @@ export const homePageQuery = /* groq */ `
         "successTitle": ${loc('success.title')},
         "successBody": ${loc('success.body')}
       },
+      "context": context[]{ key, value },
       // heroSection media / layout / style fields
       mediaType,
       heroImage { asset, hotspot, crop },
