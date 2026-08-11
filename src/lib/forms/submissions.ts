@@ -17,7 +17,6 @@ import { getAppEnvironment } from '@/lib/notifications/environment'
 import { runSpamChecks } from '@/lib/forms/spam'
 import { issueStepToken, tokensMatch, isTokenExpired } from '@/lib/forms/tokens'
 import {
-  resolveDefinition,
   resolveDefinitionSnapshot,
   isMultiStep,
   firstStep,
@@ -28,6 +27,7 @@ import {
   whitelistStepValues,
   type FormDefinition,
 } from '@/lib/forms/definitions'
+import { resolveActiveDefinition, reconstructDefinitionFromSnapshot } from '@/lib/forms/definition-source'
 
 const SPAM_OPTS = { table: 'form_submissions', ipColumn: 'submitter_ip' } as const
 
@@ -92,7 +92,7 @@ function sanitizeContext(def: FormDefinition, context: Record<string, unknown> |
 // ── Create ──────────────────────────────────────────────────────────────────────
 
 export async function createSubmission(input: CreateSubmissionInput): Promise<SubmissionResult> {
-  const def = resolveDefinition(input.formId)
+  const def = await resolveActiveDefinition(input.formId, input.projectSlug)
   if (!def) return { ok: false, status: 404, error: 'unknown form' }
 
   return runAsTrustedSystemOperation(
@@ -158,7 +158,9 @@ export async function createSubmission(input: CreateSubmissionInput): Promise<Su
 
       if (finalOnCreate) {
         await emitSubmittedEvent(supabase, {
-          tenantId, projectId, projectSlug: input.projectSlug, def, submissionId: inserted.id as string, locale: input.locale ?? 'en',
+          tenantId, projectId, projectSlug: input.projectSlug,
+          formId: def.formId, version: def.version, notificationTopic: def.notificationTopic,
+          submissionId: inserted.id as string, locale: input.locale ?? 'en',
         })
         return { ok: true, done: true, submissionId: inserted.id as string }
       }
@@ -177,9 +179,8 @@ export async function createSubmission(input: CreateSubmissionInput): Promise<Su
 // ── Complete a step ───────────────────────────────────────────────────────────
 
 export async function completeStep(input: CompleteStepInput): Promise<SubmissionResult> {
-  const def = resolveDefinition(input.formId)
-  if (!def) return { ok: false, status: 404, error: 'unknown form' }
-  if (!findStep(def, input.stepKey)) return { ok: false, status: 400, error: 'unknown step' }
+  // The definition is reconstructed from the row's pinned snapshot below, so
+  // later steps validate against exactly what the visitor started with (ADR-018).
   if (!/^[0-9a-f-]{36}$/.test(input.submissionId)) return { ok: false, status: 400, error: 'invalid id' }
 
   return runAsTrustedSystemOperation(
@@ -200,7 +201,7 @@ export async function completeStep(input: CompleteStepInput): Promise<Submission
       if (!row) return { ok: false, status: 404, error: 'not found' }
 
       // Guard: right form, still partial, token matches, not expired.
-      if (row.form_id !== def.formId) return { ok: false, status: 404, error: 'not found' }
+      if (row.form_id !== input.formId) return { ok: false, status: 404, error: 'not found' }
       if (row.completion_state !== 'partial') return { ok: false, status: 409, error: 'already complete' }
       if (
         !tokensMatch(input.completionToken, row.step_token_hash) ||
@@ -208,6 +209,13 @@ export async function completeStep(input: CompleteStepInput): Promise<Submission
       ) {
         return { ok: false, status: 401, error: 'invalid or expired token' }
       }
+
+      // Reconstruct the definition from the row's pinned snapshot and validate
+      // this step against it — historical integrity, never a live definition.
+      const def = reconstructDefinitionFromSnapshot(
+        row.definition_snapshot as Parameters<typeof reconstructDefinitionFromSnapshot>[0],
+      )
+      if (!findStep(def, input.stepKey)) return { ok: false, status: 400, error: 'unknown step' }
 
       const values = whitelistStepValues(def, input.stepKey, input.data ?? {})
       const errors = validateStep(def, input.stepKey, values)
@@ -256,11 +264,17 @@ export async function completeStep(input: CompleteStepInput): Promise<Submission
       }
 
       if (finalStep) {
+        // Live definition only for its notification topic; identity (formId/
+        // version) comes from the pinned row so the event matches the historical
+        // submission, not a definition that may have changed.
+        const liveDef = await resolveActiveDefinition(input.formId, input.projectSlug)
         await emitSubmittedEvent(supabase, {
           tenantId: (row.tenant_id as string) ?? null,
           projectId: (row.project_id as string) ?? null,
           projectSlug: input.projectSlug,
-          def,
+          formId: row.form_id as string,
+          version: row.form_version as number,
+          notificationTopic: liveDef?.notificationTopic ?? (row.form_id as string),
           submissionId: input.submissionId,
           locale: (row.locale as string) ?? 'en',
         })
@@ -282,18 +296,27 @@ export async function completeStep(input: CompleteStepInput): Promise<Submission
 
 async function emitSubmittedEvent(
   supabase: { from: (t: string) => any },
-  args: { tenantId: string | null; projectId: string | null; projectSlug: string; def: FormDefinition; submissionId: string; locale: string },
+  args: {
+    tenantId: string | null
+    projectId: string | null
+    projectSlug: string
+    formId: string
+    version: number
+    notificationTopic: string
+    submissionId: string
+    locale: string
+  },
 ): Promise<void> {
   const { error } = await supabase.from('form_events').insert({
     event_type: 'form.submitted',
     tenant_id: args.tenantId,
     project_id: args.projectId,
-    form_id: args.def.formId,
-    form_version: args.def.version,
+    form_id: args.formId,
+    form_version: args.version,
     submission_id: args.submissionId,
     project_slug: args.projectSlug,
     environment: getAppEnvironment(),
-    topic: args.def.notificationTopic ?? args.def.formId,
+    topic: args.notificationTopic,
     locale: args.locale,
     payload: {}, // provider-agnostic; ADR-019 consumer joins the submission for content
     status: 'pending',

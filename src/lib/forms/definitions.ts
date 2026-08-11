@@ -135,6 +135,9 @@ export function resolveDefinitionSnapshot(def: FormDefinition): Record<string, u
   return {
     formId: def.formId,
     version: def.version,
+    // Consent requirement is part of the interpretation subset (ADR-018 snapshot
+    // boundary) — the step path reads it back from the row to gate final-step consent.
+    requiresConsentAtFinalStep: def.requiresConsentAtFinalStep,
     steps: def.steps.map((s) => ({
       key: s.key,
       fields: s.fields.map((f) => ({
