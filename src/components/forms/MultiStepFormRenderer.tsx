@@ -302,7 +302,7 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
         <button
           type="submit"
           disabled={status === 'submitting'}
-          className={`${fullWidth ? 'w-full ' : ''}inline-flex items-center justify-center px-6 py-3.5 rounded-[var(--radius-btn)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] text-sm font-semibold transition-opacity disabled:opacity-60 hover:opacity-90`}
+          className={`${fullWidth ? 'w-full ' : ''}inline-flex items-center justify-center rounded-xl px-6 py-3.5 bg-[var(--color-primary)] text-white text-sm font-semibold transition-opacity disabled:opacity-60 hover:opacity-90`}
         >
           {status === 'submitting' ? messages.submitting : finalStep ? messages.submitLabel : messages.continueLabel}
         </button>

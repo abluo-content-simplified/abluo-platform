@@ -27,6 +27,9 @@ export function CheckboxField({ config, value, onChange, onBlur, error: external
       required={config.required}
       error={error}
       width={config.width}
+      /* Consent-style checkbox carries its text beside the box; suppress the
+         duplicate top label when it would just repeat the checkbox label. */
+      hideLabel={!config.label || config.label === config.checkboxLabel}
     >
       <label
         style={{

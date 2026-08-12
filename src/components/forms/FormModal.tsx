@@ -141,7 +141,7 @@ export function FormModal({ isOpen, onClose, closeLabel, title, eyebrow, childre
             style={{
               backgroundColor: 'color-mix(in oklch, var(--color-background, var(--background)) 90%, transparent)',
               border: '1px solid var(--color-border, var(--border))',
-              maxHeight: 'calc(100dvh - 2rem)',
+              maxHeight: '80dvh',
               outline: 'none',
             }}
           >
