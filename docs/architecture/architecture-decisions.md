@@ -1678,3 +1678,70 @@ Each slice honors the `dev` → **STOP** → `preview` → **STOP** → `main` g
 
 
 ---
+
+## ADR-019 — Amendment A: Personalized internal notification email
+
+> **Status: Accepted** (Tom, 2026-08-11). Scoped as a pre-launch requirement, implemented as its own gated slice, independent of Forms slices 6/7. Settled shape: sender **identity + branding + copy defaults live at the tenant/project level** (consistent across all of a tenant's forms, and safe under form clone/reuse — see A2 rationale); an **optional per-form subject/intro override** is a **slice-7 (form builder) follow-up**, layering on top of the tenant default. The subject already interpolates `{topic}`, so different forms read differently ("New contact request…" vs "New early-access request…") with no per-form config.
+
+### Context
+
+ADR-019 V1 sends one kind of email: an **internal "new submission" notification** to the tenant's configured recipients. Today that mail is one-size-fits-all:
+
+- **Sender** is always `Abluo <no-reply@mail.abluo.app>` (`src/lib/notifications/resend.ts`, `DEFAULT_FROM`). A Livener lead notification arrives looking like it's from "Abluo".
+- **Template** is a fixed, unbranded layout (`renderNewSubmissionEmail`, `src/lib/notifications/templates.ts`) — neutral greys, generic "New {topic} submission" heading, no tenant identity.
+- **No `Reply-To`** — a tenant can't just hit reply to reach the person who submitted.
+
+Tom's requirement before go-live: the internal mail must be personalizable "a little" per tenant, so it reads as the tenant's own. This amendment covers **only** the internal notification. It deliberately does **not** add end-user confirmation emails or tenant-domain (white-label) sending — those remain deferred (see *Out of scope*).
+
+### Decisions
+
+**A1 — One config surface: `project.notifications.internalEmail` (Studio).**
+Extend the existing `notifications` object on the Sanity `project` document (already home to `recipients`) with an optional `internalEmail` object, edited in **Project Settings → Notifications**. Resolved at **send time** (like recipients), so changes apply to events already in the outbox.
+
+```
+notifications: {
+  recipients: [ … ],                 // existing (topic / emails / enabled)
+  internalEmail: {                   // NEW — all fields optional
+    fromName:        string          // sender display name, e.g. "Livener"
+    subjectTemplate: string          // e.g. "New {topic} request — {who}"
+    intro:           localizedText   // one line under the heading (localized)
+    replyToSubmitter: boolean        // default true
+  }
+}
+```
+
+Everything is optional; an empty `internalEmail` reproduces today's behavior (so nothing breaks for tenants who don't configure it).
+
+**A2 — Sender identity: personalize the display name, keep the verified address.**
+The `From` becomes `"{fromName}" <no-reply@mail.abluo.app>` — display name per tenant, address still on the abluo-verified domain (deliverability unchanged). `fromName` defaults to the tenant's `client.displayName` when unset, so Livener automatically reads "Livener" without any configuration. Full tenant-domain sending (`no-reply@mail.livener.net`) stays deferred.
+
+**A3 — `Reply-To` = the submitter.**
+When `replyToSubmitter` is on (default) and the submission carries an email, set `Reply-To` to that address. A tenant replying to the notification reaches the lead directly. Falls back to no `Reply-To` when there's no submitter email.
+
+**A4 — Branded, still-minimal template.**
+`renderNewSubmissionEmail` gains optional branding inputs: `fromName` (heading/identity), a localized `intro` line, and an **accent color + logo pulled automatically from the tenant's Design System** (the same tokens the site uses — no extra per-tenant work). `subjectTemplate` supports tokens `{topic}`, `{who}` (submitter name/email), and `{formId}`, defaulting to today's `New {topic} submission — {who}`. The data + attribution tables and HTML-escaping stay exactly as they are.
+
+**A5 — Scope boundary (unchanged contracts).**
+The event outbox, the production-only environment gate, per-recipient sending, and recipient resolution are all untouched. This amendment changes only *what the internal email looks like and who it appears to come from* — the delivery machinery is the same.
+
+### What changes in code (on approval)
+
+- `src/lib/sanity/schema.ts` — add the `internalEmail` object to the `notifications` field.
+- `src/lib/sanity/queries.ts` — extend `projectNotificationsQuery` to return `internalEmail` (+ resolve the DS accent/logo, or read it where the consumer already has the design system).
+- `src/lib/notifications/templates.ts` — `renderNewSubmissionEmail` accepts `{ fromName, intro, accentColor, logoUrl, subjectTemplate }`; render branded heading + intro + accent.
+- `src/lib/notifications/resend.ts` — `sendEmail` accepts `fromName` and `replyTo`; compose `From` display name and `Reply-To`.
+- `src/lib/notifications/consumer.ts` — read `internalEmail` config + submitter email, thread them into the template + send.
+- Tests: template branding + subject-token rendering; `From`/`Reply-To` composition; config-absent = current behavior.
+
+### Resolved (Tom, 2026-08-11)
+
+1. **Subject** — default `New {topic} submission — {who}`, **editable** at tenant level; tokens `{topic}`, `{who}`, `{formId}`. Good enough for v1.
+2. **Intro line** — **localized** (`localizedText`), matching the rest of the platform.
+3. **Logo** — **pull the tenant logo from the Design System** into the email (with graceful fallback to the fromName heading when no logo is set).
+
+### Out of scope (still deferred, tracked in backlog)
+
+- **Per-form subject/intro override** — deferred to **slice 7** (form builder), layered over the tenant default. Identity stays tenant-level regardless.
+- **End-user confirmation / auto-reply emails** (a new email type entirely).
+- **Tenant-domain white-label sending** (verifying `mail.livener.net` in Resend; needs DNS on the tenant side).
+- Per-topic template overrides (V1 is per-project; per-topic can layer on later).
