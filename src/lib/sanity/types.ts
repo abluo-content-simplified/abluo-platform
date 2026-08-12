@@ -1148,6 +1148,23 @@ export interface FormSection {
   context?: FormSectionContextItem[] | null
 }
 
+/** A button that opens a formDefinition as an overlay (ADR-018 slice 7). */
+export interface FormOverlayButtonSection {
+  _type: 'formOverlayButtonSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Dereferenced formDefinition — null if not set or not published. */
+  definition?: RenderableFormDefinition | null
+  /** Static placement Context — pre-fills contextMappable fields. */
+  context?: FormSectionContextItem[] | null
+  /** Localized button label. */
+  buttonLabel?: string | null
+  /** Localized overlay heading; falls back to the definition's own title. */
+  overlayTitle?: string | null
+  buttonStyle?: 'primary' | 'secondary'
+  buttonAlign?: 'left' | 'center' | 'right'
+}
+
 export interface StatementSection {
   _type: 'statementSection'
   _key: string
@@ -1264,6 +1281,7 @@ export type PageSection =
   | ContactSection
   | BlogListingSection
   | FormSection
+  | FormOverlayButtonSection
   | MetricsSection
   | PhotoGallerySection
   | EventsListingSection

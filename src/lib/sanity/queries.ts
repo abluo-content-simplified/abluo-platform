@@ -161,6 +161,11 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
         "successBody": ${loc('success.body')}
       },
       "context": context[]{ key, value },
+      // formOverlayButtonSection fields (reuses "definition" + "context" above)
+      "buttonLabel": ${loc('buttonLabel')},
+      "overlayTitle": ${loc('overlayTitle')},
+      buttonStyle,
+      buttonAlign,
       // heroSection media / layout / style fields
       mediaType,
       heroImage { asset, hotspot, crop },
@@ -984,6 +989,11 @@ export const homePageQuery = /* groq */ `
         "successBody": ${loc('success.body')}
       },
       "context": context[]{ key, value },
+      // formOverlayButtonSection fields (reuses "definition" + "context" above)
+      "buttonLabel": ${loc('buttonLabel')},
+      "overlayTitle": ${loc('overlayTitle')},
+      buttonStyle,
+      buttonAlign,
       // heroSection media / layout / style fields
       mediaType,
       heroImage { asset, hotspot, crop },

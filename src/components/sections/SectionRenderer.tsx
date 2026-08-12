@@ -22,6 +22,7 @@ import { TextSection } from '@/components/sections/TextSection'
 import { FAQSection } from '@/components/sections/FAQSection'
 import { ContactSection } from '@/components/sections/ContactSection'
 import { FormSection } from '@/components/sections/FormSection'
+import { FormOverlayButtonSection } from '@/components/sections/FormOverlayButtonSection'
 import { StatementSection } from '@/components/sections/StatementSection'
 import { MetricsSection } from '@/components/sections/MetricsSection'
 import { PhotoGallerySection } from '@/components/sections/PhotoGallerySection'
@@ -34,6 +35,7 @@ import type {
   EventsListingSection as EventsListingSectionType,
   LiveLatestSection as LiveLatestSectionType,
   FormSection as FormSectionType,
+  FormOverlayButtonSection as FormOverlayButtonSectionType,
   HeroLiveCaptureSection as HeroLiveCaptureSectionType,
   HeroLensSection as HeroLensSectionType,
   SupportedLocale,
@@ -299,6 +301,8 @@ export function SectionRenderer({
       return <ContactSection section={section} surface={surface} designSystem={designSystem} siteConfig={siteConfig} locale={locale} />
     case 'formSection':
       return <FormSection section={section as FormSectionType} surface={surface} designSystem={designSystem} locale={locale} tenantSlug={tenantSlug} />
+    case 'formOverlayButtonSection':
+      return <FormOverlayButtonSection section={section as FormOverlayButtonSectionType} surface={surface} designSystem={designSystem} locale={locale} tenantSlug={tenantSlug} />
     case 'metricsSection':
       return <MetricsSection section={section} surface={surface} designSystem={designSystem} />
     case 'photoGallerySection':

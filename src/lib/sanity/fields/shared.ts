@@ -80,6 +80,7 @@ export const PAGE_SECTIONS_OF = [
   defineArrayMember({ type: 'contactSection' }),
   defineArrayMember({ type: 'blogListingSection' }),
   defineArrayMember({ type: 'formSection' }),
+  defineArrayMember({ type: 'formOverlayButtonSection' }),
   defineArrayMember({ type: 'metricsSection' }),
   defineArrayMember({ type: 'photoGallerySection' }),
   defineArrayMember({ type: 'eventsListingSection' }),

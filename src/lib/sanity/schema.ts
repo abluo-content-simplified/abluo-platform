@@ -1948,6 +1948,111 @@ const formSectionType = defineType({
   },
 })
 
+// Form Button (Overlay) — opens a formDefinition in a modal (ADR-018 slice 7).
+// Platform section, sibling to formSection. Reuses the same `form` reference and
+// `context` list; adds a button label, optional overlay heading, style + align.
+const formOverlayButtonSectionType = defineType({
+  name: 'formOverlayButtonSection',
+  title: 'Form Button (Overlay)',
+  type: 'object',
+  description: 'A button that opens a form in an overlay (ADR-018 slice 7).',
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: {
+        list: [
+          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+          { title: '⬜ Surface 1', value: 'surface1' },
+          { title: '⬜ Surface 2', value: 'surface2' },
+          { title: '🟦 Surface 3', value: 'surface3' },
+          { title: '🟢 Brand Surface', value: 'brandSurface' },
+          { title: '◻ Transparent', value: 'transparent' },
+          { title: '🔲 Glass', value: 'glass' },
+        ],
+      },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({
+      name: 'buttonLabel',
+      title: 'Button Label',
+      type: 'localizedString',
+      description: 'Text shown on the button that opens the form.',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'form',
+      title: 'Form',
+      type: 'reference',
+      to: [{ type: 'formDefinition' }],
+      description: 'The form definition opened in the overlay (ADR-018).',
+      validation: (Rule) => Rule.required(),
+      options: { filter: '_type == "formDefinition" && role == "active"' },
+    }),
+    defineField({
+      name: 'overlayTitle',
+      title: 'Overlay Heading (optional)',
+      type: 'localizedString',
+      description: 'Heading shown at the top of the overlay. Defaults to the form’s own title.',
+    }),
+    defineField({
+      name: 'buttonStyle',
+      title: 'Button Style',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Primary (filled)', value: 'primary' },
+          { title: 'Secondary (outline)', value: 'secondary' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'primary',
+    }),
+    defineField({
+      name: 'buttonAlign',
+      title: 'Alignment',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Left', value: 'left' },
+          { title: 'Center', value: 'center' },
+          { title: 'Right', value: 'right' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'center',
+    }),
+    defineField({
+      name: 'context',
+      title: 'Context (pre-fill)',
+      type: 'array',
+      description: 'Optional key/value pairs. Only keys matching a context-mappable field are applied.',
+      of: [
+        defineArrayMember({
+          type: 'object',
+          name: 'formOverlayContextItem',
+          fields: [
+            defineField({ name: 'key', title: 'Field key', type: 'string' }),
+            defineField({ name: 'value', title: 'Value', type: 'string' }),
+          ],
+          preview: {
+            select: { key: 'key', value: 'value' },
+            prepare: ({ key, value }: { key?: string; value?: string }) => ({ title: key ?? '—', subtitle: value }),
+          },
+        }),
+      ],
+    }),
+  ],
+  preview: {
+    select: { label: 'buttonLabel.en', titleEn: 'form.title.en', internalName: 'form.internalName' },
+    prepare: ({ label, titleEn, internalName }: { label?: string; titleEn?: string; internalName?: string }) => ({
+      title: label ? `Button: ${label}` : 'Form Button (Overlay)',
+      subtitle: titleEn ?? internalName ?? '—',
+    }),
+  },
+})
+
 // ─── Platform document types (admin-only) ─────────────────────────────────────
 
 const clientType = defineType({
@@ -3701,6 +3806,7 @@ export const schemaTypes = [
   formFieldItemType,
   formType,
   formSectionType,
+  formOverlayButtonSectionType,
   clientType,
   projectType,
   colorThemeType,
