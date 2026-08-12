@@ -47,6 +47,8 @@ export interface NewSubmissionEmailInput {
   intro?: string
   /** Subject template with {topic}/{who}/{formId} tokens; default when unset. */
   subjectTemplate?: string
+  /** Tenant logo URL (https CDN) shown at the top of the email. */
+  logoUrl?: string
 }
 
 export function renderNewSubmissionEmail(input: NewSubmissionEmailInput): { subject: string; html: string; text: string } {
@@ -77,6 +79,7 @@ export function renderNewSubmissionEmail(input: NewSubmissionEmailInput): { subj
 
   const html = `
   <div style="font-family:system-ui,Segoe UI,Arial,sans-serif;font-size:14px;color:#111;max-width:640px;">
+    ${input.logoUrl && /^https:\/\//.test(input.logoUrl) ? `<img src="${esc(input.logoUrl)}" alt="${esc(input.fromName ?? '')}" style="max-height:36px;margin:0 0 12px;display:block;border:0;" />` : ''}
     ${input.fromName ? `<p style="margin:0 0 8px;font-weight:600;font-size:15px;">${esc(input.fromName)}</p>` : ''}
     <h2 style="margin:0 0 4px;">New ${esc(input.topic)} submission</h2>
     <p style="margin:0 0 16px;color:#666;">${input.intro ? esc(input.intro) : `A visitor completed and submitted the form${input.createdAt ? ` on ${esc(input.createdAt)}` : ''}.`}</p>

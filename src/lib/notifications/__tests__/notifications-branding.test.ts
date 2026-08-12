@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { renderSubject, DEFAULT_SUBJECT_TEMPLATE, renderNewSubmissionEmail } from '@/lib/notifications/templates'
-import { resolveFromName, safeReplyTo } from '@/lib/notifications/branding'
+import { resolveFromName, safeReplyTo, safeLogoUrl } from '@/lib/notifications/branding'
 
 describe('renderSubject', () => {
   it('uses the default template when none is configured', () => {
@@ -58,5 +58,28 @@ describe('renderNewSubmissionEmail — personalization', () => {
     const out = renderNewSubmissionEmail(base)
     expect(out.subject).toBe('New contact submission — John')
     expect(out.html).toContain('A visitor completed and submitted the form')
+  })
+})
+
+describe('safeLogoUrl', () => {
+  it('accepts an https CDN url and rejects everything else', () => {
+    expect(safeLogoUrl('https://cdn.sanity.io/images/x/y/logo.png')).toBe('https://cdn.sanity.io/images/x/y/logo.png')
+    expect(safeLogoUrl('http://insecure.test/logo.png')).toBeUndefined()
+    expect(safeLogoUrl('javascript:alert(1)')).toBeUndefined()
+    expect(safeLogoUrl('https://x/"onerror=alert(1)')).toBeUndefined()
+    expect(safeLogoUrl(null)).toBeUndefined()
+  })
+})
+
+describe('renderNewSubmissionEmail — logo', () => {
+  const base = { formId: 'contact', topic: 'contact', locale: 'en', submissionId: 's', submissionData: { name: 'John' }, source: {} }
+  it('renders an <img> when an https logoUrl is provided', () => {
+    const out = renderNewSubmissionEmail({ ...base, fromName: 'Livener', logoUrl: 'https://cdn.sanity.io/images/x/y/logo.png' })
+    expect(out.html).toContain('<img src="https://cdn.sanity.io/images/x/y/logo.png"')
+    expect(out.html).toContain('alt="Livener"')
+  })
+  it('omits the logo when the url is not https', () => {
+    const out = renderNewSubmissionEmail({ ...base, logoUrl: 'http://x/y.png' })
+    expect(out.html).not.toContain('<img')
   })
 })

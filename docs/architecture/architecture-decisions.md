@@ -1745,3 +1745,7 @@ The event outbox, the production-only environment gate, per-recipient sending, a
 - **End-user confirmation / auto-reply emails** (a new email type entirely).
 - **Tenant-domain white-label sending** (verifying `mail.livener.net` in Resend; needs DNS on the tenant side).
 - Per-topic template overrides (V1 is per-project; per-topic can layer on later).
+
+#### Implementation note (Pass split, 2026-08-11)
+
+Delivered in two passes. **Pass 1:** `fromName` (identity, defaults to client name), configurable subject, localized intro, `Reply-To` = submitter. **Pass 2:** the **tenant logo**, pulled from `siteConfig.logo` as an https CDN URL and rendered at the top of the email. The **accent color from the Design System is deferred**: DS colors are stored in **oklch**, which most email clients cannot render, and resolving the color also requires walking DS inheritance — disproportionate risk for a background tint. The logo + `fromName` + intro already give a clearly tenant-branded, identifiable email; a hex accent (converted/curated for email) can be a later refinement.

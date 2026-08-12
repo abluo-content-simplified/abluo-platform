@@ -115,6 +115,7 @@ export async function deliverEvent(eventId: string): Promise<{ outcome: DeliverO
         fromName: cfg.fromName,
         intro: cfg.intro,
         subjectTemplate: cfg.subjectTemplate,
+        logoUrl: cfg.logoUrl,
       })
 
       // Send a SEPARATE email per recipient — better privacy (recipients never

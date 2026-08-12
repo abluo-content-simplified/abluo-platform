@@ -1275,6 +1275,7 @@ export const projectInternalEmailQuery = /* groq */ `
       replyToSubmitter,
       "intro": coalesce(intro[$locale], intro[$defaultLocale], intro.en)
     },
-    "clientName": clientRef->displayName
+    "clientName": clientRef->displayName,
+    "logoUrl": *[_type == "siteConfig" && projectSlug == ^.projectSlug][0].logo.asset->url
   }
 `

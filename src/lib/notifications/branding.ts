@@ -29,6 +29,8 @@ export interface ResolvedInternalEmail {
   subjectTemplate?: string
   intro?: string
   replyToSubmitter: boolean
+  /** Tenant logo CDN URL (ADR-019 Amendment A, Pass 2) — https only, else undefined. */
+  logoUrl?: string
 }
 
 /** Sender display name: explicit config → client display name → undefined (generic default). */
@@ -37,6 +39,13 @@ export function resolveFromName(
   clientName: string | undefined,
 ): string | undefined {
   return (configFromName && configFromName.trim()) || (clientName && clientName.trim()) || undefined
+}
+
+/** Only accept an https CDN URL for the email logo (defensive — it goes into an <img src>). */
+export function safeLogoUrl(url: unknown): string | undefined {
+  if (typeof url !== 'string') return undefined
+  const u = url.trim()
+  return /^https:\/\/[^\s"'<>]+$/.test(u) ? u : undefined
 }
 
 /** A minimally-valid email for use as Reply-To (never trust arbitrary submission data into a header). */
@@ -60,7 +69,7 @@ export async function resolveInternalEmailConfig(
   const sanitySlug = tryTenantToProjectSlug(projectSlug)
   if (!sanitySlug) return fallback
   try {
-    const row = await sanityClient.fetch<{ internalEmail?: InternalEmailConfig; clientName?: string } | null>(
+    const row = await sanityClient.fetch<{ internalEmail?: InternalEmailConfig; clientName?: string; logoUrl?: string } | null>(
       projectInternalEmailQuery,
       { projectSlug: sanitySlug, locale, defaultLocale: 'en' },
     )
@@ -70,6 +79,7 @@ export async function resolveInternalEmailConfig(
       subjectTemplate: cfg.subjectTemplate,
       intro: cfg.intro,
       replyToSubmitter: cfg.replyToSubmitter !== false, // default true
+      logoUrl: safeLogoUrl(row?.logoUrl),
     }
   } catch (err) {
     console.warn(
