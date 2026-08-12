@@ -63,6 +63,24 @@
         "draft": "Bozza"
       }
     },
+    "submissions": {
+      "title": "Invii",
+      "empty": "Ancora nessun invio.",
+      "moduleNotInstalled": "Il modulo Moduli non è abilitato per questo progetto.",
+      "anonymous": "Anonimo",
+      "columns": {
+        "name": "Nome",
+        "email": "Email",
+        "form": "Modulo",
+        "status": "Stato",
+        "received": "Ricevuto"
+      },
+      "status": {
+        "new": "Nuovo",
+        "processed": "Elaborato",
+        "archived": "Archiviato"
+      }
+    },
     "leads": {
       "title": "Contatti",
       "comingSoon": "La gestione dei contatti arriverà presto."

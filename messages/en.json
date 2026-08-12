@@ -63,6 +63,24 @@
         "draft": "Draft"
       }
     },
+    "submissions": {
+      "title": "Submissions",
+      "empty": "No submissions yet.",
+      "moduleNotInstalled": "The Forms module is not enabled for this project.",
+      "anonymous": "Anonymous",
+      "columns": {
+        "name": "Name",
+        "email": "Email",
+        "form": "Form",
+        "status": "Status",
+        "received": "Received"
+      },
+      "status": {
+        "new": "New",
+        "processed": "Processed",
+        "archived": "Archived"
+      }
+    },
     "leads": {
       "title": "Leads",
       "comingSoon": "Leads management is coming soon."

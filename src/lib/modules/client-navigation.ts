@@ -41,6 +41,10 @@ import type { ModuleManifest } from './types'
  */
 export const MODULE_DASHBOARD_ROUTES: Record<string, string> = {
   blog: 'posts',
+  // ADR-018 slice 6 — the Forms module's client surface is its submissions
+  // (leads) list at /{projectSlug}/submissions. Only appears when the forms
+  // module is installed+enabled for the active project.
+  forms: 'submissions',
 }
 
 /** A single module-driven client-dashboard navigation item. */

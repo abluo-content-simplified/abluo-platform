@@ -63,6 +63,24 @@
         "draft": "Entwurf"
       }
     },
+    "submissions": {
+      "title": "Einsendungen",
+      "empty": "Noch keine Einsendungen.",
+      "moduleNotInstalled": "Das Formulare-Modul ist für dieses Projekt nicht aktiviert.",
+      "anonymous": "Anonym",
+      "columns": {
+        "name": "Name",
+        "email": "E-Mail",
+        "form": "Formular",
+        "status": "Status",
+        "received": "Erhalten"
+      },
+      "status": {
+        "new": "Neu",
+        "processed": "Bearbeitet",
+        "archived": "Archiviert"
+      }
+    },
     "leads": {
       "title": "Anfragen",
       "comingSoon": "Die Verwaltung von Anfragen kommt bald."

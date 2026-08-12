@@ -33,6 +33,7 @@ import {
 } from '@/lib/api/tenant-scoped-sanity'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { dashboardPostsQuery } from '@/lib/sanity/queries'
+import { createClient } from '@/lib/supabase/server'
 
 /** A single post row as the client dashboard needs it. Minimal by design. */
 export type DashboardPost = {
@@ -91,4 +92,98 @@ export async function getDashboardPosts(
   })
 
   return posts ?? []
+}
+
+
+// ── Forms submissions (ADR-018 slice 6) ───────────────────────────────────────
+// Unlike posts (Sanity content via the tenant-scoped Sanity chokepoint), form
+// submissions live in Supabase. The enforcement chain is: assertModuleAction
+// FIRST (forms installed + forms.submission.read permission), THEN a read on the
+// RLS-backed, session-scoped Supabase client. RLS (project_id in
+// get_my_project_ids()) is the data-layer backstop; the explicit .eq(project_id)
+// narrows to the active project. Read-only this slice — status mutation is a
+// follow-up.
+
+/** Permission that gates listing submissions in the client dashboard. */
+export const FORMS_SUBMISSION_READ_PERMISSION = 'forms.submission.read'
+
+export type SubmissionStatus = 'new' | 'processed' | 'archived'
+
+/** A single submission (lead) row as the client dashboard needs it. */
+export type DashboardSubmission = {
+  id: string
+  /** The form's stable id (e.g. "early-access", "contact"). */
+  formId: string
+  /** Submitter name, if the form captured one. */
+  name: string | null
+  /** Submitter email, if the form captured one. */
+  email: string | null
+  status: SubmissionStatus
+  /** ISO timestamp the submission was created. */
+  createdAt: string
+}
+
+/** Minimal shape of a Supabase supabase-js client (the bits this file uses). */
+export type SubmissionsReader = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  from: (table: string) => any
+}
+
+const VALID_STATUSES: readonly SubmissionStatus[] = ['new', 'processed', 'archived']
+
+function normalizeStatus(v: unknown): SubmissionStatus {
+  return (VALID_STATUSES as readonly string[]).includes(v as string) ? (v as SubmissionStatus) : 'new'
+}
+
+function extractStr(data: unknown, key: string): string | null {
+  if (!data || typeof data !== 'object') return null
+  const v = (data as Record<string, unknown>)[key]
+  return typeof v === 'string' && v.trim() !== '' ? v : null
+}
+
+/** Pure row → DashboardSubmission mapping (exported for tests). */
+export function mapSubmissionRow(row: Record<string, unknown>): DashboardSubmission {
+  return {
+    id: row.id as string,
+    formId: (row.form_id as string) ?? '',
+    name: extractStr(row.submission_data, 'name'),
+    email: extractStr(row.submission_data, 'email'),
+    status: normalizeStatus(row.status),
+    createdAt: (row.created_at as string) ?? '',
+  }
+}
+
+/**
+ * Returns completed, non-spam submissions (leads) for `projectId`, newest first.
+ *
+ * Enforcement: `assertModuleAction` FIRST — throws `TenantAuthorizationError`
+ * unless the forms module is installed for the project AND the caller's role
+ * grants `forms.submission.read`. Then an RLS-backed Supabase read scoped to
+ * `project_id`. `ctx` is the first parameter (ADR-015 R8). `deps.client` is a
+ * test injection point.
+ */
+export async function getDashboardSubmissions(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  params: { limit?: number } = {},
+  deps: { client?: SubmissionsReader } = {}
+): Promise<DashboardSubmission[]> {
+  // Step 1 — entitlement + permission (module-installed check precedes it).
+  assertModuleAction(ctx, projectId, FORMS_SUBMISSION_READ_PERMISSION)
+
+  // Step 2 — RLS-backed, session-scoped client (respects get_my_project_ids()).
+  const supabase = deps.client ?? (await createClient())
+
+  // Step 3 — read this project's completed, non-spam submissions.
+  const { data, error } = await supabase
+    .from('form_submissions')
+    .select('id, form_id, submission_data, status, created_at')
+    .eq('project_id', projectId)
+    .eq('completion_state', 'complete')
+    .neq('status', 'spam')
+    .order('created_at', { ascending: false })
+    .limit(params.limit ?? 200)
+
+  if (error) throw new Error(`getDashboardSubmissions: ${error.message ?? 'read failed'}`)
+  return (data ?? []).map((r: Record<string, unknown>) => mapSubmissionRow(r))
 }
