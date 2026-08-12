@@ -1130,6 +1130,10 @@ export interface RenderableFormDefinition {
   formType?: 'single-step' | 'multi-step' | 'question-answer'
   version?: number
   title?: string
+  /** Localized eyebrow label shown above the title (ADR-018 slice 7). */
+  eyebrow?: string
+  /** When false, the submit/continue button is auto-width; defaults to full-width. */
+  fullWidthButton?: boolean
   tenantSlug?: string
   steps: RenderableFormStep[]
   requireConsent?: boolean
@@ -1163,6 +1167,8 @@ export interface FormOverlayButtonSection {
   overlayTitle?: string | null
   buttonStyle?: 'primary' | 'secondary'
   buttonAlign?: 'left' | 'center' | 'right'
+  /** When true, the trigger button spans the section's full content width. */
+  buttonFullWidth?: boolean
 }
 
 export interface StatementSection {

@@ -44,6 +44,8 @@ interface Props {
 
 export function FormDefinitionRenderer({ definition, messages, locale = 'en', tenantSlug }: Props) {
   const fields = singleStepFields(definition)
+  // Presentation (ADR-018 slice 7): submit spans full width unless explicitly disabled.
+  const fullWidth = definition.fullWidthButton !== false
 
   // Spam protection — capture the moment the form becomes visible (mirrors
   // FormRenderer/EarlyAccessFooterCta). A ~0ms elapsed time trips isTooFast().
@@ -117,9 +119,9 @@ export function FormDefinitionRenderer({ definition, messages, locale = 'en', te
     return (
       <div className="py-8 text-center">
         {definition.successTitle && (
-          <p className="text-[var(--text-primary)] text-lg font-medium">{definition.successTitle}</p>
+          <p className="text-[var(--color-text-primary)] text-lg font-medium">{definition.successTitle}</p>
         )}
-        <p className="text-[var(--text-secondary)] text-sm leading-relaxed mt-2">
+        <p className="text-[var(--color-text-secondary)] text-sm leading-relaxed mt-2">
           {definition.successBody ?? messages.successMessage}
         </p>
       </div>
@@ -156,14 +158,14 @@ export function FormDefinitionRenderer({ definition, messages, locale = 'en', te
       />
 
       {status === 'error' && (
-        <p className="mt-4 text-sm text-[var(--danger)]">{messages.errorMessage}</p>
+        <p className="mt-4 text-sm text-[var(--color-danger)]">{messages.errorMessage}</p>
       )}
 
       <div className="mt-6">
         <button
           type="submit"
           disabled={status === 'submitting'}
-          className="px-6 py-3 rounded-[var(--radius-md)] bg-[var(--primary)] text-[var(--btn-primary-text,#fff)] text-sm font-medium transition-opacity disabled:opacity-60 hover:opacity-90"
+          className={`${fullWidth ? 'w-full ' : ''}px-6 py-3 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-[var(--btn-primary-text,#fff)] text-sm font-medium transition-opacity disabled:opacity-60 hover:opacity-90`}
         >
           {status === 'submitting' ? messages.submitting : messages.submitLabel}
         </button>

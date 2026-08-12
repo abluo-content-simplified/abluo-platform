@@ -53,7 +53,7 @@ export function FormOverlayHost() {
   const title = req?.title ?? def?.title ?? null
 
   return (
-    <FormModal isOpen={isOpen} onClose={ctx.close} closeLabel={chrome.closeLabel} title={title}>
+    <FormModal isOpen={isOpen} onClose={ctx.close} closeLabel={chrome.closeLabel} title={title} eyebrow={def?.eyebrow ?? null}>
       {def ? (
         isMultiStepDefinition(def) ? (
           <MultiStepFormRenderer

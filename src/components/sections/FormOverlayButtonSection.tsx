@@ -20,7 +20,7 @@ import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { FormOverlayWrapper } from '@/components/forms/FormOverlayWrapper'
 import { FormOverlayTrigger } from '@/components/forms/FormOverlayTrigger'
-import { overlayButtonClass, overlayButtonAlignClass } from '@/lib/forms/overlay-button'
+import { overlayButtonClass, overlayButtonAlignClass, overlayButtonWidthClass } from '@/lib/forms/overlay-button'
 
 interface Props {
   section: SectionType
@@ -47,6 +47,8 @@ export function FormOverlayButtonSection({ section, surface, designSystem, local
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
   const context = buildContextMap(section.context)
   const label = section.buttonLabel ?? def.title ?? 'Open form'
+  const fullWidth = section.buttonFullWidth === true
+  const buttonClass = `${overlayButtonClass(section.buttonStyle)} ${overlayButtonWidthClass(fullWidth)}`.trim()
 
   return (
     <section className="px-6 py-16 md:px-16 lg:px-24" style={surfaceStyles}>
@@ -60,7 +62,7 @@ export function FormOverlayButtonSection({ section, surface, designSystem, local
             formId={def.formId}
             context={context}
             title={section.overlayTitle ?? undefined}
-            className={overlayButtonClass(section.buttonStyle)}
+            className={buttonClass}
           >
             {label}
           </FormOverlayTrigger>

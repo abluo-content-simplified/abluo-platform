@@ -2024,6 +2024,13 @@ const formOverlayButtonSectionType = defineType({
       initialValue: 'center',
     }),
     defineField({
+      name: 'buttonFullWidth',
+      title: 'Full-width Button',
+      type: 'boolean',
+      initialValue: false,
+      description: 'When on, the button spans the full width of the section (alignment is ignored).',
+    }),
+    defineField({
       name: 'context',
       title: 'Context (pre-fill)',
       type: 'array',

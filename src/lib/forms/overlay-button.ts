@@ -26,12 +26,17 @@ export function overlayButtonAlignClass(align?: OverlayButtonAlign | null): stri
   }
 }
 
+/** Width class for the trigger button. Full-width spans the section content width. */
+export function overlayButtonWidthClass(fullWidth?: boolean | null): string {
+  return fullWidth ? 'w-full' : ''
+}
+
 /** Button class string for the chosen style. Defaults to the primary (filled) look. */
 export function overlayButtonClass(style?: OverlayButtonStyle | null): string {
   const base =
     'inline-flex items-center justify-center px-6 py-3 rounded-[var(--radius-md)] text-sm font-medium transition-opacity hover:opacity-90'
   if (style === 'secondary') {
-    return `${base} border border-[var(--border)] bg-transparent text-[var(--text-primary)]`
+    return `${base} border border-[var(--color-border)] bg-transparent text-[var(--color-text-primary)]`
   }
-  return `${base} bg-[var(--primary)] text-[var(--btn-primary-text,#fff)]`
+  return `${base} bg-[var(--color-primary)] text-[var(--btn-primary-text,#fff)]`
 }

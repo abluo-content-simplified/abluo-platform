@@ -228,6 +228,7 @@ const formDefinitionType = defineType({
   type: 'document',
   groups: [
     { name: 'identity', title: 'Identity', default: true },
+    { name: 'presentation', title: 'Presentation' },
     { name: 'steps', title: 'Steps & Fields' },
     { name: 'privacy', title: 'Privacy' },
     { name: 'success', title: 'Success' },
@@ -269,6 +270,23 @@ const formDefinitionType = defineType({
       group: 'identity',
       description: 'Abstract, provider-agnostic routing tag carried on the emitted event (ADR-018 Decision 9). Not recipients or channels. Leave empty to default to the Form ID.',
       validation: (Rule) => Rule.regex(/^[a-z0-9][a-z0-9-]*$/, { name: 'topic' }).error('Lowercase letters, digits, and "-" only.'),
+    }),
+
+    // ── Presentation (how the form looks wherever it renders) ─────────────────
+    defineField({
+      name: 'eyebrow',
+      title: 'Eyebrow Label',
+      type: 'localizedString',
+      group: 'presentation',
+      description: 'Small uppercase label shown above the title (e.g. “Request Early Access”). Optional; appears in the overlay header and above inline forms.',
+    }),
+    defineField({
+      name: 'fullWidthButton',
+      title: 'Full-width Submit Button',
+      type: 'boolean',
+      group: 'presentation',
+      initialValue: true,
+      description: 'When on, the form’s submit / continue button spans the full width (recommended for overlays).',
     }),
 
     // ── Steps & Fields ────────────────────────────────────────────────────────

@@ -139,6 +139,8 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
         formType,
         version,
         "title": ${loc('title')},
+        "eyebrow": ${loc('eyebrow')},
+        fullWidthButton,
         tenantSlug,
         steps[]{
           key,
@@ -166,6 +168,7 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       "overlayTitle": ${loc('overlayTitle')},
       buttonStyle,
       buttonAlign,
+      buttonFullWidth,
       // heroSection media / layout / style fields
       mediaType,
       heroImage { asset, hotspot, crop },
@@ -967,6 +970,8 @@ export const homePageQuery = /* groq */ `
         formType,
         version,
         "title": ${loc('title')},
+        "eyebrow": ${loc('eyebrow')},
+        fullWidthButton,
         tenantSlug,
         steps[]{
           key,
@@ -994,6 +999,7 @@ export const homePageQuery = /* groq */ `
       "overlayTitle": ${loc('overlayTitle')},
       buttonStyle,
       buttonAlign,
+      buttonFullWidth,
       // heroSection media / layout / style fields
       mediaType,
       heroImage { asset, hotspot, crop },

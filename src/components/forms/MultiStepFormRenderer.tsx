@@ -165,6 +165,11 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
   const finalStep = isFinalStepIndex(def, stepIndex)
   const includeConsent = finalStep && !!def.requireConsent
   const fieldConfigs = currentStep ? buildFieldConfigs(def, currentStep.fields, includeConsent) : []
+  // Presentation (ADR-018 slice 7): full-width button + Option A progress bar.
+  const fullWidth = def.fullWidthButton !== false
+  const visibleTotal = def.steps.length - baseStep
+  const visibleCurrent = stepIndex - baseStep + 1
+  const progressPct = visibleTotal > 0 ? Math.round((visibleCurrent / visibleTotal) * 100) : 0
 
   const advanceTo = (nextStepKey: string | null | undefined) => {
     const i = nextStepKey ? def.steps.findIndex((s) => s.key === nextStepKey) : -1
@@ -210,14 +215,14 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
   }
 
   if (status === 'preparing') {
-    return <div className="py-8 text-center text-[var(--text-secondary)] text-sm">{messages.submitting}</div>
+    return <div className="py-8 text-center text-[var(--color-text-secondary)] text-sm">{messages.submitting}</div>
   }
 
   if (status === 'success') {
     return (
       <div className="py-8 text-center">
-        {def.successTitle && <p className="text-[var(--text-primary)] text-lg font-medium">{def.successTitle}</p>}
-        <p className="text-[var(--text-secondary)] text-sm leading-relaxed mt-2">
+        {def.successTitle && <p className="text-[var(--color-text-primary)] text-lg font-medium">{def.successTitle}</p>}
+        <p className="text-[var(--color-text-secondary)] text-sm leading-relaxed mt-2">
           {def.successBody ?? messages.successMessage}
         </p>
       </div>
@@ -229,15 +234,29 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-0">
       <div className="mb-6">
-        {def.steps.length - baseStep > 1 && (
-          <p className="text-[var(--text-secondary)] text-xs font-medium uppercase tracking-wide">
-            {messages.stepLabel
-              .replace('{current}', String(stepIndex - baseStep + 1))
-              .replace('{total}', String(def.steps.length - baseStep))}
-          </p>
+        {visibleTotal > 1 && (
+          <div className="mb-3">
+            <div className="flex items-baseline justify-between mb-2">
+              <span className="text-[var(--color-text-secondary)] text-xs font-medium uppercase tracking-wide">
+                {messages.stepLabel
+                  .replace('{current}', String(visibleCurrent))
+                  .replace('{total}', String(visibleTotal))}
+              </span>
+              <span className="text-[var(--color-text-secondary)] text-xs opacity-70">{progressPct}%</span>
+            </div>
+            <div
+              className="h-[5px] rounded-full overflow-hidden"
+              style={{ backgroundColor: 'color-mix(in oklch, var(--color-text-secondary) 22%, transparent)' }}
+            >
+              <div
+                className="h-full rounded-full"
+                style={{ width: `${progressPct}%`, background: 'var(--color-primary)', transition: 'width 300ms ease' }}
+              />
+            </div>
+          </div>
         )}
         {currentStep.title && (
-          <h3 className="text-[var(--text-primary)] text-lg font-medium mt-1">{currentStep.title}</h3>
+          <h3 className="text-[var(--color-text-primary)] text-lg font-medium mt-1">{currentStep.title}</h3>
         )}
       </div>
 
@@ -268,13 +287,13 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
         style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', overflow: 'hidden' }}
       />
 
-      {status === 'error' && <p className="mt-4 text-sm text-[var(--danger)]">{messages.errorMessage}</p>}
+      {status === 'error' && <p className="mt-4 text-sm text-[var(--color-danger)]">{messages.errorMessage}</p>}
 
       <div className="mt-6">
         <button
           type="submit"
           disabled={status === 'submitting'}
-          className="px-6 py-3 rounded-[var(--radius-md)] bg-[var(--primary)] text-[var(--btn-primary-text,#fff)] text-sm font-medium transition-opacity disabled:opacity-60 hover:opacity-90"
+          className={`${fullWidth ? 'w-full ' : ''}px-6 py-3 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-[var(--btn-primary-text,#fff)] text-sm font-medium transition-opacity disabled:opacity-60 hover:opacity-90`}
         >
           {status === 'submitting' ? messages.submitting : finalStep ? messages.submitLabel : messages.continueLabel}
         </button>
