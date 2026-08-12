@@ -25,15 +25,18 @@ describe('overlayButtonWidthClass', () => {
 })
 
 describe('overlayButtonClass', () => {
-  it('primary is the filled default (null/undefined included)', () => {
-    expect(overlayButtonClass('primary')).toContain('bg-[var(--color-primary)]')
-    expect(overlayButtonClass(undefined)).toContain('bg-[var(--color-primary)]')
-    expect(overlayButtonClass(null)).toContain('bg-[var(--color-primary)]')
+  it('primary uses the DS button background token (null/undefined included)', () => {
+    expect(overlayButtonClass('primary')).toContain('bg-[var(--btn-primary-bg)]')
+    expect(overlayButtonClass(undefined)).toContain('bg-[var(--btn-primary-bg)]')
+    expect(overlayButtonClass(null)).toContain('bg-[var(--btn-primary-bg)]')
   })
-  it('secondary is bordered + transparent', () => {
+  it('uses the pill button radius token, not the small card radius', () => {
+    expect(overlayButtonClass('primary')).toContain('rounded-[var(--radius-btn)]')
+    expect(overlayButtonClass('primary')).not.toContain('--radius-md')
+  })
+  it('secondary is bordered and not the primary fill', () => {
     const c = overlayButtonClass('secondary')
-    expect(c).toContain('bg-transparent')
     expect(c).toContain('border')
-    expect(c).not.toContain('bg-[var(--color-primary)]')
+    expect(c).not.toContain('bg-[var(--btn-primary-bg)]')
   })
 })

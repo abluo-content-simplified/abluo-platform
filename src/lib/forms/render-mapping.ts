@@ -64,11 +64,11 @@ export function toFieldConfig(field: RenderableFormField): FieldConfig | null {
     case 'multi-select':
       return { ...base, type: 'multi-select', options }
     case 'radio-group':
-      return { ...base, type: 'radio-group', options }
+      return { ...base, type: 'radio-group', options, display: field.display === 'cards' ? 'cards' : 'list' }
     case 'checkbox':
       return { ...base, type: 'checkbox' }
     case 'checkbox-group':
-      return { ...base, type: 'checkbox-group', options }
+      return { ...base, type: 'checkbox-group', options, display: field.display === 'chips' || field.display === 'cards' ? field.display : 'list' }
     case 'country-select':
       return { ...base, type: 'country-select', emptyOption: field.placeholder }
     case 'date':

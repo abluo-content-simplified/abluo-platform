@@ -137,21 +137,18 @@ export function FormModal({ isOpen, onClose, closeLabel, title, eyebrow, childre
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 14, scale: 0.97 }}
             transition={{ duration: 0.25, ease: [0, 0, 0.2, 1] }}
-            className="fixed inset-x-4 top-1/2 z-[510] mx-auto max-w-lg -translate-y-1/2 rounded-2xl shadow-2xl backdrop-blur-[24px] saturate-150 md:inset-x-auto md:left-1/2 md:-translate-x-1/2"
+            className="fixed inset-x-4 top-1/2 z-[510] mx-auto flex max-w-xl -translate-y-1/2 flex-col overflow-hidden rounded-2xl shadow-2xl backdrop-blur-[24px] saturate-150 md:inset-x-auto md:left-1/2 md:-translate-x-1/2"
             style={{
               backgroundColor: 'color-mix(in oklch, var(--color-background, var(--background)) 90%, transparent)',
               border: '1px solid var(--color-border, var(--border))',
               maxHeight: 'calc(100dvh - 2rem)',
-              overflowY: 'auto',
               outline: 'none',
             }}
           >
             {/* Header — sticky, holds optional eyebrow/title + the close button. */}
             <div
-              className="sticky top-0 z-10 flex items-start justify-between gap-4 px-6 pt-6 pb-5 backdrop-blur-[24px] saturate-150"
+              className="flex flex-none items-center justify-between gap-4 px-6 pt-6 pb-5"
               style={{
-                backgroundColor:
-                  'color-mix(in oklch, var(--color-background, var(--background)) 88%, transparent)',
                 borderBottom:
                   '1px solid color-mix(in oklch, var(--color-border, var(--border)) 50%, transparent)',
               }}
@@ -195,8 +192,8 @@ export function FormModal({ isOpen, onClose, closeLabel, title, eyebrow, childre
               </button>
             </div>
 
-            {/* Body — the form renderer. */}
-            <div className="px-6 pb-8 pt-5">{children}</div>
+            {/* Body — scrolls; the renderer's sticky footer pins the submit button. */}
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-8 pt-5">{children}</div>
           </motion.div>
         </>
       )}

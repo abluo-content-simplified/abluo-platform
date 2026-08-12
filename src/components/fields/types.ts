@@ -173,6 +173,8 @@ export interface RadioGroupFieldConfig extends BaseFieldConfig {
   type: 'radio-group'
   options: OptionItem[]
   layout?: 'vertical' | 'horizontal'
+  /** Visual presentation: 'list' (radios, default) or 'cards' (selectable card grid). */
+  display?: 'list' | 'cards'
 }
 
 export interface CheckboxFieldConfig extends BaseFieldConfig {
@@ -187,6 +189,8 @@ export interface CheckboxGroupFieldConfig extends BaseFieldConfig {
   minSelections?: number
   maxSelections?: number
   layout?: 'vertical' | 'horizontal'
+  /** Visual presentation: 'list' (checkboxes, default), 'chips', or 'cards'. */
+  display?: 'list' | 'chips' | 'cards'
 }
 
 /** Country select renders a <select> pre-populated with ISO 3166-1 country list */

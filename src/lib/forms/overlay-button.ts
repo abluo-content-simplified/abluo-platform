@@ -33,10 +33,12 @@ export function overlayButtonWidthClass(fullWidth?: boolean | null): string {
 
 /** Button class string for the chosen style. Defaults to the primary (filled) look. */
 export function overlayButtonClass(style?: OverlayButtonStyle | null): string {
+  // Matches the site's buttons: DS button tokens (--radius-btn / --btn-primary-*)
+  // and the same px-6 py-3.5 semibold sizing as the nav CTA and section CTAs.
   const base =
-    'inline-flex items-center justify-center px-6 py-3 rounded-[var(--radius-md)] text-sm font-medium transition-opacity hover:opacity-90'
+    'inline-flex items-center justify-center px-6 py-3.5 rounded-[var(--radius-btn)] text-sm font-semibold transition-opacity hover:opacity-90'
   if (style === 'secondary') {
-    return `${base} border border-[var(--color-border)] bg-transparent text-[var(--color-text-primary)]`
+    return `${base} border border-[var(--color-border)] bg-[var(--btn-secondary-bg,transparent)] text-[var(--btn-secondary-text,var(--color-text-primary))]`
   }
-  return `${base} bg-[var(--color-primary)] text-[var(--btn-primary-text,#fff)]`
+  return `${base} bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]`
 }

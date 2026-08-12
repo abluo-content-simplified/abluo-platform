@@ -18,6 +18,58 @@ export function RadioGroup({ config, value, onChange, onBlur, error: externalErr
   const error = externalError ?? internalError
   const isDisabled = disabled ?? config.disabled
   const isHorizontal = config.layout === 'horizontal'
+  const display = config.display ?? 'list'
+
+  // Cards presentation — a selectable card grid (single-select).
+  if (display === 'cards') {
+    return (
+      <FieldWrapper
+        id={config.id}
+        label={config.label}
+        helpText={config.helpText}
+        required={config.required}
+        error={error}
+        width={config.width}
+      >
+        <div
+          role="radiogroup"
+          aria-labelledby={`${config.id}-label`}
+          onBlur={() => { handleBlur(); onBlur?.() }}
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}
+        >
+          {config.options.map((opt) => {
+            const active = value === opt.value
+            const optDisabled = isDisabled || opt.disabled
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                disabled={optDisabled}
+                onClick={() => !optDisabled && onChange(opt.value)}
+                style={{
+                  textAlign: 'left',
+                  padding: '10px 12px',
+                  borderRadius: '12px',
+                  fontSize: 'inherit',
+                  lineHeight: 1.3,
+                  cursor: optDisabled ? 'not-allowed' : 'pointer',
+                  opacity: optDisabled ? 0.5 : 1,
+                  border: `1px solid ${active ? 'var(--color-primary)' : 'var(--form-input-border, var(--color-border))'}`,
+                  background: active ? 'color-mix(in oklch, var(--color-primary) 8%, transparent)' : 'var(--form-input-bg)',
+                  color: active ? 'var(--color-primary)' : 'var(--form-input-text)',
+                  transition: 'border-color var(--motion-duration-fast), background var(--motion-duration-fast)',
+                }}
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
+      </FieldWrapper>
+    )
+  }
 
   return (
     <FieldWrapper

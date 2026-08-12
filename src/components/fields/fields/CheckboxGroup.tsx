@@ -28,6 +28,64 @@ export function CheckboxGroup({ config, value = [], onChange, onBlur, error: ext
     }
   }
 
+  const display = config.display ?? 'list'
+
+  // Chips / cards presentation — selectable pills or a multi-select card grid.
+  if (display === 'chips' || display === 'cards') {
+    const isCards = display === 'cards'
+    return (
+      <FieldWrapper
+        id={config.id}
+        label={config.label}
+        helpText={config.helpText}
+        required={config.required}
+        error={error}
+        width={config.width}
+      >
+        <div
+          role="group"
+          onBlur={() => { handleBlur(); onBlur?.() }}
+          style={
+            isCards
+              ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }
+              : { display: 'flex', flexWrap: 'wrap', gap: '8px' }
+          }
+        >
+          {config.options.map((opt) => {
+            const active = value.includes(opt.value)
+            const optDisabled = isDisabled || opt.disabled ||
+              (!active && config.maxSelections ? value.length >= config.maxSelections : false)
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                aria-pressed={active}
+                disabled={optDisabled}
+                onClick={() => !optDisabled && toggle(opt.value)}
+                style={{
+                  textAlign: 'left',
+                  fontSize: 'inherit',
+                  lineHeight: 1.3,
+                  cursor: optDisabled ? 'not-allowed' : 'pointer',
+                  opacity: optDisabled ? 0.5 : 1,
+                  border: `1px solid ${active ? 'var(--color-primary)' : 'var(--form-input-border, var(--color-border))'}`,
+                  background: active ? 'color-mix(in oklch, var(--color-primary) 10%, transparent)' : (isCards ? 'var(--form-input-bg)' : 'transparent'),
+                  color: active ? 'var(--color-primary)' : 'var(--form-input-text)',
+                  transition: 'border-color var(--motion-duration-fast), background var(--motion-duration-fast)',
+                  ...(isCards
+                    ? { padding: '10px 12px', borderRadius: '12px' }
+                    : { display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '999px' }),
+                }}
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
+      </FieldWrapper>
+    )
+  }
+
   return (
     <FieldWrapper
       id={config.id}

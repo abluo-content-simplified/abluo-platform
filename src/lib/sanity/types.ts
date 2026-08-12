@@ -1112,6 +1112,8 @@ export interface RenderableFormField {
   options?: RenderableFormOption[]
   /** May a placement's Context pre-populate this field? (ADR-018 §7) */
   contextMappable?: boolean
+  /** Choice-field presentation: 'list' | 'cards' | 'chips' (ADR-018 slice 7). */
+  display?: string
 }
 
 /** A placement Context key/value pair set on the Form Section (ADR-018 slice 5). */

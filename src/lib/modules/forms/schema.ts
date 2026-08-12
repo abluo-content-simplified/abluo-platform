@@ -177,6 +177,22 @@ const formDefinitionFieldMember = defineArrayMember({
       description: 'Choices for dropdown / multi-select / radio / checkbox-group fields.',
       hidden: hiddenUnless(CHOICE_FIELD_TYPES),
     }),
+    defineField({
+      name: 'display',
+      title: 'Presentation',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Default (dropdown / list)', value: 'list' },
+          { title: 'Cards', value: 'cards' },
+          { title: 'Chips', value: 'chips' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'list',
+      description: 'How the options are shown. Cards suit single-select (role, type); Chips suit multi-select (interests). Applies to Radio group and Checkbox group.',
+      hidden: hiddenUnless(['radio-group', 'checkbox-group']),
+    }),
     defineField({ name: 'width', title: 'Width', type: 'string', options: { list: [{ title: 'Full row', value: '100%' }, { title: 'Half row', value: '50%' }], layout: 'radio' }, initialValue: '100%' }),
     // Generated per-type extras (conditionally shown by field type).
     ...ALL_EXTRAS.map(buildExtraField),

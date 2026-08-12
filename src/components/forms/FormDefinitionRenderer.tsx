@@ -40,9 +40,11 @@ interface Props {
   locale?: string
   /** URL tenant slug — the submission route scope; resolved server-side to tenant/project. */
   tenantSlug: string
+  /** Presentation context: 'overlay' pins the submit button as a sticky footer. */
+  layout?: 'inline' | 'overlay'
 }
 
-export function FormDefinitionRenderer({ definition, messages, locale = 'en', tenantSlug }: Props) {
+export function FormDefinitionRenderer({ definition, messages, locale = 'en', tenantSlug, layout = 'inline' }: Props) {
   const fields = singleStepFields(definition)
   // Presentation (ADR-018 slice 7): submit spans full width unless explicitly disabled.
   const fullWidth = definition.fullWidthButton !== false
@@ -161,11 +163,18 @@ export function FormDefinitionRenderer({ definition, messages, locale = 'en', te
         <p className="mt-4 text-sm text-[var(--color-danger)]">{messages.errorMessage}</p>
       )}
 
-      <div className="mt-6">
+      <div
+        className={layout === 'overlay' ? 'sticky bottom-0 -mx-6 mt-6 px-6 pt-4 pb-1' : 'mt-6'}
+        style={layout === 'overlay' ? {
+          background: 'color-mix(in oklch, var(--color-background, var(--background)) 92%, transparent)',
+          backdropFilter: 'blur(12px) saturate(1.4)',
+          borderTop: '1px solid color-mix(in oklch, var(--color-border, var(--border)) 45%, transparent)',
+        } : undefined}
+      >
         <button
           type="submit"
           disabled={status === 'submitting'}
-          className={`${fullWidth ? 'w-full ' : ''}px-6 py-3 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-[var(--btn-primary-text,#fff)] text-sm font-medium transition-opacity disabled:opacity-60 hover:opacity-90`}
+          className={`${fullWidth ? 'w-full ' : ''}inline-flex items-center justify-center px-6 py-3.5 rounded-[var(--radius-btn)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] text-sm font-semibold transition-opacity disabled:opacity-60 hover:opacity-90`}
         >
           {status === 'submitting' ? messages.submitting : messages.submitLabel}
         </button>
