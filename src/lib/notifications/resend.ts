@@ -8,7 +8,13 @@
  * Env: RESEND_API_KEY (required to send). NOTIFY_FROM_EMAIL optional override.
  */
 const RESEND_ENDPOINT = 'https://api.resend.com/emails'
-const DEFAULT_FROM = 'Abluo <no-reply@mail.abluo.app>'
+const FROM_ADDRESS = 'no-reply@mail.abluo.app'
+const DEFAULT_FROM = `Abluo <${FROM_ADDRESS}>`
+
+/** Strips characters that could break or inject into the From display name. */
+function sanitizeDisplayName(name: string): string {
+  return name.replace(/["<>\r\n]/g, '').trim()
+}
 
 export interface SendResult {
   ok: boolean
@@ -21,6 +27,10 @@ export async function sendEmail(params: {
   subject: string
   html: string
   text?: string
+  /** Tenant sender display name; composed onto the verified from-address. */
+  fromName?: string
+  /** Reply-To address (e.g. the submitter, so a reply reaches the lead). */
+  replyTo?: string
 }): Promise<SendResult> {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) return { ok: false, error: 'RESEND_API_KEY is not configured' }
@@ -34,11 +44,14 @@ export async function sendEmail(params: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: process.env.NOTIFY_FROM_EMAIL || DEFAULT_FROM,
+        from: params.fromName
+          ? `${sanitizeDisplayName(params.fromName)} <${FROM_ADDRESS}>`
+          : process.env.NOTIFY_FROM_EMAIL || DEFAULT_FROM,
         to: params.to,
         subject: params.subject,
         html: params.html,
         text: params.text,
+        ...(params.replyTo ? { reply_to: params.replyTo } : {}),
       }),
     })
 

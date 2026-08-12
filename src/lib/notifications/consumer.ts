@@ -25,6 +25,7 @@ import { isProductionEnvironment } from '@/lib/notifications/environment'
 import { resolveRecipients } from '@/lib/notifications/recipients'
 import { sendEmail } from '@/lib/notifications/resend'
 import { renderNewSubmissionEmail } from '@/lib/notifications/templates'
+import { resolveInternalEmailConfig, safeReplyTo } from '@/lib/notifications/branding'
 
 const MAX_ATTEMPTS = 5
 const SWEEP_BATCH = 50
@@ -94,21 +95,33 @@ export async function deliverEvent(eventId: string): Promise<{ outcome: DeliverO
         .eq('id', event.submission_id as string)
         .maybeSingle()
 
+      const locale = (event.locale as string) || (sub?.locale as string) || 'en'
+
+      // Tenant/project-level personalization (ADR-019 Amendment A), read at send
+      // time. Never throws — a miss yields the generic default.
+      const cfg = await resolveInternalEmailConfig(projectSlug, locale)
+      const submitterEmail = cfg.replyToSubmitter
+        ? safeReplyTo((sub?.submission_data as Record<string, unknown> | undefined)?.email)
+        : undefined
+
       const email = renderNewSubmissionEmail({
         formId: event.form_id as string,
         topic,
-        locale: (event.locale as string) || (sub?.locale as string) || 'en',
+        locale,
         submissionId: event.submission_id as string,
         submissionData: (sub?.submission_data as Record<string, unknown>) ?? {},
         source: (sub?.source as Record<string, unknown>) ?? {},
         createdAt: sub?.created_at as string | undefined,
+        fromName: cfg.fromName,
+        intro: cfg.intro,
+        subjectTemplate: cfg.subjectTemplate,
       })
 
       // Send a SEPARATE email per recipient — better privacy (recipients never
       // see each other) and a cleaner single-recipient signal to strict filters.
       const sendResults = await Promise.all(
         recipients.map((to) =>
-          sendEmail({ to: [to], subject: email.subject, html: email.html, text: email.text }).then((res) => ({ to, res })),
+          sendEmail({ to: [to], subject: email.subject, html: email.html, text: email.text, fromName: cfg.fromName, replyTo: submitterEmail }).then((res) => ({ to, res })),
         ),
       )
       const failures = sendResults.filter((r) => !r.res.ok)

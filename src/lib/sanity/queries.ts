@@ -1262,3 +1262,19 @@ export const projectNotificationsQuery = /* groq */ `
     topic, emails, enabled
   }
 `
+
+// ── Internal-email personalization config (ADR-019 Amendment A) ───────────────
+// Tenant/project-level identity + copy, read at send time. `intro` is resolved
+// at the event locale; `clientName` is the fromName default. Takes $projectSlug,
+// $locale, $defaultLocale.
+export const projectInternalEmailQuery = /* groq */ `
+  *[_type == "project" && projectSlug == $projectSlug][0]{
+    "internalEmail": notifications.internalEmail{
+      fromName,
+      subjectTemplate,
+      replyToSubmitter,
+      "intro": coalesce(intro[$locale], intro[$defaultLocale], intro.en)
+    },
+    "clientName": clientRef->displayName
+  }
+`

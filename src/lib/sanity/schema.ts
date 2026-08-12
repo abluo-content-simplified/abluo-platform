@@ -2101,6 +2101,22 @@ const projectType = defineType({
             }),
           ],
         }),
+        // ── Internal email personalization (ADR-019 Amendment A) ──────────────
+        // Tenant-level identity + copy for the "new submission" email. All
+        // optional; empty = today's generic default. Per-form overrides are a
+        // slice-7 (form builder) follow-up.
+        defineField({
+          name: 'internalEmail',
+          title: 'Internal Email',
+          type: 'object',
+          description: 'How the "new submission" notification looks and who it appears to come from.',
+          fields: [
+            defineField({ name: 'fromName', title: 'From Name', type: 'string', description: 'Sender display name — e.g. "Livener". Defaults to the client name. The address stays no-reply@mail.abluo.app.' }),
+            defineField({ name: 'subjectTemplate', title: 'Subject', type: 'string', description: 'Tokens: {topic}, {who}, {formId}. Default: "New {topic} submission — {who}".' }),
+            defineField({ name: 'intro', title: 'Intro Line', type: 'localizedText', description: 'One line under the heading (localized).' }),
+            defineField({ name: 'replyToSubmitter', title: 'Reply-To = submitter', type: 'boolean', initialValue: true, description: 'When on, a reply to the notification goes to the person who submitted.' }),
+          ],
+        }),
       ],
     }),
 

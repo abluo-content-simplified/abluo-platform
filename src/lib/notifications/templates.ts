@@ -6,6 +6,20 @@
  * Pure (no I/O) so it is unit-testable.
  */
 
+export const DEFAULT_SUBJECT_TEMPLATE = 'New {topic} submission — {who}'
+
+/** Renders a subject from a template with {topic}/{who}/{formId} tokens (default when unset). */
+export function renderSubject(
+  template: string | undefined,
+  tokens: { topic: string; who: string; formId: string },
+): string {
+  const t = (template && template.trim()) || DEFAULT_SUBJECT_TEMPLATE
+  return t
+    .replace(/\{topic\}/g, tokens.topic)
+    .replace(/\{who\}/g, tokens.who)
+    .replace(/\{formId\}/g, tokens.formId)
+}
+
 function esc(v: unknown): string {
   return String(v ?? '')
     .replace(/&/g, '&amp;')
@@ -26,12 +40,19 @@ export interface NewSubmissionEmailInput {
   submissionData: Record<string, unknown>
   source: Record<string, unknown>
   createdAt?: string | null
+  // ── Personalization (ADR-019 Amendment A) — all optional ──
+  /** Tenant sender display name, shown as a brand line above the heading. */
+  fromName?: string
+  /** Localized intro line under the heading (replaces the default sentence). */
+  intro?: string
+  /** Subject template with {topic}/{who}/{formId} tokens; default when unset. */
+  subjectTemplate?: string
 }
 
 export function renderNewSubmissionEmail(input: NewSubmissionEmailInput): { subject: string; html: string; text: string } {
   const data = input.submissionData ?? {}
   const who = (data.name as string) || (data.email as string) || 'someone'
-  const subject = `New ${input.topic} submission — ${who}`
+  const subject = renderSubject(input.subjectTemplate, { topic: input.topic, who, formId: input.formId })
 
   const dataRows = flatten(data)
   // Surface the marketing/attribution highlights from source.
@@ -56,8 +77,9 @@ export function renderNewSubmissionEmail(input: NewSubmissionEmailInput): { subj
 
   const html = `
   <div style="font-family:system-ui,Segoe UI,Arial,sans-serif;font-size:14px;color:#111;max-width:640px;">
+    ${input.fromName ? `<p style="margin:0 0 8px;font-weight:600;font-size:15px;">${esc(input.fromName)}</p>` : ''}
     <h2 style="margin:0 0 4px;">New ${esc(input.topic)} submission</h2>
-    <p style="margin:0 0 16px;color:#666;">A visitor completed and submitted the form${input.createdAt ? ` on ${esc(input.createdAt)}` : ''}.</p>
+    <p style="margin:0 0 16px;color:#666;">${input.intro ? esc(input.intro) : `A visitor completed and submitted the form${input.createdAt ? ` on ${esc(input.createdAt)}` : ''}.`}</p>
     <h3 style="margin:16px 0 4px;">Submission</h3>
     <table style="border-collapse:collapse;">${rows(dataRows)}</table>
     ${attribution.length ? `<h3 style="margin:16px 0 4px;">Attribution</h3><table style="border-collapse:collapse;">${rows(attribution)}</table>` : ''}
@@ -65,8 +87,9 @@ export function renderNewSubmissionEmail(input: NewSubmissionEmailInput): { subj
   </div>`.trim()
 
   const textLines = [
+    input.fromName ? input.fromName : '',
     `New ${input.topic} submission`,
-    input.createdAt ? `Submitted: ${input.createdAt}` : '',
+    input.intro ? input.intro : (input.createdAt ? `Submitted: ${input.createdAt}` : ''),
     '',
     'Submission:',
     ...dataRows.map(([k, v]) => `  ${k}: ${v}`),
