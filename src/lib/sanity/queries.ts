@@ -113,6 +113,44 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
         "answer": ${loc('answer')},
       },
       showMap, mapHeight, mapTheme,
+      // contactSection message button (overlay) — reuses the form projection
+      "contactForm": contactForm->{
+        _id,
+        formId,
+        formType,
+        version,
+        "title": ${loc('title')},
+        "eyebrow": ${loc('eyebrow')},
+        fullWidthButton,
+        reviewStep,
+        tenantSlug,
+        steps[]{
+          key,
+          "title": ${loc('title')},
+          fields[]{
+            "id": internalKey,
+            type,
+            required,
+            width,
+            contextMappable,
+            display,
+            "label": ${loc('label')},
+            "placeholder": ${loc('placeholder')},
+            "help": ${loc('help')},
+            minLength,
+            maxLength,
+            pattern,
+            "patternMessage": ${loc('patternMessage')},
+            options[]{ value, "label": ${loc('label')} }
+          }
+        },
+        "requireConsent": privacy.requireConsent,
+        "consentText": ${loc('privacy.consentText')},
+        "successTitle": ${loc('success.title')},
+        "successBody": ${loc('success.body')}
+      },
+      "contactButtonLabel": ${loc('contactButtonLabel')},
+      "contactOverlayTitle": ${loc('contactOverlayTitle')},
       // Blog listing section fields — null on all other section types
       filterMode,
       sortOrder,
@@ -1006,6 +1044,44 @@ export const homePageQuery = /* groq */ `
         "answer": ${loc('answer')},
       },
       showMap, mapHeight, mapTheme,
+      // contactSection message button (overlay) — reuses the form projection
+      "contactForm": contactForm->{
+        _id,
+        formId,
+        formType,
+        version,
+        "title": ${loc('title')},
+        "eyebrow": ${loc('eyebrow')},
+        fullWidthButton,
+        reviewStep,
+        tenantSlug,
+        steps[]{
+          key,
+          "title": ${loc('title')},
+          fields[]{
+            "id": internalKey,
+            type,
+            required,
+            width,
+            contextMappable,
+            display,
+            "label": ${loc('label')},
+            "placeholder": ${loc('placeholder')},
+            "help": ${loc('help')},
+            minLength,
+            maxLength,
+            pattern,
+            "patternMessage": ${loc('patternMessage')},
+            options[]{ value, "label": ${loc('label')} }
+          }
+        },
+        "requireConsent": privacy.requireConsent,
+        "consentText": ${loc('privacy.consentText')},
+        "successTitle": ${loc('success.title')},
+        "successBody": ${loc('success.body')}
+      },
+      "contactButtonLabel": ${loc('contactButtonLabel')},
+      "contactOverlayTitle": ${loc('contactOverlayTitle')},
       "definition": form->{
         _id,
         formId,

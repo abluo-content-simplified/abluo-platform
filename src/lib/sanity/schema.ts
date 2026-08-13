@@ -1413,6 +1413,28 @@ const contactSectionType = defineType({
       },
       description: 'Dark mode is reserved for a future Maps JavaScript API integration. In v1, all themes render the standard interactive Google Map.',
     }),
+    // ── Message button (overlay) — ADR-018 slice 7. Optional; when a form is set,
+    // a button appears at the bottom of the contact details and opens it in an overlay.
+    defineField({
+      name: 'contactForm',
+      title: 'Message Button — Form',
+      type: 'reference',
+      to: [{ type: 'formDefinition' }],
+      description: 'Optional. When set, a button under the contact details opens this form in an overlay.',
+      options: { filter: '_type == "formDefinition" && role == "active"' },
+    }),
+    defineField({
+      name: 'contactButtonLabel',
+      title: 'Message Button — Label',
+      type: 'localizedString',
+      description: 'Text on the button (e.g. "Send us a message"). Shown only when a form is set above.',
+    }),
+    defineField({
+      name: 'contactOverlayTitle',
+      title: 'Message Button — Overlay Heading (optional)',
+      type: 'localizedString',
+      description: 'Heading shown at the top of the overlay. Defaults to the form’s own title.',
+    }),
   ],
   preview: {
     select: { title: 'title.it' },

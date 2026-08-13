@@ -974,6 +974,10 @@ export interface ContactSection {
   mapHeight?: number
   /** Map colour theme. 'dark' is reserved for a future Maps JS API migration; v1 always renders the standard map. */
   mapTheme?: 'auto' | 'light' | 'dark'
+  /** Optional message button (ADR-018 slice 7): opens this form in an overlay from the contact details column. */
+  contactForm?: RenderableFormDefinition | null
+  contactButtonLabel?: string
+  contactOverlayTitle?: string
 }
 
 export interface BlogListingSection {

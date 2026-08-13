@@ -5,6 +5,9 @@ import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { getContactSectionMessages } from '@/lib/i18n/contact-section-messages'
 import { buildAddressQuery, getMapEmbedUrl, getMapsDeepLink } from '@/lib/maps/provider'
+import { FormOverlayWrapper } from '@/components/forms/FormOverlayWrapper'
+import { FormOverlayTrigger } from '@/components/forms/FormOverlayTrigger'
+import { overlayButtonClass } from '@/lib/forms/overlay-button'
 
 interface Props {
   section: ContactSection
@@ -13,9 +16,11 @@ interface Props {
   siteConfig?: WebsiteSiteConfig | null
   /** BCP 47 locale string — used to resolve UI chrome labels */
   locale?: string
+  /** URL tenant slug — the submission route scope for the optional message button. */
+  tenantSlug?: string
 }
 
-export function ContactSection({ section, surface, designSystem, siteConfig, locale = 'en' }: Props) {
+export function ContactSection({ section, surface, designSystem, siteConfig, locale = 'en', tenantSlug }: Props) {
   const { title, subtitle } = section
   const showMap = section.showMap ?? true
   const mapHeight = section.mapHeight ?? 400
@@ -36,6 +41,14 @@ export function ContactSection({ section, surface, designSystem, siteConfig, loc
   const mapsDeepLink = addressQuery ? getMapsDeepLink(addressQuery) : null
   const renderMap = showMap && !!mapEmbedUrl
 
+  // ── Message button (overlay) ─────────────────────────────────────────────────
+  // Optional: when a form is referenced (and we know the tenant), a button sits at
+  // the bottom of the contact details and opens the form in an overlay. Styling is
+  // design-system-driven (overlayButtonClass), so it adopts each tenant's tokens.
+  const contactForm = section.contactForm ?? null
+  const showButton = !!contactForm?.formId && !!tenantSlug
+  const buttonLabel = section.contactButtonLabel ?? contactForm?.title ?? 'Send us a message'
+
   // ── Layout ─────────────────────────────────────────────────────────────────
   // Two-column when map is shown; single full-width column when map is hidden.
   const gridClass = renderMap ? 'grid gap-16 md:grid-cols-2' : 'max-w-[560px]'
@@ -44,7 +57,8 @@ export function ContactSection({ section, surface, designSystem, siteConfig, loc
     <SectionContainer id="contatti" style={surfaceStyles}>
       <div className={gridClass}>
 
-        {/* ── Left: contact details ──────────────────────────────────── */}
+        {/* ── Left: contact details (+ optional message button) ───────── */}
+        <div className="flex h-full flex-col">
         <SlideUp duration={duration} ease={ease} delay={0}>
           {title && (
             <h2
@@ -125,6 +139,28 @@ export function ContactSection({ section, surface, designSystem, siteConfig, loc
             )}
           </div>
         </SlideUp>
+
+        {/* Message button — pinned to the bottom of the column so it lines up
+            with the base of the map; left-aligned with the contact details. */}
+        {showButton && contactForm && (
+          <div className="mt-auto pt-10">
+            <FormOverlayWrapper
+              tenantSlug={tenantSlug as string}
+              locale={locale}
+              forms={[{ formId: contactForm.formId, definition: contactForm }]}
+            >
+              <FormOverlayTrigger
+                formId={contactForm.formId}
+                title={section.contactOverlayTitle ?? undefined}
+                source={{ source: 'contact_section' }}
+                className={overlayButtonClass('primary')}
+              >
+                {buttonLabel}
+              </FormOverlayTrigger>
+            </FormOverlayWrapper>
+          </div>
+        )}
+        </div>
 
         {/* ── Right: map ─────────────────────────────────────────────── */}
         {renderMap && (

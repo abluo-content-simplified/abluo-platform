@@ -298,7 +298,7 @@ export function SectionRenderer({
     case 'faqSection':
       return <FAQSection section={section} surface={surface} designSystem={designSystem} />
     case 'contactSection':
-      return <ContactSection section={section} surface={surface} designSystem={designSystem} siteConfig={siteConfig} locale={locale} />
+      return <ContactSection section={section} surface={surface} designSystem={designSystem} siteConfig={siteConfig} locale={locale} tenantSlug={tenantSlug} />
     case 'formSection':
       return <FormSection section={section as FormSectionType} surface={surface} designSystem={designSystem} locale={locale} tenantSlug={tenantSlug} />
     case 'formOverlayButtonSection':
