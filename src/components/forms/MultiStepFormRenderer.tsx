@@ -262,8 +262,8 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
         )}
       </div>
 
-      <div className="grid grid-cols-12 gap-4">
-        {fieldConfigs.map((config) => {
+      <div className="grid grid-cols-12 gap-5">
+        {fieldConfigs.filter((c) => c.id !== CONSENT_FIELD_ID).map((config) => {
           const colClass = config.width === '50%' ? 'col-span-12 sm:col-span-6' : 'col-span-12'
           return (
             <div key={config.id} className={colClass}>
@@ -277,6 +277,27 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
           )
         })}
       </div>
+
+      {/* Required-fields hint — shown before the consent checkbox / submit. */}
+      {fieldConfigs.some((c) => c.id !== CONSENT_FIELD_ID && c.required) && (
+        <p className="mt-4 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+          {messages.requiredHint}
+        </p>
+      )}
+
+      {/* Consent — rendered after the hint with clear separation (final step only). */}
+      {fieldConfigs
+        .filter((c) => c.id === CONSENT_FIELD_ID)
+        .map((config) => (
+          <div key={config.id} className="mt-5">
+            <FormField
+              config={config}
+              value={values[config.id]}
+              onChange={(val) => handleChange(config.id, val)}
+              error={errors[config.id]}
+            />
+          </div>
+        ))}
 
       {/* Honeypot — hidden from humans, caught by spam.ts as `company_website`. */}
       <input

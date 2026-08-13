@@ -35,7 +35,7 @@ export function RadioGroup({ config, value, onChange, onBlur, error: externalErr
           role="radiogroup"
           aria-labelledby={`${config.id}-label`}
           onBlur={() => { handleBlur(); onBlur?.() }}
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px' }}
         >
           {config.options.map((opt) => {
             const active = value === opt.value
@@ -50,7 +50,7 @@ export function RadioGroup({ config, value, onChange, onBlur, error: externalErr
                 onClick={() => !optDisabled && onChange(opt.value)}
                 style={{
                   textAlign: 'left',
-                  padding: '10px 12px',
+                  padding: '12px 14px',
                   borderRadius: '12px',
                   fontSize: 'inherit',
                   lineHeight: 1.3,

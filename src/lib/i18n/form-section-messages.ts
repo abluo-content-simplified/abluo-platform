@@ -20,6 +20,8 @@ export interface FormSectionMessages {
   /** Step progress template with {current}/{total} placeholders, e.g. "Step {current} of {total}".
    * A plain string (not a function) so it can cross the Server→Client Component boundary. */
   stepLabel: string
+  /** Hint shown when a form/step has required fields (before the consent/submit). */
+  requiredHint: string
 }
 
 const MESSAGES: Record<string, FormSectionMessages> = {
@@ -30,6 +32,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     errorMessage:   'Something went wrong. Please try again.',
     continueLabel:  'Continue',
     stepLabel:      'Step {current} of {total}',
+    requiredHint:   'Fields marked with * are required.',
   },
   it: {
     submitLabel:    'Invia',
@@ -38,6 +41,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     errorMessage:   'Si è verificato un problema. Riprova.',
     continueLabel:  'Continua',
     stepLabel:      'Passo {current} di {total}',
+    requiredHint:   'I campi contrassegnati con * sono obbligatori.',
   },
   de: {
     submitLabel:    'Absenden',
@@ -46,6 +50,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     errorMessage:   'Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.',
     continueLabel:  'Weiter',
     stepLabel:      'Schritt {current} von {total}',
+    requiredHint:   'Mit * markierte Felder sind erforderlich.',
   },
   fr: {
     submitLabel:    'Envoyer',
@@ -54,6 +59,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     errorMessage:   'Une erreur est survenue. Veuillez réessayer.',
     continueLabel:  'Continuer',
     stepLabel:      'Étape {current} sur {total}',
+    requiredHint:   'Les champs marqués d’un * sont obligatoires.',
   },
   es: {
     submitLabel:    'Enviar',
@@ -62,6 +68,7 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     errorMessage:   'Algo salió mal. Por favor, inténtalo de nuevo.',
     continueLabel:  'Continuar',
     stepLabel:      'Paso {current} de {total}',
+    requiredHint:   'Los campos marcados con * son obligatorios.',
   },
 }
 

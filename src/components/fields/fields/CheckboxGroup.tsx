@@ -47,8 +47,8 @@ export function CheckboxGroup({ config, value = [], onChange, onBlur, error: ext
           onBlur={() => { handleBlur(); onBlur?.() }}
           style={
             isCards
-              ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }
-              : { display: 'flex', flexWrap: 'wrap', gap: '8px' }
+              ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px' }
+              : { display: 'flex', flexWrap: 'wrap', gap: '10px' }
           }
         >
           {config.options.map((opt) => {
@@ -73,8 +73,8 @@ export function CheckboxGroup({ config, value = [], onChange, onBlur, error: ext
                   color: active ? 'var(--color-primary)' : 'var(--form-input-text)',
                   transition: 'border-color var(--motion-duration-fast), background var(--motion-duration-fast)',
                   ...(isCards
-                    ? { padding: '10px 12px', borderRadius: '12px' }
-                    : { display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '999px' }),
+                    ? { padding: '12px 14px', borderRadius: '12px' }
+                    : { display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '999px' }),
                 }}
               >
                 {opt.label}
