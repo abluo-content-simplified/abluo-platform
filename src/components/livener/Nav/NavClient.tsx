@@ -269,11 +269,10 @@ export function NavClient({
           {ctaLabel && (ctaMode === 'modal' ? (
             <button
               onClick={handleCtaClick}
-              className="ml-2 rounded-xl border-2 px-5 py-2 text-sm font-semibold transition-all"
+              className="ml-2 rounded-[var(--radius-btn)] px-5 py-2 text-sm font-semibold transition-all"
               style={{
-                borderColor: 'var(--color-primary)',
-                backgroundColor: 'var(--color-primary)',
-                color: '#fff',
+                backgroundColor: 'var(--btn-primary-bg)',
+                color: 'var(--btn-primary-text)',
                 border: 'none',
                 cursor: 'pointer',
               }}
@@ -283,11 +282,10 @@ export function NavClient({
           ) : (
             <Link
               href={ctaHref ?? '#'}
-              className="ml-2 rounded-xl border-2 px-5 py-2 text-sm font-semibold transition-all"
+              className="ml-2 rounded-[var(--radius-btn)] px-5 py-2 text-sm font-semibold transition-all"
               style={{
-                borderColor: 'var(--color-primary)',
-                backgroundColor: 'var(--color-primary)',
-                color: '#fff',
+                backgroundColor: 'var(--btn-primary-bg)',
+                color: 'var(--btn-primary-text)',
               }}
             >
               {ctaLabel}

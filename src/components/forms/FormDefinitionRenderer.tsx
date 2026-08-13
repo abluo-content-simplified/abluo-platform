@@ -174,7 +174,7 @@ export function FormDefinitionRenderer({ definition, messages, locale = 'en', te
         <button
           type="submit"
           disabled={status === 'submitting'}
-          className={`${fullWidth ? 'w-full ' : ''}inline-flex items-center justify-center rounded-xl px-6 py-3.5 bg-[var(--color-primary)] text-white text-sm font-semibold transition-opacity disabled:opacity-60 hover:opacity-90`}
+          className={`${fullWidth ? 'w-full ' : ''}inline-flex items-center justify-center rounded-[var(--radius-btn)] px-6 py-3.5 bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] text-sm font-semibold transition-all disabled:opacity-60 hover:bg-[var(--btn-primary-hover-bg)]`}
         >
           {status === 'submitting' ? messages.submitting : messages.submitLabel}
         </button>

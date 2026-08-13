@@ -137,7 +137,7 @@ export function FormModal({ isOpen, onClose, closeLabel, title, eyebrow, childre
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 14, scale: 0.97 }}
             transition={{ duration: 0.25, ease: [0, 0, 0.2, 1] }}
-            className="fixed inset-x-4 top-1/2 z-[510] mx-auto flex max-w-xl -translate-y-1/2 flex-col overflow-hidden rounded-2xl shadow-2xl backdrop-blur-[24px] saturate-150 md:inset-x-auto md:left-1/2 md:-translate-x-1/2"
+            className="fixed inset-x-4 top-1/2 z-[510] mx-auto flex -translate-y-1/2 flex-col overflow-hidden rounded-2xl shadow-2xl backdrop-blur-[24px] saturate-150 md:inset-x-auto md:left-1/2 md:w-[36rem] md:-translate-x-1/2"
             style={{
               backgroundColor: 'color-mix(in oklch, var(--color-background, var(--background)) 90%, transparent)',
               border: '1px solid var(--color-border, var(--border))',
@@ -147,22 +147,22 @@ export function FormModal({ isOpen, onClose, closeLabel, title, eyebrow, childre
           >
             {/* Header — sticky, holds optional eyebrow/title + the close button. */}
             <div
-              className="flex flex-none items-center justify-between gap-4 px-6 pt-6 pb-5"
+              className="flex flex-none flex-col gap-1.5 px-6 pt-6 pb-5"
               style={{
                 borderBottom:
                   '1px solid color-mix(in oklch, var(--color-border, var(--border)) 50%, transparent)',
               }}
             >
-              <div className="flex flex-col gap-1.5 pr-2">
-                {eyebrow && (
+              {/* Row 1 — eyebrow (or title if no eyebrow) and the close button, vertically centred together. */}
+              <div className="flex items-center justify-between gap-4">
+                {eyebrow ? (
                   <p
                     className="text-[10px] font-bold uppercase tracking-[0.12em]"
                     style={{ color: 'var(--color-primary, var(--primary))' }}
                   >
                     {eyebrow}
                   </p>
-                )}
-                {title && (
+                ) : title ? (
                   <h2
                     id={`${dialogId}-title`}
                     className="text-lg font-semibold"
@@ -173,23 +173,39 @@ export function FormModal({ isOpen, onClose, closeLabel, title, eyebrow, childre
                   >
                     {title}
                   </h2>
+                ) : (
+                  <span />
                 )}
+
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label={closeLabel}
+                  title={closeLabel}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors"
+                  style={{
+                    color: 'var(--color-text-muted, var(--text-secondary))',
+                    backgroundColor:
+                      'color-mix(in oklch, var(--color-border, var(--border)) 50%, transparent)',
+                  }}
+                >
+                  <X size={16} />
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label={closeLabel}
-                title={closeLabel}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors"
-                style={{
-                  color: 'var(--color-text-muted, var(--text-secondary))',
-                  backgroundColor:
-                    'color-mix(in oklch, var(--color-border, var(--border)) 50%, transparent)',
-                }}
-              >
-                <X size={16} />
-              </button>
+              {/* Row 2 — title beneath, only when an eyebrow occupies row 1. */}
+              {eyebrow && title && (
+                <h2
+                  id={`${dialogId}-title`}
+                  className="text-lg font-semibold"
+                  style={{
+                    color: 'var(--color-text-primary, var(--text-primary))',
+                    fontFamily: 'var(--font-heading)',
+                  }}
+                >
+                  {title}
+                </h2>
+              )}
             </div>
 
             {/* Body — scrolls; the renderer's sticky footer pins the submit button. */}

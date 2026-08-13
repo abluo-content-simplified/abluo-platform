@@ -25,20 +25,20 @@ describe('overlayButtonWidthClass', () => {
 })
 
 describe('overlayButtonClass', () => {
-  it('primary matches the header CTA: --color-primary fill + white text', () => {
-    expect(overlayButtonClass('primary')).toContain('bg-[var(--color-primary)]')
-    expect(overlayButtonClass('primary')).toContain('text-white')
-    expect(overlayButtonClass(undefined)).toContain('bg-[var(--color-primary)]')
-    expect(overlayButtonClass(null)).toContain('bg-[var(--color-primary)]')
+  it('primary uses the DS button fill + text tokens', () => {
+    expect(overlayButtonClass('primary')).toContain('bg-[var(--btn-primary-bg)]')
+    expect(overlayButtonClass('primary')).toContain('text-[var(--btn-primary-text)]')
+    expect(overlayButtonClass(undefined)).toContain('bg-[var(--btn-primary-bg)]')
+    expect(overlayButtonClass(null)).toContain('bg-[var(--btn-primary-bg)]')
   })
-  it('uses rounded-xl like the header CTA (not a radius token)', () => {
-    expect(overlayButtonClass('primary')).toContain('rounded-xl')
-    expect(overlayButtonClass('primary')).not.toContain('--radius-btn')
+  it('radius comes from the DS token (--radius-btn), never hardcoded', () => {
+    expect(overlayButtonClass('primary')).toContain('rounded-[var(--radius-btn)]')
+    expect(overlayButtonClass('primary')).not.toContain('rounded-full')
     expect(overlayButtonClass('primary')).not.toContain('--radius-md')
   })
   it('secondary is bordered and not the primary fill', () => {
     const c = overlayButtonClass('secondary')
     expect(c).toContain('border')
-    expect(c).not.toContain('bg-[var(--color-primary)]')
+    expect(c).not.toContain('bg-[var(--btn-primary-bg)]')
   })
 })
