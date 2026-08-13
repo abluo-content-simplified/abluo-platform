@@ -22,6 +22,12 @@ export interface FormSectionMessages {
   stepLabel: string
   /** Hint shown when a form/step has required fields (before the consent/submit). */
   requiredHint: string
+  /** Back button on multi-step forms (ADR-018 slice 7e). */
+  backLabel: string
+  /** Heading of the end-of-form review/recap screen. */
+  reviewTitle: string
+  /** Per-section "Edit" affordance on the review screen. */
+  editLabel: string
 }
 
 const MESSAGES: Record<string, FormSectionMessages> = {
@@ -33,6 +39,9 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     continueLabel:  'Continue',
     stepLabel:      'Step {current} of {total}',
     requiredHint:   'Fields marked with * are required.',
+    backLabel:      'Back',
+    reviewTitle:    'Review your details',
+    editLabel:      'Edit',
   },
   it: {
     submitLabel:    'Invia',
@@ -42,6 +51,9 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     continueLabel:  'Continua',
     stepLabel:      'Passo {current} di {total}',
     requiredHint:   'I campi contrassegnati con * sono obbligatori.',
+    backLabel:      'Indietro',
+    reviewTitle:    'Rivedi i tuoi dati',
+    editLabel:      'Modifica',
   },
   de: {
     submitLabel:    'Absenden',
@@ -51,6 +63,9 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     continueLabel:  'Weiter',
     stepLabel:      'Schritt {current} von {total}',
     requiredHint:   'Mit * markierte Felder sind erforderlich.',
+    backLabel:      'Zurück',
+    reviewTitle:    'Überprüfen Sie Ihre Angaben',
+    editLabel:      'Bearbeiten',
   },
   fr: {
     submitLabel:    'Envoyer',
@@ -60,6 +75,9 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     continueLabel:  'Continuer',
     stepLabel:      'Étape {current} sur {total}',
     requiredHint:   'Les champs marqués d’un * sont obligatoires.',
+    backLabel:      'Retour',
+    reviewTitle:    'Vérifiez vos informations',
+    editLabel:      'Modifier',
   },
   es: {
     submitLabel:    'Enviar',
@@ -69,6 +87,9 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     continueLabel:  'Continuar',
     stepLabel:      'Paso {current} de {total}',
     requiredHint:   'Los campos marcados con * son obligatorios.',
+    backLabel:      'Atrás',
+    reviewTitle:    'Revisa tus datos',
+    editLabel:      'Editar',
   },
 }
 

@@ -141,6 +141,7 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
         "title": ${loc('title')},
         "eyebrow": ${loc('eyebrow')},
         fullWidthButton,
+        reviewStep,
         tenantSlug,
         steps[]{
           key,
@@ -332,6 +333,7 @@ export const websiteSiteConfigQuery = /* groq */ `
       "title": ${loc('title')},
       "eyebrow": ${loc('eyebrow')},
       fullWidthButton,
+      reviewStep,
       tenantSlug,
       steps[]{
         key,
@@ -1012,6 +1014,7 @@ export const homePageQuery = /* groq */ `
         "title": ${loc('title')},
         "eyebrow": ${loc('eyebrow')},
         fullWidthButton,
+        reviewStep,
         tenantSlug,
         steps[]{
           key,

@@ -1146,6 +1146,8 @@ export interface RenderableFormDefinition {
   eyebrow?: string
   /** When false, the submit/continue button is auto-width; defaults to full-width. */
   fullWidthButton?: boolean
+  /** When true, a multi-step form shows an end-of-form review/recap screen (ADR-018 slice 7e). */
+  reviewStep?: boolean
   tenantSlug?: string
   steps: RenderableFormStep[]
   requireConsent?: boolean
