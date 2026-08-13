@@ -35,6 +35,17 @@ export function singleStepFields(def: RenderableFormDefinition | null | undefine
  */
 export function toFieldConfig(field: RenderableFormField): FieldConfig | null {
   const validation: ValidationRule[] = field.required ? [{ type: 'required' }] : []
+  // Authored text rules (ADR-018 slice 7d) — apply to every text-like input.
+  // The email/url cases below spread `validation`, so these carry through.
+  if (typeof field.minLength === 'number') validation.push({ type: 'minLength', value: field.minLength })
+  if (typeof field.maxLength === 'number') validation.push({ type: 'maxLength', value: field.maxLength })
+  if (field.pattern) {
+    validation.push(
+      field.patternMessage
+        ? { type: 'pattern', regex: field.pattern, message: field.patternMessage }
+        : { type: 'pattern', regex: field.pattern },
+    )
+  }
   const base = {
     id: field.id,
     label: field.label ?? field.id,
@@ -154,4 +165,31 @@ export function buildSubmissionPayload(
 /** New-endpoint URL for a placement. tenantSlug is the URL tenant scope. */
 export function submissionEndpoint(tenantSlug: string, formId: string): string {
   return `/api/forms/${encodeURIComponent(tenantSlug)}/${encodeURIComponent(formId)}/submissions`
+}
+
+/** First whitespace-separated token of a full-name value ("Frank Zappa" → "Frank"). */
+function firstNameOf(name: unknown): string {
+  return typeof name === 'string' ? (name.trim().split(/\s+/)[0] ?? '') : ''
+}
+
+/**
+ * Personalizes success copy (ADR-018 slice 7d). Replaces `{token}` placeholders
+ * with the visitor's submitted values so an author can write, in any language,
+ * "{first_name}, you're on the list — thank you!".
+ *
+ * Tokens:
+ *   - `{first_name}` — first word of the `name` field's value
+ *   - `{<internalKey>}` — any submitted field by its key (arrays joined with ", ")
+ * Unknown/empty tokens collapse to nothing, and a stray leading comma/space left
+ * by an empty leading token is tidied so the sentence still reads cleanly.
+ */
+export function applySuccessTemplate(text: string | undefined, values: Record<string, unknown>): string | undefined {
+  if (!text || !text.includes('{')) return text
+  const filled = text.replace(/\{(\w+)\}/g, (_match, key: string) => {
+    if (key === 'first_name') return firstNameOf(values.name)
+    const v = values[key]
+    if (v === null || v === undefined) return ''
+    return Array.isArray(v) ? v.join(', ') : String(v)
+  })
+  return filled.replace(/\s{2,}/g, ' ').replace(/^[\s,]+/, '').trim()
 }

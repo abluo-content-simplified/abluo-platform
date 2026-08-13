@@ -49,6 +49,9 @@ export const formDefinitionByKeyQuery = /* groq */ `
         required,
         contextMappable,
         validationPreset,
+        minLength,
+        maxLength,
+        pattern,
         "options": options[].value
       }
     }
@@ -69,6 +72,9 @@ interface SanityFormDefinition {
       required?: boolean
       contextMappable?: boolean
       validationPreset?: string
+      minLength?: number
+      maxLength?: number
+      pattern?: string
       options?: Array<string | null> | null
     }>
   }>
@@ -107,6 +113,9 @@ export function mapSanityFormDefinition(input: Record<string, unknown> | null | 
             required: !!f.required,
             ...(options.length > 0 ? { options } : {}),
             ...(validate ? { validate } : {}),
+            ...(typeof f.minLength === 'number' ? { minLength: f.minLength } : {}),
+            ...(typeof f.maxLength === 'number' ? { maxLength: f.maxLength } : {}),
+            ...(f.pattern ? { pattern: f.pattern } : {}),
             ...(f.contextMappable ? { contextMappable: true } : {}),
           }
         }),
@@ -171,6 +180,9 @@ interface DefinitionSnapshot {
       required?: boolean
       options?: string[]
       validate?: string
+      minLength?: number
+      maxLength?: number
+      pattern?: string
     }>
   }>
 }
@@ -210,6 +222,9 @@ export function reconstructDefinitionFromSnapshot(input: Record<string, unknown>
               required: !!f.required,
               ...(Array.isArray(f.options) && f.options.length > 0 ? { options: f.options } : {}),
               ...(validate ? { validate } : {}),
+              ...(typeof f.minLength === 'number' ? { minLength: f.minLength } : {}),
+              ...(typeof f.maxLength === 'number' ? { maxLength: f.maxLength } : {}),
+              ...(f.pattern ? { pattern: f.pattern } : {}),
             }
           }),
       })),

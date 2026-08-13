@@ -155,6 +155,10 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
             "label": ${loc('label')},
             "placeholder": ${loc('placeholder')},
             "help": ${loc('help')},
+            minLength,
+            maxLength,
+            pattern,
+            "patternMessage": ${loc('patternMessage')},
             options[]{ value, "label": ${loc('label')} }
           }
         },
@@ -342,6 +346,10 @@ export const websiteSiteConfigQuery = /* groq */ `
           "label": ${loc('label')},
           "placeholder": ${loc('placeholder')},
           "help": ${loc('help')},
+          minLength,
+          maxLength,
+          pattern,
+          "patternMessage": ${loc('patternMessage')},
           options[]{ value, "label": ${loc('label')} }
         }
       },
@@ -1018,6 +1026,10 @@ export const homePageQuery = /* groq */ `
             "label": ${loc('label')},
             "placeholder": ${loc('placeholder')},
             "help": ${loc('help')},
+            minLength,
+            maxLength,
+            pattern,
+            "patternMessage": ${loc('patternMessage')},
             options[]{ value, "label": ${loc('label')} }
           }
         },

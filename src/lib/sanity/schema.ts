@@ -1833,6 +1833,42 @@ const formFieldItemType = defineType({
       hidden: ({ parent }: { parent?: { type?: string } }) =>
         !['select', 'radio-group', 'checkbox-group'].includes(parent?.type ?? ''),
     }),
+    // ── Text validation rules (ADR-018 slice 7d) — enforced client + server ──────
+    // Applies to free-text inputs. The engine (useFieldValidation + server
+    // validateStep) already understands these; these fields expose them.
+    defineField({
+      name: 'minLength',
+      title: 'Minimum length',
+      type: 'number',
+      description: 'Minimum number of characters (e.g. 2). Leave empty for no minimum.',
+      hidden: ({ parent }: { parent?: { type?: string } }) =>
+        !['text', 'textarea', 'email', 'url', 'phone'].includes(parent?.type ?? ''),
+      validation: (Rule) => Rule.min(0).integer(),
+    }),
+    defineField({
+      name: 'maxLength',
+      title: 'Maximum length',
+      type: 'number',
+      description: 'Maximum number of characters. Leave empty for no maximum.',
+      hidden: ({ parent }: { parent?: { type?: string } }) =>
+        !['text', 'textarea', 'email', 'url', 'phone'].includes(parent?.type ?? ''),
+      validation: (Rule) => Rule.min(1).integer(),
+    }),
+    defineField({
+      name: 'pattern',
+      title: 'Pattern (regex)',
+      type: 'string',
+      description: 'Optional regular expression the value must match. Example: \\D requires at least one non-digit (blocks all-numeric input). Leave empty for none.',
+      hidden: ({ parent }: { parent?: { type?: string } }) =>
+        !['text', 'textarea', 'email', 'url', 'phone'].includes(parent?.type ?? ''),
+    }),
+    defineField({
+      name: 'patternMessage',
+      title: 'Pattern error message',
+      type: 'localizedString',
+      description: 'Shown when the value does not match the pattern above. Falls back to a generic "Invalid format" message if empty.',
+      hidden: ({ parent }: { parent?: { type?: string; pattern?: string } }) => !parent?.pattern,
+    }),
   ],
   preview: {
     select: { id: 'id', type: 'type', labelEn: 'label.en' },

@@ -30,6 +30,10 @@ export interface FormFieldDef {
   options?: string[]
   /** Extra format check applied when a value is present. */
   validate?: FormFieldValidation
+  /** Text rules (ADR-018 slice 7d) — enforced server-side in validateStep, frozen into the snapshot. */
+  minLength?: number
+  maxLength?: number
+  pattern?: string
   /** May a placement's Context pre-populate this field? (none for Early Access) */
   contextMappable?: boolean
 }
@@ -146,6 +150,9 @@ export function resolveDefinitionSnapshot(def: FormDefinition): Record<string, u
         required: !!f.required,
         ...(f.options ? { options: f.options } : {}),
         ...(f.validate ? { validate: f.validate } : {}),
+        ...(typeof f.minLength === 'number' ? { minLength: f.minLength } : {}),
+        ...(typeof f.maxLength === 'number' ? { maxLength: f.maxLength } : {}),
+        ...(f.pattern ? { pattern: f.pattern } : {}),
       })),
     })),
   }
@@ -194,6 +201,28 @@ export function validateStep(
       } catch {
         errors[field.key] = 'invalid'
         continue
+      }
+    }
+    // Text rules (ADR-018 slice 7d) — mirror the client validator so a value that
+    // passes in the browser also passes here (and vice-versa). String values only.
+    if (typeof raw === 'string') {
+      if (typeof field.minLength === 'number' && raw.length < field.minLength) {
+        errors[field.key] = 'invalid'
+        continue
+      }
+      if (typeof field.maxLength === 'number' && raw.length > field.maxLength) {
+        errors[field.key] = 'invalid'
+        continue
+      }
+      if (field.pattern) {
+        try {
+          if (!new RegExp(field.pattern).test(raw)) {
+            errors[field.key] = 'invalid'
+            continue
+          }
+        } catch {
+          // Malformed pattern — fail open (skip), matching the client validator.
+        }
       }
     }
     // Option-membership: reject values outside the allowed set.

@@ -25,7 +25,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { FormField, validateForm } from '@/components/fields'
 import type { RenderableFormDefinition } from '@/lib/sanity/types'
 import type { FormSectionMessages } from '@/lib/i18n/form-section-messages'
-import { buildFieldConfigs, buildSubmissionPayload, submissionEndpoint, CONSENT_FIELD_ID } from '@/lib/forms/render-mapping'
+import { buildFieldConfigs, buildSubmissionPayload, submissionEndpoint, applySuccessTemplate, CONSENT_FIELD_ID } from '@/lib/forms/render-mapping'
 import { collectClientSource } from '@/lib/forms/source'
 import {
   mapContextToValues,
@@ -225,11 +225,13 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
   }
 
   if (status === 'success') {
+    const successTitle = applySuccessTemplate(def.successTitle, values)
+    const successBody = applySuccessTemplate(def.successBody, values) ?? messages.successMessage
     return (
       <div className="py-8 text-center">
-        {def.successTitle && <p className="text-[var(--color-text-primary)] text-lg font-medium">{def.successTitle}</p>}
+        {successTitle && <p className="text-[var(--color-text-primary)] text-lg font-medium">{successTitle}</p>}
         <p className="text-[var(--color-text-secondary)] text-sm leading-relaxed mt-2">
-          {def.successBody ?? messages.successMessage}
+          {successBody}
         </p>
       </div>
     )

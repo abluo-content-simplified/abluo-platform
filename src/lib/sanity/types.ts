@@ -1118,6 +1118,12 @@ export interface RenderableFormField {
   contextMappable?: boolean
   /** Choice-field presentation: 'list' | 'cards' | 'chips' (ADR-018 slice 7). */
   display?: string
+  /** Text validation (ADR-018 slice 7d) — min/max character count, enforced client + server. */
+  minLength?: number
+  maxLength?: number
+  /** Optional regex the value must match; `patternMessage` is the localized error. */
+  pattern?: string
+  patternMessage?: string
 }
 
 /** A placement Context key/value pair set on the Form Section (ADR-018 slice 5). */

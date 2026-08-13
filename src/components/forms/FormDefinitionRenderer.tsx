@@ -24,6 +24,7 @@ import {
   buildFieldConfigs,
   buildSubmissionPayload,
   submissionEndpoint,
+  applySuccessTemplate,
   CONSENT_FIELD_ID,
 } from '@/lib/forms/render-mapping'
 import { collectClientSource } from '@/lib/forms/source'
@@ -125,13 +126,15 @@ export function FormDefinitionRenderer({ definition, messages, locale = 'en', te
   }
 
   if (status === 'success') {
+    const successTitle = applySuccessTemplate(definition.successTitle, values)
+    const successBody = applySuccessTemplate(definition.successBody, values) ?? messages.successMessage
     return (
       <div className="py-8 text-center">
-        {definition.successTitle && (
-          <p className="text-[var(--color-text-primary)] text-lg font-medium">{definition.successTitle}</p>
+        {successTitle && (
+          <p className="text-[var(--color-text-primary)] text-lg font-medium">{successTitle}</p>
         )}
         <p className="text-[var(--color-text-secondary)] text-sm leading-relaxed mt-2">
-          {definition.successBody ?? messages.successMessage}
+          {successBody}
         </p>
       </div>
     )
