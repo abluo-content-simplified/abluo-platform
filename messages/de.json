@@ -72,6 +72,7 @@
         "name": "Name",
         "email": "E-Mail",
         "form": "Formular",
+        "subject": "Betreff",
         "status": "Status",
         "received": "Erhalten"
       },
@@ -79,7 +80,28 @@
         "new": "Neu",
         "processed": "Bearbeitet",
         "archived": "Archiviert"
-      }
+      },
+      "filters": {
+        "allForms": "Alle Formulare",
+        "allStatuses": "Alle Status",
+        "search": "Name oder E-Mail suchen…",
+        "from": "Von",
+        "to": "Bis",
+        "groupBy": "Zusammenfassung nach",
+        "groupNone": "Keine",
+        "groupForm": "Formular",
+        "groupStatus": "Status"
+      },
+      "exportCsv": "CSV exportieren",
+      "count": "{count} Leads",
+      "noResults": "Keine Leads entsprechen den Filtern.",
+      "detail": {
+        "show": "Details",
+        "hide": "Ausblenden",
+        "attribution": "Attribution",
+        "none": "—"
+      },
+      "updateError": "Aktualisierung fehlgeschlagen"
     },
     "leads": {
       "title": "Anfragen",

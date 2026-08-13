@@ -72,6 +72,7 @@
         "name": "Nome",
         "email": "Email",
         "form": "Modulo",
+        "subject": "Oggetto",
         "status": "Stato",
         "received": "Ricevuto"
       },
@@ -79,7 +80,28 @@
         "new": "Nuovo",
         "processed": "Elaborato",
         "archived": "Archiviato"
-      }
+      },
+      "filters": {
+        "allForms": "Tutti i moduli",
+        "allStatuses": "Tutti gli stati",
+        "search": "Cerca nome o email…",
+        "from": "Dal",
+        "to": "Al",
+        "groupBy": "Riepilogo per",
+        "groupNone": "Nessuno",
+        "groupForm": "Modulo",
+        "groupStatus": "Stato"
+      },
+      "exportCsv": "Esporta CSV",
+      "count": "{count} contatti",
+      "noResults": "Nessun contatto corrisponde ai filtri.",
+      "detail": {
+        "show": "Dettagli",
+        "hide": "Nascondi",
+        "attribution": "Attribuzione",
+        "none": "—"
+      },
+      "updateError": "Aggiornamento non riuscito"
     },
     "leads": {
       "title": "Contatti",

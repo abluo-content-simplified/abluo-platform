@@ -72,6 +72,7 @@
         "name": "Name",
         "email": "Email",
         "form": "Form",
+        "subject": "Subject",
         "status": "Status",
         "received": "Received"
       },
@@ -79,7 +80,28 @@
         "new": "New",
         "processed": "Processed",
         "archived": "Archived"
-      }
+      },
+      "filters": {
+        "allForms": "All forms",
+        "allStatuses": "All statuses",
+        "search": "Search name or email…",
+        "from": "From",
+        "to": "To",
+        "groupBy": "Summary by",
+        "groupNone": "None",
+        "groupForm": "Form",
+        "groupStatus": "Status"
+      },
+      "exportCsv": "Export CSV",
+      "count": "{count} leads",
+      "noResults": "No leads match your filters.",
+      "detail": {
+        "show": "Details",
+        "hide": "Hide",
+        "attribution": "Attribution",
+        "none": "—"
+      },
+      "updateError": "Couldn't update"
     },
     "leads": {
       "title": "Leads",

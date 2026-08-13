@@ -46,7 +46,7 @@ describe('mapSubmissionRow', () => {
     expect(mapSubmissionRow({
       id: 's1', form_id: 'contact', status: 'processed', created_at: '2026-08-11T10:00:00Z',
       submission_data: { name: 'John', email: 'john@x.test', message: 'hi' },
-    })).toEqual({ id: 's1', formId: 'contact', name: 'John', email: 'john@x.test', status: 'processed', createdAt: '2026-08-11T10:00:00Z' })
+    })).toEqual({ id: 's1', formId: 'contact', name: 'John', email: 'john@x.test', status: 'processed', createdAt: '2026-08-11T10:00:00Z', data: { name: 'John', email: 'john@x.test', message: 'hi' }, source: null, formVersion: null })
   })
   it('defaults an unknown/missing status to "new" and missing name/email to null', () => {
     const r = mapSubmissionRow({ id: 's2', form_id: 'early-access', status: 'weird', created_at: 'x', submission_data: {} })
