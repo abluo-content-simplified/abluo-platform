@@ -106,7 +106,12 @@ export function mapSanityFormDefinition(input: Record<string, unknown> | null | 
         .filter((f) => f && typeof f.internalKey === 'string' && typeof f.type === 'string')
         .map((f): FormFieldDef => {
           const options = (f.options ?? []).filter((o): o is string => typeof o === 'string' && o.length > 0)
-          const validate = mapValidationPreset(f.validationPreset)
+          // An explicit preset wins; otherwise infer the format check from the
+          // field type so an `email`/`url` field is enforced server-side too
+          // (mirrors the client, which derives the rule from the type).
+          const validate =
+            mapValidationPreset(f.validationPreset) ??
+            (f.type === 'email' ? 'email' : f.type === 'url' ? 'url' : undefined)
           return {
             key: f.internalKey as string,
             type: f.type as string,

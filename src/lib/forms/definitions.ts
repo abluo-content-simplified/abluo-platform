@@ -196,9 +196,16 @@ export function validateStep(
       continue
     }
     if (field.validate === 'url' && typeof raw === 'string') {
+      let ok = false
       try {
-        new URL(raw.startsWith('http') ? raw : `https://${raw}`)
+        const u = new URL(raw.startsWith('http') ? raw : `https://${raw}`)
+        // Match the client: a bare word parses once https:// is prepended, so
+        // also require a dotted hostname (real domain) and no whitespace.
+        ok = !/\s/.test(raw) && u.hostname.includes('.') && !u.hostname.startsWith('.') && !u.hostname.endsWith('.')
       } catch {
+        ok = false
+      }
+      if (!ok) {
         errors[field.key] = 'invalid'
         continue
       }

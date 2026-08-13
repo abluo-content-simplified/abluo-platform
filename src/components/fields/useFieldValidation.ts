@@ -64,9 +64,14 @@ function evaluateRule(
     }
 
     case 'url': {
+      if (!str) return null
       try {
-        if (str) new URL(str.startsWith('http') ? str : `https://${str}`)
-        return null
+        const u = new URL(str.startsWith('http') ? str : `https://${str}`)
+        // Prepending https:// makes any word ("abc") parse, so also require a
+        // dotted hostname (a real domain with a TLD) and no whitespace.
+        const host = u.hostname
+        const ok = !/\s/.test(str) && host.includes('.') && !host.startsWith('.') && !host.endsWith('.')
+        return ok ? null : rule.message ?? m.invalidUrl
       } catch {
         return rule.message ?? m.invalidUrl
       }
