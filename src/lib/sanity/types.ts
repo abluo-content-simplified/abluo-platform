@@ -580,6 +580,10 @@ export interface WebsiteSiteConfig {
   socialLinks?: SocialLink[]
   phone?: string
   email?: string
+  /** WhatsApp channel (ADR-018): number, the subject+message form, and the floating-button toggle. */
+  whatsappNumber?: string
+  whatsappForm?: RenderableFormDefinition | null
+  whatsappFloating?: boolean
   /** Structured business location — primary source for map generation */
   location?: BusinessLocation
   /** Legacy flat address string — fallback when location is not yet populated */
@@ -978,6 +982,8 @@ export interface ContactSection {
   contactForm?: RenderableFormDefinition | null
   contactButtonLabel?: string
   contactOverlayTitle?: string
+  /** Show a WhatsApp button next to the message button (uses siteConfig WhatsApp settings). */
+  showWhatsappButton?: boolean
 }
 
 export interface BlogListingSection {

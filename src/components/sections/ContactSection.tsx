@@ -8,6 +8,8 @@ import { buildAddressQuery, getMapEmbedUrl, getMapsDeepLink } from '@/lib/maps/p
 import { FormOverlayWrapper } from '@/components/forms/FormOverlayWrapper'
 import { FormOverlayTrigger } from '@/components/forms/FormOverlayTrigger'
 import { overlayButtonClass } from '@/lib/forms/overlay-button'
+import { WhatsAppWidget } from '@/components/forms/WhatsAppWidget'
+import { hasWhatsAppNumber } from '@/lib/forms/whatsapp'
 
 interface Props {
   section: ContactSection
@@ -48,6 +50,13 @@ export function ContactSection({ section, surface, designSystem, siteConfig, loc
   const contactForm = section.contactForm ?? null
   const showButton = !!contactForm?.formId && !!tenantSlug
   const buttonLabel = section.contactButtonLabel ?? contactForm?.title ?? 'Send us a message'
+
+  // ── WhatsApp button (optional) ───────────────────────────────────────────────
+  // Renders next to the message button when enabled on the section AND the site
+  // has a WhatsApp number + form configured (Site Settings → Contact).
+  const waNumber = siteConfig?.whatsappNumber
+  const waForm = siteConfig?.whatsappForm ?? null
+  const showWhatsapp = !!section.showWhatsappButton && hasWhatsAppNumber(waNumber) && !!waForm?.formId && !!tenantSlug
 
   // ── Layout ─────────────────────────────────────────────────────────────────
   // Two-column when map is shown; single full-width column when map is hidden.
@@ -140,24 +149,35 @@ export function ContactSection({ section, surface, designSystem, siteConfig, loc
           </div>
         </SlideUp>
 
-        {/* Message button — pinned to the bottom of the column so it lines up
+        {/* Contact actions — pinned to the bottom of the column so they line up
             with the base of the map; left-aligned with the contact details. */}
-        {showButton && contactForm && (
-          <div className="mt-auto pt-10">
-            <FormOverlayWrapper
-              tenantSlug={tenantSlug as string}
-              locale={locale}
-              forms={[{ formId: contactForm.formId, definition: contactForm }]}
-            >
-              <FormOverlayTrigger
-                formId={contactForm.formId}
-                title={section.contactOverlayTitle ?? undefined}
-                source={{ source: 'contact_section' }}
-                className={overlayButtonClass('primary')}
+        {(showButton || showWhatsapp) && (
+          <div className="mt-auto flex flex-wrap items-center gap-3 pt-10">
+            {showButton && contactForm && (
+              <FormOverlayWrapper
+                tenantSlug={tenantSlug as string}
+                locale={locale}
+                forms={[{ formId: contactForm.formId, definition: contactForm }]}
               >
-                {buttonLabel}
-              </FormOverlayTrigger>
-            </FormOverlayWrapper>
+                <FormOverlayTrigger
+                  formId={contactForm.formId}
+                  title={section.contactOverlayTitle ?? undefined}
+                  source={{ source: 'contact_section' }}
+                  className={overlayButtonClass('primary')}
+                >
+                  {buttonLabel}
+                </FormOverlayTrigger>
+              </FormOverlayWrapper>
+            )}
+            {showWhatsapp && waForm && (
+              <WhatsAppWidget
+                definition={waForm}
+                number={waNumber as string}
+                tenantSlug={tenantSlug as string}
+                locale={locale}
+                variant="inline"
+              />
+            )}
           </div>
         )}
         </div>

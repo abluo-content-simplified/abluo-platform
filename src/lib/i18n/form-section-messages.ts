@@ -28,6 +28,11 @@ export interface FormSectionMessages {
   reviewTitle: string
   /** Per-section "Edit" affordance on the review screen. */
   editLabel: string
+  /** WhatsApp channel (ADR-018): trigger button, send button, overlay heading, hand-off notice. */
+  whatsappChat: string
+  whatsappSend: string
+  whatsappTitle: string
+  whatsappOpening: string
 }
 
 const MESSAGES: Record<string, FormSectionMessages> = {
@@ -42,6 +47,10 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     backLabel:      'Back',
     reviewTitle:    'Review your details',
     editLabel:      'Edit',
+    whatsappChat:    'Chat on WhatsApp',
+    whatsappSend:    'Send on WhatsApp',
+    whatsappTitle:   'Message us on WhatsApp',
+    whatsappOpening: 'Opening WhatsApp…',
   },
   it: {
     submitLabel:    'Invia',
@@ -54,6 +63,10 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     backLabel:      'Indietro',
     reviewTitle:    'Rivedi i tuoi dati',
     editLabel:      'Modifica',
+    whatsappChat:    'Scrivici su WhatsApp',
+    whatsappSend:    'Invia su WhatsApp',
+    whatsappTitle:   'Scrivici su WhatsApp',
+    whatsappOpening: 'Apertura di WhatsApp…',
   },
   de: {
     submitLabel:    'Absenden',
@@ -66,6 +79,10 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     backLabel:      'Zurück',
     reviewTitle:    'Überprüfen Sie Ihre Angaben',
     editLabel:      'Bearbeiten',
+    whatsappChat:    'Auf WhatsApp chatten',
+    whatsappSend:    'Auf WhatsApp senden',
+    whatsappTitle:   'Schreiben Sie uns auf WhatsApp',
+    whatsappOpening: 'WhatsApp wird geöffnet…',
   },
   fr: {
     submitLabel:    'Envoyer',
@@ -78,6 +95,10 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     backLabel:      'Retour',
     reviewTitle:    'Vérifiez vos informations',
     editLabel:      'Modifier',
+    whatsappChat:    'Discuter sur WhatsApp',
+    whatsappSend:    'Envoyer sur WhatsApp',
+    whatsappTitle:   'Écrivez-nous sur WhatsApp',
+    whatsappOpening: 'Ouverture de WhatsApp…',
   },
   es: {
     submitLabel:    'Enviar',
@@ -90,6 +111,10 @@ const MESSAGES: Record<string, FormSectionMessages> = {
     backLabel:      'Atrás',
     reviewTitle:    'Revisa tus datos',
     editLabel:      'Editar',
+    whatsappChat:    'Chatea por WhatsApp',
+    whatsappSend:    'Enviar por WhatsApp',
+    whatsappTitle:   'Escríbenos por WhatsApp',
+    whatsappOpening: 'Abriendo WhatsApp…',
   },
 }
 

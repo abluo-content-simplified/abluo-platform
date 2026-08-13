@@ -16,6 +16,8 @@ import { DevBadge } from '@/components/DevBadge'
 import { isProduction } from '@/lib/deployment'
 import { EarlyAccessWrapper } from '@/components/forms/EarlyAccessWrapper'
 import { FormOverlayWrapper } from '@/components/forms/FormOverlayWrapper'
+import { WhatsAppWidget } from '@/components/forms/WhatsAppWidget'
+import { hasWhatsAppNumber } from '@/lib/forms/whatsapp'
 import { SlugMapRoot } from '@/components/SlugMapContext'
 import { TrackingScripts } from '@/components/TrackingScripts'
 
@@ -476,6 +478,15 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
+/** Site-wide floating WhatsApp button, when enabled + configured in Site Settings. */
+function whatsAppFab(cfg: WebsiteSiteConfig | null | undefined, tenantSlug: string, locale: string) {
+  const form = cfg?.whatsappForm ?? null
+  if (!cfg?.whatsappFloating || !hasWhatsAppNumber(cfg?.whatsappNumber) || !form?.formId) return null
+  return (
+    <WhatsAppWidget definition={form} number={cfg.whatsappNumber as string} tenantSlug={tenantSlug} locale={locale} variant="fab" />
+  )
+}
+
 export default async function WebsiteLayout({ children, params }: LayoutProps) {
   const { tenant: tenantId, locale } = await params
   // Fail closed to a clean 404 for an unmapped tenant slug — see the matching
@@ -562,6 +573,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         <main>{children}</main>
         <TrackingScripts data={integrations} placement="bodyEnd" />
         <Footer tenantId={tenantId} locale={locale as SupportedLocale} defaultLocale={defaultLocale} />
+        {whatsAppFab(livenerConfig, tenantId, locale)}
         <DevBadge />
       </>
     )
@@ -677,6 +689,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
           </div>
         </div>
       </footer>
+      {whatsAppFab(config, tenantId, locale)}
       <DevBadge />
     </>
     </SlugMapRoot>
