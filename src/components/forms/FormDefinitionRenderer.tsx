@@ -26,6 +26,7 @@ import {
   submissionEndpoint,
   CONSENT_FIELD_ID,
 } from '@/lib/forms/render-mapping'
+import { collectClientSource } from '@/lib/forms/source'
 
 export interface FormDefinitionRendererMessages {
   submitLabel: string
@@ -45,9 +46,11 @@ interface Props {
   tenantSlug: string
   /** Presentation context: 'overlay' pins the submit button as a sticky footer. */
   layout?: 'inline' | 'overlay'
+  /** Lead-source seed (entry point + CTA) merged with auto page/referrer/UTM. */
+  source?: Record<string, unknown> | null
 }
 
-export function FormDefinitionRenderer({ definition, messages, locale = 'en', tenantSlug, layout = 'inline' }: Props) {
+export function FormDefinitionRenderer({ definition, messages, locale = 'en', tenantSlug, layout = 'inline', source }: Props) {
   const fields = singleStepFields(definition)
   // Presentation (ADR-018 slice 7): submit spans full width unless explicitly disabled.
   const fullWidth = definition.fullWidthButton !== false
@@ -100,6 +103,7 @@ export function FormDefinitionRenderer({ definition, messages, locale = 'en', te
       locale,
       openedAt: openedAt.current,
       honeypot: honeypotRef.current?.value ?? '',
+      source: collectClientSource(source ?? {}),
     })
 
     try {

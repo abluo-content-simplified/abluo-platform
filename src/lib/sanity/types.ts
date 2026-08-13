@@ -563,6 +563,10 @@ export interface WebsiteSiteConfig {
   navLinks?: NavLink[]
   ctaLabel?: string
   ctaHref?: string
+  /** When set, the header CTA opens this form in an overlay instead of linking to ctaHref (ADR-018 slice 7c). */
+  ctaForm?: RenderableFormDefinition | null
+  /** Internal attribution label recorded with header-CTA submissions (e.g. "header-cta"). */
+  ctaInternalName?: string
   footerLinks?: NavLink[]
   footerCtaHeading?: string
   footerCtaSubtext?: string

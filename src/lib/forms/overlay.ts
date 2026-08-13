@@ -47,6 +47,12 @@ export interface OverlayOpenRequest {
    * the form's internal title.
    */
   title?: string | null
+  /**
+   * Optional lead-source seed (entry point + CTA attribution) merged into the
+   * submission `source` alongside the auto-collected page/referrer/UTM. e.g.
+   * `{ source: 'header_cta', cta_internal_name, cta_label_snapshot }`.
+   */
+  source?: Record<string, unknown> | null
 }
 
 /**

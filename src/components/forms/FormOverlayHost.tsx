@@ -62,6 +62,7 @@ export function FormOverlayHost() {
             locale={ctx.locale}
             tenantSlug={ctx.tenantSlug}
             context={req?.context ?? undefined}
+            source={req?.source ?? undefined}
             layout="overlay"
           />
         ) : (
@@ -70,6 +71,7 @@ export function FormOverlayHost() {
             messages={messages}
             locale={ctx.locale}
             tenantSlug={ctx.tenantSlug}
+            source={req?.source ?? undefined}
             layout="overlay"
           />
         )

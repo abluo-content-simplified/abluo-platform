@@ -9,6 +9,7 @@ import { LanguageSwitcher } from '@/components/SiteControls/LanguageSwitcher'
 import { ThemeSwitcher } from '@/components/SiteControls/ThemeSwitcher'
 import { getThemeSwitcherMessages } from '@/lib/i18n/theme-switcher-messages'
 import { useEarlyAccess } from '@/components/forms/EarlyAccessContext'
+import { useFormOverlaySafe } from '@/components/forms/FormOverlayContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,10 +25,15 @@ interface NavClientProps {
   ctaHref?: string
   /**
    * 'link' (default) renders <Link href={ctaHref}>.
-   * 'modal' renders a <button> that opens the EarlyAccessModal via context.
-   * Requires EarlyAccessProvider to be present in the tree.
+   * 'modal' renders a <button> that opens the bespoke EarlyAccessModal via context.
+   * 'overlay' renders a <button> that opens the module-driven form overlay
+   *   (ADR-018 slice 7c) for `ctaFormId`. Requires a FormOverlayProvider in the tree.
    */
-  ctaMode?: 'link' | 'modal'
+  ctaMode?: 'link' | 'modal' | 'overlay'
+  /** Form id opened by the header CTA when ctaMode='overlay'. */
+  ctaFormId?: string
+  /** Internal attribution label recorded with header-CTA submissions. */
+  ctaInternalName?: string
   currentLocale: SupportedLocale
   supportedLocales: SupportedLocale[]
   showLangSwitcherInNav: boolean
@@ -48,6 +54,8 @@ export function NavClient({
   ctaLabel,
   ctaHref,
   ctaMode = 'link',
+  ctaFormId,
+  ctaInternalName,
   currentLocale,
   supportedLocales,
   showLangSwitcherInNav,
@@ -67,7 +75,24 @@ export function NavClient({
     // Provider not in tree — ctaMode='modal' won't work but won't crash
   }
 
+  // Null-safe: returns null when no FormOverlayProvider is mounted (ctaMode!='overlay').
+  const formOverlay = useFormOverlaySafe()
+
+  // The CTA is a <button> (not a link) whenever it drives an in-page overlay.
+  const ctaIsButton = ctaMode === 'modal' || ctaMode === 'overlay'
+
   const handleCtaClick = () => {
+    if (ctaMode === 'overlay' && formOverlay && ctaFormId) {
+      formOverlay.open({
+        formId: ctaFormId,
+        source: {
+          source: 'header_cta',
+          cta_internal_name: ctaInternalName ?? null,
+          cta_label_snapshot: ctaLabel ?? null,
+        },
+      })
+      return
+    }
     if (ctaMode === 'modal' && earlyAccessCtx) {
       earlyAccessCtx.open({ source: 'header_cta' })
     }
@@ -149,7 +174,7 @@ export function NavClient({
         {/* CTA — hidden when ctaLabel is not set */}
         {ctaLabel && (
           <div className="mt-auto px-6 pb-10">
-            {ctaMode === 'modal' ? (
+            {ctaIsButton ? (
               <button
                 onClick={() => { handleCtaClick(); closeDrawer() }}
                 className="block w-full rounded-xl px-6 py-3.5 text-center text-[15px] font-semibold transition-colors"
@@ -266,7 +291,7 @@ export function NavClient({
           <ThemeSwitcher themeMode={themeMode} appearance="header" messages={getThemeSwitcherMessages(currentLocale)} />
 
           {/* CTA — hidden when ctaLabel is not set */}
-          {ctaLabel && (ctaMode === 'modal' ? (
+          {ctaLabel && (ctaIsButton ? (
             <button
               onClick={handleCtaClick}
               className="ml-2 rounded-[var(--radius-btn)] px-5 py-2 text-sm font-semibold transition-all"

@@ -22,6 +22,8 @@ interface FormOverlayTriggerProps {
   context?: Record<string, unknown> | null
   /** Optional overlay heading override (else the definition's own title). */
   title?: string | null
+  /** Optional lead-source seed merged into the submission `source`. */
+  source?: Record<string, unknown> | null
   className?: string
   /** Accessible label when children are non-textual (e.g. an icon). */
   'aria-label'?: string
@@ -32,6 +34,7 @@ export function FormOverlayTrigger({
   formId,
   context,
   title,
+  source,
   className,
   'aria-label': ariaLabel,
   children,
@@ -48,7 +51,7 @@ export function FormOverlayTrigger({
       }
       return
     }
-    overlay.open({ formId, context, title })
+    overlay.open({ formId, context, title, source })
   }
 
   return (

@@ -62,6 +62,7 @@ export function FormOverlayButtonSection({ section, surface, designSystem, local
             formId={def.formId}
             context={context}
             title={section.overlayTitle ?? undefined}
+            source={{ source: 'page_button' }}
             className={buttonClass}
           >
             {label}

@@ -15,6 +15,7 @@ import { HeaderAppearanceWrapper } from '@/components/HeaderAppearanceWrapper'
 import { DevBadge } from '@/components/DevBadge'
 import { isProduction } from '@/lib/deployment'
 import { EarlyAccessWrapper } from '@/components/forms/EarlyAccessWrapper'
+import { FormOverlayWrapper } from '@/components/forms/FormOverlayWrapper'
 import { SlugMapRoot } from '@/components/SlugMapContext'
 import { TrackingScripts } from '@/components/TrackingScripts'
 
@@ -510,9 +511,14 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
     const livenerBgImageUrl = livenerBgGraphic?.asset?.asset ? imageUrl(livenerBgGraphic.asset as any, 1920) : undefined
     const livenerBgStyles = buildBackgroundGraphicStyles(livenerBgGraphic, livenerBgImageUrl, false)
 
-    return (
-      <SlugMapRoot>
-      <EarlyAccessWrapper tenantSlug={tenantId} projectSlug={tenantToProjectSlug(tenantId)} locale={locale}>
+    // ADR-018 slice 7c — when siteConfig.ctaForm is set, the header CTA opens a
+    // module-driven overlay (FormOverlayWrapper) instead of the bespoke Early
+    // Access modal. EarlyAccessWrapper remains the fallback while ctaForm is unset.
+    const livenerCtaForm = livenerConfig?.ctaForm ?? null
+    const hasCtaForm = !!livenerCtaForm?.formId
+
+    const livenerInner = (
+      <>
         <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
         <TrackingScripts data={integrations} />
         {livenerBgStyles && livenerBgGraphic?.scope === 'entire' && (
@@ -526,7 +532,9 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
             navLinks={resolveNavLinks(livenerConfig?.navLinks, locale as SupportedLocale, 'livener')}
             ctaLabel={livenerConfig?.ctaLabel || (locale === 'it' ? 'Richiedi accesso anticipato' : 'Get Early Access')}
             ctaHref={livenerConfig?.ctaHref ?? '#'}
-            ctaMode="modal"
+            ctaMode={hasCtaForm ? 'overlay' : 'modal'}
+            ctaFormId={hasCtaForm ? livenerCtaForm!.formId : undefined}
+            ctaInternalName={livenerConfig?.ctaInternalName ?? undefined}
             currentLocale={locale as SupportedLocale}
             supportedLocales={livenerConfig?.supportedLocales ?? [locale as SupportedLocale]}
             showLangSwitcherInNav={livenerConfig?.showLangSwitcherInNav ?? false}
@@ -555,7 +563,24 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         <TrackingScripts data={integrations} placement="bodyEnd" />
         <Footer tenantId={tenantId} locale={locale as SupportedLocale} defaultLocale={defaultLocale} />
         <DevBadge />
-      </EarlyAccessWrapper>
+      </>
+    )
+
+    return (
+      <SlugMapRoot>
+        {hasCtaForm ? (
+          <FormOverlayWrapper
+            tenantSlug={tenantId}
+            locale={locale}
+            forms={[{ formId: livenerCtaForm!.formId, definition: livenerCtaForm! }]}
+          >
+            {livenerInner}
+          </FormOverlayWrapper>
+        ) : (
+          <EarlyAccessWrapper tenantSlug={tenantId} projectSlug={tenantToProjectSlug(tenantId)} locale={locale}>
+            {livenerInner}
+          </EarlyAccessWrapper>
+        )}
       </SlugMapRoot>
     )
   }

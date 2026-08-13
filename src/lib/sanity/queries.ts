@@ -320,6 +320,37 @@ export const websiteSiteConfigQuery = /* groq */ `
     },
     "ctaLabel": ${loc('ctaLabel')},
     ctaHref,
+    "ctaForm": ctaForm->{
+      _id,
+      formId,
+      formType,
+      version,
+      "title": ${loc('title')},
+      "eyebrow": ${loc('eyebrow')},
+      fullWidthButton,
+      tenantSlug,
+      steps[]{
+        key,
+        "title": ${loc('title')},
+        fields[]{
+          "id": internalKey,
+          type,
+          required,
+          width,
+          contextMappable,
+          display,
+          "label": ${loc('label')},
+          "placeholder": ${loc('placeholder')},
+          "help": ${loc('help')},
+          options[]{ value, "label": ${loc('label')} }
+        }
+      },
+      "requireConsent": privacy.requireConsent,
+      "consentText": ${loc('privacy.consentText')},
+      "successTitle": ${loc('success.title')},
+      "successBody": ${loc('success.body')}
+    },
+    ctaInternalName,
     footerLinks[] {
       "label": ${loc('label')},
       linkType,

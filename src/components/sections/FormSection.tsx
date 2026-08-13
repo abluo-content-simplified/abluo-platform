@@ -58,9 +58,16 @@ export function FormSection({ section, surface, designSystem, locale = 'en', ten
             locale={locale}
             tenantSlug={tenantSlug}
             context={context}
+            source={{ source: 'inline_section' }}
           />
         ) : (
-          <FormDefinitionRenderer definition={def} messages={messages} locale={locale} tenantSlug={tenantSlug} />
+          <FormDefinitionRenderer
+            definition={def}
+            messages={messages}
+            locale={locale}
+            tenantSlug={tenantSlug}
+            source={{ source: 'inline_section' }}
+          />
         )}
       </div>
     </section>

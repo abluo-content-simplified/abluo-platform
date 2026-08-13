@@ -26,6 +26,7 @@ import { FormField, validateForm } from '@/components/fields'
 import type { RenderableFormDefinition } from '@/lib/sanity/types'
 import type { FormSectionMessages } from '@/lib/i18n/form-section-messages'
 import { buildFieldConfigs, buildSubmissionPayload, submissionEndpoint, CONSENT_FIELD_ID } from '@/lib/forms/render-mapping'
+import { collectClientSource } from '@/lib/forms/source'
 import {
   mapContextToValues,
   firstIncompleteStepIndex,
@@ -51,9 +52,11 @@ interface Props {
   context?: Record<string, unknown> | null
   /** Presentation context: 'overlay' pins the submit button as a sticky footer. */
   layout?: 'inline' | 'overlay'
+  /** Lead-source seed (entry point + CTA) merged with auto page/referrer/UTM. */
+  source?: Record<string, unknown> | null
 }
 
-export function MultiStepFormRenderer({ definition: def, messages, locale = 'en', tenantSlug, context, layout = 'inline' }: Props) {
+export function MultiStepFormRenderer({ definition: def, messages, locale = 'en', tenantSlug, context, layout = 'inline', source }: Props) {
   const openedAt = useRef(Date.now())
   const honeypotRef = useRef<HTMLInputElement>(null)
   const preparedRef = useRef(false)
@@ -100,6 +103,7 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
         locale,
         openedAt: timed ? openedAt.current : undefined,
         honeypot: honeypotRef.current?.value ?? '',
+        source: collectClientSource(source ?? {}),
       })
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -109,7 +113,7 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
       if (!res.ok) return null
       return res.json()
     },
-    [endpoint, locale, context],
+    [endpoint, locale, context, source],
   )
 
   const postStep = useCallback(
