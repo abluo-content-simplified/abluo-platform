@@ -18,6 +18,7 @@ import {
   slugifySubjectValue,
   whatsAppFormId,
 } from '../../modules/whatsapp/form-sync'
+import { formFromTemplate, uniqueFormId } from '../../modules/forms/template-clone'
 
 /**
  * ModuleList — the Modules pane. ADR-020 Decision 1.
@@ -746,6 +747,14 @@ function ModuleDetail({
       </div>
 
       {/* ── Data ────────────────────────────────────────────────────────────── */}
+      {/* Forms renders its documents inline rather than pointing at the sidebar
+          — see FormsList for why it is the one module that earns the exception. */}
+      {manifest.id === 'forms' ? (
+        <div style={{ marginBottom: 32 }}>
+          <div style={sectionHeadingStyle}>Forms on this website</div>
+          <FormsList tenantSlug={tenantSlug} projectSlug={projectSlug} client={client} />
+        </div>
+      ) : (
       <div style={{ marginBottom: 32 }}>
         <div style={sectionHeadingStyle}>Data</div>
         <div style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>
@@ -763,6 +772,7 @@ function ModuleDetail({
           </div>
         )}
       </div>
+      )}
 
       {saveError && (
         <div role="alert" style={{ fontSize: 13, color: '#c62828', marginBottom: 12 }}>
@@ -1448,5 +1458,240 @@ function ReferenceSelect({
         </option>
       ))}
     </select>
+  )
+}
+
+// ── Forms list ────────────────────────────────────────────────────────────────
+//
+// The shape agreed for the Forms module: activate or deactivate forms, and
+// below that the list of the forms this website actually runs — open one to
+// edit it, or add a new one from a template.
+//
+// Every other module's Data section is a pointer into the sidebar, because its
+// content is a document list Studio already renders well. Forms earns the
+// exception: a form definition is configuration-shaped rather than
+// content-shaped, and an admin who opens Modules → Forms is asking "which forms
+// does this site have?" — a question a second navigation step should not stand
+// in front of.
+//
+// Everything here is scoped by tenantSlug and the component refuses to render
+// without one. That is the same tenant boundary the reference filters enforce:
+// a definition belongs to a tenant, so two websites of the same client share
+// theirs, and no website ever sees another client's.
+
+type StudioClient = ReturnType<typeof useClient>
+
+interface FormSummary {
+  _id: string
+  formId?: string
+  internalName?: string
+  formType?: string
+  role?: string
+  steps?: number
+  fields?: number
+}
+
+const FORM_SUMMARY_PROJECTION = `{
+  _id, formId, internalName, formType, role,
+  "steps": count(steps),
+  "fields": count(steps[].fields[])
+}`
+
+function FormsList({
+  tenantSlug,
+  projectSlug,
+  client,
+}: {
+  tenantSlug: string | null
+  projectSlug?: string
+  client: StudioClient
+}) {
+  const [forms, setForms] = useState<FormSummary[] | null>(null)
+  const [templates, setTemplates] = useState<FormSummary[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
+  const [picking, setPicking] = useState(false)
+
+  const load = useCallback(async () => {
+    if (!tenantSlug) return
+    try {
+      const result = await client.fetch<{ forms: FormSummary[]; templates: FormSummary[] }>(
+        `{
+          "forms": *[_type == "formDefinition" && role == "active" && tenantSlug == $tenantSlug]
+            | order(internalName asc) ${FORM_SUMMARY_PROJECTION},
+          "templates": *[_type == "formDefinition" && role == "template"]
+            | order(internalName asc) ${FORM_SUMMARY_PROJECTION}
+        }`,
+        { tenantSlug }
+      )
+      setForms(result.forms ?? [])
+      setTemplates(result.templates ?? [])
+      setError(null)
+    } catch {
+      setError('Could not load the forms for this website.')
+    }
+  }, [client, tenantSlug])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const addFromTemplate = async (templateId: string) => {
+    if (!tenantSlug) return
+    setAdding(true)
+    setError(null)
+    try {
+      const template = await client.fetch<Record<string, unknown> | null>(
+        `*[_id == $id][0]`,
+        { id: templateId }
+      )
+      if (!template) {
+        setError('That template no longer exists.')
+        return
+      }
+      const taken = new Set((forms ?? []).map((f) => f.formId ?? '').filter(Boolean))
+      const base = typeof template.formId === 'string' ? template.formId : 'form'
+      const draft = formFromTemplate(template, tenantSlug, projectSlug, uniqueFormId(base, taken))
+
+      await client.create(draft)
+      setPicking(false)
+      await load()
+    } catch {
+      setError('Could not create the form. Nothing was changed.')
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  if (!tenantSlug) {
+    return (
+      <div style={{ fontSize: 13, color: '#666' }}>
+        Link this project to a client before adding forms — form definitions belong to the
+        tenant, not to a single website.
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {error && (
+        <div role="alert" style={{ fontSize: 13, color: '#c62828', marginBottom: 10 }}>
+          {error}
+        </div>
+      )}
+
+      {forms === null ? (
+        <div style={{ fontSize: 13, color: '#666' }}>Loading…</div>
+      ) : forms.length === 0 ? (
+        <div style={{ fontSize: 13, color: '#666', marginBottom: 12 }}>
+          No forms yet on this website.
+        </div>
+      ) : (
+        <div style={{ marginBottom: 12 }}>
+          {forms.map((form) => (
+            <div
+              key={form._id}
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '10px 12px',
+                border: '1px solid #e6e6e6',
+                borderRadius: 4,
+                marginBottom: 6,
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>
+                  {form.internalName ?? form.formId ?? 'Untitled form'}
+                </div>
+                <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                  {form.formId}
+                  {typeof form.steps === 'number' && form.steps > 1
+                    ? ` · ${form.steps} steps`
+                    : ''}
+                  {typeof form.fields === 'number' ? ` · ${form.fields} fields` : ''}
+                </div>
+              </div>
+              <a
+                href={`/studio/intent/edit/id=${encodeURIComponent(form._id)};type=formDefinition/`}
+                style={{ fontSize: 12, color: '#1a1a1a', whiteSpace: 'nowrap' }}
+              >
+                Open
+              </a>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {picking ? (
+        <div style={{ border: '1px solid #e6e6e6', borderRadius: 4, padding: 12 }}>
+          <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>
+            Start from a template — it is copied into this website, so editing it never
+            affects the template or any other client.
+          </div>
+          {(templates ?? []).length === 0 ? (
+            <div style={{ fontSize: 13, color: '#666' }}>No templates available yet.</div>
+          ) : (
+            (templates ?? []).map((template) => (
+              <button
+                key={template._id}
+                type="button"
+                disabled={adding}
+                onClick={() => void addFromTemplate(template._id)}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '8px 10px',
+                  fontSize: 13,
+                  background: '#fff',
+                  border: '1px solid #e6e6e6',
+                  borderRadius: 4,
+                  marginBottom: 6,
+                  cursor: adding ? 'default' : 'pointer',
+                }}
+              >
+                {template.internalName ?? template.formId}
+                {typeof template.fields === 'number' ? (
+                  <span style={{ color: '#888' }}> · {template.fields} fields</span>
+                ) : null}
+              </button>
+            ))
+          )}
+          <button
+            type="button"
+            onClick={() => setPicking(false)}
+            style={{
+              fontSize: 12,
+              background: 'none',
+              border: 'none',
+              color: '#666',
+              cursor: 'pointer',
+              padding: 0,
+              marginTop: 4,
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setPicking(true)}
+          style={{
+            padding: '8px 14px',
+            fontSize: 13,
+            background: '#fff',
+            border: '1px solid #1a1a1a',
+            borderRadius: 4,
+            cursor: 'pointer',
+          }}
+        >
+          + Add form
+        </button>
+      )}
+    </div>
   )
 }

@@ -546,8 +546,15 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           id: 'ctaInternalName',
           label: 'Header CTA Attribution Name',
           type: 'string',
+          // Hidden, not deleted. There is exactly one header CTA per website, so
+          // this value is always "header-cta" — asking an admin to type a
+          // constant was the field's whole problem. Existing values keep
+          // resolving through resolveHeaderCtaConfig(); the field disappears for
+          // good when the CTA moves to Website Settings → Navigation, where
+          // cta.internalName already covers attribution properly.
+          hidden: true,
           description:
-            'Internal label recorded with each submission for lead-source attribution (e.g. "header-cta"). Never shown to visitors.',
+            'Internal label recorded with each submission for lead-source attribution. Always "header-cta" — there is only one header CTA per website.',
         },
       ],
 
