@@ -200,3 +200,22 @@ describe('slugifySubjectValue', () => {
     expect(slugifySubjectValue('Book an appointment')).toBe(slugifySubjectValue('Book an appointment'))
   })
 })
+
+describe('subject field presentation', () => {
+  it('renders subjects as cards, not a bare radio list', () => {
+    // Regression: the generated field omitted `display`, so it fell back to
+    // 'list' and the WhatsApp overlay showed unstyled radio buttons while every
+    // hand-authored form used cards. This field is the first thing a visitor
+    // sees in the overlay, so inheriting the bare default is not good enough.
+    const doc = buildWhatsAppFormDocument({
+      tenantSlug: 'studiomartegani',
+      subjects: [
+        { _key: 'book_appointment', value: 'book_appointment', label: { en: 'Book an appointment', it: 'Prenota' } },
+        { _key: 'emergency', value: 'emergency', label: { en: 'Dental emergency', it: 'Emergenza' } },
+      ],
+    })
+    const steps = doc.steps as { fields: { internalKey?: string; display?: string }[] }[]
+    const subject = steps[0].fields.find((f) => f.internalKey === 'subject')
+    expect(subject?.display).toBe('cards')
+  })
+})

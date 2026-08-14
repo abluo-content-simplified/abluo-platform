@@ -83,6 +83,11 @@ function buildFields(input: WhatsAppFormInput) {
       _key: WHATSAPP_SUBJECT_KEY,
       internalKey: WHATSAPP_SUBJECT_KEY,
       type: 'radio-group',
+      // Cards, not the default bare list. The schema's own guidance is that
+      // cards suit single-select; more to the point, this field is the first
+      // thing a visitor sees in the WhatsApp overlay, and a naked radio list
+      // reads as an unstyled form rather than part of the site.
+      display: 'cards',
       required: true,
       label: localizedString({ en: 'Subject', it: 'Oggetto', de: 'Betreff' }),
       options: input.subjects.map((subject) => ({
