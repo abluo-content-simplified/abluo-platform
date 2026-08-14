@@ -727,6 +727,45 @@ export interface Post {
   seoImage?: ResolvedImage
 }
 
+// ─── News module (ADR-020) ────────────────────────────────────────────────────
+// Mirrors BlogCategory / Post. The two differences that matter are deliberate:
+// a news item has no author (news is published by the organisation, not a
+// person), and no relatedEvent (News integrates with no other module). See the
+// header of src/lib/modules/news/schema.ts for why News is its own type rather
+// than a category on `post`.
+
+export interface NewsCategory {
+  _id: string
+  title?: string
+  /** Locale-resolved slug — coalesced from $locale → $defaultLocale */
+  slug?: string
+  color?: string
+}
+
+/** Resolved news item — all string fields are locale-resolved by GROQ */
+export interface NewsArticle {
+  _id: string
+  title?: string
+  /** List queries: resolved { current: string }. Detail query: full per-locale slug map. */
+  slug: { current: string }
+  /** Detail query only — full per-locale slug map for hreflang */
+  slugMap?: LocalizedSlugMap
+  /** Per-locale arrays of old slugs — used for 301 redirects */
+  redirectFrom?: Partial<Record<SupportedLocale, string[]>>
+  excerpt?: string
+  body?: PortableTextContent
+  publishedAt?: string
+  expiresAt?: string
+  featured?: boolean
+  coverImage?: ResolvedImage
+  /** Computed in GROQ from body word count. Minimum 1. */
+  readingTimeMinutes?: number
+  categories?: NewsCategory[]
+  seoTitle?: string
+  seoDescription?: string
+  seoImage?: ResolvedImage
+}
+
 // ─── Section types (studiomartegani — all strings locale-resolved) ─────────────
 
 export interface HeroSection {
@@ -1020,6 +1059,40 @@ export interface BlogListingSection {
   emptyStateBody?: string
 }
 
+// ─── News Listing Section ─────────────────────────────────────────────────────
+// ADR-020 — owned by the News module. Modeled on BlogListingSection, minus the
+// 'byEvent' filter mode (News has no Events integration, so offering a filter
+// that can never match would be worse than not offering it).
+
+export interface NewsListingSection {
+  _type: 'newsListingSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  title?: string
+  /** Locale-resolved by GROQ */
+  subtitle?: string
+  filterMode?: 'latest' | 'featured' | 'byCategory' | 'manual'
+  sortOrder?: 'newest' | 'oldest' | 'manual'
+  layout?: 'grid' | 'featured' | 'magazine'
+  maxItems?: number
+  /** Locale-resolved by GROQ */
+  viewAllLabel?: string
+  viewAllHref?: string
+  /** Resolved from category->._id in GROQ */
+  categoryId?: string
+  /** Resolved from articles[]->._id in GROQ — used for manual selection */
+  articleIds?: string[]
+  /** Hydrated server-side by hydrateSections — not stored in Sanity */
+  articles?: NewsArticle[]
+  /** Optional localized empty state — same semantics as BlogListingSection. */
+  emptyStateHeading?: string
+  /** Locale-resolved by GROQ */
+  emptyStateBody?: string
+}
+
 // ─── Events Listing Section ───────────────────────────────────────────────────
 // ADR-016 Phase B — modeled on BlogListingSection. Owned by the Events module.
 
@@ -1308,6 +1381,7 @@ export type PageSection =
   | FAQSection
   | ContactSection
   | BlogListingSection
+  | NewsListingSection
   | FormSection
   | FormOverlayButtonSection
   | MetricsSection
@@ -1377,6 +1451,16 @@ export interface EventsPage {
 // generateMetadata in blog/page.tsx.
 
 export interface BlogPage {
+  _id: string
+  heroTitle?: string
+  heroSubtitle?: string
+  seoTitle?: string
+  seoDescription?: string
+  sections?: PageSection[]
+}
+
+/** News module singleton page (ADR-020) — mirrors BlogPage. */
+export interface NewsPage {
   _id: string
   heroTitle?: string
   heroSubtitle?: string

@@ -30,6 +30,57 @@ const locImage = (field: string) => /* groq */ `
   }
 `
 
+// ─── Renderable form definition projection ────────────────────────────────────
+// The field selection every surface that RENDERS a form needs: identity,
+// version, localized copy, steps and fields, consent, and success copy. Shaped
+// to match the RenderableFormDefinition type in ./types.ts.
+//
+// Extracted in ADR-020. This projection previously existed as six byte-identical
+// inline copies — the contact section and form section (each duplicated across
+// the homepage and slug-route section projections), the nav CTA form, and the
+// WhatsApp form. Module config became a seventh consumer, at which point the
+// duplication stopped being tolerable: a new field on formDefinition would have
+// to be added in seven places, and missing one would make a form render
+// differently depending on which surface loaded it.
+//
+// Interpolate inside a dereference:
+//   "ctaForm": ctaForm->{ ${FORM_DEFINITION_PROJECTION} }
+const FORM_DEFINITION_PROJECTION = /* groq */ `
+_id,
+formId,
+formType,
+version,
+"title": ${loc('title')},
+"eyebrow": ${loc('eyebrow')},
+fullWidthButton,
+reviewStep,
+tenantSlug,
+steps[]{
+  key,
+  "title": ${loc('title')},
+  fields[]{
+    "id": internalKey,
+    type,
+    required,
+    width,
+    contextMappable,
+    display,
+    "label": ${loc('label')},
+    "placeholder": ${loc('placeholder')},
+    "help": ${loc('help')},
+    minLength,
+    maxLength,
+    pattern,
+    "patternMessage": ${loc('patternMessage')},
+    options[]{ value, "label": ${loc('label')} }
+  }
+},
+"requireConsent": privacy.requireConsent,
+"consentText": ${loc('privacy.consentText')},
+"successTitle": ${loc('success.title')},
+"successBody": ${loc('success.body')}
+`
+
 // ─── CTA fields projection ────────────────────────────────────────────────────
 // Reusable GROQ inline fragment for the cta object type.
 // Include it in any section projection that uses a CTA field.
@@ -115,39 +166,7 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       showMap, mapHeight, mapTheme,
       // contactSection message button (overlay) — reuses the form projection
       "contactForm": contactForm->{
-        _id,
-        formId,
-        formType,
-        version,
-        "title": ${loc('title')},
-        "eyebrow": ${loc('eyebrow')},
-        fullWidthButton,
-        reviewStep,
-        tenantSlug,
-        steps[]{
-          key,
-          "title": ${loc('title')},
-          fields[]{
-            "id": internalKey,
-            type,
-            required,
-            width,
-            contextMappable,
-            display,
-            "label": ${loc('label')},
-            "placeholder": ${loc('placeholder')},
-            "help": ${loc('help')},
-            minLength,
-            maxLength,
-            pattern,
-            "patternMessage": ${loc('patternMessage')},
-            options[]{ value, "label": ${loc('label')} }
-          }
-        },
-        "requireConsent": privacy.requireConsent,
-        "consentText": ${loc('privacy.consentText')},
-        "successTitle": ${loc('success.title')},
-        "successBody": ${loc('success.body')}
+        ${FORM_DEFINITION_PROJECTION}
       },
       "contactButtonLabel": ${loc('contactButtonLabel')},
       "contactOverlayTitle": ${loc('contactOverlayTitle')},
@@ -162,6 +181,11 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       "categoryId": category->._id,
       "eventId": event->._id,
       "postIds": posts[]->._id,
+      // newsListingSection fields — null on all other section types.
+      // filterMode, sortOrder, layout, maxItems, viewAllLabel, viewAllHref and
+      // categoryId above are shared field names, reused verbatim; only the
+      // hand-picked array differs, since News picks newsArticle not post.
+      "articleIds": articles[]->._id,
       // eventsListingSection fields — null on all other section types
       // (filterMode, sortOrder, layout, maxItems, viewAllLabel, viewAllHref,
       // categoryId above are shared field names, reused verbatim)
@@ -173,39 +197,7 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       "emptyStateBody": ${loc('emptyStateBody')},
       // formSection fields
       "definition": form->{
-        _id,
-        formId,
-        formType,
-        version,
-        "title": ${loc('title')},
-        "eyebrow": ${loc('eyebrow')},
-        fullWidthButton,
-        reviewStep,
-        tenantSlug,
-        steps[]{
-          key,
-          "title": ${loc('title')},
-          fields[]{
-            "id": internalKey,
-            type,
-            required,
-            width,
-            contextMappable,
-            display,
-            "label": ${loc('label')},
-            "placeholder": ${loc('placeholder')},
-            "help": ${loc('help')},
-            minLength,
-            maxLength,
-            pattern,
-            "patternMessage": ${loc('patternMessage')},
-            options[]{ value, "label": ${loc('label')} }
-          }
-        },
-        "requireConsent": privacy.requireConsent,
-        "consentText": ${loc('privacy.consentText')},
-        "successTitle": ${loc('success.title')},
-        "successBody": ${loc('success.body')}
+        ${FORM_DEFINITION_PROJECTION}
       },
       "context": context[]{ key, value },
       // formOverlayButtonSection fields (reuses "definition" + "context" above)
@@ -363,39 +355,7 @@ export const websiteSiteConfigQuery = /* groq */ `
     "ctaLabel": ${loc('ctaLabel')},
     ctaHref,
     "ctaForm": ctaForm->{
-      _id,
-      formId,
-      formType,
-      version,
-      "title": ${loc('title')},
-      "eyebrow": ${loc('eyebrow')},
-      fullWidthButton,
-      reviewStep,
-      tenantSlug,
-      steps[]{
-        key,
-        "title": ${loc('title')},
-        fields[]{
-          "id": internalKey,
-          type,
-          required,
-          width,
-          contextMappable,
-          display,
-          "label": ${loc('label')},
-          "placeholder": ${loc('placeholder')},
-          "help": ${loc('help')},
-          minLength,
-          maxLength,
-          pattern,
-          "patternMessage": ${loc('patternMessage')},
-          options[]{ value, "label": ${loc('label')} }
-        }
-      },
-      "requireConsent": privacy.requireConsent,
-      "consentText": ${loc('privacy.consentText')},
-      "successTitle": ${loc('success.title')},
-      "successBody": ${loc('success.body')}
+      ${FORM_DEFINITION_PROJECTION}
     },
     ctaInternalName,
     footerLinks[] {
@@ -422,39 +382,7 @@ export const websiteSiteConfigQuery = /* groq */ `
     whatsappNumber,
     whatsappFloating,
     "whatsappForm": whatsappForm->{
-      _id,
-      formId,
-      formType,
-      version,
-      "title": ${loc('title')},
-      "eyebrow": ${loc('eyebrow')},
-      fullWidthButton,
-      reviewStep,
-      tenantSlug,
-      steps[]{
-        key,
-        "title": ${loc('title')},
-        fields[]{
-          "id": internalKey,
-          type,
-          required,
-          width,
-          contextMappable,
-          display,
-          "label": ${loc('label')},
-          "placeholder": ${loc('placeholder')},
-          "help": ${loc('help')},
-          minLength,
-          maxLength,
-          pattern,
-          "patternMessage": ${loc('patternMessage')},
-          options[]{ value, "label": ${loc('label')} }
-        }
-      },
-      "requireConsent": privacy.requireConsent,
-      "consentText": ${loc('privacy.consentText')},
-      "successTitle": ${loc('success.title')},
-      "successBody": ${loc('success.body')}
+      ${FORM_DEFINITION_PROJECTION}
     },
     location { street, postalCode, city, state, country },
     address,
@@ -488,23 +416,61 @@ export const projectIntegrationsQuery = /* groq */ `
   }
 `
 
-// ─── Enabled module IDs (ADR-016 Phase D) ─────────────────────────────────────
-// Single source of truth for a tenant's installed-module set at website
-// render time. Mirrors the exact select() projection used for Studio nav in
-// sanity.config.ts (the "enabledModuleIds" projection there) — do not fork
-// this logic into a second shape. For migrated projects: derived from
-// moduleInstallations[enabled != false].moduleId. For unmigrated projects:
-// falls back to coalesce(enabledModules, []). Returns the array directly
-// (not wrapped in an object) via the trailing dot-projection.
-// Consumed by hydrateSections/SectionRenderer via fetchForTenant, same
-// pattern as projectDomainQuery / projectIntegrationsQuery.
+// ─── Enabled module IDs (ADR-016 Phase D → ADR-020) ───────────────────────────
+// Single source of truth for a website's installed-module set at render time.
+// Mirrors the exact projection used for Studio nav in sanity.config.ts (the
+// "enabledModuleIds" projection there) — do not fork this logic into a second
+// shape.
+//
+// ADR-020 retired the legacy `enabledModules` fallback: migration 004
+// backfilled typed installation records, so moduleInstallations is now the only
+// source. A website with no installations resolves to [] — a real, resolved
+// "no modules installed", which isSectionTypeAvailable() treats as gating ON
+// (distinct from an unresolved null, which fails open). Returns the array
+// directly (not wrapped in an object) via the trailing dot-projection.
+//
+// Consumed by hydrateSections/SectionRenderer via fetchForTenant, same pattern
+// as projectDomainQuery / projectIntegrationsQuery.
 export const enabledModuleIdsQuery = /* groq */ `
   *[_type == "project" && projectSlug == $projectSlug][0] {
-    "enabledModuleIds": select(
-      defined(moduleInstallations) && count(moduleInstallations) > 0 => moduleInstallations[enabled != false].moduleId,
-      coalesce(enabledModules, [])
-    )
+    "enabledModuleIds": coalesce(moduleInstallations[enabled != false].moduleId, [])
   }.enabledModuleIds
+`
+
+// ─── Runtime module configuration (ADR-020 Decision 2) ────────────────────────
+// Source of truth for module-owned per-website settings at render time:
+// project.moduleInstallations[].config.
+//
+// Only ENABLED installations are projected. A disabled module must not have its
+// configuration take effect — that is what disabling means — so the gate lives
+// here in the query rather than being re-checked by every consumer.
+//
+// Reference-typed config fields are dereferenced into the shape their consumer
+// renders. Both of the reference fields any module declares today point at a
+// formDefinition, so both use FORM_DEFINITION_PROJECTION — the same projection
+// every other form-rendering surface uses, which is precisely why it was
+// extracted rather than copied a seventh time.
+//
+// The projection names config fields explicitly (not a wildcard) because GROQ
+// cannot dereference a field it does not name. A module that adds a reference
+// config field must add it here too; a module that adds a plain scalar field is
+// covered by the `config` spread. This is the one place where the generated
+// schema and the runtime read have to be kept in step.
+//
+// Consumed by the tenant layout and ContactSection via fetchForTenant, same
+// pattern as projectIntegrationsQuery / enabledModuleIdsQuery.
+export const projectModuleConfigQuery = /* groq */ `
+  *[_type == "project" && projectSlug == $projectSlug][0] {
+    "modules": moduleInstallations[enabled != false] {
+      moduleId,
+      version,
+      "config": config {
+        ...,
+        "whatsappForm": whatsappForm->{ ${FORM_DEFINITION_PROJECTION} },
+        "ctaForm": ctaForm->{ ${FORM_DEFINITION_PROJECTION} }
+      }
+    }
+  }.modules
 `
 
 export const postsQuery = /* groq */ `
@@ -746,6 +712,147 @@ export const blogListingPostsOldestQuery = /* groq */ `
 // The page component re-orders the result to match the original $postIds array order.
 export const blogListingManualPostsQuery = /* groq */ `
   *[_type == "post" && _id in $postIds] { ${blogListingCardFields} }
+`
+
+// ─── News module queries (ADR-020) ────────────────────────────────────────────
+//
+// Mirrors the Blog query set. Two structural differences, both following from
+// the News content model rather than from copying less carefully:
+//   • no author projection — a news item has no byline
+//   • no 'byEvent' filter mode — News integrates with no other module
+//
+// newsArticle is a routable type, so it carries the three queries the Publicly
+// Routable Content Pattern requires (CLAUDE.md): a primary lookup with NO
+// locale fallback on the slug, a redirect lookup, and list queries that DO
+// resolve the slug with a fallback for display.
+
+const newsListingCardFields = /* groq */ `
+  _id,
+  "title": ${loc('title')},
+  "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
+  "excerpt": ${loc('excerpt')},
+  publishedAt,
+  featured,
+  ${locImage('coverImage')},
+  "readingTimeMinutes": math::max([1, round(
+    length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / 1200
+  )]),
+  "categories": categories[]-> {
+    _id,
+    "title": ${loc('title')},
+    "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
+    color
+  }
+`
+
+// Core filter — applied by the newest/oldest listing queries.
+//   latest     → no extra filter
+//   featured   → featured == true
+//   byCategory → $categoryId in categories[]._ref
+//
+// Unpublished and expired items are excluded here rather than in the component,
+// so an expired announcement cannot leak through any consumer.
+const newsListingFilter = /* groq */ `
+  _type == "newsArticle"
+  && projectSlug == $projectSlug
+  && defined(publishedAt)
+  && publishedAt <= now()
+  && (!defined(expiresAt) || expiresAt > now())
+  && (
+    $filterMode == "latest"
+    || ($filterMode == "featured" && featured == true)
+    || ($filterMode == "byCategory" && $categoryId in categories[]._ref)
+  )
+`
+
+export const newsListingArticlesNewestQuery = /* groq */ `
+  *[${newsListingFilter}]
+  | order(featured desc, publishedAt desc)
+  [0...$maxItems] { ${newsListingCardFields} }
+`
+
+export const newsListingArticlesOldestQuery = /* groq */ `
+  *[${newsListingFilter}]
+  | order(publishedAt asc)
+  [0...$maxItems] { ${newsListingCardFields} }
+`
+
+// Manual selection — fetch by explicit IDs. The consumer re-orders the result
+// to match the original $articleIds order, which GROQ does not preserve.
+//
+// projectSlug is asserted even though the IDs come from a tenant-scoped
+// document: every tenant query filters by projectSlug (CLAUDE.md), and without
+// it a stale or hand-edited reference to another tenant's item would resolve.
+export const newsListingManualArticlesQuery = /* groq */ `
+  *[_type == "newsArticle" && projectSlug == $projectSlug && _id in $articleIds] {
+    ${newsListingCardFields}
+  }
+`
+
+// Paged list — the /news index route.
+export const newsArticlesQuery = /* groq */ `
+  *[
+    _type == "newsArticle"
+    && projectSlug == $projectSlug
+    && defined(publishedAt)
+    && publishedAt <= now()
+    && (!defined(expiresAt) || expiresAt > now())
+  ]
+  | order(featured desc, publishedAt desc) [$offset...$offset + $limit] {
+    ${newsListingCardFields},
+    "seoTitle": ${loc('seoTitle')},
+    "seoDescription": ${loc('seoDescription')},
+  }
+`
+
+// Primary lookup — deliberately NO locale fallback on the slug.
+// Requirement 2 of the Publicly Routable Content Pattern: an Italian URL must
+// not resolve an English slug, or two locales would serve the same content at
+// two URLs and compete in search.
+export const newsArticleBySlugQuery = /* groq */ `
+  *[_type == "newsArticle" && projectSlug == $projectSlug && slug[$locale].current == $slug][0] {
+    _id,
+    "title": ${loc('title')},
+    "slugMap": slug,
+    "redirectFrom": redirectFrom,
+    "excerpt": ${loc('excerpt')},
+    "body": ${loc('body')},
+    publishedAt,
+    expiresAt,
+    featured,
+    ${locImage('coverImage')},
+    "readingTimeMinutes": math::max([1, round(
+      length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / 1200
+    )]),
+    "categories": categories[]-> {
+      _id,
+      "title": ${loc('title')},
+      "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
+      color
+    },
+    "seoTitle": coalesce(${loc('seoTitle')}, ${loc('title')}),
+    "seoDescription": coalesce(${loc('seoDescription')}, ${loc('excerpt')}),
+    seoImage { asset, hotspot, crop },
+  }
+`
+
+// Redirect lookup — resolves an old slug to the current one for a 301.
+export const newsArticleByOldSlugQuery = /* groq */ `
+  *[_type == "newsArticle" && projectSlug == $projectSlug && $slug in redirectFrom[$locale]][0] {
+    "currentSlug": slug[$locale].current
+  }
+`
+
+// News singleton page — hero, SEO, and composed sections.
+export const newsPageQuery = /* groq */ `
+  *[_type == "newsPage" && projectSlug == $projectSlug][0] {
+    _id,
+    "heroTitle": ${loc('heroTitle')},
+    "heroSubtitle": ${loc('heroSubtitle')},
+    "seoTitle": ${loc('seoTitle')},
+    "seoDescription": ${loc('seoDescription')},
+    ${PAGE_SECTIONS_PROJECTION}
+  }
 `
 
 // ─── Events Listing Section (ADR-016 Phase B, 'live' added Phase C) ───────────
@@ -1082,77 +1189,13 @@ export const homePageQuery = /* groq */ `
       showMap, mapHeight, mapTheme,
       // contactSection message button (overlay) — reuses the form projection
       "contactForm": contactForm->{
-        _id,
-        formId,
-        formType,
-        version,
-        "title": ${loc('title')},
-        "eyebrow": ${loc('eyebrow')},
-        fullWidthButton,
-        reviewStep,
-        tenantSlug,
-        steps[]{
-          key,
-          "title": ${loc('title')},
-          fields[]{
-            "id": internalKey,
-            type,
-            required,
-            width,
-            contextMappable,
-            display,
-            "label": ${loc('label')},
-            "placeholder": ${loc('placeholder')},
-            "help": ${loc('help')},
-            minLength,
-            maxLength,
-            pattern,
-            "patternMessage": ${loc('patternMessage')},
-            options[]{ value, "label": ${loc('label')} }
-          }
-        },
-        "requireConsent": privacy.requireConsent,
-        "consentText": ${loc('privacy.consentText')},
-        "successTitle": ${loc('success.title')},
-        "successBody": ${loc('success.body')}
+        ${FORM_DEFINITION_PROJECTION}
       },
       "contactButtonLabel": ${loc('contactButtonLabel')},
       "contactOverlayTitle": ${loc('contactOverlayTitle')},
       showWhatsappButton,
       "definition": form->{
-        _id,
-        formId,
-        formType,
-        version,
-        "title": ${loc('title')},
-        "eyebrow": ${loc('eyebrow')},
-        fullWidthButton,
-        reviewStep,
-        tenantSlug,
-        steps[]{
-          key,
-          "title": ${loc('title')},
-          fields[]{
-            "id": internalKey,
-            type,
-            required,
-            width,
-            contextMappable,
-            display,
-            "label": ${loc('label')},
-            "placeholder": ${loc('placeholder')},
-            "help": ${loc('help')},
-            minLength,
-            maxLength,
-            pattern,
-            "patternMessage": ${loc('patternMessage')},
-            options[]{ value, "label": ${loc('label')} }
-          }
-        },
-        "requireConsent": privacy.requireConsent,
-        "consentText": ${loc('privacy.consentText')},
-        "successTitle": ${loc('success.title')},
-        "successBody": ${loc('success.body')}
+        ${FORM_DEFINITION_PROJECTION}
       },
       "context": context[]{ key, value },
       // formOverlayButtonSection fields (reuses "definition" + "context" above)

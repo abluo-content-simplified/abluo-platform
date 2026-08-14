@@ -30,6 +30,12 @@ interface PostSitemapData {
   slug: Record<string, { current: string } | undefined>
 }
 
+/** News module items (ADR-020) — same shape as posts, different route prefix. */
+interface NewsArticleSitemapData {
+  projectSlug: string
+  slug: Record<string, { current: string } | undefined>
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Never expose a sitemap on non-production environments.
   if (!isProduction()) return []
@@ -49,8 +55,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }`
     )
 
-    // Fetch all published pages, events, and posts with their per-locale slugs.
-    const [pages, events, posts] = await Promise.all([
+    // Fetch all published pages, events, posts, and news with their per-locale slugs.
+    const [pages, events, posts, newsArticles] = await Promise.all([
       sanityClient.fetch<PageSitemapData[]>(
         `*[_type == "page" && defined(projectSlug)] { projectSlug, slug }`
       ),
@@ -59,6 +65,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ),
       sanityClient.fetch<PostSitemapData[]>(
         `*[_type == "post" && defined(projectSlug) && defined(publishedAt) && publishedAt <= now()] { projectSlug, slug }`
+      ),
+      // News items (ADR-020). Expired items are excluded as well as unpublished
+      // ones: a news item past its expiry is removed from the website, so
+      // advertising it in the sitemap would point search engines at a 404.
+      sanityClient.fetch<NewsArticleSitemapData[]>(
+        `*[
+          _type == "newsArticle"
+          && defined(projectSlug)
+          && defined(publishedAt)
+          && publishedAt <= now()
+          && (!defined(expiresAt) || expiresAt > now())
+        ] { projectSlug, slug }`
       ),
     ])
 
@@ -82,6 +100,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const list = postsByProject.get(post.projectSlug) ?? []
       list.push(post)
       postsByProject.set(post.projectSlug, list)
+    }
+
+    const newsByProject = new Map<string, NewsArticleSitemapData[]>()
+    for (const item of newsArticles) {
+      const list = newsByProject.get(item.projectSlug) ?? []
+      list.push(item)
+      newsByProject.set(item.projectSlug, list)
     }
 
     const entries: MetadataRoute.Sitemap = []
@@ -145,6 +170,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           if (slugObj?.current) {
             entries.push({
               url: `${tenantBase}/${locale}/${tenantSlug}/blog/${slugObj.current}`,
+              lastModified: new Date(),
+              changeFrequency: 'monthly',
+              priority: locale === primaryLocale ? 0.6 : 0.5,
+            })
+          }
+        }
+      }
+
+      // Per-news entries (ADR-020) — only for locales that have a slug set.
+      // Requirement 4 of the Publicly Routable Content Pattern.
+      const projectNews = newsByProject.get(projectSlug) ?? []
+      for (const item of projectNews) {
+        for (const locale of locales) {
+          const slugObj = item.slug?.[locale]
+          if (slugObj?.current) {
+            entries.push({
+              url: `${tenantBase}/${locale}/${tenantSlug}/news/${slugObj.current}`,
               lastModified: new Date(),
               changeFrequency: 'monthly',
               priority: locale === primaryLocale ? 0.6 : 0.5,

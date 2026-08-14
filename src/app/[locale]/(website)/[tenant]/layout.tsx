@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { tenantClient, tenantToProjectSlug, tryTenantToProjectSlug, fetchDesignSystemById } from '@/lib/sanity/client'
-import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, siteConfigFaviconQuery, projectIntegrationsQuery } from '@/lib/sanity/queries'
+import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, siteConfigFaviconQuery, projectIntegrationsQuery, projectModuleConfigQuery } from '@/lib/sanity/queries'
 import { ogImageUrl } from '@/lib/sanity/image'
 import type { LocaleConfig, SupportedLocale, DesignSystem, FontDefinition, WebsiteSiteConfig, BackgroundGraphic, ProjectIntegrations } from '@/lib/sanity/types'
 import { imageUrl } from '@/lib/sanity/image'
@@ -18,6 +18,11 @@ import { EarlyAccessWrapper } from '@/components/forms/EarlyAccessWrapper'
 import { FormOverlayWrapper } from '@/components/forms/FormOverlayWrapper'
 import { WhatsAppWidget } from '@/components/forms/WhatsAppWidget'
 import { hasWhatsAppNumber } from '@/lib/forms/whatsapp'
+// ADR-020 — WhatsApp and the header CTA are module configuration, not website
+// settings. These readers resolve module config first and fall back to the
+// deprecated siteConfig fields; see src/lib/modules/config.ts for why the
+// fallback exists and when it goes away.
+import { resolveWhatsAppConfig, resolveHeaderCtaConfig, type ProjectModuleConfig } from '@/lib/modules/config'
 import { SlugMapRoot } from '@/components/SlugMapContext'
 import { TrackingScripts } from '@/components/TrackingScripts'
 
@@ -468,12 +473,30 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
-/** Site-wide floating WhatsApp button, when enabled + configured in Site Settings. */
-function whatsAppFab(cfg: WebsiteSiteConfig | null | undefined, tenantSlug: string, locale: string) {
-  const form = cfg?.whatsappForm ?? null
-  if (!cfg?.whatsappFloating || !hasWhatsAppNumber(cfg?.whatsappNumber) || !form?.formId) return null
+/**
+ * Site-wide floating WhatsApp button.
+ *
+ * ADR-020 — configuration comes from the WhatsApp module (with the deprecated
+ * siteConfig fields as a transitional fallback). All three of number, form, and
+ * the floating toggle must resolve: a button with no number cannot dial, and one
+ * with no form has nothing to capture the lead with.
+ */
+function whatsAppFab(
+  modules: ProjectModuleConfig,
+  cfg: WebsiteSiteConfig | null | undefined,
+  tenantSlug: string,
+  locale: string
+) {
+  const whatsapp = resolveWhatsAppConfig(modules, cfg)
+  if (!whatsapp.floating || !hasWhatsAppNumber(whatsapp.number) || !whatsapp.form?.formId) return null
   return (
-    <WhatsAppWidget definition={form} number={cfg.whatsappNumber as string} tenantSlug={tenantSlug} locale={locale} variant="fab" />
+    <WhatsAppWidget
+      definition={whatsapp.form}
+      number={whatsapp.number as string}
+      tenantSlug={tenantSlug}
+      locale={locale}
+      variant="fab"
+    />
   )
 }
 
@@ -501,15 +524,20 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
     const livenerConfig = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
     // ADR-014 Phase C — runtime tracking/analytics config (project.integrationConfigs + project.privacy).
     const integrations = await fetchForTenant<ProjectIntegrations>(projectIntegrationsQuery, {})
+    // ADR-020 — module-owned per-website configuration (WhatsApp, header CTA).
+    const modules = await fetchForTenant<ProjectModuleConfig>(projectModuleConfigQuery, { locale, defaultLocale })
     const cssVars = buildCssVars(designSystem, { desktop: livenerConfig?.logoHeightDesktop, mobile: livenerConfig?.logoHeightMobile })
     const livenerBgGraphic = livenerConfig?.backgroundGraphic
     const livenerBgImageUrl = livenerBgGraphic?.asset?.asset ? imageUrl(livenerBgGraphic.asset as any, 1920) : undefined
     const livenerBgStyles = buildBackgroundGraphicStyles(livenerBgGraphic, livenerBgImageUrl, false)
 
-    // ADR-018 slice 7c — when siteConfig.ctaForm is set, the header CTA opens a
-    // module-driven overlay (FormOverlayWrapper) instead of the bespoke Early
-    // Access modal. EarlyAccessWrapper remains the fallback while ctaForm is unset.
-    const livenerCtaForm = livenerConfig?.ctaForm ?? null
+    // ADR-018 slice 7c + ADR-020 — when a header CTA form is configured, the CTA
+    // opens a module-driven overlay (FormOverlayWrapper) instead of the bespoke
+    // Early Access modal. EarlyAccessWrapper remains the fallback while no CTA
+    // form is set. The form now comes from Forms module config, falling back to
+    // the deprecated siteConfig.ctaForm.
+    const livenerCta = resolveHeaderCtaConfig(modules, livenerConfig)
+    const livenerCtaForm = livenerCta.form
     const hasCtaForm = !!livenerCtaForm?.formId
 
     const livenerInner = (
@@ -529,7 +557,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
             ctaHref={livenerConfig?.ctaHref ?? '#'}
             ctaMode={hasCtaForm ? 'overlay' : 'modal'}
             ctaFormId={hasCtaForm ? livenerCtaForm!.formId : undefined}
-            ctaInternalName={livenerConfig?.ctaInternalName ?? undefined}
+            ctaInternalName={livenerCta.internalName}
             currentLocale={locale as SupportedLocale}
             supportedLocales={livenerConfig?.supportedLocales ?? [locale as SupportedLocale]}
             showLangSwitcherInNav={livenerConfig?.showLangSwitcherInNav ?? false}
@@ -557,7 +585,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         <main>{children}</main>
         <TrackingScripts data={integrations} placement="bodyEnd" />
         <Footer tenantId={tenantId} locale={locale as SupportedLocale} defaultLocale={defaultLocale} />
-        {whatsAppFab(livenerConfig, tenantId, locale)}
+        {whatsAppFab(modules, livenerConfig, tenantId, locale)}
         <DevBadge />
       </>
     )
@@ -585,6 +613,8 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   const config = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
   // ADR-014 Phase C — runtime tracking/analytics config (project.integrationConfigs + project.privacy).
   const integrations = await fetchForTenant<ProjectIntegrations>(projectIntegrationsQuery, {})
+  // ADR-020 — module-owned per-website configuration (WhatsApp, header CTA).
+  const modules = await fetchForTenant<ProjectModuleConfig>(projectModuleConfigQuery, { locale, defaultLocale })
 
   // ── Branding assets — owned per-site (Website Settings), not the design system ─
   const logoSrc = config?.logo ? imageUrl(config.logo as any, 320) : undefined
@@ -677,7 +707,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
           </div>
         </div>
       </footer>
-      {whatsAppFab(config, tenantId, locale)}
+      {whatsAppFab(modules, config, tenantId, locale)}
       <DevBadge />
     </>
     </SlugMapRoot>

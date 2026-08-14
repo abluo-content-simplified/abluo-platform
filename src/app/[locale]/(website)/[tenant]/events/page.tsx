@@ -5,8 +5,9 @@ import {
   localeConfigQuery,
   designSystemQuery,
   websiteSiteConfigQuery,
-  enabledModuleIdsQuery,
+  projectModuleConfigQuery,
 } from '@/lib/sanity/queries'
+import { getEnabledModuleIds, type ProjectModuleConfig } from '@/lib/modules/config'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
 import type { EventsPage, LocaleConfig, SupportedLocale, DesignSystem, WebsiteSiteConfig } from '@/lib/sanity/types'
@@ -48,7 +49,7 @@ export default async function EventsListPage({ params }: PageProps) {
   // events grid that used to be fetched and rendered here directly is now
   // fetched by hydrateSections below, driven by the migrated
   // eventsListingSection(timeFilter:'all') section.
-  const [eventsPage, designSystem, siteConfig, enabledModuleIds] = await Promise.all([
+  const [eventsPage, designSystem, siteConfig, moduleConfig] = await Promise.all([
     fetchForTenant<EventsPage>(eventsPageQuery, {
       locale: locale as SupportedLocale,
       defaultLocale,
@@ -61,13 +62,18 @@ export default async function EventsListPage({ params }: PageProps) {
       locale: locale as SupportedLocale,
       defaultLocale,
     }),
-    fetchForTenant<string[] | null>(enabledModuleIdsQuery, {}),
+    fetchForTenant<ProjectModuleConfig>(projectModuleConfigQuery, { locale, defaultLocale }),
   ])
 
   // ADR-016 Phase A/C — hydrate blogListingSection / eventsListingSection /
   // liveLatestSection sections with data fetched server-side, mutating
   // eventsPage.sections in place. This is now the ONLY data-fetch path for
   // the page body — there is no fixed-field rendering left.
+  // ADR-020 — one query now serves both section gating and module config.
+  // getEnabledModuleIds preserves the null-vs-[] distinction the gating
+  // contract depends on (unresolved fails open; resolved-empty gates).
+  const enabledModuleIds = getEnabledModuleIds(moduleConfig)
+
   await hydrateSections(eventsPage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds })
 
   return (
@@ -84,6 +90,7 @@ export default async function EventsListPage({ params }: PageProps) {
         tenantSlug={tenantId}
         fromParam="events"
         enabledModuleIds={enabledModuleIds}
+        moduleConfig={moduleConfig}
       />
     ))}
     </>

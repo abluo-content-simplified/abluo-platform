@@ -4,6 +4,7 @@ import { blogSchemaTypes } from './blog/schema'
 import { eventsSchemaTypes } from './events/schema'
 import { liveSchemaTypes } from './live/schema'
 import { formsSchemaTypes } from './forms/schema'
+import { newsSchemaTypes } from './news/schema'
 
 // ── Module registry ───────────────────────────────────────────────────────────
 // The single authoritative definition of every module available on the platform.
@@ -136,6 +137,116 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
     },
 
     changelog: 'V1.0.0 — Initial manifest. Blog module in production use.',
+  },
+
+  // ── News ───────────────────────────────────────────────────────────────────
+  // ADR-020 — "Build the News module (mirrors Blog)."
+  //
+  // Mirrors Blog's shape because Blog's shape is right, not by copy-paste
+  // inertia. The editorial differences that justify a separate module — dated
+  // vs evergreen content, no author byline, its own URL space, independent
+  // installability per website — are documented at the top of ./news/schema.ts.
+  //
+  // Self-contained: unlike Blog (whose listing can filter by an Events-module
+  // event), News integrates with nothing, so it can be installed on a website
+  // that has no other content module.
+  {
+    id: 'news',
+    label: 'News',
+    version: '1.0.0',
+    status: 'released',
+    category: 'content',
+
+    platformContract: {
+      pageType: 'newsPage',
+
+      collections: [
+        {
+          id: 'news-module',
+          label: 'News',
+          items: [
+            {
+              id: 'news-articles',
+              label: 'News',
+              schemaType: 'newsArticle',
+              filter: `_type == "newsArticle" && projectSlug == $slug`,
+              ordering: [
+                { field: 'featured', direction: 'desc' as const },
+                { field: 'publishedAt', direction: 'desc' as const },
+              ],
+              initialValueTemplate: 'newsArticleProjectOwned',
+            },
+            {
+              id: 'news-categories',
+              label: 'Categories',
+              schemaType: 'newsCategory',
+              filter: `_type == "newsCategory" && projectSlug == $slug`,
+              initialValueTemplate: 'newsCategoryProjectOwned',
+            },
+          ],
+        },
+      ],
+
+      sectionTypes: ['newsListingSection'],
+
+      schemaTypes: [
+        'newsListingSection',
+        'newsPage',
+        'newsCategory',
+        'newsArticle',
+      ],
+
+      schemaDefinitions: () => newsSchemaTypes,
+
+      permissions: [
+        {
+          id: 'news.article.read',
+          label: 'View news',
+          description: 'View and list news items in the client dashboard.',
+          defaultRoles: ['owner', 'editor', 'viewer'],
+        },
+        {
+          id: 'news.article.write',
+          label: 'Create and edit news',
+          description: 'Create, edit, and publish news items.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          id: 'news.article.delete',
+          label: 'Delete news',
+          description: 'Permanently delete news items.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          id: 'news.taxonomy.write',
+          label: 'Manage news categories',
+          description: 'Create, edit, and delete news categories.',
+          defaultRoles: ['owner', 'editor'],
+        },
+      ],
+
+      configSchema: [],
+
+      placement: {
+        surfaces: [
+          { kind: 'page', description: 'News index page at /news, with its own hero, intro, and SEO.' },
+          { kind: 'sections', description: 'News Listing section — composable into any page.' },
+        ],
+      },
+    },
+
+    publicContract: {},
+
+    dependencies: {
+      requires: [],
+      integratesWith: [],
+    },
+
+    dataStore: {
+      primary: 'content',
+    },
+
+    changelog: 'V1.0.0 — ADR-020. News module: dated announcements with their own page, categories, listing section, and /news routes.',
   },
 
   // ── Events ─────────────────────────────────────────────────────────────────
@@ -361,13 +472,38 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         },
       ],
 
-      // Header-CTA config (ADR-020 Decision 2) lands here in the communications
-      // phase, together with the WhatsApp module. Empty until then.
-      configSchema: [],
+      // ADR-020 Decision 2 — the header-CTA form reference moves off siteConfig
+      // and lands here. The header CTA is a form placement, so the Forms module
+      // owns it. Website Settings keeps only `ctaLabel` and `ctaHref`, which are
+      // navigation properties of the website rather than form configuration.
+      configSchema: [
+        {
+          id: 'ctaForm',
+          label: 'Header CTA Form',
+          type: 'reference',
+          referenceTo: ['formDefinition'],
+          referenceFilter: '_type == "formDefinition" && role == "active"',
+          description:
+            'When set, the header CTA button opens this form in an overlay instead of navigating. Leave empty to make the CTA a plain link using the URL in Website Settings → Navigation.',
+        },
+        {
+          id: 'ctaInternalName',
+          label: 'Header CTA Attribution Name',
+          type: 'string',
+          description:
+            'Internal label recorded with each submission for lead-source attribution (e.g. "header-cta"). Never shown to visitors.',
+        },
+      ],
 
       placement: {
-        surfaces: [],
-        note: 'The Form and Form Overlay Button sections are platform sections — they stay available whether or not this module is active. Where an individual form appears is decided by the page that composes it.',
+        surfaces: [
+          {
+            kind: 'siteWide',
+            description:
+              'Header CTA button — appears in the site header on every page when a CTA form is set above.',
+          },
+        ],
+        note: 'The Form and Form Overlay Button sections are platform sections — they stay available whether or not this module is active. Where an individual form appears on a page is decided by the page that composes it.',
       },
     },
 
@@ -383,6 +519,114 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
     },
 
     changelog: 'V1.0.0 — ADR-018 slice 2. Tenant-owned formDefinition type (additive, inert). Submissions + form.submitted shipped in slice 1; notifications in ADR-019.',
+  },
+
+  // ── WhatsApp ───────────────────────────────────────────────────────────────
+  // ADR-020 Decision 2 — "WhatsApp becomes a real module."
+  //
+  // WhatsApp config (number, floating button, message form) previously lived on
+  // siteConfig, which is exactly the accretion ADR-020 exists to stop: it is
+  // communications config, not a website property.
+  //
+  // This module owns no schema types and no content. It is configuration plus a
+  // site-wide surface — a legitimate module shape, and the reason the manifest
+  // allows empty collections/sectionTypes/schemaTypes. The lead captured before
+  // hand-off to WhatsApp is a form submission owned by the Forms module, which
+  // is why `requires: forms` is a hard dependency rather than a soft one: with
+  // no form definition there is nothing to open and nothing to record.
+  {
+    id: 'whatsapp',
+    label: 'WhatsApp',
+    version: '1.0.0',
+    status: 'released',
+    category: 'engagement',
+
+    platformContract: {
+      // No pageType, collections, sectionTypes, or schemaTypes: this module
+      // contributes a configured site-wide surface, not content.
+      collections: [],
+      sectionTypes: [],
+      schemaTypes: [],
+      schemaDefinitions: () => [],
+
+      permissions: [
+        {
+          id: 'whatsapp.config.manage',
+          label: 'Configure WhatsApp',
+          description: 'Set the WhatsApp number, message form, and floating button for a website.',
+          defaultRoles: ['owner'],
+        },
+      ],
+
+      configSchema: [
+        {
+          id: 'whatsappNumber',
+          label: 'WhatsApp Number',
+          type: 'string',
+          description:
+            'International format, e.g. +39 335 1234567. WhatsApp buttons appear only when this is set.',
+          validation: {
+            // Digits, spaces, hyphens, parentheses and a leading +, 7–20 digits.
+            // Deliberately permissive: this is a display/hand-off value, not a
+            // dialling API, and over-strict validation locks out valid formats.
+            regex: '^\\+?[0-9\\s\\-()]{7,25}$',
+            message: 'Enter a phone number in international format, e.g. +39 335 1234567.',
+          },
+        },
+        {
+          id: 'whatsappForm',
+          label: 'WhatsApp Message Form',
+          type: 'reference',
+          referenceTo: ['formDefinition'],
+          referenceFilter: '_type == "formDefinition" && role == "active"',
+          description:
+            'Subject and message form opened by WhatsApp buttons. The lead is saved — and appears in the dashboard — before the visitor is handed off to WhatsApp with the message pre-filled.',
+        },
+        {
+          id: 'whatsappFloating',
+          label: 'Floating WhatsApp Button',
+          type: 'boolean',
+          initialValue: false,
+          description:
+            'Show a WhatsApp button pinned to the bottom-right corner on every page. Requires a number and a form above.',
+        },
+      ],
+
+      placement: {
+        surfaces: [
+          {
+            kind: 'siteWide',
+            description:
+              'Floating button pinned to the bottom-right corner of every page.',
+            toggleFieldId: 'whatsappFloating',
+          },
+        ],
+        note: 'The Contact section has its own per-section WhatsApp switch — that is a page-level placement decision and stays on the section.',
+      },
+    },
+
+    publicContract: {},
+
+    dependencies: {
+      requires: [
+        {
+          moduleId: 'forms',
+          reason:
+            'The WhatsApp buttons open a form definition and record the lead before handing off, so Forms must be installed.',
+        },
+      ],
+      integratesWith: [],
+    },
+
+    dataStore: {
+      // Configuration only. The submission captured before hand-off is a Forms
+      // record in the operational tier, owned by the Forms module — this module
+      // does not own a second copy of it.
+      primary: 'content',
+    },
+
+    changelog:
+      'V1.0.0 — ADR-020. WhatsApp promoted from siteConfig fields to a first-class module owning its own number, message form, and floating-button placement.',
   },
 
 ]

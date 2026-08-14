@@ -10,19 +10,22 @@ import { FormOverlayTrigger } from '@/components/forms/FormOverlayTrigger'
 import { overlayButtonClass } from '@/lib/forms/overlay-button'
 import { WhatsAppWidget } from '@/components/forms/WhatsAppWidget'
 import { hasWhatsAppNumber } from '@/lib/forms/whatsapp'
+import { resolveWhatsAppConfig, type ProjectModuleConfig } from '@/lib/modules/config'
 
 interface Props {
   section: ContactSection
   surface: SurfaceType
   designSystem: DesignSystem | null
   siteConfig?: WebsiteSiteConfig | null
+  /** ADR-020 — module-owned per-website configuration; source of truth for WhatsApp. */
+  moduleConfig?: ProjectModuleConfig
   /** BCP 47 locale string — used to resolve UI chrome labels */
   locale?: string
   /** URL tenant slug — the submission route scope for the optional message button. */
   tenantSlug?: string
 }
 
-export function ContactSection({ section, surface, designSystem, siteConfig, locale = 'en', tenantSlug }: Props) {
+export function ContactSection({ section, surface, designSystem, siteConfig, moduleConfig, locale = 'en', tenantSlug }: Props) {
   const { title, subtitle } = section
   const showMap = section.showMap ?? true
   const mapHeight = section.mapHeight ?? 400
@@ -52,10 +55,15 @@ export function ContactSection({ section, surface, designSystem, siteConfig, loc
   const buttonLabel = section.contactButtonLabel ?? contactForm?.title ?? 'Send us a message'
 
   // ── WhatsApp button (optional) ───────────────────────────────────────────────
-  // Renders next to the message button when enabled on the section AND the site
-  // has a WhatsApp number + form configured (Site Settings → Contact).
-  const waNumber = siteConfig?.whatsappNumber
-  const waForm = siteConfig?.whatsappForm ?? null
+  // Two independent decisions, deliberately kept in separate places (ADR-020):
+  //   - WHETHER this section shows a WhatsApp button is a per-section placement
+  //     choice, so it stays on the section (`showWhatsappButton`).
+  //   - WHAT number and form it uses is module configuration, so it comes from
+  //     the WhatsApp module (Modules → WhatsApp), with the deprecated siteConfig
+  //     fields as a transitional fallback.
+  const whatsapp = resolveWhatsAppConfig(moduleConfig, siteConfig)
+  const waNumber = whatsapp.number
+  const waForm = whatsapp.form
   const showWhatsapp = !!section.showWhatsappButton && hasWhatsAppNumber(waNumber) && !!waForm?.formId && !!tenantSlug
 
   // ── Layout ─────────────────────────────────────────────────────────────────

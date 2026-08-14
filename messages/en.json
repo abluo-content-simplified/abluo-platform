@@ -33,7 +33,9 @@
       "blog": "Posts",
       "events": "Events",
       "live": "Live",
-      "forms": "Forms"
+      "forms": "Forms",
+      "whatsapp": "WhatsApp",
+      "news": "News"
     },
     "shell": {
       "brandTagline": "Dashboard",

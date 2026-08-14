@@ -33,7 +33,9 @@
       "blog": "Articoli",
       "events": "Eventi",
       "live": "Live",
-      "forms": "Moduli"
+      "forms": "Moduli",
+      "whatsapp": "WhatsApp",
+      "news": "Notizie"
     },
     "shell": {
       "brandTagline": "Dashboard",

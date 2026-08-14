@@ -59,6 +59,31 @@ describe('buildModulePermissions()', () => {
     expect(map).toHaveProperty('live.page.configure')
   })
 
+  it('contains all expected news permission IDs', () => {
+    // ADR-020 — News mirrors Blog's permission shape, including the viewer-level
+    // read permission the client dashboard needs.
+    const map = buildModulePermissions()
+    expect(map).toHaveProperty('news.article.read')
+    expect(map).toHaveProperty('news.article.write')
+    expect(map).toHaveProperty('news.article.delete')
+    expect(map).toHaveProperty('news.taxonomy.write')
+    expect(map['news.article.read'].defaultRoles).toContain('viewer')
+    expect(map['news.article.write'].defaultRoles).not.toContain('viewer')
+  })
+
+  it('contains all expected whatsapp permission IDs', () => {
+    // ADR-020 — WhatsApp became a real module and brought one permission.
+    const map = buildModulePermissions()
+    expect(map).toHaveProperty('whatsapp.config.manage')
+  })
+
+  it('whatsapp.config.manage grants owner only', () => {
+    // Deliberately narrower than the content permissions: the WhatsApp number
+    // and message form are business-identity settings, not day-to-day editing.
+    const map = buildModulePermissions()
+    expect(map['whatsapp.config.manage'].defaultRoles).toEqual(['owner'])
+  })
+
   it('each entry contains id, label, description, and defaultRoles', () => {
     const map = buildModulePermissions()
     const perm = map['blog.post.write']
@@ -90,11 +115,13 @@ describe('buildModulePermissions()', () => {
 // ── MODULE_PERMISSION_MAP ─────────────────────────────────────────────────────
 
 describe('MODULE_PERMISSION_MAP', () => {
-  it('contains exactly 13 permissions — guards against accidental registry removals', () => {
+  it('contains exactly 18 permissions — guards against accidental registry removals', () => {
     // ADR-016 Phase B added events.taxonomy.write (event categories) — was 6.
     // ADR-017 slice 6 added blog.post.read (client dashboard read path) — was 8.
-    // ADR-018 slice 2 added the forms module's 5 permissions — now 13.
-    expect(Object.keys(MODULE_PERMISSION_MAP)).toHaveLength(13)
+    // ADR-018 slice 2 added the forms module's 5 permissions — was 13.
+    // ADR-020 added whatsapp.config.manage — was 14 — and the News module's
+    // 4 permissions — now 18.
+    expect(Object.keys(MODULE_PERMISSION_MAP)).toHaveLength(18)
   })
 
   it('has the same shape as buildModulePermissions()', () => {
@@ -108,7 +135,7 @@ describe('MODULE_PERMISSION_MAP', () => {
     expect(a).toBe(b)
   })
 
-  it('all 13 expected keys are present', () => {
+  it('all 18 expected keys are present', () => {
     const expectedKeys = [
       'blog.post.read',
       'blog.post.write',
@@ -123,6 +150,11 @@ describe('MODULE_PERMISSION_MAP', () => {
       'forms.submission.delete',
       'forms.definition.manage',
       'forms.definition.clone',
+      'whatsapp.config.manage',
+      'news.article.read',
+      'news.article.write',
+      'news.article.delete',
+      'news.taxonomy.write',
     ]
     for (const key of expectedKeys) {
       expect(MODULE_PERMISSION_MAP).toHaveProperty(key)

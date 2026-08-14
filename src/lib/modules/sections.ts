@@ -31,11 +31,13 @@
 
 import type { ReactNode } from 'react'
 import type { PageSection, DesignSystem, WebsiteSiteConfig } from '@/lib/sanity/types'
+import type { ProjectModuleConfig } from './config'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 
 // ── Module section imports ────────────────────────────────────────────────────
 // One import per module that contributes sections.
 import { blogSectionComponents } from './blog/sections'
+import { newsSectionComponents } from './news/sections'
 import { eventsSectionComponents } from './events/sections'
 import { liveSectionComponents } from './live/sections'
 
@@ -60,6 +62,8 @@ export type ModuleSectionProps = {
   surface: SurfaceType
   designSystem: DesignSystem | null
   siteConfig: WebsiteSiteConfig | null
+  /** ADR-020 — module-owned per-website configuration (projectModuleConfigQuery). */
+  moduleConfig?: ProjectModuleConfig
   locale: string
   tenantSlug: string
   fromParam?: string
@@ -85,6 +89,7 @@ export type SectionComponentMap = Record<string, (props: ModuleSectionProps) => 
  */
 export const SECTION_MAP: SectionComponentMap = {
   ...blogSectionComponents,
+  ...newsSectionComponents,
   ...eventsSectionComponents,
   ...liveSectionComponents,
   // Future modules: spread their section component maps here.

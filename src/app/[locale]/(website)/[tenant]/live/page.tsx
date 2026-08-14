@@ -8,8 +8,9 @@ import {
   designSystemQuery,
   livePageQuery,
   projectDomainQuery,
-  enabledModuleIdsQuery,
+  projectModuleConfigQuery,
 } from '@/lib/sanity/queries'
+import { getEnabledModuleIds, type ProjectModuleConfig } from '@/lib/modules/config'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
 import type { Event, LocaleConfig, LivePage, SupportedLocale, WebsiteSiteConfig, DesignSystem } from '@/lib/sanity/types'
@@ -77,7 +78,7 @@ export default async function LivePage({ params }: PageProps) {
   // current-event / past-events / "More Live Productions" data that used to
   // be fetched here directly is now fetched by hydrateSections below, driven
   // by the migrated liveLatestSection + eventsListingSection sections.
-  const [livePage, siteConfig, designSystem, enabledModuleIds] = await Promise.all([
+  const [livePage, siteConfig, designSystem, moduleConfig] = await Promise.all([
     fetchForTenant<LivePage>(livePageQuery, {
       locale: locale as SupportedLocale,
       defaultLocale,
@@ -90,13 +91,18 @@ export default async function LivePage({ params }: PageProps) {
       const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {})
       return resolveDesignSystemInheritance(raw, fetchDesignSystemById)
     })(),
-    fetchForTenant<string[] | null>(enabledModuleIdsQuery, {}),
+    fetchForTenant<ProjectModuleConfig>(projectModuleConfigQuery, { locale, defaultLocale }),
   ])
 
   // ADR-016 Phase A/C — hydrate blogListingSection / eventsListingSection /
   // liveLatestSection sections with data fetched server-side, mutating
   // livePage.sections in place. This is now the ONLY data-fetch path for the
   // page body — there is no fixed-field rendering left.
+  // ADR-020 — one query now serves both section gating and module config.
+  // getEnabledModuleIds preserves the null-vs-[] distinction the gating
+  // contract depends on (unresolved fails open; resolved-empty gates).
+  const enabledModuleIds = getEnabledModuleIds(moduleConfig)
+
   await hydrateSections(livePage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds })
 
   return (
@@ -113,6 +119,7 @@ export default async function LivePage({ params }: PageProps) {
           tenantSlug={tenantId}
           fromParam="live"
           enabledModuleIds={enabledModuleIds}
+          moduleConfig={moduleConfig}
         />
       ))}
     </>

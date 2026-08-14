@@ -19,6 +19,7 @@ import { SlideUp } from '@/components/animation'
 import { SlugMapProvider, type SlugMap } from '@/components/SlugMapContext'
 import { BackButton } from '@/components/events/BackButton'
 import { PortableText } from '@portabletext/react'
+import { articlePortableTextComponents } from '@/components/portable-text/article-components'
 import { PostCard } from '@/components/blog/PostCard'
 
 export const dynamic = 'force-dynamic'
@@ -89,85 +90,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export async function generateStaticParams() {
   return []
 }
-
 // ─── PortableText components ──────────────────────────────────────────────────
-// Minimal component map — outputs semantic HTML styled via CSS variables.
+// Shared with the News module detail route — see
+// src/components/portable-text/article-components.tsx for why this moved out.
 
-const portableTextComponents = {
-  block: {
-    h1: ({ children }: { children?: React.ReactNode }) => (
-      <h1 className="text-3xl font-bold mt-10 mb-4" style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}>
-        {children}
-      </h1>
-    ),
-    h2: ({ children }: { children?: React.ReactNode }) => (
-      <h2 className="text-2xl font-semibold mt-8 mb-3" style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}>
-        {children}
-      </h2>
-    ),
-    h3: ({ children }: { children?: React.ReactNode }) => (
-      <h3 className="text-xl font-semibold mt-6 mb-2" style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}>
-        {children}
-      </h3>
-    ),
-    normal: ({ children }: { children?: React.ReactNode }) => (
-      <p className="text-base leading-relaxed mb-5" style={{ color: 'var(--color-text-primary)' }}>
-        {children}
-      </p>
-    ),
-    blockquote: ({ children }: { children?: React.ReactNode }) => (
-      <blockquote
-        className="pl-5 py-1 my-6 text-lg italic"
-        style={{ borderLeft: '3px solid var(--color-primary)', color: 'var(--color-text-secondary)' }}
-      >
-        {children}
-      </blockquote>
-    ),
-  },
-  list: {
-    bullet: ({ children }: { children?: React.ReactNode }) => (
-      <ul className="list-disc pl-6 mb-5 space-y-2" style={{ color: 'var(--color-text-primary)' }}>
-        {children}
-      </ul>
-    ),
-    number: ({ children }: { children?: React.ReactNode }) => (
-      <ol className="list-decimal pl-6 mb-5 space-y-2" style={{ color: 'var(--color-text-primary)' }}>
-        {children}
-      </ol>
-    ),
-  },
-  listItem: {
-    bullet: ({ children }: { children?: React.ReactNode }) => (
-      <li className="text-base leading-relaxed">{children}</li>
-    ),
-    number: ({ children }: { children?: React.ReactNode }) => (
-      <li className="text-base leading-relaxed">{children}</li>
-    ),
-  },
-  marks: {
-    strong: ({ children }: { children?: React.ReactNode }) => <strong className="font-semibold">{children}</strong>,
-    em: ({ children }: { children?: React.ReactNode }) => <em>{children}</em>,
-    code: ({ children }: { children?: React.ReactNode }) => (
-      <code
-        className="px-1.5 py-0.5 rounded text-sm font-mono"
-        style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-primary)' }}
-      >
-        {children}
-      </code>
-    ),
-    link: ({ value, children }: { value?: { href?: string; blank?: boolean }; children?: React.ReactNode }) => (
-      <a
-        href={value?.href}
-        target={value?.blank ? '_blank' : undefined}
-        rel={value?.blank ? 'noopener noreferrer' : undefined}
-        style={{ color: 'var(--color-primary)' }}
-        className="underline underline-offset-2 hover:opacity-75 transition-opacity"
-      >
-        {children}
-      </a>
-    ),
-  },
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -377,7 +303,7 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
               <div className="mb-12">
                 <PortableText
                   value={post.body as any}
-                  components={portableTextComponents}
+                  components={articlePortableTextComponents}
                 />
               </div>
             </SlideUp>

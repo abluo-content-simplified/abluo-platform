@@ -2285,14 +2285,20 @@ const projectType = defineType({
       ],
     }),
 
-    // ── Migration bridge — do not remove ────────────────────────────────────
-    // enabledModules: string[] is the legacy installation mechanism. It is kept
-    // present in the schema as a data bridge during the migration window.
-    // sanity.config.ts reads moduleInstallations first via a GROQ select(),
-    // with a coalesce fallback to enabledModules for any unmigrated project.
+    // ── Migration bridge — no longer read ───────────────────────────────────
+    // enabledModules: string[] is the legacy installation mechanism, superseded
+    // by moduleInstallations.
     //
-    // Do not remove this field until all project documents are migrated and
-    // the coalesce fallback in sanity.config.ts is removed (post-B1 cleanup).
+    // ADR-020 retired every READ of this field: migration 004 backfilled typed
+    // installation records for both projects that had one, and the fallbacks in
+    // sanity.config.ts, queries.ts (enabledModuleIdsQuery), and ProjectLinker
+    // are gone. Nothing in the codebase consults it.
+    //
+    // The field stays DECLARED, and the data stays in the dataset, purely as a
+    // rollback bridge: the Sanity dataset is shared across dev/preview/prod, so
+    // production is still running code that predates this change until `main`
+    // is promoted. Delete the field and unset the data only after production has
+    // been promoted and observed healthy.
     defineField({
       name: 'enabledModules',
       title: 'Modules (legacy)',
@@ -3469,21 +3475,31 @@ const siteConfigType = defineType({
     defineField({ name: 'navLinks', title: 'Navigation Links', type: 'array', group: 'navigation', of: [defineArrayMember({ type: 'navigationLink' })] }),
     defineField({ name: 'showLangSwitcherInNav', title: 'Show language switcher in nav', type: 'boolean', group: 'navigation', initialValue: false }),
     defineField({ name: 'ctaLabel', title: 'Nav CTA Button Label', type: 'localizedString', group: 'navigation' }),
+    // ── Deprecated: header-CTA form config (ADR-020 Decision 2) ─────────────
+    // These moved to Forms module config (Modules → Forms). They remain
+    // DECLARED and populated as a transitional fallback only: the Sanity
+    // dataset is shared across dev/preview/production, so production still
+    // reads them until `main` is promoted. Hidden from the Studio form so no
+    // new content can be authored into them; resolveHeaderCtaConfig() in
+    // src/lib/modules/config.ts reads module config first and these second.
+    // Delete both fields, and their reads, after production is promoted.
     defineField({
       name: 'ctaForm',
       title: 'Nav CTA Form (overlay)',
       type: 'reference',
       to: [{ type: 'formDefinition' }],
       group: 'navigation',
-      description: 'Optional. When set, the header CTA opens this form in an overlay. Leave empty to make the CTA a plain link using the URL below.',
+      description: '⚠️ Deprecated (ADR-020) — configure this in Modules → Forms. Kept only until production is promoted.',
       options: { filter: '_type == "formDefinition" && role == "active"' },
+      hidden: true,
     }),
     defineField({
       name: 'ctaInternalName',
       title: 'Nav CTA Internal Name (attribution)',
       type: 'string',
       group: 'navigation',
-      description: 'Internal label recorded with each submission for lead-source attribution (e.g. "header-cta"). Not shown to visitors.',
+      description: '⚠️ Deprecated (ADR-020) — configure this in Modules → Forms. Kept only until production is promoted.',
+      hidden: true,
     }),
     defineField({ name: 'ctaHref', title: 'Nav CTA Button URL', type: 'string', group: 'navigation', description: 'Used only when no CTA Form is set above.' }),
     defineField({ name: 'phone', title: 'Phone', type: 'string', group: 'contact' }),
@@ -3504,9 +3520,14 @@ const siteConfigType = defineType({
       readOnly: true,
       description: '⚠️ Legacy flat text field. Migrate content to Business Location above, then this field can be removed.',
     }),
-    defineField({ name: 'whatsappNumber', title: 'WhatsApp Number', type: 'string', group: 'contact', description: 'International format, e.g. +39 335 …. When set, WhatsApp buttons can appear.' }),
-    defineField({ name: 'whatsappForm', title: 'WhatsApp Message Form', type: 'reference', to: [{ type: 'formDefinition' }], group: 'contact', description: 'Subject + message form opened by WhatsApp buttons. The lead is saved (and shows in the dashboard) before handing off to WhatsApp pre-filled.', options: { filter: '_type == "formDefinition" && role == "active"' } }),
-    defineField({ name: 'whatsappFloating', title: 'Floating WhatsApp Button', type: 'boolean', group: 'contact', initialValue: false, description: 'Show a WhatsApp button pinned to the bottom-right corner on every page (requires WhatsApp Number + Form above).' }),
+    // ── Deprecated: WhatsApp config (ADR-020 Decision 2) ────────────────────
+    // WhatsApp is now a module and owns these settings (Modules → WhatsApp).
+    // Same transitional rules as the CTA fields above: declared, hidden, read
+    // only as a fallback by resolveWhatsAppConfig(), and deleted once
+    // production has been promoted.
+    defineField({ name: 'whatsappNumber', title: 'WhatsApp Number', type: 'string', group: 'contact', description: '⚠️ Deprecated (ADR-020) — configure this in Modules → WhatsApp. Kept only until production is promoted.', hidden: true }),
+    defineField({ name: 'whatsappForm', title: 'WhatsApp Message Form', type: 'reference', to: [{ type: 'formDefinition' }], group: 'contact', description: '⚠️ Deprecated (ADR-020) — configure this in Modules → WhatsApp. Kept only until production is promoted.', options: { filter: '_type == "formDefinition" && role == "active"' }, hidden: true }),
+    defineField({ name: 'whatsappFloating', title: 'Floating WhatsApp Button', type: 'boolean', group: 'contact', initialValue: false, description: '⚠️ Deprecated (ADR-020) — configure this in Modules → WhatsApp. Kept only until production is promoted.', hidden: true }),
     defineField({ name: 'footerLinks', title: 'Footer Links', type: 'array', group: 'footer', of: [defineArrayMember({ type: 'navigationLink' })] }),
     defineField({ name: 'footerCtaHeading', title: 'Footer CTA Heading', type: 'localizedString', group: 'footer' }),
     defineField({ name: 'footerCtaSubtext', title: 'Footer CTA Subtext', type: 'localizedString', group: 'footer' }),
@@ -3801,6 +3822,36 @@ export const initialValueTemplates = [
     id: 'blogPageProjectOwned',
     title: 'Blog Page',
     schemaType: 'blogPage',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+    }),
+  },
+  // ── News module (ADR-020) ────────────────────────────────────────────────
+  {
+    id: 'newsArticleProjectOwned',
+    title: 'News Item',
+    schemaType: 'newsArticle',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+      publishedAt: new Date().toISOString(),
+      featured: false,
+    }),
+  },
+  {
+    id: 'newsCategoryProjectOwned',
+    title: 'News Category',
+    schemaType: 'newsCategory',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+    }),
+  },
+  {
+    id: 'newsPageProjectOwned',
+    title: 'News Page',
+    schemaType: 'newsPage',
     parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
     value: (params: any) => ({
       projectSlug: params?.projectSlug,

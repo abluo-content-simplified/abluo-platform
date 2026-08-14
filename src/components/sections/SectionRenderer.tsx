@@ -28,10 +28,12 @@ import { MetricsSection } from '@/components/sections/MetricsSection'
 import { PhotoGallerySection } from '@/components/sections/PhotoGallerySection'
 import { VideoSection } from '@/components/sections/VideoSection'
 import { SECTION_MAP, isSectionTypeAvailable } from '@/lib/modules/sections'
+import type { ProjectModuleConfig } from '@/lib/modules/config'
 import type {
   WebsiteSiteConfig,
   PageSection,
   BlogListingSection as BlogListingSectionType,
+  NewsListingSection as NewsListingSectionType,
   EventsListingSection as EventsListingSectionType,
   LiveLatestSection as LiveLatestSectionType,
   FormSection as FormSectionType,
@@ -41,6 +43,7 @@ import type {
   SupportedLocale,
   DesignSystem,
   Post,
+  NewsArticle,
   Event,
 } from '@/lib/sanity/types'
 import { computeSectionSurface } from '@/lib/sanity/surfaces'
@@ -48,6 +51,9 @@ import {
   blogListingPostsNewestQuery,
   blogListingPostsOldestQuery,
   blogListingManualPostsQuery,
+  newsListingArticlesNewestQuery,
+  newsListingArticlesOldestQuery,
+  newsListingManualArticlesQuery,
   eventsListingEventsNewestQuery,
   eventsListingEventsOldestQuery,
   eventsListingManualEventsQuery,
@@ -170,6 +176,63 @@ async function fetchEventsListingEvents(
   })
 }
 
+// ─── News listing fetcher (ADR-020) ───────────────────────────────────────────
+
+/**
+ * Fetch news items for a single newsListingSection based on its filter + sort
+ * config. Returns one extra beyond maxItems so the caller can detect "has more"
+ * for the View All button — same contract as the blog fetcher.
+ *
+ * Mirrors fetchBlogListingPosts, minus the 'byEvent' branch: News has no Events
+ * integration, so there is no eventId to pass.
+ */
+async function fetchNewsListingArticles(
+  section: NewsListingSectionType,
+  fetchForTenant: ReturnType<typeof tenantClient>['fetchForTenant'],
+  locale: SupportedLocale,
+  defaultLocale: SupportedLocale,
+): Promise<NewsArticle[]> {
+  const {
+    filterMode = 'latest',
+    sortOrder = 'newest',
+    maxItems = 3,
+    categoryId,
+    articleIds,
+  } = section
+
+  // Manual selection: fetch by explicit IDs, then order in JS. GROQ does not
+  // preserve the order of an `in` list, so editor-defined order must be
+  // reapplied here rather than relied upon from the query.
+  if (filterMode === 'manual' && articleIds?.length) {
+    const articles = await fetchForTenant<NewsArticle[]>(newsListingManualArticlesQuery, {
+      locale,
+      defaultLocale,
+      articleIds,
+    })
+    if (sortOrder === 'manual') {
+      const indexMap: Record<string, number> = Object.fromEntries(
+        articleIds.map((id, i) => [id, i])
+      )
+      return [...articles].sort((a, b) => (indexMap[a._id] ?? 999) - (indexMap[b._id] ?? 999))
+    }
+    if (sortOrder === 'oldest') {
+      return articles.sort((a, b) => (a.publishedAt ?? '').localeCompare(b.publishedAt ?? ''))
+    }
+    return articles.sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''))
+  }
+
+  // Dynamic filter (latest / featured / byCategory) — let GROQ sort.
+  const query = sortOrder === 'oldest' ? newsListingArticlesOldestQuery : newsListingArticlesNewestQuery
+  return fetchForTenant<NewsArticle[]>(query, {
+    locale,
+    defaultLocale,
+    filterMode,
+    categoryId: categoryId ?? null,
+    // One extra, to detect "has more" for the View All button.
+    maxItems: maxItems + 1,
+  })
+}
+
 /**
  * Hydrate any blogListingSection, eventsListingSection, or liveLatestSection
  * sections in `sections` with data fetched server-side, mutating each
@@ -201,6 +264,13 @@ export async function hydrateSections(
         const posts = await fetchBlogListingPosts(bls, ctx.fetchForTenant, ctx.locale, ctx.defaultLocale)
         // Slice to maxItems — we fetched one extra to detect overflow for View All
         bls.posts = posts.slice(0, bls.maxItems ?? 3)
+        return
+      }
+      if (section._type === 'newsListingSection') {
+        const nls = section as NewsListingSectionType
+        const articles = await fetchNewsListingArticles(nls, ctx.fetchForTenant, ctx.locale, ctx.defaultLocale)
+        // Slice to maxItems — one extra was fetched to detect overflow for View All
+        nls.articles = articles.slice(0, nls.maxItems ?? 3)
         return
       }
       if (section._type === 'eventsListingSection') {
@@ -241,6 +311,16 @@ export interface SectionRendererProps {
    * everything, matching pre-Phase-D behaviour.
    */
   enabledModuleIds?: string[] | null
+  /**
+   * ADR-020 — module-owned per-website configuration, as returned by
+   * projectModuleConfigQuery. Sections that render a module-configured surface
+   * (today: contactSection's WhatsApp button) read it through the resolvers in
+   * src/lib/modules/config.ts.
+   *
+   * Optional, and every consumer falls back to the deprecated siteConfig
+   * fields, so a caller that has not been updated still renders correctly.
+   */
+  moduleConfig?: ProjectModuleConfig
 }
 
 export function SectionRenderer({
@@ -253,6 +333,7 @@ export function SectionRenderer({
   tenantSlug,
   fromParam,
   enabledModuleIds,
+  moduleConfig,
 }: SectionRendererProps) {
   const surface = computeSectionSurface(section.background, backgroundPattern as any, sectionIndex)
 
@@ -271,7 +352,7 @@ export function SectionRenderer({
   // registered in their module's sections.tsx file; no changes here required.
   const ModuleSection = SECTION_MAP[section._type]
   if (ModuleSection) {
-    return <>{ModuleSection({ section, surface, designSystem, siteConfig, locale, tenantSlug, fromParam })}</>
+    return <>{ModuleSection({ section, surface, designSystem, siteConfig, moduleConfig, locale, tenantSlug, fromParam })}</>
   }
 
   // ── Platform-owned sections ──────────────────────────────────────────────
@@ -298,7 +379,7 @@ export function SectionRenderer({
     case 'faqSection':
       return <FAQSection section={section} surface={surface} designSystem={designSystem} />
     case 'contactSection':
-      return <ContactSection section={section} surface={surface} designSystem={designSystem} siteConfig={siteConfig} locale={locale} tenantSlug={tenantSlug} />
+      return <ContactSection section={section} surface={surface} designSystem={designSystem} siteConfig={siteConfig} moduleConfig={moduleConfig} locale={locale} tenantSlug={tenantSlug} />
     case 'formSection':
       return <FormSection section={section as FormSectionType} surface={surface} designSystem={designSystem} locale={locale} tenantSlug={tenantSlug} />
     case 'formOverlayButtonSection':

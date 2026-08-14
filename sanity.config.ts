@@ -33,10 +33,16 @@ export default defineConfig({
         const client = context.getClient({ apiVersion: '2026-05-21' })
 
         // ── Fetch clients + projects (with enabled modules) ───────────────────
-        // ADR-011 Phase B1: enabledModuleIds is a unified string[] projection.
-        // For migrated projects: derived from moduleInstallations[enabled != false].moduleId.
-        // For unmigrated projects: falls back to coalesce(enabledModules, []).
-        // The structure builder never needs to know which source was used.
+        // ADR-020: moduleInstallations is now the ONLY source of installed-module
+        // state. The legacy `enabledModules` string array is no longer read here
+        // — migration 004 backfilled typed installation records for every project
+        // that had one, so the fallback had nothing left to serve. The field
+        // itself remains declared on the project document as a rollback bridge
+        // (see src/lib/sanity/schema.ts) until production has been promoted.
+        //
+        // A project with no installations resolves to [] — "no modules installed"
+        // — which is the correct answer for a fresh website, and is exactly what
+        // the Modules pane lets an admin change.
         const clients = await client.fetch<{
           _id: string
           displayName: string
@@ -58,10 +64,7 @@ export default defineConfig({
               projectName,
               projectSlug,
               "designSystemId": designSystemRef._ref,
-              "enabledModuleIds": select(
-                defined(moduleInstallations) && count(moduleInstallations) > 0 => moduleInstallations[enabled != false].moduleId,
-                coalesce(enabledModules, [])
-              )
+              "enabledModuleIds": coalesce(moduleInstallations[enabled != false].moduleId, [])
             }
           }`
         )
@@ -92,7 +95,7 @@ export default defineConfig({
           projectSlug: string
         }[]>(
           `*[
-            _type in ["page", "blogPage", "eventsPage", "livePage"]
+            _type in ["page", "blogPage", "eventsPage", "livePage", "newsPage"]
             && !(_id in path("drafts.**"))
             && defined(projectSlug)
           ] | order(_createdAt asc) {
@@ -129,14 +132,35 @@ export default defineConfig({
         // See registry.ts for the full definition and documentation.
 
         // ── Design system pane builder ────────────────────────────────────────
-        function designSystemPane(documentId: string) {
+        //
+        // ADR-020 Decision 4 merges the old "Change Design System" sibling item
+        // into this pane as a third view. Passing projectId/projectSlug is what
+        // makes that possible — without them the assign pane cannot know which
+        // project it is reassigning.
+        //
+        // Called in two places: the per-project Design System entry (with the
+        // project context, so all three views appear) and the global Design
+        // Systems section (without it, where "change assignment" is meaningless
+        // because no single project is in scope).
+        function designSystemPane(documentId: string, projectId?: string, projectSlug?: string) {
+          const views = [
+            S.view.form().title('Edit'),
+            S.view.component(DesignSystemPreview).title('Preview'),
+          ]
+
+          if (projectId && projectSlug) {
+            views.push(
+              S.view
+                .component(DesignSystemAssignPane)
+                .options({ projectId, projectSlug, currentDSId: documentId })
+                .title('Change')
+            )
+          }
+
           return S.document()
             .documentId(documentId)
             .schemaType('designSystem')
-            .views([
-              S.view.form().title('Edit'),
-              S.view.component(DesignSystemPreview).title('Preview'),
-            ])
+            .views(views)
         }
 
         // ── Pages section builder ─────────────────────────────────────────────
@@ -261,82 +285,109 @@ export default defineConfig({
                   .title(projectLabel)
                   .items([
 
-                    // ── Pages ────────────────────────────────────────────────
-                    // Flat list: every page in one place, no schema-type folders.
+                    // ── Content ──────────────────────────────────────────────
+                    // ADR-020 Decision 4 — Pages, Collections, and Media are one
+                    // concern (the stuff an editor writes) and now sit together
+                    // under Content, rather than as three top-level siblings
+                    // competing with Design System and Modules.
                     S.listItem()
-                      .id(`${slug}-pages`)
-                      .title('Pages')
+                      .id(`${slug}-content`)
+                      .title('Content')
                       .child(
                         S.list()
-                          .id(`${slug}-pages-list`)
-                          .title('Pages')
-                          .items(buildPagesItems(slug, enabledModuleIds, projectPageDocs))
-                      ),
+                          .id(`${slug}-content-list`)
+                          .title('Content')
+                          .items([
 
-                    S.divider(),
+                            // Pages — flat list: every page in one place, no
+                            // schema-type folders.
+                            S.listItem()
+                              .id(`${slug}-pages`)
+                              .title('Pages')
+                              .child(
+                                S.list()
+                                  .id(`${slug}-pages-list`)
+                                  .title('Pages')
+                                  .items(buildPagesItems(slug, enabledModuleIds, projectPageDocs))
+                              ),
 
-                    // ── Collections ──────────────────────────────────────────
-                    // Only modules enabled for this project.
-                    // Grouped by module — add new modules to MODULE_REGISTRY above.
-                    ...(collectionItems.length > 0 ? [
-                      S.listItem()
-                        .id(`${slug}-collections`)
-                        .title('Collections')
-                        .child(
-                          S.list()
-                            .id(`${slug}-collections-list`)
-                            .title('Collections')
-                            .items(collectionItems)
-                        ),
-                      S.divider(),
-                    ] : []),
+                            // Collections — only modules enabled for this website.
+                            // Grouped by module; derived from MODULE_REGISTRY.
+                            ...(collectionItems.length > 0 ? [
+                              S.listItem()
+                                .id(`${slug}-collections`)
+                                .title('Collections')
+                                .child(
+                                  S.list()
+                                    .id(`${slug}-collections-list`)
+                                    .title('Collections')
+                                    .items(collectionItems)
+                                ),
+                            ] : []),
 
-                    // ── Media ────────────────────────────────────────────────
-                    S.listItem()
-                      .id(`${slug}-media`)
-                      .title('Media')
-                      .schemaType('mediaAsset')
-                      .child(
-                        S.documentList()
-                          .title('Media')
-                          .apiVersion('2026-05-21')
-                          .filter(`_type == "mediaAsset" && tenant._ref == $clientId`)
-                          .params({ clientId })
-                          .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
+                            // Media
+                            S.listItem()
+                              .id(`${slug}-media`)
+                              .title('Media')
+                              .schemaType('mediaAsset')
+                              .child(
+                                S.documentList()
+                                  .title('Media')
+                                  .apiVersion('2026-05-21')
+                                  .filter(`_type == "mediaAsset" && tenant._ref == $clientId`)
+                                  .params({ clientId })
+                                  .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
+                              ),
+
+                          ])
                       ),
 
                     S.divider(),
 
                     // ── Design System ────────────────────────────────────────
+                    // ADR-020 Decision 4 — a SINGLE entry. The separate "Change
+                    // Design System" item is merged in as a third view on the
+                    // same pane, so assigning and editing are one destination
+                    // instead of two sibling items that looked like two features.
+                    //
+                    // Unassigned projects have nothing to edit yet, so the entry
+                    // opens the assign pane directly.
                     S.listItem()
                       .id(`${slug}-design`)
                       .title('Design System')
                       .child(
                         designSystemId
-                          ? designSystemPane(designSystemId)
+                          ? designSystemPane(designSystemId, project._id, slug)
                           : S.component(DesignSystemAssignPane)
                               .id(`${slug}-design-assign`)
                               .title('Assign Design System')
                               .options({ projectId: project._id, projectSlug: slug })
                       ),
 
-                    ...(designSystemId ? [
-                      S.listItem()
-                        .id(`${slug}-design-change`)
-                        .title('Change Design System')
-                        .child(
-                          S.component(DesignSystemAssignPane)
-                            .id(`${slug}-design-change-pane`)
-                            .title('Change Design System')
-                            .options({ projectId: project._id, projectSlug: slug, currentDSId: designSystemId })
-                        ),
-                    ] : []),
+                    S.divider(),
+
+                    // ── Modules ──────────────────────────────────────────────
+                    // ADR-020 Decision 1 + 4 — modules are a first-class per-website
+                    // capability, so they are a top-level entry here rather than a
+                    // row buried inside Project Settings. Enable/disable, per-module
+                    // configuration, and placement all live in this pane.
+                    S.listItem()
+                      .id(`${slug}-modules`)
+                      .title('Modules')
+                      .child(
+                        S.component(ModuleList)
+                          .id(`${slug}-modules-pane`)
+                          .title('Modules')
+                          .options({ projectId: project._id, projectSlug: slug })
+                      ),
 
                     S.divider(),
 
                     // ── Website Settings ─────────────────────────────────────
-                    // siteConfig: website-specific configuration — identity, SEO,
-                    // contact info, locales, nav, social links, website behaviour.
+                    // siteConfig: true website properties — identity, SEO, locales,
+                    // navigation, social links, website behaviour. Module and
+                    // communications config does NOT belong here (ADR-020
+                    // Decision 2); it lives in the Modules pane above.
                     S.listItem()
                       .id(`${slug}-website-settings`)
                       .title('Website Settings')
@@ -381,21 +432,11 @@ export default defineConfig({
 
                             S.divider(),
 
-                            // Modules — read-only installation state.
-                            // Cross-references MODULE_REGISTRY with
-                            // moduleInstallations (B1 persistence model).
-                            // Mutations (install / uninstall) arrive in C2.
-                            S.listItem()
-                              .id(`${slug}-settings-modules`)
-                              .title('Modules')
-                              .child(
-                                S.component(ModuleList)
-                                  .id(`${slug}-settings-modules-pane`)
-                                  .title('Modules')
-                                  .options({ projectSlug: slug })
-                              ),
-
-                            S.divider(),
+                            // Modules moved OUT of Project Settings in ADR-020.
+                            // Project Settings is account infrastructure (domains,
+                            // billing, integrations, privacy, notifications);
+                            // modules are a per-website capability and now have a
+                            // top-level entry of their own above.
 
                             // Locales: configured in Website Settings → Languages only (ADR-014 one-surface; stub removed as Phase B completion)
 
@@ -660,6 +701,6 @@ export default defineConfig({
     // Note: Sanity always re-sorts the menu alphabetically in the UI layer —
     // custom ordering via newDocumentOptions is not possible. Filter only.
     newDocumentOptions: (prev) =>
-      prev.filter((opt) => !['homePage', 'homePageProjectOwned', 'livePageProjectOwned', 'eventsPageProjectOwned', 'blogPageProjectOwned'].includes(opt.templateId)),
+      prev.filter((opt) => !['homePage', 'homePageProjectOwned', 'livePageProjectOwned', 'eventsPageProjectOwned', 'blogPageProjectOwned', 'newsPageProjectOwned'].includes(opt.templateId)),
   },
 })

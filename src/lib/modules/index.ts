@@ -57,3 +57,17 @@ export { SECTION_MAP, isSectionTypeAvailable, type ModuleSectionProps, type Sect
 export { buildCollectionItems } from './navigation'
 
 export { buildModulePermissions, MODULE_PERMISSION_MAP } from './permissions'
+
+// ADR-020 — runtime readers for module-owned per-website configuration.
+// Pure data shaping over projectModuleConfigQuery; safe in every context.
+export {
+  getModuleConfig,
+  isModuleEnabled,
+  getEnabledModuleIds,
+  resolveWhatsAppConfig,
+  resolveHeaderCtaConfig,
+  type ModuleConfigRecord,
+  type ProjectModuleConfig,
+  type WhatsAppConfig,
+  type HeaderCtaConfig,
+} from './config'

@@ -247,7 +247,7 @@ export type ModuleDependency = {
 export type ModuleManifest = {
 
   // ── Identity ──────────────────────────────────────────────────────────────
-  /** Machine identifier — used in project.enabledModules and all module keys. */
+  /** Machine identifier — used in project.moduleInstallations and all module keys. */
   id: string
   /** Canonical Studio label — Admin UI concern, not website content (ADR-010). */
   label: string
