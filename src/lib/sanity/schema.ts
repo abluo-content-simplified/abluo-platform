@@ -5,6 +5,7 @@ import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, L
 import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF } from '@/lib/sanity/fields/shared'
 import { buildSchema } from '@/lib/modules/schema'
+import { buildModuleConfigSchemaTypes, buildModuleInstallationsField } from '@/lib/modules/config-schema'
 import { buildIntegrationSchemaTypes, buildIntegrationConfigsField } from '@/lib/integrations/schema'
 
 // scopedRef and projectSlugField are imported from @/lib/sanity/fields/shared.
@@ -2170,43 +2171,25 @@ const projectType = defineType({
       description: 'The design system this project uses for colors, typography, and spacing',
       hidden: true, // managed by ProjectLinker UI, not the default form
     }),
-    // ── Module installations (ADR-011 Phase B1) ─────────────────────────────
+    // ── Module installations (ADR-011 Phase B1 → ADR-020) ───────────────────
     // First-class installation records — replaces enabledModules[] string array.
-    // Each entry is one module installed on this project, carrying version,
-    // enabled state, install timestamp, config, and provenance.
+    // Each entry is one module installed on this website, carrying version,
+    // enabled state, install timestamp, provenance, and module-owned config.
     //
-    // Read by: sanity.config.ts structure builder (via enabledModuleIds GROQ
-    //          projection) and ProjectLinker display.
-    // Written by: migration 002-module-installations.ts; future Phase C2 UI.
+    // ADR-020: the shape is now GENERATED from MODULE_REGISTRY rather than
+    // hand-written here — see src/lib/modules/config-schema.ts
+    // (buildModuleInstallationsField()). The hand-written version had no
+    // `config` field at all, which is precisely why module configuration had
+    // nowhere to live and kept landing on siteConfig instead. The generated
+    // union gives each module a typed `config` sub-object derived from its own
+    // configSchema, so adding a config field to a module is a one-line manifest
+    // edit with no change to this document.
     //
-    // Hidden from the Studio form — managed programmatically.
-    defineField({
-      name: 'moduleInstallations',
-      title: 'Module Installations',
-      type: 'array',
-      of: [
-        defineArrayMember({
-          type: 'object',
-          fields: [
-            defineField({ name: 'moduleId', title: 'Module ID', type: 'string' }),
-            defineField({ name: 'version', title: 'Version', type: 'string' }),
-            defineField({ name: 'enabled', title: 'Enabled', type: 'boolean', initialValue: true }),
-            defineField({ name: 'installedAt', title: 'Installed At', type: 'string' }),
-            defineField({ name: 'provenance', title: 'Provenance', type: 'string' }),
-            // config: Record<string, unknown> — not declared in schema until modules
-            // define config schemas. Written directly via API (always {} in B1).
-          ],
-          preview: {
-            select: { title: 'moduleId', subtitle: 'version' },
-            prepare: ({ title, subtitle }: { title?: string; subtitle?: string }) => ({
-              title: title ?? 'Unknown module',
-              subtitle: subtitle ?? '',
-            }),
-          },
-        }),
-      ],
-      hidden: true, // managed programmatically; displayed via ProjectLinker
-    }),
+    // Read by:    sanity.config.ts structure builder, the Modules pane,
+    //             ProjectLinker display, and the website runtime via
+    //             projectModuleConfigQuery.
+    // Written by: the Modules pane and numbered content migrations.
+    buildModuleInstallationsField(),
 
     // ── Integration configurations (ADR-014 Phase A) ────────────────────────
     // Mirrors moduleInstallations immediately above: a generated, per-project
@@ -3890,6 +3873,11 @@ export const schemaTypes = [
   // heroLiveCaptureSection and heroLensSection are platform-distributed section
   // templates registered above; their availability is not module-gated.
   ...buildSchema(),
+  // Module config + installation member types — derived from MODULE_REGISTRY
+  // via buildModuleConfigSchemaTypes() (ADR-020). These are the object types
+  // the generated moduleInstallations array field above refers to; registering
+  // them here is what makes that union resolvable.
+  ...buildModuleConfigSchemaTypes(),
   // Integration-owned types — derived from INTEGRATION_REGISTRY via
   // buildIntegrationSchemaTypes() (ADR-014 Phase A). siteConfig.integrations
   // was removed from the schema in Phase B; runtime tracking is unmounted

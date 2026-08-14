@@ -40,6 +40,28 @@ const SEMVER_RE = /^\d+\.\d+\.\d+(-[\w.]+)?(\+[\w.]+)?$/
 const VALID_STATUSES = new Set<string>(['released', 'deprecated', 'archived'])
 const VALID_DATA_STORES = new Set<string>(['content', 'operational', 'hybrid'])
 
+/**
+ * Field shapes buildModuleConfigField() (config-schema.ts) knows how to render.
+ * Kept in sync with ModuleConfigFieldType — the generator's switch is exhaustive
+ * over the same union, so a value absent here would be a compile error there.
+ */
+const VALID_CONFIG_FIELD_TYPES = new Set<string>([
+  'string',
+  'text',
+  'boolean',
+  'number',
+  'localizedString',
+  'reference',
+])
+
+/**
+ * Sanity field names must be valid identifiers — the generated config type uses
+ * ModuleConfigFieldDef.id verbatim as the field name.
+ */
+const FIELD_ID_RE = /^[a-zA-Z][a-zA-Z0-9_]*$/
+
+const VALID_PLACEMENT_KINDS = new Set<string>(['page', 'sections', 'siteWide'])
+
 // ── Compiler-style formatter ──────────────────────────────────────────────────
 
 function formatErrors(errors: ManifestError[]): string {
@@ -86,6 +108,12 @@ function formatErrors(errors: ManifestError[]): string {
  *   10. platformContract.collections structure is valid (Phase D3).
  *   11. platformContract.permissions IDs are non-empty, unique across the
  *       registry, and start with the declaring module's id (Phase D4).
+ *   12. platformContract.configSchema is structurally valid (ADR-020): field
+ *       ids are non-empty, unique within the module, and usable as Sanity field
+ *       names; types are recognised; reference fields declare referenceTo.
+ *   13. platformContract.placement surfaces have recognised kinds, and any
+ *       siteWide toggleFieldId resolves to a declared boolean config field
+ *       (ADR-020).
  *
  * @throws {Error} If any rule is violated. The message lists all violations.
  */
@@ -329,6 +357,146 @@ export function validateRegistry(manifests: ModuleManifest[]): void {
       } else {
         permissionIdOwners.set(perm.id, mid)
       }
+    }
+
+    // ── Rule 12: configSchema structure validity ─────────────────────────────
+    // Added in ADR-020. Every declared field becomes a generated Sanity field
+    // in `${camelId}ModuleConfig` (config-schema.ts), so anything that would
+    // produce an invalid or ambiguous Sanity field must fail at build time —
+    // not at Studio load, where the diagnostic is far worse.
+    //
+    // configSchema ids are scoped to their module: two modules may both declare
+    // a field called "form" because they generate into two different object
+    // types. Only within-module uniqueness is checked.
+    const seenConfigFieldIds = new Set<string>()
+    const booleanConfigFieldIds = new Set<string>()
+    for (const field of m.platformContract.configSchema) {
+      if (!field.id || field.id.trim().length === 0) {
+        errors.push({
+          moduleId: mid,
+          rule: 12,
+          message: `platformContract.configSchema contains a field with an empty id.`,
+          fix: `Every config field must have a non-empty id — it becomes the generated Sanity field name.`,
+        })
+        continue
+      }
+
+      if (!FIELD_ID_RE.test(field.id)) {
+        errors.push({
+          moduleId: mid,
+          rule: 12,
+          message: `config field id "${field.id}" is not a valid Sanity field name.`,
+          fix: `Use a camelCase identifier: start with a letter, then letters, digits, or underscores (e.g. "whatsappNumber").`,
+        })
+      }
+
+      if (seenConfigFieldIds.has(field.id)) {
+        errors.push({
+          moduleId: mid,
+          rule: 12,
+          message: `config field id "${field.id}" is declared more than once.`,
+          fix: `Each config field id must be unique within a module's configSchema.`,
+        })
+      } else {
+        seenConfigFieldIds.add(field.id)
+        if (field.type === 'boolean') booleanConfigFieldIds.add(field.id)
+      }
+
+      if (!field.label || field.label.trim().length === 0) {
+        errors.push({
+          moduleId: mid,
+          rule: 12,
+          message: `config field "${field.id}" has an empty label.`,
+          fix: `Set a non-empty label — it is the Studio field title and the Modules pane control label.`,
+        })
+      }
+
+      if (!VALID_CONFIG_FIELD_TYPES.has(field.type)) {
+        errors.push({
+          moduleId: mid,
+          rule: 12,
+          message: `config field "${field.id}" has unrecognised type "${field.type}".`,
+          fix: `Use one of: ${[...VALID_CONFIG_FIELD_TYPES].join(', ')}.`,
+        })
+      }
+
+      // A reference with no target is unrenderable — Sanity requires `to`.
+      if (field.type === 'reference' && (!field.referenceTo || field.referenceTo.length === 0)) {
+        errors.push({
+          moduleId: mid,
+          rule: 12,
+          message: `config field "${field.id}" is a reference but declares no referenceTo targets.`,
+          fix: `Add referenceTo: ["someDocumentType"] — a Sanity reference field must declare what it points to.`,
+        })
+      }
+    }
+
+    // ── Rule 13: placement validity ──────────────────────────────────────────
+    // Added in ADR-020. Placement surfaces are rendered by the Modules pane;
+    // an unrecognised kind would render as nothing at all, silently.
+    for (const surface of m.platformContract.placement.surfaces) {
+      if (!VALID_PLACEMENT_KINDS.has(surface.kind)) {
+        errors.push({
+          moduleId: mid,
+          rule: 13,
+          message: `placement surface has unrecognised kind "${surface.kind}".`,
+          fix: `Use one of: ${[...VALID_PLACEMENT_KINDS].join(', ')}.`,
+        })
+        continue
+      }
+
+      if (!surface.description || surface.description.trim().length === 0) {
+        errors.push({
+          moduleId: mid,
+          rule: 13,
+          message: `placement surface "${surface.kind}" has an empty description.`,
+          fix: `Describe the surface — this text is what an admin reads under Placement in the Modules pane.`,
+        })
+      }
+
+      // The one writable placement decision must point at real storage.
+      // A dangling toggleFieldId would render a switch that saves nowhere.
+      if (surface.kind === 'siteWide' && surface.toggleFieldId) {
+        if (!seenConfigFieldIds.has(surface.toggleFieldId)) {
+          errors.push({
+            moduleId: mid,
+            rule: 13,
+            message: `placement siteWide toggleFieldId "${surface.toggleFieldId}" does not match any configSchema field.`,
+            fix: `Declare a boolean config field with id "${surface.toggleFieldId}", or remove toggleFieldId.`,
+          })
+        } else if (!booleanConfigFieldIds.has(surface.toggleFieldId)) {
+          errors.push({
+            moduleId: mid,
+            rule: 13,
+            message: `placement siteWide toggleFieldId "${surface.toggleFieldId}" refers to a config field that is not a boolean.`,
+            fix: `A site-wide placement toggle must be a boolean config field.`,
+          })
+        }
+      }
+    }
+
+    // ── Rule 13 (cont.): a page surface needs a pageType to point at ─────────
+    const declaresPageSurface = m.platformContract.placement.surfaces.some((s) => s.kind === 'page')
+    if (declaresPageSurface && !m.platformContract.pageType) {
+      errors.push({
+        moduleId: mid,
+        rule: 13,
+        message: `placement declares a "page" surface but the manifest has no platformContract.pageType.`,
+        fix: `Set pageType to the module's singleton page document type, or remove the "page" placement surface.`,
+      })
+    }
+
+    // ── Rule 13 (cont.): a sections surface needs section types ──────────────
+    const declaresSectionSurface = m.platformContract.placement.surfaces.some(
+      (s) => s.kind === 'sections'
+    )
+    if (declaresSectionSurface && m.platformContract.sectionTypes.length === 0) {
+      errors.push({
+        moduleId: mid,
+        rule: 13,
+        message: `placement declares a "sections" surface but platformContract.sectionTypes is empty.`,
+        fix: `Declare the section _type values this module contributes, or remove the "sections" placement surface.`,
+      })
     }
   }
 

@@ -17,6 +17,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { buildCollectionItems } from '../navigation'
+import { MODULE_REGISTRY } from '../registry'
 import type { ModuleManifest, ModuleCollectionGroupDef } from '../types'
 import type { StructureBuilder } from 'sanity/structure'
 
@@ -71,6 +72,8 @@ function makeManifestWithCollections(
       schemaTypes: [],
       schemaDefinitions: () => [],
       permissions: [],
+      configSchema: [],
+      placement: { surfaces: [] },
     },
     publicContract: {},
     dependencies: { requires: [], integratesWith: [] },
@@ -226,19 +229,23 @@ describe('buildCollectionItems — schema types', () => {
 })
 
 // ── Live MODULE_REGISTRY integration ─────────────────────────────────────────
+//
+// MODULE_REGISTRY is imported statically at the top of this file rather than
+// lazily inside each test. registry.ts transitively pulls in every module
+// schema file and therefore `sanity`; resolving that graph inside a test body
+// was costing more than the 5s per-test budget once ADR-020 added
+// config-schema.ts to it. A static import moves the cost to collection time.
 
 describe('buildCollectionItems — live MODULE_REGISTRY', () => {
-  it('returns no items for the Live module (no collections)', async () => {
+  it('returns no items for the Live module (no collections)', () => {
     const { S } = createMockS()
-    const { MODULE_REGISTRY } = await import('../registry')
     const liveModule = MODULE_REGISTRY.find((m) => m.id === 'live')!
     const result = buildCollectionItems('livener-main', S, liveModule)
     expect(result).toHaveLength(0)
   })
 
-  it('returns one group for the Blog module with the correct group ID', async () => {
+  it('returns one group for the Blog module with the correct group ID', () => {
     const { S, tracker } = createMockS()
-    const { MODULE_REGISTRY } = await import('../registry')
     const blogModule = MODULE_REGISTRY.find((m) => m.id === 'blog')!
     const result = buildCollectionItems('livener-main', S, blogModule)
     expect(result).toHaveLength(1)
@@ -249,9 +256,8 @@ describe('buildCollectionItems — live MODULE_REGISTRY', () => {
     expect(tracker.ids).toContain('livener-main-authors')
   })
 
-  it('returns one group for the Events module with the correct group ID', async () => {
+  it('returns one group for the Events module with the correct group ID', () => {
     const { S, tracker } = createMockS()
-    const { MODULE_REGISTRY } = await import('../registry')
     const eventsModule = MODULE_REGISTRY.find((m) => m.id === 'events')!
     const result = buildCollectionItems('livener-main', S, eventsModule)
     expect(result).toHaveLength(1)

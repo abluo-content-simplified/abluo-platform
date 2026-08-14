@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { validateRegistry } from '../validate'
+import { MODULE_REGISTRY } from '../registry'
 import type { ModuleManifest } from '../types'
 
 // ── Test helper ───────────────────────────────────────────────────────────────
@@ -20,6 +21,13 @@ function makeManifest(id = 'test-module'): ModuleManifest {
       schemaTypes: [`${id}-doc`],
       schemaDefinitions: () => [],
       permissions: [],
+      configSchema: [],
+      // Deliberately empty. Rule 13 cross-checks placement surfaces against
+      // pageType / sectionTypes, and many tests below mutate those two fields
+      // to exercise Rules 5–7. Declaring surfaces in the shared fixture would
+      // make those tests fail Rule 13 for reasons unrelated to what they assert.
+      // The Rule 13 tests set placement explicitly.
+      placement: { surfaces: [] },
     },
     publicContract: {},
     dependencies: {
@@ -572,14 +580,177 @@ describe('manifest validator — permission IDs (Phase D4)', () => {
   })
 })
 
+// ── Rule 12: configSchema structure (ADR-020) ────────────────────────────────
+//
+// Every declared config field becomes a generated Sanity field. A malformed
+// declaration must fail the build, not the Studio load — these tests pin each
+// way that can go wrong.
+
+describe('validateRegistry — Rule 12 (configSchema)', () => {
+  it('accepts an empty configSchema', () => {
+    const m = makeManifest()
+    m.platformContract.configSchema = []
+    expect(() => validateRegistry([m])).not.toThrow()
+  })
+
+  it('accepts a well-formed set of config fields', () => {
+    const m = makeManifest()
+    m.platformContract.configSchema = [
+      { id: 'someNumber', label: 'Some Number', type: 'string', description: 'A number.' },
+      { id: 'floating', label: 'Floating', type: 'boolean', description: 'A toggle.' },
+      {
+        id: 'form',
+        label: 'Form',
+        type: 'reference',
+        referenceTo: ['formDefinition'],
+        description: 'A form.',
+      },
+    ]
+    expect(() => validateRegistry([m])).not.toThrow()
+  })
+
+  it('rejects an empty config field id', () => {
+    const m = makeManifest()
+    m.platformContract.configSchema = [{ id: '', label: 'X', type: 'string', description: 'd' }]
+    expect(() => validateRegistry([m])).toThrow(/empty id/)
+  })
+
+  it('rejects a config field id that is not a valid Sanity field name', () => {
+    const m = makeManifest()
+    m.platformContract.configSchema = [
+      { id: 'not-camel-case', label: 'X', type: 'string', description: 'd' },
+    ]
+    expect(() => validateRegistry([m])).toThrow(/not a valid Sanity field name/)
+  })
+
+  it('rejects duplicate config field ids within one module', () => {
+    const m = makeManifest()
+    m.platformContract.configSchema = [
+      { id: 'dupe', label: 'A', type: 'string', description: 'd' },
+      { id: 'dupe', label: 'B', type: 'string', description: 'd' },
+    ]
+    expect(() => validateRegistry([m])).toThrow(/declared more than once/)
+  })
+
+  it('allows the same config field id in two different modules', () => {
+    // Each module generates into its own object type, so ids are module-scoped.
+    const a = makeManifest('alpha')
+    const b = makeManifest('beta')
+    for (const m of [a, b]) {
+      m.platformContract.configSchema = [
+        { id: 'form', label: 'Form', type: 'reference', referenceTo: ['x'], description: 'd' },
+      ]
+    }
+    expect(() => validateRegistry([a, b])).not.toThrow()
+  })
+
+  it('rejects an empty config field label', () => {
+    const m = makeManifest()
+    m.platformContract.configSchema = [{ id: 'ok', label: '  ', type: 'string', description: 'd' }]
+    expect(() => validateRegistry([m])).toThrow(/empty label/)
+  })
+
+  it('rejects an unrecognised config field type', () => {
+    const m = makeManifest()
+    m.platformContract.configSchema = [
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { id: 'ok', label: 'X', type: 'colorPicker' as any, description: 'd' },
+    ]
+    expect(() => validateRegistry([m])).toThrow(/unrecognised type/)
+  })
+
+  it('rejects a reference field with no referenceTo targets', () => {
+    const m = makeManifest()
+    m.platformContract.configSchema = [
+      { id: 'form', label: 'Form', type: 'reference', description: 'd' },
+    ]
+    expect(() => validateRegistry([m])).toThrow(/declares no referenceTo targets/)
+  })
+})
+
+// ── Rule 13: placement (ADR-020) ─────────────────────────────────────────────
+
+describe('validateRegistry — Rule 13 (placement)', () => {
+  it('accepts an empty surfaces array — a module need not surface on the website', () => {
+    const m = makeManifest()
+    m.platformContract.placement = { surfaces: [] }
+    expect(() => validateRegistry([m])).not.toThrow()
+  })
+
+  it('rejects an unrecognised placement kind', () => {
+    const m = makeManifest()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    m.platformContract.placement = { surfaces: [{ kind: 'sidebar' as any, description: 'd' }] }
+    expect(() => validateRegistry([m])).toThrow(/unrecognised kind/)
+  })
+
+  it('rejects a placement surface with an empty description', () => {
+    const m = makeManifest()
+    m.platformContract.placement = { surfaces: [{ kind: 'siteWide', description: '' }] }
+    expect(() => validateRegistry([m])).toThrow(/empty description/)
+  })
+
+  it('rejects a "page" surface on a manifest with no pageType', () => {
+    const m = makeManifest()
+    delete m.platformContract.pageType
+    m.platformContract.placement = { surfaces: [{ kind: 'page', description: 'A page.' }] }
+    expect(() => validateRegistry([m])).toThrow(/no platformContract\.pageType/)
+  })
+
+  it('rejects a "sections" surface on a manifest with no sectionTypes', () => {
+    const m = makeManifest()
+    m.platformContract.sectionTypes = []
+    m.platformContract.placement = { surfaces: [{ kind: 'sections', description: 'Sections.' }] }
+    expect(() => validateRegistry([m])).toThrow(/sectionTypes is empty/)
+  })
+
+  it('rejects a siteWide toggleFieldId that matches no config field', () => {
+    // A dangling toggle would render a switch in the Modules pane that saves nowhere.
+    const m = makeManifest()
+    m.platformContract.configSchema = []
+    m.platformContract.placement = {
+      surfaces: [{ kind: 'siteWide', description: 'A widget.', toggleFieldId: 'floating' }],
+    }
+    expect(() => validateRegistry([m])).toThrow(/does not match any configSchema field/)
+  })
+
+  it('rejects a siteWide toggleFieldId pointing at a non-boolean config field', () => {
+    const m = makeManifest()
+    m.platformContract.configSchema = [
+      { id: 'floating', label: 'Floating', type: 'string', description: 'd' },
+    ]
+    m.platformContract.placement = {
+      surfaces: [{ kind: 'siteWide', description: 'A widget.', toggleFieldId: 'floating' }],
+    }
+    expect(() => validateRegistry([m])).toThrow(/is not a boolean/)
+  })
+
+  it('accepts a siteWide toggleFieldId pointing at a boolean config field', () => {
+    const m = makeManifest()
+    m.platformContract.configSchema = [
+      { id: 'floating', label: 'Floating', type: 'boolean', description: 'd' },
+    ]
+    m.platformContract.placement = {
+      surfaces: [{ kind: 'siteWide', description: 'A widget.', toggleFieldId: 'floating' }],
+    }
+    expect(() => validateRegistry([m])).not.toThrow()
+  })
+})
+
 // ── Live MODULE_REGISTRY ──────────────────────────────────────────────────────
 // Explicit confirmation that the production registry passes all structural rules.
 // Note: importing registry.ts also runs validateRegistry as a side effect —
 // this test makes the passing check visible and documents the intent.
+//
+// MODULE_REGISTRY is imported statically at the top of this file rather than
+// lazily inside the test. registry.ts transitively pulls in every module schema
+// file and therefore `sanity`; resolving that graph inside the test body was
+// costing more than the 5s per-test budget once ADR-020 added config-schema.ts
+// to it. A static import moves the cost to collection time, where it belongs,
+// and the assertion is unchanged.
 
 describe('live MODULE_REGISTRY', () => {
-  it('passes all structural rules without throwing', async () => {
-    const { MODULE_REGISTRY } = await import('../registry')
+  it('passes all structural rules without throwing', () => {
     expect(() => validateRegistry(MODULE_REGISTRY)).not.toThrow()
   })
 })

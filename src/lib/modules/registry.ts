@@ -110,6 +110,18 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           defaultRoles: ['owner', 'editor'],
         },
       ],
+
+      // ADR-020 — Blog has no per-site configuration today: everything an
+      // editor controls lives on the blogPage document or the listing section.
+      // The empty array is a real answer, not a placeholder.
+      configSchema: [],
+
+      placement: {
+        surfaces: [
+          { kind: 'page', description: 'Blog index page at /blog, with its own hero, intro, and SEO.' },
+          { kind: 'sections', description: 'Blog Listing section — composable into any page.' },
+        ],
+      },
     },
 
     publicContract: {},
@@ -195,6 +207,15 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           defaultRoles: ['owner', 'editor'],
         },
       ],
+
+      configSchema: [],
+
+      placement: {
+        surfaces: [
+          { kind: 'page', description: 'Events index page at /events, with its own hero, intro, and SEO.' },
+          { kind: 'sections', description: 'Events Listing section — composable into any page.' },
+        ],
+      },
     },
 
     publicContract: {},
@@ -249,6 +270,16 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           defaultRoles: ['owner', 'editor'],
         },
       ],
+
+      configSchema: [],
+
+      placement: {
+        surfaces: [
+          { kind: 'page', description: 'Live page at /live, showing the current or next broadcast.' },
+          { kind: 'sections', description: 'Live Latest section — composable into any page.' },
+        ],
+        note: 'The Live Capture and Lens hero templates are platform sections — they stay available whether or not this module is active.',
+      },
     },
 
     publicContract: {},
@@ -329,6 +360,15 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           defaultRoles: [],
         },
       ],
+
+      // Header-CTA config (ADR-020 Decision 2) lands here in the communications
+      // phase, together with the WhatsApp module. Empty until then.
+      configSchema: [],
+
+      placement: {
+        surfaces: [],
+        note: 'The Form and Form Overlay Button sections are platform sections — they stay available whether or not this module is active. Where an individual form appears is decided by the page that composes it.',
+      },
     },
 
     publicContract: {},

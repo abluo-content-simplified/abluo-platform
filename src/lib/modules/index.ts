@@ -26,6 +26,10 @@ export {
   type ModuleCollectionGroupDef,
   type ModuleCollectionItemDef,
   type ModuleCategory,
+  type ModuleConfigFieldDef,
+  type ModuleConfigFieldType,
+  type ModulePlacementDef,
+  type ModulePlacementSurface,
   type ModulePermissionDef,
   type ModulePermissionMap,
   type ModuleDependency,
@@ -35,6 +39,16 @@ export {
 export { MODULE_REGISTRY } from './registry'
 
 export { buildSchema } from './schema'
+
+// ADR-020 — generated per-module config + installation Sanity types.
+// Safe in both bundles (imports `sanity`, never `sanity/structure`).
+export {
+  buildModuleConfigSchemaTypes,
+  buildModuleInstallationsField,
+  moduleConfigTypeName,
+  moduleInstallationTypeName,
+  moduleInstallationTypeNameForId,
+} from './config-schema'
 
 export { SECTION_MAP, isSectionTypeAvailable, type ModuleSectionProps, type SectionComponentMap } from './sections'
 

@@ -71,6 +71,120 @@ export type ModuleCollectionGroupDef = {
   items: ModuleCollectionItemDef[]
 }
 
+// ── Module configuration types ────────────────────────────────────────────────
+// ADR-020 Decision 1 — "Configuration: module-owned settings, defined by a
+// per-module config schema (the currently-undeclared `config` slot gains a
+// real, typed shape per module)."
+//
+// Design notes:
+//
+// This mirrors IntegrationFieldDef (src/lib/integrations/types.ts) deliberately.
+// Both describe "a per-project configurable value, declared in a manifest and
+// generated into a Sanity object type" — one registry mechanism, two registries.
+// Where the shapes differ it is because modules genuinely need more than
+// integrations do: modules configure references to other documents (a WhatsApp
+// message form, a header-CTA form), which no integration does.
+//
+// `type` is a CLOSED union here, unlike IntegrationFieldDef's free-form string.
+// Integrations left it open because ADR-014's literal interface did not
+// enumerate values; ADR-020 has no such constraint, and a closed union means
+// buildModuleConfigField() cannot silently misrender an unrecognised type —
+// TypeScript makes the switch exhaustive.
+
+/**
+ * The field shapes a module may declare in its config schema.
+ *
+ * string           — plain Sanity string (Rule.required/Rule.regex per declaration)
+ * text             — multi-line string
+ * boolean          — Sanity boolean, defaults to `initialValue ?? false`
+ * number           — Sanity number
+ * localizedString  — platform localizedString (multilingual-first; see CLAUDE.md)
+ * reference        — reference to one or more document types, `referenceTo` required
+ */
+export type ModuleConfigFieldType =
+  | 'string'
+  | 'text'
+  | 'boolean'
+  | 'number'
+  | 'localizedString'
+  | 'reference'
+
+/**
+ * One configurable value a module exposes per site.
+ * Generates one Sanity field inside that module's generated
+ * `${camelId}ModuleConfig` object type (see config-schema.ts), and one control
+ * in the Modules pane.
+ */
+export type ModuleConfigFieldDef = {
+  /** Unique within the manifest. Becomes the generated Sanity field name. */
+  id: string
+  /** Studio field label. */
+  label: string
+  /** Field shape — see ModuleConfigFieldType. */
+  type: ModuleConfigFieldType
+  /** Whether Sanity's Rule.required() is attached to the generated field. */
+  required?: boolean
+  /** Admin-facing help text. Shown in the Studio field and the Modules pane. */
+  description: string
+  /**
+   * Document type names this reference may point to.
+   * REQUIRED when type === 'reference'; ignored otherwise (validator Rule 12).
+   */
+  referenceTo?: string[]
+  /**
+   * GROQ filter narrowing the reference picker, e.g.
+   * `_type == "formDefinition" && role == "active"`.
+   * Only meaningful when type === 'reference'.
+   */
+  referenceFilter?: string
+  /** Default applied to the generated Sanity field. */
+  initialValue?: string | number | boolean
+  /** Regex validation, generated as Rule.regex(...).error(message). String types only. */
+  validation?: { regex: string; message: string }
+}
+
+// ── Module placement ──────────────────────────────────────────────────────────
+// ADR-020 Decision 1 — "Placement: where the module surfaces (pages/sections/
+// site-wide), declared per site."
+//
+// Design note — why placement is mostly DERIVED and not a new persistence layer:
+//
+// Two of the three placement surfaces are already fully described by the
+// manifest: a module's singleton page is `platformContract.pageType`, and the
+// sections it can be composed into are `platformContract.sectionTypes`. Where a
+// section actually appears on a given site is decided by the page's `sections[]`
+// array — that is the page's business, not the module's (CLAUDE.md: "Sections
+// and Modules are orthogonal. Never couple them."). Inventing a second,
+// module-side record of "which pages use my section" would duplicate that array
+// and immediately drift from it.
+//
+// So ModulePlacementDef declares what surfaces a module CAN occupy, the Modules
+// pane renders those as read-only facts derived from the manifest, and the one
+// genuinely per-site writable placement decision — whether a site-wide surface
+// is switched on, e.g. the floating WhatsApp button — is carried by a normal
+// config field named in `toggleFieldId`. One writable surface, one storage
+// location, no duplicated state.
+
+export type ModulePlacementSurface =
+  /** The module's singleton page (platformContract.pageType). */
+  | { kind: 'page'; description: string }
+  /** Sections the module contributes to page composition (platformContract.sectionTypes). */
+  | { kind: 'sections'; description: string }
+  /**
+   * A surface the module renders on every page of the site, independent of page
+   * composition — e.g. a floating button in the layout.
+   * `toggleFieldId` names the boolean config field that switches it on per site;
+   * validator Rule 13 checks it resolves to a declared boolean field.
+   */
+  | { kind: 'siteWide'; description: string; toggleFieldId?: string }
+
+export type ModulePlacementDef = {
+  /** The surfaces this module can occupy. Empty = the module has no website surface. */
+  surfaces: ModulePlacementSurface[]
+  /** Optional admin-facing note rendered under Placement in the Modules pane. */
+  note?: string
+}
+
 // ── Module category ───────────────────────────────────────────────────────────
 // Non-functional in Phase A2. Reserved for future UI filtering and grouping.
 export type ModuleCategory =
@@ -193,6 +307,29 @@ export type ModuleManifest = {
      * Consumed by Phase D4 (Permission Derivation).
      */
     permissions: ModulePermissionDef[]
+    /**
+     * Per-site configuration fields this module owns (ADR-020 Decision 1).
+     *
+     * Generated into a `${camelId}ModuleConfig` Sanity object type by
+     * buildModuleSchemaTypes() and rendered as editable controls by the
+     * Modules pane. Values are persisted in
+     * `project.moduleInstallations[moduleId == …].config`.
+     *
+     * An empty array is valid and common — it means "this module has status
+     * and data but nothing to configure per site". A config type is still
+     * generated for it, so every module has the same uniform shape.
+     *
+     * This is where communications config lives after ADR-020 Decision 2:
+     * module config, never siteConfig.
+     */
+    configSchema: ModuleConfigFieldDef[]
+    /**
+     * Where this module surfaces on a website (ADR-020 Decision 1).
+     * Mostly derived facts rendered read-only by the Modules pane; see the
+     * design note on ModulePlacementDef for why this is not a second
+     * persistence layer.
+     */
+    placement: ModulePlacementDef
   }
 
   // ── Public contract ────────────────────────────────────────────────────────
@@ -239,8 +376,13 @@ export type ModuleManifest = {
 // it signals that the project's content conforms to the old version until
 // an admin-triggered update is applied (Phase E1–E2).
 //
-// config is intentionally Record<string, unknown> for now. No module declares
-// a config schema yet. Type-narrowing is deferred until Phase C2.
+// config stays Record<string, unknown> by design (ADR-020). Each module's
+// generated `${camelId}ModuleConfig` Sanity object type is the source of shape
+// and validation truth in the Studio — exactly as IntegrationConfig.values
+// stays generic against its generated `*IntegrationValues` type. Narrowing this
+// to a per-module union in TypeScript would require the consuming code to
+// discriminate on moduleId at every read site for no safety that the generated
+// schema and readModuleConfig() do not already provide.
 export type ModuleInstallation = {
   /** References ModuleManifest.id — the module being installed. */
   moduleId: string
@@ -250,7 +392,10 @@ export type ModuleInstallation = {
   enabled: boolean
   /** ISO 8601 datetime when the installation record was created. */
   installedAt: string
-  /** Module-specific configuration. Empty object until modules declare config schemas. */
+  /**
+   * Module-specific configuration, shaped by the manifest's configSchema.
+   * `{}` for a module that declares no config fields.
+   */
   config: Record<string, unknown>
   /** How this installation record was created — 'admin' (manual) or 'auto' (migration). */
   provenance: 'admin' | 'auto'
