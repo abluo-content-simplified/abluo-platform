@@ -384,33 +384,6 @@ const scheduleItemType = defineType({
   },
 })
 
-const whatsappSubjectType = defineType({
-  name: 'whatsappSubject',
-  title: 'WhatsApp Subject',
-  type: 'object',
-  fields: [
-    defineField({ name: 'subject', title: 'Subject', type: 'localizedString' }),
-  ],
-  preview: {
-    select: { title: 'subject.en' },
-    prepare: ({ title }) => ({ title: title ?? '—' }),
-  },
-})
-
-const emailSubjectType = defineType({
-  name: 'emailSubject',
-  title: 'Email Subject',
-  type: 'object',
-  fields: [
-    defineField({ name: 'subject', title: 'Subject Line', type: 'localizedString' }),
-    defineField({ name: 'firstLine', title: 'First Line of Email Body', type: 'localizedText' }),
-  ],
-  preview: {
-    select: { title: 'subject.en' },
-    prepare: ({ title }) => ({ title: title ?? '—' }),
-  },
-})
-
 // ─── projectSlug — the shared linking field ───────────────────────────────────
 //
 // PATTERN FOR PROJECT-SCOPED CONTENT TYPES:
@@ -2985,14 +2958,10 @@ const designSystemType = defineType({
       title: 'Branding',
       type: 'object',
       group: 'branding',
+      description: 'Logo display sizing. Identity assets (logo, favicon, social image) live per-site in Website Settings → Branding, not in the shared Design System.',
       fields: [
-        defineField({ name: 'logo', title: 'Logo (dark background)', type: 'image', options: { hotspot: false } }),
-        defineField({ name: 'logoLight', title: 'Logo (light background)', type: 'image', options: { hotspot: false } }),
         defineField({ name: 'logoHeightDesktop', title: 'Logo Height — Desktop (px)', type: 'number', description: 'Max height of the logo in the header on desktop. Typical: 28–40px.', initialValue: 32 }),
         defineField({ name: 'logoHeightMobile', title: 'Logo Height — Mobile (px)', type: 'number', description: 'Max height of the logo in the header on mobile. Typical: 24–32px.', initialValue: 28 }),
-        defineField({ name: 'favicon', title: 'Favicon', type: 'image', options: { hotspot: false } }),
-        defineField({ name: 'openGraphImage', title: 'Open Graph Image', type: 'image', description: 'Social Sharing Image • 1200 x 630 pixels • Aspect ratio: 1.91:1 • JPG preferred', options: { hotspot: false } }),
-        defineField({ name: 'appleTouchIcon', title: 'Apple Touch Icon', type: 'image', description: 'Used when saved to iPhone/iPad home screen • 180 x 180 pixels • PNG', options: { hotspot: false } }),
       ],
     }),
 
@@ -3552,13 +3521,9 @@ const siteConfigType = defineType({
       readOnly: true,
       description: '⚠️ Legacy flat text field. Migrate content to Business Location above, then this field can be removed.',
     }),
-    defineField({ name: 'contactEmail', title: 'Contact Form Recipient Email', type: 'string', group: 'contact' }),
-    defineField({ name: 'mobileNumber', title: 'Mobile Number', type: 'string', group: 'contact' }),
     defineField({ name: 'whatsappNumber', title: 'WhatsApp Number', type: 'string', group: 'contact', description: 'International format, e.g. +39 335 …. When set, WhatsApp buttons can appear.' }),
     defineField({ name: 'whatsappForm', title: 'WhatsApp Message Form', type: 'reference', to: [{ type: 'formDefinition' }], group: 'contact', description: 'Subject + message form opened by WhatsApp buttons. The lead is saved (and shows in the dashboard) before handing off to WhatsApp pre-filled.', options: { filter: '_type == "formDefinition" && role == "active"' } }),
     defineField({ name: 'whatsappFloating', title: 'Floating WhatsApp Button', type: 'boolean', group: 'contact', initialValue: false, description: 'Show a WhatsApp button pinned to the bottom-right corner on every page (requires WhatsApp Number + Form above).' }),
-    defineField({ name: 'whatsappSubjects', title: 'WhatsApp Subject Options', type: 'array', group: 'contact', of: [defineArrayMember({ type: 'whatsappSubject' })], validation: (Rule) => Rule.max(5) }),
-    defineField({ name: 'emailSubjects', title: 'Email Subject Options', type: 'array', group: 'contact', of: [defineArrayMember({ type: 'emailSubject' })], validation: (Rule) => Rule.max(5) }),
     defineField({ name: 'footerLinks', title: 'Footer Links', type: 'array', group: 'footer', of: [defineArrayMember({ type: 'navigationLink' })] }),
     defineField({ name: 'footerCtaHeading', title: 'Footer CTA Heading', type: 'localizedString', group: 'footer' }),
     defineField({ name: 'footerCtaSubtext', title: 'Footer CTA Subtext', type: 'localizedString', group: 'footer' }),
@@ -3873,8 +3838,6 @@ export const schemaTypes = [
   navigationLinkType,
   socialLinkType,
   scheduleItemType,
-  whatsappSubjectType,
-  emailSubjectType,
   heroSectionType,
   heroLiveCaptureSectionType,
   heroLensSectionType,

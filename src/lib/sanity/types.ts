@@ -469,16 +469,14 @@ export interface DesignSystem {
    * Sections reference a style by key; this array defines what each key looks like.
    */
   mediaStyles?: MediaStyleDefinition[]
+  /**
+   * Logo display sizing only. Identity assets (logo, favicon, OG image,
+   * apple-touch icon) are owned per-site in WebsiteSiteConfig → branding,
+   * never in the shared, cloneable Design System.
+   */
   branding?: {
-    logo?: { asset?: { _ref: string } }
-    logoLight?: { asset?: { _ref: string } }
     logoHeightDesktop?: number
     logoHeightMobile?: number
-    favicon?: { asset?: { _ref: string } }
-    /** LOCAL ONLY — never inherited */
-    openGraphImage?: { asset?: { _ref: string } }
-    /** LOCAL ONLY — never inherited */
-    appleTouchIcon?: { asset?: { _ref: string } }
   }
   backgroundAssets?: BackgroundAsset[]
 }

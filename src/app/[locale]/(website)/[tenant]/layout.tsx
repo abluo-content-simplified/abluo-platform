@@ -391,14 +391,11 @@ function DesignSystemHead({ cssVars, fontsUrl }: { cssVars: string; fontsUrl: st
 
 // ─── Metadata (favicon) ───────────────────────────────────────────────────────
 //
-// Precedence:
+// Identity assets are owned per-site in Website Settings (siteConfig), never the
+// shared Design System. Favicon precedence:
 //   1. siteConfig.faviconSvg  — tenant brand favicon (SVG, preferred)
 //   2. siteConfig.faviconPng  — tenant brand favicon (PNG fallback)
-//   3. designSystem.branding.favicon — DS-level favicon
-//   4. /favicon.ico           — Abluo platform default (implicit, no override needed)
-//
-// favicon is LOCAL ONLY in DS resolver — it is never inherited from the parent
-// design system. This guarantees tenants never accidentally show Abluo's favicon.
+//   3. /favicon.ico           — Abluo platform default (implicit, no override needed)
 
 export async function generateMetadata({ params }: { params: Promise<{ tenant: string; locale: string }> }): Promise<Metadata> {
   const { tenant: tenantId } = await params
@@ -408,37 +405,30 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
   if (!tryTenantToProjectSlug(tenantId)) notFound()
   const { fetchForTenant } = tenantClient(tenantId)
 
-  const [siteConfigFavicon, rawDesignSystem] = await Promise.all([
-    fetchForTenant<{
-      faviconSvg?:      { asset?: { _ref: string } }
-      faviconPng?:      { asset?: { _ref: string } }
-      openGraphImage?:  { asset?: { _ref: string } }
-      appleTouchIcon?:  { asset?: { _ref: string } }
-      googleSiteVerification?: string
-      bingSiteVerification?:   string
-    }>(siteConfigFaviconQuery, {}),
-    fetchForTenant<DesignSystem>(designSystemQuery, {}),
-  ])
-
-  const designSystem = await resolveDesignSystemInheritance(rawDesignSystem, fetchDesignSystemById)
+  const siteConfigFavicon = await fetchForTenant<{
+    faviconSvg?:      { asset?: { _ref: string } }
+    faviconPng?:      { asset?: { _ref: string } }
+    openGraphImage?:  { asset?: { _ref: string } }
+    appleTouchIcon?:  { asset?: { _ref: string } }
+    googleSiteVerification?: string
+    bingSiteVerification?:   string
+  }>(siteConfigFaviconQuery, {})
 
   // ── Favicon — first available wins ──────────────────────────────────────────
-  // Precedence: siteConfig.faviconSvg → siteConfig.faviconPng → DS.branding.favicon
+  // Identity assets are owned per-site (Website Settings), never the design system.
+  // Precedence: siteConfig.faviconSvg → siteConfig.faviconPng
   const faviconSrc =
     (siteConfigFavicon?.faviconSvg?.asset ? imageUrl(siteConfigFavicon.faviconSvg as any, 64) : null) ??
     (siteConfigFavicon?.faviconPng?.asset ? imageUrl(siteConfigFavicon.faviconPng as any, 64) : null) ??
-    (designSystem?.branding?.favicon?.asset ? imageUrl(designSystem.branding.favicon as any, 64) : null) ??
     undefined
 
-  // ── Open Graph image — first available wins ──────────────────────────────────
-  // Precedence: siteConfig.openGraphImage → DS.branding.openGraphImage → none
-  // Forced to JPG (1200×630) — social crawlers (WhatsApp, LinkedIn, FB, X) may
-  // not accept WebP/AVIF returned by auto('format').
-  // This image is the default for ALL pages in this tenant. Page-level metadata
-  // (events, blog posts) overrides it with their own specific image.
+  // ── Open Graph image ─────────────────────────────────────────────────────────
+  // Owned per-site (Website Settings → openGraphImage). Forced to JPG (1200×630) —
+  // social crawlers (WhatsApp, LinkedIn, FB, X) may not accept WebP/AVIF returned
+  // by auto('format'). This is the default for ALL pages in this tenant; page-level
+  // metadata (events, blog posts) overrides it with their own specific image.
   const ogSrc =
     (siteConfigFavicon?.openGraphImage?.asset ? ogImageUrl(siteConfigFavicon.openGraphImage as any) : null) ??
-    (designSystem?.branding?.openGraphImage?.asset ? ogImageUrl(designSystem.branding.openGraphImage as any) : null) ??
     undefined
 
   const appleTouchIconSrc = siteConfigFavicon?.appleTouchIcon?.asset
@@ -505,12 +495,6 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   const headingFont = getFontName(designSystem?.typography?.headingFont, 'Geist')
   const bodyFont = getFontName(designSystem?.typography?.bodyFont, 'Geist')
   const fontsUrl = buildGoogleFontsUrl(headingFont, bodyFont)
-
-  // ── Branding assets from design system ───────────────────────────────────────
-  const logoAsset = designSystem?.branding?.logo
-  const logoLightAsset = designSystem?.branding?.logoLight
-  const logoDarkSrc = logoAsset?.asset ? imageUrl(logoAsset as any, 320) : undefined
-  const logoLightSrc = logoLightAsset?.asset ? imageUrl(logoLightAsset as any, 320) : logoDarkSrc
 
   // ── Livener — header appearance system + nav client + footer ─────────────────
   if (tenantId === 'livener') {
@@ -601,6 +585,10 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   const config = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
   // ADR-014 Phase C — runtime tracking/analytics config (project.integrationConfigs + project.privacy).
   const integrations = await fetchForTenant<ProjectIntegrations>(projectIntegrationsQuery, {})
+
+  // ── Branding assets — owned per-site (Website Settings), not the design system ─
+  const logoSrc = config?.logo ? imageUrl(config.logo as any, 320) : undefined
+  const logoLightSrc = config?.logoLight ? imageUrl(config.logoLight as any, 320) : logoSrc
   const cssVars = buildCssVars(designSystem, { desktop: config?.logoHeightDesktop, mobile: config?.logoHeightMobile })
 
   // ── Background graphic rendering ─────────────────────────────────────────────
@@ -618,10 +606,10 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
       )}
       <HeaderAppearanceWrapper config={config?.headerAppearance}>
         <NavClient
-          logoSrc={logoDarkSrc}
-          logoLightSrc={logoLightSrc ?? logoDarkSrc}
+          logoSrc={logoSrc}
+          logoLightSrc={logoLightSrc ?? logoSrc}
           logoAlt={config?.siteName ?? tenantId}
-          siteName={logoDarkSrc ? (config?.siteName ?? undefined) : undefined}
+          siteName={logoSrc ? (config?.siteName ?? undefined) : undefined}
           navLinks={resolveNavLinks(config?.navLinks, locale as SupportedLocale, tenantId)}
           ctaLabel={config?.ctaLabel ?? undefined}
           ctaHref={config?.ctaHref ?? undefined}
@@ -660,10 +648,10 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
       >
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           {/* Logo in footer */}
-          {logoDarkSrc ? (
+          {logoSrc ? (
             <a href={`/${locale}/${tenantId}`} className="transition-opacity hover:opacity-100">
               <img
-                src={logoDarkSrc}
+                src={logoSrc}
                 alt={config?.siteName ?? tenantId}
                 style={{ height: 'var(--logo-height-mobile)', width: 'auto', opacity: 0.6 }}
               />

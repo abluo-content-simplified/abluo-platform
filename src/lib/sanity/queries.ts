@@ -286,11 +286,9 @@ export const localeConfigQuery = /* groq */ `
 `
 
 // ─── Favicon-only query (no locale params needed) ─────────────────────────────
-// Used by generateMetadata in the tenant layout. Fetches only the favicon
-// fields from siteConfig so we can apply the three-level precedence:
-//   siteConfig.faviconSvg → siteConfig.faviconPng → designSystem.branding.favicon
-// Fetches branding assets needed for <head> metadata only (no locale params).
-// Used by generateMetadata in the tenant layout to resolve favicon + OG image.
+// Used by generateMetadata in the tenant layout. Fetches only the identity
+// fields from siteConfig for <head> metadata (favicon, OG image, apple-touch).
+// Precedence: siteConfig.faviconSvg → siteConfig.faviconPng → /favicon.ico.
 export const siteConfigFaviconQuery = /* groq */ `
   *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
     faviconSvg { asset },
@@ -1372,11 +1370,8 @@ export const DS_FIELDS_SELECTION = /* groq */ `{
   },
 
   branding {
-    logo { asset },
-    logoLight { asset },
     logoHeightDesktop,
-    logoHeightMobile,
-    favicon { asset }
+    logoHeightMobile
   },
 
   backgroundAssets[] {

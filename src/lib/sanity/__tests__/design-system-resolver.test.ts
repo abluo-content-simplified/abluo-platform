@@ -122,9 +122,6 @@ const abluo_base: DesignSystem & { _id: string; parentDesignSystem: null } = {
     sectionPaddingYLarge:   144,
   },
   branding: {
-    logo:    { asset: { _ref: 'abluo-base-logo' } },
-    logoLight: { asset: { _ref: 'abluo-base-logo-light' } },
-    favicon: { asset: { _ref: 'abluo-base-favicon' } },
     logoHeightDesktop: 32,
     logoHeightMobile:  28,
   },
@@ -174,7 +171,6 @@ const martegani_ds: DesignSystem & { _id: string; parentDesignSystem: { _ref: st
     headingFont: { source: 'google', googleFont: 'Playfair Display' }, // Override heading font
   },
   branding: {
-    logo: { asset: { _ref: 'martegani-logo' } },
     logoHeightDesktop: 48, // override Base's 32
   },
   cardVariants: [
@@ -344,21 +340,8 @@ describe('resolveDesignSystemInheritance', () => {
       expect(keys).toContain('dots')
     })
 
-    // Branding — LOCAL ONLY
-    it('does NOT inherit parent logo (LOCAL ONLY)', async () => {
-      const result = await resolve()
-      expect(result?.branding?.logo).toBeUndefined()
-    })
-
-    it('does NOT inherit parent logoLight (LOCAL ONLY)', async () => {
-      const result = await resolve()
-      expect(result?.branding?.logoLight).toBeUndefined()
-    })
-
-    it('does NOT inherit parent favicon (LOCAL ONLY)', async () => {
-      const result = await resolve()
-      expect(result?.branding?.favicon).toBeUndefined()
-    })
+    // Identity assets (logo/favicon/OG) are no longer part of the Design System —
+    // they live per-site in WebsiteSiteConfig. Only logoHeight (sizing) remains here.
 
     // logoHeight — INHERIT (sizing token, not identity asset)
     it('inherits parent logoHeightDesktop', async () => {
@@ -399,17 +382,6 @@ describe('resolveDesignSystemInheritance', () => {
     it('inherits parent background color', async () => {
       const result = await resolve()
       expect(result?.colors?.lightTheme?.background).toBe('oklch(1 0 0)')
-    })
-
-    it('uses own logo (not Base logo)', async () => {
-      const result = await resolve()
-      expect(result?.branding?.logo?.asset?._ref).toBe('martegani-logo')
-    })
-
-    it('does not inherit Base logo even when tenant sets its own', async () => {
-      // The tenant logo is its own, not inherited — the _ref should be tenant's
-      const result = await resolve()
-      expect(result?.branding?.logo?.asset?._ref).not.toBe('abluo-base-logo')
     })
 
     it('uses child logoHeightDesktop override (48)', async () => {

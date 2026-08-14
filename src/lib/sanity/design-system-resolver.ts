@@ -6,11 +6,10 @@
  *
  * Inheritance rules:
  *
- * LOCAL ONLY — never inherited from parent (brand identity assets):
- *   branding.logo, branding.logoLight, branding.favicon,
- *   branding.openGraphImage, branding.appleTouchIcon
- *   Reason: each tenant has its own visual identity; inheriting a logo would
- *   make a child tenant accidentally show the parent's logo.
+ * NOTE — brand identity assets (logo, logoLight, favicon, openGraphImage,
+ *   appleTouchIcon) are NOT part of the Design System. They are owned per-site
+ *   in Website Settings (siteConfig), so a cloned/inherited Design System never
+ *   carries another site's identity. Only logo sizing lives here.
  *
  * INHERIT WITH OVERRIDE — use child value if set, else fall back to parent:
  *   colors, typography, radius, spacing, buttons, cards, sectionSurfaces,
@@ -100,14 +99,9 @@ function mergeDesignSystems(
     eyebrowAccent: child.eyebrowAccent || parent.eyebrowAccent,
 
     // ─── Branding ────────────────────────────────────────────────────────────
+    // Identity assets (logo, favicon, OG, apple-touch) are owned per-site in
+    // Website Settings, not the Design System. Only logo sizing lives here.
     branding: {
-      // LOCAL ONLY — never inherited (brand identity assets)
-      logo:            child.branding?.logo            || undefined,
-      logoLight:       child.branding?.logoLight       || undefined,
-      favicon:         child.branding?.favicon         || undefined,
-      openGraphImage:  child.branding?.openGraphImage  || undefined,
-      appleTouchIcon:  child.branding?.appleTouchIcon  || undefined,
-
       // INHERIT WITH OVERRIDE — sizing tokens, not identity
       logoHeightDesktop: child.branding?.logoHeightDesktop !== undefined
         ? child.branding.logoHeightDesktop
