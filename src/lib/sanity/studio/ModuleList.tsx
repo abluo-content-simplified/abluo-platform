@@ -6,9 +6,18 @@ import { MODULE_REGISTRY } from '../../modules'
 import { moduleInstallationTypeNameForId, moduleConfigTypeName } from '../../modules/config-schema'
 import type {
   ModuleConfigFieldDef,
+  ModuleConfigListEntry,
   ModuleManifest,
   ModulePlacementSurface,
 } from '../../modules/types'
+import { PLATFORM_LOCALES } from '../../i18n/locales'
+import {
+  buildWhatsAppFormDocument,
+  buildWhatsAppFormPatch,
+  extractSubjectsFromForm,
+  slugifySubjectValue,
+  whatsAppFormId,
+} from '../../modules/whatsapp/form-sync'
 
 /**
  * ModuleList — the Modules pane. ADR-020 Decision 1.
@@ -155,6 +164,25 @@ function dataStoreLabel(manifest: ModuleManifest): string {
   }
 }
 
+
+/**
+ * URL tenant slug from a Sanity projectSlug.
+ *
+ * projectSlug is "studiomartegani-main"; the tenant slug used in form document
+ * ids and ownership is "studiomartegani". The "-main" suffix is the project
+ * naming convention, not part of the tenant identity.
+ */
+function deriveTenantSlug(projectSlug: string | undefined): string | null {
+  if (!projectSlug) return null
+  return projectSlug.replace(/-main$/, '')
+}
+
+/** Website language shown next to a localized input, in that language. */
+function localeLabel(locale: string): string {
+  const entry = (PLATFORM_LOCALES as Record<string, { nativeName?: string } | undefined>)[locale]
+  return entry?.nativeName ?? locale.toUpperCase()
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function ModuleList({ options }: ModuleListProps) {
@@ -163,9 +191,16 @@ export function ModuleList({ options }: ModuleListProps) {
   const client = useClient({ apiVersion: '2026-05-21' })
 
   const [installations, setInstallations] = useState<FetchedInstallation[]>([])
+  const [locales, setLocales] = useState<string[]>([])
+  const [adoptedSubjects, setAdoptedSubjects] = useState<ModuleConfigListEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  // The website's own languages drive every localized control in this pane.
+  // Derived from siteConfig, never hardcoded: adding German to a website makes
+  // a German input appear on every subject with no schema or code change.
+  const tenantSlug = useMemo(() => deriveTenantSlug(projectSlug), [projectSlug])
 
   useEffect(() => {
     if (!projectId) {
@@ -173,17 +208,47 @@ export function ModuleList({ options }: ModuleListProps) {
       return
     }
     setLoading(true)
+
     client
-      .fetch<FetchedInstallation[] | null>(
-        `*[_type == "project" && _id == $projectId][0].moduleInstallations[] {
-          _key, _type, moduleId, version, enabled, installedAt, provenance, config
+      .fetch<{
+        installations: FetchedInstallation[] | null
+        supportedLocales: string[] | null
+        defaultLocale: string | null
+        whatsappForm: unknown
+      }>(
+        `{
+          "installations": *[_type == "project" && _id == $projectId][0].moduleInstallations[] {
+            _key, _type, moduleId, version, enabled, installedAt, provenance, config
+          },
+          "supportedLocales": *[_type == "siteConfig" && projectSlug == $projectSlug][0].supportedLocales,
+          "defaultLocale": *[_type == "siteConfig" && projectSlug == $projectSlug][0].defaultLocale,
+          "whatsappForm": *[_type == "formDefinition" && _id == $whatsappFormId][0]{
+            steps[]{ fields[]{ internalKey, options[]{ value, label } } }
+          }
         }`,
-        { projectId }
+        {
+          projectId,
+          projectSlug: projectSlug ?? '',
+          whatsappFormId: tenantSlug ? whatsAppFormId(tenantSlug) : '',
+        }
       )
-      .then((data) => setInstallations(data ?? []))
+      .then((data) => {
+        setInstallations(data?.installations ?? [])
+        const supported = data?.supportedLocales ?? []
+        const fallback = data?.defaultLocale ? [data.defaultLocale] : ['en']
+        setLocales(supported.length > 0 ? supported : fallback)
+        // Adopt subjects already authored on an existing WhatsApp form, so the
+        // first time this pane opens it shows what the site actually uses
+        // rather than an empty list the admin is about to overwrite.
+        setAdoptedSubjects(
+          extractSubjectsFromForm(
+            data?.whatsappForm as Parameters<typeof extractSubjectsFromForm>[0]
+          )
+        )
+      })
       .catch(() => setError('Failed to load modules.'))
       .finally(() => setLoading(false))
-  }, [projectId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [projectId, projectSlug, tenantSlug]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const byModuleId = useMemo(() => {
     const map = new Map<string, FetchedInstallation>()
@@ -231,6 +296,10 @@ export function ModuleList({ options }: ModuleListProps) {
         key={selectedManifest.id}
         manifest={selectedManifest}
         installation={byModuleId.get(selectedManifest.id)}
+        installedModuleIds={[...byModuleId.keys()]}
+        locales={locales}
+        tenantSlug={tenantSlug}
+        adoptedSubjects={adoptedSubjects}
         client={client}
         projectId={projectId}
         onBack={() => setSelectedId(null)}
@@ -239,13 +308,7 @@ export function ModuleList({ options }: ModuleListProps) {
     )
   }
 
-  return (
-    <ModuleIndex
-      byModuleId={byModuleId}
-      projectSlug={projectSlug}
-      onSelect={setSelectedId}
-    />
-  )
+  return <ModuleIndex byModuleId={byModuleId} projectSlug={projectSlug} onSelect={setSelectedId} />
 }
 
 // ── Index ──────────────────────────────────────────────────────────────────────
@@ -318,6 +381,10 @@ function ModuleIndex({
 function ModuleDetail({
   manifest,
   installation,
+  installedModuleIds,
+  locales,
+  tenantSlug,
+  adoptedSubjects,
   client,
   projectId,
   onBack,
@@ -325,6 +392,10 @@ function ModuleDetail({
 }: {
   manifest: ModuleManifest
   installation: FetchedInstallation | undefined
+  installedModuleIds: string[]
+  locales: string[]
+  tenantSlug: string | null
+  adoptedSubjects: ModuleConfigListEntry[]
   client: ReturnType<typeof useClient>
   projectId: string
   onBack: () => void
@@ -337,13 +408,18 @@ function ModuleDetail({
   )
   const [values, setValues] = useState<Record<string, unknown>>(() => {
     const initial: Record<string, unknown> = { ...(installation?.config ?? {}) }
-    // Seed declared defaults for fields the stored config has never carried,
-    // so a freshly-activated module starts in the state its manifest describes
+    // Seed declared defaults for fields the stored config has never carried, so
+    // a freshly-activated module starts in the state its manifest describes
     // rather than with empty controls.
     for (const field of configSchema) {
       if (initial[field.id] === undefined && field.initialValue !== undefined) {
         initial[field.id] = field.initialValue
       }
+    }
+    // Adopt subjects from an already-existing WhatsApp form the first time this
+    // module is opened. Only when nothing is stored yet — never overwrite.
+    if (manifest.id === 'whatsapp' && !Array.isArray(initial.subjects) && adoptedSubjects.length > 0) {
+      initial.subjects = adoptedSubjects
     }
     return initial
   })
@@ -357,12 +433,39 @@ function ModuleDetail({
   const installedVersion = installation?.version
   const versionDrift = !!installedVersion && installedVersion !== registryVersion
 
+  /** A field is visible when it is not module-managed and its showWhen holds. */
+  const isVisible = useCallback(
+    (field: ModuleConfigFieldDef): boolean => {
+      if (field.hidden) return false
+      if (!field.showWhen) return true
+      return values[field.showWhen.field] === field.showWhen.equals
+    },
+    [values]
+  )
+
+  // Placement toggles are declared as ordinary boolean config fields but belong
+  // under Placement, not Configuration — "where does it appear" is the first
+  // thing an admin decides after switching a module on.
+  const placementFieldIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const surface of manifest.platformContract.placement.surfaces) {
+      if (surface.kind === 'siteWide' && surface.toggleFieldId) ids.add(surface.toggleFieldId)
+    }
+    return ids
+  }, [manifest])
+
+  const configFields = useMemo(
+    () => configSchema.filter((f) => !placementFieldIds.has(f.id) && isVisible(f)),
+    [configSchema, placementFieldIds, isVisible]
+  )
+
   const validateField = useCallback(
     (field: ModuleConfigFieldDef, value: unknown): string | null => {
       const isEmpty =
         value === undefined ||
         value === null ||
-        (typeof value === 'string' && value.trim() === '')
+        (typeof value === 'string' && value.trim() === '') ||
+        (Array.isArray(value) && value.length === 0)
 
       if (field.required && isEmpty) return 'This field is required.'
       if (field.validation && typeof value === 'string' && value.trim() !== '') {
@@ -385,12 +488,13 @@ function ModuleDetail({
     setSaveError(null)
     setSavedNotice(false)
 
-    // Validate config only when the module is on. An inactive module's config
+    // Validate config only while the module is on. An inactive module's config
     // is not in force, so blocking deactivation on an incomplete field would
     // trap an admin in exactly the state they are trying to leave.
     if (enabled) {
       const errs: Record<string, string> = {}
       for (const field of configSchema) {
+        if (!isVisible(field) && !placementFieldIds.has(field.id)) continue
         const err = validateField(field, values[field.id])
         if (err) errs[field.id] = err
       }
@@ -401,10 +505,21 @@ function ModuleDetail({
       }
     }
 
+    // Conditional dependency check. `dependencies.requires` is absolute and
+    // cannot express "only in capture mode", so the rule is enforced here —
+    // see ADR-020 Amendment A.
+    const needsForms = manifest.id === 'whatsapp' && enabled && values.mode === 'capture'
+    if (needsForms && !installedModuleIds.includes('forms')) {
+      setSaveError(
+        'Capturing an enquiry before handing off needs the Forms module. Activate Forms, or choose "Open WhatsApp straight away".'
+      )
+      return
+    }
+
     const installationType = moduleInstallationTypeNameForId(manifest.id)
     if (!installationType) {
-      // Unreachable via the UI — the list only renders registered modules —
-      // but writing an entry with an unresolvable _type would corrupt the array.
+      // Unreachable via the UI — the list only renders registered modules — but
+      // writing an entry with an unresolvable _type would corrupt the array.
       setSaveError('This module is not in the registry and cannot be installed.')
       return
     }
@@ -418,6 +533,29 @@ function ModuleDetail({
         // unset reference must be absent, not a malformed reference object.
         if (value === undefined || value === null || value === '') continue
         config[field.id] = value
+      }
+
+      // ── Silent form ownership (ADR-020 Amendment A) ──────────────────────
+      // In capture mode the module maintains its own form definition, so lead
+      // capture and the submissions dashboard keep working while the admin
+      // never sees a form picker. createIfNotExists + patch rather than
+      // createOrReplace: an existing form keeps everything this module does
+      // not manage.
+      if (needsForms && tenantSlug) {
+        const subjects = Array.isArray(values.subjects)
+          ? (values.subjects as ModuleConfigListEntry[])
+          : []
+        const formInput = { tenantSlug, subjects }
+        const formDocId = whatsAppFormId(tenantSlug)
+
+        await client.createIfNotExists(
+          buildWhatsAppFormDocument(formInput) as unknown as Parameters<
+            typeof client.createIfNotExists
+          >[0]
+        )
+        await client.patch(formDocId).set(buildWhatsAppFormPatch(formInput)).commit()
+
+        config.internalFormRef = { _type: 'reference', _ref: formDocId }
       }
 
       const entry: FetchedInstallation = {
@@ -436,11 +574,7 @@ function ModuleDetail({
 
       let patch = client.patch(projectId).setIfMissing({ moduleInstallations: [] })
       if (installation) {
-        patch = patch.insert(
-          'replace',
-          `moduleInstallations[moduleId=="${manifest.id}"]`,
-          [entry]
-        )
+        patch = patch.insert('replace', `moduleInstallations[moduleId=="${manifest.id}"]`, [entry])
       } else {
         patch = patch.append('moduleInstallations', [entry])
       }
@@ -461,6 +595,10 @@ function ModuleDetail({
     installation,
     installedVersion,
     registryVersion,
+    installedModuleIds,
+    placementFieldIds,
+    isVisible,
+    tenantSlug,
     client,
     projectId,
     onSaved,
@@ -485,7 +623,9 @@ function ModuleDetail({
         ← Back to Modules
       </button>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
+      <div
+        style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}
+      >
         <div style={{ fontSize: 18, fontWeight: 600, color: '#111' }}>{manifest.label}</div>
         <span style={badgeStyle(status)}>{statusLabel(status)}</span>
       </div>
@@ -543,9 +683,18 @@ function ModuleDetail({
       </div>
 
       {/* ── Placement ───────────────────────────────────────────────────────── */}
+      {/* Directly under Status: once a module is on, where it appears is the
+          next thing an admin decides. Site-wide surfaces render their real
+          toggle here; page and section surfaces are facts derived from the
+          manifest and stay read-only. */}
       <div style={{ marginBottom: 32 }}>
-        <div style={sectionHeadingStyle}>Placement</div>
-        <PlacementList surfaces={manifest.platformContract.placement.surfaces} />
+        <div style={sectionHeadingStyle}>Where it appears</div>
+        <PlacementList
+          surfaces={manifest.platformContract.placement.surfaces}
+          configSchema={configSchema}
+          values={values}
+          onChange={handleChange}
+        />
         {manifest.platformContract.placement.note && (
           <div style={{ fontSize: 12, color: '#aaa', marginTop: 10 }}>
             {manifest.platformContract.placement.note}
@@ -556,17 +705,18 @@ function ModuleDetail({
       {/* ── Configuration ───────────────────────────────────────────────────── */}
       <div style={{ marginBottom: 32 }}>
         <div style={sectionHeadingStyle}>Configuration</div>
-        {configSchema.length === 0 ? (
+        {configFields.length === 0 ? (
           <div style={{ fontSize: 13, color: '#bbb' }}>
             This module has no settings — everything it does is controlled by its content.
           </div>
         ) : (
-          configSchema.map((field) => (
+          configFields.map((field) => (
             <ConfigField
               key={field.id}
               field={field}
               value={values[field.id]}
               error={fieldErrors[field.id]}
+              locales={locales}
               client={client}
               onChange={(v) => handleChange(field, v)}
             />
@@ -624,14 +774,26 @@ function ModuleDetail({
 // ── Placement list ─────────────────────────────────────────────────────────────
 
 /**
- * Renders placement surfaces as read-only facts.
+ * Renders placement surfaces.
  *
- * These are derived from the manifest, not stored per site, because they
- * already have a single source of truth elsewhere: a module's page IS its
- * pageType, and where a section appears IS the page's sections[] array.
- * Duplicating either here would create a second copy that immediately drifts.
+ * A site-wide surface that names a `toggleFieldId` gets a real checkbox — that
+ * is the one genuinely per-site placement decision, and it belongs here rather
+ * than buried among the settings. Page and section surfaces are derived facts
+ * (a module's page IS its pageType; where a section appears IS the page's
+ * sections[] array), so they render read-only. Duplicating either into a
+ * module-side record would create a second copy that immediately drifts.
  */
-function PlacementList({ surfaces }: { surfaces: ModulePlacementSurface[] }) {
+function PlacementList({
+  surfaces,
+  configSchema,
+  values,
+  onChange,
+}: {
+  surfaces: ModulePlacementSurface[]
+  configSchema: ModuleConfigFieldDef[]
+  values: Record<string, unknown>
+  onChange: (field: ModuleConfigFieldDef, value: unknown) => void
+}) {
   if (surfaces.length === 0) {
     return (
       <div style={{ fontSize: 13, color: '#bbb' }}>
@@ -648,22 +810,58 @@ function PlacementList({ surfaces }: { surfaces: ModulePlacementSurface[] }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {surfaces.map((surface) => (
-        <div
-          key={surface.kind}
-          style={{
-            padding: '10px 14px',
-            background: '#fafafa',
-            border: '1px solid #eeeeee',
-            borderRadius: 6,
-          }}
-        >
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#555', marginBottom: 2 }}>
-            {kindLabel[surface.kind]}
+      {surfaces.map((surface, i) => {
+        const toggleId = surface.kind === 'siteWide' ? surface.toggleFieldId : undefined
+        const toggleField = toggleId ? configSchema.find((f) => f.id === toggleId) : undefined
+
+        return (
+          <div
+            key={`${surface.kind}-${i}`}
+            style={{
+              padding: '12px 14px',
+              background: '#fafafa',
+              border: '1px solid #eeeeee',
+              borderRadius: 6,
+            }}
+          >
+            {toggleField ? (
+              <>
+                <label
+                  htmlFor={`placement-${toggleField.id}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: '#111',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <input
+                    id={`placement-${toggleField.id}`}
+                    type="checkbox"
+                    checked={values[toggleField.id] === true}
+                    onChange={(e) => onChange(toggleField, e.target.checked)}
+                    style={{ width: 16, height: 16 }}
+                  />
+                  {toggleField.label}
+                </label>
+                <div style={{ fontSize: 12, color: '#aaa', marginTop: 4, marginLeft: 26 }}>
+                  {surface.description}
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#555', marginBottom: 2 }}>
+                  {kindLabel[surface.kind]}
+                </div>
+                <div style={{ fontSize: 13, color: '#666' }}>{surface.description}</div>
+              </>
+            )}
           </div>
-          <div style={{ fontSize: 13, color: '#666' }}>{surface.description}</div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
@@ -674,24 +872,27 @@ function ConfigField({
   field,
   value,
   error,
+  locales,
   client,
   onChange,
 }: {
   field: ModuleConfigFieldDef
   value: unknown
   error?: string
+  locales: string[]
   client: ReturnType<typeof useClient>
   onChange: (value: unknown) => void
 }) {
   const inputId = `module-config-${field.id}`
   const errorId = `${inputId}-error`
-
   const describedBy = error ? errorId : undefined
   const borderColor = error ? '#ef5350' : '#d0d0d0'
 
-  return (
-    <div style={{ marginBottom: 20 }}>
-      {field.type === 'boolean' ? (
+  // Boolean and select own their own labelling, so they short-circuit the
+  // shared label + control layout below.
+  if (field.type === 'boolean') {
+    return (
+      <div style={{ marginBottom: 20 }}>
         <label
           htmlFor={inputId}
           style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer' }}
@@ -705,84 +906,139 @@ function ConfigField({
           />
           {field.label}
         </label>
-      ) : (
-        <>
-          <label
-            htmlFor={inputId}
-            style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 6, fontWeight: 500 }}
-          >
-            {field.label}
-            {field.required ? ' *' : ''}
-          </label>
+        {field.description && (
+          <div style={{ fontSize: 12, color: '#aaa', marginTop: 4, marginLeft: 26 }}>
+            {field.description}
+          </div>
+        )}
+      </div>
+    )
+  }
 
-          {field.type === 'reference' ? (
-            <ReferenceSelect
-              inputId={inputId}
-              field={field}
-              value={isReferenceValue(value) ? value._ref : ''}
-              describedBy={describedBy}
-              invalid={!!error}
-              client={client}
-              onChange={(ref) =>
-                onChange(ref ? { _type: 'reference', _ref: ref } : undefined)
-              }
-            />
-          ) : field.type === 'text' ? (
-            <textarea
-              id={inputId}
-              rows={3}
-              value={typeof value === 'string' ? value : ''}
-              onChange={(e) => onChange(e.target.value)}
-              aria-invalid={!!error}
-              aria-describedby={describedBy}
-              style={{ ...inputStyle, fontFamily: 'inherit', borderColor }}
-            />
-          ) : field.type === 'number' ? (
-            <input
-              id={inputId}
-              type="number"
-              value={typeof value === 'number' ? value : ''}
-              onChange={(e) => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
-              aria-invalid={!!error}
-              aria-describedby={describedBy}
-              style={{ ...inputStyle, borderColor }}
-            />
-          ) : (
-            // string and localizedString.
-            //
-            // localizedString is intentionally NOT edited here. It is a
-            // per-locale object whose editor is LocalizedInput, and the set of
-            // locales is per-website (siteConfig.supportedLocales), which this
-            // pane does not resolve. Rendering a single text box would silently
-            // write a bare string into a localized field and break the schema
-            // contract, so a localized config field is surfaced as read-only
-            // with a pointer to where it is edited. No module declares one yet;
-            // this branch exists so that adding one fails visibly, not silently.
-            <input
-              id={inputId}
-              type="text"
-              value={typeof value === 'string' ? value : ''}
-              onChange={(e) => onChange(e.target.value)}
-              readOnly={field.type === 'localizedString'}
-              aria-invalid={!!error}
-              aria-describedby={describedBy}
+  if (field.type === 'select') {
+    return (
+      <fieldset style={{ marginBottom: 24, border: 'none', padding: 0, margin: '0 0 24px' }}>
+        <legend style={{ fontSize: 12, color: '#666', marginBottom: 8, fontWeight: 500, padding: 0 }}>
+          {field.label}
+        </legend>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {(field.options ?? []).map((option) => (
+            <label
+              key={option.value}
+              htmlFor={`${inputId}-${option.value}`}
               style={{
-                ...inputStyle,
-                borderColor,
-                background: field.type === 'localizedString' ? '#f5f5f5' : undefined,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 10,
+                padding: '12px 14px',
+                background: value === option.value ? '#f2f7ff' : '#fafafa',
+                border: `1px solid ${value === option.value ? '#c5d9f5' : '#eeeeee'}`,
+                borderRadius: 6,
+                cursor: 'pointer',
               }}
-            />
-          )}
-        </>
+            >
+              <input
+                id={`${inputId}-${option.value}`}
+                type="radio"
+                name={inputId}
+                value={option.value}
+                checked={value === option.value}
+                onChange={() => onChange(option.value)}
+                style={{ marginTop: 2 }}
+              />
+              <span>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#111' }}>
+                  {option.label}
+                </span>
+                {option.description && (
+                  <span style={{ display: 'block', fontSize: 12, color: '#888', marginTop: 2 }}>
+                    {option.description}
+                  </span>
+                )}
+              </span>
+            </label>
+          ))}
+        </div>
+        {field.description && (
+          <div style={{ fontSize: 12, color: '#aaa', marginTop: 6 }}>{field.description}</div>
+        )}
+      </fieldset>
+    )
+  }
+
+  if (field.type === 'localizedStringList') {
+    return (
+      <LocalizedListEditor
+        field={field}
+        entries={Array.isArray(value) ? (value as ModuleConfigListEntry[]) : []}
+        locales={locales}
+        error={error}
+        onChange={onChange}
+      />
+    )
+  }
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <label
+        htmlFor={inputId}
+        style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 6, fontWeight: 500 }}
+      >
+        {field.label}
+        {field.required ? ' *' : ''}
+      </label>
+
+      {field.type === 'reference' ? (
+        <ReferenceSelect
+          inputId={inputId}
+          field={field}
+          value={isReferenceValue(value) ? value._ref : ''}
+          describedBy={describedBy}
+          invalid={!!error}
+          client={client}
+          onChange={(ref) => onChange(ref ? { _type: 'reference', _ref: ref } : undefined)}
+        />
+      ) : field.type === 'text' ? (
+        <textarea
+          id={inputId}
+          rows={3}
+          value={typeof value === 'string' ? value : ''}
+          onChange={(e) => onChange(e.target.value)}
+          aria-invalid={!!error}
+          aria-describedby={describedBy}
+          style={{ ...inputStyle, fontFamily: 'inherit', borderColor }}
+        />
+      ) : field.type === 'number' ? (
+        <input
+          id={inputId}
+          type="number"
+          value={typeof value === 'number' ? value : ''}
+          onChange={(e) => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+          aria-invalid={!!error}
+          aria-describedby={describedBy}
+          style={{ ...inputStyle, borderColor }}
+        />
+      ) : field.type === 'localizedString' ? (
+        <LocalizedStringInput
+          inputId={inputId}
+          locales={locales}
+          value={(value ?? {}) as Record<string, string>}
+          onChange={onChange}
+        />
+      ) : (
+        <input
+          id={inputId}
+          type="text"
+          value={typeof value === 'string' ? value : ''}
+          onChange={(e) => onChange(e.target.value)}
+          aria-invalid={!!error}
+          aria-describedby={describedBy}
+          style={{ ...inputStyle, borderColor }}
+        />
       )}
 
       {field.description && (
         <div style={{ fontSize: 12, color: '#aaa', marginTop: 4 }}>{field.description}</div>
-      )}
-      {field.type === 'localizedString' && (
-        <div style={{ fontSize: 12, color: '#8d6e00', marginTop: 4 }}>
-          Translated text is edited in the document itself, not here.
-        </div>
       )}
       {error && (
         <div id={errorId} role="alert" style={{ fontSize: 12, color: '#c62828', marginTop: 4 }}>
@@ -791,6 +1047,250 @@ function ConfigField({
       )}
     </div>
   )
+}
+
+// ── Localized string input ─────────────────────────────────────────────────────
+
+/** One input per website language, labelled in that language. */
+function LocalizedStringInput({
+  inputId,
+  locales,
+  value,
+  onChange,
+}: {
+  inputId: string
+  locales: string[]
+  value: Record<string, string>
+  onChange: (value: Record<string, string>) => void
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {locales.map((locale) => (
+        <div key={locale} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span
+            style={{
+              width: 64,
+              flexShrink: 0,
+              fontSize: 11,
+              color: '#999',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}
+          >
+            {localeLabel(locale)}
+          </span>
+          <input
+            id={`${inputId}-${locale}`}
+            type="text"
+            value={value[locale] ?? ''}
+            onChange={(e) => onChange({ ...value, [locale]: e.target.value })}
+            style={inputStyle}
+          />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Localized list editor ──────────────────────────────────────────────────────
+
+/**
+ * The repeatable list behind "add the subjects, in every language".
+ *
+ * One row per entry, one input per website language. The language set comes
+ * from siteConfig.supportedLocales, so adding German to a website makes an
+ * empty German input appear on every existing row — no schema change, no
+ * migration, nothing to remember.
+ *
+ * The stable `value` is derived from the first label typed and then frozen.
+ * Renaming or translating a label afterwards never changes it, because it is
+ * what past submissions recorded.
+ */
+function LocalizedListEditor({
+  field,
+  entries,
+  locales,
+  error,
+  onChange,
+}: {
+  field: ModuleConfigFieldDef
+  entries: ModuleConfigListEntry[]
+  locales: string[]
+  error?: string
+  onChange: (entries: ModuleConfigListEntry[]) => void
+}) {
+  const primaryLocale = locales[0] ?? 'en'
+
+  const update = (key: string, patch: Partial<ModuleConfigListEntry>) =>
+    onChange(entries.map((e) => (e._key === key ? { ...e, ...patch } : e)))
+
+  const setLabel = (entry: ModuleConfigListEntry, locale: string, text: string) => {
+    const label = { ...entry.label, [locale]: text }
+    // Derive the stable value from the primary-language label, but only while
+    // the entry has never been saved with one. Once it has a value it keeps it.
+    const value =
+      entry.value ||
+      (locale === primaryLocale
+        ? slugifySubjectValue(text, entries.filter((e) => e._key !== entry._key).map((e) => e.value))
+        : '')
+    update(entry._key, { label, value })
+  }
+
+  const move = (index: number, delta: number) => {
+    const next = [...entries]
+    const target = index + delta
+    if (target < 0 || target >= next.length) return
+    ;[next[index], next[target]] = [next[target], next[index]]
+    onChange(next)
+  }
+
+  const add = () => {
+    const key = `entry-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    onChange([...entries, { _key: key, value: '', label: {} }])
+  }
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 8,
+        }}
+      >
+        <div style={{ fontSize: 12, color: '#666', fontWeight: 500 }}>{field.label}</div>
+        <button
+          type="button"
+          onClick={add}
+          style={{
+            padding: '6px 14px',
+            fontSize: 12,
+            fontWeight: 500,
+            background: '#fff',
+            border: '1px solid #d0d0d0',
+            borderRadius: 4,
+            cursor: 'pointer',
+          }}
+        >
+          + Add
+        </button>
+      </div>
+
+      {field.description && (
+        <div style={{ fontSize: 12, color: '#aaa', marginBottom: 12 }}>{field.description}</div>
+      )}
+
+      {entries.length === 0 && (
+        <div style={{ fontSize: 13, color: '#bbb', padding: '12px 0' }}>Nothing added yet.</div>
+      )}
+
+      {entries.map((entry, index) => (
+        <div
+          key={entry._key}
+          style={{
+            padding: 14,
+            marginBottom: 10,
+            background: '#fafafa',
+            border: '1px solid #eeeeee',
+            borderRadius: 6,
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {locales.map((locale) => (
+              <div key={locale} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span
+                  style={{
+                    width: 64,
+                    flexShrink: 0,
+                    fontSize: 11,
+                    color: '#999',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  {localeLabel(locale)}
+                </span>
+                <input
+                  type="text"
+                  value={entry.label[locale] ?? ''}
+                  onChange={(e) => setLabel(entry, locale, e.target.value)}
+                  aria-label={`${field.label} — ${localeLabel(locale)}`}
+                  style={inputStyle}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginTop: 10,
+            }}
+          >
+            <span style={{ fontSize: 11, color: '#bbb', fontFamily: 'monospace' }}>
+              {entry.value || '—'}
+            </span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                type="button"
+                onClick={() => move(index, -1)}
+                disabled={index === 0}
+                aria-label="Move up"
+                style={miniButtonStyle(index === 0)}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                onClick={() => move(index, 1)}
+                disabled={index === entries.length - 1}
+                aria-label="Move down"
+                style={miniButtonStyle(index === entries.length - 1)}
+              >
+                ↓
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange(entries.filter((e) => e._key !== entry._key))}
+                style={{
+                  padding: '4px 12px',
+                  fontSize: 12,
+                  color: '#c62828',
+                  background: '#fff',
+                  border: '1px solid #ef9a9a',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                }}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {error && (
+        <div role="alert" style={{ fontSize: 12, color: '#c62828', marginTop: 4 }}>
+          {error}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function miniButtonStyle(disabled: boolean): React.CSSProperties {
+  return {
+    padding: '4px 10px',
+    fontSize: 12,
+    background: '#fff',
+    border: '1px solid #d0d0d0',
+    borderRadius: 4,
+    cursor: disabled ? 'default' : 'pointer',
+    opacity: disabled ? 0.4 : 1,
+  }
 }
 
 // ── Reference select ───────────────────────────────────────────────────────────

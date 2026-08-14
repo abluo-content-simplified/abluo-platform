@@ -44,10 +44,27 @@ export type ProjectModuleConfig = ModuleConfigRecord[] | null | undefined
 
 // ── Resolved shapes ───────────────────────────────────────────────────────────
 
+/**
+ * How the WhatsApp buttons behave when tapped (ADR-020 Amendment A).
+ *
+ * direct  — open WhatsApp immediately. Nothing is recorded.
+ * capture — collect a subject and message first, record the enquiry, then hand
+ *           off to WhatsApp pre-filled.
+ */
+export type WhatsAppMode = 'direct' | 'capture'
+
 export type WhatsAppConfig = {
   number?: string
+  /**
+   * The module-owned form backing capture mode. Always null in direct mode —
+   * there is nothing to open.
+   */
   form: RenderableFormDefinition | null
+  mode: WhatsAppMode
+  /** Floating button, bottom-right, on every page. */
   floating: boolean
+  /** Button beside the message button in Contact sections. */
+  inContactSections: boolean
 }
 
 export type HeaderCtaConfig = {
@@ -131,16 +148,31 @@ export function resolveWhatsAppConfig(
 ): WhatsAppConfig {
   const config = getModuleConfig(modules, 'whatsapp')
 
+  // Default to capture: it is what every existing site does today, so a config
+  // written before the mode field existed must keep behaving the same way.
+  const mode: WhatsAppMode = config?.mode === 'direct' ? 'direct' : 'capture'
+
+  // `internalFormRef` is the module-owned form (ADR-020 Amendment A);
+  // `whatsappForm` is the v1 field, kept readable so a site saved before the
+  // rename keeps working until it is next saved.
+  const moduleForm = asForm(config?.internalFormRef) ?? asForm(config?.whatsappForm)
+
   return {
     number: asString(config?.whatsappNumber) ?? asString(siteConfig?.whatsappNumber),
-    form: asForm(config?.whatsappForm) ?? asForm(siteConfig?.whatsappForm),
+    // In direct mode there is deliberately no form, even if one is configured —
+    // the mode is the admin's stated intent and the form is just leftover state.
+    form: mode === 'capture' ? moduleForm ?? asForm(siteConfig?.whatsappForm) : null,
+    mode,
     // A boolean has no "empty" value, so the module's `false` must be
-    // distinguishable from "unset" — otherwise turning the floating button OFF
-    // in the module would silently fall through to a legacy `true`.
+    // distinguishable from "unset" — otherwise turning a button OFF in the
+    // module would silently fall through to a legacy `true`.
     floating:
       typeof config?.whatsappFloating === 'boolean'
         ? config.whatsappFloating
         : siteConfig?.whatsappFloating === true,
+    // No legacy fallback: this placement used to be a per-section checkbox, not
+    // a site setting, so there is no site-level predecessor to inherit from.
+    inContactSections: config?.showInContactSections === true,
   }
 }
 

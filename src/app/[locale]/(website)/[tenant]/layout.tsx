@@ -488,7 +488,10 @@ function whatsAppFab(
   locale: string
 ) {
   const whatsapp = resolveWhatsAppConfig(modules, cfg)
-  if (!whatsapp.floating || !hasWhatsAppNumber(whatsapp.number) || !whatsapp.form?.formId) return null
+  if (!whatsapp.floating || !hasWhatsAppNumber(whatsapp.number)) return null
+  // Capture mode needs a form to collect the subject and message; direct mode
+  // opens WhatsApp straight away and needs none.
+  if (whatsapp.mode === 'capture' && !whatsapp.form?.formId) return null
   return (
     <WhatsAppWidget
       definition={whatsapp.form}

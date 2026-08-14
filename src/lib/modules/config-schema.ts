@@ -74,6 +74,9 @@ function buildModuleConfigField(field: ModuleConfigFieldDef) {
     name: field.id,
     title: field.label,
     description: field.description,
+    // Module-managed values are hidden from the generated Studio form too, not
+    // just from the Modules pane — there is exactly one writer either way.
+    ...(field.hidden ? { hidden: true } : {}),
   }
 
   switch (field.type) {
@@ -92,6 +95,18 @@ function buildModuleConfigField(field: ModuleConfigFieldDef) {
         validation: (Rule) => (field.required ? Rule.required() : Rule),
       })
 
+    case 'select':
+      return defineField({
+        ...common,
+        type: 'string',
+        options: {
+          list: (field.options ?? []).map((o) => ({ title: o.label, value: o.value })),
+          layout: 'radio',
+        },
+        initialValue: typeof field.initialValue === 'string' ? field.initialValue : undefined,
+        validation: (Rule) => (field.required ? Rule.required() : Rule),
+      })
+
     case 'localizedString':
       // Multilingual-first (CLAUDE.md): any user-facing string a module exposes
       // per site is authored per locale, never as a bare string.
@@ -99,6 +114,49 @@ function buildModuleConfigField(field: ModuleConfigFieldDef) {
         ...common,
         type: 'localizedString',
         validation: (Rule) => (field.required ? Rule.required() : Rule),
+      })
+
+    case 'localizedStringList':
+      // An ordered list of localized labels, each with a stable machine value.
+      //
+      // The `value` is deliberately separate from the label: it is what gets
+      // written onto a submission, so an admin can rename "Emergency" to
+      // "Urgent care", or translate it into German, without orphaning every
+      // record that already referenced it.
+      return defineField({
+        ...common,
+        type: 'array',
+        of: [
+          defineArrayMember({
+            type: 'object',
+            name: `${field.id}Entry`,
+            fields: [
+              defineField({
+                name: 'label',
+                title: 'Label',
+                type: 'localizedString',
+                description: 'Shown to visitors. One value per website language.',
+                validation: (Rule) => Rule.required(),
+              }),
+              defineField({
+                name: 'value',
+                title: 'Reference',
+                type: 'string',
+                description:
+                  'Stable internal identifier recorded with each submission. Changing it breaks the link to existing records — rename the label instead.',
+                validation: (Rule) => Rule.required(),
+              }),
+            ],
+            preview: {
+              select: { en: 'label.en', it: 'label.it', value: 'value' },
+              prepare: ({ en, it, value }: { en?: string; it?: string; value?: string }) => ({
+                title: en ?? it ?? value ?? '—',
+                subtitle: value,
+              }),
+            },
+          }),
+        ],
+        validation: (Rule) => (field.required ? Rule.required().min(1) : Rule),
       })
 
     case 'reference':

@@ -50,7 +50,9 @@ const VALID_CONFIG_FIELD_TYPES = new Set<string>([
   'text',
   'boolean',
   'number',
+  'select',
   'localizedString',
+  'localizedStringList',
   'reference',
 ])
 
@@ -427,6 +429,59 @@ export function validateRegistry(manifests: ModuleManifest[]): void {
           rule: 12,
           message: `config field "${field.id}" is a reference but declares no referenceTo targets.`,
           fix: `Add referenceTo: ["someDocumentType"] — a Sanity reference field must declare what it points to.`,
+        })
+      }
+
+      // A select with no choices renders as an empty control the admin cannot use.
+      if (field.type === 'select' && (!field.options || field.options.length === 0)) {
+        errors.push({
+          moduleId: mid,
+          rule: 12,
+          message: `config field "${field.id}" is a select but declares no options.`,
+          fix: `Add options: [{ value: "…", label: "…" }] — a select must offer something to select.`,
+        })
+      }
+
+      // Duplicate option values would make two choices indistinguishable once stored.
+      if (field.type === 'select' && field.options) {
+        const seenValues = new Set<string>()
+        for (const option of field.options) {
+          if (seenValues.has(option.value)) {
+            errors.push({
+              moduleId: mid,
+              rule: 12,
+              message: `config field "${field.id}" declares option value "${option.value}" more than once.`,
+              fix: `Each option value must be unique within a select field.`,
+            })
+          }
+          seenValues.add(option.value)
+        }
+      }
+    }
+
+    // ── Rule 12 (cont.): showWhen must reference a real sibling field ────────
+    // Checked in a second pass so a field may depend on one declared after it.
+    // A dangling showWhen would hide a control permanently and silently — the
+    // admin would simply never see the setting, with no error anywhere.
+    for (const field of m.platformContract.configSchema) {
+      if (!field.showWhen) continue
+
+      if (!seenConfigFieldIds.has(field.showWhen.field)) {
+        errors.push({
+          moduleId: mid,
+          rule: 12,
+          message: `config field "${field.id}" has showWhen.field "${field.showWhen.field}", which is not a declared config field.`,
+          fix: `Point showWhen.field at another field in this module's configSchema, or remove it.`,
+        })
+        continue
+      }
+
+      if (field.showWhen.field === field.id) {
+        errors.push({
+          moduleId: mid,
+          rule: 12,
+          message: `config field "${field.id}" declares a showWhen condition on itself.`,
+          fix: `A field cannot control its own visibility — point showWhen.field at a different field.`,
         })
       }
     }

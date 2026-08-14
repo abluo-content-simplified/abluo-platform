@@ -467,6 +467,7 @@ export const projectModuleConfigQuery = /* groq */ `
       "config": config {
         ...,
         "whatsappForm": whatsappForm->{ ${FORM_DEFINITION_PROJECTION} },
+        "internalFormRef": internalFormRef->{ ${FORM_DEFINITION_PROJECTION} },
         "ctaForm": ctaForm->{ ${FORM_DEFINITION_PROJECTION} }
       }
     }

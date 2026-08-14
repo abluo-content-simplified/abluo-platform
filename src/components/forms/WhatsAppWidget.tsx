@@ -44,7 +44,15 @@ function WhatsAppGlyph({ size = 20 }: { size?: number }) {
 }
 
 interface Props {
-  definition: RenderableFormDefinition
+  /**
+   * The form opened before hand-off (capture mode).
+   *
+   * `null` is direct mode (ADR-020 Amendment A): the button opens WhatsApp
+   * straight away with no overlay and nothing recorded. Many practices want
+   * exactly that, and forcing a form on them was the reason WhatsApp could not
+   * be used without the Forms module.
+   */
+  definition: RenderableFormDefinition | null
   /** WhatsApp number (any format — normalised to digits for wa.me). */
   number: string
   tenantSlug: string
@@ -54,7 +62,55 @@ interface Props {
   label?: string
 }
 
-export function WhatsAppWidget({ definition: def, number, tenantSlug, locale = 'en', variant = 'inline', label }: Props) {
+/** Shared trigger styling, so both modes present identically to a visitor. */
+const fabClass =
+  'fixed bottom-5 right-5 z-[400] flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105'
+const inlineClass =
+  'inline-flex items-center gap-2 rounded-[var(--radius-btn)] px-5 py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.02]'
+
+/**
+ * Entry point. A thin dispatcher rather than a conditional inside one component:
+ * the capture path is stateful and hook-heavy, the direct path is a plain link,
+ * and React forbids calling hooks conditionally.
+ */
+export function WhatsAppWidget(props: Props) {
+  if (!props.definition) return <WhatsAppDirectLink {...props} />
+  return <WhatsAppCaptureWidget {...props} definition={props.definition} />
+}
+
+/** Direct mode — opens WhatsApp immediately, no overlay, nothing recorded. */
+function WhatsAppDirectLink({ number, locale = 'en', variant = 'inline', label }: Props) {
+  const m = getFormSectionMessages(locale)
+  const triggerLabel = label ?? m.whatsappChat
+  const href = buildWhatsAppLink(number)
+
+  return variant === 'fab' ? (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={triggerLabel}
+      className={fabClass}
+      style={{ backgroundColor: WA_GREEN }}
+    >
+      <WhatsAppGlyph size={28} />
+    </a>
+  ) : (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={inlineClass}
+      style={{ backgroundColor: WA_GREEN }}
+    >
+      <WhatsAppGlyph />
+      {triggerLabel}
+    </a>
+  )
+}
+
+/** Capture mode — subject + message overlay, lead recorded, then hand-off. */
+function WhatsAppCaptureWidget({ definition: def, number, tenantSlug, locale = 'en', variant = 'inline', label }: Props & { definition: RenderableFormDefinition }) {
   const m = getFormSectionMessages(locale)
   const chrome = getOverlayChromeMessages(locale)
   const fields = singleStepFields(def)
@@ -137,7 +193,7 @@ export function WhatsAppWidget({ definition: def, number, tenantSlug, locale = '
         type="button"
         onClick={() => setOpen(true)}
         aria-label={triggerLabel}
-        className="fixed bottom-5 right-5 z-[400] flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105"
+        className={fabClass}
         style={{ backgroundColor: WA_GREEN }}
       >
         <WhatsAppGlyph size={28} />
@@ -146,7 +202,7 @@ export function WhatsAppWidget({ definition: def, number, tenantSlug, locale = '
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-[var(--radius-btn)] px-5 py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.02]"
+        className={inlineClass}
         style={{ backgroundColor: WA_GREEN }}
       >
         <WhatsAppGlyph />

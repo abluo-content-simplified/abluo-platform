@@ -1409,12 +1409,21 @@ const contactSectionType = defineType({
       type: 'localizedString',
       description: 'Heading shown at the top of the overlay. Defaults to the form’s own title.',
     }),
+    // ── Deprecated: WhatsApp placement (ADR-020 Amendment A) ────────────────
+    // Whether contact sections show a WhatsApp button is now one switch in
+    // Modules → WhatsApp → Where it appears, alongside the floating button.
+    // Having it here made the same feature configurable in two unrelated
+    // places: per-section here, site-wide on siteConfig.
+    //
+    // Hidden and unread. Safe to delete: the only contact section in the
+    // dataset had it set to false, so nothing depended on it.
     defineField({
       name: 'showWhatsappButton',
       title: 'Show WhatsApp Button',
       type: 'boolean',
       initialValue: false,
-      description: 'Show a "Chat on WhatsApp" button next to the message button (requires WhatsApp Number + Form in Site Settings → Contact).',
+      description: '⚠️ Deprecated (ADR-020) — configure this in Modules → WhatsApp.',
+      hidden: true,
     }),
   ],
   preview: {

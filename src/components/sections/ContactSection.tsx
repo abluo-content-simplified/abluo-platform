@@ -55,16 +55,21 @@ export function ContactSection({ section, surface, designSystem, siteConfig, mod
   const buttonLabel = section.contactButtonLabel ?? contactForm?.title ?? 'Send us a message'
 
   // ── WhatsApp button (optional) ───────────────────────────────────────────────
-  // Two independent decisions, deliberately kept in separate places (ADR-020):
-  //   - WHETHER this section shows a WhatsApp button is a per-section placement
-  //     choice, so it stays on the section (`showWhatsappButton`).
-  //   - WHAT number and form it uses is module configuration, so it comes from
-  //     the WhatsApp module (Modules → WhatsApp), with the deprecated siteConfig
-  //     fields as a transitional fallback.
+  // ADR-020 Amendment A — everything about WhatsApp, including WHERE its buttons
+  // appear, is configured in the WhatsApp module. This used to be a per-section
+  // checkbox while the floating button was a site setting: two placements of the
+  // same feature, configured in two unrelated places.
+  //
+  // In capture mode a form is required (it collects the subject and message);
+  // in direct mode the button opens WhatsApp straight away and needs none.
   const whatsapp = resolveWhatsAppConfig(moduleConfig, siteConfig)
   const waNumber = whatsapp.number
   const waForm = whatsapp.form
-  const showWhatsapp = !!section.showWhatsappButton && hasWhatsAppNumber(waNumber) && !!waForm?.formId && !!tenantSlug
+  const showWhatsapp =
+    whatsapp.inContactSections &&
+    hasWhatsAppNumber(waNumber) &&
+    !!tenantSlug &&
+    (whatsapp.mode === 'direct' || !!waForm?.formId)
 
   // ── Layout ─────────────────────────────────────────────────────────────────
   // Two-column when map is shown; single full-width column when map is hidden.

@@ -94,20 +94,53 @@ export type ModuleCollectionGroupDef = {
 /**
  * The field shapes a module may declare in its config schema.
  *
- * string           — plain Sanity string (Rule.required/Rule.regex per declaration)
- * text             — multi-line string
- * boolean          — Sanity boolean, defaults to `initialValue ?? false`
- * number           — Sanity number
- * localizedString  — platform localizedString (multilingual-first; see CLAUDE.md)
- * reference        — reference to one or more document types, `referenceTo` required
+ * string             — plain Sanity string (Rule.required/Rule.regex per declaration)
+ * text               — multi-line string
+ * boolean            — Sanity boolean, defaults to `initialValue ?? false`
+ * number             — Sanity number
+ * select             — one of a fixed set of values; `options` required
+ * localizedString    — platform localizedString (multilingual-first; see CLAUDE.md)
+ * localizedStringList — an ordered, repeatable list of localized labels, each with
+ *                      a stable machine value. This is the shape behind "the admin
+ *                      types the WhatsApp subjects here": one row per subject, one
+ *                      input per site locale, reorderable. The stable `value` is
+ *                      what gets recorded on a submission, so renaming a label —
+ *                      or translating it — never breaks historical data.
+ * reference          — reference to one or more document types, `referenceTo` required
  */
 export type ModuleConfigFieldType =
   | 'string'
   | 'text'
   | 'boolean'
   | 'number'
+  | 'select'
   | 'localizedString'
+  | 'localizedStringList'
   | 'reference'
+
+/** One choice in a `select` config field. */
+export type ModuleConfigOption = {
+  /** Stored value. */
+  value: string
+  /** Admin-facing label. */
+  label: string
+  /** Optional one-line explanation rendered under the choice. */
+  description?: string
+}
+
+/**
+ * One entry in a `localizedStringList` config value, as persisted.
+ *
+ * `value` is the stable identifier; `label` carries one string per site locale.
+ * Adding a locale to the website surfaces an empty input for it automatically —
+ * the localized inputs derive their locales from siteConfig.supportedLocales,
+ * so no schema change is needed when a tenant adds German.
+ */
+export type ModuleConfigListEntry = {
+  _key: string
+  value: string
+  label: Record<string, string>
+}
 
 /**
  * One configurable value a module exposes per site.
@@ -141,6 +174,36 @@ export type ModuleConfigFieldDef = {
   initialValue?: string | number | boolean
   /** Regex validation, generated as Rule.regex(...).error(message). String types only. */
   validation?: { regex: string; message: string }
+  /**
+   * The available choices. REQUIRED when type === 'select'; ignored otherwise
+   * (validator Rule 12).
+   */
+  options?: ModuleConfigOption[]
+  /**
+   * Conditional visibility: show this field only when another field in the same
+   * configSchema currently holds `equals`.
+   *
+   * This is what keeps a module pane honest as it grows. WhatsApp has two modes;
+   * the subject list is meaningless in "open WhatsApp directly" mode, and showing
+   * it anyway invites an admin to fill in settings that will never take effect.
+   * The validator checks that `field` names a real sibling field, so a typo can't
+   * silently hide a control forever.
+   *
+   * Visibility only — a hidden field is not cleared, so toggling a mode back and
+   * forth does not destroy what was already typed.
+   */
+  showWhen?: { field: string; equals: string | boolean }
+  /**
+   * Never render this field to an admin — in the Modules pane or the generated
+   * Studio form. The value is written by the module itself.
+   *
+   * This is what lets a module keep plumbing out of sight: the WhatsApp module
+   * maintains a reference to the form definition backing capture mode, but an
+   * admin who just switched WhatsApp on has no business being asked to choose
+   * a form. Hidden config is still real, typed, validated config — it simply
+   * has an owner other than the person looking at the pane.
+   */
+  hidden?: boolean
 }
 
 // ── Module placement ──────────────────────────────────────────────────────────

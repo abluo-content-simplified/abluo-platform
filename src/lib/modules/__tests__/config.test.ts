@@ -154,6 +154,55 @@ describe('resolveWhatsAppConfig', () => {
     expect(resolved.number).toBeUndefined()
     expect(resolved.form).toBeNull()
     expect(resolved.floating).toBe(false)
+    expect(resolved.inContactSections).toBe(false)
+  })
+
+  // ── ADR-020 Amendment A — mode + second placement ──────────────────────────
+
+  it('defaults to capture mode, so config written before the field keeps behaving the same', () => {
+    const m = modules([{ moduleId: 'whatsapp', config: { whatsappNumber: '+39 1' } }])
+    expect(resolveWhatsAppConfig(m, null).mode).toBe('capture')
+  })
+
+  it('reads direct mode when set', () => {
+    const m = modules([{ moduleId: 'whatsapp', config: { mode: 'direct' } }])
+    expect(resolveWhatsAppConfig(m, null).mode).toBe('direct')
+  })
+
+  it('drops the form in direct mode even when one is configured', () => {
+    // The mode is the admin's stated intent; a leftover form reference must not
+    // resurrect the overlay they turned off.
+    const m = modules([
+      { moduleId: 'whatsapp', config: { mode: 'direct', internalFormRef: form('wa') } },
+    ])
+    expect(resolveWhatsAppConfig(m, null).form).toBeNull()
+  })
+
+  it('prefers the module-owned internalFormRef over the v1 whatsappForm field', () => {
+    const m = modules([
+      {
+        moduleId: 'whatsapp',
+        config: { mode: 'capture', internalFormRef: form('owned'), whatsappForm: form('v1') },
+      },
+    ])
+    expect(resolveWhatsAppConfig(m, null).form?.formId).toBe('owned')
+  })
+
+  it('still reads the v1 whatsappForm field, so a site saved before the rename works', () => {
+    const m = modules([{ moduleId: 'whatsapp', config: { mode: 'capture', whatsappForm: form('v1') } }])
+    expect(resolveWhatsAppConfig(m, null).form?.formId).toBe('v1')
+  })
+
+  it('reads the contact-section placement toggle', () => {
+    const m = modules([{ moduleId: 'whatsapp', config: { showInContactSections: true } }])
+    expect(resolveWhatsAppConfig(m, null).inContactSections).toBe(true)
+  })
+
+  it('has no legacy fallback for the contact-section placement', () => {
+    // That placement used to be a per-section checkbox, not a site setting, so
+    // there is no site-level predecessor to inherit from.
+    const siteConfig = { whatsappNumber: '+39 legacy' } as WebsiteSiteConfig
+    expect(resolveWhatsAppConfig(modules([]), siteConfig).inContactSections).toBe(false)
   })
 })
 

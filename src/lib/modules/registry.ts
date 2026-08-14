@@ -524,26 +524,26 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
   // ── WhatsApp ───────────────────────────────────────────────────────────────
   // ADR-020 Decision 2 — "WhatsApp becomes a real module."
   //
-  // WhatsApp config (number, floating button, message form) previously lived on
-  // siteConfig, which is exactly the accretion ADR-020 exists to stop: it is
-  // communications config, not a website property.
+  // The control-room rule: opening this module shows everything needed to make
+  // WhatsApp work — where the button appears, the number, and the subjects a
+  // visitor can choose. Nothing here sends the admin somewhere else.
   //
-  // This module owns no schema types and no content. It is configuration plus a
-  // site-wide surface — a legitimate module shape, and the reason the manifest
-  // allows empty collections/sectionTypes/schemaTypes. The lead captured before
-  // hand-off to WhatsApp is a form submission owned by the Forms module, which
-  // is why `requires: forms` is a hard dependency rather than a soft one: with
-  // no form definition there is nothing to open and nothing to record.
+  // In particular there is deliberately NO form picker. In capture mode the
+  // module owns a formDefinition behind the scenes (see syncWhatsAppForm in
+  // src/lib/modules/whatsapp/form-sync.ts) so lead capture and the submissions
+  // dashboard keep working — but "form" is plumbing, and an admin who just
+  // enabled WhatsApp should not be asked to choose one. The reference is kept
+  // in `internalFormRef`, hidden from the pane.
   {
     id: 'whatsapp',
     label: 'WhatsApp',
-    version: '1.0.0',
+    version: '2.0.0',
     status: 'released',
     category: 'engagement',
 
     platformContract: {
       // No pageType, collections, sectionTypes, or schemaTypes: this module
-      // contributes a configured site-wide surface, not content.
+      // contributes configured site-wide surfaces, not content.
       collections: [],
       sectionTypes: [],
       schemaTypes: [],
@@ -553,42 +553,87 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         {
           id: 'whatsapp.config.manage',
           label: 'Configure WhatsApp',
-          description: 'Set the WhatsApp number, message form, and floating button for a website.',
+          description: 'Set the WhatsApp number, subjects, and where the WhatsApp buttons appear.',
           defaultRoles: ['owner'],
         },
       ],
 
       configSchema: [
+        // ── Where it appears ────────────────────────────────────────────────
+        // Both surfaces are per-website decisions, so both live here. The
+        // floating button and the contact-section button used to be configured
+        // in two unrelated places (siteConfig vs. a per-section checkbox);
+        // ADR-020 Amendment A brings them together.
+        {
+          id: 'whatsappFloating',
+          label: 'Floating button on every page',
+          type: 'boolean',
+          initialValue: false,
+          description: 'Pinned to the bottom-right corner, on every page of the website.',
+        },
+        {
+          id: 'showInContactSections',
+          label: 'Button in contact sections',
+          type: 'boolean',
+          initialValue: false,
+          description: 'Shown beside the message button wherever a Contact section appears.',
+        },
+
+        // ── Configuration ───────────────────────────────────────────────────
         {
           id: 'whatsappNumber',
           label: 'WhatsApp Number',
           type: 'string',
           description:
-            'International format, e.g. +39 335 1234567. WhatsApp buttons appear only when this is set.',
+            'International format, e.g. +39 335 1234567. The buttons stay hidden until this is set.',
           validation: {
-            // Digits, spaces, hyphens, parentheses and a leading +, 7–20 digits.
-            // Deliberately permissive: this is a display/hand-off value, not a
-            // dialling API, and over-strict validation locks out valid formats.
+            // Digits, spaces, hyphens, parentheses and a leading +.
+            // Deliberately permissive: this is a display and hand-off value, not
+            // a dialling API, and over-strict validation locks out valid formats.
             regex: '^\\+?[0-9\\s\\-()]{7,25}$',
             message: 'Enter a phone number in international format, e.g. +39 335 1234567.',
           },
         },
         {
-          id: 'whatsappForm',
-          label: 'WhatsApp Message Form',
-          type: 'reference',
-          referenceTo: ['formDefinition'],
-          referenceFilter: '_type == "formDefinition" && role == "active"',
-          description:
-            'Subject and message form opened by WhatsApp buttons. The lead is saved — and appears in the dashboard — before the visitor is handed off to WhatsApp with the message pre-filled.',
+          id: 'mode',
+          label: 'When someone taps the button',
+          type: 'select',
+          initialValue: 'capture',
+          description: '',
+          options: [
+            {
+              value: 'direct',
+              label: 'Open WhatsApp straight away',
+              description: 'Fastest for the visitor. Nothing is recorded — you only see the message in WhatsApp.',
+            },
+            {
+              value: 'capture',
+              label: 'Ask for a subject and message first',
+              description: 'The enquiry is saved and appears in the dashboard before WhatsApp opens, pre-filled.',
+            },
+          ],
         },
         {
-          id: 'whatsappFloating',
-          label: 'Floating WhatsApp Button',
-          type: 'boolean',
-          initialValue: false,
+          id: 'subjects',
+          label: 'Subjects',
+          type: 'localizedStringList',
+          showWhen: { field: 'mode', equals: 'capture' },
           description:
-            'Show a WhatsApp button pinned to the bottom-right corner on every page. Requires a number and a form above.',
+            'What a visitor can be contacting you about. Add one row per subject, in every language the website offers.',
+        },
+
+        // ── Internal ────────────────────────────────────────────────────────
+        // The module-owned form definition backing capture mode. Written by the
+        // pane, never chosen by an admin — hence hidden from the Modules pane
+        // and from the generated Studio form.
+        {
+          id: 'internalFormRef',
+          label: 'Message form (managed automatically)',
+          type: 'reference',
+          referenceTo: ['formDefinition'],
+          hidden: true,
+          description:
+            'Maintained by the WhatsApp module from the subjects above. Not edited directly.',
         },
       ],
 
@@ -596,37 +641,37 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         surfaces: [
           {
             kind: 'siteWide',
-            description:
-              'Floating button pinned to the bottom-right corner of every page.',
+            description: 'Floating button pinned to the bottom-right corner of every page.',
             toggleFieldId: 'whatsappFloating',
           },
+          {
+            kind: 'siteWide',
+            description: 'Button beside the message button in every Contact section.',
+            toggleFieldId: 'showInContactSections',
+          },
         ],
-        note: 'The Contact section has its own per-section WhatsApp switch — that is a page-level placement decision and stays on the section.',
       },
     },
 
     publicContract: {},
 
     dependencies: {
-      requires: [
-        {
-          moduleId: 'forms',
-          reason:
-            'The WhatsApp buttons open a form definition and record the lead before handing off, so Forms must be installed.',
-        },
-      ],
-      integratesWith: [],
+      requires: [],
+      // Forms is required only in capture mode, which `requires` cannot express
+      // (it is absolute). The Modules pane enforces the conditional dependency
+      // at save time instead — see ADR-020 Amendment A.
+      integratesWith: ['forms'],
     },
 
     dataStore: {
-      // Configuration only. The submission captured before hand-off is a Forms
-      // record in the operational tier, owned by the Forms module — this module
-      // does not own a second copy of it.
+      // Configuration only. The enquiry captured before hand-off is a Forms
+      // submission in the operational tier, owned by the Forms module — this
+      // module does not keep a second copy of it.
       primary: 'content',
     },
 
     changelog:
-      'V1.0.0 — ADR-020. WhatsApp promoted from siteConfig fields to a first-class module owning its own number, message form, and floating-button placement.',
+      'V2.0.0 — ADR-020 Amendment A. Subjects and both button placements are configured in the module; the form picker is gone (the module owns its form definition silently). V1.0.0 — WhatsApp promoted from siteConfig fields to a first-class module.',
   },
 
 ]
