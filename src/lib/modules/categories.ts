@@ -75,8 +75,16 @@ export function resolveCategories(
   if (!keys || keys.length === 0) return []
   const selected = new Set(keys)
 
+  // Dual-read while the legacy blogCategory documents are retired. Content that
+  // has been migrated stores the stable key ("dental-health"); content that has
+  // not still stores a reference, which GROQ resolves to the category's English
+  // title ("Dental Health"). Matching on either means a badge never blanks out
+  // because a deploy and a data migration happened seconds apart — the failure
+  // mode that took both sites down on 2026-08-14, in the opposite direction.
+  //
+  // Drop the label comparison once no content references a blogCategory.
   return configuredCategories(modules, moduleId)
-    .filter((entry) => selected.has(entry.value))
+    .filter((entry) => selected.has(entry.value) || selected.has(entry.label?.en ?? '\u0000'))
     .map((entry) => ({
       key: entry.value,
       title: label(entry, locale, defaultLocale),
