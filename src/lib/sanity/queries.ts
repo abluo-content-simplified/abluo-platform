@@ -99,7 +99,12 @@ export const CTA_FIELDS = /* groq */ `
     pageRef->slug[$locale].current,
     pageRef->slug[$defaultLocale].current
   ),
-  "formId": formRef._ref,
+  // Dual-read across the two form document types while the legacy "form" type
+  // is retired. A formDefinition carries a stable formId route key; the legacy
+  // form has no such field, so coalesce falls through to the raw _ref exactly
+  // as before and existing CTAs keep working untouched.
+  "formId": coalesce(formRef->formId, formRef._ref),
+  "formDefinitionId": formRef->formId,
   "formInquiryType": formRef->inquiryType,
   "fileUrl": file.asset->url,
   "fileName": file.asset->originalFilename,

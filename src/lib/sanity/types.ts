@@ -96,6 +96,8 @@ export interface Cta {
   pageSlug?: string
   // Resolved from formRef by GROQ
   formId?: string
+  /** Set only when formRef points at a formDefinition — the stable route key. */
+  formDefinitionId?: string
   formInquiryType?: string
   // Resolved from file.asset by GROQ
   fileUrl?: string
@@ -129,6 +131,7 @@ export type ResolvedCta =
       label: string
       internalName: string
       formId: string
+      formDefinitionId?: string
       formInquiryType?: string
     }
   | {

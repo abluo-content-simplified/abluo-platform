@@ -18,6 +18,7 @@ import { imageUrl } from '@/lib/sanity/image'
 import { resolveCta } from '@/lib/sanity/cta'
 import { CtaButton } from '@/components/ui/CtaButton'
 import { useEarlyAccessSafe } from '@/components/forms/EarlyAccessContext'
+import { useFormOverlaySafe } from '@/components/forms/FormOverlayContext'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 interface Props {
@@ -473,6 +474,7 @@ function VisualColumn({ section, animationIntensity }: VisualColumnProps) {
 
 export function HeroLiveCaptureSection({ section, surface, designSystem }: Props) {
   const earlyAccess = useEarlyAccessSafe()
+  const formOverlay = useFormOverlaySafe()
   const {
     eyebrow,
     title,
@@ -481,10 +483,32 @@ export function HeroLiveCaptureSection({ section, surface, designSystem }: Props
   } = section
   const [primaryCta, secondaryCta] = (ctas ?? []).map(resolveCta)
 
-  // Bridge form CTAs to the correct modal handler.
-  // Currently only earlyAccess is wired. Future types will route via FormModalProvider.
+  // Bridge form CTAs to the correct overlay.
+  //
+  // Preferred path: the CTA points at a formDefinition, so its stable formId
+  // opens the generic form overlay — the same route NavClient uses. This is
+  // what every CTA will use once the legacy `form` type is gone.
+  //
+  // Fallback path: the CTA still points at a legacy `form` document, which the
+  // code never rendered — it read one field, inquiryType, and used it to decide
+  // which modal to open. Keeping that branch is what lets this ship before the
+  // content is repointed; without it, every legacy CTA would go dead the moment
+  // this deploys. Delete the branch once no cta references a `form`.
   function makeFormHandler(cta: ReturnType<typeof resolveCta> | undefined): (() => void) | undefined {
     if (!cta || cta.type !== 'form') return undefined
+
+    if (cta.formDefinitionId && formOverlay) {
+      const formId = cta.formDefinitionId
+      return () => formOverlay.open({
+        formId,
+        source: {
+          source: 'header_cta',
+          cta_internal_name: cta.internalName ?? null,
+          cta_label_snapshot: cta.label ?? null,
+        },
+      })
+    }
+
     if (cta.formInquiryType === 'earlyAccess') {
       return () => earlyAccess?.open({
         source: 'header_cta',

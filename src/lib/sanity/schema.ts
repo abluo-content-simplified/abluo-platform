@@ -182,14 +182,32 @@ const ctaType = defineType({
 
     // ── Form reference (shown when actionType === 'form') ────────────────────
     // Stores the reference now; modal trigger wired in a future session.
+    // `form` remains in `to` purely so existing references still validate while
+    // the last legacy documents are retired — the picker below cannot select
+    // one. Once no cta points at a `form`, drop it from `to` and delete the type.
     defineField({
       name: 'formRef',
       title: 'Form',
       type: 'reference',
-      to: [{ type: 'form' }],
+      to: [{ type: 'formDefinition' }, { type: 'form' }],
       hidden: ({ parent }: { parent?: { actionType?: string } }) => parent?.actionType !== 'form',
       description: 'Select the form to open when clicked.',
-      options: { filter: scopedRef, disableNew: true },
+      options: {
+        // Tenant-scoped, not project-scoped: form definitions belong to the
+        // client, so two websites of one client share them — and no website can
+        // ever reach another client's. Deriving the tenant from projectSlug
+        // mirrors the Modules pane; a document with no project selects nothing
+        // rather than falling open to every tenant.
+        filter: ({ document }: { document: Record<string, unknown> }) => {
+          const projectSlug = (document as { projectSlug?: string })?.projectSlug
+          if (!projectSlug) return { filter: '_id == "@@no-project-selected@@"' }
+          return {
+            filter: '_type == "formDefinition" && role == "active" && tenantSlug == $tenantSlug',
+            params: { tenantSlug: projectSlug.replace(/-main$/, '') },
+          }
+        },
+        disableNew: true,
+      },
     }),
 
     // ── File download (shown when actionType === 'fileDownload') ─────────────
