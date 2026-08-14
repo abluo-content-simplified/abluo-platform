@@ -103,7 +103,7 @@ export default async function LivePage({ params }: PageProps) {
   // contract depends on (unresolved fails open; resolved-empty gates).
   const enabledModuleIds = getEnabledModuleIds(moduleConfig)
 
-  await hydrateSections(livePage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds })
+  await hydrateSections(livePage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig })
 
   return (
     <>

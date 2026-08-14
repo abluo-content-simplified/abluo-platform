@@ -56,13 +56,6 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
               initialValueTemplate: 'postProjectOwned',
             },
             {
-              id: 'categories',
-              label: 'Categories',
-              schemaType: 'blogCategory',
-              filter: `_type == "blogCategory" && projectSlug == $slug`,
-              initialValueTemplate: 'blogCategoryProjectOwned',
-            },
-            {
               id: 'authors',
               label: 'Authors',
               schemaType: 'postAuthor',
@@ -112,10 +105,27 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         },
       ],
 
-      // ADR-020 — Blog has no per-site configuration today: everything an
-      // editor controls lives on the blogPage document or the listing section.
-      // The empty array is a real answer, not a placeholder.
-      configSchema: [],
+      // ADR-020 Amendment B — DEFINING a category is configuration; SELECTING one
+      // while writing is content. The vocabulary lives here; Content holds only
+      // the entries themselves.
+      configSchema: [
+        {
+          id: 'categories',
+          label: 'Categories',
+          type: 'localizedStringList',
+          supportsColor: true,
+          description:
+            'The categories an author can choose from, in every language this website offers. Renaming or translating a label is safe — content filed under it keeps its link.',
+        },
+        {
+          id: 'readingSpeed',
+          label: 'Reading speed (words per minute)',
+          type: 'number',
+          initialValue: 200,
+          description:
+            'Used to estimate reading time. 200 is the average for adult prose; lower it for dense or technical writing.',
+        },
+      ],
 
       placement: {
         surfaces: [
@@ -176,13 +186,6 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
               ],
               initialValueTemplate: 'newsArticleProjectOwned',
             },
-            {
-              id: 'news-categories',
-              label: 'Categories',
-              schemaType: 'newsCategory',
-              filter: `_type == "newsCategory" && projectSlug == $slug`,
-              initialValueTemplate: 'newsCategoryProjectOwned',
-            },
           ],
         },
       ],
@@ -225,7 +228,27 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         },
       ],
 
-      configSchema: [],
+      // ADR-020 Amendment B — DEFINING a category is configuration; SELECTING one
+      // while writing is content. The vocabulary lives here; Content holds only
+      // the entries themselves.
+      configSchema: [
+        {
+          id: 'categories',
+          label: 'Categories',
+          type: 'localizedStringList',
+          supportsColor: true,
+          description:
+            'The categories an author can choose from, in every language this website offers. Renaming or translating a label is safe — content filed under it keeps its link.',
+        },
+        {
+          id: 'readingSpeed',
+          label: 'Reading speed (words per minute)',
+          type: 'number',
+          initialValue: 200,
+          description:
+            'Used to estimate reading time. 200 is the average for adult prose; lower it for dense or technical writing.',
+        },
+      ],
 
       placement: {
         surfaces: [
@@ -275,13 +298,6 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
               ],
               initialValueTemplate: 'eventProjectOwned',
             },
-            {
-              id: 'categories',
-              label: 'Categories',
-              schemaType: 'eventCategory',
-              filter: `_type == "eventCategory" && projectSlug == $slug`,
-              initialValueTemplate: 'eventCategoryProjectOwned',
-            },
           ],
         },
       ],
@@ -319,7 +335,19 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         },
       ],
 
-      configSchema: [],
+      // ADR-020 Amendment B — DEFINING a category is configuration; SELECTING one
+      // while writing is content. The vocabulary lives here; Content holds only
+      // the entries themselves.
+      configSchema: [
+        {
+          id: 'categories',
+          label: 'Categories',
+          type: 'localizedStringList',
+          supportsColor: true,
+          description:
+            'The categories an author can choose from, in every language this website offers. Renaming or translating a label is safe — content filed under it keeps its link.',
+        },
+      ],
 
       placement: {
         surfaces: [

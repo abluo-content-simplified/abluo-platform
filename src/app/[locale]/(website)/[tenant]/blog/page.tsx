@@ -125,7 +125,7 @@ export default async function NewsListingPage({ params }: PageProps) {
   // contract depends on (unresolved fails open; resolved-empty gates).
   const enabledModuleIds = getEnabledModuleIds(moduleConfig)
 
-  await hydrateSections(blogPage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds })
+  await hydrateSections(blogPage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig })
 
   return (
     <>

@@ -23,8 +23,11 @@ import {
   localeConfigQuery,
   designSystemQuery,
   projectDomainQuery,
+  projectModuleConfigQuery,
 } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
+import { type ProjectModuleConfig } from '@/lib/modules/config'
+import { resolveCategories, charsPerMinute, DEFAULT_CHARS_PER_MINUTE } from '@/lib/modules/categories'
 import type { NewsArticle, LocaleConfig, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
 import { imageUrl, imageSrcSet, ogImageUrl } from '@/lib/sanity/image'
 import { SlideUp } from '@/components/animation'
@@ -56,6 +59,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       slug,
       locale: locale as SupportedLocale,
       defaultLocale,
+      charsPerMinute: DEFAULT_CHARS_PER_MINUTE,
     }),
     fetchForTenant<string | null>(projectDomainQuery, {}),
   ])
@@ -150,11 +154,18 @@ export default async function NewsDetailPage({ params, searchParams }: PageProps
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
+  // ADR-020 Amendment B — category labels and reading speed come from the module.
+  const moduleConfig = await fetchForTenant<ProjectModuleConfig>(projectModuleConfigQuery, {
+    locale,
+    defaultLocale,
+  })
+
   const [article, designSystem] = await Promise.all([
     fetchForTenant<NewsArticle>(newsArticleBySlugQuery, {
       slug,
       locale: locale as SupportedLocale,
       defaultLocale,
+      charsPerMinute: charsPerMinute(moduleConfig, 'news'),
     }),
     (async () => {
       const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {})
@@ -187,6 +198,8 @@ export default async function NewsDetailPage({ params, searchParams }: PageProps
     }
   }
 
+  article.categories = resolveCategories(article.categoryKeys, moduleConfig, 'news', locale, defaultLocale)
+
   const msg = getNewsModuleMessages(locale)
   const { label: backLabel, url: backUrl } = getBackContext(from, locale, tenantId)
 
@@ -216,7 +229,7 @@ export default async function NewsDetailPage({ params, searchParams }: PageProps
               <div className="mb-4 flex flex-wrap gap-1.5">
                 {article.categories.map((cat) => (
                   <span
-                    key={cat._id}
+                    key={cat.key}
                     className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest"
                     style={{
                       background: cat.color

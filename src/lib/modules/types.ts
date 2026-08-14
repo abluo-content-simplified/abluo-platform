@@ -140,6 +140,8 @@ export type ModuleConfigListEntry = {
   _key: string
   value: string
   label: Record<string, string>
+  /** Optional badge colour, when the declaring field sets `supportsColor`. */
+  color?: string
 }
 
 /**
@@ -193,6 +195,8 @@ export type ModuleConfigFieldDef = {
    * forth does not destroy what was already typed.
    */
   showWhen?: { field: string; equals: string | boolean }
+  /** For `localizedStringList`: each entry also carries an optional colour. */
+  supportsColor?: boolean
   /**
    * Never render this field to an admin — in the Modules pane or the generated
    * Studio form. The value is written by the module itself.

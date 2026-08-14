@@ -9,8 +9,11 @@ import {
   localeConfigQuery,
   designSystemQuery,
   projectDomainQuery,
+  projectModuleConfigQuery,
 } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
+import { type ProjectModuleConfig } from '@/lib/modules/config'
+import { resolveCategories, charsPerMinute, DEFAULT_CHARS_PER_MINUTE } from '@/lib/modules/categories'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
 import { resolveEmbedUrl } from '@/lib/embed'
 import type { Post, LocaleConfig, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
@@ -40,7 +43,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const supportedLocales: SupportedLocale[] = localeConfig?.supportedLocales ?? [defaultLocale]
 
   const [post, customDomain] = await Promise.all([
-    fetchForTenant<Post>(postBySlugQuery, { slug, locale: locale as SupportedLocale, defaultLocale }),
+    fetchForTenant<Post>(postBySlugQuery, { slug, locale: locale as SupportedLocale, defaultLocale, charsPerMinute: DEFAULT_CHARS_PER_MINUTE }),
     fetchForTenant<string | null>(projectDomainQuery, {}),
   ])
 
@@ -125,11 +128,20 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
+  // ADR-020 Amendment B — needed to resolve category keys into labels and to
+  // apply the website's configured reading speed.
+  const moduleConfig = await fetchForTenant<ProjectModuleConfig>(projectModuleConfigQuery, {
+    locale,
+    defaultLocale,
+  })
+  const cpm = charsPerMinute(moduleConfig, 'blog')
+
   const [post, designSystem] = await Promise.all([
     fetchForTenant<Post>(postBySlugQuery, {
       slug,
       locale: locale as SupportedLocale,
       defaultLocale,
+      charsPerMinute: cpm,
     }),
     (async () => {
       const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {})
@@ -150,13 +162,20 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
   }
 
   // Related posts — prioritise shared categories, exclude current post.
-  const categoryIds = (post.categories ?? []).map(c => c._id)
-  const relatedPosts = await fetchForTenant<Post[]>(relatedPostsQuery, {
+  const categoryKeys = post.categoryKeys ?? []
+  const relatedPosts = (await fetchForTenant<Post[]>(relatedPostsQuery, {
     locale: locale as SupportedLocale,
     defaultLocale,
     excludeId: post._id,
-    categoryIds,
-  })
+    categoryKeys,
+    charsPerMinute: cpm,
+  })).map((related) => ({
+    ...related,
+    categories: resolveCategories(related.categoryKeys, moduleConfig, 'blog', locale, defaultLocale),
+  }))
+
+  // Resolve this post's own categories for the header badges.
+  post.categories = resolveCategories(post.categoryKeys, moduleConfig, 'blog', locale, defaultLocale)
 
   // Build slug map for the language switcher.
   // IMPORTANT: prefix with 'blog/' so LanguageSwitcher generates
@@ -204,7 +223,7 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
               <div className="flex flex-wrap gap-2 mb-5">
                 {post.categories.map((cat) => (
                   <span
-                    key={cat._id}
+                    key={cat.key}
                     className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-widest"
                     style={{
                       background: cat.color

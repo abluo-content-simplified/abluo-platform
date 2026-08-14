@@ -118,7 +118,7 @@ export default async function WebsitePageRoute({ params }: PageProps) {
   // contract depends on (unresolved fails open; resolved-empty gates).
   const enabledModuleIds = getEnabledModuleIds(moduleConfig)
 
-  await hydrateSections(page.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds })
+  await hydrateSections(page.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig })
 
   // ── Slug map — passed to the language switcher via context ──────────────────
   // Maps each locale to its current slug for this page.

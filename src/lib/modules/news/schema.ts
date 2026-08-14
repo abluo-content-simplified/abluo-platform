@@ -1,4 +1,5 @@
 import { defineType, defineField, defineArrayMember } from 'sanity'
+import { CategorySelectInput } from '@/lib/sanity/fields/CategorySelectInput'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF } from '@/lib/sanity/fields/shared'
 
 // ── News module — Sanity schema types ─────────────────────────────────────────
@@ -107,14 +108,18 @@ const newsListingSectionType = defineType({
       description: '"Manual order" preserves the hand-picked array order below — only meaningful with "Manual selection" filter.',
     }),
     defineField({
-      name: 'category',
+      name: 'categoryKey',
       title: 'Category',
-      type: 'reference',
-      to: [{ type: 'newsCategory' }],
+      type: 'array',
       group: 'filter',
-      description: 'Choose a category to show only news in that category.',
+      of: [defineArrayMember({ type: 'string' })],
+      description: 'Show only entries in this category. Pick one.',
       hidden: ({ parent }) => parent?.filterMode !== 'byCategory',
-      options: { filter: scopedRef },
+      // Reuses the multi-select picker rather than inventing a single-select
+      // twin; the consumer reads the first entry.
+      components: { input: CategorySelectInput },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      options: { moduleId: 'news' } as any,
     }),
     defineField({
       name: 'articles',
@@ -361,7 +366,14 @@ const newsArticleType = defineType({
       title: 'Categories',
       type: 'array',
       group: 'relations',
-      of: [defineArrayMember({ type: 'reference', to: [{ type: 'newsCategory' }], options: { filter: scopedRef } })],
+      of: [defineArrayMember({ type: 'string' })],
+      // ADR-020 Amendment B — choices come from Modules → Categories for this
+      // website, so they cannot be a static options.list. Stores stable keys,
+      // never labels, so renaming or translating a category leaves existing
+      // content intact.
+      components: { input: CategorySelectInput },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      options: { moduleId: 'news' } as any,
     }),
 
     // ── SEO ───────────────────────────────────────────────────────────────────

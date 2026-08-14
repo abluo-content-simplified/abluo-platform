@@ -628,15 +628,6 @@ export default defineConfig({
                           .filter('_type == "post" && (projectSlug == null || projectSlug == "")')
                       ),
                     S.listItem()
-                      .id('unassigned-categories')
-                      .title('Categories without Project')
-                      .child(
-                        S.documentList()
-                          .title('Unassigned Categories')
-                          .apiVersion('2026-05-21')
-                          .filter('_type == "blogCategory" && (projectSlug == null || projectSlug == "")')
-                      ),
-                    S.listItem()
                       .id('unassigned-authors')
                       .title('Authors without Project')
                       .child(
@@ -726,6 +717,6 @@ export default defineConfig({
     // Note: Sanity always re-sorts the menu alphabetically in the UI layer —
     // custom ordering via newDocumentOptions is not possible. Filter only.
     newDocumentOptions: (prev) =>
-      prev.filter((opt) => !['homePage', 'homePageProjectOwned', 'livePageProjectOwned', 'eventsPageProjectOwned', 'blogPageProjectOwned', 'newsPageProjectOwned'].includes(opt.templateId)),
+      prev.filter((opt) => !['blogCategory', 'newsCategory', 'eventCategory', 'blogCategoryProjectOwned', 'newsCategoryProjectOwned', 'eventCategoryProjectOwned', 'homePage', 'homePageProjectOwned', 'livePageProjectOwned', 'eventsPageProjectOwned', 'blogPageProjectOwned', 'newsPageProjectOwned'].includes(opt.templateId)),
   },
 })

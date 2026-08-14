@@ -276,7 +276,9 @@ describe('buildCollectionItems — live MODULE_REGISTRY', () => {
     expect(result).toHaveLength(0)
   })
 
-  it('returns one group for the Blog module with the correct group ID', () => {
+  it('returns one group for the Blog module — posts and authors, no categories', () => {
+    // ADR-020 Amendment B — categories are module configuration now, so Blog's
+    // collections are just the two document lists an editor works in.
     const { S, tracker } = createMockS()
     const blogModule = MODULE_REGISTRY.find((m) => m.id === 'blog')!
     const result = buildCollectionItems('livener-main', 'tenant', S, blogModule)
@@ -284,17 +286,17 @@ describe('buildCollectionItems — live MODULE_REGISTRY', () => {
     expect(tracker.ids).toContain('livener-main-blog-module')
     expect(tracker.ids).toContain('livener-main-blog-module-list')
     expect(tracker.ids).toContain('livener-main-posts')
-    expect(tracker.ids).toContain('livener-main-categories')
     expect(tracker.ids).toContain('livener-main-authors')
+    expect(tracker.ids).not.toContain('livener-main-categories')
   })
 
-  it('returns one group for the Events module with the correct group ID', () => {
+  it('flattens the Events module to its single Events list', () => {
+    // Its categories moved to module config, leaving one item — so the group
+    // wrapper collapses (see the flattening tests above).
     const { S, tracker } = createMockS()
     const eventsModule = MODULE_REGISTRY.find((m) => m.id === 'events')!
     const result = buildCollectionItems('livener-main', 'tenant', S, eventsModule)
     expect(result).toHaveLength(1)
-    expect(tracker.ids).toContain('livener-main-events-module')
-    expect(tracker.ids).toContain('livener-main-events-module-list')
-    expect(tracker.ids).toContain('livener-main-events')
+    expect(tracker.ids).toEqual(['livener-main-events'])
   })
 })

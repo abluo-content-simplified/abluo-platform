@@ -29,6 +29,7 @@ import { PhotoGallerySection } from '@/components/sections/PhotoGallerySection'
 import { VideoSection } from '@/components/sections/VideoSection'
 import { SECTION_MAP, isSectionTypeAvailable } from '@/lib/modules/sections'
 import type { ProjectModuleConfig } from '@/lib/modules/config'
+import { resolveCategories, charsPerMinute, DEFAULT_CHARS_PER_MINUTE } from '@/lib/modules/categories'
 import type {
   WebsiteSiteConfig,
   PageSection,
@@ -71,12 +72,14 @@ async function fetchBlogListingPosts(
   fetchForTenant: ReturnType<typeof tenantClient>['fetchForTenant'],
   locale: SupportedLocale,
   defaultLocale: SupportedLocale,
+  moduleConfig?: ProjectModuleConfig,
 ): Promise<Post[]> {
+  const cpm = charsPerMinute(moduleConfig, 'blog')
   const {
     filterMode = 'latest',
     sortOrder = 'newest',
     maxItems = 3,
-    categoryId,
+    categoryKey,
     eventId,
     postIds,
   } = section
@@ -86,6 +89,7 @@ async function fetchBlogListingPosts(
     const posts = await fetchForTenant<Post[]>(blogListingManualPostsQuery, {
       locale,
       defaultLocale,
+      charsPerMinute: cpm,
       postIds,
     })
     if (sortOrder === 'manual') {
@@ -110,8 +114,9 @@ async function fetchBlogListingPosts(
   return fetchForTenant<Post[]>(query, {
     locale,
     defaultLocale,
+    charsPerMinute: cpm,
     filterMode,
-    categoryId: categoryId ?? null,
+    categoryKey: categoryKey ?? null,
     eventId: eventId ?? null,
     // Fetch one extra to detect "has more" for the View All button
     maxItems: maxItems + 1,
@@ -129,13 +134,14 @@ async function fetchEventsListingEvents(
   fetchForTenant: ReturnType<typeof tenantClient>['fetchForTenant'],
   locale: SupportedLocale,
   defaultLocale: SupportedLocale,
+  moduleConfig?: ProjectModuleConfig,
 ): Promise<Event[]> {
   const {
     filterMode = 'latest',
     sortOrder = 'newest',
     timeFilter = 'upcoming',
     maxItems = 3,
-    categoryId,
+    categoryKey,
     eventIds,
   } = section
 
@@ -170,7 +176,7 @@ async function fetchEventsListingEvents(
     defaultLocale,
     filterMode,
     timeFilter,
-    categoryId: categoryId ?? null,
+    categoryKey: categoryKey ?? null,
     // Fetch one extra to detect "has more" for the View All button
     maxItems: maxItems + 1,
   })
@@ -191,12 +197,14 @@ async function fetchNewsListingArticles(
   fetchForTenant: ReturnType<typeof tenantClient>['fetchForTenant'],
   locale: SupportedLocale,
   defaultLocale: SupportedLocale,
+  moduleConfig?: ProjectModuleConfig,
 ): Promise<NewsArticle[]> {
+  const cpm = charsPerMinute(moduleConfig, 'news')
   const {
     filterMode = 'latest',
     sortOrder = 'newest',
     maxItems = 3,
-    categoryId,
+    categoryKey,
     articleIds,
   } = section
 
@@ -207,6 +215,7 @@ async function fetchNewsListingArticles(
     const articles = await fetchForTenant<NewsArticle[]>(newsListingManualArticlesQuery, {
       locale,
       defaultLocale,
+      charsPerMinute: cpm,
       articleIds,
     })
     if (sortOrder === 'manual') {
@@ -226,8 +235,9 @@ async function fetchNewsListingArticles(
   return fetchForTenant<NewsArticle[]>(query, {
     locale,
     defaultLocale,
+    charsPerMinute: cpm,
     filterMode,
-    categoryId: categoryId ?? null,
+    categoryKey: categoryKey ?? null,
     // One extra, to detect "has more" for the View All button.
     maxItems: maxItems + 1,
   })
@@ -253,6 +263,12 @@ export async function hydrateSections(
     locale: SupportedLocale
     defaultLocale: SupportedLocale
     enabledModuleIds?: string[] | null
+    /**
+     * ADR-020 Amendment B — needed to resolve category keys into labels and to
+     * apply the website's configured reading speed. Optional: without it the
+     * defaults apply and categories render empty rather than breaking.
+     */
+    moduleConfig?: ProjectModuleConfig
   }
 ): Promise<void> {
   if (!sections) return
@@ -261,21 +277,29 @@ export async function hydrateSections(
       if (!isSectionTypeAvailable(section._type, ctx.enabledModuleIds)) return
       if (section._type === 'blogListingSection') {
         const bls = section as BlogListingSectionType
-        const posts = await fetchBlogListingPosts(bls, ctx.fetchForTenant, ctx.locale, ctx.defaultLocale)
+        const posts = await fetchBlogListingPosts(bls, ctx.fetchForTenant, ctx.locale, ctx.defaultLocale, ctx.moduleConfig)
         // Slice to maxItems — we fetched one extra to detect overflow for View All
-        bls.posts = posts.slice(0, bls.maxItems ?? 3)
+        // ADR-020 Amendment B — turn stored keys into labels + colours once,
+        // server-side, so every card renders from the same resolution.
+        bls.posts = posts.slice(0, bls.maxItems ?? 3).map((post) => ({
+          ...post,
+          categories: resolveCategories(post.categoryKeys, ctx.moduleConfig, 'blog', ctx.locale, ctx.defaultLocale),
+        }))
         return
       }
       if (section._type === 'newsListingSection') {
         const nls = section as NewsListingSectionType
-        const articles = await fetchNewsListingArticles(nls, ctx.fetchForTenant, ctx.locale, ctx.defaultLocale)
+        const articles = await fetchNewsListingArticles(nls, ctx.fetchForTenant, ctx.locale, ctx.defaultLocale, ctx.moduleConfig)
         // Slice to maxItems — one extra was fetched to detect overflow for View All
-        nls.articles = articles.slice(0, nls.maxItems ?? 3)
+        nls.articles = articles.slice(0, nls.maxItems ?? 3).map((article) => ({
+          ...article,
+          categories: resolveCategories(article.categoryKeys, ctx.moduleConfig, 'news', ctx.locale, ctx.defaultLocale),
+        }))
         return
       }
       if (section._type === 'eventsListingSection') {
         const els = section as EventsListingSectionType
-        const events = await fetchEventsListingEvents(els, ctx.fetchForTenant, ctx.locale, ctx.defaultLocale)
+        const events = await fetchEventsListingEvents(els, ctx.fetchForTenant, ctx.locale, ctx.defaultLocale, ctx.moduleConfig)
         // Slice to maxItems — we fetched one extra to detect overflow for View All
         els.events = events.slice(0, els.maxItems ?? 3)
         return

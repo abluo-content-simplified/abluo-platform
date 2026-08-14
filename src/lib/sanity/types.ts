@@ -676,11 +676,15 @@ export interface PostAuthor {
   avatar?: ResolvedImage
 }
 
+/**
+ * A category as rendered. ADR-020 Amendment B — categories are module
+ * configuration, not documents, so content stores stable keys and these are
+ * produced by resolveCategories() at render time.
+ */
 export interface BlogCategory {
-  _id: string
+  /** Stable key stored on the content. */
+  key: string
   title?: string
-  /** Locale-resolved slug — coalesced from $locale → $defaultLocale */
-  slug?: string
   color?: string
 }
 
@@ -710,6 +714,9 @@ export interface Post {
   /** Computed in GROQ from body word count. Minimum 1. */
   readingTimeMinutes?: number
   author?: PostAuthor
+  /** Stable category keys as stored. Resolve with resolveCategories(). */
+  categoryKeys?: string[]
+  /** Populated at render time from module config — never projected by GROQ. */
   categories?: BlogCategory[]
   relatedEvent?: {
     _id: string
@@ -735,10 +742,9 @@ export interface Post {
 // than a category on `post`.
 
 export interface NewsCategory {
-  _id: string
+  /** Stable key stored on the content. */
+  key: string
   title?: string
-  /** Locale-resolved slug — coalesced from $locale → $defaultLocale */
-  slug?: string
   color?: string
 }
 
@@ -760,6 +766,9 @@ export interface NewsArticle {
   coverImage?: ResolvedImage
   /** Computed in GROQ from body word count. Minimum 1. */
   readingTimeMinutes?: number
+  /** Stable category keys as stored. Resolve with resolveCategories(). */
+  categoryKeys?: string[]
+  /** Populated at render time from module config — never projected by GROQ. */
   categories?: NewsCategory[]
   seoTitle?: string
   seoDescription?: string
@@ -1040,8 +1049,8 @@ export interface BlogListingSection {
   /** Locale-resolved by GROQ */
   viewAllLabel?: string
   viewAllHref?: string
-  /** Resolved from category->._id in GROQ */
-  categoryId?: string
+  /** The configured category key to filter by (ADR-020 Amendment B). */
+  categoryKey?: string
   /** Resolved from event->._id in GROQ */
   eventId?: string
   /** Resolved from posts[]->._id in GROQ — used for manual selection */
@@ -1081,8 +1090,8 @@ export interface NewsListingSection {
   /** Locale-resolved by GROQ */
   viewAllLabel?: string
   viewAllHref?: string
-  /** Resolved from category->._id in GROQ */
-  categoryId?: string
+  /** The configured category key to filter by (ADR-020 Amendment B). */
+  categoryKey?: string
   /** Resolved from articles[]->._id in GROQ — used for manual selection */
   articleIds?: string[]
   /** Hydrated server-side by hydrateSections — not stored in Sanity */
@@ -1115,8 +1124,8 @@ export interface EventsListingSection {
   /** Locale-resolved by GROQ */
   viewAllLabel?: string
   viewAllHref?: string
-  /** Resolved from category->._id in GROQ */
-  categoryId?: string
+  /** The configured category key to filter by (ADR-020 Amendment B). */
+  categoryKey?: string
   /** Resolved from events[]->._id in GROQ — used for manual selection */
   eventIds?: string[]
   /** Hydrated server-side in page.tsx — not stored in Sanity */

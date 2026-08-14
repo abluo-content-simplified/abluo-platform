@@ -1,4 +1,5 @@
 import { defineType, defineField, defineArrayMember } from 'sanity'
+import { CategorySelectInput } from '@/lib/sanity/fields/CategorySelectInput'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF } from '@/lib/sanity/fields/shared'
 
 // ── Events module — Sanity schema types ───────────────────────────────────────
@@ -118,14 +119,18 @@ const eventsListingSectionType = defineType({
       description: '"Manual order" preserves the hand-picked array order below — only meaningful with "Manual selection" filter. "Newest"/"Oldest" sort by startDate.',
     }),
     defineField({
-      name: 'category',
+      name: 'categoryKey',
       title: 'Category',
-      type: 'reference',
-      to: [{ type: 'eventCategory' }],
+      type: 'array',
       group: 'filter',
-      description: 'Choose a category to show only events in that category.',
+      of: [defineArrayMember({ type: 'string' })],
+      description: 'Show only entries in this category. Pick one.',
       hidden: ({ parent }) => parent?.filterMode !== 'byCategory',
-      options: { filter: scopedRef },
+      // Reuses the multi-select picker rather than inventing a single-select
+      // twin; the consumer reads the first entry.
+      components: { input: CategorySelectInput },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      options: { moduleId: 'events' } as any,
     }),
     defineField({
       name: 'events',
@@ -345,9 +350,14 @@ const eventType = defineType({
       name: 'categories',
       title: 'Categories',
       type: 'array',
-      group: 'content',
-      of: [defineArrayMember({ type: 'reference', to: [{ type: 'eventCategory' }], options: { filter: scopedRef } })],
-      description: 'Optional. Used by eventsListingSection\'s "By Category" filter.',
+      of: [defineArrayMember({ type: 'string' })],
+      // ADR-020 Amendment B — choices come from Modules → Categories for this
+      // website, so they cannot be a static options.list. Stores stable keys,
+      // never labels, so renaming or translating a category leaves existing
+      // content intact.
+      components: { input: CategorySelectInput },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      options: { moduleId: 'events' } as any,
     }),
     defineField({ name: 'schedule', title: 'Schedule', type: 'array', group: 'schedule', of: [defineArrayMember({ type: 'scheduleItem' })] }),
     defineField({ name: 'heroImage', title: 'Hero Image', type: 'localizedImage', group: 'media' }),

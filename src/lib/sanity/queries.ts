@@ -178,7 +178,7 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       maxItems,
       "viewAllLabel": ${loc('viewAllLabel')},
       viewAllHref,
-      "categoryId": category->._id,
+      "categoryKey": categoryKey[0],
       "eventId": event->._id,
       "postIds": posts[]->._id,
       // newsListingSection fields — null on all other section types.
@@ -492,19 +492,14 @@ export const postsQuery = /* groq */ `
     featured,
     ${locImage('coverImage')},
     "readingTimeMinutes": math::max([1, round(
-      length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / 1200
+      length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / $charsPerMinute
     )]),
     "author": author-> {
       name,
       "role": ${loc('role')},
       avatar { asset, hotspot, crop }
     },
-    "categories": categories[]-> {
-      _id,
-      "title": ${loc('title')},
-      "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
-      color
-    },
+    "categoryKeys": categories,
     "seoTitle": ${loc('seoTitle')},
     "seoDescription": ${loc('seoDescription')},
   }
@@ -556,7 +551,7 @@ export const postBySlugQuery = /* groq */ `
       cloudflareVideoId
     },
     "readingTimeMinutes": math::max([1, round(
-      length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / 1200
+      length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / $charsPerMinute
     )]),
     "author": author-> {
       _id,
@@ -565,12 +560,7 @@ export const postBySlugQuery = /* groq */ `
       "bio": ${loc('bio')},
       avatar { asset, hotspot, crop }
     },
-    "categories": categories[]-> {
-      _id,
-      "title": ${loc('title')},
-      "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
-      color
-    },
+    "categoryKeys": categories,
     "relatedEvent": relatedEvent-> {
       _id,
       "title": ${loc('title')},
@@ -598,7 +588,7 @@ export const postByOldSlugQuery = /* groq */ `
 // Prioritises posts that share at least one category with the current post,
 // then falls back to featured / most recent from the same project.
 // $excludeId prevents the current post from appearing in the results.
-// $categoryIds should be the array of _ref strings from the current post's categories.
+// $categoryKeys is the array of category keys on the current post.
 export const relatedPostsQuery = /* groq */ `
   *[
     _type == "post"
@@ -608,7 +598,7 @@ export const relatedPostsQuery = /* groq */ `
     && publishedAt <= now()
     && (!defined(expiresAt) || expiresAt > now())
   ] | order(
-    count((categories[]._ref)[@ in $categoryIds]) desc,
+    count(categories[@ in $categoryKeys]) desc,
     featured desc,
     publishedAt desc
   ) [0...3] {
@@ -620,19 +610,14 @@ export const relatedPostsQuery = /* groq */ `
     featured,
     ${locImage('coverImage')},
     "readingTimeMinutes": math::max([1, round(
-      length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / 1200
+      length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / $charsPerMinute
     )]),
     "author": author-> {
       name,
       "role": ${loc('role')},
       avatar { asset, hotspot, crop }
     },
-    "categories": categories[]-> {
-      _id,
-      "title": ${loc('title')},
-      "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
-      color
-    }
+    "categoryKeys": categories
   }
 `
 
@@ -658,19 +643,14 @@ const blogListingCardFields = /* groq */ `
     "caption": coalesce(caption[$locale], caption[$defaultLocale], caption.en, caption)
   },
   "readingTimeMinutes": math::max([1, round(
-    length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / 1200
+    length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / $charsPerMinute
   )]),
   "author": author-> {
     name,
     "role": coalesce(role[$locale], role[$defaultLocale], role.en, role),
     avatar { asset, hotspot, crop }
   },
-  "categories": categories[]-> {
-    _id,
-    "title": coalesce(title[$locale], title[$defaultLocale], title.en, title),
-    "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
-    color
-  }
+  "categoryKeys": categories
 `
 
 // Core filter — applied by all three blog listing queries.
@@ -688,7 +668,7 @@ const blogListingFilter = /* groq */ `
   && (
     $filterMode == "latest"
     || ($filterMode == "featured" && featured == true)
-    || ($filterMode == "byCategory" && $categoryId in categories[]._ref)
+    || ($filterMode == "byCategory" && $categoryKey in categories)
     || ($filterMode == "byEvent" && relatedEvent._ref == $eventId)
   )
 `
@@ -736,14 +716,9 @@ const newsListingCardFields = /* groq */ `
   featured,
   ${locImage('coverImage')},
   "readingTimeMinutes": math::max([1, round(
-    length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / 1200
+    length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / $charsPerMinute
   )]),
-  "categories": categories[]-> {
-    _id,
-    "title": ${loc('title')},
-    "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
-    color
-  }
+  "categoryKeys": categories
 `
 
 // Core filter — applied by the newest/oldest listing queries.
@@ -762,7 +737,7 @@ const newsListingFilter = /* groq */ `
   && (
     $filterMode == "latest"
     || ($filterMode == "featured" && featured == true)
-    || ($filterMode == "byCategory" && $categoryId in categories[]._ref)
+    || ($filterMode == "byCategory" && $categoryKey in categories)
   )
 `
 
@@ -823,14 +798,9 @@ export const newsArticleBySlugQuery = /* groq */ `
     featured,
     ${locImage('coverImage')},
     "readingTimeMinutes": math::max([1, round(
-      length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / 1200
+      length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / $charsPerMinute
     )]),
-    "categories": categories[]-> {
-      _id,
-      "title": ${loc('title')},
-      "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
-      color
-    },
+    "categoryKeys": categories,
     "seoTitle": coalesce(${loc('seoTitle')}, ${loc('title')}),
     "seoDescription": coalesce(${loc('seoDescription')}, ${loc('excerpt')}),
     seoImage { asset, hotspot, crop },
@@ -885,12 +855,7 @@ const eventsListingCardFields = /* groq */ `
     "alt": coalesce(alt[$locale], alt[$defaultLocale], alt.en, alt),
     "caption": coalesce(caption[$locale], caption[$defaultLocale], caption.en, caption)
   },
-  "categories": categories[]-> {
-    _id,
-    "title": coalesce(title[$locale], title[$defaultLocale], title.en, title),
-    "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
-    color
-  }
+  "categoryKeys": categories
 `
 
 // Core filter — applied by all three eventsListing queries.
@@ -920,7 +885,7 @@ const eventsListingFilter = /* groq */ `
   && (
     $filterMode == "latest"
     || ($filterMode == "featured" && featuredOnHomePage == true)
-    || ($filterMode == "byCategory" && $categoryId in categories[]._ref)
+    || ($filterMode == "byCategory" && $categoryKey in categories)
   )
 `
 

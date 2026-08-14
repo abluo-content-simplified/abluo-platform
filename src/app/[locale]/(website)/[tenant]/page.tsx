@@ -105,7 +105,7 @@ export default async function WebsitePage({ params }: PageProps) {
   // contract depends on (unresolved fails open; resolved-empty gates).
   const enabledModuleIds = getEnabledModuleIds(moduleConfig)
 
-  await hydrateSections(homePage.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds })
+  await hydrateSections(homePage.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig })
 
   const faqSection = homePage.sections?.find(
     (s): s is FAQSectionType => s._type === 'faqSection'

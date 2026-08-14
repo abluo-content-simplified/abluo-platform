@@ -146,6 +146,14 @@ function buildModuleConfigField(field: ModuleConfigFieldDef) {
                   'Stable internal identifier recorded with each submission. Changing it breaks the link to existing records — rename the label instead.',
                 validation: (Rule) => Rule.required(),
               }),
+              ...(field.supportsColor
+                ? [defineField({
+                    name: 'color',
+                    title: 'Badge Colour',
+                    type: 'string',
+                    description: 'Optional. A hex value like #e94e1b, or a colour name.',
+                  })]
+                : []),
             ],
             preview: {
               select: { en: 'label.en', it: 'label.it', value: 'value' },

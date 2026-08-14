@@ -129,6 +129,7 @@ export default async function NewsIndexPage({ params }: PageProps) {
     locale: locale as SupportedLocale,
     defaultLocale,
     enabledModuleIds,
+    moduleConfig,
   })
 
   return (

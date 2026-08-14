@@ -72,7 +72,7 @@ export function PostCard({
             <div className="flex flex-wrap gap-1.5 mb-3">
               {post.categories.map((cat) => (
                 <span
-                  key={cat._id}
+                  key={cat.key}
                   className="text-[10px] font-semibold uppercase tracking-widest"
                   style={{ color: cat.color ?? 'var(--color-primary)' }}
                 >
