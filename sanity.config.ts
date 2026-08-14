@@ -242,24 +242,62 @@ export default defineConfig({
           return items
         }
 
-        // ── Collections section builder ───────────────────────────────────────
-        // Only includes collection groups for enabled modules.
-        // Inserts dividers between groups automatically.
+        // ── Modules section builder ───────────────────────────────────────────
+        // ADR-020 Amendment A — "open a module and everything needed to make it
+        // work is there".
+        //
+        // Each module is its own entry, containing its Settings pane AND its
+        // collections. Blog's posts, categories and authors are inside Blog;
+        // News's items and categories are inside News. They used to sit in a
+        // shared "Collections" folder under Content, which meant a module named
+        // its data in one place and you edited it in another.
+        //
+        // Every registered module appears, active or not, so a module can be
+        // switched on from here. An INACTIVE module shows only Settings: its
+        // collections are hidden until it is turned on, because content you
+        // cannot publish is noise. Its documents are untouched and reappear the
+        // moment it is re-enabled.
+        //
         // buildCollectionItems() (from navigation.ts) converts each module's
-        // declarative `collections` array into Studio structure items.
-        function buildCollectionsItems(slug: string, enabledModuleIds: string[]) {
-          const enabledDefs = MODULE_REGISTRY.filter((m) => enabledModuleIds.includes(m.id))
-          const groups: ReturnType<typeof S.listItem>[][] = enabledDefs
-            .map((m) => buildCollectionItems(slug, S, m))
-            .filter((g) => g.length > 0)
+        // declarative `collections` array into Studio structure items — the
+        // registry stays the single source of truth for what a module owns.
+        function buildModuleItems(
+          slug: string,
+          tenantSlug: string,
+          projectDocId: string,
+          enabledModuleIds: string[]
+        ) {
+          return MODULE_REGISTRY.map((mod) => {
+            const isEnabled = enabledModuleIds.includes(mod.id)
+            const collectionItems = isEnabled ? buildCollectionItems(slug, tenantSlug, S, mod) : []
 
-          // Interleave dividers between groups
-          const items: (ReturnType<typeof S.listItem> | ReturnType<typeof S.divider>)[] = []
-          for (let i = 0; i < groups.length; i++) {
-            if (i > 0) items.push(S.divider())
-            items.push(...groups[i])
-          }
-          return items
+            const settingsItem = S.listItem()
+              .id(`${slug}-module-${mod.id}-settings`)
+              .title('Settings')
+              .child(
+                S.component(ModuleList)
+                  .id(`${slug}-module-${mod.id}-pane`)
+                  .title(mod.label)
+                  .options({ projectId: projectDocId, projectSlug: slug, moduleId: mod.id })
+              )
+
+            return S.listItem()
+              .id(`${slug}-module-${mod.id}`)
+              // The status suffix is the at-a-glance signal the old index pane
+              // gave; without it an inactive module is indistinguishable from an
+              // active one in the sidebar.
+              .title(isEnabled ? mod.label : `${mod.label} — off`)
+              .child(
+                S.list()
+                  .id(`${slug}-module-${mod.id}-list`)
+                  .title(mod.label)
+                  .items(
+                    collectionItems.length > 0
+                      ? [settingsItem, S.divider(), ...collectionItems]
+                      : [settingsItem]
+                  )
+              )
+          })
         }
 
         // ── Client items ──────────────────────────────────────────────────────
@@ -273,8 +311,6 @@ export default defineConfig({
             const designSystemId = project.designSystemId
             const enabledModuleIds = project.enabledModuleIds
             const projectPageDocs = pageDocsByProject.get(slug) ?? []
-
-            const collectionItems = buildCollectionsItems(slug, enabledModuleIds)
 
             return S.listItem()
               .id(`project-${slug}`)
@@ -311,19 +347,9 @@ export default defineConfig({
                                   .items(buildPagesItems(slug, enabledModuleIds, projectPageDocs))
                               ),
 
-                            // Collections — only modules enabled for this website.
-                            // Grouped by module; derived from MODULE_REGISTRY.
-                            ...(collectionItems.length > 0 ? [
-                              S.listItem()
-                                .id(`${slug}-collections`)
-                                .title('Collections')
-                                .child(
-                                  S.list()
-                                    .id(`${slug}-collections-list`)
-                                    .title('Collections')
-                                    .items(collectionItems)
-                                ),
-                            ] : []),
+                            // Collections moved OUT of Content in ADR-020
+                            // Amendment A — a module's data now lives inside
+                            // that module, not in a shared folder here.
 
                             // Media
                             S.listItem()
@@ -375,10 +401,10 @@ export default defineConfig({
                       .id(`${slug}-modules`)
                       .title('Modules')
                       .child(
-                        S.component(ModuleList)
-                          .id(`${slug}-modules-pane`)
+                        S.list()
+                          .id(`${slug}-modules-list`)
                           .title('Modules')
-                          .options({ projectId: project._id, projectSlug: slug })
+                          .items(buildModuleItems(slug, clientDoc.tenantSlug, project._id, enabledModuleIds))
                       ),
 
                     S.divider(),

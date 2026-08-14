@@ -100,19 +100,19 @@ const BLOG_GROUP: ModuleCollectionGroupDef = {
 describe('buildCollectionItems — group structure', () => {
   it('returns empty array for a module with no collections', () => {
     const { S } = createMockS()
-    const result = buildCollectionItems('slug', S, makeManifestWithCollections([]))
+    const result = buildCollectionItems('slug', 'tenant', S, makeManifestWithCollections([]))
     expect(result).toHaveLength(0)
   })
 
   it('returns one item per collection group with items', () => {
     const { S } = createMockS()
-    const result = buildCollectionItems('livener-main', S, makeManifestWithCollections([BLOG_GROUP]))
+    const result = buildCollectionItems('livener-main', 'tenant', S, makeManifestWithCollections([BLOG_GROUP]))
     expect(result).toHaveLength(1)
   })
 
   it('returns two items for two groups', () => {
     const { S } = createMockS()
-    const result = buildCollectionItems('slug', S, makeManifestWithCollections([
+    const result = buildCollectionItems('slug', 'tenant', S, makeManifestWithCollections([
       BLOG_GROUP,
       { id: 'events-module', label: 'Events', items: [{ id: 'events', label: 'Events', schemaType: 'event', filter: '_type == "event"' }] },
     ]))
@@ -121,7 +121,7 @@ describe('buildCollectionItems — group structure', () => {
 
   it('silently excludes groups with zero items', () => {
     const { S } = createMockS()
-    const result = buildCollectionItems('slug', S, makeManifestWithCollections([
+    const result = buildCollectionItems('slug', 'tenant', S, makeManifestWithCollections([
       { id: 'empty', label: 'Empty', items: [] },
       BLOG_GROUP,
     ]))
@@ -130,7 +130,7 @@ describe('buildCollectionItems — group structure', () => {
 
   it('returns empty array when all groups have zero items', () => {
     const { S } = createMockS()
-    const result = buildCollectionItems('slug', S, makeManifestWithCollections([
+    const result = buildCollectionItems('slug', 'tenant', S, makeManifestWithCollections([
       { id: 'empty-a', label: 'A', items: [] },
       { id: 'empty-b', label: 'B', items: [] },
     ]))
@@ -143,25 +143,25 @@ describe('buildCollectionItems — group structure', () => {
 describe('buildCollectionItems — ID generation', () => {
   it('generates group list item ID as ${slug}-${group.id}', () => {
     const { S, tracker } = createMockS()
-    buildCollectionItems('livener-main', S, makeManifestWithCollections([BLOG_GROUP]))
+    buildCollectionItems('livener-main', 'tenant', S, makeManifestWithCollections([BLOG_GROUP]))
     expect(tracker.ids).toContain('livener-main-blog-module')
   })
 
   it('generates inner list ID as ${slug}-${group.id}-list', () => {
     const { S, tracker } = createMockS()
-    buildCollectionItems('livener-main', S, makeManifestWithCollections([BLOG_GROUP]))
+    buildCollectionItems('livener-main', 'tenant', S, makeManifestWithCollections([BLOG_GROUP]))
     expect(tracker.ids).toContain('livener-main-blog-module-list')
   })
 
   it('generates item list item ID as ${slug}-${item.id}', () => {
     const { S, tracker } = createMockS()
-    buildCollectionItems('livener-main', S, makeManifestWithCollections([BLOG_GROUP]))
+    buildCollectionItems('livener-main', 'tenant', S, makeManifestWithCollections([BLOG_GROUP]))
     expect(tracker.ids).toContain('livener-main-posts')
   })
 
   it('uses a different slug correctly', () => {
     const { S, tracker } = createMockS()
-    buildCollectionItems('martegani-main', S, makeManifestWithCollections([BLOG_GROUP]))
+    buildCollectionItems('martegani-main', 'tenant', S, makeManifestWithCollections([BLOG_GROUP]))
     expect(tracker.ids).toContain('martegani-main-blog-module')
     expect(tracker.ids).toContain('martegani-main-blog-module-list')
     expect(tracker.ids).toContain('martegani-main-posts')
@@ -181,7 +181,7 @@ describe('buildCollectionItems — ID generation', () => {
         ],
       },
     ])
-    buildCollectionItems('livener-main', S, blogManifest)
+    buildCollectionItems('livener-main', 'tenant', S, blogManifest)
     expect(tracker.ids).toContain('livener-main-blog-module')
     expect(tracker.ids).toContain('livener-main-blog-module-list')
     expect(tracker.ids).toContain('livener-main-posts')
@@ -200,7 +200,7 @@ describe('buildCollectionItems — ID generation', () => {
         ],
       },
     ])
-    buildCollectionItems('livener-main', S, eventsManifest)
+    buildCollectionItems('livener-main', 'tenant', S, eventsManifest)
     expect(tracker.ids).toContain('livener-main-events-module')
     expect(tracker.ids).toContain('livener-main-events-module-list')
     expect(tracker.ids).toContain('livener-main-events')
@@ -222,7 +222,7 @@ describe('buildCollectionItems — schema types', () => {
         ],
       },
     ])
-    buildCollectionItems('slug', S, manifest)
+    buildCollectionItems('slug', 'tenant', S, manifest)
     expect(tracker.schemaTypes).toContain('post')
     expect(tracker.schemaTypes).toContain('blogCategory')
   })
@@ -240,14 +240,14 @@ describe('buildCollectionItems — live MODULE_REGISTRY', () => {
   it('returns no items for the Live module (no collections)', () => {
     const { S } = createMockS()
     const liveModule = MODULE_REGISTRY.find((m) => m.id === 'live')!
-    const result = buildCollectionItems('livener-main', S, liveModule)
+    const result = buildCollectionItems('livener-main', 'tenant', S, liveModule)
     expect(result).toHaveLength(0)
   })
 
   it('returns one group for the Blog module with the correct group ID', () => {
     const { S, tracker } = createMockS()
     const blogModule = MODULE_REGISTRY.find((m) => m.id === 'blog')!
-    const result = buildCollectionItems('livener-main', S, blogModule)
+    const result = buildCollectionItems('livener-main', 'tenant', S, blogModule)
     expect(result).toHaveLength(1)
     expect(tracker.ids).toContain('livener-main-blog-module')
     expect(tracker.ids).toContain('livener-main-blog-module-list')
@@ -259,7 +259,7 @@ describe('buildCollectionItems — live MODULE_REGISTRY', () => {
   it('returns one group for the Events module with the correct group ID', () => {
     const { S, tracker } = createMockS()
     const eventsModule = MODULE_REGISTRY.find((m) => m.id === 'events')!
-    const result = buildCollectionItems('livener-main', S, eventsModule)
+    const result = buildCollectionItems('livener-main', 'tenant', S, eventsModule)
     expect(result).toHaveLength(1)
     expect(tracker.ids).toContain('livener-main-events-module')
     expect(tracker.ids).toContain('livener-main-events-module-list')

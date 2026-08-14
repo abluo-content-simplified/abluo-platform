@@ -427,7 +427,32 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
     platformContract: {
       // no pageType — Forms has no singleton page.
 
-      collections: [], // tenant-owned; admin management pane is slice 7.
+      // ADR-020 Amendment A — form definitions are finally reachable.
+      //
+      // Until now `formDefinition` appeared NOWHERE in the Studio structure:
+      // ADR-018 deferred the management pane to "slice 7", which never landed,
+      // so the only way to open one was global search. That is why WhatsApp's
+      // subjects were uneditable in practice.
+      //
+      // Scoped by `$tenantSlug`, not `$slug`: definitions are tenant-owned
+      // (keyed by tenantSlug + role), so two websites belonging to the same
+      // client legitimately share them.
+      collections: [
+        {
+          id: 'forms-module',
+          label: 'Forms',
+          items: [
+            {
+              id: 'form-definitions',
+              label: 'Form Definitions',
+              schemaType: 'formDefinition',
+              filter: `_type == "formDefinition" && tenantSlug == $tenantSlug`,
+              ordering: [{ field: 'internalName', direction: 'asc' as const }],
+              initialValueTemplate: 'formDefinitionTenantOwned',
+            },
+          ],
+        },
+      ],
 
       sectionTypes: [], // formSection is slice 4 (legacy platform formSection untouched).
 

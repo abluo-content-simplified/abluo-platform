@@ -25,10 +25,25 @@ describe('forms module — registry', () => {
     expect(forms).toBeDefined()
     expect(forms!.dataStore.primary).toBe('hybrid')
     expect(forms!.platformContract.schemaTypes).toContain('formDefinition')
-    // Inert this slice: no page, no collections, no section types yet.
+    // No singleton page and no section types: the Form and Form Overlay Button
+    // sections are platform sections, available whether or not this module is on.
     expect(forms!.platformContract.pageType).toBeUndefined()
-    expect(forms!.platformContract.collections).toEqual([])
     expect(forms!.platformContract.sectionTypes).toEqual([])
+  })
+
+  it('exposes form definitions as a tenant-scoped collection (ADR-020 Amendment A)', () => {
+    // Until this landed, `formDefinition` appeared nowhere in the Studio
+    // structure — ADR-018 deferred the pane to a slice that never shipped, so
+    // the only way to open one was global search. That is what made WhatsApp's
+    // subjects uneditable in practice.
+    const forms = MODULE_REGISTRY.find((m) => m.id === 'forms')!
+    const items = forms.platformContract.collections.flatMap((g) => g.items)
+    const definitions = items.find((i) => i.schemaType === 'formDefinition')
+
+    expect(definitions).toBeDefined()
+    // Tenant-owned, NOT project-scoped: two websites under one client share them.
+    expect(definitions!.filter).toContain('tenantSlug == $tenantSlug')
+    expect(definitions!.filter).not.toContain('projectSlug == $slug')
   })
 
   it('all forms permissions are namespaced under "forms."', () => {

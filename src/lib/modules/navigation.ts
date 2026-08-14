@@ -47,6 +47,7 @@ const STUDIO_API_VERSION = '2026-05-21'
 function buildDocumentList(
   item: ModuleCollectionItemDef,
   slug: string,
+  tenantSlug: string,
   S: StructureBuilder
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,7 +56,11 @@ function buildDocumentList(
     .schemaType(item.schemaType)
     .apiVersion(STUDIO_API_VERSION)
     .filter(item.filter)
-    .params({ slug })
+    // Both scopes are always bound. Most module content is project-scoped
+    // ($slug), but some types are TENANT-owned — formDefinition is keyed by
+    // tenantSlug, not projectSlug — and a collection must be able to say so
+    // without inventing a second builder.
+    .params({ slug, tenantSlug })
 
   const withOrdering = item.ordering?.length
     ? base.defaultOrdering(item.ordering)
@@ -82,12 +87,15 @@ function buildDocumentList(
  *
  * @param slug - The project slug (projectSlug). Prefixes all generated IDs and
  *   is passed as the `$slug` GROQ parameter.
+ * @param tenantSlug - The tenant slug, passed as `$tenantSlug` for collections
+ *   whose documents are tenant-owned rather than project-scoped.
  * @param S - The Sanity StructureBuilder from the `structure:` callback.
  * @param manifest - The module's full manifest. Only `platformContract.collections`
  *   is read; all other fields are ignored.
  */
 export function buildCollectionItems(
   slug: string,
+  tenantSlug: string,
   S: StructureBuilder,
   manifest: ModuleManifest
 ): ReturnType<StructureBuilder['listItem']>[] {
@@ -106,7 +114,7 @@ export function buildCollectionItems(
                 S.listItem()
                   .id(`${slug}-${item.id}`)
                   .title(item.label)
-                  .child(buildDocumentList(item, slug, S))
+                  .child(buildDocumentList(item, slug, tenantSlug, S))
               )
             )
         )

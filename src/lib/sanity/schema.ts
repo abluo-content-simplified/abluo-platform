@@ -3836,6 +3836,23 @@ export const initialValueTemplates = [
       projectSlug: params?.projectSlug,
     }),
   },
+  // ── Forms module (ADR-020 Amendment A) ───────────────────────────────────
+  // Tenant-owned, so the template parameter is the tenant slug. navigation.ts
+  // passes `projectSlug` to every template by convention; this template reads
+  // it as the tenant slug because that is what the Forms collection binds.
+  {
+    id: 'formDefinitionTenantOwned',
+    title: 'Form Definition',
+    schemaType: 'formDefinition',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      role: 'active',
+      version: 1,
+      formType: 'single-step',
+      tenantSlug: params?.projectSlug,
+    }),
+  },
+
   // ── News module (ADR-020) ────────────────────────────────────────────────
   {
     id: 'newsArticleProjectOwned',

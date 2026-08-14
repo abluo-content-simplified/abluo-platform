@@ -61,6 +61,15 @@ interface ModuleListProps {
   options?: {
     projectId?: string
     projectSlug?: string
+    /**
+     * Render one module's settings directly, with no index in front.
+     *
+     * Each module is now its own entry in the Studio structure, with its
+     * collections nested beneath it, so the pane is reached already knowing
+     * which module the admin opened. Omit to render the index — still used by
+     * any caller that wants the at-a-glance list.
+     */
+    moduleId?: string
   }
 }
 
@@ -188,6 +197,7 @@ function localeLabel(locale: string): string {
 export function ModuleList({ options }: ModuleListProps) {
   const projectId = options?.projectId
   const projectSlug = options?.projectSlug
+  const pinnedModuleId = options?.moduleId
   const client = useClient({ apiVersion: '2026-05-21' })
 
   const [installations, setInstallations] = useState<FetchedInstallation[]>([])
@@ -286,8 +296,10 @@ export function ModuleList({ options }: ModuleListProps) {
     )
   }
 
-  const selectedManifest = selectedId
-    ? MODULE_REGISTRY.find((m) => m.id === selectedId) ?? null
+  // A pinned module wins: the structure entry already said which one.
+  const activeId = pinnedModuleId ?? selectedId
+  const selectedManifest = activeId
+    ? MODULE_REGISTRY.find((m) => m.id === activeId) ?? null
     : null
 
   if (selectedManifest) {
@@ -302,7 +314,9 @@ export function ModuleList({ options }: ModuleListProps) {
         adoptedSubjects={adoptedSubjects}
         client={client}
         projectId={projectId}
-        onBack={() => setSelectedId(null)}
+        // No back link when the module was opened from its own structure entry —
+        // the sidebar is already the way back.
+        onBack={pinnedModuleId ? null : () => setSelectedId(null)}
         onSaved={handleSaved}
       />
     )
@@ -398,7 +412,7 @@ function ModuleDetail({
   adoptedSubjects: ModuleConfigListEntry[]
   client: ReturnType<typeof useClient>
   projectId: string
-  onBack: () => void
+  onBack: (() => void) | null
   onSaved: (entry: FetchedInstallation) => void
 }) {
   const configSchema = manifest.platformContract.configSchema
@@ -607,21 +621,23 @@ function ModuleDetail({
 
   return (
     <div style={{ padding: 32, maxWidth: 640 }}>
-      <button
-        type="button"
-        onClick={onBack}
-        style={{
-          background: 'none',
-          border: 'none',
-          color: '#888',
-          fontSize: 13,
-          cursor: 'pointer',
-          padding: 0,
-          marginBottom: 20,
-        }}
-      >
-        ← Back to Modules
-      </button>
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#888',
+            fontSize: 13,
+            cursor: 'pointer',
+            padding: 0,
+            marginBottom: 20,
+          }}
+        >
+          ← Back to Modules
+        </button>
+      )}
 
       <div
         style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}
@@ -731,11 +747,15 @@ function ModuleDetail({
           {dataStoreLabel(manifest)}
         </div>
         {manifest.platformContract.collections.length > 0 && (
-          <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 13, color: '#666' }}>
-            {manifest.platformContract.collections.flatMap((group) =>
-              group.items.map((item) => <li key={`${group.id}-${item.id}`}>{item.label}</li>)
-            )}
-          </ul>
+          <div style={{ fontSize: 13, color: '#666' }}>
+            {/* The collections are siblings of this pane in the sidebar, so the
+                list is a pointer rather than a dead-end enumeration. */}
+            Edit them under{' '}
+            {manifest.platformContract.collections
+              .flatMap((group) => group.items.map((item) => item.label))
+              .join(', ')}{' '}
+            in the sidebar.
+          </div>
         )}
       </div>
 
