@@ -173,3 +173,54 @@ describe('reference config fields', () => {
     }
   })
 })
+
+// ── ADR-020 Amendment B — cross-tenant safety and delete protection ──────────
+
+describe('reference config fields are tenant-scoped', () => {
+  it('every formDefinition picker filters by tenantSlug', () => {
+    // Without this the Modules pane offered EVERY tenant's forms: Livener could
+    // be pointed at Studio Martegani's contact form, putting one client's
+    // wording on another client's site. Submissions stay correctly filed (the
+    // endpoint uses the page's tenant, not the form's), but the content leak
+    // and the resulting orphan formId are both unacceptable.
+    for (const manifest of MODULE_REGISTRY) {
+      for (const field of manifest.platformContract.configSchema) {
+        if (field.type !== 'reference') continue
+        if (!(field.referenceTo ?? []).includes('formDefinition')) continue
+        expect(field.referenceFilter, `${manifest.id}.${field.id}`).toContain(
+          'tenantSlug == $tenantSlug'
+        )
+      }
+    }
+  })
+})
+
+describe('category lists declare a usage guard', () => {
+  it('every categories field names the type that references it', () => {
+    // Deleting a category that content still uses would silently strip the
+    // badge off every entry filed under it. The guard is declarative so the
+    // pane can count usages before allowing the removal.
+    const withCategories = MODULE_REGISTRY.filter((m) =>
+      m.platformContract.configSchema.some((f) => f.id === 'categories')
+    )
+    expect(withCategories.length).toBeGreaterThan(0)
+
+    for (const manifest of withCategories) {
+      const field = manifest.platformContract.configSchema.find((f) => f.id === 'categories')!
+      expect(field.usage, manifest.id).toBeDefined()
+      expect(field.usage!.field).toBe('categories')
+      expect(field.usage!.schemaType.length).toBeGreaterThan(0)
+      expect(field.usage!.noun.length).toBeGreaterThan(0)
+      // The guard must point at a type the module actually owns.
+      expect(manifest.platformContract.schemaTypes).toContain(field.usage!.schemaType)
+    }
+  })
+
+  it('each module guards its own content type', () => {
+    const byModule = Object.fromEntries(
+      MODULE_REGISTRY.filter((m) => m.platformContract.configSchema.some((f) => f.id === 'categories'))
+        .map((m) => [m.id, m.platformContract.configSchema.find((f) => f.id === 'categories')!.usage!.schemaType])
+    )
+    expect(byModule).toEqual({ blog: 'post', news: 'newsArticle', events: 'event' })
+  })
+})

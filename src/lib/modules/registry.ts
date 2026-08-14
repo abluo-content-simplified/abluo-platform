@@ -114,6 +114,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           label: 'Categories',
           type: 'localizedStringList',
           supportsColor: true,
+          usage: { schemaType: 'post', field: 'categories', noun: 'posts' },
           description:
             'The categories an author can choose from, in every language this website offers. Renaming or translating a label is safe — content filed under it keeps its link.',
         },
@@ -237,6 +238,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           label: 'Categories',
           type: 'localizedStringList',
           supportsColor: true,
+          usage: { schemaType: 'newsArticle', field: 'categories', noun: 'news items' },
           description:
             'The categories an author can choose from, in every language this website offers. Renaming or translating a label is safe — content filed under it keeps its link.',
         },
@@ -344,6 +346,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           label: 'Categories',
           type: 'localizedStringList',
           supportsColor: true,
+          usage: { schemaType: 'event', field: 'categories', noun: 'events' },
           description:
             'The categories an author can choose from, in every language this website offers. Renaming or translating a label is safe — content filed under it keeps its link.',
         },
@@ -535,7 +538,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           label: 'Header CTA Form',
           type: 'reference',
           referenceTo: ['formDefinition'],
-          referenceFilter: '_type == "formDefinition" && role == "active"',
+          referenceFilter: '_type == "formDefinition" && role == "active" && tenantSlug == $tenantSlug',
           description:
             'When set, the header CTA button opens this form in an overlay instead of navigating. Leave empty to make the CTA a plain link using the URL in Website Settings → Navigation.',
         },
@@ -684,6 +687,9 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           label: 'Message form (managed automatically)',
           type: 'reference',
           referenceTo: ['formDefinition'],
+          // Tenant-scoped even though it is hidden and module-written: defence in
+          // depth, so this can never resolve another tenant's form.
+          referenceFilter: '_type == "formDefinition" && tenantSlug == $tenantSlug',
           hidden: true,
           description:
             'Maintained by the WhatsApp module from the subjects above. Not edited directly.',

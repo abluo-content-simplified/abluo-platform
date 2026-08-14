@@ -198,6 +198,23 @@ export type ModuleConfigFieldDef = {
   /** For `localizedStringList`: each entry also carries an optional colour. */
   supportsColor?: boolean
   /**
+   * For `localizedStringList`: before an entry can be removed, count the
+   * documents still using it and block the removal if any do.
+   *
+   * Deleting a category that ten posts are filed under would silently strip the
+   * badge off all ten. The admin is told how many, and asked to reassign first.
+   * Declared rather than hardcoded so any future list gets the same protection
+   * by naming the type and field that reference it.
+   */
+  usage?: {
+    /** Document type that references these entries, e.g. 'post'. */
+    schemaType: string
+    /** Array field on that type holding the entry keys, e.g. 'categories'. */
+    field: string
+    /** Plural noun for the message, e.g. 'posts'. */
+    noun: string
+  }
+  /**
    * Never render this field to an admin — in the Modules pane or the generated
    * Studio form. The value is written by the module itself.
    *

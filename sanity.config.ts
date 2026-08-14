@@ -114,6 +114,60 @@ export default defineConfig({
           pageDocsByProject.set(doc.projectSlug, list)
         }
 
+        // ── Unassigned content counts ─────────────────────────────────────────
+        // Orphan rescue panes: documents with no project, which should never
+        // exist but occasionally do after an import or a half-finished create.
+        //
+        // Counted here so the sidebar can say how many there are and — more
+        // usefully — hide the entries that are empty. Previously all nine panes
+        // were always shown, so finding the one orphan meant opening nine lists.
+        const unassignedCounts = await client.fetch<Record<string, number>>(
+          `{
+            "pages":       count(*[_type == "page" && (projectSlug == null || projectSlug == "")]),
+            "homePages":   count(*[_type == "homePage"]),
+            "posts":       count(*[_type == "post" && (projectSlug == null || projectSlug == "")]),
+            "authors":     count(*[_type == "postAuthor" && (projectSlug == null || projectSlug == "")]),
+            "events":      count(*[_type == "event" && (projectSlug == null || projectSlug == "")]),
+            "siteConfigs": count(*[_type == "siteConfig" && (projectSlug == null || projectSlug == "")]),
+            "livePages":   count(*[_type == "livePage" && (projectSlug == null || projectSlug == "")]),
+            "eventsPages": count(*[_type == "eventsPage" && (projectSlug == null || projectSlug == "")]),
+            "blogPages":   count(*[_type == "blogPage" && (projectSlug == null || projectSlug == "")]),
+            "newsPages":   count(*[_type == "newsPage" && (projectSlug == null || projectSlug == "")])
+          }`
+        )
+
+        /** One rescue pane, rendered only when it has something in it. */
+        function unassignedItem(
+          id: string,
+          label: string,
+          countKey: string,
+          filter: string
+        ) {
+          const count = unassignedCounts?.[countKey] ?? 0
+          if (count === 0) return []
+          return [
+            S.listItem()
+              .id(id)
+              .title(`${label} — ${count}`)
+              .child(S.documentList().title(label).apiVersion('2026-05-21').filter(filter)),
+          ]
+        }
+
+        const unassignedItems = [
+          ...unassignedItem('unassigned-pages', 'Pages without Project', 'pages', '_type == "page" && (projectSlug == null || projectSlug == "")'),
+          ...unassignedItem('unassigned-homepages', 'Legacy Home Pages', 'homePages', '_type == "homePage"'),
+          ...unassignedItem('unassigned-posts', 'Posts without Project', 'posts', '_type == "post" && (projectSlug == null || projectSlug == "")'),
+          ...unassignedItem('unassigned-authors', 'Authors without Project', 'authors', '_type == "postAuthor" && (projectSlug == null || projectSlug == "")'),
+          ...unassignedItem('unassigned-events', 'Events without Project', 'events', '_type == "event" && (projectSlug == null || projectSlug == "")'),
+          ...unassignedItem('unassigned-siteconfigs', 'Site Configs without Project', 'siteConfigs', '_type == "siteConfig" && (projectSlug == null || projectSlug == "")'),
+          ...unassignedItem('unassigned-livepages', 'Live Pages without Project', 'livePages', '_type == "livePage" && (projectSlug == null || projectSlug == "")'),
+          ...unassignedItem('unassigned-eventspages', 'Events Pages without Project', 'eventsPages', '_type == "eventsPage" && (projectSlug == null || projectSlug == "")'),
+          ...unassignedItem('unassigned-blogpages', 'Blog Pages without Project', 'blogPages', '_type == "blogPage" && (projectSlug == null || projectSlug == "")'),
+          ...unassignedItem('unassigned-newspages', 'News Pages without Project', 'newsPages', '_type == "newsPage" && (projectSlug == null || projectSlug == "")'),
+        ]
+
+        const unassignedTotal = Object.values(unassignedCounts ?? {}).reduce((a, b) => a + b, 0)
+
         // ── Fetch all design systems ───────────────────────────────────────────
         const designSystems = await client.fetch<{
           _id: string
@@ -592,97 +646,21 @@ export default defineConfig({
 
             S.divider(),
 
-            S.listItem()
-              .id('section-unassigned')
-              .title('Unassigned Content')
-              .child(
-                S.list()
-                  .id('unassigned-root')
-                  .title('Unassigned Content')
-                  .items([
-                    S.listItem()
-                      .id('unassigned-pages')
-                      .title('Pages without Project')
-                      .child(
-                        S.documentList()
-                          .title('Unassigned Pages')
-                          .apiVersion('2026-05-21')
-                          .filter('_type == "page" && (projectSlug == null || projectSlug == "")')
-                      ),
-                    S.listItem()
-                      .id('unassigned-homepages')
-                      .title('Legacy Home Pages')
-                      .child(
-                        S.documentList()
-                          .title('Legacy Home Pages')
-                          .apiVersion('2026-05-21')
-                          .filter('_type == "homePage"')
-                      ),
-                    S.listItem()
-                      .id('unassigned-posts')
-                      .title('Posts without Project')
-                      .child(
-                        S.documentList()
-                          .title('Unassigned Posts')
-                          .apiVersion('2026-05-21')
-                          .filter('_type == "post" && (projectSlug == null || projectSlug == "")')
-                      ),
-                    S.listItem()
-                      .id('unassigned-authors')
-                      .title('Authors without Project')
-                      .child(
-                        S.documentList()
-                          .title('Unassigned Authors')
-                          .apiVersion('2026-05-21')
-                          .filter('_type == "postAuthor" && (projectSlug == null || projectSlug == "")')
-                      ),
-                    S.listItem()
-                      .id('unassigned-events')
-                      .title('Events without Project')
-                      .child(
-                        S.documentList()
-                          .title('Unassigned Events')
-                          .apiVersion('2026-05-21')
-                          .filter('_type == "event" && (projectSlug == null || projectSlug == "")')
-                      ),
-                    S.listItem()
-                      .id('unassigned-siteconfigs')
-                      .title('Site Configs without Project')
-                      .child(
-                        S.documentList()
-                          .title('Unassigned Site Configs')
-                          .apiVersion('2026-05-21')
-                          .filter('_type == "siteConfig" && (projectSlug == null || projectSlug == "")')
-                      ),
-                    S.listItem()
-                      .id('unassigned-livepages')
-                      .title('Live Pages without Project')
-                      .child(
-                        S.documentList()
-                          .title('Unassigned Live Pages')
-                          .apiVersion('2026-05-21')
-                          .filter('_type == "livePage" && (projectSlug == null || projectSlug == "")')
-                      ),
-                    S.listItem()
-                      .id('unassigned-eventspages')
-                      .title('Events Pages without Project')
-                      .child(
-                        S.documentList()
-                          .title('Unassigned Events Pages')
-                          .apiVersion('2026-05-21')
-                          .filter('_type == "eventsPage" && (projectSlug == null || projectSlug == "")')
-                      ),
-                    S.listItem()
-                      .id('unassigned-blogpages')
-                      .title('Blog Pages without Project')
-                      .child(
-                        S.documentList()
-                          .title('Unassigned Blog Pages')
-                          .apiVersion('2026-05-21')
-                          .filter('_type == "blogPage" && (projectSlug == null || projectSlug == "")')
-                      ),
-                  ])
-              ),
+            // Unassigned Content — hidden entirely when there is nothing to
+            // rescue, which is the normal state.
+            ...(unassignedTotal > 0
+              ? [
+                  S.listItem()
+                    .id('section-unassigned')
+                    .title(`Unassigned Content — ${unassignedTotal}`)
+                    .child(
+                      S.list()
+                        .id('unassigned-root')
+                        .title('Unassigned Content')
+                        .items(unassignedItems)
+                    ),
+                ]
+              : []),
 
           ])
       },

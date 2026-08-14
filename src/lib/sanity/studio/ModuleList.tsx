@@ -311,6 +311,7 @@ export function ModuleList({ options }: ModuleListProps) {
         installedModuleIds={[...byModuleId.keys()]}
         locales={locales}
         tenantSlug={tenantSlug}
+        projectSlug={projectSlug}
         adoptedSubjects={adoptedSubjects}
         client={client}
         projectId={projectId}
@@ -398,6 +399,7 @@ function ModuleDetail({
   installedModuleIds,
   locales,
   tenantSlug,
+  projectSlug,
   adoptedSubjects,
   client,
   projectId,
@@ -409,6 +411,7 @@ function ModuleDetail({
   installedModuleIds: string[]
   locales: string[]
   tenantSlug: string | null
+  projectSlug?: string
   adoptedSubjects: ModuleConfigListEntry[]
   client: ReturnType<typeof useClient>
   projectId: string
@@ -733,6 +736,8 @@ function ModuleDetail({
               value={values[field.id]}
               error={fieldErrors[field.id]}
               locales={locales}
+              tenantSlug={tenantSlug}
+              projectSlug={projectSlug}
               client={client}
               onChange={(v) => handleChange(field, v)}
             />
@@ -893,6 +898,8 @@ function ConfigField({
   value,
   error,
   locales,
+  tenantSlug,
+  projectSlug,
   client,
   onChange,
 }: {
@@ -900,6 +907,8 @@ function ConfigField({
   value: unknown
   error?: string
   locales: string[]
+  tenantSlug: string | null
+  projectSlug?: string
   client: ReturnType<typeof useClient>
   onChange: (value: unknown) => void
 }) {
@@ -993,6 +1002,8 @@ function ConfigField({
         entries={Array.isArray(value) ? (value as ModuleConfigListEntry[]) : []}
         locales={locales}
         error={error}
+        projectSlug={projectSlug}
+        client={client}
         onChange={onChange}
       />
     )
@@ -1015,6 +1026,7 @@ function ConfigField({
           value={isReferenceValue(value) ? value._ref : ''}
           describedBy={describedBy}
           invalid={!!error}
+          tenantSlug={tenantSlug}
           client={client}
           onChange={(ref) => onChange(ref ? { _type: 'reference', _ref: ref } : undefined)}
         />
@@ -1131,15 +1143,56 @@ function LocalizedListEditor({
   entries,
   locales,
   error,
+  projectSlug,
+  client,
   onChange,
 }: {
   field: ModuleConfigFieldDef
   entries: ModuleConfigListEntry[]
   locales: string[]
   error?: string
+  projectSlug?: string
+  client: ReturnType<typeof useClient>
   onChange: (entries: ModuleConfigListEntry[]) => void
 }) {
   const primaryLocale = locales[0] ?? 'en'
+  const [blocked, setBlocked] = useState<Record<string, string>>({})
+
+  /**
+   * Removing an entry that content still uses is refused.
+   *
+   * Deleting a category ten posts are filed under would strip the badge off all
+   * ten with no warning. The count comes from the declaration on the field
+   * (`usage`), so any future list gets the same protection by naming the type
+   * and field that reference it.
+   */
+  const removeEntry = async (entry: ModuleConfigListEntry) => {
+    setBlocked((prev) => ({ ...prev, [entry._key]: '' }))
+
+    if (field.usage && projectSlug && entry.value) {
+      try {
+        const count = await client.fetch<number>(
+          `count(*[_type == $type && projectSlug == $projectSlug && $value in coalesce(@[$field], [])])`,
+          { type: field.usage.schemaType, projectSlug, value: entry.value, field: field.usage.field }
+        )
+        if (count > 0) {
+          setBlocked((prev) => ({
+            ...prev,
+            [entry._key]: `${count} ${count === 1 ? field.usage!.noun.replace(/s$/, '') : field.usage!.noun} still use this. Reassign them first.`,
+          }))
+          return
+        }
+      } catch {
+        setBlocked((prev) => ({
+          ...prev,
+          [entry._key]: 'Could not check whether this is in use. Not removed.',
+        }))
+        return
+      }
+    }
+
+    onChange(entries.filter((e) => e._key !== entry._key))
+  }
 
   const update = (key: string, patch: Partial<ModuleConfigListEntry>) =>
     onChange(entries.map((e) => (e._key === key ? { ...e, ...patch } : e)))
@@ -1274,7 +1327,7 @@ function LocalizedListEditor({
               </button>
               <button
                 type="button"
-                onClick={() => onChange(entries.filter((e) => e._key !== entry._key))}
+                onClick={() => void removeEntry(entry)}
                 style={{
                   padding: '4px 12px',
                   fontSize: 12,
@@ -1289,6 +1342,12 @@ function LocalizedListEditor({
               </button>
             </div>
           </div>
+
+          {blocked[entry._key] && (
+            <div role="alert" style={{ marginTop: 8, fontSize: 12, color: '#c62828' }}>
+              {blocked[entry._key]}
+            </div>
+          )}
         </div>
       ))}
 
@@ -1329,6 +1388,7 @@ function ReferenceSelect({
   value,
   describedBy,
   invalid,
+  tenantSlug,
   client,
   onChange,
 }: {
@@ -1337,6 +1397,7 @@ function ReferenceSelect({
   value: string
   describedBy?: string
   invalid: boolean
+  tenantSlug: string | null
   client: ReturnType<typeof useClient>
   onChange: (ref: string) => void
 }) {
@@ -1351,6 +1412,10 @@ function ReferenceSelect({
       setLoading(false)
       return
     }
+    // $tenantSlug is always bound so a declaration can scope itself to the
+    // current website. Without it the picker offered EVERY tenant's forms —
+    // Livener could be pointed at Studio Martegani's contact form, putting one
+    // client's wording on another client's site.
     const typeClause = `_type in $types`
     const extra = filter ? ` && (${filter})` : ''
     client
@@ -1359,12 +1424,12 @@ function ReferenceSelect({
           _id,
           "label": coalesce(internalName, title, name, formId, _id)
         }`,
-        { types }
+        { types, tenantSlug: tenantSlug ?? '' }
       )
       .then((data) => setChoices(data ?? []))
       .catch(() => setChoices([]))
       .finally(() => setLoading(false))
-  }, [types, filter]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [types, filter, tenantSlug]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <select
