@@ -101,22 +101,42 @@ export function buildCollectionItems(
 ): ReturnType<StructureBuilder['listItem']>[] {
   return manifest.platformContract.collections
     .filter((group) => group.items.length > 0)
-    .map((group) =>
-      S.listItem()
-        .id(`${slug}-${group.id}`)
-        .title(group.label)
-        .child(
-          S.list()
-            .id(`${slug}-${group.id}-list`)
-            .title(group.label)
-            .items(
-              group.items.map((item) =>
-                S.listItem()
-                  .id(`${slug}-${item.id}`)
-                  .title(item.label)
-                  .child(buildDocumentList(item, slug, tenantSlug, S))
+    .flatMap((group) => {
+      // ── Single-item groups are flattened ──────────────────────────────────
+      // A group wrapper around one document list is a click that buys nothing,
+      // and it reads absurdly when the two share a name: Forms → Forms → Form
+      // Definitions. When a group holds exactly one item, the item is returned
+      // directly and the wrapper disappears.
+      //
+      // The item keeps its own id (`${slug}-${item.id}`), so flattening does
+      // not rename anything — it only removes a level from the path.
+      if (group.items.length === 1) {
+        const item = group.items[0]
+        return [
+          S.listItem()
+            .id(`${slug}-${item.id}`)
+            .title(item.label)
+            .child(buildDocumentList(item, slug, tenantSlug, S)),
+        ]
+      }
+
+      return [
+        S.listItem()
+          .id(`${slug}-${group.id}`)
+          .title(group.label)
+          .child(
+            S.list()
+              .id(`${slug}-${group.id}-list`)
+              .title(group.label)
+              .items(
+                group.items.map((item) =>
+                  S.listItem()
+                    .id(`${slug}-${item.id}`)
+                    .title(item.label)
+                    .child(buildDocumentList(item, slug, tenantSlug, S))
+                )
               )
-            )
-        )
-    )
+          ),
+      ]
+    })
 }

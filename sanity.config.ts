@@ -163,141 +163,167 @@ export default defineConfig({
             .views(views)
         }
 
-        // ── Pages section builder ─────────────────────────────────────────────
-        // Produces a flat list of individual document items — no folders, no
-        // document-type labels. Schema types are an implementation detail.
+        // ── Content section builder ───────────────────────────────────────────
+        // ADR-020 Amendment B.
         //
-        // Layout:
-        //   1. General pages (schema type: "page") — in creation order
-        //   2. Module singleton pages — in module registry order, enabled modules only
+        // Content holds ONLY content — no settings, no configuration, nothing to
+        // define. Activate a module in Modules and its content group appears
+        // here; deactivate it and the group disappears (its documents are
+        // untouched and return unchanged).
         //
-        // Each item uses S.document() with the actual document ID so the editor
-        // lands directly on the document with a single click.
+        //   Content
+        //     Pages          general pages only
+        //     Blog           Blog Page · Posts · Authors      (active modules only)
+        //     News           News Page · News
+        //     Events         Events Page · Events
+        //     Live           Live Page
+        //     Media
         //
-        // Fallback for a module page that has no published document yet:
-        //   S.documentList() scoped to that type — shows a "Create new" button.
-        function buildPagesItems(
-          slug: string,
-          enabledModuleIds: string[],
-          pageDocs: typeof allPageDocs
-        ) {
-          const items: ReturnType<typeof S.listItem>[] = []
+        // A module qualifies for a Content group when it has a singleton page —
+        // `platformContract.pageType`. That is exactly Blog/News/Events/Live and
+        // excludes Forms and WhatsApp, whose documents are configuration rather
+        // than content. Using `category === 'content'` instead would wrongly drop
+        // Live, which is categorised 'engagement'.
 
-          // 1. General pages
+        /** General `page` documents, opened in one click. */
+        function buildGeneralPageItems(pageDocs: typeof allPageDocs) {
           // STUDIO LABEL FOR GENERAL PAGES (ADR-010):
-          // General `page` documents are created by editors and currently use
-          // their `title` content field as the Studio navigation label. This is
-          // an intentional choice — the editor named the page "Contact", so
-          // the Studio nav shows "Contact".
-          //
-          // This is NOT a permanent architectural rule. If Abluo introduces an
-          // `internalTitle` or `studioLabel` field on `page` documents (to decouple
-          // the Studio label from the website H1), switch to using that field here
-          // instead of displayTitle. The comment is the signal to future implementors.
-          const generalPages = pageDocs.filter((d) => d._type === 'page')
-          for (const p of generalPages) {
-            items.push(
+          // General `page` documents use their `title` content field as the
+          // Studio label — the editor named the page "Contact", so the nav shows
+          // "Contact". Not a permanent rule: if an `internalTitle` field is ever
+          // added, switch to it here.
+          return pageDocs
+            .filter((d) => d._type === 'page')
+            .map((p) =>
               S.listItem()
                 .id(`page-${p._id}`)
                 .title(p.displayTitle ?? 'Untitled')
                 .child(S.document().documentId(p._id).schemaType('page'))
             )
+        }
+
+        /**
+         * The module's singleton page item — its hero, intro and SEO.
+         *
+         * Falls back to a filtered document list with a create template when the
+         * document does not exist yet. That fallback is load-bearing: these page
+         * types are filtered out of the global "+" menu, so without it a missing
+         * module page would be uncreatable.
+         */
+        function buildModulePageItem(slug: string, mod: (typeof MODULE_REGISTRY)[number], pageDocs: typeof allPageDocs) {
+          const pageType = mod.platformContract.pageType
+          if (!pageType) return null
+
+          const doc = pageDocs.find((d) => d._type === pageType)
+          const title = `${mod.label} Page`
+
+          return doc
+            ? S.listItem()
+                .id(`${slug}-${mod.id}-page`)
+                .title(title)
+                .child(S.document().documentId(doc._id).schemaType(pageType))
+            : S.listItem()
+                .id(`${slug}-${mod.id}-page`)
+                .title(title)
+                .child(
+                  S.documentList()
+                    .title(title)
+                    .schemaType(pageType)
+                    .apiVersion('2026-05-21')
+                    .filter(`_type == "${pageType}" && projectSlug == $slug`)
+                    .params({ slug })
+                    .initialValueTemplates([
+                      S.initialValueTemplateItem(`${mod.id}PageProjectOwned`, { projectSlug: slug }),
+                    ])
+                )
+        }
+
+        /** Content: Pages, one group per active content module, then Media. */
+        function buildContentItems(
+          slug: string,
+          tenantSlug: string,
+          clientId: string,
+          enabledModuleIds: string[],
+          pageDocs: typeof allPageDocs
+        ) {
+          const items: (ReturnType<typeof S.listItem> | ReturnType<typeof S.divider>)[] = [
+            S.listItem()
+              .id(`${slug}-pages`)
+              .title('Pages')
+              .child(
+                S.list()
+                  .id(`${slug}-pages-list`)
+                  .title('Pages')
+                  .items(buildGeneralPageItems(pageDocs))
+              ),
+          ]
+
+          const contentModules = MODULE_REGISTRY.filter(
+            (m) => !!m.platformContract.pageType && enabledModuleIds.includes(m.id)
+          )
+
+          for (const mod of contentModules) {
+            const children: ReturnType<typeof S.listItem>[] = []
+
+            const pageItem = buildModulePageItem(slug, mod, pageDocs)
+            if (pageItem) children.push(pageItem)
+            children.push(...buildCollectionItems(slug, tenantSlug, S, mod))
+
+            if (children.length === 0) continue
+
+            items.push(
+              S.listItem()
+                .id(`${slug}-content-${mod.id}`)
+                .title(mod.label)
+                .child(
+                  S.list()
+                    .id(`${slug}-content-${mod.id}-list`)
+                    .title(mod.label)
+                    .items(children)
+                )
+            )
           }
 
-          // 2. Module singleton pages (enabled modules only)
-          const enabledDefs = MODULE_REGISTRY.filter((m) => enabledModuleIds.includes(m.id))
-          for (const mod of enabledDefs) {
-            const pageType = mod.platformContract.pageType
-            if (!pageType) continue
-            const doc = pageDocs.find((d) => d._type === pageType)
-            if (doc) {
-              // Document exists — open directly (one click)
-              items.push(
-                S.listItem()
-                  .id(`${slug}-${mod.id}-page`)
-                  .title(mod.label)
-                  .child(S.document().documentId(doc._id).schemaType(pageType))
+          items.push(
+            S.listItem()
+              .id(`${slug}-media`)
+              .title('Media')
+              .schemaType('mediaAsset')
+              .child(
+                S.documentList()
+                  .title('Media')
+                  .apiVersion('2026-05-21')
+                  // Tenant-scoped, unlike everything else here: media is shared
+                  // across a client's websites.
+                  .filter(`_type == "mediaAsset" && tenant._ref == $clientId`)
+                  .params({ clientId })
+                  .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
               )
-            } else {
-              // Document not yet created — show a list that offers "New document"
-              items.push(
-                S.listItem()
-                  .id(`${slug}-${mod.id}-page`)
-                  .title(mod.label)
-                  .child(
-                    S.documentList()
-                      .title(mod.label)
-                      .schemaType(pageType)
-                      .apiVersion('2026-05-21')
-                      .filter(`_type == "${pageType}" && projectSlug == $slug`)
-                      .params({ slug })
-                      .initialValueTemplates([
-                        S.initialValueTemplateItem(`${mod.id}PageProjectOwned`, { projectSlug: slug }),
-                      ])
-                  )
-              )
-            }
-          }
+          )
 
           return items
         }
 
         // ── Modules section builder ───────────────────────────────────────────
-        // ADR-020 Amendment A — "open a module and everything needed to make it
-        // work is there".
+        // Every module entry opens its settings pane DIRECTLY — no "Settings"
+        // child anywhere. One rule, no exceptions: Modules → X is one pane
+        // holding everything for that module; Content → X is the documents you
+        // write in.
         //
-        // Each module is its own entry, containing its Settings pane AND its
-        // collections. Blog's posts, categories and authors are inside Blog;
-        // News's items and categories are inside News. They used to sit in a
-        // shared "Collections" folder under Content, which meant a module named
-        // its data in one place and you edited it in another.
-        //
-        // Every registered module appears, active or not, so a module can be
-        // switched on from here. An INACTIVE module shows only Settings: its
-        // collections are hidden until it is turned on, because content you
-        // cannot publish is noise. Its documents are untouched and reappear the
-        // moment it is re-enabled.
-        //
-        // buildCollectionItems() (from navigation.ts) converts each module's
-        // declarative `collections` array into Studio structure items — the
-        // registry stays the single source of truth for what a module owns.
-        function buildModuleItems(
-          slug: string,
-          tenantSlug: string,
-          projectDocId: string,
-          enabledModuleIds: string[]
-        ) {
-          return MODULE_REGISTRY.map((mod) => {
-            const isEnabled = enabledModuleIds.includes(mod.id)
-            const collectionItems = isEnabled ? buildCollectionItems(slug, tenantSlug, S, mod) : []
-
-            const settingsItem = S.listItem()
-              .id(`${slug}-module-${mod.id}-settings`)
-              .title('Settings')
+        // All modules are listed, active or not, so one can be switched on. The
+        // "— off" suffix is the at-a-glance status the old index pane carried.
+        function buildModuleItems(slug: string, projectDocId: string, enabledModuleIds: string[]) {
+          return MODULE_REGISTRY.map((mod) =>
+            S.listItem()
+              .id(`${slug}-module-${mod.id}`)
+              .title(enabledModuleIds.includes(mod.id) ? mod.label : `${mod.label} — off`)
               .child(
                 S.component(ModuleList)
                   .id(`${slug}-module-${mod.id}-pane`)
                   .title(mod.label)
                   .options({ projectId: projectDocId, projectSlug: slug, moduleId: mod.id })
               )
-
-            return S.listItem()
-              .id(`${slug}-module-${mod.id}`)
-              // The status suffix is the at-a-glance signal the old index pane
-              // gave; without it an inactive module is indistinguishable from an
-              // active one in the sidebar.
-              .title(isEnabled ? mod.label : `${mod.label} — off`)
-              .child(
-                S.list()
-                  .id(`${slug}-module-${mod.id}-list`)
-                  .title(mod.label)
-                  .items(
-                    collectionItems.length > 0
-                      ? [settingsItem, S.divider(), ...collectionItems]
-                      : [settingsItem]
-                  )
-              )
-          })
+          )
         }
 
         // ── Client items ──────────────────────────────────────────────────────
@@ -322,10 +348,7 @@ export default defineConfig({
                   .items([
 
                     // ── Content ──────────────────────────────────────────────
-                    // ADR-020 Decision 4 — Pages, Collections, and Media are one
-                    // concern (the stuff an editor writes) and now sit together
-                    // under Content, rather than as three top-level siblings
-                    // competing with Design System and Modules.
+                    // Content only: Pages, the active content modules, Media.
                     S.listItem()
                       .id(`${slug}-content`)
                       .title('Content')
@@ -333,39 +356,15 @@ export default defineConfig({
                         S.list()
                           .id(`${slug}-content-list`)
                           .title('Content')
-                          .items([
-
-                            // Pages — flat list: every page in one place, no
-                            // schema-type folders.
-                            S.listItem()
-                              .id(`${slug}-pages`)
-                              .title('Pages')
-                              .child(
-                                S.list()
-                                  .id(`${slug}-pages-list`)
-                                  .title('Pages')
-                                  .items(buildPagesItems(slug, enabledModuleIds, projectPageDocs))
-                              ),
-
-                            // Collections moved OUT of Content in ADR-020
-                            // Amendment A — a module's data now lives inside
-                            // that module, not in a shared folder here.
-
-                            // Media
-                            S.listItem()
-                              .id(`${slug}-media`)
-                              .title('Media')
-                              .schemaType('mediaAsset')
-                              .child(
-                                S.documentList()
-                                  .title('Media')
-                                  .apiVersion('2026-05-21')
-                                  .filter(`_type == "mediaAsset" && tenant._ref == $clientId`)
-                                  .params({ clientId })
-                                  .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
-                              ),
-
-                          ])
+                          .items(
+                            buildContentItems(
+                              slug,
+                              clientDoc.tenantSlug,
+                              clientId,
+                              enabledModuleIds,
+                              projectPageDocs
+                            )
+                          )
                       ),
 
                     S.divider(),
@@ -404,7 +403,7 @@ export default defineConfig({
                         S.list()
                           .id(`${slug}-modules-list`)
                           .title('Modules')
-                          .items(buildModuleItems(slug, clientDoc.tenantSlug, project._id, enabledModuleIds))
+                          .items(buildModuleItems(slug, project._id, enabledModuleIds))
                       ),
 
                     S.divider(),

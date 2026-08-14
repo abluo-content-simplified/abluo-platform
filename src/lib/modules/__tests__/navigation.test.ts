@@ -95,6 +95,20 @@ const BLOG_GROUP: ModuleCollectionGroupDef = {
   items: [POST_ITEM],
 }
 
+const AUTHOR_ITEM = {
+  id: 'authors',
+  label: 'Authors',
+  schemaType: 'postAuthor',
+  filter: '_type == "postAuthor" && projectSlug == $slug',
+}
+
+/** Two items, so the group wrapper is kept. */
+const MULTI_GROUP: ModuleCollectionGroupDef = {
+  id: 'blog-module',
+  label: 'Blog',
+  items: [POST_ITEM, AUTHOR_ITEM],
+}
+
 // ── Group structure ───────────────────────────────────────────────────────────
 
 describe('buildCollectionItems — group structure', () => {
@@ -141,16 +155,33 @@ describe('buildCollectionItems — group structure', () => {
 // ── ID generation — the safety-critical assertions ───────────────────────────
 
 describe('buildCollectionItems — ID generation', () => {
-  it('generates group list item ID as ${slug}-${group.id}', () => {
+  // ADR-020 Amendment B — a group wrapping ONE document list is a click that
+  // buys nothing, and reads absurdly when the two share a name (Forms → Forms →
+  // Form Definitions). Single-item groups are flattened to the item itself.
+
+  it('flattens a single-item group to the item, with no group wrapper', () => {
     const { S, tracker } = createMockS()
-    buildCollectionItems('livener-main', 'tenant', S, makeManifestWithCollections([BLOG_GROUP]))
-    expect(tracker.ids).toContain('livener-main-blog-module')
+    const result = buildCollectionItems('livener-main', 'tenant', S, makeManifestWithCollections([BLOG_GROUP]))
+    expect(result).toHaveLength(1)
+    expect(tracker.ids).toContain('livener-main-posts')
+    expect(tracker.ids).not.toContain('livener-main-blog-module')
+    expect(tracker.ids).not.toContain('livener-main-blog-module-list')
   })
 
-  it('generates inner list ID as ${slug}-${group.id}-list', () => {
+  it('keeps the group wrapper when a group has more than one item', () => {
+    const { S, tracker } = createMockS()
+    buildCollectionItems('livener-main', 'tenant', S, makeManifestWithCollections([MULTI_GROUP]))
+    expect(tracker.ids).toContain('livener-main-blog-module')
+    expect(tracker.ids).toContain('livener-main-blog-module-list')
+    expect(tracker.ids).toContain('livener-main-posts')
+    expect(tracker.ids).toContain('livener-main-authors')
+  })
+
+  it('preserves item ids when flattening — only the path shortens', () => {
+    // Flattening must not rename anything; Sanity caches sidebar state by id.
     const { S, tracker } = createMockS()
     buildCollectionItems('livener-main', 'tenant', S, makeManifestWithCollections([BLOG_GROUP]))
-    expect(tracker.ids).toContain('livener-main-blog-module-list')
+    expect(tracker.ids).toEqual(['livener-main-posts'])
   })
 
   it('generates item list item ID as ${slug}-${item.id}', () => {
@@ -161,7 +192,7 @@ describe('buildCollectionItems — ID generation', () => {
 
   it('uses a different slug correctly', () => {
     const { S, tracker } = createMockS()
-    buildCollectionItems('martegani-main', 'tenant', S, makeManifestWithCollections([BLOG_GROUP]))
+    buildCollectionItems('martegani-main', 'tenant', S, makeManifestWithCollections([MULTI_GROUP]))
     expect(tracker.ids).toContain('martegani-main-blog-module')
     expect(tracker.ids).toContain('martegani-main-blog-module-list')
     expect(tracker.ids).toContain('martegani-main-posts')
@@ -189,13 +220,14 @@ describe('buildCollectionItems — ID generation', () => {
     expect(tracker.ids).toContain('livener-main-authors')
   })
 
-  it('matches the exact IDs the events module previously generated', () => {
+  it('keeps the wrapper for a two-item events group', () => {
     const { S, tracker } = createMockS()
     const eventsManifest = makeManifestWithCollections([
       {
         id: 'events-module',
         label: 'Events',
         items: [
+          { id: 'event-categories', label: 'Categories', schemaType: 'eventCategory', filter: '_type == "eventCategory" && projectSlug == $slug' },
           { id: 'events', label: 'Events', schemaType: 'event', filter: '_type == "event" && projectSlug == $slug' },
         ],
       },
