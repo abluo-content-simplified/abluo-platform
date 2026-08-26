@@ -718,7 +718,10 @@ export interface Post {
   readingTimeMinutes?: number
   author?: PostAuthor
   /** Stable category keys as stored. Resolve with resolveCategories(). */
-  categoryKeys?: string[]
+  /** Raw `categories` — stable keys, or references while blogCategory lives. */
+  categoryKeys?: (string | { _ref?: string; _type?: string } | null)[]
+  /** English titles resolved positionally from any reference entries. */
+  categoryTitles?: (string | null)[]
   /** Populated at render time from module config — never projected by GROQ. */
   categories?: BlogCategory[]
   relatedEvent?: {
@@ -770,7 +773,10 @@ export interface NewsArticle {
   /** Computed in GROQ from body word count. Minimum 1. */
   readingTimeMinutes?: number
   /** Stable category keys as stored. Resolve with resolveCategories(). */
-  categoryKeys?: string[]
+  /** Raw `categories` — stable keys, or references while blogCategory lives. */
+  categoryKeys?: (string | { _ref?: string; _type?: string } | null)[]
+  /** English titles resolved positionally from any reference entries. */
+  categoryTitles?: (string | null)[]
   /** Populated at render time from module config — never projected by GROQ. */
   categories?: NewsCategory[]
   seoTitle?: string

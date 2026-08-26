@@ -13,7 +13,7 @@ import {
 } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { type ProjectModuleConfig } from '@/lib/modules/config'
-import { resolveCategories, charsPerMinute, DEFAULT_CHARS_PER_MINUTE } from '@/lib/modules/categories'
+import { resolveCategoriesFor, categoryKeysOf, charsPerMinute, DEFAULT_CHARS_PER_MINUTE } from '@/lib/modules/categories'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
 import { resolveEmbedUrl } from '@/lib/embed'
 import type { Post, LocaleConfig, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
@@ -162,7 +162,7 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
   }
 
   // Related posts — prioritise shared categories, exclude current post.
-  const categoryKeys = post.categoryKeys ?? []
+  const categoryKeys = categoryKeysOf(post)
   const relatedPosts = (await fetchForTenant<Post[]>(relatedPostsQuery, {
     locale: locale as SupportedLocale,
     defaultLocale,
@@ -171,11 +171,11 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
     charsPerMinute: cpm,
   })).map((related) => ({
     ...related,
-    categories: resolveCategories(related.categoryKeys, moduleConfig, 'blog', locale, defaultLocale),
+    categories: resolveCategoriesFor(related, moduleConfig, 'blog', locale, defaultLocale),
   }))
 
   // Resolve this post's own categories for the header badges.
-  post.categories = resolveCategories(post.categoryKeys, moduleConfig, 'blog', locale, defaultLocale)
+  post.categories = resolveCategoriesFor(post, moduleConfig, 'blog', locale, defaultLocale)
 
   // Build slug map for the language switcher.
   // IMPORTANT: prefix with 'blog/' so LanguageSwitcher generates

@@ -29,7 +29,7 @@ import { PhotoGallerySection } from '@/components/sections/PhotoGallerySection'
 import { VideoSection } from '@/components/sections/VideoSection'
 import { SECTION_MAP, isSectionTypeAvailable } from '@/lib/modules/sections'
 import type { ProjectModuleConfig } from '@/lib/modules/config'
-import { resolveCategories, charsPerMinute, DEFAULT_CHARS_PER_MINUTE } from '@/lib/modules/categories'
+import { resolveCategoriesFor, categoryKeysOf, charsPerMinute, DEFAULT_CHARS_PER_MINUTE } from '@/lib/modules/categories'
 import type {
   WebsiteSiteConfig,
   PageSection,
@@ -283,7 +283,7 @@ export async function hydrateSections(
         // server-side, so every card renders from the same resolution.
         bls.posts = posts.slice(0, bls.maxItems ?? 3).map((post) => ({
           ...post,
-          categories: resolveCategories(post.categoryKeys, ctx.moduleConfig, 'blog', ctx.locale, ctx.defaultLocale),
+          categories: resolveCategoriesFor(post, ctx.moduleConfig, 'blog', ctx.locale, ctx.defaultLocale),
         }))
         return
       }
@@ -293,7 +293,7 @@ export async function hydrateSections(
         // Slice to maxItems — one extra was fetched to detect overflow for View All
         nls.articles = articles.slice(0, nls.maxItems ?? 3).map((article) => ({
           ...article,
-          categories: resolveCategories(article.categoryKeys, ctx.moduleConfig, 'news', ctx.locale, ctx.defaultLocale),
+          categories: resolveCategoriesFor(article, ctx.moduleConfig, 'news', ctx.locale, ctx.defaultLocale),
         }))
         return
       }

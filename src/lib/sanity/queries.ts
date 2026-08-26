@@ -504,7 +504,8 @@ export const postsQuery = /* groq */ `
       "role": ${loc('role')},
       avatar { asset, hotspot, crop }
     },
-    "categoryKeys": categories[]{ "k": coalesce(@->title.en, @) }.k,
+    "categoryKeys": categories,
+    "categoryTitles": categories[]->title.en,
     "seoTitle": ${loc('seoTitle')},
     "seoDescription": ${loc('seoDescription')},
   }
@@ -565,7 +566,8 @@ export const postBySlugQuery = /* groq */ `
       "bio": ${loc('bio')},
       avatar { asset, hotspot, crop }
     },
-    "categoryKeys": categories[]{ "k": coalesce(@->title.en, @) }.k,
+    "categoryKeys": categories,
+    "categoryTitles": categories[]->title.en,
     "relatedEvent": relatedEvent-> {
       _id,
       "title": ${loc('title')},
@@ -603,7 +605,8 @@ export const relatedPostsQuery = /* groq */ `
     && publishedAt <= now()
     && (!defined(expiresAt) || expiresAt > now())
   ] | order(
-    count(categories[]{ "k": coalesce(@->title.en, @) }[k in $categoryKeys]) desc,
+    count(categories[@ in $categoryKeys]) desc,
+    count(categories[]->title.en[@ in $categoryKeys]) desc,
     featured desc,
     publishedAt desc
   ) [0...3] {
@@ -622,7 +625,8 @@ export const relatedPostsQuery = /* groq */ `
       "role": ${loc('role')},
       avatar { asset, hotspot, crop }
     },
-    "categoryKeys": categories[]{ "k": coalesce(@->title.en, @) }.k
+    "categoryKeys": categories,
+    "categoryTitles": categories[]->title.en
   }
 `
 
@@ -655,7 +659,8 @@ const blogListingCardFields = /* groq */ `
     "role": coalesce(role[$locale], role[$defaultLocale], role.en, role),
     avatar { asset, hotspot, crop }
   },
-  "categoryKeys": categories[]{ "k": coalesce(@->title.en, @) }.k
+  "categoryKeys": categories,
+  "categoryTitles": categories[]->title.en
 `
 
 // Core filter — applied by all three blog listing queries.
@@ -723,7 +728,8 @@ const newsListingCardFields = /* groq */ `
   "readingTimeMinutes": math::max([1, round(
     length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / $charsPerMinute
   )]),
-  "categoryKeys": categories[]{ "k": coalesce(@->title.en, @) }.k
+  "categoryKeys": categories,
+  "categoryTitles": categories[]->title.en
 `
 
 // Core filter — applied by the newest/oldest listing queries.
@@ -805,7 +811,8 @@ export const newsArticleBySlugQuery = /* groq */ `
     "readingTimeMinutes": math::max([1, round(
       length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / $charsPerMinute
     )]),
-    "categoryKeys": categories[]{ "k": coalesce(@->title.en, @) }.k,
+    "categoryKeys": categories,
+    "categoryTitles": categories[]->title.en,
     "seoTitle": coalesce(${loc('seoTitle')}, ${loc('title')}),
     "seoDescription": coalesce(${loc('seoDescription')}, ${loc('excerpt')}),
     seoImage { asset, hotspot, crop },
@@ -860,7 +867,8 @@ const eventsListingCardFields = /* groq */ `
     "alt": coalesce(alt[$locale], alt[$defaultLocale], alt.en, alt),
     "caption": coalesce(caption[$locale], caption[$defaultLocale], caption.en, caption)
   },
-  "categoryKeys": categories[]{ "k": coalesce(@->title.en, @) }.k
+  "categoryKeys": categories,
+  "categoryTitles": categories[]->title.en
 `
 
 // Core filter — applied by all three eventsListing queries.

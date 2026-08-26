@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveCategories } from '../categories'
+import { resolveCategories, resolveCategoriesFor, categoryKeysOf } from '../categories'
 
 // ── Dual-read during the blogCategory retirement ─────────────────────────────
 //
@@ -58,5 +58,95 @@ describe('resolveCategories — legacy reference shape', () => {
       { moduleId: 'blog', enabled: true, config: { categories: [{ _key: 'x', value: 'x', label: {} }] } },
     ] as unknown as Parameters<typeof resolveCategories>[1]
     expect(resolveCategories([''], bare, 'blog', 'en')).toEqual([])
+  })
+})
+
+// ── categoryKeysOf — the merge GROQ cannot express ───────────────────────────
+//
+// The previous attempt did this in GROQ with `categories[]{ "k": ... }`, which
+// object-projects over the array. That yields [null] when the elements are
+// plain strings, so the moment content was migrated to stable keys every badge
+// silently vanished — and the bug survived review because it was only ever
+// tested against the reference shape. These tests exercise BOTH shapes, and a
+// document caught mid-migration with one of each.
+
+describe('categoryKeysOf', () => {
+  it('reads stable keys from migrated content', () => {
+    expect(categoryKeysOf({ categoryKeys: ['dental-health'], categoryTitles: [null] }))
+      .toEqual(['dental-health'])
+  })
+
+  it('reads the resolved title from unmigrated reference content', () => {
+    expect(categoryKeysOf({
+      categoryKeys: [{ _ref: '44f4b856', _type: 'reference' }],
+      categoryTitles: ['Dental Health'],
+    })).toEqual(['Dental Health'])
+  })
+
+  it('handles a document holding one of each shape, positionally', () => {
+    // The two arrays are projected from the same source array, so index i of
+    // one must line up with index i of the other.
+    expect(categoryKeysOf({
+      categoryKeys: [{ _ref: 'x', _type: 'reference' }, 'insights'],
+      categoryTitles: ['Events', null],
+    })).toEqual(['Events', 'insights'])
+  })
+
+  it('drops a reference whose title did not resolve', () => {
+    // A dangling reference must not emit an empty badge.
+    expect(categoryKeysOf({
+      categoryKeys: [{ _ref: 'deleted', _type: 'reference' }],
+      categoryTitles: [null],
+    })).toEqual([])
+  })
+
+  it('survives missing, null, and empty inputs', () => {
+    expect(categoryKeysOf(null)).toEqual([])
+    expect(categoryKeysOf({})).toEqual([])
+    expect(categoryKeysOf({ categoryKeys: null, categoryTitles: null })).toEqual([])
+    expect(categoryKeysOf({ categoryKeys: [], categoryTitles: [] })).toEqual([])
+  })
+
+  it('ignores empty strings and null entries rather than emitting blanks', () => {
+    expect(categoryKeysOf({ categoryKeys: ['', null, 'events'], categoryTitles: [] }))
+      .toEqual(['events'])
+  })
+
+  it('tolerates a titles array shorter than the keys array', () => {
+    expect(categoryKeysOf({
+      categoryKeys: ['insights', { _ref: 'y', _type: 'reference' }],
+      categoryTitles: [null],
+    })).toEqual(['insights'])
+  })
+})
+
+describe('resolveCategoriesFor — both shapes reach a badge', () => {
+  const modules = [
+    {
+      moduleId: 'blog',
+      enabled: true,
+      config: {
+        categories: [
+          { _key: 'a', value: 'dental-health', label: { en: 'Dental Health', it: 'Salute Dentale' } },
+        ],
+      },
+    },
+  ] as unknown as Parameters<typeof resolveCategoriesFor>[1]
+
+  it('renders the Italian badge for migrated content', () => {
+    const out = resolveCategoriesFor(
+      { categoryKeys: ['dental-health'], categoryTitles: [null] }, modules, 'blog', 'it'
+    )
+    expect(out.map((c) => c.title)).toEqual(['Salute Dentale'])
+  })
+
+  it('renders the Italian badge for unmigrated reference content', () => {
+    // This is the exact case that broke: same visible output must come out of
+    // either shape, so a migration cannot change what a visitor sees.
+    const out = resolveCategoriesFor(
+      { categoryKeys: [{ _ref: 'x', _type: 'reference' }], categoryTitles: ['Dental Health'] },
+      modules, 'blog', 'it'
+    )
+    expect(out.map((c) => c.title)).toEqual(['Salute Dentale'])
   })
 })

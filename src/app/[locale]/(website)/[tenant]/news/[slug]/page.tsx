@@ -27,7 +27,7 @@ import {
 } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { type ProjectModuleConfig } from '@/lib/modules/config'
-import { resolveCategories, charsPerMinute, DEFAULT_CHARS_PER_MINUTE } from '@/lib/modules/categories'
+import { resolveCategoriesFor, categoryKeysOf, charsPerMinute, DEFAULT_CHARS_PER_MINUTE } from '@/lib/modules/categories'
 import type { NewsArticle, LocaleConfig, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
 import { imageUrl, imageSrcSet, ogImageUrl } from '@/lib/sanity/image'
 import { SlideUp } from '@/components/animation'
@@ -198,7 +198,7 @@ export default async function NewsDetailPage({ params, searchParams }: PageProps
     }
   }
 
-  article.categories = resolveCategories(article.categoryKeys, moduleConfig, 'news', locale, defaultLocale)
+  article.categories = resolveCategoriesFor(article, moduleConfig, 'news', locale, defaultLocale)
 
   const msg = getNewsModuleMessages(locale)
   const { label: backLabel, url: backUrl } = getBackContext(from, locale, tenantId)

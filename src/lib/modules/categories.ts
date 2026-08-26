@@ -75,14 +75,8 @@ export function resolveCategories(
   if (!keys || keys.length === 0) return []
   const selected = new Set(keys)
 
-  // Dual-read while the legacy blogCategory documents are retired. Content that
-  // has been migrated stores the stable key ("dental-health"); content that has
-  // not still stores a reference, which GROQ resolves to the category's English
-  // title ("Dental Health"). Matching on either means a badge never blanks out
-  // because a deploy and a data migration happened seconds apart — the failure
-  // mode that took both sites down on 2026-08-14, in the opposite direction.
-  //
-  // Drop the label comparison once no content references a blogCategory.
+  // Matching is on the stable key or the English label — see categoryKeysOf()
+  // for why both can arrive here while blogCategory documents still exist.
   return configuredCategories(modules, moduleId)
     .filter((entry) => selected.has(entry.value) || selected.has(entry.label?.en ?? '\u0000'))
     .map((entry) => ({
@@ -90,6 +84,64 @@ export function resolveCategories(
       title: label(entry, locale, defaultLocale),
       color: entry.color,
     }))
+}
+
+// ── Reading the two category shapes ───────────────────────────────────────────
+
+/** What GROQ returns for `categories` — a stable key, or a reference object. */
+export type RawCategoryEntry = string | { _ref?: string; _type?: string } | null
+
+/** A content document as projected: the raw array plus resolved titles. */
+export interface CategorySource {
+  categoryKeys?: RawCategoryEntry[] | null
+  categoryTitles?: (string | null)[] | null
+}
+
+/**
+ * Collapse the two category shapes into one list of match tokens.
+ *
+ * Content migrated to module-config categories stores a stable key
+ * ("dental-health"). Content not yet migrated stores a reference to a
+ * blogCategory document, for which GROQ resolves the English title
+ * ("Dental Health") into the parallel `categoryTitles` array.
+ *
+ * The merge lives here rather than in GROQ because GROQ cannot express it:
+ * `categories[]{ ... }` object-projects over the array, which yields [null]
+ * when the elements are plain strings rather than objects. An earlier attempt
+ * did exactly that and silently blanked every badge the moment the data was
+ * migrated — it had only ever been tested against the reference shape. Two
+ * plain projections plus this function are testable against both.
+ *
+ * Positional: `categoryTitles` is projected from the same array, so index i of
+ * one corresponds to index i of the other.
+ */
+export function categoryKeysOf(source: CategorySource | null | undefined): string[] {
+  const raw = source?.categoryKeys ?? []
+  const titles = source?.categoryTitles ?? []
+
+  const out: string[] = []
+  for (let i = 0; i < raw.length; i += 1) {
+    const entry = raw[i]
+    if (typeof entry === 'string' && entry !== '') {
+      out.push(entry)
+      continue
+    }
+    // A reference: fall back to the title GROQ resolved at the same index.
+    const title = titles[i]
+    if (typeof title === 'string' && title !== '') out.push(title)
+  }
+  return out
+}
+
+/** resolveCategories() applied directly to a projected document. */
+export function resolveCategoriesFor(
+  source: CategorySource | null | undefined,
+  modules: ProjectModuleConfig,
+  moduleId: string,
+  locale: string,
+  defaultLocale = 'en'
+): ResolvedCategory[] {
+  return resolveCategories(categoryKeysOf(source), modules, moduleId, locale, defaultLocale)
 }
 
 // ── Reading time ──────────────────────────────────────────────────────────────
