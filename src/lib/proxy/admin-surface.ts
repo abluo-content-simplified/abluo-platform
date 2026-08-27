@@ -44,3 +44,29 @@ export function isAdminSurface(pathname: string): boolean {
 export function isStudio(pathname: string): boolean {
   return pathname === '/studio' || pathname.startsWith('/studio/')
 }
+
+/**
+ * Surfaces reachable without a session.
+ *
+ * These sit outside `[locale]`, so intlMiddleware must not rewrite them to add
+ * a locale prefix — there is no `[locale]/login` or `[locale]/reset-password`
+ * route, so the rewrite would 404. They also skip the admin gate, because each
+ * is where a user goes precisely when they cannot authenticate: signing in,
+ * accepting an invite, or recovering a forgotten password.
+ *
+ * Adding a pre-auth page and forgetting to list it here produces a 404 that
+ * reads like a broken route rather than a middleware list nobody updated, which
+ * is why this is a named, tested predicate rather than an inline condition.
+ */
+const PRE_AUTH_SURFACES = [
+  '/login',
+  '/unauthorized',
+  '/auth/callback',
+  '/invite/accept',
+  '/forgot-password',
+  '/reset-password',
+] as const
+
+export function isPreAuthSurface(pathname: string): boolean {
+  return PRE_AUTH_SURFACES.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+}

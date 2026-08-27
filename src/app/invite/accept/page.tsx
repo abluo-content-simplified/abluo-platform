@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense, useEffect, useState } from 'react'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { EmailOtpType } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
@@ -465,33 +466,25 @@ function AcceptInviteForm() {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-zinc-600">
-            Password
-          </label>
-          <input
-            type="password"
+          <PasswordInput
+            label="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={MIN_PASSWORD_LENGTH}
             autoComplete="new-password"
-            className="w-full rounded border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder-zinc-300 outline-none transition-colors focus:border-zinc-400"
             placeholder="••••••••"
           />
         </div>
 
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-zinc-600">
-            Confirm password
-          </label>
-          <input
-            type="password"
+          <PasswordInput
+            label="Confirm password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
             minLength={MIN_PASSWORD_LENGTH}
             autoComplete="new-password"
-            className="w-full rounded border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder-zinc-300 outline-none transition-colors focus:border-zinc-400"
             placeholder="••••••••"
           />
         </div>

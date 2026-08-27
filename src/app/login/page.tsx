@@ -2,7 +2,9 @@
 
 import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 
 function LoginForm() {
   const router = useRouter()
@@ -79,23 +81,27 @@ function LoginForm() {
           required
           autoComplete="email"
           className="w-full rounded border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder-zinc-300 outline-none transition-colors focus:border-zinc-400"
-          placeholder="thomas@tmz.it"
+          placeholder="you@example.com"
         />
       </div>
 
       <div>
-        <label className="mb-1.5 block text-xs font-medium text-zinc-600">
-          Password
-        </label>
-        <input
-          type="password"
+        <PasswordInput
+          label="Password"
           value={password}
           onChange={e => setPassword(e.target.value)}
           required
           autoComplete="current-password"
-          className="w-full rounded border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder-zinc-300 outline-none transition-colors focus:border-zinc-400"
           placeholder="••••••••"
         />
+        <div className="mt-1.5 text-right">
+          <Link
+            href="/forgot-password"
+            className="text-[11px] text-zinc-400 transition-colors hover:text-zinc-600"
+          >
+            Forgot your password?
+          </Link>
+        </div>
       </div>
 
       {error && (

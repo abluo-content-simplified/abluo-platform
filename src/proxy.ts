@@ -3,7 +3,7 @@ import createMiddleware from 'next-intl/middleware'
 import { NextRequest, NextResponse } from 'next/server'
 import { routing } from './i18n/routing'
 import { resolvePlatformRole } from '@/lib/api/auth'
-import { isAdminSurface, isStudio } from '@/lib/proxy/admin-surface'
+import { isAdminSurface, isStudio, isPreAuthSurface } from '@/lib/proxy/admin-surface'
 import { isClientSurface } from '@/lib/proxy/client-surface'
 
 const intlMiddleware = createMiddleware(routing)
@@ -197,24 +197,9 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // ── Bypass routes — no middleware processing ─────────────────────────────
-  // /login and /unauthorized are the un-gated "escape hatch" pages: they must
-  // stay reachable without an auth/role check, otherwise the admin-host and
-  // admin-surface gates below would redirect them to themselves (a loop).
-  // /studio is intentionally NOT bypassed here — it now reaches the admin gate.
-  //
-  // /auth/callback and /invite/accept (ADR-017 slice 4, invite-acceptance
-  // flow) sit outside `[locale]` for the same reason as /login — they must
-  // reach the browser exactly as-is, without intlMiddleware rewriting the
-  // path to add a locale prefix (which would 404, since no [locale]/auth or
-  // [locale]/invite route exists) and without the admin-surface gate below
-  // (they are pre-authentication surfaces by definition: an invited user has
-  // no session yet when they land here).
-  if (
-    pathname.startsWith('/login') ||
-    pathname.startsWith('/unauthorized') ||
-    pathname.startsWith('/auth/callback') ||
-    pathname.startsWith('/invite/accept')
-  ) {
+  // Pre-authentication surfaces bypass both intlMiddleware and the admin gate.
+  // See isPreAuthSurface() for why the list lives there rather than here.
+  if (isPreAuthSurface(pathname)) {
     return NextResponse.next()
   }
 

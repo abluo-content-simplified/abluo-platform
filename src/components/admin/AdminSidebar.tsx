@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
@@ -14,6 +15,25 @@ const nav = [
 export function AdminSidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const [email, setEmail] = useState<string | null>(null)
+
+  // The signed-in user's own address. This was hardcoded to a single person's
+  // email, so every admin saw that name in the footer regardless of who they
+  // were — misleading on a platform that is about to have more than one.
+  useEffect(() => {
+    let active = true
+    createClient()
+      .auth.getUser()
+      .then(({ data }) => {
+        if (active) setEmail(data.user?.email ?? null)
+      })
+      .catch(() => {
+        // Nothing to show is better than showing someone else's address.
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   // Client-side sign-out — mirrors src/app/login/page.tsx's browser client
   // usage. Admin-only UI: label is hardcoded English, consistent with the rest
@@ -58,9 +78,11 @@ export function AdminSidebar() {
 
       {/* Footer */}
       <div className="px-5 py-4 border-t border-zinc-800 space-y-2">
-        <p className="text-[10px] text-zinc-600 tracking-widest uppercase">
-          thomas@tmz.it
-        </p>
+        {email && (
+          <p className="text-[10px] text-zinc-600 tracking-widest uppercase truncate" title={email}>
+            {email}
+          </p>
+        )}
         <button
           type="button"
           onClick={handleSignOut}
