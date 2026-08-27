@@ -276,7 +276,8 @@ const formDefinitionType = defineType({
       type: 'number',
       group: 'identity',
       initialValue: 1,
-      description: 'Monotonic integer, pinned onto each submission at creation (ADR-018 Decision 4). Bump mechanism arrives in slice 7 — do not decrement.',
+      readOnly: true,
+      description: 'Set automatically on publish. Increases when a change alters the shape of the data — fields, types, required, options, validation — and stays put for wording or layout edits. Pinned onto every submission so past entries stay readable.',
       validation: (Rule) => Rule.required().min(1).integer(),
     }),
     defineField({
