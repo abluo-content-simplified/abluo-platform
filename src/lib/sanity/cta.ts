@@ -52,8 +52,6 @@ export function resolveCta(cta: Cta | null | undefined): ResolvedCta {
         label,
         internalName,
         formId: cta.formId,
-        formDefinitionId: cta.formDefinitionId,
-        formInquiryType: cta.formInquiryType,
       }
     }
 

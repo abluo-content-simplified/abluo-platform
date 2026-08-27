@@ -182,14 +182,11 @@ const ctaType = defineType({
 
     // ── Form reference (shown when actionType === 'form') ────────────────────
     // Stores the reference now; modal trigger wired in a future session.
-    // `form` remains in `to` purely so existing references still validate while
-    // the last legacy documents are retired — the picker below cannot select
-    // one. Once no cta points at a `form`, drop it from `to` and delete the type.
     defineField({
       name: 'formRef',
       title: 'Form',
       type: 'reference',
-      to: [{ type: 'formDefinition' }, { type: 'form' }],
+      to: [{ type: 'formDefinition' }],
       hidden: ({ parent }: { parent?: { actionType?: string } }) => parent?.actionType !== 'form',
       description: 'Select the form to open when clicked.',
       options: {
@@ -1909,45 +1906,6 @@ const formFieldItemType = defineType({
   },
 })
 
-const formType = defineType({
-  name: 'form',
-  title: 'Form',
-  type: 'document',
-  fields: [
-    projectSlugField,
-    defineField({ name: 'title', title: 'Internal Title', type: 'localizedString', description: 'Used in Studio only — not shown on the website', validation: (Rule) => Rule.required() }),
-    defineField({ name: 'description', title: 'Description', type: 'localizedString', description: 'Optional text shown above the form fields' }),
-    defineField({ name: 'submitLabel', title: 'Submit Button Label', type: 'localizedString', description: 'Defaults to "Submit" if empty' }),
-    defineField({ name: 'successMessage', title: 'Success Message', type: 'localizedString', description: 'Shown after successful submission' }),
-    defineField({
-      name: 'inquiryType',
-      title: 'Inquiry Type',
-      type: 'string',
-      description: 'Tag stored in the database to categorise submissions — e.g. "contact", "appointment", "quote"',
-      initialValue: 'contact',
-      validation: (Rule) => Rule.required(),
-    }),
-    defineField({
-      name: 'recipientEmail',
-      title: 'Recipient Email (future)',
-      type: 'string',
-      description: '⏳ Not yet implemented. When email notifications are enabled, new submissions will be sent here. Leave empty for now.',
-    }),
-    defineField({
-      name: 'fields',
-      title: 'Fields',
-      type: 'array',
-      of: [defineArrayMember({ type: 'formFieldItem' })],
-    }),
-  ],
-  preview: {
-    select: { titleEn: 'title.en', projectSlug: 'projectSlug', inquiryType: 'inquiryType' },
-    prepare: ({ titleEn, projectSlug, inquiryType }: { titleEn?: string; projectSlug?: string; inquiryType?: string }) => ({
-      title: titleEn ?? 'Form',
-      subtitle: `${projectSlug ?? '—'} · ${inquiryType ?? '—'}`,
-    }),
-  },
-})
 
 const formSectionType = defineType({
   name: 'formSection',
@@ -3526,32 +3484,6 @@ const siteConfigType = defineType({
       group: 'navigation',
       description: 'Legacy — used only when Header Button above is empty.',
     }),
-    // ── Deprecated: header-CTA form config (ADR-020 Decision 2) ─────────────
-    // These moved to Forms module config (Modules → Forms). They remain
-    // DECLARED and populated as a transitional fallback only: the Sanity
-    // dataset is shared across dev/preview/production, so production still
-    // reads them until `main` is promoted. Hidden from the Studio form so no
-    // new content can be authored into them; resolveHeaderCtaConfig() in
-    // src/lib/modules/config.ts reads module config first and these second.
-    // Delete both fields, and their reads, after production is promoted.
-    defineField({
-      name: 'ctaForm',
-      title: 'Nav CTA Form (overlay)',
-      type: 'reference',
-      to: [{ type: 'formDefinition' }],
-      group: 'navigation',
-      description: '⚠️ Deprecated (ADR-020) — configure this in Modules → Forms. Kept only until production is promoted.',
-      options: { filter: '_type == "formDefinition" && role == "active"' },
-      hidden: true,
-    }),
-    defineField({
-      name: 'ctaInternalName',
-      title: 'Nav CTA Internal Name (attribution)',
-      type: 'string',
-      group: 'navigation',
-      description: '⚠️ Deprecated (ADR-020) — configure this in Modules → Forms. Kept only until production is promoted.',
-      hidden: true,
-    }),
     defineField({ name: 'ctaHref', title: 'Nav CTA Button URL', type: 'string', group: 'navigation', description: 'Legacy — used only when Header Button above is empty and no CTA Form is set.' }),
     defineField({ name: 'phone', title: 'Phone', type: 'string', group: 'contact' }),
     defineField({ name: 'email', title: 'Email', type: 'string', group: 'contact' }),
@@ -3959,7 +3891,6 @@ export const schemaTypes = [
   metricsSectionType,
   formOptionItemType,
   formFieldItemType,
-  formType,
   formSectionType,
   formOverlayButtonSectionType,
   clientType,

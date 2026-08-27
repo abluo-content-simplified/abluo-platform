@@ -125,7 +125,6 @@ export function CtaButton({
       <button
         type="button"
         data-form-id={cta.formId}
-        data-form-inquiry-type={cta.formInquiryType}
         data-internal-name={cta.internalName}
         className={className}
         style={style}

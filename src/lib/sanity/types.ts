@@ -95,10 +95,8 @@ export interface Cta {
   /** Resolved slug of the target page — locale+tenant prefix added at render time. */
   pageSlug?: string
   // Resolved from formRef by GROQ
+  /** Stable route key of the referenced form definition. */
   formId?: string
-  /** Set only when formRef points at a formDefinition — the stable route key. */
-  formDefinitionId?: string
-  formInquiryType?: string
   // Resolved from file.asset by GROQ
   fileUrl?: string
   fileName?: string
@@ -131,8 +129,6 @@ export type ResolvedCta =
       label: string
       internalName: string
       formId: string
-      formDefinitionId?: string
-      formInquiryType?: string
     }
   | {
       type: 'none'

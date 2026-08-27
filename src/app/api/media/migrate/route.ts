@@ -12,11 +12,22 @@ const client = createClient({
 
 export async function POST(request: NextRequest) {
   try {
-    // Security: Only allow from localhost or with auth header
+    // A shared secret, and nothing else.
+    //
+    // This previously waived the check when request.nextUrl.hostname was
+    // localhost. On Vercel that value derives from the Host header, which the
+    // caller controls, so a request to production carrying `Host: localhost`
+    // could plausibly have skipped it — an unauthenticated write to the
+    // production dataset. The convenience was worth nothing: this is a one-off
+    // migration that has already run, and running it locally with the secret
+    // set is no harder than running it without.
+    //
+    // Fails closed when MIGRATION_SECRET is unset: the comparison is then
+    // against the literal "Bearer undefined", which no caller sends.
     const authHeader = request.headers.get('Authorization')
-    const isLocalhost = request.nextUrl.hostname === 'localhost' || request.nextUrl.hostname === '127.0.0.1'
+    const secret = process.env.MIGRATION_SECRET
 
-    if (!isLocalhost && authHeader !== `Bearer ${process.env.MIGRATION_SECRET}`) {
+    if (!secret || authHeader !== `Bearer ${secret}`) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }

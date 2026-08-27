@@ -532,31 +532,10 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
       // and lands here. The header CTA is a form placement, so the Forms module
       // owns it. Website Settings keeps only `ctaLabel` and `ctaHref`, which are
       // navigation properties of the website rather than form configuration.
-      configSchema: [
-        {
-          id: 'ctaForm',
-          label: 'Header CTA Form (deprecated)',
-          type: 'reference',
-          referenceTo: ['formDefinition'],
-          referenceFilter: '_type == "formDefinition" && role == "active" && tenantSlug == $tenantSlug',
-          description:
-            '⚠️ Deprecated — configure the header button in Website Settings → Navigation → Header Button. The button is a navigation property, not a forms setting. Kept only until existing tenants are moved across.',
-        },
-        {
-          id: 'ctaInternalName',
-          label: 'Header CTA Attribution Name',
-          type: 'string',
-          // Hidden, not deleted. There is exactly one header CTA per website, so
-          // this value is always "header-cta" — asking an admin to type a
-          // constant was the field's whole problem. Existing values keep
-          // resolving through resolveHeaderCtaConfig(); the field disappears for
-          // good when the CTA moves to Website Settings → Navigation, where
-          // cta.internalName already covers attribution properly.
-          hidden: true,
-          description:
-            'Internal label recorded with each submission for lead-source attribution. Always "header-cta" — there is only one header CTA per website.',
-        },
-      ],
+      // No settings: a form is configured by editing the form itself, and the
+      // header button — the only thing that ever lived here — is a navigation
+      // property, now in Website Settings → Navigation.
+      configSchema: [],
 
       placement: {
         surfaces: [

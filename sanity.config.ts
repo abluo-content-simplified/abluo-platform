@@ -9,6 +9,7 @@ import { ExportDesignSystemAction } from './src/sanity/actions/ExportDesignSyste
 import { ImportDesignSystemAction } from './src/sanity/actions/ImportDesignSystemAction'
 import { DuplicateDesignSystemAction } from './src/sanity/actions/DuplicateDesignSystemAction'
 import { AutoCreateSiteConfigAction } from './src/sanity/actions/AutoCreateSiteConfigAction'
+import { BumpFormVersionAction } from './src/sanity/actions/BumpFormVersionAction'
 // ADR-011 Phase C1 — Project Settings Shell
 import { ModuleList } from './src/lib/sanity/studio/ModuleList'
 import { StubPane } from './src/lib/sanity/studio/StubPane'
@@ -680,6 +681,13 @@ export default defineConfig({
         // Remove the built-in Duplicate — our custom one always creates unassigned copies.
         const filtered = prev.filter((action) => action.action !== 'duplicate')
         return [...filtered, ExportDesignSystemAction, ImportDesignSystemAction, DuplicateDesignSystemAction]
+      }
+      if (context.schemaType === 'formDefinition') {
+        // Replace the built-in Publish with our wrapper that owns `version`.
+        // The field is read-only in the form, so this is its only writer.
+        return prev.map((action) =>
+          action.action === 'publish' ? BumpFormVersionAction : action
+        )
       }
       if (context.schemaType === 'project') {
         // Replace the built-in Publish with our wrapper that auto-bootstraps

@@ -207,42 +207,33 @@ describe('resolveWhatsAppConfig', () => {
 })
 
 describe('resolveHeaderCtaConfig', () => {
-  it('reads the CTA form and attribution name from Forms module config', () => {
+  it('does not read a header CTA from Forms module config', () => {
+    // That surface is gone. The header button is a navigation property and
+    // lives in Website Settings; leaving a second reader would let a stale
+    // module value quietly override what an editor sees in Navigation.
     const m = modules([
       { moduleId: 'forms', config: { ctaForm: form('cta'), ctaInternalName: 'header-cta' } },
     ])
     const resolved = resolveHeaderCtaConfig(m, null)
-    expect(resolved.form?.formId).toBe('cta')
-    expect(resolved.internalName).toBe('header-cta')
+    expect(resolved.form).toBeNull()
+    expect(resolved.internalName).toBeUndefined()
   })
 
-  it('falls back to the deprecated siteConfig fields', () => {
+  it('does not read the removed siteConfig.ctaForm field', () => {
     const siteConfig = {
       ctaForm: form('legacy-cta'),
       ctaInternalName: 'legacy-name',
     } as WebsiteSiteConfig
     const resolved = resolveHeaderCtaConfig(modules([]), siteConfig)
-    expect(resolved.form?.formId).toBe('legacy-cta')
-    expect(resolved.internalName).toBe('legacy-name')
+    expect(resolved.form).toBeNull()
+    expect(resolved.internalName).toBeUndefined()
   })
 
-  it('lets module config win over siteConfig', () => {
-    const m = modules([{ moduleId: 'forms', config: { ctaForm: form('module-cta') } }])
-    const siteConfig = { ctaForm: form('legacy-cta') } as WebsiteSiteConfig
-    expect(resolveHeaderCtaConfig(m, siteConfig).form?.formId).toBe('module-cta')
-  })
-
-  it('does not read CTA config from a module other than forms', () => {
-    // ctaForm on the WhatsApp module is not the header CTA — module config is
-    // namespaced by module, and cross-reading it would be a silent bug.
-    const m = modules([{ moduleId: 'whatsapp', config: { ctaForm: form('wrong') } }])
-    expect(resolveHeaderCtaConfig(m, null).form).toBeNull()
-  })
-
-  it('is absent when neither source has a form', () => {
+  it('is absent when nothing is configured', () => {
     const resolved = resolveHeaderCtaConfig(null, null)
     expect(resolved.form).toBeNull()
     expect(resolved.internalName).toBeUndefined()
+    expect(resolved.mode).toBe('none')
   })
 })
 
@@ -254,7 +245,7 @@ describe('resolveHeaderCtaConfig', () => {
 // tenants are moved across, and the ONLY thing that matters here is that a
 // tenant which has changed nothing keeps the button it has today.
 
-describe('resolveHeaderCtaConfig — precedence across three surfaces', () => {
+describe('resolveHeaderCtaConfig — the one configuration surface', () => {
   const formDef = (formId: string) => ({ formId, steps: [] })
 
   const withHeaderCta = {
@@ -273,32 +264,11 @@ describe('resolveHeaderCtaConfig — precedence across three surfaces', () => {
     { moduleId: 'forms', enabled: true, config: { ctaForm: formDef('module-surface'), ctaInternalName: 'module-name' } },
   ] as never
 
-  it('prefers Website Settings → Navigation over everything else', () => {
+  it('reads the button from Website Settings → Navigation', () => {
     const r = resolveHeaderCtaConfig(modulesWithCta, withHeaderCta)
     expect(r.form?.formId).toBe('new-surface')
     expect(r.internalName).toBe('Header Book')
     expect(r.label).toBe('Book now')
-  })
-
-  it('falls back to Forms module config when the new field is empty', () => {
-    const site = { ctaLabel: 'Get Early Access', ctaForm: formDef('deprecated') } as never
-    const r = resolveHeaderCtaConfig(modulesWithCta, site)
-    expect(r.form?.formId).toBe('module-surface')
-    expect(r.internalName).toBe('module-name')
-  })
-
-  it('falls back to the deprecated siteConfig fields when neither is set', () => {
-    // This is Livener today. It must keep working with zero data changes.
-    const site = {
-      ctaLabel: 'Get Early Access',
-      ctaForm: formDef('deprecated'),
-      ctaInternalName: 'header-cta',
-    } as never
-    const r = resolveHeaderCtaConfig([] as never, site)
-    expect(r.form?.formId).toBe('deprecated')
-    expect(r.internalName).toBe('header-cta')
-    expect(r.label).toBe('Get Early Access')
-    expect(r.mode).toBe('form')
   })
 
   it('takes the label from the legacy field when the new CTA omits one', () => {

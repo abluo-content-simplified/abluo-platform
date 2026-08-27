@@ -155,22 +155,12 @@ export function HeroLensSection({ section, surface, designSystem }: Props) {
   const { eyebrow, title, subtitle, ctas } = section
   const [primaryCta, secondaryCta] = (ctas ?? []).map(resolveCta)
 
-  // Bridge form CTAs to the correct overlay.
-  //
-  // Preferred path: the CTA points at a formDefinition, so its stable formId
-  // opens the generic form overlay — the same route NavClient uses. This is
-  // what every CTA will use once the legacy `form` type is gone.
-  //
-  // Fallback path: the CTA still points at a legacy `form` document, which the
-  // code never rendered — it read one field, inquiryType, and used it to decide
-  // which modal to open. Keeping that branch is what lets this ship before the
-  // content is repointed; without it, every legacy CTA would go dead the moment
-  // this deploys. Delete the branch once no cta references a `form`.
+  // Bridge form CTAs to the form overlay, by the form's stable route key.
   function makeFormHandler(cta: ReturnType<typeof resolveCta> | undefined): (() => void) | undefined {
     if (!cta || cta.type !== 'form') return undefined
 
-    if (cta.formDefinitionId && formOverlay) {
-      const formId = cta.formDefinitionId
+    if (cta.formId && formOverlay) {
+      const formId = cta.formId
       return () => formOverlay.open({
         formId,
         source: {
@@ -181,13 +171,6 @@ export function HeroLensSection({ section, surface, designSystem }: Props) {
       })
     }
 
-    if (cta.formInquiryType === 'earlyAccess') {
-      return () => earlyAccess?.open({
-        source: 'header_cta',
-        ctaInternalName: cta.internalName,
-        ctaLabelSnapshot: cta.label,
-      })
-    }
     return undefined
   }
 

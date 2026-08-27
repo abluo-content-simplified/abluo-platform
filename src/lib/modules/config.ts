@@ -194,28 +194,16 @@ export function resolveHeaderCtaConfig(
   modules: ProjectModuleConfig,
   siteConfig: WebsiteSiteConfig | null | undefined
 ): HeaderCtaConfig {
-  const config = getModuleConfig(modules, 'forms')
   const cta = (siteConfig as { headerCta?: Record<string, unknown> } | null | undefined)?.headerCta
 
-  // Precedence, newest configuration surface first:
-  //
-  //   1. siteConfig.headerCta   — Website Settings → Navigation (current)
-  //   2. Forms module config    — Modules → Forms (ADR-020, being retired)
-  //   3. siteConfig.ctaForm     — the original fields (deprecated, hidden)
-  //
-  // Existing tenants keep working with no data change: Livener's button is
-  // still configured at levels 2 and 3 and resolves identically until someone
-  // fills in the new field. Levels 2 and 3 come out once no tenant uses them.
-  const form =
-    asForm(cta?.form) ?? asForm(config?.ctaForm) ?? asForm(siteConfig?.ctaForm)
+  // The header button is configured in Website Settings → Navigation. It used
+  // to live in Forms module config, and before that in standalone siteConfig
+  // fields; both surfaces are gone now that every tenant is on this one.
+  const form = asForm(cta?.form)
+  const internalName = asString(cta?.internalName)
 
-  const internalName =
-    asString(cta?.internalName) ??
-    asString(config?.ctaInternalName) ??
-    asString(siteConfig?.ctaInternalName)
-
-  // Label and link fall back to the standalone legacy fields, which predate the
-  // cta object and are the only place Livener's button text currently lives.
+  // ctaLabel / ctaHref predate the cta object and still carry some tenants'
+  // button text, so they remain as a label-only fallback.
   const label = asString(cta?.label) ?? asString(siteConfig?.ctaLabel)
 
   const actionType = asString(cta?.actionType)
