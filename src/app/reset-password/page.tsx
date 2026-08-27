@@ -37,6 +37,7 @@ function ResetPasswordForm() {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [linkError, setLinkError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -46,6 +47,28 @@ function ResetPasswordForm() {
       const supabase = createClient()
       const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
       const searchParams = new URLSearchParams(window.location.search)
+
+      // Supabase reports failures by redirecting BACK here with an error in the
+      // fragment or query — not by refusing to redirect. Read it first and say
+      // what actually happened. Reporting "expired" for every failure hid a
+      // real diagnosis: an email scanner consuming a single-use link before the
+      // human clicked it looks identical to a link that genuinely timed out.
+      const errorCode =
+        hashParams.get('error_code') ??
+        searchParams.get('error_code') ??
+        hashParams.get('error') ??
+        searchParams.get('error')
+      const errorDescription =
+        hashParams.get('error_description') ?? searchParams.get('error_description')
+
+      if (errorCode) {
+        console.error('[reset-password] link rejected by Supabase:', errorCode, errorDescription)
+        if (!cancelled) {
+          setLinkError(errorDescription?.replace(/\+/g, ' ') ?? errorCode)
+          setStatus('invalid')
+        }
+        return
+      }
 
       const accessToken = hashParams.get('access_token')
       const refreshToken = hashParams.get('refresh_token')
@@ -144,8 +167,11 @@ function ResetPasswordForm() {
   if (status === 'invalid') {
     return (
       <AuthLayout
-        title="This link has expired"
-        subtitle="Reset links are single-use and time-limited."
+        title="This link can no longer be used"
+        subtitle={
+          linkError ??
+          'Reset links are single-use and time-limited. Some email providers open links automatically to scan them, which uses the link up before you get to it.'
+        }
       >
         <Link
           href="/forgot-password"
