@@ -357,6 +357,12 @@ export const websiteSiteConfigQuery = /* groq */ `
         external
       }
     },
+    // Header button. CTA_FIELDS gives label / action / internalName / targets;
+    // the overlay additionally needs the whole definition, not just its id.
+    headerCta {
+      ${CTA_FIELDS},
+      "form": formRef->{ ${FORM_DEFINITION_PROJECTION} }
+    },
     "ctaLabel": ${loc('ctaLabel')},
     ctaHref,
     "ctaForm": ctaForm->{

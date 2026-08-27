@@ -245,3 +245,86 @@ describe('resolveHeaderCtaConfig', () => {
     expect(resolved.internalName).toBeUndefined()
   })
 })
+
+// ── Header button configuration surfaces ─────────────────────────────────────
+//
+// The header button is a navigation property of the website, so it now lives in
+// Website Settings → Navigation. It was previously configured in Modules →
+// Forms, and before that in standalone siteConfig fields. All three exist while
+// tenants are moved across, and the ONLY thing that matters here is that a
+// tenant which has changed nothing keeps the button it has today.
+
+describe('resolveHeaderCtaConfig — precedence across three surfaces', () => {
+  const formDef = (formId: string) => ({ formId, steps: [] })
+
+  const withHeaderCta = {
+    headerCta: {
+      label: 'Book now',
+      internalName: 'Header Book',
+      actionType: 'form',
+      form: formDef('new-surface'),
+    },
+    ctaLabel: 'Legacy label',
+    ctaForm: formDef('deprecated'),
+    ctaInternalName: 'legacy-name',
+  } as never
+
+  const modulesWithCta = [
+    { moduleId: 'forms', enabled: true, config: { ctaForm: formDef('module-surface'), ctaInternalName: 'module-name' } },
+  ] as never
+
+  it('prefers Website Settings → Navigation over everything else', () => {
+    const r = resolveHeaderCtaConfig(modulesWithCta, withHeaderCta)
+    expect(r.form?.formId).toBe('new-surface')
+    expect(r.internalName).toBe('Header Book')
+    expect(r.label).toBe('Book now')
+  })
+
+  it('falls back to Forms module config when the new field is empty', () => {
+    const site = { ctaLabel: 'Get Early Access', ctaForm: formDef('deprecated') } as never
+    const r = resolveHeaderCtaConfig(modulesWithCta, site)
+    expect(r.form?.formId).toBe('module-surface')
+    expect(r.internalName).toBe('module-name')
+  })
+
+  it('falls back to the deprecated siteConfig fields when neither is set', () => {
+    // This is Livener today. It must keep working with zero data changes.
+    const site = {
+      ctaLabel: 'Get Early Access',
+      ctaForm: formDef('deprecated'),
+      ctaInternalName: 'header-cta',
+    } as never
+    const r = resolveHeaderCtaConfig([] as never, site)
+    expect(r.form?.formId).toBe('deprecated')
+    expect(r.internalName).toBe('header-cta')
+    expect(r.label).toBe('Get Early Access')
+    expect(r.mode).toBe('form')
+  })
+
+  it('takes the label from the legacy field when the new CTA omits one', () => {
+    const site = { headerCta: { actionType: 'form', form: formDef('x') }, ctaLabel: 'Legacy label' } as never
+    expect(resolveHeaderCtaConfig([] as never, site).label).toBe('Legacy label')
+  })
+
+  it('resolves an external-link button with no form at all', () => {
+    const site = {
+      headerCta: { label: 'Call us', internalName: 'Header Call', actionType: 'externalUrl', externalUrl: 'https://example.com' },
+    } as never
+    const r = resolveHeaderCtaConfig([] as never, site)
+    expect(r.form).toBeNull()
+    expect(r.href).toBe('https://example.com')
+    expect(r.mode).toBe('link')
+  })
+
+  it('reports mode none when nothing is configured anywhere', () => {
+    const r = resolveHeaderCtaConfig([] as never, {} as never)
+    expect(r.mode).toBe('none')
+    expect(r.form).toBeNull()
+  })
+
+  it('does not invent a label when no surface provides one', () => {
+    // The layout previously hardcoded English and Italian fallbacks, which
+    // violated the multilingual rule. No configuration must mean no text.
+    expect(resolveHeaderCtaConfig([] as never, {} as never).label).toBeUndefined()
+  })
+})

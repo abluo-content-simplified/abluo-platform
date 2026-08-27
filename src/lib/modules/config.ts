@@ -70,6 +70,12 @@ export type WhatsAppConfig = {
 export type HeaderCtaConfig = {
   form: RenderableFormDefinition | null
   internalName?: string
+  /** Button text, already locale-resolved by GROQ. */
+  label?: string
+  /** Destination when the button is a plain link rather than a form trigger. */
+  href?: string
+  /** Whether the button opens a form, navigates, or is absent. */
+  mode: 'form' | 'link' | 'none'
 }
 
 // ── Primitive accessor ────────────────────────────────────────────────────────
@@ -189,9 +195,37 @@ export function resolveHeaderCtaConfig(
   siteConfig: WebsiteSiteConfig | null | undefined
 ): HeaderCtaConfig {
   const config = getModuleConfig(modules, 'forms')
+  const cta = (siteConfig as { headerCta?: Record<string, unknown> } | null | undefined)?.headerCta
 
-  return {
-    form: asForm(config?.ctaForm) ?? asForm(siteConfig?.ctaForm),
-    internalName: asString(config?.ctaInternalName) ?? asString(siteConfig?.ctaInternalName),
-  }
+  // Precedence, newest configuration surface first:
+  //
+  //   1. siteConfig.headerCta   — Website Settings → Navigation (current)
+  //   2. Forms module config    — Modules → Forms (ADR-020, being retired)
+  //   3. siteConfig.ctaForm     — the original fields (deprecated, hidden)
+  //
+  // Existing tenants keep working with no data change: Livener's button is
+  // still configured at levels 2 and 3 and resolves identically until someone
+  // fills in the new field. Levels 2 and 3 come out once no tenant uses them.
+  const form =
+    asForm(cta?.form) ?? asForm(config?.ctaForm) ?? asForm(siteConfig?.ctaForm)
+
+  const internalName =
+    asString(cta?.internalName) ??
+    asString(config?.ctaInternalName) ??
+    asString(siteConfig?.ctaInternalName)
+
+  // Label and link fall back to the standalone legacy fields, which predate the
+  // cta object and are the only place Livener's button text currently lives.
+  const label = asString(cta?.label) ?? asString(siteConfig?.ctaLabel)
+
+  const actionType = asString(cta?.actionType)
+  const href =
+    (actionType === 'externalUrl' ? asString(cta?.externalUrl) : undefined) ??
+    (actionType === 'page' ? asString(cta?.pageSlug) : undefined) ??
+    (actionType === 'fileDownload' ? asString(cta?.fileUrl) : undefined) ??
+    asString(siteConfig?.ctaHref)
+
+  const mode: HeaderCtaConfig['mode'] = form ? 'form' : href ? 'link' : 'none'
+
+  return { form, internalName, label, href, mode }
 }

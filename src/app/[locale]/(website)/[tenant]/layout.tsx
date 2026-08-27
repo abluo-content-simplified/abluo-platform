@@ -539,6 +539,10 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
     // Early Access modal. EarlyAccessWrapper remains the fallback while no CTA
     // form is set. The form now comes from Forms module config, falling back to
     // the deprecated siteConfig.ctaForm.
+    // Header button. resolveHeaderCtaConfig() owns the precedence between the
+    // three configuration surfaces (Website Settings → Navigation, Forms module
+    // config, and the original deprecated fields) so this layout does not have
+    // to know there is more than one.
     const livenerCta = resolveHeaderCtaConfig(modules, livenerConfig)
     const livenerCtaForm = livenerCta.form
     const hasCtaForm = !!livenerCtaForm?.formId
@@ -556,8 +560,8 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
             logoLightSrc={livenerConfig?.logoLight ? imageUrl(livenerConfig.logoLight as any, 480) : undefined}
             logoAlt={livenerConfig?.siteName ?? 'Livener'}
             navLinks={resolveNavLinks(livenerConfig?.navLinks, locale as SupportedLocale, 'livener')}
-            ctaLabel={livenerConfig?.ctaLabel || (locale === 'it' ? 'Richiedi accesso anticipato' : 'Get Early Access')}
-            ctaHref={livenerConfig?.ctaHref ?? '#'}
+            ctaLabel={livenerCta.label ?? ''}
+            ctaHref={livenerCta.href ?? '#'}
             ctaMode={hasCtaForm ? 'overlay' : 'modal'}
             ctaFormId={hasCtaForm ? livenerCtaForm!.formId : undefined}
             ctaInternalName={livenerCta.internalName}

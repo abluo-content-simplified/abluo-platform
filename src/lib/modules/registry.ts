@@ -535,12 +535,12 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
       configSchema: [
         {
           id: 'ctaForm',
-          label: 'Header CTA Form',
+          label: 'Header CTA Form (deprecated)',
           type: 'reference',
           referenceTo: ['formDefinition'],
           referenceFilter: '_type == "formDefinition" && role == "active" && tenantSlug == $tenantSlug',
           description:
-            'When set, the header CTA button opens this form in an overlay instead of navigating. Leave empty to make the CTA a plain link using the URL in Website Settings → Navigation.',
+            '⚠️ Deprecated — configure the header button in Website Settings → Navigation → Header Button. The button is a navigation property, not a forms setting. Kept only until existing tenants are moved across.',
         },
         {
           id: 'ctaInternalName',

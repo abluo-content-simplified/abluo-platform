@@ -3501,7 +3501,31 @@ const siteConfigType = defineType({
     }),
     defineField({ name: 'navLinks', title: 'Navigation Links', type: 'array', group: 'navigation', of: [defineArrayMember({ type: 'navigationLink' })] }),
     defineField({ name: 'showLangSwitcherInNav', title: 'Show language switcher in nav', type: 'boolean', group: 'navigation', initialValue: false }),
-    defineField({ name: 'ctaLabel', title: 'Nav CTA Button Label', type: 'localizedString', group: 'navigation' }),
+    // ── Header CTA ───────────────────────────────────────────────────────────
+    // The header button is a navigation property of the website: it lives in
+    // the header beside the nav links, and opening a form is one of four things
+    // it can do. It was previously configured in Modules → Forms, which made a
+    // navigation decision look like a forms setting and split the button across
+    // three fields — label here, form in module config, attribution in both.
+    //
+    // The `cta` type already carries label + action + internalName together, so
+    // one field replaces all of it. Attribution comes from cta.internalName;
+    // the old "Header CTA Attribution Name" was always the constant
+    // "header-cta", since a website has exactly one header CTA.
+    defineField({
+      name: 'headerCta',
+      title: 'Header Button',
+      type: 'cta',
+      group: 'navigation',
+      description: 'The button in the site header. Leave empty for no button.',
+    }),
+    defineField({
+      name: 'ctaLabel',
+      title: 'Nav CTA Button Label',
+      type: 'localizedString',
+      group: 'navigation',
+      description: 'Legacy — used only when Header Button above is empty.',
+    }),
     // ── Deprecated: header-CTA form config (ADR-020 Decision 2) ─────────────
     // These moved to Forms module config (Modules → Forms). They remain
     // DECLARED and populated as a transitional fallback only: the Sanity
@@ -3528,7 +3552,7 @@ const siteConfigType = defineType({
       description: '⚠️ Deprecated (ADR-020) — configure this in Modules → Forms. Kept only until production is promoted.',
       hidden: true,
     }),
-    defineField({ name: 'ctaHref', title: 'Nav CTA Button URL', type: 'string', group: 'navigation', description: 'Used only when no CTA Form is set above.' }),
+    defineField({ name: 'ctaHref', title: 'Nav CTA Button URL', type: 'string', group: 'navigation', description: 'Legacy — used only when Header Button above is empty and no CTA Form is set.' }),
     defineField({ name: 'phone', title: 'Phone', type: 'string', group: 'contact' }),
     defineField({ name: 'email', title: 'Email', type: 'string', group: 'contact' }),
     defineField({
