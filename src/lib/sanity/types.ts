@@ -6,6 +6,7 @@
 // To add a new language, edit src/lib/i18n/locales.ts — not this file.
 import type { SupportedLocale as _SupportedLocale } from '@/lib/i18n/locales'
 export type { SupportedLocale } from '@/lib/i18n/locales'
+import type { IconName } from '@/components/icons/registry'
 // Local alias so references later in this file resolve correctly.
 type SupportedLocale = _SupportedLocale
 
@@ -21,6 +22,18 @@ export interface LocalizedString {
   pt?: string
   nl?: string
 }
+
+// ─── Icon field value ─────────────────────────────────────────────────────────
+
+/**
+ * Value stored by an icon-picker field (the shared `iconNameField`, or any
+ * section's own `icon` string field). Widened to `string` because GROQ returns
+ * whatever is in the dataset — including keys retired from the registry — and
+ * to `null` because GROQ resolves an unset field to null, not undefined.
+ * Narrow with `isIconName()` from '@/components/icons' before treating it as
+ * an `IconName`; `<Icon>` itself renders nothing for an unknown key.
+ */
+export type IconNameValue = IconName | string | null
 
 // ─── Portable Text ────────────────────────────────────────────────────────────
 
@@ -140,7 +153,10 @@ export type ResolvedCta =
 
 export interface NavLink {
   label: string
-  linkType?: 'internal' | 'external'
+  /** 'anchor' is additive — 'internal' and 'external' behave exactly as before. */
+  linkType?: 'internal' | 'external' | 'anchor'
+  /** Only used when linkType === 'anchor'. Resolves to `#<anchorId>`. */
+  anchorId?: string
   // Resolved slug from pageRef — set by GROQ query, not stored directly
   pageSlug?: string
   internalPage?: 'homepage' | 'live' | 'events'
@@ -807,6 +823,25 @@ export interface HeroSection {
   overlayOpacity?: number
   blur?: number
   brightness?: number
+  // ── Optional extensions (additive) ────────────────────────────────────────
+  /** Optional stat row rendered beneath the CTA. Absent → nothing renders. */
+  stats?: HeroStat[]
+  /**
+   * Optional CTA array — a SECOND CTA path. When it has entries these render
+   * instead of the legacy scalar ctaLabel/ctaHref pair above, which keeps
+   * working untouched whenever this is empty or absent.
+   */
+  ctas?: Cta[]
+}
+
+/** One figure in a heroSection's optional stat row. */
+export interface HeroStat {
+  _type: 'heroStat'
+  _key: string
+  /** Locale-resolved by GROQ */
+  value?: string
+  /** Locale-resolved by GROQ */
+  label?: string
 }
 
 /**
@@ -1323,6 +1358,201 @@ export interface MetricsSection {
   metrics?: MetricItem[]
 }
 
+// ─── Steps Section ────────────────────────────────────────────────────────────
+
+export interface StepItem {
+  _type: 'stepItem'
+  _key: string
+  /** Icon registry key (src/components/icons). Unknown keys render nothing. */
+  icon?: IconNameValue
+  /** Locale-resolved by GROQ */
+  title?: string
+  /** Locale-resolved by GROQ */
+  subtitle?: string
+  /** Locale-resolved by GROQ */
+  description?: string
+  /** Locale-resolved by GROQ — plain strings, one per chip */
+  tags?: string[]
+}
+
+export interface StepsSection {
+  _type: 'stepsSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  title?: string
+  /** Locale-resolved by GROQ */
+  intro?: string
+  steps?: StepItem[]
+  /** Locale-resolved by GROQ */
+  closingText?: string
+  closingCta?: Cta
+}
+
+// ─── Feature Grid Section ─────────────────────────────────────────────────────
+
+export interface FeatureCard {
+  _type: 'featureCard'
+  _key: string
+  /** Icon registry key. Only used by variant 'icon'. */
+  icon?: IconNameValue
+  /** Locale-resolved by GROQ */
+  kicker?: string
+  /** Locale-resolved by GROQ — honours literal "\n" line breaks */
+  title?: string
+  /** Locale-resolved by GROQ */
+  description?: string
+  /** Locale-resolved by GROQ — array of localizedString, flattened to strings */
+  bullets?: string[]
+}
+
+export interface FeatureGridSection {
+  _type: 'featureGridSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  title?: string
+  /** Locale-resolved by GROQ */
+  intro?: string
+  /** Card marker. Unset (null) is treated as 'icon'. */
+  variant?: 'icon' | 'number' | 'none'
+  /**
+   * Column strategy. Deliberately a string enum here while photoGallerySection
+   * uses a numeric `columns` — separate section types, one shared projection
+   * key that passes the raw value through. Do not harmonise the two.
+   */
+  columns?: 'auto' | '2' | '3' | '4'
+  /** Locale-resolved by GROQ — optional uppercase chip row in the header */
+  chips?: string[]
+  features?: FeatureCard[]
+}
+
+// ─── Media + Feature Section ──────────────────────────────────────────────────
+
+/** One row in a mediaFeatureSection — a capability line or a bullet. */
+export interface FeatureRow {
+  _type: 'featureRow'
+  _key: string
+  /** Registry key for the platform Icon primitive. Unknown/unset → accent dot. */
+  icon?: IconNameValue
+  /** Locale-resolved by GROQ */
+  title?: string
+  /** Locale-resolved by GROQ */
+  description?: string
+}
+
+/**
+ * Media + Feature Section — optional media on one side, a repeatable list of
+ * feature rows on the other, with optional intro, closing line and CTAs.
+ *
+ * NOTE: `features` shares its projection key with featureGridSection's
+ * `features` (FeatureCard[]). The single flat sub-projection names the union
+ * of both members' fields; a FeatureRow simply comes back with kicker/bullets
+ * null. Renaming either field means updating the projection too.
+ */
+export interface MediaFeatureSection {
+  _type: 'mediaFeatureSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  title?: string
+  /** Locale-resolved by GROQ */
+  intro?: string
+  image?: ResolvedImage
+  /** 'none' drops the media column and promotes the heading block to a column */
+  mediaPosition?: 'left' | 'right' | 'none'
+  /** Width split, content column first — applies at md and up only */
+  contentRatio?: '40/60' | '50/50' | '60/40'
+  /** DS media style key — the component looks the definition up in designSystem.mediaStyles */
+  mediaStyle?: string
+  /** Wrap the image in browser-window chrome */
+  mockupFrame?: boolean
+  /** Locale-resolved by GROQ */
+  mockupTitle?: string
+  /** Locale-resolved by GROQ */
+  mockupBadge?: string
+  features?: FeatureRow[]
+  /** Locale-resolved by GROQ */
+  closingLine?: string
+  primaryCta?: Cta
+  secondaryCta?: Cta
+}
+
+// ─── Category List Section ────────────────────────────────────────────────────
+
+export interface CategoryListItem {
+  _key: string
+  /** Locale-resolved by GROQ from the localizedString array member itself */
+  text?: string
+}
+
+export interface CategoryColumn {
+  _type: 'categoryColumn'
+  _key: string
+  /** Locale-resolved by GROQ */
+  label?: string
+  items?: CategoryListItem[]
+}
+
+export interface CategoryListCallout {
+  /** Key into the Icon registry in @/components/icons */
+  icon?: IconNameValue
+  /** Locale-resolved by GROQ */
+  title?: string
+  /** Locale-resolved by GROQ */
+  description?: string
+  cta?: Cta
+}
+
+export interface CategoryListSection {
+  _type: 'categoryListSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  title?: string
+  /** Locale-resolved by GROQ */
+  intro?: string
+  headerCta?: Cta
+  categories?: CategoryColumn[]
+  /** Optional — the section renders cleanly without it */
+  callout?: CategoryListCallout
+}
+
+// ─── CTA Banner Section ───────────────────────────────────────────────────────
+
+export interface CtaBannerSection {
+  _type: 'ctaBannerSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /**
+   * Locale-resolved by GROQ. Honours authored newlines as hard line breaks.
+   * DISTINCT from the existing `headline` field — the two are never merged.
+   */
+  heading?: string
+  /** Locale-resolved by GROQ */
+  body?: string
+  primaryCta?: Cta
+  secondaryCta?: Cta
+  /** Locale-resolved by GROQ */
+  footnote?: string
+  /** Locale-resolved by GROQ. Rendered in the accent colour after `footnote`. */
+  footnoteAccent?: string
+  /** Locale-resolved by GROQ. Decorative outlined wordmark; aria-hidden. */
+  watermarkText?: string
+  /** Defaults to true. GROQ returns null for an unset boolean. */
+  showGlow?: boolean | null
+}
+
 // ─── Gallery Module ────────────────────────────────────────────────────────────
 
 export interface GalleryMediaAsset {
@@ -1402,6 +1632,11 @@ export type PageSection =
   | PhotoGallerySection
   | EventsListingSection
   | LiveLatestSection
+  | StepsSection
+  | FeatureGridSection
+  | MediaFeatureSection
+  | CategoryListSection
+  | CtaBannerSection
 
 export interface WebsiteHomePage {
   tenantSlug: string

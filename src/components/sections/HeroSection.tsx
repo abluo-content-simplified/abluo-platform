@@ -1,8 +1,20 @@
+'use client'
+
+// 'use client' is required by the optional `ctas[]` path below: an internal
+// page CTA resolves to a bare "/slug" and has to be prefixed with the locale
+// and tenant, both of which are URL params (useParams) rather than Sanity
+// fields. This is the same approach MediaContentSection already uses, and the
+// modules this file pulls in (SlideUp, @/lib/sanity/image) were already in the
+// client bundle through those sections, so nothing new is shipped to it.
+
+import { useParams } from 'next/navigation'
 import type { HeroSection, DesignSystem } from '@/lib/sanity/types'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { urlFor } from '@/lib/sanity/image'
+import { resolveCta } from '@/lib/sanity/cta'
+import { CtaButton } from '@/components/ui/CtaButton'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 const CLOUDFLARE_ACCOUNT = 'customer-aayaptcudal3r1fx'
@@ -79,6 +91,8 @@ export function HeroSection({ section, surface, designSystem }: Props) {
     contentWidth = 'standard',
     contentAlignment = 'left',
     verticalAlignment = 'center',
+    stats,
+    ctas,
   } = section
 
   // Numeric style fields — GROQ returns `null` for unset fields, which
@@ -111,6 +125,27 @@ export function HeroSection({ section, surface, designSystem }: Props) {
   const d3 = eyebrow ? 0.3 : 0.2
   const d4 = eyebrow ? 0.4 : 0.3
   const d5 = eyebrow ? 0.5 : 0.4 // boxed media frame — after the CTA
+
+  const d6 = d5 + 0.1 // optional stat row — after the CTA / boxed media frame
+
+  // ── Optional ctas[] (second CTA path) ─────────────────────────────────────
+  // An internal 'page' CTA resolves to a bare "/slug"; locale + tenant come
+  // from the URL, exactly as in MediaContentSection.
+  const params = useParams()
+  const paramLocale = params?.locale as string | undefined
+  const paramTenant = params?.tenant as string | undefined
+
+  function withTenantPrefix(resolved: ReturnType<typeof resolveCta>) {
+    if (resolved.type !== 'link' || resolved.external || !paramLocale || !paramTenant) return resolved
+    const slug = resolved.href.startsWith('/') ? resolved.href.slice(1) : resolved.href
+    return { ...resolved, href: `/${paramLocale}/${paramTenant}/${slug}` }
+  }
+
+  // Only CTAs that actually resolve to something count — an unfinished CTA in
+  // Studio must not suppress the legacy ctaLabel/ctaHref pair.
+  const resolvedCtas = (ctas ?? [])
+    .map((cta) => withTenantPrefix(resolveCta(cta)))
+    .filter((cta) => cta.type !== 'none')
 
   const headlineLines = headline?.split('\n') ?? []
 
@@ -244,8 +279,36 @@ export function HeroSection({ section, surface, designSystem }: Props) {
           </SlideUp>
         )}
 
-        {/* CTA */}
-        {ctaLabel && (
+        {/* CTA — `ctas[]` when authored, otherwise the legacy scalar pair.
+            The legacy branch below is byte-identical to what shipped before
+            `ctas` existed, so every existing hero renders exactly as it did. */}
+        {resolvedCtas.length > 0 ? (
+          <SlideUp duration={duration} ease={ease} delay={d4}>
+            <div
+              className={`flex flex-wrap items-center gap-4 ${
+                contentAlignment === 'center' ? 'justify-center' : contentAlignment === 'right' ? 'justify-end' : ''
+              }`}
+            >
+              {resolvedCtas.map((cta, i) => (
+                <CtaButton
+                  key={`${cta.internalName}-${i}`}
+                  cta={cta}
+                  className="inline-flex h-12 items-center gap-2 px-8 text-sm font-medium tracking-wide transition-opacity hover:opacity-85"
+                  style={
+                    i === 0
+                      ? { backgroundColor: ctaBg, color: ctaText }
+                      : { color: textPrimary, border: `1px solid ${dividerColor}`, backgroundColor: 'transparent' }
+                  }
+                >
+                  {cta.label}
+                  {i === 0 && (
+                    <span aria-hidden="true" style={{ opacity: 0.6 }}>→</span>
+                  )}
+                </CtaButton>
+              ))}
+            </div>
+          </SlideUp>
+        ) : ctaLabel ? (
           <SlideUp duration={duration} ease={ease} delay={d4}>
             <a
               href={ctaHref ?? '#'}
@@ -255,6 +318,39 @@ export function HeroSection({ section, surface, designSystem }: Props) {
               {ctaLabel}
               <span aria-hidden="true" style={{ opacity: 0.6 }}>→</span>
             </a>
+          </SlideUp>
+        ) : null}
+
+        {/* Optional stat row — sits beneath the CTA. Absent `stats` renders
+            nothing at all, so this is a no-op for every existing hero. The
+            white-over-media treatment is the same textPrimary/textSecondary
+            pair the headline and subheadline use. */}
+        {stats && stats.length > 0 && (
+          <SlideUp duration={duration} ease={ease} delay={d6} className="mt-12 w-full">
+            <div
+              className={`flex flex-wrap gap-x-12 gap-y-6 ${
+                contentAlignment === 'center' ? 'justify-center' : contentAlignment === 'right' ? 'justify-end' : ''
+              }`}
+            >
+              {stats.map((stat) => (
+                <div key={stat._key} className="flex flex-col">
+                  <span
+                    className="text-3xl font-semibold leading-none tracking-tight md:text-4xl"
+                    style={{ color: textPrimary, fontFamily: 'var(--font-heading)' }}
+                  >
+                    {stat.value}
+                  </span>
+                  {stat.label && (
+                    <span
+                      className="mt-2 text-xs font-medium uppercase tracking-[0.2em]"
+                      style={{ color: textSecondary }}
+                    >
+                      {stat.label}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
           </SlideUp>
         )}
 

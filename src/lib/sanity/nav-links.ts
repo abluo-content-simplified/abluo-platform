@@ -61,6 +61,18 @@ export function resolveNavLink(
     }
   }
 
+  // Same-page anchor — resolves to `#<anchorId>`. Purely additive: no link
+  // stored before this existed can have linkType 'anchor', so the 'internal'
+  // and 'external' paths above/below are unreachable from here and unchanged.
+  if (link.linkType === 'anchor') {
+    return {
+      label: link.label,
+      href: link.anchorId ? `#${link.anchorId}` : '#',
+      external: false,
+      children: link.children?.map((child) => resolveNavLink(child, locale, tenantId)),
+    }
+  }
+
   if (link.linkType === 'external' && link.externalUrl) {
     return {
       label: link.label,

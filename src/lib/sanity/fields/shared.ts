@@ -1,5 +1,6 @@
 import { defineField, defineArrayMember } from 'sanity'
 import { ProjectSlugPicker } from '@/lib/sanity/fields/ProjectSlugPicker'
+import { ICON_OPTIONS } from '@/components/icons/registry'
 
 // ── Shared Sanity primitives ──────────────────────────────────────────────────
 //
@@ -85,4 +86,33 @@ export const PAGE_SECTIONS_OF = [
   defineArrayMember({ type: 'photoGallerySection' }),
   defineArrayMember({ type: 'eventsListingSection' }),
   defineArrayMember({ type: 'liveLatestSection' }),
+  defineArrayMember({ type: 'stepsSection' }),
+  defineArrayMember({ type: 'featureGridSection' }),
+  defineArrayMember({ type: 'mediaFeatureSection' }),
+  defineArrayMember({ type: 'categoryListSection' }),
+  defineArrayMember({ type: 'ctaBannerSection' }),
 ]
+
+// ── Icon picker field ────────────────────────────────────────────────────────
+//
+// Reusable icon selector for any section/object that wants an optional icon.
+// The option list is generated from the icon registry
+// (src/components/icons/registry.tsx), so adding an icon there makes it
+// selectable everywhere with no schema edit.
+//
+// Storage shape: a plain string key (e.g. "check", "arrow-right"). Unknown or
+// stale keys render as nothing — <Icon> returns null rather than throwing —
+// so a key may be removed from the registry without breaking stored content.
+//
+// Keep it OPTIONAL (never Rule.required()) so it stays a no-op for every
+// existing document.
+export const iconNameField = defineField({
+  name: 'iconName',
+  title: 'Icon',
+  type: 'string',
+  description: 'Optional. Inherits the surrounding text colour.',
+  options: {
+    list: ICON_OPTIONS,
+    layout: 'dropdown',
+  },
+})

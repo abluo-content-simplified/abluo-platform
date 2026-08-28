@@ -4,6 +4,7 @@ import { ProjectLinker } from '@/lib/sanity/fields/ProjectLinker'
 import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, LocalizedSlugInput, LocalizedRedirectFromInput } from '@/lib/sanity/fields/LocalizedInput'
 import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF } from '@/lib/sanity/fields/shared'
+import { ICON_OPTIONS } from '@/components/icons/registry'
 import { buildSchema } from '@/lib/modules/schema'
 import { buildModuleConfigSchemaTypes, buildModuleInstallationsField } from '@/lib/modules/config-schema'
 import { buildIntegrationSchemaTypes, buildIntegrationConfigsField } from '@/lib/integrations/schema'
@@ -272,6 +273,7 @@ const navigationLinkType = defineType({
         list: [
           { title: 'Internal Page', value: 'internal' },
           { title: 'External URL', value: 'external' },
+          { title: 'Anchor on this page', value: 'anchor' },
         ],
         layout: 'radio',
       },
@@ -326,6 +328,23 @@ const navigationLinkType = defineType({
           return true
         }),
     }),
+    // Same-page anchor. Resolves to `#<anchorId>` in resolveNavLink(); the
+    // 'internal' and 'external' paths are untouched by this field.
+    defineField({
+      name: 'anchorId',
+      title: 'Anchor ID',
+      type: 'string',
+      hidden: ({ parent }: { parent?: { linkType?: string } }) => parent?.linkType !== 'anchor',
+      description: 'The id of the element to scroll to, without the leading "#" (e.g. "pricing").',
+      validation: (Rule) =>
+        Rule.custom((anchorId, context) => {
+          const parent = context.parent as { linkType?: string } | undefined
+          if (parent?.linkType === 'anchor' && !anchorId) {
+            return 'Anchor ID is required for anchor links'
+          }
+          return true
+        }),
+    }),
     defineField({
       name: 'openInNewTab',
       title: 'Open in New Tab',
@@ -356,12 +375,14 @@ const navigationLinkType = defineType({
     }),
   ],
   preview: {
-    select: { title: 'label.en', linkType: 'linkType', internalPage: 'internalPage', externalUrl: 'externalUrl', pageTitle: 'pageRef.title.en', pageSlug: 'pageRef.slug.en.current' },
-    prepare: ({ title, linkType, internalPage, externalUrl, pageTitle, pageSlug }) => ({
+    select: { title: 'label.en', linkType: 'linkType', internalPage: 'internalPage', externalUrl: 'externalUrl', anchorId: 'anchorId', pageTitle: 'pageRef.title.en', pageSlug: 'pageRef.slug.en.current' },
+    prepare: ({ title, linkType, internalPage, externalUrl, anchorId, pageTitle, pageSlug }) => ({
       title: title ?? '—',
       subtitle: linkType === 'internal'
         ? (pageTitle ? `📄 ${pageTitle} (/${pageSlug})` : `📄 ${internalPage}`)
-        : `🔗 ${externalUrl}`,
+        : linkType === 'anchor'
+          ? `⚓ #${anchorId ?? ''}`
+          : `🔗 ${externalUrl}`,
     }),
   },
 })
@@ -654,6 +675,30 @@ const heroSectionType = defineType({
       validation: (Rule) => Rule.min(50).max(150),
       initialValue: 100,
       description: 'Adjust media brightness (50–150%). Lower darkens, higher brightens.',
+    }),
+
+    // ── Optional extensions (additive) ───────────────────────────────────────
+    // Both are optional and absent from every hero authored before them, so an
+    // existing hero renders byte-for-byte as it did. `ctas` is a SECOND CTA
+    // path: the legacy scalar ctaLabel/ctaHref pair above still works and is
+    // still rendered whenever `ctas` is empty.
+    defineField({
+      name: 'stats',
+      title: 'Stat Row',
+      type: 'array',
+      group: 'content',
+      of: [defineArrayMember({ type: 'heroStat' })],
+      description: 'Optional row of figures shown beneath the CTA. Leave empty for none.',
+      validation: (Rule) => Rule.max(4),
+    }),
+    defineField({
+      name: 'ctas',
+      title: 'CTAs',
+      type: 'array',
+      group: 'content',
+      of: [defineArrayMember({ type: 'cta' })],
+      description: 'Optional. When set, these replace the single CTA Button Label/Link above (first is primary, second secondary). Leave empty to keep using that pair.',
+      validation: (Rule) => Rule.max(3),
     }),
   ],
   preview: {
@@ -1545,6 +1590,594 @@ const metricsSectionType = defineType({
     }),
   },
 })
+
+// ─── Steps Section (platform) ─────────────────────────────────────────────────
+
+const stepItemType = defineType({
+  name: 'stepItem',
+  title: 'Step',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'icon',
+      title: 'Icon',
+      type: 'string',
+      description: 'Optional icon key from the platform icon set.',
+      options: { list: ICON_OPTIONS },
+    }),
+    defineField({
+      name: 'title',
+      title: 'Title',
+      type: 'localizedString',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'subtitle',
+      title: 'Subtitle',
+      type: 'localizedString',
+      description: 'Short qualifier under the title, e.g. "Infrastructure · API · Logic".',
+    }),
+    defineField({
+      name: 'description',
+      title: 'Description',
+      type: 'localizedText',
+    }),
+    defineField({
+      name: 'tags',
+      title: 'Tags',
+      type: 'array',
+      of: [defineArrayMember({ type: 'localizedString' })],
+      description: 'Rendered as uppercase chips under the description.',
+      validation: (Rule) => Rule.max(8),
+    }),
+  ],
+  preview: {
+    select: { title_en: 'title.en', title_it: 'title.it', subtitle_en: 'subtitle.en' },
+    prepare: ({ title_en, title_it, subtitle_en }: { title_en?: string; title_it?: string; subtitle_en?: string }) => ({
+      title: title_en ?? title_it ?? 'Step',
+      subtitle: subtitle_en ?? 'Step',
+    }),
+  },
+})
+
+const stepsSectionType = defineType({
+  name: 'stepsSection',
+  title: 'Steps Section',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: { list: BACKGROUND_SURFACE_OPTIONS },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    defineField({ name: 'intro', title: 'Intro Text', type: 'localizedText' }),
+    defineField({
+      name: 'steps',
+      title: 'Steps',
+      type: 'array',
+      of: [defineArrayMember({ type: 'stepItem' })],
+      validation: (Rule) => Rule.min(1).max(6),
+    }),
+    defineField({
+      name: 'closingText',
+      title: 'Closing Statement',
+      type: 'localizedString',
+      description: 'Optional statement bar below the steps.',
+    }),
+    defineField({
+      name: 'closingCta',
+      title: 'Closing CTA',
+      type: 'cta',
+    }),
+  ],
+  preview: {
+    select: { title_en: 'title.en', title_it: 'title.it' },
+    prepare: ({ title_en, title_it }: { title_en?: string; title_it?: string }) => ({
+      title: title_en ?? title_it ?? 'Steps',
+      subtitle: 'Steps Section',
+    }),
+  },
+})
+
+// ─── Feature Grid Section (platform) ──────────────────────────────────────────
+//
+// NOTE ON THE SHARED `features[]` KEY: featureCard (here) and featureRow
+// (mediaFeatureSection, below) are both stored under a field named `features`.
+// PAGE_SECTIONS_PROJECTION is one flat projection, so the two are served by a
+// single `features[]` sub-projection that names the union of both members'
+// fields; GROQ returns null for a field the concrete member does not have.
+// Do not rename either field without updating that projection and both types.
+
+const featureCardType = defineType({
+  name: 'featureCard',
+  title: 'Feature Card',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'icon',
+      title: 'Icon',
+      type: 'string',
+      description: 'Only shown when the section variant is "Icon".',
+      options: { list: ICON_OPTIONS },
+    }),
+    defineField({ name: 'kicker', title: 'Kicker Label', type: 'localizedString' }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    defineField({ name: 'description', title: 'Description', type: 'localizedText' }),
+    defineField({
+      name: 'bullets',
+      title: 'Bullets',
+      type: 'array',
+      of: [defineArrayMember({ type: 'localizedString' })],
+    }),
+  ],
+  preview: {
+    select: { title_en: 'title.en', title_it: 'title.it', kicker_en: 'kicker.en' },
+    prepare: ({ title_en, title_it, kicker_en }: { title_en?: string; title_it?: string; kicker_en?: string }) => ({
+      title: title_en ?? title_it ?? 'Feature',
+      subtitle: kicker_en ?? 'Feature Card',
+    }),
+  },
+})
+
+const featureGridSectionType = defineType({
+  name: 'featureGridSection',
+  title: 'Feature Grid Section',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: { list: BACKGROUND_SURFACE_OPTIONS },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    defineField({ name: 'intro', title: 'Introduction', type: 'localizedText' }),
+    defineField({
+      name: 'variant',
+      title: 'Card Marker',
+      type: 'string',
+      description: 'What sits at the top of each card.',
+      options: {
+        list: [
+          { title: 'Icon — bordered icon box', value: 'icon' },
+          { title: 'Number — large ordinal watermark', value: 'number' },
+          { title: 'None — title and copy only', value: 'none' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'icon',
+    }),
+    defineField({
+      name: 'columns',
+      title: 'Columns',
+      type: 'string',
+      description: 'Auto fits as many ~280px cards per row as the viewport allows.',
+      options: {
+        list: [
+          { title: 'Auto', value: 'auto' },
+          { title: '2 Columns', value: '2' },
+          { title: '3 Columns', value: '3' },
+          { title: '4 Columns', value: '4' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'auto',
+    }),
+    defineField({
+      name: 'chips',
+      title: 'Header Chips',
+      type: 'array',
+      description: 'Optional row of small uppercase labels beside the intro.',
+      of: [defineArrayMember({ type: 'localizedString' })],
+    }),
+    defineField({
+      name: 'features',
+      title: 'Features',
+      type: 'array',
+      of: [defineArrayMember({ type: 'featureCard' })],
+      validation: (Rule) => Rule.min(1).max(8),
+    }),
+  ],
+  preview: {
+    select: { title_en: 'title.en', title_it: 'title.it' },
+    prepare: ({ title_en, title_it }: { title_en?: string; title_it?: string }) => ({
+      title: title_en ?? title_it ?? 'Feature Grid',
+      subtitle: 'Feature Grid Section',
+    }),
+  },
+})
+
+// ─── Media + Feature Section (platform) ───────────────────────────────────────
+
+const featureRowType = defineType({
+  name: 'featureRow',
+  title: 'Feature Row',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'icon',
+      title: 'Icon',
+      type: 'string',
+      description: 'Optional. Leave empty to show a plain accent dot instead.',
+      options: { list: ICON_OPTIONS },
+    }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    defineField({
+      name: 'description',
+      title: 'Description',
+      type: 'localizedText',
+      description: 'Optional. Omit for a short bullet-style row.',
+    }),
+  ],
+  preview: {
+    select: { title: 'title.it', titleEn: 'title.en', subtitle: 'description.it' },
+    prepare: ({ title, titleEn, subtitle }: { title?: string; titleEn?: string; subtitle?: string }) => ({
+      title: title ?? titleEn ?? 'Feature',
+      subtitle,
+    }),
+  },
+})
+
+const mediaFeatureSectionType = defineType({
+  name: 'mediaFeatureSection',
+  title: 'Media + Feature Section',
+  type: 'object',
+  groups: [
+    { name: 'content', title: 'Content' },
+    { name: 'media',   title: 'Media' },
+    { name: 'layout',  title: 'Layout' },
+    { name: 'ctas',    title: 'CTAs' },
+  ],
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      group: 'content',
+      options: { list: BACKGROUND_SURFACE_OPTIONS },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString', group: 'content' }),
+    defineField({ name: 'title',   title: 'Title',         type: 'localizedString', group: 'content' }),
+    defineField({ name: 'intro',   title: 'Intro Text',    type: 'localizedText',   group: 'content' }),
+    defineField({
+      name: 'features',
+      title: 'Feature Rows',
+      type: 'array',
+      group: 'content',
+      of: [defineArrayMember({ type: 'featureRow' })],
+      description: 'Repeating rows shown beside the media (or beside the heading when Media Position is None).',
+    }),
+    defineField({
+      name: 'closingLine',
+      title: 'Closing Line',
+      type: 'localizedString',
+      group: 'content',
+      description: 'Optional single line below the rows, rendered in the heading font and accent colour.',
+    }),
+    defineField({
+      name: 'primaryCta',
+      title: 'Primary CTA',
+      type: 'cta',
+      group: 'ctas',
+      description: 'Main call-to-action button — uses primary button style from the Design System.',
+    }),
+    defineField({
+      name: 'secondaryCta',
+      title: 'Secondary CTA',
+      type: 'cta',
+      group: 'ctas',
+      description: 'Optional secondary action — rendered as a ghost or text button.',
+    }),
+    defineField({
+      name: 'image',
+      title: 'Image',
+      type: 'localizedImage',
+      group: 'media',
+      description: 'Optional. Ignored when Media Position is set to None.',
+    }),
+    defineField({
+      name: 'mediaPosition',
+      title: 'Media Position',
+      type: 'string',
+      group: 'media',
+      options: {
+        list: [
+          { title: '◀ Left', value: 'left' },
+          { title: '▶ Right', value: 'right' },
+          { title: '◻ None (heading + rows only)', value: 'none' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'left',
+      description: 'With None, the heading block becomes the left column and the feature rows the right.',
+    }),
+    defineField({
+      name: 'mediaStyle',
+      title: 'Media Style',
+      type: 'string',
+      group: 'media',
+      description: 'Presentation style — defined by the Design System. Each DS can override what each style looks like.',
+      options: {
+        list: [
+          { title: 'Default', value: 'default' },
+          { title: 'Rounded', value: 'rounded' },
+          { title: 'Square (1:1)', value: 'square' },
+          { title: 'Landscape (16:9)', value: 'landscape' },
+          { title: 'Portrait (3:4)', value: 'portrait' },
+          { title: 'Circle', value: 'circle' },
+          { title: 'Full Height', value: 'fullHeight' },
+        ],
+      },
+      initialValue: 'default',
+      hidden: ({ parent }: { parent?: { mediaPosition?: string } }) => parent?.mediaPosition === 'none',
+    }),
+    defineField({
+      name: 'mockupFrame',
+      title: 'Browser Mockup Frame',
+      type: 'boolean',
+      group: 'media',
+      description: 'Wrap the image in a browser-window frame with a titlebar. Best for product screenshots.',
+      initialValue: false,
+      hidden: ({ parent }: { parent?: { mediaPosition?: string } }) => parent?.mediaPosition === 'none',
+    }),
+    defineField({
+      name: 'mockupTitle',
+      title: 'Mockup Titlebar Text',
+      type: 'localizedString',
+      group: 'media',
+      description: 'Shown in the mockup titlebar, e.g. "Bella Vista Restaurant — Seating Plan".',
+      hidden: ({ parent }: { parent?: { mockupFrame?: boolean; mediaPosition?: string } }) =>
+        parent?.mediaPosition === 'none' || !parent?.mockupFrame,
+    }),
+    defineField({
+      name: 'mockupBadge',
+      title: 'Mockup Badge',
+      type: 'localizedString',
+      group: 'media',
+      description: 'Small accent badge in the titlebar, e.g. "Powered by YourBrand".',
+      hidden: ({ parent }: { parent?: { mockupFrame?: boolean; mediaPosition?: string } }) =>
+        parent?.mediaPosition === 'none' || !parent?.mockupFrame,
+    }),
+    defineField({
+      name: 'contentRatio',
+      title: 'Content Ratio',
+      type: 'string',
+      group: 'layout',
+      description: 'Width split, content column first. Applies at the md breakpoint and up; below it the section is always one column.',
+      options: {
+        list: [
+          { title: '40 / 60 — Emphasis on media', value: '40/60' },
+          { title: '50 / 50 — Equal split', value: '50/50' },
+          { title: '60 / 40 — Emphasis on content', value: '60/40' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: '50/50',
+    }),
+  ],
+  preview: {
+    select: { title: 'title.it', titleEn: 'title.en', media: 'image' },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    prepare: ({ title, titleEn, media }: { title?: string; titleEn?: string; media?: any }) => ({
+      title: title ?? titleEn ?? 'Media + Features',
+      subtitle: 'Media + Feature Section',
+      media,
+    }),
+  },
+})
+
+// ─── Category List Section (platform) ─────────────────────────────────────────
+
+const categoryColumnType = defineType({
+  name: 'categoryColumn',
+  title: 'Category Column',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'label',
+      title: 'Category Label',
+      type: 'localizedString',
+      description: 'Rendered uppercase in the accent colour, e.g. "POS Systems" / "Sistemi POS"',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'items',
+      title: 'Items',
+      type: 'array',
+      of: [defineArrayMember({ type: 'localizedString' })],
+      description: 'One line per entry, e.g. a partner or product name.',
+      validation: (Rule) => Rule.min(1).max(12),
+    }),
+  ],
+  preview: {
+    select: { label_en: 'label.en', label_it: 'label.it', items: 'items' },
+    prepare: ({ label_en, label_it, items }: { label_en?: string; label_it?: string; items?: unknown[] }) => ({
+      title: label_en ?? label_it ?? 'Category',
+      subtitle: `${items?.length ?? 0} item${items?.length === 1 ? '' : 's'}`,
+    }),
+  },
+})
+
+const categoryListCalloutType = defineType({
+  name: 'categoryListCallout',
+  title: 'Callout Bar',
+  type: 'object',
+  description: 'Optional full-width bar below the grid. Leave empty to hide it.',
+  fields: [
+    defineField({
+      name: 'icon',
+      title: 'Icon',
+      type: 'string',
+      options: { list: ICON_OPTIONS },
+      description: 'Optional. Shown in a 44px bordered box in the accent colour.',
+    }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    defineField({ name: 'description', title: 'Sub-line', type: 'localizedText' }),
+    defineField({ name: 'cta', title: 'Button', type: 'cta' }),
+  ],
+  preview: {
+    select: { title_en: 'title.en', title_it: 'title.it' },
+    prepare: ({ title_en, title_it }: { title_en?: string; title_it?: string }) => ({
+      title: title_en ?? title_it ?? 'Callout',
+      subtitle: 'Callout Bar',
+    }),
+  },
+})
+
+const categoryListSectionType = defineType({
+  name: 'categoryListSection',
+  title: 'Category List Section',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: { list: BACKGROUND_SURFACE_OPTIONS },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    defineField({
+      name: 'intro',
+      title: 'Intro',
+      type: 'localizedText',
+      description: 'Sits to the right of the title. Reads best at ~36 characters per line.',
+    }),
+    defineField({
+      name: 'headerCta',
+      title: 'Header Button',
+      type: 'cta',
+      description: 'Optional ghost button under the intro (e.g. "View API Docs").',
+    }),
+    defineField({
+      name: 'categories',
+      title: 'Categories',
+      type: 'array',
+      of: [defineArrayMember({ type: 'categoryColumn' })],
+      validation: (Rule) => Rule.min(1).max(8),
+    }),
+    defineField({
+      name: 'callout',
+      title: 'Callout Bar',
+      type: 'categoryListCallout',
+      description: 'Optional. The section renders cleanly without it.',
+    }),
+  ],
+  preview: {
+    select: { title_en: 'title.en', title_it: 'title.it', categories: 'categories' },
+    prepare: ({ title_en, title_it, categories }: { title_en?: string; title_it?: string; categories?: unknown[] }) => ({
+      title: title_en ?? title_it ?? 'Category List',
+      subtitle: `Category List Section — ${categories?.length ?? 0} column${categories?.length === 1 ? '' : 's'}`,
+    }),
+  },
+})
+
+// ─── CTA Banner Section (platform) ────────────────────────────────────────────
+
+const ctaBannerSectionType = defineType({
+  name: 'ctaBannerSection',
+  title: 'CTA Banner Section',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: { list: BACKGROUND_SURFACE_OPTIONS },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
+    defineField({
+      name: 'heading',
+      title: 'Heading',
+      type: 'localizedText',
+      description:
+        'Line breaks you type here are preserved on the page — use them to control where the headline wraps.',
+    }),
+    defineField({
+      name: 'body',
+      title: 'Body',
+      type: 'localizedText',
+      description: 'One or two short sentences. Renders at ~38 characters per line, centred.',
+    }),
+    defineField({ name: 'primaryCta', title: 'Primary CTA', type: 'cta' }),
+    defineField({ name: 'secondaryCta', title: 'Secondary CTA', type: 'cta' }),
+    defineField({
+      name: 'footnote',
+      title: 'Footnote',
+      type: 'localizedString',
+      description: 'Small line below the divider (e.g. "…we build, you market.").',
+    }),
+    defineField({
+      name: 'footnoteAccent',
+      title: 'Footnote — Accent Tail',
+      type: 'localizedString',
+      description:
+        'Optional. Rendered in the brand accent colour immediately after the footnote (e.g. "Stronger together."). Keep it as its own field — never rely on the platform finding a word inside the footnote, which breaks as soon as the sentence is translated.',
+    }),
+    defineField({
+      name: 'watermarkText',
+      title: 'Background Wordmark (optional)',
+      type: 'localizedString',
+      description:
+        'Oversized outlined word shown behind the content — usually the brand name. Purely decorative and hidden from screen readers. Leave empty for no wordmark. One short word works best; long strings are clipped.',
+    }),
+    defineField({
+      name: 'showGlow',
+      title: 'Show Accent Glow',
+      type: 'boolean',
+      description: 'Soft radial glow behind the content, derived from the brand accent colour.',
+      initialValue: true,
+    }),
+  ],
+  preview: {
+    select: { heading_it: 'heading.it', heading_en: 'heading.en' },
+    prepare: ({ heading_it, heading_en }: { heading_it?: string; heading_en?: string }) => ({
+      title: heading_it ?? heading_en ?? 'CTA Banner',
+      subtitle: 'CTA Banner Section',
+    }),
+  },
+})
+
+// ─── Hero stat (heroSection extension) ────────────────────────────────────────
+// Optional stat row rendered beneath the hero CTA. Purely additive: a hero with
+// no `stats` renders exactly as it did before this type existed.
+
+const heroStatType = defineType({
+  name: 'heroStat',
+  title: 'Hero Stat',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'value',
+      title: 'Value',
+      type: 'localizedString',
+      description: 'The figure itself, e.g. "500+" / "99.9%".',
+    }),
+    defineField({
+      name: 'label',
+      title: 'Label',
+      type: 'localizedString',
+      description: 'Short supporting label under the value.',
+    }),
+  ],
+  preview: {
+    select: { value_en: 'value.en', value_it: 'value.it', label_en: 'label.en', label_it: 'label.it' },
+    prepare: ({ value_en, value_it, label_en, label_it }: { value_en?: string; value_it?: string; label_en?: string; label_it?: string }) => ({
+      title: value_en ?? value_it ?? 'Stat',
+      subtitle: label_en ?? label_it ?? '',
+    }),
+  },
+})
+
 
 const faqSectionType = defineType({
   name: 'faqSection',
@@ -3889,6 +4522,20 @@ export const schemaTypes = [
   faqSectionType,
   metricItemType,
   metricsSectionType,
+  // ── Platform sections added alongside the icon primitive ──────────────────
+  // Item/row object types are listed before the section type that references
+  // them, matching the treatmentCard → treatmentsSection convention above.
+  heroStatType,
+  stepItemType,
+  stepsSectionType,
+  featureCardType,
+  featureGridSectionType,
+  featureRowType,
+  mediaFeatureSectionType,
+  categoryColumnType,
+  categoryListCalloutType,
+  categoryListSectionType,
+  ctaBannerSectionType,
   formOptionItemType,
   formFieldItemType,
   formSectionType,

@@ -34,6 +34,7 @@ function resolveTenant(hostname: string): string | null {
     'studiomartegani.com': 'studiomartegani',
     'abluo.app': 'abluo-the-tiny-cms',
     'dev.abluo.app': 'abluo-the-tiny-cms',
+    'nologo.cloud': 'nologo',
   }
 
   if (domainMap[host]) return domainMap[host]
@@ -74,6 +75,7 @@ function resolveDefaultLocale(projectSlug: string): string | null {
     'studiomartegani': 'it',
     'livener': 'en',
     'abluo-the-tiny-cms': 'en',
+    'nologo': 'en',
   }
   return localeMap[projectSlug] ?? null
 }

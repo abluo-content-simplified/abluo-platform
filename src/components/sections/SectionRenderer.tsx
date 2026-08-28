@@ -27,6 +27,11 @@ import { StatementSection } from '@/components/sections/StatementSection'
 import { MetricsSection } from '@/components/sections/MetricsSection'
 import { PhotoGallerySection } from '@/components/sections/PhotoGallerySection'
 import { VideoSection } from '@/components/sections/VideoSection'
+import { StepsSection } from '@/components/sections/StepsSection'
+import { FeatureGridSection } from '@/components/sections/FeatureGridSection'
+import { MediaFeatureSection } from '@/components/sections/MediaFeatureSection'
+import { CategoryListSection } from '@/components/sections/CategoryListSection'
+import { CtaBannerSection } from '@/components/sections/CtaBannerSection'
 import { SECTION_MAP, isSectionTypeAvailable } from '@/lib/modules/sections'
 import type { ProjectModuleConfig } from '@/lib/modules/config'
 import { resolveCategoriesFor, categoryKeysOf, charsPerMinute, DEFAULT_CHARS_PER_MINUTE } from '@/lib/modules/categories'
@@ -414,6 +419,16 @@ export function SectionRenderer({
       return <PhotoGallerySection section={section} surface={surface} designSystem={designSystem} />
     case 'videoSection':
       return <VideoSection section={section} surface={surface} designSystem={designSystem} locale={locale} />
+    case 'stepsSection':
+      return <StepsSection section={section} surface={surface} designSystem={designSystem} />
+    case 'featureGridSection':
+      return <FeatureGridSection section={section} surface={surface} designSystem={designSystem} />
+    case 'mediaFeatureSection':
+      return <MediaFeatureSection section={section} surface={surface} designSystem={designSystem} />
+    case 'categoryListSection':
+      return <CategoryListSection section={section} surface={surface} designSystem={designSystem} />
+    case 'ctaBannerSection':
+      return <CtaBannerSection section={section} surface={surface} designSystem={designSystem} />
     default:
       return null
   }

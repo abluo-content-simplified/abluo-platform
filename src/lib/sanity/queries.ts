@@ -265,6 +265,80 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
             "caption": ${loc('caption')},
           }
         }
+      },
+      // ─── Platform sections added with the icon primitive ──────────────────
+      // Every key below is NEW to this flat projection and resolves to null on
+      // every section type that does not declare it. Fields these sections
+      // share with existing ones (background, eyebrow, title, intro, body,
+      // image, mediaPosition, contentRatio, mediaStyle, columns, primaryCta,
+      // secondaryCta, ctas) are deliberately NOT re-added — they are projected
+      // above and reused verbatim.
+      //
+      // stepsSection
+      steps[] {
+        _type, _key,
+        icon,
+        "title": ${loc('title')},
+        "subtitle": ${loc('subtitle')},
+        "description": ${loc('description')},
+        "tags": tags[]{ "v": ${loc('@')} }.v,
+      },
+      "closingText": ${loc('closingText')},
+      "closingCta": closingCta { ${CTA_FIELDS} },
+      // featureGridSection (columns is the shared key already projected above)
+      variant,
+      "chips": chips[]{ "v": ${loc('@')} }.v,
+      // SHARED "features[]" KEY — featureGridSection stores featureCard members
+      // (icon/kicker/title/description/bullets) and mediaFeatureSection stores
+      // featureRow members (icon/title/description) under the same field name.
+      // One sub-projection naming the union of both serves both: GROQ returns
+      // null for a key the concrete member does not have, so a featureRow just
+      // comes back with kicker/bullets null. Do not split these into two keys
+      // without renaming the field in one of the two schemas + components.
+      features[] {
+        _type, _key,
+        icon,
+        "kicker": ${loc('kicker')},
+        "title": ${loc('title')},
+        "description": ${loc('description')},
+        "bullets": bullets[]{ "v": ${loc('@')} }.v,
+      },
+      // mediaFeatureSection
+      mockupFrame,
+      "mockupTitle": ${loc('mockupTitle')},
+      "mockupBadge": ${loc('mockupBadge')},
+      "closingLine": ${loc('closingLine')},
+      // categoryListSection — "categories" and its nested "items" are scoped
+      // inside this section's own sub-projections, so the top-level items[]
+      // (faqSection) above is untouched.
+      "headerCta": headerCta { ${CTA_FIELDS} },
+      categories[] {
+        _type, _key,
+        "label": ${loc('label')},
+        "items": items[] {
+          _key,
+          "text": ${loc('@')},
+        },
+      },
+      callout {
+        icon,
+        "title": ${loc('title')},
+        "description": ${loc('description')},
+        "cta": cta { ${CTA_FIELDS} },
+      },
+      // ctaBannerSection — "heading" is a DIFFERENT field from the existing
+      // "headline" above; the two must never be merged.
+      "heading": ${loc('heading')},
+      "footnote": ${loc('footnote')},
+      "footnoteAccent": ${loc('footnoteAccent')},
+      "watermarkText": ${loc('watermarkText')},
+      showGlow,
+      // heroSection extension — optional stat row. "ctas[]" is already
+      // projected above (heroLiveCapture / heroLens) and is reused verbatim.
+      stats[] {
+        _type, _key,
+        "value": ${loc('value')},
+        "label": ${loc('label')},
       }
     }
 `
@@ -337,6 +411,7 @@ export const websiteSiteConfigQuery = /* groq */ `
       "pageSlug": coalesce(pageRef->slug[$locale].current, pageRef->slug[$defaultLocale].current),
       internalPage,
       externalUrl,
+      anchorId,
       openInNewTab,
       href,
       external,
@@ -346,6 +421,7 @@ export const websiteSiteConfigQuery = /* groq */ `
         "pageSlug": coalesce(pageRef->slug[$locale].current, pageRef->slug[$defaultLocale].current),
         internalPage,
         externalUrl,
+        anchorId,
         openInNewTab,
         href,
         external
@@ -364,6 +440,7 @@ export const websiteSiteConfigQuery = /* groq */ `
       linkType,
       internalPage,
       externalUrl,
+      anchorId,
       openInNewTab,
       href,
       external
