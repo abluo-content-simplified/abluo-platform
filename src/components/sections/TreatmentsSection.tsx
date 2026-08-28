@@ -20,7 +20,7 @@ export function TreatmentsSection({ section, surface, designSystem }: Props) {
   const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
 
   return (
-      <SectionContainer id="trattamenti" style={surfaceStyles}>
+      <SectionContainer id={section.anchorId ?? 'trattamenti'} style={surfaceStyles}>
         {/* Header */}
         <SlideUp duration={duration} ease={ease} delay={0} className="mb-16">
           {eyebrow && (

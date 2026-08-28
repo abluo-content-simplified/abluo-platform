@@ -154,7 +154,7 @@ export function TeamSection({ section, surface, designSystem }: Props) {
   const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
 
   return (
-    <SectionContainer style={surfaceStyles}>
+    <SectionContainer id={section.anchorId} style={surfaceStyles}>
       {/* Section header */}
       <SlideUp duration={duration} ease={ease} delay={0} className="mb-16 max-w-2xl">
         {subtitle && (

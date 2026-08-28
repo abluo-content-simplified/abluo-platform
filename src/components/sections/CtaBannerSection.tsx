@@ -32,6 +32,7 @@ import { FadeIn } from '@/components/animation/FadeIn'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { resolveCta } from '@/lib/sanity/cta'
 import { CtaButton } from '@/components/ui/CtaButton'
+import { useFormOverlaySafe } from '@/components/forms/FormOverlayContext'
 
 // ─── Section data shape ───────────────────────────────────────────────────────
 // Mirrors the canonical `CtaBannerSection` interface being added to
@@ -45,6 +46,8 @@ export interface CtaBannerSectionData {
   _type: 'ctaBannerSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   /** Locale-resolved by GROQ */
   eyebrow?: string
   /** Locale-resolved by GROQ. Honours `\n` as a hard line break. */
@@ -102,6 +105,7 @@ function CtaRow({ section }: { section: CtaBannerSectionData }) {
   const params = useParams()
   const locale = params.locale as string | undefined
   const tenantId = params.tenant as string | undefined
+  const formOverlay = useFormOverlaySafe()
 
   function withTenantPrefix(resolved: ReturnType<typeof resolveCta>) {
     if (resolved.type !== 'link' || resolved.external || !locale || !tenantId) return resolved
@@ -112,6 +116,28 @@ function CtaRow({ section }: { section: CtaBannerSectionData }) {
   const primaryCta = section.primaryCta ? withTenantPrefix(resolveCta(section.primaryCta)) : null
   const secondaryCta = section.secondaryCta ? withTenantPrefix(resolveCta(section.secondaryCta)) : null
 
+  // Bridge form CTAs to the form overlay, by the form's stable route key.
+  // Same pattern as HeroLensSection / HeroLiveCaptureSection: the null-safe
+  // hook keeps the button rendering unchanged on any page without a
+  // FormOverlayProvider — it just has no handler, which is today's behaviour.
+  function makeFormHandler(cta: ReturnType<typeof resolveCta> | null): (() => void) | undefined {
+    if (!cta || cta.type !== 'form') return undefined
+
+    if (cta.formId && formOverlay) {
+      const formId = cta.formId
+      return () => formOverlay.open({
+        formId,
+        source: {
+          source: 'cta_banner_section',
+          cta_internal_name: cta.internalName ?? null,
+          cta_label_snapshot: cta.label ?? null,
+        },
+      })
+    }
+
+    return undefined
+  }
+
   if (!hasRenderableCta(primaryCta, secondaryCta)) return null
 
   return (
@@ -119,6 +145,7 @@ function CtaRow({ section }: { section: CtaBannerSectionData }) {
       {primaryCta && primaryCta.type !== 'none' && (
         <CtaButton
           cta={primaryCta}
+          onFormClick={makeFormHandler(primaryCta)}
           className="inline-flex items-center gap-2 px-9 py-4 text-base font-semibold tracking-wide transition-all duration-200 hover:opacity-90"
           style={{
             backgroundColor: 'var(--btn-primary-bg)',
@@ -130,6 +157,7 @@ function CtaRow({ section }: { section: CtaBannerSectionData }) {
       {secondaryCta && secondaryCta.type !== 'none' && (
         <CtaButton
           cta={secondaryCta}
+          onFormClick={makeFormHandler(secondaryCta)}
           className="inline-flex items-center gap-2 px-9 py-4 text-base font-medium transition-all duration-150 hover:opacity-80"
           style={{
             backgroundColor: 'var(--btn-secondary-bg)',
@@ -165,7 +193,7 @@ export function CtaBannerSection({ section, surface, designSystem }: Props) {
   const hasFootnote = Boolean(footnote || footnoteAccent)
 
   return (
-    <SectionContainer style={surfaceStyles}>
+    <SectionContainer id={section.anchorId} style={surfaceStyles}>
       {/*
         The band's extra height lives here rather than on SectionContainer,
         which owns one padding scale for every section. Combined with the

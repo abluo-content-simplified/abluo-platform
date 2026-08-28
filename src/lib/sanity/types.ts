@@ -803,6 +803,8 @@ export interface HeroSection {
   _key: string
   // Content
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   eyebrow?: string
   headline?: string
   subheadline?: string
@@ -865,6 +867,8 @@ export interface HeroLiveCaptureSection {
   _type: 'heroLiveCaptureSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   /** Short overline above the headline — e.g. "Livener for Investors" */
   eyebrow?: string
   /** Main headline — supports newlines for line breaks */
@@ -909,6 +913,8 @@ export interface HeroLensSection {
   _type: 'heroLensSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   /** Short overline above the headline */
   eyebrow?: string
   /** Main headline — supports newlines for line breaks */
@@ -948,6 +954,8 @@ export interface MediaContentSection {
   _type: 'contentSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   eyebrow?: string
   title?: string
   body?: PortableTextContent
@@ -983,6 +991,8 @@ export interface TeamSection {
   _type: 'teamSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   title?: string
   subtitle?: string
   intro?: PortableTextContent
@@ -993,6 +1003,8 @@ export interface TextSection {
   _type: 'textSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   eyebrow?: string
   title?: string
   content?: PortableTextContent
@@ -1008,6 +1020,8 @@ export interface VideoSection {
   _type: 'videoSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   provider: 'cloudflare' | 'youtube' | 'vimeo' | 'url'
   /** Provider-specific ID — Cloudflare Stream UID, YouTube video ID, or Vimeo video ID. Unused when provider is 'url'. */
   videoId?: string
@@ -1031,6 +1045,8 @@ export interface TreatmentsSection {
   _type: 'treatmentsSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   eyebrow?: string
   title?: string
   intro?: string
@@ -1047,6 +1063,8 @@ export interface FAQSection {
   _type: 'faqSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   eyebrow?: string
   title?: string
   items?: FAQItem[]
@@ -1056,6 +1074,8 @@ export interface ContactSection {
   _type: 'contactSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   title?: string
   subtitle?: string
   /** Whether to render the interactive map. Default true. */
@@ -1076,6 +1096,8 @@ export interface BlogListingSection {
   _type: 'blogListingSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   /** Locale-resolved by GROQ */
   eyebrow?: string
   /** Locale-resolved by GROQ */
@@ -1117,6 +1139,8 @@ export interface NewsListingSection {
   _type: 'newsListingSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   /** Locale-resolved by GROQ */
   eyebrow?: string
   /** Locale-resolved by GROQ */
@@ -1149,6 +1173,8 @@ export interface EventsListingSection {
   _type: 'eventsListingSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   /** Locale-resolved by GROQ */
   eyebrow?: string
   /** Locale-resolved by GROQ */
@@ -1184,6 +1210,8 @@ export interface LiveLatestSection {
   _type: 'liveLatestSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   /** Locale-resolved by GROQ */
   eyebrow?: string
   /** Locale-resolved by GROQ */
@@ -1234,6 +1262,8 @@ export interface SanityForm {
 export interface RenderableFormOption {
   value: string
   label: string
+  /** Optional localized supporting line shown under the option label. */
+  description?: string
 }
 export interface RenderableFormField {
   id: string
@@ -1264,6 +1294,8 @@ export interface FormSectionContextItem {
 export interface RenderableFormStep {
   key: string
   title?: string
+  /** Optional localized step description, shown under the step title. */
+  description?: string
   fields: RenderableFormField[]
 }
 export interface RenderableFormDefinition {
@@ -1290,6 +1322,8 @@ export interface FormSection {
   _type: 'formSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   /** Dereferenced formDefinition — null if not set or not published (ADR-018 slice 4). */
   definition?: RenderableFormDefinition | null
   /** Static placement Context — pre-fills contextMappable fields (ADR-018 slice 5). */
@@ -1301,6 +1335,8 @@ export interface FormOverlayButtonSection {
   _type: 'formOverlayButtonSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   /** Dereferenced formDefinition — null if not set or not published. */
   definition?: RenderableFormDefinition | null
   /** Static placement Context — pre-fills contextMappable fields. */
@@ -1319,6 +1355,8 @@ export interface StatementSection {
   _type: 'statementSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   /** Locale-resolved by GROQ */
   eyebrow?: string
   /** Locale-resolved by GROQ */
@@ -1349,6 +1387,8 @@ export interface MetricsSection {
   _type: 'metricsSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   /** Locale-resolved by GROQ */
   eyebrow?: string
   /** Locale-resolved by GROQ */
@@ -1379,6 +1419,8 @@ export interface StepsSection {
   _type: 'stepsSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   /** Locale-resolved by GROQ */
   eyebrow?: string
   /** Locale-resolved by GROQ */
@@ -1412,6 +1454,8 @@ export interface FeatureGridSection {
   _type: 'featureGridSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   /** Locale-resolved by GROQ */
   eyebrow?: string
   /** Locale-resolved by GROQ */
@@ -1458,6 +1502,8 @@ export interface MediaFeatureSection {
   _type: 'mediaFeatureSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   /** Locale-resolved by GROQ */
   eyebrow?: string
   /** Locale-resolved by GROQ */
@@ -1514,6 +1560,8 @@ export interface CategoryListSection {
   _type: 'categoryListSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   /** Locale-resolved by GROQ */
   eyebrow?: string
   /** Locale-resolved by GROQ */
@@ -1532,6 +1580,8 @@ export interface CtaBannerSection {
   _type: 'ctaBannerSection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   /** Locale-resolved by GROQ */
   eyebrow?: string
   /**
@@ -1599,6 +1649,8 @@ export interface PhotoGallerySection {
   _type: 'photoGallerySection'
   _key: string
   background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
+  anchorId?: string
   /** Locale-resolved by GROQ */
   eyebrow?: string
   /** Locale-resolved by GROQ */

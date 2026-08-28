@@ -177,7 +177,7 @@ export function PhotoGallerySection({ section, surface, designSystem }: Props) {
   const ratioClass = getAspectRatioClass(imageRatio)
 
   return (
-    <SectionContainer style={surfaceStyles}>
+    <SectionContainer id={section.anchorId} style={surfaceStyles}>
       {/* Optional header */}
       {hasHeader && (
         <SlideUp duration={duration} ease={ease} delay={0} className="mb-12 max-w-2xl">

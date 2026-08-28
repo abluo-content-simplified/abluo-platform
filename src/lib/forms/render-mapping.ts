@@ -55,7 +55,11 @@ export function toFieldConfig(field: RenderableFormField): FieldConfig | null {
     width: field.width ?? '100%',
     validation,
   }
-  const options: OptionItem[] = (field.options ?? []).map((o) => ({ value: o.value, label: o.label ?? o.value }))
+  const options: OptionItem[] = (field.options ?? []).map((o) => ({
+    value: o.value,
+    label: o.label ?? o.value,
+    ...(o.description ? { description: o.description } : {}),
+  }))
 
   switch (field.type) {
     case 'text':

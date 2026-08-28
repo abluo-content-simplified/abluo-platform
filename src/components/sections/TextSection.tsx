@@ -168,7 +168,7 @@ export function TextSection({ section, surface, designSystem }: Props) {
   const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
 
   return (
-      <SectionContainer style={surfaceStyles}>
+      <SectionContainer id={section.anchorId} style={surfaceStyles}>
         <div className="max-w-[680px]">
         <SlideUp duration={duration} ease={ease} delay={0}>
           {eyebrow && (

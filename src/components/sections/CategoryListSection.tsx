@@ -99,7 +99,7 @@ export function CategoryListSection({ section, surface, designSystem }: Props) {
   const showCallout = hasRenderableCallout(callout)
 
   return (
-    <SectionContainer style={surfaceStyles}>
+    <SectionContainer id={section.anchorId} style={surfaceStyles}>
       {/* ── Header: heading left, intro + ghost CTA right ─────────────────── */}
       {hasHeader && (
         <div className="mb-14 flex flex-wrap items-end justify-between gap-8 md:mb-20">

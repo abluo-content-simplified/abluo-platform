@@ -18,6 +18,8 @@
 export interface OptionItem {
   value: string
   label: string
+  /** Optional supporting line rendered under the label (cards, radios, checkboxes). */
+  description?: string
   disabled?: boolean
 }
 

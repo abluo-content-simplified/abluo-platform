@@ -373,7 +373,7 @@ export function MediaContentSection({ section, surface, designSystem }: Props) {
   // ── Layout: none / text-only ──────────────────────────────────────────────
   if (mediaPosition === 'none' || !imageSrc) {
     return (
-      <SectionContainer style={surfaceStyles}>
+      <SectionContainer id={section.anchorId} style={surfaceStyles}>
         <div className="grid gap-12 md:grid-cols-2 md:gap-20 lg:gap-28">
           <SlideUp duration={duration} ease={ease} delay={0} className="flex flex-col justify-center">
             {eyebrow && (
@@ -405,7 +405,7 @@ export function MediaContentSection({ section, surface, designSystem }: Props) {
   // ── Layout: top / bottom (stacked) ────────────────────────────────────────
   if (mediaPosition === 'top' || mediaPosition === 'bottom') {
     return (
-      <SectionContainer style={surfaceStyles}>
+      <SectionContainer id={section.anchorId} style={surfaceStyles}>
         <div className="flex flex-col gap-10 lg:gap-14">
           {mediaPosition === 'top' ? mediaBlock : null}
           {textBlock}
@@ -426,7 +426,7 @@ export function MediaContentSection({ section, surface, designSystem }: Props) {
   const mediaOrder = reverseOnMobile ? 'order-last md:order-none' : ''
 
   return (
-    <SectionContainer style={surfaceStyles}>
+    <SectionContainer id={section.anchorId} style={surfaceStyles}>
       <div className={`grid gap-12 ${cols} md:gap-16 lg:gap-24 ${align}`}>
         {/* On desktop: media position drives order. On mobile: reverseOnMobile controls order. */}
         <div className={mediaOnLeft ? mediaOrder : textOrder}>

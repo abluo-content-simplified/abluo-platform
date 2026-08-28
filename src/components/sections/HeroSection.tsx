@@ -15,6 +15,7 @@ import { SlideUp } from '@/components/animation/SlideUp'
 import { urlFor } from '@/lib/sanity/image'
 import { resolveCta } from '@/lib/sanity/cta'
 import { CtaButton } from '@/components/ui/CtaButton'
+import { useFormOverlaySafe } from '@/components/forms/FormOverlayContext'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 const CLOUDFLARE_ACCOUNT = 'customer-aayaptcudal3r1fx'
@@ -147,6 +148,30 @@ export function HeroSection({ section, surface, designSystem }: Props) {
     .map((cta) => withTenantPrefix(resolveCta(cta)))
     .filter((cta) => cta.type !== 'none')
 
+  // Bridge form CTAs to the form overlay, by the form's stable route key.
+  // Same pattern as HeroLensSection / HeroLiveCaptureSection: the null-safe
+  // hook means a page without a FormOverlayProvider keeps rendering the button
+  // exactly as before — it simply has no handler, which is today's behaviour.
+  const formOverlay = useFormOverlaySafe()
+
+  function makeFormHandler(cta: ReturnType<typeof resolveCta> | undefined): (() => void) | undefined {
+    if (!cta || cta.type !== 'form') return undefined
+
+    if (cta.formId && formOverlay) {
+      const formId = cta.formId
+      return () => formOverlay.open({
+        formId,
+        source: {
+          source: 'hero_section',
+          cta_internal_name: cta.internalName ?? null,
+          cta_label_snapshot: cta.label ?? null,
+        },
+      })
+    }
+
+    return undefined
+  }
+
   const headlineLines = headline?.split('\n') ?? []
 
   const heightClass = HEIGHT_CLASSES[heroHeight] ?? HEIGHT_CLASSES.large
@@ -185,6 +210,7 @@ export function HeroSection({ section, surface, designSystem }: Props) {
 
   return (
     <section
+      id={section.anchorId}
       className={`relative flex flex-col px-6 py-24 md:px-16 lg:px-24 ${heightClass} ${justifyClass}`}
       style={showFullBleedMedia ? undefined : surfaceStyles}
     >
@@ -293,6 +319,7 @@ export function HeroSection({ section, surface, designSystem }: Props) {
                 <CtaButton
                   key={`${cta.internalName}-${i}`}
                   cta={cta}
+                  onFormClick={makeFormHandler(cta)}
                   className="inline-flex h-12 items-center gap-2 px-8 text-sm font-medium tracking-wide transition-opacity hover:opacity-85"
                   style={
                     i === 0

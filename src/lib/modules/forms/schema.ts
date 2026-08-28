@@ -69,6 +69,12 @@ const formFieldOptionMember = defineArrayMember({
       validation: (Rule) => Rule.required().regex(/^[a-z0-9][a-z0-9_-]*$/, { name: 'option-value' }).error('Lowercase letters, digits, "-" and "_" only.'),
     }),
     defineField({ name: 'label', title: 'Label', type: 'localizedString', validation: (Rule) => Rule.required() }),
+    defineField({
+      name: 'description',
+      title: 'Description',
+      type: 'localizedString',
+      description: 'Optional supporting line shown under the label — e.g. "I run a booking platform or tech product". Leave empty and the option renders exactly as before.',
+    }),
   ],
   preview: {
     select: { value: 'value', label: 'label.en' },

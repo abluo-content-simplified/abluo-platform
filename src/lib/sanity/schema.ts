@@ -3,7 +3,7 @@ import { TenantLinker } from '@/lib/sanity/fields/TenantLinker'
 import { ProjectLinker } from '@/lib/sanity/fields/ProjectLinker'
 import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, LocalizedSlugInput, LocalizedRedirectFromInput } from '@/lib/sanity/fields/LocalizedInput'
 import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
-import { scopedRef, projectSlugField, PAGE_SECTIONS_OF } from '@/lib/sanity/fields/shared'
+import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField } from '@/lib/sanity/fields/shared'
 import { ICON_OPTIONS } from '@/components/icons/registry'
 import { buildSchema } from '@/lib/modules/schema'
 import { buildModuleConfigSchemaTypes, buildModuleInstallationsField } from '@/lib/modules/config-schema'
@@ -502,6 +502,7 @@ const heroSectionType = defineType({
     { name: 'style', title: 'Style' },
   ],
   fields: [
+    anchorIdField('content'),
     // ── Content ───────────────────────────────────────────────────────────────
     defineField({
       name: 'background',
@@ -730,6 +731,7 @@ const heroLiveCaptureSectionType = defineType({
   title: 'Hero — Live Capture',
   type: 'object',
   fields: [
+    anchorIdField(),
     defineField({
       name: 'background',
       title: 'Background Surface',
@@ -839,6 +841,7 @@ const heroLensSectionType = defineType({
   title: 'Hero — Lens',
   type: 'object',
   fields: [
+    anchorIdField(),
     defineField({
       name: 'background',
       title: 'Background Surface',
@@ -918,6 +921,7 @@ const contentSectionType = defineType({
     { name: 'ctas', title: 'CTAs' },
   ],
   fields: [
+    anchorIdField('content'),
     // ── Surface ───────────────────────────────────────────────────────────────
     defineField({
       name: 'background',
@@ -1069,6 +1073,7 @@ const statementSectionType = defineType({
   title: 'Statement Section',
   type: 'object',
   fields: [
+    anchorIdField(),
     defineField({
       name: 'background',
       title: 'Background Surface',
@@ -1151,6 +1156,7 @@ const treatmentsSectionType = defineType({
   title: 'Treatments Section',
   type: 'object',
   fields: [
+    anchorIdField(),
     defineField({
       name: 'background',
       title: 'Background Surface',
@@ -1210,6 +1216,7 @@ const teamSectionType = defineType({
   title: 'Team Section',
   type: 'object',
   fields: [
+    anchorIdField(),
     defineField({
       name: 'background',
       title: 'Background Surface',
@@ -1248,6 +1255,7 @@ const textSectionType = defineType({
   title: 'Text Section',
   type: 'object',
   fields: [
+    anchorIdField(),
     defineField({
       name: 'background',
       title: 'Background Surface',
@@ -1293,6 +1301,7 @@ const videoSectionType = defineType({
   title: 'Video Section',
   type: 'object',
   fields: [
+    anchorIdField(),
     defineField({
       name: 'background',
       title: 'Background Surface',
@@ -1396,6 +1405,7 @@ const contactSectionType = defineType({
   title: 'Contact Section',
   type: 'object',
   fields: [
+    anchorIdField(),
     defineField({
       name: 'background',
       title: 'Background Surface',
@@ -1564,6 +1574,7 @@ const metricsSectionType = defineType({
   title: 'Metrics Section',
   type: 'object',
   fields: [
+    anchorIdField(),
     defineField({
       name: 'background',
       title: 'Background Surface',
@@ -1645,6 +1656,7 @@ const stepsSectionType = defineType({
   title: 'Steps Section',
   type: 'object',
   fields: [
+    anchorIdField(),
     defineField({
       name: 'background',
       title: 'Background Surface',
@@ -1728,6 +1740,7 @@ const featureGridSectionType = defineType({
   title: 'Feature Grid Section',
   type: 'object',
   fields: [
+    anchorIdField(),
     defineField({
       name: 'background',
       title: 'Background Surface',
@@ -1835,6 +1848,7 @@ const mediaFeatureSectionType = defineType({
     { name: 'ctas',    title: 'CTAs' },
   ],
   fields: [
+    anchorIdField('content'),
     defineField({
       name: 'background',
       title: 'Background Surface',
@@ -2036,6 +2050,7 @@ const categoryListSectionType = defineType({
   title: 'Category List Section',
   type: 'object',
   fields: [
+    anchorIdField(),
     defineField({
       name: 'background',
       title: 'Background Surface',
@@ -2087,6 +2102,7 @@ const ctaBannerSectionType = defineType({
   title: 'CTA Banner Section',
   type: 'object',
   fields: [
+    anchorIdField(),
     defineField({
       name: 'background',
       title: 'Background Surface',
@@ -2184,6 +2200,7 @@ const faqSectionType = defineType({
   title: 'FAQ Section',
   type: 'object',
   fields: [
+    anchorIdField(),
     defineField({
       name: 'background',
       title: 'Background Surface',
@@ -2333,6 +2350,7 @@ const photoGallerySectionType = defineType({
   title: 'Photo Gallery Section',
   type: 'object',
   fields: [
+    anchorIdField(),
     defineField({
       name: 'background',
       title: 'Background Surface',
@@ -2545,6 +2563,7 @@ const formSectionType = defineType({
   title: 'Form Section',
   type: 'object',
   fields: [
+    anchorIdField(),
     defineField({
       name: 'background',
       title: 'Background Surface',
@@ -2614,6 +2633,7 @@ const formOverlayButtonSectionType = defineType({
   type: 'object',
   description: 'A button that opens a form in an overlay (ADR-018 slice 7).',
   fields: [
+    anchorIdField(),
     defineField({
       name: 'background',
       title: 'Background Surface',

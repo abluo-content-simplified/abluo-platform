@@ -46,7 +46,7 @@ export function FormSection({ section, surface, designSystem, locale = 'en', ten
   const context = buildContextMap(section.context)
 
   return (
-    <section className="px-6 py-24 md:px-16 lg:px-24" style={surfaceStyles}>
+    <section id={section.anchorId} className="px-6 py-24 md:px-16 lg:px-24" style={surfaceStyles}>
       <div className="mx-auto w-full max-w-2xl">
         {def.eyebrow && (
           <p className="text-[var(--color-primary)] text-[10px] font-bold uppercase tracking-[0.14em] mb-3">{def.eyebrow}</p>

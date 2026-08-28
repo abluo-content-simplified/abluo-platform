@@ -1,5 +1,5 @@
 import { defineType, defineField } from 'sanity'
-import { projectSlugField, PAGE_SECTIONS_OF } from '@/lib/sanity/fields/shared'
+import { projectSlugField, PAGE_SECTIONS_OF, anchorIdField } from '@/lib/sanity/fields/shared'
 
 // ── Live module — Sanity schema types ─────────────────────────────────────────
 //
@@ -42,6 +42,7 @@ const liveLatestSectionType = defineType({
     { name: 'display', title: 'Display' },
   ],
   fields: [
+    anchorIdField('content'),
     defineField({
       name: 'background',
       title: 'Background Surface',

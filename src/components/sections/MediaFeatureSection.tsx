@@ -477,7 +477,7 @@ export function MediaFeatureSection({ section, surface, designSystem }: Props) {
   // below md — the original had a hardcoded 1fr 1fr with no breakpoint.
   if (!showMedia) {
     return (
-      <SectionContainer style={surfaceStyles}>
+      <SectionContainer id={section.anchorId} style={surfaceStyles}>
         <div className={`grid gap-12 ${featureGridColsClass(contentRatio, false)} md:gap-16 lg:gap-24 items-start`}>
           <div>{header}</div>
           {featureColumn}
@@ -490,7 +490,7 @@ export function MediaFeatureSection({ section, surface, designSystem }: Props) {
   // Header spans the full width, then a two-column band. Single column below md
   // — the original had a hardcoded 1.1fr 0.9fr with no breakpoint.
   return (
-    <SectionContainer style={surfaceStyles}>
+    <SectionContainer id={section.anchorId} style={surfaceStyles}>
       <div className="mb-14 md:mb-16">{header}</div>
       <div className={`grid gap-12 ${featureGridColsClass(contentRatio, mediaOnLeft)} md:gap-16 lg:gap-20 items-start`}>
         <div className={mediaOnLeft ? '' : 'order-last md:order-none'}>

@@ -393,6 +393,14 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
         {!isRecap && currentStep?.title && (
           <h3 className="text-[var(--color-text-primary)] text-lg font-medium mt-1">{currentStep.title}</h3>
         )}
+        {/* Authored step description — renders only when the step has one, so
+            every existing form is unchanged. `whitespace-pre-line` honours the
+            hard line breaks authors type in the Studio text field. */}
+        {!isRecap && currentStep?.description && (
+          <p className="text-[var(--color-text-secondary)] text-sm leading-relaxed mt-1.5 whitespace-pre-line">
+            {currentStep.description}
+          </p>
+        )}
       </div>
 
       {isRecap ? (

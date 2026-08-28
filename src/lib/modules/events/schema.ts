@@ -1,6 +1,6 @@
 import { defineType, defineField, defineArrayMember } from 'sanity'
 import { CategorySelectInput } from '@/lib/sanity/fields/CategorySelectInput'
-import { scopedRef, projectSlugField, PAGE_SECTIONS_OF } from '@/lib/sanity/fields/shared'
+import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField } from '@/lib/sanity/fields/shared'
 
 // ── Events module — Sanity schema types ───────────────────────────────────────
 //
@@ -47,6 +47,7 @@ const eventsListingSectionType = defineType({
     { name: 'display', title: 'Display' },
   ],
   fields: [
+    anchorIdField('content'),
     defineField({
       name: 'background',
       title: 'Background Surface',

@@ -155,7 +155,7 @@ export function StepsSection({ section, surface, designSystem }: Props) {
   const hasClosing = Boolean(closingText || closingCta)
 
   return (
-    <SectionContainer style={surfaceStyles}>
+    <SectionContainer id={section.anchorId} style={surfaceStyles}>
       {/* Header */}
       {hasHeader && (
         <SlideUp duration={duration} ease={ease} delay={0} className="mb-14 md:mb-20">

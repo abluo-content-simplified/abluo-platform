@@ -92,7 +92,7 @@ export function FAQSection({ section, surface, designSystem }: Props) {
   if (!items?.length) return null
 
   return (
-      <SectionContainer style={surfaceStyles}>
+      <SectionContainer id={section.anchorId} style={surfaceStyles}>
         <div className="max-w-[680px]">
         {/* Section header — SlideUp, consistent with all other sections */}
         <SlideUp duration={entranceDuration} ease={ease} delay={0}>

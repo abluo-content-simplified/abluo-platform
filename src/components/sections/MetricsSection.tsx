@@ -33,7 +33,7 @@ export function MetricsSection({ section, surface, designSystem }: Props) {
   })()
 
   return (
-      <SectionContainer style={surfaceStyles}>
+      <SectionContainer id={section.anchorId} style={surfaceStyles}>
         {/* Optional header */}
         {hasHeader && (
           <SlideUp duration={duration} ease={ease} delay={0} className="mb-16 max-w-2xl">

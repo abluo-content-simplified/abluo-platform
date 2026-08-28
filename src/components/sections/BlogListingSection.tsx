@@ -425,14 +425,14 @@ export function BlogListingSection({ section, surface, designSystem, locale, ten
   if (posts.length === 0) {
     if (!emptyStateHeading) return null
     return (
-      <SectionContainer style={surfaceStyles}>
+      <SectionContainer id={section.anchorId} style={surfaceStyles}>
         <SectionEmptyState heading={emptyStateHeading} body={emptyStateBody} duration={duration} ease={ease} />
       </SectionContainer>
     )
   }
 
   return (
-      <SectionContainer style={surfaceStyles}>
+      <SectionContainer id={section.anchorId} style={surfaceStyles}>
         {/* Section header */}
         {(eyebrow || title || subtitle) && (
           <SlideUp duration={duration} ease={ease} delay={0} className="mb-12">

@@ -76,7 +76,7 @@ export function ContactSection({ section, surface, designSystem, siteConfig, mod
   const gridClass = renderMap ? 'grid gap-16 md:grid-cols-2' : 'max-w-[560px]'
 
   return (
-    <SectionContainer id="contatti" style={surfaceStyles}>
+    <SectionContainer id={section.anchorId ?? 'contatti'} style={surfaceStyles}>
       <div className={gridClass}>
 
         {/* ── Left: contact details (+ optional message button) ───────── */}

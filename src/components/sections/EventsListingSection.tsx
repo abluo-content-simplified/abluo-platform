@@ -394,14 +394,14 @@ export function EventsListingSection({ section, surface, designSystem, locale, t
   if (events.length === 0) {
     if (!emptyStateHeading) return null
     return (
-      <SectionContainer style={surfaceStyles}>
+      <SectionContainer id={section.anchorId} style={surfaceStyles}>
         <SectionEmptyState heading={emptyStateHeading} body={emptyStateBody} duration={duration} ease={ease} />
       </SectionContainer>
     )
   }
 
   return (
-    <SectionContainer style={surfaceStyles}>
+    <SectionContainer id={section.anchorId} style={surfaceStyles}>
       {(eyebrow || title || subtitle) && (
         <SlideUp duration={duration} ease={ease} delay={0} className="mb-12">
           {eyebrow && (

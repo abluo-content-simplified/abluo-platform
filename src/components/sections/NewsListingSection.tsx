@@ -393,7 +393,7 @@ export function NewsListingSection({
   if (articles.length === 0) {
     if (!emptyStateHeading) return null
     return (
-      <SectionContainer style={surfaceStyles}>
+      <SectionContainer id={section.anchorId} style={surfaceStyles}>
         <SectionEmptyState
           heading={emptyStateHeading}
           body={emptyStateBody}
@@ -414,7 +414,7 @@ export function NewsListingSection({
   }
 
   return (
-    <SectionContainer style={surfaceStyles}>
+    <SectionContainer id={section.anchorId} style={surfaceStyles}>
       {(eyebrow || title || subtitle) && (
         <SlideUp duration={duration} ease={ease} delay={0} className="mb-12">
           {eyebrow && (

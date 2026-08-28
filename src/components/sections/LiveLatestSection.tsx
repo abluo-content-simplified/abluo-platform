@@ -49,14 +49,14 @@ export function LiveLatestSection({ section, surface, designSystem, locale, tena
     const heading = emptyStateHeading ?? msg.noLiveEventHeading
     const body = emptyStateBody ?? msg.noLiveEventBody
     return (
-      <SectionContainer style={surfaceStyles}>
+      <SectionContainer id={section.anchorId} style={surfaceStyles}>
         <SectionEmptyState heading={heading} body={body} duration={duration} ease={ease} />
       </SectionContainer>
     )
   }
 
   return (
-    <SectionContainer style={surfaceStyles}>
+    <SectionContainer id={section.anchorId} style={surfaceStyles}>
       {(eyebrow || title) && (
         <SlideUp duration={duration} ease={ease} delay={0} className="mb-12">
           {eyebrow && (

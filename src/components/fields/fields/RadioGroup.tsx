@@ -62,7 +62,16 @@ export function RadioGroup({ config, value, onChange, onBlur, error: externalErr
                   transition: 'border-color var(--motion-duration-fast), background var(--motion-duration-fast)',
                 }}
               >
-                {opt.label}
+                {opt.description ? (
+                  <>
+                    <span style={{ display: 'block' }}>{opt.label}</span>
+                    <span style={{ display: 'block', marginTop: '4px', fontSize: '0.85em', opacity: 0.7 }}>
+                      {opt.description}
+                    </span>
+                  </>
+                ) : (
+                  opt.label
+                )}
               </button>
             )
           })}
@@ -100,7 +109,7 @@ export function RadioGroup({ config, value, onChange, onBlur, error: externalErr
               key={opt.value}
               style={{
                 display: 'flex',
-                alignItems: 'center',
+                alignItems: opt.description ? 'flex-start' : 'center',
                 gap: '8px',
                 cursor: isOptDisabled ? 'not-allowed' : 'pointer',
                 opacity: isOptDisabled ? 0.5 : 1,
@@ -143,7 +152,14 @@ export function RadioGroup({ config, value, onChange, onBlur, error: externalErr
                 disabled={isOptDisabled}
                 style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
               />
-              {opt.label}
+              {opt.description ? (
+                <span style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span>{opt.label}</span>
+                  <span style={{ fontSize: '0.85em', opacity: 0.7 }}>{opt.description}</span>
+                </span>
+              ) : (
+                opt.label
+              )}
             </label>
           )
         })}

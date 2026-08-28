@@ -106,7 +106,7 @@ export function VideoSection({ section, surface, designSystem, locale = 'en' }: 
   if (!player) return null
 
   return (
-    <SectionContainer style={surfaceStyles}>
+    <SectionContainer id={section.anchorId} style={surfaceStyles}>
       <div className="mx-auto max-w-[900px]">
         {(eyebrow || title) && (
           <SlideUp duration={duration} ease={ease} delay={0}>

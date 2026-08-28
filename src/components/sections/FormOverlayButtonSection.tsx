@@ -51,7 +51,7 @@ export function FormOverlayButtonSection({ section, surface, designSystem, local
   const buttonClass = `${overlayButtonClass(section.buttonStyle)} ${overlayButtonWidthClass(fullWidth)}`.trim()
 
   return (
-    <section className="px-6 py-16 md:px-16 lg:px-24" style={surfaceStyles}>
+    <section id={section.anchorId} className="px-6 py-16 md:px-16 lg:px-24" style={surfaceStyles}>
       <div className={`mx-auto flex w-full max-w-2xl ${overlayButtonAlignClass(section.buttonAlign)}`}>
         <FormOverlayWrapper
           tenantSlug={tenantSlug}

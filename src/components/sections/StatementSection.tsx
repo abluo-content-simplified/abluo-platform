@@ -83,7 +83,7 @@ export function StatementSection({ section, surface, designSystem }: Props) {
   ) : null
 
   return (
-      <SectionContainer style={surfaceStyles}>
+      <SectionContainer id={section.anchorId} style={surfaceStyles}>
         {hasImage ? (
           /* Two-column layout: text + image */
           <div

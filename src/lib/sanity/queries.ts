@@ -58,6 +58,7 @@ tenantSlug,
 steps[]{
   key,
   "title": ${loc('title')},
+  "description": ${loc('description')},
   fields[]{
     "id": internalKey,
     type,
@@ -72,7 +73,7 @@ steps[]{
     maxLength,
     pattern,
     "patternMessage": ${loc('patternMessage')},
-    options[]{ value, "label": ${loc('label')} }
+    options[]{ value, "label": ${loc('label')}, "description": ${loc('description')} }
   }
 },
 "requireConsent": privacy.requireConsent,
@@ -123,6 +124,10 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       _type,
       _key,
       background,
+      // Optional authored DOM id — powers in-page "#anchor" links. Null on
+      // every section that has never had one authored, which is every section
+      // that predates this field.
+      anchorId,
       "eyebrow": ${loc('eyebrow')},
       "headline": ${loc('headline')},
       "subheadline": ${loc('subheadline')},
@@ -1199,6 +1204,10 @@ export const homePageQuery = /* groq */ `
       _type,
       _key,
       background,
+      // Optional authored DOM id — powers in-page "#anchor" links. Null on
+      // every section that has never had one authored, which is every section
+      // that predates this field.
+      anchorId,
       "eyebrow": ${loc('eyebrow')},
       "headline": ${loc('headline')},
       "subheadline": ${loc('subheadline')},

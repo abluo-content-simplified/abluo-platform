@@ -52,6 +52,35 @@ export const projectSlugField = defineField({
   },
 })
 
+// ── Section anchor id ────────────────────────────────────────────────────────
+//
+// Optional, author-controlled DOM id for a section, so an in-page link
+// (`navigationLink` with linkType `anchor`, or a CTA pointing at `#product`)
+// has something to jump to. Every section type carries it alongside
+// `background`; the section component forwards it to <SectionContainer id>.
+//
+// Keep it OPTIONAL and never validated as required: every document authored
+// before this field existed must keep rendering exactly as it does today.
+// Sections that already hardcode an id (e.g. TreatmentsSection's
+// "trattamenti") keep that value as their fallback when nothing is authored.
+export function anchorIdField(group?: string) {
+  return defineField({
+    name: 'anchorId',
+    title: 'Anchor ID',
+    type: 'string',
+    ...(group ? { group } : {}),
+    description:
+      'Optional. Lets a nav or button link jump to this section — e.g. `product` → `#product`. Lowercase letters, digits, "-" and "_" only. Do not type the "#".',
+    validation: (Rule) =>
+      Rule.custom((value?: string) => {
+        if (!value) return true
+        return /^[a-z0-9]+([-_][a-z0-9]+)*$/.test(value)
+          ? true
+          : 'Use a URL-safe slug: lowercase letters, digits, "-" and "_" only — no "#", no spaces (e.g. "how-it-works").'
+      }),
+  })
+}
+
 // ── Shared page `sections[]` member list ─────────────────────────────────────
 //
 // ADR-016 Phase A — single source of truth for the `of:` list on every

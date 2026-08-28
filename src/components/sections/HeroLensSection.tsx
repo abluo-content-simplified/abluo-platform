@@ -182,6 +182,7 @@ export function HeroLensSection({ section, surface, designSystem }: Props) {
 
   return (
     <section
+      id={section.anchorId}
       ref={sectionRef}
       className="relative overflow-hidden"
       style={{ ...surfaceStyles, minHeight: SECTION_HEIGHT }}

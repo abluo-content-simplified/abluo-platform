@@ -522,6 +522,7 @@ export function HeroLiveCaptureSection({ section, surface, designSystem }: Props
 
   return (
     <section
+      id={section.anchorId}
       className="relative overflow-hidden px-6 py-20 md:px-12 lg:px-20 xl:px-28"
       style={surfaceStyles}
     >

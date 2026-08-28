@@ -22,7 +22,7 @@ import { hasWhatsAppNumber } from '@/lib/forms/whatsapp'
 // settings. These readers resolve module config first and fall back to the
 // deprecated siteConfig fields; see src/lib/modules/config.ts for why the
 // fallback exists and when it goes away.
-import { resolveWhatsAppConfig, resolveHeaderCtaConfig, type ProjectModuleConfig } from '@/lib/modules/config'
+import { resolveWhatsAppConfig, resolveHeaderCtaConfig, isModuleEnabled, type ProjectModuleConfig } from '@/lib/modules/config'
 import { SlugMapRoot } from '@/components/SlugMapContext'
 import { TrackingScripts } from '@/components/TrackingScripts'
 
@@ -633,8 +633,20 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   const bgImageUrl = bgGraphic?.asset?.asset ? imageUrl(bgGraphic.asset as any, 1920) : undefined
   const bgStyles = buildBackgroundGraphicStyles(bgGraphic, bgImageUrl, false)
 
-  return (
-    <SlugMapRoot>
+  // ── Header CTA + form overlay — platform behaviour, not one tenant's ─────────
+  // ADR-018 slice 7c + ADR-020. resolveHeaderCtaConfig() owns the precedence
+  // between Website Settings → Navigation and the deprecated ctaLabel/ctaHref
+  // fields, so the label/href resolved here is a superset of the previous
+  // `config?.ctaLabel` / `config?.ctaHref` reads.
+  const cta = resolveHeaderCtaConfig(modules, config)
+  const ctaForm = cta.form
+  // ADR-020 — moduleInstallations is the only source of installed-module state;
+  // isModuleEnabled() reads it via projectModuleConfigQuery. The overlay mounts
+  // for ANY tenant with the Forms module installed, not for one named client.
+  const formsModuleEnabled = isModuleEnabled(modules, 'forms')
+  const hasCtaForm = formsModuleEnabled && !!ctaForm?.formId
+
+  const genericInner = (
     <>
       <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
       <TrackingScripts data={integrations} />
@@ -648,8 +660,11 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
           logoAlt={config?.siteName ?? tenantId}
           siteName={logoSrc ? (config?.siteName ?? undefined) : undefined}
           navLinks={resolveNavLinks(config?.navLinks, locale as SupportedLocale, tenantId)}
-          ctaLabel={config?.ctaLabel ?? undefined}
-          ctaHref={config?.ctaHref ?? undefined}
+          ctaLabel={cta.label ?? undefined}
+          ctaHref={cta.href ?? undefined}
+          ctaMode={hasCtaForm ? 'overlay' : 'link'}
+          ctaFormId={hasCtaForm ? ctaForm!.formId : undefined}
+          ctaInternalName={cta.internalName}
           currentLocale={locale as SupportedLocale}
           supportedLocales={config?.supportedLocales ?? [locale as SupportedLocale]}
           showLangSwitcherInNav={config?.showLangSwitcherInNav ?? false}
@@ -717,6 +732,24 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
       {whatsAppFab(modules, config, tenantId, locale)}
       <DevBadge />
     </>
+  )
+
+  // Mounting the overlay is additive: with no seeded forms the host is inert,
+  // so any tenant with the Forms module installed gets a working form modal and
+  // every other tenant renders exactly as before.
+  return (
+    <SlugMapRoot>
+      {formsModuleEnabled ? (
+        <FormOverlayWrapper
+          tenantSlug={tenantId}
+          locale={locale}
+          forms={hasCtaForm ? [{ formId: ctaForm!.formId, definition: ctaForm! }] : []}
+        >
+          {genericInner}
+        </FormOverlayWrapper>
+      ) : (
+        genericInner
+      )}
     </SlugMapRoot>
   )
 }

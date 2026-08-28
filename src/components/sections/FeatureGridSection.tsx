@@ -100,7 +100,7 @@ export function FeatureGridSection({ section, surface, designSystem }: Props) {
     : 'mb-16 max-w-2xl'
 
   return (
-    <SectionContainer style={surfaceStyles}>
+    <SectionContainer id={section.anchorId} style={surfaceStyles}>
       {/* Header */}
       {hasHeader && (
         <SlideUp duration={duration} ease={ease} delay={0} className={headerClass}>
