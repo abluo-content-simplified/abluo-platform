@@ -76,6 +76,25 @@ async function resolveProjectScope(
   return { tenantId: (data?.tenant_id as string) ?? null, projectId: (data?.id as string) ?? null }
 }
 
+/**
+ * Resolves a project's canonical slug from its id. Returns null for a null id
+ * (platform-level rows, migration 016) or an unknown id. Used so an emitted
+ * event's `project_slug` derives from the SUBMISSION's project, never from the
+ * route the request happened to arrive on.
+ */
+async function resolveProjectSlugById(
+  supabase: { from: (t: string) => any },
+  projectId: string | null,
+): Promise<string | null> {
+  if (!projectId) return null
+  const { data } = await supabase
+    .from('projects')
+    .select('slug')
+    .eq('id', projectId)
+    .maybeSingle()
+  return (data?.slug as string) ?? null
+}
+
 /** Sanitizes placement Context to only the definition's contextMappable field keys (§18). */
 function sanitizeContext(def: FormDefinition, context: Record<string, unknown> | undefined): Record<string, unknown> {
   if (!context) return {}
@@ -202,6 +221,15 @@ export async function completeStep(input: CompleteStepInput): Promise<Submission
 
       // Guard: right form, still partial, token matches, not expired.
       if (row.form_id !== input.formId) return { ok: false, status: 404, error: 'not found' }
+
+      // Tenant isolation (§18): the route's projectSlug MUST resolve to the same
+      // project the submission was created under. Without this, a submission
+      // started on tenant A's route can be finalized via tenant B's route, and
+      // its content is then delivered to tenant B's recipients. 404 (not 403) so
+      // we never reveal that the submission exists.
+      const { projectId: routeProjectId } = await resolveProjectScope(supabase, input.projectSlug)
+      const rowProjectId = (row.project_id as string | null) ?? null
+      if (routeProjectId !== rowProjectId) return { ok: false, status: 404, error: 'not found' }
       if (row.completion_state !== 'partial') return { ok: false, status: 409, error: 'already complete' }
       if (
         !tokensMatch(input.completionToken, row.step_token_hash) ||
@@ -268,10 +296,17 @@ export async function completeStep(input: CompleteStepInput): Promise<Submission
         // version) comes from the pinned row so the event matches the historical
         // submission, not a definition that may have changed.
         const liveDef = await resolveActiveDefinition(input.formId, input.projectSlug)
+        // The event's slug derives from the ROW's project, never from the route.
+        // (They are already proven equal by the tenant-isolation guard above; the
+        // lookup keeps the event correct even if that guard is ever relaxed.) A
+        // platform-level row (project_id null) has no project slug — fall back to
+        // the route slug, which the guard proved resolves to no project either.
+        const eventProjectSlug =
+          (await resolveProjectSlugById(supabase, rowProjectId)) ?? input.projectSlug
         await emitSubmittedEvent(supabase, {
           tenantId: (row.tenant_id as string) ?? null,
-          projectId: (row.project_id as string) ?? null,
-          projectSlug: input.projectSlug,
+          projectId: rowProjectId,
+          projectSlug: eventProjectSlug,
           formId: row.form_id as string,
           version: row.form_version as number,
           notificationTopic: liveDef?.notificationTopic ?? (row.form_id as string),

@@ -39,10 +39,15 @@ export function FooterLanguageSwitcher({
         <button
           key={locale}
           onClick={() => switchLocale(locale)}
-          className="bg-transparent border-none p-0 cursor-pointer text-xs font-medium transition-opacity"
+          className="bg-transparent border-none p-0 cursor-pointer text-xs font-medium hover:text-[var(--color-footer-text)]"
           style={{
-            color: 'var(--color-text-primary)',
-            opacity: locale === currentLocale ? 0.7 : 0.3,
+            // The active locale gets the footer's full ink, the rest its muted
+            // tier — both solved against the footer surface, so neither relies
+            // on an opacity that would sink the contrast ratio.
+            color:
+              locale === currentLocale
+                ? 'var(--color-footer-text)'
+                : 'var(--color-footer-text-muted)',
             fontWeight: locale === currentLocale ? 600 : 400,
           }}
         >

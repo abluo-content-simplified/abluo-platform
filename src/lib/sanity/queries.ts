@@ -484,6 +484,24 @@ export const websiteSiteConfigQuery = /* groq */ `
     // the overlay additionally needs the whole definition, not just its id.
     headerCta {
       ${CTA_FIELDS},
+      // NOT tenant-scoped, and cannot be from inside this query. A
+      // formDefinition is scoped by tenantSlug, not projectSlug (forms
+      // belong to the client, so two websites of one client share them), and
+      // this query is only ever given $projectSlug — fetchForTenant injects
+      // nothing else. The two ways to derive the tenant inside GROQ are both
+      // wrong to rely on:
+      //   • project.clientRef->tenantSlug — demonstrably diverges in the live
+      //     dataset (project "nologo" has clientRef->tenantSlug "freeriders"
+      //     while its own header form carries tenantSlug "nologo"), so this
+      //     filter would blank out a working header CTA.
+      //   • stripping a trailing "-main" off $projectSlug — the Studio's own
+      //     heuristic (schema.ts formRef filter), but a naming convention, not
+      //     a guarantee; encoding it here makes a security boundary out of a
+      //     string suffix.
+      // The real fix is a $tenantSlug parameter injected alongside $projectSlug
+      // by fetchForTenant (client.ts), then && tenantSlug == $tenantSlug on a
+      // filtered subquery in place of this dereference. Until that parameter
+      // exists, a cross-tenant headerCta.formRef still resolves.
       "form": formRef->{ ${FORM_DEFINITION_PROJECTION} }
     },
     "ctaLabel": ${loc('ctaLabel')},
@@ -836,8 +854,14 @@ export const blogListingPostsOldestQuery = /* groq */ `
 
 // Manual selection — fetch by explicit post IDs.
 // The page component re-orders the result to match the original $postIds array order.
+//
+// projectSlug is asserted even though the IDs come from a tenant-scoped
+// document: every tenant query filters by projectSlug (CLAUDE.md), and without
+// it a stale or hand-edited reference to another tenant's post would resolve.
 export const blogListingManualPostsQuery = /* groq */ `
-  *[_type == "post" && _id in $postIds] { ${blogListingCardFields} }
+  *[_type == "post" && projectSlug == $projectSlug && _id in $postIds] {
+    ${blogListingCardFields}
+  }
 `
 
 // ─── News module queries (ADR-020) ────────────────────────────────────────────
@@ -1055,8 +1079,14 @@ export const eventsListingEventsOldestQuery = /* groq */ `
 
 // Manual selection — fetch by explicit event IDs.
 // The page component re-orders the result to match the original $eventIds array order.
+//
+// projectSlug is asserted even though the IDs come from a tenant-scoped
+// document: every tenant query filters by projectSlug (CLAUDE.md), and without
+// it a stale or hand-edited reference to another tenant's event would resolve.
 export const eventsListingManualEventsQuery = /* groq */ `
-  *[_type == "event" && _id in $eventIds] { ${eventsListingCardFields} }
+  *[_type == "event" && projectSlug == $projectSlug && _id in $eventIds] {
+    ${eventsListingCardFields}
+  }
 `
 
 export const currentLiveEventQuery = /* groq */ `
@@ -1533,6 +1563,8 @@ export const DS_FIELDS_SELECTION = /* groq */ `{
     lightTheme { background, border },
     darkTheme { background, border }
   },
+
+  footer { surface },
 
   sectionSurfaces {
     lightTheme {

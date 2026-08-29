@@ -1,0 +1,62 @@
+# ---------------------------------------------------------------------------
+# Abluo platform CI — NON-BLOCKING BY DESIGN (first run).
+#
+# This workflow is deliberately NOT configured as a required status check.
+# Nothing here is wired into branch protection, and no job is marked as a
+# merge gate. The plan is to let it run alongside normal work first, see what
+# it actually reports on real pushes and PRs, and fix the fallout at leisure.
+#
+# PROMOTE TO REQUIRED once this workflow is green on `dev`:
+#   GitHub → Settings → Branches → branch protection rule for `dev`
+#   → "Require status checks to pass before merging" → add the `build` job.
+# Do not promote it before then — as of the commit that added this file the
+# repository's lint/typecheck baseline is NOT clean (see
+# .github/sanity-client-callsites.md and the notes below), so making it
+# required today would block every PR.
+#
+# Known baseline at time of writing (informational, not a claim about now):
+#   - `npx tsc --noEmit` reports errors in src/i18n/__tests__/request.test.ts.
+#   - `npx eslint .` reports a large pre-existing error/warning baseline.
+#   - Lint is intentionally NOT run here yet; add it once the baseline is
+#     clean, otherwise the workflow is red from day one for unrelated reasons.
+#
+# No deploy step, and no `secrets.*` reference anywhere in this file — this
+# workflow only checks out, installs, typechecks and tests.
+# ---------------------------------------------------------------------------
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: typecheck + test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # NOTE: package.json has no `engines` field and the repo has no .nvmrc,
+      # so there is no declared Node version to read. 22 is chosen because it
+      # is the current LTS line, matches the Node version in use on the
+      # development machine (v22.x), and satisfies Next 16's minimum (>=20.9).
+      # If a specific version is ever settled on, add an .nvmrc and switch this
+      # step to `node-version-file: .nvmrc` so there is a single source of truth.
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      # package.json defines: "test": "vitest run"
+      - name: Test
+        run: npm test

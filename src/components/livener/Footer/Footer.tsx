@@ -4,7 +4,7 @@ import { websiteSiteConfigQuery } from '@/lib/sanity/queries'
 import type { WebsiteSiteConfig, SupportedLocale } from '@/lib/sanity/types'
 import { resolveNavLink, resolveNavLinks } from '@/lib/sanity/nav-links'
 import { imageUrl } from '@/lib/sanity/image'
-import { renderWordmark } from '@/lib/wordmark'
+import { renderWordmark, FOOTER_WORDMARK_ACCENT_STYLE } from '@/lib/wordmark'
 import { Icon } from '@/components/icons'
 import { FooterLanguageSwitcher } from './FooterClient'
 import { EarlyAccessFooterCta } from '@/components/forms/EarlyAccessFooterCta'
@@ -64,7 +64,7 @@ export async function Footer({
 
   const logoSrc = config.logo ? imageUrl(config.logo as never, 480) : undefined
   // Precedence: image logo → text wordmark → plain site name.
-  const wordmark = renderWordmark(config.wordmarkText, config.wordmarkAccent)
+  const wordmark = renderWordmark(config.wordmarkText, config.wordmarkAccent, FOOTER_WORDMARK_ACCENT_STYLE)
 
   // Credit link ("Built by …") beside the copyright. Runs through the shared
   // nav-link resolver, so an external URL, a page reference and a `mailto:`
@@ -73,7 +73,20 @@ export async function Footer({
     ? resolveNavLink(config.footerCredit, locale, tenantId)
     : null
 
-  const borderSoft = 'color-mix(in oklch, var(--color-text-primary) 10%, transparent)'
+  // Border, ink and accent all come from --color-footer-*, which buildCssVars
+  // derives from the footer's own surface (see lib/design-system/footer-tokens).
+  // The footer paints itself with a colour chosen independently of the page
+  // background, so the page's text tokens do not hold on it: this component
+  // used to write --color-text-primary at hand-picked opacities and every
+  // tenant's footer failed WCAG AA in both themes, as low as 1.03:1.
+  const borderSoft = 'var(--color-footer-border)'
+
+  // Nothing in this footer transitions `color`. Chromium does not re-resolve a
+  // transitioned colour when the custom property behind it changes on an
+  // ancestor, and switching theme does exactly that (it toggles `html.light`):
+  // the element keeps painting the previous theme's colour until the next
+  // navigation, so the footer stays light-on-light after a switch to light.
+  // Hover therefore snaps rather than fades, which is the cheaper trade.
 
   // Legacy contact cell — only when opted in, only for a 'full' footer, and only
   // while there is no authored brand row to supersede it.
@@ -81,13 +94,13 @@ export async function Footer({
     showContact && variant === 'full' && !hasBrandRow && Boolean(logoSrc || config.siteName || config.address || config.email)
 
   return (
-    <footer style={{ backgroundColor: 'var(--color-secondary)' }}>
+    <footer style={{ backgroundColor: 'var(--color-footer-bg)', color: 'var(--color-footer-text)' }}>
 
       {/* ── CTA section ────────────────────────────────────────── */}
       {hasCta && (
         <div
           className="border-b px-5 py-16 md:px-10"
-          style={{ borderColor: 'color-mix(in oklch, var(--color-text-primary) 10%, transparent)' }}
+          style={{ borderColor: borderSoft }}
         >
           <div className="mx-auto max-w-[1200px]">
             {config.footerCtaHeading && (
@@ -95,7 +108,7 @@ export async function Footer({
                 className="mb-3"
                 style={{
                   fontFamily: 'var(--font-heading)',
-                  color: 'var(--color-text-primary)',
+                  color: 'var(--color-footer-text)',
                   fontSize: 'var(--font-size-h2, 3.125rem)',
                   fontWeight: 'var(--font-weight-h2, 700)',
                   lineHeight: 'var(--line-height-h2, 4rem)',
@@ -105,7 +118,7 @@ export async function Footer({
               </h2>
             )}
             {config.footerCtaSubtext && (
-              <p className="mb-7 text-[15px]" style={{ color: 'var(--color-text-primary)', opacity: 0.7 }}>
+              <p className="mb-7 text-[15px]" style={{ color: 'var(--color-footer-text)' }}>
                 {config.footerCtaSubtext}
               </p>
             )}
@@ -143,7 +156,7 @@ export async function Footer({
                 ) : (
                   <span
                     className="text-2xl font-extrabold tracking-[-0.03em]"
-                    style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
+                    style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-footer-text)' }}
                   >
                     {wordmark ?? config.siteName ?? tenantId}
                   </span>
@@ -153,7 +166,7 @@ export async function Footer({
               {config.tagline && (
                 <p
                   className="mb-6 max-w-[24ch] text-sm leading-relaxed"
-                  style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-primary)', opacity: 0.6 }}
+                  style={{ fontFamily: 'var(--font-body)', color: 'var(--color-footer-text-muted)' }}
                 >
                   {config.tagline}
                 </p>
@@ -162,7 +175,7 @@ export async function Footer({
               {config.footerSubTagline && (
                 <div
                   className="text-[0.625rem] font-bold uppercase tracking-[0.12em]"
-                  style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)', opacity: 0.45 }}
+                  style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-footer-text-muted)' }}
                 >
                   {config.footerSubTagline}
                 </div>
@@ -178,8 +191,8 @@ export async function Footer({
                           href={social.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 transition-opacity hover:opacity-100"
-                          style={{ color: 'var(--color-text-primary)', opacity: 0.45 }}
+                          className="inline-flex items-center gap-2 hover:text-[var(--color-footer-text)]"
+                          style={{ color: 'var(--color-footer-text-muted)' }}
                         >
                           {/* Unregistered platforms render no icon rather than a broken one. */}
                           <Icon name={social.platform} size={16} />
@@ -206,7 +219,7 @@ export async function Footer({
                   {column.heading && (
                     <h4
                       className="mb-5 text-[0.6875rem] font-bold uppercase tracking-[0.1em]"
-                      style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)', opacity: 0.6 }}
+                      style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-footer-text-muted)' }}
                     >
                       {column.heading}
                     </h4>
@@ -218,8 +231,8 @@ export async function Footer({
                           href={link.href}
                           target={link.external ? '_blank' : undefined}
                           rel={link.external ? 'noopener noreferrer' : undefined}
-                          className="text-sm transition-opacity hover:opacity-100"
-                          style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-primary)', opacity: 0.45 }}
+                          className="text-sm hover:text-[var(--color-footer-text)]"
+                          style={{ fontFamily: 'var(--font-body)', color: 'var(--color-footer-text-muted)' }}
                         >
                           {link.label}
                         </Link>
@@ -244,33 +257,33 @@ export async function Footer({
         <div className="border-b px-5 py-10 md:px-10" style={{ borderColor: borderSoft }}>
           <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             {logoSrc ? (
-              <Link href={`/${locale}/${tenantId}`} className="transition-opacity hover:opacity-100">
+              <Link href={`/${locale}/${tenantId}`} className="hover:text-[var(--color-footer-text)]">
                 <img
                   src={logoSrc}
                   alt={config.siteName ?? tenantId}
-                  style={{ height: 'var(--logo-height-mobile)', width: 'auto', opacity: 0.6 }}
+                  style={{ height: 'var(--logo-height-mobile)', width: 'auto' }}
                 />
               </Link>
             ) : (
               <Link
                 href={`/${locale}/${tenantId}`}
-                className="text-xs transition-opacity hover:opacity-100"
-                style={{ color: 'var(--color-text-muted)' }}
+                className="text-xs hover:text-[var(--color-footer-text)]"
+                style={{ color: 'var(--color-footer-text-muted)' }}
               >
                 {wordmark ?? config.siteName}
               </Link>
             )}
             <div className="flex flex-col gap-1 sm:items-end">
               {config.address && (
-                <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                <p className="text-xs" style={{ color: 'var(--color-footer-text-muted)' }}>
                   {config.address}
                 </p>
               )}
               {config.email && (
                 <a
                   href={`mailto:${config.email}`}
-                  className="text-xs transition-opacity hover:opacity-100"
-                  style={{ color: 'var(--color-text-muted)', opacity: 0.75 }}
+                  className="text-xs hover:text-[var(--color-footer-text)]"
+                  style={{ color: 'var(--color-footer-text-muted)' }}
                 >
                   {config.email}
                 </a>
@@ -287,9 +300,9 @@ export async function Footer({
           {/* Top row: copyright + links */}
           <div
             className="flex flex-wrap items-center justify-between gap-4 border-b pb-6"
-            style={{ borderColor: 'color-mix(in oklch, var(--color-text-primary) 12%, transparent)' }}
+            style={{ borderColor: borderSoft }}
           >
-            <span className="text-sm" style={{ color: 'var(--color-text-primary)', opacity: 0.45 }}>
+            <span className="text-sm" style={{ color: 'var(--color-footer-text-muted)' }}>
               © {copyrightYears} {config.legalName ?? config.siteName}
             </span>
 
@@ -301,8 +314,8 @@ export async function Footer({
                       href={link.href}
                       target={link.external ? '_blank' : undefined}
                       rel={link.external ? 'noopener noreferrer' : undefined}
-                      className="text-sm font-medium transition-colors"
-                      style={{ color: 'var(--color-text-primary)', opacity: 0.55 }}
+                      className="text-sm font-medium hover:text-[var(--color-footer-text)]"
+                      style={{ color: 'var(--color-footer-text-muted)' }}
                     >
                       {link.label}
                     </Link>
@@ -317,8 +330,8 @@ export async function Footer({
                 href={credit.href}
                 target={credit.external ? '_blank' : undefined}
                 rel={credit.external ? 'noopener noreferrer' : undefined}
-                className="text-sm transition-opacity hover:opacity-100"
-                style={{ color: 'var(--color-text-primary)', opacity: 0.45 }}
+                className="text-sm hover:text-[var(--color-footer-text)]"
+                style={{ color: 'var(--color-footer-text-muted)' }}
               >
                 {credit.label}
               </Link>
@@ -329,12 +342,12 @@ export async function Footer({
           <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
             <div>
               {config.registrationInfo && (
-                <p className="text-xs" style={{ color: 'var(--color-text-primary)', opacity: 0.25 }}>
+                <p className="text-xs" style={{ color: 'var(--color-footer-text-muted)' }}>
                   {config.registrationInfo}
                 </p>
               )}
               {config.legalAddress && (
-                <p className="mt-1 text-xs" style={{ color: 'var(--color-text-primary)', opacity: 0.25 }}>
+                <p className="mt-1 text-xs" style={{ color: 'var(--color-footer-text-muted)' }}>
                   {config.legalAddress}
                 </p>
               )}

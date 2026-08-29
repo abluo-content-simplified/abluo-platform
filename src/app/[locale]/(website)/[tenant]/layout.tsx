@@ -8,9 +8,11 @@ import { ogImageUrl } from '@/lib/sanity/image'
 import type { LocaleConfig, SupportedLocale, DesignSystem, FontDefinition, WebsiteSiteConfig, BackgroundGraphic, ProjectIntegrations } from '@/lib/sanity/types'
 import { imageUrl } from '@/lib/sanity/image'
 import { resolveNavLinks } from '@/lib/sanity/nav-links'
+import { isLocaleEnabledForProject } from '@/lib/i18n/locale-guard'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { buildGoogleFontsUrl } from '@/lib/google-fonts'
 import { headingVars, fluidHeadingSize, isTypographyLegacyTenant } from '@/lib/design-system/typography'
+import { footerThemeVars } from '@/lib/design-system/footer-tokens'
 import { Footer } from '@/components/livener/Footer'
 import { NavClient } from '@/components/livener/Nav/NavClient'
 import { HeaderAppearanceWrapper } from '@/components/HeaderAppearanceWrapper'
@@ -286,6 +288,8 @@ ${formMetaVars}
       --color-section-surface3: ${sectionSurfaces?.darkTheme?.surface3 ?? 'transparent'};
       --color-section-brand-surface: ${sectionSurfaces?.darkTheme?.brandSurface ?? 'transparent'};
       --color-section-glass-bg: ${sectionSurfaces?.darkTheme?.glass?.backgroundOklch ?? 'oklch(0.3 0.02 270 / 0.4)'};
+      /* ── Footer tokens (dark theme) ── */
+${footerThemeVars(ds?.footer?.surface, D, '      ')}
     }
     html.light {
       --color-background: ${L.bg};
@@ -319,6 +323,8 @@ ${lightFormVars}
       --color-section-surface3: ${sectionSurfaces?.lightTheme?.surface3 ?? 'transparent'};
       --color-section-brand-surface: ${sectionSurfaces?.lightTheme?.brandSurface ?? 'transparent'};
       --color-section-glass-bg: ${sectionSurfaces?.lightTheme?.glass?.backgroundOklch ?? 'oklch(0.97 0 0 / 0.6)'};
+      /* ── Footer tokens (light theme) ── */
+${footerThemeVars(ds?.footer?.surface, L, '      ')}
     }
   `.trim()
 }
@@ -525,6 +531,16 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   // ── Shared: locale config ────────────────────────────────────────────────────
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
+
+  // Bug L-2 — the [locale] segment is validated against the PLATFORM registry in
+  // src/app/[locale]/layout.tsx (the outer guard: is this a language Abluo knows
+  // at all?). Nothing validated it against the PROJECT's own supportedLocales, so
+  // every tenant served all seven platform locales — e.g. /de on a project whose
+  // locales are [it, en] rendered German chrome over Italian content, indexable
+  // and duplicated. This is the inner guard, and it is free: localeConfig is
+  // already fetched above. See isLocaleEnabledForProject() for the deliberately
+  // fail-open behaviour when no siteConfig document exists.
+  if (!isLocaleEnabledForProject(locale, localeConfig)) notFound()
 
   // ── Shared: design system — runs for ALL tenants ─────────────────────────────
   // Fetched via project.designSystemRef -> design system document

@@ -3271,6 +3271,33 @@ const glassStyleType = defineType({
   ],
 })
 
+const footerStyleType = defineType({
+  name: 'footerStyle',
+  title: 'Footer',
+  type: 'object',
+  description: 'Footer surface. Text, border and accent colours are derived from it.',
+  fields: [
+    defineField({
+      name: 'surface',
+      title: 'Background Surface',
+      type: 'string',
+      description:
+        'Which palette colour the footer paints itself with, per theme. Defaults to Secondary, which is what every footer used before this field existed.',
+      options: {
+        list: [
+          { title: 'Secondary (brand)', value: 'secondary' },
+          { title: 'Primary (brand)', value: 'primary' },
+          { title: 'Background', value: 'background' },
+          { title: 'Background Alt', value: 'backgroundAlt' },
+          { title: 'Surface', value: 'surface' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'secondary',
+    }),
+  ],
+})
+
 const sectionSurfacesThemeType = defineType({
   name: 'sectionSurfacesTheme',
   title: 'Section Surfaces (Theme)',
@@ -3881,6 +3908,21 @@ const designSystemType = defineType({
           type: 'cardStyleTheme',
         }),
       ],
+    }),
+
+    // Footer
+    // The footer used to hard-code `var(--color-secondary)` as its background,
+    // which is why every tenant's footer failed WCAG AA in both themes: a brand
+    // colour was being used as a surface, and then written on with text tokens
+    // tuned for the page background. The surface is now a choice, and the text
+    // colours that sit on it are computed from it — see
+    // src/lib/design-system/contrast.ts.
+    defineField({
+      name: 'footer',
+      title: 'Footer',
+      type: 'footerStyle',
+      group: 'components',
+      description: 'Which surface the footer paints itself with. Its text, border and accent colours are derived from that surface so they always meet contrast.',
     }),
 
     // Section Surfaces
@@ -4779,6 +4821,7 @@ export const schemaTypes = [
   formTypographyType,
   formGeometryType,
   glassStyleType,
+  footerStyleType,
   sectionSurfacesThemeType,
   sectionSurfacesType,
   backgroundAssetType,

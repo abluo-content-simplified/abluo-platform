@@ -51,6 +51,33 @@ async function finalize(
     .eq('event_id', eventId)
 }
 
+/**
+ * Resolves the tenant/URL slug an event's notification is addressed to.
+ *
+ * Prefers the slug of the event's OWN `project_id` over the denormalized
+ * `project_slug` column: the column is written at emit time from the request's
+ * route, so a wrong or stale value there (e.g. rows written before the
+ * completeStep tenant-isolation guard) would otherwise route a submission to
+ * another tenant's recipients and branding. Falls back to `project_slug` only
+ * for platform-level events (no project_id) or an unresolvable project.
+ */
+async function resolveEventProjectSlug(
+  supabase: SupabaseClient,
+  event: Record<string, unknown>,
+): Promise<string | null> {
+  const projectId = (event.project_id as string | null) ?? null
+  if (projectId) {
+    const { data } = await supabase
+      .from('projects')
+      .select('slug')
+      .eq('id', projectId)
+      .maybeSingle()
+    const slug = (data?.slug as string | undefined) ?? null
+    if (slug) return slug
+  }
+  return (event.project_slug as string | null) ?? null
+}
+
 /** Delivers a single event, idempotently. Safe to call from webhook AND sweep. */
 export async function deliverEvent(eventId: string): Promise<{ outcome: DeliverOutcome; reason?: string }> {
   return runAsTrustedSystemOperation(
@@ -76,7 +103,7 @@ export async function deliverEvent(eventId: string): Promise<{ outcome: DeliverO
       }
 
       const topic = (event.topic as string) || (event.form_id as string)
-      const projectSlug = event.project_slug as string | null
+      const projectSlug = await resolveEventProjectSlug(supabase, event as Record<string, unknown>)
       if (!projectSlug) {
         await finalize(supabase, eventId, 'skipped', attempts, 'no project_slug on event')
         return { outcome: 'skipped', reason: 'no project_slug' }

@@ -415,6 +415,18 @@ export interface CardVariant {
   darkTheme?: CardStyleTheme
 }
 
+/** Which palette colour the footer paints itself with. */
+export type FooterSurfaceToken =
+  | 'secondary'
+  | 'primary'
+  | 'background'
+  | 'backgroundAlt'
+  | 'surface'
+
+export interface FooterStyle {
+  surface?: FooterSurfaceToken
+}
+
 export interface DesignSystem {
   /** Sanity document ID — present after GROQ fetch, absent in partial/merged objects */
   _id?: string
@@ -487,6 +499,13 @@ export interface DesignSystem {
   }
   cardVariants?: CardVariant[]
   sectionSurfaces?: SectionSurfaces
+  /**
+   * Footer surface. The footer's text, border and accent colours are derived
+   * from whichever palette colour this names, so they meet WCAG AA whatever
+   * the tenant's brand colours are. Absent means 'secondary', which is what
+   * every footer hard-coded before this field existed.
+   */
+  footer?: FooterStyle
   /** Global glass token — consumed by header, navigation dropdown, cards, modals. */
   glass?: GlassStyle
   forms?: {

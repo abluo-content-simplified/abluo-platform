@@ -186,6 +186,12 @@ function mergeDesignSystems(
       darkTheme:  mergeSectionSurfacesTheme(parent.sectionSurfaces?.darkTheme,  child.sectionSurfaces?.darkTheme),
     },
 
+    // ─── Footer: INHERIT WITH OVERRIDE ───────────────────────────────────────
+    // A single scalar, so the child's choice simply wins when it has one.
+    footer: {
+      surface: child.footer?.surface || parent.footer?.surface,
+    },
+
     // ─── Global Glass Token: INHERIT WITH OVERRIDE ───────────────────────────
     // Consumed by header, navigation dropdown, cards, modals.
     glass: mergeGlassStyle(parent.glass, child.glass),

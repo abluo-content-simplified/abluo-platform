@@ -23,6 +23,17 @@ import type { ReactNode } from 'react'
 /** Inline style applied to every accented character run. */
 export const WORDMARK_ACCENT_STYLE = { color: 'var(--color-primary)' } as const
 
+/**
+ * The accent colour a wordmark uses when it sits in the footer.
+ *
+ * `--color-primary` is chosen against the page background, and the footer
+ * paints itself with a different surface — on No!Logo's brand-orange footer the
+ * orange "!" measured 1.24:1 against it, i.e. invisible. `--color-footer-accent`
+ * is the same brand colour nudged toward the footer's ink only as far as AA
+ * requires, so the accent still reads as the accent.
+ */
+export const FOOTER_WORDMARK_ACCENT_STYLE = { color: 'var(--color-footer-accent)' } as const
+
 /** One run of consecutive characters that are either all accented or all not. */
 export interface WordmarkSegment {
   text: string
@@ -70,11 +81,14 @@ export function splitWordmark(
  * `renderWordmark(cfg.wordmarkText, cfg.wordmarkAccent) ?? fallback`.
  *
  * Font, size and weight are the caller's business — this only owns the colour
- * split.
+ * split. `accentStyle` lets a caller on a non-page surface substitute a colour
+ * resolved against that surface — the footer passes
+ * FOOTER_WORDMARK_ACCENT_STYLE for exactly this reason.
  */
 export function renderWordmark(
   text: string | undefined | null,
   accentChars?: string | null,
+  accentStyle: { color: string } = WORDMARK_ACCENT_STYLE,
 ): ReactNode {
   const segments = splitWordmark(text, accentChars)
   if (segments.length === 0) return null
@@ -82,7 +96,7 @@ export function renderWordmark(
     <>
       {segments.map((segment, i) =>
         segment.accent ? (
-          <span key={i} style={WORDMARK_ACCENT_STYLE}>
+          <span key={i} style={accentStyle}>
             {segment.text}
           </span>
         ) : (
