@@ -3,6 +3,8 @@ import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
+import { resolveEasing } from '@/lib/motion/easing'
+import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 interface Props {
   section: MetricsSection
@@ -16,7 +18,7 @@ export function MetricsSection({ section, surface, designSystem }: Props) {
 
   const m = designSystem?.motion
   const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
-  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const ease = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
   const hasHeader = Boolean(eyebrow || headline || description)
   const count = metrics?.length ?? 0
@@ -38,19 +40,24 @@ export function MetricsSection({ section, surface, designSystem }: Props) {
         {hasHeader && (
           <SlideUp duration={duration} ease={ease} delay={0} className="mb-16 max-w-2xl">
             {eyebrow && (
-              <p
-                className="mb-5 text-xs font-semibold uppercase tracking-[0.2em]"
-                style={{ color: 'var(--color-text-muted)' }}
-              >
-                {eyebrow}
-              </p>
+              <EyebrowLabel
+                eyebrow={eyebrow}
+                designSystem={designSystem}
+                defaultAccent="none"
+                weight="semibold"
+                className="mb-5"
+              />
             )}
             {headline && (
               <h2
-                className="text-3xl font-semibold leading-snug tracking-tight md:text-4xl"
+                className="[--fs-h2:1.875rem] md:[--fs-h2:2.25rem]"
                 style={{
                   color: 'var(--color-text-primary)',
                   fontFamily: 'var(--font-heading)',
+                  fontSize: 'var(--font-size-h2, var(--fs-h2))',
+                  fontWeight: 'var(--font-weight-h2, 600)',
+                  lineHeight: 'var(--line-height-h2, 1.375)',
+                  letterSpacing: 'var(--letter-spacing-h2, -0.025em)',
                 }}
               >
                 {headline}
@@ -77,7 +84,7 @@ export function MetricsSection({ section, surface, designSystem }: Props) {
             className={`grid gap-px ${gridClass}`}
             style={{
               border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-lg, 1rem)',
+              borderRadius: 'var(--radius-lg)',
               overflow: 'hidden',
               gridAutoRows: '1fr',
             }}

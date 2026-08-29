@@ -10,7 +10,7 @@
  * hardcodes Livener's copy into a platform file — exactly the pattern
  * CLAUDE.md's multilingual rules forbid. Nothing here mentions a tenant.
  *
- * Covers every locale in the platform registry (en/it/de), so News can be
+ * Covers every locale in the platform registry (en/it/de/fr/es/pt/nl), so News can be
  * installed on any website without a missing-string gap.
  *
  * FUTURE: fold into next-intl `messages/*.json` once that directory is the
@@ -47,6 +47,30 @@ const MESSAGES: Record<string, NewsModuleMessages> = {
     backToNews:    'Zurück zu den News',
     newsListLabel: 'News',
     publishedOn:   'Veröffentlicht am',
+  },
+  fr: {
+    readingTime:   (m) => `${m} min de lecture`,
+    backToNews:    'Retour aux actualités',
+    newsListLabel: 'Actualités',
+    publishedOn:   'Publié le',
+  },
+  es: {
+    readingTime:   (m) => `${m} min de lectura`,
+    backToNews:    'Volver a las noticias',
+    newsListLabel: 'Noticias',
+    publishedOn:   'Publicado el',
+  },
+  pt: {
+    readingTime:   (m) => `${m} min de leitura`,
+    backToNews:    'Voltar às notícias',
+    newsListLabel: 'Notícias',
+    publishedOn:   'Publicado a',
+  },
+  nl: {
+    readingTime:   (m) => `${m} min leestijd`,
+    backToNews:    'Terug naar nieuws',
+    newsListLabel: 'Nieuws',
+    publishedOn:   'Gepubliceerd op',
   },
 }
 

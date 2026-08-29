@@ -7,6 +7,8 @@ import { imageUrl } from '@/lib/sanity/image'
 import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 import { SectionEmptyState } from '@/components/sections/shared/SectionEmptyState'
 import { getNewsModuleMessages, formatNewsDate } from '@/lib/i18n/news-module-messages'
+import { resolveEasing } from '@/lib/motion/easing'
+import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 // ─── News Listing Section (ADR-020) ───────────────────────────────────────────
 //
@@ -33,7 +35,7 @@ function CategoryChips({ categories }: { categories?: NewsArticle['categories'] 
       {categories.map((cat) => (
         <span
           key={cat.key}
-          className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest"
+          className="inline-flex items-center rounded-[var(--radius-btn)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest"
           style={{
             background: cat.color
               ? `color-mix(in oklch, ${cat.color} 12%, transparent)`
@@ -101,7 +103,7 @@ function ArticleCard({
   return (
     <a
       href={href}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl transition-shadow hover:shadow-lg"
+      className="group flex h-full flex-col overflow-hidden rounded-[var(--radius-lg)] transition-shadow hover:shadow-lg"
       style={{
         backgroundColor: 'var(--color-surface)',
         border: '1px solid',
@@ -162,7 +164,7 @@ function ArticleCardLarge({
   return (
     <a
       href={href}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl transition-shadow hover:shadow-lg"
+      className="group flex h-full flex-col overflow-hidden rounded-[var(--radius-lg)] transition-shadow hover:shadow-lg"
       style={{
         backgroundColor: 'var(--color-surface)',
         border: '1px solid',
@@ -187,8 +189,8 @@ function ArticleCardLarge({
       <div className="flex flex-1 flex-col p-6 md:p-8">
         <CategoryChips categories={article.categories} />
         <h3
-          className="mb-3 line-clamp-3 text-2xl font-semibold leading-snug tracking-tight md:text-3xl"
-          style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
+          className="mb-3 line-clamp-3 [--fs-h3:1.5rem] md:[--fs-h3:1.875rem]"
+          style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--font-size-h3, var(--fs-h3))', fontWeight: 'var(--font-weight-h3, 600)', lineHeight: 'var(--line-height-h3, 1.375)', letterSpacing: 'var(--letter-spacing-h3, -0.025em)' }}
         >
           {article.title}
         </h3>
@@ -224,11 +226,11 @@ function ArticleCardMini({
   return (
     <a
       href={href}
-      className="group flex gap-4 rounded-xl p-3 transition-colors"
+      className="group flex gap-4 rounded-[var(--radius-md)] p-3 transition-colors"
       style={{ textDecoration: 'none' }}
     >
       <div
-        className="h-20 w-24 shrink-0 overflow-hidden rounded-lg"
+        className="h-20 w-24 shrink-0 overflow-hidden rounded-[var(--radius-md)]"
         style={{ backgroundColor: 'var(--color-border)' }}
       >
         {coverSrc && (
@@ -385,7 +387,7 @@ export function NewsListingSection({
   // Motion tokens — durationSlow for content sections (platform convention).
   const m = designSystem?.motion
   const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
-  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const ease = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
   // Empty-state semantics, identical to the other listing sections: no items
   // and no authored heading → render nothing at all, so an empty section never
@@ -418,17 +420,17 @@ export function NewsListingSection({
       {(eyebrow || title || subtitle) && (
         <SlideUp duration={duration} ease={ease} delay={0} className="mb-12">
           {eyebrow && (
-            <p
-              className="mb-4 text-xs font-medium uppercase tracking-[0.2em]"
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              {eyebrow}
-            </p>
+            <EyebrowLabel
+              eyebrow={eyebrow}
+              designSystem={designSystem}
+              defaultAccent="none"
+              className="mb-4"
+            />
           )}
           {title && (
             <h2
-              className="text-3xl font-semibold leading-snug tracking-tight md:text-4xl"
-              style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
+              className="[--fs-h2:1.875rem] md:[--fs-h2:2.25rem]"
+              style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--font-size-h2, var(--fs-h2))', fontWeight: 'var(--font-weight-h2, 600)', lineHeight: 'var(--line-height-h2, 1.375)', letterSpacing: 'var(--letter-spacing-h2, -0.025em)' }}
             >
               {title}
             </h2>
@@ -458,7 +460,7 @@ export function NewsListingSection({
         <SlideUp duration={duration} ease={ease} delay={0.25} className="mt-12 flex justify-center">
           <a
             href={viewAllHref}
-            className="inline-flex items-center gap-2 rounded-lg border px-7 py-3 text-sm font-medium transition-opacity hover:opacity-75"
+            className="inline-flex items-center gap-2 rounded-[var(--radius-btn)] border px-7 py-3 text-sm font-medium transition-opacity hover:opacity-75"
             style={{
               borderColor: 'var(--color-border)',
               color: 'var(--color-text-primary)',

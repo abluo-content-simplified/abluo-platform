@@ -117,7 +117,7 @@ function PillStepper({
           return (
             <div
               key={s}
-              className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all duration-200"
+              className="flex items-center gap-1.5 rounded-[var(--radius-btn)] border px-3 py-1.5 text-xs font-semibold transition-all duration-200"
               style={{
                 backgroundColor: isActive
                   ? 'var(--color-primary)'
@@ -215,7 +215,7 @@ function SelectionCards({
                   onChange(opt.value)
                 }
               }}
-              className="rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-all"
+              className="rounded-[var(--radius-md)] border px-3 py-2.5 text-left text-sm font-medium transition-all"
               style={{
                 borderColor: active
                   ? 'var(--color-primary)'
@@ -284,7 +284,7 @@ function ChipGrid({
               type="button"
               aria-pressed={active}
               onClick={() => toggle(opt.value)}
-              className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-all"
+              className="flex items-center gap-1.5 rounded-[var(--radius-btn)] border px-3 py-1.5 text-sm font-medium transition-all"
               style={{
                 borderColor: active ? 'var(--color-primary)' : 'var(--color-border)',
                 backgroundColor: active
@@ -384,7 +384,7 @@ function CustomSelect({
         onClick={handleToggle}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex w-full items-center justify-between rounded-xl border px-4 py-2.5 text-sm transition-all"
+        className="flex w-full items-center justify-between rounded-[var(--radius-md)] border px-4 py-2.5 text-sm transition-all"
         style={{
           borderColor: open ? 'var(--color-primary)' : 'var(--color-border)',
           backgroundColor: 'var(--form-input-bg)',
@@ -421,7 +421,7 @@ function CustomSelect({
                   zIndex: 9999,
                   maxHeight: '228px',
                   overflowY: 'auto',
-                  borderRadius: '14px',
+                  borderRadius: 'var(--radius-md)',
                   border: '1px solid var(--color-border)',
                   backgroundColor: 'color-mix(in oklch, var(--color-background) 90%, transparent)',
                   backdropFilter: 'blur(24px) saturate(1.5)',
@@ -542,7 +542,7 @@ function SuccessScreen({
           <button
             type="button"
             onClick={onClose}
-            className="self-start rounded-xl px-7 py-2.5 text-sm font-semibold transition-opacity"
+            className="self-start rounded-[var(--radius-btn)] px-7 py-2.5 text-sm font-semibold transition-opacity"
             style={{
               backgroundColor: 'var(--color-primary)',
               color: '#fff',
@@ -581,7 +581,7 @@ function PrimaryBtn({
       type={type}
       disabled={disabled}
       onClick={onClick}
-      className={`rounded-xl py-2.5 text-sm font-semibold transition-opacity ${className}`}
+      className={`rounded-[var(--radius-btn)] py-2.5 text-sm font-semibold transition-opacity ${className}`}
       style={{
         backgroundColor: 'var(--color-primary)',
         color: '#fff',
@@ -600,7 +600,7 @@ function SecondaryBtn({ children, onClick }: { children: React.ReactNode; onClic
     <button
       type="button"
       onClick={onClick}
-      className="rounded-xl px-5 py-2.5 text-sm font-medium transition-colors"
+      className="rounded-[var(--radius-btn)] px-5 py-2.5 text-sm font-medium transition-colors"
       style={{
         backgroundColor: 'transparent',
         border: '1px solid var(--color-border)',
@@ -901,7 +901,7 @@ export function EarlyAccessModal() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 14, scale: 0.97 }}
             transition={{ duration: 0.25, ease: [0, 0, 0.2, 1] }}
-            className="fixed inset-x-4 top-[50%] z-[510] mx-auto max-w-lg -translate-y-1/2 rounded-2xl shadow-2xl backdrop-blur-[24px] saturate-150 md:inset-x-auto md:left-1/2 md:-translate-x-1/2"
+            className="fixed inset-x-4 top-[50%] z-[510] mx-auto max-w-lg -translate-y-1/2 rounded-[var(--radius-lg)] shadow-2xl backdrop-blur-[24px] saturate-150 md:inset-x-auto md:left-1/2 md:-translate-x-1/2"
             style={{
               backgroundColor: 'color-mix(in oklch, var(--color-background) 90%, transparent)',
               border: '1px solid var(--color-border)',
@@ -1110,7 +1110,7 @@ export function EarlyAccessModal() {
                     {/* GDPR — custom premium checkbox, intentionally lighter */}
                     <div>
                       <label
-                        className="flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors"
+                        className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-md)] border p-4 transition-colors"
                         style={{
                           borderColor: errors.gdprConsent
                             ? 'var(--form-input-error-border, var(--color-danger))'

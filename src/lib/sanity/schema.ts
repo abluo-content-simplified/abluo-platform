@@ -3,7 +3,7 @@ import { TenantLinker } from '@/lib/sanity/fields/TenantLinker'
 import { ProjectLinker } from '@/lib/sanity/fields/ProjectLinker'
 import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, LocalizedSlugInput, LocalizedRedirectFromInput } from '@/lib/sanity/fields/LocalizedInput'
 import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
-import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField } from '@/lib/sanity/fields/shared'
+import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField, headlineAccentField } from '@/lib/sanity/fields/shared'
 import { ICON_OPTIONS } from '@/components/icons/registry'
 import { buildSchema } from '@/lib/modules/schema'
 import { buildModuleConfigSchemaTypes, buildModuleInstallationsField } from '@/lib/modules/config-schema'
@@ -237,6 +237,32 @@ const ctaType = defineType({
       initialValue: true,
       hidden: ({ parent }: { parent?: { actionType?: string } }) => parent?.actionType !== 'externalUrl',
     }),
+
+    // ── Form context pre-fill (shown when actionType === 'form') ─────────────
+    // Same key/value item type the Form Button (Overlay) section uses, so the
+    // two placements pre-fill a form identically. Optional: a CTA without it
+    // opens the form exactly as before.
+    defineField({
+      name: 'context',
+      title: 'Context (pre-fill)',
+      type: 'array',
+      hidden: ({ parent }: { parent?: { actionType?: string } }) => parent?.actionType !== 'form',
+      description: 'Optional key/value pairs. Only keys matching a context-mappable field are applied.',
+      of: [
+        defineArrayMember({
+          type: 'object',
+          name: 'formOverlayContextItem',
+          fields: [
+            defineField({ name: 'key', title: 'Field key', type: 'string' }),
+            defineField({ name: 'value', title: 'Value', type: 'string' }),
+          ],
+          preview: {
+            select: { key: 'key', value: 'value' },
+            prepare: ({ key, value }: { key?: string; value?: string }) => ({ title: key ?? '—', subtitle: value }),
+          },
+        }),
+      ],
+    }),
   ],
   preview: {
     select: {
@@ -406,6 +432,41 @@ const socialLinkType = defineType({
   },
 })
 
+// ── Footer link column ───────────────────────────────────────────────────────
+//
+// One headed column of links in the footer (e.g. "Product" → 4 links). Reuses
+// `navigationLink` verbatim, so anchors, page refs, external URLs and
+// openInNewTab all behave exactly as they do in the header nav.
+//
+// Additive: siteConfig.footerColumns is optional and empty on every existing
+// tenant, so the flat `footerLinks` list keeps rendering unchanged.
+const footerColumnType = defineType({
+  name: 'footerColumn',
+  title: 'Footer Column',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'heading',
+      title: 'Column Heading',
+      type: 'localizedString',
+      description: 'Short label above the column — e.g. "Product", "Company".',
+    }),
+    defineField({
+      name: 'links',
+      title: 'Links',
+      type: 'array',
+      of: [defineArrayMember({ type: 'navigationLink' })],
+    }),
+  ],
+  preview: {
+    select: { title: 'heading.it', titleEn: 'heading.en', links: 'links' },
+    prepare: ({ title, titleEn, links }: { title?: string; titleEn?: string; links?: unknown[] }) => ({
+      title: title ?? titleEn ?? 'Footer Column',
+      subtitle: `${links?.length ?? 0} link${links?.length === 1 ? '' : 's'}`,
+    }),
+  },
+})
+
 const scheduleItemType = defineType({
   name: 'scheduleItem',
   title: 'Schedule Item',
@@ -525,7 +586,18 @@ const heroSectionType = defineType({
     }),
     defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString', group: 'content' }),
     defineField({ name: 'headline', title: 'Headline', type: 'localizedText', group: 'content' }),
+    headlineAccentField('content'),
     defineField({ name: 'subheadline', title: 'Subheadline', type: 'localizedText', group: 'content' }),
+    // Optional short bold line between the subheadline and the CTA row.
+    // Absent on every hero authored before this field, and nothing renders
+    // when it is empty — so this is a no-op for existing tenants.
+    defineField({
+      name: 'tagline',
+      title: 'Tagline',
+      type: 'localizedText',
+      group: 'content',
+      description: 'Optional short, bold line shown between the subheadline and the CTA (e.g. “We build — you market”). Line breaks are preserved. Leave empty for none.',
+    }),
     defineField({ name: 'ctaLabel', title: 'CTA Button Label', type: 'localizedString', group: 'content' }),
     defineField({ name: 'ctaHref', title: 'CTA Button Link', type: 'string', group: 'content' }),
 
@@ -676,6 +748,25 @@ const heroSectionType = defineType({
       validation: (Rule) => Rule.min(50).max(150),
       initialValue: 100,
       description: 'Adjust media brightness (50–150%). Lower darkens, higher brightens.',
+    }),
+    // Primary CTA colour treatment when the hero has a full-bleed media
+    // background. Unset (every existing hero) behaves exactly like 'onMedia',
+    // which is today's white-button-on-media look. Ignored when there is no
+    // full-bleed media — that path already uses the design-system colours.
+    defineField({
+      name: 'ctaStyle',
+      title: 'Primary CTA Style (over media)',
+      type: 'string',
+      group: 'style',
+      options: {
+        list: [
+          { title: 'On media — white button (default)', value: 'onMedia' },
+          { title: 'Brand — design system button colours', value: 'brand' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'onMedia',
+      description: 'How the primary CTA is coloured when the hero has a full-bleed image/video background. “On media” keeps the white button; “Brand” uses the design system’s primary button colours.',
     }),
 
     // ── Optional extensions (additive) ───────────────────────────────────────
@@ -1093,6 +1184,7 @@ const statementSectionType = defineType({
     }),
     defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
     defineField({ name: 'headline', title: 'Headline', type: 'localizedString' }),
+    headlineAccentField(),
     defineField({ name: 'description', title: 'Description', type: 'localizedText' }),
     defineField({
       name: 'alignment',
@@ -1666,6 +1758,7 @@ const stepsSectionType = defineType({
     }),
     defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    headlineAccentField(),
     defineField({ name: 'intro', title: 'Intro Text', type: 'localizedText' }),
     defineField({
       name: 'steps',
@@ -1750,6 +1843,7 @@ const featureGridSectionType = defineType({
     }),
     defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    headlineAccentField(),
     defineField({ name: 'intro', title: 'Introduction', type: 'localizedText' }),
     defineField({
       name: 'variant',
@@ -1827,6 +1921,15 @@ const featureRowType = defineType({
       type: 'localizedText',
       description: 'Optional. Omit for a short bullet-style row.',
     }),
+    // Per-row screenshot. Optional and additive: rows authored before this
+    // field came back with no image and render exactly as they do today.
+    // Only read when the parent mediaFeatureSection has Interactive Media on.
+    defineField({
+      name: 'image',
+      title: 'Row Image',
+      type: 'localizedImage',
+      description: 'Optional. Screenshot revealed for this row when the parent section has "Interactive Media" enabled (hover on desktop, tap on mobile).',
+    }),
   ],
   preview: {
     select: { title: 'title.it', titleEn: 'title.en', subtitle: 'description.it' },
@@ -1859,6 +1962,7 @@ const mediaFeatureSectionType = defineType({
     }),
     defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString', group: 'content' }),
     defineField({ name: 'title',   title: 'Title',         type: 'localizedString', group: 'content' }),
+    headlineAccentField('content'),
     defineField({ name: 'intro',   title: 'Intro Text',    type: 'localizedText',   group: 'content' }),
     defineField({
       name: 'features',
@@ -1895,6 +1999,16 @@ const mediaFeatureSectionType = defineType({
       type: 'localizedImage',
       group: 'media',
       description: 'Optional. Ignored when Media Position is set to None.',
+    }),
+    // Opt-in interaction. Default false so every existing section keeps showing
+    // its single authored `image` and nothing about today's rendering changes.
+    defineField({
+      name: 'interactiveMedia',
+      title: 'Interactive Media',
+      type: 'boolean',
+      group: 'media',
+      initialValue: false,
+      description: 'Off by default. When on, hovering (desktop) or tapping (mobile) a feature row swaps the displayed media to that row\'s own Row Image. Rows without an image fall back to the section Image.',
     }),
     defineField({
       name: 'mediaPosition',
@@ -2060,6 +2174,7 @@ const categoryListSectionType = defineType({
     }),
     defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    headlineAccentField(),
     defineField({
       name: 'intro',
       title: 'Intro',
@@ -2118,6 +2233,7 @@ const ctaBannerSectionType = defineType({
       description:
         'Line breaks you type here are preserved on the page — use them to control where the headline wraps.',
     }),
+    headlineAccentField(),
     defineField({
       name: 'body',
       title: 'Body',
@@ -2220,6 +2336,7 @@ const faqSectionType = defineType({
     }),
     defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString' }),
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    headlineAccentField(),
     defineField({
       name: 'items',
       title: 'Questions',
@@ -3355,28 +3472,28 @@ const motionType = defineType({
       name: 'easingStandard',
       title: 'Easing — Standard',
       type: 'string',
-      description: 'General-purpose easing for most transitions',
+      description: 'General-purpose easing for most transitions. Accepts CSS cubic-bezier() syntax — e.g. cubic-bezier(0.4, 0, 0.2, 1) — or one of the named easings supported by Motion: linear, easeIn, easeOut, easeInOut, circIn, circOut, circInOut, backIn, backOut, backInOut, anticipate.',
       initialValue: 'cubic-bezier(0.4, 0, 0.2, 1)',
     }),
     defineField({
       name: 'easingDecelerate',
       title: 'Easing — Decelerate (enter)',
       type: 'string',
-      description: 'Elements entering the screen — start fast, slow to stop',
+      description: 'Elements entering the screen — start fast, slow to stop. Accepts CSS cubic-bezier() syntax — e.g. cubic-bezier(0.4, 0, 0.2, 1) — or one of the named easings supported by Motion: linear, easeIn, easeOut, easeInOut, circIn, circOut, circInOut, backIn, backOut, backInOut, anticipate.',
       initialValue: 'cubic-bezier(0, 0, 0.2, 1)',
     }),
     defineField({
       name: 'easingAccelerate',
       title: 'Easing — Accelerate (exit)',
       type: 'string',
-      description: 'Elements leaving the screen — start slow, exit quickly',
+      description: 'Elements leaving the screen — start slow, exit quickly. Accepts CSS cubic-bezier() syntax — e.g. cubic-bezier(0.4, 0, 0.2, 1) — or one of the named easings supported by Motion: linear, easeIn, easeOut, easeInOut, circIn, circOut, circInOut, backIn, backOut, backInOut, anticipate.',
       initialValue: 'cubic-bezier(0.4, 0, 1, 1)',
     }),
     defineField({
       name: 'easingEmphasized',
       title: 'Easing — Emphasized',
       type: 'string',
-      description: 'Important transitions that need extra attention — hero reveals, dialogs',
+      description: 'Important transitions that need extra attention — hero reveals, dialogs. Accepts CSS cubic-bezier() syntax — e.g. cubic-bezier(0.4, 0, 0.2, 1) — or one of the named easings supported by Motion: linear, easeIn, easeOut, easeInOut, circIn, circOut, circInOut, backIn, backOut, backInOut, anticipate.',
       initialValue: 'cubic-bezier(0.2, 0, 0, 1)',
     }),
   ],
@@ -3577,6 +3694,45 @@ const designSystemType = defineType({
         layout: 'radio',
       },
       initialValue: 'dot',
+    }),
+
+    // Eyebrow text colour — opt-in. Every eyebrow has always been painted in the
+    // muted text token, so 'muted' is the default and leaves every existing
+    // tenant exactly as it renders today. 'accent' is the opt-in restyle.
+    defineField({
+      name: 'eyebrowColor',
+      title: 'Eyebrow Text Colour',
+      type: 'string',
+      group: 'branding',
+      description:
+        'Colour of the eyebrow label text. "Muted" (the default) is the historical look — the muted text token. "Accent" paints the text in the accent colour. The marker beside it always uses the accent token either way; over full-bleed media the plain eyebrow still switches to white for contrast.',
+      options: {
+        list: [
+          { title: 'Muted', value: 'muted' },
+          { title: 'Accent', value: 'accent' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'muted',
+    }),
+
+    // Hero eyebrow treatment — opt-in. 'plain' is the inline eyebrow every hero
+    // has always rendered; 'pill' is the bordered, accent-tinted capsule.
+    defineField({
+      name: 'heroEyebrowVariant',
+      title: 'Hero Eyebrow Treatment',
+      type: 'string',
+      group: 'branding',
+      description:
+        'How the eyebrow renders in the standard Hero section. "Plain" (the default) is the inline eyebrow — marker plus text, no box — as every hero renders today. "Pill" wraps it in a bordered, accent-tinted capsule. Section eyebrows elsewhere are always plain.',
+      options: {
+        list: [
+          { title: 'Plain', value: 'plain' },
+          { title: 'Pill', value: 'pill' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'plain',
     }),
 
     // Branding
@@ -3957,6 +4113,25 @@ const siteConfigType = defineType({
     defineField({ name: 'tagline', title: 'Tagline', type: 'localizedString', group: 'branding' }),
     defineField({ name: 'logo', title: 'Logo', type: 'localizedImage', group: 'branding' }),
     defineField({ name: 'logoLight', title: 'Logo (Light variant)', type: 'localizedImage', group: 'branding' }),
+    // ── Text wordmark ────────────────────────────────────────────────────────
+    // Some brands draw their logo as TEXT in the heading font rather than as an
+    // uploaded image (e.g. "No!Logo" with the "!" in the accent colour). Both
+    // fields are OPTIONAL: a tenant with a `logo` image authored keeps rendering
+    // that image and never sees a wordmark, so every live site is unchanged.
+    defineField({
+      name: 'wordmarkText',
+      title: 'Wordmark Text',
+      type: 'localizedString',
+      group: 'branding',
+      description: 'Optional. Drawn in the heading font as the logo when no logo image is set. Leave empty to always use the uploaded logo.',
+    }),
+    defineField({
+      name: 'wordmarkAccent',
+      title: 'Wordmark Accent Characters',
+      type: 'string',
+      group: 'branding',
+      description: 'Optional. Characters to highlight in the accent colour — e.g. "!" paints the "!" in "No!Logo". Every occurrence of each character is accented.',
+    }),
     defineField({ name: 'faviconSvg', title: 'Favicon (SVG)', type: 'image', group: 'branding' }),
     defineField({ name: 'faviconPng', title: 'Favicon (PNG)', type: 'image', group: 'branding' }),
     defineField({ name: 'openGraphImage', title: 'Open Graph Image', type: 'image', group: 'branding', description: 'Social sharing image • 1200 × 630 px • JPG preferred. Used as the default og:image on all pages that do not have a page-specific image.' }),
@@ -4165,6 +4340,34 @@ const siteConfigType = defineType({
     defineField({ name: 'whatsappForm', title: 'WhatsApp Message Form', type: 'reference', to: [{ type: 'formDefinition' }], group: 'contact', description: '⚠️ Deprecated (ADR-020) — configure this in Modules → WhatsApp. Kept only until production is promoted.', options: { filter: '_type == "formDefinition" && role == "active"' }, hidden: true }),
     defineField({ name: 'whatsappFloating', title: 'Floating WhatsApp Button', type: 'boolean', group: 'contact', initialValue: false, description: '⚠️ Deprecated (ADR-020) — configure this in Modules → WhatsApp. Kept only until production is promoted.', hidden: true }),
     defineField({ name: 'footerLinks', title: 'Footer Links', type: 'array', group: 'footer', of: [defineArrayMember({ type: 'navigationLink' })] }),
+    // ── Grouped footer link columns ──────────────────────────────────────────
+    // Optional and empty on every existing tenant. A footer that authors these
+    // renders headed columns; one that does not keeps the flat `footerLinks`
+    // row exactly as today. The two are independent — nothing is migrated.
+    defineField({
+      name: 'footerColumns',
+      title: 'Footer Link Columns',
+      type: 'array',
+      group: 'footer',
+      of: [defineArrayMember({ type: 'footerColumn' })],
+      description: 'Optional. Headed columns of links (e.g. four columns). Leave empty to keep the flat Footer Links row.',
+    }),
+    defineField({
+      name: 'footerSubTagline',
+      title: 'Footer Sub-Tagline',
+      type: 'localizedString',
+      group: 'footer',
+      description: 'Optional short line under the footer tagline.',
+    }),
+    // Credit link ("Built by …"). A single navigationLink so it supports an
+    // external URL, an internal page or an anchor, with openInNewTab.
+    defineField({
+      name: 'footerCredit',
+      title: 'Footer Credit Link',
+      type: 'navigationLink',
+      group: 'footer',
+      description: 'Optional credit line link shown beside the copyright — e.g. "Built by Abluo".',
+    }),
     defineField({ name: 'footerCtaHeading', title: 'Footer CTA Heading', type: 'localizedString', group: 'footer' }),
     defineField({ name: 'footerCtaSubtext', title: 'Footer CTA Subtext', type: 'localizedString', group: 'footer' }),
     defineField({ name: 'footerCtaInputPlaceholder', title: 'Footer CTA Input Placeholder', type: 'localizedString', group: 'footer' }),
@@ -4524,6 +4727,7 @@ export const schemaTypes = [
   ctaType,
   navigationLinkType,
   socialLinkType,
+  footerColumnType,
   scheduleItemType,
   heroSectionType,
   heroLiveCaptureSectionType,

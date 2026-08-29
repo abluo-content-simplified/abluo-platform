@@ -155,7 +155,7 @@ export function EarlyAccessFooterCta({
           required
           disabled={submitting}
           aria-label={m.nameLabel}
-          className="flex-1 rounded-xl px-4 py-3 text-sm transition-colors focus:outline-none"
+          className="flex-1 rounded-[var(--form-border-radius)] px-4 py-3 text-sm transition-colors focus:outline-none"
           style={{
             backgroundColor: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
@@ -172,7 +172,7 @@ export function EarlyAccessFooterCta({
           required
           disabled={submitting}
           aria-label={m.emailLabel}
-          className="flex-1 rounded-xl px-4 py-3 text-sm transition-colors focus:outline-none"
+          className="flex-1 rounded-[var(--form-border-radius)] px-4 py-3 text-sm transition-colors focus:outline-none"
           style={{
             backgroundColor: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
@@ -184,7 +184,7 @@ export function EarlyAccessFooterCta({
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-xl px-6 py-3 text-sm font-semibold transition-colors"
+          className="rounded-[var(--radius-btn)] px-6 py-3 text-sm font-semibold transition-colors"
           style={{
             backgroundColor: 'var(--color-primary)',
             color: '#fff',

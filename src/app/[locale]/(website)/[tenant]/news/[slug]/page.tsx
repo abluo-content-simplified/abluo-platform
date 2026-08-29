@@ -36,6 +36,7 @@ import { BackButton } from '@/components/events/BackButton'
 import { PortableText } from '@portabletext/react'
 import { articlePortableTextComponents } from '@/components/portable-text/article-components'
 import { getNewsModuleMessages, formatNewsDate } from '@/lib/i18n/news-module-messages'
+import { resolveEasing } from '@/lib/motion/easing'
 
 export const dynamic = 'force-dynamic'
 
@@ -213,7 +214,7 @@ export default async function NewsDetailPage({ params, searchParams }: PageProps
   // Motion tokens — durationSlow for content entrances (platform convention).
   const m = designSystem?.motion
   const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
-  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const ease = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
   return (
     <SlugMapProvider slugMap={slugMap}>

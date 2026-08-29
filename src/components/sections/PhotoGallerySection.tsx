@@ -5,6 +5,8 @@ import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
 import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
+import { resolveEasing } from '@/lib/motion/easing'
+import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 interface Props {
   section: PhotoGallerySection
@@ -61,7 +63,7 @@ function VideoFallbackCard({ item, ratioClass }: { item: GalleryItem; ratioClass
   const { title } = resolveItem(item)
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-sm ${ratioClass || 'aspect-video'} flex items-center justify-center`}
+      className={`relative w-full overflow-hidden rounded-[var(--radius-sm)] ${ratioClass || 'aspect-video'} flex items-center justify-center`}
       style={{ backgroundColor: 'var(--color-surface, var(--color-background))' }}
     >
       {/* Play icon */}
@@ -107,7 +109,7 @@ function GalleryImageCard({
   if (!asset?.image) {
     return (
       <div
-        className={`w-full rounded-sm ${ratioClass || 'aspect-square'}`}
+        className={`w-full rounded-[var(--radius-sm)] ${ratioClass || 'aspect-square'}`}
         style={{ backgroundColor: 'var(--color-surface-alt, var(--color-background))' }}
       />
     )
@@ -118,7 +120,7 @@ function GalleryImageCard({
   const altValue = asset.altText ?? title ?? ''
 
   return (
-    <figure className="group relative overflow-hidden rounded-sm">
+    <figure className="group relative overflow-hidden rounded-[var(--radius-sm)]">
       {ratioClass ? (
         <div className={`relative w-full ${ratioClass} overflow-hidden`}>
           <img
@@ -167,7 +169,7 @@ export function PhotoGallerySection({ section, surface, designSystem }: Props) {
 
   const m = designSystem?.motion
   const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
-  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const ease = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
   const hasHeader = Boolean(eyebrow || headline || description)
   const items = gallery?.items ?? []
@@ -182,19 +184,24 @@ export function PhotoGallerySection({ section, surface, designSystem }: Props) {
       {hasHeader && (
         <SlideUp duration={duration} ease={ease} delay={0} className="mb-12 max-w-2xl">
           {eyebrow && (
-            <p
-              className="mb-5 text-xs font-semibold uppercase tracking-[0.2em]"
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              {eyebrow}
-            </p>
+            <EyebrowLabel
+              eyebrow={eyebrow}
+              designSystem={designSystem}
+              defaultAccent="none"
+              weight="semibold"
+              className="mb-5"
+            />
           )}
           {headline && (
             <h2
-              className="text-3xl font-semibold leading-snug tracking-tight md:text-4xl"
+              className="[--fs-h2:1.875rem] md:[--fs-h2:2.25rem]"
               style={{
                 color: 'var(--color-text-primary)',
                 fontFamily: 'var(--font-heading)',
+                fontSize: 'var(--font-size-h2, var(--fs-h2))',
+                fontWeight: 'var(--font-weight-h2, 600)',
+                lineHeight: 'var(--line-height-h2, 1.375)',
+                letterSpacing: 'var(--letter-spacing-h2, -0.025em)',
               }}
             >
               {headline}

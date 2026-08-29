@@ -20,7 +20,7 @@ function StatusBadge({ status }: { status: Event['status'] }) {
   if (status === 'upcoming') {
     return (
       <span
-        className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-widest"
+        className="inline-flex items-center rounded-[var(--radius-btn)] border px-2 py-0.5 text-xs font-semibold uppercase tracking-widest"
         style={{
           borderColor: 'color-mix(in oklch, var(--color-primary) 25%, transparent)',
           backgroundColor: 'color-mix(in oklch, var(--color-primary) 12%, transparent)',
@@ -33,7 +33,7 @@ function StatusBadge({ status }: { status: Event['status'] }) {
   }
   return (
     <span
-      className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-widest"
+      className="inline-flex items-center rounded-[var(--radius-btn)] border px-2 py-0.5 text-xs font-semibold uppercase tracking-widest"
       style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}
     >
       Past
@@ -102,7 +102,7 @@ export function EventCard({
     <SlideUp delay={delay} duration={duration} ease={ease} className="h-full">
       <Link
         href={href}
-        className="group flex h-full flex-col overflow-hidden rounded-2xl transition-all hover:shadow-xl"
+        className="group flex h-full flex-col overflow-hidden rounded-[var(--radius-lg)] transition-all hover:shadow-xl"
         style={{
           backgroundColor: 'var(--color-surface)',
           border: '1px solid',

@@ -20,6 +20,7 @@ import { CtaButton } from '@/components/ui/CtaButton'
 import { useEarlyAccessSafe } from '@/components/forms/EarlyAccessContext'
 import { useFormOverlaySafe } from '@/components/forms/FormOverlayContext'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
+import { resolveEasing } from '@/lib/motion/easing'
 
 interface Props {
   section: HeroLensSectionType
@@ -146,7 +147,7 @@ export function HeroLensSection({ section, surface, designSystem }: Props) {
   // ── DS motion tokens ───────────────────────────────────────────────────────
   const m = designSystem?.motion
   const duration = m?.durationSlower !== undefined ? m.durationSlower / 1000 : 0.8
-  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const ease = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
   const bgUrl = imageUrl(section.backgroundImage, 1600)
@@ -161,8 +162,12 @@ export function HeroLensSection({ section, surface, designSystem }: Props) {
 
     if (cta.formId && formOverlay) {
       const formId = cta.formId
+      // Optional authored pre-fill. Omitted entirely when the CTA has none, so
+      // the open request is byte-identical to before for every existing CTA.
+      const context = cta.context
       return () => formOverlay.open({
         formId,
+        ...(context ? { context } : {}),
         source: {
           source: 'header_cta',
           cta_internal_name: cta.internalName ?? null,
@@ -340,8 +345,8 @@ export function HeroLensSection({ section, surface, designSystem }: Props) {
           {title && (
             <SlideUp duration={duration} ease={ease} delay={d1} className="mb-6">
               <h1
-                className="text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl xl:text-6xl"
-                style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
+                className="[--fs-h1:2.25rem] sm:[--fs-h1:3rem] xl:[--fs-h1:3.75rem]"
+                style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--font-size-h1, var(--fs-h1))', fontWeight: 'var(--font-weight-h1, 700)', lineHeight: 'var(--line-height-h1, 1.08)', letterSpacing: 'var(--letter-spacing-h1, -0.025em)' }}
               >
                 {title.split('\n').map((line, i) => (
                   <span key={i} className="block">{line}</span>
@@ -373,7 +378,7 @@ export function HeroLensSection({ section, surface, designSystem }: Props) {
                     style={{
                       backgroundColor: 'var(--color-primary)',
                       color: '#fff',
-                      borderRadius: 'var(--radius-md, 8px)',
+                      borderRadius: 'var(--radius-btn)',
                       boxShadow: '0 4px 24px -4px color-mix(in srgb, var(--color-primary) 60%, transparent)',
                     }}
                   >

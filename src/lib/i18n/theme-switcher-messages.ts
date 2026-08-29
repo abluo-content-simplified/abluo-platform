@@ -49,6 +49,42 @@ const MESSAGES: Record<string, ThemeSwitcherMessages> = {
       system: 'System',
     },
   },
+  fr: {
+    ariaLabel:       'Thème de couleurs',
+    appearanceLabel: 'Apparence',
+    themes: {
+      light:  'Clair',
+      dark:   'Sombre',
+      system: 'Système',
+    },
+  },
+  es: {
+    ariaLabel:       'Esquema de color',
+    appearanceLabel: 'Apariencia',
+    themes: {
+      light:  'Claro',
+      dark:   'Oscuro',
+      system: 'Sistema',
+    },
+  },
+  pt: {
+    ariaLabel:       'Esquema de cores',
+    appearanceLabel: 'Aspeto',
+    themes: {
+      light:  'Claro',
+      dark:   'Escuro',
+      system: 'Sistema',
+    },
+  },
+  nl: {
+    ariaLabel:       'Kleurenschema',
+    appearanceLabel: 'Weergave',
+    themes: {
+      light:  'Licht',
+      dark:   'Donker',
+      system: 'Systeem',
+    },
+  },
 }
 
 export function getThemeSwitcherMessages(locale: string): ThemeSwitcherMessages {

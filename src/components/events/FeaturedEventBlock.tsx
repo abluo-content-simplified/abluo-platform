@@ -6,6 +6,7 @@ import { SlideUp, FadeIn } from '@/components/animation'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
 import { getEventMessages } from '@/lib/i18n/event-messages'
 import type { Event, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
+import { resolveEasing } from '@/lib/motion/easing'
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
@@ -25,7 +26,7 @@ function StatusBadge({ status, liveLabel, upcomingLabel }: {
   if (status === 'upcoming') {
     return (
       <span
-        className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-widest"
+        className="inline-flex items-center gap-2 rounded-[var(--radius-btn)] border px-3 py-1 text-xs font-semibold uppercase tracking-widest"
         style={{
           borderColor: 'color-mix(in oklch, var(--color-primary) 25%, transparent)',
           backgroundColor: 'color-mix(in oklch, var(--color-primary) 12%, transparent)',
@@ -85,7 +86,7 @@ interface FeaturedEventBlockProps {
 export function FeaturedEventBlock({ event, designSystem, locale, tenantId }: FeaturedEventBlockProps) {
   const m = designSystem?.motion
   const durationSlow = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
-  const easeReveal: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const easeReveal = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
   const msg = getEventMessages(locale)
 
@@ -153,7 +154,7 @@ export function FeaturedEventBlock({ event, designSystem, locale, tenantId }: Fe
 
       {/* ── Hero image ──────────────────────────────────────────────── */}
       {heroSrc && (
-        <FadeIn delay={0.1} duration={durationSlow} ease={easeReveal} className="mt-10 overflow-hidden rounded-2xl">
+        <FadeIn delay={0.1} duration={durationSlow} ease={easeReveal} className="mt-10 overflow-hidden rounded-[var(--radius-lg)]">
           <Link href={eventHref}>
             <img
               src={heroSrc}

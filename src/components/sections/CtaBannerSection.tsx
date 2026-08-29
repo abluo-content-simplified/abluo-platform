@@ -30,9 +30,12 @@ import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { FadeIn } from '@/components/animation/FadeIn'
 import { SectionContainer } from '@/components/layout/SectionContainer'
-import { resolveCta } from '@/lib/sanity/cta'
+import { resolveCta, prefixCtaHref } from '@/lib/sanity/cta'
 import { CtaButton } from '@/components/ui/CtaButton'
 import { useFormOverlaySafe } from '@/components/forms/FormOverlayContext'
+import { resolveEasing } from '@/lib/motion/easing'
+import { renderHeadline } from '@/lib/headline-accent'
+import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 // ─── Section data shape ───────────────────────────────────────────────────────
 // Mirrors the canonical `CtaBannerSection` interface being added to
@@ -52,6 +55,11 @@ export interface CtaBannerSectionData {
   eyebrow?: string
   /** Locale-resolved by GROQ. Honours `\n` as a hard line break. */
   heading?: string
+  /**
+   * Optional headline accent — 'lastWord' paints the final word of `heading`
+   * in the brand accent colour. Null/absent means 'none' (unchanged output).
+   */
+  headlineAccent?: 'none' | 'lastWord' | null
   /** Locale-resolved by GROQ */
   body?: string
   primaryCta?: Cta
@@ -107,14 +115,8 @@ function CtaRow({ section }: { section: CtaBannerSectionData }) {
   const tenantId = params.tenant as string | undefined
   const formOverlay = useFormOverlaySafe()
 
-  function withTenantPrefix(resolved: ReturnType<typeof resolveCta>) {
-    if (resolved.type !== 'link' || resolved.external || !locale || !tenantId) return resolved
-    const slug = resolved.href.startsWith('/') ? resolved.href.slice(1) : resolved.href
-    return { ...resolved, href: `/${locale}/${tenantId}/${slug}` }
-  }
-
-  const primaryCta = section.primaryCta ? withTenantPrefix(resolveCta(section.primaryCta)) : null
-  const secondaryCta = section.secondaryCta ? withTenantPrefix(resolveCta(section.secondaryCta)) : null
+  const primaryCta = section.primaryCta ? prefixCtaHref(resolveCta(section.primaryCta), locale, tenantId) : null
+  const secondaryCta = section.secondaryCta ? prefixCtaHref(resolveCta(section.secondaryCta), locale, tenantId) : null
 
   // Bridge form CTAs to the form overlay, by the form's stable route key.
   // Same pattern as HeroLensSection / HeroLiveCaptureSection: the null-safe
@@ -125,8 +127,12 @@ function CtaRow({ section }: { section: CtaBannerSectionData }) {
 
     if (cta.formId && formOverlay) {
       const formId = cta.formId
+      // Optional authored pre-fill. Omitted entirely when the CTA has none, so
+      // the open request is byte-identical to before for every existing CTA.
+      const context = cta.context
       return () => formOverlay.open({
         formId,
+        ...(context ? { context } : {}),
         source: {
           source: 'cta_banner_section',
           cta_internal_name: cta.internalName ?? null,
@@ -180,14 +186,14 @@ interface Props {
 }
 
 export function CtaBannerSection({ section, surface, designSystem }: Props) {
-  const { eyebrow, heading, body, footnote, footnoteAccent, watermarkText, showGlow } = section
+  const { eyebrow, heading, headlineAccent, body, footnote, footnoteAccent, watermarkText, showGlow } = section
 
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
   // Motion tokens
   const m = designSystem?.motion
   const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
-  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const ease = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
   const glowBackground = buildGlowBackground(showGlow)
   const hasFootnote = Boolean(footnote || footnoteAccent)
@@ -233,30 +239,33 @@ export function CtaBannerSection({ section, surface, designSystem }: Props) {
         <div className="relative mx-auto flex flex-col items-center text-center">
           <SlideUp duration={duration} ease={ease} delay={0} className="w-full">
             {eyebrow && (
-              <p
-                className="mb-6 text-xs font-semibold uppercase tracking-[0.2em]"
-                style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-body)' }}
-              >
-                {eyebrow}
-              </p>
+              <EyebrowLabel
+                eyebrow={eyebrow}
+                designSystem={designSystem}
+                defaultAccent="none"
+                weight="semibold"
+                fontFamily="var(--font-body)"
+                className="mb-6 justify-center"
+              />
             )}
 
             {heading && (
               <h2
-                className="mx-auto font-extrabold"
+                className="mx-auto"
                 style={{
                   color: 'var(--color-text-primary)',
                   fontFamily: 'var(--font-heading)',
-                  fontSize: 'clamp(2.5rem, 6vw, 5.5rem)',
-                  letterSpacing: '-0.04em',
-                  lineHeight: 1.0,
+                  fontSize: 'var(--font-size-h2, clamp(2.5rem, 6vw, 5.5rem))',
+                  fontWeight: 'var(--font-weight-h2, 800)',
+                  letterSpacing: 'var(--letter-spacing-h2, -0.04em)',
+                  lineHeight: 'var(--line-height-h2, 1)',
                   // Authors type real line breaks in the Studio text field;
                   // pre-line turns each newline into a hard break without any
                   // string splitting or markup in the content.
                   whiteSpace: 'pre-line',
                 }}
               >
-                {heading}
+                {renderHeadline(heading, headlineAccent)}
               </h2>
             )}
 

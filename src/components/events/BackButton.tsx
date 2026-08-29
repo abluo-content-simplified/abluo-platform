@@ -34,7 +34,7 @@ export function BackButton({ fallbackUrl, label }: BackButtonProps) {
     <button
       type="button"
       onClick={handleClick}
-      className="inline-flex items-center gap-2 mb-8 rounded-lg px-3 py-2 text-sm font-medium transition-all"
+      className="inline-flex items-center gap-2 mb-8 rounded-[var(--radius-btn)] px-3 py-2 text-sm font-medium transition-all"
       style={{
         color: 'var(--color-primary)',
         backgroundColor: 'color-mix(in oklch, var(--color-primary) 10%, transparent)',

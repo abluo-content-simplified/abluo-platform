@@ -3,6 +3,8 @@ import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
+import { resolveEasing } from '@/lib/motion/easing'
+import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 // ─── Shared rich-text rendering ───────────────────────────────────────────────
 //
@@ -128,8 +130,7 @@ function RichText({ blocks }: { blocks: PortableTextContent }) {
       elements.push(
         <h2
           key={block._key}
-          className="text-2xl font-semibold"
-          style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
+          style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--font-size-h3, 1.5rem)', fontWeight: 'var(--font-weight-h3, 600)', lineHeight: 'var(--line-height-h3, 2rem)' }}
         >
           {content}
         </h2>
@@ -165,24 +166,24 @@ export function TextSection({ section, surface, designSystem }: Props) {
   // Motion tokens — durationSlow for content sections; divide ms → seconds for motion/react
   const m = designSystem?.motion
   const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
-  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const ease = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
   return (
       <SectionContainer id={section.anchorId} style={surfaceStyles}>
         <div className="max-w-[680px]">
         <SlideUp duration={duration} ease={ease} delay={0}>
           {eyebrow && (
-            <p
-              className="mb-4 text-xs font-medium uppercase tracking-[0.2em]"
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              {eyebrow}
-            </p>
+            <EyebrowLabel
+              eyebrow={eyebrow}
+              designSystem={designSystem}
+              defaultAccent="none"
+              className="mb-4"
+            />
           )}
           {title && (
             <h2
-              className="mb-10 text-3xl font-semibold leading-snug tracking-tight md:text-4xl"
-              style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
+              className="mb-10 [--fs-h2:1.875rem] md:[--fs-h2:2.25rem]"
+              style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--font-size-h2, var(--fs-h2))', fontWeight: 'var(--font-weight-h2, 600)', lineHeight: 'var(--line-height-h2, 1.375)', letterSpacing: 'var(--letter-spacing-h2, -0.025em)' }}
             >
               {title}
             </h2>

@@ -91,6 +91,32 @@ const MESSAGES: Record<string, EventMessages> = {
     noEventsYetHeading:   'Todavía no hay eventos.',
     noEventsYetBody:      'Vuelve pronto.',
   },
+  pt: {
+    statusLive:           'Em direto',
+    statusUpcoming:       'Brevemente',
+    viewEventDetails:     'Ver detalhes do evento',
+    backToEvents:         'Voltar aos eventos',
+    backToLive:           'Voltar ao direto',
+    scheduleHeading:      'Programa',
+    galleryHeading:       'Galeria',
+    relatedEventsHeading: 'Outros eventos',
+    watchFallback:        'Ver',
+    noEventsYetHeading:   'Ainda não há eventos.',
+    noEventsYetBody:      'Volte em breve.',
+  },
+  nl: {
+    statusLive:           'Live',
+    statusUpcoming:       'Binnenkort',
+    viewEventDetails:     'Evenementdetails bekijken',
+    backToEvents:         'Terug naar evenementen',
+    backToLive:           'Terug naar live',
+    scheduleHeading:      'Programma',
+    galleryHeading:       'Galerij',
+    relatedEventsHeading: 'Andere evenementen',
+    watchFallback:        'Bekijken',
+    noEventsYetHeading:   'Nog geen evenementen.',
+    noEventsYetBody:      'Kom binnenkort terug.',
+  },
 }
 
 export function getEventMessages(locale: string): EventMessages {

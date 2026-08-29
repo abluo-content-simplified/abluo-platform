@@ -33,7 +33,7 @@ type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> & {
 }
 
 const FIELD_CLASS =
-  'w-full rounded border border-zinc-200 bg-white px-3 py-2.5 pr-16 text-sm text-zinc-900 placeholder-zinc-300 outline-none transition-colors focus:border-zinc-400'
+  'w-full rounded-[var(--radius-sm)] border border-zinc-200 bg-white px-3 py-2.5 pr-16 text-sm text-zinc-900 placeholder-zinc-300 outline-none transition-colors focus:border-zinc-400'
 
 export function PasswordInput({
   label,

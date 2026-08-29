@@ -17,8 +17,14 @@
  * - Components receive plain strings — unaware of localization internals.
  */
 
+// The trailing `select(...)` is the legacy escape hatch: some older documents
+// store a plain string where the schema now declares a localizedString. A plain
+// string has no `_type` attribute, so it falls through and is returned as-is.
+// A *localized object* always carries `_type`, so an object with no usable
+// locale resolves to null rather than leaking `{_type: 'localizedString'}` into
+// the render tree (React throws "Objects are not valid as a React child").
 const loc = (field: string) =>
-  `coalesce(${field}[$locale], ${field}[$defaultLocale], ${field}.en, ${field})`
+  `coalesce(${field}[$locale], ${field}[$defaultLocale], ${field}.en, select(!defined(${field}._type) => ${field}))`
 
 const locImage = (field: string) => /* groq */ `
   ${field} {
@@ -28,6 +34,23 @@ const locImage = (field: string) => /* groq */ `
     "alt": ${loc('alt')},
     "caption": ${loc('caption')}
   }
+`
+
+// ─── navigationLink fragment ──────────────────────────────────────────────────
+// Every field the navigationLink object type carries, locale-resolved, shaped
+// to match NavLink in ./types.ts. Used by the footer column / credit
+// projections added for the grouped footer. The existing navLinks[] and
+// footerLinks[] projections keep their inline copies untouched.
+const NAV_LINK_FIELDS = /* groq */ `
+  "label": ${loc('label')},
+  linkType,
+  "pageSlug": coalesce(pageRef->slug[$locale].current, pageRef->slug[$defaultLocale].current),
+  internalPage,
+  externalUrl,
+  anchorId,
+  openInNewTab,
+  href,
+  external
 `
 
 // ─── Renderable form definition projection ────────────────────────────────────
@@ -104,7 +127,10 @@ export const CTA_FIELDS = /* groq */ `
   "fileUrl": file.asset->url,
   "fileName": file.asset->originalFilename,
   externalUrl,
-  openInNewTab
+  openInNewTab,
+  // Optional form pre-fill pairs (actionType == 'form'). Null on every CTA
+  // authored before this field existed — those open the form unchanged.
+  "context": context[]{ key, value }
 `
 
 // ─── Page sections[] projection ───────────────────────────────────────────────
@@ -130,7 +156,17 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       anchorId,
       "eyebrow": ${loc('eyebrow')},
       "headline": ${loc('headline')},
+      // Optional per-section headline accent ('none' | 'lastWord'). Null on
+      // every section authored before the field existed — the renderer treats
+      // null exactly like 'none', so nothing changes for existing tenants.
+      headlineAccent,
       "subheadline": ${loc('subheadline')},
+      // heroSection extension — optional bold line between the subheadline and
+      // the CTA row. Null on every section that has never had one authored
+      // (which is every section type other than heroSection), so the renderer
+      // simply renders nothing. treatmentCard's own nested "tagline" lives
+      // inside the treatments[] sub-projection below and is untouched by this.
+      "tagline": ${loc('tagline')},
       "ctaLabel": ${loc('ctaLabel')},
       ctaHref,
       "title": ${loc('title')},
@@ -223,6 +259,10 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       overlayOpacity,
       blur,
       brightness,
+      // heroSection extension — 'onMedia' (default, today's white button over
+      // media) | 'brand' (design-system button tokens). Null on every existing
+      // hero, which the renderer treats exactly like 'onMedia'.
+      ctaStyle,
       // heroLiveCaptureSection + heroLensSection CTA array
       ctas[] { ${CTA_FIELDS} },
       backgroundImage { asset, hotspot, crop },
@@ -307,8 +347,12 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
         "title": ${loc('title')},
         "description": ${loc('description')},
         "bullets": bullets[]{ "v": ${loc('@')} }.v,
+        // featureRow only (mediaFeatureSection). Null for every featureCard
+        // and for every featureRow authored before the field existed.
+        ${locImage('image')},
       },
       // mediaFeatureSection
+      interactiveMedia,
       mockupFrame,
       "mockupTitle": ${loc('mockupTitle')},
       "mockupBadge": ${loc('mockupBadge')},
@@ -380,6 +424,10 @@ export const websiteSiteConfigQuery = /* groq */ `
     "tagline": ${loc('tagline')},
     ${locImage('logo')},
     ${locImage('logoLight')},
+    // Text wordmark — drawn in the heading font when no logo image is set.
+    // Null on every tenant that has not authored one.
+    "wordmarkText": ${loc('wordmarkText')},
+    wordmarkAccent,
     backgroundGraphic {
       enabled,
       ${locImage('asset')},
@@ -450,6 +498,15 @@ export const websiteSiteConfigQuery = /* groq */ `
       href,
       external
     },
+    // Grouped footer link columns — empty on every tenant that has not
+    // authored any, leaving the flat footerLinks[] above the only source.
+    footerColumns[] {
+      _key,
+      "heading": ${loc('heading')},
+      links[] { ${NAV_LINK_FIELDS} }
+    },
+    "footerSubTagline": ${loc('footerSubTagline')},
+    footerCredit { ${NAV_LINK_FIELDS} },
     "footerCtaHeading": ${loc('footerCtaHeading')},
     "footerCtaSubtext": ${loc('footerCtaSubtext')},
     "footerCtaInputPlaceholder": ${loc('footerCtaInputPlaceholder')},
@@ -1210,6 +1267,8 @@ export const homePageQuery = /* groq */ `
       anchorId,
       "eyebrow": ${loc('eyebrow')},
       "headline": ${loc('headline')},
+      // Optional per-section headline accent — see PAGE_SECTIONS_PROJECTION.
+      headlineAccent,
       "subheadline": ${loc('subheadline')},
       "ctaLabel": ${loc('ctaLabel')},
       ctaHref,
@@ -1420,6 +1479,8 @@ export const DS_FIELDS_SELECTION = /* groq */ `{
   description,
   parentDesignSystem,
   eyebrowAccent,
+  eyebrowColor,
+  heroEyebrowVariant,
 
   colors {
     darkTheme {
@@ -1440,7 +1501,18 @@ export const DS_FIELDS_SELECTION = /* groq */ `{
 
   typography {
     headingFont { source, libraryFont, googleFont },
-    bodyFont { source, libraryFont, googleFont }
+    bodyFont { source, libraryFont, googleFont },
+    // Typographic scale — consumed by buildCssVars() to emit the fluid
+    // --font-size-hN / --font-weight-hN / --line-height-hN / --letter-spacing-hN
+    // custom properties the section headings read. A level left empty here is
+    // simply not emitted, and the component keeps its own legacy size.
+    h1 { size, weight, lineHeight, letterSpacing },
+    h2 { size, weight, lineHeight, letterSpacing },
+    h3 { size, weight, lineHeight, letterSpacing },
+    h4 { size, weight, lineHeight, letterSpacing },
+    bodyLarge { size, weight, lineHeight, letterSpacing },
+    body { size, weight, lineHeight, letterSpacing },
+    small { size, weight, lineHeight, letterSpacing }
   },
 
   radius { small, medium, large },

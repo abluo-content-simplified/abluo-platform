@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildHeroMediaFilter, resolveHeroMediaLayout } from '../HeroSection'
+import { buildHeroMediaFilter, resolveHeroCtaColors, resolveHeroMediaLayout } from '../HeroSection'
 
 describe('buildHeroMediaFilter', () => {
   it('returns no filter when blur and brightness are null (GROQ unset-field shape)', () => {
@@ -53,5 +53,38 @@ describe('resolveHeroMediaLayout', () => {
 
   it('passes through an explicit boxed value', () => {
     expect(resolveHeroMediaLayout('boxed')).toBe('boxed')
+  })
+})
+
+describe('resolveHeroCtaColors', () => {
+  it('keeps the white-on-media button when ctaStyle is null (GROQ unset-field shape)', () => {
+    // Every hero authored before this field exists has no `ctaStyle` in
+    // storage — GROQ resolves that to `null`, not `undefined`. These are the
+    // exact literals the component hardcoded before the field existed, so
+    // Livener / Studio Martegani render unchanged.
+    expect(resolveHeroCtaColors(null, true)).toEqual({ ctaBg: '#ffffff', ctaText: '#000000' })
+  })
+
+  it('keeps the white-on-media button when ctaStyle is undefined', () => {
+    expect(resolveHeroCtaColors(undefined, true)).toEqual({ ctaBg: '#ffffff', ctaText: '#000000' })
+  })
+
+  it('keeps the white-on-media button for an explicit onMedia value', () => {
+    expect(resolveHeroCtaColors('onMedia', true)).toEqual({ ctaBg: '#ffffff', ctaText: '#000000' })
+  })
+
+  it('uses the design-system button tokens for brand over full-bleed media', () => {
+    expect(resolveHeroCtaColors('brand', true)).toEqual({
+      ctaBg: 'var(--btn-primary-bg)',
+      ctaText: 'var(--btn-primary-text)',
+    })
+  })
+
+  it('uses the surface CTA colours without full-bleed media, whatever ctaStyle says', () => {
+    const expected = { ctaBg: 'var(--color-primary)', ctaText: 'var(--color-background)' }
+    expect(resolveHeroCtaColors(null, false)).toEqual(expected)
+    expect(resolveHeroCtaColors(undefined, false)).toEqual(expected)
+    expect(resolveHeroCtaColors('onMedia', false)).toEqual(expected)
+    expect(resolveHeroCtaColors('brand', false)).toEqual(expected)
   })
 })

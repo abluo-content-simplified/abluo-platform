@@ -27,7 +27,7 @@ export function SectionEmptyState({ heading, body, duration, ease }: SectionEmpt
   return (
     <FadeIn duration={duration} ease={ease}>
       <div
-        className="rounded-2xl px-8 py-14 text-center"
+        className="rounded-[var(--radius-lg)] px-8 py-14 text-center"
         style={{
           backgroundColor: 'var(--color-surface)',
           border: '1px solid var(--color-border)',

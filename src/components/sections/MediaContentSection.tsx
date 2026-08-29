@@ -25,9 +25,11 @@ import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { imageUrl } from '@/lib/sanity/image'
-import { resolveCta } from '@/lib/sanity/cta'
+import { resolveCta, prefixCtaHref } from '@/lib/sanity/cta'
 import { CtaButton } from '@/components/ui/CtaButton'
 import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
+import { resolveEasing } from '@/lib/motion/easing'
+import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 // ─── Default media styles ─────────────────────────────────────────────────────
 // Fallback style definitions used when the Design System has no mediaStyles array.
@@ -193,7 +195,7 @@ function RichText({ blocks }: { blocks: NonNullable<MediaContentSectionType['bod
 
     if (block.style === 'h2') {
       elements.push(
-        <h2 key={block._key} className="text-2xl font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+        <h2 key={block._key} style={{ color: 'var(--color-text-primary)', fontSize: 'var(--font-size-h3, 1.5rem)', fontWeight: 'var(--font-weight-h3, 600)', lineHeight: 'var(--line-height-h3, 2rem)' }}>
           {content}
         </h2>
       )
@@ -201,7 +203,7 @@ function RichText({ blocks }: { blocks: NonNullable<MediaContentSectionType['bod
     }
     if (block.style === 'h3') {
       elements.push(
-        <h3 key={block._key} className="text-xl font-medium" style={{ color: 'var(--color-text-primary)' }}>
+        <h3 key={block._key} style={{ color: 'var(--color-text-primary)', fontSize: 'var(--font-size-h4, 1.25rem)', fontWeight: 'var(--font-weight-h4, 500)', lineHeight: 'var(--line-height-h4, 1.75rem)' }}>
           {content}
         </h3>
       )
@@ -232,15 +234,8 @@ function CtaRow({
   const locale = params.locale as string | undefined
   const tenantId = params.tenant as string | undefined
 
-  function withTenantPrefix(resolved: ReturnType<typeof resolveCta>) {
-    if (resolved.type !== 'link' || resolved.external || !locale || !tenantId) return resolved
-    // href from resolveCta for 'page' type is just "/slug" — prepend locale+tenant
-    const slug = resolved.href.startsWith('/') ? resolved.href.slice(1) : resolved.href
-    return { ...resolved, href: `/${locale}/${tenantId}/${slug}` }
-  }
-
-  const primaryCta = section.primaryCta ? withTenantPrefix(resolveCta(section.primaryCta)) : null
-  const secondaryCta = section.secondaryCta ? withTenantPrefix(resolveCta(section.secondaryCta)) : null
+  const primaryCta = section.primaryCta ? prefixCtaHref(resolveCta(section.primaryCta), locale, tenantId) : null
+  const secondaryCta = section.secondaryCta ? prefixCtaHref(resolveCta(section.secondaryCta), locale, tenantId) : null
 
   if ((!primaryCta || primaryCta.type === 'none') && (!secondaryCta || secondaryCta.type === 'none')) {
     return null
@@ -301,7 +296,7 @@ export function MediaContentSection({ section, surface, designSystem }: Props) {
   // Motion tokens
   const m = designSystem?.motion
   const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
-  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const ease = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
   // Resolve image URL
   const imageSrc = imageUrl(image, 1200)
@@ -329,17 +324,17 @@ export function MediaContentSection({ section, surface, designSystem }: Props) {
   const textBlock = (
     <SlideUp duration={duration} ease={ease} delay={0} className="flex flex-col justify-center">
       {eyebrow && (
-        <p
-          className="mb-4 text-xs font-medium uppercase tracking-[0.2em]"
-          style={{ color: 'var(--color-text-muted)' }}
-        >
-          {eyebrow}
-        </p>
+        <EyebrowLabel
+          eyebrow={eyebrow}
+          designSystem={designSystem}
+          defaultAccent="none"
+          className="mb-4"
+        />
       )}
       {title && (
         <h2
-          className="text-3xl font-semibold leading-snug tracking-tight md:text-4xl"
-          style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
+          className="[--fs-h2:1.875rem] md:[--fs-h2:2.25rem]"
+          style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--font-size-h2, var(--fs-h2))', fontWeight: 'var(--font-weight-h2, 600)', lineHeight: 'var(--line-height-h2, 1.375)', letterSpacing: 'var(--letter-spacing-h2, -0.025em)' }}
         >
           {title}
         </h2>
@@ -377,17 +372,17 @@ export function MediaContentSection({ section, surface, designSystem }: Props) {
         <div className="grid gap-12 md:grid-cols-2 md:gap-20 lg:gap-28">
           <SlideUp duration={duration} ease={ease} delay={0} className="flex flex-col justify-center">
             {eyebrow && (
-              <p
-                className="mb-4 text-xs font-medium uppercase tracking-[0.2em]"
-                style={{ color: 'var(--color-text-muted)' }}
-              >
-                {eyebrow}
-              </p>
+              <EyebrowLabel
+                eyebrow={eyebrow}
+                designSystem={designSystem}
+                defaultAccent="none"
+                className="mb-4"
+              />
             )}
             {title && (
               <h2
-                className="text-3xl font-semibold leading-snug tracking-tight md:text-4xl"
-                style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
+                className="[--fs-h2:1.875rem] md:[--fs-h2:2.25rem]"
+                style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--font-size-h2, var(--fs-h2))', fontWeight: 'var(--font-weight-h2, 600)', lineHeight: 'var(--line-height-h2, 1.375)', letterSpacing: 'var(--letter-spacing-h2, -0.025em)' }}
               >
                 {title}
               </h2>

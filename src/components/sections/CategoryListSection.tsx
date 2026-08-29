@@ -28,9 +28,12 @@ import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { FadeIn } from '@/components/animation/FadeIn'
 import { SectionContainer } from '@/components/layout/SectionContainer'
-import { resolveCta } from '@/lib/sanity/cta'
+import { resolveCta, prefixCtaHref } from '@/lib/sanity/cta'
 import { CtaButton } from '@/components/ui/CtaButton'
 import { Icon } from '@/components/icons'
+import { resolveEasing } from '@/lib/motion/easing'
+import { renderHeadline } from '@/lib/headline-accent'
+import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 // ─── Pure helpers (unit-tested) ──────────────────────────────────────────────
 
@@ -67,7 +70,7 @@ interface Props {
 }
 
 export function CategoryListSection({ section, surface, designSystem }: Props) {
-  const { eyebrow, title, intro, headerCta, categories, callout } = section
+  const { eyebrow, title, headlineAccent, intro, headerCta, categories, callout } = section
 
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
   const columnBg = resolveColumnBackground(
@@ -77,7 +80,7 @@ export function CategoryListSection({ section, surface, designSystem }: Props) {
   // Motion tokens — durationSlow for content sections; ms → seconds for motion/react
   const m = designSystem?.motion
   const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
-  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const ease = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
   // tenantId and locale are URL params — not stored in Sanity. Internal page
   // CTAs come back from resolveCta() as a bare "/slug" and need the prefix.
@@ -85,14 +88,8 @@ export function CategoryListSection({ section, surface, designSystem }: Props) {
   const locale = params?.locale as string | undefined
   const tenantId = params?.tenant as string | undefined
 
-  function withTenantPrefix(resolved: ReturnType<typeof resolveCta>) {
-    if (resolved.type !== 'link' || resolved.external || !locale || !tenantId) return resolved
-    const slug = resolved.href.startsWith('/') ? resolved.href.slice(1) : resolved.href
-    return { ...resolved, href: `/${locale}/${tenantId}/${slug}` }
-  }
-
-  const resolvedHeaderCta = headerCta ? withTenantPrefix(resolveCta(headerCta)) : null
-  const resolvedCalloutCta = callout?.cta ? withTenantPrefix(resolveCta(callout.cta)) : null
+  const resolvedHeaderCta = headerCta ? prefixCtaHref(resolveCta(headerCta), locale, tenantId) : null
+  const resolvedCalloutCta = callout?.cta ? prefixCtaHref(resolveCta(callout.cta), locale, tenantId) : null
 
   const hasHeader = Boolean(eyebrow || title || intro || (resolvedHeaderCta && resolvedHeaderCta.type !== 'none'))
   const hasCategories = Boolean(categories && categories.length > 0)
@@ -105,22 +102,27 @@ export function CategoryListSection({ section, surface, designSystem }: Props) {
         <div className="mb-14 flex flex-wrap items-end justify-between gap-8 md:mb-20">
           <SlideUp duration={duration} ease={ease} delay={0}>
             {eyebrow && (
-              <p
-                className="mb-5 text-xs font-semibold uppercase tracking-[0.2em]"
-                style={{ color: 'var(--color-text-muted)' }}
-              >
-                {eyebrow}
-              </p>
+              <EyebrowLabel
+                eyebrow={eyebrow}
+                designSystem={designSystem}
+                defaultAccent="none"
+                weight="semibold"
+                className="mb-5"
+              />
             )}
             {title && (
               <h2
-                className="text-3xl font-semibold leading-snug tracking-tight md:text-4xl"
+                className="[--fs-h2:1.875rem] md:[--fs-h2:2.25rem]"
                 style={{
                   color: 'var(--color-text-primary)',
                   fontFamily: 'var(--font-heading)',
+                  fontSize: 'var(--font-size-h2, var(--fs-h2))',
+                  fontWeight: 'var(--font-weight-h2, 600)',
+                  lineHeight: 'var(--line-height-h2, 1.375)',
+                  letterSpacing: 'var(--letter-spacing-h2, -0.025em)',
                 }}
               >
-                {title}
+                {renderHeadline(title, headlineAccent)}
               </h2>
             )}
           </SlideUp>
@@ -147,7 +149,7 @@ export function CategoryListSection({ section, surface, designSystem }: Props) {
                     color: 'var(--color-text-primary)',
                     backgroundColor: 'transparent',
                     border: '1px solid var(--color-border)',
-                    borderRadius: 'var(--radius-btn, var(--radius-md))',
+                    borderRadius: 'var(--radius-btn)',
                   }}
                 >
                   <span>{resolvedHeaderCta.label}</span>
@@ -294,7 +296,7 @@ export function CategoryListSection({ section, surface, designSystem }: Props) {
                 style={{
                   backgroundColor: 'var(--btn-primary-bg)',
                   color: 'var(--btn-primary-text)',
-                  borderRadius: 'var(--radius-btn, var(--radius-md))',
+                  borderRadius: 'var(--radius-btn)',
                 }}
               />
             )}

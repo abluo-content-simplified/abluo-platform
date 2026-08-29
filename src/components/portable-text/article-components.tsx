@@ -69,7 +69,7 @@ export const articlePortableTextComponents = {
     em: ({ children }: { children?: React.ReactNode }) => <em>{children}</em>,
     code: ({ children }: { children?: React.ReactNode }) => (
       <code
-        className="px-1.5 py-0.5 rounded text-sm font-mono"
+        className="px-1.5 py-0.5 rounded-[var(--radius-sm)] text-sm font-mono"
         style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-primary)' }}
       >
         {children}

@@ -4,6 +4,8 @@ import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { getVideoSectionMessages } from '@/lib/i18n/video-section-messages'
+import { resolveEasing } from '@/lib/motion/easing'
+import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 // Cloudflare Stream account/customer code for iframe embed URLs. Reuses the
 // exact value already established in HeroSection.tsx for the same Stream
@@ -39,7 +41,7 @@ export function VideoSection({ section, surface, designSystem, locale = 'en' }: 
   // Motion tokens — durationSlow for content-style entrances, ms → seconds
   const mot = designSystem?.motion
   const duration = mot?.durationSlow !== undefined ? mot.durationSlow / 1000 : 0.35
-  const ease: string | number[] = mot?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const ease = resolveEasing(mot?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
   const accessibleLabel = title || m.defaultPlayerLabel
   const aspectClass = ASPECT_RATIO_CLASS[aspectRatio]
@@ -111,17 +113,17 @@ export function VideoSection({ section, surface, designSystem, locale = 'en' }: 
         {(eyebrow || title) && (
           <SlideUp duration={duration} ease={ease} delay={0}>
             {eyebrow && (
-              <p
-                className="mb-4 text-xs font-medium uppercase tracking-[0.2em]"
-                style={{ color: 'var(--color-text-muted)' }}
-              >
-                {eyebrow}
-              </p>
+              <EyebrowLabel
+                eyebrow={eyebrow}
+                designSystem={designSystem}
+                defaultAccent="none"
+                className="mb-4"
+              />
             )}
             {title && (
               <h2
-                className="mb-10 text-3xl font-semibold leading-snug tracking-tight md:text-4xl"
-                style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
+                className="mb-10 [--fs-h2:1.875rem] md:[--fs-h2:2.25rem]"
+                style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--font-size-h2, var(--fs-h2))', fontWeight: 'var(--font-weight-h2, 600)', lineHeight: 'var(--line-height-h2, 1.375)', letterSpacing: 'var(--letter-spacing-h2, -0.025em)' }}
               >
                 {title}
               </h2>
@@ -129,7 +131,7 @@ export function VideoSection({ section, surface, designSystem, locale = 'en' }: 
           </SlideUp>
         )}
         <SlideUp duration={duration} ease={ease} delay={0.1}>
-          <div className={`overflow-hidden rounded-lg ${aspectClass}`}>
+          <div className={`overflow-hidden rounded-[var(--radius-md)] ${aspectClass}`}>
             {player}
           </div>
         </SlideUp>

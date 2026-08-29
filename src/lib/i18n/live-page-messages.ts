@@ -44,6 +44,16 @@ const MESSAGES: Record<string, LivePageMessages> = {
     noLiveEventBody:       'Vuelve pronto.',
     pastLiveEventsHeading: 'Eventos en directo pasados',
   },
+  pt: {
+    noLiveEventHeading:    'Não há nenhum evento em direto agendado neste momento.',
+    noLiveEventBody:       'Volte em breve.',
+    pastLiveEventsHeading: 'Eventos em Direto Anteriores',
+  },
+  nl: {
+    noLiveEventHeading:    'Er is op dit moment geen live-evenement gepland.',
+    noLiveEventBody:       'Kom binnenkort terug.',
+    pastLiveEventsHeading: 'Eerdere Live-evenementen',
+  },
 }
 
 export function getLivePageMessages(locale: string): LivePageMessages {

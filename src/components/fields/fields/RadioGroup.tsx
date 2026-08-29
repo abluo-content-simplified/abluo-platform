@@ -51,7 +51,7 @@ export function RadioGroup({ config, value, onChange, onBlur, error: externalErr
                 style={{
                   textAlign: 'left',
                   padding: '12px 14px',
-                  borderRadius: '12px',
+                  borderRadius: 'var(--form-border-radius)',
                   fontSize: 'inherit',
                   lineHeight: 1.3,
                   cursor: optDisabled ? 'not-allowed' : 'pointer',

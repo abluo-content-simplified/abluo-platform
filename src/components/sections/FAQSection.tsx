@@ -7,6 +7,9 @@ import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
+import { resolveEasing } from '@/lib/motion/easing'
+import { renderHeadline } from '@/lib/headline-accent'
+import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 interface Props {
   section: FAQSection
@@ -80,14 +83,14 @@ function FAQItem({ question, answer, itemDuration, ease }: FAQItemProps) {
 }
 
 export function FAQSection({ section, surface, designSystem }: Props) {
-  const { eyebrow, title, items } = section
+  const { eyebrow, title, headlineAccent, items } = section
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
   // Motion tokens — durationSlow for section entrance, durationFast for accordion interaction
   const m = designSystem?.motion
   const entranceDuration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
   const itemDuration = m?.durationFast !== undefined ? m.durationFast / 1000 : 0.12
-  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const ease = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
   if (!items?.length) return null
 
@@ -97,19 +100,19 @@ export function FAQSection({ section, surface, designSystem }: Props) {
         {/* Section header — SlideUp, consistent with all other sections */}
         <SlideUp duration={entranceDuration} ease={ease} delay={0}>
           {eyebrow && (
-            <p
-              className="mb-4 text-xs font-medium uppercase tracking-[0.2em]"
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              {eyebrow}
-            </p>
+            <EyebrowLabel
+              eyebrow={eyebrow}
+              designSystem={designSystem}
+              defaultAccent="none"
+              className="mb-4"
+            />
           )}
           {title && (
             <h2
-              className="mb-12 text-3xl font-semibold leading-snug tracking-tight md:text-4xl"
-              style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
+              className="mb-12 [--fs-h2:1.875rem] md:[--fs-h2:2.25rem]"
+              style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--font-size-h2, var(--fs-h2))', fontWeight: 'var(--font-weight-h2, 600)', lineHeight: 'var(--line-height-h2, 1.375)', letterSpacing: 'var(--letter-spacing-h2, -0.025em)' }}
             >
-              {title}
+              {renderHeadline(title, headlineAccent)}
             </h2>
           )}
         </SlideUp>

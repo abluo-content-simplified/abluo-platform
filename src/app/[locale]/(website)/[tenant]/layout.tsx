@@ -9,6 +9,8 @@ import type { LocaleConfig, SupportedLocale, DesignSystem, FontDefinition, Websi
 import { imageUrl } from '@/lib/sanity/image'
 import { resolveNavLinks } from '@/lib/sanity/nav-links'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
+import { buildGoogleFontsUrl } from '@/lib/google-fonts'
+import { headingVars, fluidHeadingSize, isTypographyLegacyTenant } from '@/lib/design-system/typography'
 import { Footer } from '@/components/livener/Footer'
 import { NavClient } from '@/components/livener/Nav/NavClient'
 import { HeaderAppearanceWrapper } from '@/components/HeaderAppearanceWrapper'
@@ -48,28 +50,22 @@ function getFontName(font: FontDefinition | undefined, fallback: string): string
   return fallback
 }
 
-/** Map of fonts that need non-standard weight/style variants on Google Fonts. */
-const FONT_WEIGHT_PARAMS: Record<string, string> = {
-  'Geist': 'wght@100;200;300;400;500;600;700;800;900',
-  'Barlow Condensed': 'ital,wght@0,400;0,500;0,600;0,700;1,400',
-  'Poppins': 'wght@300;400;500;600;700',
-  'Playfair Display': 'ital,wght@0,400;0,600;0,700;1,400',
-  'Lora': 'ital,wght@0,400;0,600;0,700;1,400',
-}
 
-function fontToGoogleParam(name: string): string {
-  const params = FONT_WEIGHT_PARAMS[name] ?? 'wght@400;500;600;700'
-  return `${name.replace(/ /g, '+')}:${params}`
-}
-
-// NOTE — ds.eyebrowAccent ('none' | 'dot' | 'square' | 'brandMark') and
+// NOTE — ds.eyebrowAccent ('none' | 'dot' | 'square' | 'brandMark'),
+// ds.eyebrowColor ('muted' | 'accent'), ds.heroEyebrowVariant ('plain' | 'pill') and
 // ds.navigation?.dropdownStyle ('solid' | 'glass' | 'surface') are both enums
 // consumed by component render logic (which marker/panel style to draw), not
 // CSS values — following the existing dropdownStyle precedent, they are read
 // directly from the resolved `designSystem` prop by the consuming component
 // (e.g. `designSystem.eyebrowAccent`) rather than emitted as a CSS var/data
 // attribute here. No entry added to buildCssVars() for either field.
-function buildCssVars(ds: DesignSystem | null, logoHeightOverride?: { desktop?: number; mobile?: number }): string {
+// `tenantId` is only used to honour TYPOGRAPHY_LEGACY_TENANTS — see
+// src/lib/design-system/typography.ts. Everything else is tenant-agnostic.
+function buildCssVars(
+  ds: DesignSystem | null,
+  logoHeightOverride?: { desktop?: number; mobile?: number },
+  tenantId?: string
+): string {
   const dark = ds?.colors?.darkTheme
   const light = ds?.colors?.lightTheme
   const typo = ds?.typography
@@ -115,14 +111,34 @@ function buildCssVars(ds: DesignSystem | null, logoHeightOverride?: { desktop?: 
   function typoVar(scale: { size?: number; weight?: number; lineHeight?: number; letterSpacing?: number } | undefined): string {
     if (!scale) return ''
     const parts: string[] = []
-    if (scale.size !== undefined) parts.push(`font-size: ${pxToRem(scale.size)}`)
+    if (scale.size !== undefined) parts.push(`font-size: ${fluidHeadingSize(scale.size) || pxToRem(scale.size)}`)
     if (scale.weight !== undefined) parts.push(`font-weight: ${scale.weight}`)
     if (scale.lineHeight !== undefined) parts.push(`line-height: ${scale.lineHeight}`)
     if (scale.letterSpacing !== undefined) parts.push(`letter-spacing: ${pxToRem(scale.letterSpacing)}`)
     return parts.join('; ')
   }
 
+  // Headings are emitted per property (--font-size-h1, --font-weight-h1, …) and
+  // the size is a fluid clamp() rather than a fixed rem — see
+  // src/lib/design-system/typography.ts for the formula and for why a level the
+  // design system leaves empty is deliberately NOT emitted (the component's own
+  // legacy Tailwind steps then render, unchanged).
+  //
+  // A tenant listed in TYPOGRAPHY_LEGACY_TENANTS is pinned to that legacy
+  // rendering even when its design system does carry a scale.
+  const useDsHeadings = !isTypographyLegacyTenant(tenantId)
+  const headingScaleVars = useDsHeadings
+    ? [
+        ...headingVars('h1', t?.h1),
+        ...headingVars('h2', t?.h2),
+        ...headingVars('h3', t?.h3),
+        ...headingVars('h4', t?.h4),
+      ]
+    : []
+
   const typoVars = [
+    // Shorthand bundles — kept for backwards compatibility with any consumer
+    // that wants the whole scale in one declaration.
     t?.h1 ? `      --typo-h1: ${typoVar(t.h1)};` : '',
     t?.h2 ? `      --typo-h2: ${typoVar(t.h2)};` : '',
     t?.h3 ? `      --typo-h3: ${typoVar(t.h3)};` : '',
@@ -130,10 +146,8 @@ function buildCssVars(ds: DesignSystem | null, logoHeightOverride?: { desktop?: 
     t?.bodyLarge ? `      --typo-body-large: ${typoVar(t.bodyLarge)};` : '',
     t?.body ? `      --typo-body: ${typoVar(t.body)};` : '',
     t?.small ? `      --typo-small: ${typoVar(t.small)};` : '',
-    t?.h1?.size ? `      --font-size-h1: ${pxToRem(t.h1.size)};` : '',
-    t?.h2?.size ? `      --font-size-h2: ${pxToRem(t.h2.size)};` : '',
-    t?.h3?.size ? `      --font-size-h3: ${pxToRem(t.h3.size)};` : '',
-    t?.h4?.size ? `      --font-size-h4: ${pxToRem(t.h4.size)};` : '',
+    ...headingScaleVars,
+    // Body levels stay at a fixed size — fluid body copy hurts readability.
     t?.bodyLarge?.size ? `      --font-size-body-large: ${pxToRem(t.bodyLarge.size)};` : '',
     t?.body?.size ? `      --font-size-body: ${pxToRem(t.body.size)};` : '',
     t?.small?.size ? `      --font-size-small: ${pxToRem(t.small.size)};` : '',
@@ -233,6 +247,11 @@ function buildCssVars(ds: DesignSystem | null, logoHeightOverride?: { desktop?: 
       --color-success: ${dark?.success ?? 'oklch(0.62 0.18 145)'};
       --color-warning: ${dark?.warning ?? 'oklch(0.75 0.15 80)'};
       --color-danger: ${dark?.danger ?? 'oklch(0.6 0.22 25)'};
+      /* --radius-full is a constant, not a design-system token: it exists so
+         genuinely-circular/pill geometry can be expressed through the same
+         --radius-* vocabulary as everything else. The eyebrow pill already
+         referenced it but nothing emitted it, so it silently computed to 0. */
+      --radius-full: 9999px;
       --radius-sm: ${D.radiusSm}px;
       --radius-md: ${D.radiusMd}px;
       --radius-lg: ${D.radiusLg}px;
@@ -304,13 +323,6 @@ ${lightFormVars}
   `.trim()
 }
 
-function buildGoogleFontsUrl(headingFont: string, bodyFont: string): string {
-  const families: string[] = []
-  families.push(fontToGoogleParam(headingFont))
-  if (bodyFont !== headingFont) families.push(fontToGoogleParam(bodyFont))
-  if (!families.length) return ''
-  return `https://fonts.googleapis.com/css2?${families.map((f) => `family=${f}`).join('&')}&display=swap`
-}
 
 // ─── Background Graphic Utilities ─────────────────────────────────────────────
 
@@ -529,7 +541,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
     const integrations = await fetchForTenant<ProjectIntegrations>(projectIntegrationsQuery, {})
     // ADR-020 — module-owned per-website configuration (WhatsApp, header CTA).
     const modules = await fetchForTenant<ProjectModuleConfig>(projectModuleConfigQuery, { locale, defaultLocale })
-    const cssVars = buildCssVars(designSystem, { desktop: livenerConfig?.logoHeightDesktop, mobile: livenerConfig?.logoHeightMobile })
+    const cssVars = buildCssVars(designSystem, { desktop: livenerConfig?.logoHeightDesktop, mobile: livenerConfig?.logoHeightMobile }, tenantId)
     const livenerBgGraphic = livenerConfig?.backgroundGraphic
     const livenerBgImageUrl = livenerBgGraphic?.asset?.asset ? imageUrl(livenerBgGraphic.asset as any, 1920) : undefined
     const livenerBgStyles = buildBackgroundGraphicStyles(livenerBgGraphic, livenerBgImageUrl, false)
@@ -570,6 +582,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
             showLangSwitcherInNav={livenerConfig?.showLangSwitcherInNav ?? false}
             tenantId="livener"
             themeMode={livenerConfig?.themeMode}
+            themeSwitcherPlacement={livenerConfig?.themeSwitcherPlacement}
             variant="full"
           />
         </HeaderAppearanceWrapper>
@@ -626,7 +639,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   // ── Branding assets — owned per-site (Website Settings), not the design system ─
   const logoSrc = config?.logo ? imageUrl(config.logo as any, 320) : undefined
   const logoLightSrc = config?.logoLight ? imageUrl(config.logoLight as any, 320) : logoSrc
-  const cssVars = buildCssVars(designSystem, { desktop: config?.logoHeightDesktop, mobile: config?.logoHeightMobile })
+  const cssVars = buildCssVars(designSystem, { desktop: config?.logoHeightDesktop, mobile: config?.logoHeightMobile }, tenantId)
 
   // ── Background graphic rendering ─────────────────────────────────────────────
   const bgGraphic = config?.backgroundGraphic
@@ -659,6 +672,12 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
           logoLightSrc={logoLightSrc ?? logoSrc}
           logoAlt={config?.siteName ?? tenantId}
           siteName={logoSrc ? (config?.siteName ?? undefined) : undefined}
+          // Text wordmark — only reaches NavClient via Nav.tsx on the landing
+          // variant. The generic tenant header renders NavClient directly, so
+          // without these two props every tenant without a logo IMAGE silently
+          // fell through to the plain `logoAlt` text branch.
+          wordmarkText={config?.wordmarkText}
+          wordmarkAccent={config?.wordmarkAccent}
           navLinks={resolveNavLinks(config?.navLinks, locale as SupportedLocale, tenantId)}
           ctaLabel={cta.label ?? undefined}
           ctaHref={cta.href ?? undefined}
@@ -670,6 +689,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
           showLangSwitcherInNav={config?.showLangSwitcherInNav ?? false}
           tenantId={tenantId}
           themeMode={config?.themeMode}
+          themeSwitcherPlacement={config?.themeSwitcherPlacement}
           variant="full"
         />
       </HeaderAppearanceWrapper>
@@ -691,44 +711,19 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
       />
       <main>{children}</main>
       <TrackingScripts data={integrations} placement="bodyEnd" />
-      <footer
-        className="px-6 py-10 md:px-16 lg:px-24"
-        style={{
-          backgroundColor: 'var(--color-background-alt)',
-          borderTop: '1px solid var(--color-border)',
-        }}
-      >
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          {/* Logo in footer */}
-          {logoSrc ? (
-            <a href={`/${locale}/${tenantId}`} className="transition-opacity hover:opacity-100">
-              <img
-                src={logoSrc}
-                alt={config?.siteName ?? tenantId}
-                style={{ height: 'var(--logo-height-mobile)', width: 'auto', opacity: 0.6 }}
-              />
-            </a>
-          ) : (
-            <a href={`/${locale}/${tenantId}`} className="text-xs transition-opacity hover:opacity-100" style={{ color: 'var(--color-text-muted)' }}>
-              {config?.siteName}
-            </a>
-          )}
-          <div className="flex flex-col gap-1 sm:items-end">
-            {config?.address && (
-              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{config.address}</p>
-            )}
-            {config?.email && (
-              <a
-                href={`mailto:${config.email}`}
-                className="text-xs transition-opacity hover:opacity-100"
-                style={{ color: 'var(--color-text-muted)', opacity: 0.75 }}
-              >
-                {config.email}
-              </a>
-            )}
-          </div>
-        </div>
-      </footer>
+      {/* Shared Footer — the same component the Livener branch mounts. It
+          fetches websiteSiteConfigQuery itself, so no props beyond identity.
+          `showContact` keeps the home link + address + email this branch used
+          to render inline; everything else the shared footer adds (copyright,
+          footer links, legal lines, language switcher) is additive and only
+          appears where the tenant has authored it. */}
+      <Footer
+        tenantId={tenantId}
+        locale={locale as SupportedLocale}
+        defaultLocale={defaultLocale}
+        variant="full"
+        showContact
+      />
       {whatsAppFab(modules, config, tenantId, locale)}
       <DevBadge />
     </>

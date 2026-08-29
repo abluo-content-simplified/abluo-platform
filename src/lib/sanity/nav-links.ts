@@ -1,4 +1,17 @@
 import type { NavLink, ResolvedNavLink, SupportedLocale } from './types'
+import { isPassThroughHref } from './href'
+import { LOCALE_CODES } from '@/lib/i18n/locales'
+
+/**
+ * Locale codes recognised as a URL prefix when no project locale list is given.
+ *
+ * Defaults to the whole Platform Locale Registry (src/lib/i18n/locales.ts) —
+ * the same list `src/i18n/routing.ts` gives next-intl, so any locale the router
+ * can serve is also recognised here. Callers that know the project's
+ * `siteConfig.supportedLocales` should pass them so a segment is only treated
+ * as a locale when that project actually serves it.
+ */
+const DEFAULT_LOCALE_SEGMENTS: readonly string[] = LOCALE_CODES
 
 /**
  * Resolve internal page to URL path (without locale prefix).
@@ -29,12 +42,16 @@ function resolveInternalPage(page: string | undefined): string {
  * @param link - The raw navigation link from Sanity
  * @param locale - Current locale for internal links
  * @param tenantId - Current tenant for internal links
+ * @param supportedLocales - Locale codes this project serves, used to decide
+ *   whether a legacy href already carries a locale prefix. Optional: defaults
+ *   to every platform locale, so existing 3-argument callers keep working.
  * @returns Resolved link with computed href
  */
 export function resolveNavLink(
   link: NavLink,
   locale: SupportedLocale,
-  tenantId: string
+  tenantId: string,
+  supportedLocales: readonly string[] = DEFAULT_LOCALE_SEGMENTS
 ): ResolvedNavLink {
   // Internal page — two resolution paths:
   //   1. pageRef (preferred): links to any page document by its slug
@@ -46,7 +63,7 @@ export function resolveNavLink(
         label: link.label,
         href: `/${locale}/${tenantId}/${link.pageSlug}`,
         external: false,
-        children: link.children?.map((child) => resolveNavLink(child, locale, tenantId)),
+        children: link.children?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
       }
     }
 
@@ -57,7 +74,7 @@ export function resolveNavLink(
       label: link.label,
       href,
       external: false,
-      children: link.children?.map((child) => resolveNavLink(child, locale, tenantId)),
+      children: link.children?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
     }
   }
 
@@ -69,7 +86,7 @@ export function resolveNavLink(
       label: link.label,
       href: link.anchorId ? `#${link.anchorId}` : '#',
       external: false,
-      children: link.children?.map((child) => resolveNavLink(child, locale, tenantId)),
+      children: link.children?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
     }
   }
 
@@ -78,7 +95,7 @@ export function resolveNavLink(
       label: link.label,
       href: link.externalUrl,
       external: link.openInNewTab ?? false,
-      children: link.children?.map((child) => resolveNavLink(child, locale, tenantId)),
+      children: link.children?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
     }
   }
 
@@ -86,17 +103,24 @@ export function resolveNavLink(
   if (link.href) {
     let href = link.href
 
-    // If href is a relative path starting with /, it needs locale and tenantId prefix
-    if (href.startsWith('/') && !href.startsWith('http')) {
+    // If href is a relative path starting with /, it needs locale and tenantId
+    // prefix. isPassThroughHref() keeps fragments (#faq), scheme URLs
+    // (mailto:, tel:, sms:, http:, https:) and protocol-relative URLs
+    // (//cdn.example.com/x) verbatim — a protocol-relative URL also starts
+    // with '/' and used to be mangled into an internal route here.
+    if (!isPassThroughHref(href) && href.startsWith('/')) {
       // Check if path already includes the tenant slug
       // Paths like /livener/live or /en/livener/live are already correct
       // Paths like /live need to be converted to /{locale}/{tenantId}/live
       const pathParts = href.split('/').filter(Boolean) // Remove empty strings from leading /
 
-      // If path doesn't start with locale and tenantId, add them
-      // Simple heuristic: if path has fewer than 2 parts or first part is not a locale, add locale and tenantId
-      const startsWithLocale = ['en', 'it', 'de'].includes(pathParts[0])
-      const hasTenantSlug = startsWithLocale && pathParts.length > 1 && ['livener'].includes(pathParts[1])
+      // If path doesn't start with locale and tenantId, add them.
+      // A first segment counts as a locale only when the project serves it
+      // (siteConfig.supportedLocales, defaulting to the platform registry) —
+      // never a hardcoded language list. The tenant check compares against the
+      // `tenantId` argument, so it works for every client, not just one.
+      const startsWithLocale = supportedLocales.includes(pathParts[0])
+      const hasTenantSlug = startsWithLocale && pathParts.length > 1 && pathParts[1] === tenantId
 
       if (!startsWithLocale) {
         // Path like /live -> /{locale}/{tenantId}/live
@@ -112,7 +136,7 @@ export function resolveNavLink(
       label: link.label,
       href,
       external: link.external ?? false,
-      children: link.children?.map((child) => resolveNavLink(child, locale, tenantId)),
+      children: link.children?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
     }
   }
 
@@ -121,7 +145,7 @@ export function resolveNavLink(
     label: link.label,
     href: '#',
     external: false,
-    children: link.children?.map((child) => resolveNavLink(child, locale, tenantId)),
+    children: link.children?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
   }
 }
 
@@ -131,8 +155,9 @@ export function resolveNavLink(
 export function resolveNavLinks(
   links: NavLink[] | undefined,
   locale: SupportedLocale,
-  tenantId: string
+  tenantId: string,
+  supportedLocales: readonly string[] = DEFAULT_LOCALE_SEGMENTS
 ): ResolvedNavLink[] {
   if (!links?.length) return []
-  return links.map((link) => resolveNavLink(link, locale, tenantId))
+  return links.map((link) => resolveNavLink(link, locale, tenantId, supportedLocales))
 }

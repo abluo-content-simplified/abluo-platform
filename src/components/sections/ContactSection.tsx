@@ -11,6 +11,7 @@ import { overlayButtonClass } from '@/lib/forms/overlay-button'
 import { WhatsAppWidget } from '@/components/forms/WhatsAppWidget'
 import { hasWhatsAppNumber } from '@/lib/forms/whatsapp'
 import { resolveWhatsAppConfig, type ProjectModuleConfig } from '@/lib/modules/config'
+import { resolveEasing } from '@/lib/motion/easing'
 
 interface Props {
   section: ContactSection
@@ -36,7 +37,7 @@ export function ContactSection({ section, surface, designSystem, siteConfig, mod
   // Motion tokens
   const mot = designSystem?.motion
   const duration = mot?.durationSlow !== undefined ? mot.durationSlow / 1000 : 0.35
-  const ease: string | number[] = mot?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const ease = resolveEasing(mot?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
   // ── Map resolution ──────────────────────────────────────────────────────────
   // Build address string from structured location (preferred) or legacy flat
@@ -84,8 +85,8 @@ export function ContactSection({ section, surface, designSystem, siteConfig, mod
         <SlideUp duration={duration} ease={ease} delay={0}>
           {title && (
             <h2
-              className="mb-6 text-3xl font-semibold leading-snug tracking-tight md:text-4xl"
-              style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
+              className="mb-6 [--fs-h2:1.875rem] md:[--fs-h2:2.25rem]"
+              style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--font-size-h2, var(--fs-h2))', fontWeight: 'var(--font-weight-h2, 600)', lineHeight: 'var(--line-height-h2, 1.375)', letterSpacing: 'var(--letter-spacing-h2, -0.025em)' }}
             >
               {title}
             </h2>
@@ -215,7 +216,7 @@ export function ContactSection({ section, surface, designSystem, siteConfig, mod
               rel="noopener noreferrer"
               aria-label={m.openInMapsLabel}
               className="block overflow-hidden"
-              style={{ borderRadius: 'var(--radius-card, 12px)' }}
+              style={{ borderRadius: 'var(--radius-lg)' }}
             >
               <iframe
                 src={mapEmbedUrl}
@@ -224,7 +225,7 @@ export function ContactSection({ section, surface, designSystem, siteConfig, mod
                 style={{
                   border: 0,
                   display: 'block',
-                  borderRadius: 'var(--radius-card, 12px)',
+                  borderRadius: 'var(--radius-lg)',
                 }}
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"

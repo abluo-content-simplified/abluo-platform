@@ -52,3 +52,66 @@ describe('resolveCta — form CTAs', () => {
     expect(resolveCta({ ...base }).type).toBe('none')
   })
 })
+
+// ── Form CTA Context pre-fill ────────────────────────────────────────────────
+//
+// A form CTA can carry the same key/value Context a formOverlayButtonSection
+// carries, so a landing page's button can open the overlay with e.g. the
+// persona already chosen (which satisfies step 1 and auto-advances past it).
+// Purely additive: a CTA without Context must resolve exactly as before.
+
+describe('resolveCta — form CTA Context', () => {
+  const base = { internalName: 'Restaurants Hero', label: 'Book a demo', actionType: 'form' as const, formId: 'demo' }
+
+  it('projects context in the shared CTA fragment', () => {
+    expect(CTA_FIELDS).toContain('"context": context[]{ key, value }')
+  })
+
+  it('carries authored pairs through as a pre-fill map', () => {
+    const resolved = resolveCta({ ...base, context: [{ key: 'persona', value: 'restaurant' }] })
+    if (resolved.type !== 'form') throw new Error('expected a form CTA')
+    expect(resolved.context).toEqual({ persona: 'restaurant' })
+  })
+
+  it('keeps every authored pair, and treats a missing value as empty', () => {
+    const resolved = resolveCta({
+      ...base,
+      context: [{ key: 'persona', value: 'restaurant' }, { key: 'plan' } as unknown as { key: string; value: string }],
+    })
+    if (resolved.type !== 'form') throw new Error('expected a form CTA')
+    expect(resolved.context).toEqual({ persona: 'restaurant', plan: '' })
+  })
+
+  it('resolves identically to before when no context is authored', () => {
+    expect(resolveCta(base)).toEqual({
+      type: 'form',
+      label: 'Book a demo',
+      internalName: 'Restaurants Hero',
+      formId: 'demo',
+    })
+    expect('context' in resolveCta(base)).toBe(false)
+  })
+
+  it('adds no context key for an empty or keyless list', () => {
+    for (const context of [[], [{ key: '', value: 'x' }]]) {
+      const resolved = resolveCta({ ...base, context })
+      if (resolved.type !== 'form') throw new Error('expected a form CTA')
+      expect('context' in resolved).toBe(false)
+    }
+  })
+
+  it('ignores context on non-form CTAs', () => {
+    const resolved = resolveCta({
+      internalName: 'Nav',
+      actionType: 'externalUrl',
+      externalUrl: 'https://example.com',
+      context: [{ key: 'persona', value: 'restaurant' }],
+    })
+    expect('context' in resolved).toBe(false)
+  })
+})
+
+// The pre-fill map is the same shape the overlay already consumes: keys are
+// field ids, and mapContextToValues() keeps only contextMappable ones, so a
+// `persona` value selects that option and firstIncompleteStepIndex() lands the
+// visitor past step 1 — exactly as a formOverlayButtonSection's context does.

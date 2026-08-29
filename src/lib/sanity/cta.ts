@@ -10,7 +10,27 @@
  * It can be used in both server and client components.
  */
 
-import type { Cta, ResolvedCta } from './types'
+import type { Cta, CtaContextItem, ResolvedCta } from './types'
+import { isPassThroughHref, withTenantPrefix } from './href'
+
+/**
+ * Turns the editor's Context key/value list into a plain pre-fill map — the
+ * same shape FormOverlayButtonSection builds for FormOverlayTrigger.
+ *
+ * Returns undefined when there is nothing to pre-fill (no list, empty list, or
+ * only keyless rows), so a CTA without Context resolves to exactly the object
+ * it resolved to before this field existed.
+ */
+function buildCtaContext(
+  items: CtaContextItem[] | null | undefined
+): Record<string, string> | undefined {
+  if (!items?.length) return undefined
+  const out: Record<string, string> = {}
+  for (const item of items) {
+    if (item?.key) out[item.key] = item.value ?? ''
+  }
+  return Object.keys(out).length > 0 ? out : undefined
+}
 
 /**
  * Resolve a raw Sanity CTA object into a typed action descriptor.
@@ -40,18 +60,24 @@ export function resolveCta(cta: Cta | null | undefined): ResolvedCta {
         type: 'link',
         label,
         internalName,
-        href: cta.pageSlug.startsWith('/') ? cta.pageSlug : `/${cta.pageSlug}`,
+        href: isPassThroughHref(cta.pageSlug) || cta.pageSlug.startsWith('/')
+          ? cta.pageSlug
+          : `/${cta.pageSlug}`,
         external: false,
       }
     }
 
     case 'form': {
       if (!cta.formId) return { type: 'none', label, internalName }
+      const context = buildCtaContext(cta.context)
       return {
         type: 'form',
         label,
         internalName,
         formId: cta.formId,
+        // Spread, not `context: undefined` — a CTA without Context must resolve
+        // to the identical object (no extra key) it did before.
+        ...(context ? { context } : {}),
       }
     }
 
@@ -80,6 +106,30 @@ export function resolveCta(cta: Cta | null | undefined): ResolvedCta {
     default:
       return { type: 'none', label, internalName }
   }
+}
+
+/**
+ * Apply the `/{locale}/{tenant}/` prefix to a resolved CTA's href.
+ *
+ * This is the single implementation every section component uses. It only
+ * touches `type: 'link'` CTAs that are not flagged external, and it delegates
+ * the "is this actually an internal path?" decision to withTenantPrefix() —
+ * so `#anchor`, `mailto:`, `tel:`, `sms:`, `https://` and `//cdn…` hrefs are
+ * returned verbatim, while `/about`, `about` and `/pricing#tiers` are
+ * prefixed exactly as before.
+ *
+ * Non-link CTAs (form, download, none) and CTAs resolved without locale or
+ * tenant URL params are returned unchanged.
+ */
+export function prefixCtaHref(
+  resolved: ResolvedCta,
+  locale: string | null | undefined,
+  tenantId: string | null | undefined
+): ResolvedCta {
+  if (resolved.type !== 'link' || resolved.external || !locale || !tenantId) return resolved
+  const href = withTenantPrefix(resolved.href, locale, tenantId)
+  if (href === resolved.href) return resolved
+  return { ...resolved, href }
 }
 
 /**

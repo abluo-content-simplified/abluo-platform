@@ -10,6 +10,7 @@ import { ThemeSwitcher } from '@/components/SiteControls/ThemeSwitcher'
 import { getThemeSwitcherMessages } from '@/lib/i18n/theme-switcher-messages'
 import { useEarlyAccess } from '@/components/forms/EarlyAccessContext'
 import { useFormOverlaySafe } from '@/components/forms/FormOverlayContext'
+import { renderWordmark } from '@/lib/wordmark'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -19,6 +20,14 @@ interface NavClientProps {
   logoAlt: string
   /** When provided, renders the practice/site name next to the logo as part of the same clickable link. */
   siteName?: string
+  /**
+   * Text wordmark drawn in the heading font when no `logo` image is set —
+   * e.g. "No!Logo". Undefined on every tenant using an image logo, which keeps
+   * the existing image / siteName rendering untouched.
+   */
+  wordmarkText?: string
+  /** Characters within `wordmarkText` painted in the accent colour (e.g. "!"). */
+  wordmarkAccent?: string
   navLinks: ResolvedNavLink[]
   /** When omitted the CTA button is hidden entirely. */
   ctaLabel?: string
@@ -39,6 +48,13 @@ interface NavClientProps {
   showLangSwitcherInNav: boolean
   tenantId: string
   themeMode?: 'lightOnly' | 'darkOnly' | 'toggle' | 'system'
+  /**
+   * Where siteConfig wants the theme switcher rendered. Defaults to 'header',
+   * which is the behaviour every existing tenant already has, so omitting the
+   * prop changes nothing. 'footer' suppresses the header/drawer switcher for
+   * tenants that place it in the footer instead.
+   */
+  themeSwitcherPlacement?: 'header' | 'footer' | 'both'
   variant?: 'full' | 'landing'
 }
 
@@ -50,6 +66,8 @@ export function NavClient({
   logoLightSrc,
   logoAlt,
   siteName,
+  wordmarkText,
+  wordmarkAccent,
   navLinks,
   ctaLabel,
   ctaHref,
@@ -61,6 +79,7 @@ export function NavClient({
   showLangSwitcherInNav,
   tenantId,
   themeMode = 'toggle',
+  themeSwitcherPlacement = 'header',
   variant = 'full',
 }: NavClientProps) {
   // When ctaMode='modal', we use EarlyAccessContext to open the modal.
@@ -80,6 +99,11 @@ export function NavClient({
 
   // The CTA is a <button> (not a link) whenever it drives an in-page overlay.
   const ctaIsButton = ctaMode === 'modal' || ctaMode === 'overlay'
+
+  // Theme switcher visibility. 'header' (the default, and every current
+  // tenant's value) and 'both' render it in the nav; 'footer' means the nav
+  // does not own it. ThemeSwitcher itself still hides for non-toggle modes.
+  const showNavThemeSwitcher = themeSwitcherPlacement !== 'footer'
 
   const handleCtaClick = () => {
     if (ctaMode === 'overlay' && formOverlay && ctaFormId) {
@@ -153,7 +177,7 @@ export function NavClient({
               target={link.external ? '_blank' : undefined}
               rel={link.external ? 'noopener noreferrer' : undefined}
               onClick={closeDrawer}
-              className="rounded-xl px-4 py-3 text-base font-medium transition-colors"
+              className="rounded-[var(--radius-btn)] px-4 py-3 text-base font-medium transition-colors"
               style={{ color: 'var(--color-text-primary)', opacity: 0.8 }}
             >
               {link.label}
@@ -169,7 +193,9 @@ export function NavClient({
         <div className="mx-6 my-4 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
 
         {/* Shared Theme Switcher */}
-        <ThemeSwitcher themeMode={themeMode} appearance="drawer" messages={getThemeSwitcherMessages(currentLocale)} />
+        {showNavThemeSwitcher && (
+          <ThemeSwitcher themeMode={themeMode} appearance="drawer" messages={getThemeSwitcherMessages(currentLocale)} />
+        )}
 
         {/* CTA — hidden when ctaLabel is not set */}
         {ctaLabel && (
@@ -177,10 +203,10 @@ export function NavClient({
             {ctaIsButton ? (
               <button
                 onClick={() => { handleCtaClick(); closeDrawer() }}
-                className="block w-full rounded-xl px-6 py-3.5 text-center text-[15px] font-semibold transition-colors"
+                className="block w-full rounded-[var(--radius-btn)] px-6 py-3.5 text-center text-[15px] font-semibold transition-colors"
                 style={{
-                  backgroundColor: 'var(--color-primary)',
-                  color: '#fff',
+                  backgroundColor: 'var(--btn-primary-bg)',
+                  color: 'var(--btn-primary-text)',
                   border: 'none',
                   cursor: 'pointer',
                 }}
@@ -191,10 +217,10 @@ export function NavClient({
               <Link
                 href={ctaHref ?? '#'}
                 onClick={closeDrawer}
-                className="block rounded-xl px-6 py-3.5 text-center text-[15px] font-semibold transition-colors"
+                className="block rounded-[var(--radius-btn)] px-6 py-3.5 text-center text-[15px] font-semibold transition-colors"
                 style={{
-                  backgroundColor: 'var(--color-primary)',
-                  color: '#fff',
+                  backgroundColor: 'var(--btn-primary-bg)',
+                  color: 'var(--btn-primary-text)',
                 }}
               >
                 {ctaLabel}
@@ -236,6 +262,20 @@ export function NavClient({
                 </>
               )}
             </>
+          ) : wordmarkText ? (
+            /* Text wordmark — the brand's logo IS type. Sized and tracked like
+               the original header wordmark (1.125rem / 800 / -0.02em); the
+               accent characters are coloured by the shared helper. */
+            <span
+              className="text-[1.125rem] font-extrabold"
+              style={{
+                fontFamily: 'var(--font-heading)',
+                color: 'var(--color-text-primary)',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              {renderWordmark(wordmarkText, wordmarkAccent)}
+            </span>
           ) : (
             <span
               className="text-2xl font-bold tracking-wide"
@@ -260,7 +300,7 @@ export function NavClient({
                         href={link.href}
                         target={link.external ? '_blank' : undefined}
                         rel={link.external ? 'noopener noreferrer' : undefined}
-                        className="rounded-lg px-3 py-1.5 text-sm font-medium transition-all"
+                        className="rounded-[var(--radius-btn)] px-3 py-1.5 text-sm font-medium transition-all"
                         style={{
                           backgroundColor: isActive
                             ? 'color-mix(in oklch, var(--color-text-primary) 10%, transparent)'
@@ -288,7 +328,9 @@ export function NavClient({
           )}
 
           {/* Shared Theme Switcher */}
-          <ThemeSwitcher themeMode={themeMode} appearance="header" messages={getThemeSwitcherMessages(currentLocale)} />
+          {showNavThemeSwitcher && (
+            <ThemeSwitcher themeMode={themeMode} appearance="header" messages={getThemeSwitcherMessages(currentLocale)} />
+          )}
 
           {/* CTA — hidden when ctaLabel is not set */}
           {ctaLabel && (ctaIsButton ? (
@@ -320,7 +362,7 @@ export function NavClient({
 
         {/* Hamburger — mobile only */}
         <button
-          className="ml-auto flex flex-col items-center justify-center rounded-lg p-2 transition-colors md:hidden"
+          className="ml-auto flex flex-col items-center justify-center rounded-[var(--radius-btn)] p-2 transition-colors md:hidden"
           onClick={() => setDrawerOpen(!drawerOpen)}
           aria-label={drawerOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={drawerOpen}

@@ -76,3 +76,24 @@ describe('buildStepsGridCss', () => {
     }
   })
 })
+
+
+describe('buildStepsGridCss — connector/rule visibility across breakpoints', () => {
+  // Regression: at >=1024px BOTH media queries apply. The 640px block's
+  // `>*:nth-child(2n)` (specificity 0,2,0) beat the 1024px block's bare `>*`
+  // reset (0,1,0) regardless of order, so with 3 steps the middle cell lost
+  // its right rule AND its connector arrow at 3 columns.
+  it('resets at matching specificity so the 2-col hide cannot leak into 3-col', () => {
+    const css = buildStepsGridCss('sc', 3)
+    const lg = css.slice(css.indexOf('@media (min-width:1024px)'))
+    expect(lg).toContain('.sc>*:nth-child(n){border-right:1px solid var(--color-border);}')
+    expect(lg).toContain('.sc>*:nth-child(n) .steps-connector{display:flex;}')
+    // and only the row-final cell is hidden at 3 columns
+    expect(lg).toContain('.sc>*:nth-child(3n) .steps-connector{display:none;}')
+  })
+
+  it('still hides the connector on the last cell of each row', () => {
+    const css = buildStepsGridCss('sc', 3)
+    expect(css).toContain('.sc>*:last-child .steps-connector{display:none;}')
+  })
+})

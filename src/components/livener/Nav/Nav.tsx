@@ -33,6 +33,8 @@ export async function Nav({ tenantId, locale, defaultLocale, variant = 'full' }:
         logoSrc={imageUrl(config.logo, 480)}
         logoLightSrc={imageUrl(config.logoLight, 480)}
         logoAlt={config.siteName ?? 'Livener'}
+        wordmarkText={config.wordmarkText}
+        wordmarkAccent={config.wordmarkAccent}
         navLinks={resolveNavLinks(config.navLinks, locale, tenantId)}
         ctaLabel={config.ctaLabel ?? 'Get Early Access'}
         ctaHref={config.ctaHref ?? '#'}
@@ -40,6 +42,8 @@ export async function Nav({ tenantId, locale, defaultLocale, variant = 'full' }:
         supportedLocales={config.supportedLocales ?? [locale]}
         showLangSwitcherInNav={config.showLangSwitcherInNav ?? false}
         tenantId={tenantId}
+        themeMode={config.themeMode}
+        themeSwitcherPlacement={config.themeSwitcherPlacement}
         variant={variant}
       />
     </header>

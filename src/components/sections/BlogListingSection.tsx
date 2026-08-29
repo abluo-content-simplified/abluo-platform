@@ -6,6 +6,8 @@ import { SectionContainer } from '@/components/layout/SectionContainer'
 import { imageUrl } from '@/lib/sanity/image'
 import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 import { SectionEmptyState } from '@/components/sections/shared/SectionEmptyState'
+import { resolveEasing } from '@/lib/motion/easing'
+import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 // ─── Date formatting ──────────────────────────────────────────────────────────
 
@@ -26,7 +28,7 @@ function CategoryChips({ categories }: { categories?: Post['categories'] }) {
       {categories.map((cat) => (
         <span
           key={cat.key}
-          className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-widest"
+          className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-btn)] text-[10px] font-semibold uppercase tracking-widest"
           style={{
             background: cat.color
               ? `color-mix(in oklch, ${cat.color} 12%, transparent)`
@@ -89,7 +91,7 @@ function PostCard({ post, href, priority = false }: { post: Post; href: string; 
   return (
     <a
       href={href}
-      className="group flex flex-col h-full overflow-hidden rounded-2xl transition-shadow hover:shadow-lg"
+      className="group flex flex-col h-full overflow-hidden rounded-[var(--radius-lg)] transition-shadow hover:shadow-lg"
       style={{
         backgroundColor: 'var(--color-surface)',
         border: '1px solid',
@@ -144,7 +146,7 @@ function PostCardLarge({ post, href }: { post: Post; href: string }) {
   return (
     <a
       href={href}
-      className="group flex flex-col h-full overflow-hidden rounded-2xl transition-shadow hover:shadow-lg"
+      className="group flex flex-col h-full overflow-hidden rounded-[var(--radius-lg)] transition-shadow hover:shadow-lg"
       style={{
         backgroundColor: 'var(--color-surface)',
         border: '1px solid',
@@ -170,8 +172,8 @@ function PostCardLarge({ post, href }: { post: Post; href: string }) {
       <div className="flex flex-col flex-1 p-6 md:p-8">
         <CategoryChips categories={post.categories} />
         <h3
-          className="text-2xl md:text-3xl font-semibold leading-snug tracking-tight mb-3 line-clamp-3"
-          style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
+          className="mb-3 line-clamp-3 [--fs-h3:1.5rem] md:[--fs-h3:1.875rem]"
+          style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--font-size-h3, var(--fs-h3))', fontWeight: 'var(--font-weight-h3, 600)', lineHeight: 'var(--line-height-h3, 1.375)', letterSpacing: 'var(--letter-spacing-h3, -0.025em)' }}
         >
           {post.title}
         </h3>
@@ -199,7 +201,7 @@ function PostCardMini({ post, href }: { post: Post; href: string }) {
   return (
     <a
       href={href}
-      className="group flex gap-4 p-4 rounded-xl overflow-hidden transition-shadow hover:shadow-md"
+      className="group flex gap-4 p-4 rounded-[var(--radius-md)] overflow-hidden transition-shadow hover:shadow-md"
       style={{
         backgroundColor: 'var(--color-surface)',
         border: '1px solid',
@@ -208,7 +210,7 @@ function PostCardMini({ post, href }: { post: Post; href: string }) {
       }}
     >
       {/* Thumbnail */}
-      <div className="shrink-0 overflow-hidden rounded-lg" style={{ width: '80px', height: '80px' }}>
+      <div className="shrink-0 overflow-hidden rounded-[var(--radius-md)]" style={{ width: '80px', height: '80px' }}>
         {coverSrc ? (
           <img
             src={coverSrc}
@@ -416,7 +418,7 @@ export function BlogListingSection({ section, surface, designSystem, locale, ten
   // Motion tokens — durationSlow for content sections
   const m = designSystem?.motion
   const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
-  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const ease = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
   // ADR-016 Phase B — empty-state semantics (identical across all three
   // listing sections): zero posts + no emptyStateHeading → render nothing
@@ -437,17 +439,17 @@ export function BlogListingSection({ section, surface, designSystem, locale, ten
         {(eyebrow || title || subtitle) && (
           <SlideUp duration={duration} ease={ease} delay={0} className="mb-12">
             {eyebrow && (
-              <p
-                className="mb-4 text-xs font-medium uppercase tracking-[0.2em]"
-                style={{ color: 'var(--color-text-muted)' }}
-              >
-                {eyebrow}
-              </p>
+              <EyebrowLabel
+                eyebrow={eyebrow}
+                designSystem={designSystem}
+                defaultAccent="none"
+                className="mb-4"
+              />
             )}
             {title && (
               <h2
-                className="text-3xl font-semibold leading-snug tracking-tight md:text-4xl"
-                style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
+                className="[--fs-h2:1.875rem] md:[--fs-h2:2.25rem]"
+                style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--font-size-h2, var(--fs-h2))', fontWeight: 'var(--font-weight-h2, 600)', lineHeight: 'var(--line-height-h2, 1.375)', letterSpacing: 'var(--letter-spacing-h2, -0.025em)' }}
               >
                 {title}
               </h2>
@@ -477,7 +479,7 @@ export function BlogListingSection({ section, surface, designSystem, locale, ten
           <SlideUp duration={duration} ease={ease} delay={0.25} className="mt-12 flex justify-center">
             <a
               href={viewAllHref}
-              className="inline-flex items-center gap-2 px-7 py-3 rounded-lg text-sm font-medium border transition-opacity hover:opacity-75"
+              className="inline-flex items-center gap-2 px-7 py-3 rounded-[var(--radius-btn)] text-sm font-medium border transition-opacity hover:opacity-75"
               style={{
                 borderColor: 'var(--color-border)',
                 color: 'var(--color-text-primary)',

@@ -69,7 +69,7 @@ export function LanguageSwitcher({ currentLocale, supportedLocales, tenantId, ap
             <button
               key={locale}
               onClick={() => switchLocale(locale)}
-              className="flex-1 rounded-[9px] border py-2.5 text-sm font-semibold tracking-wide transition-all"
+              className="flex-1 rounded-[var(--radius-btn)] border py-2.5 text-sm font-semibold tracking-wide transition-all"
               style={
                 locale === currentLocale
                   ? {
@@ -98,7 +98,7 @@ export function LanguageSwitcher({ currentLocale, supportedLocales, tenantId, ap
     <div className="relative" data-lang-switch>
       <button
         onClick={() => setLangOpen(!langOpen)}
-        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-semibold tracking-wide transition-all"
+        className="flex items-center gap-1.5 rounded-[var(--radius-btn)] px-2.5 py-1.5 text-sm font-semibold tracking-wide transition-all"
         style={{ color: 'var(--color-text-primary)', opacity: 0.72 }}
         aria-haspopup="listbox"
         aria-expanded={langOpen}
@@ -111,7 +111,7 @@ export function LanguageSwitcher({ currentLocale, supportedLocales, tenantId, ap
       </button>
       {langOpen && (
         <div
-          className="absolute right-0 top-[calc(100%+8px)] z-[500] min-w-[120px] rounded-xl border p-1.5 shadow-2xl"
+          className="absolute right-0 top-[calc(100%+8px)] z-[500] min-w-[120px] rounded-[var(--radius-md)] border p-1.5 shadow-2xl"
           style={{
             backgroundColor: 'var(--color-background-alt)',
             borderColor: 'var(--color-border)',
@@ -121,7 +121,7 @@ export function LanguageSwitcher({ currentLocale, supportedLocales, tenantId, ap
             <button
               key={locale}
               onClick={() => switchLocale(locale)}
-              className="flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+              className="flex w-full items-center rounded-[var(--radius-btn)] px-3 py-2 text-sm font-medium transition-colors"
               style={{
                 color: locale === currentLocale ? 'var(--color-primary)' : 'var(--color-text-primary)',
                 fontWeight: locale === currentLocale ? 700 : 500,

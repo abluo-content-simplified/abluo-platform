@@ -26,21 +26,28 @@
  * No colours are resolved in JS — everything is a CSS custom property.
  */
 
+import { useEffect, useId, useState } from 'react'
 import { useParams } from 'next/navigation'
+import { useReducedMotion } from 'motion/react'
 import type {
   MediaFeatureSection as MediaFeatureSectionType,
   DesignSystem,
   MediaStyleDefinition,
+  FeatureRow,
+  ResolvedImage,
 } from '@/lib/sanity/types'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
-import { resolveCta } from '@/lib/sanity/cta'
+import { resolveCta, prefixCtaHref } from '@/lib/sanity/cta'
 import { CtaButton } from '@/components/ui/CtaButton'
 import { Icon, isIconName } from '@/components/icons'
 import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
+import { resolveEasing } from '@/lib/motion/easing'
+import { renderHeadline } from '@/lib/headline-accent'
+import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 // ─── Default media styles ─────────────────────────────────────────────────────
 // Mirrors MediaContentSection: fallback definitions used when the Design System
@@ -101,6 +108,184 @@ export function hasMediaColumn(
   return mediaPosition !== 'none' && Boolean(imageSrc)
 }
 
+/** One distinct screenshot the interactive pane can show. Deduplicated by URL. */
+export interface MediaLayer {
+  key: string
+  src: string
+  srcSet: string | undefined
+}
+
+// ─── Interactive media helpers (exported for unit tests) ─────────────────────
+//
+// The interactive path is strictly opt-in: it only engages when the section
+// explicitly sets `interactiveMedia` AND an editor has actually attached a
+// screenshot to at least one row. Anything else — the field absent, the field
+// null (GROQ's answer for a document authored before it existed), the field
+// false, or on with no per-row images yet — falls through to the historical
+// render, byte for byte.
+
+/** True when the section should render the hover/tap-swappable media pane. */
+export function hasInteractiveMedia(
+  interactiveMedia: boolean | null | undefined,
+  features: FeatureRow[] | null | undefined,
+): boolean {
+  if (interactiveMedia !== true) return false
+  return (features ?? []).some((f) => Boolean(f?.image?.asset))
+}
+
+/**
+ * The image the media pane shows for a given row:
+ *   row image → section image → the first row that has one.
+ *
+ * The last clause is a safety net for the (authorable) case of a section with
+ * no section-level image where only *some* rows carry one: it keeps the pane
+ * from ever rendering empty, which is what the brief asks for.
+ */
+export function resolveActiveImage(
+  features: FeatureRow[] | null | undefined,
+  activeIndex: number,
+  sectionImage: ResolvedImage | null | undefined,
+): ResolvedImage | undefined {
+  const rows = features ?? []
+  const row = rows[activeIndex]
+  if (row?.image?.asset) return row.image
+  if (sectionImage?.asset) return sectionImage
+  return rows.find((f) => f?.image?.asset)?.image
+}
+
+/**
+ * Alt text for the pane. Prefers the authored alt of whichever image is
+ * actually on screen, then the row title, then the section title — so a
+ * screen reader hears what the screenshot shows rather than "image".
+ */
+export function resolveActiveAlt(
+  features: FeatureRow[] | null | undefined,
+  activeIndex: number,
+  sectionImage: ResolvedImage | null | undefined,
+  title: string | undefined,
+): string {
+  const row = (features ?? [])[activeIndex]
+  const shown = resolveActiveImage(features, activeIndex, sectionImage)
+  if (row?.image?.asset && shown === row.image) {
+    return row.image.alt ?? row.title ?? title ?? ''
+  }
+  return shown?.alt ?? sectionImage?.alt ?? title ?? ''
+}
+
+/**
+ * Which gesture selects a row. Driven by the `(hover: hover) and
+ * (pointer: fine)` media query, never by user-agent sniffing: a touchscreen
+ * laptop, a tablet with a trackpad attached mid-session, or a desktop browser
+ * in device-emulation mode all answer this correctly, and a UA string does not.
+ */
+export function selectionModeFromPointer(finePointer: boolean): 'hover' | 'click' {
+  return finePointer ? 'hover' : 'click'
+}
+
+/** Roving-focus target for a key press inside the row list. Wraps at both ends. */
+export function nextFeatureIndex(current: number, key: string, count: number): number {
+  if (count <= 0) return 0
+  switch (key) {
+    case 'ArrowDown':
+    case 'ArrowRight':
+      return (current + 1) % count
+    case 'ArrowUp':
+    case 'ArrowLeft':
+      return (current - 1 + count) % count
+    case 'Home':
+      return 0
+    case 'End':
+      return count - 1
+    default:
+      return current
+  }
+}
+
+/**
+ * `resolveEasing` speaks motion/react (arrays + named easings); a CSS
+ * `transition` needs a timing-function string. This is the one conversion
+ * point back, so the cross-fade uses the very same DS easing token the
+ * SlideUp entrances in this file already use.
+ */
+export function cssEasing(ease: unknown): string {
+  const resolved = resolveEasing(ease, [0.0, 0.0, 0.2, 1])
+  if (Array.isArray(resolved)) return `cubic-bezier(${resolved.join(', ')})`
+  switch (resolved) {
+    case 'linear':
+      return 'linear'
+    case 'easeIn':
+      return 'ease-in'
+    case 'easeOut':
+      return 'ease-out'
+    case 'easeInOut':
+      return 'ease-in-out'
+    default:
+      return 'cubic-bezier(0, 0, 0.2, 1)'
+  }
+}
+
+/**
+ * Builds the deduplicated layer list plus a row → layer index map.
+ *
+ * Rows that fall back to the same section image share one layer, so a six-row
+ * section with two per-row screenshots mounts three <img> elements, not six.
+ * A row that resolves to no image at all maps to -1.
+ */
+export function buildMediaLayers(
+  features: FeatureRow[] | null | undefined,
+  sectionImage: ResolvedImage | null | undefined,
+): { layers: MediaLayer[]; rowLayerIndex: number[] } {
+  const layers: MediaLayer[] = []
+  const rowLayerIndex: number[] = []
+
+  for (let index = 0; index < (features?.length ?? 0); index += 1) {
+    const resolved = resolveActiveImage(features, index, sectionImage)
+    const src = imageUrl(resolved, 1400)
+    if (!src) {
+      rowLayerIndex.push(-1)
+      continue
+    }
+    let layerIndex = layers.findIndex((l) => l.src === src)
+    if (layerIndex === -1) {
+      layerIndex = layers.length
+      layers.push({ key: src, src, srcSet: imageSrcSet(resolved, [600, 900, 1200, 1600]) })
+    }
+    rowLayerIndex.push(layerIndex)
+  }
+
+  return { layers, rowLayerIndex }
+}
+
+const FINE_POINTER_QUERY = '(hover: hover) and (pointer: fine)'
+
+/**
+ * True on devices that can hover with a precise pointer.
+ *
+ * Starts `false` so SSR and the first client paint agree (no hydration
+ * mismatch) and so the tap path — which works everywhere — is what a user
+ * gets if the effect never runs. Subscribes to `change`, so plugging in a
+ * mouse or resizing into a desktop emulation flips the mode live.
+ */
+function useFinePointer(): boolean {
+  const [finePointer, setFinePointer] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia(FINE_POINTER_QUERY)
+    const update = () => setFinePointer(mq.matches)
+    update()
+    if (typeof mq.addEventListener === 'function') {
+      mq.addEventListener('change', update)
+      return () => mq.removeEventListener('change', update)
+    }
+    // Safari < 14 only has the deprecated listener pair.
+    mq.addListener(update)
+    return () => mq.removeListener(update)
+  }, [])
+
+  return finePointer
+}
+
 // ─── CTA row ──────────────────────────────────────────────────────────────────
 
 function CtaRow({ section }: { section: MediaFeatureSectionType }) {
@@ -110,14 +295,8 @@ function CtaRow({ section }: { section: MediaFeatureSectionType }) {
   const locale = params.locale as string | undefined
   const tenantId = params.tenant as string | undefined
 
-  function withTenantPrefix(resolved: ReturnType<typeof resolveCta>) {
-    if (resolved.type !== 'link' || resolved.external || !locale || !tenantId) return resolved
-    const slug = resolved.href.startsWith('/') ? resolved.href.slice(1) : resolved.href
-    return { ...resolved, href: `/${locale}/${tenantId}/${slug}` }
-  }
-
-  const primaryCta = section.primaryCta ? withTenantPrefix(resolveCta(section.primaryCta)) : null
-  const secondaryCta = section.secondaryCta ? withTenantPrefix(resolveCta(section.secondaryCta)) : null
+  const primaryCta = section.primaryCta ? prefixCtaHref(resolveCta(section.primaryCta), locale, tenantId) : null
+  const secondaryCta = section.secondaryCta ? prefixCtaHref(resolveCta(section.secondaryCta), locale, tenantId) : null
 
   if ((!primaryCta || primaryCta.type === 'none') && (!secondaryCta || secondaryCta.type === 'none')) {
     return null
@@ -163,16 +342,33 @@ function CtaRow({ section }: { section: MediaFeatureSectionType }) {
  * A row with only a `title` and no `description` degrades to the Qualification
  * bullet; a row with both is the ProductShowcase capability.
  */
+/**
+ * Everything the interactive variant needs. Absent → the row renders exactly
+ * as it always has: a plain <div>, no roles, no tabindex, no extra padding.
+ * That is the whole compatibility guarantee for Livener / Studio Martegani.
+ */
+interface RowInteraction {
+  id: string
+  paneId: string
+  selected: boolean
+  onSelect: () => void
+  /** Only supplied in hover mode — omitted entirely on touch devices. */
+  onPointerEnter?: () => void
+  onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void
+  transition: string | undefined
+}
+
 function FeatureRowItem({
   feature,
+  interaction,
 }: {
   feature: NonNullable<MediaFeatureSectionType['features']>[number]
+  interaction?: RowInteraction
 }) {
-  return (
-    <div
-      className="flex items-start gap-4 py-5 md:gap-5 md:py-6"
-      style={{ borderBottom: '1px solid var(--color-border)' }}
-    >
+  const selected = interaction?.selected ?? false
+
+  const content = (
+    <>
       {/* Accent box — icon when one is chosen, dot otherwise */}
       <span
         className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center"
@@ -201,7 +397,11 @@ function FeatureRowItem({
         {feature.title && (
           <h3
             className="text-[0.9375rem] font-semibold leading-snug tracking-tight"
-            style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
+            style={{
+              color: selected ? 'var(--color-primary)' : 'var(--color-text-primary)',
+              fontFamily: 'var(--font-heading)',
+              transition: interaction?.transition,
+            }}
           >
             {feature.title}
           </h3>
@@ -215,7 +415,48 @@ function FeatureRowItem({
           </p>
         )}
       </div>
-    </div>
+    </>
+  )
+
+  // Non-interactive (default) row — the historical markup, unchanged.
+  if (!interaction) {
+    return (
+      <div
+        className="flex items-start gap-4 py-5 md:gap-5 md:py-6"
+        style={{ borderBottom: '1px solid var(--color-border)' }}
+      >
+        {content}
+      </div>
+    )
+  }
+
+  // Interactive row — a real <button>, so Enter/Space activate it for free and
+  // it is reachable by every assistive technology without extra plumbing.
+  // The 2px left rule exists (transparent) on every row so selecting one never
+  // shifts the text sideways; only its colour changes.
+  return (
+    <button
+      type="button"
+      role="tab"
+      id={interaction.id}
+      aria-selected={selected}
+      aria-controls={interaction.paneId}
+      tabIndex={selected ? 0 : -1}
+      onClick={interaction.onSelect}
+      onPointerEnter={interaction.onPointerEnter}
+      onFocus={interaction.onSelect}
+      onKeyDown={interaction.onKeyDown}
+      className="flex w-full items-start gap-4 py-5 pl-4 pr-2 text-left md:gap-5 md:py-6 md:pl-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+      style={{
+        borderBottom: '1px solid var(--color-border)',
+        borderLeft: `2px solid ${selected ? 'var(--color-primary)' : 'transparent'}`,
+        backgroundColor: selected ? 'var(--color-surface)' : 'transparent',
+        outlineColor: 'var(--color-primary)',
+        transition: interaction.transition,
+      }}
+    >
+      {content}
+    </button>
   )
 }
 
@@ -288,11 +529,38 @@ function MediaBlock({
   if (!mockupFrame) return picture
 
   return (
+    <MockupChrome
+      borderRadius={containerStyle.borderRadius}
+      mockupTitle={mockupTitle}
+      mockupBadge={mockupBadge}
+    >
+      {picture}
+    </MockupChrome>
+  )
+}
+
+/**
+ * The browser-window chrome around a screenshot. Extracted verbatim from
+ * MediaBlock so the interactive pane wears exactly the same frame — the markup,
+ * classes and tokens below are unchanged from what MediaBlock emitted before.
+ */
+function MockupChrome({
+  borderRadius,
+  mockupTitle,
+  mockupBadge,
+  children,
+}: {
+  borderRadius: React.CSSProperties['borderRadius']
+  mockupTitle: string | undefined
+  mockupBadge: string | undefined
+  children: React.ReactNode
+}) {
+  return (
     <div
       className="w-full overflow-hidden"
       style={{
         border: '1px solid var(--color-border)',
-        borderRadius: containerStyle.borderRadius ?? 'var(--radius-md)',
+        borderRadius: borderRadius ?? 'var(--radius-md)',
         backgroundColor: 'var(--color-surface)',
       }}
     >
@@ -334,9 +602,113 @@ function MediaBlock({
 
       {/* Screenshot */}
       <div className="relative" style={{ lineHeight: 0 }}>
-        {picture}
+        {children}
       </div>
     </div>
+  )
+}
+
+// ─── Interactive media block ─────────────────────────────────────────────────
+
+/**
+ * The swappable screenshot pane.
+ *
+ * Every layer is mounted at all times, stacked in a single CSS grid cell
+ * (`gridArea: 1 / 1`) and toggled with opacity. That buys three things at once:
+ *
+ *   • the browser downloads and decodes every screenshot up front, so a swap is
+ *     an opacity change on an already-painted image, never a flash of nothing;
+ *   • the outgoing and incoming images are on screen simultaneously, which is
+ *     what makes it a cross-fade rather than a cut;
+ *   • grid stacking (unlike absolute positioning) keeps the images in flow, so
+ *     the pane still derives its height from them and does not need a hardcoded
+ *     aspect ratio to avoid collapsing.
+ *
+ * The container height settles on the tallest screenshot, so swapping never
+ * reflows the page around it.
+ *
+ * The hover-zoom class the static block uses is deliberately absent: here the
+ * hover target is the row list, not the image, and its transform transition
+ * would fight the opacity one.
+ */
+function InteractiveMediaBlock({
+  layers,
+  activeLayer,
+  alt,
+  mockupFrame,
+  mockupTitle,
+  mockupBadge,
+  containerStyle,
+  imgStyle,
+  stretch,
+  transition,
+}: {
+  layers: MediaLayer[]
+  activeLayer: number
+  alt: string
+  mockupFrame: boolean
+  mockupTitle: string | undefined
+  mockupBadge: string | undefined
+  containerStyle: React.CSSProperties
+  imgStyle: React.CSSProperties
+  stretch: boolean
+  transition: string | undefined
+}) {
+  const stack = (
+    <div
+      className="relative grid w-full"
+      style={mockupFrame ? { overflow: 'hidden' } : containerStyle}
+    >
+      {layers.map((layer, index) => {
+        const isActive = index === activeLayer
+        return (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={layer.key}
+            src={layer.src}
+            srcSet={layer.srcSet}
+            sizes="(min-width: 768px) 50vw, 100vw"
+            // Only the visible layer is described; the rest are decorative
+            // preloads and must not reach the accessibility tree.
+            alt={isActive ? alt : ''}
+            aria-hidden={isActive ? undefined : true}
+            loading="lazy"
+            decoding="async"
+            style={{
+              ...imgStyle,
+              gridArea: '1 / 1',
+              // Auto-height images must not be stretched to the tallest
+              // layer's height by the grid's default `stretch` alignment.
+              alignSelf: stretch ? 'stretch' : 'start',
+              opacity: isActive ? 1 : 0,
+              transition,
+            }}
+          />
+        )
+      })}
+      {mockupFrame && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[18%]"
+          style={{
+            maskImage: 'linear-gradient(to bottom, black, transparent)',
+            WebkitMaskImage: 'linear-gradient(to bottom, black, transparent)',
+          }}
+        />
+      )}
+    </div>
+  )
+
+  if (!mockupFrame) return stack
+
+  return (
+    <MockupChrome
+      borderRadius={containerStyle.borderRadius}
+      mockupTitle={mockupTitle}
+      mockupBadge={mockupBadge}
+    >
+      {stack}
+    </MockupChrome>
   )
 }
 
@@ -352,6 +724,7 @@ export function MediaFeatureSection({ section, surface, designSystem }: Props) {
   const {
     eyebrow,
     title,
+    headlineAccent,
     intro,
     image,
     mediaPosition = 'left',
@@ -361,6 +734,7 @@ export function MediaFeatureSection({ section, surface, designSystem }: Props) {
     mockupTitle,
     mockupBadge,
     features,
+    interactiveMedia,
     closingLine,
   } = section
 
@@ -369,12 +743,63 @@ export function MediaFeatureSection({ section, surface, designSystem }: Props) {
   // Motion tokens — durationSlow for content sections; ms → seconds for motion/react
   const m = designSystem?.motion
   const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
-  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const ease = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
   const imageSrc = imageUrl(image, 1400)
   const srcSet = imageSrcSet(image, [600, 900, 1200, 1600])
-  const showMedia = hasMediaColumn(mediaPosition, imageSrc)
   const mediaOnLeft = mediaPosition === 'left'
+
+  // ── Interactive media state ───────────────────────────────────────────────
+  // All of these hooks run on every render (interactive or not) — they are
+  // cheap, and React forbids calling them conditionally. Nothing they produce
+  // is *read* unless `interactive` is true, so the default render is untouched.
+  const interactive = hasInteractiveMedia(interactiveMedia, features)
+  const rowCount = features?.length ?? 0
+
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  // Guards against an editor deleting rows while the section is mounted.
+  const activeIndex = rowCount > 0 ? Math.min(selectedIndex, rowCount - 1) : 0
+
+  const finePointer = useFinePointer()
+  const selectionMode = selectionModeFromPointer(finePointer)
+  const prefersReducedMotion = useReducedMotion() ?? false
+
+  const baseId = useId()
+  const paneId = `${baseId}-media`
+  const rowId = (index: number) => `${baseId}-row-${index}`
+
+  // Roving tabindex. Focus moves by element id rather than through a ref array
+  // so nothing ref-shaped has to travel down through props.
+  const handleRowKeyDown = (index: number) => (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+      // A <button> would fire onClick for these anyway; taking them here
+      // keeps Space from scrolling the page behind the section.
+      event.preventDefault()
+      setSelectedIndex(index)
+      return
+    }
+    const next = nextFeatureIndex(index, event.key, rowCount)
+    if (next === index) return
+    event.preventDefault()
+    setSelectedIndex(next)
+    if (typeof document !== 'undefined') {
+      document.getElementById(rowId(next))?.focus()
+    }
+  }
+
+  // One <img> per *distinct* screenshot, plus the row → layer mapping. Rows
+  // that fall back to the same section image therefore share a single layer
+  // instead of mounting a duplicate download per row.
+  const { layers, rowLayerIndex } = buildMediaLayers(interactive ? features : undefined, image)
+
+  const activeLayer = rowLayerIndex[activeIndex] ?? -1
+  const activeAlt = resolveActiveAlt(features, activeIndex, image, title)
+
+  // In interactive mode the pane can be fed entirely by row images, so a
+  // section with no section-level image still gets a media column.
+  const showMedia = interactive
+    ? mediaPosition !== 'none' && layers.length > 0 && activeLayer >= 0
+    : hasMediaColumn(mediaPosition, imageSrc)
 
   // Media style from the DS (or the shared fallbacks)
   const resolvedStyle = resolveMediaStyle(mediaStyleKey, designSystem?.mediaStyles)
@@ -392,23 +817,32 @@ export function MediaFeatureSection({ section, surface, designSystem }: Props) {
     display: 'block',
   }
 
+  // Cross-fade + row highlight transitions, built from the same DS motion
+  // tokens the SlideUp entrances above already use. `prefers-reduced-motion`
+  // drops them entirely: the swap becomes an instant cut, never a jump.
+  const easeCss = cssEasing(ease)
+  const mediaTransition = prefersReducedMotion ? undefined : `opacity ${duration}s ${easeCss}`
+  const rowTransition = prefersReducedMotion
+    ? undefined
+    : `background-color ${duration}s ${easeCss}, border-color ${duration}s ${easeCss}, color ${duration}s ${easeCss}`
+
   // ── Header ────────────────────────────────────────────────────────────────
   const header = (
     <SlideUp duration={duration} ease={ease} delay={0}>
       {eyebrow && (
-        <p
-          className="mb-4 text-xs font-medium uppercase tracking-[0.2em]"
-          style={{ color: 'var(--color-text-muted)' }}
-        >
-          {eyebrow}
-        </p>
+        <EyebrowLabel
+          eyebrow={eyebrow}
+          designSystem={designSystem}
+          defaultAccent="none"
+          className="mb-4"
+        />
       )}
       {title && (
         <h2
-          className="text-3xl font-semibold leading-snug tracking-tight md:text-4xl"
-          style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
+          className="[--fs-h2:1.875rem] md:[--fs-h2:2.25rem]"
+          style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--font-size-h2, var(--fs-h2))', fontWeight: 'var(--font-weight-h2, 600)', lineHeight: 'var(--line-height-h2, 1.375)', letterSpacing: 'var(--letter-spacing-h2, -0.025em)' }}
         >
-          {title}
+          {renderHeadline(title, headlineAccent)}
         </h2>
       )}
       {intro && (
@@ -427,18 +861,50 @@ export function MediaFeatureSection({ section, surface, designSystem }: Props) {
   const featureColumn = (
     <div>
       {features && features.length > 0 && (
-        <div className="grid gap-0" style={{ borderTop: '1px solid var(--color-border)' }}>
-          {features.map((feature, index) => (
-            <SlideUp
-              key={feature._key}
-              duration={duration}
-              ease={ease}
-              delay={index * 0.05}
+        interactive ? (
+          // One SlideUp around the whole list rather than one per row: a
+          // tablist must own its tabs directly, and a per-row motion wrapper
+          // would sit between them in the accessibility tree.
+          <SlideUp duration={duration} ease={ease} delay={0}>
+            <div
+              role="tablist"
+              aria-orientation="vertical"
+              aria-label={title}
+              className="grid gap-0"
+              style={{ borderTop: '1px solid var(--color-border)' }}
             >
-              <FeatureRowItem feature={feature} />
-            </SlideUp>
-          ))}
-        </div>
+              {features.map((feature, index) => (
+                <FeatureRowItem
+                  key={feature._key}
+                  feature={feature}
+                  interaction={{
+                    id: rowId(index),
+                    paneId,
+                    selected: index === activeIndex,
+                    onSelect: () => setSelectedIndex(index),
+                    onPointerEnter:
+                      selectionMode === 'hover' ? () => setSelectedIndex(index) : undefined,
+                    onKeyDown: handleRowKeyDown(index),
+                    transition: rowTransition,
+                  }}
+                />
+              ))}
+            </div>
+          </SlideUp>
+        ) : (
+          <div className="grid gap-0" style={{ borderTop: '1px solid var(--color-border)' }}>
+            {features.map((feature, index) => (
+              <SlideUp
+                key={feature._key}
+                duration={duration}
+                ease={ease}
+                delay={index * 0.05}
+              >
+                <FeatureRowItem feature={feature} />
+              </SlideUp>
+            ))}
+          </div>
+        )
       )}
 
       {closingLine && (
@@ -459,16 +925,40 @@ export function MediaFeatureSection({ section, surface, designSystem }: Props) {
   // ── Media column ──────────────────────────────────────────────────────────
   const mediaColumn = showMedia ? (
     <SlideUp duration={duration} ease={ease} delay={0.1} className="flex items-start justify-center">
-      <MediaBlock
-        imageSrc={imageSrc as string}
-        srcSet={srcSet}
-        alt={image?.alt ?? title ?? ''}
-        mockupFrame={mockupFrame}
-        mockupTitle={mockupTitle}
-        mockupBadge={mockupBadge}
-        containerStyle={imgContainerStyle}
-        imgStyle={imgStyle}
-      />
+      {interactive ? (
+        <div
+          id={paneId}
+          role="tabpanel"
+          aria-labelledby={rowId(activeIndex)}
+          tabIndex={0}
+          className="w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          style={{ outlineColor: 'var(--color-primary)' }}
+        >
+          <InteractiveMediaBlock
+            layers={layers}
+            activeLayer={activeLayer}
+            alt={activeAlt}
+            mockupFrame={mockupFrame}
+            mockupTitle={mockupTitle}
+            mockupBadge={mockupBadge}
+            containerStyle={imgContainerStyle}
+            imgStyle={imgStyle}
+            stretch={hasFixedAspect}
+            transition={mediaTransition}
+          />
+        </div>
+      ) : (
+        <MediaBlock
+          imageSrc={imageSrc as string}
+          srcSet={srcSet}
+          alt={image?.alt ?? title ?? ''}
+          mockupFrame={mockupFrame}
+          mockupTitle={mockupTitle}
+          mockupBadge={mockupBadge}
+          containerStyle={imgContainerStyle}
+          imgStyle={imgStyle}
+        />
+      )}
     </SlideUp>
   ) : null
 

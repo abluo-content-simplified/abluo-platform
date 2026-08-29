@@ -2,6 +2,10 @@
 
 import { motion, type Variants } from 'motion/react'
 import type { ReactNode } from 'react'
+import { resolveEasing } from '@/lib/motion/easing'
+
+/** The historical StaggerChildren easing. */
+const DEFAULT_EASE: number[] = [0.4, 0, 0.2, 1]
 
 interface StaggerChildrenProps {
   children: ReactNode
@@ -10,6 +14,11 @@ interface StaggerChildrenProps {
   staggerDelay?: number
   /** Initial delay before first child (seconds) */
   delay?: number
+  /**
+   * Easing. Accepts a CSS `cubic-bezier(...)` string, a `[x1,y1,x2,y2]` array,
+   * or one of motion's named easings; anything else degrades to the default.
+   */
+  ease?: unknown
   /** Distance each child slides up from */
   distance?: number
   duration?: number
@@ -32,10 +41,14 @@ export function StaggerChildren({
   className,
   staggerDelay = 0.1,
   delay = 0,
+  ease = DEFAULT_EASE,
   distance = 32,
   duration = 0.55,
   once = true,
 }: StaggerChildrenProps) {
+  // Defensive: same guarantee as SlideUp/FadeIn — a bad easing degrades, never throws.
+  const resolvedEase = resolveEasing(ease, DEFAULT_EASE)
+
   const containerVariants: Variants = {
     hidden: {},
     visible: {
@@ -48,7 +61,8 @@ export function StaggerChildren({
 
   const itemVariants: Variants = {
     hidden: { opacity: 0, y: distance },
-    visible: { opacity: 1, y: 0, transition: { duration, ease: [0.4, 0, 0.2, 1] } },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    visible: { opacity: 1, y: 0, transition: { duration, ease: resolvedEase as any } },
   }
 
   return (

@@ -234,7 +234,7 @@ export function FormRenderer({ form, messages, locale = 'en', tenantSlug }: Form
         <button
           type="submit"
           disabled={status === 'submitting'}
-          className="px-6 py-3 rounded-[var(--radius-md)] bg-[var(--primary)] text-[var(--btn-primary-text,#fff)] text-sm font-medium transition-opacity disabled:opacity-60 hover:opacity-90"
+          className="px-6 py-3 rounded-[var(--radius-btn)] bg-[var(--primary)] text-[var(--btn-primary-text,#fff)] text-sm font-medium transition-opacity disabled:opacity-60 hover:opacity-90"
         >
           {status === 'submitting'
             ? messages.submitting

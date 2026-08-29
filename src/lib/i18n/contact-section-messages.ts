@@ -43,6 +43,38 @@ const MESSAGES: Record<string, ContactSectionMessages> = {
     mapTitle:        'Standortkarte',
     openInMapsLabel: 'In Google Maps öffnen',
   },
+  fr: {
+    addressLabel:    'Adresse',
+    phoneLabel:      'Téléphone',
+    emailLabel:      'E-mail',
+    directionsLabel: 'Comment nous trouver',
+    mapTitle:        'Carte de localisation',
+    openInMapsLabel: 'Ouvrir dans Google Maps',
+  },
+  es: {
+    addressLabel:    'Dirección',
+    phoneLabel:      'Teléfono',
+    emailLabel:      'Email',
+    directionsLabel: 'Cómo llegar',
+    mapTitle:        'Mapa de ubicación',
+    openInMapsLabel: 'Abrir en Google Maps',
+  },
+  pt: {
+    addressLabel:    'Morada',
+    phoneLabel:      'Telefone',
+    emailLabel:      'Email',
+    directionsLabel: 'Como chegar',
+    mapTitle:        'Mapa de localização',
+    openInMapsLabel: 'Abrir no Google Maps',
+  },
+  nl: {
+    addressLabel:    'Adres',
+    phoneLabel:      'Telefoon',
+    emailLabel:      'E-mail',
+    directionsLabel: 'Zo kom je hier',
+    mapTitle:        'Locatiekaart',
+    openInMapsLabel: 'Openen in Google Maps',
+  },
 }
 
 export function getContactSectionMessages(locale: string): ContactSectionMessages {

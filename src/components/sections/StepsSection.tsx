@@ -35,9 +35,12 @@ import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
-import { resolveCta } from '@/lib/sanity/cta'
+import { resolveCta, prefixCtaHref } from '@/lib/sanity/cta'
 import { CtaButton } from '@/components/ui/CtaButton'
 import { Icon } from '@/components/icons'
+import { resolveEasing } from '@/lib/motion/easing'
+import { renderHeadline } from '@/lib/headline-accent'
+import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 // ─── Pure helpers (unit-tested) ───────────────────────────────────────────────
 
@@ -85,8 +88,14 @@ export function buildStepsGridCss(scope: string, count: number): string {
     return (
       `${s}{grid-template-columns:repeat(${cols},minmax(0,1fr));}` +
       // Every cell gets a right rule + connector...
-      `${s}>*{border-right:1px solid var(--color-border);}` +
-      `${s} .steps-connector{display:flex;}` +
+      //
+      // These resets MUST match the specificity of the `:nth-child(Nn)` hides
+      // below. Both media queries apply at wide viewports, and a bare `>*`
+      // rule (0,1,0) loses to the narrower breakpoint's `>*:nth-child(2n)`
+      // (0,2,0) no matter the source order — which silently left cell 2
+      // without its right rule or connector at 3 columns.
+      `${s}>*:nth-child(n){border-right:1px solid var(--color-border);}` +
+      `${s}>*:nth-child(n) .steps-connector{display:flex;}` +
       // ...except the last in each row, and the last overall.
       `${s}>*:nth-child(${cols}n){border-right:none;}` +
       `${s}>*:nth-child(${cols}n) .steps-connector{display:none;}` +
@@ -109,11 +118,7 @@ function ClosingCta({ cta }: { cta: NonNullable<StepsSectionType['closingCta']> 
   const locale = params?.locale as string | undefined
   const tenantId = params?.tenant as string | undefined
 
-  let resolved = resolveCta(cta)
-  if (resolved.type === 'link' && !resolved.external && locale && tenantId) {
-    const slug = resolved.href.startsWith('/') ? resolved.href.slice(1) : resolved.href
-    resolved = { ...resolved, href: `/${locale}/${tenantId}/${slug}` }
-  }
+  const resolved = prefixCtaHref(resolveCta(cta), locale, tenantId)
   if (resolved.type === 'none') return null
 
   return (
@@ -123,7 +128,7 @@ function ClosingCta({ cta }: { cta: NonNullable<StepsSectionType['closingCta']> 
       style={{
         backgroundColor: 'var(--btn-primary-bg, var(--color-primary))',
         color: 'var(--btn-primary-text)',
-        borderRadius: 'var(--radius-btn, var(--radius-md))',
+        borderRadius: 'var(--radius-btn)',
       }}
     />
   )
@@ -138,13 +143,13 @@ interface Props {
 }
 
 export function StepsSection({ section, surface, designSystem }: Props) {
-  const { eyebrow, title, intro, steps, closingText, closingCta } = section
+  const { eyebrow, title, headlineAccent, intro, steps, closingText, closingCta } = section
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
   // Motion tokens — durationSlow for content sections; ms → seconds for motion/react
   const m = designSystem?.motion
   const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
-  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const ease = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
   // Scope class for the generated grid CSS. useId is stable across
   // server/client render; ':' is not valid in a class name, so strip it.
@@ -160,26 +165,27 @@ export function StepsSection({ section, surface, designSystem }: Props) {
       {hasHeader && (
         <SlideUp duration={duration} ease={ease} delay={0} className="mb-14 md:mb-20">
           {eyebrow && (
-            <p
-              className="mb-5 text-xs font-semibold uppercase tracking-[0.2em]"
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              {eyebrow}
-            </p>
+            <EyebrowLabel
+              eyebrow={eyebrow}
+              designSystem={designSystem}
+              defaultAccent="none"
+              weight="semibold"
+              className="mb-5"
+            />
           )}
           {title && (
             <h2
-              className="font-semibold tracking-tight"
               style={{
                 color: 'var(--color-text-primary)',
                 fontFamily: 'var(--font-heading)',
-                fontSize: 'clamp(2rem, 4vw, 3.5rem)',
-                lineHeight: 1.08,
-                letterSpacing: '-0.03em',
+                fontSize: 'var(--font-size-h2, clamp(2rem, 4vw, 3.5rem))',
+                fontWeight: 'var(--font-weight-h2, 600)',
+                lineHeight: 'var(--line-height-h2, 1.08)',
+                letterSpacing: 'var(--letter-spacing-h2, -0.03em)',
                 maxWidth: '18ch',
               }}
             >
-              {title}
+              {renderHeadline(title, headlineAccent)}
             </h2>
           )}
           {intro && (
@@ -263,11 +269,14 @@ export function StepsSection({ section, surface, designSystem }: Props) {
 
                   {step.title && (
                     <h3
-                      className="mb-1.5 text-xl font-bold tracking-tight md:text-[1.375rem]"
+                      className="mb-1.5 [--fs-h4:1.25rem] md:[--fs-h4:1.375rem]"
                       style={{
                         color: 'var(--color-text-primary)',
                         fontFamily: 'var(--font-heading)',
-                        letterSpacing: '-0.02em',
+                        fontSize: 'var(--font-size-h4, var(--fs-h4))',
+                        fontWeight: 'var(--font-weight-h4, 700)',
+                        lineHeight: 'var(--line-height-h4, 1.75rem)',
+                        letterSpacing: 'var(--letter-spacing-h4, -0.02em)',
                       }}
                     >
                       {step.title}

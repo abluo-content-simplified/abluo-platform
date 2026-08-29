@@ -97,6 +97,8 @@ function mergeDesignSystems(
     // Curated enum (none/dot/square/brandMark) — flat top-level field, same
     // pattern as name/role/description above.
     eyebrowAccent: child.eyebrowAccent || parent.eyebrowAccent,
+    eyebrowColor: child.eyebrowColor || parent.eyebrowColor,
+    heroEyebrowVariant: child.heroEyebrowVariant || parent.heroEyebrowVariant,
 
     // ─── Branding ────────────────────────────────────────────────────────────
     // Identity assets (logo, favicon, OG, apple-touch) are owned per-site in

@@ -82,7 +82,7 @@ export function ThemeSwitcher() {
       {/* Trigger */}
       <button
         onClick={() => setOpen(v => !v)}
-        className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
+        className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-btn)] transition-colors"
         style={{
           color: 'var(--color-text-muted)',
           backgroundColor: open ? 'var(--color-background-alt)' : 'transparent',
@@ -97,7 +97,7 @@ export function ThemeSwitcher() {
       {/* Dropdown panel */}
       {open && (
         <div
-          className="absolute right-0 top-[calc(100%+8px)] z-[500] min-w-[140px] rounded-xl border p-1.5 shadow-2xl"
+          className="absolute right-0 top-[calc(100%+8px)] z-[500] min-w-[140px] rounded-[var(--radius-md)] border p-1.5 shadow-2xl"
           style={{
             backgroundColor: 'var(--color-background-alt)',
             borderColor: 'var(--color-border)',
@@ -112,7 +112,7 @@ export function ThemeSwitcher() {
                 role="option"
                 aria-selected={isActive}
                 onClick={() => select(value)}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium capitalize transition-colors"
+                className="flex w-full items-center gap-2.5 rounded-[var(--radius-btn)] px-3 py-2 text-sm font-medium capitalize transition-colors"
                 style={{
                   color: isActive ? 'var(--color-primary)' : 'var(--color-text-primary)',
                   opacity: isActive ? 1 : 0.72,

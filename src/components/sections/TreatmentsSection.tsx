@@ -3,6 +3,8 @@ import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
+import { resolveEasing } from '@/lib/motion/easing'
+import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 interface Props {
   section: TreatmentsSection
@@ -17,24 +19,24 @@ export function TreatmentsSection({ section, surface, designSystem }: Props) {
   // Motion tokens — durationSlow for content sections; divide ms → seconds for motion/react
   const m = designSystem?.motion
   const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
-  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const ease = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
   return (
       <SectionContainer id={section.anchorId ?? 'trattamenti'} style={surfaceStyles}>
         {/* Header */}
         <SlideUp duration={duration} ease={ease} delay={0} className="mb-16">
           {eyebrow && (
-            <p
-              className="mb-4 text-xs font-medium uppercase tracking-[0.2em]"
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              {eyebrow}
-            </p>
+            <EyebrowLabel
+              eyebrow={eyebrow}
+              designSystem={designSystem}
+              defaultAccent="none"
+              className="mb-4"
+            />
           )}
           {title && (
             <h2
-              className="mb-6 text-3xl font-semibold leading-snug tracking-tight md:text-4xl"
-              style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
+              className="mb-6 [--fs-h2:1.875rem] md:[--fs-h2:2.25rem]"
+              style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--font-size-h2, var(--fs-h2))', fontWeight: 'var(--font-weight-h2, 600)', lineHeight: 'var(--line-height-h2, 1.375)', letterSpacing: 'var(--letter-spacing-h2, -0.025em)' }}
             >
               {title}
             </h2>
@@ -75,8 +77,8 @@ export function TreatmentsSection({ section, surface, designSystem }: Props) {
                   {/* Left: name + tagline */}
                   <div className="flex flex-col justify-start">
                     <h3
-                      className="mb-2 text-lg font-semibold"
-                      style={{ color: 'var(--color-text-primary)' }}
+                      className="mb-2"
+                      style={{ color: 'var(--color-text-primary)', fontSize: 'var(--font-size-h4, 1.125rem)', fontWeight: 'var(--font-weight-h4, 600)', lineHeight: 'var(--line-height-h4, 1.75rem)' }}
                     >
                       {treatment.name}
                     </h3>

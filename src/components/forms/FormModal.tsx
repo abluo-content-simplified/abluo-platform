@@ -137,7 +137,7 @@ export function FormModal({ isOpen, onClose, closeLabel, title, eyebrow, childre
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 14, scale: 0.97 }}
             transition={{ duration: 0.25, ease: [0, 0, 0.2, 1] }}
-            className="fixed inset-x-4 top-1/2 z-[510] mx-auto flex -translate-y-1/2 flex-col overflow-hidden rounded-2xl shadow-2xl backdrop-blur-[24px] saturate-150 md:inset-x-auto md:left-1/2 md:w-[36rem] md:-translate-x-1/2"
+            className="fixed inset-x-4 top-1/2 z-[510] mx-auto flex -translate-y-1/2 flex-col overflow-hidden rounded-[var(--radius-lg)] shadow-2xl backdrop-blur-[24px] saturate-150 md:inset-x-auto md:left-1/2 md:w-[36rem] md:-translate-x-1/2"
             style={{
               backgroundColor: 'color-mix(in oklch, var(--color-background, var(--background)) 90%, transparent)',
               border: '1px solid var(--color-border, var(--border))',

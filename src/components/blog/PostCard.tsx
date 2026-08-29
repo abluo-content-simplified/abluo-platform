@@ -43,7 +43,7 @@ export function PostCard({
     <SlideUp delay={delay} duration={duration} ease={ease} className="h-full">
       <a
         href={href}
-        className="group flex flex-col h-full overflow-hidden rounded-2xl transition-shadow hover:shadow-lg"
+        className="group flex flex-col h-full overflow-hidden rounded-[var(--radius-lg)] transition-shadow hover:shadow-lg"
         style={{
           backgroundColor: 'var(--color-surface)',
           border: '1px solid',

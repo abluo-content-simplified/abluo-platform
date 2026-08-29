@@ -412,7 +412,7 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
             return (
               <div
                 key={step.key}
-                className="rounded-[var(--radius-btn)] p-4"
+                className="rounded-[var(--radius-md)] p-4"
                 style={{ border: '1px solid color-mix(in oklch, var(--color-border, var(--border)) 55%, transparent)' }}
               >
                 <div className="flex items-center justify-between mb-2">

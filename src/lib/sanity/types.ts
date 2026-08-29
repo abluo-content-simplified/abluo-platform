@@ -101,6 +101,12 @@ export interface ResolvedImage {
  * The GROQ query resolves pageSlug and fileUrl so the frontend never
  * needs to dereference Sanity references at runtime.
  */
+/** A single Context key/value pair on a form CTA (mirrors FormSectionContextItem). */
+export interface CtaContextItem {
+  key: string
+  value: string
+}
+
 export interface Cta {
   label?: string
   internalName: string
@@ -116,6 +122,11 @@ export interface Cta {
   // External URL fields
   externalUrl?: string
   openInNewTab?: boolean
+  /**
+   * Optional pre-fill pairs for `actionType: 'form'` — same key/value shape a
+   * formOverlayButtonSection carries. Only contextMappable keys are honored.
+   */
+  context?: CtaContextItem[] | null
 }
 
 /**
@@ -142,6 +153,12 @@ export type ResolvedCta =
       label: string
       internalName: string
       formId: string
+      /**
+       * Pre-fill map for the form overlay, present only when the CTA authored
+       * one. Absent (undefined) for every CTA without Context, so a consumer
+       * spreads nothing and the overlay opens exactly as before.
+       */
+      context?: Record<string, string>
     }
   | {
       type: 'none'
@@ -174,6 +191,18 @@ export interface ResolvedNavLink {
   href: string
   external: boolean
   children?: ResolvedNavLink[]
+}
+
+/**
+ * One headed column of links in the footer (siteConfig.footerColumns).
+ * Additive — absent on every tenant that has not authored columns, in which
+ * case the flat `footerLinks` list is the only footer link source.
+ */
+export interface FooterColumn {
+  _key: string
+  /** Locale-resolved by GROQ */
+  heading?: string
+  links?: NavLink[]
 }
 
 export interface SocialLink {
@@ -402,6 +431,18 @@ export interface DesignSystem {
    * heroLiveCaptureSection / heroLensSection. INHERIT WITH OVERRIDE.
    */
   eyebrowAccent?: 'none' | 'dot' | 'square' | 'brandMark'
+  /**
+   * Colour of eyebrow label text. Default (absent) is 'muted' — the historical
+   * `--color-text-muted`; 'accent' opts in to `--color-primary`. INHERIT WITH
+   * OVERRIDE.
+   */
+  eyebrowColor?: 'muted' | 'accent'
+  /**
+   * Eyebrow treatment in the standard Hero section. Default (absent) is
+   * 'plain' — the inline eyebrow every hero has always rendered; 'pill' opts
+   * in to the bordered, accent-tinted capsule. INHERIT WITH OVERRIDE.
+   */
+  heroEyebrowVariant?: 'plain' | 'pill'
   colors?: {
     darkTheme?: ColorTheme
     lightTheme?: ColorTheme
@@ -567,6 +608,16 @@ export interface WebsiteSiteConfig {
   tagline?: string
   logo?: ResolvedImage
   logoLight?: ResolvedImage
+  /**
+   * Locale-resolved by GROQ. Text wordmark drawn in the heading font when no
+   * `logo` image is set. Undefined on every tenant using an image logo.
+   */
+  wordmarkText?: string
+  /**
+   * Characters within `wordmarkText` to paint in the accent colour — e.g. "!"
+   * for "No!Logo". Every occurrence of each listed character is accented.
+   */
+  wordmarkAccent?: string
   openGraphImage?: { asset?: { _ref: string } }
   backgroundGraphic?: BackgroundGraphic
   headerAppearance?: HeaderAppearance
@@ -581,6 +632,12 @@ export interface WebsiteSiteConfig {
   /** Internal attribution label recorded with header-CTA submissions (e.g. "header-cta"). */
   ctaInternalName?: string
   footerLinks?: NavLink[]
+  /** Grouped, headed footer link columns. Empty/undefined → use footerLinks. */
+  footerColumns?: FooterColumn[]
+  /** Locale-resolved by GROQ — short line under the footer tagline. */
+  footerSubTagline?: string
+  /** Optional credit link beside the copyright line (e.g. "Built by Abluo"). */
+  footerCredit?: NavLink
   footerCtaHeading?: string
   footerCtaSubtext?: string
   footerCtaInputPlaceholder?: string
@@ -796,6 +853,13 @@ export interface NewsArticle {
   seoImage?: ResolvedImage
 }
 
+/**
+ * Optional per-section headline accent. Kept as a literal union here (rather
+ * than imported from src/lib/headline-accent.tsx) so this type module stays
+ * free of React imports; the two are structurally identical.
+ */
+export type HeadlineAccentValue = 'none' | 'lastWord'
+
 // ─── Section types (studiomartegani — all strings locale-resolved) ─────────────
 
 export interface HeroSection {
@@ -807,7 +871,19 @@ export interface HeroSection {
   anchorId?: string
   eyebrow?: string
   headline?: string
+  /**
+   * Optional headline accent — 'lastWord' paints the final word of the
+   * headline/title in the brand accent colour. Absent/null means 'none', so
+   * existing documents render unchanged. See src/lib/headline-accent.tsx.
+   */
+  headlineAccent?: 'none' | 'lastWord' | null
   subheadline?: string
+  /**
+   * Optional short, bold line rendered between the subheadline and the CTA
+   * row. Absent/null on every hero authored before this field — the renderer
+   * then outputs nothing, so existing heroes are unchanged. `\n` is preserved.
+   */
+  tagline?: string
   ctaLabel?: string
   ctaHref?: string
   // Media
@@ -825,6 +901,14 @@ export interface HeroSection {
   overlayOpacity?: number
   blur?: number
   brightness?: number
+  /**
+   * Optional primary-CTA colour treatment over full-bleed media.
+   * 'onMedia' (the default, and what absent/null resolves to) keeps today's
+   * white button with black text; 'brand' uses the design system's
+   * `--btn-primary-bg` / `--btn-primary-text` tokens. Has no effect when the
+   * hero has no full-bleed media — that path already uses DS colours.
+   */
+  ctaStyle?: 'onMedia' | 'brand' | null
   // ── Optional extensions (additive) ────────────────────────────────────────
   /** Optional stat row rendered beneath the CTA. Absent → nothing renders. */
   stats?: HeroStat[]
@@ -1067,6 +1151,12 @@ export interface FAQSection {
   anchorId?: string
   eyebrow?: string
   title?: string
+  /**
+   * Optional headline accent — 'lastWord' paints the final word of the title
+   * in the brand accent colour. Absent/null means 'none', so existing FAQ
+   * sections render unchanged. See src/lib/headline-accent.tsx.
+   */
+  headlineAccent?: 'none' | 'lastWord' | null
   items?: FAQItem[]
 }
 
@@ -1361,6 +1451,12 @@ export interface StatementSection {
   eyebrow?: string
   /** Locale-resolved by GROQ */
   headline?: string
+  /**
+   * Optional headline accent — 'lastWord' paints the final word of the
+   * headline/title in the brand accent colour. Absent/null means 'none', so
+   * existing documents render unchanged. See src/lib/headline-accent.tsx.
+   */
+  headlineAccent?: 'none' | 'lastWord' | null
   /** Locale-resolved by GROQ */
   description?: string
   alignment?: 'left' | 'center'
@@ -1425,6 +1521,12 @@ export interface StepsSection {
   eyebrow?: string
   /** Locale-resolved by GROQ */
   title?: string
+  /**
+   * Optional headline accent — 'lastWord' paints the final word of the
+   * headline/title in the brand accent colour. Absent/null means 'none', so
+   * existing documents render unchanged. See src/lib/headline-accent.tsx.
+   */
+  headlineAccent?: 'none' | 'lastWord' | null
   /** Locale-resolved by GROQ */
   intro?: string
   steps?: StepItem[]
@@ -1460,6 +1562,12 @@ export interface FeatureGridSection {
   eyebrow?: string
   /** Locale-resolved by GROQ */
   title?: string
+  /**
+   * Optional headline accent — 'lastWord' paints the final word of the
+   * headline/title in the brand accent colour. Absent/null means 'none', so
+   * existing documents render unchanged. See src/lib/headline-accent.tsx.
+   */
+  headlineAccent?: 'none' | 'lastWord' | null
   /** Locale-resolved by GROQ */
   intro?: string
   /** Card marker. Unset (null) is treated as 'icon'. */
@@ -1487,6 +1595,12 @@ export interface FeatureRow {
   title?: string
   /** Locale-resolved by GROQ */
   description?: string
+  /**
+   * Optional per-row screenshot, locale-resolved by GROQ. Only read when the
+   * parent section has `interactiveMedia` on; undefined on every row authored
+   * before this field existed.
+   */
+  image?: ResolvedImage
 }
 
 /**
@@ -1508,6 +1622,12 @@ export interface MediaFeatureSection {
   eyebrow?: string
   /** Locale-resolved by GROQ */
   title?: string
+  /**
+   * Optional headline accent — 'lastWord' paints the final word of the
+   * headline/title in the brand accent colour. Absent/null means 'none', so
+   * existing documents render unchanged. See src/lib/headline-accent.tsx.
+   */
+  headlineAccent?: 'none' | 'lastWord' | null
   /** Locale-resolved by GROQ */
   intro?: string
   image?: ResolvedImage
@@ -1524,6 +1644,12 @@ export interface MediaFeatureSection {
   /** Locale-resolved by GROQ */
   mockupBadge?: string
   features?: FeatureRow[]
+  /**
+   * Off by default (false/null/undefined all mean off). When true the section
+   * swaps its displayed media to the hovered (desktop) or selected (mobile)
+   * feature row's `image`, falling back to the section `image`.
+   */
+  interactiveMedia?: boolean
   /** Locale-resolved by GROQ */
   closingLine?: string
   primaryCta?: Cta
@@ -1566,6 +1692,12 @@ export interface CategoryListSection {
   eyebrow?: string
   /** Locale-resolved by GROQ */
   title?: string
+  /**
+   * Optional headline accent — 'lastWord' paints the final word of the
+   * headline/title in the brand accent colour. Absent/null means 'none', so
+   * existing documents render unchanged. See src/lib/headline-accent.tsx.
+   */
+  headlineAccent?: 'none' | 'lastWord' | null
   /** Locale-resolved by GROQ */
   intro?: string
   headerCta?: Cta
@@ -1589,6 +1721,12 @@ export interface CtaBannerSection {
    * DISTINCT from the existing `headline` field — the two are never merged.
    */
   heading?: string
+  /**
+   * Optional headline accent — 'lastWord' paints the final word of the
+   * headline/title in the brand accent colour. Absent/null means 'none', so
+   * existing documents render unchanged. See src/lib/headline-accent.tsx.
+   */
+  headlineAccent?: 'none' | 'lastWord' | null
   /** Locale-resolved by GROQ */
   body?: string
   primaryCta?: Cta

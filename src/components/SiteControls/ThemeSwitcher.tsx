@@ -98,7 +98,7 @@ export function ThemeSwitcher({
   // Drawer appearance
   if (appearance === 'drawer') {
     return (
-      <div className="px-6">
+      <div className="theme-switcher theme-switcher--drawer px-6" data-theme-switcher="drawer">
         <p
           className="mb-2.5 text-[10px] font-semibold uppercase tracking-widest"
           style={{ color: 'var(--color-text-primary)', opacity: 0.3 }}
@@ -110,7 +110,7 @@ export function ThemeSwitcher({
             <button
               key={t}
               onClick={() => setTheme(t)}
-              className="flex w-full items-center gap-3 rounded-[9px] border px-4 py-2.5 text-sm font-medium transition-all"
+              className="flex w-full items-center gap-3 rounded-[var(--radius-btn)] border px-4 py-2.5 text-sm font-medium transition-all"
               style={
                 theme === t
                   ? {
@@ -137,12 +137,18 @@ export function ThemeSwitcher({
 
   // Header/Footer appearance
   return (
-    <div className="relative" data-theme-switch>
+    <div
+      className={`theme-switcher theme-switcher--${appearance} relative`}
+      data-theme-switch
+      data-theme-switcher={appearance}
+    >
       <button
         onClick={() => setThemeOpen(!themeOpen)}
-        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-all"
+        className="flex items-center gap-1.5 rounded-[var(--radius-btn)] px-2.5 py-1.5 transition-all"
         style={{ color: 'var(--color-text-primary)', opacity: 0.72 }}
         aria-label={messages.ariaLabel}
+        title={messages.ariaLabel}
+        data-theme-switcher-toggle
         aria-haspopup="listbox"
         aria-expanded={themeOpen}
       >
@@ -154,7 +160,7 @@ export function ThemeSwitcher({
       </button>
       {themeOpen && (
         <div
-          className="absolute right-0 top-[calc(100%+8px)] z-[500] min-w-[140px] rounded-xl border p-1.5 shadow-2xl"
+          className="absolute right-0 top-[calc(100%+8px)] z-[500] min-w-[140px] rounded-[var(--radius-md)] border p-1.5 shadow-2xl"
           style={{
             backgroundColor: 'var(--color-background-alt)',
             borderColor: 'var(--color-border)',
@@ -167,7 +173,7 @@ export function ThemeSwitcher({
                 setTheme(t)
                 setThemeOpen(false)
               }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+              className="flex w-full items-center gap-2.5 rounded-[var(--radius-btn)] px-3 py-2 text-sm font-medium transition-colors"
               style={{
                 color: theme === t ? 'var(--color-primary)' : 'var(--color-text-primary)',
                 fontWeight: theme === t ? 600 : 500,

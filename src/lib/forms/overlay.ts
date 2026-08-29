@@ -92,6 +92,8 @@ const CHROME: Record<string, OverlayChromeMessages> = {
   de: { closeLabel: 'Schließen' },
   fr: { closeLabel: 'Fermer' },
   es: { closeLabel: 'Cerrar' },
+  pt: { closeLabel: 'Fechar' },
+  nl: { closeLabel: 'Sluiten' },
 }
 
 /** Localized modal chrome copy, falling back to English for unknown locales. */

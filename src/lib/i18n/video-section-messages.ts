@@ -27,6 +27,18 @@ const MESSAGES: Record<string, VideoSectionMessages> = {
   de: {
     defaultPlayerLabel: 'Videoplayer',
   },
+  fr: {
+    defaultPlayerLabel: 'Lecteur vidéo',
+  },
+  es: {
+    defaultPlayerLabel: 'Reproductor de vídeo',
+  },
+  pt: {
+    defaultPlayerLabel: 'Leitor de vídeo',
+  },
+  nl: {
+    defaultPlayerLabel: 'Videospeler',
+  },
 }
 
 export function getVideoSectionMessages(locale: string): VideoSectionMessages {

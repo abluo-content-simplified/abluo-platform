@@ -6,6 +6,9 @@ import { SectionContainer } from '@/components/layout/SectionContainer'
 import { FadeIn } from '@/components/animation/FadeIn'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
 import type { ResolvedImage } from '@/lib/sanity/types'
+import { resolveEasing } from '@/lib/motion/easing'
+import { renderHeadline } from '@/lib/headline-accent'
+import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 interface Props {
   section: StatementSection
@@ -14,12 +17,12 @@ interface Props {
 }
 
 export function StatementSection({ section, surface, designSystem }: Props) {
-  const { eyebrow, headline, description, alignment = 'left', image, imagePosition = 'right' } = section
+  const { eyebrow, headline, headlineAccent, description, alignment = 'left', image, imagePosition = 'right' } = section
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
   const m = designSystem?.motion
   const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
-  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const ease = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
   const hasImage = Boolean(image?.asset)
   const isCenter = !hasImage && alignment === 'center'
@@ -28,23 +31,28 @@ export function StatementSection({ section, surface, designSystem }: Props) {
   const textBlock = (
     <SlideUp duration={duration} ease={ease} delay={0} className="flex flex-col justify-center">
       {eyebrow && (
-        <p
-          className="mb-5 text-xs font-semibold uppercase tracking-[0.2em]"
-          style={{ color: 'var(--color-text-muted)' }}
-        >
-          {eyebrow}
-        </p>
+        <EyebrowLabel
+          eyebrow={eyebrow}
+          designSystem={designSystem}
+          defaultAccent="none"
+          weight="semibold"
+          className={isCenter ? 'mb-5 justify-center' : 'mb-5'}
+        />
       )}
       {headline && (
         <h2
-          className={`text-4xl font-semibold leading-[1.1] tracking-tight md:text-5xl lg:text-6xl${isCenter ? ' mx-auto' : ''}`}
+          className={`[--fs-h2:2.25rem] md:[--fs-h2:3rem] lg:[--fs-h2:3.75rem]${isCenter ? ' mx-auto' : ''}`}
           style={{
             color: 'var(--color-text-primary)',
             fontFamily: 'var(--font-heading)',
             maxWidth: isCenter ? '18ch' : undefined,
+            fontSize: 'var(--font-size-h2, var(--fs-h2))',
+            fontWeight: 'var(--font-weight-h2, 600)',
+            lineHeight: 'var(--line-height-h2, 1.1)',
+            letterSpacing: 'var(--letter-spacing-h2, -0.025em)',
           }}
         >
-          {headline}
+          {renderHeadline(headline, headlineAccent)}
         </h2>
       )}
       {description && (
@@ -65,7 +73,7 @@ export function StatementSection({ section, surface, designSystem }: Props) {
   const imageBlock = hasImage ? (
     <FadeIn duration={duration} ease={ease} delay={0.12} className="flex items-center">
       <div
-        className="relative w-full overflow-hidden rounded-2xl"
+        className="relative w-full overflow-hidden rounded-[var(--radius-lg)]"
         style={{ aspectRatio: '4 / 3' }}
       >
         <img

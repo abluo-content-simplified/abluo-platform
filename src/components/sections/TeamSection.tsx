@@ -5,6 +5,8 @@ import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
 import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
+import { resolveEasing } from '@/lib/motion/easing'
+import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 
 interface Props {
   section: TeamSection
@@ -151,24 +153,24 @@ export function TeamSection({ section, surface, designSystem }: Props) {
   // Motion tokens
   const m = designSystem?.motion
   const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
-  const ease: string | number[] = m?.easingDecelerate ?? [0.0, 0.0, 0.2, 1]
+  const ease = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
   return (
     <SectionContainer id={section.anchorId} style={surfaceStyles}>
       {/* Section header */}
       <SlideUp duration={duration} ease={ease} delay={0} className="mb-16 max-w-2xl">
         {subtitle && (
-          <p
-            className="mb-4 text-xs font-medium uppercase tracking-[0.2em]"
-            style={{ color: 'var(--color-text-muted)' }}
-          >
-            {subtitle}
-          </p>
+          <EyebrowLabel
+            eyebrow={subtitle}
+            designSystem={designSystem}
+            defaultAccent="none"
+            className="mb-4"
+          />
         )}
         {title && (
           <h2
-            className="text-3xl font-semibold leading-snug tracking-tight md:text-4xl"
-            style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
+            className="[--fs-h2:1.875rem] md:[--fs-h2:2.25rem]"
+            style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--font-size-h2, var(--fs-h2))', fontWeight: 'var(--font-weight-h2, 600)', lineHeight: 'var(--line-height-h2, 1.375)', letterSpacing: 'var(--letter-spacing-h2, -0.025em)' }}
           >
             {title}
           </h2>
