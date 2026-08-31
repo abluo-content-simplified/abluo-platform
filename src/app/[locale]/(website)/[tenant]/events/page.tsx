@@ -12,6 +12,7 @@ import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resol
 import { fetchDesignSystemById } from '@/lib/sanity/client'
 import type { EventsPage, LocaleConfig, SupportedLocale, DesignSystem, WebsiteSiteConfig } from '@/lib/sanity/types'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
+import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +23,10 @@ interface PageProps {
 // ─── Metadata ─────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { tenant: tenantId, locale } = await params
+  const { tenant: rawTenantId, locale } = await params
+  // Trust boundary: the `[tenant]` segment is a URL project segment —
+  // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
+  const tenantId = asUrlProjectSegment(rawTenantId)
   const { fetchForTenant } = tenantClient(tenantId)
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
@@ -39,7 +43,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function EventsListPage({ params }: PageProps) {
-  const { tenant: tenantId, locale } = await params
+  const { tenant: rawTenantId, locale } = await params
+  // Trust boundary: the `[tenant]` segment is a URL project segment —
+  // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
+  const tenantId = asUrlProjectSegment(rawTenantId)
   const { fetchForTenant } = tenantClient(tenantId)
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})

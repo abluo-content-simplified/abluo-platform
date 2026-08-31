@@ -60,8 +60,9 @@ afterAll(async () => {
 // same row set when a tenant has a single project. That is precisely the
 // RC-4 failure mode ("any capability a client can switch on/off needs an
 // acceptance check that switches it on") applied to the fixture itself.
-// Every table whose policies are tenant-grain (`leads`) versus project-grain
-// (`form_submissions`, `form_events`) is now separable — see block (i).
+// Every table's grain is now separable — see block (i). That is what made
+// the `leads` grain defect visible and led to migration 020, which moved
+// `leads` onto the same project grain as `form_submissions`/`form_events`.
 //
 // Tenant C's users are chosen so each grant PATH is isolated:
 //   userC             — tenant_members OWNER on tenant C, no project_members
@@ -679,53 +680,47 @@ describe('(f) profiles SELECT grant — migration 015 (closes the invite/accept 
   })
 })
 
-// ── (g) leads — CURRENTLY ungrantable + RLS still tenant-grain-only ────────
+// ── (g) leads — PROJECT grain as of migration 020; still ungranted ────────
 //
-// Filled as part of ADR-015 close-out (task #78): `leads` is the ONE
-// RLS-protected table with ZERO coverage anywhere in this suite before this
-// block — the isolation matrix audit found `schema.sql`'s original
-// migration-004-era policies (`get_my_tenant_ids()` / `get_my_writable_
-// tenant_ids()`) are still in force, but — unlike tenant_members/
-// project_members/projects (migration 011) and inquiries (migration 014)
-// and profiles (migration 015) — NO migration has ever issued a `grant
-// select/insert/update on public.leads to authenticated`. This is the exact
-// "migration 011 bug class" this file's header already names, just never
-// checked for this table specifically until now.
+// Written originally (ADR-015 close-out, task #78) as a CHARACTERIZATION of
+// the pre-020 state — it asserted the defect. CONVERTED on 2026-08-31 into
+// an assertion of the corrected behaviour, when migration 020 (`leads`:
+// tenant grain → project grain) was written and added to the harness's base
+// migration list. What changed here is listed explicitly so the diff reads
+// as intentional and no assertion looks silently flipped:
 //
-// Two things are proven here, in order:
-//   (1) TODAY, `authenticated` has zero grants on `leads` — this is not a
-//       security hole (it fails CLOSED, harder than intended, not open) but
-//       it does mean nobody could read/write leads through the RLS-scoped
-//       session client today even if a route tried to. This matches the
-//       platform's actual current state: the client dashboard's leads read
-//       path is unbuilt (ADR-017 Context) and every existing leads access is
-//       via service-role. Recorded here as a regression guard so a future
-//       session doesn't assume this table is already RLS-live.
-//   (2) IF the grant is added (simulated below, then reverted) — the
-//       pre-existing tenant-grain RLS policies (schema.sql, migration
-//       004-era) DO correctly isolate tenant A from tenant B, exactly like
-//       the `(b)` block proves for tenant_members/projects. This means the
-//       upcoming ADR-017 Decision 6 slice ("New client-dashboard `leads`
-//       SELECT") only needs the GRANT (plus, per that Decision, the
-//       `project_id` NOT NULL + project-grain RLS rewrite) — the tenant-grain
-//       isolation underneath is already sound, not something that slice has
-//       to build from scratch.
-//   (3) A KNOWN, DOCUMENTED FUNCTIONALITY GAP relative to ADR-017's
-//       per-project model: `leads` RLS reads `tenant_members` only
-//       (`get_my_tenant_ids()`), never `project_members`. A project_members-
-//       only grant (no tenant_members row for that project's tenant — e.g.
-//       userEditorA1) gets ZERO leads visibility for that project TODAY,
-//       even though ADR-017's model says an editor grant should see the
-//       project's leads. This is not a cross-tenant leak (it fails closed,
-//       not open) but it is a real, currently-live functional gap that the
-//       leads RLS rewrite (project_id in get_my_project_ids()) must close —
-//       flagged here so it is proven, not just asserted in prose, and so a
-//       future revert of the eventual rewrite would fail this test.
+//   CHANGED — the old "KNOWN GAP" line asserted that userEditorA1
+//     (project_members editor on A1, no tenant_members row anywhere) reads
+//     ZERO leads. That was the UNDER-SHARE half of the defect, deliberately
+//     recorded as today's behaviour. It now asserts ONE row (lead A, which
+//     carries project_id = A1), because migration 020's SELECT policy
+//     resolves project grants. The inversion is the point of the migration.
+//   CHANGED — the block title and the prose below no longer describe the
+//     leads RLS as tenant-grain, because it no longer is.
+//   ADDED — a structural check that the three policies really are the
+//     project-grain ones, and a check of migration 020's backfill step.
+//
+// UNCHANGED, and still asserted below:
+//   (1) `authenticated` has ZERO grants on `leads`. Migration 020 is
+//       policy-only and deliberately grants nothing (see its header): the
+//       table stays unreadable through a real session — a read fails CLOSED
+//       with "permission denied for table leads", for the row's own tenant
+//       owner as much as for a stranger. All live leads access is
+//       service-role, and the client dashboard's leads page is still a
+//       "coming soon" stub. So everything the policies do below is LATENT:
+//       correct for the day the grant lands, unreachable until then. The
+//       grant is simulated inside the tests that need it and reverted in a
+//       `finally`, exactly as this block always did.
+//   (2) Cross-tenant isolation (tenant A cannot read or write tenant B's
+//       lead). A project-grain policy is strictly narrower than the
+//       tenant-grain one it replaced, so no cross-tenant assertion needed
+//       weakening — they pass unchanged, which is itself the regression
+//       guard that 020 did not widen anything.
 
-describe('(g) leads — ungranted today; tenant-grain RLS proven sound once granted (ADR-017 Decision 6 groundwork)', () => {
+describe('(g) leads — project-grain RLS (migration 020), still ungranted to authenticated', () => {
   const leadIds = {}
 
-  it('TODAY: authenticated has ZERO grants on leads (migration-011 bug class, never closed for this table)', async () => {
+  it('authenticated STILL has ZERO grants on leads — migration 020 is policy-only and grants nothing (the dashboard leads read is a separate, later decision)', async () => {
     const { rows } = await client.query(
       `select privilege_type from information_schema.role_table_grants
        where table_schema = 'public' and table_name = 'leads' and grantee = 'authenticated'`
@@ -733,7 +728,7 @@ describe('(g) leads — ungranted today; tenant-grain RLS proven sound once gran
     expect(rows).toEqual([])
   })
 
-  it('TODAY: even the tenant owner of the row\'s own tenant cannot read leads via the authenticated role — fails CLOSED with a permission error, not an empty result', async () => {
+  it('even the tenant owner of the row\'s own tenant cannot read leads via the authenticated role — fails CLOSED with a permission error, not an empty result', async () => {
     await asSuperuser(async () => {
       const lead = await client.query(
         `insert into public.leads (tenant_id, project_id, name, email) values ($1, $2, 'Lead A', 'lead-a@verify.test') returning id`,
@@ -747,7 +742,37 @@ describe('(g) leads — ungranted today; tenant-grain RLS proven sound once gran
     )
   })
 
-  it('IF the grant is added (simulated, then reverted): the pre-existing tenant-grain RLS policies correctly isolate tenant A from tenant B', async () => {
+  it('STRUCTURAL (migration 020): the three tenant-grain policies are gone; the three that exist filter on project_id via the project helpers, and mention a tenant helper only inside the project_id-is-null legacy branch', async () => {
+    const { rows } = await client.query(
+      `select policyname, cmd, qual, with_check from pg_policies
+       where schemaname = 'public' and tablename = 'leads' order by cmd, policyname`
+    )
+    expect(rows.map((r) => `${r.cmd}:${r.policyname}`).sort()).toEqual([
+      'INSERT:Writable roles insert leads for their projects',
+      'SELECT:Members read leads for their projects',
+      'UPDATE:Writable roles update leads for their projects',
+    ])
+    // No policy named after the old tenant grain survives, and no DELETE
+    // policy was introduced (deletes stay service-role only, as schema.sql
+    // left them).
+    expect(rows.some((r) => /for their tenants/.test(r.policyname))).toBe(false)
+    expect(rows.some((r) => r.cmd === 'DELETE')).toBe(false)
+
+    for (const r of rows) {
+      const expr = `${r.qual ?? ''} ${r.with_check ?? ''}`
+      expect(expr).toMatch(/get_my_(writable_)?project_ids/)
+      // get_my_tenant_ids / get_my_writable_tenant_ids must be gone entirely.
+      expect(expr).not.toMatch(/get_my_tenant_ids|get_my_writable_tenant_ids/)
+      // The only permitted tenant helper is the owner one, and only in the
+      // transitional `project_id is null` branch of SELECT/UPDATE.
+      if (/get_my_owned_tenant_ids/.test(expr)) {
+        expect(r.cmd === 'SELECT' || r.cmd === 'UPDATE').toBe(true)
+        expect(expr).toMatch(/project_id IS NULL/i)
+      }
+    }
+  })
+
+  it('IF the grant is added (simulated, then reverted): cross-tenant isolation still holds AND a project_members-only editor now reads their project\'s leads — the under-share migration 020 closes', async () => {
     await asSuperuser(async () => {
       const leadB = await client.query(
         `insert into public.leads (tenant_id, project_id, name, email) values ($1, $2, 'Lead B', 'lead-b@verify.test') returning id`,
@@ -758,7 +783,9 @@ describe('(g) leads — ungranted today; tenant-grain RLS proven sound once gran
     })
 
     try {
-      // Positive: tenant A owner reads exactly Lead A.
+      // Positive: tenant A owner reads exactly Lead A — via get_my_project_ids()'s
+      // owned-tenant branch now, not via tenant_members. Unchanged outcome,
+      // different mechanism.
       await loginAs(ids.userA)
       const { rows: aRows } = await client.query(`select id from public.leads`)
       expect(aRows.map((r) => r.id)).toEqual([leadIds.a])
@@ -779,20 +806,75 @@ describe('(g) leads — ungranted today; tenant-grain RLS proven sound once gran
       )
       expect(ownWrite).toBe(1)
 
-      // KNOWN GAP: userEditorA1 (project_members-only editor on A1, no
-      // tenant_members row anywhere) gets ZERO leads for tenant A — leads
-      // RLS has not been migrated to the project-grain model yet. This
-      // documents the gap, it does not fix it.
+      // CHANGED BY MIGRATION 020 (was: expect(editorRows).toHaveLength(0),
+      // labelled "KNOWN GAP"). userEditorA1 holds a project_members editor
+      // grant on A1 and no tenant_members row anywhere. Under the old
+      // tenant-grain policy get_my_tenant_ids() returned nothing for them and
+      // the whole table was invisible — the under-share. Under 020 they read
+      // exactly A1's lead, and still nothing of tenant B's.
       await loginAs(ids.userEditorA1)
       const { rows: editorRows } = await client.query(`select id from public.leads`)
-      expect(editorRows).toHaveLength(0)
+      expect(editorRows.map((r) => r.id)).toEqual([leadIds.a])
+      const { rowCount: editorWrite } = await client.query(
+        `update public.leads set message = 'contacted by editor' where id = $1`,
+        [leadIds.a]
+      )
+      expect(editorWrite).toBe(1)
+      const { rowCount: editorCrossWrite } = await client.query(
+        `update public.leads set message = 'hijacked' where id = $1`,
+        [leadIds.b]
+      )
+      expect(editorCrossWrite).toBe(0)
 
-      // A user with zero tenant_members rows anywhere sees zero leads.
+      // A user with zero memberships of any kind still sees zero leads.
       await loginAs(ids.userNoMemberships)
       const { rows: noneRows } = await client.query(`select id from public.leads`)
       expect(noneRows).toHaveLength(0)
     } finally {
       await asSuperuser(() => client.query(`revoke select, insert, update on public.leads from authenticated`))
+    }
+  })
+
+  it('BACKFILL (migration 020 step 1) attributes a legacy project_id-null lead of a SINGLE-project tenant and deliberately leaves a MULTI-project tenant\'s lead null', async () => {
+    // Migration 008 added project_id nullable and did NOT backfill, so real
+    // rows are expected to be null today. 020 attributes the unambiguous
+    // ones (tenant owns exactly one project) and cannot attribute the rest.
+    // Re-applying the migration file is safe by construction — the backfill
+    // is a no-op on a second run and every policy is dropped-if-exists first.
+    const legacy = {}
+    await asSuperuser(async () => {
+      const a = await client.query(
+        `insert into public.leads (tenant_id, project_id, name, email) values ($1, null, 'Legacy A', 'legacy-a@verify.test') returning id`,
+        [ids.tenantA]
+      )
+      const c = await client.query(
+        `insert into public.leads (tenant_id, project_id, name, email) values ($1, null, 'Legacy C', 'legacy-c@verify.test') returning id`,
+        [ids.tenantC]
+      )
+      legacy.a = a.rows[0].id
+      legacy.c = c.rows[0].id
+    })
+
+    try {
+      await applyMigrationFile(client, path.join(__dirname, '..', 'migrations', '020_leads_project_grain.sql'))
+      await asSuperuser(async () => {
+        const { rows } = await client.query(
+          `select id, project_id from public.leads where id in ($1, $2) order by name`,
+          [legacy.a, legacy.c]
+        )
+        const byId = Object.fromEntries(rows.map((r) => [r.id, r.project_id]))
+        // Tenant A owns exactly one project → unambiguous, attributed.
+        expect(byId[legacy.a]).toBe(ids.projectA1)
+        // Tenant C owns TWO projects → nothing in the row says which one, so
+        // the backfill must not guess. Stays null, and stays reachable only
+        // through the transitional owner-scoped null branch (block (i)).
+        expect(byId[legacy.c]).toBeNull()
+      })
+    } finally {
+      // Leave the fixture exactly as found — later blocks count leads rows.
+      await asSuperuser(() =>
+        client.query(`delete from public.leads where id in ($1, $2)`, [legacy.a, legacy.c])
+      )
     }
   })
 
@@ -826,8 +908,9 @@ describe('(g) leads — ungranted today; tenant-grain RLS proven sound once gran
 //   (2) POLICY GRAIN — both tables' policies are PROJECT-grain
 //       (get_my_project_ids / get_my_writable_project_ids) and reference
 //       project_id only. This is the distinction that matters: `leads`
-//       (block (g)) is still tenant-grain, so a project-only editor sees
-//       nothing there; these tables are the project-grain model ADR-017
+//       (block (g)) was still tenant-grain when this block was written, so a
+//       project-only editor saw nothing there; migration 020 has since moved
+//       leads onto this same model. These tables are the project-grain model ADR-017
 //       Decision 6 wants, and a silent regression to tenant-grain would
 //       both over-share (every project in the tenant) and under-share
 //       (project_members-only grants). Asserted structurally (pg_policies)
@@ -1027,7 +1110,7 @@ describe('(h) form_submissions + form_events — migrations 016–019 (forms dat
     expect(b.rows).toHaveLength(1)
   })
 
-  it('a project_members-only editor (userEditorA1, zero tenant_members rows anywhere) DOES see project A1\'s submissions — the project-grain path `leads` still lacks (contrast with block (g))', async () => {
+  it('a project_members-only editor (userEditorA1, zero tenant_members rows anywhere) DOES see project A1\'s submissions — the project-grain path `leads` lacked until migration 020 gave it the same shape (see block (g))', async () => {
     await loginAs(ids.userEditorA1)
     const { rows } = await client.query(`select id from public.form_submissions`)
     expect(rows.map((r) => r.id)).toEqual([subIds.a])
@@ -1245,9 +1328,11 @@ describe('(i) two-project tenant (Tenant C = freeriders/nologo+t42): tenant grai
 
   beforeAll(async () => {
     await asSuperuser(async () => {
-      // Leads: one per project of the SAME tenant. Under tenant-grain RLS
-      // these two rows are indistinguishable; under project-grain RLS they
-      // are not. That is the whole experiment.
+      // Leads: one per project of the SAME tenant. Under the tenant-grain RLS
+      // that was in force before migration 020 these two rows were
+      // indistinguishable; under 020's project-grain RLS they are not. That
+      // is the whole experiment, and it is what the assertions below now
+      // measure.
       const l1 = await client.query(
         `insert into public.leads (tenant_id, project_id, name, email) values ($1, $2, 'Lead C1', 'lead-c1@verify.test') returning id`,
         [ids.tenantC, ids.projectC1]
@@ -1306,15 +1391,36 @@ describe('(i) two-project tenant (Tenant C = freeriders/nologo+t42): tenant grai
     })
   })
 
-  // ── leads — TENANT grain (schema.sql:~298) ───────────────────────────────
+  // ── leads — PROJECT grain as of migration 020 ────────────────────────────
   //
-  // Policy in force today (schema.sql, migration-004 era, never rewritten):
+  // Policy in force BEFORE migration 020 (schema.sql, migration-004 era):
   //   "Members can read leads for their tenants"
   //     using (tenant_id in (select public.get_my_tenant_ids()))
-  // `leads.project_id` exists (migration 008) but NO leads policy references
-  // it. So leads visibility is decided purely by tenant_members.
+  // `leads.project_id` existed (migration 008) but NO leads policy referenced
+  // it, so leads visibility was decided purely by tenant_members — wrong in
+  // both directions once a tenant owns more than one project.
+  //
+  // Policy in force NOW (migration 020, applied by lib/harness.mjs):
+  //   "Members read leads for their projects"
+  //     using (project_id in (select public.get_my_project_ids())
+  //            or (project_id is null
+  //                and tenant_id in (select public.get_my_owned_tenant_ids())))
+  //
+  // The four tests below were written as CHARACTERIZATIONS of the tenant-grain
+  // defect and were CONVERTED on 2026-08-31 into assertions of the corrected
+  // behaviour. Each one names what its expectation used to be and why it
+  // changed — no assertion here was flipped silently.
 
-  it('leads ARE TENANT GRAIN: userC (tenant_members owner, no project_members row at all) reads BOTH projects\' leads — C1\'s and C2\'s', async () => {
+  it('TENANT-OWNER PRECEDENCE SURVIVES 020: userC (tenant_members owner, no project_members row at all) still reads BOTH projects\' leads — now via get_my_project_ids()\'s owned-tenant branch, not via tenant_members', async () => {
+    // UNCHANGED EXPECTATION, CHANGED MECHANISM (title changed, assertions did
+    // not). Before 020 userC saw both leads because the policy read
+    // get_my_tenant_ids(). After 020 they still see both, because
+    // get_my_project_ids() begins with
+    //   select id from public.projects
+    //   where tenant_id in (select public.get_my_owned_tenant_ids())
+    // — owning tenant C resolves to every project of tenant C (ADR-017
+    // Decision 2). This test is the guard that migration 020 did not take
+    // access away from the one role that should keep it.
     await loginAs(ids.userC)
     const { rows } = await client.query(`select id from public.leads order by created_at`)
     const seen = rows.map((r) => r.id)
@@ -1323,60 +1429,95 @@ describe('(i) two-project tenant (Tenant C = freeriders/nologo+t42): tenant grai
     expect(seen).toHaveLength(2)
   })
 
-  it('leads OVER-SHARE across projects for any tenant member: userTenantViewerC (tenant_members VIEWER on C, zero project grants) also reads BOTH projects\' leads', async () => {
-    // This is the tenant-grain over-share half of the finding: a user with
-    // no project-scoped grant whatsoever still sees every project's leads in
-    // the tenant, because the policy never looks at project_id. With a
-    // one-project-per-tenant fixture this was indistinguishable from correct
-    // behaviour. With two projects it is visible.
+  it('OVER-SHARE CLOSED (migration 020): userTenantViewerC (tenant_members VIEWER on C, zero project grants) now reads ZERO leads — it used to read BOTH projects\' leads', async () => {
+    // CHANGED BY MIGRATION 020. This test previously asserted
+    //   expect(seen).toContain(cLeadIds.c1); expect(seen).toContain(cLeadIds.c2)
+    // and was labelled "OPEN FINDING (documented, NOT fixed here)". It was
+    // the over-share half of the defect: a tenant member with no
+    // project-scoped grant of any kind saw every project's leads in the
+    // tenant, because the policy never looked at project_id. A
+    // one-project-per-tenant fixture could not tell that apart from correct
+    // behaviour; tenant C's two projects can.
     //
-    // OPEN FINDING (documented, NOT fixed here — no migration is changed):
-    //   target policy per ADR-017 Decision 6 is
-    //     using (project_id in (select public.get_my_project_ids()))
-    //   matching form_submissions (migration 016). Under that target,
-    //   userTenantViewerC would read ZERO leads (they own no tenant, hold no
-    //   project_members row) instead of two.
+    // Under 020 this user resolves to nothing: they own no tenant (so
+    // get_my_owned_tenant_ids() is empty, and with it the owned-tenant branch
+    // of get_my_project_ids()) and hold no project_members row. A tenant
+    // VIEWER role is no longer, by itself, leads access — per ADR-017
+    // Decision 6 non-owner tenant members get leads access through
+    // project_members rows.
     await loginAs(ids.userTenantViewerC)
     const { rows } = await client.query(`select id from public.leads`)
-    const seen = rows.map((r) => r.id)
-    expect(seen).toContain(cLeadIds.c1)
-    expect(seen).toContain(cLeadIds.c2)
+    expect(rows).toHaveLength(0)
   })
 
-  it('leads UNDER-SHARE for project-grain members: userEditorC1 (project_members editor on C1 ONLY) reads ZERO leads — not C2\'s (no leak), but not C1\'s own either (the real gap)', async () => {
-    // THE QUESTION THIS BLOCK EXISTS TO ANSWER, answered from a real
-    // Postgres result rather than from reading the policy:
-    //   Does a project-grain-only member of C1 read C2's leads today?  NO.
-    // But not because the policy scopes by project — it is because the
-    // policy scopes by TENANT and this user has no tenant_members row at
-    // all, so get_my_tenant_ids() returns the empty set and the whole table
-    // is invisible to them, C1 included. The tenant-grain policy therefore
-    // fails CLOSED for this user (no cross-project leak) while ALSO denying
-    // the access ADR-017 says an editor should have.
+  it('UNDER-SHARE CLOSED (migration 020): userEditorC1 (project_members editor on C1 ONLY) now reads C1\'s lead — and still NOT C2\'s, the sibling project of the same tenant', async () => {
+    // CHANGED BY MIGRATION 020, in one direction only. This test previously
+    // asserted `expect(rows).toHaveLength(0)` with the inline notes
+    // "TARGET AFTER REWRITE: 1 row" (C1) and "TARGET AFTER REWRITE: still 0
+    // rows" (C2). Those targets are now the assertions.
     //
-    // The over-share (previous test) and this under-share are the same root
-    // cause — a tenant-grain policy on a table whose grain is now project —
-    // pointing in opposite directions depending on which grant path the
-    // user holds. Both are fixed by the same one-line rewrite to
-    // `project_id in (select public.get_my_project_ids())`.
+    // Before: the policy scoped by TENANT and this user has no tenant_members
+    // row at all, so get_my_tenant_ids() returned the empty set and the whole
+    // table was invisible — C1 included. It failed CLOSED (no cross-project
+    // leak) while ALSO denying the access ADR-017 says an editor grant
+    // carries. After: the project_members branch of get_my_project_ids()
+    // resolves C1 and only C1.
+    //
+    // The C2 half is the load-bearing negative control: two projects of the
+    // SAME tenant are now genuinely isolated from each other, which is
+    // exactly what the tenant-grain policy could never express.
     await loginAs(ids.userEditorC1)
     const { rows } = await client.query(`select id from public.leads`)
-    expect(rows).toHaveLength(0)
+    expect(rows.map((r) => r.id)).toEqual([cLeadIds.c1])
 
-    // Stated explicitly for both halves, so a future rewrite has to change
-    // the C1 line (from 0 rows to 1) and MUST NOT change the C2 line.
     const c1 = await client.query(`select id from public.leads where id = $1`, [cLeadIds.c1])
-    expect(c1.rows).toHaveLength(0) // TARGET AFTER REWRITE: 1 row
+    expect(c1.rows).toHaveLength(1)
     const c2 = await client.query(`select id from public.leads where id = $1`, [cLeadIds.c2])
-    expect(c2.rows).toHaveLength(0) // TARGET AFTER REWRITE: still 0 rows
+    expect(c2.rows).toHaveLength(0)
   })
 
-  it('leads WRITE is tenant grain too: userC can update C2\'s lead despite holding no project grant on C2, and neither tenant A nor tenant B can touch tenant C\'s leads at all', async () => {
+  it('leads WRITE is PROJECT grain as of 020: userC (owner) still updates C2\'s lead, userEditorC1 updates C1\'s but NOT C2\'s, userTenantViewerC updates nothing, and tenants A/B still cannot touch tenant C at all', async () => {
+    // CHANGED BY MIGRATION 020 — title and coverage, not the two assertions
+    // that were already here. The original test asserted only (a) userC can
+    // update C2's lead "despite holding no project grant on C2" and (b)
+    // tenants A and B can neither read nor write tenant C's leads.
+    //
+    // (a) still holds and is still correct: get_my_writable_project_ids()
+    // opens with the SAME owned-tenant branch as get_my_project_ids(), so a
+    // tenant owner keeps write access to every project of their tenant. What
+    // the original title called an over-share was, for the OWNER role
+    // specifically, intended behaviour all along (ADR-017 Decision 2). The
+    // genuine write over-share was the tenant EDITOR/VIEWER case, now added
+    // below and now denied.
     await loginAs(ids.userC)
     const own = await client.query(`update public.leads set message = 'contacted' where id = $1`, [
       cLeadIds.c2,
     ])
     expect(own.rowCount).toBe(1)
+
+    // NEW: the project-grain write boundary inside one tenant. An editor on
+    // C1 writes C1 and is silently filtered out of C2 — under the old
+    // tenant-grain UPDATE policy (get_my_writable_tenant_ids()) this user
+    // could write NEITHER, since they hold no tenant_members row.
+    await loginAs(ids.userEditorC1)
+    const editorOwn = await client.query(`update public.leads set message = 'editor note' where id = $1`, [
+      cLeadIds.c1,
+    ])
+    expect(editorOwn.rowCount).toBe(1)
+    const editorCross = await client.query(`update public.leads set message = 'hijacked' where id = $1`, [
+      cLeadIds.c2,
+    ])
+    expect(editorCross.rowCount).toBe(0)
+
+    // NEW: a tenant VIEWER writes nothing — read-only at the database layer
+    // was already the convention (get_my_writable_* excludes viewer); what
+    // changed is that they can no longer even SEE the rows.
+    await loginAs(ids.userTenantViewerC)
+    const viewerWrite = await client.query(
+      `update public.leads set message = 'viewer wrote this' where id in ($1, $2)`,
+      [cLeadIds.c1, cLeadIds.c2]
+    )
+    expect(viewerWrite.rowCount).toBe(0)
 
     for (const userId of [ids.userA, ids.userB]) {
       await loginAs(userId)
@@ -1391,6 +1532,80 @@ describe('(i) two-project tenant (Tenant C = freeriders/nologo+t42): tenant grai
       ])
       expect(write.rowCount).toBe(0)
     }
+  })
+
+  it('TRANSITIONAL NULL BRANCH (migration 020): an un-backfillable legacy lead (project_id null, multi-project tenant) stays visible and writable to the tenant OWNER only — not to the tenant viewer, not to the project editor', async () => {
+    // The compatibility branch migration 020 adds for rows its backfill
+    // cannot attribute:
+    //   or (project_id is null and tenant_id in (select get_my_owned_tenant_ids()))
+    // Scoped to owners on purpose: an owner would see the row under ANY
+    // eventual attribution (owned-tenant branch of get_my_project_ids()), so
+    // the branch grants them nothing extra — while the tenant VIEWER whose
+    // over-share 020 closes stays denied. If this test ever fails open for
+    // userTenantViewerC, the branch has re-introduced tenant grain.
+    const legacy = {}
+    await asSuperuser(async () => {
+      const { rows } = await client.query(
+        `insert into public.leads (tenant_id, project_id, name, email)
+         values ($1, null, 'Legacy C null', 'legacy-c-null@verify.test') returning id`,
+        [ids.tenantC]
+      )
+      legacy.id = rows[0].id
+    })
+
+    try {
+      await loginAs(ids.userC)
+      const ownerRead = await client.query(`select id from public.leads where id = $1`, [legacy.id])
+      expect(ownerRead.rows).toHaveLength(1)
+      const ownerWrite = await client.query(`update public.leads set message = 'legacy touch' where id = $1`, [
+        legacy.id,
+      ])
+      expect(ownerWrite.rowCount).toBe(1)
+
+      for (const userId of [ids.userTenantViewerC, ids.userEditorC1, ids.userA]) {
+        await loginAs(userId)
+        const read = await client.query(`select id from public.leads where id = $1`, [legacy.id])
+        expect(read.rows).toHaveLength(0)
+        const write = await client.query(`update public.leads set message = 'nope' where id = $1`, [legacy.id])
+        expect(write.rowCount).toBe(0)
+      }
+    } finally {
+      await asSuperuser(() => client.query(`delete from public.leads where id = $1`, [legacy.id]))
+    }
+  })
+
+  it('INSERT has NO null branch (migration 020): a writable role can insert a lead naming a project they can write, but an insert with project_id null is REJECTED outright — which is how the un-backfillable set stays finite', async () => {
+    await loginAs(ids.userEditorC1)
+    const inserted = await client.query(
+      `insert into public.leads (tenant_id, project_id, name, email)
+       values ($1, $2, 'Inserted by editor', 'ins-c1@verify.test') returning id`,
+      [ids.tenantC, ids.projectC1]
+    )
+    expect(inserted.rows).toHaveLength(1)
+
+    // Sibling project of the same tenant: rejected by WITH CHECK.
+    await expect(
+      client.query(
+        `insert into public.leads (tenant_id, project_id, name, email)
+         values ($1, $2, 'Cross-project', 'ins-c2@verify.test')`,
+        [ids.tenantC, ids.projectC2]
+      )
+    ).rejects.toThrow(/row-level security policy/)
+
+    // project_id null: rejected too — even for the tenant owner, whose SELECT
+    // and UPDATE null branch does NOT extend to INSERT.
+    await loginAs(ids.userC)
+    await expect(
+      client.query(
+        `insert into public.leads (tenant_id, project_id, name, email)
+         values ($1, null, 'No project', 'ins-null@verify.test')`,
+        [ids.tenantC]
+      )
+    ).rejects.toThrow(/row-level security policy/)
+
+    await asSuperuser(() =>
+      client.query(`delete from public.leads where id = $1`, [inserted.rows[0].id])
+    )
   })
 
   // ── form_submissions — PROJECT grain (migration 016:~105) ────────────────
@@ -1426,18 +1641,30 @@ describe('(i) two-project tenant (Tenant C = freeriders/nologo+t42): tenant grai
     expect(seen).not.toContain(cSubIds.platform)
   })
 
-  it('GRAIN MISMATCH, same user, two tables: userTenantViewerC reads BOTH leads but ZERO form_submissions — get_my_tenant_ids() returns tenant C while get_my_project_ids() (owner-only + project_members) returns nothing', async () => {
-    // The single sharpest demonstration that the two tables disagree about
-    // what a "member" is. A non-owner tenant member is fully visible to the
-    // tenant-grain table and completely invisible to the project-grain one.
-    // Recorded as today's reality; ADR-017's target model resolves it by
-    // moving `leads` to the project-grain side (and, per Decision 6, giving
-    // non-owner tenant members their access through project_members rows).
+  it('GRAIN NOW AGREES, same user, two tables: userTenantViewerC reads ZERO leads and ZERO form_submissions — and userEditorC1 reads exactly one of each, C1\'s', async () => {
+    // CHANGED BY MIGRATION 020. This test was previously titled "GRAIN
+    // MISMATCH …" and asserted `expect(leads.rows).toHaveLength(2)` against
+    // `expect(subs.rows).toHaveLength(0)` — the single sharpest demonstration
+    // that the two tables disagreed about what a "member" is: a non-owner
+    // tenant member was fully visible to the tenant-grain table and
+    // completely invisible to the project-grain one.
+    //
+    // The mismatch is what migration 020 removes, so the test now asserts
+    // agreement in BOTH directions: the tenant-viewer probe (visible to
+    // neither) and the project-editor probe (visible to both, and to the same
+    // project). Keeping only the first half would let a partial regression —
+    // e.g. a policy that denies everyone — pass unnoticed.
     await loginAs(ids.userTenantViewerC)
     const leads = await client.query(`select id from public.leads`)
-    expect(leads.rows).toHaveLength(2)
+    expect(leads.rows).toHaveLength(0)
     const subs = await client.query(`select id from public.form_submissions`)
     expect(subs.rows).toHaveLength(0)
+
+    await loginAs(ids.userEditorC1)
+    const editorLeads = await client.query(`select id from public.leads`)
+    expect(editorLeads.rows.map((r) => r.id)).toEqual([cLeadIds.c1])
+    const editorSubs = await client.query(`select id from public.form_submissions`)
+    expect(editorSubs.rows.map((r) => r.id)).toEqual([cSubIds.c1])
   })
 
   it('a project_id = null (platform-level) submission is invisible to EVERY member of the two-project tenant — owner, project editor and tenant viewer alike', async () => {
@@ -1536,63 +1763,88 @@ describe('(i) two-project tenant (Tenant C = freeriders/nologo+t42): tenant grai
     }
   })
 
-  it('DISCOVERED (migration-011 bug class, one more table): `public.tenants` has NO grant to authenticated at all — a tenant read fails CLOSED with "permission denied for table tenants", for the row-owner as much as for a stranger, so its "Members can read their tenants" RLS policy is unreachable today', async () => {
-    // Found while writing this block: the natural cross-tenant probe
-    // (`select id from public.tenants where id = tenantC` as userA) does not
-    // return 0 rows — it raises. `schema.sql` defines the SELECT policy
-    // "Members can read their tenants" using (id in get_my_tenant_ids()),
-    // but no migration (011 included — it audited tenant_members /
-    // project_members / projects only) ever issued
-    // `grant select on public.tenants to authenticated`. Same shape as
-    // `leads` (block (g)) and pre-015 `profiles`: fails closed, harder than
-    // intended, not open — but the policy has never been exercisable by a
-    // real authenticated session, and any future client-side tenant read
-    // (e.g. resolving a tenant's display_name in the dashboard) will hit
-    // 42501 rather than an empty set. Asserted both ways below so this is a
-    // guard, not a footnote.
+  it('`public.tenants` READ GRANT (migration 021): authenticated now holds SELECT (and only SELECT), so "Members can read their tenants" is finally reachable — and it isolates correctly', async () => {
+    // CHANGED BY MIGRATION 021. This test was originally titled
+    // "DISCOVERED (migration-011 bug class, one more table)" and asserted the
+    // gap: `expect(grants.rows).toEqual([])`, plus two
+    // `.rejects.toThrow(/permission denied for table tenants/)` probes (for a
+    // stranger AND for the row's own owner — which is how a missing GRANT is
+    // told apart from RLS filtering, since RLS returns an empty set and never
+    // raises). It then granted SELECT, proved the policy isolates, and
+    // reverted.
+    //
+    // Migration 021 makes that simulate-then-revert block permanent: the
+    // grant is now applied by lib/harness.mjs's base migration list, so the
+    // "permission denied" assertions are gone (they would now fail) and the
+    // isolation assertions run against the real granted state. 021 is
+    // GRANT-ONLY — schema.sql's policy is unchanged and still correct, which
+    // is why nothing below had to be rewritten, only un-simulated.
     const grants = await client.query(
       `select privilege_type from information_schema.role_table_grants
        where table_schema = 'public' and table_name = 'tenants' and grantee = 'authenticated'`
     )
-    expect(grants.rows).toEqual([])
+    expect(grants.rows.map((r) => r.privilege_type)).toEqual(['SELECT'])
 
-    // Stranger AND owner both get the permission error — which is exactly
-    // how you tell "no grant" apart from "RLS filtered it away".
-    await loginAs(ids.userA)
-    await expect(
-      client.query(`select id from public.tenants where id = $1`, [ids.tenantC])
-    ).rejects.toThrow(/permission denied for table tenants/)
+    // The policy itself must still be the untouched schema.sql one.
+    const policies = await client.query(
+      `select policyname, cmd, qual from pg_policies
+       where schemaname = 'public' and tablename = 'tenants'`
+    )
+    expect(policies.rows.map((r) => `${r.cmd}:${r.policyname}`)).toEqual([
+      'SELECT:Members can read their tenants',
+    ])
+    expect(policies.rows[0].qual).toMatch(/get_my_tenant_ids/)
+
+    // A tenant member reads exactly their own tenant row — no error, and no
+    // other tenant's row.
+    await loginAs(ids.userC)
+    const mine = await client.query(`select id from public.tenants`)
+    expect(mine.rows.map((r) => r.id)).toEqual([ids.tenantC])
+
+    // Tenant grain is CORRECT for this table (one row per tenant), so a
+    // tenant VIEWER does see it — unlike `leads`, where migration 020
+    // deliberately removed that. The grain asymmetry is intentional; see
+    // migration 021's header.
+    await loginAs(ids.userTenantViewerC)
+    const viewer = await client.query(`select id from public.tenants`)
+    expect(viewer.rows.map((r) => r.id)).toEqual([ids.tenantC])
+
+    // Known, unchanged under-share of the same family as leads': a
+    // project_members-only holder has no tenant_members row, so
+    // get_my_tenant_ids() is empty and they see no tenant row at all — not
+    // even the tenant owning the project they edit. 021 does not address
+    // this (grant-only, no visibility change); recorded so a future widening
+    // of the tenants policy is a deliberate edit to this line.
+    await loginAs(ids.userEditorC1)
+    const editor = await client.query(`select id from public.tenants`)
+    expect(editor.rows).toHaveLength(0)
+
+    // Cross-tenant denial is a filtered empty set now, not a 42501.
+    for (const userId of [ids.userA, ids.userB]) {
+      await loginAs(userId)
+      const t = await client.query(`select id from public.tenants where id = $1`, [ids.tenantC])
+      expect(t.rows).toHaveLength(0)
+    }
+
+    // A user with no membership anywhere sees nothing at all.
+    await loginAs(ids.userNoMemberships)
+    const none = await client.query(`select id from public.tenants`)
+    expect(none.rows).toHaveLength(0)
+  })
+
+  it('migration 021 granted SELECT only — authenticated still cannot write public.tenants, which has no write policy to constrain it (platform-admin surface, service-role only)', async () => {
     await loginAs(ids.userC)
     await expect(
-      client.query(`select id from public.tenants where id = $1`, [ids.tenantC])
+      client.query(`update public.tenants set display_name = 'renamed' where id = $1`, [ids.tenantC])
     ).rejects.toThrow(/permission denied for table tenants/)
-
-    // And IF the grant were added (simulated, then reverted): the existing
-    // tenant-grain policy does isolate correctly — tenant C is visible to
-    // its own members only. So closing this gap needs the GRANT only, not a
-    // policy rewrite.
-    await asSuperuser(() => client.query(`grant select on public.tenants to authenticated`))
-    try {
-      await loginAs(ids.userC)
-      const mine = await client.query(`select id from public.tenants`)
-      expect(mine.rows.map((r) => r.id)).toEqual([ids.tenantC])
-
-      // Both of tenant C's projects hang off this ONE tenant row — a tenant
-      // read is tenant grain by definition, and userEditorC1 (project grain
-      // only, no tenant_members row) therefore sees NO tenant row at all,
-      // not even C1's owning tenant. Same under-share shape as `leads`.
-      await loginAs(ids.userEditorC1)
-      const editor = await client.query(`select id from public.tenants`)
-      expect(editor.rows).toHaveLength(0)
-
-      for (const userId of [ids.userA, ids.userB]) {
-        await loginAs(userId)
-        const t = await client.query(`select id from public.tenants where id = $1`, [ids.tenantC])
-        expect(t.rows).toHaveLength(0)
-      }
-    } finally {
-      await asSuperuser(() => client.query(`revoke select on public.tenants from authenticated`))
-    }
+    await expect(
+      client.query(
+        `insert into public.tenants (slug, display_name, domain) values ('verify-rogue', 'Rogue', 'rogue.verify.test')`
+      )
+    ).rejects.toThrow(/permission denied for table tenants/)
+    await expect(
+      client.query(`delete from public.tenants where id = $1`, [ids.tenantC])
+    ).rejects.toThrow(/permission denied for table tenants/)
   })
 
   it('form_events follow form_submissions\' project grain across the two projects of one tenant (the outbox must not leak sibling-project events)', async () => {

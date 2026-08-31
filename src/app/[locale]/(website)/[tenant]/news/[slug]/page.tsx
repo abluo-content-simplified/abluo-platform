@@ -37,6 +37,7 @@ import { PortableText } from '@portabletext/react'
 import { articlePortableTextComponents } from '@/components/portable-text/article-components'
 import { getNewsModuleMessages, formatNewsDate } from '@/lib/i18n/news-module-messages'
 import { resolveEasing } from '@/lib/motion/easing'
+import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,7 +49,10 @@ interface PageProps {
 // ─── Metadata ─────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { tenant: tenantId, locale, slug } = await params
+  const { tenant: rawTenantId, locale, slug } = await params
+  // Trust boundary: the `[tenant]` segment is a URL project segment —
+  // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
+  const tenantId = asUrlProjectSegment(rawTenantId)
   const { fetchForTenant } = tenantClient(tenantId)
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
@@ -147,7 +151,10 @@ function getBackContext(
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function NewsDetailPage({ params, searchParams }: PageProps) {
-  const { tenant: tenantId, locale, slug } = await params
+  const { tenant: rawTenantId, locale, slug } = await params
+  // Trust boundary: the `[tenant]` segment is a URL project segment —
+  // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
+  const tenantId = asUrlProjectSegment(rawTenantId)
   const resolvedSearch = await searchParams
   const from = resolvedSearch?.from
   const { fetchForTenant } = tenantClient(tenantId)

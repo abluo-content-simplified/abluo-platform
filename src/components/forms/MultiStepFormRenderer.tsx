@@ -35,8 +35,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { FormField, validateForm } from '@/components/fields'
 import type { RenderableFormDefinition, RenderableFormField } from '@/lib/sanity/types'
 import type { FormSectionMessages } from '@/lib/i18n/form-section-messages'
-import { buildFieldConfigs, buildSubmissionPayload, submissionEndpoint, projectScopeSlugFromTenantSlug, applySuccessTemplate, CONSENT_FIELD_ID } from '@/lib/forms/render-mapping'
-import { asTenantSlug } from '@/lib/tenancy/ids'
+import { buildFieldConfigs, buildSubmissionPayload, submissionEndpoint, projectScopeSlugFromUrlSegment, applySuccessTemplate, CONSENT_FIELD_ID } from '@/lib/forms/render-mapping'
 import { collectClientSource } from '@/lib/forms/source'
 import {
   mapContextToValues,
@@ -45,6 +44,7 @@ import {
   stepValues,
   isFinalStepIndex,
 } from '@/lib/forms/multistep'
+import type { UrlProjectSegment } from '@/lib/tenancy/ids'
 
 interface StepResponse {
   ok?: boolean
@@ -58,7 +58,12 @@ interface Props {
   definition: RenderableFormDefinition
   messages: FormSectionMessages
   locale?: string
-  tenantSlug: string
+  /**
+   * The `[tenant]` URL segment. Despite the name this is NOT a tenant slug:
+   * No!Logo's segment is `nologo`, whose tenant is `freeriders`. See
+   * `@/lib/tenancy/ids`.
+   */
+  tenantSlug: UrlProjectSegment
   /** Placement Context — only contextMappable keys are honored (client + server). */
   context?: Record<string, unknown> | null
   /** Presentation context: 'overlay' pins the submit button as a sticky footer. */
@@ -125,10 +130,10 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
   }, [])
 
   // ⚠️ ONE-TO-N BOUNDARY: this component only ever receives the URL TENANT slug,
-  // but the submission route is project-scoped. `projectScopeSlugFromTenantSlug`
+  // but the submission route is project-scoped. `projectScopeSlugFromUrlSegment`
   // marks the dependency on projects.slug === tenants.slug (true for all five
   // live projects) instead of hiding it in an untyped string pass-through.
-  const endpoint = submissionEndpoint(projectScopeSlugFromTenantSlug(asTenantSlug(tenantSlug)), def.formId)
+  const endpoint = submissionEndpoint(projectScopeSlugFromUrlSegment(tenantSlug), def.formId)
 
   const postCreate = useCallback(
     async (stepData: Record<string, unknown>, timed = true): Promise<StepResponse | null> => {

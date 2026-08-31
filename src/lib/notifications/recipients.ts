@@ -40,7 +40,7 @@
  * for events already sitting in the outbox.
  */
 import { sanityClient } from '@/lib/sanity/client'
-import type { ProjectSlug } from '@/lib/tenancy/ids'
+import type { SupabaseProjectSlug } from '@/lib/tenancy/ids'
 
 /**
  * The project a notification is addressed to.
@@ -56,7 +56,7 @@ import type { ProjectSlug } from '@/lib/tenancy/ids'
  */
 export interface NotificationScope {
   projectId: string
-  projectSlug: ProjectSlug | null
+  projectSlug: SupabaseProjectSlug | null
 }
 
 /** Human-readable identity of a scope, for logs and outbox `last_error`. */

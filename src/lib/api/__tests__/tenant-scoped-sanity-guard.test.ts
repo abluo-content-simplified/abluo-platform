@@ -14,10 +14,11 @@
 import { describe, it, expect, vi } from 'vitest'
 import { tenantScopedSanityClient, TenantAuthorizationError } from '../tenant-scoped-sanity'
 import type { ProjectGrant, TenantAuthorizationContext } from '../tenant-context'
+import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 
 const grant: ProjectGrant = {
   projectId: 'project-a1',
-  projectSlug: 'livener-main',
+  projectSlug: asSupabaseProjectSlug('livener-main'),
   membershipId: 'pm-editor-a1',
   role: 'editor',
   permissions: ['blog.post.read'],

@@ -8,9 +8,11 @@ import { renderWordmark, FOOTER_WORDMARK_ACCENT_STYLE } from '@/lib/wordmark'
 import { Icon } from '@/components/icons'
 import { FooterLanguageSwitcher } from './FooterClient'
 import { EarlyAccessFooterCta } from '@/components/forms/EarlyAccessFooterCta'
+import type { UrlProjectSegment } from '@/lib/tenancy/ids'
 
 interface FooterProps {
-  tenantId: string
+  /** The `[tenant]` URL segment. Not a tenant slug — see `@/lib/tenancy/ids`. */
+  tenantId: UrlProjectSegment
   locale: SupportedLocale
   defaultLocale: SupportedLocale
   variant?: 'full' | 'minimal'

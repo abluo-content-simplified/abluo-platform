@@ -38,7 +38,8 @@ const CONNECTION_STRING = `postgresql://postgres:postgres@127.0.0.1:${PORT}/post
  * Ordered list of real migration files this harness applies, mirroring
  * exactly what a fresh Supabase project would have after all of them ran.
  * `schema.sql` already bakes in migrations 001–005 (see its own header
- * comment) — migrations 006–013 apply on top, in numeric order. The
+ * comment) — migrations 006–013 apply on top, in numeric order, followed by
+ * 020–021 (see the inline note beside them). The
  * `.sql.draft` file (010) is NOT applied — it was never applied to any real
  * environment either (see its own header). Migration 014 (this task's
  * deliverable) is applied separately by the test suite that needs it, not
@@ -53,6 +54,14 @@ const BASE_MIGRATIONS = [
   '011_authz_read_grants.sql',
   '012_profiles_update_own.sql',
   '013_fix_projects_policy_recursion.sql',
+  // 020/021 are policy/grant-only and depend on nothing from 014–019 (they
+  // need 007's project helpers and 008's leads.project_id, both above), so
+  // they belong in the base set: every block in the suite should see the
+  // corrected `leads` grain and the `tenants` read grant, not just the block
+  // that introduced them. Both are "written, NOT applied" against the real
+  // Supabase project — see supabase/APPLIED.md.
+  '020_leads_project_grain.sql',
+  '021_tenants_read_grant.sql',
 ]
 
 let pgInstance = null

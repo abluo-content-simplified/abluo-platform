@@ -109,6 +109,8 @@ header, marked as such. No row below was determined by querying a database.
 | 017 | `017_form_events.sql` | ADR-018 Decision 9: creates the append-only `form_events` outbox (status/attempts/last_error/processed_at) read by the ADR-019 consumer. Payload is provider-agnostic and carries no recipients or secrets. | UNKNOWN — verify against live DB |
 | 018 | `018_form_tables_service_role_grants.sql` | Fixes a live 500 (Postgres 42501, "permission denied for table form_submissions"): grants `service_role` full privileges on both forms tables, which 016/017 omitted. | UNKNOWN — verify against live DB |
 | 019 | `019_form_events_env_and_status.sql` | ADR-019: adds `environment` and `project_slug` to `form_events` plus a `'skipped'` status, so the single production webhook consumer delivers only `environment = 'production'` events and non-prod submissions are recorded but not emailed. | UNKNOWN — verify against live DB |
+| 020 | `020_leads_project_grain.sql` | Moves `leads` RLS from tenant grain to project grain (`get_my_project_ids()` / `get_my_writable_project_ids()`, the migration-016 shape), backfills `project_id` for single-project tenants, and keeps an owner-scoped `project_id is null` branch for legacy rows that cannot be attributed. | **NO — written 2026-08-31, NOT APPLIED.** Header states it explicitly. Proven only against `supabase/verify` (blocks (g) and (i)). See "Written but not applied" below for the exact dashboard queries. |
+| 021 | `021_tenants_read_grant.sql` | `grant select on public.tenants to authenticated` — the one table migration 011 did not audit. Grant only; `schema.sql`'s "Members can read their tenants" policy is already correct and is untouched. | **NO — written 2026-08-31, NOT APPLIED.** Header states it explicitly. Proven only against `supabase/verify` (block (i)). See below. |
 
 ## When you fill this in
 
@@ -121,3 +123,98 @@ YES — verified 2026-09-02 against <project ref>, dev/preview/prod (shared proj
 
 and leave the header-claim note in place. Record the date, the environment and
 what you actually ran — a bare "YES" is how this file rots back into guesswork.
+
+
+## Written but not applied — 2026-08-31 (migrations 020, 021)
+
+Both files were written in the same session and **neither was executed
+against the Supabase project**. No DDL was run anywhere except the local
+disposable Postgres in `supabase/verify/` (`npm run verify`, 81 tests green,
+up from 76 — `lib/harness.mjs` now applies 020 and 021 in its base list).
+Tom applies both by hand in the dashboard SQL editor, then fills in the
+`Applied?` cells above using the queries below.
+
+Suggested order: **021 first** (a pure grant, no behaviour change, trivially
+reversible with `revoke`), then **020**.
+
+### 020 — `leads` project grain
+
+What to run: the whole file, top to bottom. It is idempotent (every policy is
+`drop policy if exists`-ed first; the backfill is a no-op on a second run).
+
+Confirm it took effect:
+
+```sql
+-- (a) Exactly three policies, all project-grain, none named "… for their tenants".
+select policyname, cmd, qual, with_check
+from   pg_policies
+where  schemaname = 'public' and tablename = 'leads'
+order  by cmd, policyname;
+-- Expect exactly 3 rows:
+--   INSERT  Writable roles insert leads for their projects
+--   SELECT  Members read leads for their projects
+--   UPDATE  Writable roles update leads for their projects
+-- Every qual/with_check must mention get_my_project_ids or
+-- get_my_writable_project_ids. get_my_tenant_ids / get_my_writable_tenant_ids
+-- must appear NOWHERE. get_my_owned_tenant_ids may appear only inside the
+-- `project_id IS NULL` branch of the SELECT and UPDATE policies.
+
+-- (b) Backfill outcome — this is the number that gates the later NOT NULL flip.
+select count(*)                                   as total_leads,
+       count(project_id)                          as with_project_id,
+       count(*) filter (where project_id is null) as still_null
+from   public.leads;
+
+-- (c) Any row still null must belong to a tenant with MORE THAN ONE project.
+--     If a single-project tenant appears here, the backfill missed something
+--     — stop and investigate before applying anything else.
+select t.slug,
+       count(*) filter (where l.project_id is null) as unattributed_leads,
+       (select count(*) from public.projects p where p.tenant_id = t.id) as projects
+from   public.tenants t
+join   public.leads   l on l.tenant_id = t.id
+group  by t.id, t.slug
+order  by unattributed_leads desc;
+
+-- (d) This migration must NOT have granted anything. Expect ZERO rows.
+select privilege_type
+from   information_schema.role_table_grants
+where  table_schema = 'public' and table_name = 'leads' and grantee = 'authenticated';
+```
+
+Note on (d): `leads` has no grant to `authenticated` and 020 does not add
+one, so applying 020 changes **nothing observable today** — every live leads
+access is service-role, which bypasses RLS entirely. Its value is that the
+future "turn the dashboard leads read on" grant cannot ship an over-share
+alongside it.
+
+### 021 — `public.tenants` read grant
+
+What to run: the whole file (one `grant` statement).
+
+Confirm it took effect:
+
+```sql
+-- (a) The grant exists, and is SELECT only.
+select table_name, grantee, privilege_type
+from   information_schema.role_table_grants
+where  table_schema = 'public' and table_name = 'tenants' and grantee = 'authenticated'
+order  by privilege_type;
+-- Expect exactly 1 row: tenants | authenticated | SELECT.
+-- Any INSERT/UPDATE/DELETE row means something other than this migration ran.
+
+-- (b) The policy is untouched.
+select policyname, cmd, qual
+from   pg_policies
+where  schemaname = 'public' and tablename = 'tenants';
+-- Expect 1 row: "Members can read their tenants", SELECT, qual referencing
+-- get_my_tenant_ids() — identical to schema.sql.
+```
+
+The SQL editor runs as a superuser and bypasses both grants and RLS, so it
+can confirm the catalog state above but **cannot** confirm the end-to-end
+behaviour. For that, load a real tenant session and issue a request-scoped
+`from('tenants').select('id, slug')`: it must return that user's own tenant
+row(s) with no `42501`.
+
+To roll 021 back: `revoke select on public.tenants from authenticated;`

@@ -36,6 +36,41 @@
  * second project the values diverge and the defects surface all at once — see
  * `docs`/memory `one-to-n-tenant-projects`.
  *
+ * ── The project grain has THREE namespaces, not one (v1.0.31) ────────────────
+ * `ProjectSlug` was itself a conflation. For ONE project, three stores disagree
+ * about its name, and each store is the authority for its own:
+ *
+ *     project           Supabase          Sanity              URL segment
+ *     ----------------- ----------------- ------------------- -------------------
+ *     Livener           livener           livener-main        livener
+ *     the platform site abluo             abluo               abluo-the-tiny-cms
+ *     No!Logo           nologo            nologo              nologo
+ *
+ *     authority         projects.slug     project.projectSlug TENANT_TO_PROJECT
+ *                                                             + domainMap (proxy.ts)
+ *
+ * That is `SupabaseProjectSlug`, `SanityProjectSlug` and `UrlProjectSegment`.
+ * They are three brands because they are three namespaces that can and do
+ * disagree — not three shapes of one thing.
+ *
+ * This is not theoretical. `EarlyAccessContext.projectSlug` holds the SANITY
+ * name (`livener-main`); the forms API resolves `.eq('slug', …)` against
+ * SUPABASE (`livener`). Threading the context value into the endpoint — which
+ * reads as obviously correct, and was proposed — 404s every live Early Access
+ * submission. One `ProjectSlug` brand cannot object to that. Three can.
+ *
+ * ── There is NO conversion function between the three ────────────────────────
+ * Crossing between these namespaces is a LOOKUP against real data
+ * (`TENANT_TO_PROJECT` today; the generated route config after the contract
+ * phase), never a cast and never a string transform. Every such lookup is a
+ * named, greppable function that says which direction it goes:
+ *
+ *     lookupSanityProjectSlugByUrlSegment()      @/lib/sanity/client
+ *     tryLookupSanityProjectSlugByUrlSegment()   @/lib/sanity/client
+ *
+ * If you find yourself writing `unbrand(a) as B`, you have written the
+ * forbidden transform with an assertion instead of a regex. Add the lookup.
+ *
  * ── How to use ───────────────────────────────────────────────────────────────
  * Brand ONCE at each trust boundary — where a slug enters the system from a
  * URL segment, a database row, a Sanity document or an env var — and let the
@@ -44,9 +79,11 @@
  * being applied to something that came from a `[tenant]` route segment, the bug
  * is the route, not the missing cast.
  *
- *     // at the boundary
- *     const projectSlug = asProjectSlug(row.slug)         // from Supabase
- *     const tenantSlug  = asTenantSlug(client.tenantSlug) // from Sanity
+ *     // at the boundary — brand for the store the value CAME FROM
+ *     const projectSlug = asSupabaseProjectSlug(row.slug)          // Supabase
+ *     const sanitySlug  = asSanityProjectSlug(doc.projectSlug)     // Sanity
+ *     const segment     = asUrlProjectSegment(params.tenant)       // the URL
+ *     const tenantSlug  = asTenantSlug(client.tenantSlug)          // Sanity
  *
  *     // inward, no casts
  *     await resolveActiveDefinition(formId, projectSlug)
@@ -67,7 +104,9 @@
  * `as`, which is greppable and reviewable).
  */
 declare const TENANT_SLUG_BRAND: unique symbol
-declare const PROJECT_SLUG_BRAND: unique symbol
+declare const SUPABASE_PROJECT_SLUG_BRAND: unique symbol
+declare const SANITY_PROJECT_SLUG_BRAND: unique symbol
+declare const URL_PROJECT_SEGMENT_BRAND: unique symbol
 
 /**
  * The URL/ownership identity of a CUSTOMER. One tenant owns N projects.
@@ -77,22 +116,74 @@ declare const PROJECT_SLUG_BRAND: unique symbol
  *
  * Tenant-owned content is filed under this: `formDefinition.tenantSlug` above
  * all. Two projects of one tenant SHARE their tenant's forms.
+ *
+ * There is ONE tenant namespace, so there is one brand. If a second store ever
+ * disagrees about a tenant's name, split this the way `ProjectSlug` was split.
  */
 export type TenantSlug = string & { readonly [TENANT_SLUG_BRAND]: true }
 
 /**
- * The identity of a single WEBSITE. Belongs to exactly one tenant.
+ * The identity of a single WEBSITE **as the DATABASE names it**.
  *
- * Authority: `projects.slug` in Supabase and `project.projectSlug` in Sanity.
- * ⚠️ These two namespaces are NOT the same today — Supabase has `livener` where
- * Sanity has `livener-main`. `TENANT_TO_PROJECT` (`src/lib/sanity/client.ts`)
- * is the current translation and is scheduled for deletion; until it is gone,
- * a `ProjectSlug` says which GRAIN a value is at, not which STORE it came from.
+ * Authority: `projects.slug` in Supabase. Also what
+ * `src/lib/tenancy/generated/route-config.ts` carries (it is generated FROM
+ * that column) and therefore what `host-scope.ts` returns.
  *
- * Project-scoped content — pages, posts, events, siteConfig, submissions — is
- * filed under this. It must never be shared between projects.
+ * This is the namespace the forms and notifications stack resolves against:
+ * `resolveProjectScope()` does `.eq('slug', …)` on `projects`, and the
+ * `/api/forms/[projectSlug]/…` route segment must carry THIS value.
+ *
+ * Values today: `livener`, `studiomartegani`, `nologo`, `hoffmann`, `amelie`,
+ * `abluo`, `t42`.
  */
-export type ProjectSlug = string & { readonly [PROJECT_SLUG_BRAND]: true }
+export type SupabaseProjectSlug = string & {
+  readonly [SUPABASE_PROJECT_SLUG_BRAND]: true
+}
+
+/**
+ * The identity of a single WEBSITE **as the CMS names it**.
+ *
+ * Authority: the `projectSlug` field on Sanity `project` documents, and the
+ * `projectSlug` field every project-scoped document type carries so it can be
+ * filtered (`page`, `post`, `event`, `siteConfig`, …). It is what
+ * `$projectSlug` is bound to in every GROQ query, and what
+ * `tenant-scoped-sanity.ts` compares a dereferenced document against.
+ *
+ * ⚠️ NOT the same namespace as {@link SupabaseProjectSlug}. Sanity says
+ * `livener-main` where Supabase says `livener`. Getting from one to the other
+ * is a LOOKUP (see `lookupSanityProjectSlugByUrlSegment` in
+ * `src/lib/sanity/client.ts`), never `.replace(/-main$/, '')`.
+ */
+export type SanityProjectSlug = string & {
+  readonly [SANITY_PROJECT_SLUG_BRAND]: true
+}
+
+/**
+ * The identity of a single WEBSITE **as the URL names it**.
+ *
+ * Authority: the `[tenant]` dynamic segment of the public website route
+ * (`/[locale]/[tenant]/…`), whose legal values are exactly the keys of
+ * `TENANT_TO_PROJECT` (`src/lib/sanity/client.ts`) plus the values `domainMap`
+ * and `resolveTenant()` in `src/proxy.ts` rewrite a host to.
+ *
+ * The segment is NAMED `tenant` and is NOT one: for `nologo` it carries a
+ * project slug whose tenant is `freeriders`. It is also not a Supabase project
+ * slug: `abluo.app` rewrites to `abluo-the-tiny-cms`, while `projects.slug` is
+ * `abluo`. Hence its own brand — it is a third, independently-maintained
+ * namespace whose authority is `src/proxy.ts`, not either store.
+ *
+ * Values today: `livener`, `studiomartegani`, `nologo`, `abluo-the-tiny-cms`.
+ */
+export type UrlProjectSegment = string & {
+  readonly [URL_PROJECT_SEGMENT_BRAND]: true
+}
+
+/**
+ * Any of the three project-grain namespaces. Use ONLY for things that are
+ * genuinely namespace-agnostic — `unbrand`, a log formatter. A parameter typed
+ * as this has given up exactly the safety this module exists to provide.
+ */
+export type AnyProjectSlug = SupabaseProjectSlug | SanityProjectSlug | UrlProjectSegment
 
 // ─── Constructors ────────────────────────────────────────────────────────────
 
@@ -103,19 +194,43 @@ export type ProjectSlug = string & { readonly [PROJECT_SLUG_BRAND]: true }
  * tenant slug — a `tenants.slug` column, `client.tenantSlug`, or the resolved
  * `project.tenantSlug`. See the module header on why mid-chain casts are a
  * smell rather than a fix.
+ *
+ * ⚠️ The `[tenant]` route segment is NOT a tenant slug. If you are reaching for
+ * `asTenantSlug(params.tenant)`, you want {@link asUrlProjectSegment}.
  */
 export function asTenantSlug(raw: string): TenantSlug {
   return raw as TenantSlug
 }
 
 /**
- * Brands a raw string as a project slug. Identity at runtime.
+ * Brands a raw string as a Supabase `projects.slug`. Identity at runtime.
  *
- * Call this only at a trust boundary — a `projects.slug` column, a
- * `project.projectSlug` field, or a host→project resolution.
+ * Boundaries: a `projects.slug` column read, a `route-config.ts` row, the
+ * `[projectSlug]` segment of `/api/forms/…` (that route resolves against
+ * Supabase, so the segment is contractually a Supabase slug).
  */
-export function asProjectSlug(raw: string): ProjectSlug {
-  return raw as ProjectSlug
+export function asSupabaseProjectSlug(raw: string): SupabaseProjectSlug {
+  return raw as SupabaseProjectSlug
+}
+
+/**
+ * Brands a raw string as a Sanity `project.projectSlug`. Identity at runtime.
+ *
+ * Boundaries: a Sanity document's own `projectSlug` field, and the RESULT of
+ * `lookupSanityProjectSlugByUrlSegment()`.
+ */
+export function asSanityProjectSlug(raw: string): SanityProjectSlug {
+  return raw as SanityProjectSlug
+}
+
+/**
+ * Brands a raw string as a `[tenant]` URL segment. Identity at runtime.
+ *
+ * Boundaries: `params.tenant` in the `(website)/[tenant]` route group, and the
+ * value `resolveTenant()` in `src/proxy.ts` produces.
+ */
+export function asUrlProjectSegment(raw: string): UrlProjectSegment {
+  return raw as UrlProjectSegment
 }
 
 // ─── Nullable boundary helpers ───────────────────────────────────────────────
@@ -136,11 +251,31 @@ export function toTenantSlug(raw: string | null | undefined): TenantSlug | null 
   return trimmed.length > 0 ? (trimmed as TenantSlug) : null
 }
 
-/** Nullable counterpart of {@link asProjectSlug}. Empty/whitespace → null. */
-export function toProjectSlug(raw: string | null | undefined): ProjectSlug | null {
+/** Nullable counterpart of {@link asSupabaseProjectSlug}. Empty/whitespace → null. */
+export function toSupabaseProjectSlug(
+  raw: string | null | undefined
+): SupabaseProjectSlug | null {
   if (typeof raw !== 'string') return null
   const trimmed = raw.trim()
-  return trimmed.length > 0 ? (trimmed as ProjectSlug) : null
+  return trimmed.length > 0 ? (trimmed as SupabaseProjectSlug) : null
+}
+
+/** Nullable counterpart of {@link asSanityProjectSlug}. Empty/whitespace → null. */
+export function toSanityProjectSlug(
+  raw: string | null | undefined
+): SanityProjectSlug | null {
+  if (typeof raw !== 'string') return null
+  const trimmed = raw.trim()
+  return trimmed.length > 0 ? (trimmed as SanityProjectSlug) : null
+}
+
+/** Nullable counterpart of {@link asUrlProjectSegment}. Empty/whitespace → null. */
+export function toUrlProjectSegment(
+  raw: string | null | undefined
+): UrlProjectSegment | null {
+  if (typeof raw !== 'string') return null
+  const trimmed = raw.trim()
+  return trimmed.length > 0 ? (trimmed as UrlProjectSegment) : null
 }
 
 // ─── Escape hatch ────────────────────────────────────────────────────────────
@@ -154,12 +289,17 @@ export function toProjectSlug(raw: string | null | undefined): ProjectSlug | nul
  * `string`); this exists for the cases where an explicit widening reads more
  * clearly than a bare pass-through.
  *
- * It is deliberately NOT a conversion between the two brands. There is no such
- * function, and there must not be: getting from a project to its tenant is a
- * LOOKUP against ownership data (`deriveTenantSlug` in `./project-scope`), never
- * a cast and never a string transformation. `projectSlug.replace(/-main$/, '')`
- * was exactly that forbidden cast, spelled as a regex.
+ * It is deliberately NOT a conversion between any two brands. There is no such
+ * function, and there must not be — not tenant↔project, and not between the
+ * three project namespaces. Getting from a project to its tenant is a LOOKUP
+ * against ownership data (`deriveTenantSlug` in `./project-scope`); getting
+ * from a URL segment to Sanity's name for the same project is a LOOKUP against
+ * the bridge (`lookupSanityProjectSlugByUrlSegment` in `@/lib/sanity/client`).
+ * Never a cast and never a string transformation.
+ * `projectSlug.replace(/-main$/, '')` was exactly that forbidden cast, spelled
+ * as a regex; `unbrand(x) as SupabaseProjectSlug` is the same cast spelled as
+ * an assertion, and is equally forbidden.
  */
-export function unbrand(slug: TenantSlug | ProjectSlug): string {
+export function unbrand(slug: TenantSlug | AnyProjectSlug): string {
   return slug
 }

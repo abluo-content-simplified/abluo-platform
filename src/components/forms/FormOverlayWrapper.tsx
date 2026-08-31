@@ -18,10 +18,16 @@ import type { ReactNode } from 'react'
 import { FormOverlayProvider } from './FormOverlayContext'
 import { FormOverlayHost } from './FormOverlayHost'
 import type { OverlayFormEntry } from '@/lib/forms/overlay'
+import type { UrlProjectSegment } from '@/lib/tenancy/ids'
 
 interface FormOverlayWrapperProps {
   children: ReactNode
-  tenantSlug: string
+  /**
+   * The `[tenant]` URL segment. Despite the name this is NOT a tenant slug:
+   * No!Logo's segment is `nologo`, whose tenant is `freeriders`. See
+   * `@/lib/tenancy/ids`.
+   */
+  tenantSlug: UrlProjectSegment
   locale: string
   /** Server-resolved definitions any trigger in the tree may open. */
   forms: readonly OverlayFormEntry[]

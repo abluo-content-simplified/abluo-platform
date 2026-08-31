@@ -16,12 +16,18 @@
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import type { OverlayFormEntry, OverlayOpenRequest } from '@/lib/forms/overlay'
+import type { UrlProjectSegment } from '@/lib/tenancy/ids'
 
 interface FormOverlayContextValue {
   /** The active open request, or null when the overlay is closed. */
   request: OverlayOpenRequest | null
   /** URL tenant slug — the submission route scope, forwarded to renderers. */
-  tenantSlug: string
+  /**
+   * The `[tenant]` URL segment. Despite the name this is NOT a tenant slug:
+   * No!Logo's segment is `nologo`, whose tenant is `freeriders`. See
+   * `@/lib/tenancy/ids`.
+   */
+  tenantSlug: UrlProjectSegment
   /** Current locale — drives renderer + chrome message lookup. */
   locale: string
   /** Server-resolved forms this provider can open, keyed by formId. */
@@ -49,7 +55,12 @@ export function useFormOverlaySafe(): FormOverlayContextValue | null {
 
 interface FormOverlayProviderProps {
   children: ReactNode
-  tenantSlug: string
+  /**
+   * The `[tenant]` URL segment. Despite the name this is NOT a tenant slug:
+   * No!Logo's segment is `nologo`, whose tenant is `freeriders`. See
+   * `@/lib/tenancy/ids`.
+   */
+  tenantSlug: UrlProjectSegment
   locale: string
   forms: readonly OverlayFormEntry[]
 }

@@ -19,14 +19,14 @@ import {
   type NotificationScope,
 } from '@/lib/notifications/recipients'
 import { resolveInternalEmailConfig } from '@/lib/notifications/branding'
-import { asProjectSlug } from '@/lib/tenancy/ids'
+import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockFetch = (sanityClient as any).fetch as ReturnType<typeof vi.fn>
 
 /** Both projects belong to tenant `freeriders`. Ids are the only lookup key. */
-const NOLOGO: NotificationScope = { projectId: 'p-nologo', projectSlug: asProjectSlug('nologo') }
-const T42: NotificationScope = { projectId: 'p-t42', projectSlug: asProjectSlug('t42') }
+const NOLOGO: NotificationScope = { projectId: 'p-nologo', projectSlug: asSupabaseProjectSlug('nologo') }
+const T42: NotificationScope = { projectId: 'p-t42', projectSlug: asSupabaseProjectSlug('t42') }
 
 /** The live Sanity dataset, keyed the way the code now keys it: by projectId. */
 const DATASET: Record<string, { recipients: unknown; internalEmail: unknown; clientName: string; logoUrl: string }> = {
@@ -98,7 +98,7 @@ describe('one tenant, two projects', () => {
     // lookup by slug SUCCEEDED against a different customer's project. With ids
     // there is no such collision — an unlinked id resolves to nothing at all.
     serveDataset()
-    const impostor: NotificationScope = { projectId: 'p-unlinked', projectSlug: asProjectSlug('nologo') }
+    const impostor: NotificationScope = { projectId: 'p-unlinked', projectSlug: asSupabaseProjectSlug('nologo') }
     await expect(resolveRecipients(impostor, 'contact')).rejects.toBeInstanceOf(NotificationScopeError)
   })
 })

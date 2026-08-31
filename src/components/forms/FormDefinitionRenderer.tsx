@@ -24,12 +24,12 @@ import {
   buildFieldConfigs,
   buildSubmissionPayload,
   submissionEndpoint,
-  projectScopeSlugFromTenantSlug,
+  projectScopeSlugFromUrlSegment,
   applySuccessTemplate,
   CONSENT_FIELD_ID,
 } from '@/lib/forms/render-mapping'
 import { collectClientSource } from '@/lib/forms/source'
-import { asTenantSlug } from '@/lib/tenancy/ids'
+import type { UrlProjectSegment } from '@/lib/tenancy/ids'
 
 export interface FormDefinitionRendererMessages {
   submitLabel: string
@@ -46,7 +46,12 @@ interface Props {
   /** BCP 47 locale — used for localized validation error messages. */
   locale?: string
   /** URL tenant slug — the submission route scope; resolved server-side to tenant/project. */
-  tenantSlug: string
+  /**
+   * The `[tenant]` URL segment. Despite the name this is NOT a tenant slug:
+   * No!Logo's segment is `nologo`, whose tenant is `freeriders`. See
+   * `@/lib/tenancy/ids`.
+   */
+  tenantSlug: UrlProjectSegment
   /** Presentation context: 'overlay' pins the submit button as a sticky footer. */
   layout?: 'inline' | 'overlay'
   /** Lead-source seed (entry point + CTA) merged with auto page/referrer/UTM. */
@@ -110,10 +115,10 @@ export function FormDefinitionRenderer({ definition, messages, locale = 'en', te
     })
 
     try {
-      // ⚠️ ONE-TO-N BOUNDARY — see projectScopeSlugFromTenantSlug: this renderer
+      // ⚠️ ONE-TO-N BOUNDARY — see projectScopeSlugFromUrlSegment: this renderer
       // is given the URL tenant slug, and the route it posts to is project-scoped.
       const endpoint = submissionEndpoint(
-        projectScopeSlugFromTenantSlug(asTenantSlug(tenantSlug)),
+        projectScopeSlugFromUrlSegment(tenantSlug),
         definition.formId,
       )
       const res = await fetch(endpoint, {

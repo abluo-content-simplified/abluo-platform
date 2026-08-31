@@ -36,6 +36,7 @@ import {
 } from '../tenant-scoped-sanity'
 import { assertModuleAction, canModuleAction } from '../module-action-guard'
 import type { ModulePermissionMap } from '@/lib/modules/types'
+import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 
 // ─── Fixture world: two tenants, five users ────────────────────────────────
 //
@@ -86,25 +87,25 @@ const TENANT_B = 'tenant-studiomartegani'
 
 const projectA1: RawOwnedProject = {
   projectId: 'project-a1',
-  projectSlug: 'livener-main',
+  projectSlug: asSupabaseProjectSlug('livener-main'),
   tenantId: TENANT_A,
 }
 const projectA2: RawOwnedProject = {
   projectId: 'project-a2',
-  projectSlug: 'livener-events',
+  projectSlug: asSupabaseProjectSlug('livener-events'),
   tenantId: TENANT_A,
 }
 
 const membershipEditorA1: RawProjectMembership = {
   membershipId: 'pm-editor-a1',
   projectId: 'project-a1',
-  projectSlug: 'livener-main',
+  projectSlug: asSupabaseProjectSlug('livener-main'),
   role: 'editor',
 }
 const membershipViewerB1: RawProjectMembership = {
   membershipId: 'pm-viewer-b1',
   projectId: 'project-b1',
-  projectSlug: 'studiomartegani-main',
+  projectSlug: asSupabaseProjectSlug('studiomartegani-main'),
   role: 'viewer',
 }
 
@@ -203,7 +204,7 @@ describe('cross-tenant isolation invariants', () => {
     const strayMembership: RawProjectMembership = {
       membershipId: 'pm-stray-a1',
       projectId: 'project-a1',
-      projectSlug: 'livener-main',
+      projectSlug: asSupabaseProjectSlug('livener-main'),
       role: 'viewer',
     }
 
@@ -260,7 +261,7 @@ describe('slice 3a — Sanity chokepoint: tenant-scoped Sanity client', () => {
   // in the same tenant, to exercise the "same tenant, no grant" case.
   const grantA1: ProjectGrant = {
     projectId: 'project-a1',
-    projectSlug: 'livener-main',
+    projectSlug: asSupabaseProjectSlug('livener-main'),
     membershipId: 'pm-editor-a1',
     role: 'editor',
     permissions: [],
@@ -276,7 +277,7 @@ describe('slice 3a — Sanity chokepoint: tenant-scoped Sanity client', () => {
   // cross-tenant reference case.
   const grantB1: ProjectGrant = {
     projectId: 'project-b1',
-    projectSlug: 'studiomartegani-main',
+    projectSlug: asSupabaseProjectSlug('studiomartegani-main'),
     membershipId: 'pm-viewer-b1',
     role: 'viewer',
     permissions: [],
@@ -381,7 +382,7 @@ describe('slice 3b — entitlement + permission guard', () => {
     // `permissions`, this call would wrongly succeed.
     const inconsistentGrant: ProjectGrant = {
       projectId: 'project-a1',
-      projectSlug: 'livener-main',
+      projectSlug: asSupabaseProjectSlug('livener-main'),
       membershipId: 'pm-editor-a1',
       role: 'editor',
       permissions: ['blog.post.write', 'blog.post.read', 'events.event.write'],
@@ -409,7 +410,7 @@ describe('slice 3b — entitlement + permission guard', () => {
     const viewerGrants = grantsFor({
       ownedProjects: [],
       memberships: [
-        { membershipId: 'pm-viewer-a2', projectId: 'project-a2', projectSlug: 'livener-events', role: 'viewer' },
+        { membershipId: 'pm-viewer-a2', projectId: 'project-a2', projectSlug: asSupabaseProjectSlug('livener-events'), role: 'viewer' },
       ],
     })
     const ctxViewerA2: TenantAuthorizationContext = {

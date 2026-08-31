@@ -12,6 +12,7 @@ import { WhatsAppWidget } from '@/components/forms/WhatsAppWidget'
 import { hasWhatsAppNumber } from '@/lib/forms/whatsapp'
 import { resolveWhatsAppConfig, type ProjectModuleConfig } from '@/lib/modules/config'
 import { resolveEasing } from '@/lib/motion/easing'
+import type { UrlProjectSegment } from '@/lib/tenancy/ids'
 
 interface Props {
   section: ContactSection
@@ -23,7 +24,8 @@ interface Props {
   /** BCP 47 locale string — used to resolve UI chrome labels */
   locale?: string
   /** URL tenant slug — the submission route scope for the optional message button. */
-  tenantSlug?: string
+  /** The `[tenant]` URL segment — not a tenant slug. See `@/lib/tenancy/ids`. */
+  tenantSlug?: UrlProjectSegment
 }
 
 export function ContactSection({ section, surface, designSystem, siteConfig, moduleConfig, locale = 'en', tenantSlug }: Props) {
@@ -169,7 +171,7 @@ export function ContactSection({ section, surface, designSystem, siteConfig, mod
           <div className="mt-auto flex flex-wrap items-center gap-3 pt-10">
             {showButton && contactForm && (
               <FormOverlayWrapper
-                tenantSlug={tenantSlug as string}
+                tenantSlug={tenantSlug as UrlProjectSegment}
                 locale={locale}
                 forms={[{ formId: contactForm.formId, definition: contactForm }]}
               >
@@ -187,7 +189,7 @@ export function ContactSection({ section, surface, designSystem, siteConfig, mod
               <WhatsAppWidget
                 definition={waForm}
                 number={waNumber as string}
-                tenantSlug={tenantSlug as string}
+                tenantSlug={tenantSlug as UrlProjectSegment}
                 locale={locale}
                 variant="inline"
               />

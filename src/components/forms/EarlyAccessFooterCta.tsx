@@ -24,8 +24,7 @@ import { useState, useRef, FormEvent } from 'react'
 import { useEarlyAccess } from './EarlyAccessContext'
 import { getEarlyAccessMessages } from '@/lib/forms/early-access-config'
 import { collectClientSource } from '@/lib/forms/source'
-import { submissionEndpoint, projectScopeSlugFromTenantSlug } from '@/lib/forms/render-mapping'
-import { asTenantSlug } from '@/lib/tenancy/ids'
+import { submissionEndpoint, projectScopeSlugFromUrlSegment } from '@/lib/forms/render-mapping'
 
 interface EarlyAccessFooterCtaProps {
   /**
@@ -62,8 +61,8 @@ export function EarlyAccessFooterCta({
   // component has only the URL tenant slug. Context DOES carry a `projectSlug`,
   // but it is the SANITY slug ('livener-main') and is not a Supabase
   // `projects.slug`, so submitting under it would 404 — see
-  // `projectScopeSlugFromTenantSlug`, which names this dependency explicitly.
-  const scopeSlug = projectScopeSlugFromTenantSlug(asTenantSlug(tenantSlug))
+  // `projectScopeSlugFromUrlSegment`, which names this dependency explicitly.
+  const scopeSlug = projectScopeSlugFromUrlSegment(tenantSlug)
 
   const [name, setName]             = useState('')
   const [email, setEmail]           = useState('')

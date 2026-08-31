@@ -132,6 +132,36 @@ steps[]{
 "successBody": ${loc('success.body')}
 `
 
+// ─── Tenant-scoped formDefinition dereference ────────────────────────────────
+//
+// Replaces `someFormRef->{ ${FORM_DEFINITION_PROJECTION} }` everywhere a
+// website query reaches a formDefinition. A bare `->` resolves ANY document by
+// id, so a reference copied, duplicated or hand-edited across clients renders
+// the other client's form. This selects the same document through a filtered
+// subquery instead, so the tenant clause sits on the lookup itself.
+//
+// `field` is the reference field on the ENCLOSING scope — `^.` is the object
+// the subquery is projected from (the section, the config object, the
+// siteConfig document), exactly as a `->` on that field would have been.
+//
+// Two escape hatches are deliberate, and both are load-bearing:
+//   - `role == "template"` passes unconditionally. A template formDefinition is
+//     unscoped BY DESIGN (tenantSlug is null) and belongs to no tenant, so it
+//     must stay resolvable from every project. See MIGRATION.md section 2.2.
+//   - the tenant comes from PROJECT_TENANT_SLUG (the project document), never
+//     from `$tenantSlug`. See the block above that constant for why.
+//
+// Every call site must be reached through a query that binds $projectSlug —
+// PROJECT_TENANT_SLUG has no other way to name the tenant. All of them do:
+// websiteSiteConfigQuery, projectModuleConfigQuery, homePageQuery, and
+// PAGE_SECTIONS_PROJECTION's two consumers (pageHomeQuery, pageBySlugQuery)
+// each carry `projectSlug == $projectSlug` on their root filter.
+const scopedFormDefinition = (field: string) => /* groq */ `*[
+        _type == "formDefinition"
+        && _id == ^.${field}._ref
+        && (role == "template" || tenantSlug == ${PROJECT_TENANT_SLUG})
+      ][0]{ ${FORM_DEFINITION_PROJECTION} }`
+
 // ─── CTA fields projection ────────────────────────────────────────────────────
 // Reusable GROQ inline fragment for the cta object type.
 // Include it in any section projection that uses a CTA field.
@@ -232,9 +262,8 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       },
       showMap, mapHeight, mapTheme,
       // contactSection message button (overlay) — reuses the form projection
-      "contactForm": contactForm->{
-        ${FORM_DEFINITION_PROJECTION}
-      },
+      // TENANT-SCOPED — see scopedFormDefinition above.
+      "contactForm": ${scopedFormDefinition('contactForm')},
       "contactButtonLabel": ${loc('contactButtonLabel')},
       "contactOverlayTitle": ${loc('contactOverlayTitle')},
       showWhatsappButton,
@@ -263,9 +292,8 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       "emptyStateHeading": ${loc('emptyStateHeading')},
       "emptyStateBody": ${loc('emptyStateBody')},
       // formSection fields
-      "definition": form->{
-        ${FORM_DEFINITION_PROJECTION}
-      },
+      // TENANT-SCOPED — see scopedFormDefinition above.
+      "definition": ${scopedFormDefinition('form')},
       "context": context[]{ key, value },
       // formOverlayButtonSection fields (reuses "definition" + "context" above)
       "buttonLabel": ${loc('buttonLabel')},
@@ -532,11 +560,10 @@ export const websiteSiteConfigQuery = /* groq */ `
       // role "template" is unscoped BY DESIGN (tenantSlug is null) and belongs
       // to no tenant, so a CTA that references one must keep resolving for
       // every project. See src/lib/tenancy/MIGRATION.md section 2.2.
-      "form": *[
-        _type == "formDefinition"
-        && _id == ^.formRef._ref
-        && (role == "template" || tenantSlug == ${PROJECT_TENANT_SLUG})
-      ][0]{ ${FORM_DEFINITION_PROJECTION} }
+      // The shape below was inlined here in v1.0.30; it is now the shared
+      // scopedFormDefinition() fragment, which the six other formDefinition
+      // dereferences use verbatim.
+      "form": ${scopedFormDefinition('formRef')}
     },
     "ctaLabel": ${loc('ctaLabel')},
     ctaHref,
@@ -573,9 +600,8 @@ export const websiteSiteConfigQuery = /* groq */ `
     email,
     whatsappNumber,
     whatsappFloating,
-    "whatsappForm": whatsappForm->{
-      ${FORM_DEFINITION_PROJECTION}
-    },
+    // TENANT-SCOPED — see scopedFormDefinition above.
+    "whatsappForm": ${scopedFormDefinition('whatsappForm')},
     location { street, postalCode, city, state, country },
     address,
     openGraphImage { asset },
@@ -658,9 +684,11 @@ export const projectModuleConfigQuery = /* groq */ `
       version,
       "config": config {
         ...,
-        "whatsappForm": whatsappForm->{ ${FORM_DEFINITION_PROJECTION} },
-        "internalFormRef": internalFormRef->{ ${FORM_DEFINITION_PROJECTION} },
-        "ctaForm": ctaForm->{ ${FORM_DEFINITION_PROJECTION} }
+        // TENANT-SCOPED — see scopedFormDefinition above. All three module
+        // form slots dereference formDefinition, so all three are scoped.
+        "whatsappForm": ${scopedFormDefinition('whatsappForm')},
+        "internalFormRef": ${scopedFormDefinition('internalFormRef')},
+        "ctaForm": ${scopedFormDefinition('ctaForm')}
       }
     }
   }.modules
@@ -1372,15 +1400,13 @@ export const homePageQuery = /* groq */ `
       },
       showMap, mapHeight, mapTheme,
       // contactSection message button (overlay) — reuses the form projection
-      "contactForm": contactForm->{
-        ${FORM_DEFINITION_PROJECTION}
-      },
+      // TENANT-SCOPED — see scopedFormDefinition above.
+      "contactForm": ${scopedFormDefinition('contactForm')},
       "contactButtonLabel": ${loc('contactButtonLabel')},
       "contactOverlayTitle": ${loc('contactOverlayTitle')},
       showWhatsappButton,
-      "definition": form->{
-        ${FORM_DEFINITION_PROJECTION}
-      },
+      // TENANT-SCOPED — see scopedFormDefinition above.
+      "definition": ${scopedFormDefinition('form')},
       "context": context[]{ key, value },
       // formOverlayButtonSection fields (reuses "definition" + "context" above)
       "buttonLabel": ${loc('buttonLabel')},

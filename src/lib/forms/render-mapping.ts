@@ -13,7 +13,12 @@
  */
 import type { FieldConfig, OptionItem, ValidationRule } from '@/components/fields'
 import type { RenderableFormDefinition, RenderableFormField } from '@/lib/sanity/types'
-import { asProjectSlug, unbrand, type ProjectSlug, type TenantSlug } from '@/lib/tenancy/ids'
+import {
+  asSupabaseProjectSlug,
+  unbrand,
+  type SupabaseProjectSlug,
+  type UrlProjectSegment,
+} from '@/lib/tenancy/ids'
 
 /** Stable key used for the synthetic consent checkbox (kept out of `data`). */
 export const CONSENT_FIELD_ID = 'gdpr_consent'
@@ -176,7 +181,7 @@ export function buildSubmissionPayload(
  * why nothing ever failed. See `projectScopeSlugFromTenantSlug` below for the
  * call sites that cannot yet supply the real thing.
  */
-export function submissionEndpoint(projectSlug: ProjectSlug, formId: string): string {
+export function submissionEndpoint(projectSlug: SupabaseProjectSlug, formId: string): string {
   return `/api/forms/${encodeURIComponent(unbrand(projectSlug))}/${encodeURIComponent(formId)}/submissions`
 }
 
@@ -197,12 +202,35 @@ export function submissionEndpoint(projectSlug: ProjectSlug, formId: string): st
  * loud, correct failure rather than a silent platform-level write).
  *
  * NOTE it is deliberately NOT fed from `EarlyAccessContext.projectSlug`: that
- * value is `tenantToProjectSlug()`, the SANITY project slug ('livener-main'),
- * which is not a `projects.slug` in Supabase and would 404 today.
+ * value is `lookupSanityProjectSlugByUrlSegment()`, a `SanityProjectSlug`
+ * ('livener-main'), which is not a `projects.slug` in Supabase and would 404
+ * today. The three brands in `@/lib/tenancy/ids` now make that a type error
+ * rather than a comment.
+ *
+ * ⚠️ WHAT THIS ACTUALLY DOES (v1.0.31). The input was previously typed
+ * `TenantSlug`, which was wrong twice over: the value handed in is the
+ * `[tenant]` URL segment, which is NOT a tenant slug (No!Logo's segment is
+ * `nologo`; its tenant is `freeriders`). Retyped to `UrlProjectSegment`, which
+ * is what every caller actually holds.
+ *
+ * It is still a FORBIDDEN CAST — URL segment → Supabase slug with no lookup —
+ * and it is still the only one, deliberately, so it stays greppable. It is
+ * correct for four of the five live projects because their URL segment and
+ * `projects.slug` coincide. It is WRONG for the platform's own site:
+ * `abluo.app` rewrites to the segment `abluo-the-tiny-cms`, `projects.slug` is
+ * `abluo`, so any form placement on abluo.app POSTs to
+ * `/api/forms/abluo-the-tiny-cms/...` and gets a 404. Retire it by threading
+ * `resolveScopeFromHost().projectSlug` (a real `SupabaseProjectSlug`) down
+ * from the layout instead.
  */
-export function projectScopeSlugFromTenantSlug(tenantSlug: TenantSlug): ProjectSlug {
-  return asProjectSlug(unbrand(tenantSlug))
+export function projectScopeSlugFromUrlSegment(
+  segment: UrlProjectSegment
+): SupabaseProjectSlug {
+  return asSupabaseProjectSlug(unbrand(segment))
 }
+
+/** @deprecated Renamed — the argument was never a tenant slug. Use {@link projectScopeSlugFromUrlSegment}. */
+export const projectScopeSlugFromTenantSlug = projectScopeSlugFromUrlSegment
 
 /** First whitespace-separated token of a full-name value ("Frank Zappa" → "Frank"). */
 function firstNameOf(name: unknown): string {

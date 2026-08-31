@@ -4,9 +4,11 @@ import type { WebsiteSiteConfig, SupportedLocale } from '@/lib/sanity/types'
 import { imageUrl } from '@/lib/sanity/image'
 import { resolveNavLinks } from '@/lib/sanity/nav-links'
 import { NavClient } from './NavClient'
+import type { UrlProjectSegment } from '@/lib/tenancy/ids'
 
 interface NavProps {
-  tenantId: string
+  /** The `[tenant]` URL segment. Not a tenant slug — see `@/lib/tenancy/ids`. */
+  tenantId: UrlProjectSegment
   locale: SupportedLocale
   defaultLocale: SupportedLocale
   variant?: 'full' | 'landing'

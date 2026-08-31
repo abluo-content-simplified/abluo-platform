@@ -13,7 +13,7 @@
 import { NextResponse } from 'next/server'
 import { extractIp } from '@/lib/forms/spam'
 import { createSubmission } from '@/lib/forms/submissions'
-import { asProjectSlug } from '@/lib/tenancy/ids'
+import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 
 export async function POST(
   request: Request,
@@ -43,7 +43,7 @@ export async function POST(
       // Trust boundary: the `[projectSlug]` URL segment IS a project slug, and
       // this is the one place it is branded as one. The owning tenant is
       // resolved from it server-side — it is never used as a tenant slug.
-      projectSlug: asProjectSlug(projectSlug),
+      projectSlug: asSupabaseProjectSlug(projectSlug),
       formId,
       locale: typeof body.locale === 'string' ? body.locale : undefined,
       source,

@@ -26,7 +26,7 @@ import { resolveRecipients, describeScope, NotificationScopeError, type Notifica
 import { sendEmail } from '@/lib/notifications/resend'
 import { renderNewSubmissionEmail } from '@/lib/notifications/templates'
 import { resolveInternalEmailConfig, safeReplyTo } from '@/lib/notifications/branding'
-import { toProjectSlug, unbrand } from '@/lib/tenancy/ids'
+import { toSupabaseProjectSlug, unbrand } from '@/lib/tenancy/ids'
 
 const MAX_ATTEMPTS = 5
 const SWEEP_BATCH = 50
@@ -79,12 +79,12 @@ async function resolveEventScope(
       .select('slug')
       .eq('id', projectId)
       .maybeSingle()
-    return { projectId, projectSlug: toProjectSlug(data?.slug as string | undefined) }
+    return { projectId, projectSlug: toSupabaseProjectSlug(data?.slug as string | undefined) }
   }
   // Legacy/platform-level row: no project_id. The denormalized column holds a
   // Supabase PROJECT slug (emitted via resolveProjectSlugById), so it can be
   // resolved to the project's id — the same key the id path uses.
-  const denormalized = toProjectSlug(event.project_slug as string | null)
+  const denormalized = toSupabaseProjectSlug(event.project_slug as string | null)
   if (!denormalized) return null
   const { data } = await supabase
     .from('projects')

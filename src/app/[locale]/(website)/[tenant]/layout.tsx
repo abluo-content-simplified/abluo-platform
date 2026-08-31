@@ -29,6 +29,7 @@ import { hasWhatsAppNumber } from '@/lib/forms/whatsapp'
 import { resolveWhatsAppConfig, resolveHeaderCtaConfig, isModuleEnabled, type ProjectModuleConfig } from '@/lib/modules/config'
 import { SlugMapRoot } from '@/components/SlugMapContext'
 import { TrackingScripts } from '@/components/TrackingScripts'
+import { asUrlProjectSegment, type UrlProjectSegment } from '@/lib/tenancy/ids'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -421,7 +422,10 @@ function DesignSystemHead({ cssVars, fontsUrl }: { cssVars: string; fontsUrl: st
 //   3. /favicon.ico           — Abluo platform default (implicit, no override needed)
 
 export async function generateMetadata({ params }: { params: Promise<{ tenant: string; locale: string }> }): Promise<Metadata> {
-  const { tenant: tenantId } = await params
+  const { tenant: rawTenantId } = await params
+  // Trust boundary: the `[tenant]` segment is a URL project segment —
+  // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
+  const tenantId = asUrlProjectSegment(rawTenantId)
   // Fail closed to a clean 404 for an unmapped tenant slug (retired flat
   // routes, typos, dead links falling through to this dynamic segment)
   // instead of letting tenantClient() throw an unhandled error.
@@ -502,7 +506,7 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
 function whatsAppFab(
   modules: ProjectModuleConfig,
   cfg: WebsiteSiteConfig | null | undefined,
-  tenantSlug: string,
+  tenantSlug: UrlProjectSegment,
   locale: string
 ) {
   const whatsapp = resolveWhatsAppConfig(modules, cfg)
@@ -522,7 +526,10 @@ function whatsAppFab(
 }
 
 export default async function WebsiteLayout({ children, params }: LayoutProps) {
-  const { tenant: tenantId, locale } = await params
+  const { tenant: rawTenantId, locale } = await params
+  // Trust boundary: the `[tenant]` segment is a URL project segment —
+  // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
+  const tenantId = asUrlProjectSegment(rawTenantId)
   // Fail closed to a clean 404 for an unmapped tenant slug — see the matching
   // guard in generateMetadata() above for the full rationale.
   if (!tryTenantToProjectSlug(tenantId)) notFound()

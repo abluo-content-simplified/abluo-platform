@@ -29,8 +29,8 @@
  * to have removed.
  */
 
-import type { ProjectSlug, TenantSlug } from './ids'
-import { toProjectSlug, toTenantSlug } from './ids'
+import type { SanityProjectSlug, TenantSlug } from './ids'
+import { toSanityProjectSlug, toTenantSlug } from './ids'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -45,7 +45,7 @@ export type TenantSlugSource = 'stored' | 'clientRef'
 
 /** A project paired with the tenant that owns it, plus how we know. */
 export interface ProjectScope {
-  projectSlug: ProjectSlug
+  projectSlug: SanityProjectSlug
   tenantSlug: TenantSlug
   source: TenantSlugSource
 }
@@ -144,7 +144,7 @@ export function __resetTenantScopeWarnings(): void {
  * makes tenant-owned content invisible on that website until it is fixed.
  */
 export function deriveTenantSlug(input: ProjectScopeInput): ProjectScope | null {
-  const projectSlug = toProjectSlug(input.projectSlug)
+  const projectSlug = toSanityProjectSlug(input.projectSlug)
   if (!projectSlug) return null
 
   const stored = toTenantSlug(input.tenantSlug)

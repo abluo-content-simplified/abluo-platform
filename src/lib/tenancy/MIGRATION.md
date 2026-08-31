@@ -1,7 +1,25 @@
 # Tenant identity migration — runbook
 
-**Status:** EXPAND phase complete (`src/lib/tenancy/project-scope.ts` + tests, merged, not yet
-called by anything). MIGRATE and CONTRACT are unexecuted.
+**Status (as of v1.0.30, `dev`):** Stages **1, 2, 4 and 5 are DONE**. Stage **3 is NOT done and
+must not be run yet**.
+
+> ### ⛔ Stage 3 is blocked on a production promotion
+>
+> Stage 3 repoints `form-nologo-demo` from `tenantSlug: "nologo"` to `"freeriders"`. It is a
+> **live production data change**, and the code that makes it survivable — the dual-read and the
+> tenant-scoped `formDefinition` dereferences — is on **`dev` only**. Production still runs the
+> older code.
+>
+> Running Stage 3 now would move the data ahead of the deploy, which is precisely what §0
+> forbids: production would look for No!Logo's form under a `tenantSlug` that no longer exists,
+> and the Forms pane and every No!Logo form would empty out with no error and no log line.
+>
+> **Do not run Stage 3 until v1.0.30 has reached PRODUCTION.** Verify the promotion first, then
+> execute Stage 3, then re-run the Stage 4 verification table.
+
+Everything else has landed: `project.tenantSlug` exists in the schema and is written and unset by
+`ProjectLinker` (§6), both call sites read it, the `-main` regexes are gone, and the seven
+`formDefinition` dereferences in `queries.ts` are tenant-scoped (Stage 5, items 6–7).
 
 **Audience:** whoever executes the migrate + contract phases. Read the whole document before
 touching anything.
@@ -38,8 +56,10 @@ projectSlug.replace(/-main$/, '')
 
 - `src/lib/sanity/schema.ts:204` — the `formRef` reference filter (which forms an editor may pick
   for a CTA).
-- `src/lib/sanity/studio/ModuleList.tsx:187` — `deriveTenantSlug()`, feeding the Modules pane and
-  the inline Forms list.
+- `src/lib/sanity/studio/ModuleList.tsx` — a local `deriveTenantSlug()` at `:195` (this runbook
+  originally said `:187`; the line had already moved), feeding the Modules pane and the inline
+  Forms list. **Now deleted entirely** — the pane imports the shared `deriveTenantSlug()` from
+  `src/lib/tenancy/project-scope.ts` instead. Nothing remains at either line number.
 
 This is a no-op for any slug without the suffix. It happens to be right for four of the five live
 projects and wrong for the fifth, and the dataset has since been written to agree with the wrong
@@ -240,6 +260,14 @@ Deploy, then verify **every tenant**, not just No!Logo:
 | Abluo | `/studio` → Modules → Forms; `https://abluo.app` | 0 forms, no error |
 | Amélie | `/studio` → Amélie (draft) → Modules | pane renders, 0 forms |
 
+**Note on the Modules pane.** It no longer derives the tenant synchronously from the slug the
+structure builder hands it. It now issues an **async lookup of the `project` document** and feeds
+the result to the shared `deriveTenantSlug()`, so on every open the pane renders
+**"Loading modules…"** until that read resolves. A brief flash of that message is expected and
+correct; a pane *stuck* on it means the project read is failing, not that the tenant is wrong. A
+failed lookup deliberately resolves to NO tenant rather than a guessed one, so the pane then shows
+an empty Forms list — read that as a lookup failure, not as a migration failure.
+
 Also check the CTA form picker on at least Livener and No!Logo, and confirm the picker offers
 **no** cross-tenant form (a Livener CTA must not be able to select `form-nologo-demo`).
 
@@ -257,19 +285,92 @@ Only after Stage 4 is signed off.
    should then return `null` and select nothing, rather than guessing.
 4. Empty `KNOWN_TENANT_SCOPE_INCONSISTENCIES` (keep the type and the register — the next
    divergence should have a place to land) and delete the disagreement warning if tier 3 is gone.
-5. Fix the template at `src/lib/sanity/schema.ts:~4724`,
-   `id: 'formDefinitionTenantOwned'`, which does `tenantSlug: params?.projectSlug`. **This is the
-   mechanism that created the bug** — it stamps whatever slug the structure pane passes into a
-   field named `tenantSlug`, which is how `form-nologo-demo` got `nologo`. Left in place, it will
-   re-create the inconsistency on the next form an editor makes for No!Logo. It must take the
-   resolved tenant slug, not `projectSlug`. Consider fixing this earlier, in Stage 1 — it is
-   independent of the data migration and every day it stays is a chance to re-break the data.
-6. Update the comment block at `src/lib/sanity/queries.ts:~490`, which documents both derivations
-   as unreliable and names `nologo`/`freeriders` explicitly. Its conclusion — that `headerCta`
-   cannot be tenant-scoped inside the query — is a separate, still-open gap (`fetchForTenant`
-   passes only `$projectSlug`); the migration removes its stated reason but not the gap. Once
-   `project.tenantSlug` exists, injecting `$tenantSlug` alongside `$projectSlug` becomes
-   straightforward and should be filed as follow-up work.
+5. ~~Fix the template at `src/lib/sanity/schema.ts:~4724`, `id: 'formDefinitionTenantOwned'`,
+   which does `tenantSlug: params?.projectSlug`.~~ **DONE** (wave 2; the template now sits at
+   `~:4846`). This was the mechanism that created the bug — it stamped whatever slug the structure
+   pane passed into a field named `tenantSlug`, which is how `form-nologo-demo` got `nologo`.
+
+   The fix went further than this runbook asked for. Rather than swapping in a resolved tenant
+   slug, the template now declares an **optional** `tenantSlug` parameter alongside `projectSlug`
+   and **omits the key entirely** when none is supplied:
+
+   ```ts
+   // Never fall back to projectSlug. No prefill beats a wrong prefill.
+   ...(typeof params?.tenantSlug === 'string' && params.tenantSlug.trim() !== ''
+     ? { tenantSlug: params.tenantSlug.trim() }
+     : {}),
+   ```
+
+   That is strictly better than stamping a resolved slug: an absent `tenantSlug` is *honest* —
+   the document is visibly unfiled and an editor must file it — whereas a guessed one is a silent
+   wrong answer of exactly the kind this migration exists to remove. Sanity only validates that a
+   declared parameter has a valid name and type; it does not require callers to supply it, so the
+   optional parameter costs nothing at the call sites that do not have a tenant to hand.
+6. Update the comment block at `src/lib/sanity/queries.ts:~490`. **DONE**, and the follow-up it
+   named was **wrong** — corrected here so nobody files it.
+
+   > ⚠️ **The old text said: "injecting `$tenantSlug` alongside `$projectSlug` becomes
+   > straightforward and should be filed as follow-up work." Do not do this.** `fetchForTenant`
+   > *already* injects a `$tenantSlug` parameter, and its value is not a tenant. It is the URL
+   > tenant slug from `TENANT_TO_PROJECT` (`src/lib/sanity/client.ts`) — a **PROJECT-grain value
+   > wearing a tenant name**. For No!Logo it is `nologo`, while the tenant that owns No!Logo's
+   > forms is `freeriders`. Scoping a `formDefinition` lookup on `$tenantSlug` would match
+   > nothing and permanently blank No!Logo's forms. `client-read-token.test.ts` pins this
+   > ("injects the URL tenant slug verbatim, not the project slug"), and
+   > `query-tenant-scope.test.ts` now fails any form subquery that mentions `$tenantSlug`.
+
+   **The real follow-up is: retire `TENANT_TO_PROJECT`.** Until the URL→project mapping is
+   replaced by something that can name the owning tenant honestly, there is no trustworthy tenant
+   parameter to inject, and `$tenantSlug` should be treated as a project-grain value at every
+   call site (see `src/lib/tenancy/ids.ts` on this class of mistake).
+
+   **In the meantime, the query layer scopes forms via a project-document lookup**, which needs no
+   new parameter. `PROJECT_TENANT_SLUG` in `queries.ts` resolves the owner from the `project`
+   document itself, in `deriveTenantSlug`'s two-tier order (`project.tenantSlug`, then
+   `clientRef->tenantSlug`), and `scopedFormDefinition()` turns each dereference into a filtered
+   subquery keyed on the reference. A project with no resolvable tenant yields `null`, which
+   matches no active form — it selects nothing, never everything.
+
+   `headerCta.form` was scoped this way in v1.0.30. The **six** dereferences that survived that
+   wave are now scoped identically, all through the one shared `scopedFormDefinition()` fragment
+   (headerCta was re-pointed at the extraction, so there is one copy of the shape, not seven):
+
+   | Query / fragment | Reference field(s) |
+   |---|---|
+   | `websiteSiteConfigQuery` | `headerCta.formRef` (v1.0.30), `whatsappForm` |
+   | `projectModuleConfigQuery` | `whatsappForm`, `internalFormRef`, `ctaForm` |
+   | `PAGE_SECTIONS_PROJECTION` | `contactForm`, `form` |
+   | `homePageQuery` (its own inline copy of those sections) | `contactForm`, `form` |
+
+   That is **nine** subqueries, not seven: the runbook's count of six missed that
+   `projectModuleConfigQuery` dereferences *three* module form slots, not one. Every one of these
+   queries binds `projectSlug == $projectSlug` on its root filter, and
+   `PAGE_SECTIONS_PROJECTION`'s two consumers (`pageHomeQuery`, `pageBySlugQuery`) do too, so
+   `PROJECT_TENANT_SLUG` can always resolve. `role == "template"` documents pass unconditionally
+   — they are unscoped BY DESIGN (`tenantSlug: null`) and must stay reachable from every project
+   (§2.2). All of this is pinned structurally in
+   `src/lib/sanity/__tests__/query-tenant-scope.test.ts`, which fails on any `->` dereference into
+   the form projection anywhere in the query catalogue.
+
+7. **Dereferences deliberately NOT scoped, and why.** Two survive; both are audited, neither is
+   a definition leak.
+
+   - `CTA_FIELDS` — `"formId": formRef->formId` (`queries.ts:~183`). Reads exactly ONE field
+     across the reference, the route key the overlay opens by, and never the definition. It is
+     already allow-listed with that reason in `ALLOWED_WITHOUT_PROJECT_SCOPE`. Worth knowing that
+     a cross-tenant CTA still yields the *other tenant's `formId` string* here — the overlay then
+     opens by that id, so this is the last remaining path by which a mis-pointed CTA can name a
+     foreign form. It is a narrower hole than a rendered definition, but it is not closed. Scope
+     it when the overlay's own by-`formId` read is audited; doing one without the other just
+     moves the failure.
+   - `schema.ts` picker filters (`:~1645`, `:~2873`, `:~4484`) — `_type == "formDefinition" &&
+     role == "active"`, with no tenant clause. These are **Studio authoring** filters, not
+     website reads: they run in the Studio's own client with no `$projectSlug` in scope, so
+     `PROJECT_TENANT_SLUG` is not reachable from them. Only `:~102` carries a tenant clause
+     (`tenantSlug == $tenantSlug`, supplied by the Studio pane). The runtime queries now fail
+     closed regardless, so a cross-tenant pick renders nothing rather than another client's form
+     — but the picker still *offers* it, which is the Stage 4 check "no cross-tenant form offered
+     in any CTA picker". That check is **still open**.
 
 **Verify Stage 5.** Repeat the full Stage 4 table. Then `rg -n 'replace\(/-main\$/' src` must
 return nothing.
@@ -290,15 +391,25 @@ Worst case, restore the Stage 2 export.
 
 ---
 
-## 6. Schema change required — `project.tenantSlug` (DESCRIBED, NOT DONE)
+## 6. Schema change required — `project.tenantSlug` (DONE)
 
-`project.tenantSlug` **does not exist in the schema today**. The `project` type
-(`src/lib/sanity/schema.ts`, `name: 'project'`, ~line 2894) has `clientRef`, `projectId`,
+**Both edits below have been made.** This section is kept as the record of what was done and
+why, not as work outstanding.
+
+- **(a) is done.** `project.tenantSlug` exists in `src/lib/sanity/schema.ts` (`~line 3006`),
+  `type: 'string'`, `hidden: true`, and deliberately **not** `validation: Rule.required()` — see
+  the reason below; it stays unvalidated until the backfill is confirmed on every project.
+- **(b) is done.** `ProjectLinker` **sets** `tenantSlug` on link and **unsets** it on relink, so a
+  project moved to a different client cannot leave a stale tier-1 value behind. Both behaviours
+  are pinned by `src/lib/sanity/__tests__/tenant-slug-provenance.test.ts`; that test is what stops
+  either half from being quietly dropped.
+
+The original description follows.
+
+`project.tenantSlug` did not exist in the schema when this runbook was written. The `project` type
+(`src/lib/sanity/schema.ts`, `name: 'project'`, ~line 2894) had `clientRef`, `projectId`,
 `projectSlug`, `projectName`, `tenantId`, `customDomain` — no `tenantSlug`. The `client` type has
 one (~line 2872, hidden), and that is the value being copied down.
-
-Two edits are needed. **Both files were off-limits to the session that wrote this runbook; neither
-change has been made.**
 
 **(a) `src/lib/sanity/schema.ts`, in `projectType.fields`, beside the other auto-populated
 hidden fields:**
@@ -350,14 +461,19 @@ backfill.
 
 ## 7. Checklist
 
-- [ ] Stage 1 deployed; form counts unchanged; `[tenancy]` warnings visible
-- [ ] `project.tenantSlug` schema field added (hidden, not required)
-- [ ] `ProjectLinker` sets and unsets `tenantSlug`
+- [x] Stage 1 deployed; form counts unchanged; `[tenancy]` warnings visible
+- [x] `project.tenantSlug` schema field added (hidden, not required)
+- [x] `ProjectLinker` sets and unsets `tenantSlug` (pinned by `tenant-slug-provenance.test.ts`)
 - [ ] Dataset export taken
-- [ ] Stage 2 backfill on all five projects, including the `amelie` draft
-- [ ] Stage 3 `form-nologo-demo` → `freeriders` (and any draft of it)
-- [ ] Stage 4 deployed; all five tenants verified in Studio and on their domains
-- [ ] No cross-tenant form offered in any CTA picker
-- [ ] Stage 5 both regexes deleted; `formDefinitionTenantOwned` template fixed
-- [ ] `rg -n 'replace\(/-main\$/' src` returns nothing
-- [ ] `queries.ts` headerCta comment updated; `$tenantSlug` injection filed as follow-up
+- [x] Stage 2 backfill on all five projects, including the `amelie` draft
+- [ ] **Stage 3 `form-nologo-demo` → `freeriders` (and any draft of it) — BLOCKED until v1.0.30 is
+      in PRODUCTION; see the status block at the top**
+- [x] Stage 4 deployed; all five tenants verified in Studio and on their domains
+- [ ] No cross-tenant form offered in any CTA picker — **still open**; the Studio picker filters
+      carry no tenant clause (Stage 5 item 7). The runtime reads fail closed regardless.
+- [x] Stage 5 both regexes deleted; `formDefinitionTenantOwned` template fixed
+- [x] `rg -n 'replace\(/-main\$/' src` returns nothing
+- [x] `queries.ts` headerCta comment updated; all nine `formDefinition` subqueries scoped via
+      `scopedFormDefinition()`
+- [ ] `$tenantSlug` injection is **NOT** the follow-up — retire `TENANT_TO_PROJECT` instead
+      (Stage 5 item 6)

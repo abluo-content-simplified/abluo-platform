@@ -11,6 +11,7 @@ import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
 import { isProduction, isDev } from '@/lib/deployment'
 import { ogImageUrl } from '@/lib/sanity/image'
+import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +22,10 @@ interface PageProps {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { tenant: tenantId, locale } = await params
+  const { tenant: rawTenantId, locale } = await params
+  // Trust boundary: the `[tenant]` segment is a URL project segment —
+  // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
+  const tenantId = asUrlProjectSegment(rawTenantId)
   const { fetchForTenant } = tenantClient(tenantId)
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
@@ -77,7 +81,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 // (ADR-016 Phase 0) — shared with the [slug] route, not duplicated here.
 
 export default async function WebsitePage({ params }: PageProps) {
-  const { tenant: tenantId, locale } = await params
+  const { tenant: rawTenantId, locale } = await params
+  // Trust boundary: the `[tenant]` segment is a URL project segment —
+  // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
+  const tenantId = asUrlProjectSegment(rawTenantId)
   const { fetchForTenant } = tenantClient(tenantId)
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})

@@ -14,27 +14,28 @@
  */
 import { describe, it, expect } from 'vitest'
 import { tenantToProjectSlug, tryTenantToProjectSlug } from '@/lib/sanity/client'
+import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 
 describe('tryTenantToProjectSlug', () => {
   it('resolves a mapped tenant slug to its Sanity projectSlug', () => {
-    expect(tryTenantToProjectSlug('livener')).toBe('livener-main')
-    expect(tryTenantToProjectSlug('studiomartegani')).toBe('studiomartegani-main')
+    expect(tryTenantToProjectSlug(asUrlProjectSegment('livener'))).toBe('livener-main')
+    expect(tryTenantToProjectSlug(asUrlProjectSegment('studiomartegani'))).toBe('studiomartegani-main')
   })
 
   it('returns null (never throws) for an unmapped tenant slug', () => {
-    expect(tryTenantToProjectSlug('leads')).toBeNull()
-    expect(tryTenantToProjectSlug('some-typo')).toBeNull()
-    expect(tryTenantToProjectSlug('')).toBeNull()
+    expect(tryTenantToProjectSlug(asUrlProjectSegment('leads'))).toBeNull()
+    expect(tryTenantToProjectSlug(asUrlProjectSegment('some-typo'))).toBeNull()
+    expect(tryTenantToProjectSlug(asUrlProjectSegment(''))).toBeNull()
   })
 })
 
 describe('tenantToProjectSlug', () => {
   it('resolves a mapped tenant slug to its Sanity projectSlug', () => {
-    expect(tenantToProjectSlug('livener')).toBe('livener-main')
+    expect(tenantToProjectSlug(asUrlProjectSegment('livener'))).toBe('livener-main')
   })
 
   it('still throws for an unmapped tenant slug — internal/admin callers rely on this', () => {
-    expect(() => tenantToProjectSlug('leads')).toThrow(
+    expect(() => tenantToProjectSlug(asUrlProjectSegment('leads'))).toThrow(
       /No project mapping for tenant "leads"/
     )
   })

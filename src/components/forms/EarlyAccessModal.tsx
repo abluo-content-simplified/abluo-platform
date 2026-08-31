@@ -32,8 +32,7 @@
 
 import { useState, useEffect, useRef, useId, useCallback, Fragment } from 'react'
 import { collectClientSource } from '@/lib/forms/source'
-import { submissionEndpoint, projectScopeSlugFromTenantSlug } from '@/lib/forms/render-mapping'
-import { asTenantSlug } from '@/lib/tenancy/ids'
+import { submissionEndpoint, projectScopeSlugFromUrlSegment } from '@/lib/forms/render-mapping'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { X, Check, ChevronDown } from 'lucide-react'
@@ -706,8 +705,8 @@ export function EarlyAccessModal() {
   const { isOpen, options, tenantSlug, locale, close } = useEarlyAccess()
   // ⚠️ ONE-TO-N BOUNDARY — the submission route is project-scoped and this modal
   // has only the URL tenant slug. (Context's `projectSlug` is the SANITY slug
-  // and is not a Supabase `projects.slug`.) See projectScopeSlugFromTenantSlug.
-  const scopeSlug = projectScopeSlugFromTenantSlug(asTenantSlug(tenantSlug))
+  // and is not a Supabase `projects.slug`.) See projectScopeSlugFromUrlSegment.
+  const scopeSlug = projectScopeSlugFromUrlSegment(tenantSlug)
   const createEndpoint = submissionEndpoint(scopeSlug, 'early-access')
   const m = getEarlyAccessMessages(locale)
   const formStartedAt = useRef<number>(Date.now())

@@ -21,6 +21,7 @@ import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { FormOverlayWrapper } from '@/components/forms/FormOverlayWrapper'
 import { FormOverlayTrigger } from '@/components/forms/FormOverlayTrigger'
 import { overlayButtonClass, overlayButtonAlignClass, overlayButtonWidthClass } from '@/lib/forms/overlay-button'
+import type { UrlProjectSegment } from '@/lib/tenancy/ids'
 
 interface Props {
   section: SectionType
@@ -28,7 +29,8 @@ interface Props {
   designSystem: DesignSystem | null
   locale?: string
   /** URL tenant slug — the submission route scope; required to submit. */
-  tenantSlug?: string
+  /** The `[tenant]` URL segment — not a tenant slug. See `@/lib/tenancy/ids`. */
+  tenantSlug?: UrlProjectSegment
 }
 
 /** Turns the editor's Context key/value list into a plain map for pre-fill. */

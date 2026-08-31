@@ -64,6 +64,7 @@ import { MODULE_PERMISSION_MAP } from '@/lib/modules/permissions'
 import type { ModuleInstallation, ModulePermissionMap } from '@/lib/modules/types'
 import { tenantClient } from '@/lib/sanity/client'
 import { enabledModuleIdsQuery } from '@/lib/sanity/queries'
+import { asSupabaseProjectSlug, type SupabaseProjectSlug, type UrlProjectSegment } from '@/lib/tenancy/ids'
 
 // ── Types (ADR-017 Decision 3, shape reproduced exactly) ───────────────────────
 
@@ -73,7 +74,7 @@ export type ProjectRole = 'owner' | 'editor' | 'viewer'
 export type ProjectGrant = {
   projectId: string
   /** Resolved server-side from public.projects.slug — never client-supplied. */
-  projectSlug: string
+  projectSlug: SupabaseProjectSlug
   /**
    * Identifies the source membership row: the project_members.id for
    * editor/viewer grants, or a synthetic `tenant-owner:{tenantId}` marker for
@@ -96,7 +97,8 @@ export type TenantAuthorizationContext = {
 /** A project the caller owns via tenant_members (role = 'owner'). */
 export type RawOwnedProject = {
   projectId: string
-  projectSlug: string
+  /** `projects.slug` — the SUPABASE namespace. */
+  projectSlug: SupabaseProjectSlug
   tenantId: string
 }
 
@@ -104,7 +106,8 @@ export type RawOwnedProject = {
 export type RawProjectMembership = {
   membershipId: string
   projectId: string
-  projectSlug: string
+  /** `projects.slug` — the SUPABASE namespace. */
+  projectSlug: SupabaseProjectSlug
   role: 'editor' | 'viewer'
 }
 
@@ -255,7 +258,8 @@ export async function getTenantAuthorizationContext(): Promise<TenantAuthorizati
 
     ownedProjects = (projectRows ?? []).map((row) => ({
       projectId: row.id as string,
-      projectSlug: row.slug as string,
+      // Trust boundary: this IS `projects.slug`.
+      projectSlug: asSupabaseProjectSlug(row.slug as string),
       tenantId: row.tenant_id as string,
     }))
   }
@@ -282,7 +286,7 @@ export async function getTenantAuthorizationContext(): Promise<TenantAuthorizati
     .map((row) => row.project_id as string)
     .filter((projectId) => !ownedProjectIds.has(projectId)) // owner already covers these
 
-  let slugByProjectId = new Map<string, string>()
+  let slugByProjectId = new Map<string, SupabaseProjectSlug>()
   if (membershipProjectIds.length > 0) {
     const { data: memberProjectRows, error: memberProjectsError } = await supabase
       .from('projects')
@@ -296,7 +300,11 @@ export async function getTenantAuthorizationContext(): Promise<TenantAuthorizati
     }
 
     slugByProjectId = new Map(
-      (memberProjectRows ?? []).map((row) => [row.id as string, row.slug as string])
+      // Trust boundary: `row.slug` IS `projects.slug`.
+      (memberProjectRows ?? []).map((row) => [
+        row.id as string,
+        asSupabaseProjectSlug(row.slug as string),
+      ])
     )
   }
 
@@ -375,9 +383,27 @@ export async function getTenantAuthorizationContext(): Promise<TenantAuthorizati
  * has zero enabled modules; that is not an error condition for this
  * resolver, so it is logged and swallowed here rather than propagated.
  */
-async function fetchEnabledModuleIds(projectSlug: string): Promise<string[]> {
+async function fetchEnabledModuleIds(projectSlug: SupabaseProjectSlug): Promise<string[]> {
   try {
-    const { fetchForTenant } = tenantClient(projectSlug)
+    // ⚠️ NAMESPACE CONFLATION — LEFT IN PLACE DELIBERATELY (v1.0.31).
+    //
+    // `projectSlug` is a SUPABASE `projects.slug`. `tenantClient()` wants a
+    // `UrlProjectSegment` — a key of `TENANT_TO_PROJECT`, whose authority is
+    // `src/proxy.ts`. Those are two different namespaces, and for the
+    // platform's own project they DISAGREE: Supabase says `abluo`, the URL
+    // segment is `abluo-the-tiny-cms`. There is no correct conversion
+    // available here — Supabase→URL is a lookup nothing currently offers —
+    // so the cast stays and the failure is caught below.
+    //
+    // The consequence is live but contained: `abluo` misses the map,
+    // `lookupSanityProjectSlugByUrlSegment()` throws, the catch swallows it,
+    // and the platform project reports ZERO enabled modules. The doc comment
+    // above already describes this outcome as intentional degradation; the
+    // brand is what shows it is actually a namespace bug wearing a
+    // try/catch. Fix by giving `route-config.ts` a `urlSegment` column, or by
+    // renaming Supabase's `abluo` — NOT by widening this parameter back to
+    // `string`.
+    const { fetchForTenant } = tenantClient(projectSlug as unknown as UrlProjectSegment)
     const ids = await fetchForTenant<string[] | null>(enabledModuleIdsQuery, {})
     return ids ?? []
   } catch (error) {

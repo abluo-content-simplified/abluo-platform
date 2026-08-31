@@ -21,6 +21,7 @@
  * `@sanity/client` is mocked so nothing hits live Sanity.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 
 type SanityConfig = Record<string, unknown>
 
@@ -108,7 +109,7 @@ describe('fetchForTenant enforces scoping at runtime', () => {
     const { tenantClient } = await import('@/lib/sanity/client')
     const query = '*[_type == "page" && projectSlug == $projectSlug][0]'
 
-    await tenantClient('livener').fetchForTenant(query, { locale: 'it' })
+    await tenantClient(asUrlProjectSegment('livener')).fetchForTenant(query, { locale: 'it' })
 
     expect(fetchMock).toHaveBeenCalledWith(query, {
       locale: 'it',
@@ -123,7 +124,7 @@ describe('fetchForTenant enforces scoping at runtime', () => {
 
     // Throws synchronously, exactly like the dashboard chokepoint does — the
     // call never becomes a pending promise.
-    expect(() => tenantClient('livener').fetchForTenant('*[_type == "page"][0]')).toThrow(
+    expect(() => tenantClient(asUrlProjectSegment('livener')).fetchForTenant('*[_type == "page"][0]')).toThrow(
       /must reference \$projectSlug/,
     )
 
@@ -136,7 +137,7 @@ describe('fetchForTenant enforces scoping at runtime', () => {
 
     // A message that does not identify the query is unactionable in a codebase
     // with a hundred of them.
-    expect(() => tenantClient('abluo-the-tiny-cms').fetchForTenant('*[_id in $ids]')).toThrow(
+    expect(() => tenantClient(asUrlProjectSegment('abluo-the-tiny-cms')).fetchForTenant('*[_id in $ids]')).toThrow(
       /tenantSlug=abluo-the-tiny-cms projectSlug=abluo[^]*_id in \$ids/,
     )
   })
@@ -148,7 +149,7 @@ describe('fetchForTenant enforces scoping at runtime', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { tenantClient } = await import('@/lib/sanity/client')
 
-    await tenantClient('livener').fetchForTenant('*[_type == "page"][0]')
+    await tenantClient(asUrlProjectSegment('livener')).fetchForTenant('*[_type == "page"][0]')
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(consoleError).toHaveBeenCalledTimes(1)
@@ -164,7 +165,7 @@ describe('fetchForTenant enforces scoping at runtime', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { tenantClient } = await import('@/lib/sanity/client')
 
-    await tenantClient('livener').fetchForTenant('*[projectSlug == $projectSlug][0]')
+    await tenantClient(asUrlProjectSegment('livener')).fetchForTenant('*[projectSlug == $projectSlug][0]')
 
     expect(consoleError).not.toHaveBeenCalled()
   })

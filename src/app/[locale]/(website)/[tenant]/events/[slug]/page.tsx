@@ -21,6 +21,7 @@ import { SlideUp } from '@/components/animation'
 import { SlugMapProvider, type SlugMap } from '@/components/SlugMapContext'
 import { EventCard } from '@/components/events/EventCard'
 import { BackButton } from '@/components/events/BackButton'
+import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 interface PageProps {
   params: Promise<{ tenant: string; locale: string; slug: string }>
   searchParams?: Promise<{ from?: string }>
@@ -29,7 +30,10 @@ interface PageProps {
 // ─── Metadata ─────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { tenant: tenantId, locale, slug } = await params
+  const { tenant: rawTenantId, locale, slug } = await params
+  // Trust boundary: the `[tenant]` segment is a URL project segment —
+  // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
+  const tenantId = asUrlProjectSegment(rawTenantId)
   const { fetchForTenant } = tenantClient(tenantId)
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
@@ -92,7 +96,10 @@ export async function generateStaticParams() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function EventDetailPage({ params, searchParams }: PageProps) {
-  const { tenant: tenantId, locale, slug } = await params
+  const { tenant: rawTenantId, locale, slug } = await params
+  // Trust boundary: the `[tenant]` segment is a URL project segment —
+  // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
+  const tenantId = asUrlProjectSegment(rawTenantId)
   const resolvedSearch = await searchParams
   const from = resolvedSearch?.from
   const { fetchForTenant } = tenantClient(tenantId)

@@ -24,6 +24,7 @@ import { BackButton } from '@/components/events/BackButton'
 import { PortableText } from '@portabletext/react'
 import { articlePortableTextComponents } from '@/components/portable-text/article-components'
 import { PostCard } from '@/components/blog/PostCard'
+import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,7 +36,10 @@ interface PageProps {
 // ─── Metadata ─────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { tenant: tenantId, locale, slug } = await params
+  const { tenant: rawTenantId, locale, slug } = await params
+  // Trust boundary: the `[tenant]` segment is a URL project segment —
+  // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
+  const tenantId = asUrlProjectSegment(rawTenantId)
   const { fetchForTenant } = tenantClient(tenantId)
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
@@ -120,7 +124,10 @@ function getBackContext(from: string | undefined, locale: string, tenantId: stri
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function BlogDetailPage({ params, searchParams }: PageProps) {
-  const { tenant: tenantId, locale, slug } = await params
+  const { tenant: rawTenantId, locale, slug } = await params
+  // Trust boundary: the `[tenant]` segment is a URL project segment —
+  // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
+  const tenantId = asUrlProjectSegment(rawTenantId)
   const resolvedSearch = await searchParams
   const from = resolvedSearch?.from
   const { fetchForTenant } = tenantClient(tenantId)

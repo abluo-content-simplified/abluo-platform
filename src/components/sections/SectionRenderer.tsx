@@ -53,6 +53,7 @@ import type {
   Event,
 } from '@/lib/sanity/types'
 import { computeSectionSurface } from '@/lib/sanity/surfaces'
+import type { UrlProjectSegment } from '@/lib/tenancy/ids'
 import {
   blogListingPostsNewestQuery,
   blogListingPostsOldestQuery,
@@ -330,7 +331,8 @@ export interface SectionRendererProps {
   backgroundPattern: string | undefined
   sectionIndex: number
   locale: string
-  tenantSlug: string
+  /** The `[tenant]` URL segment — not a tenant slug. See `@/lib/tenancy/ids`. */
+  tenantSlug: UrlProjectSegment
   fromParam?: string
   /**
    * ADR-016 Phase D — the tenant's installed module IDs, used to gate

@@ -1,4 +1,10 @@
 import { createClient } from '@sanity/client'
+import {
+  asSanityProjectSlug,
+  unbrand,
+  type SanityProjectSlug,
+  type UrlProjectSegment,
+} from '@/lib/tenancy/ids'
 import { DS_FIELDS_SELECTION } from '@/lib/sanity/queries'
 import { SANITY_PROJECT_ID, SANITY_DATASET, SANITY_API_VERSION } from '@/lib/sanity/config'
 
@@ -65,14 +71,33 @@ export const sanityClient = createClient({
  */
 export const hasSanityReadToken = Boolean(sanityReadToken)
 
-// ─── Tenant → Project slug mapping ───────────────────────────────────────────
-// Maps the URL tenant slug (e.g. "livener") to the Sanity project slug
-// (e.g. "livener-main"). Add a new entry when onboarding a new client.
-const TENANT_TO_PROJECT: Record<string, string> = {
-  livener: 'livener-main',
-  studiomartegani: 'studiomartegani-main',
-  'abluo-the-tiny-cms': 'abluo',
-  nologo: 'nologo',
+// ─── THE BRIDGE: URL segment → Sanity projectSlug ────────────────────────────
+/**
+ * The hand-written translation between two of the platform's three
+ * project-grain namespaces (see `src/lib/tenancy/ids.ts`):
+ *
+ *   KEY   — `UrlProjectSegment`: the `[tenant]` route segment, whose authority
+ *           is `domainMap`/`resolveTenant()` in `src/proxy.ts`.
+ *   VALUE — `SanityProjectSlug`: the `projectSlug` field on Sanity documents.
+ *
+ * NEITHER SIDE IS A SUPABASE `projects.slug`, and neither side is a
+ * `tenants.slug`. Read the rows: the key `abluo-the-tiny-cms` is not any
+ * project's database slug (that is `abluo`), and `nologo`'s tenant is
+ * `freeriders`. The historic name of this map is therefore wrong on both
+ * halves; it is kept only to keep this change type-level.
+ *
+ * This is the ONLY sanctioned crossing between these two namespaces. There is
+ * no cast and no string transform — `'livener-main'.replace(/-main$/,'')` is
+ * the forbidden thing, and so is `unbrand(x) as SanityProjectSlug`.
+ *
+ * Scheduled for deletion by the contract phase; see
+ * `src/lib/tenancy/host-scope.ts`, "What the CONTRACT phase will delete" (4).
+ */
+const TENANT_TO_PROJECT: Record<string, SanityProjectSlug> = {
+  livener: asSanityProjectSlug('livener-main'),
+  studiomartegani: asSanityProjectSlug('studiomartegani-main'),
+  'abluo-the-tiny-cms': asSanityProjectSlug('abluo'),
+  nologo: asSanityProjectSlug('nologo'),
 }
 
 /**
@@ -87,19 +112,43 @@ const TENANT_TO_PROJECT: Record<string, string> = {
  * error for a missing mapping (internal/admin paths) should keep using
  * `tenantToProjectSlug()` below.
  */
-export function tryTenantToProjectSlug(tenantSlug: string): string | null {
-  return TENANT_TO_PROJECT[tenantSlug] ?? null
+export function tryLookupSanityProjectSlugByUrlSegment(
+  segment: UrlProjectSegment
+): SanityProjectSlug | null {
+  return TENANT_TO_PROJECT[unbrand(segment)] ?? null
 }
 
-export function tenantToProjectSlug(tenantSlug: string): string {
-  const projectSlug = tryTenantToProjectSlug(tenantSlug)
+/**
+ * Throwing counterpart. Crosses URL-segment → Sanity-projectSlug via the
+ * bridge above. Named for the direction it goes and for the fact that it
+ * CONSULTS DATA: the contract phase greps for `…ByUrlSegment` to find every
+ * crossing it has to replace with the generated route config.
+ */
+export function lookupSanityProjectSlugByUrlSegment(
+  segment: UrlProjectSegment
+): SanityProjectSlug {
+  const projectSlug = tryLookupSanityProjectSlugByUrlSegment(segment)
   if (!projectSlug) {
     throw new Error(
-      `No project mapping for tenant "${tenantSlug}". Add it to TENANT_TO_PROJECT in client.ts.`
+      `No project mapping for tenant "${segment}". Add it to TENANT_TO_PROJECT in client.ts.`
     )
   }
   return projectSlug
 }
+
+/**
+ * @deprecated Historic name — both halves of it are wrong (the argument is a
+ * URL segment, not a tenant slug; and "project slug" here means SANITY's name,
+ * not Supabase's). Kept as a pure re-export so this split stays type-level.
+ * Prefer {@link tryLookupSanityProjectSlugByUrlSegment}.
+ */
+export const tryTenantToProjectSlug = tryLookupSanityProjectSlugByUrlSegment
+
+/**
+ * @deprecated See {@link tryTenantToProjectSlug}. Prefer
+ * {@link lookupSanityProjectSlugByUrlSegment}.
+ */
+export const tenantToProjectSlug = lookupSanityProjectSlugByUrlSegment
 
 // ─── Runtime tenant-scope guard (finding I-9) ────────────────────────────────
 
@@ -216,7 +265,7 @@ export function tenantScopeEnforcement(
  * Accepts the URL tenant slug (e.g. "livener") and resolves it to the
  * Sanity projectSlug (e.g. "livener-main") before injecting into queries.
  */
-export function tenantClient(tenantSlug: string) {
+export function tenantClient(tenantSlug: UrlProjectSegment) {
   if (!tenantSlug) {
     throw new Error('tenantSlug is required — never query Sanity without a tenant scope')
   }

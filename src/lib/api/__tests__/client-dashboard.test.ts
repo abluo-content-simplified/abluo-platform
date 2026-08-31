@@ -7,6 +7,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { getDashboardPosts } from '../client-dashboard'
 import { TenantAuthorizationError } from '../tenant-scoped-sanity'
 import type { ProjectGrant, TenantAuthorizationContext } from '../tenant-context'
+import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 
 function ctxWith(grants: ProjectGrant[]): TenantAuthorizationContext {
   return { userId: 'user-1', platformRole: 'tenant_user', projects: grants }
@@ -16,7 +17,7 @@ function ctxWith(grants: ProjectGrant[]): TenantAuthorizationContext {
 // blog.post.read (viewer/editor/owner all hold it per the registry).
 const validGrant: ProjectGrant = {
   projectId: 'project-a1',
-  projectSlug: 'livener-main',
+  projectSlug: asSupabaseProjectSlug('livener-main'),
   membershipId: 'pm-editor-a1',
   role: 'editor',
   permissions: ['blog.post.read', 'blog.post.write'],

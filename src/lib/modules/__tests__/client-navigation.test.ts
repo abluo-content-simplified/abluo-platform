@@ -11,11 +11,12 @@ import {
 } from '../client-navigation'
 import type { ProjectGrant } from '@/lib/api/tenant-context'
 import type { ModuleManifest } from '../types'
+import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 
 function grantWith(enabledModuleIds: string[]): ProjectGrant {
   return {
     projectId: 'project-a1',
-    projectSlug: 'livener-main',
+    projectSlug: asSupabaseProjectSlug('livener-main'),
     membershipId: 'pm-1',
     role: 'editor',
     permissions: [],
@@ -57,7 +58,7 @@ describe('buildClientNavItems', () => {
   })
 
   it('builds the href from the grant projectSlug + the route mapping', () => {
-    const grant = { ...grantWith(['blog']), projectSlug: 'studiomartegani-main' }
+    const grant = { ...grantWith(['blog']), projectSlug: asSupabaseProjectSlug('studiomartegani-main') }
     const [item] = buildClientNavItems(grant, fakeRegistry)
     expect(item.href).toBe(`/studiomartegani-main/${MODULE_DASHBOARD_ROUTES.blog}`)
   })
@@ -65,7 +66,7 @@ describe('buildClientNavItems', () => {
 
 describe('resolveProjectGrant', () => {
   const a = grantWith(['blog'])
-  const b = { ...grantWith([]), projectId: 'project-b', projectSlug: 'other-main' }
+  const b = { ...grantWith([]), projectId: 'project-b', projectSlug: asSupabaseProjectSlug('other-main') }
 
   it('returns the matching grant for a granted slug', () => {
     expect(resolveProjectGrant([a, b], 'other-main')).toBe(b)

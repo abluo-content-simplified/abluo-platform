@@ -10,6 +10,7 @@ import { JsonLd } from '@/components/JsonLd'
 import { notFound, redirect } from 'next/navigation'
 import { SlugMapProvider } from '@/components/SlugMapContext'
 import { isProduction, isDev } from '@/lib/deployment'
+import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,7 +21,10 @@ interface PageProps {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { tenant: tenantId, locale, slug } = await params
+  const { tenant: rawTenantId, locale, slug } = await params
+  // Trust boundary: the `[tenant]` segment is a URL project segment —
+  // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
+  const tenantId = asUrlProjectSegment(rawTenantId)
   const { fetchForTenant } = tenantClient(tenantId)
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
@@ -82,7 +86,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 // (ADR-016 Phase 0) — shared with the home route, not duplicated here.
 
 export default async function WebsitePageRoute({ params }: PageProps) {
-  const { tenant: tenantId, locale, slug } = await params
+  const { tenant: rawTenantId, locale, slug } = await params
+  // Trust boundary: the `[tenant]` segment is a URL project segment —
+  // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
+  const tenantId = asUrlProjectSegment(rawTenantId)
   const { fetchForTenant } = tenantClient(tenantId)
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})

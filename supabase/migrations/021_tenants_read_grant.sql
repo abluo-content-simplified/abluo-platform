@@ -1,0 +1,121 @@
+-- ============================================================
+-- Migration 021 — authz read grant (public.tenants)
+--
+-- ⚠️ NOT APPLIED TO ANY SUPABASE PROJECT (dev/preview/prod) BY THIS TASK.
+-- This is a FILE ONLY, handed to Tom to review and apply manually via the
+-- Supabase SQL editor, per CLAUDE.md's Schema Evolution Rules and this
+-- task's explicit hard stop. Proven against the local disposable-Postgres
+-- harness only (supabase/verify/live-rls.verify.mjs, block "(i)"). Record
+-- the outcome in supabase/APPLIED.md once it has actually been run.
+--
+-- ── The gap ──────────────────────────────────────────────────────────────
+-- Exactly the bug class migration 011 was written for — one table it did
+-- not audit. 011 issued `grant select … to authenticated` on
+-- tenant_members, project_members and projects, and its own header lists
+-- the tables it deliberately left alone: "tenants/leads/profiles/inquiries
+-- are unaffected — they are read only via the service-role client today".
+-- profiles was closed afterwards (migration 015) and inquiries too
+-- (migration 014). `public.tenants` never was.
+--
+-- schema.sql §8 defines the policy:
+--
+--     create policy "Members can read their tenants"
+--       on public.tenants for select
+--       using ( id in (select public.get_my_tenant_ids()) );
+--
+-- …but with no table-level GRANT behind it, that policy has never been
+-- reachable. Verified on a real PostgreSQL 18 in the harness: a SELECT on
+-- public.tenants as the `authenticated` role raises
+--
+--     42501  permission denied for table tenants
+--
+-- for the tenant's OWN OWNER exactly as it does for a stranger. That is the
+-- signature of a missing grant, and it is how a missing grant is told apart
+-- from RLS filtering — RLS returns an empty result set, it never raises.
+--
+-- ── Severity: LATENT, fails closed ───────────────────────────────────────
+-- This is a gap, not a leak. Nothing is over-shared; the table is simply
+-- unreadable through a user session, so every tenant read in the codebase
+-- goes through the service-role client (which bypasses grants and RLS both)
+-- and works today. The failure mode is in the future: the first
+-- request-scoped `.from('tenants')` read — resolving a tenant's
+-- display_name or plan in the client dashboard under the caller's own
+-- session — will get a 42501 rather than the row it is entitled to. That is
+-- precisely how migration 011's bug surfaced, on the day
+-- getTenantAuthorizationContext() became the first code path to read
+-- tenant_members under a real JWT.
+--
+-- ── The fix is the GRANT only ────────────────────────────────────────────
+-- The policy is already correct and is NOT touched. Checked in the harness
+-- by granting SELECT, exercising the policy, and revoking again: with the
+-- grant in place a tenant owner reads exactly their own tenant row, a member
+-- of another tenant reads zero rows, and a project_members-only grant holder
+-- (no tenant_members row) reads zero rows. So the row boundary is enforced
+-- entirely by the existing policy — the GRANT is only the on/off switch for
+-- reading the table at all, exactly the model ADR-017 Decision 5 describes
+-- and migration 011's header spells out.
+--
+-- SELECT only. No write grant: tenant rows are platform-admin surface,
+-- written through the service role, and schema.sql has no INSERT/UPDATE/
+-- DELETE policy on tenants at all — a write grant would be an unbacked
+-- privilege with no policy to constrain it.
+--
+-- Note the deliberate grain asymmetry with migration 020: `tenants` is a
+-- genuinely TENANT-grain table (one row per tenant), so get_my_tenant_ids()
+-- is the right helper here — a tenant viewer SHOULD see their tenant's row.
+-- The consequence is that a project_members-only holder (e.g. an editor on
+-- one project, with no tenant_members row) sees no tenant row at all. That
+-- is a separate, known under-share of the same family as the one migration
+-- 020 closes for leads, and it is NOT addressed here: widening the tenants
+-- policy to a project branch is a visibility decision, and this migration is
+-- deliberately grant-only so it carries no visibility change whatsoever.
+-- If that under-share needs closing, it belongs in its own migration with
+-- its own sign-off.
+--
+-- Grants are idempotent — safe to re-run.
+-- ============================================================
+
+
+-- ── Grant ─────────────────────────────────────────────────────────────────
+
+grant select on public.tenants to authenticated;
+
+
+-- ============================================================
+-- Verification — run in the Supabase SQL editor after applying
+-- ============================================================
+--
+-- 1. The grant now exists, and is SELECT only:
+--
+--    select table_name, grantee, privilege_type
+--    from   information_schema.role_table_grants
+--    where  table_schema = 'public'
+--    and    table_name   = 'tenants'
+--    and    grantee      = 'authenticated'
+--    order  by privilege_type;
+--
+--    Expected: exactly 1 row — tenants | authenticated | SELECT.
+--    Any INSERT/UPDATE/DELETE row means something other than this migration
+--    ran; investigate before proceeding.
+--
+-- 2. The policy is untouched — this migration does not modify pg_policies
+--    at all (sanity check only):
+--
+--    select policyname, cmd, qual
+--    from   pg_policies
+--    where  schemaname = 'public' and tablename = 'tenants';
+--
+--    Expected: 1 row, "Members can read their tenants", SELECT, qual
+--    referencing get_my_tenant_ids() — identical to before.
+--
+-- 3. Live end-to-end check: from a real logged-in tenant session (not the
+--    SQL editor, which runs as superuser and bypasses both layers), a
+--    request-scoped `supabase.from('tenants').select('id, slug')` must
+--    return that user's own tenant row(s) and nothing else, with no 42501.
+--    The SQL editor CANNOT verify this — it is a superuser connection, so
+--    it sees every row whether or not the grant exists.
+--
+-- 4. Regression check: nothing that used the service-role client changes.
+--    `select count(*) from public.tenants;` in the SQL editor returns the
+--    same number before and after — this migration cannot affect it either
+--    way, and is listed only as a baseline if Tom wants to diff.

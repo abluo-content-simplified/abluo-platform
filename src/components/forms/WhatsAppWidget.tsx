@@ -27,13 +27,13 @@ import {
   buildFieldConfigs,
   buildSubmissionPayload,
   submissionEndpoint,
-  projectScopeSlugFromTenantSlug,
+  projectScopeSlugFromUrlSegment,
 } from '@/lib/forms/render-mapping'
 import { collectClientSource } from '@/lib/forms/source'
-import { asTenantSlug } from '@/lib/tenancy/ids'
 import { getFormSectionMessages } from '@/lib/i18n/form-section-messages'
 import { getOverlayChromeMessages } from '@/lib/forms/overlay'
 import { buildWhatsAppLink } from '@/lib/forms/whatsapp'
+import type { UrlProjectSegment } from '@/lib/tenancy/ids'
 
 const WA_GREEN = '#25D366'
 
@@ -57,7 +57,12 @@ interface Props {
   definition: RenderableFormDefinition | null
   /** WhatsApp number (any format — normalised to digits for wa.me). */
   number: string
-  tenantSlug: string
+  /**
+   * The `[tenant]` URL segment. Despite the name this is NOT a tenant slug:
+   * No!Logo's segment is `nologo`, whose tenant is `freeriders`. See
+   * `@/lib/tenancy/ids`.
+   */
+  tenantSlug: UrlProjectSegment
   locale?: string
   variant?: 'inline' | 'fab'
   /** Inline-button label override; defaults to the localized "Chat on WhatsApp". */
@@ -172,9 +177,9 @@ function WhatsAppCaptureWidget({ definition: def, number, tenantSlug, locale = '
         honeypot: honeypotRef.current?.value ?? '',
         source: collectClientSource({ source: 'whatsapp' }),
       })
-      // ⚠️ ONE-TO-N BOUNDARY — see projectScopeSlugFromTenantSlug.
+      // ⚠️ ONE-TO-N BOUNDARY — see projectScopeSlugFromUrlSegment.
       const endpoint = submissionEndpoint(
-        projectScopeSlugFromTenantSlug(asTenantSlug(tenantSlug)),
+        projectScopeSlugFromUrlSegment(tenantSlug),
         def.formId,
       )
       void fetch(endpoint, {

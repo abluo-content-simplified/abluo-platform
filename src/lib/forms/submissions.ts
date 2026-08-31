@@ -28,7 +28,7 @@ import {
   type FormDefinition,
 } from '@/lib/forms/definitions'
 import { resolveActiveDefinition, reconstructDefinitionFromSnapshot } from '@/lib/forms/definition-source'
-import { asProjectSlug, toTenantSlug, unbrand, type ProjectSlug, type TenantSlug } from '@/lib/tenancy/ids'
+import { asSupabaseProjectSlug, toTenantSlug, unbrand, type SupabaseProjectSlug, type TenantSlug } from '@/lib/tenancy/ids'
 
 const SPAM_OPTS = { table: 'form_submissions', ipColumn: 'submitter_ip' } as const
 
@@ -41,7 +41,7 @@ export type SubmissionResult =
 
 export interface CreateSubmissionInput {
   /** The route's `[projectSlug]` segment — a PROJECT slug (`projects.slug`), never a tenant slug. */
-  projectSlug: ProjectSlug
+  projectSlug: SupabaseProjectSlug
   formId: string
   locale?: string
   source?: Record<string, unknown>
@@ -55,7 +55,7 @@ export interface CreateSubmissionInput {
 
 export interface CompleteStepInput {
   /** The route's `[projectSlug]` segment — a PROJECT slug (`projects.slug`), never a tenant slug. */
-  projectSlug: ProjectSlug
+  projectSlug: SupabaseProjectSlug
   formId: string
   submissionId: string
   completionToken?: string
@@ -95,7 +95,7 @@ export interface ProjectScope {
  */
 async function resolveProjectScope(
   supabase: { from: (t: string) => any },
-  projectSlug: ProjectSlug,
+  projectSlug: SupabaseProjectSlug,
 ): Promise<ProjectScope | null> {
   const { data } = await supabase
     .from('projects')
@@ -137,7 +137,7 @@ async function resolveProjectScope(
 async function resolveProjectSlugById(
   supabase: { from: (t: string) => any },
   projectId: string | null,
-): Promise<ProjectSlug | null> {
+): Promise<SupabaseProjectSlug | null> {
   if (!projectId) return null
   const { data } = await supabase
     .from('projects')
@@ -145,7 +145,7 @@ async function resolveProjectSlugById(
     .eq('id', projectId)
     .maybeSingle()
   const slug = (data?.slug as string | null) ?? null
-  return slug ? asProjectSlug(slug) : null
+  return slug ? asSupabaseProjectSlug(slug) : null
 }
 
 /** Sanitizes placement Context to only the definition's contextMappable field keys (§18). */

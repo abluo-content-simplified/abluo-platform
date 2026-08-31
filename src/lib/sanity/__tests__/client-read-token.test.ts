@@ -10,6 +10,7 @@
  * because the token is read once at module scope.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 
 type SanityConfig = Record<string, unknown>
 
@@ -117,7 +118,7 @@ describe('tenantClient.fetchForTenant — scope injection', () => {
     const fetchSpy = vi.fn().mockResolvedValue([])
     ;(mod.sanityClient as unknown as { fetch: unknown }).fetch = fetchSpy
 
-    await mod.tenantClient('livener').fetchForTenant('*[_type == "page"]')
+    await mod.tenantClient(asUrlProjectSegment('livener')).fetchForTenant('*[_type == "page"]')
 
     expect(fetchSpy).toHaveBeenCalledWith('*[_type == "page"]', {
       projectSlug: 'livener-main',
@@ -132,7 +133,7 @@ describe('tenantClient.fetchForTenant — scope injection', () => {
 
     // "abluo-the-tiny-cms" maps to project "abluo" — the two differ, so this
     // catches any accidental swap of the two values.
-    await mod.tenantClient('abluo-the-tiny-cms').fetchForTenant('*[_type == "page"]')
+    await mod.tenantClient(asUrlProjectSegment('abluo-the-tiny-cms')).fetchForTenant('*[_type == "page"]')
 
     const params = fetchSpy.mock.calls[0][1]
     expect(params.tenantSlug).toBe('abluo-the-tiny-cms')
@@ -144,7 +145,7 @@ describe('tenantClient.fetchForTenant — scope injection', () => {
     const fetchSpy = vi.fn().mockResolvedValue([])
     ;(mod.sanityClient as unknown as { fetch: unknown }).fetch = fetchSpy
 
-    await mod.tenantClient('nologo').fetchForTenant('*[_id == $id]', {
+    await mod.tenantClient(asUrlProjectSegment('nologo')).fetchForTenant('*[_id == $id]', {
       id: 'abc',
       projectSlug: 'attacker-supplied',
       tenantSlug: 'attacker-supplied',
@@ -159,6 +160,6 @@ describe('tenantClient.fetchForTenant — scope injection', () => {
 
   it('still refuses an empty tenant slug', async () => {
     const { mod } = await loadClient()
-    expect(() => mod.tenantClient('')).toThrow(/tenantSlug is required/)
+    expect(() => mod.tenantClient(asUrlProjectSegment(''))).toThrow(/tenantSlug is required/)
   })
 })

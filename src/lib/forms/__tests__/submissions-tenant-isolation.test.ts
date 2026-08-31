@@ -16,7 +16,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { issueStepToken } from '@/lib/forms/tokens'
-import { asProjectSlug } from '@/lib/tenancy/ids'
+import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 
 // definition-source pulls in the Sanity client (and, through it, the query
 // module) purely for the live-definition lookup this test does not exercise.
@@ -155,7 +155,7 @@ beforeEach(setup)
 
 describe('completeStep tenant isolation', () => {
   it("rejects a final step posted on another tenant's route", async () => {
-    const res = await completeStep({ projectSlug: asProjectSlug('tenant-b'), ...finalStep() })
+    const res = await completeStep({ projectSlug: asSupabaseProjectSlug('tenant-b'), ...finalStep() })
 
     // 404 + the same generic message as an unknown submission — no oracle.
     expect(res).toEqual({ ok: false, status: 404, error: 'not found' })
@@ -165,13 +165,13 @@ describe('completeStep tenant isolation', () => {
   })
 
   it('rejects a projectSlug that resolves to no project at all', async () => {
-    const res = await completeStep({ projectSlug: asProjectSlug('does-not-exist'), ...finalStep() })
+    const res = await completeStep({ projectSlug: asSupabaseProjectSlug('does-not-exist'), ...finalStep() })
     expect(res).toEqual({ ok: false, status: 404, error: 'not found' })
     expect(supabase.inserts).toEqual([])
   })
 
   it("emits an event whose projectSlug comes from the row's project, not the route", async () => {
-    const res = await completeStep({ projectSlug: asProjectSlug('tenant-a-alias'), ...finalStep() })
+    const res = await completeStep({ projectSlug: asSupabaseProjectSlug('tenant-a-alias'), ...finalStep() })
 
     expect(res).toEqual({ ok: true, done: true, submissionId: SUBMISSION_ID })
 
@@ -184,7 +184,7 @@ describe('completeStep tenant isolation', () => {
   })
 
   it('still completes normally on the tenant its own route', async () => {
-    const res = await completeStep({ projectSlug: asProjectSlug('tenant-a'), ...finalStep() })
+    const res = await completeStep({ projectSlug: asSupabaseProjectSlug('tenant-a'), ...finalStep() })
     expect(res).toEqual({ ok: true, done: true, submissionId: SUBMISSION_ID })
     const event = supabase.inserts.find((i) => i.table === 'form_events')
     expect(event!.payload.project_slug).toBe('tenant-a')
@@ -242,7 +242,7 @@ describe('completeStep — an unresolvable route slug is never a match (D1)', ()
 
   it('REJECTS a platform-level (project_id null) submission finalized through a slug that resolves to no project — the null === null hole', async () => {
     const res = await completeStep({
-      projectSlug: asProjectSlug('made-up-slug'),
+      projectSlug: asSupabaseProjectSlug('made-up-slug'),
       ...platformFinalStep(),
     })
     expect(res).toEqual({ ok: false, status: 404, error: 'not found' })
@@ -252,7 +252,7 @@ describe('completeStep — an unresolvable route slug is never a match (D1)', ()
 
   it('REJECTS it through a DIFFERENT invented slug too — two unrelated unresolvable URLs must not be "the same scope"', async () => {
     const res = await completeStep({
-      projectSlug: asProjectSlug('another-made-up-slug'),
+      projectSlug: asSupabaseProjectSlug('another-made-up-slug'),
       ...platformFinalStep(),
     })
     expect(res).toEqual({ ok: false, status: 404, error: 'not found' })
@@ -261,7 +261,7 @@ describe('completeStep — an unresolvable route slug is never a match (D1)', ()
 
   it('REJECTS it on a REAL tenant route as well — a platform-level row cannot be adopted by a project', async () => {
     const res = await completeStep({
-      projectSlug: asProjectSlug('tenant-a'),
+      projectSlug: asSupabaseProjectSlug('tenant-a'),
       ...platformFinalStep(),
     })
     expect(res).toEqual({ ok: false, status: 404, error: 'not found' })
@@ -271,7 +271,7 @@ describe('completeStep — an unresolvable route slug is never a match (D1)', ()
   it('rejects an unresolvable slug BEFORE the token is checked, so a real submission is never advanced by it either', async () => {
     setup() // the tenant-A fixture, whose row has a real project_id
     const res = await completeStep({
-      projectSlug: asProjectSlug('made-up-slug'),
+      projectSlug: asSupabaseProjectSlug('made-up-slug'),
       ...finalStep(),
     })
     expect(res).toEqual({ ok: false, status: 404, error: 'not found' })

@@ -35,6 +35,7 @@ import type { LocaleConfig, SupportedLocale, DesignSystem, WebsiteSiteConfig, Bl
 import { getNewsPageMessages } from '@/lib/i18n/news-page-messages'
 import { isProduction, isDev } from '@/lib/deployment'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
+import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,7 +46,10 @@ interface PageProps {
 // ─── Metadata ─────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { tenant: tenantId, locale } = await params
+  const { tenant: rawTenantId, locale } = await params
+  // Trust boundary: the `[tenant]` segment is a URL project segment —
+  // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
+  const tenantId = asUrlProjectSegment(rawTenantId)
   const { fetchForTenant } = tenantClient(tenantId)
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
@@ -96,7 +100,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function NewsListingPage({ params }: PageProps) {
-  const { tenant: tenantId, locale } = await params
+  const { tenant: rawTenantId, locale } = await params
+  // Trust boundary: the `[tenant]` segment is a URL project segment —
+  // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
+  const tenantId = asUrlProjectSegment(rawTenantId)
   const { fetchForTenant } = tenantClient(tenantId)
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})

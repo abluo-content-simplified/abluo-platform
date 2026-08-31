@@ -19,6 +19,7 @@
  */
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import type { SanityProjectSlug, UrlProjectSegment } from '@/lib/tenancy/ids'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,7 +53,12 @@ export interface EarlyAccessOpenOptions {
 interface EarlyAccessContextValue {
   isOpen: boolean
   options: EarlyAccessOpenOptions | null
-  tenantSlug: string
+  /**
+   * The `[tenant]` URL segment. Despite the name this is NOT a tenant slug:
+   * No!Logo's segment is `nologo`, whose tenant is `freeriders`. See
+   * `@/lib/tenancy/ids`.
+   */
+  tenantSlug: UrlProjectSegment
   /**
    * ⚠️ SANITY project slug (`tenantToProjectSlug()`, e.g. 'livener-main') — NOT
    * a Supabase `projects.slug` and NOT the submission route's scope. It does not
@@ -60,9 +66,9 @@ interface EarlyAccessContextValue {
    * comment that said it did was the reason it looked like the fix for the
    * tenant-slug-in-a-projectSlug-position defect. Left in place for Sanity-side
    * consumers; the submission scope stays the tenant slug until routing supplies
-   * a real Supabase project slug (see `projectScopeSlugFromTenantSlug`).
+   * a real Supabase project slug (see `projectScopeSlugFromUrlSegment`).
    */
-  projectSlug?: string
+  projectSlug?: SanityProjectSlug
   /** Current locale — used by components to look up localised messages */
   locale: string
   open: (opts: EarlyAccessOpenOptions) => void
@@ -91,9 +97,14 @@ export function useEarlyAccessSafe(): EarlyAccessContextValue | null {
 
 interface EarlyAccessProviderProps {
   children: ReactNode
-  tenantSlug: string
+  /**
+   * The `[tenant]` URL segment. Despite the name this is NOT a tenant slug:
+   * No!Logo's segment is `nologo`, whose tenant is `freeriders`. See
+   * `@/lib/tenancy/ids`.
+   */
+  tenantSlug: UrlProjectSegment
   /** Sanity project slug (see the context value's doc) — not the API scope. */
-  projectSlug?: string
+  projectSlug?: SanityProjectSlug
   /** Current page locale — passed through to components for message lookup */
   locale: string
 }

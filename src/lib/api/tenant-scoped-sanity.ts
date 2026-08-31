@@ -92,6 +92,7 @@
  */
 import { findTenantScopeViolation, sanityClient } from '@/lib/sanity/client'
 import type { ProjectGrant, TenantAuthorizationContext } from '@/lib/api/tenant-context'
+import { toSanityProjectSlug, type SanityProjectSlug } from '@/lib/tenancy/ids'
 
 // ── Error type ──────────────────────────────────────────────────────────────
 
@@ -119,7 +120,12 @@ export type SanityFetchFn = <T>(query: string, params?: Record<string, unknown>)
 
 export type TenantScopedSanityClient = {
   readonly projectId: string
-  readonly projectSlug: string
+  /**
+   * The value bound to `$projectSlug` in every scoped GROQ query, so it is by
+   * construction a SANITY `project.projectSlug` — the namespace the documents
+   * are actually filed under. See `@/lib/tenancy/ids`.
+   */
+  readonly projectSlug: SanityProjectSlug
   /**
    * Runs a parameterized GROQ query scoped to this client's granted project.
    * `projectSlug` in `params` (if supplied) is always overwritten by the
@@ -197,15 +203,35 @@ export function tenantScopedSanityClient(
     (<T>(query: string, params?: Record<string, unknown>) =>
       sanityClient.fetch<T>(query, params ?? {}))
 
+  // ⚠️⚠️ NAMESPACE CONFLATION — LIVE DEFECT, LEFT UNFIXED ON PURPOSE (v1.0.31).
+  //
+  // `grant.projectSlug` is a SUPABASE `projects.slug` (`tenant-context.ts`
+  // reads it straight off the `projects` table). It is bound below to GROQ's
+  // `$projectSlug`, which every Sanity document matches against its own
+  // `project.projectSlug` field — a DIFFERENT namespace. For Livener the
+  // grant says `livener` and the documents say `livener-main`, so
+  // `dashboardPostsQuery` filters on a value no document carries and the
+  // client dashboard's Posts list returns EMPTY.
+  //
+  // This is not hypothetical: `client-dashboard.ts` → `posts/page.tsx` is a
+  // live path. It is NOT fixed here because the fix is a behaviour change
+  // (route the grant through `lookupSanityProjectSlugByUrlSegment`, which
+  // first needs a Supabase→URL-segment lookup that does not exist yet) and
+  // this change is contracted to be type-level only.
+  //
+  // The `as unknown as` is the marker. Do not delete it by widening the field
+  // back to `string`.
+  const grantSanityProjectSlug = grant.projectSlug as unknown as SanityProjectSlug
+
   const client: TenantScopedSanityClient = {
     projectId: grant.projectId,
-    projectSlug: grant.projectSlug,
+    projectSlug: grantSanityProjectSlug,
     fetch<T>(query: string, params: Record<string, unknown> = {}): Promise<T> {
       assertQueryIsTenantScoped(query)
       // Caller params spread FIRST, projectSlug forced from the resolved
       // grant LAST — a caller-supplied projectSlug key is always
       // overwritten, never merged or honored (ADR-017 Decision 4).
-      const scopedParams = { ...params, projectSlug: grant.projectSlug }
+      const scopedParams = { ...params, projectSlug: grantSanityProjectSlug }
       return rawFetch<T>(query, scopedParams)
     },
   }
@@ -251,9 +277,21 @@ export async function assertSameTenantReference(
     { referencedDocId }
   )
 
-  const referencedProjectSlug = referenced?.projectSlug
+  // Trust boundary: this came out of a Sanity document's own `projectSlug`.
+  const referencedProjectSlug = toSanityProjectSlug(referenced?.projectSlug)
 
-  if (!referencedProjectSlug || referencedProjectSlug !== grant.projectSlug) {
+  // ⚠️ Same conflation as `tenantScopedSanityClient` above, in its most
+  // dangerous form: this compares a SANITY slug to a SUPABASE slug. When this
+  // guard is wired into a write route it will reject EVERY legitimate
+  // reference (`livener-main` !== `livener`) — fail-closed, so not a security
+  // hole, but a total outage of whatever calls it. `scoped.projectSlug` is
+  //
+  // The cast is repeated here rather than reading `scoped.projectSlug`, to
+  // preserve this function's stated invariant (see its doc comment): the
+  // grant is taken EXPLICITLY and is never re-derived from the client object.
+  const grantSanityProjectSlug = grant.projectSlug as unknown as SanityProjectSlug
+
+  if (!referencedProjectSlug || referencedProjectSlug !== grantSanityProjectSlug) {
     throw new TenantAuthorizationError(
       `assertSameTenantReference: referenced document "${referencedDocId}" belongs to project ` +
         `"${referencedProjectSlug ?? 'unknown'}", not the caller's granted project ` +

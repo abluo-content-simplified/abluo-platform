@@ -18,12 +18,18 @@
 import type { ReactNode } from 'react'
 import { EarlyAccessProvider } from './EarlyAccessContext'
 import { EarlyAccessModal } from './EarlyAccessModal'
+import type { SanityProjectSlug, UrlProjectSegment } from '@/lib/tenancy/ids'
 
 interface EarlyAccessWrapperProps {
   children: ReactNode
-  tenantSlug: string
+  /**
+   * The `[tenant]` URL segment. Despite the name this is NOT a tenant slug:
+   * No!Logo's segment is `nologo`, whose tenant is `freeriders`. See
+   * `@/lib/tenancy/ids`.
+   */
+  tenantSlug: UrlProjectSegment
   /** Sanity/Supabase project slug — resolved to project_id by the API */
-  projectSlug?: string
+  projectSlug?: SanityProjectSlug
   /** Current page locale — forwarded to context so form components can localise */
   locale: string
 }

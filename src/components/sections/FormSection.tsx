@@ -16,6 +16,7 @@ import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { FormDefinitionRenderer } from '@/components/forms/FormDefinitionRenderer'
 import { MultiStepFormRenderer } from '@/components/forms/MultiStepFormRenderer'
 import { getFormSectionMessages } from '@/lib/i18n/form-section-messages'
+import type { UrlProjectSegment } from '@/lib/tenancy/ids'
 
 interface Props {
   section: FormSection
@@ -23,7 +24,8 @@ interface Props {
   designSystem: DesignSystem | null
   locale?: string
   /** URL tenant slug — the submission route scope; required to submit. */
-  tenantSlug?: string
+  /** The `[tenant]` URL segment — not a tenant slug. See `@/lib/tenancy/ids`. */
+  tenantSlug?: UrlProjectSegment
 }
 
 /** Turns the editor's Context key/value list into a plain map for pre-fill. */

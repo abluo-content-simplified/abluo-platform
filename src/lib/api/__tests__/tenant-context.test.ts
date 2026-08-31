@@ -20,6 +20,7 @@ import {
   type RawProjectMembership,
 } from '../tenant-context'
 import type { ModulePermissionMap } from '@/lib/modules/types'
+import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -95,8 +96,8 @@ describe('permissionsForRole', () => {
 describe('assembleProjectGrants', () => {
   it('grants all of a tenant-owned project set when the user owns the tenant', () => {
     const ownedProjects: RawOwnedProject[] = [
-      { projectId: 'project-a', projectSlug: 'livener', tenantId: 'tenant-1' },
-      { projectId: 'project-b', projectSlug: 'studiomartegani', tenantId: 'tenant-1' },
+      { projectId: 'project-a', projectSlug: asSupabaseProjectSlug('livener'), tenantId: 'tenant-1' },
+      { projectId: 'project-b', projectSlug: asSupabaseProjectSlug('studiomartegani'), tenantId: 'tenant-1' },
     ]
 
     const grants = assembleProjectGrants({
@@ -116,7 +117,7 @@ describe('assembleProjectGrants', () => {
 
   it('grants a single project_members editor row on project A only', () => {
     const memberships: RawProjectMembership[] = [
-      { membershipId: 'pm-1', projectId: 'project-a', projectSlug: 'livener', role: 'editor' },
+      { membershipId: 'pm-1', projectId: 'project-a', projectSlug: asSupabaseProjectSlug('livener'), role: 'editor' },
     ]
 
     const grants = assembleProjectGrants({
@@ -138,10 +139,10 @@ describe('assembleProjectGrants', () => {
 
   it('unions grants for a user spanning two different tenants', () => {
     const ownedProjects: RawOwnedProject[] = [
-      { projectId: 'project-a', projectSlug: 'livener', tenantId: 'tenant-1' },
+      { projectId: 'project-a', projectSlug: asSupabaseProjectSlug('livener'), tenantId: 'tenant-1' },
     ]
     const memberships: RawProjectMembership[] = [
-      { membershipId: 'pm-1', projectId: 'project-b', projectSlug: 'studiomartegani', role: 'viewer' },
+      { membershipId: 'pm-1', projectId: 'project-b', projectSlug: asSupabaseProjectSlug('studiomartegani'), role: 'viewer' },
     ]
 
     const grants = assembleProjectGrants({
@@ -160,13 +161,13 @@ describe('assembleProjectGrants', () => {
 
   it('owner wins when the same project has both a tenant-owner grant and a project_members row', () => {
     const ownedProjects: RawOwnedProject[] = [
-      { projectId: 'project-a', projectSlug: 'livener', tenantId: 'tenant-1' },
+      { projectId: 'project-a', projectSlug: asSupabaseProjectSlug('livener'), tenantId: 'tenant-1' },
     ]
     // Same project — should never happen in practice (owners don't get a
     // project_members row), but the assembler must not double-count or let a
     // stray/legacy row downgrade an owner grant.
     const memberships: RawProjectMembership[] = [
-      { membershipId: 'pm-stray', projectId: 'project-a', projectSlug: 'livener', role: 'viewer' },
+      { membershipId: 'pm-stray', projectId: 'project-a', projectSlug: asSupabaseProjectSlug('livener'), role: 'viewer' },
     ]
 
     const grants = assembleProjectGrants({
@@ -194,7 +195,7 @@ describe('assembleProjectGrants', () => {
 
   it('falls back to an empty enabledModuleIds/permissions set for an unconfigured project', () => {
     const ownedProjects: RawOwnedProject[] = [
-      { projectId: 'project-unknown', projectSlug: 'new-project', tenantId: 'tenant-1' },
+      { projectId: 'project-unknown', projectSlug: asSupabaseProjectSlug('new-project'), tenantId: 'tenant-1' },
     ]
 
     const grants = assembleProjectGrants({
@@ -218,7 +219,7 @@ describe('assembleProjectGrants', () => {
     // shape that degradation produces: the project must still appear in ctx.projects,
     // just with zero modules/permissions, not be dropped or take down the resolver.
     const ownedProjects: RawOwnedProject[] = [
-      { projectId: 'project-abluo', projectSlug: 'abluo', tenantId: 'tenant-abluo' },
+      { projectId: 'project-abluo', projectSlug: asSupabaseProjectSlug('abluo'), tenantId: 'tenant-abluo' },
     ]
 
     const grants = assembleProjectGrants({
