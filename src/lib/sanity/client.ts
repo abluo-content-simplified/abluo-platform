@@ -101,6 +101,116 @@ export function tenantToProjectSlug(tenantSlug: string): string {
   return projectSlug
 }
 
+// ─── Runtime tenant-scope guard (finding I-9) ────────────────────────────────
+
+/**
+ * A query that failed the tenant-scope check. `kind` distinguishes the two
+ * failure shapes; `message` is the human-readable text both chokepoints report.
+ */
+export type TenantScopeViolation = {
+  kind: 'interpolation' | 'missing-project-slug'
+  message: string
+}
+
+/**
+ * The SINGLE implementation of "is this GROQ query tenant-scoped?", shared by
+ * both chokepoints:
+ *
+ *   - the dashboard chokepoint — `assertQueryIsTenantScoped` in
+ *     `src/lib/api/tenant-scoped-sanity.ts`, which throws
+ *     `TenantAuthorizationError` on any violation; and
+ *   - the public-website read path — `tenantClient().fetchForTenant` below.
+ *
+ * It lives HERE, in the lower-level of the two modules, because
+ * `tenant-scoped-sanity.ts` already imports `sanityClient` from this file:
+ * putting the shared detector on that side would create an import cycle and
+ * would drag the API/auth layer into a module that sits on the client-bundle
+ * boundary (see `__tests__/client-bundle-boundary.test.ts`).
+ *
+ * It is deliberately a DETECTOR, not an assertion — it RETURNS the violation
+ * rather than throwing, so each chokepoint chooses its own reaction. The
+ * dashboard throws unconditionally (an API route returning 500 is a contained
+ * failure). The website does not always throw, because a throw on a false
+ * positive is a blank client site — see `tenantScopeEnforcement` below.
+ *
+ * `label` is prefixed to the message so the two chokepoints stay
+ * distinguishable in logs, and so the dashboard's messages are byte-for-byte
+ * what they were before this detector was extracted from it.
+ *
+ * This is a lightweight guard, not a GROQ parser. It proves the query is
+ * parameterized on `$projectSlug` and does not inline tenant identity as a
+ * literal. It does NOT prove `$projectSlug` is used in the ROOT filter — that
+ * stronger, static check lives in `__tests__/query-tenant-scope.test.ts`,
+ * which reads every exported query at CI time. The two are complementary:
+ * static coverage of the query catalogue, runtime coverage of whatever string
+ * a caller actually passes.
+ */
+export function findTenantScopeViolation(
+  query: string,
+  label: string
+): TenantScopeViolation | null {
+  if (query.includes('${')) {
+    return {
+      kind: 'interpolation',
+      message:
+        label +
+        ': query string contains a template-literal interpolation ' +
+        '(`${...}`) — raw interpolation of tenant identity is banned at this chokepoint. ' +
+        'Use a bound GROQ parameter ($projectSlug) instead.',
+    }
+  }
+  if (!query.includes('$projectSlug')) {
+    return {
+      kind: 'missing-project-slug',
+      message:
+        label +
+        ': query must reference $projectSlug — every query executed ' +
+        'through this chokepoint must be scoped by the bound projectSlug parameter.',
+    }
+  }
+  return null
+}
+
+export type TenantScopeEnforcement = 'throw' | 'warn'
+
+/**
+ * How `fetchForTenant` reacts to a violation: THROW in development, WARN
+ * everywhere else (production, preview, test).
+ *
+ * ── Why not throw in production ─────────────────────────────────────────────
+ * This guard is a substring check, not a parser. A false positive here does
+ * not degrade a page — it takes a live client website down entirely, on a
+ * server component, with no fallback. Every query the website actually issues
+ * comes from `queries.ts`, and the whole exported catalogue is already proven
+ * scoped at CI time by `__tests__/query-tenant-scope.test.ts`; so in
+ * production this guard is defence-in-depth against a *future* ad-hoc query
+ * string, not the primary control. Defence-in-depth that can black out a
+ * tenant is a worse trade than defence-in-depth that pages someone. The warn
+ * carries the full query plus the tenant and project slugs, so it is
+ * actionable rather than decorative.
+ *
+ * ── Why throw in development ────────────────────────────────────────────────
+ * That is where a new unscoped query is written, and where a hard failure
+ * costs nothing and is impossible to ignore. A developer never gets to commit
+ * an unscoped `fetchForTenant` call without seeing it fail first, and CI
+ * catches it again on the way in.
+ *
+ * ── Why warn (not throw) in test ────────────────────────────────────────────
+ * NODE_ENV is 'test' under vitest, and existing suites deliberately drive
+ * `fetchForTenant` with stub queries like `*[_type == "page"]` to assert
+ * param injection — those are testing the injection, not the query catalogue.
+ * The throwing branch is exercised directly by passing 'development' here.
+ *
+ * The env is read per call (not captured at module load) so it stays
+ * stubbable and so a process cannot be locked into the wrong mode by import
+ * order.
+ */
+export function tenantScopeEnforcement(
+  nodeEnv: string | undefined = process.env.NODE_ENV
+): TenantScopeEnforcement {
+  return nodeEnv === 'development' ? 'throw' : 'warn'
+}
+
 /**
  * Returns a project-scoped fetch helper.
  * Accepts the URL tenant slug (e.g. "livener") and resolves it to the
@@ -133,9 +243,82 @@ export function tenantClient(tenantSlug: string) {
       // Injection order is unchanged from before: the scope values are spread
       // LAST, so they still win over any caller-supplied param of the same
       // name. No current caller passes either name.
+      // ── Runtime scope enforcement (finding I-9) ────────────────────────
+      // Injecting $projectSlug proves nothing on its own: a query that never
+      // MENTIONS $projectSlug is handed the parameter and quietly ignores it,
+      // returning every tenant's documents. Before this check, scoping on the
+      // public website was a convention enforced only by a CI test over the
+      // `queries.ts` catalogue — nothing stopped an inline query string here.
+      // Throws in development, warns (loudly, with the query and both slugs)
+      // elsewhere — see `tenantScopeEnforcement`.
+      const violation = findTenantScopeViolation(query, 'tenantClient.fetchForTenant')
+      if (violation) {
+        const detail =
+          violation.message +
+          ` [tenantSlug=${tenantSlug} projectSlug=${projectSlug}] query: ` +
+          query.replace(/\s+/g, ' ').trim().slice(0, 500)
+        if (tenantScopeEnforcement() === 'throw') {
+          throw new Error(detail)
+        }
+        // console.error, not console.warn: this is a potential cross-tenant
+        // content leak, and it must surface at error level in the platform's
+        // log drain rather than blend into build noise.
+        console.error('[tenant-scope] UNSCOPED WEBSITE QUERY — ' + detail)
+      }
+
       return sanityClient.fetch<T>(query, { ...params, projectSlug, tenantSlug })
     },
   }
+}
+
+// ─── Audited exemptions from the tenant-scope guard ─────────────────────────
+
+/**
+ * The CLOSED list of website reads that deliberately run without a
+ * `projectSlug == $projectSlug` root filter.
+ *
+ * These reads do not go through `fetchForTenant`, so they are not silently
+ * slipping past the guard — they are recorded here, each with the reason it
+ * is safe, and they can only be performed through `fetchUnscoped` below,
+ * whose `exemption` parameter is typed as `keyof` this object. Adding an
+ * unscoped read therefore requires editing this list, which is a security
+ * decision and shows up as one in review. `grep fetchUnscoped` enumerates
+ * every unscoped read in the codebase.
+ *
+ * Mirrors, for the website path, the single documented exemption the
+ * dashboard chokepoint carries (`assertSameTenantReference`'s reference
+ * lookup — see the header of `src/lib/api/tenant-scoped-sanity.ts`).
+ */
+export const UNSCOPED_READ_EXEMPTIONS = {
+  fetchDesignSystemById:
+    'Design systems are deliberately SHARED across projects — that is what ' +
+    'design-system inheritance means. The resolver follows `parentDesignSystem->` ' +
+    'from a document it has already reached through the project-scoped ' +
+    '`designSystemQuery`, so the parent is reached by reference from an ' +
+    'already-scoped document, never by an attacker-controlled id: the `_id` comes ' +
+    'from the child design system in Sanity, not from the request. Scoping this ' +
+    'fetch by $projectSlug would break inheritance outright.',
+} as const
+
+export type UnscopedReadExemption = keyof typeof UNSCOPED_READ_EXEMPTIONS
+
+/**
+ * Runs a read that is exempt from the tenant-scope guard. The `exemption`
+ * argument is not decoration: it is the key of the audited entry in
+ * `UNSCOPED_READ_EXEMPTIONS` that justifies this call, and the union type
+ * makes it impossible to invent a new exemption at the call site.
+ */
+// `T = any` reproduces `sanityClient.fetch`'s own default type parameter
+// exactly, so routing a call through this helper does not narrow its result to
+// `unknown` and change the caller's inferred types.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function fetchUnscoped<T = any>(
+  query: string,
+  params: Record<string, unknown>,
+  exemption: UnscopedReadExemption
+): Promise<T> {
+  void exemption
+  return sanityClient.fetch<T>(query, params)
 }
 
 /**
@@ -144,8 +327,13 @@ export function tenantClient(tenantSlug: string) {
  *
  * Uses DS_FIELDS_SELECTION from queries.ts — the single canonical field list.
  * Do NOT add fields here directly; add them to DS_FIELDS_SELECTION instead.
+ *
+ * EXEMPT from the `$projectSlug` scope guard, explicitly and by name — see
+ * `UNSCOPED_READ_EXEMPTIONS.fetchDesignSystemById` for why. It does not use
+ * `fetchForTenant` (it has no tenant slug to hand it) and must not: an
+ * inherited parent design system belongs to a different project on purpose.
  */
 export async function fetchDesignSystemById(id: string) {
   const query = /* groq */ `*[_id == $id && _type == "designSystem"][0] ${DS_FIELDS_SELECTION}`
-  return sanityClient.fetch(query, { id })
+  return fetchUnscoped(query, { id }, 'fetchDesignSystemById')
 }

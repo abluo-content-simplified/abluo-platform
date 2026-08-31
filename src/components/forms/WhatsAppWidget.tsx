@@ -27,8 +27,10 @@ import {
   buildFieldConfigs,
   buildSubmissionPayload,
   submissionEndpoint,
+  projectScopeSlugFromTenantSlug,
 } from '@/lib/forms/render-mapping'
 import { collectClientSource } from '@/lib/forms/source'
+import { asTenantSlug } from '@/lib/tenancy/ids'
 import { getFormSectionMessages } from '@/lib/i18n/form-section-messages'
 import { getOverlayChromeMessages } from '@/lib/forms/overlay'
 import { buildWhatsAppLink } from '@/lib/forms/whatsapp'
@@ -170,7 +172,12 @@ function WhatsAppCaptureWidget({ definition: def, number, tenantSlug, locale = '
         honeypot: honeypotRef.current?.value ?? '',
         source: collectClientSource({ source: 'whatsapp' }),
       })
-      void fetch(submissionEndpoint(tenantSlug, def.formId), {
+      // ⚠️ ONE-TO-N BOUNDARY — see projectScopeSlugFromTenantSlug.
+      const endpoint = submissionEndpoint(
+        projectScopeSlugFromTenantSlug(asTenantSlug(tenantSlug)),
+        def.formId,
+      )
+      void fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

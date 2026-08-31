@@ -1,10 +1,11 @@
 /**
- * Project → Tenant scope resolution — Tests
+ * Project → Tenant scope resolution — Tests (post-CONTRACT).
  *
  * Fixtures are the five real `project` documents in the live `production`
- * dataset (Sanity project 3n7t84j3), read on 2026-08-29. Four of them agree
- * with the legacy "-main" strip by luck; `nologo` does not, and that one is
- * the reason the whole refactor exists.
+ * dataset (Sanity project 3n7t84j3). All five now carry a stored `tenantSlug`
+ * (Stage 2 backfill), and `form-nologo-demo` has been repointed to
+ * `freeriders` (Stage 3). The `-main` suffix strip is GONE — a project with no
+ * resolvable tenant returns null and selects nothing rather than guessing.
  *
  * These tests are pure — no Sanity client, no network.
  */
@@ -12,7 +13,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   deriveTenantSlug,
-  legacyTenantSlugFromProjectSlug,
   findKnownInconsistency,
   KNOWN_TENANT_SCOPE_INCONSISTENCIES,
   __resetTenantScopeWarnings,
@@ -21,12 +21,13 @@ import {
 
 // ─── Fixtures: the five real projects ────────────────────────────────────────
 
-/** Shape of a project as the dual-read sees it, pre-migration. */
+/** Shape of a project as the resolver sees it, post-migration. */
 type RealProject = ProjectScopeInput & { _id: string; trueTenantSlug: string }
 
 const livener: RealProject = {
   _id: '088e16f6-0288-47b9-af2b-4ef28f90c6a8',
   projectSlug: 'livener-main',
+  tenantSlug: 'livener',
   clientRef: { tenantSlug: 'livener' },
   trueTenantSlug: 'livener',
 }
@@ -34,6 +35,7 @@ const livener: RealProject = {
 const studiomartegani: RealProject = {
   _id: '90b7cb26-b192-4e8c-8378-d16c085540fd',
   projectSlug: 'studiomartegani-main',
+  tenantSlug: 'studiomartegani',
   clientRef: { tenantSlug: 'studiomartegani' },
   trueTenantSlug: 'studiomartegani',
 }
@@ -41,6 +43,7 @@ const studiomartegani: RealProject = {
 const abluo: RealProject = {
   _id: '38cf9381-3893-489a-a987-3a2da28f561b',
   projectSlug: 'abluo',
+  tenantSlug: 'abluo',
   clientRef: { tenantSlug: 'abluo' },
   trueTenantSlug: 'abluo',
 }
@@ -49,21 +52,21 @@ const abluo: RealProject = {
 const amelie: RealProject = {
   _id: 'drafts.28f192d5-f59d-44c5-a738-e10aaeaed041',
   projectSlug: 'amelie',
+  tenantSlug: 'amelie',
   clientRef: { tenantSlug: 'amelie' },
   trueTenantSlug: 'amelie',
 }
 
-/** The broken one: slug says "nologo", the owner is Freeriders. */
+/** The one the whole refactor exists for: slug says "nologo", owner is Freeriders. */
 const nologo: RealProject = {
   _id: 'project-nologo',
   projectSlug: 'nologo',
+  tenantSlug: 'freeriders',
   clientRef: { tenantSlug: 'freeriders' },
   trueTenantSlug: 'freeriders',
 }
 
 const ALL_REAL_PROJECTS = [livener, studiomartegani, abluo, amelie, nologo]
-/** The four whose legacy derivation happens to be right. */
-const LUCKY_PROJECTS = [livener, studiomartegani, abluo, amelie]
 
 // ─── Harness ─────────────────────────────────────────────────────────────────
 
@@ -81,23 +84,48 @@ afterEach(() => {
 /** All console.warn output from this test, joined. */
 const warnings = () => warn.mock.calls.map((c: unknown[]) => String(c[0])).join('\n')
 
+// ─── The live dataset ────────────────────────────────────────────────────────
+
+describe('deriveTenantSlug — the five live projects', () => {
+  it('resolves every project to its TRUE owner from the stored field', () => {
+    for (const p of ALL_REAL_PROJECTS) {
+      expect(deriveTenantSlug(p), `project ${p._id}`).toEqual({
+        projectSlug: p.projectSlug,
+        tenantSlug: p.trueTenantSlug,
+        source: 'stored',
+      })
+    }
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('resolves nologo to freeriders, not to its own slug', () => {
+    const scope = deriveTenantSlug(nologo)
+    expect(scope?.tenantSlug).toBe('freeriders')
+    expect(scope?.tenantSlug).not.toBe(scope?.projectSlug)
+  })
+
+  it('leaves the four conventionally-named projects exactly where they were', () => {
+    // The migration must be a no-op for these: the tenant the deleted suffix
+    // strip used to return, spelled out rather than re-derived, so this pins
+    // the before/after equivalence without resurrecting the derivation.
+    const unchanged = {
+      'livener-main': 'livener',
+      'studiomartegani-main': 'studiomartegani',
+      abluo: 'abluo',
+      amelie: 'amelie',
+    } as const
+    for (const p of [livener, studiomartegani, abluo, amelie]) {
+      expect(deriveTenantSlug(p)?.tenantSlug).toBe(
+        unchanged[p.projectSlug as keyof typeof unchanged]
+      )
+    }
+  })
+})
+
 // ─── Tier 1: stored project.tenantSlug ───────────────────────────────────────
 
 describe('deriveTenantSlug — tier 1, stored tenantSlug', () => {
-  it('prefers a stored tenantSlug over clientRef and over the suffix strip', () => {
-    const scope = deriveTenantSlug({
-      projectSlug: 'nologo',
-      tenantSlug: 'freeriders',
-      clientRef: { tenantSlug: 'freeriders' },
-    })
-    expect(scope).toEqual({
-      projectSlug: 'nologo',
-      tenantSlug: 'freeriders',
-      source: 'stored',
-    })
-  })
-
-  it('wins even when it disagrees with clientRef (stored is the post-migration authority)', () => {
+  it('prefers a stored tenantSlug over clientRef', () => {
     const scope = deriveTenantSlug({
       projectSlug: 'livener-main',
       tenantSlug: 'someothertenant',
@@ -107,28 +135,30 @@ describe('deriveTenantSlug — tier 1, stored tenantSlug', () => {
     expect(scope?.source).toBe('stored')
   })
 
-  it('never emits the unreliable-legacy warning', () => {
-    deriveTenantSlug({ projectSlug: 'livener-main', tenantSlug: 'livener' })
-    expect(warnings()).not.toContain('UNRELIABLE')
+  it('treats an empty or whitespace-only stored value as absent', () => {
+    for (const tenantSlug of ['', '   ']) {
+      expect(
+        deriveTenantSlug({ projectSlug: 'abluo', tenantSlug, clientRef: { tenantSlug: 'abluo' } })
+          ?.source
+      ).toBe('clientRef')
+    }
   })
 
-  it('treats an empty or whitespace-only stored value as absent', () => {
-    expect(
-      deriveTenantSlug({ projectSlug: 'abluo', tenantSlug: '', clientRef: { tenantSlug: 'abluo' } })?.source
-    ).toBe('clientRef')
-    expect(
-      deriveTenantSlug({ projectSlug: 'abluo', tenantSlug: '   ', clientRef: { tenantSlug: 'abluo' } })?.source
-    ).toBe('clientRef')
+  it('trims a padded stored value', () => {
+    expect(deriveTenantSlug({ projectSlug: 'nologo', tenantSlug: ' freeriders ' })?.tenantSlug)
+      .toBe('freeriders')
   })
 })
 
 // ─── Tier 2: clientRef->tenantSlug ───────────────────────────────────────────
 
 describe('deriveTenantSlug — tier 2, clientRef', () => {
-  it('resolves every real project to its TRUE owner, including nologo → freeriders', () => {
+  it('falls back to the ownership edge for a project the backfill has not reached', () => {
     for (const p of ALL_REAL_PROJECTS) {
-      const scope = deriveTenantSlug({ projectSlug: p.projectSlug, clientRef: p.clientRef })
-      expect(scope, `project ${p._id}`).toEqual({
+      expect(
+        deriveTenantSlug({ projectSlug: p.projectSlug, clientRef: p.clientRef }),
+        `project ${p._id}`
+      ).toEqual({
         projectSlug: p.projectSlug,
         tenantSlug: p.trueTenantSlug,
         source: 'clientRef',
@@ -137,177 +167,108 @@ describe('deriveTenantSlug — tier 2, clientRef', () => {
   })
 
   it('accepts the flattened projection shape ("clientTenantSlug": clientRef->tenantSlug)', () => {
-    const scope = deriveTenantSlug({ projectSlug: 'nologo', clientTenantSlug: 'freeriders' })
-    expect(scope).toEqual({ projectSlug: 'nologo', tenantSlug: 'freeriders', source: 'clientRef' })
-  })
-
-  it('falls through to legacy when clientRef is present but unpopulated', () => {
-    expect(deriveTenantSlug({ projectSlug: 'livener-main', clientRef: {} })?.source).toBe('legacy-suffix')
-    expect(deriveTenantSlug({ projectSlug: 'abluo', clientRef: null })?.source).toBe('legacy-suffix')
-    expect(
-      deriveTenantSlug({ projectSlug: 'amelie', clientRef: { tenantSlug: null } })?.source
-    ).toBe('legacy-suffix')
-  })
-})
-
-// ─── Tier 3: legacy suffix strip ─────────────────────────────────────────────
-
-describe('deriveTenantSlug — tier 3, legacy -main strip', () => {
-  it('reproduces todays behaviour exactly for every real project', () => {
-    for (const p of ALL_REAL_PROJECTS) {
-      const scope = deriveTenantSlug({ projectSlug: p.projectSlug })
-      expect(scope?.tenantSlug, `project ${p._id}`).toBe(
-        p.projectSlug!.replace(/-main$/, '')
-      )
-      expect(scope?.source).toBe('legacy-suffix')
-    }
-  })
-
-  it('is correct by luck for the four conventionally-named projects', () => {
-    for (const p of LUCKY_PROJECTS) {
-      expect(deriveTenantSlug({ projectSlug: p.projectSlug })?.tenantSlug).toBe(p.trueTenantSlug)
-    }
-  })
-
-  it('is WRONG for nologo — it yields the project slug, not freeriders', () => {
-    const scope = deriveTenantSlug({ projectSlug: nologo.projectSlug })
-    expect(scope?.tenantSlug).toBe('nologo')
-    expect(scope?.tenantSlug).not.toBe(nologo.trueTenantSlug)
-  })
-
-  it('only strips a trailing -main, not an embedded or leading one', () => {
-    expect(legacyTenantSlugFromProjectSlug('main-site')).toBe('main-site')
-    expect(legacyTenantSlugFromProjectSlug('acme-main-eu')).toBe('acme-main-eu')
-    expect(legacyTenantSlugFromProjectSlug('acme-main-main')).toBe('acme-main')
-  })
-
-  it('warns that the derivation is unreliable, naming the project', () => {
-    deriveTenantSlug({ projectSlug: 'studiomartegani-main' })
-    expect(warn).toHaveBeenCalledTimes(1)
-    expect(warnings()).toContain('studiomartegani-main')
-    expect(warnings()).toContain('UNRELIABLE')
-  })
-
-  it('warns once per slug, not once per call', () => {
-    deriveTenantSlug({ projectSlug: 'livener-main' })
-    deriveTenantSlug({ projectSlug: 'livener-main' })
-    deriveTenantSlug({ projectSlug: 'livener-main' })
-    expect(warn).toHaveBeenCalledTimes(1)
-
-    deriveTenantSlug({ projectSlug: 'abluo' })
-    expect(warn).toHaveBeenCalledTimes(2)
-  })
-})
-
-// ─── The disagreement warning ────────────────────────────────────────────────
-
-describe('deriveTenantSlug — clientRef/legacy disagreement warning', () => {
-  it('fires a distinct, louder warning for nologo', () => {
-    deriveTenantSlug({ projectSlug: nologo.projectSlug, clientRef: nologo.clientRef })
-    expect(warn).toHaveBeenCalledTimes(1)
-    const text = warnings()
-    expect(text).toContain('TENANT SCOPE DISAGREEMENT')
-    expect(text).toContain('nologo')
-    expect(text).toContain('freeriders')
-    expect(text).toContain('KNOWN inconsistency')
-  })
-
-  it('does NOT fire for any of the four agreeing projects', () => {
-    for (const p of LUCKY_PROJECTS) {
-      deriveTenantSlug({ projectSlug: p.projectSlug, clientRef: p.clientRef })
-    }
-    expect(warnings()).not.toContain('DISAGREEMENT')
-    expect(warn).not.toHaveBeenCalled()
-  })
-
-  it('fires even when the stored tier wins — the data mismatch is still there', () => {
-    const scope = deriveTenantSlug({
+    expect(deriveTenantSlug({ projectSlug: 'nologo', clientTenantSlug: 'freeriders' })).toEqual({
       projectSlug: 'nologo',
       tenantSlug: 'freeriders',
-      clientRef: { tenantSlug: 'freeriders' },
+      source: 'clientRef',
     })
-    expect(scope?.source).toBe('stored')
-    expect(warnings()).toContain('TENANT SCOPE DISAGREEMENT')
-  })
-
-  it('flags an UNKNOWN divergence differently, telling the reader to register it', () => {
-    deriveTenantSlug({ projectSlug: 'brandnew', clientRef: { tenantSlug: 'someholding' } })
-    const text = warnings()
-    expect(text).toContain('TENANT SCOPE DISAGREEMENT')
-    expect(text).toContain('NOT in KNOWN_TENANT_SCOPE_INCONSISTENCIES')
-    expect(text).not.toContain('KNOWN inconsistency:')
-  })
-
-  it('warns once per slug', () => {
-    deriveTenantSlug({ projectSlug: 'nologo', clientRef: { tenantSlug: 'freeriders' } })
-    deriveTenantSlug({ projectSlug: 'nologo', clientRef: { tenantSlug: 'freeriders' } })
-    expect(warn).toHaveBeenCalledTimes(1)
-  })
-
-  it('does not change the returned value — warn-only, no behaviour branch', () => {
-    const withoutClient = deriveTenantSlug({ projectSlug: 'nologo' })
-    expect(withoutClient?.tenantSlug).toBe('nologo')
-    expect(withoutClient?.source).toBe('legacy-suffix')
   })
 })
 
 // ─── The multi-project case the refactor exists for ──────────────────────────
 
 describe('one tenant owning several projects', () => {
-  // Freeriders already owns "nologo". The whole point of storing tenancy
-  // rather than deriving it from a slug is that the tenant can own a second
-  // site whose slug shares nothing with the tenant name.
+  // Freeriders already owns "nologo". The whole point of storing tenancy rather
+  // than deriving it from a slug is that the tenant can own a second site whose
+  // slug shares nothing with the tenant name.
   const freeridersProjects = [
-    { projectSlug: 'nologo', clientRef: { tenantSlug: 'freeriders' } },
-    { projectSlug: 'freeriders-shop', clientRef: { tenantSlug: 'freeriders' } },
+    { projectSlug: 'nologo', tenantSlug: 'freeriders', clientRef: { tenantSlug: 'freeriders' } },
+    { projectSlug: 't42', tenantSlug: 'freeriders', clientRef: { tenantSlug: 'freeriders' } },
   ]
 
-  it('resolves both projects to the same tenant via clientRef', () => {
+  it('resolves BOTH projects to the same tenant', () => {
     const scopes = freeridersProjects.map((p) => deriveTenantSlug(p))
     expect(scopes.map((s) => s?.tenantSlug)).toEqual(['freeriders', 'freeriders'])
     expect(new Set(scopes.map((s) => s?.tenantSlug)).size).toBe(1)
   })
 
-  it('the legacy strip splits them into two bogus tenants — the bug, demonstrated', () => {
-    const legacy = freeridersProjects.map((p) => legacyTenantSlugFromProjectSlug(p.projectSlug))
-    expect(legacy).toEqual(['nologo', 'freeriders-shop'])
-    expect(new Set(legacy).size).toBe(2)
+  it('resolves both the same way through clientRef alone, with no stored field', () => {
+    const scopes = freeridersProjects.map((p) =>
+      deriveTenantSlug({ projectSlug: p.projectSlug, clientRef: p.clientRef })
+    )
+    expect(scopes.map((s) => s?.tenantSlug)).toEqual(['freeriders', 'freeriders'])
+    expect(scopes.map((s) => s?.source)).toEqual(['clientRef', 'clientRef'])
   })
 
-  it('so a tenant-scoped form is shared by both projects only under clientRef', () => {
-    // Forms are filed by tenantSlug. One form owned by "freeriders" must be
-    // reachable from both of that tenant's projects.
+  it('keeps the two projects distinguishable — same tenant, different project', () => {
+    // Tenant-owned content is shared; project-scoped content must not be.
+    expect(freeridersProjects.map((p) => deriveTenantSlug(p)?.projectSlug)).toEqual([
+      'nologo',
+      't42',
+    ])
+  })
+
+  it('makes one tenant-owned form visible from both of that tenant\'s projects', () => {
     const form = { tenantSlug: 'freeriders' }
-    const visibleUnderClientRef = freeridersProjects.filter(
+    const visible = freeridersProjects.filter(
       (p) => deriveTenantSlug(p)?.tenantSlug === form.tenantSlug
     )
-    expect(visibleUnderClientRef).toHaveLength(2)
+    expect(visible).toHaveLength(2)
+  })
+})
 
-    const visibleUnderLegacy = freeridersProjects.filter(
-      (p) => legacyTenantSlugFromProjectSlug(p.projectSlug) === form.tenantSlug
-    )
-    expect(visibleUnderLegacy).toHaveLength(0)
+// ─── No resolvable tenant: select NOTHING ────────────────────────────────────
+
+describe('deriveTenantSlug — a project with no resolvable tenant', () => {
+  const orphan = { projectSlug: 'orphan-main' }
+
+  it('returns null rather than guessing "orphan" from the slug', () => {
+    // The deleted tier-3 behaviour. `orphan-main` must NOT become `orphan`.
+    expect(deriveTenantSlug(orphan)).toBeNull()
   })
 
-  it('post-migration, a stored tenantSlug gives the same answer with source "stored"', () => {
-    const migrated = freeridersProjects.map((p) => ({ ...p, tenantSlug: 'freeriders' }))
-    for (const p of migrated) {
-      expect(deriveTenantSlug(p)).toEqual({
-        projectSlug: p.projectSlug,
-        tenantSlug: 'freeriders',
-        source: 'stored',
-      })
-    }
+  it('returns null for every shape of an unpopulated client link', () => {
+    expect(deriveTenantSlug({ projectSlug: 'livener-main', clientRef: {} })).toBeNull()
+    expect(deriveTenantSlug({ projectSlug: 'abluo', clientRef: null })).toBeNull()
+    expect(deriveTenantSlug({ projectSlug: 'amelie', clientRef: { tenantSlug: null } })).toBeNull()
+    expect(deriveTenantSlug({ projectSlug: 'nologo', tenantSlug: '  ', clientTenantSlug: '' }))
+      .toBeNull()
+  })
+
+  it('selects NOTHING — no form of any tenant matches a null scope', () => {
+    // The property every call site relies on: null means "select nothing",
+    // never "select everything".
+    const allForms = [
+      { _id: 'form-nologo-demo', tenantSlug: 'freeriders' },
+      { _id: 'formDefinition-livener-contact', tenantSlug: 'livener' },
+      { _id: 'formDefinition-orphan', tenantSlug: 'orphan' },
+    ]
+    const scope = deriveTenantSlug(orphan)
+    expect(scope).toBeNull()
+    const selected = scope ? allForms.filter((f) => f.tenantSlug === scope.tenantSlug) : []
+    expect(selected).toEqual([])
+  })
+
+  it('warns once per slug, naming the project', () => {
+    deriveTenantSlug(orphan)
+    deriveTenantSlug(orphan)
+    deriveTenantSlug(orphan)
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warnings()).toContain('orphan-main')
+    expect(warnings()).toContain('select NOTHING')
+
+    deriveTenantSlug({ projectSlug: 'second-orphan' })
+    expect(warn).toHaveBeenCalledTimes(2)
   })
 })
 
 // ─── Absent input ────────────────────────────────────────────────────────────
 
 describe('deriveTenantSlug — no project', () => {
-  it('returns null rather than a tenant, for undefined, null and empty slug', () => {
-    expect(deriveTenantSlug({ projectSlug: undefined })).toBeNull()
-    expect(deriveTenantSlug({ projectSlug: null })).toBeNull()
-    expect(deriveTenantSlug({ projectSlug: '' })).toBeNull()
+  it('returns null for undefined, null, empty and whitespace-only slugs', () => {
+    for (const projectSlug of [undefined, null, '', '   ']) {
+      expect(deriveTenantSlug({ projectSlug })).toBeNull()
+    }
   })
 
   it('returns null even when a tenant slug is available — no project, no scope', () => {
@@ -321,35 +282,38 @@ describe('deriveTenantSlug — no project', () => {
   })
 })
 
+// ─── The legacy derivation is gone ───────────────────────────────────────────
+
+describe('the "-main" suffix strip has been removed', () => {
+  it('exports no legacy derivation helper', async () => {
+    const mod = await import('../project-scope')
+    expect('legacyTenantSlugFromProjectSlug' in mod).toBe(false)
+  })
+
+  it('reports only the two remaining tiers as a source', () => {
+    const sources = ALL_REAL_PROJECTS.map((p) => deriveTenantSlug(p)?.source)
+    expect(sources.every((s) => s === 'stored' || s === 'clientRef')).toBe(true)
+    expect(sources).not.toContain('legacy-suffix')
+  })
+})
+
 // ─── The inconsistency register ──────────────────────────────────────────────
 
 describe('KNOWN_TENANT_SCOPE_INCONSISTENCIES', () => {
-  it('records nologo → freeriders with the documents the migration must touch', () => {
-    const entry = findKnownInconsistency('nologo')
-    expect(entry).toBeDefined()
-    expect(entry!.trueTenantSlug).toBe('freeriders')
-    expect(entry!.legacyDerivedTenantSlug).toBe('nologo')
-    expect(entry!.formsFiledUnderTenantSlug).toBe('nologo')
-    expect(entry!.affectedDocumentIds).toContain('project-nologo')
-    expect(entry!.affectedDocumentIds).toContain('form-nologo-demo')
+  it('is empty — the nologo/freeriders divergence was migrated away', () => {
+    expect(KNOWN_TENANT_SCOPE_INCONSISTENCIES).toEqual([])
+    expect(findKnownInconsistency('nologo')).toBeUndefined()
   })
 
-  it('holds exactly the divergences present in the live dataset', () => {
-    const diverging = ALL_REAL_PROJECTS.filter(
-      (p) => p.trueTenantSlug !== legacyTenantSlugFromProjectSlug(p.projectSlug!)
-    ).map((p) => p.projectSlug)
-    expect(diverging).toEqual(['nologo'])
-    expect(KNOWN_TENANT_SCOPE_INCONSISTENCIES.map((e) => e.projectSlug)).toEqual(diverging)
+  it('is still a real register, so the next divergence has somewhere to land', () => {
+    // Type and lookup kept deliberately; only the entry was removed.
+    expect(Array.isArray(KNOWN_TENANT_SCOPE_INCONSISTENCIES)).toBe(true)
+    expect(typeof findKnownInconsistency).toBe('function')
+    expect(findKnownInconsistency('anything')).toBeUndefined()
   })
 
-  it('every entry is genuinely a disagreement', () => {
-    for (const e of KNOWN_TENANT_SCOPE_INCONSISTENCIES) {
-      expect(e.trueTenantSlug).not.toBe(e.legacyDerivedTenantSlug)
-      expect(e.legacyDerivedTenantSlug).toBe(legacyTenantSlugFromProjectSlug(e.projectSlug))
-    }
-  })
-
-  it('returns undefined for a project with no recorded inconsistency', () => {
-    expect(findKnownInconsistency('livener-main')).toBeUndefined()
+  it('never changes what deriveTenantSlug returns', () => {
+    expect(deriveTenantSlug({ projectSlug: 'nologo', tenantSlug: 'freeriders' })?.tenantSlug)
+      .toBe('freeriders')
   })
 })

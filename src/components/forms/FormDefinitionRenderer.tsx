@@ -5,7 +5,7 @@
  *
  * Renders a tenant-owned, single-step `formDefinition` (GROQ-resolved,
  * locale-applied) through the Field Library and submits to the new
- * `/api/forms/{tenantSlug}/{formId}/submissions` endpoint — the one that
+ * `/api/forms/{projectSlug}/{formId}/submissions` endpoint — the one that
  * resolves the published definition, validates + freezes the snapshot, and
  * emits `form.submitted` (slices 1/3). Appearance derives entirely from the
  * website Design System CSS variables the field components already consume;
@@ -24,10 +24,12 @@ import {
   buildFieldConfigs,
   buildSubmissionPayload,
   submissionEndpoint,
+  projectScopeSlugFromTenantSlug,
   applySuccessTemplate,
   CONSENT_FIELD_ID,
 } from '@/lib/forms/render-mapping'
 import { collectClientSource } from '@/lib/forms/source'
+import { asTenantSlug } from '@/lib/tenancy/ids'
 
 export interface FormDefinitionRendererMessages {
   submitLabel: string
@@ -108,7 +110,13 @@ export function FormDefinitionRenderer({ definition, messages, locale = 'en', te
     })
 
     try {
-      const res = await fetch(submissionEndpoint(tenantSlug, definition.formId), {
+      // ⚠️ ONE-TO-N BOUNDARY — see projectScopeSlugFromTenantSlug: this renderer
+      // is given the URL tenant slug, and the route it posts to is project-scoped.
+      const endpoint = submissionEndpoint(
+        projectScopeSlugFromTenantSlug(asTenantSlug(tenantSlug)),
+        definition.formId,
+      )
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

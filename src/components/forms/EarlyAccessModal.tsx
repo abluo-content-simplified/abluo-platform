@@ -32,6 +32,8 @@
 
 import { useState, useEffect, useRef, useId, useCallback, Fragment } from 'react'
 import { collectClientSource } from '@/lib/forms/source'
+import { submissionEndpoint, projectScopeSlugFromTenantSlug } from '@/lib/forms/render-mapping'
+import { asTenantSlug } from '@/lib/tenancy/ids'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { X, Check, ChevronDown } from 'lucide-react'
@@ -702,6 +704,11 @@ function SectionDivider() {
 
 export function EarlyAccessModal() {
   const { isOpen, options, tenantSlug, locale, close } = useEarlyAccess()
+  // ⚠️ ONE-TO-N BOUNDARY — the submission route is project-scoped and this modal
+  // has only the URL tenant slug. (Context's `projectSlug` is the SANITY slug
+  // and is not a Supabase `projects.slug`.) See projectScopeSlugFromTenantSlug.
+  const scopeSlug = projectScopeSlugFromTenantSlug(asTenantSlug(tenantSlug))
+  const createEndpoint = submissionEndpoint(scopeSlug, 'early-access')
   const m = getEarlyAccessMessages(locale)
   const formStartedAt = useRef<number>(Date.now())
   const dialogId = useId()
@@ -773,7 +780,7 @@ export function EarlyAccessModal() {
 
     setSubmitting(true)
     try {
-      const res  = await fetch(`/api/forms/${tenantSlug}/early-access/submissions`, {
+      const res  = await fetch(createEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -841,7 +848,7 @@ export function EarlyAccessModal() {
       }
 
       const res = await fetch(
-        `/api/forms/${tenantSlug}/early-access/submissions/${submissionId}/steps`,
+        `${createEndpoint}/${encodeURIComponent(submissionId)}/steps`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

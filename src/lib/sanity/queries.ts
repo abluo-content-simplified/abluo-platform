@@ -68,6 +68,33 @@ const NAV_LINK_FIELDS = /* groq */ `
 //
 // Interpolate inside a dereference:
 //   "ctaForm": ctaForm->{ ${FORM_DEFINITION_PROJECTION} }
+// ─── Tenant scope inside a website query ─────────────────────────────────────
+//
+// `formDefinition` is TENANT-owned: filed under a flat `tenantSlug`, not under
+// a project. Two websites of one client share their forms; no website may reach
+// another client's. Every website query is handed `$projectSlug`, which is at
+// the PROJECT grain, so the tenant has to be looked up.
+//
+// It is looked up from the `project` document itself, in the same two-tier
+// order as `deriveTenantSlug()` (src/lib/tenancy/project-scope.ts): the stored
+// `project.tenantSlug`, then the `clientRef->tenantSlug` ownership edge it is
+// copied from. There is no third tier — the `-main` suffix strip is gone.
+//
+// NOT `$tenantSlug`. `fetchForTenant` does inject that parameter, but its value
+// is the URL tenant slug from `TENANT_TO_PROJECT` (client.ts), which is a
+// PROJECT-grain value wearing a tenant name: No!Logo's websites resolve it to
+// `nologo`, while the tenant that owns them is `freeriders`. Scoping on it
+// would blank No!Logo's header form. See src/lib/tenancy/ids.ts on exactly this
+// class of mistake. Until `TENANT_TO_PROJECT` is retired, the project document
+// is the only authority reachable from inside a query.
+//
+// A project with no resolvable tenant yields `null` here, and `tenantSlug ==
+// null` matches no active form — select nothing, never everything.
+const PROJECT_TENANT_SLUG = /* groq */ `coalesce(
+      *[_type == "project" && projectSlug == $projectSlug][0].tenantSlug,
+      *[_type == "project" && projectSlug == $projectSlug][0].clientRef->tenantSlug
+    )`
+
 const FORM_DEFINITION_PROJECTION = /* groq */ `
 _id,
 formId,
@@ -484,25 +511,32 @@ export const websiteSiteConfigQuery = /* groq */ `
     // the overlay additionally needs the whole definition, not just its id.
     headerCta {
       ${CTA_FIELDS},
-      // NOT tenant-scoped, and cannot be from inside this query. A
-      // formDefinition is scoped by tenantSlug, not projectSlug (forms
-      // belong to the client, so two websites of one client share them), and
-      // this query is only ever given $projectSlug — fetchForTenant injects
-      // nothing else. The two ways to derive the tenant inside GROQ are both
-      // wrong to rely on:
-      //   • project.clientRef->tenantSlug — demonstrably diverges in the live
-      //     dataset (project "nologo" has clientRef->tenantSlug "freeriders"
-      //     while its own header form carries tenantSlug "nologo"), so this
-      //     filter would blank out a working header CTA.
-      //   • stripping a trailing "-main" off $projectSlug — the Studio's own
-      //     heuristic (schema.ts formRef filter), but a naming convention, not
-      //     a guarantee; encoding it here makes a security boundary out of a
-      //     string suffix.
-      // The real fix is a $tenantSlug parameter injected alongside $projectSlug
-      // by fetchForTenant (client.ts), then && tenantSlug == $tenantSlug on a
-      // filtered subquery in place of this dereference. Until that parameter
-      // exists, a cross-tenant headerCta.formRef still resolves.
-      "form": formRef->{ ${FORM_DEFINITION_PROJECTION} }
+      // TENANT-SCOPED (it was not, until the tenancy migration completed).
+      //
+      // This used to be a bare formRef dereference, so a header CTA pointing --
+      // by accident, by a copied document id, or by a picker that carried no
+      // tenant clause of its own -- at another client's form resolved and
+      // rendered it. The blocker was real at the time: the only derivations
+      // available inside GROQ were clientRef->tenantSlug, which disagreed with
+      // where No!Logo's form was actually filed, and the legacy project-slug
+      // suffix strip, which is a naming convention rather than an ownership
+      // record.
+      //
+      // Both objections are now spent. project.tenantSlug is stored and
+      // backfilled, form-nologo-demo has been repointed to freeriders, and the
+      // two agree everywhere -- so PROJECT_TENANT_SLUG (above) resolves the
+      // owner from the project document, and the dereference becomes a
+      // filtered subquery that can only reach this tenant's forms.
+      //
+      // Templates are allowed through unconditionally: a formDefinition with
+      // role "template" is unscoped BY DESIGN (tenantSlug is null) and belongs
+      // to no tenant, so a CTA that references one must keep resolving for
+      // every project. See src/lib/tenancy/MIGRATION.md section 2.2.
+      "form": *[
+        _type == "formDefinition"
+        && _id == ^.formRef._ref
+        && (role == "template" || tenantSlug == ${PROJECT_TENANT_SLUG})
+      ][0]{ ${FORM_DEFINITION_PROJECTION} }
     },
     "ctaLabel": ${loc('ctaLabel')},
     ctaHref,

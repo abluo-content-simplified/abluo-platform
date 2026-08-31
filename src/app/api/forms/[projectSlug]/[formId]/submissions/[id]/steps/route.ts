@@ -12,6 +12,7 @@
  */
 import { NextResponse } from 'next/server'
 import { completeStep } from '@/lib/forms/submissions'
+import { asProjectSlug } from '@/lib/tenancy/ids'
 
 export async function POST(
   request: Request,
@@ -26,7 +27,9 @@ export async function POST(
     }
 
     const result = await completeStep({
-      projectSlug,
+      // Trust boundary — see the sibling create route: this segment is a
+      // PROJECT slug and is branded here, once.
+      projectSlug: asProjectSlug(projectSlug),
       formId,
       submissionId: id,
       completionToken: typeof body.completionToken === 'string' ? body.completionToken : undefined,

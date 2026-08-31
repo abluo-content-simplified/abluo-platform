@@ -24,6 +24,8 @@ import { useState, useRef, FormEvent } from 'react'
 import { useEarlyAccess } from './EarlyAccessContext'
 import { getEarlyAccessMessages } from '@/lib/forms/early-access-config'
 import { collectClientSource } from '@/lib/forms/source'
+import { submissionEndpoint, projectScopeSlugFromTenantSlug } from '@/lib/forms/render-mapping'
+import { asTenantSlug } from '@/lib/tenancy/ids'
 
 interface EarlyAccessFooterCtaProps {
   /**
@@ -56,7 +58,12 @@ export function EarlyAccessFooterCta({
   // resubmitting reopens the modal for the SAME submission instead of creating a new one.
   const createdRef = useRef<CreatedSubmission | null>(null)
 
-  const scopeSlug = tenantSlug
+  // ⚠️ ONE-TO-N BOUNDARY. The submission route is project-scoped, and this
+  // component has only the URL tenant slug. Context DOES carry a `projectSlug`,
+  // but it is the SANITY slug ('livener-main') and is not a Supabase
+  // `projects.slug`, so submitting under it would 404 — see
+  // `projectScopeSlugFromTenantSlug`, which names this dependency explicitly.
+  const scopeSlug = projectScopeSlugFromTenantSlug(asTenantSlug(tenantSlug))
 
   const [name, setName]             = useState('')
   const [email, setEmail]           = useState('')
@@ -93,7 +100,7 @@ export function EarlyAccessFooterCta({
     // ── Create partial submission ──────────────────────────────────────────────
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/forms/${scopeSlug}/early-access/submissions`, {
+      const res = await fetch(submissionEndpoint(scopeSlug, 'early-access'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

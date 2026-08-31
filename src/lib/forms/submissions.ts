@@ -28,6 +28,7 @@ import {
   type FormDefinition,
 } from '@/lib/forms/definitions'
 import { resolveActiveDefinition, reconstructDefinitionFromSnapshot } from '@/lib/forms/definition-source'
+import { asProjectSlug, toTenantSlug, unbrand, type ProjectSlug, type TenantSlug } from '@/lib/tenancy/ids'
 
 const SPAM_OPTS = { table: 'form_submissions', ipColumn: 'submitter_ip' } as const
 
@@ -39,7 +40,8 @@ export type SubmissionResult =
   | { ok: false; status: number; error: string; errors?: Record<string, string> }
 
 export interface CreateSubmissionInput {
-  projectSlug: string
+  /** The route's `[projectSlug]` segment — a PROJECT slug (`projects.slug`), never a tenant slug. */
+  projectSlug: ProjectSlug
   formId: string
   locale?: string
   source?: Record<string, unknown>
@@ -52,7 +54,8 @@ export interface CreateSubmissionInput {
 }
 
 export interface CompleteStepInput {
-  projectSlug: string
+  /** The route's `[projectSlug]` segment — a PROJECT slug (`projects.slug`), never a tenant slug. */
+  projectSlug: ProjectSlug
   formId: string
   submissionId: string
   completionToken?: string
@@ -63,17 +66,66 @@ export interface CompleteStepInput {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-/** Resolves { tenantId, projectId } from a projects.slug; both null if unknown (platform-level). */
+/**
+ * The fully resolved scope of a route's `[projectSlug]`: the project it names,
+ * the tenant that owns it, and that TENANT's slug (the grain `formDefinition`
+ * documents are filed under — a project's slug must never be used for that
+ * lookup, see `resolveActiveDefinition`).
+ */
+export interface ProjectScope {
+  tenantId: string
+  projectId: string
+  /** `tenants.slug` of the project's owner — NOT the route slug. */
+  tenantSlug: TenantSlug
+}
+
+/**
+ * Resolves a route `projects.slug` to its scope, or `null` when the slug names
+ * NO project.
+ *
+ * "Unknown" is returned as `null` rather than as a scope full of nulls, and that
+ * distinction is the entire point. The previous shape — `{ tenantId: null,
+ * projectId: null }` — made an unresolvable slug indistinguishable from a
+ * legitimately platform-level submission row (migration 016 allows
+ * `project_id null`), so `completeStep`'s tenant-isolation guard compared
+ * `null !== null`, passed, and let ANY unresolvable route slug finalize any
+ * platform-level submission. A `null` scope cannot be compared against a row's
+ * project id by accident: both call sites must handle it explicitly, and both
+ * fail closed.
+ */
 async function resolveProjectScope(
   supabase: { from: (t: string) => any },
-  projectSlug: string,
-): Promise<{ tenantId: string | null; projectId: string | null }> {
+  projectSlug: ProjectSlug,
+): Promise<ProjectScope | null> {
   const { data } = await supabase
     .from('projects')
     .select('id, tenant_id')
-    .eq('slug', projectSlug)
+    .eq('slug', unbrand(projectSlug))
     .maybeSingle()
-  return { tenantId: (data?.tenant_id as string) ?? null, projectId: (data?.id as string) ?? null }
+
+  const projectId = (data?.id as string | null) ?? null
+  const tenantId = (data?.tenant_id as string | null) ?? null
+  if (!projectId || !tenantId) return null
+
+  // The owning tenant's slug. `projects.tenant_id` is NOT NULL with an FK
+  // (migration 002), so a miss here means the row is unreadable, not that the
+  // project is tenant-less — fail closed rather than guess a tenant.
+  const { data: tenant } = await supabase
+    .from('tenants')
+    .select('slug')
+    .eq('id', tenantId)
+    .maybeSingle()
+
+  const tenantSlug = toTenantSlug(tenant?.slug as string | null | undefined)
+  if (!tenantSlug) {
+    console.error(
+      `[forms.resolveProjectScope] project "${unbrand(projectSlug)}" resolved to tenant ` +
+        `${tenantId} but that tenant has no readable slug; refusing to scope the request.`,
+    )
+    return null
+  }
+
+  return { tenantId, projectId, tenantSlug }
 }
 
 /**
@@ -85,14 +137,15 @@ async function resolveProjectScope(
 async function resolveProjectSlugById(
   supabase: { from: (t: string) => any },
   projectId: string | null,
-): Promise<string | null> {
+): Promise<ProjectSlug | null> {
   if (!projectId) return null
   const { data } = await supabase
     .from('projects')
     .select('slug')
     .eq('id', projectId)
     .maybeSingle()
-  return (data?.slug as string) ?? null
+  const slug = (data?.slug as string | null) ?? null
+  return slug ? asProjectSlug(slug) : null
 }
 
 /** Sanitizes placement Context to only the definition's contextMappable field keys (§18). */
@@ -111,14 +164,19 @@ function sanitizeContext(def: FormDefinition, context: Record<string, unknown> |
 // ── Create ──────────────────────────────────────────────────────────────────────
 
 export async function createSubmission(input: CreateSubmissionInput): Promise<SubmissionResult> {
-  const def = await resolveActiveDefinition(input.formId, input.projectSlug)
-  if (!def) return { ok: false, status: 404, error: 'unknown form' }
-
   return runAsTrustedSystemOperation(
     'Anonymous public form submission (create) — the submitter is a website visitor with no ' +
-      'session. Covers the per-IP rate-limit count, the projects slug lookup, the ' +
+      'session. Covers the projects/tenants slug lookup, the per-IP rate-limit count, the ' +
       'form_submissions INSERT, and (single-step forms) the form_events outbox INSERT.',
     async (supabase): Promise<SubmissionResult> => {
+      // Scope FIRST, and fail closed. An unrecognised route slug used to fall
+      // through to a platform-level write (tenant_id/project_id null) from an
+      // arbitrary URL; those rows are then indistinguishable from legitimate
+      // platform-level rows and were finalizable from any other unresolvable
+      // slug. A slug that names no project is now simply not a place to submit.
+      const scope = await resolveProjectScope(supabase, input.projectSlug)
+      if (!scope) return { ok: false, status: 404, error: 'unknown project' }
+
       // Spam (silent 200 on block — never reveal which check fired).
       const spam = await runSpamChecks(
         { honeypot: input.honeypot, openedAt: input.openedAt, ip: input.ip },
@@ -126,6 +184,13 @@ export async function createSubmission(input: CreateSubmissionInput): Promise<Su
         SPAM_OPTS,
       )
       if (spam.blocked) return { ok: true, spam: true }
+
+      // Definitions are TENANT-owned (ADR-018 Decision 1): the lookup key is the
+      // owning tenant's slug, resolved from the project above — never the
+      // route's project slug, which only coincided with it while every tenant
+      // had exactly one project.
+      const def = await resolveActiveDefinition(input.formId, scope.tenantSlug)
+      if (!def) return { ok: false, status: 404, error: 'unknown form' }
 
       const step = firstStep(def)
       const values = whitelistStepValues(def, step.key, input.data ?? {})
@@ -139,7 +204,7 @@ export async function createSubmission(input: CreateSubmissionInput): Promise<Su
         return { ok: false, status: 400, error: 'validation failed', errors }
       }
 
-      const { tenantId, projectId } = await resolveProjectScope(supabase, input.projectSlug)
+      const { tenantId, projectId } = scope
       const snapshot = resolveDefinitionSnapshot(def)
       const now = Date.now()
 
@@ -227,9 +292,19 @@ export async function completeStep(input: CompleteStepInput): Promise<Submission
       // started on tenant A's route can be finalized via tenant B's route, and
       // its content is then delivered to tenant B's recipients. 404 (not 403) so
       // we never reveal that the submission exists.
-      const { projectId: routeProjectId } = await resolveProjectScope(supabase, input.projectSlug)
+      // An unresolvable route slug is a hard reject, NOT a null-vs-null match:
+      // before this, a slug naming no project produced `routeProjectId === null`
+      // and a platform-level row produced `rowProjectId === null`, so the guard
+      // compared null !== null, passed, and let any invented slug finalize any
+      // platform-level submission. Unknown scope now fails closed, with the same
+      // generic 404 an unknown submission gets.
+      const scope = await resolveProjectScope(supabase, input.projectSlug)
+      if (!scope) return { ok: false, status: 404, error: 'not found' }
       const rowProjectId = (row.project_id as string | null) ?? null
-      if (routeProjectId !== rowProjectId) return { ok: false, status: 404, error: 'not found' }
+      // A genuinely platform-level row (project_id null, migration 016) never
+      // matches a resolved route project either — it simply cannot be advanced
+      // through a project-scoped route.
+      if (scope.projectId !== rowProjectId) return { ok: false, status: 404, error: 'not found' }
       if (row.completion_state !== 'partial') return { ok: false, status: 409, error: 'already complete' }
       if (
         !tokensMatch(input.completionToken, row.step_token_hash) ||
@@ -295,12 +370,13 @@ export async function completeStep(input: CompleteStepInput): Promise<Submission
         // Live definition only for its notification topic; identity (formId/
         // version) comes from the pinned row so the event matches the historical
         // submission, not a definition that may have changed.
-        const liveDef = await resolveActiveDefinition(input.formId, input.projectSlug)
+        const liveDef = await resolveActiveDefinition(input.formId, scope.tenantSlug)
         // The event's slug derives from the ROW's project, never from the route.
         // (They are already proven equal by the tenant-isolation guard above; the
         // lookup keeps the event correct even if that guard is ever relaxed.) A
-        // platform-level row (project_id null) has no project slug — fall back to
-        // the route slug, which the guard proved resolves to no project either.
+        // The guard above proved `rowProjectId === scope.projectId` and that it
+        // is non-null, so this lookup always resolves; the route slug remains as
+        // a belt-and-braces fallback (it may be an alias of the same project).
         const eventProjectSlug =
           (await resolveProjectSlugById(supabase, rowProjectId)) ?? input.projectSlug
         await emitSubmittedEvent(supabase, {

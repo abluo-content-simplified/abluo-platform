@@ -19,6 +19,7 @@ import {
   whatsAppFormId,
 } from '../../modules/whatsapp/form-sync'
 import { formFromTemplate, uniqueFormId } from '../../modules/forms/template-clone'
+import { deriveTenantSlug } from '../../tenancy/project-scope'
 
 /**
  * ModuleList — the Modules pane. ADR-020 Decision 1.
@@ -174,28 +175,20 @@ function dataStoreLabel(manifest: ModuleManifest): string {
   }
 }
 
-
 /**
- * URL tenant slug from a Sanity projectSlug.
+ * The project document, projected for tenancy resolution.
  *
- * projectSlug is "studiomartegani-main"; the tenant slug used in form document
- * ids and ownership is "studiomartegani". The "-main" suffix is the project
- * naming convention, not part of the tenant identity.
- *
- * KNOWN-WRONG, DELIBERATELY UNCHANGED. This is the legacy derivation described
- * in src/lib/tenancy/project-scope.ts: it encodes a naming convention as if it
- * were an ownership record, and it is wrong for project `nologo`, which is
- * owned by client `freeriders`. The live data currently agrees with the bug
- * (`form-nologo-demo` is filed under tenantSlug "nologo"), so switching this to
- * the true `clientRef->tenantSlug` BEFORE the backfill would empty No!Logo's
- * Forms pane. Replacing it with `deriveTenantSlug()` from
- * src/lib/tenancy/project-scope.ts is the CONTRACT phase and requires the data
- * migration first — see src/lib/tenancy/MIGRATION.md.
+ * Both tiers are fetched: the stored `project.tenantSlug` (written by
+ * ProjectLinker, backfilled on every live project) and the ownership edge it is
+ * copied from. `deriveTenantSlug()` in src/lib/tenancy/project-scope.ts picks
+ * between them and is the single derivation — the local `-main` strip that used
+ * to sit here is gone, along with the guess it made for project `nologo`.
  */
-function deriveTenantSlug(projectSlug: string | undefined): string | null {
-  if (!projectSlug) return null
-  return projectSlug.replace(/-main$/, '')
-}
+const PROJECT_SCOPE_PROJECTION = `{
+  projectSlug,
+  tenantSlug,
+  "clientTenantSlug": clientRef->tenantSlug
+}`
 
 /** Website language shown next to a localized input, in that language. */
 function localeLabel(locale: string): string {
@@ -218,16 +211,57 @@ export function ModuleList({ options }: ModuleListProps) {
   const [error, setError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
+  // Which tenant owns this website. Resolved from the project DOCUMENT, not
+  // from its slug: the stored `tenantSlug` first, `clientRef->tenantSlug`
+  // second, and `null` — select nothing — when neither is there.
+  //
+  // The lookup is asynchronous, so the resolution is tracked BY PROJECT ID
+  // rather than by a boolean. Switching websites therefore makes `scopeResolved`
+  // false again for free, and the tenant of the website being navigated away
+  // from can never be handed to the pane of the one being navigated to — a
+  // stale tenant here would show another client's forms, however briefly.
+  const [resolvedScope, setResolvedScope] = useState<{ projectId: string; tenantSlug: string | null } | null>(null)
+  const scopeResolved = !projectId || resolvedScope?.projectId === projectId
+  const tenantSlug = scopeResolved ? resolvedScope?.tenantSlug ?? null : null
+
+  useEffect(() => {
+    if (!projectId) return
+    let cancelled = false
+    client
+      .fetch<{ projectSlug?: string; tenantSlug?: string; clientTenantSlug?: string } | null>(
+        `*[_type == "project" && _id == $projectId][0] ${PROJECT_SCOPE_PROJECTION}`,
+        { projectId }
+      )
+      .then((project) => {
+        const scope = deriveTenantSlug({
+          // Fall back to the slug the structure builder handed us if the
+          // document read comes back thin; the tenant tiers are unaffected.
+          projectSlug: project?.projectSlug ?? projectSlug,
+          tenantSlug: project?.tenantSlug,
+          clientTenantSlug: project?.clientTenantSlug,
+        })
+        if (!cancelled) setResolvedScope({ projectId, tenantSlug: scope?.tenantSlug ?? null })
+      })
+      .catch(() => {
+        // A failed lookup resolves to NO tenant, not to a guessed one.
+        if (!cancelled) setResolvedScope({ projectId, tenantSlug: null })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [client, projectId, projectSlug])
+
   // The website's own languages drive every localized control in this pane.
   // Derived from siteConfig, never hardcoded: adding German to a website makes
   // a German input appear on every subject with no schema or code change.
-  const tenantSlug = useMemo(() => deriveTenantSlug(projectSlug), [projectSlug])
-
   useEffect(() => {
     if (!projectId) {
       setLoading(false)
       return
     }
+    // The WhatsApp form id below is tenant-derived, so this read cannot run
+    // before the tenant is known.
+    if (!scopeResolved) return
     setLoading(true)
 
     client
@@ -269,7 +303,7 @@ export function ModuleList({ options }: ModuleListProps) {
       })
       .catch(() => setError('Failed to load modules.'))
       .finally(() => setLoading(false))
-  }, [projectId, projectSlug, tenantSlug]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [projectId, projectSlug, tenantSlug, scopeResolved]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const byModuleId = useMemo(() => {
     const map = new Map<string, FetchedInstallation>()
@@ -285,7 +319,10 @@ export function ModuleList({ options }: ModuleListProps) {
     return <div style={{ padding: 32, fontSize: 13, color: '#aaa' }}>No website selected.</div>
   }
 
-  if (loading) {
+  // `!scopeResolved` is part of loading: rendering the pane before the tenant is
+  // known would hand the Forms list a null (or, on a website switch, a stale)
+  // tenant slug.
+  if (loading || !scopeResolved) {
     return <div style={{ padding: 32, fontSize: 13, color: '#aaa' }}>Loading modules…</div>
   }
 

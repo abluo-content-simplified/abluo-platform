@@ -10,6 +10,7 @@ import {
   resolveActiveDefinition,
 } from '@/lib/forms/definition-source'
 import { resolveDefinition, resolveDefinitionSnapshot } from '@/lib/forms/definitions'
+import { asTenantSlug } from '@/lib/tenancy/ids'
 import fixture from './early-access.fixture.json'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -66,7 +67,7 @@ describe('resolveDefinitionSnapshot', () => {
 describe('resolveActiveDefinition', () => {
   it('uses the published Sanity definition when one exists', async () => {
     mockFetch.mockResolvedValueOnce(fixture)
-    const def = await resolveActiveDefinition('early-access', 'livener')
+    const def = await resolveActiveDefinition('early-access', asTenantSlug('livener'))
     const code = resolveDefinition('early-access')!
     expect(def).not.toBeNull()
     expect(canon(resolveDefinitionSnapshot(def!))).toEqual(canon(resolveDefinitionSnapshot(code)))
@@ -74,19 +75,19 @@ describe('resolveActiveDefinition', () => {
 
   it('falls back to the code descriptor on a Sanity miss', async () => {
     mockFetch.mockResolvedValueOnce(null)
-    const def = await resolveActiveDefinition('early-access', 'livener')
+    const def = await resolveActiveDefinition('early-access', asTenantSlug('livener'))
     expect(def?.formId).toBe('early-access')
   })
 
   it('falls back to the code descriptor on a Sanity error', async () => {
     mockFetch.mockRejectedValueOnce(new Error('sanity down'))
-    const def = await resolveActiveDefinition('early-access', 'livener')
+    const def = await resolveActiveDefinition('early-access', asTenantSlug('livener'))
     expect(def?.formId).toBe('early-access')
   })
 
   it('returns null for an unknown formId (route → 404)', async () => {
     mockFetch.mockResolvedValueOnce(null)
-    const def = await resolveActiveDefinition('does-not-exist', 'livener')
+    const def = await resolveActiveDefinition('does-not-exist', asTenantSlug('livener'))
     expect(def).toBeNull()
   })
 })

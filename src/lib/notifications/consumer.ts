@@ -22,10 +22,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 import { isProductionEnvironment } from '@/lib/notifications/environment'
-import { resolveRecipients } from '@/lib/notifications/recipients'
+import { resolveRecipients, describeScope, NotificationScopeError, type NotificationScope } from '@/lib/notifications/recipients'
 import { sendEmail } from '@/lib/notifications/resend'
 import { renderNewSubmissionEmail } from '@/lib/notifications/templates'
 import { resolveInternalEmailConfig, safeReplyTo } from '@/lib/notifications/branding'
+import { toProjectSlug, unbrand } from '@/lib/tenancy/ids'
 
 const MAX_ATTEMPTS = 5
 const SWEEP_BATCH = 50
@@ -52,19 +53,25 @@ async function finalize(
 }
 
 /**
- * Resolves the tenant/URL slug an event's notification is addressed to.
+ * Resolves the PROJECT an event's notification is addressed to.
  *
- * Prefers the slug of the event's OWN `project_id` over the denormalized
- * `project_slug` column: the column is written at emit time from the request's
- * route, so a wrong or stale value there (e.g. rows written before the
- * completeStep tenant-isolation guard) would otherwise route a submission to
- * another tenant's recipients and branding. Falls back to `project_slug` only
- * for platform-level events (no project_id) or an unresolvable project.
+ * Prefers the event's OWN `project_id` over the denormalized `project_slug`
+ * column: the column is written at emit time from the request's route, so a
+ * wrong or stale value there (e.g. rows written before the completeStep
+ * tenant-isolation guard) would otherwise route a submission to another
+ * tenant's recipients and branding. Same precedent as
+ * `resolveProjectSlugById()` in `@/lib/forms/submissions`.
+ *
+ * The id is what downstream resolution is KEYED on (Sanity `project.projectId`)
+ * — the slug is carried only for logs, and is branded `ProjectSlug` so it
+ * cannot silently become a tenant-grain lookup key again. For a legacy row with
+ * no `project_id` the slug is resolved BACK to an id here, at this one
+ * boundary, so exactly one code path addresses a notification.
  */
-async function resolveEventProjectSlug(
+async function resolveEventScope(
   supabase: SupabaseClient,
   event: Record<string, unknown>,
-): Promise<string | null> {
+): Promise<NotificationScope | null> {
   const projectId = (event.project_id as string | null) ?? null
   if (projectId) {
     const { data } = await supabase
@@ -72,10 +79,20 @@ async function resolveEventProjectSlug(
       .select('slug')
       .eq('id', projectId)
       .maybeSingle()
-    const slug = (data?.slug as string | undefined) ?? null
-    if (slug) return slug
+    return { projectId, projectSlug: toProjectSlug(data?.slug as string | undefined) }
   }
-  return (event.project_slug as string | null) ?? null
+  // Legacy/platform-level row: no project_id. The denormalized column holds a
+  // Supabase PROJECT slug (emitted via resolveProjectSlugById), so it can be
+  // resolved to the project's id — the same key the id path uses.
+  const denormalized = toProjectSlug(event.project_slug as string | null)
+  if (!denormalized) return null
+  const { data } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('slug', unbrand(denormalized))
+    .maybeSingle()
+  const resolvedId = (data?.id as string | undefined) ?? null
+  return resolvedId ? { projectId: resolvedId, projectSlug: denormalized } : null
 }
 
 /** Delivers a single event, idempotently. Safe to call from webhook AND sweep. */
@@ -103,13 +120,28 @@ export async function deliverEvent(eventId: string): Promise<{ outcome: DeliverO
       }
 
       const topic = (event.topic as string) || (event.form_id as string)
-      const projectSlug = await resolveEventProjectSlug(supabase, event as Record<string, unknown>)
-      if (!projectSlug) {
-        await finalize(supabase, eventId, 'skipped', attempts, 'no project_slug on event')
-        return { outcome: 'skipped', reason: 'no project_slug' }
+      const scope = await resolveEventScope(supabase, event as Record<string, unknown>)
+      if (!scope) {
+        await finalize(supabase, eventId, 'skipped', attempts, 'no project on event (no project_id, and project_slug resolved to no project)')
+        return { outcome: 'skipped', reason: 'no project' }
       }
 
-      const recipients = await resolveRecipients(projectSlug, topic)
+      // A scope we cannot resolve is NOT an empty recipient list. Sending a
+      // customer's submission to nobody, terminally and without an error, is
+      // the failure this whole change exists to remove — so the throw becomes a
+      // retryable outbox row that carries the reason and eventually goes 'dead'
+      // (loud, inspectable) rather than 'skipped' (silent, terminal).
+      let recipients: string[]
+      try {
+        recipients = await resolveRecipients(scope, topic)
+      } catch (err) {
+        const msg = err instanceof NotificationScopeError ? err.message : `[notifications] recipient resolution failed for ${describeScope(scope)}: ${err instanceof Error ? err.message : String(err)}`
+        console.error(msg)
+        const nextAttempts = attempts + 1
+        const nextStatus = nextAttempts >= MAX_ATTEMPTS ? 'dead' : 'failed'
+        await finalize(supabase, eventId, nextStatus, nextAttempts, msg)
+        return { outcome: nextStatus, reason: msg }
+      }
       if (recipients.length === 0) {
         await finalize(supabase, eventId, 'skipped', attempts, `no recipients configured for topic "${topic}"`)
         return { outcome: 'skipped', reason: 'no recipients' }
@@ -126,7 +158,18 @@ export async function deliverEvent(eventId: string): Promise<{ outcome: DeliverO
 
       // Tenant/project-level personalization (ADR-019 Amendment A), read at send
       // time. Never throws — a miss yields the generic default.
-      const cfg = await resolveInternalEmailConfig(projectSlug, locale)
+      let cfg: Awaited<ReturnType<typeof resolveInternalEmailConfig>>
+      try {
+        cfg = await resolveInternalEmailConfig(scope, locale)
+      } catch (err) {
+        // Same rule as recipients: unknown brand → retry loudly, never guess.
+        const msg = err instanceof Error ? err.message : String(err)
+        console.error(msg)
+        const nextAttempts = attempts + 1
+        const nextStatus = nextAttempts >= MAX_ATTEMPTS ? 'dead' : 'failed'
+        await finalize(supabase, eventId, nextStatus, nextAttempts, msg)
+        return { outcome: nextStatus, reason: msg }
+      }
       const submitterEmail = cfg.replyToSubmitter
         ? safeReplyTo((sub?.submission_data as Record<string, unknown> | undefined)?.email)
         : undefined

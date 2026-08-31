@@ -3,7 +3,7 @@
  *
  * Pure, framework-free helpers that turn a GROQ-resolved, locale-applied
  * `RenderableFormDefinition` into the Field Library's `FieldConfig[]`, and shape
- * the submission payload for the new `/api/forms/{tenantSlug}/{formId}/submissions`
+ * the submission payload for the new `/api/forms/{projectSlug}/{formId}/submissions`
  * endpoint. Kept pure so the mapping (all 16 field types + consent handling) is
  * unit-tested without rendering.
  *
@@ -13,6 +13,7 @@
  */
 import type { FieldConfig, OptionItem, ValidationRule } from '@/components/fields'
 import type { RenderableFormDefinition, RenderableFormField } from '@/lib/sanity/types'
+import { asProjectSlug, unbrand, type ProjectSlug, type TenantSlug } from '@/lib/tenancy/ids'
 
 /** Stable key used for the synthetic consent checkbox (kept out of `data`). */
 export const CONSENT_FIELD_ID = 'gdpr_consent'
@@ -166,9 +167,41 @@ export function buildSubmissionPayload(
   }
 }
 
-/** New-endpoint URL for a placement. tenantSlug is the URL tenant scope. */
-export function submissionEndpoint(tenantSlug: string, formId: string): string {
-  return `/api/forms/${encodeURIComponent(tenantSlug)}/${encodeURIComponent(formId)}/submissions`
+/**
+ * Submission endpoint for a placement.
+ *
+ * The route segment is `[projectSlug]` and the service resolves `projects.slug`
+ * from it, so this takes a PROJECT slug. It used to take (and be called with) a
+ * tenant slug; the two are identical for every single-project tenant, which is
+ * why nothing ever failed. See `projectScopeSlugFromTenantSlug` below for the
+ * call sites that cannot yet supply the real thing.
+ */
+export function submissionEndpoint(projectSlug: ProjectSlug, formId: string): string {
+  return `/api/forms/${encodeURIComponent(unbrand(projectSlug))}/${encodeURIComponent(formId)}/submissions`
+}
+
+/**
+ * ⚠️ TEMPORARY BOUNDARY SHIM — do not add call sites.
+ *
+ * A website component that only received the URL TENANT slug cannot name a
+ * project. Until the routing layer supplies a real project slug to those
+ * placements, they submit under the tenant slug, which resolves only because
+ * Supabase seeded `projects.slug` with the tenant slug for all five live
+ * projects (`002_projects.sql`: 'livener', 'studiomartegani').
+ *
+ * This function exists so that dependency is a single greppable name in the
+ * codebase rather than an invisible `string` → `string` assignment: every caller
+ * is a place the one-tenant-to-N-projects routing work must fix, and the moment
+ * a tenant owns a project whose slug differs from it, each of them submits to a
+ * slug that no longer resolves (a 404 now that the service fails closed — a
+ * loud, correct failure rather than a silent platform-level write).
+ *
+ * NOTE it is deliberately NOT fed from `EarlyAccessContext.projectSlug`: that
+ * value is `tenantToProjectSlug()`, the SANITY project slug ('livener-main'),
+ * which is not a `projects.slug` in Supabase and would 404 today.
+ */
+export function projectScopeSlugFromTenantSlug(tenantSlug: TenantSlug): ProjectSlug {
+  return asProjectSlug(unbrand(tenantSlug))
 }
 
 /** First whitespace-separated token of a full-name value ("Frank Zappa" → "Frank"). */

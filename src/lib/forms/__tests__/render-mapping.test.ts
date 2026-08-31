@@ -5,8 +5,10 @@ import {
   buildSubmissionPayload,
   singleStepFields,
   submissionEndpoint,
+  projectScopeSlugFromTenantSlug,
   CONSENT_FIELD_ID,
 } from '@/lib/forms/render-mapping'
+import { asProjectSlug, asTenantSlug } from '@/lib/tenancy/ids'
 import type { RenderableFormDefinition, RenderableFormField } from '@/lib/sanity/types'
 
 const FIELD_TYPES = [
@@ -108,7 +110,22 @@ describe('singleStepFields', () => {
 })
 
 describe('submissionEndpoint', () => {
-  it('builds the new tenant/form-scoped endpoint', () => {
-    expect(submissionEndpoint('livener', 'early-access')).toBe('/api/forms/livener/early-access/submissions')
+  it('builds the new project/form-scoped endpoint', () => {
+    expect(submissionEndpoint(asProjectSlug('livener'), 'early-access')).toBe(
+      '/api/forms/livener/early-access/submissions',
+    )
+  })
+
+  it('encodes both segments', () => {
+    expect(submissionEndpoint(asProjectSlug('a/b'), 'c d')).toBe('/api/forms/a%2Fb/c%20d/submissions')
+  })
+})
+
+describe('projectScopeSlugFromTenantSlug (temporary one-to-N boundary shim)', () => {
+  it('is identity at runtime — it only re-labels the grain, so behaviour for the five single-project tenants is unchanged', () => {
+    expect(projectScopeSlugFromTenantSlug(asTenantSlug('livener'))).toBe('livener')
+    expect(submissionEndpoint(projectScopeSlugFromTenantSlug(asTenantSlug('nologo')), 'early-access')).toBe(
+      '/api/forms/nologo/early-access/submissions',
+    )
   })
 })

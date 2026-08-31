@@ -25,11 +25,12 @@
  *      project's content by passing a different `projectSlug` param.
  *
  *   3. Every query must reference `$projectSlug` (a lightweight runtime
- *      guard — `assertQueryIsTenantScoped`). Raw string interpolation of
- *      tenant identity is banned at this chokepoint (ADR-015 R2): a query
- *      that doesn't parameterize on `$projectSlug`, or that looks like it
- *      inlines a tenant identifier via template-literal interpolation
- *      (`${...}`), is rejected before it ever reaches Sanity.
+ *      guard — `assertQueryIsTenantScoped`, over the shared detector
+ *      `findTenantScopeViolation` in `@/lib/sanity/client`). Raw string
+ *      interpolation of tenant identity is banned at this chokepoint
+ *      (ADR-015 R2): a query that doesn't parameterize on `$projectSlug`, or
+ *      that looks like it inlines a tenant identifier via template-literal
+ *      interpolation (`${...}`), is rejected before it ever reaches Sanity.
  *
  *   4. `assertSameTenantReference(scoped, referencedDocId, grant)` — the
  *      reference/media cross-tenant guard (ADR-015 R3) — independently
@@ -55,17 +56,41 @@
  * client instance, so ordinary callers of `.fetch()` can never opt out of
  * the guard.
  *
- * ── Not wired into any route yet ────────────────────────────────────────────
- * Per the ADR-017 Implementation Order, this slice (3a) builds the
- * chokepoint and guard only. No route or component calls
- * `tenantScopedSanityClient` yet — it is inert, exactly like
- * `tenant-context.ts` was on landing. Route wiring is a later slice.
+ * ── Where this is wired (was stale: it said "no route yet") ─────────────────
+ * `tenantScopedSanityClient` is live on the client-dashboard read path —
+ * `src/lib/api/client-dashboard.ts` obtains a scoped client per request and
+ * every dashboard Sanity read goes through it. It is no longer inert.
+ *
+ * The `assertSameTenantReference` write-side guard (point 4 above) is still
+ * unwired: there is no write route that accepts a reference or media asset
+ * yet. That helper — and only that helper — remains a primitive awaiting its
+ * first caller.
+ *
+ * ── The website read path uses the same rule, a different reaction ──────────
+ * Finding I-9: the public website does NOT use this chokepoint (it has no
+ * `TenantAuthorizationContext` — there is no logged-in actor). It reads
+ * through `tenantClient(tenantSlug).fetchForTenant` in
+ * `src/lib/sanity/client.ts`, which injects `projectSlug`/`tenantSlug` as
+ * bound params. Injection alone proved nothing: a query that never mentions
+ * `$projectSlug` was handed the parameter and ignored it, returning every
+ * tenant's documents — scoping there was a convention, not a control.
+ *
+ * `fetchForTenant` now runs the SAME detector, so the rule cannot drift
+ * between the two paths. The reaction differs on purpose: this chokepoint
+ * always throws (a failing API route is contained), whereas the website
+ * throws only in development and logs a `console.error` carrying the query
+ * and both slugs in production, where a false positive from a substring
+ * check would take a live client site down. See `tenantScopeEnforcement` in
+ * `@/lib/sanity/client` for that trade-off in full, and
+ * `UNSCOPED_READ_EXEMPTIONS` there for the website's one audited exemption
+ * (`fetchDesignSystemById`, which follows `parentDesignSystem->` across
+ * projects by design).
  *
  * Internally reuses the existing configured `sanityClient`
  * (`src/lib/sanity/client.ts`) — the raw, unscoped `@sanity/client` instance
  * is never exposed to callers of this module.
  */
-import { sanityClient } from '@/lib/sanity/client'
+import { findTenantScopeViolation, sanityClient } from '@/lib/sanity/client'
 import type { ProjectGrant, TenantAuthorizationContext } from '@/lib/api/tenant-context'
 
 // ── Error type ──────────────────────────────────────────────────────────────
@@ -113,20 +138,20 @@ export type TenantScopedSanityClient = {
  * signal that tenant identity may have been inlined as a literal rather than
  * passed as a bound GROQ parameter. This is a lightweight guard, not a full
  * GROQ parser — it does not attempt to prove the query is otherwise correct.
+ *
+ * The detection itself now lives in `findTenantScopeViolation`
+ * (`@/lib/sanity/client`) so the public-website read path
+ * (`tenantClient().fetchForTenant`) enforces the SAME rule rather than a
+ * second, drifting copy of it. Only the REACTION differs, and it differs
+ * deliberately: this chokepoint always throws — an API route failing is a
+ * contained failure — while the website throws in development and warns in
+ * production, where a false positive would black out a live client site.
+ * Behaviour here, including the exact error messages, is unchanged.
  */
 function assertQueryIsTenantScoped(query: string): void {
-  if (query.includes('${')) {
-    throw new TenantAuthorizationError(
-      'tenantScopedSanityClient: query string contains a template-literal interpolation ' +
-        '(`${...}`) — raw interpolation of tenant identity is banned at this chokepoint. ' +
-        'Use a bound GROQ parameter ($projectSlug) instead.'
-    )
-  }
-  if (!query.includes('$projectSlug')) {
-    throw new TenantAuthorizationError(
-      'tenantScopedSanityClient: query must reference $projectSlug — every query executed ' +
-        'through this chokepoint must be scoped by the bound projectSlug parameter.'
-    )
+  const violation = findTenantScopeViolation(query, 'tenantScopedSanityClient')
+  if (violation) {
+    throw new TenantAuthorizationError(violation.message)
   }
 }
 

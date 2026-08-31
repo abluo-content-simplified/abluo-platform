@@ -22,10 +22,10 @@ const ALLOWED_WITHOUT_PROJECT_SCOPE: Record<string, string> = {
   // Not a query — a projection fragment for the `cta` OBJECT type, interpolated
   // into a section projection that has already been reached through a
   // project-scoped root filter. It selects no documents of its own, so it has
-  // no root filter to scope. (Its `formRef->` dereference is a separate,
-  // documented gap: formDefinition is scoped by tenantSlug, not projectSlug,
-  // and no $tenantSlug parameter is injected today. See the comment on
-  // headerCta in websiteSiteConfigQuery.)
+  // no root filter to scope. It reads ONE field across its `formRef->`
+  // dereference — `formId`, the route key the overlay opens by — and never the
+  // definition itself; the full dereference, on headerCta, is tenant-scoped
+  // (see the block below).
   CTA_FIELDS:
     'Projection fragment for the cta object type, not a document query — no root filter of its own.',
 
@@ -115,4 +115,75 @@ describe('manual-selection queries scope the id lookup itself', () => {
       expect(rootFilter).toContain('projectSlug == $projectSlug')
     },
   )
+})
+
+
+// ── Tenant-owned dereferences carry a tenant clause ──────────────────────────
+//
+// `formDefinition` is TENANT-owned: filed under a flat `tenantSlug`, never
+// under a project. A `projectSlug == $projectSlug` root filter therefore proves
+// nothing about a `formRef->` inside it — the reference crosses OUT of the
+// project scope the root filter established, into a document filed under a
+// different key entirely. `headerCta.form` dereferenced unscoped until the
+// tenancy migration completed (src/lib/tenancy/MIGRATION.md), and a header CTA
+// pointing at another client's form rendered it.
+//
+// This is the check the migration adds to CI: the scope must sit on the
+// subquery that selects the definition, not merely somewhere in the string.
+
+describe('headerCta.form is scoped to the tenant that owns the project', () => {
+  const query = queries.websiteSiteConfigQuery
+
+  /**
+   * The root filter of the subquery that selects the header form, whitespace
+   * collapsed. Ends at `][0]{` — the OUTER close — so the nested project
+   * lookups inside it stay part of the filter under test. Asserting on this
+   * slice rather than on the whole query is the point: a tenant clause that
+   * sits somewhere else in the string scopes nothing.
+   */
+  const formFilter = (() => {
+    const at = query.indexOf('_id == ^.formRef._ref')
+    return query
+      .slice(query.lastIndexOf('*[', at), query.indexOf('][0]{', at))
+      .replace(/\s+/g, ' ')
+  })()
+
+  it('no longer dereferences formRef straight into the full projection', () => {
+    // The exact shape of the leak. `->` reaches any document by id.
+    expect(query).not.toContain('"form": formRef->')
+  })
+
+  it('selects the definition through a filtered subquery keyed on the reference', () => {
+    expect(query).toContain('_id == ^.formRef._ref')
+  })
+
+  it('constrains tenantSlug in the same filter as the reference lookup', () => {
+    expect(formFilter).toContain('_id == ^.formRef._ref')
+    expect(formFilter).toContain('tenantSlug ==')
+  })
+
+  it('resolves the tenant from the project document, not from the $tenantSlug param', () => {
+    // $tenantSlug is injected by fetchForTenant but holds the URL tenant slug
+    // from TENANT_TO_PROJECT, which is a PROJECT-grain value: it is "nologo"
+    // for a site whose owning tenant is "freeriders". Scoping on it would blank
+    // No!Logo's header form. See src/lib/tenancy/ids.ts.
+    expect(formFilter).not.toContain('$tenantSlug')
+    expect(formFilter).toContain('*[_type == "project" && projectSlug == $projectSlug][0].tenantSlug')
+    expect(formFilter).toContain('clientRef->tenantSlug')
+  })
+
+  it('still lets an unscoped template resolve for every project', () => {
+    // formDefinition documents with role == "template" carry tenantSlug: null
+    // and belong to no tenant — they must stay reachable from any project.
+    expect(formFilter).toContain('role == "template"')
+  })
+})
+
+// ── The legacy tenant derivation is gone from the query layer ────────────────
+
+describe('no query derives a tenant by stripping a slug suffix', () => {
+  it.each(exportedStrings.map(([name]) => name))('%s contains no -main strip', (name) => {
+    const query = (queries as Record<string, string>)[name]
+    expect(query).not.toContain('-main')
+  })
 })

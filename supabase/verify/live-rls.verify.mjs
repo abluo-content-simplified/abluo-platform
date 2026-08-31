@@ -40,7 +40,7 @@ afterAll(async () => {
   await stopHarness(client)
 }, 30_000)
 
-// ── Fixture world: two tenants, two projects, three users ──────────────────
+// ── Fixture world: three tenants, four projects ────────────────────────────
 //
 // Tenant A ("livener")          — owner: userA
 //   project A1 ("livener-main")
@@ -48,6 +48,34 @@ afterAll(async () => {
 //   project B1 ("studiomartegani-main")
 // userEditorA1 — project_members editor on A1 only, no tenant_members row
 //   anywhere (isolates the project_members-only grant path).
+//
+// Tenant C ("freeriders")       — owner: userC
+//   project C1 ("nologo")
+//   project C2 ("t42")
+// Tenant C is the TWO-PROJECT tenant, mirroring the real live-Supabase
+// `freeriders` tenant which owns both `nologo` and `t42` as of 2026-08-31.
+// It exists because, until it was added, EVERY tenant in this fixture owned
+// exactly one project — which means no assertion in this file could
+// distinguish TENANT grain from PROJECT grain: the two collapse into the
+// same row set when a tenant has a single project. That is precisely the
+// RC-4 failure mode ("any capability a client can switch on/off needs an
+// acceptance check that switches it on") applied to the fixture itself.
+// Every table whose policies are tenant-grain (`leads`) versus project-grain
+// (`form_submissions`, `form_events`) is now separable — see block (i).
+//
+// Tenant C's users are chosen so each grant PATH is isolated:
+//   userC             — tenant_members OWNER on tenant C, no project_members
+//                       row at all. Tenant grain + owner precedence (ADR-017
+//                       Decision 2: owning a tenant implies all its projects).
+//   userEditorC1      — project_members EDITOR on C1 ONLY, no tenant_members
+//                       row anywhere (same shape as userEditorA1, but now
+//                       against a tenant that has a SECOND project to leak
+//                       into). This is the user that answers "is this table
+//                       tenant grain or project grain?" for real.
+//   userTenantViewerC — tenant_members VIEWER on tenant C, no project_members
+//                       row. The mirror-image probe: tenant grain WITHOUT
+//                       owner precedence, so get_my_tenant_ids() returns
+//                       tenant C while get_my_project_ids() returns NOTHING.
 
 const ids = {}
 
@@ -72,7 +100,7 @@ beforeEach(async () => {
 })
 
 describe('fixture setup', () => {
-  it('seeds two tenants, two projects, three users, and memberships as superuser', async () => {
+  it('seeds three tenants (one of them owning TWO projects), four projects, six users, and memberships as superuser', async () => {
     await asSuperuser(async () => {
       const tenantA = await client.query(
         `insert into public.tenants (slug, display_name, domain) values ('verify-tenant-a', 'Tenant A', 'tenant-a.verify.test') returning id`
@@ -118,6 +146,53 @@ describe('fixture setup', () => {
       await client.query(
         `insert into public.project_members (project_id, user_id, role) values ($1, $2, 'editor')`,
         [ids.projectA1, ids.userEditorA1]
+      )
+
+      // ── Tenant C — the two-project tenant (mirrors freeriders/nologo+t42) ──
+      // Everything below follows the same insert idiom as tenants A/B above;
+      // the only structural difference is that ONE tenant now owns TWO
+      // projects, which is what makes tenant-grain vs project-grain
+      // separable for the first time in this fixture.
+      const tenantC = await client.query(
+        `insert into public.tenants (slug, display_name, domain) values ('verify-tenant-c', 'Tenant C', 'tenant-c.verify.test') returning id`
+      )
+      ids.tenantC = tenantC.rows[0].id
+
+      const projectC1 = await client.query(
+        `insert into public.projects (slug, tenant_id, name) values ('verify-c1', $1, 'Project C1') returning id`,
+        [ids.tenantC]
+      )
+      const projectC2 = await client.query(
+        `insert into public.projects (slug, tenant_id, name) values ('verify-c2', $1, 'Project C2') returning id`,
+        [ids.tenantC]
+      )
+      ids.projectC1 = projectC1.rows[0].id
+      ids.projectC2 = projectC2.rows[0].id
+
+      const userC = await client.query(`insert into auth.users (email) values ('owner-c@verify.test') returning id`)
+      const userEditorC1 = await client.query(
+        `insert into auth.users (email) values ('editor-c1@verify.test') returning id`
+      )
+      const userTenantViewerC = await client.query(
+        `insert into auth.users (email) values ('tenant-viewer-c@verify.test') returning id`
+      )
+      ids.userC = userC.rows[0].id
+      ids.userEditorC1 = userEditorC1.rows[0].id
+      ids.userTenantViewerC = userTenantViewerC.rows[0].id
+
+      await client.query(
+        `insert into public.tenant_members (tenant_id, user_id, role) values ($1, $2, 'owner')`,
+        [ids.tenantC, ids.userC]
+      )
+      await client.query(
+        `insert into public.tenant_members (tenant_id, user_id, role) values ($1, $2, 'viewer')`,
+        [ids.tenantC, ids.userTenantViewerC]
+      )
+      // NOTE: userEditorC1 deliberately gets NO tenant_members row — the
+      // whole point of this user is the project_members-only grant path.
+      await client.query(
+        `insert into public.project_members (project_id, user_id, role) values ($1, $2, 'editor')`,
+        [ids.projectC1, ids.userEditorC1]
       )
 
       // No manual profiles insert needed: `on_auth_user_created` /
@@ -727,5 +802,813 @@ describe('(g) leads — ungranted today; tenant-grain RLS proven sound once gran
        where table_schema = 'public' and table_name = 'leads' and grantee = 'authenticated'`
     )
     expect(rows).toEqual([])
+  })
+})
+
+// ── (h) form_submissions + form_events — migrations 016–019 (Forms Module) ──
+//
+// Filled as part of finding I-11 close-out: `form_submissions` and
+// `form_events` are the two tables that hold real client form submission
+// content, and before this block NEITHER was mentioned anywhere in this
+// suite — the ADR-018 §16 access model ("anonymous visitors create via the
+// service-role route; dashboard members read/update via RLS; no anon
+// policy") had never been exercised against a real Postgres. Everything
+// asserted here was read off migrations 016/017/018/019 first, not assumed.
+//
+// Applied LAST, after (g), so every earlier block ran against the pre-016
+// state. Four things are proven, in this order:
+//   (1) GRANT layer — `authenticated` gets exactly SELECT+UPDATE on
+//       form_submissions and SELECT only on form_events (016/017); `anon`
+//       gets NOTHING on either (the "no anon policy" claim is actually
+//       enforced one layer lower, by the absence of a grant); `service_role`
+//       holds the full DML set (018 — the fix for the 42501 that broke the
+//       anonymous POST path).
+//   (2) POLICY GRAIN — both tables' policies are PROJECT-grain
+//       (get_my_project_ids / get_my_writable_project_ids) and reference
+//       project_id only. This is the distinction that matters: `leads`
+//       (block (g)) is still tenant-grain, so a project-only editor sees
+//       nothing there; these tables are the project-grain model ADR-017
+//       Decision 6 wants, and a silent regression to tenant-grain would
+//       both over-share (every project in the tenant) and under-share
+//       (project_members-only grants). Asserted structurally (pg_policies)
+//       AND behaviourally (a row whose tenant_id is A's but whose
+//       project_id is B's must be visible to B, never to A).
+//   (3) WRITE PATH — the service role is the only writer. `authenticated`
+//       cannot INSERT or DELETE either table (permission denied, not an
+//       empty result), cannot INSERT or UPDATE form_events at all, and a
+//       viewer cannot UPDATE a submission it can read. `service_role` can.
+//   (4) migration 019's environment/project_slug columns and the widened
+//       status CHECK ('skipped' accepted, garbage rejected) really exist.
+
+describe('(h) form_submissions + form_events — migrations 016–019 (forms data isolation)', () => {
+  const subIds = {}
+  const eventIds = {}
+
+  beforeAll(async () => {
+    await asSuperuser(async () => {
+      // Pre-016 baseline — proves this block tests a real before/after and
+      // that no earlier block accidentally created these tables.
+      const pre = await client.query(
+        `select table_name from information_schema.tables
+         where table_schema = 'public' and table_name in ('form_submissions', 'form_events')`
+      )
+      if (pre.rows.length !== 0) {
+        throw new Error(
+          'Expected form_submissions/form_events not to exist before migration 016 — got: ' +
+            JSON.stringify(pre.rows)
+        )
+      }
+
+      for (const file of [
+        '016_form_submissions.sql',
+        '017_form_events.sql',
+        '018_form_tables_service_role_grants.sql',
+        '019_form_events_env_and_status.sql',
+      ]) {
+        await applyMigrationFile(client, path.join(__dirname, '..', 'migrations', file))
+      }
+
+      // Seed four submissions. The fourth is the discriminator: its
+      // tenant_id is tenant A's but its project_id is project B1 — under
+      // project-grain RLS it belongs to B and MUST be invisible to A.
+      const seed = async (tenantId, projectId, formId) => {
+        const { rows } = await client.query(
+          `insert into public.form_submissions (tenant_id, project_id, form_id, form_version, submission_data)
+           values ($1, $2, $3, 1, '{"name": "seed"}'::jsonb) returning id`,
+          [tenantId, projectId, formId]
+        )
+        return rows[0].id
+      }
+      subIds.a = await seed(ids.tenantA, ids.projectA1, 'early-access')
+      subIds.b = await seed(ids.tenantB, ids.projectB1, 'early-access')
+      subIds.platform = await seed(null, null, 'early-access')
+      subIds.tenantAProjectB = await seed(ids.tenantA, ids.projectB1, 'early-access')
+
+      const seedEvent = async (tenantId, projectId, submissionId, slug) => {
+        const { rows } = await client.query(
+          `insert into public.form_events (tenant_id, project_id, form_id, form_version, submission_id, project_slug, environment)
+           values ($1, $2, 'early-access', 1, $3, $4, 'production') returning event_id`,
+          [tenantId, projectId, submissionId, slug]
+        )
+        return rows[0].event_id
+      }
+      eventIds.a = await seedEvent(ids.tenantA, ids.projectA1, subIds.a, 'verify-a1')
+      eventIds.b = await seedEvent(ids.tenantB, ids.projectB1, subIds.b, 'verify-b1')
+      eventIds.platform = await seedEvent(null, null, subIds.platform, null)
+    })
+  })
+
+  // ── (1) GRANT layer ──────────────────────────────────────────────────────
+
+  it('RLS is ENABLED on both forms tables', async () => {
+    const { rows } = await client.query(
+      `select tablename, rowsecurity from pg_tables
+       where schemaname = 'public' and tablename in ('form_submissions', 'form_events')
+       order by tablename`
+    )
+    expect(rows).toEqual([
+      { tablename: 'form_events', rowsecurity: true },
+      { tablename: 'form_submissions', rowsecurity: true },
+    ])
+  })
+
+  it('authenticated holds exactly SELECT+UPDATE on form_submissions and SELECT only on form_events — no INSERT, no DELETE (migrations 016/017)', async () => {
+    const { rows } = await client.query(
+      `select table_name, privilege_type from information_schema.role_table_grants
+       where table_schema = 'public' and grantee = 'authenticated'
+         and table_name in ('form_submissions', 'form_events')
+       order by table_name, privilege_type`
+    )
+    expect(rows).toEqual([
+      { table_name: 'form_events', privilege_type: 'SELECT' },
+      { table_name: 'form_submissions', privilege_type: 'SELECT' },
+      { table_name: 'form_submissions', privilege_type: 'UPDATE' },
+    ])
+  })
+
+  it('ANON HAS NO GRANT AT ALL on either forms table — table-level or column-level (this, not a policy, is what makes "no anon access" true; a submission is client data and anon is the whole public internet)', async () => {
+    const table = await client.query(
+      `select table_name, privilege_type from information_schema.role_table_grants
+       where table_schema = 'public' and grantee = 'anon'
+         and table_name in ('form_submissions', 'form_events')`
+    )
+    expect(table.rows).toEqual([])
+
+    // Column-level grants are a separate catalog (migration 012 uses them on
+    // profiles) — a column grant here would be just as much of a leak.
+    const cols = await client.query(
+      `select table_name, column_name, privilege_type from information_schema.column_privileges
+       where table_schema = 'public' and grantee = 'anon'
+         and table_name in ('form_submissions', 'form_events')`
+    )
+    expect(cols.rows).toEqual([])
+  })
+
+  it('service_role holds the full DML set on both tables (migration 018 — the fix for the 42501 "permission denied" that broke the anonymous POST path)', async () => {
+    const { rows } = await client.query(
+      `select table_name, privilege_type from information_schema.role_table_grants
+       where table_schema = 'public' and grantee = 'service_role'
+         and table_name in ('form_submissions', 'form_events')
+         and privilege_type in ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
+       order by table_name, privilege_type`
+    )
+    const byTable = {}
+    for (const r of rows) (byTable[r.table_name] ??= []).push(r.privilege_type)
+    expect(byTable.form_submissions).toEqual(['DELETE', 'INSERT', 'SELECT', 'UPDATE'])
+    expect(byTable.form_events).toEqual(['DELETE', 'INSERT', 'SELECT', 'UPDATE'])
+  })
+
+  // ── (2) POLICY GRAIN ─────────────────────────────────────────────────────
+
+  it('the policies that exist are exactly the ones migrations 016/017 define — 2 on form_submissions (SELECT, UPDATE), 1 on form_events (SELECT); no INSERT/DELETE/ALL policy anywhere', async () => {
+    const { rows } = await client.query(
+      `select tablename, policyname, cmd, roles::text as roles from pg_policies
+       where schemaname = 'public' and tablename in ('form_submissions', 'form_events')
+       order by tablename, cmd`
+    )
+    expect(rows.map((r) => `${r.tablename}:${r.cmd}`)).toEqual([
+      'form_events:SELECT',
+      'form_submissions:SELECT',
+      'form_submissions:UPDATE',
+    ])
+    // Every policy applies to PUBLIC (no role restriction) — so the grant
+    // layer above is the only thing standing between anon and these rows.
+    // Asserted so the two layers are never conflated when reading this file.
+    for (const r of rows) expect(r.roles).toBe('{public}')
+  })
+
+  it('POLICY GRAIN IS PROJECT, NOT TENANT: every forms policy filters on project_id via get_my_project_ids()/get_my_writable_project_ids() and mentions no tenant helper at all', async () => {
+    const { rows } = await client.query(
+      `select tablename, cmd, coalesce(qual, '') as qual, coalesce(with_check, '') as with_check
+       from pg_policies
+       where schemaname = 'public' and tablename in ('form_submissions', 'form_events')
+       order by tablename, cmd`
+    )
+    for (const r of rows) {
+      const expr = `${r.qual} ${r.with_check}`
+      expect(expr).toMatch(/project_id/)
+      // Tenant-grain helpers must not appear — that would widen a project
+      // grant to every project in the tenant (the `leads` shape, block (g)).
+      expect(expr).not.toMatch(/get_my_tenant_ids|get_my_writable_tenant_ids|get_my_owned_tenant_ids/)
+      expect(expr).not.toMatch(/tenant_id/)
+    }
+    const readGrain = rows.filter((r) => r.cmd === 'SELECT')
+    for (const r of readGrain) expect(r.qual).toMatch(/get_my_project_ids/)
+
+    const writeGrain = rows.find((r) => r.tablename === 'form_submissions' && r.cmd === 'UPDATE')
+    // Writable-only helper on BOTH sides — a USING-only policy would let a
+    // writable row be UPDATEd into a project the caller cannot write.
+    expect(writeGrain.qual).toMatch(/get_my_writable_project_ids/)
+    expect(writeGrain.with_check).toMatch(/get_my_writable_project_ids/)
+  })
+
+  // ── (2b) The same grain, proven behaviourally ────────────────────────────
+
+  it('CROSS-TENANT READ DENIAL: tenant A owner reads submission A and nothing else — not B\'s, not the platform-level row', async () => {
+    await loginAs(ids.userA)
+    const { rows } = await client.query(`select id from public.form_submissions`)
+    const seen = rows.map((r) => r.id)
+    expect(seen).toEqual([subIds.a])
+    expect(seen).not.toContain(subIds.b)
+    expect(seen).not.toContain(subIds.platform)
+  })
+
+  it('PROJECT-GRAIN DISCRIMINATOR: a submission carrying tenant A\'s tenant_id but project B1\'s project_id is visible to tenant B\'s owner and INVISIBLE to tenant A\'s — a tenant-grain regression would flip both halves', async () => {
+    await loginAs(ids.userA)
+    const a = await client.query(`select id from public.form_submissions where id = $1`, [
+      subIds.tenantAProjectB,
+    ])
+    expect(a.rows).toHaveLength(0)
+
+    await loginAs(ids.userB)
+    const b = await client.query(`select id from public.form_submissions where id = $1`, [
+      subIds.tenantAProjectB,
+    ])
+    expect(b.rows).toHaveLength(1)
+  })
+
+  it('a project_members-only editor (userEditorA1, zero tenant_members rows anywhere) DOES see project A1\'s submissions — the project-grain path `leads` still lacks (contrast with block (g))', async () => {
+    await loginAs(ids.userEditorA1)
+    const { rows } = await client.query(`select id from public.form_submissions`)
+    expect(rows.map((r) => r.id)).toEqual([subIds.a])
+  })
+
+  it('a user with zero memberships anywhere sees zero submissions and zero form_events', async () => {
+    await loginAs(ids.userNoMemberships)
+    const [subs, evts] = await Promise.all([
+      client.query(`select id from public.form_submissions`),
+      client.query(`select event_id from public.form_events`),
+    ])
+    expect(subs.rows).toHaveLength(0)
+    expect(evts.rows).toHaveLength(0)
+  })
+
+  // ── (3) WRITE PATH — service role is the only writer ─────────────────────
+
+  it('CROSS-TENANT WRITE DENIAL: tenant A owner\'s UPDATE of tenant B\'s submission affects 0 rows, while the same UPDATE on their own submission affects 1', async () => {
+    await loginAs(ids.userA)
+    const cross = await client.query(`update public.form_submissions set status = 'archived' where id = $1`, [
+      subIds.b,
+    ])
+    expect(cross.rowCount).toBe(0)
+
+    const own = await client.query(`update public.form_submissions set status = 'processed' where id = $1`, [
+      subIds.a,
+    ])
+    expect(own.rowCount).toBe(1)
+  })
+
+  it('WITH CHECK holds: an owner cannot re-parent their own submission into a project they cannot write — the UPDATE is REJECTED outright ("new row violates row-level security policy"), not silently filtered, so a writable row can never be walked across the tenant boundary', async () => {
+    await loginAs(ids.userA)
+    // Note the asymmetry vs. the cross-tenant UPDATE above: reaching for
+    // someone else's row is a 0-row no-op (USING filters it away), whereas
+    // pushing your own row INTO someone else's project is a hard error
+    // (WITH CHECK evaluates the post-image). Both are denials; only this
+    // one surfaces to the caller. Pinned so a future policy edit that drops
+    // the WITH CHECK — leaving a USING-only UPDATE policy — fails here.
+    await expect(
+      client.query(`update public.form_submissions set project_id = $1 where id = $2`, [
+        ids.projectB1,
+        subIds.a,
+      ])
+    ).rejects.toThrow(/new row violates row-level security policy for table "form_submissions"/)
+
+    // The row did not move.
+    await asSuperuser(async () => {
+      const { rows } = await client.query(`select project_id from public.form_submissions where id = $1`, [
+        subIds.a,
+      ])
+      expect(rows[0].project_id).toBe(ids.projectA1)
+    })
+  })
+
+  it('VIEWER CAN READ but CANNOT WRITE — project-only viewer on A1 sees submission A, and an UPDATE affects 0 rows (get_my_writable_project_ids excludes viewer)', async () => {
+    await loginAs(ids.userViewerA1)
+    const read = await client.query(`select id from public.form_submissions where id = $1`, [subIds.a])
+    expect(read.rows).toHaveLength(1)
+    const write = await client.query(`update public.form_submissions set status = 'spam' where id = $1`, [
+      subIds.a,
+    ])
+    expect(write.rowCount).toBe(0)
+  })
+
+  it('authenticated CANNOT INSERT or DELETE form_submissions — permission denied at the grant layer, not a row-filtered no-op (the anonymous create path is service-role only, ADR-018 §16)', async () => {
+    await loginAs(ids.userA)
+    await expect(
+      client.query(
+        `insert into public.form_submissions (tenant_id, project_id, form_id, form_version) values ($1, $2, 'early-access', 1)`,
+        [ids.tenantA, ids.projectA1]
+      )
+    ).rejects.toThrow(/permission denied for table form_submissions/)
+    await expect(
+      client.query(`delete from public.form_submissions where id = $1`, [subIds.a])
+    ).rejects.toThrow(/permission denied for table form_submissions/)
+  })
+
+  it('form_events is READ-ONLY for authenticated — SELECT is scoped to own projects, INSERT/UPDATE/DELETE are permission denied (the outbox is written by the emit path and consumed by ADR-019, both service-role)', async () => {
+    await loginAs(ids.userA)
+    const { rows } = await client.query(`select event_id from public.form_events`)
+    expect(rows.map((r) => r.event_id)).toEqual([eventIds.a])
+
+    await expect(
+      client.query(
+        `insert into public.form_events (tenant_id, project_id, form_id, form_version, submission_id) values ($1, $2, 'early-access', 1, $3)`,
+        [ids.tenantA, ids.projectA1, subIds.a]
+      )
+    ).rejects.toThrow(/permission denied for table form_events/)
+    await expect(
+      client.query(`update public.form_events set status = 'delivered' where event_id = $1`, [eventIds.a])
+    ).rejects.toThrow(/permission denied for table form_events/)
+    await expect(
+      client.query(`delete from public.form_events where event_id = $1`, [eventIds.a])
+    ).rejects.toThrow(/permission denied for table form_events/)
+  })
+
+  it('platform-level rows (project_id null) are invisible to every authenticated member on both tables — they are admin/service-role surface only', async () => {
+    for (const userId of [ids.userA, ids.userB, ids.userEditorA1, ids.userViewerA1]) {
+      await loginAs(userId)
+      const sub = await client.query(`select id from public.form_submissions where id = $1`, [subIds.platform])
+      expect(sub.rows).toHaveLength(0)
+      const evt = await client.query(`select event_id from public.form_events where event_id = $1`, [
+        eventIds.platform,
+      ])
+      expect(evt.rows).toHaveLength(0)
+    }
+  })
+
+  it('ANON (the whole public internet — the role a visitor\'s submission would arrive as if the route ever stopped using the service-role client) is denied outright on both tables: SELECT, INSERT and UPDATE all raise permission denied', async () => {
+    await logout()
+    await client.query(`set role anon`)
+    try {
+      await expect(client.query(`select id from public.form_submissions`)).rejects.toThrow(
+        /permission denied for table form_submissions/
+      )
+      await expect(
+        client.query(
+          `insert into public.form_submissions (form_id, form_version) values ('early-access', 1)`
+        )
+      ).rejects.toThrow(/permission denied for table form_submissions/)
+      await expect(client.query(`select event_id from public.form_events`)).rejects.toThrow(
+        /permission denied for table form_events/
+      )
+      await expect(
+        client.query(
+          `insert into public.form_events (form_id, form_version, submission_id) values ('early-access', 1, $1)`,
+          [subIds.a]
+        )
+      ).rejects.toThrow(/permission denied for table form_events/)
+    } finally {
+      await client.query(`reset role`)
+    }
+  })
+
+  it('THE SERVICE ROLE IS THE ONLY WRITER: running as service_role, the exact INSERT pair the anonymous route performs (form_submissions then form_events) succeeds', async () => {
+    await logout()
+    await client.query(`set role service_role`)
+    try {
+      const sub = await client.query(
+        `insert into public.form_submissions (tenant_id, project_id, form_id, form_version, submission_data, completion_state)
+         values ($1, $2, 'early-access', 1, '{"name": "via service role"}'::jsonb, 'complete') returning id`,
+        [ids.tenantA, ids.projectA1]
+      )
+      expect(sub.rows).toHaveLength(1)
+
+      const evt = await client.query(
+        `insert into public.form_events (tenant_id, project_id, form_id, form_version, submission_id, project_slug, environment, status)
+         values ($1, $2, 'early-access', 1, $3, 'verify-a1', 'production', 'pending') returning event_id`,
+        [ids.tenantA, ids.projectA1, sub.rows[0].id]
+      )
+      expect(evt.rows).toHaveLength(1)
+
+      // And it bypasses RLS entirely — it sees every project's rows, which is
+      // exactly why no route may ever hand it a caller-supplied project scope.
+      const all = await client.query(`select id from public.form_submissions`)
+      expect(all.rows.length).toBeGreaterThan(4)
+    } finally {
+      await client.query(`reset role`)
+    }
+  })
+
+  // ── (4) Migration 019 shape ──────────────────────────────────────────────
+
+  it('migration 019 added form_events.environment + project_slug and widened the status CHECK to accept \'skipped\' while still rejecting an unknown status', async () => {
+    await asSuperuser(async () => {
+      const cols = await client.query(
+        `select column_name from information_schema.columns
+         where table_schema = 'public' and table_name = 'form_events'
+           and column_name in ('environment', 'project_slug')
+         order by column_name`
+      )
+      expect(cols.rows.map((r) => r.column_name)).toEqual(['environment', 'project_slug'])
+
+      const ok = await client.query(
+        `insert into public.form_events (form_id, form_version, submission_id, status, environment)
+         values ('early-access', 1, $1, 'skipped', 'preview') returning event_id`,
+        [subIds.a]
+      )
+      expect(ok.rows).toHaveLength(1)
+
+      await expect(
+        client.query(
+          `insert into public.form_events (form_id, form_version, submission_id, status) values ('early-access', 1, $1, 'not-a-status')`,
+          [subIds.a]
+        )
+      ).rejects.toThrow(/form_events_status_check/)
+    })
+  })
+})
+
+// ── (i) TWO-PROJECT TENANT — tenant grain vs project grain, made separable ──
+//
+// Until Tenant C existed, every tenant in this fixture owned exactly ONE
+// project, so "tenant grain" and "project grain" produced identical row sets
+// and NO assertion in this file could tell them apart. This block is the
+// acceptance check RC-4 asks for, applied to the fixture's own blind spot:
+// it switches on the configuration that has never been exercised (one tenant,
+// two projects) and reads the resulting rows out of a real Postgres under
+// real RLS, rather than reasoning about the policy text.
+//
+// It is a CHARACTERIZATION suite: every assertion below states what the
+// migrations as they stand TODAY actually do — including where that differs
+// from the ADR-017 per-project target model. Where the two differ, the
+// difference is named inline as an OPEN FINDING with the target policy, and
+// the test asserts today's behaviour so that the day the policy is rewritten,
+// this block fails loudly and deliberately instead of silently drifting. No
+// migration or policy SQL is changed by this block.
+//
+// Runs LAST so migrations 014–019 (applied by blocks (e)/(f)/(h)) are all in
+// force — this is the full, current production shape.
+
+describe('(i) two-project tenant (Tenant C = freeriders/nologo+t42): tenant grain vs project grain', () => {
+  const cLeadIds = {}
+  const cSubIds = {}
+
+  beforeAll(async () => {
+    await asSuperuser(async () => {
+      // Leads: one per project of the SAME tenant. Under tenant-grain RLS
+      // these two rows are indistinguishable; under project-grain RLS they
+      // are not. That is the whole experiment.
+      const l1 = await client.query(
+        `insert into public.leads (tenant_id, project_id, name, email) values ($1, $2, 'Lead C1', 'lead-c1@verify.test') returning id`,
+        [ids.tenantC, ids.projectC1]
+      )
+      const l2 = await client.query(
+        `insert into public.leads (tenant_id, project_id, name, email) values ($1, $2, 'Lead C2', 'lead-c2@verify.test') returning id`,
+        [ids.tenantC, ids.projectC2]
+      )
+      cLeadIds.c1 = l1.rows[0].id
+      cLeadIds.c2 = l2.rows[0].id
+
+      // form_submissions: same pair of projects, plus a platform-level row.
+      const seedSub = async (tenantId, projectId) => {
+        const { rows } = await client.query(
+          `insert into public.form_submissions (tenant_id, project_id, form_id, form_version, submission_data)
+           values ($1, $2, 'early-access', 1, '{"name": "seed-c"}'::jsonb) returning id`,
+          [tenantId, projectId]
+        )
+        return rows[0].id
+      }
+      cSubIds.c1 = await seedSub(ids.tenantC, ids.projectC1)
+      cSubIds.c2 = await seedSub(ids.tenantC, ids.projectC2)
+      cSubIds.platform = await seedSub(null, null)
+
+      // `leads` has no grant to `authenticated` in any migration (block (g)).
+      // Grant it here, exactly as block (g) does, so the POLICY can be
+      // exercised at all; reverted in afterAll so this block leaves the
+      // grant catalog exactly as it found it.
+      await client.query(`grant select, insert, update on public.leads to authenticated`)
+    })
+  })
+
+  afterAll(async () => {
+    await asSuperuser(() =>
+      client.query(`revoke select, insert, update on public.leads from authenticated`)
+    )
+  })
+
+  // ── The fixture itself now models what it never modelled ────────────────
+
+  it('the fixture really does contain a tenant with TWO projects (the precondition every assertion below depends on)', async () => {
+    await asSuperuser(async () => {
+      const { rows } = await client.query(
+        `select slug from public.projects where tenant_id = $1 order by slug`,
+        [ids.tenantC]
+      )
+      expect(rows.map((r) => r.slug)).toEqual(['verify-c1', 'verify-c2'])
+      // And no OTHER tenant in the fixture has two — i.e. this really was
+      // the missing configuration, and the earlier blocks genuinely could
+      // not have caught a grain bug.
+      const counts = await client.query(
+        `select tenant_id, count(*)::int as n from public.projects group by tenant_id order by n desc`
+      )
+      expect(counts.rows[0].n).toBe(2)
+      expect(counts.rows.slice(1).every((r) => r.n === 1)).toBe(true)
+    })
+  })
+
+  // ── leads — TENANT grain (schema.sql:~298) ───────────────────────────────
+  //
+  // Policy in force today (schema.sql, migration-004 era, never rewritten):
+  //   "Members can read leads for their tenants"
+  //     using (tenant_id in (select public.get_my_tenant_ids()))
+  // `leads.project_id` exists (migration 008) but NO leads policy references
+  // it. So leads visibility is decided purely by tenant_members.
+
+  it('leads ARE TENANT GRAIN: userC (tenant_members owner, no project_members row at all) reads BOTH projects\' leads — C1\'s and C2\'s', async () => {
+    await loginAs(ids.userC)
+    const { rows } = await client.query(`select id from public.leads order by created_at`)
+    const seen = rows.map((r) => r.id)
+    expect(seen).toContain(cLeadIds.c1)
+    expect(seen).toContain(cLeadIds.c2)
+    expect(seen).toHaveLength(2)
+  })
+
+  it('leads OVER-SHARE across projects for any tenant member: userTenantViewerC (tenant_members VIEWER on C, zero project grants) also reads BOTH projects\' leads', async () => {
+    // This is the tenant-grain over-share half of the finding: a user with
+    // no project-scoped grant whatsoever still sees every project's leads in
+    // the tenant, because the policy never looks at project_id. With a
+    // one-project-per-tenant fixture this was indistinguishable from correct
+    // behaviour. With two projects it is visible.
+    //
+    // OPEN FINDING (documented, NOT fixed here — no migration is changed):
+    //   target policy per ADR-017 Decision 6 is
+    //     using (project_id in (select public.get_my_project_ids()))
+    //   matching form_submissions (migration 016). Under that target,
+    //   userTenantViewerC would read ZERO leads (they own no tenant, hold no
+    //   project_members row) instead of two.
+    await loginAs(ids.userTenantViewerC)
+    const { rows } = await client.query(`select id from public.leads`)
+    const seen = rows.map((r) => r.id)
+    expect(seen).toContain(cLeadIds.c1)
+    expect(seen).toContain(cLeadIds.c2)
+  })
+
+  it('leads UNDER-SHARE for project-grain members: userEditorC1 (project_members editor on C1 ONLY) reads ZERO leads — not C2\'s (no leak), but not C1\'s own either (the real gap)', async () => {
+    // THE QUESTION THIS BLOCK EXISTS TO ANSWER, answered from a real
+    // Postgres result rather than from reading the policy:
+    //   Does a project-grain-only member of C1 read C2's leads today?  NO.
+    // But not because the policy scopes by project — it is because the
+    // policy scopes by TENANT and this user has no tenant_members row at
+    // all, so get_my_tenant_ids() returns the empty set and the whole table
+    // is invisible to them, C1 included. The tenant-grain policy therefore
+    // fails CLOSED for this user (no cross-project leak) while ALSO denying
+    // the access ADR-017 says an editor should have.
+    //
+    // The over-share (previous test) and this under-share are the same root
+    // cause — a tenant-grain policy on a table whose grain is now project —
+    // pointing in opposite directions depending on which grant path the
+    // user holds. Both are fixed by the same one-line rewrite to
+    // `project_id in (select public.get_my_project_ids())`.
+    await loginAs(ids.userEditorC1)
+    const { rows } = await client.query(`select id from public.leads`)
+    expect(rows).toHaveLength(0)
+
+    // Stated explicitly for both halves, so a future rewrite has to change
+    // the C1 line (from 0 rows to 1) and MUST NOT change the C2 line.
+    const c1 = await client.query(`select id from public.leads where id = $1`, [cLeadIds.c1])
+    expect(c1.rows).toHaveLength(0) // TARGET AFTER REWRITE: 1 row
+    const c2 = await client.query(`select id from public.leads where id = $1`, [cLeadIds.c2])
+    expect(c2.rows).toHaveLength(0) // TARGET AFTER REWRITE: still 0 rows
+  })
+
+  it('leads WRITE is tenant grain too: userC can update C2\'s lead despite holding no project grant on C2, and neither tenant A nor tenant B can touch tenant C\'s leads at all', async () => {
+    await loginAs(ids.userC)
+    const own = await client.query(`update public.leads set message = 'contacted' where id = $1`, [
+      cLeadIds.c2,
+    ])
+    expect(own.rowCount).toBe(1)
+
+    for (const userId of [ids.userA, ids.userB]) {
+      await loginAs(userId)
+      const read = await client.query(`select id from public.leads where id in ($1, $2)`, [
+        cLeadIds.c1,
+        cLeadIds.c2,
+      ])
+      expect(read.rows).toHaveLength(0)
+      const write = await client.query(`update public.leads set message = 'hijacked' where id in ($1, $2)`, [
+        cLeadIds.c1,
+        cLeadIds.c2,
+      ])
+      expect(write.rowCount).toBe(0)
+    }
+  })
+
+  // ── form_submissions — PROJECT grain (migration 016:~105) ────────────────
+
+  it('form_submissions ARE PROJECT GRAIN: userEditorC1 sees C1\'s submission and NOT C2\'s — two projects of the SAME tenant are genuinely isolated from each other', async () => {
+    await loginAs(ids.userEditorC1)
+    const { rows } = await client.query(`select id from public.form_submissions`)
+    expect(rows.map((r) => r.id)).toEqual([cSubIds.c1])
+
+    const c2 = await client.query(`select id from public.form_submissions where id = $1`, [cSubIds.c2])
+    expect(c2.rows).toHaveLength(0)
+  })
+
+  it('form_submissions cross-PROJECT write denial inside one tenant: userEditorC1\'s UPDATE of C2\'s submission affects 0 rows, while C1\'s affects 1', async () => {
+    await loginAs(ids.userEditorC1)
+    const cross = await client.query(`update public.form_submissions set status = 'archived' where id = $1`, [
+      cSubIds.c2,
+    ])
+    expect(cross.rowCount).toBe(0)
+
+    const own = await client.query(`update public.form_submissions set status = 'processed' where id = $1`, [
+      cSubIds.c1,
+    ])
+    expect(own.rowCount).toBe(1)
+  })
+
+  it('tenant-owner precedence still applies at project grain: userC (owner of tenant C, no project_members row) sees BOTH C1\'s and C2\'s submissions via get_my_project_ids()\'s owned-tenant branch', async () => {
+    await loginAs(ids.userC)
+    const { rows } = await client.query(`select id from public.form_submissions order by created_at`)
+    const seen = rows.map((r) => r.id)
+    expect(seen).toContain(cSubIds.c1)
+    expect(seen).toContain(cSubIds.c2)
+    expect(seen).not.toContain(cSubIds.platform)
+  })
+
+  it('GRAIN MISMATCH, same user, two tables: userTenantViewerC reads BOTH leads but ZERO form_submissions — get_my_tenant_ids() returns tenant C while get_my_project_ids() (owner-only + project_members) returns nothing', async () => {
+    // The single sharpest demonstration that the two tables disagree about
+    // what a "member" is. A non-owner tenant member is fully visible to the
+    // tenant-grain table and completely invisible to the project-grain one.
+    // Recorded as today's reality; ADR-017's target model resolves it by
+    // moving `leads` to the project-grain side (and, per Decision 6, giving
+    // non-owner tenant members their access through project_members rows).
+    await loginAs(ids.userTenantViewerC)
+    const leads = await client.query(`select id from public.leads`)
+    expect(leads.rows).toHaveLength(2)
+    const subs = await client.query(`select id from public.form_submissions`)
+    expect(subs.rows).toHaveLength(0)
+  })
+
+  it('a project_id = null (platform-level) submission is invisible to EVERY member of the two-project tenant — owner, project editor and tenant viewer alike', async () => {
+    for (const userId of [ids.userC, ids.userEditorC1, ids.userTenantViewerC]) {
+      await loginAs(userId)
+      const { rows } = await client.query(`select id from public.form_submissions where id = $1`, [
+        cSubIds.platform,
+      ])
+      expect(rows).toHaveLength(0)
+    }
+  })
+
+  it('tenant A and tenant B see NONE of tenant C\'s submissions — adding a third tenant did not widen anything for the existing two', async () => {
+    for (const userId of [ids.userA, ids.userB, ids.userEditorA1, ids.userNoMemberships]) {
+      await loginAs(userId)
+      const { rows } = await client.query(
+        `select id from public.form_submissions where id in ($1, $2, $3)`,
+        [cSubIds.c1, cSubIds.c2, cSubIds.platform]
+      )
+      expect(rows).toHaveLength(0)
+    }
+  })
+
+  // ── projects / project_members / tenant_members under two projects ───────
+
+  it('projects: userC (tenant owner) sees BOTH C1 and C2; userTenantViewerC (tenant viewer) also sees both via the tenant branch of the migration-013 policy', async () => {
+    for (const userId of [ids.userC, ids.userTenantViewerC]) {
+      await loginAs(userId)
+      const { rows } = await client.query(`select id from public.projects order by slug`)
+      expect(rows.map((r) => r.id)).toEqual([ids.projectC1, ids.projectC2])
+    }
+  })
+
+  it('projects: userEditorC1 (project_members on C1 only) sees EXACTLY C1 — the sibling project C2 of the same tenant stays invisible (branch (b) of the migration-013 policy does not widen to the tenant)', async () => {
+    await loginAs(ids.userEditorC1)
+    const { rows } = await client.query(`select id from public.projects`)
+    expect(rows.map((r) => r.id)).toEqual([ids.projectC1])
+  })
+
+  it('projects: tenant A\'s and tenant B\'s users see neither C1 nor C2, and a zero-membership user still sees nothing at all', async () => {
+    for (const userId of [ids.userA, ids.userB, ids.userEditorA1]) {
+      await loginAs(userId)
+      const { rows } = await client.query(`select id from public.projects where id in ($1, $2)`, [
+        ids.projectC1,
+        ids.projectC2,
+      ])
+      expect(rows).toHaveLength(0)
+    }
+    await loginAs(ids.userNoMemberships)
+    const { rows } = await client.query(`select id from public.projects`)
+    expect(rows).toHaveLength(0)
+  })
+
+  it('project_members: userC (tenant owner) reads the C1 editor grant via "Tenant owners can read members of their projects" — including for a project they hold no project_members row on', async () => {
+    await loginAs(ids.userC)
+    const { rows } = await client.query(`select project_id, user_id, role from public.project_members`)
+    expect(rows).toHaveLength(1)
+    expect(rows[0].project_id).toBe(ids.projectC1)
+    expect(rows[0].user_id).toBe(ids.userEditorC1)
+    expect(rows[0].role).toBe('editor')
+  })
+
+  it('project_members: userEditorC1 reads only their OWN row (own-rows policy), and userTenantViewerC — a tenant member who is not an owner — reads NONE', async () => {
+    await loginAs(ids.userEditorC1)
+    const editor = await client.query(`select project_id from public.project_members`)
+    expect(editor.rows.map((r) => r.project_id)).toEqual([ids.projectC1])
+
+    await loginAs(ids.userTenantViewerC)
+    const viewer = await client.query(`select project_id from public.project_members`)
+    expect(viewer.rows).toHaveLength(0)
+  })
+
+  it('tenant_members: userC (owner) reads BOTH tenant C membership rows (own + the tenant viewer\'s); userTenantViewerC reads only their own; userEditorC1 reads none', async () => {
+    await loginAs(ids.userC)
+    const owner = await client.query(`select user_id from public.tenant_members order by created_at`)
+    expect(owner.rows.map((r) => r.user_id).sort()).toEqual([ids.userC, ids.userTenantViewerC].sort())
+
+    await loginAs(ids.userTenantViewerC)
+    const viewer = await client.query(`select user_id, tenant_id from public.tenant_members`)
+    expect(viewer.rows).toHaveLength(1)
+    expect(viewer.rows[0].user_id).toBe(ids.userTenantViewerC)
+    expect(viewer.rows[0].tenant_id).toBe(ids.tenantC)
+
+    await loginAs(ids.userEditorC1)
+    const editor = await client.query(`select user_id from public.tenant_members`)
+    expect(editor.rows).toHaveLength(0)
+  })
+
+  it('tenant_members: tenant A\'s and tenant B\'s owners see no tenant C membership row', async () => {
+    for (const userId of [ids.userA, ids.userB]) {
+      await loginAs(userId)
+      const tm = await client.query(`select user_id from public.tenant_members where tenant_id = $1`, [
+        ids.tenantC,
+      ])
+      expect(tm.rows).toHaveLength(0)
+    }
+  })
+
+  it('DISCOVERED (migration-011 bug class, one more table): `public.tenants` has NO grant to authenticated at all — a tenant read fails CLOSED with "permission denied for table tenants", for the row-owner as much as for a stranger, so its "Members can read their tenants" RLS policy is unreachable today', async () => {
+    // Found while writing this block: the natural cross-tenant probe
+    // (`select id from public.tenants where id = tenantC` as userA) does not
+    // return 0 rows — it raises. `schema.sql` defines the SELECT policy
+    // "Members can read their tenants" using (id in get_my_tenant_ids()),
+    // but no migration (011 included — it audited tenant_members /
+    // project_members / projects only) ever issued
+    // `grant select on public.tenants to authenticated`. Same shape as
+    // `leads` (block (g)) and pre-015 `profiles`: fails closed, harder than
+    // intended, not open — but the policy has never been exercisable by a
+    // real authenticated session, and any future client-side tenant read
+    // (e.g. resolving a tenant's display_name in the dashboard) will hit
+    // 42501 rather than an empty set. Asserted both ways below so this is a
+    // guard, not a footnote.
+    const grants = await client.query(
+      `select privilege_type from information_schema.role_table_grants
+       where table_schema = 'public' and table_name = 'tenants' and grantee = 'authenticated'`
+    )
+    expect(grants.rows).toEqual([])
+
+    // Stranger AND owner both get the permission error — which is exactly
+    // how you tell "no grant" apart from "RLS filtered it away".
+    await loginAs(ids.userA)
+    await expect(
+      client.query(`select id from public.tenants where id = $1`, [ids.tenantC])
+    ).rejects.toThrow(/permission denied for table tenants/)
+    await loginAs(ids.userC)
+    await expect(
+      client.query(`select id from public.tenants where id = $1`, [ids.tenantC])
+    ).rejects.toThrow(/permission denied for table tenants/)
+
+    // And IF the grant were added (simulated, then reverted): the existing
+    // tenant-grain policy does isolate correctly — tenant C is visible to
+    // its own members only. So closing this gap needs the GRANT only, not a
+    // policy rewrite.
+    await asSuperuser(() => client.query(`grant select on public.tenants to authenticated`))
+    try {
+      await loginAs(ids.userC)
+      const mine = await client.query(`select id from public.tenants`)
+      expect(mine.rows.map((r) => r.id)).toEqual([ids.tenantC])
+
+      // Both of tenant C's projects hang off this ONE tenant row — a tenant
+      // read is tenant grain by definition, and userEditorC1 (project grain
+      // only, no tenant_members row) therefore sees NO tenant row at all,
+      // not even C1's owning tenant. Same under-share shape as `leads`.
+      await loginAs(ids.userEditorC1)
+      const editor = await client.query(`select id from public.tenants`)
+      expect(editor.rows).toHaveLength(0)
+
+      for (const userId of [ids.userA, ids.userB]) {
+        await loginAs(userId)
+        const t = await client.query(`select id from public.tenants where id = $1`, [ids.tenantC])
+        expect(t.rows).toHaveLength(0)
+      }
+    } finally {
+      await asSuperuser(() => client.query(`revoke select on public.tenants from authenticated`))
+    }
+  })
+
+  it('form_events follow form_submissions\' project grain across the two projects of one tenant (the outbox must not leak sibling-project events)', async () => {
+    await asSuperuser(async () => {
+      await client.query(
+        `insert into public.form_events (tenant_id, project_id, form_id, form_version, submission_id, project_slug, environment)
+         values ($1, $2, 'early-access', 1, $3, 'verify-c2', 'production')`,
+        [ids.tenantC, ids.projectC2, cSubIds.c2]
+      )
+    })
+    await loginAs(ids.userEditorC1)
+    const { rows } = await client.query(`select event_id from public.form_events`)
+    expect(rows).toHaveLength(0) // C1 has no events; C2's event must not appear
+
+    await loginAs(ids.userC)
+    const ownerRows = await client.query(`select project_id from public.form_events`)
+    expect(ownerRows.rows.map((r) => r.project_id)).toEqual([ids.projectC2])
   })
 })

@@ -20,6 +20,7 @@
  *     integrity), never a definition that may have changed mid-flow.
  */
 import { sanityClient } from '@/lib/sanity/client'
+import { unbrand, type TenantSlug } from '@/lib/tenancy/ids'
 import {
   resolveDefinition,
   type FormDefinition,
@@ -142,18 +143,23 @@ export function mapSanityFormDefinition(input: Record<string, unknown> | null | 
  * (no published doc for the tenant, or a Sanity error) falls back to the code
  * descriptor so the live path never hard-fails on a content gap.
  *
- * `tenantSlug` is the route's path scope (e.g. "livener") — the same value the
- * submission service resolves tenant/project from, and the key the definition is
- * owned by (ADR-018 Decision 1). It is server-derived, never trusted from the body.
+ * `tenantSlug` is the OWNING TENANT's slug — the grain a `formDefinition` is
+ * filed under (ADR-018 Decision 1): two projects of one tenant legitimately
+ * share their tenant's forms. It is NOT the route's project slug. The submission
+ * service resolves it from `projects.tenant_id -> tenants.slug`, server-side;
+ * it is never trusted from the body. The `TenantSlug` brand is what stops the
+ * route's `[projectSlug]` segment being threaded in here again (it used to be:
+ * the two namespaces are identical for every single-project tenant, so the
+ * mistake was invisible).
  */
 export async function resolveActiveDefinition(
   formId: string,
-  tenantSlug: string,
+  tenantSlug: TenantSlug,
 ): Promise<FormDefinition | null> {
   try {
     const doc = await sanityClient.fetch<Record<string, unknown> | null>(formDefinitionByKeyQuery, {
       formId,
-      tenantSlug,
+      tenantSlug: unbrand(tenantSlug),
     })
     const mapped = mapSanityFormDefinition(doc)
     if (mapped) return mapped
