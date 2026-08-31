@@ -374,8 +374,10 @@ export async function getTenantAuthorizationContext(): Promise<TenantAuthorizati
  *
  * Degrades to `[]` (never throws) for ANY failure of this per-project fetch —
  * most notably `tenantToProjectSlug()` throwing when the Supabase project
- * slug has no entry in `TENANT_TO_PROJECT` (e.g. the platform's own `abluo`
- * project, which has no Sanity content mapping and therefore no modules).
+ * slug has no entry in `TENANT_TO_PROJECT` (today: `hoffmann` and `amelie`,
+ * which have no Sanity content mapping and therefore no modules; the
+ * platform's own `abluo` project USED to land here too, and no longer does —
+ * see the ⚠️ note in the body).
  * Without this, a single unmapped project used to throw out of the
  * `Promise.all` in `getTenantAuthorizationContext` and take down the whole
  * resolver — 500-ing `/account` for a user who is otherwise validly granted
@@ -385,24 +387,33 @@ export async function getTenantAuthorizationContext(): Promise<TenantAuthorizati
  */
 async function fetchEnabledModuleIds(projectSlug: SupabaseProjectSlug): Promise<string[]> {
   try {
-    // ⚠️ NAMESPACE CONFLATION — LEFT IN PLACE DELIBERATELY (v1.0.31).
+    // ⚠️ NAMESPACE CONFLATION — STILL A CAST, BUT NO LONGER A LIVE DEFECT.
     //
     // `projectSlug` is a SUPABASE `projects.slug`. `tenantClient()` wants a
     // `UrlProjectSegment` — a key of `TENANT_TO_PROJECT`, whose authority is
-    // `src/proxy.ts`. Those are two different namespaces, and for the
-    // platform's own project they DISAGREE: Supabase says `abluo`, the URL
-    // segment is `abluo-the-tiny-cms`. There is no correct conversion
-    // available here — Supabase→URL is a lookup nothing currently offers —
-    // so the cast stays and the failure is caught below.
+    // `src/proxy.ts`. Those are still two different namespaces and there is
+    // still no Supabase→URL lookup, so the cast stays.
     //
-    // The consequence is live but contained: `abluo` misses the map,
-    // `lookupSanityProjectSlugByUrlSegment()` throws, the catch swallows it,
-    // and the platform project reports ZERO enabled modules. The doc comment
-    // above already describes this outcome as intentional degradation; the
-    // brand is what shows it is actually a namespace bug wearing a
-    // try/catch. Fix by giving `route-config.ts` a `urlSegment` column, or by
-    // renaming Supabase's `abluo` — NOT by widening this parameter back to
-    // `string`.
+    // FIXED (Step 1 of `src/lib/tenancy/RENAME.md`), finding (c) of `f669ab9`:
+    // the two namespaces used to DISAGREE for the platform's own project —
+    // Supabase said `abluo`, the URL segment was a longer legacy name (spelled
+    // out in RENAME.md §0). `abluo`
+    // was therefore not a key of `TENANT_TO_PROJECT`,
+    // `lookupSanityProjectSlugByUrlSegment()` threw, the catch below swallowed
+    // it, and the platform project reported ZERO enabled modules. Renaming the
+    // URL segment to `abluo` made the key exist; this lookup now succeeds.
+    //
+    // What remains is structural, not a broken row: EVERY live project's URL
+    // segment currently equals its `projects.slug`, so the cast is correct for
+    // all of them — but only by coincidence of the data, and `domainMap` is
+    // hand-maintained. The moment a project's segment differs again this
+    // silently degrades to `[]` once more. The real fix is still to give
+    // `route-config.ts` a `urlSegment` column (Step 6) — NOT to widen this
+    // parameter back to `string`.
+    //
+    // (The separate `livener` / `livener-main` gap is on the VALUE side of
+    // `TENANT_TO_PROJECT`, i.e. Sanity's name, and never affected this call:
+    // `livener` has always been a key. It is Steps 3-5 of RENAME.md.)
     const { fetchForTenant } = tenantClient(projectSlug as unknown as UrlProjectSegment)
     const ids = await fetchForTenant<string[] | null>(enabledModuleIdsQuery, {})
     return ids ?? []

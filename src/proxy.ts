@@ -32,8 +32,8 @@ function resolveTenant(hostname: string): string | null {
   const domainMap: Record<string, string> = {
     'livener.net': 'livener',
     'studiomartegani.com': 'studiomartegani',
-    'abluo.app': 'abluo-the-tiny-cms',
-    'dev.abluo.app': 'abluo-the-tiny-cms',
+    'abluo.app': 'abluo',
+    'dev.abluo.app': 'abluo',
     'nologo.cloud': 'nologo',
   }
 
@@ -74,7 +74,7 @@ function resolveDefaultLocale(projectSlug: string): string | null {
   const localeMap: Record<string, string> = {
     'studiomartegani': 'it',
     'livener': 'en',
-    'abluo-the-tiny-cms': 'en',
+    'abluo': 'en',
     'nologo': 'en',
   }
   return localeMap[projectSlug] ?? null
@@ -298,7 +298,7 @@ export async function proxy(request: NextRequest) {
   // dev.abluo.app/livener           → /en/livener
   // dev.abluo.app/studiomartegani   → /it/studiomartegani
   // dev.abluo.app/de/livener        → pass through (language switch on livener)
-  // dev.abluo.app (root / unknown)  → falls through to domainMap → abluo-the-tiny-cms
+  // dev.abluo.app (root / unknown)  → falls through to domainMap → abluo
   if (host === 'dev.abluo.app') {
     const segments = pathname.split('/').filter(Boolean)
     const slug = segments[0]
@@ -308,7 +308,7 @@ export async function proxy(request: NextRequest) {
       // Path is already in /{locale}/... form — happens after a language switch.
       // If the second segment is a known project slug, pass straight through to
       // the App Router (e.g. /de/livener). Otherwise fall through so the
-      // domainMap block can inject abluo-the-tiny-cms (e.g. /de → /de/abluo-the-tiny-cms).
+      // domainMap block can inject abluo (e.g. /de → /de/abluo).
       const secondSegment = segments[1]
       if (secondSegment && resolveDefaultLocale(secondSegment)) {
         return NextResponse.next()
@@ -329,7 +329,7 @@ export async function proxy(request: NextRequest) {
         return NextResponse.next()
       }
     }
-    // Root or unrecognised path — fall through to domainMap → abluo-the-tiny-cms
+    // Root or unrecognised path — fall through to domainMap → abluo
   }
 
   // ── Admin-surface gate (ADR-015 R6) ──────────────────────────────────────
@@ -380,8 +380,8 @@ export async function proxy(request: NextRequest) {
     )
 
     if (localePrefix) {
-      // /it               → /it/abluo-the-tiny-cms
-      // /it/some-page     → /it/abluo-the-tiny-cms/some-page
+      // /it               → /it/abluo
+      // /it/some-page     → /it/abluo/some-page
       const subPath = path === `/${localePrefix}` ? '' : path.slice(`/${localePrefix}`.length)
       url.pathname = `/${localePrefix}/${tenantId}${subPath}`
       return NextResponse.rewrite(url)

@@ -81,10 +81,17 @@ export const hasSanityReadToken = Boolean(sanityReadToken)
  *   VALUE — `SanityProjectSlug`: the `projectSlug` field on Sanity documents.
  *
  * NEITHER SIDE IS A SUPABASE `projects.slug`, and neither side is a
- * `tenants.slug`. Read the rows: the key `abluo-the-tiny-cms` is not any
- * project's database slug (that is `abluo`), and `nologo`'s tenant is
- * `freeriders`. The historic name of this map is therefore wrong on both
- * halves; it is kept only to keep this change type-level.
+ * `tenants.slug`. Read the rows: `nologo` is a project slug whose tenant is
+ * `freeriders`, and the VALUES `livener-main` / `studiomartegani-main` are
+ * Sanity names that exist in no other store. The historic name of this map is
+ * therefore wrong on both halves; it is kept only to keep this change
+ * type-level.
+ *
+ * The keys used to diverge from Supabase on a second count too: the platform
+ * site's key was a longer legacy URL segment (see `src/lib/tenancy/RENAME.md`
+ * §0) while `projects.slug` is `abluo`. Step 1 of that runbook renamed the
+ * segment, so today every KEY here equals its `projects.slug`. Only the two `-main` VALUES still diverge —
+ * that is Step 4.
  *
  * This is the ONLY sanctioned crossing between these two namespaces. There is
  * no cast and no string transform — `'livener-main'.replace(/-main$/,'')` is
@@ -96,7 +103,7 @@ export const hasSanityReadToken = Boolean(sanityReadToken)
 const TENANT_TO_PROJECT: Record<string, SanityProjectSlug> = {
   livener: asSanityProjectSlug('livener-main'),
   studiomartegani: asSanityProjectSlug('studiomartegani-main'),
-  'abluo-the-tiny-cms': asSanityProjectSlug('abluo'),
+  abluo: asSanityProjectSlug('abluo'),
   nologo: asSanityProjectSlug('nologo'),
 }
 

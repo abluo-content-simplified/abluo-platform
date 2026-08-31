@@ -62,16 +62,24 @@
  * against the live database on 2026-08-31. They are asserted explicitly in
  * `__tests__/host-scope.test.ts` so they cannot change unnoticed.
  *
- * (A) `abluo.app` / `dev.abluo.app`.  proxy.ts resolves these to the URL slug
- *     `abluo-the-tiny-cms`. Supabase says the project's slug is `abluo`. There
- *     are three namespaces in play for one project — URL `abluo-the-tiny-cms`,
- *     Supabase `abluo`, Sanity `abluo` — and `TENANT_TO_PROJECT` exists to
- *     bridge the first to the third. This module returns the DATABASE truth
- *     (`abluo`), because the database is the source of truth by construction.
- *     ⚠️ THIS IS A FLIP-TIME BLOCKER: swapping proxy.ts over without settling
- *     it changes the platform's own site from `/en/abluo-the-tiny-cms` to
- *     `/en/abluo`, and `resolveDefaultLocale('abluo')` returns null today.
- *     Settle it by renaming one namespace — pick Supabase's — before flipping.
+ * (A) `abluo.app` / `dev.abluo.app`.  ✅ RESOLVED — no longer a divergence.
+ *     HISTORY, kept because it was a flip-time BLOCKER and its absence should
+ *     not be mistaken for it never having existed: proxy.ts used to resolve
+ *     these hosts to a longer URL slug of proxy.ts's own invention (spelled
+ *     out in `./RENAME.md` §0) while Supabase called the project `abluo`, so
+ *     one project carried three names — that URL segment, Supabase `abluo`,
+ *     Sanity `abluo`. Flipping proxy.ts onto this module would have renamed the
+ *     platform's own site to `/en/abluo` underneath it, and
+ *     `resolveDefaultLocale('abluo')` returned null.
+ *     Step 1 of `./RENAME.md` settled it the way this note asked — by renaming
+ *     the URL segment to Supabase's `abluo` (safe: the segment is an internal
+ *     rewrite target, never visible in a browser, and appears in no Sanity
+ *     document). proxy.ts and this module now agree on `abluo.app` and
+ *     `dev.abluo.app`, slug AND locale; `__tests__/host-scope.test.ts` guards
+ *     that agreement.
+ *     The only project-name gap left anywhere is Sanity's `livener` /
+ *     `livener-main` (and `studiomartegani-main`) — divergence (D) below,
+ *     Steps 3-5 of `./RENAME.md`.
  *
  * (B) `ch-psicoterapeuta.com` (project `hoffmann`) is a live `custom_domain` in
  *     Supabase and is in NONE of proxy.ts's three maps, so proxy.ts resolves it

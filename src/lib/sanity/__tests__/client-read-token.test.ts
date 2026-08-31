@@ -131,13 +131,16 @@ describe('tenantClient.fetchForTenant — scope injection', () => {
     const fetchSpy = vi.fn().mockResolvedValue([])
     ;(mod.sanityClient as unknown as { fetch: unknown }).fetch = fetchSpy
 
-    // "abluo-the-tiny-cms" maps to project "abluo" — the two differ, so this
-    // catches any accidental swap of the two values.
-    await mod.tenantClient(asUrlProjectSegment('abluo-the-tiny-cms')).fetchForTenant('*[_type == "page"]')
+    // The example MUST be a segment whose Sanity projectSlug differs from it,
+    // or the assertion proves nothing: `livener` maps to `livener-main`.
+    // (This used to use the platform site, whose URL segment and project slug
+    // differed. Step 1 of `src/lib/tenancy/RENAME.md` made those two equal,
+    // which would have left this test passing while testing nothing.)
+    await mod.tenantClient(asUrlProjectSegment('livener')).fetchForTenant('*[_type == "page"]')
 
     const params = fetchSpy.mock.calls[0][1]
-    expect(params.tenantSlug).toBe('abluo-the-tiny-cms')
-    expect(params.projectSlug).toBe('abluo')
+    expect(params.tenantSlug).toBe('livener')
+    expect(params.projectSlug).toBe('livener-main')
   })
 
   it('preserves caller params and still wins on the scope keys', async () => {

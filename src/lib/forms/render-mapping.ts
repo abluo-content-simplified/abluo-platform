@@ -214,14 +214,28 @@ export function submissionEndpoint(projectSlug: SupabaseProjectSlug, formId: str
  * is what every caller actually holds.
  *
  * It is still a FORBIDDEN CAST — URL segment → Supabase slug with no lookup —
- * and it is still the only one, deliberately, so it stays greppable. It is
- * correct for four of the five live projects because their URL segment and
- * `projects.slug` coincide. It is WRONG for the platform's own site:
- * `abluo.app` rewrites to the segment `abluo-the-tiny-cms`, `projects.slug` is
- * `abluo`, so any form placement on abluo.app POSTs to
- * `/api/forms/abluo-the-tiny-cms/...` and gets a 404. Retire it by threading
- * `resolveScopeFromHost().projectSlug` (a real `SupabaseProjectSlug`) down
- * from the layout instead.
+ * and it is still the only one, deliberately, so it stays greppable. What
+ * changed is that it is no longer WRONG for anyone today: it is correct for
+ * all five live projects, because each one's URL segment now equals its
+ * `projects.slug`.
+ *
+ * FIXED (Step 1 of `src/lib/tenancy/RENAME.md`), finding (d) of `f669ab9`: the
+ * platform's own site was the exception. `abluo.app` rewrote to a longer legacy
+ * segment (named in `src/lib/tenancy/RENAME.md` §0) while `projects.slug` is
+ * `abluo`, so every form placement on abluo.app POSTed to
+ * `/api/forms/<that segment>/...`, the service's `.eq('slug', …)` matched no
+ * row, and the submission failed closed with a 404. The segment is now `abluo`; the two match and the POST resolves.
+ *
+ * The shim still has to go, for the reason it was written: correctness here
+ * rests on DATA (a hand-maintained `domainMap` happening to agree with
+ * `projects.slug`), not on a lookup. The first project whose segment differs —
+ * the one-tenant-to-N-projects case above — silently 404s again. Retire it by
+ * threading `resolveScopeFromHost().projectSlug` (a real `SupabaseProjectSlug`)
+ * down from the layout instead.
+ *
+ * (Sanity's `livener` / `livener-main` gap is a DIFFERENT axis and never
+ * affected this cast — see the NOTE above about `EarlyAccessContext`. It is
+ * Steps 3-5 of RENAME.md.)
  */
 export function projectScopeSlugFromUrlSegment(
   segment: UrlProjectSegment

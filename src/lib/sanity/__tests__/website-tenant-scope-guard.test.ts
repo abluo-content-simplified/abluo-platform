@@ -137,8 +137,12 @@ describe('fetchForTenant enforces scoping at runtime', () => {
 
     // A message that does not identify the query is unactionable in a codebase
     // with a hundred of them.
-    expect(() => tenantClient(asUrlProjectSegment('abluo-the-tiny-cms')).fetchForTenant('*[_id in $ids]')).toThrow(
-      /tenantSlug=abluo-the-tiny-cms projectSlug=abluo[^]*_id in \$ids/,
+    // Use a segment whose projectSlug DIFFERS from it (`livener` →
+    // `livener-main`), so the message is proved to name both namespaces and not
+    // one value twice. (This used to use the platform site; Step 1 of
+    // `src/lib/tenancy/RENAME.md` made that pair identical.)
+    expect(() => tenantClient(asUrlProjectSegment('livener')).fetchForTenant('*[_id in $ids]')).toThrow(
+      /tenantSlug=livener projectSlug=livener-main[^]*_id in \$ids/,
     )
   })
 

@@ -44,8 +44,8 @@ function proxyResolveTenant(hostname: string): string | null {
   const domainMap: Record<string, string> = {
     'livener.net': 'livener',
     'studiomartegani.com': 'studiomartegani',
-    'abluo.app': 'abluo-the-tiny-cms',
-    'dev.abluo.app': 'abluo-the-tiny-cms',
+    'abluo.app': 'abluo',
+    'dev.abluo.app': 'abluo',
     'nologo.cloud': 'nologo',
   }
   if (domainMap[host]) return domainMap[host]
@@ -62,7 +62,7 @@ function proxyResolveDefaultLocale(projectSlug: string): string | null {
   const localeMap: Record<string, string> = {
     studiomartegani: 'it',
     livener: 'en',
-    'abluo-the-tiny-cms': 'en',
+    abluo: 'en',
     nologo: 'en',
   }
   return localeMap[projectSlug] ?? null
@@ -132,8 +132,11 @@ const LIVE_PROJECTS: LiveProject[] = [
   {
     name: 'abluo (platform site)',
     hosts: ['abluo.app', 'www.abluo.app', 'dev.abluo.app'],
-    // ⚠️ Divergence (A): proxy.ts calls this project 'abluo-the-tiny-cms'.
-    proxySlug: 'abluo-the-tiny-cms',
+    // Divergence (A) — RESOLVED. proxy.ts used to call this project by a
+    // longer name of its own (see ../RENAME.md §0); Step 1 of that runbook
+    // renamed the URL segment to the database's name, so proxy.ts and this
+    // resolver now agree.
+    proxySlug: 'abluo',
     proxyLocale: 'en',
     expected: {
       tenantSlug: 'abluo',
@@ -166,9 +169,12 @@ describe('equivalence with the proxy.ts host maps', () => {
     }
   })
 
-  it('agrees with proxy.ts on the PROJECT SLUG for every project except the platform site', () => {
+  it('agrees with proxy.ts on the PROJECT SLUG for every project proxy.ts knows', () => {
     for (const project of LIVE_PROJECTS) {
-      if (project.name.startsWith('abluo') || project.name.startsWith('hoffmann')) continue
+      // Only hoffmann is still skipped — divergence (B), proxy.ts has never
+      // heard of its domain. The platform site used to be skipped here too
+      // (divergence (A)); Step 1 of RENAME.md made it agree.
+      if (project.name.startsWith('hoffmann')) continue
       for (const host of project.hosts) {
         expect(proxyResolveTenant(host), `proxy on ${host}`).toBe(project.proxySlug)
         expect(resolveScopeFromHost(host)?.projectSlug, `new on ${host}`).toBe(project.proxySlug)
@@ -190,16 +196,30 @@ describe('equivalence with the proxy.ts host maps', () => {
 
   // ── The divergences, asserted rather than discovered at flip time ──────────
 
-  it('DIVERGENCE (A): proxy.ts says "abluo-the-tiny-cms", the database says "abluo"', () => {
-    expect(proxyResolveTenant('abluo.app')).toBe('abluo-the-tiny-cms')
-    expect(proxyResolveTenant('dev.abluo.app')).toBe('abluo-the-tiny-cms')
-    // The new resolver returns the database truth. Flipping proxy.ts over
-    // without first reconciling this renames the platform's own URL segment.
+  // ── (A) is a REGRESSION GUARD now, not a divergence ────────────────────────
+  // HISTORY: this test used to be named
+  //   'DIVERGENCE (A): proxy.ts says "<the legacy segment>", the database says "abluo"'
+  // and asserted the opposite of what it asserts below — proxy.ts resolved
+  // abluo.app to a longer URL slug of its own (spelled out in `../RENAME.md`
+  // §0) while Supabase called the project `abluo`, and
+  // `resolveDefaultLocale('abluo')` returned null. That
+  // made flipping proxy.ts onto this resolver a BLOCKER: the flip would have
+  // silently renamed the platform's own URL segment.
+  // Step 1 of `../RENAME.md` settled it by renaming the URL segment (an
+  // internal rewrite target, invisible in the browser, present in zero Sanity
+  // documents) to the database's `abluo`. This test now guards the agreement so
+  // the old three-name split cannot come back unnoticed.
+  it('AGREEMENT (was divergence A): proxy.ts and the resolver both say "abluo"', () => {
+    expect(proxyResolveTenant('abluo.app')).toBe('abluo')
+    expect(proxyResolveTenant('dev.abluo.app')).toBe('abluo')
     expect(resolveScopeFromHost('abluo.app')?.projectSlug).toBe('abluo')
     expect(resolveScopeFromHost('dev.abluo.app')?.projectSlug).toBe('abluo')
-    // And the incumbent locale map cannot answer for the database's name,
-    // which is what makes this a blocker and not a cosmetic rename.
-    expect(proxyResolveDefaultLocale('abluo')).toBeNull()
+    // The locale map answers for the database's name too — the second half of
+    // what made this a flip-time blocker.
+    expect(proxyResolveDefaultLocale('abluo')).toBe('en')
+    expect(resolveScopeFromHost('abluo.app')?.defaultLocale).toBe('en')
+    // www. is stripped before the lookup, so every platform host agrees too.
+    expect(proxyResolveTenant('www.abluo.app')).toBe('abluo')
   })
 
   it('DIVERGENCE (B): ch-psicoterapeuta.com is live in Supabase and unknown to proxy.ts', () => {

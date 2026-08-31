@@ -1,11 +1,14 @@
 import type { MetadataRoute } from 'next'
 import { isProduction } from '@/lib/deployment'
 
-// Reverse of TENANT_TO_PROJECT in client.ts — projectSlug → URL tenant slug
+// Reverse of TENANT_TO_PROJECT in client.ts — projectSlug → URL tenant slug.
+// Only the two `-main` projects still need a row: every other project's Sanity
+// name and URL segment are identical, and the lookup below falls back to the
+// projectSlug itself. `abluo` used to need a row (its URL segment was a longer
+// legacy name); Step 1 of `src/lib/tenancy/RENAME.md` removed that gap.
 const PROJECT_TO_TENANT: Record<string, string> = {
   'livener-main': 'livener',
   'studiomartegani-main': 'studiomartegani',
-  'abluo': 'abluo-the-tiny-cms',
 }
 
 interface TenantSitemapData {

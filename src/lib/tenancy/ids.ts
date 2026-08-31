@@ -43,11 +43,22 @@
  *     project           Supabase          Sanity              URL segment
  *     ----------------- ----------------- ------------------- -------------------
  *     Livener           livener           livener-main        livener
- *     the platform site abluo             abluo               abluo-the-tiny-cms
+ *     Studio Martegani  studiomartegani   studiomartegani-main studiomartegani
+ *     the platform site abluo             abluo               abluo
  *     No!Logo           nologo            nologo              nologo
  *
  *     authority         projects.slug     project.projectSlug TENANT_TO_PROJECT
  *                                                             + domainMap (proxy.ts)
+ *
+ * The platform site used to be the second broken row here: its URL segment was
+ * a longer name of the proxy's own (`./RENAME.md` §0 spells it out and tracks
+ * the blame). Step 1 of that runbook renamed it, so the only store
+ * still holding a name of its own is SANITY, for the two `-main` projects
+ * (Steps 3-5). The brands stay three, because they are three AUTHORITIES, not
+ * three current value sets: `UrlProjectSegment` is maintained by hand in
+ * `src/proxy.ts` and nothing but a test stops it drifting from Supabase again —
+ * which is precisely how the platform site's odd segment got here in the first
+ * place.
  *
  * That is `SupabaseProjectSlug`, `SanityProjectSlug` and `UrlProjectSegment`.
  * They are three brands because they are three namespaces that can and do
@@ -167,12 +178,22 @@ export type SanityProjectSlug = string & {
  * and `resolveTenant()` in `src/proxy.ts` rewrite a host to.
  *
  * The segment is NAMED `tenant` and is NOT one: for `nologo` it carries a
- * project slug whose tenant is `freeriders`. It is also not a Supabase project
- * slug: `abluo.app` rewrites to `abluo-the-tiny-cms`, while `projects.slug` is
- * `abluo`. Hence its own brand — it is a third, independently-maintained
- * namespace whose authority is `src/proxy.ts`, not either store.
+ * project slug whose tenant is `freeriders`, so it is not a `tenants.slug`.
+ * Neither is it a Supabase project slug BY CONSTRUCTION — it only happens to
+ * equal one for every project alive today. Its values are typed by hand into
+ * `domainMap`/`resolveDefaultLocale` in `src/proxy.ts`; nothing derives them
+ * from `projects.slug` and nothing but `__tests__/host-scope.test.ts` notices
+ * when they drift. They HAVE drifted: `abluo.app` rewrote to a segment that was
+ * not `projects.slug` for two months (fixed by Step 1 of `./RENAME.md`, which
+ * names it). Hence its own brand — a third, independently-maintained
+ * namespace whose authority is `src/proxy.ts`, not either store. It collapses
+ * into `SupabaseProjectSlug` only at Step 6, when the proxy reads the
+ * generated route table instead of a hand-written map.
  *
- * Values today: `livener`, `studiomartegani`, `nologo`, `abluo-the-tiny-cms`.
+ * Values today: `livener`, `studiomartegani`, `nologo`, `abluo` — each equal to
+ * its `projects.slug`. `hoffmann` and `amelie` are live projects with NO
+ * segment at all (absent from every proxy map; divergence (B) in
+ * `./host-scope.ts`).
  */
 export type UrlProjectSegment = string & {
   readonly [URL_PROJECT_SEGMENT_BRAND]: true
