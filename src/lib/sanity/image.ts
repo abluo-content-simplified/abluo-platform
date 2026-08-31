@@ -1,8 +1,12 @@
 import imageUrlBuilder from '@sanity/image-url'
-import { sanityClient } from '@/lib/sanity/client'
+import { SANITY_PROJECT_ID, SANITY_DATASET } from '@/lib/sanity/config'
 import type { ResolvedImage } from '@/lib/sanity/types'
 
-const builder = imageUrlBuilder(sanityClient)
+// Built from plain config, NOT from `sanityClient`. This module is imported by
+// 'use client' components; importing the client would pull the (server-only)
+// SANITY_API_READ_TOKEN module graph into the browser bundle. @sanity/image-url
+// only ever builds CDN URLs and never authenticates, so config is all it needs.
+const builder = imageUrlBuilder({ projectId: SANITY_PROJECT_ID, dataset: SANITY_DATASET })
 
 /**
  * Build a responsive Sanity image URL.

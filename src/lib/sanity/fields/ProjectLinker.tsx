@@ -34,11 +34,81 @@ interface ProjectDocument {
   projectSlug?: string
   projectName?: string
   tenantId?: string
+  /** EXPAND phase — see src/lib/tenancy/MIGRATION.md. Written from clientRef->tenantSlug. */
+  tenantSlug?: string
   clientRef?: { _type: 'reference'; _ref: string }
   customDomain?: string
   designSystemRef?: { _type: 'reference'; _ref: string }
   /** First-class installation records — the only source of module state (ADR-020). */
   moduleInstallations?: ModuleInstallationDisplay[]
+}
+
+// ── Patch construction (pure — exported for tests) ────────────────────────────
+
+/** Everything the link patch needs, flattened out of the two picker states. */
+export interface ProjectLinkSelection {
+  /** Sanity `_id` of the chosen client document. */
+  clientId: string
+  /** The client's `tenantId` (Supabase tenant UUID). */
+  tenantId: string
+  /**
+   * The client's `tenantSlug` — the TRUE owning-tenant key, the authority the
+   * whole project → tenant migration copies from. Optional because a client
+   * document is not forced to carry one; when it is absent the field is unset
+   * rather than left stale.
+   */
+  tenantSlug?: string | null
+  projectId: string
+  projectSlug: string
+  projectName: string
+  domain?: string | null
+}
+
+/**
+ * Patches written when a project document is linked to a client + Supabase project.
+ *
+ * `tenantSlug` is stored alongside `tenantId` so tier 1 of
+ * `deriveTenantSlug()` (src/lib/tenancy/project-scope.ts) has something to
+ * read, instead of the `-main` suffix strip guessing at ownership. When the
+ * client carries no slug the field is UNSET, never left at its previous value:
+ * a stale stored `tenantSlug` outranks the correct `clientRef` in the dual-read
+ * and would scope the project to the wrong tenant.
+ */
+export function buildProjectLinkPatches(selection: ProjectLinkSelection) {
+  const tenantSlug =
+    typeof selection.tenantSlug === 'string' && selection.tenantSlug.trim() !== ''
+      ? selection.tenantSlug.trim()
+      : null
+
+  return [
+    set({ _type: 'reference', _ref: selection.clientId }, ['clientRef']),
+    set(selection.projectId,                             ['projectId']),
+    set(selection.projectSlug,                           ['projectSlug']),
+    set(selection.projectName,                           ['projectName']),
+    set(selection.tenantId,                              ['tenantId']),
+    tenantSlug ? set(tenantSlug, ['tenantSlug']) : unset(['tenantSlug']),
+    selection.domain ? set(selection.domain, ['customDomain']) : unset(['customDomain']),
+  ]
+}
+
+/**
+ * Every field the link patch writes, cleared.
+ *
+ * `tenantSlug` MUST be in here. Leaving a stale one behind while `clientRef`
+ * moves is the worst failure this design allows: the stored field wins the
+ * dual-read, so the project would keep resolving to its FORMER tenant and pull
+ * that tenant's forms — silently, with no error anywhere.
+ */
+export function buildProjectUnlinkPatches() {
+  return [
+    unset(['clientRef']),
+    unset(['projectId']),
+    unset(['projectSlug']),
+    unset(['projectName']),
+    unset(['tenantId']),
+    unset(['tenantSlug']),
+    unset(['customDomain']),
+  ]
 }
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
@@ -149,16 +219,17 @@ export function ProjectLinker(props: ObjectInputProps) {
     const selectedClient = clients.find((c) => c._id === selectedClientId)
 
     onChange(
-      PatchEvent.from([
-        set({ _type: 'reference', _ref: selectedClientId }, ['clientRef']),
-        set(selectedProject.id,                              ['projectId']),
-        set(selectedProject.slug,                            ['projectSlug']),
-        set(selectedProject.name,                            ['projectName']),
-        set(selectedClient?.tenantId ?? clientTenantId,      ['tenantId']),
-        ...(selectedProject.domain
-          ? [set(selectedProject.domain, ['customDomain'])]
-          : [unset(['customDomain'])]),
-      ])
+      PatchEvent.from(
+        buildProjectLinkPatches({
+          clientId: selectedClientId,
+          tenantId: selectedClient?.tenantId ?? clientTenantId,
+          tenantSlug: selectedClient?.tenantSlug,
+          projectId: selectedProject.id,
+          projectSlug: selectedProject.slug,
+          projectName: selectedProject.name,
+          domain: selectedProject.domain,
+        })
+      )
     )
   }, [selectedProject, selectedClientId, clients, clientTenantId, onChange])
 
@@ -166,16 +237,7 @@ export function ProjectLinker(props: ObjectInputProps) {
     setSelectedClientId('')
     setSelectedProject(null)
     setClientTenantId('')
-    onChange(
-      PatchEvent.from([
-        unset(['clientRef']),
-        unset(['projectId']),
-        unset(['projectSlug']),
-        unset(['projectName']),
-        unset(['tenantId']),
-        unset(['customDomain']),
-      ])
-    )
+    onChange(PatchEvent.from(buildProjectUnlinkPatches()))
   }, [onChange])
 
   const handleAssignDS = useCallback(

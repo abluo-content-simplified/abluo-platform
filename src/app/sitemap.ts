@@ -43,6 +43,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID) return []
 
   try {
+    // ── DELIBERATELY CROSS-PROJECT — not an oversight, do not "fix" this ─────
+    // This is the single root sitemap for the whole multi-tenant deployment,
+    // so it must enumerate EVERY active project; there is no tenant in scope
+    // to hand `tenantClient()`. Using the raw client here is correct, and the
+    // scoping guard does not apply.
+    //
+    // Two things keep it safe:
+    //   1. It only ever emits URLs that are already public — published pages,
+    //      events, posts and non-expired news, each under the tenant's own
+    //      `customDomain`. Tenants without a custom domain are skipped, so no
+    //      tenant's content is advertised on another tenant's host.
+    //   2. It is production-only (`isProduction()` above).
+    //
+    // The `await import()` is a genuine dynamic import, kept so the Sanity
+    // client is never constructed on non-production builds that return early.
+    // Note that `no-restricted-imports` CANNOT see a dynamic import, so this
+    // call site produces no lint warning — this comment is the only signal a
+    // reviewer gets. If you make the raw client a hard error, remember this
+    // file needs an explicit exemption in `eslint.config.mjs`.
+    //
+    // When the dataset goes private this read starts depending on
+    // `SANITY_API_READ_TOKEN` being present in the Production environment.
+    // The `catch` below swallows the failure and returns an EMPTY sitemap
+    // rather than erroring — silent SEO degradation, not an outage. See
+    // `docs/engineering/sanity-private-dataset.md`.
     const { sanityClient } = await import('@/lib/sanity/client')
 
     // Fetch active projects with their tenant-specific supportedLocales.

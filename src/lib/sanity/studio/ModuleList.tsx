@@ -181,6 +181,16 @@ function dataStoreLabel(manifest: ModuleManifest): string {
  * projectSlug is "studiomartegani-main"; the tenant slug used in form document
  * ids and ownership is "studiomartegani". The "-main" suffix is the project
  * naming convention, not part of the tenant identity.
+ *
+ * KNOWN-WRONG, DELIBERATELY UNCHANGED. This is the legacy derivation described
+ * in src/lib/tenancy/project-scope.ts: it encodes a naming convention as if it
+ * were an ownership record, and it is wrong for project `nologo`, which is
+ * owned by client `freeriders`. The live data currently agrees with the bug
+ * (`form-nologo-demo` is filed under tenantSlug "nologo"), so switching this to
+ * the true `clientRef->tenantSlug` BEFORE the backfill would empty No!Logo's
+ * Forms pane. Replacing it with `deriveTenantSlug()` from
+ * src/lib/tenancy/project-scope.ts is the CONTRACT phase and requires the data
+ * migration first — see src/lib/tenancy/MIGRATION.md.
  */
 function deriveTenantSlug(projectSlug: string | undefined): string | null {
   if (!projectSlug) return null

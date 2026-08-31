@@ -2902,6 +2902,20 @@ const projectType = defineType({
     defineField({ name: 'projectSlug',  title: 'Project Slug', type: 'string',    hidden: true }),
     defineField({ name: 'projectName',  title: 'Project Name', type: 'string',    hidden: true }),
     defineField({ name: 'tenantId',     title: 'Tenant ID',    type: 'string',    hidden: true }),
+    // EXPAND phase of the project → tenant scope migration.
+    //
+    // The tenant that owns this project, stored rather than derived. Today the
+    // owner is inferred by stripping a `-main` suffix off `projectSlug`, which
+    // is a naming convention masquerading as an ownership record and is wrong
+    // for at least one live project (`nologo` is owned by `freeriders`). This
+    // field is tier 1 of deriveTenantSlug() in src/lib/tenancy/project-scope.ts.
+    //
+    // Written by ProjectLinker alongside `tenantId`, copied from the linked
+    // client's `tenantSlug`. NOT `Rule.required()` and NOT validated: every
+    // project in the live dataset predates this field and would go invalid the
+    // moment the schema deploys. It becomes authoritative only after the
+    // backfill — see src/lib/tenancy/MIGRATION.md.
+    defineField({ name: 'tenantSlug',   title: 'Tenant Slug',  type: 'string',    hidden: true }),
     defineField({ name: 'customDomain', title: 'Custom Domain',type: 'string',    hidden: true }),
     // ── Sanity-only fields (visible, editor fills these after linking) ──────
     defineField({
@@ -4709,19 +4723,55 @@ export const initialValueTemplates = [
     }),
   },
   // ── Forms module (ADR-020 Amendment A) ───────────────────────────────────
-  // Tenant-owned, so the template parameter is the tenant slug. navigation.ts
-  // passes `projectSlug` to every template by convention; this template reads
-  // it as the tenant slug because that is what the Forms collection binds.
+  // formDefinition is TENANT-owned: it is filed under `tenantSlug`, not
+  // `projectSlug`. This template used to prefill
+  //
+  //     tenantSlug: params?.projectSlug
+  //
+  // which wrote a PROJECT slug into a TENANT field. It held by luck for the
+  // four projects whose slug is `<tenant>-main`, and produced corrupt data for
+  // the fifth: project `nologo` is owned by client `freeriders`, so the live
+  // form `form-nologo-demo` carries `tenantSlug: "nologo"` — a project slug
+  // masquerading as a tenant slug. See src/lib/tenancy/project-scope.ts
+  // (KNOWN_TENANT_SCOPE_INCONSISTENCIES) and src/lib/tenancy/MIGRATION.md.
+  //
+  // navigation.ts passes only `{ projectSlug: slug }` to every template by
+  // convention, so the true tenant is NOT reachable here today. A template
+  // value() is synchronous-in-practice and holds no Sanity client, so it cannot
+  // resolve `clientRef->tenantSlug` itself.
+  //
+  // Therefore this template PREFILLS NO TENANT. `tenantSlug` is simply omitted,
+  // and the editor sets it in the document's Ownership group. The field's own
+  // validation ("Active forms must have a tenant slug", see
+  // src/lib/modules/forms/schema.ts) turns the omission into a visible,
+  // publish-blocking prompt — strictly better than a silently wrong value that
+  // nothing downstream can distinguish from a correct one. Document creation is
+  // unaffected: the draft opens normally with role/version/formType prefilled.
+  //
+  // Forward-compatible: an optional `tenantSlug` parameter is declared, so the
+  // day the structure builder passes the real tenant (sanity.config.ts already
+  // has it as `clientDoc.tenantSlug`, and navigation.ts already threads it into
+  // `.params({ slug, tenantSlug })`), adding it to `initialValueTemplateItem`
+  // is the only change needed and this template starts prefilling correctly.
+  // Only a value proven to be a tenant slug is ever written.
   {
     id: 'formDefinitionTenantOwned',
     title: 'Form Definition',
     schemaType: 'formDefinition',
-    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    parameters: [
+      { name: 'projectSlug', type: 'string', title: 'Project' },
+      // Optional. Sanity only validates that a declared parameter has a valid
+      // name and type; it does not require callers to supply it.
+      { name: 'tenantSlug', type: 'string', title: 'Tenant' },
+    ],
     value: (params: any) => ({
       role: 'active',
       version: 1,
       formType: 'single-step',
-      tenantSlug: params?.projectSlug,
+      // Never fall back to projectSlug. No prefill beats a wrong prefill.
+      ...(typeof params?.tenantSlug === 'string' && params.tenantSlug.trim() !== ''
+        ? { tenantSlug: params.tenantSlug.trim() }
+        : {}),
     }),
   },
 

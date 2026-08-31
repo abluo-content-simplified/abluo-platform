@@ -68,7 +68,7 @@ function buildDocumentList(
 
   return item.initialValueTemplate
     ? withOrdering.initialValueTemplates([
-        S.initialValueTemplateItem(item.initialValueTemplate, { projectSlug: slug }),
+        S.initialValueTemplateItem(item.initialValueTemplate, { projectSlug: slug, tenantSlug }),
       ])
     : withOrdering
 }
