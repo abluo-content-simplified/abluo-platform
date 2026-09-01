@@ -39,7 +39,7 @@ const CONNECTION_STRING = `postgresql://postgres:postgres@127.0.0.1:${PORT}/post
  * exactly what a fresh Supabase project would have after all of them ran.
  * `schema.sql` already bakes in migrations 001–005 (see its own header
  * comment) — migrations 006–013 apply on top, in numeric order, followed by
- * 020–021 (see the inline note beside them). The
+ * 020–023 (see the inline notes beside them). The
  * `.sql.draft` file (010) is NOT applied — it was never applied to any real
  * environment either (see its own header). Migration 014 (this task's
  * deliverable) is applied separately by the test suite that needs it, not
@@ -62,6 +62,16 @@ const BASE_MIGRATIONS = [
   // Supabase project — see supabase/APPLIED.md.
   '020_leads_project_grain.sql',
   '021_tenants_read_grant.sql',
+  // 022/023 are RENAME.md Step 7's schema cleanup: 022 drops
+  // `tenants.domain`, 023 replaces the global unique on `projects.slug`
+  // with `unique (tenant_id, slug)`. They are in the BASE set rather than a
+  // block-local apply because they change the SHAPE every other block's
+  // fixtures are built on — after 022 no `insert into public.tenants` in
+  // this suite may name `domain`, and the fixture inserts above were
+  // updated accordingly. Both are "written, NOT applied" against the real
+  // Supabase project — see supabase/APPLIED.md.
+  '022_tenants_drop_domain.sql',
+  '023_projects_slug_unique_per_tenant.sql',
 ]
 
 let pgInstance = null

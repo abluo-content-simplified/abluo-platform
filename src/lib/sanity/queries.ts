@@ -1736,29 +1736,11 @@ export const designSystemQuery = /* groq */ `
 `
 
 
-// ── Project notification recipients (ADR-019) ─────────────────────────────────
-// Returns the project's notifications.recipients groups (topic/emails/enabled),
-// read at send time by the form-notification consumer. Same $projectSlug pattern
-// as projectIntegrationsQuery / enabledModuleIdsQuery.
-export const projectNotificationsQuery = /* groq */ `
-  *[_type == "project" && projectSlug in $projectSlugs][0].notifications.recipients[]{
-    topic, emails, enabled
-  }
-`
-
-// ── Internal-email personalization config (ADR-019 Amendment A) ───────────────
-// Tenant/project-level identity + copy, read at send time. `intro` is resolved
-// at the event locale; `clientName` is the fromName default. Takes $projectSlug,
-// $locale, $defaultLocale.
-export const projectInternalEmailQuery = /* groq */ `
-  *[_type == "project" && projectSlug in $projectSlugs][0]{
-    "internalEmail": notifications.internalEmail{
-      fromName,
-      subjectTemplate,
-      replyToSubmitter,
-      "intro": coalesce(intro[$locale], intro[$defaultLocale], intro.en)
-    },
-    "clientName": clientRef->displayName,
-    "logoUrl": *[_type == "siteConfig" && projectSlug == ^.projectSlug][0].logo.asset->url
-  }
-`
+// ── Notification queries live with their consumer ─────────────────────────────
+// `projectNotificationsQuery` and `projectInternalEmailQuery` were here. They
+// had no callers: the notifications stack reads a project by DOCUMENT ID, not
+// by slug — projectNotificationsByIdQuery (src/lib/notifications/recipients.ts)
+// and the internal-email projection in src/lib/notifications/branding.ts — so
+// these two were a second, drifting copy of a projection that is maintained
+// next to the code that sends the email. Removed rather than kept as a
+// template; the live shapes are in those two files.

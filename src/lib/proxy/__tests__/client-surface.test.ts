@@ -24,23 +24,26 @@ describe('isClientSurface', () => {
     }
   })
 
+  // The `{projectSlug}` segment of a client-dashboard URL is built from
+  // `ProjectGrant.projectSlug` (client-navigation.ts), i.e. the SUPABASE
+  // `projects.slug` — `livener`, not Sanity's `livener`.
   it('matches project-scoped routes: /{projectSlug}/{segment}', () => {
     for (const seg of CLIENT_PROJECT_SEGMENTS) {
-      expect(isClientSurface(`/livener-main/${seg}`)).toBe(true)
-      expect(isClientSurface(`/en/livener-main/${seg}`)).toBe(true)
-      expect(isClientSurface(`/de/studiomartegani-main/${seg}`)).toBe(true)
+      expect(isClientSurface(`/livener/${seg}`)).toBe(true)
+      expect(isClientSurface(`/en/livener/${seg}`)).toBe(true)
+      expect(isClientSurface(`/de/studiomartegani/${seg}`)).toBe(true)
     }
   })
 
   it('matches deeper paths under a project-scoped segment', () => {
-    expect(isClientSurface('/en/livener-main/posts/123')).toBe(true)
-    expect(isClientSurface('/livener-main/leads/new')).toBe(true)
+    expect(isClientSurface('/en/livener/posts/123')).toBe(true)
+    expect(isClientSurface('/livener/leads/new')).toBe(true)
   })
 
   it('does NOT match a bare project slug with no client sub-page', () => {
     // /{projectSlug} alone is not a client surface — it is a public tenant root.
-    expect(isClientSurface('/en/livener-main')).toBe(false)
-    expect(isClientSurface('/livener-main')).toBe(false)
+    expect(isClientSurface('/en/livener')).toBe(false)
+    expect(isClientSurface('/livener')).toBe(false)
   })
 
   it('does NOT match a project path whose sub-page is not a client segment', () => {

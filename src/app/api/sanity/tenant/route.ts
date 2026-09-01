@@ -32,10 +32,16 @@ export async function GET(request: Request) {
 
     const supabase = createAdminClient()
 
-    // Fetch tenant with all details
+    // Fetch tenant with all details.
+    // `domain` is deliberately NOT in this select-list: migration 022 drops
+    // public.tenants.domain (hosts are per-PROJECT — projects.custom_domain),
+    // and PostgREST 400s on a select-list naming a column that no longer
+    // exists. The value was never read — TenantLinker.tsx consumes this row
+    // and never touches `.domain` — so dropping it from the list is a no-op
+    // while the column still exists, and is what lets 022 be applied later.
     const { data: tenant, error } = await supabase
       .from('tenants')
-      .select('id, slug, display_name, status, plan, created_at, domain')
+      .select('id, slug, display_name, status, plan, created_at')
       .eq('id', tenantId)
       .single()
 

@@ -89,7 +89,7 @@ a short window no longer applies — the site is not live.
 
 **Verify:** Studio → No!Logo → Modules → Forms lists 1 active form.
 
-### Step 3 — deploy DUAL-READ for the two live sites
+### Step 3 — deploy DUAL-READ for the two live sites  ✅ CODE DONE (commit 2ccfaaf, NOT YET DEPLOYED)
 Teach the code to accept BOTH names before any document moves. The read path is
 `tenantClient(segment).fetchForTenant`, which binds `$projectSlug`; queries filter
 `projectSlug == $projectSlug`. Change that to match either name, e.g. bind a
@@ -106,7 +106,7 @@ the dual-read itself.
 ### Step 4 — rename the 38 documents
 Take an export first: `npx sanity dataset export production ./backup-pre-rename-$(date +%Y%m%d).tar.gz`
 
-`livener-main` → `livener` (25 documents, 3 of them drafts):
+`livener-main` → `livener` (**24 documents**, 3 of them drafts) — counts re-verified against the live dataset 2026-09-01:
 
 | type | `_id` |
 |---|---|
@@ -135,7 +135,7 @@ Take an export first: `npx sanity dataset export production ./backup-pre-rename-
 | project | `088e16f6-0288-47b9-af2b-4ef28f90c6a8` |
 | siteConfig | `01ab0be5-d7c7-4e78-be91-2e9b75ac7a8b` |
 
-`studiomartegani-main` → `studiomartegani` (13 documents, 0 drafts):
+`studiomartegani-main` → `studiomartegani` (**14 documents**, 0 drafts) — counts re-verified against the live dataset 2026-09-01:
 
 | type | `_id` |
 |---|---|
@@ -229,7 +229,7 @@ step 3 deployed, the data can sit in either state indefinitely.
 
 - [ ] Step 1 — `abluo-the-tiny-cms` gone; `rg abluo-the-tiny-cms` returns nothing
 - [ ] Step 2 — No!Logo Stage 3 done; Forms pane shows 1 form
-- [ ] Step 3 — dual-read deployed; both live sites verified rendering
+- [x] Step 3 — dual-read WRITTEN (`dualReadProjectSlugs`, commit 2ccfaaf). ⚠️ STILL NEEDS DEPLOY + both live sites verified before Step 4.
 - [ ] Export taken
 - [ ] Step 4 — 38 documents renamed (25 + 13); `*[projectSlug match "*-main"]` returns 0
 - [ ] Step 4 — drafts republished; no unrelated pending draft pushed live

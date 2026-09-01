@@ -167,7 +167,16 @@ describe('reference config fields', () => {
         expect(generated.type).toBe('reference')
         expect(generated.to).toEqual(declared.referenceTo!.map((t) => ({ type: t })))
         if (declared.referenceFilter) {
-          expect(generated.options.filter).toBe(declared.referenceFilter)
+          // A picker pointing at `formDefinition` is generated with the shared
+          // resolver instead of the declared string: nothing binds
+          // `$tenantSlug` in the Studio's reference picker, so the string —
+          // which the Modules pane binds for itself — would select nothing
+          // there. Every other reference keeps its declared filter verbatim.
+          if ((declared.referenceTo ?? []).includes('formDefinition')) {
+            expect(typeof generated.options.filter).toBe('function')
+          } else {
+            expect(generated.options.filter).toBe(declared.referenceFilter)
+          }
         }
       }
     }

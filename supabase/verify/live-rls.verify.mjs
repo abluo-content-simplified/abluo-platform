@@ -104,10 +104,10 @@ describe('fixture setup', () => {
   it('seeds three tenants (one of them owning TWO projects), four projects, six users, and memberships as superuser', async () => {
     await asSuperuser(async () => {
       const tenantA = await client.query(
-        `insert into public.tenants (slug, display_name, domain) values ('verify-tenant-a', 'Tenant A', 'tenant-a.verify.test') returning id`
+        `insert into public.tenants (slug, display_name) values ('verify-tenant-a', 'Tenant A') returning id`
       )
       const tenantB = await client.query(
-        `insert into public.tenants (slug, display_name, domain) values ('verify-tenant-b', 'Tenant B', 'tenant-b.verify.test') returning id`
+        `insert into public.tenants (slug, display_name) values ('verify-tenant-b', 'Tenant B') returning id`
       )
       ids.tenantA = tenantA.rows[0].id
       ids.tenantB = tenantB.rows[0].id
@@ -155,7 +155,7 @@ describe('fixture setup', () => {
       // projects, which is what makes tenant-grain vs project-grain
       // separable for the first time in this fixture.
       const tenantC = await client.query(
-        `insert into public.tenants (slug, display_name, domain) values ('verify-tenant-c', 'Tenant C', 'tenant-c.verify.test') returning id`
+        `insert into public.tenants (slug, display_name) values ('verify-tenant-c', 'Tenant C') returning id`
       )
       ids.tenantC = tenantC.rows[0].id
 
@@ -1839,7 +1839,7 @@ describe('(i) two-project tenant (Tenant C = freeriders/nologo+t42): tenant grai
     ).rejects.toThrow(/permission denied for table tenants/)
     await expect(
       client.query(
-        `insert into public.tenants (slug, display_name, domain) values ('verify-rogue', 'Rogue', 'rogue.verify.test')`
+        `insert into public.tenants (slug, display_name) values ('verify-rogue', 'Rogue')`
       )
     ).rejects.toThrow(/permission denied for table tenants/)
     await expect(
@@ -1862,5 +1862,215 @@ describe('(i) two-project tenant (Tenant C = freeriders/nologo+t42): tenant grai
     await loginAs(ids.userC)
     const ownerRows = await client.query(`select project_id from public.form_events`)
     expect(ownerRows.rows.map((r) => r.project_id)).toEqual([ids.projectC2])
+  })
+})
+
+// ── (j) SCHEMA CLEANUP — migrations 022 (drop tenants.domain) and 023 ───────
+//        (projects.slug unique PER TENANT)
+//
+// RENAME.md Step 7. Both migrations are applied by lib/harness.mjs's
+// BASE_MIGRATIONS, so everything this block asserts is in force for the whole
+// suite — including, silently, for every fixture insert above: none of them
+// may name `tenants.domain` any more, and that is itself part of the proof
+// that 022 landed.
+//
+// Two of these tests are the POINT of migration 023 and are written as a
+// matched pair, because either one alone proves nothing:
+//   * two DIFFERENT tenants may each own a project with the SAME slug — the
+//     freedom the migration exists to grant, and the pressure that produced
+//     `livener-main` / `studiomartegani-main` in the first place;
+//   * the SAME tenant still may NOT have two projects with one slug — the
+//     constraint is narrowed, not deleted. A migration that merely dropped
+//     the global unique would pass the first test and fail the second, which
+//     is exactly the mistake worth catching here.
+//
+// Everything is asserted against the real catalog and against real inserts on
+// a real PostgreSQL, never against the migration text. Runs LAST and cleans up
+// after itself, so it leaves the fixture world exactly as it found it.
+
+describe('(j) schema cleanup — migration 022 (tenants.domain dropped) + migration 023 (projects.slug unique per tenant)', () => {
+  const probe = {}
+
+  afterAll(async () => {
+    await asSuperuser(async () => {
+      await client.query(`delete from public.projects where slug like 'verify-probe-%'`)
+      await client.query(`delete from public.tenants  where slug like 'verify-probe-%'`)
+    })
+  })
+
+  // ── 022 — tenants.domain ────────────────────────────────────────────────
+
+  it('022: public.tenants no longer has a `domain` column, and still has `slug`', async () => {
+    await asSuperuser(async () => {
+      const { rows } = await client.query(
+        `select column_name, is_nullable
+         from   information_schema.columns
+         where  table_schema = 'public' and table_name = 'tenants'
+         order  by ordinal_position`
+      )
+      const names = rows.map((r) => r.column_name)
+      expect(names).not.toContain('domain')
+      // The tenant's real identifier is untouched, and still NOT NULL.
+      expect(names).toContain('slug')
+      expect(rows.find((r) => r.column_name === 'slug').is_nullable).toBe('NO')
+      // Nothing else was collateral damage.
+      expect(names).toEqual(['id', 'slug', 'display_name', 'status', 'plan', 'created_at'])
+    })
+  })
+
+  it('022: the column took its index and its unique constraint with it — tenants_domain_idx / tenants_domain_key are gone, tenants_slug_idx survives', async () => {
+    await asSuperuser(async () => {
+      const { rows } = await client.query(
+        `select indexname from pg_indexes
+         where  schemaname = 'public' and tablename = 'tenants' order by indexname`
+      )
+      const names = rows.map((r) => r.indexname)
+      expect(names).not.toContain('tenants_domain_idx')
+      expect(names).not.toContain('tenants_domain_key')
+      expect(names).toContain('tenants_slug_idx')
+      expect(names).toContain('tenants_slug_key')
+      expect(names).toContain('tenants_pkey')
+    })
+  })
+
+  it('022: a tenant can now be created without inventing a domain — which the `not null unique` column made impossible', async () => {
+    await asSuperuser(async () => {
+      const { rows } = await client.query(
+        `insert into public.tenants (slug, display_name)
+         values ('verify-probe-tenant-d', 'Probe Tenant D') returning id`
+      )
+      probe.tenantD = rows[0].id
+      expect(probe.tenantD).toBeTruthy()
+    })
+  })
+
+  it('022: migration 021\'s grant and the tenants SELECT policy are untouched by the column drop', async () => {
+    await asSuperuser(async () => {
+      const grants = await client.query(
+        `select privilege_type from information_schema.role_table_grants
+         where  table_schema = 'public' and table_name = 'tenants' and grantee = 'authenticated'`
+      )
+      expect(grants.rows.map((r) => r.privilege_type)).toEqual(['SELECT'])
+
+      const policies = await client.query(
+        `select policyname, cmd, qual from pg_policies
+         where  schemaname = 'public' and tablename = 'tenants'`
+      )
+      expect(policies.rows).toHaveLength(1)
+      expect(policies.rows[0].policyname).toBe('Members can read their tenants')
+      expect(policies.rows[0].cmd).toBe('SELECT')
+      expect(policies.rows[0].qual).toMatch(/get_my_tenant_ids/)
+    })
+
+    // And it still behaves: a tenant owner reads exactly their own row.
+    await loginAs(ids.userC)
+    const { rows } = await client.query(`select id, slug from public.tenants`)
+    expect(rows.map((r) => r.id)).toEqual([ids.tenantC])
+  })
+
+  // ── 023 — projects.slug unique per tenant ───────────────────────────────
+
+  it('023: the GLOBAL unique on projects (slug) is gone and `projects_tenant_id_slug_key UNIQUE (tenant_id, slug)` is in its place', async () => {
+    await asSuperuser(async () => {
+      const { rows } = await client.query(
+        `select con.conname, pg_get_constraintdef(con.oid) as def
+         from   pg_constraint con
+         join   pg_class     r on r.oid = con.conrelid
+         join   pg_namespace n on n.oid = r.relnamespace
+         where  n.nspname = 'public' and r.relname = 'projects' and con.contype = 'u'
+         order  by con.conname`
+      )
+      const defs = rows.map((r) => r.def.replace(/\s+/g, ' '))
+      // No unique constraint on slug alone, whatever it might be named.
+      expect(defs).not.toContain('UNIQUE (slug)')
+      // The per-tenant one exists, under the name later migrations can address.
+      const composite = rows.find((r) => r.conname === 'projects_tenant_id_slug_key')
+      expect(composite).toBeDefined()
+      expect(composite.def.replace(/\s+/g, ' ')).toBe('UNIQUE (tenant_id, slug)')
+      // custom_domain stays GLOBALLY unique — a host really is a global
+      // resource, so this one must NOT have been scoped to the tenant.
+      expect(defs).toContain('UNIQUE (custom_domain)')
+    })
+  })
+
+  it('023: the plain (non-unique) projects_slug_idx survives, so the by-slug lookups that still exist in src/ keep their index', async () => {
+    await asSuperuser(async () => {
+      const { rows } = await client.query(
+        `select indexname, indexdef from pg_indexes
+         where  schemaname = 'public' and tablename = 'projects' order by indexname`
+      )
+      const byName = new Map(rows.map((r) => [r.indexname, r.indexdef]))
+      expect(byName.has('projects_slug_key')).toBe(false)
+      expect(byName.has('projects_tenant_id_slug_key')).toBe(true)
+      expect(byName.has('projects_slug_idx')).toBe(true)
+      expect(byName.get('projects_slug_idx')).not.toMatch(/UNIQUE/i)
+    })
+  })
+
+  it('023 — THE POINT: two DIFFERENT tenants can each own a project with the SAME slug (this insert pair was impossible before the migration)', async () => {
+    await asSuperuser(async () => {
+      // `main` is precisely the name the global unique made unavailable to
+      // the second tenant to ask for it, which is how tenant-prefixed slugs
+      // like `livener-main` came to exist (RENAME.md §0).
+      await client.query(
+        `insert into public.projects (slug, tenant_id, name) values ('verify-probe-main', $1, 'A main')`,
+        [ids.tenantA]
+      )
+      await client.query(
+        `insert into public.projects (slug, tenant_id, name) values ('verify-probe-main', $1, 'B main')`,
+        [ids.tenantB]
+      )
+
+      const { rows } = await client.query(
+        `select tenant_id from public.projects where slug = 'verify-probe-main' order by name`
+      )
+      expect(rows.map((r) => r.tenant_id)).toEqual([ids.tenantA, ids.tenantB])
+    })
+  })
+
+  it('023: the constraint is NARROWED, not deleted — a duplicate slug WITHIN one tenant is still rejected, by projects_tenant_id_slug_key', async () => {
+    await asSuperuser(async () => {
+      await expect(
+        client.query(
+          `insert into public.projects (slug, tenant_id, name) values ('verify-probe-main', $1, 'A main again')`,
+          [ids.tenantA]
+        )
+      ).rejects.toThrow(/duplicate key value violates unique constraint "projects_tenant_id_slug_key"/)
+
+      // …and the failed insert really did not land.
+      const { rows } = await client.query(
+        `select count(*)::int as n from public.projects
+         where  slug = 'verify-probe-main' and tenant_id = $1`,
+        [ids.tenantA]
+      )
+      expect(rows[0].n).toBe(1)
+    })
+  })
+
+  it('023: changes no RLS decision — the projects SELECT policy is byte-identical and a same-slug sibling in ANOTHER tenant stays invisible', async () => {
+    // The database makes no authorization use of projects.slug (every helper
+    // is id-based), so widening the slug namespace must not widen visibility.
+    // Proven behaviourally: userA now shares a project slug with tenant B.
+    await loginAs(ids.userA)
+    const { rows } = await client.query(
+      `select tenant_id from public.projects where slug = 'verify-probe-main'`
+    )
+    expect(rows.map((r) => r.tenant_id)).toEqual([ids.tenantA])
+
+    await loginAs(ids.userB)
+    const b = await client.query(
+      `select tenant_id from public.projects where slug = 'verify-probe-main'`
+    )
+    expect(b.rows.map((r) => r.tenant_id)).toEqual([ids.tenantB])
+
+    // A slug-only lookup is now genuinely ambiguous at the SQL level — which
+    // is the whole content of migration 023's call-site audit. Recorded here
+    // as an executable statement of the hazard, not as a defect of the DB.
+    await asSuperuser(async () => {
+      const all = await client.query(
+        `select count(*)::int as n from public.projects where slug = 'verify-probe-main'`
+      )
+      expect(all.rows[0].n).toBe(2)
+    })
   })
 })

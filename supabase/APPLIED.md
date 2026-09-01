@@ -111,6 +111,8 @@ header, marked as such. No row below was determined by querying a database.
 | 019 | `019_form_events_env_and_status.sql` | ADR-019: adds `environment` and `project_slug` to `form_events` plus a `'skipped'` status, so the single production webhook consumer delivers only `environment = 'production'` events and non-prod submissions are recorded but not emailed. | UNKNOWN — verify against live DB |
 | 020 | `020_leads_project_grain.sql` | Moves `leads` RLS from tenant grain to project grain (`get_my_project_ids()` / `get_my_writable_project_ids()`, the migration-016 shape), backfills `project_id` for single-project tenants, and keeps an owner-scoped `project_id is null` branch for legacy rows that cannot be attributed. | **NO — written 2026-08-31, NOT APPLIED.** Header states it explicitly. Proven only against `supabase/verify` (blocks (g) and (i)). See "Written but not applied" below for the exact dashboard queries. |
 | 021 | `021_tenants_read_grant.sql` | `grant select on public.tenants to authenticated` — the one table migration 011 did not audit. Grant only; `schema.sql`'s "Members can read their tenants" policy is already correct and is untouched. | **NO — written 2026-08-31, NOT APPLIED.** Header states it explicitly. Proven only against `supabase/verify` (block (i)). See below. |
+| 022 | `022_tenants_drop_domain.sql` | Drops `public.tenants.domain` (`not null unique`, wrong grain — hosts are per-PROJECT via `projects.custom_domain`; nothing consumes the value). RENAME.md Step 7, bullet 1. | **NO — written 2026-09-01, NOT APPLIED.** Header states it explicitly. Proven only against `supabase/verify` (block (j)). ⚠️ **Has an application-deploy prerequisite and is NOT reversible** — see below. |
+| 023 | `023_projects_slug_unique_per_tenant.sql` | Replaces the GLOBAL `unique (slug)` on `public.projects` with `unique (tenant_id, slug)` (named `projects_tenant_id_slug_key`). The global unique is what made tenant-prefixed slugs like `livener-main` look necessary. RENAME.md Step 7, bullet 2. | **NO — written 2026-09-01, NOT APPLIED.** Header states it explicitly. Proven only against `supabase/verify` (block (j)). |
 
 ## When you fill this in
 
@@ -218,3 +220,159 @@ behaviour. For that, load a real tenant session and issue a request-scoped
 row(s) with no `42501`.
 
 To roll 021 back: `revoke select on public.tenants from authenticated;`
+
+
+## Written but not applied — 2026-09-01 (migrations 022, 023)
+
+RENAME.md **Step 7** ("schema cleanup"). Both files were written in the same
+session and **neither was executed against the Supabase project**. No DDL was
+run anywhere except the local disposable Postgres in `supabase/verify/`
+(`npm run verify`, **90 tests green, up from 81** — `lib/harness.mjs` now
+applies 022 and 023 in its base list, and a new block **(j) schema cleanup**
+covers both). Tom applies them by hand in the dashboard SQL editor, then fills
+in the `Applied?` cells above using the queries below.
+
+Suggested order: **023 first**, then 022.
+
+- **023 is the safe one.** It only narrows a constraint. Flipping it creates no
+  duplicate slug by itself — it merely stops the database refusing one — so no
+  existing row and no existing code path changes behaviour on the day it is
+  applied. It is also reversible: `alter table public.projects drop constraint
+  projects_tenant_id_slug_key;` then `add constraint projects_slug_key unique
+  (slug);` (the rollback succeeds as long as no duplicate slug has been created
+  in the meantime).
+- **022 is the one to be careful with.** It has an application-deploy
+  prerequisite (below) and a dropped column cannot be un-dropped — undoing it
+  means a point-in-time restore, or re-adding the column and re-typing the
+  values from the capture query. Take the capture first.
+
+### 022 — drop `tenants.domain`
+
+⚠️ **Prerequisite — deploy application code FIRST.** Nothing *uses* the value
+(routing is `projects.custom_domain` + `projects.slug`, everywhere), but three
+PostgREST select-lists still **name** the column, and PostgREST fails a request
+whose select-list names a column that does not exist:
+
+| # | file:line | what breaks the moment the column goes |
+|---|---|---|
+| 1 | `src/app/api/sanity/tenant/route.ts:38` | `.select('… , domain')` — Studio TenantLinker stops resolving the linked tenant (404 branch). The value was returned to the client and never read. |
+| 2 | `src/app/api/sanity/tenants/route.ts:33` | `.select('… , domain')` — the Studio "link a tenant" picker 500s and lists nothing. The value is fetched and discarded by the route's own `.map()`. |
+| 3 | `scripts/generate-route-config.mjs:353` | `tenants?select=id,slug,domain` — regenerating / `--check`-ing `src/lib/tenancy/generated/route-config.ts` throws. `buildRows()` never references `domain`. That is RENAME.md Step 6's tooling, and `--check` is destined for the deploy pipeline. |
+
+Each fix is deleting the word `domain` from a select-list — no logic. Deploy
+that first; then this migration has no window at all (the column still exists
+while the new code runs, and the new code is already correct when it goes).
+
+**Capture before running** — the drop is not recoverable without a restore:
+
+```sql
+select id, slug, display_name, domain
+from   public.tenants
+order  by slug;
+```
+
+Paste the result into this file next to the `Applied?` cell. It is one short
+string per tenant; keeping it turns a hypothetical "something off-repo needed
+that value" into an `add column` + N `update`s instead of a restore.
+
+What to run: the whole file. Idempotent (`drop column if exists`).
+
+Confirm it took effect:
+
+```sql
+-- (a) The column is gone; slug survives and is still NOT NULL.
+select column_name, is_nullable
+from   information_schema.columns
+where  table_schema = 'public' and table_name = 'tenants'
+order  by ordinal_position;
+-- Expect exactly: id, slug, display_name, status, plan, created_at.
+-- No `domain`.
+
+-- (b) Its index and unique constraint went with it, nothing else did.
+select indexname from pg_indexes
+where  schemaname = 'public' and tablename = 'tenants'
+order  by indexname;
+-- Expect tenants_pkey, tenants_slug_idx, tenants_slug_key.
+-- NO tenants_domain_idx, NO tenants_domain_key.
+
+-- (c) No row was lost — this is a column drop, not a row operation.
+select count(*) from public.tenants;
+-- Expect the same count as the capture query above returned.
+
+-- (d) Policy and grant untouched (021's grant must still be there).
+select policyname, cmd, qual from pg_policies
+where  schemaname = 'public' and tablename = 'tenants';
+-- Expect 1 row: "Members can read their tenants", SELECT, qual referencing
+-- get_my_tenant_ids().
+
+select privilege_type from information_schema.role_table_grants
+where  table_schema = 'public' and table_name = 'tenants' and grantee = 'authenticated';
+-- Expect SELECT only (1 row) if 021 has been applied; 0 rows if it has not.
+```
+
+Then, with the prerequisite deploy live: open the Studio's tenant-link pane
+(the picker must list tenants and the linked tenant must resolve), and run
+`node scripts/generate-route-config.mjs --check` — it must print `OK: …`
+rather than throwing.
+
+### 023 — `projects.slug` unique per tenant
+
+What to run: the whole file. Idempotent: the drop is catalog-driven (it finds
+whatever UNIQUE constraint covers exactly `(slug)`, rather than assuming the
+implicit name `projects_slug_key`) and the add is existence-guarded.
+
+Confirm it took effect:
+
+```sql
+-- (a) The constraint set is exactly right.
+select con.conname, pg_get_constraintdef(con.oid) as def
+from   pg_constraint con
+join   pg_class     r on r.oid = con.conrelid
+join   pg_namespace n on n.oid = r.relnamespace
+where  n.nspname = 'public' and r.relname = 'projects' and con.contype = 'u'
+order  by con.conname;
+-- Expect projects_tenant_id_slug_key | UNIQUE (tenant_id, slug)
+--    and a UNIQUE (custom_domain)  — custom_domain stays GLOBALLY unique,
+--        correctly: a host is a global resource.
+-- There must be NO constraint whose def is `UNIQUE (slug)`.
+
+-- (b) The plain lookup index survived (the composite cannot serve a
+--     slug-only predicate, and by-slug lookups still exist in src/).
+select indexname, indexdef from pg_indexes
+where  schemaname = 'public' and tablename = 'projects'
+order  by indexname;
+-- Expect projects_slug_idx (non-unique) AND projects_tenant_id_slug_key.
+-- NO projects_slug_key.
+
+-- (c) Proof, not inspection — substitute two real tenant ids.
+--     ⚠️ DO NOT FORGET THE ROLLBACK: a committed insert here would create
+--     real preview hosts ({slug}.preview.abluo.app).
+begin;
+  insert into public.projects (slug, tenant_id, name)
+  values ('constraint-probe', '<tenant-A-uuid>', 'probe A'),
+         ('constraint-probe', '<tenant-B-uuid>', 'probe B');   -- must SUCCEED
+  insert into public.projects (slug, tenant_id, name)
+  values ('constraint-probe', '<tenant-A-uuid>', 'probe A2');  -- must FAIL 23505
+rollback;
+
+-- (d) TRIPWIRE — pin this as a saved query the day 023 is applied.
+select slug, count(*) as tenants_using_it
+from   public.projects group by slug having count(*) > 1;
+-- Must stay 0 rows until the call sites below are fixed.
+```
+
+**Why the tripwire.** Applying 023 is safe; *using* it is what needs work
+first. Five sites key on a project slug without a tenant (full audit, with the
+reasoning, in `023_projects_slug_unique_per_tenant.sql`'s header):
+
+| # | site | verdict |
+|---|---|---|
+| 1 | `src/lib/forms/submissions.ts:103` `resolveProjectScope()` | Slug comes off the URL of `/api/forms/[projectSlug]/…` — caller-chosen. A shared slug makes `.maybeSingle()` raise ⇒ `null` scope ⇒ both call sites fail closed. **Outage, not a leak** — and the highest-priority fix. |
+| 2 | `src/lib/notifications/consumer.ts:92` `resolveEventScope()` | Legacy branch only (rows with no `project_id`); slug is platform-written. Same fail-closed mechanics ⇒ a stuck notification, not a misrouted one. |
+| 3 | `src/lib/modules/client-navigation.ts:109` `resolveProjectGrant()` | In-memory `find()` over the caller's grants **across all their tenants**. A user in two tenants that share a slug gets the first match — **the wrong project rendered, silently**. Cannot cross a permission boundary (every candidate is already granted), but it is the one entry that is silently wrong rather than loudly broken. |
+| 4 | `scripts/generate-route-config.mjs:197,200` | Preview/localhost hosts are `{slug}.preview.abluo.app` — a flat, global namespace derived from the slug alone. A shared slug trips the generator's own host-collision check ⇒ **fails loudly**, blocks regeneration (and, with `--check`, the deploy). |
+| 5 | `supabase/` itself | **Nothing.** No policy, helper, trigger or view reads `projects.slug`; the RLS helpers are all id-based. This migration is invisible to every authorization decision in the database. |
+
+Safe sequencing: apply 023 → RENAME.md **Step 6** (host-first resolution) →
+fix sites 1, 3 and 4 → *only then* create a project whose slug duplicates
+another tenant's.

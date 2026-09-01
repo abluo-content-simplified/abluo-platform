@@ -17,7 +17,11 @@ function ctxWith(grants: ProjectGrant[]): TenantAuthorizationContext {
 // blog.post.read (viewer/editor/owner all hold it per the registry).
 const validGrant: ProjectGrant = {
   projectId: 'project-a1',
-  projectSlug: asSupabaseProjectSlug('livener-main'),
+  // SUPABASE namespace — `projects.slug` for Livener is `livener`. Sanity's
+  // name for the same project is `livener-main`; branding THAT here made the
+  // two namespaces coincide and hid the empty-Posts-list defect (see
+  // `dashboard-posts-namespace.test.ts`).
+  projectSlug: asSupabaseProjectSlug('livener'),
   membershipId: 'pm-editor-a1',
   role: 'editor',
   permissions: ['blog.post.read', 'blog.post.write'],
@@ -87,8 +91,15 @@ describe('getDashboardPosts', () => {
     )
     const [query, params] = fetchMock.mock.calls[0]
     expect(query).toContain('$projectSlug')
-    // The chokepoint forces the grant's own slug, never a caller value.
-    expect(params.projectSlug).toBe('livener-main')
+    // The chokepoint forces the grant's own slug, never a caller value —
+    // and the grant's slug is SUPABASE's `livener`.
+    expect(params.projectSlug).toBe('livener')
+    // STEP 5 LIABILITY (src/lib/tenancy/RENAME.md): the real query filters
+    // `projectSlug in $projectSlugs`, and only the dual-read array reaches
+    // Sanity's `livener-main` documents. When step 5 deletes the dual-read
+    // this binding disappears and `$projectSlug` alone must match — which is
+    // only true once step 4 has renamed the documents.
+    expect(params.projectSlugs).toEqual(['livener', 'livener-main'])
     expect(params.locale).toBe('it')
     expect(params.defaultLocale).toBe('en')
   })

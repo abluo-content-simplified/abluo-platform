@@ -14,10 +14,13 @@
  * The sweep below is the point of the file: it does not name the three fields,
  * it finds every `reference → formDefinition` field in the whole schema and
  * insists on a tenant clause. A picker added later is covered the day it is
- * written. It already finds a sixth — `whatsappModuleConfig.internalFormRef`,
- * generated from `src/lib/modules/registry.ts` — which carries its own
- * `tenantSlug == $tenantSlug` string filter and is hidden and module-written
- * rather than editor-facing; it is asserted on, not rewritten.
+ * written. It also finds a sixth — `whatsappModuleConfig.internalFormRef`,
+ * generated from `src/lib/modules/registry.ts`. Its manifest still declares a
+ * `tenantSlug == $tenantSlug` STRING, which is right for the Modules pane
+ * (ModuleList.tsx binds that param itself) but would select NOTHING in a
+ * Studio reference picker, where nothing binds it. `config-schema.ts`
+ * therefore generates every formDefinition picker with the shared resolver
+ * instead, so this field takes the FUNCTION branch below like the other five.
  *
  * Pure — no Sanity client, no network. The resolver is exercised against a
  * stubbed `getClient`.
@@ -86,9 +89,8 @@ describe('formDefinition reference pickers', () => {
     // The invariant, stated once for every shape a filter can take:
     //   • a FUNCTION must be the shared resolver — nothing else has been shown
     //     to fail closed;
-    //   • a STRING must already carry `tenantSlug ==` (only
-    //     `whatsappModuleConfig.internalFormRef` does, from the module registry;
-    //     it is hidden and module-written, and is left exactly as it is);
+    //   • a STRING must already carry `tenantSlug ==` — no picker takes this
+    //     branch today, but a module that declares one keeps the guarantee;
     //   • no filter at all is the defect this file was written for.
     for (const { path, field } of formReferences) {
       const filter = field.options?.filter

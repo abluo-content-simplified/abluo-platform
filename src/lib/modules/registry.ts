@@ -675,6 +675,18 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           referenceTo: ['formDefinition'],
           // Tenant-scoped even though it is hidden and module-written: defence in
           // depth, so this can never resolve another tenant's form.
+          //
+          // This STRING is the Modules-pane filter: ModuleList.tsx runs the
+          // option query itself and binds `$tenantSlug` (the current website's
+          // tenant) before interpolating it, so the param resolves there.
+          // Nothing binds `$tenantSlug` in the Studio's own reference picker,
+          // so config-schema.ts does NOT hand this string to the generated
+          // field: any picker pointing at `formDefinition` gets
+          // `activeFormReferenceFilter` instead, which resolves the tenant from
+          // the project document and fails closed. The registry stays
+          // declarative — it cannot import that resolver
+          // (schema.ts → config-schema.ts → registry.ts is the existing
+          // direction), and config-schema.ts is the seam that applies it.
           referenceFilter: '_type == "formDefinition" && tenantSlug == $tenantSlug',
           hidden: true,
           description:

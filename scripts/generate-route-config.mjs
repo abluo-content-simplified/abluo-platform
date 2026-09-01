@@ -350,7 +350,13 @@ export async function generateRouteConfigSource() {
 
   const [projects, tenants] = await Promise.all([
     fetchTable(url, key, 'projects?select=id,slug,tenant_id,custom_domain,default_locale,status&order=slug'),
-    fetchTable(url, key, 'tenants?select=id,slug,domain&order=slug'),
+    // `domain` is deliberately NOT selected: migration 022 drops
+    // public.tenants.domain, and PostgREST 400s on a select-list naming a
+    // column that no longer exists. buildRows()/hostsForProject() use the
+    // tenant row for `id` and `slug` only (hosts come from
+    // projects.custom_domain), so this is a no-op while the column still
+    // exists — and it is what keeps `--check` working once 022 is applied.
+    fetchTable(url, key, 'tenants?select=id,slug&order=slug'),
   ])
 
   const { rows, orphans } = buildRows(projects, tenants)

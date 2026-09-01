@@ -115,6 +115,8 @@ describe('fetchForTenant enforces scoping at runtime', () => {
       locale: 'it',
       projectSlug: 'livener-main',
       // STEP 3 DUAL-READ — see dualReadProjectSlugs in @/lib/sanity/client.
+      // This key exists ONLY while the dual-read does: step 5 of
+      // src/lib/tenancy/RENAME.md deletes it and this assertion must drop it.
       projectSlugs: ['livener', 'livener-main'],
       tenantSlug: 'livener',
     })

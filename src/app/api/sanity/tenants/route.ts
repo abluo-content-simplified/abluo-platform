@@ -27,10 +27,16 @@ export async function GET(request: Request) {
 
     const supabase = createAdminClient()
 
-    // Fetch all tenants from Supabase
+    // Fetch all tenants from Supabase.
+    // `domain` is deliberately NOT in this select-list: migration 022 drops
+    // public.tenants.domain (hosts are per-PROJECT — projects.custom_domain),
+    // and PostgREST 400s on a select-list naming a column that no longer
+    // exists. It was fetched and immediately discarded by the .map() below,
+    // so removing it is a no-op while the column still exists, and is what
+    // lets 022 be applied later without this route 500ing.
     const { data: tenants, error } = await supabase
       .from('tenants')
-      .select('id, slug, display_name, status, plan, created_at, domain')
+      .select('id, slug, display_name, status, plan, created_at')
       .order('created_at', { ascending: false })
 
     if (error) {

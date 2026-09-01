@@ -16,7 +16,10 @@ import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 function grantWith(enabledModuleIds: string[]): ProjectGrant {
   return {
     projectId: 'project-a1',
-    projectSlug: asSupabaseProjectSlug('livener-main'),
+    // SUPABASE namespace. `ProjectGrant.projectSlug` is `projects.slug`, and
+    // the client-dashboard URL segment is built from it — so the href below is
+    // `/livener/...`, never Sanity's `/livener-main/...`.
+    projectSlug: asSupabaseProjectSlug('livener'),
     membershipId: 'pm-1',
     role: 'editor',
     permissions: [],
@@ -38,7 +41,7 @@ describe('buildClientNavItems', () => {
     expect(items[0]).toEqual({
       moduleId: 'blog',
       labelKey: 'clientDashboard.nav.blog',
-      href: '/livener-main/posts',
+      href: '/livener/posts',
     })
   })
 
@@ -58,18 +61,20 @@ describe('buildClientNavItems', () => {
   })
 
   it('builds the href from the grant projectSlug + the route mapping', () => {
-    const grant = { ...grantWith(['blog']), projectSlug: asSupabaseProjectSlug('studiomartegani-main') }
+    // SUPABASE namespace (Sanity says `studiomartegani-main`).
+    const grant = { ...grantWith(['blog']), projectSlug: asSupabaseProjectSlug('studiomartegani') }
     const [item] = buildClientNavItems(grant, fakeRegistry)
-    expect(item.href).toBe(`/studiomartegani-main/${MODULE_DASHBOARD_ROUTES.blog}`)
+    expect(item.href).toBe(`/studiomartegani/${MODULE_DASHBOARD_ROUTES.blog}`)
   })
 })
 
 describe('resolveProjectGrant', () => {
   const a = grantWith(['blog'])
-  const b = { ...grantWith([]), projectId: 'project-b', projectSlug: asSupabaseProjectSlug('other-main') }
+  // SUPABASE namespace — a second real `projects.slug`, not a `-main` name.
+  const b = { ...grantWith([]), projectId: 'project-b', projectSlug: asSupabaseProjectSlug('nologo') }
 
   it('returns the matching grant for a granted slug', () => {
-    expect(resolveProjectGrant([a, b], 'other-main')).toBe(b)
+    expect(resolveProjectGrant([a, b], 'nologo')).toBe(b)
   })
 
   it('returns null for a slug the caller has no grant for (no silent substitute)', () => {
@@ -77,6 +82,6 @@ describe('resolveProjectGrant', () => {
   })
 
   it('returns null for an empty grant set', () => {
-    expect(resolveProjectGrant([], 'livener-main')).toBeNull()
+    expect(resolveProjectGrant([], 'livener')).toBeNull()
   })
 })

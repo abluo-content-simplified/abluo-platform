@@ -2,6 +2,7 @@ import { defineType, defineField, defineArrayMember } from 'sanity'
 import type { SchemaTypeDefinition } from 'sanity'
 import { MODULE_REGISTRY } from './registry'
 import type { ModuleConfigFieldDef, ModuleManifest } from './types'
+import { activeFormReferenceFilter } from '@/lib/sanity/form-reference-filter'
 
 // ── Module config schema derivation ───────────────────────────────────────────
 // ADR-020 Decision 1 — the `config` slot on ModuleInstallation gains "a real,
@@ -167,14 +168,42 @@ function buildModuleConfigField(field: ModuleConfigFieldDef) {
         validation: (Rule) => (field.required ? Rule.required().min(1) : Rule),
       })
 
-    case 'reference':
+    case 'reference': {
+      // A manifest declares `referenceFilter` as a GROQ STRING, because the
+      // Modules pane (ModuleList.tsx → ReferenceSelect) runs the query itself
+      // and binds `$tenantSlug` before interpolating it. The STUDIO's own
+      // reference picker, generated below, binds no such param: a string filter
+      // naming `$tenantSlug` there resolves against nothing and would select
+      // NOTHING the moment the field were un-hidden.
+      //
+      // So for a picker that selects a `formDefinition` — the only tenant-owned
+      // document a module config points at — the generated field uses the same
+      // resolver every hand-written picker in schema.ts uses. It reads
+      // `document.projectSlug` off the `project` document that carries
+      // `moduleInstallations` and looks the tenant up with `getClient`, so no
+      // bound GROQ param is needed, and it fails CLOSED when it cannot resolve
+      // one. The manifest string stays exactly as declared for the pane.
+      // Sanity types `options.filter` as a union — a GROQ string OR a resolver
+      // — so the two shapes are built separately rather than as one widened
+      // `string | function`, which is assignable to neither half.
+      const to = (field.referenceTo ?? []).map((t) => ({ type: t }))
+      if ((field.referenceTo ?? []).includes('formDefinition')) {
+        return defineField({
+          ...common,
+          type: 'reference',
+          to,
+          options: { filter: activeFormReferenceFilter },
+          validation: (Rule) => (field.required ? Rule.required() : Rule),
+        })
+      }
       return defineField({
         ...common,
         type: 'reference',
-        to: (field.referenceTo ?? []).map((t) => ({ type: t })),
+        to,
         options: field.referenceFilter ? { filter: field.referenceFilter } : undefined,
         validation: (Rule) => (field.required ? Rule.required() : Rule),
       })
+    }
 
     case 'text':
       return defineField({

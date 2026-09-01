@@ -1,0 +1,205 @@
+-- ============================================================
+-- Migration 022 — drop public.tenants.domain
+--
+-- ⚠️ NOT APPLIED TO ANY SUPABASE PROJECT (dev/preview/prod) BY THIS TASK.
+-- This is a FILE ONLY, handed to Tom to review and apply manually via the
+-- Supabase SQL editor, per CLAUDE.md's Schema Evolution Rules ("Tom decides
+-- at execution time") and this task's explicit hard stop. Proven against the
+-- local disposable-Postgres harness only (supabase/verify/live-rls.verify.mjs,
+-- block "(j) schema cleanup") — never executed against the single shared
+-- Supabase project. Record the outcome in supabase/APPLIED.md once it has
+-- actually been run.
+--
+-- This is `src/lib/tenancy/RENAME.md` Step 7, first bullet ("Drop
+-- `tenants.domain`. No routing code reads it; it is `not null unique`, so it
+-- forces an invented value per tenant.").
+--
+-- ⚠️⚠️ THIS MIGRATION IS ORDER-DEPENDENT ON AN APPLICATION DEPLOY.
+--       Read "Prerequisite" below before running it. It is the only
+--       migration in this repo that can break running code the moment it
+--       is applied, and unlike 020/021 it is NOT reversible without a
+--       point-in-time restore.
+--
+-- ── What the column is ───────────────────────────────────────────────────
+-- schema.sql §1:
+--
+--     create table public.tenants (
+--       ...
+--       domain text not null unique,
+--       ...
+--     );
+--     create index tenants_domain_idx on public.tenants (domain);
+--
+-- One domain per TENANT. That is the wrong grain for this platform and has
+-- been since migration 002 introduced `projects`: a tenant owns N projects,
+-- and the host that actually serves traffic is `projects.custom_domain`, one
+-- per project (D-2, "one project = one host", enforced by the host-collision
+-- check in scripts/generate-route-config.mjs). The live `freeriders` tenant
+-- owns two projects (`nologo`, `t42`), so its `tenants.domain` value
+-- (`freeriders.app`) cannot mean "the host for this tenant" — there are two —
+-- and in fact serves nothing at all today.
+--
+-- Because it is `not null unique`, every tenant row must carry SOME value, so
+-- onboarding invents one. An invented value in a uniquely-constrained column
+-- is a future collision waiting for the day two clients pick the same
+-- placeholder, and it is a standing invitation for someone to "fix" routing
+-- by reading it.
+--
+-- ── Nothing consumes the value — verified, not assumed ───────────────────
+-- Grepped `src/`, `scripts/` and `supabase/` on 2026-09-01. NOTHING reads
+-- `tenants.domain` for routing, or for anything else:
+--
+--   * Host → project resolution is `projects.custom_domain` +
+--     `projects.slug` only: src/lib/tenancy/host-scope.ts,
+--     src/lib/tenancy/generated/route-config.ts (every row's host comes from
+--     `hostsForProject()`, which touches `project.custom_domain` and
+--     `project.slug`), src/proxy.ts's `domainMap`, src/app/sitemap.ts.
+--   * src/lib/sanity/fields/ProjectLinker.tsx renders a field called
+--     `Domain`, but that value is `projects.custom_domain`, renamed to
+--     `domain` by src/app/api/sanity/projects/route.ts. Different column,
+--     different table.
+--   * src/lib/seo/indexability.ts classifies hosts from the generated
+--     route table — again `projects.custom_domain`.
+--
+-- ── Prerequisite: THREE select-lists still NAME the column ───────────────
+-- No code uses the VALUE, but three PostgREST select-lists still ask for the
+-- column by name, and PostgREST fails a request whose select-list names a
+-- column that does not exist (`42703 column tenants.domain does not exist`,
+-- surfaced as a 400). So applying this migration against un-updated code
+-- breaks all three IMMEDIATELY, even though none of them uses what it asked
+-- for:
+--
+--   1. src/app/api/sanity/tenant/route.ts:38
+--        .select('id, slug, display_name, status, plan, created_at, domain')
+--      Admin-only (requireAbluoAdmin). Returns the row verbatim to
+--      src/lib/sanity/fields/TenantLinker.tsx, which never reads `.domain`.
+--      After the drop this endpoint returns its 404 branch on every call, so
+--      the Studio's TenantLinker pane stops resolving the linked tenant.
+--
+--   2. src/app/api/sanity/tenants/route.ts:33
+--        .select('id, slug, display_name, status, plan, created_at, domain')
+--      Admin-only. Maps the result down to
+--      {tenantId, tenantSlug, displayName} — `domain` is fetched and
+--      discarded. After the drop this endpoint 500s, so the Studio's
+--      "link a tenant" picker lists nothing.
+--
+--   3. scripts/generate-route-config.mjs:353
+--        fetchTable(url, key, 'tenants?select=id,slug,domain&order=slug')
+--      `buildRows()` uses the tenants rows for `id`/`slug` only; `domain` is
+--      never referenced. After the drop, regenerating (or `--check`-ing)
+--      `src/lib/tenancy/generated/route-config.ts` throws. That is RENAME.md
+--      Step 6's tooling and, once `--check` is in the deploy pipeline, this
+--      would fail the pipeline.
+--
+-- The fix in all three cases is deleting the word `domain` from a
+-- select-list — no logic changes, nothing to reason about. But it IS an
+-- application deploy, and it must land FIRST:
+--
+--     deploy the three select-list edits  →  THEN apply this migration.
+--
+-- That order is safe in both directions and has no window: the column still
+-- exists while the new code runs (it simply stops asking for it), and the
+-- new code is already correct when the column disappears. The reverse order
+-- has a window during which three admin surfaces are broken. This file
+-- deliberately does not contain those edits — application code is out of
+-- scope for this migration set.
+--
+-- ── Capture before running: the drop is NOT reversible ───────────────────
+-- `alter table … drop column` destroys the data. There is no undo short of a
+-- point-in-time restore of the whole database, and this project has no
+-- staging copy to rehearse against. The values are small and few (one short
+-- string per tenant), so capture them first and paste the result into the
+-- APPLIED.md entry for this migration:
+--
+--     select id, slug, display_name, domain
+--     from   public.tenants
+--     order  by slug;
+--
+-- Keep that output. If it later turns out some off-repo consumer (a Vercel
+-- env var, a DNS runbook, a Sanity document, a saved dashboard query — none
+-- of which a `src/` grep can see) depended on a value, restoring it is then
+-- an `alter table … add column` plus N updates rather than a restore.
+--
+-- Also worth noting before running, though neither needs action:
+--   * `tenants_domain_idx` and the implicit `tenants_domain_key` unique
+--     constraint are dropped automatically with the column. No separate
+--     `drop index` is needed, and no other index is affected.
+--   * schema.sql's own seed block (§ bottom) inserts `domain` values for
+--     `studiomartegani` and `livener`. schema.sql documents the pre-migration
+--     shape and is applied before the migrations (that is exactly how
+--     supabase/verify/lib/harness.mjs runs it), so it is left alone here —
+--     but anyone re-running schema.sql from scratch against a fresh project
+--     must then run this migration after it, as the harness does.
+--
+-- ── What this migration does NOT do ──────────────────────────────────────
+--   * It does not touch `projects.custom_domain`, which is the domain that
+--     matters and stays exactly as it is.
+--   * It does not touch any policy, grant, function or trigger. `domain`
+--     appears in none of them (checked across schema.sql and migrations
+--     001–021): no RLS qual, no SECURITY DEFINER helper, no `handle_new_user`
+--     branch, no view, no generated column references it.
+--   * It does not change `tenants.slug`, which remains `not null unique` and
+--     is the tenant's real identifier.
+--
+-- Idempotent: `drop column if exists`. Safe to re-run.
+-- ============================================================
+
+
+alter table public.tenants drop column if exists domain;
+
+
+comment on table public.tenants is
+  'One row per client. Mirrors the Sanity tenant document. '
+  'Identified by slug. As of migration 022 a tenant has NO domain of its '
+  'own: hosts are per-PROJECT (projects.custom_domain, D-2 "one project = '
+  'one host"), because one tenant owns N projects.';
+
+
+-- ============================================================
+-- Verification — run in the Supabase SQL editor after applying
+-- ============================================================
+--
+-- 1. The column is gone:
+--
+--    select column_name
+--    from   information_schema.columns
+--    where  table_schema = 'public' and table_name = 'tenants'
+--    order  by ordinal_position;
+--
+--    Expected: id, slug, display_name, status, plan, created_at — and NO
+--    `domain`. `slug` must still be present.
+--
+-- 2. Its index and its unique constraint went with it, and nothing else did:
+--
+--    select indexname from pg_indexes
+--    where  schemaname = 'public' and tablename = 'tenants'
+--    order  by indexname;
+--
+--    Expected: `tenants_pkey`, `tenants_slug_idx`, `tenants_slug_key` —
+--    and NO `tenants_domain_idx`, NO `tenants_domain_key`.
+--
+-- 3. No row was lost — this is a column drop, not a row operation:
+--
+--    select count(*) from public.tenants;
+--
+--    Expected: the same number as before applying (compare against the
+--    capture query in the header, which lists one row per tenant).
+--
+-- 4. Policies and grants are untouched:
+--
+--    select policyname, cmd, qual from pg_policies
+--    where  schemaname = 'public' and tablename = 'tenants';
+--    -- Expect 1 row: "Members can read their tenants", SELECT,
+--    -- qual referencing get_my_tenant_ids() — exactly as migration 021
+--    -- left it.
+--
+--    select privilege_type from information_schema.role_table_grants
+--    where  table_schema = 'public' and table_name = 'tenants'
+--    and    grantee = 'authenticated';
+--    -- Expect exactly SELECT, if 021 has been applied; 0 rows if it has not.
+--
+-- 5. Application smoke test, AFTER the prerequisite deploy is live:
+--    open the Sanity Studio's tenant-link pane — the tenant picker must list
+--    tenants and the linked tenant must resolve — and run
+--    `node scripts/generate-route-config.mjs --check`, which must print
+--    `OK: …` rather than throwing.
