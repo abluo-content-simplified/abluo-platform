@@ -60,6 +60,43 @@ const nextConfig: NextConfig = {
           { key: 'Cache-Control', value: 'no-store' },
         ],
       },
+      {
+        // ── Staging hosts must never be indexed ──────────────────────────────
+        // This account has no Vercel Deployment Protection, so dev.abluo.app,
+        // preview.abluo.app, every *.preview.abluo.app and every raw
+        // *.vercel.app deployment URL are PUBLIC and serve a complete copy of
+        // every client website. `X-Robots-Tag: noindex` is the authoritative
+        // control — robots.txt only asks a crawler not to FETCH a URL, and a
+        // URL linked from anywhere else can still be indexed without ever
+        // being fetched.
+        //
+        // Declarative rather than middleware on purpose: this is matched on the
+        // HOST by the routing layer, so it covers EVERY response — pages, API
+        // routes (which `proxy.ts`'s matcher excludes), images, static files —
+        // and needs no change to proxy.ts's many return points.
+        //
+        // `has: [{ type: 'host', value }]` wraps `value` in ^…$ and tests it
+        // against the lowercased, port-stripped Host header (see `matchHas` in
+        // next/dist/shared/lib/router/utils/prepare-destination.js), so the
+        // value is a full regex and the wildcard hosts are covered.
+        //
+        // THE REGEX BELOW MUST STAY BYTE-IDENTICAL TO
+        // `STAGING_HOST_REGEX_SOURCE` in src/lib/seo/indexability.ts, which is
+        // what robots.txt uses. next.config.ts is loaded by Next's own config
+        // loader before the app module graph exists and so cannot import it;
+        // src/lib/seo/__tests__/indexability.test.ts reads this file and fails
+        // if the two copies drift.
+        source: '/(.*)',
+        has: [
+          {
+            type: 'host',
+            value: '(?:dev\\.abluo\\.app|(?:.+\\.)?preview\\.abluo\\.app|(?:.+\\.)?vercel\\.app|(?:.+\\.)?localhost)',
+          },
+        ],
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+        ],
+      },
     ]
   },
 }

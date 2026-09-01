@@ -1,5 +1,7 @@
 import type { MetadataRoute } from 'next'
+import { headers } from 'next/headers'
 import { isProduction } from '@/lib/deployment'
+import { isStagingHost } from '@/lib/seo/indexability'
 
 // Reverse of TENANT_TO_PROJECT in client.ts — projectSlug → URL tenant slug.
 // Only the two `-main` projects still need a row: every other project's Sanity
@@ -40,8 +42,30 @@ interface NewsArticleSitemapData {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // Never expose a sitemap on non-production environments.
+  // Never expose a sitemap on non-production environments. This alone already
+  // empties the sitemap on dev.abluo.app and preview.abluo.app today, because
+  // both run in Vercel's `preview` environment.
   if (!isProduction()) return []
+
+  // Belt and braces on the HOST as well as the environment. The env check above
+  // is a property of the DEPLOYMENT; this one is a property of the REQUEST, and
+  // it is what keeps the sitemap empty if a staging alias is ever pointed at a
+  // production-environment deployment (a Vercel alias change, not a code
+  // change, so nothing else here would catch it). Production client hosts are
+  // unaffected: `isStagingHost` fails open, so an unknown or new custom domain
+  // still gets the full sitemap.
+  //
+  // Note the entries below are always absolute `https://<customDomain>/…` URLs
+  // built from Supabase, never from the request host, so this never removed a
+  // staging URL — there were none to remove.
+  //
+  // This guard matters MORE than it looks, because staging robots.txt is now
+  // deliberately PERMISSIVE (see the staging branch of `buildRobotsForHost` —
+  // a crawl must be allowed for the X-Robots-Tag: noindex header to be seen).
+  // A crawler is therefore expected on dev.abluo.app, and it must find an
+  // empty /sitemap.xml there: permitting the crawl is not advertising the
+  // content. robots.txt correspondingly emits no `Sitemap:` line on staging.
+  if (isStagingHost((await headers()).get('host'))) return []
 
   if (!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID) return []
 
