@@ -122,6 +122,10 @@ describe('tenantClient.fetchForTenant — scope injection', () => {
 
     expect(fetchSpy).toHaveBeenCalledWith('*[_type == "page"]', {
       projectSlug: 'livener-main',
+      // STEP 3 DUAL-READ (src/lib/tenancy/RENAME.md): both names of the same
+      // project, so a query survives the step-4 document rename in either
+      // direction. Step 5 deletes this key.
+      projectSlugs: ['livener', 'livener-main'],
       tenantSlug: 'livener',
     })
   })
@@ -157,6 +161,10 @@ describe('tenantClient.fetchForTenant — scope injection', () => {
     expect(fetchSpy).toHaveBeenCalledWith('*[_id == $id]', {
       id: 'abc',
       projectSlug: 'nologo',
+      // A project whose two names already agree gets a ONE-element dual-read
+      // array — i.e. `projectSlug in $projectSlugs` is exactly the old
+      // equality filter for every project but Livener and Studio Martegani.
+      projectSlugs: ['nologo'],
       tenantSlug: 'nologo',
     })
   })

@@ -16,7 +16,12 @@ import { CTA_FIELDS } from '../queries'
 
 describe('CTA_FIELDS projection', () => {
   it('resolves the form by its stable route key', () => {
-    expect(CTA_FIELDS).toContain('"formId": formRef->formId')
+    // Still projected as `formId`, but through the tenant-scoped subquery
+    // (scopedFormId in queries.ts) rather than a bare `formRef->` — see the
+    // CTA_FIELDS block in query-tenant-scope.test.ts.
+    expect(CTA_FIELDS).toContain('"formId": *[')
+    expect(CTA_FIELDS).toContain('][0].formId')
+    expect(CTA_FIELDS).not.toContain('formRef->formId')
   })
 
   it('no longer reads inquiryType from the referenced document', () => {
@@ -26,7 +31,11 @@ describe('CTA_FIELDS projection', () => {
 
   it('no longer falls back to a raw reference id', () => {
     // A _ref is a document id, not a route key — it could never resolve a form.
-    expect(CTA_FIELDS).not.toContain('formRef._ref')
+    // The reference id is now used as the KEY of the scoped lookup
+    // (`_id == ^.formRef._ref`), which is a different thing entirely: it
+    // selects the document, and `formId` is still read off that document.
+    expect(CTA_FIELDS).not.toContain('"formId": formRef._ref')
+    expect(CTA_FIELDS).not.toContain('coalesce(formRef->formId, formRef._ref)')
   })
 })
 

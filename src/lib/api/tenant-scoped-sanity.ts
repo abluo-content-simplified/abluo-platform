@@ -17,12 +17,21 @@
  *      way to obtain a scoped client for a project you have no grant in.
  *
  *   2. Every `fetch()` call through the returned client builds its params by
- *      spreading the caller's params FIRST, then forcing `projectSlug` from
- *      the resolved grant LAST:
- *        `{ ...params, projectSlug: grant.projectSlug }`
- *      A caller-supplied `projectSlug` key is always overwritten, never
- *      merged or honored — it is structurally impossible to read another
- *      project's content by passing a different `projectSlug` param.
+ *      spreading the caller's params FIRST, then forcing the scope from the
+ *      resolved grant LAST:
+ *        `{ ...params, projectSlug: grant.projectSlug, projectSlugs }`
+ *      A caller-supplied `projectSlug` or `projectSlugs` key is always
+ *      overwritten, never merged or honored — it is structurally impossible
+ *      to read another project's content by passing a different param.
+ *
+ *      `projectSlugs` is the STEP 3 DUAL-READ binding
+ *      (`src/lib/tenancy/RENAME.md`): the queries in `queries.ts` filter
+ *      `projectSlug in $projectSlugs`, and `dualReadProjectSlugs()` turns the
+ *      grant's SUPABASE name into every name that project is known by. It is
+ *      what makes this chokepoint find Sanity's `livener-main` documents while
+ *      holding Supabase's `livener` — the client dashboard's empty Posts list.
+ *      It widens the scope to the second NAME of the SAME project and nothing
+ *      else. Step 5 of the runbook deletes it.
  *
  *   3. Every query must reference `$projectSlug` (a lightweight runtime
  *      guard — `assertQueryIsTenantScoped`, over the shared detector
@@ -37,7 +46,9 @@
  *      re-fetches the referenced document's own `projectSlug` (via an
  *      internal, ungated raw fetch reserved for exactly this verification —
  *      see "Why the reference guard bypasses the $projectSlug query guard"
- *      below) and rejects if it does not match the grant's `projectSlug`.
+ *      below) and rejects unless it is one of the grant's own names (the same
+ *      dual-read set as point 2 — a Sanity slug compared to Sanity slugs, not
+ *      to a Supabase one).
  *      This is a shared helper meant to be called at every future write site
  *      that accepts a reference or media asset — not reimplemented per
  *      route. It is not wired into any route in this slice.
@@ -90,9 +101,9 @@
  * (`src/lib/sanity/client.ts`) — the raw, unscoped `@sanity/client` instance
  * is never exposed to callers of this module.
  */
-import { findTenantScopeViolation, sanityClient } from '@/lib/sanity/client'
+import { dualReadProjectSlugs, findTenantScopeViolation, sanityClient } from '@/lib/sanity/client'
 import type { ProjectGrant, TenantAuthorizationContext } from '@/lib/api/tenant-context'
-import { toSanityProjectSlug, type SanityProjectSlug } from '@/lib/tenancy/ids'
+import { toSanityProjectSlug, unbrand, type SupabaseProjectSlug } from '@/lib/tenancy/ids'
 
 // ── Error type ──────────────────────────────────────────────────────────────
 
@@ -121,11 +132,20 @@ export type SanityFetchFn = <T>(query: string, params?: Record<string, unknown>)
 export type TenantScopedSanityClient = {
   readonly projectId: string
   /**
-   * The value bound to `$projectSlug` in every scoped GROQ query, so it is by
-   * construction a SANITY `project.projectSlug` — the namespace the documents
-   * are actually filed under. See `@/lib/tenancy/ids`.
+   * The granted project's name IN SUPABASE'S NAMESPACE — `projects.slug`,
+   * exactly as `tenant-context.ts` read it off the row. It is NOT re-branded
+   * as a Sanity slug: it never was one (that assertion was the defect below),
+   * and nothing here needs it to be.
    */
-  readonly projectSlug: SanityProjectSlug
+  readonly projectSlug: SupabaseProjectSlug
+  /**
+   * Every name this project is known by, bound to `$projectSlugs` — the STEP 3
+   * DUAL-READ set from `dualReadProjectSlugs()` (`@/lib/sanity/client`). This
+   * is what the documents are actually matched against, and it is why the
+   * dashboard can hold Supabase's `livener` and still find Sanity's
+   * `livener-main`. Step 5 collapses it back to the single name.
+   */
+  readonly projectSlugs: readonly string[]
   /**
    * Runs a parameterized GROQ query scoped to this client's granted project.
    * `projectSlug` in `params` (if supplied) is always overwritten by the
@@ -203,35 +223,40 @@ export function tenantScopedSanityClient(
     (<T>(query: string, params?: Record<string, unknown>) =>
       sanityClient.fetch<T>(query, params ?? {}))
 
-  // ⚠️⚠️ NAMESPACE CONFLATION — LIVE DEFECT, LEFT UNFIXED ON PURPOSE (v1.0.31).
+  // ── The Posts-list defect, fixed by the STEP 3 DUAL-READ ──────────────────
   //
   // `grant.projectSlug` is a SUPABASE `projects.slug` (`tenant-context.ts`
-  // reads it straight off the `projects` table). It is bound below to GROQ's
-  // `$projectSlug`, which every Sanity document matches against its own
-  // `project.projectSlug` field — a DIFFERENT namespace. For Livener the
-  // grant says `livener` and the documents say `livener-main`, so
-  // `dashboardPostsQuery` filters on a value no document carries and the
-  // client dashboard's Posts list returns EMPTY.
+  // reads it straight off the `projects` table). Sanity documents carry their
+  // OWN `projectSlug` field, and for two live projects the two names disagree:
+  // the grant says `livener`, every document says `livener-main`. Binding the
+  // grant's value to a `projectSlug == $projectSlug` filter therefore matched
+  // NOTHING, and the client dashboard's Posts list rendered EMPTY for Livener
+  // and Studio Martegani (`client-dashboard.ts` -> `[tenant]/posts/page.tsx`).
+  // It was masked for abluo/nologo/hoffmann/amelie, whose two names coincide.
   //
-  // This is not hypothetical: `client-dashboard.ts` → `posts/page.tsx` is a
-  // live path. It is NOT fixed here because the fix is a behaviour change
-  // (route the grant through `lookupSanityProjectSlugByUrlSegment`, which
-  // first needs a Supabase→URL-segment lookup that does not exist yet) and
-  // this change is contracted to be type-level only.
+  // The fix is the dual-read itself, not a second lookup table: every query
+  // now filters `projectSlug in $projectSlugs`, and `dualReadProjectSlugs`
+  // turns `livener` into `['livener', 'livener-main']`. No cast, no invented
+  // Supabase->Sanity conversion (see `@/lib/tenancy/ids`, "There is NO
+  // conversion function between the three") — a lookup against the alias table.
   //
-  // The `as unknown as` is the marker. Do not delete it by widening the field
-  // back to `string`.
-  const grantSanityProjectSlug = grant.projectSlug as unknown as SanityProjectSlug
+  // STEP 5 SIMPLIFIES THIS TO: bind `projectSlug: grant.projectSlug` and drop
+  // `projectSlugs` entirely, once the documents have been renamed and the two
+  // namespaces genuinely agree.
+  const projectSlugs = dualReadProjectSlugs(grant.projectSlug)
 
   const client: TenantScopedSanityClient = {
     projectId: grant.projectId,
-    projectSlug: grantSanityProjectSlug,
+    projectSlug: grant.projectSlug,
+    projectSlugs,
     fetch<T>(query: string, params: Record<string, unknown> = {}): Promise<T> {
       assertQueryIsTenantScoped(query)
-      // Caller params spread FIRST, projectSlug forced from the resolved
-      // grant LAST — a caller-supplied projectSlug key is always
-      // overwritten, never merged or honored (ADR-017 Decision 4).
-      const scopedParams = { ...params, projectSlug: grantSanityProjectSlug }
+      // Caller params spread FIRST, the scope forced from the resolved grant
+      // LAST — a caller-supplied projectSlug OR projectSlugs key is always
+      // overwritten, never merged or honored (ADR-017 Decision 4). Both are
+      // bound: `$projectSlugs` is what `queries.ts` filters on, `$projectSlug`
+      // stays for ad-hoc query strings and is unchanged from before.
+      const scopedParams = { ...params, projectSlug: grant.projectSlug, projectSlugs }
       return rawFetch<T>(query, scopedParams)
     },
   }
@@ -280,18 +305,28 @@ export async function assertSameTenantReference(
   // Trust boundary: this came out of a Sanity document's own `projectSlug`.
   const referencedProjectSlug = toSanityProjectSlug(referenced?.projectSlug)
 
-  // ⚠️ Same conflation as `tenantScopedSanityClient` above, in its most
-  // dangerous form: this compares a SANITY slug to a SUPABASE slug. When this
-  // guard is wired into a write route it will reject EVERY legitimate
-  // reference (`livener-main` !== `livener`) — fail-closed, so not a security
-  // hole, but a total outage of whatever calls it. `scoped.projectSlug` is
+  // ── Compare like with like ────────────────────────────────────────────────
   //
-  // The cast is repeated here rather than reading `scoped.projectSlug`, to
-  // preserve this function's stated invariant (see its doc comment): the
-  // grant is taken EXPLICITLY and is never re-derived from the client object.
-  const grantSanityProjectSlug = grant.projectSlug as unknown as SanityProjectSlug
+  // This used to compare `referencedProjectSlug` (a SANITY slug, read off the
+  // document above) against `grant.projectSlug` (a SUPABASE slug) with an
+  // `as unknown as` in between. `'livener-main' !== 'livener'`, so once this
+  // guard was wired into its first write route it would have rejected EVERY
+  // legitimate reference — fail-closed, so never a leak, but a total outage of
+  // whatever called it. It has zero callers today, which is exactly what made
+  // it a landmine for whoever wires it first.
+  //
+  // The accepted set is the STEP 3 DUAL-READ set for the GRANTED project, and
+  // nothing else: the ONLY thing widened is the second spelling of the SAME
+  // project. A document belonging to a different project is not in the set and
+  // is still rejected — see `__tests__/tenant-scoped-sanity-guard.test.ts`.
+  //
+  // The grant is still read EXPLICITLY (never re-derived from `scoped`), which
+  // is this function's stated invariant.
+  //
+  // STEP 5 SIMPLIFIES THIS TO: `referencedProjectSlug !== grant.projectSlug`.
+  const acceptableProjectSlugs = dualReadProjectSlugs(grant.projectSlug)
 
-  if (!referencedProjectSlug || referencedProjectSlug !== grantSanityProjectSlug) {
+  if (!referencedProjectSlug || !acceptableProjectSlugs.includes(unbrand(referencedProjectSlug))) {
     throw new TenantAuthorizationError(
       `assertSameTenantReference: referenced document "${referencedDocId}" belongs to project ` +
         `"${referencedProjectSlug ?? 'unknown'}", not the caller's granted project ` +

@@ -2,7 +2,9 @@ import { createClient } from '@sanity/client'
 import {
   asSanityProjectSlug,
   unbrand,
+  type AnyProjectSlug,
   type SanityProjectSlug,
+  type TenantSlug,
   type UrlProjectSegment,
 } from '@/lib/tenancy/ids'
 import { DS_FIELDS_SELECTION } from '@/lib/sanity/queries'
@@ -156,6 +158,75 @@ export const tryTenantToProjectSlug = tryLookupSanityProjectSlugByUrlSegment
  * {@link lookupSanityProjectSlugByUrlSegment}.
  */
 export const tenantToProjectSlug = lookupSanityProjectSlugByUrlSegment
+
+// ─── STEP 3 DUAL-READ (src/lib/tenancy/RENAME.md) ────────────────────────────
+//
+// Two projects have TWO names for one thing: Supabase says `livener`, Sanity
+// documents say `livener-main` (same for `studiomartegani`). Step 4 of the
+// runbook renames the 38 Sanity documents; step 3 — this — teaches the read
+// path to accept BOTH names FIRST, so the data can move without a synchronised
+// deploy and can sit in either state indefinitely.
+//
+// Mechanism: every query filters `projectSlug in $projectSlugs`, and both
+// chokepoints (`fetchForTenant` below, `tenantScopedSanityClient` in
+// `@/lib/api/tenant-scoped-sanity`) bind that array through
+// `dualReadProjectSlugs()`.
+//
+// ⚠️ THIS IS A NO-OP TODAY. Verified against the live production dataset on
+// 2026-09-01: `array::unique(*[defined(projectSlug)].projectSlug)` is
+// `[abluo, abluo-base, abluo-dental, amelie, livener-main, nologo,
+// studiomartegani-main]` — NO document carries the bare `livener` or
+// `studiomartegani` name, so `projectSlug in ["livener", "livener-main"]`
+// selects exactly the same 24 documents `projectSlug == "livener-main"` does.
+// Every other project has ONE name, so its array has ONE element and the
+// filter is literally the old one. (`abluo-base`/`abluo-dental` are the
+// shared designSystem misuse of the field noted in RENAME.md §Step 4 — they
+// are not project names and are untouched by this.)
+//
+// ── WHAT STEP 5 DELETES ─────────────────────────────────────────────────────
+// Exactly two things in this file: the constant `LEGACY_MAIN_PROJECT_SLUG_PAIRS`
+// and the function `dualReadProjectSlugs`. Then sweep the query catalogue back
+// from `projectSlug in $projectSlugs` to `projectSlug == $projectSlug` and drop
+// the `projectSlugs` binding at both chokepoints. `grep -rn dualReadProjectSlugs`
+// enumerates every site.
+
+/**
+ * The ONLY place the legacy `-main` names are written down. One row per project
+ * whose Supabase name and Sanity name disagree; both are dead the moment step 4
+ * lands. Deleting this constant (and the function below) is the whole of the
+ * step-5 contraction on the read path.
+ */
+const LEGACY_MAIN_PROJECT_SLUG_PAIRS: ReadonlyArray<readonly [supabase: string, sanity: string]> = [
+  ['livener', 'livener-main'],
+  ['studiomartegani', 'studiomartegani-main'],
+]
+
+/**
+ * The set of project-slug values a query should match for `slug` — the name it
+ * was given, plus the OTHER name of the same project while both exist.
+ *
+ * This is NOT a conversion between the branded namespaces of
+ * `@/lib/tenancy/ids` (there is no such function, and there must not be — see
+ * that module's "There is NO conversion function between the three"). It is a
+ * LOOKUP against a table of known aliases, and it returns plain `string[]`
+ * precisely because the result is a mixed-namespace set on its way out to an
+ * untyped GROQ param bag, not a value of any one namespace.
+ *
+ * Accepts a name from EITHER side of a pair, so it is correct whichever
+ * chokepoint calls it: the website passes Sanity's `livener-main`, the
+ * dashboard passes Supabase's `livener`, and both get
+ * `['livener', 'livener-main']`.
+ *
+ * A project with one name gets a one-element array — an exact-match filter by
+ * another spelling.
+ */
+export function dualReadProjectSlugs(slug: TenantSlug | AnyProjectSlug): string[] {
+  const raw = unbrand(slug)
+  for (const [supabaseSlug, sanitySlug] of LEGACY_MAIN_PROJECT_SLUG_PAIRS) {
+    if (raw === supabaseSlug || raw === sanitySlug) return [supabaseSlug, sanitySlug]
+  }
+  return [raw]
+}
 
 // ─── Runtime tenant-scope guard (finding I-9) ────────────────────────────────
 
@@ -322,7 +393,17 @@ export function tenantClient(tenantSlug: UrlProjectSegment) {
         console.error('[tenant-scope] UNSCOPED WEBSITE QUERY — ' + detail)
       }
 
-      return sanityClient.fetch<T>(query, { ...params, projectSlug, tenantSlug })
+      // `projectSlugs` is the STEP 3 DUAL-READ binding (see the block above
+      // `findTenantScopeViolation`): every query in `queries.ts` filters
+      // `projectSlug in $projectSlugs`. `projectSlug` stays bound alongside it,
+      // unchanged, so an ad-hoc query string that still says `== $projectSlug`
+      // (and the guard's own message) keep working. Step 5 drops `projectSlugs`.
+      return sanityClient.fetch<T>(query, {
+        ...params,
+        projectSlug,
+        projectSlugs: dualReadProjectSlugs(projectSlug),
+        tenantSlug,
+      })
     },
   }
 }

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import * as queries from '../queries'
+import { dualReadProjectSlugs } from '../client'
 
 // ── Every query is tenant-scoped ─────────────────────────────────────────────
 //
@@ -19,15 +20,12 @@ import * as queries from '../queries'
 // Exported strings that legitimately carry no $projectSlug. Every entry needs a
 // reason — an unexplained name here is how the next leak gets waved through.
 const ALLOWED_WITHOUT_PROJECT_SCOPE: Record<string, string> = {
-  // Not a query — a projection fragment for the `cta` OBJECT type, interpolated
-  // into a section projection that has already been reached through a
-  // project-scoped root filter. It selects no documents of its own, so it has
-  // no root filter to scope. It reads ONE field across its `formRef->`
-  // dereference — `formId`, the route key the overlay opens by — and never the
-  // definition itself; the full dereference, on headerCta, is tenant-scoped
-  // (see the block below).
-  CTA_FIELDS:
-    'Projection fragment for the cta object type, not a document query — no root filter of its own.',
+  // CTA_FIELDS was here. It is NO LONGER EXEMPT: its one dereference —
+  // `"formId": formRef->formId`, the route key the overlay opens by — read a
+  // field off ANY document by id, so a cross-tenant CTA yielded a FOREIGN
+  // formId. It now selects the definition through the same tenant-scoped
+  // subquery as the other nine (scopedFormId in queries.ts), which carries
+  // $projectSlugs, so it passes the check below on its own merits.
 
   // Not a query — the shared `pageSections[]` projection, interpolated into
   // homePageQuery / pageBySlugQuery / pageHomeQuery. Sections are embedded in
@@ -71,9 +69,9 @@ describe('GROQ queries are tenant-scoped', () => {
       expect(
         query,
         `${name} selects documents without a projectSlug filter. Add ` +
-          `\`projectSlug == $projectSlug\` to its root filter, or add it to ` +
+          `\`projectSlug in $projectSlugs\` to its root filter, or add it to ` +
           `ALLOWED_WITHOUT_PROJECT_SCOPE with a reason.`,
-      ).toContain('$projectSlug')
+      ).toContain('$projectSlugs')
     },
   )
 
@@ -112,7 +110,7 @@ describe('manual-selection queries scope the id lookup itself', () => {
       const query = (queries as Record<string, string>)[name]
       const rootFilter = query.slice(query.indexOf('*['), query.indexOf(']'))
       expect(rootFilter).toContain('_id in $')
-      expect(rootFilter).toContain('projectSlug == $projectSlug')
+      expect(rootFilter).toContain('projectSlug in $projectSlugs')
     },
   )
 })
@@ -136,17 +134,11 @@ describe('headerCta.form is scoped to the tenant that owns the project', () => {
 
   /**
    * The root filter of the subquery that selects the header form, whitespace
-   * collapsed. Ends at `][0]{` — the OUTER close — so the nested project
-   * lookups inside it stay part of the filter under test. Asserting on this
-   * slice rather than on the whole query is the point: a tenant clause that
-   * sits somewhere else in the string scopes nothing.
+   * collapsed — see `subqueryFilterAt` below for how the OUTER close is found.
+   * Asserting on this slice rather than on the whole query is the point: a
+   * tenant clause that sits somewhere else in the string scopes nothing.
    */
-  const formFilter = (() => {
-    const at = query.indexOf('_id == ^.formRef._ref')
-    return query
-      .slice(query.lastIndexOf('*[', at), query.indexOf('][0]{', at))
-      .replace(/\s+/g, ' ')
-  })()
+  const formFilter = subqueryFilterAt(query, query.indexOf('_id == ^.formRef._ref'))
 
   it('no longer dereferences formRef straight into the full projection', () => {
     // The exact shape of the leak. `->` reaches any document by id.
@@ -168,7 +160,7 @@ describe('headerCta.form is scoped to the tenant that owns the project', () => {
     // for a site whose owning tenant is "freeriders". Scoping on it would blank
     // No!Logo's header form. See src/lib/tenancy/ids.ts.
     expect(formFilter).not.toContain('$tenantSlug')
-    expect(formFilter).toContain('*[_type == "project" && projectSlug == $projectSlug][0].tenantSlug')
+    expect(formFilter).toContain('*[_type == "project" && projectSlug in $projectSlugs][0].tenantSlug')
     expect(formFilter).toContain('clientRef->tenantSlug')
   })
 
@@ -198,22 +190,43 @@ describe('headerCta.form is scoped to the tenant that owns the project', () => {
 const allStrings = Object.fromEntries(exportedStrings) as Record<string, string>
 
 /**
+ * The root filter of the `*[ … ]` subquery that ENCLOSES position `at`,
+ * whitespace collapsed.
+ *
+ * The close bracket is found by DEPTH COUNTING rather than by searching for a
+ * literal `][0]{`. Two reasons, and both are load-bearing:
+ *   - these filters nest (`PROJECT_TENANT_SLUG` opens its own `*[ … ][0]` for
+ *     the project lookup), so the first `][0]` is not the outer close; and
+ *   - a scoped subquery does not have to end in a projection. `scopedFormId`
+ *     (CTA_FIELDS) closes with `][0].formId`, and a scan for `][0]{` would run
+ *     past it into the next section and "prove" the tenant clause off some
+ *     unrelated part of the string.
+ */
+function subqueryFilterAt(query: string, at: number): string {
+  const start = query.lastIndexOf('*[', at)
+  let depth = 0
+  for (let i = start + 1; i < query.length; i++) {
+    if (query[i] === '[') depth++
+    else if (query[i] === ']') {
+      depth--
+      if (depth === 0) return query.slice(start, i).replace(/\s+/g, ' ')
+    }
+  }
+  throw new Error(`unbalanced GROQ subquery at index ${at}`)
+}
+
+/**
  * The root filter of every subquery in `query` that selects a document by a
  * reference on the enclosing scope (`_id == ^.something._ref`), whitespace
- * collapsed. Sliced to the OUTER `][0]{` so the nested project lookups stay
- * inside the filter under test — a tenant clause sitting anywhere else in the
- * string scopes nothing.
+ * collapsed — a tenant clause sitting anywhere else in the string scopes
+ * nothing.
  */
 function referenceKeyedFilters(query: string): string[] {
   const filters: string[] = []
   const marker = /_id == \^\.(\w+)\._ref/g
   let match: RegExpExecArray | null
   while ((match = marker.exec(query)) !== null) {
-    filters.push(
-      query
-        .slice(query.lastIndexOf('*[', match.index), query.indexOf('][0]{', match.index))
-        .replace(/\s+/g, ' '),
-    )
+    filters.push(subqueryFilterAt(query, match.index))
   }
   return filters
 }
@@ -241,14 +254,30 @@ describe('every reference-keyed form subquery is tenant-scoped', () => {
   // names are asserted, so deleting a scoped dereference (or adding an
   // unscoped sibling next to it) fails here rather than silently passing.
   const EXPECTED: Record<string, string[]> = {
-    // headerCta.form + the footer/floating WhatsApp form.
-    websiteSiteConfigQuery: ['formRef', 'whatsappForm'],
+    // The cta fragment's own formId lookup — one per CTA_FIELDS interpolation
+    // below, which is why `formRef` recurs in the consumers.
+    CTA_FIELDS: ['formRef'],
+    // headerCta's CTA_FIELDS formId + headerCta.form, then the
+    // footer/floating WhatsApp form.
+    websiteSiteConfigQuery: ['formRef', 'formRef', 'whatsappForm'],
     // All three module-owned form slots (ADR-020 module config).
     projectModuleConfigQuery: ['whatsappForm', 'internalFormRef', 'ctaForm'],
-    // contactSection overlay + formSection / formOverlayButtonSection.
-    PAGE_SECTIONS_PROJECTION: ['contactForm', 'form'],
-    // homePageQuery carries its own inline copy of those two sections.
-    homePageQuery: ['contactForm', 'form'],
+    // Six CTA_FIELDS interpolations (hero primary/secondary, ctas[], closing,
+    // header, callout) plus the contactSection overlay and the formSection /
+    // formOverlayButtonSection definition.
+    PAGE_SECTIONS_PROJECTION: [
+      'formRef',
+      'formRef',
+      'contactForm',
+      'form',
+      'formRef',
+      'formRef',
+      'formRef',
+      'formRef',
+    ],
+    // homePageQuery carries its own inline copy of those two sections, each
+    // with its pair of CTA_FIELDS.
+    homePageQuery: ['formRef', 'formRef', 'contactForm', 'form'],
   }
 
   it.each(Object.keys(EXPECTED))('%s scopes exactly its known form references', (name) => {
@@ -262,9 +291,9 @@ describe('every reference-keyed form subquery is tenant-scoped', () => {
   // the tenant, and an unbound parameter resolves the tenant to null, which
   // matches no form and blanks the section.
   it.each(['pageHomeQuery', 'pageBySlugQuery'])(
-    '%s binds $projectSlug for the spliced section subqueries',
+    '%s binds $projectSlugs for the spliced section subqueries',
     (name) => {
-      expect(allStrings[name]).toContain('projectSlug == $projectSlug')
+      expect(allStrings[name]).toContain('projectSlug in $projectSlugs')
       expect(allStrings[name]).toContain('_id == ^.contactForm._ref')
     },
   )
@@ -275,8 +304,11 @@ describe('every reference-keyed form subquery is tenant-scoped', () => {
     ),
   )
 
-  it('finds all nine reference-keyed form subqueries', () => {
-    expect(scoped.length).toBe(9)
+  it('finds all nineteen reference-keyed form subqueries', () => {
+    // Nine full-definition dereferences (scopedFormDefinition) plus the ten
+    // formId lookups CTA_FIELDS contributes — one in the fragment itself and
+    // one per interpolation of it into the queries listed in EXPECTED.
+    expect(scoped.length).toBe(19)
   })
 
   it.each(scoped.map(([label]) => label))(
@@ -299,7 +331,7 @@ describe('every reference-keyed form subquery is tenant-scoped', () => {
       const filter = scoped.find(([l]) => l === label)![1]
       expect(filter).not.toContain('$tenantSlug')
       expect(filter).toContain(
-        '*[_type == "project" && projectSlug == $projectSlug][0].tenantSlug',
+        '*[_type == "project" && projectSlug in $projectSlugs][0].tenantSlug',
       )
       expect(filter).toContain('clientRef->tenantSlug')
     },
@@ -322,5 +354,90 @@ describe('no query derives a tenant by stripping a slug suffix', () => {
   it.each(exportedStrings.map(([name]) => name))('%s contains no -main strip', (name) => {
     const query = (queries as Record<string, string>)[name]
     expect(query).not.toContain('-main')
+  })
+})
+
+// ── STEP 3 DUAL-READ: every query matches BOTH names of its project ──────────
+//
+// `src/lib/tenancy/RENAME.md` §0: two live projects have two names for one
+// thing. Supabase's `projects.slug` says `livener`; the Sanity documents say
+// `livener-main`. Step 4 of that runbook renames the 38 documents, and a
+// rename of the exact field every query filters on cannot be made atomic with
+// a deploy — between the two, both live sites would be blank (the 2026-08-14
+// outage, exactly).
+//
+// Step 3 removes that window by making the read path accept EITHER name:
+// queries filter `projectSlug in $projectSlugs`, and both chokepoints bind
+// that array through `dualReadProjectSlugs()`. This block is what stops the
+// single-param shape coming back — including in a query written after the
+// rename but before step 5, which would look correct and return nothing for
+// whichever half of the transition it did not name.
+//
+// STEP 5 DELETES THIS WHOLE BLOCK, along with `LEGACY_MAIN_PROJECT_SLUG_PAIRS`
+// and `dualReadProjectSlugs` in `../client`.
+
+describe('every query is dual-read (RENAME.md step 3)', () => {
+  it.each(exportedStrings.map(([name]) => name))(
+    '%s never uses the single-name `projectSlug == $projectSlug` filter',
+    (name) => {
+      expect(
+        allStrings[name],
+        `${name} filters on a single project name. On the DASHBOARD path that ` +
+          `is not a style point: the grant carries Supabase's name (\`livener\`) ` +
+          `and the documents carry Sanity's (\`livener-main\`), so an equality ` +
+          `filter matches nothing and the list renders EMPTY. Use ` +
+          `\`projectSlug in $projectSlugs\`.`,
+      ).not.toContain('projectSlug == $projectSlug')
+    },
+  )
+
+  it.each(
+    exportedStrings
+      .map(([name]) => name)
+      .filter((name) => !(name in ALLOWED_WITHOUT_PROJECT_SCOPE)),
+  )('%s binds the dual-read array', (name) => {
+    expect(allStrings[name]).toContain('projectSlug in $projectSlugs')
+  })
+
+  it('scopes the tenant lookup itself on both names, not just the root filter', () => {
+    // PROJECT_TENANT_SLUG resolves the owning tenant by looking the project
+    // document up BY THE SAME FIELD. Left on `== $projectSlug` it would
+    // resolve to null for Livener, and `tenantSlug == null` matches no form —
+    // every form on the site would silently vanish.
+    expect(queries.websiteSiteConfigQuery).toContain(
+      '*[_type == "project" && projectSlug in $projectSlugs][0].tenantSlug',
+    )
+  })
+})
+
+describe('dualReadProjectSlugs — the binding half, and why it is a no-op today', () => {
+  it('returns both names for a project whose two stores disagree', () => {
+    // Whichever name the caller holds: the website resolves Sanity's through
+    // TENANT_TO_PROJECT, the dashboard reads Supabase's off the grant.
+    expect(dualReadProjectSlugs('livener' as never)).toEqual(['livener', 'livener-main'])
+    expect(dualReadProjectSlugs('livener-main' as never)).toEqual(['livener', 'livener-main'])
+    expect(dualReadProjectSlugs('studiomartegani' as never)).toEqual([
+      'studiomartegani',
+      'studiomartegani-main',
+    ])
+    expect(dualReadProjectSlugs('studiomartegani-main' as never)).toEqual([
+      'studiomartegani',
+      'studiomartegani-main',
+    ])
+  })
+
+  it('returns ONE name for every project whose two stores already agree', () => {
+    // This is the no-op proof for everyone else: a one-element array makes
+    // `projectSlug in $projectSlugs` the exact equality filter it replaced.
+    for (const slug of ['abluo', 'nologo', 'amelie', 'hoffmann', 't42']) {
+      expect(dualReadProjectSlugs(slug as never)).toEqual([slug])
+    }
+  })
+
+  it('invents nothing — it is a lookup, not a suffix transform', () => {
+    // `x + "-main"` / `x.replace(/-main$/, '')` is the forbidden conversion
+    // (src/lib/tenancy/ids.ts). An unknown slug gets no second name.
+    expect(dualReadProjectSlugs('freeriders-main' as never)).toEqual(['freeriders-main'])
+    expect(dualReadProjectSlugs('livener-events' as never)).toEqual(['livener-events'])
   })
 })

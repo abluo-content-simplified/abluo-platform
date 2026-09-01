@@ -160,7 +160,7 @@ describe('news module — tenant scoping', () => {
     // query is the easy one to miss, since its IDs already come from a scoped
     // document — but a stale reference would otherwise cross tenants.
     expect((queries as Record<string, unknown>)[name] as string).toContain(
-      'projectSlug == $projectSlug'
+      'projectSlug in $projectSlugs'
     )
   })
 

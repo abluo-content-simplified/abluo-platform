@@ -42,6 +42,8 @@ describe('dashboard chokepoint query guard (unchanged by I-9)', () => {
     expect(fetchMock).toHaveBeenCalledWith(query, {
       locale: 'en',
       projectSlug: 'livener-main',
+      // STEP 3 DUAL-READ — see dualReadProjectSlugs in @/lib/sanity/client.
+      projectSlugs: ['livener', 'livener-main'],
     })
   })
 

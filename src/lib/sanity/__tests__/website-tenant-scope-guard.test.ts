@@ -114,6 +114,8 @@ describe('fetchForTenant enforces scoping at runtime', () => {
     expect(fetchMock).toHaveBeenCalledWith(query, {
       locale: 'it',
       projectSlug: 'livener-main',
+      // STEP 3 DUAL-READ — see dualReadProjectSlugs in @/lib/sanity/client.
+      projectSlugs: ['livener', 'livener-main'],
       tenantSlug: 'livener',
     })
   })

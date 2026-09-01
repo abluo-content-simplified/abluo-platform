@@ -86,8 +86,18 @@ export async function resolveProjectScope(
 /**
  * Reference filter for every picker that selects an ACTIVE form definition.
  *
- * Shared by the CTA `formRef` and the Form Section `form` field so the two can
- * never drift apart — they are the same tenant boundary asked twice.
+ * Shared by every picker that selects an active form, so they can never drift
+ * apart — they are the same tenant boundary asked five times:
+ *   • `cta.formRef`
+ *   • `formSection.form`
+ *   • `contactSection.contactForm`
+ *   • `formOverlayButtonSection.form`
+ *   • `siteConfig.whatsappForm` (deprecated, hidden — scoped anyway)
+ *
+ * The first two are objects nested in a page and the last is a document of its
+ * own, but all five resolve identically: Sanity hands the filter callback the
+ * DOCUMENT being edited, and every one of those documents (`page`, `siteConfig`)
+ * carries `projectSlugField`. Nothing here needs a bound GROQ param.
  *
  * `role == "active"` is preserved verbatim from both call sites: templates
  * (`role == "template"`, `tenantSlug: null`) are unscoped by design and stay
@@ -1642,7 +1652,10 @@ const contactSectionType = defineType({
       type: 'reference',
       to: [{ type: 'formDefinition' }],
       description: 'Optional. When set, a button under the contact details opens this form in an overlay.',
-      options: { filter: '_type == "formDefinition" && role == "active"' },
+      // Same tenant boundary as the CTA and Form Section pickers. A section
+      // object is edited inside its PAGE, so the filter callback is handed the
+      // page document — `projectSlug` and all — exactly like `formSection.form`.
+      options: { filter: activeFormReferenceFilter },
     }),
     defineField({
       name: 'contactButtonLabel',
@@ -2870,7 +2883,10 @@ const formOverlayButtonSectionType = defineType({
       to: [{ type: 'formDefinition' }],
       description: 'The form definition opened in the overlay (ADR-018).',
       validation: (Rule) => Rule.required(),
-      options: { filter: '_type == "formDefinition" && role == "active"' },
+      // Tenant-scoped via the page document this section is edited in — see
+      // activeFormReferenceFilter. Was unscoped, so the picker listed every
+      // tenant's active forms even though the runtime refused to render them.
+      options: { filter: activeFormReferenceFilter },
     }),
     defineField({
       name: 'overlayTitle',
@@ -4481,7 +4497,7 @@ const siteConfigType = defineType({
     // only as a fallback by resolveWhatsAppConfig(), and deleted once
     // production has been promoted.
     defineField({ name: 'whatsappNumber', title: 'WhatsApp Number', type: 'string', group: 'contact', description: '⚠️ Deprecated (ADR-020) — configure this in Modules → WhatsApp. Kept only until production is promoted.', hidden: true }),
-    defineField({ name: 'whatsappForm', title: 'WhatsApp Message Form', type: 'reference', to: [{ type: 'formDefinition' }], group: 'contact', description: '⚠️ Deprecated (ADR-020) — configure this in Modules → WhatsApp. Kept only until production is promoted.', options: { filter: '_type == "formDefinition" && role == "active"' }, hidden: true }),
+    defineField({ name: 'whatsappForm', title: 'WhatsApp Message Form', type: 'reference', to: [{ type: 'formDefinition' }], group: 'contact', description: '⚠️ Deprecated (ADR-020) — configure this in Modules → WhatsApp. Kept only until production is promoted.', options: { filter: activeFormReferenceFilter }, hidden: true }),
     defineField({ name: 'whatsappFloating', title: 'Floating WhatsApp Button', type: 'boolean', group: 'contact', initialValue: false, description: '⚠️ Deprecated (ADR-020) — configure this in Modules → WhatsApp. Kept only until production is promoted.', hidden: true }),
     defineField({ name: 'footerLinks', title: 'Footer Links', type: 'array', group: 'footer', of: [defineArrayMember({ type: 'navigationLink' })] }),
     // ── Grouped footer link columns ──────────────────────────────────────────

@@ -23,7 +23,7 @@ import { stripLocale } from './admin-surface'
  * that list or act across all of a user's grants (currently just `account`).
  *
  * ADR-017 Phase 2 route restructure: the project-scoped pages (`posts`,
- * `leads`, `analytics`) moved OUT of this leading-segment set and UNDER the
+ * `leads`, `analytics`, `submissions`) moved OUT of this leading-segment set and UNDER the
  * `[tenant]` (projectSlug) dynamic segment — matched by
  * `CLIENT_PROJECT_SEGMENTS` at the SECOND position below.
  */
@@ -34,14 +34,22 @@ export const CLIENT_USER_SEGMENTS = new Set(['account'])
  * live at `/{projectSlug}/{segment}` — i.e. the SECOND path segment (after any
  * locale prefix), because the first segment is the dynamic projectSlug. Kept in
  * lockstep with `src/app/[locale]/(client)/[tenant]/*` — a new project-scoped
- * client page must be added here to be gated.
+ * client page must be added here to be gated. That lockstep is no longer a
+ * promise in a comment: `__tests__/client-surface.test.ts` reads the directory
+ * at test time and fails when the two disagree in either direction. (It had
+ * already drifted once — `submissions` shipped without being listed here.)
  *
  * These names are deliberately disjoint from the public tenant sub-routes
  * (`blog`, `events`, `live`, and free-form page slugs under
  * `(website)/[tenant]`), so that on the platform host the gate cannot mistake a
  * public-style path for a client surface via a name clash.
  */
-export const CLIENT_PROJECT_SEGMENTS = new Set(['posts', 'leads', 'analytics'])
+export const CLIENT_PROJECT_SEGMENTS = new Set([
+  'posts',
+  'leads',
+  'analytics',
+  'submissions',
+])
 
 /**
  * True when `pathname` addresses a client dashboard surface. Pure: the locale
