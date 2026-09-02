@@ -249,10 +249,39 @@ step 3 deployed, the data can sit in either state indefinitely.
 - [x] Step 3 — dual-read WRITTEN and DEPLOYED (`dualReadProjectSlugs`, commit 2ccfaaf); both live sites verified before Step 4
 - [x] Export taken
 - [x] Step 4 — 39 documents renamed (25 + 14); `*[projectSlug match "*-main"]` returns 0
-- [x] Step 4 — drafts republished; no unrelated pending draft pushed live
+- [x] Step 4 — no unrelated pending draft pushed live. NOTHING was republished,
+      deliberately: `drafts.Pn6oyV4Ks5AcNbecjb7Gdy` carries a real unfinished edit
+      (`name` = "8 on the Lago di Varese" vs a published "hhhhhh"). It was blocked
+      from publishing by a raw-string `altText`, now removed. Both the published doc
+      and its draft were renamed; publishing the draft is Tom's call, not the
+      rename's business.
 - [x] Step 5 — both maps deleted; dual-read removed; the brands collapsed; the 4 defects settled (2 fixed here, 2 already fixed by Step 1 — see the ⚠️ in Step 5)
 - [ ] Step 5 — **client dashboard Posts list non-empty for Livener + Studio Martegani** — proven by `dashboard-posts-namespace.test.ts` against the post-rename fixture; NOT yet re-checked in the browser (this change is uncommitted and undeployed)
-- [ ] Step 6 — proxy on the generated table; Hoffmann + Amélie hosts verified
-- [ ] Step 6 — `--check` in the deploy pipeline
+- [x] Step 6 — proxy on the generated table (commit 7646dd0). ⚠️ CODE ONLY, NOT
+      DEPLOYED. Hoffmann + Amélie hosts verified in tests, NOT in a browser.
+      Amélie is the only behaviour change on a live-reachable host: her preview and
+      localhost hosts resolved to nothing before and now resolve to `/en/amelie`.
+- [x] Step 6 — `--check` wired into `scripts/doctor.sh`, which `release.sh` runs and
+      dies on. ⚠️ Narrower than it sounds: doctor SKIPS the check when
+      `SUPABASE_SERVICE_ROLE_KEY` is absent, the drift test skips without
+      credentials, and NOTHING runs on Vercel — so a direct `git push` or a
+      dev→preview→main promotion is not drift-checked at all. That promotion path
+      is the one normally used.
 - [ ] Step 6 — delete `KNOWN_PROJECT_SEGMENTS` (`src/lib/sanity/client.ts`) and `projectScopeSlugFromUrlSegment` (`src/lib/forms/render-mapping.ts`), the last two hand-maintained URL-segment facts
 - [x] Step 7 — `tenants.domain` dropped; `projects.slug` unique per tenant
+
+### Step 6 — open decisions, neither resolved
+
+1. **Only `status = 'active'` is served.** `projects.status` allows
+   `draft | preview | active | inactive` and **`draft` is the column default**, so a
+   newly inserted project is born unroutable — including on its own
+   `<slug>.preview.abluo.app` host and in local dev. No live impact today (all 7 rows
+   are active or inactive), but it breaks the NEXT onboarding, silently, in the
+   workflow the preview host exists for. Either serve `preview` on preview/localhost
+   hosts, or write down that onboarding requires `status='active'` first.
+
+2. **An unknown or inactive host now lands on the Abluo login page, not a 404.**
+   `t42.preview.abluo.app` used to 404 at the route boundary; it now resolves to
+   null, falls through to intl, and redirects to `/login`. Same for any domain
+   someone CNAMEs at the deployment. Not a leak, but the code comment claiming
+   "same visible outcome" is wrong and should say what actually happens.
