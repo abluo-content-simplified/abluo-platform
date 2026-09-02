@@ -2074,3 +2074,422 @@ describe('(j) schema cleanup — migration 022 (tenants.domain dropped) + migrat
     })
   })
 })
+
+// ── (k) handle_new_user() metadata escalation — migration 024 ──────────────
+//
+// The P0 this block exists for: `handle_new_user()` reads
+// `new.raw_user_meta_data`, which is the CLIENT-supplied `data` bag from
+// `POST /auth/v1/signup`. With `disable_signup: false` on the live project
+// (confirmed via GET /auth/v1/settings) and the anon key in the browser
+// bundle, anyone could self-sign-up carrying `{ tenant_id: <victim uuid> }`
+// and be handed `tenant_members.role = 'owner'` for that tenant.
+//
+// This block is deliberately LAST, and it is the only place in the suite
+// that touches the trigger definitions, because it rewrites them globally.
+//
+// It runs in three phases, in one describe, so the file reads as the story:
+//
+//   PHASE 1 — reproduce the live PRE-fix state and ASSERT THE HOLE IS REAL.
+//     The harness's base migration set stops at 004's function body (no
+//     project branch), but the LIVE function has the project branch too —
+//     i.e. `010_project_member_invite_trigger.sql.draft` (or SQL equal to
+//     it) was applied by hand despite the file still being marked NOT
+//     APPLIED. So phase 1 applies that draft to make the local function
+//     byte-equivalent to what is running in production, then demonstrates
+//     the escalation on both branches. These tests PASS before the fix and
+//     are INVERTED by it — see phase 2.
+//
+//   PHASE 2 — apply migration 024 and assert the hole is closed, the
+//     legitimate invite path still works, and profiles is unaffected.
+//
+//   PHASE 3 — structural checks on the shipped objects.
+//
+// ── How a user is created here, and why it matters ────────────────────────
+//
+// Every simulation below writes auth.users the way GoTrue actually writes
+// it, because the whole fix turns on that ordering:
+//
+//   self-signup : ONE insert. invited_at stays NULL, forever.
+//   invite      : an insert with invited_at NULL, THEN an update setting
+//                 invited_at — GoTrue's api/invite.go calls signupNewUser()
+//                 (the insert) and only afterwards api/mail.go sendInvite(),
+//                 which does
+//                   u.InvitedAt = &now
+//                   tx.UpdateOnly(u, "confirmation_token",
+//                                 "confirmation_sent_at", "invited_at")
+//                 in the same transaction.
+//
+// If the tests inserted a row with invited_at already populated, they would
+// be testing a shape GoTrue never produces — and the "obvious" version of
+// this fix (`if new.invited_at is not null` inside the AFTER INSERT trigger)
+// would pass them while breaking every real invite in production. The two
+// helpers below are the guard against writing that test.
+//
+// ── What this harness can and cannot prove ────────────────────────────────
+//
+// HONEST SCOPE. `auth.users` here is the local shim (verify/auth-shim.sql),
+// not GoTrue's real table — the harness has no GoTrue. So these tests prove
+// the DATABASE side completely and for real: the real trigger definitions,
+// the real function bodies, real RLS, real constraints, a real Postgres.
+// What they CANNOT prove is the GoTrue side of the contract — that GoTrue
+// really does stamp invited_at in a separate UPDATE. That claim is sourced
+// from supabase/auth's own source (cited above and in migration 024's
+// header) and encoded in the helpers below; it is the one link in the chain
+// verified by reading rather than by executing. It is also the link most
+// worth re-checking if invites ever stop granting membership after 024 is
+// applied: the symptom would be a profiles row with no tenant_members row.
+
+const SELF_SIGNUP_TENANT_PROBE = 'attacker-selfsignup-tenant@verify.test'
+const SELF_SIGNUP_PROJECT_PROBE = 'attacker-selfsignup-project@verify.test'
+
+/**
+ * Simulate `POST /auth/v1/signup` — a single INSERT, invited_at NULL.
+ * `metadata` is fully attacker-controlled; that is the entire point.
+ */
+async function simulateSelfSignup(email, metadata) {
+  const { rows } = await client.query(
+    `insert into auth.users (email, raw_user_meta_data)
+     values ($1, $2::jsonb)
+     returning id`,
+    [email, JSON.stringify(metadata)]
+  )
+  return rows[0].id
+}
+
+/**
+ * Simulate `auth.admin.inviteUserByEmail(email, { data })` — INSERT with
+ * invited_at NULL, then the sendInvite() UPDATE that stamps it. Wrapped in a
+ * transaction because GoTrue does both in one.
+ */
+async function simulateInvite(email, metadata) {
+  await client.query('begin')
+  const { rows } = await client.query(
+    `insert into auth.users (email, raw_user_meta_data)
+     values ($1, $2::jsonb)
+     returning id`,
+    [email, JSON.stringify(metadata)]
+  )
+  const id = rows[0].id
+  // sendInvite()'s `tx.UpdateOnly(u, "confirmation_token",
+  // "confirmation_sent_at", "invited_at")`. Only invited_at is modelled in
+  // the shim; the other two columns are irrelevant to this trigger.
+  await client.query(`update auth.users set invited_at = now() where id = $1`, [id])
+  await client.query('commit')
+  return id
+}
+
+async function tenantMembershipsOf(userId) {
+  const { rows } = await client.query(
+    `select tenant_id, role from public.tenant_members where user_id = $1`,
+    [userId]
+  )
+  return rows
+}
+
+async function projectMembershipsOf(userId) {
+  const { rows } = await client.query(
+    `select project_id, role from public.project_members where user_id = $1`,
+    [userId]
+  )
+  return rows
+}
+
+async function profileCountOf(userId) {
+  const { rows } = await client.query(`select count(*)::int as n from public.profiles where id = $1`, [
+    userId,
+  ])
+  return rows[0].n
+}
+
+describe('(k) handle_new_user() signup-metadata privilege escalation — migration 024', () => {
+  describe('PHASE 1 — the live PRE-fix function: the hole is real', () => {
+    beforeAll(async () => {
+      // Bring the local function up to the LIVE body. The base harness set
+      // stops at migration 004 (tenant branch only); the live database also
+      // has the project branch from the 010 draft. Applying the draft here
+      // is what makes phase 1 a characterization of PRODUCTION rather than
+      // of the repo's migration list.
+      await asSuperuser(() =>
+        applyMigrationFile(
+          client,
+          path.join(__dirname, '..', 'migrations', '010_project_member_invite_trigger.sql.draft')
+        )
+      )
+    })
+
+    it('PRE-024: a SELF-SIGNUP carrying only { tenant_id } is handed tenant_members.role = OWNER of a tenant it has no relationship with — the P0, reproduced', async () => {
+      await asSuperuser(async () => {
+        const attacker = await simulateSelfSignup(SELF_SIGNUP_TENANT_PROBE, {
+          full_name: 'Mallory',
+          tenant_id: ids.tenantA, // victim tenant; note NO role is supplied
+        })
+        ids.attackerTenantPre = attacker
+
+        const memberships = await tenantMembershipsOf(attacker)
+        expect(memberships).toEqual([{ tenant_id: ids.tenantA, role: 'owner' }])
+      })
+    })
+
+    it("PRE-024: that owner row is not cosmetic — it puts the attacker inside tenant A's authorization helpers, i.e. read AND write on tenant A", async () => {
+      // get_my_tenant_ids / get_my_writable_tenant_ids / get_my_owned_tenant_ids
+      // are what every RLS policy in the system resolves through.
+      await loginAs(ids.attackerTenantPre)
+      const readable = await client.query(`select public.get_my_tenant_ids() as t`)
+      expect(readable.rows.map((r) => r.t)).toEqual([ids.tenantA])
+
+      const writable = await client.query(`select public.get_my_writable_tenant_ids() as t`)
+      expect(writable.rows.map((r) => r.t)).toEqual([ids.tenantA])
+
+      const owned = await client.query(`select public.get_my_owned_tenant_ids() as t`)
+      expect(owned.rows.map((r) => r.t)).toEqual([ids.tenantA])
+
+      // And, concretely: tenant A's project row is now visible to a stranger.
+      const projects = await client.query(`select id from public.projects`)
+      expect(projects.rows.map((r) => r.id)).toContain(ids.projectA1)
+    })
+
+    it('PRE-024: the same hole one grain down — a SELF-SIGNUP carrying { project_id, role: editor } is handed project_members editor on a stranger\'s project', async () => {
+      await asSuperuser(async () => {
+        const attacker = await simulateSelfSignup(SELF_SIGNUP_PROJECT_PROBE, {
+          full_name: 'Mallory Two',
+          project_id: ids.projectB1, // victim project, different tenant
+          role: 'editor',
+        })
+        ids.attackerProjectPre = attacker
+
+        const memberships = await projectMembershipsOf(attacker)
+        expect(memberships).toEqual([{ project_id: ids.projectB1, role: 'editor' }])
+      })
+    })
+  })
+
+  describe('PHASE 2 — migration 024 applied', () => {
+    beforeAll(async () => {
+      await asSuperuser(async () => {
+        // Clean the phase-1 damage so phase 2's assertions are about phase
+        // 2's own users, not leftovers.
+        await client.query(`delete from auth.users where email in ($1, $2)`, [
+          SELF_SIGNUP_TENANT_PROBE,
+          SELF_SIGNUP_PROJECT_PROBE,
+        ])
+        await applyMigrationFile(
+          client,
+          path.join(__dirname, '..', 'migrations', '024_handle_new_user_invite_only.sql')
+        )
+      })
+    })
+
+    it('POST-024 (the fix): a SELF-SIGNUP carrying { tenant_id } gets NO tenant_members row at all — same input as phase 1, inverted outcome', async () => {
+      await asSuperuser(async () => {
+        const attacker = await simulateSelfSignup(SELF_SIGNUP_TENANT_PROBE, {
+          full_name: 'Mallory',
+          tenant_id: ids.tenantA,
+        })
+        ids.attackerTenantPost = attacker
+        expect(await tenantMembershipsOf(attacker)).toEqual([])
+      })
+    })
+
+    it('POST-024: naming the role explicitly does not help either — { tenant_id, role: owner } from a self-signup is still zero rows', async () => {
+      await asSuperuser(async () => {
+        const attacker = await simulateSelfSignup('attacker-explicit-owner@verify.test', {
+          tenant_id: ids.tenantA,
+          role: 'owner',
+        })
+        expect(await tenantMembershipsOf(attacker)).toEqual([])
+      })
+    })
+
+    it('POST-024: the attacker is authorization-invisible — every tenant helper returns nothing, and tenant A\'s projects are gone from their view', async () => {
+      await loginAs(ids.attackerTenantPost)
+      for (const fn of ['get_my_tenant_ids', 'get_my_writable_tenant_ids', 'get_my_owned_tenant_ids']) {
+        const { rows } = await client.query(`select public.${fn}() as t`)
+        expect(rows).toEqual([])
+      }
+      const projects = await client.query(`select id from public.projects`)
+      expect(projects.rows).toEqual([])
+    })
+
+    it('POST-024: the project branch is closed too — a SELF-SIGNUP with { project_id, role: editor } gets NO project_members row', async () => {
+      await asSuperuser(async () => {
+        const attacker = await simulateSelfSignup(SELF_SIGNUP_PROJECT_PROBE, {
+          project_id: ids.projectB1,
+          role: 'editor',
+        })
+        ids.attackerProjectPost = attacker
+        expect(await projectMembershipsOf(attacker)).toEqual([])
+      })
+    })
+
+    it('POST-024: profiles is STILL created for a self-signup — identity is not privilege, and blocking it would break the invite/accept name-sync path (block (f))', async () => {
+      await asSuperuser(async () => {
+        expect(await profileCountOf(ids.attackerTenantPost)).toBe(1)
+        expect(await profileCountOf(ids.attackerProjectPost)).toBe(1)
+        const { rows } = await client.query(`select full_name from public.profiles where id = $1`, [
+          ids.attackerTenantPost,
+        ])
+        expect(rows[0].full_name).toBe('Mallory')
+      })
+    })
+
+    it('POST-024 (no regression): the LEGITIMATE tenant-owner invite — insert then the sendInvite() invited_at update, { tenant_id, role: owner, invited_by } — still creates the owner membership', async () => {
+      await asSuperuser(async () => {
+        // Exactly the metadata src/app/api/tenants/[tenantId]/invite/route.ts sends.
+        const invitee = await simulateInvite('invited-owner-d@verify.test', {
+          tenant_id: ids.tenantB,
+          role: 'owner',
+          invited_by: ids.userA,
+        })
+        ids.invitedOwner = invitee
+        expect(await tenantMembershipsOf(invitee)).toEqual([{ tenant_id: ids.tenantB, role: 'owner' }])
+        expect(await profileCountOf(invitee)).toBe(1)
+      })
+    })
+
+    it('POST-024 (no regression): the LEGITIMATE project invite — { project_id, role: editor, invited_by } — still creates the editor membership, and role viewer is honoured as viewer', async () => {
+      await asSuperuser(async () => {
+        // Exactly the metadata src/app/api/projects/[projectId]/invite/route.ts sends.
+        const editor = await simulateInvite('invited-editor-c2@verify.test', {
+          project_id: ids.projectC2,
+          role: 'editor',
+          invited_by: ids.userC,
+        })
+        expect(await projectMembershipsOf(editor)).toEqual([{ project_id: ids.projectC2, role: 'editor' }])
+
+        const viewer = await simulateInvite('invited-viewer-c2@verify.test', {
+          project_id: ids.projectC2,
+          role: 'viewer',
+          invited_by: ids.userC,
+        })
+        expect(await projectMembershipsOf(viewer)).toEqual([{ project_id: ids.projectC2, role: 'viewer' }])
+      })
+    })
+
+    it('POST-024: the invited owner really is an owner — the membership row resolves through the same helpers phase 1 showed the attacker abusing', async () => {
+      await loginAs(ids.invitedOwner)
+      const owned = await client.query(`select public.get_my_owned_tenant_ids() as t`)
+      expect(owned.rows.map((r) => r.t)).toEqual([ids.tenantB])
+    })
+
+    it("POST-024: 'owner' is no longer a silent default — an invite carrying tenant_id with NO role creates no membership (fails closed) instead of granting the highest privilege", async () => {
+      await asSuperuser(async () => {
+        const invitee = await simulateInvite('invited-no-role@verify.test', {
+          tenant_id: ids.tenantB,
+          invited_by: ids.userB,
+        })
+        expect(await tenantMembershipsOf(invitee)).toEqual([])
+        // Still a real account with an identity row — just no grant.
+        expect(await profileCountOf(invitee)).toBe(1)
+      })
+    })
+
+    it('POST-024: an unrecognised role fails closed rather than inserting a row that violates the check constraint', async () => {
+      await asSuperuser(async () => {
+        const invitee = await simulateInvite('invited-bogus-role@verify.test', {
+          tenant_id: ids.tenantB,
+          role: 'superadmin',
+          invited_by: ids.userB,
+        })
+        expect(await tenantMembershipsOf(invitee)).toEqual([])
+      })
+    })
+
+    it("POST-024: 'owner' is still rejected at PROJECT grain (ADR-017 Decision 2 — ownership is tenant-level only)", async () => {
+      await asSuperuser(async () => {
+        const invitee = await simulateInvite('invited-project-owner@verify.test', {
+          project_id: ids.projectC2,
+          role: 'owner',
+          invited_by: ids.userC,
+        })
+        expect(await projectMembershipsOf(invitee)).toEqual([])
+      })
+    })
+
+    it('POST-024: re-invite is idempotent — a second sendInvite() invited_at stamp does not duplicate or alter the membership', async () => {
+      await asSuperuser(async () => {
+        const before = await tenantMembershipsOf(ids.invitedOwner)
+        await client.query(`update auth.users set invited_at = now() where id = $1`, [ids.invitedOwner])
+        expect(await tenantMembershipsOf(ids.invitedOwner)).toEqual(before)
+      })
+    })
+
+    it('POST-024: an already-invited user cannot self-escalate later — rewriting their own raw_user_meta_data to name another tenant does not fire the membership trigger', async () => {
+      await asSuperuser(async () => {
+        // This is what supabase.auth.updateUser({ data }) does: it touches
+        // raw_user_meta_data and nothing else. invited_at does not change,
+        // so the WHEN clause on on_auth_user_invited does not fire.
+        await client.query(
+          `update auth.users
+           set    raw_user_meta_data = raw_user_meta_data || jsonb_build_object('tenant_id', $2::text, 'role', 'owner')
+           where  id = $1`,
+          [ids.invitedOwner, ids.tenantA]
+        )
+        const memberships = await tenantMembershipsOf(ids.invitedOwner)
+        expect(memberships).toEqual([{ tenant_id: ids.tenantB, role: 'owner' }])
+        expect(memberships.map((m) => m.tenant_id)).not.toContain(ids.tenantA)
+      })
+    })
+  })
+
+  describe('PHASE 3 — shipped object shape', () => {
+    it('handle_new_user() no longer references either membership table', async () => {
+      const { rows } = await client.query(
+        `select prosrc ilike '%tenant_members%'  as tm,
+                prosrc ilike '%project_members%' as pm,
+                prosrc ilike '%profiles%'        as pr
+         from   pg_proc
+         where  proname = 'handle_new_user' and pronamespace = 'public'::regnamespace`
+      )
+      expect(rows).toHaveLength(1)
+      expect(rows[0]).toEqual({ tm: false, pm: false, pr: true })
+    })
+
+    it('exactly two user triggers exist on auth.users, with the expected events, and the invited one is gated on the invited_at transition', async () => {
+      const { rows } = await client.query(
+        `select t.tgname, pg_get_triggerdef(t.oid) as def
+         from   pg_trigger t
+         where  t.tgrelid = 'auth.users'::regclass and not t.tgisinternal
+         order  by t.tgname`
+      )
+      expect(rows.map((r) => r.tgname)).toEqual(['on_auth_user_created', 'on_auth_user_invited'])
+
+      expect(rows[0].def).toMatch(/AFTER INSERT ON auth\.users/i)
+      expect(rows[0].def).toMatch(/handle_new_user\(\)/)
+
+      expect(rows[1].def).toMatch(/AFTER UPDATE OF invited_at ON auth\.users/i)
+      expect(rows[1].def).toMatch(/handle_user_invited\(\)/)
+      // The WHEN clause is load-bearing: without it, any UPDATE naming
+      // invited_at (including one that leaves it null) would re-run the
+      // membership branches against whatever metadata is on the row now.
+      expect(rows[1].def).toMatch(/invited_at IS NOT NULL/i)
+      expect(rows[1].def).toMatch(/IS DISTINCT FROM/i)
+    })
+
+    it("no 'owner' coalesce fallback survives in either trigger function", async () => {
+      const { rows } = await client.query(
+        `select proname from pg_proc
+         where  proname in ('handle_new_user', 'handle_user_invited')
+         and    pronamespace = 'public'::regnamespace
+         and    prosrc ilike '%coalesce%role%owner%'`
+      )
+      expect(rows).toEqual([])
+    })
+
+    it('both trigger functions are SECURITY DEFINER with an empty search_path (same hardening as 003/004/007 helpers)', async () => {
+      const { rows } = await client.query(
+        `select proname, prosecdef, proconfig
+         from   pg_proc
+         where  proname in ('handle_new_user', 'handle_user_invited')
+         and    pronamespace = 'public'::regnamespace
+         order  by proname`
+      )
+      expect(rows).toHaveLength(2)
+      for (const r of rows) {
+        expect(r.prosecdef).toBe(true)
+        // Postgres renders `set search_path = ''` in proconfig as the
+        // quoted empty string, not a bare empty value.
+        expect(r.proconfig).toEqual(['search_path=""'])
+      }
+    })
+  })
+})

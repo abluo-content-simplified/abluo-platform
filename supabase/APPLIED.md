@@ -99,7 +99,7 @@ header, marked as such. No row below was determined by querying a database.
 | 007 | `007_project_members.sql` | ADR-017 slice 1: adds `project_members` (per-project authorization grain) on top of `tenant_members`. Header says additive only and inert until `TenantAuthorizationContext` is wired into a route. | UNKNOWN — verify against live DB |
 | 008 | `008_leads_project_id.sql` | ADR-017 Decision 6, step 1 of 5: adds a **nullable** `leads.project_id` FK to `projects`. Header says purely additive — no behaviour or RLS change. | UNKNOWN — verify against live DB |
 | 009 | `009_projects_select_project_members.sql` | ADR-017 slice 2: widens the `projects` SELECT policy so a user holding only a `project_members` grant (no `tenant_members` row) can read that project. | UNKNOWN — verify against live DB. Migration 013's header describes 009 as having introduced a live recursion bug, which implies 009 reached a real database — but that is an inference, not a check. |
-| 010 | `010_project_member_invite_trigger.sql.draft` | **DRAFT** — would extend `handle_new_user()` to create `project_members` rows on invite acceptance. | **NO — not applied.** Header states: "NOT APPLIED. NOT RENAMED TO .sql." The `.sql.draft` extension is deliberate so no runner picks it up; Tom must decide trigger-vs-server-action before it becomes `010_….sql`. |
+| 010 | `010_project_member_invite_trigger.sql.draft` | **DRAFT** — would extend `handle_new_user()` to create `project_members` rows on invite acceptance. | **NO — not applied.** Header states: "NOT APPLIED. NOT RENAMED TO .sql." The `.sql.draft` extension is deliberate so no runner picks it up. ⚠️ **CONTRADICTED BY THE LIVE DATABASE, 2026-09-02:** the live `handle_new_user()` body DOES contain this draft's `project_id` / `project_members` branch, so this SQL (or SQL equal to it) was applied by hand and the file's own "NOT APPLIED" header is stale. Superseded by migration 024 — do **not** apply this draft after 024. |
 | 011 | `011_authz_read_grants.sql` | Fixes a live bug: adds missing table-level `GRANT`s on `tenant_members`, `project_members`, `projects` (the "permission denied for table tenant_members" error in `getTenantAuthorizationContext`). | UNKNOWN — verify against live DB |
 | 012 | `012_profiles_update_own.sql` | Grants `authenticated` UPDATE on `public.profiles` (`full_name` only), for the invite-acceptance "Your name" write done with the user's own session. | UNKNOWN — verify against live DB |
 | 013 | `013_fix_projects_policy_recursion.sql` | Fixes infinite recursion in the `projects` SELECT policy introduced by 009 (009 broke the SECURITY DEFINER convention). Recursion-only surgery, not a visibility change. | UNKNOWN — verify against live DB. Header's own step 1 is "Apply this migration via the Supabase dashboard SQL editor", i.e. it was written as not-yet-applied. |
@@ -113,6 +113,7 @@ header, marked as such. No row below was determined by querying a database.
 | 021 | `021_tenants_read_grant.sql` | `grant select on public.tenants to authenticated` — the one table migration 011 did not audit. Grant only; `schema.sql`'s "Members can read their tenants" policy is already correct and is untouched. | **NO — written 2026-08-31, NOT APPLIED.** Header states it explicitly. Proven only against `supabase/verify` (block (i)). See below. |
 | 022 | `022_tenants_drop_domain.sql` | Drops `public.tenants.domain` (`not null unique`, wrong grain — hosts are per-PROJECT via `projects.custom_domain`; nothing consumes the value). RENAME.md Step 7, bullet 1. | **NO — written 2026-09-01, NOT APPLIED.** Header states it explicitly. Proven only against `supabase/verify` (block (j)). ⚠️ **Has an application-deploy prerequisite and is NOT reversible** — see below. |
 | 023 | `023_projects_slug_unique_per_tenant.sql` | Replaces the GLOBAL `unique (slug)` on `public.projects` with `unique (tenant_id, slug)` (named `projects_tenant_id_slug_key`). The global unique is what made tenant-prefixed slugs like `livener-main` look necessary. RENAME.md Step 7, bullet 2. | **NO — written 2026-09-01, NOT APPLIED.** Header states it explicitly. Proven only against `supabase/verify` (block (j)). |
+| 024 | `024_handle_new_user_invite_only.sql` | **SECURITY (P0).** Splits the `auth.users` trigger so membership rows (`tenant_members` / `project_members`) are created ONLY for users GoTrue actually invited, and removes the `role` default of `'owner'`. `profiles` is still created for everyone. Closes the client-supplied `raw_user_meta_data` escalation described below. | **NO — written 2026-09-02, NOT APPLIED.** Header states it explicitly. Proven only against `supabase/verify` (block (k), 20 tests). See "Written but not applied — 2026-09-02" below. ⚠️ **Disabling self-signup in the dashboard is the PRIMARY control; this migration is the second layer.** |
 
 ## When you fill this in
 
@@ -376,3 +377,228 @@ reasoning, in `023_projects_slug_unique_per_tenant.sql`'s header):
 Safe sequencing: apply 023 → RENAME.md **Step 6** (host-first resolution) →
 fix sites 1, 3 and 4 → *only then* create a project whose slug duplicates
 another tenant's.
+
+
+## Written but not applied — 2026-09-02 (migration 024)
+
+**This is a P0 security migration. Read the whole section before applying.**
+
+### What was actually wrong
+
+`handle_new_user()` (`after insert on auth.users`) read `new.raw_user_meta_data`
+— the **client-supplied** `data` bag from `POST /auth/v1/signup` — and created a
+`tenant_members` row from it, with `coalesce(role, 'owner')`. A second branch did
+the same for `project_members` at editor/viewer grain.
+
+`GET /auth/v1/settings` on the live project returned `disable_signup: false`, and
+the anon key ships in the browser bundle. So anyone could:
+
+```
+POST https://<project-ref>.supabase.co/auth/v1/signup
+apikey: <anon key>
+{ "email": "...", "password": "...",
+  "data": { "tenant_id": "<any tenant uuid>" } }
+```
+
+and be made **owner** of that tenant — read of its projects and leads, write via
+`get_my_writable_tenant_ids()`, and the ability to add further members. No role
+had to be named: absent `role` defaulted to `'owner'`.
+
+### The two controls, in order
+
+1. **PRIMARY — self-signup disabled** in Supabase Dashboard → Authentication →
+   Providers → Email → "Allow new users to sign up" = OFF (Tom, 2026-09-02).
+   This is what actually closed the live hole. Verify it, separately from any
+   SQL, with:
+
+   ```bash
+   curl -s "https://<project-ref>.supabase.co/auth/v1/settings" \
+        -H "apikey: <anon key>" | jq '{disable_signup, external}'
+   # disable_signup must be true.
+   ```
+
+   Note `external` too: any social provider left on is a second self-signup
+   door, and OAuth signups also carry attacker-influenced user metadata.
+
+2. **SECOND LAYER — migration 024.** Makes the trigger itself safe, so
+   re-enabling signup (deliberately, or via a project restore or a dashboard
+   misclick) does not silently reopen the escalation. Control 1 without
+   control 2 is one checkbox away from the same breach.
+
+### The discriminator, and the trap in it
+
+`auth.users.invited_at` is set by `inviteUserByEmail` and never by a signup —
+but **it is not set by the INSERT**. Verified against supabase/auth source:
+`internal/api/invite.go` calls `signupNewUser()` (the INSERT, `invited_at`
+NULL) and only afterwards `internal/api/mail.go`'s `sendInvite()`, which does
+`u.InvitedAt = &now` followed by
+`tx.UpdateOnly(u, "confirmation_token", "confirmation_sent_at", "invited_at")`
+— a separate UPDATE, in the same transaction. Neither `NewUser()` nor
+`NewUserWithPasswordHash()` ever sets it.
+
+So the obvious fix — `if new.invited_at is not null then …` inside the existing
+`after insert` trigger — **would block every legitimate invite too**, silently
+breaking the membership model while looking fixed.
+
+Migration 024 therefore SPLITS the trigger:
+
+| trigger | event | creates |
+|---|---|---|
+| `on_auth_user_created` | `after insert on auth.users` | `profiles` only (identity; no privilege) |
+| `on_auth_user_invited` | `after update of invited_at on auth.users`, `when (new.invited_at is not null and old.invited_at is distinct from new.invited_at)` | `tenant_members` / `project_members` |
+
+A self-signup never reaches the second trigger. A real invite reaches it in the
+same transaction as its insert, so membership is still created atomically with
+the account.
+
+### Also changed: `role` no longer defaults to `'owner'`
+
+Migration 004's `coalesce(role, 'owner')` meant an ABSENT role granted the
+HIGHEST privilege. 024 requires the role to be explicit and in the vocabulary
+(`owner`/`editor`/`viewer` for `tenant_members`, `editor`/`viewer` only for
+`project_members` — ADR-017 Decision 2) and otherwise creates no row. Both
+invite routes always send `role` explicitly, so nothing regresses.
+
+The column default `tenant_members.role default 'owner'` (migration 003) is
+left in place — it is unreachable from this trigger now, since every insert
+names the column. Worth revisiting separately.
+
+### Dashboard SQL to verify 024 took effect
+
+Run in Supabase Dashboard → SQL editor, **after** applying, and record the
+outcome and date in the ledger above.
+
+```sql
+-- (a) handle_new_user() must no longer touch either membership table.
+select prosrc ilike '%tenant_members%'  as mentions_tenant_members,
+       prosrc ilike '%project_members%' as mentions_project_members,
+       prosrc ilike '%profiles%'        as mentions_profiles
+from   pg_proc
+where  proname = 'handle_new_user' and pronamespace = 'public'::regnamespace;
+-- Expect: false | false | true
+
+-- (b) Both triggers exist, with the right events and the WHEN gate.
+select t.tgname, pg_get_triggerdef(t.oid) as definition
+from   pg_trigger t
+where  t.tgrelid = 'auth.users'::regclass and not t.tgisinternal
+order  by t.tgname;
+-- Expect exactly two rows:
+--   on_auth_user_created  AFTER INSERT ... EXECUTE FUNCTION public.handle_new_user()
+--   on_auth_user_invited  AFTER UPDATE OF invited_at ...
+--                         WHEN ((new.invited_at IS NOT NULL)
+--                               AND (old.invited_at IS DISTINCT FROM new.invited_at))
+--                         EXECUTE FUNCTION public.handle_user_invited()
+
+-- (c) No 'owner' fallback survives anywhere in the pair.
+select proname from pg_proc
+where  proname in ('handle_new_user', 'handle_user_invited')
+and    pronamespace = 'public'::regnamespace
+and    prosrc ilike '%coalesce%role%owner%';
+-- Expect: 0 rows.
+
+-- (d) Both functions still SECURITY DEFINER with an empty search_path.
+select proname, prosecdef, proconfig
+from   pg_proc
+where  proname in ('handle_new_user', 'handle_user_invited')
+and    pronamespace = 'public'::regnamespace
+order  by proname;
+-- Expect: prosecdef = true, proconfig = {"search_path=\"\""} for both.
+
+-- (e) BEHAVIOURAL — this is the one that actually proves it. It creates and
+--     then deletes a real auth.users row; the delete cascades to profiles.
+--     Substitute a real tenant uuid. ⚠️ DO NOT FORGET THE ROLLBACK.
+begin;
+  insert into auth.users (id, email, raw_user_meta_data)
+  values ('00000000-0000-0000-0000-0000000000ff',
+          'probe-selfsignup@verify.invalid',
+          jsonb_build_object('tenant_id', '<a real tenant uuid>'))
+  ;   -- simulates POST /auth/v1/signup: one INSERT, invited_at stays NULL
+
+  select (select count(*) from public.tenant_members
+          where user_id = '00000000-0000-0000-0000-0000000000ff') as memberships,  -- expect 0 (was 1 before 024)
+         (select count(*) from public.profiles
+          where id      = '00000000-0000-0000-0000-0000000000ff') as profiles;     -- expect 1
+
+  update auth.users set invited_at = now()
+  where id = '00000000-0000-0000-0000-0000000000ff';   -- simulates sendInvite()
+
+  select count(*) from public.tenant_members
+  where user_id = '00000000-0000-0000-0000-0000000000ff';  -- expect 0: no role in metadata
+rollback;
+```
+
+If (e)'s first `memberships` count is not 0, 024 did not take effect — do not
+re-enable self-signup.
+
+### Cleanup after applying
+
+Migration 024 does **not** remove memberships that were already created through
+the hole. Audit before declaring it closed:
+
+```sql
+-- Memberships whose auth.users row was never invited: candidates for the
+-- exploit, plus any legitimate rows created before the invite routes existed.
+select tm.tenant_id, tm.user_id, tm.role, tm.created_at, u.email, u.invited_at
+from   public.tenant_members tm
+join   auth.users u on u.id = tm.user_id
+where  u.invited_at is null
+order  by tm.created_at desc;
+
+-- Same at project grain.
+select pm.project_id, pm.user_id, pm.role, pm.created_at, u.email, u.invited_at
+from   public.project_members pm
+join   auth.users u on u.id = pm.user_id
+where  u.invited_at is null
+order  by pm.created_at desc;
+```
+
+Expect legitimate hits: migration 003's backfill and any hand-seeded owner
+predate the invite flow. Anything you cannot account for by email is the thing
+to worry about.
+
+### Known residual risk (not closed by 024)
+
+GoTrue's re-invite path **merges** the new invite's `data` into the existing
+row's `raw_user_meta_data` rather than replacing it. A self-signed-up user who
+planted `tenant_id: <victim>` in their own metadata, and who is later invited
+at that same address by a legitimate admin, would have the planted key survive
+the merge and be read by `handle_user_invited()`. Closing it requires an
+application change — replace rather than merge the metadata at invite time, or
+move the grant out of user metadata entirely into a server-written
+`pending_invitations` table keyed by a nonce. The precondition (an admin
+invites the attacker's exact address) makes it far narrower than the hole 024
+closes, but it is the reason user metadata remains the wrong home for an
+authorization grant.
+
+### Harness proof
+
+`supabase/verify` block **(k)**, 20 tests, 3 phases:
+
+- **Phase 1** applies `010_project_member_invite_trigger.sql.draft` first — that
+  is what makes the local function byte-equivalent to the LIVE body — and then
+  asserts the escalation actually happens, on both branches, including that the
+  attacker lands inside `get_my_tenant_ids()` / `get_my_writable_tenant_ids()` /
+  `get_my_owned_tenant_ids()` and can see the victim tenant's project row.
+- **Phase 2** applies 024 and inverts every one of those outcomes, while proving
+  both legitimate invite paths (the exact metadata each route sends) still
+  create their membership, `profiles` is still created for everyone, and an
+  already-invited user cannot self-escalate by rewriting their own metadata.
+- **Phase 3** asserts the shipped object shape (function bodies, both trigger
+  definitions including the WHEN clause, no `owner` coalesce, SECURITY DEFINER
+  + empty `search_path`).
+
+Suite: **90 tests → 110 tests**, 2 files, green. With 024 deliberately not
+applied, 13 of the 20 new tests fail — confirming they test the migration and
+not themselves. The 7 that still pass are the 3 phase-1 vulnerability
+characterizations (they assert the hole) and the 4 legitimate-path/`profiles`
+tests, which the old function also satisfied.
+
+**Harness honesty note.** `supabase/verify/auth-shim.sql` now models
+`auth.users.invited_at`, and block (k)'s helpers write users the way GoTrue
+does — a self-signup as one INSERT, an invite as INSERT-then-UPDATE. The
+database side of this fix is proven for real (real trigger definitions, real
+function bodies, real RLS, real Postgres). The GoTrue side — that GoTrue really
+does stamp `invited_at` in a separate UPDATE — is sourced from supabase/auth's
+own source, not executed here. That is the one link verified by reading. If
+invites ever stop granting membership after 024 is applied, that is the link to
+re-check; the symptom would be a `profiles` row with no `tenant_members` row.

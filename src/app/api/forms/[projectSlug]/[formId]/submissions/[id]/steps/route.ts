@@ -12,6 +12,7 @@
  */
 import { NextResponse } from 'next/server'
 import { completeStep } from '@/lib/forms/submissions'
+import { readJsonBodyWithLimit } from '@/lib/forms/request-limits'
 import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 
 export async function POST(
@@ -20,7 +21,12 @@ export async function POST(
 ) {
   try {
     const { projectSlug, formId, id } = await params
-    const body = await request.json().catch(() => ({}))
+
+    // Same hard body cap as the create route — a step call writes into the same
+    // row, from the same anonymous surface.
+    const read = await readJsonBodyWithLimit(request)
+    if (!read.ok) return NextResponse.json({ error: read.error }, { status: read.status })
+    const body = read.body
 
     if (typeof body.stepKey !== 'string' || !body.stepKey) {
       return NextResponse.json({ error: 'stepKey required' }, { status: 400 })
@@ -34,7 +40,9 @@ export async function POST(
       submissionId: id,
       completionToken: typeof body.completionToken === 'string' ? body.completionToken : undefined,
       stepKey: body.stepKey,
-      data: body.data && typeof body.data === 'object' ? body.data : undefined,
+      data: body.data && typeof body.data === 'object' && !Array.isArray(body.data)
+        ? (body.data as Record<string, unknown>)
+        : undefined,
       gdprConsent: body.gdprConsent === true,
     })
 

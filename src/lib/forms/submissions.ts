@@ -15,6 +15,7 @@
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 import { getAppEnvironment } from '@/lib/notifications/environment'
 import { runSpamChecks } from '@/lib/forms/spam'
+import { sanitizeSourceObject, sanitizeScalar, MAX_SOURCE_VALUE_LENGTH } from '@/lib/forms/request-limits'
 import { issueStepToken, tokensMatch, isTokenExpired } from '@/lib/forms/tokens'
 import {
   resolveDefinitionSnapshot,
@@ -30,7 +31,14 @@ import {
 import { resolveActiveDefinition, reconstructDefinitionFromSnapshot } from '@/lib/forms/definition-source'
 import { asSupabaseProjectSlug, toTenantSlug, unbrand, type SupabaseProjectSlug, type TenantSlug } from '@/lib/tenancy/ids'
 
-const SPAM_OPTS = { table: 'form_submissions', ipColumn: 'submitter_ip' } as const
+const SPAM_OPTS = {
+  table: 'form_submissions',
+  ipColumn: 'submitter_ip',
+  // Enables the per-project hourly cap: the per-IP cap alone does nothing
+  // against a distributed attack, and every completed submission emails the
+  // tenant's recipients.
+  projectColumn: 'project_id',
+} as const
 
 // ── Result types (routes translate these to HTTP) ──────────────────────────────
 
@@ -49,8 +57,10 @@ export interface CreateSubmissionInput {
   data?: Record<string, unknown>
   gdprConsent?: boolean
   ip: string
-  honeypot?: string
-  openedAt?: number
+  /** Raw from the body — `undefined` (absent) is a MEANINGFUL value, see spam.ts. */
+  honeypot?: unknown
+  /** Raw from the body — validated in `evaluateTiming`, never coerced here. */
+  openedAt?: unknown
 }
 
 export interface CompleteStepInput {
@@ -156,9 +166,30 @@ function sanitizeContext(def: FormDefinition, context: Record<string, unknown> |
   )
   const out: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(context)) {
-    if (mappable.has(k)) out[k] = v
+    if (!mappable.has(k)) continue
+    // Keys were already whitelisted; bound the VALUES too, so a mappable key is
+    // not itself an unbounded write channel into the stored JSONB.
+    const clean = sanitizeScalar(v, MAX_SOURCE_VALUE_LENGTH)
+    if (clean !== undefined) out[k] = clean
   }
   return out
+}
+
+/**
+ * Whitelists the attribution `source` JSONB the same way `sanitizeContext`
+ * whitelists Context (§18). It lives at the SERVICE layer, not in the route, so
+ * every caller of `createSubmission` gets it — the route used to spread
+ * `body.source` wholesale into the stored row, which made it an arbitrary-JSON
+ * write primitive for any anonymous visitor.
+ */
+function sanitizeSource(source: Record<string, unknown> | undefined): Record<string, unknown> {
+  return sanitizeSourceObject(source)
+}
+
+/** Locale is a stored string column; bound it so it cannot be a write channel. */
+function boundedLocale(locale: string | undefined): string {
+  if (typeof locale !== 'string' || locale.trim() === '') return 'en'
+  return locale.slice(0, 16)
 }
 
 // ── Create ──────────────────────────────────────────────────────────────────────
@@ -179,7 +210,13 @@ export async function createSubmission(input: CreateSubmissionInput): Promise<Su
 
       // Spam (silent 200 on block — never reveal which check fired).
       const spam = await runSpamChecks(
-        { honeypot: input.honeypot, openedAt: input.openedAt, ip: input.ip },
+        {
+          honeypot: input.honeypot,
+          openedAt: input.openedAt,
+          ip: input.ip,
+          // Server-resolved (never from the body) — scopes the per-project cap.
+          projectId: scope.projectId,
+        },
         supabase,
         SPAM_OPTS,
       )
@@ -220,8 +257,8 @@ export async function createSubmission(input: CreateSubmissionInput): Promise<Su
           form_id: def.formId,
           form_version: def.version,
           definition_snapshot: snapshot,
-          locale: input.locale ?? 'en',
-          source: input.source ?? {},
+          locale: boundedLocale(input.locale),
+          source: sanitizeSource(input.source),
           context: sanitizeContext(def, input.context),
           submission_data: values,
           status: 'new',

@@ -40,7 +40,17 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get('type') as EmailOtpType | null
   const error = searchParams.get('error')
   const errorDescription = searchParams.get('error_description')
-  const next = searchParams.get('next') ?? '/invite/accept'
+  // Only same-origin relative paths. `new URL(next, origin)` happily resolves
+  // a protocol-relative `//evil.com` to https://evil.com, so a bare
+  // startsWith('/') is not enough — the second character matters. Session
+  // tokens live in cookies and are not forwarded, so the impact was
+  // phishing-grade rather than account takeover, but an auth callback is the
+  // last place to host an open redirect.
+  const requestedNext = searchParams.get('next')
+  const next =
+    requestedNext && requestedNext.startsWith('/') && !requestedNext.startsWith('//')
+      ? requestedNext
+      : '/invite/accept'
 
   if (error) {
     const url = new URL('/invite/accept', origin)

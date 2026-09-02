@@ -102,8 +102,13 @@ export async function PATCH(
     }
 
     // Fetch full document with asset metadata
+    // Parameterised, like every other query in this file. It was the one
+    // raw interpolation left (ADR-015 R2 bans them at the chokepoint): the
+    // URL path segment was concatenated into the query text, so a crafted
+    // id could close the string and read arbitrary documents. Admin-gated,
+    // so never reachable from outside — but a one-line fix either way.
     let fullAsset = await client.fetch(
-      `*[_id == "${id}"][0] {
+      `*[_id == $id][0] {
         _id,
         _createdAt,
         name,
@@ -126,7 +131,8 @@ export async function PATCH(
             originalFilename
           }
         }
-      }`
+      }`,
+      { id }
     )
 
     // Backward compatibility: convert string to objects

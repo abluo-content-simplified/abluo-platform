@@ -65,8 +65,27 @@ create table if not exists auth.users (
   email               text,
   raw_user_meta_data  jsonb not null default '{}'::jsonb,
   raw_app_meta_data   jsonb not null default '{}'::jsonb,
+  -- `invited_at` is a REAL GoTrue column (internal/models/user.go:
+  --   InvitedAt *time.Time  db:"invited_at"). It is modelled here
+  -- because migration 024 keys the membership-creation trigger off it.
+  --
+  -- CRITICAL ORDERING FACT (verified against GoTrue source, see migration
+  -- 024's header): GoTrue does NOT set invited_at on the INSERT. The invite
+  -- endpoint calls signupNewUser() -> INSERT (invited_at NULL), and only
+  -- then sendInvite() sets it:
+  --     u.InvitedAt = &now
+  --     u.ConfirmationSentAt = &now
+  --     tx.UpdateOnly(u, "confirmation_token", "confirmation_sent_at", "invited_at")
+  -- i.e. a separate UPDATE, in the same transaction. Neither NewUser() nor
+  -- NewUserWithPasswordHash() ever sets InvitedAt. Tests in
+  -- live-rls.verify.mjs block (k) drive that exact INSERT-then-UPDATE
+  -- sequence rather than a single INSERT carrying invited_at, because a
+  -- single INSERT would be a shape GoTrue never produces.
+  invited_at          timestamptz,
   created_at          timestamptz not null default now()
 );
+
+alter table auth.users add column if not exists invited_at timestamptz;
 
 grant select on auth.users to authenticated, service_role;
 

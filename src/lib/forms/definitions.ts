@@ -160,6 +160,62 @@ export function resolveDefinitionSnapshot(def: FormDefinition): Record<string, u
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+// ── Server-side value bounds (abuse hardening) ────────────────────────────────
+//
+// A definition MAY declare `maxLength` per field, but most do not — the code
+// fallback descriptor declares none at all, and it is what serves every tenant
+// without a published `formDefinition`. Without a floor of our own, `name`,
+// `organization` and `message` were unbounded: a 4 MB string satisfied both the
+// "required" check and the email regex. These defaults apply whenever the
+// definition supplies no explicit `maxLength`, so an unbounded field cannot
+// exist regardless of who authored the form.
+
+/** Fallback cap for any field type not listed below. */
+export const DEFAULT_MAX_FIELD_LENGTH = 2_000
+
+/**
+ * Per-type caps, sized to the longest plausible REAL value:
+ *   email    — 254, the RFC 5321 maximum forward-path length
+ *   url      — 2048, the de-facto browser/ IIS URL limit
+ *   textarea — 4000, ~800 words; longer than any message a contact form wants
+ *   short scalars (number/date/rating/checkbox/phone) — 64
+ *   choice values — 200; option membership is the real constraint there
+ */
+export const MAX_FIELD_LENGTH_BY_TYPE: Readonly<Record<string, number>> = {
+  textarea: 4_000,
+  email: 254,
+  url: 2_048,
+  phone: 64,
+  tel: 64,
+  number: 64,
+  date: 64,
+  rating: 64,
+  checkbox: 64,
+  hidden: 512,
+  select: 200,
+  'radio-group': 200,
+  'country-select': 200,
+  multiselect: 200,
+  'multi-select': 200,
+  'checkbox-group': 200,
+}
+
+/** Maximum number of values a multi-value field may carry. */
+export const MAX_MULTI_VALUE_ITEMS = 50
+
+/** The effective per-value character cap for a field. */
+export function maxLengthFor(field: FormFieldDef): number {
+  if (typeof field.maxLength === 'number') return field.maxLength
+  return MAX_FIELD_LENGTH_BY_TYPE[field.type] ?? DEFAULT_MAX_FIELD_LENGTH
+}
+
+/** Field types whose value may legitimately be an array. */
+const MULTI_VALUE_TYPES = new Set(['multiselect', 'multi-select', 'checkbox-group'])
+
+export function acceptsMultipleValues(field: FormFieldDef): boolean {
+  return MULTI_VALUE_TYPES.has(field.type)
+}
+
 /**
  * Server-side validation of one step's values (never trust the client, §18).
  * Returns a map of fieldKey → error code ('required' | 'invalid' | 'not_allowed').
@@ -191,6 +247,44 @@ export function validateStep(
     }
     if (isEmpty) continue // optional + empty → ok
 
+    // ── Shape + size, BEFORE any format/pattern work ─────────────────────────
+    // Two reasons this runs first. (1) The length rules used to hang off
+    // `if (typeof raw === 'string')`, so sending a field as a nested object or
+    // an array skipped every length, format and pattern check and landed in the
+    // database as-is. A value whose shape the field cannot hold is now simply
+    // invalid. (2) Bounding the length before running a regex keeps an
+    // attacker-supplied megabyte away from the email/URL/`pattern` matchers.
+    const max = maxLengthFor(field)
+
+    if (Array.isArray(raw)) {
+      if (!acceptsMultipleValues(field)) {
+        errors[field.key] = 'invalid' // a single-value field cannot hold a list
+        continue
+      }
+      if (raw.length > MAX_MULTI_VALUE_ITEMS) {
+        errors[field.key] = 'invalid'
+        continue
+      }
+      if (!raw.every((v) => typeof v === 'string' && v.length <= max)) {
+        errors[field.key] = 'invalid'
+        continue
+      }
+    } else if (typeof raw === 'string') {
+      if (raw.length > max) {
+        errors[field.key] = 'invalid'
+        continue
+      }
+    } else if (typeof raw === 'number') {
+      if (!Number.isFinite(raw)) {
+        errors[field.key] = 'invalid'
+        continue
+      }
+    } else if (typeof raw !== 'boolean') {
+      // Objects, functions, symbols, bigints — nothing a form field holds.
+      errors[field.key] = 'invalid'
+      continue
+    }
+
     if (field.validate === 'email' && typeof raw === 'string' && !EMAIL_RE.test(raw.trim())) {
       errors[field.key] = 'invalid'
       continue
@@ -212,12 +306,10 @@ export function validateStep(
     }
     // Text rules (ADR-018 slice 7d) — mirror the client validator so a value that
     // passes in the browser also passes here (and vice-versa). String values only.
+    // (`maxLength` is enforced above, where it also covers fields the definition
+    // gave no explicit cap — see maxLengthFor.)
     if (typeof raw === 'string') {
       if (typeof field.minLength === 'number' && raw.length < field.minLength) {
-        errors[field.key] = 'invalid'
-        continue
-      }
-      if (typeof field.maxLength === 'number' && raw.length > field.maxLength) {
         errors[field.key] = 'invalid'
         continue
       }
