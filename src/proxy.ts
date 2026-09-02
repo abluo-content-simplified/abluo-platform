@@ -35,6 +35,7 @@ function resolveTenant(hostname: string): string | null {
     'abluo.app': 'abluo',
     'dev.abluo.app': 'abluo',
     'nologo.cloud': 'nologo',
+    'ch-psicoterapeuta.com': 'hoffmann',
   }
 
   if (domainMap[host]) return domainMap[host]
@@ -76,6 +77,8 @@ function resolveDefaultLocale(projectSlug: string): string | null {
     'livener': 'en',
     'abluo': 'en',
     'nologo': 'en',
+    // it-only site (Supabase projects.default_locale = 'it').
+    'hoffmann': 'it',
   }
   return localeMap[projectSlug] ?? null
 }

@@ -47,6 +47,7 @@ function proxyResolveTenant(hostname: string): string | null {
     'abluo.app': 'abluo',
     'dev.abluo.app': 'abluo',
     'nologo.cloud': 'nologo',
+    'ch-psicoterapeuta.com': 'hoffmann',
   }
   if (domainMap[host]) return domainMap[host]
 
@@ -64,6 +65,7 @@ function proxyResolveDefaultLocale(projectSlug: string): string | null {
     livener: 'en',
     abluo: 'en',
     nologo: 'en',
+    hoffmann: 'it',
   }
   return localeMap[projectSlug] ?? null
 }
@@ -148,9 +150,11 @@ const LIVE_PROJECTS: LiveProject[] = [
   {
     name: 'hoffmann',
     hosts: ['ch-psicoterapeuta.com', 'www.ch-psicoterapeuta.com', 'hoffmann.preview.abluo.app'],
-    // ⚠️ Divergence (B): proxy.ts has never heard of this domain.
-    proxySlug: '(unresolved by proxy.ts)',
-    proxyLocale: null,
+    // Divergence (B) RESOLVED 2026-09-01: hoffmann was added to all three
+    // proxy.ts maps so her site could be built. proxy.ts and the resolver now
+    // agree. Step 6 deletes the maps entirely and this row stops being special.
+    proxySlug: 'hoffmann',
+    proxyLocale: 'it',
     expected: {
       tenantSlug: 'hoffmann',
       projectSlug: 'hoffmann',
@@ -171,10 +175,10 @@ describe('equivalence with the proxy.ts host maps', () => {
 
   it('agrees with proxy.ts on the PROJECT SLUG for every project proxy.ts knows', () => {
     for (const project of LIVE_PROJECTS) {
-      // Only hoffmann is still skipped — divergence (B), proxy.ts has never
-      // heard of its domain. The platform site used to be skipped here too
-      // (divergence (A)); Step 1 of RENAME.md made it agree.
-      if (project.name.startsWith('hoffmann')) continue
+      // Nothing is skipped any more. abluo used to be (divergence A, fixed by
+      // RENAME.md Step 1) and hoffmann used to be (divergence B, fixed
+      // 2026-09-01 by adding her to the three proxy maps). Every live project
+      // now resolves identically through both paths.
       for (const host of project.hosts) {
         expect(proxyResolveTenant(host), `proxy on ${host}`).toBe(project.proxySlug)
         expect(resolveScopeFromHost(host)?.projectSlug, `new on ${host}`).toBe(project.proxySlug)
@@ -222,8 +226,19 @@ describe('equivalence with the proxy.ts host maps', () => {
     expect(proxyResolveTenant('www.abluo.app')).toBe('abluo')
   })
 
-  it('DIVERGENCE (B): ch-psicoterapeuta.com is live in Supabase and unknown to proxy.ts', () => {
-    expect(proxyResolveTenant('ch-psicoterapeuta.com')).toBeNull()
+  // ── (B) is a REGRESSION GUARD now, not a divergence ────────────────────────
+  // HISTORY: this test was 'DIVERGENCE (B): ch-psicoterapeuta.com is live in
+  // Supabase and unknown to proxy.ts', and asserted proxyResolveTenant(...) was
+  // NULL — Hoffmann's domain was in the database but in none of the three
+  // hand-typed maps, so her site could not be served at all. Fixed 2026-09-01.
+  // This is the drift the maps produce: a client is onboarded in Supabase and
+  // the maps are not updated, because nothing forces them to be. Step 6 removes
+  // the maps so the class cannot recur.
+  it('AGREEMENT (was divergence B): proxy.ts and the resolver both serve hoffmann', () => {
+    expect(proxyResolveTenant('ch-psicoterapeuta.com')).toBe('hoffmann')
+    expect(proxyResolveTenant('www.ch-psicoterapeuta.com')).toBe('hoffmann')
+    expect(proxyResolveTenant('hoffmann.preview.abluo.app')).toBe('hoffmann')
+    expect(proxyResolveDefaultLocale('hoffmann')).toBe('it')
     expect(resolveScopeFromHost('ch-psicoterapeuta.com')).toEqual({
       tenantSlug: 'hoffmann',
       projectSlug: 'hoffmann',

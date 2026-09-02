@@ -107,6 +107,9 @@ const TENANT_TO_PROJECT: Record<string, SanityProjectSlug> = {
   studiomartegani: asSanityProjectSlug('studiomartegani-main'),
   abluo: asSanityProjectSlug('abluo'),
   nologo: asSanityProjectSlug('nologo'),
+  // Onboarded 2026-09-01. Supabase projects.slug and Sanity projectSlug agree
+  // ('hoffmann'), so this is an identity entry — no `-main` legacy here.
+  hoffmann: asSanityProjectSlug('hoffmann'),
 }
 
 /**
