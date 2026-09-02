@@ -185,6 +185,42 @@ else
   log_info "No lowercase release tag yet (v2 baseline is v1.0.1)"
 fi
 
+# 11. Sanity content shape (localised field drift) ---------------------------
+# Warning-only by design. Drift lives in the DATASET, not in the commit being
+# released: blocking a code release on pre-existing content state would fail
+# hotfixes for reasons the release cannot fix. The semantic cases (a raw string
+# where a localizedString belongs) need a human, so a FAIL here would wedge the
+# release pipeline until someone edits content. Doctor's job is to make the
+# operator SEE it; scripts/check-content-shape.mjs still exits non-zero on its
+# own so CI or a pre-deploy gate can be stricter than we are here.
+SHAPE_SCRIPT="$(repo_root)/scripts/check-content-shape.mjs"
+SHAPE_ENV="$(repo_root)/.env.local"
+if ! node_present; then
+  log_info "Skipping content-shape check (node is not on PATH)"
+elif [ ! -f "$SHAPE_SCRIPT" ]; then
+  log_info "Skipping content-shape check (scripts/check-content-shape.mjs not present)"
+elif [ -z "${SANITY_API_WRITE_TOKEN:-}${SANITY_AUTH_TOKEN:-}" ] &&
+     ! grep -qE '^[[:space:]]*(SANITY_API_WRITE_TOKEN|SANITY_AUTH_TOKEN)=..' "$SHAPE_ENV" 2>/dev/null; then
+  warn "No Sanity token in .env.local — content-shape check skipped (normal on a fresh clone or in CI)"
+else
+  SHAPE_OUT="$(node "$SHAPE_SCRIPT" 2>&1)" && SHAPE_RC=0 || SHAPE_RC=$?
+  case "$SHAPE_RC" in
+    0)
+      pass "Sanity content matches the schema (no localised-field drift)"
+      ;;
+    1)
+      # `|| true`: set -e + pipefail would abort here when grep matches nothing.
+      SHAPE_SUMMARY="$(printf '%s\n' "$SHAPE_OUT" | grep -E '^✖ [0-9]+ issue' | tail -1 || true)"
+      warn "Localised-field drift in Sanity — ${SHAPE_SUMMARY:-see report below}"
+      printf '\n  %s\n\n' "${C_BOLD}node scripts/check-content-shape.mjs${C_RESET}   ${C_DIM}# full report; add --fix for mechanical repairs${C_RESET}" >&2
+      ;;
+    *)
+      warn "Content-shape check could not run (exit $SHAPE_RC) — release not blocked"
+      printf '%s\n' "$SHAPE_OUT" | tail -3 | sed 's/^/    /' >&2
+      ;;
+  esac
+fi
+
 # --- Summary ----------------------------------------------------------------
 printf '\n%s\n' "${C_DIM}--------------------------------------------------${C_RESET}" >&2
 if [ "$FAILURES" -eq 0 ]; then

@@ -15,3 +15,8 @@ out/
 dist/static/*.json
 # vercel
 .vercel/
+
+# FUSE mount artifacts — the sandbox mount cannot unlink() open files, so an
+# edited file can leave a .fuse_hidden* behind that nothing is able to remove.
+# Untracked and inert; ignored so it can never be committed by `git add -A`.
+.fuse_hidden*

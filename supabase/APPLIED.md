@@ -1,7 +1,12 @@
 # Migration ledger — which migrations have actually been applied?
 
-**Status of this file: a scaffold, not an answer.** Almost every row below says
-`UNKNOWN`. That is deliberate and it is the honest state — see below.
+**Status of this file: CORRECTED 2026-09-02 from the live database.** It was
+previously a scaffold of `UNKNOWN`s plus a handful of "NO — not applied" values
+copied from migration file headers. **Four of those "NO"s were wrong** (021,
+022, 023, 024 are all live), on top of the already-known 010. Verdicts now come
+from `supabase/verify/applied-check.mjs`, which fingerprints each migration
+against the live catalog. Do not edit a verdict here by hand — change the
+fingerprint and re-run the tool.
 
 ## Why this file exists
 
@@ -41,7 +46,12 @@ npm run verify
 It proves the migrations are *correct*. It cannot tell you whether they were
 *applied* to dev/preview/prod. See `supabase/verify/README.md`.
 
-### 2. The real check — Supabase dashboard SQL editor
+### 2. The real check — `supabase/verify/applied-check.mjs`
+
+Since 2026-09-02 this is automated. See **"How to check this yourself"** below.
+The manual route it replaces is still described here for context:
+
+#### 2b. By hand — Supabase dashboard SQL editor
 
 Every migration file ends with its own `Verification` section — a set of
 queries whose results tell you whether that migration's objects exist. Open the
@@ -82,38 +92,122 @@ header of `019_form_events_env_and_status.sql`), so in practice there is one
 database to check, not three — but confirm that is still true before relying
 on it.
 
-## Ledger
+## Ledger — corrected 2026-09-02 from the live database
 
-`Applied?` values: `UNKNOWN — verify against live DB` (the default; nothing in
-the repo settles it) or a value taken from an explicit claim in the file's own
-header, marked as such. No row below was determined by querying a database.
+**This table is no longer a scaffold.** Every cell below was produced by
+`supabase/verify/applied-check.mjs` reading the LIVE project
+(`xsdamzirepfqlutvqfbe`), not by reading file headers. Four rows that said
+"NO — not applied" on a file's own authority were wrong; see
+**"Corrections — what the database actually said"** below.
 
-| # | File | Purpose (from its own header) | Applied? |
-|---|------|-------------------------------|----------|
-| 001 | `001_leads_add_lead_status.sql` | Adds `leads.lead_status` (sales-pipeline stage), distinct from `status` (inbox read/archived state). | UNKNOWN — verify against live DB |
-| 002 | `002_projects.sql` | Creates `public.projects` — the project as the core deployable unit; a tenant can have many, each with slug, preview URL and optional custom domain. | UNKNOWN — verify against live DB |
-| 003 | `003_tenant_members.sql` | Introduces `tenant_members` (multi-tenant membership, one identity → many tenants, role per membership). Header says: additive only, nothing dropped or altered. | UNKNOWN — verify against live DB |
-| 004 | `004_profiles_identity_only.sql` | Completes the move to the membership model: adds `get_my_tenant_ids()` / `get_my_writable_tenant_ids()`, drops profiles-based RLS on tenants/leads/projects and replaces it with `tenant_members`-based policies, rewrites `handle_new_user()`. | UNKNOWN — verify against live DB |
-| 005 | `005_inquiries.sql` | Creates the platform-wide `inquiries` table for form submissions (first use case `inquiry_type = 'early_access'`); distinct from `leads`. | UNKNOWN — verify against live DB |
-| 006 | `006_custom_access_token_hook.sql` | ADR-015 phase 1: the Supabase Auth custom-access-token hook that puts a top-level `platform_role` claim (`abluo_admin` \| `tenant_user`, fail-safe default `tenant_user`) into every JWT. | UNKNOWN — verify against live DB. **Header claims** it was applied manually via the SQL editor + Dashboard → Authentication → Hooks on **2026-07-29** and verified live, and that the file exists to capture the already-applied SQL. Not independently confirmed here. |
-| 007 | `007_project_members.sql` | ADR-017 slice 1: adds `project_members` (per-project authorization grain) on top of `tenant_members`. Header says additive only and inert until `TenantAuthorizationContext` is wired into a route. | UNKNOWN — verify against live DB |
-| 008 | `008_leads_project_id.sql` | ADR-017 Decision 6, step 1 of 5: adds a **nullable** `leads.project_id` FK to `projects`. Header says purely additive — no behaviour or RLS change. | UNKNOWN — verify against live DB |
-| 009 | `009_projects_select_project_members.sql` | ADR-017 slice 2: widens the `projects` SELECT policy so a user holding only a `project_members` grant (no `tenant_members` row) can read that project. | UNKNOWN — verify against live DB. Migration 013's header describes 009 as having introduced a live recursion bug, which implies 009 reached a real database — but that is an inference, not a check. |
-| 010 | `010_project_member_invite_trigger.sql.draft` | **DRAFT** — would extend `handle_new_user()` to create `project_members` rows on invite acceptance. | **NO — not applied.** Header states: "NOT APPLIED. NOT RENAMED TO .sql." The `.sql.draft` extension is deliberate so no runner picks it up. ⚠️ **CONTRADICTED BY THE LIVE DATABASE, 2026-09-02:** the live `handle_new_user()` body DOES contain this draft's `project_id` / `project_members` branch, so this SQL (or SQL equal to it) was applied by hand and the file's own "NOT APPLIED" header is stale. Superseded by migration 024 — do **not** apply this draft after 024. |
-| 011 | `011_authz_read_grants.sql` | Fixes a live bug: adds missing table-level `GRANT`s on `tenant_members`, `project_members`, `projects` (the "permission denied for table tenant_members" error in `getTenantAuthorizationContext`). | UNKNOWN — verify against live DB |
-| 012 | `012_profiles_update_own.sql` | Grants `authenticated` UPDATE on `public.profiles` (`full_name` only), for the invite-acceptance "Your name" write done with the user's own session. | UNKNOWN — verify against live DB |
-| 013 | `013_fix_projects_policy_recursion.sql` | Fixes infinite recursion in the `projects` SELECT policy introduced by 009 (009 broke the SECURITY DEFINER convention). Recursion-only surgery, not a visibility change. | UNKNOWN — verify against live DB. Header's own step 1 is "Apply this migration via the Supabase dashboard SQL editor", i.e. it was written as not-yet-applied. |
-| 014 | `014_inquiries_authz.sql` | Closes the `inquiries` P0: adds the grants/RLS the `PATCH /api/inquiries/[id]` route needs so it stops relying on the service-role client. | **NO — header states it was never applied.** Verbatim: "⚠️ NOT APPLIED TO ANY SUPABASE PROJECT (dev/preview/prod) BY THIS TASK. This is a FILE ONLY, handed to Tom to review and apply manually via the Supabase SQL editor." Proven only against the local `supabase/verify` harness. **Re-check the live DB before acting on this — someone may have applied it since the file was written.** |
-| 015 | `015_profiles_select_grant.sql` | Completes 012: adds the `authenticated` SELECT grant on `profiles` that Postgres requires for columns referenced in an UPDATE's WHERE clause. | UNKNOWN — verify against live DB. Header instructs: "Apply this in the Supabase SQL editor immediately after migration 014" — which, given 014's own header, implies 015 was not applied either. Inference only; check. |
-| 016 | `016_form_submissions.sql` | ADR-018 slice 1: creates `form_submissions`, the canonical store for form submissions, scoped by both `tenant_id` and `project_id` (both nullable this slice), with pinned `form_version` + `definition_snapshot`. | UNKNOWN — verify against live DB |
-| 017 | `017_form_events.sql` | ADR-018 Decision 9: creates the append-only `form_events` outbox (status/attempts/last_error/processed_at) read by the ADR-019 consumer. Payload is provider-agnostic and carries no recipients or secrets. | UNKNOWN — verify against live DB |
-| 018 | `018_form_tables_service_role_grants.sql` | Fixes a live 500 (Postgres 42501, "permission denied for table form_submissions"): grants `service_role` full privileges on both forms tables, which 016/017 omitted. | UNKNOWN — verify against live DB |
-| 019 | `019_form_events_env_and_status.sql` | ADR-019: adds `environment` and `project_slug` to `form_events` plus a `'skipped'` status, so the single production webhook consumer delivers only `environment = 'production'` events and non-prod submissions are recorded but not emailed. | UNKNOWN — verify against live DB |
-| 020 | `020_leads_project_grain.sql` | Moves `leads` RLS from tenant grain to project grain (`get_my_project_ids()` / `get_my_writable_project_ids()`, the migration-016 shape), backfills `project_id` for single-project tenants, and keeps an owner-scoped `project_id is null` branch for legacy rows that cannot be attributed. | **NO — written 2026-08-31, NOT APPLIED.** Header states it explicitly. Proven only against `supabase/verify` (blocks (g) and (i)). See "Written but not applied" below for the exact dashboard queries. |
-| 021 | `021_tenants_read_grant.sql` | `grant select on public.tenants to authenticated` — the one table migration 011 did not audit. Grant only; `schema.sql`'s "Members can read their tenants" policy is already correct and is untouched. | **NO — written 2026-08-31, NOT APPLIED.** Header states it explicitly. Proven only against `supabase/verify` (block (i)). See below. |
-| 022 | `022_tenants_drop_domain.sql` | Drops `public.tenants.domain` (`not null unique`, wrong grain — hosts are per-PROJECT via `projects.custom_domain`; nothing consumes the value). RENAME.md Step 7, bullet 1. | **NO — written 2026-09-01, NOT APPLIED.** Header states it explicitly. Proven only against `supabase/verify` (block (j)). ⚠️ **Has an application-deploy prerequisite and is NOT reversible** — see below. |
-| 023 | `023_projects_slug_unique_per_tenant.sql` | Replaces the GLOBAL `unique (slug)` on `public.projects` with `unique (tenant_id, slug)` (named `projects_tenant_id_slug_key`). The global unique is what made tenant-prefixed slugs like `livener-main` look necessary. RENAME.md Step 7, bullet 2. | **NO — written 2026-09-01, NOT APPLIED.** Header states it explicitly. Proven only against `supabase/verify` (block (j)). |
-| 024 | `024_handle_new_user_invite_only.sql` | **SECURITY (P0).** Splits the `auth.users` trigger so membership rows (`tenant_members` / `project_members`) are created ONLY for users GoTrue actually invited, and removes the `role` default of `'owner'`. `profiles` is still created for everyone. Closes the client-supplied `raw_user_meta_data` escalation described below. | **NO — written 2026-09-02, NOT APPLIED.** Header states it explicitly. Proven only against `supabase/verify` (block (k), 20 tests). See "Written but not applied — 2026-09-02" below. ⚠️ **Disabling self-signup in the dashboard is the PRIMARY control; this migration is the second layer.** |
+Verdict vocabulary:
+
+| Verdict | Meaning |
+|---|---|
+| `APPLIED` | A fingerprint unique to this migration is present in the live catalog. |
+| `APPLIED (NOT VERBATIM)` | The migration's structural effect is live, but the `COMMENT` text the file writes is NOT. Something other than the literal file was executed. |
+| `NOT APPLIED` | A fingerprint unique to this migration is absent, and the pre-migration state is observable instead. |
+| `EFFECT PRESENT / FILE UNDETERMINABLE` | The objects exist, but nothing in the catalog can separate "this file ran" from "`schema.sql` (or the original hand-written schema) produced the same thing". |
+| `UNDETERMINABLE` | A later migration overwrote the only object this one touched. There is no trace left to read. Honest dead end — do not upgrade it to a guess. |
+| `NEEDS CATALOG` | Determinable, but only from `pg_catalog` / `information_schema`. Run `applied-check.mjs --sql`, paste in the dashboard, `--merge` the result. |
+
+| # | File | Applied? (live, 2026-09-02) | Fingerprint used |
+|---|------|-----------------------------|------------------|
+| 001 | `001_leads_add_lead_status.sql` | **EFFECT PRESENT / FILE UNDETERMINABLE** | `leads.lead_status` exists — but `schema.sql` declares it too, and 001 writes no comment and creates no other object, so nothing separates them. |
+| 002 | `002_projects.sql` | **EFFECT PRESENT / FILE UNDETERMINABLE** | `public.projects` exists, 8 columns. `schema.sql` creates the same table with a byte-identical comment. (Inference, not observation: `schema.sql` was probably never run here — see the 004 row — which would make this file the source.) |
+| 003 | `003_tenant_members.sql` | **EFFECT PRESENT / FILE UNDETERMINABLE** | `tenant_members` exists **with** 003's table and `role` comments live — but `schema.sql` carries the identical text. |
+| 004 | `004_profiles_identity_only.sql` | **APPLIED** | `public.profiles` has NO `tenant_id` and NO `role` column (004 drops both), and `avatar_url` carries 004's comment verbatim. |
+| 005 | `005_inquiries.sql` | **APPLIED (NOT VERBATIM)** | `inquiries` exists with all its columns — but **none** of the five `COMMENT`s the 005 file writes are live. The table exists; the file as written did not run. |
+| 006 | `006_custom_access_token_hook.sql` | **APPLIED** — header claim of 2026-07-29 now independently confirmed | `public.custom_access_token_hook(jsonb)` is live and exposed by PostgREST. Nothing else in the repo declares it. ⚠️ This proves the FUNCTION exists; it does **not** prove the Dashboard → Auth → Hooks wiring, which is not in the catalog at all. |
+| 007 | `007_project_members.sql` | **APPLIED (NOT VERBATIM)** ⚠️ | `project_members` + `get_my_project_ids()` + `get_my_writable_project_ids()` all live (only 007 creates them) — but **neither** comment 007 writes is present, while 003's comments on `tenant_members` are. Same failure mode as 010: what ran was not the file. |
+| 008 | `008_leads_project_id.sql` | **APPLIED** | `leads.project_id` exists with its FK to `projects.id`. No other file adds this column. |
+| 009 | `009_projects_select_project_members.sql` | **NEEDS CATALOG** → expected `UNDETERMINABLE` | The `qual` of policy "Members can read their projects". If 013 is applied it overwrote 009's only object and no trace survives. 013 existing at all is *evidence* 009 once ran live — but that is an inference, not a reading. |
+| 010 | `010_project_member_invite_trigger.sql.draft` | **WAS APPLIED** (verified 2026-09-02 by direct query) → now **UNDETERMINABLE** | Its `project_members` branch in `handle_new_user()`'s body — text that exists nowhere else in the repo. ⚠️ **024 has since rewritten `handle_new_user()`, erasing that trace.** The tool will now honestly report UNDETERMINABLE for 010; this row is the record. The file's own "NOT APPLIED" header is a lie and should be corrected in the file. Do **not** apply this draft after 024. |
+| 011 | `011_authz_read_grants.sql` | **NEEDS CATALOG** | `GRANT SELECT` to `authenticated` on all three of `tenant_members`, `project_members`, `projects`. |
+| 012 | `012_profiles_update_own.sql` | **NEEDS CATALOG** | Column-level `GRANT UPDATE(full_name)` on `profiles` to `authenticated`, with no table-level UPDATE. |
+| 013 | `013_fix_projects_policy_recursion.sql` | **NEEDS CATALOG** | The `projects` SELECT policy `qual` calls `get_my_project_ids()` (013) rather than a raw `project_members` subquery (009). A live `NOT APPLIED` here means the recursion bug is still in production. |
+| 014 | `014_inquiries_authz.sql` | **NEEDS CATALOG** — the ledger's old "NO" was a file header, never a check | Both named `inquiries` policies + `GRANT SELECT, UPDATE` on `inquiries` to `authenticated`. |
+| 015 | `015_profiles_select_grant.sql` | **NEEDS CATALOG** | Table-level `GRANT SELECT` on `profiles` to `authenticated`. |
+| 016 | `016_form_submissions.sql` | **APPLIED** (table half; grant + 2 policies still NEEDS CATALOG) | `form_submissions` exists with 016's table comment and its `definition_snapshot` comment, verbatim. |
+| 017 | `017_form_events.sql` | **APPLIED** (table half; grant + policy still NEEDS CATALOG) | `form_events` exists with 017's "ADR-018 append-only outbox" table comment, verbatim. |
+| 018 | `018_form_tables_service_role_grants.sql` | **NEEDS CATALOG** | 8 `service_role` privileges across both form tables. Weak on its own (Supabase default privileges could produce the same grants) — but the live 42501 that 018 was written to fix proves they did not here. |
+| 019 | `019_form_events_env_and_status.sql` | **APPLIED (NOT VERBATIM)** ⚠️ | `form_events.environment` and `.project_slug` both live (only 019 adds them) — but 019's column comments are absent. Third instance of the "comments stripped" pattern (see 005, 007). The `'skipped'` status constraint half is NEEDS CATALOG. |
+| 020 | `020_leads_project_grain.sql` | **NOT APPLIED** — confirmed, matches the header | The `leads` table comment is still `'Contact form submissions. Tenant-scoped.'`. 020 rewrites it to PROJECT-scoped text in the same file as the policy swap, so an unchanged comment means the file did not run. `leads` RLS is still at tenant grain. |
+| 021 | `021_tenants_read_grant.sql` | **APPLIED** ⚠️ **ledger previously said "NO — not applied"** | `GRANT SELECT` on `public.tenants` to `authenticated`, verified 2026-09-02 by direct query. |
+| 022 | `022_tenants_drop_domain.sql` | **APPLIED** ⚠️ **ledger previously said "NO — not applied"** | `tenants.domain` is gone (`schema.sql` declares it `not null unique`, so only 022 can remove it) **and** the live `tenants` table comment reads "As of migration 022 a tenant has NO domain of its own". Two independent traces agree. |
+| 023 | `023_projects_slug_unique_per_tenant.sql` | **APPLIED** ⚠️ **ledger previously said "NO — not applied"** | `pg_constraint` shows `UNIQUE (tenant_id, slug)` and no `UNIQUE (slug)` (verified 2026-09-02); independently, the live comment on `projects.slug` names `projects_tenant_id_slug_key`. |
+| 024 | `024_handle_new_user_invite_only.sql` | **APPLIED** ⚠️ **ledger previously said "NO — not applied"** | `pg_trigger` on `auth.users` shows both `on_auth_user_created` and `on_auth_user_invited`, and `public.handle_user_invited()` exists (verified 2026-09-02). The P0 second layer IS live. |
+
+### Corrections — what the database actually said
+
+Rows whose real state differs from what this file previously claimed. Every one
+of the first four was a "NO — not applied" taken from the migration file's own
+header. **Tom made decisions from these.**
+
+| # | This file said | Live database says | Consequence of the old belief |
+|---|---|---|---|
+| 010 | `NO — not applied` (file header) | **was APPLIED** | The original discovery. A draft that "no runner picks up" was running in production. |
+| 021 | `NO — written 2026-08-31, NOT APPLIED` | **APPLIED** | Re-applying is harmless (idempotent grant), but the "021 first, then 020" plan was built on a false starting state. |
+| 022 | `NO — written 2026-09-01, NOT APPLIED` | **APPLIED** | ⚠️ The most dangerous one. This file still tells Tom to "capture `tenants.domain` before running — the drop is not recoverable". **That capture query can no longer run and the values are already gone.** It also says the application-code prerequisite must be deployed FIRST; if those three `select`-lists still name `domain`, they are broken in production *right now*. |
+| 023 | `NO — written 2026-09-01, NOT APPLIED` | **APPLIED** | The tripwire query and the five slug call sites (`resolveProjectScope`, `client-navigation`, `generate-route-config`, …) are live concerns TODAY, not future ones. The doc's "safe sequencing: apply 023 → then fix sites" has already had its first step taken. |
+| 024 | `NO — written 2026-09-02, NOT APPLIED` | **APPLIED** | Good news, and it inverts the risk note: the second layer IS in place. But it is also why 010 is now unverifiable — 024 overwrote the evidence. |
+| 005 | `UNKNOWN` | **APPLIED (NOT VERBATIM)** | The table is live; the file's five `COMMENT`s are not. |
+| 007 | `UNKNOWN` | **APPLIED (NOT VERBATIM)** | Table + both helper functions live; both of 007's `COMMENT`s missing. |
+| 019 | `UNKNOWN` | **APPLIED (NOT VERBATIM)** | Both columns live; 019's column comments missing. |
+| 004, 006, 008, 016, 017 | `UNKNOWN` | **APPLIED** | 006 in particular: its header claim of 2026-07-29 is now independently confirmed. |
+| 020 | `NO` (header) | **NOT APPLIED** — confirmed | The one header claim that survived checking. |
+
+**The pattern behind 005 / 007 / 019 is worth a decision.** Three migrations
+are structurally live but arrived without the `COMMENT` statements their files
+contain. The most likely explanation is that the DDL was pasted into the SQL
+editor without the trailing comment block. It is benign in itself — but it is
+the *same class of drift* as 010: **the SQL that ran was not the SQL in the
+file**, and this ledger has no way to see the difference except by fingerprint.
+
+**One structural finding, stated as inference not observation:** the live
+`profiles` table comment is `'Links auth.users to a tenant + role. One profile
+per user.'` — the pre-004 text, and NOT `schema.sql`'s `'Identity record for
+each auth user…'`. Since `schema.sql` uses bare `create table` (which would
+fail against an existing table), it appears **`schema.sql` has never been run
+against this project**; the database grew from the original hand-written schema
+by migration. If that holds, 001/002/003's `EFFECT PRESENT / FILE
+UNDETERMINABLE` rows are in practice `APPLIED` — but the catalog cannot say so,
+so the tool does not.
+
+## How to check this yourself — `supabase/verify/applied-check.mjs`
+
+Do not re-derive this by hand and do not trust a file header again.
+
+```bash
+cd supabase/verify
+
+# Tier 1 — automatic. Reads the LIVE project via PostgREST's OpenAPI document
+# (columns, types, defaults, FKs, exposed RPCs, and the live COMMENT text).
+# One GET. Read-only. Settles 13 of the 24 migrations on its own.
+node applied-check.mjs
+
+# Tier 2 — the catalog half. PostgREST cannot see pg_catalog, so policies,
+# GRANTs, function bodies, triggers and constraints need one paste.
+node applied-check.mjs --sql          # writes applied-check.sql
+#   → Supabase Dashboard → SQL editor → paste → Run.
+#   → It is ONE read-only SELECT. No DDL, no DML, no temp objects.
+#   → It returns a single JSON cell, one object per migration.
+#   → Save that cell to catalog.json, then:
+node applied-check.mjs --merge catalog.json
+
+node applied-check.mjs --json         # machine-readable, for scripting
+```
+
+Adding a migration means adding its fingerprint to `REMOTE_CHECKS` (if PostgREST
+can see it) or `CATALOG_CHECKS` (if it needs the catalog) in
+`applied-check.mjs`, then regenerating with `--sql`. If a migration genuinely
+leaves no distinguishable trace, give it the `UNDETERMINABLE` verdict and say
+why in its `note` — do not invent a weak signal. That is exactly how this file
+came to mislead everyone.
+
+The generated SQL is self-tested: running it inside `supabase/verify`'s
+disposable local Postgres, where the applied set is known exactly, reproduces
+that set with no false positives and no false negatives.
 
 ## When you fill this in
 
@@ -129,6 +223,11 @@ what you actually ran — a bare "YES" is how this file rots back into guesswork
 
 
 ## Written but not applied — 2026-08-31 (migrations 020, 021)
+
+> ⚠️ **STALE — 021 IS APPLIED (live check, 2026-09-02).** Only 020 below is
+> still accurate. Read 021 here as post-hoc verification queries, not as a
+> to-do. Rollback if ever needed: `revoke select on public.tenants from authenticated;`
+
 
 Both files were written in the same session and **neither was executed
 against the Supabase project**. No DDL was run anywhere except the local
@@ -224,6 +323,14 @@ To roll 021 back: `revoke select on public.tenants from authenticated;`
 
 
 ## Written but not applied — 2026-09-01 (migrations 022, 023)
+
+> ⚠️ **STALE — BOTH 022 AND 023 ARE APPLIED (live check, 2026-09-02).**
+> Everything below is now verification, not instruction. In particular the
+> "capture `tenants.domain` before running" step **can no longer be performed**:
+> the column is already dropped and those values are gone unless they were
+> captured at the time. Confirm the three `domain` select-lists named below were
+> actually deployed out, because the column they name no longer exists.
+
 
 RENAME.md **Step 7** ("schema cleanup"). Both files were written in the same
 session and **neither was executed against the Supabase project**. No DDL was
@@ -380,6 +487,12 @@ another tenant's.
 
 
 ## Written but not applied — 2026-09-02 (migration 024)
+
+> ⚠️ **STALE — 024 IS APPLIED (live check, 2026-09-02, via `pg_trigger`).**
+> Read the section as background plus the post-application audit it prescribes.
+> The "Cleanup after applying" queries at the end are the part still OUTSTANDING:
+> 024 does not remove memberships created through the hole before it closed.
+
 
 **This is a P0 security migration. Read the whole section before applying.**
 

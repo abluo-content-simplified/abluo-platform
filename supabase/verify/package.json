@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "verify": "vitest run --config vitest.config.mjs",
-    "verify:keep-alive": "node keep-alive.mjs"
+    "verify:keep-alive": "node keep-alive.mjs",
+    "applied-check": "node applied-check.mjs",
+    "applied-check:sql": "node applied-check.mjs --sql"
   },
   "license": "UNLICENSED",
   "dependencies": {
