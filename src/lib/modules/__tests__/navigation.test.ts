@@ -120,7 +120,7 @@ describe('buildCollectionItems — group structure', () => {
 
   it('returns one item per collection group with items', () => {
     const { S } = createMockS()
-    const result = buildCollectionItems('livener-main', 'tenant', S, makeManifestWithCollections([BLOG_GROUP]))
+    const result = buildCollectionItems('livener', 'tenant', S, makeManifestWithCollections([BLOG_GROUP]))
     expect(result).toHaveLength(1)
   })
 
@@ -161,33 +161,33 @@ describe('buildCollectionItems — ID generation', () => {
 
   it('flattens a single-item group to the item, with no group wrapper', () => {
     const { S, tracker } = createMockS()
-    const result = buildCollectionItems('livener-main', 'tenant', S, makeManifestWithCollections([BLOG_GROUP]))
+    const result = buildCollectionItems('livener', 'tenant', S, makeManifestWithCollections([BLOG_GROUP]))
     expect(result).toHaveLength(1)
-    expect(tracker.ids).toContain('livener-main-posts')
-    expect(tracker.ids).not.toContain('livener-main-blog-module')
-    expect(tracker.ids).not.toContain('livener-main-blog-module-list')
+    expect(tracker.ids).toContain('livener-posts')
+    expect(tracker.ids).not.toContain('livener-blog-module')
+    expect(tracker.ids).not.toContain('livener-blog-module-list')
   })
 
   it('keeps the group wrapper when a group has more than one item', () => {
     const { S, tracker } = createMockS()
-    buildCollectionItems('livener-main', 'tenant', S, makeManifestWithCollections([MULTI_GROUP]))
-    expect(tracker.ids).toContain('livener-main-blog-module')
-    expect(tracker.ids).toContain('livener-main-blog-module-list')
-    expect(tracker.ids).toContain('livener-main-posts')
-    expect(tracker.ids).toContain('livener-main-authors')
+    buildCollectionItems('livener', 'tenant', S, makeManifestWithCollections([MULTI_GROUP]))
+    expect(tracker.ids).toContain('livener-blog-module')
+    expect(tracker.ids).toContain('livener-blog-module-list')
+    expect(tracker.ids).toContain('livener-posts')
+    expect(tracker.ids).toContain('livener-authors')
   })
 
   it('preserves item ids when flattening — only the path shortens', () => {
     // Flattening must not rename anything; Sanity caches sidebar state by id.
     const { S, tracker } = createMockS()
-    buildCollectionItems('livener-main', 'tenant', S, makeManifestWithCollections([BLOG_GROUP]))
-    expect(tracker.ids).toEqual(['livener-main-posts'])
+    buildCollectionItems('livener', 'tenant', S, makeManifestWithCollections([BLOG_GROUP]))
+    expect(tracker.ids).toEqual(['livener-posts'])
   })
 
   it('generates item list item ID as ${slug}-${item.id}', () => {
     const { S, tracker } = createMockS()
-    buildCollectionItems('livener-main', 'tenant', S, makeManifestWithCollections([BLOG_GROUP]))
-    expect(tracker.ids).toContain('livener-main-posts')
+    buildCollectionItems('livener', 'tenant', S, makeManifestWithCollections([BLOG_GROUP]))
+    expect(tracker.ids).toContain('livener-posts')
   })
 
   it('uses a different slug correctly', () => {
@@ -196,7 +196,7 @@ describe('buildCollectionItems — ID generation', () => {
     expect(tracker.ids).toContain('martegani-main-blog-module')
     expect(tracker.ids).toContain('martegani-main-blog-module-list')
     expect(tracker.ids).toContain('martegani-main-posts')
-    expect(tracker.ids).not.toContain('livener-main-blog-module')
+    expect(tracker.ids).not.toContain('livener-blog-module')
   })
 
   it('matches the exact IDs the blog module previously generated for all three collections', () => {
@@ -212,12 +212,12 @@ describe('buildCollectionItems — ID generation', () => {
         ],
       },
     ])
-    buildCollectionItems('livener-main', 'tenant', S, blogManifest)
-    expect(tracker.ids).toContain('livener-main-blog-module')
-    expect(tracker.ids).toContain('livener-main-blog-module-list')
-    expect(tracker.ids).toContain('livener-main-posts')
-    expect(tracker.ids).toContain('livener-main-categories')
-    expect(tracker.ids).toContain('livener-main-authors')
+    buildCollectionItems('livener', 'tenant', S, blogManifest)
+    expect(tracker.ids).toContain('livener-blog-module')
+    expect(tracker.ids).toContain('livener-blog-module-list')
+    expect(tracker.ids).toContain('livener-posts')
+    expect(tracker.ids).toContain('livener-categories')
+    expect(tracker.ids).toContain('livener-authors')
   })
 
   it('keeps the wrapper for a two-item events group', () => {
@@ -232,10 +232,10 @@ describe('buildCollectionItems — ID generation', () => {
         ],
       },
     ])
-    buildCollectionItems('livener-main', 'tenant', S, eventsManifest)
-    expect(tracker.ids).toContain('livener-main-events-module')
-    expect(tracker.ids).toContain('livener-main-events-module-list')
-    expect(tracker.ids).toContain('livener-main-events')
+    buildCollectionItems('livener', 'tenant', S, eventsManifest)
+    expect(tracker.ids).toContain('livener-events-module')
+    expect(tracker.ids).toContain('livener-events-module-list')
+    expect(tracker.ids).toContain('livener-events')
   })
 })
 
@@ -272,7 +272,7 @@ describe('buildCollectionItems — live MODULE_REGISTRY', () => {
   it('returns no items for the Live module (no collections)', () => {
     const { S } = createMockS()
     const liveModule = MODULE_REGISTRY.find((m) => m.id === 'live')!
-    const result = buildCollectionItems('livener-main', 'tenant', S, liveModule)
+    const result = buildCollectionItems('livener', 'tenant', S, liveModule)
     expect(result).toHaveLength(0)
   })
 
@@ -281,13 +281,13 @@ describe('buildCollectionItems — live MODULE_REGISTRY', () => {
     // collections are just the two document lists an editor works in.
     const { S, tracker } = createMockS()
     const blogModule = MODULE_REGISTRY.find((m) => m.id === 'blog')!
-    const result = buildCollectionItems('livener-main', 'tenant', S, blogModule)
+    const result = buildCollectionItems('livener', 'tenant', S, blogModule)
     expect(result).toHaveLength(1)
-    expect(tracker.ids).toContain('livener-main-blog-module')
-    expect(tracker.ids).toContain('livener-main-blog-module-list')
-    expect(tracker.ids).toContain('livener-main-posts')
-    expect(tracker.ids).toContain('livener-main-authors')
-    expect(tracker.ids).not.toContain('livener-main-categories')
+    expect(tracker.ids).toContain('livener-blog-module')
+    expect(tracker.ids).toContain('livener-blog-module-list')
+    expect(tracker.ids).toContain('livener-posts')
+    expect(tracker.ids).toContain('livener-authors')
+    expect(tracker.ids).not.toContain('livener-categories')
   })
 
   it('flattens the Events module to its single Events list', () => {
@@ -295,8 +295,8 @@ describe('buildCollectionItems — live MODULE_REGISTRY', () => {
     // wrapper collapses (see the flattening tests above).
     const { S, tracker } = createMockS()
     const eventsModule = MODULE_REGISTRY.find((m) => m.id === 'events')!
-    const result = buildCollectionItems('livener-main', 'tenant', S, eventsModule)
+    const result = buildCollectionItems('livener', 'tenant', S, eventsModule)
     expect(result).toHaveLength(1)
-    expect(tracker.ids).toEqual(['livener-main-events'])
+    expect(tracker.ids).toEqual(['livener-events'])
   })
 })

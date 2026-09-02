@@ -16,9 +16,9 @@ import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 function grantWith(enabledModuleIds: string[]): ProjectGrant {
   return {
     projectId: 'project-a1',
-    // SUPABASE namespace. `ProjectGrant.projectSlug` is `projects.slug`, and
-    // the client-dashboard URL segment is built from it — so the href below is
-    // `/livener/...`, never Sanity's `/livener-main/...`.
+    // `ProjectGrant.projectSlug` is `projects.slug`, and the client-dashboard
+    // URL segment is built from it — so the href below is `/livener/...`.
+    // (Sanity's separate `/livener-main/` name is gone: RENAME.md Step 4.)
     projectSlug: asSupabaseProjectSlug('livener'),
     membershipId: 'pm-1',
     role: 'editor',
@@ -61,7 +61,6 @@ describe('buildClientNavItems', () => {
   })
 
   it('builds the href from the grant projectSlug + the route mapping', () => {
-    // SUPABASE namespace (Sanity says `studiomartegani-main`).
     const grant = { ...grantWith(['blog']), projectSlug: asSupabaseProjectSlug('studiomartegani') }
     const [item] = buildClientNavItems(grant, fakeRegistry)
     expect(item.href).toBe(`/studiomartegani/${MODULE_DASHBOARD_ROUTES.blog}`)

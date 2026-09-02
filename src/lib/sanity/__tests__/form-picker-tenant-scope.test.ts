@@ -174,8 +174,8 @@ describe('activeFormReferenceFilter', () => {
     // `$projectSlug` is not in scope inside the callback. It does not need to
     // be: the project comes off the document Sanity hands the callback.
     const scope = await resolveProjectScope({
-      document: { projectSlug: 'livener-main' },
-      getClient: clientReturning({ projectSlug: 'livener-main', tenantSlug: 'livener' }),
+      document: { projectSlug: 'livener' },
+      getClient: clientReturning({ projectSlug: 'livener', tenantSlug: 'livener' }),
     })
     expect(scope?.tenantSlug).toBe('livener')
     expect(await resolveProjectScope({ document: {} })).toBeNull()

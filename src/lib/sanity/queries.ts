@@ -4,25 +4,20 @@
  * Rules:
  * - Every query MUST filter by projectSlug — no unscoped queries ever.
  * - Use `tenantClient('slug').fetchForTenant(query, params)` to execute.
- *   tenantClient resolves the URL tenant slug (e.g. "livener") to the
- *   Sanity projectSlug (e.g. "livener-main") and injects it as $projectSlug.
+ *   tenantClient binds the project's ONE name (e.g. "livener") as
+ *   $projectSlug — no translation, no lookup.
  *
- * ── The scope filter is `projectSlug in $projectSlugs` (STEP 3 DUAL-READ) ────
- * NOT `projectSlug == $projectSlug`. Two projects have two names for one thing
- * — Supabase says `livener`, Sanity documents say `livener-main` — and
- * `src/lib/tenancy/RENAME.md` step 4 renames the documents. Matching an ARRAY
- * lets a query written today keep working before, during and after that rename,
- * so the data move needs no synchronised deploy.
+ * ── The scope filter is `projectSlug == $projectSlug` ────────────────────
+ * It was briefly `projectSlug in $projectSlugs` (the STEP 3 DUAL-READ of
+ * `src/lib/tenancy/RENAME.md`), while two projects had two names for one thing
+ * — Supabase said `livener`, Sanity documents said `livener-main`. Step 4
+ * renamed the 39 documents and Step 5 removed the array binding from both
+ * chokepoints: `tenantClient().fetchForTenant` (public website) and
+ * `tenantScopedSanityClient()` (client dashboard) each bind `$projectSlug`
+ * alone again.
  *
- * `$projectSlugs` is bound by BOTH chokepoints, via `dualReadProjectSlugs()` in
- * `@/lib/sanity/client`: `tenantClient().fetchForTenant` (public website) and
- * `tenantScopedSanityClient()` (client dashboard). It is a no-op against
- * today's data — every project whose two names already agree gets a
- * one-element array. Step 5 sweeps this file back to `== $projectSlug`.
- *
- * A NEW QUERY MUST USE `projectSlug in $projectSlugs`; a `== $projectSlug`
- * root filter fails `__tests__/query-tenant-scope.test.ts` at CI time, because
- * on the dashboard path it is the shape that returns an EMPTY list for Livener.
+ * A NEW QUERY MUST carry `projectSlug == $projectSlug` on its ROOT filter;
+ * anything else fails `__tests__/query-tenant-scope.test.ts` at CI time.
  *
  * Multilingual fields:
  * - Text fields are stored as { it: "...", en: "..." } objects in Sanity.
@@ -98,18 +93,17 @@ const NAV_LINK_FIELDS = /* groq */ `
 // copied from. There is no third tier — the `-main` suffix strip is gone.
 //
 // NOT `$tenantSlug`. `fetchForTenant` does inject that parameter, but its value
-// is the URL tenant slug from `TENANT_TO_PROJECT` (client.ts), which is a
-// PROJECT-grain value wearing a tenant name: No!Logo's websites resolve it to
-// `nologo`, while the tenant that owns them is `freeriders`. Scoping on it
-// would blank No!Logo's header form. See src/lib/tenancy/ids.ts on exactly this
-// class of mistake. Until `TENANT_TO_PROJECT` is retired, the project document
-// is the only authority reachable from inside a query.
+// is the `[tenant]` URL segment, which is a PROJECT-grain value wearing a
+// tenant name: No!Logo's websites resolve it to `nologo`, while the tenant that
+// owns them is `freeriders`. Scoping on it would blank No!Logo's header form.
+// See src/lib/tenancy/ids.ts on exactly this class of mistake. The project
+// document is the only tenant authority reachable from inside a query.
 //
 // A project with no resolvable tenant yields `null` here, and `tenantSlug ==
 // null` matches no active form — select nothing, never everything.
 const PROJECT_TENANT_SLUG = /* groq */ `coalesce(
-      *[_type == "project" && projectSlug in $projectSlugs][0].tenantSlug,
-      *[_type == "project" && projectSlug in $projectSlugs][0].clientRef->tenantSlug
+      *[_type == "project" && projectSlug == $projectSlug][0].tenantSlug,
+      *[_type == "project" && projectSlug == $projectSlug][0].clientRef->tenantSlug
     )`
 
 const FORM_DEFINITION_PROJECTION = /* groq */ `
@@ -172,7 +166,7 @@ steps[]{
 // PROJECT_TENANT_SLUG has no other way to name the tenant. All of them do:
 // websiteSiteConfigQuery, projectModuleConfigQuery, homePageQuery, and
 // PAGE_SECTIONS_PROJECTION's two consumers (pageHomeQuery, pageBySlugQuery)
-// each carry `projectSlug in $projectSlugs` on their root filter.
+// each carry `projectSlug == $projectSlug` on their root filter.
 const scopedFormDefinition = (field: string) => /* groq */ `*[
         _type == "formDefinition"
         && _id == ^.${field}._ref
@@ -489,7 +483,7 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
 `
 
 export const localeConfigQuery = /* groq */ `
-  *[_type == "siteConfig" && projectSlug in $projectSlugs][0] {
+  *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
     defaultLocale,
     supportedLocales
   }
@@ -500,7 +494,7 @@ export const localeConfigQuery = /* groq */ `
 // fields from siteConfig for <head> metadata (favicon, OG image, apple-touch).
 // Precedence: siteConfig.faviconSvg → siteConfig.faviconPng → /favicon.ico.
 export const siteConfigFaviconQuery = /* groq */ `
-  *[_type == "siteConfig" && projectSlug in $projectSlugs][0] {
+  *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
     faviconSvg { asset },
     faviconPng { asset },
     openGraphImage { asset },
@@ -511,7 +505,7 @@ export const siteConfigFaviconQuery = /* groq */ `
 `
 
 export const websiteSiteConfigQuery = /* groq */ `
-  *[_type == "siteConfig" && projectSlug in $projectSlugs][0] {
+  *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
     projectSlug,
     siteName,
     defaultLocale,
@@ -650,7 +644,7 @@ export const websiteSiteConfigQuery = /* groq */ `
     logoHeightMobile,
     "seoDefaultTitle": ${loc('seoDefaultTitle')},
     "seoDefaultDescription": ${loc('seoDefaultDescription')},
-    "customDomain": *[_type == "project" && projectSlug in $projectSlugs && defined(customDomain)][0].customDomain
+    "customDomain": *[_type == "project" && projectSlug == $projectSlug && defined(customDomain)][0].customDomain
   }
 `
 
@@ -659,7 +653,7 @@ export const websiteSiteConfigQuery = /* groq */ `
 // (blog/[slug], events/[slug], live). Source of truth: project.customDomain,
 // synced from Supabase via ProjectLinker.
 export const projectDomainQuery = /* groq */ `
-  *[_type == "project" && projectSlug in $projectSlugs && defined(customDomain)][0].customDomain
+  *[_type == "project" && projectSlug == $projectSlug && defined(customDomain)][0].customDomain
 `
 
 // ─── Runtime integration configuration (ADR-014 Phase C) ──────────────────────
@@ -669,7 +663,7 @@ export const projectDomainQuery = /* groq */ `
 // explicit rule (the old model was already removed from the schema in Phase B).
 // Consumed by TrackingScripts.tsx via fetchForTenant, same pattern as projectDomainQuery.
 export const projectIntegrationsQuery = /* groq */ `
-  *[_type == "project" && projectSlug in $projectSlugs][0] {
+  *[_type == "project" && projectSlug == $projectSlug][0] {
     integrationConfigs[] { integrationId, enabled, values },
     privacy { consentModeEnabled, trackingKillSwitch }
   }
@@ -691,7 +685,7 @@ export const projectIntegrationsQuery = /* groq */ `
 // Consumed by hydrateSections/SectionRenderer via fetchForTenant, same pattern
 // as projectDomainQuery / projectIntegrationsQuery.
 export const enabledModuleIdsQuery = /* groq */ `
-  *[_type == "project" && projectSlug in $projectSlugs][0] {
+  *[_type == "project" && projectSlug == $projectSlug][0] {
     "enabledModuleIds": coalesce(moduleInstallations[enabled != false].moduleId, [])
   }.enabledModuleIds
 `
@@ -719,7 +713,7 @@ export const enabledModuleIdsQuery = /* groq */ `
 // Consumed by the tenant layout and ContactSection via fetchForTenant, same
 // pattern as projectIntegrationsQuery / enabledModuleIdsQuery.
 export const projectModuleConfigQuery = /* groq */ `
-  *[_type == "project" && projectSlug in $projectSlugs][0] {
+  *[_type == "project" && projectSlug == $projectSlug][0] {
     "modules": moduleInstallations[enabled != false] {
       moduleId,
       version,
@@ -738,7 +732,7 @@ export const projectModuleConfigQuery = /* groq */ `
 export const postsQuery = /* groq */ `
   *[
     _type == "post"
-    && projectSlug in $projectSlugs
+    && projectSlug == $projectSlug
     && defined(publishedAt)
     && publishedAt <= now()
     && (!defined(expiresAt) || expiresAt > now())
@@ -783,7 +777,7 @@ export const postsQuery = /* groq */ `
 // $projectSlug (required by the chokepoint's assertQueryIsTenantScoped guard)
 // and never interpolates tenant identity.
 export const dashboardPostsQuery = /* groq */ `
-  *[_type == "post" && projectSlug in $projectSlugs]
+  *[_type == "post" && projectSlug == $projectSlug]
   | order(coalesce(publishedAt, _updatedAt) desc) {
     _id,
     "title": ${loc('title')},
@@ -797,7 +791,7 @@ export const dashboardPostsQuery = /* groq */ `
 `
 
 export const postBySlugQuery = /* groq */ `
-  *[_type == "post" && projectSlug in $projectSlugs && slug[$locale].current == $slug][0] {
+  *[_type == "post" && projectSlug == $projectSlug && slug[$locale].current == $slug][0] {
     _id,
     "title": ${loc('title')},
     "slugMap": slug,
@@ -842,7 +836,7 @@ export const postBySlugQuery = /* groq */ `
 `
 
 export const postByOldSlugQuery = /* groq */ `
-  *[_type == "post" && projectSlug in $projectSlugs && $slug in redirectFrom[$locale]][0] {
+  *[_type == "post" && projectSlug == $projectSlug && $slug in redirectFrom[$locale]][0] {
     "currentSlug": slug[$locale].current
   }
 `
@@ -855,7 +849,7 @@ export const postByOldSlugQuery = /* groq */ `
 export const relatedPostsQuery = /* groq */ `
   *[
     _type == "post"
-    && projectSlug in $projectSlugs
+    && projectSlug == $projectSlug
     && _id != $excludeId
     && defined(publishedAt)
     && publishedAt <= now()
@@ -927,7 +921,7 @@ const blogListingCardFields = /* groq */ `
 //   byEvent      → relatedEvent._ref == $eventId
 const blogListingFilter = /* groq */ `
   _type == "post"
-  && projectSlug in $projectSlugs
+  && projectSlug == $projectSlug
   && defined(publishedAt)
   && publishedAt <= now()
   && (!defined(expiresAt) || expiresAt > now())
@@ -962,7 +956,7 @@ export const blogListingPostsOldestQuery = /* groq */ `
 // document: every tenant query filters by projectSlug (CLAUDE.md), and without
 // it a stale or hand-edited reference to another tenant's post would resolve.
 export const blogListingManualPostsQuery = /* groq */ `
-  *[_type == "post" && projectSlug in $projectSlugs && _id in $postIds] {
+  *[_type == "post" && projectSlug == $projectSlug && _id in $postIds] {
     ${blogListingCardFields}
   }
 `
@@ -1003,7 +997,7 @@ const newsListingCardFields = /* groq */ `
 // so an expired announcement cannot leak through any consumer.
 const newsListingFilter = /* groq */ `
   _type == "newsArticle"
-  && projectSlug in $projectSlugs
+  && projectSlug == $projectSlug
   && defined(publishedAt)
   && publishedAt <= now()
   && (!defined(expiresAt) || expiresAt > now())
@@ -1033,7 +1027,7 @@ export const newsListingArticlesOldestQuery = /* groq */ `
 // document: every tenant query filters by projectSlug (CLAUDE.md), and without
 // it a stale or hand-edited reference to another tenant's item would resolve.
 export const newsListingManualArticlesQuery = /* groq */ `
-  *[_type == "newsArticle" && projectSlug in $projectSlugs && _id in $articleIds] {
+  *[_type == "newsArticle" && projectSlug == $projectSlug && _id in $articleIds] {
     ${newsListingCardFields}
   }
 `
@@ -1042,7 +1036,7 @@ export const newsListingManualArticlesQuery = /* groq */ `
 export const newsArticlesQuery = /* groq */ `
   *[
     _type == "newsArticle"
-    && projectSlug in $projectSlugs
+    && projectSlug == $projectSlug
     && defined(publishedAt)
     && publishedAt <= now()
     && (!defined(expiresAt) || expiresAt > now())
@@ -1059,7 +1053,7 @@ export const newsArticlesQuery = /* groq */ `
 // not resolve an English slug, or two locales would serve the same content at
 // two URLs and compete in search.
 export const newsArticleBySlugQuery = /* groq */ `
-  *[_type == "newsArticle" && projectSlug in $projectSlugs && slug[$locale].current == $slug][0] {
+  *[_type == "newsArticle" && projectSlug == $projectSlug && slug[$locale].current == $slug][0] {
     _id,
     "title": ${loc('title')},
     "slugMap": slug,
@@ -1083,14 +1077,14 @@ export const newsArticleBySlugQuery = /* groq */ `
 
 // Redirect lookup — resolves an old slug to the current one for a 301.
 export const newsArticleByOldSlugQuery = /* groq */ `
-  *[_type == "newsArticle" && projectSlug in $projectSlugs && $slug in redirectFrom[$locale]][0] {
+  *[_type == "newsArticle" && projectSlug == $projectSlug && $slug in redirectFrom[$locale]][0] {
     "currentSlug": slug[$locale].current
   }
 `
 
 // News singleton page — hero, SEO, and composed sections.
 export const newsPageQuery = /* groq */ `
-  *[_type == "newsPage" && projectSlug in $projectSlugs][0] {
+  *[_type == "newsPage" && projectSlug == $projectSlug][0] {
     _id,
     "heroTitle": ${loc('heroTitle')},
     "heroSubtitle": ${loc('heroSubtitle')},
@@ -1150,7 +1144,7 @@ const eventsListingCardFields = /* groq */ `
 // for the accepted parity delta.
 const eventsListingFilter = /* groq */ `
   _type == "event"
-  && projectSlug in $projectSlugs
+  && projectSlug == $projectSlug
   && (
     $timeFilter == "all"
     || ($timeFilter == "upcoming" && startDate >= now())
@@ -1187,7 +1181,7 @@ export const eventsListingEventsOldestQuery = /* groq */ `
 // document: every tenant query filters by projectSlug (CLAUDE.md), and without
 // it a stale or hand-edited reference to another tenant's event would resolve.
 export const eventsListingManualEventsQuery = /* groq */ `
-  *[_type == "event" && projectSlug in $projectSlugs && _id in $eventIds] {
+  *[_type == "event" && projectSlug == $projectSlug && _id in $eventIds] {
     ${eventsListingCardFields}
   }
 `
@@ -1197,16 +1191,16 @@ export const currentLiveEventQuery = /* groq */ `
     // Explicitly featured on live page, within optional scheduling window
     *[
       _type == "event"
-      && projectSlug in $projectSlugs
+      && projectSlug == $projectSlug
       && (featuredOnLivePage == true || isCurrentLiveEvent == true)
       && (livePageFeatureStartDate == null || now() >= livePageFeatureStartDate)
       && (livePageFeatureEndDate == null || now() <= livePageFeatureEndDate)
       && (endDate == null || now() <= endDate)
     ][0],
     // Fallback: any live-status event
-    *[_type == "event" && projectSlug in $projectSlugs && status == "live" && (endDate == null || now() <= endDate)][0],
+    *[_type == "event" && projectSlug == $projectSlug && status == "live" && (endDate == null || now() <= endDate)][0],
     // Fallback: next upcoming event
-    *[_type == "event" && projectSlug in $projectSlugs && status == "upcoming" && now() < startDate]
+    *[_type == "event" && projectSlug == $projectSlug && status == "upcoming" && now() < startDate]
       | order(startDate asc)[0]
   ) {
     _id,
@@ -1268,7 +1262,7 @@ export const homepageFeaturedEventQuery = /* groq */ `
     // Live events that are featured on homepage (within date window)
     *[
       _type == "event"
-      && projectSlug in $projectSlugs
+      && projectSlug == $projectSlug
       && featuredOnHomePage == true
       && status == "live"
       && (homePageFeatureStartDate == null || now() >= homePageFeatureStartDate)
@@ -1277,7 +1271,7 @@ export const homepageFeaturedEventQuery = /* groq */ `
     // Upcoming events that are featured on homepage (within date window)
     *[
       _type == "event"
-      && projectSlug in $projectSlugs
+      && projectSlug == $projectSlug
       && featuredOnHomePage == true
       && status == "upcoming"
       && (homePageFeatureStartDate == null || now() >= homePageFeatureStartDate)
@@ -1287,7 +1281,7 @@ export const homepageFeaturedEventQuery = /* groq */ `
 `
 
 export const eventsQuery = /* groq */ `
-  *[_type == "event" && projectSlug in $projectSlugs]
+  *[_type == "event" && projectSlug == $projectSlug]
   | order(startDate desc) {
     _id,
     "title": ${loc('title')},
@@ -1303,7 +1297,7 @@ export const eventsQuery = /* groq */ `
 `
 
 export const pastEventsQuery = /* groq */ `
-  *[_type == "event" && projectSlug in $projectSlugs && (status == "past" || now() > endDate)]
+  *[_type == "event" && projectSlug == $projectSlug && (status == "past" || now() > endDate)]
   | order(startDate desc) [0..4] {
     _id,
     "title": ${loc('title')},
@@ -1320,7 +1314,7 @@ export const pastEventsQuery = /* groq */ `
 // Additional live events — all events with status "live" except the featured one.
 // $featuredEventId should be the _id of the currently featured live event (or "" if none).
 export const additionalLiveEventsQuery = /* groq */ `
-  *[_type == "event" && projectSlug in $projectSlugs && status == "live" && _id != $featuredEventId && (endDate == null || now() <= endDate)]
+  *[_type == "event" && projectSlug == $projectSlug && status == "live" && _id != $featuredEventId && (endDate == null || now() <= endDate)]
   | order(startDate asc) {
     _id,
     "title": ${loc('title')},
@@ -1335,13 +1329,13 @@ export const additionalLiveEventsQuery = /* groq */ `
 `
 
 export const eventByOldSlugQuery = /* groq */ `
-  *[_type == "event" && projectSlug in $projectSlugs && $slug in redirectFrom[$locale]][0] {
+  *[_type == "event" && projectSlug == $projectSlug && $slug in redirectFrom[$locale]][0] {
     "currentSlug": slug[$locale].current
   }
 `
 
 export const eventBySlugQuery = /* groq */ `
-  *[_type == "event" && projectSlug in $projectSlugs && slug[$locale].current == $slug][0] {
+  *[_type == "event" && projectSlug == $projectSlug && slug[$locale].current == $slug][0] {
     _id,
     "title": ${loc('title')},
     "slugMap": slug,
@@ -1387,7 +1381,7 @@ export const eventBySlugQuery = /* groq */ `
 
 // Legacy — kept for backward compat. New tenants use pageHomeQuery below.
 export const homePageQuery = /* groq */ `
-  *[_type == "homePage" && projectSlug in $projectSlugs][0] {
+  *[_type == "homePage" && projectSlug == $projectSlug][0] {
     projectSlug,
     backgroundPattern,
     sections[] {
@@ -1508,7 +1502,7 @@ export const homePageQuery = /* groq */ `
 
 // Fetches the homepage from the new page system (pageType == "home").
 export const pageHomeQuery = /* groq */ `
-  *[_type == "page" && projectSlug in $projectSlugs && pageType == "home"][0] {
+  *[_type == "page" && projectSlug == $projectSlug && pageType == "home"][0] {
     _id,
     pageType,
     "title": ${loc('title')},
@@ -1519,7 +1513,7 @@ export const pageHomeQuery = /* groq */ `
 `
 
 export const pageBySlugQuery = /* groq */ `
-  *[_type == "page" && projectSlug in $projectSlugs && slug[$locale].current == $slug][0] {
+  *[_type == "page" && projectSlug == $projectSlug && slug[$locale].current == $slug][0] {
     _id,
     pageType,
     "title": ${loc('title')},
@@ -1533,7 +1527,7 @@ export const pageBySlugQuery = /* groq */ `
 // Used for 301 redirects: find the page that has $slug in its redirectFrom[$locale] array.
 // Returns just the current slug for the locale so we can redirect to it.
 export const pageByOldSlugQuery = /* groq */ `
-  *[_type == "page" && projectSlug in $projectSlugs && $slug in redirectFrom[$locale]][0] {
+  *[_type == "page" && projectSlug == $projectSlug && $slug in redirectFrom[$locale]][0] {
     "currentSlug": slug[$locale].current
   }
 `
@@ -1551,7 +1545,7 @@ export const siteConfigQuery = websiteSiteConfigQuery
 // remaining runtime reads (live/page.tsx renders body + metadata entirely
 // from sections[]/seoTitle/seoDescription). See migration 002 + 003.
 export const livePageQuery = /* groq */ `
-  *[_type == "livePage" && projectSlug in $projectSlugs][0] {
+  *[_type == "livePage" && projectSlug == $projectSlug][0] {
     _id,
     "seoTitle": ${loc('seoTitle')},
     "seoDescription": ${loc('seoDescription')},
@@ -1565,7 +1559,7 @@ export const livePageQuery = /* groq */ `
 // read as SEO-fallback strings by generateMetadata in events/page.tsx.
 
 export const eventsPageQuery = /* groq */ `
-  *[_type == "eventsPage" && projectSlug in $projectSlugs][0] {
+  *[_type == "eventsPage" && projectSlug == $projectSlug][0] {
     _id,
     "heroTitle": ${loc('heroTitle')},
     "heroSubtitle": ${loc('heroSubtitle')},
@@ -1581,7 +1575,7 @@ export const eventsPageQuery = /* groq */ `
 // generateMetadata in blog/page.tsx.
 
 export const blogPageQuery = /* groq */ `
-  *[_type == "blogPage" && projectSlug in $projectSlugs][0] {
+  *[_type == "blogPage" && projectSlug == $projectSlug][0] {
     _id,
     "heroTitle": ${loc('heroTitle')},
     "heroSubtitle": ${loc('heroSubtitle')},
@@ -1730,8 +1724,8 @@ export const DS_FIELDS_SELECTION = /* groq */ `{
 // Includes parentDesignSystem reference for inheritance resolution.
 export const designSystemQuery = /* groq */ `
   coalesce(
-    *[_type == "project" && projectSlug in $projectSlugs][0].designSystemRef->,
-    *[_type == "designSystem" && projectSlug in $projectSlugs][0]
+    *[_type == "project" && projectSlug == $projectSlug][0].designSystemRef->,
+    *[_type == "designSystem" && projectSlug == $projectSlug][0]
   ) ${DS_FIELDS_SELECTION}
 `
 

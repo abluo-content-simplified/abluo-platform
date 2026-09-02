@@ -40,7 +40,7 @@ describe('uniqueFormId', () => {
 })
 
 describe('formFromTemplate', () => {
-  const clone = formFromTemplate(TEMPLATE, 'livener', 'livener-main', 'contact')
+  const clone = formFromTemplate(TEMPLATE, 'livener', 'livener', 'contact')
 
   it('assigns the target tenant', () => {
     // The whole point of the guard: a clone belongs to exactly one tenant, and
@@ -67,7 +67,7 @@ describe('formFromTemplate', () => {
   })
 
   it('takes the formId it is given, not the template one', () => {
-    expect(formFromTemplate(TEMPLATE, 'livener', 'livener-main', 'contact-2').formId).toBe('contact-2')
+    expect(formFromTemplate(TEMPLATE, 'livener', 'livener', 'contact-2').formId).toBe('contact-2')
   })
 
   it('names the clone for its tenant so the list is readable', () => {
@@ -80,7 +80,7 @@ describe('formFromTemplate', () => {
 
   it('carries unknown fields through, so new schema fields need no change here', () => {
     const extended = { ...TEMPLATE, someFutureField: { nested: true } }
-    expect(formFromTemplate(extended, 'livener', 'livener-main', 'contact')).toHaveProperty(
+    expect(formFromTemplate(extended, 'livener', 'livener', 'contact')).toHaveProperty(
       'someFutureField',
       { nested: true }
     )

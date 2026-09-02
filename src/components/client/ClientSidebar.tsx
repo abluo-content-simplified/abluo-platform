@@ -31,7 +31,7 @@ export type ClientSidebarProps = {
 
 export function ClientSidebar({ navItems, projects, activeSlug }: ClientSidebarProps) {
   const t = useTranslations('clientDashboard')
-  const pathname = usePathname() // locale-stripped, e.g. "/livener-main/posts"
+  const pathname = usePathname() // locale-stripped, e.g. "/livener/posts"
   const router = useRouter()
 
   async function handleSignOut() {

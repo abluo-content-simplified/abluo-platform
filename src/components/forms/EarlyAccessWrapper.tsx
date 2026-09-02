@@ -18,7 +18,7 @@
 import type { ReactNode } from 'react'
 import { EarlyAccessProvider } from './EarlyAccessContext'
 import { EarlyAccessModal } from './EarlyAccessModal'
-import type { SanityProjectSlug, UrlProjectSegment } from '@/lib/tenancy/ids'
+import type { ProjectSlug, UrlProjectSegment } from '@/lib/tenancy/ids'
 
 interface EarlyAccessWrapperProps {
   children: ReactNode
@@ -28,8 +28,8 @@ interface EarlyAccessWrapperProps {
    * `@/lib/tenancy/ids`.
    */
   tenantSlug: UrlProjectSegment
-  /** Sanity/Supabase project slug — resolved to project_id by the API */
-  projectSlug?: SanityProjectSlug
+  /** The project's one name (Sanity `projectSlug` == Supabase `projects.slug`). */
+  projectSlug?: ProjectSlug
   /** Current page locale — forwarded to context so form components can localise */
   locale: string
 }

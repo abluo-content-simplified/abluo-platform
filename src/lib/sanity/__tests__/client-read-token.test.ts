@@ -120,31 +120,30 @@ describe('tenantClient.fetchForTenant — scope injection', () => {
 
     await mod.tenantClient(asUrlProjectSegment('livener')).fetchForTenant('*[_type == "page"]')
 
+    // Exact object: Step 5 of `src/lib/tenancy/RENAME.md` removed the
+    // `projectSlugs` dual-read key, and nothing may quietly bind it again.
     expect(fetchSpy).toHaveBeenCalledWith('*[_type == "page"]', {
-      projectSlug: 'livener-main',
-      // STEP 3 DUAL-READ (src/lib/tenancy/RENAME.md): both names of the same
-      // project, so a query survives the step-4 document rename in either
-      // direction. Step 5 deletes this key.
-      projectSlugs: ['livener', 'livener-main'],
+      projectSlug: 'livener',
       tenantSlug: 'livener',
     })
   })
 
-  it('injects the URL tenant slug verbatim, not the project slug', async () => {
+  it('injects the URL segment verbatim into BOTH scope params', async () => {
     const { mod } = await loadClient()
     const fetchSpy = vi.fn().mockResolvedValue([])
     ;(mod.sanityClient as unknown as { fetch: unknown }).fetch = fetchSpy
 
-    // The example MUST be a segment whose Sanity projectSlug differs from it,
-    // or the assertion proves nothing: `livener` maps to `livener-main`.
-    // (This used to use the platform site, whose URL segment and project slug
-    // differed. Step 1 of `src/lib/tenancy/RENAME.md` made those two equal,
-    // which would have left this test passing while testing nothing.)
+    // ⚠️ This test no longer distinguishes two namespaces, because there is
+    // only one name left: Steps 1/4/5 of `src/lib/tenancy/RENAME.md` made the
+    // URL segment, `projects.slug` and Sanity's `projectSlug` the same string
+    // for every project. What it still pins is that NOTHING transforms the
+    // value on the way in — above all that no `-main` suffix comes back.
     await mod.tenantClient(asUrlProjectSegment('livener')).fetchForTenant('*[_type == "page"]')
 
     const params = fetchSpy.mock.calls[0][1]
     expect(params.tenantSlug).toBe('livener')
-    expect(params.projectSlug).toBe('livener-main')
+    expect(params.projectSlug).toBe('livener')
+    expect(params.projectSlug).not.toMatch(/-main$/)
   })
 
   it('preserves caller params and still wins on the scope keys', async () => {
@@ -161,10 +160,6 @@ describe('tenantClient.fetchForTenant — scope injection', () => {
     expect(fetchSpy).toHaveBeenCalledWith('*[_id == $id]', {
       id: 'abc',
       projectSlug: 'nologo',
-      // A project whose two names already agree gets a ONE-element dual-read
-      // array — i.e. `projectSlug in $projectSlugs` is exactly the old
-      // equality filter for every project but Livener and Studio Martegani.
-      projectSlugs: ['nologo'],
       tenantSlug: 'nologo',
     })
   })

@@ -42,10 +42,14 @@ import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 //
 // Every slug below is a SUPABASE `projects.slug` (that is what
 // `RawOwnedProject`/`RawProjectMembership`/`ProjectGrant` carry — see
-// `asSupabaseProjectSlug` in `@/lib/tenancy/ids`). Sanity's names for the same
-// projects are `livener-main` / `studiomartegani-main`; branding THOSE here
-// made the two namespaces coincide and is what let the empty-Posts-list defect
-// through review (`dashboard-posts-namespace.test.ts`).
+// `asSupabaseProjectSlug` in `@/lib/tenancy/ids`). Sanity's separate names for
+// the same projects USED to be `livener-main` / `studiomartegani-main`;
+// branding THOSE here made the two namespaces look like one and is what let the
+// empty-Posts-list defect through review (`dashboard-posts-namespace.test.ts`).
+// `RENAME.md` Step 4 deleted those names from the dataset, so a document's own
+// `projectSlug` is now the same string as the grant's — the fixtures below say
+// so, and a `-main` value reappearing in one of them is a regression, not a
+// namespace.
 //
 // Tenant A ("livener"):
 //   - project A1 (Supabase slug "livener")
@@ -304,9 +308,8 @@ describe('slice 3a — Sanity chokepoint: tenant-scoped Sanity client', () => {
 
     await scoped.fetch(`*[_type == "post" && projectSlug == $projectSlug]`, {
       // Attempted cross-tenant read: caller supplies a different project's
-      // slug in params (SANITY's name for tenant B's project — a caller can
-      // supply anything; it must be discarded either way).
-      projectSlug: 'studiomartegani-main',
+      // slug in params (a caller can supply anything; it must be discarded).
+      projectSlug: 'studiomartegani',
       someOtherParam: 'unchanged',
     })
 
@@ -330,8 +333,9 @@ describe('slice 3a — Sanity chokepoint: tenant-scoped Sanity client', () => {
   it('rejects a document reference that resolves to a different tenant\'s projectSlug', async () => {
     // The referenced document actually belongs to tenant B's project, while
     // the caller only holds a grant on tenant A's project A1. The mocked value
-    // is a SANITY `projectSlug` — it is read off a Sanity document.
-    const mockFetch = vi.fn().mockResolvedValue({ projectSlug: 'studiomartegani-main' })
+    // is a `projectSlug` read off a Sanity document — one namespace since
+    // `RENAME.md` Step 4.
+    const mockFetch = vi.fn().mockResolvedValue({ projectSlug: 'studiomartegani' })
     const scoped = tenantScopedSanityClient(ctxEditorA1, 'project-a1', { fetch: mockFetch })
 
     await expect(
@@ -340,15 +344,11 @@ describe('slice 3a — Sanity chokepoint: tenant-scoped Sanity client', () => {
   })
 
   it('accepts a document reference that resolves to the same project\'s projectSlug', async () => {
-    // The document carries SANITY's name (`livener-main`); the grant carries
-    // SUPABASE's (`livener`). They are compared through the STEP 3 DUAL-READ.
-    //
-    // ⚠️ STEP 5 LIABILITY (src/lib/tenancy/RENAME.md): this assertion passes
-    // ONLY because `dualReadProjectSlugs('livener')` widens the accepted set to
-    // `['livener','livener-main']`. When step 5 deletes the dual-read and this
-    // becomes a plain `!==`, the fixture must carry Sanity's post-step-4 name
-    // (`livener`) or this test correctly fails.
-    const mockFetch = vi.fn().mockResolvedValue({ projectSlug: 'livener-main' })
+    // The document's `projectSlug` and the grant's are now the SAME string —
+    // that is what `RENAME.md` Step 4 established and what Step 5's plain
+    // `!==` comparison relies on. (This fixture carried `livener-main` while
+    // the dual-read bridged the two names.)
+    const mockFetch = vi.fn().mockResolvedValue({ projectSlug: 'livener' })
     const scoped = tenantScopedSanityClient(ctxEditorA1, 'project-a1', { fetch: mockFetch })
 
     await expect(assertSameTenantReference(scoped, 'some-doc-id', grantA1)).resolves.toBeUndefined()
@@ -371,9 +371,9 @@ describe('slice 3a — Sanity chokepoint: tenant-scoped Sanity client', () => {
       platformRole: 'tenant_user',
       projects: [grantA1, grantB1],
     }
-    // SANITY name again (a document's own field), matched against grantB1's
-    // SUPABASE name via the dual-read set — which does not contain it.
-    const mockFetch = vi.fn().mockResolvedValue({ projectSlug: 'livener-main' })
+    // The document belongs to A1; grantB1 names B1. Different projects,
+    // one namespace — still rejected.
+    const mockFetch = vi.fn().mockResolvedValue({ projectSlug: 'livener' })
     const scoped = tenantScopedSanityClient(ctxSpanning, 'project-a1', { fetch: mockFetch })
 
     await expect(

@@ -18,7 +18,7 @@ function ctxWith(grants: ProjectGrant[]): TenantAuthorizationContext {
 const validGrant: ProjectGrant = {
   projectId: 'project-a1',
   // SUPABASE namespace — `projects.slug` for Livener is `livener`. Sanity's
-  // name for the same project is `livener-main`; branding THAT here made the
+  // name for the same project was `livener-main`; branding THAT here made the
   // two namespaces coincide and hid the empty-Posts-list defect (see
   // `dashboard-posts-namespace.test.ts`).
   projectSlug: asSupabaseProjectSlug('livener'),
@@ -94,12 +94,10 @@ describe('getDashboardPosts', () => {
     // The chokepoint forces the grant's own slug, never a caller value —
     // and the grant's slug is SUPABASE's `livener`.
     expect(params.projectSlug).toBe('livener')
-    // STEP 5 LIABILITY (src/lib/tenancy/RENAME.md): the real query filters
-    // `projectSlug in $projectSlugs`, and only the dual-read array reaches
-    // Sanity's `livener-main` documents. When step 5 deletes the dual-read
-    // this binding disappears and `$projectSlug` alone must match — which is
-    // only true once step 4 has renamed the documents.
-    expect(params.projectSlugs).toEqual(['livener', 'livener-main'])
+    // RENAME.md Step 4 renamed the documents and Step 5 deleted the dual-read,
+    // so `$projectSlug` alone is what matches them now — and nothing may bind
+    // the removed array again.
+    expect(params).not.toHaveProperty('projectSlugs')
     expect(params.locale).toBe('it')
     expect(params.defaultLocale).toBe('en')
   })

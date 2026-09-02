@@ -18,8 +18,9 @@ import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 
 const grant: ProjectGrant = {
   projectId: 'project-a1',
-  // SUPABASE namespace — `projects.slug` is `livener`. (`livener-main` is
-  // SANITY's name for the same project and must never be branded here.)
+  // `projects.slug` is `livener` — and since `RENAME.md` Step 4 that is also
+  // what the project's Sanity documents carry. (`livener-main` was SANITY's
+  // separate name for it and no longer exists in either store.)
   projectSlug: asSupabaseProjectSlug('livener'),
   membershipId: 'pm-editor-a1',
   role: 'editor',
@@ -41,14 +42,11 @@ describe('dashboard chokepoint query guard (unchanged by I-9)', () => {
     const query = '*[_type == "post" && projectSlug == $projectSlug]'
     await scoped.fetch(query, { locale: 'en', projectSlug: 'attacker-supplied' })
 
+    // Exact object: RENAME.md Step 5 removed the `projectSlugs` dual-read key,
+    // so the grant's one slug is the whole of the forced scope again.
     expect(fetchMock).toHaveBeenCalledWith(query, {
       locale: 'en',
-      // The grant's own (SUPABASE) slug.
       projectSlug: 'livener',
-      // STEP 3 DUAL-READ — see dualReadProjectSlugs in @/lib/sanity/client.
-      // This array is the ONLY thing that reaches Sanity's `livener-main`
-      // documents; it goes away at step 5 of src/lib/tenancy/RENAME.md.
-      projectSlugs: ['livener', 'livener-main'],
     })
   })
 

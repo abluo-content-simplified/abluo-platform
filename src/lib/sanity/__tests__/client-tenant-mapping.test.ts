@@ -1,42 +1,75 @@
 /**
- * Tenant → projectSlug mapping resolution
+ * The `[tenant]` URL segment allow-list, and the absence of a translation.
  *
  * WHY THIS TEST EXISTS:
- * The public website route boundary (`(website)/[tenant]/layout.tsx`) must
- * fail closed to `notFound()` for an unmapped tenant slug (retired flat
- * routes, typos, dead links falling through to the `[tenant]` dynamic
- * segment) rather than let a raw `Error` throw and produce an unhandled
- * error page. `tryTenantToProjectSlug()` is the non-throwing lookup that
- * makes that guard possible; `tenantToProjectSlug()` must keep throwing
- * unchanged for internal/admin callers (e.g.
- * `getTenantAuthorizationContext` → `fetchEnabledModuleIds`) that rely on
- * the throw and catch it explicitly.
+ * The public website route boundary (`(website)/[tenant]/layout.tsx`) must fail
+ * closed to `notFound()` for an unknown tenant segment (retired flat routes,
+ * typos, dead links falling through to the `[tenant]` dynamic segment) rather
+ * than render an empty page with a 200. That guard used to be the null branch
+ * of `tryTenantToProjectSlug()`, the non-throwing half of the URL→Sanity
+ * translation map. `src/lib/tenancy/RENAME.md` Step 4 renamed the documents and
+ * Step 5 deleted the map, so the TRANSLATION is gone — but the fail-closed
+ * guard is not, and it is what this file now pins, via `isKnownProjectSegment`.
+ *
+ * The second half is the anti-regression: `tenantClient()` must bind the
+ * segment VERBATIM. Any reappearance of a `-main` suffix (a map, a
+ * `.replace()`, a cast) is the defect this whole workstream removed.
  */
-import { describe, it, expect } from 'vitest'
-import { tenantToProjectSlug, tryTenantToProjectSlug } from '@/lib/sanity/client'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { isKnownProjectSegment, tenantClient } from '@/lib/sanity/client'
+import { sanityClient } from '@/lib/sanity/client'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 
-describe('tryTenantToProjectSlug', () => {
-  it('resolves a mapped tenant slug to its Sanity projectSlug', () => {
-    expect(tryTenantToProjectSlug(asUrlProjectSegment('livener'))).toBe('livener-main')
-    expect(tryTenantToProjectSlug(asUrlProjectSegment('studiomartegani'))).toBe('studiomartegani-main')
+describe('isKnownProjectSegment', () => {
+  it('accepts every segment this deployment serves', () => {
+    for (const segment of ['livener', 'studiomartegani', 'abluo', 'nologo', 'hoffmann']) {
+      expect(isKnownProjectSegment(asUrlProjectSegment(segment))).toBe(true)
+    }
   })
 
-  it('returns null (never throws) for an unmapped tenant slug', () => {
-    expect(tryTenantToProjectSlug(asUrlProjectSegment('leads'))).toBeNull()
-    expect(tryTenantToProjectSlug(asUrlProjectSegment('some-typo'))).toBeNull()
-    expect(tryTenantToProjectSlug(asUrlProjectSegment(''))).toBeNull()
+  it('rejects (never throws for) an unknown segment — the route 404s on this', () => {
+    expect(isKnownProjectSegment(asUrlProjectSegment('leads'))).toBe(false)
+    expect(isKnownProjectSegment(asUrlProjectSegment('some-typo'))).toBe(false)
+    expect(isKnownProjectSegment(asUrlProjectSegment(''))).toBe(false)
+  })
+
+  it('rejects the retired `-main` spellings outright', () => {
+    // They were never URL segments — they were Sanity's separate names, and
+    // Step 4 deleted them from the dataset too.
+    expect(isKnownProjectSegment(asUrlProjectSegment('livener-main'))).toBe(false)
+    expect(isKnownProjectSegment(asUrlProjectSegment('studiomartegani-main'))).toBe(false)
   })
 })
 
-describe('tenantToProjectSlug', () => {
-  it('resolves a mapped tenant slug to its Sanity projectSlug', () => {
-    expect(tenantToProjectSlug(asUrlProjectSegment('livener'))).toBe('livener-main')
+describe('tenantClient binds the segment verbatim — no translation survives', () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    fetchSpy = vi
+      .spyOn(sanityClient, 'fetch')
+      .mockResolvedValue(null as never) as ReturnType<typeof vi.spyOn>
+  })
+  afterEach(() => {
+    fetchSpy.mockRestore()
   })
 
-  it('still throws for an unmapped tenant slug — internal/admin callers rely on this', () => {
-    expect(() => tenantToProjectSlug(asUrlProjectSegment('leads'))).toThrow(
-      /No project mapping for tenant "leads"/
+  it.each(['livener', 'studiomartegani', 'abluo', 'nologo', 'hoffmann'])(
+    '%s is bound to $projectSlug unchanged',
+    async (segment) => {
+      await tenantClient(asUrlProjectSegment(segment)).fetchForTenant(
+        '*[_type == "page" && projectSlug == $projectSlug][0]',
+      )
+      const params = fetchSpy.mock.calls[0][1] as Record<string, unknown>
+      expect(params.projectSlug).toBe(segment)
+      expect(String(params.projectSlug)).not.toMatch(/-main$/)
+    },
+  )
+
+  it('no longer binds the removed dual-read array', async () => {
+    await tenantClient(asUrlProjectSegment('livener')).fetchForTenant(
+      '*[_type == "page" && projectSlug == $projectSlug][0]',
     )
+    const params = fetchSpy.mock.calls[0][1] as Record<string, unknown>
+    expect(params).not.toHaveProperty('projectSlugs')
   })
 })

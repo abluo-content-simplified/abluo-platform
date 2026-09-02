@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { tenantClient, tenantToProjectSlug, tryTenantToProjectSlug, fetchDesignSystemById } from '@/lib/sanity/client'
+import { tenantClient, isKnownProjectSegment, fetchDesignSystemById } from '@/lib/sanity/client'
 import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, siteConfigFaviconQuery, projectIntegrationsQuery, projectModuleConfigQuery } from '@/lib/sanity/queries'
 import { ogImageUrl } from '@/lib/sanity/image'
 import type { LocaleConfig, SupportedLocale, DesignSystem, FontDefinition, WebsiteSiteConfig, BackgroundGraphic, ProjectIntegrations } from '@/lib/sanity/types'
@@ -30,6 +30,7 @@ import { resolveWhatsAppConfig, resolveHeaderCtaConfig, isModuleEnabled, type Pr
 import { SlugMapRoot } from '@/components/SlugMapContext'
 import { TrackingScripts } from '@/components/TrackingScripts'
 import { asUrlProjectSegment, type UrlProjectSegment } from '@/lib/tenancy/ids'
+import { projectScopeSlugFromUrlSegment } from '@/lib/forms/render-mapping'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -426,10 +427,12 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
   // Trust boundary: the `[tenant]` segment is a URL project segment —
   // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
   const tenantId = asUrlProjectSegment(rawTenantId)
-  // Fail closed to a clean 404 for an unmapped tenant slug (retired flat
-  // routes, typos, dead links falling through to this dynamic segment)
-  // instead of letting tenantClient() throw an unhandled error.
-  if (!tryTenantToProjectSlug(tenantId)) notFound()
+  // Fail closed to a clean 404 for an unknown tenant segment (retired flat
+  // routes, typos, dead links falling through to this dynamic segment) instead
+  // of rendering an empty page with a 200. This used to be the null branch of
+  // `tryTenantToProjectSlug()`; `RENAME.md` Step 5 deleted that lookup, so the
+  // check is now an explicit allow-list — see `isKnownProjectSegment`.
+  if (!isKnownProjectSegment(tenantId)) notFound()
   const { fetchForTenant } = tenantClient(tenantId)
 
   const siteConfigFavicon = await fetchForTenant<{
@@ -530,9 +533,9 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   // Trust boundary: the `[tenant]` segment is a URL project segment —
   // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
   const tenantId = asUrlProjectSegment(rawTenantId)
-  // Fail closed to a clean 404 for an unmapped tenant slug — see the matching
+  // Fail closed to a clean 404 for an unknown tenant segment — see the matching
   // guard in generateMetadata() above for the full rationale.
-  if (!tryTenantToProjectSlug(tenantId)) notFound()
+  if (!isKnownProjectSegment(tenantId)) notFound()
   const { fetchForTenant } = tenantClient(tenantId)
 
   // ── Shared: locale config ────────────────────────────────────────────────────
@@ -644,7 +647,14 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
             {livenerInner}
           </FormOverlayWrapper>
         ) : (
-          <EarlyAccessWrapper tenantSlug={tenantId} projectSlug={tenantToProjectSlug(tenantId)} locale={locale}>
+          <EarlyAccessWrapper
+            tenantSlug={tenantId}
+            /* The one named URL-segment -> project-slug crossing (Step 6 replaces
+               it with the generated route table). It used to be
+               `tenantToProjectSlug()`, which returned Sanity's separate name. */
+            projectSlug={projectScopeSlugFromUrlSegment(tenantId)}
+            locale={locale}
+          >
             {livenerInner}
           </EarlyAccessWrapper>
         )}

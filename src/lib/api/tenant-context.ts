@@ -64,7 +64,7 @@ import { MODULE_PERMISSION_MAP } from '@/lib/modules/permissions'
 import type { ModuleInstallation, ModulePermissionMap } from '@/lib/modules/types'
 import { tenantClient } from '@/lib/sanity/client'
 import { enabledModuleIdsQuery } from '@/lib/sanity/queries'
-import { asSupabaseProjectSlug, type SupabaseProjectSlug, type UrlProjectSegment } from '@/lib/tenancy/ids'
+import { asSupabaseProjectSlug, type SupabaseProjectSlug } from '@/lib/tenancy/ids'
 
 // ── Types (ADR-017 Decision 3, shape reproduced exactly) ───────────────────────
 
@@ -364,57 +364,40 @@ export async function getTenantAuthorizationContext(): Promise<TenantAuthorizati
  * Fetches enabled module ids for a project via the existing
  * `enabledModuleIdsQuery` + `tenantClient()` path — the same one
  * `[tenant]/page.tsx`, `[tenant]/[slug]/page.tsx`, `blog/page.tsx`,
- * `events/page.tsx`, and `live/page.tsx` already use. `projectSlug` here is
- * the Supabase `projects.slug` value (e.g. `"livener"`), which is also the
- * URL tenant slug `tenantClient()` expects — it internally maps it to the
- * Sanity `projectSlug` document field (e.g. `"livener-main"`) via
- * `TENANT_TO_PROJECT` (src/lib/sanity/client.ts). Returns `[]` on a missing
- * or null result rather than throwing — an unconfigured project has no
- * enabled modules, not an error.
+ * `events/page.tsx`, and `live/page.tsx` already use. `projectSlug` here is the
+ * `projects.slug` value (e.g. `"livener"`), which since `RENAME.md` Step 4 is
+ * also the value the project's Sanity documents carry, so `tenantClient()`
+ * binds it to `$projectSlug` verbatim — no map, no translation, no cast.
+ * Returns `[]` on a missing or null result rather than throwing — an
+ * unconfigured project has no enabled modules, not an error.
  *
- * Degrades to `[]` (never throws) for ANY failure of this per-project fetch —
- * most notably `tenantToProjectSlug()` throwing when the Supabase project
- * slug has no entry in `TENANT_TO_PROJECT` (today: `hoffmann` and `amelie`,
- * which have no Sanity content mapping and therefore no modules; the
- * platform's own `abluo` project USED to land here too, and no longer does —
- * see the ⚠️ note in the body).
- * Without this, a single unmapped project used to throw out of the
+ * Degrades to `[]` (never throws) for ANY failure of this per-project fetch:
+ * a Sanity outage, or a project with no `project` document at all. It used to
+ * ALSO swallow a throw from the deleted `tenantToProjectSlug()` for any project
+ * absent from `TENANT_TO_PROJECT` — `hoffmann` and `amelie` then, and the
+ * platform's own `abluo` project before Step 1 of `./RENAME.md` (finding (c) of
+ * `f669ab9`: the platform project reported ZERO enabled modules). There is no
+ * lookup left to throw, so those projects now resolve their real module list.
+ * Without this catch, a single failing project would throw out of the
  * `Promise.all` in `getTenantAuthorizationContext` and take down the whole
- * resolver — 500-ing `/account` for a user who is otherwise validly granted
- * on other, mapped projects. A project with no Sanity mapping legitimately
- * has zero enabled modules; that is not an error condition for this
- * resolver, so it is logged and swallowed here rather than propagated.
+ * resolver — 500-ing `/account` for a user who is otherwise validly granted on
+ * other projects.
  */
 async function fetchEnabledModuleIds(projectSlug: SupabaseProjectSlug): Promise<string[]> {
   try {
-    // ⚠️ NAMESPACE CONFLATION — STILL A CAST, BUT NO LONGER A LIVE DEFECT.
+    // FINDING (c) OF `f669ab9` — THE CAST IS GONE.
     //
-    // `projectSlug` is a SUPABASE `projects.slug`. `tenantClient()` wants a
-    // `UrlProjectSegment` — a key of `TENANT_TO_PROJECT`, whose authority is
-    // `src/proxy.ts`. Those are still two different namespaces and there is
-    // still no Supabase→URL lookup, so the cast stays.
+    // This used to read `tenantClient(projectSlug as unknown as UrlProjectSegment)`:
+    // a Supabase `projects.slug` forced into the URL-segment namespace so that
+    // `tenantToProjectSlug()` could look up Sanity's name for it. When the two
+    // disagreed the lookup threw and the catch below reported zero modules —
+    // which is exactly what happened to the platform's own project until Step 1
+    // renamed its URL segment.
     //
-    // FIXED (Step 1 of `src/lib/tenancy/RENAME.md`), finding (c) of `f669ab9`:
-    // the two namespaces used to DISAGREE for the platform's own project —
-    // Supabase said `abluo`, the URL segment was a longer legacy name (spelled
-    // out in RENAME.md §0). `abluo`
-    // was therefore not a key of `TENANT_TO_PROJECT`,
-    // `lookupSanityProjectSlugByUrlSegment()` threw, the catch below swallowed
-    // it, and the platform project reported ZERO enabled modules. Renaming the
-    // URL segment to `abluo` made the key exist; this lookup now succeeds.
-    //
-    // What remains is structural, not a broken row: EVERY live project's URL
-    // segment currently equals its `projects.slug`, so the cast is correct for
-    // all of them — but only by coincidence of the data, and `domainMap` is
-    // hand-maintained. The moment a project's segment differs again this
-    // silently degrades to `[]` once more. The real fix is still to give
-    // `route-config.ts` a `urlSegment` column (Step 6) — NOT to widen this
-    // parameter back to `string`.
-    //
-    // (The separate `livener` / `livener-main` gap is on the VALUE side of
-    // `TENANT_TO_PROJECT`, i.e. Sanity's name, and never affected this call:
-    // `livener` has always been a key. It is Steps 3-5 of RENAME.md.)
-    const { fetchForTenant } = tenantClient(projectSlug as unknown as UrlProjectSegment)
+    // `tenantClient()` now takes a `ProjectSlug` directly and binds it, so the
+    // value flows in unchanged and unbranded-to-nothing. (Its parameter is a
+    // union with `UrlProjectSegment` only until Step 6 collapses that brand.)
+    const { fetchForTenant } = tenantClient(projectSlug)
     const ids = await fetchForTenant<string[] | null>(enabledModuleIdsQuery, {})
     return ids ?? []
   } catch (error) {

@@ -3,7 +3,8 @@
 **Goal, in one line:** every project has exactly ONE name, everywhere, and that name comes
 from Supabase.
 
-**Status:** written 2026-08-31, nothing executed. Companion to `./MIGRATION.md` (tenant
+**Status:** written 2026-08-31. Steps 1, 2, 3, 4, 5 and 7 DONE (Step 5 on 2026-09-02, code
+uncommitted at time of writing). Step 6 outstanding. Companion to `./MIGRATION.md` (tenant
 identity, Stages 1/2/4/5 done, Stage 3 pending) and `./host-scope.ts` (host resolver, built,
 wired to nothing).
 
@@ -15,8 +16,8 @@ One project currently has up to three names:
 
 | project | Supabase `projects.slug` | Sanity `projectSlug` | URL segment |
 |---|---|---|---|
-| Livener | `livener` | **`livener-main`** | `livener` |
-| Studio Martegani | `studiomartegani` | **`studiomartegani-main`** | `studiomartegani` |
+| Livener | `livener` | `livener` *(was `livener-main` until Step 4)* | `livener` |
+| Studio Martegani | `studiomartegani` | `studiomartegani` *(was `…-main`)* | `studiomartegani` |
 | No!Logo | `nologo` | `nologo` | `nologo` |
 | Abluo (platform) | `abluo` | `abluo` | **`abluo-the-tiny-cms`** |
 | Amélie | `amelie` | `amelie` | `amelie` |
@@ -25,9 +26,10 @@ One project currently has up to three names:
 Only two rows are actually broken, and they are broken in two different places. Everything
 else already agrees.
 
-Two hand-written maps exist solely to translate between these names:
+Two hand-written maps existed solely to translate between these names:
 `TENANT_TO_PROJECT` (`src/lib/sanity/client.ts`) and `resolveSanityProjectSlug`
-(`src/proxy.ts`). Both disappear once the names agree — they become identity maps.
+(`src/proxy.ts`). Both became identity maps once the names agreed, and **Step 5 deleted
+them** (`resolveSanityProjectSlug` turned out to have had no callers at all).
 
 ### Why this is not cosmetic
 The `livener` / `livener-main` gap is the direct cause of four live defects recorded in
@@ -72,7 +74,7 @@ provably stop being maintained.
 
 Steps 1 and 2 are independent of each other. Steps 3→5 are strictly ordered.
 
-### Step 1 — rename the URL segment (code only, no data, invisible)
+### Step 1 — rename the URL segment (code only, no data, invisible)  ✅ DONE
 Replace `abluo-the-tiny-cms` with `abluo` in:
 - `src/proxy.ts:35` `'abluo.app'`, `:36` `'dev.abluo.app'`, `:77` locale map key
 - `src/app/sitemap.ts:8`
@@ -82,14 +84,14 @@ Replace `abluo-the-tiny-cms` with `abluo` in:
 **Verify:** `abluo.app/en` and `dev.abluo.app/en` still render the platform homepage; the
 browser URL is unchanged (it was never visible). `rg abluo-the-tiny-cms` returns nothing.
 
-### Step 2 — No!Logo, free of charge
+### Step 2 — No!Logo, free of charge  ✅ DONE
 Execute `MIGRATION.md` Stage 3 now: patch `form-nologo-demo.tenantSlug` `nologo` → `freeriders`
 (check for a `drafts.form-nologo-demo` and patch both if present). The runbook's caution about
 a short window no longer applies — the site is not live.
 
 **Verify:** Studio → No!Logo → Modules → Forms lists 1 active form.
 
-### Step 3 — deploy DUAL-READ for the two live sites  ✅ CODE DONE (commit 2ccfaaf, NOT YET DEPLOYED)
+### Step 3 — deploy DUAL-READ for the two live sites  ✅ DONE + DEPLOYED (commit 2ccfaaf), then REMOVED by Step 5
 Teach the code to accept BOTH names before any document moves. The read path is
 `tenantClient(segment).fetchForTenant`, which binds `$projectSlug`; queries filter
 `projectSlug == $projectSlug`. Change that to match either name, e.g. bind a
@@ -103,10 +105,10 @@ deploy and a data write; they cannot be atomic, and between them both live sites
 a blog post, an event, the header CTA form. Nothing has moved yet, so anything broken here is
 the dual-read itself.
 
-### Step 4 — rename the 38 documents
+### Step 4 — rename the 39 documents  ✅ DONE 2026-09-01
 Take an export first: `npx sanity dataset export production ./backup-pre-rename-$(date +%Y%m%d).tar.gz`
 
-`livener-main` → `livener` (**24 documents**, 3 of them drafts) — counts re-verified against the live dataset 2026-09-01:
+`livener-main` → `livener` (**25 documents**, 4 of them drafts) — counts re-verified against the live dataset 2026-09-01. The list below omits `drafts.Pn6oyV4Ks5AcNbecjb7Gdy`, the draft of the listed `mediaAsset`, which was renamed with the rest:
 
 | type | `_id` |
 |---|---|
@@ -167,18 +169,33 @@ unfinished edit live.
 **Verify:** `count(*[projectSlug match "*-main"])` returns 0. Both live sites still render
 (they are on dual-read, so this should be a no-op).
 
-### Step 5 — contract: delete the translation maps
-Now that Supabase and Sanity agree, these are identity maps:
+### Step 5 — contract: delete the translation maps  ✅ DONE 2026-09-02
+Now that Supabase and Sanity agree, these were identity maps and are gone:
 - `TENANT_TO_PROJECT` — `src/lib/sanity/client.ts`, with `lookupSanityProjectSlugByUrlSegment`
   and `tryLookupSanityProjectSlugByUrlSegment`
-- `resolveSanityProjectSlug` — `src/proxy.ts:55-61`
+- `resolveSanityProjectSlug` — `src/proxy.ts:55-61` (dead on arrival: it had NO callers)
 - the dual-read from step 3 (drop back to `projectSlug == $projectSlug`)
 - `SanityProjectSlug` and `SupabaseProjectSlug` in `src/lib/tenancy/ids.ts` collapse into one
-  brand — keep `UrlProjectSegment` separate until step 6 is done
+  brand — `ProjectSlug`, with both old names kept as deprecated aliases.
+  `UrlProjectSegment` stays separate until step 6 is done
 
-Then fix the four live defects, which are now one-line changes because the cast is no longer
-needed: `tenant-scoped-sanity.ts:205` and `~:285`, `tenant-context.ts:380`,
-`render-mapping.ts` `projectScopeSlugFromUrlSegment`.
+⚠️ **Two things this section got wrong, corrected in execution:**
+
+1. **`TENANT_TO_PROJECT` had a SECOND job**, unmentioned here: it was the allow-list the
+   `(website)/[tenant]` route boundary checked (`tryTenantToProjectSlug(...) || notFound()`),
+   so an unknown segment 404'd instead of rendering an empty page with a 200. Deleting the
+   whole constant would have silently created a soft-404 on every typo and retired route.
+   The KEYS survive as `KNOWN_PROJECT_SEGMENTS` / `isKnownProjectSegment()` in
+   `src/lib/sanity/client.ts` — a validity check with no translation in it. Step 6 deletes
+   that too, replaced by the generated route table.
+2. **Only TWO of the four defects were step-5 work.** (a) and (b) — both in
+   `tenant-scoped-sanity.ts` — are on the Supabase↔Sanity axis and did become one-liners.
+   (c) `tenant-context.ts` and (d) `render-mapping.ts` are on the **URL-segment** axis, and
+   were already fixed by **Step 1**; their casts survive because `UrlProjectSegment` is
+   deliberately still a separate brand. (c)'s cast was removable anyway, by widening
+   `tenantClient()`'s parameter to `UrlProjectSegment | ProjectSlug`; (d)'s is not, and is
+   now the ONLY remaining forbidden cast in the codebase — deliberately, so it stays
+   countable. Step 6 removes it.
 
 **Verify:** the client dashboard's Posts list is NON-EMPTY for Livener and Studio Martegani.
 That is the acceptance test for this whole document.
@@ -197,7 +214,7 @@ change — put both in the test plan rather than discovering it in production.
 **After this step, adding `starter.freeriders.app` is:** one Supabase row (tenant `freeriders`,
 slug `starter`, `custom_domain` `starter.freeriders.app`), regenerate, add DNS. **No code.**
 
-### Step 7 — schema cleanup (independent, do any time)
+### Step 7 — schema cleanup (independent, do any time)  ✅ DONE
 - **Drop `tenants.domain`.** No routing code reads it; it is `not null unique`, so it forces an
   invented value per tenant. `freeriders.app` currently serves nothing. The domain that matters
   is `projects.custom_domain`, one per project.
@@ -215,7 +232,7 @@ slug `starter`, `custom_domain` `starter.freeriders.app`), regenerate, add DNS. 
 | 1 | revert the deploy — no data changed |
 | 2 | patch `form-nologo-demo.tenantSlug` back to `nologo` |
 | 3 | revert the deploy — dual-read is additive, nothing moved |
-| 4 | re-patch the 38 `_id`s back to the `-main` values; dual-read code still serves both, so this is not urgent. Worst case restore the export. |
+| 4 | re-patch the 39 `_id`s back to the `-main` values; dual-read code still serves both, so this is not urgent. Worst case restore the export. |
 | 5 | revert the deploy — but only back to a dual-read build, never to one that expects `-main` |
 | 6 | revert the deploy |
 | 7 | `tenants.domain` needs a restore to undo; the unique constraint can be swapped back |
@@ -227,14 +244,15 @@ step 3 deployed, the data can sit in either state indefinitely.
 
 ## 4. Checklist
 
-- [ ] Step 1 — `abluo-the-tiny-cms` gone; `rg abluo-the-tiny-cms` returns nothing
-- [ ] Step 2 — No!Logo Stage 3 done; Forms pane shows 1 form
-- [x] Step 3 — dual-read WRITTEN (`dualReadProjectSlugs`, commit 2ccfaaf). ⚠️ STILL NEEDS DEPLOY + both live sites verified before Step 4.
-- [ ] Export taken
-- [ ] Step 4 — 38 documents renamed (25 + 13); `*[projectSlug match "*-main"]` returns 0
-- [ ] Step 4 — drafts republished; no unrelated pending draft pushed live
-- [ ] Step 5 — both maps deleted; dual-read removed; the 4 defects fixed
-- [ ] Step 5 — **client dashboard Posts list non-empty for Livener + Studio Martegani**
+- [x] Step 1 — `abluo-the-tiny-cms` gone; `rg abluo-the-tiny-cms` returns nothing
+- [x] Step 2 — No!Logo Stage 3 done; Forms pane shows 1 form
+- [x] Step 3 — dual-read WRITTEN and DEPLOYED (`dualReadProjectSlugs`, commit 2ccfaaf); both live sites verified before Step 4
+- [x] Export taken
+- [x] Step 4 — 39 documents renamed (25 + 14); `*[projectSlug match "*-main"]` returns 0
+- [x] Step 4 — drafts republished; no unrelated pending draft pushed live
+- [x] Step 5 — both maps deleted; dual-read removed; the brands collapsed; the 4 defects settled (2 fixed here, 2 already fixed by Step 1 — see the ⚠️ in Step 5)
+- [ ] Step 5 — **client dashboard Posts list non-empty for Livener + Studio Martegani** — proven by `dashboard-posts-namespace.test.ts` against the post-rename fixture; NOT yet re-checked in the browser (this change is uncommitted and undeployed)
 - [ ] Step 6 — proxy on the generated table; Hoffmann + Amélie hosts verified
 - [ ] Step 6 — `--check` in the deploy pipeline
-- [ ] Step 7 — `tenants.domain` dropped; `projects.slug` unique per tenant
+- [ ] Step 6 — delete `KNOWN_PROJECT_SEGMENTS` (`src/lib/sanity/client.ts`) and `projectScopeSlugFromUrlSegment` (`src/lib/forms/render-mapping.ts`), the last two hand-maintained URL-segment facts
+- [x] Step 7 — `tenants.domain` dropped; `projects.slug` unique per tenant

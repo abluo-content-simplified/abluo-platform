@@ -20,9 +20,9 @@ function ctxWith(grants: ProjectGrant[]): TenantAuthorizationContext {
 // Forms module installed + forms.submission.read held (owner/editor/viewer all hold it).
 const formsGrant: ProjectGrant = {
   projectId: 'project-a1',
-  // SUPABASE namespace — `projects.slug` is `livener` (`livener-main` is
-  // SANITY's name for the same project). Submissions are read by project_id,
-  // so nothing here depends on the value; it must still be honest.
+  // `projects.slug` is `livener` — and since RENAME.md Step 4 that is also
+  // what its Sanity documents carry. Submissions are read by project_id, so
+  // nothing here depends on the value; it must still be honest.
   projectSlug: asSupabaseProjectSlug('livener'),
   membershipId: 'pm-editor-a1',
   role: 'editor',

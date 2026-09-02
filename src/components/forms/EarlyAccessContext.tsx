@@ -19,7 +19,7 @@
  */
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
-import type { SanityProjectSlug, UrlProjectSegment } from '@/lib/tenancy/ids'
+import type { ProjectSlug, UrlProjectSegment } from '@/lib/tenancy/ids'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -60,15 +60,16 @@ interface EarlyAccessContextValue {
    */
   tenantSlug: UrlProjectSegment
   /**
-   * ⚠️ SANITY project slug (`tenantToProjectSlug()`, e.g. 'livener-main') — NOT
-   * a Supabase `projects.slug` and NOT the submission route's scope. It does not
-   * resolve to a project_id server-side, so nothing here submits under it; the
-   * comment that said it did was the reason it looked like the fix for the
-   * tenant-slug-in-a-projectSlug-position defect. Left in place for Sanity-side
-   * consumers; the submission scope stays the tenant slug until routing supplies
-   * a real Supabase project slug (see `projectScopeSlugFromUrlSegment`).
+   * The project's name, as Sanity documents and `projects.slug` both spell it
+   * (one namespace since `RENAME.md` Step 4 — it used to be Sanity's separate
+   * `livener-main`, which is why nothing here ever submitted under it).
+   *
+   * ⚠️ STILL NOT the submission route's scope. Nothing in this provider derives
+   * the endpoint from it; the submission scope is produced by
+   * `projectScopeSlugFromUrlSegment()` from the URL segment, and stays that way
+   * until routing supplies a real project slug (Step 6).
    */
-  projectSlug?: SanityProjectSlug
+  projectSlug?: ProjectSlug
   /** Current locale — used by components to look up localised messages */
   locale: string
   open: (opts: EarlyAccessOpenOptions) => void
@@ -104,7 +105,7 @@ interface EarlyAccessProviderProps {
    */
   tenantSlug: UrlProjectSegment
   /** Sanity project slug (see the context value's doc) — not the API scope. */
-  projectSlug?: SanityProjectSlug
+  projectSlug?: ProjectSlug
   /** Current page locale — passed through to components for message lookup */
   locale: string
 }

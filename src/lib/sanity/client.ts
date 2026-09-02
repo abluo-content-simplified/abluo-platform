@@ -1,10 +1,8 @@
 import { createClient } from '@sanity/client'
 import {
-  asSanityProjectSlug,
+  asProjectSlug,
   unbrand,
-  type AnyProjectSlug,
-  type SanityProjectSlug,
-  type TenantSlug,
+  type ProjectSlug,
   type UrlProjectSegment,
 } from '@/lib/tenancy/ids'
 import { DS_FIELDS_SELECTION } from '@/lib/sanity/queries'
@@ -73,162 +71,49 @@ export const sanityClient = createClient({
  */
 export const hasSanityReadToken = Boolean(sanityReadToken)
 
-// ─── THE BRIDGE: URL segment → Sanity projectSlug ────────────────────────────
+// ─── Route allow-list: which `[tenant]` URL segments exist at all ────────────
 /**
- * The hand-written translation between two of the platform's three
- * project-grain namespaces (see `src/lib/tenancy/ids.ts`):
+ * The closed set of legal `[tenant]` URL segments.
  *
- *   KEY   — `UrlProjectSegment`: the `[tenant]` route segment, whose authority
- *           is `domainMap`/`resolveTenant()` in `src/proxy.ts`.
- *   VALUE — `SanityProjectSlug`: the `projectSlug` field on Sanity documents.
+ * ── What this replaced, and what it deliberately did NOT keep ───────────────
+ * Until Step 5 of `src/lib/tenancy/RENAME.md` this was `TENANT_TO_PROJECT`, a
+ * Record whose VALUES were Sanity's separate names for the same projects
+ * (`livener` → `livener-main`). Step 4 renamed those documents, so the map
+ * became an identity map and the TRANSLATION is gone — with it
+ * `lookupSanityProjectSlugByUrlSegment` / `tryLookupSanityProjectSlugByUrlSegment`
+ * and their two deprecated aliases.
  *
- * NEITHER SIDE IS A SUPABASE `projects.slug`, and neither side is a
- * `tenants.slug`. Read the rows: `nologo` is a project slug whose tenant is
- * `freeriders`, and the VALUES `livener-main` / `studiomartegani-main` are
- * Sanity names that exist in no other store. The historic name of this map is
- * therefore wrong on both halves; it is kept only to keep this change
- * type-level.
+ * The map had a SECOND job, though, and that job is still real: it was the
+ * allow-list the `(website)/[tenant]` route boundary checked before querying,
+ * so an unknown segment (a retired flat route, a typo, a dead link falling
+ * through to the dynamic segment) produced a clean 404 instead of a 200 with
+ * an empty page. Deleting the whole constant would have silently turned every
+ * such URL into a soft-404. So the KEYS survive, as keys and nothing else.
  *
- * The keys used to diverge from Supabase on a second count too: the platform
- * site's key was a longer legacy URL segment (see `src/lib/tenancy/RENAME.md`
- * §0) while `projects.slug` is `abluo`. Step 1 of that runbook renamed the
- * segment, so today every KEY here equals its `projects.slug`. Only the two `-main` VALUES still diverge —
- * that is Step 4.
- *
- * This is the ONLY sanctioned crossing between these two namespaces. There is
- * no cast and no string transform — `'livener-main'.replace(/-main$/,'')` is
- * the forbidden thing, and so is `unbrand(x) as SanityProjectSlug`.
- *
- * Scheduled for deletion by the contract phase; see
- * `src/lib/tenancy/host-scope.ts`, "What the CONTRACT phase will delete" (4).
+ * ⚠️ It is still a hand-maintained list, which is the disease, not the cure:
+ * `amelie` is a live project and is absent (as it was from the map it replaces),
+ * so `/en/amelie` 404s. Step 6 deletes this outright — `resolveScopeFromHost()`
+ * and the generated `route-config.ts` derive the same set from Supabase, with a
+ * `--check` in the deploy pipeline so it cannot drift.
  */
-const TENANT_TO_PROJECT: Record<string, SanityProjectSlug> = {
-  livener: asSanityProjectSlug('livener-main'),
-  studiomartegani: asSanityProjectSlug('studiomartegani-main'),
-  abluo: asSanityProjectSlug('abluo'),
-  nologo: asSanityProjectSlug('nologo'),
-  // Onboarded 2026-09-01. Supabase projects.slug and Sanity projectSlug agree
-  // ('hoffmann'), so this is an identity entry — no `-main` legacy here.
-  hoffmann: asSanityProjectSlug('hoffmann'),
-}
+const KNOWN_PROJECT_SEGMENTS: ReadonlySet<string> = new Set([
+  'livener',
+  'studiomartegani',
+  'abluo',
+  'nologo',
+  // Onboarded 2026-09-01.
+  'hoffmann',
+])
 
 /**
- * Non-throwing lookup — resolves a URL tenant slug to its Sanity projectSlug,
- * or returns `null` when the slug has no entry in `TENANT_TO_PROJECT`.
+ * True when `segment` is a `[tenant]` URL segment this deployment serves.
  *
- * Use this at public-website route boundaries (the `(website)/[tenant]`
- * route group) where an unmapped/unknown tenant slug is an expected,
- * recoverable case — e.g. a retired flat route or a typo falling through to
- * the `[tenant]` dynamic segment — and should resolve to a clean `notFound()`
- * rather than an unhandled throw. Callers that legitimately want a hard
- * error for a missing mapping (internal/admin paths) should keep using
- * `tenantToProjectSlug()` below.
+ * Route boundaries call this and `notFound()` on false. It is a VALIDITY check
+ * only — it performs no namespace crossing, because since Step 4 there is
+ * nothing to cross: a legal segment IS the project's one name.
  */
-export function tryLookupSanityProjectSlugByUrlSegment(
-  segment: UrlProjectSegment
-): SanityProjectSlug | null {
-  return TENANT_TO_PROJECT[unbrand(segment)] ?? null
-}
-
-/**
- * Throwing counterpart. Crosses URL-segment → Sanity-projectSlug via the
- * bridge above. Named for the direction it goes and for the fact that it
- * CONSULTS DATA: the contract phase greps for `…ByUrlSegment` to find every
- * crossing it has to replace with the generated route config.
- */
-export function lookupSanityProjectSlugByUrlSegment(
-  segment: UrlProjectSegment
-): SanityProjectSlug {
-  const projectSlug = tryLookupSanityProjectSlugByUrlSegment(segment)
-  if (!projectSlug) {
-    throw new Error(
-      `No project mapping for tenant "${segment}". Add it to TENANT_TO_PROJECT in client.ts.`
-    )
-  }
-  return projectSlug
-}
-
-/**
- * @deprecated Historic name — both halves of it are wrong (the argument is a
- * URL segment, not a tenant slug; and "project slug" here means SANITY's name,
- * not Supabase's). Kept as a pure re-export so this split stays type-level.
- * Prefer {@link tryLookupSanityProjectSlugByUrlSegment}.
- */
-export const tryTenantToProjectSlug = tryLookupSanityProjectSlugByUrlSegment
-
-/**
- * @deprecated See {@link tryTenantToProjectSlug}. Prefer
- * {@link lookupSanityProjectSlugByUrlSegment}.
- */
-export const tenantToProjectSlug = lookupSanityProjectSlugByUrlSegment
-
-// ─── STEP 3 DUAL-READ (src/lib/tenancy/RENAME.md) ────────────────────────────
-//
-// Two projects have TWO names for one thing: Supabase says `livener`, Sanity
-// documents say `livener-main` (same for `studiomartegani`). Step 4 of the
-// runbook renames the 38 Sanity documents; step 3 — this — teaches the read
-// path to accept BOTH names FIRST, so the data can move without a synchronised
-// deploy and can sit in either state indefinitely.
-//
-// Mechanism: every query filters `projectSlug in $projectSlugs`, and both
-// chokepoints (`fetchForTenant` below, `tenantScopedSanityClient` in
-// `@/lib/api/tenant-scoped-sanity`) bind that array through
-// `dualReadProjectSlugs()`.
-//
-// ⚠️ THIS IS A NO-OP TODAY. Verified against the live production dataset on
-// 2026-09-01: `array::unique(*[defined(projectSlug)].projectSlug)` is
-// `[abluo, abluo-base, abluo-dental, amelie, livener-main, nologo,
-// studiomartegani-main]` — NO document carries the bare `livener` or
-// `studiomartegani` name, so `projectSlug in ["livener", "livener-main"]`
-// selects exactly the same 24 documents `projectSlug == "livener-main"` does.
-// Every other project has ONE name, so its array has ONE element and the
-// filter is literally the old one. (`abluo-base`/`abluo-dental` are the
-// shared designSystem misuse of the field noted in RENAME.md §Step 4 — they
-// are not project names and are untouched by this.)
-//
-// ── WHAT STEP 5 DELETES ─────────────────────────────────────────────────────
-// Exactly two things in this file: the constant `LEGACY_MAIN_PROJECT_SLUG_PAIRS`
-// and the function `dualReadProjectSlugs`. Then sweep the query catalogue back
-// from `projectSlug in $projectSlugs` to `projectSlug == $projectSlug` and drop
-// the `projectSlugs` binding at both chokepoints. `grep -rn dualReadProjectSlugs`
-// enumerates every site.
-
-/**
- * The ONLY place the legacy `-main` names are written down. One row per project
- * whose Supabase name and Sanity name disagree; both are dead the moment step 4
- * lands. Deleting this constant (and the function below) is the whole of the
- * step-5 contraction on the read path.
- */
-const LEGACY_MAIN_PROJECT_SLUG_PAIRS: ReadonlyArray<readonly [supabase: string, sanity: string]> = [
-  ['livener', 'livener-main'],
-  ['studiomartegani', 'studiomartegani-main'],
-]
-
-/**
- * The set of project-slug values a query should match for `slug` — the name it
- * was given, plus the OTHER name of the same project while both exist.
- *
- * This is NOT a conversion between the branded namespaces of
- * `@/lib/tenancy/ids` (there is no such function, and there must not be — see
- * that module's "There is NO conversion function between the three"). It is a
- * LOOKUP against a table of known aliases, and it returns plain `string[]`
- * precisely because the result is a mixed-namespace set on its way out to an
- * untyped GROQ param bag, not a value of any one namespace.
- *
- * Accepts a name from EITHER side of a pair, so it is correct whichever
- * chokepoint calls it: the website passes Sanity's `livener-main`, the
- * dashboard passes Supabase's `livener`, and both get
- * `['livener', 'livener-main']`.
- *
- * A project with one name gets a one-element array — an exact-match filter by
- * another spelling.
- */
-export function dualReadProjectSlugs(slug: TenantSlug | AnyProjectSlug): string[] {
-  const raw = unbrand(slug)
-  for (const [supabaseSlug, sanitySlug] of LEGACY_MAIN_PROJECT_SLUG_PAIRS) {
-    if (raw === supabaseSlug || raw === sanitySlug) return [supabaseSlug, sanitySlug]
-  }
-  return [raw]
+export function isKnownProjectSegment(segment: UrlProjectSegment): boolean {
+  return KNOWN_PROJECT_SEGMENTS.has(unbrand(segment))
 }
 
 // ─── Runtime tenant-scope guard (finding I-9) ────────────────────────────────
@@ -343,15 +228,25 @@ export function tenantScopeEnforcement(
 
 /**
  * Returns a project-scoped fetch helper.
- * Accepts the URL tenant slug (e.g. "livener") and resolves it to the
- * Sanity projectSlug (e.g. "livener-main") before injecting into queries.
+ *
+ * Accepts EITHER a `[tenant]` URL segment (the website route group) or a
+ * `ProjectSlug` (the dashboard resolver, which holds `projects.slug`). They
+ * are the same string for every project alive today — that is what Step 4 of
+ * `src/lib/tenancy/RENAME.md` established — so the value is bound to
+ * `$projectSlug` verbatim, with no lookup and no translation.
+ *
+ * ⚠️ The union, not a cast, is the honest shape while `UrlProjectSegment` is
+ * still a separate AUTHORITY (`domainMap` in `src/proxy.ts`, hand-written).
+ * Step 6 collapses that brand and this parameter narrows to `ProjectSlug`.
+ * This function no longer THROWS on an unrecognised value: validity is the
+ * route boundary's job, via `isKnownProjectSegment()` above.
  */
-export function tenantClient(tenantSlug: UrlProjectSegment) {
+export function tenantClient(tenantSlug: UrlProjectSegment | ProjectSlug) {
   if (!tenantSlug) {
     throw new Error('tenantSlug is required — never query Sanity without a tenant scope')
   }
 
-  const projectSlug = tenantToProjectSlug(tenantSlug)
+  const projectSlug: ProjectSlug = asProjectSlug(unbrand(tenantSlug))
 
   return {
     fetchForTenant<T>(query: string, params: Record<string, unknown> = {}): Promise<T> {
@@ -396,15 +291,12 @@ export function tenantClient(tenantSlug: UrlProjectSegment) {
         console.error('[tenant-scope] UNSCOPED WEBSITE QUERY — ' + detail)
       }
 
-      // `projectSlugs` is the STEP 3 DUAL-READ binding (see the block above
-      // `findTenantScopeViolation`): every query in `queries.ts` filters
-      // `projectSlug in $projectSlugs`. `projectSlug` stays bound alongside it,
-      // unchanged, so an ad-hoc query string that still says `== $projectSlug`
-      // (and the guard's own message) keep working. Step 5 drops `projectSlugs`.
+      // Step 5 dropped the `projectSlugs` dual-read binding: every query in
+      // `queries.ts` is back to `projectSlug == $projectSlug`, because the
+      // documents now carry the same name Supabase does.
       return sanityClient.fetch<T>(query, {
         ...params,
         projectSlug,
-        projectSlugs: dualReadProjectSlugs(projectSlug),
         tenantSlug,
       })
     },

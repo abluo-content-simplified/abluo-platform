@@ -58,10 +58,11 @@ export function EarlyAccessFooterCta({
   const createdRef = useRef<CreatedSubmission | null>(null)
 
   // ⚠️ ONE-TO-N BOUNDARY. The submission route is project-scoped, and this
-  // component has only the URL tenant slug. Context DOES carry a `projectSlug`,
-  // but it is the SANITY slug ('livener-main') and is not a Supabase
-  // `projects.slug`, so submitting under it would 404 — see
-  // `projectScopeSlugFromUrlSegment`, which names this dependency explicitly.
+  // component has only the URL segment. (Context also carries a `projectSlug`;
+  // it used to be Sanity's separate name — 'livener-main' — and submitting
+  // under it would have 404'd. Since `RENAME.md` Step 4 the two agree, but the
+  // scope still comes from the URL segment through the one named cast:
+  // `projectScopeSlugFromUrlSegment`, which names this dependency explicitly.)
   const scopeSlug = projectScopeSlugFromUrlSegment(tenantSlug)
 
   const [name, setName]             = useState('')

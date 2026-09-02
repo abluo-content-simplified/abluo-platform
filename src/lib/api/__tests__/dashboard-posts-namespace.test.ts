@@ -5,31 +5,32 @@
  * `ProjectGrant.projectSlug` is read straight off Supabase `projects.slug`
  * (`tenant-context.ts`, branded `asSupabaseProjectSlug`). Sanity documents
  * carry their OWN `projectSlug` field, and for two live projects the two
- * stores disagree: the grant says `livener`, every one of the 24 Livener
- * documents says `livener-main` (`src/lib/tenancy/RENAME.md` §0).
+ * stores used to disagree: the grant said `livener`, every one of the 25
+ * Livener documents said `livener-main` (`src/lib/tenancy/RENAME.md` §0).
  *
- * `tenantScopedSanityClient` binds the grant's value into the GROQ scope. With
- * the old `projectSlug == $projectSlug` filter that value matched NO document,
- * so `dashboardPostsQuery` returned an empty array and
+ * `tenantScopedSanityClient` binds the grant's value into the GROQ scope, so
+ * the `projectSlug == $projectSlug` filter matched NO document,
+ * `dashboardPostsQuery` returned an empty array, and
  * `[locale]/(client)/[tenant]/posts/page.tsx` rendered an empty Posts list for
  * a client who has seven published posts. It was invisible for
  * abluo / nologo / hoffmann / amelie, whose two names coincide — which is
  * exactly why it survived review.
  *
- * The fix is the step-3 DUAL-READ: queries filter `projectSlug in
- * $projectSlugs`, and the chokepoint binds every name the project is known by.
+ * `RENAME.md` Step 4 renamed the documents (the Step 3 dual-read carried the
+ * dashboard across that window; Step 5 removed it again), so the equality
+ * filter is now correct BY THE DATA. This file is what stops that regressing.
  *
  * ── How this test works ─────────────────────────────────────────────────────
  * The injected fetch is a MINIMAL GROQ evaluator over a fixture dataset: it
  * reads the scope predicate out of the query text and applies the params it
- * was actually handed. That is the point — it fails if EITHER half regresses
- * (the query going back to a single name, or the chokepoint dropping the
- * array), and it fails the way production failed, with an empty list, rather
- * than on a params snapshot that could be "fixed" by updating the snapshot.
+ * was actually handed. That is the point — it fails the way production failed,
+ * with an empty list, rather than on a params snapshot that could be "fixed"
+ * by updating the snapshot.
  *
- * After step 4 renames the documents this file keeps passing unchanged: swap
- * the fixture's `livener-main` for `livener` and it still passes, which is the
- * whole property dual-read buys.
+ * The fixture carries the POST-STEP-4 names, plus one deliberately stale
+ * `livener-main` document that must NOT be returned: if anything ever
+ * reintroduces an alias table or a suffix transform, that row starts matching
+ * and this file says so.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { getDashboardPosts } from '../client-dashboard'
@@ -41,12 +42,16 @@ import {
 import type { ProjectGrant, TenantAuthorizationContext } from '../tenant-context'
 import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 
-/** What Sanity actually holds today — the `-main` names, un-migrated. */
+/** What Sanity holds after `RENAME.md` Step 4 — one name per project. */
 const DATASET = [
-  { _id: 'post-liv-1', _type: 'post', projectSlug: 'livener-main', title: 'Livener one' },
-  { _id: 'post-liv-2', _type: 'post', projectSlug: 'livener-main', title: 'Livener two' },
-  { _id: 'post-sm-1', _type: 'post', projectSlug: 'studiomartegani-main', title: 'Martegani one' },
+  { _id: 'post-liv-1', _type: 'post', projectSlug: 'livener', title: 'Livener one' },
+  { _id: 'post-liv-2', _type: 'post', projectSlug: 'livener', title: 'Livener two' },
+  { _id: 'post-sm-1', _type: 'post', projectSlug: 'studiomartegani', title: 'Martegani one' },
   { _id: 'post-nologo-1', _type: 'post', projectSlug: 'nologo', title: 'No!Logo one' },
+  // A retired name that no live document carries any more. It is here to FAIL
+  // the suite if an alias table or a `-main` suffix transform ever comes back:
+  // nothing may make this row visible to the Livener grant.
+  { _id: 'post-stale', _type: 'post', projectSlug: 'livener-main', title: 'Stale' },
 ]
 
 /**
@@ -57,12 +62,10 @@ const DATASET = [
 function fakeSanity(dataset = DATASET) {
   return vi.fn(async (query: string, params: Record<string, unknown> = {}) => {
     let matches: (doc: (typeof DATASET)[number]) => boolean
-    if (query.includes('projectSlug in $projectSlugs')) {
-      const slugs = params.projectSlugs
-      if (!Array.isArray(slugs)) {
-        throw new Error('query filters on $projectSlugs but the caller bound no array')
-      }
-      matches = (doc) => slugs.includes(doc.projectSlug)
+    if (query.includes('$projectSlugs')) {
+      // The Step 3 dual-read binding was removed by Step 5. A query that still
+      // asks for it would be handed nothing and match nothing in production.
+      throw new Error('query filters on $projectSlugs, which no chokepoint binds any more')
     } else if (query.includes('projectSlug == $projectSlug')) {
       matches = (doc) => doc.projectSlug === params.projectSlug
     } else {
@@ -73,11 +76,10 @@ function fakeSanity(dataset = DATASET) {
 }
 
 /**
- * The REAL grant shape: `projects.slug` for Livener is `livener`. The existing
- * suites use `livener-main` here, which is a Sanity name in a Supabase field —
- * the very conflation that hid this defect. This fixture is deliberately
- * accurate, so the namespaces actually disagree in the test the way they
- * disagree in production.
+ * The REAL grant shape: `projects.slug` for Livener is `livener`, which since
+ * Step 4 is also what its Sanity documents carry. Older suites branded
+ * `livener-main` here — a Sanity name in a Supabase field, the very conflation
+ * that hid this defect.
  */
 const livenerGrant: ProjectGrant = {
   projectId: 'project-livener',
@@ -104,7 +106,7 @@ const ctx = (grants: ProjectGrant[]): TenantAuthorizationContext => ({
 })
 
 describe("the client dashboard's Posts list for Livener", () => {
-  it('is NOT empty — a Supabase grant slug reaches Sanity `-main` documents', async () => {
+  it('is NOT empty — the grant slug matches the documents\' own projectSlug', async () => {
     const fetch = fakeSanity()
 
     const posts = await getDashboardPosts(
@@ -116,14 +118,14 @@ describe("the client dashboard's Posts list for Livener", () => {
 
     expect(
       posts.map((p) => (p as unknown as { _id: string })._id),
-      'the Posts list is EMPTY for Livener — the dashboard binds Supabase\'s ' +
-        '`livener` and the documents carry Sanity\'s `livener-main`. Either the ' +
-        'query lost `projectSlug in $projectSlugs` or the chokepoint stopped ' +
-        'binding the dual-read array.',
+      'the Posts list is EMPTY for Livener — the dashboard binds the grant\'s ' +
+        '`livener` and no document matched it. Either dashboardPostsQuery lost ' +
+        'its `projectSlug == $projectSlug` root filter, or the chokepoint ' +
+        'stopped forcing the grant slug.',
     ).toEqual(['post-liv-1', 'post-liv-2'])
   })
 
-  it('still returns only Livener — the widening is the second NAME, not a second project', async () => {
+  it('returns ONLY Livener documents — including not the retired `-main` row', async () => {
     const fetch = fakeSanity()
     const posts = await getDashboardPosts(
       ctx([livenerGrant]),
@@ -132,7 +134,8 @@ describe("the client dashboard's Posts list for Livener", () => {
       { fetch },
     )
     const slugs = posts.map((p) => (p as unknown as { projectSlug: string }).projectSlug)
-    expect(slugs.every((s) => s === 'livener-main')).toBe(true)
+    expect(slugs.every((s) => s === 'livener')).toBe(true)
+    expect(posts.map((p) => (p as unknown as { _id: string })._id)).not.toContain('post-stale')
   })
 
   it('is non-empty for Studio Martegani too, and does not see Livener', async () => {
@@ -146,9 +149,9 @@ describe("the client dashboard's Posts list for Livener", () => {
     expect(posts.map((p) => (p as unknown as { _id: string })._id)).toEqual(['post-sm-1'])
   })
 
-  it('is unaffected for a project whose two names already agree', async () => {
-    // The masking case. `nologo` is one name in both stores, so its dual-read
-    // array has one element and the filter is the equality filter it replaced.
+  it('is unaffected for a project that never had a second name', async () => {
+    // The masking case: `nologo` always had one name in both stores, which is
+    // why the defect was invisible for it.
     const nologoGrant: ProjectGrant = {
       ...livenerGrant,
       projectId: 'project-nologo',
@@ -172,25 +175,16 @@ describe("the client dashboard's Posts list for Livener", () => {
 // `'livener-main' !== 'livener'` rejected EVERY legitimate reference. Harmless
 // only because it has no callers yet — a landmine for whoever wires it first.
 //
-// The half that matters is the second one: the accepted set is the dual-read
-// set for the GRANTED project and nothing else, so a genuine cross-tenant
-// reference is still rejected.
+// It is now a plain equality on one namespace. The half that matters is the
+// second one: only the GRANTED project's own name is accepted, so a genuine
+// cross-tenant reference — and a sibling project of the same tenant — is still
+// rejected.
 
 describe('assertSameTenantReference', () => {
   const referenceTo = (projectSlug: string | null) =>
     vi.fn(async () => (projectSlug === null ? null : { projectSlug })) as never
 
-  it('ACCEPTS a reference to a document of the same project under its Sanity name', async () => {
-    const scoped = tenantScopedSanityClient(ctx([livenerGrant]), 'project-livener', {
-      fetch: referenceTo('livener-main'),
-    })
-    await expect(
-      assertSameTenantReference(scoped, 'post-liv-1', livenerGrant),
-    ).resolves.toBeUndefined()
-  })
-
-  it('ACCEPTS the same document after the step-4 rename, under its Supabase name', async () => {
-    // Both states of the migration are legal for as long as dual-read stands.
+  it('ACCEPTS a reference to a document of the same project', async () => {
     const scoped = tenantScopedSanityClient(ctx([livenerGrant]), 'project-livener', {
       fetch: referenceTo('livener'),
     })
@@ -199,9 +193,22 @@ describe('assertSameTenantReference', () => {
     ).resolves.toBeUndefined()
   })
 
+  it('REJECTS the retired `-main` name — the alias is gone, not merely unused', async () => {
+    // While the Step 3 dual-read stood, BOTH spellings were accepted. Step 5
+    // contracted that to one, so a document that somehow still carried the old
+    // name would now be treated as foreign: fail-closed, and the honest
+    // consequence of the rename being complete.
+    const scoped = tenantScopedSanityClient(ctx([livenerGrant]), 'project-livener', {
+      fetch: referenceTo('livener-main'),
+    })
+    await expect(
+      assertSameTenantReference(scoped, 'post-liv-1', livenerGrant),
+    ).rejects.toThrow(TenantAuthorizationError)
+  })
+
   it('REJECTS a genuine cross-tenant reference', async () => {
     const scoped = tenantScopedSanityClient(ctx([livenerGrant]), 'project-livener', {
-      fetch: referenceTo('studiomartegani-main'),
+      fetch: referenceTo('studiomartegani'),
     })
     await expect(
       assertSameTenantReference(scoped, 'post-sm-1', livenerGrant),
@@ -211,7 +218,7 @@ describe('assertSameTenantReference', () => {
   it('REJECTS a sibling project of the SAME tenant that the grant does not cover', async () => {
     // `livener-events` shares a prefix with the granted project and is owned by
     // the same tenant. A suffix-stripping or prefix-matching "fix" would let it
-    // through; a lookup against the alias table does not.
+    // through; an exact equality does not.
     const scoped = tenantScopedSanityClient(ctx([livenerGrant]), 'project-livener', {
       fetch: referenceTo('livener-events'),
     })
@@ -235,7 +242,7 @@ describe('assertSameTenantReference', () => {
     const scoped = tenantScopedSanityClient(
       ctx([livenerGrant, martiganiGrant]),
       'project-livener',
-      { fetch: referenceTo('livener-main') },
+      { fetch: referenceTo('livener') },
     )
     await expect(
       assertSameTenantReference(scoped, 'post-liv-1', martiganiGrant),

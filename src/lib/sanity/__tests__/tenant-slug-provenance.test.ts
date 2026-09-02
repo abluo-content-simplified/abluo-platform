@@ -5,8 +5,8 @@
  * A `formDefinition` is TENANT-owned: it is filed under `tenantSlug`. The
  * `formDefinitionTenantOwned` initial value template used to prefill that field
  * with `params.projectSlug` — a PROJECT slug written into a TENANT field. It
- * looked correct for the four projects slugged `<tenant>-main` and corrupted
- * the fifth: project `nologo` is owned by client `freeriders`, so the live
+ * looked correct for the four projects whose slug equals their tenant's and
+ * corrupted the fifth: project `nologo` is owned by client `freeriders`, so the live
  * document `form-nologo-demo` carries `tenantSlug: "nologo"`.
  *
  * These tests pin the two halves of the fix:
@@ -33,8 +33,8 @@ type AnyType = any
 
 /** The real project → true-tenant mapping in the live `production` dataset. */
 const REAL_PROJECTS = [
-  { projectSlug: 'livener-main', trueTenantSlug: 'livener' },
-  { projectSlug: 'studiomartegani-main', trueTenantSlug: 'studiomartegani' },
+  { projectSlug: 'livener', trueTenantSlug: 'livener' },
+  { projectSlug: 'studiomartegani', trueTenantSlug: 'studiomartegani' },
   { projectSlug: 'abluo', trueTenantSlug: 'abluo' },
   { projectSlug: 'amelie', trueTenantSlug: 'amelie' },
   // The one the whole refactor exists for.

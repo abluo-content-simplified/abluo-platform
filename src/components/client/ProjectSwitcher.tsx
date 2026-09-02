@@ -41,7 +41,7 @@ export function ProjectSwitcher({ projects, activeSlug }: ProjectSwitcherProps) 
   const t = useTranslations('clientDashboard.projectSwitcher')
   const router = useRouter()
   // next-intl usePathname() returns the path WITHOUT the locale prefix,
-  // e.g. "/livener-main/posts".
+  // e.g. "/livener/posts".
   const pathname = usePathname()
 
   // Keep the landing hint fresh: the last project the user actually viewed.

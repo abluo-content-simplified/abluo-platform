@@ -26,7 +26,7 @@ type RealProject = ProjectScopeInput & { _id: string; trueTenantSlug: string }
 
 const livener: RealProject = {
   _id: '088e16f6-0288-47b9-af2b-4ef28f90c6a8',
-  projectSlug: 'livener-main',
+  projectSlug: 'livener',
   tenantSlug: 'livener',
   clientRef: { tenantSlug: 'livener' },
   trueTenantSlug: 'livener',
@@ -34,7 +34,7 @@ const livener: RealProject = {
 
 const studiomartegani: RealProject = {
   _id: '90b7cb26-b192-4e8c-8378-d16c085540fd',
-  projectSlug: 'studiomartegani-main',
+  projectSlug: 'studiomartegani',
   tenantSlug: 'studiomartegani',
   clientRef: { tenantSlug: 'studiomartegani' },
   trueTenantSlug: 'studiomartegani',
@@ -109,8 +109,8 @@ describe('deriveTenantSlug — the five live projects', () => {
     // strip used to return, spelled out rather than re-derived, so this pins
     // the before/after equivalence without resurrecting the derivation.
     const unchanged = {
-      'livener-main': 'livener',
-      'studiomartegani-main': 'studiomartegani',
+      livener: 'livener',
+      studiomartegani: 'studiomartegani',
       abluo: 'abluo',
       amelie: 'amelie',
     } as const
@@ -127,7 +127,7 @@ describe('deriveTenantSlug — the five live projects', () => {
 describe('deriveTenantSlug — tier 1, stored tenantSlug', () => {
   it('prefers a stored tenantSlug over clientRef', () => {
     const scope = deriveTenantSlug({
-      projectSlug: 'livener-main',
+      projectSlug: 'livener',
       tenantSlug: 'someothertenant',
       clientRef: { tenantSlug: 'livener' },
     })
@@ -228,7 +228,7 @@ describe('deriveTenantSlug — a project with no resolvable tenant', () => {
   })
 
   it('returns null for every shape of an unpopulated client link', () => {
-    expect(deriveTenantSlug({ projectSlug: 'livener-main', clientRef: {} })).toBeNull()
+    expect(deriveTenantSlug({ projectSlug: 'livener', clientRef: {} })).toBeNull()
     expect(deriveTenantSlug({ projectSlug: 'abluo', clientRef: null })).toBeNull()
     expect(deriveTenantSlug({ projectSlug: 'amelie', clientRef: { tenantSlug: null } })).toBeNull()
     expect(deriveTenantSlug({ projectSlug: 'nologo', tenantSlug: '  ', clientTenantSlug: '' }))

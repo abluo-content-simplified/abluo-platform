@@ -2493,3 +2493,573 @@ describe('(k) handle_new_user() signup-metadata privilege escalation — migrati
     })
   })
 })
+
+// ── (l) abluo_admin cross-tenant READ access — migration 025 ───────────────
+//
+// ⚠️ THIS BLOCK DELIBERATELY INVERTS THE DESIGN BLOCK (d) ASSERTS.
+// Block (d) is the pre-025 negative control: "abluo_admin is NOT special-cased
+// in any RLS policy." Migration 025 makes it special-cased, for SELECT only.
+// Block (d) is left standing and still PASSES after 025 — deliberately, and
+// for a reason worth stating, because a green negative-control that has
+// quietly stopped controlling anything is worse than a red one:
+//
+//   Block (d) logs in with `{ app_metadata: { platform_role: 'abluo_admin' } }`
+//   — the claim NESTED under app_metadata. That is the hook's INPUT shape.
+//   migration 006's custom_access_token_hook copies it to a TOP-LEVEL
+//   `platform_role` claim, and that top-level claim is what real tokens carry
+//   and what is_abluo_admin() reads. So block (d)'s session is, to migration
+//   025, not an admin at all — its assertions remain true post-025, but they
+//   no longer prove what their comment says they prove.
+//   That distinction is asserted explicitly below ("app_metadata nesting alone
+//   is NOT admin"), so the two blocks cannot silently disagree.
+//
+// Everything below runs AFTER migrations 014/015/016–019/020/022/023/024 have
+// been applied by the earlier blocks, i.e. against the fullest schema this
+// suite ever reaches. `leads` is deliberately still ungranted here (block (g)
+// reverts its simulated grant), which is the real production state.
+
+describe('(l) abluo_admin cross-tenant read (migration 025)', () => {
+  // Tables `authenticated` actually holds a SELECT grant on, so a read
+  // returns rows rather than 42501. `leads` is handled separately — it has
+  // NO grant, and proving that 025 does not change that is part of the point.
+  const READABLE = [
+    'tenants',
+    'projects',
+    'tenant_members',
+    'project_members',
+    'inquiries',
+    'form_submissions',
+    'form_events',
+  ]
+  const ALL_TARGETS = [...READABLE, 'leads']
+
+  // Every identity whose visibility must be unchanged by 025.
+  const tenantUsers = () => ({
+    userA: ids.userA,
+    userB: ids.userB,
+    userC: ids.userC,
+    userEditorA1: ids.userEditorA1,
+    userEditorC1: ids.userEditorC1,
+    userTenantViewerC: ids.userTenantViewerC,
+    userNoMemberships: ids.userNoMemberships,
+  })
+
+  const before = { visibility: {}, policies: null, adminWrites: null }
+  const inquiryIds = {}
+
+  /** Row-id set a given session can SELECT from a table, sorted. */
+  async function visibleIds(table) {
+    const idCol = table === 'form_events' ? 'event_id' : 'id'
+    const { rows } = await client.query(`select ${idCol} as id from public.${table}`)
+    return rows.map((r) => r.id).sort()
+  }
+
+  /** Full visibility fingerprint for one logged-in session. */
+  async function visibilityFingerprint() {
+    const out = {}
+    for (const t of READABLE) out[t] = await visibleIds(t)
+    return out
+  }
+
+  /**
+   * Probes every write verb an abluo_admin session could attempt against a
+   * row it has no membership for, and returns a normalised outcome string per
+   * (table, verb): either 'denied:<sqlstate>' (grant layer refused) or
+   * 'rows:<n>' (grant allowed, RLS matched n rows). Run identically before
+   * and after 025; the two results must be equal.
+   */
+  async function adminWriteFingerprint() {
+    const out = {}
+    const probe = async (key, sql, params) => {
+      try {
+        const res = await client.query(sql, params)
+        out[key] = `rows:${res.rowCount}`
+      } catch (err) {
+        out[key] = `denied:${err.code}`
+      }
+    }
+    // UPDATE against another tenant's row on every target table.
+    await probe('tenants.update', `update public.tenants set display_name = 'hijacked' where id = $1`, [ids.tenantB])
+    await probe('projects.update', `update public.projects set name = 'hijacked' where id = $1`, [ids.projectB1])
+    await probe('tenant_members.update', `update public.tenant_members set role = 'owner' where tenant_id = $1`, [ids.tenantB])
+    await probe('project_members.update', `update public.project_members set role = 'owner' where project_id = $1`, [ids.projectB1])
+    await probe('leads.update', `update public.leads set message = 'hijacked' where tenant_id = $1`, [ids.tenantB])
+    await probe('inquiries.update', `update public.inquiries set status = 'archived' where id is not null`, [])
+    await probe('form_submissions.update', `update public.form_submissions set status = 'archived' where id is not null`, [])
+    await probe('form_events.update', `update public.form_events set status = 'skipped' where event_id is not null`, [])
+    // INSERT into another tenant's scope.
+    await probe('tenants.insert', `insert into public.tenants (slug, display_name) values ('admin-inserted', 'X')`, [])
+    await probe('projects.insert', `insert into public.projects (slug, tenant_id, name) values ('admin-inserted', $1, 'X')`, [ids.tenantB])
+    await probe('tenant_members.insert', `insert into public.tenant_members (tenant_id, user_id, role) values ($1, $2, 'owner')`, [ids.tenantB, ids.userAdmin])
+    await probe('project_members.insert', `insert into public.project_members (project_id, user_id, role) values ($1, $2, 'editor')`, [ids.projectB1, ids.userAdmin])
+    await probe('leads.insert', `insert into public.leads (tenant_id, project_id, name, email) values ($1, $2, 'X', 'x@verify.test')`, [ids.tenantB, ids.projectB1])
+    await probe('inquiries.insert', `insert into public.inquiries (tenant_id, name, email) values ($1, 'X', 'x@verify.test')`, [ids.tenantB])
+    await probe('form_submissions.insert', `insert into public.form_submissions (tenant_id, project_id, form_id, form_version) values ($1, $2, 'early-access', 1)`, [ids.tenantB, ids.projectB1])
+    await probe('form_events.insert', `insert into public.form_events (tenant_id, project_id, form_id, form_version, submission_id) values ($1, $2, 'early-access', 1, null)`, [ids.tenantB, ids.projectB1])
+    // DELETE.
+    for (const t of ALL_TARGETS) {
+      const idCol = t === 'form_events' ? 'event_id' : 'id'
+      await probe(`${t}.delete`, `delete from public.${t} where ${idCol} is not null`, [])
+    }
+    return out
+  }
+
+  beforeAll(async () => {
+    await asSuperuser(async () => {
+      // A user with ZERO memberships anywhere — the cleanest possible probe.
+      // Post-025 every row this user sees is attributable to the admin policy
+      // and to nothing else.
+      const admin = await client.query(
+        `insert into auth.users (email) values ('platform-admin@verify.test') returning id`
+      )
+      ids.userAdmin = admin.rows[0].id
+
+      // inquiries fixtures — one per tenant plus a PLATFORM-level row
+      // (tenant_id AND project_id both null), which migration 014's policy
+      // shows to nobody and 025's shows to the admin only.
+      const seedInquiry = async (tenantId, projectId, name) => {
+        const { rows } = await client.query(
+          `insert into public.inquiries (tenant_id, project_id, name, email)
+           values ($1, $2, $3, $4) returning id`,
+          [tenantId, projectId, name, `${name}@verify.test`]
+        )
+        return rows[0].id
+      }
+      inquiryIds.a = await seedInquiry(ids.tenantA, ids.projectA1, 'inq-a')
+      inquiryIds.b = await seedInquiry(ids.tenantB, ids.projectB1, 'inq-b')
+      inquiryIds.c1 = await seedInquiry(ids.tenantC, ids.projectC1, 'inq-c1')
+      inquiryIds.platform = await seedInquiry(null, null, 'inq-platform')
+    })
+
+    // ── BEFORE snapshot ────────────────────────────────────────────────────
+    for (const [name, uid] of Object.entries(tenantUsers())) {
+      await loginAs(uid)
+      before.visibility[name] = await visibilityFingerprint()
+    }
+    // The admin user, pre-025, carrying the real top-level claim: must see
+    // nothing anywhere (no memberships).
+    await loginAs(ids.userAdmin, { platform_role: 'abluo_admin' })
+    before.visibility.adminPre = await visibilityFingerprint()
+    before.adminWrites = await adminWriteFingerprint()
+
+    await asSuperuser(async () => {
+      const { rows } = await client.query(
+        `select tablename, policyname, cmd, permissive, roles::text, qual, with_check
+         from pg_policies where schemaname = 'public' order by tablename, policyname`
+      )
+      before.policies = rows
+    })
+
+    // ── APPLY MIGRATION 025 ────────────────────────────────────────────────
+    await asSuperuser(() =>
+      applyMigrationFile(client, path.join(__dirname, '..', 'migrations', '025_abluo_admin_read_access.sql'))
+    )
+    await logout()
+  }, 60_000)
+
+  // ── (1) The helper itself ────────────────────────────────────────────────
+
+  describe('(l1) is_abluo_admin() — the recursion-proof half', () => {
+    it('is STABLE, NOT security definer, has an empty search_path, and returns boolean', async () => {
+      const { rows } = await client.query(
+        `select prosecdef, provolatile, proconfig, prorettype::regtype::text as rettype, prosrc
+         from   pg_proc
+         where  proname = 'is_abluo_admin' and pronamespace = 'public'::regnamespace`
+      )
+      expect(rows).toHaveLength(1)
+      // SECURITY DEFINER would be a pure escalation surface here — the
+      // function reads no table, so definer rights buy nothing.
+      expect(rows[0].prosecdef).toBe(false)
+      expect(rows[0].provolatile).toBe('s')
+      expect(rows[0].proconfig).toEqual(['search_path=""'])
+      expect(rows[0].rettype).toBe('boolean')
+    })
+
+    it('STRUCTURAL: the body references NO relation — this, not SECURITY DEFINER, is what makes it recursion-proof (migration 013)', async () => {
+      const { rows } = await client.query(
+        `select prosrc from pg_proc
+         where proname = 'is_abluo_admin' and pronamespace = 'public'::regnamespace`
+      )
+      const src = rows[0].prosrc
+      expect(src).not.toMatch(/\bfrom\b/i)
+      expect(src).not.toMatch(/public\./)
+      expect(src).toMatch(/auth\.jwt\(\)/)
+    })
+
+    it('is TOTAL — never null, for every claim shape including no session at all', async () => {
+      await asSuperuser(async () => {
+        const cases = [
+          [null, false], // no request.jwt.claims GUC at all
+          ['{}', false],
+          ['{"platform_role":"abluo_admin"}', true],
+          ['{"platform_role":"tenant_user"}', false],
+          ['{"platform_role":"super-admin"}', false], // garbage passes the 006 hook; stops here
+          ['{"platform_role":" abluo_admin "}', false], // padded is NOT admin
+          ['{"platform_role":"Abluo_Admin"}', false], // case-sensitive
+          ['{"platform_role":null}', false],
+          ['{"platform_role":{"role":"abluo_admin"}}', false], // object, not string
+          ['{"app_metadata":{"platform_role":"abluo_admin"}}', false], // hook INPUT shape, not output
+        ]
+        for (const [claims, expected] of cases) {
+          await client.query(`select set_config('request.jwt.claims', $1, false)`, [claims ?? ''])
+          const { rows } = await client.query(`select public.is_abluo_admin() as v`)
+          expect({ claims, v: rows[0].v }).toEqual({ claims, v: expected })
+          expect(rows[0].v).not.toBeNull()
+        }
+        await client.query(`select set_config('request.jwt.claims', '', false)`)
+      })
+    })
+  })
+
+  // ── (2) Structural shape of the migration ────────────────────────────────
+
+  describe('(l2) migration 025 shape — additive, SELECT-only, profiles untouched', () => {
+    it('adds exactly EIGHT policies, all SELECT / PERMISSIVE / {authenticated}, predicate is_abluo_admin() and with_check null', async () => {
+      const { rows } = await client.query(
+        `select tablename, policyname, cmd, permissive, roles::text as roles, qual, with_check
+         from   pg_policies
+         where  schemaname = 'public' and policyname like 'Abluo admins read all%'
+         order  by tablename`
+      )
+      expect(rows.map((r) => r.tablename)).toEqual([
+        'form_events',
+        'form_submissions',
+        'inquiries',
+        'leads',
+        'project_members',
+        'projects',
+        'tenant_members',
+        'tenants',
+      ])
+      for (const r of rows) {
+        expect(r.cmd).toBe('SELECT')
+        expect(r.permissive).toBe('PERMISSIVE')
+        expect(r.roles).toBe('{authenticated}')
+        expect(r.qual).toBe('is_abluo_admin()')
+        expect(r.with_check).toBeNull()
+      }
+    })
+
+    it('profiles is DELIBERATELY EXCLUDED — still exactly its two self-scoped policies, no admin branch', async () => {
+      const { rows } = await client.query(
+        `select policyname, cmd, qual from pg_policies
+         where schemaname = 'public' and tablename = 'profiles' order by policyname`
+      )
+      expect(rows.map((r) => r.policyname).sort()).toEqual([
+        'Users can read their own profile',
+        'Users can update their own profile',
+      ])
+      for (const r of rows) expect(r.qual).not.toMatch(/is_abluo_admin/)
+    })
+
+    it('READ-ONLY BY CONSTRUCTION: no INSERT/UPDATE/DELETE/ALL policy anywhere references is_abluo_admin()', async () => {
+      const { rows } = await client.query(
+        `select tablename, policyname, cmd from pg_policies
+         where  schemaname = 'public'
+         and    (coalesce(qual,'') || ' ' || coalesce(with_check,'')) like '%is_abluo_admin%'
+         and    cmd <> 'SELECT'`
+      )
+      expect(rows).toEqual([])
+    })
+
+    it('NO pre-existing policy was dropped, altered, or re-created — every pre-025 policy row is bit-identical', async () => {
+      const { rows } = await client.query(
+        `select tablename, policyname, cmd, permissive, roles::text, qual, with_check
+         from pg_policies where schemaname = 'public'
+         and  policyname not like 'Abluo admins read all%'
+         order by tablename, policyname`
+      )
+      expect(rows).toEqual(before.policies)
+    })
+
+    it('grants are UNCHANGED — in particular leads still has ZERO grants to authenticated (025 is policy-only)', async () => {
+      const { rows } = await client.query(
+        `select privilege_type from information_schema.role_table_grants
+         where table_schema = 'public' and table_name = 'leads' and grantee = 'authenticated'`
+      )
+      expect(rows).toEqual([])
+    })
+  })
+
+  // ── (3) An abluo_admin JWT reads across ALL tenants ──────────────────────
+
+  describe('(l3) an abluo_admin JWT reads across ALL tenants', () => {
+    it('a user with ZERO memberships anywhere saw NOTHING before 025 — the baseline that makes the next test meaningful', async () => {
+      for (const t of READABLE) expect(before.visibility.adminPre[t]).toEqual([])
+    })
+
+    it('the same user, same JWT, now reads EVERY tenant, project, membership, inquiry, submission and event on the platform', async () => {
+      await loginAs(ids.userAdmin, { platform_role: 'abluo_admin' })
+
+      const seen = await visibilityFingerprint()
+
+      // Ground truth, read as superuser (RLS bypassed) — the admin must match
+      // it exactly on every table, not merely "see more than before".
+      const truth = {}
+      await asSuperuser(async () => {
+        for (const t of READABLE) {
+          const idCol = t === 'form_events' ? 'event_id' : 'id'
+          const { rows } = await client.query(`select ${idCol} as id from public.${t}`)
+          truth[t] = rows.map((r) => r.id).sort()
+        }
+      })
+
+      expect(seen).toEqual(truth)
+      // Sanity: the fixture really is multi-tenant, so "sees everything" is
+      // a meaningful claim and not a vacuous one over empty tables.
+      expect(truth.tenants.length).toBeGreaterThanOrEqual(3)
+      expect(truth.projects.length).toBeGreaterThanOrEqual(4)
+      expect(truth.inquiries.length).toBeGreaterThanOrEqual(4)
+    })
+
+    it('specifically reaches rows NO membership could ever reach: PLATFORM-level inquiries and form_submissions (tenant_id AND project_id both null)', async () => {
+      await loginAs(ids.userAdmin, { platform_role: 'abluo_admin' })
+      const { rows: inq } = await client.query(
+        `select id from public.inquiries where tenant_id is null and project_id is null`
+      )
+      expect(inq.map((r) => r.id)).toContain(inquiryIds.platform)
+
+      const { rows: subs } = await client.query(
+        `select count(*)::int as n from public.form_submissions where project_id is null`
+      )
+      expect(subs[0].n).toBeGreaterThan(0)
+
+      // And confirm a real tenant owner still cannot see them — 025 widened
+      // the admin, not everyone.
+      await loginAs(ids.userA)
+      const { rows: ownerInq } = await client.query(
+        `select id from public.inquiries where tenant_id is null and project_id is null`
+      )
+      expect(ownerInq).toEqual([])
+    })
+
+    it('an admin claim ADDS to, never replaces, the holder\'s own memberships (userA + admin claim = everything, superset of userA alone)', async () => {
+      await loginAs(ids.userA, { platform_role: 'abluo_admin' })
+      const withAdmin = await visibilityFingerprint()
+      for (const t of READABLE) {
+        for (const id of before.visibility.userA[t]) expect(withAdmin[t]).toContain(id)
+      }
+      expect(withAdmin.tenants.length).toBeGreaterThan(before.visibility.userA.tenants.length)
+    })
+
+    it('`leads` stays LATENT — the admin still fails CLOSED at the GRANT layer (42501), not at RLS, exactly as every other session does', async () => {
+      await loginAs(ids.userAdmin, { platform_role: 'abluo_admin' })
+      await expect(client.query(`select id from public.leads`)).rejects.toThrow(
+        /permission denied for table leads/
+      )
+    })
+
+    it('IF the leads grant is added (simulated, then reverted), the admin policy is correct and reads every tenant\'s leads', async () => {
+      await asSuperuser(() => client.query(`grant select on public.leads to authenticated`))
+      try {
+        const truth = await asSuperuser(async () => {
+          const { rows } = await client.query(`select id from public.leads`)
+          return rows.map((r) => r.id).sort()
+        })
+        await loginAs(ids.userAdmin, { platform_role: 'abluo_admin' })
+        const { rows } = await client.query(`select id from public.leads`)
+        expect(rows.map((r) => r.id).sort()).toEqual(truth)
+        expect(truth.length).toBeGreaterThan(0)
+      } finally {
+        await asSuperuser(() => client.query(`revoke select on public.leads from authenticated`))
+      }
+    })
+  })
+
+  // ── (4) NO WIDENING for tenant_user ──────────────────────────────────────
+
+  describe('(l4) a tenant_user JWT reads EXACTLY what it read before — row for row', () => {
+    for (const name of Object.keys({
+      userA: 1,
+      userB: 1,
+      userC: 1,
+      userEditorA1: 1,
+      userEditorC1: 1,
+      userTenantViewerC: 1,
+      userNoMemberships: 1,
+    })) {
+      it(`${name}: visibility on all seven granted tables is byte-identical pre- and post-025`, async () => {
+        await loginAs(tenantUsers()[name])
+        const after = await visibilityFingerprint()
+        expect(after).toEqual(before.visibility[name])
+      })
+
+      it(`${name}: an explicit platform_role='tenant_user' claim changes nothing either`, async () => {
+        await loginAs(tenantUsers()[name], { platform_role: 'tenant_user' })
+        const after = await visibilityFingerprint()
+        expect(after).toEqual(before.visibility[name])
+      })
+    }
+
+    it('a FORGED-shaped claim does not widen anything: garbage, padded, wrong-case, and app_metadata-nested values all read as tenant_user', async () => {
+      for (const claims of [
+        { platform_role: 'super-admin' },
+        { platform_role: ' abluo_admin ' },
+        { platform_role: 'Abluo_Admin' },
+        { app_metadata: { platform_role: 'abluo_admin' } },
+      ]) {
+        await loginAs(ids.userA, claims)
+        const after = await visibilityFingerprint()
+        expect({ claims, after }).toEqual({ claims, after: before.visibility.userA })
+      }
+    })
+
+    it('BLOCK (d) RECONCILIATION: app_metadata nesting alone is NOT admin — block (d) still passes post-025, but for this reason, not because 025 failed to apply', async () => {
+      await loginAs(ids.userA, { app_metadata: { platform_role: 'abluo_admin' } })
+      const { rows } = await client.query(`select id from public.projects where id = $1`, [ids.projectB1])
+      expect(rows).toHaveLength(0)
+      // ...whereas the top-level claim the hook actually emits DOES work.
+      await loginAs(ids.userA, { platform_role: 'abluo_admin' })
+      const { rows: admin } = await client.query(`select id from public.projects where id = $1`, [
+        ids.projectB1,
+      ])
+      expect(admin.map((r) => r.id)).toEqual([ids.projectB1])
+    })
+  })
+
+  // ── (5) NO WRITE WIDENING ────────────────────────────────────────────────
+
+  describe('(l5) an abluo_admin JWT gains ZERO write capability', () => {
+    it('every INSERT / UPDATE / DELETE probe on all eight tables has the IDENTICAL outcome pre- and post-025', async () => {
+      await loginAs(ids.userAdmin, { platform_role: 'abluo_admin' })
+      const after = await adminWriteFingerprint()
+      expect(after).toEqual(before.adminWrites)
+    })
+
+    it('and every one of those outcomes is a refusal — either denied at the GRANT layer or a 0-row no-op at RLS; nothing was written', async () => {
+      await loginAs(ids.userAdmin, { platform_role: 'abluo_admin' })
+      const after = await adminWriteFingerprint()
+      for (const [key, outcome] of Object.entries(after)) {
+        expect({ key, ok: outcome === 'rows:0' || outcome.startsWith('denied:') }).toEqual({
+          key,
+          ok: true,
+        })
+      }
+    })
+
+    it('the platform is materially unchanged after all those write attempts — row counts on every target table match the pre-probe truth', async () => {
+      await asSuperuser(async () => {
+        for (const t of ALL_TARGETS) {
+          const { rows } = await client.query(`select count(*)::int as n from public.${t}`)
+          expect({ t, empty: rows[0].n === 0 }).toEqual({ t, empty: false })
+        }
+        // Nothing the probes tried to insert exists.
+        const { rows: injected } = await client.query(
+          `select count(*)::int as n from public.tenants where slug = 'admin-inserted'`
+        )
+        expect(injected[0].n).toBe(0)
+        const { rows: injectedP } = await client.query(
+          `select count(*)::int as n from public.projects where slug = 'admin-inserted'`
+        )
+        expect(injectedP[0].n).toBe(0)
+        // The admin holds no membership row anywhere — the probes could not
+        // bootstrap themselves one.
+        const { rows: memb } = await client.query(
+          `select (select count(*) from public.tenant_members  where user_id = $1)::int as tm,
+                  (select count(*) from public.project_members where user_id = $1)::int as pm`,
+          [ids.userAdmin]
+        )
+        expect(memb[0]).toEqual({ tm: 0, pm: 0 })
+      })
+    })
+
+    it('a WRITE-granted table proves the point at RLS rather than at the grant layer: inquiries/form_submissions UPDATE is allowed by GRANT but matches 0 rows for the admin', async () => {
+      await loginAs(ids.userAdmin, { platform_role: 'abluo_admin' })
+      // The admin can SEE every row on these two tables (block l3)...
+      const { rows: visible } = await client.query(`select count(*)::int as n from public.inquiries`)
+      expect(visible[0].n).toBeGreaterThan(0)
+      // ...and can still UPDATE none of them, because 025 added no UPDATE policy.
+      const upd = await client.query(`update public.inquiries set status = 'archived' where id is not null`)
+      expect(upd.rowCount).toBe(0)
+      const updS = await client.query(
+        `update public.form_submissions set status = 'archived' where id is not null`
+      )
+      expect(updS.rowCount).toBe(0)
+    })
+  })
+
+  // ── (6) No recursion, no policy error ────────────────────────────────────
+
+  describe('(l6) no recursion and no policy error on any table, under either identity', () => {
+    for (const t of ['tenants', 'projects', 'tenant_members', 'project_members', 'inquiries', 'form_submissions', 'form_events', 'profiles']) {
+      it(`${t}: a plain SELECT succeeds under an abluo_admin JWT with no "infinite recursion" error`, async () => {
+        await loginAs(ids.userAdmin, { platform_role: 'abluo_admin' })
+        await expect(client.query(`select * from public.${t}`)).resolves.toBeDefined()
+      })
+
+      it(`${t}: a plain SELECT succeeds under a tenant_user JWT with no "infinite recursion" error`, async () => {
+        await loginAs(ids.userC, { platform_role: 'tenant_user' })
+        await expect(client.query(`select * from public.${t}`)).resolves.toBeDefined()
+      })
+    }
+
+    it('leads: the ONLY failure is 42501 (missing grant) — never 42P17 (recursion) — under both identities', async () => {
+      for (const claims of [{ platform_role: 'abluo_admin' }, { platform_role: 'tenant_user' }]) {
+        await loginAs(ids.userAdmin, claims)
+        const err = await client.query(`select * from public.leads`).catch((e) => e)
+        expect(err.code).toBe('42501')
+      }
+    })
+
+    it('the join that originally recursed (projects → project_members, migration 013) is still clean under an admin JWT', async () => {
+      await loginAs(ids.userAdmin, { platform_role: 'abluo_admin' })
+      await expect(
+        client.query(
+          `select p.id, pm.role from public.projects p
+           left join public.project_members pm on pm.project_id = p.id`
+        )
+      ).resolves.toBeDefined()
+    })
+  })
+
+  // ── (7) Idempotence ──────────────────────────────────────────────────────
+
+  it('(l7a) ORDER-INDEPENDENCE vs migration 020: re-applying 020 AFTER 025 leaves the admin leads policy untouched — the two commute', async () => {
+    // Migration 020 is written but NOT applied to the real Supabase project
+    // (supabase/APPLIED.md). 025's header claims the two are order-independent
+    // in BOTH directions. This proves the harder direction: 020's
+    // `drop policy if exists` list names only its own three policy names and
+    // the three schema.sql ones, so it cannot clobber 025's additive policy.
+    await asSuperuser(() =>
+      applyMigrationFile(client, path.join(__dirname, '..', 'migrations', '020_leads_project_grain.sql'))
+    )
+    const { rows } = await client.query(
+      `select policyname, cmd, qual from pg_policies
+       where schemaname = 'public' and tablename = 'leads' order by policyname`
+    )
+    const admin = rows.find((r) => r.policyname === 'Abluo admins read all leads')
+    expect(admin).toBeDefined()
+    expect(admin.cmd).toBe('SELECT')
+    expect(admin.qual).toBe('is_abluo_admin()')
+    // And 020's own three project-grain policies are all present alongside it.
+    expect(rows.map((r) => r.policyname).sort()).toEqual([
+      'Abluo admins read all leads',
+      'Members read leads for their projects',
+      'Writable roles insert leads for their projects',
+      'Writable roles update leads for their projects',
+    ])
+    // Still readable cross-tenant by the admin once granted, after 020 ran last.
+    await asSuperuser(() => client.query(`grant select on public.leads to authenticated`))
+    try {
+      await loginAs(ids.userAdmin, { platform_role: 'abluo_admin' })
+      const { rows: leads } = await client.query(`select id from public.leads`)
+      expect(leads.length).toBeGreaterThan(0)
+    } finally {
+      await asSuperuser(() => client.query(`revoke select on public.leads from authenticated`))
+    }
+  })
+
+  it('(l7) re-applying migration 025 is a no-op — same eight policies, same helper, nothing duplicated', async () => {
+    await asSuperuser(() =>
+      applyMigrationFile(client, path.join(__dirname, '..', 'migrations', '025_abluo_admin_read_access.sql'))
+    )
+    const { rows } = await client.query(
+      `select count(*)::int as n from pg_policies
+       where schemaname = 'public' and policyname like 'Abluo admins read all%'`
+    )
+    expect(rows[0].n).toBe(8)
+    await loginAs(ids.userAdmin, { platform_role: 'abluo_admin' })
+    const { rows: t } = await client.query(`select id from public.tenants`)
+    expect(t.length).toBeGreaterThanOrEqual(3)
+  })
+})

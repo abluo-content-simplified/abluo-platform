@@ -3,15 +3,20 @@ import { headers } from 'next/headers'
 import { isProduction } from '@/lib/deployment'
 import { isStagingHost } from '@/lib/seo/indexability'
 
-// Reverse of TENANT_TO_PROJECT in client.ts — projectSlug → URL tenant slug.
-// Only the two `-main` projects still need a row: every other project's Sanity
-// name and URL segment are identical, and the lookup below falls back to the
-// projectSlug itself. `abluo` used to need a row (its URL segment was a longer
-// legacy name); Step 1 of `src/lib/tenancy/RENAME.md` removed that gap.
-const PROJECT_TO_TENANT: Record<string, string> = {
-  'livener-main': 'livener',
-  'studiomartegani-main': 'studiomartegani',
-}
+// ─── projectSlug → URL tenant slug ───────────────────────────────────────────
+// There is no longer a map here. This was `PROJECT_TO_TENANT`, the reverse of
+// `TENANT_TO_PROJECT` in client.ts, and it carried exactly two rows —
+// `livener-main` → `livener` and `studiomartegani-main` → `studiomartegani`.
+// `src/lib/tenancy/RENAME.md` Step 4 renamed those documents, so neither key
+// could ever match again: every lookup already fell through to the `?? projectSlug`
+// default, and both rows were dead code producing the same string this line does.
+// (`abluo` had needed a row too, until Step 1 renamed its URL segment.)
+//
+// ⚠️ This still ASSUMES the URL segment equals `projects.slug`, which is true
+// for every live project but rests on the hand-maintained `domainMap` in
+// `src/proxy.ts` rather than on data — divergence (B) in `host-scope.ts`.
+// Step 6 replaces the assumption with `resolveScopeFromHost()` and the
+// generated route table.
 
 interface TenantSitemapData {
   projectSlug: string
@@ -167,7 +172,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // Skip tenants without a custom domain — no canonical URL to emit.
       if (!customDomain) continue
 
-      const tenantSlug = PROJECT_TO_TENANT[projectSlug] ?? projectSlug
+      const tenantSlug = projectSlug
       const locales = supportedLocales && supportedLocales.length > 0 ? supportedLocales : ['en']
       const primaryLocale = defaultLocale ?? locales[0]
       const tenantBase = `https://${customDomain}`

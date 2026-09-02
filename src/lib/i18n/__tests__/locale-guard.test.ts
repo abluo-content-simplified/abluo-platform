@@ -12,8 +12,8 @@ import type { SupportedLocale } from '../locales'
  * allow/deny matrix below is the exact set of URLs whose behaviour changes.
  */
 const PROD = {
-  'livener-main':        { defaultLocale: 'en', supportedLocales: ['en', 'it'] },
-  'studiomartegani-main': { defaultLocale: 'it', supportedLocales: ['it', 'en'] },
+  'livener':             { defaultLocale: 'en', supportedLocales: ['en', 'it'] },
+  'studiomartegani':     { defaultLocale: 'it', supportedLocales: ['it', 'en'] },
   'abluo':               { defaultLocale: 'en', supportedLocales: ['en', 'it', 'de'] },
   'nologo':              { defaultLocale: 'en', supportedLocales: ['en', 'it', 'de', 'fr', 'es', 'nl', 'pt'] },
 } as const satisfies Record<string, { defaultLocale: SupportedLocale; supportedLocales: SupportedLocale[] }>
@@ -37,10 +37,10 @@ describe('isLocaleEnabledForProject — allow', () => {
 describe('isLocaleEnabledForProject — deny', () => {
   it('denies the locales that are live-but-bogus today', () => {
     // The regression that shipped: /de on Martegani.
-    expect(isLocaleEnabledForProject('de', PROD['studiomartegani-main'])).toBe(false)
+    expect(isLocaleEnabledForProject('de', PROD['studiomartegani'])).toBe(false)
     for (const locale of ['de', 'fr', 'es', 'pt', 'nl']) {
-      expect(isLocaleEnabledForProject(locale, PROD['livener-main'])).toBe(false)
-      expect(isLocaleEnabledForProject(locale, PROD['studiomartegani-main'])).toBe(false)
+      expect(isLocaleEnabledForProject(locale, PROD['livener'])).toBe(false)
+      expect(isLocaleEnabledForProject(locale, PROD['studiomartegani'])).toBe(false)
     }
     for (const locale of ['fr', 'es', 'pt', 'nl']) {
       expect(isLocaleEnabledForProject(locale, PROD.abluo)).toBe(false)

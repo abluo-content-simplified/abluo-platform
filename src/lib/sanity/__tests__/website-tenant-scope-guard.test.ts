@@ -111,13 +111,12 @@ describe('fetchForTenant enforces scoping at runtime', () => {
 
     await tenantClient(asUrlProjectSegment('livener')).fetchForTenant(query, { locale: 'it' })
 
+    // Step 5 of src/lib/tenancy/RENAME.md removed the `projectSlugs` dual-read
+    // key; the exact-object assertion is what proves it is gone rather than
+    // merely unused, and that the segment is bound VERBATIM (no `-main`).
     expect(fetchMock).toHaveBeenCalledWith(query, {
       locale: 'it',
-      projectSlug: 'livener-main',
-      // STEP 3 DUAL-READ — see dualReadProjectSlugs in @/lib/sanity/client.
-      // This key exists ONLY while the dual-read does: step 5 of
-      // src/lib/tenancy/RENAME.md deletes it and this assertion must drop it.
-      projectSlugs: ['livener', 'livener-main'],
+      projectSlug: 'livener',
       tenantSlug: 'livener',
     })
   })
@@ -141,12 +140,15 @@ describe('fetchForTenant enforces scoping at runtime', () => {
 
     // A message that does not identify the query is unactionable in a codebase
     // with a hundred of them.
-    // Use a segment whose projectSlug DIFFERS from it (`livener` →
-    // `livener-main`), so the message is proved to name both namespaces and not
-    // one value twice. (This used to use the platform site; Step 1 of
-    // `src/lib/tenancy/RENAME.md` made that pair identical.)
+    //
+    // ⚠️ This assertion is WEAKER than it was, and deliberately so: it used to
+    // use `livener`, whose Sanity projectSlug (`livener-main`) DIFFERED from
+    // its segment, proving the message named both namespaces rather than one
+    // value twice. Steps 4-5 of `src/lib/tenancy/RENAME.md` made every pair
+    // identical, so no example can distinguish them any more — there is only
+    // one name left to print.
     expect(() => tenantClient(asUrlProjectSegment('livener')).fetchForTenant('*[_id in $ids]')).toThrow(
-      /tenantSlug=livener projectSlug=livener-main[^]*_id in \$ids/,
+      /tenantSlug=livener projectSlug=livener[^]*_id in \$ids/,
     )
   })
 
@@ -164,7 +166,7 @@ describe('fetchForTenant enforces scoping at runtime', () => {
     const logged = String(consoleError.mock.calls[0][0])
     expect(logged).toContain('[tenant-scope]')
     expect(logged).toContain('tenantSlug=livener')
-    expect(logged).toContain('projectSlug=livener-main')
+    expect(logged).toContain('projectSlug=livener')
     expect(logged).toContain('*[_type == "page"][0]')
   })
 

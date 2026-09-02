@@ -21,9 +21,9 @@
 //     ModuleCollectionItemDef.
 //
 // ID convention:
-//   Group list item:  "${slug}-${group.id}"        e.g. "livener-main-blog-module"
-//   Group inner list: "${slug}-${group.id}-list"   e.g. "livener-main-blog-module-list"
-//   Item list item:   "${slug}-${item.id}"          e.g. "livener-main-posts"
+//   Group list item:  "${slug}-${group.id}"        e.g. "livener-blog-module"
+//   Group inner list: "${slug}-${group.id}-list"   e.g. "livener-blog-module-list"
+//   Item list item:   "${slug}-${item.id}"          e.g. "livener-posts"
 //
 // These IDs match the hard-coded values previously in the registry lambdas.
 // Sanity Studio caches navigation state by list item ID — changing IDs resets

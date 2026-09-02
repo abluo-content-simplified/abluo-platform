@@ -17,8 +17,7 @@
  */
 export {
   tenantClient,
-  tenantToProjectSlug,
-  tryTenantToProjectSlug,
+  isKnownProjectSegment,
   fetchDesignSystemById,
   hasSanityReadToken,
 } from '@/lib/sanity/client'

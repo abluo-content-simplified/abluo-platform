@@ -201,11 +201,14 @@ export function submissionEndpoint(projectSlug: SupabaseProjectSlug, formId: str
  * slug that no longer resolves (a 404 now that the service fails closed — a
  * loud, correct failure rather than a silent platform-level write).
  *
- * NOTE it is deliberately NOT fed from `EarlyAccessContext.projectSlug`: that
- * value is `lookupSanityProjectSlugByUrlSegment()`, a `SanityProjectSlug`
- * ('livener-main'), which is not a `projects.slug` in Supabase and would 404
- * today. The three brands in `@/lib/tenancy/ids` now make that a type error
- * rather than a comment.
+ * HISTORICAL NOTE: it was deliberately NOT fed from
+ * `EarlyAccessContext.projectSlug`, because that value was Sanity's separate
+ * name for the project ('livener-main') and would have 404'd against Supabase's
+ * `.eq('slug', …)`. `./RENAME.md` Steps 4-5 removed that second name and the
+ * lookup that produced it, so the two values are now the same string and the
+ * brands they carry are the same brand. The hazard this paragraph warned about
+ * is closed by the DATA, not by the type system — which is why the remaining
+ * cast below is still worth its comment.
  *
  * ⚠️ WHAT THIS ACTUALLY DOES (v1.0.31). The input was previously typed
  * `TenantSlug`, which was wrong twice over: the value handed in is the
@@ -213,11 +216,11 @@ export function submissionEndpoint(projectSlug: SupabaseProjectSlug, formId: str
  * `nologo`; its tenant is `freeriders`). Retyped to `UrlProjectSegment`, which
  * is what every caller actually holds.
  *
- * It is still a FORBIDDEN CAST — URL segment → Supabase slug with no lookup —
- * and it is still the only one, deliberately, so it stays greppable. What
- * changed is that it is no longer WRONG for anyone today: it is correct for
- * all five live projects, because each one's URL segment now equals its
- * `projects.slug`.
+ * It is still a FORBIDDEN CAST — URL segment → project slug with no lookup —
+ * and since Step 5 it is the ONLY one left in the codebase, deliberately, so
+ * it stays greppable and countable. What changed is that it is no longer WRONG
+ * for anyone today: it is correct for all five live projects, because each
+ * one's URL segment now equals its `projects.slug`.
  *
  * FIXED (Step 1 of `src/lib/tenancy/RENAME.md`), finding (d) of `f669ab9`: the
  * platform's own site was the exception. `abluo.app` rewrote to a longer legacy
@@ -233,9 +236,9 @@ export function submissionEndpoint(projectSlug: SupabaseProjectSlug, formId: str
  * threading `resolveScopeFromHost().projectSlug` (a real `SupabaseProjectSlug`)
  * down from the layout instead.
  *
- * (Sanity's `livener` / `livener-main` gap is a DIFFERENT axis and never
- * affected this cast — see the NOTE above about `EarlyAccessContext`. It is
- * Steps 3-5 of RENAME.md.)
+ * (Sanity's `livener` / `livener-main` gap was a DIFFERENT axis and never
+ * affected this cast — see the NOTE above about `EarlyAccessContext`. It was
+ * closed by Steps 3-5 of RENAME.md; this URL-segment axis is Step 6.)
  */
 export function projectScopeSlugFromUrlSegment(
   segment: UrlProjectSegment

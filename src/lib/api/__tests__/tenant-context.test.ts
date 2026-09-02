@@ -212,10 +212,13 @@ describe('assembleProjectGrants', () => {
 
   it('still surfaces a grant (with no modules) for a project with no Sanity content mapping', () => {
     // Regression for the getTenantAuthorizationContext resolver throwing whole-hog
-    // when a granted project (e.g. the platform's own "abluo" tenant) has no entry
-    // in TENANT_TO_PROJECT (src/lib/sanity/client.ts). The resolver's per-project
-    // Sanity fetch (fetchEnabledModuleIds) now catches that failure and degrades to
-    // an empty enabledModuleIds entry rather than throwing — this is the pure-layer
+    // when a granted project's per-project Sanity fetch fails. Historically that
+    // failure was `TENANT_TO_PROJECT` (src/lib/sanity/client.ts) having no entry
+    // for the project — the platform's own "abluo" was exactly that case; the map
+    // is gone (RENAME.md Step 5) but a Sanity outage or a project with no `project`
+    // document produces the same shape. fetchEnabledModuleIds catches it and
+    // degrades to an empty enabledModuleIds entry rather than throwing — this is
+    // the pure-layer
     // shape that degradation produces: the project must still appear in ctx.projects,
     // just with zero modules/permissions, not be dropped or take down the resolver.
     const ownedProjects: RawOwnedProject[] = [

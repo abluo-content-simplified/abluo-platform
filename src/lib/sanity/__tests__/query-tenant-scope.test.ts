@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import * as queries from '../queries'
-import { dualReadProjectSlugs } from '../client'
 
 // ── Every query is tenant-scoped ─────────────────────────────────────────────
 //
@@ -25,7 +24,7 @@ const ALLOWED_WITHOUT_PROJECT_SCOPE: Record<string, string> = {
   // field off ANY document by id, so a cross-tenant CTA yielded a FOREIGN
   // formId. It now selects the definition through the same tenant-scoped
   // subquery as the other nine (scopedFormId in queries.ts), which carries
-  // $projectSlugs, so it passes the check below on its own merits.
+  // $projectSlug, so it passes the check below on its own merits.
 
   // Not a query — the shared `pageSections[]` projection, interpolated into
   // homePageQuery / pageBySlugQuery / pageHomeQuery. Sections are embedded in
@@ -69,9 +68,9 @@ describe('GROQ queries are tenant-scoped', () => {
       expect(
         query,
         `${name} selects documents without a projectSlug filter. Add ` +
-          `\`projectSlug in $projectSlugs\` to its root filter, or add it to ` +
+          `\`projectSlug == $projectSlug\` to its root filter, or add it to ` +
           `ALLOWED_WITHOUT_PROJECT_SCOPE with a reason.`,
-      ).toContain('$projectSlugs')
+      ).toContain('$projectSlug')
     },
   )
 
@@ -110,7 +109,7 @@ describe('manual-selection queries scope the id lookup itself', () => {
       const query = (queries as Record<string, string>)[name]
       const rootFilter = query.slice(query.indexOf('*['), query.indexOf(']'))
       expect(rootFilter).toContain('_id in $')
-      expect(rootFilter).toContain('projectSlug in $projectSlugs')
+      expect(rootFilter).toContain('projectSlug == $projectSlug')
     },
   )
 })
@@ -155,12 +154,12 @@ describe('headerCta.form is scoped to the tenant that owns the project', () => {
   })
 
   it('resolves the tenant from the project document, not from the $tenantSlug param', () => {
-    // $tenantSlug is injected by fetchForTenant but holds the URL tenant slug
-    // from TENANT_TO_PROJECT, which is a PROJECT-grain value: it is "nologo"
-    // for a site whose owning tenant is "freeriders". Scoping on it would blank
-    // No!Logo's header form. See src/lib/tenancy/ids.ts.
+    // $tenantSlug is injected by fetchForTenant but holds the `[tenant]` URL
+    // segment, which is a PROJECT-grain value: it is "nologo" for a site whose
+    // owning tenant is "freeriders". Scoping on it would blank No!Logo's header
+    // form. See src/lib/tenancy/ids.ts.
     expect(formFilter).not.toContain('$tenantSlug')
-    expect(formFilter).toContain('*[_type == "project" && projectSlug in $projectSlugs][0].tenantSlug')
+    expect(formFilter).toContain('*[_type == "project" && projectSlug == $projectSlug][0].tenantSlug')
     expect(formFilter).toContain('clientRef->tenantSlug')
   })
 
@@ -291,9 +290,9 @@ describe('every reference-keyed form subquery is tenant-scoped', () => {
   // the tenant, and an unbound parameter resolves the tenant to null, which
   // matches no form and blanks the section.
   it.each(['pageHomeQuery', 'pageBySlugQuery'])(
-    '%s binds $projectSlugs for the spliced section subqueries',
+    '%s binds $projectSlug for the spliced section subqueries',
     (name) => {
-      expect(allStrings[name]).toContain('projectSlug in $projectSlugs')
+      expect(allStrings[name]).toContain('projectSlug == $projectSlug')
       expect(allStrings[name]).toContain('_id == ^.contactForm._ref')
     },
   )
@@ -324,14 +323,14 @@ describe('every reference-keyed form subquery is tenant-scoped', () => {
   it.each(scoped.map(([label]) => label))(
     '%s resolves the tenant from the project document, not from $tenantSlug',
     (label) => {
-      // $tenantSlug is injected by fetchForTenant but holds the URL tenant slug
-      // from TENANT_TO_PROJECT, a PROJECT-grain value: "nologo" for a site whose
-      // owning tenant is "freeriders". Scoping on it would permanently blank
-      // No!Logo's forms. See src/lib/tenancy/ids.ts.
+      // $tenantSlug is injected by fetchForTenant but holds the `[tenant]` URL
+      // segment, a PROJECT-grain value: "nologo" for a site whose owning tenant
+      // is "freeriders". Scoping on it would permanently blank No!Logo's forms.
+      // See src/lib/tenancy/ids.ts.
       const filter = scoped.find(([l]) => l === label)![1]
       expect(filter).not.toContain('$tenantSlug')
       expect(filter).toContain(
-        '*[_type == "project" && projectSlug in $projectSlugs][0].tenantSlug',
+        '*[_type == "project" && projectSlug == $projectSlug][0].tenantSlug',
       )
       expect(filter).toContain('clientRef->tenantSlug')
     },
@@ -357,87 +356,48 @@ describe('no query derives a tenant by stripping a slug suffix', () => {
   })
 })
 
-// ── STEP 3 DUAL-READ: every query matches BOTH names of its project ──────────
+// ── STEP 5: every query is back to the SINGLE-NAME filter ───────────────────
 //
-// `src/lib/tenancy/RENAME.md` §0: two live projects have two names for one
-// thing. Supabase's `projects.slug` says `livener`; the Sanity documents say
-// `livener-main`. Step 4 of that runbook renames the 38 documents, and a
-// rename of the exact field every query filters on cannot be made atomic with
-// a deploy — between the two, both live sites would be blank (the 2026-08-14
-// outage, exactly).
+// `src/lib/tenancy/RENAME.md` §0: two live projects used to have two names for
+// one thing — Supabase's `projects.slug` said `livener`, the Sanity documents
+// said `livener-main` — so Step 3 taught every query to match EITHER
+// (`projectSlug in $projectSlugs`, bound through `dualReadProjectSlugs()`) and
+// Step 4 then renamed the 39 documents without a synchronised deploy.
 //
-// Step 3 removes that window by making the read path accept EITHER name:
-// queries filter `projectSlug in $projectSlugs`, and both chokepoints bind
-// that array through `dualReadProjectSlugs()`. This block is what stops the
-// single-param shape coming back — including in a query written after the
-// rename but before step 5, which would look correct and return nothing for
-// whichever half of the transition it did not name.
-//
-// STEP 5 DELETES THIS WHOLE BLOCK, along with `LEGACY_MAIN_PROJECT_SLUG_PAIRS`
-// and `dualReadProjectSlugs` in `../client`.
+// Step 5 contracted that back. The invariant this block now pins is the
+// opposite one: no query may reintroduce the array binding, because nothing
+// binds `$projectSlugs` any more — a query that filters on it would match
+// NOTHING and render an empty page, which is precisely the failure mode the
+// dual-read existed to avoid.
 
-describe('every query is dual-read (RENAME.md step 3)', () => {
-  it.each(exportedStrings.map(([name]) => name))(
-    '%s never uses the single-name `projectSlug == $projectSlug` filter',
-    (name) => {
-      expect(
-        allStrings[name],
-        `${name} filters on a single project name. On the DASHBOARD path that ` +
-          `is not a style point: the grant carries Supabase's name (\`livener\`) ` +
-          `and the documents carry Sanity's (\`livener-main\`), so an equality ` +
-          `filter matches nothing and the list renders EMPTY. Use ` +
-          `\`projectSlug in $projectSlugs\`.`,
-      ).not.toContain('projectSlug == $projectSlug')
-    },
-  )
-
+describe('every query uses the single-name filter (RENAME.md step 5)', () => {
   it.each(
     exportedStrings
       .map(([name]) => name)
       .filter((name) => !(name in ALLOWED_WITHOUT_PROJECT_SCOPE)),
-  )('%s binds the dual-read array', (name) => {
-    expect(allStrings[name]).toContain('projectSlug in $projectSlugs')
+  )('%s filters `projectSlug == $projectSlug` on its root filter', (name) => {
+    expect(allStrings[name]).toContain('projectSlug == $projectSlug')
   })
 
-  it('scopes the tenant lookup itself on both names, not just the root filter', () => {
+  it.each(exportedStrings.map(([name]) => name))(
+    '%s no longer references the removed $projectSlugs binding',
+    (name) => {
+      expect(
+        allStrings[name],
+        `${name} filters on $projectSlugs, which no chokepoint binds any more ` +
+          `(RENAME.md step 5 removed the dual-read). An unbound array parameter ` +
+          `matches NOTHING — the page renders empty.`,
+      ).not.toContain('$projectSlugs')
+    },
+  )
+
+  it('scopes the tenant lookup itself, not just the root filter', () => {
     // PROJECT_TENANT_SLUG resolves the owning tenant by looking the project
-    // document up BY THE SAME FIELD. Left on `== $projectSlug` it would
-    // resolve to null for Livener, and `tenantSlug == null` matches no form —
-    // every form on the site would silently vanish.
+    // document up BY THE SAME FIELD. If it ever loses its own filter it
+    // resolves to null, and `tenantSlug == null` matches no form — every form
+    // on the site would silently vanish.
     expect(queries.websiteSiteConfigQuery).toContain(
-      '*[_type == "project" && projectSlug in $projectSlugs][0].tenantSlug',
+      '*[_type == "project" && projectSlug == $projectSlug][0].tenantSlug',
     )
-  })
-})
-
-describe('dualReadProjectSlugs — the binding half, and why it is a no-op today', () => {
-  it('returns both names for a project whose two stores disagree', () => {
-    // Whichever name the caller holds: the website resolves Sanity's through
-    // TENANT_TO_PROJECT, the dashboard reads Supabase's off the grant.
-    expect(dualReadProjectSlugs('livener' as never)).toEqual(['livener', 'livener-main'])
-    expect(dualReadProjectSlugs('livener-main' as never)).toEqual(['livener', 'livener-main'])
-    expect(dualReadProjectSlugs('studiomartegani' as never)).toEqual([
-      'studiomartegani',
-      'studiomartegani-main',
-    ])
-    expect(dualReadProjectSlugs('studiomartegani-main' as never)).toEqual([
-      'studiomartegani',
-      'studiomartegani-main',
-    ])
-  })
-
-  it('returns ONE name for every project whose two stores already agree', () => {
-    // This is the no-op proof for everyone else: a one-element array makes
-    // `projectSlug in $projectSlugs` the exact equality filter it replaced.
-    for (const slug of ['abluo', 'nologo', 'amelie', 'hoffmann', 't42']) {
-      expect(dualReadProjectSlugs(slug as never)).toEqual([slug])
-    }
-  })
-
-  it('invents nothing — it is a lookup, not a suffix transform', () => {
-    // `x + "-main"` / `x.replace(/-main$/, '')` is the forbidden conversion
-    // (src/lib/tenancy/ids.ts). An unknown slug gets no second name.
-    expect(dualReadProjectSlugs('freeriders-main' as never)).toEqual(['freeriders-main'])
-    expect(dualReadProjectSlugs('livener-events' as never)).toEqual(['livener-events'])
   })
 })
