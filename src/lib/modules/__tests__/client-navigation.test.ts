@@ -3,7 +3,7 @@
  * of MODULE_REGISTRY into client-dashboard navigation (ADR-017 Phase 2 / task
  * #81). No I/O, no live request.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   buildClientNavItems,
   resolveProjectGrant,
@@ -83,5 +83,50 @@ describe('resolveProjectGrant', () => {
 
   it('returns null for an empty grant set', () => {
     expect(resolveProjectGrant([], 'livener')).toBeNull()
+  })
+
+  // ── Migration 023: slugs are unique per TENANT, not globally ───────────────
+  // A user who belongs to two tenants that each own a project called `main`
+  // reaches `/en/main/posts` — a URL that carries no tenant and therefore
+  // cannot say which `main` is meant. Before 023 this could not happen
+  // (global unique); after it, it can. The old `.find()` would have returned
+  // whichever grant came back first — one customer seeing another customer's
+  // dashboard, with no error anywhere.
+  describe('ambiguity (migration 023 made slugs unique per tenant, not globally)', () => {
+    const mainInTenant1 = {
+      ...grantWith(['blog']),
+      projectId: 'project-main-t1',
+      projectSlug: asSupabaseProjectSlug('main'),
+    }
+    const mainInTenant2 = {
+      ...grantWith(['blog']),
+      projectId: 'project-main-t2',
+      projectSlug: asSupabaseProjectSlug('main'),
+    }
+
+    it('REFUSES rather than guessing when one slug matches two grants', () => {
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      // The critical assertion: not "returns the first one", but returns
+      // NOTHING. Every caller turns null into notFound()/redirect, so this is
+      // a 404 instead of the wrong client's content.
+      expect(resolveProjectGrant([mainInTenant1, mainInTenant2], 'main')).toBeNull()
+      spy.mockRestore()
+    })
+
+    it('names both candidate projects in the error, so the 404 is diagnosable', () => {
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      resolveProjectGrant([mainInTenant1, mainInTenant2], 'main')
+      const msg = spy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n')
+      expect(msg).toContain('AMBIGUOUS')
+      expect(msg).toContain('project-main-t1')
+      expect(msg).toContain('project-main-t2')
+      spy.mockRestore()
+    })
+
+    it('still resolves an unambiguous slug when an ambiguous one is also present', () => {
+      // Refusing must be scoped to the colliding slug, not to the whole set —
+      // one collision cannot be allowed to break every other project.
+      expect(resolveProjectGrant([mainInTenant1, mainInTenant2, b], 'nologo')).toBe(b)
+    })
   })
 })

@@ -106,5 +106,46 @@ export function resolveProjectGrant(
   projects: ProjectGrant[],
   projectSlug: string
 ): ProjectGrant | null {
-  return projects.find((grant) => grant.projectSlug === projectSlug) ?? null
+  const matches = projects.filter((grant) => grant.projectSlug === projectSlug)
+
+  if (matches.length === 1) return matches[0]
+
+  // ── AMBIGUITY FAILS CLOSED — do not "fix" this back to .find() ─────────────
+  //
+  // `projects.slug` used to be GLOBALLY unique, so a slug could only ever match
+  // one grant and `.find()` was safe. Migration 023 makes it unique per TENANT
+  // instead — deliberately, because "you cannot call your project `main`
+  // because a different customer already did" is what produced the
+  // `livener-main` naming and the whole three-namespace mess (see
+  // src/lib/tenancy/RENAME.md).
+  //
+  // The cost of that freedom lands exactly here. This function is handed a bare
+  // slug from the dashboard URL `/{locale}/{projectSlug}/…`, which carries NO
+  // tenant, and searches `ctx.projects` — EVERY project the caller can reach,
+  // across every tenant they belong to. A user in two tenants that each own a
+  // project called `main` would, with `.find()`, silently get whichever came
+  // back first: the wrong client's content, no error, no log.
+  //
+  // So: more than one match returns null. Every caller already treats null as
+  // notFound()/redirect (layout.tsx, posts, leads, submissions, analytics,
+  // and the last-project fallback in (client)/page.tsx), so refusing is a 404
+  // rather than a wrong answer. Showing one customer another customer's
+  // dashboard is far worse than showing nobody anything.
+  //
+  // This is a stop-gap that is CORRECT, not a stop-gap that is convenient. The
+  // real fix is to put the tenant in the dashboard URL, at which point the
+  // lookup becomes (tenant, slug) and can never be ambiguous. Until someone
+  // actually hits this 404, that URL change is not worth making.
+  if (matches.length > 1) {
+    console.error(
+      `[client-navigation] AMBIGUOUS project slug "${projectSlug}" — it matches ` +
+        `${matches.length} grants across the tenants this user belongs to ` +
+        `(${matches.map((g) => g.projectId).join(', ')}). Refusing to guess; ` +
+        `returning null so the caller 404s. The dashboard URL needs to carry ` +
+        `the tenant. See resolveProjectGrant in src/lib/modules/client-navigation.ts.`
+    )
+    return null
+  }
+
+  return null
 }
