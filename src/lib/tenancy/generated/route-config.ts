@@ -15,8 +15,9 @@
  * against a fresh generation (`--check`) as a drift guard, and a timestamp
  * would make every regeneration a diff.
  *
- * NOTHING IMPORTS THIS YET. See `src/lib/tenancy/host-scope.ts` for why
- * (expand phase — built, callable, uncalled).
+ * This table is LIVE: `src/proxy.ts` resolves every request host through
+ * `src/lib/tenancy/host-scope.ts`, which reads it. A wrong row here is a
+ * wrong site at the edge, so regenerate — never hand-edit.
  */
 
 /** How a host came to be in this table. See scripts/generate-route-config.mjs. */

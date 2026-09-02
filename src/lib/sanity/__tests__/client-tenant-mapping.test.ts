@@ -10,19 +10,27 @@
  * translation map. `src/lib/tenancy/RENAME.md` Step 4 renamed the documents and
  * Step 5 deleted the map, so the TRANSLATION is gone — but the fail-closed
  * guard is not, and it is what this file now pins, via `isKnownProjectSegment`.
+ * Step 6 then moved that guard to `@/lib/tenancy/host-scope` and derived it
+ * from the generated route table; the behaviour it must have is unchanged.
  *
  * The second half is the anti-regression: `tenantClient()` must bind the
  * segment VERBATIM. Any reappearance of a `-main` suffix (a map, a
  * `.replace()`, a cast) is the defect this whole workstream removed.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { isKnownProjectSegment, tenantClient } from '@/lib/sanity/client'
+import { tenantClient } from '@/lib/sanity/client'
 import { sanityClient } from '@/lib/sanity/client'
+// Step 6 moved the allow-list out of sanity/client.ts: it is now derived from
+// the generated route table rather than hand-typed. Same guard, one import
+// further away — see `@/lib/tenancy/host-scope`.
+import { isKnownProjectSegment } from '@/lib/tenancy/host-scope'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 
 describe('isKnownProjectSegment', () => {
   it('accepts every segment this deployment serves', () => {
-    for (const segment of ['livener', 'studiomartegani', 'abluo', 'nologo', 'hoffmann']) {
+    // `amelie` joined this list in Step 6: it is an active project in Supabase
+    // and was missing from the hand-typed set, so `/en/amelie` used to 404.
+    for (const segment of ['livener', 'studiomartegani', 'abluo', 'nologo', 'hoffmann', 'amelie']) {
       expect(isKnownProjectSegment(asUrlProjectSegment(segment))).toBe(true)
     }
   })

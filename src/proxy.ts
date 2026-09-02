@@ -5,71 +5,44 @@ import { routing } from './i18n/routing'
 import { resolvePlatformRole } from '@/lib/api/auth'
 import { isAdminSurface, isStudio, isPreAuthSurface } from '@/lib/proxy/admin-surface'
 import { isClientSurface } from '@/lib/proxy/client-surface'
+import {
+  resolveScopeFromHost,
+  defaultLocaleForProjectSegment,
+  normalizeHost,
+} from '@/lib/tenancy/host-scope'
+import { unbrand } from '@/lib/tenancy/ids'
 
 const intlMiddleware = createMiddleware(routing)
 
-/**
- * Resolve the project slug from the request hostname.
- *
- * Production domains:  studiomartegani.com        → "studiomartegani"
- * Abluo preview URLs:  studiomartegani.preview.abluo.app → "studiomartegani"
- * Dev convention:      studiomartegani.localhost:3000    → "studiomartegani"
- * Platform/admin:      abluo-platform.vercel.app        → null
- */
-function resolveTenant(hostname: string): string | null {
-  // Strip port, then normalize www. prefix so studiomartegani.com and
-  // www.studiomartegani.com both resolve via the same domainMap entry.
-  const host = hostname.split(':')[0].replace(/^www\./, '')
-
-  // Abluo managed preview — *.preview.abluo.app
-  // studiomartegani.preview.abluo.app → "studiomartegani"
-  if (host.endsWith('.preview.abluo.app')) {
-    const slug = host.slice(0, -'.preview.abluo.app'.length)
-    if (slug && slug !== 'www') return slug
-  }
-
-  // Production custom domains — map known domains to project slugs
-  const domainMap: Record<string, string> = {
-    'livener.net': 'livener',
-    'studiomartegani.com': 'studiomartegani',
-    'abluo.app': 'abluo',
-    'dev.abluo.app': 'abluo',
-    'nologo.cloud': 'nologo',
-    'ch-psicoterapeuta.com': 'hoffmann',
-  }
-
-  if (domainMap[host]) return domainMap[host]
-
-  // Dev convention: <project>.localhost
-  if (host.endsWith('.localhost')) {
-    const sub = host.replace('.localhost', '')
-    if (sub && sub !== 'www') return sub
-  }
-
-  return null
-}
-
-/**
- * Resolve the default display locale for a project.
- * Used when routing from a domain root — no locale in the URL yet.
- * Keep in sync with the projects table in Supabase.
- */
-/**
- * Returns the default locale for a known project slug, or null if unknown.
- * Only known project slugs get preview routing — prevents false rewrites
- * on paths like /login, /unauthorized, etc.
- */
-function resolveDefaultLocale(projectSlug: string): string | null {
-  const localeMap: Record<string, string> = {
-    'studiomartegani': 'it',
-    'livener': 'en',
-    'abluo': 'en',
-    'nologo': 'en',
-    // it-only site (Supabase projects.default_locale = 'it').
-    'hoffmann': 'it',
-  }
-  return localeMap[projectSlug] ?? null
-}
+// ── How this middleware resolves a host (was `resolveTenant`) ───────────────
+//
+// Production domains:  studiomartegani.com               → "studiomartegani"
+// Abluo preview URLs:  studiomartegani.preview.abluo.app → "studiomartegani"
+// Dev convention:      studiomartegani.localhost:3000    → "studiomartegani"
+// Platform/admin:      admin.abluo.app, bare localhost   → null
+//
+// ── This used to be three hand-typed maps ────────────────────────────────────
+// `domainMap` (host → slug), `resolveSanityProjectSlug` (a dead second copy of
+// TENANT_TO_PROJECT) and `resolveDefaultLocale` (slug → locale, with a comment
+// asking a human to "keep in sync with the projects table in Supabase"). They
+// drifted, exactly as `src/lib/tenancy/RENAME.md` predicted they would: each
+// grew one line per onboarding until somebody forgot, and `amelie` was the
+// onboarding somebody forgot. All three are gone. The table now comes from
+// `src/lib/tenancy/generated/route-config.ts`, generated from Supabase.
+//
+// ── Two deliberate behaviour changes vs. the old maps ────────────────────────
+//  1. NO SUBDOMAIN GUESSING. The old code returned whatever `<x>.localhost` or
+//     `<x>.preview.abluo.app` said, for any `<x>`, and let the route 404 later.
+//     An unknown subdomain now resolves to `null` and gets platform routes. A
+//     guessed project slug at the edge is how one tenant's host gets made to
+//     render another tenant's route; `host-scope.ts` divergence (C).
+//  2. INACTIVE PROJECTS DO NOT SERVE. `t42.preview.abluo.app` resolved to
+//     "t42" and then 404'd at the route boundary; it now resolves to null.
+//     Same visible outcome, decided one layer earlier and on purpose.
+//
+// Host normalisation (port, case, trailing dot, `www.`, IPv6 literals) is
+// `normalizeHost()` inside the resolver — it is stricter than the
+// `split(':')[0].replace(/^www\./,'')` this function used to do inline.
 
 /**
  * Local admin gate for the middleware boundary (ADR-015 R6). Builds a Supabase
@@ -185,8 +158,15 @@ async function requireAuthenticatedInProxy(request: NextRequest) {
 
 export async function proxy(request: NextRequest) {
   const hostname = request.headers.get('host') ?? ''
-  const host = hostname.split(':')[0]
-  const tenantId = resolveTenant(hostname)
+  // Same normalisation the route table is keyed by (case, port, trailing dot,
+  // `www.`, IPv6 literals) so the three platform-host equality checks below
+  // cannot be defeated by a host header spelling `Dev.Abluo.App`.
+  const host = normalizeHost(hostname)
+  // ONE host lookup per request. `hostScope` carries the tenant slug and the
+  // project's default locale as well as the URL slug, so nothing below has to
+  // look the same host up a second time by a different key.
+  const hostScope = resolveScopeFromHost(hostname)
+  const tenantId = hostScope ? unbrand(hostScope.projectSlug) : null
   const { pathname } = request.nextUrl
 
   // ── Bypass routes — no middleware processing ─────────────────────────────
@@ -259,7 +239,19 @@ export async function proxy(request: NextRequest) {
   // ── Abluo preview platform — preview.abluo.app/[project-slug] ────────────
   // preview.abluo.app/studiomartegani       → /it/studiomartegani
   // preview.abluo.app/studiomartegani/blog  → /it/studiomartegani/blog
-  if (host === 'preview.abluo.app') {
+  // ⚠️ This branch sits ABOVE the admin-surface gate, so anything it returns
+  // skips that gate entirely. `/dashboard` used to rewrite to `/null/dashboard`,
+  // which `[locale]/layout.tsx` 404s on an unknown locale — an accident that
+  // happened to keep the surface closed. Resolving the locale honestly turned
+  // that 404 into a 307 to `/en/dashboard`: a signpost onto a service-role admin
+  // page that has no auth of its own. Admin/client/studio paths must fall
+  // through to the real gate below.
+  if (
+    host === 'preview.abluo.app' &&
+    !isAdminSurface(pathname) &&
+    !isClientSurface(pathname) &&
+    !isStudio(pathname)
+  ) {
     const segments = pathname.split('/').filter(Boolean)
     const slug = segments[0]
 
@@ -271,7 +263,12 @@ export async function proxy(request: NextRequest) {
         (l) => pathname === `/${l}/${slug}` || pathname.startsWith(`/${l}/${slug}/`)
       )
       if (!alreadyRewritten) {
-        const locale = resolveDefaultLocale(slug)
+        // An unknown first segment gets NO rewrite. The old code interpolated
+        // the null straight into the path and rewrote to `/null/<slug>`, which
+        // 404s with a nonsense URL in the logs. Falling through to intl gives
+        // the same 404 with a truthful one.
+        const locale = defaultLocaleForProjectSegment(slug)
+        if (!locale) return intlMiddleware(request)
         const subPath = segments.slice(1).join('/')
         const url = request.nextUrl.clone()
         url.pathname = `/${locale}/${slug}${subPath ? '/' + subPath : ''}`
@@ -289,7 +286,7 @@ export async function proxy(request: NextRequest) {
   // dev.abluo.app/livener           → /en/livener
   // dev.abluo.app/studiomartegani   → /it/studiomartegani
   // dev.abluo.app/de/livener        → pass through (language switch on livener)
-  // dev.abluo.app (root / unknown)  → falls through to domainMap → abluo
+  // dev.abluo.app (root / unknown)  → falls through to the host lookup → abluo
   if (host === 'dev.abluo.app') {
     const segments = pathname.split('/').filter(Boolean)
     const slug = segments[0]
@@ -299,14 +296,14 @@ export async function proxy(request: NextRequest) {
       // Path is already in /{locale}/... form — happens after a language switch.
       // If the second segment is a known project slug, pass straight through to
       // the App Router (e.g. /de/livener). Otherwise fall through so the
-      // domainMap block can inject abluo (e.g. /de → /de/abluo).
+      // host lookup can inject abluo (e.g. /de → /de/abluo).
       const secondSegment = segments[1]
-      if (secondSegment && resolveDefaultLocale(secondSegment)) {
+      if (secondSegment && defaultLocaleForProjectSegment(secondSegment)) {
         return NextResponse.next()
       }
     } else if (slug && slug !== 'studio') {
       // First segment is a project slug — prefix with the tenant's default locale.
-      const slugLocale = resolveDefaultLocale(slug)
+      const slugLocale = defaultLocaleForProjectSegment(slug)
       if (slugLocale) {
         const alreadyRewritten = (routing.locales as readonly string[]).some(
           (l) => pathname === `/${l}/${slug}` || pathname.startsWith(`/${l}/${slug}/`)
@@ -320,7 +317,7 @@ export async function proxy(request: NextRequest) {
         return NextResponse.next()
       }
     }
-    // Root or unrecognised path — fall through to domainMap → abluo
+    // Root or unrecognised path — fall through to the host lookup → abluo
   }
 
   // ── Admin-surface gate (ADR-015 R6) ──────────────────────────────────────
@@ -380,7 +377,9 @@ export async function proxy(request: NextRequest) {
 
     // Root path — determine locale from NEXT_LOCALE cookie, then Accept-Language,
     // then fall back to the project default.
-    const defaultLocale = resolveDefaultLocale(tenantId) ?? 'en'
+    // `hostScope` is non-null here (tenantId came from it), so this is the
+    // project's own default — not a guess, and not the platform's 'en'.
+    const defaultLocale = hostScope?.defaultLocale ?? 'en'
     let locale = defaultLocale
 
     if (path === '/') {
@@ -411,7 +410,7 @@ export async function proxy(request: NextRequest) {
   // preview.abluo.app/studiomartegani → /it/studiomartegani
   const segments = pathname.split('/').filter(Boolean)
   const firstSegment = segments[0]
-  const defaultLocale = firstSegment ? resolveDefaultLocale(firstSegment) : null
+  const defaultLocale = firstSegment ? defaultLocaleForProjectSegment(firstSegment) : null
 
   if (firstSegment && defaultLocale && !routing.locales.includes(firstSegment as (typeof routing.locales)[number])) {
     const alreadyRewritten = routing.locales.some(

@@ -185,7 +185,68 @@ else
   log_info "No lowercase release tag yet (v2 baseline is v1.0.1)"
 fi
 
-# 11. Sanity content shape (localised field drift) ---------------------------
+# 11. Generated route table vs. Supabase (RENAME.md Step 6) ------------------
+# CRITICAL, not a warning. `src/lib/tenancy/generated/route-config.ts` is the
+# ONLY host/locale/allow-list routing table left in the codebase: `src/proxy.ts`
+# and the `(website)/[tenant]` 404 guard both read it, and it is baked into the
+# edge bundle at build time. If it disagrees with Supabase, a real customer
+# domain either serves the wrong project or serves nothing — the exact failure
+# the three hand-maintained maps in proxy.ts were retired for.
+#
+# Why HERE and not in `npm run build`: the build runs on Vercel, where a
+# service-role key and outbound access to Supabase during the build are not
+# guaranteed. Making every deploy depend on a network call to Supabase converts
+# a drift guard into an availability risk, and a build that cannot reach the
+# database would have to either fail (blocking hotfixes) or skip (guarding
+# nothing). doctor.sh runs on the operator's machine, where `.env.local`
+# exists, and `release.sh` Step 1 `die`s if doctor fails — before it commits,
+# tags, or pushes. That push is what triggers the deploy, so this is the last
+# gate that both HAS credentials and CAN stop a deploy.
+#
+# Skips (warning, not failure) when credentials are absent, matching the
+# content-shape check below: a fresh clone or a CI runner has no .env.local,
+# and a check that hard-fails there teaches people to bypass doctor.
+ROUTE_SCRIPT="$(repo_root)/scripts/generate-route-config.mjs"
+ROUTE_ENV="$(repo_root)/.env.local"
+if ! node_present; then
+  log_info "Skipping route-table drift check (node is not on PATH)"
+elif [ ! -f "$ROUTE_SCRIPT" ]; then
+  log_info "Skipping route-table drift check (scripts/generate-route-config.mjs not present)"
+elif [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ] &&
+     ! grep -qE '^[[:space:]]*SUPABASE_SERVICE_ROLE_KEY=..' "$ROUTE_ENV" 2>/dev/null; then
+  warn "No SUPABASE_SERVICE_ROLE_KEY — route-table drift check skipped (normal on a fresh clone or in CI)"
+else
+  ROUTE_OUT="$(node "$ROUTE_SCRIPT" --check 2>&1)" && ROUTE_RC=0 || ROUTE_RC=$?
+  case "$ROUTE_RC" in
+    0)
+      pass "Route table matches Supabase (${ROUTE_OUT#OK: })"
+      ;;
+    1)
+      fail "Generated route table has drifted from Supabase"
+      printf '\n  %s\n\n' "${C_BOLD}node scripts/generate-route-config.mjs${C_RESET}   ${C_DIM}# regenerate, review the diff, commit it${C_RESET}" >&2
+      printf '%s\n' "$ROUTE_OUT" | sed 's/^/    /' >&2
+      ;;
+    *)
+      # Exit 2 = the check could not ANSWER the question. Two very different
+      # causes land here, and they must not be reported the same way.
+      if printf '%s' "$ROUTE_OUT" | grep -q 'Host collision'; then
+        # Two projects claim one host. This is the one condition that can make
+        # a customer's domain serve another customer's site, and it is a data
+        # fault in Supabase that regenerating cannot fix. Always block.
+        fail "Two projects claim the same host — fix the projects rows in Supabase"
+        printf '%s\n' "$ROUTE_OUT" | sed 's/^/    /' >&2
+      else
+        # Could not reach Supabase at all (network, paused project, 5xx). This
+        # is NOT drift, and failing the release for it would wedge hotfixes on
+        # an outage of a system the release does not otherwise need.
+        warn "Route-table drift check could not run (exit $ROUTE_RC) — release not blocked"
+        printf '%s\n' "$ROUTE_OUT" | tail -3 | sed 's/^/    /' >&2
+      fi
+      ;;
+  esac
+fi
+
+# 12. Sanity content shape (localised field drift) ---------------------------
 # Warning-only by design. Drift lives in the DATASET, not in the commit being
 # released: blocking a code release on pre-existing content state would fail
 # hotfixes for reasons the release cannot fix. The semantic cases (a raw string

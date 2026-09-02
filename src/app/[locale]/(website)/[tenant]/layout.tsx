@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic'
 
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { tenantClient, isKnownProjectSegment, fetchDesignSystemById } from '@/lib/sanity/client'
+import { tenantClient, fetchDesignSystemById } from '@/lib/sanity/client'
+import { isKnownProjectSegment } from '@/lib/tenancy/host-scope'
 import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, siteConfigFaviconQuery, projectIntegrationsQuery, projectModuleConfigQuery } from '@/lib/sanity/queries'
 import { ogImageUrl } from '@/lib/sanity/image'
 import type { LocaleConfig, SupportedLocale, DesignSystem, FontDefinition, WebsiteSiteConfig, BackgroundGraphic, ProjectIntegrations } from '@/lib/sanity/types'
@@ -431,7 +432,7 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
   // routes, typos, dead links falling through to this dynamic segment) instead
   // of rendering an empty page with a 200. This used to be the null branch of
   // `tryTenantToProjectSlug()`; `RENAME.md` Step 5 deleted that lookup, so the
-  // check is now an explicit allow-list — see `isKnownProjectSegment`.
+  // check is `isKnownProjectSegment()`, derived from the generated route table.
   if (!isKnownProjectSegment(tenantId)) notFound()
   const { fetchForTenant } = tenantClient(tenantId)
 

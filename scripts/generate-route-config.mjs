@@ -286,8 +286,9 @@ function renderModule(rows) {
  * against a fresh generation (\`--check\`) as a drift guard, and a timestamp
  * would make every regeneration a diff.
  *
- * NOTHING IMPORTS THIS YET. See \`src/lib/tenancy/host-scope.ts\` for why
- * (expand phase — built, callable, uncalled).
+ * This table is LIVE: \`src/proxy.ts\` resolves every request host through
+ * \`src/lib/tenancy/host-scope.ts\`, which reads it. A wrong row here is a
+ * wrong site at the edge, so regenerate — never hand-edit.
  */
 
 /** How a host came to be in this table. See scripts/generate-route-config.mjs. */
@@ -399,6 +400,14 @@ async function main() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((err) => {
     console.error(err.message)
-    process.exit(1)
+    // Exit 2, NOT 1. `--check` reserves exit 1 for 'the table has drifted from
+    // Supabase' — a real, actionable diff. Everything reaching this catch is a
+    // failure to ANSWER the question: missing credentials, an unreachable or
+    // paused Supabase project, a PostgREST 5xx, or a host collision. Exiting 1
+    // for those made scripts/doctor.sh report an outage as drift and wedge the
+    // release — the exact outcome its own comment says it was built to avoid —
+    // and mislabelled a host collision (two projects claiming one host, the one
+    // condition that can cross-serve a customer) as routine drift.
+    process.exit(2)
   })
 }

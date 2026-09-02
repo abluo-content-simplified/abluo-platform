@@ -12,11 +12,17 @@ import { isStagingHost } from '@/lib/seo/indexability'
 // default, and both rows were dead code producing the same string this line does.
 // (`abluo` had needed a row too, until Step 1 renamed its URL segment.)
 //
-// ⚠️ This still ASSUMES the URL segment equals `projects.slug`, which is true
-// for every live project but rests on the hand-maintained `domainMap` in
-// `src/proxy.ts` rather than on data — divergence (B) in `host-scope.ts`.
-// Step 6 replaces the assumption with `resolveScopeFromHost()` and the
-// generated route table.
+// It ASSUMES the URL segment equals `projects.slug`. Step 6 made that an
+// enforced fact rather than an assumption: `src/proxy.ts` now derives the
+// segment from `projects.slug` via the generated route table
+// (`src/lib/tenancy/generated/route-config.ts`), so there is no longer a
+// hand-maintained map that could make the two disagree.
+//
+// This file deliberately does NOT read that table. Its rows come from Sanity
+// (`projectSlug` + `customDomain`), and the sitemap should describe what is
+// actually PUBLISHED, not what is configured: a project row in Supabase with
+// no content should not produce sitemap URLs. The two sources agreeing is the
+// point of RENAME.md, not something this file should paper over.
 
 interface TenantSitemapData {
   projectSlug: string

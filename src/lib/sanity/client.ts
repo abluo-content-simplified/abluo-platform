@@ -71,50 +71,22 @@ export const sanityClient = createClient({
  */
 export const hasSanityReadToken = Boolean(sanityReadToken)
 
-// ─── Route allow-list: which `[tenant]` URL segments exist at all ────────────
-/**
- * The closed set of legal `[tenant]` URL segments.
- *
- * ── What this replaced, and what it deliberately did NOT keep ───────────────
- * Until Step 5 of `src/lib/tenancy/RENAME.md` this was `TENANT_TO_PROJECT`, a
- * Record whose VALUES were Sanity's separate names for the same projects
- * (`livener` → `livener-main`). Step 4 renamed those documents, so the map
- * became an identity map and the TRANSLATION is gone — with it
- * `lookupSanityProjectSlugByUrlSegment` / `tryLookupSanityProjectSlugByUrlSegment`
- * and their two deprecated aliases.
- *
- * The map had a SECOND job, though, and that job is still real: it was the
- * allow-list the `(website)/[tenant]` route boundary checked before querying,
- * so an unknown segment (a retired flat route, a typo, a dead link falling
- * through to the dynamic segment) produced a clean 404 instead of a 200 with
- * an empty page. Deleting the whole constant would have silently turned every
- * such URL into a soft-404. So the KEYS survive, as keys and nothing else.
- *
- * ⚠️ It is still a hand-maintained list, which is the disease, not the cure:
- * `amelie` is a live project and is absent (as it was from the map it replaces),
- * so `/en/amelie` 404s. Step 6 deletes this outright — `resolveScopeFromHost()`
- * and the generated `route-config.ts` derive the same set from Supabase, with a
- * `--check` in the deploy pipeline so it cannot drift.
- */
-const KNOWN_PROJECT_SEGMENTS: ReadonlySet<string> = new Set([
-  'livener',
-  'studiomartegani',
-  'abluo',
-  'nologo',
-  // Onboarded 2026-09-01.
-  'hoffmann',
-])
-
-/**
- * True when `segment` is a `[tenant]` URL segment this deployment serves.
- *
- * Route boundaries call this and `notFound()` on false. It is a VALIDITY check
- * only — it performs no namespace crossing, because since Step 4 there is
- * nothing to cross: a legal segment IS the project's one name.
- */
-export function isKnownProjectSegment(segment: UrlProjectSegment): boolean {
-  return KNOWN_PROJECT_SEGMENTS.has(unbrand(segment))
-}
+// ─── Route allow-list: moved out of this file ────────────────────────────────
+// `isKnownProjectSegment()` now lives in `@/lib/tenancy/host-scope`, derived
+// from the generated route table.
+//
+// Its history in one paragraph, because it has been deleted by accident once
+// already: it began as the null branch of `tryTenantToProjectSlug()`, whose map
+// `TENANT_TO_PROJECT` did TWO jobs — translate a URL segment to Sanity's
+// separate name for the project, and answer "is this segment a project at all?".
+// RENAME.md Step 4 made the two names one, so Step 5 deleted the translation
+// and kept the KEYS as a hand-typed `KNOWN_PROJECT_SEGMENTS` set. Step 6 could
+// then delete that too: the same set is a projection of Supabase's `projects`
+// table, which `scripts/generate-route-config.mjs` already emits.
+//
+// The allow-list is not optional and it is not cosmetic: the `(website)/[tenant]`
+// layout calls it and `notFound()`s on false, so an unknown segment produces a
+// clean 404 rather than a 200 with an empty page.
 
 // ─── Runtime tenant-scope guard (finding I-9) ────────────────────────────────
 
@@ -235,11 +207,17 @@ export function tenantScopeEnforcement(
  * `src/lib/tenancy/RENAME.md` established — so the value is bound to
  * `$projectSlug` verbatim, with no lookup and no translation.
  *
- * ⚠️ The union, not a cast, is the honest shape while `UrlProjectSegment` is
- * still a separate AUTHORITY (`domainMap` in `src/proxy.ts`, hand-written).
- * Step 6 collapses that brand and this parameter narrows to `ProjectSlug`.
- * This function no longer THROWS on an unrecognised value: validity is the
- * route boundary's job, via `isKnownProjectSegment()` above.
+ * ⚠️ The union, not a cast, is still the honest shape. Step 6 removed the
+ * hand-written AUTHORITY behind `UrlProjectSegment` — the segment is now a
+ * projection of `projects.slug` from the generated route table — but it did
+ * NOT collapse the brand, deliberately: the two remain different TRUST levels.
+ * A `UrlProjectSegment` is an unvalidated path parameter from the open
+ * internet; a `ProjectSlug` has been checked. Merging them would delete the
+ * type-level reason the route boundary has to call `isKnownProjectSegment()`
+ * at all. Collapsing it is a separate change with its own review.
+ * This function does not THROW on an unrecognised value: validity is the
+ * route boundary's job, via `isKnownProjectSegment()`
+ * (`@/lib/tenancy/host-scope`).
  */
 export function tenantClient(tenantSlug: UrlProjectSegment | ProjectSlug) {
   if (!tenantSlug) {

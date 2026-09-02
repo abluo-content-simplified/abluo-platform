@@ -20,3 +20,7 @@ dist/static/*.json
 # edited file can leave a .fuse_hidden* behind that nothing is able to remove.
 # Untracked and inert; ignored so it can never be committed by `git add -A`.
 .fuse_hidden*
+
+# Local safety copies: Sanity dataset exports and pre-migration document
+# snapshots. Real content, sometimes large, never part of a build.
+backups/

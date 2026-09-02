@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "routes:generate": "node scripts/generate-route-config.mjs",
+    "routes:check": "node scripts/generate-route-config.mjs --check"
   },
   "dependencies": {
     "@sanity/client": "^6",

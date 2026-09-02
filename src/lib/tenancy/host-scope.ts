@@ -1,15 +1,20 @@
 /**
- * Host → project scope resolution (EXPAND phase — built, callable, UNCALLED).
+ * Host → project scope resolution. THE routing table the edge reads.
  *
- * ── Read this first: nothing imports this module ─────────────────────────────
- * This is the expand half of an expand/migrate/contract, and it is deliberately
- * inert. No route, layout, page or middleware imports it; `src/proxy.ts` is
- * untouched and still resolves hosts with its own three hand-maintained maps.
- * That is the same shape `./project-scope.ts` was landed in during its expand
- * phase: correct, tested, and reachable only from its tests, so that the risky
- * part (flipping the callers) is a separate, revertible change with its own
- * review. If you are about to "just wire it up while you're in here" — don't;
- * read the divergence register below first, because flipping is NOT a no-op.
+ * ── Status: LIVE (RENAME.md Step 6 flipped the callers) ──────────────────────
+ * `src/proxy.ts` resolves every request through this module: hosts via
+ * `resolveScopeFromHost()`, path-based project segments via
+ * `resolveScopeFromProjectSegment()` / `defaultLocaleForProjectSegment()`, and
+ * the `(website)/[tenant]` route boundary's 404 guard via
+ * `isKnownProjectSegment()`. There is no hand-maintained routing table left
+ * anywhere in the request path.
+ *
+ * Everything below is derived from `./generated/route-config.ts`, which is
+ * generated from the Supabase `projects`/`tenants` tables by
+ * `scripts/generate-route-config.mjs`. Drift is caught by
+ * `node scripts/generate-route-config.mjs --check`, wired as a CRITICAL check
+ * in `scripts/doctor.sh` (which `scripts/release.sh` runs, and dies on, before
+ * it commits, tags or pushes), and echoed by `__tests__/route-config-drift.test.ts`.
  *
  * ── What problem this solves ─────────────────────────────────────────────────
  * The route is `/[locale]/[tenant]/...`. That segment is named `tenant` but is
@@ -17,105 +22,107 @@
  * `nologo`, which is a PROJECT slug whose TENANT is `freeriders`. So the
  * segment is misnamed rather than misdesigned: it is already project-grain.
  *
- * What the platform has never had is a way to answer "which TENANT is this?"
- * at the edge without guessing. `proxy.ts` cannot: `resolveTenant()` returns a
- * URL slug that is really a project slug, and there is no tenant anywhere in
- * the request path. Every tenant-owned lookup downstream (forms above all) then
- * has to re-derive ownership from Sanity. This module resolves BOTH grains, at
- * the edge, from one lookup, with no guessing anywhere.
+ * What the platform never had is a way to answer "which TENANT is this?" at the
+ * edge without guessing. The old `resolveTenant()` could not: it returned a URL
+ * slug that was really a project slug, and there was no tenant anywhere in the
+ * request path. Every tenant-owned lookup downstream (forms above all) then had
+ * to re-derive ownership from Sanity. This module resolves BOTH grains, at the
+ * edge, from one lookup, with no guessing anywhere.
  *
  * ── Why a copy of the database is acceptable here ────────────────────────────
  * Edge middleware cannot query Supabase per request, so a copy near the edge is
  * unavoidable. The rule agreed with Tom is: one source of truth (Supabase);
- * every other copy is GENERATED at build time, never typed by a human. This
- * module reads `./generated/route-config.ts`, which is exactly that — see
- * `scripts/generate-route-config.mjs`, and the drift test that fails if the
- * checked-in copy stops matching the database.
+ * every other copy is GENERATED at build time, never typed by a human.
  *
  * ── Decision D-2: ONE PROJECT = ONE HOST ─────────────────────────────────────
  * A customer with several projects gets `project1.customer.com`,
  * `project2.customer.com` — never `customer.com/project1`. Path-mode was
  * rejected because a project segment collides permanently with client-authored
  * page slugs, and because it shares one origin (cookies, localStorage, CSP)
- * across a customer's projects. This module therefore keys on HOST alone and
- * never inspects the path. The generator enforces the other half: two projects
- * claiming one host is a generation-time throw, not a runtime precedence rule.
+ * across a customer's projects. `resolveScopeFromHost()` therefore keys on HOST
+ * alone and never inspects the path. The generator enforces the other half: two
+ * projects claiming one host is a generation-time throw, not a runtime
+ * precedence rule.
  *
- * ── What the CONTRACT phase will delete ──────────────────────────────────────
- * Once callers are flipped and the divergences below are settled:
- *   1. `domainMap`                (src/proxy.ts ~:32)  — superseded by
+ * (`resolveScopeFromProjectSegment()` below is NOT path-mode routing. It exists
+ * only for the platform's own path-based dev/preview surfaces —
+ * `preview.abluo.app/<slug>`, `dev.abluo.app/<slug>` — and for the internal
+ * rewrite target `/[locale]/[tenant]`, neither of which is a customer host.)
+ *
+ * ── What the CONTRACT phase DELETED ──────────────────────────────────────────
+ *   1. `domainMap`                (src/proxy.ts) — superseded by
  *      `GENERATED_HOST_ROUTES` rows with hostKind 'custom-domain'/'platform-alias'.
- *   2. `resolveSanityProjectSlug` (src/proxy.ts ~:56)  — an incomplete second
- *      copy of `TENANT_TO_PROJECT`; it is dead the moment the URL segment and
- *      `projects.slug` are the same namespace.
- *   3. `resolveDefaultLocale`     (src/proxy.ts ~:73)  — superseded by
- *      `defaultLocale` on each row. Its comment already asks a human to "keep
- *      in sync with the projects table in Supabase"; this replaces the human.
- *   4. `TENANT_TO_PROJECT`        (src/lib/sanity/client.ts ~:71) — the
- *      URL-slug → Sanity-projectSlug translation. It survives only until the
- *      `livener` / `livener-main` split is reconciled; see divergence (D) below.
- * `resolveTenant()` itself stays, gutted to a call into this module.
+ *   2. `resolveSanityProjectSlug` (src/proxy.ts) — deleted in Step 5. It had
+ *      NO callers, and was dead the moment the URL segment and `projects.slug`
+ *      became one namespace.
+ *   3. `resolveDefaultLocale`     (src/proxy.ts) — superseded by `defaultLocale`
+ *      on each row, read through `defaultLocaleForProjectSegment()`. Its comment
+ *      asked a human to "keep in sync with the projects table in Supabase";
+ *      the generator replaced the human.
+ *   4. `TENANT_TO_PROJECT`        (src/lib/sanity/client.ts) — deleted in
+ *      Step 5: Step 4 renamed the Sanity documents, so it was an identity map.
+ *      Its surviving half, the hand-typed `KNOWN_PROJECT_SEGMENTS` allow-list,
+ *      is replaced by `isKnownProjectSegment()` below.
+ * `resolveTenant()` in proxy.ts survives, gutted to a call into this module.
  *
- * ── KNOWN DIVERGENCES FROM proxy.ts TODAY ────────────────────────────────────
- * This module is NOT byte-equivalent to `proxy.ts` and pretending otherwise
- * would be the dangerous thing. Four differences, all deliberate, all verified
- * against the live database on 2026-08-31. They are asserted explicitly in
- * `__tests__/host-scope.test.ts` so they cannot change unnoticed.
+ * ── DIVERGENCES FROM THE PRE-STEP-6 proxy.ts ─────────────────────────────────
+ * This module was never byte-equivalent to the maps it replaced. The
+ * differences are deliberate, and each is asserted in
+ * `__tests__/host-scope.test.ts` so it cannot change unnoticed.
  *
- * (A) `abluo.app` / `dev.abluo.app`.  ✅ RESOLVED — no longer a divergence.
- *     HISTORY, kept because it was a flip-time BLOCKER and its absence should
- *     not be mistaken for it never having existed: proxy.ts used to resolve
- *     these hosts to a longer URL slug of proxy.ts's own invention (spelled
- *     out in `./RENAME.md` §0) while Supabase called the project `abluo`, so
- *     one project carried three names — that URL segment, Supabase `abluo`,
- *     Sanity `abluo`. Flipping proxy.ts onto this module would have renamed the
- *     platform's own site to `/en/abluo` underneath it, and
- *     `resolveDefaultLocale('abluo')` returned null.
- *     Step 1 of `./RENAME.md` settled it the way this note asked — by renaming
- *     the URL segment to Supabase's `abluo` (safe: the segment is an internal
- *     rewrite target, never visible in a browser, and appears in no Sanity
- *     document). proxy.ts and this module now agree on `abluo.app` and
- *     `dev.abluo.app`, slug AND locale; `__tests__/host-scope.test.ts` guards
- *     that agreement.
- *     The only project-name gap left anywhere is Sanity's `livener` /
- *     `livener-main` (and `studiomartegani-main`) — divergence (D) below,
- *     Steps 3-5 of `./RENAME.md`.
+ * (A) `abluo.app` / `dev.abluo.app`.  ✅ RESOLVED by Step 1 — the URL segment
+ *     was renamed from a longer invention of proxy.ts's own to Supabase's
+ *     `abluo` (safe: the segment is an internal rewrite target, never visible
+ *     in a browser, and appears in no Sanity document). Kept in this list
+ *     because it was a flip-time BLOCKER, and its absence should not be
+ *     mistaken for it never having existed.
  *
- * (B) `ch-psicoterapeuta.com` (project `hoffmann`) is a live `custom_domain` in
- *     Supabase and is in NONE of proxy.ts's three maps, so proxy.ts resolves it
- *     to null and serves it the platform routes. This module resolves it. That
- *     is a fix, not a regression — but it IS a behaviour change on a live host,
- *     so it belongs in the flip's test plan, not in its footnotes.
+ * (B) `ch-psicoterapeuta.com` (project `hoffmann`).  ✅ RESOLVED, and the note
+ *     that used to live here was STALE by the time Step 6 ran. It said the host
+ *     was in none of proxy.ts's maps. By 2026-09-02 somebody had hand-added it
+ *     to BOTH `domainMap` and `resolveDefaultLocale` (and `hoffmann` to
+ *     `KNOWN_PROJECT_SEGMENTS`, "Onboarded 2026-09-01"), so the flip is a no-op
+ *     for that host. That hand-add is itself the argument for this module: the
+ *     maps were only correct because somebody remembered three of them.
  *
- * (C) Unknown `*.preview.abluo.app` and `*.localhost` subdomains. proxy.ts
- *     GUESSES: it returns whatever the subdomain says, for any subdomain, and
- *     lets the route 404 later. This module returns null for a subdomain that
- *     is not a known project. Fail-closed is the house rule (`project-scope.ts`:
- *     "null MUST mean select nothing, never select everything"), and a guessed
- *     project slug at the edge is precisely how one tenant's host can be made
- *     to render another tenant's route.
+ *     The project that WAS broken is `amelie`: an active project with no
+ *     `custom_domain`, absent from `resolveDefaultLocale` and from
+ *     `KNOWN_PROJECT_SEGMENTS`, so `amelie.preview.abluo.app` resolved a
+ *     GUESSED slug (divergence C) and then 404'd at the route boundary. It now
+ *     resolves and renders. That is the one genuine live behaviour change.
  *
- * (D) Sanity `projectSlug`. This module returns `projects.slug` from Supabase
- *     (`livener`), NOT the Sanity `project.projectSlug` (`livener-main`). It
- *     deliberately does not carry a third field for the Sanity name: adding one
- *     would make this module the fourth copy of `TENANT_TO_PROJECT` instead of
- *     the thing that retires it. Callers that need Sanity's name keep using
- *     `TENANT_TO_PROJECT` until that split is reconciled.
+ * (C) Unknown `*.preview.abluo.app` and `*.localhost` subdomains. proxy.ts used
+ *     to GUESS: it returned whatever the subdomain said, for any subdomain, and
+ *     let the route 404 later. This module returns null for a subdomain that is
+ *     not a known ACTIVE project. Fail-closed is the house rule
+ *     (`project-scope.ts`: "null MUST mean select nothing, never select
+ *     everything"), and a guessed project slug at the edge is precisely how one
+ *     tenant's host can be made to render another tenant's route.
+ *
+ * (D) Sanity `projectSlug`.  ✅ RESOLVED by Steps 4 and 5. `projects.slug` and
+ *     Sanity's `projectSlug` are now the same string for every project, so the
+ *     `projectSlug` this module returns is BOTH. There is no third field and no
+ *     translation left to carry.
  *
  * ── What this module does NOT do ─────────────────────────────────────────────
- *   - No path parsing. `preview.abluo.app/<slug>` and `dev.abluo.app/<slug>`
- *     are PATH-based routing and stay in proxy.ts; a host resolver that also
- *     read paths would re-create the collision D-2 rejects.
+ *   - No host-shaped guessing. See (C).
  *   - No network, no Supabase, no async. It must run in the edge runtime inside
  *     a request, so it is a pure synchronous lookup over a frozen table.
  *   - No locale negotiation. `defaultLocale` is the project's default; the
- *     cookie/Accept-Language negotiation in proxy.ts:395 is policy and stays
- *     where the request headers are.
+ *     cookie/Accept-Language negotiation in proxy.ts is policy and stays where
+ *     the request headers are.
  *   - No inactive projects. A row with `status !== 'active'` is present in the
- *     table but resolves to null — `t42` exists and must not serve.
+ *     table but resolves to null everywhere — `t42` exists and must not serve.
  */
 
-import { asSupabaseProjectSlug, asTenantSlug, type SupabaseProjectSlug, type TenantSlug } from './ids'
+import {
+  asSupabaseProjectSlug,
+  asTenantSlug,
+  unbrand,
+  type SupabaseProjectSlug,
+  type TenantSlug,
+  type UrlProjectSegment,
+} from './ids'
 import {
   GENERATED_HOST_ROUTES,
   GENERATED_PLATFORM_HOSTS,
@@ -259,6 +266,99 @@ export function isPlatformHost(host: string | null | undefined): boolean {
  */
 export function hostsForProjectId(projectId: string): readonly GeneratedHostRoute[] {
   return GENERATED_HOST_ROUTES.filter((route) => route.projectId === projectId)
+}
+
+// ─── Project URL segments ────────────────────────────────────────────────────
+
+/**
+ * `projects.slug` → the scope it names, ACTIVE projects only.
+ *
+ * The `[tenant]` URL segment is project-grain (see the header), and since
+ * RENAME.md Step 4 a legal segment IS `projects.slug` — there is no second
+ * namespace to translate into. So this index answers two questions with one
+ * lookup: "is this segment a project at all?" and "what is its default
+ * locale?". Both used to be hand-typed, in two different files that disagreed
+ * (`resolveDefaultLocale` in proxy.ts knew five projects, `KNOWN_PROJECT_SEGMENTS`
+ * in sanity/client.ts knew the same five, and Supabase had six active ones).
+ *
+ * Built from the same generated rows as the host index rather than from a
+ * second generated list: every project emits at least a `<slug>.localhost` row,
+ * so no project can be missing from it, and there is nothing extra to keep in
+ * step. Inactive projects are excluded here for the same reason
+ * `resolveScopeFromHost()` excludes them — `t42` must not serve on any surface,
+ * host-based or path-based.
+ */
+const SCOPE_BY_PROJECT_SEGMENT: ReadonlyMap<string, HostScope> = (() => {
+  const index = new Map<string, HostScope>()
+  for (const route of GENERATED_HOST_ROUTES) {
+    if (route.status !== 'active') continue
+    if (index.has(route.projectSlug)) continue
+    index.set(route.projectSlug, {
+      tenantSlug: asTenantSlug(route.tenantSlug),
+      projectSlug: asSupabaseProjectSlug(route.projectSlug),
+      projectId: route.projectId,
+      defaultLocale: route.defaultLocale,
+    })
+  }
+  return index
+})()
+
+/**
+ * Resolve a `[tenant]` URL segment to its project scope, or `null`.
+ *
+ * For the platform's own PATH-based surfaces (`preview.abluo.app/<slug>`,
+ * `dev.abluo.app/<slug>`) and for the internal `/[locale]/[tenant]` rewrite
+ * target. NOT a customer routing mode — see decision D-2 in the header.
+ *
+ * Exact match only: no normalisation, no case-folding, no trimming. A URL
+ * segment is compared byte-for-byte against `projects.slug`, because
+ * `/en/Livener` and `/en/livener` must not be two ways of reaching one site.
+ */
+export function resolveScopeFromProjectSegment(
+  segment: string | null | undefined
+): HostScope | null {
+  if (typeof segment !== 'string' || segment.length === 0) return null
+  return SCOPE_BY_PROJECT_SEGMENT.get(segment) ?? null
+}
+
+/**
+ * The default locale for a project URL segment, or `null` when the segment is
+ * not an active project.
+ *
+ * Replaces `resolveDefaultLocale()` in proxy.ts, which did the same two jobs
+ * from a hand-typed Record: supply a locale, AND act as the "is this a project
+ * slug?" test that stops `/login` and `/unauthorized` being rewritten as if
+ * they were sites. `null` still means "not a project" — callers must not
+ * substitute a default locale for it, or that guard disappears.
+ */
+export function defaultLocaleForProjectSegment(
+  segment: string | null | undefined
+): string | null {
+  return resolveScopeFromProjectSegment(segment)?.defaultLocale ?? null
+}
+
+/**
+ * True when `segment` is a `[tenant]` URL segment this deployment serves.
+ *
+ * This is the `(website)/[tenant]` route boundary's 404 guard: the layout and
+ * `generateMetadata` call it and `notFound()` on false, so an unknown segment
+ * (a retired flat route, a typo, a dead link falling through to the dynamic
+ * segment) produces a clean 404 rather than a 200 with an empty page.
+ *
+ * ── Lineage, because deleting this by accident is a silent regression ────────
+ * It began as the null branch of `tryTenantToProjectSlug()`, survived Step 5 as
+ * the hand-typed `KNOWN_PROJECT_SEGMENTS` set in `src/lib/sanity/client.ts`,
+ * and is now derived from the generated table. The behaviour it must preserve
+ * has never changed: FALSE for anything that is not a project, so the caller
+ * 404s. The set it is computed over got one member wider in Step 6 — `amelie`
+ * is an active project and was missing from the hand-typed list.
+ *
+ * Takes the branded `UrlProjectSegment` deliberately: the caller has to have
+ * passed the raw param through `asUrlProjectSegment()` at the trust boundary
+ * before it can ask this question.
+ */
+export function isKnownProjectSegment(segment: UrlProjectSegment): boolean {
+  return SCOPE_BY_PROJECT_SEGMENT.has(unbrand(segment))
 }
 
 export type { GeneratedHostRoute }
