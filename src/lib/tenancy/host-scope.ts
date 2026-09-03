@@ -111,8 +111,11 @@
  *   - No locale negotiation. `defaultLocale` is the project's default; the
  *     cookie/Accept-Language negotiation in proxy.ts is policy and stays where
  *     the request headers are.
- *   - No inactive projects. A row with `status !== 'active'` is present in the
- *     table but resolves to null everywhere — `t42` exists and must not serve.
+ *   - No routing for a project whose status does not serve on the host being
+ *     asked about. The row stays in the table either way; `servesOnHostKind()`
+ *     decides. `t42` is `inactive` and resolves to null everywhere; a `preview`
+ *     project resolves on its preview and localhost hosts only; a `draft`
+ *     project resolves nowhere. Only `active` serves on a custom domain.
  */
 
 import {
@@ -126,6 +129,7 @@ import {
 import {
   GENERATED_HOST_ROUTES,
   GENERATED_PLATFORM_HOSTS,
+  type GeneratedHostKind,
   type GeneratedHostRoute,
 } from './generated/route-config'
 
@@ -145,6 +149,100 @@ export interface HostScope {
   projectId: string
   /** `projects.default_locale`. A default, not a negotiated locale. */
   defaultLocale: string
+}
+
+// ─── The status ladder ───────────────────────────────────────────────────────
+
+/**
+ * The four values of `projects.status`.
+ *
+ * Mirrors the Supabase check constraint:
+ *   `status text not null default 'draft'
+ *    check (status in ('draft','preview','active','inactive'))`
+ *
+ * The row's `status` arrives from the generated table typed as a bare `string`
+ * (the generator copies whatever the column holds, so the table cannot promise
+ * more than the database does). This union is the set this module KNOWS; a
+ * value outside it is handled by `servesOnHostKind()` as "not served".
+ */
+export const PROJECT_STATUSES = ['draft', 'preview', 'active', 'inactive'] as const
+
+export type ProjectStatus = (typeof PROJECT_STATUSES)[number]
+
+/** Narrow a raw `projects.status` string to the union this module understands. */
+export function isProjectStatus(value: string): value is ProjectStatus {
+  return (PROJECT_STATUSES as readonly string[]).includes(value)
+}
+
+/**
+ * THE routing rule. Does a project with this `status` serve on this `hostKind`?
+ *
+ * This is the single place the status ladder is expressed. Every status test in
+ * this module goes through it, so the ladder cannot be half-applied on one
+ * surface and not another.
+ *
+ * ── The ladder (approved by Tom, 2026-09-03) ─────────────────────────────────
+ *
+ *   status     custom-domain  platform-alias  preview-subdomain  localhost-subdomain
+ *   ─────────────────────────────────────────────────────────────────────────────
+ *   draft            ✗              ✗                ✗                   ✗
+ *   preview          ✗              ✗                ✓                   ✓
+ *   active           ✓              ✓                ✓                   ✓
+ *   inactive         ✗              ✗                ✗                   ✗
+ *
+ *   - `draft` — serves NOWHERE. It is the column DEFAULT, so this is the state
+ *     a just-inserted project is born in. Before this predicate existed, that
+ *     was indistinguishable from `inactive`, which made a new project silently
+ *     unroutable even on its own preview host.
+ *
+ *   - `preview` — serves ONLY on the two non-public surfaces: the project's
+ *     `<slug>.preview.abluo.app` host and its `<slug>.localhost` dev host. The
+ *     custom domain and any platform alias stay dark. This is the state that
+ *     did not exist before: "my client can review it, the public cannot".
+ *
+ *   - `active` — serves everywhere, custom domain included. Unchanged.
+ *
+ *   - `inactive` — serves NOWHERE. Retired. `t42` is the live example.
+ *
+ * ── `draft` and `inactive` are deliberately IDENTICAL here ───────────────────
+ * There is no routing difference between them and there is not meant to be.
+ * They differ only in what they tell a human reading the `projects` table:
+ * `draft` is "not launched yet", `inactive` is "launched once, retired". Do not
+ * try to give them different routing behaviour to justify being two values —
+ * the distinction is editorial, and it is worth keeping for that alone.
+ *
+ * ── FAIL CLOSED ──────────────────────────────────────────────────────────────
+ * An unrecognised status (someone widens the DB check constraint and forgets
+ * this file) returns FALSE. It never falls through to serving. The `never`
+ * assignment in the default branch makes the same mistake a COMPILE error the
+ * moment the new value is added to `PROJECT_STATUSES` above, so the two halves
+ * are: a type error if you update the union, and a dark site if you do not.
+ * Neither is a leak.
+ */
+export function servesOnHostKind(status: string, hostKind: GeneratedHostKind): boolean {
+  if (!isProjectStatus(status)) return false
+
+  switch (status) {
+    case 'active':
+      // Everywhere, custom domain included.
+      return true
+    case 'preview':
+      // Non-public surfaces only. The customer's own domain stays dark.
+      return hostKind === 'preview-subdomain' || hostKind === 'localhost-subdomain'
+    case 'draft':
+      // Not launched yet. Same routing as `inactive`, different meaning.
+      return false
+    case 'inactive':
+      // Retired. Same routing as `draft`, different meaning.
+      return false
+    default: {
+      // Unreachable while the union above matches the DB check constraint.
+      // If it stops matching, this line stops compiling.
+      const exhaustive: never = status
+      void exhaustive
+      return false
+    }
+  }
 }
 
 // ─── Normalisation ───────────────────────────────────────────────────────────
@@ -211,8 +309,11 @@ const PLATFORM_HOST_SET: ReadonlySet<string> = new Set(
  *
  * Pure, synchronous, edge-safe. Returns `null` for: an unknown host, a known
  * platform host (`admin.abluo.app`, bare `localhost`, bare `preview.abluo.app`),
- * and a host whose project is not `active`. It NEVER guesses — there is no
- * subdomain-shaped fallback, no "strip the suffix and hope", no default project.
+ * and a host whose project's `status` does not serve on that host's `hostKind`
+ * — see `servesOnHostKind()` for the ladder. It is NOT an active-only test any
+ * more: a `preview` project serves on its preview and localhost hosts and stays
+ * dark on its custom domain. It NEVER guesses — there is no subdomain-shaped
+ * fallback, no "strip the suffix and hope", no default project.
  *
  * `null` must be treated as "this host has no project", never as "use the
  * platform default". Callers that need to tell an unknown host from a platform
@@ -222,7 +323,7 @@ const PLATFORM_HOST_SET: ReadonlySet<string> = new Set(
 export function resolveScopeFromHost(host: string | null | undefined): HostScope | null {
   const route = lookupHostRoute(host)
   if (!route) return null
-  if (route.status !== 'active') return null
+  if (!servesOnHostKind(route.status, route.hostKind)) return null
   return {
     tenantSlug: asTenantSlug(route.tenantSlug),
     projectSlug: asSupabaseProjectSlug(route.projectSlug),
@@ -233,12 +334,13 @@ export function resolveScopeFromHost(host: string | null | undefined): HostScope
 
 /**
  * The raw generated row for a host, `status` and `hostKind` included, ignoring
- * the active-only rule.
+ * the status ladder entirely.
  *
  * For diagnostics, admin tooling and tests — an admin UI wants to say "t42 is
- * configured on t42.preview.abluo.app but is inactive", which
- * `resolveScopeFromHost` cannot express. NOT for routing: routing must go
- * through `resolveScopeFromHost` so the inactive check cannot be forgotten.
+ * configured on t42.preview.abluo.app but is inactive", or "this project is in
+ * preview, so it answers here but not on its domain", neither of which
+ * `resolveScopeFromHost` can express. NOT for routing: routing must go through
+ * `resolveScopeFromHost` so `servesOnHostKind()` cannot be forgotten.
  */
 export function lookupHostRoute(
   host: string | null | undefined
@@ -271,7 +373,8 @@ export function hostsForProjectId(projectId: string): readonly GeneratedHostRout
 // ─── Project URL segments ────────────────────────────────────────────────────
 
 /**
- * `projects.slug` → the scope it names, ACTIVE projects only.
+ * `projects.slug` → the scope it names, for projects that serve on the
+ * platform's PATH-based preview surfaces.
  *
  * The `[tenant]` URL segment is project-grain (see the header), and since
  * RENAME.md Step 4 a legal segment IS `projects.slug` — there is no second
@@ -284,14 +387,49 @@ export function hostsForProjectId(projectId: string): readonly GeneratedHostRout
  * Built from the same generated rows as the host index rather than from a
  * second generated list: every project emits at least a `<slug>.localhost` row,
  * so no project can be missing from it, and there is nothing extra to keep in
- * step. Inactive projects are excluded here for the same reason
- * `resolveScopeFromHost()` excludes them — `t42` must not serve on any surface,
- * host-based or path-based.
+ * step.
+ *
+ * ── WHICH HOST KIND DOES A SEGMENT GET JUDGED AT? ────────────────────────────
+ * `servesOnHostKind()` needs a host kind and this map has none — it is keyed by
+ * project segment, and one segment is reachable from several surfaces. It is
+ * evaluated at `PROJECT_SEGMENT_HOST_KIND` = `'preview-subdomain'`, because
+ * every consumer of this map is a preview-grade surface, never a customer's
+ * public domain:
+ *
+ *   1. `preview.abluo.app/<slug>` — the preview platform. Same surface, same
+ *      audience and same DNS as `<slug>.preview.abluo.app`; it would be
+ *      incoherent for the two spellings of "preview" to disagree.
+ *   2. `dev.abluo.app/<slug>` — the platform's internal dev surface.
+ *   3. `isKnownProjectSegment()` — the `(website)/[tenant]` route boundary's
+ *      404 guard, which sees the INTERNAL rewrite target `/[locale]/[tenant]`
+ *      after proxy.ts has already resolved and approved the host through
+ *      `resolveScopeFromHost()`. This one is load-bearing: if the map excluded
+ *      `preview` projects, a preview host would resolve at the edge, rewrite,
+ *      and then be 404'd by the layout — the ladder would be defeated one hop
+ *      downstream. The guard must be at least as permissive as the host
+ *      resolver on the most permissive host kind the resolver can approve for a
+ *      non-`active` project, and that kind is `preview-subdomain`.
+ *
+ * So the two status tests in this module are CONSISTENT, not identical: the
+ * host resolver judges each host at its own kind, and this map judges a segment
+ * at the kind all three of its callers actually are. `draft` and `inactive` are
+ * excluded here exactly as they are excluded from every host — `t42` must not
+ * serve on any surface, host-based or path-based.
+ *
+ * ── Known, PRE-EXISTING and unchanged: the fall-through at proxy.ts:446 ──────
+ * A host proxy.ts cannot resolve (an unknown domain someone CNAMEs at the
+ * deployment) falls through to a last path-segment branch that also reads this
+ * map, so `whatever.example.com/<slug>` can path-route to a project. That was
+ * already true for every `active` project before this change and is out of
+ * scope here; it now extends to `preview` projects too. If that matters, the
+ * fix belongs in proxy.ts (do not path-route on an unresolved host), not here.
  */
+const PROJECT_SEGMENT_HOST_KIND: GeneratedHostKind = 'preview-subdomain'
+
 const SCOPE_BY_PROJECT_SEGMENT: ReadonlyMap<string, HostScope> = (() => {
   const index = new Map<string, HostScope>()
   for (const route of GENERATED_HOST_ROUTES) {
-    if (route.status !== 'active') continue
+    if (!servesOnHostKind(route.status, PROJECT_SEGMENT_HOST_KIND)) continue
     if (index.has(route.projectSlug)) continue
     index.set(route.projectSlug, {
       tenantSlug: asTenantSlug(route.tenantSlug),
@@ -323,7 +461,8 @@ export function resolveScopeFromProjectSegment(
 
 /**
  * The default locale for a project URL segment, or `null` when the segment is
- * not an active project.
+ * not a project this deployment serves on its preview surfaces (see the map
+ * above: `active` and `preview` qualify, `draft` and `inactive` do not).
  *
  * Replaces `resolveDefaultLocale()` in proxy.ts, which did the same two jobs
  * from a hand-typed Record: supply a locale, AND act as the "is this a project
@@ -361,4 +500,4 @@ export function isKnownProjectSegment(segment: UrlProjectSegment): boolean {
   return SCOPE_BY_PROJECT_SEGMENT.has(unbrand(segment))
 }
 
-export type { GeneratedHostRoute }
+export type { GeneratedHostRoute, GeneratedHostKind }

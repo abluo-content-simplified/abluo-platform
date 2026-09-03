@@ -40,7 +40,12 @@ export interface GeneratedHostRoute {
   projectId: string
   /** `projects.default_locale`. */
   defaultLocale: string
-  /** `projects.status`. Only 'active' is served; see host-scope.ts. */
+  /**
+   * `projects.status`: 'draft' | 'preview' | 'active' | 'inactive'.
+   * What each one serves depends on the ROW'S `hostKind` — see
+   * `servesOnHostKind()` in host-scope.ts. In short: 'active' everywhere,
+   * 'preview' on preview/localhost hosts only, 'draft' and 'inactive' nowhere.
+   */
   status: string
 }
 

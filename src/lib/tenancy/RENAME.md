@@ -270,15 +270,50 @@ step 3 deployed, the data can sit in either state indefinitely.
 - [ ] Step 6 — delete `KNOWN_PROJECT_SEGMENTS` (`src/lib/sanity/client.ts`) and `projectScopeSlugFromUrlSegment` (`src/lib/forms/render-mapping.ts`), the last two hand-maintained URL-segment facts
 - [x] Step 7 — `tenants.domain` dropped; `projects.slug` unique per tenant
 
-### Step 6 — open decisions, neither resolved
+### Step 6 — open decisions
 
-1. **Only `status = 'active'` is served.** `projects.status` allows
-   `draft | preview | active | inactive` and **`draft` is the column default**, so a
-   newly inserted project is born unroutable — including on its own
-   `<slug>.preview.abluo.app` host and in local dev. No live impact today (all 7 rows
-   are active or inactive), but it breaks the NEXT onboarding, silently, in the
-   workflow the preview host exists for. Either serve `preview` on preview/localhost
-   hosts, or write down that onboarding requires `status='active'` first.
+1. ~~**Only `status = 'active'` is served.**~~ ✅ **RESOLVED 2026-09-03 — the status
+   ladder.** All four values of `projects.status` now mean four different things, and the
+   rule lives in ONE exported, documented predicate,
+   `servesOnHostKind(status, hostKind)` in `host-scope.ts`:
+
+   | status | custom-domain | platform-alias | preview-subdomain | localhost-subdomain |
+   |---|---|---|---|---|
+   | `draft` | ✗ | ✗ | ✗ | ✗ |
+   | `preview` | ✗ | ✗ | ✓ | ✓ |
+   | `active` | ✓ | ✓ | ✓ | ✓ |
+   | `inactive` | ✗ | ✗ | ✗ | ✗ |
+
+   - `preview` is the state that did not exist before: **the client can review the site
+     on `<slug>.preview.abluo.app` and in local dev while the custom domain stays dark.**
+     That is the workflow the preview host exists for, and it was unreachable.
+   - `draft` (the column DEFAULT) and `inactive` are **deliberately identical in
+     routing** — both serve nowhere. They differ only in what they tell a human reading
+     the table: `draft` is "not launched yet", `inactive` is "launched once, retired".
+     Do not invent a routing difference to justify keeping both; the editorial
+     distinction is the whole point, and the code says so.
+   - Onboarding no longer requires `status='active'` first. A new project is born
+     `draft` (dark everywhere, deliberately); flip it to `preview` and its preview and
+     localhost hosts come up with nothing public exposed; flip it to `active` to launch.
+   - **Unchanged for every live host.** All 7 rows are `active` or `inactive`, and
+     neither of those rungs moved. Proven by the hand-transcribed snapshot of all 20
+     generated hosts in `__tests__/status-ladder.test.ts`, plus an assertion that the
+     new predicate agrees with the retired `status === 'active'` test on every live row.
+   - **Fails closed.** An unrecognised status serves nowhere; adding a fifth value to
+     the DB check constraint and to `PROJECT_STATUSES` without updating the predicate is
+     a compile error (`never` assignment), and forgetting the union entirely leaves the
+     project dark rather than public.
+   - The second status test — the `SCOPE_BY_PROJECT_SEGMENT` map, which has no host kind
+     because it is keyed by segment — is evaluated at `hostKind = 'preview-subdomain'`.
+     Every consumer of that map is a preview-grade surface (`preview.abluo.app/<slug>`,
+     `dev.abluo.app/<slug>`, and the `(website)/[tenant]` 404 guard which only ever sees
+     the internal rewrite target of a host the resolver already approved). That last one
+     is load-bearing: judging the segment map at anything stricter would 404 a `preview`
+     project one hop after its preview host resolved it.
+   - Tests: `__tests__/status-ladder.test.ts` (all 16 outcomes typed out by hand, plus
+     the live-host no-op snapshot) and `__tests__/status-ladder-fixtures.test.ts` (the
+     ladder driven end-to-end through the public resolvers on a synthetic table, because
+     no live project is `draft` or `preview`).
 
 2. **An unknown or inactive host now lands on the Abluo login page, not a 404.**
    `t42.preview.abluo.app` used to 404 at the route boundary; it now resolves to

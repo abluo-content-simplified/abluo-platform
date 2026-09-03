@@ -185,6 +185,60 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // ── Auth gates — keyed on the PATH, on every host ───────────────────────
+  // ADR-015 R6 (admin surfaces + Studio) and ADR-017 slice 6 (client dashboard).
+  //
+  // These used to sit BELOW the host-specific branches and carry a
+  // `tenantId === null` conjunct. Both were wrong, for the same reason:
+  //
+  //   • The conjunct meant the gates did not run at all on any host that
+  //     resolves to a project — livener.net, studiomartegani.com, nologo.cloud,
+  //     abluo.app, dev.abluo.app, ch-psicoterapeuta.com. `/dashboard` was closed
+  //     on those hosts only because it fell through to the tenant rewrite and
+  //     landed on a route that does not exist. That is a routing accident, not
+  //     authentication, and it changes whenever the rewrite changes.
+  //   • The position meant any host branch that returned first skipped them.
+  //     That is exactly what leaked on 2026-09-02:
+  //     `preview.abluo.app/en/dashboard` returned 200 unauthenticated with every
+  //     project name and UUID in the flight payload, because the preview branch
+  //     answered the request above the gate.
+  //
+  // So the gate now keys on the PATH and nothing else, and the ordering
+  // invariant is positional: the ONLY things allowed to return before this
+  // block are the pre-auth surfaces and the static-asset bypass above it, both
+  // of which must be reachable without a session by construction. Anything
+  // added below this line cannot re-open a gated surface by accident.
+  //
+  // `admin.abluo.app` is the one exemption, and it is not a hole: that host's
+  // own inline gate immediately below requires an `abluo_admin` session for
+  // EVERY path on it, not merely the gated ones — strictly stronger than this
+  // block. It is exempted so that (a) an admin request does not pay for two
+  // `getUser()` round-trips, and (b) the host still reaches its subdomain
+  // rewrite (`/dashboard` → `/en/dashboard`), which returning from here would
+  // skip. Removing the exemption would break that rewrite, not tighten anything.
+  //
+  // ── `/studio` is now admin-gated on EVERY host (deliberate change) ───────
+  // Sanity Studio is one app at `src/app/studio/[[...tool]]`, outside `[locale]`
+  // and outside `[tenant]`. It was previously gated only when `tenantId === null`;
+  // on a customer host `/studio` instead fell into the tenant rewrite and became
+  // `/{locale}/{project}/studio`, i.e. it was matched by the public catch-all
+  // `(website)/[tenant]/[slug]` and served (or 404'd) as an ordinary CMS page.
+  // The Studio itself was never reachable there either way, so gating it costs
+  // no functionality; what it costs is the string `studio` as a client-authored
+  // page slug on a customer domain. That word was ALREADY reserved on the
+  // platform's own path-routed hosts — both the `preview.abluo.app` and
+  // `dev.abluo.app` branches below hard-code `slug !== 'studio'` — so this makes
+  // one reservation uniform instead of host-dependent, and removes a case where
+  // a reserved platform path is answered by tenant content.
+  if (host !== 'admin.abluo.app') {
+    if (isAdminSurface(pathname) || isStudio(pathname)) {
+      return await requireAdminInProxy(request) // NextResponse (continue) or redirect
+    }
+    if (isClientSurface(pathname)) {
+      return await requireAuthenticatedInProxy(request) // NextResponse (continue) or redirect
+    }
+  }
+
   // ── Admin subdomain — admin.abluo.app ────────────────────────────────────
   // All requests to admin.abluo.app require a valid session.
   // Auth is checked here (before rewrite) because the rewrite changes
@@ -239,13 +293,13 @@ export async function proxy(request: NextRequest) {
   // ── Abluo preview platform — preview.abluo.app/[project-slug] ────────────
   // preview.abluo.app/studiomartegani       → /it/studiomartegani
   // preview.abluo.app/studiomartegani/blog  → /it/studiomartegani/blog
-  // ⚠️ This branch sits ABOVE the admin-surface gate, so anything it returns
-  // skips that gate entirely. `/dashboard` used to rewrite to `/null/dashboard`,
-  // which `[locale]/layout.tsx` 404s on an unknown locale — an accident that
-  // happened to keep the surface closed. Resolving the locale honestly turned
-  // that 404 into a 307 to `/en/dashboard`: a signpost onto a service-role admin
-  // page that has no auth of its own. Admin/client/studio paths must fall
-  // through to the real gate below.
+  // The three `!is…Surface` conjuncts below are now REDUNDANT — the gates run
+  // above every host branch, so no gated path can reach this line. They are kept
+  // deliberately, as the last line of defence for the hole that actually leaked:
+  // this branch once answered `/en/dashboard` itself (307 → `/en/dashboard`, a
+  // signpost onto a service-role admin page with no auth of its own) precisely
+  // because it sat above the gate. If anyone ever moves the gate back down,
+  // these conjuncts keep that specific 200 from returning.
   if (
     host === 'preview.abluo.app' &&
     !isAdminSurface(pathname) &&
@@ -320,33 +374,12 @@ export async function proxy(request: NextRequest) {
     // Root or unrecognised path — fall through to the host lookup → abluo
   }
 
-  // ── Admin-surface gate (ADR-015 R6) ──────────────────────────────────────
-  // Admin dashboard surfaces and Sanity Studio are Abluo-admin-only. The
-  // `tenantId === null` guard is the public-site safety boundary: every public
-  // tenant website resolves a NON-null tenant, so this gate is provably INERT
-  // for every tenant host and can never touch a paying client's site. It fires
-  // only on platform/admin hosts (localhost, dev.abluo.app root, etc.) where no
-  // tenant resolves. Must run BEFORE the tenant-routes block below.
-  if (tenantId === null && (isAdminSurface(pathname) || isStudio(pathname))) {
-    return await requireAdminInProxy(request) // NextResponse (continue) or redirect
-  }
-
-  // ── Client-dashboard-surface gate (ADR-017 slice 6 / ADR-015 close-out) ──
-  // The tenant CLIENT dashboard `(client)` route group — the user-level
-  // `account` page plus the project-scoped `/{projectSlug}/{posts,leads,
-  // analytics}` pages (ADR-017 Phase 2) — requires ANY authenticated session,
-  // not the abluo_admin role.
-  // The same `tenantId === null` guard as the admin gate keeps this provably
-  // INERT for every public tenant host (which always resolves a non-null
-  // tenant): it fires only on platform/admin hosts where the client dashboard
-  // actually lives. The CLIENT_SURFACE_SEGMENTS allowlist is disjoint from
-  // ADMIN_SURFACE_SEGMENTS, so this never double-gates an admin surface. Runs
-  // AFTER the admin gate and BEFORE the tenant-routes block, mirroring its
-  // placement — intl middleware ordering is undisturbed (both gates short-
-  // circuit before the intl fall-through at the end of proxy()).
-  if (tenantId === null && isClientSurface(pathname)) {
-    return await requireAuthenticatedInProxy(request) // NextResponse (continue) or redirect
-  }
+  // ── Where the two auth gates used to live ───────────────────────────
+  // The admin-surface gate and the client-dashboard gate ran HERE, each behind a
+  // `tenantId === null` conjunct. Both have moved to the top of proxy(), above
+  // every host-specific branch, and lost the conjunct — see the comment there.
+  // Nothing gated can reach this point: an admin/client/studio path on any host
+  // but `admin.abluo.app` (which gates itself, harder) has already been answered.
 
   // ── Tenant routes — rewrite to [locale]/(website)/[tenant] ───────────────
   // Handles custom production domains (studiomartegani.com → /it/studiomartegani)

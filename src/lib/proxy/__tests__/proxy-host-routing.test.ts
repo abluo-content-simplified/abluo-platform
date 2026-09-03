@@ -326,3 +326,147 @@ describe('preview.abluo.app does not bypass the admin gate', () => {
     expect(await rewriteFor('preview.abluo.app', '/not-a-project')).toBeNull()
   })
 })
+
+/**
+ * INVARIANT — a gated path is gated on EVERY host, because the gate keys on the
+ * PATH and nothing else.
+ *
+ * The two suites above this one each pin ONE host's behaviour. This one pins the
+ * property that made both of those bugs possible in the first place: until now
+ * the admin/client/studio gates carried a `tenantId === null` conjunct, so they
+ * did not run at all on any host that resolves to a project — livener.net,
+ * studiomartegani.com, nologo.cloud, abluo.app, dev.abluo.app,
+ * ch-psicoterapeuta.com. `/dashboard` was closed on those hosts only because the
+ * request fell through to the tenant rewrite and landed on a route that does not
+ * exist. A 404 produced by a missing route is not an authentication boundary: it
+ * moves the moment the rewrite moves, which is precisely how
+ * `preview.abluo.app/en/dashboard` became a 200 with every project name and UUID
+ * in it.
+ *
+ * So the assertion here is deliberately not "it 404s" or "it does not rewrite".
+ * It is the positive one: the request REACHED the gate and was turned away —
+ * 307 to /login, carrying `?next=`. A future refactor that reintroduces an
+ * accidental 404 fails this file.
+ */
+
+import { GENERATED_HOST_ROUTES, GENERATED_PLATFORM_HOSTS } from '@/lib/tenancy/generated/route-config'
+
+/**
+ * Every host the edge can see: the whole generated route table (INCLUDING the
+ * inactive `t42` rows — an inactive project must not be a gap either), every
+ * platform host (`admin.abluo.app`, `preview.abluo.app`, bare `localhost`), and
+ * a host in no table at all. Read from the generated table rather than typed out,
+ * so onboarding a customer cannot silently shrink this suite.
+ */
+const ALL_HOSTS: readonly string[] = [
+  ...new Set([
+    ...GENERATED_HOST_ROUTES.map((r) => r.host),
+    ...GENERATED_PLATFORM_HOSTS,
+    'dev.abluo.app',
+    'not-a-customer.invalid',
+  ]),
+]
+
+/**
+ * Both spellings of every gated surface. The locale-prefixed form is not
+ * decoration: `/en/dashboard` is the exact spelling that leaked in production,
+ * because it took a different branch from `/dashboard` and skipped the gate.
+ * The project-scoped client paths use real project slugs, which is the shape the
+ * (client)/[tenant] routes actually serve.
+ */
+const GATED_PATHS: readonly string[] = [
+  // (admin) route group — bare
+  '/dashboard', '/clients', '/content', '/media', '/projects', '/settings',
+  // (admin) route group — locale-prefixed, in three locales
+  '/en/dashboard', '/it/clients', '/de/content', '/en/media', '/it/projects', '/de/settings',
+  // nested admin paths
+  '/dashboard/anything/deep', '/en/media/some-asset',
+  // (client) route group — user-level
+  '/account', '/en/account', '/it/account',
+  // (client) route group — project-scoped, /{projectSlug}/{segment}
+  '/livener/posts', '/en/livener/leads', '/it/studiomartegani/analytics',
+  '/nologo/submissions', '/de/hoffmann/posts',
+  // Sanity Studio
+  '/studio', '/studio/structure',
+]
+
+describe('INVARIANT: every gated path requires a session on every host', () => {
+  it.each(ALL_HOSTS)('%s', async (host) => {
+    for (const path of GATED_PATHS) {
+      const where = `${host}${path}`
+      const res = await proxy(
+        new NextRequest(new URL(`https://placeholder.invalid${path}`), { headers: { host } })
+      )
+
+      // 1. Not served. An unauthenticated request must never get a 200 here.
+      expect(res.status, where).not.toBe(200)
+
+      // 2. Not handed to the i18n middleware. That fall-through is what turned
+      //    the accidental 404 into a 307 onto an ungated service-role page.
+      expect(res.headers.get('x-intl-fallthrough'), where).toBeNull()
+
+      // 3. Not rewritten into a tenant route either — a gated path must not be
+      //    answered by tenant content on a customer host.
+      expect(res.headers.get('x-middleware-rewrite'), where).toBeNull()
+
+      // 4. It reached the gate, and the gate turned it away.
+      expect(res.status, where).toBe(307)
+      const location = new URL(res.headers.get('location') ?? '')
+      expect(location.pathname, where).toBe('/login')
+      expect(location.searchParams.get('next'), where).toBe(path)
+    }
+  })
+})
+
+describe('INVARIANT: the gate does not swallow anything it should not', () => {
+  it.each(ALL_HOSTS)('%s still lets the pre-auth surfaces through', async (host) => {
+    for (const path of ['/login', '/unauthorized', '/invite/accept', '/reset-password', '/forgot-password', '/auth/callback']) {
+      const res = await proxy(
+        new NextRequest(new URL(`https://placeholder.invalid${path}`), { headers: { host } })
+      )
+      // NextResponse.next() — no redirect, no rewrite, no intl.
+      expect(res.status, `${host}${path}`).toBe(200)
+      expect(res.headers.get('location'), `${host}${path}`).toBeNull()
+      expect(res.headers.get('x-intl-fallthrough'), `${host}${path}`).toBeNull()
+    }
+  })
+
+  it.each(ALL_HOSTS)('%s still lets static assets through', async (host) => {
+    for (const path of ['/favicon.ico', '/logo.svg', '/robots.txt', '/sitemap.xml']) {
+      const res = await proxy(
+        new NextRequest(new URL(`https://placeholder.invalid${path}`), { headers: { host } })
+      )
+      expect(res.status, `${host}${path}`).toBe(200)
+      expect(res.headers.get('location'), `${host}${path}`).toBeNull()
+    }
+  })
+
+  it('a public tenant page on a customer host is untouched by the gate', async () => {
+    // The gate keys on the path, so the thing to prove is that ordinary public
+    // paths still reach the tenant rewrite on a live customer host.
+    expect(await rewriteFor('livener.net', '/about')).toBe('/en/livener/about')
+    expect(await rewriteFor('studiomartegani.com', '/blog/a-post')).toBe('/it/studiomartegani/blog/a-post')
+    expect(await rewriteFor('ch-psicoterapeuta.com', '/')).toBe('/it/hoffmann')
+  })
+})
+
+/**
+ * BEHAVIOUR CHANGE, stated so it cannot be discovered later by surprise.
+ *
+ * `/studio` on a customer host used to fall into the tenant rewrite and be
+ * served by the public catch-all `(website)/[tenant]/[slug]` as an ordinary CMS
+ * page. It is now admin-gated like every other host. Sanity Studio itself was
+ * never reachable on those hosts (it lives outside `[locale]`), so nothing that
+ * worked stops working — but `studio` is no longer available as a client-authored
+ * page slug on a customer domain. It was already reserved on the platform's own
+ * path-routed hosts (`preview.abluo.app` and `dev.abluo.app` both hard-code
+ * `slug !== 'studio'`); this makes that reservation uniform.
+ */
+describe('BEHAVIOUR CHANGE: /studio is admin-gated on customer hosts too', () => {
+  it.each(['livener.net', 'studiomartegani.com', 'nologo.cloud', 'abluo.app', 'ch-psicoterapeuta.com'])(
+    '%s /studio no longer rewrites to a tenant page',
+    async (host) => {
+      expect(await rewriteFor(host, '/studio')).toBeNull()
+    }
+  )
+})
