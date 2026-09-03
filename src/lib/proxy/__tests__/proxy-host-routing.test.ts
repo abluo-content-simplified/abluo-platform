@@ -279,7 +279,17 @@ describe('root-path locale negotiation still overrides the project default', () 
  * here — the point is that proxy() does NOT answer these itself.
  */
 describe('preview.abluo.app does not bypass the admin gate', () => {
-  const GATED = ['/dashboard', '/clients', '/content', '/media', '/projects', '/settings']
+  // Both spellings. The LOCALE-PREFIXED form is the one that leaked in
+  // production: `/dashboard` took the `slug && !isLocale` path, but `/en/...`
+  // set isLocale=true, skipped that block entirely, and fell out of the branch
+  // to `return intlMiddleware(request)` — above the gate. Verified live on
+  // 2026-09-02: preview.abluo.app/en/dashboard returned 200 unauthenticated
+  // with every project name and UUID in the flight payload.
+  const GATED = [
+    '/dashboard', '/clients', '/content', '/media', '/projects', '/settings',
+    '/en/dashboard', '/en/clients', '/en/content', '/en/media', '/en/projects', '/en/settings',
+    '/it/dashboard', '/de/clients',
+  ]
 
   for (const path of GATED) {
     it(`does not rewrite ${path} into a tenant route`, async () => {
