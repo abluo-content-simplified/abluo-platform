@@ -10,7 +10,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "routes:generate": "node scripts/generate-route-config.mjs",
-    "routes:check": "node scripts/generate-route-config.mjs --check"
+    "routes:check": "node scripts/generate-route-config.mjs --check",
+    "probe:live": "node scripts/probe-live.mjs",
+    "probe:live:staging": "node scripts/probe-live.mjs --staging"
   },
   "dependencies": {
     "@sanity/client": "^6",

@@ -470,3 +470,55 @@ describe('BEHAVIOUR CHANGE: /studio is admin-gated on customer hosts too', () =>
     }
   )
 })
+
+/**
+ * An UNKNOWN host must not reach a project by path.
+ *
+ * The project-slug block at the end of proxy() used to run for any host that
+ * got that far, so a hostname the route table does not know — a domain pointed
+ * at this deployment, a raw *.vercel.app URL — could serve any customer's site
+ * by path: `whatever.example.com/livener` → /en/livener.
+ *
+ * Never a data leak (a public website either way) and *.vercel.app is already
+ * noindex'd, so the duplicate-content half was covered. But a customer's site
+ * should not answer on a hostname that is not theirs, and it should not do so
+ * by omission. Path routing is now gated on isPlatformHost().
+ */
+describe('unknown hosts cannot reach a project by path', () => {
+  const UNKNOWN = [
+    'whatever.example.com',
+    'abluo-platform-abc123.vercel.app',
+    'nologo.cloud.evil.com',
+    'not-a-host',
+  ]
+  const PROJECT_SEGMENTS = ['livener', 'studiomartegani', 'nologo', 'hoffmann', 'amelie']
+
+  for (const host of UNKNOWN) {
+    for (const seg of PROJECT_SEGMENTS) {
+      it(`${host}/${seg} does not rewrite into the project`, async () => {
+        expect(await rewriteFor(host, `/${seg}`)).toBeNull()
+      })
+    }
+    it(`${host} falls through to the platform routes`, async () => {
+      expect(await fellThroughToIntl(host, '/livener')).toBe(true)
+    })
+  }
+
+  // The platform's OWN hosts must keep working — this is the half that would
+  // break if the guard were too strict.
+  it('preview.abluo.app still routes by path', async () => {
+    expect(await rewriteFor('preview.abluo.app', '/studiomartegani')).toBe('/it/studiomartegani')
+  })
+
+  it('localhost still routes by path (dev convention)', async () => {
+    expect(await rewriteFor('localhost', '/livener')).toBe('/en/livener')
+  })
+
+  it('a custom domain still serves its own project', async () => {
+    expect(await rewriteFor('livener.net')).toBe('/en/livener')
+  })
+
+  it('dev.abluo.app still routes by path', async () => {
+    expect(await rewriteFor('dev.abluo.app', '/studiomartegani')).toBe('/it/studiomartegani')
+  })
+})

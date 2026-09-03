@@ -9,6 +9,7 @@ import {
   resolveScopeFromHost,
   defaultLocaleForProjectSegment,
   normalizeHost,
+  isPlatformHost,
 } from '@/lib/tenancy/host-scope'
 import { unbrand } from '@/lib/tenancy/ids'
 
@@ -438,12 +439,29 @@ export async function proxy(request: NextRequest) {
   }
 
   // ── Project slug routing ───────────────────────────────────────────────────
-  // Handles preview.abluo.app/[slug] and any platform URL where the first
-  // path segment is a known project slug — no host header dependency.
-  // preview.abluo.app/studiomartegani → /it/studiomartegani
+  // Path-based access to a project on the PLATFORM's own hosts:
+  // preview.abluo.app/studiomartegani → /it/studiomartegani, and the same on
+  // localhost during development.
+  //
+  // ⚠️ GUARDED BY isPlatformHost. This block used to run for ANY host that
+  // reached it, so a hostname the route table does not know — a domain someone
+  // points at this deployment, a raw *.vercel.app URL — could reach any project
+  // by path. `whatever.example.com/livener` served Livener.
+  //
+  // That was never a data leak (the content is a public website either way) and
+  // *.vercel.app is already noindex'd by src/lib/seo/indexability.ts, so the
+  // duplicate-content half was covered. But serving a customer's site from a
+  // hostname that is not theirs is not something to do by omission. A host now
+  // has to be a known platform host to route by path; everything else falls
+  // through to the platform routes below.
+  //
+  // Not affected: hosts the route table DOES know resolve earlier and return
+  // before this point — the tenant branch for custom domains, and the
+  // dedicated dev.abluo.app / preview.abluo.app branches above.
   const segments = pathname.split('/').filter(Boolean)
   const firstSegment = segments[0]
-  const defaultLocale = firstSegment ? defaultLocaleForProjectSegment(firstSegment) : null
+  const defaultLocale =
+    firstSegment && isPlatformHost(host) ? defaultLocaleForProjectSegment(firstSegment) : null
 
   if (firstSegment && defaultLocale && !routing.locales.includes(firstSegment as (typeof routing.locales)[number])) {
     const alreadyRewritten = routing.locales.some(
