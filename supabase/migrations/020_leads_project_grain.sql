@@ -1,6 +1,17 @@
 -- ============================================================
 -- Migration 020 — leads: tenant grain → project grain
 --
+-- ⛔ SUPERSEDED BY MIGRATION 026 — DO NOT APPLY.
+--    2026-09-03: `leads` was confirmed dead (0 rows since creation, 0 code
+--    references in src/, no grant to `authenticated`) and 026 drops the table.
+--    Applying this migration would recreate policies on a table that is going
+--    away. It is kept as the written record of a real defect worth recognising
+--    again: a TENANT-grain RLS policy on a PROJECT-grain table over-shares to
+--    every project in the tenant AND under-shares to project-only members —
+--    both halves reproduced on real PostgreSQL in the harness. If `leads` is
+--    ever resurrected, or any other project-grain table gets tenant-grain
+--    policies, this is the shape of the fix.
+--
 -- ⚠️ NOT APPLIED TO ANY SUPABASE PROJECT (dev/preview/prod) BY THIS TASK.
 -- This is a FILE ONLY, handed to Tom to review and apply manually via the
 -- Supabase SQL editor, per CLAUDE.md's Schema Evolution Rules ("Tom decides
