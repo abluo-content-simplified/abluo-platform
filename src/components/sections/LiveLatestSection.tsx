@@ -1,7 +1,7 @@
 // ─── Live — Current Event Section ──────────────────────────────────────────
 // ADR-016 Phase B — composable version of the "current live event" hero
 // treatment already rendered on the fixed /live page
-// (src/components/livener/live/LivePageContent.tsx). Reuses
+// (src/components/site/live/LivePageContent.tsx). Reuses
 // FeaturedEventBlock — the exact component LivePageContent uses to render
 // status/title/date/image/CTA for the current event — so the section matches
 // the existing live hero pixel-for-pixel instead of re-implementing it.

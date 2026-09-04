@@ -11,17 +11,46 @@ import { notFound, redirect } from 'next/navigation'
 import { SlugMapProvider } from '@/components/SlugMapContext'
 import { isProduction, isDev } from '@/lib/deployment'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { joinSlugSegments } from '@/lib/sanity/fields/nested-slug'
 
 export const dynamic = 'force-dynamic'
+
+// ─── Nested paths (D1) ────────────────────────────────────────────────────────
+//
+// This segment is a CATCH-ALL. It used to be `[slug]`, one segment, which meant
+// a page could only ever live at the root of a site — there was no way to serve
+// `/servizi/terapia-individuale`.
+//
+// The nesting is expressed in the DATA, not in the route tree: `page.slug` holds
+// the full path for that locale ("servizi/terapia-individuale"), and this route
+// joins the captured segments back into the same string before querying. Three
+// consequences, all of them the reason it is done this way:
+//
+//   • It is locale-aware for free, and cannot be otherwise. The path lives in
+//     `slug[locale]`, so German is `slug.de` — a different path, not a prefix
+//     bolted onto an Italian one. `dienstleistungen/einzeltherapie` needs no
+//     code. A parent/child document model would have made the PARENT segment a
+//     single shared value and forced a second, locale-blind mechanism on top;
+//     that is the retrofit this avoids.
+//   • Nothing existing changes. A one-segment slug is a one-element catch-all,
+//     so every current page on every live site resolves exactly as before, with
+//     no data migration.
+//   • hreflang, the slug map, the language switcher and `redirectFrom` keep
+//     working unchanged, because all four already read whole slug STRINGS.
+//
+// Static sibling routes (`blog`, `events`, `live`, `news`) still win over this
+// catch-all — Next resolves static segments first — so the module routes are
+// unaffected.
 
 // ─── Metadata ─────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  params: Promise<{ tenant: string; locale: string; slug: string }>
+  params: Promise<{ tenant: string; locale: string; slug: string[] }>
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { tenant: rawTenantId, locale, slug } = await params
+  const { tenant: rawTenantId, locale, slug: slugSegments } = await params
+  const slug = joinSlugSegments(slugSegments)
   // Trust boundary: the `[tenant]` segment is a URL project segment —
   // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
   const tenantId = asUrlProjectSegment(rawTenantId)
@@ -86,7 +115,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 // (ADR-016 Phase 0) — shared with the home route, not duplicated here.
 
 export default async function WebsitePageRoute({ params }: PageProps) {
-  const { tenant: rawTenantId, locale, slug } = await params
+  const { tenant: rawTenantId, locale, slug: slugSegments } = await params
+  const slug = joinSlugSegments(slugSegments)
   // Trust boundary: the `[tenant]` segment is a URL project segment —
   // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
   const tenantId = asUrlProjectSegment(rawTenantId)

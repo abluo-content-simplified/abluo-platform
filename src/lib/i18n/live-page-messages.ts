@@ -2,7 +2,7 @@
  * Live Page UI Messages
  *
  * ADR-016 Phase B — fixed-page fallback strings for the /live route
- * (src/components/livener/live/LivePageContent.tsx). These are platform UI
+ * (src/components/site/live/LivePageContent.tsx). These are platform UI
  * chrome, not tenant content — mirrors the pattern established by
  * event-messages.ts (src/lib/i18n/event-messages.ts).
  *

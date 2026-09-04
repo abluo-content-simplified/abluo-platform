@@ -2,6 +2,7 @@ import { defineType, defineField, defineArrayMember } from 'sanity'
 import { TenantLinker } from '@/lib/sanity/fields/TenantLinker'
 import { ProjectLinker } from '@/lib/sanity/fields/ProjectLinker'
 import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, LocalizedSlugInput, LocalizedRedirectFromInput } from '@/lib/sanity/fields/LocalizedInput'
+import { slugifyNestedPath, validateNestedSlug } from '@/lib/sanity/fields/nested-slug'
 import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField, headlineAccentField } from '@/lib/sanity/fields/shared'
 import { ICON_OPTIONS } from '@/components/icons/registry'
@@ -86,7 +87,12 @@ const localizedSlugType = defineType({
           return title?.[code] ?? title?.en ?? ''
         },
         maxLength: 96,
+        // NESTED PATHS (D1) — see src/lib/sanity/fields/nested-slug.ts for why
+        // the default slugifier cannot be used here.
+        slugify: (input: string) => slugifyNestedPath(input),
       },
+      validation: (Rule) =>
+        Rule.custom((value?: { current?: string }) => validateNestedSlug(value?.current)),
     })
   ),
 })
@@ -3731,6 +3737,29 @@ const designSystemType = defineType({
       initialValue: 'active',
     }),
     defineField({ name: 'description', title: 'Description', type: 'text', rows: 2, group: 'meta' }),
+
+    // ── Inheritance ──────────────────────────────────────────────────────────
+    // This field was READ but never DECLARED. `resolveDesignSystemInheritance`
+    // follows it, `queries.ts` projects it, and Paolo Martegani's system has
+    // used it to inherit from Abluo Dental since June — but because it was
+    // missing from the schema it could not be seen or set in the Studio, only
+    // written by script. Declaring it changes no data; it makes an existing
+    // mechanism visible to the people who need it.
+    //
+    // Merge rule is child-overrides-parent, resolved per request: a child that
+    // leaves a field empty inherits it, and a template edit reaches every child
+    // that has not overridden it. Chain depth is capped at 5.
+    defineField({
+      name: 'parentDesignSystem',
+      title: 'Inherits From',
+      type: 'reference',
+      to: [{ type: 'designSystem' }],
+      group: 'meta',
+      description:
+        'Optional. Values left empty on this system are inherited from the parent. ' +
+        'Use a Template as the parent — e.g. a practice-type base system.',
+      options: { filter: 'role == "template"' },
+    }),
 
     // Eyebrow accent marker — the small shape shown next to eyebrow labels (hero
     // sections and elsewhere). Curated enum, not free-form — consistency across all

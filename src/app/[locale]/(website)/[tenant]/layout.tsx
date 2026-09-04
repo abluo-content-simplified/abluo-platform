@@ -14,8 +14,8 @@ import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resol
 import { buildGoogleFontsUrl } from '@/lib/google-fonts'
 import { headingVars, fluidHeadingSize, isTypographyLegacyTenant } from '@/lib/design-system/typography'
 import { footerThemeVars } from '@/lib/design-system/footer-tokens'
-import { Footer } from '@/components/livener/Footer'
-import { NavClient } from '@/components/livener/Nav/NavClient'
+import { Footer } from '@/components/site/Footer'
+import { NavClient } from '@/components/site/Nav/NavClient'
 import { HeaderAppearanceWrapper } from '@/components/HeaderAppearanceWrapper'
 import { DevBadge } from '@/components/DevBadge'
 import { isProduction } from '@/lib/deployment'
@@ -31,6 +31,8 @@ import { resolveWhatsAppConfig, resolveHeaderCtaConfig, isModuleEnabled, type Pr
 import { SlugMapRoot } from '@/components/SlugMapContext'
 import { TrackingScripts } from '@/components/TrackingScripts'
 import { asUrlProjectSegment, type UrlProjectSegment } from '@/lib/tenancy/ids'
+import { lightThemeSelector, type ThemeMode } from '@/lib/design-system/theme-mode'
+import { FALLBACK_DARK, FALLBACK_LIGHT, FALLBACK_STATE, FALLBACK_FONTS, FALLBACK_RADIUS } from '@/lib/design-system/fallback-tokens'
 import { projectScopeSlugFromUrlSegment } from '@/lib/forms/render-mapping'
 
 interface LayoutProps {
@@ -66,10 +68,33 @@ function getFontName(font: FontDefinition | undefined, fallback: string): string
 // attribute here. No entry added to buildCssVars() for either field.
 // `tenantId` is only used to honour TYPOGRAPHY_LEGACY_TENANTS — see
 // src/lib/design-system/typography.ts. Everything else is tenant-agnostic.
+// ─── Locked themes (themeMode) ────────────────────────────────────────────────
+//
+// The root layout's boot script picks the theme from localStorage and
+// `prefers-color-scheme` and writes `class="light"` on <html>. It knows nothing
+// about the PROJECT, so before this it decided the theme for every site on the
+// platform — including sites that are not supposed to have two themes.
+//
+// `siteConfig.themeMode` used to control only ONE thing: whether the
+// ThemeSwitcher renders. That made "Light Only" actively worse than no setting
+// at all — the site still followed the visitor's OS preference, so a visitor on
+// a dark-mode machine got the dark palette, and hiding the switcher took away
+// the only control that could have fixed it.
+//
+// The fix is CSS, not more JS: a locked theme changes which selector the tokens
+// are emitted under, so the winning palette is decided at build time and there
+// is no flash and nothing for the boot script to race.
+//
+//   toggle / system  → `html.light { … }`         (unchanged — the class decides)
+//   lightOnly        → `:root, html.light { … }`  (light wins with or without it)
+//   darkOnly         → light block omitted        (`:root` dark always wins)
+//
+// Only hoffmann is non-toggle today, so this changes nothing on any live site.
 function buildCssVars(
   ds: DesignSystem | null,
   logoHeightOverride?: { desktop?: number; mobile?: number },
-  tenantId?: string
+  tenantId?: string,
+  themeMode: ThemeMode = 'toggle'
 ): string {
   const dark = ds?.colors?.darkTheme
   const light = ds?.colors?.lightTheme
@@ -82,33 +107,36 @@ function buildCssVars(
   const fDark = ds?.forms   // form input dark theme (used via .input?.darkTheme etc.)
   const fLight = ds?.forms  // form input light theme
 
+  // Fallbacks are DELIBERATELY neutral — see fallback-tokens.ts. Until 2026-09-03
+  // the literals here were Livener's brand verbatim, so any tenant with a gap in
+  // their design system rendered in another client's amber, invisibly.
   const D = {
-    bg: dark?.background ?? 'oklch(0.2309 0.0292 263.75deg)',
-    bgAlt: dark?.backgroundAlt ?? 'oklch(0.2626 0.0223 288.58deg)',
-    surface: dark?.surface ?? dark?.backgroundAlt ?? 'oklch(0.2626 0.0223 288.58deg)',
-    primary: dark?.primary ?? 'oklch(0.7886 0.1630 66.32deg)',
-    secondary: dark?.secondary ?? 'oklch(0.3515 0.0866 283.66deg)',
-    textPrimary: dark?.textPrimary ?? 'oklch(0.9612 0.0000 89.88deg)',
-    textSecondary: dark?.textSecondary ?? 'oklch(0.9612 0.0000 89.88deg / 0.55)',
-    textMuted: dark?.textMuted ?? dark?.textSecondary ?? 'oklch(0.9612 0.0000 89.88deg / 0.4)',
-    border: dark?.border ?? 'oklch(1 0 0 / 0.1)',
-    headingFont: getFontName(typo?.headingFont, 'Barlow Condensed'),
-    bodyFont: getFontName(typo?.bodyFont, 'Poppins'),
-    radiusSm: radius?.small ?? 4,
-    radiusMd: radius?.medium ?? 8,
-    radiusLg: radius?.large ?? 16,
+    bg: dark?.background ?? FALLBACK_DARK.background,
+    bgAlt: dark?.backgroundAlt ?? FALLBACK_DARK.backgroundAlt,
+    surface: dark?.surface ?? dark?.backgroundAlt ?? FALLBACK_DARK.surface,
+    primary: dark?.primary ?? FALLBACK_DARK.primary,
+    secondary: dark?.secondary ?? FALLBACK_DARK.secondary,
+    textPrimary: dark?.textPrimary ?? FALLBACK_DARK.textPrimary,
+    textSecondary: dark?.textSecondary ?? FALLBACK_DARK.textSecondary,
+    textMuted: dark?.textMuted ?? dark?.textSecondary ?? FALLBACK_DARK.textMuted,
+    border: dark?.border ?? FALLBACK_DARK.border,
+    headingFont: getFontName(typo?.headingFont, FALLBACK_FONTS.heading),
+    bodyFont: getFontName(typo?.bodyFont, FALLBACK_FONTS.body),
+    radiusSm: radius?.small ?? FALLBACK_RADIUS.small,
+    radiusMd: radius?.medium ?? FALLBACK_RADIUS.medium,
+    radiusLg: radius?.large ?? FALLBACK_RADIUS.large,
   }
 
   const L = {
-    bg: light?.background ?? 'oklch(0.98 0 0)',
-    bgAlt: light?.backgroundAlt ?? 'oklch(0.95 0 0)',
-    surface: light?.surface ?? light?.backgroundAlt ?? 'oklch(0.95 0 0)',
+    bg: light?.background ?? FALLBACK_LIGHT.background,
+    bgAlt: light?.backgroundAlt ?? FALLBACK_LIGHT.backgroundAlt,
+    surface: light?.surface ?? light?.backgroundAlt ?? FALLBACK_LIGHT.surface,
     primary: light?.primary ?? D.primary,
     secondary: light?.secondary ?? D.secondary,
-    textPrimary: light?.textPrimary ?? 'oklch(0.15 0 0)',
-    textSecondary: light?.textSecondary ?? 'oklch(0.15 0 0 / 0.55)',
-    textMuted: light?.textMuted ?? light?.textSecondary ?? 'oklch(0.15 0 0 / 0.4)',
-    border: light?.border ?? 'oklch(0 0 0 / 0.1)',
+    textPrimary: light?.textPrimary ?? FALLBACK_LIGHT.textPrimary,
+    textSecondary: light?.textSecondary ?? FALLBACK_LIGHT.textSecondary,
+    textMuted: light?.textMuted ?? light?.textSecondary ?? FALLBACK_LIGHT.textMuted,
+    border: light?.border ?? FALLBACK_LIGHT.border,
   }
 
   // Typography scale — sizes in rem, line height unitless, letter spacing in rem
@@ -236,6 +264,46 @@ function buildCssVars(
     `      --form-border-radius: ${formGeo?.borderRadius ?? D.radiusMd}px;`,
   ].join('\n')
 
+  // See the themeMode note above buildCssVars(), and
+  // src/lib/design-system/theme-mode.ts for why this is a selector and not JS.
+  const lightSelector = lightThemeSelector(themeMode)
+  const lightThemeBlock = lightSelector === null ? '' : `
+    ${lightSelector} {
+      --color-background: ${L.bg};
+      --color-background-alt: ${L.bgAlt};
+      --color-surface: ${L.surface};
+      --color-primary: ${L.primary};
+      --color-secondary: ${L.secondary};
+      --color-text-primary: ${L.textPrimary};
+      --color-text-secondary: ${L.textSecondary};
+      --color-text-muted: ${L.textMuted};
+      --color-border: ${L.border};
+      --color-success: ${light?.success ?? FALLBACK_STATE.successLight};
+      --color-warning: ${light?.warning ?? FALLBACK_STATE.warningLight};
+      --color-danger: ${light?.danger ?? FALLBACK_STATE.dangerLight};
+      --background: ${L.bg};
+      --foreground: ${L.textPrimary};
+      /* ── Form tokens (light theme) ── */
+${lightFormVars}
+      --form-label-color: ${formTypo?.labelColor ?? L.textSecondary};
+      --form-help-color: ${formTypo?.helpTextColor ?? L.textMuted};
+      /* ── Button tokens (light theme overrides) ── */
+      --btn-primary-bg: ${ds?.buttons?.primary?.lightTheme?.background ?? L.primary};
+      --btn-primary-text: ${ds?.buttons?.primary?.lightTheme?.text ?? L.bg};
+      --btn-primary-hover-bg: ${ds?.buttons?.primary?.lightTheme?.hover?.background ?? L.primary};
+      --btn-secondary-bg: ${ds?.buttons?.secondary?.lightTheme?.background ?? 'transparent'};
+      --btn-secondary-text: ${ds?.buttons?.secondary?.lightTheme?.text ?? L.textPrimary};
+      --btn-secondary-hover-bg: ${ds?.buttons?.secondary?.lightTheme?.hover?.background ?? 'transparent'};
+      /* ── Section surface tokens (light theme) ── */
+      --color-section-surface1: ${sectionSurfaces?.lightTheme?.surface1 ?? 'transparent'};
+      --color-section-surface2: ${sectionSurfaces?.lightTheme?.surface2 ?? 'transparent'};
+      --color-section-surface3: ${sectionSurfaces?.lightTheme?.surface3 ?? 'transparent'};
+      --color-section-brand-surface: ${sectionSurfaces?.lightTheme?.brandSurface ?? 'transparent'};
+      --color-section-glass-bg: ${sectionSurfaces?.lightTheme?.glass?.backgroundOklch ?? 'oklch(0.97 0 0 / 0.6)'};
+      /* ── Footer tokens (light theme) ── */
+${footerThemeVars(ds?.footer?.surface, L, '      ')}
+    }`
+
   return `
     :root {
       --font-heading: '${D.headingFont}', sans-serif;
@@ -249,9 +317,9 @@ function buildCssVars(
       --color-text-secondary: ${D.textSecondary};
       --color-text-muted: ${D.textMuted};
       --color-border: ${D.border};
-      --color-success: ${dark?.success ?? 'oklch(0.62 0.18 145)'};
-      --color-warning: ${dark?.warning ?? 'oklch(0.75 0.15 80)'};
-      --color-danger: ${dark?.danger ?? 'oklch(0.6 0.22 25)'};
+      --color-success: ${dark?.success ?? FALLBACK_STATE.successDark};
+      --color-warning: ${dark?.warning ?? FALLBACK_STATE.warningDark};
+      --color-danger: ${dark?.danger ?? FALLBACK_STATE.dangerDark};
       /* --radius-full is a constant, not a design-system token: it exists so
          genuinely-circular/pill geometry can be expressed through the same
          --radius-* vocabulary as everything else. The eyebrow pill already
@@ -294,41 +362,7 @@ ${formMetaVars}
       /* ── Footer tokens (dark theme) ── */
 ${footerThemeVars(ds?.footer?.surface, D, '      ')}
     }
-    html.light {
-      --color-background: ${L.bg};
-      --color-background-alt: ${L.bgAlt};
-      --color-surface: ${L.surface};
-      --color-primary: ${L.primary};
-      --color-secondary: ${L.secondary};
-      --color-text-primary: ${L.textPrimary};
-      --color-text-secondary: ${L.textSecondary};
-      --color-text-muted: ${L.textMuted};
-      --color-border: ${L.border};
-      --color-success: ${light?.success ?? 'oklch(0.55 0.18 145)'};
-      --color-warning: ${light?.warning ?? 'oklch(0.65 0.15 80)'};
-      --color-danger: ${light?.danger ?? 'oklch(0.55 0.22 25)'};
-      --background: ${L.bg};
-      --foreground: ${L.textPrimary};
-      /* ── Form tokens (light theme) ── */
-${lightFormVars}
-      --form-label-color: ${formTypo?.labelColor ?? L.textSecondary};
-      --form-help-color: ${formTypo?.helpTextColor ?? L.textMuted};
-      /* ── Button tokens (light theme overrides) ── */
-      --btn-primary-bg: ${ds?.buttons?.primary?.lightTheme?.background ?? L.primary};
-      --btn-primary-text: ${ds?.buttons?.primary?.lightTheme?.text ?? L.bg};
-      --btn-primary-hover-bg: ${ds?.buttons?.primary?.lightTheme?.hover?.background ?? L.primary};
-      --btn-secondary-bg: ${ds?.buttons?.secondary?.lightTheme?.background ?? 'transparent'};
-      --btn-secondary-text: ${ds?.buttons?.secondary?.lightTheme?.text ?? L.textPrimary};
-      --btn-secondary-hover-bg: ${ds?.buttons?.secondary?.lightTheme?.hover?.background ?? 'transparent'};
-      /* ── Section surface tokens (light theme) ── */
-      --color-section-surface1: ${sectionSurfaces?.lightTheme?.surface1 ?? 'transparent'};
-      --color-section-surface2: ${sectionSurfaces?.lightTheme?.surface2 ?? 'transparent'};
-      --color-section-surface3: ${sectionSurfaces?.lightTheme?.surface3 ?? 'transparent'};
-      --color-section-brand-surface: ${sectionSurfaces?.lightTheme?.brandSurface ?? 'transparent'};
-      --color-section-glass-bg: ${sectionSurfaces?.lightTheme?.glass?.backgroundOklch ?? 'oklch(0.97 0 0 / 0.6)'};
-      /* ── Footer tokens (light theme) ── */
-${footerThemeVars(ds?.footer?.surface, L, '      ')}
-    }
+${lightThemeBlock}
   `.trim()
 }
 
@@ -568,7 +602,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
     const integrations = await fetchForTenant<ProjectIntegrations>(projectIntegrationsQuery, {})
     // ADR-020 — module-owned per-website configuration (WhatsApp, header CTA).
     const modules = await fetchForTenant<ProjectModuleConfig>(projectModuleConfigQuery, { locale, defaultLocale })
-    const cssVars = buildCssVars(designSystem, { desktop: livenerConfig?.logoHeightDesktop, mobile: livenerConfig?.logoHeightMobile }, tenantId)
+    const cssVars = buildCssVars(designSystem, { desktop: livenerConfig?.logoHeightDesktop, mobile: livenerConfig?.logoHeightMobile }, tenantId, livenerConfig?.themeMode)
     const livenerBgGraphic = livenerConfig?.backgroundGraphic
     const livenerBgImageUrl = livenerBgGraphic?.asset?.asset ? imageUrl(livenerBgGraphic.asset as any, 1920) : undefined
     const livenerBgStyles = buildBackgroundGraphicStyles(livenerBgGraphic, livenerBgImageUrl, false)
@@ -673,7 +707,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   // ── Branding assets — owned per-site (Website Settings), not the design system ─
   const logoSrc = config?.logo ? imageUrl(config.logo as any, 320) : undefined
   const logoLightSrc = config?.logoLight ? imageUrl(config.logoLight as any, 320) : logoSrc
-  const cssVars = buildCssVars(designSystem, { desktop: config?.logoHeightDesktop, mobile: config?.logoHeightMobile }, tenantId)
+  const cssVars = buildCssVars(designSystem, { desktop: config?.logoHeightDesktop, mobile: config?.logoHeightMobile }, tenantId, config?.themeMode)
 
   // ── Background graphic rendering ─────────────────────────────────────────────
   const bgGraphic = config?.backgroundGraphic
