@@ -1836,6 +1836,29 @@ const featureCardType = defineType({
       type: 'array',
       of: [defineArrayMember({ type: 'localizedString' })],
     }),
+    // ── Image + CTA per card ─────────────────────────────────────────────────
+    // A feature card could only ever show an ICON — a registry key, drawn as a
+    // 48px glyph. That is right for a product feature grid and wrong for the
+    // shape this section is most often actually used for: a services grid,
+    // where each card is a photograph, a name, a paragraph and a link through
+    // to the service's own page. Without these two fields such a grid could
+    // show no picture and lead nowhere, which is what Claudia Hoffmann's six
+    // service cards did — the images were extracted and sitting in the media
+    // library with nowhere to be referenced from.
+    //
+    // Both optional. Every grid authored before this renders exactly as before.
+    defineField({
+      name: 'image',
+      title: 'Image',
+      type: 'localizedImage',
+      description: 'Optional. Shown above the card content, filling the card width.',
+    }),
+    defineField({
+      name: 'cta',
+      title: 'Card Link',
+      type: 'cta',
+      description: 'Optional. Renders as a text link at the foot of the card — e.g. “Read more”.',
+    }),
   ],
   preview: {
     select: { title_en: 'title.en', title_it: 'title.it', kicker_en: 'kicker.en' },

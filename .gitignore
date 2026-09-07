@@ -24,3 +24,6 @@ dist/static/*.json
 # Local safety copies: Sanity dataset exports and pre-migration document
 # snapshots. Real content, sometimes large, never part of a build.
 backups/
+
+# Generated verifier report — regenerate with `node scripts/check-content-shape.mjs`
+content-shape-dryrun.md

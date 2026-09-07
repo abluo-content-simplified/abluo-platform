@@ -437,9 +437,14 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
         "title": ${loc('title')},
         "description": ${loc('description')},
         "bullets": bullets[]{ "v": ${loc('@')} }.v,
-        // featureRow only (mediaFeatureSection). Null for every featureCard
-        // and for every featureRow authored before the field existed.
+        // Shared by BOTH members now. featureRow has carried an image since
+        // interactiveMedia; featureCard gained one for services-style grids.
+        // (No backticks in comments here — this whole block is a JS template
+        // literal, so a backtick ends the string and the file stops parsing.)
         ${locImage('image')},
+        // featureCard only — the per-card link ("Leggi" -> /servizi/<slug>).
+        // Null for every featureRow and for every card authored before it.
+        "cta": cta { ${CTA_FIELDS} },
       },
       // mediaFeatureSection
       interactiveMedia,

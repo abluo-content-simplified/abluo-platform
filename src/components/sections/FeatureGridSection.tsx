@@ -8,6 +8,8 @@ import { Icon } from '@/components/icons'
 import { resolveEasing } from '@/lib/motion/easing'
 import { renderHeadline } from '@/lib/headline-accent'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
+import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
+import { FeatureCardCta } from '@/components/sections/FeatureCardCta'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 //
@@ -196,6 +198,25 @@ export function FeatureGridSection({ section, surface, designSystem }: Props) {
               <div
                 className="relative flex h-full flex-col bg-[var(--color-surface)] p-8 transition-colors duration-300 hover:bg-[var(--color-background-alt)] md:p-10"
               >
+                {/* Card image — a services grid leads with a photograph, not a
+                    glyph. Corner radius comes from the design system so it
+                    matches every other framed image on the site. */}
+                {feature.image?.asset && (
+                  <div
+                    className="relative z-[1] mb-7 overflow-hidden"
+                    style={{ borderRadius: 'var(--radius-lg)', aspectRatio: '3 / 2' }}
+                  >
+                    <img
+                      src={imageUrl(feature.image, 800)}
+                      srcSet={imageSrcSet(feature.image)}
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                      alt={feature.image.alt ?? ''}
+                      loading="lazy"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                )}
+
                 {/* Marker — icon box, ordinal watermark, or nothing */}
                 {variant === 'icon' && feature.icon && (
                   <div
@@ -296,6 +317,14 @@ export function FeatureGridSection({ section, surface, designSystem }: Props) {
                       </li>
                     ))}
                   </ul>
+                )}
+
+                {/* Per-card link — pushed to the foot so cards of unequal text
+                    length still line their links up. */}
+                {feature.cta && (
+                  <div className="mt-auto">
+                    <FeatureCardCta cta={feature.cta} />
+                  </div>
                 )}
               </div>
             </SlideUp>

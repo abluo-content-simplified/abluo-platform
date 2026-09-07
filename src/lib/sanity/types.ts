@@ -1569,6 +1569,13 @@ export interface FeatureCard {
   description?: string
   /** Locale-resolved by GROQ — array of localizedString, flattened to strings */
   bullets?: string[]
+  /**
+   * Optional card image, locale-resolved by GROQ. Shown above the card content.
+   * Undefined on every card authored before the field existed.
+   */
+  image?: ResolvedImage
+  /** Optional per-card link, rendered as a text link at the foot of the card. */
+  cta?: Cta
 }
 
 export interface FeatureGridSection {

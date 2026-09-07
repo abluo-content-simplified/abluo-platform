@@ -100,6 +100,11 @@ export function resolveHeroMediaLayout(
 // GROQ returns `null` (not `undefined`) for a field no document has, hence
 // `??` rather than a destructuring default — the same null-vs-undefined shape
 // as buildHeroMediaFilter / resolveHeroMediaLayout above.
+// NOTE on corner radius: the two hero CTAs above are the only buttons on the
+// platform that did NOT carry `rounded-[var(--radius-btn)]`. Every other button
+// — nav, cards, forms, banners — reads that token, so a design system asking for
+// pill buttons produced pill buttons everywhere EXCEPT the most prominent one on
+// the page. Now they all read the same token.
 export function resolveHeroCtaColors(
   ctaStyle: 'onMedia' | 'brand' | null | undefined,
   showFullBleedMedia: boolean
@@ -518,7 +523,7 @@ export function HeroSection({ section, surface, designSystem }: Props) {
                   key={`${cta.internalName}-${i}`}
                   cta={cta}
                   onFormClick={makeFormHandler(cta)}
-                  className="inline-flex h-12 items-center gap-2 px-8 text-sm font-medium tracking-wide transition-opacity hover:opacity-85"
+                  className="inline-flex h-12 items-center gap-2 rounded-[var(--radius-btn)] px-8 text-sm font-medium tracking-wide transition-opacity hover:opacity-85"
                   style={
                     i === 0
                       ? { backgroundColor: ctaBg, color: ctaText }
@@ -537,7 +542,7 @@ export function HeroSection({ section, surface, designSystem }: Props) {
           <SlideUp duration={duration} ease={ease} delay={d4}>
             <a
               href={ctaHref ?? '#'}
-              className="inline-flex h-12 items-center gap-2 px-8 text-sm font-medium tracking-wide transition-opacity hover:opacity-85"
+              className="inline-flex h-12 items-center gap-2 rounded-[var(--radius-btn)] px-8 text-sm font-medium tracking-wide transition-opacity hover:opacity-85"
               style={{ backgroundColor: ctaBg, color: ctaText }}
             >
               {ctaLabel}
