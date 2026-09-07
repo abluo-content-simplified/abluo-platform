@@ -155,6 +155,31 @@ function buildModuleConfigField(field: ModuleConfigFieldDef) {
                     description: 'Optional. A hex value like #e94e1b, or a colour name.',
                   })]
                 : []),
+              // Only for lists whose entries are also public pages.
+              ...(field.supportsRouting
+                ? [
+                    defineField({
+                      name: 'description',
+                      title: 'Description',
+                      type: 'localizedText',
+                      description: 'Shown under the heading on this entry\u2019s own page, and used as its meta description.',
+                    }),
+                    defineField({
+                      name: 'redirectFrom',
+                      title: 'Redirect From (retired keys)',
+                      type: 'array',
+                      of: [defineArrayMember({ type: 'string' })],
+                      description: 'Keys that were merged into this one. Their old URLs 301 here instead of 404ing.',
+                    }),
+                    defineField({
+                      name: 'noindex',
+                      title: 'Hide from search engines',
+                      type: 'boolean',
+                      initialValue: false,
+                      description: 'For an entry with too little content to stand as its own indexed page.',
+                    }),
+                  ]
+                : []),
             ],
             preview: {
               select: { en: 'label.en', it: 'label.it', value: 'value' },

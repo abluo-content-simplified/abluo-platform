@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveCategories, resolveCategoriesFor, categoryKeysOf } from '../categories'
+import { resolveCategories, resolveCategoriesFor, categoryKeysOf, findRoutableCategory, listRoutableCategories } from '../categories'
 
 // ── Dual-read during the blogCategory retirement ─────────────────────────────
 //
@@ -148,5 +148,114 @@ describe('resolveCategoriesFor — both shapes reach a badge', () => {
       modules, 'blog', 'it'
     )
     expect(out.map((c) => c.title)).toEqual(['Salute Dentale'])
+  })
+})
+
+// ── Routable categories ───────────────────────────────────────────────────────
+//
+// The old Webflow site published /category/<slug> and those URLs are indexed.
+// Five categories survived consolidation; five were merged into survivors and
+// must 301 rather than 404. The distinction between "merged" and "never
+// existed" is the whole point of this API returning three outcomes instead of
+// throwing — a 301 and a 404 are not interchangeable for a URL with two years
+// of accumulated links.
+
+describe('findRoutableCategory', () => {
+  const modules = [
+    {
+      moduleId: 'blog',
+      enabled: true,
+      config: {
+        categories: [
+          {
+            _key: 'a',
+            value: 'terapia-individuale',
+            label: { it: 'Terapia individuale' },
+            color: '#43554A',
+            description: { it: 'Per chi vuole lavorare su di sé.' },
+            redirectFrom: ['traumi-e-ferite-emotive'],
+          },
+          {
+            _key: 'b',
+            value: 'parole-riflessioni',
+            label: { it: 'Parole e Riflessioni' },
+          },
+          {
+            _key: 'c',
+            value: 'archivio',
+            label: { it: 'Archivio' },
+            noindex: true,
+          },
+        ],
+      },
+    },
+  ] as unknown as Parameters<typeof findRoutableCategory>[1]
+
+  it('resolves a live category by key', () => {
+    const { category, redirectTo } = findRoutableCategory('terapia-individuale', modules, 'blog', 'it')
+    expect(redirectTo).toBeUndefined()
+    expect(category?.title).toBe('Terapia individuale')
+    expect(category?.description).toBe('Per chi vuole lavorare su di sé.')
+    expect(category?.color).toBe('#43554A')
+  })
+
+  it('reports the survivor for a retired key, rather than resolving it', () => {
+    const { category, redirectTo } = findRoutableCategory('traumi-e-ferite-emotive', modules, 'blog', 'it')
+    expect(category).toBeUndefined()
+    expect(redirectTo).toBe('terapia-individuale')
+  })
+
+  it('returns neither for a key that never existed, so the route can 404', () => {
+    const out = findRoutableCategory('non-esiste', modules, 'blog', 'it')
+    expect(out.category).toBeUndefined()
+    expect(out.redirectTo).toBeUndefined()
+  })
+
+  it('omits an absent description instead of falling back to the key', () => {
+    const { category } = findRoutableCategory('parole-riflessioni', modules, 'blog', 'it')
+    expect(category?.title).toBe('Parole e Riflessioni')
+    expect(category?.description).toBeUndefined()
+  })
+
+  it('carries noindex through, so a thin category can be de-listed without deleting it', () => {
+    const { category } = findRoutableCategory('archivio', modules, 'blog', 'it')
+    expect(category?.noindex).toBe(true)
+  })
+
+  it('defaults noindex to false rather than undefined', () => {
+    const { category } = findRoutableCategory('parole-riflessioni', modules, 'blog', 'it')
+    expect(category?.noindex).toBe(false)
+  })
+
+  it('never resolves a retired key just because it looks like a live one', () => {
+    // Guards the ordering inside findRoutableCategory: a direct hit must be
+    // checked before the redirect table, or a category listed in its own
+    // redirectFrom would shadow itself into an infinite redirect.
+    const { category, redirectTo } = findRoutableCategory('terapia-individuale', modules, 'blog', 'it')
+    expect(category?.key).toBe('terapia-individuale')
+    expect(redirectTo).toBeUndefined()
+  })
+})
+
+describe('listRoutableCategories', () => {
+  const modules = [
+    {
+      moduleId: 'blog',
+      enabled: true,
+      config: {
+        categories: [
+          { _key: 'a', value: 'uno', label: { it: 'Uno', en: 'One' } },
+          { _key: 'b', value: 'due', label: { it: 'Due' } },
+        ],
+      },
+    },
+  ] as unknown as Parameters<typeof listRoutableCategories>[0]
+
+  it('lists every configured category in configured order', () => {
+    expect(listRoutableCategories(modules, 'blog', 'it').map((c) => c.key)).toEqual(['uno', 'due'])
+  })
+
+  it('falls back through locale → default → en → any populated value', () => {
+    expect(listRoutableCategories(modules, 'blog', 'de', 'en').map((c) => c.title)).toEqual(['One', 'Due'])
   })
 })

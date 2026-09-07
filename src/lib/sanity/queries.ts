@@ -851,6 +851,41 @@ export const postByOldSlugQuery = /* groq */ `
   }
 `
 
+// Posts in one category. Deliberately the same projection as postsQuery so the
+// existing BlogListingSection renderer can consume the result unchanged --
+// the category page is a filtered blog index, not a second design.
+export const postsByCategoryQuery = /* groq */ `
+  *[
+    _type == "post"
+    && projectSlug == $projectSlug
+    && $categoryKey in categories
+    && defined(publishedAt)
+    && publishedAt <= now()
+    && (!defined(expiresAt) || expiresAt > now())
+  ]
+  | order(featured desc, publishedAt desc) [$offset...$offset + $limit] {
+    _id,
+    "title": ${loc('title')},
+    "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
+    "excerpt": ${loc('excerpt')},
+    publishedAt,
+    expiresAt,
+    featured,
+    ${locImage('coverImage')},
+    "readingTimeMinutes": math::max([1, round(
+      length(pt::text(coalesce(body[$locale], body[$defaultLocale], body.en))) / $charsPerMinute
+    )]),
+    "author": author-> {
+      name,
+      "role": ${loc('role')},
+      avatar { asset, hotspot, crop }
+    },
+    "categoryKeys": categories,
+    "seoTitle": ${loc('seoTitle')},
+    "seoDescription": ${loc('seoDescription')},
+  }
+`
+
 // Fetches up to 3 related posts for the blog detail page.
 // Prioritises posts that share at least one category with the current post,
 // then falls back to featured / most recent from the same project.

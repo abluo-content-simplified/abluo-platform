@@ -34,12 +34,16 @@ export async function Nav({ tenantId, locale, defaultLocale, variant = 'full' }:
       <NavClient
         logoSrc={imageUrl(config.logo, 480)}
         logoLightSrc={imageUrl(config.logoLight, 480)}
-        logoAlt={config.siteName ?? 'Livener'}
+        logoAlt={config.siteName ?? tenantId}
+        // Matches the generic tenant header in layout.tsx: the practice name is
+        // drawn beside the mark only when there IS a mark. A wordmark tenant
+        // renders its name once, as the wordmark, and must not get it twice.
+        siteName={imageUrl(config.logo, 480) ? (config.siteName ?? undefined) : undefined}
         wordmarkText={config.wordmarkText}
         wordmarkAccent={config.wordmarkAccent}
         navLinks={resolveNavLinks(config.navLinks, locale, tenantId)}
-        ctaLabel={config.ctaLabel ?? 'Get Early Access'}
-        ctaHref={config.ctaHref ?? '#'}
+        ctaLabel={config.ctaLabel}
+        ctaHref={config.ctaHref}
         currentLocale={locale}
         supportedLocales={config.supportedLocales ?? [locale]}
         showLangSwitcherInNav={config.showLangSwitcherInNav ?? false}

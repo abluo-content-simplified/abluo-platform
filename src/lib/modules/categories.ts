@@ -182,3 +182,92 @@ export function charsPerMinute(modules: ProjectModuleConfig, moduleId: string): 
 export const DEFAULT_CHARS_PER_MINUTE = Math.round(
   DEFAULT_READING_SPEED_WPM * AVERAGE_CHARS_PER_WORD
 )
+
+// ── Routable categories ───────────────────────────────────────────────────────
+// Only for config lists whose manifest sets `supportsRouting` (today: blog
+// categories, which the old Webflow site published at /category/<slug> and
+// which are indexed). Everything below reads the SAME configured entries the
+// badges read — there is no second store of category titles anywhere.
+
+/** A category resolved as a page, not a badge. */
+export interface RoutableCategory extends ResolvedCategory {
+  /** Prose under the heading, and the meta description. */
+  description?: string
+  /** Keep the page out of search results without deleting the category. */
+  noindex?: boolean
+}
+
+/**
+ * Find one routable category by its key.
+ *
+ * Returns `{ category }` on a direct hit, `{ redirectTo }` when the key is a
+ * retired one listed in another entry's `redirectFrom`, and `{}` when neither
+ * matches — which the route turns into a 404.
+ *
+ * The three outcomes are returned rather than thrown so the caller decides the
+ * HTTP semantics; a 301 and a 404 are not interchangeable for a URL that has
+ * been indexed for two years.
+ */
+export function findRoutableCategory(
+  key: string,
+  modules: ProjectModuleConfig,
+  moduleId: string,
+  locale: string,
+  defaultLocale = 'en'
+): { category?: RoutableCategory; redirectTo?: string } {
+  const entries = configuredCategories(modules, moduleId)
+
+  const hit = entries.find((e) => e.value === key)
+  if (hit) {
+    return {
+      category: {
+        key: hit.value,
+        title: label(hit, locale, defaultLocale),
+        color: hit.color,
+        description: localizedValue(hit.description, locale, defaultLocale),
+        noindex: hit.noindex === true,
+      },
+    }
+  }
+
+  // Not a live category. Was it merged into one?
+  const merged = entries.find((e) => Array.isArray(e.redirectFrom) && e.redirectFrom.includes(key))
+  if (merged) return { redirectTo: merged.value }
+
+  return {}
+}
+
+/** Every routable category that currently has a page worth linking to. */
+export function listRoutableCategories(
+  modules: ProjectModuleConfig,
+  moduleId: string,
+  locale: string,
+  defaultLocale = 'en'
+): RoutableCategory[] {
+  return configuredCategories(modules, moduleId).map((entry) => ({
+    key: entry.value,
+    title: label(entry, locale, defaultLocale),
+    color: entry.color,
+    description: localizedValue(entry.description, locale, defaultLocale),
+    noindex: entry.noindex === true,
+  }))
+}
+
+/**
+ * Same fallback chain as label(), for the optional localized prose fields.
+ * Returns undefined rather than the key: a missing description should render
+ * nothing, not a slug.
+ */
+function localizedValue(
+  value: Record<string, string> | undefined,
+  locale: string,
+  defaultLocale: string
+): string | undefined {
+  if (!value) return undefined
+  const v =
+    value[locale] ??
+    value[defaultLocale] ??
+    value.en ??
+    Object.values(value).find((x) => typeof x === 'string' && x.trim() !== '')
+  return v && v.trim() !== '' ? v : undefined
+}

@@ -142,6 +142,16 @@ export type ModuleConfigListEntry = {
   label: Record<string, string>
   /** Optional badge colour, when the declaring field sets `supportsColor`. */
   color?: string
+  /**
+   * The three fields below exist only when the declaring field sets
+   * `supportsRouting` — i.e. when each entry is also a public page.
+   */
+  /** Prose shown under the heading on the entry's own page, and as its meta description. */
+  description?: Record<string, string>
+  /** Retired keys that were merged into this one. Requests for them 301 here. */
+  redirectFrom?: string[]
+  /** Keep the entry's page out of search results without unpublishing it. */
+  noindex?: boolean
 }
 
 /**
@@ -197,6 +207,16 @@ export type ModuleConfigFieldDef = {
   showWhen?: { field: string; equals: string | boolean }
   /** For `localizedStringList`: each entry also carries an optional colour. */
   supportsColor?: boolean
+  /**
+   * For `localizedStringList`: each entry is also a public page, so it carries
+   * a description, a list of retired keys that 301 to it, and a noindex flag.
+   *
+   * Declared rather than assumed. Blog categories were published as pages on
+   * the old Webflow site and those URLs are indexed; event types, form
+   * subjects and the other lists in the registry are vocabulary only and must
+   * NOT sprout pages just because they share a field type.
+   */
+  supportsRouting?: boolean
   /**
    * For `localizedStringList`: before an entry can be removed, count the
    * documents still using it and block the removal if any do.

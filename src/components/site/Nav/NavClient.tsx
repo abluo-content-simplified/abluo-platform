@@ -249,13 +249,20 @@ export function NavClient({
               {siteName && (
                 <>
                   <span
-                    className="hidden h-5 w-px shrink-0 sm:block"
+                    className="hidden h-6 w-px shrink-0 sm:block"
                     style={{ backgroundColor: 'var(--color-border)' }}
                     aria-hidden="true"
                   />
+                  {/* The practice name is the brand here, not a caption beside
+                      an icon -- it was 13px/0.85 opacity, which read as fine
+                      print. Sized to sit alongside the wordmark branch below
+                      (1.125rem) so a logo tenant and a wordmark tenant carry
+                      the same visual weight, and shown on mobile too: with the
+                      name hidden under sm, a phone got a bare mark and no
+                      indication of whose site it is. */}
                   <span
-                    className="hidden text-[13px] font-medium leading-tight tracking-wide sm:block md:text-[14px]"
-                    style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)', opacity: 0.85 }}
+                    className="text-[1.0625rem] font-semibold leading-tight tracking-[-0.01em] md:text-[1.1875rem]"
+                    style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
                   >
                     {siteName}
                   </span>

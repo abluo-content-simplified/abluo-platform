@@ -114,6 +114,10 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           label: 'Categories',
           type: 'localizedStringList',
           supportsColor: true,
+          // Blog categories are the one list in this registry that is also a
+          // set of public pages: /category/<key>. The old Webflow site
+          // published them and those URLs are indexed.
+          supportsRouting: true,
           usage: { schemaType: 'post', field: 'categories', noun: 'posts' },
           description:
             'The categories an author can choose from, in every language this website offers. Renaming or translating a label is safe — content filed under it keeps its link.',
