@@ -510,6 +510,7 @@ export const siteConfigFaviconQuery = /* groq */ `
     faviconPng { asset },
     openGraphImage { asset },
     appleTouchIcon { asset },
+    businessType,
     "googleSiteVerification": googleSiteVerification,
     "bingSiteVerification": bingSiteVerification
   }

@@ -621,6 +621,12 @@ export interface ProjectIntegrations {
 export interface WebsiteSiteConfig {
   tenantSlug: string
   siteName?: string
+  /**
+   * Schema.org LocalBusiness subtype for structured data. Was hardcoded to
+   * 'Dentist' in the JsonLd component, so a psychotherapist's site told search
+   * engines she ran a dental practice. Unset falls back to 'LocalBusiness'.
+   */
+  businessType?: string
   defaultLocale: SupportedLocale
   supportedLocales: SupportedLocale[]
   showLangSwitcherInNav?: boolean

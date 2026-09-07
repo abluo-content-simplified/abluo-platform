@@ -9,19 +9,23 @@ interface Props {
 
 /**
  * Renders Schema.org JSON-LD structured data for:
- * - Dentist (LocalBusiness) — powers knowledge panel, maps, voice search
+ * - LocalBusiness — powers knowledge panel, maps, voice search
  * - FAQPage — enables expandable FAQ rich results in Google
  *
- * Both scripts are invisible to users but read by search engines.
+ * Both scripts are invisible to users but read by search engines — which is
+ * exactly why the business type sitting hardcoded as 'Dentist' went unnoticed:
+ * every tenant, a psychotherapist included, was described to Google as a dental
+ * practice, and nothing on the rendered page showed it. The type now comes from
+ * siteConfig.businessType and defaults to the generic 'LocalBusiness'.
  */
 export function JsonLd({ siteConfig, faqSection, locale, tenantId }: Props) {
   const canonicalBase = siteConfig?.customDomain ? `https://${siteConfig.customDomain}` : null
   const url = canonicalBase ? `${canonicalBase}/${locale}/${tenantId}` : undefined
 
-  // ── Dentist / LocalBusiness ───────────────────────────────────────────────
-  const dentistSchema: Record<string, unknown> = {
+  // ── LocalBusiness ─────────────────────────────────────────────────────────
+  const businessSchema: Record<string, unknown> = {
     '@context': 'https://schema.org',
-    '@type': 'Dentist',
+    '@type': siteConfig?.businessType || 'LocalBusiness',
     name: siteConfig?.siteName,
     url,
     ...(siteConfig?.phone && { telephone: siteConfig.phone }),
@@ -59,7 +63,7 @@ export function JsonLd({ siteConfig, faqSection, locale, tenantId }: Props) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(dentistSchema) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(businessSchema) }}
       />
       {faqSchema && (
         <script

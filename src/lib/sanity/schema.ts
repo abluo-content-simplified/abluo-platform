@@ -4294,6 +4294,34 @@ const siteConfigType = defineType({
     defineField({ name: 'logoHeightMobile', title: 'Logo Height — Mobile (px)', type: 'number', group: 'branding', description: 'Max height of the logo in the header on mobile. Default: 28px.', initialValue: 28 }),
     defineField({ name: 'seoDefaultTitle', title: 'Default Page Title', type: 'localizedString', group: 'seo', description: 'Used as the <title> on pages that do not have a page-specific title. Falls back to Site Name.' }),
     defineField({ name: 'seoDefaultDescription', title: 'Default Meta Description', type: 'localizedText', group: 'seo', description: 'Used as the meta description on pages that do not have a page-specific description. Falls back to Tagline.' }),
+    // ── Structured data ──────────────────────────────────────────────────────
+    // Schema.org type for the site's LocalBusiness JSON-LD. This was HARDCODED
+    // to 'Dentist' in the JsonLd component — right for the first client, wrong
+    // for every one after. A psychotherapist's site was telling search engines
+    // she ran a dental practice, and because JSON-LD is invisible on the page,
+    // nothing surfaced it.
+    //
+    // Unset falls back to the generic 'LocalBusiness', never to one profession.
+    defineField({
+      name: 'businessType',
+      title: 'Business Type (structured data)',
+      type: 'string',
+      group: 'seo',
+      description:
+        'Schema.org type used in this site’s structured data — it tells search engines what kind of practice this is.',
+      options: {
+        list: [
+          { title: 'Local Business (generic)', value: 'LocalBusiness' },
+          { title: 'Psychologist / Psychotherapist', value: 'Psychologist' },
+          { title: 'Dentist', value: 'Dentist' },
+          { title: 'Physician', value: 'Physician' },
+          { title: 'Medical Clinic', value: 'MedicalClinic' },
+          { title: 'Health & Beauty Business', value: 'HealthAndBeautyBusiness' },
+          { title: 'Professional Service', value: 'ProfessionalService' },
+        ],
+      },
+      initialValue: 'LocalBusiness',
+    }),
     defineField({
       name: 'googleSiteVerification',
       title: 'Google Search Console Verification',
