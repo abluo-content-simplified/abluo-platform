@@ -409,6 +409,7 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
                 >
                   {relatedPosts.map((related, i) => (
                     <PostCard
+                      locale={locale}
                       key={related._id}
                       post={related}
                       href={`/${locale}/${tenantId}/blog/${related.slug.current}`}

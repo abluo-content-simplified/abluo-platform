@@ -196,7 +196,7 @@ export function FeatureGridSection({ section, surface, designSystem }: Props) {
               className="h-full"
             >
               <div
-                className="relative flex h-full flex-col bg-[var(--color-surface)] p-8 transition-colors duration-300 hover:bg-[var(--color-background-alt)] md:p-10"
+                className="group/card relative flex h-full flex-col bg-[var(--color-surface)] p-8 transition-[box-shadow,transform] duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-card,0_20px_48px_-24px_rgba(0,0,0,0.3))] md:p-10"
               >
                 {/* Card image — a services grid leads with a photograph, not a
                     glyph. Corner radius comes from the design system so it
@@ -204,15 +204,15 @@ export function FeatureGridSection({ section, surface, designSystem }: Props) {
                 {feature.image?.asset && (
                   <div
                     className="relative z-[1] mb-7 overflow-hidden"
-                    style={{ borderRadius: 'var(--radius-lg)', aspectRatio: '3 / 2' }}
+                    style={{ borderRadius: 'var(--radius-lg)', aspectRatio: '4 / 3' }}
                   >
                     <img
-                      src={imageUrl(feature.image, 800)}
+                      src={imageUrl(feature.image, 1000)}
                       srcSet={imageSrcSet(feature.image)}
                       sizes="(max-width: 768px) 100vw, 33vw"
                       alt={feature.image.alt ?? ''}
                       loading="lazy"
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover transition-transform duration-[600ms] ease-out group-hover/card:scale-[1.04]"
                     />
                   </div>
                 )}
@@ -322,7 +322,7 @@ export function FeatureGridSection({ section, surface, designSystem }: Props) {
                 {/* Per-card link — pushed to the foot so cards of unequal text
                     length still line their links up. */}
                 {feature.cta && (
-                  <div className="mt-auto">
+                  <div className="mt-auto pt-2">
                     <FeatureCardCta cta={feature.cta} />
                   </div>
                 )}

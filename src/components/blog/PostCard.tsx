@@ -10,18 +10,13 @@ import type { Post } from '@/lib/sanity/types'
 import { imageUrl } from '@/lib/sanity/image'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
-}
+import { formatBlogDate } from '@/lib/i18n/blog-module-messages'
 
 interface PostCardProps {
   post: Post
   href: string
+  /** Reader's locale — the published date is formatted in it, not in English. */
+  locale?: string
   /** Stagger delay in seconds */
   delay?: number
   /** Animation duration in seconds */
@@ -33,6 +28,7 @@ interface PostCardProps {
 export function PostCard({
   post,
   href,
+  locale,
   delay = 0,
   duration = 0.35,
   ease = [0.0, 0.0, 0.2, 1],
@@ -99,7 +95,7 @@ export function PostCard({
           )}
 
           <div className="mt-auto flex items-center gap-1.5 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            {post.publishedAt && <span>{formatDate(post.publishedAt)}</span>}
+            {post.publishedAt && <span>{formatBlogDate(post.publishedAt, locale)}</span>}
             {post.publishedAt && post.readingTimeMinutes && <span aria-hidden="true">·</span>}
             {post.readingTimeMinutes && <span>{post.readingTimeMinutes} min</span>}
           </div>

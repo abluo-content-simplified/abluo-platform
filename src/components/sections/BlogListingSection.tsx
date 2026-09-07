@@ -8,16 +8,12 @@ import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 import { SectionEmptyState } from '@/components/sections/shared/SectionEmptyState'
 import { resolveEasing } from '@/lib/motion/easing'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
+import { getBlogModuleMessages, formatBlogDate } from '@/lib/i18n/blog-module-messages'
 
-// ─── Date formatting ──────────────────────────────────────────────────────────
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
-}
+// Dates and the reading-time suffix are localized — see
+// @/lib/i18n/blog-module-messages. They used to be hardcoded to 'en' and
+// "min read", so an Italian reader on an Italian page got "Feb 12, 2026 ·
+// 2 min read".
 
 // ─── Category chips ───────────────────────────────────────────────────────────
 
@@ -45,7 +41,8 @@ function CategoryChips({ categories }: { categories?: Post['categories'] }) {
 
 // ─── Post meta (date + read time + author) ────────────────────────────────────
 
-function PostMeta({ post, size = 'sm' }: { post: Post; size?: 'sm' | 'base' }) {
+function PostMeta({ post, size = 'sm', locale }: { post: Post; size?: 'sm' | 'base'; locale: string }) {
+  const msg = getBlogModuleMessages(locale)
   const textSize = size === 'base' ? 'text-sm' : 'text-xs'
   const avatarSize = size === 'base' ? 'w-8 h-8' : 'w-6 h-6'
   const avatarSrc = post.author?.avatar ? imageUrl(post.author.avatar, 64) : undefined
@@ -70,12 +67,12 @@ function PostMeta({ post, size = 'sm' }: { post: Post; size?: 'sm' | 'base' }) {
           </span>
         )}
         <div className={`flex items-center gap-1.5 ${textSize}`} style={{ color: 'var(--color-text-muted)' }}>
-          {post.publishedAt && <span>{formatDate(post.publishedAt)}</span>}
+          {post.publishedAt && <span>{formatBlogDate(post.publishedAt, locale)}</span>}
           {post.publishedAt && post.readingTimeMinutes && (
             <span aria-hidden="true">·</span>
           )}
           {post.readingTimeMinutes && (
-            <span>{post.readingTimeMinutes} min read</span>
+            <span>{msg.readingTime(post.readingTimeMinutes)}</span>
           )}
         </div>
       </div>
@@ -85,7 +82,7 @@ function PostMeta({ post, size = 'sm' }: { post: Post; size?: 'sm' | 'base' }) {
 
 // ─── Post Card — Standard (used in Grid layout) ───────────────────────────────
 
-function PostCard({ post, href, priority = false }: { post: Post; href: string; priority?: boolean }) {
+function PostCard({ post, href, locale, priority = false }: { post: Post; href: string; locale: string; priority?: boolean }) {
   const coverSrc = imageUrl(post.coverImage, 800)
 
   return (
@@ -131,7 +128,7 @@ function PostCard({ post, href, priority = false }: { post: Post; href: string; 
           </p>
         )}
         <div className="mt-auto pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-          <PostMeta post={post} />
+          <PostMeta post={post} locale={locale} />
         </div>
       </div>
     </a>
@@ -140,7 +137,7 @@ function PostCard({ post, href, priority = false }: { post: Post; href: string; 
 
 // ─── Post Card — Large (used in Featured layout + Magazine main card) ─────────
 
-function PostCardLarge({ post, href }: { post: Post; href: string }) {
+function PostCardLarge({ post, href, locale }: { post: Post; href: string; locale: string }) {
   const coverSrc = imageUrl(post.coverImage, 1200)
 
   return (
@@ -186,7 +183,7 @@ function PostCardLarge({ post, href }: { post: Post; href: string }) {
           </p>
         )}
         <div className="mt-auto pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
-          <PostMeta post={post} size="base" />
+          <PostMeta post={post} size="base" locale={locale} />
         </div>
       </div>
     </a>
@@ -195,7 +192,7 @@ function PostCardLarge({ post, href }: { post: Post; href: string }) {
 
 // ─── Post Card — Mini (used in Magazine right column) ─────────────────────────
 
-function PostCardMini({ post, href }: { post: Post; href: string }) {
+function PostCardMini({ post, href, locale }: { post: Post; href: string; locale: string }) {
   const coverSrc = imageUrl(post.coverImage, 240)
 
   return (
@@ -240,11 +237,11 @@ function PostCardMini({ post, href }: { post: Post; href: string }) {
           {post.title}
         </h4>
         <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-          {post.publishedAt && <span>{formatDate(post.publishedAt)}</span>}
+          {post.publishedAt && <span>{formatBlogDate(post.publishedAt, locale)}</span>}
           {post.readingTimeMinutes && (
             <>
               <span aria-hidden="true">·</span>
-              <span>{post.readingTimeMinutes} min</span>
+              <span>{getBlogModuleMessages(locale).readingTimeShort(post.readingTimeMinutes)}</span>
             </>
           )}
         </div>
@@ -264,12 +261,14 @@ function postHref(blogBase: string, slug: string, fromParam?: string): string {
 // ─── Grid Layout ──────────────────────────────────────────────────────────────
 
 function GridLayout({
+  locale,
   posts,
   blogBase,
   fromParam,
   duration,
   ease,
 }: {
+  locale: string
   posts: Post[]
   blogBase: string
   fromParam?: string
@@ -288,7 +287,7 @@ function GridLayout({
     <div className={`grid gap-6 ${gridCols}`}>
       {posts.map((post, i) => (
         <SlideUp key={post._id} duration={duration} ease={ease} delay={i * 0.08} className="h-full">
-          <PostCard post={post} href={postHref(blogBase, post.slug.current, fromParam)} priority={i === 0} />
+          <PostCard post={post} href={postHref(blogBase, post.slug.current, fromParam)} priority={i === 0} locale={locale} />
         </SlideUp>
       ))}
     </div>
@@ -298,12 +297,14 @@ function GridLayout({
 // ─── Featured Layout ─────────────────────────────────────────────────────────
 
 function FeaturedLayout({
+  locale,
   posts,
   blogBase,
   fromParam,
   duration,
   ease,
 }: {
+  locale: string
   posts: Post[]
   blogBase: string
   fromParam?: string
@@ -317,7 +318,7 @@ function FeaturedLayout({
     <div className="flex flex-col gap-6">
       {/* Primary — always large */}
       <SlideUp duration={duration} ease={ease} delay={0}>
-        <PostCardLarge post={first} href={postHref(blogBase, first.slug.current, fromParam)} />
+        <PostCardLarge post={first} href={postHref(blogBase, first.slug.current, fromParam)} locale={locale} />
       </SlideUp>
 
       {/* Secondary cards below — if any */}
@@ -333,7 +334,7 @@ function FeaturedLayout({
         >
           {rest.map((post, i) => (
             <SlideUp key={post._id} duration={duration} ease={ease} delay={0.1 + i * 0.08} className="h-full">
-              <PostCard post={post} href={postHref(blogBase, post.slug.current, fromParam)} />
+              <PostCard post={post} href={postHref(blogBase, post.slug.current, fromParam)} locale={locale} />
             </SlideUp>
           ))}
         </div>
@@ -345,12 +346,14 @@ function FeaturedLayout({
 // ─── Magazine Layout ──────────────────────────────────────────────────────────
 
 function MagazineLayout({
+  locale,
   posts,
   blogBase,
   fromParam,
   duration,
   ease,
 }: {
+  locale: string
   posts: Post[]
   blogBase: string
   fromParam?: string
@@ -364,7 +367,7 @@ function MagazineLayout({
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
       {/* Main card — 3/5 width on large screens */}
       <SlideUp duration={duration} ease={ease} delay={0} className="lg:col-span-3 h-full">
-        <PostCardLarge post={first} href={postHref(blogBase, first.slug.current, fromParam)} />
+        <PostCardLarge post={first} href={postHref(blogBase, first.slug.current, fromParam)} locale={locale} />
       </SlideUp>
 
       {/* Secondary cards — 2/5 width, stacked */}
@@ -372,7 +375,7 @@ function MagazineLayout({
         <div className="lg:col-span-2 flex flex-col gap-4">
           {rest.map((post, i) => (
             <SlideUp key={post._id} duration={duration} ease={ease} delay={0.12 + i * 0.1}>
-              <PostCardMini post={post} href={postHref(blogBase, post.slug.current, fromParam)} />
+              <PostCardMini post={post} href={postHref(blogBase, post.slug.current, fromParam)} locale={locale} />
             </SlideUp>
           ))}
         </div>
@@ -467,11 +470,11 @@ export function BlogListingSection({ section, surface, designSystem, locale, ten
 
         {/* Posts — layout variant */}
         {layout === 'featured' ? (
-          <FeaturedLayout posts={posts} blogBase={blogBase} fromParam={fromParam} duration={duration} ease={ease} />
+          <FeaturedLayout locale={locale} posts={posts} blogBase={blogBase} fromParam={fromParam} duration={duration} ease={ease} />
         ) : layout === 'magazine' ? (
-          <MagazineLayout posts={posts} blogBase={blogBase} fromParam={fromParam} duration={duration} ease={ease} />
+          <MagazineLayout locale={locale} posts={posts} blogBase={blogBase} fromParam={fromParam} duration={duration} ease={ease} />
         ) : (
-          <GridLayout posts={posts} blogBase={blogBase} fromParam={fromParam} duration={duration} ease={ease} />
+          <GridLayout locale={locale} posts={posts} blogBase={blogBase} fromParam={fromParam} duration={duration} ease={ease} />
         )}
 
         {/* View All button — shown when label + href are both set */}

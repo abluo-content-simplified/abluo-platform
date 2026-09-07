@@ -28,7 +28,12 @@ export function FeatureCardCta({ cta }: { cta: Cta }) {
       style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-body)' }}
     >
       {resolved.label}
-      <span aria-hidden="true">→</span>
+      <span
+        aria-hidden="true"
+        className="transition-transform duration-300 ease-out group-hover/card:translate-x-1"
+      >
+        →
+      </span>
     </a>
   )
 }
