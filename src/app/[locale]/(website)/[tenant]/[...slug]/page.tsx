@@ -7,7 +7,7 @@ import { SectionRenderer, hydrateSections } from '@/components/sections/SectionR
 import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, FAQSection as FAQSectionType, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
 import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
-import { notFound, redirect } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { SlugMapProvider } from '@/components/SlugMapContext'
 import { isProduction, isDev } from '@/lib/deployment'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
@@ -144,7 +144,7 @@ export default async function WebsitePageRoute({ params }: PageProps) {
       { locale, slug }
     )
     if (redirectTarget?.currentSlug) {
-      redirect(`/${locale}/${tenantId}/${redirectTarget.currentSlug}`)
+      permanentRedirect(`/${locale}/${tenantId}/${redirectTarget.currentSlug}`)
     }
     return notFound()
   }

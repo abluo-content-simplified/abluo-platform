@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { notFound, redirect } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { isProduction, isDev } from '@/lib/deployment'
 import { tenantClient } from '@/lib/sanity/client'
 import {
@@ -124,7 +124,7 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
       { slug, locale: locale as SupportedLocale }
     )
     if (redirectResult?.currentSlug) {
-      redirect(`/${locale}/${tenantId}/events/${redirectResult.currentSlug}`)
+      permanentRedirect(`/${locale}/${tenantId}/events/${redirectResult.currentSlug}`)
     }
     notFound()
   }

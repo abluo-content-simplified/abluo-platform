@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { notFound, redirect } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { isProduction, isDev } from '@/lib/deployment'
 import { tenantClient } from '@/lib/sanity/client'
 import {
@@ -163,7 +163,7 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
       { slug, locale: locale as SupportedLocale }
     )
     if (redirectResult?.currentSlug) {
-      redirect(`/${locale}/${tenantId}/blog/${redirectResult.currentSlug}`)
+      permanentRedirect(`/${locale}/${tenantId}/blog/${redirectResult.currentSlug}`)
     }
     notFound()
   }

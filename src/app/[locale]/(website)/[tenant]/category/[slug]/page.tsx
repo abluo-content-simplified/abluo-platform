@@ -29,7 +29,7 @@
  */
 
 import type { Metadata } from 'next'
-import { notFound, redirect } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { tenantClient, fetchDesignSystemById } from '@/lib/sanity/client'
 import {
   localeConfigQuery,
@@ -142,7 +142,13 @@ export default async function BlogCategoryPage({ params }: PageProps) {
 
   // A retired category. 301 rather than 404: these were merged during the
   // migration and their old URLs are still linked from the live site.
-  if (redirectTo) redirect(`/${locale}/${tenantId}/category/${redirectTo}`)
+  //
+  // permanentRedirect, NOT redirect: Next's `redirect()` emits 307 Temporary,
+  // which does not pass link equity and which Google will not use to
+  // consolidate the old URL into the new one. Every redirectFrom route in this
+  // app had the same defect -- each documented as "301" while serving 307 --
+  // and they are all corrected in this change.
+  if (redirectTo) permanentRedirect(`/${locale}/${tenantId}/category/${redirectTo}`)
   if (!category) notFound()
 
   const [designSystem, posts] = await Promise.all([

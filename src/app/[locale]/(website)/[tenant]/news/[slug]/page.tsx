@@ -14,7 +14,7 @@
  */
 
 import type { Metadata } from 'next'
-import { notFound, redirect } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { isProduction, isDev } from '@/lib/deployment'
 import { tenantClient, fetchDesignSystemById } from '@/lib/sanity/client'
 import {
@@ -189,7 +189,7 @@ export default async function NewsDetailPage({ params, searchParams }: PageProps
       locale: locale as SupportedLocale,
     })
     if (redirectResult?.currentSlug) {
-      redirect(`/${locale}/${tenantId}/news/${redirectResult.currentSlug}`)
+      permanentRedirect(`/${locale}/${tenantId}/news/${redirectResult.currentSlug}`)
     }
     notFound()
   }
