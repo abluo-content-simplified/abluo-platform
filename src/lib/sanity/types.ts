@@ -1822,6 +1822,13 @@ export interface PhotoGallerySection {
   /** Locale-resolved by GROQ */
   description?: string
   gallery?: Gallery
+  /**
+   * 'grid' (default) lays every tile out equally in `columns`.
+   * 'featured' gives the FIRST item a 2x2 cell and flows the rest around it —
+   * the establishing-shot composition a studio gallery usually wants. Falls
+   * back to a plain grid below three items.
+   */
+  layout?: 'grid' | 'featured'
   columns?: 2 | 3 | 4
   imageRatio?: 'square' | 'landscape' | 'portrait' | 'auto'
   spacing?: 'tight' | 'normal' | 'loose'

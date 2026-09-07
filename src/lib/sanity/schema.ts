@@ -2528,6 +2528,34 @@ const photoGallerySectionType = defineType({
       description: 'Select the gallery to display. Manage galleries in the Gallery section.',
     }),
     defineField({
+      // ── Layout ───────────────────────────────────────────────────────────
+      // 'grid' is the historical behaviour: every tile the same size, laid out
+      // in `columns`. That is right for a set of equal photographs and wrong
+      // for the commonest real gallery — a studio or premises set, where one
+      // establishing shot should lead and the rest support it. Claudia
+      // Hoffmann's old site did exactly that (Webflow gallery8: one
+      // `image-wrapper-large` plus smaller `image-wrapper`s); rebuilt as a
+      // uniform grid it became four identical tiles and lost the composition.
+      //
+      // 'featured' gives the FIRST item a large cell — two columns wide and two
+      // rows tall — and flows the rest around it. Falls back to the plain grid
+      // when there are fewer than three items, where a feature cell has nothing
+      // to be featured against.
+      //
+      // Default stays 'grid', so every gallery authored before this is unchanged.
+      name: 'layout',
+      title: 'Layout',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Grid — equal tiles', value: 'grid' },
+          { title: 'Featured — first image large', value: 'featured' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'grid',
+    }),
+    defineField({
       name: 'columns',
       title: 'Columns',
       type: 'number',

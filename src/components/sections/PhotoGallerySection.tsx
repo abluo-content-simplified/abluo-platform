@@ -178,6 +178,19 @@ export function PhotoGallerySection({ section, surface, designSystem }: Props) {
   const gapClass = getGapClass(spacing)
   const ratioClass = getAspectRatioClass(imageRatio)
 
+  // ── Featured layout ─────────────────────────────────────────────────────────
+  // Equal tiles are right for a set of equal photographs and wrong for the
+  // commonest real gallery: a studio or premises set, where one establishing
+  // shot should lead. 'featured' gives the FIRST item a 2x2 cell and flows the
+  // rest around it.
+  //
+  // Below three items there is nothing to feature against, so it falls back to
+  // the plain grid rather than rendering one large image and a lone small one.
+  const featured = (section.layout ?? 'grid') === 'featured' && items.length >= 3
+  // A featured cell must be square-ish or it starves the tiles beside it, so
+  // the feature ignores `imageRatio` and the tiles keep it.
+  const featureRatioClass = 'aspect-square'
+
   return (
     <SectionContainer id={section.anchorId} style={surfaceStyles}>
       {/* Optional header */}
@@ -231,20 +244,24 @@ export function PhotoGallerySection({ section, surface, designSystem }: Props) {
 
       {/* Gallery grid */}
       {items.length > 0 && (
-        <div className={`grid ${gridClass} ${gapClass}`}>
+        <div className={`grid ${featured ? 'grid-cols-2 md:grid-cols-3' : gridClass} ${gapClass}`}>
           {items.map((item, index) => (
             <SlideUp
               key={item._key}
               duration={duration}
               ease={ease}
               delay={Math.min(index * 0.04, 0.4)}
+              className={featured && index === 0 ? 'col-span-2 row-span-2' : undefined}
             >
               {item.mediaAsset?.mediaType === 'video' ? (
-                <VideoFallbackCard item={item} ratioClass={ratioClass} />
+                <VideoFallbackCard
+                  item={item}
+                  ratioClass={featured && index === 0 ? featureRatioClass : ratioClass}
+                />
               ) : (
                 <GalleryImageCard
                   item={item}
-                  ratioClass={ratioClass}
+                  ratioClass={featured && index === 0 ? featureRatioClass : ratioClass}
                   showCaptions={showCaptions}
                 />
               )}

@@ -375,7 +375,13 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
         "label": ${loc('label')},
         "description": ${loc('description')},
       },
-      // photoGallerySection fields
+      // photoGallerySection fields.
+      // NOTE: layout is NOT repeated here. This projection is FLAT — one object
+      // naming the union of every section type's fields — so the layout already
+      // projected for blogListingSection above serves photoGallerySection too.
+      // Naming it twice is a duplicate key in a single GROQ object.
+      // (And no backticks in this file's comments: the whole block is a JS
+      // template literal, so a backtick ends the string.)
       columns,
       imageRatio,
       spacing,
@@ -607,16 +613,14 @@ export const websiteSiteConfigQuery = /* groq */ `
     },
     "ctaLabel": ${loc('ctaLabel')},
     ctaHref,
-    footerLinks[] {
-      "label": ${loc('label')},
-      linkType,
-      internalPage,
-      externalUrl,
-      anchorId,
-      openInNewTab,
-      href,
-      external
-    },
+    // Uses NAV_LINK_FIELDS, which navLinks[] has always used. The inline copy
+    // that used to live here was identical EXCEPT that it omitted "pageSlug" —
+    // so it never dereferenced pageRef->slug, every internal footer link
+    // resolved to nothing, and the renderer fell back to the tenant home.
+    // Fifteen footer links on one site all pointed at the homepage; the nav
+    // links beside them were correct, which is why it survived review.
+    // Any tenant whose footer links to a page document was affected.
+    footerLinks[] { ${NAV_LINK_FIELDS} },
     // Grouped footer link columns — empty on every tenant that has not
     // authored any, leaving the flat footerLinks[] above the only source.
     footerColumns[] {
