@@ -231,6 +231,33 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     defaultLocale: "en",
     status: "inactive",
   },
+  {
+    host: "tmz.it",
+    hostKind: "custom-domain",
+    tenantSlug: "tmz",
+    projectSlug: "tmz",
+    projectId: "3e308301-6916-4f0c-b616-97a3b7f6d9ef",
+    defaultLocale: "en",
+    status: "draft",
+  },
+  {
+    host: "tmz.localhost",
+    hostKind: "localhost-subdomain",
+    tenantSlug: "tmz",
+    projectSlug: "tmz",
+    projectId: "3e308301-6916-4f0c-b616-97a3b7f6d9ef",
+    defaultLocale: "en",
+    status: "draft",
+  },
+  {
+    host: "tmz.preview.abluo.app",
+    hostKind: "preview-subdomain",
+    tenantSlug: "tmz",
+    projectSlug: "tmz",
+    projectId: "3e308301-6916-4f0c-b616-97a3b7f6d9ef",
+    defaultLocale: "en",
+    status: "draft",
+  },
 ] as const
 
 /**
