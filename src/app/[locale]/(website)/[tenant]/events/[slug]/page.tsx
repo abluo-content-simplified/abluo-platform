@@ -22,6 +22,7 @@ import { SlugMapProvider, type SlugMap } from '@/components/SlugMapContext'
 import { EventCard } from '@/components/events/EventCard'
 import { BackButton } from '@/components/events/BackButton'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
 interface PageProps {
   params: Promise<{ tenant: string; locale: string; slug: string }>
   searchParams?: Promise<{ from?: string }>
@@ -45,16 +46,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     fetchForTenant<string | null>(projectDomainQuery, {}),
   ])
 
-  const canonicalBase = customDomain ? `https://${customDomain}` : null
+  const origin = canonicalOrigin(customDomain)
   const currentSlug = event?.slugMap?.[locale as SupportedLocale]?.current ?? ''
 
   // Build hreflang alternates from per-locale slugs in slugMap.
   const alternates: Record<string, string> = {}
-  if (canonicalBase && event?.slugMap) {
+  if (origin && event?.slugMap) {
     for (const loc of supportedLocales) {
       const locSlug = event.slugMap[loc as SupportedLocale]?.current
       if (locSlug) {
-        alternates[loc] = `${canonicalBase}/${loc}/${tenantId}/events/${locSlug}`
+        alternates[loc] = canonicalUrl(origin, loc, 'events', locSlug)!
       }
     }
   }
@@ -63,8 +64,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: event?.seoTitle ?? event?.title ?? 'Event',
     description: event?.seoDescription ?? event?.shortDescription ?? 'Event details',
     alternates: {
-      canonical: isProduction() && canonicalBase && currentSlug
-        ? `${canonicalBase}/${locale}/${tenantId}/events/${currentSlug}`
+      canonical: isProduction() && origin && currentSlug
+        ? canonicalUrl(origin, locale, 'events', currentSlug)
         : undefined,
       languages: !isDev() && Object.keys(alternates).length > 0 ? alternates : undefined,
     },

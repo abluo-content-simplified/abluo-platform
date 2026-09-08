@@ -664,6 +664,11 @@ export const websiteSiteConfigQuery = /* groq */ `
     legalAddress,
     registrationInfo,
     foundedYear,
+    // businessType was projected ONLY by siteConfigFaviconQuery, which JsonLd
+    // does not call — so the field an editor sets in Studio never reached the
+    // structured data and every tenant fell back to the default type.
+    businessType,
+    addressCountry,
     youtubeChannelUrl,
     socialLinks[] { platform, url },
     phone,
@@ -1570,6 +1575,17 @@ export const homePageQuery = /* groq */ `
   }
 `
 
+// ─── Page-level SEO ──────────────────────────────────────────────────────────
+// Locale-resolved so a consumer receives a plain string, exactly like `title`.
+// `ogImage` is projected raw: it is an image object, and the caller runs it
+// through ogImageUrl() to force the 1200x630 JPG that social crawlers accept.
+const PAGE_SEO_PROJECTION = /* groq */ `
+    "seoTitle": ${loc('seoTitle')},
+    "seoDescription": ${loc('seoDescription')},
+    ogImage,
+    noindex
+`
+
 // Fetches the homepage from the new page system (pageType == "home").
 export const pageHomeQuery = /* groq */ `
   *[_type == "page" && projectSlug == $projectSlug && pageType == "home"][0] {
@@ -1578,6 +1594,7 @@ export const pageHomeQuery = /* groq */ `
     "title": ${loc('title')},
     slug,
     backgroundPattern,
+    ${PAGE_SEO_PROJECTION},
     ${PAGE_SECTIONS_PROJECTION}
   }
 `
@@ -1590,6 +1607,7 @@ export const pageBySlugQuery = /* groq */ `
     "slugMap": slug,
     "redirectFrom": redirectFrom,
     backgroundPattern,
+    ${PAGE_SEO_PROJECTION},
     ${PAGE_SECTIONS_PROJECTION}
   }
 `

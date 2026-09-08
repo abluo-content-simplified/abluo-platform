@@ -25,6 +25,7 @@ import { PortableText } from '@portabletext/react'
 import { articlePortableTextComponents } from '@/components/portable-text/article-components'
 import { PostCard } from '@/components/blog/PostCard'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,15 +52,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     fetchForTenant<string | null>(projectDomainQuery, {}),
   ])
 
-  const canonicalBase = customDomain ? `https://${customDomain}` : null
+  const origin = canonicalOrigin(customDomain)
   const currentSlug = post?.slugMap?.[locale as SupportedLocale]?.current ?? slug
 
   const alternates: Record<string, string> = {}
-  if (canonicalBase && post?.slugMap) {
+  if (origin && post?.slugMap) {
     for (const loc of supportedLocales) {
       const locSlug = post.slugMap[loc as SupportedLocale]?.current
       if (locSlug) {
-        alternates[loc] = `${canonicalBase}/${loc}/${tenantId}/blog/${locSlug}`
+        alternates[loc] = canonicalUrl(origin, loc, 'blog', locSlug)!
       }
     }
   }
@@ -68,8 +69,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: post?.seoTitle ?? post?.title ?? 'Article',
     description: post?.seoDescription ?? post?.excerpt ?? 'Article',
     alternates: {
-      canonical: isProduction() && canonicalBase
-        ? `${canonicalBase}/${locale}/${tenantId}/blog/${currentSlug}`
+      canonical: isProduction() && origin
+        ? canonicalUrl(origin, locale, 'blog', currentSlug)
         : undefined,
       languages: !isDev() && Object.keys(alternates).length > 0 ? alternates : undefined,
     },

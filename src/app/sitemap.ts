@@ -2,6 +2,8 @@ import type { MetadataRoute } from 'next'
 import { headers } from 'next/headers'
 import { isProduction } from '@/lib/deployment'
 import { isStagingHost } from '@/lib/seo/indexability'
+import { canonicalUrl } from '@/lib/seo/canonical'
+import { normalizeHost } from '@/lib/tenancy/host-scope'
 
 // ─── projectSlug → URL tenant slug ───────────────────────────────────────────
 // There is no longer a map here. This was `PROJECT_TO_TENANT`, the reverse of
@@ -81,11 +83,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID) return []
 
   try {
-    // ── DELIBERATELY CROSS-PROJECT — not an oversight, do not "fix" this ─────
-    // This is the single root sitemap for the whole multi-tenant deployment,
-    // so it must enumerate EVERY active project; there is no tenant in scope
-    // to hand `tenantClient()`. Using the raw client here is correct, and the
-    // scoping guard does not apply.
+    // ── CROSS-PROJECT READ, SINGLE-PROJECT OUTPUT ───────────────────────────
+    // The read is deliberately unscoped: one deployment serves every host, and
+    // there is no tenant in scope to hand `tenantClient()`, so the raw client
+    // is correct here and the scoping guard does not apply.
+    //
+    // The OUTPUT is scoped, which it was not until this commit. This function
+    // used to emit every active project's URLs and serve that same list on
+    // every domain, so `livener.net/sitemap.xml` advertised `abluo.app`,
+    // `ch-psicoterapeuta.com`, `studiomartegani.com` and `nologo.cloud` — 31
+    // entries across five domains, on every one of them. Two things wrong with
+    // that: a search engine ignores sitemap entries for a domain other than the
+    // one the sitemap sits on unless they are cross-submitted in Search
+    // Console, so the extra rows did nothing for anybody; and the file is
+    // public, so every client's sitemap disclosed the entire client list.
+    //
+    // `hostProject` below is the filter. It is derived from the REQUEST host
+    // rather than from the generated route table, for the same reason the rest
+    // of this file reads Sanity: the sitemap describes what is published.
     //
     // Two things keep it safe:
     //   1. It only ever emits URLs that are already public — published pages,
@@ -174,19 +189,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     const entries: MetadataRoute.Sitemap = []
 
+    // The host this sitemap is being served on, normalised the same way the
+    // indexability classifier normalises it (lowercased, port stripped).
+    const requestHost = normalizeHost((await headers()).get('host'))
+
     for (const { projectSlug, customDomain, supportedLocales, defaultLocale } of projects) {
       // Skip tenants without a custom domain — no canonical URL to emit.
       if (!customDomain) continue
 
-      const tenantSlug = projectSlug
+      // Emit only the project whose own domain is being asked. A request that
+      // arrives on a host no project claims (an alias, a domain mid-migration)
+      // gets an EMPTY sitemap rather than everyone's: on an unknown host we do
+      // not know whose content it is safe to advertise, and an empty sitemap
+      // costs a project nothing while a wrong one leaks every other client.
+      if (normalizeHost(customDomain) !== requestHost) continue
+
       const locales = supportedLocales && supportedLocales.length > 0 ? supportedLocales : ['en']
       const primaryLocale = defaultLocale ?? locales[0]
       const tenantBase = `https://${customDomain}`
 
-      // Tenant homepage — one URL per locale
+      // Tenant homepage — one URL per locale.
+      // No project segment: see @/lib/seo/canonical. `/en/livener` and `/en`
+      // both answer on a custom domain, and the sitemap must name the same one
+      // the canonical tag does or the two disagree about which is the page.
       for (const locale of locales) {
         entries.push({
-          url: `${tenantBase}/${locale}/${tenantSlug}`,
+          url: canonicalUrl(tenantBase, locale)!,
           lastModified: new Date(),
           changeFrequency: 'weekly',
           priority: locale === primaryLocale ? 1.0 : 0.9,
@@ -200,7 +228,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           const slugObj = page.slug?.[locale]
           if (slugObj?.current) {
             entries.push({
-              url: `${tenantBase}/${locale}/${tenantSlug}/${slugObj.current}`,
+              url: canonicalUrl(tenantBase, locale, slugObj.current)!,
               lastModified: new Date(),
               changeFrequency: 'weekly',
               priority: locale === primaryLocale ? 0.8 : 0.7,
@@ -216,7 +244,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           const slugObj = event.slug?.[locale]
           if (slugObj?.current) {
             entries.push({
-              url: `${tenantBase}/${locale}/${tenantSlug}/events/${slugObj.current}`,
+              url: canonicalUrl(tenantBase, locale, 'events', slugObj.current)!,
               lastModified: new Date(),
               changeFrequency: 'weekly',
               priority: locale === primaryLocale ? 0.7 : 0.6,
@@ -232,7 +260,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           const slugObj = post.slug?.[locale]
           if (slugObj?.current) {
             entries.push({
-              url: `${tenantBase}/${locale}/${tenantSlug}/blog/${slugObj.current}`,
+              url: canonicalUrl(tenantBase, locale, 'blog', slugObj.current)!,
               lastModified: new Date(),
               changeFrequency: 'monthly',
               priority: locale === primaryLocale ? 0.6 : 0.5,
@@ -249,7 +277,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           const slugObj = item.slug?.[locale]
           if (slugObj?.current) {
             entries.push({
-              url: `${tenantBase}/${locale}/${tenantSlug}/news/${slugObj.current}`,
+              url: canonicalUrl(tenantBase, locale, 'news', slugObj.current)!,
               lastModified: new Date(),
               changeFrequency: 'monthly',
               priority: locale === primaryLocale ? 0.6 : 0.5,

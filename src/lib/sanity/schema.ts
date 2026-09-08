@@ -4613,6 +4613,10 @@ const siteConfigType = defineType({
         'Schema.org type used in this site’s structured data — it tells search engines what kind of practice this is.',
       options: {
         list: [
+          // Never wrong. The right answer for anything that is not a place a
+          // customer can walk into — software, infrastructure, an agency.
+          { title: 'Organization (generic — software, agency, platform)', value: 'Organization' },
+          // Asserts a physical place of business. Only for one.
           { title: 'Local Business (generic)', value: 'LocalBusiness' },
           { title: 'Psychologist / Psychotherapist', value: 'Psychologist' },
           { title: 'Dentist', value: 'Dentist' },
@@ -4620,9 +4624,25 @@ const siteConfigType = defineType({
           { title: 'Medical Clinic', value: 'MedicalClinic' },
           { title: 'Health & Beauty Business', value: 'HealthAndBeautyBusiness' },
           { title: 'Professional Service', value: 'ProfessionalService' },
+          { title: 'Software Company', value: 'SoftwareApplication' },
         ],
       },
-      initialValue: 'LocalBusiness',
+      // Organization, not LocalBusiness: see the note in JsonLd.tsx. A default
+      // that asserts a storefront is a claim, and a default should not make one.
+      initialValue: 'Organization',
+    }),
+    defineField({
+      name: 'addressCountry',
+      title: 'Address Country (structured data)',
+      type: 'string',
+      group: 'seo',
+      description:
+        'ISO country code for the address above — IT, GB, DE, CH … Used in structured data only. This used to be hardcoded to IT for every site, which was wrong for any tenant registered outside Italy. Leave empty and no country is claimed.',
+      validation: (Rule) =>
+        Rule.uppercase()
+          .min(2)
+          .max(2)
+          .warning('Use the two-letter ISO 3166-1 code, e.g. IT or GB.'),
     }),
     defineField({
       name: 'googleSiteVerification',
@@ -4883,6 +4903,7 @@ const pageType = defineType({
   type: 'document',
   groups: [
     { name: 'content', title: 'Content', default: true },
+    { name: 'seo', title: 'SEO' },
     { name: 'redirects', title: 'Redirects' },
   ],
   fields: [
@@ -4954,6 +4975,46 @@ const pageType = defineType({
       title: 'Sections',
       type: 'array',
       of: PAGE_SECTIONS_OF,
+    }),
+
+    // ── SEO ──────────────────────────────────────────────────────────────────
+    // Until these existed a page could carry a <title> and nothing else: the
+    // slug route emitted no `description` at all and had no way to author one,
+    // so every page but the home page let Google compose its own snippet from
+    // the body copy. Each field falls back to the site default when empty, so
+    // adding them changes nothing for a page that leaves them blank.
+    defineField({
+      name: 'seoTitle',
+      title: 'SEO Title',
+      type: 'localizedString',
+      group: 'seo',
+      description:
+        'Overrides the browser/search-result title for this page. Leave empty to use "<Page title> — <Site name>". Aim for roughly 60 characters; Google truncates beyond that.',
+    }),
+    defineField({
+      name: 'seoDescription',
+      title: 'Meta Description',
+      type: 'localizedText',
+      group: 'seo',
+      description:
+        'The snippet under the title in search results, and the description used when the page is shared or quoted by an AI assistant. Roughly 150–160 characters. Leave empty to inherit the site default.',
+    }),
+    defineField({
+      name: 'ogImage',
+      title: 'Social Sharing Image',
+      type: 'image',
+      group: 'seo',
+      description:
+        'Overrides the site-wide Open Graph image for this page only • 1200 × 630 px • JPG preferred.',
+    }),
+    defineField({
+      name: 'noindex',
+      title: 'Hide from search engines',
+      type: 'boolean',
+      group: 'seo',
+      initialValue: false,
+      description:
+        'Emits noindex for this page. For thank-you pages, campaign duplicates and anything that should be reachable by link but never listed in search. Links on the page are still followed.',
     }),
   ],
   preview: {

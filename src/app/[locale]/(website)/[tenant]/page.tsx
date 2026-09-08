@@ -10,7 +10,8 @@ import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, FAQSection as FAQSec
 import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
 import { isProduction, isDev } from '@/lib/deployment'
-import { ogImageUrl } from '@/lib/sanity/image'
+import { ogImageUrl, imageUrl } from '@/lib/sanity/image'
+import { canonicalOrigin, canonicalUrl, hreflangAlternates, seoAlternates } from '@/lib/seo/canonical'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 
 export const dynamic = 'force-dynamic'
@@ -29,21 +30,32 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { fetchForTenant } = tenantClient(tenantId)
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
-  const config = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
+  // The home document is fetched here as well as in the page body: its SEO
+  // fields are page-level overrides of the site defaults, and generateMetadata
+  // has no other way to see them. Same query, same params — Next's request
+  // memoisation collapses the two into one round trip.
+  const [config, homePage] = await Promise.all([
+    fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale }),
+    fetchForTenant<WebsitePage>(pageHomeQuery, { locale, defaultLocale }),
+  ])
 
   // Canonical base from Sanity project.customDomain — single source of truth.
   // Null when the project has no custom domain (new/unlaunched tenants).
-  const canonicalBase = config?.customDomain ? `https://${config.customDomain}` : null
-  const canonical = canonicalBase ? `${canonicalBase}/${locale}/${tenantId}` : undefined
+  //
+  // The URL is built by @/lib/seo/canonical and carries NO project segment: the
+  // public home page of a custom domain is `https://domain/en`, not
+  // `https://domain/en/<project>`. Both spellings answer (see proxy.ts), which
+  // is exactly why the canonical has to name one of them.
+  const origin = canonicalOrigin(config?.customDomain)
+  const canonical = canonicalUrl(origin, locale)
 
-  // Build hreflang alternates dynamically from siteConfig.supportedLocales.
+  // hreflang from siteConfig.supportedLocales, plus x-default.
   const supportedLocales = config?.supportedLocales ?? [locale as SupportedLocale]
-  const languages: Record<string, string> = {}
-  if (canonicalBase) {
-    for (const loc of supportedLocales) {
-      languages[loc] = `${canonicalBase}/${loc}/${tenantId}`
-    }
-  }
+  const languages = hreflangAlternates(
+    origin,
+    Object.fromEntries(supportedLocales.map((loc) => [loc, []])),
+    defaultLocale
+  )
 
   // OG locale tag — maps 2-letter code to IETF format
   const ogLocaleMap: Record<string, string> = {
@@ -51,16 +63,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     es: 'es_ES', pt: 'pt_PT', nl: 'nl_NL',
   }
 
-  const metaTitle = config?.seoDefaultTitle ?? config?.siteName ?? tenantId
-  const metaDescription = config?.seoDefaultDescription ?? config?.tagline
+  // Page-level SEO wins, then the site default, then the bare site name.
+  const metaTitle = homePage?.seoTitle ?? config?.seoDefaultTitle ?? config?.siteName ?? tenantId
+  const metaDescription =
+    homePage?.seoDescription ?? config?.seoDefaultDescription ?? config?.tagline
+  const pageOgImage = homePage?.ogImage?.asset ? ogImageUrl(homePage.ogImage as never) : undefined
 
   return {
     title: metaTitle,
     description: metaDescription,
-    alternates: {
-      canonical: isProduction() ? canonical : undefined,
-      languages: !isDev() && Object.keys(languages).length > 0 ? languages : undefined,
-    },
+    alternates: seoAlternates(origin, canonical, languages, {
+      isProduction: isProduction(),
+      isDev: isDev(),
+    }),
+    ...(homePage?.noindex ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       title: metaTitle,
       description: metaDescription ?? undefined,
@@ -69,7 +85,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       locale: ogLocaleMap[locale] ?? locale,
       type: 'website',
       images: (() => {
-        const url = config?.openGraphImage?.asset ? ogImageUrl(config.openGraphImage as any) : undefined
+        const url =
+          pageOgImage ??
+          (config?.openGraphImage?.asset ? ogImageUrl(config.openGraphImage as never) : undefined)
         return url ? [{ url, width: 1200, height: 630 }] : undefined
       })(),
     },
@@ -133,6 +151,8 @@ export default async function WebsitePage({ params }: PageProps) {
         faqSection={faqSection}
         locale={locale}
         tenantId={tenantId}
+        pathSegments={[]}
+        logoUrl={siteConfig?.logo ? imageUrl(siteConfig.logo as never, 512) : undefined}
       />
 
       {/* ── Hero section (always first) ──────────────────────────── */}

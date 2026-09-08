@@ -38,6 +38,7 @@ import { articlePortableTextComponents } from '@/components/portable-text/articl
 import { getNewsModuleMessages, formatNewsDate } from '@/lib/i18n/news-module-messages'
 import { resolveEasing } from '@/lib/motion/easing'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,17 +70,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     fetchForTenant<string | null>(projectDomainQuery, {}),
   ])
 
-  const canonicalBase = customDomain ? `https://${customDomain}` : null
+  const origin = canonicalOrigin(customDomain)
   const currentSlug = article?.slugMap?.[locale as SupportedLocale]?.current ?? slug
 
   // hreflang: only for locales that actually have a slug. Emitting an alternate
   // for a locale with no translation would advertise a URL that 404s.
   const alternates: Record<string, string> = {}
-  if (canonicalBase && article?.slugMap) {
+  if (origin && article?.slugMap) {
     for (const loc of supportedLocales) {
       const locSlug = article.slugMap[loc as SupportedLocale]?.current
       if (locSlug) {
-        alternates[loc] = `${canonicalBase}/${loc}/${tenantId}/news/${locSlug}`
+        alternates[loc] = canonicalUrl(origin, loc, 'news', locSlug)!
       }
     }
   }
@@ -93,8 +94,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: article?.seoDescription ?? article?.excerpt,
     alternates: {
       canonical:
-        isProduction() && canonicalBase
-          ? `${canonicalBase}/${locale}/${tenantId}/news/${currentSlug}`
+        isProduction() && origin
+          ? canonicalUrl(origin, locale, 'news', currentSlug)
           : undefined,
       languages: !isDev() && Object.keys(alternates).length > 0 ? alternates : undefined,
     },

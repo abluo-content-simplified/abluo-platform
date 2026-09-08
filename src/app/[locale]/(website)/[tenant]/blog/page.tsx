@@ -36,6 +36,7 @@ import { getNewsPageMessages } from '@/lib/i18n/news-page-messages'
 import { isProduction, isDev } from '@/lib/deployment'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
 
 export const dynamic = 'force-dynamic'
 
@@ -66,14 +67,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const pageHeading = blogPage?.heroTitle ?? msg.title
   const pageDescription = blogPage?.seoDescription ?? blogPage?.heroSubtitle ?? msg.subtitle
 
-  const canonicalBase = config?.customDomain ? `https://${config.customDomain}` : null
-  const canonical = canonicalBase ? `${canonicalBase}/${locale}/${tenantId}/blog` : undefined
+  const origin = canonicalOrigin(config?.customDomain)
+  const canonical = canonicalUrl(origin, locale, 'blog')
 
   // hreflang: /blog is locale-invariant in path.
   const languages: Record<string, string> = {}
-  if (canonicalBase) {
+  if (origin) {
     for (const loc of supportedLocales) {
-      languages[loc] = `${canonicalBase}/${loc}/${tenantId}/blog`
+      languages[loc] = canonicalUrl(origin, loc, 'blog')!
     }
   }
 

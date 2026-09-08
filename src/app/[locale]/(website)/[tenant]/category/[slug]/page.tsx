@@ -116,14 +116,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // The category URL is the same segment in every locale, so alternates are a
   // straight product of supportedLocales — no slug map needed.
   const languages: Record<string, string> = {}
-  for (const l of supportedLocales) languages[l] = `/${l}/${tenantId}/category/${category.key}`
+  for (const l of supportedLocales) languages[l] = `/${l}/category/${category.key}`
 
   const noindex = category.noindex === true || !isProduction() || isDev()
 
   return {
     title,
     description: category.description,
-    alternates: { canonical: `/${locale}/${tenantId}/category/${category.key}`, languages },
+    alternates: { canonical: `/${locale}/category/${category.key}`, languages },
     robots: noindex ? { index: false, follow: false } : undefined,
     openGraph: { title, description: category.description, type: 'website' },
   }

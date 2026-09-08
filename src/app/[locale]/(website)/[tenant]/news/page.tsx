@@ -40,6 +40,7 @@ import { getNewsModuleMessages } from '@/lib/i18n/news-module-messages'
 import { isProduction, isDev } from '@/lib/deployment'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
 
 export const dynamic = 'force-dynamic'
 
@@ -72,15 +73,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const pageHeading = newsPage?.heroTitle ?? msg.newsListLabel
   const pageDescription = newsPage?.seoDescription ?? newsPage?.heroSubtitle
 
-  const canonicalBase = config?.customDomain ? `https://${config.customDomain}` : null
-  const canonical = canonicalBase ? `${canonicalBase}/${locale}/${tenantId}/news` : undefined
+  const origin = canonicalOrigin(config?.customDomain)
+  const canonical = canonicalUrl(origin, locale, 'news')
 
   // hreflang: the /news segment is locale-invariant, so one URL per supported
   // locale differing only in the locale prefix.
   const languages: Record<string, string> = {}
-  if (canonicalBase) {
+  if (origin) {
     for (const loc of supportedLocales) {
-      languages[loc] = `${canonicalBase}/${loc}/${tenantId}/news`
+      languages[loc] = canonicalUrl(origin, loc, 'news')!
     }
   }
 

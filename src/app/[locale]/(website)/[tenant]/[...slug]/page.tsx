@@ -10,6 +10,8 @@ import { JsonLd } from '@/components/JsonLd'
 import { notFound, permanentRedirect } from 'next/navigation'
 import { SlugMapProvider } from '@/components/SlugMapContext'
 import { isProduction, isDev } from '@/lib/deployment'
+import { canonicalOrigin, canonicalUrl, hreflangAlternates, seoAlternates } from '@/lib/seo/canonical'
+import { ogImageUrl, imageUrl } from '@/lib/sanity/image'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 import { joinSlugSegments } from '@/lib/sanity/fields/nested-slug'
 
@@ -66,27 +68,31 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!page) return {}
 
-  const canonicalBase = config?.customDomain ? `https://${config.customDomain}` : null
+  const origin = canonicalOrigin(config?.customDomain)
 
-  const pageTitle = page.title
-    ? `${page.title} — ${config?.siteName ?? tenantId}`
-    : config?.siteName ?? tenantId
+  // Page-level SEO overrides the site defaults; the site defaults override
+  // nothing at all, which is how the restaurant landing page ended up with a
+  // title and no description. Precedence: page.seoTitle → page.title → siteName.
+  const pageTitle =
+    page.seoTitle ??
+    (page.title ? `${page.title} — ${config?.siteName ?? tenantId}` : config?.siteName ?? tenantId)
 
-  // Build hreflang alternates from the page's per-locale slug map.
+  // A page with no description of its own inherits the site default rather than
+  // emitting none — an absent description lets Google invent one from the body.
+  const pageDescription = page.seoDescription ?? config?.seoDefaultDescription ?? config?.tagline
+
+  // hreflang from the page's per-locale slug map, plus x-default. A locale with
+  // no slug is omitted: the page does not exist in that language.
   const supportedLocales = config?.supportedLocales ?? [locale as SupportedLocale]
-  const languages: Record<string, string> = {}
-  if (canonicalBase) {
-    for (const loc of supportedLocales) {
-      const locSlug = page.slugMap?.[loc]?.current
-      if (locSlug) {
-        languages[loc] = `${canonicalBase}/${loc}/${tenantId}/${locSlug}`
-      }
-    }
-  }
+  const languages = hreflangAlternates(
+    origin,
+    Object.fromEntries(
+      supportedLocales.map((loc) => [loc, page.slugMap?.[loc]?.current ? [page.slugMap[loc]!.current] : undefined])
+    ),
+    defaultLocale
+  )
 
-  const canonical = canonicalBase
-    ? `${canonicalBase}/${locale}/${tenantId}/${slug}`
-    : undefined
+  const canonical = canonicalUrl(origin, locale, slug)
 
   // OG locale tag — maps 2-letter code to IETF format
   const ogLocaleMap: Record<string, string> = {
@@ -94,18 +100,28 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     es: 'es_ES', pt: 'pt_PT', nl: 'nl_NL',
   }
 
+  // Page image → site default. The layout supplies the site default for every
+  // page in the tenant, so only a page-specific image needs emitting here.
+  const pageOgImage = page.ogImage?.asset ? ogImageUrl(page.ogImage as never) : undefined
+
   return {
     title: pageTitle,
-    alternates: {
-      canonical: isProduction() ? canonical : undefined,
-      languages: !isDev() && Object.keys(languages).length > 0 ? languages : undefined,
-    },
+    description: pageDescription ?? undefined,
+    alternates: seoAlternates(origin, canonical, languages, {
+      isProduction: isProduction(),
+      isDev: isDev(),
+    }),
+    // An authored noindex on a page beats everything else. Thank-you pages and
+    // campaign duplicates need it, and there was no way to express it before.
+    ...(page.noindex ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       title: pageTitle,
+      description: pageDescription ?? undefined,
       url: canonical,
       siteName: config?.siteName ?? tenantId,
       locale: ogLocaleMap[locale] ?? locale,
       type: 'website',
+      ...(pageOgImage ? { images: [{ url: pageOgImage, width: 1200, height: 630 }] } : {}),
     },
   }
 }
@@ -179,6 +195,8 @@ export default async function WebsitePageRoute({ params }: PageProps) {
         faqSection={faqSection}
         locale={locale}
         tenantId={tenantId}
+        pathSegments={[slug]}
+        logoUrl={siteConfig?.logo ? imageUrl(siteConfig.logo as never, 512) : undefined}
       />
       {page.sections?.map((section, index) => (
         <SectionRenderer

@@ -630,6 +630,8 @@ export interface WebsiteSiteConfig {
    * engines she ran a dental practice. Unset falls back to 'LocalBusiness'.
    */
   businessType?: string
+  /** ISO 3166-1 alpha-2, e.g. 'IT', 'GB'. Omitted from JSON-LD when unset. */
+  addressCountry?: string
   defaultLocale: SupportedLocale
   supportedLocales: SupportedLocale[]
   showLangSwitcherInNav?: boolean
@@ -1992,6 +1994,14 @@ export interface WebsitePage {
   redirectFrom?: Partial<Record<SupportedLocale, string[]>>
   backgroundPattern?: 'none' | 'alternate1-2' | 'alternate1-2-3'
   sections?: PageSection[]
+  /** Locale-resolved by GROQ. Overrides "<title> — <siteName>" when set. */
+  seoTitle?: string
+  /** Locale-resolved by GROQ. Falls back to the site default when absent. */
+  seoDescription?: string
+  /** Page-specific Open Graph image; overrides the tenant-wide one. */
+  ogImage?: SanityImage
+  /** Emit noindex for this page only. Links are still followed. */
+  noindex?: boolean
 }
 
 // ─── Live Page ────────────────────────────────────────────────────────────────

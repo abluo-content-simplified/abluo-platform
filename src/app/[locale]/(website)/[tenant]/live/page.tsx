@@ -17,6 +17,7 @@ import type { Event, LocaleConfig, LivePage, SupportedLocale, WebsiteSiteConfig,
 import { ogImageUrl } from '@/lib/sanity/image'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
 
 // force-dynamic: always render server-side so event status changes are immediate.
 // (ISR can permanently cache a failed initial generation if Sanity returns null at build time.)
@@ -47,9 +48,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const title = livePage?.seoTitle ?? event?.seoTitle ?? event?.title ?? 'Live — Livener'
   const description = livePage?.seoDescription ?? event?.seoDescription ?? event?.shortDescription ?? 'Live video streaming from Livener.'
 
-  const canonicalBase = customDomain ? `https://${customDomain}` : null
-  const canonical = canonicalBase && isProduction()
-    ? `${canonicalBase}/${locale}/${tenantId}/live`
+  const origin = canonicalOrigin(customDomain)
+  const canonical = origin && isProduction()
+    ? canonicalUrl(origin, locale, 'live')
     : undefined
 
   // Use the current event's hero image for OG when available.
