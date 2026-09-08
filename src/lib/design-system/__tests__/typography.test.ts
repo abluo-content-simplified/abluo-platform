@@ -71,6 +71,64 @@ describe('fluidHeadingSize', () => {
   })
 })
 
+describe('minSize: an explicit clamp minimum', () => {
+  it('is used verbatim as the minimum at and below MIN_VW', () => {
+    // tmz.it's hero: clamp(4rem, 11vw, 15rem) — 64px at 375, 240px at 1280.
+    const css = fluidHeadingSize(240, 64)
+    expect(evalClamp(css, MIN_VW)).toBeCloseTo(64, 1)
+    expect(evalClamp(css, 320)).toBeCloseTo(64, 1)
+    expect(evalClamp(css, MAX_VW)).toBeCloseTo(240, 1)
+  })
+
+  it('is what the 0.62 derivation could not express', () => {
+    // The whole reason the field exists: derived would be 149px on a 375px
+    // screen, which is roughly three times the viewport width.
+    expect(fluidMinPx(240)).toBe(149)
+    expect(fluidMinPx(240, 64)).toBe(64)
+  })
+
+  it('still interpolates linearly between the two ends', () => {
+    const css = fluidHeadingSize(240, 64)
+    const mid = (MIN_VW + MAX_VW) / 2
+    expect(evalClamp(css, mid)).toBeCloseTo((64 + 240) / 2, 0)
+  })
+
+  it('is ignored when absent, zero, negative or not a number', () => {
+    const derived = fluidHeadingSize(76)
+    expect(fluidHeadingSize(76, undefined)).toBe(derived)
+    expect(fluidHeadingSize(76, null)).toBe(derived)
+    expect(fluidHeadingSize(76, 0)).toBe(derived)
+    expect(fluidHeadingSize(76, -10)).toBe(derived)
+    expect(fluidHeadingSize(76, NaN)).toBe(derived)
+  })
+
+  it('is clamped to the maximum — a min above the max is a typo, not a request', () => {
+    // clamp(x, …, y) with x > y resolves to x at EVERY width, i.e. not fluid at
+    // all. Collapsing to the plain max is the safer reading of the mistake.
+    expect(fluidMinPx(40, 90)).toBe(40)
+    expect(fluidHeadingSize(40, 90)).toBe('2.5rem')
+  })
+
+  it('may go below MIN_FLOOR_PX, which only guards the derivation', () => {
+    // The 18px floor exists so the 0.62 ratio cannot accidentally produce
+    // unreadable text. An author who types 12 meant 12.
+    expect(fluidMinPx(30, 12)).toBe(12)
+  })
+
+  it('every existing site is byte-identical — no scale sets minSize yet', () => {
+    for (const size of [76, 68, 54, 34, 24, 20, 18]) {
+      expect(fluidHeadingSize(size, undefined)).toBe(fluidHeadingSize(size))
+    }
+  })
+
+  it('headingVars threads minSize through from the scale', () => {
+    const [line] = headingVars('h1', { size: 240, minSize: 64 }, '')
+    expect(line).toBe(`--font-size-h1: ${fluidHeadingSize(240, 64)};`)
+    expect(line).toContain('4rem')
+    expect(line).toContain('15rem')
+  })
+})
+
 describe('headingVars', () => {
   it('emits nothing when the level is absent — the component fallback survives', () => {
     expect(headingVars('h1', undefined)).toEqual([])

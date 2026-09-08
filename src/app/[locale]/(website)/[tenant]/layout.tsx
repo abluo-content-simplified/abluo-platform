@@ -122,6 +122,10 @@ function buildCssVars(
     border: dark?.border ?? FALLBACK_DARK.border,
     headingFont: getFontName(typo?.headingFont, FALLBACK_FONTS.heading),
     bodyFont: getFontName(typo?.bodyFont, FALLBACK_FONTS.body),
+    // Optional third face. No fallback family on purpose: a design system that
+    // declares no accent font emits no --font-accent, so a component asking for
+    // it falls back through its own var() default exactly as before.
+    accentFont: getFontName(typo?.accentFont, ''),
     radiusSm: radius?.small ?? FALLBACK_RADIUS.small,
     radiusMd: radius?.medium ?? FALLBACK_RADIUS.medium,
     radiusLg: radius?.large ?? FALLBACK_RADIUS.large,
@@ -308,6 +312,8 @@ ${footerThemeVars(ds?.footer?.surface, L, '      ')}
     :root {
       --font-heading: '${D.headingFont}', sans-serif;
       --font-body: '${D.bodyFont}', sans-serif;
+${D.accentFont ? `      --font-accent: '${D.accentFont}', Georgia, serif;
+` : ''}
       --color-background: ${D.bg};
       --color-background-alt: ${D.bgAlt};
       --color-surface: ${D.surface};
@@ -593,7 +599,8 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   const designSystem = await resolveDesignSystemInheritance(rawDesignSystem, fetchDesignSystemById)
   const headingFont = getFontName(designSystem?.typography?.headingFont, 'Geist')
   const bodyFont = getFontName(designSystem?.typography?.bodyFont, 'Geist')
-  const fontsUrl = buildGoogleFontsUrl(headingFont, bodyFont)
+  const accentFont = getFontName(designSystem?.typography?.accentFont, '')
+  const fontsUrl = buildGoogleFontsUrl(headingFont, bodyFont, accentFont)
 
   // ── Livener — header appearance system + nav client + footer ─────────────────
   if (tenantId === 'livener') {

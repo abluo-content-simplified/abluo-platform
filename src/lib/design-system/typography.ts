@@ -37,6 +37,28 @@
  * roughly the size the old Tailwind base class rendered at 375px:
  *   h1 76px → 47px (was text-5xl = 48px)   h2 54px → 33px (was text-3xl = 30px)
  *   h3 34px → 21px (was text-2xl = 24px)   h4 24px → 18px (was text-xl  = 20px)
+ *
+ * WHY ONE RATIO IS NOT ENOUGH — `minSize`
+ * ---------------------------------------
+ * A single ratio works because ordinary headings all shrink by roughly the same
+ * proportion. DISPLAY type does not: the larger the size, the steeper the shrink
+ * a designer actually wants, because the constraint at the small end is the
+ * viewport width, not the ratio. Measured against tmz.it's authored `clamp()`s:
+ *
+ *   style           authored min   0.62 gives   authored ratio
+ *   hero name             64px        149px         0.267
+ *   contact headline      48px         89px         0.333
+ *   metric number         56px         69px         0.500
+ *   expertise title       24px         25px         0.600   ← ratio is fine here
+ *   career role         22.4px         22px         0.636   ← and here
+ *
+ * The bottom of that table is within a pixel; the top is off by 85px, which on a
+ * 375px screen is a headline roughly three times the viewport width. So a scale
+ * MAY now carry an explicit `minSize`, used verbatim as the clamp minimum.
+ *
+ * Absent `minSize`, the derivation is exactly as before — every site that has not
+ * set one renders byte-identically, which is the reason this is additive rather
+ * than a change to MOBILE_RATIO.
  */
 
 import type { Typescale } from '@/lib/sanity/types'
@@ -58,8 +80,19 @@ function rem(px: number): string {
   return `${parseFloat((px / 16).toFixed(4))}rem`
 }
 
-/** The mobile minimum for a given design-system size, in px. */
-export function fluidMinPx(maxPx: number): number {
+/**
+ * The mobile minimum for a given design-system size, in px.
+ *
+ * `explicitMinPx` wins when it is a usable number. It is still clamped to at most
+ * `maxPx` — a minimum above the maximum is a typo, and `clamp()` would silently
+ * resolve it to the minimum at every width, i.e. the opposite of fluid. It is NOT
+ * raised to MIN_FLOOR_PX: that floor exists to stop the 0.62 derivation producing
+ * unreadably small text by accident, and an author who types a number meant it.
+ */
+export function fluidMinPx(maxPx: number, explicitMinPx?: number | null): number {
+  if (typeof explicitMinPx === 'number' && Number.isFinite(explicitMinPx) && explicitMinPx > 0) {
+    return Math.min(maxPx, explicitMinPx)
+  }
   return Math.min(maxPx, Math.max(MIN_FLOOR_PX, Math.round(maxPx * MOBILE_RATIO)))
 }
 
@@ -68,9 +101,9 @@ export function fluidMinPx(maxPx: number): number {
  * Returns a plain rem value when the scale collapses (min === max), because
  * `clamp(x, …, x)` is just `x` with extra steps.
  */
-export function fluidHeadingSize(maxPx: number): string {
+export function fluidHeadingSize(maxPx: number, explicitMinPx?: number | null): string {
   if (!Number.isFinite(maxPx) || maxPx <= 0) return ''
-  const minPx = fluidMinPx(maxPx)
+  const minPx = fluidMinPx(maxPx, explicitMinPx)
   if (minPx >= maxPx) return rem(maxPx)
 
   const slopeVw = ((maxPx - minPx) / (MAX_VW - MIN_VW)) * 100
@@ -88,7 +121,7 @@ export function headingVars(level: HeadingLevel, scale: Typescale | undefined, i
   if (!scale) return []
   const out: string[] = []
   if (scale.size !== undefined && scale.size !== null) {
-    const size = fluidHeadingSize(scale.size)
+    const size = fluidHeadingSize(scale.size, scale.minSize)
     if (size) out.push(`${indent}--font-size-${level}: ${size};`)
   }
   if (scale.weight !== undefined && scale.weight !== null) {

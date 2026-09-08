@@ -3238,7 +3238,21 @@ const typescaleType = defineType({
   title: 'Type Scale',
   type: 'object',
   fields: [
-    defineField({ name: 'size', title: 'Size (px)', type: 'number' }),
+    defineField({
+      name: 'size',
+      title: 'Size (px)',
+      type: 'number',
+      description:
+        'The size at 1280px and wider. Headings are emitted as a fluid clamp(), so this is the MAXIMUM, not a fixed size.',
+    }),
+    defineField({
+      name: 'minSize',
+      title: 'Minimum size at 375px (px)',
+      type: 'number',
+      description:
+        'Optional. The size a heading shrinks to on a small phone. Leave empty and it is derived as 62% of Size, which suits ordinary headings — set it explicitly for display type, where the right shrink is far steeper (a 240px hero wants ~64px, not 149px).',
+      validation: (Rule) => Rule.min(1).warning('A minimum below 1px is almost certainly a mistake.'),
+    }),
     defineField({ name: 'weight', title: 'Weight', type: 'number' }),
     defineField({ name: 'lineHeight', title: 'Line Height', type: 'number' }),
     defineField({ name: 'letterSpacing', title: 'Letter Spacing (px)', type: 'number' }),
@@ -3918,6 +3932,13 @@ const designSystemType = defineType({
       fields: [
         defineField({ name: 'headingFont', title: 'Heading Font', type: 'fontDefinition' }),
         defineField({ name: 'bodyFont', title: 'Body Font', type: 'fontDefinition' }),
+        defineField({
+          name: 'accentFont',
+          title: 'Accent Font',
+          type: 'fontDefinition',
+          description:
+            'Optional third face for straplines and pull quotes — the editorial voice that is neither a heading nor body copy. Available to components as var(--font-accent). Leave empty and no third family is loaded.',
+        }),
         defineField({ name: 'h1', title: 'H1', type: 'typescale' }),
         defineField({ name: 'h2', title: 'H2', type: 'typescale' }),
         defineField({ name: 'h3', title: 'H3', type: 'typescale' }),

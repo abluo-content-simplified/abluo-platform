@@ -30,6 +30,12 @@ export const FONT_WEIGHT_PARAMS: Record<string, string> = {
   'Syne': 'wght@400;500;600;700;800',
   // DM Sans publishes a 100–1000 axis; 300 gives the lighter body/label cuts.
   'DM Sans': 'wght@300;400;500;600;700',
+  // tmz.it sets its straplines in Cormorant Garamond 300 AND italic 300 — both
+  // outside the default range, so without this entry the straplines render in
+  // a synthesised oblique of the wrong weight.
+  'Cormorant Garamond': 'ital,wght@0,300;0,400;0,600;1,300;1,400',
+  // Oswald is a 200–700 axis with no italic; 700 is the tmz display weight.
+  'Oswald': 'wght@200;300;400;500;600;700',
 }
 
 /** Weights requested for any family without an explicit entry above. */
@@ -40,10 +46,24 @@ export function fontToGoogleParam(name: string): string {
   return `${name.replace(/ /g, '+')}:${params}`
 }
 
-export function buildGoogleFontsUrl(headingFont: string, bodyFont: string): string {
+/**
+ * Build the css2 request for a design system's faces.
+ *
+ * Variadic and order-preserving, de-duplicated, and it skips empty names: a
+ * design system may declare two faces or three (heading / body / accent), and
+ * the accent is optional. Passing the same family twice emits it once, which
+ * is what the two-argument version did for `heading === body` and is still the
+ * behaviour every existing caller relies on.
+ */
+export function buildGoogleFontsUrl(...fonts: Array<string | undefined | null>): string {
+  const seen = new Set<string>()
   const families: string[] = []
-  families.push(fontToGoogleParam(headingFont))
-  if (bodyFont !== headingFont) families.push(fontToGoogleParam(bodyFont))
+  for (const font of fonts) {
+    if (!font) continue
+    if (seen.has(font)) continue
+    seen.add(font)
+    families.push(fontToGoogleParam(font))
+  }
   if (!families.length) return ''
   return `https://fonts.googleapis.com/css2?${families.map((f) => `family=${f}`).join('&')}&display=swap`
 }

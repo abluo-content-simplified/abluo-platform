@@ -236,6 +236,8 @@ export interface FontDefinition {
 
 export interface Typescale {
   size?: number
+  /** Explicit clamp minimum at MIN_VW. Absent → derived from MOBILE_RATIO. */
+  minSize?: number
   weight?: number
   lineHeight?: number
   letterSpacing?: number
@@ -462,6 +464,7 @@ export interface DesignSystem {
   typography?: {
     headingFont?: FontDefinition
     bodyFont?: FontDefinition
+    accentFont?: FontDefinition
     h1?: Typescale
     h2?: Typescale
     h3?: Typescale

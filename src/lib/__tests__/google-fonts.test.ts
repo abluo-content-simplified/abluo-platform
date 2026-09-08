@@ -28,6 +28,39 @@ describe('fontToGoogleParam', () => {
   })
 })
 
+describe('buildGoogleFontsUrl: the optional third face', () => {
+  it('emits three families in declaration order', () => {
+    expect(buildGoogleFontsUrl('Oswald', 'DM Sans', 'Cormorant Garamond')).toBe(
+      'https://fonts.googleapis.com/css2' +
+        '?family=Oswald:wght@200;300;400;500;600;700' +
+        '&family=DM+Sans:wght@300;400;500;600;700' +
+        '&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400' +
+        '&display=swap'
+    )
+  })
+
+  it('is unchanged for the two-argument callers that existed before', () => {
+    expect(buildGoogleFontsUrl('Syne', 'DM Sans', '')).toBe(buildGoogleFontsUrl('Syne', 'DM Sans'))
+    expect(buildGoogleFontsUrl('Syne', 'DM Sans', undefined)).toBe(buildGoogleFontsUrl('Syne', 'DM Sans'))
+  })
+
+  it('de-duplicates rather than requesting a family twice', () => {
+    expect(buildGoogleFontsUrl('Syne', 'Syne', 'Syne')).toBe(buildGoogleFontsUrl('Syne'))
+  })
+
+  it('returns empty when every face is missing', () => {
+    expect(buildGoogleFontsUrl('', undefined, null)).toBe('')
+  })
+
+  it('asks Cormorant Garamond for the 300 and italic cuts tmz sets straplines in', () => {
+    // Outside DEFAULT_FONT_WEIGHTS — without the explicit entry the browser
+    // synthesises an oblique of the wrong weight.
+    const url = buildGoogleFontsUrl('Cormorant Garamond')
+    expect(url).toContain('0,300')
+    expect(url).toContain('1,300')
+  })
+})
+
 describe('buildGoogleFontsUrl', () => {
   it('emits the No!Logo pairing with Syne 800', () => {
     expect(buildGoogleFontsUrl('Syne', 'DM Sans')).toBe(
