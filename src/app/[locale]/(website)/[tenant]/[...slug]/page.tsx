@@ -100,9 +100,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     es: 'es_ES', pt: 'pt_PT', nl: 'nl_NL',
   }
 
-  // Page image → site default. The layout supplies the site default for every
-  // page in the tenant, so only a page-specific image needs emitting here.
-  const pageOgImage = page.ogImage?.asset ? ogImageUrl(page.ogImage as never) : undefined
+  // Page image → site default.
+  //
+  // The site default must be repeated here, not inherited. Next replaces the
+  // parent's `openGraph` object wholesale when a child declares its own — it
+  // does not deep-merge `images` — so a page that sets openGraph without images
+  // ERASES the tenant-wide og:image the layout provided. Symptom: the home page
+  // carried an og:image and every other page silently carried none, which stayed
+  // invisible for as long as no tenant had an OG image set at all.
+  //
+  // `twitter:image` survived, because this route declares no `twitter` block and
+  // so inherits the layout's. That asymmetry is the tell.
+  const pageOgImage =
+    (page.ogImage?.asset ? ogImageUrl(page.ogImage as never) : undefined) ??
+    (config?.openGraphImage?.asset ? ogImageUrl(config.openGraphImage as never) : undefined)
 
   return {
     title: pageTitle,

@@ -33,6 +33,8 @@ const SITE_CONFIG = {
   seoDefaultDescription:
     'Launch your own branded table reservation system without building the technology.',
   socialLinks: [{ url: 'https://www.linkedin.com/company/nologo-reservation-platform' }],
+  // A real asset id shape: the URL builder parses it and rejects anything else.
+  openGraphImage: { asset: { _ref: 'image-d198f93e2836a690f5a8642bdd3a36e55a720ae3-1200x630-png' } },
 }
 
 const HOME_PAGE = { _id: 'page-nologo-home', pageType: 'home', title: 'Home' }
@@ -125,6 +127,20 @@ describe('a landing page canonical', () => {
 
     expect(meta.description).toBe('A modern booking system for restaurants.')
     expect(meta.openGraph?.description).toBe('A modern booking system for restaurants.')
+  })
+
+  // Next replaces the parent's openGraph object wholesale rather than merging
+  // `images` into it, so a child that declares openGraph without images erases
+  // the tenant-wide og:image from the layout. The home page kept its image and
+  // every other page silently lost one.
+  it('falls back to the site Open Graph image instead of erasing it', async () => {
+    const meta = await slugMetadata({ params: params('en') })
+    const images = meta.openGraph?.images as { url: string }[] | undefined
+    expect(images, 'the slug route must re-emit the site OG image').toBeDefined()
+    // The CDN URL drops the `image-` prefix and joins the extension with a dot,
+    // so match on the asset hash rather than the _ref spelling.
+    expect(images![0].url).toContain('d198f93e2836a690f5a8642bdd3a36e55a720ae3-1200x630')
+    expect(images![0].url).toMatch(/^https:\/\/cdn\.sanity\.io\//)
   })
 
   it('uses each language’s own slug in hreflang, and omits the languages that have none', async () => {
