@@ -238,7 +238,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "tmz",
     projectId: "3e308301-6916-4f0c-b616-97a3b7f6d9ef",
     defaultLocale: "en",
-    status: "draft",
+    status: "preview",
   },
   {
     host: "tmz.localhost",
@@ -247,7 +247,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "tmz",
     projectId: "3e308301-6916-4f0c-b616-97a3b7f6d9ef",
     defaultLocale: "en",
-    status: "draft",
+    status: "preview",
   },
   {
     host: "tmz.preview.abluo.app",
@@ -256,7 +256,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "tmz",
     projectId: "3e308301-6916-4f0c-b616-97a3b7f6d9ef",
     defaultLocale: "en",
-    status: "draft",
+    status: "preview",
   },
 ] as const
 
