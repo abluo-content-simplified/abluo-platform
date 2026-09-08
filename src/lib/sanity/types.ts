@@ -898,6 +898,8 @@ export interface HeroSection {
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   eyebrow?: string
+  /** Hero treatment. Unset (null) is treated as 'standard'. */
+  variant?: 'standard' | 'display' | null
   headline?: string
   /**
    * Optional headline accent — 'lastWord' paints the final word of the
@@ -1606,7 +1608,7 @@ export interface FeatureGridSection {
   /** Locale-resolved by GROQ */
   intro?: string
   /** Card marker. Unset (null) is treated as 'icon'. */
-  variant?: 'icon' | 'number' | 'none'
+  variant?: 'icon' | 'number' | 'ordinal' | 'none'
   /**
    * Column strategy. Deliberately a string enum here while photoGallerySection
    * uses a numeric `columns` — separate section types, one shared projection
@@ -1615,7 +1617,104 @@ export interface FeatureGridSection {
   columns?: 'auto' | '2' | '3' | '4'
   /** Locale-resolved by GROQ — optional uppercase chip row in the header */
   chips?: string[]
+  /**
+   * For an odd card count in a FIXED-column grid: the last card fills the row
+   * rather than leaving a hole, and its copy gets a wider measure. Ignored in
+   * 'auto' columns, where auto-fit already has no hole to fill.
+   */
+  lastCardSpans?: boolean
   features?: FeatureCard[]
+}
+
+// ─── Venture List Section ─────────────────────────────────────────────────────
+
+/** One venture, product or case study. */
+export interface VentureItem {
+  _type: 'ventureItem'
+  _key: string
+  /** Locale-resolved by GROQ */
+  kicker?: string
+  /** Locale-resolved by GROQ */
+  name?: string
+  /** Locale-resolved by GROQ */
+  tagline?: string
+  /** Locale-resolved by GROQ */
+  body?: string
+  /** Drives the badge treatment. Unset is treated as 'dev'. */
+  status?: 'live' | 'soon' | 'dev' | null
+  /** Locale-resolved by GROQ — overrides the default wording for the badge. */
+  statusLabel?: string
+  /** Locale-resolved by GROQ */
+  role?: string
+  href?: string
+}
+
+export interface VentureListSection {
+  _type: 'ventureListSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  anchorId?: string
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  title?: string
+  headlineAccent?: 'none' | 'lastWord' | null
+  /** Locale-resolved by GROQ */
+  intro?: string
+  ventures?: VentureItem[]
+}
+
+// ─── Clients Flow Section ─────────────────────────────────────────────────────
+
+export interface ClientsFlowSection {
+  _type: 'clientsFlowSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  anchorId?: string
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  title?: string
+  headlineAccent?: 'none' | 'lastWord' | null
+  /** Locale-resolved by GROQ */
+  intro?: string
+  /** The glyph between names. Unset falls back to '/'. */
+  separator?: string
+  /** Plain strings — proper nouns, not localized. */
+  names?: string[]
+}
+
+// ─── Career Timeline Section ──────────────────────────────────────────────────
+
+/** One dated role. */
+export interface CareerRow {
+  _type: 'careerRow'
+  _key: string
+  /** Locale-resolved by GROQ — authored wording, not a date */
+  period?: string
+  /** Locale-resolved by GROQ */
+  role?: string
+  /** Locale-resolved by GROQ */
+  org?: string
+  /** Locale-resolved by GROQ */
+  note?: string
+  /** Locale-resolved by GROQ */
+  award?: string
+}
+
+export interface CareerTimelineSection {
+  _type: 'careerTimelineSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  anchorId?: string
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  title?: string
+  headlineAccent?: 'none' | 'lastWord' | null
+  /** Locale-resolved by GROQ */
+  intro?: string
+  rows?: CareerRow[]
 }
 
 // ─── Media + Feature Section ──────────────────────────────────────────────────
@@ -1866,6 +1965,9 @@ export type PageSection =
   | LiveLatestSection
   | StepsSection
   | FeatureGridSection
+  | VentureListSection
+  | ClientsFlowSection
+  | CareerTimelineSection
   | MediaFeatureSection
   | CategoryListSection
   | CtaBannerSection

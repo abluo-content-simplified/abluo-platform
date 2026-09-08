@@ -1,7 +1,7 @@
 'use client'
 
 import { motion, type Variants } from 'motion/react'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { resolveEasing } from '@/lib/motion/easing'
 
 /** The historical SlideUp easing. Every tenant with `motion: null` lands here. */
@@ -22,6 +22,16 @@ interface SlideUpProps {
   /** How many pixels to slide up from (default 40) */
   distance?: number
   once?: boolean
+  /**
+   * Inline styles for the motion wrapper.
+   *
+   * SlideUp sits BETWEEN a grid container and its child, so the wrapper — not
+   * the child — is the grid item. Anything the parent grid needs to say about
+   * one item (`gridColumn`, `gridRow`) has to land here or it addresses an
+   * element that is not participating in the grid at all. Kept minimal on
+   * purpose: layout placement, not decoration.
+   */
+  style?: CSSProperties
 }
 
 /**
@@ -41,6 +51,7 @@ export function SlideUp({
   ease = DEFAULT_EASE,
   distance = 40,
   once = true,
+  style,
 }: SlideUpProps) {
   // Defensive: a caller that passes a raw design-system token (or anything
   // malformed) must not be able to crash the page — motion throws on
@@ -55,6 +66,7 @@ export function SlideUp({
   return (
     <motion.div
       className={className}
+      style={style}
       initial="hidden"
       whileInView="visible"
       viewport={{ once, margin: '-10% 0px' }}

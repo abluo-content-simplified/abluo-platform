@@ -19,7 +19,7 @@ import { FeatureCardCta } from '@/components/sections/FeatureCardCta'
 // The two helper unions below stay here — they are this component's own
 // vocabulary, and the canonical interface spells the same members inline.
 
-export type FeatureGridVariant = 'icon' | 'number' | 'none'
+export type FeatureGridVariant = 'icon' | 'number' | 'ordinal' | 'none'
 export type FeatureGridColumns = 'auto' | '2' | '3' | '4'
 
 interface Props {
@@ -38,7 +38,7 @@ interface Props {
 export function resolveFeatureGridVariant(
   variant: string | null | undefined,
 ): FeatureGridVariant {
-  return variant === 'number' || variant === 'none' ? variant : 'icon'
+  return variant === 'number' || variant === 'ordinal' || variant === 'none' ? variant : 'icon'
 }
 
 /**
@@ -67,6 +67,33 @@ export function resolveFeatureGridColumns(
   }
 }
 
+/**
+ * Should the final card fill the whole last row?
+ *
+ * An odd number of cards in a FIXED-column grid leaves a hole. Filling it with
+ * the final card is not a hack: the card with room to run wide is usually the
+ * one the design wants read last and longest, and a hole in a hairline grid
+ * reads as a mistake rather than as space.
+ *
+ * Inert in two cases, both on purpose:
+ *   - 'auto' columns — auto-fit has already distributed the tracks to fit, so
+ *     there is no hole to fill and forcing a span would fight the layout.
+ *   - an even count — nothing is missing.
+ *
+ * The consequence worth knowing: a section that turns this on and later gains a
+ * card quietly stops spanning. That is right. The setting expresses "do not
+ * leave a hole", not "make the last one big".
+ */
+export function shouldSpanLastCard(
+  lastCardSpans: boolean | null | undefined,
+  columns: string | null | undefined,
+  count: number,
+): boolean {
+  if (!lastCardSpans) return false
+  if (columns === 'auto' || columns == null) return false
+  return count % 2 === 1
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 /**
@@ -92,6 +119,8 @@ export function FeatureGridSection({ section, surface, designSystem }: Props) {
 
   const variant = resolveFeatureGridVariant(section.variant)
   const grid = resolveFeatureGridColumns(section.columns)
+
+  const spanLast = shouldSpanLastCard(section.lastCardSpans, section.columns, features?.length ?? 0)
 
   const hasChips = Boolean(chips && chips.length > 0)
   const hasAside = Boolean(intro || hasChips)
@@ -194,6 +223,11 @@ export function FeatureGridSection({ section, surface, designSystem }: Props) {
               ease={ease}
               delay={index * 0.05}
               className="h-full"
+              style={
+                spanLast && index === features.length - 1
+                  ? { gridColumn: '1 / -1' }
+                  : undefined
+              }
             >
               <div
                 className="group/card relative flex h-full flex-col bg-[var(--color-surface)] p-8 transition-[box-shadow,transform] duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-card,0_20px_48px_-24px_rgba(0,0,0,0.3))] md:p-10"
@@ -231,6 +265,28 @@ export function FeatureGridSection({ section, surface, designSystem }: Props) {
                   >
                     <Icon name={feature.icon} size={24} />
                   </div>
+                )}
+
+                {/* 'ordinal' — the ordinal is a design element in its own right,
+                    not a watermark: it sits IN FLOW above the title, at display
+                    size, in the accent colour held back to a low opacity so it
+                    reads as a mark rather than as a number to be counted. It
+                    lifts to full strength when the card is hovered, which is
+                    the only reason it is dimmed in the first place. */}
+                {variant === 'ordinal' && (
+                  <span
+                    className="pointer-events-none relative z-[1] mb-6 block font-bold leading-none opacity-[0.15] transition-opacity duration-[400ms] ease-out group-hover/card:opacity-100"
+                    style={{
+                      color: 'var(--color-primary)',
+                      fontFamily: 'var(--font-heading)',
+                      fontSize: 'clamp(3rem, 5vw, 5rem)',
+                      letterSpacing: '-0.03em',
+                      userSelect: 'none',
+                    }}
+                    aria-hidden="true"
+                  >
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
                 )}
 
                 {variant === 'number' && (
@@ -271,7 +327,12 @@ export function FeatureGridSection({ section, surface, designSystem }: Props) {
                       fontFamily: 'var(--font-heading)',
                       whiteSpace: 'pre-line',
                       // Keeps the ordinal watermark clear of the headline
-                      maxWidth: variant === 'number' ? '18ch' : undefined,
+                      maxWidth:
+                        spanLast && index === features.length - 1
+                          ? '72ch'
+                          : variant === 'number'
+                            ? '18ch'
+                            : undefined,
                       fontSize: 'var(--font-size-h3, 1.625rem)',
                       fontWeight: 'var(--font-weight-h3, 600)',
                       lineHeight: 'var(--line-height-h3, 1.1)',

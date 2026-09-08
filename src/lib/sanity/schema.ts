@@ -5,6 +5,11 @@ import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, L
 import { slugifyNestedPath, validateNestedSlug } from '@/lib/sanity/fields/nested-slug'
 import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField, headlineAccentField } from '@/lib/sanity/fields/shared'
+import {
+  VentureListWireframe,
+  ClientsFlowWireframe,
+  CareerTimelineWireframe,
+} from '@/sanity/components/SectionWireframes'
 import { ICON_OPTIONS } from '@/components/icons/registry'
 import { buildSchema } from '@/lib/modules/schema'
 import { buildModuleConfigSchemaTypes, buildModuleInstallationsField } from '@/lib/modules/config-schema'
@@ -598,6 +603,22 @@ const heroSectionType = defineType({
       },
       initialValue: 'usePagePattern',
       description: 'Used when no media background is set.',
+    }),
+    defineField({
+      name: 'variant',
+      title: 'Treatment',
+      type: 'string',
+      group: 'layout',
+      description:
+        'Standard is the usual hero — headline, a short rule, supporting copy. Display gives the headline the whole stage: each line of it lands separately against a vertical accent rule, and the short rule is dropped. Use Display when the headline IS the page (a name, a manifesto line) and there is little else to say.',
+      options: {
+        list: [
+          { title: 'Standard', value: 'standard' },
+          { title: 'Display — headline on its own, vertical rule', value: 'display' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'standard',
     }),
     defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString', group: 'content' }),
     defineField({ name: 'headline', title: 'Headline', type: 'localizedText', group: 'content' }),
@@ -1869,6 +1890,257 @@ const featureCardType = defineType({
   },
 })
 
+
+// ─── Venture list ─────────────────────────────────────────────────────────────
+//
+// A short list of ventures, products or case studies, each with a status. Not a
+// card grid: one full-width row per item, rule-separated, with the descriptive
+// copy on the left and the status plus the author's role on the right. Built for
+// tmz.it's "Own Ventures" block and reusable by any portfolio or studio site
+// that needs to say what a thing IS, what state it is in, and what the author
+// did on it.
+
+const ventureItemType = defineType({
+  name: 'ventureItem',
+  title: 'Venture',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'kicker',
+      title: 'Domain',
+      type: 'localizedString',
+      description: 'The small uppercase label above the name — the field it plays in ("Hospitality", "Sport").',
+    }),
+    defineField({ name: 'name', title: 'Name', type: 'localizedString', validation: (Rule) => Rule.required() }),
+    defineField({
+      name: 'tagline',
+      title: 'Tagline',
+      type: 'localizedText',
+      description: 'One sentence, set in the accent face. What the thing is.',
+    }),
+    defineField({ name: 'body', title: 'Description', type: 'localizedText' }),
+    defineField({
+      name: 'status',
+      title: 'Status',
+      type: 'string',
+      description: 'Drives the badge. Colour comes from the design system, never from here.',
+      options: {
+        list: [
+          { title: 'Live', value: 'live' },
+          { title: 'Coming soon', value: 'soon' },
+          { title: 'In development', value: 'dev' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'dev',
+    }),
+    defineField({
+      name: 'statusLabel',
+      title: 'Status label',
+      type: 'localizedString',
+      description: 'Optional wording for the badge. Falls back to the status name.',
+    }),
+    defineField({
+      name: 'role',
+      title: 'Role',
+      type: 'localizedText',
+      description: 'What the author does on it — sits under the badge, right-aligned.',
+    }),
+    defineField({ name: 'href', title: 'Link', type: 'url', description: 'Optional. The row is not a link when empty.' }),
+  ],
+  preview: {
+    select: { title: 'name.en', subtitle: 'kicker.en', status: 'status' },
+    prepare: ({ title, subtitle, status }: { title?: string; subtitle?: string; status?: string }) => ({
+      title: title ?? 'Venture',
+      subtitle: [subtitle, status].filter(Boolean).join(' · '),
+    }),
+  },
+})
+
+const ventureListSectionType = defineType({
+  name: 'ventureListSection',
+  title: 'Venture List',
+  type: 'object',
+  icon: VentureListWireframe,
+  description:
+    'A short list of ventures, products or case studies — one full-width row each, separated by a rule. The description sits on the left and a status badge with your role sits on the right, so someone scanning only the right-hand edge still learns what state everything is in. Best from two to six items; past that it reads as a directory.',
+  fields: [
+    anchorIdField(),
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: { list: BACKGROUND_SURFACE_OPTIONS },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    headlineAccentField(),
+    defineField({
+      name: 'intro',
+      title: 'Introduction',
+      type: 'localizedText',
+      description: 'Set in the accent face, above the list.',
+    }),
+    defineField({
+      name: 'ventures',
+      title: 'Ventures',
+      type: 'array',
+      of: [defineArrayMember({ type: 'ventureItem' })],
+      validation: (Rule) => Rule.min(1).max(12),
+    }),
+  ],
+  preview: {
+    select: { title: 'title.en', n: 'ventures' },
+    prepare: ({ title, n }: { title?: string; n?: unknown[] }) => ({
+      title: title ?? 'Venture List',
+      subtitle: `${n?.length ?? 0} ventures`,
+      media: VentureListWireframe,
+    }),
+  },
+})
+
+// ─── Clients flow ─────────────────────────────────────────────────────────────
+//
+// A long list of client names set as ONE continuous typographic block, wrapping
+// like prose, each name separated by a visible glyph. Deliberately not a logo
+// wall and not a scrolling marquee: nothing moves, and the names carry the
+// weight themselves. Reusable anywhere a long roster reads better as display
+// type than as a grid of images.
+
+const clientsFlowSectionType = defineType({
+  name: 'clientsFlowSection',
+  title: 'Clients Flow',
+  type: 'object',
+  icon: ClientsFlowWireframe,
+  description:
+    'A long roster of client names set as one continuous block of large type, wrapping like prose with a separator between each. Use it instead of a logo wall when the names are more recognisable than the logos, or when you do not have thirty usable logo files. Nothing moves — this is not a scrolling marquee. Works from about ten names; fewer look sparse.',
+  fields: [
+    anchorIdField(),
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: { list: BACKGROUND_SURFACE_OPTIONS },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    headlineAccentField(),
+    defineField({
+      name: 'intro',
+      title: 'Context',
+      type: 'localizedText',
+      description: 'Set in the accent face, above the names.',
+    }),
+    defineField({
+      name: 'separator',
+      title: 'Separator',
+      type: 'string',
+      description: 'The glyph between names. Rendered in the accent colour and hidden from screen readers.',
+      initialValue: '/',
+      validation: (Rule) => Rule.max(3),
+    }),
+    defineField({
+      name: 'names',
+      title: 'Names',
+      type: 'array',
+      of: [defineArrayMember({ type: 'string' })],
+      description: 'Plain strings — proper nouns are not translated. Order is the rendered order.',
+      validation: (Rule) => Rule.min(1),
+    }),
+  ],
+  preview: {
+    select: { title: 'title.en', names: 'names' },
+    prepare: ({ title, names }: { title?: string; names?: string[] }) => ({
+      title: title ?? 'Clients',
+      subtitle: `${names?.length ?? 0} names`,
+      media: ClientsFlowWireframe,
+    }),
+  },
+})
+
+// ─── Career timeline ──────────────────────────────────────────────────────────
+//
+// A dated CV: period in a fixed left column, the role and everything about it on
+// the right. The period column is what makes it a timeline rather than a list,
+// so it holds its width until the layout can no longer afford it.
+
+const careerRowType = defineType({
+  name: 'careerRow',
+  title: 'Career Row',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'period',
+      title: 'Period',
+      type: 'localizedString',
+      description: 'As it should read — "2019 → present", "Nov 2023 → Mar 2024". Not a date field: the wording is part of the design and some periods are deliberately vague.',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({ name: 'role', title: 'Role', type: 'localizedString', validation: (Rule) => Rule.required() }),
+    defineField({
+      name: 'org',
+      title: 'Organisation',
+      type: 'localizedString',
+      description: 'Rendered in the accent colour, uppercase and tracked.',
+    }),
+    defineField({ name: 'note', title: 'Description', type: 'localizedText' }),
+    defineField({
+      name: 'award',
+      title: 'Award',
+      type: 'localizedString',
+      description: 'Optional. Rendered as an outlined badge under the description.',
+    }),
+  ],
+  preview: {
+    select: { title: 'role.en', period: 'period.en', org: 'org.en' },
+    prepare: ({ title, period, org }: { title?: string; period?: string; org?: string }) => ({
+      title: title ?? 'Role',
+      subtitle: [period, org].filter(Boolean).join(' · '),
+    }),
+  },
+})
+
+const careerTimelineSectionType = defineType({
+  name: 'careerTimelineSection',
+  title: 'Career Timeline',
+  type: 'object',
+  icon: CareerTimelineWireframe,
+  description:
+    'A dated list — roles, projects, exhibitions, milestones. The period sits in its own left column so the dates line up and the eye can travel down them without reading the prose. Each row takes a period, a title, an organisation and an optional note, plus an award badge where one applies.',
+  fields: [
+    anchorIdField(),
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: { list: BACKGROUND_SURFACE_OPTIONS },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    headlineAccentField(),
+    defineField({ name: 'intro', title: 'Introduction', type: 'localizedText' }),
+    defineField({
+      name: 'rows',
+      title: 'Rows',
+      type: 'array',
+      of: [defineArrayMember({ type: 'careerRow' })],
+      description: 'Newest first, unless the design says otherwise. Order is the rendered order.',
+      validation: (Rule) => Rule.min(1),
+    }),
+  ],
+  preview: {
+    select: { title: 'title.en', rows: 'rows' },
+    prepare: ({ title, rows }: { title?: string; rows?: unknown[] }) => ({
+      title: title ?? 'Career',
+      subtitle: `${rows?.length ?? 0} roles`,
+      media: CareerTimelineWireframe,
+    }),
+  },
+})
+
 const featureGridSectionType = defineType({
   name: 'featureGridSection',
   title: 'Feature Grid Section',
@@ -1894,7 +2166,8 @@ const featureGridSectionType = defineType({
       options: {
         list: [
           { title: 'Icon — bordered icon box', value: 'icon' },
-          { title: 'Number — large ordinal watermark', value: 'number' },
+          { title: 'Number — small ordinal watermark, top right', value: 'number' },
+          { title: 'Ordinal — large ordinal above the title', value: 'ordinal' },
           { title: 'None — title and copy only', value: 'none' },
         ],
         layout: 'radio',
@@ -1916,6 +2189,14 @@ const featureGridSectionType = defineType({
         layout: 'radio',
       },
       initialValue: 'auto',
+    }),
+    defineField({
+      name: 'lastCardSpans',
+      title: 'Last card spans the full row',
+      type: 'boolean',
+      description:
+        'For an odd number of cards in a fixed-column grid: the final card fills the whole row instead of leaving a gap, and its copy is given a wider measure to suit the longer line.',
+      initialValue: false,
     }),
     defineField({
       name: 'chips',
@@ -4993,6 +5274,11 @@ export const schemaTypes = [
   stepsSectionType,
   featureCardType,
   featureGridSectionType,
+  ventureItemType,
+  ventureListSectionType,
+  clientsFlowSectionType,
+  careerRowType,
+  careerTimelineSectionType,
   featureRowType,
   mediaFeatureSectionType,
   categoryColumnType,

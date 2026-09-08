@@ -105,6 +105,32 @@ export function resolveHeroMediaLayout(
 // — nav, cards, forms, banners — reads that token, so a design system asking for
 // pill buttons produced pill buttons everywhere EXCEPT the most prominent one on
 // the page. Now they all read the same token.
+/**
+ * Hero treatment. GROQ returns null for an unset field, and every hero authored
+ * before this option existed has none — both mean 'standard', which is the hero
+ * this component has always rendered.
+ */
+export function resolveHeroVariant(variant: string | null | undefined): 'standard' | 'display' {
+  return variant === 'display' ? 'display' : 'standard'
+}
+
+/**
+ * Per-line entrance delays for the display treatment.
+ *
+ * A display headline is read line by line, so the lines arrive line by line —
+ * one block fading in as a unit reads as a slide, not as a name. The step is
+ * deliberately SHORTER than the gap between the eyebrow and the headline: the
+ * lines belong to each other, and too long a step makes them feel like separate
+ * thoughts. Capped so that a headline someone pastes eight lines into does not
+ * take three seconds to finish arriving.
+ */
+export const DISPLAY_LINE_STEP = 0.15
+export const DISPLAY_LINE_CAP = 0.9
+
+export function displayLineDelay(index: number, base: number): number {
+  return base + Math.min(index * DISPLAY_LINE_STEP, DISPLAY_LINE_CAP)
+}
+
 export function resolveHeroCtaColors(
   ctaStyle: 'onMedia' | 'brand' | null | undefined,
   showFullBleedMedia: boolean
@@ -286,6 +312,7 @@ export function HeroSection({ section, surface, designSystem }: Props) {
 
   const hasMedia = mediaType === 'image' ? !!heroImage?.asset : mediaType === 'video' ? !!heroVideo : false
   const mediaLayout = resolveHeroMediaLayout(section.mediaLayout)
+  const heroVariant = resolveHeroVariant(section.variant)
   // A hero only gets the full-bleed background treatment when it actually
   // has media AND is in fullBleed mode (the default). Boxed mode — or
   // media-less heroes — always render on the section's normal surface with
@@ -437,7 +464,25 @@ export function HeroSection({ section, surface, designSystem }: Props) {
       )}
 
       {/* ── Content ──────────────────────────────────────────────────────── */}
-      <div className={`relative mx-auto w-full ${widthClass} flex flex-col ${textAlignClass}`}>
+      <div
+        className={`relative mx-auto w-full ${widthClass} flex flex-col ${textAlignClass}${
+          heroVariant === 'display' ? ' pl-6 md:pl-8' : ''
+        }`}
+        style={
+          heroVariant === 'display'
+            ? {
+                // The rule replaces the short horizontal divider: it measures
+                // the whole block rather than separating two parts of it, which
+                // is what a headline standing on its own needs. 2px because a
+                // hairline disappears next to type this size.
+                // Same source as the standard divider, so a hero over media
+                // keeps the translucent white rather than an accent nobody can
+                // read against a photograph.
+                borderLeft: `2px solid ${dividerColor}`,
+              }
+            : undefined
+        }
+      >
         {/* Eyebrow */}
         {eyebrow && (
           <SlideUp duration={duration} ease={ease} delay={0} className="mb-8">
@@ -460,22 +505,42 @@ export function HeroSection({ section, surface, designSystem }: Props) {
             style={{ color: textPrimary, fontFamily: 'var(--font-heading)', fontSize: 'var(--font-size-h1, var(--fs-h1))', fontWeight: 'var(--font-weight-h1, 600)', lineHeight: 'var(--line-height-h1, 1.1)', letterSpacing: 'var(--letter-spacing-h1, -0.025em)' }}
           >
             {headlineLines.length > 1
-              ? headlineLines.map((line, i) => (
-                  <span key={i} className="block">
-                    {i === accentLineIndex ? renderHeadline(line, headlineAccent) : line}
-                  </span>
-                ))
+              ? headlineLines.map((line, i) =>
+                  heroVariant === 'display' ? (
+                    // Each line is its own motion element so it can arrive on
+                    // its own beat. In 'standard' they stay one block, which is
+                    // byte-identical to what shipped before this variant.
+                    <SlideUp
+                      key={i}
+                      duration={duration}
+                      ease={ease}
+                      delay={displayLineDelay(i, d1)}
+                      className="block"
+                    >
+                      <span className="block">
+                        {i === accentLineIndex ? renderHeadline(line, headlineAccent) : line}
+                      </span>
+                    </SlideUp>
+                  ) : (
+                    <span key={i} className="block">
+                      {i === accentLineIndex ? renderHeadline(line, headlineAccent) : line}
+                    </span>
+                  ),
+                )
               : renderHeadline(headline, headlineAccent)}
           </h1>
         </SlideUp>
 
-        {/* Divider */}
-        <SlideUp duration={duration} ease={ease} delay={d2} className="mb-8">
-          <div
-            className={`h-[1px] w-16 ${contentAlignment === 'center' ? 'mx-auto' : contentAlignment === 'right' ? 'ml-auto' : ''}`}
-            style={{ backgroundColor: dividerColor, opacity: dividerOpacity }}
-          />
-        </SlideUp>
+        {/* Divider — the display treatment already has the vertical rule, and a
+            second short rule under the headline would be one mark too many. */}
+        {heroVariant !== 'display' && (
+          <SlideUp duration={duration} ease={ease} delay={d2} className="mb-8">
+            <div
+              className={`h-[1px] w-16 ${contentAlignment === 'center' ? 'mx-auto' : contentAlignment === 'right' ? 'ml-auto' : ''}`}
+              style={{ backgroundColor: dividerColor, opacity: dividerOpacity }}
+            />
+          </SlideUp>
+        )}
 
         {/* Subheadline. The bottom margin only changes when a tagline follows
             it — with no tagline this is the same `mb-12` it has always been. */}

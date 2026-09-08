@@ -428,7 +428,32 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       "closingCta": closingCta { ${CTA_FIELDS} },
       // featureGridSection (columns is the shared key already projected above)
       variant,
+      lastCardSpans,
       "chips": chips[]{ "v": ${loc('@')} }.v,
+      // ventureListSection. The intro key is already projected above, shared.
+      ventures[] {
+        _type, _key,
+        status, href,
+        "kicker": ${loc('kicker')},
+        "name": ${loc('name')},
+        "tagline": ${loc('tagline')},
+        "body": ${loc('body')},
+        "statusLabel": ${loc('statusLabel')},
+        "role": ${loc('role')},
+      },
+      // clientsFlowSection. The names array holds PLAIN strings — proper nouns
+      // are not translated — so it passes through with no locale projection.
+      separator,
+      names,
+      // careerTimelineSection
+      rows[] {
+        _type, _key,
+        "period": ${loc('period')},
+        "role": ${loc('role')},
+        "org": ${loc('org')},
+        "note": ${loc('note')},
+        "award": ${loc('award')},
+      },
       // SHARED "features[]" KEY — featureGridSection stores featureCard members
       // (icon/kicker/title/description/bullets) and mediaFeatureSection stores
       // featureRow members (icon/title/description) under the same field name.

@@ -29,6 +29,9 @@ import { PhotoGallerySection } from '@/components/sections/PhotoGallerySection'
 import { VideoSection } from '@/components/sections/VideoSection'
 import { StepsSection } from '@/components/sections/StepsSection'
 import { FeatureGridSection } from '@/components/sections/FeatureGridSection'
+import { VentureListSection } from '@/components/sections/VentureListSection'
+import { ClientsFlowSection } from '@/components/sections/ClientsFlowSection'
+import { CareerTimelineSection } from '@/components/sections/CareerTimelineSection'
 import { MediaFeatureSection } from '@/components/sections/MediaFeatureSection'
 import { CategoryListSection } from '@/components/sections/CategoryListSection'
 import { CtaBannerSection } from '@/components/sections/CtaBannerSection'
@@ -46,6 +49,9 @@ import type {
   FormOverlayButtonSection as FormOverlayButtonSectionType,
   HeroLiveCaptureSection as HeroLiveCaptureSectionType,
   HeroLensSection as HeroLensSectionType,
+  VentureListSection as VentureListSectionType,
+  ClientsFlowSection as ClientsFlowSectionType,
+  CareerTimelineSection as CareerTimelineSectionType,
   SupportedLocale,
   DesignSystem,
   Post,
@@ -425,6 +431,12 @@ export function SectionRenderer({
       return <StepsSection section={section} surface={surface} designSystem={designSystem} />
     case 'featureGridSection':
       return <FeatureGridSection section={section} surface={surface} designSystem={designSystem} />
+    case 'ventureListSection':
+      return <VentureListSection section={section as VentureListSectionType} surface={surface} designSystem={designSystem} />
+    case 'clientsFlowSection':
+      return <ClientsFlowSection section={section as ClientsFlowSectionType} surface={surface} designSystem={designSystem} />
+    case 'careerTimelineSection':
+      return <CareerTimelineSection section={section as CareerTimelineSectionType} surface={surface} designSystem={designSystem} />
     case 'mediaFeatureSection':
       return <MediaFeatureSection section={section} surface={surface} designSystem={designSystem} />
     case 'categoryListSection':
