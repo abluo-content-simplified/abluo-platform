@@ -13,6 +13,52 @@ This file is the **implementation handbook** — the *how*, within the Playbook'
 - Every configurable concept has exactly one configuration surface (ADR-014); enforced by `src/lib/sanity/__tests__/settings-structure.test.ts`.
 - Notifications fire at workflow boundaries only — completion, blocked-on-Tom, long-run finish — never per handoff (`.claude/agents/orchestrator.md`).
 
+## Where things live on disk
+
+This repo is one folder inside a wider workspace at `~/Abluo/`. A session that
+opens only the repo cannot see the rest, which is exactly how a client's content
+brief once ended up filed under `docs/engineering/`. The rule:
+
+    ~/Abluo/
+      abluo-platform/     this repo — the code AND the docs about the code
+      clients/<tenant>/<project>/   everything about one client's project
+      company/            Abluo's own business material
+      _template/          reference layout, not to be copied wholesale
+
+- **About the code** → `abluo-platform/docs/`. Architecture, ADRs, playbooks,
+  platform rules. It versions with the code, it is reviewed in the same PR, and
+  it is on GitHub where anyone — including a cloud session — can read it. A doc
+  describing behaviour that tests enforce belongs beside those tests.
+- **About a client's project** → `~/Abluo/clients/<tenant>/<project>/`. Source
+  material from a migration, brand assets, content briefs, legal drafts,
+  provisioning scripts, handoffs. Not versioned with the platform, because it
+  is not the platform.
+
+Two further rules, both from Tom:
+
+1. **Flat by default; nest only when a tenant actually has a second project.**
+   `clients/studiomartegani/` holds its project directly. When a second one
+   arrives, create `clients/<tenant>/<project-slug>/` per project and move the
+   existing files down.
+
+   Deferring is cheap, and that was measured rather than assumed: no code in
+   this repo reads a client folder path (grep `src`, `scripts`, `supabase` for
+   `Abluo/clients` — zero hits), the per-client scripts resolve `ROOT` from
+   their own location (`Path(__file__).resolve().parent.parent`) so they keep
+   working wherever the folder sits, and the only absolute paths inside client
+   folders point OUTWARD at `abluo-platform/.env.local`, which does not move.
+   The whole migration is a `mv` plus a stale line in one README.
+
+   `clients/freeriders/` is nested because it has a second project imminent —
+   the exception that shows the rule.
+2. **Folders are created when something needs them.** No empty scaffolding.
+   `_template` shows the vocabulary — `archive assets build content contracts
+   design legal scripts source` — it is not a checklist to instantiate.
+
+Never copy a `.env` file between locations, and never carry one into a client
+folder. Reference material from a retired site is copied without its
+`node_modules`, `.next`, `.git` and secrets.
+
 ## What Abluo Is
 
 Abluo is a multi-tenant website management platform for small professional practices — dentists, therapists, consultants, studios. It provides premium websites with a minimal editorial interface, AI-assisted publishing, and zero CMS complexity for clients.
