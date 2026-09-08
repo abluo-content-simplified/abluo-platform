@@ -164,9 +164,24 @@ describe('servesOnHostKind fails closed on anything it does not know', () => {
 /**
  * The snapshot below is the resolver's behaviour BEFORE the ladder existed,
  * transcribed by hand from `generated/route-config.ts` under the old rule
- * (`status === 'active'` or nothing). Every live row is `active` or `inactive`,
- * and the ladder changes neither of those rungs — so this whole table must be
- * unchanged. If a single line of it moves, the change was not a no-op.
+ * (`status === 'active'` or nothing). The ladder changes neither the `active`
+ * nor the `inactive` rung — so every row BELOW must still resolve exactly as it
+ * does here. If a single line of it moves, the change was not a no-op.
+ *
+ * ── Why this is a SUBSET check and not an equality check ─────────────────────
+ * It used to assert this list EQUALS the generated table, and that every status
+ * in the generated table was `active` or `inactive`. Both assumptions expired
+ * the first time the ladder was actually used: `tmz` was onboarded 2026-09-07
+ * as the first `draft` project, and the suite went red on a change that broke
+ * nothing. Worse, the failure would have repeated on EVERY future onboarding,
+ * and again on every cutover as each project climbs draft → preview → active.
+ *
+ * A snapshot pinned to the whole live table is a snapshot that fails for
+ * reasons unrelated to the thing it guards. What this proof actually needs to
+ * say is narrower and stays true forever: NOTHING THAT WAS HERE MOVED. New
+ * projects may be added freely; the rows below may not change or disappear.
+ * The four rungs themselves are proved exhaustively by the 4 × 4 matrix in
+ * section 1 and end-to-end on a synthetic table in `status-ladder-fixtures`.
  */
 const LIVE_HOST_SNAPSHOT: Array<[host: string, projectSlug: string | null]> = [
   ['abluo.app', 'abluo'],
@@ -194,23 +209,33 @@ const LIVE_HOST_SNAPSHOT: Array<[host: string, projectSlug: string | null]> = [
 ]
 
 describe('no-op proof: the ladder changes nothing for any live host', () => {
-  it('covers every host in the generated table, with nothing left over', () => {
-    expect(LIVE_HOST_SNAPSHOT.map(([h]) => h).sort()).toEqual(
-      GENERATED_HOST_ROUTES.map((r) => r.host).sort()
-    )
+  const SNAPSHOT_HOSTS = new Set(LIVE_HOST_SNAPSHOT.map(([h]) => h))
+  const snapshotRows = () => GENERATED_HOST_ROUTES.filter((r) => SNAPSHOT_HOSTS.has(r.host))
+
+  it('every host in the snapshot is still in the generated table — none was lost', () => {
+    const generated = new Set(GENERATED_HOST_ROUTES.map((r) => r.host))
+    const missing = [...SNAPSHOT_HOSTS].filter((h) => !generated.has(h)).sort()
+    expect(missing, 'hosts that vanished from the generated table').toEqual([])
   })
 
   it.each(LIVE_HOST_SNAPSHOT)('%s → %s', (host, projectSlug) => {
     expect(resolveScopeFromHost(host)?.projectSlug ?? null).toBe(projectSlug)
   })
 
-  it('every live row is active or inactive — the two rungs this change does not touch', () => {
-    const statuses = [...new Set(GENERATED_HOST_ROUTES.map((r) => r.status))].sort()
+  it('every SNAPSHOT row is still active or inactive — the two rungs this change does not touch', () => {
+    // Scoped to the snapshot on purpose: a project onboarded later is allowed to
+    // sit on any rung, and must not make this proof fail.
+    const statuses = [...new Set(snapshotRows().map((r) => r.status))].sort()
     expect(statuses).toEqual(['active', 'inactive'])
   })
 
-  it('the new predicate agrees with the OLD active-only rule on every live row', () => {
-    for (const route of GENERATED_HOST_ROUTES) {
+  it('the new predicate agrees with the OLD active-only rule on every SNAPSHOT row', () => {
+    // Scoped to the snapshot for the same reason, and for one more: a project on
+    // the `preview` rung DELIBERATELY disagrees with the old active-only rule —
+    // that disagreement is the entire point of the ladder. Asserting agreement
+    // across the whole table would fail the moment any project is promoted to
+    // `preview` for review.
+    for (const route of snapshotRows()) {
       const oldRule = route.status === 'active'
       expect(servesOnHostKind(route.status, route.hostKind), route.host).toBe(oldRule)
     }
