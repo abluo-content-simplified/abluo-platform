@@ -126,6 +126,10 @@ function buildCssVars(
     // declares no accent font emits no --font-accent, so a component asking for
     // it falls back through its own var() default exactly as before.
     accentFont: getFontName(typo?.accentFont, ''),
+    // Layout. Emitted ONLY when the design system sets it, so SectionContainer's
+    // var() fallback keeps rendering the historical 1120px for every tenant that
+    // does not — see the comment beside --layout-max-content-width below.
+    maxContentWidth: ds?.layout?.maxContentWidth,
     radiusSm: radius?.small ?? FALLBACK_RADIUS.small,
     radiusMd: radius?.medium ?? FALLBACK_RADIUS.medium,
     radiusLg: radius?.large ?? FALLBACK_RADIUS.large,
@@ -310,7 +314,12 @@ ${footerThemeVars(ds?.footer?.surface, L, '      ')}
 
   return `
     :root {
-      --font-heading: '${D.headingFont}', sans-serif;
+${D.maxContentWidth ? `      /* How wide the readable column is allowed to get. Consumed by
+         SectionContainer, which falls back to 1120px when this is absent — so a
+         design system that says nothing renders exactly as it always has, and
+         one that sets layout.maxContentWidth finally gets what it asked for. */
+      --layout-max-content-width: ${D.maxContentWidth}px;
+` : ''}      --font-heading: '${D.headingFont}', sans-serif;
       --font-body: '${D.bodyFont}', sans-serif;
 ${D.accentFont ? `      --font-accent: '${D.accentFont}', Georgia, serif;
 ` : ''}
