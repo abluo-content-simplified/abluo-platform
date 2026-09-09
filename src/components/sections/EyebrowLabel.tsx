@@ -112,6 +112,10 @@ export function EyebrowLabel({
     ? 'shrink-0 rounded-full motion-safe:animate-pulse'
     : 'h-2 w-2 rounded-full'
   const squareClass = isPill ? 'shrink-0 rounded-[1px]' : 'h-2 w-2 rounded-[1px]'
+  // A short bar rather than a bullet. Reads as a rule the label hangs off,
+  // which suits a section opener; a dot reads as a list item. 32x2 inline,
+  // shortened inside the pill where there is no room for it.
+  const ruleClass = isPill ? 'shrink-0' : 'h-[2px] w-8 shrink-0'
   const markerStyle: CSSProperties = {
     backgroundColor: markerColor,
     ...(isPill ? { width: '6px', height: '6px' } : {}),
@@ -128,7 +132,13 @@ export function EyebrowLabel({
 
   const textStyle: CSSProperties = isPill
     ? { color: textColor, fontFamily: 'var(--font-heading)' }
-    : { color: textColor, ...(fontFamily ? { fontFamily } : {}) }
+    : {
+        color: textColor,
+        // Without this the label falls back to the UA default (Inter on most
+        // machines) — a face the site never loads, sitting next to type that is
+        // all Oswald and DM Sans. An explicit override still wins.
+        fontFamily: fontFamily ?? 'var(--font-body)',
+      }
 
   const marker = (
     <>
@@ -137,6 +147,13 @@ export function EyebrowLabel({
       )}
       {effectiveAccent === 'square' && (
         <span className={squareClass} style={markerStyle} aria-hidden="true" />
+      )}
+      {effectiveAccent === 'rule' && (
+        <span
+          className={ruleClass}
+          style={{ backgroundColor: markerColor, ...(isPill ? { width: '14px', height: '2px' } : {}) }}
+          aria-hidden="true"
+        />
       )}
       {effectiveAccent === 'brandMark' && brandMarkSrc && (
         // eslint-disable-next-line @next/next/no-img-element
@@ -162,7 +179,12 @@ export function EyebrowLabel({
   // Written out in full — Tailwind's scanner only sees literal class names,
   // never an interpolated `font-${weight}`.
   const weightClass = weight === 'semibold' ? 'font-semibold' : 'font-medium'
-  const textClass = `text-xs ${weightClass} uppercase tracking-[0.2em]`
+  // Tracking widens when the marker is a rule. A label introducing a section
+  // is read as a mark rather than a word, and the source sets it at 0.32-0.35em
+  // — at 0.2em it reads as ordinary small caps and disappears next to display
+  // type. The dot/square/none variants keep 0.2em so nothing else moves.
+  const trackingClass = effectiveAccent === 'rule' ? 'tracking-[0.32em]' : 'tracking-[0.2em]'
+  const textClass = `text-xs ${weightClass} uppercase ${trackingClass}`
 
   // No marker → no flex wrapper. The label is then the exact same bare <p>
   // (same classes, same inline colour) every section rendered before it was
@@ -176,7 +198,9 @@ export function EyebrowLabel({
   }
 
   return (
-    <div className={`flex items-center gap-3 ${className ?? ''}`}>
+    <div
+      className={`flex items-center ${effectiveAccent === 'rule' ? 'gap-4' : 'gap-3'} ${className ?? ''}`}
+    >
       {marker}
       <p className={textClass} style={textStyle}>
         {eyebrow}

@@ -465,20 +465,20 @@ export function HeroSection({ section, surface, designSystem }: Props) {
 
       {/* ── Content ──────────────────────────────────────────────────────── */}
       <div
-        className={`relative mx-auto w-full ${widthClass} flex flex-col ${textAlignClass}${
-          heroVariant === 'display' ? ' pl-6 md:pl-8' : ''
+        className={`relative w-full flex flex-col ${textAlignClass}${
+          // The display hero spans the design system's content width like every
+          // other section. `mx-auto ${widthClass}` centres it inside a narrower
+          // column, which left the hero starting ~350px in on a left-aligned
+          // page while its rule floated in the middle of nothing.
+          heroVariant === 'display' ? '' : ` mx-auto ${widthClass}`
         }`}
         style={
           heroVariant === 'display'
             ? {
-                // The rule replaces the short horizontal divider: it measures
-                // the whole block rather than separating two parts of it, which
-                // is what a headline standing on its own needs. 2px because a
-                // hairline disappears next to type this size.
-                // Same source as the standard divider, so a hero over media
-                // keeps the translucent white rather than an accent nobody can
-                // read against a photograph.
-                borderLeft: `2px solid ${dividerColor}`,
+                // No border here any more. The vertical accent is now SiteRail,
+                // drawn once for the whole document — a per-hero rule on top of
+                // it gave the page two orange lines a few hundred pixels apart.
+                maxWidth: 'var(--layout-max-content-width, 1120px)',
               }
             : undefined
         }

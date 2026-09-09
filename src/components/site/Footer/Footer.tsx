@@ -295,6 +295,33 @@ export async function Footer({
         </div>
       )}
 
+      {/* ── Colophon ───────────────────────────────────────────────
+          A closing statement, not a caption: its own band, centred, set large
+          in the accent face where the design system declares one. Drawn only
+          when authored, so it is a no-op for every site that has not written
+          one. It sits ABOVE the bottom bar because it belongs to the page it
+          is closing, not to the legal furniture underneath it. */}
+      {config.colophon && (
+        <div
+          className="border-t px-5 py-12 text-center md:px-10"
+          style={{ borderColor: borderSoft }}
+        >
+          <p
+            className="mx-auto max-w-[52ch]"
+            style={{
+              color: 'var(--color-footer-text-muted)',
+              fontFamily: 'var(--font-accent, var(--font-body))',
+              fontStyle: 'italic',
+              fontWeight: 300,
+              fontSize: 'clamp(1.25rem, 2vw, 2rem)',
+              letterSpacing: '0.01em',
+            }}
+          >
+            {config.colophon}
+          </p>
+        </div>
+      )}
+
       {/* ── Bottom bar ─────────────────────────────────────────── */}
       <div className="px-5 py-10 md:px-10">
         <div className="mx-auto max-w-[1200px]">

@@ -1073,6 +1073,16 @@ const contentSectionType = defineType({
     defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString', group: 'content' }),
     defineField({ name: 'title', title: 'Title', type: 'localizedString', group: 'content' }),
     defineField({ name: 'body', title: 'Body', type: 'localizedPortableText', group: 'content' }),
+    defineField({
+      name: 'bodyColumns',
+      title: 'Body columns',
+      type: 'number',
+      group: 'layout',
+      description:
+        'Set to 2 to run the body copy in two newspaper columns on desktop, collapsing to one on tablet and below. Worth it for three or more paragraphs beside a portrait; below that the columns are too short to read as columns.',
+      options: { list: [{ title: 'One', value: 1 }, { title: 'Two', value: 2 }], layout: 'radio' },
+      initialValue: 1,
+    }),
 
     // ── CTAs ──────────────────────────────────────────────────────────────────
     defineField({
@@ -1716,6 +1726,21 @@ const metricsSectionType = defineType({
     defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
     defineField({ name: 'headline', title: 'Headline', type: 'localizedString' }),
     defineField({ name: 'description', title: 'Description', type: 'localizedText' }),
+    defineField({
+      name: 'layout',
+      title: 'Treatment',
+      type: 'string',
+      description:
+        'Cards puts each figure in a bordered tile on a filled surface. Rule sets them in one row divided by hairlines, with no box and no fill, and animates them in: the dividers draw, then each figure rises out from behind the rule above it. Choose Rule when the figures are large enough to carry themselves.',
+      options: {
+        list: [
+          { title: 'Cards', value: 'cards' },
+          { title: 'Rule — hairline row, no boxes', value: 'rule' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'cards',
+    }),
     defineField({
       name: 'metrics',
       title: 'Metrics',
@@ -4123,6 +4148,7 @@ const designSystemType = defineType({
           { title: 'None', value: 'none' },
           { title: 'Dot', value: 'dot' },
           { title: 'Square', value: 'square' },
+          { title: 'Rule — a short horizontal bar', value: 'rule' },
           { title: 'Brand mark', value: 'brandMark' },
         ],
         layout: 'radio',
@@ -4509,6 +4535,15 @@ const designSystemType = defineType({
       group: 'layout',
       description: 'Layout tokens — control page rhythm across all sections',
       fields: [
+        defineField({
+          name: 'accentRail',
+          title: 'Accent rail',
+          type: 'boolean',
+          description:
+            'Draws a single vertical accent bar down the left of every page, inset from the edge, and gives every section enough left padding to clear it. It is the spine the whole layout hangs off, so turn it on only for a design built around one — on a site that is not, it reads as a stray line.',
+          initialValue: false,
+        }),
+        
         defineField({ name: 'maxContentWidth', title: 'Max Content Width (px)', type: 'number', description: 'Maximum width of the page container — typically 1280–1440px', initialValue: 1280 }),
         defineField({ name: 'maxTextWidth', title: 'Max Text Width (px)', type: 'number', description: 'Maximum width for reading-width text blocks — typically 680–780px', initialValue: 720 }),
         defineField({ name: 'sectionPaddingY', title: 'Section Padding Y — Normal (px)', type: 'number', description: 'Standard vertical padding for sections — top and bottom', initialValue: 96 }),
@@ -4843,6 +4878,14 @@ const siteConfigType = defineType({
     defineField({ name: 'whatsappNumber', title: 'WhatsApp Number', type: 'string', group: 'contact', description: '⚠️ Deprecated (ADR-020) — configure this in Modules → WhatsApp. Kept only until production is promoted.', hidden: true }),
     defineField({ name: 'whatsappForm', title: 'WhatsApp Message Form', type: 'reference', to: [{ type: 'formDefinition' }], group: 'contact', description: '⚠️ Deprecated (ADR-020) — configure this in Modules → WhatsApp. Kept only until production is promoted.', options: { filter: activeFormReferenceFilter }, hidden: true }),
     defineField({ name: 'whatsappFloating', title: 'Floating WhatsApp Button', type: 'boolean', group: 'contact', initialValue: false, description: '⚠️ Deprecated (ADR-020) — configure this in Modules → WhatsApp. Kept only until production is promoted.', hidden: true }),
+    defineField({
+      name: 'colophon',
+      title: 'Colophon',
+      type: 'localizedString',
+      group: 'footer',
+      description:
+        'One line, set large and centred in its own band above the footer — a closing statement rather than a caption. Leave empty and the band is not drawn at all.',
+    }),
     defineField({ name: 'footerLinks', title: 'Footer Links', type: 'array', group: 'footer', of: [defineArrayMember({ type: 'navigationLink' })] }),
     // ── Grouped footer link columns ──────────────────────────────────────────
     // Optional and empty on every existing tenant. A footer that authors these

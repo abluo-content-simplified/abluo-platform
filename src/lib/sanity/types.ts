@@ -444,7 +444,7 @@ export interface DesignSystem {
    * separate field. Default 'dot' preserves the current hardcoded look of
    * heroLiveCaptureSection / heroLensSection. INHERIT WITH OVERRIDE.
    */
-  eyebrowAccent?: 'none' | 'dot' | 'square' | 'brandMark'
+  eyebrowAccent?: 'none' | 'dot' | 'square' | 'rule' | 'brandMark'
   /**
    * Colour of eyebrow label text. Default (absent) is 'muted' — the historical
    * `--color-text-muted`; 'accent' opts in to `--color-primary`. INHERIT WITH
@@ -534,6 +534,8 @@ export interface DesignSystem {
     modal?: string
   }
   layout?: {
+    /** Draw the vertical accent bar, and pad sections clear of it. */
+    accentRail?: boolean
     maxContentWidth?: number
     maxTextWidth?: number
     sectionPaddingY?: number
@@ -661,6 +663,8 @@ export interface WebsiteSiteConfig {
   ctaForm?: RenderableFormDefinition | null
   /** Internal attribution label recorded with header-CTA submissions (e.g. "header-cta"). */
   ctaInternalName?: string
+  /** Locale-resolved closing line, its own band above the footer. */
+  colophon?: string
   footerLinks?: NavLink[]
   /** Grouped, headed footer link columns. Empty/undefined → use footerLinks. */
   footerColumns?: FooterColumn[]
@@ -1074,6 +1078,8 @@ export interface MediaContentSection {
   anchorId?: string
   eyebrow?: string
   title?: string
+  /** 2 runs the body in two columns on desktop. Unset/1 is one column. */
+  bodyColumns?: number | null
   body?: PortableTextContent
   image?: ResolvedImage
   /** Resolved from coalesce(mediaPosition, imagePosition) — migrates old data automatically */
@@ -1201,6 +1207,8 @@ export interface ContactSection {
   title?: string
   subtitle?: string
   /** Whether to render the interactive map. Default true. */
+  /** Treatment. Unset (null) is 'details' — the historical layout. */
+  layout?: 'details' | 'statement' | null
   showMap?: boolean
   /** Map iframe height in pixels. Default 400. */
   mapHeight?: number
@@ -1523,6 +1531,8 @@ export interface MetricsSection {
   headline?: string
   /** Locale-resolved by GROQ */
   description?: string
+  /** Presentation. Unset (null) is treated as 'cards' — the historical look. */
+  layout?: 'cards' | 'rule' | null
   metrics?: MetricItem[]
 }
 

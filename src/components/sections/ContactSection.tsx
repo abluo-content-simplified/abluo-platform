@@ -80,6 +80,84 @@ export function ContactSection({ section, surface, designSystem, siteConfig, mod
 
   return (
     <SectionContainer id={section.anchorId ?? 'contatti'} style={surfaceStyles}>
+      {section.layout === 'statement' ? (
+        /* ── Statement ────────────────────────────────────────────────────
+           A closing block, not a contact card. The headline runs at display
+           size, then a single rule-topped row: the email and social link on
+           the left, the availability lines right-aligned opposite. No map, no
+           form, no address — a site that closes this way is asking to be
+           written to, not visited. */
+        <>
+          {title && (
+            <SlideUp duration={duration} ease={ease}>
+              <h2
+                className="mb-20 uppercase [--fs-h2:3rem] md:[--fs-h2:5rem] lg:[--fs-h2:9rem]"
+                style={{
+                  color: 'var(--color-text-primary)',
+                  fontFamily: 'var(--font-heading)',
+                  fontSize: 'var(--font-size-h2, var(--fs-h2))',
+                  fontWeight: 'var(--font-weight-h2, 700)',
+                  lineHeight: 0.88,
+                  letterSpacing: 'var(--letter-spacing-h2, -0.02em)',
+                  whiteSpace: 'pre-line',
+                }}
+              >
+                {title}
+              </h2>
+            </SlideUp>
+          )}
+
+          <SlideUp duration={duration} ease={ease} delay={0.1}>
+            <div
+              className="flex flex-col justify-between gap-10 pt-12 md:flex-row md:items-end"
+              style={{ borderTop: '1px solid var(--color-border)' }}
+            >
+              <div className="flex flex-col items-start gap-5">
+                {siteConfig?.email && (
+                  <a
+                    href={`mailto:${siteConfig.email}`}
+                    className="inline-block pb-1 uppercase transition-colors"
+                    style={{
+                      color: 'var(--color-text-primary)',
+                      fontFamily: 'var(--font-heading)',
+                      fontWeight: 600,
+                      fontSize: 'clamp(1.8rem, 3.5vw, 4rem)',
+                      letterSpacing: '0.02em',
+                      // The accent underline is the only decoration on the
+                      // address, and it is what marks it as the one thing on
+                      // the page to act on.
+                      borderBottom: '3px solid var(--color-primary)',
+                    }}
+                  >
+                    {siteConfig.email}
+                  </a>
+                )}
+                {(siteConfig?.socialLinks ?? []).map((link) => (
+                  <a
+                    key={link.platform ?? link.url}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[0.72rem] uppercase tracking-[0.22em] transition-colors hover:opacity-80"
+                    style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-body)' }}
+                  >
+                    {link.platform ?? 'Link'}
+                  </a>
+                ))}
+              </div>
+
+              {subtitle && (
+                <p
+                  className="whitespace-pre-line text-[0.82rem] leading-relaxed tracking-[0.08em] md:text-right"
+                  style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-body)' }}
+                >
+                  {subtitle}
+                </p>
+              )}
+            </div>
+          </SlideUp>
+        </>
+      ) : (
       <div className={gridClass}>
 
         {/* ── Left: contact details (+ optional message button) ───────── */}
@@ -239,6 +317,7 @@ export function ContactSection({ section, surface, designSystem, siteConfig, mod
         )}
 
       </div>
+      )}
     </SectionContainer>
   )
 }

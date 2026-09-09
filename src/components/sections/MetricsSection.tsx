@@ -5,6 +5,7 @@ import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { resolveEasing } from '@/lib/motion/easing'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
+import { MetricsRow } from '@/components/sections/MetricsRow'
 
 interface Props {
   section: MetricsSection
@@ -12,6 +13,23 @@ interface Props {
   designSystem: DesignSystem | null
 }
 
+/**
+ * Metrics — figures that state a position, not a dashboard.
+ *
+ * Two presentations, chosen by `layout`:
+ *
+ *   'cards'  (default, unchanged) — bordered tiles on a filled surface. What
+ *            every existing site renders; untouched by the addition below.
+ *
+ *   'rule'   — a single row divided by hairlines, no fill, no box. The figures
+ *            carry themselves and the rules do the separating. This is the
+ *            treatment a display-typography site wants: a box around a 100px
+ *            numeral makes it look like a statistic in a report.
+ *
+ * The 'rule' row is a client component (MetricsRow) because it animates: the
+ * dividers draw before the figures arrive, and that sequence has to observe the
+ * viewport. 'cards' stays a server component, exactly as before.
+ */
 export function MetricsSection({ section, surface, designSystem }: Props) {
   const { eyebrow, headline, description, metrics } = section
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
@@ -22,10 +40,8 @@ export function MetricsSection({ section, surface, designSystem }: Props) {
 
   const hasHeader = Boolean(eyebrow || headline || description)
   const count = metrics?.length ?? 0
+  const isRule = section.layout === 'rule'
 
-  // Grid column class based on metric count.
-  // 2 → 2-col, 3 → 3-col, 4 → 4-col (wraps on mobile), etc.
-  // We use a responsive approach: sm:grid-cols-2, then md based on count.
   const gridClass = (() => {
     if (count <= 2) return 'grid-cols-1 sm:grid-cols-2'
     if (count === 3) return 'grid-cols-1 sm:grid-cols-3'
@@ -35,51 +51,52 @@ export function MetricsSection({ section, surface, designSystem }: Props) {
   })()
 
   return (
-      <SectionContainer id={section.anchorId} style={surfaceStyles}>
-        {/* Optional header */}
-        {hasHeader && (
-          <SlideUp duration={duration} ease={ease} delay={0} className="mb-16 max-w-2xl">
-            {eyebrow && (
-              <EyebrowLabel
-                eyebrow={eyebrow}
-                designSystem={designSystem}
-                defaultAccent="none"
-                weight="semibold"
-                className="mb-5"
-              />
-            )}
-            {headline && (
-              <h2
-                className="[--fs-h2:1.875rem] md:[--fs-h2:2.25rem]"
-                style={{
-                  color: 'var(--color-text-primary)',
-                  fontFamily: 'var(--font-heading)',
-                  fontSize: 'var(--font-size-h2, var(--fs-h2))',
-                  fontWeight: 'var(--font-weight-h2, 600)',
-                  lineHeight: 'var(--line-height-h2, 1.375)',
-                  letterSpacing: 'var(--letter-spacing-h2, -0.025em)',
-                }}
-              >
-                {headline}
-              </h2>
-            )}
-            {description && (
-              <p
-                className="mt-5 text-base leading-relaxed"
-                style={{
-                  color: 'var(--color-text-secondary)',
-                  fontFamily: 'var(--font-body)',
-                  maxWidth: '52ch',
-                }}
-              >
-                {description}
-              </p>
-            )}
-          </SlideUp>
-        )}
+    <SectionContainer id={section.anchorId} style={surfaceStyles}>
+      {hasHeader && (
+        <SlideUp duration={duration} ease={ease} delay={0} className="mb-16 max-w-2xl">
+          {eyebrow && (
+            <EyebrowLabel
+              eyebrow={eyebrow}
+              designSystem={designSystem}
+              defaultAccent="none"
+              weight="semibold"
+              className="mb-5"
+            />
+          )}
+          {headline && (
+            <h2
+              className="[--fs-h2:1.875rem] md:[--fs-h2:2.25rem]"
+              style={{
+                color: 'var(--color-text-primary)',
+                fontFamily: 'var(--font-heading)',
+                fontSize: 'var(--font-size-h2, var(--fs-h2))',
+                fontWeight: 'var(--font-weight-h2, 600)',
+                lineHeight: 'var(--line-height-h2, 1.375)',
+                letterSpacing: 'var(--letter-spacing-h2, -0.025em)',
+              }}
+            >
+              {headline}
+            </h2>
+          )}
+          {description && (
+            <p
+              className="mt-5 text-base leading-relaxed"
+              style={{
+                color: 'var(--color-text-secondary)',
+                fontFamily: 'var(--font-body)',
+                maxWidth: '52ch',
+              }}
+            >
+              {description}
+            </p>
+          )}
+        </SlideUp>
+      )}
 
-        {/* Metrics grid */}
-        {metrics && metrics.length > 0 && (
+      {metrics && metrics.length > 0 && (
+        isRule ? (
+          <MetricsRow metrics={metrics} />
+        ) : (
           <div
             className={`grid gap-px ${gridClass}`}
             style={{
@@ -101,7 +118,6 @@ export function MetricsSection({ section, surface, designSystem }: Props) {
                   className="flex h-full flex-col justify-between gap-6 p-8 md:p-10"
                   style={{ backgroundColor: 'var(--color-surface, var(--color-background))' }}
                 >
-                  {/* Value — the hero element */}
                   <p
                     className="whitespace-nowrap font-semibold leading-none tracking-tight"
                     style={{
@@ -112,8 +128,6 @@ export function MetricsSection({ section, surface, designSystem }: Props) {
                   >
                     {metric.value}
                   </p>
-
-                  {/* Label + description */}
                   <div className="flex flex-col gap-2">
                     {metric.label && (
                       <p
@@ -136,8 +150,8 @@ export function MetricsSection({ section, surface, designSystem }: Props) {
               </SlideUp>
             ))}
           </div>
-        )}
-      </SectionContainer>
-
+        )
+      )}
+    </SectionContainer>
   )
 }

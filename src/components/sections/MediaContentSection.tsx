@@ -340,7 +340,21 @@ export function MediaContentSection({ section, surface, designSystem }: Props) {
         </h2>
       )}
       {body && (
-        <div className="mt-6">
+        <div
+          className={
+            section.bodyColumns === 2
+              ? // CSS multi-column rather than a grid: the paragraphs FLOW between
+                // the columns and balance themselves, which is what makes it read
+                // as newspaper setting instead of two stacks that happen to sit
+                // side by side. Responsive classes, not an inline style — this
+                // has to collapse to one column on a phone, where a 40-character
+                // column is unreadable, and an inline style cannot hold a media
+                // query. `break-inside-avoid` on the paragraphs keeps a two-line
+                // paragraph from splitting across the gutter.
+                'mt-6 lg:[column-count:2] lg:[column-gap:4rem] lg:[column-fill:balance] lg:[&>*]:break-inside-avoid'
+              : 'mt-6'
+          }
+        >
           <RichText blocks={body} />
         </div>
       )}

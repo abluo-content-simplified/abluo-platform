@@ -128,16 +128,25 @@ export function ClientsFlowSection({ section, surface, designSystem }: Props) {
             }}
           >
             {names.map((name, index) => (
+              // The explicit {' '} after each item is load-bearing. JSX strips
+              // whitespace between elements, so without it thirty inline names
+              // and their separators are ONE unbreakable token: the browser has
+              // no break opportunity and the row runs 7000px wide instead of
+              // wrapping. The name itself stays nowrap so it never splits
+              // mid-word; the break belongs BETWEEN entries, not inside one.
               <li key={`${name}-${index}`} className="inline">
                 <span className="whitespace-nowrap">{name}</span>
                 {index < names.length - 1 && (
-                  <span
-                    aria-hidden="true"
-                    className="select-none"
-                    style={{ color: 'var(--color-primary)', opacity: 0.3, margin: '0 0.6rem' }}
-                  >
-                    {separator}
-                  </span>
+                  <>
+                    <span
+                      aria-hidden="true"
+                      className="select-none"
+                      style={{ color: 'var(--color-primary)', opacity: 0.3, margin: '0 0.6rem' }}
+                    >
+                      {separator}
+                    </span>
+                    {' '}
+                  </>
                 )}
               </li>
             ))}

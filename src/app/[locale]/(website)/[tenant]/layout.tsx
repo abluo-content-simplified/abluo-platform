@@ -16,6 +16,7 @@ import { headingVars, fluidHeadingSize, isTypographyLegacyTenant } from '@/lib/d
 import { footerThemeVars } from '@/lib/design-system/footer-tokens'
 import { Footer } from '@/components/site/Footer'
 import { NavClient } from '@/components/site/Nav/NavClient'
+import { SiteRail } from '@/components/site/SiteRail'
 import { HeaderAppearanceWrapper } from '@/components/HeaderAppearanceWrapper'
 import { DevBadge } from '@/components/DevBadge'
 import { isProduction } from '@/lib/deployment'
@@ -129,6 +130,7 @@ function buildCssVars(
     // Layout. Emitted ONLY when the design system sets it, so SectionContainer's
     // var() fallback keeps rendering the historical 1120px for every tenant that
     // does not — see the comment beside --layout-max-content-width below.
+    accentRail: ds?.layout?.accentRail === true,
     maxContentWidth: ds?.layout?.maxContentWidth,
     radiusSm: radius?.small ?? FALLBACK_RADIUS.small,
     radiusMd: radius?.medium ?? FALLBACK_RADIUS.medium,
@@ -314,7 +316,16 @@ ${footerThemeVars(ds?.footer?.surface, L, '      ')}
 
   return `
     :root {
-${D.maxContentWidth ? `      /* How wide the readable column is allowed to get. Consumed by
+${D.accentRail ? `      /* -- Accent rail --
+         Geometry for the vertical bar SiteRail draws, published as variables so
+         the bar and the padding that clears it cannot drift apart. The rail is
+         decoration and takes no layout space of its own, so the clearance below
+         is what actually stops content touching it. */
+      --rail-inset: 3.5rem;
+      --rail-width: 4px;
+      --rail-clearance: 1.5rem;
+      --content-inset-left: calc(var(--rail-inset) + var(--rail-width) + var(--rail-clearance));
+` : ''}${D.maxContentWidth ? `      /* How wide the readable column is allowed to get. Consumed by
          SectionContainer, which falls back to 1120px when this is absent — so a
          design system that says nothing renders exactly as it always has, and
          one that sets layout.maxContentWidth finally gets what it asked for. */
@@ -378,6 +389,16 @@ ${formMetaVars}
 ${footerThemeVars(ds?.footer?.surface, D, '      ')}
     }
 ${lightThemeBlock}
+${D.accentRail ? `
+    /* Every section clears the rail. Scoped to the attribute rather than applied
+       globally, so a tenant without a rail keeps the padding it has always had. */
+    [data-accent-rail="on"] section { padding-left: var(--content-inset-left); }
+    @media (max-width: 767px) {
+      /* On a phone the rail would eat a quarter of the viewport. It stays drawn
+         - it is the identity - but the content stops clearing it and runs past
+         it instead, which is what the source design does at this width. */
+      [data-accent-rail="on"] section { padding-left: 1.5rem; }
+    }` : ''}
   `.trim()
 }
 
@@ -609,6 +630,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   const headingFont = getFontName(designSystem?.typography?.headingFont, 'Geist')
   const bodyFont = getFontName(designSystem?.typography?.bodyFont, 'Geist')
   const accentFont = getFontName(designSystem?.typography?.accentFont, '')
+  const accentRail = designSystem?.layout?.accentRail === true
   const fontsUrl = buildGoogleFontsUrl(headingFont, bodyFont, accentFont)
 
   // ── Livener — header appearance system + nav client + footer ─────────────────
@@ -746,6 +768,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   const genericInner = (
     <>
       <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
+      {accentRail && <SiteRail />}
       <TrackingScripts data={integrations} />
       {bgStyles && bgGraphic?.scope === 'entire' && (
         <div style={bgStyles} aria-hidden="true" />
@@ -817,7 +840,11 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   // so any tenant with the Forms module installed gets a working form modal and
   // every other tenant renders exactly as before.
   return (
+    // data-accent-rail is what the clearance rule in buildCssVars() keys off.
+    // Absent for every tenant without a rail, so their sections keep the exact
+    // padding they have always had.
     <SlugMapRoot>
+      <div data-accent-rail={accentRail ? 'on' : undefined} className="contents">
       {formsModuleEnabled ? (
         <FormOverlayWrapper
           tenantSlug={tenantId}
@@ -829,6 +856,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
       ) : (
         genericInner
       )}
+      </div>
     </SlugMapRoot>
   )
 }

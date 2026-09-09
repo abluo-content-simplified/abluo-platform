@@ -428,6 +428,7 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       "closingCta": closingCta { ${CTA_FIELDS} },
       // featureGridSection (columns is the shared key already projected above)
       variant,
+      bodyColumns,
       lastCardSpans,
       "chips": chips[]{ "v": ${loc('@')} }.v,
       // ventureListSection. The intro key is already projected above, shared.
@@ -545,6 +546,9 @@ export const websiteSiteConfigQuery = /* groq */ `
   *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
     projectSlug,
     siteName,
+    // The closing line above the footer. Locale-resolved like every other
+    // string here; absent means the band is not drawn.
+    "colophon": ${loc('colophon')},
     defaultLocale,
     supportedLocales,
     showLangSwitcherInNav,
@@ -1715,17 +1719,22 @@ export const DS_FIELDS_SELECTION = /* groq */ `{
   typography {
     headingFont { source, libraryFont, googleFont },
     bodyFont { source, libraryFont, googleFont },
+    // The optional third face. Absent on every design system but tmz's, where
+    // it carries the straplines. A field the schema declares but the projection
+    // omits is silently undefined at runtime and the feature simply does not
+    // happen - which is exactly what went wrong here between 2026-09-07 and -09.
+    accentFont { source, libraryFont, googleFont },
     // Typographic scale — consumed by buildCssVars() to emit the fluid
     // --font-size-hN / --font-weight-hN / --line-height-hN / --letter-spacing-hN
     // custom properties the section headings read. A level left empty here is
     // simply not emitted, and the component keeps its own legacy size.
-    h1 { size, weight, lineHeight, letterSpacing },
-    h2 { size, weight, lineHeight, letterSpacing },
-    h3 { size, weight, lineHeight, letterSpacing },
-    h4 { size, weight, lineHeight, letterSpacing },
-    bodyLarge { size, weight, lineHeight, letterSpacing },
-    body { size, weight, lineHeight, letterSpacing },
-    small { size, weight, lineHeight, letterSpacing }
+    h1 { size, minSize, weight, lineHeight, letterSpacing },
+    h2 { size, minSize, weight, lineHeight, letterSpacing },
+    h3 { size, minSize, weight, lineHeight, letterSpacing },
+    h4 { size, minSize, weight, lineHeight, letterSpacing },
+    bodyLarge { size, minSize, weight, lineHeight, letterSpacing },
+    body { size, minSize, weight, lineHeight, letterSpacing },
+    small { size, minSize, weight, lineHeight, letterSpacing }
   },
 
   radius { small, medium, large },
@@ -1794,6 +1803,7 @@ export const DS_FIELDS_SELECTION = /* groq */ `{
   shadows { card, dropdown, modal },
 
   layout {
+    accentRail,
     maxContentWidth, maxTextWidth,
     sectionPaddingY, sectionPaddingYCompact, sectionPaddingYLarge
   },
