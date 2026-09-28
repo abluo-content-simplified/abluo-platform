@@ -3432,6 +3432,14 @@ const projectType = defineType({
           initialValue: false,
           description: 'Emergency override — when on, ALL tracking halts for this project regardless of individual integration enabled state. Successor of the day-to-day analyticsEnabled toggle (ADR-014).',
         }),
+        // ADR-021 — linked from the consent banner's first layer.
+        defineField({
+          name: 'cookiePolicyPage',
+          title: 'Cookie Policy Page',
+          type: 'reference',
+          to: [{ type: 'page' }],
+          description: 'The page with this website’s cookie policy. Linked from the cookie banner.',
+        }),
       ],
     }),
 

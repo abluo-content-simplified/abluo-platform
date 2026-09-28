@@ -7,6 +7,7 @@ import { imageUrl } from '@/lib/sanity/image'
 import { renderWordmark, FOOTER_WORDMARK_ACCENT_STYLE } from '@/lib/wordmark'
 import { Icon } from '@/components/icons'
 import { FooterLanguageSwitcher } from './FooterClient'
+import { CookieSettingsLink } from '@/components/consent/CookieSettingsLink'
 import { EarlyAccessFooterCta } from '@/components/forms/EarlyAccessFooterCta'
 import type { UrlProjectSegment } from '@/lib/tenancy/ids'
 
@@ -352,6 +353,13 @@ export async function Footer({
                 ))}
               </ul>
             )}
+
+            {/* ADR-021 — permanent consent withdrawal path; absent when the
+                site uses nothing that needs consent. */}
+            <CookieSettingsLink
+              className="text-sm font-medium hover:text-[var(--color-footer-text)]"
+              style={{ color: 'var(--color-footer-text-muted)' }}
+            />
 
             {/* Credit link — absent until `footerCredit` is authored. */}
             {credit && (

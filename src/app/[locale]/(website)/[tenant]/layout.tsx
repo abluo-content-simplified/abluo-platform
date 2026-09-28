@@ -4,7 +4,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { tenantClient, fetchDesignSystemById } from '@/lib/sanity/client'
 import { isKnownProjectSegment } from '@/lib/tenancy/host-scope'
-import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, siteConfigFaviconQuery, projectIntegrationsQuery, projectModuleConfigQuery } from '@/lib/sanity/queries'
+import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, siteConfigFaviconQuery, projectIntegrationsQuery, projectModuleConfigQuery, projectConsentQuery } from '@/lib/sanity/queries'
 import { ogImageUrl } from '@/lib/sanity/image'
 import type { LocaleConfig, SupportedLocale, DesignSystem, FontDefinition, WebsiteSiteConfig, BackgroundGraphic, ProjectIntegrations } from '@/lib/sanity/types'
 import { imageUrl } from '@/lib/sanity/image'
@@ -31,6 +31,8 @@ import { hasWhatsAppNumber } from '@/lib/forms/whatsapp'
 import { resolveWhatsAppConfig, resolveHeaderCtaConfig, isModuleEnabled, type ProjectModuleConfig } from '@/lib/modules/config'
 import { SlugMapRoot } from '@/components/SlugMapContext'
 import { TrackingScripts } from '@/components/TrackingScripts'
+import { ConsentProvider } from '@/components/consent/ConsentProvider'
+import { readConsentContext } from '@/lib/consent/server'
 import { asUrlProjectSegment, type UrlProjectSegment } from '@/lib/tenancy/ids'
 import { lightThemeSelector, type ThemeMode } from '@/lib/design-system/theme-mode'
 import { FALLBACK_DARK, FALLBACK_LIGHT, FALLBACK_STATE, FALLBACK_FONTS, FALLBACK_RADIUS } from '@/lib/design-system/fallback-tokens'
@@ -638,6 +640,9 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
     const livenerConfig = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
     // ADR-014 Phase C — runtime tracking/analytics config (project.integrationConfigs + project.privacy).
     const integrations = await fetchForTenant<ProjectIntegrations>(projectIntegrationsQuery, {})
+    // ADR-021 — the visitor's consent for THIS site, derived banner state.
+    const consent = await readConsentContext(tenantId, integrations)
+    const consentLinks = await fetchForTenant<{ cookiePolicySlug?: string }>(projectConsentQuery, { locale, defaultLocale })
     // ADR-020 — module-owned per-website configuration (WhatsApp, header CTA).
     const modules = await fetchForTenant<ProjectModuleConfig>(projectModuleConfigQuery, { locale, defaultLocale })
     const cssVars = buildCssVars(designSystem, { desktop: livenerConfig?.logoHeightDesktop, mobile: livenerConfig?.logoHeightMobile }, tenantId, livenerConfig?.themeMode)
@@ -659,9 +664,19 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
     const hasCtaForm = !!livenerCtaForm?.formId
 
     const livenerInner = (
-      <>
+      <ConsentProvider
+        cookieName={consent.cookieName}
+        policy={consent.policy}
+        record={consent.record}
+        showBanner={consent.showBanner}
+        requiresConsent={consent.requiresConsent}
+        locale={locale}
+        policyHref={consentLinks?.cookiePolicySlug ? `/${locale}/${tenantId}/${consentLinks.cookiePolicySlug}` : undefined}
+        allowReset={!isProduction()}
+        motionTokens={designSystem?.motion}
+      >
         <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
-        <TrackingScripts data={integrations} />
+        <TrackingScripts data={integrations} grants={consent.grants} />
         {livenerBgStyles && livenerBgGraphic?.scope === 'entire' && (
           <div style={livenerBgStyles} aria-hidden="true" />
         )}
@@ -702,11 +717,11 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
           }
         />
         <main>{children}</main>
-        <TrackingScripts data={integrations} placement="bodyEnd" />
+        <TrackingScripts data={integrations} placement="bodyEnd" grants={consent.grants} />
         <Footer tenantId={tenantId} locale={locale as SupportedLocale} defaultLocale={defaultLocale} />
         {whatsAppFab(modules, livenerConfig, tenantId, locale)}
         <DevBadge />
-      </>
+      </ConsentProvider>
     )
 
     return (
@@ -739,6 +754,9 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   const config = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
   // ADR-014 Phase C — runtime tracking/analytics config (project.integrationConfigs + project.privacy).
   const integrations = await fetchForTenant<ProjectIntegrations>(projectIntegrationsQuery, {})
+  // ADR-021 — the visitor's consent for THIS site, derived banner state.
+  const consent = await readConsentContext(tenantId, integrations)
+  const consentLinks = await fetchForTenant<{ cookiePolicySlug?: string }>(projectConsentQuery, { locale, defaultLocale })
   // ADR-020 — module-owned per-website configuration (WhatsApp, header CTA).
   const modules = await fetchForTenant<ProjectModuleConfig>(projectModuleConfigQuery, { locale, defaultLocale })
 
@@ -766,10 +784,20 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   const hasCtaForm = formsModuleEnabled && !!ctaForm?.formId
 
   const genericInner = (
-    <>
+    <ConsentProvider
+      cookieName={consent.cookieName}
+      policy={consent.policy}
+      record={consent.record}
+      showBanner={consent.showBanner}
+      requiresConsent={consent.requiresConsent}
+      locale={locale}
+      policyHref={consentLinks?.cookiePolicySlug ? `/${locale}/${tenantId}/${consentLinks.cookiePolicySlug}` : undefined}
+      allowReset={!isProduction()}
+      motionTokens={designSystem?.motion}
+    >
       <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
       {accentRail && <SiteRail />}
-      <TrackingScripts data={integrations} />
+      <TrackingScripts data={integrations} grants={consent.grants} />
       {bgStyles && bgGraphic?.scope === 'entire' && (
         <div style={bgStyles} aria-hidden="true" />
       )}
@@ -817,7 +845,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         }
       />
       <main>{children}</main>
-      <TrackingScripts data={integrations} placement="bodyEnd" />
+      <TrackingScripts data={integrations} placement="bodyEnd" grants={consent.grants} />
       {/* Shared Footer — the same component the Livener branch mounts. It
           fetches websiteSiteConfigQuery itself, so no props beyond identity.
           `showContact` keeps the home link + address + email this branch used
@@ -833,7 +861,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
       />
       {whatsAppFab(modules, config, tenantId, locale)}
       <DevBadge />
-    </>
+    </ConsentProvider>
   )
 
   // Mounting the overlay is additive: with no seeded forms the host is inert,

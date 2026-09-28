@@ -3,6 +3,7 @@ import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
+import { ConsentEmbed } from '@/components/consent/ConsentEmbed'
 import { getContactSectionMessages } from '@/lib/i18n/contact-section-messages'
 import { buildAddressQuery, getMapEmbedUrl, getMapsDeepLink } from '@/lib/maps/provider'
 import { FormOverlayWrapper } from '@/components/forms/FormOverlayWrapper'
@@ -290,29 +291,32 @@ export function ContactSection({ section, surface, designSystem, siteConfig, mod
               The iframe itself is interactive (zoom/pan) — the link only activates
               when the user clicks outside the iframe's interactive area.
             */}
-            <a
-              href={mapsDeepLink ?? '#'}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={m.openInMapsLabel}
-              className="block overflow-hidden"
-              style={{ borderRadius: 'var(--radius-lg)' }}
-            >
-              <iframe
-                src={mapEmbedUrl}
-                width="100%"
-                height={mapHeight}
-                style={{
-                  border: 0,
-                  display: 'block',
-                  borderRadius: 'var(--radius-lg)',
-                }}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title={m.mapTitle}
-                allowFullScreen
-              />
-            </a>
+            {/* ADR-021 — the map sets Google cookies on load: click-to-load. */}
+            <ConsentEmbed vendorId="google-maps" vendorName="Google Maps" locale={locale} height={mapHeight}>
+              <a
+                href={mapsDeepLink ?? '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={m.openInMapsLabel}
+                className="block overflow-hidden"
+                style={{ borderRadius: 'var(--radius-lg)' }}
+              >
+                <iframe
+                  src={mapEmbedUrl}
+                  width="100%"
+                  height={mapHeight}
+                  style={{
+                    border: 0,
+                    display: 'block',
+                    borderRadius: 'var(--radius-lg)',
+                  }}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title={m.mapTitle}
+                  allowFullScreen
+                />
+              </a>
+            </ConsentEmbed>
           </SlideUp>
         )}
 

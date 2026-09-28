@@ -1,11 +1,9 @@
 import type { ProjectIntegrations } from '@/lib/sanity/types'
 import { isProduction } from '@/lib/deployment'
 import { resolveTracking } from '@/lib/tracking/resolve'
-import {
-  filterCustomScripts,
-  consentStateFor,
-  builtInTrackingAllowed,
-} from '@/lib/tracking/custom-scripts'
+import { filterCustomScripts } from '@/lib/tracking/custom-scripts'
+import { INTEGRATION_REGISTRY } from '@/lib/integrations/registry'
+import type { ConsentGrants } from '@/lib/consent'
 
 // ─── Tracking / Analytics Scripts ──────────────────────────────────────────────
 //
@@ -47,6 +45,14 @@ import {
 //     `necessary` scripts are never gated (see `custom-scripts.ts` TSDoc for
 //     Tom's rule verbatim — that module is unchanged by Phase C).
 //
+// ── ADR-021 (supersedes the two bullets above) ───────────────────────────────
+// Consent is no longer derived from `consentModeEnabled`. The layout reads the
+// visitor's real choice (`readConsentContext`, src/lib/consent/server.ts) and
+// passes `grants`. Each built-in integration is gated by its OWN manifest
+// `consentCategory` (GA4/GTM → analytics, Meta Pixel → marketing); custom
+// scripts by their per-script category. No `grants` = nothing gated loads.
+// `consentModeEnabled` is no longer read anywhere at runtime.
+//
 // Uses plain <script> tags, NOT next/script. Precedent: `layout.tsx` previously
 // used `<Script strategy="beforeInteractive">` in this same Server Component
 // tree and it was replaced with a plain <script> for React 19 compatibility
@@ -83,29 +89,39 @@ import {
 interface TrackingScriptsProps {
   data?: ProjectIntegrations | null
   placement?: 'head' | 'bodyEnd'
+  /** The visitor's resolved consent (ADR-021). Absent → fail closed. */
+  grants?: ConsentGrants
 }
 
-export function TrackingScripts({ data, placement = 'head' }: TrackingScriptsProps) {
+const NO_GRANTS: ConsentGrants = { analytics: false, marketing: false, functional: false }
+
+function integrationAllowed(integrationId: string, grants: ConsentGrants): boolean {
+  const cat = INTEGRATION_REGISTRY.find((m) => m.id === integrationId)?.consentCategory
+  if (!cat) return false
+  return cat === 'necessary' ? true : grants[cat] === true
+}
+
+export function TrackingScripts({ data, placement = 'head', grants = NO_GRANTS }: TrackingScriptsProps) {
   if (!data || !isProduction()) return null
 
   const t = resolveTracking(data.integrationConfigs, data.privacy)
 
   if (t.killSwitched) return null
 
-  const { ga4MeasurementId, gtmContainerId, metaPixelId, customScripts, consentModeEnabled } = t
+  const { customScripts } = t
+  const ga4MeasurementId = integrationAllowed('google-analytics', grants) ? t.ga4MeasurementId : undefined
+  const gtmContainerId = integrationAllowed('google-tag-manager', grants) ? t.gtmContainerId : undefined
+  const metaPixelId = integrationAllowed('meta-pixel', grants) ? t.metaPixelId : undefined
 
-  const scriptsForPlacement = filterCustomScripts(
-    customScripts,
-    placement,
-    consentStateFor(consentModeEnabled)
-  )
+  // ConsentGrants has the ConsentState shape — always passed, so custom
+  // scripts are always gated (the old "undefined = don't gate" path is dead).
+  const scriptsForPlacement = filterCustomScripts(customScripts, placement, grants)
 
-  const builtInsAllowed = builtInTrackingAllowed(consentModeEnabled)
 
   if (placement === 'bodyEnd') {
     return (
       <>
-        {builtInsAllowed && gtmContainerId && (
+        {gtmContainerId && (
           <noscript>
             <iframe
               src={`https://www.googletagmanager.com/ns.html?id=${gtmContainerId}`}
@@ -125,7 +141,7 @@ export function TrackingScripts({ data, placement = 'head' }: TrackingScriptsPro
 
   return (
     <>
-      {builtInsAllowed && ga4MeasurementId && (
+      {ga4MeasurementId && (
         <>
           <script async src={`https://www.googletagmanager.com/gtag/js?id=${ga4MeasurementId}`} />
           <script
@@ -135,14 +151,14 @@ export function TrackingScripts({ data, placement = 'head' }: TrackingScriptsPro
           />
         </>
       )}
-      {builtInsAllowed && gtmContainerId && (
+      {gtmContainerId && (
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${gtmContainerId}');`,
           }}
         />
       )}
-      {builtInsAllowed && metaPixelId && (
+      {metaPixelId && (
         <>
           <script
             dangerouslySetInnerHTML={{

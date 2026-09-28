@@ -713,6 +713,18 @@ export const projectIntegrationsQuery = /* groq */ `
   }
 `
 
+// ─── Cookie consent (ADR-021) ─────────────────────────────────────────────────
+// The tenant's cookie-policy page, linked from the consent banner's first layer.
+// Slug resolved per locale with default-locale fallback (list-query rule).
+export const projectConsentQuery = /* groq */ `
+  *[_type == "project" && projectSlug == $projectSlug][0] {
+    "cookiePolicySlug": coalesce(
+      privacy.cookiePolicyPage->slug[$locale].current,
+      privacy.cookiePolicyPage->slug[$defaultLocale].current
+    )
+  }
+`
+
 // ─── Enabled module IDs (ADR-016 Phase D → ADR-020) ───────────────────────────
 // Single source of truth for a website's installed-module set at render time.
 // Mirrors the exact projection used for Studio nav in sanity.config.ts (the
