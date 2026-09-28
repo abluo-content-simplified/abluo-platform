@@ -320,6 +320,8 @@ const navigationLinkType = defineType({
           { title: 'Internal Page', value: 'internal' },
           { title: 'External URL', value: 'external' },
           { title: 'Anchor on this page', value: 'anchor' },
+          // ADR-021 — footer only: the button that reopens the cookie consent panel.
+          { title: 'Cookie settings (footer only)', value: 'cookieSettings' },
         ],
         layout: 'radio',
       },

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useClient } from 'sanity'
 import type { PrivacySettings } from '../../integrations'
+import { deriveConsentPolicy, type ConsentPurpose } from '../../consent'
+import type { ProjectIntegrations } from '../types'
 
 /**
  * PrivacyPane — Project Settings > Privacy pane.
@@ -17,6 +19,12 @@ import type { PrivacySettings } from '../../integrations'
  * toggle (no separate Save step) — a deliberate low-friction choice for a
  * two-field settings pane; flagged as an `AI decides` design choice in the
  * handoff since the brief did not specify save-button vs. auto-commit.
+ *
+ * ADR-021 — the cookie banner is DERIVED from the enabled integrations, so the
+ * old "Consent Mode Enabled" switch is gone (consent is always enforced). The
+ * pane now shows why the banner is on or off, and picks the cookie-policy page
+ * the banner links to. The reference is weak so a page that is still a draft
+ * can be chosen: the link stays hidden until that page is published.
  */
 
 interface PrivacyPaneProps {
@@ -27,7 +35,15 @@ interface PrivacyPaneProps {
 }
 
 interface ProjectPrivacyDoc {
-  privacy?: PrivacySettings
+  privacy?: PrivacySettings & { cookiePolicyPage?: { _ref?: string } }
+  integrationConfigs?: ProjectIntegrations['integrationConfigs']
+  pages?: { _id: string; title?: string; slug?: string }[]
+}
+
+const PURPOSE_LABEL: Record<ConsentPurpose, string> = {
+  analytics: 'Statistics',
+  marketing: 'Marketing',
+  functional: 'Functional',
 }
 
 export function PrivacyPane({ options }: PrivacyPaneProps) {
@@ -35,6 +51,9 @@ export function PrivacyPane({ options }: PrivacyPaneProps) {
   const client = useClient({ apiVersion: '2026-05-21' })
 
   const [privacy, setPrivacy] = useState<PrivacySettings>({})
+  const [doc, setDoc] = useState<ProjectPrivacyDoc | null>(null)
+  const [policyRef, setPolicyRef] = useState<string>('')
+  const [savingPolicy, setSavingPolicy] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState<'consentModeEnabled' | 'trackingKillSwitch' | null>(null)
@@ -47,10 +66,23 @@ export function PrivacyPane({ options }: PrivacyPaneProps) {
     }
     setLoading(true)
     client
-      .fetch<ProjectPrivacyDoc>(`*[_type == "project" && _id == $projectId][0]{ privacy }`, {
-        projectId,
+      .fetch<ProjectPrivacyDoc>(
+        `*[_type == "project" && _id == $projectId][0]{
+          privacy,
+          integrationConfigs[] { integrationId, enabled, values },
+          "pages": *[_type == "page" && projectSlug == ^.projectSlug] | order(_updatedAt desc) {
+            _id,
+            "title": coalesce(title.en, title.it, title.de, title.fr, title.es, title.pt, title.nl),
+            "slug": coalesce(slug.en.current, slug.it.current, slug.de.current, slug.fr.current, slug.es.current, slug.pt.current, slug.nl.current)
+          }
+        }`,
+        { projectId }
+      )
+      .then((data) => {
+        setDoc(data ?? null)
+        setPrivacy(data?.privacy ?? {})
+        setPolicyRef(data?.privacy?.cookiePolicyPage?._ref ?? '')
       })
-      .then((data) => setPrivacy(data?.privacy ?? {}))
       .catch(() => setError('Failed to load privacy settings.'))
       .finally(() => setLoading(false))
   }, [projectId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -76,6 +108,29 @@ export function PrivacyPane({ options }: PrivacyPaneProps) {
       }
     },
     [projectId, privacy, client]
+  )
+
+  const savePolicyPage = useCallback(
+    async (ref: string) => {
+      if (!projectId) return
+      setSaveError(null)
+      setSavingPolicy(true)
+      const prev = policyRef
+      setPolicyRef(ref)
+      try {
+        const patch = client.patch(projectId).setIfMissing({ privacy: {} })
+        await (ref
+          ? patch.set({ 'privacy.cookiePolicyPage': { _type: 'reference', _ref: ref, _weak: true } })
+          : patch.unset(['privacy.cookiePolicyPage'])
+        ).commit()
+      } catch {
+        setPolicyRef(prev)
+        setSaveError('Failed to save. Please try again.')
+      } finally {
+        setSavingPolicy(false)
+      }
+    },
+    [projectId, policyRef, client]
   )
 
   // ── Loading / error / no-project states ─────────────────────────────────────
@@ -147,36 +202,57 @@ export function PrivacyPane({ options }: PrivacyPaneProps) {
         </div>
       )}
 
-      {/* ── Consent Mode ─────────────────────────────────────────────────────── */}
-      <div
-        style={{
-          marginBottom: 20,
-          padding: 16,
-          background: '#fafafa',
-          border: '1px solid #eeeeee',
-          borderRadius: 6,
-        }}
-      >
-        <label
-          htmlFor="privacy-consent-mode"
-          style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
-        >
-          <input
-            id="privacy-consent-mode"
-            type="checkbox"
-            checked={privacy.consentModeEnabled === true}
-            disabled={saving === 'consentModeEnabled'}
-            onChange={(e) => toggle('consentModeEnabled', e.target.checked)}
-            style={{ width: 16, height: 16 }}
-          />
-          <span style={{ fontSize: 14, fontWeight: 500, color: '#111' }}>Consent Mode Enabled</span>
-        </label>
-        <div style={{ fontSize: 13, color: '#888', marginTop: 8, lineHeight: 1.5 }}>
-          Fail-closed consent gate. When on and no valid visitor consent exists, ALL tracking is
-          blocked except Necessary custom scripts — Analytics, Marketing, and Functional
-          integrations and scripts do not load until consent is given.
-        </div>
-      </div>
+      {/* ── Cookie banner status (ADR-021 — derived, not configured) ────────── */}
+      {(() => {
+        const policy = deriveConsentPolicy({ integrationConfigs: doc?.integrationConfigs, privacy })
+        const purposes = (Object.keys(policy.purposes) as ConsentPurpose[]).map(
+          (p) => `${policy.purposes[p]!.vendors.map((v) => v.name).join(', ')} (${PURPOSE_LABEL[p]})`
+        )
+        // Pages keep one entry per document: a draft-only page appears once, marked.
+        const pages = new Map<string, { title: string; draftOnly: boolean }>()
+        for (const pg of doc?.pages ?? []) {
+          const id = pg._id.replace(/^drafts\./, '')
+          const isDraft = pg._id.startsWith('drafts.')
+          const prev = pages.get(id)
+          pages.set(id, {
+            title: `${pg.title ?? 'Untitled'}${pg.slug ? ` — /${pg.slug}` : ''}`,
+            draftOnly: prev ? prev.draftOnly && isDraft : isDraft,
+          })
+        }
+        return (
+          <div style={{ marginBottom: 20, padding: 16, background: '#fafafa', border: '1px solid #eeeeee', borderRadius: 6 }}>
+            <div style={{ fontSize: 14, fontWeight: 500, color: '#111' }}>
+              Cookie banner: {purposes.length ? 'active' : 'not needed'}
+            </div>
+            <div style={{ fontSize: 13, color: '#888', marginTop: 8, lineHeight: 1.5 }}>
+              {purposes.length
+                ? `Shown to visitors because this site uses ${purposes.join(' and ')}. It turns on and off by itself from the Integrations above — there is no switch.`
+                : 'No enabled integration needs consent, so visitors see no banner. Embedded maps and videos ask for consent on their own when clicked.'}
+            </div>
+
+            <label htmlFor="privacy-cookie-policy" style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#111', marginTop: 16 }}>
+              Cookie policy page
+            </label>
+            <select
+              id="privacy-cookie-policy"
+              value={policyRef}
+              disabled={savingPolicy}
+              onChange={(e) => savePolicyPage(e.target.value)}
+              style={{ marginTop: 6, width: '100%', padding: '6px 8px', fontSize: 13 }}
+            >
+              <option value="">— none —</option>
+              {[...pages.entries()].map(([id, pg]) => (
+                <option key={id} value={id}>
+                  {pg.title}{pg.draftOnly ? ' (not published yet)' : ''}
+                </option>
+              ))}
+            </select>
+            <div style={{ fontSize: 12, color: '#888', marginTop: 6, lineHeight: 1.5 }}>
+              Linked from the banner. A page that is not published yet can be chosen now — the link appears when the page is published.
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Tracking Kill Switch ─────────────────────────────────────────────── */}
       <div

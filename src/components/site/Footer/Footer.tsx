@@ -64,6 +64,10 @@ export async function Footer({
     (column) => column.heading || column.links?.length,
   )
   const hasBrandRow = variant === 'full' && columns.length > 0
+  // ADR-021 — when a column carries an authored "Cookie settings" link (e.g.
+  // under Legal), the automatic one in the bottom bar is not repeated.
+  const hasAuthoredCookieLink =
+    hasBrandRow && columns.some((c) => c.links?.some((l) => l.linkType === 'cookieSettings'))
 
   const logoSrc = config.logo ? imageUrl(config.logo as never, 480) : undefined
   // Precedence: image logo → text wordmark → plain site name.
@@ -241,6 +245,17 @@ export async function Footer({
                         </Link>
                       </li>
                     ))}
+                    {column.links
+                      ?.filter((l) => l.linkType === 'cookieSettings')
+                      .map((l, i) => (
+                        <li key={`cookie-settings-${i}`}>
+                          <CookieSettingsLink
+                            label={l.label}
+                            className="text-left text-sm hover:text-[var(--color-footer-text)]"
+                            style={{ fontFamily: 'var(--font-body)', color: 'var(--color-footer-text-muted)' }}
+                          />
+                        </li>
+                      ))}
                   </ul>
                 </div>
               ))}
@@ -356,10 +371,12 @@ export async function Footer({
 
             {/* ADR-021 — permanent consent withdrawal path; absent when the
                 site uses nothing that needs consent. */}
-            <CookieSettingsLink
-              className="text-sm font-medium hover:text-[var(--color-footer-text)]"
-              style={{ color: 'var(--color-footer-text-muted)' }}
-            />
+            {!hasAuthoredCookieLink && (
+              <CookieSettingsLink
+                className="text-sm font-medium hover:text-[var(--color-footer-text)]"
+                style={{ color: 'var(--color-footer-text-muted)' }}
+              />
+            )}
 
             {/* Credit link — absent until `footerCredit` is authored. */}
             {credit && (

@@ -150,6 +150,19 @@ export function resolveNavLink(
 }
 
 /**
+ * ADR-021. Two kinds of link never become an <a>:
+ *  - a link to a page that is not published yet (pageRef set, no slug resolves) —
+ *    hidden until the page goes live, instead of silently pointing at the home
+ *    page. This is how "prepare the legal pages now, show them later" works;
+ *  - `cookieSettings`, which the footer renders as the consent-panel button.
+ */
+export function isRenderableNavLink(link: NavLink): boolean {
+  if (link.linkType === 'cookieSettings') return false
+  if (link.linkType === 'internal' && link.hasPageRef && !link.pageSlug) return false
+  return true
+}
+
+/**
  * Resolve an array of navigation links
  */
 export function resolveNavLinks(
@@ -159,5 +172,7 @@ export function resolveNavLinks(
   supportedLocales: readonly string[] = DEFAULT_LOCALE_SEGMENTS
 ): ResolvedNavLink[] {
   if (!links?.length) return []
-  return links.map((link) => resolveNavLink(link, locale, tenantId, supportedLocales))
+  return links
+    .filter(isRenderableNavLink)
+    .map((link) => resolveNavLink(link, locale, tenantId, supportedLocales))
 }

@@ -170,12 +170,16 @@ export type ResolvedCta =
 
 export interface NavLink {
   label: string
-  /** 'anchor' is additive — 'internal' and 'external' behave exactly as before. */
-  linkType?: 'internal' | 'external' | 'anchor'
+  /** 'anchor' is additive — 'internal' and 'external' behave exactly as before.
+   *  'cookieSettings' (ADR-021) renders the button that reopens the consent panel;
+   *  it is footer-only and never resolved to an href. */
+  linkType?: 'internal' | 'external' | 'anchor' | 'cookieSettings'
   /** Only used when linkType === 'anchor'. Resolves to `#<anchorId>`. */
   anchorId?: string
   // Resolved slug from pageRef — set by GROQ query, not stored directly
   pageSlug?: string
+  /** True when a page reference is set — with no pageSlug it points at an unpublished page. */
+  hasPageRef?: boolean
   internalPage?: 'homepage' | 'live' | 'events'
   externalUrl?: string
   openInNewTab?: boolean

@@ -142,6 +142,26 @@ Remaining for Phase 1:
 
 **Done when:** a tenant with GA4 enabled shows the banner in its own DS look on preview. Rejecting keeps GA4 out of the network tab. Accepting reloads once and then loads it. The banner does not come back on reload or next visit. The footer link reopens it.
 
+### Phase 1 close-out — *BUILT 2026-09-28*
+
+- **Privacy pane (Studio).**
+  - The "Consent Mode Enabled" switch is removed from the UI; consent is always enforced.
+  - The pane now shows *"Cookie banner: active — because <vendors> (<purpose>)"* or *"not needed"*.
+  - It has a **Cookie policy page** picker. The stored reference is weak, so a page that is still a draft can be chosen now; the link appears once that page is published.
+- **Links to unpublished pages are hidden.** `NAV_LINK_FIELDS` projects `hasPageRef`, and `isRenderableNavLink()` drops internal links whose page is not published. Previously such a link silently pointed at the home page. Links can now be prepared in advance and appear when the page is published.
+- **`cookieSettings` link type (footer only).** An editor can place "Cookie settings" in a footer column (e.g. under Legal). When they do, the automatic one in the bottom bar is not repeated.
+- **Banner text stays platform-owned** (decided 2026-09-28). There is no per-site override for now.
+
+**Data (production dataset, 2026-09-28):**
+
+- `privacy.cookiePolicyPage` is set (weak) on hoffmann → `hoffmann-page-cookie-policy` (published), livener → `livener-page-cookie-policy` (draft) and studiomartegani → `studiomartegani-page-cookie-policy` (draft).
+- There are empty **draft** pages `livener-page-{privacy,cookie}-policy` and `studiomartegani-page-{privacy,cookie}-policy`.
+
+**After this code is on production — data still to add (never before the deploy):**
+
+1. Livener and Studio Martegani `siteConfig.footerLinks`: Privacy Policy + Cookie Policy (internal, weak `pageRef` to the draft pages). They stay hidden until the pages are published.
+2. Hoffmann footer column "Legale": add a `cookieSettings` link ("Impostazioni cookie" / "Cookie-Einstellungen").
+
 ### Phase 1.5 — Withdrawable embeds + self-hosted fonts — *BUILT 2026-09-28*
 
 - **Embed withdrawal.**

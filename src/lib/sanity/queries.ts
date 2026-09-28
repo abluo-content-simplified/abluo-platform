@@ -57,6 +57,8 @@ const NAV_LINK_FIELDS = /* groq */ `
   "label": ${loc('label')},
   linkType,
   "pageSlug": coalesce(pageRef->slug[$locale].current, pageRef->slug[$defaultLocale].current),
+  // ADR-021 — a link whose page is not published yet is hidden, not sent home.
+  "hasPageRef": defined(pageRef),
   internalPage,
   externalUrl,
   anchorId,
