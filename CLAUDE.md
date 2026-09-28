@@ -281,6 +281,15 @@ All section components share this signature: `({ section, surface, designSystem 
 
 Derived from `siteConfig.backgroundPattern` + optional per-section `background` override. Values: `transparent`, `solid`, `glass`.
 
+### Galleries (ADR-022)
+
+Galleries are the Gallery **module** (`src/lib/modules/gallery/`), not platform types. A gallery is a small, hand-ordered set of Media Library photos; a Photo Gallery section composes one or more, a blog post can show one below its text. Rules that are easy to break:
+
+- **The layout decides the tile shape, never the photo.** Tile plans come from `planTiles()` in `src/lib/gallery/layout.ts` (12-track grid, per breakpoint, no gaps, no orphans). Do not add per-photo size controls.
+- **Focal points live on the Media Library asset** (`mediaAsset.image` hotspot) and are applied with `focalObjectPosition()`. Any component that crops a Media Library image should use it.
+- **`photoGallerySection` is module-gated.** A project that shows a gallery needs the `gallery` installation, or the section stops rendering.
+- One projection (`GALLERY_FIELDS` in queries.ts) and one server entry point (`GalleryPlacement`) serve every placement.
+
 ### Rule
 
 Animations belong to section components. Sanity stores content — not timing, easing, motion, or animation logic.
@@ -312,7 +321,7 @@ A module owns: document types, editorial collections, filtering logic, permissio
 | Events Section | Renders content from the Events Module |
 | FAQ Section | Inline FAQs or content from a future FAQ Module |
 | Team Section | Inline team members or content from a future Team Module |
-| Gallery Section | Inline images or content from a future Media Library Module |
+| Photo Gallery Section | Renders galleries from the Gallery Module (ADR-022) — composes several, tabs, lightbox |
 
 ### Platform Section Library
 
