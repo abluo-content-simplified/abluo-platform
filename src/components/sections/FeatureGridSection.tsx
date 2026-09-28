@@ -10,6 +10,7 @@ import { renderHeadline } from '@/lib/headline-accent'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
 import { FeatureCardCta } from '@/components/sections/FeatureCardCta'
+import { FeatureCardTitleLink } from '@/components/sections/FeatureCardTitleLink'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 //
@@ -229,8 +230,12 @@ export function FeatureGridSection({ section, surface, designSystem }: Props) {
                   : undefined
               }
             >
+              {/* `relative` is load-bearing: the title link stretches its
+                  ::after over this box to make the whole card clickable. See
+                  FeatureCardTitleLink. focus-within puts the keyboard ring on
+                  the card rather than on the invisible stretched anchor. */}
               <div
-                className="group/card relative flex h-full flex-col bg-[var(--color-surface)] p-8 transition-[box-shadow,transform] duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-card,0_20px_48px_-24px_rgba(0,0,0,0.3))] md:p-10"
+                className={`group/card relative flex h-full flex-col bg-[var(--color-surface)] p-8 transition-[box-shadow] duration-300 hover:shadow-[var(--shadow-card,0_20px_48px_-24px_rgba(0,0,0,0.3))] md:p-10 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)]${feature.cta && feature.title ? ' cursor-pointer' : ''}`}
               >
                 {/* Card image — a services grid leads with a photograph, not a
                     glyph. Corner radius comes from the design system so it
@@ -246,7 +251,7 @@ export function FeatureGridSection({ section, surface, designSystem }: Props) {
                       sizes="(max-width: 768px) 100vw, 33vw"
                       alt={feature.image.alt ?? ''}
                       loading="lazy"
-                      className="h-full w-full object-cover transition-transform duration-[600ms] ease-out group-hover/card:scale-[1.04]"
+                      className="h-full w-full object-cover transition-transform duration-[600ms] ease-out group-hover/card:scale-[1.08]"
                     />
                   </div>
                 )}
@@ -321,7 +326,10 @@ export function FeatureGridSection({ section, surface, designSystem }: Props) {
                 {/* Title — honours literal line breaks authored in Studio */}
                 {feature.title && (
                   <h3
-                    className="relative z-[1] mb-5"
+                    /* No `relative` when the card is linked: a positioned <h3>
+                       would become the ::after's containing block and shrink
+                       the hit area to the heading. */
+                    className={feature.cta ? 'mb-5' : 'relative z-[1] mb-5'}
                     style={{
                       color: 'var(--color-text-primary)',
                       fontFamily: 'var(--font-heading)',
@@ -339,7 +347,11 @@ export function FeatureGridSection({ section, surface, designSystem }: Props) {
                       letterSpacing: 'var(--letter-spacing-h3, -0.025em)',
                     }}
                   >
-                    {feature.title}
+                    {feature.cta ? (
+                      <FeatureCardTitleLink cta={feature.cta}>{feature.title}</FeatureCardTitleLink>
+                    ) : (
+                      feature.title
+                    )}
                   </h3>
                 )}
 
@@ -383,8 +395,12 @@ export function FeatureGridSection({ section, surface, designSystem }: Props) {
                 {/* Per-card link — pushed to the foot so cards of unequal text
                     length still line their links up. */}
                 {feature.cta && (
-                  <div className="mt-auto pt-2">
-                    <FeatureCardCta cta={feature.cta} />
+                  <div className="mt-auto pt-1">
+                    {/* One link per card. When the title carries it, this stays
+                        as the visual affordance only — a second anchor to the
+                        same place would double every card's tab stop and read
+                        twice to a screen reader. */}
+                    <FeatureCardCta cta={feature.cta} asDecoration={Boolean(feature.title)} />
                   </div>
                 )}
               </div>
