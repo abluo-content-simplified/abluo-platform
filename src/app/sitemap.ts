@@ -124,19 +124,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const { sanityClient } = await import('@/lib/sanity/client')
 
     // Fetch active projects with their tenant-specific supportedLocales.
+    // No project sets its `siteConfig` reference, so reading the locales only
+    // through it left every sitemap on the ['en'] fallback below:
+    // studiomartegani.com (default locale it) listed English URLs only. The
+    // project's own siteConfig, found by projectSlug, is the one the pages read.
     const projects = await sanityClient.fetch<TenantSitemapData[]>(
       `*[_type == "project" && status == "active"] | order(projectName asc) {
         projectSlug,
         customDomain,
-        "supportedLocales": siteConfig->supportedLocales,
-        "defaultLocale": siteConfig->defaultLocale
+        "supportedLocales": coalesce(
+          siteConfig->supportedLocales,
+          *[_type == "siteConfig" && projectSlug == ^.projectSlug][0].supportedLocales
+        ),
+        "defaultLocale": coalesce(
+          siteConfig->defaultLocale,
+          *[_type == "siteConfig" && projectSlug == ^.projectSlug][0].defaultLocale
+        )
       }`
     )
 
     // Fetch all published pages, events, posts, and news with their per-locale slugs.
     const [pages, events, posts, newsArticles] = await Promise.all([
       sanityClient.fetch<PageSitemapData[]>(
-        `*[_type == "page" && defined(projectSlug)] { projectSlug, slug }`
+        // The home page is already emitted as the bare locale URL above; listing
+        // it again under its slug (/en/home) named a duplicate of the home page.
+        `*[_type == "page" && defined(projectSlug) && coalesce(pageType, "") != "home"] { projectSlug, slug }`
       ),
       sanityClient.fetch<EventSitemapData[]>(
         `*[_type == "event" && defined(projectSlug)] { projectSlug, slug }`

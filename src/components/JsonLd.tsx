@@ -138,3 +138,53 @@ export function JsonLd({ siteConfig, faqSection, locale, pathSegments = [], logo
     </>
   )
 }
+
+// ─── Article (blog posts) ─────────────────────────────────────────────────────
+
+export interface ArticleSchemaInput {
+  /** Canonical origin of the tenant (https://domain), or null when unknown. */
+  origin: string | null
+  locale: string
+  /** Public path segments below the locale, e.g. ['blog', slug]. */
+  pathSegments: string[]
+  headline?: string | null
+  description?: string | null
+  imageUrl?: string | null
+  datePublished?: string | null
+  authorName?: string | null
+}
+
+/**
+ * Schema.org BlogPosting for a single post. Pure so it can be tested.
+ *
+ * It points at the organisation and website entities emitted on the home page
+ * by `@id`, so the article is attached to the practice rather than floating
+ * free. Nothing is asserted that is not authored: no image, date or author key
+ * appears when the post does not have one.
+ */
+export function buildArticleSchema(input: ArticleSchemaInput): Record<string, unknown> | null {
+  const { origin, locale, pathSegments, headline } = input
+  if (!headline) return null
+  const url = canonicalUrl(origin, locale, ...pathSegments)
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    ...(url && { '@id': `${url}#article`, url, mainEntityOfPage: url }),
+    headline,
+    inLanguage: locale,
+    ...(input.description && { description: input.description }),
+    ...(input.imageUrl && { image: input.imageUrl }),
+    ...(input.datePublished && { datePublished: input.datePublished }),
+    ...(input.authorName && { author: { '@type': 'Person', name: input.authorName } }),
+    ...(origin && {
+      publisher: { '@id': `${origin}#organization` },
+      isPartOf: { '@id': `${origin}#website` },
+    }),
+  }
+}
+
+export function ArticleJsonLd(props: ArticleSchemaInput) {
+  const schema = buildArticleSchema(props)
+  if (!schema) return null
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+}

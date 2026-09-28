@@ -26,6 +26,7 @@ import { articlePortableTextComponents } from '@/components/portable-text/articl
 import { PostCard } from '@/components/blog/PostCard'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
+import { ArticleJsonLd } from '@/components/JsonLd'
 
 export const dynamic = 'force-dynamic'
 
@@ -144,7 +145,7 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
   })
   const cpm = charsPerMinute(moduleConfig, 'blog')
 
-  const [post, designSystem] = await Promise.all([
+  const [post, designSystem, customDomain] = await Promise.all([
     fetchForTenant<Post>(postBySlugQuery, {
       slug,
       locale: locale as SupportedLocale,
@@ -155,6 +156,7 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
       const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {})
       return resolveDesignSystemInheritance(raw, fetchDesignSystemById)
     })(),
+    fetchForTenant<string | null>(projectDomainQuery, {}),
   ])
 
   // Primary lookup missed — check redirect table.
@@ -214,6 +216,16 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
 
   return (
     <SlugMapProvider slugMap={slugMap}>
+      <ArticleJsonLd
+        origin={canonicalOrigin(customDomain)}
+        locale={locale}
+        pathSegments={['blog', post.slugMap?.[locale as SupportedLocale]?.current ?? slug]}
+        headline={post.title}
+        description={post.excerpt}
+        imageUrl={post.coverImage?.asset ? ogImageUrl(post.coverImage) : null}
+        datePublished={post.publishedAt}
+        authorName={post.author?.name}
+      />
       <div style={{ backgroundColor: 'var(--color-background)' }}>
         <div className="mx-auto max-w-[780px] px-5 py-12 md:px-8">
 

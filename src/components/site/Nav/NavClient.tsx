@@ -178,7 +178,7 @@ export function NavClient({
               rel={link.external ? 'noopener noreferrer' : undefined}
               onClick={closeDrawer}
               className="rounded-[var(--radius-btn)] px-4 py-3 text-base font-medium transition-colors"
-              style={{ color: 'var(--color-text-primary)', opacity: 0.8 }}
+              style={{ color: 'var(--color-text-primary)', opacity: 0.95 }}
             >
               {link.label}
             </Link>
