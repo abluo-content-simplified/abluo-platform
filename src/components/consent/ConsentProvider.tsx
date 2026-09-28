@@ -82,12 +82,19 @@ export function ConsentProvider({
     if (!allowReset) return
     const url = new URL(window.location.href)
     if (url.searchParams.get('consent') !== 'reset') return
-    // Clear and reload without the parameter: the server then renders the
-    // page exactly as a first-time visitor sees it.
+    // Clear the choice in place — no reload (a reload flashes a blank page).
+    // State is reset in the next frame: we are syncing React to an external
+    // change (the URL + cookie), not deriving state during render.
     writeCookie(cookieName, null)
     url.searchParams.delete('consent')
-    window.location.replace(url.toString())
-  }, [allowReset, cookieName])
+    window.history.replaceState(window.history.state, '', url.toString())
+    const frame = requestAnimationFrame(() => {
+      setRecord(null)
+      setSessionVendors(new Set())
+      setOpen(requiresConsent ? 'first' : null)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [allowReset, cookieName, requiresConsent])
 
   const choose = useCallback(
     (choice: Partial<Record<ConsentPurpose, boolean>>) => {
