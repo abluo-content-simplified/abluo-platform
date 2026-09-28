@@ -29,12 +29,12 @@
  *   hoffmann (4, one used on the home page), studiomartegani (1, team page),
  *   tmz (1, unused). None of the three has a gallery installation.
  *
- * Run, dry-run first:
- *   npx tsx src/lib/sanity/migrations/006-install-gallery-module.ts
- *   npx tsx src/lib/sanity/migrations/006-install-gallery-module.ts --apply
+ * Run, dry-run first (tsx reads .env.local with --env-file):
+ *   npx tsx --env-file=.env.local src/lib/sanity/migrations/006-install-gallery-module.ts
+ *   npx tsx --env-file=.env.local src/lib/sanity/migrations/006-install-gallery-module.ts --apply
  *
- * Prerequisites: SANITY_API_TOKEN with write access, NEXT_PUBLIC_SANITY_PROJECT_ID,
- * NEXT_PUBLIC_SANITY_DATASET (all in .env.local).
+ * Prerequisites: SANITY_API_WRITE_TOKEN (or SANITY_API_TOKEN) with write access,
+ * NEXT_PUBLIC_SANITY_PROJECT_ID, NEXT_PUBLIC_SANITY_DATASET — all in .env.local.
  */
 
 import { createClient } from '@sanity/client'
@@ -45,7 +45,8 @@ const client = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ?? '',
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET ?? 'production',
   apiVersion: '2026-05-21',
-  token: process.env.SANITY_API_TOKEN ?? '',
+  // .env.local names it SANITY_API_WRITE_TOKEN; older scripts used SANITY_API_TOKEN.
+  token: process.env.SANITY_API_WRITE_TOKEN ?? process.env.SANITY_API_TOKEN ?? '',
   useCdn: false,
 })
 
