@@ -481,7 +481,6 @@ function DesignSystemHead({ cssVars, fontsUrl }: { cssVars: string; fontsUrl: st
     <>
       {/* Design system CSS variables — applies to all tenants */}
       <style dangerouslySetInnerHTML={{ __html: cssVars }} />
-      {fontsUrl && <link rel="preconnect" href="https://fonts.googleapis.com" />}
       {fontsUrl && <link rel="stylesheet" href={fontsUrl} />}
     </>
   )

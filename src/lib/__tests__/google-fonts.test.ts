@@ -31,7 +31,7 @@ describe('fontToGoogleParam', () => {
 describe('buildGoogleFontsUrl: the optional third face', () => {
   it('emits three families in declaration order', () => {
     expect(buildGoogleFontsUrl('Oswald', 'DM Sans', 'Cormorant Garamond')).toBe(
-      'https://fonts.googleapis.com/css2' +
+      '/api/fonts/css' +
         '?family=Oswald:wght@200;300;400;500;600;700' +
         '&family=DM+Sans:wght@300;400;500;600;700' +
         '&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400' +
@@ -64,13 +64,13 @@ describe('buildGoogleFontsUrl: the optional third face', () => {
 describe('buildGoogleFontsUrl', () => {
   it('emits the No!Logo pairing with Syne 800', () => {
     expect(buildGoogleFontsUrl('Syne', 'DM Sans')).toBe(
-      'https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap',
+      '/api/fonts/css?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap',
     )
   })
 
   it('requests one family when heading and body are the same', () => {
     expect(buildGoogleFontsUrl('Syne', 'Syne')).toBe(
-      'https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&display=swap',
+      '/api/fonts/css?family=Syne:wght@400;500;600;700;800&display=swap',
     )
   })
 })

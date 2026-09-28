@@ -13,7 +13,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import {
   CONSENT_COOKIE_MAX_AGE_S,
   allowVendor as allowVendorIn,
+  allowedVendorIds,
   applyChoice,
+  applyVendorChoices,
+  embedVendorName,
   grantsFrom,
   serializeConsentCookie,
   vendorAllowed as vendorAllowedIn,
@@ -25,7 +28,8 @@ import { CookieBanner } from './CookieBanner'
 import type { MotionTokens } from '@/lib/sanity/types'
 
 interface ConsentContextValue {
-  requiresConsent: boolean
+  /** Footer "Cookie settings" link: the site needs consent, or the visitor allowed an embed. */
+  showSettingsLink: boolean
   openSettings: () => void
   isVendorLoaded: (vendorId: string) => boolean
   loadVendor: (vendorId: string, always: boolean) => void
@@ -97,9 +101,20 @@ export function ConsentProvider({
   }, [allowReset, cookieName, requiresConsent])
 
   const choose = useCallback(
-    (choice: Partial<Record<ConsentPurpose, boolean>>) => {
+    (choice: Partial<Record<ConsentPurpose, boolean>>, vendorChoices?: Record<string, boolean>) => {
       const before = grantsFrom(record, policy)
-      const next = applyChoice(record, policy, choice)
+      let next = applyChoice(record, policy, choice)
+      if (vendorChoices) {
+        next = applyVendorChoices(next, vendorChoices)
+        const withdrawn = Object.keys(vendorChoices).filter((id) => !vendorChoices[id])
+        if (withdrawn.length) {
+          setSessionVendors((s) => {
+            const n = new Set(s)
+            withdrawn.forEach((id) => n.delete(id))
+            return n
+          })
+        }
+      }
       writeCookie(cookieName, next)
       setRecord(next)
       setOpen(null)
@@ -122,27 +137,31 @@ export function ConsentProvider({
     [record, cookieName]
   )
 
+  const allowedVendors = allowedVendorIds(record)
+  const showSettings = requiresConsent || allowedVendors.length > 0
+
   const value = useMemo<ConsentContextValue>(
     () => ({
-      requiresConsent,
+      showSettingsLink: showSettings,
       openSettings: () => setOpen('settings'),
       isVendorLoaded: (id) => sessionVendors.has(id) || vendorAllowedIn(record, id),
       loadVendor,
       locale,
     }),
-    [requiresConsent, sessionVendors, record, loadVendor, locale]
+    [showSettings, sessionVendors, record, loadVendor, locale]
   )
 
   return (
     <ConsentContext.Provider value={value}>
       {children}
-      {requiresConsent && (
+      {showSettings && (
         <CookieBanner
           open={open}
           onOpenSettings={() => setOpen('settings')}
           onChoose={choose}
           policy={policy}
           grants={grantsFrom(record, policy)}
+          vendors={allowedVendors.map((id) => ({ id, name: embedVendorName(id) }))}
           locale={locale}
           policyHref={policyHref}
           motionTokens={motionTokens}

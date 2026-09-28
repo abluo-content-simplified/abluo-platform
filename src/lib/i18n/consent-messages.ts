@@ -22,6 +22,8 @@ export interface ConsentMessages {
   alwaysOn: string
   purposes: Record<'analytics' | 'marketing' | 'functional', { label: string; description: string }>
   footerLink: string
+  /** Settings-panel heading for click-to-load embeds (maps, videos). */
+  embedsTitle: string
   embedNotice: (vendor: string) => string
   embedLoad: string
   embedAlwaysAllow: (vendor: string) => string
@@ -47,6 +49,7 @@ const MESSAGES: Record<string, ConsentMessages> = {
       functional: { label: 'Functional', description: 'Enable extra features such as chat or embedded services.' },
     },
     footerLink: 'Cookie settings',
+    embedsTitle: 'External content',
     embedNotice: (v) => `This content is provided by ${v}, which may set cookies.`,
     embedLoad: 'Load content',
     embedAlwaysAllow: (v) => `Always allow ${v}`,
@@ -70,6 +73,7 @@ const MESSAGES: Record<string, ConsentMessages> = {
       functional: { label: 'Funzionali', description: 'Attivano funzioni aggiuntive come chat o servizi incorporati.' },
     },
     footerLink: 'Impostazioni cookie',
+    embedsTitle: 'Contenuti esterni',
     embedNotice: (v) => `Questo contenuto è fornito da ${v}, che potrebbe impostare dei cookie.`,
     embedLoad: 'Carica contenuto',
     embedAlwaysAllow: (v) => `Consenti sempre ${v}`,
@@ -93,6 +97,7 @@ const MESSAGES: Record<string, ConsentMessages> = {
       functional: { label: 'Funktional', description: 'Ermöglichen zusätzliche Funktionen wie Chat oder eingebettete Dienste.' },
     },
     footerLink: 'Cookie-Einstellungen',
+    embedsTitle: 'Externe Inhalte',
     embedNotice: (v) => `Dieser Inhalt wird von ${v} bereitgestellt, das Cookies setzen kann.`,
     embedLoad: 'Inhalt laden',
     embedAlwaysAllow: (v) => `${v} immer erlauben`,
@@ -116,6 +121,7 @@ const MESSAGES: Record<string, ConsentMessages> = {
       functional: { label: 'Fonctionnels', description: 'Activent des fonctions supplémentaires comme le chat ou des services intégrés.' },
     },
     footerLink: 'Paramètres des cookies',
+    embedsTitle: 'Contenus externes',
     embedNotice: (v) => `Ce contenu est fourni par ${v}, qui peut déposer des cookies.`,
     embedLoad: 'Charger le contenu',
     embedAlwaysAllow: (v) => `Toujours autoriser ${v}`,
@@ -139,6 +145,7 @@ const MESSAGES: Record<string, ConsentMessages> = {
       functional: { label: 'Funcionales', description: 'Activan funciones adicionales como chat o servicios integrados.' },
     },
     footerLink: 'Configuración de cookies',
+    embedsTitle: 'Contenido externo',
     embedNotice: (v) => `Este contenido lo proporciona ${v}, que puede instalar cookies.`,
     embedLoad: 'Cargar contenido',
     embedAlwaysAllow: (v) => `Permitir siempre ${v}`,
@@ -162,6 +169,7 @@ const MESSAGES: Record<string, ConsentMessages> = {
       functional: { label: 'Funcionais', description: 'Ativam funções adicionais como chat ou serviços incorporados.' },
     },
     footerLink: 'Definições de cookies',
+    embedsTitle: 'Conteúdo externo',
     embedNotice: (v) => `Este conteúdo é fornecido por ${v}, que pode definir cookies.`,
     embedLoad: 'Carregar conteúdo',
     embedAlwaysAllow: (v) => `Permitir sempre ${v}`,
@@ -185,6 +193,7 @@ const MESSAGES: Record<string, ConsentMessages> = {
       functional: { label: 'Functioneel', description: 'Maken extra functies mogelijk, zoals chat of ingesloten diensten.' },
     },
     footerLink: 'Cookie-instellingen',
+    embedsTitle: 'Externe inhoud',
     embedNotice: (v) => `Deze inhoud wordt geleverd door ${v}, dat cookies kan plaatsen.`,
     embedLoad: 'Inhoud laden',
     embedAlwaysAllow: (v) => `${v} altijd toestaan`,

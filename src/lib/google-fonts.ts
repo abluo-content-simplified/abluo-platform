@@ -1,3 +1,5 @@
+import { FONTS_CSS_ENDPOINT } from '@/lib/fonts/self-host'
+
 // ─── Google Fonts URL ─────────────────────────────────────────────────────────
 //
 // Extracted from the website layout so the emitted css2 request is unit-
@@ -65,5 +67,7 @@ export function buildGoogleFontsUrl(...fonts: Array<string | undefined | null>):
     families.push(fontToGoogleParam(font))
   }
   if (!families.length) return ''
-  return `https://fonts.googleapis.com/css2?${families.map((f) => `family=${f}`).join('&')}&display=swap`
+  // Self-hosted: the browser fetches fonts from our own domain, never from
+  // Google (see src/lib/fonts/self-host.ts). Same css2 query, our endpoint.
+  return `${FONTS_CSS_ENDPOINT}?${families.map((f) => `family=${f}`).join('&')}&display=swap`
 }

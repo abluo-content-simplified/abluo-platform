@@ -142,6 +142,18 @@ Remaining for Phase 1:
 
 **Done when:** a tenant with GA4 enabled shows the banner in its own DS look on preview. Rejecting keeps GA4 out of the network tab. Accepting reloads once and then loads it. The banner does not come back on reload or next visit. The footer link reopens it.
 
+### Phase 1.5 — Withdrawable embeds + self-hosted fonts — *BUILT 2026-09-28*
+
+- **Embed withdrawal.**
+  - The footer "Cookie settings" link also appears when the visitor has allowed an embed. Before this, a site with no tracking (e.g. Hoffmann) had no way to take back "Always allow Google Maps".
+  - The settings panel lists the allowed embeds under "External content", each with a switch.
+  - "Reject all" withdraws them too.
+- **Self-hosted Google Fonts.**
+  - Tenant pages load fonts from `/api/fonts/css` and `/api/fonts/file/*` on the site's own host, instead of `fonts.googleapis.com` / `fonts.gstatic.com`. Visitors' IP addresses no longer reach Google, which was the finding of LG München, 20 Jan 2022.
+  - Our server fetches from Google once and the CDN caches the result: CSS for 30 days, font files as immutable.
+  - The endpoints validate their input and are not an open proxy.
+  - The Studio's Design System Preview (admin-only) still uses Google directly.
+
 ### Phase 2 — Video embeds (click-to-load)
 
 - A `ConsentEmbed` wrapper for `VideoSection` (YouTube, Vimeo) and the `ContactSection` map. Before consent it shows a DS-styled placeholder: "This content is hosted by YouTube, which sets cookies. [Load video] ☐ Always allow YouTube". Use `youtube-nocookie.com` once loaded.

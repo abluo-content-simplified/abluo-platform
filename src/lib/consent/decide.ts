@@ -116,3 +116,30 @@ export function allowVendor(previous: ConsentRecord | null, vendorId: string, no
   rec.vendors[vendorId] = { granted: true, decidedAt: now.toISOString() }
   return rec
 }
+
+/** Embed vendors the visitor currently allows (still within 12 months). */
+export function allowedVendorIds(record: ConsentRecord | null, now: Date = new Date()): string[] {
+  return Object.keys(record?.vendors ?? {}).filter((id) => vendorAllowed(record, id, now))
+}
+
+/**
+ * Applies embed choices from the settings panel. `false` withdraws — the entry
+ * is removed, so the placeholder shows again and nothing is remembered.
+ */
+export function applyVendorChoices(
+  previous: ConsentRecord | null,
+  choices: Record<string, boolean>,
+  now: Date = new Date()
+): ConsentRecord {
+  const rec: ConsentRecord = previous
+    ? { v: 1, purposes: { ...previous.purposes }, vendors: { ...previous.vendors } }
+    : emptyRecord()
+  for (const [id, allowed] of Object.entries(choices)) {
+    if (allowed) {
+      if (!vendorAllowed(rec, id, now)) rec.vendors[id] = { granted: true, decidedAt: now.toISOString() }
+    } else {
+      delete rec.vendors[id]
+    }
+  }
+  return rec
+}

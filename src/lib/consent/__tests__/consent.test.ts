@@ -154,3 +154,24 @@ describe('embed vendors (click-to-load)', () => {
     expect(rec.purposes).toEqual({})
   })
 })
+
+describe('embed withdrawal (settings panel)', () => {
+  it('allowed vendors are listed, and withdrawing removes them', async () => {
+    const { allowedVendorIds, applyVendorChoices } = await import('@/lib/consent')
+    const rec = allowVendor(null, 'google-maps', T0)
+    expect(allowedVendorIds(rec, after(1))).toEqual(['google-maps'])
+    const withdrawn = applyVendorChoices(rec, { 'google-maps': false }, after(2))
+    expect(allowedVendorIds(withdrawn, after(3))).toEqual([])
+    expect(vendorAllowed(withdrawn, 'google-maps', after(3))).toBe(false)
+  })
+  it('keeping a vendor does not reset its 12-month clock', async () => {
+    const { applyVendorChoices } = await import('@/lib/consent')
+    const rec = allowVendor(null, 'google-maps', T0)
+    const kept = applyVendorChoices(rec, { 'google-maps': true }, after(100))
+    expect(kept.vendors['google-maps'].decidedAt).toBe(T0.toISOString())
+  })
+  it('expired vendor is no longer listed', async () => {
+    const { allowedVendorIds } = await import('@/lib/consent')
+    expect(allowedVendorIds(allowVendor(null, 'google-maps', T0), after(400))).toEqual([])
+  })
+})

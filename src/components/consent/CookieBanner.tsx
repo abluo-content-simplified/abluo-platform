@@ -21,9 +21,11 @@ import type { MotionTokens } from '@/lib/sanity/types'
 interface CookieBannerProps {
   open: null | 'first' | 'settings'
   onOpenSettings: () => void
-  onChoose: (choice: Partial<Record<ConsentPurpose, boolean>>) => void
+  onChoose: (choice: Partial<Record<ConsentPurpose, boolean>>, vendorChoices?: Record<string, boolean>) => void
   policy: ConsentPolicy
   grants: ConsentGrants
+  /** Embed vendors the visitor currently allows — withdrawable in settings. */
+  vendors: { id: string; name: string }[]
   locale: string
   policyHref?: string
   motionTokens?: MotionTokens
@@ -56,6 +58,7 @@ export function CookieBanner({
   onChoose,
   policy,
   grants,
+  vendors,
   locale,
   policyHref,
   motionTokens,
@@ -143,6 +146,7 @@ export function CookieBanner({
                 key="settings"
                 policy={policy}
                 grants={grants}
+                vendors={vendors}
                 inUse={inUse}
                 locale={locale}
                 policyHref={policyHref}
@@ -160,6 +164,7 @@ export function CookieBanner({
 function SettingsBody({
   policy,
   grants,
+  vendors,
   inUse,
   locale,
   policyHref,
@@ -167,15 +172,20 @@ function SettingsBody({
 }: {
   policy: ConsentPolicy
   grants: ConsentGrants
+  vendors: { id: string; name: string }[]
   inUse: ConsentPurpose[]
   locale: string
   policyHref?: string
-  onChoose: (choice: Partial<Record<ConsentPurpose, boolean>>) => void
+  onChoose: (choice: Partial<Record<ConsentPurpose, boolean>>, vendorChoices?: Record<string, boolean>) => void
 }) {
   const m = getConsentMessages(locale)
   const [draft, setDraft] = useState<Partial<Record<ConsentPurpose, boolean>>>(() =>
     Object.fromEntries(inUse.map((p) => [p, grants[p]]))
   )
+  const [vendorDraft, setVendorDraft] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(vendors.map((v) => [v.id, true]))
+  )
+  const noVendors = Object.fromEntries(vendors.map((v) => [v.id, false]))
   return (
     <>
       <ul className="mt-3 space-y-3">
@@ -196,41 +206,66 @@ function SettingsBody({
                   {m.purposes[p].description} ({policy.purposes[p]!.vendors.map((v) => v.name).join(', ')})
                 </p>
               </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={on}
-                aria-label={m.purposes[p].label}
-                onClick={() => setDraft((d) => ({ ...d, [p]: !on }))}
-                className="relative mt-0.5 h-6 w-10 shrink-0 transition-colors"
-                style={{
-                  background: on ? 'var(--color-primary)' : 'var(--color-border)',
-                  borderRadius: 'var(--radius-full, 9999px)',
-                }}
-              >
-                <span
-                  className="absolute top-0.5 h-5 w-5 transition-all"
-                  style={{
-                    left: on ? '18px' : '2px',
-                    background: 'var(--color-background)',
-                    borderRadius: 'var(--radius-full, 9999px)',
-                  }}
-                />
-              </button>
+              <Switch on={on} label={m.purposes[p].label} onToggle={() => setDraft((d) => ({ ...d, [p]: !on }))} />
             </li>
           )
         })}
       </ul>
+      {vendors.length > 0 && (
+        <>
+          <p className="mt-4 text-sm font-medium">{m.embedsTitle}</p>
+          <ul className="mt-2 space-y-3">
+            {vendors.map((v) => {
+              const on = vendorDraft[v.id] === true
+              return (
+                <li key={v.id} className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium">{v.name}</p>
+                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{m.embedNotice(v.name)}</p>
+                  </div>
+                  <Switch on={on} label={v.name} onToggle={() => setVendorDraft((d) => ({ ...d, [v.id]: !on }))} />
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
       {policyHref && (
         <a href={policyHref} className="mt-3 inline-block text-sm underline underline-offset-2" style={{ color: 'var(--color-text-secondary)' }}>
           {m.policyLink}
         </a>
       )}
       <div className="mt-4 flex flex-wrap gap-2">
-        <ActionButton onClick={() => onChoose(rejectAll())}>{m.rejectAll}</ActionButton>
-        <ActionButton onClick={() => onChoose(draft)}>{m.save}</ActionButton>
-        <ActionButton onClick={() => onChoose(acceptAll(policy))}>{m.acceptAll}</ActionButton>
+        <ActionButton onClick={() => onChoose(rejectAll(), noVendors)}>{m.rejectAll}</ActionButton>
+        <ActionButton onClick={() => onChoose(draft, vendorDraft)}>{m.save}</ActionButton>
+        <ActionButton onClick={() => onChoose(acceptAll(policy), vendorDraft)}>{m.acceptAll}</ActionButton>
       </div>
     </>
+  )
+}
+
+function Switch({ on, label, onToggle }: { on: boolean; label: string; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      onClick={onToggle}
+      className="relative mt-0.5 h-6 w-10 shrink-0 transition-colors"
+      style={{
+        background: on ? 'var(--color-primary)' : 'var(--color-border)',
+        borderRadius: 'var(--radius-full, 9999px)',
+      }}
+    >
+      <span
+        className="absolute top-0.5 h-5 w-5 transition-all"
+        style={{
+          left: on ? '18px' : '2px',
+          background: 'var(--color-background)',
+          borderRadius: 'var(--radius-full, 9999px)',
+        }}
+      />
+    </button>
   )
 }
