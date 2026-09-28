@@ -146,8 +146,13 @@ const blogListingSectionType = defineType({
       type: 'number',
       group: 'display',
       initialValue: 3,
-      description: 'Maximum number of articles to display (1–12). Default: 3.',
-      validation: (Rule) => Rule.min(1).max(12).integer(),
+      // The ceiling was 12, which silently truncated any blog with more posts
+      // than that: Hoffmann has 14, the index listed 12, and the remaining two
+      // were unreachable by browsing because this section type has no
+      // pagination. A cap is still wanted -- an unbounded list is a slow page
+      // -- but it has to be above a realistic blog, not below it.
+      description: 'Maximum number of articles to display (1–48). Default: 3.',
+      validation: (Rule) => Rule.min(1).max(48).integer(),
     }),
     defineField({
       name: 'viewAllLabel',
