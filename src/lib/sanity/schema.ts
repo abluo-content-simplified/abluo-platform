@@ -4,7 +4,7 @@ import { ProjectLinker } from '@/lib/sanity/fields/ProjectLinker'
 import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, LocalizedSlugInput, LocalizedRedirectFromInput } from '@/lib/sanity/fields/LocalizedInput'
 import { slugifyNestedPath, validateNestedSlug } from '@/lib/sanity/fields/nested-slug'
 import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
-import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField, headlineAccentField } from '@/lib/sanity/fields/shared'
+import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField, headlineAccentField, BACKGROUND_SURFACE_OPTIONS } from '@/lib/sanity/fields/shared'
 import {
   VentureListWireframe,
   ClientsFlowWireframe,
@@ -1702,15 +1702,6 @@ const metricItemType = defineType({
   },
 })
 
-const BACKGROUND_SURFACE_OPTIONS = [
-  { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
-  { title: '⬜ Surface 1', value: 'surface1' },
-  { title: '⬜ Surface 2', value: 'surface2' },
-  { title: '🟦 Surface 3', value: 'surface3' },
-  { title: '🟢 Brand Surface', value: 'brandSurface' },
-  { title: '◻ Transparent', value: 'transparent' },
-  { title: '🔲 Glass', value: 'glass' },
-]
 
 const metricsSectionType = defineType({
   name: 'metricsSection',
@@ -2702,230 +2693,9 @@ const faqSectionType = defineType({
 // blogListingSection moved to src/lib/modules/blog/schema.ts (ADR-011 Phase D1)
 
 // ─── Gallery Module ────────────────────────────────────────────────────────────
-
-const galleryItemType = defineType({
-  name: 'galleryItem',
-  title: 'Gallery Item',
-  type: 'object',
-  fields: [
-    defineField({
-      name: 'mediaAsset',
-      title: 'Media Asset',
-      type: 'reference',
-      to: [{ type: 'mediaAsset' }],
-      validation: (Rule) => Rule.required(),
-      description: 'Select a Media Asset from the Media Library.',
-    }),
-    // ── Title override ──────────────────────────────────────────────────────
-    defineField({
-      name: 'titleOverrideEnabled',
-      title: 'Override Display Title',
-      type: 'boolean',
-      initialValue: false,
-      description: 'Enable to use a custom title for this item instead of the Media Library title.',
-    }),
-    defineField({
-      name: 'titleOverride',
-      title: 'Custom Display Title',
-      type: 'localizedString',
-      description: 'Replaces the Media Library title in this gallery only.',
-      hidden: ({ parent }) => !parent?.titleOverrideEnabled,
-    }),
-    // ── Caption override ────────────────────────────────────────────────────
-    defineField({
-      name: 'captionOverrideEnabled',
-      title: 'Override Caption',
-      type: 'boolean',
-      initialValue: false,
-      description: 'Enable to use a custom caption for this item instead of the Media Library caption.',
-    }),
-    defineField({
-      name: 'captionOverride',
-      title: 'Custom Caption',
-      type: 'localizedString',
-      description: 'Replaces the Media Library caption in this gallery only.',
-      hidden: ({ parent }) => !parent?.captionOverrideEnabled,
-    }),
-  ],
-  preview: {
-    select: {
-      assetName: 'mediaAsset.name',
-      assetAltEn: 'mediaAsset.altText.en',
-      assetTitleEn: 'mediaAsset.title.en',
-      media: 'mediaAsset.image',
-    },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    prepare: ({ assetName, assetAltEn, assetTitleEn, media }: { assetName?: string; assetAltEn?: string; assetTitleEn?: string; media?: any }) => ({
-      title: assetName ?? assetTitleEn ?? assetAltEn ?? 'Media Asset',
-      media,
-    }),
-  },
-})
-
-const galleryType = defineType({
-  name: 'gallery',
-  title: 'Gallery',
-  type: 'document',
-  fields: [
-    projectSlugField,
-    defineField({
-      name: 'internalName',
-      title: 'Internal Name',
-      type: 'string',
-      description: 'Used in Studio to identify this gallery (e.g. "Hygiene", "Our Team").',
-      validation: (Rule) => Rule.required(),
-    }),
-    defineField({
-      name: 'slug',
-      title: 'Slug',
-      type: 'slug',
-      description: 'Optional identifier for future API use.',
-      options: { source: 'internalName', maxLength: 96 },
-    }),
-    defineField({
-      name: 'description',
-      title: 'Description',
-      type: 'localizedString',
-      description: 'Optional short description of this gallery.',
-    }),
-    defineField({
-      name: 'items',
-      title: 'Gallery Items',
-      type: 'array',
-      description: 'Ordered list of Media Assets in this gallery. Drag to reorder.',
-      of: [defineArrayMember({ type: 'galleryItem' })],
-      validation: (Rule) => Rule.min(1),
-    }),
-  ],
-  preview: {
-    select: {
-      title: 'internalName',
-      projectSlug: 'projectSlug',
-      count0: 'items.0',
-      count1: 'items.1',
-    },
-    prepare: ({ title, projectSlug, count0, count1 }: { title?: string; projectSlug?: string; count0?: unknown; count1?: unknown }) => ({
-      title: title ?? 'Unnamed Gallery',
-      subtitle: `${projectSlug ?? '?'} · ${[count0, count1].filter(Boolean).length}+ items`,
-    }),
-  },
-})
-
-const photoGallerySectionType = defineType({
-  name: 'photoGallerySection',
-  title: 'Photo Gallery Section',
-  type: 'object',
-  fields: [
-    anchorIdField(),
-    defineField({
-      name: 'background',
-      title: 'Background Surface',
-      type: 'string',
-      options: { list: BACKGROUND_SURFACE_OPTIONS },
-      initialValue: 'usePagePattern',
-    }),
-    defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
-    defineField({ name: 'headline', title: 'Headline', type: 'localizedString' }),
-    defineField({ name: 'description', title: 'Description', type: 'localizedText' }),
-    defineField({
-      name: 'gallery',
-      title: 'Gallery',
-      type: 'reference',
-      to: [{ type: 'gallery' }],
-      validation: (Rule) => Rule.required(),
-      description: 'Select the gallery to display. Manage galleries in the Gallery section.',
-    }),
-    defineField({
-      // ── Layout ───────────────────────────────────────────────────────────
-      // 'grid' is the historical behaviour: every tile the same size, laid out
-      // in `columns`. That is right for a set of equal photographs and wrong
-      // for the commonest real gallery — a studio or premises set, where one
-      // establishing shot should lead and the rest support it. Claudia
-      // Hoffmann's old site did exactly that (Webflow gallery8: one
-      // `image-wrapper-large` plus smaller `image-wrapper`s); rebuilt as a
-      // uniform grid it became four identical tiles and lost the composition.
-      //
-      // 'featured' gives the FIRST item a large cell — two columns wide and two
-      // rows tall — and flows the rest around it. Falls back to the plain grid
-      // when there are fewer than three items, where a feature cell has nothing
-      // to be featured against.
-      //
-      // Default stays 'grid', so every gallery authored before this is unchanged.
-      name: 'layout',
-      title: 'Layout',
-      type: 'string',
-      options: {
-        list: [
-          { title: 'Grid — equal tiles', value: 'grid' },
-          { title: 'Featured — first image large', value: 'featured' },
-        ],
-        layout: 'radio',
-      },
-      initialValue: 'grid',
-    }),
-    defineField({
-      name: 'columns',
-      title: 'Columns',
-      type: 'number',
-      options: {
-        list: [
-          { title: '2 Columns', value: 2 },
-          { title: '3 Columns', value: 3 },
-          { title: '4 Columns', value: 4 },
-        ],
-        layout: 'radio',
-      },
-      initialValue: 3,
-    }),
-    defineField({
-      name: 'imageRatio',
-      title: 'Image Ratio',
-      type: 'string',
-      options: {
-        list: [
-          { title: 'Square (1:1)', value: 'square' },
-          { title: 'Landscape (4:3)', value: 'landscape' },
-          { title: 'Portrait (3:4)', value: 'portrait' },
-          { title: 'Auto (original)', value: 'auto' },
-        ],
-        layout: 'radio',
-      },
-      initialValue: 'square',
-    }),
-    defineField({
-      name: 'spacing',
-      title: 'Grid Spacing',
-      type: 'string',
-      options: {
-        list: [
-          { title: 'Tight (4px)', value: 'tight' },
-          { title: 'Normal (12px)', value: 'normal' },
-          { title: 'Loose (24px)', value: 'loose' },
-        ],
-        layout: 'radio',
-      },
-      initialValue: 'normal',
-    }),
-    defineField({
-      name: 'showCaptions',
-      title: 'Show Captions',
-      type: 'boolean',
-      initialValue: false,
-      description: 'Display image captions beneath each item.',
-    }),
-  ],
-  preview: {
-    select: {
-      headline_en: 'headline.en',
-      headline_it: 'headline.it',
-      galleryName: 'gallery.internalName',
-    },
-    prepare: ({ headline_en, headline_it, galleryName }: { headline_en?: string; headline_it?: string; galleryName?: string }) => ({
-      title: headline_en ?? headline_it ?? galleryName ?? 'Photo Gallery',
-      subtitle: `Photo Gallery Section${galleryName ? ` · ${galleryName}` : ''}`,
-    }),
-  },
-})
+// gallery, galleryItem and photoGallerySection moved to the Gallery module
+// (src/lib/modules/gallery/schema.ts, ADR-022) and are registered through
+// buildSchema(). Type names are unchanged, so no stored document moves.
 
 // ─── Form System ──────────────────────────────────────────────────────────────
 
@@ -3980,8 +3750,13 @@ const mediaAssetType = defineType({
       name: 'image',
       title: 'Image',
       type: 'image',
-      description: 'Max 4000px / 10MB recommended',
-      options: { hotspot: false },
+      description:
+        'Max 4000px / 10MB recommended. Click the crop icon to set the focal point — the part of the photo that must stay visible when a gallery tile crops it. It applies everywhere this photo is used.',
+      // ADR-022 §4a — the focal point ("hotspot") and crop tool. A UI option,
+      // not a field type change: no stored document changes shape. Galleries
+      // crop every photo into a tile shape; without a focal point the crop
+      // is always around the centre.
+      options: { hotspot: true },
       hidden: ({ document }) => (document?.mediaType as string) === 'video',
       validation: (Rule) =>
         Rule.custom((value, context) => {
@@ -5201,6 +4976,16 @@ export const initialValueTemplates = [
     }),
   },
   {
+    // Gallery module (ADR-022) — Content → Galleries.
+    id: 'galleryProjectOwned',
+    title: 'Gallery',
+    schemaType: 'gallery',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+    }),
+  },
+  {
     id: 'postAuthorProjectOwned',
     title: 'Author',
     schemaType: 'postAuthor',
@@ -5423,9 +5208,6 @@ export const schemaTypes = [
   sectionSurfacesType,
   backgroundAssetType,
   mediaAssetType,
-  galleryItemType,
-  galleryType,
-  photoGallerySectionType,
   designSystemType,
   siteConfigType,
   pageType,

@@ -239,6 +239,42 @@ export const CTA_FIELDS = /* groq */ `
 //
 // Emitted as a bare `sections[] { ... }` fragment (no leading/trailing comma)
 // — call sites splice it in as a field alongside a document's other fields.
+// ─── Gallery projection (Gallery module, ADR-022) ─────────────────────────────
+// The single projection of a gallery document, used by every placement (page
+// sections, the legacy homePage query, blog posts) so they can never drift.
+// Image metadata — natural dimensions and the LQIP placeholder — is what the
+// uncropped layouts, the blurred preview and structured data need.
+// (No backticks in these comments: this is a JS template literal.)
+const GALLERY_FIELDS = /* groq */ `
+        _id,
+        internalName,
+        "title": ${loc('title')},
+        "description": ${loc('description')},
+        items[] {
+          _key,
+          titleOverrideEnabled,
+          "titleOverride": select(titleOverrideEnabled == true => ${loc('titleOverride')}),
+          captionOverrideEnabled,
+          "captionOverride": select(captionOverrideEnabled == true => ${loc('captionOverride')}),
+          "mediaAsset": mediaAsset->{
+            _id,
+            mediaType,
+            image {
+              asset,
+              hotspot,
+              crop,
+              "dimensions": asset->metadata.dimensions { width, height, aspectRatio },
+              "lqip": asset->metadata.lqip,
+              "url": asset->url
+            },
+            videoUrl,
+            "altText": ${loc('altText')},
+            "title": ${loc('title')},
+            "caption": ${loc('caption')},
+          }
+        }
+`
+
 export const PAGE_SECTIONS_PROJECTION = /* groq */ `
     sections[] {
       _type,
@@ -388,27 +424,12 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       imageRatio,
       spacing,
       showCaptions,
-      "gallery": gallery->{
-        _id,
-        internalName,
-        "description": ${loc('description')},
-        items[] {
-          _key,
-          titleOverrideEnabled,
-          "titleOverride": select(titleOverrideEnabled == true => ${loc('titleOverride')}),
-          captionOverrideEnabled,
-          "captionOverride": select(captionOverrideEnabled == true => ${loc('captionOverride')}),
-          "mediaAsset": mediaAsset->{
-            _id,
-            mediaType,
-            image { asset, hotspot, crop },
-            videoUrl,
-            "altText": ${loc('altText')},
-            "title": ${loc('title')},
-            "caption": ${loc('caption')},
-          }
-        }
-      },
+      "gallery": gallery->{ ${GALLERY_FIELDS} },
+      // ADR-022 §3 — composed galleries, display mode, lightbox switch.
+      "galleries": galleries[]->{ ${GALLERY_FIELDS} },
+      galleryDisplay,
+      showAllTab,
+      lightbox,
       // ─── Platform sections added with the icon primitive ──────────────────
       // Every key below is NEW to this flat projection and resolves to null on
       // every section type that does not declare it. Fields these sections
@@ -887,6 +908,9 @@ export const postBySlugQuery = /* groq */ `
       "shortDescription": ${loc('shortDescription')},
       ${locImage('heroImage')}
     },
+    // ADR-022 §6 — optional gallery below the text (Gallery module).
+    "gallery": gallery->{ ${GALLERY_FIELDS} },
+    galleryLayout,
     "seoTitle": coalesce(${loc('seoTitle')}, ${loc('title')}),
     "seoDescription": coalesce(${loc('seoDescription')}, ${loc('excerpt')}),
     seoImage { asset, hotspot, crop },
@@ -1568,27 +1592,15 @@ export const homePageQuery = /* groq */ `
       imageRatio,
       spacing,
       showCaptions,
-      "gallery": gallery->{
-        _id,
-        internalName,
-        "description": ${loc('description')},
-        items[] {
-          _key,
-          titleOverrideEnabled,
-          "titleOverride": select(titleOverrideEnabled == true => ${loc('titleOverride')}),
-          captionOverrideEnabled,
-          "captionOverride": select(captionOverrideEnabled == true => ${loc('captionOverride')}),
-          "mediaAsset": mediaAsset->{
-            _id,
-            mediaType,
-            image { asset, hotspot, crop },
-            videoUrl,
-            "altText": ${loc('altText')},
-            "title": ${loc('title')},
-            "caption": ${loc('caption')},
-          }
-        }
-      }
+      "gallery": gallery->{ ${GALLERY_FIELDS} },
+      // ADR-022 §3 — composed galleries, display mode, lightbox switch.
+      "galleries": galleries[]->{ ${GALLERY_FIELDS} },
+      galleryDisplay,
+      showAllTab,
+      lightbox,
+      // Not projected elsewhere in this (legacy homePage) query, unlike
+      // PAGE_SECTIONS_PROJECTION where blogListingSection already names it.
+      layout
     }
   }
 `

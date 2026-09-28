@@ -27,6 +27,8 @@ import { PostCard } from '@/components/blog/PostCard'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
 import { ArticleJsonLd } from '@/components/JsonLd'
+import { GalleryPlacement } from '@/components/gallery/GalleryPlacement'
+import { getEnabledModuleIds } from '@/lib/modules/config'
 
 export const dynamic = 'force-dynamic'
 
@@ -144,6 +146,8 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
     defaultLocale,
   })
   const cpm = charsPerMinute(moduleConfig, 'blog')
+  const enabledModuleIds = getEnabledModuleIds(moduleConfig)
+  const showGallery = enabledModuleIds === null || enabledModuleIds.includes('gallery')
 
   const [post, designSystem, customDomain] = await Promise.all([
     fetchForTenant<Post>(postBySlugQuery, {
@@ -346,6 +350,31 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
                 />
               </div>
             </SlideUp>
+          )}
+
+          {/* ── Gallery (ADR-022 §6) ──────────────────────────────────
+              Optional, below the text. Rendered only while the Gallery module
+              is active for this website; an unresolved module list fails open,
+              like module sections do (isSectionTypeAvailable). */}
+          {showGallery && post.gallery && (
+            <section className="mb-12" aria-label={post.gallery.title ?? undefined}>
+              {post.gallery.title && (
+                <h2
+                  className="text-2xl font-semibold mb-6"
+                  style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
+                >
+                  {post.gallery.title}
+                </h2>
+              )}
+              <GalleryPlacement
+                galleries={[post.gallery]}
+                layout={post.galleryLayout ?? 'grid'}
+                columns={2}
+                imageRatio="landscape"
+                locale={locale}
+                designSystem={designSystem}
+              />
+            </section>
           )}
 
           {/* ── Featured video ────────────────────────────────────── */}

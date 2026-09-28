@@ -232,6 +232,7 @@ export default defineConfig({
         //     News           News Page · News
         //     Events         Events Page · Events
         //     Live           Live Page
+        //     Galleries      (Gallery module — no page, so no group)
         //     Media
         //
         // A module qualifies for a Content group when it has a singleton page —
@@ -337,6 +338,21 @@ export default defineConfig({
                     .items(children)
                 )
             )
+          }
+
+          // Content modules without a singleton page (Gallery, ADR-022) have
+          // no group of their own: their collection sits beside Media, one
+          // click deep. Restricted to category 'content' so configuration-only
+          // modules (Forms, WhatsApp) never appear under Content.
+          const collectionOnlyModules = MODULE_REGISTRY.filter(
+            (m) =>
+              !m.platformContract.pageType &&
+              m.category === 'content' &&
+              m.platformContract.collections.length > 0 &&
+              enabledModuleIds.includes(m.id)
+          )
+          for (const mod of collectionOnlyModules) {
+            items.push(...buildCollectionItems(slug, tenantSlug, S, mod))
           }
 
           items.push(

@@ -1,199 +1,44 @@
-import type { PhotoGallerySection, GalleryItem, DesignSystem } from '@/lib/sanity/types'
+import type { PhotoGallerySection as PhotoGallerySectionType, DesignSystem } from '@/lib/sanity/types'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
-import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
-import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 import { resolveEasing } from '@/lib/motion/easing'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
+import { GalleryPlacement } from '@/components/gallery/GalleryPlacement'
+import { galleriesOf } from '@/lib/gallery/compose'
 
 interface Props {
-  section: PhotoGallerySection
+  section: PhotoGallerySectionType
   surface: SurfaceType
   designSystem: DesignSystem | null
+  locale: string
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ── Photo Gallery section (Gallery module, ADR-022) ───────────────────────────
+// Presentation only. The section decides where a gallery appears and how it is
+// laid out; the galleries themselves — which photos, in what order — belong to
+// the Gallery module and are edited once, wherever they are used.
+//
+// Layout, tile shapes, focal points, tabs and the lightbox are shared with the
+// blog-post gallery through GalleryPlacement.
 
-function getAspectRatioClass(ratio: PhotoGallerySection['imageRatio']): string {
-  switch (ratio) {
-    case 'landscape': return 'aspect-[4/3]'
-    case 'portrait':  return 'aspect-[3/4]'
-    case 'auto':      return ''
-    case 'square':
-    default:          return 'aspect-square'
-  }
-}
-
-function getGridClass(columns: number): string {
-  switch (columns) {
-    case 2:  return 'grid-cols-1 sm:grid-cols-2'
-    case 4:  return 'grid-cols-2 md:grid-cols-4'
-    case 3:
-    default: return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3'
-  }
-}
-
-function getGapClass(spacing: PhotoGallerySection['spacing']): string {
-  switch (spacing) {
-    case 'tight': return 'gap-1'
-    case 'loose': return 'gap-6'
-    case 'normal':
-    default:      return 'gap-3'
-  }
-}
-
-/** Derive effective display title and caption from a gallery item */
-function resolveItem(item: GalleryItem): { title?: string; caption?: string } {
-  const title = item.titleOverrideEnabled && item.titleOverride
-    ? item.titleOverride
-    : item.mediaAsset?.title
-
-  const caption = item.captionOverrideEnabled && item.captionOverride
-    ? item.captionOverride
-    : item.mediaAsset?.caption
-
-  return { title, caption }
-}
-
-// ─── Video fallback card ───────────────────────────────────────────────────────
-
-function VideoFallbackCard({ item, ratioClass }: { item: GalleryItem; ratioClass: string }) {
-  const { title } = resolveItem(item)
-  return (
-    <div
-      className={`relative w-full overflow-hidden rounded-[var(--radius-sm)] ${ratioClass || 'aspect-video'} flex items-center justify-center`}
-      style={{ backgroundColor: 'var(--color-surface, var(--color-background))' }}
-    >
-      {/* Play icon */}
-      <div
-        className="flex h-12 w-12 items-center justify-center rounded-full"
-        style={{ backgroundColor: 'var(--color-text-primary)', opacity: 0.15 }}
-      />
-      <svg
-        className="absolute h-6 w-6"
-        style={{ color: 'var(--color-text-primary)', opacity: 0.5 }}
-        fill="currentColor"
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-      >
-        <path d="M8 5v14l11-7z" />
-      </svg>
-      {title && (
-        <p
-          className="absolute bottom-2 left-2 right-2 truncate text-xs font-medium"
-          style={{ color: 'var(--color-text-secondary)' }}
-        >
-          {title}
-        </p>
-      )}
-    </div>
-  )
-}
-
-// ─── Single gallery image ──────────────────────────────────────────────────────
-
-function GalleryImageCard({
-  item,
-  ratioClass,
-  showCaptions,
-}: {
-  item: GalleryItem
-  ratioClass: string
-  showCaptions: boolean
-}) {
-  const asset = item.mediaAsset
-  const { title, caption } = resolveItem(item)
-
-  if (!asset?.image) {
-    return (
-      <div
-        className={`w-full rounded-[var(--radius-sm)] ${ratioClass || 'aspect-square'}`}
-        style={{ backgroundColor: 'var(--color-surface-alt, var(--color-background))' }}
-      />
-    )
-  }
-
-  const src = imageUrl(asset.image, 800)
-  const srcSet = imageSrcSet(asset.image, [400, 800, 1200])
-  const altValue = asset.altText ?? title ?? ''
-
-  return (
-    <figure className="group relative overflow-hidden rounded-[var(--radius-sm)]">
-      {ratioClass ? (
-        <div className={`relative w-full ${ratioClass} overflow-hidden`}>
-          <img
-            src={src}
-            srcSet={srcSet}
-            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
-            alt={altValue}
-            loading="lazy"
-            decoding="async"
-            className={`absolute inset-0 h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
-          />
-        </div>
-      ) : (
-        <img
-          src={src}
-          srcSet={srcSet}
-          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
-          alt={altValue}
-          loading="lazy"
-          decoding="async"
-          className={`w-full object-cover ${IMAGE_HOVER_CLASSES}`}
-        />
-      )}
-
-      {showCaptions && (caption || title) && (
-        <figcaption
-          className="mt-2 text-xs leading-relaxed"
-          style={{ color: 'var(--color-text-muted)' }}
-        >
-          {caption ?? title}
-        </figcaption>
-      )}
-    </figure>
-  )
-}
-
-// ─── Main section ──────────────────────────────────────────────────────────────
-
-export function PhotoGallerySection({ section, surface, designSystem }: Props) {
-  const { eyebrow, headline, description, gallery, showCaptions = false } = section
-  const columns = section.columns ?? 3
-  const imageRatio = section.imageRatio ?? 'square'
-  const spacing = section.spacing ?? 'normal'
+export function PhotoGallerySection({ section, surface, designSystem, locale }: Props) {
+  const { eyebrow, headline, description } = section
+  const galleries = galleriesOf(section)
+  const hasItems = galleries.some((g) => (g.items ?? []).some((i) => !!i?.mediaAsset))
+  // An empty gallery renders nothing on the public site — an admin-facing
+  // "no items yet" message would be shown to visitors.
+  if (!hasItems) return null
 
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
-
   const m = designSystem?.motion
   const duration = m?.durationSlow !== undefined ? m.durationSlow / 1000 : 0.35
   const ease = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
-
   const hasHeader = Boolean(eyebrow || headline || description)
-  const items = gallery?.items ?? []
-
-  const gridClass = getGridClass(columns)
-  const gapClass = getGapClass(spacing)
-  const ratioClass = getAspectRatioClass(imageRatio)
-
-  // ── Featured layout ─────────────────────────────────────────────────────────
-  // Equal tiles are right for a set of equal photographs and wrong for the
-  // commonest real gallery: a studio or premises set, where one establishing
-  // shot should lead. 'featured' gives the FIRST item a 2x2 cell and flows the
-  // rest around it.
-  //
-  // Below three items there is nothing to feature against, so it falls back to
-  // the plain grid rather than rendering one large image and a lone small one.
-  const featured = (section.layout ?? 'grid') === 'featured' && items.length >= 3
-  // A featured cell must be square-ish or it starves the tiles beside it, so
-  // the feature ignores `imageRatio` and the tiles keep it.
-  const featureRatioClass = 'aspect-square'
 
   return (
     <SectionContainer id={section.anchorId} style={surfaceStyles}>
-      {/* Optional header */}
       {hasHeader && (
         <SlideUp duration={duration} ease={ease} delay={0} className="mb-12 max-w-2xl">
           {eyebrow && (
@@ -235,40 +80,21 @@ export function PhotoGallerySection({ section, surface, designSystem }: Props) {
         </SlideUp>
       )}
 
-      {/* Empty state */}
-      {items.length === 0 && (
-        <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-          No items in this gallery yet.
-        </p>
-      )}
-
-      {/* Gallery grid */}
-      {items.length > 0 && (
-        <div className={`grid ${featured ? 'grid-cols-2 md:grid-cols-3' : gridClass} ${gapClass}`}>
-          {items.map((item, index) => (
-            <SlideUp
-              key={item._key}
-              duration={duration}
-              ease={ease}
-              delay={Math.min(index * 0.04, 0.4)}
-              className={featured && index === 0 ? 'col-span-2 row-span-2' : undefined}
-            >
-              {item.mediaAsset?.mediaType === 'video' ? (
-                <VideoFallbackCard
-                  item={item}
-                  ratioClass={featured && index === 0 ? featureRatioClass : ratioClass}
-                />
-              ) : (
-                <GalleryImageCard
-                  item={item}
-                  ratioClass={featured && index === 0 ? featureRatioClass : ratioClass}
-                  showCaptions={showCaptions}
-                />
-              )}
-            </SlideUp>
-          ))}
-        </div>
-      )}
+      <GalleryPlacement
+        galleries={galleries}
+        layout={section.layout}
+        columns={section.columns}
+        imageRatio={section.imageRatio}
+        spacing={section.spacing}
+        showCaptions={section.showCaptions}
+        lightbox={section.lightbox}
+        display={section.galleryDisplay}
+        showAllTab={section.showAllTab}
+        anchorId={section.anchorId}
+        structuredDataName={headline}
+        locale={locale}
+        designSystem={designSystem}
+      />
     </SectionContainer>
   )
 }

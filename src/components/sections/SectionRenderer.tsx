@@ -25,7 +25,6 @@ import { FormSection } from '@/components/sections/FormSection'
 import { FormOverlayButtonSection } from '@/components/sections/FormOverlayButtonSection'
 import { StatementSection } from '@/components/sections/StatementSection'
 import { MetricsSection } from '@/components/sections/MetricsSection'
-import { PhotoGallerySection } from '@/components/sections/PhotoGallerySection'
 import { VideoSection } from '@/components/sections/VideoSection'
 import { StepsSection } from '@/components/sections/StepsSection'
 import { FeatureGridSection } from '@/components/sections/FeatureGridSection'
@@ -423,8 +422,6 @@ export function SectionRenderer({
       return <FormOverlayButtonSection section={section as FormOverlayButtonSectionType} surface={surface} designSystem={designSystem} locale={locale} tenantSlug={tenantSlug} />
     case 'metricsSection':
       return <MetricsSection section={section} surface={surface} designSystem={designSystem} />
-    case 'photoGallerySection':
-      return <PhotoGallerySection section={section} surface={surface} designSystem={designSystem} />
     case 'videoSection':
       return <VideoSection section={section} surface={surface} designSystem={designSystem} locale={locale} />
     case 'stepsSection':

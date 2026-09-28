@@ -4,6 +4,7 @@ import { isProduction } from '@/lib/deployment'
 import { isStagingHost } from '@/lib/seo/indexability'
 import { canonicalUrl } from '@/lib/seo/canonical'
 import { normalizeHost } from '@/lib/tenancy/host-scope'
+import { withImages } from '@/lib/seo/sitemap-images'
 
 // ─── projectSlug → URL tenant slug ───────────────────────────────────────────
 // There is no longer a map here. This was `PROJECT_TO_TENANT`, the reverse of
@@ -36,6 +37,13 @@ interface TenantSitemapData {
 interface PageSitemapData {
   projectSlug: string
   slug: Record<string, { current: string } | undefined>
+  /** Gallery photo URLs shown on the page (ADR-022 §7) — the image sitemap. */
+  images?: string[] | null
+}
+
+interface HomeImagesSitemapData {
+  projectSlug: string
+  images?: string[] | null
 }
 
 interface EventSitemapData {
@@ -46,6 +54,7 @@ interface EventSitemapData {
 interface PostSitemapData {
   projectSlug: string
   slug: Record<string, { current: string } | undefined>
+  images?: string[] | null
 }
 
 /** News module items (ADR-020) — same shape as posts, different route prefix. */
@@ -53,6 +62,15 @@ interface NewsArticleSitemapData {
   projectSlug: string
   slug: Record<string, { current: string } | undefined>
 }
+
+// ── Gallery images (ADR-022 §7) ──────────────────────────────────────────────
+// The photos of every Photo Gallery section on a page — composed galleries and
+// the legacy single gallery — once each. Raw CDN originals: no query string, so
+// nothing needs XML-escaping in the sitemap.
+const GALLERY_SECTION_IMAGES = /* groq */ `array::compact(array::unique(
+  sections[_type == "photoGallerySection"].galleries[]->items[].mediaAsset->image.asset->url
+  + sections[_type == "photoGallerySection"].gallery->items[].mediaAsset->image.asset->url
+))`
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Never expose a sitemap on non-production environments. This alone already
@@ -144,17 +162,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     )
 
     // Fetch all published pages, events, posts, and news with their per-locale slugs.
-    const [pages, events, posts, newsArticles] = await Promise.all([
+    const [pages, events, posts, newsArticles, homeImages] = await Promise.all([
       sanityClient.fetch<PageSitemapData[]>(
         // The home page is already emitted as the bare locale URL above; listing
         // it again under its slug (/en/home) named a duplicate of the home page.
-        `*[_type == "page" && defined(projectSlug) && coalesce(pageType, "") != "home"] { projectSlug, slug }`
+        `*[_type == "page" && defined(projectSlug) && coalesce(pageType, "") != "home"] { projectSlug, slug, "images": ${GALLERY_SECTION_IMAGES} }`
       ),
       sanityClient.fetch<EventSitemapData[]>(
         `*[_type == "event" && defined(projectSlug)] { projectSlug, slug }`
       ),
       sanityClient.fetch<PostSitemapData[]>(
-        `*[_type == "post" && defined(projectSlug) && defined(publishedAt) && publishedAt <= now()] { projectSlug, slug }`
+        `*[_type == "post" && defined(projectSlug) && defined(publishedAt) && publishedAt <= now()] { projectSlug, slug, "images": gallery->items[].mediaAsset->image.asset->url }`
       ),
       // News items (ADR-020). Expired items are excluded as well as unpublished
       // ones: a news item past its expiry is removed from the website, so
@@ -168,7 +186,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           && (!defined(expiresAt) || expiresAt > now())
         ] { projectSlug, slug }`
       ),
+      // Gallery photos on each project's home page. The home page is emitted as
+      // the bare locale URL, not from the pages list above, so its images are
+      // fetched separately and attached there.
+      sanityClient.fetch<HomeImagesSitemapData[]>(
+        `*[_type == "page" && defined(projectSlug) && pageType == "home"] { projectSlug, "images": ${GALLERY_SECTION_IMAGES} }`
+      ),
     ])
+
+    const homeImagesByProject = new Map<string, string[]>()
+    for (const h of homeImages ?? []) {
+      if (h.images?.length) homeImagesByProject.set(h.projectSlug, h.images)
+    }
 
     // Build projectSlug → items maps for quick lookup.
     const pagesByProject = new Map<string, PageSitemapData[]>()
@@ -224,12 +253,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // No project segment: see @/lib/seo/canonical. `/en/livener` and `/en`
       // both answer on a custom domain, and the sitemap must name the same one
       // the canonical tag does or the two disagree about which is the page.
+      const homeImagesForProject = homeImagesByProject.get(projectSlug)
       for (const locale of locales) {
         entries.push({
           url: canonicalUrl(tenantBase, locale)!,
           lastModified: new Date(),
           changeFrequency: 'weekly',
           priority: locale === primaryLocale ? 1.0 : 0.9,
+          ...withImages(homeImagesForProject),
         })
       }
 
@@ -244,6 +275,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
               lastModified: new Date(),
               changeFrequency: 'weekly',
               priority: locale === primaryLocale ? 0.8 : 0.7,
+              ...withImages(page.images),
             })
           }
         }
@@ -276,6 +308,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
               lastModified: new Date(),
               changeFrequency: 'monthly',
               priority: locale === primaryLocale ? 0.6 : 0.5,
+              ...withImages(post.images),
             })
           }
         }

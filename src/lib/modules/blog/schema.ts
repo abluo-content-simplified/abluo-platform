@@ -19,6 +19,7 @@ import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField } from '@/
 //   post.author                 → postAuthor (same module, string ref)
 //   post.categories             → blogCategory (same module, string ref)
 //   post.relatedEvent           → event (Events module, string ref — no TS import)
+//   post.gallery                → gallery (Gallery module, string ref — ADR-022 §6)
 //
 // ADR-011 Phase D1 — extracted from src/lib/sanity/schema.ts.
 
@@ -404,6 +405,38 @@ const postType = defineType({
       type: 'localizedImage',
       group: 'media',
       description: 'Used in article listings, the article hero, and social sharing. Falls back to the global OG image if not set.',
+    }),
+    // ── Gallery (ADR-022 §6) ────────────────────────────────────────────────
+    // Most posts have none. Picked once per post — the language versions share
+    // it; the gallery's own title and captions are already localized. It is
+    // shown below the article text, with its title, in the chosen layout.
+    // A cross-module string reference (Gallery module, no TS import): when the
+    // Gallery module is not active for the website it simply is not rendered.
+    defineField({
+      name: 'gallery',
+      title: 'Gallery',
+      type: 'reference',
+      to: [{ type: 'gallery' }],
+      group: 'media',
+      description: 'Optional. Shown below the article, with the gallery title. Only this website’s galleries are listed.',
+      options: { filter: scopedRef },
+    }),
+    defineField({
+      name: 'galleryLayout',
+      title: 'Gallery layout',
+      type: 'string',
+      group: 'media',
+      options: {
+        list: [
+          { title: 'Grid — equal tiles', value: 'grid' },
+          { title: 'Featured — first photo large', value: 'featured' },
+          { title: 'Rows — every photo uncropped', value: 'rows' },
+          { title: 'Carousel — one swipeable strip', value: 'carousel' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'grid',
+      hidden: ({ document }) => !(document as { gallery?: unknown } | undefined)?.gallery,
     }),
     defineField({
       name: 'featuredVideo',

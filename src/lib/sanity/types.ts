@@ -842,6 +842,9 @@ export interface Post {
     shortDescription?: string
     heroImage?: ResolvedImage
   }
+  /** ADR-022 §6 — optional gallery shown below the article text. */
+  gallery?: Gallery | null
+  galleryLayout?: 'grid' | 'featured' | 'rows' | 'carousel' | null
   seoTitle?: string
   seoDescription?: string
   seoImage?: ResolvedImage
@@ -1893,11 +1896,23 @@ export interface CtaBannerSection {
 
 // ─── Gallery Module ────────────────────────────────────────────────────────────
 
+/**
+ * A gallery photo as projected by GALLERY_FIELDS: the image reference plus the
+ * asset metadata the layouts need — natural dimensions (rows, masonry,
+ * carousel and structured data) and the tiny LQIP placeholder.
+ */
+export interface GalleryImage extends ResolvedImage {
+  dimensions?: { width?: number; height?: number; aspectRatio?: number } | null
+  lqip?: string | null
+  /** Original CDN URL — structured data and the image sitemap. */
+  url?: string | null
+}
+
 export interface GalleryMediaAsset {
   _id: string
   mediaType?: 'image' | 'video'
   /** Locale-resolved image reference */
-  image?: ResolvedImage
+  image?: GalleryImage
   videoUrl?: string
   /** Locale-resolved by GROQ */
   altText?: string
@@ -1927,6 +1942,8 @@ export interface Gallery {
   _type: 'gallery'
   projectSlug: string
   internalName: string
+  /** Public, locale-resolved title — tab labels and headings (ADR-022 §3). */
+  title?: string
   slug?: { current: string }
   /** Locale-resolved by GROQ */
   description?: string
@@ -1945,15 +1962,23 @@ export interface PhotoGallerySection {
   headline?: string
   /** Locale-resolved by GROQ */
   description?: string
-  gallery?: Gallery
+  /** Legacy single gallery. Read as a fallback when `galleries` is empty. */
+  gallery?: Gallery | null
+  /** ADR-022 §3 — the galleries this section shows, in order. */
+  galleries?: (Gallery | null)[] | null
+  /** 'combined' (default): one set. 'tabs': one tab per gallery. */
+  galleryDisplay?: 'combined' | 'tabs' | null
+  /** Tabs only — prepend an "All" tab, selected on load. Defaults to true. */
+  showAllTab?: boolean | null
+  /** Open photos in the lightbox. Defaults to true. */
+  lightbox?: boolean | null
   /**
-   * 'grid' (default) lays every tile out equally in `columns`.
-   * 'featured' gives the FIRST item a 2x2 cell and flows the rest around it —
-   * the establishing-shot composition a studio gallery usually wants. Falls
-   * back to a plain grid below three items.
+   * Layout family (ADR-022 §4). The layout decides the tile shape; the photo is
+   * cropped into it around its focal point. See src/lib/gallery/layout.ts.
    */
-  layout?: 'grid' | 'featured'
+  layout?: 'grid' | 'featured' | 'wideLead' | 'rows' | 'masonry' | 'carousel' | null
   columns?: 2 | 3 | 4
+  /** 'auto' is retired and reads as landscape. */
   imageRatio?: 'square' | 'landscape' | 'portrait' | 'auto'
   spacing?: 'tight' | 'normal' | 'loose'
   showCaptions?: boolean

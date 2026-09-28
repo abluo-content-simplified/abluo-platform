@@ -37,6 +37,19 @@ export const scopedRef = ({ document }: { document: Record<string, unknown> }) =
   }
 }
 
+// ── Section background surface options ──────────────────────────────────────
+// The shared list for every section's `background` field. Lives here so module
+// schema files (which cannot import src/lib/sanity/schema.ts) use the same list.
+export const BACKGROUND_SURFACE_OPTIONS = [
+  { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
+  { title: '⬜ Surface 1', value: 'surface1' },
+  { title: '⬜ Surface 2', value: 'surface2' },
+  { title: '🟦 Surface 3', value: 'surface3' },
+  { title: '🟢 Brand Surface', value: 'brandSurface' },
+  { title: '◻ Transparent', value: 'transparent' },
+  { title: '🔲 Glass', value: 'glass' },
+]
+
 // ── Project slug field ────────────────────────────────────────────────────────
 //
 // Standard projectSlug field for all project-scoped document types.

@@ -5,6 +5,7 @@ import { eventsSchemaTypes } from './events/schema'
 import { liveSchemaTypes } from './live/schema'
 import { formsSchemaTypes } from './forms/schema'
 import { newsSchemaTypes } from './news/schema'
+import { gallerySchemaTypes } from './gallery/schema'
 
 // ── Module registry ───────────────────────────────────────────────────────────
 // The single authoritative definition of every module available on the platform.
@@ -144,7 +145,9 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
 
     dependencies: {
       requires: [],
-      integratesWith: ['events'], // blogListingSection filterMode: 'byEvent' references event type
+      // blogListingSection filterMode 'byEvent' references the event type;
+      // post.gallery references the gallery type (ADR-022 §6). Both optional.
+      integratesWith: ['events', 'gallery'],
     },
 
     dataStore: {
@@ -565,6 +568,90 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
     },
 
     changelog: 'V1.0.0 — ADR-018 slice 2. Tenant-owned formDefinition type (additive, inert). Submissions + form.submitted shipped in slice 1; notifications in ADR-019.',
+  },
+
+  // ── Gallery ────────────────────────────────────────────────────────────────
+  // ADR-022 — galleries promoted from loose platform types to a module.
+  //
+  // A gallery is a small, hand-ordered set of Media Library photos. The module
+  // owns the sets; the Photo Gallery section (and a blog post's optional
+  // gallery) only decide where a set appears and how it is laid out.
+  //
+  // Editing is admin-only in Studio for now. The permissions are declared
+  // anyway so a client-side gallery editor later needs no redesign.
+  //
+  // ⚠ ROLLOUT: photoGallerySection is now module-gated. A project that uses a
+  // gallery section must have the module installed BEFORE this code reaches
+  // its environment, or the section stops rendering. Migration
+  // 006-install-gallery-module installs it where galleries exist; run it first.
+  {
+    id: 'gallery',
+    label: 'Gallery',
+    version: '1.0.0',
+    status: 'released',
+    category: 'content',
+
+    platformContract: {
+      collections: [
+        {
+          id: 'gallery-module',
+          label: 'Galleries',
+          items: [
+            {
+              id: 'galleries',
+              label: 'Galleries',
+              schemaType: 'gallery',
+              filter: `_type == "gallery" && projectSlug == $slug`,
+              ordering: [{ field: 'internalName', direction: 'asc' as const }],
+              initialValueTemplate: 'galleryProjectOwned',
+            },
+          ],
+        },
+      ],
+
+      sectionTypes: ['photoGallerySection'],
+
+      schemaTypes: ['galleryItem', 'gallery', 'photoGallerySection'],
+
+      schemaDefinitions: () => gallerySchemaTypes,
+
+      permissions: [
+        {
+          id: 'gallery.gallery.read',
+          label: 'View galleries',
+          description: 'View and list galleries in the client dashboard.',
+          defaultRoles: ['owner', 'editor', 'viewer'],
+        },
+        {
+          id: 'gallery.gallery.write',
+          label: 'Create and edit galleries',
+          description: 'Create galleries, add, remove and reorder their photos.',
+          defaultRoles: ['owner', 'editor'],
+        },
+      ],
+
+      configSchema: [],
+
+      placement: {
+        surfaces: [
+          { kind: 'sections', description: 'Photo Gallery section — one or more galleries, in any page, with tabs and a lightbox.' },
+        ],
+        note: 'A blog post can also show one gallery below its text (Blog module, when both are active).',
+      },
+    },
+
+    publicContract: {},
+
+    dependencies: {
+      requires: [],
+      integratesWith: ['blog'],
+    },
+
+    dataStore: {
+      primary: 'content',
+    },
+
+    changelog: 'V1.0.0 — ADR-022. gallery / galleryItem / photoGallerySection become a module; sections compose several galleries (tabs, All tab), focal points, fixed tile shapes, lightbox with deep links, six layouts.',
   },
 
   // ── WhatsApp ───────────────────────────────────────────────────────────────
