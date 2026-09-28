@@ -12,6 +12,27 @@ import { deployment, environmentLabel } from '@/lib/deployment'
  * Uses plain inline styles — no Tailwind/design-system dependency —
  * so it renders identically across all tenant themes.
  */
+
+// Build time in the VIEWER'S timezone, with the zone named so there is never a
+// doubt about which clock it is. `toUTCString()` was showing GMT to everyone,
+// which reads as an hour or two "wrong" to anyone not on UTC -- in Italy the
+// build that happened at 17:20 local was reported as 15:20.
+// This component is already a client component, so the browser's own zone is
+// available; `undefined` locale means "use the viewer's".
+function formatBuilt(iso: string | undefined): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleString(undefined, {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  })
+}
+
 export function DevBadge() {
   const label = environmentLabel()
   const [open, setOpen] = useState(false)
@@ -98,7 +119,7 @@ export function DevBadge() {
               ['Environment', label],
               ['Commit',      deployment.commitSha],
               ['Branch',      deployment.branch],
-              ['Built',       deployment.buildTime ? new Date(deployment.buildTime).toUTCString() : '—'],
+              ['Built',       formatBuilt(deployment.buildTime)],
             ].map(([key, val]) => (
               <div key={key} style={{ display: 'flex', gap: 8 }}>
                 <span style={{ opacity: 0.45, minWidth: 90 }}>{key}</span>

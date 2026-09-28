@@ -392,10 +392,16 @@ export function FeatureGridSection({ section, surface, designSystem }: Props) {
                   </ul>
                 )}
 
-                {/* Per-card link — pushed to the foot so cards of unequal text
-                    length still line their links up. */}
+                {/* Per-card link.
+                    It used to carry `mt-auto`, which pins it to the foot of the
+                    card so links line up across a row. On a grid, though, every
+                    card is as tall as the tallest one, so a card with two lines
+                    of text got a large void above its link -- and because the
+                    void is `auto` height, no padding value could shrink it.
+                    Alignment across the row was worth less than the gap it
+                    cost, so the link now follows the text directly. */}
                 {feature.cta && (
-                  <div className="mt-auto pt-1">
+                  <div className="pt-1">
                     {/* One link per card. When the title carries it, this stays
                         as the visual affordance only — a second anchor to the
                         same place would double every card's tab stop and read

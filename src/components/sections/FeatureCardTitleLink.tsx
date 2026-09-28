@@ -24,6 +24,15 @@ import { resolveCta, prefixCtaHref } from '@/lib/sanity/cta'
  * it sits on top of the text and kills selection — a visitor cannot copy the
  * description. The pseudo-element has no such effect.
  *
+ * ── Why after:z-[2] ──────────────────────────────────────────────────────────
+ * The card's image, kicker, description and bullets each carry `relative
+ * z-[1]` (they sit above the ordinal watermark). A ::after at the default
+ * `z-index: auto` therefore ends up UNDERNEATH all of them: the hit area
+ * survives only in the padding between elements, so the pointer picks up the
+ * link in the gaps and loses it over the text -- the href flickering in and
+ * out of the status bar, and clicks landing on nothing. z-[2] puts the hit
+ * area above its siblings, where it has to be.
+ *
  * ── The positioning contract ─────────────────────────────────────────────────
  * `::after` resolves against the nearest POSITIONED ancestor, so the card must
  * be `relative` and nothing between the card and this anchor may be. That is
@@ -46,7 +55,7 @@ export function FeatureCardTitleLink({ cta, children }: { cta: Cta; children: Re
     <a
       href={resolved.href}
       {...(resolved.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-      className="no-underline after:absolute after:inset-0 after:content-[''] focus:outline-none"
+      className="no-underline after:absolute after:inset-0 after:z-[2] after:content-[''] focus:outline-none"
       style={{ color: 'inherit' }}
     >
       {children}
