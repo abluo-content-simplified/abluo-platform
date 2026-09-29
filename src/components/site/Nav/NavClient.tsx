@@ -238,13 +238,13 @@ export function NavClient({
           {logoSrc ? (
             <>
               {!isLight && (
-                <img src={logoSrc} alt={logoAlt} height={36} className="h-9 w-auto" />
+                <img src={logoSrc} alt={logoAlt} height={36} className="h-[var(--header-logo-height-mobile,36px)] w-auto md:h-[var(--header-logo-height-desktop,36px)]" />
               )}
               {isLight && logoLightSrc && (
-                <img src={logoLightSrc} alt={logoAlt} height={36} className="h-9 w-auto" />
+                <img src={logoLightSrc} alt={logoAlt} height={36} className="h-[var(--header-logo-height-mobile,36px)] w-auto md:h-[var(--header-logo-height-desktop,36px)]" />
               )}
               {isLight && !logoLightSrc && (
-                <img src={logoSrc} alt={logoAlt} height={36} className="h-9 w-auto" />
+                <img src={logoSrc} alt={logoAlt} height={36} className="h-[var(--header-logo-height-mobile,36px)] w-auto md:h-[var(--header-logo-height-desktop,36px)]" />
               )}
               {siteName && (
                 <>

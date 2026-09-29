@@ -710,6 +710,7 @@ export const websiteSiteConfigQuery = /* groq */ `
     openGraphImage { asset },
     logoHeightDesktop,
     logoHeightMobile,
+    logoIncludesName,
     "seoDefaultTitle": ${loc('seoDefaultTitle')},
     "seoDefaultDescription": ${loc('seoDefaultDescription')},
     "customDomain": *[_type == "project" && projectSlug == $projectSlug && defined(customDomain)][0].customDomain

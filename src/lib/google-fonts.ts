@@ -38,6 +38,10 @@ export const FONT_WEIGHT_PARAMS: Record<string, string> = {
   'Cormorant Garamond': 'ital,wght@0,300;0,400;0,600;1,300;1,400',
   // Oswald is a 200–700 axis with no italic; 700 is the tmz display weight.
   'Oswald': 'wght@200;300;400;500;600;700',
+  // Comfortaa is a 300–700 axis; 300 is the body weight on ameliez.com.
+  'Comfortaa': 'wght@300;400;500;600;700',
+  // Varela ships a single 400 cut; asking for 500–700 only invites synthesis.
+  'Varela': 'wght@400',
 }
 
 /** Weights requested for any family without an explicit entry above. */

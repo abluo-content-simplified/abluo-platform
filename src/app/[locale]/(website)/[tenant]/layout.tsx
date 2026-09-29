@@ -334,6 +334,11 @@ ${D.accentRail ? `      /* -- Accent rail --
       --layout-max-content-width: ${D.maxContentWidth}px;
 ` : ''}      --font-heading: '${D.headingFont}', sans-serif;
       --font-body: '${D.bodyFont}', sans-serif;
+      /* Text with no font of its own (portable-text bodies, plain <p>s) inherits
+         from <html>, which Tailwind sets to var(--font-sans) — the platform's
+         Inter. Pointing it at the site's body font makes the design system the
+         default everywhere on the website, not only where a component asks. */
+      --font-sans: var(--font-body);
 ${D.accentFont ? `      --font-accent: '${D.accentFont}', Georgia, serif;
 ` : ''}
       --color-background: ${D.bg};
@@ -366,6 +371,11 @@ ${D.accentFont ? `      --font-accent: '${D.accentFont}', Georgia, serif;
       --btn-secondary-hover-bg: ${ds?.buttons?.secondary?.darkTheme?.hover?.background ?? 'transparent'};
       --logo-height-desktop: ${logoHeightOverride?.desktop ?? ds?.branding?.logoHeightDesktop ?? 36}px;
       --logo-height-mobile: ${logoHeightOverride?.mobile ?? ds?.branding?.logoHeightMobile ?? 28}px;
+      /* The header logo follows only the per-site Website Settings heights (their
+         Studio description says "in the header"); unset, it stays 36px, which is
+         what every header rendered before these were honoured. */
+      --header-logo-height-desktop: ${logoHeightOverride?.desktop ?? 36}px;
+      --header-logo-height-mobile: ${logoHeightOverride?.mobile ?? 36}px;
       --motion-duration-fast: ${motion?.durationFast ?? 120}ms;
       --motion-duration-base: ${motion?.durationBase ?? 200}ms;
       --motion-duration-slow: ${motion?.durationSlow ?? 350}ms;
@@ -805,7 +815,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
           logoSrc={logoSrc}
           logoLightSrc={logoLightSrc ?? logoSrc}
           logoAlt={config?.siteName ?? tenantId}
-          siteName={logoSrc ? (config?.siteName ?? undefined) : undefined}
+          siteName={logoSrc && !config?.logoIncludesName ? (config?.siteName ?? undefined) : undefined}
           // Text wordmark — only reaches NavClient via Nav.tsx on the landing
           // variant. The generic tenant header renders NavClient directly, so
           // without these two props every tenant without a logo IMAGE silently

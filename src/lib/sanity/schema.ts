@@ -444,7 +444,7 @@ const socialLinkType = defineType({
       name: 'platform',
       title: 'Platform',
       type: 'string',
-      options: { list: ['youtube', 'instagram', 'linkedin', 'facebook', 'x', 'tiktok', 'threads'] },
+      options: { list: ['youtube', 'instagram', 'linkedin', 'facebook', 'x', 'tiktok', 'threads', 'pinterest'] },
     }),
     defineField({ name: 'url', title: 'URL', type: 'url' }),
   ],
@@ -4419,6 +4419,7 @@ const siteConfigType = defineType({
     defineField({ name: 'appleTouchIcon', title: 'Apple Touch Icon', type: 'image', group: 'branding', description: 'Shown when the site is saved to an iPhone/iPad home screen • 180 × 180 px • PNG' }),
     defineField({ name: 'logoHeightDesktop', title: 'Logo Height — Desktop (px)', type: 'number', group: 'branding', description: 'Max height of the logo in the header on desktop. Default: 36px.', initialValue: 36 }),
     defineField({ name: 'logoHeightMobile', title: 'Logo Height — Mobile (px)', type: 'number', group: 'branding', description: 'Max height of the logo in the header on mobile. Default: 28px.', initialValue: 28 }),
+    defineField({ name: 'logoIncludesName', title: 'Logo already shows the name', type: 'boolean', group: 'branding', initialValue: false, description: 'Turn on when the logo is a wordmark that spells the site name. The header then shows the logo alone instead of repeating the Site Name beside it.' }),
     defineField({ name: 'seoDefaultTitle', title: 'Default Page Title', type: 'localizedString', group: 'seo', description: 'Used as the <title> on pages that do not have a page-specific title. Falls back to Site Name.' }),
     defineField({ name: 'seoDefaultDescription', title: 'Default Meta Description', type: 'localizedText', group: 'seo', description: 'Used as the meta description on pages that do not have a page-specific description. Falls back to Tagline.' }),
     // ── Structured data ──────────────────────────────────────────────────────
