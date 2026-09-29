@@ -94,6 +94,21 @@ export const ICONS = {
     </svg>
   ),
 
+  instagram: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.2" cy="6.8" r="0.6" fill="currentColor" />
+    </svg>
+  ),
+  pinterest: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M11 20.5l1.8-8" strokeLinecap="round" />
+      <path d="M9.6 14.2c-1-.7-1.6-1.8-1.6-3.1C8 8.8 9.8 7 12.2 7s4 1.6 4 3.8c0 2.4-1.4 4.2-3.2 4.2-.9 0-1.6-.5-1.4-1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+
   // ── Platform staples ───────────────────────────────────────────────────────
   check: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>

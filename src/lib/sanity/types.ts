@@ -210,7 +210,7 @@ export interface FooterColumn {
 }
 
 export interface SocialLink {
-  platform: 'youtube' | 'instagram' | 'linkedin' | 'facebook' | 'x' | 'tiktok' | 'threads'
+  platform: 'youtube' | 'instagram' | 'linkedin' | 'facebook' | 'x' | 'tiktok' | 'threads' | 'pinterest'
   url: string
 }
 
@@ -698,6 +698,8 @@ export interface WebsiteSiteConfig {
   address?: string
   logoHeightDesktop?: number
   logoHeightMobile?: number
+  /** The logo is a wordmark that already spells the site name — the header then shows it alone. */
+  logoIncludesName?: boolean
   seoDefaultTitle?: string
   seoDefaultDescription?: string
   appleTouchIcon?: { asset?: { _ref: string } }

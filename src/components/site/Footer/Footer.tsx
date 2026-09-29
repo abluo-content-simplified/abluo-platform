@@ -63,6 +63,36 @@ export async function Footer({
   const columns = (config.footerColumns ?? []).filter(
     (column) => column.heading || column.links?.length,
   )
+  // Social links render wherever the footer shows its brand: in the brand row
+  // when the site has link columns, otherwise in the contact row. Before this,
+  // a site without footer columns (a one-page portfolio) never showed them.
+  const socialItems = (config.socialLinks ?? []).filter((social) => social.url)
+  const socialLinks = (className: string) =>
+    socialItems.length > 0 ? (
+      <ul className={`${className} flex list-none flex-wrap gap-x-5 gap-y-2`}>
+        {socialItems.map((social) => (
+          <li key={social.url}>
+            <a
+              href={social.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 hover:text-[var(--color-footer-text)]"
+              style={{ color: 'var(--color-footer-text-muted)' }}
+            >
+              {/* Unregistered platforms render no icon rather than a broken one. */}
+              <Icon name={social.platform} size={16} />
+              <span
+                className="text-[0.625rem] font-bold uppercase tracking-[0.1em]"
+                style={{ fontFamily: 'var(--font-heading)' }}
+              >
+                {social.platform}
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    ) : null
+
   const hasBrandRow = variant === 'full' && columns.length > 0
   // ADR-021 — when a column carries an authored "Cookie settings" link (e.g.
   // under Legal), the automatic one in the bottom bar is not repeated.
@@ -188,32 +218,7 @@ export async function Footer({
                 </div>
               )}
 
-              {config.socialLinks && config.socialLinks.length > 0 && (
-                <ul className="mt-5 flex list-none flex-wrap gap-x-5 gap-y-2">
-                  {config.socialLinks
-                    .filter((social) => social.url)
-                    .map((social) => (
-                      <li key={social.url}>
-                        <a
-                          href={social.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 hover:text-[var(--color-footer-text)]"
-                          style={{ color: 'var(--color-footer-text-muted)' }}
-                        >
-                          {/* Unregistered platforms render no icon rather than a broken one. */}
-                          <Icon name={social.platform} size={16} />
-                          <span
-                            className="text-[0.625rem] font-bold uppercase tracking-[0.1em]"
-                            style={{ fontFamily: 'var(--font-heading)' }}
-                          >
-                            {social.platform}
-                          </span>
-                        </a>
-                      </li>
-                    ))}
-                </ul>
-              )}
+              {socialLinks('mt-5')}
             </div>
 
             {/* Link columns */}
@@ -306,6 +311,7 @@ export async function Footer({
                   {config.email}
                 </a>
               )}
+              {socialLinks('mt-2 sm:justify-end')}
             </div>
           </div>
         </div>
