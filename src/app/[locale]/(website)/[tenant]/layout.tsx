@@ -16,6 +16,7 @@ import { headingVars, fluidHeadingSize, isTypographyLegacyTenant } from '@/lib/d
 import { footerThemeVars } from '@/lib/design-system/footer-tokens'
 import { Footer } from '@/components/site/Footer'
 import { NavClient } from '@/components/site/Nav/NavClient'
+import { Masthead } from '@/components/site/Masthead'
 import { SiteRail } from '@/components/site/SiteRail'
 import { HeaderAppearanceWrapper } from '@/components/HeaderAppearanceWrapper'
 import { DevBadge } from '@/components/DevBadge'
@@ -792,6 +793,14 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   const formsModuleEnabled = isModuleEnabled(modules, 'forms')
   const hasCtaForm = formsModuleEnabled && !!ctaForm?.formId
 
+  // Header layout (siteConfig.headerAppearance.layout). A masthead draws the
+  // logo at content width, so it asks for a wider rendition than the bar's 320.
+  const useMasthead = config?.headerAppearance?.layout === 'masthead' && !!config?.logo
+  const mastheadLogoSrc = useMasthead ? imageUrl(config!.logo as any, 1600) : undefined
+  // siteConfig.footerDisplay — a site may end with its last section, unless it
+  // needs cookie consent: the footer is where Cookie settings lives.
+  const showFooter = config?.footerDisplay !== 'hidden' || consent.requiresConsent
+
   const genericInner = (
     <ConsentProvider
       cookieName={consent.cookieName}
@@ -810,49 +819,60 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
       {bgStyles && bgGraphic?.scope === 'entire' && (
         <div style={bgStyles} aria-hidden="true" />
       )}
-      <HeaderAppearanceWrapper config={config?.headerAppearance}>
-        <NavClient
-          logoSrc={logoSrc}
-          logoLightSrc={logoLightSrc ?? logoSrc}
+      {useMasthead ? (
+        <Masthead
+          href={`/${locale}/${tenantId}`}
+          logoSrc={mastheadLogoSrc!}
           logoAlt={config?.siteName ?? tenantId}
-          siteName={logoSrc && !config?.logoIncludesName ? (config?.siteName ?? undefined) : undefined}
-          // Text wordmark — only reaches NavClient via Nav.tsx on the landing
-          // variant. The generic tenant header renders NavClient directly, so
-          // without these two props every tenant without a logo IMAGE silently
-          // fell through to the plain `logoAlt` text branch.
-          wordmarkText={config?.wordmarkText}
-          wordmarkAccent={config?.wordmarkAccent}
           navLinks={resolveNavLinks(config?.navLinks, locale as SupportedLocale, tenantId)}
-          ctaLabel={cta.label ?? undefined}
-          ctaHref={cta.href ?? undefined}
-          ctaMode={hasCtaForm ? 'overlay' : 'link'}
-          ctaFormId={hasCtaForm ? ctaForm!.formId : undefined}
-          ctaInternalName={cta.internalName}
-          currentLocale={locale as SupportedLocale}
-          supportedLocales={config?.supportedLocales ?? [locale as SupportedLocale]}
-          showLangSwitcherInNav={config?.showLangSwitcherInNav ?? false}
-          tenantId={tenantId}
-          themeMode={config?.themeMode}
-          themeSwitcherPlacement={config?.themeSwitcherPlacement}
-          variant="full"
         />
-      </HeaderAppearanceWrapper>
-      <div
-        style={{
-          height: config?.headerAppearance?.customHeight
-            ? `${config.headerAppearance.customHeight}px`
-            : undefined,
-        }}
-        className={
-          config?.headerAppearance?.customHeight
-            ? undefined
-            : {
-                compact: 'h-12',
-                normal: 'h-16',
-                large: 'h-20',
-              }[config?.headerAppearance?.headerHeight ?? 'normal']
-        }
-      />
+      ) : (
+        <>
+          <HeaderAppearanceWrapper config={config?.headerAppearance}>
+            <NavClient
+              logoSrc={logoSrc}
+              logoLightSrc={logoLightSrc ?? logoSrc}
+              logoAlt={config?.siteName ?? tenantId}
+              siteName={logoSrc && !config?.logoIncludesName ? (config?.siteName ?? undefined) : undefined}
+              // Text wordmark — only reaches NavClient via Nav.tsx on the landing
+              // variant. The generic tenant header renders NavClient directly, so
+              // without these two props every tenant without a logo IMAGE silently
+              // fell through to the plain `logoAlt` text branch.
+              wordmarkText={config?.wordmarkText}
+              wordmarkAccent={config?.wordmarkAccent}
+              navLinks={resolveNavLinks(config?.navLinks, locale as SupportedLocale, tenantId)}
+              ctaLabel={cta.label ?? undefined}
+              ctaHref={cta.href ?? undefined}
+              ctaMode={hasCtaForm ? 'overlay' : 'link'}
+              ctaFormId={hasCtaForm ? ctaForm!.formId : undefined}
+              ctaInternalName={cta.internalName}
+              currentLocale={locale as SupportedLocale}
+              supportedLocales={config?.supportedLocales ?? [locale as SupportedLocale]}
+              showLangSwitcherInNav={config?.showLangSwitcherInNav ?? false}
+              tenantId={tenantId}
+              themeMode={config?.themeMode}
+              themeSwitcherPlacement={config?.themeSwitcherPlacement}
+              variant="full"
+            />
+          </HeaderAppearanceWrapper>
+          <div
+            style={{
+              height: config?.headerAppearance?.customHeight
+                ? `${config.headerAppearance.customHeight}px`
+                : undefined,
+            }}
+            className={
+              config?.headerAppearance?.customHeight
+                ? undefined
+                : {
+                    compact: 'h-12',
+                    normal: 'h-16',
+                    large: 'h-20',
+                  }[config?.headerAppearance?.headerHeight ?? 'normal']
+            }
+          />
+        </>
+      )}
       <main>{children}</main>
       <TrackingScripts data={integrations} placement="bodyEnd" grants={consent.grants} />
       {/* Shared Footer — the same component the Livener branch mounts. It
@@ -861,13 +881,15 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
           to render inline; everything else the shared footer adds (copyright,
           footer links, legal lines, language switcher) is additive and only
           appears where the tenant has authored it. */}
-      <Footer
-        tenantId={tenantId}
-        locale={locale as SupportedLocale}
-        defaultLocale={defaultLocale}
-        variant="full"
-        showContact
-      />
+      {showFooter && (
+        <Footer
+          tenantId={tenantId}
+          locale={locale as SupportedLocale}
+          defaultLocale={defaultLocale}
+          variant="full"
+          showContact
+        />
+      )}
       {whatsAppFab(modules, config, tenantId, locale)}
       <DevBadge />
     </ConsentProvider>

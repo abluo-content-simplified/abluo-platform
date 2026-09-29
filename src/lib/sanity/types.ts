@@ -292,6 +292,8 @@ export interface BackgroundGraphic {
 }
 
 export interface HeaderAppearance {
+  /** 'masthead' = full-width logo that scrolls away; default 'bar'. */
+  layout?: 'bar' | 'masthead'
   stickyHeader?: boolean
   initialStyle?: 'transparent' | 'solid' | 'glass'
   scrolledStyle?: 'transparent' | 'solid' | 'glass'
@@ -676,6 +678,8 @@ export interface WebsiteSiteConfig {
   footerSubTagline?: string
   /** Optional credit link beside the copyright line (e.g. "Built by Abluo"). */
   footerCredit?: NavLink
+  /** 'hidden' = no footer (kept anyway when cookie consent is required). */
+  footerDisplay?: 'full' | 'hidden'
   footerCtaHeading?: string
   footerCtaSubtext?: string
   footerCtaInputPlaceholder?: string

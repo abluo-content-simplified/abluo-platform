@@ -599,6 +599,7 @@ export const websiteSiteConfigQuery = /* groq */ `
       scope
     },
     headerAppearance {
+      layout,
       stickyHeader,
       initialStyle,
       scrolledStyle,
@@ -684,6 +685,7 @@ export const websiteSiteConfigQuery = /* groq */ `
     },
     "footerSubTagline": ${loc('footerSubTagline')},
     footerCredit { ${NAV_LINK_FIELDS} },
+    footerDisplay,
     "footerCtaHeading": ${loc('footerCtaHeading')},
     "footerCtaSubtext": ${loc('footerCtaSubtext')},
     "footerCtaInputPlaceholder": ${loc('footerCtaInputPlaceholder')},

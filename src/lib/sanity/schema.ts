@@ -4529,6 +4529,20 @@ const siteConfigType = defineType({
       type: 'object',
       group: 'branding',
       fields: [
+        defineField({
+          name: 'layout',
+          title: 'Layout',
+          type: 'string',
+          options: {
+            list: [
+              { title: 'Bar — logo and navigation in a top bar', value: 'bar' },
+              { title: 'Masthead — the logo alone, as wide as the page content, scrolls away', value: 'masthead' },
+            ],
+            layout: 'radio',
+          },
+          initialValue: 'bar',
+          description: 'Masthead suits a wordmark logo that is the title of the page. It needs a logo; without one the bar is used. The options below apply to the bar only.',
+        }),
         defineField({ name: 'stickyHeader', title: 'Sticky Header', type: 'boolean', initialValue: true }),
         defineField({
           name: 'initialStyle',
@@ -4699,6 +4713,21 @@ const siteConfigType = defineType({
     }),
     // Credit link ("Built by …"). A single navigationLink so it supports an
     // external URL, an internal page or an anchor, with openInNewTab.
+    defineField({
+      name: 'footerDisplay',
+      title: 'Footer',
+      type: 'string',
+      group: 'footer',
+      options: {
+        list: [
+          { title: 'Show the footer', value: 'full' },
+          { title: 'No footer — the page ends with its last section', value: 'hidden' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'full',
+      description: 'For one-page sites whose last section already closes the page. If the site needs cookie consent, the footer stays, so Cookie settings remains reachable.',
+    }),
     defineField({
       name: 'footerCredit',
       title: 'Footer Credit Link',
