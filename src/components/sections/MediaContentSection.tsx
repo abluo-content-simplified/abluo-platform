@@ -321,6 +321,10 @@ export function MediaContentSection({ section, surface, designSystem }: Props) {
   }
 
   // ── Text block (shared across layouts) ────────────────────────────────────
+  // The gap above the body separates it from the title (or eyebrow). With
+  // neither, the body is the first thing in the column and starts flush —
+  // otherwise untitled text sits 24px lower than the image beside it.
+  const bodyGap = title || eyebrow ? 'mt-6' : ''
   const textBlock = (
     <SlideUp duration={duration} ease={ease} delay={0} className="flex flex-col justify-center">
       {eyebrow && (
@@ -351,8 +355,8 @@ export function MediaContentSection({ section, surface, designSystem }: Props) {
                 // column is unreadable, and an inline style cannot hold a media
                 // query. `break-inside-avoid` on the paragraphs keeps a two-line
                 // paragraph from splitting across the gutter.
-                'mt-6 lg:[column-count:2] lg:[column-gap:4rem] lg:[column-fill:balance] lg:[&>*]:break-inside-avoid'
-              : 'mt-6'
+                `${bodyGap} lg:[column-count:2] lg:[column-gap:4rem] lg:[column-fill:balance] lg:[&>*]:break-inside-avoid`
+              : bodyGap
           }
         >
           <RichText blocks={body} />
