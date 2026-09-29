@@ -38,14 +38,61 @@ export {
 // Fields are generated from the Platform Locale Registry (src/lib/i18n/locales.ts).
 // To add a language, add it to PLATFORM_LOCALES — these types update automatically.
 
+// ─── Translation status (ADR-023 §4) ──────────────────────────────────────────
+// Every localized type carries ONE hidden, optional field, `translationStatus`,
+// keyed by locale. It records which values were machine-translated (and from
+// what), so the editing UI can show Original / Machine / Reviewed and the
+// Translate button never overwrites text a person wrote or reviewed.
+//
+// Additive: no stored value changes shape, GROQ `field[$locale]` reads are
+// unaffected, and no website query projects it — it never reaches a visitor.
+// Absent = `original`. Written only by the Translate button in LocalizedInput.
+const translationMetaType = defineType({
+  name: 'translationMeta',
+  title: 'Translation',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'status',
+      type: 'string',
+      options: { list: ['machine', 'reviewed'] },
+    }),
+    defineField({ name: 'provider', type: 'string' }),
+    defineField({ name: 'sourceLocale', type: 'string' }),
+    defineField({ name: 'translatedAt', type: 'datetime' }),
+    defineField({ name: 'textHash', type: 'string' }),
+    defineField({ name: 'sourceHash', type: 'string' }),
+  ],
+})
+
+const translationStatusType = defineType({
+  name: 'translationStatus',
+  title: 'Translation status',
+  type: 'object',
+  fields: LOCALE_CODES.map((code) =>
+    defineField({ name: code, title: PLATFORM_LOCALES[code].nativeName, type: 'translationMeta' })
+  ),
+})
+
+/** The hidden status field appended to every localized type. */
+const translationStatusField = defineField({
+  name: 'translationStatus',
+  title: 'Translation status',
+  type: 'translationStatus',
+  hidden: true,
+})
+
 const localizedStringType = defineType({
   name: 'localizedString',
   title: 'Localized String',
   type: 'object',
   components: { input: LocalizedStringInput },
-  fields: LOCALE_CODES.map((code) =>
-    defineField({ name: code, title: PLATFORM_LOCALES[code].nativeName, type: 'string' })
-  ),
+  fields: [
+    ...LOCALE_CODES.map((code) =>
+      defineField({ name: code, title: PLATFORM_LOCALES[code].nativeName, type: 'string' })
+    ),
+    translationStatusField,
+  ],
 })
 
 const localizedTextType = defineType({
@@ -53,9 +100,12 @@ const localizedTextType = defineType({
   title: 'Localized Text',
   type: 'object',
   components: { input: LocalizedTextInput },
-  fields: LOCALE_CODES.map((code) =>
-    defineField({ name: code, title: PLATFORM_LOCALES[code].nativeName, type: 'text', rows: 3 })
-  ),
+  fields: [
+    ...LOCALE_CODES.map((code) =>
+      defineField({ name: code, title: PLATFORM_LOCALES[code].nativeName, type: 'text', rows: 3 })
+    ),
+    translationStatusField,
+  ],
 })
 
 const localizedPortableTextType = defineType({
@@ -63,14 +113,17 @@ const localizedPortableTextType = defineType({
   title: 'Localized Rich Text',
   type: 'object',
   components: { input: LocalizedPortableTextInput },
-  fields: LOCALE_CODES.map((code) =>
-    defineField({
-      name: code,
-      title: PLATFORM_LOCALES[code].nativeName,
-      type: 'array',
-      of: [defineArrayMember({ type: 'block' })],
-    })
-  ),
+  fields: [
+    ...LOCALE_CODES.map((code) =>
+      defineField({
+        name: code,
+        title: PLATFORM_LOCALES[code].nativeName,
+        type: 'array',
+        of: [defineArrayMember({ type: 'block' })],
+      })
+    ),
+    translationStatusField,
+  ],
 })
 
 // Each locale field is a proper Sanity slug — keeps slug generation, validation,
@@ -5172,6 +5225,8 @@ export const initialValueTemplates = [
 // ─── Export ───────────────────────────────────────────────────────────────────
 
 export const schemaTypes = [
+  translationMetaType,
+  translationStatusType,
   localizedStringType,
   localizedTextType,
   localizedPortableTextType,

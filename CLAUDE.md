@@ -457,6 +457,17 @@ There are two completely separate localization concerns. They must never be conf
 
 The set of locales in `routing.ts` must cover every content locale any tenant might use — next-intl parses the URL prefix before the tenant config is fetched. A locale in `siteConfig.supportedLocales` that is absent from `routing.ts` will 404.
 
+
+### Machine translation — the Translate module (ADR-023)
+
+A Translate button on `localizedString` / `localizedText` fills the site's other languages from the source text. Rules that are easy to break:
+
+- **Stored, never per visitor.** The public site never calls a provider; one language per URL is unchanged.
+- **Status lives beside the value** in the hidden `translationStatus` field of every localized type (`machine` / `reviewed`; absent = `original`). No website query may project it — a test enforces this.
+- **One click never overwrites** `original` or `reviewed` text — only empty or untouched `machine` values.
+- **Provider + quota are module config** (the one surface); **API keys are env vars only** (`GOOGLE_TRANSLATE_API_KEY`, `DEEPL_API_KEY`, `ANTHROPIC_API_KEY` + `TRANSLATE_CLAUDE_MODEL`). Never in Sanity.
+- **Every call is metered** in Supabase `translation_usage` (migration 027); the monthly total is summed in SQL, never by selecting rows.
+- New provider = one adapter in `src/lib/translate/providers/` + one select option in the manifest.
 ---
 
 ## Publicly Routable Content Pattern

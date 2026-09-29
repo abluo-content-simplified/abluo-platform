@@ -822,6 +822,97 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
       'V2.0.0 — ADR-020 Amendment A. Subjects and both button placements are configured in the module; the form picker is gone (the module owns its form definition silently). V1.0.0 — WhatsApp promoted from siteConfig fields to a first-class module.',
   },
 
+  // ── Translate (ADR-023) ─────────────────────────────────────────────────────
+  // One-click machine translation of localized fields, stored — never
+  // translated per visitor. Owns no content: it adds a capability to the
+  // platform's localized field types, so it contributes no schema types,
+  // sections or collections, and has no website surface.
+  {
+    id: 'translate',
+    label: 'Translate',
+    version: '1.0.0',
+    status: 'released',
+    category: 'platform',
+
+    platformContract: {
+      collections: [],
+      sectionTypes: [],
+      schemaTypes: [],
+      schemaDefinitions: () => [],
+
+      permissions: [
+        {
+          id: 'translate.use',
+          label: 'Translate content',
+          description: 'Use the Translate button to fill the other languages of a field from the source text.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          id: 'translate.usage.read',
+          label: 'See translation usage',
+          description: 'See how many characters this website has translated this month, and its limit.',
+          defaultRoles: ['owner'],
+        },
+      ],
+
+      // ADR-023 §2 — the ONE configuration surface for provider and quota.
+      // API keys are environment variables, never Sanity (the dataset is public).
+      configSchema: [
+        {
+          id: 'provider',
+          label: 'Translation service',
+          type: 'select',
+          initialValue: 'google',
+          description: 'Which engine translates this website. The API key is set per environment, not here.',
+          options: [
+            {
+              value: 'google',
+              label: 'Google Cloud Translation',
+              description: 'Fast and inexpensive. Needs GOOGLE_TRANSLATE_API_KEY.',
+            },
+            {
+              value: 'deepl',
+              label: 'DeepL',
+              description: 'Often more natural for European languages. Needs DEEPL_API_KEY.',
+            },
+            {
+              value: 'claude',
+              label: 'Claude (AI)',
+              description: 'Best at keeping tone and register. Needs ANTHROPIC_API_KEY and TRANSLATE_CLAUDE_MODEL.',
+            },
+          ],
+        },
+        {
+          id: 'monthlyCharacterQuota',
+          label: 'Monthly limit (characters)',
+          type: 'number',
+          description:
+            'Characters this website may translate per calendar month. Leave empty for no limit. When reached, the Translate button is disabled with a "contact us" message.',
+        },
+      ],
+
+      placement: {
+        surfaces: [],
+        note: 'Editing only. Appears as a Translate button on multilingual fields; nothing changes on the public website.',
+      },
+    },
+
+    publicContract: {},
+
+    dependencies: {
+      requires: [],
+      integratesWith: [],
+    },
+
+    dataStore: {
+      // Configuration in Sanity (module config + a hidden per-value status),
+      // usage records in Supabase (translation_usage).
+      primary: 'hybrid',
+    },
+
+    changelog: 'V1.0.0 — ADR-023. Translate button on localized text fields, swappable provider, per-project metering and optional monthly quota.',
+  },
+
 ]
 
 // ── Build-time validation ─────────────────────────────────────────────────────

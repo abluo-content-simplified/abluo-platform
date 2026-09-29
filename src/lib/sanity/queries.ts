@@ -812,6 +812,21 @@ export const projectModuleConfigQuery = /* groq */ `
   }.modules
 `
 
+// ─── Translate module (ADR-023) ───────────────────────────────────────────────
+// Server-side only (POST /api/translate, GET /api/translate/status). Returns the
+// Supabase project id (for metering) and the ENABLED `translate` installation's
+// config — null when the module is not installed or is switched off, which is
+// what "disabled" means. Deliberately projects nothing else: provider and quota
+// are all the route needs, and API keys never live in Sanity.
+export const projectTranslateQuery = /* groq */ `
+  *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0] {
+    projectId,
+    "translate": moduleInstallations[moduleId == "translate" && enabled != false][0] { config },
+    // The site's languages: the only valid translation targets.
+    "supportedLocales": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].supportedLocales
+  }
+`
+
 export const postsQuery = /* groq */ `
   *[
     _type == "post"

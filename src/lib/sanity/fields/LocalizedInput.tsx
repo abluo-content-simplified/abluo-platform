@@ -18,6 +18,7 @@
 import { ObjectInputProps, MemberField, MemberFieldSet, MemberFieldError } from 'sanity'
 import { useProjectLocales } from './useProjectLocales'
 import { PLATFORM_LOCALES, type SupportedLocale } from '@/lib/i18n/locales'
+import { TranslateBar } from './TranslateBar'
 
 const ALL_LOCALE_KEYS = new Set(Object.keys(PLATFORM_LOCALES))
 
@@ -90,9 +91,12 @@ function LanguageBadge({ locales }: { locales: SupportedLocale[] }) {
 function LocalizedInputWrapper({
   props,
   showBadge = true,
+  translatable = false,
 }: {
   props: ObjectInputProps
   showBadge?: boolean
+  /** Show the ADR-023 Translate button (only when the module is enabled). */
+  translatable?: boolean
 }) {
   const { locales, loading } = useProjectLocales()
   const filteredMembers = getFilteredMembers(props.members, locales)
@@ -102,6 +106,7 @@ function LocalizedInputWrapper({
     <div>
       {loading && <LoadingBadge />}
       {!loading && showBadge && isFiltered && <LanguageBadge locales={locales} />}
+      {!loading && translatable && <TranslateBar props={props} locales={locales} />}
       {filteredMembers.map((member) => {
         const renderProps = {
           renderAnnotation: props.renderAnnotation,
@@ -124,11 +129,11 @@ function LocalizedInputWrapper({
 // ─── Exported input components ────────────────────────────────────────────────
 
 export function LocalizedStringInput(props: ObjectInputProps) {
-  return <LocalizedInputWrapper props={props} />
+  return <LocalizedInputWrapper props={props} translatable />
 }
 
 export function LocalizedTextInput(props: ObjectInputProps) {
-  return <LocalizedInputWrapper props={props} />
+  return <LocalizedInputWrapper props={props} translatable />
 }
 
 export function LocalizedPortableTextInput(props: ObjectInputProps) {

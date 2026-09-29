@@ -36,7 +36,8 @@
       "forms": "Forms",
       "whatsapp": "WhatsApp",
       "news": "News",
-      "gallery": "Galleries"
+      "gallery": "Galleries",
+      "translate": "Translate"
     },
     "shell": {
       "brandTagline": "Dashboard",

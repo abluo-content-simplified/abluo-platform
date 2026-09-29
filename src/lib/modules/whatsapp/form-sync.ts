@@ -176,9 +176,13 @@ export function extractSubjectsFromForm(
           typeof option.value === 'string' && option.value.length > 0
         )
         .map((option) => {
-          // Drop Sanity's _type marker — the pane edits plain locale→string maps.
-          const { _type, ...labels } = (option.label ?? {}) as Record<string, string>
-          void _type
+          // Keep only locale→string entries — the pane edits plain maps. This
+          // drops Sanity's _type marker and ADR-023's translationStatus object.
+          const labels = Object.fromEntries(
+            Object.entries((option.label ?? {}) as Record<string, unknown>).filter(
+              (entry): entry is [string, string] => !entry[0].startsWith('_') && typeof entry[1] === 'string'
+            )
+          )
           return { _key: option.value, value: option.value, label: labels }
         })
     }
