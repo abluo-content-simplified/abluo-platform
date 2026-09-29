@@ -164,6 +164,9 @@
   }
   html {
     @apply font-sans;
+    /* Tenant websites set this from the design system's Body weight; everywhere
+       else it is unset and the weight stays the browser's normal 400. */
+    font-weight: var(--font-weight-body, 400);
     color-scheme: dark;
   }
   html.light {

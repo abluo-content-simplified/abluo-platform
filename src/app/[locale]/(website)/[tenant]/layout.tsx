@@ -135,6 +135,7 @@ function buildCssVars(
     // does not — see the comment beside --layout-max-content-width below.
     accentRail: ds?.layout?.accentRail === true,
     maxContentWidth: ds?.layout?.maxContentWidth,
+    sectionPaddingY: ds?.layout?.sectionPaddingY,
     radiusSm: radius?.small ?? FALLBACK_RADIUS.small,
     radiusMd: radius?.medium ?? FALLBACK_RADIUS.medium,
     radiusLg: radius?.large ?? FALLBACK_RADIUS.large,
@@ -197,6 +198,15 @@ function buildCssVars(
     t?.bodyLarge?.size ? `      --font-size-body-large: ${pxToRem(t.bodyLarge.size)};` : '',
     t?.body?.size ? `      --font-size-body: ${pxToRem(t.body.size)};` : '',
     t?.small?.size ? `      --font-size-small: ${pxToRem(t.small.size)};` : '',
+    // Body copy. Components set running text with Tailwind's `text-base` and
+    // `leading-relaxed`, so the design system's Body level is applied by
+    // re-pointing those two theme variables, and the weight through <html>
+    // (globals.css reads --font-weight-body). Each is emitted only when the
+    // design system sets it: unset, text-base stays 1rem, leading-relaxed 1.625
+    // and the weight 400 — exactly what every site rendered before.
+    t?.body?.size ? `      --text-base: ${pxToRem(t.body.size)};` : '',
+    t?.body?.lineHeight !== undefined ? `      --leading-relaxed: ${t.body.lineHeight};` : '',
+    t?.body?.weight !== undefined ? `      --font-weight-body: ${t.body.weight};` : '',
   ].filter(Boolean).join('\n')
 
   // ─── Form input helpers ────────────────────────────────────────────────────
@@ -333,6 +343,11 @@ ${D.accentRail ? `      /* -- Accent rail --
          design system that says nothing renders exactly as it always has, and
          one that sets layout.maxContentWidth finally gets what it asked for. */
       --layout-max-content-width: ${D.maxContentWidth}px;
+` : ''}${D.sectionPaddingY !== undefined && D.sectionPaddingY !== null ? `      /* Section vertical padding (layout.sectionPaddingY) — the desktop value.
+         SectionContainer scales it to 0.8x on tablets and 0.6x on phones, the
+         same 120 / 96 / 72px ratio it has always used. Absent, the container
+         keeps those historical numbers. */
+      --section-padding-y: ${D.sectionPaddingY}px;
 ` : ''}      --font-heading: '${D.headingFont}', sans-serif;
       --font-body: '${D.bodyFont}', sans-serif;
       /* Text with no font of its own (portable-text bodies, plain <p>s) inherits
