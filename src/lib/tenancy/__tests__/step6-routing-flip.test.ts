@@ -114,7 +114,8 @@ const LIVE_HOSTS: HostCase[] = [
   { host: 'ch-psicoterapeuta.com',        tenantSlug: 'hoffmann',        projectSlug: 'hoffmann',        projectId: '6d709178-f33a-4b4a-be52-521189e11290', defaultLocale: 'it' },
   { host: 'hoffmann.preview.abluo.app',   tenantSlug: 'hoffmann',        projectSlug: 'hoffmann',        projectId: '6d709178-f33a-4b4a-be52-521189e11290', defaultLocale: 'it' },
   { host: 'hoffmann.localhost',           tenantSlug: 'hoffmann',        projectSlug: 'hoffmann',        projectId: '6d709178-f33a-4b4a-be52-521189e11290', defaultLocale: 'it' },
-  // amelie — active, NO custom_domain. Previewhosts only.
+  // amelie — active; custom_domain ameliez.com set 2026-09-29 (DNS moves from IONOS/Webflow at cutover).
+  { host: 'ameliez.com',                  tenantSlug: 'amelie',          projectSlug: 'amelie',          projectId: 'fb34c7e4-6ecf-489a-b56a-8acbf75909cd', defaultLocale: 'en' },
   { host: 'amelie.preview.abluo.app',     tenantSlug: 'amelie',          projectSlug: 'amelie',          projectId: 'fb34c7e4-6ecf-489a-b56a-8acbf75909cd', defaultLocale: 'en' },
   { host: 'amelie.localhost',             tenantSlug: 'amelie',          projectSlug: 'amelie',          projectId: 'fb34c7e4-6ecf-489a-b56a-8acbf75909cd', defaultLocale: 'en' },
 ]
@@ -301,9 +302,11 @@ describe('BEHAVIOUR CHANGE: amelie — the one project the flip actually fixes',
     expect(defaultLocaleForProjectSegment('amelie')).toBe('en')
   })
 
-  it('has no apex host — it is preview-only until a custom_domain is set', () => {
+  it('gets its apex host once custom_domain is set (ameliez.com, 2026-09-29)', () => {
     const hosts = GENERATED_HOST_ROUTES.filter((r) => r.projectSlug === 'amelie').map((r) => r.host)
-    expect(hosts.sort()).toEqual(['amelie.localhost', 'amelie.preview.abluo.app'])
+    expect(hosts.sort()).toEqual(['amelie.localhost', 'amelie.preview.abluo.app', 'ameliez.com'])
+    expect(resolveScopeFromHost('ameliez.com')?.projectSlug).toBe('amelie')
+    expect(resolveScopeFromHost('www.ameliez.com')?.projectSlug).toBe('amelie')
   })
 })
 

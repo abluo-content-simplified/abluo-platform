@@ -97,6 +97,15 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     status: "active",
   },
   {
+    host: "ameliez.com",
+    hostKind: "custom-domain",
+    tenantSlug: "amelie",
+    projectSlug: "amelie",
+    projectId: "fb34c7e4-6ecf-489a-b56a-8acbf75909cd",
+    defaultLocale: "en",
+    status: "active",
+  },
+  {
     host: "ch-psicoterapeuta.com",
     hostKind: "custom-domain",
     tenantSlug: "hoffmann",
