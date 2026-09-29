@@ -76,6 +76,21 @@ const galleryItemType = defineType({
   },
 })
 
+// ── Slug uniqueness, scoped to one website ────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function isGallerySlugUniqueInProject(slug: string, context: any): Promise<boolean> {
+  const { document, getClient } = context
+  const projectSlug = document?.projectSlug
+  if (!slug || !projectSlug) return true
+  const id = String(document._id ?? '').replace(/^drafts\./, '')
+  const count = await getClient({ apiVersion: '2026-05-21' }).fetch(
+    `count(*[_type == "gallery" && projectSlug == $projectSlug && slug.current == $slug && !(_id in [$draft, $published])])`,
+    { projectSlug, slug, draft: `drafts.${id}`, published: id }
+  )
+  return count === 0
+}
+
 // ── Gallery ───────────────────────────────────────────────────────────────────
 
 const galleryType = defineType({
@@ -105,7 +120,11 @@ const galleryType = defineType({
       title: 'Slug',
       type: 'slug',
       description: 'Optional identifier for future API use.',
-      options: { source: 'internalName', maxLength: 96 },
+      // Unique per WEBSITE, not across the whole dataset. Sanity's default
+      // check is dataset-wide, so Claudia Hoffmann's "studio" gallery was
+      // flagged red because Studio Martegani also has a "studio" gallery —
+      // two clients must be free to use the same word.
+      options: { source: 'internalName', maxLength: 96, isUnique: isGallerySlugUniqueInProject },
     }),
     defineField({
       name: 'description',
