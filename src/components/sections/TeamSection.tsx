@@ -208,7 +208,7 @@ export function TeamSection({ section, surface, designSystem }: Props) {
                         src={src}
                         srcSet={srcSet}
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-                        alt={member.name}
+                        alt={[member.honorific, member.name].filter(Boolean).join(' ')}
                         className={`h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
                         loading="lazy"
                         decoding="async"
@@ -236,7 +236,7 @@ export function TeamSection({ section, surface, designSystem }: Props) {
                     className="mb-1 text-base font-semibold"
                     style={{ color: 'var(--color-text-primary)' }}
                   >
-                    {member.name}
+                    {[member.honorific, member.name].filter(Boolean).join(' ')}
                   </p>
 
                   {/* Role */}

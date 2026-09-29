@@ -1341,13 +1341,18 @@ const teamMemberType = defineType({
       type: 'image',
       options: { hotspot: true },
     }),
+    // The honorific is localized separately from the name: "Dott." in Italian is
+    // "Dr." in English, and a hygienist may carry one in Italian and none in
+    // English. The name itself stays a plain string — it is the same in every
+    // language and existing content already stores it that way.
+    defineField({ name: 'honorific', title: 'Title (e.g. Dott. / Dr.)', type: 'localizedString', description: 'Shown before the name. Leave empty for none.' }),
     defineField({ name: 'name', title: 'Name', type: 'string' }),
     defineField({ name: 'role', title: 'Role / Job Title', type: 'localizedString' }),
     defineField({ name: 'bio', title: 'Short Description', type: 'localizedText' }),
   ],
   preview: {
-    select: { title: 'name', subtitle: 'role.it', media: 'photo' },
-    prepare: ({ title, subtitle, media }) => ({ title: title ?? 'Team Member', subtitle, media }),
+    select: { title: 'name', honorific: 'honorific.it', subtitle: 'role.it', media: 'photo' },
+    prepare: ({ title, honorific, subtitle, media }) => ({ title: [honorific, title].filter(Boolean).join(' ') || 'Team Member', subtitle, media }),
   },
 })
 

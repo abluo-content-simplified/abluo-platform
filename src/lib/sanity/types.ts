@@ -1110,6 +1110,8 @@ export interface TeamMember {
   _type: 'teamMemberObject'
   _key: string
   name: string
+  /** Localized title shown before the name, e.g. "Dott." / "Dr." */
+  honorific?: string
   role?: string
   bio?: string
   // GROQ projects photo { asset, hotspot, crop } — no _type field — so ResolvedImage, not SanityImage
