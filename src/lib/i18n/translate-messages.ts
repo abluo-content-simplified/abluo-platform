@@ -24,6 +24,10 @@ export interface TranslateMessages {
   allTargetsProtected: string
   /** Source-language picker label. */
   sourceLabel: string
+  /** The language being translated from. */
+  statusSource: string
+  /** A site language with no text yet. */
+  statusMissing: string
   statusOriginal: string
   statusMachine: string
   statusReviewed: string
@@ -43,6 +47,8 @@ const MESSAGES: Record<string, TranslateMessages> = {
     nothingToTranslate: 'Write the {source} text first.',
     allTargetsProtected: 'The other languages already have text written or reviewed by a person, so nothing was changed.',
     sourceLabel: 'Translate from',
+    statusSource: 'Source',
+    statusMissing: 'Missing',
     statusOriginal: 'Original',
     statusMachine: 'Machine translation',
     statusReviewed: 'Reviewed',
@@ -69,6 +75,8 @@ const MESSAGES: Record<string, TranslateMessages> = {
     nothingToTranslate: 'Scrivi prima il testo in {source}.',
     allTargetsProtected: 'Le altre lingue hanno già un testo scritto o rivisto da una persona, quindi non è stato modificato nulla.',
     sourceLabel: 'Traduci da',
+    statusSource: 'Origine',
+    statusMissing: 'Mancante',
     statusOriginal: 'Originale',
     statusMachine: 'Traduzione automatica',
     statusReviewed: 'Rivisto',
@@ -95,6 +103,8 @@ const MESSAGES: Record<string, TranslateMessages> = {
     nothingToTranslate: 'Rédigez d’abord le texte en {source}.',
     allTargetsProtected: 'Les autres langues contiennent déjà un texte rédigé ou relu par une personne : rien n’a été modifié.',
     sourceLabel: 'Traduire depuis',
+    statusSource: 'Source',
+    statusMissing: 'Manquant',
     statusOriginal: 'Original',
     statusMachine: 'Traduction automatique',
     statusReviewed: 'Relu',
@@ -121,6 +131,8 @@ const MESSAGES: Record<string, TranslateMessages> = {
     nothingToTranslate: 'Schreiben Sie zuerst den Text auf {source}.',
     allTargetsProtected: 'Die anderen Sprachen enthalten bereits von einer Person geschriebenen oder geprüften Text, daher wurde nichts geändert.',
     sourceLabel: 'Übersetzen aus',
+    statusSource: 'Quelle',
+    statusMissing: 'Fehlt',
     statusOriginal: 'Original',
     statusMachine: 'Maschinelle Übersetzung',
     statusReviewed: 'Geprüft',
@@ -147,6 +159,8 @@ const MESSAGES: Record<string, TranslateMessages> = {
     nothingToTranslate: 'Escribe primero el texto en {source}.',
     allTargetsProtected: 'Los demás idiomas ya tienen un texto escrito o revisado por una persona, así que no se ha cambiado nada.',
     sourceLabel: 'Traducir desde',
+    statusSource: 'Origen',
+    statusMissing: 'Falta',
     statusOriginal: 'Original',
     statusMachine: 'Traducción automática',
     statusReviewed: 'Revisado',
@@ -173,6 +187,8 @@ const MESSAGES: Record<string, TranslateMessages> = {
     nothingToTranslate: 'Escreva primeiro o texto em {source}.',
     allTargetsProtected: 'As outras línguas já têm texto escrito ou revisto por uma pessoa, por isso nada foi alterado.',
     sourceLabel: 'Traduzir de',
+    statusSource: 'Origem',
+    statusMissing: 'Em falta',
     statusOriginal: 'Original',
     statusMachine: 'Tradução automática',
     statusReviewed: 'Revisto',
@@ -199,6 +215,8 @@ const MESSAGES: Record<string, TranslateMessages> = {
     nothingToTranslate: 'Schrijf eerst de tekst in het {source}.',
     allTargetsProtected: 'De andere talen hebben al tekst die door een persoon is geschreven of nagekeken, dus er is niets gewijzigd.',
     sourceLabel: 'Vertalen uit',
+    statusSource: 'Bron',
+    statusMissing: 'Ontbreekt',
     statusOriginal: 'Origineel',
     statusMachine: 'Machinevertaling',
     statusReviewed: 'Nagekeken',

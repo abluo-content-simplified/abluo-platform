@@ -467,15 +467,26 @@ export default defineConfig({
                     // capability, so they are a top-level entry here rather than a
                     // row buried inside Project Settings. Enable/disable, per-module
                     // configuration, and placement all live in this pane.
+                    //
+                    // The on/off state is re-read every time this list opens,
+                    // not taken from the snapshot fetched when Studio loaded:
+                    // otherwise a module switched on in its pane kept showing
+                    // "— off" here until a full Studio reload.
                     S.listItem()
                       .id(`${slug}-modules`)
                       .title('Modules')
-                      .child(
-                        S.list()
+                      .child(async () => {
+                        const liveIds = await client
+                          .fetch<string[] | null>(
+                            `*[_type == "project" && _id == $id][0].moduleInstallations[enabled != false].moduleId`,
+                            { id: project._id }
+                          )
+                          .catch(() => null)
+                        return S.list()
                           .id(`${slug}-modules-list`)
                           .title('Modules')
-                          .items(buildModuleItems(slug, project._id, enabledModuleIds))
-                      ),
+                          .items(buildModuleItems(slug, project._id, liveIds ?? enabledModuleIds))
+                      }),
 
                     S.divider(),
 

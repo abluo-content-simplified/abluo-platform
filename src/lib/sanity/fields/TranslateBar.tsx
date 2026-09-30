@@ -118,15 +118,32 @@ const styles = {
     cursor: disabled ? 'not-allowed' : 'pointer',
   }),
   select: { fontSize: 12, padding: '3px 4px', borderRadius: 4, border: '1px solid #c9ced6' },
-  chip: (tone: 'machine' | 'reviewed') => ({
-    fontSize: 10,
-    fontWeight: 600,
-    letterSpacing: '0.04em',
-    padding: '2px 6px',
-    borderRadius: 3,
-    background: tone === 'machine' ? '#fff4e0' : '#e6f4ea',
-    color: tone === 'machine' ? '#8a5a00' : '#1e6b34',
-  }),
+  table: {
+    flexBasis: '100%',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 4,
+    marginTop: 2,
+  },
+  row: { display: 'flex', alignItems: 'center', gap: 8, minHeight: 20 },
+  code: { width: 24, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', color: '#5b6472' },
+  chip: (tone: 'source' | 'missing' | 'original' | 'machine' | 'reviewed') => {
+    const palette = {
+      source: { background: '#eef1f5', color: '#4b5563' },
+      original: { background: '#eef1f5', color: '#4b5563' },
+      missing: { background: '#fdecec', color: '#b42318' },
+      machine: { background: '#fff4e0', color: '#8a5a00' },
+      reviewed: { background: '#e6f4ea', color: '#1e6b34' },
+    }[tone]
+    return {
+      fontSize: 10,
+      fontWeight: 600,
+      letterSpacing: '0.04em',
+      padding: '2px 6px',
+      borderRadius: 3,
+      ...palette,
+    }
+  },
   link: {
     fontSize: 11,
     background: 'none',
@@ -194,9 +211,25 @@ export function TranslateBar({
     props.onChange(edited.map((code) => set('reviewed', ['translationStatus', code, 'status'])))
   }, [props.value]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const chips = locales
-    .map((code) => ({ code, st: effectiveStatus(value[code], statusMap[code]) }))
-    .filter((c): c is { code: SupportedLocale; st: 'machine' | 'reviewed' } => c.st !== 'original')
+  // One row per language, so it is obvious at a glance what is the source,
+  // what a machine wrote, what a person checked and what is still missing.
+  type RowStatus = 'source' | 'missing' | 'original' | 'machine' | 'reviewed'
+  const rows: { code: SupportedLocale; st: RowStatus }[] = locales.map((code) => ({
+    code,
+    st:
+      code === source
+        ? 'source'
+        : !hasText(value[code])
+          ? 'missing'
+          : effectiveStatus(value[code], statusMap[code]),
+  }))
+  const statusLabel: Record<RowStatus, string> = {
+    source: t.statusSource,
+    missing: t.statusMissing,
+    original: t.statusOriginal,
+    machine: t.statusMachine,
+    reviewed: t.statusReviewed,
+  }
 
   // Module not enabled for this project (or status unknown): render nothing.
   if (!status || !status.enabled || locales.length < 2) return null
@@ -324,18 +357,19 @@ export function TranslateBar({
           ? t.translating
           : formatTranslateMessage(t.translateFrom, { source: (source ?? '').toUpperCase() })}
       </button>
-      {chips.map(({ code, st }) => (
-        <span key={code} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <span style={styles.chip(st)}>
-            {code.toUpperCase()} · {st === 'machine' ? t.statusMachine : t.statusReviewed}
-          </span>
-          {st === 'machine' && !props.readOnly && (
-            <button type="button" style={styles.link} onClick={() => markReviewed(code)}>
-              {t.markReviewed}
-            </button>
-          )}
-        </span>
-      ))}
+      <div style={styles.table} role="list">
+        {rows.map(({ code, st }) => (
+          <div key={code} style={styles.row} role="listitem">
+            <span style={styles.code}>{code.toUpperCase()}</span>
+            <span style={styles.chip(st)}>{statusLabel[st]}</span>
+            {st === 'machine' && !props.readOnly && (
+              <button type="button" style={styles.link} onClick={() => markReviewed(code)}>
+                {t.markReviewed}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
       {blockedReason && <div style={styles.note('error')}>{blockedReason}</div>}
       {note && <div style={styles.note(note.tone)}>{note.text}</div>}
     </div>
