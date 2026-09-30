@@ -48,6 +48,28 @@ const locImage = (field: string) => /* groq */ `
   }
 `
 
+// Event registration / prices / hosts (additive, 2026-09-30). Projected by
+// EVERY query that returns events (list, detail, listing-section hydration,
+// live + homepage featured, post.relatedEvent) so a card or detail view never
+// silently lacks them.
+const EVENT_ENGAGEMENT_FIELDS = /* groq */ `
+  registrationUrl,
+  "registrationLabel": ${loc('registrationLabel')},
+  priceOptions[] {
+    _key,
+    "label": ${loc('label')},
+    amount,
+    currency,
+    "note": ${loc('note')}
+  },
+  hosts[] {
+    _key,
+    name,
+    "role": ${loc('role')},
+    url
+  }
+`
+
 // ─── navigationLink fragment ──────────────────────────────────────────────────
 // Every field the navigationLink object type carries, locale-resolved, shaped
 // to match NavLink in ./types.ts. Used by the footer column / credit
@@ -327,6 +349,8 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
         "honorific": ${loc('honorific')},
         "role": ${loc('role')},
         "bio": ${loc('bio')},
+        website,
+        anchorId,
       },
       "content": ${loc('content')},
       items[] {
@@ -925,7 +949,8 @@ export const postBySlugQuery = /* groq */ `
       endDate,
       "location": ${loc('location')},
       "shortDescription": ${loc('shortDescription')},
-      ${locImage('heroImage')}
+      ${locImage('heroImage')},
+      ${EVENT_ENGAGEMENT_FIELDS}
     },
     // ADR-022 §6 — optional gallery below the text (Gallery module).
     "gallery": gallery->{ ${GALLERY_FIELDS} },
@@ -1260,7 +1285,8 @@ const eventsListingCardFields = /* groq */ `
     "caption": coalesce(caption[$locale], caption[$defaultLocale], caption.en, caption)
   },
   "categoryKeys": categories,
-  "categoryTitles": categories[]->title.en
+  "categoryTitles": categories[]->title.en,
+  ${EVENT_ENGAGEMENT_FIELDS}
 `
 
 // Core filter — applied by all three eventsListing queries.
@@ -1367,7 +1393,8 @@ export const currentLiveEventQuery = /* groq */ `
     youtubeUrl,
     "ctaLabel": ${loc('ctaLabel')},
     "seoTitle": ${loc('seoTitle')},
-    "seoDescription": ${loc('seoDescription')}
+    "seoDescription": ${loc('seoDescription')},
+    ${EVENT_ENGAGEMENT_FIELDS}
   }
 `
 
@@ -1390,7 +1417,8 @@ const homepageFeaturedEventFields = /* groq */ `
   "secondaryStreamLabel": ${loc('secondaryStreamLabel')},
   secondaryStreamUrl,
   youtubeUrl,
-  "ctaLabel": ${loc('ctaLabel')}
+  "ctaLabel": ${loc('ctaLabel')},
+  ${EVENT_ENGAGEMENT_FIELDS}
 `
 
 export const homepageFeaturedEventQuery = /* groq */ `
@@ -1428,7 +1456,8 @@ export const eventsQuery = /* groq */ `
     "location": ${loc('location')},
     "shortDescription": ${loc('shortDescription')},
     ${locImage('heroImage')},
-    youtubeChannelUrl
+    youtubeChannelUrl,
+    ${EVENT_ENGAGEMENT_FIELDS}
   }
 `
 
@@ -1443,7 +1472,8 @@ export const pastEventsQuery = /* groq */ `
     "shortDescription": ${loc('shortDescription')},
     ${locImage('heroImage')},
     startDate,
-    endDate
+    endDate,
+    ${EVENT_ENGAGEMENT_FIELDS}
   }
 `
 
@@ -1460,7 +1490,8 @@ export const additionalLiveEventsQuery = /* groq */ `
     "shortDescription": ${loc('shortDescription')},
     ${locImage('heroImage')},
     startDate,
-    endDate
+    endDate,
+    ${EVENT_ENGAGEMENT_FIELDS}
   }
 `
 
@@ -1511,7 +1542,8 @@ export const eventBySlugQuery = /* groq */ `
     youtubeUrl,
     "ctaLabel": ${loc('ctaLabel')},
     "seoTitle": ${loc('seoTitle')},
-    "seoDescription": ${loc('seoDescription')}
+    "seoDescription": ${loc('seoDescription')},
+    ${EVENT_ENGAGEMENT_FIELDS}
   }
 `
 
@@ -1563,6 +1595,8 @@ export const homePageQuery = /* groq */ `
         "honorific": ${loc('honorific')},
         "role": ${loc('role')},
         "bio": ${loc('bio')},
+        website,
+        anchorId,
       },
       "content": ${loc('content')},
       items[] {

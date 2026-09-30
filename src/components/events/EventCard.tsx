@@ -5,6 +5,7 @@ import { SlideUp } from '@/components/animation'
 import { imageUrl } from '@/lib/sanity/image'
 import type { Event } from '@/lib/sanity/types'
 import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
+import { EventCardExtras } from '@/components/events/EventEngagement'
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
@@ -100,9 +101,11 @@ export function EventCard({
 
   return (
     <SlideUp delay={delay} duration={duration} ease={ease} className="h-full">
-      <Link
-        href={href}
-        className="group flex h-full flex-col overflow-hidden rounded-[var(--radius-lg)] transition-all hover:shadow-xl"
+      {/* Stretched-link card: the title link's ::after covers the whole card,
+          so the registration link in EventCardExtras (relative z-10) can sit
+          above it without nesting <a> elements. */}
+      <div
+        className="group relative flex h-full flex-col overflow-hidden rounded-[var(--radius-lg)] transition-all hover:shadow-xl"
         style={{
           backgroundColor: 'var(--color-surface)',
           border: '1px solid',
@@ -135,7 +138,9 @@ export function EventCard({
             className="mb-2 line-clamp-2 text-base font-semibold leading-snug transition-opacity group-hover:opacity-75"
             style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
           >
-            {event.title}
+            <Link href={href} className="after:absolute after:inset-0 after:content-['']">
+              {event.title}
+            </Link>
           </h2>
 
           {/* Date + location */}
@@ -157,6 +162,8 @@ export function EventCard({
             {event.shortDescription ?? ''}
           </p>
 
+          <EventCardExtras event={event} locale={locale} tenantId={tenantId} className="mt-3" />
+
           {/* CTA — mt-auto pins to bottom regardless of content height */}
           <div
             className="mt-auto pt-4"
@@ -167,7 +174,7 @@ export function EventCard({
             </span>
           </div>
         </div>
-      </Link>
+      </div>
     </SlideUp>
   )
 }

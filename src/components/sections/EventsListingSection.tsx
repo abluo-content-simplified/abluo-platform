@@ -14,6 +14,9 @@ import { imageUrl } from '@/lib/sanity/image'
 import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 import { resolveEasing } from '@/lib/motion/easing'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
+import { EventCardExtras } from '@/components/events/EventEngagement'
+import { priceSummary } from '@/lib/modules/events/engagement'
+import { getEventMessages } from '@/lib/i18n/event-messages'
 
 // ─── Date formatting — locale-aware (mirrors EventCard/FeaturedEventBlock) ────
 
@@ -72,18 +75,19 @@ function EventMeta({ event, locale, size = 'sm' }: { event: Event; locale: strin
 
 // ─── Event Card — Standard (used in Grid layout) ──────────────────────────────
 
-function EventListingCard({ event, href, locale, priority = false }: { event: Event; href: string; locale: string; priority?: boolean }) {
+function EventListingCard({ event, href, locale, tenantId, priority = false }: { event: Event; href: string; locale: string; tenantId: string; priority?: boolean }) {
   const coverSrc = imageUrl(event.heroImage, 800)
 
   return (
-    <a
-      href={href}
-      className="group flex flex-col h-full overflow-hidden rounded-[var(--radius-lg)] transition-shadow hover:shadow-lg"
+    // Stretched-link card: the title link's ::after covers the card so the
+    // registration link in EventCardExtras (relative z-10) can sit above it
+    // without nesting <a> elements.
+    <div
+      className="group relative flex flex-col h-full overflow-hidden rounded-[var(--radius-lg)] transition-shadow hover:shadow-lg"
       style={{
         backgroundColor: 'var(--color-surface)',
         border: '1px solid',
         borderColor: 'var(--color-border)',
-        textDecoration: 'none',
       }}
     >
       <div className="shrink-0 overflow-hidden" style={{ height: '200px' }}>
@@ -105,7 +109,9 @@ function EventListingCard({ event, href, locale, priority = false }: { event: Ev
           className="text-base font-semibold leading-snug tracking-tight mb-2 line-clamp-2"
           style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
         >
-          {event.title}
+          <a href={href} className="after:absolute after:inset-0 after:content-['']" style={{ textDecoration: 'none', color: 'inherit' }}>
+            {event.title}
+          </a>
         </h3>
         {event.shortDescription && (
           <p
@@ -115,28 +121,30 @@ function EventListingCard({ event, href, locale, priority = false }: { event: Ev
             {event.shortDescription}
           </p>
         )}
+        <EventCardExtras event={event} locale={locale} tenantId={tenantId} className="mb-4" />
         <div className="mt-auto pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
           <EventMeta event={event} locale={locale} />
         </div>
       </div>
-    </a>
+    </div>
   )
 }
 
 // ─── Event Card — Large (Featured layout + Magazine main card) ────────────────
 
-function EventListingCardLarge({ event, href, locale }: { event: Event; href: string; locale: string }) {
+function EventListingCardLarge({ event, href, locale, tenantId }: { event: Event; href: string; locale: string; tenantId: string }) {
   const coverSrc = imageUrl(event.heroImage, 1200)
 
   return (
-    <a
-      href={href}
-      className="group flex flex-col h-full overflow-hidden rounded-[var(--radius-lg)] transition-shadow hover:shadow-lg"
+    // Stretched-link card: the title link's ::after covers the card so the
+    // registration link in EventCardExtras (relative z-10) can sit above it
+    // without nesting <a> elements.
+    <div
+      className="group relative flex flex-col h-full overflow-hidden rounded-[var(--radius-lg)] transition-shadow hover:shadow-lg"
       style={{
         backgroundColor: 'var(--color-surface)',
         border: '1px solid',
         borderColor: 'var(--color-border)',
-        textDecoration: 'none',
       }}
     >
       <div className="relative shrink-0 overflow-hidden" style={{ paddingTop: '56.25%' }}>
@@ -158,7 +166,9 @@ function EventListingCardLarge({ event, href, locale }: { event: Event; href: st
           className="mb-3 line-clamp-3 [--fs-h3:1.5rem] md:[--fs-h3:1.875rem]"
           style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--font-size-h3, var(--fs-h3))', fontWeight: 'var(--font-weight-h3, 600)', lineHeight: 'var(--line-height-h3, 1.375)', letterSpacing: 'var(--letter-spacing-h3, -0.025em)' }}
         >
-          {event.title}
+          <a href={href} className="after:absolute after:inset-0 after:content-['']" style={{ textDecoration: 'none', color: 'inherit' }}>
+            {event.title}
+          </a>
         </h3>
         {event.shortDescription && (
           <p
@@ -168,11 +178,12 @@ function EventListingCardLarge({ event, href, locale }: { event: Event; href: st
             {event.shortDescription}
           </p>
         )}
+        <EventCardExtras event={event} locale={locale} tenantId={tenantId} size="base" className="mb-6" />
         <div className="mt-auto pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
           <EventMeta event={event} locale={locale} size="base" />
         </div>
       </div>
-    </a>
+    </div>
   )
 }
 
@@ -180,6 +191,7 @@ function EventListingCardLarge({ event, href, locale }: { event: Event; href: st
 
 function EventListingCardMini({ event, href, locale }: { event: Event; href: string; locale: string }) {
   const coverSrc = imageUrl(event.heroImage, 240)
+  const price = priceSummary(event.priceOptions, locale, getEventMessages(locale).priceFrom)
 
   return (
     <a
@@ -221,6 +233,11 @@ function EventListingCardMini({ event, href, locale }: { event: Event; href: str
           {event.title}
         </h4>
         <EventMeta event={event} locale={locale} />
+        {price && (
+          <span className="text-xs font-semibold tabular-nums" style={{ color: 'var(--color-text-primary)' }}>
+            {price}
+          </span>
+        )}
       </div>
     </a>
   )
@@ -239,6 +256,7 @@ function GridLayout({
   events,
   eventsBase,
   locale,
+  tenantId,
   fromParam,
   duration,
   ease,
@@ -246,6 +264,7 @@ function GridLayout({
   events: Event[]
   eventsBase: string
   locale: string
+  tenantId: string
   fromParam?: string
   duration: number
   ease: string | number[]
@@ -262,7 +281,7 @@ function GridLayout({
     <div className={`grid gap-6 ${gridCols}`}>
       {events.map((event, i) => (
         <SlideUp key={event._id} duration={duration} ease={ease} delay={i * 0.08} className="h-full">
-          <EventListingCard event={event} href={eventHref(eventsBase, event.slug.current, fromParam)} locale={locale} priority={i === 0} />
+          <EventListingCard event={event} href={eventHref(eventsBase, event.slug.current, fromParam)} locale={locale} tenantId={tenantId} priority={i === 0} />
         </SlideUp>
       ))}
     </div>
@@ -275,6 +294,7 @@ function FeaturedLayout({
   events,
   eventsBase,
   locale,
+  tenantId,
   fromParam,
   duration,
   ease,
@@ -282,6 +302,7 @@ function FeaturedLayout({
   events: Event[]
   eventsBase: string
   locale: string
+  tenantId: string
   fromParam?: string
   duration: number
   ease: string | number[]
@@ -292,7 +313,7 @@ function FeaturedLayout({
   return (
     <div className="flex flex-col gap-6">
       <SlideUp duration={duration} ease={ease} delay={0}>
-        <EventListingCardLarge event={first} href={eventHref(eventsBase, first.slug.current, fromParam)} locale={locale} />
+        <EventListingCardLarge event={first} href={eventHref(eventsBase, first.slug.current, fromParam)} locale={locale} tenantId={tenantId} />
       </SlideUp>
 
       {rest.length > 0 && (
@@ -307,7 +328,7 @@ function FeaturedLayout({
         >
           {rest.map((event, i) => (
             <SlideUp key={event._id} duration={duration} ease={ease} delay={0.1 + i * 0.08} className="h-full">
-              <EventListingCard event={event} href={eventHref(eventsBase, event.slug.current, fromParam)} locale={locale} />
+              <EventListingCard event={event} href={eventHref(eventsBase, event.slug.current, fromParam)} locale={locale} tenantId={tenantId} />
             </SlideUp>
           ))}
         </div>
@@ -322,6 +343,7 @@ function MagazineLayout({
   events,
   eventsBase,
   locale,
+  tenantId,
   fromParam,
   duration,
   ease,
@@ -329,6 +351,7 @@ function MagazineLayout({
   events: Event[]
   eventsBase: string
   locale: string
+  tenantId: string
   fromParam?: string
   duration: number
   ease: string | number[]
@@ -339,7 +362,7 @@ function MagazineLayout({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
       <SlideUp duration={duration} ease={ease} delay={0} className="lg:col-span-3 h-full">
-        <EventListingCardLarge event={first} href={eventHref(eventsBase, first.slug.current, fromParam)} locale={locale} />
+        <EventListingCardLarge event={first} href={eventHref(eventsBase, first.slug.current, fromParam)} locale={locale} tenantId={tenantId} />
       </SlideUp>
 
       {rest.length > 0 && (
@@ -434,11 +457,11 @@ export function EventsListingSection({ section, surface, designSystem, locale, t
       )}
 
       {layout === 'featured' ? (
-        <FeaturedLayout events={events} eventsBase={eventsBase} locale={locale} fromParam={fromParam} duration={duration} ease={ease} />
+        <FeaturedLayout events={events} eventsBase={eventsBase} locale={locale} tenantId={tenantId} fromParam={fromParam} duration={duration} ease={ease} />
       ) : layout === 'magazine' ? (
-        <MagazineLayout events={events} eventsBase={eventsBase} locale={locale} fromParam={fromParam} duration={duration} ease={ease} />
+        <MagazineLayout events={events} eventsBase={eventsBase} locale={locale} tenantId={tenantId} fromParam={fromParam} duration={duration} ease={ease} />
       ) : (
-        <GridLayout events={events} eventsBase={eventsBase} locale={locale} fromParam={fromParam} duration={duration} ease={ease} />
+        <GridLayout events={events} eventsBase={eventsBase} locale={locale} tenantId={tenantId} fromParam={fromParam} duration={duration} ease={ease} />
       )}
 
       {viewAllLabel && viewAllHref && (

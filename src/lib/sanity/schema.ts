@@ -1402,6 +1402,19 @@ const teamMemberType = defineType({
     defineField({ name: 'name', title: 'Name', type: 'string' }),
     defineField({ name: 'role', title: 'Role / Job Title', type: 'localizedString' }),
     defineField({ name: 'bio', title: 'Short Description', type: 'localizedText' }),
+    // Additive (2026-09-30) — both optional, language-neutral.
+    defineField({
+      name: 'website',
+      title: 'Website',
+      type: 'url',
+      description: 'Optional personal website. Shown as a small link under the description.',
+      validation: (Rule) => Rule.uri({ scheme: ['http', 'https'] }),
+    }),
+    {
+      ...anchorIdField(),
+      description:
+        'Optional. Lets other pages link straight to this person — e.g. `florian-parra` → /teachers#florian-parra. Lowercase letters, digits, "-" and "_" only. Do not type the "#".',
+    },
   ],
   preview: {
     select: { title: 'name', honorific: 'honorific.it', subtitle: 'role.it', media: 'photo' },

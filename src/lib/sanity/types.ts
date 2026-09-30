@@ -780,6 +780,30 @@ export interface Event {
   ctaLabel?: string
   seoTitle?: string
   seoDescription?: string
+  // Registration — primary sign-up link (absolute URL or site-relative path)
+  registrationUrl?: string
+  /** Resolved localized label; the component falls back to a dictionary label. */
+  registrationLabel?: string
+  priceOptions?: EventPriceOption[]
+  hosts?: EventHost[]
+}
+
+/** One price row on an event (e.g. "Members — €30"). Labels resolved by GROQ. */
+export interface EventPriceOption {
+  _key?: string
+  label?: string
+  amount?: number
+  /** ISO 4217 code, e.g. "EUR". Defaults to EUR when missing. */
+  currency?: string
+  note?: string
+}
+
+/** A person hosting an event. `url` may be absolute or site-relative (`/teachers#anchor`). */
+export interface EventHost {
+  _key?: string
+  name?: string
+  role?: string
+  url?: string
 }
 
 // ─── Blog ─────────────────────────────────────────────────────────────────────
@@ -1122,6 +1146,10 @@ export interface TeamMember {
   bio?: string
   // GROQ projects photo { asset, hotspot, crop } — no _type field — so ResolvedImage, not SanityImage
   photo?: ResolvedImage
+  /** Optional personal website (absolute URL). */
+  website?: string
+  /** Optional DOM id so `/team#anchor` links can target this member. */
+  anchorId?: string
 }
 
 export interface TeamSection {

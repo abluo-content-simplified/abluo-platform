@@ -21,6 +21,8 @@ import { SlideUp } from '@/components/animation'
 import { SlugMapProvider, type SlugMap } from '@/components/SlugMapContext'
 import { EventCard } from '@/components/events/EventCard'
 import { BackButton } from '@/components/events/BackButton'
+import { EventHostsLine, EventPriceList, EventRegisterButton } from '@/components/events/EventEngagement'
+import { validPriceOptions } from '@/lib/modules/events/engagement'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
 interface PageProps {
@@ -147,6 +149,8 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
 
   const msg = getEventMessages(locale)
 
+  const hasPrices = validPriceOptions(event.priceOptions).length > 0
+
   const heroSrc = imageUrl(event.heroImage, 1600)
   const heroSrcSet = imageSrcSet(event.heroImage, [800, 1200, 1600, 2400])
   const embedSrc = event.embedPlayerEnabled ? resolveEmbedUrl(event.embedVideoUrl) : null
@@ -205,6 +209,7 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
               {startDate && <div>📅 {startDate}{endDate && endDate !== startDate ? ` – ${endDate}` : ''}</div>}
               {event.location && <div>📍 {event.location}</div>}
             </div>
+            <EventHostsLine hosts={event.hosts} locale={locale} tenantId={tenantId} className="-mt-4 mb-8 text-sm" />
           </SlideUp>
 
           {/* ── Short description ────────────────────────────────── */}
@@ -213,6 +218,18 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
               <p className="text-lg font-medium mb-8" style={{ color: 'var(--color-text-primary)' }}>
                 {event.shortDescription}
               </p>
+            </SlideUp>
+          )}
+
+          {/* ── Registration: prices + sign-up button ──────────────── */}
+          {(hasPrices || event.registrationUrl) && (
+            <SlideUp delay={0.22} duration={0.5}>
+              <div className="mb-12 flex flex-col gap-6">
+                <EventPriceList options={event.priceOptions} locale={locale} />
+                <div>
+                  <EventRegisterButton event={event} locale={locale} tenantId={tenantId} />
+                </div>
+              </div>
             </SlideUp>
           )}
 

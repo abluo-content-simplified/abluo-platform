@@ -23,6 +23,14 @@ export interface EventMessages {
   noEventsYetHeading:   string
   /** ADR-016 Phase B — events list page (/events) fixed fallback empty state */
   noEventsYetBody:      string
+  /** Fallback label for the registration button when the event sets none. */
+  registerFallback:     string
+  /** Heading above the price list on the event detail page. */
+  pricesHeading:        string
+  /** Compact lowest price on cards — `{price}` is the formatted amount. */
+  priceFrom:            string
+  /** Prefix before the host names: "Hosted by Anna, Marco". */
+  hostedBy:             string
 }
 
 const MESSAGES: Record<string, EventMessages> = {
@@ -38,6 +46,10 @@ const MESSAGES: Record<string, EventMessages> = {
     watchFallback:        'Watch',
     noEventsYetHeading:   'No events yet.',
     noEventsYetBody:      'Check back soon.',
+    registerFallback:     'Sign up',
+    pricesHeading:        'Prices',
+    priceFrom:            'from {price}',
+    hostedBy:             'Hosted by',
   },
   it: {
     statusLive:           'In diretta',
@@ -51,6 +63,10 @@ const MESSAGES: Record<string, EventMessages> = {
     watchFallback:        'Guarda',
     noEventsYetHeading:   'Nessun evento al momento.',
     noEventsYetBody:      'Torna presto per aggiornamenti.',
+    registerFallback:     'Iscriviti',
+    pricesHeading:        'Prezzi',
+    priceFrom:            'da {price}',
+    hostedBy:             'Con',
   },
   de: {
     statusLive:           'Live',
@@ -64,6 +80,10 @@ const MESSAGES: Record<string, EventMessages> = {
     watchFallback:        'Ansehen',
     noEventsYetHeading:   'Noch keine Events.',
     noEventsYetBody:      'Schau bald wieder vorbei.',
+    registerFallback:     'Anmelden',
+    pricesHeading:        'Preise',
+    priceFrom:            'ab {price}',
+    hostedBy:             'Mit',
   },
   fr: {
     statusLive:           'En direct',
@@ -77,6 +97,10 @@ const MESSAGES: Record<string, EventMessages> = {
     watchFallback:        'Regarder',
     noEventsYetHeading:   'Aucun événement pour le moment.',
     noEventsYetBody:      'Revenez bientôt.',
+    registerFallback:     "S'inscrire",
+    pricesHeading:        'Tarifs',
+    priceFrom:            'à partir de {price}',
+    hostedBy:             'Animé par',
   },
   es: {
     statusLive:           'En directo',
@@ -90,6 +114,10 @@ const MESSAGES: Record<string, EventMessages> = {
     watchFallback:        'Ver',
     noEventsYetHeading:   'Todavía no hay eventos.',
     noEventsYetBody:      'Vuelve pronto.',
+    registerFallback:     'Inscríbete',
+    pricesHeading:        'Precios',
+    priceFrom:            'desde {price}',
+    hostedBy:             'Con',
   },
   pt: {
     statusLive:           'Em direto',
@@ -103,6 +131,10 @@ const MESSAGES: Record<string, EventMessages> = {
     watchFallback:        'Ver',
     noEventsYetHeading:   'Ainda não há eventos.',
     noEventsYetBody:      'Volte em breve.',
+    registerFallback:     'Inscrever-me',
+    pricesHeading:        'Preços',
+    priceFrom:            'a partir de {price}',
+    hostedBy:             'Com',
   },
   nl: {
     statusLive:           'Live',
@@ -116,9 +148,15 @@ const MESSAGES: Record<string, EventMessages> = {
     watchFallback:        'Bekijken',
     noEventsYetHeading:   'Nog geen evenementen.',
     noEventsYetBody:      'Kom binnenkort terug.',
+    registerFallback:     'Aanmelden',
+    pricesHeading:        'Prijzen',
+    priceFrom:            'vanaf {price}',
+    hostedBy:             'Met',
   },
 }
 
 export function getEventMessages(locale: string): EventMessages {
   return MESSAGES[locale] ?? MESSAGES.en
 }
+
+export const EVENT_MESSAGES_FOR_TEST = MESSAGES

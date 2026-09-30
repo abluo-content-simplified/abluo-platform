@@ -7,11 +7,14 @@ import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
 import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 import { resolveEasing } from '@/lib/motion/easing'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
+import { getTeamSectionMessages } from '@/lib/i18n/team-section-messages'
 
 interface Props {
   section: TeamSection
   surface: SurfaceType
   designSystem: DesignSystem | null
+  /** Page locale — picks the dictionary label for member website links. */
+  locale?: string
 }
 
 // ─── Shared rich-text rendering ───────────────────────────────────────────────
@@ -146,8 +149,9 @@ function RichText({ blocks }: { blocks: PortableTextContent }) {
   return <div className="space-y-3">{elements}</div>
 }
 
-export function TeamSection({ section, surface, designSystem }: Props) {
+export function TeamSection({ section, surface, designSystem, locale }: Props) {
   const { title, subtitle, intro, members } = section
+  const msg = getTeamSectionMessages(locale)
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
   // Motion tokens
@@ -192,7 +196,8 @@ export function TeamSection({ section, surface, designSystem }: Props) {
 
             return (
               <SlideUp key={member._key} duration={duration} ease={ease} delay={index * 0.07}>
-                <div className="group flex flex-col">
+                {/* anchorId lets other pages deep-link to one member (/teachers#florian-parra). */}
+                <div id={member.anchorId || undefined} className="group flex scroll-mt-24 flex-col">
                   {/* Photo or initials placeholder */}
                   <div
                     className="relative mb-6 w-full overflow-hidden"
@@ -263,6 +268,21 @@ export function TeamSection({ section, surface, designSystem }: Props) {
                     >
                       {member.bio}
                     </p>
+                  )}
+
+                  {/* Website */}
+                  {member.website && (
+                    <a
+                      href={member.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-4 inline-flex items-center gap-1 self-start text-sm font-medium underline-offset-4 hover:underline"
+                      style={{ color: 'var(--color-primary)' }}
+                    >
+                      {msg.website}
+                      <span aria-hidden="true">↗</span>
+                      <span className="sr-only"> ({msg.opensInNewTab})</span>
+                    </a>
                   )}
                 </div>
               </SlideUp>

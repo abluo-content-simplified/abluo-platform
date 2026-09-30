@@ -409,7 +409,7 @@ export function SectionRenderer({
     case 'treatmentsSection':
       return <TreatmentsSection section={section} surface={surface} designSystem={designSystem} />
     case 'teamSection':
-      return <TeamSection section={section} surface={surface} designSystem={designSystem} />
+      return <TeamSection section={section} surface={surface} designSystem={designSystem} locale={locale} />
     case 'textSection':
       return <TextSection section={section} surface={surface} designSystem={designSystem} />
     case 'faqSection':

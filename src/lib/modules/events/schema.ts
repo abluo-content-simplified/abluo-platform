@@ -269,6 +269,7 @@ const eventType = defineType({
     { name: 'content', title: 'Content', default: true },
     { name: 'placement', title: 'Placement' },
     { name: 'schedule', title: 'Schedule' },
+    { name: 'registration', title: 'Registration' },
     { name: 'media', title: 'Media' },
     { name: 'streaming', title: 'Streaming' },
     { name: 'meta', title: 'SEO / Meta' },
@@ -361,6 +362,101 @@ const eventType = defineType({
       options: { moduleId: 'events' } as any,
     }),
     defineField({ name: 'schedule', title: 'Schedule', type: 'array', group: 'schedule', of: [defineArrayMember({ type: 'scheduleItem' })] }),
+    // ── Hosts ──────────────────────────────────────────────────────────────────
+    // Additive (2026-09-30). `name` is a plain string — a person's name is the
+    // same in every language; `role` is localized. `url` may be absolute or a
+    // site-relative path/anchor (e.g. /teachers#florian-parra), resolved with
+    // the shared withTenantPrefix rule at render time.
+    defineField({
+      name: 'hosts',
+      title: 'Hosts',
+      type: 'array',
+      group: 'content',
+      description: 'Who leads this event. Shown as "Hosted by …" on the event page and listing cards.',
+      of: [
+        defineArrayMember({
+          type: 'object',
+          name: 'eventHost',
+          title: 'Host',
+          fields: [
+            defineField({ name: 'name', title: 'Name', type: 'string', validation: (Rule) => Rule.required() }),
+            defineField({ name: 'role', title: 'Role', type: 'localizedString', description: 'Optional, e.g. "Teacher".' }),
+            defineField({
+              name: 'url',
+              title: 'Link',
+              type: 'string',
+              description: 'Optional. A full URL (https://…) or a page on this site, e.g. /teachers#florian-parra.',
+              validation: (Rule) =>
+                Rule.custom((value?: string) => {
+                  if (!value) return true
+                  return /^(https?:\/\/|\/|#)/i.test(value.trim())
+                    ? true
+                    : 'Use a full URL starting with https:// or a site path starting with "/" (or "#").'
+                }),
+            }),
+          ],
+          preview: {
+            select: { title: 'name', subtitle: 'role.en' },
+          },
+        }),
+      ],
+    }),
+    // ── Registration ───────────────────────────────────────────────────────────
+    // Additive (2026-09-30). All optional — an event with none of these renders
+    // exactly as before.
+    defineField({
+      name: 'registrationUrl',
+      title: 'Registration Link',
+      type: 'url',
+      group: 'registration',
+      description: 'Where visitors sign up — a full URL (opens in a new tab) or a page on this site (e.g. /contact).',
+      validation: (Rule) => Rule.uri({ allowRelative: true, scheme: ['http', 'https', 'mailto'] }),
+    }),
+    defineField({
+      name: 'registrationLabel',
+      title: 'Registration Button Label',
+      type: 'localizedString',
+      group: 'registration',
+      description: 'Optional. Leave empty for the default ("Sign up" / "Iscriviti" / "S\'inscrire" …).',
+    }),
+    defineField({
+      name: 'priceOptions',
+      title: 'Prices',
+      type: 'array',
+      group: 'registration',
+      description: 'Optional price list. Listing cards show the lowest price ("from €30").',
+      of: [
+        defineArrayMember({
+          type: 'object',
+          name: 'eventPriceOption',
+          title: 'Price',
+          fields: [
+            defineField({ name: 'label', title: 'Label', type: 'localizedString', description: 'e.g. "Members", "Non-members".' }),
+            defineField({ name: 'amount', title: 'Amount', type: 'number', validation: (Rule) => Rule.required().min(0) }),
+            defineField({
+              name: 'currency',
+              title: 'Currency',
+              type: 'string',
+              initialValue: 'EUR',
+              description: 'Three-letter code, e.g. EUR, CHF, GBP.',
+              validation: (Rule) =>
+                Rule.custom((value?: string) => {
+                  if (!value) return true
+                  return /^[A-Z]{3}$/.test(value) ? true : 'Use a three-letter uppercase currency code, e.g. EUR.'
+                }),
+            }),
+            defineField({ name: 'note', title: 'Note', type: 'localizedString', description: 'Optional, e.g. "incl. lunch".' }),
+          ],
+          preview: {
+            select: { label: 'label.en', amount: 'amount', currency: 'currency' },
+            prepare: ({ label, amount, currency }: { label?: string; amount?: number; currency?: string }) => ({
+              title: label ?? 'Price',
+              subtitle: amount !== undefined ? `${amount} ${currency ?? 'EUR'}` : '—',
+            }),
+          },
+        }),
+      ],
+    }),
     defineField({ name: 'heroImage', title: 'Hero Image', type: 'localizedImage', group: 'media' }),
     defineField({ name: 'gallery', title: 'Gallery', type: 'array', group: 'media', of: [defineArrayMember({ type: 'localizedImage' })] }),
     // ── Embedded Player ────────────────────────────────────────────────────────
