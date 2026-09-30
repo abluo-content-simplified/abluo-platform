@@ -11,6 +11,7 @@ import { DuplicateDesignSystemAction } from './src/sanity/actions/DuplicateDesig
 import { AutoCreateSiteConfigAction } from './src/sanity/actions/AutoCreateSiteConfigAction'
 import { BumpFormVersionAction } from './src/sanity/actions/BumpFormVersionAction'
 // ADR-011 Phase C1 — Project Settings Shell
+import { ModulesOverview } from './src/lib/sanity/studio/ModulesOverview'
 import { ModuleList } from './src/lib/sanity/studio/ModuleList'
 import { StubPane } from './src/lib/sanity/studio/StubPane'
 // ADR-014 Phase B — Integrations & Privacy panes
@@ -383,19 +384,6 @@ export default defineConfig({
         //
         // All modules are listed, active or not, so one can be switched on. The
         // "— off" suffix is the at-a-glance status the old index pane carried.
-        function buildModuleItems(slug: string, projectDocId: string, enabledModuleIds: string[]) {
-          return MODULE_REGISTRY.map((mod) =>
-            S.listItem()
-              .id(`${slug}-module-${mod.id}`)
-              .title(enabledModuleIds.includes(mod.id) ? mod.label : `${mod.label} — off`)
-              .child(
-                S.component(ModuleList)
-                  .id(`${slug}-module-${mod.id}-pane`)
-                  .title(mod.label)
-                  .options({ projectId: projectDocId, projectSlug: slug, moduleId: mod.id })
-              )
-          )
-        }
 
         // ── Client items ──────────────────────────────────────────────────────
         const clientItems = clients.map((clientDoc) => {
@@ -475,18 +463,24 @@ export default defineConfig({
                     S.listItem()
                       .id(`${slug}-modules`)
                       .title('Modules')
-                      .child(async () => {
-                        const liveIds = await client
-                          .fetch<string[] | null>(
-                            `*[_type == "project" && _id == $id][0].moduleInstallations[enabled != false].moduleId`,
-                            { id: project._id }
-                          )
-                          .catch(() => null)
-                        return S.list()
+                      // A LIVE pane (ModulesOverview): on first, divider, off
+                      // below, re-rendered on every change to the project — a
+                      // plain S.list() kept "— off" until a Studio reload
+                      // because list titles are fixed when the pane resolves.
+                      .child(
+                        S.component(ModulesOverview)
                           .id(`${slug}-modules-list`)
                           .title('Modules')
-                          .items(buildModuleItems(slug, project._id, liveIds ?? enabledModuleIds))
-                      }),
+                          .options({ projectId: project._id, projectSlug: slug })
+                          .child((moduleId: string) => {
+                            const mod = MODULE_REGISTRY.find((m) => m.id === moduleId)
+                            if (!mod) return undefined
+                            return S.component(ModuleList)
+                              .id(`${slug}-module-${mod.id}-pane`)
+                              .title(mod.label)
+                              .options({ projectId: project._id, projectSlug: slug, moduleId: mod.id })
+                          })
+                      ),
 
                     S.divider(),
 
