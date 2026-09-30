@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import createMiddleware from 'next-intl/middleware'
+import { negotiateLocale } from '@/lib/i18n/negotiate-locale'
 import { NextRequest, NextResponse } from 'next/server'
 import { routing } from './i18n/routing'
 import { resolvePlatformRole } from '@/lib/api/auth'
@@ -409,27 +410,23 @@ export async function proxy(request: NextRequest) {
       return NextResponse.rewrite(url)
     }
 
-    // Root path — determine locale from NEXT_LOCALE cookie, then Accept-Language,
-    // then fall back to the project default.
-    // `hostScope` is non-null here (tenantId came from it), so this is the
-    // project's own default — not a guess, and not the platform's 'en'.
+    // Root path — the platform rule (src/lib/i18n/negotiate-locale.ts):
+    // earlier choice on this site (NEXT_LOCALE) → first browser language the
+    // SITE offers → the site's default. Negotiated against the PROJECT's
+    // languages, never the platform registry: a German browser on a site
+    // without German used to be sent to /de and 404ed by the [tenant] layout.
+    // `hostScope` is non-null here (tenantId came from it), so the default and
+    // the language list are the project's own.
     const defaultLocale = hostScope?.defaultLocale ?? 'en'
     let locale = defaultLocale
 
     if (path === '/') {
-      // 1. Honour a previously persisted locale preference (written by next-intl).
-      const cookieLocale = request.cookies.get('NEXT_LOCALE')?.value
-      if (cookieLocale && (routing.locales as readonly string[]).includes(cookieLocale)) {
-        locale = cookieLocale
-      } else {
-        // 2. Negotiate from Accept-Language header.
-        const acceptLanguage = request.headers.get('accept-language') ?? ''
-        const preferred = acceptLanguage
-          .split(',')
-          .map((part) => part.split(';')[0].trim().slice(0, 2))
-          .find((code) => (routing.locales as readonly string[]).includes(code))
-        if (preferred) locale = preferred
-      }
+      locale = negotiateLocale({
+        cookieLocale: request.cookies.get('NEXT_LOCALE')?.value,
+        acceptLanguage: request.headers.get('accept-language'),
+        supportedLocales: hostScope?.supportedLocales,
+        defaultLocale,
+      })
     }
 
     // All other paths (e.g. /about): use tenant default locale.

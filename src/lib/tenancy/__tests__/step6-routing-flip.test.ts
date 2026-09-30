@@ -31,6 +31,16 @@ import {
 import { asUrlProjectSegment } from '../ids'
 import { GENERATED_HOST_ROUTES } from '../generated/route-config'
 
+// The identity of a scope — which customer, which website, which default. The
+// language list (supportedLocales) is deliberately NOT part of these frozen
+// snapshots: it is live Sanity content that changes whenever a client adds a
+// language, and is covered by its own tests (host-scope.test.ts, "languages").
+function identity<T extends { supportedLocales?: unknown } | null | undefined>(scope: T) {
+  if (!scope) return scope
+  return Object.fromEntries(Object.entries(scope).filter(([key]) => key !== 'supportedLocales'))
+}
+
+
 // ─── The incumbent, transcribed verbatim from commit c73fd54 ─────────────────
 
 /** src/proxy.ts `resolveTenant` as it stood before this commit. */
@@ -122,7 +132,7 @@ const LIVE_HOSTS: HostCase[] = [
 
 describe('every live host resolves to the right project and locale', () => {
   it.each(LIVE_HOSTS)('$host', ({ host, tenantSlug, projectSlug, projectId, defaultLocale }) => {
-    expect(resolveScopeFromHost(host)).toEqual({
+    expect(identity(resolveScopeFromHost(host))).toEqual({
       tenantSlug,
       projectSlug,
       projectId,
@@ -289,7 +299,7 @@ describe('BEHAVIOUR CHANGE: amelie — the one project the flip actually fixes',
   })
 
   it('AFTER: the host resolves to the amelie project', () => {
-    expect(resolveScopeFromHost('amelie.preview.abluo.app')).toEqual({
+    expect(identity(resolveScopeFromHost('amelie.preview.abluo.app'))).toEqual({
       tenantSlug: 'amelie',
       projectSlug: 'amelie',
       projectId: 'fb34c7e4-6ecf-489a-b56a-8acbf75909cd',

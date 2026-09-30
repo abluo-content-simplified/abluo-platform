@@ -29,6 +29,16 @@ import {
 } from '../host-scope'
 import { GENERATED_HOST_ROUTES } from '../generated/route-config'
 
+// The identity of a scope — which customer, which website, which default. The
+// language list (supportedLocales) is deliberately NOT part of these frozen
+// snapshots: it is live Sanity content that changes whenever a client adds a
+// language, and is covered by its own tests (host-scope.test.ts, "languages").
+function identity<T extends { supportedLocales?: unknown } | null | undefined>(scope: T) {
+  if (!scope) return scope
+  return Object.fromEntries(Object.entries(scope).filter(([key]) => key !== 'supportedLocales'))
+}
+
+
 // ─── The incumbent, transcribed verbatim from src/proxy.ts (2026-08-31) ──────
 
 /** proxy.ts:19 `resolveTenant`. Copied, not imported — proxy.ts pulls in
@@ -169,7 +179,7 @@ const LIVE_PROJECTS: LiveProject[] = [
 describe('equivalence with the proxy.ts host maps', () => {
   it.each(LIVE_PROJECTS)('$name resolves on every host it serves', (project) => {
     for (const host of project.hosts) {
-      expect(resolveScopeFromHost(host), `host ${host}`).toEqual(project.expected)
+      expect(identity(resolveScopeFromHost(host)), `host ${host}`).toEqual(project.expected)
     }
   })
 
@@ -239,7 +249,7 @@ describe('equivalence with the proxy.ts host maps', () => {
     expect(proxyResolveTenant('www.ch-psicoterapeuta.com')).toBe('hoffmann')
     expect(proxyResolveTenant('hoffmann.preview.abluo.app')).toBe('hoffmann')
     expect(proxyResolveDefaultLocale('hoffmann')).toBe('it')
-    expect(resolveScopeFromHost('ch-psicoterapeuta.com')).toEqual({
+    expect(identity(resolveScopeFromHost('ch-psicoterapeuta.com'))).toEqual({
       tenantSlug: 'hoffmann',
       projectSlug: 'hoffmann',
       projectId: '6d709178-f33a-4b4a-be52-521189e11290',
@@ -361,7 +371,7 @@ describe('host normalisation', () => {
     ['whitespace', '  studiomartegani.com  '],
     ['scheme pasted in', 'https://studiomartegani.com'],
   ])('%s → the same scope', (_label, host) => {
-    expect(resolveScopeFromHost(host)).toEqual(expected)
+    expect(identity(resolveScopeFromHost(host))).toEqual(expected)
   })
 
   it('normalises dev-convention and preview hosts the same way', () => {
@@ -435,5 +445,20 @@ describe('generated table invariants', () => {
       'abluo.preview.abluo.app',
       'dev.abluo.app',
     ])
+  })
+})
+
+// ─── Languages (root-URL negotiation input) ──────────────────────────────────
+describe('languages carried on every route', () => {
+  it('every route offers its default language, first', () => {
+    for (const route of GENERATED_HOST_ROUTES) {
+      expect(route.supportedLocales[0], route.host).toBe(route.defaultLocale)
+      expect(new Set(route.supportedLocales).size, `${route.host} has duplicates`).toBe(route.supportedLocales.length)
+      for (const l of route.supportedLocales) expect(l, route.host).toMatch(/^[a-z]{2}$/)
+    }
+  })
+  it('the resolver passes the list through', () => {
+    const route = GENERATED_HOST_ROUTES.find((r) => r.host === 'livener.net')!
+    expect(resolveScopeFromHost('livener.net')?.supportedLocales).toEqual(route.supportedLocales)
   })
 })

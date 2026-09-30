@@ -149,6 +149,11 @@ export interface HostScope {
   projectId: string
   /** `projects.default_locale`. A default, not a negotiated locale. */
   defaultLocale: string
+  /**
+   * The website's languages (default first). Only for root-URL negotiation —
+   * see src/lib/i18n/negotiate-locale.ts.
+   */
+  supportedLocales: readonly string[]
 }
 
 // ─── The status ladder ───────────────────────────────────────────────────────
@@ -329,6 +334,7 @@ export function resolveScopeFromHost(host: string | null | undefined): HostScope
     projectSlug: asSupabaseProjectSlug(route.projectSlug),
     projectId: route.projectId,
     defaultLocale: route.defaultLocale,
+    supportedLocales: route.supportedLocales,
   }
 }
 
@@ -436,6 +442,7 @@ const SCOPE_BY_PROJECT_SEGMENT: ReadonlyMap<string, HostScope> = (() => {
       projectSlug: asSupabaseProjectSlug(route.projectSlug),
       projectId: route.projectId,
       defaultLocale: route.defaultLocale,
+      supportedLocales: route.supportedLocales,
     })
   }
   return index

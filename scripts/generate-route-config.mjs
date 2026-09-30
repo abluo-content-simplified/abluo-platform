@@ -134,6 +134,33 @@ async function fetchTable(baseUrl, key, query) {
   return JSON.parse(text)
 }
 
+/**
+ * projectSlug → { supportedLocales, defaultLocale } from each PUBLISHED siteConfig.
+ * Read-only; the token is optional (the dataset is public) but used when present.
+ * A failure here fails the whole run (exit 2), like a Supabase failure: a table
+ * generated without languages would silently send every browser to the default.
+ */
+async function fetchSupportedLocales(env) {
+  const pid = env.NEXT_PUBLIC_SANITY_PROJECT_ID ?? process.env.NEXT_PUBLIC_SANITY_PROJECT_ID
+  const ds = env.NEXT_PUBLIC_SANITY_DATASET ?? process.env.NEXT_PUBLIC_SANITY_DATASET
+  const token = env.SANITY_API_READ_TOKEN ?? env.SANITY_API_WRITE_TOKEN ?? process.env.SANITY_API_READ_TOKEN
+  if (!pid || !ds) throw new Error('Missing NEXT_PUBLIC_SANITY_PROJECT_ID and/or NEXT_PUBLIC_SANITY_DATASET.')
+  const groq = '*[_type == "siteConfig" && defined(projectSlug) && !(_id in path("drafts.**"))]{projectSlug, defaultLocale, supportedLocales}'
+  const res = await fetch(
+    `https://${pid}.apicdn.sanity.io/v2026-05-21/data/query/${ds}?query=${encodeURIComponent(groq)}&perspective=published`,
+    { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+  )
+  const text = await res.text()
+  if (!res.ok) throw new Error(`Sanity ${res.status} reading siteConfig languages: ${text.slice(0, 200)}`)
+  const map = new Map()
+  for (const c of JSON.parse(text).result ?? []) {
+    // Two siteConfigs for one project would be a data error; the first one wins
+    // deterministically (sorted by the GROQ default order) and it is reported.
+    if (!map.has(c.projectSlug)) map.set(c.projectSlug, c)
+  }
+  return map
+}
+
 // ─── Derivation ──────────────────────────────────────────────────────────────
 
 /**
@@ -176,6 +203,7 @@ function hostsForProject(project, tenant) {
       projectSlug: project.slug,
       projectId: project.id,
       defaultLocale: project.default_locale,
+      supportedLocales: project.supported_locales,
       status: project.status,
     })
 
@@ -262,6 +290,7 @@ function renderModule(rows) {
         `    projectSlug: ${q(r.projectSlug)},\n` +
         `    projectId: ${q(r.projectId)},\n` +
         `    defaultLocale: ${q(r.defaultLocale)},\n` +
+        `    supportedLocales: [${r.supportedLocales.map(q).join(', ')}],\n` +
         `    status: ${q(r.status)},\n` +
         `  },`
     )
@@ -272,7 +301,8 @@ function renderModule(rows) {
   return `/**
  * GENERATED — DO NOT EDIT BY HAND, run scripts/generate-route-config.mjs
  *
- * Source of truth: the \`projects\` and \`tenants\` tables in Supabase.
+ * Source of truth: the \`projects\` and \`tenants\` tables in Supabase, plus each
+ * project's \`siteConfig.supportedLocales\` in Sanity (languages only).
  * This file is the build-time COPY of that data that the edge can read
  * synchronously. It is checked in so the edge bundle needs no network, and it
  * is regenerated — never edited — so it cannot drift from the database.
@@ -311,6 +341,15 @@ export interface GeneratedHostRoute {
   projectId: string
   /** \`projects.default_locale\`. */
   defaultLocale: string
+  /**
+   * The website's languages — \`siteConfig.supportedLocales\` in Sanity, default
+   * language always included. Used ONLY to negotiate the root URL
+   * (src/lib/i18n/negotiate-locale.ts): a browser language the site does not
+   * offer must fall back to \`defaultLocale\`, never to a 404.
+   * A language added in Studio is reachable at once through the switcher; the
+   * browser auto-detection picks it up at the next regeneration.
+   */
+  supportedLocales: readonly string[]
   /**
    * \`projects.status\`: 'draft' | 'preview' | 'active' | 'inactive'.
    * What each one serves depends on the ROW'S \`hostKind\` — see
@@ -365,15 +404,28 @@ export async function generateRouteConfigSource() {
     fetchTable(url, key, 'tenants?select=id,slug&order=slug'),
   ])
 
+  const localesBySlug = await fetchSupportedLocales(env)
+  const warnings = []
+  for (const p of projects) {
+    const cfg = localesBySlug.get(p.slug)
+    const list = Array.isArray(cfg?.supportedLocales) ? cfg.supportedLocales.filter((l) => typeof l === 'string') : []
+    // Default first, then the site's own order; the default is always offered.
+    p.supported_locales = [p.default_locale, ...list.filter((l) => l !== p.default_locale)]
+    if (cfg?.defaultLocale && cfg.defaultLocale !== p.default_locale) {
+      warnings.push(`project "${p.slug}": Supabase default_locale=${p.default_locale} but siteConfig.defaultLocale=${cfg.defaultLocale}`)
+    }
+  }
+
   const { rows, orphans } = buildRows(projects, tenants)
-  return { source: renderModule(rows), rows, orphans, projectCount: projects.length }
+  return { source: renderModule(rows), rows, orphans, warnings, projectCount: projects.length }
 }
 
 export { normalizeHost, PLATFORM_HOSTS, OUT_REL }
 
 async function main() {
   const args = new Set(process.argv.slice(2))
-  const { source, rows, orphans, projectCount } = await generateRouteConfigSource()
+  const { source, rows, orphans, warnings, projectCount } = await generateRouteConfigSource()
+  for (const w of warnings) console.warn(`  warning: ${w}`)
 
   if (args.has('--stdout')) {
     process.stdout.write(source)

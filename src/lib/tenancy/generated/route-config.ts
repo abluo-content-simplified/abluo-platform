@@ -1,7 +1,8 @@
 /**
  * GENERATED — DO NOT EDIT BY HAND, run scripts/generate-route-config.mjs
  *
- * Source of truth: the `projects` and `tenants` tables in Supabase.
+ * Source of truth: the `projects` and `tenants` tables in Supabase, plus each
+ * project's `siteConfig.supportedLocales` in Sanity (languages only).
  * This file is the build-time COPY of that data that the edge can read
  * synchronously. It is checked in so the edge bundle needs no network, and it
  * is regenerated — never edited — so it cannot drift from the database.
@@ -41,6 +42,15 @@ export interface GeneratedHostRoute {
   /** `projects.default_locale`. */
   defaultLocale: string
   /**
+   * The website's languages — `siteConfig.supportedLocales` in Sanity, default
+   * language always included. Used ONLY to negotiate the root URL
+   * (src/lib/i18n/negotiate-locale.ts): a browser language the site does not
+   * offer must fall back to `defaultLocale`, never to a 404.
+   * A language added in Studio is reachable at once through the switcher; the
+   * browser auto-detection picks it up at the next regeneration.
+   */
+  supportedLocales: readonly string[]
+  /**
    * `projects.status`: 'draft' | 'preview' | 'active' | 'inactive'.
    * What each one serves depends on the ROW'S `hostKind` — see
    * `servesOnHostKind()` in host-scope.ts. In short: 'active' everywhere,
@@ -58,6 +68,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "abluo",
     projectId: "84702a83-b59a-434d-8dd4-99ea7292f873",
     defaultLocale: "en",
+    supportedLocales: ["en", "it", "de"],
     status: "active",
   },
   {
@@ -67,6 +78,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "abluo",
     projectId: "84702a83-b59a-434d-8dd4-99ea7292f873",
     defaultLocale: "en",
+    supportedLocales: ["en", "it", "de"],
     status: "active",
   },
   {
@@ -76,6 +88,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "abluo",
     projectId: "84702a83-b59a-434d-8dd4-99ea7292f873",
     defaultLocale: "en",
+    supportedLocales: ["en", "it", "de"],
     status: "active",
   },
   {
@@ -85,6 +98,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "amelie",
     projectId: "fb34c7e4-6ecf-489a-b56a-8acbf75909cd",
     defaultLocale: "en",
+    supportedLocales: ["en"],
     status: "active",
   },
   {
@@ -94,6 +108,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "amelie",
     projectId: "fb34c7e4-6ecf-489a-b56a-8acbf75909cd",
     defaultLocale: "en",
+    supportedLocales: ["en"],
     status: "active",
   },
   {
@@ -103,6 +118,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "amelie",
     projectId: "fb34c7e4-6ecf-489a-b56a-8acbf75909cd",
     defaultLocale: "en",
+    supportedLocales: ["en"],
     status: "active",
   },
   {
@@ -112,6 +128,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "hoffmann",
     projectId: "6d709178-f33a-4b4a-be52-521189e11290",
     defaultLocale: "it",
+    supportedLocales: ["it", "de"],
     status: "active",
   },
   {
@@ -121,6 +138,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "abluo",
     projectId: "84702a83-b59a-434d-8dd4-99ea7292f873",
     defaultLocale: "en",
+    supportedLocales: ["en", "it", "de"],
     status: "active",
   },
   {
@@ -130,6 +148,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "hoffmann",
     projectId: "6d709178-f33a-4b4a-be52-521189e11290",
     defaultLocale: "it",
+    supportedLocales: ["it", "de"],
     status: "active",
   },
   {
@@ -139,6 +158,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "hoffmann",
     projectId: "6d709178-f33a-4b4a-be52-521189e11290",
     defaultLocale: "it",
+    supportedLocales: ["it", "de"],
     status: "active",
   },
   {
@@ -148,6 +168,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "livener",
     projectId: "6cf3b0d5-e878-4625-a231-f0b0176d4c4f",
     defaultLocale: "en",
+    supportedLocales: ["en", "it"],
     status: "active",
   },
   {
@@ -157,6 +178,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "livener",
     projectId: "6cf3b0d5-e878-4625-a231-f0b0176d4c4f",
     defaultLocale: "en",
+    supportedLocales: ["en", "it"],
     status: "active",
   },
   {
@@ -166,6 +188,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "livener",
     projectId: "6cf3b0d5-e878-4625-a231-f0b0176d4c4f",
     defaultLocale: "en",
+    supportedLocales: ["en", "it"],
     status: "active",
   },
   {
@@ -175,6 +198,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "nologo",
     projectId: "cd14c981-e458-48b6-9cd3-bb8c089d5cbc",
     defaultLocale: "en",
+    supportedLocales: ["en", "it", "de", "fr", "es", "nl", "pt"],
     status: "active",
   },
   {
@@ -184,6 +208,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "nologo",
     projectId: "cd14c981-e458-48b6-9cd3-bb8c089d5cbc",
     defaultLocale: "en",
+    supportedLocales: ["en", "it", "de", "fr", "es", "nl", "pt"],
     status: "active",
   },
   {
@@ -193,6 +218,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "nologo",
     projectId: "cd14c981-e458-48b6-9cd3-bb8c089d5cbc",
     defaultLocale: "en",
+    supportedLocales: ["en", "it", "de", "fr", "es", "nl", "pt"],
     status: "active",
   },
   {
@@ -202,6 +228,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "studiomartegani",
     projectId: "58980fd3-0c72-4549-9a8c-f42ca6d5750a",
     defaultLocale: "it",
+    supportedLocales: ["it", "en"],
     status: "active",
   },
   {
@@ -211,6 +238,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "studiomartegani",
     projectId: "58980fd3-0c72-4549-9a8c-f42ca6d5750a",
     defaultLocale: "it",
+    supportedLocales: ["it", "en"],
     status: "active",
   },
   {
@@ -220,6 +248,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "studiomartegani",
     projectId: "58980fd3-0c72-4549-9a8c-f42ca6d5750a",
     defaultLocale: "it",
+    supportedLocales: ["it", "en"],
     status: "active",
   },
   {
@@ -229,6 +258,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "t42",
     projectId: "eaab108c-3dca-471a-a16c-d6db96a74fe4",
     defaultLocale: "en",
+    supportedLocales: ["en"],
     status: "inactive",
   },
   {
@@ -238,6 +268,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "t42",
     projectId: "eaab108c-3dca-471a-a16c-d6db96a74fe4",
     defaultLocale: "en",
+    supportedLocales: ["en"],
     status: "inactive",
   },
   {
@@ -247,6 +278,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "tmz",
     projectId: "3e308301-6916-4f0c-b616-97a3b7f6d9ef",
     defaultLocale: "en",
+    supportedLocales: ["en", "de", "it", "fr"],
     status: "preview",
   },
   {
@@ -256,6 +288,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "tmz",
     projectId: "3e308301-6916-4f0c-b616-97a3b7f6d9ef",
     defaultLocale: "en",
+    supportedLocales: ["en", "de", "it", "fr"],
     status: "preview",
   },
   {
@@ -265,6 +298,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectSlug: "tmz",
     projectId: "3e308301-6916-4f0c-b616-97a3b7f6d9ef",
     defaultLocale: "en",
+    supportedLocales: ["en", "de", "it", "fr"],
     status: "preview",
   },
 ] as const

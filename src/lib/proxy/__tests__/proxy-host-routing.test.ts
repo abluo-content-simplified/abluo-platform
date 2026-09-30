@@ -228,12 +228,27 @@ describe('root-path locale negotiation still overrides the project default', () 
     )
   })
 
-  it('falls back to Accept-Language when there is no cookie', async () => {
+  // studiomartegani offers [it, en]. Before 2026-09-30 this test expected /de —
+  // a language the site does not have — and the [tenant] layout 404ed it.
+  it('falls back to Accept-Language: the first browser language the SITE offers', async () => {
     expect(
       await rewriteFor('studiomartegani.com', '/', {
         headers: { 'accept-language': 'de-DE,de;q=0.9,en;q=0.8' },
       })
-    ).toBe('/de/studiomartegani')
+    ).toBe('/en/studiomartegani')
+  })
+
+  it('a browser language the site does not offer → the site default, never a 404', async () => {
+    expect(
+      await rewriteFor('studiomartegani.com', '/', { headers: { 'accept-language': 'de-DE,de;q=0.9' } })
+    ).toBe('/it/studiomartegani')
+    expect(
+      await rewriteFor('livener.net', '/', { headers: { 'accept-language': 'es-ES,es;q=0.9' } })
+    ).toBe('/en/livener')
+  })
+
+  it('a remembered language the site does not offer is ignored', async () => {
+    expect(await rewriteFor('livener.net', '/', { cookie: 'NEXT_LOCALE=de' })).toBe('/en/livener')
   })
 
   it('uses the project default when neither is present', async () => {
