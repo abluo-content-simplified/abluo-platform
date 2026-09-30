@@ -1941,6 +1941,11 @@ export interface LocationsSection {
   selection?: 'all' | 'pick' | null
   /** Location keys, in display order — used when selection is 'pick'. */
   locationKeys?: string[] | null
+  /**
+   * Live Google map per location (click-to-load behind consent, ADR-021).
+   * Null/undefined → true. Projected by the shared `showMap` key.
+   */
+  showMap?: boolean | null
 }
 
 // ─── CTA Banner Section ───────────────────────────────────────────────────────

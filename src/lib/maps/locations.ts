@@ -11,11 +11,21 @@
  *   3. address — a Maps search for the street address
  *   4. none    — the location renders without a link
  *
- * It is always a plain outbound LINK, never an embed: nothing is loaded from
- * Google until the visitor clicks, so no cookies and no consent are involved.
+ * The link is a plain outbound LINK: nothing is loaded from Google until the
+ * visitor clicks, so no cookies and no consent are involved.
+ *
+ * The optional live map (locationsSection.showMap) is a Google Maps EMBED and
+ * resolves in the same order minus the pasted link, which cannot be embedded:
+ *
+ *   1. pin     — the entrance coordinates (zoomed in on the door)
+ *   2. address — a Maps search for the street address
+ *   3. none    — no map, link only
+ *
+ * The embed is click-to-load behind ConsentEmbed (ADR-021); without an embed
+ * key it resolves to null and the card stays link-only.
  */
 
-import { buildAddressQuery, getMapsDeepLink, type BusinessLocation } from '@/lib/maps/provider'
+import { buildAddressQuery, buildMapEmbedUrl, getMapsDeepLink, getMapsEmbedKey, type BusinessLocation } from '@/lib/maps/provider'
 import type { SiteLocation } from '@/lib/sanity/types'
 
 /** The subset of a location the link resolution reads. */
@@ -59,6 +69,39 @@ export function getLocationMapsLink(location: LocationLinkSource | null | undefi
   if (addressQuery) return getMapsDeepLink(addressQuery)
 
   return null
+}
+
+/** Zoom used when the map centres on an entrance pin — close enough to see the door. */
+export const LOCATION_PIN_ZOOM = 17
+
+/**
+ * What the embedded map shows: the pin, else the address search, else nothing.
+ * A pasted mapsUrl is ignored here — a share link cannot be embedded.
+ */
+export function getLocationMapQuery(
+  location: Pick<SiteLocation, 'pin' | 'address'> | null | undefined,
+): { query: string; zoom?: number } | null {
+  if (!location) return null
+  const pin = validPin(location.pin)
+  if (pin) return { query: `${pin.lat},${pin.lng}`, zoom: LOCATION_PIN_ZOOM }
+  const addressQuery = buildAddressQuery(location.address)
+  if (addressQuery) return { query: addressQuery }
+  return null
+}
+
+/**
+ * The Maps Embed API URL for a location, or null (→ link-only card) when the
+ * location has no pin/address or no embed key is configured. Never throws.
+ * `apiKey` defaults to NEXT_PUBLIC_GOOGLE_MAPS_KEY; tests pass it explicitly.
+ */
+export function getLocationMapEmbedUrl(
+  location: Pick<SiteLocation, 'pin' | 'address'> | null | undefined,
+  options: { apiKey?: string | null; language?: string } = {},
+): string | null {
+  const target = getLocationMapQuery(location)
+  if (!target) return null
+  const apiKey = 'apiKey' in options ? options.apiKey : getMapsEmbedKey()
+  return buildMapEmbedUrl({ query: target.query, zoom: target.zoom, apiKey, language: options.language })
 }
 
 /**

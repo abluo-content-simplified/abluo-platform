@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@sanity/client": "^6",
+    "@sanity/google-maps-input": "4.1.1",
     "@sanity/image-url": "^1",
     "@sanity/vision": "^3",
     "@supabase/ssr": "^0.10.3",

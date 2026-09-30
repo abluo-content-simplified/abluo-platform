@@ -6,7 +6,8 @@ import { SectionContainer } from '@/components/layout/SectionContainer'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { resolveEasing } from '@/lib/motion/easing'
 import { getLocationsSectionMessages } from '@/lib/i18n/locations-section-messages'
-import { formatLocationAddress, getLocationMapsLink, selectLocations } from '@/lib/maps/locations'
+import { ConsentEmbed } from '@/components/consent/ConsentEmbed'
+import { formatLocationAddress, getLocationMapEmbedUrl, getLocationMapsLink, selectLocations } from '@/lib/maps/locations'
 
 interface Props {
   section: LocationsSectionType
@@ -21,8 +22,13 @@ interface Props {
 /**
  * LocationsSection — presentation of siteConfig.locations[] (Sections vs
  * Modules: the section owns no data). Each location renders with DOM id =
- * its key, so `/contact#brey` scrolls to it. The Maps link is an outbound
- * link only — no embed, no cookies, no consent needed.
+ * its key, so `/contact#brey` scrolls to it. The "Open in Google Maps" link is
+ * a plain outbound link. The optional live map (section.showMap, default on)
+ * is click-to-load behind ConsentEmbed (ADR-021, vendor `google-maps`): the
+ * iframe is not rendered — so nothing is requested from Google — until the
+ * visitor clicks "Show map" or has chosen "Always allow Google Maps". With no
+ * embed key, or a location with neither pin nor address, the entry stays
+ * link-only.
  */
 export function LocationsSection({ section, surface, designSystem, siteConfig, locale }: Props) {
   const locations = selectLocations(siteConfig?.locations, section.selection, section.locationKeys)
@@ -31,6 +37,7 @@ export function LocationsSection({ section, surface, designSystem, siteConfig, l
   const { eyebrow, title, intro } = section
   const layout = section.layout === 'list' ? 'list' : 'cards'
   const msg = getLocationsSectionMessages(locale)
+  const showMap = section.showMap !== false
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
   // Motion tokens
@@ -68,6 +75,8 @@ export function LocationsSection({ section, surface, designSystem, siteConfig, l
               <LocationEntry
                 location={location}
                 msg={msg}
+                locale={locale}
+                showMap={showMap}
                 className="flex h-full flex-col p-6"
                 style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)' }}
               />
@@ -81,6 +90,8 @@ export function LocationsSection({ section, surface, designSystem, siteConfig, l
               <LocationEntry
                 location={location}
                 msg={msg}
+                locale={locale}
+                showMap={showMap}
                 className="grid gap-3 py-8 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-10"
                 style={{ borderBottom: '1px solid var(--color-border)' }}
                 split
@@ -96,12 +107,16 @@ export function LocationsSection({ section, surface, designSystem, siteConfig, l
 function LocationEntry({
   location,
   msg,
+  locale,
+  showMap,
   className,
   style,
   split = false,
 }: {
   location: SiteLocation
   msg: ReturnType<typeof getLocationsSectionMessages>
+  locale?: string
+  showMap: boolean
   className: string
   style: React.CSSProperties
   /** List layout: name in the left column, details in the right. */
@@ -109,6 +124,31 @@ function LocationEntry({
 }) {
   const addressLines = formatLocationAddress(location.address)
   const mapsLink = getLocationMapsLink(location)
+  const embedUrl = showMap ? getLocationMapEmbedUrl(location, { language: locale }) : null
+  const name = location.name ?? location.key
+
+  const map = embedUrl ? (
+    <ConsentEmbed
+      vendorId="google-maps"
+      vendorName="Google Maps"
+      locale={locale ?? 'en'}
+      aspectRatio="4 / 3"
+      labels={{ notice: msg.mapConsentNotice, load: msg.showMap, alwaysAllow: msg.mapAlwaysAllow }}
+    >
+      <div className="w-full overflow-hidden" style={{ aspectRatio: '4 / 3', borderRadius: 'var(--radius-lg)' }}>
+        <iframe
+          src={embedUrl}
+          title={msg.mapTitle(name)}
+          width="100%"
+          height="100%"
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          allowFullScreen
+          style={{ border: 0, display: 'block', width: '100%', height: '100%' }}
+        />
+      </div>
+    </ConsentEmbed>
+  ) : null
 
   const details = (
     <div className="flex flex-1 flex-col gap-3">
@@ -149,9 +189,24 @@ function LocationEntry({
         className={`text-lg font-semibold ${split ? '' : 'mb-3'}`}
         style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
       >
-        {location.name ?? location.key}
+        {name}
       </h3>
-      {details}
+      {split ? (
+        map ? (
+          // List: details and map side by side on large screens, stacked below.
+          <div className="grid gap-6 lg:grid-cols-2">
+            {details}
+            {map}
+          </div>
+        ) : (
+          details
+        )
+      ) : (
+        <>
+          {map && <div className="mb-4">{map}</div>}
+          {details}
+        </>
+      )}
     </article>
   )
 }

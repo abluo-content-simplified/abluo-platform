@@ -698,6 +698,12 @@ Custom-script security rules are unchanged: admin-vetted only, disabled by defau
 
 Authority: ADR-014 (Integration Registry & Studio IA) plus ADR-013's carried-over policy sections (security, consent).
 
+### Google Maps keys
+
+Two public env vars, never Sanity fields — setup, API restrictions and referrers in `docs/engineering/google-maps-keys.md`:
+- `NEXT_PUBLIC_GOOGLE_MAPS_KEY` — website maps (Contact + Locations sections), **Maps Embed API only**. Every embed is click-to-load behind `ConsentEmbed` (ADR-021, vendor `google-maps`). Missing → link-only, never an error.
+- `NEXT_PUBLIC_GOOGLE_MAPS_STUDIO_KEY` — Studio entrance-pin picker (`siteLocation.pin`), Maps JavaScript + Places + Maps Static APIs, referrer-restricted to the Studio hosts. Missing → plain lat/lng fields.
+
 ---
 
 ## AI Features (Planned)

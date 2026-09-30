@@ -5,6 +5,7 @@ import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, L
 import { slugifyNestedPath, validateNestedSlug } from '@/lib/sanity/fields/nested-slug'
 import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
 import { LOCATION_KEY_PATTERN } from '@/lib/maps/locations'
+import { LocationPinInput } from '@/lib/sanity/fields/LocationPinInput'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField, headlineAccentField, BACKGROUND_SURFACE_OPTIONS } from '@/lib/sanity/fields/shared'
 import {
   VentureListWireframe,
@@ -2698,6 +2699,14 @@ const locationsSectionType = defineType({
       hidden: ({ parent }) => (parent as { selection?: string } | undefined)?.selection !== 'pick',
       validation: (Rule) => Rule.custom((value, context) => validatePickedLocationKeys(value, context)),
     }),
+    defineField({
+      name: 'showMap',
+      title: 'Show map',
+      type: 'boolean',
+      initialValue: true,
+      description:
+        'Show a Google map for each location (its entrance pin, otherwise its address). Visitors first see a "Show map" button — the map loads only after they agree, as cookie rules require. The "Open in Google Maps" link is always shown.',
+    }),
   ],
   preview: {
     select: { title_en: 'title.en', title_it: 'title.it', title_fr: 'title.fr', selection: 'selection', keys: 'locationKeys', layout: 'layout' },
@@ -4582,7 +4591,10 @@ const siteLocationType = defineType({
       title: 'Entrance pin',
       type: 'geopoint',
       description:
-        'Optional alternative to the link above: latitude/longitude of the entrance (Studio shows plain number fields — no map picker). Used only when no Google Maps link is set.',
+        'Drag the pin to the exact ENTRANCE you want visitors to use — these buildings have many doors. Search the address in the map first, then drag. The live map on the website centres on this pin; the "Open in Google Maps" link uses it when no link is pasted above.',
+      // Scoped to this field only: a draggable Google map when the Studio key
+      // is set, otherwise the plain latitude/longitude fields.
+      components: { input: LocationPinInput },
     }),
     defineField({
       name: 'accessNote',

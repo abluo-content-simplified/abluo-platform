@@ -174,6 +174,10 @@ Remaining for Phase 1:
   - The endpoints validate their input and are not an open proxy.
   - The Studio's Design System Preview (admin-only) still uses Google directly.
 
+### Note 2026-09-30 — Locations section maps
+
+Maps have no banner category: like every embed they are consented per vendor at the point of use (Decision 5). The Locations section's live maps (`locationsSection.showMap`, default on) reuse `ConsentEmbed` with the same vendor id `google-maps` as the Contact section, so one "Always allow Google Maps" covers both, and the footer settings withdraw both. Before consent the server HTML contains the placeholder only, no iframe (tested in `locations-map.test.tsx`). `ConsentEmbed` gained optional `aspectRatio` and `labels` props so a section can supply its own localized copy ("Show map").
+
 ### Phase 2 — Video embeds (click-to-load)
 
 - A `ConsentEmbed` wrapper for `VideoSection` (YouTube, Vimeo) and the `ContactSection` map. Before consent it shows a DS-styled placeholder: "This content is hosted by YouTube, which sets cookies. [Load video] ☐ Always allow YouTube". Use `youtube-nocookie.com` once loaded.
