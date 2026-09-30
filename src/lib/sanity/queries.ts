@@ -557,6 +557,11 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       "footnoteAccent": ${loc('footnoteAccent')},
       "watermarkText": ${loc('watermarkText')},
       showGlow,
+      // locationsSection — which of siteConfig.locations[] to show. The
+      // locations themselves come from websiteSiteConfigQuery. eyebrow, title,
+      // intro, layout and background are shared keys projected above.
+      selection,
+      locationKeys,
       // heroSection extension — optional stat row. "ctas[]" is already
       // projected above (heroLiveCapture / heroLens) and is reused verbatim.
       stats[] {
@@ -733,6 +738,18 @@ export const websiteSiteConfigQuery = /* groq */ `
     "whatsappForm": ${scopedFormDefinition('whatsappForm')},
     location { street, postalCode, city, state, country },
     address,
+    // Editable list of places, rendered by locationsSection. The section reads
+    // it from here (siteConfig is already passed to every section), so no
+    // per-section hydration query exists. Null on every site without any.
+    locations[] {
+      _key,
+      key,
+      "name": ${loc('name')},
+      address { street, postalCode, city, state, country },
+      mapsUrl,
+      pin { lat, lng },
+      "accessNote": ${loc('accessNote')}
+    },
     openGraphImage { asset },
     logoHeightDesktop,
     logoHeightMobile,
@@ -1654,7 +1671,10 @@ export const homePageQuery = /* groq */ `
       lightbox,
       // Not projected elsewhere in this (legacy homePage) query, unlike
       // PAGE_SECTIONS_PROJECTION where blogListingSection already names it.
-      layout
+      layout,
+      // locationsSection — see PAGE_SECTIONS_PROJECTION.
+      selection,
+      locationKeys
     }
   }
 `

@@ -34,6 +34,7 @@ import { CareerTimelineSection } from '@/components/sections/CareerTimelineSecti
 import { MediaFeatureSection } from '@/components/sections/MediaFeatureSection'
 import { CategoryListSection } from '@/components/sections/CategoryListSection'
 import { CtaBannerSection } from '@/components/sections/CtaBannerSection'
+import { LocationsSection } from '@/components/sections/LocationsSection'
 import { SECTION_MAP, isSectionTypeAvailable } from '@/lib/modules/sections'
 import type { ProjectModuleConfig } from '@/lib/modules/config'
 import { resolveCategoriesFor, categoryKeysOf, charsPerMinute, DEFAULT_CHARS_PER_MINUTE } from '@/lib/modules/categories'
@@ -440,6 +441,10 @@ export function SectionRenderer({
       return <CategoryListSection section={section} surface={surface} designSystem={designSystem} />
     case 'ctaBannerSection':
       return <CtaBannerSection section={section} surface={surface} designSystem={designSystem} />
+    case 'locationsSection':
+      // Presentation of siteConfig.locations — siteConfig is fetched by both
+      // routes and passed here, so no hydration step is needed.
+      return <LocationsSection section={section} surface={surface} designSystem={designSystem} siteConfig={siteConfig} locale={locale} />
     default:
       return null
   }

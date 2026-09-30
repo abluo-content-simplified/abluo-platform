@@ -328,6 +328,7 @@ A module owns: document types, editorial collections, filtering logic, permissio
 Some sections are platform assets — available to every tenant regardless of which modules are installed:
 - `heroLensSection`
 - `heroLiveCaptureSection`
+- `locationsSection` — presents `siteConfig.locations[]` (Website Settings → Contact → Locations); link resolution in `src/lib/maps/locations.ts` (pasted Maps link → entrance pin → address search; a link, never an embed)
 
 These live in `src/lib/sanity/schema.ts` as platform-owned types. Their availability is never gated by any module's installation state. Installing or uninstalling a module must not affect which platform sections are available to SectionRenderer.
 

@@ -700,6 +700,11 @@ export interface WebsiteSiteConfig {
   location?: BusinessLocation
   /** Legacy flat address string — fallback when location is not yet populated */
   address?: string
+  /**
+   * Editable list of the website's places (siteConfig.locations[]), rendered
+   * by locationsSection. Locale-resolved by GROQ. Undefined when none authored.
+   */
+  locations?: SiteLocation[]
   logoHeightDesktop?: number
   logoHeightMobile?: number
   /** The logo is a wordmark that already spells the site name — the header then shows it alone. */
@@ -709,6 +714,26 @@ export interface WebsiteSiteConfig {
   appleTouchIcon?: { asset?: { _ref: string } }
   /** Canonical domain for this tenant, e.g. "livener.net". Derived from project.customDomain via GROQ join. */
   customDomain?: string
+}
+
+// ─── Site location (siteConfig.locations[]) ──────────────────────────────────
+// One of a website's places — e.g. a class venue or a clinic's practice.
+// Edited as content in Website Settings → Contact; rendered by locationsSection.
+
+export interface SiteLocation {
+  _key: string
+  /** Stable slug-like id, unique within the list. Also the DOM id (`/contact#brey`). */
+  key: string
+  /** Locale-resolved by GROQ */
+  name?: string
+  /** Postal address — optional as a whole; same shape as siteConfig.location. */
+  address?: BusinessLocation
+  /** A pasted Google Maps link (usually the entrance pin). Wins over everything else. */
+  mapsUrl?: string
+  /** Entrance coordinates (Sanity geopoint). */
+  pin?: { lat?: number; lng?: number }
+  /** Locale-resolved by GROQ — how to get in (door, floor, badge, ...). */
+  accessNote?: string
 }
 
 // Locale config subset — fetched first to get $defaultLocale for subsequent queries
@@ -1895,6 +1920,29 @@ export interface CategoryListSection {
   callout?: CategoryListCallout
 }
 
+// ─── Locations Section ────────────────────────────────────────────────────────
+// Presentation only: renders siteConfig.locations[] (all, or picked by key).
+
+export interface LocationsSection {
+  _type: 'locationsSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  /** Optional authored DOM id for the section itself. */
+  anchorId?: string
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  title?: string
+  /** Locale-resolved by GROQ */
+  intro?: string
+  /** Null/undefined → 'cards'. */
+  layout?: 'list' | 'cards' | null
+  /** Null/undefined → 'all'. */
+  selection?: 'all' | 'pick' | null
+  /** Location keys, in display order — used when selection is 'pick'. */
+  locationKeys?: string[] | null
+}
+
 // ─── CTA Banner Section ───────────────────────────────────────────────────────
 
 export interface CtaBannerSection {
@@ -2048,6 +2096,7 @@ export type PageSection =
   | MediaFeatureSection
   | CategoryListSection
   | CtaBannerSection
+  | LocationsSection
 
 export interface WebsiteHomePage {
   tenantSlug: string

@@ -136,6 +136,7 @@ export const PAGE_SECTIONS_OF = [
   defineArrayMember({ type: 'mediaFeatureSection' }),
   defineArrayMember({ type: 'categoryListSection' }),
   defineArrayMember({ type: 'ctaBannerSection' }),
+  defineArrayMember({ type: 'locationsSection' }),
 ]
 
 // ── Icon picker field ────────────────────────────────────────────────────────

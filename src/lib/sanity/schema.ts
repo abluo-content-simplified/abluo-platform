@@ -4,6 +4,7 @@ import { ProjectLinker } from '@/lib/sanity/fields/ProjectLinker'
 import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, LocalizedSlugInput, LocalizedRedirectFromInput } from '@/lib/sanity/fields/LocalizedInput'
 import { slugifyNestedPath, validateNestedSlug } from '@/lib/sanity/fields/nested-slug'
 import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
+import { LOCATION_KEY_PATTERN } from '@/lib/maps/locations'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField, headlineAccentField, BACKGROUND_SURFACE_OPTIONS } from '@/lib/sanity/fields/shared'
 import {
   VentureListWireframe,
@@ -2621,6 +2622,92 @@ const categoryListSectionType = defineType({
   },
 })
 
+// ─── Locations Section (platform) ─────────────────────────────────────────────
+// Presentation only (Sections vs Modules): the locations themselves live in
+// Website Settings → Contact → Locations (siteConfig.locations), edited once
+// and shown by any number of these sections. Available to every tenant.
+
+// A picked key must name a location in this website's Website Settings. The
+// siteConfig may exist as draft and published; keys from either count.
+async function validatePickedLocationKeys(value: unknown, context: unknown): Promise<true | string> {
+  if (!Array.isArray(value) || value.length === 0) return true
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ctx = context as any
+  const projectSlug = ctx?.document?.projectSlug
+  if (!projectSlug || typeof ctx?.getClient !== 'function') return true
+  const keys: unknown = await ctx.getClient({ apiVersion: '2026-05-21' }).fetch(
+    `*[_type == "siteConfig" && projectSlug == $projectSlug].locations[].key`,
+    { projectSlug },
+  )
+  const known = new Set(Array.isArray(keys) ? keys.filter((k): k is string => typeof k === 'string') : [])
+  const unknown = value.filter((k) => typeof k !== 'string' || !known.has(k))
+  return unknown.length === 0
+    ? true
+    : `Not found in Website Settings → Contact → Locations: ${unknown.map((k) => `"${String(k)}"`).join(', ')}`
+}
+
+const locationsSectionType = defineType({
+  name: 'locationsSection',
+  title: 'Locations Section',
+  type: 'object',
+  fields: [
+    anchorIdField(),
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: { list: BACKGROUND_SURFACE_OPTIONS },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    defineField({ name: 'intro', title: 'Intro', type: 'localizedText' }),
+    defineField({
+      name: 'layout',
+      title: 'Layout',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Cards', value: 'cards' },
+          { title: 'List', value: 'list' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'cards',
+    }),
+    defineField({
+      name: 'selection',
+      title: 'Which locations',
+      type: 'string',
+      description: 'The locations are edited in Website Settings → Contact → Locations.',
+      options: {
+        list: [
+          { title: 'All locations', value: 'all' },
+          { title: 'Pick by key', value: 'pick' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'all',
+    }),
+    defineField({
+      name: 'locationKeys',
+      title: 'Location keys',
+      type: 'array',
+      of: [defineArrayMember({ type: 'string' })],
+      description: 'The keys of the locations to show, in this order (e.g. "brey"). Each must exist in Website Settings → Contact → Locations.',
+      hidden: ({ parent }) => (parent as { selection?: string } | undefined)?.selection !== 'pick',
+      validation: (Rule) => Rule.custom((value, context) => validatePickedLocationKeys(value, context)),
+    }),
+  ],
+  preview: {
+    select: { title_en: 'title.en', title_it: 'title.it', title_fr: 'title.fr', selection: 'selection', keys: 'locationKeys', layout: 'layout' },
+    prepare: ({ title_en, title_it, title_fr, selection, keys, layout }: { title_en?: string; title_it?: string; title_fr?: string; selection?: string; keys?: string[]; layout?: string }) => ({
+      title: title_en ?? title_fr ?? title_it ?? 'Locations',
+      subtitle: `Locations Section — ${selection === 'pick' ? `${keys?.length ?? 0} picked` : 'all locations'} · ${layout ?? 'cards'}`,
+    }),
+  },
+})
+
 // ─── CTA Banner Section (platform) ────────────────────────────────────────────
 
 const ctaBannerSectionType = defineType({
@@ -4438,6 +4525,82 @@ const businessLocationType = defineType({
   },
 })
 
+// ─── Site Location (siteConfig.locations[]) ───────────────────────────────────
+// One of a website's places — a class venue, one practice of a clinic. Edited
+// as content by the client, rendered by locationsSection. In a big building
+// the street address and the door differ, so the entrance (pasted Maps link or
+// pin) and a short access note are first-class. The single `location` field
+// above (Business Location) is unchanged and still drives the Contact Section.
+
+// Studio validation for the key: slug-shaped (it doubles as the DOM id for
+// `/contact#brey`) and unique within the list.
+function validateLocationKey(value: unknown, context: { document?: { locations?: Array<{ key?: string }> } }) {
+  if (typeof value !== 'string' || value.length === 0) return true // Rule.required() reports the empty case
+  if (!LOCATION_KEY_PATTERN.test(value)) {
+    return 'Use lowercase letters, digits, "-" and "_" only — no spaces, no "#" (e.g. "brey" or "rue-de-la-loi").'
+  }
+  const same = (context.document?.locations ?? []).filter((l) => l?.key === value).length
+  return same > 1 ? `Another location already uses the key "${value}". Keys must be unique.` : true
+}
+
+const siteLocationType = defineType({
+  name: 'siteLocation',
+  title: 'Location',
+  type: 'object',
+  fields: [
+    defineField({
+      name: 'key',
+      title: 'Key',
+      type: 'string',
+      description:
+        'Short id for this place, e.g. "brey". Used to pick it in a Locations section and as a link target (/contact#brey). Lowercase letters, digits, "-" and "_". Change it only if nothing links to it yet.',
+      validation: (Rule) => [Rule.required(), Rule.custom((value, context) => validateLocationKey(value, context as never))],
+    }),
+    defineField({
+      name: 'name',
+      title: 'Name',
+      type: 'localizedString',
+      description: 'What visitors call this place, e.g. "Breydel building".',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'address',
+      title: 'Address',
+      type: 'businessLocation',
+      description: 'Optional. The postal address. If the entrance is somewhere else, say so in the access note.',
+    }),
+    defineField({
+      name: 'mapsUrl',
+      title: 'Google Maps link',
+      type: 'url',
+      description:
+        'Easiest option: in Google Maps, drop a pin on the ENTRANCE, press Share and paste the link here. When set, this is the link visitors get.',
+      validation: (Rule) => Rule.uri({ scheme: ['http', 'https'] }),
+    }),
+    defineField({
+      name: 'pin',
+      title: 'Entrance pin',
+      type: 'geopoint',
+      description:
+        'Optional alternative to the link above: latitude/longitude of the entrance (Studio shows plain number fields — no map picker). Used only when no Google Maps link is set.',
+    }),
+    defineField({
+      name: 'accessNote',
+      title: 'Access note',
+      type: 'localizedText',
+      description:
+        'Short directions to get in, e.g. "Entrance Avenue d\'Auderghem 45, stairs on the right. Badge required at reception."',
+    }),
+  ],
+  preview: {
+    select: { name_en: 'name.en', name_it: 'name.it', name_fr: 'name.fr', key: 'key', city: 'address.city' },
+    prepare: ({ name_en, name_it, name_fr, key, city }: { name_en?: string; name_it?: string; name_fr?: string; key?: string; city?: string }) => ({
+      title: name_en ?? name_fr ?? name_it ?? key ?? 'Location',
+      subtitle: [key ? `#${key}` : null, city].filter(Boolean).join(' · '),
+    }),
+  },
+})
+
 // ─── Site Config ──────────────────────────────────────────────────────────────
 
 const siteConfigType = defineType({
@@ -4740,6 +4903,15 @@ const siteConfigType = defineType({
       group: 'contact',
       readOnly: true,
       description: '⚠️ Legacy flat text field. Migrate content to Business Location above, then this field can be removed.',
+    }),
+    defineField({
+      name: 'locations',
+      title: 'Locations',
+      type: 'array',
+      group: 'contact',
+      description:
+        'Every place where you receive people — e.g. class venues or practices — each with its entrance and how to get in. Show them on any page with a Locations section. The Business Location above stays the main address used by the Contact section.',
+      of: [defineArrayMember({ type: 'siteLocation' })],
     }),
     // ── Deprecated: WhatsApp config (ADR-020 Decision 2) ────────────────────
     // WhatsApp is now a module and owns these settings (Modules → WhatsApp).
@@ -5263,6 +5435,7 @@ export const schemaTypes = [
   textSectionType,
   videoSectionType,
   businessLocationType,
+  siteLocationType,
   contactSectionType,
   faqItemType,
   faqSectionType,
@@ -5287,6 +5460,7 @@ export const schemaTypes = [
   categoryListCalloutType,
   categoryListSectionType,
   ctaBannerSectionType,
+  locationsSectionType,
   formOptionItemType,
   formFieldItemType,
   formSectionType,
