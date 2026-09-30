@@ -147,7 +147,7 @@ async function fetchSupportedLocales(env) {
   if (!pid || !ds) throw new Error('Missing NEXT_PUBLIC_SANITY_PROJECT_ID and/or NEXT_PUBLIC_SANITY_DATASET.')
   const groq = '*[_type == "siteConfig" && defined(projectSlug) && !(_id in path("drafts.**"))]{projectSlug, defaultLocale, supportedLocales}'
   const res = await fetch(
-    `https://${pid}.apicdn.sanity.io/v2026-05-21/data/query/${ds}?query=${encodeURIComponent(groq)}&perspective=published`,
+    `https://${pid}.api.sanity.io/v2026-05-21/data/query/${ds}?query=${encodeURIComponent(groq)}&perspective=published`,
     { headers: token ? { Authorization: `Bearer ${token}` } : {} }
   )
   const text = await res.text()
