@@ -149,7 +149,7 @@ create table public.translation_usage (
 
 - Index `(project_id, created_at)` for the monthly sum.
 - The monthly total is summed **in SQL** by `translation_usage_month_total(project_id, since)` (service role only). Summing selected rows in application code would silently stop at PostgREST's 1,000-row page and the quota would never trigger on a busy site.
-- RLS on. `select` for members of the project (`get_my_project_ids()`) and for Abluo admins (`is_abluo_admin()`), matching migrations 017/025. Inserts are **service-role only** (no insert policy) — a client can never forge or erase usage.
+- RLS on. `select` for members of the project (`get_my_project_ids()`), matching migration 017. Abluo admins read through the service role like every other admin surface; no `is_abluo_admin()` policy, because migration 025 is optional and not applied. Inserts are **service-role only** (no insert policy) — a client can never forge or erase usage.
 - `environment` (`VERCEL_ENV` or `development`) so dev/preview clicks can be excluded from a billing view — they spend the same real provider credit, so they are recorded, not dropped.
 - One row per target language per click. At CYCE's scale this is a few hundred rows a year; no rollup table until one is needed.
 

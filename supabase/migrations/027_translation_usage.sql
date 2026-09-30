@@ -52,11 +52,11 @@ create policy "Members read their project translation usage"
   on public.translation_usage for select
   using (project_id in (select public.get_my_project_ids()));
 
--- Abluo admins read every project's usage (Tom's usage view). READ ONLY —
--- see the comment on public.is_abluo_admin() (migration 025).
-create policy "Abluo admins read all translation usage"
-  on public.translation_usage for select
-  using (public.is_abluo_admin());
+-- No abluo_admin policy here on purpose. Migration 025 (is_abluo_admin) is
+-- optional and NOT applied; admins read usage through the service role, like
+-- every other admin surface today. If 025 is ever applied, add:
+--   create policy "Abluo admins read all translation usage"
+--     on public.translation_usage for select using (public.is_abluo_admin());
 
 -- Inserts/updates/deletes: service role only (POST /api/translate). No policy,
 -- so no browser session can forge or erase usage.
@@ -88,5 +88,5 @@ grant execute on function public.translation_usage_month_total(uuid, timestamptz
 -- ── Verification ──────────────────────────────────────────────────────────────
 -- 1. select column_name, data_type from information_schema.columns
 --    where table_schema='public' and table_name='translation_usage' order by ordinal_position;
--- 2. select policyname, cmd from pg_policies where tablename='translation_usage';  -- expect 2 (select)
+-- 2. select policyname, cmd from pg_policies where tablename='translation_usage';  -- expect 1 (select)
 -- 3. select public.translation_usage_month_total(gen_random_uuid(), now());       -- expect 0 (as service_role)
