@@ -25,7 +25,7 @@ describe('the home page is not reachable at its own slug', () => {
     expect(src).toMatch(/pageType === 'home'/)
     // The redirect must be permanent: these URLs were indexable.
     const branch = src.slice(src.indexOf("pageType === 'home'"))
-    expect(branch.slice(0, 400)).toMatch(/permanentRedirect\(/)
+    expect(branch.slice(0, 900)).toMatch(/permanentRedirect\(/)
   })
 
   it('builds the redirect target the same way the canonical is built', () => {
@@ -33,8 +33,18 @@ describe('the home page is not reachable at its own slug', () => {
     // a public URL on a custom domain — the defect 26014fa removed from the
     // canonical. canonicalUrl() is the single place that shape is decided.
     const branch = src.slice(src.indexOf("pageType === 'home'"))
-    expect(branch.slice(0, 400)).toMatch(/canonicalOrigin\(/)
-    expect(branch.slice(0, 400)).toMatch(/canonicalUrl\(/)
+    expect(branch.slice(0, 900)).toMatch(/canonicalOrigin\(/)
+    expect(branch.slice(0, 900)).toMatch(/canonicalUrl\(/)
+  })
+
+  it('only builds an absolute target on production', () => {
+    // Off production the site is reached by path on a platform host. An
+    // absolute target built from `customDomain` sent preview visitors to the
+    // live site — measured on preview.abluo.app before this gate existed:
+    //   /en/nologo/home        -> https://nologo.cloud/en
+    //   /it/studiomartegani/home -> https://studiomartegani.com/it
+    const branch = src.slice(src.indexOf("pageType === 'home'"))
+    expect(branch.slice(0, 900)).toMatch(/isProduction\(\) \? canonicalOrigin\(/)
   })
 
   it('agrees with the sitemap, which already excludes the home page', () => {

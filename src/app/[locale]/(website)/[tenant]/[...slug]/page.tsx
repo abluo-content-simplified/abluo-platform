@@ -188,7 +188,14 @@ export default async function WebsitePageRoute({ params }: PageProps) {
   // custom domain it is the public URL (https://site/en) and never leaks the
   // project segment; off a custom domain it falls back to the platform path.
   if (page.pageType === 'home') {
-    const homeOrigin = canonicalOrigin(siteConfig?.customDomain)
+    // Only the PRODUCTION deployment is reached through a custom domain, so
+    // only there is the absolute public URL the right target. Off production
+    // the same site is reached by path on a platform host
+    // (preview.abluo.app/en/nologo/…), and an absolute redirect built from
+    // `customDomain` would send a preview visitor to the LIVE site — which it
+    // did, until this gate. Same posture as canonical, the sitemap and
+    // llms.txt, all of which are isProduction()-gated for the same reason.
+    const homeOrigin = isProduction() ? canonicalOrigin(siteConfig?.customDomain) : null
     permanentRedirect(canonicalUrl(homeOrigin, locale as SupportedLocale) ?? `/${locale}/${tenantId}`)
   }
 
