@@ -75,6 +75,28 @@ describe('llms.txt lists every published language', () => {
     expect(src).toMatch(/if \(!isHome && !slug\) continue/)
   })
 
+  it('falls back to a projectSlug lookup for every siteConfig field', () => {
+    // MEASURED on production 2026-10-01, with the fix deployed and the bare
+    // `siteConfig->` dereference still in place: nologo.cloud/llms.txt had no
+    // site summary, no "published in" line and ONE language section, because
+    // no project document sets its `siteConfig` reference, so every
+    // `siteConfig->x` resolved to null. sitemap.ts documents the same thing at
+    // its own query. Each field must carry the fallback or it silently empties.
+    for (const field of [
+      'defaultLocale',
+      'supportedLocales',
+      'siteName',
+    ]) {
+      const re = new RegExp(
+        `"${field}": coalesce\\(\\s*siteConfig->${field},\\s*\\*\\[_type == "siteConfig" && projectSlug == \\^\\.projectSlug\\]\\[0\\]\\.${field}`
+      )
+      expect(src).toMatch(re)
+    }
+    // The two localized fields coalesce through four candidates, not two.
+    expect(src).toMatch(/\[0\]\.tagline\.en/)
+    expect(src).toMatch(/\[0\]\.seoDefaultDescription\.en/)
+  })
+
   it('identifies the home page by pageType, not by the literal slug "home"', () => {
     expect(src).not.toMatch(/page\.slug === 'home'/)
     expect(src).toMatch(/page\.pageType === 'home'/)

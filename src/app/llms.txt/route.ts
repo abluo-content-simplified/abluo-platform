@@ -75,13 +75,35 @@ export async function GET(): Promise<Response> {
         projectSlug,
         projectName,
         customDomain,
-        "defaultLocale": siteConfig->defaultLocale,
-        "supportedLocales": siteConfig->supportedLocales,
-        "siteName": siteConfig->siteName,
-        "tagline": coalesce(siteConfig->tagline[$defaultLocale], siteConfig->tagline.en),
+        // Every siteConfig field is read through a coalesce with a lookup by
+        // projectSlug, because NO project document sets its \`siteConfig\`
+        // reference — the dereference silently yields null for all of them.
+        // sitemap.ts carries the same fallback for the same reason; without it
+        // this file lost the site name, the summary AND every language but the
+        // default, which is most of what it exists to publish.
+        "defaultLocale": coalesce(
+          siteConfig->defaultLocale,
+          *[_type == "siteConfig" && projectSlug == ^.projectSlug][0].defaultLocale
+        ),
+        "supportedLocales": coalesce(
+          siteConfig->supportedLocales,
+          *[_type == "siteConfig" && projectSlug == ^.projectSlug][0].supportedLocales
+        ),
+        "siteName": coalesce(
+          siteConfig->siteName,
+          *[_type == "siteConfig" && projectSlug == ^.projectSlug][0].siteName
+        ),
+        "tagline": coalesce(
+          siteConfig->tagline[$defaultLocale],
+          siteConfig->tagline.en,
+          *[_type == "siteConfig" && projectSlug == ^.projectSlug][0].tagline[$defaultLocale],
+          *[_type == "siteConfig" && projectSlug == ^.projectSlug][0].tagline.en
+        ),
         "description": coalesce(
           siteConfig->seoDefaultDescription[$defaultLocale],
-          siteConfig->seoDefaultDescription.en
+          siteConfig->seoDefaultDescription.en,
+          *[_type == "siteConfig" && projectSlug == ^.projectSlug][0].seoDefaultDescription[$defaultLocale],
+          *[_type == "siteConfig" && projectSlug == ^.projectSlug][0].seoDefaultDescription.en
         )
       }`,
       { host, defaultLocale: 'en' }
