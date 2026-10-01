@@ -176,6 +176,22 @@ export default async function WebsitePageRoute({ params }: PageProps) {
     return notFound()
   }
 
+  // ── The home page is not reachable at its own slug ──────────────────────────
+  // A page with pageType 'home' is served at the bare locale URL (/en). It also
+  // resolved here under its slug (/en/home), so the same page existed at two
+  // indexable URLs, each self-canonicalising. src/app/sitemap.ts already
+  // excludes the home page from the slug list for exactly this reason; this is
+  // the routing half of the same rule.
+  //
+  // 301 rather than 404: these URLs have been live and indexable, so a link to
+  // one may exist. The target is built the same way the canonical is, so on a
+  // custom domain it is the public URL (https://site/en) and never leaks the
+  // project segment; off a custom domain it falls back to the platform path.
+  if (page.pageType === 'home') {
+    const homeOrigin = canonicalOrigin(siteConfig?.customDomain)
+    permanentRedirect(canonicalUrl(homeOrigin, locale as SupportedLocale) ?? `/${locale}/${tenantId}`)
+  }
+
   // ── Hydrate blogListingSection posts server-side ────────────────────────────
   // ADR-020 — one query now serves both section gating and module config.
   // getEnabledModuleIds preserves the null-vs-[] distinction the gating

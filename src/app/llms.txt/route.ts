@@ -47,9 +47,11 @@ interface ProjectRow {
 }
 
 interface PageRow {
-  title?: string
-  slug?: string
-  description?: string
+  pageType?: string
+  /** Full per-locale maps — resolved in JS so one read serves every language. */
+  titles?: Record<string, string | undefined>
+  slugs?: Record<string, { current?: string } | undefined>
+  descriptions?: Record<string, string | undefined>
 }
 
 const NOT_FOUND = new Response('Not found', {
@@ -90,13 +92,17 @@ export async function GET(): Promise<Response> {
     const locale = project.defaultLocale ?? 'en'
     const origin = `https://${project.customDomain}`
 
+    // The whole localized objects, not one language's projection: this file
+    // lists every language the site publishes, and a second read per locale
+    // would be six more round trips for data already in these documents.
     const pages = await sanityClient.fetch<PageRow[]>(
       `*[_type == "page" && projectSlug == $projectSlug && !(noindex == true)] | order(pageType asc) {
-        "title": coalesce(title[$locale], title.en),
-        "slug": slug[$locale].current,
-        "description": coalesce(seoDescription[$locale], seoDescription.en)
+        pageType,
+        "titles": title,
+        "slugs": slug,
+        "descriptions": seoDescription
       }`,
-      { projectSlug: project.projectSlug, locale }
+      { projectSlug: project.projectSlug }
     )
 
     const name = project.siteName ?? project.projectName ?? project.projectSlug
@@ -105,23 +111,41 @@ export async function GET(): Promise<Response> {
     const lines: string[] = [`# ${name}`, '']
     if (summary) lines.push(`> ${summary}`, '')
 
-    const otherLocales = (project.supportedLocales ?? []).filter((l) => l !== locale)
+    // Every language the site actually publishes, default first. Listing only
+    // the default locale and telling the model to "replace the language
+    // segment" asked it to guess six localized slugs — `/it/privacy-policy` is
+    // not `/fr/politique-de-confidentialite`. Each language gets its own
+    // section with its own titles, descriptions and real URLs.
+    const supported = project.supportedLocales ?? []
+    const otherLocales = supported.filter((l) => l !== locale)
     if (otherLocales.length > 0) {
-      lines.push(
-        `This site is published in ${[locale, ...otherLocales].join(', ')}. ` +
-          `Replace the language segment in any URL below to read another translation.`,
-        ''
-      )
+      lines.push(`This site is published in ${[locale, ...otherLocales].join(', ')}.`, '')
     }
 
-    lines.push('## Pages', '')
-    for (const page of pages) {
-      // The home page is the locale root; every other page hangs below it.
-      const isHome = !page.slug || page.slug === 'home'
-      const url = isHome ? canonicalUrl(origin, locale) : canonicalUrl(origin, locale, page.slug)
-      if (!url) continue
-      const label = page.title ?? name
-      lines.push(page.description ? `- [${label}](${url}): ${page.description}` : `- [${label}](${url})`)
+    /** One `## …` block of page links for a single language. */
+    const sectionFor = (loc: string): string[] => {
+      const out: string[] = []
+      for (const page of pages) {
+        const isHome = page.pageType === 'home'
+        const slug = page.slugs?.[loc]?.current
+        // A page with no slug in this language does not exist in it.
+        if (!isHome && !slug) continue
+        const url = isHome ? canonicalUrl(origin, loc) : canonicalUrl(origin, loc, slug)
+        if (!url) continue
+        const label = page.titles?.[loc] ?? page.titles?.en ?? name
+        const description = page.descriptions?.[loc] ?? (loc === locale ? page.descriptions?.en : undefined)
+        out.push(description ? `- [${label}](${url}): ${description}` : `- [${label}](${url})`)
+      }
+      return out
+    }
+
+    const primary = sectionFor(locale)
+    if (primary.length > 0) lines.push('## Pages', '', ...primary)
+
+    for (const loc of otherLocales) {
+      const block = sectionFor(loc)
+      if (block.length === 0) continue
+      lines.push('', `## Pages (${loc})`, '', ...block)
     }
 
     lines.push('', '## Machine-readable', '')
