@@ -30,6 +30,7 @@ import { FadeIn } from '@/components/animation/FadeIn'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { resolveCta, prefixCtaHref } from '@/lib/sanity/cta'
 import { CtaButton } from '@/components/ui/CtaButton'
+import { useFormCtaHandler } from '@/components/forms/useFormCtaHandler'
 import { Icon } from '@/components/icons'
 import { resolveEasing } from '@/lib/motion/easing'
 import { renderHeadline } from '@/lib/headline-accent'
@@ -90,6 +91,7 @@ export function CategoryListSection({ section, surface, designSystem }: Props) {
 
   const resolvedHeaderCta = headerCta ? prefixCtaHref(resolveCta(headerCta), locale, tenantId) : null
   const resolvedCalloutCta = callout?.cta ? prefixCtaHref(resolveCta(callout.cta), locale, tenantId) : null
+  const formHandler = useFormCtaHandler('category_list_section')
 
   const hasHeader = Boolean(eyebrow || title || intro || (resolvedHeaderCta && resolvedHeaderCta.type !== 'none'))
   const hasCategories = Boolean(categories && categories.length > 0)
@@ -144,6 +146,7 @@ export function CategoryListSection({ section, surface, designSystem }: Props) {
               {resolvedHeaderCta && resolvedHeaderCta.type !== 'none' && (
                 <CtaButton
                   cta={resolvedHeaderCta}
+                  onFormClick={formHandler(resolvedHeaderCta)}
                   className="mt-6 inline-flex h-11 items-center gap-2 px-5 text-sm font-medium transition-opacity duration-150 hover:opacity-70"
                   style={{
                     color: 'var(--color-text-primary)',
@@ -292,6 +295,7 @@ export function CategoryListSection({ section, surface, designSystem }: Props) {
             {resolvedCalloutCta && resolvedCalloutCta.type !== 'none' && (
               <CtaButton
                 cta={resolvedCalloutCta}
+                onFormClick={formHandler(resolvedCalloutCta)}
                 className="inline-flex h-11 items-center gap-2 px-6 text-sm font-semibold tracking-wide transition-all duration-200 hover:opacity-90"
                 style={{
                   backgroundColor: 'var(--btn-primary-bg)',

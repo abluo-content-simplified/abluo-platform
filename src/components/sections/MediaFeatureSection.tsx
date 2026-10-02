@@ -43,6 +43,7 @@ import { SectionContainer } from '@/components/layout/SectionContainer'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
 import { resolveCta, prefixCtaHref } from '@/lib/sanity/cta'
 import { CtaButton } from '@/components/ui/CtaButton'
+import { useFormCtaHandler } from '@/components/forms/useFormCtaHandler'
 import { Icon, isIconName } from '@/components/icons'
 import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 import { resolveEasing } from '@/lib/motion/easing'
@@ -297,6 +298,7 @@ function CtaRow({ section }: { section: MediaFeatureSectionType }) {
 
   const primaryCta = section.primaryCta ? prefixCtaHref(resolveCta(section.primaryCta), locale, tenantId) : null
   const secondaryCta = section.secondaryCta ? prefixCtaHref(resolveCta(section.secondaryCta), locale, tenantId) : null
+  const formHandler = useFormCtaHandler('media_feature_section')
 
   if ((!primaryCta || primaryCta.type === 'none') && (!secondaryCta || secondaryCta.type === 'none')) {
     return null
@@ -307,6 +309,7 @@ function CtaRow({ section }: { section: MediaFeatureSectionType }) {
       {primaryCta && primaryCta.type !== 'none' && (
         <CtaButton
           cta={primaryCta}
+          onFormClick={formHandler(primaryCta)}
           className="inline-flex h-11 items-center gap-2 px-6 text-sm font-semibold tracking-wide transition-all duration-200 hover:opacity-90"
           style={{
             backgroundColor: 'var(--btn-primary-bg)',
@@ -318,6 +321,7 @@ function CtaRow({ section }: { section: MediaFeatureSectionType }) {
       {secondaryCta && secondaryCta.type !== 'none' && (
         <CtaButton
           cta={secondaryCta}
+          onFormClick={formHandler(secondaryCta)}
           className="inline-flex h-11 items-center gap-2 px-5 text-sm font-medium transition-all duration-150 hover:opacity-80"
           style={{
             color: 'var(--btn-secondary-text)',

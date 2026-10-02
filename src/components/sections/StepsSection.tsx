@@ -37,6 +37,7 @@ import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { resolveCta, prefixCtaHref } from '@/lib/sanity/cta'
 import { CtaButton } from '@/components/ui/CtaButton'
+import { useFormCtaHandler } from '@/components/forms/useFormCtaHandler'
 import { Icon } from '@/components/icons'
 import { resolveEasing } from '@/lib/motion/easing'
 import { renderHeadline } from '@/lib/headline-accent'
@@ -118,12 +119,15 @@ function ClosingCta({ cta }: { cta: NonNullable<StepsSectionType['closingCta']> 
   const locale = params?.locale as string | undefined
   const tenantId = params?.tenant as string | undefined
 
+  const formHandler = useFormCtaHandler('steps_section')
+
   const resolved = prefixCtaHref(resolveCta(cta), locale, tenantId)
   if (resolved.type === 'none') return null
 
   return (
     <CtaButton
       cta={resolved}
+      onFormClick={formHandler(resolved)}
       className="inline-flex h-11 shrink-0 items-center gap-2 px-6 text-sm font-semibold tracking-wide transition-all duration-200 hover:opacity-90"
       style={{
         backgroundColor: 'var(--btn-primary-bg, var(--color-primary))',
