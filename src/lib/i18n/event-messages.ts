@@ -79,7 +79,7 @@ const MESSAGES: Record<string, EventMessages> = {
     relatedEventsHeading: 'Weitere Events',
     watchFallback:        'Ansehen',
     noEventsYetHeading:   'Noch keine Events.',
-    noEventsYetBody:      'Schau bald wieder vorbei.',
+    noEventsYetBody:      'Schauen Sie bald wieder vorbei.',
     registerFallback:     'Anmelden',
     pricesHeading:        'Preise',
     priceFrom:            'ab {price}',

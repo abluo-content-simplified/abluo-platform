@@ -31,7 +31,7 @@ const MESSAGES: Record<string, LivePageMessages> = {
   },
   de: {
     noLiveEventHeading:    'Derzeit ist kein Live-Event geplant.',
-    noLiveEventBody:       'Schau bald wieder vorbei.',
+    noLiveEventBody:       'Schauen Sie bald wieder vorbei.',
     pastLiveEventsHeading: 'Vergangene Live-Events',
   },
   fr: {

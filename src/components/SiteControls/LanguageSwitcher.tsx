@@ -8,6 +8,7 @@ import { LOCALE_LABELS, LOCALE_NATIVE_NAMES } from '@/lib/i18n/locales'
 import { useSlugMap } from '@/components/SlugMapContext'
 import { useHostScoped } from '@/components/SiteLinkScope'
 import { languageSwitchPath } from '@/lib/i18n/language-switch'
+import { getLanguageSwitcherMessages } from '@/lib/i18n/language-switcher-messages'
 
 interface LanguageSwitcherProps {
   currentLocale: SupportedLocale
@@ -60,7 +61,7 @@ export function LanguageSwitcher({ currentLocale, supportedLocales, tenantId, ap
           className="mb-2.5 text-[10px] font-semibold uppercase tracking-widest"
           style={{ color: 'var(--color-text-primary)', opacity: 0.3 }}
         >
-          Language
+          {getLanguageSwitcherMessages(currentLocale).languageLabel}
         </p>
         <div className="flex gap-2">
           {supportedLocales.map((locale) => (
