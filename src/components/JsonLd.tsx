@@ -208,3 +208,57 @@ export function ArticleJsonLd(props: ArticleSchemaInput) {
   if (!schema) return null
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
 }
+
+// ─── CollectionPage + ItemList (listing routes: /news) ───────────────────────
+
+export interface CollectionSchemaInput {
+  /** `https://<customDomain>`; null → nothing is emitted (no canonical address). */
+  origin: string | null
+  locale: string
+  /** Public path segments below the locale, e.g. ['news']. */
+  pathSegments: string[]
+  name?: string | null
+  description?: string | null
+  /** Items in display order: public path segments below the locale + a name. */
+  items: { pathSegments: string[]; name?: string | null }[]
+}
+
+/**
+ * A listing page described as what it is: a CollectionPage of the site, whose
+ * main entity is the ordered list of the items it shows. Item URLs are the
+ * canonical public URLs, built the same way as each item's own canonical.
+ */
+export function buildCollectionSchema(input: CollectionSchemaInput): Record<string, unknown> | null {
+  const { origin, locale, pathSegments, name, description, items } = input
+  const url = canonicalUrl(origin, locale, ...pathSegments)
+  if (!origin || !url) return null
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    '@id': `${url}#collection`,
+    url,
+    ...(name ? { name } : {}),
+    ...(description ? { description } : {}),
+    inLanguage: locale,
+    isPartOf: { '@id': `${origin}#website` },
+    ...(items.length > 0
+      ? {
+          mainEntity: {
+            '@type': 'ItemList',
+            itemListElement: items.map((item, i) => ({
+              '@type': 'ListItem',
+              position: i + 1,
+              url: canonicalUrl(origin, locale, ...item.pathSegments),
+              ...(item.name ? { name: item.name } : {}),
+            })),
+          },
+        }
+      : {}),
+  }
+}
+
+export function CollectionJsonLd(props: CollectionSchemaInput) {
+  const schema = buildCollectionSchema(props)
+  if (!schema) return null
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+}

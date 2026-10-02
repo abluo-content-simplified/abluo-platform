@@ -40,7 +40,8 @@ import { resolveEasing } from '@/lib/motion/easing'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
 import { siteBasePath } from '@/lib/sanity/href'
-import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
+import { canonicalOrigin, canonicalUrl, hreflangAlternates, seoAlternates } from '@/lib/seo/canonical'
+import { ogLocale } from '@/lib/seo/og-locale'
 import { ArticleJsonLd } from '@/components/JsonLd'
 
 export const dynamic = 'force-dynamic'
@@ -78,15 +79,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   // hreflang: only for locales that actually have a slug. Emitting an alternate
   // for a locale with no translation would advertise a URL that 404s.
-  const alternates: Record<string, string> = {}
-  if (origin && article?.slugMap) {
-    for (const loc of supportedLocales) {
-      const locSlug = article.slugMap[loc as SupportedLocale]?.current
-      if (locSlug) {
-        alternates[loc] = canonicalUrl(origin, loc, 'news', locSlug)!
-      }
-    }
-  }
+  // x-default comes with hreflangAlternates, like every other route.
+  const alternates = hreflangAlternates(
+    origin,
+    Object.fromEntries(
+      supportedLocales.map((loc) => {
+        const locSlug = article?.slugMap?.[loc as SupportedLocale]?.current
+        return [loc, locSlug ? ['news', locSlug] : undefined]
+      })
+    ),
+    defaultLocale
+  )
+  const canonical = canonicalUrl(origin, locale, 'news', currentSlug)
 
   const ogImage = article?.coverImage?.asset
     ? ogImageUrl(article.seoImage ?? article.coverImage)
@@ -95,16 +99,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: article?.seoTitle ?? article?.title,
     description: article?.seoDescription ?? article?.excerpt,
-    alternates: {
-      canonical:
-        isProduction() && origin
-          ? canonicalUrl(origin, locale, 'news', currentSlug)
-          : undefined,
-      languages: !isDev() && Object.keys(alternates).length > 0 ? alternates : undefined,
-    },
+    alternates: seoAlternates(origin, canonical, alternates, {
+      isProduction: isProduction(),
+      isDev: isDev(),
+    }),
     openGraph: {
       title: article?.seoTitle ?? article?.title,
       description: article?.seoDescription ?? article?.excerpt ?? undefined,
+      url: canonical,
+      locale: ogLocale(locale),
       type: 'article',
       publishedTime: article?.publishedAt,
       images: ogImage ? [{ url: ogImage, width: 1200, height: 630 }] : undefined,

@@ -103,13 +103,16 @@ function ArticleCard({
   href,
   locale,
   priority = false,
+  level,
 }: {
   article: NewsArticle
   href: string
   locale: string
   priority?: boolean
+  level: CardHeadingLevel
 }) {
   const coverSrc = imageUrl(article.coverImage, 800)
+  const Heading = level === 2 ? 'h2' : 'h3'
 
   return (
     <a
@@ -137,12 +140,12 @@ function ArticleCard({
 
       <div className="flex flex-1 flex-col p-5">
         <CategoryChips categories={article.categories} />
-        <h3
+        <Heading
           className="mb-2 line-clamp-2 text-base font-semibold leading-snug tracking-tight"
           style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
         >
           {article.title}
-        </h3>
+        </Heading>
         {article.excerpt && (
           <p
             className="mb-4 line-clamp-3 flex-1 text-sm leading-relaxed"
@@ -165,12 +168,15 @@ function ArticleCardLarge({
   article,
   href,
   locale,
+  level,
 }: {
   article: NewsArticle
   href: string
   locale: string
+  level: CardHeadingLevel
 }) {
   const coverSrc = imageUrl(article.coverImage, 1200)
+  const Heading = level === 2 ? 'h2' : 'h3'
 
   return (
     <a
@@ -199,12 +205,12 @@ function ArticleCardLarge({
 
       <div className="flex flex-1 flex-col p-6 md:p-8">
         <CategoryChips categories={article.categories} />
-        <h3
+        <Heading
           className="mb-3 line-clamp-3 [--fs-h3:1.5rem] md:[--fs-h3:1.875rem]"
           style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)', fontSize: 'var(--font-size-h3, var(--fs-h3))', fontWeight: 'var(--font-weight-h3, 600)', lineHeight: 'var(--line-height-h3, 1.375)', letterSpacing: 'var(--letter-spacing-h3, -0.025em)' }}
         >
           {article.title}
-        </h3>
+        </Heading>
         {article.excerpt && (
           <p
             className="mb-6 line-clamp-3 flex-1 text-base leading-relaxed"
@@ -227,12 +233,16 @@ function ArticleCardMini({
   article,
   href,
   locale,
+  level,
 }: {
   article: NewsArticle
   href: string
   locale: string
+  level: CardHeadingLevel
 }) {
   const coverSrc = imageUrl(article.coverImage, 240)
+  // Mini cards sit beside a large lead card, one level below it.
+  const Heading = level === 2 ? 'h3' : 'h4'
 
   return (
     <a
@@ -254,12 +264,12 @@ function ArticleCardMini({
         )}
       </div>
       <div className="flex min-w-0 flex-1 flex-col justify-center">
-        <h4
+        <Heading
           className="mb-1 line-clamp-2 text-sm font-semibold leading-snug"
           style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}
         >
           {article.title}
-        </h4>
+        </Heading>
         <ArticleMeta article={article} locale={locale} />
       </div>
     </a>
@@ -268,16 +278,24 @@ function ArticleCardMini({
 
 // ─── Layouts ──────────────────────────────────────────────────────────────────
 
+/**
+ * Card title level. Cards are h3 under the section's own h2 title; with no
+ * section title they are h2, so a page whose h1 is the hero (the /news index)
+ * goes h1 → h2 rather than skipping to h3.
+ */
+type CardHeadingLevel = 2 | 3
+
 interface LayoutProps {
   articles: NewsArticle[]
   base: string
   locale: string
+  level: CardHeadingLevel
   fromParam?: string
   duration: number
   ease: string | number[]
 }
 
-function GridLayout({ articles, base, locale, fromParam, duration, ease }: LayoutProps) {
+function GridLayout({ articles, base, locale, level, fromParam, duration, ease }: LayoutProps) {
   return (
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {articles.map((article, i) => (
@@ -286,6 +304,7 @@ function GridLayout({ articles, base, locale, fromParam, duration, ease }: Layou
             article={article}
             href={articleHref(base, article, fromParam)}
             locale={locale}
+            level={level}
             priority={i === 0}
           />
         </SlideUp>
@@ -294,7 +313,7 @@ function GridLayout({ articles, base, locale, fromParam, duration, ease }: Layou
   )
 }
 
-function FeaturedLayout({ articles, base, locale, fromParam, duration, ease }: LayoutProps) {
+function FeaturedLayout({ articles, base, locale, level, fromParam, duration, ease }: LayoutProps) {
   const [lead, ...rest] = articles
   if (!lead) return null
 
@@ -305,6 +324,7 @@ function FeaturedLayout({ articles, base, locale, fromParam, duration, ease }: L
           article={lead}
           href={articleHref(base, lead, fromParam)}
           locale={locale}
+          level={level}
         />
       </SlideUp>
       {rest.length > 0 && (
@@ -315,6 +335,7 @@ function FeaturedLayout({ articles, base, locale, fromParam, duration, ease }: L
                 article={article}
                 href={articleHref(base, article, fromParam)}
                 locale={locale}
+                level={level}
               />
             </SlideUp>
           ))}
@@ -324,7 +345,7 @@ function FeaturedLayout({ articles, base, locale, fromParam, duration, ease }: L
   )
 }
 
-function MagazineLayout({ articles, base, locale, fromParam, duration, ease }: LayoutProps) {
+function MagazineLayout({ articles, base, locale, level, fromParam, duration, ease }: LayoutProps) {
   const [lead, ...rest] = articles
   if (!lead) return null
 
@@ -335,6 +356,7 @@ function MagazineLayout({ articles, base, locale, fromParam, duration, ease }: L
           article={lead}
           href={articleHref(base, lead, fromParam)}
           locale={locale}
+          level={level}
         />
       </SlideUp>
       {rest.length > 0 && (
@@ -345,6 +367,7 @@ function MagazineLayout({ articles, base, locale, fromParam, duration, ease }: L
                 article={article}
                 href={articleHref(base, article, fromParam)}
                 locale={locale}
+                level={level}
               />
             </SlideUp>
           ))}
@@ -423,6 +446,7 @@ export async function NewsListingSection({
     articles,
     base: newsBase,
     locale,
+    level: title ? 3 : 2,
     fromParam,
     duration,
     ease,

@@ -10,6 +10,7 @@ import { JsonLd } from '@/components/JsonLd'
 import { notFound, permanentRedirect } from 'next/navigation'
 import { SlugMapProvider } from '@/components/SlugMapContext'
 import { isProduction, isDev } from '@/lib/deployment'
+import { ogLocale } from '@/lib/seo/og-locale'
 import { canonicalOrigin, canonicalUrl, hreflangAlternates, seoAlternates } from '@/lib/seo/canonical'
 import { ogImageUrl, imageUrl } from '@/lib/sanity/image'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
@@ -96,11 +97,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const canonical = canonicalUrl(origin, locale, slug)
 
-  // OG locale tag — maps 2-letter code to IETF format
-  const ogLocaleMap: Record<string, string> = {
-    en: 'en_US', it: 'it_IT', de: 'de_DE', fr: 'fr_FR',
-    es: 'es_ES', pt: 'pt_PT', nl: 'nl_NL',
-  }
 
   // Page image → site default.
   //
@@ -132,7 +128,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description: pageDescription ?? undefined,
       url: canonical,
       siteName: config?.siteName ?? tenantId,
-      locale: ogLocaleMap[locale] ?? locale,
+      locale: ogLocale(locale),
       type: 'website',
       ...(pageOgImage ? { images: [{ url: pageOgImage, width: 1200, height: 630 }] } : {}),
     },

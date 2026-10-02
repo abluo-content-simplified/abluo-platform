@@ -40,7 +40,11 @@ import { getNewsModuleMessages } from '@/lib/i18n/news-module-messages'
 import { isProduction, isDev } from '@/lib/deployment'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
-import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
+import { canonicalOrigin, canonicalUrl, hreflangAlternates, seoAlternates } from '@/lib/seo/canonical'
+import { ogLocale } from '@/lib/seo/og-locale'
+import { ogImageUrl, imageUrl } from '@/lib/sanity/image'
+import { JsonLd, CollectionJsonLd } from '@/components/JsonLd'
+import type { NewsListingSection as NewsListingSectionType } from '@/lib/sanity/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -77,13 +81,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const canonical = canonicalUrl(origin, locale, 'news')
 
   // hreflang: the /news segment is locale-invariant, so one URL per supported
-  // locale differing only in the locale prefix.
-  const languages: Record<string, string> = {}
-  if (origin) {
-    for (const loc of supportedLocales) {
-      languages[loc] = canonicalUrl(origin, loc, 'news')!
-    }
-  }
+  // locale differing only in the locale prefix — plus x-default, like every
+  // other route (hreflangAlternates adds it).
+  const languages = hreflangAlternates(
+    origin,
+    Object.fromEntries(supportedLocales.map((loc) => [loc, ['news']])),
+    defaultLocale
+  )
+
+  // The site's default share image. A route that declares its own openGraph
+  // block REPLACES the layout's, images included, so it must be repeated here
+  // (see the same note in [...slug]/page.tsx) — /news had no og:image at all.
+  const ogImage = config?.openGraphImage?.asset ? ogImageUrl(config.openGraphImage as never) : undefined
 
   const metaTitle =
     newsPage?.seoTitle ?? (config?.siteName ? `${pageHeading} — ${config.siteName}` : pageHeading)
@@ -91,16 +100,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: metaTitle,
     description: pageDescription,
-    alternates: {
-      canonical: isProduction() ? canonical : undefined,
-      languages: !isDev() && Object.keys(languages).length > 0 ? languages : undefined,
-    },
+    alternates: seoAlternates(origin, canonical, languages, {
+      isProduction: isProduction(),
+      isDev: isDev(),
+    }),
     openGraph: {
       title: metaTitle,
       description: pageDescription,
       url: canonical,
       siteName: config?.siteName ?? tenantId,
+      locale: ogLocale(locale),
       type: 'website',
+      ...(ogImage ? { images: [{ url: ogImage, width: 1200, height: 630 }] } : {}),
     },
   }
 }
@@ -140,8 +151,31 @@ export default async function NewsIndexPage({ params }: PageProps) {
     moduleConfig,
   })
 
+  // JSON-LD: the site's Organization + WebSite (same as every page route) and
+  // this page as a CollectionPage listing the articles it shows, in order.
+  const origin = canonicalOrigin(siteConfig?.customDomain)
+  const listedArticles = (newsPage?.sections ?? [])
+    .filter((s): s is NewsListingSectionType => s._type === 'newsListingSection')
+    .flatMap((s) => s.articles ?? [])
+    .filter((a) => a.slug?.current)
+
   return (
     <>
+      <JsonLd
+        siteConfig={siteConfig}
+        locale={locale}
+        tenantId={tenantId}
+        pathSegments={['news']}
+        logoUrl={siteConfig?.logo ? imageUrl(siteConfig.logo as never, 512) : undefined}
+      />
+      <CollectionJsonLd
+        origin={origin}
+        locale={locale}
+        pathSegments={['news']}
+        name={newsPage?.seoTitle ?? newsPage?.heroTitle}
+        description={newsPage?.seoDescription ?? newsPage?.heroSubtitle}
+        items={listedArticles.map((a) => ({ pathSegments: ['news', a.slug.current], name: a.title }))}
+      />
       {newsPage?.sections?.map((section, index) => (
         <SectionRenderer
           key={section._key}

@@ -5,6 +5,7 @@ import { isStagingHost } from '@/lib/seo/indexability'
 import { canonicalUrl } from '@/lib/seo/canonical'
 import { normalizeHost } from '@/lib/tenancy/host-scope'
 import { withImages } from '@/lib/seo/sitemap-images'
+import { HAS_NEWS_INDEX_PROJECTION, newsIndexSitemapEntries } from '@/lib/seo/sitemap-news'
 
 // ─── projectSlug → URL tenant slug ───────────────────────────────────────────
 // There is no longer a map here. This was `PROJECT_TO_TENANT`, the reverse of
@@ -32,6 +33,8 @@ interface TenantSitemapData {
   customDomain?: string
   supportedLocales?: string[]
   defaultLocale?: string
+  /** News module enabled + a published newsPage → /{locale}/news exists. */
+  hasNewsIndex?: boolean
 }
 
 interface PageSitemapData {
@@ -157,7 +160,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         "defaultLocale": coalesce(
           siteConfig->defaultLocale,
           *[_type == "siteConfig" && projectSlug == ^.projectSlug][0].defaultLocale
-        )
+        ),
+        ${HAS_NEWS_INDEX_PROJECTION}
       }`
     )
 
@@ -240,7 +244,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // indexability classifier normalises it (lowercased, port stripped).
     const requestHost = normalizeHost((await headers()).get('host'))
 
-    for (const { projectSlug, customDomain, supportedLocales, defaultLocale } of projects) {
+    for (const { projectSlug, customDomain, supportedLocales, defaultLocale, hasNewsIndex } of projects) {
       // Skip tenants without a custom domain — no canonical URL to emit.
       if (!customDomain) continue
 
@@ -322,6 +326,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
       // Per-news entries (ADR-020) — only for locales that have a slug set.
       // Requirement 4 of the Publicly Routable Content Pattern.
+      entries.push(...newsIndexSitemapEntries({ hasNewsIndex, origin: tenantBase, locales, primaryLocale }))
+
       const projectNews = newsByProject.get(projectSlug) ?? []
       for (const item of projectNews) {
         for (const locale of locales) {

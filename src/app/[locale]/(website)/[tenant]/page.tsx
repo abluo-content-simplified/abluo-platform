@@ -11,6 +11,7 @@ import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
 import { isProduction, isDev } from '@/lib/deployment'
 import { ogImageUrl, imageUrl } from '@/lib/sanity/image'
+import { ogLocale } from '@/lib/seo/og-locale'
 import { canonicalOrigin, canonicalUrl, hreflangAlternates, seoAlternates } from '@/lib/seo/canonical'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 
@@ -57,11 +58,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     defaultLocale
   )
 
-  // OG locale tag — maps 2-letter code to IETF format
-  const ogLocaleMap: Record<string, string> = {
-    en: 'en_US', it: 'it_IT', de: 'de_DE', fr: 'fr_FR',
-    es: 'es_ES', pt: 'pt_PT', nl: 'nl_NL',
-  }
 
   // Page-level SEO wins, then the site default, then the bare site name.
   const metaTitle = homePage?.seoTitle ?? config?.seoDefaultTitle ?? config?.siteName ?? tenantId
@@ -82,7 +78,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description: metaDescription ?? undefined,
       url: canonical,
       siteName: config?.siteName ?? tenantId,
-      locale: ogLocaleMap[locale] ?? locale,
+      locale: ogLocale(locale),
       type: 'website',
       images: (() => {
         const url =
