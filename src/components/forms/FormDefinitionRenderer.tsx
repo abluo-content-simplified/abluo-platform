@@ -17,6 +17,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react'
+import { useFocusOnChange } from './useFocusOnChange'
 import { FormField, validateForm } from '@/components/fields'
 import type { RenderableFormDefinition } from '@/lib/sanity/types'
 import {
@@ -85,6 +86,10 @@ export function FormDefinitionRenderer({ definition, messages, locale = 'en', te
     })
   }, [])
 
+  // Focus the success message once it replaces the form (see useFocusOnChange).
+  const successRef = useRef<HTMLDivElement>(null)
+  useFocusOnChange(successRef, status === 'success')
+
   // Multi-step / malformed definitions are not rendered this slice (slice 5).
   if (!fields) {
     if (process.env.NODE_ENV !== 'production') {
@@ -142,7 +147,7 @@ export function FormDefinitionRenderer({ definition, messages, locale = 'en', te
     const successTitle = applySuccessTemplate(definition.successTitle, values)
     const successBody = applySuccessTemplate(definition.successBody, values) ?? messages.successMessage
     return (
-      <div className="py-8 text-center">
+      <div ref={successRef} tabIndex={-1} role="status" aria-live="polite" className="py-8 text-center outline-none">
         {successTitle && (
           <p className="text-[var(--color-text-primary)] text-lg font-medium">{successTitle}</p>
         )}

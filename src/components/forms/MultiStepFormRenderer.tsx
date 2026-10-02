@@ -32,6 +32,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { useFocusOnChange } from './useFocusOnChange'
 import { FormField, validateForm } from '@/components/fields'
 import type { RenderableFormDefinition, RenderableFormField } from '@/lib/sanity/types'
 import type { FormSectionMessages } from '@/lib/i18n/form-section-messages'
@@ -342,6 +343,13 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
     }
   }
 
+  // Focus follows the content: the step header after Continue/Back, the
+  // success message after Submit. See useFocusOnChange.
+  const stepHeaderRef = useRef<HTMLDivElement>(null)
+  const successRef = useRef<HTMLDivElement>(null)
+  useFocusOnChange(stepHeaderRef, stepIndex)
+  useFocusOnChange(successRef, status === 'success')
+
   if (status === 'preparing') {
     return <div className="py-8 text-center text-[var(--color-text-secondary)] text-sm">{messages.submitting}</div>
   }
@@ -350,7 +358,7 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
     const successTitle = applySuccessTemplate(def.successTitle, values)
     const successBody = applySuccessTemplate(def.successBody, values) ?? messages.successMessage
     return (
-      <div className="py-8 text-center">
+      <div ref={successRef} tabIndex={-1} role="status" aria-live="polite" className="py-8 text-center outline-none">
         {successTitle && <p className="text-[var(--color-text-primary)] text-lg font-medium">{successTitle}</p>}
         <p className="text-[var(--color-text-secondary)] text-sm leading-relaxed mt-2">
           {successBody}
@@ -376,7 +384,7 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-0">
-      <div className="mb-6">
+      <div ref={stepHeaderRef} tabIndex={-1} className="mb-6 outline-none">
         {visibleTotal > 1 && (
           <div className="mb-3">
             <div className="flex items-baseline justify-between mb-2">

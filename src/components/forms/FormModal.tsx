@@ -33,10 +33,14 @@ const FOCUSABLE_SELECTORS = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ')
 
-function useFocusTrap(containerRef: React.RefObject<HTMLElement | null>, isActive: boolean) {
+export function useFocusTrap(containerRef: React.RefObject<HTMLElement | null>, isActive: boolean) {
   useEffect(() => {
     if (!isActive || !containerRef.current) return
     const container = containerRef.current
+    // The element that opened the dialog (the CTA button). Focus returns to it
+    // on close — Esc, ✕ or programmatic — so keyboard users are not dropped at
+    // the top of the page.
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
 
     const getFocusables = () =>
       Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS)).filter(
@@ -51,6 +55,14 @@ function useFocusTrap(containerRef: React.RefObject<HTMLElement | null>, isActiv
       if (!elements.length) return
       const first = elements[0]
       const last = elements[elements.length - 1]
+      // Focus can end up outside the panel without a Tab — e.g. on <body> when
+      // the focused button is unmounted by a step change. Pull it back in
+      // rather than letting Tab walk the page behind the dialog.
+      if (!container.contains(document.activeElement)) {
+        e.preventDefault()
+        ;(e.shiftKey ? last : first).focus()
+        return
+      }
       if (e.shiftKey) {
         if (document.activeElement === first || document.activeElement === container) {
           e.preventDefault()
@@ -63,7 +75,10 @@ function useFocusTrap(containerRef: React.RefObject<HTMLElement | null>, isActiv
     }
 
     document.addEventListener('keydown', handleKeydown)
-    return () => document.removeEventListener('keydown', handleKeydown)
+    return () => {
+      document.removeEventListener('keydown', handleKeydown)
+      if (opener && opener.isConnected) opener.focus()
+    }
   }, [isActive, containerRef])
 }
 
