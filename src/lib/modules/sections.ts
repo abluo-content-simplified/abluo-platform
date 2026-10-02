@@ -68,6 +68,8 @@ export type ModuleSectionProps = {
   locale: string
   tenantSlug: string
   fromParam?: string
+  /** Site served on its own host — links drop the project segment (siteBasePath). */
+  hostScoped?: boolean
 }
 
 /**

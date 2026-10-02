@@ -25,6 +25,7 @@ type LocalSectionProps = {
   locale: string
   tenantSlug: string
   fromParam?: string
+  hostScoped?: boolean
 }
 
 // ── Events section components ─────────────────────────────────────────────────
@@ -37,7 +38,7 @@ export const eventsSectionComponents: Record<string, (props: LocalSectionProps) 
    * data fetching. Adapter: maps tenantSlug → tenantId (EventsListingSection's
    * prop name), mirroring blogSectionComponents.
    */
-  eventsListingSection: ({ section, surface, designSystem, locale, tenantSlug, fromParam }) => (
+  eventsListingSection: ({ section, surface, designSystem, locale, tenantSlug, fromParam, hostScoped }) => (
     <EventsListingSection
       section={section as EventsListingSectionType}
       surface={surface}
@@ -45,6 +46,7 @@ export const eventsSectionComponents: Record<string, (props: LocalSectionProps) 
       locale={locale}
       tenantId={tenantSlug}
       fromParam={fromParam}
+      hostScoped={hostScoped}
     />
   ),
 }

@@ -137,6 +137,7 @@ export default async function BlogCategoryPage({ params }: PageProps) {
   const { tenant: rawTenantId, locale, slug } = await params
   const tenantId = asUrlProjectSegment(rawTenantId)
 
+  const hostScoped = await isHostScopedRequest(tenantId)
   const { fetchForTenant, defaultLocale, moduleConfig, blogEnabled, category, redirectTo } =
     await load(tenantId, locale, slug)
 
@@ -151,7 +152,7 @@ export default async function BlogCategoryPage({ params }: PageProps) {
   // app had the same defect -- each documented as "301" while serving 307 --
   // and they are all corrected in this change.
   if (redirectTo) {
-    const siteBase = siteBasePath(locale, tenantId, await isHostScopedRequest(tenantId))
+    const siteBase = siteBasePath(locale, tenantId, hostScoped)
     permanentRedirect(`${siteBase}/category/${redirectTo}`)
   }
   if (!category) notFound()
@@ -188,6 +189,7 @@ export default async function BlogCategoryPage({ params }: PageProps) {
 
   return (
     <BlogListingSection
+      hostScoped={hostScoped}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       section={section as any}
       surface="surface1"

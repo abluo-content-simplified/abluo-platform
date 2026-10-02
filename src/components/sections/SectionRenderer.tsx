@@ -341,6 +341,12 @@ export interface SectionRendererProps {
   tenantSlug: UrlProjectSegment
   fromParam?: string
   /**
+   * True when the site is served on its own host: module listings then link
+   * without the project segment (siteBasePath in @/lib/sanity/href). Routes
+   * read it with isHostScopedRequest().
+   */
+  hostScoped?: boolean
+  /**
    * ADR-016 Phase D — the tenant's installed module IDs, used to gate
    * module-owned sections at render time. Optional and defaults to
    * "unresolved" (fail-open — see isSectionTypeAvailable in
@@ -369,6 +375,7 @@ export function SectionRenderer({
   locale,
   tenantSlug,
   fromParam,
+  hostScoped,
   enabledModuleIds,
   moduleConfig,
 }: SectionRendererProps) {
@@ -389,7 +396,7 @@ export function SectionRenderer({
   // registered in their module's sections.tsx file; no changes here required.
   const ModuleSection = SECTION_MAP[section._type]
   if (ModuleSection) {
-    return <>{ModuleSection({ section, surface, designSystem, siteConfig, moduleConfig, locale, tenantSlug, fromParam })}</>
+    return <>{ModuleSection({ section, surface, designSystem, siteConfig, moduleConfig, locale, tenantSlug, fromParam, hostScoped })}</>
   }
 
   // ── Platform-owned sections ──────────────────────────────────────────────

@@ -36,6 +36,7 @@ import { getNewsPageMessages } from '@/lib/i18n/news-page-messages'
 import { isProduction, isDev } from '@/lib/deployment'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
 import { SlugMapProvider } from '@/components/SlugMapContext'
 import { indexRouteSlugMap } from '@/lib/i18n/language-switch'
 import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
@@ -108,6 +109,7 @@ export default async function NewsListingPage({ params }: PageProps) {
   // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
   const tenantId = asUrlProjectSegment(rawTenantId)
   const { fetchForTenant } = tenantClient(tenantId)
+  const hostScoped = await isHostScopedRequest(tenantId)
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
@@ -146,6 +148,7 @@ export default async function NewsListingPage({ params }: PageProps) {
     <>
     {blogPage?.sections?.map((section, index) => (
       <SectionRenderer
+        hostScoped={hostScoped}
         key={section._key}
         section={section}
         siteConfig={siteConfig}

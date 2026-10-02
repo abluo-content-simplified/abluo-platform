@@ -32,6 +32,7 @@ type LocalSectionProps = {
   locale: string
   tenantSlug: string
   fromParam?: string
+  hostScoped?: boolean
 }
 
 // ── Blog section components ───────────────────────────────────────────────────
@@ -43,7 +44,7 @@ export const blogSectionComponents: Record<string, (props: LocalSectionProps) =>
    * this component is stateless with respect to data fetching.
    * Adapter: maps tenantSlug → tenantId (BlogListingSection's prop name).
    */
-  blogListingSection: ({ section, surface, designSystem, locale, tenantSlug, fromParam }) => (
+  blogListingSection: ({ section, surface, designSystem, locale, tenantSlug, fromParam, hostScoped }) => (
     <BlogListingSection
       section={section as BlogListingSectionType}
       surface={surface}
@@ -51,6 +52,7 @@ export const blogSectionComponents: Record<string, (props: LocalSectionProps) =>
       locale={locale}
       tenantId={tenantSlug}
       fromParam={fromParam}
+      hostScoped={hostScoped}
     />
   ),
 }

@@ -146,7 +146,8 @@ export default async function WebsitePageRoute({ params }: PageProps) {
   // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
   const tenantId = asUrlProjectSegment(rawTenantId)
   const { fetchForTenant } = tenantClient(tenantId)
-  const siteBase = siteBasePath(locale, tenantId, await isHostScopedRequest(tenantId))
+  const hostScoped = await isHostScopedRequest(tenantId)
+  const siteBase = siteBasePath(locale, tenantId, hostScoped)
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
@@ -233,6 +234,7 @@ export default async function WebsitePageRoute({ params }: PageProps) {
       />
       {page.sections?.map((section, index) => (
         <SectionRenderer
+          hostScoped={hostScoped}
           key={section._key}
           section={section}
           siteConfig={siteConfig}

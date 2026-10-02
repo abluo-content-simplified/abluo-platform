@@ -13,6 +13,7 @@ import { fetchDesignSystemById } from '@/lib/sanity/client'
 import type { EventsPage, LocaleConfig, SupportedLocale, DesignSystem, WebsiteSiteConfig } from '@/lib/sanity/types'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
 import { SlugMapProvider } from '@/components/SlugMapContext'
 import { indexRouteSlugMap } from '@/lib/i18n/language-switch'
 
@@ -50,6 +51,7 @@ export default async function EventsListPage({ params }: PageProps) {
   // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
   const tenantId = asUrlProjectSegment(rawTenantId)
   const { fetchForTenant } = tenantClient(tenantId)
+  const hostScoped = await isHostScopedRequest(tenantId)
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
@@ -94,6 +96,7 @@ export default async function EventsListPage({ params }: PageProps) {
     <>
     {eventsPage?.sections?.map((section, index) => (
       <SectionRenderer
+        hostScoped={hostScoped}
         key={section._key}
         section={section}
         siteConfig={siteConfig}

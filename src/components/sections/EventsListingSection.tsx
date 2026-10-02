@@ -5,7 +5,6 @@
 // src/lib/modules/events/sections.tsx into SECTION_MAP.
 
 import type { EventsListingSection as EventsListingSectionType, Event, DesignSystem } from '@/lib/sanity/types'
-import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
 import { siteBasePath } from '@/lib/sanity/href'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
@@ -390,9 +389,16 @@ interface Props {
   tenantId: string
   /** When set, appended as ?from=${fromParam} to every card link. */
   fromParam?: string
+  /**
+   * True when the site is served on its own host — links then carry no project
+   * segment (see siteBasePath in @/lib/sanity/href). Passed down from the
+   * route, which reads it with isHostScopedRequest(); this component also
+   * ships in the Studio bundle, so it cannot read request headers itself.
+   */
+  hostScoped?: boolean
 }
 
-export async function EventsListingSection({ section, surface, designSystem, locale, tenantId, fromParam }: Props) {
+export function EventsListingSection({ section, surface, designSystem, locale, tenantId, fromParam, hostScoped = false }: Props) {
   const {
     eyebrow,
     title,
@@ -408,7 +414,6 @@ export async function EventsListingSection({ section, surface, designSystem, loc
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
   // Base URL for event detail links: /[locale]/[tenant]/events
-  const hostScoped = await isHostScopedRequest(tenantId)
   const eventsBase = `${siteBasePath(locale, tenantId, hostScoped)}/events`
 
   // Motion tokens — durationSlow for content sections

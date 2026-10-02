@@ -32,6 +32,7 @@ type LocalSectionProps = {
   locale: string
   tenantSlug: string
   fromParam?: string
+  hostScoped?: boolean
 }
 
 // ── News section components ───────────────────────────────────────────────────
@@ -43,7 +44,7 @@ export const newsSectionComponents: Record<string, (props: LocalSectionProps) =>
    * this component does no data fetching of its own.
    * Adapter: maps tenantSlug → tenantId (the component's prop name).
    */
-  newsListingSection: ({ section, surface, designSystem, locale, tenantSlug, fromParam }) => (
+  newsListingSection: ({ section, surface, designSystem, locale, tenantSlug, fromParam, hostScoped }) => (
     <NewsListingSection
       section={section as NewsListingSectionType}
       surface={surface}
@@ -51,6 +52,7 @@ export const newsSectionComponents: Record<string, (props: LocalSectionProps) =>
       locale={locale}
       tenantId={tenantSlug}
       fromParam={fromParam}
+      hostScoped={hostScoped}
     />
   ),
 }

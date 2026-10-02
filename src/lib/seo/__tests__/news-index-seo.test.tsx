@@ -1,11 +1,10 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { buildCollectionSchema } from '@/components/JsonLd'
 import { newsIndexSitemapEntries, HAS_NEWS_INDEX_PROJECTION } from '../sitemap-news'
 import { ogLocale } from '../og-locale'
 import type { NewsListingSection as NewsListingSectionType } from '@/lib/sanity/types'
 
-vi.mock('@/lib/tenancy/link-scope.server', () => ({ isHostScopedRequest: async () => true }))
 import { NewsListingSection } from '@/components/sections/NewsListingSection'
 
 describe('news index — CollectionPage JSON-LD', () => {
@@ -72,7 +71,7 @@ describe('NewsListingSection — heading levels and links', () => {
     ({ _type: 'newsListingSection', _key: 'n', title, layout: 'grid', articles: [article('a'), article('b')] }) as unknown as NewsListingSectionType
 
   const render = async (s: NewsListingSectionType) =>
-    renderToStaticMarkup(await NewsListingSection({ section: s, surface: 'transparent' as never, designSystem: null, locale: 'it', tenantId: 'abluo', fromParam: 'news' }))
+    renderToStaticMarkup(<NewsListingSection section={s} surface={'transparent' as never} designSystem={null} locale="it" tenantId="abluo" fromParam="news" hostScoped />)
 
   it('cards are h2 when the section has no title (h1 → h2, no skip)', async () => {
     const html = await render(section())

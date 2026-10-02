@@ -1,5 +1,4 @@
 import type { BlogListingSection as BlogListingSectionType, Post, DesignSystem } from '@/lib/sanity/types'
-import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
 import { siteBasePath } from '@/lib/sanity/href'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
@@ -400,9 +399,16 @@ interface Props {
    * e.g. "home" → "Back to Home", "investors" → "Back to Investors"
    */
   fromParam?: string
+  /**
+   * True when the site is served on its own host — links then carry no project
+   * segment (see siteBasePath in @/lib/sanity/href). Passed down from the
+   * route, which reads it with isHostScopedRequest(); this component also
+   * ships in the Studio bundle, so it cannot read request headers itself.
+   */
+  hostScoped?: boolean
 }
 
-export async function BlogListingSection({ section, surface, designSystem, locale, tenantId, fromParam }: Props) {
+export function BlogListingSection({ section, surface, designSystem, locale, tenantId, fromParam, hostScoped = false }: Props) {
   const {
     eyebrow,
     title,
@@ -418,7 +424,6 @@ export async function BlogListingSection({ section, surface, designSystem, local
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
   // Base URL for post detail links: /[locale]/[tenant]/blog
-  const hostScoped = await isHostScopedRequest(tenantId)
   const blogBase = `${siteBasePath(locale, tenantId, hostScoped)}/blog`
 
   // Motion tokens — durationSlow for content sections
