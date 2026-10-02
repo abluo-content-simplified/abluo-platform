@@ -20,6 +20,7 @@ import { Masthead } from '@/components/site/Masthead'
 import { SiteRail } from '@/components/site/SiteRail'
 import { HeaderAppearanceWrapper } from '@/components/HeaderAppearanceWrapper'
 import { DevBadge } from '@/components/DevBadge'
+import { FirstTouchRecorder } from '@/components/forms/FirstTouchRecorder'
 import { isProduction } from '@/lib/deployment'
 import { EarlyAccessWrapper } from '@/components/forms/EarlyAccessWrapper'
 import { FormOverlayWrapper } from '@/components/forms/FormOverlayWrapper'
@@ -752,6 +753,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         <TrackingScripts data={integrations} placement="bodyEnd" grants={consent.grants} />
         <Footer tenantId={tenantId} locale={locale as SupportedLocale} defaultLocale={defaultLocale} />
         {whatsAppFab(modules, livenerConfig, tenantId, locale)}
+        <FirstTouchRecorder scope={tenantId} />
         <DevBadge />
       </ConsentProvider>
     )
@@ -915,6 +917,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         />
       )}
       {whatsAppFab(modules, config, tenantId, locale)}
+      <FirstTouchRecorder scope={tenantId} />
       <DevBadge />
     </ConsentProvider>
   )

@@ -6,15 +6,37 @@
  * form (the Early Access modal/footer today; the generic Form Section in
  * slice 4). Returns a plain object merged into the submission `source` jsonb.
  *
- * Server-side fields (device_type, country, submitter_ip) are added by the API
- * route — they are not collected here. This helper only reads what the browser
- * knows: the current page, the true referrer, and campaign parameters.
+ * Server-side fields (device_type, country, region, city, submitter_ip) are
+ * added by the API route — they are not collected here. This helper only reads
+ * what the browser knows: the current page, the immediate referrer, campaign
+ * parameters, the browser language + timezone, and the session's FIRST-TOUCH
+ * record (external entry, landing page, pages viewed — see `first-touch.ts`),
+ * from which it also computes `seconds_to_submit`.
  *
- * Privacy: this is first-party lead attribution captured alongside an explicit
- * GDPR consent on the form. It deliberately does NOT collect fingerprinting
- * signals (raw user-agent, timezone, screen) — that was the "Standard +
- * technical" option, not enabled.
+ * Privacy: this is first-party lead attribution sent only when the visitor
+ * submits a form, alongside that form's consent. Language and timezone were
+ * added on Tom's request (2026-10) to tell a tenant where a lead is from; it
+ * still does NOT collect fingerprinting signals (raw user-agent, screen size,
+ * fonts, plugins).
  */
+import { firstTouchSourceFields, getSessionStorage, readActiveFirstTouch } from '@/lib/forms/first-touch'
+
+function safeLanguage(): string | null {
+  try {
+    return typeof navigator !== 'undefined' && navigator.language ? navigator.language : null
+  } catch {
+    return null
+  }
+}
+
+function safeTimezone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null
+  } catch {
+    return null
+  }
+}
+
 export function collectClientSource(
   extra: Record<string, unknown> = {},
 ): Record<string, unknown> {
@@ -61,6 +83,12 @@ export function collectClientSource(
     // Ad click IDs
     gclid: pick('gclid'),
     fbclid: pick('fbclid'),
+    // Visitor context
+    browser_language: safeLanguage(),
+    timezone: safeTimezone(),
+    // Session first-touch (external entry, landing page, pages viewed,
+    // seconds_to_submit) — {} when storage is blocked or nothing was recorded.
+    ...firstTouchSourceFields(readActiveFirstTouch(getSessionStorage())),
     // Caller-supplied (entry point, CTA attribution) — override/extend the above
     ...extra,
   }

@@ -154,6 +154,25 @@ export const ALLOWED_SOURCE_KEYS: readonly string[] = [
   // collectClientSource() — ad click ids
   'gclid',
   'fbclid',
+  // collectClientSource() — visitor context
+  'browser_language',
+  'timezone',
+  // first-touch.ts — the session's external entry (recorded once per session
+  // in sessionStorage, sent only with a submission)
+  'landing_page_url',
+  'landing_page_path',
+  'first_referrer',
+  'first_referrer_domain',
+  'first_utm_source',
+  'first_utm_medium',
+  'first_utm_campaign',
+  'first_utm_term',
+  'first_utm_content',
+  'first_gclid',
+  'first_fbclid',
+  'session_started_at',
+  'pages_viewed',
+  'seconds_to_submit',
   // Entry point / CTA attribution seeded by the section components
   'source',
   'cta_internal_name',
@@ -162,16 +181,18 @@ export const ALLOWED_SOURCE_KEYS: readonly string[] = [
   // sets them AFTER sanitizing, so a client-sent value is overwritten).
   'device_type',
   'country',
+  'region',
+  'city',
 ]
 
 const SOURCE_KEY_SET = new Set(ALLOWED_SOURCE_KEYS)
 
-/** Per-value cap for URL-ish attribution keys (page_url, referrer). */
+/** Per-value cap for URL-ish attribution keys (page_url, referrer, landing_page_url, first_referrer). */
 export const MAX_SOURCE_URL_VALUE_LENGTH = 2_048
 /** Per-value cap for every other attribution key. */
 export const MAX_SOURCE_VALUE_LENGTH = 512
 
-const LONG_SOURCE_KEYS = new Set(['page_url', 'referrer'])
+const LONG_SOURCE_KEYS = new Set(['page_url', 'referrer', 'landing_page_url', 'first_referrer'])
 
 /**
  * Reduces a client-supplied `source` object to whitelisted keys with bounded
