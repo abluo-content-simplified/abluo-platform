@@ -1233,6 +1233,8 @@ export const newsArticlesQuery = /* groq */ `
 export const newsArticleBySlugQuery = /* groq */ `
   *[_type == "newsArticle" && projectSlug == $projectSlug && slug[$locale].current == $slug][0] {
     _id,
+    // Article JSON-LD dateModified — the document's own last-edit time.
+    "updatedAt": _updatedAt,
     "title": ${loc('title')},
     "slugMap": slug,
     "redirectFrom": redirectFrom,

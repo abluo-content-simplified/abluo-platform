@@ -932,6 +932,8 @@ export interface NewsArticle {
   excerpt?: string
   body?: PortableTextContent
   publishedAt?: string
+  /** Detail query only — `_updatedAt`, used as Article JSON-LD dateModified. */
+  updatedAt?: string
   expiresAt?: string
   featured?: boolean
   coverImage?: ResolvedImage

@@ -39,6 +39,7 @@ import { getNewsModuleMessages, formatNewsDate } from '@/lib/i18n/news-module-me
 import { resolveEasing } from '@/lib/motion/easing'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
+import { ArticleJsonLd } from '@/components/JsonLd'
 
 export const dynamic = 'force-dynamic'
 
@@ -169,7 +170,7 @@ export default async function NewsDetailPage({ params, searchParams }: PageProps
     defaultLocale,
   })
 
-  const [article, designSystem] = await Promise.all([
+  const [article, designSystem, customDomain] = await Promise.all([
     fetchForTenant<NewsArticle>(newsArticleBySlugQuery, {
       slug,
       locale: locale as SupportedLocale,
@@ -180,6 +181,7 @@ export default async function NewsDetailPage({ params, searchParams }: PageProps
       const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {})
       return resolveDesignSystemInheritance(raw, fetchDesignSystemById)
     })(),
+    fetchForTenant<string | null>(projectDomainQuery, {}),
   ])
 
   // Primary lookup missed — consult the redirect table before giving up, so a
@@ -226,6 +228,25 @@ export default async function NewsDetailPage({ params, searchParams }: PageProps
 
   return (
     <SlugMapProvider slugMap={slugMap}>
+      {/* Article JSON-LD — same builder as blog posts. News items have no
+          author field, so the site's organisation is named as author (it is
+          already the publisher). Every other key is omitted when unauthored. */}
+      <ArticleJsonLd
+        schemaType="Article"
+        origin={canonicalOrigin(customDomain)}
+        locale={locale}
+        pathSegments={['news', article.slugMap?.[locale as SupportedLocale]?.current ?? slug]}
+        headline={article.title}
+        description={article.excerpt ?? article.seoDescription}
+        imageUrl={
+          (article.seoImage ?? article.coverImage)?.asset
+            ? ogImageUrl(article.seoImage ?? article.coverImage)
+            : null
+        }
+        datePublished={article.publishedAt}
+        dateModified={article.updatedAt}
+        authorIsPublisher
+      />
       <article className="mx-auto w-full max-w-[760px] px-6 py-16 md:py-24">
         <SlideUp duration={duration} ease={ease} delay={0}>
           <BackButton label={backLabel} fallbackUrl={backUrl} />

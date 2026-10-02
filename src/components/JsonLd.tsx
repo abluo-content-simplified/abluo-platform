@@ -139,7 +139,7 @@ export function JsonLd({ siteConfig, faqSection, locale, pathSegments = [], logo
   )
 }
 
-// ─── Article (blog posts) ─────────────────────────────────────────────────────
+// ─── Article (blog posts, news articles) ──────────────────────────────────────
 
 export interface ArticleSchemaInput {
   /** Canonical origin of the tenant (https://domain), or null when unknown. */
@@ -151,11 +151,26 @@ export interface ArticleSchemaInput {
   description?: string | null
   imageUrl?: string | null
   datePublished?: string | null
+  /** Last edit of the document (`_updatedAt`). Omitted when unknown. */
+  dateModified?: string | null
   authorName?: string | null
+  /**
+   * When the content type has no author field (news articles), the site's own
+   * organisation is the author — the same entity already named as publisher.
+   * An authored `authorName` always wins. Never a guessed person.
+   */
+  authorIsPublisher?: boolean
+  /**
+   * Schema.org type. `BlogPosting` (default) for blog posts; `Article` for
+   * news-module items — release notes and announcements are not journalism,
+   * so `NewsArticle` would assert something the content does not.
+   */
+  schemaType?: 'BlogPosting' | 'Article'
 }
 
 /**
- * Schema.org BlogPosting for a single post. Pure so it can be tested.
+ * Schema.org BlogPosting / Article for a single post or news item. Pure so it
+ * can be tested.
  *
  * It points at the organisation and website entities emitted on the home page
  * by `@id`, so the article is attached to the practice rather than floating
@@ -168,14 +183,19 @@ export function buildArticleSchema(input: ArticleSchemaInput): Record<string, un
   const url = canonicalUrl(origin, locale, ...pathSegments)
   return {
     '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
+    '@type': input.schemaType ?? 'BlogPosting',
     ...(url && { '@id': `${url}#article`, url, mainEntityOfPage: url }),
     headline,
     inLanguage: locale,
     ...(input.description && { description: input.description }),
     ...(input.imageUrl && { image: input.imageUrl }),
     ...(input.datePublished && { datePublished: input.datePublished }),
-    ...(input.authorName && { author: { '@type': 'Person', name: input.authorName } }),
+    ...(input.datePublished && input.dateModified && { dateModified: input.dateModified }),
+    ...(input.authorName
+      ? { author: { '@type': 'Person', name: input.authorName } }
+      : input.authorIsPublisher && origin
+        ? { author: { '@id': `${origin}#organization` } }
+        : {}),
     ...(origin && {
       publisher: { '@id': `${origin}#organization` },
       isPartOf: { '@id': `${origin}#website` },
