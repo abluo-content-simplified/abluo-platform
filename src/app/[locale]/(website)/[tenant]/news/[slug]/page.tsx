@@ -24,11 +24,12 @@ import {
   designSystemQuery,
   projectDomainQuery,
   projectModuleConfigQuery,
+  newsPageTitleQuery,
 } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { type ProjectModuleConfig } from '@/lib/modules/config'
 import { resolveCategoriesFor, categoryKeysOf, charsPerMinute, DEFAULT_CHARS_PER_MINUTE } from '@/lib/modules/categories'
-import type { NewsArticle, LocaleConfig, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
+import type { NewsArticle, NewsPage, LocaleConfig, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
 import { imageUrl, imageSrcSet, ogImageUrl } from '@/lib/sanity/image'
 import { SlideUp } from '@/components/animation'
 import { SlugMapProvider, type SlugMap } from '@/components/SlugMapContext'
@@ -36,6 +37,7 @@ import { BackButton } from '@/components/events/BackButton'
 import { PortableText } from '@portabletext/react'
 import { articlePortableTextComponents } from '@/components/portable-text/article-components'
 import { getNewsModuleMessages, formatNewsDate } from '@/lib/i18n/news-module-messages'
+import { newsBackLink } from '@/lib/modules/news/back-link'
 import { resolveEasing } from '@/lib/motion/easing'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
@@ -128,34 +130,6 @@ export async function generateStaticParams() {
   return []
 }
 
-// ─── Back-button context ──────────────────────────────────────────────────────
-
-/**
- * Resolves the back link from the `?from=` parameter set on listing cards.
- *
- * The label is localized, unlike the blog route's equivalent helper, which
- * builds English strings ("Back to Home") regardless of locale. For an
- * arbitrary page slug there is no authored label available at this point, so
- * the module's generic "back to news" label is used rather than title-casing
- * a URL segment into a pseudo-English phrase.
- */
-function getBackContext(
-  from: string | undefined,
-  locale: string,
-  siteBase: string
-): { label: string; url: string } {
-  const msg = getNewsModuleMessages(locale)
-  const newsUrl = `${siteBase}/news`
-
-  if (!from || from === 'news') {
-    return { label: msg.backToNews, url: newsUrl }
-  }
-  // Came from another page (a composed News Listing section). Send the visitor
-  // back where they were, with the module's generic label. Listing cards no
-  // longer add `?from=`; this keeps links shared before that working.
-  return { label: msg.backToNews, url: `${siteBase}/${from}` }
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function NewsDetailPage({ params, searchParams }: PageProps) {
@@ -177,7 +151,7 @@ export default async function NewsDetailPage({ params, searchParams }: PageProps
     defaultLocale,
   })
 
-  const [article, designSystem, customDomain] = await Promise.all([
+  const [article, designSystem, customDomain, newsPage] = await Promise.all([
     fetchForTenant<NewsArticle>(newsArticleBySlugQuery, {
       slug,
       locale: locale as SupportedLocale,
@@ -189,6 +163,8 @@ export default async function NewsDetailPage({ params, searchParams }: PageProps
       return resolveDesignSystemInheritance(raw, fetchDesignSystemById)
     })(),
     fetchForTenant<string | null>(projectDomainQuery, {}),
+    // Only for the back link's label — the site's own name for its index.
+    fetchForTenant<Pick<NewsPage, 'heroTitle'>>(newsPageTitleQuery, { locale, defaultLocale }),
   ])
 
   // Primary lookup missed — consult the redirect table before giving up, so a
@@ -219,7 +195,7 @@ export default async function NewsDetailPage({ params, searchParams }: PageProps
   article.categories = resolveCategoriesFor(article, moduleConfig, 'news', locale, defaultLocale)
 
   const msg = getNewsModuleMessages(locale)
-  const { label: backLabel, url: backUrl } = getBackContext(from, locale, siteBase)
+  const { label: backLabel, url: backUrl } = newsBackLink({ from, locale, siteBase, newsIndexTitle: newsPage?.heroTitle })
 
   const coverSrc = imageUrl(article.coverImage, 1600)
   const coverSrcSet = imageSrcSet(article.coverImage, [800, 1200, 1600, 2400])

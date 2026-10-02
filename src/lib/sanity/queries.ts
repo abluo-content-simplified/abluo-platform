@@ -1296,6 +1296,14 @@ export const newsPageQuery = /* groq */ `
   }
 `
 
+// The news index's own title only — for the back link on a news article,
+// which must not pay for the index's full section projection.
+export const newsPageTitleQuery = /* groq */ `
+  *[_type == "newsPage" && projectSlug == $projectSlug][0] {
+    "heroTitle": ${loc('heroTitle')}
+  }
+`
+
 // ─── Events Listing Section (ADR-016 Phase B, 'live' added Phase C) ───────────
 //
 // Modeled on the Blog Listing Section queries above. Adds a $timeFilter
