@@ -1575,6 +1575,21 @@ V2 (Concept Spec §26, out of V1): save-and-resume, draft submissions, tenant su
 
 **Decision ownership note (spine §4):** acceptance of this ADR is `Tom approves` — **done (2026-08-11)**. Within it, the `form_submissions`/`form_events` migrations and any RLS-tightening (the `project_id` `NOT NULL` step, the RLS-primary flip for submission reads) are `Tom decides` at execution time — irreversible-adjacent actions per spine §7, planned here but never executed without explicit sign-off at the moment each is run.
 
+### Amendment A — Consent before data (2026-10-02)
+
+**Problem.** On a multi-step form, step 1's "Continue" created the partial row (name + email) with `gdpr_consent = false`; the consent checkbox only appeared on the final step (or the review screen). Personal data was therefore stored before the visitor had agreed to anything — for every form with `privacy.requireConsent` (Livener and abluo `early-access` among them).
+
+**Rule.** When a form requires consent, consent is asked on the **first screen whose submit stores data** and travels with that request:
+- **Server** (`createSubmission`): a create for a consent-requiring form is refused (`400`, `_consent: required`, nothing inserted) without `gdprConsent: true`, single-step or multi-step. `gdpr_consent` + `gdpr_consent_at` are written on the create. `completeStep` no longer re-asks: the final step requires consent only for a legacy partial row that has none.
+- **Client** (`MultiStepFormRenderer`, `consentPlacement()` in `src/lib/forms/multistep.ts`): the checkbox renders on step 1 (or, if the visitor reaches the review screen with nothing stored yet, on the recap); once the row exists it is not shown again. Context auto-advance is deferred for consent-requiring forms — the landing step's submit creates the row with consent and replays the context-satisfied steps.
+- **Legacy Early Access modal / footer CTA**: consent moved to the modal's step 1; the footer CTA no longer POSTs on its own and opens the modal at step 1 pre-filled.
+
+Partial-lead capture is unchanged otherwise: a form that does not require consent still stores step 1 as a partial row. The snapshot field keeps its historical name `requiresConsentAtFinalStep` (frozen into stored snapshots); it now means "requires consent".
+
+### Amendment B — Lead origin in `source` (2026-10-02)
+
+The §12 attribution `source` JSONB additionally carries, per submission: the session's **first-touch** (landing page, external referrer, first UTM set + click ids, session start, pages viewed, seconds to submit — recorded in `sessionStorage` only by `FirstTouchRecorder`, sent only with a submission), the browser language + time zone, and server-derived `region` + `city` (Vercel IP headers) beside `country`/`device_type`. No schema change; keys are whitelisted in `ALLOWED_SOURCE_KEYS`. The notification email and the dashboard submission detail show a localized "Where this lead came from" block built by `buildLeadOriginRows()`.
+
 
 ---
 
