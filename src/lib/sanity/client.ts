@@ -161,41 +161,34 @@ export function findTenantScopeViolation(
 export type TenantScopeEnforcement = 'throw' | 'warn'
 
 /**
- * How `fetchForTenant` reacts to a violation: THROW in development, WARN
- * everywhere else (production, preview, test).
+ * How `fetchForTenant` reacts to a violation: it THROWS, in every
+ * environment. The query never reaches Sanity.
  *
- * ── Why not throw in production ─────────────────────────────────────────────
- * This guard is a substring check, not a parser. A false positive here does
- * not degrade a page — it takes a live client website down entirely, on a
- * server component, with no fallback. Every query the website actually issues
- * comes from `queries.ts`, and the whole exported catalogue is already proven
- * scoped at CI time by `__tests__/query-tenant-scope.test.ts`; so in
- * production this guard is defence-in-depth against a *future* ad-hoc query
- * string, not the primary control. Defence-in-depth that can black out a
- * tenant is a worse trade than defence-in-depth that pages someone. The warn
- * carries the full query plus the tenant and project slugs, so it is
- * actionable rather than decorative.
+ * ── History ─────────────────────────────────────────────────────────────────
+ * This used to throw only in development and merely `console.error` in
+ * production (and keep running the query), on the argument that a false
+ * positive from a substring check would black out a live client site. That
+ * left the guarantee "a website read can only return its own tenant's
+ * content" resting on a log line. Once the dataset is private the trade is
+ * no longer close: an unscoped query run with the read token returns every
+ * tenant's content — drafts-free, but still another client's data — onto a
+ * public page.
  *
- * ── Why throw in development ────────────────────────────────────────────────
- * That is where a new unscoped query is written, and where a hard failure
- * costs nothing and is impossible to ignore. A developer never gets to commit
- * an unscoped `fetchForTenant` call without seeing it fail first, and CI
- * catches it again on the way in.
+ * The false-positive risk is now closed at CI instead of being absorbed at
+ * runtime: `__tests__/fetch-for-tenant-call-sites.test.ts` walks every
+ * `fetchForTenant(...)` call in `src/` and proves the query each one passes
+ * resolves to a catalogue query that passes this exact detector, and
+ * `website-tenant-scope-guard.test.ts` runs the whole `queries.ts` catalogue
+ * through it. A query that would throw here cannot be merged.
  *
- * ── Why warn (not throw) in test ────────────────────────────────────────────
- * NODE_ENV is 'test' under vitest, and existing suites deliberately drive
- * `fetchForTenant` with stub queries like `*[_type == "page"]` to assert
- * param injection — those are testing the injection, not the query catalogue.
- * The throwing branch is exercised directly by passing 'development' here.
- *
- * The env is read per call (not captured at module load) so it stays
- * stubbable and so a process cannot be locked into the wrong mode by import
- * order.
+ * The parameter is kept so existing callers/tests that pass an env still
+ * type-check; it no longer changes the answer.
  */
 export function tenantScopeEnforcement(
   nodeEnv: string | undefined = process.env.NODE_ENV
 ): TenantScopeEnforcement {
-  return nodeEnv === 'development' ? 'throw' : 'warn'
+  void nodeEnv
+  return 'throw'
 }
 
 /**
@@ -252,21 +245,20 @@ export function tenantClient(tenantSlug: UrlProjectSegment | ProjectSlug) {
       // returning every tenant's documents. Before this check, scoping on the
       // public website was a convention enforced only by a CI test over the
       // `queries.ts` catalogue — nothing stopped an inline query string here.
-      // Throws in development, warns (loudly, with the query and both slugs)
-      // elsewhere — see `tenantScopeEnforcement`.
+      // Throws in every environment, before reaching Sanity — see
+      // `tenantScopeEnforcement`.
       const violation = findTenantScopeViolation(query, 'tenantClient.fetchForTenant')
       if (violation) {
         const detail =
           violation.message +
           ` [tenantSlug=${tenantSlug} projectSlug=${projectSlug}] query: ` +
           query.replace(/\s+/g, ' ').trim().slice(0, 500)
+        // console.error first, so the refusal is visible at error level in the
+        // platform's log drain even where the throw is caught and degraded.
+        console.error('[tenant-scope] UNSCOPED WEBSITE QUERY REFUSED — ' + detail)
         if (tenantScopeEnforcement() === 'throw') {
           throw new Error(detail)
         }
-        // console.error, not console.warn: this is a potential cross-tenant
-        // content leak, and it must surface at error level in the platform's
-        // log drain rather than blend into build noise.
-        console.error('[tenant-scope] UNSCOPED WEBSITE QUERY — ' + detail)
       }
 
       // Step 5 dropped the `projectSlugs` dual-read binding: every query in

@@ -84,12 +84,11 @@
  * tenant's documents — scoping there was a convention, not a control.
  *
  * `fetchForTenant` now runs the SAME detector, so the rule cannot drift
- * between the two paths. The reaction differs on purpose: this chokepoint
- * always throws (a failing API route is contained), whereas the website
- * throws only in development and logs a `console.error` carrying the query
- * and both slugs in production, where a false positive from a substring
- * check would take a live client site down. See `tenantScopeEnforcement` in
- * `@/lib/sanity/client` for that trade-off in full, and
+ * between the two paths, and since 2026-10 it reacts the same way too: it
+ * throws in every environment (it used to only log in production). The
+ * false-positive risk that once justified the softer reaction is closed at CI
+ * by `src/lib/sanity/__tests__/fetch-for-tenant-call-sites.test.ts`. See
+ * `tenantScopeEnforcement` in `@/lib/sanity/client`, and
  * `UNSCOPED_READ_EXEMPTIONS` there for the website's one audited exemption
  * (`fetchDesignSystemById`, which follows `parentDesignSystem->` across
  * projects by design).
@@ -157,11 +156,10 @@ export type TenantScopedSanityClient = {
  * The detection itself now lives in `findTenantScopeViolation`
  * (`@/lib/sanity/client`) so the public-website read path
  * (`tenantClient().fetchForTenant`) enforces the SAME rule rather than a
- * second, drifting copy of it. Only the REACTION differs, and it differs
- * deliberately: this chokepoint always throws — an API route failing is a
- * contained failure — while the website throws in development and warns in
- * production, where a false positive would black out a live client site.
- * Behaviour here, including the exact error messages, is unchanged.
+ * second, drifting copy of it. Both chokepoints now react the same way:
+ * this one always throws (an API route failing is a
+ * contained failure), and the website path throws in every environment
+ * as well. Behaviour here, including the exact error messages, is unchanged.
  */
 function assertQueryIsTenantScoped(query: string): void {
   const violation = findTenantScopeViolation(query, 'tenantScopedSanityClient')

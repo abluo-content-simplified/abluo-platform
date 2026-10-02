@@ -118,11 +118,11 @@ describe('tenantClient.fetchForTenant — scope injection', () => {
     const fetchSpy = vi.fn().mockResolvedValue([])
     ;(mod.sanityClient as unknown as { fetch: unknown }).fetch = fetchSpy
 
-    await mod.tenantClient(asUrlProjectSegment('livener')).fetchForTenant('*[_type == "page"]')
+    await mod.tenantClient(asUrlProjectSegment('livener')).fetchForTenant('*[_type == "page" && projectSlug == $projectSlug]')
 
     // Exact object: Step 5 of `src/lib/tenancy/RENAME.md` removed the
     // `projectSlugs` dual-read key, and nothing may quietly bind it again.
-    expect(fetchSpy).toHaveBeenCalledWith('*[_type == "page"]', {
+    expect(fetchSpy).toHaveBeenCalledWith('*[_type == "page" && projectSlug == $projectSlug]', {
       projectSlug: 'livener',
       tenantSlug: 'livener',
     })
@@ -138,7 +138,7 @@ describe('tenantClient.fetchForTenant — scope injection', () => {
     // URL segment, `projects.slug` and Sanity's `projectSlug` the same string
     // for every project. What it still pins is that NOTHING transforms the
     // value on the way in — above all that no `-main` suffix comes back.
-    await mod.tenantClient(asUrlProjectSegment('livener')).fetchForTenant('*[_type == "page"]')
+    await mod.tenantClient(asUrlProjectSegment('livener')).fetchForTenant('*[_type == "page" && projectSlug == $projectSlug]')
 
     const params = fetchSpy.mock.calls[0][1]
     expect(params.tenantSlug).toBe('livener')
@@ -151,13 +151,13 @@ describe('tenantClient.fetchForTenant — scope injection', () => {
     const fetchSpy = vi.fn().mockResolvedValue([])
     ;(mod.sanityClient as unknown as { fetch: unknown }).fetch = fetchSpy
 
-    await mod.tenantClient(asUrlProjectSegment('nologo')).fetchForTenant('*[_id == $id]', {
+    await mod.tenantClient(asUrlProjectSegment('nologo')).fetchForTenant('*[_id == $id && projectSlug == $projectSlug]', {
       id: 'abc',
       projectSlug: 'attacker-supplied',
       tenantSlug: 'attacker-supplied',
     })
 
-    expect(fetchSpy).toHaveBeenCalledWith('*[_id == $id]', {
+    expect(fetchSpy).toHaveBeenCalledWith('*[_id == $id && projectSlug == $projectSlug]', {
       id: 'abc',
       projectSlug: 'nologo',
       tenantSlug: 'nologo',

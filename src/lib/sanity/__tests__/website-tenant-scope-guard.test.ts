@@ -89,15 +89,15 @@ describe('findTenantScopeViolation', () => {
   })
 })
 
-// ── throw-in-dev / warn-elsewhere ────────────────────────────────────────────
+// ── fail-closed everywhere ───────────────────────────────────────────────────
 
 describe('tenantScopeEnforcement', () => {
-  it('throws in development and warns everywhere else', async () => {
+  it('throws in EVERY environment (fail-closed; false positives are closed at CI)', async () => {
     const { tenantScopeEnforcement } = await import('@/lib/sanity/client')
     expect(tenantScopeEnforcement('development')).toBe('throw')
-    expect(tenantScopeEnforcement('production')).toBe('warn')
-    expect(tenantScopeEnforcement('test')).toBe('warn')
-    expect(tenantScopeEnforcement(undefined)).toBe('warn')
+    expect(tenantScopeEnforcement('production')).toBe('throw')
+    expect(tenantScopeEnforcement('test')).toBe('throw')
+    expect(tenantScopeEnforcement(undefined)).toBe('throw')
   })
 })
 
@@ -152,16 +152,19 @@ describe('fetchForTenant enforces scoping at runtime', () => {
     )
   })
 
-  it('in production warns with full detail and STILL RUNS the query', async () => {
-    // The load-bearing half of the trade-off: a false positive from this
-    // substring check must not black out a live client website.
+  it('in production REFUSES the query: logs full detail and never reaches Sanity', async () => {
+    // Was "warns and STILL RUNS the query". With a private dataset and a read
+    // token an unscoped query returns other tenants' content, so the guard is
+    // now fail-closed in production too (see tenantScopeEnforcement).
     vi.stubEnv('NODE_ENV', 'production')
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { tenantClient } = await import('@/lib/sanity/client')
 
-    await tenantClient(asUrlProjectSegment('livener')).fetchForTenant('*[_type == "page"][0]')
+    expect(() =>
+      tenantClient(asUrlProjectSegment('livener')).fetchForTenant('*[_type == "page"][0]'),
+    ).toThrow(/must reference \$projectSlug/)
 
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).not.toHaveBeenCalled()
     expect(consoleError).toHaveBeenCalledTimes(1)
     const logged = String(consoleError.mock.calls[0][0])
     expect(logged).toContain('[tenant-scope]')
