@@ -60,7 +60,7 @@ export interface CtaBannerSectionData {
    * Optional headline accent — 'lastWord' paints the final word of `heading`
    * in the brand accent colour. Null/absent means 'none' (unchanged output).
    */
-  headlineAccent?: 'none' | 'lastWord' | null
+  headlineAccent?: 'none' | 'lastWord' | 'lastWordEachLine' | 'all' | null
   /** Locale-resolved by GROQ */
   body?: string
   primaryCta?: Cta

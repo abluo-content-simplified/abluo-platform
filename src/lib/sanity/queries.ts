@@ -330,7 +330,7 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       anchorId,
       "eyebrow": ${loc('eyebrow')},
       "headline": ${loc('headline')},
-      // Optional per-section headline accent ('none' | 'lastWord'). Null on
+      // Optional per-section headline accent ('none' | 'lastWord' | 'lastWordEachLine' | 'all'). Null on
       // every section authored before the field existed — the renderer treats
       // null exactly like 'none', so nothing changes for existing tenants.
       headlineAccent,

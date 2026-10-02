@@ -961,7 +961,7 @@ export interface NewsArticle {
  * than imported from src/lib/headline-accent.tsx) so this type module stays
  * free of React imports; the two are structurally identical.
  */
-export type HeadlineAccentValue = 'none' | 'lastWord'
+export type HeadlineAccentValue = 'none' | 'lastWord' | 'lastWordEachLine' | 'all'
 
 // ─── Section types (studiomartegani — all strings locale-resolved) ─────────────
 
@@ -981,7 +981,7 @@ export interface HeroSection {
    * headline/title in the brand accent colour. Absent/null means 'none', so
    * existing documents render unchanged. See src/lib/headline-accent.tsx.
    */
-  headlineAccent?: 'none' | 'lastWord' | null
+  headlineAccent?: 'none' | 'lastWord' | 'lastWordEachLine' | 'all' | null
   subheadline?: string
   /**
    * Optional short, bold line rendered between the subheadline and the CTA
@@ -1269,7 +1269,7 @@ export interface FAQSection {
    * in the brand accent colour. Absent/null means 'none', so existing FAQ
    * sections render unchanged. See src/lib/headline-accent.tsx.
    */
-  headlineAccent?: 'none' | 'lastWord' | null
+  headlineAccent?: 'none' | 'lastWord' | 'lastWordEachLine' | 'all' | null
   items?: FAQItem[]
 }
 
@@ -1571,7 +1571,7 @@ export interface StatementSection {
    * headline/title in the brand accent colour. Absent/null means 'none', so
    * existing documents render unchanged. See src/lib/headline-accent.tsx.
    */
-  headlineAccent?: 'none' | 'lastWord' | null
+  headlineAccent?: 'none' | 'lastWord' | 'lastWordEachLine' | 'all' | null
   /** Locale-resolved by GROQ */
   description?: string
   alignment?: 'left' | 'center'
@@ -1643,7 +1643,7 @@ export interface StepsSection {
    * headline/title in the brand accent colour. Absent/null means 'none', so
    * existing documents render unchanged. See src/lib/headline-accent.tsx.
    */
-  headlineAccent?: 'none' | 'lastWord' | null
+  headlineAccent?: 'none' | 'lastWord' | 'lastWordEachLine' | 'all' | null
   /** Locale-resolved by GROQ */
   intro?: string
   steps?: StepItem[]
@@ -1691,7 +1691,7 @@ export interface FeatureGridSection {
    * headline/title in the brand accent colour. Absent/null means 'none', so
    * existing documents render unchanged. See src/lib/headline-accent.tsx.
    */
-  headlineAccent?: 'none' | 'lastWord' | null
+  headlineAccent?: 'none' | 'lastWord' | 'lastWordEachLine' | 'all' | null
   /** Locale-resolved by GROQ */
   intro?: string
   /** Card marker. Unset (null) is treated as 'icon'. */
@@ -1745,7 +1745,7 @@ export interface VentureListSection {
   eyebrow?: string
   /** Locale-resolved by GROQ */
   title?: string
-  headlineAccent?: 'none' | 'lastWord' | null
+  headlineAccent?: 'none' | 'lastWord' | 'lastWordEachLine' | 'all' | null
   /** Locale-resolved by GROQ */
   intro?: string
   ventures?: VentureItem[]
@@ -1762,7 +1762,7 @@ export interface ClientsFlowSection {
   eyebrow?: string
   /** Locale-resolved by GROQ */
   title?: string
-  headlineAccent?: 'none' | 'lastWord' | null
+  headlineAccent?: 'none' | 'lastWord' | 'lastWordEachLine' | 'all' | null
   /** Locale-resolved by GROQ */
   intro?: string
   /** The glyph between names. Unset falls back to '/'. */
@@ -1798,7 +1798,7 @@ export interface CareerTimelineSection {
   eyebrow?: string
   /** Locale-resolved by GROQ */
   title?: string
-  headlineAccent?: 'none' | 'lastWord' | null
+  headlineAccent?: 'none' | 'lastWord' | 'lastWordEachLine' | 'all' | null
   /** Locale-resolved by GROQ */
   intro?: string
   rows?: CareerRow[]
@@ -1848,7 +1848,7 @@ export interface MediaFeatureSection {
    * headline/title in the brand accent colour. Absent/null means 'none', so
    * existing documents render unchanged. See src/lib/headline-accent.tsx.
    */
-  headlineAccent?: 'none' | 'lastWord' | null
+  headlineAccent?: 'none' | 'lastWord' | 'lastWordEachLine' | 'all' | null
   /** Locale-resolved by GROQ */
   intro?: string
   image?: ResolvedImage
@@ -1918,7 +1918,7 @@ export interface CategoryListSection {
    * headline/title in the brand accent colour. Absent/null means 'none', so
    * existing documents render unchanged. See src/lib/headline-accent.tsx.
    */
-  headlineAccent?: 'none' | 'lastWord' | null
+  headlineAccent?: 'none' | 'lastWord' | 'lastWordEachLine' | 'all' | null
   /** Locale-resolved by GROQ */
   intro?: string
   headerCta?: Cta
@@ -1975,7 +1975,7 @@ export interface CtaBannerSection {
    * headline/title in the brand accent colour. Absent/null means 'none', so
    * existing documents render unchanged. See src/lib/headline-accent.tsx.
    */
-  headlineAccent?: 'none' | 'lastWord' | null
+  headlineAccent?: 'none' | 'lastWord' | 'lastWordEachLine' | 'all' | null
   /** Locale-resolved by GROQ */
   body?: string
   primaryCta?: Cta

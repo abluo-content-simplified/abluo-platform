@@ -1,7 +1,8 @@
 // ─── Headline accent ──────────────────────────────────────────────────────────
 //
-// Renders the LAST WORD of a section headline in the brand accent colour —
-// "…for Hospitality **Platforms.**". A platform-wide, opt-in feature: every
+// Renders part of a section headline in the brand accent colour — the LAST
+// WORD ("…for Hospitality **Platforms.**"), the last word of EVERY line, or the
+// whole headline (see HeadlineAccent below). A platform-wide, opt-in feature: every
 // section that has a headline/title carries an optional `headlineAccent`
 // field whose default is 'none', so every document authored before this
 // existed renders byte-identically (the helper returns the raw string
@@ -12,13 +13,28 @@
 // inline colour on the span is the only thing that reliably wins there. That
 // matches the original site, which accents over its hero video too.
 //
+// Why primary and not the design system's `accent` colour: primary is the
+// bright brand colour, and the hero headline sits in white over a darkened
+// photo/video in BOTH themes, so the accent has to stay readable on dark media.
+// A design system's `accent` is often a DEEPER shade picked for small text on a
+// light background (CYCE: #B84F06 on cream) — over a dark photo that would be
+// dark-on-dark. It is also not emitted as a CSS variable at all today.
+//
 // Language-agnostic: the split is positional (last whitespace run), never a
 // dictionary or word list, so a translated headline accents its own last word.
 
-import type { ReactNode } from 'react'
+import { Fragment, type ReactNode } from 'react'
 
-/** Enum stored by the `headlineAccent` schema field. */
-export type HeadlineAccent = 'none' | 'lastWord'
+/**
+ * Enum stored by the `headlineAccent` schema field.
+ *
+ *   none              no accent (also null / undefined / any unknown value)
+ *   lastWord          last word of the LAST line
+ *   lastWordEachLine  last word of EVERY line of a multi-line headline
+ *                     ("…concentration? **Yoga!**" / "…with others? **Yoga!**")
+ *   all               the whole headline ("**Enjoy your practice!**")
+ */
+export type HeadlineAccent = 'none' | 'lastWord' | 'lastWordEachLine' | 'all'
 
 /** Inline style applied to the accented word. */
 export const HEADLINE_ACCENT_STYLE = { color: 'var(--color-primary)' } as const
@@ -61,23 +77,82 @@ export function lastContentLineIndex(lines: readonly string[]): number {
 }
 
 /**
- * Render a headline with the configured accent applied.
+ * Whether line `index` of a headline the caller has already split on "\n"
+ * (the hero does, to render each line as its own block) gets the accent.
  *
- * Returns the input untouched for 'none' / undefined / null / empty, so
- * callers can swap `{title}` for `{renderHeadline(title, section.headlineAccent)}`
- * with zero change to existing output.
+ *   lastWord                → only the last line with content (`lastLineIndex`)
+ *   lastWordEachLine / all  → every line
+ *   anything else           → none
+ *
+ * The caller then hands that single line to renderHeadline() with the same
+ * accent value, which accents its last word (or all of it for 'all').
  */
-export function renderHeadline(
-  text: string | undefined | null,
-  accent?: HeadlineAccent | null,
-): ReactNode {
-  if (!text || accent !== 'lastWord') return text
+export function accentsLine(
+  accent: HeadlineAccent | string | null | undefined,
+  index: number,
+  lastLineIndex: number,
+): boolean {
+  if (accent === 'lastWord') return index === lastLineIndex
+  return accent === 'lastWordEachLine' || accent === 'all'
+}
+
+/** Accent the last word of one line; returns the line untouched when it has none. */
+function accentLastWord(text: string): ReactNode {
   const { head, accent: word } = splitLastWord(text)
   if (word === '') return text
+  // The trimmed-off trailing whitespace is kept, so re-joining is lossless.
+  const tail = text.slice(text.trimEnd().length)
   return (
     <>
       {head}
       <span style={HEADLINE_ACCENT_STYLE}>{word}</span>
+      {tail}
     </>
   )
+}
+
+/**
+ * Render a headline with the configured accent applied.
+ *
+ * Returns the input untouched for 'none' / undefined / null / empty AND for any
+ * value this code does not know, so callers can swap `{title}` for
+ * `{renderHeadline(title, section.headlineAccent)}` with zero change to
+ * existing output, and content written for a newer renderer degrades to plain.
+ */
+export function renderHeadline(
+  text: string | undefined | null,
+  accent?: HeadlineAccent | string | null,
+): ReactNode {
+  if (!text) return text
+  if (accent === 'lastWord') {
+    const { head, accent: word } = splitLastWord(text)
+    if (word === '') return text
+    return (
+      <>
+        {head}
+        <span style={HEADLINE_ACCENT_STYLE}>{word}</span>
+      </>
+    )
+  }
+  if (accent === 'lastWordEachLine') {
+    // Split on "\n" only (the line separator every section uses with
+    // white-space: pre-line); the newlines are re-emitted between the lines.
+    const lines = text.split('\n')
+    if (lines.length === 1) return accentLastWord(text)
+    return (
+      <>
+        {lines.map((line, i) => (
+          <Fragment key={i}>
+            {i > 0 ? '\n' : null}
+            {accentLastWord(line)}
+          </Fragment>
+        ))}
+      </>
+    )
+  }
+  if (accent === 'all') {
+    if (text.trim() === '') return text
+    return <span style={HEADLINE_ACCENT_STYLE}>{text}</span>
+  }
+  return text
 }

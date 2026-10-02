@@ -20,7 +20,7 @@ import { CtaButton } from '@/components/ui/CtaButton'
 import { useFormOverlaySafe } from '@/components/forms/FormOverlayContext'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { resolveEasing } from '@/lib/motion/easing'
-import { renderHeadline, lastContentLineIndex } from '@/lib/headline-accent'
+import { renderHeadline, lastContentLineIndex, accentsLine } from '@/lib/headline-accent'
 
 const CLOUDFLARE_ACCOUNT = 'customer-aayaptcudal3r1fx'
 
@@ -520,12 +520,12 @@ export function HeroSection({ section, surface, designSystem }: Props) {
                       className="block"
                     >
                       <span className="block">
-                        {i === accentLineIndex ? renderHeadline(line, headlineAccent) : line}
+                        {accentsLine(headlineAccent, i, accentLineIndex) ? renderHeadline(line, headlineAccent) : line}
                       </span>
                     </SlideUp>
                   ) : (
                     <span key={i} className="block">
-                      {i === accentLineIndex ? renderHeadline(line, headlineAccent) : line}
+                      {accentsLine(headlineAccent, i, accentLineIndex) ? renderHeadline(line, headlineAccent) : line}
                     </span>
                   ),
                 )

@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { splitLastWord, lastContentLineIndex, renderHeadline } from '@/lib/headline-accent'
+import { createElement, type ReactNode } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { splitLastWord, lastContentLineIndex, renderHeadline, accentsLine } from '@/lib/headline-accent'
 
 describe('splitLastWord', () => {
   it('splits a normal sentence at the final space', () => {
@@ -103,5 +105,76 @@ describe('renderHeadline', () => {
     const [head, span] = out.props.children
     expect(head).toBe('')
     expect(span.props.children).toBe('Platforms')
+  })
+})
+
+// Render through React so the assertions are on real markup, not element shapes.
+const html = (node: ReactNode) => renderToStaticMarkup(createElement('h1', null, node))
+const ACC = (s: string) => `<span style="color:var(--color-primary)">${s}</span>`
+
+describe('renderHeadline — markup is unchanged for lastWord', () => {
+  it('lastWord on a multi-line headline still accents only the last line', () => {
+    expect(html(renderHeadline('Tired? Yoga!\nAt peace? Yoga!', 'lastWord'))).toBe(
+      `<h1>Tired? Yoga!\nAt peace? ${ACC('Yoga!')}</h1>`,
+    )
+  })
+})
+
+describe('renderHeadline — lastWordEachLine', () => {
+  it('accents the last word of every line and keeps the line breaks', () => {
+    expect(
+      html(renderHeadline('Are you tired? Yoga!\nAre you looking for peace? Yoga!', 'lastWordEachLine')),
+    ).toBe(`<h1>Are you tired? ${ACC('Yoga!')}\nAre you looking for peace? ${ACC('Yoga!')}</h1>`)
+  })
+
+  it('behaves like lastWord on a single line', () => {
+    expect(html(renderHeadline('Êtes-vous fatigué ? Yoga!', 'lastWordEachLine'))).toBe(
+      html(renderHeadline('Êtes-vous fatigué ? Yoga!', 'lastWord')),
+    )
+  })
+
+  it('leaves an empty line alone instead of emitting an empty span', () => {
+    expect(html(renderHeadline('One two\n\nThree four', 'lastWordEachLine'))).toBe(
+      `<h1>One ${ACC('two')}\n\nThree ${ACC('four')}</h1>`,
+    )
+  })
+
+  it('accents a one-word line whole', () => {
+    expect(html(renderHeadline('Breathe\nYoga!', 'lastWordEachLine'))).toBe(
+      `<h1>${ACC('Breathe')}\n${ACC('Yoga!')}</h1>`,
+    )
+  })
+})
+
+describe('renderHeadline — all', () => {
+  it('wraps the whole headline in one accent span', () => {
+    expect(html(renderHeadline('Enjoy your practice!', 'all'))).toBe(`<h1>${ACC('Enjoy your practice!')}</h1>`)
+  })
+
+  it('returns a whitespace-only headline untouched', () => {
+    expect(renderHeadline('  ', 'all')).toBe('  ')
+  })
+})
+
+describe('renderHeadline — unknown values degrade to plain text', () => {
+  it('returns the raw string for a value this renderer does not know', () => {
+    expect(renderHeadline('Bonne pratique!', 'somethingNewer')).toBe('Bonne pratique!')
+  })
+})
+
+describe('accentsLine — which hero lines get the accent', () => {
+  it('lastWord: only the last content line', () => {
+    expect([0, 1, 2].map((i) => accentsLine('lastWord', i, 1))).toEqual([false, true, false])
+  })
+
+  it('lastWordEachLine and all: every line', () => {
+    expect([0, 1].map((i) => accentsLine('lastWordEachLine', i, 1))).toEqual([true, true])
+    expect([0, 1].map((i) => accentsLine('all', i, 1))).toEqual([true, true])
+  })
+
+  it('none / null / unknown: no line', () => {
+    for (const a of ['none', null, undefined, 'bogus']) {
+      expect([0, 1].map((i) => accentsLine(a, i, 1))).toEqual([false, false])
+    }
   })
 })

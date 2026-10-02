@@ -165,8 +165,9 @@ export const iconNameField = defineField({
 
 // ── Headline accent ──────────────────────────────────────────────────────────
 //
-// Opt-in per section: renders the LAST WORD of the section's headline/title in
-// the brand accent colour (see src/lib/headline-accent.tsx for the renderer).
+// Opt-in per section: renders the LAST WORD of the section's headline/title
+// (or the last word of every line, or the whole headline) in the brand accent
+// colour (see src/lib/headline-accent.tsx for the renderer).
 //
 // Keep it OPTIONAL with initialValue 'none': every document authored before
 // this field existed comes back null from GROQ, the renderer treats null and
@@ -181,11 +182,13 @@ export function headlineAccentField(group?: string) {
       list: [
         { title: 'None', value: 'none' },
         { title: 'Last word in accent colour', value: 'lastWord' },
+        { title: 'Last word of every line in accent colour', value: 'lastWordEachLine' },
+        { title: 'Whole headline in accent colour', value: 'all' },
       ],
       layout: 'radio',
     },
     initialValue: 'none',
     description:
-      'Optional. "Last word" paints the final word of the headline in the brand accent colour — e.g. "…for Hospitality Platforms." Works in any language (the split is positional, not a word list) and on multi-line headlines, where it accents the last word of the last line.',
+      'Optional. "Last word" paints the final word of the headline in the brand accent colour — e.g. "…for Hospitality Platforms." Works in any language (the split is positional, not a word list) and on multi-line headlines, where it accents the last word of the last line. "Last word of every line" does the same on each line of a multi-line headline. "Whole headline" paints all of it.',
   })
 }
