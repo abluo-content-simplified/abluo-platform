@@ -381,3 +381,64 @@ describe('POST …/submissions — the rate-limit failure mode is deliberate (fi
     expect(submissions()).toEqual([])
   })
 })
+
+// ── Lead origin: first-touch keys + server geo enrichment (2026-10) ──────────
+
+describe('POST …/submissions — lead-origin enrichment', () => {
+  it('adds region + city from Vercel headers (city URI-decoded) next to country and device', async () => {
+    const res = await postCreate(humanBody(), {
+      'x-vercel-forwarded-for': HUMAN_IP,
+      'x-vercel-ip-country': 'IT',
+      'x-vercel-ip-country-region': 'RA',
+      'x-vercel-ip-city': 'Forl%C3%AC',
+      'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148',
+    })
+    expect(res.status).toBe(200)
+    const stored = row(res.body.submissionId).source as Record<string, unknown>
+    expect(stored).toMatchObject({ country: 'IT', region: 'RA', city: 'Forlì', device_type: 'mobile' })
+    // Never the raw user-agent.
+    expect(JSON.stringify(stored)).not.toContain('iPhone OS')
+  })
+
+  it('a client can never supply region / city / country — even when the header is absent', async () => {
+    const res = await postCreate(
+      humanBody({ source: { region: 'XX', city: 'Atlantis', country: 'ZZ' } }),
+      { 'x-vercel-forwarded-for': HUMAN_IP },
+    )
+    const stored = row(res.body.submissionId).source as Record<string, unknown>
+    expect('region' in stored).toBe(false)
+    expect('city' in stored).toBe(false)
+    expect('country' in stored).toBe(false)
+  })
+
+  it('stores the first-touch keys and visitor context the client collected', async () => {
+    const res = await postCreate(
+      humanBody({
+        source: {
+          landing_page_url: 'https://acme.test/en/?utm_source=ig',
+          landing_page_path: '/en/',
+          first_referrer: 'https://l.instagram.com/',
+          first_referrer_domain: 'l.instagram.com',
+          first_utm_source: 'ig',
+          session_started_at: '2026-10-02T09:00:00.000Z',
+          pages_viewed: 4,
+          seconds_to_submit: 312,
+          browser_language: 'de-CH',
+          timezone: 'Europe/Zurich',
+          fingerprint: 'nope',
+        },
+      }),
+    )
+    const stored = row(res.body.submissionId).source as Record<string, unknown>
+    expect(stored).toMatchObject({
+      landing_page_path: '/en/',
+      first_referrer_domain: 'l.instagram.com',
+      first_utm_source: 'ig',
+      pages_viewed: 4,
+      seconds_to_submit: 312,
+      browser_language: 'de-CH',
+      timezone: 'Europe/Zurich',
+    })
+    expect('fingerprint' in stored).toBe(false)
+  })
+})

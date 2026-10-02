@@ -14,6 +14,7 @@ import { NextResponse } from 'next/server'
 import { extractIp } from '@/lib/forms/spam'
 import { readJsonBodyWithLimit } from '@/lib/forms/request-limits'
 import { createSubmission } from '@/lib/forms/submissions'
+import { serverSourceEnrichment, SERVER_SOURCE_KEYS } from '@/lib/forms/server-source'
 import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 
 export async function POST(
@@ -33,26 +34,19 @@ export async function POST(
     const headers = request.headers
 
     const ip = extractIp(headers)
-    const country = headers.get('x-vercel-ip-country') ?? null
-    const ua = headers.get('user-agent') ?? ''
-    const deviceType = /iPad|tablet|(android(?!.*mobile))/i.test(ua)
-      ? 'tablet'
-      : /Mobi|Android|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)
-        ? 'mobile'
-        : 'desktop'
 
     // NOTE the `source` object is key/value-whitelisted in the submission
     // service (`sanitizeSource`), not here — so any caller of createSubmission
-    // gets the same treatment `context` already had. The two server-derived
-    // keys are applied AFTER the client's, so a client-sent `device_type` or
-    // `country` can never win.
-    const source: Record<string, unknown> = {
-      ...(body.source && typeof body.source === 'object' && !Array.isArray(body.source)
-        ? (body.source as Record<string, unknown>)
-        : {}),
-      device_type: deviceType,
-    }
-    if (country) source.country = country
+    // gets the same treatment `context` already had. The server-derived keys
+    // (device_type, country, region, city) are applied AFTER the client's, and
+    // a client-sent value for any of them is dropped first — so a client can
+    // never supply them, even when the header is absent.
+    const clientSource: Record<string, unknown> =
+      body.source && typeof body.source === 'object' && !Array.isArray(body.source)
+        ? { ...(body.source as Record<string, unknown>) }
+        : {}
+    for (const k of SERVER_SOURCE_KEYS) delete clientSource[k]
+    const source: Record<string, unknown> = { ...clientSource, ...serverSourceEnrichment(headers) }
 
     const result = await createSubmission({
       // Trust boundary: the `[projectSlug]` URL segment IS a project slug, and
