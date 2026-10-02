@@ -13,6 +13,8 @@ import { isProduction, isDev } from '@/lib/deployment'
 import { canonicalOrigin, canonicalUrl, hreflangAlternates, seoAlternates } from '@/lib/seo/canonical'
 import { ogImageUrl, imageUrl } from '@/lib/sanity/image'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
+import { siteBasePath } from '@/lib/sanity/href'
 import { joinSlugSegments } from '@/lib/sanity/fields/nested-slug'
 
 export const dynamic = 'force-dynamic'
@@ -148,6 +150,7 @@ export default async function WebsitePageRoute({ params }: PageProps) {
   // NOT a tenant slug and NOT a Supabase `projects.slug`. See ids.ts.
   const tenantId = asUrlProjectSegment(rawTenantId)
   const { fetchForTenant } = tenantClient(tenantId)
+  const siteBase = siteBasePath(locale, tenantId, await isHostScopedRequest(tenantId))
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
@@ -171,7 +174,7 @@ export default async function WebsitePageRoute({ params }: PageProps) {
       { locale, slug }
     )
     if (redirectTarget?.currentSlug) {
-      permanentRedirect(`/${locale}/${tenantId}/${redirectTarget.currentSlug}`)
+      permanentRedirect(`${siteBase}/${redirectTarget.currentSlug}`)
     }
     return notFound()
   }
@@ -196,7 +199,7 @@ export default async function WebsitePageRoute({ params }: PageProps) {
     // did, until this gate. Same posture as canonical, the sitemap and
     // llms.txt, all of which are isProduction()-gated for the same reason.
     const homeOrigin = isProduction() ? canonicalOrigin(siteConfig?.customDomain) : null
-    permanentRedirect(canonicalUrl(homeOrigin, locale as SupportedLocale) ?? `/${locale}/${tenantId}`)
+    permanentRedirect(canonicalUrl(homeOrigin, locale as SupportedLocale) ?? `${siteBase}`)
   }
 
   // ── Hydrate blogListingSection posts server-side ────────────────────────────

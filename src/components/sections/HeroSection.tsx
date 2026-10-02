@@ -15,6 +15,7 @@ import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { urlFor } from '@/lib/sanity/image'
 import { resolveCta, prefixCtaHref } from '@/lib/sanity/cta'
+import { useHostScoped } from '@/components/SiteLinkScope'
 import { CtaButton } from '@/components/ui/CtaButton'
 import { useFormOverlaySafe } from '@/components/forms/FormOverlayContext'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
@@ -341,11 +342,12 @@ export function HeroSection({ section, surface, designSystem }: Props) {
   const params = useParams()
   const paramLocale = params?.locale as string | undefined
   const paramTenant = params?.tenant as string | undefined
+  const hostScoped = useHostScoped()
 
   // Only CTAs that actually resolve to something count — an unfinished CTA in
   // Studio must not suppress the legacy ctaLabel/ctaHref pair.
   const resolvedCtas = (ctas ?? [])
-    .map((cta) => prefixCtaHref(resolveCta(cta), paramLocale, paramTenant))
+    .map((cta) => prefixCtaHref(resolveCta(cta), paramLocale, paramTenant, hostScoped))
     .filter((cta) => cta.type !== 'none')
 
   // Bridge form CTAs to the form overlay, by the form's stable route key.

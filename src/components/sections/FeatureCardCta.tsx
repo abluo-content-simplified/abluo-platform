@@ -3,6 +3,7 @@
 import { useParams } from 'next/navigation'
 import type { Cta } from '@/lib/sanity/types'
 import { resolveCta, prefixCtaHref } from '@/lib/sanity/cta'
+import { useHostScoped } from '@/components/SiteLinkScope'
 
 /**
  * The per-card link at the foot of a feature card ("Leggi →").
@@ -16,8 +17,9 @@ export function FeatureCardCta({ cta, asDecoration = false }: { cta: Cta; asDeco
   const params = useParams()
   const locale = params?.locale as string | undefined
   const tenantId = params?.tenant as string | undefined
+  const hostScoped = useHostScoped()
 
-  const resolved = prefixCtaHref(resolveCta(cta), locale, tenantId)
+  const resolved = prefixCtaHref(resolveCta(cta), locale, tenantId, hostScoped)
   if (resolved.type !== 'link') return null
 
   // `asDecoration` — the card's TITLE is the link (see FeatureCardTitleLink),

@@ -6,6 +6,8 @@ import { ChevronDown } from 'lucide-react'
 import type { SupportedLocale } from '@/lib/i18n/locales'
 import { LOCALE_LABELS, LOCALE_NATIVE_NAMES } from '@/lib/i18n/locales'
 import { useSlugMap } from '@/components/SlugMapContext'
+import { useHostScoped } from '@/components/SiteLinkScope'
+import { languageSwitchPath } from '@/lib/i18n/language-switch'
 
 interface LanguageSwitcherProps {
   currentLocale: SupportedLocale
@@ -18,24 +20,20 @@ export function LanguageSwitcher({ currentLocale, supportedLocales, tenantId, ap
   const pathname = usePathname()
   const router = useRouter()
   const slugMap = useSlugMap()
+  const hostScoped = useHostScoped()
   const [langOpen, setLangOpen] = useState(false)
 
   // Auto-hide if only one locale
   if (supportedLocales.length <= 1) return null
 
   const switchLocale = (locale: SupportedLocale) => {
-    const targetSlug = slugMap[locale]
-    if (targetSlug && tenantId) {
-      // Slug page with a locale-specific slug (e.g. /investors → /investitori).
-      // Navigate to the slug for the target locale.
-      router.push(`/${tenantId}/${targetSlug}`, { locale })
-    } else if (tenantId) {
-      // Non-slug tenant route (homepage, /live, /events, /investors with same slug, etc.)
-      // Preserve the sub-path so switching language stays on the same page.
-      // pathname from next-intl strips the locale prefix, e.g. /livener/live
-      const tenantPrefix = `/${tenantId}`
-      const subPath = pathname.startsWith(tenantPrefix) ? pathname.slice(tenantPrefix.length) : ''
-      router.replace(`/${tenantId}${subPath}`, { locale })
+    if (tenantId) {
+      // A page with a per-locale target (localized slug, index route) goes
+      // there; any other tenant route keeps its sub-path, so switching
+      // language stays on the same page. See languageSwitchPath().
+      const path = languageSwitchPath({ targetLocale: locale, slugMap, tenantId, hostScoped, pathname, preservePath: true })
+      if (slugMap[locale]) router.push(path, { locale })
+      else router.replace(path, { locale })
     } else {
       // Platform route (no tenant): same path, different locale prefix.
       router.replace(pathname, { locale })

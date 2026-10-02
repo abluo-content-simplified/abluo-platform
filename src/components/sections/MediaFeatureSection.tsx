@@ -42,6 +42,7 @@ import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
 import { resolveCta, prefixCtaHref } from '@/lib/sanity/cta'
+import { useHostScoped } from '@/components/SiteLinkScope'
 import { CtaButton } from '@/components/ui/CtaButton'
 import { useFormCtaHandler } from '@/components/forms/useFormCtaHandler'
 import { Icon, isIconName } from '@/components/icons'
@@ -295,9 +296,10 @@ function CtaRow({ section }: { section: MediaFeatureSectionType }) {
   const params = useParams()
   const locale = params.locale as string | undefined
   const tenantId = params.tenant as string | undefined
+  const hostScoped = useHostScoped()
 
-  const primaryCta = section.primaryCta ? prefixCtaHref(resolveCta(section.primaryCta), locale, tenantId) : null
-  const secondaryCta = section.secondaryCta ? prefixCtaHref(resolveCta(section.secondaryCta), locale, tenantId) : null
+  const primaryCta = section.primaryCta ? prefixCtaHref(resolveCta(section.primaryCta), locale, tenantId, hostScoped) : null
+  const secondaryCta = section.secondaryCta ? prefixCtaHref(resolveCta(section.secondaryCta), locale, tenantId, hostScoped) : null
   const formHandler = useFormCtaHandler('media_feature_section')
 
   if ((!primaryCta || primaryCta.type === 'none') && (!secondaryCta || secondaryCta.type === 'none')) {

@@ -3,6 +3,7 @@ import { websiteSiteConfigQuery } from '@/lib/sanity/queries'
 import type { WebsiteSiteConfig, SupportedLocale } from '@/lib/sanity/types'
 import { imageUrl } from '@/lib/sanity/image'
 import { resolveNavLinks } from '@/lib/sanity/nav-links'
+import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
 import { NavClient } from './NavClient'
 import type { UrlProjectSegment } from '@/lib/tenancy/ids'
 
@@ -22,6 +23,7 @@ export async function Nav({ tenantId, locale, defaultLocale, variant = 'full' }:
   )
 
   if (!config) return null
+  const hostScoped = await isHostScopedRequest(tenantId)
 
   return (
     <header
@@ -41,7 +43,7 @@ export async function Nav({ tenantId, locale, defaultLocale, variant = 'full' }:
         siteName={imageUrl(config.logo, 480) ? (config.siteName ?? undefined) : undefined}
         wordmarkText={config.wordmarkText}
         wordmarkAccent={config.wordmarkAccent}
-        navLinks={resolveNavLinks(config.navLinks, locale, tenantId)}
+        navLinks={resolveNavLinks(config.navLinks, locale, tenantId, undefined, hostScoped)}
         ctaLabel={config.ctaLabel}
         ctaHref={config.ctaHref}
         currentLocale={locale}

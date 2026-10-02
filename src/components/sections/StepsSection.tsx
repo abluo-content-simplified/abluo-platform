@@ -36,6 +36,7 @@ import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { resolveCta, prefixCtaHref } from '@/lib/sanity/cta'
+import { useHostScoped } from '@/components/SiteLinkScope'
 import { CtaButton } from '@/components/ui/CtaButton'
 import { useFormCtaHandler } from '@/components/forms/useFormCtaHandler'
 import { Icon } from '@/components/icons'
@@ -118,10 +119,11 @@ function ClosingCta({ cta }: { cta: NonNullable<StepsSectionType['closingCta']> 
   const params = useParams()
   const locale = params?.locale as string | undefined
   const tenantId = params?.tenant as string | undefined
+  const hostScoped = useHostScoped()
 
   const formHandler = useFormCtaHandler('steps_section')
 
-  const resolved = prefixCtaHref(resolveCta(cta), locale, tenantId)
+  const resolved = prefixCtaHref(resolveCta(cta), locale, tenantId, hostScoped)
   if (resolved.type === 'none') return null
 
   return (

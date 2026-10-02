@@ -4,6 +4,8 @@ import { useRouter, usePathname } from '@/i18n/navigation'
 import type { SupportedLocale } from '@/lib/i18n/locales'
 import { LOCALE_NATIVE_NAMES } from '@/lib/i18n/locales'
 import { useSlugMap } from '@/components/SlugMapContext'
+import { useHostScoped } from '@/components/SiteLinkScope'
+import { languageSwitchPath } from '@/lib/i18n/language-switch'
 
 interface LanguageSwitcherProps {
   currentLocale: SupportedLocale
@@ -19,13 +21,15 @@ export function FooterLanguageSwitcher({
   const router = useRouter()
   const pathname = usePathname()
   const slugMap = useSlugMap()
+  const hostScoped = useHostScoped()
 
   function switchLocale(locale: SupportedLocale) {
-    const targetSlug = slugMap[locale]
-    if (targetSlug && tenantId) {
-      router.push(`/${tenantId}/${targetSlug}`, { locale })
-    } else if (tenantId) {
-      router.replace(`/${tenantId}`, { locale })
+    if (tenantId) {
+      // preservePath: false — the footer has always sent a page without a
+      // registered target to the home page rather than guess a path.
+      const path = languageSwitchPath({ targetLocale: locale, slugMap, tenantId, hostScoped, pathname, preservePath: false })
+      if (slugMap[locale]) router.push(path, { locale })
+      else router.replace(path, { locale })
     } else {
       router.replace(pathname, { locale })
     }

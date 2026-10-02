@@ -38,6 +38,8 @@ import { articlePortableTextComponents } from '@/components/portable-text/articl
 import { getNewsModuleMessages, formatNewsDate } from '@/lib/i18n/news-module-messages'
 import { resolveEasing } from '@/lib/motion/easing'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
+import { siteBasePath } from '@/lib/sanity/href'
 import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
 import { ArticleJsonLd } from '@/components/JsonLd'
 
@@ -137,17 +139,18 @@ export async function generateStaticParams() {
 function getBackContext(
   from: string | undefined,
   locale: string,
-  tenantId: string
+  siteBase: string
 ): { label: string; url: string } {
   const msg = getNewsModuleMessages(locale)
-  const newsUrl = `/${locale}/${tenantId}/news`
+  const newsUrl = `${siteBase}/news`
 
   if (!from || from === 'news') {
     return { label: msg.backToNews, url: newsUrl }
   }
   // Came from another page (a composed News Listing section). Send the visitor
-  // back where they were, with the module's generic label.
-  return { label: msg.backToNews, url: `/${locale}/${tenantId}/${from}` }
+  // back where they were, with the module's generic label. Listing cards no
+  // longer add `?from=`; this keeps links shared before that working.
+  return { label: msg.backToNews, url: `${siteBase}/${from}` }
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -160,6 +163,7 @@ export default async function NewsDetailPage({ params, searchParams }: PageProps
   const resolvedSearch = await searchParams
   const from = resolvedSearch?.from
   const { fetchForTenant } = tenantClient(tenantId)
+  const siteBase = siteBasePath(locale, tenantId, await isHostScopedRequest(tenantId))
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
@@ -192,7 +196,7 @@ export default async function NewsDetailPage({ params, searchParams }: PageProps
       locale: locale as SupportedLocale,
     })
     if (redirectResult?.currentSlug) {
-      permanentRedirect(`/${locale}/${tenantId}/news/${redirectResult.currentSlug}`)
+      permanentRedirect(`${siteBase}/news/${redirectResult.currentSlug}`)
     }
     notFound()
   }
@@ -212,7 +216,7 @@ export default async function NewsDetailPage({ params, searchParams }: PageProps
   article.categories = resolveCategoriesFor(article, moduleConfig, 'news', locale, defaultLocale)
 
   const msg = getNewsModuleMessages(locale)
-  const { label: backLabel, url: backUrl } = getBackContext(from, locale, tenantId)
+  const { label: backLabel, url: backUrl } = getBackContext(from, locale, siteBase)
 
   const coverSrc = imageUrl(article.coverImage, 1600)
   const coverSrcSet = imageSrcSet(article.coverImage, [800, 1200, 1600, 2400])

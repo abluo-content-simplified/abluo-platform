@@ -1,6 +1,8 @@
 'use client'
 
 import Link from 'next/link'
+import { useHostScoped } from '@/components/SiteLinkScope'
+import { siteBasePath } from '@/lib/sanity/href'
 import { PlayCircle, ArrowRight } from 'lucide-react'
 import { SlideUp, FadeIn } from '@/components/animation'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
@@ -89,6 +91,7 @@ export function FeaturedEventBlock({ event, designSystem, locale, tenantId }: Fe
   const easeReveal = resolveEasing(m?.easingDecelerate, [0.0, 0.0, 0.2, 1])
 
   const msg = getEventMessages(locale)
+  const hostScoped = useHostScoped()
 
   const heroSrc    = imageUrl(event.heroImage, 1600)
   const heroSrcSet = imageSrcSet(event.heroImage, [800, 1200, 1600, 2400])
@@ -100,7 +103,7 @@ export function FeaturedEventBlock({ event, designSystem, locale, tenantId }: Fe
     ? new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', year: '2-digit' }).format(new Date(event.endDate))
     : null
 
-  const eventHref = `/${locale}/${tenantId}/events/${event.slug.current}`
+  const eventHref = `${siteBasePath(locale, tenantId, hostScoped)}/events/${event.slug.current}`
 
   // Resolve streaming CTAs from new fields, with fallback to deprecated fields
   const primaryLabel = event.primaryStreamLabel ?? event.ctaLabel ?? null

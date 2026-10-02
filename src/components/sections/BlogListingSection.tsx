@@ -1,4 +1,6 @@
 import type { BlogListingSection as BlogListingSectionType, Post, DesignSystem } from '@/lib/sanity/types'
+import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
+import { siteBasePath } from '@/lib/sanity/href'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
@@ -400,7 +402,7 @@ interface Props {
   fromParam?: string
 }
 
-export function BlogListingSection({ section, surface, designSystem, locale, tenantId, fromParam }: Props) {
+export async function BlogListingSection({ section, surface, designSystem, locale, tenantId, fromParam }: Props) {
   const {
     eyebrow,
     title,
@@ -416,7 +418,8 @@ export function BlogListingSection({ section, surface, designSystem, locale, ten
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
   // Base URL for post detail links: /[locale]/[tenant]/blog
-  const blogBase = `/${locale}/${tenantId}/blog`
+  const hostScoped = await isHostScopedRequest(tenantId)
+  const blogBase = `${siteBasePath(locale, tenantId, hostScoped)}/blog`
 
   // Motion tokens — durationSlow for content sections
   const m = designSystem?.motion

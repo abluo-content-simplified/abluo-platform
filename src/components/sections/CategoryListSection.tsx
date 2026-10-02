@@ -29,6 +29,7 @@ import { SlideUp } from '@/components/animation/SlideUp'
 import { FadeIn } from '@/components/animation/FadeIn'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { resolveCta, prefixCtaHref } from '@/lib/sanity/cta'
+import { useHostScoped } from '@/components/SiteLinkScope'
 import { CtaButton } from '@/components/ui/CtaButton'
 import { useFormCtaHandler } from '@/components/forms/useFormCtaHandler'
 import { Icon } from '@/components/icons'
@@ -88,9 +89,10 @@ export function CategoryListSection({ section, surface, designSystem }: Props) {
   const params = useParams()
   const locale = params?.locale as string | undefined
   const tenantId = params?.tenant as string | undefined
+  const hostScoped = useHostScoped()
 
-  const resolvedHeaderCta = headerCta ? prefixCtaHref(resolveCta(headerCta), locale, tenantId) : null
-  const resolvedCalloutCta = callout?.cta ? prefixCtaHref(resolveCta(callout.cta), locale, tenantId) : null
+  const resolvedHeaderCta = headerCta ? prefixCtaHref(resolveCta(headerCta), locale, tenantId, hostScoped) : null
+  const resolvedCalloutCta = callout?.cta ? prefixCtaHref(resolveCta(callout.cta), locale, tenantId, hostScoped) : null
   const formHandler = useFormCtaHandler('category_list_section')
 
   const hasHeader = Boolean(eyebrow || title || intro || (resolvedHeaderCta && resolvedHeaderCta.type !== 'none'))

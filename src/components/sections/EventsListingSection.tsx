@@ -5,6 +5,8 @@
 // src/lib/modules/events/sections.tsx into SECTION_MAP.
 
 import type { EventsListingSection as EventsListingSectionType, Event, DesignSystem } from '@/lib/sanity/types'
+import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
+import { siteBasePath } from '@/lib/sanity/href'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation'
@@ -390,7 +392,7 @@ interface Props {
   fromParam?: string
 }
 
-export function EventsListingSection({ section, surface, designSystem, locale, tenantId, fromParam }: Props) {
+export async function EventsListingSection({ section, surface, designSystem, locale, tenantId, fromParam }: Props) {
   const {
     eyebrow,
     title,
@@ -406,7 +408,8 @@ export function EventsListingSection({ section, surface, designSystem, locale, t
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
 
   // Base URL for event detail links: /[locale]/[tenant]/events
-  const eventsBase = `/${locale}/${tenantId}/events`
+  const hostScoped = await isHostScopedRequest(tenantId)
+  const eventsBase = `${siteBasePath(locale, tenantId, hostScoped)}/events`
 
   // Motion tokens — durationSlow for content sections
   const m = designSystem?.motion

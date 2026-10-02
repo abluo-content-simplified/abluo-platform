@@ -165,10 +165,12 @@ export function resolveCta(cta: Cta | null | undefined): ResolvedCta {
 export function prefixCtaHref(
   resolved: ResolvedCta,
   locale: string | null | undefined,
-  tenantId: string | null | undefined
+  tenantId: string | null | undefined,
+  /** True on the site's own host — see siteBasePath() in ./href. */
+  hostScoped = false
 ): ResolvedCta {
   if (resolved.type !== 'link' || resolved.external || !locale || !tenantId) return resolved
-  const href = withTenantPrefix(resolved.href, locale, tenantId)
+  const href = withTenantPrefix(resolved.href, locale, tenantId, hostScoped)
   if (href === resolved.href) return resolved
   return { ...resolved, href }
 }

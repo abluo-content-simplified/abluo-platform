@@ -2,7 +2,9 @@ import Link from 'next/link'
 import { tenantClient } from '@/lib/sanity/client'
 import { websiteSiteConfigQuery } from '@/lib/sanity/queries'
 import type { WebsiteSiteConfig, SupportedLocale } from '@/lib/sanity/types'
-import { resolveNavLink, resolveNavLinks } from '@/lib/sanity/nav-links'
+import { resolveNavLink, resolveNavLinks, toPublicNavLink } from '@/lib/sanity/nav-links'
+import { siteBasePath } from '@/lib/sanity/href'
+import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
 import { imageUrl } from '@/lib/sanity/image'
 import { renderWordmark, FOOTER_WORDMARK_ACCENT_STYLE } from '@/lib/wordmark'
 import { Icon } from '@/components/icons'
@@ -45,6 +47,10 @@ export async function Footer({
   )
 
   if (!config) return null
+
+  // On the site's own host, links carry no project segment (see siteBasePath).
+  const hostScoped = await isHostScopedRequest(tenantId)
+  const homeHref = siteBasePath(locale, tenantId, hostScoped)
 
   const currentYear = new Date().getFullYear()
   const copyrightYears =
@@ -107,7 +113,7 @@ export async function Footer({
   // nav-link resolver, so an external URL, a page reference and a `mailto:`
   // href all behave exactly as they do in the header.
   const credit = config.footerCredit
-    ? resolveNavLink(config.footerCredit, locale, tenantId)
+    ? toPublicNavLink(resolveNavLink(config.footerCredit, locale, tenantId), tenantId, hostScoped)
     : null
 
   // Border, ink and accent all come from --color-footer-*, which buildCssVars
@@ -183,7 +189,7 @@ export async function Footer({
 
             {/* Brand */}
             <div className="lg:w-[30%] lg:shrink-0">
-              <Link href={`/${locale}/${tenantId}`} className="mb-4 inline-block">
+              <Link href={homeHref} className="mb-4 inline-block">
                 {logoSrc ? (
                   <img
                     src={logoSrc}
@@ -237,7 +243,7 @@ export async function Footer({
                     </h4>
                   )}
                   <ul className="list-none space-y-3">
-                    {resolveNavLinks(column.links, locale, tenantId).map((link, i) => (
+                    {resolveNavLinks(column.links, locale, tenantId, undefined, hostScoped).map((link, i) => (
                       <li key={`${link.label}-${link.href}-${i}`}>
                         <Link
                           href={link.href}
@@ -280,7 +286,7 @@ export async function Footer({
         <div className="border-b px-5 py-10 md:px-10" style={{ borderColor: borderSoft }}>
           <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             {logoSrc ? (
-              <Link href={`/${locale}/${tenantId}`} className="hover:text-[var(--color-footer-text)]">
+              <Link href={homeHref} className="hover:text-[var(--color-footer-text)]">
                 <img
                   src={logoSrc}
                   alt={config.siteName ?? tenantId}
@@ -289,7 +295,7 @@ export async function Footer({
               </Link>
             ) : (
               <Link
-                href={`/${locale}/${tenantId}`}
+                href={homeHref}
                 className="text-xs hover:text-[var(--color-footer-text)]"
                 style={{ color: 'var(--color-footer-text-muted)' }}
               >
@@ -359,7 +365,7 @@ export async function Footer({
 
             {config.footerLinks && config.footerLinks.length > 0 && (
               <ul className="flex flex-wrap gap-5 list-none">
-                {resolveNavLinks(config.footerLinks, locale, tenantId).map((link, i) => (
+                {resolveNavLinks(config.footerLinks, locale, tenantId, undefined, hostScoped).map((link, i) => (
                   <li key={`${link.href}-${i}`}>
                     <Link
                       href={link.href}

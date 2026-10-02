@@ -31,6 +31,9 @@ import { hasWhatsAppNumber } from '@/lib/forms/whatsapp'
 // fallback exists and when it goes away.
 import { resolveWhatsAppConfig, resolveHeaderCtaConfig, isModuleEnabled, type ProjectModuleConfig } from '@/lib/modules/config'
 import { SlugMapRoot } from '@/components/SlugMapContext'
+import { SiteLinkScopeProvider } from '@/components/SiteLinkScope'
+import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
+import { siteBasePath } from '@/lib/sanity/href'
 import { TrackingScripts } from '@/components/TrackingScripts'
 import { ConsentProvider } from '@/components/consent/ConsentProvider'
 import { readConsentContext } from '@/lib/consent/server'
@@ -650,6 +653,10 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   // fail-open behaviour when no siteConfig document exists.
   if (!isLocaleEnabledForProject(locale, localeConfig)) notFound()
 
+  // On the site's own host, links carry no project segment (see siteBasePath).
+  const hostScoped = await isHostScopedRequest(tenantId)
+  const siteBase = siteBasePath(locale, tenantId, hostScoped)
+
   // ── Shared: design system — runs for ALL tenants ─────────────────────────────
   // Fetched via project.designSystemRef -> design system document
   const rawDesignSystem = await fetchForTenant<DesignSystem>(designSystemQuery, {})
@@ -696,7 +703,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         showBanner={consent.showBanner}
         requiresConsent={consent.requiresConsent}
         locale={locale}
-        policyHref={consentLinks?.cookiePolicySlug ? `/${locale}/${tenantId}/${consentLinks.cookiePolicySlug}` : undefined}
+        policyHref={consentLinks?.cookiePolicySlug ? `${siteBase}/${consentLinks.cookiePolicySlug}` : undefined}
         allowReset={!isProduction()}
         motionTokens={designSystem?.motion}
       >
@@ -710,7 +717,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
             logoSrc={livenerConfig?.logo ? imageUrl(livenerConfig.logo as any, 480) : undefined}
             logoLightSrc={livenerConfig?.logoLight ? imageUrl(livenerConfig.logoLight as any, 480) : undefined}
             logoAlt={livenerConfig?.siteName ?? 'Livener'}
-            navLinks={resolveNavLinks(livenerConfig?.navLinks, locale as SupportedLocale, 'livener')}
+            navLinks={resolveNavLinks(livenerConfig?.navLinks, locale as SupportedLocale, 'livener', undefined, hostScoped)}
             ctaLabel={livenerCta.label ?? ''}
             ctaHref={livenerCta.href ?? '#'}
             ctaMode={hasCtaForm ? 'overlay' : 'modal'}
@@ -750,6 +757,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
     )
 
     return (
+      <SiteLinkScopeProvider hostScoped={hostScoped}>
       <SlugMapRoot>
         {hasCtaForm ? (
           <FormOverlayWrapper
@@ -772,6 +780,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
           </EarlyAccessWrapper>
         )}
       </SlugMapRoot>
+      </SiteLinkScopeProvider>
     )
   }
 
@@ -824,7 +833,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
       showBanner={consent.showBanner}
       requiresConsent={consent.requiresConsent}
       locale={locale}
-      policyHref={consentLinks?.cookiePolicySlug ? `/${locale}/${tenantId}/${consentLinks.cookiePolicySlug}` : undefined}
+      policyHref={consentLinks?.cookiePolicySlug ? `${siteBase}/${consentLinks.cookiePolicySlug}` : undefined}
       allowReset={!isProduction()}
       motionTokens={designSystem?.motion}
     >
@@ -836,10 +845,10 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
       )}
       {useMasthead ? (
         <Masthead
-          href={`/${locale}/${tenantId}`}
+          href={siteBase}
           logoSrc={mastheadLogoSrc!}
           logoAlt={config?.siteName ?? tenantId}
-          navLinks={resolveNavLinks(config?.navLinks, locale as SupportedLocale, tenantId)}
+          navLinks={resolveNavLinks(config?.navLinks, locale as SupportedLocale, tenantId, undefined, hostScoped)}
         />
       ) : (
         <>
@@ -855,7 +864,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
               // fell through to the plain `logoAlt` text branch.
               wordmarkText={config?.wordmarkText}
               wordmarkAccent={config?.wordmarkAccent}
-              navLinks={resolveNavLinks(config?.navLinks, locale as SupportedLocale, tenantId)}
+              navLinks={resolveNavLinks(config?.navLinks, locale as SupportedLocale, tenantId, undefined, hostScoped)}
               ctaLabel={cta.label ?? undefined}
               ctaHref={cta.href ?? undefined}
               ctaMode={hasCtaForm ? 'overlay' : 'link'}
@@ -917,6 +926,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
     // data-accent-rail is what the clearance rule in buildCssVars() keys off.
     // Absent for every tenant without a rail, so their sections keep the exact
     // padding they have always had.
+    <SiteLinkScopeProvider hostScoped={hostScoped}>
     <SlugMapRoot>
       <div data-accent-rail={accentRail ? 'on' : undefined} className="contents">
       {formsModuleEnabled ? (
@@ -932,5 +942,6 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
       )}
       </div>
     </SlugMapRoot>
+    </SiteLinkScopeProvider>
   )
 }

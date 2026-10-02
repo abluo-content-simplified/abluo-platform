@@ -20,14 +20,14 @@
  * So: one helper, no interpolation at the call sites, and the project segment
  * never appears in a public URL.
  *
- * ── What this does NOT change ────────────────────────────────────────────────
- * Internal `href`s and `permanentRedirect()` targets still carry the project
- * segment (see `withTenantPrefix` in `@/lib/sanity/href`). Those are app paths,
- * not public addresses, and the proxy round-trips them. A crawler following one
- * lands on `/en/livener`, reads the canonical it declares — `/en` — and
- * consolidates. Correct, if one hop longer than it needs to be; collapsing that
- * hop means changing every rendered link on two live client sites and is
- * deliberately a separate decision.
+ * ── Internal links follow the same rule (2026-10-02) ─────────────────────────
+ * Internal `href`s and redirect targets used to keep the project segment, so a
+ * crawler on a custom domain walked `/en/livener/…` and consolidated through
+ * the canonical. QA on abluo.app counted 60 crawlable URLs where 27 were needed.
+ * Links are now built with `siteBasePath()` (`@/lib/sanity/href`), which drops
+ * the segment whenever the request is on the site's own host
+ * (`@/lib/tenancy/link-scope`) and keeps it on the platform's path-based
+ * preview/dev surfaces, where it is part of the public URL.
  */
 
 import type { Metadata } from 'next'

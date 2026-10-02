@@ -1,6 +1,8 @@
 'use client'
 
 import Link from 'next/link'
+import { useHostScoped } from '@/components/SiteLinkScope'
+import { siteBasePath } from '@/lib/sanity/href'
 import { SlideUp } from '@/components/animation'
 import { imageUrl } from '@/lib/sanity/image'
 import type { Event } from '@/lib/sanity/types'
@@ -85,6 +87,7 @@ export function EventCard({
   ease = [0.0, 0.0, 0.2, 1],
   from,
 }: EventCardProps) {
+  const hostScoped = useHostScoped()
   const heroSrc = imageUrl(event.heroImage, 600)
 
   const startDate = event.startDate
@@ -95,9 +98,8 @@ export function EventCard({
       }).format(new Date(event.startDate))
     : null
 
-  const href = from
-    ? `/${locale}/${tenantId}/events/${event.slug.current}?from=${from}`
-    : `/${locale}/${tenantId}/events/${event.slug.current}`
+  const eventPath = `${siteBasePath(locale, tenantId, hostScoped)}/events/${event.slug.current}`
+  const href = from ? `${eventPath}?from=${from}` : eventPath
 
   return (
     <SlideUp delay={delay} duration={duration} ease={ease} className="h-full">

@@ -55,6 +55,8 @@ import type {
 import { BlogListingSection } from '@/components/sections/BlogListingSection'
 import { isProduction, isDev } from '@/lib/deployment'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
+import { siteBasePath } from '@/lib/sanity/href'
 
 export const dynamic = 'force-dynamic'
 
@@ -148,7 +150,10 @@ export default async function BlogCategoryPage({ params }: PageProps) {
   // consolidate the old URL into the new one. Every redirectFrom route in this
   // app had the same defect -- each documented as "301" while serving 307 --
   // and they are all corrected in this change.
-  if (redirectTo) permanentRedirect(`/${locale}/${tenantId}/category/${redirectTo}`)
+  if (redirectTo) {
+    const siteBase = siteBasePath(locale, tenantId, await isHostScopedRequest(tenantId))
+    permanentRedirect(`${siteBase}/category/${redirectTo}`)
+  }
   if (!category) notFound()
 
   const [designSystem, posts] = await Promise.all([

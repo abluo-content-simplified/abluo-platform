@@ -31,6 +31,7 @@ import { SlideUp } from '@/components/animation/SlideUp'
 import { FadeIn } from '@/components/animation/FadeIn'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { resolveCta, prefixCtaHref } from '@/lib/sanity/cta'
+import { useHostScoped } from '@/components/SiteLinkScope'
 import { CtaButton } from '@/components/ui/CtaButton'
 import { useFormOverlaySafe } from '@/components/forms/FormOverlayContext'
 import { resolveEasing } from '@/lib/motion/easing'
@@ -113,10 +114,11 @@ function CtaRow({ section }: { section: CtaBannerSectionData }) {
   const params = useParams()
   const locale = params.locale as string | undefined
   const tenantId = params.tenant as string | undefined
+  const hostScoped = useHostScoped()
   const formOverlay = useFormOverlaySafe()
 
-  const primaryCta = section.primaryCta ? prefixCtaHref(resolveCta(section.primaryCta), locale, tenantId) : null
-  const secondaryCta = section.secondaryCta ? prefixCtaHref(resolveCta(section.secondaryCta), locale, tenantId) : null
+  const primaryCta = section.primaryCta ? prefixCtaHref(resolveCta(section.primaryCta), locale, tenantId, hostScoped) : null
+  const secondaryCta = section.secondaryCta ? prefixCtaHref(resolveCta(section.secondaryCta), locale, tenantId, hostScoped) : null
 
   // Bridge form CTAs to the form overlay, by the form's stable route key.
   // Same pattern as HeroLensSection / HeroLiveCaptureSection: the null-safe

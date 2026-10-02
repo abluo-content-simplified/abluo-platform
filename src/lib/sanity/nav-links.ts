@@ -1,5 +1,5 @@
 import type { NavLink, ResolvedNavLink, SupportedLocale } from './types'
-import { isPassThroughHref } from './href'
+import { isPassThroughHref, toPublicPath } from './href'
 import { NEWS_ROUTE_SEGMENT } from './cta'
 import { LOCALE_CODES } from '@/lib/i18n/locales'
 
@@ -174,10 +174,25 @@ export function resolveNavLinks(
   links: NavLink[] | undefined,
   locale: SupportedLocale,
   tenantId: string,
-  supportedLocales: readonly string[] = DEFAULT_LOCALE_SEGMENTS
+  supportedLocales: readonly string[] = DEFAULT_LOCALE_SEGMENTS,
+  /** True on the site's own host — internal hrefs drop the project segment. */
+  hostScoped = false
 ): ResolvedNavLink[] {
   if (!links?.length) return []
   return links
     .filter(isRenderableNavLink)
-    .map((link) => resolveNavLink(link, locale, tenantId, supportedLocales))
+    .map((link) => toPublicNavLink(resolveNavLink(link, locale, tenantId, supportedLocales), tenantId, hostScoped))
+}
+
+/**
+ * The public form of a resolved link (and its children): on the site's own
+ * host `/{locale}/{tenant}/x` becomes `/{locale}/x` — see toPublicPath().
+ */
+export function toPublicNavLink(link: ResolvedNavLink, tenantId: string, hostScoped: boolean): ResolvedNavLink {
+  if (!hostScoped) return link
+  return {
+    ...link,
+    href: link.external ? link.href : toPublicPath(link.href, tenantId, true),
+    children: link.children?.map((child) => toPublicNavLink(child, tenantId, true)),
+  }
 }

@@ -3,6 +3,7 @@
 import { useParams } from 'next/navigation'
 import type { Cta } from '@/lib/sanity/types'
 import { resolveCta, prefixCtaHref } from '@/lib/sanity/cta'
+import { useHostScoped } from '@/components/SiteLinkScope'
 
 /**
  * Makes a whole feature card clickable, with the card TITLE as the link.
@@ -47,8 +48,9 @@ export function FeatureCardTitleLink({ cta, children }: { cta: Cta; children: Re
   const params = useParams()
   const locale = params?.locale as string | undefined
   const tenantId = params?.tenant as string | undefined
+  const hostScoped = useHostScoped()
 
-  const resolved = prefixCtaHref(resolveCta(cta), locale, tenantId)
+  const resolved = prefixCtaHref(resolveCta(cta), locale, tenantId, hostScoped)
   if (resolved.type !== 'link') return <>{children}</>
 
   return (

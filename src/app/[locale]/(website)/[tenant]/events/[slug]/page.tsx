@@ -24,6 +24,8 @@ import { BackButton } from '@/components/events/BackButton'
 import { EventHostsLine, EventPriceList, EventRegisterButton } from '@/components/events/EventEngagement'
 import { validPriceOptions } from '@/lib/modules/events/engagement'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
+import { siteBasePath } from '@/lib/sanity/href'
 import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
 interface PageProps {
   params: Promise<{ tenant: string; locale: string; slug: string }>
@@ -106,6 +108,7 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
   const resolvedSearch = await searchParams
   const from = resolvedSearch?.from
   const { fetchForTenant } = tenantClient(tenantId)
+  const siteBase = siteBasePath(locale, tenantId, await isHostScopedRequest(tenantId))
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
@@ -127,7 +130,7 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
       { slug, locale: locale as SupportedLocale }
     )
     if (redirectResult?.currentSlug) {
-      permanentRedirect(`/${locale}/${tenantId}/events/${redirectResult.currentSlug}`)
+      permanentRedirect(`${siteBase}/events/${redirectResult.currentSlug}`)
     }
     notFound()
   }
@@ -172,8 +175,8 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
             <BackButton
               fallbackUrl={
                 from === 'events'
-                  ? `/${locale}/${tenantId}/events`
-                  : `/${locale}/${tenantId}/live`
+                  ? `${siteBase}/events`
+                  : `${siteBase}/live`
               }
               label={from === 'events' ? msg.backToEvents : msg.backToLive}
             />

@@ -25,6 +25,8 @@ import { PortableText } from '@portabletext/react'
 import { articlePortableTextComponents } from '@/components/portable-text/article-components'
 import { PostCard } from '@/components/blog/PostCard'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
+import { siteBasePath } from '@/lib/sanity/href'
 import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
 import { ArticleJsonLd } from '@/components/JsonLd'
 import { GalleryPlacement } from '@/components/gallery/GalleryPlacement'
@@ -110,19 +112,19 @@ export async function generateStaticParams() {
 
 // ─── Back-button context helper ──────────────────────────────────────────────
 
-function getBackContext(from: string | undefined, locale: string, tenantId: string) {
+function getBackContext(from: string | undefined, siteBase: string) {
   if (!from || from === 'home') {
-    return { label: 'Back to Home', url: `/${locale}/${tenantId}` }
+    return { label: 'Back to Home', url: `${siteBase}` }
   }
   if (from === 'blog') {
-    return { label: 'Back to Blog', url: `/${locale}/${tenantId}/blog` }
+    return { label: 'Back to Blog', url: `${siteBase}/blog` }
   }
   // Any other value is treated as a page slug: "investors" → "Back to Investors"
   const label = from
     .split('-')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ')
-  return { label: `Back to ${label}`, url: `/${locale}/${tenantId}/${from}` }
+  return { label: `Back to ${label}`, url: `${siteBase}/${from}` }
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -135,6 +137,7 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
   const resolvedSearch = await searchParams
   const from = resolvedSearch?.from
   const { fetchForTenant } = tenantClient(tenantId)
+  const siteBase = siteBasePath(locale, tenantId, await isHostScopedRequest(tenantId))
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
@@ -170,7 +173,7 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
       { slug, locale: locale as SupportedLocale }
     )
     if (redirectResult?.currentSlug) {
-      permanentRedirect(`/${locale}/${tenantId}/blog/${redirectResult.currentSlug}`)
+      permanentRedirect(`${siteBase}/blog/${redirectResult.currentSlug}`)
     }
     notFound()
   }
@@ -204,7 +207,7 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
     }
   }
 
-  const { label: backLabel, url: backUrl } = getBackContext(from, locale, tenantId)
+  const { label: backLabel, url: backUrl } = getBackContext(from, siteBase)
 
   const coverSrc = imageUrl(post.coverImage, 1600)
   const coverSrcSet = imageSrcSet(post.coverImage, [800, 1200, 1600, 2400])
@@ -417,7 +420,7 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
                   )}
                 </div>
                 <a
-                  href={`/${locale}/${tenantId}/events/${post.relatedEvent.slug.current}`}
+                  href={`${siteBase}/events/${post.relatedEvent.slug.current}`}
                   className="shrink-0 text-sm font-medium px-4 py-2 rounded-lg transition-opacity hover:opacity-75"
                   style={{ backgroundColor: 'color-mix(in oklch, var(--color-primary) 12%, transparent)', color: 'var(--color-primary)' }}
                 >
@@ -454,7 +457,7 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
                       locale={locale}
                       key={related._id}
                       post={related}
-                      href={`/${locale}/${tenantId}/blog/${related.slug.current}`}
+                      href={`${siteBase}/blog/${related.slug.current}`}
                       delay={i * 0.07}
                     />
                   ))}
@@ -477,7 +480,7 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
                 ← {backLabel}
               </a>
               <a
-                href={`/${locale}/${tenantId}/blog`}
+                href={`${siteBase}/blog`}
                 className="inline-flex items-center gap-2 text-sm font-medium transition-opacity hover:opacity-75"
                 style={{ color: 'var(--color-text-secondary)' }}
               >

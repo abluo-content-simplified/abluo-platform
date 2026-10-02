@@ -11,6 +11,8 @@ import { getThemeSwitcherMessages } from '@/lib/i18n/theme-switcher-messages'
 import { useEarlyAccess } from '@/components/forms/EarlyAccessContext'
 import { useFormOverlaySafe } from '@/components/forms/FormOverlayContext'
 import { renderWordmark } from '@/lib/wordmark'
+import { useHostScoped } from '@/components/SiteLinkScope'
+import { siteBasePath } from '@/lib/sanity/href'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -96,6 +98,10 @@ export function NavClient({
 
   // Null-safe: returns null when no FormOverlayProvider is mounted (ctaMode!='overlay').
   const formOverlay = useFormOverlaySafe()
+
+  // On the site's own host the home link is /{locale}, not /{locale}/{tenant}.
+  const hostScoped = useHostScoped()
+  const homeHref = siteBasePath(currentLocale, tenantId, hostScoped)
 
   // The CTA is a <button> (not a link) whenever it drives an in-page overlay.
   const ctaIsButton = ctaMode === 'modal' || ctaMode === 'overlay'
@@ -234,7 +240,7 @@ export function NavClient({
       <div className="flex w-full max-w-[1200px] items-center mx-auto gap-4">
 
         {/* Logo (+ optional practice name) */}
-        <Link href={`/${currentLocale}/${tenantId}`} className="flex shrink-0 items-center gap-3">
+        <Link href={homeHref} className="flex shrink-0 items-center gap-3">
           {logoSrc ? (
             <>
               {!isLight && (

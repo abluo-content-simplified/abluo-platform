@@ -1,4 +1,6 @@
 import type { NewsListingSection as NewsListingSectionType, NewsArticle, DesignSystem } from '@/lib/sanity/types'
+import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
+import { siteBasePath, withTenantPrefix } from '@/lib/sanity/href'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
@@ -80,9 +82,18 @@ function ArticleMeta({
 
 // ─── Card link helper ─────────────────────────────────────────────────────────
 
-function articleHref(base: string, article: NewsArticle, fromParam?: string): string {
-  const href = `${base}/${article.slug.current}`
-  return fromParam ? `${href}?from=${encodeURIComponent(fromParam)}` : href
+/**
+ * A card's href is the article's canonical path and nothing else.
+ *
+ * Cards used to append `?from=<page>` so the article's back button knew where
+ * the visitor came from. Every such URL answered 200 with a canonical pointing
+ * elsewhere — one duplicate per card per listing page — while the back button
+ * already returns through browser history, using `from` only as a fallback for
+ * a visitor who opened the article in a fresh tab. That fallback is now the
+ * news index. `fromParam` is still accepted so callers need not change.
+ */
+function articleHref(base: string, article: NewsArticle, _fromParam?: string): string {
+  return `${base}/${article.slug.current}`
 }
 
 // ─── Card — Standard (Grid layout) ────────────────────────────────────────────
@@ -352,13 +363,13 @@ interface Props {
   locale: string
   tenantId: string
   /**
-   * When set, appended as ?from=${fromParam} to every card link so the news
-   * detail page can render an accurate back label.
+   * Ignored — kept for call-site compatibility. Card links carry no
+   * `?from=`; see articleHref().
    */
   fromParam?: string
 }
 
-export function NewsListingSection({
+export async function NewsListingSection({
   section,
   surface,
   designSystem,
@@ -381,8 +392,10 @@ export function NewsListingSection({
   const surfaceStyles = getSurfaceStyles(designSystem, surface)
   const msg = getNewsModuleMessages(locale)
 
-  // Detail-route base: /[locale]/[tenant]/news
-  const newsBase = `/${locale}/${tenantId}/news`
+  // Detail-route base: /[locale]/news on the site's own host,
+  // /[locale]/[tenant]/news on the platform's path-based surfaces.
+  const hostScoped = await isHostScopedRequest(tenantId)
+  const newsBase = `${siteBasePath(locale, tenantId, hostScoped)}/news`
 
   // Motion tokens — durationSlow for content sections (platform convention).
   const m = designSystem?.motion
@@ -459,7 +472,7 @@ export function NewsListingSection({
       {viewAllLabel && viewAllHref && (
         <SlideUp duration={duration} ease={ease} delay={0.25} className="mt-12 flex justify-center">
           <a
-            href={viewAllHref}
+            href={withTenantPrefix(viewAllHref, locale, tenantId, hostScoped)}
             className="inline-flex items-center gap-2 rounded-[var(--radius-btn)] border px-7 py-3 text-sm font-medium transition-opacity hover:opacity-75"
             style={{
               borderColor: 'var(--color-border)',
