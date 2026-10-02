@@ -209,6 +209,23 @@ const scopedFormId = (field: string) => /* groq */ `*[
         && (role == "template" || tenantSlug == ${PROJECT_TENANT_SLUG})
       ][0].formId`
 
+// ─── Tenant-scoped newsArticle slug lookup ───────────────────────────────────
+//
+// The per-locale slug of a referenced news article, read through a filtered
+// subquery so the project clause sits on the lookup itself (same reasoning as
+// scopedFormId above). `^.` is the object the reference field lives on. Every
+// consumer binds $projectSlug, $locale and $defaultLocale (CTA_FIELDS is only
+// interpolated into project-scoped queries — query-tenant-scope.test.ts).
+//
+// The key is written `^.<field>._ref == _id`, not `_id == ^.<field>._ref`: the
+// latter is the marker query-tenant-scope.test.ts counts as a TENANT-owned
+// formDefinition lookup (which must carry a tenantSlug clause). A news article
+// is PROJECT-owned, so its clause is projectSlug — cta-news-link.test.ts pins it.
+const scopedNewsArticleSlug = (field: string) => /* groq */ `coalesce(
+    *[_type == "newsArticle" && ^.${field}._ref == _id && projectSlug == $projectSlug][0].slug[$locale].current,
+    *[_type == "newsArticle" && ^.${field}._ref == _id && projectSlug == $projectSlug][0].slug[$defaultLocale].current
+  )`
+
 // ─── CTA fields projection ────────────────────────────────────────────────────
 // Reusable GROQ inline fragment for the cta object type.
 // Include it in any section projection that uses a CTA field.
@@ -240,6 +257,11 @@ export const CTA_FIELDS = /* groq */ `
   // /api/forms/[projectSlug]/[formId] routes resolve a formId independently,
   // and their own scoping is outside this file.
   "formId": ${scopedFormId('formRef')},
+  // actionType == 'newsArticle'. Resolved like pageSlug above — the article's
+  // slug in this locale, else in the default locale — but through a
+  // project-scoped subquery rather than a bare ->, so an article id copied
+  // from another project resolves to nothing instead of a foreign slug.
+  "newsArticleSlug": ${scopedNewsArticleSlug('newsArticleRef')},
   "fileUrl": file.asset->url,
   "fileName": file.asset->originalFilename,
   externalUrl,

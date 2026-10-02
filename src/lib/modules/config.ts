@@ -28,7 +28,8 @@
 // deprecated in the schema and hidden from the Studio form, so nothing new can
 // be authored into them in the meantime.
 
-import type { RenderableFormDefinition, WebsiteSiteConfig } from '@/lib/sanity/types'
+import type { Cta, RenderableFormDefinition, WebsiteSiteConfig } from '@/lib/sanity/types'
+import { ctaInternalPath } from '@/lib/sanity/cta'
 
 // ── Query result shape ────────────────────────────────────────────────────────
 
@@ -210,6 +211,9 @@ export function resolveHeaderCtaConfig(
   const href =
     (actionType === 'externalUrl' ? asString(cta?.externalUrl) : undefined) ??
     (actionType === 'page' ? asString(cta?.pageSlug) : undefined) ??
+    (actionType === 'newsArticle' || actionType === 'newsIndex'
+      ? ctaInternalPath(cta as Cta | undefined)
+      : undefined) ??
     (actionType === 'fileDownload' ? asString(cta?.fileUrl) : undefined) ??
     asString(siteConfig?.ctaHref)
 

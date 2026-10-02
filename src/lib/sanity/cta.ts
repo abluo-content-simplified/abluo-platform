@@ -14,6 +14,37 @@ import type { Cta, CtaContextItem, ResolvedCta } from './types'
 import { isPassThroughHref, withTenantPrefix } from './href'
 
 /**
+ * Route segment of the News module (ADR-020): `/{locale}/{tenant}/news` is the
+ * index, `/{locale}/{tenant}/news/{slug}` an article. It mirrors the route
+ * folder `src/app/[locale]/(website)/[tenant]/news/`, so it is a platform
+ * constant, not tenant configuration.
+ */
+export const NEWS_ROUTE_SEGMENT = 'news'
+
+/**
+ * The internal path a CTA points at, before the `/{locale}/{tenant}` prefix —
+ * or undefined when the CTA is not an internal link or its target is missing.
+ *
+ * One place for the three internal destinations, so resolveCta() and the
+ * header button (resolveHeaderCtaConfig) cannot disagree about them:
+ *   page        → the page's slug, exactly as before
+ *   newsArticle → news/{slug}
+ *   newsIndex   → news
+ */
+export function ctaInternalPath(cta: Cta | null | undefined): string | undefined {
+  switch (cta?.actionType) {
+    case 'page':
+      return cta.pageSlug || undefined
+    case 'newsArticle':
+      return cta.newsArticleSlug ? `${NEWS_ROUTE_SEGMENT}/${cta.newsArticleSlug}` : undefined
+    case 'newsIndex':
+      return NEWS_ROUTE_SEGMENT
+    default:
+      return undefined
+  }
+}
+
+/**
  * Turns the editor's Context key/value list into a plain pre-fill map — the
  * same shape FormOverlayButtonSection builds for FormOverlayTrigger.
  *
@@ -65,6 +96,16 @@ export function resolveCta(cta: Cta | null | undefined): ResolvedCta {
           : `/${cta.pageSlug}`,
         external: false,
       }
+    }
+
+    // News module targets (ADR-020). Additive: no CTA stored before these
+    // existed has either actionType, so every legacy shape takes the cases
+    // above and below exactly as it did.
+    case 'newsArticle':
+    case 'newsIndex': {
+      const path = ctaInternalPath(cta)
+      if (!path) return { type: 'none', label, internalName }
+      return { type: 'link', label, internalName, href: `/${path}`, external: false }
     }
 
     case 'form': {

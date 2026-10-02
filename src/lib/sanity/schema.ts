@@ -229,6 +229,10 @@ const ctaType = defineType({
       options: {
         list: [
           { title: '📄 Go to a page', value: 'page' },
+          // Additive (news module, ADR-020): every CTA stored before these two
+          // options existed keeps its actionType and resolves exactly as before.
+          { title: '📰 Go to a news article', value: 'newsArticle' },
+          { title: '🗞️ Go to the news page', value: 'newsIndex' },
           { title: '📋 Open a form', value: 'form' },
           { title: '⬇️ Download a file', value: 'fileDownload' },
           { title: '🔗 External URL', value: 'externalUrl' },
@@ -248,6 +252,31 @@ const ctaType = defineType({
       to: [{ type: 'page' }],
       hidden: ({ parent }: { parent?: { actionType?: string } }) => parent?.actionType !== 'page',
       description: 'Pick any page from this project. Never type a URL.',
+      options: {
+        filter: ({ document }: { document: Record<string, unknown> }) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const projectSlug = (document as any)?.projectSlug as string | undefined
+          if (!projectSlug) return { filter: '_id == "@@no-project-selected@@"' }
+          return {
+            filter: 'projectSlug == $projectSlug && defined(slug)',
+            params: { projectSlug },
+          }
+        },
+        disableNew: true,
+      },
+    }),
+
+    // ── News article reference (shown when actionType === 'newsArticle') ─────
+    // Same picker rules as pageRef: this project's articles only, and only ones
+    // that already have a slug. Resolved per locale via the article's
+    // localizedSlug (CTA_FIELDS), so the link follows the visitor's language.
+    defineField({
+      name: 'newsArticleRef',
+      title: 'News article',
+      type: 'reference',
+      to: [{ type: 'newsArticle' }],
+      hidden: ({ parent }: { parent?: { actionType?: string } }) => parent?.actionType !== 'newsArticle',
+      description: 'Pick a news article from this project. Never type a URL.',
       options: {
         filter: ({ document }: { document: Record<string, unknown> }) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -348,6 +377,8 @@ const ctaType = defineType({
     prepare: ({ label, internalName, actionType }: { label?: string; internalName?: string; actionType?: string }) => {
       const icon: Record<string, string> = {
         page: '📄',
+        newsArticle: '📰',
+        newsIndex: '🗞️',
         form: '📋',
         fileDownload: '⬇️',
         externalUrl: '🔗',
@@ -411,6 +442,8 @@ const navigationLinkType = defineType({
           { title: 'Live', value: 'live' },
           { title: 'Events', value: 'events' },
           { title: 'News & Announcements (Blog)', value: 'blog' },
+          // The News module index (ADR-020) — /news. Additive option.
+          { title: 'News (module)', value: 'news' },
         ],
       },
       hidden: ({ parent }: { parent?: { linkType?: string; pageRef?: unknown } }) =>

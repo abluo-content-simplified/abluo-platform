@@ -110,9 +110,14 @@ export interface CtaContextItem {
 export interface Cta {
   label?: string
   internalName: string
-  actionType?: 'page' | 'form' | 'fileDownload' | 'externalUrl'
+  actionType?: 'page' | 'newsArticle' | 'newsIndex' | 'form' | 'fileDownload' | 'externalUrl'
   /** Resolved slug of the target page — locale+tenant prefix added at render time. */
   pageSlug?: string
+  /**
+   * Resolved slug of the referenced news article (`actionType: 'newsArticle'`)
+   * in the request locale, else the default locale. Project-scoped in GROQ.
+   */
+  newsArticleSlug?: string
   // Resolved from formRef by GROQ
   /** Stable route key of the referenced form definition. */
   formId?: string
@@ -180,7 +185,7 @@ export interface NavLink {
   pageSlug?: string
   /** True when a page reference is set — with no pageSlug it points at an unpublished page. */
   hasPageRef?: boolean
-  internalPage?: 'homepage' | 'live' | 'events'
+  internalPage?: 'homepage' | 'live' | 'events' | 'blog' | 'news'
   externalUrl?: string
   openInNewTab?: boolean
   // Legacy fields for backward compatibility

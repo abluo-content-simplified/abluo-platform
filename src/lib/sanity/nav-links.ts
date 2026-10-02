@@ -1,5 +1,6 @@
 import type { NavLink, ResolvedNavLink, SupportedLocale } from './types'
 import { isPassThroughHref } from './href'
+import { NEWS_ROUTE_SEGMENT } from './cta'
 import { LOCALE_CODES } from '@/lib/i18n/locales'
 
 /**
@@ -30,6 +31,10 @@ function resolveInternalPage(page: string | undefined): string {
       return 'events'
     case 'blog':
       return 'blog'
+    // News module index (ADR-020). Additive — no link stored before this
+    // option existed carries the value.
+    case 'news':
+      return NEWS_ROUTE_SEGMENT
     default:
       return ''
   }
