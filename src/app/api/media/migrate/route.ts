@@ -1,14 +1,9 @@
-import { createClient } from '@sanity/client'
+import { sanityWriteClient as client } from '@/lib/sanity/server-clients'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAbluoAdmin } from '@/lib/api/auth'
+import { bearerMatches } from '@/lib/api/shared-secret'
 
 // Migration API for converting string altText/description to localized objects
-const client = createClient({
-  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || '3n7t84j3',
-  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
-  apiVersion: '2026-05-21',
-  token: process.env.SANITY_API_WRITE_TOKEN,
-  useCdn: false,
-})
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,16 +17,24 @@ export async function POST(request: NextRequest) {
     // migration that has already run, and running it locally with the secret
     // set is no harder than running it without.
     //
-    // Fails closed when MIGRATION_SECRET is unset: the comparison is then
-    // against the literal "Bearer undefined", which no caller sends.
+    // Fails closed when MIGRATION_SECRET is unset (bearerMatches never matches
+    // an unset secret), and compares in constant time.
     const authHeader = request.headers.get('Authorization')
     const secret = process.env.MIGRATION_SECRET
 
-    if (!secret || authHeader !== `Bearer ${secret}`) {
+    if (!bearerMatches(authHeader, secret)) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       )
+    }
+
+    // AND an Abluo admin session (two-factor, via requireAbluoAdmin). This
+    // route mutates every tenant's mediaAsset documents with the write token;
+    // a leaked MIGRATION_SECRET alone must not be enough to do that.
+    const actor = await requireAbluoAdmin()
+    if (!actor) {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
     }
 
     // Fetch all mediaAssets that have string altText or description

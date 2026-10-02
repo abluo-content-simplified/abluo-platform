@@ -15,12 +15,13 @@
  */
 import { NextResponse } from 'next/server'
 import { deliverEvent } from '@/lib/notifications/consumer'
+import { secretEquals } from '@/lib/api/shared-secret'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   const secret = process.env.FORM_EVENTS_WEBHOOK_SECRET
-  if (!secret || request.headers.get('x-webhook-secret') !== secret) {
+  if (!secretEquals(request.headers.get('x-webhook-secret'), secret)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

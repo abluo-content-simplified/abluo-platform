@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
+import { bearerMatches } from '@/lib/api/shared-secret'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +25,7 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
 
-  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!bearerMatches(authHeader, process.env.CRON_SECRET)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
