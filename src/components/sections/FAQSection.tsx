@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'motion/react'
+import { useId, useState } from 'react'
+import { motion } from 'motion/react'
 import type { FAQSection, DesignSystem } from '@/lib/sanity/types'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
@@ -27,13 +27,19 @@ interface FAQItemProps {
 
 function FAQItem({ question, answer, itemDuration, ease }: FAQItemProps) {
   const [open, setOpen] = useState(false)
+  const id = useId()
+  const buttonId = `${id}-question`
+  const panelId = `${id}-answer`
 
   return (
     <div style={{ borderBottom: '1px solid var(--color-border)' }} className="last:border-0">
       <button
+        id={buttonId}
+        type="button"
         onClick={() => setOpen(!open)}
         className="flex w-full items-start justify-between gap-6 py-6 text-left"
         aria-expanded={open}
+        aria-controls={panelId}
       >
         <span
           className="text-base font-medium leading-snug"
@@ -57,27 +63,37 @@ function FAQItem({ question, answer, itemDuration, ease }: FAQItemProps) {
         </motion.span>
       </button>
 
-      {/* Accordion body — AnimatePresence for height + opacity via motion tokens */}
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            key="answer"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            transition={{ duration: itemDuration, ease: ease as any }}
-            style={{ overflow: 'hidden' }}
-          >
-            <p
-              className="pb-6 text-sm leading-relaxed"
-              style={{ color: 'var(--color-text-secondary)' }}
-            >
-              {answer}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/*
+        Accordion body — ALWAYS in the DOM, collapsed to height 0 when closed.
+
+        The answer used to mount only when opened (AnimatePresence), so the
+        server HTML carried the questions but none of the answers: crawlers and
+        AI fetchers never saw them, and the FAQPage JSON-LD described text that
+        was not on the page. Now the answer is server-rendered and the motion
+        tokens animate height + opacity between the two states.
+
+        Closed panels are `inert` + aria-hidden so they are skipped by keyboard
+        and assistive tech exactly as when they were unmounted.
+      */}
+      <motion.div
+        id={panelId}
+        role="region"
+        aria-labelledby={buttonId}
+        aria-hidden={!open}
+        inert={!open}
+        initial={false}
+        animate={open ? { height: 'auto', opacity: 1 } : { height: 0, opacity: 0 }}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        transition={{ duration: itemDuration, ease: ease as any }}
+        style={{ overflow: 'hidden' }}
+      >
+        <p
+          className="pb-6 text-sm leading-relaxed"
+          style={{ color: 'var(--color-text-secondary)' }}
+        >
+          {answer}
+        </p>
+      </motion.div>
     </div>
   )
 }
