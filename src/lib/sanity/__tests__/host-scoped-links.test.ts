@@ -106,3 +106,13 @@ describe('languageSwitchPath', () => {
     expect(languageSwitchPath({ ...base, preservePath: false, targetLocale: 'it', hostScoped: false, pathname: '/abluo/news' })).toBe('/abluo')
   })
 })
+
+describe('index routes keep the visitor on the index when switching language', () => {
+  it('the footer switcher (no path preservation) goes to /{other}/news, not home', async () => {
+    const { indexRouteSlugMap } = await import('@/lib/i18n/language-switch')
+    const slugMap = indexRouteSlugMap(['en', 'it', 'de'], 'news')
+    expect(slugMap).toEqual({ en: 'news', it: 'news', de: 'news' })
+    expect(languageSwitchPath({ targetLocale: 'de', slugMap, tenantId: 'abluo', hostScoped: true, pathname: '/news', preservePath: false })).toBe('/news')
+    expect(languageSwitchPath({ targetLocale: 'de', slugMap, tenantId: 'abluo', hostScoped: false, pathname: '/abluo/news', preservePath: false })).toBe('/abluo/news')
+  })
+})

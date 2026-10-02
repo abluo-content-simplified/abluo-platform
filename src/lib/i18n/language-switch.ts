@@ -41,3 +41,14 @@ export function languageSwitchPath(opts: {
 
   return base || '/'
 }
+
+/**
+ * The slug map an INDEX route registers (`/news`, `/blog`, `/events`): the same
+ * segment in every site language.
+ *
+ * Without it the footer switcher — which never guesses a path — sent a visitor
+ * on /en/news to the German home page instead of /de/news.
+ */
+export function indexRouteSlugMap(locales: readonly string[], segment: string): Record<string, string> {
+  return Object.fromEntries(locales.map((locale) => [locale, segment]))
+}

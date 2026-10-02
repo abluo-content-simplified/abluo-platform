@@ -14,9 +14,9 @@
  * - `getNewsPageMessages` is still used for `generateMetadata` SEO fallback
  *   strings while a tenant has no `blogPage` document — that is a metadata
  *   concern, not page-body rendering, and is unaffected by this retirement.
- * - The page uses no SlugMapProvider because the URL /blog is the same
- *   in every locale — the LanguageSwitcher's fallback path-preservation
- *   branch handles locale switching correctly.
+ * - The URL /blog is the same in every locale; it is registered with a
+ *   SlugMapProvider (indexRouteSlugMap) so the footer switcher, which never
+ *   preserves the path, keeps the visitor on /blog.
  */
 
 import type { Metadata } from 'next'
@@ -36,6 +36,8 @@ import { getNewsPageMessages } from '@/lib/i18n/news-page-messages'
 import { isProduction, isDev } from '@/lib/deployment'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { SlugMapProvider } from '@/components/SlugMapContext'
+import { indexRouteSlugMap } from '@/lib/i18n/language-switch'
 import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
 
 export const dynamic = 'force-dynamic'
@@ -109,6 +111,7 @@ export default async function NewsListingPage({ params }: PageProps) {
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
+  const supportedLocales = localeConfig?.supportedLocales ?? [defaultLocale]
 
   // ADR-016 Phase C — the page now renders purely from sections[]. The
   // featured-card + grid posts list that used to be fetched and rendered
@@ -135,7 +138,11 @@ export default async function NewsListingPage({ params }: PageProps) {
 
   await hydrateSections(blogPage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig })
 
+  // The /blog segment is the same in every language; registering it lets
+  // both language switchers keep the visitor on this index (see
+  // indexRouteSlugMap) — the footer one used to send them to the home page.
   return (
+    <SlugMapProvider slugMap={indexRouteSlugMap(supportedLocales, 'blog')}>
     <>
     {blogPage?.sections?.map((section, index) => (
       <SectionRenderer
@@ -153,5 +160,6 @@ export default async function NewsListingPage({ params }: PageProps) {
       />
     ))}
     </>
+    </SlugMapProvider>
   )
 }

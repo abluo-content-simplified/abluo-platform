@@ -13,6 +13,8 @@ import { fetchDesignSystemById } from '@/lib/sanity/client'
 import type { EventsPage, LocaleConfig, SupportedLocale, DesignSystem, WebsiteSiteConfig } from '@/lib/sanity/types'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { SlugMapProvider } from '@/components/SlugMapContext'
+import { indexRouteSlugMap } from '@/lib/i18n/language-switch'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,6 +53,7 @@ export default async function EventsListPage({ params }: PageProps) {
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
+  const supportedLocales = localeConfig?.supportedLocales ?? [defaultLocale]
 
   // ADR-016 Phase C — the page now renders purely from sections[]. The
   // events grid that used to be fetched and rendered here directly is now
@@ -83,7 +86,11 @@ export default async function EventsListPage({ params }: PageProps) {
 
   await hydrateSections(eventsPage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig })
 
+  // The /events segment is the same in every language; registering it lets
+  // both language switchers keep the visitor on this index (see
+  // indexRouteSlugMap) — the footer one used to send them to the home page.
   return (
+    <SlugMapProvider slugMap={indexRouteSlugMap(supportedLocales, 'events')}>
     <>
     {eventsPage?.sections?.map((section, index) => (
       <SectionRenderer
@@ -101,5 +108,6 @@ export default async function EventsListPage({ params }: PageProps) {
       />
     ))}
     </>
+    </SlugMapProvider>
   )
 }

@@ -6,10 +6,11 @@
  * appears here. There is no fixed-field body, so unlike the Blog route this
  * page never needed a migration away from one.
  *
- * The URL segment `/news` is the same in every locale, so this page uses no
- * SlugMapProvider — the language switcher's path-preserving fallback handles
- * locale changes correctly. Only the ITEM route (news/[slug]) carries a slug
- * map, because item slugs are per-locale.
+ * The URL segment `/news` is the same in every locale. It is still registered
+ * with a SlugMapProvider (indexRouteSlugMap): the header switcher could fall
+ * back to preserving the path, but the footer switcher never guesses and sent
+ * visitors to the home page. The ITEM route (news/[slug]) registers per-locale
+ * slugs.
  *
  * Module gating: if the News module is not enabled for the website, the
  * newsListingSection renders nothing (isSectionTypeAvailable) and hydration is
@@ -40,6 +41,8 @@ import { getNewsModuleMessages } from '@/lib/i18n/news-module-messages'
 import { isProduction, isDev } from '@/lib/deployment'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { SlugMapProvider } from '@/components/SlugMapContext'
+import { indexRouteSlugMap } from '@/lib/i18n/language-switch'
 import { canonicalOrigin, canonicalUrl, hreflangAlternates, seoAlternates } from '@/lib/seo/canonical'
 import { ogLocale } from '@/lib/seo/og-locale'
 import { ogImageUrl, imageUrl } from '@/lib/sanity/image'
@@ -127,6 +130,7 @@ export default async function NewsIndexPage({ params }: PageProps) {
 
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
+  const supportedLocales = localeConfig?.supportedLocales ?? [defaultLocale]
 
   const [designSystem, newsPage, siteConfig, moduleConfig] = await Promise.all([
     (async () => {
@@ -159,7 +163,11 @@ export default async function NewsIndexPage({ params }: PageProps) {
     .flatMap((s) => s.articles ?? [])
     .filter((a) => a.slug?.current)
 
+  // The /news segment is the same in every language; registering it lets
+  // both language switchers keep the visitor on this index (see
+  // indexRouteSlugMap) — the footer one used to send them to the home page.
   return (
+    <SlugMapProvider slugMap={indexRouteSlugMap(supportedLocales, 'news')}>
     <>
       <JsonLd
         siteConfig={siteConfig}
@@ -192,5 +200,6 @@ export default async function NewsIndexPage({ params }: PageProps) {
         />
       ))}
     </>
+    </SlugMapProvider>
   )
 }
