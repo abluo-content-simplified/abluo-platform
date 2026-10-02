@@ -3,6 +3,7 @@ import { isProduction } from '@/lib/deployment'
 import { isStagingHost } from '@/lib/seo/indexability'
 import { canonicalUrl } from '@/lib/seo/canonical'
 import { normalizeHost } from '@/lib/tenancy/host-scope'
+import { LLMS_NEWS_QUERY, LLMS_POSTS_QUERY, entryLinesFor, type EntryRow } from '@/lib/seo/llms'
 
 /**
  * `/llms.txt` — a plain-text map of the site for answer engines.
@@ -117,15 +118,19 @@ export async function GET(): Promise<Response> {
     // The whole localized objects, not one language's projection: this file
     // lists every language the site publishes, and a second read per locale
     // would be six more round trips for data already in these documents.
-    const pages = await sanityClient.fetch<PageRow[]>(
-      `*[_type == "page" && projectSlug == $projectSlug && !(noindex == true)] | order(pageType asc) {
-        pageType,
-        "titles": title,
-        "slugs": slug,
-        "descriptions": seoDescription
-      }`,
-      { projectSlug: project.projectSlug }
-    )
+    const [pages, news, posts] = await Promise.all([
+      sanityClient.fetch<PageRow[]>(
+        `*[_type == "page" && projectSlug == $projectSlug && !(noindex == true)] | order(pageType asc) {
+          pageType,
+          "titles": title,
+          "slugs": slug,
+          "descriptions": seoDescription
+        }`,
+        { projectSlug: project.projectSlug }
+      ),
+      sanityClient.fetch<EntryRow[]>(LLMS_NEWS_QUERY, { projectSlug: project.projectSlug }),
+      sanityClient.fetch<EntryRow[]>(LLMS_POSTS_QUERY, { projectSlug: project.projectSlug }),
+    ])
 
     const name = project.siteName ?? project.projectName ?? project.projectSlug
     const summary = project.description ?? project.tagline
@@ -168,6 +173,21 @@ export async function GET(): Promise<Response> {
       const block = sectionFor(loc)
       if (block.length === 0) continue
       lines.push('', `## Pages (${loc})`, '', ...block)
+    }
+
+    // News and blog — one block per language, exactly like pages: the default
+    // language under a bare heading, every other language suffixed with its
+    // code, and a language with no entries omitted.
+    for (const [heading, entries, routePrefix] of [
+      ['News', news ?? [], 'news'],
+      ['Blog', posts ?? [], 'blog'],
+    ] as const) {
+      for (const loc of [locale, ...otherLocales]) {
+        const block = entryLinesFor(entries, origin, loc, routePrefix)
+        if (block.length === 0) continue
+        if (lines[lines.length - 1] !== '') lines.push('')
+        lines.push(loc === locale ? `## ${heading}` : `## ${heading} (${loc})`, '', ...block)
+      }
     }
 
     lines.push('', '## Machine-readable', '')
