@@ -166,7 +166,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       sanityClient.fetch<PageSitemapData[]>(
         // The home page is already emitted as the bare locale URL above; listing
         // it again under its slug (/en/home) named a duplicate of the home page.
-        `*[_type == "page" && defined(projectSlug) && coalesce(pageType, "") != "home"] { projectSlug, slug, "images": ${GALLERY_SECTION_IMAGES} }`
+        //
+        // A page marked `noindex` is excluded too. It carries a robots noindex
+        // meta, and listing it here sent search engines a contradiction: "index
+        // this URL" from the sitemap, "do not index" from the page. Same filter
+        // llms.txt applies, so the two never disagree about which pages exist.
+        // `noindex` is a `page`-only field; events, posts and news have none.
+        `*[_type == "page" && defined(projectSlug) && coalesce(pageType, "") != "home" && !(noindex == true)] { projectSlug, slug, "images": ${GALLERY_SECTION_IMAGES} }`
       ),
       sanityClient.fetch<EventSitemapData[]>(
         `*[_type == "event" && defined(projectSlug)] { projectSlug, slug }`
