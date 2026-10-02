@@ -86,6 +86,7 @@ describe('isPreAuthSurface', () => {
       '/invite/accept',
       '/forgot-password',
       '/reset-password',
+      '/mfa',
     ]) {
       expect(isPreAuthSurface(path), path).toBe(true)
     }
@@ -106,6 +107,7 @@ describe('isPreAuthSurface', () => {
   it('does not match unrelated paths that merely share a prefix', () => {
     expect(isPreAuthSurface('/logins')).toBe(false)
     expect(isPreAuthSurface('/reset-password-admin')).toBe(false)
+    expect(isPreAuthSurface('/mfa-bypass')).toBe(false)
     expect(isPreAuthSurface('/en/dashboard')).toBe(false)
     expect(isPreAuthSurface('/')).toBe(false)
   })

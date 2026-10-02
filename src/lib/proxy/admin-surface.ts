@@ -65,6 +65,10 @@ const PRE_AUTH_SURFACES = [
   '/invite/accept',
   '/forgot-password',
   '/reset-password',
+  // Two-factor enrollment / challenge for Abluo admins. Reachable with an
+  // aal1 session by construction — it is where the admin gate SENDS an aal1
+  // admin — and it does its own session check (no session → /login).
+  '/mfa',
 ] as const
 
 export function isPreAuthSurface(pathname: string): boolean {

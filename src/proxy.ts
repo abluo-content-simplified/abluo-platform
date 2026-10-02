@@ -4,6 +4,7 @@ import { negotiateLocale } from '@/lib/i18n/negotiate-locale'
 import { NextRequest, NextResponse } from 'next/server'
 import { routing } from './i18n/routing'
 import { resolvePlatformRole } from '@/lib/api/auth'
+import { adminGateDecision, mfaRedirectPath, readAssuranceLevel } from '@/lib/auth/admin-assurance'
 import { isAdminSurface, isStudio, isPreAuthSurface } from '@/lib/proxy/admin-surface'
 import { isClientSurface } from '@/lib/proxy/client-surface'
 import {
@@ -99,8 +100,37 @@ async function requireAdminInProxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/unauthorized', request.url))
   }
 
+  // Two-factor (AAL2) for every admin surface — see admin-assurance.ts.
+  const mfa = await requireAdminAal2(request, supabase, supabaseResponse)
+  if (mfa) return mfa
+
   // Admin — return the (possibly cookie-refreshed) continue response.
   return supabaseResponse
+}
+
+/**
+ * The two-factor half of the admin gate, shared by `requireAdminInProxy` and
+ * the `admin.abluo.app` host block. Called only after `getUser()` returned an
+ * `abluo_admin` on this same client, which is what makes the decoded `aal`
+ * claim server-validated. Returns `null` when the session is AAL2 (continue),
+ * otherwise a redirect to `/mfa?next=<original path>` — enrollment when the
+ * admin has no verified factor yet, a challenge when they do. Fail-closed: an
+ * error reading the level is "not AAL2". The redirect carries any refreshed
+ * session cookies so the MFA page sees the same session.
+ */
+async function requireAdminAal2(
+  request: NextRequest,
+  supabase: Parameters<typeof readAssuranceLevel>[0],
+  supabaseResponse: NextResponse
+): Promise<NextResponse | null> {
+  const currentLevel = await readAssuranceLevel(supabase)
+  const decision = adminGateDecision({ hasUser: true, platformRole: 'abluo_admin', currentLevel })
+  if (decision === 'allow') return null
+  const redirect = NextResponse.redirect(
+    new URL(mfaRedirectPath(request.nextUrl.pathname, request.nextUrl.search), request.url)
+  )
+  for (const c of supabaseResponse.cookies.getAll()) redirect.cookies.set(c)
+  return redirect
 }
 
 /**
@@ -279,6 +309,10 @@ export async function proxy(request: NextRequest) {
     if (resolvePlatformRole(user.app_metadata) !== 'abluo_admin') {
       return NextResponse.redirect(new URL('/unauthorized', request.url))
     }
+
+    // Two-factor (AAL2) for every path on the admin host.
+    const mfa = await requireAdminAal2(request, supabase, supabaseResponse)
+    if (mfa) return mfa
 
     // Authenticated admin — apply subdomain rewrite (skip API and static paths)
     const url = request.nextUrl.clone()

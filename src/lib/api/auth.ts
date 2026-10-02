@@ -11,6 +11,11 @@
  */
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import {
+  adminGateDecision,
+  readAssuranceLevel,
+  type AdminGateDecision,
+} from '@/lib/auth/admin-assurance'
 
 /**
  * Returns the authenticated Supabase user for the current request, or `null`
@@ -95,16 +100,46 @@ export async function getAuthenticatedActor(): Promise<AuthenticatedActor | null
 }
 
 /**
- * Convenience guard for Abluo-admin-only surfaces (slice 3 will gate `/studio`
- * and the admin dashboard on this — ADR-015 R6). Returns the actor only when
- * `platformRole === 'abluo_admin'`, otherwise `null`. Fail-safe: an
- * unauthenticated request and an authenticated tenant user are treated
- * identically (both `null`), so callers cannot accidentally distinguish
- * "logged in but not admin" from "not logged in" into an allow path.
+ * The admin gate's full decision for the current request — identity, role
+ * AND two-factor. `decision` is `'allow'` only for an `abluo_admin` whose
+ * session is at AAL2 (password + TOTP in this session); see
+ * `src/lib/auth/admin-assurance.ts`. `actor` is present whenever there is a
+ * valid session, so callers can still log who was refused.
+ *
+ * `getUser()` runs BEFORE the AAL read on the same client — that ordering is
+ * what makes the decoded `aal` claim server-validated (admin-assurance.ts).
+ */
+export async function resolveAdminAccess(): Promise<{
+  decision: AdminGateDecision
+  actor: AuthenticatedActor | null
+}> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { decision: 'login', actor: null }
+
+  const actor = toAuthenticatedActor(user)
+  // Only an admin pays for the AAL read; tenant users never reach it.
+  const currentLevel =
+    actor.platformRole === 'abluo_admin' ? await readAssuranceLevel(supabase) : null
+  return {
+    decision: adminGateDecision({ hasUser: true, platformRole: actor.platformRole, currentLevel }),
+    actor,
+  }
+}
+
+/**
+ * Guard for Abluo-admin-only surfaces (ADR-015 R6) — every admin API route
+ * calls this. Returns the actor only when `platformRole === 'abluo_admin'`
+ * AND the session is two-factor (AAL2); otherwise `null`. Fail-safe: an
+ * unauthenticated request, an authenticated tenant user and a password-only
+ * (aal1) admin are all treated identically (`null` → the route's 403), so
+ * callers cannot accidentally distinguish them into an allow path.
  */
 export async function requireAbluoAdmin(): Promise<AuthenticatedActor | null> {
-  const actor = await getAuthenticatedActor()
-  return actor?.platformRole === 'abluo_admin' ? actor : null
+  const { decision, actor } = await resolveAdminAccess()
+  return decision === 'allow' ? actor : null
 }
 
 /**
