@@ -5,6 +5,8 @@
  * Code-owned + minimal; admin-editable templates are a later enhancement.
  * Pure (no I/O) so it is unit-testable.
  */
+import { buildLeadOriginRows } from '@/lib/forms/lead-origin'
+import { getLeadOriginMessages } from '@/lib/i18n/lead-origin-messages'
 
 export const DEFAULT_SUBJECT_TEMPLATE = 'New {topic} submission — {who}'
 
@@ -57,17 +59,12 @@ export function renderNewSubmissionEmail(input: NewSubmissionEmailInput): { subj
   const subject = renderSubject(input.subjectTemplate, { topic: input.topic, who, formId: input.formId })
 
   const dataRows = flatten(data)
-  // Surface the marketing/attribution highlights from source.
-  const src = input.source ?? {}
-  const attribution: Array<[string, string]> = [
-    ['UTM source', src.utm_source as string],
-    ['UTM medium', src.utm_medium as string],
-    ['UTM campaign', src.utm_campaign as string],
-    ['Referrer', (src.referrer as string) || (src.referrer_domain as string)],
-    ['Page', src.page_url as string],
-    ['Country', src.country as string],
-    ['Entry point', src.source as string],
-  ].filter(([, v]) => v) as Array<[string, string]>
+  // "Where this lead came from" — localized to the submission's locale, empty
+  // rows omitted. Same builder as the client dashboard detail.
+  const originMsgs = getLeadOriginMessages(input.locale)
+  const attribution: Array<[string, string]> = buildLeadOriginRows(input.source, originMsgs).map(
+    (r) => [r.label, r.value],
+  )
 
   const rows = (pairs: Array<[string, string]>) =>
     pairs
@@ -85,7 +82,7 @@ export function renderNewSubmissionEmail(input: NewSubmissionEmailInput): { subj
     <p style="margin:0 0 16px;color:#666;">${input.intro ? esc(input.intro) : `A visitor completed and submitted the form${input.createdAt ? ` on ${esc(input.createdAt)}` : ''}.`}</p>
     <h3 style="margin:16px 0 4px;">Submission</h3>
     <table style="border-collapse:collapse;">${rows(dataRows)}</table>
-    ${attribution.length ? `<h3 style="margin:16px 0 4px;">Attribution</h3><table style="border-collapse:collapse;">${rows(attribution)}</table>` : ''}
+    ${attribution.length ? `<h3 style="margin:16px 0 4px;">${esc(originMsgs.heading)}</h3><table style="border-collapse:collapse;">${rows(attribution)}</table>` : ''}
     <p style="margin:16px 0 0;color:#999;font-size:12px;">Submission ID: ${esc(input.submissionId)} · locale ${esc(input.locale)} · form ${esc(input.formId)}</p>
   </div>`.trim()
 
@@ -96,7 +93,7 @@ export function renderNewSubmissionEmail(input: NewSubmissionEmailInput): { subj
     '',
     'Submission:',
     ...dataRows.map(([k, v]) => `  ${k}: ${v}`),
-    attribution.length ? '\nAttribution:' : '',
+    attribution.length ? `\n${originMsgs.heading}:` : '',
     ...attribution.map(([k, v]) => `  ${k}: ${v}`),
     '',
     `Submission ID: ${input.submissionId} · locale ${input.locale} · form ${input.formId}`,

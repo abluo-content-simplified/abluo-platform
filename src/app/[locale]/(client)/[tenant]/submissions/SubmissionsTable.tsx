@@ -19,6 +19,8 @@ import { Fragment, useMemo, useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import type { DashboardSubmission, SubmissionStatus } from '@/lib/api/client-dashboard'
 import { setSubmissionStatusAction } from './actions'
+import { buildLeadOriginRows } from '@/lib/forms/lead-origin'
+import { getLeadOriginMessages } from '@/lib/i18n/lead-origin-messages'
 
 const STATUSES: readonly SubmissionStatus[] = ['new', 'processed', 'archived']
 
@@ -58,6 +60,7 @@ interface Props {
 
 export function SubmissionsTable({ submissions, projectSlug, locale }: Props) {
   const t = useTranslations('clientDashboard')
+  const originMsgs = getLeadOriginMessages(locale)
   const [rows, setRows] = useState<DashboardSubmission[]>(submissions)
   const [form, setForm] = useState('all')
   const [status, setStatus] = useState('all')
@@ -280,18 +283,35 @@ export function SubmissionsTable({ submissions, projectSlug, locale }: Props) {
                             </dl>
                           </div>
                           <div>
-                            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('submissions.detail.attribution')}</p>
-                            {s.source && Object.keys(s.source).length > 0 ? (
-                              <dl className="space-y-1">
-                                {Object.entries(s.source).map(([k, v]) => (
-                                  <div key={k} className="flex gap-2">
-                                    <dt className="w-40 shrink-0 text-muted-foreground">{humanizeKey(k)}</dt>
-                                    <dd className="flex-1 break-words">{rawValue(v) || '—'}</dd>
-                                  </div>
-                                ))}
-                              </dl>
-                            ) : (
-                              <p className="text-muted-foreground">{t('submissions.detail.none')}</p>
+                            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{originMsgs.heading}</p>
+                            {(() => {
+                              const origin = buildLeadOriginRows(s.source, originMsgs)
+                              return origin.length > 0 ? (
+                                <dl className="space-y-1">
+                                  {origin.map((row) => (
+                                    <div key={row.key} className="flex gap-2">
+                                      <dt className="w-40 shrink-0 text-muted-foreground">{row.label}</dt>
+                                      <dd className="flex-1 break-words">{row.value}</dd>
+                                    </div>
+                                  ))}
+                                </dl>
+                              ) : (
+                                <p className="text-muted-foreground">{t('submissions.detail.none')}</p>
+                              )
+                            })()}
+                            {/* Every stored attribution key, for the curious and for support. */}
+                            {s.source && Object.keys(s.source).length > 0 && (
+                              <details className="mt-3">
+                                <summary className="cursor-pointer text-xs text-muted-foreground">{t('submissions.detail.attribution')}</summary>
+                                <dl className="mt-2 space-y-1">
+                                  {Object.entries(s.source).map(([k, v]) => (
+                                    <div key={k} className="flex gap-2">
+                                      <dt className="w-40 shrink-0 text-muted-foreground">{humanizeKey(k)}</dt>
+                                      <dd className="flex-1 break-words">{rawValue(v) || '—'}</dd>
+                                    </div>
+                                  ))}
+                                </dl>
+                              </details>
                             )}
                           </div>
                         </div>
