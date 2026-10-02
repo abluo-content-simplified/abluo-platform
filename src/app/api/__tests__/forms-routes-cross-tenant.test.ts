@@ -237,7 +237,8 @@ async function postCreate(
   const req = new Request(`https://abluo.test/api/forms/${projectSlug}/${formId}/submissions`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-forwarded-for': '203.0.113.7' },
-    body: JSON.stringify(body),
+    // Consent-first (ADR-018 amendment): creates carry consent, as real clients do.
+    body: JSON.stringify({ gdprConsent: true, ...body }),
   })
   const res = await createRoute(req, { params: Promise.resolve({ projectSlug, formId }) })
   return { status: res.status, body: await res.json() }

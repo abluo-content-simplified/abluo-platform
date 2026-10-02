@@ -49,8 +49,13 @@ export interface FormDefinition {
   /** Abstract, provider-agnostic routing tag (ADR-018 Decision 3). */
   notificationTopic: string
   /**
-   * If true, the final step also requires GDPR consent (`gdpr_consent = true`).
+   * If true, the form requires GDPR consent (`gdpr_consent = true`).
    * Consent is handled as a top-level column, not a data field.
+   *
+   * ⚠️ The name is historical and frozen into every stored snapshot. Since the
+   * ADR-018 consent-first amendment (2026-10) consent is required on the FIRST
+   * request that stores data (the create), not at the final step; the final
+   * step only asks for it on a legacy partial row that has none.
    */
   requiresConsentAtFinalStep: boolean
   steps: FormStepDef[]

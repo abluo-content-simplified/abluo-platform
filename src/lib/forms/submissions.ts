@@ -234,7 +234,10 @@ export async function createSubmission(input: CreateSubmissionInput): Promise<Su
       const errors = validateStep(def, step.key, values)
 
       const finalOnCreate = isFinalStep(def, step.key) // single-step form
-      if (finalOnCreate && def.requiresConsentAtFinalStep && input.gdprConsent !== true) {
+      // Consent BEFORE data (ADR-018 amendment, 2026-10): when the form requires
+      // consent, the FIRST request that carries personal data — this create —
+      // must carry it, single-step or multi-step. Nothing is stored without it.
+      if (def.requiresConsentAtFinalStep && input.gdprConsent !== true) {
         errors._consent = 'required'
       }
       if (Object.keys(errors).length > 0) {
@@ -247,7 +250,9 @@ export async function createSubmission(input: CreateSubmissionInput): Promise<Su
 
       const multi = isMultiStep(def)
       const token = multi && !finalOnCreate ? issueStepToken(now) : null
-      const gdprConsent = finalOnCreate && input.gdprConsent === true
+      // Recorded on the row the moment it is given — on a multi-step form that
+      // is step 1, so the partial lead already carries consent + its timestamp.
+      const gdprConsent = input.gdprConsent === true
 
       const { data: inserted, error } = await supabase
         .from('form_submissions')
@@ -311,7 +316,7 @@ export async function completeStep(input: CompleteStepInput): Promise<Submission
     async (supabase): Promise<SubmissionResult> => {
       const { data: row, error: fetchErr } = await supabase
         .from('form_submissions')
-        .select('id, form_id, completion_state, step_token_hash, step_token_expires_at, submission_data, definition_snapshot, form_version, tenant_id, project_id, locale')
+        .select('id, form_id, completion_state, step_token_hash, step_token_expires_at, submission_data, definition_snapshot, form_version, tenant_id, project_id, locale, gdpr_consent')
         .eq('id', input.submissionId)
         .maybeSingle()
 
@@ -361,7 +366,11 @@ export async function completeStep(input: CompleteStepInput): Promise<Submission
       const errors = validateStep(def, input.stepKey, values)
 
       const finalStep = isFinalStep(def, input.stepKey)
-      if (finalStep && def.requiresConsentAtFinalStep && input.gdprConsent !== true) {
+      // Consent is normally captured on the create (step 1). A row that already
+      // carries it is never re-asked; only a partial created BEFORE the
+      // consent-first change (no consent on the row) still needs it to finalize.
+      const alreadyConsented = row.gdpr_consent === true
+      if (finalStep && def.requiresConsentAtFinalStep && !alreadyConsented && input.gdprConsent !== true) {
         errors._consent = 'required'
       }
       if (Object.keys(errors).length > 0) {
@@ -373,7 +382,7 @@ export async function completeStep(input: CompleteStepInput): Promise<Submission
 
       // Rotate on a non-final step; clear the token + finalize on the last step.
       const rotated = finalStep ? null : issueStepToken(now)
-      const gdprConsent = finalStep && input.gdprConsent === true
+      const gdprConsent = !alreadyConsented && input.gdprConsent === true
 
       const updatePayload: Record<string, unknown> = {
         submission_data: mergedData,

@@ -163,7 +163,10 @@ async function postCreate(
   const req = new Request(`https://abluo.test/api/forms/${projectSlug}/${formId}/submissions`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...headers },
-    body: typeof body === 'string' ? body : JSON.stringify(body),
+    // Consent-first (ADR-018 amendment): a create for a consent-requiring form
+    // carries consent, as every real client now sends it. Tests about consent
+    // itself pass `gdprConsent` explicitly.
+    body: typeof body === 'string' ? body : JSON.stringify({ gdprConsent: true, ...(body as object) }),
   })
   const res = await createRoute(req, { params: Promise.resolve({ projectSlug, formId }) })
   return { status: res.status, body: await res.json() }

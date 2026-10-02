@@ -23,9 +23,17 @@
  *     step updates that same row in place — never a new record (the server
  *     merges by step key). Back is pure client navigation; nothing is posted.
  *   - Review (`definition.reviewStep`): a final recap screen lists every answer
- *     with per-step "Edit" links before the visitor commits. Consent moves to
- *     the recap (the true submit point), and the LAST step is only posted when
- *     the visitor confirms on the recap — so "review before send" is real.
+ *     with per-step "Edit" links before the visitor commits. The LAST step is
+ *     only posted when the visitor confirms on the recap — so "review before
+ *     send" is real.
+ *
+ * Consent first (ADR-018 amendment, 2026-10): when the definition requires
+ * consent, the checkbox is shown on the FIRST screen whose submit stores data
+ * (normally step 1) and travels with that request — no personal data is
+ * stored before consent. Once the partial row exists it is not asked again.
+ * See `consentPlacement()`. Context auto-advance is deferred for such forms:
+ * the visitor lands on the first incomplete step, and its submit creates the
+ * row (with consent) and replays the context-satisfied steps before it.
  *
  * Appearance derives entirely from the website Design System CSS variables the
  * Field Library consumes — no styling of its own beyond DS tokens.
@@ -44,6 +52,7 @@ import {
   autoAdvanceSteps,
   stepValues,
   isFinalStepIndex,
+  consentPlacement,
 } from '@/lib/forms/multistep'
 import type { UrlProjectSegment } from '@/lib/tenancy/ids'
 
@@ -137,7 +146,7 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
   const endpoint = submissionEndpoint(projectScopeSlugFromUrlSegment(tenantSlug), def.formId)
 
   const postCreate = useCallback(
-    async (stepData: Record<string, unknown>, timed = true): Promise<StepResponse | null> => {
+    async (stepData: Record<string, unknown>, timed = true, gdprConsent = false): Promise<StepResponse | null> => {
       // `timed` false for the machine-paced auto-advance create: it omits
       // openedAt so the server's too-fast spam heuristic does not apply to a
       // context-satisfied step the visitor never filled.
@@ -150,7 +159,7 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...base, context: context ?? undefined }),
+        body: JSON.stringify({ ...base, gdprConsent, context: context ?? undefined }),
       })
       if (!res.ok) return null
       return res.json()
@@ -176,7 +185,10 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
     if (preparedRef.current) return
     preparedRef.current = true
     const leading = autoAdvanceSteps(def, initialContext) // steps [0 .. landingIndex-1]
-    if (leading.length === 0) {
+    // Consent-first: posting the context-satisfied steps now would create the
+    // row before the visitor has agreed. Defer — the landing step's submit
+    // creates it with consent and replays these steps (postFromStart).
+    if (leading.length === 0 || def.requireConsent) {
       setStatus('idle')
       return
     }
@@ -211,13 +223,43 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
 
   const currentStep = isRecap ? undefined : def.steps[stepIndex]
   const finalStep = isFinalStepIndex(def, stepIndex)
-  // Consent lives on the final SUBMIT surface: the recap when review is on,
-  // otherwise the last step itself.
-  const consentRequired = !!def.requireConsent
-  const includeConsent = !showRecap && finalStep && consentRequired
+  // Consent lives on the first screen whose submit stores data (consent-first).
+  const placement = consentPlacement({
+    requireConsent: !!def.requireConsent,
+    hasSubmission: !!submissionId,
+    stepIndex,
+    stepCount: def.steps.length,
+    reviewStep: !!def.reviewStep,
+    isRecap,
+  })
+  const includeConsent = placement === 'step'
   const fieldConfigs = currentStep ? buildFieldConfigs(def, currentStep.fields, includeConsent) : []
   // Consent config for the recap screen (built independently of any step's fields).
-  const recapConsentConfigs = isRecap && consentRequired ? buildFieldConfigs(def, [], true) : []
+  const recapConsentConfigs = placement === 'recap' ? buildFieldConfigs(def, [], true) : []
+  const consentGiven = values[CONSENT_FIELD_ID] === true
+
+  /**
+   * Creates the row (step 0, with consent) and posts every step up to and
+   * including `throughIndex` from the current values — one request chain for
+   * the first data-storing submit, whether that is step 1, a context-deferred
+   * landing step, or the recap. Returns the last response plus the row's id
+   * and current token, or null on any failure.
+   */
+  const postFromStart = async (
+    throughIndex: number,
+  ): Promise<{ r: StepResponse; sid: string; tok: string | null } | null> => {
+    let r = await postCreate(stepValues(def.steps[0], values), true, consentGiven)
+    if (!r?.submissionId) return null
+    const sid = r.submissionId
+    let tok = r.completionToken ?? null
+    for (let i = 1; i <= throughIndex && !r.done; i++) {
+      const next = await postStep(sid, tok, def.steps[i].key, stepValues(def.steps[i], values), consentGiven)
+      if (!next) return null
+      r = next
+      tok = next.completionToken ?? null
+    }
+    return { r, sid, tok }
+  }
   // Presentation (ADR-018 slice 7): full-width button + Option A progress bar.
   const fullWidth = def.fullWidthButton !== false
   // Progress counts the recap as one extra screen when enabled.
@@ -252,7 +294,7 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
 
     // ── Final submit from the recap screen ──────────────────────────────────
     if (isRecap) {
-      if (consentRequired) {
+      if (recapConsentConfigs.length > 0) {
         const consentErrors = validateForm(recapConsentConfigs, values, locale)
         if (Object.keys(consentErrors).length > 0) { setErrors(consentErrors); return }
       }
@@ -260,11 +302,10 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
       setErrors({})
       const lastKey = def.steps[lastRealIndex].key
       const data = stepValues(def.steps[lastRealIndex], values)
-      const consent = consentRequired && values[CONSENT_FIELD_ID] === true
       try {
         const r = submissionId
-          ? await postStep(submissionId, token, lastKey, data, consent)
-          : await postCreate(data)
+          ? await postStep(submissionId, token, lastKey, data, consentGiven)
+          : (await postFromStart(lastRealIndex))?.r ?? null
         if (!r) { setStatus('error'); return }
         if (r.done || r.ok) { setStatus('success'); return }
         // A non-final response here is unexpected for the last step; treat as sent.
@@ -296,12 +337,16 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
       setStatus('submitting')
       const data = stepValues(currentStep, values)
       try {
-        const r = submissionId
-          ? await postStep(submissionId, token, currentStep.key, data, false)
-          : await postCreate(data)
-        if (!r) { setStatus('error'); return }
-        if (r.submissionId && !submissionId) setSubmissionId(r.submissionId)
-        if (r.completionToken) setToken(r.completionToken)
+        if (submissionId) {
+          const r = await postStep(submissionId, token, currentStep.key, data, consentGiven)
+          if (!r) { setStatus('error'); return }
+          if (r.completionToken) setToken(r.completionToken)
+        } else {
+          const created = await postFromStart(stepIndex)
+          if (!created) { setStatus('error'); return }
+          setSubmissionId(created.sid)
+          setToken(created.tok)
+        }
         setStatus('idle')
         setEditReturn(false)
         setStepIndex(recapIndex)
@@ -320,18 +365,19 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
 
     setStatus('submitting')
     const data = stepValues(currentStep, values)
-    const consent = includeConsent ? values[CONSENT_FIELD_ID] === true : false
     try {
       if (!submissionId) {
-        const created = await postCreate(data)
-        if (!created?.submissionId) { setStatus('error'); return }
-        if (created.done) { setStatus('success'); return }
-        setSubmissionId(created.submissionId)
-        setToken(created.completionToken ?? null)
+        // First data-storing submit: create (with consent) and replay any
+        // context-satisfied steps before this one.
+        const created = await postFromStart(stepIndex)
+        if (!created) { setStatus('error'); return }
+        if (created.r.done) { setStatus('success'); return }
+        setSubmissionId(created.sid)
+        setToken(created.tok)
         setStatus('idle')
-        advanceTo(created.nextStepKey)
+        advanceTo(created.r.nextStepKey)
       } else {
-        const r = await postStep(submissionId, token, currentStep.key, data, consent)
+        const r = await postStep(submissionId, token, currentStep.key, data, consentGiven)
         if (!r) { setStatus('error'); return }
         if (r.done) { setStatus('success'); return }
         setToken(r.completionToken ?? null)
@@ -458,7 +504,7 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
             )
           })}
 
-          {/* Consent — the recap is the true submit point, so consent lives here. */}
+          {/* Consent — only when the recap is the first screen that stores data. */}
           {recapConsentConfigs.map((config) => (
             <div key={config.id} className="mt-1">
               <FormField
@@ -496,7 +542,7 @@ export function MultiStepFormRenderer({ definition: def, messages, locale = 'en'
             </p>
           )}
 
-          {/* Consent — inline on the last step only when there is no recap. */}
+          {/* Consent — on the first step that stores data (consent-first). */}
           {fieldConfigs
             .filter((c) => c.id === CONSENT_FIELD_ID)
             .map((config) => (

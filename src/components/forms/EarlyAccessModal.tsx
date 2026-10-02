@@ -5,17 +5,18 @@
  *
  * Three-step Early Access request flow.
  *
- * Step 1 — Contact (name + email)
+ * Step 1 — Contact (name + email + GDPR consent — consent-first, ADR-018 amendment)
  *   POST /api/forms/{projectSlug}/early-access/submissions → { submissionId, completionToken } → step 2
  *
  * Step 2 — Organisation (name, role cards, org type cards)
  *   Data collected locally → advance to step 3
  *
- * Step 3 — Streaming Needs (use cases chips, audience size dropdown, website, referral, GDPR)
+ * Step 3 — Streaming Needs (use cases chips, audience size dropdown, website, referral)
  *   POST …/submissions/{id}/steps (stepKey 'details') → finalize → show success state
  *
- * When opened from footer CTA with startAtStep2=true, step 1 is already
- * recorded and we jump straight to step 2.
+ * The footer CTA opens this modal at step 1 with name + email pre-filled (it
+ * no longer POSTs on its own — that would store data before consent). The
+ * `startAtStep2` option remains for a caller holding an already-consented row.
  *
  * LOCALIZATION: all user-facing text comes from getEarlyAccessMessages(locale).
  * No English literals appear in this component.
@@ -665,7 +666,7 @@ function getInitialStep2Values(): FormValues {
 }
 
 function getInitialStep3Values(): FormValues {
-  return { useCases: [], audienceSize: '', website: '', referralSource: '', gdprConsent: false }
+  return { useCases: [], audienceSize: '', website: '', referralSource: '' }
 }
 
 function validateStep(fields: FieldConfig[], values: FormValues): Record<string, string> {
@@ -722,7 +723,7 @@ export function EarlyAccessModal() {
   const [step, setStep]               = useState<1 | 2 | 3>(1)
   const [submissionId, setSubmissionId]       = useState<string | null>(null)
   const [completionToken, setCompletionToken] = useState<string | null>(null)
-  const [step1Values, setStep1Values] = useState<FormValues>({ name: '', email: '' })
+  const [step1Values, setStep1Values] = useState<FormValues>({ name: '', email: '', gdprConsent: false })
   const [step2Values, setStep2Values] = useState<FormValues>(getInitialStep2Values())
   const [step3Values, setStep3Values] = useState<FormValues>(getInitialStep3Values())
   const [errors, setErrors]           = useState<Record<string, string>>({})
@@ -743,14 +744,14 @@ export function EarlyAccessModal() {
         setStep(2)
         setSubmissionId(options.submissionId)
         setCompletionToken(options.completionToken ?? null)
-        setStep1Values({ name: options.name ?? '', email: options.email ?? '' })
+        setStep1Values({ name: options.name ?? '', email: options.email ?? '', gdprConsent: false })
         setStep2Values(getInitialStep2Values())
         setStep3Values(getInitialStep3Values())
       } else {
         setStep(1)
         setSubmissionId(options.submissionId ?? null)
         setCompletionToken(options.completionToken ?? null)
-        setStep1Values({ name: options.name ?? '', email: options.email ?? '' })
+        setStep1Values({ name: options.name ?? '', email: options.email ?? '', gdprConsent: false })
         setStep2Values(getInitialStep2Values())
         setStep3Values(getInitialStep3Values())
       }
@@ -775,6 +776,8 @@ export function EarlyAccessModal() {
     e.preventDefault()
     setSubmitError(null)
     const errs = validateStep(step1Fields, step1Values)
+    // Consent-first: nothing is sent until the visitor agrees.
+    if (!step1Values.gdprConsent) errs.gdprConsent = m.gdprRequiredError
     if (Object.keys(errs).length) { setErrors(errs); return }
 
     setSubmitting(true)
@@ -785,6 +788,7 @@ export function EarlyAccessModal() {
         body: JSON.stringify({
           locale,
           data: { name: step1Values.name, email: step1Values.email },
+          gdprConsent: step1Values.gdprConsent === true,
           source: collectClientSource({
             source:             options?.source ?? 'header_cta',
             cta_internal_name:  options?.ctaInternalName  ?? null,
@@ -832,9 +836,6 @@ export function EarlyAccessModal() {
     // Validate the website field via the shared validator
     const errs = validateStep([websiteField], step3Values)
 
-    // GDPR consent is required — validate explicitly
-    if (!step3Values.gdprConsent) errs.gdprConsent = m.gdprRequiredError
-
     if (Object.keys(errs).length) { setErrors(errs); return }
 
     setSubmitting(true)
@@ -855,7 +856,8 @@ export function EarlyAccessModal() {
             stepKey: 'details',
             completionToken,
             data: detailsData,
-            gdprConsent: step3Values.gdprConsent === true,
+            // Consent was recorded with the step-1 create; the row already has it.
+            gdprConsent: step1Values.gdprConsent === true,
           }),
         },
       )
@@ -1003,6 +1005,49 @@ export function EarlyAccessModal() {
                         error={errors[field.id]}
                       />
                     ))}
+                    {/* GDPR — consent-first (ADR-018 amendment): asked on step 1, BEFORE
+                        name + email are sent, and sent with that request. */}
+                    <div>
+                      <label
+                        className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-md)] border p-4 transition-colors"
+                        style={{
+                          borderColor: errors.gdprConsent
+                            ? 'var(--form-input-error-border, var(--color-danger))'
+                            : 'var(--color-border)',
+                          backgroundColor: 'color-mix(in oklch, var(--color-border) 25%, transparent)',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={Boolean(step1Values.gdprConsent)}
+                          onChange={(e) =>
+                            setStep1Values((prev) => ({ ...prev, gdprConsent: e.target.checked }))
+                          }
+                          style={{
+                            marginTop: 2,
+                            flexShrink: 0,
+                            accentColor: 'var(--color-primary)',
+                            width: 15,
+                            height: 15,
+                          }}
+                        />
+                        <span
+                          className="text-sm leading-relaxed"
+                          style={{ color: 'var(--color-text-secondary)' }}
+                        >
+                          {m.gdprConsentText}
+                        </span>
+                      </label>
+                      {errors.gdprConsent && (
+                        <p
+                          className="mt-1.5 text-xs"
+                          role="alert"
+                          style={{ color: 'var(--color-danger)' }}
+                        >
+                          {errors.gdprConsent}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   {submitError && (
@@ -1113,48 +1158,6 @@ export function EarlyAccessModal() {
                       error={errors.website}
                     />
 
-                    {/* GDPR — custom premium checkbox, intentionally lighter */}
-                    <div>
-                      <label
-                        className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-md)] border p-4 transition-colors"
-                        style={{
-                          borderColor: errors.gdprConsent
-                            ? 'var(--form-input-error-border, var(--color-danger))'
-                            : 'var(--color-border)',
-                          backgroundColor: 'color-mix(in oklch, var(--color-border) 25%, transparent)',
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={Boolean(step3Values.gdprConsent)}
-                          onChange={(e) =>
-                            setStep3Values((prev) => ({ ...prev, gdprConsent: e.target.checked }))
-                          }
-                          style={{
-                            marginTop: 2,
-                            flexShrink: 0,
-                            accentColor: 'var(--color-primary)',
-                            width: 15,
-                            height: 15,
-                          }}
-                        />
-                        <span
-                          className="text-sm leading-relaxed"
-                          style={{ color: 'var(--color-text-secondary)' }}
-                        >
-                          {m.gdprConsentText}
-                        </span>
-                      </label>
-                      {errors.gdprConsent && (
-                        <p
-                          className="mt-1.5 text-xs"
-                          role="alert"
-                          style={{ color: 'var(--color-danger)' }}
-                        >
-                          {errors.gdprConsent}
-                        </p>
-                      )}
-                    </div>
 
                   </div>
 

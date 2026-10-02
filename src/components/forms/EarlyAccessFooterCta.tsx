@@ -5,13 +5,10 @@
  *
  * Compact Name + Email form for the footer CTA section.
  *
- * Flow (ADR-018 slice 1 — new submission contract):
- *   1. User types name + email → submit
- *   2. POST /api/forms/{projectSlug}/early-access/submissions → { submissionId, completionToken }
- *   3. Hold { submissionId, completionToken } in component state (in-memory duplicate guard —
- *      replaces the old sessionStorage inquiryId hack)
- *   4. Open modal at step 2 with prefilled name, email, submissionId, and completionToken
- *   5. User completes step 2 → POST …/submissions/{id}/steps (handled by the modal)
+ * Flow (consent-first, ADR-018 amendment 2026-10):
+ *   1. User types name + email → submit (validated locally; nothing is sent)
+ *   2. The Early Access modal opens at step 1 with both pre-filled, where the
+ *      GDPR consent checkbox is; the modal POSTs name + email + consent together.
  *
  * LOCALIZATION: all user-facing text is resolved via getEarlyAccessMessages(locale).
  * No English literals appear in this component. Locale is read from EarlyAccessContext.
@@ -20,11 +17,9 @@
  * @param buttonLabel — optional Sanity override for the submit button label
  */
 
-import { useState, useRef, FormEvent } from 'react'
+import { useState, FormEvent } from 'react'
 import { useEarlyAccess } from './EarlyAccessContext'
 import { getEarlyAccessMessages } from '@/lib/forms/early-access-config'
-import { collectClientSource } from '@/lib/forms/source'
-import { submissionEndpoint, projectScopeSlugFromUrlSegment } from '@/lib/forms/render-mapping'
 
 interface EarlyAccessFooterCtaProps {
   /**
@@ -39,38 +34,20 @@ interface EarlyAccessFooterCtaProps {
   buttonLabel?: string
 }
 
-interface CreatedSubmission {
-  submissionId: string
-  completionToken: string | null
-  name: string
-  email: string
-}
-
 export function EarlyAccessFooterCta({
   emailPlaceholder,
   buttonLabel,
 }: EarlyAccessFooterCtaProps) {
-  const { open, locale, tenantSlug } = useEarlyAccess()
+  const { open, locale } = useEarlyAccess()
   const m = getEarlyAccessMessages(locale)
-  const openedAt = useRef(Date.now())
-  // In-memory duplicate guard: once this footer has created a partial submission,
-  // resubmitting reopens the modal for the SAME submission instead of creating a new one.
-  const createdRef = useRef<CreatedSubmission | null>(null)
 
-  // ⚠️ ONE-TO-N BOUNDARY. The submission route is project-scoped, and this
-  // component has only the URL segment. (Context also carries a `projectSlug`;
-  // it used to be Sanity's separate name — 'livener-main' — and submitting
-  // under it would have 404'd. Since `RENAME.md` Step 4 the two agree, but the
-  // scope still comes from the URL segment through the one named cast:
-  // `projectScopeSlugFromUrlSegment`, which names this dependency explicitly.)
-  const scopeSlug = projectScopeSlugFromUrlSegment(tenantSlug)
+  const [name, setName]   = useState('')
+  const [email, setEmail] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  // Nothing is sent from here any more, so the button never waits.
+  const submitting = false
 
-  const [name, setName]             = useState('')
-  const [email, setEmail]           = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError]           = useState<string | null>(null)
-
-  async function handleSubmit(e: FormEvent) {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
 
@@ -83,62 +60,15 @@ export function EarlyAccessFooterCta({
       return
     }
 
-    // ── Duplicate guard ────────────────────────────────────────────────────────
-    const existing = createdRef.current
-    if (existing) {
-      open({
-        name:            existing.name,
-        email:           existing.email,
-        source:          'footer_cta',
-        submissionId:    existing.submissionId,
-        completionToken: existing.completionToken ?? undefined,
-        startAtStep2:    true,
-      })
-      return
-    }
-
-    // ── Create partial submission ──────────────────────────────────────────────
-    setSubmitting(true)
-    try {
-      const res = await fetch(submissionEndpoint(scopeSlug, 'early-access'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          locale,
-          data: { name: trimmedName, email: trimmedEmail },
-          source: collectClientSource({ source: 'footer_cta' }),
-          openedAt:        openedAt.current,
-          company_website: '',   // honeypot — always empty from real users
-        }),
-      })
-
-      const data = await res.json()
-
-      if (!res.ok || !data.submissionId) {
-        setError(m.submitError)
-        return
-      }
-
-      createdRef.current = {
-        submissionId:    data.submissionId,
-        completionToken: data.completionToken ?? null,
-        name:            trimmedName,
-        email:           trimmedEmail,
-      }
-
-      open({
-        name:            trimmedName,
-        email:           trimmedEmail,
-        source:          'footer_cta',
-        submissionId:    data.submissionId,
-        completionToken: data.completionToken ?? undefined,
-        startAtStep2:    true,
-      })
-    } catch {
-      setError(m.submitError)
-    } finally {
-      setSubmitting(false)
-    }
+    // Consent-first (ADR-018 amendment): the footer no longer creates the
+    // partial submission itself — that stored name + email before the visitor
+    // had agreed to anything. It hands both to the modal's step 1, where the
+    // consent checkbox is, and the modal sends them together with consent.
+    open({
+      name:   trimmedName,
+      email:  trimmedEmail,
+      source: 'footer_cta',
+    })
   }
 
   return (

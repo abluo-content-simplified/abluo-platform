@@ -105,3 +105,31 @@ export function stepValues(step: RenderableFormStep, values: Record<string, unkn
 export function isFinalStepIndex(def: RenderableFormDefinition, index: number): boolean {
   return index === def.steps.length - 1
 }
+
+/**
+ * Where the consent checkbox goes on a multi-step form — ADR-018 consent-first
+ * amendment (2026-10).
+ *
+ * Consent is asked on the FIRST screen whose submit sends data to the server,
+ * so no personal data is stored before the visitor agrees:
+ *   - no partial row exists yet → the current screen, if its submit posts;
+ *   - with a review screen, the LAST step only advances to the recap (nothing
+ *     is posted), so a visitor who reaches it without a row is asked on the
+ *     recap instead;
+ *   - once a row exists, consent was already given with it → never re-asked.
+ */
+export function consentPlacement(opts: {
+  requireConsent: boolean
+  /** A partial submission row already exists (consent was sent with it). */
+  hasSubmission: boolean
+  stepIndex: number
+  stepCount: number
+  reviewStep: boolean
+  isRecap: boolean
+}): 'step' | 'recap' | null {
+  if (!opts.requireConsent || opts.hasSubmission) return null
+  if (opts.isRecap) return 'recap'
+  const showRecap = opts.reviewStep && opts.stepCount > 1
+  if (showRecap && opts.stepIndex === opts.stepCount - 1) return null
+  return 'step'
+}
