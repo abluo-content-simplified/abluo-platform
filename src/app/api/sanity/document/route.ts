@@ -1,13 +1,7 @@
-import { createClient } from '@sanity/client'
+import { sanityServerReadClient as client } from '@/lib/sanity/server-clients'
 import { NextResponse } from 'next/server'
 import { requireAbluoAdmin } from '@/lib/api/auth'
 
-const client = createClient({
-  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || '3n7t84j3',
-  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
-  apiVersion: '2026-05-21',
-  useCdn: false,
-})
 
 /**
  * GET /api/sanity/document?id=xxx

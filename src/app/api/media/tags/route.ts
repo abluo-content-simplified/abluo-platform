@@ -1,15 +1,8 @@
-import { createClient } from '@sanity/client'
+import { sanityServerReadClient as client } from '@/lib/sanity/server-clients'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAbluoAdmin } from '@/lib/api/auth'
 import { buildMediaFilter } from '@/lib/media/media-filter'
 
-const client = createClient({
-  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || '3n7t84j3',
-  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
-  apiVersion: '2026-05-21',
-  token: process.env.SANITY_API_WRITE_TOKEN,
-  useCdn: false,
-})
 
 // GET /api/media/tags — Get distinct tags for autocomplete
 export async function GET(request: NextRequest) {

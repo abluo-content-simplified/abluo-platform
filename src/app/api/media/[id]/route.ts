@@ -1,16 +1,9 @@
-import { createClient } from '@sanity/client'
+import { sanityWriteClient as client } from '@/lib/sanity/server-clients'
 import { NextRequest, NextResponse } from 'next/server'
 import { isExpectedDocType, requireAbluoAdmin } from '@/lib/api/auth'
 
 const MEDIA_ASSET_TYPE = 'mediaAsset'
 
-const client = createClient({
-  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || '3n7t84j3',
-  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
-  apiVersion: '2026-05-21',
-  token: process.env.SANITY_API_WRITE_TOKEN,
-  useCdn: false,
-})
 
 // PATCH /api/media/[id] — Update mediaAsset metadata
 export async function PATCH(

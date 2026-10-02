@@ -41,8 +41,9 @@ import { SANITY_PROJECT_ID, SANITY_DATASET, SANITY_API_VERSION } from '@/lib/san
  * builds URLs from `@/lib/sanity/config`, which carries no token.
  *
  * That structural separation is enforced by
- * `__tests__/client-bundle-boundary.test.ts`, which fails if any 'use client'
- * component reaches this module again.
+ * `__tests__/client-bundle-boundary.test.ts` (source-level) and by the import-graph
+ * walk in `__tests__/private-dataset-readiness.test.ts`, which fails if any 'use client'
+ * module (or anything Sanity Studio bundles) reaches this module again.
  *
  * A compile-time guard (`import 'server-only'`) would be stronger still, but
  * the package is not a dependency of this repo and importing it breaks every

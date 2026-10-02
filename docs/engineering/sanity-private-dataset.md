@@ -54,10 +54,12 @@ sanity.io/manage → project `3n7t84j3` → **API** → **Tokens** → *Add API 
 
 Copy the value once; it is not shown again.
 
-> A **Viewer** token can read drafts. Our datasets are public today, so drafts are *already*
-> readable and no query behaviour changes when the token appears. The client deliberately sets no
-> `perspective`, so what comes back is identical before and after. Do not add a `perspective`
-> override as part of this change — that would be a separate, non-no-op behaviour change.
+> A **Viewer** token *can* read drafts, but no read path will start returning them: every
+> client in this repo pins `apiVersion: 2026-05-21`, and from API version `2025-02-19` the
+> default perspective is **`published`** — drafts are excluded unless a query asks for them.
+> (An anonymous request against a public dataset never sees drafts either, so before and after
+> are the same.) The clients deliberately set no `perspective`; do not add one as part of this
+> change. Pinned by `src/lib/sanity/__tests__/private-dataset-readiness.test.ts`.
 
 ### Step 2 — Add the variable to **all three** Vercel environments
 
@@ -204,7 +206,37 @@ Roll back the dataset that is broken; there is no need to revert `staging` if on
 misbehaves. Do **not** delete the `SANITY_API_READ_TOKEN` variable as part of a rollback — leaving
 it in place costs nothing and keeps you ready to retry.
 
-## 7. After the flip
+## 7. Read-path checklist (audited 2026-10-02)
+
+Every place the platform reads Sanity, and the credential it carries after the flip. "Token"
+means the request carries `SANITY_API_READ_TOKEN` (or the write token) when configured.
+
+| Read path | Runs where | Client | After flip |
+|---|---|---|---|
+| Tenant website pages, layout, Nav/Footer, section hydration (`(website)/[tenant]/**`, `SectionRenderer`) | server (RSC) | `tenantClient().fetchForTenant` → `sanityClient` | token ✅ |
+| Design-system parent lookup (`fetchDesignSystemById`) | server | `sanityClient` | token ✅ |
+| `sitemap.xml`, `llms.txt` | server | `sanityClient` (dynamic import) | token ✅ |
+| `robots.txt` | server | no Sanity read | n/a |
+| Client dashboard Posts (`client-dashboard.ts`) | server | `tenantScopedSanityClient` → `sanityClient` | token ✅ |
+| Module entitlement (`tenant-context.ts` → `enabledModuleIdsQuery`) | server | `tenantClient` | token ✅ |
+| Form definitions (`forms/definition-source.ts`), notification branding/recipients | server | `sanityClient` | token ✅ |
+| Translate config (`translate/config.ts`) | server | `tenantClient` | token ✅ |
+| `/api/media`, `/api/media/tags`, `/api/media/scopes`, `/api/media/[id]`, `/api/media/migrate` | server | `server-clients.ts` | write token, else read token ✅ |
+| `/api/sanity/document` | server | `sanityServerReadClient` | token ✅ (was anonymous — fixed) |
+| Admin Media page tenant/project pickers | was **browser**, now `/api/media/scopes` | server | token ✅ (was an anonymous browser read — fixed) |
+| Sanity Studio (`/studio`, all `useClient()` panes/inputs/actions) | browser | Studio's own client, signed-in Sanity user | ✅ (project members) |
+| Images / files | browser | `cdn.sanity.io` URLs from `image.ts` (config only, no client) | public CDN ✅ |
+| `scripts/generate-route-config.mjs` | dev machine | uses `SANITY_API_READ_TOKEN`/write token from `.env.local` | needs a token in `.env.local` |
+| `scripts/check-content-shape.mjs`, `content-width.mjs` | dev machine | write/auth token from `.env.local` | needs a token in `.env.local` |
+| `scripts/probe-live.mjs` | dev machine | deliberately ANONYMOUS write probe (must be refused) | unchanged ✅ |
+| `src/lib/sanity/migrations/*` | dev machine (CLI) | own `SANITY_API_TOKEN`/write token | needs a token |
+
+Enforced, not just listed: `private-dataset-readiness.test.ts` fails if any file other than
+`src/lib/sanity/client.ts` / `server-clients.ts` imports `@sanity/client`, if any file calls
+`api.sanity.io` directly, or if any `'use client'` module (or anything `sanity.config.ts`
+bundles) reaches a server Sanity client through its import graph.
+
+## 8. After the flip
 
 - Revoking the token becomes a site-down event. Note it wherever tokens are rotated.
 - CORS origins in sanity.io/manage govern browser-side access only; server-side reads from Vercel

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@sanity/client'
 import { Search, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { UploadDialog } from '@/components/media/UploadDialog'
 import { EditSheet } from '@/components/media/EditSheet'
@@ -63,12 +62,6 @@ interface MediaResponse {
   }
 }
 
-const sanityClient = createClient({
-  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || '3n7t84j3',
-  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
-  apiVersion: '2026-05-21',
-  useCdn: false,
-})
 
 export default function MediaPage() {
   const [assets, setAssets] = useState<MediaAsset[]>([])
@@ -105,11 +98,10 @@ export default function MediaPage() {
   useEffect(() => {
     const fetchTenants = async () => {
       try {
-        const data = await sanityClient.fetch<Tenant[]>(
-          `*[_type == "client" && !(_id in path("drafts.**"))] | order(displayName asc) {
-            _id, displayName, tenantSlug
-          }`
-        )
+        // Server-side read (private-dataset safe) — see /api/media/scopes.
+        const response = await fetch('/api/media/scopes')
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const { data } = (await response.json()) as { data: Tenant[] }
         setTenants(data)
       } catch (err) {
         console.error('Failed to fetch tenants:', err)
@@ -128,13 +120,11 @@ export default function MediaPage() {
 
     const fetchProjects = async () => {
       try {
-        const data = await sanityClient.fetch<Project[]>(
-          `*[_type == "project" && clientRef._ref == $tenantId && !(_id in path("drafts.**"))] | order(projectName asc) {
-            _id, projectName, projectSlug,
-            "supportedLocales": siteConfig->supportedLocales
-          }`,
-          { tenantId: selectedTenant }
+        const response = await fetch(
+          `/api/media/scopes?${new URLSearchParams({ tenant: selectedTenant })}`
         )
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const { data } = (await response.json()) as { data: Project[] }
         setProjects(data)
         // Narrow to this tenant's enabled locales; fall back to all platform locales.
         const tenantLocales = data[0]?.supportedLocales

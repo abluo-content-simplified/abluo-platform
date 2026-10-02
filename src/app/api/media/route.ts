@@ -1,15 +1,13 @@
-import { createClient } from '@sanity/client'
+import { sanityServerReadClient, sanityWriteClient as client } from '@/lib/sanity/server-clients'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAbluoAdmin } from '@/lib/api/auth'
 import { buildMediaFilter } from '@/lib/media/media-filter'
+import {
+  MEDIA_OWNERSHIP_QUERY,
+  evaluateMediaOwnership,
+  type MediaOwnershipRow,
+} from '@/lib/media/ownership'
 
-const client = createClient({
-  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || '3n7t84j3',
-  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
-  apiVersion: '2026-05-21',
-  token: process.env.SANITY_API_WRITE_TOKEN,
-  useCdn: false,
-})
 
 // GET /api/media — List media assets with filters & pagination
 export async function GET(request: NextRequest) {
@@ -40,7 +38,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch count
     const countQuery = `count(*[${filter}])`
-    const totalCount = await client.fetch<number>(countQuery, params)
+    const totalCount = await sanityServerReadClient.fetch<number>(countQuery, params)
 
     // Fetch paginated results with asset metadata
     const query = `*[${filter}] | order(_createdAt desc) [${offset}...${offset + limit}] {
@@ -68,7 +66,7 @@ export async function GET(request: NextRequest) {
       }
     }`
 
-    let assets = await client.fetch(query, params)
+    let assets = await sanityServerReadClient.fetch(query, params)
 
     // Backward compatibility: convert string altText/description to objects
     assets = assets.map((asset: any) => ({
@@ -147,21 +145,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Cross-tenant reference guard: the project (if any) must belong to the
+    // tenant, and the tenant must exist. Checked BEFORE the upload so a
+    // rejected request leaves no orphaned asset. `projectSlug` is derived from
+    // the verified project document, never from the request.
+    const ownership = evaluateMediaOwnership(
+      await client.fetch<MediaOwnershipRow | null>(MEDIA_OWNERSHIP_QUERY, {
+        tenant,
+        project: project ?? '',
+      }),
+      tenant,
+      project
+    )
+    if (!ownership.ok) {
+      return NextResponse.json({ success: false, error: ownership.error }, { status: 400 })
+    }
+    const projectSlug = ownership.projectSlug
+
     // Upload asset to Sanity
     const buffer = await file.arrayBuffer()
     const uploadedAsset = await client.assets.upload('image', Buffer.from(buffer), {
       filename: file.name,
     })
-
-    // Fetch project slug if project ref provided
-    let projectSlug: string | null = null
-    if (project) {
-      const projectDoc = await client.fetch<{ projectSlug: string }>(
-        `*[_type == "project" && _id == $project][0] { projectSlug }`,
-        { project }
-      )
-      projectSlug = projectDoc?.projectSlug || null
-    }
 
     // Parse tags
     const tags = tagsJson ? JSON.parse(tagsJson).map((tag: string) => tag.toLowerCase().trim()) : []
