@@ -46,19 +46,32 @@ Clients never see Sanity (CLAUDE.md principle 4). Today the client dashboard is 
 - It stores native Portable Text, so there is no HTML↔PT conversion and it matches `localizedPortableText`.
 - **Gate:** a one-day spike on iOS Safari plus React 19 / Next 16. If it fails, fall back to TipTap with the round-trip converter proven in the Hoffmann migration.
 
-### D7 — Dashboard theming
-- The dashboard uses Abluo's own semantic tokens (`globals.css`, shadcn: `background`, `foreground`, `card`, `muted`, `border`, `primary`…). It never uses tenant DS tokens, and never raw palette classes (`zinc-*`, `gray-*`, `#hex`, `bg-white`, `text-black`).
-- Default is **follow system**. A Light / Dark / Auto switch in the account menu is saved per user (Supabase profile) and mirrored in a cookie so the first render doesn't flash.
+### D7 — One design system: a shared foundation, three surfaces
+The Abluo app gets its own design system, built fresh rather than reusing the shadcn starter theme (2026-10-04, Tom). Light mode is inspired by Airbnb: ink on white, the main action in ink, selection shown by a border. Dark mode is Linear-style, using the current colours as its starting point. Tenant websites are unaffected; they keep their Sanity design systems.
+
+- **Foundation, shared by every app surface:** colours (light + dark), fonts, focus, and base components (button, input, chip, card, SavePill, theme switch). Base components live in `src/components/ui`.
+- **The app tokens are scoped, not global.** Tenant websites use the same variable names (`--background`, `--border`, `--primary`…) and rely on the `:root` values for the ones their design system doesn't emit. So the app tokens live under the app root (`.abluo-app`, with `[data-theme="dark"]`), never on `:root`. The app theme preference uses its own key (`abluo-app-theme` + cookie) and never touches the website theme switch (`abluo-theme`, `html.light`).
+- **Surfaces** may adjust **size, spacing, radius, density and motion only — never colour or font**. Each surface is set by an attribute on its root (e.g. `data-surface="create"`):
+  - **Create:** the tenant's guided creation flow (wizard). Generous type, large cards, more space and motion. Components go in `src/components/client/create/`.
+  - **Manage:** the tenant's dashboard (home, lists, submissions, settings). Calmer and slightly denser.
+  - **Admin:** the Abluo admin. The densest surface, plus a permanent admin marker: a slim top bar with a reserved admin-only accent colour, which no other surface uses. Adopted later; the admin's hardcoded colours (≈135 classes) are a separate cleanup.
+- When an Abluo admin opens a tenant's dashboard (after migration 028), a banner reads "Viewing <project> as Abluo admin" and offers Exit. Tenants never see it.
+- The default theme is **follow system**. A Light / Dark / Auto switch in the account menu is saved per user (Supabase profile) and mirrored in a cookie, so the first paint is right. The website's dark-first boot script (`html.light`) stays as it is; the app resolves its own theme on its root.
+- No raw palette classes (`zinc-*`, `gray-*`, `#hex`, `bg-white`, `text-black`) in client code (verification T2).
 - **Only exception:** the Preview step renders the real article with the tenant's design system, inside a frame.
 
-### D8 — Content types are module-driven
-- The "What would you like to create?" cards come from installed modules that declare `dashboard.create` and for which the user holds `edit`.
-- When there is exactly one type, the step is skipped.
+### D8 — Content types are module-driven, with a soft upsell
+- The "What would you like to create?" cards come from installed modules that declare `dashboard.create` and for which the user holds `edit`. Those are the only selectable cards.
+- **The step is always shown, including for a single module** (Tom, 2026-10-04). When only one type is available it is pre-selected, so it stays one tap.
+- Under the selectable cards, a quieter **"More you can add to your site"** row lists modules the project doesn't have (e.g. Events, Video). They are clearly not choices: smaller, with an "Add" label instead of a selection state. Tapping one opens a short sheet that explains it and offers "Ask us to add it", which sends a request to Abluo. Only owners see this row, never editors or viewers.
 - Blog is first. News and Events use the same wizard shell later, with their own step lists.
 
-### D9 — Machine translation stays a draft
-- The Languages step calls the Translate module (ADR-023) and writes values with `translationStatus: 'machine'`. It never overwrites `original` or `reviewed` text.
-- Publishing the original language never waits on translations.
+### D9 — Languages: a step of its own, and no fallback to the default language
+- On a site with more than one locale, the wizard has a **Languages** step after the cover and before the preview. The original language comes first. For every other language the choices are **Translate for me** (pre-selected), **I'll write it** and **Not now**. Translation runs in the background, and the preview can switch language. Single-locale sites never see this step.
+- **A post appears only in the languages it has content for.** If a language has no title and body, the post is left out of that locale's lists, detail route, sitemap and hreflang. It never falls back to the default language and never shows as an empty page. This is a platform query rule, not a wizard rule (it also affects the `coalesce(field[$locale], field[$defaultLocale], …)` pattern for routable content, which needs a review).
+- "Not now" stays visible: the Publish step lists each language with its status, and Home shows a "Missing translations" card until the language is filled or explicitly turned off for that post.
+- Machine translation goes through the Translate module (ADR-023). Values are marked `translationStatus: 'machine'`, and `original` / `reviewed` text is never overwritten.
+- **Per-site setting (Translate module config): "Publish translations automatically"**, on by default. When it is on, machine translations go live with the original and get a "review suggested" note in the app. When it is off, they wait for "Looks good" before that language goes live. Publishing the original never waits on translations.
 
 ## Consequences
 - First tenant write surface, so the security review is mandatory for S2.
