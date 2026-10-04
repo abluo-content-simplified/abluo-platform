@@ -83,8 +83,12 @@ export async function readAssuranceLevel(supabase: AssuranceReader): Promise<Ass
  * MFA page redirects to after a successful challenge — the same rule as
  * `src/app/auth/callback/route.ts` (a leading `//` or `/\` is protocol-
  * relative to a browser, i.e. an open redirect).
+ *
+ * The default fallback is `/auth/continue`, NOT a localized dashboard path:
+ * which locale (and, for that matter, which home) is decided server-side from
+ * the session and the visitor's language there — never a hardcoded `/en/…`.
  */
-export function safeNextPath(next: string | null | undefined, fallback = '/en/dashboard'): string {
+export function safeNextPath(next: string | null | undefined, fallback = '/auth/continue'): string {
   if (!next || !next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) return fallback
   return next
 }

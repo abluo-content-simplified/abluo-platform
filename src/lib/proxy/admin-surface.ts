@@ -62,6 +62,10 @@ const PRE_AUTH_SURFACES = [
   '/login',
   '/unauthorized',
   '/auth/callback',
+  // Post-sign-in landing decision (src/app/(platform)/auth/continue). It reads
+  // the session itself and redirects — no session → /login — so it must not be
+  // gated, and it has no `[locale]` twin for the i18n middleware to prefix.
+  '/auth/continue',
   '/invite/accept',
   '/forgot-password',
   '/reset-password',

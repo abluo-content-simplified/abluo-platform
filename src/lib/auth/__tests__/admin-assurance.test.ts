@@ -71,12 +71,12 @@ describe('safeNextPath / mfaRedirectPath — no open redirect through /mfa', () 
 
   it('replaces protocol-relative, absolute and backslash tricks with the fallback', () => {
     for (const bad of ['//evil.example', 'https://evil.example', '/\\evil.example', 'evil', '', null, undefined]) {
-      expect(safeNextPath(bad)).toBe('/en/dashboard')
+      expect(safeNextPath(bad)).toBe('/auth/continue')
     }
   })
 
   it('builds the MFA redirect carrying the original target', () => {
     expect(mfaRedirectPath('/studio', '?x=1')).toBe('/mfa?next=%2Fstudio%3Fx%3D1')
-    expect(mfaRedirectPath('//evil')).toBe('/mfa?next=%2Fen%2Fdashboard')
+    expect(mfaRedirectPath('//evil')).toBe('/mfa?next=%2Fauth%2Fcontinue')
   })
 })

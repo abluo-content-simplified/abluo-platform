@@ -13,6 +13,10 @@ import { getAuthenticatedActor } from '@/lib/api/auth'
  * for platform-role resolution (ADR-015 R1/decision 4) instead of
  * duplicating the mapping logic client-side.
  *
+ * NOTE: the login page no longer uses this for its landing decision — that is
+ * made server-side by `GET /auth/continue` (src/lib/auth/post-login.ts), from
+ * the cookies a full-page navigation carries. Kept as a read-only role hint.
+ *
  * Returns `{ platformRole: null }` (200, not 401) for an unauthenticated
  * caller — this endpoint is a routing hint, not an authorization boundary,
  * so callers should treat a null role the same as "not signed in" rather

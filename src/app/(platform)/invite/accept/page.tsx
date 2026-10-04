@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { PasswordInput } from '@/components/ui/PasswordInput'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import type { EmailOtpType } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 
@@ -122,7 +122,6 @@ function parseHashParams(hash: string): URLSearchParams {
 }
 
 function AcceptInviteForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
 
   const [status, setStatus] = useState<Status>('checking')
@@ -395,8 +394,11 @@ function AcceptInviteForm() {
     }
 
     setStatus('done')
-    router.push('/account')
-    router.refresh()
+    // Server-side landing decision (src/lib/auth/post-login.ts): the tenant
+    // user's LOCALIZED account page. A bare `/account` has no route — the
+    // client dashboard lives under `[locale]` — and a full navigation sends
+    // the session cookies just written.
+    window.location.assign('/auth/continue')
   }
 
   if (status === 'checking') {
@@ -432,7 +434,7 @@ function AcceptInviteForm() {
         </h1>
         <p className="mb-8 text-sm text-amber-600">{profileWarning}</p>
         <a
-          href="/account"
+          href="/auth/continue"
           className="block w-full rounded bg-zinc-900 py-2.5 text-center text-sm font-medium text-white transition-colors hover:bg-zinc-700"
         >
           Continue to account

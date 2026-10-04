@@ -1,13 +1,12 @@
 'use client'
 
 import { Suspense, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { PasswordInput } from '@/components/ui/PasswordInput'
 
 function LoginForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const explicitNext = searchParams.get('next')
 
@@ -30,42 +29,21 @@ function LoginForm() {
       return
     }
 
-    // Role-based landing (ADR-017 slice 4). An explicit `?next=` always
-    // wins — e.g. proxy.ts's admin gate and /account both append `next` to
-    // send a signed-out user back to where they were headed, and that
-    // intent should be honored regardless of role. Absent that, land
-    // abluo_admin on the admin dashboard and every other authenticated
-    // user (tenant_user) on /account, per ADR-015's two-platform-identity
-    // model. The role check goes through /api/auth/me rather than
-    // importing `resolvePlatformRole` from `@/lib/api/auth` directly —
-    // that module pulls in `next/headers` (server-only) and cannot be
-    // imported into this client component; the route keeps
-    // `getAuthenticatedActor` the single source of truth for the mapping
-    // instead of duplicating it here.
-    if (explicitNext) {
-      router.push(explicitNext)
-      router.refresh()
-      return
-    }
-
-    let destination = '/account'
-    try {
-      const res = await fetch('/api/auth/me')
-      if (res.ok) {
-        const { platformRole } = (await res.json()) as { platformRole: string | null }
-        if (platformRole === 'abluo_admin') {
-          destination = '/en/dashboard'
-        }
-      }
-    } catch {
-      // Network hiccup right after sign-in — fall back to the non-admin
-      // destination rather than blocking the redirect. /account performs
-      // its own auth check and will bounce back to /login if the session
-      // somehow didn't stick, so this fails safe, not open.
-    }
-
-    router.push(destination)
-    router.refresh()
+    // Where to land is decided SERVER-side by GET /auth/continue (see
+    // src/lib/auth/post-login.ts): admin → MFA challenge or dashboard, tenant
+    // user → their localized account page, an explicit safe `?next=` honored.
+    //
+    // This used to be decided here — `fetch('/api/auth/me')`, then
+    // `router.push()` — and on preview v1.0.42 that sent a TOTP admin to a
+    // bare `/account` (no route → 404) whenever the role fetch answered
+    // `null`. A FULL navigation is deliberate: the document request carries
+    // the session cookies the browser client has just written, the target is
+    // in a different root layout anyway (`(platform)` → `[locale]`), and the
+    // proxy/gates see exactly what the server will.
+    const target = explicitNext
+      ? `/auth/continue?next=${encodeURIComponent(explicitNext)}`
+      : '/auth/continue'
+    window.location.assign(target)
   }
 
   return (
