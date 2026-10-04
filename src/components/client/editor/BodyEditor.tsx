@@ -42,7 +42,9 @@ const renderStyle: RenderStyleFunction = (props) => {
       return <h3 className="mt-5 mb-1 text-xl font-semibold">{props.children}</h3>
     case 'blockquote':
       return (
-        <blockquote className="my-3 border-l-2 border-border pl-4 text-muted-foreground">{props.children}</blockquote>
+        <blockquote className="my-4 border-l-[3px] border-foreground/30 pl-4 text-lg italic leading-8 text-foreground/80">
+          {props.children}
+        </blockquote>
       )
     default:
       return <p className="my-3">{props.children}</p>
@@ -145,7 +147,7 @@ export function BodyEditor({
       <div className="flex min-h-0 flex-1 flex-col">
         <PortableTextEditable
           aria-label={t('label')}
-          className="min-h-[40vh] flex-1 text-[17px] leading-7 text-foreground outline-none [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6"
+          className="abluo-body-editor min-h-[40vh] flex-1 text-[17px] leading-7 text-foreground outline-none"
           renderStyle={renderStyle}
           renderDecorator={renderDecorator}
           renderPlaceholder={() => <span className="text-muted-foreground">{t('placeholder')}</span>}

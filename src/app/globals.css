@@ -306,3 +306,29 @@
 .abluo-app [data-surface="create"], .abluo-app[data-surface="create"] {
   --control-height: 56px;
 }
+
+/* Body editor (ADR-025 D6). The Portable Text editor renders list items as
+   flat blocks carrying data-list-item / data-level / data-list-index, without
+   <ul>/<ol>, so the markers are drawn here. Tokens only — works in both themes. */
+.abluo-body-editor [data-list-item] {
+  position: relative;
+  margin-block: 0.25rem;
+  padding-inline-start: 1.75rem;
+}
+.abluo-body-editor [data-list-item][data-level="2"] { padding-inline-start: 3.5rem; }
+.abluo-body-editor [data-list-item][data-level="3"] { padding-inline-start: 5.25rem; }
+.abluo-body-editor [data-list-item] p { margin-block: 0; }
+.abluo-body-editor [data-list-item]::before {
+  position: absolute;
+  inset-inline-start: calc(var(--marker-offset, 0rem));
+  width: 1.25rem;
+  text-align: end;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+.abluo-body-editor [data-list-item][data-level="2"]::before { --marker-offset: 1.75rem; }
+.abluo-body-editor [data-list-item][data-level="3"]::before { --marker-offset: 3.5rem; }
+.abluo-body-editor [data-list-item="bullet"]::before { content: "•"; }
+.abluo-body-editor [data-list-item="bullet"][data-level="2"]::before { content: "◦"; }
+.abluo-body-editor [data-list-item="number"]::before { content: attr(data-list-index) "."; }
+
