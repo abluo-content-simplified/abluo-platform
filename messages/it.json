@@ -45,7 +45,9 @@
       "signOut": "Esci",
       "noModules": "Nessun modulo è ancora attivo per questo progetto.",
       "entryTitle": "Dashboard",
-      "noProjects": "Non hai ancora accesso a nessun progetto."
+      "noProjects": "Non hai ancora accesso a nessun progetto.",
+      "openMenu": "Menu",
+      "closeMenu": "Chiudi menu"
     },
     "projectSwitcher": {
       "label": "Progetto",

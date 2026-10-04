@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link, usePathname, useRouter } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -37,6 +38,10 @@ export function ClientSidebar({ navItems, projects, activeSlug, theme }: ClientS
   const t = useTranslations('clientDashboard')
   const pathname = usePathname() // locale-stripped, e.g. "/livener/posts"
   const router = useRouter()
+  // Phones: the sidebar is a slide-in drawer (interim until S1's bottom tab bar).
+  // From md up it is the fixed rail it always was.
+  const [open, setOpen] = useState(false)
+  useEffect(() => setOpen(false), [pathname])
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -46,7 +51,37 @@ export function ClientSidebar({ navItems, projects, activeSlug, theme }: ClientS
   }
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-56 flex-col border-r border-border bg-card text-card-foreground">
+    <>
+    {/* Phone top bar: opens the drawer. Hidden from md up. */}
+    <div className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border-subtle bg-background px-4 md:hidden">
+      <span className="truncate text-sm font-semibold">{activeSlug}</span>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-expanded={open}
+        aria-controls="client-sidebar"
+        className="inline-flex h-11 items-center gap-2 rounded-md px-3 text-sm font-medium hover:bg-hover"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+          <path d="M4 7h16M4 12h16M4 17h16" />
+        </svg>
+        {t('shell.openMenu')}
+      </button>
+    </div>
+    {open && (
+      <button
+        type="button"
+        aria-label={t('shell.closeMenu')}
+        onClick={() => setOpen(false)}
+        className="fixed inset-0 z-40 bg-overlay md:hidden"
+      />
+    )}
+    <aside
+      id="client-sidebar"
+      className={`fixed left-0 top-0 z-50 flex h-dvh w-64 flex-col border-r border-border bg-card text-card-foreground transition-transform duration-200 md:z-40 md:h-screen md:w-56 md:translate-x-0 ${
+        open ? 'translate-x-0 shadow-[var(--shadow-raise)]' : '-translate-x-full'
+      }`}
+    >
       {/* Brand */}
       <div className="border-b border-border-subtle px-5 py-5">
         <span className="text-sm font-semibold tracking-tight text-foreground">
@@ -107,5 +142,6 @@ export function ClientSidebar({ navItems, projects, activeSlug, theme }: ClientS
         </button>
       </div>
     </aside>
+    </>
   )
 }

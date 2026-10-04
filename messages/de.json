@@ -45,7 +45,9 @@
       "signOut": "Abmelden",
       "noModules": "Für dieses Projekt sind noch keine Module aktiviert.",
       "entryTitle": "Dashboard",
-      "noProjects": "Du hast noch keinen Zugriff auf Projekte."
+      "noProjects": "Du hast noch keinen Zugriff auf Projekte.",
+      "openMenu": "Menü",
+      "closeMenu": "Menü schließen"
     },
     "projectSwitcher": {
       "label": "Projekt",

@@ -45,7 +45,9 @@
       "signOut": "Sign out",
       "noModules": "No modules are enabled for this project yet.",
       "entryTitle": "Dashboard",
-      "noProjects": "You don’t have access to any projects yet."
+      "noProjects": "You don’t have access to any projects yet.",
+      "openMenu": "Menu",
+      "closeMenu": "Close menu"
     },
     "projectSwitcher": {
       "label": "Project",

@@ -51,7 +51,7 @@ export default async function ClientProjectLayout({
   const theme = parseAppTheme((await cookies()).get(APP_THEME_COOKIE)?.value)
 
   return (
-    <div className="flex min-h-screen">
+    <div className="min-h-screen md:flex">
       <ClientSidebar
         navItems={navItems}
         projects={projects}
