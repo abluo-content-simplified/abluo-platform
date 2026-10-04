@@ -67,10 +67,10 @@ export function ProjectSwitcher({ projects, activeSlug }: ProjectSwitcherProps) 
   if (projects.length <= 1) {
     return (
       <div>
-        <p className="text-[10px] uppercase tracking-widest text-zinc-500">
+        <p className="text-xs text-muted-foreground">
           {t('label')}
         </p>
-        <p className="mt-1 truncate text-sm text-zinc-100" title={activeSlug}>
+        <p className="mt-1 truncate text-sm font-semibold text-foreground" title={activeSlug}>
           {activeSlug}
         </p>
       </div>
@@ -81,7 +81,7 @@ export function ProjectSwitcher({ projects, activeSlug }: ProjectSwitcherProps) 
     <div>
       <label
         htmlFor="client-project-switcher"
-        className="text-[10px] uppercase tracking-widest text-zinc-500"
+        className="text-xs text-muted-foreground"
       >
         {t('label')}
       </label>
@@ -90,7 +90,7 @@ export function ProjectSwitcher({ projects, activeSlug }: ProjectSwitcherProps) 
         aria-label={t('ariaLabel')}
         value={activeSlug}
         onChange={(event) => handleChange(event.target.value)}
-        className="mt-1 w-full rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100 focus:border-zinc-500 focus:outline-none"
+        className="mt-1 h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       >
         {projects.map((project) => (
           <option key={project.projectSlug} value={project.projectSlug}>

@@ -114,6 +114,13 @@
     "analytics": {
       "title": "Statistiken",
       "comingSoon": "Statistiken kommen bald."
+    },
+    "theme": {
+      "label": "Darstellung",
+      "system": "Auto",
+      "light": "Hell",
+      "dark": "Dunkel",
+      "ariaLabel": "Helle oder dunkle Darstellung wählen"
     }
   }
 }

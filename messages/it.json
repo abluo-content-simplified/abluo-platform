@@ -114,6 +114,13 @@
     "analytics": {
       "title": "Statistiche",
       "comingSoon": "Le statistiche arriveranno presto."
+    },
+    "theme": {
+      "label": "Aspetto",
+      "system": "Auto",
+      "light": "Chiaro",
+      "dark": "Scuro",
+      "ariaLabel": "Scegli aspetto chiaro o scuro"
     }
   }
 }

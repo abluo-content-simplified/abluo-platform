@@ -1,4 +1,7 @@
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { Inter } from 'next/font/google'
+import { APP_THEME_COOKIE, appThemeAttribute, parseAppTheme } from '@/lib/app-theme'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 
 /**
@@ -17,7 +20,15 @@ import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
  * `[tenant]` (projectSlug) segment and has no active project. The user-level
  * `account` page renders directly inside this frame; project-scoped pages get
  * the sidebar from the nested `[tenant]/layout.tsx`.
+ *
+ * Abluo App design system (ADR-025 D7): this element is the `.abluo-app` root.
+ * Its tokens are scoped here (globals.css) so tenant websites are untouched.
+ * The theme comes from the `abluo-app-theme` cookie and is rendered on the
+ * server, so the first paint is already right (no boot script, no flash).
+ * Inter is loaded here only — tenant websites never download it.
  */
+const inter = Inter({ subsets: ['latin'], variable: '--font-app', display: 'swap' })
+
 export default async function ClientLayout({
   children,
   params,
@@ -31,5 +42,15 @@ export default async function ClientLayout({
     redirect(`/login?next=${encodeURIComponent(`/${locale}/account`)}`)
   }
 
-  return <div className="min-h-screen bg-zinc-50 text-zinc-900">{children}</div>
+  const theme = parseAppTheme((await cookies()).get(APP_THEME_COOKIE)?.value)
+
+  return (
+    <div
+      className={`abluo-app ${inter.variable} min-h-screen`}
+      data-theme={appThemeAttribute(theme)}
+      data-surface="manage"
+    >
+      {children}
+    </div>
+  )
 }

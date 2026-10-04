@@ -1,4 +1,6 @@
+import { cookies } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
+import { APP_THEME_COOKIE, parseAppTheme } from '@/lib/app-theme'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import {
   buildClientNavItems,
@@ -46,6 +48,7 @@ export default async function ClientProjectLayout({
 
   const navItems = buildClientNavItems(activeGrant)
   const projects = ctx.projects.map((grant) => ({ projectSlug: grant.projectSlug }))
+  const theme = parseAppTheme((await cookies()).get(APP_THEME_COOKIE)?.value)
 
   return (
     <div className="flex min-h-screen">
@@ -53,6 +56,7 @@ export default async function ClientProjectLayout({
         navItems={navItems}
         projects={projects}
         activeSlug={activeGrant.projectSlug}
+        theme={theme}
       />
       <div className="min-h-screen flex-1 md:ml-56">
         <main className="p-6">{children}</main>

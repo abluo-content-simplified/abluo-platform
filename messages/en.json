@@ -114,6 +114,13 @@
     "analytics": {
       "title": "Analytics",
       "comingSoon": "Analytics are coming soon."
+    },
+    "theme": {
+      "label": "Appearance",
+      "system": "Auto",
+      "light": "Light",
+      "dark": "Dark",
+      "ariaLabel": "Choose light or dark appearance"
     }
   }
 }

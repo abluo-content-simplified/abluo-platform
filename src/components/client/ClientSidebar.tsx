@@ -4,6 +4,8 @@ import { useTranslations } from 'next-intl'
 import { Link, usePathname, useRouter } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ProjectSwitcher } from './ProjectSwitcher'
+import { AppThemeSwitch } from './AppThemeSwitch'
+import type { AppTheme } from '@/lib/app-theme'
 import type { ClientNavItem } from '@/lib/modules/client-navigation'
 
 /**
@@ -27,9 +29,11 @@ export type ClientSidebarProps = {
   projects: { projectSlug: string }[]
   /** Active project slug (URL first segment). */
   activeSlug: string
+  /** The app theme preference, read from the cookie on the server. */
+  theme: AppTheme
 }
 
-export function ClientSidebar({ navItems, projects, activeSlug }: ClientSidebarProps) {
+export function ClientSidebar({ navItems, projects, activeSlug, theme }: ClientSidebarProps) {
   const t = useTranslations('clientDashboard')
   const pathname = usePathname() // locale-stripped, e.g. "/livener/posts"
   const router = useRouter()
@@ -42,26 +46,26 @@ export function ClientSidebar({ navItems, projects, activeSlug }: ClientSidebarP
   }
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-56 flex-col bg-zinc-950">
+    <aside className="fixed left-0 top-0 z-40 flex h-screen w-56 flex-col border-r border-border bg-card text-card-foreground">
       {/* Brand */}
-      <div className="border-b border-zinc-800 px-5 py-5">
-        <span className="text-xs font-medium uppercase tracking-[0.25em] text-zinc-100">
+      <div className="border-b border-border-subtle px-5 py-5">
+        <span className="text-sm font-semibold tracking-tight text-foreground">
           Abluo
         </span>
-        <p className="mt-0.5 text-[10px] tracking-wider text-zinc-500">
+        <p className="mt-0.5 text-xs text-muted-foreground">
           {t('shell.brandTagline')}
         </p>
       </div>
 
       {/* Project switcher */}
-      <div className="border-b border-zinc-800 px-4 py-4">
+      <div className="border-b border-border-subtle px-4 py-4">
         <ProjectSwitcher projects={projects} activeSlug={activeSlug} />
       </div>
 
       {/* Module-driven nav */}
       <nav className="flex-1 space-y-0.5 px-3 py-4">
         {navItems.length === 0 ? (
-          <p className="px-3 py-2 text-[11px] leading-relaxed text-zinc-600">
+          <p className="px-3 py-2 text-xs leading-relaxed text-muted-foreground">
             {t('shell.noModules')}
           </p>
         ) : (
@@ -71,10 +75,11 @@ export function ClientSidebar({ navItems, projects, activeSlug }: ClientSidebarP
               <Link
                 key={item.moduleId}
                 href={item.href}
-                className={`block rounded px-3 py-2 text-xs tracking-wide transition-colors ${
+                aria-current={active ? 'page' : undefined}
+                className={`flex min-h-10 items-center rounded-md px-3 text-sm transition-colors ${
                   active
-                    ? 'bg-zinc-800 text-zinc-100'
-                    : 'text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300'
+                    ? 'bg-muted font-semibold text-foreground'
+                    : 'text-muted-foreground hover:bg-hover hover:text-foreground'
                 }`}
               >
                 {t(`nav.${item.moduleId}`)}
@@ -85,17 +90,18 @@ export function ClientSidebar({ navItems, projects, activeSlug }: ClientSidebarP
       </nav>
 
       {/* Footer — account + sign-out */}
-      <div className="space-y-2 border-t border-zinc-800 px-4 py-4">
+      <div className="space-y-3 border-t border-border-subtle px-4 py-4">
+        <AppThemeSwitch initial={theme} />
         <Link
           href="/account"
-          className="block text-[10px] uppercase tracking-widest text-zinc-500 transition-colors hover:text-zinc-300"
+          className="block text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           {t('shell.account')}
         </Link>
         <button
           type="button"
           onClick={handleSignOut}
-          className="text-[10px] uppercase tracking-widest text-zinc-500 transition-colors hover:text-zinc-300"
+          className="text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           {t('shell.signOut')}
         </button>

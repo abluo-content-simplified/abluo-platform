@@ -131,6 +131,17 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
+  /* Abluo App only (ADR-025 D7) — defined under .abluo-app below. */
+  --color-action: var(--action);
+  --color-action-foreground: var(--action-foreground);
+  --color-success: var(--success);
+  --color-admin: var(--admin);
+  --color-admin-foreground: var(--admin-foreground);
+  --color-border-subtle: var(--border-subtle);
+  --color-hover: var(--hover);
+  --color-selected-tint: var(--selected-tint);
+  --color-overlay: var(--overlay);
+
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --font-serif: var(--font-serif);
@@ -177,4 +188,121 @@
     letter-spacing: var(--tracking-normal);
     transition: background-color 0.2s ease, color 0.15s ease;
   }
+}
+
+
+/* ─── Abluo App design system (ADR-025 D7) ───────────────────────────────────
+   The client dashboard and wizard (and later the Abluo admin) render inside an
+   element with class `abluo-app`. These values are SCOPED to it on purpose:
+   tenant websites reuse the same variable names (--background, --border,
+   --primary…) and read the :root values above for the ones their design system
+   does not emit, so changing :root would restyle live sites.
+   Source of truth: the "Abluo App" design system (tokens.json, OKLCH).
+   Theme: no data-theme = follow the device; data-theme="light"|"dark" = the
+   user's explicit choice (cookie `abluo-app-theme`, see src/lib/app-theme.ts).
+   Admin amber (--admin) is reserved for the admin marker; defined later. */
+.abluo-app {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.252 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.252 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.252 0 0);
+  --muted: oklch(0.976 0 0);
+  --muted-foreground: oklch(0.524 0 0);
+  --secondary: oklch(0.961 0 0);
+  --secondary-foreground: oklch(0.252 0 0);
+  --border: oklch(0.898 0 0);
+  --input: oklch(0.660 0 0);
+  --action: oklch(0.252 0 0);
+  --action-foreground: oklch(1 0 0);
+  --primary: oklch(0.525 0.196 263.6);
+  --primary-foreground: oklch(1 0 0);
+  --accent: oklch(0.963 0.014 264.5);
+  --accent-foreground: oklch(0.462 0.175 262.6);
+  --ring: oklch(0.525 0.196 263.6);
+  --destructive: oklch(0.539 0.182 33.7);
+  --success: oklch(0.516 0.145 148.1);
+  --overlay: oklch(0 0 0 / 0.4);
+  --hover: oklch(0 0 0 / 0.04);
+  --border-subtle: oklch(0 0 0 / 0.08);
+  --selected-tint: oklch(0.525 0.196 263.6 / 0.08);
+  --shadow-raise: 0 6px 16px oklch(0 0 0 / 0.12);
+  --shadow-bar: 0 -1px 0 oklch(0 0 0 / 0.06), 0 -4px 12px oklch(0 0 0 / 0.04);
+  color-scheme: light;
+  --admin: oklch(0.782 0.158 72.3);
+  --admin-foreground: oklch(0.198 0.041 80.2);
+  --radius: 0.75rem;
+  --control-height: 44px;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-app, Inter), system-ui, -apple-system, "Segoe UI", sans-serif;
+  letter-spacing: 0;
+  -webkit-font-smoothing: antialiased;
+}
+.abluo-app[data-theme="dark"] {
+  --background: oklch(0.168 0.004 264.4);
+  --foreground: oklch(0.964 0.003 264.5);
+  --card: oklch(0.205 0.006 271.1);
+  --card-foreground: oklch(0.964 0.003 264.5);
+  --popover: oklch(0.231 0.008 274.6);
+  --popover-foreground: oklch(0.964 0.003 264.5);
+  --muted: oklch(0.244 0.008 274.6);
+  --muted-foreground: oklch(0.652 0.015 262.4);
+  --secondary: oklch(0.244 0.008 274.6);
+  --secondary-foreground: oklch(0.964 0.003 264.5);
+  --border: oklch(0.277 0.010 268.3);
+  --input: oklch(0.503 0.015 266.6);
+  --action: oklch(0.964 0.003 264.5);
+  --action-foreground: oklch(0.168 0.004 264.4);
+  --primary: oklch(0.683 0.150 264.9);
+  --primary-foreground: oklch(0.168 0.004 264.4);
+  --accent: oklch(0.264 0.056 269.3);
+  --accent-foreground: oklch(0.839 0.073 269.3);
+  --ring: oklch(0.683 0.150 264.9);
+  --destructive: oklch(0.697 0.164 31.0);
+  --success: oklch(0.715 0.165 151.0);
+  --overlay: oklch(0 0 0 / 0.6);
+  --hover: oklch(1 0 0 / 0.05);
+  --border-subtle: oklch(1 0 0 / 0.08);
+  --selected-tint: oklch(0.683 0.150 264.9 / 0.14);
+  --shadow-raise: 0 6px 16px oklch(0 0 0 / 0.5);
+  --shadow-bar: 0 -1px 0 oklch(1 0 0 / 0.06);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  .abluo-app:not([data-theme]) {
+  --background: oklch(0.168 0.004 264.4);
+  --foreground: oklch(0.964 0.003 264.5);
+  --card: oklch(0.205 0.006 271.1);
+  --card-foreground: oklch(0.964 0.003 264.5);
+  --popover: oklch(0.231 0.008 274.6);
+  --popover-foreground: oklch(0.964 0.003 264.5);
+  --muted: oklch(0.244 0.008 274.6);
+  --muted-foreground: oklch(0.652 0.015 262.4);
+  --secondary: oklch(0.244 0.008 274.6);
+  --secondary-foreground: oklch(0.964 0.003 264.5);
+  --border: oklch(0.277 0.010 268.3);
+  --input: oklch(0.503 0.015 266.6);
+  --action: oklch(0.964 0.003 264.5);
+  --action-foreground: oklch(0.168 0.004 264.4);
+  --primary: oklch(0.683 0.150 264.9);
+  --primary-foreground: oklch(0.168 0.004 264.4);
+  --accent: oklch(0.264 0.056 269.3);
+  --accent-foreground: oklch(0.839 0.073 269.3);
+  --ring: oklch(0.683 0.150 264.9);
+  --destructive: oklch(0.697 0.164 31.0);
+  --success: oklch(0.715 0.165 151.0);
+  --overlay: oklch(0 0 0 / 0.6);
+  --hover: oklch(1 0 0 / 0.05);
+  --border-subtle: oklch(1 0 0 / 0.08);
+  --selected-tint: oklch(0.683 0.150 264.9 / 0.14);
+  --shadow-raise: 0 6px 16px oklch(0 0 0 / 0.5);
+  --shadow-bar: 0 -1px 0 oklch(1 0 0 / 0.06);
+  color-scheme: dark;
+  }
+}
+/* Surfaces change size, spacing, radius, density and motion only — never colour or font. */
+.abluo-app [data-surface="create"], .abluo-app[data-surface="create"] {
+  --control-height: 56px;
 }
