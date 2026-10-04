@@ -2,10 +2,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
-import {
-  buildClientNavItems,
-  resolveProjectGrant,
-} from '@/lib/modules/client-navigation'
+import { dashboardHomeHref, resolveProjectGrant } from '@/lib/modules/client-navigation'
 
 /**
  * Bare client-dashboard entry (ADR-017 Phase 2 / task #81) — `/{locale}` with
@@ -19,8 +16,7 @@ import {
  *   2. Otherwise, the first grant.
  *   3. Zero grants → the localized "no projects" state (no redirect).
  *
- * The destination sub-page is the first module-driven nav item for that grant,
- * falling back to `posts` (the wired page). On a tenant host the proxy rewrites
+ * The destination is the project's dashboard home (`/{projectSlug}/home`). On a tenant host the proxy rewrites
  * `/{locale}` to the public site, so this page renders only on the platform
  * host where the client dashboard lives.
  */
@@ -52,9 +48,6 @@ export default async function ClientDashboardEntry({
   const target =
     (lastSlug && resolveProjectGrant(ctx.projects, lastSlug)) || ctx.projects[0]
 
-  // First module-driven destination for the target project; fall back to posts.
-  const firstNav = buildClientNavItems(target)[0]
-  const href = firstNav?.href ?? `/${target.projectSlug}/posts`
-
-  redirect(`/${locale}${href}`)
+  // Every project lands on its dashboard home (S1).
+  redirect(`/${locale}${dashboardHomeHref(target.projectSlug)}`)
 }

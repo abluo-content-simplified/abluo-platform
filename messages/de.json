@@ -37,7 +37,10 @@
       "whatsapp": "WhatsApp",
       "news": "News",
       "gallery": "Galerien",
-      "translate": "Übersetzung"
+      "translate": "Übersetzung",
+      "home": "Start",
+      "more": "Mehr",
+      "add": "Inhalt hinzufügen"
     },
     "shell": {
       "brandTagline": "Dashboard",
@@ -123,6 +126,23 @@
       "light": "Hell",
       "dark": "Dunkel",
       "ariaLabel": "Helle oder dunkle Darstellung wählen"
+    },
+    "home": {
+      "title": "Willkommen zurück",
+      "continueEditing": "Weiterschreiben",
+      "continue": "Weiter",
+      "edited": "bearbeitet {date}",
+      "recentPosts": "Neueste Beiträge",
+      "seeAll": "Alle ansehen",
+      "newRequests": "Neue Anfragen",
+      "newRequestsBody": "{count, plural, =0 {Keine neuen Kontaktanfragen} one {neue Kontaktanfrage zu beantworten} other {neue Kontaktanfragen zu beantworten}}",
+      "emptyTitle": "Dein erster Beitrag ist nur ein paar Tipps entfernt",
+      "emptyBody": "Tippe auf +, um zu beginnen. Wir speichern laufend – du kannst jederzeit pausieren und weitermachen."
+    },
+    "add": {
+      "title": "Bald verfügbar",
+      "body": "Beiträge direkt hier schreiben – am Handy oder Computer – ist fast fertig.",
+      "close": "Schließen"
     }
   },
   "editor": {

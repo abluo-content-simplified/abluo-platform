@@ -37,7 +37,10 @@
       "whatsapp": "WhatsApp",
       "news": "News",
       "gallery": "Galleries",
-      "translate": "Translate"
+      "translate": "Translate",
+      "home": "Home",
+      "more": "More",
+      "add": "Add content"
     },
     "shell": {
       "brandTagline": "Dashboard",
@@ -123,6 +126,23 @@
       "light": "Light",
       "dark": "Dark",
       "ariaLabel": "Choose light or dark appearance"
+    },
+    "home": {
+      "title": "Welcome back",
+      "continueEditing": "Continue editing",
+      "continue": "Continue",
+      "edited": "edited {date}",
+      "recentPosts": "Recent posts",
+      "seeAll": "See all",
+      "newRequests": "New requests",
+      "newRequestsBody": "{count, plural, =0 {No new contact requests} one {new contact request to answer} other {new contact requests to answer}}",
+      "emptyTitle": "Your first post is a few taps away",
+      "emptyBody": "Tap + to start. We save as you go, so you can stop and continue any time."
+    },
+    "add": {
+      "title": "Coming very soon",
+      "body": "Writing posts right here, on your phone or computer, is almost ready.",
+      "close": "Close"
     }
   },
   "editor": {

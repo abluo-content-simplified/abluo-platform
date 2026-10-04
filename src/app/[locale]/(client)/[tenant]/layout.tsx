@@ -4,6 +4,7 @@ import { APP_THEME_COOKIE, parseAppTheme } from '@/lib/app-theme'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import {
   buildClientNavItems,
+  dashboardHomeHref,
   resolveProjectGrant,
 } from '@/lib/modules/client-navigation'
 import { ClientSidebar } from '@/components/client/ClientSidebar'
@@ -37,7 +38,7 @@ export default async function ClientProjectLayout({
 
   const ctx = await getTenantAuthorizationContext()
   if (!ctx) {
-    redirect(`/login?next=/${projectSlug}/posts`)
+    redirect(`/login?next=/${projectSlug}/home`)
   }
 
   // Re-validate the URL slug against the caller's grants — never substitute.
@@ -57,9 +58,10 @@ export default async function ClientProjectLayout({
         projects={projects}
         activeSlug={activeGrant.projectSlug}
         theme={theme}
+        homeHref={dashboardHomeHref(activeGrant.projectSlug)}
       />
       <div className="min-h-screen min-w-0 flex-1 md:ml-56">
-        <main className="p-6">{children}</main>
+        <main className="p-4 pb-28 md:p-6">{children}</main>
       </div>
     </div>
   )

@@ -45,6 +45,7 @@ export const CLIENT_USER_SEGMENTS = new Set(['account'])
  * public-style path for a client surface via a name clash.
  */
 export const CLIENT_PROJECT_SEGMENTS = new Set([
+  'home',
   'posts',
   'leads',
   'analytics',

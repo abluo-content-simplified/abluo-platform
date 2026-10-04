@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
+import { Link } from '@/i18n/navigation'
+import { dashboardHomeHref } from '@/lib/modules/client-navigation'
 
 /**
  * Minimal authenticated client landing page — ADR-017 slice 4 handoff §5.4.
@@ -36,7 +38,7 @@ export default async function AccountPage({
   const t = await getTranslations('account')
 
   return (
-    <div className="max-w-lg space-y-6">
+    <div className="mx-auto max-w-lg space-y-6 px-4 py-8">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">{t('title')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t('subtitle')}</p>
@@ -47,14 +49,21 @@ export default async function AccountPage({
       ) : (
         <ul className="space-y-3">
           {ctx.projects.map((project) => (
-            <li
-              key={project.projectId}
-              className="rounded border border-border p-4"
-            >
-              <p className="font-medium">{project.projectSlug}</p>
-              <p className="text-sm text-muted-foreground">
-                {t('roleLabel', { role: t(`roles.${project.role}`) })}
-              </p>
+            <li key={project.projectId}>
+              <Link
+                href={dashboardHomeHref(project.projectSlug)}
+                className="flex min-h-16 items-center gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-hover"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold">{project.projectSlug}</span>
+                  <span className="block text-sm text-muted-foreground">
+                    {t('roleLabel', { role: t(`roles.${project.role}`) })}
+                  </span>
+                </span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <path d="m9 6 6 6-6 6" />
+                </svg>
+              </Link>
             </li>
           ))}
         </ul>

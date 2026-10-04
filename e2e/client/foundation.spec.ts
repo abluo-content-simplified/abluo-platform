@@ -6,7 +6,7 @@ import { expect, test, type Page } from '@playwright/test'
  * Runs in phone/desktop × light/dark (see playwright.config.ts).
  */
 const project = process.env.E2E_PROJECT ?? 'abluo'
-const PAGES = [`/en/account`, `/en/${project}/submissions`]
+const PAGES = [`/en/account`, `/en/${project}/home`, `/en/${project}/submissions`]
 
 /** Relative luminance of the computed background of `.abluo-app`. */
 async function appBackgroundLuminance(page: Page): Promise<number> {
@@ -72,9 +72,10 @@ test.describe('Abluo App foundation', () => {
   })
 
   test('E8 — an explicit choice sticks across reloads, from the first paint', async ({ page }, info) => {
-    test.skip(info.project.name.startsWith('phone'), 'switch lives in the desktop sidebar until S1')
     const pick = info.project.use.colorScheme === 'dark' ? 'light' : 'dark'
     await page.goto(PAGES[1])
+    // On phones the switch lives in the "More" drawer.
+    if (info.project.name.startsWith('phone')) await page.getByRole('button', { name: 'More' }).click()
     await page.getByRole('radio', { name: pick === 'dark' ? 'Dark' : 'Light' }).click()
     await expect(page.locator('.abluo-app').first()).toHaveAttribute('data-theme', pick)
     // The server must render the attribute itself — check the raw HTML, not the hydrated DOM.
@@ -90,5 +91,31 @@ test.describe('Abluo App foundation', () => {
     })
     const appCookie = (await page.context().cookies()).find((c) => c.name === 'abluo-theme')
     expect({ websiteKey, appCookie }).toEqual({ websiteKey: null, appCookie: undefined })
+  })
+})
+
+test.describe('S1 navigation', () => {
+  test('home is reachable from the bare entry and lists only real sections', async ({ page }) => {
+    await page.goto('/en')
+    await expect(page).toHaveURL(new RegExp(`/en/${project}/home$`))
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  })
+
+  test('phones get a bottom tab bar; desktops get the sidebar', async ({ page }, info) => {
+    await page.goto(`/en/${project}/home`)
+    const phone = info.project.name.startsWith('phone')
+    await expect(page.getByRole('button', { name: 'More' })).toBeVisible({ visible: phone })
+    const sidebar = page.locator('#client-sidebar')
+    if (phone) await expect(sidebar).not.toBeInViewport() // tucked away until "More"
+    else await expect(sidebar).toBeInViewport({ ratio: 0.9 })
+  })
+
+  test('"+ Add content" opens and closes the sheet', async ({ page }) => {
+    await page.goto(`/en/${project}/home`)
+    await page.getByRole('button', { name: 'Add content' }).filter({ visible: true }).first().click()
+    const sheet = page.getByRole('dialog')
+    await expect(sheet).toBeVisible()
+    await sheet.getByRole('button').click()
+    await expect(sheet).toBeHidden()
   })
 })

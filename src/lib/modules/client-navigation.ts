@@ -47,6 +47,19 @@ export const MODULE_DASHBOARD_ROUTES: Record<string, string> = {
   forms: 'submissions',
 }
 
+/**
+ * The client dashboard's home page segment (S1, ADR-025): `/{projectSlug}/home`.
+ * Not module-driven — every project has a home. `/{locale}/{projectSlug}` itself
+ * is the tenant's public website, so the home needs its own segment. Listed in
+ * CLIENT_PROJECT_SEGMENTS (src/lib/proxy/client-surface.ts) so the gate covers it.
+ */
+export const DASHBOARD_HOME_SEGMENT = 'home'
+
+/** Locale-agnostic href of a project's dashboard home. */
+export function dashboardHomeHref(projectSlug: string): string {
+  return `/${projectSlug}/${DASHBOARD_HOME_SEGMENT}`
+}
+
 /** A single module-driven client-dashboard navigation item. */
 export type ClientNavItem = {
   /** The originating module id (e.g. `'blog'`). */
