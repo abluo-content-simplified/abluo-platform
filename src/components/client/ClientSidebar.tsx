@@ -94,14 +94,14 @@ export function ClientSidebar({ navItems, projects, activeSlug, theme }: ClientS
         <AppThemeSwitch initial={theme} />
         <Link
           href="/account"
-          className="block text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="flex min-h-8 items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           {t('shell.account')}
         </Link>
         <button
           type="button"
           onClick={handleSignOut}
-          className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="min-h-8 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           {t('shell.signOut')}
         </button>

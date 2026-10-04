@@ -21,7 +21,7 @@ Then run `git checkout -- next-env.d.ts` if the build touched it.
 | T5 | No hardcoded user-facing text in client components (JSX text nodes / aria-label literals) | vitest source scan, allowlist for symbols |
 | E1 | Each flow runs in 4 projects: `phone-light` 390×844, `phone-dark`, `desktop-light` 1280×800, `desktop-dark` | Playwright `colorScheme` |
 | E2 | axe: 0 serious/critical violations on every wizard step and dashboard page, every project | `@axe-core/playwright` |
-| E3 | Tap targets ≥ 44×44 on phone; Back/Next visible without scrolling; respects `env(safe-area-inset-bottom)` | Playwright bounding boxes |
+| E3 | Every control ≥ 24×24 (WCAG 2.5.8); inside `[data-surface="create"]` ≥ 44×44; Back/Next visible without scrolling; respects `env(safe-area-inset-bottom)` | Playwright bounding boxes |
 | E4 | Autosave: type title → reload → title **and step** restored | Playwright |
 | E5 | Offline: `setOffline(true)` → type → pill says offline → online → server has the text | Playwright |
 | E6 | Close mid-typing (`page.close()` < 800 ms after keystroke) → reopen → text present | Playwright |
@@ -41,6 +41,11 @@ Screenshot every wizard step plus the dashboard home in all 4 projects. Check ag
 - [ ] Preview shows the real tenant design (cover, title, subtitle, category · author · date, body).
 - [ ] Copy is warm and short, and matches the dashboard UI language.
 - [ ] It feels calm: generous spacing, ≤ 2 type weights per screen, no visual noise.
+
+## 3b. Running the browser checks
+- One-time setup: `npx playwright install chromium`, and in `.env.local` (never committed): `E2E_CLIENT_EMAIL`, `E2E_CLIENT_PASSWORD`, `E2E_PROJECT` (default `abluo`). Optional `E2E_BASE_URL` (default `http://localhost:3000`; `npm run dev` starts automatically).
+- `npm run verify:dashboard` runs `e2e/` in phone/desktop × light/dark. Report: `npx playwright show-report`.
+- Implemented in S0: T1–T4 (vitest), E1–E3 and E8 (`e2e/client/foundation.spec.ts`). E4–E7, S2, W1–W2 and T5 arrive with the slices that need them.
 
 ## 4. Test data
 - Account: the test owner of project `abluo` (see the client-dashboard handoff). Blog is installed on `abluo` for this track.

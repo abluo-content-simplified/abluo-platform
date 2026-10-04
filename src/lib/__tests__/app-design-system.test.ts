@@ -120,3 +120,18 @@ describe('T2 — no raw colours in Abluo App client code', () => {
     })
   }
 })
+
+const CREATE_DIR = 'src/components/client/create'
+
+describe('T3 — no dropdowns in the Create flow (ADR-025: cards, chips, toggles)', () => {
+  let created: string[] = []
+  try {
+    created = files(join(process.cwd(), CREATE_DIR))
+  } catch {
+    created = [] // the Create components arrive in S2; the guard is armed already
+  }
+  it(`${CREATE_DIR} uses no <select> or Select component`, () => {
+    const hits = created.filter((f) => /<select\b|<Select\b|from ['"][^'"]*\/select['"]/.test(readFileSync(f, 'utf8')))
+    expect(hits).toEqual([])
+  })
+})

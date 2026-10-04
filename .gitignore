@@ -27,3 +27,8 @@ backups/
 
 # Generated verifier report — regenerate with `node scripts/check-content-shape.mjs`
 content-shape-dryrun.md
+
+# playwright (verify:dashboard)
+/test-results/
+/playwright-report/
+/e2e/.auth/

@@ -58,7 +58,7 @@ export default async function ClientProjectLayout({
         activeSlug={activeGrant.projectSlug}
         theme={theme}
       />
-      <div className="min-h-screen flex-1 md:ml-56">
+      <div className="min-h-screen min-w-0 flex-1 md:ml-56">
         <main className="p-6">{children}</main>
       </div>
     </div>

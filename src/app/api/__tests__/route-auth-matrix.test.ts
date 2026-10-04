@@ -23,7 +23,7 @@
  * refused). This file asserts they are the ONLY unauthenticated write
  * surfaces, via the route inventory at the bottom.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
 import { readdirSync, statSync } from 'fs'
 import { join, relative, resolve } from 'path'
 import { NextRequest } from 'next/server'
@@ -306,6 +306,13 @@ describe('setSubmissionStatusAction — the dashboard lead-status server action'
     permissions: ['forms.submission.read', 'forms.submission.update'],
     enabledModuleIds: ['forms'],
   }
+
+  // The first import of the server action pulls in next-intl, Supabase and Sanity
+  // clients. Under full-suite load that cold import alone can exceed the 5s
+  // per-test limit, so load it once here instead of charging it to the first case.
+  beforeAll(async () => {
+    await import('@/app/[locale]/(client)/[tenant]/submissions/actions')
+  }, 30_000)
 
   it('unauthenticated → refused, nothing written', async () => {
     const { setSubmissionStatusAction } = await import('@/app/[locale]/(client)/[tenant]/submissions/actions')

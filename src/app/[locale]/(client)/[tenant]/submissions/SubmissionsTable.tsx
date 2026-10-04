@@ -219,6 +219,7 @@ export function SubmissionsTable({ submissions, projectSlug, locale }: Props) {
       {filtered.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('submissions.noResults')}</p>
       ) : (
+        <div className="-mx-1 overflow-x-auto px-1">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-muted-foreground">
@@ -246,6 +247,7 @@ export function SubmissionsTable({ submissions, projectSlug, locale }: Props) {
                     <td className="py-2">
                       <select
                         className={selectCls + ' py-1'}
+                        aria-label={`${t('submissions.columns.status')}: ${s.name ?? t('submissions.anonymous')}`}
                         value={s.status}
                         onChange={(e) => changeStatus(s.id, e.target.value as SubmissionStatus)}
                       >
@@ -261,7 +263,7 @@ export function SubmissionsTable({ submissions, projectSlug, locale }: Props) {
                       <button
                         type="button"
                         onClick={() => setExpanded(isOpen ? null : s.id)}
-                        className="text-xs font-medium underline underline-offset-2 text-muted-foreground hover:text-foreground"
+                        className="inline-flex min-h-8 items-center px-1 text-xs font-medium underline underline-offset-2 text-muted-foreground hover:text-foreground"
                       >
                         {isOpen ? t('submissions.detail.hide') : t('submissions.detail.show')}
                       </button>
@@ -323,6 +325,7 @@ export function SubmissionsTable({ submissions, projectSlug, locale }: Props) {
             })}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   )
