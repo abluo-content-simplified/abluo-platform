@@ -72,3 +72,24 @@ export function isClientSurface(pathname: string): boolean {
   if (segs.length >= 2 && CLIENT_PROJECT_SEGMENTS.has(segs[1])) return true
   return false
 }
+
+/**
+ * The localized spelling of a LOCALE-LESS client-dashboard path, or null when
+ * the path is not a client surface or already carries a locale-shaped prefix.
+ *
+ * Every client-dashboard route lives under `src/app/[locale]/(client)/`, so a
+ * bare `/account` or `/{projectSlug}/posts` has no route: the proxy used to let
+ * it through the auth gate and the request 404'd. The proxy now redirects it to
+ * `/{locale}{path}` first (keeping the query string), and the gate then runs on
+ * the localized path. `locale` is chosen by the caller (NEXT_LOCALE /
+ * Accept-Language against the platform locales) — never hardcoded here.
+ *
+ * "Locale-shaped" uses the same rule as `stripLocale()`, so a path the gate
+ * already treats as localized (even with a code the platform does not offer)
+ * is left alone rather than double-prefixed.
+ */
+export function localizeClientSurfacePath(pathname: string, locale: string): string | null {
+  if (!isClientSurface(pathname)) return null
+  if (stripLocale(pathname) !== pathname) return null
+  return `/${locale}${pathname}`
+}

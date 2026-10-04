@@ -6,7 +6,8 @@ import { routing } from './i18n/routing'
 import { resolvePlatformRole } from '@/lib/api/auth'
 import { adminGateDecision, mfaRedirectPath, readAssuranceLevel } from '@/lib/auth/admin-assurance'
 import { isAdminSurface, isStudio, isPreAuthSurface } from '@/lib/proxy/admin-surface'
-import { isClientSurface } from '@/lib/proxy/client-surface'
+import { isClientSurface, localizeClientSurfacePath } from '@/lib/proxy/client-surface'
+import { platformLocale } from '@/lib/auth/post-login'
 import {
   resolveScopeFromHost,
   defaultLocaleForProjectSegment,
@@ -267,6 +268,24 @@ export async function proxy(request: NextRequest) {
       return await requireAdminInProxy(request) // NextResponse (continue) or redirect
     }
     if (isClientSurface(pathname)) {
+      // A locale-less client path (`/account`, `/{projectSlug}/posts`) has no
+      // route — the client dashboard lives under `[locale]`. Redirect it to
+      // its localized spelling first; the gate then runs on THAT request.
+      const localized = localizeClientSurfacePath(
+        pathname,
+        platformLocale(
+          {
+            cookieLocale: request.cookies.get('NEXT_LOCALE')?.value,
+            acceptLanguage: request.headers.get('accept-language'),
+          },
+          routing
+        )
+      )
+      if (localized) {
+        const url = request.nextUrl.clone()
+        url.pathname = localized
+        return NextResponse.redirect(url)
+      }
       return await requireAuthenticatedInProxy(request) // NextResponse (continue) or redirect
     }
   }

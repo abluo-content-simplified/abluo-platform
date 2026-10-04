@@ -18,10 +18,17 @@ import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
  * `account` page renders directly inside this frame; project-scoped pages get
  * the sidebar from the nested `[tenant]/layout.tsx`.
  */
-export default async function ClientLayout({ children }: { children: React.ReactNode }) {
+export default async function ClientLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode
+  params: Promise<{ locale: string }>
+}) {
+  const { locale } = await params
   const ctx = await getTenantAuthorizationContext()
   if (!ctx) {
-    redirect('/login?next=/account')
+    redirect(`/login?next=${encodeURIComponent(`/${locale}/account`)}`)
   }
 
   return <div className="min-h-screen bg-zinc-50 text-zinc-900">{children}</div>

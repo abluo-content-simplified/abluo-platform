@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
 import {
   isClientSurface,
+  localizeClientSurfacePath,
   CLIENT_USER_SEGMENTS,
   CLIENT_PROJECT_SEGMENTS,
 } from '../client-surface'
@@ -163,5 +164,22 @@ describe('CLIENT_PROJECT_SEGMENTS is in lockstep with the filesystem', () => {
     // Still not a leading-segment surface, and still not an admin one.
     expect(isClientSurface('/submissions')).toBe(false)
     expect(isAdminSurface('/en/submissions')).toBe(false)
+  })
+})
+
+describe('localizeClientSurfacePath', () => {
+  it('prefixes a locale-less client path with the given locale', () => {
+    expect(localizeClientSurfacePath('/account', 'it')).toBe('/it/account')
+    expect(localizeClientSurfacePath('/livener/posts/1', 'de')).toBe('/de/livener/posts/1')
+  })
+
+  it('leaves localized, non-client and locale-shaped paths alone', () => {
+    expect(localizeClientSurfacePath('/en/account', 'it')).toBeNull()
+    expect(localizeClientSurfacePath('/login', 'it')).toBeNull()
+    expect(localizeClientSurfacePath('/dashboard', 'it')).toBeNull()
+    expect(localizeClientSurfacePath('/', 'it')).toBeNull()
+    expect(localizeClientSurfacePath('/livener/blog', 'it')).toBeNull()
+    // `fr` is locale-SHAPED, which is what the gate strips — never double-prefix.
+    expect(localizeClientSurfacePath('/fr/account', 'it')).toBeNull()
   })
 })

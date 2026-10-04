@@ -21,11 +21,16 @@ import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
  * (out of this slice's scope — flagged, not built, to avoid pre-empting
  * the login-route-sharing decision in handoff §8).
  */
-export default async function AccountPage() {
+export default async function AccountPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}) {
+  const { locale } = await params
   const ctx = await getTenantAuthorizationContext()
 
   if (!ctx) {
-    redirect('/login?next=/account')
+    redirect(`/login?next=${encodeURIComponent(`/${locale}/account`)}`)
   }
 
   const t = await getTranslations('account')

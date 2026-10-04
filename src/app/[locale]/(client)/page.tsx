@@ -33,7 +33,7 @@ export default async function ClientDashboardEntry({
 
   const ctx = await getTenantAuthorizationContext()
   if (!ctx) {
-    redirect('/login?next=/account')
+    redirect(`/login?next=${encodeURIComponent(`/${locale}/account`)}`)
   }
 
   if (ctx.projects.length === 0) {

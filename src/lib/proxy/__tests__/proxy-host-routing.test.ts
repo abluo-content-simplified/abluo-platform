@@ -38,6 +38,7 @@ vi.mock('@supabase/ssr', () => ({
 
 import { NextRequest } from 'next/server'
 import { proxy } from '@/proxy'
+import { routing } from '@/i18n/routing'
 
 /** The URL proxy() rewrote to, or null when it did not rewrite. */
 async function rewriteFor(
@@ -396,11 +397,11 @@ const GATED_PATHS: readonly string[] = [
   '/en/dashboard', '/it/clients', '/de/content', '/en/media', '/it/projects', '/de/settings',
   // nested admin paths
   '/dashboard/anything/deep', '/en/media/some-asset',
-  // (client) route group — user-level
-  '/account', '/en/account', '/it/account',
-  // (client) route group — project-scoped, /{projectSlug}/{segment}
-  '/livener/posts', '/en/livener/leads', '/it/studiomartegani/analytics',
-  '/nologo/submissions', '/de/hoffmann/posts',
+  // (client) route group — user-level (locale-prefixed; the bare spellings
+  // are redirected to these first — see LOCALE_LESS_CLIENT_PATHS below)
+  '/en/account', '/it/account',
+  // (client) route group — project-scoped, /{locale}/{projectSlug}/{segment}
+  '/en/livener/leads', '/it/studiomartegani/analytics', '/de/hoffmann/posts',
   // Sanity Studio
   '/studio', '/studio/structure',
 ]
@@ -433,9 +434,74 @@ describe('INVARIANT: every gated path requires a session on every host', () => {
   })
 })
 
+/**
+ * Locale-less client-dashboard paths have no route (the client dashboard lives
+ * under `[locale]`). They used to pass the gate and 404 — the preview v1.0.42
+ * login bug landed an admin on exactly that. They are now redirected to their
+ * localized spelling BEFORE the gate, and the gate runs on the next hop.
+ */
+const LOCALE_LESS_CLIENT_PATHS: readonly string[] = [
+  '/account', '/livener/posts', '/nologo/submissions',
+]
+
+describe('INVARIANT: a locale-less client path is redirected to its localized spelling, on every host', () => {
+  // admin.abluo.app is admin-only: its own inline gate answers every path
+  // first (stricter — a tenant user is /unauthorized there), so it is asserted
+  // separately below rather than redirected.
+  it.each(ALL_HOSTS.filter((h) => h !== 'admin.abluo.app'))('%s', async (host) => {
+    for (const path of LOCALE_LESS_CLIENT_PATHS) {
+      const where = `${host}${path}`
+      const res = await proxy(
+        new NextRequest(new URL(`https://placeholder.invalid${path}?a=1`), { headers: { host } })
+      )
+      expect(res.status, where).toBe(307)
+      expect(res.headers.get('x-middleware-rewrite'), where).toBeNull()
+      expect(res.headers.get('x-intl-fallthrough'), where).toBeNull()
+      const location = new URL(res.headers.get('location') ?? '')
+      expect(location.pathname, where).toBe(`/${routing.defaultLocale}${path}`)
+      expect(location.search, where).toBe('?a=1')
+
+      // …and the next hop is the gate (anonymous → /login?next=<localized>).
+      const hop = await proxy(
+        new NextRequest(new URL(`https://placeholder.invalid${location.pathname}`), { headers: { host } })
+      )
+      expect(hop.status, where).toBe(307)
+      const login = new URL(hop.headers.get('location') ?? '')
+      expect(login.pathname, where).toBe('/login')
+      expect(login.searchParams.get('next'), where).toBe(location.pathname)
+    }
+  })
+
+  it('admin.abluo.app still gates the bare spelling itself', async () => {
+    for (const path of LOCALE_LESS_CLIENT_PATHS) {
+      const res = await proxy(
+        new NextRequest(new URL(`https://placeholder.invalid${path}`), { headers: { host: 'admin.abluo.app' } })
+      )
+      expect(res.status, path).toBe(307)
+      expect(new URL(res.headers.get('location') ?? '').pathname, path).toBe('/login')
+    }
+  })
+
+  it('picks the locale from NEXT_LOCALE, then Accept-Language — never a hardcoded one', async () => {
+    const [other, third] = routing.locales.filter((l) => l !== routing.defaultLocale)
+    const viaCookie = await proxy(
+      new NextRequest(new URL('https://placeholder.invalid/account'), {
+        headers: { host: 'preview.abluo.app', cookie: `NEXT_LOCALE=${other}`, 'accept-language': third },
+      })
+    )
+    expect(new URL(viaCookie.headers.get('location')!).pathname).toBe(`/${other}/account`)
+    const viaHeader = await proxy(
+      new NextRequest(new URL('https://placeholder.invalid/account'), {
+        headers: { host: 'preview.abluo.app', 'accept-language': `xx, ${third};q=0.5` },
+      })
+    )
+    expect(new URL(viaHeader.headers.get('location')!).pathname).toBe(`/${third}/account`)
+  })
+})
+
 describe('INVARIANT: the gate does not swallow anything it should not', () => {
   it.each(ALL_HOSTS)('%s still lets the pre-auth surfaces through', async (host) => {
-    for (const path of ['/login', '/unauthorized', '/invite/accept', '/reset-password', '/forgot-password', '/auth/callback']) {
+    for (const path of ['/login', '/unauthorized', '/invite/accept', '/reset-password', '/forgot-password', '/auth/callback', '/auth/continue']) {
       const res = await proxy(
         new NextRequest(new URL(`https://placeholder.invalid${path}`), { headers: { host } })
       )
