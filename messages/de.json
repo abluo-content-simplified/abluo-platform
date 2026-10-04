@@ -122,5 +122,18 @@
       "dark": "Dunkel",
       "ariaLabel": "Helle oder dunkle Darstellung wählen"
     }
+  },
+  "editor": {
+    "body": {
+      "label": "Deine Geschichte",
+      "placeholder": "Schreib los…",
+      "toolbar": "Textformatierung",
+      "heading": "Überschrift",
+      "bold": "Fett",
+      "italic": "Kursiv",
+      "bulletList": "Aufzählung",
+      "numberedList": "Nummerierte Liste",
+      "quote": "Zitat"
+    }
   }
 }

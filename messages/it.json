@@ -122,5 +122,18 @@
       "dark": "Scuro",
       "ariaLabel": "Scegli aspetto chiaro o scuro"
     }
+  },
+  "editor": {
+    "body": {
+      "label": "Il tuo articolo",
+      "placeholder": "Inizia a scrivere…",
+      "toolbar": "Formattazione del testo",
+      "heading": "Titolo",
+      "bold": "Grassetto",
+      "italic": "Corsivo",
+      "bulletList": "Elenco puntato",
+      "numberedList": "Elenco numerato",
+      "quote": "Citazione"
+    }
   }
 }

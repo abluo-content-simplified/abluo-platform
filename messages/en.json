@@ -122,5 +122,18 @@
       "dark": "Dark",
       "ariaLabel": "Choose light or dark appearance"
     }
+  },
+  "editor": {
+    "body": {
+      "label": "Your story",
+      "placeholder": "Start writing…",
+      "toolbar": "Text formatting",
+      "heading": "Heading",
+      "bold": "Bold",
+      "italic": "Italic",
+      "bulletList": "Bulleted list",
+      "numberedList": "Numbered list",
+      "quote": "Quote"
+    }
   }
 }
