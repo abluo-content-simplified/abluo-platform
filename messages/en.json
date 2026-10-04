@@ -143,6 +143,9 @@
       "title": "Coming very soon",
       "body": "Writing posts right here, on your phone or computer, is almost ready.",
       "close": "Close"
+    },
+    "version": {
+      "updated": "Updated {date}"
     }
   },
   "editor": {

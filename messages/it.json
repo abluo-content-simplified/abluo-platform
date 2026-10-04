@@ -143,6 +143,9 @@
       "title": "In arrivo a breve",
       "body": "Scrivere articoli direttamente qui, dal telefono o dal computer, è quasi pronto.",
       "close": "Chiudi"
+    },
+    "version": {
+      "updated": "Aggiornato {date}"
     }
   },
   "editor": {

@@ -6,6 +6,7 @@ import { Link, usePathname, useRouter } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ProjectSwitcher } from './ProjectSwitcher'
 import { AppThemeSwitch } from './AppThemeSwitch'
+import { AppVersion } from './AppVersion'
 import type { AppTheme } from '@/lib/app-theme'
 import type { ClientNavItem } from '@/lib/modules/client-navigation'
 
@@ -160,6 +161,7 @@ export function ClientSidebar({ navItems, projects, activeSlug, theme, homeHref 
           <button type="button" onClick={handleSignOut} className="min-h-8 text-sm text-muted-foreground transition-colors hover:text-foreground">
             {t('shell.signOut')}
           </button>
+          <AppVersion />
         </div>
       </aside>
 

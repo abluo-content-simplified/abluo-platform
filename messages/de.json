@@ -143,6 +143,9 @@
       "title": "Bald verfügbar",
       "body": "Beiträge direkt hier schreiben – am Handy oder Computer – ist fast fertig.",
       "close": "Schließen"
+    },
+    "version": {
+      "updated": "Aktualisiert {date}"
     }
   },
   "editor": {
