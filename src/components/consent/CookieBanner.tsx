@@ -201,7 +201,7 @@ function SettingsBody({
             <p className="text-sm font-medium">{m.necessaryLabel}</p>
             <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{m.necessaryDescription}</p>
           </div>
-          <span className="shrink-0 text-xs" style={{ color: 'var(--color-text-muted)' }}>{m.alwaysOn}</span>
+          <span className="shrink-0 whitespace-nowrap text-xs" style={{ color: 'var(--color-text-muted)' }}>{m.alwaysOn}</span>
         </li>
         {inUse.map((p) => {
           const on = draft[p] === true
