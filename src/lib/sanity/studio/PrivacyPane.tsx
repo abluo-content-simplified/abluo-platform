@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useClient } from 'sanity'
 import type { PrivacySettings } from '../../integrations'
-import { deriveConsentPolicy, type ConsentPurpose } from '../../consent'
+import { deriveConsentPolicy, detectSiteEmbedVendors, type ConsentPurpose, type ConsentVendor, type SiteEmbedsData } from '../../consent'
+import { siteEmbedsQuery } from '../queries'
+import { getMapsEmbedKey } from '../../maps/provider'
 import type { ProjectIntegrations } from '../types'
 
 /**
@@ -44,6 +46,7 @@ const PURPOSE_LABEL: Record<ConsentPurpose, string> = {
   analytics: 'Statistics',
   marketing: 'Marketing',
   functional: 'Functional',
+  externalContent: 'External content',
 }
 
 export function PrivacyPane({ options }: PrivacyPaneProps) {
@@ -55,6 +58,8 @@ export function PrivacyPane({ options }: PrivacyPaneProps) {
   const [policyRef, setPolicyRef] = useState<string>('')
   const [savingPolicy, setSavingPolicy] = useState(false)
   const [loading, setLoading] = useState(true)
+  // ADR-021 amendment 2026-10-05 — embeds in the site's sections also turn the banner on.
+  const [embedVendors, setEmbedVendors] = useState<ConsentVendor[]>([])
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState<'consentModeEnabled' | 'trackingKillSwitch' | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -86,6 +91,15 @@ export function PrivacyPane({ options }: PrivacyPaneProps) {
       .catch(() => setError('Failed to load privacy settings.'))
       .finally(() => setLoading(false))
   }, [projectId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const projectSlug = options?.projectSlug
+    if (!projectSlug) return
+    client
+      .fetch<SiteEmbedsData>(siteEmbedsQuery, { projectSlug })
+      .then((data) => setEmbedVendors(detectSiteEmbedVendors(data, { mapsEmbedEnabled: getMapsEmbedKey() !== null })))
+      .catch(() => setEmbedVendors([]))
+  }, [options?.projectSlug]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = useCallback(
     async (key: 'consentModeEnabled' | 'trackingKillSwitch', value: boolean) => {
@@ -204,7 +218,7 @@ export function PrivacyPane({ options }: PrivacyPaneProps) {
 
       {/* ── Cookie banner status (ADR-021 — derived, not configured) ────────── */}
       {(() => {
-        const policy = deriveConsentPolicy({ integrationConfigs: doc?.integrationConfigs, privacy })
+        const policy = deriveConsentPolicy({ integrationConfigs: doc?.integrationConfigs, privacy }, embedVendors)
         const purposes = (Object.keys(policy.purposes) as ConsentPurpose[]).map(
           (p) => `${policy.purposes[p]!.vendors.map((v) => v.name).join(', ')} (${PURPOSE_LABEL[p]})`
         )

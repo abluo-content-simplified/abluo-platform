@@ -5,9 +5,11 @@
 // Holds the visitor's record for ONE site, writes the per-site cookie, renders
 // the banner, and lets the footer link and click-to-load embeds reach it.
 //
-// Newly granted purposes take effect with one reload: the server then renders
-// the scripts, which is the single code path that loads tracking (inline
-// scripts inserted after hydration would not execute). Rejecting never reloads.
+// Newly granted SCRIPT purposes take effect with one reload: the server then
+// renders the scripts, which is the single code path that loads tracking
+// (inline scripts inserted after hydration would not execute). Granting
+// External content needs no reload — every ConsentEmbed re-renders from the
+// new record and mounts its iframe in place. Rejecting never reloads.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import {
@@ -16,10 +18,11 @@ import {
   allowedVendorIds,
   applyChoice,
   applyVendorChoices,
+  choiceNeedsReload,
+  embedAllowed,
   embedVendorName,
   grantsFrom,
   serializeConsentCookie,
-  vendorAllowed as vendorAllowedIn,
   type ConsentPolicy,
   type ConsentPurpose,
   type ConsentRecord,
@@ -118,9 +121,7 @@ export function ConsentProvider({
       writeCookie(cookieName, next)
       setRecord(next)
       setOpen(null)
-      const after = grantsFrom(next, policy)
-      const newlyGranted = (Object.keys(after) as ConsentPurpose[]).some((p) => after[p] && !before[p])
-      if (newlyGranted) window.location.reload()
+      if (choiceNeedsReload(before, grantsFrom(next, policy))) window.location.reload()
     },
     [record, policy, cookieName]
   )
@@ -144,11 +145,13 @@ export function ConsentProvider({
     () => ({
       showSettingsLink: showSettings,
       openSettings: () => setOpen('settings'),
-      isVendorLoaded: (id) => sessionVendors.has(id) || vendorAllowedIn(record, id),
+      // Loaded this page view, always-allowed, or covered by an External
+      // content grant that lists this vendor (embedAllowed).
+      isVendorLoaded: (id) => sessionVendors.has(id) || embedAllowed(record, policy, id),
       loadVendor,
       locale,
     }),
-    [showSettings, sessionVendors, record, loadVendor, locale]
+    [showSettings, sessionVendors, record, policy, loadVendor, locale]
   )
 
   return (

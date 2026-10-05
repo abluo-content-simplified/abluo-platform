@@ -14,7 +14,7 @@ import type {
   ConsentPurpose,
   ConsentRecord,
 } from './types'
-import { CONSENT_PURPOSES } from './types'
+import { CONSENT_PURPOSES, SCRIPT_PURPOSES } from './types'
 import { emptyRecord } from './cookie'
 
 const DAY = 24 * 60 * 60 * 1000
@@ -61,7 +61,7 @@ export function grantsFrom(
   policy: ConsentPolicy,
   now: Date = new Date()
 ): ConsentGrants {
-  const out: ConsentGrants = { analytics: false, marketing: false, functional: false }
+  const out: ConsentGrants = { analytics: false, marketing: false, functional: false, externalContent: false }
   for (const p of CONSENT_PURPOSES) {
     const inUse = policy.purposes[p]
     const d = record?.purposes[p]
@@ -142,4 +142,34 @@ export function applyVendorChoices(
     }
   }
   return rec
+}
+
+/**
+ * Whether an embed of `vendorId` may load without a click (amendment
+ * 2026-10-05). Two independent ways in:
+ *   - the `externalContent` purpose is granted AND the vendor is one of the
+ *     vendors listed under it — the visitor accepted exactly that list, so a
+ *     vendor detection missed stays behind its placeholder (fail closed);
+ *   - the visitor chose "Always allow <vendor>" on a placeholder.
+ * Refusing the purpose does not erase a per-vendor allow, and vice versa;
+ * Cookie settings can withdraw each.
+ */
+export function embedAllowed(
+  record: ConsentRecord | null,
+  policy: ConsentPolicy,
+  vendorId: string,
+  now: Date = new Date()
+): boolean {
+  if (vendorAllowed(record, vendorId, now)) return true
+  const listed = policy.purposes.externalContent?.vendors.some((v) => v.id === vendorId) === true
+  return listed && grantsFrom(record, policy, now).externalContent
+}
+
+/**
+ * Whether a choice needs one page reload to take effect: only a newly granted
+ * SCRIPT purpose does (scripts are server-rendered). External content does
+ * not — ConsentEmbed re-renders from the new record and mounts the iframes.
+ */
+export function choiceNeedsReload(before: ConsentGrants, after: ConsentGrants): boolean {
+  return SCRIPT_PURPOSES.some((p) => after[p] && !before[p])
 }

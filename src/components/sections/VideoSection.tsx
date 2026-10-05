@@ -6,6 +6,8 @@ import { SectionContainer } from '@/components/layout/SectionContainer'
 import { getVideoSectionMessages } from '@/lib/i18n/video-section-messages'
 import { resolveEasing } from '@/lib/motion/easing'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
+import { ConsentEmbed } from '@/components/consent/ConsentEmbed'
+import { DIRECT_VIDEO_FILE_RE, embedVendorName, videoSectionVendor } from '@/lib/consent/embeds'
 
 // Cloudflare Stream account/customer code for iframe embed URLs. Reuses the
 // exact value already established in HeroSection.tsx for the same Stream
@@ -20,9 +22,17 @@ const ASPECT_RATIO_CLASS: Record<NonNullable<VideoSection['aspectRatio']>, strin
   '9:16': 'aspect-[9/16]',
 }
 
-// Direct video file extensions — rendered via <video controls>. Anything
-// else with provider 'url' is treated as an embeddable player URL (iframe).
-const DIRECT_VIDEO_FILE_RE = /\.(mp4|webm|ogg|ogv|mov|m4v)(\?.*)?$/i
+/** Same ratios for the click-to-load placeholder (CSS aspect-ratio). */
+const ASPECT_RATIO_CSS: Record<NonNullable<VideoSection['aspectRatio']>, string> = {
+  '16:9': '16 / 9',
+  '4:3': '4 / 3',
+  '9:16': '9 / 16',
+}
+
+// Direct video file extensions (DIRECT_VIDEO_FILE_RE) are rendered via
+// <video controls> with no consent gate — see ADR-021 amendment 2026-10-05
+// (own/Sanity CDN). Anything else with provider 'url' is an embeddable player
+// URL (iframe) and goes through ConsentEmbed like every other provider.
 
 interface Props {
   section: VideoSection
@@ -62,7 +72,8 @@ export function VideoSection({ section, surface, designSystem, locale = 'en' }: 
   } else if (provider === 'youtube' && videoId) {
     player = (
       <iframe
-        src={`https://www.youtube.com/embed/${videoId}`}
+        // Privacy-enhanced mode (ADR-021): no YouTube cookies until playback.
+        src={`https://www.youtube-nocookie.com/embed/${videoId}`}
         title={accessibleLabel}
         className="h-full w-full"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -72,7 +83,8 @@ export function VideoSection({ section, surface, designSystem, locale = 'en' }: 
   } else if (provider === 'vimeo' && videoId) {
     player = (
       <iframe
-        src={`https://player.vimeo.com/video/${videoId}`}
+        // dnt=1 (ADR-021): Vimeo sets no tracking cookies for this player.
+        src={`https://player.vimeo.com/video/${videoId}?dnt=1`}
         title={accessibleLabel}
         className="h-full w-full"
         allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
@@ -107,6 +119,31 @@ export function VideoSection({ section, surface, designSystem, locale = 'en' }: 
   // than a broken embed.
   if (!player) return null
 
+  // ADR-021 — every third-party player is click-to-load until the visitor
+  // accepts External content (or always-allows this vendor). Before that the
+  // server HTML holds the placeholder only: no iframe, no embed URL.
+  const vendorId = videoSectionVendor(section)
+  const frame = <div className={`overflow-hidden rounded-[var(--radius-md)] ${aspectClass}`}>{player}</div>
+  let gated: React.ReactNode = frame
+  if (vendorId) {
+    const vendorName = embedVendorName(vendorId)
+    gated = (
+      <ConsentEmbed
+        vendorId={vendorId}
+        vendorName={vendorName}
+        locale={locale}
+        aspectRatio={ASPECT_RATIO_CSS[aspectRatio]}
+        labels={{
+          notice: m.videoConsentNotice(vendorName),
+          load: m.showVideo,
+          alwaysAllow: m.videoAlwaysAllow(vendorName),
+        }}
+      >
+        {frame}
+      </ConsentEmbed>
+    )
+  }
+
   return (
     <SectionContainer id={section.anchorId} style={surfaceStyles}>
       <div className="mx-auto max-w-[900px]">
@@ -131,9 +168,7 @@ export function VideoSection({ section, surface, designSystem, locale = 'en' }: 
           </SlideUp>
         )}
         <SlideUp duration={duration} ease={ease} delay={0.1}>
-          <div className={`overflow-hidden rounded-[var(--radius-md)] ${aspectClass}`}>
-            {player}
-          </div>
+          {gated}
         </SlideUp>
         {caption && (
           <SlideUp duration={duration} ease={ease} delay={0.15}>

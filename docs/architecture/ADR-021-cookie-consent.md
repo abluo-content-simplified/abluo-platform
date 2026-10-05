@@ -27,6 +27,7 @@ Build vs buy: Cookiebot and iubenda bill per domain, per month. Our registry alr
 3. **The banner inherits the site's look.** It is a first-party component styled only from Design System CSS variables already emitted by `buildCssVars()`, and it animates with the motion tokens. No new DS fields are needed for v1.
 4. **The choice is remembered, not nagged.** A decision (accept, reject or custom) is stored in a first-party, strictly-necessary cookie and respected for **12 months**. We re-ask earlier only for a purpose that has *changed*, and never for a purpose the visitor refused within the last 6 months.
 5. **Embeds are consented at the point of use.** They get a click-to-load placeholder, so a site whose only third-party content is a YouTube video needs no banner at all.
+   *Amended 2026-10-05:* embeds now also form a banner category, **External content**; the click-to-load placeholder remains as the fallback. See [Amendment 2026-10-05](#amendment-2026-10-05--external-content-category).
 
 ## Remembering the choice — legal floor vs our choice
 
@@ -183,7 +184,7 @@ Maps have no banner category: like every embed they are consented per vendor at 
 - A `ConsentEmbed` wrapper for `VideoSection` (YouTube, Vimeo) and the `ContactSection` map. Before consent it shows a DS-styled placeholder: "This content is hosted by YouTube, which sets cookies. [Load video] ☐ Always allow YouTube". Use `youtube-nocookie.com` once loaded.
 - Per-vendor "always allow" is stored in the same consent record (`vendors: { youtube: {granted, decidedAt} }`).
 - Cloudflare Stream: verify whether it sets any non-essential cookie. If it sets none, it is exempt.
-- **Decision for Tom:** embed consent is per vendor, not a banner category. That keeps the banner away from embed-only sites.
+- **Decision for Tom:** embed consent is per vendor, not a banner category. That keeps the banner away from embed-only sites. *Superseded 2026-10-05 — Tom approved a banner category; videos are done (amendment below).*
 
 ### Phase 3 — Proof of consent + Google Consent Mode v2
 
@@ -248,7 +249,7 @@ Production audit: `livener` and `studiomartegani` have `google-analytics` enable
 
 1. Accept and Reject both use the DS *secondary* button style.
 2. Position: a bottom-left card on desktop, full-width on mobile.
-3. Embed consent is per vendor (placeholder), not a banner category.
+3. Embed consent is per vendor (placeholder), not a banner category. *Superseded 2026-10-05 by the External content category (amendment below).*
 
 ## How to test (Phase 1)
 
@@ -261,3 +262,47 @@ Production audit: `livener` and `studiomartegani` have `google-analytics` enable
   5. Contact page: the map shows the placeholder. Network tab filter `google` → no request. Click "Load map" → the map loads. "Always allow" → the next visit loads it directly.
   6. Early re-ask: in DevTools, edit the cookie's `decidedAt` back 13 months → reload → the banner returns.
 - **Production smoke after deploy:** reject → the Network tab shows no `googletagmanager.com` request; accept → one reload → `gtag/js` loads.
+
+---
+
+## Amendment 2026-10-05 — External content category
+
+**Status:** Accepted (design approved by Tom, 2026-10-05). Built on `dev`.
+
+### Why
+
+Per-vendor click-to-load meant a visitor had to click every video and every map, and `VideoSection` was never wired at all: YouTube, Vimeo, Cloudflare Stream and generic iframe URLs loaded with **no consent**. Tom wants one friendlier choice in the banner that covers all external content, with click-to-load kept as the fallback.
+
+### Decision
+
+1. **A fourth consent purpose, `externalContent`** ("External content" / "Contenuti esterni" / "Contenus externes" / "Externe Inhalte" / "Contenido externo" / "Conteúdo externo" / "Externe inhoud"). Description, deliberately short and neutral: *"Content from other services embedded in this site, such as videos and maps."* No "sends your data to…" sentence (Tom's call): the legal detail lives in the cookie policy, which the banner already links.
+   - `ConsentPurpose = ScriptPurpose | 'externalContent'`; `SCRIPT_PURPOSES` stays `analytics | marketing | functional`. Integrations and custom scripts can only claim a script purpose — a custom script with `consentCategory: 'externalContent'` is ignored by the policy (and therefore never renders).
+2. **Vendor registry** — `src/lib/consent/embeds.ts`, `EMBED_VENDOR_REGISTRY: { id, name, purpose: 'externalContent' }[]`: `youtube`, `vimeo`, `cloudflare-stream`, `google-maps`. An iframe URL on any other host becomes a host vendor `embed:<host>` (dots stored as `_`, so the cookie parser accepts it; shown to visitors as the host name). A future embed (Instagram, Spotify, Calendly) is one registry entry plus a `ConsentEmbed` at the point of use.
+3. **Cloudflare Stream counts as external content.** It is our own video host, but the visitor's browser talks to Cloudflare on `*.cloudflarestream.com` — a separate company and domain. We default to treating it like any other third party rather than auditing its cookies per release.
+4. **How vendors are detected (server-side, cheap).** A registry of embed-capable section types, `EMBED_SECTIONS` in `src/lib/consent/site-embeds.ts`, says which vendor each section loads:
+   - `videoSection` → by `provider` (`videoSectionVendor()`, the same function the renderer uses, so they cannot disagree); a direct video file needs no vendor;
+   - `contactSection` → `google-maps` when `showMap !== false`, siteConfig has a `location`/`address`, and `NEXT_PUBLIC_GOOGLE_MAPS_KEY` is set;
+   - `locationsSection` → `google-maps` when `showMap !== false`, at least one location has a pin or an address, and the key is set.
+   The data comes from one GROQ read, `siteEmbedsQuery`: every document of the project with a `sections` array (pages, home, module pages), only those three section types, only the fields the registry reads, plus two siteConfig facts. `readSiteEmbedVendors()` runs it in both branches of the tenant layout and passes the result to `readConsentContext()`. A failed read yields no category, and every embed still sits behind its placeholder (fail closed). The Studio Privacy pane uses the same query, so "Cookie banner: active — because Vimeo, Google Maps (External content)" is accurate.
+   - *Not covered (yet):* the blog post featured video (`post.featuredVideo`) and the event page / `FeaturedEventBlock` stream players render iframes outside sections and outside `ConsentEmbed`. They are the next embeds to wire.
+5. **When the banner appears.** It shows when the site uses any consent-requiring purpose: tracking **or** external content. A site with neither still has no banner. The banner lists each category with only the services actually in use, e.g. *External content: Vimeo · Google Maps*. The tracking kill switch blanks scripts only; it does not remove embeds from the category.
+6. **Interaction rules.**
+   - **Purpose grant** (Accept all, or the toggle) → every embed of every vendor *listed under the category* loads immediately, server-rendered on the next request and mounted in place right away (no placeholders). A vendor the visitor was never shown (a detection miss) stays behind its placeholder — the visitor accepted that list, not "anything".
+   - **Purpose refused** → each embed keeps its `ConsentEmbed` placeholder: "Show video" / "Show map", once, or "Always allow <vendor>".
+   - **Per-vendor allow** loads only that vendor, independently of the purpose. Refusing the purpose does not erase a per-vendor allow, and granting it does not create one.
+   - **Revoking:** footer Cookie settings → the External content toggle withdraws the purpose; "Allowed individually" (the per-vendor list, renamed from "External content" to avoid two headings with the same name) withdraws each vendor; "Reject all" in settings withdraws both. Embeds loaded through the purpose unmount back to placeholders immediately.
+   - **Reload:** only a newly granted *script* purpose reloads (scripts are server-rendered, unchanged). Granting External content alone does not reload: `ConsentEmbed` re-renders from the new record and mounts the iframes, which is faster and keeps scroll position.
+   - Same time rules as every purpose: valid 12 months; adding a vendor to the category re-asks an accepted category immediately and a refused one only after 6 months.
+7. **VideoSection** wraps YouTube, Vimeo, Cloudflare Stream and generic iframe URLs in `ConsentEmbed`, reusing the map placeholder (same component, same tokens) with the frame's aspect ratio. Copy ("Show video", the notice, "Always allow <vendor>") comes from `video-section-messages.ts` in 7 locales; vendor names come from the registry. Players use the privacy-enhanced variants: `youtube-nocookie.com` and Vimeo `?dnt=1`. Before consent the server HTML contains no iframe, embed URL or id (tested).
+8. **Direct video files** (`<video src>`, provider `url` with a file extension) are not gated. They are served from our own host or Sanity's CDN (`cdn.sanity.io`). *Open question:* Sanity's CDN sets no cookies, but the visitor's IP reaches Sanity — the same position as images, which we treat as hosting by a processor under the DPA. If a lawyer disagrees, the fix is a proxy through the site's own host (as done for fonts), not consent.
+
+### Existing visitors (backwards compatibility)
+
+- Old cookies parse unchanged; they simply have no `externalContent` entry, which is "never asked" for that purpose.
+- On a site that now has embeds, **the banner re-shows once** for such visitors. This is the standard "new purpose" case (Garante 2021 allows re-asking when a new purpose appears; our own rule was already "purpose never asked → ask"), and it applies even to visitors who refused tracking less than 6 months ago, because they were never asked about this purpose. Their earlier per-vendor "Always allow Google Maps" choices are kept.
+- Sites with tracking and no embeds behave exactly as before — same categories, same fingerprints, no re-prompt.
+- Embed-only sites (e.g. a site whose only third party is a map) **now show a banner** where before they showed none. That is the intended change.
+
+### Tests
+
+`src/lib/consent/__tests__/external-content.test.ts` (registry, URL classification, site detection, query/registry sync, banner trigger, back-compat, grants interplay, reload rule) and `src/components/sections/__tests__/video-consent.test.tsx` (no iframe/URL before consent for all four players, localized placeholder, iframes after a purpose grant, per-vendor allow, unlisted host stays gated, direct files ungated).

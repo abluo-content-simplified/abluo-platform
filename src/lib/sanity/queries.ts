@@ -815,6 +815,28 @@ export const projectConsentQuery = /* groq */ `
   }
 `
 
+// ─── Embed vendors in use (ADR-021 amendment 2026-10-05) ──────────────────────
+// Feeds the banner's "External content" category with the services the site
+// actually embeds. One read: every section-bearing document of the project
+// (pages, home, module pages), only the embed-capable section types, only the
+// fields the vendor registry reads — plus the siteConfig facts the two map
+// sections need. Interpreted by detectSiteEmbedVendors()
+// (src/lib/consent/site-embeds.ts); the type and field lists must match
+// EMBED_SECTION_TYPES / SITE_EMBED_SECTION_FIELDS there (tested).
+export const siteEmbedsQuery = /* groq */ `
+  {
+    "docs": *[projectSlug == $projectSlug && defined(sections)] {
+      "sections": sections[_type in ["videoSection", "contactSection", "locationsSection"]] {
+        _type, provider, videoId, videoUrl, showMap
+      }
+    },
+    "site": *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
+      "hasAddress": defined(location) || defined(address),
+      "mappableLocations": count(locations[defined(pin) || defined(address)])
+    }
+  }
+`
+
 // ─── Enabled module IDs (ADR-016 Phase D → ADR-020) ───────────────────────────
 // Single source of truth for a website's installed-module set at render time.
 // Mirrors the exact projection used for Studio nav in sanity.config.ts (the

@@ -2,20 +2,22 @@
 //
 // The banner is DERIVED, never configured: a purpose is "in use" when at least
 // one enabled integration with a non-empty value (or an enabled custom script)
-// belongs to it. Reuses resolveTracking() so the kill switch and the
+// belongs to it — or, for `externalContent` (amendment 2026-10-05), when the
+// site embeds at least one third-party vendor (detectSiteEmbedVendors). Reuses resolveTracking() so the kill switch and the
 // enabled/blank-value rules are exactly the ones TrackingScripts renders by.
 
 import type { ProjectIntegrations } from '@/lib/sanity/types'
 import { resolveTracking } from '@/lib/tracking/resolve'
 import { INTEGRATION_REGISTRY } from '@/lib/integrations/registry'
-import type { ConsentPolicy, ConsentPurpose, ConsentVendor } from './types'
-import { CONSENT_PURPOSES } from './types'
+import type { ConsentPolicy, ConsentPurpose, ConsentVendor, ScriptPurpose } from './types'
+import { CONSENT_PURPOSES, SCRIPT_PURPOSES } from './types'
 
-function isPurpose(c: unknown): c is ConsentPurpose {
-  return typeof c === 'string' && (CONSENT_PURPOSES as readonly string[]).includes(c)
+/** Scripts can only claim a script purpose — never `externalContent`. */
+function isPurpose(c: unknown): c is ScriptPurpose {
+  return typeof c === 'string' && (SCRIPT_PURPOSES as readonly string[]).includes(c)
 }
 
-function manifestPurpose(integrationId: string): ConsentPurpose | null {
+function manifestPurpose(integrationId: string): ScriptPurpose | null {
   const m = INTEGRATION_REGISTRY.find((x) => x.id === integrationId)
   return m && isPurpose(m.consentCategory) ? m.consentCategory : null
 }
@@ -29,12 +31,32 @@ export function fingerprintVendors(vendors: ConsentVendor[]): string {
   return [...new Set(vendors.map((v) => v.id))].sort().join('|')
 }
 
-export function deriveConsentPolicy(data: ProjectIntegrations | null | undefined): ConsentPolicy {
-  if (!data) return { purposes: {} }
-  const t = resolveTracking(data.integrationConfigs, data.privacy)
-  if (t.killSwitched) return { purposes: {} }
-
+/**
+ * @param embedVendors the embed vendors the site uses (detectSiteEmbedVendors).
+ *        They form the `externalContent` purpose. The tracking kill switch does
+ *        not remove them: it blanks scripts, not page content.
+ */
+export function deriveConsentPolicy(
+  data: ProjectIntegrations | null | undefined,
+  embedVendors: ConsentVendor[] = []
+): ConsentPolicy {
   const byPurpose: Partial<Record<ConsentPurpose, ConsentVendor[]>> = {}
+  if (embedVendors.length) byPurpose.externalContent = [...embedVendors]
+  const t = data ? resolveTracking(data.integrationConfigs, data.privacy) : null
+  if (t && !t.killSwitched) addTracking(t, byPurpose)
+
+  const purposes: ConsentPolicy['purposes'] = {}
+  for (const p of CONSENT_PURPOSES) {
+    const vendors = byPurpose[p]
+    if (vendors?.length) purposes[p] = { vendors, fingerprint: fingerprintVendors(vendors) }
+  }
+  return { purposes }
+}
+
+function addTracking(
+  t: ReturnType<typeof resolveTracking>,
+  byPurpose: Partial<Record<ConsentPurpose, ConsentVendor[]>>
+): void {
   const add = (purpose: ConsentPurpose | null, vendor: ConsentVendor) => {
     if (!purpose) return
     ;(byPurpose[purpose] ??= []).push(vendor)
@@ -49,13 +71,6 @@ export function deriveConsentPolicy(data: ProjectIntegrations | null | undefined
     if (!isPurpose(s.consentCategory)) continue // necessary / unset → exempt
     add(s.consentCategory, { id: `custom:${s.label ?? 'script'}`, name: s.label ?? 'Custom script' })
   }
-
-  const purposes: ConsentPolicy['purposes'] = {}
-  for (const p of CONSENT_PURPOSES) {
-    const vendors = byPurpose[p]
-    if (vendors?.length) purposes[p] = { vendors, fingerprint: fingerprintVendors(vendors) }
-  }
-  return { purposes }
 }
 
 /** True when the site uses anything that needs consent — i.e. the banner exists. */

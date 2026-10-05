@@ -20,7 +20,7 @@ const data: ProjectIntegrations = {
 }
 
 const html = (g?: { analytics: boolean; marketing: boolean; functional: boolean }) =>
-  renderToStaticMarkup(<TrackingScripts data={data} grants={g} />)
+  renderToStaticMarkup(<TrackingScripts data={data} grants={g && { ...g, externalContent: false }} />)
 
 describe('TrackingScripts × consent (ADR-021)', () => {
   it('no grants → nothing gated loads; necessary still does', () => {
@@ -43,7 +43,7 @@ describe('TrackingScripts × consent (ADR-021)', () => {
   })
   it('kill switch beats consent', () => {
     const out = renderToStaticMarkup(
-      <TrackingScripts data={{ ...data, privacy: { trackingKillSwitch: true } }} grants={{ analytics: true, marketing: true, functional: true }} />
+      <TrackingScripts data={{ ...data, privacy: { trackingKillSwitch: true } }} grants={{ analytics: true, marketing: true, functional: true, externalContent: true }} />
     )
     expect(out).toBe('')
   })

@@ -132,7 +132,7 @@ describe('banner & grants — the rules', () => {
   it('custom choice: only what was ticked', () => {
     const p2 = deriveConsentPolicy(gaAndPixel)
     const rec = applyChoice(null, p2, { analytics: true }, T0)
-    expect(grantsFrom(rec, p2, after(1))).toEqual({ analytics: true, marketing: false, functional: false })
+    expect(grantsFrom(rec, p2, after(1))).toEqual({ analytics: true, marketing: false, functional: false, externalContent: false })
     expect(shouldShowBanner(rec, p2, after(1))).toBe(false)
   })
   it('future-dated decision (tampered cookie) → ask, grant nothing', () => {

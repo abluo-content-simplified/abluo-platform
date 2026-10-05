@@ -93,7 +93,7 @@ interface TrackingScriptsProps {
   grants?: ConsentGrants
 }
 
-const NO_GRANTS: ConsentGrants = { analytics: false, marketing: false, functional: false }
+const NO_GRANTS: ConsentGrants = { analytics: false, marketing: false, functional: false, externalContent: false }
 
 function integrationAllowed(integrationId: string, grants: ConsentGrants): boolean {
   const cat = INTEGRATION_REGISTRY.find((m) => m.id === integrationId)?.consentCategory

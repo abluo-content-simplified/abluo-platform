@@ -2,11 +2,13 @@
 
 // ─── Click-to-load embed (ADR-021) ───────────────────────────────────────────
 //
-// Third-party embeds (Google Maps, later YouTube/Vimeo) set their own cookies
-// the moment the iframe loads. Until the visitor asks for the content, render a
-// design-system placeholder instead — so a site whose only third party is a map
-// needs no banner at all. "Always allow" is remembered for 12 months in the
-// same per-site consent cookie.
+// Third-party embeds (Google Maps, YouTube, Vimeo, Cloudflare Stream, any
+// iframe host) set their own cookies the moment the iframe loads. The embed
+// renders when the visitor accepted the banner's External content category
+// (and this vendor is listed under it) or always-allowed this vendor;
+// otherwise a design-system placeholder renders instead, with "load once" and
+// "Always allow" (remembered 12 months in the same per-site consent cookie).
+// Every third-party iframe on a website goes through this component.
 
 import { useId, useState } from 'react'
 import { useConsent } from './ConsentProvider'

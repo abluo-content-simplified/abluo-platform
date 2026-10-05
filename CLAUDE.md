@@ -691,6 +691,8 @@ Third-party integrations (GA4, GTM, Meta Pixel, custom scripts) are registry-dri
 
 Privacy policy is a separate, cross-integration surface: **Project Settings → Privacy** edits `project.privacy` — `consentModeEnabled` and a `trackingKillSwitch` (an emergency override that blanks all tracking regardless of individual integration state).
 
+**Cookie consent (ADR-021).** The banner is derived, never configured: it shows when a site uses any consent-requiring purpose — tracking (`analytics`/`marketing`/`functional`, from the enabled integrations) or **`externalContent`** (amendment 2026-10-05: third-party embeds detected from the site's sections by `siteEmbedsQuery` + `detectSiteEmbedVendors()`). Every third-party iframe (videos, maps, any future embed) goes through `ConsentEmbed` with a vendor id from `src/lib/consent/embeds.ts`; an embed-capable section type is registered in `EMBED_SECTIONS` (`src/lib/consent/site-embeds.ts`). Never server-render an iframe or embed URL outside `ConsentEmbed`.
+
 At runtime, `TrackingScripts.tsx` reads `project.integrationConfigs` + `project.privacy` (fetched via `projectIntegrationsQuery`, `src/lib/sanity/queries.ts`) and resolves what renders through the pure `resolveTracking()` helper (`src/lib/tracking/resolve.ts`): kill switch first, then per-integration `enabled === true`. Scripts emit in production only. ADR-013's consent semantics (fail-closed under `consentModeEnabled`, `necessary`-category custom scripts never gated) carry over unchanged.
 
 Verification tokens (`googleSiteVerification`, `bingSiteVerification`) are not tracking — they live in `siteConfig`'s SEO group (**Website Settings → SEO**) and always render, in every environment.
@@ -702,7 +704,7 @@ Authority: ADR-014 (Integration Registry & Studio IA) plus ADR-013's carried-ove
 ### Google Maps keys
 
 Two public env vars, never Sanity fields — setup, API restrictions and referrers in `docs/engineering/google-maps-keys.md`:
-- `NEXT_PUBLIC_GOOGLE_MAPS_KEY` — website maps (Contact + Locations sections), **Maps Embed API only**. Every embed is click-to-load behind `ConsentEmbed` (ADR-021, vendor `google-maps`). Missing → link-only, never an error.
+- `NEXT_PUBLIC_GOOGLE_MAPS_KEY` — website maps (Contact + Locations sections), **Maps Embed API only**. Every embed is click-to-load behind `ConsentEmbed` (ADR-021, vendor `google-maps`). Missing → link-only, never an error (and no Google Maps under the banner's External content category).
 - `NEXT_PUBLIC_GOOGLE_MAPS_STUDIO_KEY` — Studio entrance-pin picker (`siteLocation.pin`), Maps JavaScript + Places + Maps Static APIs, referrer-restricted to the Studio hosts. Missing → plain lat/lng fields.
 
 ---

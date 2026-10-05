@@ -37,7 +37,7 @@ import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
 import { siteBasePath } from '@/lib/sanity/href'
 import { TrackingScripts } from '@/components/TrackingScripts'
 import { ConsentProvider } from '@/components/consent/ConsentProvider'
-import { readConsentContext } from '@/lib/consent/server'
+import { readConsentContext, readSiteEmbedVendors } from '@/lib/consent/server'
 import { asUrlProjectSegment, type UrlProjectSegment } from '@/lib/tenancy/ids'
 import { lightThemeSelector, type ThemeMode } from '@/lib/design-system/theme-mode'
 import { FALLBACK_DARK, FALLBACK_LIGHT, FALLBACK_STATE, FALLBACK_FONTS, FALLBACK_RADIUS } from '@/lib/design-system/fallback-tokens'
@@ -673,8 +673,9 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
     const livenerConfig = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
     // ADR-014 Phase C — runtime tracking/analytics config (project.integrationConfigs + project.privacy).
     const integrations = await fetchForTenant<ProjectIntegrations>(projectIntegrationsQuery, {})
-    // ADR-021 — the visitor's consent for THIS site, derived banner state.
-    const consent = await readConsentContext(tenantId, integrations)
+    // ADR-021 — the visitor's consent for THIS site, derived banner state
+    // (tracking integrations + the embed vendors its sections use).
+    const consent = await readConsentContext(tenantId, integrations, await readSiteEmbedVendors(fetchForTenant))
     const consentLinks = await fetchForTenant<{ cookiePolicySlug?: string }>(projectConsentQuery, { locale, defaultLocale })
     // ADR-020 — module-owned per-website configuration (WhatsApp, header CTA).
     const modules = await fetchForTenant<ProjectModuleConfig>(projectModuleConfigQuery, { locale, defaultLocale })
@@ -790,8 +791,9 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   const config = await fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale })
   // ADR-014 Phase C — runtime tracking/analytics config (project.integrationConfigs + project.privacy).
   const integrations = await fetchForTenant<ProjectIntegrations>(projectIntegrationsQuery, {})
-  // ADR-021 — the visitor's consent for THIS site, derived banner state.
-  const consent = await readConsentContext(tenantId, integrations)
+  // ADR-021 — the visitor's consent for THIS site, derived banner state
+  // (tracking integrations + the embed vendors its sections use).
+  const consent = await readConsentContext(tenantId, integrations, await readSiteEmbedVendors(fetchForTenant))
   const consentLinks = await fetchForTenant<{ cookiePolicySlug?: string }>(projectConsentQuery, { locale, defaultLocale })
   // ADR-020 — module-owned per-website configuration (WhatsApp, header CTA).
   const modules = await fetchForTenant<ProjectModuleConfig>(projectModuleConfigQuery, { locale, defaultLocale })

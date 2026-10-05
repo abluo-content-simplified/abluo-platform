@@ -31,6 +31,11 @@ interface CookieBannerProps {
   motionTokens?: MotionTokens
 }
 
+/** "Vimeo · Google Maps" — the vendors in use for one purpose. */
+function vendorList(policy: ConsentPolicy, p: ConsentPurpose): string {
+  return (policy.purposes[p]?.vendors ?? []).map((v) => v.name).join(' · ')
+}
+
 const buttonStyle: React.CSSProperties = {
   background: 'var(--btn-secondary-bg, var(--color-surface))',
   color: 'var(--btn-secondary-text, var(--color-text-primary))',
@@ -123,11 +128,13 @@ export function CookieBanner({
                     </a>
                   )}
                 </p>
-                <p className="mt-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                  {inUse
-                    .map((p) => `${m.purposes[p].label}: ${policy.purposes[p]!.vendors.map((v) => v.name).join(', ')}`)
-                    .join(' · ')}
-                </p>
+                <ul className="mt-2 space-y-0.5 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                  {inUse.map((p) => (
+                    <li key={p}>
+                      {m.purposes[p].label}: {vendorList(policy, p)}
+                    </li>
+                  ))}
+                </ul>
                 <div className="mt-4 flex gap-2">
                   <ActionButton onClick={() => onChoose(rejectAll())}>{m.rejectAll}</ActionButton>
                   <ActionButton onClick={() => onChoose(acceptAll(policy))}>{m.acceptAll}</ActionButton>
@@ -202,9 +209,8 @@ function SettingsBody({
             <li key={p} className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-medium">{m.purposes[p].label}</p>
-                <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                  {m.purposes[p].description} ({policy.purposes[p]!.vendors.map((v) => v.name).join(', ')})
-                </p>
+                <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{m.purposes[p].description}</p>
+                <p className="mt-0.5 text-xs" style={{ color: 'var(--color-text-secondary)' }}>{vendorList(policy, p)}</p>
               </div>
               <Switch on={on} label={m.purposes[p].label} onToggle={() => setDraft((d) => ({ ...d, [p]: !on }))} />
             </li>
