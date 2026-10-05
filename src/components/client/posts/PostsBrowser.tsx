@@ -91,6 +91,8 @@ export function PostsBrowser({
           <span className="sr-only">{t('filters.search')}</span>
           <svg
             aria-hidden
+            width="16"
+            height="16"
             viewBox="0 0 24 24"
             className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 fill-none stroke-current stroke-2 text-muted-foreground"
           >

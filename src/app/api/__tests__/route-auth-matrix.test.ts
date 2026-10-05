@@ -343,6 +343,81 @@ describe('setSubmissionStatusAction — the dashboard lead-status server action'
   })
 })
 
+describe('post draft server actions — the dashboard\'s only Sanity write path (S2b)', () => {
+  const grantA = {
+    projectId: 'project-a',
+    projectSlug: 'tenant-a-site',
+    membershipId: 'tenant-owner:tenant-a',
+    role: 'owner',
+    permissions: ['blog.post.read', 'blog.post.write'],
+    enabledModuleIds: ['blog'],
+  }
+  const viewerA = { ...grantA, role: 'viewer', permissions: ['blog.post.read'] }
+  const ID = '11111111-2222-4333-8444-555555555555'
+  const load = () => import('@/app/[locale]/(client)/[tenant]/posts/actions')
+
+  beforeAll(async () => {
+    await load()
+  }, 30_000)
+
+  it('unauthenticated → refused, nothing touched', async () => {
+    const a = await load()
+    expect(await a.createPostDraftAction({ projectSlug: 'tenant-a-site' })).toEqual({ ok: false, error: 'unauthenticated' })
+    expect(await a.patchPostDraftAction({ projectSlug: 'tenant-a-site', id: ID, rev: 'r', set: { 'title.it': 'x' } })).toEqual({
+      ok: false,
+      error: 'unauthenticated',
+    })
+    noSideEffects()
+  })
+
+  it("tenant A cannot create or patch in tenant B's project", async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [grantA] }
+    const a = await load()
+    expect(await a.createPostDraftAction({ projectSlug: 'tenant-b-site' })).toEqual({ ok: false, error: 'forbidden' })
+    expect(await a.patchPostDraftAction({ projectSlug: 'tenant-b-site', id: ID, rev: 'r', set: { 'title.it': 'x' } })).toEqual({
+      ok: false,
+      error: 'forbidden',
+    })
+    noSideEffects()
+  })
+
+  it('a viewer cannot create or patch', async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [viewerA] }
+    const a = await load()
+    expect(await a.createPostDraftAction({ projectSlug: 'tenant-a-site' })).toEqual({ ok: false, error: 'forbidden' })
+    expect(await a.patchPostDraftAction({ projectSlug: 'tenant-a-site', id: ID, rev: 'r', set: { 'title.it': 'x' } })).toEqual({
+      ok: false,
+      error: 'forbidden',
+    })
+    noSideEffects()
+  })
+
+  it('a forbidden field is refused before anything is read or written', async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [grantA] }
+    const a = await load()
+    const r = await a.patchPostDraftAction({ projectSlug: 'tenant-a-site', id: 'not-a-uuid', rev: 'r', set: { projectSlug: 'tenant-b-site' } })
+    expect(r).toEqual({ ok: false, error: 'not_found' })
+    noSideEffects()
+  })
+
+  it("an owner's new draft gets its id, type and projectSlug from the SERVER", async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [grantA] }
+    const a = await load()
+    const r = await a.createPostDraftAction({ projectSlug: 'tenant-a-site', projectId: 'project-b', _type: 'page' } as never)
+    expect(r.ok).toBe(true)
+    const { sanityWriteClient } = await import('@/lib/sanity/server-clients')
+    const doc = (sanityWriteClient.create as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0] as Record<string, unknown>
+    expect(doc._id).toMatch(/^drafts\.[0-9a-f-]{36}$/)
+    expect(doc._type).toBe('post')
+    expect(doc.projectSlug).toBe('tenant-a-site')
+    expect(sanityCalls).toEqual(['write:create'])
+  })
+})
+
 // ── Machine-to-machine routes ───────────────────────────────────────────────
 
 describe('cron / webhook routes require their shared secret', () => {
