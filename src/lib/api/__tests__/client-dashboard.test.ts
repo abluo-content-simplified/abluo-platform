@@ -4,8 +4,8 @@
  * chain binds at the call site, with an injected fetch — no live Sanity.
  */
 import { describe, it, expect, vi } from 'vitest'
-import { getDashboardPosts } from '../client-dashboard'
-import { TenantAuthorizationError } from '../tenant-scoped-sanity'
+import { getDashboardPostRows, getDashboardPosts } from '../client-dashboard'
+import { TenantAuthorizationError, type SanityFetchFn } from '../tenant-scoped-sanity'
 import type { ProjectGrant, TenantAuthorizationContext } from '../tenant-context'
 import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 
@@ -112,5 +112,60 @@ describe('getDashboardPosts', () => {
     )
     const [, params] = fetchMock.mock.calls[0]
     expect(params.defaultLocale).toBe('de')
+  })
+})
+
+describe('getDashboardPostRows', () => {
+  // Regression: an Italian-only site (hoffmann: it + de, default it) showed every
+  // post as "Untitled" to an English dashboard because the site's default
+  // language was never passed — the title fell back to `.en`, which is empty.
+  function fakeFetch(postsRows: unknown[]) {
+    return vi.fn(async (query: string, params: Record<string, unknown> = {}) => {
+      if (query.includes('"site"')) {
+        return {
+          site: { defaultLocale: 'it', supportedLocales: ['it', 'de'] },
+          categories: [{ value: 'self-care', label: { _type: 'localizedString', it: 'Prendersi cura di sé' } }],
+        }
+      }
+      // The post query must receive the SITE default language, not the viewer's.
+      expect(params.defaultLocale).toBe('it')
+      return postsRows
+    }) as unknown as SanityFetchFn & ReturnType<typeof vi.fn>
+  }
+
+  it('passes the site default language and resolves categories and languages', async () => {
+    const fetchMock = fakeFetch([
+      {
+        _id: 'p1',
+        title: 'Coltivare la consapevolezza',
+        titleLocales: { _type: 'localizedString', it: 'Coltivare la consapevolezza', de: 'Bewusstsein kultivieren' },
+        categoryKeys: ['self-care', 'unknown-key'],
+        slug: 'x',
+        status: 'published',
+        updatedAt: '2026-08-01T00:00:00Z',
+      },
+    ])
+    const [row] = await getDashboardPostRows(ctxWith([validGrant]), 'project-a1', { locale: 'en' }, { fetch: fetchMock })
+    expect(row.title).toBe('Coltivare la consapevolezza')
+    expect(row.categories).toEqual(['Prendersi cura di sé', 'unknown key'])
+    expect(row.languages).toEqual(['it', 'de'])
+    // Both reads went through the scoped client.
+    for (const [, params] of fetchMock.mock.calls) expect(params.projectSlug).toBe('livener')
+  })
+
+  it('falls back to any language when the query found no title', async () => {
+    const fetchMock = fakeFetch([
+      { _id: 'p2', title: null, titleLocales: { de: 'Nur Deutsch' }, slug: null, status: 'draft', updatedAt: '2026-08-01T00:00:00Z' },
+    ])
+    const [row] = await getDashboardPostRows(ctxWith([validGrant]), 'project-a1', { locale: 'en' }, { fetch: fetchMock })
+    expect(row.title).toBe('Nur Deutsch')
+  })
+
+  it('rejects before any read when the blog module is not installed', async () => {
+    const fetchMock = vi.fn()
+    await expect(
+      getDashboardPostRows(ctxWith([noBlogGrant]), 'project-a1', { locale: 'en' }, { fetch: fetchMock })
+    ).rejects.toThrow(TenantAuthorizationError)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

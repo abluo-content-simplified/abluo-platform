@@ -69,7 +69,42 @@
       },
       "status": {
         "published": "Pubblicato",
-        "draft": "Bozza"
+        "draft": "Bozza",
+        "scheduled": "Programmato",
+        "offline": "Offline"
+      },
+      "meta": {
+        "published": "Pubblicato il {date}",
+        "scheduled": "Online dal {date}",
+        "created": "Iniziato il {date}",
+        "offlineOn": "Offline dal {date}",
+        "offlineSince": "Offline dal {date}",
+        "edited": "Modificato il {date}"
+      },
+      "languages": "Lingue",
+      "count": "{count, plural, one {# articolo} other {# articoli}}",
+      "filters": {
+        "search": "Cerca articoli",
+        "searchPlaceholder": "Cerca nei titoli…",
+        "sort": "Ordina",
+        "sort_newest": "Più recenti",
+        "sort_oldest": "Meno recenti",
+        "sort_edited": "Modificati di recente",
+        "filters": "Filtri",
+        "status": "Stato",
+        "all": "Tutti",
+        "category": "Categoria",
+        "date": "Data",
+        "anyTime": "Sempre",
+        "thisMonth": "Questo mese",
+        "last3Months": "Ultimi 3 mesi",
+        "thisYear": "Quest’anno",
+        "translations": "Traduzioni",
+        "anyLanguage": "Tutte",
+        "missingLanguage": "Manca {language}",
+        "showing": "{shown} di {total} articoli",
+        "clear": "Azzera filtri",
+        "noMatch": "Nessun articolo corrisponde ai filtri."
       }
     },
     "submissions": {

@@ -32,7 +32,7 @@ import {
   type SanityFetchFn,
 } from '@/lib/api/tenant-scoped-sanity'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
-import { dashboardPostsQuery } from '@/lib/sanity/queries'
+import { dashboardPostsContextQuery, dashboardPostsQuery } from '@/lib/sanity/queries'
 import { createClient } from '@/lib/supabase/server'
 
 /** A single post row as the client dashboard needs it. Minimal by design. */
@@ -43,9 +43,41 @@ export type DashboardPost = {
   /** Locale-resolved slug; null if no slug is set yet (unpublished draft). */
   slug: string | null
   /** Derived publish state — see dashboardPostsQuery. */
-  status: 'published' | 'draft'
+  status: DashboardPostStatus
   /** Sanity `_updatedAt` — ISO timestamp. */
   updatedAt: string
+  /** Locale-resolved subtitle, if any. */
+  subtitle?: string | null
+  /** Raw localized title object (or a legacy plain string). */
+  titleLocales?: unknown
+  /** Stored category keys (ADR-020 Amendment B — keys, never labels). */
+  categoryKeys?: string[] | null
+  /** Go-live date (ISO), if set. */
+  publishedAt?: string | null
+  /** Take-offline date (ISO), if set. */
+  expiresAt?: string | null
+  /** Sanity `_createdAt` — ISO timestamp. */
+  createdAt?: string
+}
+
+export type DashboardPostStatus = 'published' | 'scheduled' | 'draft' | 'offline'
+
+/** A post row ready for display: category labels and languages resolved. */
+export type DashboardPostRow = DashboardPost & {
+  categories: string[]
+  /** Site languages this post has a title in; empty on single-language sites. */
+  languages: string[]
+  /** Lower-cased, accent-free titles + subtitle in every language (for search). */
+  searchText: string
+}
+
+/** The posts list plus what its filters need. */
+export type DashboardPostList = {
+  posts: DashboardPostRow[]
+  /** Site languages; only meaningful when there are two or more. */
+  languages: string[]
+  /** The blog's categories for this site, in the viewer's language. */
+  categories: { value: string; label: string }[]
 }
 
 /** Permission that gates listing posts in the client dashboard. */
@@ -94,6 +126,109 @@ export async function getDashboardPosts(
   return posts ?? []
 }
 
+
+type LocalizedLabel = string | Record<string, unknown> | null | undefined
+
+/** Picks a label in the viewer's language, then the site's, then any. */
+export function resolveLocalized(
+  value: LocalizedLabel,
+  locale: string,
+  defaultLocale: string
+): string | null {
+  if (typeof value === 'string') return value.trim() || null
+  if (!value || typeof value !== 'object') return null
+  for (const key of [locale, defaultLocale, 'en']) {
+    const v = value[key]
+    if (typeof v === 'string' && v.trim()) return v
+  }
+  for (const [key, v] of Object.entries(value)) {
+    if (!key.startsWith('_') && typeof v === 'string' && v.trim()) return v
+  }
+  return null
+}
+
+/**
+ * The posts list as the dashboard shows it. Same authorization chain as
+ * getDashboardPosts (it calls it), plus one scoped read for the site's
+ * languages and the blog's category labels.
+ *
+ * Titles fall back viewer language → site default language → English → any,
+ * so an Italian-only site never shows "Untitled" to a viewer whose dashboard
+ * is in English.
+ */
+export async function getDashboardPostRows(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  params: { locale: string },
+  deps: { fetch?: SanityFetchFn } = {}
+): Promise<DashboardPostRow[]> {
+  return (await getDashboardPostList(ctx, projectId, params, deps)).posts
+}
+
+function searchBlob(...values: unknown[]): string {
+  const parts: string[] = []
+  for (const v of values) {
+    if (typeof v === 'string') parts.push(v)
+    else if (v && typeof v === 'object') {
+      for (const [k, x] of Object.entries(v)) if (!k.startsWith('_') && typeof x === 'string') parts.push(x)
+    }
+  }
+  return parts.join(' \n ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
+
+export async function getDashboardPostList(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  params: { locale: string },
+  deps: { fetch?: SanityFetchFn } = {}
+): Promise<DashboardPostList> {
+  assertModuleAction(ctx, projectId, BLOG_POST_READ_PERMISSION)
+  const scoped = tenantScopedSanityClient(ctx, projectId, deps)
+
+  type Context = {
+    site?: { defaultLocale?: string | null; supportedLocales?: string[] | null } | null
+    categories?: { value?: string; label?: LocalizedLabel }[] | null
+  }
+  const context = (await scoped.fetch<Context | null>(dashboardPostsContextQuery, {})) ?? {}
+  const defaultLocale = context.site?.defaultLocale || params.locale
+  const supported = context.site?.supportedLocales ?? []
+
+  const labels = new Map<string, string>()
+  for (const c of context.categories ?? []) {
+    if (!c?.value) continue
+    labels.set(c.value, resolveLocalized(c.label, params.locale, defaultLocale) ?? c.value)
+  }
+
+  const posts = await getDashboardPosts(ctx, projectId, { locale: params.locale, defaultLocale }, deps)
+
+  const rows = posts.map((post): DashboardPostRow => {
+    const titleObj =
+      post.titleLocales && typeof post.titleLocales === 'object'
+        ? (post.titleLocales as Record<string, unknown>)
+        : null
+    const languages =
+      supported.length > 1 && titleObj
+        ? supported.filter((l) => typeof titleObj[l] === 'string' && (titleObj[l] as string).trim())
+        : []
+    return {
+      ...post,
+      title: post.title ?? resolveLocalized(titleObj, params.locale, defaultLocale),
+      categories: (post.categoryKeys ?? []).map(
+        (key) => labels.get(key) ?? key.replace(/-/g, ' ')
+      ),
+      languages,
+      searchText: searchBlob(titleObj ?? post.title, post.subtitle),
+    }
+  })
+
+  const usedKeys = new Set(rows.flatMap((r) => r.categoryKeys ?? []))
+  const categories = [...labels.entries()].map(([value, label]) => ({ value, label }))
+  for (const key of usedKeys) {
+    if (!labels.has(key)) categories.push({ value: key, label: key.replace(/-/g, ' ') })
+  }
+
+  return { posts: rows, languages: supported.length > 1 ? supported : [], categories }
+}
 
 // ── Forms submissions (ADR-018 slice 6) ───────────────────────────────────────
 // Unlike posts (Sanity content via the tenant-scoped Sanity chokepoint), form

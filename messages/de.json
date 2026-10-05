@@ -69,7 +69,42 @@
       },
       "status": {
         "published": "Veröffentlicht",
-        "draft": "Entwurf"
+        "draft": "Entwurf",
+        "scheduled": "Geplant",
+        "offline": "Offline"
+      },
+      "meta": {
+        "published": "Veröffentlicht am {date}",
+        "scheduled": "Online ab {date}",
+        "created": "Begonnen am {date}",
+        "offlineOn": "Offline ab {date}",
+        "offlineSince": "Offline seit {date}",
+        "edited": "Bearbeitet am {date}"
+      },
+      "languages": "Sprachen",
+      "count": "{count, plural, one {# Beitrag} other {# Beiträge}}",
+      "filters": {
+        "search": "Beiträge suchen",
+        "searchPlaceholder": "In Titeln suchen…",
+        "sort": "Sortieren",
+        "sort_newest": "Neueste",
+        "sort_oldest": "Älteste",
+        "sort_edited": "Zuletzt bearbeitet",
+        "filters": "Filter",
+        "status": "Status",
+        "all": "Alle",
+        "category": "Kategorie",
+        "date": "Datum",
+        "anyTime": "Jederzeit",
+        "thisMonth": "Dieser Monat",
+        "last3Months": "Letzte 3 Monate",
+        "thisYear": "Dieses Jahr",
+        "translations": "Übersetzungen",
+        "anyLanguage": "Alle",
+        "missingLanguage": "{language} fehlt",
+        "showing": "{shown} von {total} Beiträgen",
+        "clear": "Filter zurücksetzen",
+        "noMatch": "Keine Beiträge passen zu diesen Filtern."
       }
     },
     "submissions": {

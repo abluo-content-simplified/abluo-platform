@@ -4,7 +4,7 @@ import { Link } from '@/i18n/navigation'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { MODULE_DASHBOARD_ROUTES, resolveProjectGrant } from '@/lib/modules/client-navigation'
 import {
-  getDashboardPosts,
+  getDashboardPostRows,
   getDashboardSubmissions,
   type DashboardPost,
   type DashboardSubmission,
@@ -52,7 +52,7 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
   const enabled = new Set(grant.enabledModuleIds)
 
   const [posts, submissions] = await Promise.all([
-    enabled.has('blog') ? settle<DashboardPost[]>(() => getDashboardPosts(ctx, grant.projectId, { locale })) : null,
+    enabled.has('blog') ? settle<DashboardPost[]>(() => getDashboardPostRows(ctx, grant.projectId, { locale })) : null,
     enabled.has('forms')
       ? settle<DashboardSubmission[]>(() => getDashboardSubmissions(ctx, grant.projectId, { limit: 200 }))
       : null,

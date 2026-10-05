@@ -929,8 +929,8 @@ export const postsQuery = /* groq */ `
 // client needs to see drafts and scheduled posts they haven't published yet.
 //
 // A `status` field is derived so the dashboard can label each row without a
-// second pass: "published" when publishedAt is set and in the past, otherwise
-// "draft" (covers both never-published and future-scheduled posts). Ordered by
+// second pass: "draft" (no go-live date), "scheduled" (go-live in the future),
+// "offline" (expiresAt passed — ADR-025 D5) or "published". Ordered by
 // most-recently-touched first (publishedAt when set, else _updatedAt).
 //
 // Executed ONLY through tenantScopedSanityClient (getDashboardPosts), which
@@ -943,13 +943,35 @@ export const dashboardPostsQuery = /* groq */ `
     _id,
     "title": ${loc('title')},
     "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
+    "subtitle": ${loc('subtitle')},
+    // Raw localized title, so the dashboard can show which languages exist.
+    "titleLocales": title,
+    "categoryKeys": categories,
+    publishedAt,
+    expiresAt,
+    "createdAt": _createdAt,
     "status": select(
-      defined(publishedAt) && publishedAt <= now() => "published",
-      "draft"
+      !defined(publishedAt) => "draft",
+      publishedAt > now() => "scheduled",
+      defined(expiresAt) && expiresAt <= now() => "offline",
+      "published"
     ),
     "updatedAt": _updatedAt
   }
 `
+
+// Per-project context for the dashboard posts list: the site's languages (so
+// titles fall back to the site's default language, not English — Italian-only
+// sites showed every post as "Untitled") and the blog's configured category
+// labels (stored on the project's module installation, ADR-020 Amendment B).
+export const dashboardPostsContextQuery = /* groq */ `{
+  "site": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{
+    defaultLocale,
+    supportedLocales
+  },
+  "categories": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]
+    .moduleInstallations[moduleId == "blog"][0].config.categories[]{ value, label }
+}`
 
 // A post is live when it has gone live and has not been taken offline (ADR-025
 // D5). The list queries already applied this; the detail and redirect lookups

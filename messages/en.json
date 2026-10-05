@@ -69,7 +69,42 @@
       },
       "status": {
         "published": "Published",
-        "draft": "Draft"
+        "draft": "Draft",
+        "scheduled": "Scheduled",
+        "offline": "Offline"
+      },
+      "meta": {
+        "published": "Published {date}",
+        "scheduled": "Goes live {date}",
+        "created": "Started {date}",
+        "offlineOn": "Goes offline {date}",
+        "offlineSince": "Offline since {date}",
+        "edited": "Edited {date}"
+      },
+      "languages": "Languages",
+      "count": "{count, plural, one {# post} other {# posts}}",
+      "filters": {
+        "search": "Search posts",
+        "searchPlaceholder": "Search titles…",
+        "sort": "Sort",
+        "sort_newest": "Newest",
+        "sort_oldest": "Oldest",
+        "sort_edited": "Recently edited",
+        "filters": "Filters",
+        "status": "Status",
+        "all": "All",
+        "category": "Category",
+        "date": "Date",
+        "anyTime": "Any time",
+        "thisMonth": "This month",
+        "last3Months": "Last 3 months",
+        "thisYear": "This year",
+        "translations": "Translations",
+        "anyLanguage": "All",
+        "missingLanguage": "Missing {language}",
+        "showing": "{shown} of {total} posts",
+        "clear": "Clear filters",
+        "noMatch": "No posts match these filters."
       }
     },
     "submissions": {

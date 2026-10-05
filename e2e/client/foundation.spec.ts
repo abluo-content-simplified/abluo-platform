@@ -6,7 +6,7 @@ import { expect, test, type Page } from '@playwright/test'
  * Runs in phone/desktop × light/dark (see playwright.config.ts).
  */
 const project = process.env.E2E_PROJECT ?? 'abluo'
-const PAGES = [`/en/account`, `/en/${project}/home`, `/en/${project}/submissions`]
+const PAGES = [`/en/account`, `/en/${project}/home`, `/en/${project}/submissions`, `/en/${project}/posts`]
 
 /** Relative luminance of the computed background of `.abluo-app`. */
 async function appBackgroundLuminance(page: Page): Promise<number> {

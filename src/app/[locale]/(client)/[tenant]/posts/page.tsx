@@ -2,7 +2,12 @@ import { notFound, redirect } from 'next/navigation'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
-import { getDashboardPosts, type DashboardPost } from '@/lib/api/client-dashboard'
+import {
+  getDashboardPostList,
+  type DashboardPostList,
+  type DashboardPostRow,
+} from '@/lib/api/client-dashboard'
+import { PostsBrowser, type BrowserPost } from '@/components/client/posts/PostsBrowser'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 
 /**
@@ -24,8 +29,10 @@ import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
  */
 export default async function PostsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ tenant: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const { tenant: projectSlug } = await params
 
@@ -42,10 +49,10 @@ export default async function PostsPage({
   const locale = await getLocale()
   const t = await getTranslations('clientDashboard')
 
-  let posts: DashboardPost[] = []
+  let list: DashboardPostList = { posts: [], languages: [], categories: [] }
   let moduleNotInstalled = false
   try {
-    posts = await getDashboardPosts(ctx, grant.projectId, { locale })
+    list = await getDashboardPostList(ctx, grant.projectId, { locale })
   } catch (error) {
     // A denial here (most likely: the blog module is not installed for this
     // project) is an expected, localized state — not a crash. Anything that
@@ -61,33 +68,15 @@ export default async function PostsPage({
     <Shell title={t('posts.title')}>
       {moduleNotInstalled ? (
         <p className="text-sm text-muted-foreground">{t('posts.moduleNotInstalled')}</p>
-      ) : posts.length === 0 ? (
+      ) : list.posts.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('posts.emptyNoPosts')}</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-muted-foreground">
-              <th className="py-2 font-medium">{t('posts.columns.title')}</th>
-              <th className="py-2 font-medium">{t('posts.columns.status')}</th>
-              <th className="py-2 font-medium">{t('posts.columns.updated')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {posts.map((post) => (
-              <tr key={post._id} className="border-b border-border/60">
-                <td className="py-2 font-medium">
-                  {post.title ?? t('posts.untitled')}
-                </td>
-                <td className="py-2 text-muted-foreground">
-                  {t(`posts.status.${post.status}`)}
-                </td>
-                <td className="py-2 text-muted-foreground">
-                  {formatUpdated(post.updatedAt, locale)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <PostsBrowser
+          posts={list.posts.map((post) => toBrowserPost(post, locale, t))}
+          languages={list.languages}
+          categories={list.categories}
+          initialQuery={toQueryString(await searchParams)}
+        />
       )}
     </Shell>
   )
@@ -96,7 +85,7 @@ export default async function PostsPage({
 /** Minimal page frame inside the dashboard shell. */
 function Shell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-3xl space-y-5">
       <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
       {children}
     </div>
@@ -104,10 +93,54 @@ function Shell({ title, children }: { title: string; children: React.ReactNode }
 }
 
 /** Locale-aware date formatting; falls back to the raw ISO string on error. */
-function formatUpdated(iso: string, locale: string): string {
+function formatDate(iso: string, locale: string): string {
   try {
     return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(iso))
   } catch {
     return iso
   }
+}
+
+type T = Awaited<ReturnType<typeof getTranslations<'clientDashboard'>>>
+
+/** The one date that matters for each state. */
+function dateLine(post: DashboardPostRow, locale: string, t: T): string {
+  switch (post.status) {
+    case 'published':
+      return t('posts.meta.published', { date: formatDate(post.publishedAt ?? post.updatedAt, locale) })
+    case 'scheduled':
+      return t('posts.meta.scheduled', { date: formatDate(post.publishedAt ?? post.updatedAt, locale) })
+    case 'offline':
+      return t('posts.meta.offlineSince', { date: formatDate(post.expiresAt ?? post.updatedAt, locale) })
+    default:
+      return t('posts.meta.edited', { date: formatDate(post.updatedAt, locale) })
+  }
+}
+
+/** Server-side formatting (dates in one place, no hydration drift). */
+function toBrowserPost(post: DashboardPostRow, locale: string, t: T): BrowserPost {
+  return {
+    _id: post._id,
+    title: post.title ?? t('posts.untitled'),
+    subtitle: post.subtitle ?? null,
+    status: post.status,
+    statusLabel: t(`posts.status.${post.status}`),
+    searchText: post.searchText,
+    categoryKeys: post.categoryKeys ?? [],
+    categories: post.categories,
+    languages: post.languages,
+    primaryDate: post.status === 'draft' ? post.updatedAt : post.publishedAt ?? post.updatedAt,
+    updatedAt: post.updatedAt,
+    dateLabel: dateLine(post, locale, t),
+    offlineLabel:
+      post.expiresAt && post.status !== 'offline'
+        ? t('posts.meta.offlineOn', { date: formatDate(post.expiresAt, locale) })
+        : null,
+  }
+}
+
+function toQueryString(sp: Record<string, string | string[] | undefined>): string {
+  const out = new URLSearchParams()
+  for (const [k, v] of Object.entries(sp)) if (typeof v === 'string') out.set(k, v)
+  return out.toString()
 }
