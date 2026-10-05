@@ -405,23 +405,6 @@ const postType = defineType({
       group: 'content',
       description: 'The post becomes visible on the website at this date and time. Leave empty to keep it as a draft.',
     }),
-    // ADR-025 D4/D5 — "Take offline automatically". Every website read of posts
-    // already filters `!defined(expiresAt) || expiresAt > now()`, so no job runs.
-    defineField({
-      name: 'expiresAt',
-      title: 'Take Offline At',
-      type: 'datetime',
-      group: 'content',
-      description: 'Optional. The post disappears from the website at this date and time. Leave empty to keep it online.',
-      validation: (Rule) =>
-        Rule.custom((value, context) => {
-          const publishedAt = (context.document as { publishedAt?: string } | undefined)?.publishedAt
-          if (value && publishedAt && new Date(value) <= new Date(publishedAt)) {
-            return 'Must be after the go-live date.'
-          }
-          return true
-        }),
-    }),
 
     // ── Media ─────────────────────────────────────────────────────────────────
     defineField({
@@ -565,6 +548,15 @@ const postType = defineType({
       type: 'datetime',
       group: 'settings',
       description: 'Optional. The post is automatically hidden from the website after this date. Leave empty to keep it live indefinitely.',
+      // ADR-025 D4/D5 — the dashboard's "Take offline automatically" writes this.
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          const publishedAt = (context.document as { publishedAt?: string } | undefined)?.publishedAt
+          if (value && publishedAt && new Date(value as string) <= new Date(publishedAt)) {
+            return 'Must be after the go-live date.'
+          }
+          return true
+        }),
     }),
     defineField({
       name: 'featured',
