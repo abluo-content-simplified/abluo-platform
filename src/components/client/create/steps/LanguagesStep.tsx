@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { BodyEditor } from '@/components/client/editor/BodyEditor'
+import { useLinkTools } from '@/components/client/create/use-link-tools'
 import type { StepProps } from '@/components/client/create/types'
 import { StepHeading, languageName } from '@/components/client/create/StepHeading'
 import { TitleFields } from '@/components/client/create/steps/TitleStep'
@@ -35,6 +36,7 @@ export function LanguagesStep({
   const writing = others.filter((l) => choices[l] === 'write')
   const [active, setActive] = useState<string | null>(writing[0] ?? null)
   const current = active && writing.includes(active) ? active : (writing[0] ?? null)
+  const links = useLinkTools(site.projectSlug, current)
   const sourceLabel = t('sourceLabel', { language: languageName(site.defaultLocale, ui) })
   const original = normalizeBlocks(draft.body[site.defaultLocale], draft.body[site.defaultLocale])
 
@@ -138,6 +140,7 @@ export function LanguagesStep({
                   initialValue={asEditorValue(normalizeBlocks(draft.body[current], draft.body[current]))}
                   placeholder={t('storyPlaceholder', { language: languageName(current, ui) })}
                   onChange={(value) => update({ [`body.${current}`]: normalizeBlocks(value, draft.body[current]) })}
+                  links={links}
                 />
               </div>
             </div>

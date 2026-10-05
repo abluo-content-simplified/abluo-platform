@@ -566,6 +566,50 @@ const postType = defineType({
       initialValue: false,
       description: 'Pin this article at the top of the homepage, blog overview, and landing pages',
     }),
+    // Call to action at the end of the post — the client's choice among the
+    // project's callToAction documents (ADR-027). Absent = default.
+    defineField({
+      name: 'cta',
+      title: 'Call to action',
+      type: 'object',
+      group: 'settings',
+      description: 'Which of the website\u2019s calls to action appears at the end of this post. Empty = the website default.',
+      fields: [
+        defineField({
+          name: 'mode',
+          title: 'Show',
+          type: 'string',
+          options: {
+            list: [
+              { value: 'default', title: 'The site default' },
+              { value: 'custom', title: 'A specific one' },
+              { value: 'none', title: 'None' },
+            ],
+            layout: 'radio',
+          },
+          initialValue: 'default',
+        }),
+        defineField({
+          name: 'ref',
+          title: 'Call to action',
+          type: 'reference',
+          to: [{ type: 'callToAction' }],
+          // Weak: deleting a call to action must never be blocked by the posts that chose it
+          // (they then simply show nothing, see resolvePostCta).
+          weak: true,
+          hidden: ({ parent }: { parent?: { mode?: string } }) => parent?.mode !== 'custom',
+          description: 'One of this website\u2019s calls to action (Website Settings → Calls to action).',
+          options: {
+            disableNew: true,
+            filter: ({ document }: { document: Record<string, unknown> }) => {
+              const projectSlug = (document as { projectSlug?: string })?.projectSlug
+              if (!projectSlug) return { filter: '_id == "@@no-project-selected@@"' }
+              return { filter: 'projectSlug == $projectSlug', params: { projectSlug } }
+            },
+          },
+        }),
+      ],
+    }),
   ],
   preview: {
     select: {

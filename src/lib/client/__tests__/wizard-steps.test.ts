@@ -5,6 +5,7 @@ vi.mock('@/lib/sanity/server-clients', () => ({ sanityWriteClient: {} }))
 import { WIZARD_STEPS } from '@/lib/api/post-drafts'
 import {
   canAdvance,
+  ctaChoiceShown,
   canPublish,
   coverNeedsAlt,
   firstPassDone,
@@ -171,5 +172,25 @@ describe('publish language summary per mode (B)', () => {
       'languageInProgress',
       'languageNotStarted',
     ])
+  })
+})
+
+describe('call to action in the overview', () => {
+  const ctas = [{ id: 'cta-book', isDefault: true }, { id: 'cta-call', isDefault: false }]
+  const draft = { title: { it: 'T' }, body: { it: block('x') } }
+  it('the CTA card appears only when the site has prepared CTAs', () => {
+    expect(overviewSections(draft, { categories: [], languages: ['it'], defaultLocale: 'it' }).map((s) => s.id)).not.toContain('cta')
+    expect(overviewSections(draft, { categories: [], languages: ['it'], defaultLocale: 'it', ctas }).at(-1)).toEqual({ id: 'cta', state: 'done' })
+    expect(overviewSections({ ...draft, cta: { mode: 'none' } }, { categories: [], languages: ['it'], defaultLocale: 'it', ctas }).at(-1)).toEqual({
+      id: 'cta',
+      state: 'optional',
+    })
+  })
+  it('ctaChoiceShown: default needs a default; custom needs an existing key; none never', () => {
+    expect(ctaChoiceShown(null, ctas)).toBe(true)
+    expect(ctaChoiceShown(null, [{ id: 'cta-call', isDefault: false }])).toBe(false)
+    expect(ctaChoiceShown({ mode: 'custom', ref: 'cta-call' }, ctas)).toBe(true)
+    expect(ctaChoiceShown({ mode: 'custom', ref: 'gone' }, ctas)).toBe(false)
+    expect(ctaChoiceShown({ mode: 'none' }, ctas)).toBe(false)
   })
 })

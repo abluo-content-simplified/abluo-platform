@@ -53,10 +53,17 @@ describe('article body links (blog + news)', () => {
       expect(html).toContain('Click')
     }
   })
-  it('a safe href renders a link, with rel/target only when blank', () => {
-    expect(render('https://studio.it')).toContain('href="https://studio.it"')
-    expect(render('https://studio.it')).not.toContain('target=')
-    const blank = render('https://studio.it', true)
+  it('a safe href renders a link; new tab follows the rule (external yes, internal no), blank overrides', () => {
+    // Links round 2: external sites open in a new tab automatically …
+    const external = render('https://studio.it')
+    expect(external).toContain('href="https://studio.it"')
+    expect(external).toContain('target="_blank"')
+    expect(external).toContain('rel="noopener noreferrer"')
+    // … site pages, mailto and tel do not …
+    for (const h of ['/contatti', 'mailto:a@b.it', 'tel:+39054412', '#prenota']) expect(render(h), h).not.toContain('target=')
+    // … and `blank` overrides either way.
+    expect(render('https://studio.it', false)).not.toContain('target=')
+    const blank = render('/contatti', true)
     expect(blank).toContain('target="_blank"')
     expect(blank).toContain('rel="noopener noreferrer"')
   })

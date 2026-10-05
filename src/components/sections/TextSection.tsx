@@ -1,5 +1,6 @@
 import type { TextSection, PortableTextContent, PortableTextBlock, DesignSystem } from '@/lib/sanity/types'
-import { isExternalHref, safeLinkHref } from '@/lib/links/safe-href'
+import { safeLinkHref } from '@/lib/links/safe-href'
+import { opensInNewTab } from '@/lib/links/link-target'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
 import { SlideUp } from '@/components/animation/SlideUp'
@@ -48,7 +49,8 @@ function renderRichTextSpans(block: PortableTextBlock): React.ReactNode {
     // Unsafe or malformed hrefs render as plain text (src/lib/links/safe-href.ts).
     const href = linkDef ? safeLinkHref(linkDef.href) : null
     if (href) {
-      const external = isExternalHref(href)
+      // New-tab rule + the link's own `blank` override (src/lib/links/link-target.ts).
+      const external = opensInNewTab({ href, blank: (linkDef as { blank?: unknown }).blank })
       node = (
         <a
           href={href}

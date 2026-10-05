@@ -6,10 +6,11 @@ import { Link, usePathname, useRouter } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ProjectSwitcher } from './ProjectSwitcher'
 import { AppThemeSwitch } from './AppThemeSwitch'
+import { AppTextSizeSwitch } from './AppTextSizeSwitch'
 import { AppVersion } from './AppVersion'
 import { AddContentSheet } from './create/AddContentSheet'
 import type { CreateMenu } from '@/lib/modules/create-menu'
-import type { AppTheme } from '@/lib/app-theme'
+import type { AppTextSize, AppTheme } from '@/lib/app-theme'
 import type { ClientNavItem } from '@/lib/modules/client-navigation'
 
 /**
@@ -36,6 +37,8 @@ export type ClientSidebarProps = {
   activeSlug: string
   /** The app theme preference, read from the cookie on the server. */
   theme: AppTheme
+  /** Text size preference, read from the cookie on the server. */
+  textSize?: AppTextSize
   /** Locale-agnostic href of the project's dashboard home. */
   homeHref: string
   /** What this user can create in this project (server-computed, `buildCreateMenu`). */
@@ -68,6 +71,7 @@ export function ClientSidebar({
   projects,
   activeSlug,
   theme,
+  textSize = 'md',
   homeHref,
   createMenu = { available: [], more: [] },
   contactEmail = null,
@@ -162,6 +166,7 @@ export function ClientSidebar({
 
         <div className="space-y-3 border-t border-border-subtle px-4 py-4">
           <AppThemeSwitch initial={theme} />
+          <AppTextSizeSwitch initial={textSize} />
           <Link href="/account" className="flex min-h-8 items-center text-sm text-muted-foreground transition-colors hover:text-foreground">
             {t('shell.account')}
           </Link>

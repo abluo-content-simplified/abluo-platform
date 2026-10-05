@@ -4,7 +4,7 @@ import { Link } from '@/i18n/navigation'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { MODULE_DASHBOARD_ROUTES, resolveProjectGrant } from '@/lib/modules/client-navigation'
 import {
-  getDashboardPostRows,
+  getDashboardPostList,
   getDashboardSubmissions,
   type DashboardPost,
   type DashboardSubmission,
@@ -62,8 +62,8 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
   const enabled = new Set(grant.enabledModuleIds)
   const canEdit = grant.permissions.includes('blog.post.write')
 
-  const [posts, wizardDrafts, submissions] = await Promise.all([
-    enabled.has('blog') ? settle<DashboardPost[]>(() => getDashboardPostRows(ctx, grant.projectId, { locale })) : null,
+  const [postList, wizardDrafts, submissions] = await Promise.all([
+    enabled.has('blog') ? settle(() => getDashboardPostList(ctx, grant.projectId, { locale })) : null,
     enabled.has('blog') ? settle<PostDraftSummary[]>(() => listPostDrafts(ctx, grant.projectId)) : null,
     enabled.has('forms')
       ? settle<DashboardSubmission[]>(() => getDashboardSubmissions(ctx, grant.projectId, { limit: 200 }))
@@ -72,6 +72,8 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
 
   // Continue editing = unfinished wizard drafts (ADR-025 D3), each reopening at its step.
   const drafts = (wizardDrafts ?? []).slice(0, 3)
+  const posts: DashboardPost[] | null = postList ? postList.posts : null
+  const categoryLabel = new Map((postList?.categories ?? []).map((c) => [c.value, c.label]))
   const recent = (posts ?? []).filter((p) => p.status === 'published').slice(0, 3)
   const newRequests = (submissions ?? []).filter((s) => s.status === 'new').length
   const postsHref = `/${projectSlug}/${MODULE_DASHBOARD_ROUTES.blog}`
@@ -93,30 +95,47 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
         <section className="flex flex-col gap-3">
           <h2 className="text-[17px] font-semibold">{t('home.continueEditing')}</h2>
           {drafts.map((draft) => (
-            <div key={draft.id} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
-              <div className="flex items-start gap-3">
-                {draft.coverThumb ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- Sanity CDN thumbnail, already sized
-                  <img
-                    src={draft.coverThumb}
-                    alt=""
-                    width={64}
-                    height={64}
-                    loading="lazy"
-                    className="size-16 shrink-0 rounded-lg bg-muted object-cover"
-                  />
+            <div key={draft.id} className="flex items-start gap-4 rounded-xl border border-border bg-card p-3">
+              {draft.coverThumb ? (
+                // eslint-disable-next-line @next/next/no-img-element -- Sanity CDN thumbnail, already sized
+                <img
+                  src={draft.coverThumb}
+                  alt=""
+                  width={96}
+                  height={96}
+                  loading="lazy"
+                  className="size-24 shrink-0 rounded-lg bg-muted object-cover"
+                />
+              ) : (
+                // Same size as a cover, so "no image yet" is obvious and never looks like a loading problem.
+                <div
+                  role="img"
+                  aria-label={t('home.noCover')}
+                  className="flex size-24 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border bg-muted text-muted-foreground"
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" className="fill-none stroke-current stroke-[1.5]">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <circle cx="9" cy="9" r="2" />
+                    <path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" />
+                  </svg>
+                  <span className="text-[11px] font-medium">{t('home.noCoverShort')}</span>
+                </div>
+              )}
+              <div className="min-w-0 flex-1 pt-0.5">
+                <p className="line-clamp-2 text-[15px] font-semibold leading-[22px]">{draft.title ?? t('posts.untitledDraft')}</p>
+                {draft.categoryKeys.length > 0 ? (
+                  <p className="mt-0.5 truncate text-sm font-medium text-foreground/80">
+                    {draft.categoryKeys.map((k) => categoryLabel.get(k) ?? k.replace(/-/g, ' ')).join(' · ')}
+                  </p>
                 ) : null}
-                <div className="min-w-0">
-                <p className="text-[15px] font-semibold leading-[22px]">{draft.title ?? t('posts.untitledDraft')}</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="mt-0.5 text-sm text-muted-foreground">
                   {t('home.atStep', { step: t(`create.stepNames.${stepKey(draft)}`) })} ·{' '}
                   {t('home.edited', { date: formatDay(draft.updatedAt, locale) })}
                 </p>
-                </div>
               </div>
               <Link
                 href={`/${projectSlug}/posts/write/${draft.id}`}
-                className="inline-flex h-11 w-fit items-center rounded-md bg-action px-4 text-[15px] font-semibold text-action-foreground"
+                className="inline-flex h-11 shrink-0 items-center rounded-md bg-action px-4 text-[15px] font-semibold text-action-foreground"
               >
                 {t('home.continue')}
               </Link>

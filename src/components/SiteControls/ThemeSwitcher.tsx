@@ -15,6 +15,7 @@ import {
   defaultThemeSwitcherMessages,
   type ThemeSwitcherMessages,
 } from '@/lib/i18n/theme-switcher-messages'
+import { isThemeForced } from '@/lib/design-system/theme-boot'
 
 type Theme = 'light' | 'dark' | 'system'
 type ThemeMode = 'lightOnly' | 'darkOnly' | 'toggle' | 'system'
@@ -30,6 +31,8 @@ interface ThemeSwitcherProps {
 }
 
 function applyTheme(t: Theme) {
+  // A draft preview forced this page's theme (?theme=); leave it alone.
+  if (isThemeForced()) return
   const resolved =
     t === 'system'
       ? window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -56,7 +59,7 @@ function useTheme() {
   }, [])
 
   function setTheme(t: Theme) {
-    localStorage.setItem('abluo-theme', t)
+    if (!isThemeForced()) localStorage.setItem('abluo-theme', t)
     setThemeState(t)
     applyTheme(t)
   }

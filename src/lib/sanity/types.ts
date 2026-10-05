@@ -867,6 +867,10 @@ export interface PostVideo {
 /** Resolved blog post — all string fields are locale-resolved by GROQ */
 export interface Post {
   _id: string
+  /** Detail query only — the post's call-to-action choice (see src/lib/blog/post-cta.ts). */
+  cta?: { mode?: 'default' | 'none' | 'custom' | null; ref?: { _ref?: string | null } | null } | null
+  /** Detail query only — the owning project (internal body links are checked against it). */
+  projectSlug?: string
   title?: string
   /** List queries: resolved { current: string }. Detail query: full per-locale slug map. */
   slug: { current: string }

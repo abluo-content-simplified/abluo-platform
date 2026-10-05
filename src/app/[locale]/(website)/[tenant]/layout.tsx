@@ -2,6 +2,8 @@ export const dynamic = 'force-dynamic'
 
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { headers } from 'next/headers'
+import { DRAFT_PREVIEW_HEADER } from '@/lib/proxy/draft-preview'
 import { tenantClient, fetchDesignSystemById } from '@/lib/sanity/client'
 import { isKnownProjectSegment } from '@/lib/tenancy/host-scope'
 import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, siteConfigFaviconQuery, projectIntegrationsQuery, projectModuleConfigQuery, projectConsentQuery } from '@/lib/sanity/queries'
@@ -654,6 +656,11 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
   // fail-open behaviour when no siteConfig document exists.
   if (!isLocaleEnabledForProject(locale, localeConfig)) notFound()
 
+  // Private draft preview (proxy-marked, see src/lib/proxy/draft-preview.ts):
+  // the same chrome, but no tracking scripts, no first-touch attribution and no
+  // consent banner — a client checking a draft is not a visitor.
+  const draftPreview = (await headers()).get(DRAFT_PREVIEW_HEADER) === '1'
+
   // On the site's own host, links carry no project segment (see siteBasePath).
   const hostScoped = await isHostScopedRequest(tenantId)
   const siteBase = siteBasePath(locale, tenantId, hostScoped)
@@ -702,7 +709,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         cookieName={consent.cookieName}
         policy={consent.policy}
         record={consent.record}
-        showBanner={consent.showBanner}
+        showBanner={consent.showBanner && !draftPreview}
         requiresConsent={consent.requiresConsent}
         locale={locale}
         policyHref={consentLinks?.cookiePolicySlug ? `${siteBase}/${consentLinks.cookiePolicySlug}` : undefined}
@@ -710,7 +717,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         motionTokens={designSystem?.motion}
       >
         <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
-        <TrackingScripts data={integrations} grants={consent.grants} />
+        {!draftPreview && <TrackingScripts data={integrations} grants={consent.grants} />}
         {livenerBgStyles && livenerBgGraphic?.scope === 'entire' && (
           <div style={livenerBgStyles} aria-hidden="true" />
         )}
@@ -751,10 +758,10 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
           }
         />
         <main>{children}</main>
-        <TrackingScripts data={integrations} placement="bodyEnd" grants={consent.grants} />
+        {!draftPreview && <TrackingScripts data={integrations} placement="bodyEnd" grants={consent.grants} />}
         <Footer tenantId={tenantId} locale={locale as SupportedLocale} defaultLocale={defaultLocale} />
         {whatsAppFab(modules, livenerConfig, tenantId, locale)}
-        <FirstTouchRecorder scope={tenantId} />
+        {!draftPreview && <FirstTouchRecorder scope={tenantId} />}
         <DevBadge />
       </ConsentProvider>
     )
@@ -834,7 +841,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
       cookieName={consent.cookieName}
       policy={consent.policy}
       record={consent.record}
-      showBanner={consent.showBanner}
+      showBanner={consent.showBanner && !draftPreview}
       requiresConsent={consent.requiresConsent}
       locale={locale}
       policyHref={consentLinks?.cookiePolicySlug ? `${siteBase}/${consentLinks.cookiePolicySlug}` : undefined}
@@ -843,7 +850,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
     >
       <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
       {accentRail && <SiteRail />}
-      <TrackingScripts data={integrations} grants={consent.grants} />
+      {!draftPreview && <TrackingScripts data={integrations} grants={consent.grants} />}
       {bgStyles && bgGraphic?.scope === 'entire' && (
         <div style={bgStyles} aria-hidden="true" />
       )}
@@ -902,7 +909,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         </>
       )}
       <main>{children}</main>
-      <TrackingScripts data={integrations} placement="bodyEnd" grants={consent.grants} />
+      {!draftPreview && <TrackingScripts data={integrations} placement="bodyEnd" grants={consent.grants} />}
       {/* Shared Footer — the same component the Livener branch mounts. It
           fetches websiteSiteConfigQuery itself, so no props beyond identity.
           `showContact` keeps the home link + address + email this branch used
@@ -919,7 +926,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         />
       )}
       {whatsAppFab(modules, config, tenantId, locale)}
-      <FirstTouchRecorder scope={tenantId} />
+      {!draftPreview && <FirstTouchRecorder scope={tenantId} />}
       <DevBadge />
     </ConsentProvider>
   )

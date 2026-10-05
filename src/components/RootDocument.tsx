@@ -1,4 +1,5 @@
 import { Geist_Mono, Barlow_Condensed, Poppins } from 'next/font/google'
+import { THEME_BOOT_SCRIPT } from '@/lib/design-system/theme-boot'
 
 /**
  * RootDocument — the `<html>`/`<body>` shell shared by the app's root layouts.
@@ -41,7 +42,8 @@ const poppins = Poppins({
 // Runs synchronously before first paint.
 // Dark-first: `:root` = dark (no class). `html.light` = light override.
 // Reads `abluo-theme` from localStorage; falls back to system preference.
-const themeScript = `(function(){try{var t=localStorage.getItem('abluo-theme');if(t==='light'){document.documentElement.classList.add('light');}else if(t==='dark'){/* default — no class needed */}else{if(!window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.classList.add('light');}}}catch(e){}})();`
+// Draft previews may force the theme via `?theme=` — see theme-boot.ts.
+const themeScript = THEME_BOOT_SCRIPT
 
 export function RootDocument({ lang, children }: { lang: string; children: React.ReactNode }) {
   return (

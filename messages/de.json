@@ -175,7 +175,9 @@
       "newRequestsBody": "{count, plural, =0 {Keine neuen Kontaktanfragen} one {neue Kontaktanfrage zu beantworten} other {neue Kontaktanfragen zu beantworten}}",
       "emptyTitle": "Dein erster Beitrag ist nur ein paar Tipps entfernt",
       "emptyBody": "Tippe auf +, um zu beginnen. Wir speichern laufend – du kannst jederzeit pausieren und weitermachen.",
-      "atStep": "Als Nächstes: {step}"
+      "atStep": "Als Nächstes: {step}",
+      "noCover": "Kein Titelbild",
+      "noCoverShort": "Kein Bild"
     },
     "version": {
       "updated": "Aktualisiert {date}"
@@ -399,9 +401,25 @@
       },
       "preview": {
         "title": "So wird dein Beitrag aussehen",
-        "helper": "Eine einfache Vorschau. Das Design deiner Website wird beim Veröffentlichen angewendet.",
+        "helper": "Dein Beitrag im Design deiner Website, genau so, wie Besucher ihn sehen werden. Nur du siehst diese Vorschau.",
         "language": "Sprache",
-        "empty": "In dieser Sprache gibt es noch nichts zu zeigen."
+        "empty": "In dieser Sprache gibt es noch nichts zu zeigen.",
+        "theme": "Farben",
+        "themeLight": "Hell",
+        "themeDark": "Dunkel",
+        "device": "Bildschirm",
+        "phone": "Telefon",
+        "computer": "Computer",
+        "openNewTab": "In neuem Tab öffnen",
+        "loading": "Vorschau wird geladen …",
+        "frameTitle": "Vorschau deines Beitrags",
+        "private": "Privater Link – er gilt 15 Minuten und zeigt nur diesen Entwurf.",
+        "errors": {
+          "generic": "Die Vorschau konnte nicht geladen werden. Bitte versuche es noch einmal.",
+          "unavailable": "Die Vorschau ist gerade nicht verfügbar.",
+          "not_found": "Dieser Entwurf ist nicht mehr da."
+        },
+        "retry": "Erneut versuchen"
       },
       "publish": {
         "title": "Was möchtest du damit machen?",
@@ -465,7 +483,8 @@
           "title": "Titel & Untertitel",
           "story": "Text",
           "cover": "Titelbild",
-          "languages": "Sprachen"
+          "languages": "Sprachen",
+          "cta": "Handlungsaufforderung"
         },
         "state": {
           "done": "Fertig",
@@ -491,7 +510,10 @@
           "scheduled": "Geplant für {date}",
           "offline": "Offline seit {date}"
         },
-        "editing": "Du bearbeitest eine Kopie. Besucher sehen die veröffentlichte Version, bis du aktualisierst."
+        "editing": "Du bearbeitest eine Kopie. Besucher sehen die veröffentlichte Version, bis du aktualisierst.",
+        "ctaNone": "Keine",
+        "ctaDefault": "Standard der Website: {name}",
+        "ctaNoDefault": "Keine (die Website hat keinen Standard)"
       },
       "menu": {
         "label": "Weitere Aktionen",
@@ -530,7 +552,23 @@
         "title": "Dein Beitrag wird geöffnet …",
         "failed": "Wir konnten diesen Beitrag nicht öffnen. Bitte versuch es noch einmal.",
         "back": "Zurück zu den Beiträgen"
+      },
+      "cta": {
+        "title": "Handlungsaufforderung hinzufügen?",
+        "helper": "Was sollen Leser nach dem Lesen tun? Diese sind für deine Website vorbereitet.",
+        "useDefault": "Die Handlungsaufforderung der Website verwenden",
+        "chooseAnother": "Oder eine andere wählen",
+        "none": "Keine",
+        "noneHelp": "Unter diesem Beitrag wird nichts angezeigt.",
+        "options": "Handlungsaufforderung"
       }
+    },
+    "textSize": {
+      "label": "Textgröße",
+      "sm": "Klein",
+      "md": "Standard",
+      "lg": "Groß",
+      "xl": "Sehr groß"
     }
   },
   "editor": {
@@ -554,7 +592,27 @@
         "invalid": "Das sieht nicht nach einem gültigen Link aus. Versuchen Sie https://beispiel.de, /kontakt oder name@beispiel.de.",
         "save": "Link speichern",
         "cancel": "Abbrechen",
-        "remove": "Link entfernen"
+        "remove": "Link entfernen",
+        "modeLabel": "Verlinken auf",
+        "modeWeb": "Webadresse",
+        "modePage": "Eine Seite Ihrer Website",
+        "searchLabel": "Seite finden",
+        "searchPlaceholder": "Nach Titel suchen …",
+        "searching": "Wird gesucht …",
+        "searchFailed": "Die Suche ist gerade nicht verfügbar – bitte gleich noch einmal versuchen.",
+        "noResults": "Nichts mit diesem Titel gefunden.",
+        "pickPage": "Wählen Sie zuerst eine Seite.",
+        "change": "Ändern",
+        "pageFallback": "Eine Seite Ihrer Website",
+        "newTab": "In neuem Tab öffnen",
+        "newTabAuto": "Automatisch: Andere Websites öffnen sich in einem neuen Tab, Ihre eigenen Seiten nicht.",
+        "newTabManual": "Von Ihnen für diesen Link festgelegt.",
+        "types": {
+          "page": "Seite",
+          "post": "Blogbeitrag",
+          "newsArticle": "Neuigkeit",
+          "event": "Veranstaltung"
+        }
       },
       "preserved": {
         "image": "Bild",

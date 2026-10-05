@@ -39,6 +39,7 @@ import { PreviewStep } from './steps/PreviewStep'
 import { PublishStep, isoToLocalInput, localToIso, type PublishChoice } from './steps/PublishStep'
 import { DoneStep, type DoneResult } from './steps/DoneStep'
 import { ReviewStep } from './steps/ReviewStep'
+import { CtaStep } from './steps/CtaStep'
 import { ConfirmDialog } from './ConfirmDialog'
 
 const LIFECYCLE_ERRORS = ['conflict', 'forbidden', 'not_found', 'invalid_value', 'unauthenticated', 'failed']
@@ -474,6 +475,8 @@ export function WizardShell({
             <StoryStep {...props} onImprove={aiImprove ? onImprove : undefined} />
           ) : step === 'cover' ? (
             <CoverStep {...props} altNeeded={altNeeded} onCoverChange={(cover) => setSnap((s) => ({ ...s, cover }))} />
+          ) : step === 'cta' ? (
+            <CtaStep {...props} />
           ) : step === 'languages' ? (
             <LanguagesStep {...props} choices={choices} onChoice={(l, c) => setChoices((s) => ({ ...s, [l]: c }))} />
           ) : step === 'preview' ? (

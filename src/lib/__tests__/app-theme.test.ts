@@ -24,3 +24,15 @@ describe('app theme preference (ADR-025 D7)', () => {
     expect(c).not.toContain('abluo-theme=')
   })
 })
+
+describe('app text size', () => {
+  it('parses, defaults and builds the attribute/cookie', async () => {
+    const m = await import('../app-theme')
+    expect(m.parseAppTextSize('xl')).toBe('xl')
+    expect(m.parseAppTextSize('huge')).toBe('md')
+    expect(m.parseAppTextSize(undefined)).toBe('md')
+    expect(m.appTextSizeAttribute('md')).toBeUndefined()
+    expect(m.appTextSizeAttribute('lg')).toBe('lg')
+    expect(m.appTextSizeCookie('sm')).toMatch(/^abluo-app-text=sm; path=\/; max-age=\d+; SameSite=Lax$/)
+  })
+})

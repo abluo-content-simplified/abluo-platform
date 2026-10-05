@@ -175,7 +175,9 @@
       "newRequestsBody": "{count, plural, =0 {No new contact requests} one {new contact request to answer} other {new contact requests to answer}}",
       "emptyTitle": "Your first post is a few taps away",
       "emptyBody": "Tap + to start. We save as you go, so you can stop and continue any time.",
-      "atStep": "Next: {step}"
+      "atStep": "Next: {step}",
+      "noCover": "No cover image",
+      "noCoverShort": "No image"
     },
     "version": {
       "updated": "Updated {date}"
@@ -399,9 +401,25 @@
       },
       "preview": {
         "title": "Here's how your post will look",
-        "helper": "A simple preview. Your website's own design is applied when it goes live.",
+        "helper": "Your post in your website's own design, exactly as visitors will see it. Only you can see this preview.",
         "language": "Language",
-        "empty": "Nothing to show in this language yet."
+        "empty": "Nothing to show in this language yet.",
+        "theme": "Colours",
+        "themeLight": "Light",
+        "themeDark": "Dark",
+        "device": "Screen",
+        "phone": "Phone",
+        "computer": "Computer",
+        "openNewTab": "Open in a new tab",
+        "loading": "Loading your preview…",
+        "frameTitle": "Preview of your post",
+        "private": "Private link — it works for 15 minutes and only shows this draft.",
+        "errors": {
+          "generic": "We couldn't load the preview. Please try again.",
+          "unavailable": "The preview isn't available right now.",
+          "not_found": "We couldn't find this draft any more."
+        },
+        "retry": "Try again"
       },
       "publish": {
         "title": "What do you want to do with it?",
@@ -465,7 +483,8 @@
           "title": "Title & subtitle",
           "story": "Story",
           "cover": "Cover image",
-          "languages": "Languages"
+          "languages": "Languages",
+          "cta": "Call to action"
         },
         "state": {
           "done": "Done",
@@ -491,7 +510,10 @@
           "scheduled": "Scheduled for {date}",
           "offline": "Offline since {date}"
         },
-        "editing": "You're editing a copy. Visitors see the live version until you update."
+        "editing": "You're editing a copy. Visitors see the live version until you update.",
+        "ctaNone": "None",
+        "ctaDefault": "Site default: {name}",
+        "ctaNoDefault": "None (the site has no default)"
       },
       "menu": {
         "label": "More actions",
@@ -530,7 +552,23 @@
         "title": "Opening your post…",
         "failed": "We couldn't open this post. Please try again.",
         "back": "Back to posts"
+      },
+      "cta": {
+        "title": "Add a call to action?",
+        "helper": "What should readers do after reading? These are prepared for your site.",
+        "useDefault": "Use the site's call to action",
+        "chooseAnother": "Or choose another",
+        "none": "None",
+        "noneHelp": "Nothing is shown under this post.",
+        "options": "Call to action"
       }
+    },
+    "textSize": {
+      "label": "Text size",
+      "sm": "Small",
+      "md": "Default",
+      "lg": "Large",
+      "xl": "Extra large"
     }
   },
   "editor": {
@@ -554,7 +592,27 @@
         "invalid": "That doesn’t look like a link we can use. Try https://example.com, /contact or name@example.com.",
         "save": "Save link",
         "cancel": "Cancel",
-        "remove": "Remove link"
+        "remove": "Remove link",
+        "modeLabel": "Link to",
+        "modeWeb": "Web address",
+        "modePage": "A page on your site",
+        "searchLabel": "Find a page",
+        "searchPlaceholder": "Search by title…",
+        "searching": "Searching…",
+        "searchFailed": "Search isn’t available right now — try again in a moment.",
+        "noResults": "Nothing found with that title.",
+        "pickPage": "Choose a page first.",
+        "change": "Change",
+        "pageFallback": "A page on your site",
+        "newTab": "Open in a new tab",
+        "newTabAuto": "Automatic: other websites open in a new tab, your own pages don’t.",
+        "newTabManual": "Set by you for this link.",
+        "types": {
+          "page": "Page",
+          "post": "Blog post",
+          "newsArticle": "News",
+          "event": "Event"
+        }
       },
       "preserved": {
         "image": "Image",

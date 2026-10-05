@@ -21,6 +21,8 @@ export type DraftSnapshot = {
   step: WizardStep
   /** Furthest step reached in the first pass ('publish' or later → reopening shows the overview). */
   furthest?: WizardStep
+  /** Call to action at the end of the post; null/absent = the site default. */
+  cta?: { mode: 'default' | 'none' | 'custom'; ref: string | null } | null
   /** 'edit' = unpublished changes to a live post ("Update post"); 'create' otherwise. */
   mode?: 'create' | 'edit'
   /** The published version, when there is one. */
@@ -37,6 +39,8 @@ export type SiteInfo = {
   categories: { value: string; label: string }[]
   /** `https://<customDomain>` when the site has one, else null ("View on your site" is hidden). */
   origin?: string | null
+  /** The project's callToAction documents (empty/absent = the CTA card is hidden). */
+  ctas?: { id: string; name: string; isDefault: boolean; heading: string | null; buttonLabel: string | null }[]
 }
 
 export type StepProps = {

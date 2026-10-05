@@ -327,6 +327,7 @@ describe('publishPostDraft', () => {
       seoDescription: { _type: 'localizedText', it: 'Desc' },
       featured: true,
       relatedEvent: { _type: 'reference', _ref: 'event-1' },
+      cta: { mode: 'custom', ref: { _type: 'reference', _ref: 'cta-book', _weak: true } },
       coverImage: { _type: 'localizedImage', asset: { _type: 'reference', _ref: 'image-x' } },
     }
     const draft = {

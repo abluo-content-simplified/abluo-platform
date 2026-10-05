@@ -29,8 +29,10 @@ import { randomUUID } from 'crypto'
 import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
+import { POST_CTA_MODES } from '@/lib/blog/post-cta'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
-import { bodyReference, cleanLink, preserved } from '@/lib/client/normalize-blocks'
+import { bodyReference, cleanLink, collectInternalRefs, preserved } from '@/lib/client/normalize-blocks'
+import { LINK_TARGET_TYPES } from '@/lib/links/link-target'
 
 export const BLOG_POST_WRITE_PERMISSION = 'blog.post.write'
 
@@ -41,6 +43,8 @@ export const WIZARD_STEPS = [
   'story',
   'cover',
   'languages',
+  // Overview-only edit screen (never part of the first pass).
+  'cta',
   'preview',
   'publish',
   'promote',
@@ -172,7 +176,10 @@ export async function patchPostDraft(
     throw new PostDraftError('not_found', 'Unknown draft id.')
   }
 
-  const site = await client.fetch<{ locales?: string[] | null; categories?: string[] | null } | null>(
+  const site = await client.fetch<{
+    locales?: string[] | null
+    categories?: string[] | null
+  } | null>(
     `{
       "locales": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].supportedLocales,
       "categories": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]
@@ -186,6 +193,8 @@ export async function patchPostDraft(
   const set: Record<string, unknown> = {}
   const unset: string[] = []
   const ensure: Record<string, unknown> = {}
+  // Links round 2: internal-link targets added in this patch (checked below in one read).
+  const newInternalRefs = new Set<string>()
 
   for (const [path, value] of Object.entries(input.set)) {
     const [field, locale, ...rest] = path.split('.')
@@ -200,6 +209,33 @@ export async function patchPostDraft(
       }
       if (keys.length) set.categories = keys
       else unset.push('categories')
+      continue
+    }
+
+    // Call to action at the end of the post: the website default, none, or one
+    // of THIS project's callToAction documents (ADR-027), stored as a weak ref.
+    if (path === 'cta.mode') {
+      if (!(POST_CTA_MODES as readonly unknown[]).includes(value)) {
+        throw new PostDraftError('invalid_value', 'Unknown call-to-action choice.')
+      }
+      ensure.cta = {}
+      set[path] = value
+      continue
+    }
+    if (path === 'cta.ref') {
+      if (value === null || value === '') {
+        unset.push(path)
+        continue
+      }
+      if (!isPostId(value)) throw new PostDraftError('invalid_value', 'Unknown call to action.')
+      // One read: the id must be a callToAction of THIS project (published).
+      const found = await client.fetch<string | null>(
+        `*[_type == "callToAction" && _id == $id && projectSlug == $projectSlug][0]._id`,
+        { id: value, projectSlug: grant.projectSlug }
+      )
+      if (found !== value) throw new PostDraftError('invalid_value', 'Unknown call to action.')
+      ensure.cta = {}
+      set[path] = { _type: 'reference', _ref: value, _weak: true }
       continue
     }
 
@@ -223,6 +259,8 @@ export async function patchPostDraft(
       // what this draft already stores for the language.
       const stored = (current as { body?: Record<string, unknown> }).body?.[locale]
       const blocks = sanitizeBlocks(value, stored)
+      const storedRefs = collectInternalRefs(stored)
+      for (const ref of collectInternalRefs(blocks)) if (!storedRefs.has(ref)) newInternalRefs.add(ref)
       if (blocks.length) set[path] = blocks
       else unset.push(path)
       continue
@@ -232,6 +270,21 @@ export async function patchPostDraft(
     }
     if (value.trim()) set[path] = value
     else unset.push(path)
+  }
+
+  // A NEW internal link must point at a published page / post / news item /
+  // event of THIS project (refs already stored are left alone, so a target
+  // deleted later never blocks saving). One read for the whole patch.
+  if (newInternalRefs.size) {
+    const ids = [...newInternalRefs]
+    const found = await client.fetch<string[] | null>(
+      `*[_id in $ids && _type in $types && projectSlug == $projectSlug]._id`,
+      { ids, types: [...LINK_TARGET_TYPES], projectSlug: grant.projectSlug }
+    )
+    const ok = new Set(Array.isArray(found) ? found : [])
+    if (!ids.every((id) => ok.has(id))) {
+      throw new PostDraftError('invalid_value', 'That link points to a page that is not on this website.')
+    }
   }
 
   set['wizard.updatedAt'] = (deps.now ?? (() => new Date()))().toISOString()
@@ -367,6 +420,8 @@ export type PostDraftSnapshot = {
   mode: 'create' | 'edit'
   /** The published version's state, when there is one. */
   live: PostLiveState | null
+  /** The post's call-to-action choice; null = never chosen (= the site default). */
+  cta: { mode: 'default' | 'none' | 'custom'; ref: string | null } | null
 }
 
 /** What the editor needs to know about the live version of a post. */
@@ -418,6 +473,25 @@ export type PostEditorSite = {
   categories: { value: string; label: string }[]
   /** `https://<customDomain>`, or null when the site has no domain yet. */
   origin: string | null
+  /** The site's prepared calls to action, texts in the site's main language. Empty = feature hidden. */
+  ctas: PostEditorCta[]
+}
+
+export type PostEditorCta = {
+  /** The callToAction document id. */
+  id: string
+  name: string
+  isDefault: boolean
+  heading: string | null
+  buttonLabel: string | null
+}
+
+function ctaChoice(value: unknown): PostDraftSnapshot['cta'] {
+  const v = value as { mode?: unknown; ref?: { _ref?: unknown } | null } | null | undefined
+  if (!v || typeof v !== 'object') return null
+  const mode = (POST_CTA_MODES as readonly unknown[]).includes(v.mode) ? (v.mode as 'default' | 'none' | 'custom') : 'default'
+  const ref = v.ref?._ref
+  return { mode, ref: typeof ref === 'string' && ref ? ref.replace(/^drafts\./, '') : null }
 }
 
 function textMap(value: unknown): Record<string, string> {
@@ -496,6 +570,7 @@ export async function getPostDraft(
     furthest: published ? 'review' : asStep(wizard?.furthest ?? wizard?.step),
     mode: published ? 'edit' : 'create',
     live: published ? liveState(published) : null,
+    cta: ctaChoice(doc.cta),
   }
 }
 
@@ -549,7 +624,7 @@ export async function listPostDrafts(
         updatedAt: typeof d.updatedAt === 'string' ? d.updatedAt : '',
         titles,
         categoryKeys: Array.isArray(d.categories) ? d.categories.filter((c): c is string => typeof c === 'string') : [],
-        coverThumb: coverThumbUrl(d.coverUrl, d.hotspot),
+        coverThumb: coverThumbUrl(d.coverUrl, d.hotspot, 192),
       }
     })
 }
@@ -581,8 +656,11 @@ export async function getPostEditorSite(
     site?: { defaultLocale?: string | null; supportedLocales?: string[] | null } | null
     categories?: Array<{ value?: string; label?: unknown }> | null
     customDomain?: string | null
+    ctas?: Array<{ _id?: unknown; internalName?: unknown; isDefault?: unknown; heading?: unknown; buttonLabel?: unknown }> | null
   } | null>(
     `{
+      "ctas": *[_type == "callToAction" && projectSlug == $projectSlug && !(_id in path("drafts.**"))]
+        | order(_createdAt asc){ _id, internalName, isDefault, heading, buttonLabel },
       "site": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales },
       "categories": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]
         .moduleInstallations[moduleId == "blog"][0].config.categories[]{ value, label },
@@ -609,5 +687,18 @@ export async function getPostEditorSite(
     languages,
     categories,
     origin: domain ? `https://${domain}` : null,
+    ctas: (r?.ctas ?? [])
+      .filter((c) => typeof c?._id === 'string' && !!c._id)
+      .map((c) => {
+        const heading = textMap(c.heading)[defaultLocale]?.trim() || null
+        const buttonLabel = textMap(c.buttonLabel)[defaultLocale]?.trim() || null
+        return {
+          id: c._id as string,
+          name: (typeof c.internalName === 'string' && c.internalName.trim()) || heading || (c._id as string),
+          isDefault: c.isDefault === true,
+          heading,
+          buttonLabel,
+        }
+      }),
   }
 }

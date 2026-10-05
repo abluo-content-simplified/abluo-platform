@@ -17,6 +17,7 @@ import { buildSchema } from '@/lib/modules/schema'
 import { buildModuleConfigSchemaTypes, buildModuleInstallationsField } from '@/lib/modules/config-schema'
 import { buildIntegrationSchemaTypes, buildIntegrationConfigsField } from '@/lib/integrations/schema'
 import { activeFormReferenceFilter } from '@/lib/sanity/form-reference-filter'
+import { POST_CTA_ACTIONS, validateCtaAction, type CtaEntryInput } from '@/lib/blog/post-cta'
 
 // scopedRef and projectSlugField are imported from @/lib/sanity/fields/shared.
 // They live there so module schema files can import them without creating a
@@ -110,6 +111,54 @@ const localizedTextType = defineType({
   ],
 })
 
+// Body link (ADR-025 · links round 2). Replaces Sanity's default link
+// annotation with the same `href` plus:
+//   - `internal`: a reference to a page / post / news item / event of the SAME
+//     project (filtered by the document's projectSlug) — resolved to a URL in
+//     the page's language by the website, plain text if the target is gone;
+//   - `blank`: optional new-tab OVERRIDE. Empty = automatic (external sites in
+//     a new tab, the site's own pages in the same tab) — src/lib/links/link-target.ts.
+// Weak reference: deleting or unpublishing a page never fails because a post
+// links to it; the website just stops linking.
+const bodyLinkAnnotation = defineArrayMember({
+  name: 'link',
+  type: 'object',
+  title: 'Link',
+  fields: [
+    defineField({
+      name: 'href',
+      title: 'URL',
+      type: 'url',
+      description: 'An external address, mailto:, tel: or a site path starting with "/". Leave empty when linking to a page below.',
+      validation: (Rule) => Rule.uri({ scheme: ['http', 'https', 'mailto', 'tel'], allowRelative: true }),
+    }),
+    defineField({
+      name: 'internal',
+      title: 'Page on this site',
+      type: 'reference',
+      weak: true,
+      to: [{ type: 'page' }, { type: 'post' }, { type: 'newsArticle' }, { type: 'event' }],
+      options: {
+        filter: ({ document }: { document: Record<string, unknown> }) => {
+          const projectSlug = typeof document?.projectSlug === 'string' ? document.projectSlug : undefined
+          if (!projectSlug) return { filter: '_id == "@@no-project-selected@@"' }
+          return { filter: 'projectSlug == $projectSlug', params: { projectSlug } }
+        },
+      },
+    }),
+    defineField({
+      name: 'blank',
+      title: 'Open in a new tab',
+      type: 'boolean',
+      description: 'Leave unset for automatic: other websites open in a new tab, pages of this site in the same tab.',
+    }),
+  ],
+  validation: (Rule) =>
+    Rule.custom((value?: { href?: string; internal?: unknown }) =>
+      value?.href && value?.internal ? 'Use either a URL or a page on this site, not both.' : true
+    ),
+})
+
 const localizedPortableTextType = defineType({
   name: 'localizedPortableText',
   title: 'Localized Rich Text',
@@ -121,7 +170,7 @@ const localizedPortableTextType = defineType({
         name: code,
         title: PLATFORM_LOCALES[code].nativeName,
         type: 'array',
-        of: [defineArrayMember({ type: 'block' })],
+        of: [defineArrayMember({ type: 'block', marks: { annotations: [bodyLinkAnnotation] } })],
       })
     ),
     translationStatusField,
@@ -191,6 +240,118 @@ const localizedImageType = defineType({
     }),
     defineField({ name: 'caption', title: 'Caption (optional)', type: 'localizedString' }),
   ],
+})
+
+// ─── Call to action (project-scoped document) ─────────────────────────────────
+// The calls to action a client can put at the end of a blog post. Abluo
+// prepares them in Studio (<project> → Website Settings → Calls to action); the
+// client only picks one per post in the dashboard (post.cta). The first
+// Website Settings area born as its own small document (ADR-027). Pure
+// validation lives in src/lib/blog/post-cta.ts so Studio, the dashboard and
+// the website agree.
+const projectScopedRefFilter = ({ document }: { document: Record<string, unknown> }) => {
+  const projectSlug = (document as { projectSlug?: string })?.projectSlug
+  if (!projectSlug) return { filter: '_id == "@@no-project-selected@@"' }
+  return { filter: 'projectSlug == $projectSlug && defined(slug)', params: { projectSlug } }
+}
+const POST_CTA_ACTION_TITLES: Record<(typeof POST_CTA_ACTIONS)[number], string> = {
+  page: '📄 Go to a page',
+  post: '📝 Go to a blog post',
+  form: '📋 Open a contact form',
+  phone: '📞 Call a phone number',
+  whatsapp: '💬 Open WhatsApp',
+  email: '✉️ Send an email',
+  externalUrl: '🔗 External URL',
+}
+const ctaShownFor =
+  (action: string) =>
+  ({ parent }: { parent?: { actionType?: string } }) =>
+    parent?.actionType !== action
+
+/** At most one default call to action per project (drafts and published both count). */
+async function validateSingleDefaultCta(value: unknown, context: unknown): Promise<true | string> {
+  if (value !== true) return true
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ctx = context as any
+  const doc = ctx?.document as { _id?: string; projectSlug?: string } | undefined
+  if (!doc?.projectSlug || typeof ctx?.getClient !== 'function') return true
+  const id = (doc._id ?? '').replace(/^drafts\./, '')
+  const others: unknown = await ctx.getClient({ apiVersion: '2026-05-21' }).fetch(
+    `count(*[_type == "callToAction" && projectSlug == $projectSlug && isDefault == true && !(_id in [$id, $draftId])])`,
+    { projectSlug: doc.projectSlug, id, draftId: `drafts.${id}` }
+  )
+  return others === 0 ? true : 'Another call to action of this website is already the default. Untick it there first.'
+}
+
+const callToActionType = defineType({
+  name: 'callToAction',
+  title: 'Call to action',
+  type: 'document',
+  fields: [
+    projectSlugField,
+    defineField({
+      name: 'internalName',
+      title: 'Internal name',
+      type: 'string',
+      description: 'What clients see when they pick it, e.g. "Book a first session". Not shown on the website.',
+      validation: (Rule) => Rule.required().min(3).max(80),
+    }),
+    defineField({
+      name: 'isDefault',
+      title: 'Default for blog posts',
+      type: 'boolean',
+      initialValue: false,
+      description: 'Shown under every post that does not choose another one. Only one per website can be the default.',
+      validation: (Rule) => Rule.custom(validateSingleDefaultCta),
+    }),
+    defineField({ name: 'heading', title: 'Heading', type: 'localizedString', validation: (Rule) => Rule.required() }),
+    defineField({ name: 'text', title: 'Short text', type: 'localizedText' }),
+    defineField({ name: 'buttonLabel', title: 'Button label', type: 'localizedString', validation: (Rule) => Rule.required() }),
+    defineField({
+      name: 'actionType',
+      title: 'What the button does',
+      type: 'string',
+      options: { list: POST_CTA_ACTIONS.map((value) => ({ value, title: POST_CTA_ACTION_TITLES[value] })), layout: 'radio' },
+      validation: (Rule) => Rule.custom((_v, context) => validateCtaAction(context.document as CtaEntryInput)),
+    }),
+    defineField({
+      name: 'pageRef',
+      title: 'Page',
+      type: 'reference',
+      to: [{ type: 'page' }],
+      hidden: ctaShownFor('page'),
+      options: { filter: projectScopedRefFilter, disableNew: true },
+    }),
+    defineField({
+      name: 'postRef',
+      title: 'Blog post',
+      type: 'reference',
+      to: [{ type: 'post' }],
+      hidden: ctaShownFor('post'),
+      options: { filter: projectScopedRefFilter, disableNew: true },
+    }),
+    defineField({
+      name: 'formRef',
+      title: 'Form',
+      type: 'reference',
+      to: [{ type: 'formDefinition' }],
+      hidden: ctaShownFor('form'),
+      description: 'Opens in a pop-up, like the other form buttons on the site.',
+      options: { filter: activeFormReferenceFilter, disableNew: true },
+    }),
+    defineField({ name: 'phone', title: 'Phone number', type: 'string', hidden: ctaShownFor('phone'), description: 'With country code, e.g. +39 0541 123456.' }),
+    defineField({ name: 'whatsappNumber', title: 'WhatsApp number', type: 'string', hidden: ctaShownFor('whatsapp'), description: 'With country code, e.g. +39 333 1234567.' }),
+    defineField({ name: 'whatsappText', title: 'Pre-filled message (optional)', type: 'localizedString', hidden: ctaShownFor('whatsapp') }),
+    defineField({ name: 'email', title: 'Email address', type: 'string', hidden: ctaShownFor('email') }),
+    defineField({ name: 'externalUrl', title: 'URL', type: 'url', hidden: ctaShownFor('externalUrl') }),
+  ],
+  preview: {
+    select: { title: 'internalName', isDefault: 'isDefault', actionType: 'actionType', heading: 'heading' },
+    prepare: ({ title, isDefault, actionType, heading }: { title?: string; isDefault?: boolean; actionType?: string; heading?: Record<string, string> }) => ({
+      title: `${title ?? Object.values(heading ?? {}).find((h) => typeof h === 'string') ?? 'Call to action'}${isDefault ? ' · Default' : ''}`,
+      subtitle: actionType ? POST_CTA_ACTION_TITLES[actionType as keyof typeof POST_CTA_ACTION_TITLES] ?? actionType : 'No action yet',
+    }),
+  },
 })
 
 // ─── CTA Object ───────────────────────────────────────────────────────────────
@@ -5253,6 +5414,14 @@ const homePageType = defineType({
  */
 export const initialValueTemplates = [
   {
+    id: 'callToActionProjectOwned',
+    title: 'Call to action',
+    schemaType: 'callToAction',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    value: (params: any) => ({ projectSlug: params?.projectSlug, isDefault: false }),
+  },
+  {
     id: 'siteConfigProjectOwned',
     title: 'Site Config',
     schemaType: 'siteConfig',
@@ -5474,6 +5643,7 @@ export const schemaTypes = [
   redirectFromType,
   localizedImageType,
   ctaType,
+  callToActionType,
   navigationLinkType,
   socialLinkType,
   footerColumnType,

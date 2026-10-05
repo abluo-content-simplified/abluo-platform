@@ -40,3 +40,12 @@ describe('wizard snapshot patches', () => {
     expect(out).not.toHaveProperty('slug')
   })
 })
+
+describe('call-to-action patches', () => {
+  it('custom + key, then back to default clears the key', () => {
+    const custom = applyToSnapshot(base, { 'cta.mode': 'custom', 'cta.ref': 'cta-call' })
+    expect(custom.cta).toEqual({ mode: 'custom', ref: 'cta-call' })
+    expect(applyToSnapshot(custom, { 'cta.mode': 'default', 'cta.ref': null }).cta).toEqual({ mode: 'default', ref: null })
+    expect(applyToSnapshot(custom, { 'cta.mode': 'none', 'cta.ref': null }).cta).toEqual({ mode: 'none', ref: null })
+  })
+})

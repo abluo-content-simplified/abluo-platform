@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
-import { APP_THEME_COOKIE, parseAppTheme } from '@/lib/app-theme'
+import { APP_TEXT_SIZE_COOKIE, APP_THEME_COOKIE, parseAppTextSize, parseAppTheme } from '@/lib/app-theme'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import {
   buildClientNavItems,
@@ -51,6 +51,7 @@ export default async function ClientProjectLayout({
   const navItems = buildClientNavItems(activeGrant)
   const projects = ctx.projects.map((grant) => ({ projectSlug: grant.projectSlug }))
   const theme = parseAppTheme((await cookies()).get(APP_THEME_COOKIE)?.value)
+  const textSize = parseAppTextSize((await cookies()).get(APP_TEXT_SIZE_COOKIE)?.value)
 
   return (
     <div className="min-h-screen md:flex">
@@ -59,6 +60,7 @@ export default async function ClientProjectLayout({
         projects={projects}
         activeSlug={activeGrant.projectSlug}
         theme={theme}
+        textSize={textSize}
         homeHref={dashboardHomeHref(activeGrant.projectSlug)}
         createMenu={buildCreateMenu(activeGrant)}
         contactEmail={process.env.ABLUO_CONTACT_EMAIL || null}

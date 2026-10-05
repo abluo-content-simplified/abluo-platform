@@ -175,7 +175,9 @@
       "newRequestsBody": "{count, plural, =0 {Nessuna nuova richiesta di contatto} one {nuova richiesta di contatto a cui rispondere} other {nuove richieste di contatto a cui rispondere}}",
       "emptyTitle": "Il tuo primo articolo è a pochi tocchi",
       "emptyBody": "Tocca + per iniziare. Salviamo mentre scrivi: puoi fermarti e riprendere quando vuoi.",
-      "atStep": "Prossimo: {step}"
+      "atStep": "Prossimo: {step}",
+      "noCover": "Nessuna immagine di copertina",
+      "noCoverShort": "Nessuna immagine"
     },
     "version": {
       "updated": "Aggiornato {date}"
@@ -399,9 +401,25 @@
       },
       "preview": {
         "title": "Ecco come apparirà il tuo articolo",
-        "helper": "Un'anteprima semplice. Il design del tuo sito viene applicato quando va online.",
+        "helper": "Il tuo articolo con il design del tuo sito, esattamente come lo vedranno i visitatori. Questa anteprima la vedi solo tu.",
         "language": "Lingua",
-        "empty": "In questa lingua non c'è ancora nulla da mostrare."
+        "empty": "In questa lingua non c'è ancora nulla da mostrare.",
+        "theme": "Colori",
+        "themeLight": "Chiaro",
+        "themeDark": "Scuro",
+        "device": "Schermo",
+        "phone": "Telefono",
+        "computer": "Computer",
+        "openNewTab": "Apri in una nuova scheda",
+        "loading": "Caricamento dell'anteprima…",
+        "frameTitle": "Anteprima del tuo articolo",
+        "private": "Link privato: funziona per 15 minuti e mostra solo questa bozza.",
+        "errors": {
+          "generic": "Non siamo riusciti a caricare l'anteprima. Riprova.",
+          "unavailable": "L'anteprima non è disponibile in questo momento.",
+          "not_found": "Non troviamo più questa bozza."
+        },
+        "retry": "Riprova"
       },
       "publish": {
         "title": "Cosa vuoi farne?",
@@ -465,7 +483,8 @@
           "title": "Titolo e sottotitolo",
           "story": "Testo",
           "cover": "Immagine di copertina",
-          "languages": "Lingue"
+          "languages": "Lingue",
+          "cta": "Invito all'azione"
         },
         "state": {
           "done": "Fatto",
@@ -491,7 +510,10 @@
           "scheduled": "Programmato per il {date}",
           "offline": "Offline dal {date}"
         },
-        "editing": "Stai modificando una copia. I visitatori vedono la versione online finché non aggiorni."
+        "editing": "Stai modificando una copia. I visitatori vedono la versione online finché non aggiorni.",
+        "ctaNone": "Nessuno",
+        "ctaDefault": "Predefinito del sito: {name}",
+        "ctaNoDefault": "Nessuno (il sito non ha un predefinito)"
       },
       "menu": {
         "label": "Altre azioni",
@@ -530,7 +552,23 @@
         "title": "Stiamo aprendo il tuo articolo…",
         "failed": "Non siamo riusciti ad aprire questo articolo. Riprova.",
         "back": "Torna agli articoli"
+      },
+      "cta": {
+        "title": "Vuoi aggiungere un invito all'azione?",
+        "helper": "Cosa dovrebbero fare i lettori dopo aver letto? Questi sono pronti per il tuo sito.",
+        "useDefault": "Usa l'invito all'azione del sito",
+        "chooseAnother": "Oppure scegline un altro",
+        "none": "Nessuno",
+        "noneHelp": "Sotto questo articolo non viene mostrato nulla.",
+        "options": "Invito all'azione"
       }
+    },
+    "textSize": {
+      "label": "Dimensione testo",
+      "sm": "Piccolo",
+      "md": "Normale",
+      "lg": "Grande",
+      "xl": "Molto grande"
     }
   },
   "editor": {
@@ -554,7 +592,27 @@
         "invalid": "Questo link non sembra valido. Prova con https://esempio.it, /contatti o nome@esempio.it.",
         "save": "Salva link",
         "cancel": "Annulla",
-        "remove": "Rimuovi link"
+        "remove": "Rimuovi link",
+        "modeLabel": "Collega a",
+        "modeWeb": "Indirizzo web",
+        "modePage": "Una pagina del tuo sito",
+        "searchLabel": "Trova una pagina",
+        "searchPlaceholder": "Cerca per titolo…",
+        "searching": "Ricerca in corso…",
+        "searchFailed": "La ricerca non è disponibile al momento: riprova tra poco.",
+        "noResults": "Nessun risultato con questo titolo.",
+        "pickPage": "Scegli prima una pagina.",
+        "change": "Cambia",
+        "pageFallback": "Una pagina del tuo sito",
+        "newTab": "Apri in una nuova scheda",
+        "newTabAuto": "Automatico: gli altri siti si aprono in una nuova scheda, le tue pagine no.",
+        "newTabManual": "Impostato da te per questo link.",
+        "types": {
+          "page": "Pagina",
+          "post": "Articolo del blog",
+          "newsArticle": "Notizia",
+          "event": "Evento"
+        }
       },
       "preserved": {
         "image": "Immagine",

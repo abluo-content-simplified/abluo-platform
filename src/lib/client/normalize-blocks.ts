@@ -46,7 +46,11 @@ const DECORATOR_ALIAS: Record<string, string> = { b: 'strong', bold: 'strong', i
 export type BodySpan = { _type: 'span'; _key: string; text: string; marks: string[] }
 /** A preserved inline object, annotation or top-level block — opaque, kept byte-for-byte. */
 export type BodyObject = { _type: string; _key: string; [field: string]: unknown }
-export type BodyLink = { _type: 'link'; _key: string; href: string; blank?: boolean }
+export type BodyInternalRef = { _type: 'reference'; _ref: string; _weak?: boolean }
+/** An external/site-relative link (`href`) or an internal reference (`internal`) — never both. */
+export type BodyLink =
+  | { _type: 'link'; _key: string; href: string; blank?: boolean }
+  | { _type: 'link'; _key: string; internal: BodyInternalRef; blank?: boolean }
 export type BodyBlock = {
   _type: 'block'
   _key: string
@@ -109,15 +113,49 @@ export function hrefFromUserInput(input: string): string | null {
   return null
 }
 
-/** A link markDef in the supported shape, rebuilt; null when it isn't one. */
+/** A published document id: no `drafts.` / `versions.` (no dots), no paths. */
+export const DOC_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/
+
+/** `{ _type: 'reference', _ref, _weak? }` rebuilt, or null. */
+export function cleanInternalRef(value: unknown): BodyInternalRef | null {
+  const r = value as Record<string, unknown> | null
+  if (!r || typeof r !== 'object' || r._type !== 'reference' || typeof r._ref !== 'string' || !DOC_ID.test(r._ref)) return null
+  if (Object.keys(r).some((k) => !['_type', '_ref', '_weak'].includes(k))) return null
+  if (r._weak !== undefined && r._weak !== true) return null
+  return r._weak ? { _type: 'reference', _ref: r._ref, _weak: true } : { _type: 'reference', _ref: r._ref }
+}
+
+/**
+ * A link markDef in the supported shape, rebuilt; null when it isn't one.
+ * Either a safe `href` or an `internal` reference (its project is checked on
+ * the server), plus an optional boolean `blank` (new-tab override).
+ */
 export function cleanLink(def: unknown): BodyLink | null {
   const d = def as Record<string, unknown> | null
   if (!d || d._type !== 'link' || typeof d._key !== 'string' || !BODY_KEY.test(d._key)) return null
-  if (Object.keys(d).some((k) => !['_type', '_key', 'href', 'blank'].includes(k))) return null
+  if (Object.keys(d).some((k) => !['_type', '_key', 'href', 'internal', 'blank'].includes(k))) return null
   if (d.blank !== undefined && typeof d.blank !== 'boolean') return null
+  const blank = d.blank === undefined ? {} : { blank: d.blank }
+  if (d.internal !== undefined) {
+    if (d.href !== undefined) return null
+    const internal = cleanInternalRef(d.internal)
+    return internal ? { _type: 'link', _key: d._key, internal, ...blank } : null
+  }
   const href = normalizeHref(d.href)
   if (!href || href !== d.href) return null
-  return d.blank === undefined ? { _type: 'link', _key: d._key, href } : { _type: 'link', _key: d._key, href, blank: d.blank }
+  return { _type: 'link', _key: d._key, href, ...blank }
+}
+
+/** Every internal-link target id in a body (supported links only). */
+export function collectInternalRefs(value: unknown): Set<string> {
+  const out = new Set<string>()
+  for (const b of Array.isArray(value) ? value : []) {
+    for (const d of (b as { markDefs?: unknown[] })?.markDefs ?? []) {
+      const link = cleanLink(d)
+      if (link && 'internal' in link) out.add(link.internal._ref)
+    }
+  }
+  return out
 }
 
 // ── Reference (what is already stored) ───────────────────────────────────────

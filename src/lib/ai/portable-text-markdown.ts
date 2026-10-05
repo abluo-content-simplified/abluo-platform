@@ -14,13 +14,32 @@
  * were in the input — a model must not invent links) and it is safe; any other
  * link keeps just its text. Output still goes through `sanitizeBlocks` afterwards.
  */
-import { cleanLink, normalizeHref } from '@/lib/client/normalize-blocks'
+import { cleanLink, DOC_ID, normalizeHref } from '@/lib/client/normalize-blocks'
+
+/**
+ * Internal links (references to a page / post of the site) travel through
+ * Markdown as a pseudo-URL the model can copy but not invent: `abluo-ref:<id>`
+ * (weak reference) / `abluo-sref:<id>` (strong). Like any link they come back
+ * only when listed in `allowedHrefs` (i.e. they were in the input). A `blank`
+ * new-tab override does not survive the round-trip — the link falls back to
+ * the automatic rule.
+ */
+const REF_TOKEN = /^abluo-(s?)ref:([A-Za-z0-9][A-Za-z0-9_-]{0,127})$/
+
+function linkToken(def: unknown): string | null {
+  const link = cleanLink(def)
+  if (!link) return null
+  if ('internal' in link) return `abluo-${link.internal._weak ? '' : 's'}ref:${link.internal._ref}`
+  return link.href
+}
 
 
 export type PtStyle = 'normal' | 'h2' | 'h3' | 'blockquote'
 export type PtListItem = 'bullet' | 'number'
 export type PtSpan = { _type: 'span'; _key: string; text: string; marks: string[] }
-export type PtLinkDef = { _type: 'link'; _key: string; href: string }
+export type PtLinkDef =
+  | { _type: 'link'; _key: string; href: string }
+  | { _type: 'link'; _key: string; internal: { _type: 'reference'; _ref: string; _weak?: true } }
 export type PtBlock = {
   _type: 'block'
   _key: string
@@ -41,8 +60,8 @@ export function collectHrefs(blocks: unknown[]): Set<string> {
   const out = new Set<string>()
   for (const b of Array.isArray(blocks) ? blocks : []) {
     for (const d of (b as { markDefs?: unknown[] })?.markDefs ?? []) {
-      const link = cleanLink(d)
-      if (link) out.add(link.href)
+      const token = linkToken(d)
+      if (token) out.add(token)
     }
   }
   return out
@@ -85,8 +104,8 @@ function formatRun(text: string, strong: boolean, em: boolean): string {
 function spansToInline(children: InBlock['children'], markDefs?: unknown[]): string {
   const hrefs = new Map<string, string>()
   for (const d of markDefs ?? []) {
-    const link = cleanLink(d)
-    if (link) hrefs.set(link._key, link.href)
+    const token = linkToken(d)
+    if (token) hrefs.set((d as { _key: string })._key, token)
   }
   // Merge neighbours with identical marks first so `**a****b**` never appears.
   const merged: { text: string; strong: boolean; em: boolean; link?: string }[] = []
@@ -294,7 +313,8 @@ function stripInlineSyntax(s: string, hrefs: string[], allowed?: ReadonlySet<str
     .replace(/<\/?[a-zA-Z][a-zA-Z0-9-]*(\s[^<>]*)?\/?>/g, (tag) => (/^<(?:https?:\/\/|mailto:)/.test(tag) ? tag : '')) // HTML tags
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '') // images
     .replace(LINK, (_m, label: string, dest: string) => {
-      const href = normalizeHref(dest.startsWith('<') ? dest.slice(1, -1) : dest)
+      const raw = dest.startsWith('<') ? dest.slice(1, -1) : dest
+      const href = REF_TOKEN.test(raw) ? raw : normalizeHref(raw)
       if (!href || !allowed?.has(href)) return label // links → text
       hrefs.push(href)
       return LINK_OPEN + label + LINK_CLOSE
@@ -410,7 +430,12 @@ export function parseInlineWithLinks(
   const markDefs: PtLinkDef[] = []
   for (const sp of result) {
     if (sp.link < 0 || defKeys.has(sp.link) || !sp.text.trim()) continue
-    const def: PtLinkDef = { _type: 'link', _key: key(), href: hrefs[sp.link] }
+    const token = hrefs[sp.link]
+    const ref = token.match(REF_TOKEN)
+    const def: PtLinkDef =
+      ref && DOC_ID.test(ref[2])
+        ? { _type: 'link', _key: key(), internal: { _type: 'reference', _ref: ref[2], ...(ref[1] ? {} : { _weak: true as const }) } }
+        : { _type: 'link', _key: key(), href: token }
     defKeys.set(sp.link, def._key)
     markDefs.push(def)
   }

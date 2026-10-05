@@ -44,6 +44,7 @@ To confirm the actual rows, an abluo_admin can run this in the Supabase SQL edit
 | `SANITY_API_WRITE_TOKEN` | **required** for the dashboard | `src/lib/sanity/server-clients.ts` (drafts, publish, media, siteConfig/tone reads) | Every draft save and publish fails |
 | `SANITY_API_READ_TOKEN` | optional (needed once the dataset goes private) | `client.ts`, `server-clients.ts` (fallback for reads) | Public-dataset reads still work today |
 | `TINIFY_API_KEY` | optional (recommended) | `src/lib/media/optimize-image.ts` (cover uploads) | Originals are uploaded without optimisation; never blocks |
+| `PREVIEW_SECRET` | **required for launch** (≥ 32 random chars; same value on every deployment that mints or renders previews) | `src/lib/preview/draft-preview-token.ts` (signs/verifies the private draft-preview links, 15 min) | Falls back to a key derived from `SUPABASE_SERVICE_ROLE_KEY` (works, but rotating the service key then breaks open preview links, and the two secrets are coupled). With neither, Preview shows "not available" and every preview URL 404s |
 | `ABLUO_CONTACT_EMAIL` | optional | `(client)/[tenant]/layout.tsx` ("contact us" in the shell) | Contact link hidden |
 | `RESEND_API_KEY` | optional for the dashboard (required for e-mail notifications) | `src/lib/notifications/resend.ts` | Notification e-mails are not sent |
 | `NOTIFY_FROM_EMAIL` | optional | same | Default sender |

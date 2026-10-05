@@ -36,6 +36,7 @@ import { SlugMapProvider, type SlugMap } from '@/components/SlugMapContext'
 import { BackButton } from '@/components/events/BackButton'
 import { PortableText } from '@portabletext/react'
 import { articlePortableTextComponents } from '@/components/portable-text/article-components'
+import { resolveBodyLinks, siteHostsForProject } from '@/lib/links/link-target'
 import { getNewsModuleMessages, formatNewsDate } from '@/lib/i18n/news-module-messages'
 import { newsBackLink } from '@/lib/modules/news/back-link'
 import { resolveEasing } from '@/lib/motion/easing'
@@ -321,7 +322,11 @@ export default async function NewsDetailPage({ params, searchParams }: PageProps
         {article.body && (
           <SlideUp duration={duration} ease={ease} delay={0.15}>
             <div className="mt-12">
-              <PortableText value={article.body} components={articlePortableTextComponents} />
+              <PortableText
+                // Internal links → URLs in this language; new-tab rule + override (links round 2).
+                value={resolveBodyLinks(article.body, { siteBase, siteHosts: siteHostsForProject(tenantId), projectSlug: tenantId })}
+                components={articlePortableTextComponents}
+              />
             </div>
           </SlideUp>
         )}

@@ -64,6 +64,14 @@ export function ReviewStep({
         )
           .map(({ locale, state }) => `${languageName(locale, ui)} ${state === 'ready' ? '✓' : `– ${tp(languageSummaryKey(state, 'draft'))}`}`)
           .join(' · ')
+      case 'cta': {
+        const ctas = site.ctas ?? []
+        const mode = draft.cta?.mode ?? 'default'
+        if (mode === 'none') return t('ctaNone')
+        if (mode === 'custom') return ctas.find((c) => c.id === draft.cta?.ref)?.name ?? t('ctaNone')
+        const def = ctas.find((c) => c.isDefault)
+        return def ? t('ctaDefault', { name: def.name }) : t('ctaNoDefault')
+      }
     }
   }
 

@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Sun, Moon, Monitor } from 'lucide-react'
+import { isThemeForced } from '@/lib/design-system/theme-boot'
 
 // ─── Theme logic ──────────────────────────────────────────────────────────────
 // Dark-first: `:root` = dark (no class), `html.light` = light override.
@@ -15,6 +16,8 @@ export type Theme = 'light' | 'dark' | 'system'
 export const THEME_KEY = 'abluo-theme'
 
 export function applyTheme(t: Theme) {
+  // A draft preview forced this page's theme (?theme=); leave it alone.
+  if (isThemeForced()) return
   const resolved =
     t === 'system'
       ? window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
@@ -69,7 +72,7 @@ export function ThemeSwitcher() {
 
   function select(t: Theme) {
     setThemeState(t)
-    try { localStorage.setItem(THEME_KEY, t) } catch {}
+    try { if (!isThemeForced()) localStorage.setItem(THEME_KEY, t) } catch {}
     applyTheme(t)
     setOpen(false)
   }

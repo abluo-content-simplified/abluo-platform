@@ -238,7 +238,7 @@ describe('links', () => {
     const back = markdownToBlocks('Vedi [qui](https://evil.example) e [là](https://studio.it)', key, {
       allowedHrefs: new Set(['https://studio.it']),
     })
-    expect(back[0].markDefs.map((d) => d.href)).toEqual(['https://studio.it'])
+    expect(back[0].markDefs.map((d) => ('href' in d ? d.href : null))).toEqual(['https://studio.it'])
     expect(back[0].children.map((c) => c.text).join('')).toBe('Vedi qui e là')
     expect(markdownToBlocks('[qui](https://studio.it)', key)[0].markDefs).toEqual([])
   })
@@ -259,5 +259,38 @@ describe('links', () => {
       '/contatti',
       'https://x.it/a?b=1&c=2#d',
     ])
+  })
+})
+
+describe('internal links through the AI round-trip', () => {
+  const body = () => [
+    block([span('Vedi '), span('chi sono', ['W']), span(' e '), span('il blog', ['S'])], {
+      markDefs: [
+        { _type: 'link', _key: 'W', internal: { _type: 'reference', _ref: 'hoffmann-page-chi-sono', _weak: true }, blank: true },
+        { _type: 'link', _key: 'S', internal: { _type: 'reference', _ref: 'hoffmann-post-x' } },
+      ],
+    }),
+  ]
+
+  it('travels as a pseudo-URL and comes back as the same reference when allowed', () => {
+    const md = blocksToMarkdown(body())
+    expect(md).toBe('Vedi [chi sono](abluo-ref:hoffmann-page-chi-sono) e [il blog](abluo-sref:hoffmann-post-x)')
+    const back = markdownToBlocks(md, key, { allowedHrefs: collectHrefs(body()) })
+    expect(back[0].markDefs.map((d) => ('internal' in d ? d.internal : null))).toEqual([
+      { _type: 'reference', _ref: 'hoffmann-page-chi-sono', _weak: true },
+      { _type: 'reference', _ref: 'hoffmann-post-x' },
+    ])
+    // The override is not carried (documented): the link falls back to the automatic rule.
+    expect(back[0].markDefs.every((d) => !('blank' in d))).toBe(true)
+    expect(sanitizeBlocks(back)).toEqual(back)
+    expect(normalizeBlocks(back)).toEqual(back)
+  })
+
+  it('drops a reference the model invented or altered, keeping the text', () => {
+    const allowed = collectHrefs(body())
+    const back = markdownToBlocks('[a](abluo-ref:livener-page-secret) [b](abluo-ref:drafts.x) [c](abluo-ref:hoffmann-page-chi-sono)', key, { allowedHrefs: allowed })
+    expect(back[0].markDefs).toHaveLength(1)
+    expect(back[0].children.map((c) => c.text).join('')).toBe('a b c')
+    expect(markdownToBlocks('[a](abluo-ref:hoffmann-page-chi-sono)', key)[0].markDefs).toEqual([])
   })
 })

@@ -5,6 +5,7 @@ vi.mock('@/lib/sanity/server-clients', () => ({ sanityWriteClient: {} }))
 import { LIMITS, sanitizeBlocks } from '@/lib/api/post-drafts'
 import {
   BODY_LIMITS,
+  collectInternalRefs,
   hasPreservedContent,
   hrefFromUserInput,
   normalizeHref,
@@ -325,5 +326,37 @@ describe('preserving existing content (edit an existing post)', () => {
     expect(sanitizeBlocks([block({ _key: 'n', style: 'h4' })], stored)).toHaveLength(1)
     expect(() => sanitizeBlocks([block({ children: [span('x', ['underline'], 's')] })], stored)).toThrow()
     expect(sanitizeBlocks([block({ children: [span('x', ['code'], 's')] })], stored)).toHaveLength(1)
+  })
+})
+
+describe('internal links (links round 2)', () => {
+  const linkBlock = (def: Record<string, unknown>) => [
+    block({ markDefs: [{ _type: 'link', _key: 'l', ...def }], children: [span('Chi sono', ['l'], 's')] }),
+  ]
+
+  it('keeps a reference link with an optional new-tab override through normalize + sanitize', () => {
+    for (const def of [
+      { internal: { _type: 'reference', _ref: 'hoffmann-page-chi-sono', _weak: true } },
+      { internal: { _type: 'reference', _ref: 'abc123' }, blank: true },
+    ]) {
+      const out = roundTrip(linkBlock(def))
+      expect(out[0].markDefs).toEqual([{ _type: 'link', _key: 'l', ...def }])
+    }
+    expect(collectInternalRefs(linkBlock({ internal: { _type: 'reference', _ref: 'abc123' } }))).toEqual(new Set(['abc123']))
+  })
+
+  it.each([
+    ['a draft id', { internal: { _type: 'reference', _ref: 'drafts.abc' } }],
+    ['a path-like id', { internal: { _type: 'reference', _ref: 'a/b' } }],
+    ['both href and internal', { href: 'https://x.it', internal: { _type: 'reference', _ref: 'abc' } }],
+    ['extra reference fields', { internal: { _type: 'reference', _ref: 'abc', _strengthenOnPublish: {} } }],
+    ['_weak false', { internal: { _type: 'reference', _ref: 'abc', _weak: false } }],
+    ['not a reference', { internal: { _ref: 'abc' } }],
+    ['a non-boolean blank', { internal: { _type: 'reference', _ref: 'abc' }, blank: 1 }],
+  ])('refuses %s (server) and drops it keeping the text (client)', (_l, def) => {
+    expect(() => sanitizeBlocks(linkBlock(def))).toThrow()
+    const out = normalizeBlocks(linkBlock(def)) as BodyBlock[]
+    expect(out[0].markDefs).toEqual([])
+    expect(spanOf(out[0]).text).toBe('Chi sono')
   })
 })

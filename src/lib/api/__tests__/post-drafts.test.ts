@@ -48,9 +48,16 @@ function fakeClient(doc: Record<string, unknown> | null = { _id: `drafts.${ID}`,
   const client = {
     create: vi.fn(async (d: Record<string, unknown>) => ({ ...d, _rev: 'r0' })),
     getDocument: vi.fn(async () => doc),
-    fetch: vi.fn(async (q: string) =>
+    fetch: vi.fn(async (q: string, p?: Record<string, unknown>) =>
       // The single-Sanity-project write guard (sanity-project-guard.ts) asks for a count.
-      q.startsWith('count(') ? 1 : { locales: ['it', 'de'], categories: ['cura', 'riflessioni'] }
+      q.startsWith('count(')
+        ? 1
+        : q.includes('"callToAction"')
+          ? // Only this project's callToAction 'cta-call' exists.
+            p?.id === 'cta-call' && p?.projectSlug === 'hoffmann'
+            ? 'cta-call'
+            : null
+          : { locales: ['it', 'de'], categories: ['cura', 'riflessioni'] }
     ),
     patch: vi.fn(() => patch),
   }
@@ -146,6 +153,41 @@ describe('patchPostDraft', () => {
     expect(wrote(c)).toBe(0)
   })
 
+  it("call to action: mode default / none / custom with one of THIS project's callToAction docs (weak ref)", async () => {
+    const c = fakeClient()
+    await patch({ 'cta.mode': 'custom', 'cta.ref': 'cta-call' }, c)
+    expect(c.ops.find(([o]) => o === 'setIfMissing')?.[1]).toEqual({ cta: {} })
+    expect(c.ops.find(([o]) => o === 'set')?.[1]).toMatchObject({
+      'cta.mode': 'custom',
+      'cta.ref': { _type: 'reference', _ref: 'cta-call', _weak: true },
+    })
+    const lookup = c.client.fetch.mock.calls.find(([q]) => (q as string).includes('"callToAction"')) as unknown as [string, Record<string, unknown>]
+    expect(lookup[1]).toEqual({ id: 'cta-call', projectSlug: 'hoffmann' })
+    const c2 = fakeClient()
+    await patch({ 'cta.mode': 'none', 'cta.ref': null }, c2)
+    expect(c2.ops.find(([o]) => o === 'set')?.[1]).toMatchObject({ 'cta.mode': 'none' })
+    expect(c2.ops.find(([o]) => o === 'unset')?.[1]).toEqual(['cta.ref'])
+  })
+
+  it.each([
+    ['an unknown mode', { 'cta.mode': 'always' }],
+    ['an unknown callToAction', { 'cta.mode': 'custom', 'cta.ref': 'cta-gone' }],
+    ["another project's callToAction", { 'cta.ref': 'cta-livener' }],
+    ['a draft id', { 'cta.ref': 'drafts.cta-call' }],
+    ['a non-string ref', { 'cta.ref': { _ref: 'cta-call' } }],
+  ])('call to action: refuses %s, nothing written', async (_l, set) => {
+    const c = fakeClient()
+    await expect(patch(set, c)).rejects.toMatchObject({ code: 'invalid_value' })
+    expect(wrote(c)).toBe(0)
+  })
+
+  it('call to action: other cta sub-fields (incl. the old key) are refused', async () => {
+    for (const set of [{ 'cta.href': 'https://evil' }, { 'cta.key': 'book' }]) {
+      const c = fakeClient()
+      await expect(patch(set, c)).rejects.toMatchObject({ code: 'invalid_field' })
+    }
+  })
+
   it('accepts the overview step and the furthest step (same enum as wizard.step)', async () => {
     const c = fakeClient()
     await patch({ 'wizard.step': 'review', 'wizard.furthest': 'publish' }, c)
@@ -219,6 +261,59 @@ describe('patchPostDraft', () => {
 
 describe('sanitizeBlocks', () => {
   // Wave 2 — existing posts: preserved content is checked against the STORED body for that language.
+  // Links round 2 — internal links must point at a page / post / news / event of THIS project.
+  describe('patchPostDraft — internal links', () => {
+    const para = (ref: string, extra: Record<string, unknown> = {}) => ({
+      _type: 'block',
+      _key: 'p',
+      style: 'normal',
+      markDefs: [{ _type: 'link', _key: 'l', internal: { _type: 'reference', _ref: ref, _weak: true }, ...extra }],
+      children: [{ _type: 'span', _key: 's', text: 'Chi sono', marks: ['l'] }],
+    })
+    // Answers the target lookup with the ids that exist in THIS project.
+    const withTargets = (ids: string[], doc?: Record<string, unknown>) => {
+      const c = fakeClient(doc)
+      ;(c.client.fetch as unknown as { mockImplementation: (fn: (q: string, params?: unknown) => Promise<unknown>) => void }).mockImplementation(async (q: string, params?: unknown) => {
+        if (q.startsWith('count(')) return 1
+        if (q.includes('_id in $ids')) {
+          const p = params as { ids: string[]; projectSlug: string; types: string[] }
+          expect(p.projectSlug).toBe('hoffmann')
+          expect(p.types).toEqual(['page', 'post', 'newsArticle', 'event'])
+          return p.ids.filter((id) => ids.includes(id))
+        }
+        return { locales: ['it', 'de'], categories: ['cura'] }
+      })
+      return c
+    }
+    const save = (set: Record<string, unknown>, c: ReturnType<typeof fakeClient>) =>
+      patchPostDraft(ctx(grant()), 'project-a', { id: ID, rev: 'r1', set }, deps(c))
+    const lookups = (c: ReturnType<typeof fakeClient>) => c.client.fetch.mock.calls.filter(([q]) => String(q).includes('_id in $ids')).length
+
+    it('accepts a link to a page of the same project (one lookup for the whole patch), with a new-tab override', async () => {
+      const c = withTargets(['hoffmann-page-chi-sono', 'hoffmann-post-x'])
+      await save({ 'body.it': [para('hoffmann-page-chi-sono', { blank: true })], 'body.de': [para('hoffmann-post-x')] }, c)
+      expect(lookups(c)).toBe(1)
+      const set = c.ops.find(([o]) => o === 'set')![1] as Record<string, unknown>
+      expect((set['body.it'] as { markDefs: unknown[] }[])[0].markDefs).toEqual([
+        { _type: 'link', _key: 'l', internal: { _type: 'reference', _ref: 'hoffmann-page-chi-sono', _weak: true }, blank: true },
+      ])
+    })
+
+    it('refuses a link to another project’s (or a missing) document, nothing written', async () => {
+      const c = withTargets(['hoffmann-page-chi-sono'])
+      await expect(save({ 'body.it': [para('livener-page-about')] }, c)).rejects.toMatchObject({ code: 'invalid_value' })
+      expect(wrote(c)).toBe(0)
+    })
+
+    it('does not re-check a link already stored (a target deleted later never blocks saving)', async () => {
+      const stored = { _id: `drafts.${ID}`, _type: 'post', _rev: 'r1', projectSlug: 'hoffmann', body: { it: [para('gone-page')] } }
+      const c = withTargets([], stored)
+      await save({ 'body.it': [para('gone-page')] }, c)
+      expect(lookups(c)).toBe(0)
+      expect(wrote(c)).toBe(1)
+    })
+  })
+
   describe('patchPostDraft wiring (stored body as reference)', () => {
     const image = { _type: 'image', _key: 'img1', asset: { _type: 'reference', _ref: 'image-abc-10x10-jpg' } }
     const text = { _type: 'block', _key: 'p', style: 'h4', markDefs: [], children: [{ _type: 'span', _key: 's', text: 'Ciao', marks: [] }] }
@@ -342,6 +437,7 @@ describe('getPostDraft', () => {
       furthest: 'cover',
       mode: 'create',
       live: null,
+      cta: null,
     })
     expect(c.getDocument).toHaveBeenCalledWith(`drafts.${ID}`)
   })
@@ -366,6 +462,12 @@ describe('getPostDraft', () => {
     })
   })
 
+  it('returns the call-to-action choice; an unknown stored mode reads as default', async () => {
+    const base = { _id: `drafts.${ID}`, _type: 'post', _rev: 'r', projectSlug: 'hoffmann' }
+    expect((await getPostDraft(ctx(grant()), 'project-a', ID, rdeps(readClient({ doc: { ...base, cta: { mode: 'custom', ref: { _type: 'reference', _ref: 'cta-call', _weak: true } } } })))).cta).toEqual({ mode: 'custom', ref: 'cta-call' })
+    expect((await getPostDraft(ctx(grant()), 'project-a', ID, rdeps(readClient({ doc: { ...base, cta: { mode: 'x' } } })))).cta).toEqual({ mode: 'default', ref: null })
+  })
+
   it("a published doc of another project under the same id makes the draft not_found", async () => {
     const c = readClient({ published: { _id: ID, _type: 'post', _rev: 'p', projectSlug: 'livener' } })
     await expect(getPostDraft(ctx(grant()), 'project-a', ID, rdeps(c))).rejects.toMatchObject({ code: 'not_found' })
@@ -375,6 +477,7 @@ describe('getPostDraft', () => {
     const c = readClient({ doc: { _id: `drafts.${ID}`, _type: 'post', _rev: 'r', projectSlug: 'hoffmann', wizard: { step: 'nope' } } })
     const d = await getPostDraft(ctx(grant()), 'project-a', ID, rdeps(c))
     expect(d.step).toBe('type')
+    expect(d.cta).toBeNull()
     expect(d.furthest).toBe('type')
     expect(d.cover).toBeNull()
     expect(c.fetch).not.toHaveBeenCalled()
@@ -462,8 +565,27 @@ describe('getPostEditorSite', () => {
         { value: 'senza-label', label: 'senza label' },
       ],
       origin: 'https://ch-psicoterapeuta.com',
+      ctas: [],
     })
     expect((c.fetch.mock.calls[0] as unknown as [string, Record<string, unknown>])[1]).toEqual({ projectSlug: 'hoffmann' })
+  })
+
+  it("lists the site's prepared calls to action, texts in the main language", async () => {
+    const c = readClient({
+      fetchResult: {
+        site: { defaultLocale: 'it', supportedLocales: ['it', 'de'] },
+        ctas: [
+          { _id: 'cta-book', internalName: 'Book a first session', isDefault: true, heading: { it: 'Prenota', de: 'Buchen' }, buttonLabel: { it: 'Scrivimi' } },
+          { _id: 'cta-call', heading: { de: 'Anrufen' } },
+          { internalName: 'no id — ignored' },
+        ],
+      },
+    })
+    const site = await getPostEditorSite(ctx(grant()), 'project-a', { locale: 'en' }, rdeps(c))
+    expect(site.ctas).toEqual([
+      { id: 'cta-book', name: 'Book a first session', isDefault: true, heading: 'Prenota', buttonLabel: 'Scrivimi' },
+      { id: 'cta-call', name: 'cta-call', isDefault: false, heading: null, buttonLabel: null },
+    ])
   })
 
   it('no domain → origin null', async () => {

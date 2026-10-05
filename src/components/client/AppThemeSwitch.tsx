@@ -20,7 +20,7 @@ export function AppThemeSwitch({ initial }: { initial: AppTheme }) {
 
   function choose(next: AppTheme, el: HTMLElement) {
     setTheme(next)
-    document.cookie = appThemeCookie(next)
+    writeCookie(appThemeCookie(next))
     const root = el.closest<HTMLElement>('.abluo-app')
     if (!root) return
     const attr = appThemeAttribute(next)
@@ -60,4 +60,9 @@ export function AppThemeSwitch({ initial }: { initial: AppTheme }) {
       </div>
     </div>
   )
+}
+
+/** Module-level so the React compiler doesn't treat it as mutating render state. */
+function writeCookie(value: string) {
+  document.cookie = value
 }

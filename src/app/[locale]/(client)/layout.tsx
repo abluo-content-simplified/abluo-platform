@@ -1,7 +1,14 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { Inter } from 'next/font/google'
-import { APP_THEME_COOKIE, appThemeAttribute, parseAppTheme } from '@/lib/app-theme'
+import {
+  APP_TEXT_SIZE_COOKIE,
+  APP_THEME_COOKIE,
+  appTextSizeAttribute,
+  appThemeAttribute,
+  parseAppTextSize,
+  parseAppTheme,
+} from '@/lib/app-theme'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 
 /**
@@ -42,12 +49,15 @@ export default async function ClientLayout({
     redirect(`/login?next=${encodeURIComponent(`/${locale}/account`)}`)
   }
 
-  const theme = parseAppTheme((await cookies()).get(APP_THEME_COOKIE)?.value)
+  const jar = await cookies()
+  const theme = parseAppTheme(jar.get(APP_THEME_COOKIE)?.value)
+  const textSize = parseAppTextSize(jar.get(APP_TEXT_SIZE_COOKIE)?.value)
 
   return (
     <div
       className={`abluo-app ${inter.variable} min-h-screen`}
       data-theme={appThemeAttribute(theme)}
+      data-text-size={appTextSizeAttribute(textSize)}
       data-surface="manage"
     >
       {children}

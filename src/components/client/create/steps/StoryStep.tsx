@@ -4,6 +4,7 @@ import { useRef, useState, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import type { PortableTextBlock } from '@portabletext/editor'
 import { BodyEditor } from '@/components/client/editor/BodyEditor'
+import { useLinkTools } from '@/components/client/create/use-link-tools'
 import { ImproveReview } from '@/components/client/create/ImproveReview'
 import type { StepProps } from '@/components/client/create/types'
 import {
@@ -38,7 +39,7 @@ type Notice = { kind: 'hint' | 'error'; text: string } | null
  * area. Every change is normalised to the server's body shape and handed to
  * the shell via `update({ 'body.<locale>': blocks })`; the shell autosaves.
  */
-export function StoryStep({ draft, locale, update, onImprove }: StoryStepProps) {
+export function StoryStep({ draft, site, locale, update, onImprove }: StoryStepProps) {
   const t = useTranslations('clientDashboard.create.story')
   const path = `body.${locale}`
 
@@ -53,6 +54,9 @@ export function StoryStep({ draft, locale, update, onImprove }: StoryStepProps) 
   const [notice, setNotice] = useState<Notice>(null)
   const [improving, setImproving] = useState(false)
   const [suggestion, setSuggestion] = useState<BodyItem[] | null>(null)
+
+  // Links: the site's own hosts decide "new tab"; "A page on your site" searches this project only.
+  const links = useLinkTools(site.projectSlug, locale)
 
   const words = countWords(current)
   const minutes = readingMinutes(words)
@@ -122,6 +126,7 @@ export function StoryStep({ draft, locale, update, onImprove }: StoryStepProps) 
           key={`${locale}:${editorKey}`}
           initialValue={asEditorValue(seed)}
           placeholder={t('placeholder')}
+          links={links}
           onChange={(value) => commit(normalizeBlocks(value, latest.current))}
         />
       </div>

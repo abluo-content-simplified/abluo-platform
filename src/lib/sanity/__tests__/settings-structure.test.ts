@@ -145,4 +145,24 @@ describe('Studio settings structure — one-surface source guard (ADR-014)', () 
     // the two checks above if it existed outside both named regions).
     expect(totalOccurrences).toBe(websiteOccurrences)
   })
+
+  it('ADR-027: Website Settings is a list — General (siteConfig) then Calls to action (callToAction docs)', () => {
+    const source = readConfigSource()
+    const region = sliceRegion(source, findBanners(source), WEBSITE_SETTINGS_MARKER)
+    // Stable ids: the Website Settings entry itself, its list, and both areas.
+    for (const id of ['-website-settings`', '-website-settings-list`', '-website-settings-general`', '-website-settings-ctas`']) {
+      expect(region).toContain(id)
+    }
+    const general = region.indexOf('website-settings-general')
+    const ctas = region.indexOf('website-settings-ctas')
+    expect(general).toBeGreaterThan(-1)
+    expect(ctas).toBeGreaterThan(general)
+    // General still opens siteConfig with its project-owned template; Calls to action is project-filtered.
+    expect(region.slice(general, ctas)).toMatch(/schemaType\(\s*['"]siteConfig['"]\s*\)/)
+    expect(region.slice(general, ctas)).toContain("'siteConfigProjectOwned'")
+    const ctaSlice = region.slice(ctas)
+    expect(ctaSlice).toMatch(/schemaType\(\s*['"]callToAction['"]\s*\)/)
+    expect(ctaSlice).toContain('_type == "callToAction" && projectSlug == $slug')
+    expect(ctaSlice).toContain("'callToActionProjectOwned'")
+  })
 })

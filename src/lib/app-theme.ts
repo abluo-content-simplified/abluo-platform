@@ -34,3 +34,26 @@ export function appThemeAttribute(theme: AppTheme): 'light' | 'dark' | undefined
 export function appThemeCookie(theme: AppTheme): string {
   return `${APP_THEME_COOKIE}=${theme}; path=/; max-age=${APP_THEME_COOKIE_MAX_AGE}; SameSite=Lax`
 }
+
+// ── Text size (accessibility) ────────────────────────────────────────────────
+// Per-person preference, same cookie pattern as the theme so the first paint is
+// already right. Applied as `data-text-size` on `.abluo-app` (absent = default);
+// globals.css scales the whole app (text, controls, spacing) with CSS `zoom`, so
+// fixed px sizes scale too and tap targets grow with the text.
+
+export const APP_TEXT_SIZE_COOKIE = 'abluo-app-text'
+export const APP_TEXT_SIZES = ['sm', 'md', 'lg', 'xl'] as const
+export type AppTextSize = (typeof APP_TEXT_SIZES)[number]
+
+export function parseAppTextSize(value: string | undefined | null): AppTextSize {
+  return value === 'sm' || value === 'lg' || value === 'xl' ? value : 'md'
+}
+
+/** The `data-text-size` attribute for `.abluo-app`: absent for the default. */
+export function appTextSizeAttribute(size: AppTextSize): Exclude<AppTextSize, 'md'> | undefined {
+  return size === 'md' ? undefined : size
+}
+
+export function appTextSizeCookie(size: AppTextSize): string {
+  return `${APP_TEXT_SIZE_COOKIE}=${size}; path=/; max-age=${APP_THEME_COOKIE_MAX_AGE}; SameSite=Lax`
+}

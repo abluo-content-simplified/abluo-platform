@@ -489,18 +489,48 @@ export default defineConfig({
                     // navigation, social links, website behaviour. Module and
                     // communications config does NOT belong here (ADR-020
                     // Decision 2); it lives in the Modules pane above.
+                    // ADR-027 — Website Settings is a list of small documents,
+                    // split out of siteConfig one area at a time. "General" is
+                    // the siteConfig document exactly as before (one surface,
+                    // AutoCreateSiteConfigAction unchanged); new areas are
+                    // their own project-scoped document types.
                     S.listItem()
                       .id(`${slug}-website-settings`)
                       .title('Website Settings')
                       .child(
-                        S.documentList()
+                        S.list()
+                          .id(`${slug}-website-settings-list`)
                           .title('Website Settings')
-                          .schemaType('siteConfig')
-                          .apiVersion('2026-05-21')
-                          .filter(`_type == "siteConfig" && projectSlug == $slug`)
-                          .params({ slug })
-                          .initialValueTemplates([
-                            S.initialValueTemplateItem('siteConfigProjectOwned', { projectSlug: slug }),
+                          .items([
+                            S.listItem()
+                              .id(`${slug}-website-settings-general`)
+                              .title('General')
+                              .child(
+                                S.documentList()
+                                  .title('General')
+                                  .schemaType('siteConfig')
+                                  .apiVersion('2026-05-21')
+                                  .filter(`_type == "siteConfig" && projectSlug == $slug`)
+                                  .params({ slug })
+                                  .initialValueTemplates([
+                                    S.initialValueTemplateItem('siteConfigProjectOwned', { projectSlug: slug }),
+                                  ])
+                              ),
+                            // Calls to action at the end of blog posts (ADR-027, first split area).
+                            S.listItem()
+                              .id(`${slug}-website-settings-ctas`)
+                              .title('Calls to action')
+                              .child(
+                                S.documentList()
+                                  .title('Calls to action')
+                                  .schemaType('callToAction')
+                                  .apiVersion('2026-05-21')
+                                  .filter(`_type == "callToAction" && projectSlug == $slug`)
+                                  .params({ slug })
+                                  .initialValueTemplates([
+                                    S.initialValueTemplateItem('callToActionProjectOwned', { projectSlug: slug }),
+                                  ])
+                              ),
                           ])
                       ),
 
@@ -724,6 +754,6 @@ export default defineConfig({
     // Note: Sanity always re-sorts the menu alphabetically in the UI layer —
     // custom ordering via newDocumentOptions is not possible. Filter only.
     newDocumentOptions: (prev) =>
-      prev.filter((opt) => !['blogCategory', 'newsCategory', 'eventCategory', 'blogCategoryProjectOwned', 'newsCategoryProjectOwned', 'eventCategoryProjectOwned', 'homePage', 'homePageProjectOwned', 'livePageProjectOwned', 'eventsPageProjectOwned', 'blogPageProjectOwned', 'newsPageProjectOwned'].includes(opt.templateId)),
+      prev.filter((opt) => !['blogCategory', 'newsCategory', 'eventCategory', 'blogCategoryProjectOwned', 'newsCategoryProjectOwned', 'eventCategoryProjectOwned', 'homePage', 'homePageProjectOwned', 'livePageProjectOwned', 'eventsPageProjectOwned', 'blogPageProjectOwned', 'newsPageProjectOwned', 'callToActionProjectOwned'].includes(opt.templateId)),
   },
 })

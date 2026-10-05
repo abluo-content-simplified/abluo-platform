@@ -332,3 +332,9 @@
 .abluo-body-editor [data-list-item="bullet"][data-level="2"]::before { content: "◦"; }
 .abluo-body-editor [data-list-item="number"]::before { content: attr(data-list-index) "."; }
 
+
+/* Abluo App text size (accessibility). Scales the whole app — text, controls and
+   spacing — so fixed px sizes grow too and tap targets stay proportional. */
+.abluo-app[data-text-size="sm"] { zoom: 0.9; }
+.abluo-app[data-text-size="lg"] { zoom: 1.125; }
+.abluo-app[data-text-size="xl"] { zoom: 1.25; }

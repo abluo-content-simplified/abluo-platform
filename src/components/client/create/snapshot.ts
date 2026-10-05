@@ -9,6 +9,12 @@ export function applyToSnapshot(snap: DraftSnapshot, set: PendingSet): DraftSnap
     if (path === 'categories') next = { ...next, categories: Array.isArray(value) ? (value as string[]) : [] }
     else if (path === 'wizard.step') next = { ...next, step: value as WizardStep }
     else if (path === 'wizard.furthest') next = { ...next, furthest: value as WizardStep }
+    else if (path === 'cta.mode') {
+      const mode = value as 'default' | 'none' | 'custom'
+      next = { ...next, cta: { mode, ref: mode === 'custom' ? (next.cta?.ref ?? null) : null } }
+    } else if (path === 'cta.ref') {
+      next = { ...next, cta: { mode: next.cta?.mode ?? 'custom', ref: typeof value === 'string' && value ? value : null } }
+    }
     else {
       const [field, locale] = path.split('.')
       if (!locale || !['title', 'subtitle', 'excerpt', 'body'].includes(field)) continue

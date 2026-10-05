@@ -15,6 +15,7 @@ import {
   isPlatformHost,
 } from '@/lib/tenancy/host-scope'
 import { unbrand } from '@/lib/tenancy/ids'
+import { DRAFT_PREVIEW_HEADER, isDraftPreviewPath } from '@/lib/proxy/draft-preview'
 
 const intlMiddleware = createMiddleware(routing)
 
@@ -189,7 +190,7 @@ async function requireAuthenticatedInProxy(request: NextRequest) {
   return supabaseResponse
 }
 
-export async function proxy(request: NextRequest) {
+async function routeRequest(request: NextRequest) {
   const hostname = request.headers.get('host') ?? ''
   // Same normalisation the route table is keyed by (case, port, trailing dot,
   // `www.`, IPv6 literals) so the three platform-host equality checks below
@@ -527,6 +528,33 @@ export async function proxy(request: NextRequest) {
 
   // ── Platform routes (no tenant) — apply i18n middleware ───────────────────
   return intlMiddleware(request)
+}
+
+// ─── Private draft preview (ADR-025 · preview) ────────────────────────────────
+// `/{locale}/{project}/preview/post/{id}?t=…` (or `/preview/post/{id}` on a
+// project's own domain) routes like any other website path above — the page
+// itself checks the signed token. On top of the routing, every response for it
+// is marked: never indexed, never cached, no Referer (the URL carries the
+// token), and the website layout is told it renders a preview so it loads no
+// tracking, records no first touch and shows no consent banner.
+export async function proxy(request: NextRequest) {
+  const response = await routeRequest(request)
+  if (!isDraftPreviewPath(request.nextUrl.pathname)) return response
+  response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive')
+  response.headers.set('Cache-Control', 'private, no-store, max-age=0')
+  response.headers.set('Referrer-Policy', 'no-referrer')
+  // Forward a request header to the page/layout. NextResponse encodes request
+  // header overrides as response headers; build them with the public API and
+  // copy them onto whatever response routing produced (next or rewrite).
+  const forwarded = new Headers(request.headers)
+  forwarded.set(DRAFT_PREVIEW_HEADER, '1')
+  const carrier = NextResponse.next({ request: { headers: forwarded } })
+  carrier.headers.forEach((value, key) => {
+    if (key === 'x-middleware-override-headers' || key.startsWith('x-middleware-request-')) {
+      response.headers.set(key, value)
+    }
+  })
+  return response
 }
 
 export const config = {

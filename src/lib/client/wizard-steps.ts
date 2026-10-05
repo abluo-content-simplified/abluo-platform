@@ -20,6 +20,7 @@ export const WIZARD_STEP_ORDER: readonly WizardStep[] = [
   'story',
   'cover',
   'languages',
+  'cta',
   'preview',
   'publish',
   'promote',
@@ -86,6 +87,7 @@ type Content = {
   body: Record<string, unknown[]>
   categories?: string[]
   cover?: { alt: Record<string, string> } | null
+  cta?: { mode?: string | null; ref?: string | null } | null
 }
 
 /** True when Portable Text blocks contain any non-blank text. */
@@ -131,12 +133,12 @@ export function progressSteps(steps: WizardFlowStep[]): WizardFlowStep[] {
 // ── Overview ("review") ──────────────────────────────────────────────────────
 
 export type SectionState = 'done' | 'missing' | 'optional'
-export type OverviewSection = { id: 'category' | 'title' | 'story' | 'cover' | 'languages'; state: SectionState }
+export type OverviewSection = { id: 'category' | 'title' | 'story' | 'cover' | 'languages' | 'cta'; state: SectionState }
 
 /** The overview's sections for this site, each with its state. */
 export function overviewSections(
   draft: Content,
-  site: { categories: unknown[]; languages: string[]; defaultLocale: string }
+  site: { categories: unknown[]; languages: string[]; defaultLocale: string; ctas?: { id: string; isDefault: boolean }[] }
 ): OverviewSection[] {
   const d = site.defaultLocale
   const out: OverviewSection[] = []
@@ -148,6 +150,8 @@ export function overviewSections(
     const others = site.languages.filter((l) => l !== d)
     out.push({ id: 'languages', state: others.every((l) => languageReady(draft, l)) ? 'done' : 'optional' })
   }
+  // Call to action: only on sites with prepared CTAs (overview-only screen).
+  if (site.ctas?.length) out.push({ id: 'cta', state: ctaChoiceShown(draft.cta, site.ctas) ? 'done' : 'optional' })
   return out
 }
 
@@ -175,4 +179,15 @@ export function languageStates(draft: Content, languages: string[]): { locale: s
 export function languageSummaryKey(state: LanguageState, mode: 'now' | 'schedule' | 'draft'): string {
   if (mode === 'draft') return state === 'ready' ? 'languageSaved' : state === 'partial' ? 'languageInProgress' : 'languageNotStarted'
   return state === 'ready' ? 'languageLive' : 'languageMissing'
+}
+
+/** True when the post's choice ends up showing one of the site's CTAs. */
+export function ctaChoiceShown(
+  choice: { mode?: string | null; ref?: string | null } | null | undefined,
+  ctas: { id: string; isDefault: boolean }[]
+): boolean {
+  const mode = choice?.mode ?? 'default'
+  if (mode === 'none') return false
+  if (mode === 'custom') return ctas.some((c) => c.id === choice?.ref)
+  return ctas.some((c) => c.isDefault)
 }

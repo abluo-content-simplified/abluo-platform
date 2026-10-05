@@ -14,6 +14,7 @@
 // content type with a localizedPortableText body can use it.
 
 import { safeLinkHref } from '@/lib/links/safe-href'
+import { opensInNewTab } from '@/lib/links/link-target'
 
 export const articlePortableTextComponents = {
   block: {
@@ -80,13 +81,17 @@ export const articlePortableTextComponents = {
     link: ({ value, children }: { value?: { href?: string; blank?: boolean }; children?: React.ReactNode }) => {
       // Unsafe or malformed hrefs (javascript:, data:, "//host", …) render as
       // plain text — bodies can hold Studio-authored or preserved annotations.
+      // So does an internal link the page didn't resolve (no href): pages pass
+      // bodies through `resolveBodyLinks` first, which also settles `blank`.
       const href = safeLinkHref(value?.href)
       if (!href) return <>{children}</>
+      // New tab: external sites yes, the site's own pages no; `blank` overrides.
+      const blank = opensInNewTab({ href, blank: value?.blank })
       return (
         <a
           href={href}
-          target={value?.blank ? '_blank' : undefined}
-          rel={value?.blank ? 'noopener noreferrer' : undefined}
+          target={blank ? '_blank' : undefined}
+          rel={blank ? 'noopener noreferrer' : undefined}
           style={{ color: 'var(--color-primary)' }}
           className="underline underline-offset-2 hover:opacity-75 transition-opacity"
         >

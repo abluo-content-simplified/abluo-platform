@@ -38,6 +38,30 @@
 const loc = (field: string) =>
   `coalesce(${field}[$locale], ${field}[$defaultLocale], ${field}.en, select(!defined(${field}._type) => ${field}))`
 
+/**
+ * A localized rich-text body with its INTERNAL links dereferenced (ADR-025 ·
+ * links round 2). Every link markDef carrying `internal` (a weak reference to
+ * a page / post / news item / event) gains `internalTarget` — type, home flag,
+ * project, slug in the CURRENT language only, and whether it is live — which
+ * `resolveBodyLinks` (src/lib/links/link-target.ts) turns into a URL, or into
+ * plain text when the target is missing, unpublished or untranslated.
+ * Everything else in the body passes through untouched (`...`).
+ */
+const locBody = (field: string) => /* groq */ `(${loc(field)})[]{
+    ...,
+    markDefs[]{
+      ...,
+      _type == "link" && defined(internal._ref) => {
+        "internalTarget": internal->{
+          _type, pageType, projectSlug,
+          "slug": slug[$locale].current,
+          "live": select(_type in ["post", "newsArticle"] => defined(publishedAt) && publishedAt <= now(), true)
+            && (!defined(expiresAt) || expiresAt > now())
+        }
+      }
+    }
+  }`
+
 const locImage = (field: string) => /* groq */ `
   ${field} {
     asset,
@@ -1000,15 +1024,43 @@ export const dashboardPostsContextQuery = /* groq */ `{
 // did not, so a scheduled or expired post was reachable by its direct URL.
 const POST_IS_LIVE = /* groq */ `defined(publishedAt) && publishedAt <= now() && (!defined(expiresAt) || expiresAt > now())`
 
+// ─── Calls to action at the end of blog posts ─────────────────────────────────
+// The project's callToAction documents (Website Settings → Calls to action,
+// ADR-027), published only. Localized fields
+// stay RAW — resolvePostCta picks the visitor's language with no fallback.
+// Every reference is resolved through a project-scoped subquery, so a
+// reference copied from another project resolves to nothing. Binds
+// $projectSlug, $locale and $defaultLocale (the form definition projection).
+export const postCallToActionsQuery = /* groq */ `
+  *[_type == "callToAction" && projectSlug == $projectSlug && !(_id in path("drafts.**"))] | order(_createdAt asc){
+    _id,
+    internalName,
+    isDefault,
+    heading,
+    text,
+    buttonLabel,
+    actionType,
+    "pageSlugs": *[_type == "page" && ^.pageRef._ref == _id && projectSlug == $projectSlug][0].slug,
+    "postSlugs": *[_type == "post" && ^.postRef._ref == _id && projectSlug == $projectSlug && ${POST_IS_LIVE}][0].slug,
+    "form": ${scopedFormDefinition('formRef')},
+    phone,
+    whatsappNumber,
+    whatsappText,
+    email,
+    externalUrl
+  }
+`
+
 export const postBySlugQuery = /* groq */ `
   *[_type == "post" && projectSlug == $projectSlug && slug[$locale].current == $slug && ${POST_IS_LIVE}][0] {
     _id,
+    projectSlug,
     "title": ${loc('title')},
     "slugMap": slug,
     "redirectFrom": redirectFrom,
     "excerpt": coalesce(${loc('excerpt')}, ${loc('subtitle')}),
     "subtitle": ${loc('subtitle')},
-    "body": ${loc('body')},
+    "body": ${locBody('body')},
     publishedAt,
     featured,
     ${locImage('coverImage')},
@@ -1044,6 +1096,9 @@ export const postBySlugQuery = /* groq */ `
     // ADR-022 §6 — optional gallery below the text (Gallery module).
     "gallery": gallery->{ ${GALLERY_FIELDS} },
     galleryLayout,
+    // The post's call-to-action choice ({ mode, ref }); resolved against
+    // postCallToActionsQuery by resolvePostCta (src/lib/blog/post-cta.ts).
+    cta { mode, ref },
     "seoTitle": coalesce(${loc('seoTitle')}, ${loc('title')}),
     "seoDescription": coalesce(${loc('seoDescription')}, ${loc('excerpt')}),
     seoImage { asset, hotspot, crop },
@@ -1311,7 +1366,7 @@ export const newsArticleBySlugQuery = /* groq */ `
     "slugMap": slug,
     "redirectFrom": redirectFrom,
     "excerpt": ${loc('excerpt')},
-    "body": ${loc('body')},
+    "body": ${locBody('body')},
     publishedAt,
     expiresAt,
     featured,
