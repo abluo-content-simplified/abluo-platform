@@ -93,12 +93,25 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
           <h2 className="text-[17px] font-semibold">{t('home.continueEditing')}</h2>
           {drafts.map((draft) => (
             <div key={draft.id} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
-              <div>
+              <div className="flex items-start gap-3">
+                {draft.coverThumb ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- Sanity CDN thumbnail, already sized
+                  <img
+                    src={draft.coverThumb}
+                    alt=""
+                    width={64}
+                    height={64}
+                    loading="lazy"
+                    className="size-16 shrink-0 rounded-lg bg-muted object-cover"
+                  />
+                ) : null}
+                <div className="min-w-0">
                 <p className="text-[15px] font-semibold leading-[22px]">{draft.title ?? t('posts.untitledDraft')}</p>
                 <p className="text-sm text-muted-foreground">
                   {t('home.atStep', { step: t(`create.stepNames.${stepKey(draft)}`) })} ·{' '}
                   {t('home.edited', { date: formatDay(draft.updatedAt, locale) })}
                 </p>
+                </div>
               </div>
               <Link
                 href={`/${projectSlug}/posts/write/${draft.id}`}

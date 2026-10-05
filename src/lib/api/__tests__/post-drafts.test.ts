@@ -340,8 +340,8 @@ describe('listPostDrafts', () => {
     })
     const rows = await listPostDrafts(ctx(grant()), 'project-a', rdeps(c))
     expect(rows).toEqual([
-      { id: ID, title: 'Hallo', step: 'title', furthest: 'publish', updatedAt: '2026-10-05T09:00:00Z', titles: { it: 'Ciao', de: 'Hallo' }, categoryKeys: ['cura'] },
-      { id: '22222222-2222-4333-8444-555555555555', title: null, step: 'type', furthest: 'type', updatedAt: '2026-10-04T09:00:00Z', titles: { it: '  ' }, categoryKeys: [] },
+      { id: ID, title: 'Hallo', step: 'title', furthest: 'publish', updatedAt: '2026-10-05T09:00:00Z', titles: { it: 'Ciao', de: 'Hallo' }, categoryKeys: ['cura'], coverThumb: null },
+      { id: '22222222-2222-4333-8444-555555555555', title: null, step: 'type', furthest: 'type', updatedAt: '2026-10-04T09:00:00Z', titles: { it: '  ' }, categoryKeys: [], coverThumb: null },
     ])
     const [query, params, options] = c.fetch.mock.calls[0] as unknown as [string, Record<string, unknown>, Record<string, unknown>]
     expect(params).toEqual({ projectSlug: 'hoffmann' })
@@ -388,5 +388,17 @@ describe('getPostEditorSite', () => {
     const site = await getPostEditorSite(ctx(grant()), 'project-a', { locale: 'en' }, rdeps(c))
     expect(site.origin).toBeNull()
     expect(site.languages).toEqual(['en'])
+  })
+})
+
+describe('coverThumbUrl', () => {
+  it('crops around the focal point on the Sanity CDN only', async () => {
+    const { coverThumbUrl } = await import('../post-drafts')
+    expect(coverThumbUrl('https://cdn.sanity.io/images/p/d/a.jpg', { x: 0.25, y: 0.8 })).toBe(
+      'https://cdn.sanity.io/images/p/d/a.jpg?w=160&h=160&fit=crop&auto=format&crop=focalpoint&fp-x=0.250&fp-y=0.800'
+    )
+    expect(coverThumbUrl('https://cdn.sanity.io/images/p/d/a.jpg')).toBe('https://cdn.sanity.io/images/p/d/a.jpg?w=160&h=160&fit=crop&auto=format')
+    expect(coverThumbUrl('https://evil.example/a.jpg')).toBeNull()
+    expect(coverThumbUrl(null)).toBeNull()
   })
 })

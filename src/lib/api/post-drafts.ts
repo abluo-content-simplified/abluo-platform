@@ -311,6 +311,8 @@ export type PostDraftSummary = {
   /** Every language's title (for search and the language badges in the posts list). */
   titles: Record<string, string>
   categoryKeys: string[]
+  /** Small square cover thumbnail cropped around the focal point, or null. */
+  coverThumb: string | null
 }
 
 /** What the wizard needs to know about the site. Mirrors `SiteInfo`. */
@@ -413,13 +415,16 @@ export async function listPostDrafts(
       step?: unknown
       furthest?: unknown
       updatedAt?: string
+      coverUrl?: unknown
+      hotspot?: { x?: unknown; y?: unknown } | null
     }> | null
   } | null>(
     `{
       "defaultLocale": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].defaultLocale,
       "drafts": *[_type == "post" && _id in path("drafts.**") && projectSlug == $projectSlug && defined(wizard.step)]
         | order(coalesce(wizard.updatedAt, _updatedAt) desc)[0...50]{
-          _id, projectSlug, title, categories, "step": wizard.step, "furthest": coalesce(wizard.furthest, wizard.step), "updatedAt": coalesce(wizard.updatedAt, _updatedAt)
+          _id, projectSlug, title, categories, "step": wizard.step, "furthest": coalesce(wizard.furthest, wizard.step), "updatedAt": coalesce(wizard.updatedAt, _updatedAt),
+          "coverUrl": coverImage.asset->url, "hotspot": coverImage.hotspot
         }
     }`,
     { projectSlug: grant.projectSlug },
@@ -442,8 +447,23 @@ export async function listPostDrafts(
         updatedAt: typeof d.updatedAt === 'string' ? d.updatedAt : '',
         titles,
         categoryKeys: Array.isArray(d.categories) ? d.categories.filter((c): c is string => typeof c === 'string') : [],
+        coverThumb: coverThumbUrl(d.coverUrl, d.hotspot),
       }
     })
+}
+
+/** Sanity CDN square thumbnail, cropped around the focal point when one is set. */
+export function coverThumbUrl(url: unknown, hotspot?: { x?: unknown; y?: unknown } | null, size = 160): string | null {
+  if (typeof url !== 'string' || !url.startsWith('https://cdn.sanity.io/')) return null
+  const params = new URLSearchParams({ w: String(size), h: String(size), fit: 'crop', auto: 'format' })
+  const x = hotspot?.x
+  const y = hotspot?.y
+  if (typeof x === 'number' && typeof y === 'number' && x >= 0 && x <= 1 && y >= 0 && y <= 1) {
+    params.set('crop', 'focalpoint')
+    params.set('fp-x', x.toFixed(3))
+    params.set('fp-y', y.toFixed(3))
+  }
+  return `${url}?${params.toString()}`
 }
 
 /** Site languages, blog categories (labels in `locale`) and public origin, for the wizard. */
