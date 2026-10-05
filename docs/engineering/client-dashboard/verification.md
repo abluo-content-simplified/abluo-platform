@@ -29,7 +29,7 @@ Then run `git checkout -- next-env.d.ts` if the build touched it.
 | E8 | Theme: Auto follows `colorScheme`; manual choice persists across reload with no flash of the wrong theme | Playwright |
 | S1 | Every new write route is classified in `route-auth-matrix.test.ts` | vitest |
 | S2 | Viewer role → write refused; project A grant → patch on project B doc refused; module not installed → 404 | vitest (data layer) + Playwright |
-| W1 | Drafts never on the public site; a future `publishedAt` is hidden; a past `unpublishAt` is hidden (list, detail, sitemap) | vitest on queries + live probe |
+| W1 | Drafts never on the public site; a future `publishedAt` is hidden; a past `expiresAt` is hidden (list, detail, sitemap) | vitest on queries + live probe |
 | W2 | Machine translation never overwrites `original`/`reviewed` | vitest (ADR-023 tests extended) |
 
 ## 3. Visual review (the /verify agent does this by looking)

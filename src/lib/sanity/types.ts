@@ -875,6 +875,8 @@ export interface Post {
   /** Per-locale arrays of old slugs — used for 301 redirects */
   redirectFrom?: Partial<Record<SupportedLocale, string[]>>
   excerpt?: string
+  /** Detail query only — one sentence under the title (ADR-025 D4). */
+  subtitle?: string
   body?: PortableTextContent
   publishedAt?: string
   expiresAt?: string

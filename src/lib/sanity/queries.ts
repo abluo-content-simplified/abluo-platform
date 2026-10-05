@@ -902,7 +902,7 @@ export const postsQuery = /* groq */ `
     _id,
     "title": ${loc('title')},
     "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
-    "excerpt": ${loc('excerpt')},
+    "excerpt": coalesce(${loc('excerpt')}, ${loc('subtitle')}),
     publishedAt,
     expiresAt,
     featured,
@@ -951,13 +951,19 @@ export const dashboardPostsQuery = /* groq */ `
   }
 `
 
+// A post is live when it has gone live and has not been taken offline (ADR-025
+// D5). The list queries already applied this; the detail and redirect lookups
+// did not, so a scheduled or expired post was reachable by its direct URL.
+const POST_IS_LIVE = /* groq */ `defined(publishedAt) && publishedAt <= now() && (!defined(expiresAt) || expiresAt > now())`
+
 export const postBySlugQuery = /* groq */ `
-  *[_type == "post" && projectSlug == $projectSlug && slug[$locale].current == $slug][0] {
+  *[_type == "post" && projectSlug == $projectSlug && slug[$locale].current == $slug && ${POST_IS_LIVE}][0] {
     _id,
     "title": ${loc('title')},
     "slugMap": slug,
     "redirectFrom": redirectFrom,
-    "excerpt": ${loc('excerpt')},
+    "excerpt": coalesce(${loc('excerpt')}, ${loc('subtitle')}),
+    "subtitle": ${loc('subtitle')},
     "body": ${loc('body')},
     publishedAt,
     featured,
@@ -1001,7 +1007,7 @@ export const postBySlugQuery = /* groq */ `
 `
 
 export const postByOldSlugQuery = /* groq */ `
-  *[_type == "post" && projectSlug == $projectSlug && $slug in redirectFrom[$locale]][0] {
+  *[_type == "post" && projectSlug == $projectSlug && $slug in redirectFrom[$locale] && ${POST_IS_LIVE}][0] {
     "currentSlug": slug[$locale].current
   }
 `
@@ -1022,7 +1028,7 @@ export const postsByCategoryQuery = /* groq */ `
     _id,
     "title": ${loc('title')},
     "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
-    "excerpt": ${loc('excerpt')},
+    "excerpt": coalesce(${loc('excerpt')}, ${loc('subtitle')}),
     publishedAt,
     expiresAt,
     featured,
@@ -1063,7 +1069,7 @@ export const relatedPostsQuery = /* groq */ `
     _id,
     "title": ${loc('title')},
     "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
-    "excerpt": ${loc('excerpt')},
+    "excerpt": coalesce(${loc('excerpt')}, ${loc('subtitle')}),
     publishedAt,
     featured,
     ${locImage('coverImage')},
@@ -1091,7 +1097,7 @@ const blogListingCardFields = /* groq */ `
   _id,
   "title": coalesce(title[$locale], title[$defaultLocale], title.en, title),
   "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
-  "excerpt": coalesce(excerpt[$locale], excerpt[$defaultLocale], excerpt.en, excerpt),
+  "excerpt": coalesce(excerpt[$locale], excerpt[$defaultLocale], excerpt.en, excerpt, subtitle[$locale], subtitle[$defaultLocale], subtitle.en),
   publishedAt,
   featured,
   coverImage {

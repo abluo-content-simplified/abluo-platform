@@ -382,6 +382,14 @@ const postType = defineType({
       group: 'redirects',
       description: 'Fill these only when you rename a slug. Old URLs here will 301-redirect to the current slug.',
     }),
+    // ADR-025 D4 — asked by the client-dashboard wizard (step "Give your story a title").
+    defineField({
+      name: 'subtitle',
+      title: 'Subtitle',
+      type: 'localizedString',
+      group: 'content',
+      description: 'One sentence under the title. When the excerpt is empty, it is used as the excerpt.',
+    }),
     defineField({
       name: 'excerpt',
       title: 'Excerpt',
@@ -396,6 +404,23 @@ const postType = defineType({
       type: 'datetime',
       group: 'content',
       description: 'The post becomes visible on the website at this date and time. Leave empty to keep it as a draft.',
+    }),
+    // ADR-025 D4/D5 — "Take offline automatically". Every website read of posts
+    // already filters `!defined(expiresAt) || expiresAt > now()`, so no job runs.
+    defineField({
+      name: 'expiresAt',
+      title: 'Take Offline At',
+      type: 'datetime',
+      group: 'content',
+      description: 'Optional. The post disappears from the website at this date and time. Leave empty to keep it online.',
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          const publishedAt = (context.document as { publishedAt?: string } | undefined)?.publishedAt
+          if (value && publishedAt && new Date(value) <= new Date(publishedAt)) {
+            return 'Must be after the go-live date.'
+          }
+          return true
+        }),
     }),
 
     // ── Media ─────────────────────────────────────────────────────────────────

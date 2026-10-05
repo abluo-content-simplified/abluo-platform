@@ -182,7 +182,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         `*[_type == "event" && defined(projectSlug)] { projectSlug, slug }`
       ),
       sanityClient.fetch<PostSitemapData[]>(
-        `*[_type == "post" && defined(projectSlug) && defined(publishedAt) && publishedAt <= now()] { projectSlug, slug, "images": gallery->items[].mediaAsset->image.asset->url }`
+        `*[_type == "post" && defined(projectSlug) && defined(publishedAt) && publishedAt <= now() && (!defined(expiresAt) || expiresAt > now())] { projectSlug, slug, "images": gallery->items[].mediaAsset->image.asset->url }`
       ),
       // News items (ADR-020). Expired items are excluded as well as unpublished
       // ones: a news item past its expiry is removed from the website, so

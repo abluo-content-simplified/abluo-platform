@@ -34,7 +34,7 @@ Authority: ADR-025. This doc is the *what it looks like*. Verification lives in 
 | 5 | Add a cover image | Take photo · From device · Media Library · ✨ Generate (later) · Skip | Media Library asset → `coverImage` | yes |
 | 6 | Make it available in other languages? | one row per site locale: Original / Translate / Later | `translationStatus: machine` | only shown when the site has more than one locale |
 | 7 | Here's how your post will look | real tenant render in a frame, Edit links per block | — | — |
-| 8 | What do you want to do with it? | Publish now · Schedule (date+time chips) · Keep as draft; advanced: Take offline automatically | `publishedAt`, `unpublishAt`, publish | — |
+| 8 | What do you want to do with it? | Publish now · Schedule (date+time chips) · Keep as draft; advanced: Take offline automatically | `publishedAt`, `expiresAt`, publish | — |
 | 9 | Give it more visibility? | visual placement previews (S10) | `promotion.*` | yes |
 | ✓ | Published | View on site · Share link · Back to dashboard | — | — |
 

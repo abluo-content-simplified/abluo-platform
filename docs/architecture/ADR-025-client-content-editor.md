@@ -21,15 +21,15 @@ Clients never see Sanity (CLAUDE.md principle 4). Today the client dashboard is 
 - The journal is a buffer, not a store. Once the server confirms, the entry is deleted. If IndexedDB is unavailable, the editor still works online.
 - Save state is one small pill: `Saving…` → `Saved` → `Offline — saved on this device`. There is no Save button.
 
-### D3 — Wizard position lives in Supabase
-- New table `content_drafts_progress (user_id, project_id, document_id, step, updated_at)`, with RLS so a user only sees their own rows.
-- "Continue editing" opens the step the user was on, on any device. Once a document is published, its row is deleted and further edits use the direct editor.
+### D3 — Wizard position lives on the draft (Tom, 2026-10-04)
+- A small hidden object on the draft, `wizard: { step, updatedAt }`, written by the same save path. It travels with the draft across devices, visitors never see drafts (published perspective), and it is **stripped when the post is published** (S5).
+- "Continue editing" opens the step stored there. No Supabase table and no migration; a per-user table can come later if several people edit one draft.
 
 ### D4 — Schema additions to `post` (additive only, no migration)
 | Field | Type | Why |
 |---|---|---|
 | `subtitle` | `localizedString` | Wizard step 3. |
-| `unpublishAt` | `datetime` | Optional "take offline automatically". |
+| `expiresAt` | `datetime` | Optional "take offline automatically". Named `expiresAt` because every website post query already filters on it. |
 | `promotion` | object `{ homepage: boolean, featured: boolean, pinned: boolean }` | S10 only. It renders only once a section reads it. |
 
 - **Excerpt** stays. When it is empty, it is filled by default from the subtitle (and later by AI).
@@ -39,7 +39,7 @@ Clients never see Sanity (CLAUDE.md principle 4). Today the client dashboard is 
 
 ### D5 — Scheduling and expiry need no job runner
 - A scheduled post is a **published** document whose `publishedAt` is in the future.
-- Every website list and detail query adds `publishedAt <= now() && (!defined(unpublishAt) || unpublishAt > now())`. The sitemap does the same.
+- Every website post read uses `defined(publishedAt) && publishedAt <= now() && (!defined(expiresAt) || expiresAt > now())`. The lists already did; S2a added it to the detail page, the old-slug redirect and the sitemap (test: `post-visibility.test.ts`).
 - ISR revalidation time for blog surfaces is ≤ 5 min, so a scheduled post shows up within that window. No cron and no Sanity Releases.
 
 ### D6 — Body editor: `@portabletext/editor`
@@ -75,7 +75,7 @@ The Abluo app gets its own design system, built fresh rather than reusing the sh
 
 ## Consequences
 - First tenant write surface, so the security review is mandatory for S2.
-- One new Supabase migration (D3) plus a profile column for the theme (D7).
+- No Supabase migration for the wizard (D3 on the draft). The theme preference is a cookie (D7); a per-user profile column is optional later.
 - Website queries change (D5). Every blog query is touched, so `npm run test` must cover the filter.
 - `@portabletext/editor` is a new dependency (gated by the D6 spike).
 - New dev dependencies for the verification harness: `@playwright/test` and `@axe-core/playwright`.
