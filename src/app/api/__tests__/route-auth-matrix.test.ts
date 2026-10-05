@@ -416,6 +416,52 @@ describe('post draft server actions — the dashboard\'s only Sanity write path 
     expect(doc.projectSlug).toBe('tenant-a-site')
     expect(sanityCalls).toEqual(['write:create'])
   })
+
+  // S2c — the wizard also calls publish (S5) and Improve (ADR-026). Same refusals.
+  const loadPublish = () => import('@/app/[locale]/(client)/[tenant]/posts/publish-actions')
+  const loadAi = () => import('@/app/[locale]/(client)/[tenant]/posts/ai-actions')
+  const publishInput = (projectSlug: string) => ({ projectSlug, id: ID, rev: 'r', mode: 'now' as const })
+  const improveInput = (projectSlug: string) => ({
+    projectSlug,
+    locale: 'it',
+    blocks: [{ _type: 'block', _key: 'b', children: [{ _type: 'span', _key: 's', text: 'ciao '.repeat(40) }] }],
+  })
+
+  it('publish + improve: unauthenticated → refused, nothing touched', async () => {
+    const p = await loadPublish()
+    const ai = await loadAi()
+    expect(await p.publishPostDraftAction(publishInput('tenant-a-site'))).toEqual({ ok: false, error: 'unauthenticated' })
+    expect(await ai.improvePostBodyAction(improveInput('tenant-a-site'))).toEqual({ ok: false, error: 'unauthenticated' })
+    noSideEffects()
+  }, 30_000)
+
+  it("publish + improve: tenant A cannot act in tenant B's project", async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [grantA] }
+    const p = await loadPublish()
+    const ai = await loadAi()
+    expect(await p.publishPostDraftAction(publishInput('tenant-b-site'))).toEqual({ ok: false, error: 'forbidden' })
+    expect(await ai.improvePostBodyAction(improveInput('tenant-b-site'))).toEqual({ ok: false, error: 'forbidden' })
+    noSideEffects()
+  })
+
+  it('publish + improve: a viewer is refused', async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [viewerA] }
+    const p = await loadPublish()
+    const ai = await loadAi()
+    expect(await p.publishPostDraftAction(publishInput('tenant-a-site'))).toEqual({ ok: false, error: 'forbidden' })
+    expect(await ai.improvePostBodyAction(improveInput('tenant-a-site'))).toEqual({ ok: false, error: 'forbidden' })
+    noSideEffects()
+  })
+
+  it('publish: a malformed id is not_found before anything is read', async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [grantA] }
+    const p = await loadPublish()
+    expect(await p.publishPostDraftAction({ ...publishInput('tenant-a-site'), id: '../x' })).toEqual({ ok: false, error: 'not_found' })
+    noSideEffects()
+  })
 })
 
 // ── Machine-to-machine routes ───────────────────────────────────────────────

@@ -115,7 +115,7 @@ test.describe('S1 navigation', () => {
     await page.getByRole('button', { name: 'Add content' }).filter({ visible: true }).first().click()
     const sheet = page.getByRole('dialog')
     await expect(sheet).toBeVisible()
-    await sheet.getByRole('button').click()
+    await sheet.getByRole('button', { name: 'Close' }).click()
     await expect(sheet).toBeHidden()
   })
 })

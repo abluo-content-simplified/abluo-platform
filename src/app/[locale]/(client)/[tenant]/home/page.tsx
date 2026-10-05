@@ -10,6 +10,8 @@ import {
   type DashboardSubmission,
 } from '@/lib/api/client-dashboard'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
+import { listPostDrafts, type PostDraftSummary } from '@/lib/api/post-drafts'
+import { firstPassDone, laterStep } from '@/lib/client/wizard-steps'
 
 /**
  * Client dashboard home (S1, ADR-025 · spec "Dashboard home").
@@ -33,6 +35,14 @@ async function settle<T>(read: () => Promise<T>): Promise<T | null> {
   }
 }
 
+/** Where "Continue" lands ("Next: Story", or the overview once the first pass is over). */
+function stepKey(draft: Pick<PostDraftSummary, 'step' | 'furthest'>): string {
+  const at = laterStep(draft.step, draft.furthest)
+  if (firstPassDone(at)) return 'review'
+  if (at === 'type') return 'title'
+  return at
+}
+
 function formatDay(iso: string, locale: string): string {
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(locale, { day: 'numeric', month: 'short' })
@@ -51,19 +61,21 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
   const t = await getTranslations('clientDashboard')
   const enabled = new Set(grant.enabledModuleIds)
 
-  const [posts, submissions] = await Promise.all([
+  const [posts, wizardDrafts, submissions] = await Promise.all([
     enabled.has('blog') ? settle<DashboardPost[]>(() => getDashboardPostRows(ctx, grant.projectId, { locale })) : null,
+    enabled.has('blog') ? settle<PostDraftSummary[]>(() => listPostDrafts(ctx, grant.projectId)) : null,
     enabled.has('forms')
       ? settle<DashboardSubmission[]>(() => getDashboardSubmissions(ctx, grant.projectId, { limit: 200 }))
       : null,
   ])
 
-  const drafts = (posts ?? []).filter((p) => p.status === 'draft').slice(0, 2)
+  // Continue editing = unfinished wizard drafts (ADR-025 D3), each reopening at its step.
+  const drafts = (wizardDrafts ?? []).slice(0, 3)
   const recent = (posts ?? []).filter((p) => p.status === 'published').slice(0, 3)
   const newRequests = (submissions ?? []).filter((s) => s.status === 'new').length
   const postsHref = `/${projectSlug}/${MODULE_DASHBOARD_ROUTES.blog}`
   const leadsHref = `/${projectSlug}/${MODULE_DASHBOARD_ROUTES.forms}`
-  const nothingYet = posts !== null && posts.length === 0
+  const nothingYet = posts !== null && posts.length === 0 && drafts.length === 0
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8 pb-28 md:pb-8">
@@ -79,16 +91,17 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
       {drafts.length > 0 && (
         <section className="flex flex-col gap-3">
           <h2 className="text-[17px] font-semibold">{t('home.continueEditing')}</h2>
-          {drafts.map((post) => (
-            <div key={post._id} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+          {drafts.map((draft) => (
+            <div key={draft.id} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
               <div>
-                <p className="text-[15px] font-semibold leading-[22px]">{post.title ?? t('posts.untitled')}</p>
+                <p className="text-[15px] font-semibold leading-[22px]">{draft.title ?? t('posts.untitledDraft')}</p>
                 <p className="text-sm text-muted-foreground">
-                  {t('posts.status.draft')} · {t('home.edited', { date: formatDay(post.updatedAt, locale) })}
+                  {t('home.atStep', { step: t(`create.stepNames.${stepKey(draft)}`) })} ·{' '}
+                  {t('home.edited', { date: formatDay(draft.updatedAt, locale) })}
                 </p>
               </div>
               <Link
-                href={postsHref}
+                href={`/${projectSlug}/posts/write/${draft.id}`}
                 className="inline-flex h-11 w-fit items-center rounded-md bg-action px-4 text-[15px] font-semibold text-action-foreground"
               >
                 {t('home.continue')}

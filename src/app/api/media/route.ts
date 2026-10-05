@@ -7,6 +7,7 @@ import {
   evaluateMediaOwnership,
   type MediaOwnershipRow,
 } from '@/lib/media/ownership'
+import { createMediaAsset } from '@/lib/media/create-media-asset'
 
 
 // GET /api/media — List media assets with filters & pagination
@@ -162,32 +163,27 @@ export async function POST(request: NextRequest) {
     }
     const projectSlug = ownership.projectSlug
 
-    // Upload asset to Sanity
-    const buffer = await file.arrayBuffer()
-    const uploadedAsset = await client.assets.upload('image', Buffer.from(buffer), {
-      filename: file.name,
-    })
-
     // Parse tags
     const tags = tagsJson ? JSON.parse(tagsJson).map((tag: string) => tag.toLowerCase().trim()) : []
 
-    // Create mediaAsset document
-    const mediaAsset = await client.create({
-      _type: 'mediaAsset',
-      image: {
-        _type: 'image',
-        asset: { _type: 'reference', _ref: uploadedAsset._id },
-      },
-      tenant: { _type: 'reference', _ref: tenant },
-      ...(project && { project: { _type: 'reference', _ref: project } }),
-      ...(projectSlug && { projectSlug }),
-      ...(name && { name }),
+    // Upload asset to Sanity + create the mediaAsset document (shared with the
+    // client dashboard's cover upload — src/lib/media/create-media-asset.ts).
+    const buffer = await file.arrayBuffer()
+    const created = await createMediaAsset(client, {
+      data: Buffer.from(buffer),
+      filename: file.name,
+      contentType: file.type,
+      tenantId: tenant,
+      projectId: project,
+      projectSlug,
+      name,
       tags,
       altText,
-      ...(description && { description }),
-      ...(uploadedBy && { uploadedBy }),
-      ...(uploadedByName && { uploadedByName }),
+      description,
+      uploadedBy,
+      uploadedByName,
     })
+    const mediaAsset = { _id: created.mediaAssetId }
 
     // Fetch full document with asset metadata
     let fullAsset = await client.fetch(
@@ -233,7 +229,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, data: fullAsset }, { status: 201 })
+    return NextResponse.json({ success: true, data: fullAsset, optimization: created.optimization }, { status: 201 })
   } catch (error) {
     console.error('POST /api/media/upload error:', error)
     return NextResponse.json(

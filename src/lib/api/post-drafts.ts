@@ -16,7 +16,9 @@
  *      own `projectSlug` equals the grant's — another project's draft is
  *      reported as "not found", so ids can't be probed.
  *   4. Field allowlist: title / subtitle / excerpt / body per language, the
- *      categories configured for this site, and the hidden wizard step
+ *      categories configured for this site, and the hidden wizard position
+ *      (`wizard.step` = where the user is, `wizard.furthest` = the furthest
+ *      step reached in the first pass; 'review' is the overview)
  *      (ADR-025 D3). Anything else — projectSlug, _type, _id, slug, author,
  *      publish dates, images — is refused. Languages must be the site's own.
  *      Body blocks are rebuilt from a strict shape (unknown keys dropped).
@@ -40,6 +42,7 @@ export const WIZARD_STEPS = [
   'preview',
   'publish',
   'promote',
+  'review',
   'done',
 ] as const
 export type WizardStep = (typeof WIZARD_STEPS)[number]
@@ -180,11 +183,11 @@ export async function patchPostDraft(
       continue
     }
 
-    if (path === 'wizard.step') {
+    if (path === 'wizard.step' || path === 'wizard.furthest') {
       if (!WIZARD_STEPS.includes(value as WizardStep)) {
         throw new PostDraftError('invalid_value', 'Unknown wizard step.')
       }
-      set['wizard.step'] = value
+      set[path] = value
       continue
     }
 
@@ -272,4 +275,217 @@ export function sanitizeBlocks(value: unknown): unknown[] {
     })
     return block
   })
+}
+
+// ── Reads for the wizard (ADR-025 · S2c) ─────────────────────────────────────
+//
+// Drafts are invisible to every website query (published perspective). The
+// wizard reads them here, through the same write-permission gate as the patch
+// path: a viewer can list posts, but a draft is something you EDIT, so opening
+// one needs 'blog.post.write'. Ownership is re-checked on the document itself
+// (projectSlug from the grant); another project's draft is "not_found".
+
+/** One draft, as the wizard shell needs it (mirrors `DraftSnapshot`). */
+export type PostDraftSnapshot = {
+  id: string
+  rev: string
+  title: Record<string, string>
+  subtitle: Record<string, string>
+  excerpt: Record<string, string>
+  body: Record<string, unknown[]>
+  categories: string[]
+  cover: { assetId: string; url: string; alt: Record<string, string>; focal?: { x: number; y: number } | null } | null
+  step: WizardStep
+  /** Furthest step reached in the first pass (drafts from before it existed: their step). */
+  furthest: WizardStep
+}
+
+/** A row of the "Continue editing" list. */
+export type PostDraftSummary = {
+  id: string
+  /** Title in the site's default language, else any language; null when untitled. */
+  title: string | null
+  step: WizardStep
+  furthest: WizardStep
+  updatedAt: string
+  /** Every language's title (for search and the language badges in the posts list). */
+  titles: Record<string, string>
+  categoryKeys: string[]
+}
+
+/** What the wizard needs to know about the site. Mirrors `SiteInfo`. */
+export type PostEditorSite = {
+  projectSlug: string
+  defaultLocale: string
+  languages: string[]
+  categories: { value: string; label: string }[]
+  /** `https://<customDomain>`, or null when the site has no domain yet. */
+  origin: string | null
+}
+
+function textMap(value: unknown): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return out
+  for (const [k, v] of Object.entries(value)) {
+    if (!k.startsWith('_') && typeof v === 'string') out[k] = v
+  }
+  return out
+}
+
+function blockMap(value: unknown): Record<string, unknown[]> {
+  const out: Record<string, unknown[]> = {}
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return out
+  for (const [k, v] of Object.entries(value)) {
+    if (!k.startsWith('_') && Array.isArray(v)) out[k] = v
+  }
+  return out
+}
+
+function asStep(value: unknown): WizardStep {
+  return WIZARD_STEPS.includes(value as WizardStep) ? (value as WizardStep) : 'type'
+}
+
+/** Reads one of the caller's project drafts for the wizard. */
+export async function getPostDraft(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  id: string,
+  deps: PostDraftDeps = {}
+): Promise<PostDraftSnapshot> {
+  const grant = grantFor(ctx, projectId)
+  const client = deps.client ?? sanityWriteClient
+  if (typeof id !== 'string' || !UUID.test(id)) {
+    throw new PostDraftError('not_found', 'Unknown draft id.')
+  }
+  const doc = (await client.getDocument(`drafts.${id}`)) as Record<string, unknown> | undefined
+  if (!doc || doc._type !== 'post' || doc.projectSlug !== grant.projectSlug) {
+    throw new PostDraftError('not_found', 'Unknown draft id.')
+  }
+
+  let cover: PostDraftSnapshot['cover'] = null
+  const image = doc.coverImage as
+    | { asset?: { _ref?: unknown }; alt?: unknown; hotspot?: { x?: unknown; y?: unknown } }
+    | undefined
+  const ref = image?.asset?._ref
+  if (typeof ref === 'string' && ref) {
+    const url = await client.fetch<string | null>(`*[_id == $ref][0].url`, { ref })
+    if (typeof url === 'string' && url) {
+      const hx = image?.hotspot?.x
+      const hy = image?.hotspot?.y
+      const focal =
+        typeof hx === 'number' && typeof hy === 'number' && hx >= 0 && hx <= 1 && hy >= 0 && hy <= 1
+          ? { x: hx, y: hy }
+          : undefined
+      cover = { assetId: ref, url, alt: textMap(image?.alt), ...(focal ? { focal } : {}) }
+    }
+  }
+
+  const wizard = doc.wizard as { step?: unknown; furthest?: unknown } | undefined
+  return {
+    id,
+    rev: typeof doc._rev === 'string' ? doc._rev : '',
+    title: textMap(doc.title),
+    subtitle: textMap(doc.subtitle),
+    excerpt: textMap(doc.excerpt),
+    body: blockMap(doc.body),
+    categories: Array.isArray(doc.categories) ? doc.categories.filter((c): c is string => typeof c === 'string') : [],
+    cover,
+    step: asStep(wizard?.step),
+    furthest: asStep(wizard?.furthest ?? wizard?.step),
+  }
+}
+
+/** The caller's project's unfinished wizard drafts, most recently edited first. */
+export async function listPostDrafts(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  deps: PostDraftDeps = {}
+): Promise<PostDraftSummary[]> {
+  const grant = grantFor(ctx, projectId)
+  const client = deps.client ?? sanityWriteClient
+  const result = await client.fetch<{
+    defaultLocale?: string | null
+    drafts?: Array<{
+      _id?: string
+      projectSlug?: string
+      title?: unknown
+      categories?: unknown
+      step?: unknown
+      furthest?: unknown
+      updatedAt?: string
+    }> | null
+  } | null>(
+    `{
+      "defaultLocale": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].defaultLocale,
+      "drafts": *[_type == "post" && _id in path("drafts.**") && projectSlug == $projectSlug && defined(wizard.step)]
+        | order(coalesce(wizard.updatedAt, _updatedAt) desc)[0...50]{
+          _id, projectSlug, title, categories, "step": wizard.step, "furthest": coalesce(wizard.furthest, wizard.step), "updatedAt": coalesce(wizard.updatedAt, _updatedAt)
+        }
+    }`,
+    { projectSlug: grant.projectSlug },
+    { perspective: 'raw' }
+  )
+  const defaultLocale = result?.defaultLocale ?? ''
+  return (result?.drafts ?? [])
+    .filter((d) => typeof d?._id === 'string' && d._id.startsWith('drafts.') && d.projectSlug === grant.projectSlug)
+    .map((d) => {
+      const titles = textMap(d.title)
+      const title =
+        (titles[defaultLocale]?.trim() && titles[defaultLocale]) ||
+        Object.values(titles).find((t) => t.trim()) ||
+        null
+      return {
+        id: d._id!.slice('drafts.'.length),
+        title,
+        step: asStep(d.step),
+        furthest: asStep(d.furthest ?? d.step),
+        updatedAt: typeof d.updatedAt === 'string' ? d.updatedAt : '',
+        titles,
+        categoryKeys: Array.isArray(d.categories) ? d.categories.filter((c): c is string => typeof c === 'string') : [],
+      }
+    })
+}
+
+/** Site languages, blog categories (labels in `locale`) and public origin, for the wizard. */
+export async function getPostEditorSite(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  params: { locale: string },
+  deps: PostDraftDeps = {}
+): Promise<PostEditorSite> {
+  const grant = grantFor(ctx, projectId)
+  const client = deps.client ?? sanityWriteClient
+  const r = await client.fetch<{
+    site?: { defaultLocale?: string | null; supportedLocales?: string[] | null } | null
+    categories?: Array<{ value?: string; label?: unknown }> | null
+    customDomain?: string | null
+  } | null>(
+    `{
+      "site": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales },
+      "categories": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]
+        .moduleInstallations[moduleId == "blog"][0].config.categories[]{ value, label },
+      "customDomain": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**")) && defined(customDomain)][0].customDomain
+    }`,
+    { projectSlug: grant.projectSlug }
+  )
+  const supported = (r?.site?.supportedLocales ?? []).filter((l): l is string => typeof l === 'string' && !!l)
+  const defaultLocale = r?.site?.defaultLocale || supported[0] || params.locale
+  const languages = [defaultLocale, ...supported.filter((l) => l !== defaultLocale)]
+  const categories = (r?.categories ?? [])
+    .filter((c): c is { value: string; label?: unknown } => typeof c?.value === 'string' && !!c.value)
+    .map((c) => {
+      const labels = textMap(c.label)
+      const label = [params.locale, defaultLocale, 'en'].map((l) => labels[l]?.trim()).find(Boolean) ??
+        Object.values(labels).find((l) => l.trim()) ??
+        c.value.replace(/-/g, ' ')
+      return { value: c.value, label }
+    })
+  const domain = typeof r?.customDomain === 'string' ? r.customDomain.trim().replace(/\/+$/, '') : ''
+  return {
+    projectSlug: grant.projectSlug,
+    defaultLocale,
+    languages,
+    categories,
+    origin: domain ? `https://${domain}` : null,
+  }
 }

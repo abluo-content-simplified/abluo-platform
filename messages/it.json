@@ -105,7 +105,8 @@
         "showing": "{shown} di {total} articoli",
         "clear": "Azzera filtri",
         "noMatch": "Nessun articolo corrisponde ai filtri."
-      }
+      },
+      "untitledDraft": "Bozza senza titolo"
     },
     "submissions": {
       "title": "Invii",
@@ -172,15 +173,311 @@
       "newRequests": "Nuove richieste",
       "newRequestsBody": "{count, plural, =0 {Nessuna nuova richiesta di contatto} one {nuova richiesta di contatto a cui rispondere} other {nuove richieste di contatto a cui rispondere}}",
       "emptyTitle": "Il tuo primo articolo è a pochi tocchi",
-      "emptyBody": "Tocca + per iniziare. Salviamo mentre scrivi: puoi fermarti e riprendere quando vuoi."
-    },
-    "add": {
-      "title": "In arrivo a breve",
-      "body": "Scrivere articoli direttamente qui, dal telefono o dal computer, è quasi pronto.",
-      "close": "Chiudi"
+      "emptyBody": "Tocca + per iniziare. Salviamo mentre scrivi: puoi fermarti e riprendere quando vuoi.",
+      "atStep": "Prossimo: {step}"
     },
     "version": {
       "updated": "Aggiornato {date}"
+    },
+    "create": {
+      "story": {
+        "title": "Racconta la tua storia",
+        "helper": "Scrivi come lo spiegheresti a un paziente o a un cliente. Non preoccuparti della forma: potrai sistemarla dopo.",
+        "placeholder": "Inizia a scrivere, oppure incolla un testo che hai già…",
+        "stats": "{words, plural, one {# parola} other {# parole}} · {minutes, plural, one {# min di lettura} other {# min di lettura}}",
+        "statsEmpty": "Ancora nessuna parola",
+        "actions": {
+          "label": "Aiuti alla scrittura",
+          "paste": "Incolla testo",
+          "dictate": "Detta",
+          "soon": "In arrivo",
+          "improve": "Migliora con l'IA"
+        },
+        "paste": {
+          "done": "Testo incollato alla fine.",
+          "empty": "Negli appunti non c’è testo da incollare.",
+          "fallback": "Tieni premuto nell’area di scrittura e scegli Incolla, oppure usa ⌘V / Ctrl+V."
+        },
+        "improve": {
+          "loading": "Sto migliorando…",
+          "tooShort": "Scrivi almeno {count} parole per usare Migliora.",
+          "failed": "Al momento non riusciamo a migliorare il testo. Le tue parole sono al sicuro: riprova tra poco.",
+          "title": "Una versione suggerita",
+          "helper": "Confrontala con la tua. Non cambia nulla finché non la scegli.",
+          "yours": "La tua versione",
+          "suggestion": "Versione suggerita",
+          "accept": "Usa questa versione",
+          "keep": "Tengo la mia"
+        }
+      },
+      "improve": {
+        "button": "Migliora",
+        "working": "Sto migliorando il testo…",
+        "hint": "Sistema ortografia, grammatica e scorrevolezza. Le tue parole, la tua voce: non aggiunge nulla di nuovo.",
+        "yours": "La tua versione",
+        "suggestion": "Suggerimento",
+        "accept": "Usa il suggerimento",
+        "keepMine": "Tieni la mia",
+        "accepted": "Suggerimento applicato.",
+        "errors": {
+          "forbidden": "Non hai i permessi per farlo.",
+          "invalid_value": "Scrivi qualche frase, poi riprova.",
+          "too_large": "Il testo è troppo lungo da migliorare in una volta. Prova con una parte più breve.",
+          "ai_unavailable": "L’assistente non è disponibile ora. Riprova tra poco.",
+          "unauthenticated": "La sessione è scaduta. Accedi di nuovo.",
+          "failed": "Qualcosa è andato storto. Riprova."
+        }
+      },
+      "cover": {
+        "title": "Aggiungi un'immagine di copertina",
+        "helper": "Appare in cima all'articolo e quando qualcuno lo condivide.",
+        "choices": {
+          "label": "Scegli un'immagine di copertina",
+          "camera": "Scatta una foto",
+          "phone": "Da questo telefono",
+          "library": "La tua libreria",
+          "ai": "Crea con l'IA",
+          "soon": "In arrivo",
+          "computer": "Carica dal computer",
+          "computerHint": "oppure trascina qui una foto"
+        },
+        "note": "Alleggeriamo ogni foto per il web e ti chiediamo una breve descrizione, così tutti possono capirla.",
+        "preparing": "Preparazione della foto…",
+        "uploading": "Caricamento della foto…",
+        "saving": "Salvataggio…",
+        "saved": "Immagine di copertina salvata.",
+        "removed": "Immagine di copertina rimossa.",
+        "previewLabel": "La tua immagine di copertina",
+        "change": "Cambia",
+        "remove": "Rimuovi",
+        "alt": {
+          "label": "Descrivi questa foto",
+          "helper": "Una breve frase per chi non può vedere l'immagine, ad esempio «La sala d'attesa con una grande finestra».",
+          "placeholder": "Cosa mostra la foto?",
+          "count": "{count}/{max}",
+          "otherLanguages": "Altre lingue (facoltativo)",
+          "otherHelper": "Se le lasci vuote, i visitatori vedono la descrizione qui sopra.",
+          "inLanguage": "Descrizione in {language}",
+          "neededToContinue": "Aggiungi una breve descrizione, così tutti possono capire l'immagine."
+        },
+        "library": {
+          "title": "La tua libreria",
+          "close": "Chiudi",
+          "loading": "Caricamento delle foto…",
+          "empty": "Ancora nessuna foto. Scattane una o scegline una da questo telefono.",
+          "more": "Mostra altre",
+          "choose": "Scegli la foto {number}",
+          "untitled": "Foto senza descrizione",
+          "searchLabel": "Cerca foto",
+          "searchPlaceholder": "Cerca per nome o descrizione",
+          "tagsLabel": "Filtra per etichetta",
+          "noResults": "Nessuna foto corrisponde. Prova con altre parole o etichette.",
+          "clear": "Azzera filtri"
+        },
+        "errors": {
+          "unsupported_type": "Questo tipo di file non si può usare. Scegli una foto JPEG, PNG o WebP.",
+          "heic": "Questa foto è in formato HEIC. Sceglila di nuovo dalla libreria foto, oppure imposta la fotocamera su «Più compatibile».",
+          "too_large": "Questa foto è troppo grande. Scegline una sotto i 15 MB.",
+          "conflict": "Questo articolo è stato modificato in un'altra finestra. Ricarica la pagina per vedere la versione più recente.",
+          "forbidden": "Non hai il permesso di modificare questo articolo.",
+          "not_found": "Non troviamo più questa foto. Scegline un'altra.",
+          "generic": "Qualcosa è andato storto. Riprova."
+        },
+        "dropHere": "Rilascia la foto per usarla come copertina",
+        "altStatus": {
+          "saving": "Salvataggio…",
+          "saved": "Salvato",
+          "failed": "Non salvato — riproviamo quando scrivi"
+        },
+        "optimised": "Ottimizzata · {before} → {after}",
+        "notOptimised": "Caricata (non ottimizzata)",
+        "focal": {
+          "title": "Punto focale",
+          "helper": "Tocca o trascina sulla parte più importante della foto. Ogni ritaglio la terrà in vista.",
+          "label": "Punto focale dell'immagine di copertina",
+          "valueText": "{x}% da sinistra, {y}% dall'alto",
+          "keys": "Usa i tasti freccia per spostarlo; tieni premuto Maiusc per passi più grandi.",
+          "previews": "Come verrà ritagliata",
+          "preview": {
+            "wide": "Testata dell'articolo",
+            "card": "Scheda del blog",
+            "square": "Social",
+            "tall": "Telefono"
+          }
+        }
+      },
+      "type": {
+        "title": "Cosa vuoi creare?",
+        "helper": "Scegli da dove iniziare. Salviamo mentre scrivi.",
+        "items": {
+          "blog": "Articolo del blog",
+          "news": "Notizia",
+          "events": "Evento",
+          "gallery": "Galleria"
+        },
+        "desc": {
+          "blog": "Un articolo per il tuo sito, in pochi semplici passaggi.",
+          "news": "Un breve aggiornamento per chi visita il sito.",
+          "events": "Un appuntamento a cui partecipare.",
+          "gallery": "Una raccolta di foto da mostrare."
+        },
+        "soon": "In arrivo",
+        "more": "Altro che puoi aggiungere al tuo sito",
+        "moreHelper": "Non è ancora sul tuo sito. Chiedicelo e lo attiviamo noi.",
+        "add": "Aggiungi",
+        "ask": "Chiedi di aggiungerlo",
+        "askSubject": "Vorrei aggiungere {module} a {project}",
+        "askUnavailable": "Fallo sapere al tuo referente Abluo: lo aggiungiamo noi.",
+        "nothing": "Qui non c'è ancora nulla che puoi creare.",
+        "starting": "Stiamo preparando il tuo articolo…",
+        "failed": "Non siamo riusciti a iniziare un nuovo articolo. Riprova.",
+        "close": "Chiudi"
+      },
+      "shell": {
+        "saveExit": "Salva ed esci",
+        "back": "Indietro",
+        "next": "Avanti",
+        "progress": "Passaggio {current} di {total}",
+        "language": "Stai scrivendo in {language}",
+        "skip": "Salta per ora",
+        "done": "Fatto"
+      },
+      "save": {
+        "saving": "Salvataggio…",
+        "saved": "Salvato",
+        "offline": "Offline — salvato su questo dispositivo",
+        "conflict": "Modificato altrove",
+        "reload": "Ricarica",
+        "error": "Non salvato — ricarica la pagina"
+      },
+      "stepNames": {
+        "category": "Argomento",
+        "title": "Titolo",
+        "story": "Testo",
+        "cover": "Immagine di copertina",
+        "languages": "Lingue",
+        "preview": "Anteprima",
+        "publish": "Pubblicazione",
+        "review": "Rivedi e pubblica"
+      },
+      "category": {
+        "title": "Di cosa parla questo articolo?",
+        "helper": "Scegli uno o più argomenti. Puoi cambiarli in seguito."
+      },
+      "titleStep": {
+        "title": "Dai un titolo al tuo articolo",
+        "helper": "Breve e chiaro funziona meglio. Puoi cambiarlo quando vuoi.",
+        "titleLabel": "Titolo",
+        "titlePlaceholder": "Per esempio: Cinque consigli per una mattina più serena",
+        "subtitleLabel": "Sottotitolo (facoltativo)",
+        "subtitlePlaceholder": "Una frase che dice ai lettori cosa troveranno",
+        "remaining": "{count, plural, one {Resta # carattere} other {Restano # caratteri}}"
+      },
+      "languages": {
+        "title": "Vuoi renderlo disponibile in altre lingue?",
+        "helper": "L'articolo appare solo nelle lingue in cui ha un titolo e un testo.",
+        "original": "Originale",
+        "translate": "Traduci per me",
+        "soon": "In arrivo",
+        "write": "Lo scrivo io",
+        "later": "Non ora",
+        "editing": "La tua versione in {language}",
+        "titleLabel": "Titolo",
+        "subtitleLabel": "Sottotitolo (facoltativo)",
+        "storyLabel": "Testo",
+        "storyPlaceholder": "Scrivi il testo in {language}…",
+        "ready": "Pronta",
+        "missing": "Non ancora scritta",
+        "titlePlaceholder": "Titolo in {language}",
+        "subtitlePlaceholder": "Sottotitolo in {language}",
+        "sourceLabel": "Originale ({language})",
+        "showOriginal": "Mostra l'originale",
+        "sourceEmpty": "Nell'originale non c'è ancora nulla."
+      },
+      "preview": {
+        "title": "Ecco come apparirà il tuo articolo",
+        "helper": "Un'anteprima semplice. Il design del tuo sito viene applicato quando va online.",
+        "language": "Lingua",
+        "empty": "In questa lingua non c'è ancora nulla da mostrare."
+      },
+      "publish": {
+        "title": "Cosa vuoi farne?",
+        "now": "Pubblica ora",
+        "nowHelp": "Va online sul tuo sito subito.",
+        "schedule": "Programma",
+        "scheduleHelp": "Scegli il giorno e l'ora in cui deve apparire.",
+        "draft": "Tieni come bozza",
+        "draftHelp": "Non va online nulla. Puoi continuare quando vuoi dalla Home.",
+        "when": "Online dal",
+        "expire": "Togli dal sito automaticamente",
+        "expireHelp": "Utile per offerte o notizie con una scadenza.",
+        "expireWhen": "Offline dal",
+        "timezone": "Gli orari sono nel tuo fuso orario ({zone}).",
+        "languageLive": "va online",
+        "languageMissing": "non inclusa",
+        "action": {
+          "now": "Pubblica",
+          "schedule": "Programma",
+          "draft": "Salva bozza"
+        },
+        "working": "Pubblicazione…",
+        "errors": {
+          "missing_title": "Prima aggiungi un titolo — torna al passaggio del titolo.",
+          "missing_body": "Prima scrivi il testo — torna al passaggio del testo.",
+          "invalid_schedule": "Scegli una data e un'ora future, entro due anni.",
+          "invalid_expiry": "La data di fine deve essere successiva a quella di pubblicazione.",
+          "conflict": "Questo articolo è stato modificato altrove. Ricarica per vedere l'ultima versione.",
+          "forbidden": "Non hai il permesso di pubblicare qui.",
+          "not_found": "Non troviamo più questo articolo.",
+          "unauthenticated": "La sessione è scaduta. Accedi di nuovo.",
+          "offline": "Sei offline. L'articolo è al sicuro su questo dispositivo — riprova quando sei connesso.",
+          "failed": "Qualcosa è andato storto. L'articolo è al sicuro — riprova."
+        },
+        "summaryNow": "Va online in",
+        "summarySchedule": "Va online il {date} in",
+        "summaryDraft": "Salvato in",
+        "languageSaved": "salvata",
+        "languageInProgress": "iniziata",
+        "languageNotStarted": "non iniziata"
+      },
+      "done": {
+        "live": "Il tuo articolo è online",
+        "liveBody": "Chi visita il tuo sito può già leggerlo.",
+        "scheduled": "Il tuo articolo è programmato",
+        "scheduledBody": "Apparirà il {date}.",
+        "draft": "Salvato come bozza",
+        "draftBody": "Non è ancora online. Puoi continuare quando vuoi dalla Home.",
+        "view": "Vedi sul tuo sito",
+        "home": "Torna alla Home"
+      },
+      "review": {
+        "title": "Il tuo articolo",
+        "helper": "Tutto in un unico posto. Tocca Modifica per cambiare una parte.",
+        "sections": {
+          "category": "Argomento",
+          "title": "Titolo e sottotitolo",
+          "story": "Testo",
+          "cover": "Immagine di copertina",
+          "languages": "Lingue"
+        },
+        "state": {
+          "done": "Fatto",
+          "missing": "Manca",
+          "optional": "Non aggiunto"
+        },
+        "edit": "Modifica",
+        "editLabel": "Modifica {section}",
+        "preview": "Vedi l'anteprima",
+        "publish": "Vai alla pubblicazione",
+        "publishNeeds": "Per pubblicare servono un titolo e il testo.",
+        "noTitle": "Ancora nessun titolo",
+        "noStory": "Ancora nessun testo",
+        "words": "{count, plural, one {# parola} other {# parole}}",
+        "noCategory": "Nessun argomento scelto",
+        "noCover": "Nessuna immagine di copertina",
+        "coverAltMissing": "La foto ha bisogno di una breve descrizione",
+        "coverSet": "Foto aggiunta"
+      }
     }
   },
   "editor": {

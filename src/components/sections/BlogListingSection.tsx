@@ -10,6 +10,7 @@ import { SectionEmptyState } from '@/components/sections/shared/SectionEmptyStat
 import { resolveEasing } from '@/lib/motion/easing'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { getBlogModuleMessages, formatBlogDate } from '@/lib/i18n/blog-module-messages'
+import { focalObjectPosition } from '@/lib/gallery/focal'
 
 // Dates and the reading-time suffix are localized — see
 // @/lib/i18n/blog-module-messages. They used to be hardcoded to 'en' and
@@ -104,6 +105,7 @@ function PostCard({ post, href, locale, priority = false }: { post: Post; href: 
             src={coverSrc}
             alt={post.coverImage?.alt ?? post.title ?? ''}
             className={`h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
+            style={{ objectPosition: focalObjectPosition(post.coverImage) }}
             loading={priority ? 'eager' : 'lazy'}
           />
         ) : (
@@ -159,6 +161,7 @@ function PostCardLarge({ post, href, locale }: { post: Post; href: string; local
             src={coverSrc}
             alt={post.coverImage?.alt ?? post.title ?? ''}
             className={`absolute inset-0 h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
+            style={{ objectPosition: focalObjectPosition(post.coverImage) }}
             loading="eager"
           />
         ) : (
@@ -214,6 +217,7 @@ function PostCardMini({ post, href, locale }: { post: Post; href: string; locale
             src={coverSrc}
             alt={post.coverImage?.alt ?? post.title ?? ''}
             className={`h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
+            style={{ objectPosition: focalObjectPosition(post.coverImage) }}
             loading="lazy"
           />
         ) : (

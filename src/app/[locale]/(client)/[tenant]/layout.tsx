@@ -8,6 +8,7 @@ import {
   resolveProjectGrant,
 } from '@/lib/modules/client-navigation'
 import { ClientSidebar } from '@/components/client/ClientSidebar'
+import { buildCreateMenu } from '@/lib/modules/create-menu'
 
 /**
  * Project-scoped client dashboard shell (ADR-017 Phase 2 / task #81).
@@ -59,6 +60,8 @@ export default async function ClientProjectLayout({
         activeSlug={activeGrant.projectSlug}
         theme={theme}
         homeHref={dashboardHomeHref(activeGrant.projectSlug)}
+        createMenu={buildCreateMenu(activeGrant)}
+        contactEmail={process.env.ABLUO_CONTACT_EMAIL || null}
       />
       <div className="min-h-screen min-w-0 flex-1 md:ml-56">
         <main className="p-4 pb-28 md:p-6">{children}</main>

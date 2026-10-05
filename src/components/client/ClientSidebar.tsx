@@ -1,12 +1,14 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link, usePathname, useRouter } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ProjectSwitcher } from './ProjectSwitcher'
 import { AppThemeSwitch } from './AppThemeSwitch'
 import { AppVersion } from './AppVersion'
+import { AddContentSheet } from './create/AddContentSheet'
+import type { CreateMenu } from '@/lib/modules/create-menu'
 import type { AppTheme } from '@/lib/app-theme'
 import type { ClientNavItem } from '@/lib/modules/client-navigation'
 
@@ -22,7 +24,8 @@ import type { ClientNavItem } from '@/lib/modules/client-navigation'
  * Content and Leads exist only when the project has the module (navItems are
  * module-driven, `buildClientNavItems`). All copy from `clientDashboard.*`.
  *
- * "+ Add content" opens a short "coming soon" sheet until S2 ships the wizard.
+ * "+ Add content" (desktop button and the phone tab bar's "+") opens the
+ * "What would you like to create?" sheet (ADR-025 D8, `AddContentSheet`).
  */
 
 export type ClientSidebarProps = {
@@ -35,6 +38,10 @@ export type ClientSidebarProps = {
   theme: AppTheme
   /** Locale-agnostic href of the project's dashboard home. */
   homeHref: string
+  /** What this user can create in this project (server-computed, `buildCreateMenu`). */
+  createMenu?: CreateMenu
+  /** Abluo contact for "Ask us to add it" (optional). */
+  contactEmail?: string | null
 }
 
 const ICONS = {
@@ -56,25 +63,25 @@ function Icon({ d, size = 24, width = 1.8 }: { d: string; size?: number; width?:
 
 const iconFor = (moduleId: string) => (ICONS as Record<string, string>)[moduleId] ?? ICONS.generic
 
-export function ClientSidebar({ navItems, projects, activeSlug, theme, homeHref }: ClientSidebarProps) {
+export function ClientSidebar({
+  navItems,
+  projects,
+  activeSlug,
+  theme,
+  homeHref,
+  createMenu = { available: [], more: [] },
+  contactEmail = null,
+}: ClientSidebarProps) {
   const t = useTranslations('clientDashboard')
   const pathname = usePathname() // locale-stripped, e.g. "/livener/posts"
   const router = useRouter()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
-  const addDialog = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
     setDrawerOpen(false)
     setAddOpen(false)
   }, [pathname])
-
-  useEffect(() => {
-    const d = addDialog.current
-    if (!d) return
-    if (addOpen && !d.open) d.showModal()
-    if (!addOpen && d.open) d.close()
-  }, [addOpen])
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
 
@@ -224,23 +231,14 @@ export function ClientSidebar({ navItems, projects, activeSlug, theme, homeHref 
         </button>
       </nav>
 
-      {/* ── "+ Add content" sheet (until S2) ─────────────────────────────── */}
-      <dialog
-        ref={addDialog}
+      {/* ── "+ Add content" → "What would you like to create?" ───────────── */}
+      <AddContentSheet
+        open={addOpen}
         onClose={() => setAddOpen(false)}
-        aria-labelledby="add-sheet-title"
-        className="m-auto mb-0 w-full max-w-lg rounded-t-2xl bg-popover p-6 pb-[max(24px,env(safe-area-inset-bottom))] text-popover-foreground backdrop:bg-overlay md:mb-auto md:rounded-2xl"
-      >
-        <h2 id="add-sheet-title" className="text-xl font-semibold tracking-tight">{t('add.title')}</h2>
-        <p className="mt-2 text-[15px] leading-6 text-muted-foreground">{t('add.body')}</p>
-        <button
-          type="button"
-          onClick={() => setAddOpen(false)}
-          className="mt-6 h-12 w-full rounded-lg bg-action text-[15px] font-semibold text-action-foreground"
-        >
-          {t('add.close')}
-        </button>
-      </dialog>
+        projectSlug={activeSlug}
+        menu={createMenu}
+        contactEmail={contactEmail}
+      />
     </>
   )
 }

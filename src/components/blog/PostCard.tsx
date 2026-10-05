@@ -11,6 +11,7 @@ import { imageUrl } from '@/lib/sanity/image'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 import { formatBlogDate } from '@/lib/i18n/blog-module-messages'
+import { focalObjectPosition } from '@/lib/gallery/focal'
 
 interface PostCardProps {
   post: Post
@@ -54,6 +55,7 @@ export function PostCard({
               src={coverSrc}
               alt={post.coverImage?.alt ?? post.title ?? ''}
               className={`h-full w-full object-cover ${IMAGE_HOVER_CLASSES}`}
+              style={{ objectPosition: focalObjectPosition(post.coverImage) }}
               loading="lazy"
             />
           ) : (

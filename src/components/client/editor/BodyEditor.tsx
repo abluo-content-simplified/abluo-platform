@@ -128,9 +128,13 @@ function Toolbar() {
 export function BodyEditor({
   initialValue,
   onChange,
+  placeholder,
 }: {
+  /** Read once on mount; to replace the content (e.g. an accepted AI version) remount with a new `key`. */
   initialValue?: PortableTextBlock[]
   onChange?: (value: PortableTextBlock[] | undefined) => void
+  /** Overrides the default "Start writing…" hint. */
+  placeholder?: string
 }) {
   const t = useTranslations('editor.body')
   const [focused, setFocused] = useState(false)
@@ -150,7 +154,7 @@ export function BodyEditor({
           className="abluo-body-editor min-h-[40vh] flex-1 text-[17px] leading-7 text-foreground outline-none"
           renderStyle={renderStyle}
           renderDecorator={renderDecorator}
-          renderPlaceholder={() => <span className="text-muted-foreground">{t('placeholder')}</span>}
+          renderPlaceholder={() => <span className="text-muted-foreground">{placeholder ?? t('placeholder')}</span>}
         />
         {/* Sticky above the phone keyboard; the step's own footer stays below. */}
         <div

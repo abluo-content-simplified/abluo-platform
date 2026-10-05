@@ -4666,6 +4666,16 @@ const siteConfigType = defineType({
     projectSlugField,
     defineField({ name: 'siteName', title: 'Site Name', type: 'string', group: 'branding' }),
     defineField({ name: 'tagline', title: 'Tagline', type: 'localizedString', group: 'branding' }),
+    defineField({
+      name: 'toneOfVoice',
+      title: 'Tone of voice',
+      type: 'text',
+      rows: 6,
+      group: 'branding',
+      description:
+        'How this website speaks. Every AI feature (Improve, title suggestions, excerpts, translations) follows it. Plain words, up to 1000 characters — who the readers are, the register (formal "Lei" / informal "tu", "Sie" / "du"), the feeling, words to use or avoid. Examples — Warm & reassuring: "Calm, warm and reassuring. We speak to people who may feel anxious; short sentences, no jargon, never alarmist. Informal \'tu\' in Italian." · Professional & precise: "Clear, competent and factual, like a trusted specialist. Formal register (Lei / Sie). Explain technical terms briefly; no exclamation marks." · Friendly & lively: "Upbeat and welcoming, like a community club. Informal, inclusive \'we\', light humour is fine; keep it simple and practical." Leave empty to keep each author\'s own tone.',
+      validation: (Rule) => Rule.max(1000).warning('Keep the tone of voice under 1000 characters — only the first 1000 are used.'),
+    }),
     defineField({ name: 'logo', title: 'Logo', type: 'localizedImage', group: 'branding' }),
     defineField({ name: 'logoLight', title: 'Logo (Light variant)', type: 'localizedImage', group: 'branding' }),
     // ── Text wordmark ────────────────────────────────────────────────────────

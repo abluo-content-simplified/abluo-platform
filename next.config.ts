@@ -50,6 +50,15 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_GIT_COMMIT_REF:     process.env.VERCEL_GIT_COMMIT_REF ?? 'local',
     NEXT_PUBLIC_BUILD_TIME:         new Date().toISOString(),
   },
+  // Server actions accept 1 MB bodies by default. The client dashboard uploads
+  // photos through a server action (posts/media-actions.ts) so TinyPNG gets the
+  // ORIGINAL photo to compress; 4 MB stays under Vercel's 4.5 MB request limit.
+  // The browser only pre-resizes files above ~3.8 MB / 2560 px (CoverStep).
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '4mb',
+    },
+  },
   async headers() {
     return [
       {

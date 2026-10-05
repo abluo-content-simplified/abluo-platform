@@ -31,6 +31,7 @@ import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
 import { ArticleJsonLd } from '@/components/JsonLd'
 import { GalleryPlacement } from '@/components/gallery/GalleryPlacement'
 import { getEnabledModuleIds } from '@/lib/modules/config'
+import { focalObjectPosition } from '@/lib/gallery/focal'
 
 export const dynamic = 'force-dynamic'
 
@@ -319,6 +320,7 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
                     srcSet={coverSrcSet}
                     alt={post.coverImage?.alt ?? post.title ?? ''}
                     className="block h-full w-full object-cover"
+                    style={{ objectPosition: focalObjectPosition(post.coverImage) }}
                     loading="eager"
                   />
                 </div>

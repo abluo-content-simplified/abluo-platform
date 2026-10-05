@@ -105,7 +105,8 @@
         "showing": "{shown} of {total} posts",
         "clear": "Clear filters",
         "noMatch": "No posts match these filters."
-      }
+      },
+      "untitledDraft": "Untitled draft"
     },
     "submissions": {
       "title": "Submissions",
@@ -172,15 +173,311 @@
       "newRequests": "New requests",
       "newRequestsBody": "{count, plural, =0 {No new contact requests} one {new contact request to answer} other {new contact requests to answer}}",
       "emptyTitle": "Your first post is a few taps away",
-      "emptyBody": "Tap + to start. We save as you go, so you can stop and continue any time."
-    },
-    "add": {
-      "title": "Coming very soon",
-      "body": "Writing posts right here, on your phone or computer, is almost ready.",
-      "close": "Close"
+      "emptyBody": "Tap + to start. We save as you go, so you can stop and continue any time.",
+      "atStep": "Next: {step}"
     },
     "version": {
       "updated": "Updated {date}"
+    },
+    "create": {
+      "story": {
+        "title": "Tell your story",
+        "helper": "Write it the way you'd explain it to a patient or client. Don't worry about polish — you can tidy up later.",
+        "placeholder": "Start writing, or paste text you already have…",
+        "stats": "{words, plural, one {# word} other {# words}} · {minutes, plural, one {# min read} other {# min read}}",
+        "statsEmpty": "No words yet",
+        "actions": {
+          "label": "Writing helpers",
+          "paste": "Paste text",
+          "dictate": "Dictate",
+          "soon": "Coming soon",
+          "improve": "Improve with AI"
+        },
+        "paste": {
+          "done": "Pasted at the end of your text.",
+          "empty": "Your clipboard has no text to paste.",
+          "fallback": "Tap and hold in the writing area, then choose Paste — or use ⌘V / Ctrl+V."
+        },
+        "improve": {
+          "loading": "Improving…",
+          "tooShort": "Write at least {count} words to use Improve.",
+          "failed": "We couldn't improve your text just now. Your words are safe — please try again.",
+          "title": "A suggested version",
+          "helper": "Compare it with yours. Nothing changes unless you choose it.",
+          "yours": "Your version",
+          "suggestion": "Suggested version",
+          "accept": "Use this version",
+          "keep": "Keep mine"
+        }
+      },
+      "improve": {
+        "button": "Improve",
+        "working": "Improving your text…",
+        "hint": "Tidies spelling, grammar and flow. Your words, your voice — nothing new is added.",
+        "yours": "Your version",
+        "suggestion": "Suggested",
+        "accept": "Use suggestion",
+        "keepMine": "Keep mine",
+        "accepted": "Suggestion applied.",
+        "errors": {
+          "forbidden": "You don’t have permission to do this.",
+          "invalid_value": "Write a few sentences first, then try again.",
+          "too_large": "This text is too long to improve in one go. Try a shorter part.",
+          "ai_unavailable": "The assistant isn’t available right now. Please try again in a moment.",
+          "unauthenticated": "Your session has ended. Please sign in again.",
+          "failed": "Something went wrong. Please try again."
+        }
+      },
+      "cover": {
+        "title": "Add a cover image",
+        "helper": "It shows at the top of your post and when people share it.",
+        "choices": {
+          "label": "Choose a cover image",
+          "camera": "Take a photo",
+          "phone": "From this phone",
+          "library": "Your media library",
+          "ai": "Create with AI",
+          "soon": "Coming soon",
+          "computer": "Upload from your computer",
+          "computerHint": "or drag a photo here"
+        },
+        "note": "We make every photo lighter for the web and ask you for a short description, so everyone can understand it.",
+        "preparing": "Preparing your photo…",
+        "uploading": "Uploading your photo…",
+        "saving": "Saving…",
+        "saved": "Cover image saved.",
+        "removed": "Cover image removed.",
+        "previewLabel": "Your cover image",
+        "change": "Change",
+        "remove": "Remove",
+        "alt": {
+          "label": "Describe this photo",
+          "helper": "One short sentence for people who can't see the image — for example “The waiting room with a large window”.",
+          "placeholder": "What does the photo show?",
+          "count": "{count}/{max}",
+          "otherLanguages": "Other languages (optional)",
+          "otherHelper": "If you leave these empty, visitors see the description above.",
+          "inLanguage": "Description in {language}",
+          "neededToContinue": "Add a short description so everyone can understand the image."
+        },
+        "library": {
+          "title": "Your media library",
+          "close": "Close",
+          "loading": "Loading your photos…",
+          "empty": "No photos yet. Take a photo or choose one from this phone.",
+          "more": "Show more",
+          "choose": "Choose photo {number}",
+          "untitled": "Photo without description",
+          "searchLabel": "Search photos",
+          "searchPlaceholder": "Search by name or description",
+          "tagsLabel": "Filter by tag",
+          "noResults": "No photos match. Try other words or tags.",
+          "clear": "Clear filters"
+        },
+        "errors": {
+          "unsupported_type": "This kind of file can't be used. Please choose a JPEG, PNG or WebP photo.",
+          "heic": "This photo is in HEIC format. Please choose it again from the photo library, or set your camera to “Most Compatible”.",
+          "too_large": "This photo is too large. Please choose one under 15 MB.",
+          "conflict": "This post was changed in another window. Reload the page to see the latest version.",
+          "forbidden": "You don't have permission to change this post.",
+          "not_found": "We couldn't find this photo any more. Please choose another one.",
+          "generic": "Something went wrong. Please try again."
+        },
+        "dropHere": "Drop the photo to use it as the cover",
+        "altStatus": {
+          "saving": "Saving…",
+          "saved": "Saved",
+          "failed": "Not saved — we'll try again when you type"
+        },
+        "optimised": "Optimised · {before} → {after}",
+        "notOptimised": "Uploaded (not optimised)",
+        "focal": {
+          "title": "Focus point",
+          "helper": "Tap or drag to the most important part of the photo. Every crop keeps it in view.",
+          "label": "Focus point of the cover image",
+          "valueText": "{x}% from the left, {y}% from the top",
+          "keys": "Use the arrow keys to move it; hold Shift for bigger steps.",
+          "previews": "How it will be cropped",
+          "preview": {
+            "wide": "Post header",
+            "card": "Blog card",
+            "square": "Social",
+            "tall": "Phone"
+          }
+        }
+      },
+      "type": {
+        "title": "What would you like to create?",
+        "helper": "Pick one to start. We save as you go.",
+        "items": {
+          "blog": "Blog post",
+          "news": "News",
+          "events": "Event",
+          "gallery": "Gallery"
+        },
+        "desc": {
+          "blog": "An article for your website, in a few easy steps.",
+          "news": "A short update for your visitors.",
+          "events": "A date people can come to.",
+          "gallery": "A set of photos to show."
+        },
+        "soon": "Coming soon",
+        "more": "More you can add to your site",
+        "moreHelper": "Not on your site yet. Ask us and we'll set it up.",
+        "add": "Add",
+        "ask": "Ask us to add it",
+        "askSubject": "Please add {module} to {project}",
+        "askUnavailable": "Tell your Abluo contact you'd like this — we'll add it for you.",
+        "nothing": "There's nothing you can create here yet.",
+        "starting": "Getting your post ready…",
+        "failed": "We couldn't start a new post. Please try again.",
+        "close": "Close"
+      },
+      "shell": {
+        "saveExit": "Save & exit",
+        "back": "Back",
+        "next": "Next",
+        "progress": "Step {current} of {total}",
+        "language": "Writing in {language}",
+        "skip": "Skip for now",
+        "done": "Done"
+      },
+      "save": {
+        "saving": "Saving…",
+        "saved": "Saved",
+        "offline": "Offline — saved on this device",
+        "conflict": "Edited elsewhere",
+        "reload": "Reload",
+        "error": "Not saved — please reload"
+      },
+      "stepNames": {
+        "category": "Topic",
+        "title": "Title",
+        "story": "Story",
+        "cover": "Cover image",
+        "languages": "Languages",
+        "preview": "Preview",
+        "publish": "Publishing",
+        "review": "Review & publish"
+      },
+      "category": {
+        "title": "What's this post about?",
+        "helper": "Pick one or more topics. You can change them later."
+      },
+      "titleStep": {
+        "title": "Give your story a title",
+        "helper": "Short and clear works best. You can change it any time.",
+        "titleLabel": "Title",
+        "titlePlaceholder": "For example: Five tips for a calmer morning",
+        "subtitleLabel": "Subtitle (optional)",
+        "subtitlePlaceholder": "One sentence that tells readers what they'll get",
+        "remaining": "{count, plural, one {# character left} other {# characters left}}"
+      },
+      "languages": {
+        "title": "Make it available in other languages?",
+        "helper": "Your post appears only in the languages it has a title and text for.",
+        "original": "Original",
+        "translate": "Translate for me",
+        "soon": "Coming soon",
+        "write": "I'll write it",
+        "later": "Not now",
+        "editing": "Your {language} version",
+        "titleLabel": "Title",
+        "subtitleLabel": "Subtitle (optional)",
+        "storyLabel": "Story",
+        "storyPlaceholder": "Write the {language} text…",
+        "ready": "Ready",
+        "missing": "Not written yet",
+        "titlePlaceholder": "{language} title",
+        "subtitlePlaceholder": "{language} subtitle",
+        "sourceLabel": "Original ({language})",
+        "showOriginal": "Show original",
+        "sourceEmpty": "Nothing written in the original yet."
+      },
+      "preview": {
+        "title": "Here's how your post will look",
+        "helper": "A simple preview. Your website's own design is applied when it goes live.",
+        "language": "Language",
+        "empty": "Nothing to show in this language yet."
+      },
+      "publish": {
+        "title": "What do you want to do with it?",
+        "now": "Publish now",
+        "nowHelp": "It goes live on your website straight away.",
+        "schedule": "Schedule",
+        "scheduleHelp": "Pick the day and time it should appear.",
+        "draft": "Keep as draft",
+        "draftHelp": "Nothing goes live. Continue any time from Home.",
+        "when": "Goes live on",
+        "expire": "Take offline automatically",
+        "expireHelp": "Useful for offers or news with an end date.",
+        "expireWhen": "Offline from",
+        "timezone": "Times are in your time zone ({zone}).",
+        "languageLive": "goes live",
+        "languageMissing": "not included",
+        "action": {
+          "now": "Publish",
+          "schedule": "Schedule",
+          "draft": "Save draft"
+        },
+        "working": "Publishing…",
+        "errors": {
+          "missing_title": "Add a title first — go back to the title step.",
+          "missing_body": "Write your story first — go back to the story step.",
+          "invalid_schedule": "Pick a date and time in the future, within two years.",
+          "invalid_expiry": "The offline date must be after the go-live date.",
+          "conflict": "This post was changed somewhere else. Reload to see the latest version.",
+          "forbidden": "You don't have permission to publish here.",
+          "not_found": "We couldn't find this post any more.",
+          "unauthenticated": "Your session has ended. Please sign in again.",
+          "offline": "You're offline. Your post is safe on this device — try again when you're connected.",
+          "failed": "Something went wrong. Your post is safe — please try again."
+        },
+        "summaryNow": "Goes live in",
+        "summarySchedule": "Goes live on {date} in",
+        "summaryDraft": "Saved in",
+        "languageSaved": "saved",
+        "languageInProgress": "started",
+        "languageNotStarted": "not started"
+      },
+      "done": {
+        "live": "Your post is live",
+        "liveBody": "Visitors can read it on your website now.",
+        "scheduled": "Your post is scheduled",
+        "scheduledBody": "It will appear on {date}.",
+        "draft": "Saved as a draft",
+        "draftBody": "Nothing is live yet. Continue any time from Home.",
+        "view": "View on your site",
+        "home": "Back to home"
+      },
+      "review": {
+        "title": "Your post",
+        "helper": "Everything in one place. Tap Edit to change a part.",
+        "sections": {
+          "category": "Topic",
+          "title": "Title & subtitle",
+          "story": "Story",
+          "cover": "Cover image",
+          "languages": "Languages"
+        },
+        "state": {
+          "done": "Done",
+          "missing": "Missing",
+          "optional": "Not added"
+        },
+        "edit": "Edit",
+        "editLabel": "Edit {section}",
+        "preview": "Preview your post",
+        "publish": "Continue to publish",
+        "publishNeeds": "Add a title and your story to publish.",
+        "noTitle": "No title yet",
+        "noStory": "Nothing written yet",
+        "words": "{count, plural, one {# word} other {# words}}",
+        "noCategory": "No topic chosen",
+        "noCover": "No cover image",
+        "coverAltMissing": "The photo needs a short description",
+        "coverSet": "Photo added"
+      }
     }
   },
   "editor": {

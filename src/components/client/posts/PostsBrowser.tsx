@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { usePathname, useRouter } from 'next/navigation'
+import { Link } from '@/i18n/navigation'
 import {
   activeFilterCount,
   applyFilters,
@@ -24,6 +25,8 @@ export type BrowserPost = FilterablePost & {
   categories: string[]
   dateLabel: string
   offlineLabel: string | null
+  /** Locale-agnostic link (wizard drafts open in the wizard). */
+  href?: string | null
 }
 
 const STATUS_TABS: (PostStatus | 'all')[] = ['all', 'published', 'scheduled', 'draft', 'offline']
@@ -224,7 +227,16 @@ export function PostsBrowser({
               className="flex flex-col gap-2 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
             >
               <div className="min-w-0 flex-1 space-y-1">
-                <p className="text-base font-medium leading-snug text-foreground">{post.title}</p>
+                {post.href ? (
+                  <Link
+                    href={post.href}
+                    className="inline-flex min-h-6 items-center text-base font-medium leading-snug text-foreground underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  >
+                    {post.title}
+                  </Link>
+                ) : (
+                  <p className="text-base font-medium leading-snug text-foreground">{post.title}</p>
+                )}
                 {post.subtitle ? <p className="line-clamp-1 text-sm text-muted-foreground">{post.subtitle}</p> : null}
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-1 text-sm text-muted-foreground">
                   {post.categories.map((c) => (

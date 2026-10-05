@@ -9,6 +9,7 @@ import {
 } from '@/lib/api/client-dashboard'
 import { PostsBrowser, type BrowserPost } from '@/components/client/posts/PostsBrowser'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
+import { listPostDrafts, type PostDraftSummary } from '@/lib/api/post-drafts'
 
 /**
  * Client dashboard — Posts list. ADR-017 slice 6 (Phase 1 read path) relocated
@@ -50,9 +51,18 @@ export default async function PostsPage({
   const t = await getTranslations('clientDashboard')
 
   let list: DashboardPostList = { posts: [], languages: [], categories: [] }
+  let drafts: PostDraftSummary[] = []
   let moduleNotInstalled = false
   try {
-    list = await getDashboardPostList(ctx, grant.projectId, { locale })
+    ;[list, drafts] = await Promise.all([
+      getDashboardPostList(ctx, grant.projectId, { locale }),
+      // Wizard drafts (ADR-025) live in the drafts perspective; only people who
+      // can edit see them. A viewer simply gets none — never an error.
+      listPostDrafts(ctx, grant.projectId).catch((error) => {
+        if (error instanceof TenantAuthorizationError) return []
+        throw error
+      }),
+    ])
   } catch (error) {
     // A denial here (most likely: the blog module is not installed for this
     // project) is an expected, localized state — not a crash. Anything that
@@ -68,11 +78,16 @@ export default async function PostsPage({
     <Shell title={t('posts.title')}>
       {moduleNotInstalled ? (
         <p className="text-sm text-muted-foreground">{t('posts.moduleNotInstalled')}</p>
-      ) : list.posts.length === 0 ? (
+      ) : list.posts.length === 0 && drafts.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('posts.emptyNoPosts')}</p>
       ) : (
         <PostsBrowser
-          posts={list.posts.map((post) => toBrowserPost(post, locale, t))}
+          posts={[
+            ...drafts
+              .filter((d) => !list.posts.some((p) => p._id === d.id))
+              .map((d) => draftToBrowserPost(d, projectSlug, list, locale, t)),
+            ...list.posts.map((post) => toBrowserPost(post, locale, t)),
+          ]}
           languages={list.languages}
           categories={list.categories}
           initialQuery={toQueryString(await searchParams)}
@@ -136,6 +151,34 @@ function toBrowserPost(post: DashboardPostRow, locale: string, t: T): BrowserPos
       post.expiresAt && post.status !== 'offline'
         ? t('posts.meta.offlineOn', { date: formatDate(post.expiresAt, locale) })
         : null,
+  }
+}
+
+/** A wizard draft as a list row: status draft, opens the wizard. */
+function draftToBrowserPost(
+  draft: PostDraftSummary,
+  projectSlug: string,
+  list: DashboardPostList,
+  locale: string,
+  t: T
+): BrowserPost {
+  const label = new Map(list.categories.map((c) => [c.value, c.label]))
+  const texts = Object.values(draft.titles).join(' \n ')
+  return {
+    _id: draft.id,
+    title: draft.title ?? t('posts.untitledDraft'),
+    subtitle: null,
+    status: 'draft',
+    statusLabel: t('posts.status.draft'),
+    searchText: texts.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(),
+    categoryKeys: draft.categoryKeys,
+    categories: draft.categoryKeys.map((k) => label.get(k) ?? k.replace(/-/g, ' ')),
+    languages: list.languages.filter((l) => draft.titles[l]?.trim()),
+    primaryDate: draft.updatedAt,
+    updatedAt: draft.updatedAt,
+    dateLabel: t('posts.meta.edited', { date: formatDate(draft.updatedAt, locale) }),
+    offlineLabel: null,
+    href: `/${projectSlug}/posts/write/${draft.id}`,
   }
 }
 

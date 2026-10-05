@@ -6,7 +6,16 @@ import { describe, it, expect, vi } from 'vitest'
 
 vi.mock('@/lib/sanity/server-clients', () => ({ sanityWriteClient: {} }))
 
-import { createPostDraft, patchPostDraft, PostDraftError, sanitizeBlocks, LIMITS } from '../post-drafts'
+import {
+  createPostDraft,
+  patchPostDraft,
+  getPostDraft,
+  listPostDrafts,
+  getPostEditorSite,
+  PostDraftError,
+  sanitizeBlocks,
+  LIMITS,
+} from '../post-drafts'
 import { TenantAuthorizationError } from '../tenant-scoped-sanity'
 import type { ProjectGrant, TenantAuthorizationContext } from '../tenant-context'
 import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
@@ -125,10 +134,28 @@ describe('patchPostDraft', () => {
     ['title too long', { 'title.it': 'x'.repeat(LIMITS.title + 1) }],
     ['title not text', { 'title.it': 42 }],
     ['unknown wizard step', { 'wizard.step': 'hack' }],
+    ['unknown furthest step', { 'wizard.furthest': 'everywhere' }],
+    ['furthest not a string', { 'wizard.furthest': { $set: 'x' } }],
     ['image block', { 'body.it': [{ _type: 'image', _key: 'a' }] }],
   ])('refuses %s, nothing written', async (_l, set) => {
     const c = fakeClient()
     await expect(patch(set, c)).rejects.toMatchObject({ code: 'invalid_value' })
+    expect(wrote(c)).toBe(0)
+  })
+
+  it('accepts the overview step and the furthest step (same enum as wizard.step)', async () => {
+    const c = fakeClient()
+    await patch({ 'wizard.step': 'review', 'wizard.furthest': 'publish' }, c)
+    expect(c.ops.find(([o]) => o === 'set')?.[1]).toEqual({
+      'wizard.step': 'review',
+      'wizard.furthest': 'publish',
+      'wizard.updatedAt': '2026-10-05T10:00:00.000Z',
+    })
+  })
+
+  it('refuses other wizard sub-fields', async () => {
+    const c = fakeClient()
+    await expect(patch({ 'wizard.updatedAt': '2020-01-01' }, c)).rejects.toMatchObject({ code: 'invalid_field' })
     expect(wrote(c)).toBe(0)
   })
 
@@ -212,5 +239,154 @@ describe('sanitizeBlocks', () => {
     [{ _type: 'block', _key: 'bad key!', children: [{ _type: 'span', _key: 's', text: '' }] }],
   ])('refuses unsupported content %#', (block) => {
     expect(() => sanitizeBlocks([block])).toThrow(PostDraftError)
+  })
+})
+
+// ── S2c — wizard reads ───────────────────────────────────────────────────────
+
+function readClient(o: { doc?: Record<string, unknown> | null; fetchResult?: unknown } = {}) {
+  const doc =
+    o.doc === undefined
+      ? {
+          _id: `drafts.${ID}`,
+          _type: 'post',
+          _rev: 'r9',
+          projectSlug: 'hoffmann',
+          title: { _type: 'localizedString', it: 'Ciao', de: 'Hallo' },
+          subtitle: { _type: 'localizedString', it: 'Sotto' },
+          body: { _type: 'localizedPortableText', it: [{ _type: 'block', _key: 'b' }] },
+          categories: ['cura'],
+          coverImage: { _type: 'localizedImage', asset: { _ref: 'image-abc-10x10-jpg' }, alt: { _type: 'x', it: 'Alt' } },
+          wizard: { step: 'story', furthest: 'cover', updatedAt: '2026-10-05T09:00:00Z' },
+        }
+      : o.doc
+  return {
+    create: vi.fn(),
+    patch: vi.fn(),
+    getDocument: vi.fn(async () => doc ?? undefined),
+    fetch: vi.fn(async (q: string) => (o.fetchResult !== undefined ? o.fetchResult : q.includes('.url') ? 'https://cdn/x.jpg' : null)),
+  }
+}
+const rdeps = (client: ReturnType<typeof readClient>) => ({ client: client as never })
+
+describe('getPostDraft', () => {
+  it('returns the snapshot: localized maps without _type, cover url resolved, stored step', async () => {
+    const c = readClient()
+    const d = await getPostDraft(ctx(grant()), 'project-a', ID, rdeps(c))
+    expect(d).toEqual({
+      id: ID,
+      rev: 'r9',
+      title: { it: 'Ciao', de: 'Hallo' },
+      subtitle: { it: 'Sotto' },
+      excerpt: {},
+      body: { it: [{ _type: 'block', _key: 'b' }] },
+      categories: ['cura'],
+      cover: { assetId: 'image-abc-10x10-jpg', url: 'https://cdn/x.jpg', alt: { it: 'Alt' } },
+      step: 'story',
+      furthest: 'cover',
+    })
+    expect(c.getDocument).toHaveBeenCalledWith(`drafts.${ID}`)
+  })
+
+  it('an unknown stored step resumes at "type"; no cover → null', async () => {
+    const c = readClient({ doc: { _id: `drafts.${ID}`, _type: 'post', _rev: 'r', projectSlug: 'hoffmann', wizard: { step: 'nope' } } })
+    const d = await getPostDraft(ctx(grant()), 'project-a', ID, rdeps(c))
+    expect(d.step).toBe('type')
+    expect(d.furthest).toBe('type')
+    expect(d.cover).toBeNull()
+    expect(c.fetch).not.toHaveBeenCalled()
+  })
+
+  it("another project's draft, a missing draft and a non-post all read as not_found", async () => {
+    for (const doc of [
+      { _id: `drafts.${ID}`, _type: 'post', _rev: 'r', projectSlug: 'livener' },
+      null,
+      { _id: `drafts.${ID}`, _type: 'page', _rev: 'r', projectSlug: 'hoffmann' },
+    ]) {
+      const c = readClient({ doc })
+      await expect(getPostDraft(ctx(grant()), 'project-a', ID, rdeps(c))).rejects.toMatchObject({ code: 'not_found' })
+    }
+  })
+
+  it('a malformed id is not_found before any read', async () => {
+    const c = readClient()
+    await expect(getPostDraft(ctx(grant()), 'project-a', `../${ID}`, rdeps(c))).rejects.toMatchObject({ code: 'not_found' })
+    expect(c.getDocument).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['a viewer (read is not enough to edit)', grant({ role: 'viewer', permissions: ['blog.post.read'] }), 'project-a'],
+    ['blog not installed', grant({ enabledModuleIds: ['forms'] }), 'project-a'],
+    ["another tenant's project", grant(), 'project-b'],
+  ])('refuses %s before any read', async (_l, g, projectId) => {
+    const c = readClient()
+    await expect(getPostDraft(ctx(g), projectId, ID, rdeps(c))).rejects.toThrow(TenantAuthorizationError)
+    expect(c.getDocument).not.toHaveBeenCalled()
+  })
+})
+
+describe('listPostDrafts', () => {
+  it('lists this project\'s wizard drafts (raw perspective, grant slug), title in the default language', async () => {
+    const c = readClient({
+      fetchResult: {
+        defaultLocale: 'de',
+        drafts: [
+          { _id: `drafts.${ID}`, projectSlug: 'hoffmann', title: { _type: 'x', it: 'Ciao', de: 'Hallo' }, categories: ['cura'], step: 'title', furthest: 'publish', updatedAt: '2026-10-05T09:00:00Z' },
+          { _id: 'drafts.22222222-2222-4333-8444-555555555555', projectSlug: 'hoffmann', title: { it: '  ' }, step: 'weird', updatedAt: '2026-10-04T09:00:00Z' },
+          { _id: 'drafts.33333333-2222-4333-8444-555555555555', projectSlug: 'livener', title: { it: 'Altro' }, step: 'title' },
+          { _id: '44444444-2222-4333-8444-555555555555', projectSlug: 'hoffmann', title: { it: 'Pubblicato' }, step: 'title' },
+        ],
+      },
+    })
+    const rows = await listPostDrafts(ctx(grant()), 'project-a', rdeps(c))
+    expect(rows).toEqual([
+      { id: ID, title: 'Hallo', step: 'title', furthest: 'publish', updatedAt: '2026-10-05T09:00:00Z', titles: { it: 'Ciao', de: 'Hallo' }, categoryKeys: ['cura'] },
+      { id: '22222222-2222-4333-8444-555555555555', title: null, step: 'type', furthest: 'type', updatedAt: '2026-10-04T09:00:00Z', titles: { it: '  ' }, categoryKeys: [] },
+    ])
+    const [query, params, options] = c.fetch.mock.calls[0] as unknown as [string, Record<string, unknown>, Record<string, unknown>]
+    expect(params).toEqual({ projectSlug: 'hoffmann' })
+    expect(options).toEqual({ perspective: 'raw' })
+    expect(query).toContain('_id in path("drafts.**")')
+    expect(query).toContain('projectSlug == $projectSlug')
+  })
+
+  it.each([
+    ['a viewer', grant({ role: 'viewer', permissions: ['blog.post.read'] }), 'project-a'],
+    ["another tenant's project", grant(), 'project-b'],
+  ])('refuses %s before any read', async (_l, g, projectId) => {
+    const c = readClient()
+    await expect(listPostDrafts(ctx(g), projectId, rdeps(c))).rejects.toThrow(TenantAuthorizationError)
+    expect(c.fetch).not.toHaveBeenCalled()
+  })
+})
+
+describe('getPostEditorSite', () => {
+  it('default language first, category labels in the viewer language, origin from the domain', async () => {
+    const c = readClient({
+      fetchResult: {
+        site: { defaultLocale: 'it', supportedLocales: ['de', 'it'] },
+        categories: [{ value: 'cura', label: { it: 'Cura', en: 'Care' } }, { value: 'senza-label' }],
+        customDomain: 'ch-psicoterapeuta.com/',
+      },
+    })
+    const site = await getPostEditorSite(ctx(grant()), 'project-a', { locale: 'en' }, rdeps(c))
+    expect(site).toEqual({
+      projectSlug: 'hoffmann',
+      defaultLocale: 'it',
+      languages: ['it', 'de'],
+      categories: [
+        { value: 'cura', label: 'Care' },
+        { value: 'senza-label', label: 'senza label' },
+      ],
+      origin: 'https://ch-psicoterapeuta.com',
+    })
+    expect((c.fetch.mock.calls[0] as unknown as [string, Record<string, unknown>])[1]).toEqual({ projectSlug: 'hoffmann' })
+  })
+
+  it('no domain → origin null', async () => {
+    const c = readClient({ fetchResult: { site: { defaultLocale: 'en', supportedLocales: ['en'] } } })
+    const site = await getPostEditorSite(ctx(grant()), 'project-a', { locale: 'en' }, rdeps(c))
+    expect(site.origin).toBeNull()
+    expect(site.languages).toEqual(['en'])
   })
 })

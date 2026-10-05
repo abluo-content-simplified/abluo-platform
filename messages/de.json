@@ -105,7 +105,8 @@
         "showing": "{shown} von {total} Beiträgen",
         "clear": "Filter zurücksetzen",
         "noMatch": "Keine Beiträge passen zu diesen Filtern."
-      }
+      },
+      "untitledDraft": "Entwurf ohne Titel"
     },
     "submissions": {
       "title": "Einsendungen",
@@ -172,15 +173,311 @@
       "newRequests": "Neue Anfragen",
       "newRequestsBody": "{count, plural, =0 {Keine neuen Kontaktanfragen} one {neue Kontaktanfrage zu beantworten} other {neue Kontaktanfragen zu beantworten}}",
       "emptyTitle": "Dein erster Beitrag ist nur ein paar Tipps entfernt",
-      "emptyBody": "Tippe auf +, um zu beginnen. Wir speichern laufend – du kannst jederzeit pausieren und weitermachen."
-    },
-    "add": {
-      "title": "Bald verfügbar",
-      "body": "Beiträge direkt hier schreiben – am Handy oder Computer – ist fast fertig.",
-      "close": "Schließen"
+      "emptyBody": "Tippe auf +, um zu beginnen. Wir speichern laufend – du kannst jederzeit pausieren und weitermachen.",
+      "atStep": "Als Nächstes: {step}"
     },
     "version": {
       "updated": "Aktualisiert {date}"
+    },
+    "create": {
+      "story": {
+        "title": "Erzählen Sie Ihre Geschichte",
+        "helper": "Schreiben Sie so, wie Sie es einer Patientin oder einem Kunden erklären würden. Feinschliff kommt später.",
+        "placeholder": "Einfach losschreiben – oder vorhandenen Text einfügen …",
+        "stats": "{words, plural, one {# Wort} other {# Wörter}} · {minutes, plural, one {# Min. Lesezeit} other {# Min. Lesezeit}}",
+        "statsEmpty": "Noch keine Wörter",
+        "actions": {
+          "label": "Schreibhilfen",
+          "paste": "Text einfügen",
+          "dictate": "Diktieren",
+          "soon": "Bald verfügbar",
+          "improve": "Mit KI verbessern"
+        },
+        "paste": {
+          "done": "Am Ende Ihres Textes eingefügt.",
+          "empty": "In der Zwischenablage ist kein Text.",
+          "fallback": "Tippen und halten Sie im Schreibbereich und wählen Sie „Einfügen“ – oder nutzen Sie ⌘V / Strg+V."
+        },
+        "improve": {
+          "loading": "Wird verbessert …",
+          "tooShort": "Schreiben Sie mindestens {count} Wörter, um „Verbessern“ zu nutzen.",
+          "failed": "Ihr Text konnte gerade nicht verbessert werden. Ihre Worte sind sicher – bitte versuchen Sie es noch einmal.",
+          "title": "Ein Vorschlag",
+          "helper": "Vergleichen Sie ihn mit Ihrer Fassung. Es ändert sich nichts, bis Sie ihn auswählen.",
+          "yours": "Ihre Fassung",
+          "suggestion": "Vorgeschlagene Fassung",
+          "accept": "Diese Fassung verwenden",
+          "keep": "Meine behalten"
+        }
+      },
+      "improve": {
+        "button": "Verbessern",
+        "working": "Dein Text wird verbessert…",
+        "hint": "Korrigiert Rechtschreibung, Grammatik und Lesefluss. Deine Worte, deine Stimme – nichts Neues wird hinzugefügt.",
+        "yours": "Deine Version",
+        "suggestion": "Vorschlag",
+        "accept": "Vorschlag übernehmen",
+        "keepMine": "Meine behalten",
+        "accepted": "Vorschlag übernommen.",
+        "errors": {
+          "forbidden": "Dafür fehlt dir die Berechtigung.",
+          "invalid_value": "Schreib zuerst ein paar Sätze und versuch es dann erneut.",
+          "too_large": "Der Text ist zu lang, um ihn auf einmal zu verbessern. Versuch es mit einem kürzeren Teil.",
+          "ai_unavailable": "Der Assistent ist gerade nicht verfügbar. Bitte versuch es gleich noch einmal.",
+          "unauthenticated": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.",
+          "failed": "Etwas ist schiefgelaufen. Bitte versuch es erneut."
+        }
+      },
+      "cover": {
+        "title": "Titelbild hinzufügen",
+        "helper": "Es erscheint oben in deinem Beitrag und wenn jemand ihn teilt.",
+        "choices": {
+          "label": "Titelbild auswählen",
+          "camera": "Foto aufnehmen",
+          "phone": "Von diesem Telefon",
+          "library": "Deine Mediathek",
+          "ai": "Mit KI erstellen",
+          "soon": "Demnächst",
+          "computer": "Vom Computer hochladen",
+          "computerHint": "oder ein Foto hierher ziehen"
+        },
+        "note": "Wir machen jedes Foto leichter fürs Web und bitten dich um eine kurze Beschreibung, damit alle es verstehen.",
+        "preparing": "Foto wird vorbereitet …",
+        "uploading": "Foto wird hochgeladen …",
+        "saving": "Wird gespeichert …",
+        "saved": "Titelbild gespeichert.",
+        "removed": "Titelbild entfernt.",
+        "previewLabel": "Dein Titelbild",
+        "change": "Ändern",
+        "remove": "Entfernen",
+        "alt": {
+          "label": "Beschreibe dieses Foto",
+          "helper": "Ein kurzer Satz für Menschen, die das Bild nicht sehen können – zum Beispiel „Das Wartezimmer mit einem großen Fenster“.",
+          "placeholder": "Was zeigt das Foto?",
+          "count": "{count}/{max}",
+          "otherLanguages": "Weitere Sprachen (optional)",
+          "otherHelper": "Bleiben sie leer, sehen Besucher die Beschreibung oben.",
+          "inLanguage": "Beschreibung auf {language}",
+          "neededToContinue": "Füge eine kurze Beschreibung hinzu, damit alle das Bild verstehen."
+        },
+        "library": {
+          "title": "Deine Mediathek",
+          "close": "Schließen",
+          "loading": "Deine Fotos werden geladen …",
+          "empty": "Noch keine Fotos. Nimm eins auf oder wähle eins von diesem Telefon.",
+          "more": "Mehr anzeigen",
+          "choose": "Foto {number} auswählen",
+          "untitled": "Foto ohne Beschreibung",
+          "searchLabel": "Fotos suchen",
+          "searchPlaceholder": "Nach Name oder Beschreibung suchen",
+          "tagsLabel": "Nach Schlagwort filtern",
+          "noResults": "Keine passenden Fotos. Versuche andere Wörter oder Schlagwörter.",
+          "clear": "Filter zurücksetzen"
+        },
+        "errors": {
+          "unsupported_type": "Diese Art von Datei kann nicht verwendet werden. Bitte wähle ein JPEG-, PNG- oder WebP-Foto.",
+          "heic": "Dieses Foto ist im HEIC-Format. Wähle es bitte erneut aus der Fotomediathek oder stelle die Kamera auf „Maximale Kompatibilität“.",
+          "too_large": "Dieses Foto ist zu groß. Bitte wähle eines unter 15 MB.",
+          "conflict": "Dieser Beitrag wurde in einem anderen Fenster geändert. Lade die Seite neu, um die aktuelle Version zu sehen.",
+          "forbidden": "Du darfst diesen Beitrag nicht ändern.",
+          "not_found": "Dieses Foto ist nicht mehr verfügbar. Bitte wähle ein anderes.",
+          "generic": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal."
+        },
+        "dropHere": "Foto loslassen, um es als Titelbild zu verwenden",
+        "altStatus": {
+          "saving": "Wird gespeichert …",
+          "saved": "Gespeichert",
+          "failed": "Nicht gespeichert – wir versuchen es beim Tippen erneut"
+        },
+        "optimised": "Optimiert · {before} → {after}",
+        "notOptimised": "Hochgeladen (nicht optimiert)",
+        "focal": {
+          "title": "Fokuspunkt",
+          "helper": "Tippe oder ziehe auf den wichtigsten Teil des Fotos. Jeder Zuschnitt behält ihn im Bild.",
+          "label": "Fokuspunkt des Titelbilds",
+          "valueText": "{x} % von links, {y} % von oben",
+          "keys": "Mit den Pfeiltasten verschieben; mit gedrückter Umschalttaste in größeren Schritten.",
+          "previews": "So wird zugeschnitten",
+          "preview": {
+            "wide": "Beitragskopf",
+            "card": "Blog-Karte",
+            "square": "Social Media",
+            "tall": "Telefon"
+          }
+        }
+      },
+      "type": {
+        "title": "Was möchtest du erstellen?",
+        "helper": "Wähle aus, womit du beginnen möchtest. Wir speichern laufend.",
+        "items": {
+          "blog": "Blogbeitrag",
+          "news": "Neuigkeit",
+          "events": "Veranstaltung",
+          "gallery": "Galerie"
+        },
+        "desc": {
+          "blog": "Ein Artikel für deine Website, in wenigen einfachen Schritten.",
+          "news": "Ein kurzes Update für deine Besucher.",
+          "events": "Ein Termin, zu dem man kommen kann.",
+          "gallery": "Eine Sammlung von Fotos."
+        },
+        "soon": "Bald verfügbar",
+        "more": "Mehr für deine Website",
+        "moreHelper": "Noch nicht auf deiner Website. Frag uns, wir richten es ein.",
+        "add": "Hinzufügen",
+        "ask": "Bei uns anfragen",
+        "askSubject": "Bitte {module} zu {project} hinzufügen",
+        "askUnavailable": "Sag deinem Abluo-Ansprechpartner Bescheid – wir fügen es für dich hinzu.",
+        "nothing": "Hier kannst du noch nichts erstellen.",
+        "starting": "Dein Beitrag wird vorbereitet …",
+        "failed": "Wir konnten keinen neuen Beitrag beginnen. Bitte versuch es noch einmal.",
+        "close": "Schließen"
+      },
+      "shell": {
+        "saveExit": "Speichern & beenden",
+        "back": "Zurück",
+        "next": "Weiter",
+        "progress": "Schritt {current} von {total}",
+        "language": "Du schreibst auf {language}",
+        "skip": "Vorerst überspringen",
+        "done": "Fertig"
+      },
+      "save": {
+        "saving": "Wird gespeichert …",
+        "saved": "Gespeichert",
+        "offline": "Offline – auf diesem Gerät gespeichert",
+        "conflict": "Anderswo bearbeitet",
+        "reload": "Neu laden",
+        "error": "Nicht gespeichert – bitte neu laden"
+      },
+      "stepNames": {
+        "category": "Thema",
+        "title": "Titel",
+        "story": "Text",
+        "cover": "Titelbild",
+        "languages": "Sprachen",
+        "preview": "Vorschau",
+        "publish": "Veröffentlichen",
+        "review": "Prüfen & veröffentlichen"
+      },
+      "category": {
+        "title": "Worum geht es in diesem Beitrag?",
+        "helper": "Wähle ein oder mehrere Themen. Du kannst sie später ändern."
+      },
+      "titleStep": {
+        "title": "Gib deinem Beitrag einen Titel",
+        "helper": "Kurz und klar funktioniert am besten. Du kannst ihn jederzeit ändern.",
+        "titleLabel": "Titel",
+        "titlePlaceholder": "Zum Beispiel: Fünf Tipps für einen ruhigeren Morgen",
+        "subtitleLabel": "Untertitel (optional)",
+        "subtitlePlaceholder": "Ein Satz, der den Lesern sagt, was sie erwartet",
+        "remaining": "{count, plural, one {Noch # Zeichen} other {Noch # Zeichen}}"
+      },
+      "languages": {
+        "title": "Auch in anderen Sprachen anbieten?",
+        "helper": "Dein Beitrag erscheint nur in den Sprachen, in denen er einen Titel und Text hat.",
+        "original": "Original",
+        "translate": "Für mich übersetzen",
+        "soon": "Bald verfügbar",
+        "write": "Ich schreibe es selbst",
+        "later": "Nicht jetzt",
+        "editing": "Deine Version auf {language}",
+        "titleLabel": "Titel",
+        "subtitleLabel": "Untertitel (optional)",
+        "storyLabel": "Text",
+        "storyPlaceholder": "Schreib den Text auf {language} …",
+        "ready": "Fertig",
+        "missing": "Noch nicht geschrieben",
+        "titlePlaceholder": "Titel auf {language}",
+        "subtitlePlaceholder": "Untertitel auf {language}",
+        "sourceLabel": "Original ({language})",
+        "showOriginal": "Original anzeigen",
+        "sourceEmpty": "Im Original ist noch nichts geschrieben."
+      },
+      "preview": {
+        "title": "So wird dein Beitrag aussehen",
+        "helper": "Eine einfache Vorschau. Das Design deiner Website wird beim Veröffentlichen angewendet.",
+        "language": "Sprache",
+        "empty": "In dieser Sprache gibt es noch nichts zu zeigen."
+      },
+      "publish": {
+        "title": "Was möchtest du damit machen?",
+        "now": "Jetzt veröffentlichen",
+        "nowHelp": "Er erscheint sofort auf deiner Website.",
+        "schedule": "Planen",
+        "scheduleHelp": "Wähle Tag und Uhrzeit, an dem er erscheinen soll.",
+        "draft": "Als Entwurf behalten",
+        "draftHelp": "Nichts wird veröffentlicht. Du kannst jederzeit über die Startseite weitermachen.",
+        "when": "Online ab",
+        "expire": "Automatisch offline nehmen",
+        "expireHelp": "Praktisch für Angebote oder Neuigkeiten mit Enddatum.",
+        "expireWhen": "Offline ab",
+        "timezone": "Zeiten in deiner Zeitzone ({zone}).",
+        "languageLive": "wird veröffentlicht",
+        "languageMissing": "nicht dabei",
+        "action": {
+          "now": "Veröffentlichen",
+          "schedule": "Planen",
+          "draft": "Entwurf speichern"
+        },
+        "working": "Wird veröffentlicht …",
+        "errors": {
+          "missing_title": "Füge zuerst einen Titel hinzu – geh zurück zum Titel-Schritt.",
+          "missing_body": "Schreib zuerst deinen Text – geh zurück zum Text-Schritt.",
+          "invalid_schedule": "Wähle ein Datum und eine Uhrzeit in der Zukunft, innerhalb von zwei Jahren.",
+          "invalid_expiry": "Das Offline-Datum muss nach dem Veröffentlichungsdatum liegen.",
+          "conflict": "Dieser Beitrag wurde anderswo geändert. Lade neu, um die aktuelle Version zu sehen.",
+          "forbidden": "Du hast keine Berechtigung, hier zu veröffentlichen.",
+          "not_found": "Wir finden diesen Beitrag nicht mehr.",
+          "unauthenticated": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.",
+          "offline": "Du bist offline. Dein Beitrag ist auf diesem Gerät sicher – versuch es erneut, sobald du verbunden bist.",
+          "failed": "Etwas ist schiefgelaufen. Dein Beitrag ist sicher – bitte versuch es noch einmal."
+        },
+        "summaryNow": "Wird veröffentlicht auf",
+        "summarySchedule": "Wird am {date} veröffentlicht auf",
+        "summaryDraft": "Gespeichert auf",
+        "languageSaved": "gespeichert",
+        "languageInProgress": "begonnen",
+        "languageNotStarted": "nicht begonnen"
+      },
+      "done": {
+        "live": "Dein Beitrag ist online",
+        "liveBody": "Besucher können ihn jetzt auf deiner Website lesen.",
+        "scheduled": "Dein Beitrag ist geplant",
+        "scheduledBody": "Er erscheint am {date}.",
+        "draft": "Als Entwurf gespeichert",
+        "draftBody": "Noch ist nichts online. Du kannst jederzeit über die Startseite weitermachen.",
+        "view": "Auf deiner Website ansehen",
+        "home": "Zur Startseite"
+      },
+      "review": {
+        "title": "Dein Beitrag",
+        "helper": "Alles an einem Ort. Tippe auf Bearbeiten, um einen Teil zu ändern.",
+        "sections": {
+          "category": "Thema",
+          "title": "Titel & Untertitel",
+          "story": "Text",
+          "cover": "Titelbild",
+          "languages": "Sprachen"
+        },
+        "state": {
+          "done": "Fertig",
+          "missing": "Fehlt",
+          "optional": "Nicht hinzugefügt"
+        },
+        "edit": "Bearbeiten",
+        "editLabel": "{section} bearbeiten",
+        "preview": "Vorschau ansehen",
+        "publish": "Weiter zum Veröffentlichen",
+        "publishNeeds": "Zum Veröffentlichen brauchst du einen Titel und deinen Text.",
+        "noTitle": "Noch kein Titel",
+        "noStory": "Noch nichts geschrieben",
+        "words": "{count, plural, one {# Wort} other {# Wörter}}",
+        "noCategory": "Kein Thema gewählt",
+        "noCover": "Kein Titelbild",
+        "coverAltMissing": "Das Foto braucht eine kurze Beschreibung",
+        "coverSet": "Foto hinzugefügt"
+      }
     }
   },
   "editor": {
