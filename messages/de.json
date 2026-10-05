@@ -106,7 +106,8 @@
         "clear": "Filter zurücksetzen",
         "noMatch": "Keine Beiträge passen zu diesen Filtern."
       },
-      "untitledDraft": "Entwurf ohne Titel"
+      "untitledDraft": "Entwurf ohne Titel",
+      "unpublishedChanges": "Nicht veröffentlichte Änderungen"
     },
     "submissions": {
       "title": "Einsendungen",
@@ -207,7 +208,8 @@
           "yours": "Ihre Fassung",
           "suggestion": "Vorgeschlagene Fassung",
           "accept": "Diese Fassung verwenden",
-          "keep": "Meine behalten"
+          "keep": "Meine behalten",
+          "preserved": "„Verbessern“ ist für Beiträge mit Bildern oder anderen in Studio bearbeiteten Inhalten nicht verfügbar."
         }
       },
       "improve": {
@@ -281,6 +283,7 @@
           "conflict": "Dieser Beitrag wurde in einem anderen Fenster geändert. Lade die Seite neu, um die aktuelle Version zu sehen.",
           "forbidden": "Du darfst diesen Beitrag nicht ändern.",
           "not_found": "Dieses Foto ist nicht mehr verfügbar. Bitte wähle ein anderes.",
+          "rate_limited": "Du hast heute schon viele Fotos hochgeladen. Bitte versuche es morgen erneut oder wähle eines aus deiner Bibliothek.",
           "generic": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal."
         },
         "dropHere": "Foto loslassen, um es als Titelbild zu verwenden",
@@ -448,7 +451,11 @@
         "draft": "Als Entwurf gespeichert",
         "draftBody": "Noch ist nichts online. Du kannst jederzeit über die Startseite weitermachen.",
         "view": "Auf deiner Website ansehen",
-        "home": "Zur Startseite"
+        "home": "Zur Startseite",
+        "updated": "Deine Änderungen sind online",
+        "updatedBody": "Besucher sehen jetzt die neue Version.",
+        "updatedNotLive": "Deine Änderungen sind gespeichert",
+        "updatedNotLiveBody": "Besucher sehen sie, sobald der Beitrag online ist."
       },
       "review": {
         "title": "Dein Beitrag",
@@ -476,7 +483,53 @@
         "noCategory": "Kein Thema gewählt",
         "noCover": "Kein Titelbild",
         "coverAltMissing": "Das Foto braucht eine kurze Beschreibung",
-        "coverSet": "Foto hinzugefügt"
+        "coverSet": "Foto hinzugefügt",
+        "update": "Beitrag aktualisieren",
+        "updating": "Wird aktualisiert …",
+        "status": {
+          "live": "Seit {date} auf deiner Website",
+          "scheduled": "Geplant für {date}",
+          "offline": "Offline seit {date}"
+        },
+        "editing": "Du bearbeitest eine Kopie. Besucher sehen die veröffentlichte Version, bis du aktualisierst."
+      },
+      "menu": {
+        "label": "Weitere Aktionen",
+        "takeOffline": "Offline nehmen",
+        "backOnline": "Wieder online stellen",
+        "changeDate": "Veröffentlichungsdatum ändern",
+        "discard": "Änderungen verwerfen",
+        "deleteDraft": "Entwurf löschen",
+        "deletePost": "Beitrag löschen"
+      },
+      "confirm": {
+        "cancel": "Abbrechen",
+        "discardTitle": "Änderungen verwerfen?",
+        "discardBody": "Der veröffentlichte Beitrag bleibt, wie er ist. Deine nicht veröffentlichten Änderungen werden gelöscht.",
+        "discard": "Änderungen verwerfen",
+        "deleteDraftTitle": "Diesen Entwurf löschen?",
+        "deleteDraftBody": "„{title}“ wird gelöscht. Das lässt sich nicht rückgängig machen.",
+        "deleteDraft": "Entwurf löschen",
+        "deletePostTitle": "Diesen Beitrag löschen?",
+        "deletePostBody": "„{title}“ wird endgültig von deiner Website entfernt. Das lässt sich nicht rückgängig machen.",
+        "deletePost": "Beitrag löschen"
+      },
+      "lifecycle": {
+        "offlineDone": "Dein Beitrag ist offline. Du kannst ihn jederzeit wieder online stellen.",
+        "onlineDone": "Dein Beitrag ist wieder online.",
+        "errors": {
+          "conflict": "Dieser Beitrag wurde anderswo geändert. Lade neu, um die aktuelle Version zu sehen.",
+          "forbidden": "Dazu hast du keine Berechtigung.",
+          "not_found": "Wir finden diesen Beitrag nicht mehr.",
+          "invalid_value": "Das ist bei diesem Beitrag nicht möglich.",
+          "unauthenticated": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.",
+          "failed": "Etwas ist schiefgelaufen. Bitte versuch es noch einmal."
+        }
+      },
+      "open": {
+        "title": "Dein Beitrag wird geöffnet …",
+        "failed": "Wir konnten diesen Beitrag nicht öffnen. Bitte versuch es noch einmal.",
+        "back": "Zurück zu den Beiträgen"
       }
     }
   },
@@ -490,7 +543,24 @@
       "italic": "Kursiv",
       "bulletList": "Aufzählung",
       "numberedList": "Nummerierte Liste",
-      "quote": "Zitat"
+      "quote": "Zitat",
+      "link": "Link hinzufügen",
+      "editLink": "Link bearbeiten",
+      "linkSheet": {
+        "addTitle": "Link zu",
+        "editTitle": "Link bearbeiten",
+        "placeholder": "https://… oder /seite",
+        "help": "Eine Webadresse, eine E-Mail, eine Telefonnummer oder eine Seite Ihrer Website (beginnt mit /).",
+        "invalid": "Das sieht nicht nach einem gültigen Link aus. Versuchen Sie https://beispiel.de, /kontakt oder name@beispiel.de.",
+        "save": "Link speichern",
+        "cancel": "Abbrechen",
+        "remove": "Link entfernen"
+      },
+      "preserved": {
+        "image": "Bild",
+        "other": "Eingebetteter Inhalt ({type})",
+        "hint": "In Studio bearbeiten · hier verschieben oder löschen"
+      }
     }
   }
 }

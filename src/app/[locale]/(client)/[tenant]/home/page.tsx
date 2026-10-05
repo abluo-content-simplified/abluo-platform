@@ -60,6 +60,7 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
   const locale = await getLocale()
   const t = await getTranslations('clientDashboard')
   const enabled = new Set(grant.enabledModuleIds)
+  const canEdit = grant.permissions.includes('blog.post.write')
 
   const [posts, wizardDrafts, submissions] = await Promise.all([
     enabled.has('blog') ? settle<DashboardPost[]>(() => getDashboardPostRows(ctx, grant.projectId, { locale })) : null,
@@ -136,7 +137,16 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
             {recent.map((post) => (
               <li key={post._id} className="flex items-center gap-3 border-b border-border-subtle py-3 last:border-b-0">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-medium leading-[22px]">{post.title ?? t('posts.untitled')}</p>
+                  {canEdit ? (
+                    <Link
+                      href={`/${projectSlug}/posts/write/${post._id}`}
+                      className="block truncate text-[15px] font-medium leading-[22px] underline-offset-4 hover:underline"
+                    >
+                      {post.title ?? t('posts.untitled')}
+                    </Link>
+                  ) : (
+                    <p className="truncate text-[15px] font-medium leading-[22px]">{post.title ?? t('posts.untitled')}</p>
+                  )}
                   <p className="text-sm text-muted-foreground">
                     {t('posts.status.published')} · {formatDay(post.updatedAt, locale)}
                   </p>

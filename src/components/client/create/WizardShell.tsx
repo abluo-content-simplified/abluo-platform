@@ -7,6 +7,13 @@ import { useRouter } from '@/i18n/navigation'
 import { patchPostDraftAction } from '@/app/[locale]/(client)/[tenant]/posts/actions'
 import { improvePostBodyAction } from '@/app/[locale]/(client)/[tenant]/posts/ai-actions'
 import { publishPostDraftAction } from '@/app/[locale]/(client)/[tenant]/posts/publish-actions'
+import {
+  deletePostDraftAction,
+  deletePublishedPostAction,
+  discardPostChangesAction,
+  putPostBackOnlineAction,
+  takePostOfflineAction,
+} from '@/app/[locale]/(client)/[tenant]/posts/lifecycle-actions'
 import { useAutosave } from '@/lib/client/autosave/use-autosave'
 import type { PendingSet } from '@/lib/client/autosave/journal'
 import {
@@ -32,6 +39,22 @@ import { PreviewStep } from './steps/PreviewStep'
 import { PublishStep, isoToLocalInput, localToIso, type PublishChoice } from './steps/PublishStep'
 import { DoneStep, type DoneResult } from './steps/DoneStep'
 import { ReviewStep } from './steps/ReviewStep'
+import { ConfirmDialog } from './ConfirmDialog'
+
+const LIFECYCLE_ERRORS = ['conflict', 'forbidden', 'not_found', 'invalid_value', 'unauthenticated', 'failed']
+type Confirm = 'discard' | 'deleteDraft' | 'deletePost'
+
+/** Where the live version stands right now (D5: dates decide, no job runner). */
+export function liveStatus(
+  live: { publishedAt: string | null; expiresAt: string | null },
+  now = Date.now()
+): 'live' | 'scheduled' | 'offline' {
+  const at = live.publishedAt ? Date.parse(live.publishedAt) : NaN
+  const until = live.expiresAt ? Date.parse(live.expiresAt) : NaN
+  if (!Number.isNaN(until) && until <= now) return 'offline'
+  if (!Number.isNaN(at) && at > now) return 'scheduled'
+  return 'live'
+}
 
 const IMPROVE_ERRORS = ['forbidden', 'invalid_value', 'too_large', 'ai_unavailable', 'unauthenticated', 'failed']
 const PUBLISH_ERRORS = [
@@ -57,10 +80,19 @@ export function WizardShell({
   draft: initialDraft,
   site,
   homeHref,
+  postsHref,
+  canDelete = false,
+  aiImprove = false,
 }: {
   draft: DraftSnapshot
   site: SiteInfo
   homeHref: string
+  /** The posts list, where Discard / Delete land. */
+  postsHref: string
+  /** Owner holding blog.post.delete (the server re-checks). */
+  canDelete?: boolean
+  /** AI_FEATURES includes 'improve' (server-side flag, ADR-026 D6). Off → "Coming soon". */
+  aiImprove?: boolean
 }) {
   const t = useTranslations('clientDashboard.create')
   const router = useRouter()
@@ -93,6 +125,12 @@ export function WizardShell({
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<DoneResult | null>(null)
   const finished = useRef(false)
+  const isEdit = initialDraft.mode === 'edit'
+  const [live, setLive] = useState(initialDraft.live ?? null)
+  const [notice, setNotice] = useState<{ kind: 'status' | 'error'; text: string } | null>(null)
+  const [confirm, setConfirm] = useState<Confirm | null>(null)
+  const [confirmBusy, setConfirmBusy] = useState(false)
+  const [confirmError, setConfirmError] = useState<string | null>(null)
   const mainRef = useRef<HTMLDivElement>(null)
 
   const send = useCallback(
@@ -192,9 +230,11 @@ export function WizardShell({
 
   const publishError_ = (code: string) => t(`publish.errors.${PUBLISH_ERRORS.includes(code) ? code : 'failed'}`)
 
-  async function runPublish() {
+  async function runPublish(override?: 'keep') {
     if (busy) return
     setPublishError(null)
+    setNotice(null)
+    if (override === 'keep') return runUpdate()
     if (publish.mode === 'draft') {
       setBusy(true)
       await autosave.flush()
@@ -240,6 +280,74 @@ export function WizardShell({
     }
   }
 
+  /** "Update post": publishes the draft over the live post, keeping its dates and URLs. */
+  async function runUpdate() {
+    setBusy(true)
+    const fail = (text: string) => setNotice({ kind: 'error', text })
+    try {
+      const saved = await autosave.flush()
+      if (!saved) return fail(publishError_(autosave.currentState() === 'conflict' ? 'conflict' : 'offline'))
+      const r = await publishPostDraftAction({ projectSlug, id: initialDraft.id, rev: autosave.currentRev(), mode: 'keep' })
+      if (!r.ok) return fail(publishError_(r.error))
+      finished.current = true
+      await autosave.discard()
+      const isLive = live ? liveStatus(live) === 'live' : true
+      const slug = r.slugs[locale]
+      const url = isLive && site.origin && slug ? `${site.origin}/${locale}/blog/${slug}` : null
+      setDone({ kind: 'updated', live: isLive, url })
+      setStep('done')
+    } catch {
+      fail(publishError_(typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'failed'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const lifecycleError = (code: string) => t(`lifecycle.errors.${LIFECYCLE_ERRORS.includes(code) ? code : 'failed'}`)
+
+  async function setOnline(online: boolean) {
+    if (!live || busy) return
+    setBusy(true)
+    setNotice(null)
+    try {
+      const action = online ? putPostBackOnlineAction : takePostOfflineAction
+      const r = await action({ projectSlug, id: initialDraft.id, rev: live.rev })
+      if (!r.ok) return setNotice({ kind: 'error', text: lifecycleError(r.error) })
+      setLive(r.live)
+      setNotice({ kind: 'status', text: online ? t('lifecycle.onlineDone') : t('lifecycle.offlineDone') })
+    } catch {
+      setNotice({ kind: 'error', text: lifecycleError('failed') })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function runConfirm() {
+    if (!confirm || confirmBusy) return
+    setConfirmBusy(true)
+    setConfirmError(null)
+    try {
+      let r: { ok: boolean; error?: string }
+      if (confirm === 'deletePost') {
+        if (!live) return
+        r = await deletePublishedPostAction({ projectSlug, id: initialDraft.id, rev: live.rev })
+      } else {
+        // Both remove the draft itself: send whatever is queued first, then use its latest rev.
+        await autosave.flush()
+        const action = confirm === 'discard' ? discardPostChangesAction : deletePostDraftAction
+        r = await action({ projectSlug, id: initialDraft.id, rev: autosave.currentRev() })
+      }
+      if (!r.ok) return setConfirmError(lifecycleError(r.error ?? 'failed'))
+      finished.current = true
+      await autosave.discard()
+      router.push(postsHref)
+    } catch {
+      setConfirmError(lifecycleError('failed'))
+    } finally {
+      setConfirmBusy(false)
+    }
+  }
+
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     const target = e.target as HTMLElement
     if (e.defaultPrevented || target.closest('dialog')) return
@@ -265,6 +373,26 @@ export function WizardShell({
     onServerWrite,
   }
 
+  const state = live ? liveStatus(live) : null
+  const fmt = (iso: string | null) =>
+    iso ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso)) : ''
+  const statusLine = !isEdit || !live || !state
+    ? null
+    : state === 'offline'
+      ? t('review.status.offline', { date: fmt(live.expiresAt) })
+      : t(`review.status.${state}`, { date: fmt(live.publishedAt) })
+  const menu: { key: string; label: string; onSelect: () => void }[] = isEdit
+    ? [
+        ...(state === 'offline'
+          ? [{ key: 'online', label: t('menu.backOnline'), onSelect: () => void setOnline(true) }]
+          : [{ key: 'offline', label: t('menu.takeOffline'), onSelect: () => void setOnline(false) }]),
+        { key: 'date', label: t('menu.changeDate'), onSelect: () => go('publish', { editing: true }) },
+        { key: 'discard', label: t('menu.discard'), onSelect: () => setConfirm('discard') },
+        ...(canDelete ? [{ key: 'deletePost', label: t('menu.deletePost'), onSelect: () => setConfirm('deletePost') }] : []),
+      ]
+    : [{ key: 'deleteDraft', label: t('menu.deleteDraft'), onSelect: () => setConfirm('deleteDraft') }]
+  const postTitle = snap.title[locale]?.trim() || t('review.title')
+
   const ready = step !== null
   const onReview = step === 'review'
   const canNext =
@@ -281,7 +409,11 @@ export function WizardShell({
         ? t('publish.working')
         : t(`publish.action.${publish.mode}`)
       : onReview
-        ? t('review.publish')
+        ? isEdit
+          ? busy
+            ? t('review.updating')
+            : t('review.update')
+          : t('review.publish')
         : editing
           ? t('shell.done')
           : step === 'cover' && !snap.cover
@@ -291,7 +423,9 @@ export function WizardShell({
     step === 'publish'
       ? runPublish
       : onReview
-        ? () => go('publish', { editing: true })
+        ? isEdit
+          ? () => void runPublish('keep')
+          : () => go('publish', { editing: true })
         : step === 'cover' && coverNeedsAlt(snap, locale)
           ? () => setAltNeeded(true)
           : goNext
@@ -324,13 +458,20 @@ export function WizardShell({
       <div ref={mainRef} className="flex-1 overflow-y-auto">
         <main className={`mx-auto flex min-h-full w-full flex-col px-4 pt-6 pb-10 ${wide ? 'max-w-5xl' : 'max-w-[672px]'}`}>
           {!ready ? null : step === 'review' ? (
-            <ReviewStep {...props} onEdit={openSection} onPreview={() => go('preview', { editing: true })} />
+            <ReviewStep
+              {...props}
+              onEdit={openSection}
+              onPreview={() => go('preview', { editing: true })}
+              menu={menu}
+              status={statusLine}
+              notice={notice}
+            />
           ) : step === 'category' ? (
             <CategoryStep {...props} />
           ) : step === 'title' ? (
             <TitleStep {...props} />
           ) : step === 'story' ? (
-            <StoryStep {...props} onImprove={onImprove} />
+            <StoryStep {...props} onImprove={aiImprove ? onImprove : undefined} />
           ) : step === 'cover' ? (
             <CoverStep {...props} altNeeded={altNeeded} onCoverChange={(cover) => setSnap((s) => ({ ...s, cover }))} />
           ) : step === 'languages' ? (
@@ -382,7 +523,7 @@ export function WizardShell({
               )}
               <button
                 type="button"
-                onClick={onPrimary}
+                onClick={() => void onPrimary()}
                 disabled={!canNext}
                 aria-busy={busy || undefined}
                 className="inline-flex h-14 min-w-32 items-center justify-center rounded-xl bg-action px-8 text-[17px] font-semibold text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
@@ -393,6 +534,20 @@ export function WizardShell({
           </div>
         </footer>
       ) : null}
+
+      <ConfirmDialog
+        open={confirm !== null}
+        title={confirm ? t(`confirm.${confirm}Title`) : ''}
+        body={confirm ? t(`confirm.${confirm}Body`, { title: postTitle }) : ''}
+        confirmLabel={confirm ? t(`confirm.${confirm}`) : ''}
+        busy={confirmBusy}
+        error={confirmError}
+        onConfirm={() => void runConfirm()}
+        onCancel={() => {
+          setConfirm(null)
+          setConfirmError(null)
+        }}
+      />
     </div>
   )
 }

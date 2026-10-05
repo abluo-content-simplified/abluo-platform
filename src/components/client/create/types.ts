@@ -21,6 +21,10 @@ export type DraftSnapshot = {
   step: WizardStep
   /** Furthest step reached in the first pass ('publish' or later → reopening shows the overview). */
   furthest?: WizardStep
+  /** 'edit' = unpublished changes to a live post ("Update post"); 'create' otherwise. */
+  mode?: 'create' | 'edit'
+  /** The published version, when there is one. */
+  live?: { rev: string; publishedAt: string | null; expiresAt: string | null; slugs: Record<string, string> } | null
 }
 
 export type SiteInfo = {

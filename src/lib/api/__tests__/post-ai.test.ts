@@ -42,6 +42,7 @@ const deps = (provider = createFakeAiProvider(), o: Record<string, unknown> = {}
   loadSite: site,
   key,
   logError: vi.fn(),
+  env: { AI_FEATURES: 'improve' },
   ...o,
 })
 const input = { locale: 'it', blocks: [para('ciao a tutti, oggi parliamo di ansia')] }
@@ -79,7 +80,7 @@ describe('improvePostBody — input', () => {
     ['no language', { locale: '', blocks: input.blocks }],
     ['empty body', { locale: 'it', blocks: [] }],
     ['whitespace body', { locale: 'it', blocks: [para('   ')] }],
-    ['a link in the input', { locale: 'it', blocks: [{ ...para('x'), markDefs: [{ _key: 'l', _type: 'link', href: 'https://x' }] }] }],
+    ['an unsafe link in the input', { locale: 'it', blocks: [{ ...para('x'), markDefs: [{ _key: 'l', _type: 'link', href: 'javascript:alert(1)' }] }] }],
     ['an image block', { locale: 'it', blocks: [{ _type: 'image', _key: 'i1' }] }],
     ['not a list', { locale: 'it', blocks: 'hello' }],
   ])('refuses %s as invalid_value before the provider', async (_l, inp) => {
@@ -99,7 +100,7 @@ describe('improvePostBody — prompt', () => {
     expect(call.system).toContain(TONE)
     expect(call.system).toContain('<tone_of_voice>')
     expect(call.system).toMatch(/Write in Italian/)
-    expect(call.system).toMatch(/Do NOT add new information/)
+    expect(call.system).toMatch(/Do NOT add new links, information/)
     expect(call.prompt).toBe('<draft>\nCiao\n\n**forte**\n</draft>')
     expect(call.maxTokens).toBe(improveMaxTokens(9))
     expect(call.maxTokens).toBeLessThanOrEqual(IMPROVE_LIMITS.maxOutputTokens)
@@ -155,5 +156,53 @@ describe('improvePostBody — output', () => {
     } finally {
       if (prev !== undefined) process.env.ANTHROPIC_API_KEY = prev
     }
+  })
+})
+
+describe('improvePostBody — AI_FEATURES flag', () => {
+  it.each([[undefined], [''], ['off'], ['translate']])('AI_FEATURES=%s → ai_unavailable before any site read or provider call', async (flag) => {
+    const p = createFakeAiProvider()
+    site.mockClear()
+    const d = deps(p, { env: { AI_FEATURES: flag, ANTHROPIC_API_KEY: 'sk-present' } })
+    await expect(improvePostBody(ctx(grant()), 'project-a', input, d)).rejects.toMatchObject({ code: 'ai_unavailable' })
+    expect(p.calls).toHaveLength(0)
+    expect(site).not.toHaveBeenCalled()
+  })
+
+  it('the auth gate still wins over the flag (viewer → forbidden, not ai_unavailable)', async () => {
+    const d = deps(createFakeAiProvider(), { env: {} })
+    await expect(
+      improvePostBody(ctx(grant({ role: 'viewer', permissions: ['blog.post.read'] })), 'project-a', input, d)
+    ).rejects.toThrow(TenantAuthorizationError)
+  })
+
+  it.each([['improve'], ['all'], ['translate, improve']])('AI_FEATURES=%s → runs', async (flag) => {
+    const p = createFakeAiProvider()
+    await improvePostBody(ctx(grant()), 'project-a', input, deps(p, { env: { AI_FEATURES: flag } }))
+    expect(p.calls).toHaveLength(1)
+  })
+})
+
+describe('improvePostBody — links', () => {
+  it("keeps the author's own link and drops links the model invented", async () => {
+    const withLink = {
+      _type: 'block',
+      _key: 'b1',
+      style: 'normal',
+      markDefs: [{ _type: 'link', _key: 'l1', href: 'https://ch-psicoterapeuta.com/contatti' }],
+      children: [
+        { _type: 'span', _key: 's1', text: 'Scrivimi ', marks: [] },
+        { _type: 'span', _key: 's2', text: 'qui', marks: ['l1'] },
+      ],
+    }
+    const p = createFakeAiProvider(
+      'Scrivimi [qui](https://ch-psicoterapeuta.com/contatti) oppure [altrove](https://evil.example).'
+    )
+    const { blocks } = await improvePostBody(ctx(grant()), 'project-a', { locale: 'it', blocks: [withLink] }, deps(p))
+    expect(p.calls[0].prompt).toContain('[qui](https://ch-psicoterapeuta.com/contatti)')
+    const out = JSON.stringify(blocks)
+    expect(out).toContain('https://ch-psicoterapeuta.com/contatti')
+    expect(out).not.toContain('evil.example')
+    expect(out).toContain('altrove')
   })
 })

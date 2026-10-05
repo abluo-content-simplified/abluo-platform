@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import type { StepProps } from '@/components/client/create/types'
 import { StepHeading, languageName } from '@/components/client/create/StepHeading'
@@ -18,8 +18,21 @@ export function ReviewStep({
   site,
   onEdit,
   onPreview,
-}: StepProps & { onEdit: (section: OverviewSection['id']) => void; onPreview: () => void }) {
+  menu = [],
+  status,
+  notice,
+}: StepProps & {
+  onEdit: (section: OverviewSection['id']) => void
+  onPreview: () => void
+  /** The "…" menu: lifecycle actions (take offline, discard, delete …). */
+  menu?: { key: string; label: string; onSelect: () => void }[]
+  /** Where the live version stands ("Live on your site since …"), edit mode only. */
+  status?: string | null
+  notice?: { kind: 'status' | 'error'; text: string } | null
+}) {
   const t = useTranslations('clientDashboard.create.review')
+  const tm = useTranslations('clientDashboard.create.menu')
+  const [menuOpen, setMenuOpen] = useState(false)
   const tp = useTranslations('clientDashboard.create.publish')
   const ui = useLocale()
   const d = site.defaultLocale
@@ -56,7 +69,56 @@ export function ReviewStep({
 
   return (
     <section aria-labelledby="review-step-title">
-      <StepHeading id="review-step-title" title={draft.title[d]?.trim() || t('title')} helper={t('helper')} />
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <StepHeading id="review-step-title" title={draft.title[d]?.trim() || t('title')} helper={t('helper')} />
+        </div>
+        {menu.length > 0 ? (
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              aria-label={tm('label')}
+              aria-expanded={menuOpen}
+              aria-controls="review-menu"
+              onClick={() => setMenuOpen((o) => !o)}
+              className="grid size-11 place-items-center rounded-full border border-border text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
+                <path d="M5 12h.01M12 12h.01M19 12h.01" />
+              </svg>
+            </button>
+            {menuOpen ? (
+              <ul
+                id="review-menu"
+                className="absolute right-0 z-10 mt-2 w-64 overflow-hidden rounded-2xl border border-border bg-popover py-1 text-popover-foreground shadow-[var(--shadow-raise)]"
+              >
+                {menu.map((item) => (
+                  <li key={item.key}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        item.onSelect()
+                      }}
+                      className="flex min-h-12 w-full items-center px-4 text-left text-[15px] text-foreground hover:bg-hover focus-visible:bg-hover focus-visible:outline-none"
+                    >
+                      {item.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+      {status ? <p className="mt-4 text-[15px] font-medium text-foreground">{status}</p> : null}
+      {draft.mode === 'edit' ? <p className="mt-1 text-[15px] leading-6 text-muted-foreground">{t('editing')}</p> : null}
+      <p
+        role={notice?.kind === 'error' ? 'alert' : 'status'}
+        className={`mt-2 min-h-5 text-[15px] ${notice?.kind === 'error' ? 'text-destructive' : 'text-success'}`}
+      >
+        {notice?.text}
+      </p>
 
       <ul className="mt-8 divide-y divide-border-subtle border-y border-border-subtle">
         {overviewSections(draft, site).map(({ id, state }) => {

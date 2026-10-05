@@ -7,6 +7,9 @@ import { getPostDraft, getPostEditorSite, PostDraftError } from '@/lib/api/post-
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { WizardShell } from '@/components/client/create/WizardShell'
 import type { DraftSnapshot } from '@/components/client/create/types'
+import { OpenForEdit } from '@/components/client/create/OpenForEdit'
+import { canDeletePublished, canOpenPublishedPost } from '@/lib/api/post-lifecycle'
+import { getAiFeatureFlags } from '@/lib/ai/features'
 
 /**
  * The guided creation wizard for one blog-post draft (ADR-025 · S2c):
@@ -17,6 +20,10 @@ import type { DraftSnapshot } from '@/components/client/create/types'
  * caller's grants; the draft is read through `getPostDraft`, which needs
  * 'blog.post.write' and re-checks ownership — a viewer, another project's
  * draft or an unknown id all get the same 404.
+ *
+ * A PUBLISHED post's id with no draft yet renders `OpenForEdit`, which creates
+ * the editable copy from the browser (a server action on mount — never on a
+ * GET render or a link prefetch) and then reloads into the overview.
  */
 export const dynamic = 'force-dynamic'
 
@@ -39,11 +46,25 @@ export default async function WriteDraftPage({ params }: { params: Promise<{ ten
     ])
   } catch (error) {
     if (error instanceof TenantAuthorizationError) notFound()
-    if (error instanceof PostDraftError && error.code === 'not_found') notFound()
+    if (error instanceof PostDraftError && error.code === 'not_found') {
+      if (await canOpenPublishedPost(ctx, grant.projectId, id)) {
+        return <OpenForEdit projectSlug={projectSlug} id={id} postsHref={`/${projectSlug}/posts`} />
+      }
+      notFound()
+    }
     throw error
   }
 
   const snapshot: DraftSnapshot = { ...draft, body: draft.body as Record<string, PortableTextBlock[]> }
 
-  return <WizardShell draft={snapshot} site={site} homeHref={dashboardHomeHref(projectSlug)} />
+  return (
+    <WizardShell
+      draft={snapshot}
+      site={site}
+      homeHref={dashboardHomeHref(projectSlug)}
+      postsHref={`/${projectSlug}/posts`}
+      canDelete={canDeletePublished(grant)}
+      aiImprove={getAiFeatureFlags().improve}
+    />
+  )
 }

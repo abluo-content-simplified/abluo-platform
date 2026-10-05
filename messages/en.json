@@ -106,7 +106,8 @@
         "clear": "Clear filters",
         "noMatch": "No posts match these filters."
       },
-      "untitledDraft": "Untitled draft"
+      "untitledDraft": "Untitled draft",
+      "unpublishedChanges": "Unpublished changes"
     },
     "submissions": {
       "title": "Submissions",
@@ -207,7 +208,8 @@
           "yours": "Your version",
           "suggestion": "Suggested version",
           "accept": "Use this version",
-          "keep": "Keep mine"
+          "keep": "Keep mine",
+          "preserved": "Improve isn’t available for posts with images or other content edited in Studio."
         }
       },
       "improve": {
@@ -281,6 +283,7 @@
           "conflict": "This post was changed in another window. Reload the page to see the latest version.",
           "forbidden": "You don't have permission to change this post.",
           "not_found": "We couldn't find this photo any more. Please choose another one.",
+          "rate_limited": "You've added a lot of photos today. Please try again tomorrow, or choose one already in your library.",
           "generic": "Something went wrong. Please try again."
         },
         "dropHere": "Drop the photo to use it as the cover",
@@ -448,7 +451,11 @@
         "draft": "Saved as a draft",
         "draftBody": "Nothing is live yet. Continue any time from Home.",
         "view": "View on your site",
-        "home": "Back to home"
+        "home": "Back to home",
+        "updated": "Your changes are live",
+        "updatedBody": "Visitors see the new version now.",
+        "updatedNotLive": "Your changes are saved",
+        "updatedNotLiveBody": "Visitors will see them when the post is online."
       },
       "review": {
         "title": "Your post",
@@ -476,7 +483,53 @@
         "noCategory": "No topic chosen",
         "noCover": "No cover image",
         "coverAltMissing": "The photo needs a short description",
-        "coverSet": "Photo added"
+        "coverSet": "Photo added",
+        "update": "Update post",
+        "updating": "Updating…",
+        "status": {
+          "live": "Live on your site since {date}",
+          "scheduled": "Scheduled for {date}",
+          "offline": "Offline since {date}"
+        },
+        "editing": "You're editing a copy. Visitors see the live version until you update."
+      },
+      "menu": {
+        "label": "More actions",
+        "takeOffline": "Take offline",
+        "backOnline": "Put back online",
+        "changeDate": "Change publishing date",
+        "discard": "Discard changes",
+        "deleteDraft": "Delete draft",
+        "deletePost": "Delete post"
+      },
+      "confirm": {
+        "cancel": "Cancel",
+        "discardTitle": "Discard your changes?",
+        "discardBody": "The live post stays as it is. Your unpublished changes are deleted.",
+        "discard": "Discard changes",
+        "deleteDraftTitle": "Delete this draft?",
+        "deleteDraftBody": "“{title}” will be deleted. This can't be undone.",
+        "deleteDraft": "Delete draft",
+        "deletePostTitle": "Delete this post?",
+        "deletePostBody": "“{title}” will be removed from your website for good. This can't be undone.",
+        "deletePost": "Delete post"
+      },
+      "lifecycle": {
+        "offlineDone": "Your post is offline. You can put it back online any time.",
+        "onlineDone": "Your post is back online.",
+        "errors": {
+          "conflict": "This post was changed somewhere else. Reload to see the latest version.",
+          "forbidden": "You don't have permission to do this.",
+          "not_found": "We couldn't find this post any more.",
+          "invalid_value": "This can't be done for this post.",
+          "unauthenticated": "Your session has ended. Please sign in again.",
+          "failed": "Something went wrong. Please try again."
+        }
+      },
+      "open": {
+        "title": "Opening your post…",
+        "failed": "We couldn't open this post. Please try again.",
+        "back": "Back to posts"
       }
     }
   },
@@ -490,7 +543,24 @@
       "italic": "Italic",
       "bulletList": "Bulleted list",
       "numberedList": "Numbered list",
-      "quote": "Quote"
+      "quote": "Quote",
+      "link": "Add link",
+      "editLink": "Edit link",
+      "linkSheet": {
+        "addTitle": "Link to",
+        "editTitle": "Edit link",
+        "placeholder": "https://… or /page",
+        "help": "A web address, an email, a phone number or a page of your site (starting with /).",
+        "invalid": "That doesn’t look like a link we can use. Try https://example.com, /contact or name@example.com.",
+        "save": "Save link",
+        "cancel": "Cancel",
+        "remove": "Remove link"
+      },
+      "preserved": {
+        "image": "Image",
+        "other": "Embedded content ({type})",
+        "hint": "Edit in Studio · you can move or delete it here"
+      }
     }
   }
 }

@@ -127,7 +127,7 @@ export function CoverStep(props: CoverStepProps) {
 
   const errorText = useCallback(
     (code: MediaActionError | 'heic' | 'generic') => {
-      const known = ['unsupported_type', 'heic', 'too_large', 'conflict', 'forbidden', 'not_found']
+      const known = ['unsupported_type', 'heic', 'too_large', 'conflict', 'forbidden', 'not_found', 'rate_limited']
       return t(`errors.${known.includes(code) ? code : 'generic'}`)
     },
     [t]

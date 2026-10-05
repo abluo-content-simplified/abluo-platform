@@ -1,5 +1,6 @@
 import type { WebsiteSiteConfig, FAQSection } from '@/lib/sanity/types'
 import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
+import { safeJsonLd } from '@/lib/seo/safe-json-ld'
 
 interface Props {
   siteConfig: WebsiteSiteConfig | null
@@ -124,7 +125,7 @@ export function JsonLd({ siteConfig, faqSection, locale, pathSegments = [], logo
 
   // `undefined` values are dropped by JSON.stringify; this keeps the emitted
   // JSON free of null-valued keys without each spread having to guard itself.
-  const render = (schema: Record<string, unknown>) => JSON.stringify(schema)
+  const render = (schema: Record<string, unknown>) => safeJsonLd(schema)
 
   return (
     <>
@@ -206,7 +207,7 @@ export function buildArticleSchema(input: ArticleSchemaInput): Record<string, un
 export function ArticleJsonLd(props: ArticleSchemaInput) {
   const schema = buildArticleSchema(props)
   if (!schema) return null
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(schema) }} />
 }
 
 // ─── CollectionPage + ItemList (listing routes: /news) ───────────────────────
@@ -260,5 +261,5 @@ export function buildCollectionSchema(input: CollectionSchemaInput): Record<stri
 export function CollectionJsonLd(props: CollectionSchemaInput) {
   const schema = buildCollectionSchema(props)
   if (!schema) return null
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(schema) }} />
 }

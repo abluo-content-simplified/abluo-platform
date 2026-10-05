@@ -61,6 +61,10 @@ function fakes(
     assets?: Assets
     site?: { defaultLocale?: string; supportedLocales?: string[] } | null
     project?: { _id?: string; clientId?: string | null } | null
+    /** Extra Sanity `project` documents carrying the same slug (must be none). */
+    duplicateProjects?: number
+    /** This user's uploads to the project in the rate-limit window. */
+    recentUploads?: number | null
     commitError?: unknown
     library?: LibraryRow[]
   } = {}
@@ -101,8 +105,15 @@ function fakes(
       const a = assets[params.referencedDocId as string]
       return a ? { projectSlug: a.projectSlug } : null
     }
-    if (query.includes('_type == "project"')) {
-      return opts.project === undefined ? { _id: 'sanity-project-a', clientId: 'client-a' } : opts.project
+    if (query.startsWith('count(*[_type == "project"')) {
+      // The single-Sanity-project write guard (sanity-project-guard.ts).
+      return 1 + (opts.duplicateProjects ?? 0)
+    }
+    if (query.includes('"projects"')) {
+      const project = opts.project === undefined ? { _id: 'sanity-project-a', clientId: 'client-a' } : opts.project
+      const projects = project ? [project] : []
+      for (let i = 0; i < (opts.duplicateProjects ?? 0); i++) projects.push({ _id: `dup-${i}`, clientId: 'client-x' })
+      return { projects, recentUploads: opts.recentUploads === undefined ? 0 : opts.recentUploads }
     }
     if (query.includes('_type == "siteConfig"')) {
       return opts.site === undefined ? { defaultLocale: 'it', supportedLocales: ['it', 'de'] } : opts.site
@@ -175,8 +186,32 @@ describe('uploadPostImage', () => {
       tags: ['blog'],
       uploadedBy: 'u1',
     })
-    // The project lookup went through the scoped client with the grant's slug.
-    expect(f.fetch.mock.calls[0][1]).toEqual({ projectSlug: 'hoffmann' })
+    // The project lookup went through the scoped client with the grant's slug,
+    // counting THIS user's uploads in the last 24 h.
+    expect(f.fetch.mock.calls[0][1]).toEqual({
+      projectSlug: 'hoffmann',
+      userId: 'u1',
+      since: '2026-10-04T10:00:00.000Z',
+    })
+  })
+
+  it('refuses (forbidden) when more than one Sanity project carries the slug — nothing uploaded', async () => {
+    const f = fakes({ duplicateProjects: 1 })
+    await expect(uploadPostImage(ctx(grant()), 'project-a', file(), f.deps)).rejects.toThrow(TenantAuthorizationError)
+    expect(f.io()).toBe(0)
+    expect(f.optimize).not.toHaveBeenCalled()
+  })
+
+  it('rate limit: the 61st upload in 24 h is refused with rate_limited before Tinify or Sanity', async () => {
+    const ok = fakes({ recentUploads: POST_MEDIA_LIMITS.uploadsPerWindow - 1 })
+    await uploadPostImage(ctx(grant()), 'project-a', file(), ok.deps)
+    expect(ok.client.create).toHaveBeenCalledTimes(1)
+    for (const recentUploads of [POST_MEDIA_LIMITS.uploadsPerWindow, 500, null]) {
+      const f = fakes({ recentUploads })
+      await expect(uploadPostImage(ctx(grant()), 'project-a', file(), f.deps)).rejects.toMatchObject({ code: 'rate_limited' })
+      expect(f.io()).toBe(0)
+      expect(f.optimize).not.toHaveBeenCalled()
+    }
   })
 
   it.each([
@@ -639,5 +674,21 @@ describe('optimizeImage', () => {
     const fetch = vi.fn(async () => new Response('quota', { status: 429 }))
     const r = await optimizeImage(Buffer.from(JPEG), 'image/jpeg', { apiKey: 'k', fetch: fetch as never })
     expect(r).toMatchObject({ optimized: false, reason: 'failed' })
+  })
+})
+
+describe('setPostCover — single-Sanity-project write guard', () => {
+  it('set (with a new focal point) and remove are refused before any write when the slug is shared', async () => {
+    const set = fakes({ duplicateProjects: 1 })
+    await expect(
+      setPostCover(ctx(grant()), 'project-a', { id: ID, rev: 'r1', assetId: 'media-a', focal: { x: 0.2, y: 0.3 } }, set.deps)
+    ).rejects.toThrow(TenantAuthorizationError)
+    expect(set.patches.filter((p) => p.ops.some(([o]) => o === 'commit'))).toHaveLength(0)
+
+    const remove = fakes({ duplicateProjects: 1 })
+    await expect(
+      setPostCover(ctx(grant()), 'project-a', { id: ID, rev: 'r1', remove: true }, remove.deps)
+    ).rejects.toThrow(TenantAuthorizationError)
+    expect(remove.draftCommits()).toBe(0)
   })
 })

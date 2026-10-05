@@ -106,7 +106,8 @@
         "clear": "Azzera filtri",
         "noMatch": "Nessun articolo corrisponde ai filtri."
       },
-      "untitledDraft": "Bozza senza titolo"
+      "untitledDraft": "Bozza senza titolo",
+      "unpublishedChanges": "Modifiche non pubblicate"
     },
     "submissions": {
       "title": "Invii",
@@ -207,7 +208,8 @@
           "yours": "La tua versione",
           "suggestion": "Versione suggerita",
           "accept": "Usa questa versione",
-          "keep": "Tengo la mia"
+          "keep": "Tengo la mia",
+          "preserved": "Migliora non è disponibile per gli articoli con immagini o altri contenuti modificati in Studio."
         }
       },
       "improve": {
@@ -281,6 +283,7 @@
           "conflict": "Questo articolo è stato modificato in un'altra finestra. Ricarica la pagina per vedere la versione più recente.",
           "forbidden": "Non hai il permesso di modificare questo articolo.",
           "not_found": "Non troviamo più questa foto. Scegline un'altra.",
+          "rate_limited": "Oggi hai caricato molte foto. Riprova domani, oppure scegline una già presente nella tua libreria.",
           "generic": "Qualcosa è andato storto. Riprova."
         },
         "dropHere": "Rilascia la foto per usarla come copertina",
@@ -448,7 +451,11 @@
         "draft": "Salvato come bozza",
         "draftBody": "Non è ancora online. Puoi continuare quando vuoi dalla Home.",
         "view": "Vedi sul tuo sito",
-        "home": "Torna alla Home"
+        "home": "Torna alla Home",
+        "updated": "Le modifiche sono online",
+        "updatedBody": "I visitatori vedono già la nuova versione.",
+        "updatedNotLive": "Le modifiche sono salvate",
+        "updatedNotLiveBody": "I visitatori le vedranno quando l'articolo sarà online."
       },
       "review": {
         "title": "Il tuo articolo",
@@ -476,7 +483,53 @@
         "noCategory": "Nessun argomento scelto",
         "noCover": "Nessuna immagine di copertina",
         "coverAltMissing": "La foto ha bisogno di una breve descrizione",
-        "coverSet": "Foto aggiunta"
+        "coverSet": "Foto aggiunta",
+        "update": "Aggiorna articolo",
+        "updating": "Aggiornamento…",
+        "status": {
+          "live": "Online sul tuo sito dal {date}",
+          "scheduled": "Programmato per il {date}",
+          "offline": "Offline dal {date}"
+        },
+        "editing": "Stai modificando una copia. I visitatori vedono la versione online finché non aggiorni."
+      },
+      "menu": {
+        "label": "Altre azioni",
+        "takeOffline": "Togli dal sito",
+        "backOnline": "Rimetti online",
+        "changeDate": "Cambia data di pubblicazione",
+        "discard": "Annulla le modifiche",
+        "deleteDraft": "Elimina bozza",
+        "deletePost": "Elimina articolo"
+      },
+      "confirm": {
+        "cancel": "Annulla",
+        "discardTitle": "Annullare le modifiche?",
+        "discardBody": "L'articolo online resta com'è. Le modifiche non pubblicate vengono eliminate.",
+        "discard": "Annulla le modifiche",
+        "deleteDraftTitle": "Eliminare questa bozza?",
+        "deleteDraftBody": "«{title}» verrà eliminata. L'operazione non si può annullare.",
+        "deleteDraft": "Elimina bozza",
+        "deletePostTitle": "Eliminare questo articolo?",
+        "deletePostBody": "«{title}» verrà rimosso definitivamente dal tuo sito. L'operazione non si può annullare.",
+        "deletePost": "Elimina articolo"
+      },
+      "lifecycle": {
+        "offlineDone": "L'articolo è offline. Puoi rimetterlo online quando vuoi.",
+        "onlineDone": "L'articolo è di nuovo online.",
+        "errors": {
+          "conflict": "Questo articolo è stato modificato altrove. Ricarica per vedere l'ultima versione.",
+          "forbidden": "Non hai il permesso per farlo.",
+          "not_found": "Non troviamo più questo articolo.",
+          "invalid_value": "Per questo articolo non è possibile.",
+          "unauthenticated": "La sessione è scaduta. Accedi di nuovo.",
+          "failed": "Qualcosa è andato storto. Riprova."
+        }
+      },
+      "open": {
+        "title": "Stiamo aprendo il tuo articolo…",
+        "failed": "Non siamo riusciti ad aprire questo articolo. Riprova.",
+        "back": "Torna agli articoli"
       }
     }
   },
@@ -490,7 +543,24 @@
       "italic": "Corsivo",
       "bulletList": "Elenco puntato",
       "numberedList": "Elenco numerato",
-      "quote": "Citazione"
+      "quote": "Citazione",
+      "link": "Aggiungi link",
+      "editLink": "Modifica link",
+      "linkSheet": {
+        "addTitle": "Collega a",
+        "editTitle": "Modifica link",
+        "placeholder": "https://… oppure /pagina",
+        "help": "Un indirizzo web, un’email, un numero di telefono o una pagina del tuo sito (che inizia con /).",
+        "invalid": "Questo link non sembra valido. Prova con https://esempio.it, /contatti o nome@esempio.it.",
+        "save": "Salva link",
+        "cancel": "Annulla",
+        "remove": "Rimuovi link"
+      },
+      "preserved": {
+        "image": "Immagine",
+        "other": "Contenuto incorporato ({type})",
+        "hint": "Si modifica in Studio · qui puoi spostarlo o eliminarlo"
+      }
     }
   }
 }

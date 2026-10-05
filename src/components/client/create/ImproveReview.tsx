@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
-import type { BodyBlock, BodySpan } from '@/lib/client/normalize-blocks'
+import { PreservedChip } from '@/components/client/editor/BodyEditor'
+import { cleanLink, isSpan, isTextBlock, type BodyBlock, type BodyItem, type BodyObject, type BodySpan } from '@/lib/client/normalize-blocks'
 
 /**
  * "Improve with AI" review (ADR-025 · Tell your story). The writer sees their
@@ -19,8 +20,8 @@ export function ImproveReview({
   onKeep,
 }: {
   open: boolean
-  original: BodyBlock[]
-  suggestion: BodyBlock[]
+  original: BodyItem[]
+  suggestion: BodyItem[]
   onAccept: () => void
   onKeep: () => void
 }) {
@@ -97,13 +98,17 @@ function Version({ label, highlight, children }: { label: string; highlight?: bo
   )
 }
 
-function Spans({ spans }: { spans: BodySpan[] }) {
+function Spans({ block }: { block: BodyBlock }) {
+  const links = new Set(block.markDefs.map((d) => cleanLink(d)?._key).filter(Boolean))
   return (
     <>
-      {spans.map((s) => {
+      {block.children.map((c) => {
+        if (!isSpan(c)) return <PreservedChip key={c._key} value={c as BodyObject} inline />
+        const s: BodySpan = c
         let node: ReactNode = s.text
         if (s.marks.includes('em')) node = <em>{node}</em>
         if (s.marks.includes('strong')) node = <strong className="font-semibold">{node}</strong>
+        if (s.marks.some((m) => links.has(m))) node = <span className="underline underline-offset-2">{node}</span>
         return <span key={s._key}>{node}</span>
       })}
     </>
@@ -111,30 +116,38 @@ function Spans({ spans }: { spans: BodySpan[] }) {
 }
 
 /** Read-only rendering of a normalised body (the shapes `normalizeBlocks` emits). */
-export function BlocksPreview({ blocks }: { blocks: BodyBlock[] }) {
+export function BlocksPreview({ blocks }: { blocks: BodyItem[] }) {
   const out: ReactNode[] = []
   for (let i = 0; i < blocks.length; i++) {
     const b = blocks[i]
+    if (!isTextBlock(b)) {
+      out.push(
+        <div key={b._key} className="my-3">
+          <PreservedChip value={b} />
+        </div>,
+      )
+      continue
+    }
     if (b.listItem) {
       const type = b.listItem
       const items: BodyBlock[] = []
-      while (i < blocks.length && blocks[i].listItem === type) items.push(blocks[i++])
+      for (let next = blocks[i]; i < blocks.length && isTextBlock(next) && next.listItem === type; next = blocks[++i]) items.push(next)
       i--
       const List = type === 'number' ? 'ol' : 'ul'
       out.push(
         <List key={b._key} className={`my-3 pl-6 ${type === 'number' ? 'list-decimal' : 'list-disc'} marker:text-muted-foreground`}>
           {items.map((it) => (
             <li key={it._key} style={{ marginInlineStart: `${((it.level ?? 1) - 1) * 1.5}rem` }} className="my-1">
-              <Spans spans={it.children} />
+              <Spans block={it} />
             </li>
           ))}
         </List>,
       )
       continue
     }
-    const content = <Spans spans={b.children} />
-    if (b.style === 'h2') out.push(<h4 key={b._key} className="mt-5 mb-2 text-xl font-semibold tracking-tight">{content}</h4>)
-    else if (b.style === 'h3') out.push(<h5 key={b._key} className="mt-4 mb-1 text-lg font-semibold">{content}</h5>)
+    const content = <Spans block={b} />
+    if (b.style === 'h1' || b.style === 'h2') out.push(<h4 key={b._key} className="mt-5 mb-2 text-xl font-semibold tracking-tight">{content}</h4>)
+    else if (/^h[3-6]$/.test(b.style)) out.push(<h5 key={b._key} className="mt-4 mb-1 text-lg font-semibold">{content}</h5>)
     else if (b.style === 'blockquote')
       out.push(
         <blockquote key={b._key} className="my-3 border-l-[3px] border-foreground/30 pl-4 italic text-foreground/80">

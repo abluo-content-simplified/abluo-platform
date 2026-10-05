@@ -5,6 +5,7 @@ import { hashPrefix } from '@/lib/gallery/deeplink'
 import { normalizeLayout, normalizeShape } from '@/lib/gallery/layout'
 import { formatGalleryMessage, getGalleryMessages } from '@/lib/i18n/gallery-messages'
 import { buildImageGallerySchema } from '@/lib/gallery/jsonld'
+import { safeJsonLd } from '@/lib/seo/safe-json-ld'
 import { GalleryView } from './GalleryView'
 
 // ── GalleryPlacement (server) ─────────────────────────────────────────────────
@@ -54,7 +55,7 @@ export function GalleryPlacement(p: GalleryPlacementProps) {
   return (
     <>
       {schema && (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, '\\u003c') }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(schema) }} />
       )}
       <GalleryView
       tabs={tabs.map((t) => ({ id: t.id, label: t.label, items: toViewItems(t.items) }))}

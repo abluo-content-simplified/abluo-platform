@@ -11,6 +11,7 @@
  *   1. `assertModuleAction(ctx, projectId, 'blog.post.write')` — same gate as
  *      writing the draft (owner/editor with Blog installed; never viewer).
  *      The site is the GRANT's projectSlug, never the caller's.
+ *   1b. AI_FEATURES must include 'improve' (or 'all') — default OFF.
  *   2. Input rebuilt through `sanitizeBlocks` (allowed shape only), non-empty,
  *      ≤ IMPROVE_LIMITS.inputChars of text.
  *   3. `locale` must be one of the site's languages.
@@ -23,12 +24,14 @@ import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { BLOG_POST_WRITE_PERMISSION, PostDraftError, sanitizeBlocks } from '@/lib/api/post-drafts'
 import { getAiProvider } from '@/lib/ai/registry'
+import { isAiFeatureEnabled } from '@/lib/ai/features'
 import { AiError, type AiProvider } from '@/lib/ai/types'
 import { loadSiteAiContext, type SiteAiContext } from '@/lib/ai/tone'
 import { buildImproveSystemPrompt, buildImproveUserPrompt } from '@/lib/ai/prompts'
 import {
   blocksPlainTextLength,
   blocksToMarkdown,
+  collectHrefs,
   defaultKey,
   markdownToBlocks,
   type KeyFn,
@@ -58,6 +61,8 @@ export type PostAiDeps = {
   loadSite?: (projectSlug: string) => Promise<SiteAiContext>
   key?: KeyFn
   logError?: (message: string) => void
+  /** Environment for the AI_FEATURES flag (tests). Defaults to process.env. */
+  env?: Record<string, string | undefined>
 }
 
 /** Roughly the input's size back, plus headroom for headings. */
@@ -74,6 +79,11 @@ export async function improvePostBody(
   // 1. Gate — throws TenantAuthorizationError (→ 'forbidden' in the action).
   assertModuleAction(ctx, projectId, BLOG_POST_WRITE_PERMISSION)
   const grant = ctx.projects.find((p) => p.projectId === projectId)!
+
+  // 1b. Feature flag (ADR-026 D6): off → refuse, whatever keys are configured.
+  if (!isAiFeatureEnabled('improve', deps.env)) {
+    throw new PostAiError('ai_unavailable', 'Improve is not enabled yet.')
+  }
 
   // 2. Input shape and size.
   if (typeof input?.locale !== 'string' || !input.locale) {
@@ -119,7 +129,10 @@ export async function improvePostBody(
 
   // 5. Back to the allowed shape.
   try {
-    const blocks = sanitizeBlocks(markdownToBlocks(text, deps.key ?? defaultKey))
+    const blocks = sanitizeBlocks(
+      // Only links the author already had may come back as links (the model must not add any).
+      markdownToBlocks(text, deps.key ?? defaultKey, { allowedHrefs: collectHrefs(clean) })
+    )
     if (!blocks.length) throw new Error('empty result')
     return { blocks }
   } catch (err) {

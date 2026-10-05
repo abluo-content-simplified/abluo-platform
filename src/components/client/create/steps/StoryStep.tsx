@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import type { PortableTextBlock } from '@portabletext/editor'
 import { BodyEditor } from '@/components/client/editor/BodyEditor'
@@ -12,7 +12,8 @@ import {
   normalizeBlocks,
   readingMinutes,
   textToBlocks,
-  type BodyBlock,
+  hasPreservedContent,
+  type BodyItem,
 } from '@/lib/client/normalize-blocks'
 
 /** Below this many words "Improve" has too little to work with. */
@@ -22,7 +23,8 @@ export type ImproveResult = { ok: true; blocks: PortableTextBlock[] } | { ok: fa
 
 export type StoryStepProps = StepProps & {
   /**
-   * Asks the AI for an improved version of the body. Hidden when omitted.
+   * Asks the AI for an improved version of the body. When omitted (AI_FEATURES
+   * off) the button shows disabled with a "Coming soon" badge.
    * Receives the normalised current body; the returned blocks are normalised
    * again before they are shown or saved, so the server shape is guaranteed.
    */
@@ -40,23 +42,28 @@ export function StoryStep({ draft, locale, update, onImprove }: StoryStepProps) 
   const t = useTranslations('clientDashboard.create.story')
   const path = `body.${locale}`
 
-  const [seed, setSeed] = useState<BodyBlock[]>(() => normalizeBlocks(draft.body[locale]))
-  const [current, setCurrent] = useState<BodyBlock[]>(seed)
+  // An existing post's body is its own reference: everything stored loads untouched.
+  const [seed, setSeed] = useState<BodyItem[]>(() => normalizeBlocks(draft.body[locale], draft.body[locale]))
+  const [current, setCurrent] = useState<BodyItem[]>(seed)
+  // Last body handed to the shell — the reference that decides which preserved
+  // content (images, h1/h4, Studio-only annotations) may stay. Mirrors the server.
+  const latest = useRef<BodyItem[]>(seed)
   // Bumped to remount the editor with new content (paste, accepted AI version).
   const [editorKey, setEditorKey] = useState(0)
   const [notice, setNotice] = useState<Notice>(null)
   const [improving, setImproving] = useState(false)
-  const [suggestion, setSuggestion] = useState<BodyBlock[] | null>(null)
+  const [suggestion, setSuggestion] = useState<BodyItem[] | null>(null)
 
   const words = countWords(current)
   const minutes = readingMinutes(words)
 
-  const commit = (blocks: BodyBlock[]) => {
+  const commit = (blocks: BodyItem[]) => {
+    latest.current = blocks
     setCurrent(blocks)
     update({ [path]: blocks })
   }
 
-  const replaceContent = (blocks: BodyBlock[]) => {
+  const replaceContent = (blocks: BodyItem[]) => {
     commit(blocks)
     setSeed(blocks)
     setEditorKey((k) => k + 1)
@@ -74,7 +81,7 @@ export function StoryStep({ draft, locale, update, onImprove }: StoryStepProps) 
         setNotice({ kind: 'hint', text: t('paste.empty') })
         return
       }
-      replaceContent(normalizeBlocks([...current, ...pasted]))
+      replaceContent(normalizeBlocks([...latest.current, ...pasted], latest.current))
       setNotice({ kind: 'hint', text: t('paste.done') })
     } catch {
       // Permission denied or not a user gesture on this browser.
@@ -83,11 +90,12 @@ export function StoryStep({ draft, locale, update, onImprove }: StoryStepProps) 
   }
 
   const improve = async () => {
-    if (!onImprove || improving || words < IMPROVE_MIN_WORDS) return
+    if (!onImprove || improving || words < IMPROVE_MIN_WORDS || preservedContent) return
     setNotice(null)
     setImproving(true)
     try {
-      const result = await onImprove(asEditorValue(current))
+      // The AI sees the supported shape only (h1 → h2, h4 → h3; links kept).
+      const result = await onImprove(asEditorValue(normalizeBlocks(current)))
       const blocks = result.ok ? normalizeBlocks(result.blocks) : []
       if (!result.ok || !blocks.length) setNotice({ kind: 'error', text: t('improve.failed') })
       else setSuggestion(blocks)
@@ -99,6 +107,8 @@ export function StoryStep({ draft, locale, update, onImprove }: StoryStepProps) 
   }
 
   const tooShort = words < IMPROVE_MIN_WORDS
+  // Accepting a rewrite would drop images / Studio-only content — not offered for those posts.
+  const preservedContent = hasPreservedContent(current)
 
   return (
     <section aria-labelledby="story-step-title" className="flex min-h-0 flex-1 flex-col">
@@ -112,7 +122,7 @@ export function StoryStep({ draft, locale, update, onImprove }: StoryStepProps) 
           key={`${locale}:${editorKey}`}
           initialValue={asEditorValue(seed)}
           placeholder={t('placeholder')}
-          onChange={(value) => commit(normalizeBlocks(value))}
+          onChange={(value) => commit(normalizeBlocks(value, latest.current))}
         />
       </div>
 
@@ -130,20 +140,25 @@ export function StoryStep({ draft, locale, update, onImprove }: StoryStepProps) 
         {onImprove && (
           <Action
             onPress={improve}
-            disabled={tooShort || improving}
+            disabled={tooShort || improving || preservedContent}
             busy={improving}
             icon={ICONS.sparkle}
-            describedBy={tooShort ? 'story-improve-hint' : undefined}
+            describedBy={tooShort || preservedContent ? 'story-improve-hint' : undefined}
             primary
           >
             {improving ? t('improve.loading') : t('actions.improve')}
           </Action>
         )}
+        {!onImprove && (
+          <Action disabled icon={ICONS.sparkle} badge={t('actions.soon')}>
+            {t('actions.improve')}
+          </Action>
+        )}
       </div>
 
-      {onImprove && tooShort && (
+      {onImprove && (tooShort || preservedContent) && (
         <p id="story-improve-hint" className="mt-2 text-sm text-muted-foreground">
-          {t('improve.tooShort', { count: IMPROVE_MIN_WORDS })}
+          {preservedContent ? t('improve.preserved') : t('improve.tooShort', { count: IMPROVE_MIN_WORDS })}
         </p>
       )}
 

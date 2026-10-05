@@ -46,7 +46,8 @@ import {
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { createMediaAsset } from '@/lib/media/create-media-asset'
 import type { OptimizeImageResult } from '@/lib/media/optimize-image'
-import { BLOG_POST_WRITE_PERMISSION } from '@/lib/api/post-drafts'
+import { BLOG_POST_WRITE_PERMISSION, isPostId } from '@/lib/api/post-drafts'
+import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
 
 export const POST_MEDIA_LIMITS = {
   /** Upload size limit (before optimisation). */
@@ -60,10 +61,17 @@ export const POST_MEDIA_LIMITS = {
   /** Tags per filter, and characters per tag. */
   tags: 10,
   tagLength: 40,
-  /** Assets considered per library request (filtered + paged in memory). */
-  scan: 2000,
+  /**
+   * Assets considered per library request (filtered + paged in memory). The
+   * picker debounces search by 300 ms (CoverStep MediaLibrary); 1000 keeps a
+   * request cheap while covering every current project's library many times over.
+   */
+  scan: 1000,
   /** Tag chips returned. */
   tagChips: 30,
+  /** Uploads per user per project in a rolling window (cost / storage abuse cap). */
+  uploadsPerWindow: 60,
+  uploadWindowMs: 24 * 60 * 60 * 1000,
 } as const
 
 export const POST_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
@@ -76,6 +84,7 @@ export type PostMediaErrorCode =
   | 'too_large'
   | 'invalid_value'
   | 'conflict'
+  | 'rate_limited'
   | 'failed'
 
 export class PostMediaError extends Error {
@@ -146,7 +155,6 @@ function focalOf(hotspot: unknown): FocalPoint | null {
   return h && typeof h.x === 'number' && typeof h.y === 'number' ? { x: h.x, y: h.y } : null
 }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const DOC_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/
 const CURSOR = /^(\d{4}-\d{2}-\d{2}T[0-9:.]+Z)\|([A-Za-z0-9._-]{1,128})$/
 
@@ -207,13 +215,34 @@ export async function uploadPostImage(
   }
 
   // The project document gives the tenant + project references. Looked up by
-  // the GRANT's projectSlug through the tenant-scoped chokepoint.
+  // the GRANT's projectSlug through the tenant-scoped chokepoint — and there
+  // must be EXACTLY one (a shared slug would file the asset under whichever
+  // project came first, possibly another tenant's). Same read: how many images
+  // this user uploaded to this project in the rate-limit window.
   const scoped = tenantScopedSanityClient(ctx, projectId, deps.fetch ? { fetch: deps.fetch } : {})
-  const project = await scoped.fetch<{ _id?: string; clientId?: string | null } | null>(
-    `*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ _id, "clientId": clientRef._ref }`
+  const now = (deps.now ?? (() => new Date()))()
+  const lookup = await scoped.fetch<{
+    projects?: Array<{ _id?: string; clientId?: string | null }> | null
+    recentUploads?: number | null
+  } | null>(
+    `{
+      "projects": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0...2]{ _id, "clientId": clientRef._ref },
+      "recentUploads": count(*[_type == "mediaAsset" && projectSlug == $projectSlug && uploadedBy == $userId && _createdAt > $since])
+    }`,
+    { userId: ctx.userId, since: new Date(now.getTime() - POST_MEDIA_LIMITS.uploadWindowMs).toISOString() }
   )
+  const projects = Array.isArray(lookup?.projects) ? lookup.projects : []
+  if (projects.length > 1) {
+    throw new TenantAuthorizationError(
+      `uploadPostImage: more than one Sanity project carries projectSlug "${grant.projectSlug}" — upload refused.`
+    )
+  }
+  const project = projects[0]
   if (!project?._id || !project.clientId) {
     throw new PostMediaError('failed', 'This site is not set up for images yet.')
+  }
+  if (typeof lookup?.recentUploads !== 'number' || lookup.recentUploads >= POST_MEDIA_LIMITS.uploadsPerWindow) {
+    throw new PostMediaError('rate_limited', 'Too many uploads today. Please try again tomorrow.')
   }
 
   const ext = sniffed === 'image/png' ? 'png' : sniffed === 'image/webp' ? 'webp' : 'jpg'
@@ -377,7 +406,7 @@ export async function listProjectMedia(
 type DraftDoc = { _type?: string; _rev?: string; projectSlug?: string; coverImage?: { asset?: { _ref?: string }; alt?: unknown } }
 
 async function readOwnedDraft(client: WriteClient, id: unknown, rev: unknown, projectSlug: string, checkRev = true) {
-  if (typeof id !== 'string' || !UUID.test(id)) throw new PostMediaError('not_found', 'Unknown draft id.')
+  if (!isPostId(id)) throw new PostMediaError('not_found', 'Unknown draft id.')
   if (checkRev && (typeof rev !== 'string' || !rev)) throw new PostMediaError('conflict', 'Missing revision.')
   const draftId = `drafts.${id}`
   const current = (await client.getDocument(draftId)) as DraftDoc | undefined
@@ -419,6 +448,8 @@ export async function setPostCover(
 
   if ('remove' in input) {
     if (input.remove !== true) throw new PostMediaError('invalid_value', 'Nothing to save.')
+    const guardScope = tenantScopedSanityClient(ctx, projectId, deps.fetch ? { fetch: deps.fetch } : {})
+    await assertSingleSanityProject((q, p) => guardScope.fetch(q, p), grant.projectSlug)
     const rev = await commit((p) => p.unset(['coverImage']).set({ 'wizard.updatedAt': now }))
     return { rev, cover: null }
   }
@@ -483,6 +514,8 @@ export async function setPostCover(
     { assetId: mediaAssetId }
   )
   if (!asset?.ref || !asset.ref.startsWith('image-')) throw new PostMediaError('not_found', 'Unknown image.')
+  // Before the first write (asset hotspot, then the draft).
+  await assertSingleSanityProject((q, p) => scoped.fetch(q, p), grant.projectSlug)
 
   // The focal point lives on the Media Library asset ("set once, applies
   // everywhere", ADR-022 §4a); the cover carries a copy so the website's

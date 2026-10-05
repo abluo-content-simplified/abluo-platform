@@ -17,6 +17,7 @@ The folder is **server-only**: `src/lib/ai/__tests__/server-boundary.test.ts` wa
 ### D2 — Configuration
 | Env var | Meaning | Default |
 |---|---|---|
+| `AI_FEATURES` | Feature flag (D6): `all`, or a list such as `improve,translate`. Unset means **off** | off |
 | `AI_PROVIDER` | `anthropic` \| `fake` (`fake` is refused when `NODE_ENV=production`) | `anthropic` |
 | `AI_MODEL` | Model id for that provider | `claude-sonnet-5-5` |
 | `AI_TIMEOUT_MS` | Request timeout | `60000` |
@@ -40,7 +41,16 @@ The Anthropic adapter calls `POST https://api.anthropic.com/v1/messages` with `a
 - Nothing is written. The UI shows the suggestion side by side. **Accept** saves it through the normal autosave (`patchPostDraft`), which sanitizes it again.
 - Server action: `improvePostBodyAction({ projectSlug, locale, blocks })` → `{ ok: true, blocks } | { ok: false, error }`.
 
+### D6 — Feature flag `AI_FEATURES` (default OFF)
+The blog dashboard launches for every tenant before the AI features do, so there is one server-side switch: `src/lib/ai/features.ts`. `parseAiFeatures(raw)` is pure and returns `{ improve, translate }`.
+- `AI_FEATURES` unset, empty, `off` or anything unrecognised turns everything **off**. `all` turns everything on. `improve,translate` (comma or space separated) turns on just those.
+- **UI:** the write page (`posts/write/[id]/page.tsx`) reads the flag on the server and passes `aiImprove` to `WizardShell`. When it is off, the Story step still shows "Improve with AI", but as a disabled chip with a "Coming soon" badge. "Translate for me" on the Languages step stays "Coming soon"; the `translate` flag is reserved for when the wizard gets translation.
+- **Server (defence in depth):** `improvePostBody` checks the flag right after the auth gate. When it is off, it refuses with `ai_unavailable` before any site read or provider call, whatever keys are configured. A viewer still gets `forbidden`.
+- The Studio Translate module (ADR-023) is admin-only and governed by its own module installation, not by this flag.
+- **Pre-enable requirement: per-user AI quotas.** Improve has no rate limit or quota today. Any owner/editor can call it in a loop (up to 16k output tokens per call). Before `AI_FEATURES` includes `improve` in production, add per-user and per-project usage rows plus a cap checked right after the auth gate. Reuse the `translation_usage` pattern from migration 027 / ADR-023, and refuse over the cap with a friendly code.
+- To go live: meet the requirement above, then set `AI_FEATURES=improve` (or `all`) and `ANTHROPIC_API_KEY` in the Vercel environment and redeploy.
+
 ## Consequences
 - The Translate module keeps its own Claude adapter (`TRANSLATE_CLAUDE_MODEL`). A later change can move it onto this layer.
-- No metering or quota yet for Improve. Add usage rows (as ADR-023 does) before it is widely used.
+- No metering or quota yet for Improve. Per-user quotas are a **pre-enable requirement** (D6); do not turn the flag on without them.
 - Tests never call a paid API; they use `createFakeAiProvider()`.

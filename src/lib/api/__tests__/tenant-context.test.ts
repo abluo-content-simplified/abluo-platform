@@ -15,6 +15,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   assembleProjectGrants,
+  dropAmbiguousSlugGrants,
   permissionsForRole,
   type RawOwnedProject,
   type RawProjectMembership,
@@ -240,5 +241,49 @@ describe('assembleProjectGrants', () => {
       enabledModuleIds: [],
       permissions: [],
     })
+  })
+})
+
+// ─── Shared-slug guard (cross-tenant Sanity isolation) ───────────────────────
+
+
+describe('dropAmbiguousSlugGrants', () => {
+  const owned: RawOwnedProject[] = [
+    { projectId: 'p-main', projectSlug: asSupabaseProjectSlug('main'), tenantId: 't-a' },
+    { projectId: 'p-solo', projectSlug: asSupabaseProjectSlug('solo'), tenantId: 't-a' },
+  ]
+  const members: RawProjectMembership[] = [
+    { membershipId: 'm1', projectId: 'p-x', projectSlug: asSupabaseProjectSlug('shared'), role: 'editor' },
+    { membershipId: 'm2', projectId: 'p-y', projectSlug: asSupabaseProjectSlug('fine'), role: 'viewer' },
+  ]
+
+  it('keeps grants whose slug is used by exactly one projects row', () => {
+    const r = dropAmbiguousSlugGrants({
+      ownedProjects: owned,
+      memberships: members,
+      slugUsage: new Map([['main', 1], ['solo', 1], ['shared', 1], ['fine', 1]]),
+    })
+    expect(r.ownedProjects).toEqual(owned)
+    expect(r.memberships).toEqual(members)
+    expect(r.droppedSlugs).toEqual([])
+  })
+
+  it('drops owner and member grants whose slug another tenant also uses', () => {
+    const r = dropAmbiguousSlugGrants({
+      ownedProjects: owned,
+      memberships: members,
+      slugUsage: new Map([['main', 2], ['solo', 1], ['shared', 3], ['fine', 1]]),
+    })
+    expect(r.ownedProjects.map((p) => p.projectId)).toEqual(['p-solo'])
+    expect(r.memberships.map((m) => m.projectId)).toEqual(['p-y'])
+    expect(r.droppedSlugs.sort()).toEqual(['main', 'shared'])
+  })
+
+  it('fails closed: an unverifiable or missing count drops the grant', () => {
+    const none = dropAmbiguousSlugGrants({ ownedProjects: owned, memberships: members, slugUsage: null })
+    expect(none.ownedProjects).toEqual([])
+    expect(none.memberships).toEqual([])
+    const missing = dropAmbiguousSlugGrants({ ownedProjects: owned, memberships: [], slugUsage: new Map([['main', 1]]) })
+    expect(missing.ownedProjects.map((p) => p.projectId)).toEqual(['p-main'])
   })
 })

@@ -34,7 +34,7 @@ export async function publishPostDraftAction(input: {
   projectSlug: string
   id: string
   rev: string
-  mode: 'now' | 'schedule'
+  mode: 'now' | 'schedule' | 'keep'
   publishAt?: string
   expiresAt?: string | null
 }): Promise<PublishDraftResult> {

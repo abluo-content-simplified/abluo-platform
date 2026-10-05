@@ -18,7 +18,9 @@
  *   4. Slugs: an already-published language keeps its slug (URLs never move).
  *      A new language gets one generated from its title, unique among this
  *      project's published posts for that language (-2, -3, …).
- *   5. Dates: "now" → publishedAt = now. "schedule" → publishAt must be a valid
+ *   5. Dates: "keep" (Update post) → an already-published post keeps its
+ *      publishedAt and expiresAt (expiresAt only changes when passed).
+ *      "now" → publishedAt = now. "schedule" → publishAt must be a valid
  *      ISO date-time in the future and at most two years away; a scheduled post
  *      is just a published doc with a future publishedAt (D5, no cron).
  *      expiresAt is optional and must be after publishedAt.
@@ -40,9 +42,10 @@
  */
 import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
-import { BLOG_POST_WRITE_PERMISSION, type PostDraftErrorCode } from '@/lib/api/post-drafts'
+import { BLOG_POST_WRITE_PERMISSION, isPostId, type PostDraftErrorCode } from '@/lib/api/post-drafts'
 import { slugifyNestedPath } from '@/lib/sanity/fields/nested-slug'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
+import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
 
 export type PostPublishErrorCode =
   | PostDraftErrorCode
@@ -67,7 +70,12 @@ export type PostPublishDeps = { client?: PublishClient; now?: () => Date }
 export type PublishPostInput = {
   id: string
   rev: string
-  mode: 'now' | 'schedule'
+  /**
+   * now / schedule set the go-live date. keep = "Update post" for a post that
+   * is already published: its publishedAt and expiresAt stay as they are
+   * (unless expiresAt is passed); for a never-published draft keep = now.
+   */
+  mode: 'now' | 'schedule' | 'keep'
   publishAt?: string
   expiresAt?: string | null
 }
@@ -76,7 +84,6 @@ export type PublishPostResult = { id: string; publishedAt: string; slugs: Record
 export const SLUG_MAX = 80
 export const MAX_SCHEDULE_MS = 2 * 366 * 24 * 60 * 60 * 1000
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/
 /** System fields and fields this step owns — never copied from the draft. */
 const NOT_COPIED = new Set([
@@ -102,6 +109,13 @@ type PostDoc = Record<string, unknown> & {
 
 function parseDate(value: unknown): Date | null {
   if (typeof value !== 'string' || !ISO.test(value)) return null
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+/** A date as Sanity stores it on a published doc (any ISO form), or null. */
+function parseLiveDate(value: unknown): Date | null {
+  if (typeof value !== 'string' || !value) return null
   const d = new Date(value)
   return Number.isNaN(d.getTime()) ? null : d
 }
@@ -134,15 +148,15 @@ export async function publishPostDraft(
   const now = (deps.now ?? (() => new Date()))()
 
   // ── Input shape and dates — refused before anything is read ────────────────
-  if (typeof input?.id !== 'string' || !UUID.test(input.id)) {
+  if (!isPostId(input?.id)) {
     throw new PostPublishError('not_found', 'Unknown draft id.')
   }
   if (typeof input.rev !== 'string' || !input.rev) {
     throw new PostPublishError('conflict', 'Missing revision.')
   }
   let publishedAt: Date
-  if (input.mode === 'now') {
-    publishedAt = now
+  if (input.mode === 'now' || input.mode === 'keep') {
+    publishedAt = now // 'keep' is resolved against the published doc below
   } else if (input.mode === 'schedule') {
     const at = parseDate(input.publishAt)
     if (!at || at.getTime() <= now.getTime() || at.getTime() - now.getTime() > MAX_SCHEDULE_MS) {
@@ -155,7 +169,7 @@ export async function publishPostDraft(
   let expiresAt: Date | null = null
   if (input.expiresAt !== undefined && input.expiresAt !== null) {
     expiresAt = parseDate(input.expiresAt)
-    if (!expiresAt || expiresAt.getTime() <= publishedAt.getTime()) {
+    if (!expiresAt || (input.mode !== 'keep' && expiresAt.getTime() <= publishedAt.getTime())) {
       throw new PostPublishError('invalid_expiry', 'The offline date must be after the go-live date.')
     }
   }
@@ -172,6 +186,15 @@ export async function publishPostDraft(
   const published = (await client.getDocument(input.id)) as PostDoc | undefined
   if (published && (published._type !== 'post' || published.projectSlug !== grant.projectSlug)) {
     throw new PostPublishError('not_found', 'Unknown draft id.')
+  }
+  // Update post: the live dates stay unless the caller changes them.
+  if (input.mode === 'keep' && published) {
+    const livePublishedAt = parseLiveDate(published.publishedAt)
+    if (livePublishedAt) publishedAt = livePublishedAt
+    if (input.expiresAt === undefined) expiresAt = parseLiveDate(published.expiresAt)
+  }
+  if (input.mode === 'keep' && expiresAt && input.expiresAt != null && expiresAt.getTime() <= publishedAt.getTime()) {
+    throw new PostPublishError('invalid_expiry', 'The offline date must be after the go-live date.')
   }
 
   // ── Languages (D9) ─────────────────────────────────────────────────────────
@@ -219,15 +242,27 @@ export async function publishPostDraft(
     return true
   })
   if (needed.length) {
-    const others = await client.fetch<Array<{ slug?: Record<string, { current?: string } | undefined> | null }>>(
+    const others = await client.fetch<
+      Array<{
+        slug?: Record<string, { current?: string } | undefined> | null
+        redirectFrom?: Record<string, unknown> | null
+      }>
+    >(
       `*[_type == "post" && projectSlug == $projectSlug && _id != $id
-          && !(_id in path("drafts.**")) && !(_id in path("versions.**"))]{ slug }`,
+          && !(_id in path("drafts.**")) && !(_id in path("versions.**"))]{ slug, redirectFrom }`,
       { projectSlug: grant.projectSlug, id: input.id }
     )
     for (const locale of needed) {
-      const taken = new Set(
-        (others ?? []).map((o) => o?.slug?.[locale]?.current).filter((s): s is string => typeof s === 'string')
-      )
+      // Taken: other posts' current slugs AND their old (redirectFrom) slugs —
+      // the slug route resolves a current slug before a redirect, so reusing an
+      // old one would silently hijack that post's redirect.
+      const taken = new Set<string>()
+      for (const o of others ?? []) {
+        const current = o?.slug?.[locale]?.current
+        if (typeof current === 'string') taken.add(current)
+        const old = o?.redirectFrom?.[locale]
+        if (Array.isArray(old)) for (const r of old) if (typeof r === 'string') taken.add(r)
+      }
       const base = slugFromTitle(titleIn(locale)) || `post-${input.id.slice(0, 8)}`
       slugs[locale] = uniqueSlug(base, taken)
     }
@@ -249,10 +284,19 @@ export async function publishPostDraft(
   if (expiresAt) doc.expiresAt = expiresAt.toISOString()
 
   // ── Commit — one transaction, revision-guarded ─────────────────────────────
+  await assertSingleSanityProject((q, p) => client.fetch(q, p), grant.projectSlug)
   try {
     let tx = client.transaction().patch(draftId, { ifRevisionID: input.rev, unset: ['_publishGuard'] })
-    if (published?._rev) tx = tx.patch(input.id, { ifRevisionID: published._rev, unset: ['_publishGuard'] })
-    await tx.createOrReplace(doc as { _id: string; _type: string }).delete(draftId).commit()
+    if (published?._rev) {
+      tx = tx.patch(input.id, { ifRevisionID: published._rev, unset: ['_publishGuard'] })
+      tx = tx.createOrReplace(doc as { _id: string; _type: string })
+    } else {
+      // Nothing was published under this id when we read: `create` makes the
+      // transaction fail (409 → "conflict") if a document appeared since,
+      // instead of silently replacing it.
+      tx = tx.create(doc as { _id: string; _type: string })
+    }
+    await tx.delete(draftId).commit()
   } catch (error) {
     if ((error as { statusCode?: number })?.statusCode === 409) {
       throw new PostPublishError('conflict', 'This draft was edited elsewhere.')

@@ -57,6 +57,7 @@
  * touched here) — see the handoff for the recommended next step.
  */
 import { createClient } from '@/lib/supabase/server'
+import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 import { getAuthenticatedActor } from '@/lib/api/auth'
 import type { PlatformRole } from '@/lib/api/auth'
 import { canPerformModuleAction } from '@/lib/permissions'
@@ -196,6 +197,76 @@ export function assembleProjectGrants(params: {
   return Array.from(grantsByProjectId.values())
 }
 
+// ── Shared-slug guard (fail closed) ─────────────────────────────────────────
+
+/**
+ * Drops every grant whose project slug is used by more than one
+ * `public.projects` row (any tenant).
+ *
+ * Why: migration 023 made `projects.slug` unique per TENANT only, but Sanity
+ * scopes ALL content by `projectSlug` alone — there is no tenant in that
+ * namespace. Two tenants owning a project `main` would therefore share every
+ * Sanity document (posts, media, siteConfig): an editor of one could read,
+ * edit, publish over and delete the other's content through the client
+ * dashboard. Until the namespace carries a tenant (or a global unique index
+ * is restored — docs/engineering/client-dashboard/launch-inventory.md), a
+ * shared slug makes the project unusable from the dashboard rather than
+ * shared.
+ *
+ * `slugUsage` maps slug → number of `projects` rows using it. `null` means
+ * the lookup failed: fail closed, every grant is dropped. Pure — tested in
+ * tenant-context.test.ts.
+ */
+export function dropAmbiguousSlugGrants(params: {
+  ownedProjects: RawOwnedProject[]
+  memberships: RawProjectMembership[]
+  slugUsage: Map<string, number> | null
+}): { ownedProjects: RawOwnedProject[]; memberships: RawProjectMembership[]; droppedSlugs: string[] } {
+  const { ownedProjects, memberships, slugUsage } = params
+  const dropped = new Set<string>()
+  const unique = (slug: string) => {
+    const ok = slugUsage !== null && slugUsage.get(slug) === 1
+    if (!ok) dropped.add(slug)
+    return ok
+  }
+  return {
+    ownedProjects: ownedProjects.filter((p) => unique(p.projectSlug)),
+    memberships: memberships.filter((m) => unique(m.projectSlug)),
+    droppedSlugs: [...dropped],
+  }
+}
+
+/**
+ * Counts `public.projects` rows per slug, across ALL tenants. The caller's
+ * RLS-scoped client can't see other tenants' rows, so this is the one
+ * service-role read in the resolver: slugs in, counts out — no row data
+ * leaves this function and no policy is widened. Returns null on failure.
+ */
+async function fetchProjectSlugUsage(slugs: string[]): Promise<Map<string, number> | null> {
+  if (slugs.length === 0) return new Map()
+  try {
+    return await runAsTrustedSystemOperation(
+      'tenant-context: count projects sharing a granted slug (cross-tenant Sanity isolation guard)',
+      async (admin) => {
+        const { data, error } = await admin.from('projects').select('slug').in('slug', slugs)
+        if (error) throw new Error(error.message)
+        const usage = new Map<string, number>()
+        for (const row of data ?? []) {
+          const slug = (row as { slug?: unknown }).slug
+          if (typeof slug === 'string') usage.set(slug, (usage.get(slug) ?? 0) + 1)
+        }
+        return usage
+      }
+    )
+  } catch (error) {
+    console.warn(
+      `getTenantAuthorizationContext: could not verify project slug uniqueness — failing closed ` +
+        `(no project grants this request). Reason: ${error instanceof Error ? error.message : String(error)}`
+    )
+    return null
+  }
+}
+
 // ── DB + Sanity-facing resolver ─────────────────────────────────────────────
 
 /**
@@ -208,7 +279,10 @@ export function assembleProjectGrants(params: {
  *    resolves: (a) tenant_members rows where role = 'owner' → their projects,
  *    and (b) the caller's own project_members rows. Never the service-role
  *    admin client (`src/lib/supabase/admin.ts`) — this must reflect exactly
- *    what the caller's own session is authorized to see.
+ *    what the caller's own session is authorized to see. (Sole exception:
+ *    `fetchProjectSlugUsage` counts rows per granted slug with the service
+ *    role — slugs in, counts out — so `dropAmbiguousSlugGrants` can drop any
+ *    grant whose slug another tenant also uses. It grants nothing.)
  * 3. For each resolved project, `enabledModuleIds` is fetched from Sanity via
  *    the existing `enabledModuleIdsQuery` + `tenantClient()` helper — the same
  *    path the website route (`[tenant]/page.tsx` et al.) already uses.
@@ -331,6 +405,25 @@ export async function getTenantAuthorizationContext(): Promise<TenantAuthorizati
       projectSlug,
       role: row.role as 'editor' | 'viewer',
     })
+  }
+
+  // Shared-slug guard: a slug used by more than one projects row (any tenant)
+  // would share Sanity content across tenants — drop those grants, fail closed.
+  {
+    const slugs = [...new Set([...ownedProjects, ...memberships].map((p) => p.projectSlug as string))]
+    const guarded = dropAmbiguousSlugGrants({
+      ownedProjects,
+      memberships,
+      slugUsage: await fetchProjectSlugUsage(slugs),
+    })
+    if (guarded.droppedSlugs.length) {
+      console.warn(
+        `getTenantAuthorizationContext: dropped grants for project slug(s) not unique across tenants ` +
+          `(or unverifiable): ${guarded.droppedSlugs.join(', ')} — see dropAmbiguousSlugGrants.`
+      )
+    }
+    ownedProjects = guarded.ownedProjects
+    memberships.splice(0, memberships.length, ...guarded.memberships)
   }
 
   // Enabled module ids per resolved project, via the existing Sanity path.

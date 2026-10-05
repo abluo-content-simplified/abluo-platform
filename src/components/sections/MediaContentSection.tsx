@@ -19,6 +19,7 @@
  */
 
 import { useParams } from 'next/navigation'
+import { isExternalHref, safeLinkHref } from '@/lib/links/safe-href'
 import type { MediaContentSection as MediaContentSectionType, DesignSystem, MediaStyleDefinition, PortableTextBlock } from '@/lib/sanity/types'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
 import type { SurfaceType } from '@/lib/sanity/surfaces'
@@ -113,11 +114,13 @@ function renderRichTextSpans(block: PortableTextBlock): React.ReactNode {
     if (marks.includes('strong')) node = <strong>{node}</strong>
 
     const linkDef = defs.find((d) => d?.href && marks.includes(d._key))
-    if (linkDef?.href) {
-      const external = /^(https?:)?\/\//i.test(linkDef.href) || linkDef.href.startsWith('mailto:')
+    // Unsafe or malformed hrefs render as plain text (src/lib/links/safe-href.ts).
+    const href = linkDef ? safeLinkHref(linkDef.href) : null
+    if (href) {
+      const external = isExternalHref(href)
       node = (
         <a
-          href={linkDef.href}
+          href={href}
           style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}
           {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
         >

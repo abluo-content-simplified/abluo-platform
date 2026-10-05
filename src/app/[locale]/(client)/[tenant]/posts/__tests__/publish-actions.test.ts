@@ -14,6 +14,7 @@ vi.mock('@/lib/sanity/server-clients', () => {
   const tx = {
     patch: (id: string, p: unknown) => (sanityCalls.push('tx:patch'), ops.push(['patch', id, p]), tx),
     createOrReplace: (d: unknown) => (sanityCalls.push('tx:createOrReplace'), ops.push(['createOrReplace', d]), tx),
+    create: (d: unknown) => (sanityCalls.push('tx:create'), ops.push(['create', d]), tx),
     delete: (id: string) => (sanityCalls.push('tx:delete'), ops.push(['delete', id]), tx),
     commit: async () => (sanityCalls.push('tx:commit'), { results: [] }),
   }
@@ -26,6 +27,8 @@ vi.mock('@/lib/sanity/server-clients', () => {
     },
     fetch: async (q: string) => {
       sanityCalls.push('fetch')
+      // count(...) = the single-Sanity-project write guard (exactly one project doc).
+      if (q.startsWith('count(')) return 1
       return q.includes('siteConfig') ? { defaultLocale: 'it', supportedLocales: ['it'] } : []
     },
     transaction: () => (sanityCalls.push('transaction'), tx),
@@ -102,7 +105,7 @@ describe('publishPostDraftAction', () => {
     const a = await load()
     const r = await a.publishPostDraftAction({ ...input(), projectId: 'project-b', _type: 'page' } as never)
     expect(r).toMatchObject({ ok: true, id: ID, slugs: { it: 'ciao-mondo' } })
-    const doc = ops.find(([o]) => o === 'createOrReplace')![1] as Record<string, unknown>
+    const doc = ops.find(([o]) => o === 'create' || o === 'createOrReplace')![1] as Record<string, unknown>
     expect(doc).toMatchObject({ _id: ID, _type: 'post', projectSlug: 'tenant-a-site' })
     expect(doc).not.toHaveProperty('wizard')
     expect(ops.at(-1)).toEqual(['delete', `drafts.${ID}`])

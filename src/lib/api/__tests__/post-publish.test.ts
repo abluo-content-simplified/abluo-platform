@@ -49,8 +49,10 @@ type Opts = {
   draft?: Record<string, unknown> | null
   published?: Record<string, unknown> | null
   site?: Record<string, unknown> | null
-  others?: Array<{ slug: Record<string, { current: string }> }>
+  others?: Array<{ slug?: Record<string, { current: string }>; redirectFrom?: Record<string, string[]> }>
   commitError?: unknown
+  /** Sanity `project` documents carrying the slug (the write guard needs exactly 1). */
+  projectCount?: number
 }
 function fakeClient(o: Opts = {}) {
   const draft = o.draft === undefined ? baseDraft() : o.draft
@@ -59,6 +61,7 @@ function fakeClient(o: Opts = {}) {
   const tx = {
     patch: (id: string, p: unknown) => (ops.push(['patch', id, p]), tx),
     createOrReplace: (d: unknown) => (ops.push(['createOrReplace', d]), tx),
+    create: (d: unknown) => (ops.push(['create', d]), tx),
     delete: (id: string) => (ops.push(['delete', id]), tx),
     commit: vi.fn(async () => {
       if (o.commitError) throw o.commitError
@@ -69,7 +72,9 @@ function fakeClient(o: Opts = {}) {
   const client = {
     getDocument: vi.fn(async (id: string) => (id.startsWith('drafts.') ? draft : published) ?? undefined),
     fetch: vi.fn(async (q: string) =>
-      q.includes('siteConfig')
+      q.startsWith('count(')
+        ? (o.projectCount ?? 1)
+        : q.includes('siteConfig')
         ? o.site === undefined
           ? { defaultLocale: 'it', supportedLocales: ['it', 'de', 'en'] }
           : o.site
@@ -112,7 +117,8 @@ describe('publishPostDraft', () => {
     expect(c.ops).toEqual([
       ['patch', `drafts.${ID}`, { ifRevisionID: 'r1', unset: ['_publishGuard'] }],
       [
-        'createOrReplace',
+        // Never published before → `create`, so a doc that appeared since fails (409).
+        'create',
         {
           _id: ID,
           _type: 'post',
@@ -141,7 +147,7 @@ describe('publishPostDraft', () => {
   it('identity comes from the grant, not the draft content', async () => {
     const c = fakeClient({ draft: { ...baseDraft(), _type: 'post', publishedAt: '2020-01-01T00:00:00Z', slug: { it: { current: 'x' } } } })
     await publish(c)
-    const doc = c.ops.find(([o]) => o === 'createOrReplace')![1] as Record<string, unknown>
+    const doc = c.ops.find(([o]) => o === 'createOrReplace' || o === 'create')![1] as Record<string, unknown>
     expect(doc.publishedAt).toBe('2026-10-05T10:00:00.000Z')
     expect((doc.slug as Record<string, { current: string }>).it.current).toBe('perche-la-terapia-e-utile')
     expect(doc).not.toHaveProperty('wizard')
@@ -189,7 +195,42 @@ describe('publishPostDraft', () => {
       },
     })
     await publish(c)
-    expect(c.client.fetch).toHaveBeenCalledTimes(1)
+    // siteConfig + the single-project write guard; no slug lookup.
+    const queries = (c.client.fetch.mock.calls as unknown as Array<[string]>).map(([q]) => q)
+    expect(queries).toHaveLength(2)
+    expect(queries.some((q) => q.includes('_type == "post"'))).toBe(false)
+  })
+
+  it('republishing an already-published post uses a guarded createOrReplace', async () => {
+    const c = fakeClient({
+      published: { _id: ID, _type: 'post', _rev: 'p7', projectSlug: 'hoffmann', slug: { it: { current: 'a' }, de: { current: 'b' } } },
+    })
+    await publish(c, { mode: 'keep' })
+    expect(c.ops.map(([o]) => o)).toEqual(['patch', 'patch', 'createOrReplace', 'delete', 'commit'])
+    expect(c.ops[1]).toEqual(['patch', ID, { ifRevisionID: 'p7', unset: ['_publishGuard'] }])
+  })
+
+  it('a document that appeared under the id since the read → create fails 409 → conflict', async () => {
+    const c = fakeClient({ commitError: { statusCode: 409 } })
+    await expect(publish(c)).rejects.toMatchObject({ code: 'conflict' })
+    expect(c.ops.some(([o]) => o === 'createOrReplace')).toBe(false)
+  })
+
+  it("a new slug avoids other posts' old (redirectFrom) slugs in that language", async () => {
+    const c = fakeClient({
+      others: [{ redirectFrom: { it: ['perche-la-terapia-e-utile'], de: ['nicht-relevant'] } }],
+    })
+    const r = await publish(c)
+    expect(r.slugs.it).toBe('perche-la-terapia-e-utile-2')
+    expect(r.slugs.de).toBe('warum-therapie-hilft')
+  })
+
+  it('refuses (forbidden) unless exactly one Sanity project carries the slug — nothing written', async () => {
+    for (const projectCount of [0, 2]) {
+      const c = fakeClient({ projectCount })
+      await expect(publish(c)).rejects.toThrow(TenantAuthorizationError)
+      expect(committed(c)).toBe(false)
+    }
   })
 
   it('refuses a draft without a title in the default language', async () => {
@@ -205,7 +246,7 @@ describe('publishPostDraft', () => {
     const c = fakeClient({ draft })
     const r = await publish(c)
     expect(r.slugs).toEqual({ it: 'perche-la-terapia-e-utile' })
-    const doc = c.ops.find(([o]) => o === 'createOrReplace')![1] as Record<string, Record<string, unknown>>
+    const doc = c.ops.find(([o]) => o === 'createOrReplace' || o === 'create')![1] as Record<string, Record<string, unknown>>
     expect(Object.keys(doc.slug)).toEqual(['_type', 'it'])
   })
 
@@ -230,7 +271,7 @@ describe('publishPostDraft', () => {
     const c = fakeClient()
     const r = await publish(c, { mode: 'schedule', publishAt: '2026-10-10T08:00:00.000Z', expiresAt: '2026-11-10T08:00:00Z' })
     expect(r.publishedAt).toBe('2026-10-10T08:00:00.000Z')
-    const doc = c.ops.find(([o]) => o === 'createOrReplace')![1] as Record<string, unknown>
+    const doc = c.ops.find(([o]) => o === 'createOrReplace' || o === 'create')![1] as Record<string, unknown>
     expect(doc.expiresAt).toBe('2026-11-10T08:00:00.000Z')
   })
 
@@ -274,6 +315,64 @@ describe('publishPostDraft', () => {
     const c = fakeClient({ published: { _id: ID, _type: 'post', _rev: 'x', projectSlug: 'livener' } })
     await expect(publish(c)).rejects.toMatchObject({ code: 'not_found' })
     expect(committed(c)).toBe(false)
+  })
+
+  it('Update post (keep): a migrated post keeps publishedAt, expiresAt, slugs and every field it carries', async () => {
+    const HID = 'hoffmann-post-coltivare-la-consapevolezza'
+    const extra = {
+      author: { _type: 'reference', _ref: 'hoffmann-author-claudia-hoffmann' },
+      faq: [{ _key: 'f1', _type: 'faqItem', question: { it: 'Che cos’è?' }, answer: { it: 'Una pratica.' } }],
+      redirectFrom: { de: ['old-slug'] },
+      seoTitle: { _type: 'localizedString', it: 'SEO' },
+      seoDescription: { _type: 'localizedText', it: 'Desc' },
+      featured: true,
+      relatedEvent: { _type: 'reference', _ref: 'event-1' },
+      coverImage: { _type: 'localizedImage', asset: { _type: 'reference', _ref: 'image-x' } },
+    }
+    const draft = {
+      ...baseDraft(),
+      ...extra,
+      _id: `drafts.${HID}`,
+      title: { _type: 'localizedString', it: 'Titolo modificato' },
+      wizard: { step: 'review', furthest: 'review', mode: 'edit' },
+    }
+    const c = fakeClient({
+      draft,
+      published: {
+        _id: HID,
+        _type: 'post',
+        _rev: 'p9',
+        projectSlug: 'hoffmann',
+        publishedAt: '2025-11-22T18:01:44.181Z',
+        expiresAt: '2027-01-01T00:00:00Z',
+        slug: { _type: 'localizedSlug', it: { _type: 'slug', current: 'coltivare' } },
+      },
+    })
+    const r = await publish(c, { id: HID, mode: 'keep' })
+    expect(r).toEqual({ id: HID, publishedAt: '2025-11-22T18:01:44.181Z', slugs: { it: 'coltivare' } })
+    const doc = c.ops.find(([o]) => o === 'createOrReplace' || o === 'create')![1] as Record<string, unknown>
+    expect(doc).toMatchObject({ ...extra, _id: HID, title: draft.title, publishedAt: '2025-11-22T18:01:44.181Z', expiresAt: '2027-01-01T00:00:00.000Z' })
+    expect(doc).not.toHaveProperty('wizard')
+    expect(c.ops[1]).toEqual(['patch', HID, { ifRevisionID: 'p9', unset: ['_publishGuard'] }])
+  })
+
+  it('Update post (keep) can clear the take-offline date explicitly', async () => {
+    const c = fakeClient({ published: { _id: ID, _type: 'post', _rev: 'p', projectSlug: 'hoffmann', publishedAt: '2025-01-01T00:00:00Z', expiresAt: '2025-06-01T00:00:00Z' } })
+    await publish(c, { mode: 'keep', expiresAt: null })
+    const doc = c.ops.find(([o]) => o === 'createOrReplace' || o === 'create')![1] as Record<string, unknown>
+    expect(doc).not.toHaveProperty('expiresAt')
+    expect(doc.publishedAt).toBe('2025-01-01T00:00:00.000Z')
+  })
+
+  it('keep on a never-published draft publishes now', async () => {
+    const r = await publish(fakeClient(), { mode: 'keep' })
+    expect(r.publishedAt).toBe('2026-10-05T10:00:00.000Z')
+  })
+
+  it.each(['drafts.x', '../x', 'a/b', 'a.b'])('unsafe id %j is not_found before any read', async (id) => {
+    const c = fakeClient()
+    await expect(publish(c, { id })).rejects.toMatchObject({ code: 'not_found' })
+    expect(c.client.getDocument).not.toHaveBeenCalled()
   })
 
   it('a malformed id is not_found before any read', async () => {

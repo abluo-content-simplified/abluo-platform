@@ -7,6 +7,7 @@ export type DoneResult =
   | { kind: 'live'; url: string | null }
   | { kind: 'scheduled'; at: string }
   | { kind: 'draft' }
+  | { kind: 'updated'; live: boolean; url: string | null }
 
 /** The final screen: live / scheduled / saved as draft, with the way back. */
 export function DoneStep({ result, homeHref }: { result: DoneResult; homeHref: string }) {
@@ -16,9 +17,27 @@ export function DoneStep({ result, homeHref }: { result: DoneResult; homeHref: s
     result.kind === 'scheduled'
       ? new Intl.DateTimeFormat(ui, { dateStyle: 'full', timeStyle: 'short' }).format(new Date(result.at))
       : ''
-  const heading = result.kind === 'live' ? t('live') : result.kind === 'scheduled' ? t('scheduled') : t('draft')
-  const body = result.kind === 'live' ? t('liveBody') : result.kind === 'scheduled' ? t('scheduledBody', { date: when }) : t('draftBody')
-  const url = result.kind === 'live' ? result.url : null
+  const heading =
+    result.kind === 'live'
+      ? t('live')
+      : result.kind === 'scheduled'
+        ? t('scheduled')
+        : result.kind === 'updated'
+          ? result.live
+            ? t('updated')
+            : t('updatedNotLive')
+          : t('draft')
+  const body =
+    result.kind === 'live'
+      ? t('liveBody')
+      : result.kind === 'scheduled'
+        ? t('scheduledBody', { date: when })
+        : result.kind === 'updated'
+          ? result.live
+            ? t('updatedBody')
+            : t('updatedNotLiveBody')
+          : t('draftBody')
+  const url = result.kind === 'live' || result.kind === 'updated' ? result.url : null
 
   return (
     <section aria-labelledby="done-step-title" className="flex flex-col items-start pt-10">

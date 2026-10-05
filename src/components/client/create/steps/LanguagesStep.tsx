@@ -36,7 +36,7 @@ export function LanguagesStep({
   const [active, setActive] = useState<string | null>(writing[0] ?? null)
   const current = active && writing.includes(active) ? active : (writing[0] ?? null)
   const sourceLabel = t('sourceLabel', { language: languageName(site.defaultLocale, ui) })
-  const original = normalizeBlocks(draft.body[site.defaultLocale])
+  const original = normalizeBlocks(draft.body[site.defaultLocale], draft.body[site.defaultLocale])
 
   return (
     <section aria-labelledby="languages-step-title">
@@ -135,9 +135,9 @@ export function LanguagesStep({
               </div>
               <div className="flex min-h-64 flex-col" lang={current}>
                 <BodyEditor
-                  initialValue={asEditorValue(normalizeBlocks(draft.body[current]))}
+                  initialValue={asEditorValue(normalizeBlocks(draft.body[current], draft.body[current]))}
                   placeholder={t('storyPlaceholder', { language: languageName(current, ui) })}
-                  onChange={(value) => update({ [`body.${current}`]: normalizeBlocks(value) })}
+                  onChange={(value) => update({ [`body.${current}`]: normalizeBlocks(value, draft.body[current]) })}
                 />
               </div>
             </div>

@@ -48,6 +48,7 @@ export default async function PostsPage({
   }
 
   const locale = await getLocale()
+  const canEdit = grant.permissions.includes('blog.post.write')
   const t = await getTranslations('clientDashboard')
 
   let list: DashboardPostList = { posts: [], languages: [], categories: [] }
@@ -86,7 +87,12 @@ export default async function PostsPage({
             ...drafts
               .filter((d) => !list.posts.some((p) => p._id === d.id))
               .map((d) => draftToBrowserPost(d, projectSlug, list, locale, t)),
-            ...list.posts.map((post) => toBrowserPost(post, locale, t)),
+            ...list.posts.map((post) => ({
+              ...toBrowserPost(post, locale, t),
+              // Live posts open in the editor too (a copy is made on first open).
+              href: canEdit ? `/${projectSlug}/posts/write/${post._id}` : null,
+              badge: drafts.some((d) => d.id === post._id) ? t('posts.unpublishedChanges') : null,
+            })),
           ]}
           languages={list.languages}
           categories={list.categories}

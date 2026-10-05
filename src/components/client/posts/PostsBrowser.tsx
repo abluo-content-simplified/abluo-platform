@@ -27,6 +27,8 @@ export type BrowserPost = FilterablePost & {
   offlineLabel: string | null
   /** Locale-agnostic link (wizard drafts open in the wizard). */
   href?: string | null
+  /** e.g. "Unpublished changes" on a live post that has a draft. */
+  badge?: string | null
 }
 
 const STATUS_TABS: (PostStatus | 'all')[] = ['all', 'published', 'scheduled', 'draft', 'offline']
@@ -257,7 +259,14 @@ export function PostsBrowser({
                   ) : null}
                 </div>
               </div>
-              <StatusBadge status={post.status} label={post.statusLabel} />
+              <div className="flex shrink-0 flex-wrap items-center gap-1.5 self-start">
+                {post.badge ? (
+                  <span className="inline-flex h-7 items-center rounded-full bg-accent px-2.5 text-xs font-medium text-accent-foreground">
+                    {post.badge}
+                  </span>
+                ) : null}
+                <StatusBadge status={post.status} label={post.statusLabel} />
+              </div>
             </li>
           ))}
         </ul>

@@ -48,7 +48,10 @@ function fakeClient(doc: Record<string, unknown> | null = { _id: `drafts.${ID}`,
   const client = {
     create: vi.fn(async (d: Record<string, unknown>) => ({ ...d, _rev: 'r0' })),
     getDocument: vi.fn(async () => doc),
-    fetch: vi.fn(async () => ({ locales: ['it', 'de'], categories: ['cura', 'riflessioni'] })),
+    fetch: vi.fn(async (q: string) =>
+      // The single-Sanity-project write guard (sanity-project-guard.ts) asks for a count.
+      q.startsWith('count(') ? 1 : { locales: ['it', 'de'], categories: ['cura', 'riflessioni'] }
+    ),
     patch: vi.fn(() => patch),
   }
   return { client, ops, patch }
@@ -178,10 +181,19 @@ describe('patchPostDraft', () => {
     await expect(patch({ 'title.it': 'x' }, c)).rejects.toMatchObject({ code: 'not_found' })
   })
 
-  it('a malformed id (e.g. a published id) is refused without a read', async () => {
-    const c = fakeClient()
-    await expect(patch({ 'title.it': 'x' }, c, grant(), 'r1', 'hoffmann-post-abc')).rejects.toMatchObject({ code: 'not_found' })
-    expect(c.client.getDocument).not.toHaveBeenCalled()
+  it.each(['drafts.abc', 'versions.r.abc', '../abc', 'a/b', '', '-abc', 'x'.repeat(129), 'abc.def'])(
+    'an unsafe id %j is refused without a read',
+    async (id) => {
+      const c = fakeClient()
+      await expect(patch({ 'title.it': 'x' }, c, grant(), 'r1', id)).rejects.toMatchObject({ code: 'not_found' })
+      expect(c.client.getDocument).not.toHaveBeenCalled()
+    }
+  )
+
+  it('a readable migrated id (hoffmann-post-…) is a valid post id', async () => {
+    const c = fakeClient({ _id: 'drafts.hoffmann-post-abc', _type: 'post', _rev: 'r1', projectSlug: 'hoffmann' })
+    await patch({ 'title.it': 'x' }, c, grant(), 'r1', 'hoffmann-post-abc')
+    expect(c.client.getDocument).toHaveBeenCalledWith('drafts.hoffmann-post-abc')
   })
 
   it('stale revision → conflict, nothing written', async () => {
@@ -206,6 +218,48 @@ describe('patchPostDraft', () => {
 })
 
 describe('sanitizeBlocks', () => {
+  // Wave 2 — existing posts: preserved content is checked against the STORED body for that language.
+  describe('patchPostDraft wiring (stored body as reference)', () => {
+    const image = { _type: 'image', _key: 'img1', asset: { _type: 'reference', _ref: 'image-abc-10x10-jpg' } }
+    const text = { _type: 'block', _key: 'p', style: 'h4', markDefs: [], children: [{ _type: 'span', _key: 's', text: 'Ciao', marks: [] }] }
+    const stored = () =>
+      fakeClient({ _id: `drafts.${ID}`, _type: 'post', _rev: 'r1', projectSlug: 'hoffmann', body: { _type: 'localizedPortableText', it: [text, image] } })
+    const save = (set: Record<string, unknown>, c: ReturnType<typeof fakeClient>) =>
+      patchPostDraft(ctx(grant()), 'project-a', { id: ID, rev: 'r1', set }, deps(c))
+
+    it('keeps an unchanged stored image and h4 while text changes', async () => {
+      const c = stored()
+      const edited = { ...text, children: [{ _type: 'span', _key: 's', text: 'Ciao a tutti', marks: [] }] }
+      await save({ 'body.it': [image, edited] }, c)
+      const set = c.ops.find(([o]) => o === 'set')![1] as Record<string, unknown>
+      expect(set['body.it']).toEqual([image, edited])
+    })
+
+    it('refuses a new image, a modified image, and stored content used in another language', async () => {
+      for (const [path, body] of [
+        ['body.it', [{ ...image, _key: 'img2' }]],
+        ['body.it', [{ ...image, asset: { _type: 'reference', _ref: 'image-evil-1x1-png' } }]],
+        ['body.de', [image]],
+      ] as const) {
+        const c = stored()
+        await expect(save({ [path]: body }, c)).rejects.toMatchObject({ code: 'invalid_value' })
+        expect(wrote(c)).toBe(0)
+      }
+    })
+  })
+
+  it('accepts safe links and refuses unsafe ones', () => {
+    const withHref = (href: string) => [
+      { _type: 'block', _key: 'b', markDefs: [{ _type: 'link', _key: 'l', href }], children: [{ _type: 'span', _key: 's', text: 'x', marks: ['l'] }] },
+    ]
+    for (const ok of ['https://studio.it', 'mailto:a@b.it', 'tel:+39054412', '/contatti']) {
+      expect((sanitizeBlocks(withHref(ok))[0] as { markDefs: unknown[] }).markDefs).toEqual([{ _type: 'link', _key: 'l', href: ok }])
+    }
+    for (const bad of ['javascript:alert(1)', 'data:text/html,x', '//evil.example', 'ftp://x.it']) {
+      expect(() => sanitizeBlocks(withHref(bad))).toThrow(PostDraftError)
+    }
+  })
+
   it('keeps text blocks, drops unknown keys', () => {
     const out = sanitizeBlocks([
       {
@@ -244,7 +298,9 @@ describe('sanitizeBlocks', () => {
 
 // ── S2c — wizard reads ───────────────────────────────────────────────────────
 
-function readClient(o: { doc?: Record<string, unknown> | null; fetchResult?: unknown } = {}) {
+function readClient(
+  o: { doc?: Record<string, unknown> | null; published?: Record<string, unknown> | null; fetchResult?: unknown } = {}
+) {
   const doc =
     o.doc === undefined
       ? {
@@ -263,7 +319,7 @@ function readClient(o: { doc?: Record<string, unknown> | null; fetchResult?: unk
   return {
     create: vi.fn(),
     patch: vi.fn(),
-    getDocument: vi.fn(async () => doc ?? undefined),
+    getDocument: vi.fn(async (id: string) => (id.startsWith('drafts.') ? doc : o.published) ?? undefined),
     fetch: vi.fn(async (q: string) => (o.fetchResult !== undefined ? o.fetchResult : q.includes('.url') ? 'https://cdn/x.jpg' : null)),
   }
 }
@@ -284,8 +340,35 @@ describe('getPostDraft', () => {
       cover: { assetId: 'image-abc-10x10-jpg', url: 'https://cdn/x.jpg', alt: { it: 'Alt' } },
       step: 'story',
       furthest: 'cover',
+      mode: 'create',
+      live: null,
     })
     expect(c.getDocument).toHaveBeenCalledWith(`drafts.${ID}`)
+  })
+
+  it('a draft over a live post is edit mode: overview step, live dates and slugs', async () => {
+    const c = readClient({
+      published: {
+        _id: ID,
+        _type: 'post',
+        _rev: 'p3',
+        projectSlug: 'hoffmann',
+        publishedAt: '2025-11-22T18:01:44.181Z',
+        slug: { _type: 'localizedSlug', it: { _type: 'slug', current: 'ciao' } },
+      },
+    })
+    const d = await getPostDraft(ctx(grant()), 'project-a', ID, rdeps(c))
+    expect(d).toMatchObject({
+      mode: 'edit',
+      step: 'review',
+      furthest: 'review',
+      live: { rev: 'p3', publishedAt: '2025-11-22T18:01:44.181Z', expiresAt: null, slugs: { it: 'ciao' } },
+    })
+  })
+
+  it("a published doc of another project under the same id makes the draft not_found", async () => {
+    const c = readClient({ published: { _id: ID, _type: 'post', _rev: 'p', projectSlug: 'livener' } })
+    await expect(getPostDraft(ctx(grant()), 'project-a', ID, rdeps(c))).rejects.toMatchObject({ code: 'not_found' })
   })
 
   it('an unknown stored step resumes at "type"; no cover → null', async () => {
@@ -400,5 +483,52 @@ describe('coverThumbUrl', () => {
     expect(coverThumbUrl('https://cdn.sanity.io/images/p/d/a.jpg')).toBe('https://cdn.sanity.io/images/p/d/a.jpg?w=160&h=160&fit=crop&auto=format')
     expect(coverThumbUrl('https://evil.example/a.jpg')).toBeNull()
     expect(coverThumbUrl(null)).toBeNull()
+  })
+})
+
+// ── Launch hardening: published-doc re-check and single-project guard ────────
+
+describe('patchPostDraft / createPostDraft — isolation hardening', () => {
+  const titleSet = { 'title.it': 'Ciao' }
+
+  it("a published doc of another project under the draft's id → not_found, nothing written", async () => {
+    const c = fakeClient()
+    c.client.getDocument.mockImplementation((async (id: string) =>
+      id.startsWith('drafts.')
+        ? { _id: `drafts.${ID}`, _type: 'post', _rev: 'r1', projectSlug: 'hoffmann' }
+        : { _id: ID, _type: 'post', _rev: 'p1', projectSlug: 'other' }) as never)
+    await expect(
+      patchPostDraft(ctx(grant()), 'project-a', { id: ID, rev: 'r1', set: titleSet }, deps(c))
+    ).rejects.toMatchObject({ code: 'not_found' })
+    expect(wrote(c)).toBe(0)
+  })
+
+  it('a published non-post under the id → not_found', async () => {
+    const c = fakeClient()
+    c.client.getDocument.mockImplementation((async (id: string) =>
+      id.startsWith('drafts.')
+        ? { _id: `drafts.${ID}`, _type: 'post', _rev: 'r1', projectSlug: 'hoffmann' }
+        : { _id: ID, _type: 'siteConfig', projectSlug: 'hoffmann' }) as never)
+    await expect(
+      patchPostDraft(ctx(grant()), 'project-a', { id: ID, rev: 'r1', set: titleSet }, deps(c))
+    ).rejects.toMatchObject({ code: 'not_found' })
+    expect(wrote(c)).toBe(0)
+  })
+
+  it('writes are refused (forbidden) unless exactly one Sanity project carries the slug', async () => {
+    for (const count of [0, 2]) {
+      const c = fakeClient()
+      c.client.fetch.mockImplementation((async (q: string) =>
+        q.startsWith('count(') ? count : { locales: ['it', 'de'], categories: [] }) as never)
+      await expect(createPostDraft(ctx(grant()), 'project-a', deps(c))).rejects.toThrow(TenantAuthorizationError)
+      await expect(
+        patchPostDraft(ctx(grant()), 'project-a', { id: ID, rev: 'r1', set: titleSet }, deps(c))
+      ).rejects.toThrow(TenantAuthorizationError)
+      expect(wrote(c)).toBe(0)
+      const counted = (c.client.fetch.mock.calls as unknown as Array<[string, Record<string, unknown>]>).find(([q]) =>
+        q.startsWith('count(')
+      )
+      expect(counted?.[1]).toEqual({ projectSlug: 'hoffmann' })
+    }
   })
 })

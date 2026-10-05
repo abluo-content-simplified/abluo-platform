@@ -113,7 +113,10 @@ const sanityCalls: string[] = []
 function fakeSanity(name: string) {
   const patch = () => ({ set: () => ({ commit: async () => (sanityCalls.push(`${name}:patch`), {}) }) })
   return {
-    fetch: vi.fn(async () => (sanityCalls.push(`${name}:fetch`), { _id: 'doc', _type: 'mediaAsset' })),
+    // count(...) = the single-Sanity-project write guard (sanity-project-guard.ts).
+    fetch: vi.fn(async (q?: string) =>
+      (sanityCalls.push(`${name}:fetch`), typeof q === 'string' && q.startsWith('count(') ? 1 : { _id: 'doc', _type: 'mediaAsset' })
+    ),
     create: vi.fn(async () => (sanityCalls.push(`${name}:create`), { _id: 'new' })),
     delete: vi.fn(async () => (sanityCalls.push(`${name}:delete`), {})),
     patch: vi.fn(() => (sanityCalls.push(`${name}:patch-start`), patch())),
@@ -398,7 +401,7 @@ describe('post draft server actions — the dashboard\'s only Sanity write path 
     persona = 'tenantA'
     tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [grantA] }
     const a = await load()
-    const r = await a.patchPostDraftAction({ projectSlug: 'tenant-a-site', id: 'not-a-uuid', rev: 'r', set: { projectSlug: 'tenant-b-site' } })
+    const r = await a.patchPostDraftAction({ projectSlug: 'tenant-a-site', id: '../not-a-uuid', rev: 'r', set: { projectSlug: 'tenant-b-site' } })
     expect(r).toEqual({ ok: false, error: 'not_found' })
     noSideEffects()
   })
@@ -414,7 +417,8 @@ describe('post draft server actions — the dashboard\'s only Sanity write path 
     expect(doc._id).toMatch(/^drafts\.[0-9a-f-]{36}$/)
     expect(doc._type).toBe('post')
     expect(doc.projectSlug).toBe('tenant-a-site')
-    expect(sanityCalls).toEqual(['write:create'])
+    // The single-project guard read, then the one write.
+    expect(sanityCalls).toEqual(['write:fetch', 'write:create'])
   })
 
   // S2c — the wizard also calls publish (S5) and Improve (ADR-026). Same refusals.
@@ -452,6 +456,65 @@ describe('post draft server actions — the dashboard\'s only Sanity write path 
     const ai = await loadAi()
     expect(await p.publishPostDraftAction(publishInput('tenant-a-site'))).toEqual({ ok: false, error: 'forbidden' })
     expect(await ai.improvePostBodyAction(improveInput('tenant-a-site'))).toEqual({ ok: false, error: 'forbidden' })
+    noSideEffects()
+  })
+
+  // Wave 2 — editing live posts and lifecycle actions. Same refusals, nothing touched.
+  const loadLifecycle = () => import('@/app/[locale]/(client)/[tenant]/posts/lifecycle-actions')
+  const lifecycleCalls = async (projectSlug: string, id = 'hoffmann-post-x') => {
+    const l = await loadLifecycle()
+    const input = { projectSlug, id, rev: 'r' }
+    return [
+      await l.openPostForEditAction({ projectSlug, id }),
+      await l.takePostOfflineAction(input),
+      await l.putPostBackOnlineAction(input),
+      await l.discardPostChangesAction(input),
+      await l.deletePostDraftAction(input),
+      await l.deletePublishedPostAction(input),
+    ]
+  }
+
+  it('lifecycle: unauthenticated → refused, nothing touched', async () => {
+    for (const r of await lifecycleCalls('tenant-a-site')) expect(r).toEqual({ ok: false, error: 'unauthenticated' })
+    noSideEffects()
+  }, 30_000)
+
+  it("lifecycle: tenant A cannot act in tenant B's project", async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [grantA] }
+    for (const r of await lifecycleCalls('tenant-b-site')) expect(r).toEqual({ ok: false, error: 'forbidden' })
+    noSideEffects()
+  })
+
+  it('lifecycle: a viewer is refused every action', async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [viewerA] }
+    for (const r of await lifecycleCalls('tenant-a-site')) expect(r).toEqual({ ok: false, error: 'forbidden' })
+    noSideEffects()
+  })
+
+  it('lifecycle: an editor cannot delete a published post', async () => {
+    persona = 'tenantA'
+    tenantCtx = {
+      userId: 'user-tenant-a',
+      platformRole: 'tenant_user',
+      projects: [{ ...grantA, role: 'editor', permissions: ['blog.post.read', 'blog.post.write', 'blog.post.delete'] }],
+    }
+    const l = await loadLifecycle()
+    expect(await l.deletePublishedPostAction({ projectSlug: 'tenant-a-site', id: 'hoffmann-post-x', rev: 'r' })).toEqual({ ok: false, error: 'forbidden' })
+    noSideEffects()
+  })
+
+  it('lifecycle: unsafe ids are not_found before anything is read', async () => {
+    persona = 'tenantA'
+    tenantCtx = {
+      userId: 'user-tenant-a',
+      platformRole: 'tenant_user',
+      projects: [{ ...grantA, permissions: ['blog.post.read', 'blog.post.write', 'blog.post.delete'] }],
+    }
+    for (const id of ['drafts.x', '../x', 'a/b']) {
+      for (const r of await lifecycleCalls('tenant-a-site', id)) expect(r).toEqual({ ok: false, error: 'not_found' })
+    }
     noSideEffects()
   })
 

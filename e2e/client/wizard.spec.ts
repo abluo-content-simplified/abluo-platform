@@ -7,7 +7,8 @@ import { expect, test, type Page } from '@playwright/test'
  * By default NOTHING here writes to Sanity: the sheet is opened and closed,
  * and the wizard route is probed with an id that does not exist.
  * Set E2E_WRITE=1 to also run the flows that create a real draft on the test
- * project (title prefix "[e2e]"; they never publish — they end on "Keep as draft").
+ * project (title prefix "[e2e]"; they never publish — they end on "Keep as draft"
+ * and then delete their own draft through the overview's "Delete draft").
  */
 const project = process.env.E2E_PROJECT ?? 'abluo'
 const WRITE = process.env.E2E_WRITE === '1'
@@ -139,5 +140,14 @@ test.describe('Wizard flow (writes a draft — E2E_WRITE=1)', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Give your story a title' })).toBeVisible()
     await page.getByRole('button', { name: 'Done' }).click()
     await expect(page.getByRole('button', { name: 'Continue to publish' })).toBeVisible()
+
+    // Clean up: the overview's "…" menu deletes this never-published draft.
+    await page.getByRole('button', { name: 'More actions' }).click()
+    await page.getByRole('button', { name: 'Delete draft' }).click()
+    const confirm = page.getByRole('dialog', { name: 'Delete this draft?' })
+    await expect(confirm).toBeVisible()
+    await confirm.getByRole('button', { name: 'Delete draft' }).click()
+    await expect(page).toHaveURL(new RegExp(`/en/${project}/posts$`))
+    await expect(page.getByText(title)).toHaveCount(0)
   })
 })

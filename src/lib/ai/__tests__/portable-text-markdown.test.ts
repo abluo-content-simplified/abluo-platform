@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { blocksToMarkdown, markdownToBlocks, parseInline, blocksPlainTextLength } from '../portable-text-markdown'
+import { blocksToMarkdown, markdownToBlocks, parseInline, blocksPlainTextLength, collectHrefs } from '../portable-text-markdown'
+import { normalizeBlocks } from '@/lib/client/normalize-blocks'
 import { sanitizeBlocks } from '@/lib/api/post-drafts'
 
 let n = 0
@@ -187,5 +188,76 @@ describe('markdownToBlocks — forgiving of model output', () => {
 describe('blocksPlainTextLength', () => {
   it('counts span text only and tolerates junk', () => {
     expect(blocksPlainTextLength([block([span('abc'), span('de')]), { children: 3 }, null])).toBe(5)
+  })
+})
+
+describe('links', () => {
+  const linked = () => [
+    block([span('Scrivi a '), span('noi', ['L1']), span(' o leggi '), span('la guida', ['strong', 'L2']), span(' [non un link] e '), span('chiama', ['L3']), span('.')], {
+      markDefs: [
+        { _type: 'link', _key: 'L1', href: 'mailto:info@studio.it' },
+        { _type: 'link', _key: 'L2', href: 'https://studio.it/guida_(2026)' },
+        { _type: 'link', _key: 'L3', href: 'tel:+390544123456' },
+      ],
+    }),
+    block([span('Contatti', ['L4'])], { style: 'h3', markDefs: [{ _type: 'link', _key: 'L4', href: '/contatti' }] }),
+    block([span('voce '), span('qui', ['L5'])], { listItem: 'bullet', level: 1, markDefs: [{ _type: 'link', _key: 'L5', href: 'https://x.it/a?b=1&c=2#d' }] }),
+  ]
+  const linkShape = (blocks: unknown[]) =>
+    (blocks as Array<{ style: string; markDefs: { _key: string; href: string }[]; children: { text: string; marks: string[] }[] }>).map((b) => ({
+      style: b.style,
+      spans: b.children.map((s) => [
+        s.text,
+        s.marks.filter((m) => m === 'strong' || m === 'em').join('+'),
+        b.markDefs.find((d) => s.marks.includes(d._key))?.href ?? '',
+      ]),
+    }))
+
+  it('renders links as [text](href), bare or <…> when parentheses would confuse', () => {
+    const md = blocksToMarkdown(linked())
+    expect(md).toContain('[noi](mailto:info@studio.it)')
+    expect(md).toContain('[**la guida**](https://studio.it/guida_(2026))')
+    expect(md).toContain('\\[non un link\\]')
+    expect(md).toContain('### [Contatti](/contatti)')
+    expect(md).toContain('- voce [qui](https://x.it/a?b=1&c=2#d)')
+    expect(blocksToMarkdown([block([span('x', ['L'])], { markDefs: [{ _type: 'link', _key: 'L', href: 'https://x.it/a)b' }] })])).toBe(
+      '[x](<https://x.it/a)b>)'
+    )
+  })
+
+  it('round-trips links PT → MD → PT through normalize + sanitize when the hrefs are allowed', () => {
+    const input = linked()
+    const back = markdownToBlocks(blocksToMarkdown(input), key, { allowedHrefs: collectHrefs(input) })
+    expect(linkShape(back)).toEqual(linkShape(input))
+    const normalized = normalizeBlocks(back)
+    expect(normalized).toEqual(back)
+    expect(sanitizeBlocks(normalized)).toEqual(normalized)
+  })
+
+  it('keeps only the text of links the caller did not allow (a model must not invent links)', () => {
+    const back = markdownToBlocks('Vedi [qui](https://evil.example) e [là](https://studio.it)', key, {
+      allowedHrefs: new Set(['https://studio.it']),
+    })
+    expect(back[0].markDefs.map((d) => d.href)).toEqual(['https://studio.it'])
+    expect(back[0].children.map((c) => c.text).join('')).toBe('Vedi qui e là')
+    expect(markdownToBlocks('[qui](https://studio.it)', key)[0].markDefs).toEqual([])
+  })
+
+  it('never turns an unsafe href into a link, even if allowed', () => {
+    const back = markdownToBlocks('[x](javascript:alert(1)) [y](//evil.example)', key, {
+      allowedHrefs: new Set(['javascript:alert(1)', '//evil.example']),
+    })
+    expect(back[0].markDefs).toEqual([])
+    expect(back[0].children.map((c) => c.text).join('')).toBe('x y')
+  })
+
+  it('collectHrefs lists only safe link hrefs', () => {
+    expect([...collectHrefs([...linked(), block([span('z', ['B'])], { markDefs: [{ _type: 'link', _key: 'B', href: 'javascript:x' }] })])]).toEqual([
+      'mailto:info@studio.it',
+      'https://studio.it/guida_(2026)',
+      'tel:+390544123456',
+      '/contatti',
+      'https://x.it/a?b=1&c=2#d',
+    ])
   })
 })

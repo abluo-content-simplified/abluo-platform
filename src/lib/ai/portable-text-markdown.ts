@@ -3,27 +3,49 @@
  *
  * Covers exactly the dashboard's allowed body shape (see `sanitizeBlocks` in
  * `src/lib/api/post-drafts.ts`): paragraphs, h2/h3, blockquotes, bullet and
- * numbered lists at levels 1–4, **bold** and *italic*. Models speak Markdown
- * far more reliably than they preserve JSON keys, so the provider only ever
- * sees and returns Markdown.
+ * numbered lists at levels 1–4, **bold**, *italic* and [links](https://…).
+ * Models speak Markdown far more reliably than they preserve JSON keys, so the
+ * provider only ever sees and returns Markdown.
  *
  * The parser is deliberately forgiving: whatever the model returns is mapped
- * onto that shape — `#` becomes h2, `####`+ becomes h3, links keep their text,
- * images / code fences / rules / HTML are dropped to plain text. Output still
- * goes through `sanitizeBlocks` afterwards.
+ * onto that shape — `#` becomes h2, `####`+ becomes h3, images / code fences /
+ * rules / HTML are dropped to plain text. Links become link annotations only
+ * when the caller allows their href (`allowedHrefs`, typically the hrefs that
+ * were in the input — a model must not invent links) and it is safe; any other
+ * link keeps just its text. Output still goes through `sanitizeBlocks` afterwards.
  */
+import { cleanLink, normalizeHref } from '@/lib/client/normalize-blocks'
+
 
 export type PtStyle = 'normal' | 'h2' | 'h3' | 'blockquote'
 export type PtListItem = 'bullet' | 'number'
 export type PtSpan = { _type: 'span'; _key: string; text: string; marks: string[] }
+export type PtLinkDef = { _type: 'link'; _key: string; href: string }
 export type PtBlock = {
   _type: 'block'
   _key: string
   style: PtStyle
   listItem?: PtListItem
   level?: number
-  markDefs: never[]
+  markDefs: PtLinkDef[]
   children: PtSpan[]
+}
+
+export type MarkdownToBlocksOptions = {
+  /** Hrefs that may come back as links (anything else keeps only its text). Default: none. */
+  allowedHrefs?: ReadonlySet<string>
+}
+
+/** Every safe link href in a body — pass as `allowedHrefs` so the user's own links survive an AI round-trip. */
+export function collectHrefs(blocks: unknown[]): Set<string> {
+  const out = new Set<string>()
+  for (const b of Array.isArray(blocks) ? blocks : []) {
+    for (const d of (b as { markDefs?: unknown[] })?.markDefs ?? []) {
+      const link = cleanLink(d)
+      if (link) out.add(link.href)
+    }
+  }
+  return out
 }
 
 const MAX_LEVEL = 4
@@ -34,6 +56,7 @@ type InBlock = {
   style?: string
   listItem?: string
   level?: number
+  markDefs?: unknown[]
   children?: { text?: string; marks?: string[] }[]
 }
 
@@ -44,33 +67,49 @@ export function blocksPlainTextLength(blocks: unknown[]): number {
   return n
 }
 
-const escapeInline = (text: string) => text.replace(/[\\*_]/g, '\\$&')
+const escapeInline = (text: string) => text.replace(/[\\*_[\]]/g, '\\$&')
 
-function spansToInline(children: InBlock['children']): string {
+/** A link destination: bare when its parentheses balance, otherwise `<…>`. */
+const linkDestination = (href: string) => (/^(?:[^()\s<>]|\([^()\s]*\))+$/.test(href) ? href : `<${href}>`)
+
+function formatRun(text: string, strong: boolean, em: boolean): string {
+  const escaped = escapeInline(text)
+  if ((!strong && !em) || !text.trim()) return escaped
+  // Emphasis may not start or end on whitespace: move it outside the markers.
+  const m = escaped.match(/^(\s*)([\s\S]*?)(\s*)$/)!
+  const d = strong && em ? '***' : strong ? '**' : '*'
+  // Keep marked text on one line so a newline can't split the markers.
+  return m[1] + d + m[2] + d + m[3]
+}
+
+function spansToInline(children: InBlock['children'], markDefs?: unknown[]): string {
+  const hrefs = new Map<string, string>()
+  for (const d of markDefs ?? []) {
+    const link = cleanLink(d)
+    if (link) hrefs.set(link._key, link.href)
+  }
   // Merge neighbours with identical marks first so `**a****b**` never appears.
-  const merged: { text: string; strong: boolean; em: boolean }[] = []
+  const merged: { text: string; strong: boolean; em: boolean; link?: string }[] = []
   for (const s of children ?? []) {
     const text = typeof s?.text === 'string' ? s.text : ''
     if (!text) continue
     const marks = Array.isArray(s.marks) ? s.marks : []
     const strong = marks.includes('strong')
     const em = marks.includes('em')
+    const link = marks.find((m) => hrefs.has(m))
     const last = merged.at(-1)
-    if (last && last.strong === strong && last.em === em) last.text += text
-    else merged.push({ text, strong, em })
+    if (last && last.strong === strong && last.em === em && last.link === link) last.text += text
+    else merged.push({ text, strong, em, link })
   }
   let out = ''
-  for (const { text, strong, em } of merged) {
-    const escaped = escapeInline(text)
-    if ((!strong && !em) || !text.trim()) {
-      out += escaped
-      continue
+  for (let i = 0; i < merged.length; ) {
+    const link = merged[i].link
+    let inner = ''
+    while (i < merged.length && merged[i].link === link) {
+      const r = merged[i++]
+      inner += formatRun(r.text, r.strong, r.em)
     }
-    // Emphasis may not start or end on whitespace: move it outside the markers.
-    const m = escaped.match(/^(\s*)([\s\S]*?)(\s*)$/)!
-    const d = strong && em ? '***' : strong ? '**' : '*'
-    // Keep marked text on one line so a newline can't split the markers.
-    out += m[1] + d + m[2] + d + m[3]
+    out += link && inner.trim() ? `[${inner.replace(/\s*\n\s*/g, ' ')}](${linkDestination(hrefs.get(link)!)})` : inner
   }
   return out
 }
@@ -91,7 +130,7 @@ export function blocksToMarkdown(blocks: unknown[]): string {
   let prevWasList = false
 
   for (const raw of blocks as InBlock[]) {
-    const inline = spansToInline(raw?.children)
+    const inline = spansToInline(raw?.children, raw?.markDefs)
     if (!inline.trim()) continue
     const style = raw?.style ?? 'normal'
 
@@ -147,7 +186,7 @@ function unwrap(md: string): string {
   return s
 }
 
-export function markdownToBlocks(md: string, key: KeyFn = defaultKey): PtBlock[] {
+export function markdownToBlocks(md: string, key: KeyFn = defaultKey, options: MarkdownToBlocksOptions = {}): PtBlock[] {
   const out: PtBlock[] = []
   const lines = unwrap(md).split('\n')
   let pending: Pending | null = null
@@ -162,9 +201,9 @@ export function markdownToBlocks(md: string, key: KeyFn = defaultKey): PtBlock[]
     else pushBlock(text, p.kind === 'quote' ? 'blockquote' : 'normal')
   }
   const pushBlock = (text: string, style: PtStyle, listItem?: PtListItem, level?: number) => {
-    const children = parseInline(text, key)
+    const { children, markDefs } = parseInlineWithLinks(text, key, options.allowedHrefs)
     if (!children.length) return
-    const block: PtBlock = { _type: 'block', _key: key(), style, markDefs: [], children }
+    const block: PtBlock = { _type: 'block', _key: key(), style, markDefs, children }
     if (listItem) {
       block.listItem = listItem
       block.level = level
@@ -238,22 +277,44 @@ export function markdownToBlocks(md: string, key: KeyFn = defaultKey): PtBlock[]
 
 type Tok =
   | { t: 'text'; v: string }
+  | { t: 'link'; open: boolean }
   | { t: 'delim'; ch: string; len: number; open: boolean; close: boolean; role?: 'open' | 'close' }
 
 const PUNCT = /[!-/:-@[-`{-~]/
 const WORD = /[\p{L}\p{N}]/u
 
-function stripInlineSyntax(s: string): string {
+// Private-use sentinels marking where an allowed link's label starts / ends.
+const LINK_OPEN = '\uE000'
+const LINK_CLOSE = '\uE001'
+const LINK = /(?<!\\)\[((?:\\.|[^\]\\])+)\]\((<[^<>\n]*>|(?:[^()\s]|\([^()\s]*\))+)(?:\s+"[^"]*")?\)/g
+
+function stripInlineSyntax(s: string, hrefs: string[], allowed?: ReadonlySet<string>): string {
   return s
+    .replace(/[\uE000\uE001]/g, '')
+    .replace(/<\/?[a-zA-Z][a-zA-Z0-9-]*(\s[^<>]*)?\/?>/g, (tag) => (/^<(?:https?:\/\/|mailto:)/.test(tag) ? tag : '')) // HTML tags
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '') // images
-    .replace(/\[([^\]]+)\]\((?:[^()\s]|\([^()]*\))+(?:\s+"[^"]*")?\)/g, '$1') // links → text
+    .replace(LINK, (_m, label: string, dest: string) => {
+      const href = normalizeHref(dest.startsWith('<') ? dest.slice(1, -1) : dest)
+      if (!href || !allowed?.has(href)) return label // links → text
+      hrefs.push(href)
+      return LINK_OPEN + label + LINK_CLOSE
+    })
     .replace(/<((?:https?:\/\/|mailto:)[^>\s]+)>/g, '$1') // autolinks
     .replace(/`([^`\n]+)`/g, '$1') // inline code
-    .replace(/<\/?[a-zA-Z][a-zA-Z0-9-]*(\s[^<>]*)?\/?>/g, '') // HTML tags
 }
 
 export function parseInline(src: string, key: KeyFn = defaultKey): PtSpan[] {
-  const s = stripInlineSyntax(src)
+  return parseInlineWithLinks(src, key).children
+}
+
+/** Inline markdown → spans plus the link markDefs they reference (only `allowedHrefs` become links). */
+export function parseInlineWithLinks(
+  src: string,
+  key: KeyFn = defaultKey,
+  allowedHrefs?: ReadonlySet<string>
+): { children: PtSpan[]; markDefs: PtLinkDef[] } {
+  const hrefs: string[] = []
+  const s = stripInlineSyntax(src, hrefs, allowedHrefs)
   const toks: Tok[] = []
   let buf = ''
   const pushText = () => {
@@ -262,6 +323,12 @@ export function parseInline(src: string, key: KeyFn = defaultKey): PtSpan[] {
   }
   for (let i = 0; i < s.length; ) {
     const c = s[i]
+    if (c === LINK_OPEN || c === LINK_CLOSE) {
+      pushText()
+      toks.push({ t: 'link', open: c === LINK_OPEN })
+      i++
+      continue
+    }
     if (c === '\\' && i + 1 < s.length && PUNCT.test(s[i + 1])) {
       buf += s[i + 1]
       i += 2
@@ -306,20 +373,26 @@ export function parseInline(src: string, key: KeyFn = defaultKey): PtSpan[] {
     if (tok.open) stack.push(idx)
   })
 
-  const spans: { text: string; strong: boolean; em: boolean }[] = []
+  const spans: { text: string; strong: boolean; em: boolean; link: number }[] = []
   let strong = 0
   let em = 0
+  let link = -1
+  let links = 0
   const emit = (text: string) => {
     if (!text) return
     const last = spans.at(-1)
     const st = strong > 0
     const e = em > 0
-    if (last && last.strong === st && last.em === e) last.text += text
-    else spans.push({ text, strong: st, em: e })
+    if (last && last.strong === st && last.em === e && last.link === link) last.text += text
+    else spans.push({ text, strong: st, em: e, link })
   }
   for (const tok of toks) {
     if (tok.t === 'text') {
       emit(tok.v)
+      continue
+    }
+    if (tok.t === 'link') {
+      link = tok.open ? links++ : -1
       continue
     }
     if (!tok.role) {
@@ -332,11 +405,20 @@ export function parseInline(src: string, key: KeyFn = defaultKey): PtSpan[] {
   }
 
   const result = spans.filter((sp) => sp.text.length > 0)
-  if (!result.some((sp) => sp.text.trim())) return []
-  return result.map((sp) => ({
+  if (!result.some((sp) => sp.text.trim())) return { children: [], markDefs: [] }
+  const defKeys = new Map<number, string>()
+  const markDefs: PtLinkDef[] = []
+  for (const sp of result) {
+    if (sp.link < 0 || defKeys.has(sp.link) || !sp.text.trim()) continue
+    const def: PtLinkDef = { _type: 'link', _key: key(), href: hrefs[sp.link] }
+    defKeys.set(sp.link, def._key)
+    markDefs.push(def)
+  }
+  const children = result.map((sp) => ({
     _type: 'span' as const,
     _key: key(),
     text: sp.text,
-    marks: [...(sp.strong ? ['strong'] : []), ...(sp.em ? ['em'] : [])],
+    marks: [...(sp.strong ? ['strong'] : []), ...(sp.em ? ['em'] : []), ...(defKeys.has(sp.link) ? [defKeys.get(sp.link)!] : [])],
   }))
+  return { children, markDefs }
 }
