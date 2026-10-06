@@ -79,10 +79,18 @@ describe('isClientSurface', () => {
     }
   })
 
-  it('project and admin sub-page segment sets are disjoint', () => {
+  it('project and admin sub-page segment sets are disjoint (except media, matched at different positions)', () => {
+    // `media` is both the admin Media Library (`/media`, FIRST segment) and the
+    // client Media screen (`/{project}/media`, SECOND segment). The two
+    // predicates look at different positions, so they never claim the same path.
     for (const seg of CLIENT_PROJECT_SEGMENTS) {
+      if (seg === 'media') continue
       expect(ADMIN_SURFACE_SEGMENTS.has(seg)).toBe(false)
     }
+    expect(isAdminSurface('/en/media')).toBe(true)
+    expect(isClientSurface('/en/media')).toBe(false)
+    expect(isClientSurface('/en/hoffmann/media')).toBe(true)
+    expect(isAdminSurface('/en/hoffmann/media')).toBe(false)
   })
 })
 
@@ -154,6 +162,13 @@ describe('CLIENT_PROJECT_SEGMENTS is in lockstep with the filesystem', () => {
       stale,
       `CLIENT_PROJECT_SEGMENTS names route(s) that do not exist: ${stale.join(', ')}`
     ).toEqual([])
+  })
+
+  it('gates the galleries pages (list and editor)', () => {
+    expect(CLIENT_PROJECT_SEGMENTS.has('galleries')).toBe(true)
+    expect(isClientSurface('/hoffmann/galleries')).toBe(true)
+    expect(isClientSurface('/it/hoffmann/galleries/gallery-1')).toBe(true)
+    expect(isAdminSurface('/en/galleries')).toBe(false)
   })
 
   it('gates the submissions page', () => {

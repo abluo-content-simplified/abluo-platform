@@ -40,7 +40,8 @@
       "translate": "Translate",
       "home": "Home",
       "more": "More",
-      "add": "Add content"
+      "add": "Add content",
+      "media": "Media"
     },
     "shell": {
       "brandTagline": "Dashboard",
@@ -65,7 +66,16 @@
       "columns": {
         "title": "Title",
         "status": "Status",
-        "updated": "Updated"
+        "updated": "Updated",
+        "selectAll": "Select all shown",
+        "image": "Image",
+        "categories": "Categories",
+        "featured": "Featured",
+        "languages": "Languages",
+        "published": "Published",
+        "scheduled": "Scheduled",
+        "ends": "Ends",
+        "actions": "Actions"
       },
       "status": {
         "published": "Published",
@@ -79,13 +89,14 @@
         "created": "Started {date}",
         "offlineOn": "Goes offline {date}",
         "offlineSince": "Offline since {date}",
-        "edited": "Edited {date}"
+        "edited": "Edited {date}",
+        "ends": "Ends {date}"
       },
       "languages": "Languages",
       "count": "{count, plural, one {# post} other {# posts}}",
       "filters": {
         "search": "Search posts",
-        "searchPlaceholder": "Search titles…",
+        "searchPlaceholder": "Search posts…",
         "sort": "Sort",
         "sort_newest": "Newest",
         "sort_oldest": "Oldest",
@@ -104,10 +115,138 @@
         "missingLanguage": "Missing {language}",
         "showing": "{shown} of {total} posts",
         "clear": "Clear filters",
-        "noMatch": "No posts match these filters."
+        "noMatch": "No posts match these filters.",
+        "categoryAll": "All categories",
+        "statusAll": "All statuses",
+        "translationsAll": "All translations",
+        "translationsComplete": "Translations complete",
+        "translationsMissing": "Missing translations",
+        "featured": "Featured",
+        "featuredAll": "All posts",
+        "featuredOnly": "Featured only",
+        "dateField": "Which date",
+        "dateField_published": "Published",
+        "dateField_updated": "Updated",
+        "dateField_ends": "Ends",
+        "dateRange": "{field} date",
+        "sort_edited_asc": "Least recently edited",
+        "sort_title": "Title A–Z",
+        "sort_title_desc": "Title Z–A",
+        "sort_ends": "Ending soonest",
+        "sort_ends_desc": "Ending latest",
+        "sentenceNoun": "Posts",
+        "sentenceField_updated": "updated",
+        "sentenceField_published": "published",
+        "sentenceField_ends": "ends",
+        "dateChip": "{field} · {range}",
+        "anyDate": "Show all dates"
       },
       "untitledDraft": "Untitled draft",
-      "unpublishedChanges": "Unpublished changes"
+      "unpublishedChanges": "Unpublished changes",
+      "line": {
+        "live": "Live",
+        "liveEnds": "Live · Ends {date}",
+        "scheduledFor": "Scheduled for {date}",
+        "offline": "Offline",
+        "draft": "Draft · Edited {date}"
+      },
+      "card": {
+        "menu": "More for “{title}”",
+        "edit": "Edit",
+        "preview": "Preview",
+        "view": "View on website",
+        "offline": "Take offline",
+        "online": "Put back online",
+        "endDate": "Set end date",
+        "delete": "Delete",
+        "select": "Select",
+        "selectAll": "Select all",
+        "selectNone": "Select none",
+        "exitSelect": "Stop selecting",
+        "selected": "{count} selected",
+        "deleted": "{count, plural, one {Deleted} other {# deleted}}",
+        "undo": "Undo",
+        "previewFailed": "We couldn’t open the preview. Please try again.",
+        "bar": {
+          "offline": "Take offline",
+          "endDate": "End date",
+          "delete": "Delete",
+          "more": "More",
+          "featured": "Featured",
+          "notFeatured": "Not featured",
+          "categories": "Category",
+          "clear": "Clear"
+        },
+        "more": {
+          "title": "More actions",
+          "online": "Put back online",
+          "categories": "Change category",
+          "removeEndDate": "Remove end date",
+          "clear": "Clear selection",
+          "featured": "Mark as featured",
+          "notFeatured": "Remove from featured"
+        },
+        "endDateSheet": {
+          "title": "Set end date",
+          "helper": "On this date the post leaves your website by itself. You can put it back online any time.",
+          "label": "Goes offline on",
+          "save": "Save end date"
+        },
+        "categorySheet": {
+          "title": "Change category",
+          "helper": "The chosen topics replace the current ones on the selected posts.",
+          "save": "Save topics"
+        },
+        "confirmDelete": {
+          "title": "{count, plural, one {Delete this post?} other {Delete # posts?}}",
+          "body": "{count, plural, one {“{title}” is removed from your website and can’t be restored.} other {Live posts are removed from your website and can’t be restored.}}",
+          "confirm": "Delete"
+        },
+        "batch": {
+          "done": {
+            "offline": "{count, plural, one {# post taken offline.} other {# posts taken offline.}}",
+            "online": "{count, plural, one {# post back online.} other {# posts back online.}}",
+            "delete": "{count, plural, one {# post deleted.} other {# posts deleted.}}",
+            "endDate": "{count, plural, one {End date saved for # post.} other {End date saved for # posts.}}",
+            "categories": "{count, plural, one {Topics changed on # post.} other {Topics changed on # posts.}}",
+            "featured": "{count, plural, one {Featured changed on # post.} other {Featured changed on # posts.}}"
+          },
+          "someFailed": "{count, plural, one {This one didn’t work: {titles}.} other {# didn’t work: {titles}.}}",
+          "failedAll": "That didn’t work. Nothing was changed — please try again."
+        }
+      },
+      "select": {
+        "checkbox": "Select {title}",
+        "toolbar": "Selected posts",
+        "all": "Select all"
+      },
+      "newPost": "New post",
+      "view": {
+        "label": "View",
+        "list": "List",
+        "cards": "Cards"
+      },
+      "pill": {
+        "published": "Live",
+        "scheduled": "Scheduled",
+        "draft": "Draft",
+        "offline": "Offline"
+      },
+      "lang": {
+        "complete": "{language}: translation complete",
+        "missing": "{language}: translation missing or incomplete"
+      },
+      "featured": {
+        "isOn": "“{title}” is featured",
+        "isOff": "“{title}” is not featured",
+        "dialog": "Featured post",
+        "help": "Featured posts are shown first in the lists on your website.",
+        "mark": "Mark as featured",
+        "remove": "Remove from featured",
+        "cancel": "Cancel",
+        "marked": "Marked as featured.",
+        "removed": "Removed from featured."
+      }
     },
     "submissions": {
       "title": "Submissions",
@@ -145,9 +284,30 @@
         "show": "Details",
         "hide": "Hide",
         "attribution": "Attribution",
-        "none": "—"
+        "none": "—",
+        "submitted": "What they sent",
+        "cameFrom": "Where it came from",
+        "site": "Website",
+        "siteLanguage": "Site language",
+        "timezone": "Visitor timezone",
+        "pageSlug": "Page",
+        "consent": "Consent given"
       },
-      "updateError": "Couldn't update"
+      "updateError": "Couldn't update",
+      "select": "Select",
+      "selectAll": "Select all",
+      "selectRow": "Select {name}",
+      "selected": "{count} selected",
+      "exitSelect": "Exit selection",
+      "markHandled": "Mark as handled",
+      "markNew": "Mark as new",
+      "exportSelected": "Export (CSV)",
+      "delete": "Delete",
+      "more": "More",
+      "cancel": "Cancel",
+      "deleteTitle": "{count, plural, one {Delete # submission?} other {Delete # submissions?}}",
+      "deleteBody": "This can't be undone.",
+      "batchError": "Couldn't finish. Please try again."
     },
     "leads": {
       "title": "Leads",
@@ -177,7 +337,48 @@
       "emptyBody": "Tap + to start. We save as you go, so you can stop and continue any time.",
       "atStep": "Next: {step}",
       "noCover": "No cover image",
-      "noCoverShort": "No image"
+      "noCoverShort": "No image",
+      "greeting": {
+        "morning": "Good morning, {name}",
+        "afternoon": "Good afternoon, {name}",
+        "evening": "Good evening, {name}",
+        "welcome": "Welcome back"
+      },
+      "viewSite": "View your site",
+      "opensNewTab": "(opens in a new tab)",
+      "progress": "How far this draft got",
+      "meta": {
+        "draft": "Draft · You were on “{step}” · {ago}",
+        "liveChanges": "Changes to a live post · {ago}",
+        "galleryDraft": "Gallery · {count, plural, =0 {no photos yet} one {# photo} other {# photos}}",
+        "galleryChanges": "Changes to a live gallery · {count, plural, =0 {no photos} one {# photo} other {# photos}}"
+      },
+      "menu": {
+        "label": "More for “{title}”",
+        "continue": "Continue editing",
+        "preview": "Preview",
+        "delete": "Delete",
+        "discard": "Discard changes",
+        "deleted": "Deleted",
+        "discarded": "Changes discarded",
+        "undo": "Undo",
+        "failed": "That didn’t work, so nothing was removed. Please try again.",
+        "previewFailed": "We couldn’t open the preview. Please try again."
+      },
+      "recent": {
+        "published": "Published",
+        "publishedOn": "Published · {date}",
+        "scheduled": "Scheduled",
+        "scheduledOn": "Scheduled · {date}",
+        "offline": "Offline"
+      },
+      "requestsBody": "{week, plural, one {contact request} other {contact requests}} this week, {open, plural, =0 {all answered} other {# not answered yet}}",
+      "latestPosts": "Latest posts",
+      "latestGalleries": "Latest galleries",
+      "kind": {
+        "post": "Blog post",
+        "gallery": "Gallery"
+      }
     },
     "version": {
       "updated": "Updated {date}"
@@ -318,13 +519,15 @@
           "blog": "Blog post",
           "news": "News",
           "events": "Event",
-          "gallery": "Gallery"
+          "gallery": "Gallery",
+          "media": "Add to media library"
         },
         "desc": {
           "blog": "An article for your website, in a few easy steps.",
           "news": "A short update for your visitors.",
           "events": "A date people can come to.",
-          "gallery": "A set of photos to show."
+          "gallery": "A set of photos to show.",
+          "media": "Upload photos once, then use them anywhere on your site."
         },
         "soon": "Coming soon",
         "more": "More you can add to your site",
@@ -336,7 +539,9 @@
         "nothing": "There's nothing you can create here yet.",
         "starting": "Getting your post ready…",
         "failed": "We couldn't start a new post. Please try again.",
-        "close": "Close"
+        "close": "Close",
+        "startingGallery": "Getting your gallery ready…",
+        "failedGallery": "We couldn't start a new gallery. Please try again."
       },
       "shell": {
         "saveExit": "Save & exit",
@@ -345,7 +550,8 @@
         "progress": "Step {current} of {total}",
         "language": "Writing in {language}",
         "skip": "Skip for now",
-        "done": "Done"
+        "done": "Done",
+        "close": "Close"
       },
       "save": {
         "saving": "Saving…",
@@ -363,7 +569,9 @@
         "languages": "Languages",
         "preview": "Preview",
         "publish": "Publishing",
-        "review": "Review & publish"
+        "review": "Review & publish",
+        "cta": "Call to action",
+        "gallery": "Gallery"
       },
       "category": {
         "title": "What's this post about?",
@@ -376,7 +584,12 @@
         "titlePlaceholder": "For example: Five tips for a calmer morning",
         "subtitleLabel": "Subtitle (optional)",
         "subtitlePlaceholder": "One sentence that tells readers what they'll get",
-        "remaining": "{count, plural, one {# character left} other {# characters left}}"
+        "remaining": "{count, plural, one {# character left} other {# characters left}}",
+        "improveTitle": "Improve title",
+        "improveSubtitle": "Improve subtitle",
+        "improving": "Improving…",
+        "soon": "Coming soon",
+        "improveSame": "Your text already reads well — no change suggested."
       },
       "languages": {
         "title": "Make it available in other languages?",
@@ -560,7 +773,13 @@
         "chooseAnother": "Or choose another",
         "none": "None",
         "noneHelp": "Nothing is shown under this post.",
-        "options": "Call to action"
+        "options": "Call to action",
+        "empty": {
+          "hello": "Hi {firstName}, there are no calls to action on this site yet.",
+          "helloNoName": "There are no calls to action on this site yet.",
+          "what": "A call to action is the button at the end of a post, for example “Book an appointment”.",
+          "setup": "Set them up in Studio → Website Settings → Calls to action"
+        }
       }
     },
     "textSize": {
@@ -569,6 +788,616 @@
       "md": "Default",
       "lg": "Large",
       "xl": "Extra large"
+    },
+    "gallery": {
+      "photo": {
+        "missing": "This photo is no longer in the Media Library.",
+        "count": "{count}/{max}",
+        "status": {
+          "saving": "Saving…",
+          "saved": "Saved",
+          "failed": "Not saved — we'll try again"
+        },
+        "errors": {
+          "conflict": "This photo was changed somewhere else. Close and reopen it to see the latest version.",
+          "not_found": "We couldn't find this photo any more.",
+          "invalid_value": "Something in this photo couldn't be saved. Please check the texts.",
+          "generic": "We couldn't save just now. Your changes are kept — we'll try again."
+        },
+        "focal": {
+          "title": "Focus point",
+          "helper": "Tap or drag to the most important part of the photo. Every crop keeps it in view — on every page that uses this photo.",
+          "keys": "Use the arrow keys to move it; hold Shift for bigger steps.",
+          "label": "Focus point of the photo",
+          "valueText": "{x}% from the left, {y}% from the top",
+          "previews": "How it will be cropped",
+          "preview": {
+            "wide": "Wide",
+            "card": "Card",
+            "square": "Square",
+            "tall": "Phone"
+          }
+        },
+        "alt": {
+          "label": "Description",
+          "helper": "One short sentence for people who can't see the photo. It is saved with the photo and used everywhere.",
+          "needed": "Needed before you save the gallery."
+        },
+        "titleField": {
+          "label": "Title (optional)",
+          "helper": "Shown with the photo where the layout has room for it."
+        },
+        "caption": {
+          "label": "Caption (optional)",
+          "helper": "A line under the photo, for example who or where."
+        },
+        "otherLanguages": "Other languages",
+        "grid": {
+          "label": "Photos",
+          "full": "A gallery holds up to {max} photos.",
+          "queue": {
+            "waiting": "Waiting…",
+            "preparing": "Preparing…",
+            "uploading": "Uploading…",
+            "optimised": "Optimised · {before} → {after}",
+            "notOptimised": "Uploaded (not optimised)",
+            "errors": {
+              "unsupported_type": "This file can't be used. Choose a JPEG, PNG or WebP photo.",
+              "too_large": "This photo is too large.",
+              "rate_limited": "You've uploaded a lot today. Please try again tomorrow.",
+              "forbidden": "You don't have permission to add photos.",
+              "generic": "This photo couldn't be uploaded."
+            },
+            "retry": "Try again",
+            "clear": "Clear finished uploads"
+          },
+          "addFromPhone": "Add photos",
+          "addFromComputer": "Upload photos",
+          "addFromLibrary": "From your Media Library",
+          "count": "{count, plural, =0 {No photos yet} one {# photo} other {# photos}}",
+          "dropHere": "Drop the photos to add them",
+          "photoN": "Photo {n}",
+          "editPhoto": "Edit {name}",
+          "missing": "Photo missing",
+          "needsDescription": "Needs a description",
+          "moveEarlier": "Move {name} earlier",
+          "moveLater": "Move {name} later",
+          "dragHandle": "Drag to move {name}",
+          "dragRole": "draggable photo",
+          "addTile": "Add photos",
+          "addTileHint": "or drag them here",
+          "removePhoto": "Remove {name}",
+          "reorderHint": "Drag ⋮⋮ to change the order",
+          "needsDescriptionShort": "No description"
+        },
+        "library": {
+          "title": "Your Media Library",
+          "close": "Close",
+          "search": "Search photos",
+          "searchPlaceholder": "Search by name or description",
+          "tags": "Filter by tag",
+          "error": "We couldn't load your photos. Please try again.",
+          "noResults": "No photos match. Try other words or tags.",
+          "empty": "No photos in your Media Library yet.",
+          "photoN": "Photo {n}",
+          "alreadyIn": "{name} — already in this gallery",
+          "pick": "Choose {name}",
+          "loading": "Loading your photos…",
+          "more": "Show more",
+          "full": "The gallery is full.",
+          "selected": "{count, plural, =0 {Choose photos to add} one {# photo chosen} other {# photos chosen}}",
+          "add": "{count, plural, =0 {Add} one {Add # photo} other {Add # photos}}"
+        },
+        "position": "Photo {n} of {total}",
+        "moreDetails": "More details",
+        "tags": {
+          "label": "Tags",
+          "helper": "Help you find the photo again in your Media Library.",
+          "placeholder": "Add a tag",
+          "add": "Add",
+          "remove": "Remove tag {tag}",
+          "suggested": "Tags you already use",
+          "full": "Up to {max} tags"
+        }
+      },
+      "errors": {
+        "unauthenticated": "Please sign in again.",
+        "forbidden": "You don't have permission to do this.",
+        "not_found": "We couldn't find this gallery any more.",
+        "invalid_field": "This can't be changed here.",
+        "invalid_value": "Something couldn't be saved. Please check the texts.",
+        "too_large": "That's too much at once.",
+        "conflict": "This gallery was changed somewhere else. Reload to see the latest version.",
+        "empty": "Add at least one photo before publishing.",
+        "missing_alt": "Some photos still need a description.",
+        "in_use": "This gallery is shown on your website, so it can't be deleted.",
+        "failed": "Something went wrong. Please try again.",
+        "unsupported_type": "This file can't be used. Choose a JPEG, PNG or WebP photo.",
+        "rate_limited": "You've uploaded a lot today. Please try again tomorrow."
+      },
+      "list": {
+        "title": "Galleries",
+        "helper": "Photo galleries for your website and your posts.",
+        "new": "New gallery",
+        "emptyTitle": "No galleries yet",
+        "emptyBody": "Create a gallery, add your photos, and show it under your posts.",
+        "count": "{count, plural, =0 {No photos} one {# photo} other {# photos}}",
+        "usedOn": "Used on: {places}",
+        "unpublished": "Unpublished changes",
+        "notPublished": "Not published yet",
+        "untitled": "Untitled gallery",
+        "noCover": "No photos yet",
+        "filters": {
+          "label": "Filter galleries",
+          "search": "Search galleries",
+          "searchPlaceholder": "Search galleries…",
+          "tag": "Tag",
+          "allTags": "All tags",
+          "usage": "Where used",
+          "usageAll": "All",
+          "usageUsed": "Used",
+          "usageUnused": "Not used",
+          "showing": "{shown} of {total} galleries",
+          "clear": "Clear filters",
+          "noMatch": "No galleries match these filters."
+        },
+        "card": {
+          "menu": "More for “{title}”",
+          "edit": "Edit",
+          "preview": "Preview",
+          "delete": "Delete",
+          "previewFailed": "We couldn’t open the preview. Please try again."
+        },
+        "tags": {
+          "label": "Tags",
+          "helper": "Optional. Help you find this gallery again. Not shown on your website.",
+          "placeholder": "Add a tag",
+          "add": "Add",
+          "remove": "Remove tag {tag}",
+          "suggested": "Tags you already use",
+          "full": "Up to {max} tags"
+        }
+      },
+      "publish": {
+        "errors": {
+          "empty": "Add at least one photo first.",
+          "missing_alt": "{count, plural, one {# photo needs} other {# photos need}} a description. Open the photos marked as needing one.",
+          "conflict": "This gallery was changed somewhere else. Reload to see the latest version.",
+          "offline": "You're offline. Your changes are safe on this device — try again when you're connected.",
+          "forbidden": "You don't have permission to publish.",
+          "failed": "Something went wrong. Please try again."
+        }
+      },
+      "menu": {
+        "label": "More actions",
+        "discard": "Discard changes",
+        "delete": "Delete gallery"
+      },
+      "confirm": {
+        "cancel": "Cancel",
+        "discardTitle": "Discard your changes?",
+        "discardBody": "The published gallery stays as it is. Your unpublished changes are deleted.",
+        "discard": "Discard changes",
+        "deleteTitle": "Delete this gallery?",
+        "deleteBody": "“{title}” will be deleted. The photos stay in your Media Library.",
+        "delete": "Delete gallery",
+        "inUse": "This gallery is shown on: {places}, so it can’t be deleted.",
+        "failed": "Something went wrong. Please try again."
+      },
+      "preview": {
+        "on": "Show on",
+        "alone": "Gallery only"
+      },
+      "post": {
+        "section": "Gallery",
+        "title": "Add a gallery to this post?",
+        "helper": "It is shown below your text.",
+        "none": "No gallery",
+        "noneHelp": "Nothing is shown below this post.",
+        "noGalleries": "This website has no galleries yet.",
+        "options": "Galleries"
+      },
+      "home": {
+        "label": "Gallery"
+      },
+      "wizard": {
+        "name": {
+          "title": "Name your gallery",
+          "helper": "A short title, and a sentence about the photos if you like.",
+          "titleLabel": "Title",
+          "titlePlaceholder": "For example: Our studio",
+          "descriptionLabel": "Description (optional)",
+          "descriptionPlaceholder": "One sentence about these photos"
+        },
+        "photos": {
+          "title": "Add your photos",
+          "helper": "Upload them or pick them from your Media Library. Drag to change the order."
+        },
+        "languages": {
+          "helper": "Your gallery shows its title and description in the languages you write them in.",
+          "descriptionPlaceholder": "{language} description"
+        },
+        "preview": {
+          "title": "Here’s how your gallery will look",
+          "helper": "Your gallery in your website’s own design. Only you can see this preview."
+        },
+        "review": {
+          "title": "Your gallery",
+          "helper": "Check each part, then save.",
+          "sections": {
+            "name": "Name",
+            "photos": "Photos",
+            "describe": "Descriptions",
+            "languages": "Languages"
+          },
+          "noTitle": "No title yet",
+          "photos": "{count, plural, =0 {No photos yet} one {# photo} other {# photos}}",
+          "noPhotos": "Add photos first",
+          "allDescribed": "Every photo has a description",
+          "described": "{done} of {total} described",
+          "languageMissing": "not written yet"
+        },
+        "save": "Save",
+        "saving": "Saving…",
+        "saveNeeds": "To save, add a title and at least one photo, and describe every photo.",
+        "noChanges": "No changes to save.",
+        "done": {
+          "saved": "Saved",
+          "savedBody": "Your gallery is ready. Add it to a blog post to show it on your website.",
+          "updated": "Updated",
+          "updatedOn": "Updated on: {places}",
+          "updatedBody": "Your changes are saved.",
+          "back": "Back to galleries"
+        }
+      },
+      "status": {
+        "notUsed": "Not used yet",
+        "shownOn": "Shown on: {places}",
+        "draftPage": "{title} (draft)",
+        "untitledPage": "Untitled page",
+        "posts": "{count, plural, one {# post} other {# posts}}",
+        "draftPosts": "{count, plural, one {# draft post} other {# draft posts}}",
+        "photos": "{count, plural, =0 {No photos} one {# photo} other {# photos}}",
+        "needDescription": "{count, plural, one {# needs a description} other {# need a description}}",
+        "missingTranslation": "{language} missing on {count}"
+      },
+      "select": {
+        "start": "Select",
+        "stop": "Stop selecting",
+        "count": "{count, plural, =0 {Choose galleries} one {# selected} other {# selected}}",
+        "all": "Select all",
+        "none": "Select none",
+        "card": "Select {title}",
+        "toolbar": "Selected galleries",
+        "bar": {
+          "addTags": "Add tags",
+          "delete": "Delete"
+        },
+        "tagsSheet": {
+          "title": "Add tags",
+          "helper": "The tags are added to every selected gallery.",
+          "save": "Add tags"
+        },
+        "confirm": {
+          "title": "{count, plural, one {Delete this gallery?} other {Delete # galleries?}}",
+          "body": "{count, plural, one {“{title}” will be deleted. The photos stay in your Media Library.} other {These galleries will be deleted. Galleries shown on your website are skipped. The photos stay in your Media Library.}}",
+          "confirm": "Delete"
+        },
+        "done": {
+          "delete": "{count, plural, one {# gallery deleted.} other {# galleries deleted.}}",
+          "tags": "{count, plural, one {Tags added to # gallery.} other {Tags added to # galleries.}}"
+        },
+        "skippedInUse": "{count, plural, one {# gallery was skipped because it is shown on your website.} other {# galleries were skipped because they are shown on your website.}}",
+        "someFailed": "{count, plural, one {# gallery couldn’t be changed.} other {# galleries couldn’t be changed.}}",
+        "failed": "Something went wrong. Please try again."
+      }
+    },
+    "media": {
+      "title": "Media",
+      "helper": "All the photos of your website, in one place. Describe them once — every page that uses a photo gets the description.",
+      "addTitle": "Add photos",
+      "add": {
+        "label": "Add photos",
+        "camera": "Take a photo",
+        "phone": "From this phone",
+        "computer": "Upload photos",
+        "computerHint": "or drag them here",
+        "dropHere": "Drop the photos to add them",
+        "library": "Media Library",
+        "full": "There's no room for more photos here.",
+        "retry": "Try again",
+        "dismiss": "Dismiss",
+        "story": {
+          "waiting": "Waiting…",
+          "uploading": "Uploading…",
+          "compressing": "Compressing…",
+          "optimised": "Optimised · {before} → {after}",
+          "uploaded": "Uploaded",
+          "errors": {
+            "unsupported_type": "This file can't be used. Choose a JPEG, PNG or WebP photo.",
+            "too_large": "This photo is too large.",
+            "rate_limited": "You've uploaded a lot today. Please try again tomorrow.",
+            "forbidden": "You don't have permission to add photos.",
+            "generic": "This photo couldn't be uploaded."
+          }
+        }
+      },
+      "describe": {
+        "title": "Describe your new photos",
+        "helper": "A short description helps everyone understand the photo — and search engines too.",
+        "previous": "Previous",
+        "next": "Next photo",
+        "done": "Done"
+      },
+      "library": {
+        "title": "Your photos",
+        "search": "Search photos",
+        "searchPlaceholder": "Search by name, description or caption",
+        "tags": "Filter by tag",
+        "error": "We couldn't load your photos. Please try again.",
+        "noResults": "No photos match. Try other words or tags.",
+        "empty": "No photos yet. Tap “Add photos” to add your first ones.",
+        "photoN": "Photo {n}",
+        "edit": "Edit {name}",
+        "needsDescription": "No description",
+        "loading": "Loading your photos…",
+        "more": "Show more",
+        "tagSummary": "{count, plural, one {# tag} other {# tags}}",
+        "clearAll": "Clear all",
+        "usage": "{count, plural, =0 {Not used} one {Used once} other {Used # times}}"
+      },
+      "sheet": {
+        "title": "Edit photo",
+        "close": "Close"
+      },
+      "usedIn": {
+        "title": "Used in",
+        "none": "Not used on your website yet.",
+        "untitled": "Untitled",
+        "kind": {
+          "gallery": "Gallery",
+          "page": "Page",
+          "post": "Post"
+        }
+      },
+      "picker": {
+        "title": "Your Media Library",
+        "close": "Close",
+        "search": "Search photos",
+        "searchPlaceholder": "Search by name, description or caption",
+        "tags": "Filter by tag",
+        "error": "We couldn't load your photos. Please try again.",
+        "noResults": "No photos match. Try other words or tags.",
+        "allInGallery": "All these photos are already in the gallery.",
+        "empty": "Your Media Library is still empty.",
+        "photoN": "Photo {n}",
+        "pick": "Choose {name}",
+        "loading": "Loading your photos…",
+        "more": "Show more",
+        "full": "No room for more photos.",
+        "selected": "{count, plural, =0 {Tap photos to choose them} one {# photo chosen} other {# photos chosen}}",
+        "add": "{count, plural, =0 {Add photos} one {Add # photo} other {Add # photos}}"
+      },
+      "select": {
+        "start": "Select",
+        "stop": "Stop selecting",
+        "hint": "Press and hold a photo — or tap Select — to choose several.",
+        "count": "{count, plural, =0 {Choose photos} one {# selected} other {# selected}}",
+        "photo": "Select {name}",
+        "toolbar": "Selected photos",
+        "addTags": "Add tags",
+        "rename": "Rename",
+        "clear": "Clear",
+        "limit": "You can select up to {max} photos at a time.",
+        "saved": "{count, plural, =0 {Nothing changed} one {Saved on # photo} other {Saved on # photos}}",
+        "skipped": "{count, plural, one {# photo couldn’t be changed} other {# photos couldn’t be changed}}"
+      },
+      "size": {
+        "label": "Photo size",
+        "small": "Small",
+        "medium": "Medium",
+        "large": "Large"
+      }
+    },
+    "photoWizard": {
+      "add": {
+        "choices": {
+          "label": "Add photos",
+          "camera": "Take a photo",
+          "computer": "Upload from your computer",
+          "computerHint": "or drag photos here",
+          "library": "Your media library",
+          "photoLibrary": "Photo library"
+        },
+        "note": "We make every photo lighter for the web and ask you for a short description, so everyone can understand it.",
+        "dropHere": "Drop the photos to add them",
+        "count": "{count, plural, =0 {No photos yet} one {# photo} other {# photos}}",
+        "reorderHint": "Drag ⋮⋮ to change the order",
+        "photoN": "Photo {n}",
+        "describePhoto": "Describe {name}",
+        "missing": "Photo missing",
+        "needsDescription": "No description",
+        "dragHandle": "Drag to move {name}",
+        "dragRole": "draggable photo",
+        "removePhoto": "Remove {name}",
+        "camera": {
+          "label": "Camera",
+          "taken": "{count, plural, one {# photo taken} other {# photos taken}}",
+          "another": "Take another",
+          "done": "Done"
+        }
+      },
+      "describe": {
+        "title": "Describe photo {n} of {total}",
+        "helper": "A short description helps people who can’t see the photo, and search engines.",
+        "missing": "This photo is no longer in your media library.",
+        "alt": {
+          "label": "Describe this photo",
+          "helper": "One short sentence for people who can't see the image — for example “The waiting room with a large window”.",
+          "placeholder": "What does the photo show?",
+          "count": "{count}/{max}",
+          "otherLanguages": "Other languages (optional)",
+          "otherHelper": "If you leave these empty, visitors see the description above.",
+          "inLanguage": "Description in {language}",
+          "neededToContinue": "Add a short description so everyone can understand the image."
+        },
+        "altStatus": {
+          "saving": "Saving…",
+          "saved": "Saved",
+          "failed": "Not saved — we'll try again when you type"
+        },
+        "errors": {
+          "conflict": "This photo was changed somewhere else. Reload to see the latest version.",
+          "not_found": "We couldn't find this photo any more.",
+          "invalid_value": "This description couldn't be saved. Please check the text.",
+          "generic": "We couldn't save just now. Your text is kept — we'll try again."
+        },
+        "focal": {
+          "title": "Focus point",
+          "helper": "Tap or drag to the most important part of the photo. Every crop keeps it in view.",
+          "label": "Focus point of the photo",
+          "valueText": "{x}% from the left, {y}% from the top",
+          "keys": "Use the arrow keys to move it; hold Shift for bigger steps.",
+          "previews": "How it will be cropped",
+          "preview": {
+            "wide": "Wide",
+            "card": "Card",
+            "square": "Square",
+            "tall": "Phone"
+          }
+        },
+        "helperLater": "Name it, describe it and tag it — or do it later. Nothing here is required.",
+        "skip": "Describe later",
+        "skipRest": "Describe the remaining {count} later"
+      },
+      "media": {
+        "addTitle": "Add to your media library",
+        "addHelper": "Upload photos once, then use them anywhere on your site.",
+        "doneTitle": "Added to your media library",
+        "doneBody": "{count, plural, one {# photo is} other {# photos are}} ready to use anywhere on your site.",
+        "back": "Back to media"
+      }
+    },
+    "photoCard": {
+      "languages": "Language",
+      "languageMissing": "{language} — still to do",
+      "source": "{language} (main language)",
+      "sourceEmpty": "Not written yet",
+      "missing": "This photo is no longer in your media library.",
+      "count": "{count}/{max}",
+      "name": {
+        "label": "Name",
+        "helper": "So you can find the photo again.",
+        "helperShared": "So you can find the photo again. The same in every language.",
+        "placeholder": "For example “Waiting room”"
+      },
+      "alt": {
+        "label": "Description",
+        "helper": "One short sentence for people who can’t see the photo, and for search engines. You can add it later.",
+        "placeholder": "What does the photo show?"
+      },
+      "caption": {
+        "label": "Caption (optional)",
+        "helper": "A line under the photo, for example who or where."
+      },
+      "tags": {
+        "label": "Tags",
+        "helper": "Help you find the photo in your media library. The same in every language.",
+        "placeholder": "Type a tag",
+        "add": "Add",
+        "remove": "Remove tag {tag}",
+        "suggested": "Tags you already use",
+        "full": "Up to {max} tags"
+      },
+      "status": {
+        "saving": "Saving…",
+        "saved": "Saved",
+        "failed": "Not saved — we’ll try again"
+      },
+      "errors": {
+        "conflict": "This photo was changed somewhere else. Close and reopen it to see the latest version.",
+        "not_found": "We couldn’t find this photo any more.",
+        "invalid_value": "Something in this photo couldn’t be saved. Please check the texts.",
+        "generic": "We couldn’t save just now. Your changes are kept — we’ll try again."
+      },
+      "focal": {
+        "title": "Focus point",
+        "helper": "Tap or drag to the most important part of the photo. Every crop keeps it in view.",
+        "keys": "Use the arrow keys to move it; hold Shift for bigger steps.",
+        "label": "Focus point of the photo",
+        "valueText": "{x}% from the left, {y}% from the top",
+        "previews": "How it will be cropped",
+        "preview": {
+          "wide": "Wide",
+          "card": "Card",
+          "square": "Square",
+          "tall": "Phone"
+        }
+      }
+    },
+    "photoBatch": {
+      "allTitle": "Name and tag all {count} photos",
+      "renameTitle": "Rename {count, plural, one {# photo} other {# photos}}",
+      "tagsTitle": "Add tags to {count, plural, one {# photo} other {# photos}}",
+      "allHelper": "Give them one name and the same tags in one go. You can skip this and describe each photo next.",
+      "helper": "Names and tags are the same in every language.",
+      "baseName": {
+        "label": "Name",
+        "helper": "Each photo gets this name and a number.",
+        "placeholder": "For example “Summer party”",
+        "preview": "They become “{first}”, “{second}”, …"
+      },
+      "tagsHelper": "Added to every photo, next to the tags it already has.",
+      "capped": "Up to {max} photos at a time.",
+      "skip": "Skip",
+      "cancel": "Cancel",
+      "apply": "{count, plural, one {Apply to # photo} other {Apply to all #}}",
+      "saving": "Saving…",
+      "errors": {
+        "conflict": "Some of these photos were changed somewhere else. Please try again.",
+        "generic": "We couldn’t save just now. Please try again."
+      }
+    },
+    "filterBar": {
+      "label": "Filters",
+      "search": "Search"
+    },
+    "ui": {
+      "dateRange": {
+        "anyDate": "Any date",
+        "dialog": "Choose dates",
+        "clear": "Clear",
+        "apply": "Apply",
+        "prevMonth": "Previous month",
+        "nextMonth": "Next month",
+        "presets": "Quick ranges",
+        "last7": "Last 7 days",
+        "last30": "Last 30 days",
+        "thisYear": "This year",
+        "rangeStart": "Start date",
+        "rangeEnd": "End date",
+        "selectEnd": "Now pick the end date",
+        "today": "Today",
+        "custom": "Custom dates",
+        "clearRange": "Clear dates",
+        "help": "Choose your start and end date.",
+        "inline": {
+          "last7": "last 7 days",
+          "last30": "last 30 days",
+          "thisYear": "this year"
+        }
+      },
+      "filterSheet": {
+        "filters": "Filters",
+        "filtersCount": "Filters · {count}",
+        "title": "Filters",
+        "clearAll": "Clear all",
+        "showResults": "Show {count, plural, one {# result} other {# results}}",
+        "close": "Close filters",
+        "dragHandle": "Drag down to close",
+        "applied": "Applied filters",
+        "remove": "Remove filter: {label}"
+      }
     }
   },
   "editor": {

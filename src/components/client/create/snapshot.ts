@@ -9,6 +9,7 @@ export function applyToSnapshot(snap: DraftSnapshot, set: PendingSet): DraftSnap
     if (path === 'categories') next = { ...next, categories: Array.isArray(value) ? (value as string[]) : [] }
     else if (path === 'wizard.step') next = { ...next, step: value as WizardStep }
     else if (path === 'wizard.furthest') next = { ...next, furthest: value as WizardStep }
+    else if (path === 'gallery') next = { ...next, gallery: typeof value === 'string' && value ? value : null }
     else if (path === 'cta.mode') {
       const mode = value as 'default' | 'none' | 'custom'
       next = { ...next, cta: { mode, ref: mode === 'custom' ? (next.cta?.ref ?? null) : null } }

@@ -32,7 +32,7 @@ export function OpenForEdit({ projectSlug, id, postsHref }: { projectSlug: strin
       {failed ? (
         <Link
           href={postsHref}
-          className="inline-flex h-12 items-center rounded-xl border border-border px-5 text-[15px] font-semibold text-foreground hover:bg-hover"
+          className="inline-flex h-12 items-center rounded-xl border border-border px-5 text-[0.9375rem] font-semibold text-foreground hover:bg-hover"
         >
           {t('back')}
         </Link>

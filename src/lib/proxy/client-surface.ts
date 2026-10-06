@@ -50,6 +50,8 @@ export const CLIENT_PROJECT_SEGMENTS = new Set([
   'leads',
   'analytics',
   'submissions',
+  'galleries',
+  'media',
 ])
 
 /**

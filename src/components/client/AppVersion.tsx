@@ -34,7 +34,7 @@ export function AppVersion() {
   }, [])
 
   return (
-    <p className="text-[11px] leading-4 text-muted-foreground tabular-nums">
+    <p className="text-[0.6875rem] leading-4 text-muted-foreground tabular-nums">
       {version}
       {!isProduction() && ` · ${deployment.commitSha}`}
       {built && (

@@ -40,7 +40,8 @@
       "translate": "Übersetzung",
       "home": "Start",
       "more": "Mehr",
-      "add": "Inhalt hinzufügen"
+      "add": "Inhalt hinzufügen",
+      "media": "Medien"
     },
     "shell": {
       "brandTagline": "Dashboard",
@@ -65,7 +66,16 @@
       "columns": {
         "title": "Titel",
         "status": "Status",
-        "updated": "Aktualisiert"
+        "updated": "Aktualisiert",
+        "selectAll": "Alle angezeigten auswählen",
+        "image": "Bild",
+        "categories": "Kategorien",
+        "featured": "Hervorgehoben",
+        "languages": "Sprachen",
+        "published": "Veröffentlicht",
+        "scheduled": "Geplant",
+        "ends": "Endet",
+        "actions": "Aktionen"
       },
       "status": {
         "published": "Veröffentlicht",
@@ -79,13 +89,14 @@
         "created": "Begonnen am {date}",
         "offlineOn": "Offline ab {date}",
         "offlineSince": "Offline seit {date}",
-        "edited": "Bearbeitet am {date}"
+        "edited": "Bearbeitet am {date}",
+        "ends": "Endet am {date}"
       },
       "languages": "Sprachen",
       "count": "{count, plural, one {# Beitrag} other {# Beiträge}}",
       "filters": {
         "search": "Beiträge suchen",
-        "searchPlaceholder": "In Titeln suchen…",
+        "searchPlaceholder": "Beiträge suchen…",
         "sort": "Sortieren",
         "sort_newest": "Neueste",
         "sort_oldest": "Älteste",
@@ -104,10 +115,138 @@
         "missingLanguage": "{language} fehlt",
         "showing": "{shown} von {total} Beiträgen",
         "clear": "Filter zurücksetzen",
-        "noMatch": "Keine Beiträge passen zu diesen Filtern."
+        "noMatch": "Keine Beiträge passen zu diesen Filtern.",
+        "categoryAll": "Alle Kategorien",
+        "statusAll": "Alle Status",
+        "translationsAll": "Alle Übersetzungen",
+        "translationsComplete": "Übersetzungen vollständig",
+        "translationsMissing": "Fehlende Übersetzungen",
+        "featured": "Hervorgehoben",
+        "featuredAll": "Alle Beiträge",
+        "featuredOnly": "Nur hervorgehobene",
+        "dateField": "Welches Datum",
+        "dateField_published": "Veröffentlicht",
+        "dateField_updated": "Bearbeitet",
+        "dateField_ends": "Endet",
+        "dateRange": "Datum: {field}",
+        "sort_edited_asc": "Am längsten nicht bearbeitet",
+        "sort_title": "Titel A–Z",
+        "sort_title_desc": "Titel Z–A",
+        "sort_ends": "Endet zuerst",
+        "sort_ends_desc": "Endet zuletzt",
+        "sentenceNoun": "Beiträge",
+        "sentenceField_updated": "bearbeitet",
+        "sentenceField_published": "veröffentlicht",
+        "sentenceField_ends": "endend",
+        "dateChip": "{field} · {range}",
+        "anyDate": "Alle Daten anzeigen"
       },
       "untitledDraft": "Entwurf ohne Titel",
-      "unpublishedChanges": "Nicht veröffentlichte Änderungen"
+      "unpublishedChanges": "Nicht veröffentlichte Änderungen",
+      "line": {
+        "live": "Live",
+        "liveEnds": "Live · Endet am {date}",
+        "scheduledFor": "Geplant für {date}",
+        "offline": "Offline",
+        "draft": "Entwurf · Bearbeitet {date}"
+      },
+      "card": {
+        "menu": "Mehr für „{title}“",
+        "edit": "Bearbeiten",
+        "preview": "Vorschau",
+        "view": "Auf der Website ansehen",
+        "offline": "Offline nehmen",
+        "online": "Wieder online stellen",
+        "endDate": "Enddatum festlegen",
+        "delete": "Löschen",
+        "select": "Auswählen",
+        "selectAll": "Alle auswählen",
+        "selectNone": "Keine auswählen",
+        "exitSelect": "Auswahl beenden",
+        "selected": "{count} ausgewählt",
+        "deleted": "{count, plural, one {Gelöscht} other {# gelöscht}}",
+        "undo": "Rückgängig",
+        "previewFailed": "Die Vorschau ließ sich nicht öffnen. Bitte versuch es erneut.",
+        "bar": {
+          "offline": "Offline",
+          "endDate": "Enddatum",
+          "delete": "Löschen",
+          "more": "Mehr",
+          "featured": "Hervorheben",
+          "notFeatured": "Nicht hervorheben",
+          "categories": "Kategorie",
+          "clear": "Aufheben"
+        },
+        "more": {
+          "title": "Weitere Aktionen",
+          "online": "Wieder online stellen",
+          "categories": "Kategorie ändern",
+          "removeEndDate": "Enddatum entfernen",
+          "clear": "Auswahl aufheben",
+          "featured": "Hervorheben",
+          "notFeatured": "Nicht mehr hervorheben"
+        },
+        "endDateSheet": {
+          "title": "Enddatum festlegen",
+          "helper": "An diesem Datum verschwindet der Beitrag von selbst von deiner Website. Du kannst ihn jederzeit wieder online stellen.",
+          "label": "Geht offline am",
+          "save": "Enddatum speichern"
+        },
+        "categorySheet": {
+          "title": "Kategorie ändern",
+          "helper": "Die gewählten Themen ersetzen die bisherigen bei den ausgewählten Beiträgen.",
+          "save": "Themen speichern"
+        },
+        "confirmDelete": {
+          "title": "{count, plural, one {Diesen Beitrag löschen?} other {# Beiträge löschen?}}",
+          "body": "{count, plural, one {„{title}“ wird von deiner Website entfernt und kann nicht wiederhergestellt werden.} other {Live-Beiträge werden von deiner Website entfernt und können nicht wiederhergestellt werden.}}",
+          "confirm": "Löschen"
+        },
+        "batch": {
+          "done": {
+            "offline": "{count, plural, one {# Beitrag offline genommen.} other {# Beiträge offline genommen.}}",
+            "online": "{count, plural, one {# Beitrag wieder online.} other {# Beiträge wieder online.}}",
+            "delete": "{count, plural, one {# Beitrag gelöscht.} other {# Beiträge gelöscht.}}",
+            "endDate": "{count, plural, one {Enddatum für # Beitrag gespeichert.} other {Enddatum für # Beiträge gespeichert.}}",
+            "categories": "{count, plural, one {Themen bei # Beitrag geändert.} other {Themen bei # Beiträgen geändert.}}",
+            "featured": "{count, plural, one {Hervorhebung bei # Beitrag geändert.} other {Hervorhebung bei # Beiträgen geändert.}}"
+          },
+          "someFailed": "{count, plural, one {Hat nicht geklappt: {titles}.} other {# haben nicht geklappt: {titles}.}}",
+          "failedAll": "Das hat nicht geklappt. Nichts wurde geändert — bitte versuch es erneut."
+        }
+      },
+      "select": {
+        "checkbox": "{title} auswählen",
+        "toolbar": "Ausgewählte Beiträge",
+        "all": "Alle auswählen"
+      },
+      "newPost": "Neuer Beitrag",
+      "view": {
+        "label": "Ansicht",
+        "list": "Liste",
+        "cards": "Karten"
+      },
+      "pill": {
+        "published": "Online",
+        "scheduled": "Geplant",
+        "draft": "Entwurf",
+        "offline": "Offline"
+      },
+      "lang": {
+        "complete": "{language}: Übersetzung vollständig",
+        "missing": "{language}: Übersetzung fehlt oder ist unvollständig"
+      },
+      "featured": {
+        "isOn": "„{title}“ ist hervorgehoben",
+        "isOff": "„{title}“ ist nicht hervorgehoben",
+        "dialog": "Hervorgehobener Beitrag",
+        "help": "Hervorgehobene Beiträge erscheinen in den Listen deiner Website zuerst.",
+        "mark": "Hervorheben",
+        "remove": "Nicht mehr hervorheben",
+        "cancel": "Abbrechen",
+        "marked": "Hervorgehoben.",
+        "removed": "Nicht mehr hervorgehoben."
+      }
     },
     "submissions": {
       "title": "Einsendungen",
@@ -145,9 +284,30 @@
         "show": "Details",
         "hide": "Ausblenden",
         "attribution": "Attribution",
-        "none": "—"
+        "none": "—",
+        "submitted": "Was gesendet wurde",
+        "cameFrom": "Woher es kam",
+        "site": "Website",
+        "siteLanguage": "Sprache der Website",
+        "timezone": "Zeitzone des Besuchers",
+        "pageSlug": "Seite",
+        "consent": "Einwilligung erteilt"
       },
-      "updateError": "Aktualisierung fehlgeschlagen"
+      "updateError": "Aktualisierung fehlgeschlagen",
+      "select": "Auswählen",
+      "selectAll": "Alle auswählen",
+      "selectRow": "{name} auswählen",
+      "selected": "{count} ausgewählt",
+      "exitSelect": "Auswahl beenden",
+      "markHandled": "Als erledigt markieren",
+      "markNew": "Als neu markieren",
+      "exportSelected": "Exportieren (CSV)",
+      "delete": "Löschen",
+      "more": "Mehr",
+      "cancel": "Abbrechen",
+      "deleteTitle": "{count, plural, one {# Anfrage löschen?} other {# Anfragen löschen?}}",
+      "deleteBody": "Das kann nicht rückgängig gemacht werden.",
+      "batchError": "Das hat nicht geklappt. Bitte versuche es erneut."
     },
     "leads": {
       "title": "Anfragen",
@@ -177,7 +337,48 @@
       "emptyBody": "Tippe auf +, um zu beginnen. Wir speichern laufend – du kannst jederzeit pausieren und weitermachen.",
       "atStep": "Als Nächstes: {step}",
       "noCover": "Kein Titelbild",
-      "noCoverShort": "Kein Bild"
+      "noCoverShort": "Kein Bild",
+      "greeting": {
+        "morning": "Guten Morgen, {name}",
+        "afternoon": "Guten Tag, {name}",
+        "evening": "Guten Abend, {name}",
+        "welcome": "Willkommen zurück"
+      },
+      "viewSite": "Deine Website ansehen",
+      "opensNewTab": "(öffnet in einem neuen Tab)",
+      "progress": "Wie weit dieser Entwurf ist",
+      "meta": {
+        "draft": "Entwurf · Du warst bei „{step}“ · {ago}",
+        "liveChanges": "Änderungen an einem Live-Beitrag · {ago}",
+        "galleryDraft": "Galerie · {count, plural, =0 {noch keine Fotos} one {# Foto} other {# Fotos}}",
+        "galleryChanges": "Änderungen an einer Live-Galerie · {count, plural, =0 {keine Fotos} one {# Foto} other {# Fotos}}"
+      },
+      "menu": {
+        "label": "Mehr für „{title}“",
+        "continue": "Weiter bearbeiten",
+        "preview": "Vorschau",
+        "delete": "Löschen",
+        "discard": "Änderungen verwerfen",
+        "deleted": "Gelöscht",
+        "discarded": "Änderungen verworfen",
+        "undo": "Rückgängig",
+        "failed": "Das hat nicht geklappt, es wurde nichts entfernt. Bitte versuch es erneut.",
+        "previewFailed": "Die Vorschau ließ sich nicht öffnen. Bitte versuch es erneut."
+      },
+      "recent": {
+        "published": "Veröffentlicht",
+        "publishedOn": "Veröffentlicht · {date}",
+        "scheduled": "Geplant",
+        "scheduledOn": "Geplant · {date}",
+        "offline": "Offline"
+      },
+      "requestsBody": "{week, plural, one {Kontaktanfrage} other {Kontaktanfragen}} diese Woche, {open, plural, =0 {alle beantwortet} other {# noch unbeantwortet}}",
+      "latestPosts": "Neueste Beiträge",
+      "latestGalleries": "Neueste Galerien",
+      "kind": {
+        "post": "Blogbeitrag",
+        "gallery": "Galerie"
+      }
     },
     "version": {
       "updated": "Aktualisiert {date}"
@@ -318,13 +519,15 @@
           "blog": "Blogbeitrag",
           "news": "Neuigkeit",
           "events": "Veranstaltung",
-          "gallery": "Galerie"
+          "gallery": "Galerie",
+          "media": "Zur Mediathek hinzufügen"
         },
         "desc": {
           "blog": "Ein Artikel für deine Website, in wenigen einfachen Schritten.",
           "news": "Ein kurzes Update für deine Besucher.",
           "events": "Ein Termin, zu dem man kommen kann.",
-          "gallery": "Eine Sammlung von Fotos."
+          "gallery": "Eine Sammlung von Fotos.",
+          "media": "Fotos einmal hochladen und überall auf deiner Website verwenden."
         },
         "soon": "Bald verfügbar",
         "more": "Mehr für deine Website",
@@ -336,7 +539,9 @@
         "nothing": "Hier kannst du noch nichts erstellen.",
         "starting": "Dein Beitrag wird vorbereitet …",
         "failed": "Wir konnten keinen neuen Beitrag beginnen. Bitte versuch es noch einmal.",
-        "close": "Schließen"
+        "close": "Schließen",
+        "startingGallery": "Deine Galerie wird vorbereitet…",
+        "failedGallery": "Wir konnten keine neue Galerie anlegen. Bitte versuche es noch einmal."
       },
       "shell": {
         "saveExit": "Speichern & beenden",
@@ -345,7 +550,8 @@
         "progress": "Schritt {current} von {total}",
         "language": "Du schreibst auf {language}",
         "skip": "Vorerst überspringen",
-        "done": "Fertig"
+        "done": "Fertig",
+        "close": "Schließen"
       },
       "save": {
         "saving": "Wird gespeichert …",
@@ -363,7 +569,9 @@
         "languages": "Sprachen",
         "preview": "Vorschau",
         "publish": "Veröffentlichen",
-        "review": "Prüfen & veröffentlichen"
+        "review": "Prüfen & veröffentlichen",
+        "cta": "Handlungsaufforderung",
+        "gallery": "Galerie"
       },
       "category": {
         "title": "Worum geht es in diesem Beitrag?",
@@ -376,7 +584,12 @@
         "titlePlaceholder": "Zum Beispiel: Fünf Tipps für einen ruhigeren Morgen",
         "subtitleLabel": "Untertitel (optional)",
         "subtitlePlaceholder": "Ein Satz, der den Lesern sagt, was sie erwartet",
-        "remaining": "{count, plural, one {Noch # Zeichen} other {Noch # Zeichen}}"
+        "remaining": "{count, plural, one {Noch # Zeichen} other {Noch # Zeichen}}",
+        "improveTitle": "Titel verbessern",
+        "improveSubtitle": "Untertitel verbessern",
+        "improving": "Wird verbessert…",
+        "soon": "Bald verfügbar",
+        "improveSame": "Dein Text liest sich schon gut — keine Änderung vorgeschlagen."
       },
       "languages": {
         "title": "Auch in anderen Sprachen anbieten?",
@@ -560,7 +773,13 @@
         "chooseAnother": "Oder eine andere wählen",
         "none": "Keine",
         "noneHelp": "Unter diesem Beitrag wird nichts angezeigt.",
-        "options": "Handlungsaufforderung"
+        "options": "Handlungsaufforderung",
+        "empty": {
+          "hello": "Hallo {firstName}, auf dieser Website gibt es noch keine Handlungsaufforderungen.",
+          "helloNoName": "Auf dieser Website gibt es noch keine Handlungsaufforderungen.",
+          "what": "Eine Handlungsaufforderung ist der Button am Ende eines Beitrags, zum Beispiel „Termin buchen“.",
+          "setup": "Richte sie in Studio ein → Website-Einstellungen → Handlungsaufforderungen"
+        }
       }
     },
     "textSize": {
@@ -569,6 +788,616 @@
       "md": "Standard",
       "lg": "Groß",
       "xl": "Sehr groß"
+    },
+    "gallery": {
+      "photo": {
+        "missing": "Dieses Foto ist nicht mehr in der Mediathek.",
+        "count": "{count}/{max}",
+        "status": {
+          "saving": "Wird gespeichert …",
+          "saved": "Gespeichert",
+          "failed": "Nicht gespeichert – wir versuchen es erneut"
+        },
+        "errors": {
+          "conflict": "Dieses Foto wurde an anderer Stelle geändert. Schließe es und öffne es erneut, um die aktuelle Version zu sehen.",
+          "not_found": "Dieses Foto ist nicht mehr da.",
+          "invalid_value": "Etwas an diesem Foto konnte nicht gespeichert werden. Bitte prüfe die Texte.",
+          "generic": "Speichern hat gerade nicht geklappt. Deine Änderungen bleiben erhalten – wir versuchen es erneut."
+        },
+        "focal": {
+          "title": "Fokuspunkt",
+          "helper": "Tippe oder ziehe auf den wichtigsten Teil des Fotos. Jeder Zuschnitt behält ihn im Bild – auf allen Seiten, die dieses Foto verwenden.",
+          "keys": "Mit den Pfeiltasten verschieben; mit gedrückter Umschalttaste in größeren Schritten.",
+          "label": "Fokuspunkt des Fotos",
+          "valueText": "{x} % von links, {y} % von oben",
+          "previews": "So wird zugeschnitten",
+          "preview": {
+            "wide": "Breit",
+            "card": "Karte",
+            "square": "Quadrat",
+            "tall": "Telefon"
+          }
+        },
+        "alt": {
+          "label": "Beschreibung",
+          "helper": "Ein kurzer Satz für Menschen, die das Foto nicht sehen können. Er wird mit dem Foto gespeichert und überall verwendet.",
+          "needed": "Wird vor dem Speichern der Galerie benötigt."
+        },
+        "titleField": {
+          "label": "Titel (optional)",
+          "helper": "Erscheint beim Foto, wo das Layout Platz dafür hat."
+        },
+        "caption": {
+          "label": "Bildunterschrift (optional)",
+          "helper": "Eine Zeile unter dem Foto, zum Beispiel wer oder wo."
+        },
+        "otherLanguages": "Weitere Sprachen",
+        "grid": {
+          "label": "Fotos",
+          "full": "Eine Galerie fasst höchstens {max} Fotos.",
+          "queue": {
+            "waiting": "Wartet …",
+            "preparing": "Wird vorbereitet …",
+            "uploading": "Wird hochgeladen …",
+            "optimised": "Optimiert · {before} → {after}",
+            "notOptimised": "Hochgeladen (nicht optimiert)",
+            "errors": {
+              "unsupported_type": "Diese Datei kann nicht verwendet werden. Bitte wähle ein JPEG-, PNG- oder WebP-Foto.",
+              "too_large": "Dieses Foto ist zu groß.",
+              "rate_limited": "Du hast heute schon viel hochgeladen. Bitte versuche es morgen wieder.",
+              "forbidden": "Du darfst keine Fotos hinzufügen.",
+              "generic": "Dieses Foto konnte nicht hochgeladen werden."
+            },
+            "retry": "Erneut versuchen",
+            "clear": "Fertige Uploads ausblenden"
+          },
+          "addFromPhone": "Fotos hinzufügen",
+          "addFromComputer": "Fotos hochladen",
+          "addFromLibrary": "Aus deiner Mediathek",
+          "count": "{count, plural, =0 {Noch keine Fotos} one {# Foto} other {# Fotos}}",
+          "dropHere": "Fotos loslassen, um sie hinzuzufügen",
+          "photoN": "Foto {n}",
+          "editPhoto": "{name} bearbeiten",
+          "missing": "Foto fehlt",
+          "needsDescription": "Beschreibung fehlt",
+          "moveEarlier": "{name} nach vorne verschieben",
+          "moveLater": "{name} nach hinten verschieben",
+          "dragHandle": "Ziehen, um {name} zu verschieben",
+          "dragRole": "verschiebbares Foto",
+          "addTile": "Fotos hinzufügen",
+          "addTileHint": "oder hierher ziehen",
+          "removePhoto": "{name} entfernen",
+          "reorderHint": "⋮⋮ ziehen, um die Reihenfolge zu ändern",
+          "needsDescriptionShort": "Ohne Beschreibung"
+        },
+        "library": {
+          "title": "Deine Mediathek",
+          "close": "Schließen",
+          "search": "Fotos suchen",
+          "searchPlaceholder": "Nach Name oder Beschreibung suchen",
+          "tags": "Nach Schlagwort filtern",
+          "error": "Deine Fotos konnten nicht geladen werden. Bitte versuche es noch einmal.",
+          "noResults": "Keine passenden Fotos. Versuche andere Wörter oder Schlagwörter.",
+          "empty": "Deine Mediathek ist noch leer.",
+          "photoN": "Foto {n}",
+          "alreadyIn": "{name} – schon in dieser Galerie",
+          "pick": "{name} auswählen",
+          "loading": "Deine Fotos werden geladen …",
+          "more": "Mehr anzeigen",
+          "full": "Die Galerie ist voll.",
+          "selected": "{count, plural, =0 {Fotos zum Hinzufügen auswählen} one {# Foto ausgewählt} other {# Fotos ausgewählt}}",
+          "add": "{count, plural, =0 {Hinzufügen} one {# Foto hinzufügen} other {# Fotos hinzufügen}}"
+        },
+        "position": "Foto {n} von {total}",
+        "moreDetails": "Weitere Details",
+        "tags": {
+          "label": "Schlagwörter",
+          "helper": "Helfen dir, das Foto in deiner Mediathek wiederzufinden.",
+          "placeholder": "Schlagwort hinzufügen",
+          "add": "Hinzufügen",
+          "remove": "Schlagwort {tag} entfernen",
+          "suggested": "Schlagwörter, die du schon verwendest",
+          "full": "Höchstens {max} Schlagwörter"
+        }
+      },
+      "errors": {
+        "unauthenticated": "Bitte melde dich erneut an.",
+        "forbidden": "Dazu hast du keine Berechtigung.",
+        "not_found": "Diese Galerie ist nicht mehr da.",
+        "invalid_field": "Das kann hier nicht geändert werden.",
+        "invalid_value": "Etwas konnte nicht gespeichert werden. Bitte prüfe die Texte.",
+        "too_large": "Das ist zu viel auf einmal.",
+        "conflict": "Diese Galerie wurde an anderer Stelle geändert. Lade die Seite neu, um die aktuelle Version zu sehen.",
+        "empty": "Füge vor dem Veröffentlichen mindestens ein Foto hinzu.",
+        "missing_alt": "Einige Fotos brauchen noch eine Beschreibung.",
+        "in_use": "Diese Galerie wird auf deiner Website gezeigt und kann deshalb nicht gelöscht werden.",
+        "failed": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal.",
+        "unsupported_type": "Diese Datei kann nicht verwendet werden. Bitte wähle ein JPEG-, PNG- oder WebP-Foto.",
+        "rate_limited": "Du hast heute schon viel hochgeladen. Bitte versuche es morgen wieder."
+      },
+      "list": {
+        "title": "Galerien",
+        "helper": "Fotogalerien für deine Website und deine Beiträge.",
+        "new": "Neue Galerie",
+        "emptyTitle": "Noch keine Galerien",
+        "emptyBody": "Erstelle eine Galerie, füge deine Fotos hinzu und zeige sie unter deinen Beiträgen.",
+        "count": "{count, plural, =0 {Keine Fotos} one {# Foto} other {# Fotos}}",
+        "usedOn": "Verwendet auf: {places}",
+        "unpublished": "Nicht veröffentlichte Änderungen",
+        "notPublished": "Noch nicht veröffentlicht",
+        "untitled": "Galerie ohne Titel",
+        "noCover": "Noch keine Fotos",
+        "filters": {
+          "label": "Galerien filtern",
+          "search": "Galerien durchsuchen",
+          "searchPlaceholder": "Galerien durchsuchen …",
+          "tag": "Tag",
+          "allTags": "Alle Tags",
+          "usage": "Wo verwendet",
+          "usageAll": "Alle",
+          "usageUsed": "Verwendet",
+          "usageUnused": "Nicht verwendet",
+          "showing": "{shown} von {total} Galerien",
+          "clear": "Filter zurücksetzen",
+          "noMatch": "Keine Galerie passt zu diesen Filtern."
+        },
+        "card": {
+          "menu": "Mehr für „{title}“",
+          "edit": "Bearbeiten",
+          "preview": "Vorschau",
+          "delete": "Löschen",
+          "previewFailed": "Die Vorschau konnte nicht geöffnet werden. Bitte versuche es erneut."
+        },
+        "tags": {
+          "label": "Tags",
+          "helper": "Optional. Helfen dir, diese Galerie wiederzufinden. Auf deiner Website nicht sichtbar.",
+          "placeholder": "Tag hinzufügen",
+          "add": "Hinzufügen",
+          "remove": "Tag {tag} entfernen",
+          "suggested": "Tags, die du schon nutzt",
+          "full": "Bis zu {max} Tags"
+        }
+      },
+      "publish": {
+        "errors": {
+          "empty": "Füge zuerst mindestens ein Foto hinzu.",
+          "missing_alt": "{count, plural, one {# Foto braucht} other {# Fotos brauchen}} eine Beschreibung. Öffne die markierten Fotos.",
+          "conflict": "Diese Galerie wurde anderswo geändert. Lade neu, um die aktuelle Version zu sehen.",
+          "offline": "Du bist offline. Deine Änderungen sind auf diesem Gerät sicher – versuch es erneut, sobald du verbunden bist.",
+          "forbidden": "Du hast keine Berechtigung zum Veröffentlichen.",
+          "failed": "Etwas ist schiefgelaufen. Bitte versuch es noch einmal."
+        }
+      },
+      "menu": {
+        "label": "Weitere Aktionen",
+        "discard": "Änderungen verwerfen",
+        "delete": "Galerie löschen"
+      },
+      "confirm": {
+        "cancel": "Abbrechen",
+        "discardTitle": "Änderungen verwerfen?",
+        "discardBody": "Die veröffentlichte Galerie bleibt, wie sie ist. Deine nicht veröffentlichten Änderungen werden gelöscht.",
+        "discard": "Änderungen verwerfen",
+        "deleteTitle": "Diese Galerie löschen?",
+        "deleteBody": "„{title}“ wird gelöscht. Die Fotos bleiben in deiner Mediathek.",
+        "delete": "Galerie löschen",
+        "inUse": "Diese Galerie wird gezeigt auf: {places}. Deshalb kann sie nicht gelöscht werden.",
+        "failed": "Etwas ist schiefgelaufen. Bitte versuch es noch einmal."
+      },
+      "preview": {
+        "on": "Zeigen auf",
+        "alone": "Nur die Galerie"
+      },
+      "post": {
+        "section": "Galerie",
+        "title": "Eine Galerie zu diesem Beitrag hinzufügen?",
+        "helper": "Sie wird unter deinem Text gezeigt.",
+        "none": "Keine Galerie",
+        "noneHelp": "Unter diesem Beitrag wird nichts gezeigt.",
+        "noGalleries": "Diese Website hat noch keine Galerien.",
+        "options": "Galerien"
+      },
+      "home": {
+        "label": "Galerie"
+      },
+      "wizard": {
+        "name": {
+          "title": "Gib deiner Galerie einen Namen",
+          "helper": "Ein kurzer Titel und, wenn du magst, ein Satz zu den Fotos.",
+          "titleLabel": "Titel",
+          "titlePlaceholder": "Zum Beispiel: Unsere Praxis",
+          "descriptionLabel": "Beschreibung (optional)",
+          "descriptionPlaceholder": "Ein Satz zu diesen Fotos"
+        },
+        "photos": {
+          "title": "Füge deine Fotos hinzu",
+          "helper": "Lade sie hoch oder wähle sie aus deiner Mediathek. Zum Umsortieren ziehen."
+        },
+        "languages": {
+          "helper": "Deine Galerie zeigt Titel und Beschreibung in den Sprachen, in denen du sie schreibst.",
+          "descriptionPlaceholder": "Beschreibung auf {language}"
+        },
+        "preview": {
+          "title": "So wird deine Galerie aussehen",
+          "helper": "Deine Galerie im Design deiner Website. Nur du siehst diese Vorschau."
+        },
+        "review": {
+          "title": "Deine Galerie",
+          "helper": "Prüfe jeden Teil und speichere dann.",
+          "sections": {
+            "name": "Name",
+            "photos": "Fotos",
+            "describe": "Beschreibungen",
+            "languages": "Sprachen"
+          },
+          "noTitle": "Noch kein Titel",
+          "photos": "{count, plural, =0 {Noch keine Fotos} one {# Foto} other {# Fotos}}",
+          "noPhotos": "Füge zuerst Fotos hinzu",
+          "allDescribed": "Jedes Foto hat eine Beschreibung",
+          "described": "{done} von {total} beschrieben",
+          "languageMissing": "noch nicht geschrieben"
+        },
+        "save": "Speichern",
+        "saving": "Wird gespeichert…",
+        "saveNeeds": "Zum Speichern: Titel und mindestens ein Foto hinzufügen und jedes Foto beschreiben.",
+        "noChanges": "Keine Änderungen zu speichern.",
+        "done": {
+          "saved": "Gespeichert",
+          "savedBody": "Deine Galerie ist bereit. Füge sie einem Blogbeitrag hinzu, um sie auf deiner Website zu zeigen.",
+          "updated": "Aktualisiert",
+          "updatedOn": "Aktualisiert auf: {places}",
+          "updatedBody": "Deine Änderungen sind gespeichert.",
+          "back": "Zurück zu den Galerien"
+        }
+      },
+      "status": {
+        "notUsed": "Noch nicht verwendet",
+        "shownOn": "Angezeigt auf: {places}",
+        "draftPage": "{title} (Entwurf)",
+        "untitledPage": "Seite ohne Titel",
+        "posts": "{count, plural, one {# Beitrag} other {# Beiträge}}",
+        "draftPosts": "{count, plural, one {# Beitragsentwurf} other {# Beitragsentwürfe}}",
+        "photos": "{count, plural, =0 {Keine Fotos} one {# Foto} other {# Fotos}}",
+        "needDescription": "{count, plural, one {# braucht eine Beschreibung} other {# brauchen eine Beschreibung}}",
+        "missingTranslation": "{language} fehlt bei {count}"
+      },
+      "select": {
+        "start": "Auswählen",
+        "stop": "Auswahl beenden",
+        "count": "{count, plural, =0 {Galerien auswählen} one {# ausgewählt} other {# ausgewählt}}",
+        "all": "Alle auswählen",
+        "none": "Auswahl aufheben",
+        "card": "{title} auswählen",
+        "toolbar": "Ausgewählte Galerien",
+        "bar": {
+          "addTags": "Tags hinzufügen",
+          "delete": "Löschen"
+        },
+        "tagsSheet": {
+          "title": "Tags hinzufügen",
+          "helper": "Die Tags werden zu allen ausgewählten Galerien hinzugefügt.",
+          "save": "Tags hinzufügen"
+        },
+        "confirm": {
+          "title": "{count, plural, one {Diese Galerie löschen?} other {# Galerien löschen?}}",
+          "body": "{count, plural, one {„{title}“ wird gelöscht. Die Fotos bleiben in deiner Mediathek.} other {Diese Galerien werden gelöscht. Galerien, die auf deiner Website angezeigt werden, werden übersprungen. Die Fotos bleiben in deiner Mediathek.}}",
+          "confirm": "Löschen"
+        },
+        "done": {
+          "delete": "{count, plural, one {# Galerie gelöscht.} other {# Galerien gelöscht.}}",
+          "tags": "{count, plural, one {Tags zu # Galerie hinzugefügt.} other {Tags zu # Galerien hinzugefügt.}}"
+        },
+        "skippedInUse": "{count, plural, one {# Galerie wurde übersprungen, weil sie auf deiner Website angezeigt wird.} other {# Galerien wurden übersprungen, weil sie auf deiner Website angezeigt werden.}}",
+        "someFailed": "{count, plural, one {# Galerie konnte nicht geändert werden.} other {# Galerien konnten nicht geändert werden.}}",
+        "failed": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+      }
+    },
+    "media": {
+      "title": "Medien",
+      "helper": "Alle Fotos deiner Website an einem Ort. Beschreibe sie einmal – jede Seite, die ein Foto verwendet, erhält die Beschreibung.",
+      "addTitle": "Fotos hinzufügen",
+      "add": {
+        "label": "Fotos hinzufügen",
+        "camera": "Foto aufnehmen",
+        "phone": "Von diesem Telefon",
+        "computer": "Fotos hochladen",
+        "computerHint": "oder hierher ziehen",
+        "dropHere": "Fotos loslassen, um sie hinzuzufügen",
+        "library": "Mediathek",
+        "full": "Hier ist kein Platz für weitere Fotos.",
+        "retry": "Erneut versuchen",
+        "dismiss": "Ausblenden",
+        "story": {
+          "waiting": "Wartet …",
+          "uploading": "Wird hochgeladen …",
+          "compressing": "Wird komprimiert …",
+          "optimised": "Optimiert · {before} → {after}",
+          "uploaded": "Hochgeladen",
+          "errors": {
+            "unsupported_type": "Diese Datei kann nicht verwendet werden. Bitte wähle ein JPEG-, PNG- oder WebP-Foto.",
+            "too_large": "Dieses Foto ist zu groß.",
+            "rate_limited": "Du hast heute schon viel hochgeladen. Bitte versuche es morgen wieder.",
+            "forbidden": "Du darfst keine Fotos hinzufügen.",
+            "generic": "Dieses Foto konnte nicht hochgeladen werden."
+          }
+        }
+      },
+      "describe": {
+        "title": "Beschreibe deine neuen Fotos",
+        "helper": "Eine kurze Beschreibung hilft allen, das Foto zu verstehen – auch Suchmaschinen.",
+        "previous": "Zurück",
+        "next": "Nächstes Foto",
+        "done": "Fertig"
+      },
+      "library": {
+        "title": "Deine Fotos",
+        "search": "Fotos suchen",
+        "searchPlaceholder": "Nach Name, Beschreibung oder Bildunterschrift suchen",
+        "tags": "Nach Schlagwort filtern",
+        "error": "Deine Fotos konnten nicht geladen werden. Bitte versuche es noch einmal.",
+        "noResults": "Keine passenden Fotos. Versuche andere Wörter oder Schlagwörter.",
+        "empty": "Noch keine Fotos. Tippe auf „Fotos hinzufügen“, um die ersten hinzuzufügen.",
+        "photoN": "Foto {n}",
+        "edit": "{name} bearbeiten",
+        "needsDescription": "Ohne Beschreibung",
+        "loading": "Deine Fotos werden geladen …",
+        "more": "Mehr anzeigen",
+        "tagSummary": "{count, plural, one {# Schlagwort} other {# Schlagwörter}}",
+        "clearAll": "Alle entfernen",
+        "usage": "{count, plural, =0 {Nicht verwendet} one {Einmal verwendet} other {# Mal verwendet}}"
+      },
+      "sheet": {
+        "title": "Foto bearbeiten",
+        "close": "Schließen"
+      },
+      "usedIn": {
+        "title": "Verwendet in",
+        "none": "Noch nicht auf deiner Website verwendet.",
+        "untitled": "Ohne Titel",
+        "kind": {
+          "gallery": "Galerie",
+          "page": "Seite",
+          "post": "Beitrag"
+        }
+      },
+      "picker": {
+        "title": "Deine Mediathek",
+        "close": "Schließen",
+        "search": "Fotos suchen",
+        "searchPlaceholder": "Nach Name, Beschreibung oder Bildunterschrift suchen",
+        "tags": "Nach Schlagwort filtern",
+        "error": "Deine Fotos konnten nicht geladen werden. Bitte versuche es noch einmal.",
+        "noResults": "Keine passenden Fotos. Versuche andere Wörter oder Schlagwörter.",
+        "allInGallery": "Alle diese Fotos sind schon in der Galerie.",
+        "empty": "Deine Mediathek ist noch leer.",
+        "photoN": "Foto {n}",
+        "pick": "{name} auswählen",
+        "loading": "Deine Fotos werden geladen …",
+        "more": "Mehr anzeigen",
+        "full": "Kein Platz für weitere Fotos.",
+        "selected": "{count, plural, =0 {Tippe auf Fotos, um sie auszuwählen} one {# Foto ausgewählt} other {# Fotos ausgewählt}}",
+        "add": "{count, plural, =0 {Fotos hinzufügen} one {# Foto hinzufügen} other {# Fotos hinzufügen}}"
+      },
+      "select": {
+        "start": "Auswählen",
+        "stop": "Auswahl beenden",
+        "hint": "Halte ein Foto gedrückt — oder tippe auf Auswählen —, um mehrere zu wählen.",
+        "count": "{count, plural, =0 {Fotos wählen} one {# ausgewählt} other {# ausgewählt}}",
+        "photo": "{name} auswählen",
+        "toolbar": "Ausgewählte Fotos",
+        "addTags": "Schlagwörter",
+        "rename": "Umbenennen",
+        "clear": "Leeren",
+        "limit": "Du kannst höchstens {max} Fotos auf einmal auswählen.",
+        "saved": "{count, plural, =0 {Nichts geändert} one {Bei # Foto gespeichert} other {Bei # Fotos gespeichert}}",
+        "skipped": "{count, plural, one {# Foto konnte nicht geändert werden} other {# Fotos konnten nicht geändert werden}}"
+      },
+      "size": {
+        "label": "Fotogröße",
+        "small": "Klein",
+        "medium": "Mittel",
+        "large": "Groß"
+      }
+    },
+    "photoWizard": {
+      "add": {
+        "choices": {
+          "label": "Fotos hinzufügen",
+          "camera": "Foto aufnehmen",
+          "computer": "Vom Computer hochladen",
+          "computerHint": "oder Fotos hierher ziehen",
+          "library": "Deine Mediathek",
+          "photoLibrary": "Fotomediathek"
+        },
+        "note": "Wir machen jedes Foto leichter fürs Web und bitten dich um eine kurze Beschreibung, damit alle es verstehen.",
+        "dropHere": "Fotos hier ablegen, um sie hinzuzufügen",
+        "count": "{count, plural, =0 {Noch keine Fotos} one {# Foto} other {# Fotos}}",
+        "reorderHint": "⋮⋮ ziehen, um die Reihenfolge zu ändern",
+        "photoN": "Foto {n}",
+        "describePhoto": "{name} beschreiben",
+        "missing": "Foto fehlt",
+        "needsDescription": "Ohne Beschreibung",
+        "dragHandle": "Ziehen, um {name} zu verschieben",
+        "dragRole": "verschiebbares Foto",
+        "removePhoto": "{name} entfernen",
+        "camera": {
+          "label": "Kamera",
+          "taken": "{count, plural, one {# Foto aufgenommen} other {# Fotos aufgenommen}}",
+          "another": "Noch eins",
+          "done": "Fertig"
+        }
+      },
+      "describe": {
+        "title": "Beschreibe Foto {n} von {total}",
+        "helper": "Eine kurze Beschreibung hilft Menschen, die das Foto nicht sehen können, und Suchmaschinen.",
+        "missing": "Dieses Foto ist nicht mehr in deiner Mediathek.",
+        "alt": {
+          "label": "Beschreibe dieses Foto",
+          "helper": "Ein kurzer Satz für Menschen, die das Bild nicht sehen können — zum Beispiel „Das Wartezimmer mit großem Fenster“.",
+          "placeholder": "Was zeigt das Foto?",
+          "count": "{count}/{max}",
+          "otherLanguages": "Weitere Sprachen (optional)",
+          "otherHelper": "Wenn du sie leer lässt, sehen Besucher die Beschreibung oben.",
+          "inLanguage": "Beschreibung auf {language}",
+          "neededToContinue": "Füge eine kurze Beschreibung hinzu, damit alle das Bild verstehen."
+        },
+        "altStatus": {
+          "saving": "Wird gespeichert…",
+          "saved": "Gespeichert",
+          "failed": "Nicht gespeichert — wir versuchen es beim Tippen erneut"
+        },
+        "errors": {
+          "conflict": "Dieses Foto wurde anderswo geändert. Lade neu, um die aktuelle Version zu sehen.",
+          "not_found": "Wir finden dieses Foto nicht mehr.",
+          "invalid_value": "Die Beschreibung konnte nicht gespeichert werden. Bitte prüfe den Text.",
+          "generic": "Speichern klappt gerade nicht. Dein Text bleibt erhalten — wir versuchen es erneut."
+        },
+        "focal": {
+          "title": "Fokuspunkt",
+          "helper": "Tippe oder ziehe auf den wichtigsten Teil des Fotos. Jeder Zuschnitt behält ihn im Blick.",
+          "label": "Fokuspunkt des Fotos",
+          "valueText": "{x} % von links, {y} % von oben",
+          "keys": "Mit den Pfeiltasten verschieben; Umschalt für größere Schritte.",
+          "previews": "So wird es zugeschnitten",
+          "preview": {
+            "wide": "Breit",
+            "card": "Karte",
+            "square": "Quadrat",
+            "tall": "Handy"
+          }
+        },
+        "helperLater": "Benennen, beschreiben, verschlagworten — oder später. Nichts hier ist Pflicht.",
+        "skip": "Später beschreiben",
+        "skipRest": "Die restlichen {count} später beschreiben"
+      },
+      "media": {
+        "addTitle": "Zur Mediathek hinzufügen",
+        "addHelper": "Lade Fotos einmal hoch und nutze sie überall auf deiner Website.",
+        "doneTitle": "Zur Mediathek hinzugefügt",
+        "doneBody": "{count, plural, one {# Foto ist} other {# Fotos sind}} bereit, überall auf deiner Website genutzt zu werden.",
+        "back": "Zurück zu den Medien"
+      }
+    },
+    "photoCard": {
+      "languages": "Sprache",
+      "languageMissing": "{language} — noch offen",
+      "source": "{language} (Hauptsprache)",
+      "sourceEmpty": "Noch nicht geschrieben",
+      "missing": "Dieses Foto ist nicht mehr in deiner Medienbibliothek.",
+      "count": "{count}/{max}",
+      "name": {
+        "label": "Name",
+        "helper": "Damit du das Foto wiederfindest.",
+        "helperShared": "Damit du das Foto wiederfindest. In allen Sprachen gleich.",
+        "placeholder": "Zum Beispiel „Wartezimmer“"
+      },
+      "alt": {
+        "label": "Beschreibung",
+        "helper": "Ein kurzer Satz für Menschen, die das Foto nicht sehen können, und für Suchmaschinen. Du kannst ihn auch später ergänzen.",
+        "placeholder": "Was zeigt das Foto?"
+      },
+      "caption": {
+        "label": "Bildunterschrift (optional)",
+        "helper": "Eine Zeile unter dem Foto, zum Beispiel wer oder wo."
+      },
+      "tags": {
+        "label": "Schlagwörter",
+        "helper": "Helfen dir, das Foto in deiner Medienbibliothek zu finden. In allen Sprachen gleich.",
+        "placeholder": "Schlagwort eingeben",
+        "add": "Hinzufügen",
+        "remove": "Schlagwort {tag} entfernen",
+        "suggested": "Schlagwörter, die du schon verwendest",
+        "full": "Höchstens {max} Schlagwörter"
+      },
+      "status": {
+        "saving": "Wird gespeichert…",
+        "saved": "Gespeichert",
+        "failed": "Nicht gespeichert — wir versuchen es erneut"
+      },
+      "errors": {
+        "conflict": "Dieses Foto wurde an anderer Stelle geändert. Schließe und öffne es erneut, um die neueste Version zu sehen.",
+        "not_found": "Wir finden dieses Foto nicht mehr.",
+        "invalid_value": "Etwas an diesem Foto konnte nicht gespeichert werden. Bitte prüfe die Texte.",
+        "generic": "Speichern klappt gerade nicht. Deine Änderungen bleiben erhalten — wir versuchen es erneut."
+      },
+      "focal": {
+        "title": "Fokuspunkt",
+        "helper": "Tippe oder ziehe auf den wichtigsten Teil des Fotos. Jeder Zuschnitt behält ihn im Bild.",
+        "keys": "Mit den Pfeiltasten verschieben; mit gedrückter Umschalttaste in größeren Schritten.",
+        "label": "Fokuspunkt des Fotos",
+        "valueText": "{x} % von links, {y} % von oben",
+        "previews": "So wird zugeschnitten",
+        "preview": {
+          "wide": "Breit",
+          "card": "Karte",
+          "square": "Quadrat",
+          "tall": "Handy"
+        }
+      }
+    },
+    "photoBatch": {
+      "allTitle": "Alle {count} Fotos benennen und verschlagworten",
+      "renameTitle": "{count, plural, one {# Foto} other {# Fotos}} umbenennen",
+      "tagsTitle": "Schlagwörter zu {count, plural, one {# Foto} other {# Fotos}} hinzufügen",
+      "allHelper": "Gib ihnen in einem Schritt einen Namen und dieselben Schlagwörter. Du kannst das überspringen und danach jedes Foto beschreiben.",
+      "helper": "Namen und Schlagwörter sind in allen Sprachen gleich.",
+      "baseName": {
+        "label": "Name",
+        "helper": "Jedes Foto bekommt diesen Namen und eine Nummer.",
+        "placeholder": "Zum Beispiel „Sommerfest“",
+        "preview": "Daraus wird „{first}“, „{second}“, …"
+      },
+      "tagsHelper": "Wird jedem Foto hinzugefügt, zusätzlich zu seinen Schlagwörtern.",
+      "capped": "Höchstens {max} Fotos auf einmal.",
+      "skip": "Überspringen",
+      "cancel": "Abbrechen",
+      "apply": "{count, plural, one {Auf # Foto anwenden} other {Auf alle # anwenden}}",
+      "saving": "Wird gespeichert…",
+      "errors": {
+        "conflict": "Einige dieser Fotos wurden an anderer Stelle geändert. Bitte versuche es erneut.",
+        "generic": "Speichern klappt gerade nicht. Bitte versuche es erneut."
+      }
+    },
+    "filterBar": {
+      "label": "Filter",
+      "search": "Suchen"
+    },
+    "ui": {
+      "dateRange": {
+        "anyDate": "Beliebiges Datum",
+        "dialog": "Zeitraum wählen",
+        "clear": "Zurücksetzen",
+        "apply": "Übernehmen",
+        "prevMonth": "Vorheriger Monat",
+        "nextMonth": "Nächster Monat",
+        "presets": "Schnellauswahl",
+        "last7": "Letzte 7 Tage",
+        "last30": "Letzte 30 Tage",
+        "thisYear": "Dieses Jahr",
+        "rangeStart": "Startdatum",
+        "rangeEnd": "Enddatum",
+        "selectEnd": "Wähle jetzt das Enddatum",
+        "today": "Heute",
+        "custom": "Eigener Zeitraum",
+        "clearRange": "Zeitraum entfernen",
+        "help": "Wähle Start- und Enddatum.",
+        "inline": {
+          "last7": "letzte 7 Tage",
+          "last30": "letzte 30 Tage",
+          "thisYear": "dieses Jahr"
+        }
+      },
+      "filterSheet": {
+        "filters": "Filter",
+        "filtersCount": "Filter · {count}",
+        "title": "Filter",
+        "clearAll": "Alle löschen",
+        "showResults": "{count, plural, one {# Ergebnis} other {# Ergebnisse}} anzeigen",
+        "close": "Filter schließen",
+        "dragHandle": "Zum Schließen nach unten ziehen",
+        "applied": "Aktive Filter",
+        "remove": "Filter entfernen: {label}"
+      }
     }
   },
   "editor": {

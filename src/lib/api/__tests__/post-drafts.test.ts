@@ -52,6 +52,12 @@ function fakeClient(doc: Record<string, unknown> | null = { _id: `drafts.${ID}`,
       // The single-Sanity-project write guard (sanity-project-guard.ts) asks for a count.
       q.startsWith('count(')
         ? 1
+        : q.includes('_type == "gallery"')
+          ? // Galleries of this project: 'g-live' is published, 'g-new' only exists as a draft.
+            {
+              published: p?.projectSlug === 'hoffmann' && p?.id === 'g-live' ? 'g-live' : null,
+              draft: p?.projectSlug === 'hoffmann' && p?.id === 'g-new' ? 'drafts.g-new' : null,
+            }
         : q.includes('"callToAction"')
           ? // Only this project's callToAction 'cta-call' exists.
             p?.id === 'cta-call' && p?.projectSlug === 'hoffmann'
@@ -179,6 +185,40 @@ describe('patchPostDraft', () => {
     const c = fakeClient()
     await expect(patch(set, c)).rejects.toMatchObject({ code: 'invalid_value' })
     expect(wrote(c)).toBe(0)
+  })
+
+  it("gallery: a published gallery of THIS project → strong ref; a new (draft-only) one → weak ref; null removes it", async () => {
+    const c = fakeClient()
+    await patch({ gallery: 'g-live' }, c)
+    expect(c.ops.find(([o]) => o === 'set')?.[1]).toMatchObject({ gallery: { _type: 'reference', _ref: 'g-live' } })
+    const lookup = c.client.fetch.mock.calls.find(([q]) => (q as string).includes('_type == "gallery"')) as unknown as [string, Record<string, unknown>, Record<string, unknown>]
+    expect(lookup[1]).toEqual({ id: 'g-live', draftId: 'drafts.g-live', projectSlug: 'hoffmann' })
+    expect(lookup[2]).toEqual({ perspective: 'raw' })
+    const c2 = fakeClient()
+    await patch({ gallery: 'g-new' }, c2)
+    expect(c2.ops.find(([o]) => o === 'set')?.[1]).toMatchObject({
+      gallery: { _type: 'reference', _ref: 'g-new', _weak: true, _strengthenOnPublish: { type: 'gallery' } },
+    })
+    const c3 = fakeClient()
+    await patch({ gallery: null }, c3)
+    expect(c3.ops.find(([o]) => o === 'unset')?.[1]).toEqual(['gallery'])
+  })
+
+  it.each([
+    ["another project's / unknown gallery", { gallery: 'g-other' }],
+    ['a draft id', { gallery: 'drafts.g-live' }],
+    ['a non-string', { gallery: { _ref: 'g-live' } }],
+  ])('gallery: refuses %s, nothing written', async (_l, set) => {
+    const c = fakeClient()
+    await expect(patch(set, c)).rejects.toMatchObject({ code: 'invalid_value' })
+    expect(wrote(c)).toBe(0)
+  })
+
+  it('gallery sub-fields and the layout are not editable here', async () => {
+    for (const set of [{ 'gallery._ref': 'g-live' }, { galleryLayout: 'grid' }]) {
+      const c = fakeClient()
+      await expect(patch(set, c)).rejects.toMatchObject({ code: 'invalid_field' })
+    }
   })
 
   it('call to action: other cta sub-fields (incl. the old key) are refused', async () => {
@@ -438,6 +478,7 @@ describe('getPostDraft', () => {
       mode: 'create',
       live: null,
       cta: null,
+      gallery: null,
     })
     expect(c.getDocument).toHaveBeenCalledWith(`drafts.${ID}`)
   })
@@ -460,6 +501,11 @@ describe('getPostDraft', () => {
       furthest: 'review',
       live: { rev: 'p3', publishedAt: '2025-11-22T18:01:44.181Z', expiresAt: null, slugs: { it: 'ciao' } },
     })
+  })
+
+  it('returns the chosen gallery id (weak draft refs included)', async () => {
+    const base = { _id: `drafts.${ID}`, _type: 'post', _rev: 'r', projectSlug: 'hoffmann' }
+    expect((await getPostDraft(ctx(grant()), 'project-a', ID, rdeps(readClient({ doc: { ...base, gallery: { _ref: 'g1', _weak: true } } })))).gallery).toBe('g1')
   })
 
   it('returns the call-to-action choice; an unknown stored mode reads as default', async () => {
@@ -516,8 +562,9 @@ describe('listPostDrafts', () => {
     const c = readClient({
       fetchResult: {
         defaultLocale: 'de',
+        liveIds: [ID, 'other'],
         drafts: [
-          { _id: `drafts.${ID}`, projectSlug: 'hoffmann', title: { _type: 'x', it: 'Ciao', de: 'Hallo' }, categories: ['cura'], step: 'title', furthest: 'publish', updatedAt: '2026-10-05T09:00:00Z' },
+          { _id: `drafts.${ID}`, _rev: 'dr1', projectSlug: 'hoffmann', title: { _type: 'x', it: 'Ciao', de: 'Hallo' }, categories: ['cura'], step: 'title', furthest: 'publish', updatedAt: '2026-10-05T09:00:00Z', featured: true, bodyLangs: [null, 'it', null], subtitle: { it: 'Sottotitolo' }, bodyText: { it: 'Corpo  del testo', en: null } },
           { _id: 'drafts.22222222-2222-4333-8444-555555555555', projectSlug: 'hoffmann', title: { it: '  ' }, step: 'weird', updatedAt: '2026-10-04T09:00:00Z' },
           { _id: 'drafts.33333333-2222-4333-8444-555555555555', projectSlug: 'livener', title: { it: 'Altro' }, step: 'title' },
           { _id: '44444444-2222-4333-8444-555555555555', projectSlug: 'hoffmann', title: { it: 'Pubblicato' }, step: 'title' },
@@ -526,9 +573,11 @@ describe('listPostDrafts', () => {
     })
     const rows = await listPostDrafts(ctx(grant()), 'project-a', rdeps(c))
     expect(rows).toEqual([
-      { id: ID, title: 'Hallo', step: 'title', furthest: 'publish', updatedAt: '2026-10-05T09:00:00Z', titles: { it: 'Ciao', de: 'Hallo' }, categoryKeys: ['cura'], coverThumb: null },
-      { id: '22222222-2222-4333-8444-555555555555', title: null, step: 'type', furthest: 'type', updatedAt: '2026-10-04T09:00:00Z', titles: { it: '  ' }, categoryKeys: [], coverThumb: null },
+      { id: ID, title: 'Hallo', step: 'title', furthest: 'publish', updatedAt: '2026-10-05T09:00:00Z', titles: { it: 'Ciao', de: 'Hallo' }, categoryKeys: ['cura'], coverThumb: null, rev: 'dr1', hasLive: true, featured: true, bodyLanguages: ['it'], coverCard: null, searchText: 'ciao \n hallo \n sottotitolo \n corpo del testo', subtitle: 'Sottotitolo' },
+      { id: '22222222-2222-4333-8444-555555555555', title: null, step: 'type', furthest: 'type', updatedAt: '2026-10-04T09:00:00Z', titles: { it: '  ' }, categoryKeys: [], coverThumb: null, rev: '', hasLive: false, featured: false, bodyLanguages: [], coverCard: null, searchText: '', subtitle: null },
     ])
+    // Search covers the body's plain text in every language (pt::text per language).
+    expect(c.fetch.mock.calls[0][0]).toContain('pt::text(body.it)')
     const [query, params, options] = c.fetch.mock.calls[0] as unknown as [string, Record<string, unknown>, Record<string, unknown>]
     expect(params).toEqual({ projectSlug: 'hoffmann' })
     expect(options).toEqual({ perspective: 'raw' })
@@ -565,6 +614,7 @@ describe('getPostEditorSite', () => {
         { value: 'senza-label', label: 'senza label' },
       ],
       origin: 'https://ch-psicoterapeuta.com',
+      galleries: [],
       ctas: [],
     })
     expect((c.fetch.mock.calls[0] as unknown as [string, Record<string, unknown>])[1]).toEqual({ projectSlug: 'hoffmann' })
@@ -586,6 +636,27 @@ describe('getPostEditorSite', () => {
       { id: 'cta-book', name: 'Book a first session', isDefault: true, heading: 'Prenota', buttonLabel: 'Scrivimi' },
       { id: 'cta-call', name: 'cta-call', isDefault: false, heading: null, buttonLabel: null },
     ])
+  })
+
+  it("lists this project's galleries once each (draft wins), raw perspective", async () => {
+    const c = readClient()
+    c.fetch.mockImplementation((async (q: string) =>
+      q.includes('_type == "gallery"')
+        ? [
+            { _id: 'drafts.g1', title: { it: 'Lo studio (bozza)' }, count: 4 },
+            { _id: 'g1', title: { it: 'Lo studio' }, count: 3 },
+            { _id: 'g2', internalName: 'Team', count: 0 },
+            { _id: 'versions.x.g3' },
+          ]
+        : { site: { defaultLocale: 'it', supportedLocales: ['it'] } }) as never)
+    const site = await getPostEditorSite(ctx(grant()), 'project-a', { locale: 'en' }, rdeps(c))
+    expect(site.galleries).toEqual([
+      { id: 'g1', title: 'Lo studio (bozza)', count: 4 },
+      { id: 'g2', title: 'Team', count: 0 },
+    ])
+    const call = c.fetch.mock.calls.find(([q]) => (q as string).includes('_type == "gallery"')) as unknown as [string, Record<string, unknown>, Record<string, unknown>]
+    expect(call[1]).toEqual({ projectSlug: 'hoffmann' })
+    expect(call[2]).toEqual({ perspective: 'raw' })
   })
 
   it('no domain → origin null', async () => {
@@ -652,5 +723,15 @@ describe('patchPostDraft / createPostDraft — isolation hardening', () => {
       )
       expect(counted?.[1]).toEqual({ projectSlug: 'hoffmann' })
     }
+  })
+})
+
+describe('createPostDraft — draft cap', () => {
+  it('refuses (too_large) once the project holds LIMITS.drafts drafts, before the guard or any write', async () => {
+    const c = fakeClient()
+    c.client.fetch.mockImplementation((async (q: string) =>
+      q.includes('_type == "post"') ? LIMITS.drafts : 1) as never)
+    await expect(createPostDraft(ctx(grant()), 'project-a', deps(c))).rejects.toMatchObject({ code: 'too_large' })
+    expect(wrote(c)).toBe(0)
   })
 })

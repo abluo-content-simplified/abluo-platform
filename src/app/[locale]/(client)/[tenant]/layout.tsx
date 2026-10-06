@@ -5,9 +5,11 @@ import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import {
   buildClientNavItems,
   dashboardHomeHref,
+  mediaNavItems,
   resolveProjectGrant,
 } from '@/lib/modules/client-navigation'
 import { ClientSidebar } from '@/components/client/ClientSidebar'
+import { AddContentRoot } from '@/components/client/create/AddContentRoot'
 import { buildCreateMenu } from '@/lib/modules/create-menu'
 
 /**
@@ -48,26 +50,32 @@ export default async function ClientProjectLayout({
     notFound()
   }
 
-  const navItems = buildClientNavItems(activeGrant)
+  const navItems = [...buildClientNavItems(activeGrant), ...mediaNavItems(activeGrant)]
   const projects = ctx.projects.map((grant) => ({ projectSlug: grant.projectSlug }))
   const theme = parseAppTheme((await cookies()).get(APP_THEME_COOKIE)?.value)
   const textSize = parseAppTextSize((await cookies()).get(APP_TEXT_SIZE_COOKIE)?.value)
 
   return (
-    <div className="min-h-screen md:flex">
-      <ClientSidebar
-        navItems={navItems}
-        projects={projects}
-        activeSlug={activeGrant.projectSlug}
-        theme={theme}
-        textSize={textSize}
-        homeHref={dashboardHomeHref(activeGrant.projectSlug)}
-        createMenu={buildCreateMenu(activeGrant)}
-        contactEmail={process.env.ABLUO_CONTACT_EMAIL || null}
-      />
-      <div className="min-h-screen min-w-0 flex-1 md:ml-56">
-        <main className="p-4 pb-28 md:p-6">{children}</main>
+    <AddContentRoot
+      projectSlug={activeGrant.projectSlug}
+      menu={buildCreateMenu(activeGrant)}
+      mediaLibrary={mediaNavItems(activeGrant).length > 0}
+      contactEmail={process.env.ABLUO_CONTACT_EMAIL || null}
+    >
+      <div className="min-h-screen md:flex">
+        <ClientSidebar
+          navItems={navItems}
+          projects={projects}
+          activeSlug={activeGrant.projectSlug}
+          theme={theme}
+          textSize={textSize}
+          homeHref={dashboardHomeHref(activeGrant.projectSlug)}
+        />
+        {/* #client-main: the main scroll container (the floating "+" listens to it and to the window). */}
+        <div id="client-main" className="min-h-screen min-w-0 flex-1 md:ml-56">
+          <main className="p-4 pb-28 md:p-6">{children}</main>
+        </div>
       </div>
-    </div>
+    </AddContentRoot>
   )
 }

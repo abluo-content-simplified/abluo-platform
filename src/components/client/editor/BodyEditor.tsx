@@ -190,7 +190,7 @@ export function PreservedChip({ value, inline = false }: { value: BodyObject; in
   return (
     <div
       contentEditable={false}
-      className="my-3 flex min-h-11 items-center gap-3 rounded-xl border border-border-subtle bg-muted p-2 pr-3 text-[15px] select-none"
+      className="my-3 flex min-h-11 items-center gap-3 rounded-xl border border-border-subtle bg-muted p-2 pr-3 text-[0.9375rem] select-none"
     >
       {thumb ? (
         // eslint-disable-next-line @next/next/no-img-element -- tiny CDN thumbnail
@@ -242,7 +242,7 @@ function ToolButton({
       // Keep focus (and the phone keyboard) in the text while tapping a tool.
       onMouseDown={(e) => e.preventDefault()}
       onClick={onPress}
-      className={`grid h-11 min-w-11 place-items-center rounded-md px-2 text-[15px] font-semibold transition-colors disabled:opacity-40 ${
+      className={`grid h-11 min-w-11 place-items-center rounded-md px-2 text-[0.9375rem] font-semibold transition-colors disabled:opacity-40 ${
         active ? 'bg-secondary text-foreground' : 'text-muted-foreground enabled:hover:bg-hover enabled:hover:text-foreground'
       }`}
     >
@@ -282,7 +282,7 @@ function PageIcon({ size = 16 }: { size?: number }) {
 }
 
 const optionClass =
-  'flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[15px] text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
+  'flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[0.9375rem] text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
 
 function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTools; onClose: () => void }) {
   const t = useTranslations('editor.body.linkSheet')
@@ -392,7 +392,7 @@ function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTo
         setMode(m)
         setInvalid(null)
       }}
-      className={`min-h-11 flex-1 rounded-md px-3 text-[15px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
+      className={`min-h-11 flex-1 rounded-md px-3 text-[0.9375rem] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
         mode === m ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
       }`}
     >
@@ -445,7 +445,7 @@ function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTo
               setValue(e.target.value)
               setInvalid(null)
             }}
-            className="min-h-11 w-full rounded-lg border border-border bg-background px-3 text-[17px] text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-invalid:border-destructive"
+            className="min-h-11 w-full rounded-lg border border-border bg-background px-3 text-[1.0625rem] text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-invalid:border-destructive"
           />
           <p id={`${id}-help`} className={`text-sm ${invalid ? 'text-destructive' : 'text-muted-foreground'}`}>
             {invalid ?? t('help')}
@@ -457,7 +457,7 @@ function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTo
             <PageIcon size={18} />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[15px] font-medium text-foreground">{page.title || t('pageFallback')}</span>
+            <span className="block truncate text-[0.9375rem] font-medium text-foreground">{page.title || t('pageFallback')}</span>
             {page.path !== '' || page.title ? (
               <span className="block truncate text-sm text-muted-foreground">/{page.path}</span>
             ) : null}
@@ -468,7 +468,7 @@ function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTo
               setPage(null)
               setInvalid(null)
             }}
-            className="min-h-11 rounded-lg px-3 text-[15px] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            className="min-h-11 rounded-lg px-3 text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             {t('change')}
           </button>
@@ -487,7 +487,7 @@ function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTo
             placeholder={t('searchPlaceholder')}
             aria-describedby={`${id}-search-status`}
             onChange={(e) => setQuery(e.target.value)}
-            className="min-h-11 w-full rounded-lg border border-border bg-background px-3 text-[17px] text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            className="min-h-11 w-full rounded-lg border border-border bg-background px-3 text-[1.0625rem] text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           />
           <p id={`${id}-search-status`} role="status" className={`text-sm ${invalid || searchState === 'failed' ? 'text-destructive' : 'text-muted-foreground'}`}>
             {invalid ??
@@ -530,7 +530,7 @@ function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTo
 
       <div className="flex min-h-11 items-center gap-3">
         <span className="min-w-0 flex-1">
-          <span id={`${id}-tab`} className="block text-[15px] text-foreground">
+          <span id={`${id}-tab`} className="block text-[0.9375rem] text-foreground">
             {t('newTab')}
           </span>
           <span className="block text-sm text-muted-foreground">{newTabChoice === undefined ? t('newTabAuto') : t('newTabManual')}</span>
@@ -554,7 +554,7 @@ function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTo
           <button
             type="button"
             onClick={remove}
-            className="mr-auto min-h-11 rounded-lg px-3 text-[15px] font-medium text-destructive hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            className="mr-auto min-h-11 rounded-lg px-3 text-[0.9375rem] font-medium text-destructive hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             {t('remove')}
           </button>
@@ -562,13 +562,13 @@ function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTo
         <button
           type="button"
           onClick={cancel}
-          className="min-h-11 rounded-lg px-3 text-[15px] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          className="min-h-11 rounded-lg px-3 text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
           {t('cancel')}
         </button>
         <button
           type="submit"
-          className="min-h-11 rounded-lg bg-action px-4 text-[15px] font-medium text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+          className="min-h-11 rounded-lg bg-action px-4 text-[0.9375rem] font-medium text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           {t('save')}
         </button>
@@ -675,7 +675,7 @@ export function BodyEditor({
       <div className="flex min-h-0 flex-1 flex-col">
         <PortableTextEditable
           aria-label={t('label')}
-          className="abluo-body-editor min-h-[40vh] flex-1 text-[17px] leading-7 text-foreground outline-none"
+          className="abluo-body-editor min-h-[40vh] flex-1 text-[1.0625rem] leading-7 text-foreground outline-none"
           renderStyle={renderStyle}
           renderDecorator={renderDecorator}
           renderAnnotation={renderAnnotation}

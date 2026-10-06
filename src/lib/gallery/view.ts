@@ -53,10 +53,10 @@ export function toViewItem(item: GalleryItem): GalleryViewItem {
     srcSet: image ? imageSrcSet(image, [400, 800, 1200, 1600]) : undefined,
     fullSrc: image ? imageUrl(image, 1600) : undefined,
     fullSrcSet: image ? imageSrcSet(image, [800, 1200, 1600, 2400]) : undefined,
-    // Alt text is the Media Library's job (media-library-first rule). The title
-    // is a fallback so a photo without alt still says something; empty alt is
-    // the last resort and marks the image as decorative.
-    alt: asset?.altText || title || '',
+    // Alt text is the Media Library's job (media-library-first rule). Photos
+    // may be described later (Tom, wave B): until then the photo's NAME is the
+    // fallback; with no name the alt is empty (decorative).
+    alt: asset?.altText || asset?.name?.trim() || '',
     title,
     caption,
     objectPosition: focalObjectPosition(image),

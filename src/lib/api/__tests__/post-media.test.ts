@@ -170,6 +170,7 @@ describe('uploadPostImage', () => {
       optimized: true,
       bytesBefore: JPEG.length,
       bytesAfter: 5,
+      name: 'Foto mare',
     })
     expect(f.optimize).toHaveBeenCalledWith(expect.any(Buffer), 'image/jpeg')
     expect(f.client.assets.upload).toHaveBeenCalledWith('image', Buffer.from('small'), {
@@ -182,7 +183,7 @@ describe('uploadPostImage', () => {
       tenant: { _type: 'reference', _ref: 'client-a' },
       project: { _type: 'reference', _ref: 'sanity-project-a' },
       projectSlug: 'hoffmann',
-      name: 'Foto mare.jpg',
+      name: 'Foto mare',
       tags: ['blog'],
       uploadedBy: 'u1',
     })
@@ -309,6 +310,11 @@ describe('listProjectMedia', () => {
       height: 10,
       alt: { it: 'La città di Varese', de: 'Die Praxis' },
       focal: { x: 0.2, y: 0.7 },
+      rev: '',
+      name: 'Studio',
+      title: {},
+      caption: {},
+      tags: ['studio', 'esterni'],
     })
     expect(r.items[1].focal).toBeNull()
     expect(r.items[1].alt).toEqual({ en: 'legacy text' })

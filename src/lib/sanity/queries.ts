@@ -29,6 +29,8 @@
  * - Components receive plain strings — unaware of localization internals.
  */
 
+import { localePlainTexts, presentLocales } from '@/lib/sanity/groq-locales'
+
 // The trailing `select(...)` is the legacy escape hatch: some older documents
 // store a plain string where the schema now declares a localizedString. A plain
 // string has no `_type` attribute, so it falls through and is returned as-is.
@@ -336,6 +338,7 @@ const GALLERY_FIELDS = /* groq */ `
               "url": asset->url
             },
             videoUrl,
+            name,
             "altText": ${loc('altText')},
             "title": ${loc('title')},
             "caption": ${loc('caption')},
@@ -989,13 +992,23 @@ export const dashboardPostsQuery = /* groq */ `
     _id,
     "title": ${loc('title')},
     "slug": coalesce(slug[$locale].current, slug[$defaultLocale].current),
+    "slugDefault": slug[$defaultLocale].current,
     "subtitle": ${loc('subtitle')},
     // Raw localized title, so the dashboard can show which languages exist.
     "titleLocales": title,
+    // Raw localized subtitle and the body's plain text per language (search).
+    "subtitleLocales": subtitle,
+    "bodyText": ${localePlainTexts('body')},
     "categoryKeys": categories,
     publishedAt,
     expiresAt,
+    "rev": _rev,
+    "coverUrl": coverImage.asset->url,
+    "coverHotspot": coverImage.hotspot,
     "createdAt": _createdAt,
+    "featured": featured == true,
+    // Languages whose body has content (with the title: a complete translation).
+    "bodyLangs": ${presentLocales('body')},
     "status": select(
       !defined(publishedAt) => "draft",
       publishedAt > now() => "scheduled",
@@ -1851,6 +1864,28 @@ export const pageBySlugQuery = /* groq */ `
     ${PAGE_SEO_PROJECTION},
     ${PAGE_SECTIONS_PROJECTION}
   }
+`
+
+// ─── Gallery draft preview (client dashboard · galleries) ─────────────────────
+// The page a gallery is shown on, by id, exactly as the live page projects it
+// (published perspective via fetchForTenant). The preview route then swaps the
+// gallery for its draft (src/lib/preview/gallery-substitute.ts).
+export const galleryPreviewPageQuery = /* groq */ `
+  *[_type == "page" && projectSlug == $projectSlug && _id == $pageId][0] {
+    _id,
+    pageType,
+    "title": ${loc('title')},
+    "slugMap": slug,
+    backgroundPattern,
+    ${PAGE_SECTIONS_PROJECTION}
+  }
+`
+
+// One gallery document by exact id (the draft `drafts.<id>` or the published
+// one), with the same projection a Photo Gallery section uses. Run with
+// perspective "raw" by the preview route only.
+export const galleryDocPreviewQuery = /* groq */ `
+  *[_type == "gallery" && projectSlug == $projectSlug && _id == $docId][0] { ${GALLERY_FIELDS} }
 `
 
 // Used for 301 redirects: find the page that has $slug in its redirectFrom[$locale] array.

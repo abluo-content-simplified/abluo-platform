@@ -32,7 +32,14 @@ const block = (text: string) => [{ _type: 'block', _key: 'b', children: [{ _type
 describe('wizard step order', () => {
   it('full flow: categories + several languages', () => {
     expect(wizardSteps({ categories: cats, languages: ['it', 'de'] })).toEqual([
-      'category', 'title', 'story', 'cover', 'languages', 'preview', 'publish', 'done',
+      'category', 'title', 'story', 'cover', 'languages', 'cta', 'preview', 'publish', 'done',
+    ])
+  })
+  it('call to action on every blog; gallery only with the Gallery module', () => {
+    expect(wizardSteps({ categories: [], languages: ['it'] })).toContain('cta')
+    expect(wizardSteps({ categories: [], languages: ['it'] })).not.toContain('gallery')
+    expect(wizardSteps({ categories: [], languages: ['it'], galleries: [] })).toEqual([
+      'title', 'story', 'cover', 'cta', 'gallery', 'preview', 'publish', 'done',
     ])
   })
   it('skips category when the site has none', () => {
@@ -42,7 +49,7 @@ describe('wizard step order', () => {
     expect(wizardSteps({ categories: cats, languages: ['en'] })).not.toContain('languages')
   })
   it('progress has no segment for the done screen', () => {
-    expect(progressSteps(wizardSteps({ categories: [], languages: ['en'] }))).toEqual(['title', 'story', 'cover', 'preview', 'publish'])
+    expect(progressSteps(wizardSteps({ categories: [], languages: ['en'] }))).toEqual(['title', 'story', 'cover', 'cta', 'preview', 'publish'])
   })
 })
 
@@ -52,7 +59,8 @@ describe('resume', () => {
   it('"type" (just created) starts at the first step', () => expect(resumeStep('type', single)).toBe('title'))
   it('a stored step this site skips moves to the next one', () => {
     expect(resumeStep('category', single)).toBe('title')
-    expect(resumeStep('languages', single)).toBe('preview')
+    expect(resumeStep('languages', single)).toBe('cta')
+    expect(resumeStep('gallery', single)).toBe('preview')
   })
   it('done / promote resume at publish', () => {
     expect(resumeStep('done', single)).toBe('publish')
@@ -109,6 +117,7 @@ describe('overview / furthest / resume (round 2)', () => {
       { id: 'title', state: 'done' },
       { id: 'story', state: 'done' },
       { id: 'cover', state: 'optional' },
+      { id: 'cta', state: 'optional' },
     ])
     expect(
       overviewSections({ title: {}, body: {}, categories: ['a'], cover: { alt: {} } }, { categories: cats, languages: ['it', 'de'], defaultLocale: 'it' })
@@ -118,6 +127,7 @@ describe('overview / furthest / resume (round 2)', () => {
       { id: 'story', state: 'missing' },
       { id: 'cover', state: 'missing' },
       { id: 'languages', state: 'optional' },
+      { id: 'cta', state: 'optional' },
     ])
   })
   it('publishing needs title + text in the main language', () => {
@@ -178,8 +188,8 @@ describe('publish language summary per mode (B)', () => {
 describe('call to action in the overview', () => {
   const ctas = [{ id: 'cta-book', isDefault: true }, { id: 'cta-call', isDefault: false }]
   const draft = { title: { it: 'T' }, body: { it: block('x') } }
-  it('the CTA card appears only when the site has prepared CTAs', () => {
-    expect(overviewSections(draft, { categories: [], languages: ['it'], defaultLocale: 'it' }).map((s) => s.id)).not.toContain('cta')
+  it('the CTA card is always there; optional until a prepared CTA is shown', () => {
+    expect(overviewSections(draft, { categories: [], languages: ['it'], defaultLocale: 'it' }).at(-1)).toEqual({ id: 'cta', state: 'optional' })
     expect(overviewSections(draft, { categories: [], languages: ['it'], defaultLocale: 'it', ctas }).at(-1)).toEqual({ id: 'cta', state: 'done' })
     expect(overviewSections({ ...draft, cta: { mode: 'none' } }, { categories: [], languages: ['it'], defaultLocale: 'it', ctas }).at(-1)).toEqual({
       id: 'cta',
@@ -192,5 +202,19 @@ describe('call to action in the overview', () => {
     expect(ctaChoiceShown({ mode: 'custom', ref: 'cta-call' }, ctas)).toBe(true)
     expect(ctaChoiceShown({ mode: 'custom', ref: 'gone' }, ctas)).toBe(false)
     expect(ctaChoiceShown({ mode: 'none' }, ctas)).toBe(false)
+  })
+})
+
+describe('gallery in the overview', () => {
+  const draft = { title: { it: 'T' }, body: { it: block('x') } }
+  it('only with the Gallery module; done when an existing gallery is chosen', () => {
+    expect(overviewSections(draft, { categories: [], languages: ['it'], defaultLocale: 'it' }).map((s) => s.id)).not.toContain('gallery')
+    expect(overviewSections(draft, { categories: [], languages: ['it'], defaultLocale: 'it', galleries: [{ id: 'g1' }] }).at(-1)).toEqual({ id: 'gallery', state: 'optional' })
+    expect(
+      overviewSections({ ...draft, gallery: 'g1' }, { categories: [], languages: ['it'], defaultLocale: 'it', galleries: [{ id: 'g1' }] }).at(-1)
+    ).toEqual({ id: 'gallery', state: 'done' })
+    expect(
+      overviewSections({ ...draft, gallery: 'gone' }, { categories: [], languages: ['it'], defaultLocale: 'it', galleries: [{ id: 'g1' }] }).at(-1)
+    ).toEqual({ id: 'gallery', state: 'optional' })
   })
 })

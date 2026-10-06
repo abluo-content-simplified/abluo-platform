@@ -116,10 +116,10 @@ export function StoryStep({ draft, site, locale, update, onImprove }: StoryStepP
 
   return (
     <section aria-labelledby="story-step-title" className="flex min-h-0 flex-1 flex-col">
-      <h1 id="story-step-title" className="text-[30px] leading-9 font-semibold tracking-tight text-foreground">
+      <h1 id="story-step-title" className="text-[1.875rem] leading-9 font-semibold tracking-tight text-foreground">
         {t('title')}
       </h1>
-      <p className="mt-3 text-[17px] leading-7 text-muted-foreground">{t('helper')}</p>
+      <p className="mt-3 text-[1.0625rem] leading-7 text-muted-foreground">{t('helper')}</p>
 
       <div className="mt-8 flex min-h-0 flex-1 flex-col">
         <BodyEditor
@@ -225,7 +225,7 @@ function Action({
       disabled={disabled}
       aria-busy={busy || undefined}
       aria-describedby={describedBy}
-      className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-[15px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
+      className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-[0.9375rem] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
         primary
           ? 'border-transparent bg-accent text-accent-foreground enabled:hover:bg-hover'
           : 'border-border bg-background text-foreground enabled:hover:bg-hover'

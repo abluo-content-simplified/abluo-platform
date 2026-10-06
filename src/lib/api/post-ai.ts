@@ -27,7 +27,7 @@ import { getAiProvider } from '@/lib/ai/registry'
 import { isAiFeatureEnabled } from '@/lib/ai/features'
 import { AiError, type AiProvider } from '@/lib/ai/types'
 import { loadSiteAiContext, type SiteAiContext } from '@/lib/ai/tone'
-import { buildImproveSystemPrompt, buildImproveUserPrompt } from '@/lib/ai/prompts'
+import { buildImproveLineSystemPrompt, buildImproveLineUserPrompt, buildImproveSystemPrompt, buildImproveUserPrompt } from '@/lib/ai/prompts'
 import {
   blocksPlainTextLength,
   blocksToMarkdown,
@@ -139,4 +139,66 @@ export async function improvePostBody(
     log(`[post-ai] improve output unusable: ${err instanceof Error ? err.message : 'unknown'}`)
     throw new PostAiError('ai_unavailable', 'The assistant returned something we could not use.')
   }
+}
+
+// ── Title / subtitle ─────────────────────────────────────────────────────────
+
+/** Matches the wizard's TITLE_MAX / SUBTITLE_MAX (post-drafts accepts these). */
+export const LINE_LIMITS = { title: 200, subtitle: 300 } as const
+
+/** The model's reply as one clean line: first line, no wrapping quotes or markup. */
+export function cleanLine(text: string, max: number): string {
+  const first = text.replace(/\r/g, '').split('\n').map((l) => l.trim()).find(Boolean) ?? ''
+  const unquoted = first.replace(/^["'“”«»„‚‘’`*#\s]+|["'“”«»„‚‘’`*\s]+$/g, '').replace(/\s+/g, ' ').trim()
+  return unquoted.slice(0, max)
+}
+
+/**
+ * "Improve title" / "Improve subtitle" (Title step). Same enforcement as
+ * `improvePostBody`: blog.post.write on the grant, AI_FEATURES 'improve', the
+ * locale must be the site's, size limits — all before the provider is called.
+ * Returns a suggestion only; nothing is written.
+ */
+export async function improvePostLine(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: { locale: string; field: 'title' | 'subtitle'; text: string; title?: string },
+  deps: PostAiDeps = {}
+): Promise<{ text: string }> {
+  assertModuleAction(ctx, projectId, BLOG_POST_WRITE_PERMISSION)
+  const grant = ctx.projects.find((p) => p.projectId === projectId)!
+  if (!isAiFeatureEnabled('improve', deps.env)) {
+    throw new PostAiError('ai_unavailable', 'Improve is not enabled yet.')
+  }
+  if (input?.field !== 'title' && input?.field !== 'subtitle') throw new PostAiError('invalid_value', 'Unknown field.')
+  if (typeof input.locale !== 'string' || !input.locale) throw new PostAiError('invalid_value', 'Missing language.')
+  const max = LINE_LIMITS[input.field]
+  if (typeof input.text !== 'string' || !input.text.trim()) throw new PostAiError('invalid_value', 'Nothing to improve yet.')
+  if (input.text.length > max) throw new PostAiError('too_large', 'This text is too long.')
+  const title = typeof input.title === 'string' ? input.title.slice(0, LINE_LIMITS.title) : undefined
+
+  const site = await (deps.loadSite ?? loadSiteAiContext)(grant.projectSlug)
+  if (!site.locales.includes(input.locale)) throw new PostAiError('invalid_value', 'Unknown language for this site.')
+
+  const log = deps.logError ?? ((m: string) => console.error(m))
+  let text: string
+  try {
+    const provider = deps.provider ?? getAiProvider()
+    if (!provider.isConfigured()) throw new AiError('not_configured', `${provider.id}: missing credentials`)
+    const result = await provider.generate({
+      system: buildImproveLineSystemPrompt({ locale: input.locale, tone: site.tone, field: input.field, maxChars: max }),
+      prompt: buildImproveLineUserPrompt({ field: input.field, text: input.text.trim(), title }),
+      maxTokens: 400,
+    })
+    text = result.text
+  } catch (err) {
+    log(`[post-ai] improve ${input.field} failed: ${err instanceof AiError ? err.message : err instanceof Error ? err.name : 'unknown'}`)
+    throw new PostAiError('ai_unavailable', 'The assistant is not available right now.')
+  }
+  const line = cleanLine(text, max)
+  if (!line) {
+    log(`[post-ai] improve ${input.field} output unusable`)
+    throw new PostAiError('ai_unavailable', 'The assistant returned something we could not use.')
+  }
+  return { text: line }
 }

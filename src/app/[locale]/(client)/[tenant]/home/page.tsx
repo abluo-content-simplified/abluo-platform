@@ -6,24 +6,32 @@ import { MODULE_DASHBOARD_ROUTES, resolveProjectGrant } from '@/lib/modules/clie
 import {
   getDashboardPostList,
   getDashboardSubmissions,
+  getProjectSiteDomain,
   type DashboardPost,
   type DashboardSubmission,
 } from '@/lib/api/client-dashboard'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { listPostDrafts, type PostDraftSummary } from '@/lib/api/post-drafts'
-import { firstPassDone, laterStep } from '@/lib/client/wizard-steps'
+import { GALLERY_READ_PERMISSION, GALLERY_WRITE_PERMISSION, listGalleries, type GalleryListItem } from '@/lib/api/gallery-drafts'
+import { getViewerFirstName } from '@/lib/api/viewer-profile'
+import { draftProgress, requestCounts, timeAgo } from '@/lib/client/home-cards'
+import { Greeting } from '@/components/client/home/Greeting'
+import { ContinueEditing, type DraftCard } from '@/components/client/home/ContinueEditing'
+import { LatestList, type LatestItem } from '@/components/client/home/LatestList'
+import { getGalleryStatuses, type GalleryStatus } from '@/lib/api/gallery-status'
 
 /**
- * Client dashboard home (S1, ADR-025 · spec "Dashboard home").
+ * Client dashboard home (canvas "Main", ADR-025 · spec "Dashboard home").
  *
- * One calm screen per project: continue an unfinished draft, see the latest
- * posts with their status, and see new contact requests. Every section comes
- * from a module the project actually has; a module that is not installed (or a
+ * One calm screen per project: a greeting, "View your site", continue an
+ * unfinished draft (posts and galleries, each with a ⋯ menu), the latest
+ * posts with their status, and new contact requests. Every section comes from
+ * a module the project actually has; a module that is not installed (or a
  * permission the user lacks) simply leaves its section out — never an error.
  *
  * Reads go through the same enforced data layer as the list pages
  * (`assertModuleAction` → tenant-scoped client), so this page adds no new
- * access path. "View your site" waits for domain resolution (S1b).
+ * access path; the menu's actions are the existing lifecycle server actions.
  */
 
 async function settle<T>(read: () => Promise<T>): Promise<T | null> {
@@ -35,17 +43,10 @@ async function settle<T>(read: () => Promise<T>): Promise<T | null> {
   }
 }
 
-/** Where "Continue" lands ("Next: Story", or the overview once the first pass is over). */
-function stepKey(draft: Pick<PostDraftSummary, 'step' | 'furthest'>): string {
-  const at = laterStep(draft.step, draft.furthest)
-  if (firstPassDone(at)) return 'review'
-  if (at === 'type') return 'title'
-  return at
-}
-
-function formatDay(iso: string, locale: string): string {
-  const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(locale, { day: 'numeric', month: 'short' })
+/** The step a draft was on ("type" = just created → the title). */
+function stepKey(step: PostDraftSummary['step']): string {
+  if (step === 'type') return 'title'
+  return step === 'done' || step === 'promote' ? 'review' : step
 }
 
 export default async function DashboardHomePage({ params }: { params: Promise<{ tenant: string }> }) {
@@ -59,131 +60,158 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
 
   const locale = await getLocale()
   const t = await getTranslations('clientDashboard')
+  const ts = await getTranslations('clientDashboard.gallery.status')
   const enabled = new Set(grant.enabledModuleIds)
   const canEdit = grant.permissions.includes('blog.post.write')
 
-  const [postList, wizardDrafts, submissions] = await Promise.all([
+  const canReadGalleries = enabled.has('gallery') && grant.permissions.includes(GALLERY_READ_PERMISSION)
+  const [firstName, domain, postList, wizardDrafts, galleryList, submissions] = await Promise.all([
+    getViewerFirstName(ctx),
+    settle(() => getProjectSiteDomain(ctx, grant.projectId)).catch(() => null),
     enabled.has('blog') ? settle(() => getDashboardPostList(ctx, grant.projectId, { locale })) : null,
     enabled.has('blog') ? settle<PostDraftSummary[]>(() => listPostDrafts(ctx, grant.projectId)) : null,
+    // Galleries with unpublished changes also wait under "Continue editing".
+    canReadGalleries
+      ? settle<GalleryListItem[]>(() => listGalleries(ctx, grant.projectId))
+      : null,
     enabled.has('forms')
       ? settle<DashboardSubmission[]>(() => getDashboardSubmissions(ctx, grant.projectId, { limit: 200 }))
       : null,
   ])
 
-  // Continue editing = unfinished wizard drafts (ADR-025 D3), each reopening at its step.
-  const drafts = (wizardDrafts ?? []).slice(0, 3)
   const posts: DashboardPost[] | null = postList ? postList.posts : null
   const categoryLabel = new Map((postList?.categories ?? []).map((c) => [c.value, c.label]))
-  const recent = (posts ?? []).filter((p) => p.status === 'published').slice(0, 3)
-  const newRequests = (submissions ?? []).filter((s) => s.status === 'new').length
+  const postCards: DraftCard[] = (wizardDrafts ?? []).slice(0, 3).map((d) => {
+    const ago = timeAgo(d.updatedAt, locale)
+    return {
+      kind: 'post',
+      id: d.id,
+      rev: d.rev,
+      title: d.title ?? t('posts.untitledDraft'),
+      thumb: d.coverThumb,
+      topics: d.categoryKeys.length ? d.categoryKeys.map((k) => categoryLabel.get(k) ?? k.replace(/-/g, ' ')).join(' · ') : null,
+      meta: d.hasLive
+        ? t('home.meta.liveChanges', { ago })
+        : t('home.meta.draft', { step: t(`create.stepNames.${stepKey(d.step)}`), ago }),
+      progress: d.hasLive ? 1 : draftProgress(d.step),
+      href: `/${projectSlug}/posts/write/${d.id}`,
+      hasLive: d.hasLive,
+      canDelete: true,
+      previewLocale: Object.keys(d.titles).find((l) => d.titles[l]?.trim()) ?? '',
+    }
+  })
+  const galleryCards: DraftCard[] = (galleryList ?? [])
+    .filter((g) => g.hasDraft && grant.permissions.includes(GALLERY_WRITE_PERMISSION))
+    .slice(0, 3)
+    .map((g) => ({
+      kind: 'gallery',
+      id: g.id,
+      rev: '',
+      title: g.title || g.internalName || t('gallery.list.untitled'),
+      thumb: g.coverThumb,
+      topics: null,
+      meta: g.isPublished
+        ? t('home.meta.galleryChanges', { count: g.count })
+        : t('home.meta.galleryDraft', { count: g.count }),
+      // Galleries don't keep a wizard position: photos added = halfway.
+      progress: g.isPublished ? 1 : g.count > 0 ? 0.5 : 0.25,
+      href: `/${projectSlug}/galleries/${g.id}`,
+      hasLive: g.isPublished,
+      canDelete: grant.role === 'owner',
+      previewLocale: '',
+    }))
+  const cards = [...postCards, ...galleryCards]
+
+  const latestPosts: LatestItem[] = (posts ?? [])
+    .filter((p): p is DashboardPost & { status: 'published' | 'scheduled' } => p.status === 'published' || p.status === 'scheduled')
+    .slice(0, 3)
+    .map((p) => ({
+      id: p._id,
+      title: p.title ?? t('posts.untitled'),
+      thumb: (p as { coverThumb?: string | null }).coverThumb ?? null,
+      status: p.status,
+      publishedAt: p.publishedAt ?? null,
+      href: canEdit ? `/${projectSlug}/posts/write/${p._id}` : null,
+    }))
+  const liveGalleries = (galleryList ?? []).filter((g) => g.isPublished).slice(0, 3)
+  const galleryStatuses: Record<string, GalleryStatus> = liveGalleries.length
+    ? await getGalleryStatuses(ctx, grant.projectId, liveGalleries.map((g) => g.id)).catch((): Record<string, GalleryStatus> => ({}))
+    : {}
+  const latestGalleries: LatestItem[] = liveGalleries.map((g) => {
+    const u = galleryStatuses[g.id]?.usedOn
+    const places = u
+      ? [
+          ...u.pages.map((pg) => (pg.published ? pg.title || ts('untitledPage') : ts('draftPage', { title: pg.title || ts('untitledPage') }))),
+          ...(u.posts.published > 0 ? [ts('posts', { count: u.posts.published })] : []),
+          ...(u.posts.draft > 0 ? [ts('draftPosts', { count: u.posts.draft })] : []),
+        ]
+      : []
+    return {
+      id: g.id,
+      title: g.title || g.internalName || t('gallery.list.untitled'),
+      thumb: g.coverThumb,
+      line: places.length ? ts('shownOn', { places: places.join(' · ') }) : ts('notUsed'),
+      href: grant.permissions.includes(GALLERY_WRITE_PERMISSION) ? `/${projectSlug}/galleries/${g.id}` : null,
+    }
+  })
+  const requests = submissions ? requestCounts(submissions) : null
   const postsHref = `/${projectSlug}/${MODULE_DASHBOARD_ROUTES.blog}`
   const leadsHref = `/${projectSlug}/${MODULE_DASHBOARD_ROUTES.forms}`
-  const nothingYet = posts !== null && posts.length === 0 && drafts.length === 0
+  const galleriesHref = `/${projectSlug}/${MODULE_DASHBOARD_ROUTES.gallery}`
+  const nothingYet = posts !== null && posts.length === 0 && cards.length === 0
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-8 pb-28 md:pb-8">
-      <h1 className="text-2xl font-semibold leading-[30px] tracking-tight">{t('home.title')}</h1>
+    <div className="mx-auto flex max-w-2xl flex-col gap-7 pb-28 md:px-4 md:pb-8">
+      <Greeting firstName={firstName} />
+
+      {domain ? (
+        <a
+          href={`https://${domain}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex min-h-11 items-start gap-3 rounded-xl border border-border bg-card px-4 py-3.5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
+          <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-[0.625rem] bg-accent text-accent-foreground">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" />
+            </svg>
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[0.9375rem] font-semibold">{t('home.viewSite')}</span>
+            <span className="block truncate text-sm text-muted-foreground">{domain}</span>
+          </span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="mt-1 shrink-0 text-muted-foreground">
+            <path d="M7 17 17 7M8 7h9v9" />
+          </svg>
+          <span className="sr-only">{t('home.opensNewTab')}</span>
+        </a>
+      ) : null}
 
       {nothingYet && (
         <section className="flex flex-col gap-2 rounded-xl border border-border bg-card p-5">
-          <h2 className="text-[17px] font-semibold">{t('home.emptyTitle')}</h2>
+          <h2 className="text-[1.0625rem] font-semibold">{t('home.emptyTitle')}</h2>
           <p className="text-sm text-muted-foreground">{t('home.emptyBody')}</p>
         </section>
       )}
 
-      {drafts.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-[17px] font-semibold">{t('home.continueEditing')}</h2>
-          {drafts.map((draft) => (
-            <div key={draft.id} className="flex items-start gap-4 rounded-xl border border-border bg-card p-3">
-              {draft.coverThumb ? (
-                // eslint-disable-next-line @next/next/no-img-element -- Sanity CDN thumbnail, already sized
-                <img
-                  src={draft.coverThumb}
-                  alt=""
-                  width={96}
-                  height={96}
-                  loading="lazy"
-                  className="size-24 shrink-0 rounded-lg bg-muted object-cover"
-                />
-              ) : (
-                // Same size as a cover, so "no image yet" is obvious and never looks like a loading problem.
-                <div
-                  role="img"
-                  aria-label={t('home.noCover')}
-                  className="flex size-24 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border bg-muted text-muted-foreground"
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" className="fill-none stroke-current stroke-[1.5]">
-                    <rect x="3" y="3" width="18" height="18" rx="2" />
-                    <circle cx="9" cy="9" r="2" />
-                    <path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" />
-                  </svg>
-                  <span className="text-[11px] font-medium">{t('home.noCoverShort')}</span>
-                </div>
-              )}
-              <div className="min-w-0 flex-1 pt-0.5">
-                <p className="line-clamp-2 text-[15px] font-semibold leading-[22px]">{draft.title ?? t('posts.untitledDraft')}</p>
-                {draft.categoryKeys.length > 0 ? (
-                  <p className="mt-0.5 truncate text-sm font-medium text-foreground/80">
-                    {draft.categoryKeys.map((k) => categoryLabel.get(k) ?? k.replace(/-/g, ' ')).join(' · ')}
-                  </p>
-                ) : null}
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  {t('home.atStep', { step: t(`create.stepNames.${stepKey(draft)}`) })} ·{' '}
-                  {t('home.edited', { date: formatDay(draft.updatedAt, locale) })}
-                </p>
-              </div>
-              <Link
-                href={`/${projectSlug}/posts/write/${draft.id}`}
-                className="inline-flex h-11 shrink-0 items-center rounded-md bg-action px-4 text-[15px] font-semibold text-action-foreground"
-              >
-                {t('home.continue')}
-              </Link>
-            </div>
-          ))}
-        </section>
-      )}
+      {cards.length > 0 ? <ContinueEditing projectSlug={projectSlug} cards={cards} /> : null}
 
-      {posts !== null && recent.length > 0 && (
-        <section className="flex flex-col gap-1">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-[17px] font-semibold">{t('home.recentPosts')}</h2>
-            <Link href={postsHref} className="inline-flex min-h-8 items-center text-sm font-medium text-primary">
-              {t('home.seeAll')}
-            </Link>
-          </div>
-          <ul>
-            {recent.map((post) => (
-              <li key={post._id} className="flex items-center gap-3 border-b border-border-subtle py-3 last:border-b-0">
-                <div className="min-w-0 flex-1">
-                  {canEdit ? (
-                    <Link
-                      href={`/${projectSlug}/posts/write/${post._id}`}
-                      className="block truncate text-[15px] font-medium leading-[22px] underline-offset-4 hover:underline"
-                    >
-                      {post.title ?? t('posts.untitled')}
-                    </Link>
-                  ) : (
-                    <p className="truncate text-[15px] font-medium leading-[22px]">{post.title ?? t('posts.untitled')}</p>
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    {t('posts.status.published')} · {formatDay(post.updatedAt, locale)}
-                  </p>
-                </div>
-                <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-success" />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {latestPosts.length > 0 ? <LatestList kind="post" heading={t('home.latestPosts')} items={latestPosts} seeAllHref={postsHref} /> : null}
 
-      {submissions !== null && (
+      {latestGalleries.length > 0 ? (
+        <LatestList kind="gallery" heading={t('home.latestGalleries')} items={latestGalleries} seeAllHref={galleriesHref} />
+      ) : null}
+
+      {requests !== null && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-[17px] font-semibold">{t('home.newRequests')}</h2>
-          <Link href={leadsHref} className="flex min-h-14 items-center gap-3 rounded-xl bg-muted px-4 py-3">
-            <span className="text-2xl font-semibold tabular-nums">{newRequests}</span>
-            <span className="flex-1 text-sm text-muted-foreground">{t('home.newRequestsBody', { count: newRequests })}</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+          <h2 className="text-[1.0625rem] leading-6 font-semibold">{t('home.newRequests')}</h2>
+          <Link href={leadsHref} className="flex min-h-14 items-start gap-3 rounded-xl bg-muted px-4 py-3.5">
+            <span className="text-2xl leading-7 font-semibold tabular-nums">{requests.week}</span>
+            <span className="flex-1 pt-1 text-sm leading-5 text-muted-foreground">
+              {t('home.requestsBody', { week: requests.week, open: requests.open })}
+            </span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" className="mt-1 shrink-0">
               <path d="m9 6 6 6-6 6" />
             </svg>
           </Link>

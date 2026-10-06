@@ -49,3 +49,11 @@ describe('call-to-action patches', () => {
     expect(applyToSnapshot(custom, { 'cta.mode': 'none', 'cta.ref': null }).cta).toEqual({ mode: 'none', ref: null })
   })
 })
+
+describe('gallery patch', () => {
+  it('sets and clears the gallery locally', () => {
+    const withG = applyToSnapshot(base, { gallery: 'g1' })
+    expect(withG.gallery).toBe('g1')
+    expect(applyToSnapshot(withG, { gallery: null }).gallery).toBeNull()
+  })
+})

@@ -4,8 +4,8 @@ import { useCallback, useMemo, useRef, useState, type KeyboardEvent } from 'reac
 import { useTranslations } from 'next-intl'
 import type { PortableTextBlock } from '@portabletext/editor'
 import { useRouter } from '@/i18n/navigation'
-import { patchPostDraftAction } from '@/app/[locale]/(client)/[tenant]/posts/actions'
-import { improvePostBodyAction } from '@/app/[locale]/(client)/[tenant]/posts/ai-actions'
+import { createPostDraftAction, patchPostDraftAction } from '@/app/[locale]/(client)/[tenant]/posts/actions'
+import { improvePostBodyAction, improvePostLineAction } from '@/app/[locale]/(client)/[tenant]/posts/ai-actions'
 import { publishPostDraftAction } from '@/app/[locale]/(client)/[tenant]/posts/publish-actions'
 import {
   deletePostDraftAction,
@@ -16,6 +16,7 @@ import {
 } from '@/app/[locale]/(client)/[tenant]/posts/lifecycle-actions'
 import { useAutosave } from '@/lib/client/autosave/use-autosave'
 import type { PendingSet } from '@/lib/client/autosave/journal'
+import { POST_CONTENT, routePreDraft } from '@/lib/client/lazy-draft'
 import {
   canAdvance,
   canPublish,
@@ -31,7 +32,7 @@ import type { DraftSnapshot, SiteInfo, StepProps } from './types'
 import { SavePill } from './SavePill'
 import { applyToSnapshot } from './snapshot'
 import { CategoryStep } from './steps/CategoryStep'
-import { TitleStep } from './steps/TitleStep'
+import { TitleStep, type ImproveLineResult } from './steps/TitleStep'
 import { StoryStep, type ImproveResult } from './steps/StoryStep'
 import { CoverStep } from './steps/CoverStep'
 import { LanguagesStep, type LanguageChoice } from './steps/LanguagesStep'
@@ -40,6 +41,7 @@ import { PublishStep, isoToLocalInput, localToIso, type PublishChoice } from './
 import { DoneStep, type DoneResult } from './steps/DoneStep'
 import { ReviewStep } from './steps/ReviewStep'
 import { CtaStep } from './steps/CtaStep'
+import { GalleryPickStep } from './steps/GalleryPickStep'
 import { ConfirmDialog } from './ConfirmDialog'
 
 const LIFECYCLE_ERRORS = ['conflict', 'forbidden', 'not_found', 'invalid_value', 'unauthenticated', 'failed']
@@ -76,6 +78,12 @@ const PUBLISH_ERRORS = [
  * question per screen, on the Create surface. Owns: the step order, the
  * autosave engine (SavePill, never a Save button), Back/Next, Save & exit, and
  * the publish action. Steps are dumb (see ./types.ts).
+ *
+ * Lazy creation: opened with an empty `draft.id` ("+ Add content" →
+ * /posts/write/new), no document exists until the first real content (a title
+ * or story text); the first save creates the draft and the URL becomes
+ * /posts/write/<id> without a reload. Until then the top-left is a round ×
+ * that leaves nothing behind.
  */
 export function WizardShell({
   draft: initialDraft,
@@ -133,13 +141,34 @@ export function WizardShell({
   const [confirmBusy, setConfirmBusy] = useState(false)
   const [confirmError, setConfirmError] = useState<string | null>(null)
   const mainRef = useRef<HTMLDivElement>(null)
+  /** The draft's id; '' until the first content creates it (lazy creation). */
+  const draftIdRef = useRef(initialDraft.id)
+  const [created, setCreated] = useState(Boolean(initialDraft.id))
+  /** Changes made before any content exists (a topic, the step) — sent with the first content. */
+  const heldRef = useRef<PendingSet>({})
+  const [journalKey] = useState(() => initialDraft.id || `new-post:${Math.random().toString(36).slice(2)}`)
 
   const send = useCallback(
     async (input: { rev: string; set: PendingSet }) => {
-      const r = await patchPostDraftAction({ projectSlug, id: initialDraft.id, rev: input.rev, set: input.set })
+      let rev = input.rev
+      if (!draftIdRef.current) {
+        const c = await createPostDraftAction({ projectSlug })
+        if (!c.ok) return { ok: false, error: c.error === 'forbidden' || c.error === 'unauthenticated' ? c.error : 'failed' } as const
+        draftIdRef.current = c.id
+        rev = c.rev
+        setCreated(true)
+        setSnap((s) => ({ ...s, id: c.id }))
+        // The address becomes the draft's own, without remounting the wizard.
+        try {
+          window.history.replaceState(window.history.state, '', window.location.pathname.replace(/\/new\/?$/, `/${c.id}`) + window.location.search)
+        } catch {
+          /* ignore */
+        }
+      }
+      const r = await patchPostDraftAction({ projectSlug, id: draftIdRef.current, rev, set: input.set })
       return r.ok ? ({ ok: true, rev: r.rev } as const) : ({ ok: false, error: r.error } as const)
     },
-    [projectSlug, initialDraft.id]
+    [projectSlug]
   )
   // Replay anything the journal kept (a closed tab, lost signal) BEFORE showing a step.
   const onReady = useCallback(
@@ -151,13 +180,17 @@ export function WizardShell({
     },
     [initialDraft, steps]
   )
-  const autosave = useAutosave({ draftId: initialDraft.id, rev: initialDraft.rev, send, onReady })
+  const autosave = useAutosave({ draftId: journalKey, rev: initialDraft.rev, send, onReady })
 
   const update = useCallback(
     (set: Record<string, unknown>) => {
       if (finished.current) return
       setSnap((s) => applyToSnapshot(s, set))
-      autosave.set(set)
+      if (draftIdRef.current) return autosave.set(set)
+      // No draft yet: hold everything until the first real content creates it.
+      const routed = routePreDraft(heldRef.current, set, POST_CONTENT)
+      heldRef.current = routed.held
+      if (routed.send) autosave.set(routed.send)
     },
     [autosave]
   )
@@ -200,6 +233,8 @@ export function WizardShell({
     await autosave.flush()
     router.push(homeHref)
   }, [autosave, router, homeHref])
+  /** Nothing saved yet: just leave (no draft is created). */
+  const closeEmpty = useCallback(() => router.push(homeHref), [router, homeHref])
 
   const reload = useCallback(async () => {
     await autosave.discard()
@@ -227,6 +262,21 @@ export function WizardShell({
       }
     },
     [projectSlug, locale, t]
+  )
+
+  /** "Improve title" / "Improve subtitle" (same gating and review as Improve on the story). */
+  const onImproveLine = useCallback(
+    async (field: 'title' | 'subtitle', text: string): Promise<ImproveLineResult> => {
+      try {
+        const r = await improvePostLineAction({ projectSlug, locale, field, text, title: snap.title[locale] ?? '' })
+        if (r.ok) return { ok: true, text: r.text }
+        const code = IMPROVE_ERRORS.includes(r.error) ? r.error : 'failed'
+        return { ok: false, error: t(`improve.errors.${code}`) }
+      } catch {
+        return { ok: false, error: t('improve.errors.failed') }
+      }
+    },
+    [projectSlug, locale, t, snap.title]
   )
 
   const publishError_ = (code: string) => t(`publish.errors.${PUBLISH_ERRORS.includes(code) ? code : 'failed'}`)
@@ -258,7 +308,7 @@ export function WizardShell({
       }
       const r = await publishPostDraftAction({
         projectSlug,
-        id: initialDraft.id,
+        id: draftIdRef.current,
         rev: autosave.currentRev(),
         mode: publish.mode,
         publishAt: publishAt ?? undefined,
@@ -288,7 +338,7 @@ export function WizardShell({
     try {
       const saved = await autosave.flush()
       if (!saved) return fail(publishError_(autosave.currentState() === 'conflict' ? 'conflict' : 'offline'))
-      const r = await publishPostDraftAction({ projectSlug, id: initialDraft.id, rev: autosave.currentRev(), mode: 'keep' })
+      const r = await publishPostDraftAction({ projectSlug, id: draftIdRef.current, rev: autosave.currentRev(), mode: 'keep' })
       if (!r.ok) return fail(publishError_(r.error))
       finished.current = true
       await autosave.discard()
@@ -312,7 +362,7 @@ export function WizardShell({
     setNotice(null)
     try {
       const action = online ? putPostBackOnlineAction : takePostOfflineAction
-      const r = await action({ projectSlug, id: initialDraft.id, rev: live.rev })
+      const r = await action({ projectSlug, id: draftIdRef.current, rev: live.rev })
       if (!r.ok) return setNotice({ kind: 'error', text: lifecycleError(r.error) })
       setLive(r.live)
       setNotice({ kind: 'status', text: online ? t('lifecycle.onlineDone') : t('lifecycle.offlineDone') })
@@ -331,12 +381,12 @@ export function WizardShell({
       let r: { ok: boolean; error?: string }
       if (confirm === 'deletePost') {
         if (!live) return
-        r = await deletePublishedPostAction({ projectSlug, id: initialDraft.id, rev: live.rev })
+        r = await deletePublishedPostAction({ projectSlug, id: draftIdRef.current, rev: live.rev })
       } else {
         // Both remove the draft itself: send whatever is queued first, then use its latest rev.
         await autosave.flush()
         const action = confirm === 'discard' ? discardPostChangesAction : deletePostDraftAction
-        r = await action({ projectSlug, id: initialDraft.id, rev: autosave.currentRev() })
+        r = await action({ projectSlug, id: draftIdRef.current, rev: autosave.currentRev() })
       }
       if (!r.ok) return setConfirmError(lifecycleError(r.error ?? 'failed'))
       finished.current = true
@@ -354,7 +404,8 @@ export function WizardShell({
     if (e.defaultPrevented || target.closest('dialog')) return
     if (e.key === 'Escape' && step !== 'done') {
       e.preventDefault()
-      void saveAndExit()
+      if (created) void saveAndExit()
+      else closeEmpty()
     } else if (e.key === 'Enter' && !e.shiftKey && (target.matches('[data-enter-next]') || target === e.currentTarget)) {
       if (step && step !== 'publish' && step !== 'review' && step !== 'done' && canAdvance(step, snap, locale)) {
         e.preventDefault()
@@ -442,11 +493,22 @@ export function WizardShell({
       className="fixed inset-0 z-[60] flex flex-col bg-background text-foreground"
     >
       <header className="mx-auto flex w-full max-w-[672px] items-center justify-between gap-3 px-4 pt-[max(12px,env(safe-area-inset-top))] pb-2">
-        {step !== 'done' ? (
+        {step !== 'done' && !created ? (
+          <button
+            type="button"
+            onClick={closeEmpty}
+            aria-label={t('shell.close')}
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        ) : step !== 'done' ? (
           <button
             type="button"
             onClick={saveAndExit}
-            className="inline-flex min-h-11 items-center rounded-full border border-border px-4 text-[15px] font-semibold text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            className="inline-flex min-h-11 items-center rounded-full border border-border px-4 text-[0.9375rem] font-semibold text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             {t('shell.saveExit')}
           </button>
@@ -470,13 +532,15 @@ export function WizardShell({
           ) : step === 'category' ? (
             <CategoryStep {...props} />
           ) : step === 'title' ? (
-            <TitleStep {...props} />
+            <TitleStep {...props} onImproveLine={aiImprove ? onImproveLine : undefined} />
           ) : step === 'story' ? (
             <StoryStep {...props} onImprove={aiImprove ? onImprove : undefined} />
           ) : step === 'cover' ? (
             <CoverStep {...props} altNeeded={altNeeded} onCoverChange={(cover) => setSnap((s) => ({ ...s, cover }))} />
           ) : step === 'cta' ? (
             <CtaStep {...props} />
+          ) : step === 'gallery' ? (
+            <GalleryPickStep {...props} />
           ) : step === 'languages' ? (
             <LanguagesStep {...props} choices={choices} onChoice={(l, c) => setChoices((s) => ({ ...s, [l]: c }))} />
           ) : step === 'preview' ? (
@@ -493,7 +557,7 @@ export function WizardShell({
         <footer className="border-t border-border-subtle bg-background pb-[max(12px,env(safe-area-inset-bottom))]">
           <div className={`mx-auto w-full px-4 pt-3 ${wide ? 'max-w-5xl' : 'max-w-[672px]'}`}>
             {blockedHint ? (
-              <p role="status" className="mb-3 text-[15px] leading-6 text-muted-foreground">
+              <p role="status" className="mb-3 text-[0.9375rem] leading-6 text-muted-foreground">
                 {blockedHint}
               </p>
             ) : null}
@@ -517,7 +581,7 @@ export function WizardShell({
                   type="button"
                   onClick={goBack}
                   disabled={busy}
-                  className="inline-flex min-h-11 items-center px-1 text-[17px] font-semibold text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60"
+                  className="inline-flex min-h-11 items-center px-1 text-[1.0625rem] font-semibold text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60"
                 >
                   {t('shell.back')}
                 </button>
@@ -529,7 +593,7 @@ export function WizardShell({
                 onClick={() => void onPrimary()}
                 disabled={!canNext}
                 aria-busy={busy || undefined}
-                className="inline-flex h-14 min-w-32 items-center justify-center rounded-xl bg-action px-8 text-[17px] font-semibold text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-14 min-w-32 items-center justify-center rounded-xl bg-action px-8 text-[1.0625rem] font-semibold text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {nextLabel}
               </button>

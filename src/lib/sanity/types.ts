@@ -2022,6 +2022,8 @@ export interface GalleryMediaAsset {
   title?: string
   /** Locale-resolved by GROQ */
   caption?: string
+  /** The photo's name (not translated) — the alt fallback when no description exists. */
+  name?: string
 }
 
 export interface GalleryItem {

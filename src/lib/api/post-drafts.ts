@@ -33,6 +33,8 @@ import { POST_CTA_MODES } from '@/lib/blog/post-cta'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
 import { bodyReference, cleanLink, collectInternalRefs, preserved } from '@/lib/client/normalize-blocks'
 import { LINK_TARGET_TYPES } from '@/lib/links/link-target'
+import { localePlainTexts, presentLocales } from '@/lib/sanity/groq-locales'
+import { postSearchText } from '@/lib/client/posts-filter'
 
 export const BLOG_POST_WRITE_PERMISSION = 'blog.post.write'
 
@@ -43,8 +45,9 @@ export const WIZARD_STEPS = [
   'story',
   'cover',
   'languages',
-  // Overview-only edit screen (never part of the first pass).
+  // Overview-only edit screens (never part of the first pass).
   'cta',
+  'gallery',
   'preview',
   'publish',
   'promote',
@@ -86,6 +89,8 @@ export const LIMITS = {
   markDefsPerBlock: 100,
   href: 2048,
   patchBytes: 1_000_000,
+  /** Post drafts (unpublished + unpublished changes) per project. */
+  drafts: 500,
 } as const
 
 /**
@@ -125,6 +130,15 @@ export async function createPostDraft(
   const client = deps.client ?? sanityWriteClient
   const id = (deps.uuid ?? randomUUID)()
   const now = (deps.now ?? (() => new Date()))().toISOString()
+  // Cap on unpublished drafts per project (abuse / dataset-quota guard).
+  const drafts = await client.fetch<number | null>(
+    `count(*[_type == "post" && projectSlug == $projectSlug && _id in path("drafts.**")])`,
+    { projectSlug: grant.projectSlug },
+    { perspective: 'raw' }
+  )
+  if (typeof drafts !== 'number' || drafts >= LIMITS.drafts) {
+    throw new PostDraftError('too_large', 'Too many unfinished posts. Publish or delete some first.')
+  }
   await assertSingleSanityProject((q, p) => client.fetch(q, p), grant.projectSlug)
   const created = await client.create({
     _id: `drafts.${id}`,
@@ -220,6 +234,31 @@ export async function patchPostDraft(
       }
       ensure.cta = {}
       set[path] = value
+      continue
+    }
+    // Gallery below the post (Gallery module): one of THIS project's galleries
+    // (published, or a new one that only exists as a draft), or null to remove.
+    if (path === 'gallery') {
+      if (value === null || value === '') {
+        unset.push('gallery')
+        continue
+      }
+      if (!isPostId(value)) throw new PostDraftError('invalid_value', 'Unknown gallery.')
+      const found = await client.fetch<{ published?: string | null; draft?: string | null } | null>(
+        `{
+          "published": *[_type == "gallery" && _id == $id && projectSlug == $projectSlug][0]._id,
+          "draft": *[_type == "gallery" && _id == $draftId && projectSlug == $projectSlug][0]._id
+        }`,
+        { id: value, draftId: `drafts.${value}`, projectSlug: grant.projectSlug },
+        { perspective: 'raw' }
+      )
+      if (found?.published !== value && found?.draft !== `drafts.${value}`) {
+        throw new PostDraftError('invalid_value', 'Unknown gallery.')
+      }
+      // A gallery that is not published yet can only be referenced weakly.
+      set.gallery = found?.published === value
+        ? { _type: 'reference', _ref: value }
+        : { _type: 'reference', _ref: value, _weak: true, _strengthenOnPublish: { type: 'gallery' } }
       continue
     }
     if (path === 'cta.ref') {
@@ -422,6 +461,8 @@ export type PostDraftSnapshot = {
   live: PostLiveState | null
   /** The post's call-to-action choice; null = never chosen (= the site default). */
   cta: { mode: 'default' | 'none' | 'custom'; ref: string | null } | null
+  /** The gallery shown below the post (published id), or null. */
+  gallery: string | null
 }
 
 /** What the editor needs to know about the live version of a post. */
@@ -463,6 +504,20 @@ export type PostDraftSummary = {
   categoryKeys: string[]
   /** Small square cover thumbnail cropped around the focal point, or null. */
   coverThumb: string | null
+  /** The draft's revision (for Discard / Delete from a list). */
+  rev: string
+  /** True when a published version exists (the draft holds changes to a live post). */
+  hasLive: boolean
+  /** The draft's featured flag. */
+  featured: boolean
+  /** Languages whose body has content in the draft. */
+  bodyLanguages: string[]
+  /** Search blob: titles, subtitles and body text (capped), every language (postSearchText). */
+  searchText?: string
+  /** Subtitle in the site's default language, else any language; null when none. */
+  subtitle?: string | null
+  /** 16:10 cover around the focal point (desktop cards view), or null. */
+  coverCard: string | null
 }
 
 /** What the wizard needs to know about the site. Mirrors `SiteInfo`. */
@@ -475,7 +530,11 @@ export type PostEditorSite = {
   origin: string | null
   /** The site's prepared calls to action, texts in the site's main language. Empty = feature hidden. */
   ctas: PostEditorCta[]
+  /** This project's galleries (published or new), title in the main language. */
+  galleries: PostEditorGallery[]
 }
+
+export type PostEditorGallery = { id: string; title: string; count: number }
 
 export type PostEditorCta = {
   /** The callToAction document id. */
@@ -484,6 +543,11 @@ export type PostEditorCta = {
   isDefault: boolean
   heading: string | null
   buttonLabel: string | null
+}
+
+function galleryRef(value: unknown): string | null {
+  const ref = (value as { _ref?: unknown } | null | undefined)?._ref
+  return typeof ref === 'string' && ref ? ref.replace(/^drafts\./, '') : null
 }
 
 function ctaChoice(value: unknown): PostDraftSnapshot['cta'] {
@@ -571,6 +635,7 @@ export async function getPostDraft(
     mode: published ? 'edit' : 'create',
     live: published ? liveState(published) : null,
     cta: ctaChoice(doc.cta),
+    gallery: galleryRef(doc.gallery),
   }
 }
 
@@ -584,8 +649,10 @@ export async function listPostDrafts(
   const client = deps.client ?? sanityWriteClient
   const result = await client.fetch<{
     defaultLocale?: string | null
+    liveIds?: unknown
     drafts?: Array<{
       _id?: string
+      _rev?: string
       projectSlug?: string
       title?: unknown
       categories?: unknown
@@ -594,20 +661,28 @@ export async function listPostDrafts(
       updatedAt?: string
       coverUrl?: unknown
       hotspot?: { x?: unknown; y?: unknown } | null
+      featured?: unknown
+      bodyLangs?: unknown
+      subtitle?: unknown
+      bodyText?: Record<string, string | null> | null
     }> | null
   } | null>(
     `{
       "defaultLocale": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].defaultLocale,
+      "liveIds": *[_type == "post" && projectSlug == $projectSlug && !(_id in path("drafts.**")) && !(_id in path("versions.**"))]._id,
       "drafts": *[_type == "post" && _id in path("drafts.**") && projectSlug == $projectSlug && defined(wizard.step)]
         | order(coalesce(wizard.updatedAt, _updatedAt) desc)[0...50]{
-          _id, projectSlug, title, categories, "step": wizard.step, "furthest": coalesce(wizard.furthest, wizard.step), "updatedAt": coalesce(wizard.updatedAt, _updatedAt),
-          "coverUrl": coverImage.asset->url, "hotspot": coverImage.hotspot
+          _id, _rev, projectSlug, title, categories, "step": wizard.step, "furthest": coalesce(wizard.furthest, wizard.step), "updatedAt": coalesce(wizard.updatedAt, _updatedAt),
+          "coverUrl": coverImage.asset->url, "hotspot": coverImage.hotspot,
+          "featured": featured == true, "bodyLangs": ${presentLocales('body')},
+          subtitle, "bodyText": ${localePlainTexts('body')}
         }
     }`,
     { projectSlug: grant.projectSlug },
     { perspective: 'raw' }
   )
   const defaultLocale = result?.defaultLocale ?? ''
+  const live = new Set(Array.isArray(result?.liveIds) ? (result.liveIds as unknown[]).filter((x): x is string => typeof x === 'string') : [])
   return (result?.drafts ?? [])
     .filter((d) => typeof d?._id === 'string' && d._id.startsWith('drafts.') && d.projectSlug === grant.projectSlug)
     .map((d) => {
@@ -615,6 +690,11 @@ export async function listPostDrafts(
       const title =
         (titles[defaultLocale]?.trim() && titles[defaultLocale]) ||
         Object.values(titles).find((t) => t.trim()) ||
+        null
+      const subtitles = textMap(d.subtitle)
+      const subtitle =
+        (subtitles[defaultLocale]?.trim() && subtitles[defaultLocale]) ||
+        Object.values(subtitles).find((t) => t.trim()) ||
         null
       return {
         id: d._id!.slice('drafts.'.length),
@@ -625,14 +705,26 @@ export async function listPostDrafts(
         titles,
         categoryKeys: Array.isArray(d.categories) ? d.categories.filter((c): c is string => typeof c === 'string') : [],
         coverThumb: coverThumbUrl(d.coverUrl, d.hotspot, 192),
+        rev: typeof d._rev === 'string' ? d._rev : '',
+        hasLive: live.has(d._id!.slice('drafts.'.length)),
+        featured: d.featured === true,
+        bodyLanguages: Array.isArray(d.bodyLangs) ? d.bodyLangs.filter((l): l is string => typeof l === 'string') : [],
+        coverCard: coverCropUrl(d.coverUrl, d.hotspot, 640, 400),
+        searchText: postSearchText({ titles, subtitles, bodies: d.bodyText }),
+        subtitle,
       }
     })
 }
 
 /** Sanity CDN square thumbnail, cropped around the focal point when one is set. */
 export function coverThumbUrl(url: unknown, hotspot?: { x?: unknown; y?: unknown } | null, size = 160): string | null {
+  return coverCropUrl(url, hotspot, size, size)
+}
+
+/** Sanity CDN crop of any size, around the focal point when one is set. */
+export function coverCropUrl(url: unknown, hotspot: { x?: unknown; y?: unknown } | null | undefined, w: number, h: number): string | null {
   if (typeof url !== 'string' || !url.startsWith('https://cdn.sanity.io/')) return null
-  const params = new URLSearchParams({ w: String(size), h: String(size), fit: 'crop', auto: 'format' })
+  const params = new URLSearchParams({ w: String(w), h: String(h), fit: 'crop', auto: 'format' })
   const x = hotspot?.x
   const y = hotspot?.y
   if (typeof x === 'number' && typeof y === 'number' && x >= 0 && x <= 1 && y >= 0 && y <= 1) {
@@ -671,6 +763,25 @@ export async function getPostEditorSite(
   const supported = (r?.site?.supportedLocales ?? []).filter((l): l is string => typeof l === 'string' && !!l)
   const defaultLocale = r?.site?.defaultLocale || supported[0] || params.locale
   const languages = [defaultLocale, ...supported.filter((l) => l !== defaultLocale)]
+  // Galleries incl. new ones that only exist as drafts (raw perspective); one entry per gallery.
+  const galleryRows = await client.fetch<unknown>(
+    `*[_type == "gallery" && projectSlug == $projectSlug && !(_id in path("versions.**"))] | order(_updatedAt desc){ _id, title, internalName, "count": count(items) }`,
+    { projectSlug: grant.projectSlug },
+    { perspective: 'raw' }
+  )
+  const galleries = new Map<string, PostEditorGallery>()
+  for (const row of Array.isArray(galleryRows) ? (galleryRows as Array<{ _id?: unknown; title?: unknown; internalName?: unknown; count?: unknown }>) : []) {
+    if (typeof row?._id !== 'string') continue
+    const isDraft = row._id.startsWith('drafts.')
+    const id = isDraft ? row._id.slice('drafts.'.length) : row._id
+    if (!isPostId(id) || (galleries.has(id) && !isDraft)) continue
+    const titles = textMap(row.title)
+    galleries.set(id, {
+      id,
+      title: titles[defaultLocale]?.trim() || (typeof row.internalName === 'string' ? row.internalName : '') || id,
+      count: typeof row.count === 'number' ? row.count : 0,
+    })
+  }
   const categories = (r?.categories ?? [])
     .filter((c): c is { value: string; label?: unknown } => typeof c?.value === 'string' && !!c.value)
     .map((c) => {
@@ -687,6 +798,7 @@ export async function getPostEditorSite(
     languages,
     categories,
     origin: domain ? `https://${domain}` : null,
+    galleries: [...galleries.values()],
     ctas: (r?.ctas ?? [])
       .filter((c) => typeof c?._id === 'string' && !!c._id)
       .map((c) => {

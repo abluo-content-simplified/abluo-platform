@@ -19,9 +19,16 @@ export const PREVIEW_TOKEN_TTL_SECONDS = 15 * 60
 /** Clock skew tolerated between the minting and the rendering server. */
 const SKEW_SECONDS = 60
 
+/** What a token previews: a blog post draft, or a gallery draft (optionally inside one page). */
+export type DraftPreviewKind = 'post' | 'gallery'
+
 export type DraftPreviewClaims = {
-  /** Public draft id (uuid, no `drafts.` prefix). */
+  /** Public document id (no `drafts.` prefix): the post, or the gallery. */
   draftId: string
+  /** 'post' for every token minted before galleries existed. */
+  kind: DraftPreviewKind
+  /** Gallery previews only: the page to render with the draft gallery in it (null = gallery alone). */
+  pageId: string | null
   /** The project (Supabase `projects.slug` = Sanity `projectSlug`). */
   projectSlug: string
   /** Who asked for it (audit only — the token is the capability). */
@@ -30,7 +37,7 @@ export type DraftPreviewClaims = {
   exp: number
 }
 
-type Payload = { v: 1; d: string; p: string; u: string; e: number }
+type Payload = { v: 1; d: string; p: string; u: string; e: number; k?: 'g'; pg?: string }
 
 const b64 = (buf: Buffer) => buf.toString('base64url')
 
@@ -47,14 +54,22 @@ function sign(body: string, secret: Buffer): string {
 }
 
 export function signDraftPreviewToken(
-  claims: Omit<DraftPreviewClaims, 'exp'>,
+  claims: Omit<DraftPreviewClaims, 'exp' | 'kind' | 'pageId'> & { kind?: DraftPreviewKind; pageId?: string | null },
   opts: { secret?: Buffer | null; now?: number; ttlSeconds?: number } = {}
 ): { token: string; exp: number } {
   const secret = opts.secret === undefined ? previewSecret() : opts.secret
   if (!secret) throw new Error('Draft preview is not configured (PREVIEW_SECRET).')
   const now = Math.floor((opts.now ?? Date.now()) / 1000)
   const exp = now + Math.min(opts.ttlSeconds ?? PREVIEW_TOKEN_TTL_SECONDS, PREVIEW_TOKEN_TTL_SECONDS)
-  const payload: Payload = { v: 1, d: claims.draftId, p: claims.projectSlug, u: claims.userId, e: exp }
+  const payload: Payload = {
+    v: 1,
+    d: claims.draftId,
+    p: claims.projectSlug,
+    u: claims.userId,
+    e: exp,
+    ...(claims.kind === 'gallery' && { k: 'g' as const }),
+    ...(claims.kind === 'gallery' && claims.pageId && { pg: claims.pageId }),
+  }
   const body = b64(Buffer.from(JSON.stringify(payload), 'utf8'))
   return { token: `${body}.${sign(body, secret)}`, exp }
 }
@@ -83,7 +98,16 @@ export function verifyDraftPreviewToken(
     // A token can never live longer than the TTL, even if a key leaked into a
     // minting bug: reject anything expiring further out than mint could set.
     if (p.e > now + PREVIEW_TOKEN_TTL_SECONDS + SKEW_SECONDS) return null
-    return { draftId: p.d, projectSlug: p.p, userId: p.u, exp: p.e }
+    if (p.k !== undefined && p.k !== 'g') return null
+    if (p.pg !== undefined && (p.k !== 'g' || typeof p.pg !== 'string' || !p.pg)) return null
+    return {
+      draftId: p.d,
+      projectSlug: p.p,
+      userId: p.u,
+      exp: p.e,
+      kind: p.k === 'g' ? 'gallery' : 'post',
+      pageId: typeof p.pg === 'string' ? p.pg : null,
+    }
   } catch {
     return null
   }

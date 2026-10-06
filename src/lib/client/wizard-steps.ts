@@ -4,6 +4,9 @@
  *   • "type" happens in the Add-content sheet, before the draft exists.
  *   • "category" only when the site has categories configured.
  *   • "languages" only on sites with more than one language.
+ *   • "cta" (call to action) on every blog; skippable — with no calls to
+ *     action on the site it explains where to set them up.
+ *   • "gallery" only on sites with the Gallery module (`site.galleries` set).
  *   • "promote" (S10) is not built yet; "done" is a screen, never a stored step.
  *   • "review" is the overview: once the first pass is over (the user reached
  *     "publish"), reopening a draft lands there; Edit opens one step and
@@ -21,6 +24,7 @@ export const WIZARD_STEP_ORDER: readonly WizardStep[] = [
   'cover',
   'languages',
   'cta',
+  'gallery',
   'preview',
   'publish',
   'promote',
@@ -31,11 +35,13 @@ export const WIZARD_STEP_ORDER: readonly WizardStep[] = [
 export type WizardFlowStep = Exclude<WizardStep, 'type' | 'promote'>
 
 /** The first-pass steps for this site, in order (the overview "review" is not one of them). */
-export function wizardSteps(site: { categories: unknown[]; languages: string[] }): WizardFlowStep[] {
+export function wizardSteps(site: { categories: unknown[]; languages: string[]; galleries?: unknown[] }): WizardFlowStep[] {
   const steps: WizardFlowStep[] = []
   if (site.categories.length > 0) steps.push('category')
   steps.push('title', 'story', 'cover')
   if (site.languages.length > 1) steps.push('languages')
+  steps.push('cta')
+  if (site.galleries) steps.push('gallery')
   steps.push('preview', 'publish', 'done')
   return steps
 }
@@ -88,6 +94,7 @@ type Content = {
   categories?: string[]
   cover?: { alt: Record<string, string> } | null
   cta?: { mode?: string | null; ref?: string | null } | null
+  gallery?: string | null
 }
 
 /** True when Portable Text blocks contain any non-blank text. */
@@ -133,12 +140,19 @@ export function progressSteps(steps: WizardFlowStep[]): WizardFlowStep[] {
 // ── Overview ("review") ──────────────────────────────────────────────────────
 
 export type SectionState = 'done' | 'missing' | 'optional'
-export type OverviewSection = { id: 'category' | 'title' | 'story' | 'cover' | 'languages' | 'cta'; state: SectionState }
+export type OverviewSection = { id: 'category' | 'title' | 'story' | 'cover' | 'languages' | 'cta' | 'gallery'; state: SectionState }
 
 /** The overview's sections for this site, each with its state. */
 export function overviewSections(
   draft: Content,
-  site: { categories: unknown[]; languages: string[]; defaultLocale: string; ctas?: { id: string; isDefault: boolean }[] }
+  site: {
+    categories: unknown[]
+    languages: string[]
+    defaultLocale: string
+    ctas?: { id: string; isDefault: boolean }[]
+    /** Present only when the Gallery module is installed (may be empty). */
+    galleries?: { id: string }[]
+  }
 ): OverviewSection[] {
   const d = site.defaultLocale
   const out: OverviewSection[] = []
@@ -150,8 +164,12 @@ export function overviewSections(
     const others = site.languages.filter((l) => l !== d)
     out.push({ id: 'languages', state: others.every((l) => languageReady(draft, l)) ? 'done' : 'optional' })
   }
-  // Call to action: only on sites with prepared CTAs (overview-only screen).
-  if (site.ctas?.length) out.push({ id: 'cta', state: ctaChoiceShown(draft.cta, site.ctas) ? 'done' : 'optional' })
+  // Call to action: on every blog; optional (none prepared yet, or none chosen).
+  out.push({ id: 'cta', state: site.ctas?.length && ctaChoiceShown(draft.cta, site.ctas) ? 'done' : 'optional' })
+  // Gallery below the post: only on sites with the Gallery module.
+  if (site.galleries) {
+    out.push({ id: 'gallery', state: draft.gallery && site.galleries.some((g) => g.id === draft.gallery) ? 'done' : 'optional' })
+  }
   return out
 }
 

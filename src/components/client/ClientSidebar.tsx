@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link, usePathname, useRouter } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -8,8 +8,7 @@ import { ProjectSwitcher } from './ProjectSwitcher'
 import { AppThemeSwitch } from './AppThemeSwitch'
 import { AppTextSizeSwitch } from './AppTextSizeSwitch'
 import { AppVersion } from './AppVersion'
-import { AddContentSheet } from './create/AddContentSheet'
-import type { CreateMenu } from '@/lib/modules/create-menu'
+import { useOpenAddContent } from './create/AddContentRoot'
 import type { AppTextSize, AppTheme } from '@/lib/app-theme'
 import type { ClientNavItem } from '@/lib/modules/client-navigation'
 
@@ -20,13 +19,14 @@ import type { ClientNavItem } from '@/lib/modules/client-navigation'
  *   • Phones: a slim top bar with the project name, and a bottom tab bar —
  *     Home · Content · [+ Add content] · Leads · More. "More" opens the drawer
  *     (project switcher, appearance, account, sign out).
- *   • From md up: the fixed sidebar — Home first, then the module-driven items,
- *     and "+ Add content" as the one action button.
+ *   • From md up: the fixed sidebar — Home first, then the module-driven items.
  * Content and Leads exist only when the project has the module (navItems are
  * module-driven, `buildClientNavItems`). All copy from `clientDashboard.*`.
  *
- * "+ Add content" (desktop button and the phone tab bar's "+") opens the
- * "What would you like to create?" sheet (ADR-025 D8, `AddContentSheet`).
+ * The phone tab bar's "+" opens the "What would you like to create?" panel
+ * (ADR-025 D8). That panel and the floating "+" live OUTSIDE the sidebar, in
+ * `create/AddContentRoot` (rendered by `[tenant]/layout.tsx`), so the FAB is
+ * truly fixed to the viewport.
  */
 
 export type ClientSidebarProps = {
@@ -41,16 +41,14 @@ export type ClientSidebarProps = {
   textSize?: AppTextSize
   /** Locale-agnostic href of the project's dashboard home. */
   homeHref: string
-  /** What this user can create in this project (server-computed, `buildCreateMenu`). */
-  createMenu?: CreateMenu
-  /** Abluo contact for "Ask us to add it" (optional). */
-  contactEmail?: string | null
 }
 
 const ICONS = {
   home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
   blog: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',
   forms: 'M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z',
+  gallery: 'M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15 9h.01',
+  media: 'M3 7h4l2-3h6l2 3h4v13H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   more: 'M5 12h.01M12 12h.01M19 12h.01',
   plus: 'M12 5v14M5 12h14',
   generic: 'M4 6h16M4 12h16M4 18h10',
@@ -73,19 +71,15 @@ export function ClientSidebar({
   theme,
   textSize = 'md',
   homeHref,
-  createMenu = { available: [], more: [] },
-  contactEmail = null,
 }: ClientSidebarProps) {
   const t = useTranslations('clientDashboard')
   const pathname = usePathname() // locale-stripped, e.g. "/livener/posts"
   const router = useRouter()
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [addOpen, setAddOpen] = useState(false)
-
-  useEffect(() => {
-    setDrawerOpen(false)
-    setAddOpen(false)
-  }, [pathname])
+  // Open on the page it was opened on: navigating closes it (no effect needed).
+  const [drawerOpenOn, setDrawerOpenOn] = useState<string | null>(null)
+  const drawerOpen = drawerOpenOn === pathname
+  const setDrawerOpen = (next: boolean) => setDrawerOpenOn(next ? pathname : null)
+  const openAddContent = useOpenAddContent()
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
 
@@ -103,7 +97,7 @@ export function ClientSidebar({
     <>
       {/* ── Phone top bar ─────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-30 flex h-14 items-center border-b border-border-subtle bg-background px-4 md:hidden">
-        <span className="truncate text-[15px] font-semibold">{activeSlug}</span>
+        <span className="truncate text-[0.9375rem] font-semibold">{activeSlug}</span>
       </div>
 
       {/* ── Drawer backdrop (phones) ─────────────────────────────────────── */}
@@ -119,7 +113,7 @@ export function ClientSidebar({
       {/* ── Sidebar (md+) / drawer (phones) ──────────────────────────────── */}
       <aside
         id="client-sidebar"
-        className={`fixed left-0 top-0 z-50 flex h-dvh w-64 flex-col border-r border-border bg-card text-card-foreground transition-transform duration-200 md:z-40 md:h-screen md:w-56 md:translate-x-0 ${
+        className={`fixed left-0 top-0 z-50 flex h-dvh w-64 flex-col border-r border-border bg-card text-card-foreground transition-transform duration-200 md:z-40 md:h-screen md:w-56 md:translate-x-0 overflow-y-auto overscroll-contain ${
           drawerOpen ? 'translate-x-0 shadow-[var(--shadow-raise)]' : '-translate-x-full'
         }`}
       >
@@ -133,14 +127,6 @@ export function ClientSidebar({
         </div>
 
         <nav aria-label={t('shell.brandTagline')} className="flex-1 space-y-0.5 px-3 py-4">
-          <button
-            type="button"
-            onClick={() => setAddOpen(true)}
-            className="mb-3 hidden h-11 w-full items-center justify-center gap-2 rounded-md bg-action text-sm font-semibold text-action-foreground md:flex"
-          >
-            <Icon d={ICONS.plus} size={18} width={2.2} />
-            {t('nav.add')}
-          </button>
           {[{ moduleId: 'home', href: homeHref, label: t('nav.home') }, ...navItems.map((i) => ({ moduleId: i.moduleId, href: i.href, label: t(`nav.${i.moduleId}`) }))].map(
             (item) => {
               const active = isActive(item.href)
@@ -204,7 +190,7 @@ export function ClientSidebar({
         )}
         <button
           type="button"
-          onClick={() => setAddOpen(true)}
+          onClick={openAddContent}
           aria-label={t('nav.add')}
           className="mx-auto grid size-[52px] -translate-y-3.5 place-items-center rounded-full bg-action text-action-foreground shadow-[var(--shadow-raise)]"
         >
@@ -236,14 +222,6 @@ export function ClientSidebar({
         </button>
       </nav>
 
-      {/* ── "+ Add content" → "What would you like to create?" ───────────── */}
-      <AddContentSheet
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-        projectSlug={activeSlug}
-        menu={createMenu}
-        contactEmail={contactEmail}
-      />
     </>
   )
 }

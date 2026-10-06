@@ -34,6 +34,9 @@ import {
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { dashboardPostsContextQuery, dashboardPostsQuery } from '@/lib/sanity/queries'
 import { createClient } from '@/lib/supabase/server'
+import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
+import { coverCropUrl, coverThumbUrl } from '@/lib/api/post-drafts'
+import { postSearchText } from '@/lib/client/posts-filter'
 
 /** A single post row as the client dashboard needs it. Minimal by design. */
 export type DashboardPost = {
@@ -58,17 +61,38 @@ export type DashboardPost = {
   expiresAt?: string | null
   /** Sanity `_createdAt` — ISO timestamp. */
   createdAt?: string
+  /** The published document's revision (lifecycle actions guard on it). */
+  rev?: string
+  /** Slug in the site's default language (for "View on website"). */
+  slugDefault?: string | null
+  /** Cover image URL and focal point, when set. */
+  coverUrl?: string | null
+  coverHotspot?: { x?: unknown; y?: unknown } | null
+  /** Pinned first on the website's lists (and shown by "Featured only" sections). */
+  featured?: boolean | null
+  /** Platform languages the body has content in (nulls where it has none). */
+  bodyLangs?: (string | null)[] | null
+  /** Raw localized subtitle (every language), for search. */
+  subtitleLocales?: unknown
+  /** The body's plain text per platform language (null where empty), for search. Not sent to the browser. */
+  bodyText?: Record<string, string | null> | null
 }
 
 export type DashboardPostStatus = 'published' | 'scheduled' | 'draft' | 'offline'
 
 /** A post row ready for display: category labels and languages resolved. */
 export type DashboardPostRow = DashboardPost & {
+  /** Square cover thumbnail around the focal point, or null. */
+  coverThumb: string | null
   categories: string[]
   /** Site languages this post has a title in; empty on single-language sites. */
   languages: string[]
-  /** Lower-cased, accent-free titles + subtitle in every language (for search). */
+  /** Lower-cased, accent-free titles, subtitles and body text (capped) in every language, for search. */
   searchText: string
+  /** Site languages with both a title and a body; empty on single-language sites. */
+  completeLanguages: string[]
+  /** 16:10 cover around the focal point, for the desktop cards view, or null. */
+  coverCard: string | null
 }
 
 /** The posts list plus what its filters need. */
@@ -78,6 +102,8 @@ export type DashboardPostList = {
   languages: string[]
   /** The blog's categories for this site, in the viewer's language. */
   categories: { value: string; label: string }[]
+  /** The site's main language (website URLs start with it). */
+  defaultLocale?: string
 }
 
 /** Permission that gates listing posts in the client dashboard. */
@@ -165,17 +191,6 @@ export async function getDashboardPostRows(
   return (await getDashboardPostList(ctx, projectId, params, deps)).posts
 }
 
-function searchBlob(...values: unknown[]): string {
-  const parts: string[] = []
-  for (const v of values) {
-    if (typeof v === 'string') parts.push(v)
-    else if (v && typeof v === 'object') {
-      for (const [k, x] of Object.entries(v)) if (!k.startsWith('_') && typeof x === 'string') parts.push(x)
-    }
-  }
-  return parts.join(' \n ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
-
 export async function getDashboardPostList(
   ctx: TenantAuthorizationContext,
   projectId: string,
@@ -210,14 +225,30 @@ export async function getDashboardPostList(
       supported.length > 1 && titleObj
         ? supported.filter((l) => typeof titleObj[l] === 'string' && (titleObj[l] as string).trim())
         : []
+    const bodyLangs = new Set((post.bodyLangs ?? []).filter((l): l is string => typeof l === 'string'))
+    // The full body text stays on the server: only the capped search blob goes to the browser.
+    const { bodyText, subtitleLocales, ...rest } = post
     return {
-      ...post,
+      ...rest,
+      featured: post.featured === true,
       title: post.title ?? resolveLocalized(titleObj, params.locale, defaultLocale),
+      // Viewer language → site default → English → any language (the query's
+      // coalesce stops at English, so a subtitle only in another language was lost).
+      subtitle:
+        (typeof post.subtitle === 'string' && post.subtitle.trim() ? post.subtitle : null) ??
+        resolveLocalized(subtitleLocales as LocalizedLabel, params.locale, defaultLocale),
+      coverThumb: coverThumbUrl(post.coverUrl, post.coverHotspot, 192),
+      coverCard: coverCropUrl(post.coverUrl, post.coverHotspot, 640, 400),
+      completeLanguages: languages.filter((l) => bodyLangs.has(l)),
       categories: (post.categoryKeys ?? []).map(
         (key) => labels.get(key) ?? key.replace(/-/g, ' ')
       ),
       languages,
-      searchText: searchBlob(titleObj ?? post.title, post.subtitle),
+      searchText: postSearchText({
+        titles: titleObj ?? post.title,
+        subtitles: subtitleLocales && typeof subtitleLocales === 'object' ? (subtitleLocales as Record<string, unknown>) : post.subtitle,
+        bodies: bodyText,
+      }),
     }
   })
 
@@ -227,7 +258,26 @@ export async function getDashboardPostList(
     if (!labels.has(key)) categories.push({ value: key, label: key.replace(/-/g, ' ') })
   }
 
-  return { posts: rows, languages: supported.length > 1 ? supported : [], categories }
+  return { posts: rows, languages: supported.length > 1 ? supported : [], categories, defaultLocale }
+}
+
+/**
+ * The project's public domain ("studiomartegani.com"), for Home's "View your
+ * site", or null when it has none yet. Any member of the project may see it:
+ * the grant is the gate (the tenant-scoped client refuses anything else).
+ */
+export async function getProjectSiteDomain(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  deps: { fetch?: SanityFetchFn } = {}
+): Promise<string | null> {
+  const scoped = tenantScopedSanityClient(ctx, projectId, deps)
+  const raw = await scoped.fetch<string | null>(
+    `*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**")) && defined(customDomain)][0].customDomain`,
+    {}
+  )
+  const domain = typeof raw === 'string' ? raw.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '') : ''
+  return /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(domain) ? domain.toLowerCase() : null
 }
 
 // ── Forms submissions (ADR-018 slice 6) ───────────────────────────────────────
@@ -242,6 +292,10 @@ export async function getDashboardPostList(
 /** Permission that gates listing submissions in the client dashboard. */
 export const FORMS_SUBMISSION_READ_PERMISSION = 'forms.submission.read'
 export const FORMS_SUBMISSION_UPDATE_PERMISSION = 'forms.submission.update'
+export const FORMS_SUBMISSION_DELETE_PERMISSION = 'forms.submission.delete'
+
+/** Hard cap on a batch action (status change / delete). */
+export const SUBMISSION_BATCH_MAX = 100
 
 export type SubmissionStatus = 'new' | 'processed' | 'archived'
 
@@ -263,6 +317,10 @@ export type DashboardSubmission = {
   source: Record<string, unknown> | null
   /** The definition version the submission was validated against. */
   formVersion: number | null
+  /** Locale the visitor submitted in (column), null if unknown. */
+  locale: string | null
+  /** When GDPR consent was recorded, if it was. */
+  consentAt: string | null
 }
 
 /** Minimal shape of a Supabase supabase-js client (the bits this file uses). */
@@ -304,6 +362,8 @@ export function mapSubmissionRow(row: Record<string, unknown>): DashboardSubmiss
     data,
     source,
     formVersion: typeof row.form_version === 'number' ? row.form_version : null,
+    locale: typeof row.locale === 'string' && row.locale ? row.locale : null,
+    consentAt: typeof row.gdpr_consent_at === 'string' ? row.gdpr_consent_at : null,
   }
 }
 
@@ -331,7 +391,7 @@ export async function getDashboardSubmissions(
   // Step 3 — read this project's completed, non-spam submissions.
   const { data, error } = await supabase
     .from('form_submissions')
-    .select('id, form_id, submission_data, source, form_version, status, created_at')
+    .select('id, form_id, submission_data, source, form_version, status, created_at, locale, gdpr_consent_at')
     .eq('project_id', projectId)
     .eq('completion_state', 'complete')
     .neq('status', 'spam')
@@ -376,4 +436,76 @@ export async function updateSubmissionStatus(
     .neq('status', 'spam')
 
   if (error) throw new Error(`updateSubmissionStatus: ${error.message ?? 'update failed'}`)
+}
+
+
+/** De-duplicates and validates a batch of ids; throws when empty, malformed or over the cap. */
+function cleanBatchIds(ids: readonly string[]): string[] {
+  const unique = Array.from(new Set(ids))
+  if (unique.length === 0 || unique.length > SUBMISSION_BATCH_MAX) {
+    throw new Error('submissions batch: invalid size')
+  }
+  if (!unique.every((id) => /^[0-9a-f-]{36}$/i.test(id))) throw new Error('submissions batch: invalid id')
+  return unique
+}
+
+/**
+ * Batch status change (max 100). Same gate as the single update; the UPDATE is
+ * scoped to `project_id` AND the id list, so foreign ids simply match nothing.
+ * Returns how many rows were changed.
+ */
+export async function updateSubmissionsStatusBatch(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  submissionIds: readonly string[],
+  status: SubmissionStatus,
+  deps: { client?: SubmissionsReader } = {}
+): Promise<number> {
+  assertModuleAction(ctx, projectId, FORMS_SUBMISSION_UPDATE_PERMISSION)
+  if (!(VALID_STATUSES as readonly string[]).includes(status)) {
+    throw new Error(`updateSubmissionsStatusBatch: invalid status "${status}"`)
+  }
+  const ids = cleanBatchIds(submissionIds)
+  const supabase = deps.client ?? (await createClient())
+  const { data, error } = await supabase
+    .from('form_submissions')
+    .update({ status })
+    .eq('project_id', projectId)
+    .in('id', ids)
+    .neq('status', 'spam')
+    .select('id')
+  if (error) throw new Error(`updateSubmissionsStatusBatch: ${error.message ?? 'update failed'}`)
+  return Array.isArray(data) ? data.length : 0
+}
+
+/**
+ * Permanently deletes submissions (max 100). `form_submissions` has no DELETE
+ * policy (members cannot delete under RLS), so after `assertModuleAction`
+ * (forms.submission.delete) the delete runs service-role, scoped to the
+ * grant's `project_id` AND the id list — ids from another project match nothing.
+ */
+export async function deleteSubmissions(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  submissionIds: readonly string[],
+  deps: { client?: SubmissionsReader } = {}
+): Promise<number> {
+  assertModuleAction(ctx, projectId, FORMS_SUBMISSION_DELETE_PERMISSION)
+  const ids = cleanBatchIds(submissionIds)
+  const run = async (supabase: SubmissionsReader): Promise<number> => {
+    const { data, error } = await supabase
+      .from('form_submissions')
+      .delete()
+      .eq('project_id', projectId)
+      .in('id', ids)
+      .select('id')
+    if (error) throw new Error(`deleteSubmissions: ${error.message ?? 'delete failed'}`)
+    return Array.isArray(data) ? data.length : 0
+  }
+  if (deps.client) return run(deps.client)
+  return runAsTrustedSystemOperation(
+    'Client dashboard batch delete of form submissions — members have no DELETE policy on form_submissions; ' +
+      'the caller was authorised via assertModuleAction(forms.submission.delete) and the DELETE is scoped to the grant project_id and the selected ids.',
+    (supabase) => run(supabase as unknown as SubmissionsReader)
+  )
 }

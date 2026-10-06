@@ -1,320 +1,523 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
-import { useTranslations } from 'next-intl'
+import { useMemo, useState, useSyncExternalStore, useTransition } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
 import { usePathname, useRouter } from 'next/navigation'
-import { Link } from '@/i18n/navigation'
+import { getPathname, useRouter as useAppRouter } from '@/i18n/navigation'
+import { batchPostsAction, setPostFeaturedAction } from '@/app/[locale]/(client)/[tenant]/posts/lifecycle-actions'
+import { mintDraftPreviewAction } from '@/app/[locale]/(client)/[tenant]/posts/preview-actions'
+import { draftPreviewUrl } from '@/lib/client/preview-url'
+import { ConfirmDialog } from '@/components/client/create/ConfirmDialog'
+import type { CardMenuItem } from '@/components/client/ui/CardMenu'
+import { BottomSheet } from '@/components/client/ui/BottomSheet'
+import { idRange, SelectionBar } from '@/components/client/ui/SelectionBar'
+import { PageHeader } from '@/components/client/ui/PageHeader'
+import { ViewSwitch } from '@/components/client/ui/ViewSwitch'
+import { SelectAll } from '@/components/client/ui/list/ContentCard'
+import { Toast } from '@/components/client/ui/Toast'
+import { useUndo } from '@/components/client/ui/use-undo'
 import {
   activeFilterCount,
   applyFilters,
   DEFAULT_FILTERS,
   filtersToParams,
+  isDefaultFilters,
+  nextSort,
   parseFilters,
-  postYears,
   statusCounts,
-  type FilterablePost,
   type PostFilters,
-  type PostSort,
-  type PostStatus,
+  type SortColumn,
 } from '@/lib/client/posts-filter'
+import { ICONS, NewPostLink, StarGlyph } from './post-bits'
+import { PostsFilters } from './PostsFilters'
+import { PostsTable } from './PostsTable'
+import { PostCardsGrid, PostPhoneList } from './PostCards'
+import { BarButton, CategorySheet, EndDateSheet, SheetItem } from './PostSheets'
+import type { BrowserPost } from './types'
 
-export type BrowserPost = FilterablePost & {
-  title: string
-  subtitle: string | null
-  statusLabel: string
-  categories: string[]
-  dateLabel: string
-  offlineLabel: string | null
-  /** Locale-agnostic link (wizard drafts open in the wizard). */
-  href?: string | null
-  /** e.g. "Unpublished changes" on a live post that has a draft. */
-  badge?: string | null
+export type { BrowserPost } from './types'
+
+type BatchOp = 'offline' | 'online' | 'delete' | 'endDate' | 'categories' | 'featured'
+type BatchExtra = { expiresAt?: string | null; categories?: string[]; featured?: boolean }
+type Sheet = null | { kind: 'endDate'; ids: string[] } | { kind: 'categories'; ids: string[] } | { kind: 'more' }
+type View = 'list' | 'cards'
+
+const VIEW_KEY = 'abluo.posts.view'
+
+// The List / Cards choice lives in localStorage (per browser, a convenience):
+// read through useSyncExternalStore so the server render and first paint agree.
+const viewListeners = new Set<() => void>()
+let memoryView: View | null = null
+function readView(): View {
+  try {
+    const saved = window.localStorage.getItem(VIEW_KEY)
+    if (saved === 'cards' || saved === 'list') return saved
+  } catch {
+    /* storage unavailable */
+  }
+  return memoryView ?? 'list'
+}
+function writeView(v: View) {
+  try {
+    window.localStorage.setItem(VIEW_KEY, v)
+  } catch {
+    /* storage unavailable: the choice lasts until reload */
+    memoryView = v
+  }
+  viewListeners.forEach((l) => l())
+}
+function subscribeView(listener: () => void) {
+  viewListeners.add(listener)
+  const onStorage = (e: StorageEvent) => e.key === VIEW_KEY && listener()
+  window.addEventListener('storage', onStorage)
+  return () => {
+    viewListeners.delete(listener)
+    window.removeEventListener('storage', onStorage)
+  }
 }
 
-const STATUS_TABS: (PostStatus | 'all')[] = ['all', 'published', 'scheduled', 'draft', 'offline']
-
 /**
- * Posts list with search, status tabs, category / date / language filters and
- * sort. Filtering runs in the browser on the loaded list (see posts-filter.ts);
- * the state lives in the URL so reload, Back and shared links keep it.
+ * The Posts list — the reference pattern for every client list page.
+ *
+ * Computers (md+): a table by default (select · image · title · categories ·
+ * status · featured · languages · updated · published · ends · ⋯) with sortable
+ * headers, or a cards grid (List / Cards switch, remembered per browser).
+ * Phones: cards with a square checkbox on the left. Filters run in the browser
+ * on the loaded list (posts-filter.ts) and live in the URL.
+ *
+ * Selecting is only ever through the checkboxes (shift-click selects a range).
+ * As soon as one post is selected the selection bar floats up: on computers
+ * Take offline, Set end date, Featured, Not featured, Change category, Delete,
+ * Clear; on phones the main three plus "More". Batch actions run per post on
+ * the server (runPostBatch) and end in one toast. The featured star in the
+ * table / desktop cards opens a small confirm popover; on phone cards it is
+ * display-only.
  */
 export function PostsBrowser({
+  title,
   posts,
   languages,
   categories,
   initialQuery,
+  projectSlug,
+  canEdit = false,
+  canDeleteLive = false,
 }: {
+  title: string
   /** The page's query string at request time (server-provided, no Suspense needed). */
   initialQuery: string
   posts: BrowserPost[]
+  /** Site languages (two or more), or empty on single-language sites. */
   languages: string[]
   categories: { value: string; label: string }[]
+  projectSlug?: string
+  /** blog.post.write: menus, selection, featured and batch actions. */
+  canEdit?: boolean
+  /** Owner with blog.post.delete: may delete live posts (the server re-checks). */
+  canDeleteLive?: boolean
 }) {
   const t = useTranslations('clientDashboard.posts')
+  const tc = useTranslations('clientDashboard.posts.card')
   const router = useRouter()
+  const appRouter = useAppRouter()
   const pathname = usePathname()
+  const locale = useLocale()
   const [, startTransition] = useTransition()
 
-  const [filters, setFilters] = useState<PostFilters>(() =>
-    parseFilters(new URLSearchParams(initialQuery))
-  )
-  const [panelOpen, setPanelOpen] = useState(false)
+  // ── View (List / Cards), remembered per browser ────────────────────────────
+  const view = useSyncExternalStore(subscribeView, readView, () => 'list' as View)
+  const chooseView = (v: View) => writeView(v)
 
+  // ── Filters (in the URL) ───────────────────────────────────────────────────
+  const [filters, setFilters] = useState<PostFilters>(() => parseFilters(new URLSearchParams(initialQuery)))
   const update = (patch: Partial<PostFilters>) => {
     const next = { ...filters, ...patch }
     setFilters(next)
     const qs = filtersToParams(next).toString()
     startTransition(() => router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false }))
   }
+  const reset = () => update({ ...DEFAULT_FILTERS, sort: filters.sort })
 
-  const visible = useMemo(() => applyFilters(posts, filters), [posts, filters])
-  const counts = useMemo(() => statusCounts(posts, filters), [posts, filters])
-  const years = useMemo(() => postYears(posts), [posts])
+  // Optimistic featured flags until the refreshed list arrives (then dropped).
+  const [featuredNow, setFeaturedNow] = useState<Map<string, boolean>>(new Map())
+  const [seenPosts, setSeenPosts] = useState(posts)
+  if (seenPosts !== posts) {
+    setSeenPosts(posts)
+    setFeaturedNow(new Map())
+  }
+  const rows = useMemo(
+    () => posts.map((p) => (featuredNow.has(p._id) ? { ...p, featured: featuredNow.get(p._id)! } : p)),
+    [posts, featuredNow]
+  )
+  const visible = useMemo(() => applyFilters(rows, filters), [rows, filters])
+  const counts = useMemo(() => statusCounts(rows, filters), [rows, filters])
   const active = activeFilterCount(filters)
+  const isDefault = isDefaultFilters(filters)
   const usedCategories = categories.filter((c) => posts.some((p) => p.categoryKeys.includes(c.value)))
+  const multilingual = languages.length > 1
 
-  const toggleCategory = (value: string) =>
-    update({
-      categories: filters.categories.includes(value)
-        ? filters.categories.filter((c) => c !== value)
-        : [...filters.categories, value],
+  // ── Selection ──────────────────────────────────────────────────────────────
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [lastPicked, setLastPicked] = useState<string | null>(null)
+  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const shown = visible.filter((p) => !hidden.has(p._id))
+  const selectedIds = shown.filter((p) => selected.has(p._id)).map((p) => p._id)
+  const allState: 'none' | 'some' | 'all' =
+    selectedIds.length === 0 ? 'none' : selectedIds.length === shown.length ? 'all' : 'some'
+
+  /** Tick one post; with Shift, everything between the last tick and this one gets the same state. */
+  const toggle = (id: string, checked: boolean, shift: boolean) => {
+    const order = shown.map((p) => p._id)
+    setSelected((s) => {
+      const n = new Set(s)
+      const ids = shift && lastPicked && lastPicked !== id ? idRange(order, lastPicked, id) : [id]
+      for (const x of ids) {
+        if (checked) n.add(x)
+        else n.delete(x)
+      }
+      return n
     })
+    setLastPicked(id)
+  }
+  const toggleAll = (checked: boolean) => {
+    setSelected(checked ? new Set(shown.map((p) => p._id)) : new Set())
+    setLastPicked(null)
+  }
+  const clearSelection = () => {
+    setSelected(new Set())
+    setLastPicked(null)
+  }
 
-  const whenOptions = [
-    { value: 'all', label: t('filters.anyTime') },
-    { value: 'month', label: t('filters.thisMonth') },
-    { value: '3m', label: t('filters.last3Months') },
-    { value: 'year', label: t('filters.thisYear') },
-    ...years.map((y) => ({ value: y, label: y })),
-  ]
+  // ── Actions ────────────────────────────────────────────────────────────────
+  const [sheet, setSheet] = useState<Sheet>(null)
+  const [confirmDelete, setConfirmDelete] = useState<string[] | null>(null)
+  const [busy, setBusy] = useState(false)
+  const { toast, show, schedule } = useUndo()
+  const byId = useMemo(() => new Map(rows.map((p) => [p._id, p])), [rows])
+  const titleOf = (id: string) => byId.get(id)?.title ?? id
 
+  async function runBatch(op: BatchOp, ids: string[], extra: BatchExtra = {}) {
+    if (!projectSlug || !ids.length || busy) return false
+    setBusy(true)
+    try {
+      const r = await batchPostsAction({ projectSlug, ids: ids.slice(0, 100), op, ...extra })
+      if (!r.ok) {
+        show({ message: tc('batch.failedAll'), tone: 'error' })
+        return false
+      }
+      const ok = r.results.filter((x) => x.ok)
+      const failed = r.results.filter((x) => !x.ok).map((x) => titleOf(x.id))
+      if (op === 'featured' && ok.length) {
+        setFeaturedNow((m) => {
+          const n = new Map(m)
+          ok.forEach((x) => n.set(x.id, extra.featured === true))
+          return n
+        })
+      }
+      const done = ok.length ? tc(`batch.done.${op}`, { count: ok.length }) : ''
+      const fail = failed.length ? tc('batch.someFailed', { count: failed.length, titles: failed.slice(0, 3).join(', ') }) : ''
+      show({ message: [done, fail].filter(Boolean).join(' '), tone: failed.length && !ok.length ? 'error' : 'status' }, 7000)
+      if (ok.length) appRouter.refresh()
+      return failed.length === 0
+    } catch {
+      show({ message: tc('batch.failedAll'), tone: 'error' })
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** One post's star, after the popover's confirm button. */
+  const setFeatured = async (post: BrowserPost, next: boolean): Promise<boolean> => {
+    if (!projectSlug) return false
+    try {
+      const r = await setPostFeaturedAction({ projectSlug, id: post._id, featured: next })
+      if (!r.ok) throw new Error(r.error)
+      setFeaturedNow((m) => new Map(m).set(post._id, next))
+      show({ message: next ? t('featured.marked') : t('featured.removed'), tone: 'status' })
+      appRouter.refresh()
+      return true
+    } catch {
+      show({ message: tc('batch.failedAll'), tone: 'error' })
+      return false
+    }
+  }
+
+  /** Delete: drafts go behind "Deleted · Undo"; anything live asks first. */
+  const askDelete = (ids: string[]) => {
+    if (ids.some((id) => byId.get(id)?.hasLive)) return setConfirmDelete(ids)
+    setHidden((h) => new Set([...h, ...ids]))
+    clearSelection()
+    schedule({
+      id: ids.join(','),
+      message: tc('deleted', { count: ids.length }),
+      undoLabel: tc('undo'),
+      failMessage: tc('batch.failedAll'),
+      restore: () =>
+        setHidden((h) => {
+          const n = new Set(h)
+          ids.forEach((id) => n.delete(id))
+          return n
+        }),
+      run: async () => {
+        const r = await batchPostsAction({ projectSlug: projectSlug ?? '', ids, op: 'delete' })
+        if (r.ok) appRouter.refresh()
+        return r.ok && r.results.every((x) => x.ok)
+      },
+    })
+  }
+
+  const preview = async (post: BrowserPost) => {
+    if (!projectSlug) return
+    const tab = window.open('about:blank', '_blank')
+    if (tab) tab.opener = null
+    try {
+      const r = await mintDraftPreviewAction({ projectSlug, id: post._id })
+      if (!r.ok) throw new Error(r.error)
+      const url = draftPreviewUrl({ origin: r.origin, locale: post.previewLocale || 'en', projectSlug: r.projectSlug, id: post._id, token: r.token })
+      if (tab) tab.location.href = url
+      else window.location.assign(url)
+    } catch {
+      tab?.close()
+      show({ message: tc('previewFailed'), tone: 'error' })
+    }
+  }
+
+  const open = (post: BrowserPost, newTab: boolean) => {
+    if (!post.href) return
+    if (newTab) window.open(getPathname({ href: post.href, locale }), '_blank', 'noopener')
+    else appRouter.push(post.href)
+  }
+
+  const menuFor = (post: BrowserPost): CardMenuItem[] => {
+    const items: CardMenuItem[] = []
+    if (post.href) items.push({ key: 'edit', label: tc('edit'), onSelect: () => appRouter.push(post.href!) })
+    if (post.hasDraft) items.push({ key: 'preview', label: tc('preview'), onSelect: () => void preview(post) })
+    if (post.liveUrl) items.push({ key: 'view', label: tc('view'), onSelect: () => window.open(post.liveUrl!, '_blank', 'noopener,noreferrer') })
+    items.push({
+      key: 'featured',
+      label: post.featured ? t('featured.remove') : t('featured.mark'),
+      onSelect: () => void setFeatured(post, !post.featured),
+    })
+    if (post.hasLive && post.status === 'offline') items.push({ key: 'online', label: tc('online'), onSelect: () => void runBatch('online', [post._id]) })
+    if (post.hasLive && post.status !== 'offline') items.push({ key: 'offline', label: tc('offline'), onSelect: () => void runBatch('offline', [post._id]) })
+    if (post.hasLive) items.push({ key: 'endDate', label: tc('endDate'), onSelect: () => setSheet({ kind: 'endDate', ids: [post._id] }) })
+    if (!post.hasLive || canDeleteLive) items.push({ key: 'delete', label: tc('delete'), onSelect: () => askDelete([post._id]), destructive: true })
+    return items
+  }
+
+  const onSort = (column: SortColumn) => update({ sort: nextSort(column, filters.sort) })
+  const selectedPosts = selectedIds.map((id) => byId.get(id)).filter((p): p is BrowserPost => Boolean(p))
+  const liveSelected = selectedPosts.filter((p) => p.hasLive)
+  /** Every selected live post is offline: offer "Put back online" in the bar instead. */
+  const allOffline = liveSelected.length > 0 && liveSelected.every((p) => p.status === 'offline')
+  const none = !selectedIds.length || busy
   return (
-    <div className="space-y-4">
-      {/* Search + sort + (phone) filter toggle */}
-      <div className="flex flex-wrap items-center gap-2">
-        <label className="relative min-w-0 flex-1 basis-56">
-          <span className="sr-only">{t('filters.search')}</span>
-          <svg
-            aria-hidden
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 fill-none stroke-current stroke-2 text-muted-foreground"
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path d="m20 20-3.5-3.5" />
-          </svg>
-          <input
-            type="search"
-            value={filters.q}
-            onChange={(e) => update({ q: e.target.value })}
-            placeholder={t('filters.searchPlaceholder')}
-            className="h-11 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm"
-          />
-        </label>
-        <div role="radiogroup" aria-label={t('filters.sort')} className="inline-flex h-11 items-center rounded-xl bg-muted p-1">
-          {(['newest', 'oldest', 'edited'] as PostSort[]).map((s) => (
-            <button
-              key={s}
-              type="button"
-              role="radio"
-              aria-checked={filters.sort === s}
-              onClick={() => update({ sort: s })}
-              className={`h-9 rounded-lg px-3 text-sm font-medium ${
-                filters.sort === s ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {t(`filters.sort_${s}`)}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={() => setPanelOpen((o) => !o)}
-          aria-expanded={panelOpen}
-          aria-controls="posts-filter-panel"
-          className="inline-flex h-11 items-center gap-2 rounded-xl border border-border px-4 text-sm font-medium text-foreground sm:hidden"
-        >
-          {t('filters.filters')}
-          {active > 0 ? (
-            <span className="inline-flex size-5 items-center justify-center rounded-full bg-action text-xs text-action-foreground">
-              {active}
+    <div className="space-y-4 pb-28">
+      <PageHeader
+        title={title}
+        actions={
+          <>
+            <ViewSwitch
+              label={t('view.label')}
+              value={view}
+              onChange={chooseView}
+              options={[
+                { value: 'list', label: t('view.list'), icon: ICONS.list },
+                { value: 'cards', label: t('view.cards'), icon: ICONS.cards },
+              ]}
+            />
+            {canEdit && projectSlug ? <NewPostLink href={`/${projectSlug}/posts/write/new`} label={t('newPost')} /> : null}
+          </>
+        }
+      />
+
+      <PostsFilters
+        filters={filters}
+        update={update}
+        reset={reset}
+        isDefault={isDefault}
+        categories={usedCategories}
+        multilingual={multilingual}
+        counts={counts}
+        resultCount={shown.length}
+        total={posts.length}
+        activeCount={active}
+        showSortOnDesktop={view === 'cards'}
+        summaryExtra={
+          view === 'cards' && canEdit && shown.length > 0 ? (
+            <span className="hidden md:inline-flex">
+              <SelectAll label={t('select.all')} ariaLabel={t('columns.selectAll')} state={allState} onChange={toggleAll} />
             </span>
-          ) : null}
-        </button>
-      </div>
+          ) : null
+        }
+      />
 
-      {/* Status tabs (always visible; scroll sideways on phones) */}
-      <div role="radiogroup" aria-label={t('filters.status')} className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
-        {STATUS_TABS.map((s) => (
-          <button
-            key={s}
-            type="button"
-            role="radio"
-            aria-checked={filters.status === s}
-            onClick={() => update({ status: s })}
-            className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium ${
-              filters.status === s
-                ? 'bg-action text-action-foreground'
-                : 'border border-border text-foreground hover:bg-hover'
-            }`}
-          >
-            {s === 'all' ? t('filters.all') : t(`status.${s}`)}
-            <span className={filters.status === s ? 'opacity-80' : 'text-muted-foreground'}>{counts[s]}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Category / date / language — inline on larger screens, toggled on phones */}
-      <div id="posts-filter-panel" className={`${panelOpen ? 'block' : 'hidden'} space-y-3 sm:block`}>
-        {usedCategories.length > 0 ? (
-          <FilterRow label={t('filters.category')}>
-            {usedCategories.map((c) => (
-              <Chip key={c.value} on={filters.categories.includes(c.value)} onClick={() => toggleCategory(c.value)}>
-                {c.label}
-              </Chip>
-            ))}
-          </FilterRow>
-        ) : null}
-        <FilterRow label={t('filters.date')}>
-          {whenOptions.map((o) => (
-            <Chip key={o.value} on={filters.when === o.value} onClick={() => update({ when: o.value })}>
-              {o.label}
-            </Chip>
-          ))}
-        </FilterRow>
-        {languages.length > 1 ? (
-          <FilterRow label={t('filters.translations')}>
-            <Chip on={!filters.missing} onClick={() => update({ missing: '' })}>
-              {t('filters.anyLanguage')}
-            </Chip>
-            {languages.map((l) => (
-              <Chip key={l} on={filters.missing === l} onClick={() => update({ missing: filters.missing === l ? '' : l })}>
-                {t('filters.missingLanguage', { language: l.toUpperCase() })}
-              </Chip>
-            ))}
-          </FilterRow>
-        ) : null}
-      </div>
-
-      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-        <p aria-live="polite">{t('filters.showing', { shown: visible.length, total: posts.length })}</p>
-        {active > 0 || filters.q ? (
-          <button
-            type="button"
-            onClick={() => update({ ...DEFAULT_FILTERS, sort: filters.sort })}
-            className="inline-flex min-h-8 items-center font-medium text-foreground underline underline-offset-4"
-          >
-            {t('filters.clear')}
-          </button>
-        ) : null}
-      </div>
-
-      {visible.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border px-6 py-10 text-center">
+      {shown.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border px-6 py-10">
           <p className="font-medium text-foreground">{t('filters.noMatch')}</p>
+          {/* On the page-load filters ("updated, last 7 days") clearing changes nothing: widen to any date instead. */}
           <button
             type="button"
-            onClick={() => update({ ...DEFAULT_FILTERS, sort: filters.sort })}
-            className="mt-3 inline-flex h-10 items-center rounded-xl border border-border px-4 text-sm font-medium text-foreground"
+            onClick={isDefault ? () => update({ range: 'all' }) : reset}
+            className="mt-3 inline-flex h-11 items-center rounded-xl border border-border px-4 text-sm font-medium text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
-            {t('filters.clear')}
+            {isDefault ? t('filters.anyDate') : t('filters.clear')}
           </button>
         </div>
       ) : (
-        <ul className="divide-y divide-border-subtle border-y border-border-subtle">
-          {visible.map((post) => (
-            <li
-              key={post._id}
-              className="flex flex-col gap-2 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
-            >
-              <div className="min-w-0 flex-1 space-y-1">
-                {post.href ? (
-                  <Link
-                    href={post.href}
-                    className="inline-flex min-h-6 items-center text-base font-medium leading-snug text-foreground underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                  >
-                    {post.title}
-                  </Link>
-                ) : (
-                  <p className="text-base font-medium leading-snug text-foreground">{post.title}</p>
-                )}
-                {post.subtitle ? <p className="line-clamp-1 text-sm text-muted-foreground">{post.subtitle}</p> : null}
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-1 text-sm text-muted-foreground">
-                  {post.categories.map((c) => (
-                    <span key={c} className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground">
-                      {c}
-                    </span>
-                  ))}
-                  <span>{post.dateLabel}</span>
-                  {post.offlineLabel ? <span>{post.offlineLabel}</span> : null}
-                  {post.languages.length > 0 ? (
-                    <span className="inline-flex gap-1" aria-label={t('languages')}>
-                      {post.languages.map((l) => (
-                        <span key={l} className="rounded border border-border px-1.5 text-xs font-medium uppercase leading-5">
-                          {l}
-                        </span>
-                      ))}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-              <div className="flex shrink-0 flex-wrap items-center gap-1.5 self-start">
-                {post.badge ? (
-                  <span className="inline-flex h-7 items-center rounded-full bg-accent px-2.5 text-xs font-medium text-accent-foreground">
-                    {post.badge}
-                  </span>
-                ) : null}
-                <StatusBadge status={post.status} label={post.statusLabel} />
-              </div>
-            </li>
-          ))}
-        </ul>
+        <>
+          {/* Computers */}
+          <div className="hidden md:block">
+            {view === 'list' ? (
+              <PostsTable
+                posts={shown}
+                multilingual={multilingual}
+                canEdit={canEdit}
+                selected={selected}
+                onToggle={toggle}
+                allState={allState}
+                onToggleAll={toggleAll}
+                sort={filters.sort}
+                onSort={onSort}
+                onOpen={open}
+                menuFor={menuFor}
+                onFeatured={setFeatured}
+              />
+            ) : (
+              <PostCardsGrid
+                posts={shown}
+                canEdit={canEdit}
+                selected={selected}
+                onToggle={toggle}
+                onOpen={open}
+                menuFor={menuFor}
+                onFeatured={setFeatured}
+              />
+            )}
+          </div>
+          {/* Phones */}
+          <div className="md:hidden">
+            <PostPhoneList posts={shown} canEdit={canEdit} selected={selected} onToggle={toggle} onOpen={open} menuFor={menuFor} />
+          </div>
+        </>
       )}
+
+      {canEdit && selectedIds.length > 0 ? (
+        <SelectionBar label={t('select.toolbar')} count={tc('selected', { count: selectedIds.length })}>
+          {/* Phones: the main three + More */}
+          <BarButton className="md:hidden" disabled={none} onPress={() => void runBatch('offline', selectedIds)} icon={ICONS.offline}>
+            {tc('bar.offline')}
+          </BarButton>
+          <BarButton className="md:hidden" disabled={none} onPress={() => setSheet({ kind: 'endDate', ids: selectedIds })} icon={ICONS.calendar}>
+            {tc('bar.endDate')}
+          </BarButton>
+          <BarButton className="md:hidden" disabled={none} onPress={() => askDelete(selectedIds)} icon={ICONS.trash} destructive>
+            {tc('bar.delete')}
+          </BarButton>
+          <BarButton className="md:hidden" disabled={busy} onPress={() => setSheet({ kind: 'more' })} icon={ICONS.more}>
+            {tc('bar.more')}
+          </BarButton>
+          {/* Computers: everything in the bar */}
+          {allOffline ? (
+            <BarButton className="hidden md:flex" disabled={none} onPress={() => void runBatch('online', selectedIds)} icon={ICONS.online}>
+              {tc('more.online')}
+            </BarButton>
+          ) : (
+            <BarButton className="hidden md:flex" disabled={none} onPress={() => void runBatch('offline', selectedIds)} icon={ICONS.offline}>
+              {tc('bar.offline')}
+            </BarButton>
+          )}
+          <BarButton className="hidden md:flex" disabled={none} onPress={() => setSheet({ kind: 'endDate', ids: selectedIds })} icon={ICONS.calendar}>
+            {tc('bar.endDate')}
+          </BarButton>
+          <BarButton className="hidden md:flex" disabled={none} onPress={() => void runBatch('featured', selectedIds, { featured: true })} icon={<StarGlyph on />}>
+            {tc('bar.featured')}
+          </BarButton>
+          <BarButton className="hidden md:flex" disabled={none} onPress={() => void runBatch('featured', selectedIds, { featured: false })} icon={<StarGlyph on={false} />}>
+            {tc('bar.notFeatured')}
+          </BarButton>
+          <BarButton
+            className="hidden md:flex"
+            disabled={none || categories.length === 0}
+            onPress={() => setSheet({ kind: 'categories', ids: selectedIds })}
+            icon={ICONS.tag}
+          >
+            {tc('bar.categories')}
+          </BarButton>
+          <BarButton className="hidden md:flex" disabled={none} onPress={() => askDelete(selectedIds)} icon={ICONS.trash} destructive>
+            {tc('bar.delete')}
+          </BarButton>
+          <BarButton className="hidden md:flex" onPress={clearSelection} icon={ICONS.x}>
+            {tc('bar.clear')}
+          </BarButton>
+        </SelectionBar>
+      ) : null}
+
+      <BottomSheet open={sheet?.kind === 'more'} title={tc('more.title')} onClose={() => setSheet(null)}>
+        <SheetItem disabled={none} onPress={() => { setSheet(null); void runBatch('online', selectedIds) }}>
+          {tc('more.online')}
+        </SheetItem>
+        <SheetItem disabled={none} onPress={() => { setSheet(null); void runBatch('featured', selectedIds, { featured: true }) }}>
+          {tc('more.featured')}
+        </SheetItem>
+        <SheetItem disabled={none} onPress={() => { setSheet(null); void runBatch('featured', selectedIds, { featured: false }) }}>
+          {tc('more.notFeatured')}
+        </SheetItem>
+        <SheetItem disabled={none || categories.length === 0} onPress={() => setSheet({ kind: 'categories', ids: selectedIds })}>
+          {tc('more.categories')}
+        </SheetItem>
+        <SheetItem disabled={none} onPress={() => { setSheet(null); void runBatch('endDate', selectedIds, { expiresAt: null }) }}>
+          {tc('more.removeEndDate')}
+        </SheetItem>
+        <SheetItem onPress={() => { setSheet(null); clearSelection() }}>{tc('more.clear')}</SheetItem>
+      </BottomSheet>
+
+      <EndDateSheet
+        open={sheet?.kind === 'endDate'}
+        busy={busy}
+        onClose={() => setSheet(null)}
+        onSave={async (iso) => {
+          const ids = sheet?.kind === 'endDate' ? sheet.ids : []
+          if (await runBatch('endDate', ids, { expiresAt: iso })) setSheet(null)
+        }}
+        onRemove={
+          sheet?.kind === 'endDate' && sheet.ids.some((id) => byId.get(id)?.expiresAt)
+            ? async () => {
+                const ids = sheet.ids
+                if (await runBatch('endDate', ids, { expiresAt: null })) setSheet(null)
+              }
+            : undefined
+        }
+      />
+
+      <CategorySheet
+        open={sheet?.kind === 'categories'}
+        busy={busy}
+        categories={categories}
+        onClose={() => setSheet(null)}
+        onSave={async (keys) => {
+          const ids = sheet?.kind === 'categories' ? sheet.ids : []
+          if (await runBatch('categories', ids, { categories: keys })) setSheet(null)
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title={tc('confirmDelete.title', { count: confirmDelete?.length ?? 0 })}
+        body={tc('confirmDelete.body', { count: confirmDelete?.length ?? 0, title: confirmDelete?.length === 1 ? titleOf(confirmDelete[0]) : '' })}
+        confirmLabel={tc('confirmDelete.confirm')}
+        busy={busy}
+        onConfirm={async () => {
+          const ids = confirmDelete ?? []
+          await runBatch('delete', ids)
+          setConfirmDelete(null)
+          clearSelection()
+        }}
+        onCancel={() => setConfirmDelete(null)}
+      />
+
+      <Toast message={toast?.message ?? null} tone={toast?.tone} action={toast?.undo ? tc('undo') : undefined} onAction={toast?.undo} />
     </div>
-  )
-}
-
-function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div role="group" aria-label={label} className="flex flex-wrap items-center gap-1.5">
-      <span className="mr-1 w-full text-xs font-medium uppercase tracking-wide text-muted-foreground sm:w-24">
-        {label}
-      </span>
-      {children}
-    </div>
-  )
-}
-
-function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={onClick}
-      className={`inline-flex h-8 items-center rounded-full px-3 text-sm ${
-        on ? 'bg-selected-tint font-medium text-foreground ring-1 ring-foreground' : 'border border-border text-foreground hover:bg-hover'
-      }`}
-    >
-      {children}
-    </button>
-  )
-}
-
-const BADGE: Record<PostStatus, string> = {
-  published: 'text-success',
-  scheduled: 'bg-accent text-accent-foreground border-transparent',
-  draft: 'text-muted-foreground',
-  offline: 'bg-muted text-muted-foreground border-transparent',
-}
-
-function StatusBadge({ status, label }: { status: PostStatus; label: string }) {
-  return (
-    <span
-      className={`inline-flex h-7 shrink-0 items-center gap-1.5 self-start rounded-full border border-border px-2.5 text-xs font-medium ${BADGE[status]}`}
-    >
-      {status === 'published' ? <span aria-hidden className="size-1.5 rounded-full bg-success" /> : null}
-      {label}
-    </span>
   )
 }

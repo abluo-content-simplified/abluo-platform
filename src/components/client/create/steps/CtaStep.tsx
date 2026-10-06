@@ -4,10 +4,14 @@ import { useTranslations } from 'next-intl'
 import type { StepProps } from '@/components/client/create/types'
 import { StepHeading } from '@/components/client/create/StepHeading'
 
+/** Where calls to action are prepared (Website Settings → Calls to action). */
+const STUDIO_URL = 'https://admin.abluo.app/studio'
+
 /**
- * "Add a call to action?" — overview-only screen (ADR-025 · post CTA). The
- * project's calls to action are callToAction documents (Website Settings); the client picks the
- * site default, another prepared one, or none. Never shown when the site has none.
+ * "Add a call to action?" (ADR-025 · post CTA), on every blog. The project's
+ * calls to action are callToAction documents (Website Settings); the client
+ * picks the site default, another prepared one, or none. A site with none yet
+ * gets a short explanation and the way to set them up; Next skips the step.
  */
 export function CtaStep({ draft, site, update }: StepProps) {
   const t = useTranslations('clientDashboard.create.cta')
@@ -23,6 +27,31 @@ export function CtaStep({ draft, site, update }: StepProps) {
     else update({ 'cta.mode': 'custom', 'cta.ref': value.slice('custom:'.length) })
   }
 
+  if (ctas.length === 0) {
+    return (
+      <section aria-labelledby="cta-step-title">
+        <StepHeading id="cta-step-title" title={t('title')} />
+        <div className="mt-8 flex flex-col items-start gap-3 rounded-2xl border border-border p-4">
+          <p className="text-[1.0625rem] leading-7 font-medium text-foreground">
+            {site.firstName ? t('empty.hello', { firstName: site.firstName }) : t('empty.helloNoName')}
+          </p>
+          <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('empty.what')}</p>
+          <a
+            href={STUDIO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-11 items-center gap-2 text-[0.9375rem] font-semibold text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            {t('empty.setup')}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M7 17 17 7M8 7h9v9" />
+            </svg>
+          </a>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section aria-labelledby="cta-step-title">
       <StepHeading id="cta-step-title" title={t('title')} helper={t('helper')} />
@@ -33,7 +62,7 @@ export function CtaStep({ draft, site, update }: StepProps) {
           </Option>
         ) : null}
         {others.length > 0 ? (
-          <p className="mt-3 text-[15px] font-semibold text-foreground">{def ? t('chooseAnother') : t('options')}</p>
+          <p className="mt-3 text-[0.9375rem] font-semibold text-foreground">{def ? t('chooseAnother') : t('options')}</p>
         ) : null}
         {others.map((c) => (
           <Option key={c.id} value={`custom:${c.id}`} selected={selected} onPick={pick} title={c.name}>
@@ -41,7 +70,7 @@ export function CtaStep({ draft, site, update }: StepProps) {
           </Option>
         ))}
         <Option value="none" selected={selected} onPick={pick} title={t('none')}>
-          <span className="text-[15px] leading-6 text-muted-foreground">{t('noneHelp')}</span>
+          <span className="text-[0.9375rem] leading-6 text-muted-foreground">{t('noneHelp')}</span>
         </Option>
       </div>
     </section>
@@ -72,7 +101,7 @@ function Option({
         on ? 'border-foreground bg-selected-tint' : 'border-border hover:bg-hover'
       }`}
     >
-      <span className="text-[17px] font-semibold text-foreground">{title}</span>
+      <span className="text-[1.0625rem] font-semibold text-foreground">{title}</span>
       {children}
     </button>
   )
@@ -83,7 +112,7 @@ function CtaPreview({ heading, button }: { heading: string | null; button: strin
   if (!heading && !button) return null
   return (
     <span className="flex w-full flex-col items-start gap-2 rounded-xl bg-muted px-4 py-3">
-      {heading ? <span className="text-[15px] font-medium text-foreground">{heading}</span> : null}
+      {heading ? <span className="text-[0.9375rem] font-medium text-foreground">{heading}</span> : null}
       {button ? (
         <span className="inline-flex min-h-8 items-center rounded-full bg-background px-3 text-sm font-semibold text-foreground">
           {button}

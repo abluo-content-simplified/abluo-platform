@@ -35,7 +35,8 @@
  *   { _type: 'localizedImage', asset: { _type: 'reference', _ref: 'image-…' },
  *     alt: { _type: 'localizedString', <locale>: '…' } }
  */
-import { assertModuleAction } from '@/lib/api/module-action-guard'
+import { photoNameFromFile } from '@/lib/media/photo-name'
+import { assertProjectAccess } from '@/lib/api/media-permission'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import {
   assertSameTenantReference,
@@ -70,7 +71,7 @@ export const POST_MEDIA_LIMITS = {
   /** Tag chips returned. */
   tagChips: 30,
   /** Uploads per user per project in a rolling window (cost / storage abuse cap). */
-  uploadsPerWindow: 60,
+  uploadsPerWindow: 300,
   uploadWindowMs: 24 * 60 * 60 * 1000,
 } as const
 
@@ -118,6 +119,8 @@ export type UploadedPostImage = {
   /** Bytes received by the server, and bytes stored after optimisation. */
   bytesBefore: number
   bytesAfter: number
+  /** The photo's starting name (from the file name; '' for camera names like IMG_1234). */
+  name: string
 }
 
 /** Focal point in fractions of the ORIGINAL image (Sanity hotspot centre). */
@@ -132,6 +135,12 @@ export type ProjectMediaItem = {
   alt: Record<string, string>
   /** The asset's focal point ("set once, applies everywhere"), or null. */
   focal: FocalPoint | null
+  /** Asset revision (guards edits), name, title, caption and tags — for the Media screen. */
+  rev: string
+  name: string
+  title: Record<string, string>
+  caption: Record<string, string>
+  tags: string[]
 }
 
 export type PostCover = { assetId: string; url: string; alt: Record<string, string>; focal: FocalPoint | null }
@@ -158,8 +167,8 @@ function focalOf(hotspot: unknown): FocalPoint | null {
 const DOC_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/
 const CURSOR = /^(\d{4}-\d{2}-\d{2}T[0-9:.]+Z)\|([A-Za-z0-9._-]{1,128})$/
 
-function grantFor(ctx: TenantAuthorizationContext, projectId: string) {
-  assertModuleAction(ctx, projectId, BLOG_POST_WRITE_PERMISSION)
+function grantFor(ctx: TenantAuthorizationContext, projectId: string, permission: string = BLOG_POST_WRITE_PERMISSION) {
+  assertProjectAccess(ctx, projectId, permission)
   return ctx.projects.find((p) => p.projectId === projectId)!
 }
 
@@ -189,14 +198,31 @@ function toLocalized(value: unknown): Record<string, string> {
   return out
 }
 
-/** Optimises and files one image as this project's Media Library asset. */
+/** Optimises and files one image as this project's Media Library asset (blog: tag `blog`, gate blog.post.write). */
 export async function uploadPostImage(
   ctx: TenantAuthorizationContext,
   projectId: string,
   file: File,
   deps: PostMediaDeps = {}
 ): Promise<UploadedPostImage> {
-  const grant = grantFor(ctx, projectId)
+  return uploadProjectImage(ctx, projectId, file, { tag: 'blog', permission: BLOG_POST_WRITE_PERMISSION }, deps)
+}
+
+/**
+ * Optimises and files one image as this project's Media Library asset. The
+ * caller's module decides the gate (`permission`, e.g. gallery.gallery.write)
+ * and the asset's tag; everything else — type sniffing, size and rate limits,
+ * the single-project lookup, Tinify — is shared.
+ */
+export async function uploadProjectImage(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  file: File,
+  opts: { tag?: string; permission?: string } = {},
+  deps: PostMediaDeps = {}
+): Promise<UploadedPostImage> {
+  const grant = grantFor(ctx, projectId, opts.permission ?? 'gallery.gallery.write')
+  const tag = opts.tag === '' ? '' : (opts.tag ?? 'gallery').toLowerCase()
 
   if (!file || typeof file !== 'object' || typeof file.size !== 'number' || typeof file.arrayBuffer !== 'function') {
     throw new PostMediaError('invalid_value', 'No file.')
@@ -247,6 +273,7 @@ export async function uploadPostImage(
 
   const ext = sniffed === 'image/png' ? 'png' : sniffed === 'image/webp' ? 'webp' : 'jpg'
   const base = (file.name || 'image').replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '-').slice(0, 80) || 'image'
+  const name = photoNameFromFile(file.name)
   let created: Awaited<ReturnType<typeof createMediaAsset>>
   try {
     // createMediaAsset runs Tinify first (never blocks the upload).
@@ -259,8 +286,8 @@ export async function uploadPostImage(
         tenantId: project.clientId,
         projectId: project._id,
         projectSlug: grant.projectSlug,
-        name: file.name ? file.name.slice(0, 120) : null,
-        tags: ['blog'],
+        name: name || null,
+        tags: tag ? [tag] : [],
         uploadedBy: ctx.userId,
       },
       { optimize: deps.optimize, log: deps.log }
@@ -276,6 +303,7 @@ export async function uploadPostImage(
     optimized: created.optimization.optimized,
     bytesBefore: created.optimization.bytesBefore,
     bytesAfter: created.optimization.bytesAfter,
+    name,
   }
 }
 
@@ -306,9 +334,11 @@ export async function listProjectMedia(
   ctx: TenantAuthorizationContext,
   projectId: string,
   options: ListProjectMediaOptions = {},
-  deps: PostMediaDeps = {}
+  deps: PostMediaDeps = {},
+  /** The calling module's gate (default: the blog's; galleries pass gallery.gallery.write). */
+  permission: string = BLOG_POST_WRITE_PERMISSION
 ): Promise<{ items: ProjectMediaItem[]; nextCursor: string | null; tags: string[] }> {
-  grantFor(ctx, projectId)
+  grantFor(ctx, projectId, permission)
 
   let cursorAt = ''
   let cursorId = ''
@@ -338,8 +368,11 @@ export async function listProjectMedia(
   const rows = await scoped.fetch<
     Array<{
       _id: string
+      _rev?: string
       _createdAt: string
       name?: string | null
+      title?: unknown
+      caption?: unknown
       alt?: unknown
       tags?: unknown
       hotspot?: unknown
@@ -350,7 +383,7 @@ export async function listProjectMedia(
   >(
     `*[_type == "mediaAsset" && projectSlug == $projectSlug && defined(image.asset) && !(_id in path("drafts.**"))]
       | order(_createdAt desc, _id desc)[0...${POST_MEDIA_LIMITS.scan}]{
-        _id, _createdAt, name, tags,
+        _id, _rev, _createdAt, name, tags, title, caption,
         "alt": altText,
         "hotspot": image.hotspot,
         "url": image.asset->url,
@@ -377,7 +410,9 @@ export async function listProjectMedia(
   const matching = all.filter((r) => {
     if (wanted.size && !tagsOf(r).some((t) => wanted.has(t))) return false
     if (!words.length) return true
-    const haystack = foldText([r.name ?? '', ...Object.values(altOf(r))].join(' '))
+    const haystack = foldText(
+      [r.name ?? '', ...Object.values(altOf(r)), ...Object.values(toLocalized(r.title)), ...Object.values(toLocalized(r.caption))].join(' ')
+    )
     return words.every((w) => haystack.includes(w))
   })
   // Rows are already newest first (_createdAt desc, _id desc).
@@ -397,6 +432,11 @@ export async function listProjectMedia(
       height: r.height ?? null,
       alt: altOf(r),
       focal: focalOf(r.hotspot),
+      rev: r._rev ?? '',
+      name: typeof r.name === 'string' ? r.name.trim() : '',
+      title: toLocalized(r.title),
+      caption: toLocalized(r.caption),
+      tags: tagsOf(r),
     })),
     nextCursor: last ? `${last._createdAt}|${last._id}` : null,
     tags,

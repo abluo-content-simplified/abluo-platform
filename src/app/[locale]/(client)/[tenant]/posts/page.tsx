@@ -7,9 +7,15 @@ import {
   type DashboardPostList,
   type DashboardPostRow,
 } from '@/lib/api/client-dashboard'
-import { PostsBrowser, type BrowserPost } from '@/components/client/posts/PostsBrowser'
+import { PostsBrowser } from '@/components/client/posts/PostsBrowser'
+import { PageHeader } from '@/components/client/ui/PageHeader'
+import { NewPostLink } from '@/components/client/posts/post-bits'
+import type { BrowserPost } from '@/components/client/posts/types'
+import { postSearchText } from '@/lib/client/posts-filter'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { listPostDrafts, type PostDraftSummary } from '@/lib/api/post-drafts'
+import { canDeletePublished } from '@/lib/api/post-lifecycle'
+import { getProjectSiteDomain } from '@/lib/api/client-dashboard'
 
 /**
  * Client dashboard — Posts list. ADR-017 slice 6 (Phase 1 read path) relocated
@@ -26,7 +32,8 @@ import { listPostDrafts, type PostDraftSummary } from '@/lib/api/post-drafts'
  * itself — the same belt-and-braces posture as the rest of the dashboard.
  *
  * All user-facing copy comes from the `clientDashboard` next-intl namespace —
- * no hardcoded strings (Multilingual-First).
+ * no hardcoded strings (Multilingual-First). Dates go to the browser as ISO
+ * strings and are formatted there, in the viewer's own time zone.
  */
 export default async function PostsPage({
   params,
@@ -51,6 +58,7 @@ export default async function PostsPage({
   const canEdit = grant.permissions.includes('blog.post.write')
   const t = await getTranslations('clientDashboard')
 
+  const domain = await getProjectSiteDomain(ctx, grant.projectId).catch(() => null)
   let list: DashboardPostList = { posts: [], languages: [], categories: [] }
   let drafts: PostDraftSummary[] = []
   let moduleNotInstalled = false
@@ -75,92 +83,94 @@ export default async function PostsPage({
     }
   }
 
+  const site = list.defaultLocale ?? locale
+  const draftById = new Map(drafts.map((d) => [d.id, d]))
+  const posts: BrowserPost[] = [
+    ...drafts
+      .filter((d) => !list.posts.some((p) => p._id === d.id))
+      .map((d) => draftToBrowserPost(d, projectSlug, list, locale, t)),
+    ...list.posts.map((post) => {
+      const draft = draftById.get(post._id)
+      return {
+        ...toBrowserPost(post, list.languages, t),
+        // Live posts open on their overview (a copy is made on first open).
+        href: canEdit ? `/${projectSlug}/posts/write/${post._id}` : null,
+        badge: draft ? t('posts.unpublishedChanges') : null,
+        // The last edit of either version.
+        updatedAt: latest(post.updatedAt, draft?.updatedAt),
+        hasLive: true,
+        hasDraft: Boolean(draft),
+        liveUrl: domain && post.status === 'published' && post.slugDefault ? `https://${domain}/${site}/blog/${post.slugDefault}` : null,
+        previewLocale: site,
+      }
+    }),
+  ]
+
   return (
-    <Shell title={t('posts.title')}>
-      {moduleNotInstalled ? (
-        <p className="text-sm text-muted-foreground">{t('posts.moduleNotInstalled')}</p>
-      ) : list.posts.length === 0 && drafts.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('posts.emptyNoPosts')}</p>
+    <div className="max-w-6xl space-y-5">
+      {moduleNotInstalled || posts.length === 0 ? (
+        <>
+          <PageHeader
+            title={t('posts.title')}
+            actions={canEdit && !moduleNotInstalled ? <NewPostLink href={`/${projectSlug}/posts/write/new`} label={t('posts.newPost')} /> : null}
+          />
+          <p className="text-sm text-muted-foreground">
+            {moduleNotInstalled ? t('posts.moduleNotInstalled') : t('posts.emptyNoPosts')}
+          </p>
+        </>
       ) : (
         <PostsBrowser
-          posts={[
-            ...drafts
-              .filter((d) => !list.posts.some((p) => p._id === d.id))
-              .map((d) => draftToBrowserPost(d, projectSlug, list, locale, t)),
-            ...list.posts.map((post) => ({
-              ...toBrowserPost(post, locale, t),
-              // Live posts open in the editor too (a copy is made on first open).
-              href: canEdit ? `/${projectSlug}/posts/write/${post._id}` : null,
-              badge: drafts.some((d) => d.id === post._id) ? t('posts.unpublishedChanges') : null,
-            })),
-          ]}
+          title={t('posts.title')}
+          posts={posts}
           languages={list.languages}
           categories={list.categories}
           initialQuery={toQueryString(await searchParams)}
+          projectSlug={projectSlug}
+          canEdit={canEdit}
+          canDeleteLive={canDeletePublished(grant)}
         />
       )}
-    </Shell>
-  )
-}
-
-/** Minimal page frame inside the dashboard shell. */
-function Shell({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="max-w-3xl space-y-5">
-      <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-      {children}
     </div>
   )
 }
 
-/** Locale-aware date formatting; falls back to the raw ISO string on error. */
-function formatDate(iso: string, locale: string): string {
-  try {
-    return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(iso))
-  } catch {
-    return iso
-  }
-}
-
 type T = Awaited<ReturnType<typeof getTranslations<'clientDashboard'>>>
 
-/** The one date that matters for each state. */
-function dateLine(post: DashboardPostRow, locale: string, t: T): string {
-  switch (post.status) {
-    case 'published':
-      return t('posts.meta.published', { date: formatDate(post.publishedAt ?? post.updatedAt, locale) })
-    case 'scheduled':
-      return t('posts.meta.scheduled', { date: formatDate(post.publishedAt ?? post.updatedAt, locale) })
-    case 'offline':
-      return t('posts.meta.offlineSince', { date: formatDate(post.expiresAt ?? post.updatedAt, locale) })
-    default:
-      return t('posts.meta.edited', { date: formatDate(post.updatedAt, locale) })
-  }
+function latest(a: string, b?: string): string {
+  if (!b) return a
+  return (Date.parse(b) || 0) > (Date.parse(a) || 0) ? b : a
 }
 
-/** Server-side formatting (dates in one place, no hydration drift). */
-function toBrowserPost(post: DashboardPostRow, locale: string, t: T): BrowserPost {
+/** Every site language with its state; `complete` = title and body in that language. */
+function languageStates(languages: string[], complete: (code: string) => boolean) {
+  return languages.map((code) => ({ code, complete: complete(code) }))
+}
+
+/** A published (live / scheduled / offline) post as a list row. */
+function toBrowserPost(post: DashboardPostRow, languages: string[], t: T): BrowserPost {
+  const states = languageStates(languages, (l) => post.completeLanguages.includes(l))
   return {
     _id: post._id,
     title: post.title ?? t('posts.untitled'),
     subtitle: post.subtitle ?? null,
     status: post.status,
-    statusLabel: t(`posts.status.${post.status}`),
     searchText: post.searchText,
     categoryKeys: post.categoryKeys ?? [],
     categories: post.categories,
     languages: post.languages,
     primaryDate: post.status === 'draft' ? post.updatedAt : post.publishedAt ?? post.updatedAt,
     updatedAt: post.updatedAt,
-    dateLabel: dateLine(post, locale, t),
-    offlineLabel:
-      post.expiresAt && post.status !== 'offline'
-        ? t('posts.meta.offlineOn', { date: formatDate(post.expiresAt, locale) })
-        : null,
+    publishedAt: post.publishedAt ?? null,
+    expiresAt: post.expiresAt ?? null,
+    featured: post.featured === true,
+    languageStates: states,
+    translationsComplete: states.length ? states.every((s) => s.complete) : undefined,
+    thumb: post.coverThumb,
+    cardImage: post.coverCard,
   }
 }
 
-/** A wizard draft as a list row: status draft, opens the wizard. */
+/** A wizard draft (never published) as a list row: status draft, opens the wizard. */
 function draftToBrowserPost(
   draft: PostDraftSummary,
   projectSlug: string,
@@ -169,22 +179,30 @@ function draftToBrowserPost(
   t: T
 ): BrowserPost {
   const label = new Map(list.categories.map((c) => [c.value, c.label]))
-  const texts = Object.values(draft.titles).join(' \n ')
+  const states = languageStates(list.languages, (l) => Boolean(draft.titles[l]?.trim()) && draft.bodyLanguages.includes(l))
   return {
     _id: draft.id,
     title: draft.title ?? t('posts.untitledDraft'),
-    subtitle: null,
+    subtitle: draft.subtitle ?? null,
     status: 'draft',
-    statusLabel: t('posts.status.draft'),
-    searchText: texts.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(),
+    searchText: draft.searchText ?? postSearchText({ titles: draft.titles }),
     categoryKeys: draft.categoryKeys,
     categories: draft.categoryKeys.map((k) => label.get(k) ?? k.replace(/-/g, ' ')),
     languages: list.languages.filter((l) => draft.titles[l]?.trim()),
     primaryDate: draft.updatedAt,
     updatedAt: draft.updatedAt,
-    dateLabel: t('posts.meta.edited', { date: formatDate(draft.updatedAt, locale) }),
-    offlineLabel: null,
+    publishedAt: null,
+    expiresAt: null,
+    featured: draft.featured,
+    languageStates: states,
+    translationsComplete: states.length ? states.every((s) => s.complete) : undefined,
     href: `/${projectSlug}/posts/write/${draft.id}`,
+    thumb: draft.coverThumb,
+    cardImage: draft.coverCard,
+    hasLive: false,
+    hasDraft: true,
+    liveUrl: null,
+    previewLocale: list.defaultLocale ?? Object.keys(draft.titles)[0] ?? locale,
   }
 }
 

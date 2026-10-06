@@ -19,7 +19,7 @@
 import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
-import { BLOG_POST_WRITE_PERMISSION, isPostId, liveState, PostDraftError, type PostLiveState } from '@/lib/api/post-drafts'
+import { BLOG_POST_WRITE_PERMISSION, isPostId, LIMITS, liveState, PostDraftError, type PostDraftErrorCode, type PostLiveState } from '@/lib/api/post-drafts'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
 
@@ -238,4 +238,173 @@ export async function deletePublishedPost(
 /** Whether this grant may delete published posts (UI hint; the server re-checks). */
 export function canDeletePublished(grant: { role: string; permissions: string[] }): boolean {
   return grant.role === 'owner' && grant.permissions.includes(BLOG_POST_DELETE_PERMISSION)
+}
+
+// ── End date and topics (Posts list, single and batch) ───────────────────────
+
+/** An ISO date-time, or null; anything else is invalid. */
+function isoOrNull(value: unknown): string | null {
+  if (value === null) return null
+  if (typeof value !== 'string' || value.length > 40) throw new PostDraftError('invalid_value', 'Unknown date.')
+  const at = Date.parse(value)
+  if (Number.isNaN(at)) throw new PostDraftError('invalid_value', 'Unknown date.')
+  return new Date(at).toISOString()
+}
+
+/**
+ * Sets (or with null removes) the date a post goes offline by itself
+ * (`expiresAt`, D5) — on the live version, and on its draft when there is one
+ * so "Update post" keeps it. Revision-guarded on both.
+ */
+export async function setPostEndDate(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: { id: string; rev: string; expiresAt: string | null },
+  deps: PostLifecycleDeps = {}
+): Promise<PostLiveState> {
+  const grant = grantFor(ctx, projectId, BLOG_POST_WRITE_PERMISSION)
+  const client = deps.client ?? sanityWriteClient
+  if (!isPostId(input?.id)) notFound()
+  const expiresAt = isoOrNull(input.expiresAt)
+  const now = (deps.now ?? (() => new Date()))().getTime()
+  if (expiresAt && Date.parse(expiresAt) <= now) throw new PostDraftError('invalid_value', 'The end date must be in the future.')
+  const { published, draft } = await read(client, input.id, grant.projectSlug)
+  if (!published) notFound()
+  if (published._rev !== input.rev) throw new PostDraftError('conflict', 'This post was changed elsewhere.')
+  if (expiresAt && typeof published.publishedAt === 'string' && Date.parse(expiresAt) <= Date.parse(published.publishedAt)) {
+    throw new PostDraftError('invalid_value', 'The end date must be after the publish date.')
+  }
+  const change = expiresAt ? { set: { expiresAt } } : { unset: ['expiresAt'] }
+  await commit(client, grant.projectSlug, () => {
+    let tx = client.transaction().patch(input.id, { ifRevisionID: input.rev, ...change })
+    if (draft?._rev) tx = tx.patch(`drafts.${input.id}`, { ifRevisionID: draft._rev, ...change })
+    return tx.commit()
+  })
+  const next: Doc = { ...published }
+  if (expiresAt) next.expiresAt = expiresAt
+  else delete next.expiresAt
+  return liveState(next)
+}
+
+/**
+ * Replaces a post's topics (blog categories of THIS site only) on whatever
+ * versions exist — live and draft — revision-guarded on each.
+ */
+export async function setPostCategories(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: { id: string; categories: string[] },
+  deps: PostLifecycleDeps = {}
+): Promise<void> {
+  const grant = grantFor(ctx, projectId, BLOG_POST_WRITE_PERMISSION)
+  const client = deps.client ?? sanityWriteClient
+  if (!isPostId(input?.id)) notFound()
+  if (!Array.isArray(input.categories) || input.categories.length > LIMITS.categories) {
+    throw new PostDraftError('invalid_value', 'Categories must be a short list.')
+  }
+  const keys = [...new Set(input.categories)]
+  const allowed = await client.fetch<string[] | null>(
+    `*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].moduleInstallations[moduleId == "blog"][0].config.categories[].value`,
+    { projectSlug: grant.projectSlug }
+  )
+  if (!keys.every((k) => typeof k === 'string' && (allowed ?? []).includes(k))) {
+    throw new PostDraftError('invalid_value', 'Unknown category.')
+  }
+  const { published, draft } = await read(client, input.id, grant.projectSlug)
+  if (!published && !draft) notFound()
+  const change = keys.length ? { set: { categories: keys } } : { unset: ['categories'] }
+  await commit(client, grant.projectSlug, () => {
+    let tx = client.transaction()
+    if (published?._rev) tx = tx.patch(input.id, { ifRevisionID: published._rev, ...change })
+    if (draft?._rev) tx = tx.patch(`drafts.${input.id}`, { ifRevisionID: draft._rev, ...change })
+    return tx.commit()
+  })
+}
+
+/**
+ * Marks a post as featured (or not): the `featured` boolean the website uses
+ * to pin posts first in its lists and for "Featured only" blog sections. Set
+ * on whatever versions exist — live and draft (so "Update post" keeps it) —
+ * revision-guarded on each, read fresh just before.
+ */
+export async function setPostFeatured(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: { id: string; featured: boolean },
+  deps: PostLifecycleDeps = {}
+): Promise<void> {
+  const grant = grantFor(ctx, projectId, BLOG_POST_WRITE_PERMISSION)
+  const client = deps.client ?? sanityWriteClient
+  if (!isPostId(input?.id)) notFound()
+  if (typeof input.featured !== 'boolean') throw new PostDraftError('invalid_value', 'Featured must be true or false.')
+  const { published, draft } = await read(client, input.id, grant.projectSlug)
+  if (!published && !draft) notFound()
+  const change = { set: { featured: input.featured } }
+  await commit(client, grant.projectSlug, () => {
+    let tx = client.transaction()
+    if (published?._rev) tx = tx.patch(input.id, { ifRevisionID: published._rev, ...change })
+    if (draft?._rev) tx = tx.patch(`drafts.${input.id}`, { ifRevisionID: draft._rev, ...change })
+    return tx.commit()
+  })
+}
+
+// ── Batch (Posts list selection) ─────────────────────────────────────────────
+
+export const POST_BATCH_LIMIT = 100
+export const POST_BATCH_OPS = ['offline', 'online', 'delete', 'endDate', 'categories', 'featured'] as const
+export type PostBatchOp = (typeof POST_BATCH_OPS)[number]
+export type PostBatchItem = { id: string; ok: true } | { id: string; ok: false; error: PostDraftErrorCode }
+
+/**
+ * Runs one lifecycle action over several posts by looping over the per-post
+ * functions above — each does its own `assertModuleAction`, ownership re-read
+ * and revision guard. The revision each one needs is read just before (the
+ * list's copy may be minutes old). At most POST_BATCH_LIMIT ids; per-item
+ * results, never all-or-nothing.
+ */
+export async function runPostBatch(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: { ids: unknown; op: PostBatchOp; expiresAt?: string | null; categories?: string[]; featured?: boolean },
+  deps: PostLifecycleDeps = {}
+): Promise<PostBatchItem[]> {
+  // The gate before any I/O (each item re-checks).
+  grantFor(ctx, projectId, BLOG_POST_WRITE_PERMISSION)
+  if (!(POST_BATCH_OPS as readonly unknown[]).includes(input?.op)) throw new PostDraftError('invalid_value', 'Unknown action.')
+  if (!Array.isArray(input.ids) || input.ids.length === 0) throw new PostDraftError('invalid_value', 'Nothing selected.')
+  if (input.ids.length > POST_BATCH_LIMIT) throw new PostDraftError('too_large', `At most ${POST_BATCH_LIMIT} posts at once.`)
+  const ids = [...new Set(input.ids)].filter((id): id is string => typeof id === 'string')
+  const client = deps.client ?? sanityWriteClient
+  const grant = ctx.projects.find((p) => p.projectId === projectId)!
+  const results: PostBatchItem[] = []
+  for (const id of ids) {
+    try {
+      if (!isPostId(id)) notFound()
+      if (input.op === 'categories') {
+        await setPostCategories(ctx, projectId, { id, categories: input.categories ?? [] }, deps)
+      } else if (input.op === 'featured') {
+        await setPostFeatured(ctx, projectId, { id, featured: input.featured as boolean }, deps)
+      } else {
+        const { published, draft } = await read(client, id, grant.projectSlug)
+        if (input.op === 'delete') {
+          if (published) await deletePublishedPost(ctx, projectId, { id, rev: published._rev ?? '' }, deps)
+          else if (draft) await deletePostDraft(ctx, projectId, { id, rev: draft._rev ?? '' }, deps)
+          else notFound()
+        } else {
+          if (!published && !draft) notFound()
+          if (!published) throw new PostDraftError('invalid_value', 'This post is not published.')
+          const rev = published._rev ?? ''
+          if (input.op === 'offline') await takePostOffline(ctx, projectId, { id, rev }, deps)
+          else if (input.op === 'online') await putPostBackOnline(ctx, projectId, { id, rev }, deps)
+          else await setPostEndDate(ctx, projectId, { id, rev, expiresAt: input.expiresAt ?? null }, deps)
+        }
+      }
+      results.push({ id, ok: true })
+    } catch (error) {
+      if (error instanceof PostDraftError) results.push({ id, ok: false, error: error.code })
+      else if (error instanceof TenantAuthorizationError) results.push({ id, ok: false, error: 'forbidden' })
+      else results.push({ id, ok: false, error: 'failed' })
+    }
+  }
+  return results
 }

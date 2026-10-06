@@ -23,6 +23,8 @@ export type DraftSnapshot = {
   furthest?: WizardStep
   /** Call to action at the end of the post; null/absent = the site default. */
   cta?: { mode: 'default' | 'none' | 'custom'; ref: string | null } | null
+  /** Gallery shown below the post (gallery id), null/absent = none. */
+  gallery?: string | null
   /** 'edit' = unpublished changes to a live post ("Update post"); 'create' otherwise. */
   mode?: 'create' | 'edit'
   /** The published version, when there is one. */
@@ -40,7 +42,11 @@ export type SiteInfo = {
   /** `https://<customDomain>` when the site has one, else null ("View on your site" is hidden). */
   origin?: string | null
   /** The project's callToAction documents (empty/absent = the CTA card is hidden). */
+  /** This project's galleries — present only when the Gallery module is installed (may be empty). */
+  galleries?: { id: string; title: string; count: number }[]
   ctas?: { id: string; name: string; isDefault: boolean; heading: string | null; buttonLabel: string | null }[]
+  /** The signed-in person's first name, for a friendlier message (null = unknown). */
+  firstName?: string | null
 }
 
 export type StepProps = {

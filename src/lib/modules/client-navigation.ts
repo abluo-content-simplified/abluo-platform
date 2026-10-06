@@ -22,6 +22,7 @@
 import type { ProjectGrant } from '@/lib/api/tenant-context'
 import { MODULE_REGISTRY } from './registry'
 import type { ModuleManifest } from './types'
+import { canManageMedia } from '@/lib/permissions'
 
 /**
  * The single authoritative mapping from a module id to the client-dashboard
@@ -45,6 +46,9 @@ export const MODULE_DASHBOARD_ROUTES: Record<string, string> = {
   // (leads) list at /{projectSlug}/submissions. Only appears when the forms
   // module is installed+enabled for the active project.
   forms: 'submissions',
+  // Gallery module — the client's galleries (list + draft editor) at
+  // /{projectSlug}/galleries. Only when the gallery module is installed.
+  gallery: 'galleries',
 }
 
 /**
@@ -103,6 +107,19 @@ export function buildClientNavItems(
       labelKey: `clientDashboard.nav.${manifest.id}`,
       href: `/${grant.projectSlug}/${MODULE_DASHBOARD_ROUTES[manifest.id]}`,
     }))
+}
+
+/** The Media screen segment (`/{projectSlug}/media`) — not a module: every project has a Media Library. */
+export const MEDIA_SEGMENT = 'media'
+
+/**
+ * The Media nav item, for grants that may manage media (owner/editor —
+ * `canManageMedia`). Appended after the module items, i.e. under Content.
+ */
+export function mediaNavItems(grant: Pick<ProjectGrant, 'projectSlug' | 'role'>): ClientNavItem[] {
+  return canManageMedia(grant.role)
+    ? [{ moduleId: 'media', labelKey: 'clientDashboard.nav.media', href: `/${grant.projectSlug}/${MEDIA_SEGMENT}` }]
+    : []
 }
 
 /**

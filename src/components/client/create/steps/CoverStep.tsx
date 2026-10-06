@@ -402,16 +402,16 @@ export function CoverStep(props: CoverStepProps) {
       className={`relative -m-2 flex flex-col rounded-3xl p-2 transition-colors ${dragging ? 'bg-selected-tint ring-2 ring-ring' : ''}`}
       {...dragProps}
     >
-      <h1 id="cover-step-title" className="text-[30px] leading-9 font-semibold tracking-tight text-foreground">
+      <h1 id="cover-step-title" className="text-[1.875rem] leading-9 font-semibold tracking-tight text-foreground">
         {t('title')}
       </h1>
-      <p className="mt-3 text-[17px] leading-7 text-muted-foreground">{t('helper')}</p>
+      <p className="mt-3 text-[1.0625rem] leading-7 text-muted-foreground">{t('helper')}</p>
 
       <input ref={cameraRef} type="file" accept={ACCEPT} capture="environment" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={(e) => onPicked(e.target)} />
       <input ref={pickerRef} type="file" accept={ACCEPT} className="sr-only" tabIndex={-1} aria-hidden="true" onChange={(e) => onPicked(e.target)} />
 
       {dragging && (
-        <p className="pointer-events-none mt-4 text-center text-[15px] font-medium text-foreground" aria-live="polite">
+        <p className="pointer-events-none mt-4 text-center text-[0.9375rem] font-medium text-foreground" aria-live="polite">
           {t('dropHere')}
         </p>
       )}
@@ -474,7 +474,7 @@ export function CoverStep(props: CoverStepProps) {
           </div>
 
           <div className="mt-6">
-            <label htmlFor={`${uid}-alt`} className="block text-[15px] font-medium text-foreground">
+            <label htmlFor={`${uid}-alt`} className="block text-[0.9375rem] font-medium text-foreground">
               {t('alt.label')}
               {otherLocales.length > 0 && <span className="text-muted-foreground"> · {languageName(defaultLocale)}</span>}
             </label>
@@ -508,7 +508,7 @@ export function CoverStep(props: CoverStepProps) {
                 aria-expanded={showOthers}
                 aria-controls={`${uid}-others`}
                 onClick={() => setShowOthers((s) => !s)}
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-[15px] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                className="inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               >
                 <span className={`transition-transform ${showOthers ? 'rotate-90' : ''}`}>{ICONS.chevron}</span>
                 {t('alt.otherLanguages')}
@@ -628,7 +628,7 @@ function FocalPicker({
 
   return (
     <div>
-      <p className="text-[15px] font-medium text-foreground">{t('focal.title')}</p>
+      <p className="text-[0.9375rem] font-medium text-foreground">{t('focal.title')}</p>
       <p id={helpId} className="mt-1 mb-3 text-sm leading-6 text-muted-foreground">
         {t('focal.helper')} <span className="sr-only">{t('focal.keys')}</span>
       </p>
@@ -805,7 +805,7 @@ function LibrarySheet({
               maxLength={SEARCH_MAX}
               placeholder={t('library.searchPlaceholder')}
               onChange={(e) => setQuery(e.target.value)}
-              className="block min-h-11 w-full rounded-full border border-border bg-background pr-3 pl-10 text-[16px] text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="block min-h-11 w-full rounded-full border border-border bg-background pr-3 pl-10 text-[1rem] text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             />
           </div>
           {tags.length > 0 && (
@@ -872,7 +872,7 @@ function LibrarySheet({
             <button
               type="button"
               onClick={() => void load(cursor, debouncedQuery, selected)}
-              className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-border bg-background text-[15px] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-border bg-background text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
               {t('library.more')}
             </button>
@@ -923,7 +923,7 @@ function AltField({
         aria-invalid={invalid || undefined}
         onChange={(e) => onChange(e.target.value.replace(/\n/g, ' '))}
         onBlur={onBlur}
-        className={`block min-h-11 w-full resize-none rounded-xl border bg-background px-3 py-2.5 text-[16px] leading-6 text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
+        className={`block min-h-11 w-full resize-none rounded-xl border bg-background px-3 py-2.5 text-[1rem] leading-6 text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
           invalid ? 'border-destructive' : 'border-border'
         }`}
       />
@@ -963,7 +963,7 @@ function Choice({
       type="button"
       onClick={onPress}
       disabled={disabled}
-      className={`flex min-h-28 flex-col items-start justify-between gap-3 rounded-2xl border p-4 text-left text-[15px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed ${
+      className={`flex min-h-28 flex-col items-start justify-between gap-3 rounded-2xl border p-4 text-left text-[0.9375rem] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed ${
         wide ? 'col-span-2 border-dashed' : ''
       } ${
         highlight
@@ -989,7 +989,7 @@ function Pill({ children, icon, onPress, disabled }: { children: ReactNode; icon
       type="button"
       onClick={onPress}
       disabled={disabled}
-      className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-background px-4 text-[15px] font-medium text-foreground transition-colors enabled:hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-background px-4 text-[0.9375rem] font-medium text-foreground transition-colors enabled:hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
     >
       {icon}
       {children}

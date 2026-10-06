@@ -10,9 +10,11 @@ export function draftPreviewUrl(p: {
   id: string
   token: string
   theme?: 'light' | 'dark' | null
+  /** 'gallery' → `/preview/gallery/{id}` (gallery drafts); default 'post'. */
+  kind?: 'post' | 'gallery'
 }): string {
   const q = new URLSearchParams({ t: p.token })
   if (p.theme) q.set('theme', p.theme)
   const seg = (s: string) => encodeURIComponent(s)
-  return `${p.origin}/${seg(p.locale)}/${seg(p.projectSlug)}/preview/post/${seg(p.id)}?${q.toString()}`
+  return `${p.origin}/${seg(p.locale)}/${seg(p.projectSlug)}/preview/${p.kind === 'gallery' ? 'gallery' : 'post'}/${seg(p.id)}?${q.toString()}`
 }

@@ -4202,14 +4202,18 @@ const mediaAssetType = defineType({
       title: 'name',
       altTextEn: 'altText.en',
       media: 'image',
-      subtitle: 'tags.0',
+      // `tags` is an array of plain strings (not references).
+      tags: 'tags',
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    prepare: ({ title, altTextEn, media, subtitle }: { title?: string; altTextEn?: string; media?: any; subtitle?: string }) => ({
-      title: title ?? altTextEn ?? 'Untitled',
-      media,
-      subtitle: subtitle ?? 'No tags',
-    }),
+    prepare: ({ title, altTextEn, media, tags }: { title?: string; altTextEn?: string; media?: any; tags?: unknown }) => {
+      const list = Array.isArray(tags) ? tags.filter((t): t is string => typeof t === 'string' && t.trim() !== '') : []
+      return {
+        title: title ?? altTextEn ?? 'Untitled',
+        media,
+        subtitle: list.length ? list.join(', ') : 'No tags',
+      }
+    },
   },
 })
 

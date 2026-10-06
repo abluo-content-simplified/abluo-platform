@@ -79,6 +79,9 @@ describe('isDraftPreviewPath', () => {
   it.each([
     [`/it/hoffmann/preview/post/${ID}`, true],
     [`/preview/post/${ID}`, true],
+    ['/it/hoffmann/preview/gallery/gallery-studio', true],
+    ['/preview/gallery/gallery-studio', true],
+    ['/it/hoffmann/preview/page/x', false],
     ['/it/hoffmann/preview', false],
     ['/it/hoffmann/blog/preview', false],
     [`/it/hoffmann/preview/post/${ID}/x`, false],

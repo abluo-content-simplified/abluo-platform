@@ -55,7 +55,7 @@ export function PublishStep({
     { mode: 'draft', label: t('draft'), help: t('draftHelp') },
   ]
   const inputClass =
-    'mt-2 block min-h-[var(--control-height,56px)] w-full rounded-xl border border-border bg-background px-4 text-[17px] text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
+    'mt-2 block min-h-[var(--control-height,56px)] w-full rounded-xl border border-border bg-background px-4 text-[1.0625rem] text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
 
   return (
     <section aria-labelledby="publish-step-title">
@@ -75,8 +75,8 @@ export function PublishStep({
                 on ? 'border-foreground bg-selected-tint' : 'border-border hover:bg-hover'
               }`}
             >
-              <span className="text-[17px] font-semibold text-foreground">{o.label}</span>
-              <span className="text-[15px] leading-6 text-muted-foreground">{o.help}</span>
+              <span className="text-[1.0625rem] font-semibold text-foreground">{o.label}</span>
+              <span className="text-[0.9375rem] leading-6 text-muted-foreground">{o.help}</span>
             </button>
           )
         })}
@@ -84,7 +84,7 @@ export function PublishStep({
 
       {choice.mode === 'schedule' ? (
         <div className="mt-6">
-          <label htmlFor="publish-at" className="text-[15px] font-medium text-foreground">
+          <label htmlFor="publish-at" className="text-[0.9375rem] font-medium text-foreground">
             {t('when')}
           </label>
           <input id="publish-at" type="datetime-local" value={choice.at} onChange={(e) => set({ at: e.target.value })} className={inputClass} />
@@ -95,10 +95,10 @@ export function PublishStep({
         <div className="mt-6 rounded-2xl border border-border p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p id="expire-label" className="text-[17px] font-medium text-foreground">
+              <p id="expire-label" className="text-[1.0625rem] font-medium text-foreground">
                 {t('expire')}
               </p>
-              <p className="text-[15px] leading-6 text-muted-foreground">{t('expireHelp')}</p>
+              <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('expireHelp')}</p>
             </div>
             <button
               type="button"
@@ -118,7 +118,7 @@ export function PublishStep({
           </div>
           {choice.expire ? (
             <div className="mt-4">
-              <label htmlFor="expire-at" className="text-[15px] font-medium text-foreground">
+              <label htmlFor="expire-at" className="text-[0.9375rem] font-medium text-foreground">
                 {t('expireWhen')}
               </label>
               <input id="expire-at" type="datetime-local" value={choice.expireAt} onChange={(e) => set({ expireAt: e.target.value })} className={inputClass} />
@@ -135,7 +135,7 @@ export function PublishStep({
         <LanguageSummary draft={draft} languages={site.languages} choice={choice} />
       ) : null}
 
-      <p role="alert" className="mt-4 min-h-5 text-[15px] text-destructive">
+      <p role="alert" className="mt-4 min-h-5 text-[0.9375rem] text-destructive">
         {error}
       </p>
     </section>
@@ -170,8 +170,8 @@ function LanguageSummary({
         : t('summaryNow')
   return (
     <div className="mt-8 rounded-2xl bg-muted px-4 py-3" aria-live="polite">
-      <h2 className="text-[15px] font-semibold text-foreground">{heading}</h2>
-      <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[15px] leading-7">
+      <h2 className="text-[0.9375rem] font-semibold text-foreground">{heading}</h2>
+      <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[0.9375rem] leading-7">
         {languageStates(draft, languages).map(({ locale, state }, i) => (
           <li key={locale} className="inline-flex items-center gap-1.5">
             {i > 0 ? (

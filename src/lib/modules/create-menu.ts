@@ -24,7 +24,7 @@ export const CREATE_CONTENT_TYPES: CreateContentType[] = [
   { moduleId: 'blog', ready: true, permission: 'blog.post.write' },
   { moduleId: 'news', ready: false, permission: 'news.article.write' },
   { moduleId: 'events', ready: false, permission: 'events.event.write' },
-  { moduleId: 'gallery', ready: false, permission: 'gallery.gallery.write' },
+  { moduleId: 'gallery', ready: true, permission: 'gallery.gallery.write' },
 ]
 
 export type CreateMenu = {

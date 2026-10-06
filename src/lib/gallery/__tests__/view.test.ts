@@ -31,10 +31,13 @@ describe('toViewItem', () => {
     expect(v.isVideo).toBe(false)
   })
 
-  it('falls back to the title when a photo has no alt text', () => {
+  it('falls back to the name, then to an empty (decorative) alt, when a photo has no description', () => {
     const item = base()
     item.mediaAsset!.altText = undefined
-    expect(toViewItem(item).alt).toBe('Room 1')
+    item.mediaAsset!.name = 'Room 1 armchair'
+    expect(toViewItem(item).alt).toBe('Room 1 armchair')
+    item.mediaAsset!.name = undefined
+    expect(toViewItem(item).alt).toBe('')
   })
 
   it('lets a per-gallery override win over the Media Library text', () => {

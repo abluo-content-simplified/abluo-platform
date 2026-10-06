@@ -14,7 +14,7 @@
 import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
-import { BLOG_POST_WRITE_PERMISSION } from '@/lib/api/post-drafts'
+import { BLOG_POST_WRITE_PERMISSION, isPostId } from '@/lib/api/post-drafts'
 import { signDraftPreviewToken, previewSecret } from '@/lib/preview/draft-preview-token'
 import { hostsForProjectId, lookupHostRoute, resolveScopeFromHost } from '@/lib/tenancy/host-scope'
 
@@ -45,8 +45,6 @@ export type DraftPreviewLink = {
 
 type Client = Pick<typeof sanityWriteClient, 'getDocument' | 'fetch'>
 export type PostPreviewDeps = { client?: Client; secret?: Buffer | null; now?: number }
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /** Which themes a site renders: siteConfig.themeMode + whether its design system has light colours. */
 export function previewThemes(themeMode: string | null | undefined, hasLight: boolean): PreviewTheme[] {
@@ -82,25 +80,8 @@ export function previewOrigin(
   return ''
 }
 
-export async function mintDraftPreview(
-  ctx: TenantAuthorizationContext,
-  projectId: string,
-  input: { id: string; host?: string | null; proto?: 'https' | 'http' },
-  deps: PostPreviewDeps = {}
-): Promise<DraftPreviewLink> {
-  assertModuleAction(ctx, projectId, BLOG_POST_WRITE_PERMISSION)
-  const grant = ctx.projects.find((p) => p.projectId === projectId)!
-  const client = deps.client ?? sanityWriteClient
-
-  if (typeof input?.id !== 'string' || !UUID.test(input.id)) throw new PostPreviewError('not_found', 'Unknown draft id.')
-  const secret = deps.secret === undefined ? previewSecret() : deps.secret
-  if (!secret) throw new PostPreviewError('unavailable', 'Preview is not configured.')
-
-  const draft = (await client.getDocument(`drafts.${input.id}`)) as { _type?: string; projectSlug?: string } | undefined
-  if (!draft || draft._type !== 'post' || draft.projectSlug !== grant.projectSlug) {
-    throw new PostPreviewError('not_found', 'Unknown draft id.')
-  }
-
+/** The themes a project's site renders (never throws — defaults to both). */
+export async function sitePreviewThemes(client: Pick<Client, 'fetch'>, projectSlug: string): Promise<PreviewTheme[]> {
   let site: { themeMode?: string | null; hasLight?: boolean | null } | null = null
   try {
     site = await client.fetch(
@@ -111,11 +92,35 @@ export async function mintDraftPreview(
           *[_type == "designSystem" && projectSlug == $projectSlug][0]
         ){ "l": coalesce(colors.lightTheme.background, parentDesignSystem->colors.lightTheme.background) }.l)
       }`,
-      { projectSlug: grant.projectSlug }
+      { projectSlug }
     )
   } catch {
     site = null // themes default below; the preview itself still works
   }
+
+  return previewThemes(site?.themeMode, site?.hasLight !== false)
+}
+
+export async function mintDraftPreview(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: { id: string; host?: string | null; proto?: 'https' | 'http' },
+  deps: PostPreviewDeps = {}
+): Promise<DraftPreviewLink> {
+  assertModuleAction(ctx, projectId, BLOG_POST_WRITE_PERMISSION)
+  const grant = ctx.projects.find((p) => p.projectId === projectId)!
+  const client = deps.client ?? sanityWriteClient
+
+  if (!isPostId(input?.id)) throw new PostPreviewError('not_found', 'Unknown draft id.')
+  const secret = deps.secret === undefined ? previewSecret() : deps.secret
+  if (!secret) throw new PostPreviewError('unavailable', 'Preview is not configured.')
+
+  const draft = (await client.getDocument(`drafts.${input.id}`)) as { _type?: string; projectSlug?: string } | undefined
+  if (!draft || draft._type !== 'post' || draft.projectSlug !== grant.projectSlug) {
+    throw new PostPreviewError('not_found', 'Unknown draft id.')
+  }
+
+  const themes = await sitePreviewThemes(client, grant.projectSlug)
 
   const { token, exp } = signDraftPreviewToken(
     { draftId: input.id, projectSlug: grant.projectSlug, userId: ctx.userId },
@@ -126,6 +131,6 @@ export async function mintDraftPreview(
     exp,
     origin: previewOrigin(input.host, { projectId: grant.projectId, projectSlug: grant.projectSlug }, input.proto),
     projectSlug: grant.projectSlug,
-    themes: previewThemes(site?.themeMode, site?.hasLight !== false),
+    themes,
   }
 }

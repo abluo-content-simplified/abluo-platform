@@ -133,6 +133,16 @@ const galleryType = defineType({
       description: 'Optional short description of this gallery.',
     }),
     defineField({
+      // Additive: for filtering the client dashboard's gallery list. Never shown on the website.
+      name: 'tags',
+      title: 'Tags',
+      type: 'array',
+      of: [defineArrayMember({ type: 'string' })],
+      options: { layout: 'tags' },
+      description: 'Optional labels to find this gallery again in the dashboard. Never shown on the website.',
+      validation: (Rule) => Rule.max(10),
+    }),
+    defineField({
       name: 'items',
       title: 'Gallery Items',
       type: 'array',

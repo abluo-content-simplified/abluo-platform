@@ -15,7 +15,13 @@
 import { revalidatePath } from 'next/cache'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
-import { updateSubmissionStatus, type SubmissionStatus } from '@/lib/api/client-dashboard'
+import {
+  deleteSubmissions,
+  SUBMISSION_BATCH_MAX,
+  updateSubmissionsStatusBatch,
+  updateSubmissionStatus,
+  type SubmissionStatus,
+} from '@/lib/api/client-dashboard'
 
 const ALLOWED: readonly SubmissionStatus[] = ['new', 'processed', 'archived']
 
@@ -53,4 +59,58 @@ export async function setSubmissionStatusAction(input: SetStatusInput): Promise<
 
   revalidatePath(`/${locale}/${projectSlug}/submissions`)
   return { ok: true }
+}
+
+export interface BatchInput {
+  projectSlug: string
+  submissionIds: string[]
+  locale: string
+}
+
+export interface BatchResult {
+  ok: boolean
+  /** Rows actually changed / removed inside this project. */
+  count?: number
+  error?: 'invalid_input' | 'unauthenticated' | 'forbidden' | 'failed'
+}
+
+async function resolveBatch(input: BatchInput) {
+  const ids = Array.isArray(input.submissionIds) ? input.submissionIds : []
+  if (ids.length === 0 || ids.length > SUBMISSION_BATCH_MAX || !ids.every((i) => typeof i === 'string')) {
+    return { error: 'invalid_input' as const }
+  }
+  const ctx = await getTenantAuthorizationContext()
+  if (!ctx) return { error: 'unauthenticated' as const }
+  const grant = resolveProjectGrant(ctx.projects, input.projectSlug)
+  if (!grant) return { error: 'forbidden' as const }
+  return { ctx, projectId: grant.projectId, ids }
+}
+
+/** Batch status change (max 100); the project comes from the caller's grant. */
+export async function setSubmissionsStatusBatchAction(
+  input: BatchInput & { status: SubmissionStatus },
+): Promise<BatchResult> {
+  if (!ALLOWED.includes(input.status)) return { ok: false, error: 'invalid_input' }
+  const r = await resolveBatch(input)
+  if ('error' in r) return { ok: false, error: r.error }
+  try {
+    const count = await updateSubmissionsStatusBatch(r.ctx, r.projectId, r.ids, input.status)
+    revalidatePath(`/${input.locale}/${input.projectSlug}/submissions`)
+    return { ok: true, count }
+  } catch {
+    return { ok: false, error: 'failed' }
+  }
+}
+
+/** Batch permanent delete (max 100); gated by forms.submission.delete. */
+export async function deleteSubmissionsAction(input: BatchInput): Promise<BatchResult> {
+  const r = await resolveBatch(input)
+  if ('error' in r) return { ok: false, error: r.error }
+  try {
+    const count = await deleteSubmissions(r.ctx, r.projectId, r.ids)
+    revalidatePath(`/${input.locale}/${input.projectSlug}/submissions`)
+    return { ok: true, count }
+  } catch {
+    return { ok: false, error: 'failed' }
+  }
 }

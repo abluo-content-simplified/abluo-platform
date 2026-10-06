@@ -40,7 +40,8 @@
       "translate": "Traduzione",
       "home": "Home",
       "more": "Altro",
-      "add": "Aggiungi contenuto"
+      "add": "Aggiungi contenuto",
+      "media": "Media"
     },
     "shell": {
       "brandTagline": "Dashboard",
@@ -65,7 +66,16 @@
       "columns": {
         "title": "Titolo",
         "status": "Stato",
-        "updated": "Aggiornato"
+        "updated": "Aggiornato",
+        "selectAll": "Seleziona tutti quelli mostrati",
+        "image": "Immagine",
+        "categories": "Categorie",
+        "featured": "In evidenza",
+        "languages": "Lingue",
+        "published": "Pubblicato",
+        "scheduled": "Programmato",
+        "ends": "Termina",
+        "actions": "Azioni"
       },
       "status": {
         "published": "Pubblicato",
@@ -79,13 +89,14 @@
         "created": "Iniziato il {date}",
         "offlineOn": "Offline dal {date}",
         "offlineSince": "Offline dal {date}",
-        "edited": "Modificato il {date}"
+        "edited": "Modificato il {date}",
+        "ends": "Termina il {date}"
       },
       "languages": "Lingue",
       "count": "{count, plural, one {# articolo} other {# articoli}}",
       "filters": {
         "search": "Cerca articoli",
-        "searchPlaceholder": "Cerca nei titoli…",
+        "searchPlaceholder": "Cerca articoli…",
         "sort": "Ordina",
         "sort_newest": "Più recenti",
         "sort_oldest": "Meno recenti",
@@ -104,10 +115,138 @@
         "missingLanguage": "Manca {language}",
         "showing": "{shown} di {total} articoli",
         "clear": "Azzera filtri",
-        "noMatch": "Nessun articolo corrisponde ai filtri."
+        "noMatch": "Nessun articolo corrisponde ai filtri.",
+        "categoryAll": "Tutte le categorie",
+        "statusAll": "Tutti gli stati",
+        "translationsAll": "Tutte le traduzioni",
+        "translationsComplete": "Traduzioni complete",
+        "translationsMissing": "Traduzioni mancanti",
+        "featured": "In evidenza",
+        "featuredAll": "Tutti gli articoli",
+        "featuredOnly": "Solo in evidenza",
+        "dateField": "Quale data",
+        "dateField_published": "Pubblicazione",
+        "dateField_updated": "Modifica",
+        "dateField_ends": "Fine",
+        "dateRange": "Data di {field}",
+        "sort_edited_asc": "Modificati meno di recente",
+        "sort_title": "Titolo A–Z",
+        "sort_title_desc": "Titolo Z–A",
+        "sort_ends": "Fine più vicina",
+        "sort_ends_desc": "Fine più lontana",
+        "sentenceNoun": "Articoli",
+        "sentenceField_updated": "modificati",
+        "sentenceField_published": "pubblicati",
+        "sentenceField_ends": "in scadenza",
+        "dateChip": "{field} · {range}",
+        "anyDate": "Mostra tutte le date"
       },
       "untitledDraft": "Bozza senza titolo",
-      "unpublishedChanges": "Modifiche non pubblicate"
+      "unpublishedChanges": "Modifiche non pubblicate",
+      "line": {
+        "live": "Online",
+        "liveEnds": "Online · Fino al {date}",
+        "scheduledFor": "Programmato per {date}",
+        "offline": "Offline",
+        "draft": "Bozza · Modificata {date}"
+      },
+      "card": {
+        "menu": "Altro per “{title}”",
+        "edit": "Modifica",
+        "preview": "Anteprima",
+        "view": "Vedi sul sito",
+        "offline": "Metti offline",
+        "online": "Rimetti online",
+        "endDate": "Imposta data di fine",
+        "delete": "Elimina",
+        "select": "Seleziona",
+        "selectAll": "Seleziona tutto",
+        "selectNone": "Deseleziona tutto",
+        "exitSelect": "Termina la selezione",
+        "selected": "{count} selezionati",
+        "deleted": "{count, plural, one {Eliminato} other {# eliminati}}",
+        "undo": "Annulla",
+        "previewFailed": "Non riusciamo ad aprire l’anteprima. Riprova.",
+        "bar": {
+          "offline": "Offline",
+          "endDate": "Data di fine",
+          "delete": "Elimina",
+          "more": "Altro",
+          "featured": "In evidenza",
+          "notFeatured": "Non in evidenza",
+          "categories": "Categoria",
+          "clear": "Annulla"
+        },
+        "more": {
+          "title": "Altre azioni",
+          "online": "Rimetti online",
+          "categories": "Cambia categoria",
+          "removeEndDate": "Rimuovi data di fine",
+          "clear": "Annulla selezione",
+          "featured": "Metti in evidenza",
+          "notFeatured": "Togli dall’evidenza"
+        },
+        "endDateSheet": {
+          "title": "Imposta data di fine",
+          "helper": "In questa data l’articolo esce da solo dal tuo sito. Puoi rimetterlo online quando vuoi.",
+          "label": "Va offline il",
+          "save": "Salva data di fine"
+        },
+        "categorySheet": {
+          "title": "Cambia categoria",
+          "helper": "Gli argomenti scelti sostituiscono quelli attuali negli articoli selezionati.",
+          "save": "Salva argomenti"
+        },
+        "confirmDelete": {
+          "title": "{count, plural, one {Eliminare questo articolo?} other {Eliminare # articoli?}}",
+          "body": "{count, plural, one {“{title}” viene tolto dal tuo sito e non si può recuperare.} other {Gli articoli online vengono tolti dal tuo sito e non si possono recuperare.}}",
+          "confirm": "Elimina"
+        },
+        "batch": {
+          "done": {
+            "offline": "{count, plural, one {# articolo messo offline.} other {# articoli messi offline.}}",
+            "online": "{count, plural, one {# articolo di nuovo online.} other {# articoli di nuovo online.}}",
+            "delete": "{count, plural, one {# articolo eliminato.} other {# articoli eliminati.}}",
+            "endDate": "{count, plural, one {Data di fine salvata per # articolo.} other {Data di fine salvata per # articoli.}}",
+            "categories": "{count, plural, one {Argomenti cambiati su # articolo.} other {Argomenti cambiati su # articoli.}}",
+            "featured": "{count, plural, one {Evidenza cambiata su # articolo.} other {Evidenza cambiata su # articoli.}}"
+          },
+          "someFailed": "{count, plural, one {Non ha funzionato per: {titles}.} other {Non ha funzionato per #: {titles}.}}",
+          "failedAll": "Non ha funzionato. Non è cambiato nulla — riprova."
+        }
+      },
+      "select": {
+        "checkbox": "Seleziona {title}",
+        "toolbar": "Articoli selezionati",
+        "all": "Seleziona tutto"
+      },
+      "newPost": "Nuovo articolo",
+      "view": {
+        "label": "Vista",
+        "list": "Elenco",
+        "cards": "Schede"
+      },
+      "pill": {
+        "published": "Online",
+        "scheduled": "Programmato",
+        "draft": "Bozza",
+        "offline": "Offline"
+      },
+      "lang": {
+        "complete": "{language}: traduzione completa",
+        "missing": "{language}: traduzione mancante o incompleta"
+      },
+      "featured": {
+        "isOn": "“{title}” è in evidenza",
+        "isOff": "“{title}” non è in evidenza",
+        "dialog": "Articolo in evidenza",
+        "help": "Gli articoli in evidenza compaiono per primi negli elenchi del tuo sito.",
+        "mark": "Metti in evidenza",
+        "remove": "Togli dall’evidenza",
+        "cancel": "Annulla",
+        "marked": "Messo in evidenza.",
+        "removed": "Tolto dall’evidenza."
+      }
     },
     "submissions": {
       "title": "Invii",
@@ -145,9 +284,30 @@
         "show": "Dettagli",
         "hide": "Nascondi",
         "attribution": "Attribuzione",
-        "none": "—"
+        "none": "—",
+        "submitted": "Cosa hanno inviato",
+        "cameFrom": "Da dove arriva",
+        "site": "Sito web",
+        "siteLanguage": "Lingua del sito",
+        "timezone": "Fuso orario del visitatore",
+        "pageSlug": "Pagina",
+        "consent": "Consenso dato"
       },
-      "updateError": "Aggiornamento non riuscito"
+      "updateError": "Aggiornamento non riuscito",
+      "select": "Seleziona",
+      "selectAll": "Seleziona tutto",
+      "selectRow": "Seleziona {name}",
+      "selected": "{count} selezionati",
+      "exitSelect": "Esci dalla selezione",
+      "markHandled": "Segna come gestito",
+      "markNew": "Segna come nuovo",
+      "exportSelected": "Esporta (CSV)",
+      "delete": "Elimina",
+      "more": "Altro",
+      "cancel": "Annulla",
+      "deleteTitle": "{count, plural, one {Eliminare # richiesta?} other {Eliminare # richieste?}}",
+      "deleteBody": "Non si può annullare.",
+      "batchError": "Non è stato possibile completare. Riprova."
     },
     "leads": {
       "title": "Contatti",
@@ -177,7 +337,48 @@
       "emptyBody": "Tocca + per iniziare. Salviamo mentre scrivi: puoi fermarti e riprendere quando vuoi.",
       "atStep": "Prossimo: {step}",
       "noCover": "Nessuna immagine di copertina",
-      "noCoverShort": "Nessuna immagine"
+      "noCoverShort": "Nessuna immagine",
+      "greeting": {
+        "morning": "Buongiorno, {name}",
+        "afternoon": "Buon pomeriggio, {name}",
+        "evening": "Buonasera, {name}",
+        "welcome": "Bentornato"
+      },
+      "viewSite": "Vedi il tuo sito",
+      "opensNewTab": "(si apre in una nuova scheda)",
+      "progress": "A che punto è questa bozza",
+      "meta": {
+        "draft": "Bozza · Eri su “{step}” · {ago}",
+        "liveChanges": "Modifiche a un articolo online · {ago}",
+        "galleryDraft": "Galleria · {count, plural, =0 {ancora nessuna foto} one {# foto} other {# foto}}",
+        "galleryChanges": "Modifiche a una galleria online · {count, plural, =0 {nessuna foto} one {# foto} other {# foto}}"
+      },
+      "menu": {
+        "label": "Altro per “{title}”",
+        "continue": "Continua a modificare",
+        "preview": "Anteprima",
+        "delete": "Elimina",
+        "discard": "Annulla le modifiche",
+        "deleted": "Eliminata",
+        "discarded": "Modifiche annullate",
+        "undo": "Annulla",
+        "failed": "Non ha funzionato, quindi non è stato rimosso nulla. Riprova.",
+        "previewFailed": "Non riusciamo ad aprire l’anteprima. Riprova."
+      },
+      "recent": {
+        "published": "Pubblicato",
+        "publishedOn": "Pubblicato · {date}",
+        "scheduled": "Programmato",
+        "scheduledOn": "Programmato · {date}",
+        "offline": "Offline"
+      },
+      "requestsBody": "{week, plural, one {richiesta di contatto} other {richieste di contatto}} questa settimana, {open, plural, =0 {tutte con risposta} one {# ancora senza risposta} other {# ancora senza risposta}}",
+      "latestPosts": "Ultimi articoli",
+      "latestGalleries": "Ultime gallerie",
+      "kind": {
+        "post": "Articolo del blog",
+        "gallery": "Galleria"
+      }
     },
     "version": {
       "updated": "Aggiornato {date}"
@@ -318,13 +519,15 @@
           "blog": "Articolo del blog",
           "news": "Notizia",
           "events": "Evento",
-          "gallery": "Galleria"
+          "gallery": "Galleria",
+          "media": "Aggiungi alla libreria"
         },
         "desc": {
           "blog": "Un articolo per il tuo sito, in pochi semplici passaggi.",
           "news": "Un breve aggiornamento per chi visita il sito.",
           "events": "Un appuntamento a cui partecipare.",
-          "gallery": "Una raccolta di foto da mostrare."
+          "gallery": "Una raccolta di foto da mostrare.",
+          "media": "Carica le foto una volta sola e usale ovunque nel tuo sito."
         },
         "soon": "In arrivo",
         "more": "Altro che puoi aggiungere al tuo sito",
@@ -336,7 +539,9 @@
         "nothing": "Qui non c'è ancora nulla che puoi creare.",
         "starting": "Stiamo preparando il tuo articolo…",
         "failed": "Non siamo riusciti a iniziare un nuovo articolo. Riprova.",
-        "close": "Chiudi"
+        "close": "Chiudi",
+        "startingGallery": "Preparo la tua galleria…",
+        "failedGallery": "Non siamo riusciti a creare una nuova galleria. Riprova."
       },
       "shell": {
         "saveExit": "Salva ed esci",
@@ -345,7 +550,8 @@
         "progress": "Passaggio {current} di {total}",
         "language": "Stai scrivendo in {language}",
         "skip": "Salta per ora",
-        "done": "Fatto"
+        "done": "Fatto",
+        "close": "Chiudi"
       },
       "save": {
         "saving": "Salvataggio…",
@@ -363,7 +569,9 @@
         "languages": "Lingue",
         "preview": "Anteprima",
         "publish": "Pubblicazione",
-        "review": "Rivedi e pubblica"
+        "review": "Rivedi e pubblica",
+        "cta": "Invito all’azione",
+        "gallery": "Galleria"
       },
       "category": {
         "title": "Di cosa parla questo articolo?",
@@ -376,7 +584,12 @@
         "titlePlaceholder": "Per esempio: Cinque consigli per una mattina più serena",
         "subtitleLabel": "Sottotitolo (facoltativo)",
         "subtitlePlaceholder": "Una frase che dice ai lettori cosa troveranno",
-        "remaining": "{count, plural, one {Resta # carattere} other {Restano # caratteri}}"
+        "remaining": "{count, plural, one {Resta # carattere} other {Restano # caratteri}}",
+        "improveTitle": "Migliora il titolo",
+        "improveSubtitle": "Migliora il sottotitolo",
+        "improving": "Sto migliorando…",
+        "soon": "In arrivo",
+        "improveSame": "Il testo funziona già bene — nessuna modifica suggerita."
       },
       "languages": {
         "title": "Vuoi renderlo disponibile in altre lingue?",
@@ -560,7 +773,13 @@
         "chooseAnother": "Oppure scegline un altro",
         "none": "Nessuno",
         "noneHelp": "Sotto questo articolo non viene mostrato nulla.",
-        "options": "Invito all'azione"
+        "options": "Invito all'azione",
+        "empty": {
+          "hello": "Ciao {firstName}, su questo sito non ci sono ancora inviti all’azione.",
+          "helloNoName": "Su questo sito non ci sono ancora inviti all’azione.",
+          "what": "Un invito all’azione è il pulsante alla fine di un articolo, per esempio “Prenota un appuntamento”.",
+          "setup": "Configurali in Studio → Impostazioni sito → Inviti all’azione"
+        }
       }
     },
     "textSize": {
@@ -569,6 +788,616 @@
       "md": "Normale",
       "lg": "Grande",
       "xl": "Molto grande"
+    },
+    "gallery": {
+      "photo": {
+        "missing": "Questa foto non è più nella libreria.",
+        "count": "{count}/{max}",
+        "status": {
+          "saving": "Salvataggio…",
+          "saved": "Salvato",
+          "failed": "Non salvato: riproviamo"
+        },
+        "errors": {
+          "conflict": "Questa foto è stata modificata altrove. Chiudi e riaprila per vedere la versione più recente.",
+          "not_found": "Non troviamo più questa foto.",
+          "invalid_value": "Qualcosa in questa foto non si può salvare. Controlla i testi.",
+          "generic": "Non siamo riusciti a salvare. Le modifiche restano qui: riproveremo."
+        },
+        "focal": {
+          "title": "Punto focale",
+          "helper": "Tocca o trascina sulla parte più importante della foto. Ogni ritaglio la terrà in vista, in tutte le pagine che usano questa foto.",
+          "keys": "Usa i tasti freccia per spostarlo; tieni premuto Maiusc per passi più grandi.",
+          "label": "Punto focale della foto",
+          "valueText": "{x}% da sinistra, {y}% dall'alto",
+          "previews": "Come verrà ritagliata",
+          "preview": {
+            "wide": "Larga",
+            "card": "Scheda",
+            "square": "Quadrata",
+            "tall": "Telefono"
+          }
+        },
+        "alt": {
+          "label": "Descrizione",
+          "helper": "Una breve frase per chi non può vedere la foto. Viene salvata con la foto e usata ovunque.",
+          "needed": "Serve prima di salvare la galleria."
+        },
+        "titleField": {
+          "label": "Titolo (facoltativo)",
+          "helper": "Appare con la foto dove il layout ha spazio."
+        },
+        "caption": {
+          "label": "Didascalia (facoltativa)",
+          "helper": "Una riga sotto la foto, ad esempio chi o dove."
+        },
+        "otherLanguages": "Altre lingue",
+        "grid": {
+          "label": "Foto",
+          "full": "Una galleria contiene al massimo {max} foto.",
+          "queue": {
+            "waiting": "In attesa…",
+            "preparing": "Preparazione…",
+            "uploading": "Caricamento…",
+            "optimised": "Ottimizzata · {before} → {after}",
+            "notOptimised": "Caricata (non ottimizzata)",
+            "errors": {
+              "unsupported_type": "Questo file non si può usare. Scegli una foto JPEG, PNG o WebP.",
+              "too_large": "Questa foto è troppo grande.",
+              "rate_limited": "Oggi hai caricato molte foto. Riprova domani.",
+              "forbidden": "Non hai il permesso di aggiungere foto.",
+              "generic": "Non è stato possibile caricare questa foto."
+            },
+            "retry": "Riprova",
+            "clear": "Togli i caricamenti completati"
+          },
+          "addFromPhone": "Aggiungi foto",
+          "addFromComputer": "Carica foto",
+          "addFromLibrary": "Dalla tua libreria",
+          "count": "{count, plural, =0 {Ancora nessuna foto} one {# foto} other {# foto}}",
+          "dropHere": "Rilascia le foto per aggiungerle",
+          "photoN": "Foto {n}",
+          "editPhoto": "Modifica {name}",
+          "missing": "Foto mancante",
+          "needsDescription": "Manca la descrizione",
+          "moveEarlier": "Sposta {name} prima",
+          "moveLater": "Sposta {name} dopo",
+          "dragHandle": "Trascina per spostare {name}",
+          "dragRole": "foto trascinabile",
+          "addTile": "Aggiungi foto",
+          "addTileHint": "oppure trascinale qui",
+          "removePhoto": "Rimuovi {name}",
+          "reorderHint": "Trascina ⋮⋮ per cambiare l'ordine",
+          "needsDescriptionShort": "Senza descrizione"
+        },
+        "library": {
+          "title": "La tua libreria",
+          "close": "Chiudi",
+          "search": "Cerca foto",
+          "searchPlaceholder": "Cerca per nome o descrizione",
+          "tags": "Filtra per etichetta",
+          "error": "Non siamo riusciti a caricare le foto. Riprova.",
+          "noResults": "Nessuna foto corrisponde. Prova con altre parole o etichette.",
+          "empty": "La tua libreria è ancora vuota.",
+          "photoN": "Foto {n}",
+          "alreadyIn": "{name} — già in questa galleria",
+          "pick": "Scegli {name}",
+          "loading": "Caricamento delle foto…",
+          "more": "Mostra altre",
+          "full": "La galleria è piena.",
+          "selected": "{count, plural, =0 {Scegli le foto da aggiungere} one {# foto scelta} other {# foto scelte}}",
+          "add": "{count, plural, =0 {Aggiungi} one {Aggiungi # foto} other {Aggiungi # foto}}"
+        },
+        "position": "Foto {n} di {total}",
+        "moreDetails": "Altri dettagli",
+        "tags": {
+          "label": "Etichette",
+          "helper": "Ti aiutano a ritrovare la foto nella libreria.",
+          "placeholder": "Aggiungi un'etichetta",
+          "add": "Aggiungi",
+          "remove": "Rimuovi l'etichetta {tag}",
+          "suggested": "Etichette che usi già",
+          "full": "Al massimo {max} etichette"
+        }
+      },
+      "errors": {
+        "unauthenticated": "Accedi di nuovo.",
+        "forbidden": "Non hai il permesso di farlo.",
+        "not_found": "Non troviamo più questa galleria.",
+        "invalid_field": "Questo non si può modificare qui.",
+        "invalid_value": "Qualcosa non si può salvare. Controlla i testi.",
+        "too_large": "È troppo in una volta sola.",
+        "conflict": "Questa galleria è stata modificata altrove. Ricarica per vedere la versione più recente.",
+        "empty": "Aggiungi almeno una foto prima di pubblicare.",
+        "missing_alt": "Alcune foto non hanno ancora una descrizione.",
+        "in_use": "Questa galleria è mostrata sul tuo sito, quindi non si può eliminare.",
+        "failed": "Qualcosa è andato storto. Riprova.",
+        "unsupported_type": "Questo file non si può usare. Scegli una foto JPEG, PNG o WebP.",
+        "rate_limited": "Oggi hai caricato molte foto. Riprova domani."
+      },
+      "list": {
+        "title": "Gallerie",
+        "helper": "Gallerie fotografiche per il tuo sito e i tuoi articoli.",
+        "new": "Nuova galleria",
+        "emptyTitle": "Ancora nessuna galleria",
+        "emptyBody": "Crea una galleria, aggiungi le tue foto e mostrala sotto i tuoi articoli.",
+        "count": "{count, plural, =0 {Nessuna foto} one {# foto} other {# foto}}",
+        "usedOn": "Usata in: {places}",
+        "unpublished": "Modifiche non pubblicate",
+        "notPublished": "Non ancora pubblicata",
+        "untitled": "Galleria senza titolo",
+        "noCover": "Ancora nessuna foto",
+        "filters": {
+          "label": "Filtra le gallerie",
+          "search": "Cerca gallerie",
+          "searchPlaceholder": "Cerca gallerie…",
+          "tag": "Tag",
+          "allTags": "Tutti i tag",
+          "usage": "Dove è usata",
+          "usageAll": "Tutte",
+          "usageUsed": "Usate",
+          "usageUnused": "Non usate",
+          "showing": "{shown} di {total} gallerie",
+          "clear": "Rimuovi i filtri",
+          "noMatch": "Nessuna galleria corrisponde ai filtri."
+        },
+        "card": {
+          "menu": "Altro per “{title}”",
+          "edit": "Modifica",
+          "preview": "Anteprima",
+          "delete": "Elimina",
+          "previewFailed": "Non siamo riusciti ad aprire l’anteprima. Riprova."
+        },
+        "tags": {
+          "label": "Tag",
+          "helper": "Facoltativo. Ti aiutano a ritrovare questa galleria. Non sono visibili sul tuo sito.",
+          "placeholder": "Aggiungi un tag",
+          "add": "Aggiungi",
+          "remove": "Rimuovi il tag {tag}",
+          "suggested": "Tag che usi già",
+          "full": "Al massimo {max} tag"
+        }
+      },
+      "publish": {
+        "errors": {
+          "empty": "Aggiungi prima almeno una foto.",
+          "missing_alt": "{count, plural, one {# foto ha} other {# foto hanno}} bisogno di una descrizione. Apri le foto segnalate.",
+          "conflict": "Questa galleria è stata modificata altrove. Ricarica per vedere l'ultima versione.",
+          "offline": "Sei offline. Le modifiche sono al sicuro su questo dispositivo — riprova quando sei connesso.",
+          "forbidden": "Non hai il permesso di pubblicare.",
+          "failed": "Qualcosa è andato storto. Riprova."
+        }
+      },
+      "menu": {
+        "label": "Altre azioni",
+        "discard": "Annulla le modifiche",
+        "delete": "Elimina galleria"
+      },
+      "confirm": {
+        "cancel": "Annulla",
+        "discardTitle": "Annullare le modifiche?",
+        "discardBody": "La galleria pubblicata resta com'è. Le modifiche non pubblicate vengono eliminate.",
+        "discard": "Annulla le modifiche",
+        "deleteTitle": "Eliminare questa galleria?",
+        "deleteBody": "«{title}» verrà eliminata. Le foto restano nella tua libreria.",
+        "delete": "Elimina galleria",
+        "inUse": "Questa galleria è mostrata in: {places}, quindi non si può eliminare.",
+        "failed": "Qualcosa è andato storto. Riprova."
+      },
+      "preview": {
+        "on": "Mostra su",
+        "alone": "Solo la galleria"
+      },
+      "post": {
+        "section": "Galleria",
+        "title": "Vuoi aggiungere una galleria a questo articolo?",
+        "helper": "Viene mostrata sotto il testo.",
+        "none": "Nessuna galleria",
+        "noneHelp": "Sotto questo articolo non viene mostrato nulla.",
+        "noGalleries": "Questo sito non ha ancora gallerie.",
+        "options": "Gallerie"
+      },
+      "home": {
+        "label": "Galleria"
+      },
+      "wizard": {
+        "name": {
+          "title": "Dai un nome alla galleria",
+          "helper": "Un titolo breve e, se vuoi, una frase sulle foto.",
+          "titleLabel": "Titolo",
+          "titlePlaceholder": "Per esempio: Il nostro studio",
+          "descriptionLabel": "Descrizione (facoltativa)",
+          "descriptionPlaceholder": "Una frase su queste foto"
+        },
+        "photos": {
+          "title": "Aggiungi le foto",
+          "helper": "Caricale o sceglile dalla tua Libreria media. Trascinale per cambiare l’ordine."
+        },
+        "languages": {
+          "helper": "La galleria mostra titolo e descrizione nelle lingue in cui li scrivi.",
+          "descriptionPlaceholder": "Descrizione in {language}"
+        },
+        "preview": {
+          "title": "Ecco come apparirà la galleria",
+          "helper": "La galleria con il design del tuo sito. Solo tu vedi questa anteprima."
+        },
+        "review": {
+          "title": "La tua galleria",
+          "helper": "Controlla ogni parte, poi salva.",
+          "sections": {
+            "name": "Nome",
+            "photos": "Foto",
+            "describe": "Descrizioni",
+            "languages": "Lingue"
+          },
+          "noTitle": "Nessun titolo",
+          "photos": "{count, plural, =0 {Ancora nessuna foto} one {# foto} other {# foto}}",
+          "noPhotos": "Aggiungi prima le foto",
+          "allDescribed": "Ogni foto ha una descrizione",
+          "described": "{done} di {total} descritte",
+          "languageMissing": "non ancora scritta"
+        },
+        "save": "Salva",
+        "saving": "Salvataggio…",
+        "saveNeeds": "Per salvare, aggiungi un titolo e almeno una foto, e descrivi ogni foto.",
+        "noChanges": "Nessuna modifica da salvare.",
+        "done": {
+          "saved": "Salvata",
+          "savedBody": "La galleria è pronta. Aggiungila a un articolo per mostrarla sul tuo sito.",
+          "updated": "Aggiornata",
+          "updatedOn": "Aggiornata in: {places}",
+          "updatedBody": "Le modifiche sono salvate.",
+          "back": "Torna alle gallerie"
+        }
+      },
+      "status": {
+        "notUsed": "Non ancora usata",
+        "shownOn": "Mostrata in: {places}",
+        "draftPage": "{title} (bozza)",
+        "untitledPage": "Pagina senza titolo",
+        "posts": "{count, plural, one {# articolo} other {# articoli}}",
+        "draftPosts": "{count, plural, one {# articolo in bozza} other {# articoli in bozza}}",
+        "photos": "{count, plural, =0 {Nessuna foto} one {# foto} other {# foto}}",
+        "needDescription": "{count, plural, one {# senza descrizione} other {# senza descrizione}}",
+        "missingTranslation": "{language} mancante su {count}"
+      },
+      "select": {
+        "start": "Seleziona",
+        "stop": "Interrompi la selezione",
+        "count": "{count, plural, =0 {Scegli le gallerie} one {# selezionata} other {# selezionate}}",
+        "all": "Seleziona tutto",
+        "none": "Deseleziona tutto",
+        "card": "Seleziona {title}",
+        "toolbar": "Gallerie selezionate",
+        "bar": {
+          "addTags": "Aggiungi tag",
+          "delete": "Elimina"
+        },
+        "tagsSheet": {
+          "title": "Aggiungi tag",
+          "helper": "I tag vengono aggiunti a tutte le gallerie selezionate.",
+          "save": "Aggiungi tag"
+        },
+        "confirm": {
+          "title": "{count, plural, one {Eliminare questa galleria?} other {Eliminare # gallerie?}}",
+          "body": "{count, plural, one {“{title}” verrà eliminata. Le foto restano nella tua Libreria multimediale.} other {Queste gallerie verranno eliminate. Quelle mostrate sul tuo sito vengono saltate. Le foto restano nella tua Libreria multimediale.}}",
+          "confirm": "Elimina"
+        },
+        "done": {
+          "delete": "{count, plural, one {# galleria eliminata.} other {# gallerie eliminate.}}",
+          "tags": "{count, plural, one {Tag aggiunti a # galleria.} other {Tag aggiunti a # gallerie.}}"
+        },
+        "skippedInUse": "{count, plural, one {# galleria è stata saltata perché è mostrata sul tuo sito.} other {# gallerie sono state saltate perché sono mostrate sul tuo sito.}}",
+        "someFailed": "{count, plural, one {# galleria non è stata modificata.} other {# gallerie non sono state modificate.}}",
+        "failed": "Qualcosa è andato storto. Riprova."
+      }
+    },
+    "media": {
+      "title": "Media",
+      "helper": "Tutte le foto del tuo sito, in un unico posto. Descrivile una volta: ogni pagina che usa una foto ne riceve la descrizione.",
+      "addTitle": "Aggiungi foto",
+      "add": {
+        "label": "Aggiungi foto",
+        "camera": "Scatta una foto",
+        "phone": "Da questo telefono",
+        "computer": "Carica foto",
+        "computerHint": "oppure trascinale qui",
+        "dropHere": "Rilascia le foto per aggiungerle",
+        "library": "Libreria",
+        "full": "Qui non c'è spazio per altre foto.",
+        "retry": "Riprova",
+        "dismiss": "Chiudi",
+        "story": {
+          "waiting": "In attesa…",
+          "uploading": "Caricamento…",
+          "compressing": "Compressione…",
+          "optimised": "Ottimizzata · {before} → {after}",
+          "uploaded": "Caricata",
+          "errors": {
+            "unsupported_type": "Questo file non si può usare. Scegli una foto JPEG, PNG o WebP.",
+            "too_large": "Questa foto è troppo grande.",
+            "rate_limited": "Oggi hai caricato molte foto. Riprova domani.",
+            "forbidden": "Non hai il permesso di aggiungere foto.",
+            "generic": "Non è stato possibile caricare questa foto."
+          }
+        }
+      },
+      "describe": {
+        "title": "Descrivi le nuove foto",
+        "helper": "Una breve descrizione aiuta tutti a capire la foto, e anche i motori di ricerca.",
+        "previous": "Indietro",
+        "next": "Foto successiva",
+        "done": "Fatto"
+      },
+      "library": {
+        "title": "Le tue foto",
+        "search": "Cerca foto",
+        "searchPlaceholder": "Cerca per nome, descrizione o didascalia",
+        "tags": "Filtra per etichetta",
+        "error": "Non siamo riusciti a caricare le foto. Riprova.",
+        "noResults": "Nessuna foto corrisponde. Prova con altre parole o etichette.",
+        "empty": "Ancora nessuna foto. Tocca “Aggiungi foto” per aggiungere le prime.",
+        "photoN": "Foto {n}",
+        "edit": "Modifica {name}",
+        "needsDescription": "Senza descrizione",
+        "loading": "Caricamento delle foto…",
+        "more": "Mostra altre",
+        "tagSummary": "{count, plural, one {# tag} other {# tag}}",
+        "clearAll": "Rimuovi tutti",
+        "usage": "{count, plural, =0 {Non usata} one {Usata una volta} other {Usata # volte}}"
+      },
+      "sheet": {
+        "title": "Modifica foto",
+        "close": "Chiudi"
+      },
+      "usedIn": {
+        "title": "Usata in",
+        "none": "Non ancora usata nel tuo sito.",
+        "untitled": "Senza titolo",
+        "kind": {
+          "gallery": "Galleria",
+          "page": "Pagina",
+          "post": "Articolo"
+        }
+      },
+      "picker": {
+        "title": "La tua libreria",
+        "close": "Chiudi",
+        "search": "Cerca foto",
+        "searchPlaceholder": "Cerca per nome, descrizione o didascalia",
+        "tags": "Filtra per etichetta",
+        "error": "Non siamo riusciti a caricare le foto. Riprova.",
+        "noResults": "Nessuna foto corrisponde. Prova con altre parole o etichette.",
+        "allInGallery": "Tutte queste foto sono già nella galleria.",
+        "empty": "La tua libreria è ancora vuota.",
+        "photoN": "Foto {n}",
+        "pick": "Scegli {name}",
+        "loading": "Caricamento delle foto…",
+        "more": "Mostra altre",
+        "full": "Non c'è spazio per altre foto.",
+        "selected": "{count, plural, =0 {Tocca le foto per sceglierle} one {# foto scelta} other {# foto scelte}}",
+        "add": "{count, plural, =0 {Aggiungi foto} one {Aggiungi # foto} other {Aggiungi # foto}}"
+      },
+      "select": {
+        "start": "Seleziona",
+        "stop": "Esci dalla selezione",
+        "hint": "Tieni premuta una foto — o tocca Seleziona — per sceglierne diverse.",
+        "count": "{count, plural, =0 {Scegli le foto} one {# selezionata} other {# selezionate}}",
+        "photo": "Seleziona {name}",
+        "toolbar": "Foto selezionate",
+        "addTags": "Aggiungi tag",
+        "rename": "Rinomina",
+        "clear": "Deseleziona",
+        "limit": "Puoi selezionare al massimo {max} foto alla volta.",
+        "saved": "{count, plural, =0 {Nessuna modifica} one {Salvato su # foto} other {Salvato su # foto}}",
+        "skipped": "{count, plural, one {# foto non è stata modificata} other {# foto non sono state modificate}}"
+      },
+      "size": {
+        "label": "Dimensione foto",
+        "small": "Piccola",
+        "medium": "Media",
+        "large": "Grande"
+      }
+    },
+    "photoWizard": {
+      "add": {
+        "choices": {
+          "label": "Aggiungi foto",
+          "camera": "Scatta una foto",
+          "computer": "Carica dal computer",
+          "computerHint": "o trascina qui le foto",
+          "library": "La tua libreria media",
+          "photoLibrary": "Libreria foto"
+        },
+        "note": "Alleggeriamo ogni foto per il web e ti chiediamo una breve descrizione, così tutti possono capirla.",
+        "dropHere": "Rilascia le foto per aggiungerle",
+        "count": "{count, plural, =0 {Ancora nessuna foto} one {# foto} other {# foto}}",
+        "reorderHint": "Trascina ⋮⋮ per cambiare l’ordine",
+        "photoN": "Foto {n}",
+        "describePhoto": "Descrivi {name}",
+        "missing": "Foto mancante",
+        "needsDescription": "Senza descrizione",
+        "dragHandle": "Trascina per spostare {name}",
+        "dragRole": "foto trascinabile",
+        "removePhoto": "Rimuovi {name}",
+        "camera": {
+          "label": "Fotocamera",
+          "taken": "{count, plural, one {# foto scattata} other {# foto scattate}}",
+          "another": "Scattane un’altra",
+          "done": "Fatto"
+        }
+      },
+      "describe": {
+        "title": "Descrivi la foto {n} di {total}",
+        "helper": "Una breve descrizione aiuta chi non può vedere la foto, e i motori di ricerca.",
+        "missing": "Questa foto non è più nella tua libreria media.",
+        "alt": {
+          "label": "Descrivi questa foto",
+          "helper": "Una breve frase per chi non può vedere l’immagine — per esempio “La sala d’attesa con una grande finestra”.",
+          "placeholder": "Cosa mostra la foto?",
+          "count": "{count}/{max}",
+          "otherLanguages": "Altre lingue (facoltativo)",
+          "otherHelper": "Se le lasci vuote, i visitatori vedono la descrizione qui sopra.",
+          "inLanguage": "Descrizione in {language}",
+          "neededToContinue": "Aggiungi una breve descrizione, così tutti possono capire l’immagine."
+        },
+        "altStatus": {
+          "saving": "Salvataggio…",
+          "saved": "Salvato",
+          "failed": "Non salvato — riproviamo quando scrivi"
+        },
+        "errors": {
+          "conflict": "Questa foto è stata modificata altrove. Ricarica per vedere l’ultima versione.",
+          "not_found": "Non troviamo più questa foto.",
+          "invalid_value": "Non è stato possibile salvare la descrizione. Controlla il testo.",
+          "generic": "Non riusciamo a salvare ora. Il testo resta qui — riproviamo."
+        },
+        "focal": {
+          "title": "Punto focale",
+          "helper": "Tocca o trascina sulla parte più importante della foto. Ogni ritaglio la tiene in vista.",
+          "label": "Punto focale della foto",
+          "valueText": "{x}% da sinistra, {y}% dall’alto",
+          "keys": "Usa le frecce per spostarlo; tieni premuto Maiusc per passi più grandi.",
+          "previews": "Come verrà ritagliata",
+          "preview": {
+            "wide": "Larga",
+            "card": "Scheda",
+            "square": "Quadrata",
+            "tall": "Telefono"
+          }
+        },
+        "helperLater": "Dai un nome, descrivi e aggiungi tag — oppure fallo dopo. Niente qui è obbligatorio.",
+        "skip": "Descrivi dopo",
+        "skipRest": "Descrivi le restanti {count} dopo"
+      },
+      "media": {
+        "addTitle": "Aggiungi alla libreria media",
+        "addHelper": "Carica le foto una volta, poi usale ovunque sul tuo sito.",
+        "doneTitle": "Aggiunte alla libreria media",
+        "doneBody": "{count, plural, one {# foto è pronta} other {# foto sono pronte}} da usare ovunque sul tuo sito.",
+        "back": "Torna ai media"
+      }
+    },
+    "photoCard": {
+      "languages": "Lingua",
+      "languageMissing": "{language} — da completare",
+      "source": "{language} (lingua principale)",
+      "sourceEmpty": "Non ancora scritto",
+      "missing": "Questa foto non è più nella tua libreria media.",
+      "count": "{count}/{max}",
+      "name": {
+        "label": "Nome",
+        "helper": "Per ritrovare la foto.",
+        "helperShared": "Per ritrovare la foto. Uguale in tutte le lingue.",
+        "placeholder": "Per esempio “Sala d’attesa”"
+      },
+      "alt": {
+        "label": "Descrizione",
+        "helper": "Una frase breve per chi non può vedere la foto e per i motori di ricerca. Puoi aggiungerla anche dopo.",
+        "placeholder": "Cosa mostra la foto?"
+      },
+      "caption": {
+        "label": "Didascalia (facoltativa)",
+        "helper": "Una riga sotto la foto, per esempio chi o dove."
+      },
+      "tags": {
+        "label": "Tag",
+        "helper": "Ti aiutano a ritrovare la foto nella libreria media. Uguali in tutte le lingue.",
+        "placeholder": "Scrivi un tag",
+        "add": "Aggiungi",
+        "remove": "Rimuovi il tag {tag}",
+        "suggested": "Tag che usi già",
+        "full": "Al massimo {max} tag"
+      },
+      "status": {
+        "saving": "Salvataggio…",
+        "saved": "Salvato",
+        "failed": "Non salvato — riproveremo"
+      },
+      "errors": {
+        "conflict": "Questa foto è stata modificata altrove. Chiudila e riaprila per vedere la versione più recente.",
+        "not_found": "Non troviamo più questa foto.",
+        "invalid_value": "Qualcosa in questa foto non si può salvare. Controlla i testi.",
+        "generic": "Non riusciamo a salvare adesso. Le modifiche restano qui — riproveremo."
+      },
+      "focal": {
+        "title": "Punto focale",
+        "helper": "Tocca o trascina sulla parte più importante della foto. Ogni ritaglio la mantiene visibile.",
+        "keys": "Usa i tasti freccia per spostarlo; tieni premuto Maiusc per passi più grandi.",
+        "label": "Punto focale della foto",
+        "valueText": "{x}% da sinistra, {y}% dall’alto",
+        "previews": "Come verrà ritagliata",
+        "preview": {
+          "wide": "Larga",
+          "card": "Scheda",
+          "square": "Quadrata",
+          "tall": "Telefono"
+        }
+      }
+    },
+    "photoBatch": {
+      "allTitle": "Dai nome e tag a tutte le {count} foto",
+      "renameTitle": "Rinomina {count, plural, one {# foto} other {# foto}}",
+      "tagsTitle": "Aggiungi tag a {count, plural, one {# foto} other {# foto}}",
+      "allHelper": "Dai loro un nome e gli stessi tag in un colpo solo. Puoi saltare questo passaggio e descrivere ogni foto dopo.",
+      "helper": "Nomi e tag sono uguali in tutte le lingue.",
+      "baseName": {
+        "label": "Nome",
+        "helper": "Ogni foto riceve questo nome e un numero.",
+        "placeholder": "Per esempio “Festa d’estate”",
+        "preview": "Diventano “{first}”, “{second}”, …"
+      },
+      "tagsHelper": "Aggiunti a ogni foto, accanto ai tag che ha già.",
+      "capped": "Al massimo {max} foto alla volta.",
+      "skip": "Salta",
+      "cancel": "Annulla",
+      "apply": "{count, plural, one {Applica a # foto} other {Applica a tutte le #}}",
+      "saving": "Salvataggio…",
+      "errors": {
+        "conflict": "Alcune di queste foto sono state modificate altrove. Riprova.",
+        "generic": "Non riusciamo a salvare adesso. Riprova."
+      }
+    },
+    "filterBar": {
+      "label": "Filtri",
+      "search": "Cerca"
+    },
+    "ui": {
+      "dateRange": {
+        "anyDate": "Qualsiasi data",
+        "dialog": "Scegli le date",
+        "clear": "Cancella",
+        "apply": "Applica",
+        "prevMonth": "Mese precedente",
+        "nextMonth": "Mese successivo",
+        "presets": "Intervalli rapidi",
+        "last7": "Ultimi 7 giorni",
+        "last30": "Ultimi 30 giorni",
+        "thisYear": "Quest’anno",
+        "rangeStart": "Data di inizio",
+        "rangeEnd": "Data di fine",
+        "selectEnd": "Ora scegli la data di fine",
+        "today": "Oggi",
+        "custom": "Date personalizzate",
+        "clearRange": "Cancella date",
+        "help": "Scegli la data di inizio e di fine.",
+        "inline": {
+          "last7": "ultimi 7 giorni",
+          "last30": "ultimi 30 giorni",
+          "thisYear": "quest’anno"
+        }
+      },
+      "filterSheet": {
+        "filters": "Filtri",
+        "filtersCount": "Filtri · {count}",
+        "title": "Filtri",
+        "clearAll": "Cancella tutto",
+        "showResults": "Mostra {count, plural, one {# risultato} other {# risultati}}",
+        "close": "Chiudi i filtri",
+        "dragHandle": "Trascina verso il basso per chiudere",
+        "applied": "Filtri applicati",
+        "remove": "Rimuovi filtro: {label}"
+      }
     }
   },
   "editor": {

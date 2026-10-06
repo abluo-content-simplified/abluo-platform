@@ -10,6 +10,7 @@ import type { DraftSnapshot } from '@/components/client/create/types'
 import { OpenForEdit } from '@/components/client/create/OpenForEdit'
 import { canDeletePublished, canOpenPublishedPost } from '@/lib/api/post-lifecycle'
 import { getAiFeatureFlags } from '@/lib/ai/features'
+import { getViewerFirstName } from '@/lib/api/viewer-profile'
 
 /**
  * The guided creation wizard for one blog-post draft (ADR-025 · S2c):
@@ -27,6 +28,28 @@ import { getAiFeatureFlags } from '@/lib/ai/features'
  */
 export const dynamic = 'force-dynamic'
 
+/** The URL segment of a wizard that has no document yet. */
+const NEW_DRAFT_SEGMENT = 'new'
+
+function emptyPostDraft(): Awaited<ReturnType<typeof getPostDraft>> {
+  return {
+    id: '',
+    rev: '',
+    title: {},
+    subtitle: {},
+    excerpt: {},
+    body: {},
+    categories: [],
+    cover: null,
+    step: 'type',
+    furthest: 'type',
+    mode: 'create',
+    live: null,
+    cta: null,
+    gallery: null,
+  }
+}
+
 export default async function WriteDraftPage({ params }: { params: Promise<{ tenant: string; id: string }> }) {
   const { tenant: projectSlug, id } = await params
 
@@ -41,7 +64,10 @@ export default async function WriteDraftPage({ params }: { params: Promise<{ ten
   let site: Awaited<ReturnType<typeof getPostEditorSite>>
   try {
     ;[draft, site] = await Promise.all([
-      getPostDraft(ctx, grant.projectId, id),
+      // "+ Add content" opens /posts/write/new: an empty wizard, NO document yet.
+      // getPostEditorSite is still the write gate (blog.post.write). The first
+      // real content creates the draft (lazy creation, WizardShell).
+      id === NEW_DRAFT_SEGMENT ? Promise.resolve(emptyPostDraft()) : getPostDraft(ctx, grant.projectId, id),
       getPostEditorSite(ctx, grant.projectId, { locale }),
     ])
   } catch (error) {
@@ -55,12 +81,14 @@ export default async function WriteDraftPage({ params }: { params: Promise<{ ten
     throw error
   }
 
+  const firstName = await getViewerFirstName(ctx)
   const snapshot: DraftSnapshot = { ...draft, body: draft.body as Record<string, PortableTextBlock[]> }
 
   return (
     <WizardShell
       draft={snapshot}
-      site={site}
+      // The Gallery step shows only on sites with the Gallery module installed.
+      site={{ ...site, firstName, galleries: grant.enabledModuleIds.includes('gallery') ? site.galleries : undefined }}
       homeHref={dashboardHomeHref(projectSlug)}
       postsHref={`/${projectSlug}/posts`}
       canDelete={canDeletePublished(grant)}

@@ -4,7 +4,7 @@
  * chain binds at the call site, with an injected fetch — no live Sanity.
  */
 import { describe, it, expect, vi } from 'vitest'
-import { getDashboardPostRows, getDashboardPosts } from '../client-dashboard'
+import { getDashboardPostRows, getDashboardPosts, getProjectSiteDomain } from '../client-dashboard'
 import { TenantAuthorizationError, type SanityFetchFn } from '../tenant-scoped-sanity'
 import type { ProjectGrant, TenantAuthorizationContext } from '../tenant-context'
 import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
@@ -143,12 +143,17 @@ describe('getDashboardPostRows', () => {
         slug: 'x',
         status: 'published',
         updatedAt: '2026-08-01T00:00:00Z',
+        featured: true,
+        bodyLangs: ['en', 'it', null, null],
       },
     ])
     const [row] = await getDashboardPostRows(ctxWith([validGrant]), 'project-a1', { locale: 'en' }, { fetch: fetchMock })
     expect(row.title).toBe('Coltivare la consapevolezza')
     expect(row.categories).toEqual(['Prendersi cura di sé', 'unknown key'])
     expect(row.languages).toEqual(['it', 'de'])
+    // Complete = title AND body in that language (German has a title only).
+    expect(row.completeLanguages).toEqual(['it'])
+    expect(row.featured).toBe(true)
     // Both reads went through the scoped client.
     for (const [, params] of fetchMock.mock.calls) expect(params.projectSlug).toBe('livener')
   })
@@ -166,6 +171,21 @@ describe('getDashboardPostRows', () => {
     await expect(
       getDashboardPostRows(ctxWith([noBlogGrant]), 'project-a1', { locale: 'en' }, { fetch: fetchMock })
     ).rejects.toThrow(TenantAuthorizationError)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('getProjectSiteDomain', () => {
+  it("reads the grant's project domain, bare and lower-case", async () => {
+    const fetchMock = vi.fn().mockResolvedValue('https://StudioMartegani.com/')
+    await expect(getProjectSiteDomain(ctxWith([validGrant]), 'project-a1', { fetch: fetchMock })).resolves.toBe('studiomartegani.com')
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ projectSlug: 'livener' })
+  })
+  it('null without a usable domain; refused without a grant', async () => {
+    await expect(getProjectSiteDomain(ctxWith([validGrant]), 'project-a1', { fetch: vi.fn().mockResolvedValue(null) })).resolves.toBeNull()
+    await expect(getProjectSiteDomain(ctxWith([validGrant]), 'project-a1', { fetch: vi.fn().mockResolvedValue('not a domain') })).resolves.toBeNull()
+    const fetchMock = vi.fn()
+    await expect(getProjectSiteDomain(ctxWith([validGrant]), 'project-b1', { fetch: fetchMock })).rejects.toThrow(TenantAuthorizationError)
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })

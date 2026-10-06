@@ -12,7 +12,7 @@
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
-import { improvePostBody, PostAiError, type PostAiErrorCode } from '@/lib/api/post-ai'
+import { improvePostBody, improvePostLine, PostAiError, type PostAiErrorCode } from '@/lib/api/post-ai'
 
 export type AiActionError = 'unauthenticated' | 'failed' | PostAiErrorCode
 
@@ -30,6 +30,35 @@ export async function improvePostBodyAction(input: {
   try {
     const { blocks } = await improvePostBody(ctx, grant.projectId, { locale: input.locale, blocks: input.blocks })
     return { ok: true, blocks }
+  } catch (error) {
+    if (error instanceof PostAiError) return { ok: false, error: error.code }
+    if (error instanceof TenantAuthorizationError) return { ok: false, error: 'forbidden' }
+    return { ok: false, error: 'failed' }
+  }
+}
+
+export type ImproveLineActionResult = { ok: true; text: string } | { ok: false; error: AiActionError }
+
+/** "Improve title" / "Improve subtitle" — same gates as the body (see post-ai.ts). */
+export async function improvePostLineAction(input: {
+  projectSlug: string
+  locale: string
+  field: 'title' | 'subtitle'
+  text: string
+  title?: string
+}): Promise<ImproveLineActionResult> {
+  const ctx = await getTenantAuthorizationContext()
+  if (!ctx) return { ok: false, error: 'unauthenticated' }
+  const grant = resolveProjectGrant(ctx.projects, input?.projectSlug)
+  if (!grant) return { ok: false, error: 'forbidden' }
+  try {
+    const { text } = await improvePostLine(ctx, grant.projectId, {
+      locale: input.locale,
+      field: input.field,
+      text: input.text,
+      title: input.title,
+    })
+    return { ok: true, text }
   } catch (error) {
     if (error instanceof PostAiError) return { ok: false, error: error.code }
     if (error instanceof TenantAuthorizationError) return { ok: false, error: 'forbidden' }

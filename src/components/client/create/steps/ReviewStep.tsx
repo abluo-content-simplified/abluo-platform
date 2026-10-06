@@ -31,6 +31,7 @@ export function ReviewStep({
   notice?: { kind: 'status' | 'error'; text: string } | null
 }) {
   const t = useTranslations('clientDashboard.create.review')
+  const tg = useTranslations('clientDashboard.gallery.post')
   const tm = useTranslations('clientDashboard.create.menu')
   const [menuOpen, setMenuOpen] = useState(false)
   const tp = useTranslations('clientDashboard.create.publish')
@@ -72,6 +73,8 @@ export function ReviewStep({
         const def = ctas.find((c) => c.isDefault)
         return def ? t('ctaDefault', { name: def.name }) : t('ctaNoDefault')
       }
+      case 'gallery':
+        return (site.galleries ?? []).find((g) => g.id === draft.gallery)?.title ?? tg('none')
     }
   }
 
@@ -108,7 +111,7 @@ export function ReviewStep({
                         setMenuOpen(false)
                         item.onSelect()
                       }}
-                      className="flex min-h-12 w-full items-center px-4 text-left text-[15px] text-foreground hover:bg-hover focus-visible:bg-hover focus-visible:outline-none"
+                      className="flex min-h-12 w-full items-center px-4 text-left text-[0.9375rem] text-foreground hover:bg-hover focus-visible:bg-hover focus-visible:outline-none"
                     >
                       {item.label}
                     </button>
@@ -119,18 +122,18 @@ export function ReviewStep({
           </div>
         ) : null}
       </div>
-      {status ? <p className="mt-4 text-[15px] font-medium text-foreground">{status}</p> : null}
-      {draft.mode === 'edit' ? <p className="mt-1 text-[15px] leading-6 text-muted-foreground">{t('editing')}</p> : null}
+      {status ? <p className="mt-4 text-[0.9375rem] font-medium text-foreground">{status}</p> : null}
+      {draft.mode === 'edit' ? <p className="mt-1 text-[0.9375rem] leading-6 text-muted-foreground">{t('editing')}</p> : null}
       <p
         role={notice?.kind === 'error' ? 'alert' : 'status'}
-        className={`mt-2 min-h-5 text-[15px] ${notice?.kind === 'error' ? 'text-destructive' : 'text-success'}`}
+        className={`mt-2 min-h-5 text-[0.9375rem] ${notice?.kind === 'error' ? 'text-destructive' : 'text-success'}`}
       >
         {notice?.text}
       </p>
 
       <ul className="mt-8 divide-y divide-border-subtle border-y border-border-subtle">
         {overviewSections(draft, site).map(({ id, state }) => {
-          const name = t(`sections.${id}`)
+          const name = id === 'gallery' ? tg('section') : t(`sections.${id}`)
           return (
             <li key={id} className="flex items-start gap-4 py-5">
               {id === 'cover' && draft.cover?.url ? (
@@ -145,16 +148,16 @@ export function ReviewStep({
               ) : null}
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-[17px] font-semibold text-foreground">{name}</h2>
+                  <h2 className="text-[1.0625rem] font-semibold text-foreground">{name}</h2>
                   <StateBadge state={state} label={t(`state.${state}`)} />
                 </div>
-                <p className="mt-1 line-clamp-3 text-[15px] leading-6 text-muted-foreground">{summary(id)}</p>
+                <p className="mt-1 line-clamp-3 text-[0.9375rem] leading-6 text-muted-foreground">{summary(id)}</p>
               </div>
               <button
                 type="button"
                 onClick={() => onEdit(id)}
                 aria-label={t('editLabel', { section: name })}
-                className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-border px-4 text-[15px] font-semibold text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-border px-4 text-[0.9375rem] font-semibold text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               >
                 {t('edit')}
               </button>
@@ -166,7 +169,7 @@ export function ReviewStep({
       <button
         type="button"
         onClick={onPreview}
-        className="mt-6 inline-flex min-h-11 items-center gap-2 text-[17px] font-semibold text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        className="mt-6 inline-flex min-h-11 items-center gap-2 text-[1.0625rem] font-semibold text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />

@@ -417,8 +417,8 @@ describe('post draft server actions — the dashboard\'s only Sanity write path 
     expect(doc._id).toMatch(/^drafts\.[0-9a-f-]{36}$/)
     expect(doc._type).toBe('post')
     expect(doc.projectSlug).toBe('tenant-a-site')
-    // The single-project guard read, then the one write.
-    expect(sanityCalls).toEqual(['write:fetch', 'write:create'])
+    // The draft-count cap and the single-project guard reads, then the one write.
+    expect(sanityCalls).toEqual(['write:fetch', 'write:fetch', 'write:create'])
   })
 
   // S2c — the wizard also calls publish (S5) and Improve (ADR-026). Same refusals.
@@ -436,6 +436,7 @@ describe('post draft server actions — the dashboard\'s only Sanity write path 
     const ai = await loadAi()
     expect(await p.publishPostDraftAction(publishInput('tenant-a-site'))).toEqual({ ok: false, error: 'unauthenticated' })
     expect(await ai.improvePostBodyAction(improveInput('tenant-a-site'))).toEqual({ ok: false, error: 'unauthenticated' })
+    expect(await ai.improvePostLineAction({ projectSlug: 'tenant-a-site', locale: 'it', field: 'title', text: 'Ciao' })).toEqual({ ok: false, error: 'unauthenticated' })
     noSideEffects()
   }, 30_000)
 
@@ -446,6 +447,7 @@ describe('post draft server actions — the dashboard\'s only Sanity write path 
     const ai = await loadAi()
     expect(await p.publishPostDraftAction(publishInput('tenant-b-site'))).toEqual({ ok: false, error: 'forbidden' })
     expect(await ai.improvePostBodyAction(improveInput('tenant-b-site'))).toEqual({ ok: false, error: 'forbidden' })
+    expect(await ai.improvePostLineAction({ projectSlug: 'tenant-b-site', locale: 'it', field: 'title', text: 'Ciao' })).toEqual({ ok: false, error: 'forbidden' })
     noSideEffects()
   })
 
@@ -456,6 +458,7 @@ describe('post draft server actions — the dashboard\'s only Sanity write path 
     const ai = await loadAi()
     expect(await p.publishPostDraftAction(publishInput('tenant-a-site'))).toEqual({ ok: false, error: 'forbidden' })
     expect(await ai.improvePostBodyAction(improveInput('tenant-a-site'))).toEqual({ ok: false, error: 'forbidden' })
+    expect(await ai.improvePostLineAction({ projectSlug: 'tenant-a-site', locale: 'it', field: 'title', text: 'Ciao' })).toEqual({ ok: false, error: 'forbidden' })
     noSideEffects()
   })
 
@@ -471,6 +474,7 @@ describe('post draft server actions — the dashboard\'s only Sanity write path 
       await l.discardPostChangesAction(input),
       await l.deletePostDraftAction(input),
       await l.deletePublishedPostAction(input),
+      await l.setPostFeaturedAction({ projectSlug, id, featured: true }),
     ]
   }
 
@@ -492,6 +496,18 @@ describe('post draft server actions — the dashboard\'s only Sanity write path 
     for (const r of await lifecycleCalls('tenant-a-site')) expect(r).toEqual({ ok: false, error: 'forbidden' })
     noSideEffects()
   })
+
+  it('batch posts: unauthenticated, another tenant and a viewer are refused, nothing touched', async () => {
+    const l = await loadLifecycle()
+    const batch = (projectSlug: string) => l.batchPostsAction({ projectSlug, ids: ['hoffmann-post-x'], op: 'offline' })
+    expect(await batch('tenant-a-site')).toEqual({ ok: false, error: 'unauthenticated' })
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [grantA] }
+    expect(await batch('tenant-b-site')).toEqual({ ok: false, error: 'forbidden' })
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [viewerA] }
+    expect(await batch('tenant-a-site')).toEqual({ ok: false, error: 'forbidden' })
+    noSideEffects()
+  }, 30_000)
 
   it('lifecycle: an editor cannot delete a published post', async () => {
     persona = 'tenantA'
@@ -518,11 +534,193 @@ describe('post draft server actions — the dashboard\'s only Sanity write path 
     noSideEffects()
   })
 
+  // Galleries — the private preview link (the gallery write actions are covered by their owner's tests).
+  const loadGalleryPreview = () => import('@/app/[locale]/(client)/[tenant]/galleries/preview-actions')
+  const galleryGrantA = { ...grantA, permissions: ['gallery.gallery.read', 'gallery.gallery.write'], enabledModuleIds: ['gallery'] }
+
+  it('gallery preview: unauthenticated, other tenant and viewer are refused, nothing read', async () => {
+    const g = await loadGalleryPreview()
+    expect(await g.mintGalleryPreviewAction({ projectSlug: 'tenant-a-site', id: 'g1' })).toEqual({ ok: false, error: 'unauthenticated' })
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [galleryGrantA] }
+    expect(await g.mintGalleryPreviewAction({ projectSlug: 'tenant-b-site', id: 'g1' })).toEqual({ ok: false, error: 'forbidden' })
+    tenantCtx = {
+      userId: 'user-tenant-a',
+      platformRole: 'tenant_user',
+      projects: [{ ...galleryGrantA, role: 'viewer', permissions: ['gallery.gallery.read'] }],
+    }
+    expect(await g.mintGalleryPreviewAction({ projectSlug: 'tenant-a-site', id: 'g1' })).toEqual({ ok: false, error: 'forbidden' })
+    noSideEffects()
+  }, 30_000)
+
+  it('gallery preview: unsafe ids are not_found before anything is read', async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [galleryGrantA] }
+    const g = await loadGalleryPreview()
+    process.env.PREVIEW_SECRET = 'route-auth-matrix-secret-1234'
+    expect(await g.mintGalleryPreviewAction({ projectSlug: 'tenant-a-site', id: '../g1' })).toEqual({ ok: false, error: 'not_found' })
+    expect(await g.mintGalleryPreviewAction({ projectSlug: 'tenant-a-site', id: 'g1', pageId: 'drafts.x' })).toEqual({ ok: false, error: 'not_found' })
+    delete process.env.PREVIEW_SECRET
+    noSideEffects()
+  })
+
   it('publish: a malformed id is not_found before anything is read', async () => {
     persona = 'tenantA'
     tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [grantA] }
     const p = await loadPublish()
     expect(await p.publishPostDraftAction({ ...publishInput('tenant-a-site'), id: '../x' })).toEqual({ ok: false, error: 'not_found' })
+    noSideEffects()
+  })
+})
+
+// ── Gallery server actions (client dashboard) ───────────────────────────────
+
+describe('gallery server actions — same refusals as posts', () => {
+  const grantA = {
+    projectId: 'project-a',
+    projectSlug: 'tenant-a-site',
+    membershipId: 'tenant-owner:tenant-a',
+    role: 'owner',
+    permissions: ['gallery.gallery.read', 'gallery.gallery.write'],
+    enabledModuleIds: ['gallery'],
+  }
+  const viewerA = { ...grantA, role: 'viewer', permissions: ['gallery.gallery.read'] }
+  const load = () => import('@/app/[locale]/(client)/[tenant]/galleries/actions')
+  const writes = async (projectSlug: string, id = 'gallery-x') => {
+    const a = await load()
+    const fd = new FormData()
+    fd.set('projectSlug', projectSlug)
+    fd.set('file', new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], 'a.jpg', { type: 'image/jpeg' }))
+    return [
+      await a.openGalleryForEditAction({ projectSlug, id }),
+      await a.createGalleryAction({ projectSlug, title: 'x' }),
+      await a.patchGalleryDraftAction({ projectSlug, id, rev: 'r', set: { 'title.it': 'x' } }),
+      await a.updateGalleryPhotoAction({ projectSlug, assetId: 'm1', alt: { it: 'x' } }),
+      await a.batchGalleryPhotosAction({ projectSlug, assetIds: ['m1', 'm2'], baseName: 'x', addTags: ['y'] }),
+      await a.uploadGalleryImageAction(fd),
+      await a.listGalleryMediaAction({ projectSlug }),
+      await a.publishGalleryDraftAction({ projectSlug, id, rev: 'r' }),
+      await a.discardGalleryDraftAction({ projectSlug, id, rev: 'r' }),
+      await a.deleteGalleryAction({ projectSlug, id }),
+    ]
+  }
+
+  beforeAll(async () => {
+    await load()
+  }, 30_000)
+
+  it('unauthenticated → refused, nothing touched', async () => {
+    const a = await load()
+    expect(await a.listGalleriesAction({ projectSlug: 'tenant-a-site' })).toEqual({ ok: false, error: 'unauthenticated' })
+    for (const r of await writes('tenant-a-site')) expect(r).toEqual({ ok: false, error: 'unauthenticated' })
+    noSideEffects()
+  })
+
+  it("tenant A cannot read or write in tenant B's project", async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [grantA] }
+    const a = await load()
+    expect(await a.listGalleriesAction({ projectSlug: 'tenant-b-site' })).toEqual({ ok: false, error: 'forbidden' })
+    expect(await a.getGalleryAction({ projectSlug: 'tenant-b-site', id: 'g' })).toEqual({ ok: false, error: 'forbidden' })
+    for (const r of await writes('tenant-b-site')) expect(r).toEqual({ ok: false, error: 'forbidden' })
+    noSideEffects()
+  })
+
+  it('a viewer is refused every write', async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [viewerA] }
+    for (const r of await writes('tenant-a-site')) expect(r).toEqual({ ok: false, error: 'forbidden' })
+    noSideEffects()
+  })
+
+  it('an editor cannot delete a gallery', async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [{ ...grantA, role: 'editor' }] }
+    const a = await load()
+    expect(await a.deleteGalleryAction({ projectSlug: 'tenant-a-site', id: 'gallery-x' })).toEqual({ ok: false, error: 'forbidden' })
+    noSideEffects()
+  })
+
+  it('unsafe ids are not_found before anything is read', async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [grantA] }
+    const a = await load()
+    for (const id of ['drafts.x', '../x', 'a/b']) {
+      expect(await a.openGalleryForEditAction({ projectSlug: 'tenant-a-site', id })).toEqual({ ok: false, error: 'not_found' })
+      expect(await a.patchGalleryDraftAction({ projectSlug: 'tenant-a-site', id, rev: 'r', set: { 'title.it': 'x' } })).toEqual({
+        ok: false,
+        error: 'not_found',
+      })
+      expect(await a.publishGalleryDraftAction({ projectSlug: 'tenant-a-site', id, rev: 'r' })).toEqual({ ok: false, error: 'not_found' })
+      expect(await a.deleteGalleryAction({ projectSlug: 'tenant-a-site', id })).toEqual({ ok: false, error: 'not_found' })
+    }
+    expect(await a.updateGalleryPhotoAction({ projectSlug: 'tenant-a-site', assetId: '../x', alt: { it: 'x' } })).toEqual({
+      ok: false,
+      error: 'not_found',
+    })
+    noSideEffects()
+  })
+})
+
+// ── Media screen server actions (client dashboard) ──────────────────────────
+
+describe('media screen server actions — owner/editor only, nothing touched on refusal', () => {
+  const ownerA = {
+    projectId: 'project-a',
+    projectSlug: 'tenant-a-site',
+    membershipId: 'tenant-owner:tenant-a',
+    role: 'owner',
+    permissions: [],
+    enabledModuleIds: [],
+  }
+  const viewerA = { ...ownerA, role: 'viewer' }
+  const load = () => import('@/app/[locale]/(client)/[tenant]/media/actions')
+  const calls = async (projectSlug: string) => {
+    const a = await load()
+    const fd = new FormData()
+    fd.set('projectSlug', projectSlug)
+    fd.set('file', new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], 'a.jpg', { type: 'image/jpeg' }))
+    return [
+      await a.listMediaLibraryAction({ projectSlug }),
+      await a.uploadMediaImageAction(fd),
+      await a.updateMediaPhotoAction({ projectSlug, assetId: 'm1', alt: { it: 'x' } }),
+      await a.batchMediaPhotosAction({ projectSlug, assetIds: ['m1', 'm2'], baseName: 'x', addTags: ['y'] }),
+    ]
+  }
+
+  beforeAll(async () => {
+    await load()
+  }, 30_000)
+
+  it('unauthenticated → refused', async () => {
+    for (const r of await calls('tenant-a-site')) expect(r).toEqual({ ok: false, error: 'unauthenticated' })
+    noSideEffects()
+  })
+
+  it("tenant A cannot use tenant B's Media Library", async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [ownerA] }
+    for (const r of await calls('tenant-b-site')) expect(r).toEqual({ ok: false, error: 'forbidden' })
+    noSideEffects()
+  })
+
+  it('a viewer is refused', async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [viewerA] }
+    for (const r of await calls('tenant-a-site')) expect(r).toEqual({ ok: false, error: 'forbidden' })
+    noSideEffects()
+  })
+
+  it('an unsafe asset id is not_found before anything is read', async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [ownerA] }
+    const a = await load()
+    expect(await a.updateMediaPhotoAction({ projectSlug: 'tenant-a-site', assetId: '../x', alt: { it: 'x' } })).toEqual({ ok: false, error: 'not_found' })
+    // Batches: a bad id or more than 100 photos are refused before anything is read.
+    expect(await a.batchMediaPhotosAction({ projectSlug: 'tenant-a-site', assetIds: ['../x'], addTags: ['y'] })).toEqual({ ok: false, error: 'invalid_value' })
+    expect(
+      await a.batchMediaPhotosAction({ projectSlug: 'tenant-a-site', assetIds: Array.from({ length: 101 }, (_, i) => `m${i}`), addTags: ['y'] })
+    ).toEqual({ ok: false, error: 'invalid_value' })
     noSideEffects()
   })
 })

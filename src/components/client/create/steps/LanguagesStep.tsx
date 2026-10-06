@@ -46,7 +46,7 @@ export function LanguagesStep({
 
       <ul className="mt-8 flex flex-col gap-3">
         <li className="flex min-h-14 items-center justify-between rounded-2xl border border-border-subtle bg-muted px-4 py-3">
-          <span className="text-[17px] font-medium text-foreground">{languageName(site.defaultLocale, ui)}</span>
+          <span className="text-[1.0625rem] font-medium text-foreground">{languageName(site.defaultLocale, ui)}</span>
           <span className="text-sm text-muted-foreground">{t('original')}</span>
         </li>
         {others.map((locale) => {
@@ -56,7 +56,7 @@ export function LanguagesStep({
           return (
             <li key={locale} className="rounded-2xl border border-border p-4">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-[17px] font-medium text-foreground">{name}</span>
+                <span className="text-[1.0625rem] font-medium text-foreground">{name}</span>
                 <span className={`text-sm ${ready ? 'text-success' : 'text-muted-foreground'}`}>{ready ? t('ready') : t('missing')}</span>
               </div>
               <div role="radiogroup" aria-label={name} className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -87,7 +87,7 @@ export function LanguagesStep({
                   role="radio"
                   aria-checked={l === current}
                   onClick={() => setActive(l)}
-                  className={`inline-flex min-h-11 items-center rounded-full border-2 px-4 text-[15px] font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
+                  className={`inline-flex min-h-11 items-center rounded-full border-2 px-4 text-[0.9375rem] font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
                     l === current ? 'border-foreground bg-selected-tint text-foreground' : 'border-border text-foreground hover:bg-hover'
                   }`}
                 >
@@ -119,19 +119,19 @@ export function LanguagesStep({
                 empty: t('sourceEmpty'),
               }}
             />
-            <p className="mt-6 text-[15px] font-medium text-foreground">{t('storyLabel')}</p>
+            <p className="mt-6 text-[0.9375rem] font-medium text-foreground">{t('storyLabel')}</p>
             {/* Phones: the original folds away above the editor. */}
             <details className="mt-2 rounded-xl bg-muted md:hidden">
-              <summary className="flex min-h-11 cursor-pointer items-center px-4 text-[15px] font-medium text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+              <summary className="flex min-h-11 cursor-pointer items-center px-4 text-[0.9375rem] font-medium text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
                 {t('showOriginal')}
               </summary>
-              <div lang={site.defaultLocale} className="px-4 pb-4 text-[16px] leading-7">
+              <div lang={site.defaultLocale} className="px-4 pb-4 text-[1rem] leading-7">
                 {original.length ? <BlocksPreview blocks={original} /> : <p className="text-muted-foreground">{t('sourceEmpty')}</p>}
               </div>
             </details>
             {/* From md: original and translation side by side. */}
             <div className="mt-2 grid gap-4 md:grid-cols-2">
-              <div lang={site.defaultLocale} className="hidden rounded-xl bg-muted p-4 text-[16px] leading-7 md:block">
+              <div lang={site.defaultLocale} className="hidden rounded-xl bg-muted p-4 text-[1rem] leading-7 md:block">
                 <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">{sourceLabel}</p>
                 {original.length ? <BlocksPreview blocks={original} /> : <p className="text-muted-foreground">{t('sourceEmpty')}</p>}
               </div>
@@ -172,7 +172,7 @@ function Choice({
       aria-disabled={disabled || undefined}
       disabled={disabled}
       onClick={onPress}
-      className={`flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 px-3 text-[15px] font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:text-muted-foreground ${
+      className={`flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 px-3 text-[0.9375rem] font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:text-muted-foreground ${
         on ? 'border-foreground bg-selected-tint text-foreground' : 'border-border text-foreground enabled:hover:bg-hover'
       }`}
     >

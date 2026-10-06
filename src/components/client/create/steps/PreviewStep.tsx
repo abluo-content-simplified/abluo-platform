@@ -144,11 +144,11 @@ export function PreviewStep({ draft, site, flush }: StepProps) {
       <div ref={boxRef} className="mt-5 w-full">
         {error ? (
           <div className="flex flex-col items-start gap-3 rounded-2xl border border-border bg-muted p-6" role="alert">
-            <p className="text-[15px] text-foreground">{error}</p>
+            <p className="text-[0.9375rem] text-foreground">{error}</p>
             <button
               type="button"
               onClick={() => void mint()}
-              className="inline-flex min-h-11 items-center rounded-full border border-border bg-background px-4 text-[15px] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="inline-flex min-h-11 items-center rounded-full border border-border bg-background px-4 text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
               {t('retry')}
             </button>
@@ -196,7 +196,7 @@ export function PreviewStep({ draft, site, flush }: StepProps) {
             target="_blank"
             rel="noopener noreferrer"
             onClick={refreshIfStale}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full px-1 text-[15px] font-semibold text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full px-1 text-[0.9375rem] font-semibold text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             {ICONS.external}
             {t('openNewTab')}
@@ -229,7 +229,7 @@ function Segmented({
             role="radio"
             aria-checked={on}
             onClick={() => !on && onChange(o.value)}
-            className={`inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-[15px] font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
+            className={`inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-[0.9375rem] font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
               on ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
             }`}
           >

@@ -52,7 +52,7 @@ export function ImproveReview({
             <h2 id="improve-review-title" className="text-2xl font-semibold tracking-tight">
               {t('title')}
             </h2>
-            <p className="mt-2 text-[17px] leading-7 text-muted-foreground">{t('helper')}</p>
+            <p className="mt-2 text-[1.0625rem] leading-7 text-muted-foreground">{t('helper')}</p>
           </header>
 
           <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-4 pb-4 md:grid-cols-2 md:gap-6 md:px-8">
@@ -68,14 +68,14 @@ export function ImproveReview({
             <button
               type="button"
               onClick={onKeep}
-              className="min-h-12 rounded-xl px-5 text-[17px] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="min-h-12 rounded-xl px-5 text-[1.0625rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
               {t('keep')}
             </button>
             <button
               type="button"
               onClick={onAccept}
-              className="min-h-12 rounded-xl bg-action px-5 text-[17px] font-medium text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+              className="min-h-12 rounded-xl bg-action px-5 text-[1.0625rem] font-medium text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
             >
               {t('accept')}
             </button>
@@ -93,7 +93,7 @@ function Version({ label, highlight, children }: { label: string; highlight?: bo
       className={`rounded-xl border p-4 md:p-5 ${highlight ? 'border-border bg-selected-tint' : 'border-border-subtle bg-muted'}`}
     >
       <h3 className="mb-2 text-sm font-medium text-muted-foreground">{label}</h3>
-      <div className="text-[17px] leading-7 text-foreground">{children}</div>
+      <div className="text-[1.0625rem] leading-7 text-foreground">{children}</div>
     </section>
   )
 }

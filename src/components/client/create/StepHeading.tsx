@@ -2,10 +2,10 @@
 export function StepHeading({ id, title, helper }: { id: string; title: string; helper?: string }) {
   return (
     <>
-      <h1 id={id} className="text-[30px] leading-9 font-semibold tracking-tight text-foreground">
+      <h1 id={id} className="text-[1.875rem] leading-9 font-semibold tracking-tight text-foreground">
         {title}
       </h1>
-      {helper ? <p className="mt-3 text-[17px] leading-7 text-muted-foreground">{helper}</p> : null}
+      {helper ? <p className="mt-3 text-[1.0625rem] leading-7 text-muted-foreground">{helper}</p> : null}
     </>
   )
 }

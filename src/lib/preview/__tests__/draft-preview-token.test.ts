@@ -16,8 +16,18 @@ describe('draft preview token', () => {
   it('round-trips the claims and expires after 15 minutes', () => {
     const { token, exp } = signDraftPreviewToken(claims, { secret, now: NOW })
     expect(exp).toBe(NOW / 1000 + PREVIEW_TOKEN_TTL_SECONDS)
-    expect(verifyDraftPreviewToken(token, { secret, now: NOW + 60_000 })).toEqual({ ...claims, exp })
+    expect(verifyDraftPreviewToken(token, { secret, now: NOW + 60_000 })).toEqual({ ...claims, kind: 'post', pageId: null, exp })
     expect(verifyDraftPreviewToken(token, { secret, now: NOW + PREVIEW_TOKEN_TTL_SECONDS * 1000 })).toBeNull()
+  })
+
+  it('gallery tokens carry their kind and optional page; old post tokens stay posts', () => {
+    const g = signDraftPreviewToken({ ...claims, kind: 'gallery', pageId: 'page-home' }, { secret, now: NOW })
+    expect(verifyDraftPreviewToken(g.token, { secret, now: NOW + 1000 })).toMatchObject({ kind: 'gallery', pageId: 'page-home' })
+    const alone = signDraftPreviewToken({ ...claims, kind: 'gallery' }, { secret, now: NOW })
+    expect(verifyDraftPreviewToken(alone.token, { secret, now: NOW + 1000 })).toMatchObject({ kind: 'gallery', pageId: null })
+    // A page id on a post token is never emitted.
+    const p = signDraftPreviewToken({ ...claims, pageId: 'x' }, { secret, now: NOW })
+    expect(verifyDraftPreviewToken(p.token, { secret, now: NOW + 1000 })).toMatchObject({ kind: 'post', pageId: null })
   })
 
   it('never mints longer than the TTL', () => {
