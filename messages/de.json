@@ -780,6 +780,28 @@
           "what": "Eine Handlungsaufforderung ist der Button am Ende eines Beitrags, zum Beispiel „Termin buchen“.",
           "setup": "Richte sie in Studio ein → Website-Einstellungen → Handlungsaufforderungen"
         }
+      },
+      "saveNotice": {
+        "offline": "Noch nicht gespeichert. Deine Änderungen bleiben auf diesem Gerät und werden gespeichert, sobald die Verbindung zurück ist.",
+        "retry": "Erneut versuchen",
+        "conflict": "Speichern nicht möglich: Das wurde anderswo geändert. Neu laden, um die neueste Version zu sehen.",
+        "error": "Deine letzten Änderungen konnten nicht gespeichert werden. Neu laden, um mit der zuletzt gespeicherten Version weiterzumachen.",
+        "rejected": "Eine Änderung konnte nicht gespeichert werden ({field}). Alles andere ist gespeichert.",
+        "reload": "Neu laden",
+        "fields": {
+          "title": "Titel",
+          "subtitle": "Untertitel",
+          "body": "Text",
+          "categories": "Thema",
+          "cta": "Handlungsaufruf",
+          "gallery": "Galerie",
+          "cover": "Titelbild",
+          "wizard": "aktueller Schritt",
+          "description": "Beschreibung",
+          "tags": "Schlagwörter",
+          "items": "Fotos",
+          "other": "eine Einstellung"
+        }
       }
     },
     "textSize": {

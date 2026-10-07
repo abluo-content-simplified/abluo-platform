@@ -13,6 +13,12 @@ export interface JournalStorage {
   load(draftId: string): Promise<PendingSet | null>
   save(draftId: string, set: PendingSet): Promise<void>
   clear(draftId: string): Promise<void>
+  /**
+   * Moves the entry under `from` to `to` (merged over anything already under
+   * `to`), then removes `from` — in one step where the storage allows it. Used
+   * when a lazily created draft gets its real id.
+   */
+  rekey?(from: string, to: string): Promise<void>
 }
 
 /** In-memory journal — tests, and the fallback when IndexedDB is unavailable. */
@@ -29,6 +35,12 @@ export function createMemoryJournal(seed: Record<string, PendingSet> = {}): Jour
     },
     async clear(id) {
       entries.delete(id)
+    },
+    async rekey(from, to) {
+      if (from === to) return
+      const moved = entries.get(from)
+      if (moved) entries.set(to, { ...(entries.get(to) ?? {}), ...moved })
+      entries.delete(from)
     },
   }
 }
@@ -92,6 +104,28 @@ export function createIdbJournal(): JournalStorage {
     },
     async clear(id) {
       await run('readwrite', (s) => s.delete(id), undefined)
+    },
+    async rekey(from, to) {
+      if (from === to) return
+      // One readwrite transaction: read both, write the merge, delete the old key — all or nothing.
+      await run(
+        'readwrite',
+        (s) => {
+          const get = s.get(from)
+          get.onsuccess = () => {
+            const moved = get.result
+            if (!moved || typeof moved !== 'object' || Array.isArray(moved)) return
+            const prev = s.get(to)
+            prev.onsuccess = () => {
+              const base = prev.result && typeof prev.result === 'object' && !Array.isArray(prev.result) ? prev.result : {}
+              s.put({ ...base, ...moved }, to)
+              s.delete(from)
+            }
+          }
+          return null
+        },
+        undefined
+      )
     },
   }
 }

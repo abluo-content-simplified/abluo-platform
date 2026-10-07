@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useTranslations } from 'next-intl'
 import type { PortableTextBlock } from '@portabletext/editor'
 import { useRouter } from '@/i18n/navigation'
@@ -30,6 +30,7 @@ import {
 } from '@/lib/client/wizard-steps'
 import type { DraftSnapshot, SiteInfo, StepProps } from './types'
 import { SavePill } from './SavePill'
+import { SaveNotice } from './SaveNotice'
 import { applyToSnapshot } from './snapshot'
 import { CategoryStep } from './steps/CategoryStep'
 import { TitleStep, type ImproveLineResult } from './steps/TitleStep'
@@ -146,7 +147,15 @@ export function WizardShell({
   const [created, setCreated] = useState(Boolean(initialDraft.id))
   /** Changes made before any content exists (a topic, the step) — sent with the first content. */
   const heldRef = useRef<PendingSet>({})
+  /** True once the first content went to the engine: from then on nothing is held (the engine creates the draft). */
+  const contentSentRef = useRef(Boolean(initialDraft.id))
+  /**
+   * The journal key the engine STARTS with. A new post journals under a
+   * temporary key until it is created; then the journal moves to the real id
+   * (`rekey`), so reopening /posts/write/<id> replays what was not saved yet.
+   */
   const [journalKey] = useState(() => initialDraft.id || `new-post:${Math.random().toString(36).slice(2)}`)
+  const rekeyRef = useRef<(key: string) => Promise<void>>(async () => undefined)
 
   const send = useCallback(
     async (input: { rev: string; set: PendingSet }) => {
@@ -156,6 +165,8 @@ export function WizardShell({
         if (!c.ok) return { ok: false, error: c.error === 'forbidden' || c.error === 'unauthenticated' ? c.error : 'failed' } as const
         draftIdRef.current = c.id
         rev = c.rev
+        // Move everything journaled under the temporary key to the real id, before the first patch.
+        await rekeyRef.current(c.id)
         setCreated(true)
         setSnap((s) => ({ ...s, id: c.id }))
         // The address becomes the draft's own, without remounting the wizard.
@@ -181,16 +192,28 @@ export function WizardShell({
     [initialDraft, steps]
   )
   const autosave = useAutosave({ draftId: journalKey, rev: initialDraft.rev, send, onReady })
+  const { rekey } = autosave
+  useEffect(() => {
+    rekeyRef.current = rekey
+  }, [rekey])
 
   const update = useCallback(
     (set: Record<string, unknown>) => {
       if (finished.current) return
       setSnap((s) => applyToSnapshot(s, set))
-      if (draftIdRef.current) return autosave.set(set)
+      if (draftIdRef.current || contentSentRef.current) {
+        // Anything still held goes along — a held change is never dropped.
+        const held = heldRef.current
+        heldRef.current = {}
+        return autosave.set({ ...held, ...set })
+      }
       // No draft yet: hold everything until the first real content creates it.
       const routed = routePreDraft(heldRef.current, set, POST_CONTENT)
       heldRef.current = routed.held
-      if (routed.send) autosave.set(routed.send)
+      if (routed.send) {
+        contentSentRef.current = true
+        autosave.set(routed.send)
+      }
     },
     [autosave]
   )
@@ -517,6 +540,7 @@ export function WizardShell({
         )}
         <SavePill state={autosave.state} onReload={reload} />
       </header>
+      <SaveNotice state={autosave.state} rejected={autosave.rejected} onRetry={autosave.retry} onReload={reload} />
 
       <div ref={mainRef} className="flex-1 overflow-y-auto">
         <main className={`mx-auto flex min-h-full w-full flex-col px-4 pt-6 pb-10 ${wide ? 'max-w-5xl' : 'max-w-[672px]'}`}>

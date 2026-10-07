@@ -5,6 +5,10 @@
  * journal (IndexedDB), and the page-lifecycle flushes — leaving the tab
  * (`visibilitychange` → hidden), closing it (`pagehide`), and coming back
  * online (`online` → retry now).
+ *
+ * `draftId` is the journal key the engine STARTS with (a temporary one for a
+ * draft that does not exist yet); `rekey(realKey)` moves the journal once the
+ * draft is created, without recreating the engine.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createAutosave, type Autosave, type SaveState, type SendResult } from './engine'
@@ -25,6 +29,7 @@ export function useAutosave({
   onReady?: (replayed: PendingSet | null) => void
 }) {
   const [state, setState] = useState<SaveState>('idle')
+  const [rejected, setRejected] = useState<string[]>([])
   const [replayed, setReplayed] = useState<PendingSet | null | undefined>(undefined)
   const engineRef = useRef<Autosave | null>(null)
   const sendRef = useRef(send)
@@ -41,6 +46,7 @@ export function useAutosave({
       send: (input) => sendRef.current(input),
       storage: storage ?? createIdbJournal(),
       onState: setState,
+      onRejected: setRejected,
     })
     engineRef.current = engine
     let alive = true
@@ -78,6 +84,8 @@ export function useAutosave({
   const discard = useCallback(async () => engineRef.current?.discard(), [])
   const adoptRev = useCallback((next: string) => engineRef.current?.setRev(next), [])
   const currentState = useCallback((): SaveState => engineRef.current?.state ?? 'idle', [])
+  const retry = useCallback(() => engineRef.current?.retryNow(), [])
+  const rekey = useCallback(async (nextKey: string) => engineRef.current?.rekey(nextKey), [])
 
-  return { state, set, flush, currentRev, currentState, discard, adoptRev, replayed }
+  return { state, rejected, set, flush, currentRev, currentState, discard, adoptRev, retry, rekey, replayed }
 }

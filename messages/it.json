@@ -780,6 +780,28 @@
           "what": "Un invito all’azione è il pulsante alla fine di un articolo, per esempio “Prenota un appuntamento”.",
           "setup": "Configurali in Studio → Impostazioni sito → Inviti all’azione"
         }
+      },
+      "saveNotice": {
+        "offline": "Non ancora salvato. Le modifiche restano su questo dispositivo e verranno salvate appena torna la connessione.",
+        "retry": "Riprova",
+        "conflict": "Impossibile salvare: è stato modificato altrove. Ricarica per vedere l'ultima versione.",
+        "error": "Impossibile salvare le ultime modifiche. Ricarica per ripartire dall'ultima versione salvata.",
+        "rejected": "Impossibile salvare una modifica ({field}). Tutto il resto è salvato.",
+        "reload": "Ricarica",
+        "fields": {
+          "title": "titolo",
+          "subtitle": "sottotitolo",
+          "body": "testo",
+          "categories": "argomento",
+          "cta": "invito all'azione",
+          "gallery": "galleria",
+          "cover": "foto di copertina",
+          "wizard": "passo attuale",
+          "description": "descrizione",
+          "tags": "tag",
+          "items": "foto",
+          "other": "un'impostazione"
+        }
       }
     },
     "textSize": {

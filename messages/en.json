@@ -780,6 +780,28 @@
           "what": "A call to action is the button at the end of a post, for example “Book an appointment”.",
           "setup": "Set them up in Studio → Website Settings → Calls to action"
         }
+      },
+      "saveNotice": {
+        "offline": "Not saved yet. Your changes are kept on this device and will be saved when the connection is back.",
+        "retry": "Retry",
+        "conflict": "Couldn't save: this was changed somewhere else. Reload to see the latest version.",
+        "error": "Couldn't save your latest changes. Reload to continue from the last saved version.",
+        "rejected": "Couldn't save one change ({field}). Everything else is saved.",
+        "reload": "Reload",
+        "fields": {
+          "title": "title",
+          "subtitle": "subtitle",
+          "body": "text",
+          "categories": "topic",
+          "cta": "call to action",
+          "gallery": "gallery",
+          "cover": "cover photo",
+          "wizard": "current step",
+          "description": "description",
+          "tags": "tags",
+          "items": "photos",
+          "other": "a setting"
+        }
       }
     },
     "textSize": {

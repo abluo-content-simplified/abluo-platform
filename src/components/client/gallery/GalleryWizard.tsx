@@ -122,6 +122,10 @@ export function GalleryWizard({
   const hasDraftRef = useRef(initial.hasDraft)
   const [hasDraft, setHasDraft] = useState(initial.hasDraft)
   const heldRef = useRef<PendingSet>({})
+  /** True once the first content went to the engine: from then on nothing is held (the engine creates the gallery). */
+  const contentSentRef = useRef(Boolean(initial.id))
+  const rekeyRef = useRef<(key: string) => Promise<void>>(async () => undefined)
+  /** Starts temporary for a new gallery; moved to `gallery:<id>` (rekey) once it is created. */
   const [journalKey] = useState(() => (initial.id ? `gallery:${initial.id}` : `new-gallery:${Math.random().toString(36).slice(2)}`))
   /** Photo-text saves in flight (PhotoDescribeStep): Save waits for them. */
   const photoSaves = useRef<Promise<unknown>>(Promise.resolve())
@@ -141,6 +145,8 @@ export function GalleryWizard({
         if (!c.ok) return { ok: false, error: c.error === 'forbidden' || c.error === 'unauthenticated' ? c.error : 'failed' } as const
         idRef.current = c.id
         rev = c.rev
+        // Move the journal from the temporary key to the real one, before the first patch.
+        await rekeyRef.current(`gallery:${c.id}`)
         setGalleryId(c.id)
         markDraft()
         try {
@@ -169,6 +175,10 @@ export function GalleryWizard({
     if (r && idRef.current) setReplayed(true)
   }, [])
   const autosave = useAutosave({ draftId: journalKey, rev: initial.rev, send, onReady })
+  const { rekey } = autosave
+  useEffect(() => {
+    rekeyRef.current = rekey
+  }, [rekey])
   const flushEngine = autosave.flush
   useEffect(() => {
     if (!replayed) return
@@ -195,10 +205,18 @@ export function GalleryWizard({
   const update = useCallback(
     (set: PendingSet) => {
       if (finished.current) return
-      if (idRef.current) return autosave.set(set)
+      if (idRef.current || contentSentRef.current) {
+        // Anything still held goes along — a held change is never dropped.
+        const held = heldRef.current
+        heldRef.current = {}
+        return autosave.set({ ...held, ...set })
+      }
       const routed = routePreDraft(heldRef.current, set, GALLERY_CONTENT)
       heldRef.current = routed.held
-      if (routed.send) autosave.set(routed.send)
+      if (routed.send) {
+        contentSentRef.current = true
+        autosave.set(routed.send)
+      }
     },
     [autosave]
   )
@@ -413,6 +431,8 @@ export function GalleryWizard({
       exit={step === 'done' ? null : created ? { kind: 'save', onPress: () => void saveAndExit() } : { kind: 'close', onPress: closeEmpty }}
       saveState={autosave.state}
       onReload={() => void reload()}
+      onRetry={autosave.retry}
+      rejected={autosave.rejected}
       footer={
         step === 'done'
           ? null

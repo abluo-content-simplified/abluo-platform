@@ -115,8 +115,8 @@ describe('autosave engine', () => {
     expect(h.storage.entries.has('d1')).toBe(false)
   })
 
-  it('a refusal other than failed/conflict stops with "error" and keeps the journal', async () => {
-    const h = harness([{ ok: false, error: 'invalid_value' }])
+  it('a refusal other than failed/conflict/refused value stops with "error" and keeps the journal', async () => {
+    const h = harness([{ ok: false, error: 'forbidden' }])
     h.a.set({ 'title.en': 'x' })
     await tick(800)
     expect(h.a.state).toBe('error')

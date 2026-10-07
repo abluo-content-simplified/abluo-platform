@@ -4,6 +4,7 @@ import type { KeyboardEvent, ReactNode, RefObject } from 'react'
 import { useTranslations } from 'next-intl'
 import type { SaveState } from '@/lib/client/autosave/engine'
 import { SavePill } from './SavePill'
+import { SaveNotice } from './SaveNotice'
 
 /**
  * The blog wizard's chrome (WizardShell, v1.0.45) as a frame for the other
@@ -21,6 +22,8 @@ export function WizardFrame({
   exit,
   saveState,
   onReload,
+  onRetry,
+  rejected,
   footer,
   overlay,
 }: {
@@ -33,6 +36,10 @@ export function WizardFrame({
   exit: { kind: 'save' | 'close'; onPress: () => void } | null
   saveState: SaveState
   onReload: () => void
+  /** "Retry" on the not-saved notice (offline / retrying). */
+  onRetry?: () => void
+  /** Paths the server refused (one change not saved; the rest is). */
+  rejected?: string[]
   footer: null | {
     hint?: string | null
     progress?: { current: number; total: number } | null
@@ -74,6 +81,7 @@ export function WizardFrame({
         )}
         <SavePill state={saveState} onReload={onReload} />
       </header>
+      <SaveNotice state={saveState} rejected={rejected} onRetry={onRetry} onReload={onReload} />
 
       <div ref={mainRef} className="flex-1 overflow-y-auto">
         <main className={`mx-auto flex min-h-full w-full flex-col px-4 pt-6 pb-10 ${wide ? 'max-w-5xl' : 'max-w-[672px]'}`}>{children}</main>
