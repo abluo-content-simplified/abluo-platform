@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedActor } from '@/lib/api/auth'
-import { createClient } from '@/lib/supabase/server'
+import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
+import { checkGrant, granterForProject } from '@/lib/authz'
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 
-const INVITABLE_ROLES = new Set(['editor', 'viewer'])
+// ADR-028: Viewer is retired. Site admin ('admin') becomes invitable once
+// migration 029 widens project_members.role; until then the database accepts
+// only 'editor' | 'viewer', so this route offers 'editor' alone.
+const INVITABLE_NOW = new Set(['editor'])
 
 /**
- * POST /api/projects/[projectId]/invite — invite an EDITOR or VIEWER to a
- * single project.
+ * POST /api/projects/[projectId]/invite — invite an EDITOR to a single
+ * project (ADR-028: Viewer retired; Site admin after migration 029).
  *
  * ADR-017 slice 4 (client login + invitation flow). Handles the "tenant
  * owner invites editor/viewer to one of their projects" leg. The
@@ -17,14 +21,11 @@ const INVITABLE_ROLES = new Set(['editor', 'viewer'])
  * configures the Supabase Auth email template / SMTP routing and the
  * redirect allowlist (handoff §8).
  *
- * Authorization: the caller must hold `owner` on the TENANT that owns this
- * project (ADR-017 Decision 2 — ownership is tenant-level; there is no
- * project-level owner to delegate from). This mirrors the RLS policy
- * already shipped on `project_members` writes (migration 007, "Tenant
- * owners can add members to their projects") — this route performs the
- * equivalent check application-side, via the caller's own RLS-scoped
- * session client (never the service-role admin client), before touching
- * the admin client for the invite-send call only.
+ * Authorization (ADR-028): the caller must hold `users.invite` on this
+ * project in their resolved grants (Owner of the tenant, or Site admin of
+ * the project) and pass the no-escalation rules (`checkGrant`). Grants are
+ * resolved fresh from the database through the caller's own RLS-scoped
+ * session; the service role is used for the invite-send call only.
  *
  * Membership creation on acceptance is the one open fork this ADR/handoff
  * flags (handoff §5.1, §8, decision 1): a `handle_new_user()` trigger
@@ -58,45 +59,21 @@ export async function POST(
   if (!email) {
     return NextResponse.json({ success: false, error: 'email is required' }, { status: 400 })
   }
-  if (!role || !INVITABLE_ROLES.has(role)) {
-    return NextResponse.json(
-      { success: false, error: "role must be 'editor' or 'viewer'" },
-      { status: 400 }
-    )
+  if (!role || !INVITABLE_NOW.has(role)) {
+    return NextResponse.json({ success: false, error: "role must be 'editor'" }, { status: 400 })
   }
 
-  // Authorize via the caller's own RLS-scoped session — never the
-  // service-role client — mirroring ADR-017's "resolve fresh from the
-  // database, never from the JWT" principle (Decision 3).
-  const supabase = await createClient()
-
-  const { data: project, error: projectError } = await supabase
-    .from('projects')
-    .select('id, tenant_id')
-    .eq('id', projectId)
-    .maybeSingle()
-
-  if (projectError) {
-    return NextResponse.json({ success: false, error: projectError.message }, { status: 500 })
-  }
-  if (!project) {
-    // RLS-invisible or nonexistent — collapsed to one response, same
-    // fail-closed convention as requireAbluoAdmin (auth.ts header).
-    return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 })
-  }
-
-  const { data: ownerMembership, error: ownerError } = await supabase
-    .from('tenant_members')
-    .select('id')
-    .eq('tenant_id', project.tenant_id)
-    .eq('user_id', actor.userId)
-    .eq('role', 'owner')
-    .maybeSingle()
-
-  if (ownerError) {
-    return NextResponse.json({ success: false, error: ownerError.message }, { status: 500 })
-  }
-  if (!ownerMembership) {
+  // Authorize from the caller's resolved grants (fresh from the database via
+  // their own RLS-scoped session — ADR-017 Decision 3) and the no-escalation
+  // rules (ADR-028 §4): the caller must hold users.invite on THIS project and
+  // may only invite at or below their own level. A project the caller holds
+  // no grant on is refused the same way as one they may not invite into.
+  const authz = await getTenantAuthorizationContext()
+  const granter = authz ? granterForProject(authz, projectId) : null
+  const decision = granter
+    ? checkGrant(granter, { scope: 'project', action: 'invite', role: role as 'editor', extras: [] })
+    : null
+  if (!decision?.ok) {
     return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
   }
 
@@ -105,9 +82,9 @@ export async function POST(
   const redirectTo = `${request.nextUrl.origin}/invite/accept`
 
   const { data, error } = await runAsTrustedSystemOperation(
-    `tenant owner ${actor.userId} inviting a project ${role} (project ${projectId}) — ` +
+    `user ${actor.userId} inviting a project ${role} (project ${projectId}) — ` +
       'auth.admin.inviteUserByEmail requires the service role; caller authorization was ' +
-      'already verified above via the RLS-scoped session (project + tenant_members owner check).',
+      'already verified above (resolved grant + ADR-028 no-escalation rules).',
     (admin) =>
       admin.auth.admin.inviteUserByEmail(email, {
         data: {

@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
-import { GALLERY_WRITE_PERMISSION, listGalleries, type GalleryListItem } from '@/lib/api/gallery-drafts'
+import { GALLERY_WRITE_PERMISSION, canDeleteGalleries, listGalleries, type GalleryListItem } from '@/lib/api/gallery-drafts'
 import { getGalleryStatuses, type GalleryStatus } from '@/lib/api/gallery-status'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { GalleryList } from '@/components/client/gallery/GalleryList'
@@ -36,7 +36,7 @@ export default async function GalleriesPage({ params }: { params: Promise<{ tena
       galleries={galleries}
       statuses={statuses}
       canWrite={grant.permissions.includes(GALLERY_WRITE_PERMISSION)}
-      canDelete={grant.role === 'owner' && grant.permissions.includes(GALLERY_WRITE_PERMISSION)}
+      canDelete={canDeleteGalleries(grant)}
     />
   )
 }

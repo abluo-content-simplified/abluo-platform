@@ -152,7 +152,7 @@ describe('runPostBatch', () => {
       { id: 'd1', ok: true },
     ])
     const o = fake({ p1: post('p1') })
-    expect(await runPostBatch(ctx(grant({ role: 'owner' })), 'project-a', { ids: ['p1'], op: 'delete' }, o.deps)).toEqual([{ id: 'p1', ok: true }])
+    expect(await runPostBatch(ctx(grant({ role: 'owner', permissions: ['blog.post.read', 'blog.post.write', 'blog.post.delete', 'blog.published.delete'] })), 'project-a', { ids: ['p1'], op: 'delete' }, o.deps)).toEqual([{ id: 'p1', ok: true }])
   })
 
   it('end date and topics run per post', async () => {

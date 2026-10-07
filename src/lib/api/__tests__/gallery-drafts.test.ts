@@ -28,11 +28,11 @@ const grant = (o: Partial<ProjectGrant> = {}): ProjectGrant => ({
   projectSlug: asSupabaseProjectSlug('hoffmann'),
   membershipId: 'm1',
   role: 'owner',
-  permissions: ['gallery.gallery.read', 'gallery.gallery.write'],
+  permissions: ['gallery.gallery.read', 'gallery.gallery.write', 'gallery.gallery.delete'],
   enabledModuleIds: ['gallery'],
   ...o,
 })
-const editor = () => grant({ role: 'editor' })
+const editor = () => grant({ role: 'editor', permissions: ['gallery.gallery.read', 'gallery.gallery.write'] })
 const viewer = () => grant({ role: 'viewer', permissions: ['gallery.gallery.read'] })
 const ctx = (...g: ProjectGrant[]): TenantAuthorizationContext => ({ userId: 'u1', platformRole: 'tenant_user', projects: g })
 

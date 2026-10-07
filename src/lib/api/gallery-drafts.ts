@@ -31,6 +31,13 @@ import { slugFromTitle, uniqueSlug } from '@/lib/api/post-publish'
 
 export const GALLERY_READ_PERMISSION = 'gallery.gallery.read'
 export const GALLERY_WRITE_PERMISSION = 'gallery.gallery.write'
+/** Deleting a gallery (ADR-028: Owner and Site admin). */
+export const GALLERY_DELETE_PERMISSION = 'gallery.gallery.delete'
+
+/** Whether this grant may delete galleries (UI hint; the server re-checks). */
+export function canDeleteGalleries(grant: { permissions: readonly string[] }): boolean {
+  return grant.permissions.includes(GALLERY_WRITE_PERMISSION) && grant.permissions.includes(GALLERY_DELETE_PERMISSION)
+}
 
 export const GALLERY_LIMITS = {
   items: 200,
@@ -707,7 +714,7 @@ export async function discardGalleryDraft(
 }
 
 /**
- * Deletes a gallery (published and draft). Owners only. Refused with "in_use"
+ * Deletes a gallery (published and draft). Needs gallery.gallery.delete (Owner / Site admin). Refused with "in_use"
  * (and where) while a page or post of the site shows it. The photos stay in
  * the Media Library.
  */
@@ -717,8 +724,8 @@ export async function deleteGallery(
   input: { id: string; rev?: string },
   deps: GalleryDeps = {}
 ): Promise<void> {
-  const grant = grantFor(ctx, projectId, GALLERY_WRITE_PERMISSION)
-  if (grant.role !== 'owner') throw new TenantAuthorizationError('Only owners can delete a gallery.')
+  grantFor(ctx, projectId, GALLERY_WRITE_PERMISSION)
+  const grant = grantFor(ctx, projectId, GALLERY_DELETE_PERMISSION)
   const client = deps.client ?? sanityWriteClient
   if (!isGalleryId(input?.id)) notFound()
   const { published, draft } = await readPair(client, input.id, grant.projectSlug)
@@ -766,7 +773,7 @@ export async function batchGalleries(
   if (input.op !== 'delete' && input.op !== 'tags') throw new GalleryError('invalid_value', 'Unknown action.')
   const add = input.op === 'tags' ? cleanGalleryTags(input.addTags) : []
   if (input.op === 'tags' && !add.length) throw new GalleryError('invalid_value', 'Nothing to save.')
-  if (input.op === 'delete' && grant.role !== 'owner') throw new TenantAuthorizationError('Only owners can delete a gallery.')
+  if (input.op === 'delete') assertModuleAction(ctx, projectId, GALLERY_DELETE_PERMISSION)
 
   const results: GalleryBatchResult[] = []
   for (const id of ids) {

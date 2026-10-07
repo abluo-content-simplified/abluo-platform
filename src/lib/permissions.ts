@@ -1,7 +1,14 @@
 /**
- * Tenant membership permissions
+ * Tenant membership permissions — LEGACY (superseded by ADR-028).
  *
- * All permission checks go through this module.
+ * ⚠️ Do not call the role functions below from application code. Access is
+ * decided by permissions: `can()` / `grant.permissions` from
+ * src/lib/authz (ADR-028). A test (src/lib/authz/__tests__/
+ * no-role-comparisons.test.ts) fails the build on any new call. They remain
+ * only for their own tests until removed; `canPerformModuleAction` is still
+ * used as the independent reference the new resolver is proven against.
+ *
+ * Original note: all permission checks go through this module.
  * Never compare role strings directly in application code — always call a
  * helper here. This ensures that adding a new role (e.g. 'billing_admin')
  * only requires changes in this file, not scattered across the codebase.

@@ -24,6 +24,8 @@ import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
 
 export const BLOG_POST_DELETE_PERMISSION = 'blog.post.delete'
+/** Deleting a post that is live on the website (ADR-028: Owner and Site admin). */
+export const BLOG_PUBLISHED_DELETE_PERMISSION = 'blog.published.delete'
 
 type LifecycleClient = Pick<typeof sanityWriteClient, 'getDocument' | 'create' | 'patch' | 'transaction' | 'fetch'>
 export type PostLifecycleDeps = { client?: LifecycleClient; now?: () => Date }
@@ -210,8 +212,9 @@ export async function deletePostDraft(
 }
 
 /**
- * Permanently deletes a published post (and its draft). Owners only, and only
- * when the role holds blog.post.delete. The UI asks for confirmation with the title.
+ * Permanently deletes a published post (and its draft). Needs both
+ * blog.post.delete and blog.published.delete (Owner / Site admin). The UI asks
+ * for confirmation with the title.
  */
 export async function deletePublishedPost(
   ctx: TenantAuthorizationContext,
@@ -219,8 +222,8 @@ export async function deletePublishedPost(
   input: { id: string; rev: string },
   deps: PostLifecycleDeps = {}
 ): Promise<void> {
-  const grant = grantFor(ctx, projectId, BLOG_POST_DELETE_PERMISSION)
-  if (grant.role !== 'owner') throw new TenantAuthorizationError('Only owners can delete a published post.')
+  grantFor(ctx, projectId, BLOG_POST_DELETE_PERMISSION)
+  const grant = grantFor(ctx, projectId, BLOG_PUBLISHED_DELETE_PERMISSION)
   const client = deps.client ?? sanityWriteClient
   if (!isPostId(input?.id)) notFound()
   const { published, draft } = await read(client, input.id, grant.projectSlug)
@@ -236,8 +239,8 @@ export async function deletePublishedPost(
 }
 
 /** Whether this grant may delete published posts (UI hint; the server re-checks). */
-export function canDeletePublished(grant: { role: string; permissions: string[] }): boolean {
-  return grant.role === 'owner' && grant.permissions.includes(BLOG_POST_DELETE_PERMISSION)
+export function canDeletePublished(grant: { permissions: readonly string[] }): boolean {
+  return grant.permissions.includes(BLOG_POST_DELETE_PERMISSION) && grant.permissions.includes(BLOG_PUBLISHED_DELETE_PERMISSION)
 }
 
 // ── End date and topics (Posts list, single and batch) ───────────────────────

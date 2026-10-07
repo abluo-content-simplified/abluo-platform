@@ -60,9 +60,9 @@ import { createClient } from '@/lib/supabase/server'
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 import { getAuthenticatedActor } from '@/lib/api/auth'
 import type { PlatformRole } from '@/lib/api/auth'
-import { canPerformModuleAction } from '@/lib/permissions'
+import { resolveProjectPermissions } from '@/lib/authz/resolve'
 import { MODULE_PERMISSION_MAP } from '@/lib/modules/permissions'
-import type { ModuleInstallation, ModulePermissionMap } from '@/lib/modules/types'
+import type { ModulePermissionMap } from '@/lib/modules/types'
 import { tenantClient } from '@/lib/sanity/client'
 import { enabledModuleIdsQuery } from '@/lib/sanity/queries'
 import { asSupabaseProjectSlug, type SupabaseProjectSlug } from '@/lib/tenancy/ids'
@@ -113,38 +113,35 @@ export type RawProjectMembership = {
 }
 
 /**
- * Computes the flat permission-id list a role holds, given the project's
- * enabled modules. Reuses the existing `canPerformModuleAction` /
- * `MODULE_PERMISSION_MAP` machinery (src/lib/permissions.ts,
- * src/lib/modules/permissions.ts) rather than reimplementing the
- * module-installed → permission-declared → role-granted check. Builds a
- * synthetic `ModuleInstallation[]` from `enabledModuleIds` because
- * `canPerformModuleAction` expects that shape; `version`/`installedAt`/
- * `config` are irrelevant to the permission check and are filled with inert
- * placeholders.
+ * The MODULE permission ids a role holds, given the project's enabled
+ * modules. Since ADR-028 step 2 this is derived from the single resolver
+ * (`resolveProjectPermissions`, src/lib/authz/resolve.ts); its output is
+ * proven identical to the previous `canPerformModuleAction` derivation by
+ * src/lib/authz/__tests__/resolve.test.ts.
  */
 export function permissionsForRole(
   role: ProjectRole,
   enabledModuleIds: string[],
   modulePermissionMap: ModulePermissionMap = MODULE_PERMISSION_MAP
 ): string[] {
-  const installations: ModuleInstallation[] = enabledModuleIds.map((moduleId) => ({
-    moduleId,
-    version: '0.0.0',
-    enabled: true,
-    installedAt: '',
-    config: {},
-    provenance: 'admin',
-  }))
+  // MODULE permissions only (kept for its existing callers and invariants).
+  // Grants carry the full set — module + platform — via `grantPermissions`.
+  return grantPermissions(role, enabledModuleIds, modulePermissionMap).filter((id) => id in modulePermissionMap)
+}
 
-  // owner receives every permission an editor would (owner is a superset by
-  // convention across the platform's TenantRole model — src/lib/permissions.ts
-  // header). ModulePermissionDef.defaultRoles is authored against TenantRole
-  // ('owner' | 'editor' | 'viewer'), the same union ProjectRole mirrors here,
-  // so role is passed straight through with no translation.
-  return Object.keys(modulePermissionMap).filter((permissionId) =>
-    canPerformModuleAction(role, permissionId, installations, modulePermissionMap)
-  )
+/**
+ * Every permission a grant carries: module permissions (gated on the
+ * project's enabled modules) plus platform project-scope permissions
+ * (`users.invite`, `media.library.manage`, …) — ADR-028 §2, resolved by the
+ * pure `resolveProjectPermissions` (src/lib/authz/resolve.ts). Extras arrive
+ * with ADR-028 Migration step 2; until then there are none.
+ */
+export function grantPermissions(
+  role: ProjectRole,
+  enabledModuleIds: string[],
+  modulePermissionMap: ModulePermissionMap = MODULE_PERMISSION_MAP
+): string[] {
+  return resolveProjectPermissions({ role, enabledModuleIds, modulePermissionMap }).permissions
 }
 
 /**
@@ -174,7 +171,7 @@ export function assembleProjectGrants(params: {
       projectSlug: owned.projectSlug,
       membershipId: `tenant-owner:${owned.tenantId}`,
       role: 'owner',
-      permissions: permissionsForRole('owner', enabledModuleIds, modulePermissionMap),
+      permissions: grantPermissions('owner', enabledModuleIds, modulePermissionMap),
       enabledModuleIds,
     })
   }
@@ -189,7 +186,7 @@ export function assembleProjectGrants(params: {
       projectSlug: membership.projectSlug,
       membershipId: membership.membershipId,
       role: membership.role,
-      permissions: permissionsForRole(membership.role, enabledModuleIds, modulePermissionMap),
+      permissions: grantPermissions(membership.role, enabledModuleIds, modulePermissionMap),
       enabledModuleIds,
     })
   }

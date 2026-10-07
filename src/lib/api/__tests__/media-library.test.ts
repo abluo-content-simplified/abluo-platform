@@ -13,17 +13,18 @@ import { updateGalleryPhoto } from '../gallery-photos'
 import { POST_MEDIA_LIMITS } from '../post-media'
 import { mediaNavItems } from '@/lib/modules/client-navigation'
 import { TenantAuthorizationError } from '../tenant-scoped-sanity'
-import type { ProjectGrant, TenantAuthorizationContext } from '../tenant-context'
+import { grantPermissions, type ProjectGrant, type TenantAuthorizationContext } from '../tenant-context'
 import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 
+// Permissions come from the real resolver for the role (ADR-028), unless a test overrides them.
 const grant = (o: Partial<ProjectGrant> = {}): ProjectGrant => ({
   projectId: 'project-a',
   projectSlug: asSupabaseProjectSlug('amelie'),
   membershipId: 'm1',
   role: 'editor',
-  permissions: [],
   enabledModuleIds: [], // the Media Library needs no module
   ...o,
+  permissions: o.permissions ?? grantPermissions(o.role ?? 'editor', o.enabledModuleIds ?? []),
 })
 const ctx = (...g: ProjectGrant[]): TenantAuthorizationContext => ({ userId: 'u1', platformRole: 'tenant_user', projects: g })
 const URL1 = 'https://cdn.sanity.io/images/3n7t84j3/production/66a8b9bcfe43b1394d24c10e3effe6e0f5f4cb27-2560x1707.jpg'
@@ -34,7 +35,7 @@ describe('Media Library gate', () => {
     expect(assertProjectAccess(ctx(grant({ role: 'owner' })), 'project-a', MEDIA_MANAGE_PERMISSION).role).toBe('owner')
     expect(() => assertProjectAccess(ctx(grant({ role: 'viewer' })), 'project-a', MEDIA_MANAGE_PERMISSION)).toThrow(TenantAuthorizationError)
     expect(() => assertProjectAccess(ctx(grant()), 'project-b', MEDIA_MANAGE_PERMISSION)).toThrow(TenantAuthorizationError)
-    expect(grantCanManageMedia({ role: 'viewer' })).toBe(false)
+    expect(grantCanManageMedia({ permissions: grantPermissions('viewer', []) })).toBe(false)
   })
 
   it('module permissions still go through assertModuleAction', () => {

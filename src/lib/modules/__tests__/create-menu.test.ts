@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { buildCreateMenu, CREATE_CONTENT_TYPES } from '../create-menu'
 import { MODULE_PERMISSION_MAP } from '../permissions'
-import { permissionsForRole } from '@/lib/api/tenant-context'
+import { grantPermissions } from '@/lib/api/tenant-context'
 
 const grantFor = (role: 'owner' | 'editor' | 'viewer', enabledModuleIds: string[]) => ({
-  role,
   enabledModuleIds,
-  permissions: permissionsForRole(role, enabledModuleIds),
+  // Full grant permissions (module + platform), as the resolver produces them — ADR-028.
+  permissions: grantPermissions(role, enabledModuleIds),
 })
 
 describe('Add-content sheet (ADR-025 D8)', () => {

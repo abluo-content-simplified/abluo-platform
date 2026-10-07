@@ -99,6 +99,14 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           defaultRoles: ['owner', 'editor'],
         },
         {
+          // ADR-028: was a hard-coded Owner-only role check in post-lifecycle.ts.
+          // Project Admins hold it too (owner bundle on their project).
+          id: 'blog.published.delete',
+          label: 'Delete published posts',
+          description: 'Permanently delete a post that is live on the website.',
+          defaultRoles: ['owner'],
+        },
+        {
           id: 'blog.taxonomy.write',
           label: 'Manage categories and authors',
           description: 'Create, edit, and delete blog categories and post authors.',
@@ -627,6 +635,13 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           label: 'Create and edit galleries',
           description: 'Create galleries, add, remove and reorder their photos.',
           defaultRoles: ['owner', 'editor'],
+        },
+        {
+          // ADR-028: was a hard-coded Owner-only role check in gallery-drafts.ts.
+          id: 'gallery.gallery.delete',
+          label: 'Delete galleries',
+          description: 'Delete a gallery (its photos stay in the Media Library).',
+          defaultRoles: ['owner'],
         },
       ],
 

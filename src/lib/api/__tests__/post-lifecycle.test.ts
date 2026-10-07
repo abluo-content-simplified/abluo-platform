@@ -32,7 +32,7 @@ const grant = (o: Partial<ProjectGrant> = {}): ProjectGrant => ({
   enabledModuleIds: ['blog'],
   ...o,
 })
-const owner = () => grant({ role: 'owner' })
+const owner = () => grant({ role: 'owner', permissions: ['blog.post.read', 'blog.post.write', 'blog.post.delete', 'blog.published.delete'] })
 const viewer = () => grant({ role: 'viewer', permissions: ['blog.post.read'] })
 const ctx = (g: ProjectGrant): TenantAuthorizationContext => ({ userId: 'u1', platformRole: 'tenant_user', projects: [g] })
 

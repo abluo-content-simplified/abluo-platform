@@ -263,12 +263,31 @@ describe('POST /api/media refuses a project that belongs to another tenant', () 
 
 // ── Tenant-facing writes ────────────────────────────────────────────────────
 
-describe('POST /api/projects/[projectId]/invite — tenant derived from the authenticated grant', () => {
-  const call = async (projectId: string) =>
+describe('POST /api/projects/[projectId]/invite — authorized from the resolved grant (ADR-028)', () => {
+  const call = async (projectId: string, role = 'editor') =>
     (await import('@/app/api/projects/[projectId]/invite/route')).POST(
-      req(`/api/projects/${projectId}/invite`, json({ email: 'new@x.y', role: 'editor', tenant_id: 'tenant-a' })),
+      req(`/api/projects/${projectId}/invite`, json({ email: 'new@x.y', role, tenant_id: 'tenant-a' })),
       ctx({ projectId })
     )
+  const grantOn = async (projectId: string, role: 'owner' | 'admin' | 'editor' | 'viewer') => {
+    const { grantPermissions } = await import('@/lib/api/tenant-context')
+    return {
+      projectId,
+      projectSlug: `${projectId}-site`,
+      membershipId: role === 'owner' ? 'tenant-owner:tenant-a' : 'pm-1',
+      role,
+      permissions: grantPermissions(role as 'owner', []),
+      enabledModuleIds: [],
+    }
+  }
+  // Cold import (route + resolver + module registry) can exceed 5s under full-suite load.
+  beforeAll(async () => {
+    await import('@/app/api/projects/[projectId]/invite/route')
+  }, 30_000)
+  const asUser = async (...grants: Awaited<ReturnType<typeof grantOn>>[]) => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: grants }
+  }
 
   it('anon is refused with no side effects', async () => {
     expect((await call('project-b')).status).toBe(403)
@@ -276,27 +295,41 @@ describe('POST /api/projects/[projectId]/invite — tenant derived from the auth
   })
 
   it("tenant A's owner cannot invite into tenant B's project (body tenant_id is ignored)", async () => {
-    persona = 'tenantA'
-    visible = {
-      projects: [{ id: 'project-b', tenant_id: 'tenant-b' }],
-      tenant_members: [{ id: 'm1', tenant_id: 'tenant-a', user_id: 'user-tenant-a', role: 'owner' }],
-    }
+    await asUser(await grantOn('project-a', 'owner'))
     const res = await call('project-b')
     expect(res.status).toBe(403)
     expect(inviteUserByEmail).not.toHaveBeenCalled()
     noSideEffects()
   })
 
-  it("tenant A's owner CAN invite into tenant A's project", async () => {
-    persona = 'tenantA'
-    visible = {
-      projects: [{ id: 'project-a', tenant_id: 'tenant-a' }],
-      tenant_members: [{ id: 'm1', tenant_id: 'tenant-a', user_id: 'user-tenant-a', role: 'owner' }],
-    }
+  it("tenant A's owner CAN invite an Editor into tenant A's project", async () => {
+    await asUser(await grantOn('project-a', 'owner'))
     const res = await call('project-a')
     expect(res.status).toBe(200)
     expect(inviteUserByEmail).toHaveBeenCalledTimes(1)
-    expect((inviteUserByEmail.mock.calls[0] as unknown[])[1]).toMatchObject({ data: { project_id: 'project-a' } })
+    expect((inviteUserByEmail.mock.calls[0] as unknown[])[1]).toMatchObject({ data: { project_id: 'project-a', role: 'editor' } })
+  })
+
+  it('a Site admin CAN invite an Editor into their own project', async () => {
+    await asUser(await grantOn('project-a', 'admin'))
+    expect((await call('project-a')).status).toBe(200)
+  })
+
+  it('an Editor or Viewer cannot invite anyone', async () => {
+    for (const role of ['editor', 'viewer'] as const) {
+      inviteUserByEmail.mockClear()
+      await asUser(await grantOn('project-a', role))
+      expect((await call('project-a')).status).toBe(403)
+      expect(inviteUserByEmail).not.toHaveBeenCalled()
+    }
+  })
+
+  it('Viewer (retired) and Site admin (not yet in the database) are not invitable', async () => {
+    await asUser(await grantOn('project-a', 'owner'))
+    for (const role of ['viewer', 'admin', 'owner']) {
+      expect((await call('project-a', role)).status).toBe(400)
+    }
+    expect(inviteUserByEmail).not.toHaveBeenCalled()
   })
 })
 
@@ -526,7 +559,7 @@ describe('post draft server actions — the dashboard\'s only Sanity write path 
     tenantCtx = {
       userId: 'user-tenant-a',
       platformRole: 'tenant_user',
-      projects: [{ ...grantA, permissions: ['blog.post.read', 'blog.post.write', 'blog.post.delete'] }],
+      projects: [{ ...grantA, permissions: ['blog.post.read', 'blog.post.write', 'blog.post.delete', 'blog.published.delete'] }],
     }
     for (const id of ['drafts.x', '../x', 'a/b']) {
       for (const r of await lifecycleCalls('tenant-a-site', id)) expect(r).toEqual({ ok: false, error: 'not_found' })
@@ -581,7 +614,7 @@ describe('gallery server actions — same refusals as posts', () => {
     projectSlug: 'tenant-a-site',
     membershipId: 'tenant-owner:tenant-a',
     role: 'owner',
-    permissions: ['gallery.gallery.read', 'gallery.gallery.write'],
+    permissions: ['gallery.gallery.read', 'gallery.gallery.write', 'gallery.gallery.delete'],
     enabledModuleIds: ['gallery'],
   }
   const viewerA = { ...grantA, role: 'viewer', permissions: ['gallery.gallery.read'] }
@@ -635,7 +668,8 @@ describe('gallery server actions — same refusals as posts', () => {
 
   it('an editor cannot delete a gallery', async () => {
     persona = 'tenantA'
-    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [{ ...grantA, role: 'editor' }] }
+    // An Editor's real gallery permissions: read + write, never delete (ADR-028).
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [{ ...grantA, role: 'editor', permissions: ['gallery.gallery.read', 'gallery.gallery.write'] }] }
     const a = await load()
     expect(await a.deleteGalleryAction({ projectSlug: 'tenant-a-site', id: 'gallery-x' })).toEqual({ ok: false, error: 'forbidden' })
     noSideEffects()
@@ -670,10 +704,10 @@ describe('media screen server actions — owner/editor only, nothing touched on 
     projectSlug: 'tenant-a-site',
     membershipId: 'tenant-owner:tenant-a',
     role: 'owner',
-    permissions: [],
+    permissions: ['media.library.manage'],
     enabledModuleIds: [],
   }
-  const viewerA = { ...ownerA, role: 'viewer' }
+  const viewerA = { ...ownerA, role: 'viewer', permissions: [] }
   const load = () => import('@/app/[locale]/(client)/[tenant]/media/actions')
   const calls = async (projectSlug: string) => {
     const a = await load()

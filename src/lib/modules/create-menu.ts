@@ -12,6 +12,9 @@
  */
 import type { ProjectGrant } from '@/lib/api/tenant-context'
 
+/** Adding modules to a site (ADR-028: Owner only). */
+const MODULES_MANAGE_PERMISSION = 'modules.manage'
+
 export type CreateContentType = {
   moduleId: string
   /** True when the guided wizard exists for this type. */
@@ -35,7 +38,7 @@ export type CreateMenu = {
 }
 
 export function buildCreateMenu(
-  grant: Pick<ProjectGrant, 'role' | 'permissions' | 'enabledModuleIds'>,
+  grant: Pick<ProjectGrant, 'permissions' | 'enabledModuleIds'>,
   types: CreateContentType[] = CREATE_CONTENT_TYPES
 ): CreateMenu {
   const installed = new Set(grant.enabledModuleIds)
@@ -44,6 +47,6 @@ export function buildCreateMenu(
     available: types
       .filter((t) => installed.has(t.moduleId) && canWrite(t))
       .map((t) => ({ moduleId: t.moduleId, ready: t.ready })),
-    more: grant.role === 'owner' ? types.filter((t) => !installed.has(t.moduleId)).map((t) => t.moduleId) : [],
+    more: grant.permissions.includes(MODULES_MANAGE_PERMISSION) ? types.filter((t) => !installed.has(t.moduleId)).map((t) => t.moduleId) : [],
   }
 }

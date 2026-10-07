@@ -12,7 +12,7 @@ import {
 } from '@/lib/api/client-dashboard'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { listPostDrafts, type PostDraftSummary } from '@/lib/api/post-drafts'
-import { GALLERY_READ_PERMISSION, GALLERY_WRITE_PERMISSION, listGalleries, type GalleryListItem } from '@/lib/api/gallery-drafts'
+import { GALLERY_READ_PERMISSION, GALLERY_WRITE_PERMISSION, canDeleteGalleries, listGalleries, type GalleryListItem } from '@/lib/api/gallery-drafts'
 import { getViewerFirstName } from '@/lib/api/viewer-profile'
 import { draftProgress, requestCounts, timeAgo } from '@/lib/client/home-cards'
 import { Greeting } from '@/components/client/home/Greeting'
@@ -117,7 +117,7 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
       progress: g.isPublished ? 1 : g.count > 0 ? 0.5 : 0.25,
       href: `/${projectSlug}/galleries/${g.id}`,
       hasLive: g.isPublished,
-      canDelete: grant.role === 'owner',
+      canDelete: canDeleteGalleries(grant),
       previewLocale: '',
     }))
   const cards = [...postCards, ...galleryCards]

@@ -22,7 +22,7 @@
 import type { ProjectGrant } from '@/lib/api/tenant-context'
 import { MODULE_REGISTRY } from './registry'
 import type { ModuleManifest } from './types'
-import { canManageMedia } from '@/lib/permissions'
+import { grantCanManageMedia } from '@/lib/api/media-permission'
 
 /**
  * The single authoritative mapping from a module id to the client-dashboard
@@ -113,11 +113,11 @@ export function buildClientNavItems(
 export const MEDIA_SEGMENT = 'media'
 
 /**
- * The Media nav item, for grants that may manage media (owner/editor —
- * `canManageMedia`). Appended after the module items, i.e. under Content.
+ * The Media nav item, for grants that hold `media.library.manage`
+ * (ADR-028). Appended after the module items, i.e. under Content.
  */
-export function mediaNavItems(grant: Pick<ProjectGrant, 'projectSlug' | 'role'>): ClientNavItem[] {
-  return canManageMedia(grant.role)
+export function mediaNavItems(grant: Pick<ProjectGrant, 'projectSlug' | 'permissions'>): ClientNavItem[] {
+  return grantCanManageMedia(grant)
     ? [{ moduleId: 'media', labelKey: 'clientDashboard.nav.media', href: `/${grant.projectSlug}/${MEDIA_SEGMENT}` }]
     : []
 }

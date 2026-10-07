@@ -4,6 +4,7 @@ import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import {
   GALLERY_WRITE_PERMISSION,
   GalleryError,
+  canDeleteGalleries,
   getGalleryDraft,
   getGallerySite,
   isGalleryId,
@@ -54,7 +55,7 @@ export default async function GalleryEditorPage({ params }: { params: Promise<{ 
       projectSlug={projectSlug}
       initial={gallery}
       listHref={`/${projectSlug}/galleries`}
-      canDelete={grant.role === 'owner'}
+      canDelete={canDeleteGalleries(grant)}
       status={status}
     />
   )

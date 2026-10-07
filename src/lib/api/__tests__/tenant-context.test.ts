@@ -53,6 +53,9 @@ const enabledModuleIdsByProjectId: Record<string, string[]> = {
   'project-c': [],
 }
 
+/** The module-permission part of a grant (grants also carry platform permissions — ADR-028). */
+const moduleOnly = (perms: string[]) => perms.filter((p) => p in fixturePermissionMap).sort()
+
 // ─── permissionsForRole ──────────────────────────────────────────────────────
 
 describe('permissionsForRole', () => {
@@ -135,7 +138,10 @@ describe('assembleProjectGrants', () => {
       membershipId: 'pm-1',
       role: 'editor',
     })
-    expect(grants[0].permissions.sort()).toEqual(['blog.post.read', 'blog.post.write'])
+    expect(moduleOnly(grants[0].permissions)).toEqual(['blog.post.read', 'blog.post.write'])
+    // Platform permissions: an Editor manages media, never people.
+    expect(grants[0].permissions).toContain('media.library.manage')
+    expect(grants[0].permissions).not.toContain('users.invite')
   })
 
   it('unions grants for a user spanning two different tenants', () => {
@@ -208,7 +214,9 @@ describe('assembleProjectGrants', () => {
 
     expect(grants).toHaveLength(1)
     expect(grants[0].enabledModuleIds).toEqual([])
-    expect(grants[0].permissions).toEqual([])
+    // No module permissions without modules; the Owner's platform permissions remain.
+    expect(moduleOnly(grants[0].permissions)).toEqual([])
+    expect(grants[0].permissions).toEqual(expect.arrayContaining(['users.invite', 'media.library.manage']))
   })
 
   it('still surfaces a grant (with no modules) for a project with no Sanity content mapping', () => {
@@ -239,8 +247,8 @@ describe('assembleProjectGrants', () => {
       projectSlug: 'abluo',
       role: 'owner',
       enabledModuleIds: [],
-      permissions: [],
     })
+    expect(moduleOnly(grants[0].permissions)).toEqual([])
   })
 })
 
