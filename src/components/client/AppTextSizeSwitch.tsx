@@ -47,7 +47,7 @@ export function AppTextSizeSwitch({ initial }: { initial: AppTextSize }) {
               aria-label={t(option)}
               title={t(option)}
               onClick={(e) => choose(option, e.currentTarget)}
-              className={`h-8 rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${glyph[option]} ${
+              className={`h-11 rounded-md md:h-8 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${glyph[option]} ${
                 on
                   ? 'bg-background font-semibold text-foreground shadow-sm'
                   : 'font-medium text-muted-foreground hover:text-foreground'

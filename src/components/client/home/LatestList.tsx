@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
+import { SectionHeading } from '@/components/client/ui/SectionHeading'
 
 export type LatestItem = {
   id: string
@@ -44,13 +45,8 @@ export function LatestList({ heading, items, seeAllHref, kind }: { heading: stri
   }
 
   return (
-    <section className="flex flex-col">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <h2 className="text-[1.0625rem] leading-6 font-semibold">{heading}</h2>
-        <Link href={seeAllHref} className="-my-2 inline-flex min-h-11 items-center text-sm font-medium text-primary">
-          {t('seeAll')}
-        </Link>
-      </div>
+    <section aria-labelledby={`latest-${kind}`} className="flex flex-col gap-3">
+      <SectionHeading id={`latest-${kind}`} title={heading} seeAllHref={seeAllHref} />
       <ul className="rounded-xl border border-border bg-card px-3">
         {items.map((p) => {
           const body = (

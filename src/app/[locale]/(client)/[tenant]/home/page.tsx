@@ -1,54 +1,59 @@
 import { notFound, redirect } from 'next/navigation'
-import { PageShell } from '@/components/client/ui/PageShell'
 import { getLocale, getTranslations } from 'next-intl/server'
-import { Link } from '@/i18n/navigation'
-import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
-import { MODULE_DASHBOARD_ROUTES, resolveProjectGrant } from '@/lib/modules/client-navigation'
-import {
-  getDashboardPostList,
-  getDashboardSubmissions,
-  getProjectSiteDomain,
-  type DashboardPost,
-  type DashboardSubmission,
-} from '@/lib/api/client-dashboard'
-import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
-import { listPostDrafts, type PostDraftSummary } from '@/lib/api/post-drafts'
-import { GALLERY_READ_PERMISSION, GALLERY_WRITE_PERMISSION, canDeleteGalleries, listGalleries, type GalleryListItem } from '@/lib/api/gallery-drafts'
-import { getViewerFirstName } from '@/lib/api/viewer-profile'
-import { draftProgress, requestCounts, timeAgo } from '@/lib/client/home-cards'
+import { PageShell } from '@/components/client/ui/PageShell'
+import { DashboardArea, DashboardGrid } from '@/components/client/ui/DashboardGrid'
+import { SectionHeading } from '@/components/client/ui/SectionHeading'
+import { StatGrid } from '@/components/client/ui/StatGrid'
+import { StatTile } from '@/components/client/ui/StatTile'
+import { AttentionList, type AttentionRow } from '@/components/client/ui/AttentionList'
+import { EmptyState } from '@/components/client/ui/EmptyState'
+import { SiteStatus } from '@/components/client/ui/SiteStatus'
 import { Greeting } from '@/components/client/home/Greeting'
 import { ContinueEditing, type DraftCard } from '@/components/client/home/ContinueEditing'
 import { LatestList, type LatestItem } from '@/components/client/home/LatestList'
-import { getGalleryStatuses, type GalleryStatus } from '@/lib/api/gallery-status'
+import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
+import { resolveProjectGrant } from '@/lib/modules/client-navigation'
+import type { DashboardPost } from '@/lib/api/client-dashboard'
+import type { PostDraftSummary } from '@/lib/api/post-drafts'
+import { GALLERY_WRITE_PERMISSION, canDeleteGalleries } from '@/lib/api/gallery-drafts'
+import { getViewerFirstName } from '@/lib/api/viewer-profile'
+import { getBlogDashboard } from '@/lib/api/dashboard/blog'
+import { getFormsDashboard } from '@/lib/api/dashboard/forms'
+import { getGalleryDashboard } from '@/lib/api/dashboard/gallery'
+import { getMediaDashboard } from '@/lib/api/dashboard/media'
+import { getPeopleAttention } from '@/lib/api/dashboard/people'
+import { getSiteStatus } from '@/lib/api/dashboard/site'
+import { buildTenantSurfaces, hasWidget } from '@/lib/client/surfaces'
+import { allowedAttentionRules, sortAttention, type AttentionItem } from '@/lib/client/attention'
+import { draftProgress, navHref, percentChange, timeAgo } from '@/lib/client/home-cards'
 
 /**
- * Client dashboard home (canvas "Main", ADR-025 · spec "Dashboard home").
+ * Client dashboard Home (ADR-029 §5) — an operational overview, never a
+ * configuration surface.
  *
- * One calm screen per project: a greeting, "View your site", continue an
- * unfinished draft (posts and galleries, each with a ⋯ menu), the latest
- * posts with their status, and new contact requests. Every section comes from
- * a module the project actually has; a module that is not installed (or a
- * permission the user lacks) simply leaves its section out — never an error.
+ * Every block is a registered widget (`src/lib/client/surfaces.ts`): Home
+ * renders only what `buildTenantSurfaces(grant)` returns and reads data only
+ * for those widgets. Each module's data comes from its provider in
+ * `src/lib/api/dashboard/`, which goes through the existing enforced data
+ * layer (`assertModuleAction` / tenant-scoped clients); a provider that fails
+ * or is refused just leaves its block out. Links are derived from the
+ * registry's nav entries, so a block never links to a page the person can't open.
  *
- * Reads go through the same enforced data layer as the list pages
- * (`assertModuleAction` → tenant-scoped client), so this page adds no new
- * access path; the menu's actions are the existing lifecycle server actions.
+ * Phone: one column — greeting + site, needs your attention, continue
+ * editing, at a glance, latest lists. Desktop: greeting + site · at a glance
+ * · attention (8) | continue editing (4) · latest lists side by side.
  */
-
-async function settle<T>(read: () => Promise<T>): Promise<T | null> {
-  try {
-    return await read()
-  } catch (error) {
-    if (error instanceof TenantAuthorizationError) return null
-    throw error
-  }
-}
 
 /** The step a draft was on ("type" = just created → the title). */
 function stepKey(step: PostDraftSummary['step']): string {
   if (step === 'type') return 'title'
   return step === 'done' || step === 'promote' ? 'review' : step
 }
+
+/** Draft cards shown per kind under "Continue editing". */
+const CONTINUE_PER_KIND = 3
+/** Items in each "Latest" list. */
+const LATEST_COUNT = 3
 
 export default async function DashboardHomePage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant: projectSlug } = await params
@@ -61,85 +66,148 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
 
   const locale = await getLocale()
   const t = await getTranslations('clientDashboard')
+  const th = await getTranslations('clientDashboard.home')
   const ts = await getTranslations('clientDashboard.gallery.status')
-  const enabled = new Set(grant.enabledModuleIds)
-  const canEdit = grant.permissions.includes('blog.post.write')
 
-  const canReadGalleries = enabled.has('gallery') && grant.permissions.includes(GALLERY_READ_PERMISSION)
-  const [firstName, domain, postList, wizardDrafts, galleryList, submissions] = await Promise.all([
-    getViewerFirstName(ctx),
-    settle(() => getProjectSiteDomain(ctx, grant.projectId)).catch(() => null),
-    enabled.has('blog') ? settle(() => getDashboardPostList(ctx, grant.projectId, { locale })) : null,
-    enabled.has('blog') ? settle<PostDraftSummary[]>(() => listPostDrafts(ctx, grant.projectId)) : null,
-    // Galleries with unpublished changes also wait under "Continue editing".
-    canReadGalleries
-      ? settle<GalleryListItem[]>(() => listGalleries(ctx, grant.projectId))
+  // ── What this person may see (the registry is the only gate for Home) ────
+  const surfaces = buildTenantSurfaces(grant)
+  const show = (id: string) => hasWidget(surfaces, id)
+  const rules = show('attention') ? allowedAttentionRules(grant) : new Set<never>()
+  const link = (navId: string, query?: Record<string, string>) => navHref(projectSlug, navId, surfaces.nav, query)
+  const enabled = new Set(grant.enabledModuleIds)
+  const canEditPosts = grant.permissions.includes('blog.post.write')
+  const canEditGalleries = grant.permissions.includes(GALLERY_WRITE_PERMISSION)
+
+  const wantBlog = enabled.has('blog')
+  const blogList = wantBlog && (show('glance.posts') || show('latest.posts') || show('continueEditing') || rules.has('scheduledSoon') || rules.has('missingLanguage'))
+  const blogDrafts = wantBlog && canEditPosts && (show('continueEditing') || rules.has('stalePostDrafts'))
+  const wantForms = show('glance.requests') || rules.has('newRequests')
+  const wantGallery =
+    enabled.has('gallery') && (show('glance.galleries') || show('latest.galleries') || (show('continueEditing') && canEditGalleries) || rules.has('staleGalleryDrafts'))
+  const wantMedia = show('glance.media') || rules.has('missingAltText')
+  const wantPeople = rules.has('pendingInvites')
+
+  const [firstName, site, blog, forms, gallery, media, people] = await Promise.all([
+    getViewerFirstName(ctx).catch(() => null),
+    show('siteStatus') ? getSiteStatus(ctx, grant.projectId) : null,
+    blogList || blogDrafts
+      ? getBlogDashboard(ctx, grant.projectId, {
+          locale,
+          readList: blogList,
+          readDrafts: blogDrafts,
+          glance: show('glance.posts'),
+          attention:
+            rules.has('stalePostDrafts') || rules.has('scheduledSoon') || rules.has('missingLanguage')
+              ? {
+                  rules,
+                  hrefs: {
+                    drafts: link('blog', { status: 'draft' }) ?? '',
+                    scheduled: link('blog', { status: 'scheduled' }) ?? '',
+                    missingLanguage: link('blog', { status: 'published', tr: 'missing' }) ?? '',
+                  },
+                  untitled: t('posts.untitled'),
+                  when: (iso) => timeAgo(iso, locale),
+                }
+              : null,
+        })
       : null,
-    enabled.has('forms')
-      ? settle<DashboardSubmission[]>(() => getDashboardSubmissions(ctx, grant.projectId, { limit: 200 }))
+    wantForms ? getFormsDashboard(ctx, grant.projectId, { attentionHref: rules.has('newRequests') ? link('forms') : null }) : null,
+    wantGallery
+      ? getGalleryDashboard(ctx, grant.projectId, {
+          latest: show('latest.galleries'),
+          attention: rules.has('staleGalleryDrafts') ? { href: link('gallery', { status: 'draft' }) ?? '', untitled: t('gallery.list.untitled') } : null,
+        })
       : null,
+    wantMedia ? getMediaDashboard(ctx, grant.projectId, { attentionHref: rules.has('missingAltText') ? link('media') : null }) : null,
+    wantPeople && link('people') ? getPeopleAttention(ctx, grant.projectId, link('people')!) : [],
   ])
 
-  const posts: DashboardPost[] | null = postList ? postList.posts : null
-  const categoryLabel = new Map((postList?.categories ?? []).map((c) => [c.value, c.label]))
-  const postCards: DraftCard[] = (wizardDrafts ?? []).slice(0, 3).map((d) => {
-    const ago = timeAgo(d.updatedAt, locale)
-    return {
-      kind: 'post',
-      id: d.id,
-      rev: d.rev,
-      title: d.title ?? t('posts.untitledDraft'),
-      thumb: d.coverThumb,
-      topics: d.categoryKeys.length ? d.categoryKeys.map((k) => categoryLabel.get(k) ?? k.replace(/-/g, ' ')).join(' · ') : null,
-      meta: d.hasLive
-        ? t('home.meta.liveChanges', { ago })
-        : t('home.meta.draft', { step: t(`create.stepNames.${stepKey(d.step)}`), ago }),
-      progress: d.hasLive ? 1 : draftProgress(d.step),
-      href: `/${projectSlug}/posts/write/${d.id}`,
-      hasLive: d.hasLive,
-      canDelete: true,
-      previewLocale: Object.keys(d.titles).find((l) => d.titles[l]?.trim()) ?? '',
-    }
-  })
-  const galleryCards: DraftCard[] = (galleryList ?? [])
-    .filter((g) => g.hasDraft && grant.permissions.includes(GALLERY_WRITE_PERMISSION))
-    .slice(0, 3)
-    .map((g) => ({
-      kind: 'gallery',
-      id: g.id,
-      rev: '',
-      title: g.title || g.internalName || t('gallery.list.untitled'),
-      thumb: g.coverThumb,
-      topics: null,
-      meta: g.isPublished
-        ? t('home.meta.galleryChanges', { count: g.count })
-        : t('home.meta.galleryDraft', { count: g.count }),
-      // Galleries don't keep a wizard position: photos added = halfway.
-      progress: g.isPublished ? 1 : g.count > 0 ? 0.5 : 0.25,
-      href: `/${projectSlug}/galleries/${g.id}`,
-      hasLive: g.isPublished,
-      canDelete: canDeleteGalleries(grant),
-      previewLocale: '',
-    }))
+  // ── Needs your attention ────────────────────────────────────────────────
+  const attentionItems: AttentionItem[] = sortAttention([
+    ...(forms?.attention ?? []),
+    ...(blog?.attention ?? []),
+    ...(gallery?.attention ?? []),
+    ...(media?.attention ?? []),
+    ...people,
+  ]).filter((i) => i.href)
+  const attentionRows: AttentionRow[] = attentionItems.map((i) => ({
+    id: i.id,
+    severity: i.severity,
+    title: th(i.titleKey, i.params),
+    detail: th(i.detailKey, i.params),
+    actionLabel: th(i.actionKey, i.params),
+    href: i.href,
+  }))
+  // Only when at least one rule this person may see actually got its data
+  // (a failed read must not turn into a false "All caught up").
+  const showAttention =
+    (rules.has('newRequests') && forms !== null) ||
+    ((rules.has('stalePostDrafts') || rules.has('scheduledSoon') || rules.has('missingLanguage')) && !!(blog?.list || blog?.drafts)) ||
+    (rules.has('staleGalleryDrafts') && gallery !== null) ||
+    (rules.has('missingAltText') && media !== null) ||
+    (rules.has('pendingInvites') && !!link('people'))
+
+  // ── Continue editing (unchanged behaviour: posts then galleries, ⋯ menu) ──
+  const categoryLabel = new Map((blog?.list?.categories ?? []).map((c) => [c.value, c.label]))
+  const postCards: DraftCard[] = show('continueEditing')
+    ? (blog?.drafts ?? []).slice(0, CONTINUE_PER_KIND).map((d) => {
+        const ago = timeAgo(d.updatedAt, locale)
+        return {
+          kind: 'post',
+          id: d.id,
+          rev: d.rev,
+          title: d.title ?? t('posts.untitledDraft'),
+          thumb: d.coverThumb,
+          topics: d.categoryKeys.length ? d.categoryKeys.map((k) => categoryLabel.get(k) ?? k.replace(/-/g, ' ')).join(' · ') : null,
+          meta: d.hasLive ? th('meta.liveChanges', { ago }) : th('meta.draft', { step: t(`create.stepNames.${stepKey(d.step)}`), ago }),
+          progress: d.hasLive ? 1 : draftProgress(d.step),
+          href: `/${projectSlug}/posts/write/${d.id}`,
+          hasLive: d.hasLive,
+          canDelete: true,
+          previewLocale: Object.keys(d.titles).find((l) => d.titles[l]?.trim()) ?? '',
+        }
+      })
+    : []
+  const galleryCards: DraftCard[] =
+    show('continueEditing') && canEditGalleries
+      ? (gallery?.galleries ?? [])
+          .filter((g) => g.hasDraft)
+          .slice(0, CONTINUE_PER_KIND)
+          .map((g) => ({
+            kind: 'gallery',
+            id: g.id,
+            rev: '',
+            title: g.title || g.internalName || t('gallery.list.untitled'),
+            thumb: g.coverThumb,
+            topics: null,
+            meta: g.isPublished ? th('meta.galleryChanges', { count: g.count }) : th('meta.galleryDraft', { count: g.count }),
+            // Galleries don't keep a wizard position: photos added = halfway.
+            progress: g.isPublished ? 1 : g.count > 0 ? 0.5 : 0.25,
+            href: `/${projectSlug}/galleries/${g.id}`,
+            hasLive: g.isPublished,
+            canDelete: canDeleteGalleries(grant),
+            previewLocale: '',
+          }))
+      : []
   const cards = [...postCards, ...galleryCards]
 
-  const latestPosts: LatestItem[] = (posts ?? [])
-    .filter((p): p is DashboardPost & { status: 'published' | 'scheduled' } => p.status === 'published' || p.status === 'scheduled')
-    .slice(0, 3)
-    .map((p) => ({
-      id: p._id,
-      title: p.title ?? t('posts.untitled'),
-      thumb: (p as { coverThumb?: string | null }).coverThumb ?? null,
-      status: p.status,
-      publishedAt: p.publishedAt ?? null,
-      href: canEdit ? `/${projectSlug}/posts/write/${p._id}` : null,
-    }))
-  const liveGalleries = (galleryList ?? []).filter((g) => g.isPublished).slice(0, 3)
-  const galleryStatuses: Record<string, GalleryStatus> = liveGalleries.length
-    ? await getGalleryStatuses(ctx, grant.projectId, liveGalleries.map((g) => g.id)).catch((): Record<string, GalleryStatus> => ({}))
-    : {}
-  const latestGalleries: LatestItem[] = liveGalleries.map((g) => {
-    const u = galleryStatuses[g.id]?.usedOn
+  // ── Latest lists ────────────────────────────────────────────────────────
+  const posts = blog?.list?.posts ?? null
+  const latestPosts: LatestItem[] = show('latest.posts')
+    ? (posts ?? [])
+        .filter((p): p is typeof p & { status: 'published' | 'scheduled' } => p.status === 'published' || p.status === 'scheduled')
+        .slice(0, LATEST_COUNT)
+        .map((p: DashboardPost & { coverThumb?: string | null; status: 'published' | 'scheduled' }) => ({
+          id: p._id,
+          title: p.title ?? t('posts.untitled'),
+          thumb: p.coverThumb ?? null,
+          status: p.status,
+          publishedAt: p.publishedAt ?? null,
+          href: canEditPosts ? `/${projectSlug}/posts/write/${p._id}` : null,
+        }))
+    : []
+  const latestGalleries: LatestItem[] = (gallery?.latest ?? []).map((g) => {
+    const u = gallery?.statuses[g.id]?.usedOn
     const places = u
       ? [
           ...u.pages.map((pg) => (pg.published ? pg.title || ts('untitledPage') : ts('draftPage', { title: pg.title || ts('untitledPage') }))),
@@ -152,74 +220,115 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
       title: g.title || g.internalName || t('gallery.list.untitled'),
       thumb: g.coverThumb,
       line: places.length ? ts('shownOn', { places: places.join(' · ') }) : ts('notUsed'),
-      href: grant.permissions.includes(GALLERY_WRITE_PERMISSION) ? `/${projectSlug}/galleries/${g.id}` : null,
+      href: canEditGalleries ? `/${projectSlug}/galleries/${g.id}` : null,
     }
   })
-  const requests = submissions ? requestCounts(submissions) : null
-  const postsHref = `/${projectSlug}/${MODULE_DASHBOARD_ROUTES.blog}`
-  const leadsHref = `/${projectSlug}/${MODULE_DASHBOARD_ROUTES.forms}`
-  const galleriesHref = `/${projectSlug}/${MODULE_DASHBOARD_ROUTES.gallery}`
+  const postsHref = link('blog')
+  const galleriesHref = link('gallery')
+
+  // ── At a glance ─────────────────────────────────────────────────────────
+  const tiles = [
+    show('glance.posts') && blog?.glance ? (
+      <StatTile
+        key="posts"
+        label={th('glance.posts.label')}
+        value={blog.glance.published}
+        sub={th('glance.posts.sub', { drafts: blog.glance.drafts, scheduled: blog.glance.scheduled })}
+        href={postsHref}
+      />
+    ) : null,
+    show('glance.requests') && forms?.glance ? (
+      <StatTile
+        key="requests"
+        label={th('glance.requests.label')}
+        value={forms.glance.week}
+        delta={(() => {
+          const percent = percentChange(forms.glance.week, forms.glance.previousWeek)
+          return percent === null ? null : { percent, period: th('glance.lastWeek') }
+        })()}
+        sub={th('glance.requests.sub', { open: forms.glance.open })}
+        href={link('forms')}
+      />
+    ) : null,
+    show('glance.galleries') && gallery ? (
+      <StatTile
+        key="galleries"
+        label={th('glance.galleries.label')}
+        value={gallery.glance.total}
+        sub={th('glance.galleries.sub', { unpublished: gallery.glance.unpublished })}
+        href={galleriesHref}
+      />
+    ) : null,
+    show('glance.media') && media ? (
+      <StatTile
+        key="media"
+        label={th('glance.media.label')}
+        value={media.glance.photos}
+        sub={th('glance.media.sub', { missing: media.glance.missingAlt })}
+        href={link('media')}
+      />
+    ) : null,
+  ].filter(Boolean)
+
+  // First run: nothing written yet and nothing in progress.
   const nothingYet = posts !== null && posts.length === 0 && cards.length === 0
+  const hasContinue = cards.length > 0
 
   return (
     <PageShell>
-      <div className="flex flex-col gap-7">
-      <Greeting firstName={firstName} />
+      <DashboardGrid>
+        <DashboardArea span={site ? 8 : 12} desktopOrder={1}>
+          <Greeting firstName={firstName} />
+        </DashboardArea>
 
-      {domain ? (
-        <a
-          href={`https://${domain}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex min-h-11 items-start gap-3 rounded-xl border border-border bg-card px-4 py-3.5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        >
-          <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-[0.625rem] bg-accent text-accent-foreground">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" />
-            </svg>
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[0.9375rem] font-semibold">{t('home.viewSite')}</span>
-            <span className="block truncate text-sm text-muted-foreground">{domain}</span>
-          </span>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="mt-1 shrink-0 text-muted-foreground">
-            <path d="M7 17 17 7M8 7h9v9" />
-          </svg>
-          <span className="sr-only">{t('home.opensNewTab')}</span>
-        </a>
-      ) : null}
+        {site ? (
+          <DashboardArea span={4} desktopOrder={2}>
+            <SiteStatus state={site.state} host={site.host} url={site.url} />
+          </DashboardArea>
+        ) : null}
 
-      {nothingYet && (
-        <section className="flex flex-col gap-2 rounded-xl border border-border bg-card p-5">
-          <h2 className="text-[1.0625rem] font-semibold">{t('home.emptyTitle')}</h2>
-          <p className="text-sm text-muted-foreground">{t('home.emptyBody')}</p>
-        </section>
-      )}
+        {nothingYet ? (
+          <DashboardArea desktopOrder={3}>
+            <EmptyState title={th('emptyTitle')} body={th('emptyBody')} />
+          </DashboardArea>
+        ) : null}
 
-      {cards.length > 0 ? <ContinueEditing projectSlug={projectSlug} cards={cards} /> : null}
+        {showAttention ? (
+          <DashboardArea span={8} desktopOrder={5}>
+            <section aria-labelledby="needs-attention" className="flex flex-col gap-3">
+              <SectionHeading id="needs-attention" title={th('attention.heading')} />
+              <AttentionList items={attentionRows} />
+            </section>
+          </DashboardArea>
+        ) : null}
 
-      {latestPosts.length > 0 ? <LatestList kind="post" heading={t('home.latestPosts')} items={latestPosts} seeAllHref={postsHref} /> : null}
+        {hasContinue ? (
+          <DashboardArea span={showAttention ? 4 : 12} desktopOrder={6}>
+            <ContinueEditing projectSlug={projectSlug} cards={cards} layout={showAttention ? 'stack' : 'grid'} />
+          </DashboardArea>
+        ) : null}
 
-      {latestGalleries.length > 0 ? (
-        <LatestList kind="gallery" heading={t('home.latestGalleries')} items={latestGalleries} seeAllHref={galleriesHref} />
-      ) : null}
+        {tiles.length ? (
+          <DashboardArea desktopOrder={4}>
+            <section aria-labelledby="at-a-glance" className="flex flex-col gap-3">
+              <SectionHeading id="at-a-glance" title={th('glance.heading')} />
+              <StatGrid>{tiles}</StatGrid>
+            </section>
+          </DashboardArea>
+        ) : null}
 
-      {requests !== null && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-[1.0625rem] leading-6 font-semibold">{t('home.newRequests')}</h2>
-          <Link href={leadsHref} className="flex min-h-14 items-start gap-3 rounded-xl bg-muted px-4 py-3.5">
-            <span className="text-2xl leading-7 font-semibold tabular-nums">{requests.week}</span>
-            <span className="flex-1 pt-1 text-sm leading-5 text-muted-foreground">
-              {t('home.requestsBody', { week: requests.week, open: requests.open })}
-            </span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" className="mt-1 shrink-0">
-              <path d="m9 6 6 6-6 6" />
-            </svg>
-          </Link>
-        </section>
-      )}
-      </div>
+        {latestPosts.length > 0 && postsHref ? (
+          <DashboardArea span={6} desktopOrder={7}>
+            <LatestList kind="post" heading={th('latestPosts')} items={latestPosts} seeAllHref={postsHref} />
+          </DashboardArea>
+        ) : null}
+
+        {latestGalleries.length > 0 && galleriesHref ? (
+          <DashboardArea span={6} desktopOrder={8}>
+            <LatestList kind="gallery" heading={th('latestGalleries')} items={latestGalleries} seeAllHref={galleriesHref} />
+          </DashboardArea>
+        ) : null}
+      </DashboardGrid>
     </PageShell>
   )
 }

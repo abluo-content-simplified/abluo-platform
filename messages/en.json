@@ -19,14 +19,14 @@
   },
   "account": {
     "title": "Your account",
-    "subtitle": "Projects you have access to.",
-    "noProjects": "You don't have access to any projects yet.",
-    "roleLabel": "Role: {role}",
-    "roles": {
-      "owner": "Owner",
-      "editor": "Editor",
-      "viewer": "Viewer"
-    }
+    "back": "Back to dashboard",
+    "profile": "Profile",
+    "name": "Name",
+    "email": "Email",
+    "notSet": "Not set",
+    "preferences": "Display",
+    "security": "Security",
+    "twoStep": "2-step verification"
   },
   "clientDashboard": {
     "nav": {
@@ -46,7 +46,6 @@
     },
     "shell": {
       "brandTagline": "Dashboard",
-      "account": "Account",
       "signOut": "Sign out",
       "noModules": "No modules are enabled for this project yet.",
       "entryTitle": "Dashboard",
@@ -349,8 +348,6 @@
       "continue": "Continue",
       "edited": "edited {date}",
       "recentPosts": "Recent posts",
-      "seeAll": "See all",
-      "newRequests": "New requests",
       "newRequestsBody": "{count, plural, =0 {No new contact requests} one {new contact request to answer} other {new contact requests to answer}}",
       "emptyTitle": "Your first post is a few taps away",
       "emptyBody": "Tap + to start. We save as you go, so you can stop and continue any time.",
@@ -363,8 +360,6 @@
         "evening": "Good evening, {name}",
         "welcome": "Welcome back"
       },
-      "viewSite": "View your site",
-      "opensNewTab": "(opens in a new tab)",
       "progress": "How far this draft got",
       "meta": {
         "draft": "Draft · You were on “{step}” · {ago}",
@@ -391,12 +386,79 @@
         "scheduledOn": "Scheduled · {date}",
         "offline": "Offline"
       },
-      "requestsBody": "{week, plural, one {contact request} other {contact requests}} this week, {open, plural, =0 {all answered} other {# not answered yet}}",
       "latestPosts": "Latest posts",
       "latestGalleries": "Latest galleries",
       "kind": {
         "post": "Blog post",
         "gallery": "Gallery"
+      },
+      "attention": {
+        "heading": "Needs your attention",
+        "newRequests": {
+          "title": "{count, plural, one {A new contact request} other {# new contact requests}}",
+          "detail": "{count, plural, one {Someone is waiting for your reply.} other {People are waiting for your reply.}}",
+          "action": "Open requests"
+        },
+        "newRequestsWaiting": {
+          "title": "{count, plural, one {A contact request is waiting} other {# contact requests are waiting}}",
+          "detail": "{count, plural, one {It came in more than {days} days ago.} other {Some came in more than {days} days ago.}}",
+          "action": "Reply now"
+        },
+        "stalePostDrafts": {
+          "title": "{count, plural, one {A draft is waiting for you} other {# drafts are waiting for you}}",
+          "detail": "{count, plural, one {“{title}” hasn’t changed in over {days} days.} other {The oldest, “{title}”, hasn’t changed in over {days} days.}}",
+          "action": "See drafts"
+        },
+        "staleGalleryDrafts": {
+          "title": "{count, plural, one {A gallery is waiting for you} other {# galleries are waiting for you}}",
+          "detail": "{count, plural, one {“{title}” hasn’t changed in over {days} days.} other {The oldest, “{title}”, hasn’t changed in over {days} days.}}",
+          "action": "See galleries"
+        },
+        "scheduledSoon": {
+          "title": "{count, plural, one {A post goes live soon} other {# posts go live soon}}",
+          "detail": "{count, plural, one {“{title}” goes live {when}.} other {The first, “{title}”, goes live {when}.}}",
+          "action": "See scheduled posts"
+        },
+        "missingLanguage": {
+          "title": "{count, plural, one {A post is missing a language} other {# posts are missing a language}}",
+          "detail": "{count, plural, one {“{title}” isn’t in all of your site’s languages yet.} other {Some visitors can’t read them in their language yet.}}",
+          "action": "Add translations"
+        },
+        "missingAltText": {
+          "title": "{count, plural, one {A photo has no description} other {# photos have no description}}",
+          "detail": "Descriptions help people who use screen readers, and help search engines.",
+          "action": "Add descriptions"
+        },
+        "pendingInvites": {
+          "title": "{count, plural, one {An invitation hasn’t been accepted} other {# invitations haven’t been accepted}}",
+          "detail": "{count, plural, one {They haven’t joined yet.} other {They haven’t joined yet.}}",
+          "action": "See people"
+        },
+        "expiredInvites": {
+          "title": "{count, plural, one {An invitation has expired} other {# invitations have expired}}",
+          "detail": "{count, plural, one {Send it again so they can join.} other {Send them again so they can join.}}",
+          "action": "See people"
+        }
+      },
+      "glance": {
+        "heading": "At a glance",
+        "lastWeek": "last week",
+        "posts": {
+          "label": "Published posts",
+          "sub": "{drafts, plural, =0 {No drafts} one {# draft} other {# drafts}} · {scheduled, plural, =0 {none scheduled} other {# scheduled}}"
+        },
+        "requests": {
+          "label": "Contact requests this week",
+          "sub": "{open, plural, =0 {All answered} other {# not answered yet}}"
+        },
+        "galleries": {
+          "label": "Galleries",
+          "sub": "{unpublished, plural, =0 {None in draft} other {# in draft}}"
+        },
+        "media": {
+          "label": "Photos",
+          "sub": "{missing, plural, =0 {All have a description} other {# without a description}}"
+        }
       }
     },
     "version": {
@@ -1562,6 +1624,37 @@
         "dragHandle": "Drag down to close",
         "applied": "Applied filters",
         "remove": "Remove filter: {label}"
+      },
+      "section": {
+        "seeAll": "See all",
+        "seeAllNamed": "See all: {section}"
+      },
+      "linkCard": {
+        "opensNewTab": "(opens in a new tab)"
+      },
+      "stat": {
+        "up": "Up {percent}% on {period}",
+        "down": "Down {percent}% on {period}",
+        "flat": "Same as {period}"
+      },
+      "attention": {
+        "caughtUpTitle": "All caught up",
+        "caughtUpBody": "Nothing needs you right now.",
+        "severityWarn": "Needs action",
+        "severityInfo": "For your information",
+        "showMore": "Show {count} more",
+        "showFewer": "Show fewer"
+      },
+      "siteStatus": {
+        "viewSite": "View your site",
+        "viewPreview": "View your preview",
+        "yourSite": "Your site",
+        "notOnlineBody": "Not online yet — we’ll let you know when it is.",
+        "state": {
+          "live": "Live",
+          "preview": "Preview only",
+          "offline": "Not online"
+        }
       }
     },
     "people": {
@@ -1669,6 +1762,13 @@
         "clear": "Clear filters",
         "noMatch": "Nobody matches these filters."
       }
+    },
+    "accountMenu": {
+      "open": "Open account menu",
+      "title": "Your account",
+      "account": "Account",
+      "help": "Help",
+      "opensInNewTab": "(opens in a new tab)"
     }
   },
   "editor": {

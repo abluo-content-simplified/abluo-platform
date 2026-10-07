@@ -12,6 +12,8 @@ import { APP_THEMES, appThemeAttribute, appThemeCookie, type AppTheme } from '@/
  * away, so the change is instant and there is no reload. It never touches the
  * website theme switch (`abluo-theme`, `html.light`).
  *
+ * Segments are 44px tall on phones (touch), 32px from md up.
+ *
  * A segmented control, not a dropdown (wizard rule T3 applies app-wide in spirit).
  */
 export function AppThemeSwitch({ initial }: { initial: AppTheme }) {
@@ -47,7 +49,7 @@ export function AppThemeSwitch({ initial }: { initial: AppTheme }) {
               role="radio"
               aria-checked={on}
               onClick={(e) => choose(option, e.currentTarget)}
-              className={`h-8 rounded-md text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+              className={`h-11 rounded-md md:h-8 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
                 on
                   ? 'bg-background font-semibold text-foreground shadow-sm'
                   : 'font-medium text-muted-foreground hover:text-foreground'

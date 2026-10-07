@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/sanity/server-clients', () => ({ sanityWriteClient: {} }))
 
-import { draftProgress, partOfDay, requestCounts, segmentFills, timeAgo } from '../home-cards'
+import { draftProgress, navHref, partOfDay, percentChange, requestCounts, requestTrend, segmentFills, timeAgo } from '../home-cards'
 
 describe('home cards', () => {
   it('greets by the local hour', () => {
@@ -40,5 +40,28 @@ describe('home cards', () => {
         now
       )
     ).toEqual({ week: 2, open: 2 })
+  })
+
+  it('counts requests this week and the week before, only when the read reaches back far enough', () => {
+    const now = Date.parse('2026-10-07T12:00:00Z')
+    const at = (d: number) => ({ createdAt: new Date(now - d * 86400_000).toISOString() })
+    const rows = [at(1), at(3), at(8), at(20)]
+    expect(requestTrend(rows, 200, now)).toEqual({ week: 2, previous: 1 })
+    // Hit the limit and never got past two weeks: the previous week is unknown.
+    expect(requestTrend([at(1), at(9)], 2, now)).toEqual({ week: 1, previous: null })
+    // Hit the limit but reached older rows: the previous week is complete.
+    expect(requestTrend([at(1), at(9), at(15)], 3, now)).toEqual({ week: 1, previous: 1 })
+  })
+  it('percent change only against a real, non-zero previous period', () => {
+    expect(percentChange(5, 4)).toBe(25)
+    expect(percentChange(3, 4)).toBe(-25)
+    expect(percentChange(3, 0)).toBeNull()
+    expect(percentChange(3, null)).toBeNull()
+  })
+  it('derives links from registered nav surfaces only', () => {
+    const nav = [{ kind: 'nav', id: 'blog', segment: 'posts' }, { kind: 'widget', id: 'gallery' }]
+    expect(navHref('abluo', 'blog', nav)).toBe('/abluo/posts')
+    expect(navHref('abluo', 'blog', nav, { status: 'draft', tr: 'missing' })).toBe('/abluo/posts?status=draft&tr=missing')
+    expect(navHref('abluo', 'gallery', nav)).toBeNull()
   })
 })

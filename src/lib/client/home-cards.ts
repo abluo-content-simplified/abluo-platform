@@ -59,3 +59,51 @@ export function requestCounts(rows: readonly { status: string; createdAt: string
     open: rows.filter((r) => r.status === 'new').length,
   }
 }
+
+const DAY_MS = 86400 * 1000
+
+/** Days in a "this week" window for contact requests. */
+export const REQUEST_WEEK_DAYS = 7
+
+/**
+ * Contact requests this week and the week before. `previous` is null when the
+ * rows read do not reach back two full weeks (the read hit its `limit`), so a
+ * delta is only ever shown when it is true.
+ */
+export function requestTrend(
+  rows: readonly { createdAt: string }[],
+  limit: number,
+  now = Date.now(),
+): { week: number; previous: number | null } {
+  const weekStart = now - REQUEST_WEEK_DAYS * DAY_MS
+  const prevStart = now - 2 * REQUEST_WEEK_DAYS * DAY_MS
+  const times = rows.map((r) => Date.parse(r.createdAt)).filter((t) => !Number.isNaN(t))
+  const week = times.filter((t) => t >= weekStart).length
+  const complete = rows.length < limit || times.some((t) => t < prevStart)
+  return { week, previous: complete ? times.filter((t) => t >= prevStart && t < weekStart).length : null }
+}
+
+/**
+ * Whole-number % change from `previous` to `current`, or null when there is
+ * nothing honest to say (no previous period, or it was zero).
+ */
+export function percentChange(current: number, previous: number | null | undefined): number | null {
+  if (previous === null || previous === undefined || previous <= 0) return null
+  return Math.round(((current - previous) / previous) * 100)
+}
+
+/**
+ * `/{projectSlug}/{segment}` for a registered nav surface, or null when the
+ * registry has no such entry. Home derives every link from the registry.
+ */
+export function navHref(
+  projectSlug: string,
+  navId: string,
+  registry: readonly { kind: string; id: string; segment?: string }[],
+  query?: Record<string, string>,
+): string | null {
+  const entry = registry.find((s) => s.kind === 'nav' && s.id === navId)
+  if (!entry?.segment) return null
+  const qs = query && Object.keys(query).length ? `?${new URLSearchParams(query).toString()}` : ''
+  return `/${projectSlug}/${entry.segment}${qs}`
+}

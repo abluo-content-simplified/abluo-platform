@@ -19,14 +19,14 @@
   },
   "account": {
     "title": "Dein Konto",
-    "subtitle": "Projekte, auf die du Zugriff hast.",
-    "noProjects": "Du hast noch keinen Zugriff auf Projekte.",
-    "roleLabel": "Rolle: {role}",
-    "roles": {
-      "owner": "Inhaber",
-      "editor": "Redakteur",
-      "viewer": "Betrachter"
-    }
+    "back": "Zurück zum Dashboard",
+    "profile": "Profil",
+    "name": "Name",
+    "email": "E-Mail",
+    "notSet": "Nicht angegeben",
+    "preferences": "Anzeige",
+    "security": "Sicherheit",
+    "twoStep": "Bestätigung in zwei Schritten"
   },
   "clientDashboard": {
     "nav": {
@@ -46,7 +46,6 @@
     },
     "shell": {
       "brandTagline": "Dashboard",
-      "account": "Konto",
       "signOut": "Abmelden",
       "noModules": "Für dieses Projekt sind noch keine Module aktiviert.",
       "entryTitle": "Dashboard",
@@ -349,8 +348,6 @@
       "continue": "Weiter",
       "edited": "bearbeitet {date}",
       "recentPosts": "Neueste Beiträge",
-      "seeAll": "Alle ansehen",
-      "newRequests": "Neue Anfragen",
       "newRequestsBody": "{count, plural, =0 {Keine neuen Kontaktanfragen} one {neue Kontaktanfrage zu beantworten} other {neue Kontaktanfragen zu beantworten}}",
       "emptyTitle": "Dein erster Beitrag ist nur ein paar Tipps entfernt",
       "emptyBody": "Tippe auf +, um zu beginnen. Wir speichern laufend – du kannst jederzeit pausieren und weitermachen.",
@@ -363,8 +360,6 @@
         "evening": "Guten Abend, {name}",
         "welcome": "Willkommen zurück"
       },
-      "viewSite": "Deine Website ansehen",
-      "opensNewTab": "(öffnet in einem neuen Tab)",
       "progress": "Wie weit dieser Entwurf ist",
       "meta": {
         "draft": "Entwurf · Du warst bei „{step}“ · {ago}",
@@ -391,12 +386,79 @@
         "scheduledOn": "Geplant · {date}",
         "offline": "Offline"
       },
-      "requestsBody": "{week, plural, one {Kontaktanfrage} other {Kontaktanfragen}} diese Woche, {open, plural, =0 {alle beantwortet} other {# noch unbeantwortet}}",
       "latestPosts": "Neueste Beiträge",
       "latestGalleries": "Neueste Galerien",
       "kind": {
         "post": "Blogbeitrag",
         "gallery": "Galerie"
+      },
+      "attention": {
+        "heading": "Braucht deine Aufmerksamkeit",
+        "newRequests": {
+          "title": "{count, plural, one {Eine neue Kontaktanfrage} other {# neue Kontaktanfragen}}",
+          "detail": "{count, plural, one {Jemand wartet auf deine Antwort.} other {Einige Leute warten auf deine Antwort.}}",
+          "action": "Anfragen öffnen"
+        },
+        "newRequestsWaiting": {
+          "title": "{count, plural, one {Eine Kontaktanfrage wartet} other {# Kontaktanfragen warten}}",
+          "detail": "{count, plural, one {Sie kam vor mehr als {days} Tagen an.} other {Einige kamen vor mehr als {days} Tagen an.}}",
+          "action": "Jetzt antworten"
+        },
+        "stalePostDrafts": {
+          "title": "{count, plural, one {Ein Entwurf wartet auf dich} other {# Entwürfe warten auf dich}}",
+          "detail": "{count, plural, one {„{title}“ wurde seit über {days} Tagen nicht geändert.} other {Der älteste, „{title}“, wurde seit über {days} Tagen nicht geändert.}}",
+          "action": "Entwürfe ansehen"
+        },
+        "staleGalleryDrafts": {
+          "title": "{count, plural, one {Eine Galerie wartet auf dich} other {# Galerien warten auf dich}}",
+          "detail": "{count, plural, one {„{title}“ wurde seit über {days} Tagen nicht geändert.} other {Die älteste, „{title}“, wurde seit über {days} Tagen nicht geändert.}}",
+          "action": "Galerien ansehen"
+        },
+        "scheduledSoon": {
+          "title": "{count, plural, one {Ein Beitrag geht bald online} other {# Beiträge gehen bald online}}",
+          "detail": "{count, plural, one {„{title}“ geht {when} online.} other {Der erste, „{title}“, geht {when} online.}}",
+          "action": "Geplante Beiträge ansehen"
+        },
+        "missingLanguage": {
+          "title": "{count, plural, one {Einem Beitrag fehlt eine Sprache} other {# Beiträgen fehlt eine Sprache}}",
+          "detail": "{count, plural, one {„{title}“ gibt es noch nicht in allen Sprachen deiner Website.} other {Manche Besucher können sie noch nicht in ihrer Sprache lesen.}}",
+          "action": "Übersetzungen hinzufügen"
+        },
+        "missingAltText": {
+          "title": "{count, plural, one {Ein Foto hat keine Beschreibung} other {# Fotos haben keine Beschreibung}}",
+          "detail": "Beschreibungen helfen Menschen mit Screenreader – und Suchmaschinen.",
+          "action": "Beschreibungen hinzufügen"
+        },
+        "pendingInvites": {
+          "title": "{count, plural, one {Eine Einladung wurde noch nicht angenommen} other {# Einladungen wurden noch nicht angenommen}}",
+          "detail": "{count, plural, one {Die Person ist noch nicht dabei.} other {Diese Personen sind noch nicht dabei.}}",
+          "action": "Personen ansehen"
+        },
+        "expiredInvites": {
+          "title": "{count, plural, one {Eine Einladung ist abgelaufen} other {# Einladungen sind abgelaufen}}",
+          "detail": "{count, plural, one {Schick sie noch einmal, damit die Person beitreten kann.} other {Schick sie noch einmal, damit die Personen beitreten können.}}",
+          "action": "Personen ansehen"
+        }
+      },
+      "glance": {
+        "heading": "Auf einen Blick",
+        "lastWeek": "in der Vorwoche",
+        "posts": {
+          "label": "Veröffentlichte Beiträge",
+          "sub": "{drafts, plural, =0 {Keine Entwürfe} one {# Entwurf} other {# Entwürfe}} · {scheduled, plural, =0 {nichts geplant} other {# geplant}}"
+        },
+        "requests": {
+          "label": "Kontaktanfragen diese Woche",
+          "sub": "{open, plural, =0 {Alle beantwortet} other {# noch unbeantwortet}}"
+        },
+        "galleries": {
+          "label": "Galerien",
+          "sub": "{unpublished, plural, =0 {Keine im Entwurf} other {# im Entwurf}}"
+        },
+        "media": {
+          "label": "Fotos",
+          "sub": "{missing, plural, =0 {Alle haben eine Beschreibung} other {# ohne Beschreibung}}"
+        }
       }
     },
     "version": {
@@ -1562,6 +1624,37 @@
         "dragHandle": "Zum Schließen nach unten ziehen",
         "applied": "Aktive Filter",
         "remove": "Filter entfernen: {label}"
+      },
+      "section": {
+        "seeAll": "Alle ansehen",
+        "seeAllNamed": "Alle ansehen: {section}"
+      },
+      "linkCard": {
+        "opensNewTab": "(öffnet in einem neuen Tab)"
+      },
+      "stat": {
+        "up": "{percent} % mehr als {period}",
+        "down": "{percent} % weniger als {period}",
+        "flat": "Gleich wie {period}"
+      },
+      "attention": {
+        "caughtUpTitle": "Alles erledigt",
+        "caughtUpBody": "Gerade wartet nichts auf dich.",
+        "severityWarn": "Zu erledigen",
+        "severityInfo": "Zur Info",
+        "showMore": "{count} weitere anzeigen",
+        "showFewer": "Weniger anzeigen"
+      },
+      "siteStatus": {
+        "viewSite": "Deine Website ansehen",
+        "viewPreview": "Deine Vorschau ansehen",
+        "yourSite": "Deine Website",
+        "notOnlineBody": "Noch nicht online – wir sagen dir Bescheid, sobald sie es ist.",
+        "state": {
+          "live": "Online",
+          "preview": "Nur Vorschau",
+          "offline": "Nicht online"
+        }
       }
     },
     "people": {
@@ -1669,6 +1762,13 @@
         "clear": "Filter löschen",
         "noMatch": "Niemand passt zu diesen Filtern."
       }
+    },
+    "accountMenu": {
+      "open": "Kontomenü öffnen",
+      "title": "Dein Konto",
+      "account": "Konto",
+      "help": "Hilfe",
+      "opensInNewTab": "(öffnet in einem neuen Tab)"
     }
   },
   "editor": {

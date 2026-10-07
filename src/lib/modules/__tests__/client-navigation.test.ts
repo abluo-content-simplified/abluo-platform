@@ -8,14 +8,16 @@ import {
   buildClientNavItems,
   resolveProjectGrant,
   MODULE_DASHBOARD_ROUTES,
+  MEDIA_SEGMENT,
+  PEOPLE_SEGMENT,
+  segmentOf,
   isNavItemActive,
   phoneNavLayout,
 } from '../client-navigation'
 import type { ProjectGrant } from '@/lib/api/tenant-context'
-import type { ModuleManifest } from '../types'
 import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
 
-function grantWith(enabledModuleIds: string[]): ProjectGrant {
+function grantWith(enabledModuleIds: string[], permissions: string[] = []): ProjectGrant {
   return {
     projectId: 'project-a1',
     // `ProjectGrant.projectSlug` is `projects.slug`, and the client-dashboard
@@ -24,48 +26,62 @@ function grantWith(enabledModuleIds: string[]): ProjectGrant {
     projectSlug: asSupabaseProjectSlug('livener'),
     membershipId: 'pm-1',
     role: 'editor',
-    permissions: [],
+    permissions,
     enabledModuleIds,
   }
 }
 
-// A minimal fake registry so the test does not depend on the exact live module
-// set — blog is mapped to a dashboard route, ghost is not.
-const fakeRegistry = [
-  { id: 'blog' },
-  { id: 'events' },
-] as unknown as ModuleManifest[]
-
 describe('buildClientNavItems', () => {
-  it('yields a Blog nav item ONLY when the blog module is enabled', () => {
-    const items = buildClientNavItems(grantWith(['blog']), fakeRegistry)
-    expect(items).toHaveLength(1)
-    expect(items[0]).toEqual({
-      moduleId: 'blog',
-      labelKey: 'clientDashboard.nav.blog',
-      href: '/livener/posts',
-    })
+  it('yields a Blog nav item ONLY when the module is installed AND blog.post.read is held', () => {
+    const items = buildClientNavItems(grantWith(['blog'], ['blog.post.read']))
+    expect(items).toEqual([{ moduleId: 'blog', labelKey: 'clientDashboard.nav.blog', href: '/livener/posts' }])
   })
 
-  it('yields NO Blog nav item when the blog module is not enabled', () => {
-    const items = buildClientNavItems(grantWith(['events']), fakeRegistry)
-    expect(items.find((i) => i.moduleId === 'blog')).toBeUndefined()
+  it('yields NO Blog item when the module is not installed, even with the permission', () => {
+    expect(buildClientNavItems(grantWith([], ['blog.post.read']))).toEqual([])
   })
 
-  it('skips an enabled module that has no client-dashboard route mapping', () => {
-    // events is enabled but absent from MODULE_DASHBOARD_ROUTES → no item.
-    const items = buildClientNavItems(grantWith(['events']), fakeRegistry)
-    expect(items).toHaveLength(0)
+  it('yields NO Blog item when the module is installed but the permission is missing', () => {
+    expect(buildClientNavItems(grantWith(['blog'], []))).toEqual([])
   })
 
-  it('yields no items when no modules are enabled', () => {
-    expect(buildClientNavItems(grantWith([]), fakeRegistry)).toEqual([])
+  it('gates Forms on forms.submission.read and Galleries on gallery.gallery.read', () => {
+    const mods = ['forms', 'gallery']
+    expect(buildClientNavItems(grantWith(mods, [])).map((i) => i.moduleId)).toEqual([])
+    expect(buildClientNavItems(grantWith(mods, ['forms.submission.read'])).map((i) => i.moduleId)).toEqual(['forms'])
+    expect(buildClientNavItems(grantWith(mods, ['gallery.gallery.read'])).map((i) => i.moduleId)).toEqual(['gallery'])
   })
 
-  it('builds the href from the grant projectSlug + the route mapping', () => {
-    const grant = { ...grantWith(['blog']), projectSlug: asSupabaseProjectSlug('studiomartegani') }
-    const [item] = buildClientNavItems(grant, fakeRegistry)
+  it('skips an enabled module that has no client-dashboard surface (events)', () => {
+    expect(buildClientNavItems(grantWith(['events'], ['blog.post.read']))).toEqual([])
+  })
+
+  it('shows Media on the permission alone (no module) and People on invite OR manage', () => {
+    expect(buildClientNavItems(grantWith([], ['media.library.manage'])).map((i) => i.moduleId)).toEqual(['media'])
+    expect(buildClientNavItems(grantWith([], ['users.invite'])).map((i) => i.moduleId)).toEqual(['people'])
+    expect(buildClientNavItems(grantWith([], ['users.manage'])).map((i) => i.moduleId)).toEqual(['people'])
+  })
+
+  it('keeps registry order: modules first, then Media, then People', () => {
+    const all = grantWith(
+      ['blog', 'forms', 'gallery'],
+      ['blog.post.read', 'forms.submission.read', 'gallery.gallery.read', 'media.library.manage', 'users.invite'],
+    )
+    expect(buildClientNavItems(all).map((i) => i.moduleId)).toEqual(['blog', 'forms', 'gallery', 'media', 'people'])
+  })
+
+  it('builds the href from the grant projectSlug + the registry segment', () => {
+    const grant = { ...grantWith(['blog'], ['blog.post.read']), projectSlug: asSupabaseProjectSlug('studiomartegani') }
+    const [item] = buildClientNavItems(grant)
     expect(item.href).toBe(`/studiomartegani/${MODULE_DASHBOARD_ROUTES.blog}`)
+  })
+
+  it('derives the exported segments from the registry', () => {
+    expect(MODULE_DASHBOARD_ROUTES).toEqual({ blog: 'posts', forms: 'submissions', gallery: 'galleries' })
+    expect(MEDIA_SEGMENT).toBe('media')
+    expect(PEOPLE_SEGMENT).toBe('people')
+    expect(segmentOf('blog')).toBe('posts')
+    expect(segmentOf('nope')).toBeUndefined()
   })
 })
 

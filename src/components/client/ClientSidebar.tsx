@@ -2,14 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Link, usePathname, useRouter } from '@/i18n/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { Link, usePathname } from '@/i18n/navigation'
 import { ProjectSwitcher } from './ProjectSwitcher'
-import { AppThemeSwitch } from './AppThemeSwitch'
-import { AppTextSizeSwitch } from './AppTextSizeSwitch'
-import { AppVersion } from './AppVersion'
+import { AccountMenu, type AccountMenuProps } from './AccountMenu'
 import { useOpenAddContent } from './create/AddContentRoot'
-import type { AppTextSize, AppTheme } from '@/lib/app-theme'
 import type { ClientNavItem } from '@/lib/modules/client-navigation'
 import { isNavItemActive, phoneNavLayout } from '@/lib/modules/client-nav-layout'
 
@@ -20,13 +16,16 @@ import { isNavItemActive, phoneNavLayout } from '@/lib/modules/client-nav-layout
  *   • Phones: a slim top bar (menu button + project name) and a bottom tab bar —
  *     Home · Content · [+ Add content] · Forms · More. Both the menu button and
  *     "More" open the drawer: the same sidebar, with EVERY destination
- *     (Galleries, Media, People… have no tab of their own, `phoneNavLayout`),
- *     plus project switcher, appearance, account, sign out. "More" is shown
+ *     (Galleries, Media, People… have no tab of their own, `phoneNavLayout`)
+ *     plus the project switcher — navigation only, no personal settings. The
+ *     person's own menu (account, appearance, text size, help, sign out) is the
+ *     avatar button at the right of the top bar (a bottom sheet). "More" is shown
  *     active while you are on one of those pages. The drawer closes on
  *     navigation, a tap on the backdrop or any item, and Escape.
- *   • From md up: the fixed sidebar — Home first, then the module-driven items.
- * Content and Leads exist only when the project has the module (navItems are
- * module-driven, `buildClientNavItems`). All copy from `clientDashboard.*`.
+ *   • From md up: the fixed sidebar — Home first, then the module-driven items,
+ *     and the same account menu (a popover) from the avatar at its bottom.
+ * Content and Leads exist only when the project has the module (navItems come
+ * from the tenant surface registry, `buildClientNavItems`). All copy from `clientDashboard.*`.
  *
  * The phone tab bar's "+" opens the "What would you like to create?" panel
  * (ADR-025 D8). That panel and the floating "+" live OUTSIDE the sidebar, in
@@ -40,10 +39,8 @@ export type ClientSidebarProps = {
   projects: { projectSlug: string }[]
   /** Active project slug (URL first segment). */
   activeSlug: string
-  /** The app theme preference, read from the cookie on the server. */
-  theme: AppTheme
-  /** Text size preference, read from the cookie on the server. */
-  textSize?: AppTextSize
+  /** The signed-in person and their app preferences, for the account menu. */
+  account: Omit<AccountMenuProps, 'variant'>
   /** Locale-agnostic href of the project's dashboard home. */
   homeHref: string
 }
@@ -75,13 +72,11 @@ export function ClientSidebar({
   navItems,
   projects,
   activeSlug,
-  theme,
-  textSize = 'md',
+  account,
   homeHref,
 }: ClientSidebarProps) {
   const t = useTranslations('clientDashboard')
   const pathname = usePathname() // locale-stripped, e.g. "/livener/posts"
-  const router = useRouter()
   // Open on the page it was opened on: navigating closes it. The page is then
   // forgotten (adjusting state during render, no effect), so coming BACK to
   // that page never pops the drawer open again by itself.
@@ -124,13 +119,6 @@ export function ClientSidebar({
 
   const isActive = (href: string) => isNavItemActive(pathname, href)
 
-  async function handleSignOut() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
-  }
-
   const { content: contentItem, forms: leadsItem, overflow } = phoneNavLayout(navItems)
   // "More" carries the active state for pages without a tab of their own.
   const moreActive = drawerOpen || overflow.some((i) => isActive(i.href))
@@ -138,7 +126,7 @@ export function ClientSidebar({
   return (
     <>
       {/* ── Phone top bar ─────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 flex h-14 items-center gap-1 border-b border-border-subtle bg-background pl-1 pr-4 md:hidden">
+      <div className="sticky top-0 z-30 flex h-14 items-center gap-1 border-b border-border-subtle bg-background pl-1 pr-1 md:hidden">
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
@@ -149,7 +137,8 @@ export function ClientSidebar({
         >
           <Icon d={ICONS.menu} size={22} />
         </button>
-        <span className="truncate text-[0.9375rem] font-semibold">{activeSlug}</span>
+        <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{activeSlug}</span>
+        <AccountMenu variant="bar" {...account} />
       </div>
 
       {/* ── Drawer backdrop (phones) ─────────────────────────────────────── */}
@@ -210,16 +199,9 @@ export function ClientSidebar({
           )}
         </nav>
 
-        <div className="space-y-3 border-t border-border-subtle px-4 py-4">
-          <AppThemeSwitch initial={theme} />
-          <AppTextSizeSwitch initial={textSize} />
-          <Link href="/account" onClick={closeDrawer} className="flex min-h-8 items-center text-sm text-muted-foreground transition-colors hover:text-foreground">
-            {t('shell.account')}
-          </Link>
-          <button type="button" onClick={handleSignOut} className="min-h-8 text-sm text-muted-foreground transition-colors hover:text-foreground">
-            {t('shell.signOut')}
-          </button>
-          <AppVersion />
+        {/* Desktop only: on phones the account menu lives in the top bar. */}
+        <div className="hidden border-t border-border-subtle px-3 py-3 md:block">
+          <AccountMenu variant="sidebar" {...account} />
         </div>
       </aside>
 

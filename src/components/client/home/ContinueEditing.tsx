@@ -10,6 +10,7 @@ import { mintGalleryPreviewAction } from '@/app/[locale]/(client)/[tenant]/galle
 import { draftPreviewUrl } from '@/lib/client/preview-url'
 import { segmentFills } from '@/lib/client/home-cards'
 import { CardMenu } from '@/components/client/ui/CardMenu'
+import { SectionHeading } from '@/components/client/ui/SectionHeading'
 import { Toast } from '@/components/client/ui/Toast'
 import { useUndo } from '@/components/client/ui/use-undo'
 
@@ -44,7 +45,16 @@ export type DraftCard = {
  * "Deleted · Undo" before the server is asked; Discard only removes the
  * draft, the live version stays exactly as it is.
  */
-export function ContinueEditing({ projectSlug, cards }: { projectSlug: string; cards: DraftCard[] }) {
+export function ContinueEditing({
+  projectSlug,
+  cards,
+  layout = 'stack',
+}: {
+  projectSlug: string
+  cards: DraftCard[]
+  /** 'grid' puts two cards per row on desktop (when the block has the full width). */
+  layout?: 'stack' | 'grid'
+}) {
   const t = useTranslations('clientDashboard.home')
   const ui = useLocale()
   const router = useRouter()
@@ -106,8 +116,9 @@ export function ContinueEditing({ projectSlug, cards }: { projectSlug: string; c
 
   if (!visible.length && !toast) return null
   return (
-    <section className="flex flex-col gap-3">
-      {visible.length ? <h2 className="mb-0.5 text-[1.0625rem] leading-6 font-semibold">{t('continueEditing')}</h2> : null}
+    <section aria-labelledby="continue-editing" className="flex flex-col gap-3">
+      {visible.length ? <SectionHeading id="continue-editing" title={t('continueEditing')} /> : null}
+      <div className={`grid grid-cols-1 items-start gap-3 ${layout === 'grid' ? 'lg:grid-cols-2' : ''}`}>
       {visible.map((c) => (
         <div key={key(c)} className="flex items-start gap-4 rounded-xl border border-border bg-card p-3">
           {c.thumb ? (
@@ -172,6 +183,7 @@ export function ContinueEditing({ projectSlug, cards }: { projectSlug: string; c
           </div>
         </div>
       ))}
+      </div>
       <Toast message={toast?.message ?? null} tone={toast?.tone} action={toast?.undo ? t('menu.undo') : undefined} onAction={toast?.undo} />
     </section>
   )

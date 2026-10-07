@@ -38,6 +38,7 @@ import { GalleriesFilters } from './GalleriesFilters'
 import { GalleriesTable } from './GalleriesTable'
 import { GalleryCardsGrid, GalleryPhoneList } from './GalleryCards'
 import { GALLERY_ICONS, useGalleryPlaces, type GalleryRow } from './gallery-bits'
+import { EmptyState } from '@/components/client/ui/EmptyState'
 
 const BATCH_MAX = 100
 const VIEW_KEY = 'abluo.galleries.view'
@@ -268,10 +269,7 @@ export function GalleryList({
     return (
       <div className="space-y-4">
         {header}
-        <section className="flex flex-col items-start gap-2 rounded-2xl border border-dashed border-border p-6">
-          <h2 className="text-[1.0625rem] font-semibold text-foreground">{t('emptyTitle')}</h2>
-          <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('emptyBody')}</p>
-        </section>
+        <EmptyState title={t('emptyTitle')} body={t('emptyBody')} />
       </div>
     )
   }

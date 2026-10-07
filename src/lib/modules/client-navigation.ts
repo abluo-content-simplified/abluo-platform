@@ -1,55 +1,45 @@
 // ── Client-dashboard navigation builder ───────────────────────────────────────
 // ADR-017 slice 6 / task #81 (Client dashboard shell + module-driven nav).
 //
-// Next.js-safe SIBLING to navigation.ts. Where navigation.ts projects the
-// module registry into Sanity STUDIO structure (and therefore imports
-// `sanity/structure`), this file projects the SAME `MODULE_REGISTRY` truth into
+// Next.js-safe SIBLING to navigation.ts (which projects the module registry into
+// Sanity STUDIO structure and imports `sanity/structure`). This file projects the
+// TENANT SURFACE REGISTRY (`src/lib/client/surfaces.ts`, ADR-029 §3.1) into
 // CLIENT DASHBOARD navigation items — href-based, locale-agnostic, renderable
-// from a React Server/Client Component. It imports NOTHING from Studio and is
-// unit-testable in isolation.
+// from a React Server/Client Component. It imports NOTHING from Studio.
 //
 // Design rules honoured here:
-//   • Configuration over hardcoding — the module→dashboard-page mapping lives in
-//     the single `MODULE_DASHBOARD_ROUTES` surface below, never inline in a
-//     component or route.
+//   • One source of truth — what the tenant can see, and what it needs (module +
+//     permission), is declared once in the registry; this file only projects it.
 //   • Multilingual-first — nav items carry an i18n `labelKey`
-//     (`clientDashboard.nav.<moduleId>`), never a resolved English string. The
-//     Studio-only manifest `label` is deliberately NOT used for client-facing
-//     labels (Tom's locked decision #2).
-//   • Platform before tenant — the builder reads the platform registry and a
-//     per-request `ProjectGrant`; it contains no tenant-specific branches.
+//     (`clientDashboard.nav.<id>`), never a resolved English string.
+//   • Platform before tenant — no tenant-specific branches.
 
 import type { ProjectGrant } from '@/lib/api/tenant-context'
-import { MODULE_REGISTRY } from './registry'
-import type { ModuleManifest } from './types'
-import { grantCanManageMedia } from '@/lib/api/media-permission'
+import {
+  buildTenantSurfaces,
+  TENANT_SURFACES,
+  type NavSurface,
+  type TenantSurface,
+} from '@/lib/client/surfaces'
+
+const isNavSurface = (s: TenantSurface): s is NavSurface => s.kind === 'nav'
+
+/** URL segment of a registered nav surface (`'blog'` → `'posts'`), or undefined. */
+export function segmentOf(id: string): string | undefined {
+  return TENANT_SURFACES.filter(isNavSurface).find((s) => s.id === id)?.segment
+}
 
 /**
- * The single authoritative mapping from a module id to the client-dashboard
- * sub-page (URL segment) that surfaces that module's content.
- *
- * Only modules with an entry here contribute a nav item. A module can be
- * installed/enabled on a project yet still have no client-dashboard page wired
- * (its Studio management surface exists; its client surface does not yet). Such
- * a module is intentionally skipped by `buildClientNavItems` — its i18n label
- * still exists (enforced by the nav-label completeness test) so that wiring its
- * page later is a one-line addition here, with zero string work.
- *
- * Phase 2 wires exactly one client page: the Blog module's post list
- * (`/{projectSlug}/posts`, the Phase 1 read path). `events` and `live` are
- * released modules whose client-dashboard pages are a later slice — they carry
- * labels but no route yet.
+ * Module id → client-dashboard sub-page (URL segment). DERIVED from the tenant
+ * surface registry (ADR-029 §3.1) — never edited here: add a nav surface with a
+ * `module` requirement in `src/lib/client/surfaces.ts` and it appears. Kept as an
+ * export because pages build links to a module's list from it.
  */
-export const MODULE_DASHBOARD_ROUTES: Record<string, string> = {
-  blog: 'posts',
-  // ADR-018 slice 6 — the Forms module's client surface is its submissions
-  // (leads) list at /{projectSlug}/submissions. Only appears when the forms
-  // module is installed+enabled for the active project.
-  forms: 'submissions',
-  // Gallery module — the client's galleries (list + draft editor) at
-  // /{projectSlug}/galleries. Only when the gallery module is installed.
-  gallery: 'galleries',
-}
+export const MODULE_DASHBOARD_ROUTES: Record<string, string> = Object.fromEntries(
+  TENANT_SURFACES.filter(isNavSurface)
+    .filter((s) => s.requires.module)
+    .map((s) => [s.requires.module as string, s.segment]),
+)
 
 /**
  * The client dashboard's home page segment (S1, ADR-025): `/{projectSlug}/home`.
@@ -83,53 +73,36 @@ export type ClientNavItem = {
 }
 
 /**
- * Builds the module-driven navigation for a single project grant.
+ * The dashboard navigation for one project grant: exactly the nav surfaces in
+ * the registry that the grant satisfies (module installed AND permission held),
+ * in registry order. Pure — no I/O, no Next imports.
  *
- * Filters `registry` to modules that are BOTH enabled for the grant
- * (`grant.enabledModuleIds`) AND have a client-dashboard route mapping
- * (`MODULE_DASHBOARD_ROUTES`), then projects each to a `ClientNavItem`. Registry
- * order is preserved (stable nav ordering). Pure — no I/O, no Next imports.
- *
- * Consequence (the "Blog nav only if Blog enabled" rule): a module absent from
- * `grant.enabledModuleIds` yields NO item, so the sidebar shows only the
- * modules actually enabled for the active project.
+ * `moduleId` carries the surface id (`'blog'`, `'forms'`, `'media'`, …): the
+ * icon and the `clientDashboard.nav.<id>` label key.
  */
 export function buildClientNavItems(
-  grant: ProjectGrant,
-  registry: ModuleManifest[] = MODULE_REGISTRY
+  grant: Pick<ProjectGrant, 'projectSlug' | 'permissions' | 'enabledModuleIds'>,
+  registry: readonly TenantSurface[] = TENANT_SURFACES,
 ): ClientNavItem[] {
-  const enabled = new Set(grant.enabledModuleIds)
-
-  return registry
-    .filter((manifest) => enabled.has(manifest.id) && manifest.id in MODULE_DASHBOARD_ROUTES)
-    .map((manifest) => ({
-      moduleId: manifest.id,
-      labelKey: `clientDashboard.nav.${manifest.id}`,
-      href: `/${grant.projectSlug}/${MODULE_DASHBOARD_ROUTES[manifest.id]}`,
-    }))
+  return buildTenantSurfaces(grant, registry).nav.map((s) => ({
+    moduleId: s.id,
+    labelKey: `clientDashboard.nav.${s.id}`,
+    href: `/${grant.projectSlug}/${s.segment}`,
+  }))
 }
 
-/** The Media screen segment (`/{projectSlug}/media`) — not a module: every project has a Media Library. */
-export const MEDIA_SEGMENT = 'media'
+/** The Media screen segment (`/{projectSlug}/media`), from the registry. */
+export const MEDIA_SEGMENT = segmentOf('media') as string
+
+/** The People screen segment (`/{projectSlug}/people`), from the registry. */
+export const PEOPLE_SEGMENT = segmentOf('people') as string
 
 /**
- * The Media nav item, for grants that hold `media.library.manage`
- * (ADR-028). Appended after the module items, i.e. under Content.
+ * @deprecated Use `buildClientNavItems`. Thin filter kept for existing callers
+ * (the Media Library test); Media needs no module, only the permission.
  */
 export function mediaNavItems(grant: Pick<ProjectGrant, 'projectSlug' | 'permissions'>): ClientNavItem[] {
-  return grantCanManageMedia(grant)
-    ? [{ moduleId: 'media', labelKey: 'clientDashboard.nav.media', href: `/${grant.projectSlug}/${MEDIA_SEGMENT}` }]
-    : []
-}
-
-/** The People screen segment (`/{projectSlug}/people`) — ADR-028. */
-export const PEOPLE_SEGMENT = 'people'
-
-/** The People nav item, for grants that may invite or manage people on the site (Owner, Site admin). */
-export function peopleNavItems(grant: Pick<ProjectGrant, 'projectSlug' | 'permissions'>): ClientNavItem[] {
-  return grant.permissions.includes('users.invite') || grant.permissions.includes('users.manage')
-    ? [{ moduleId: 'people', labelKey: 'clientDashboard.nav.people', href: `/${grant.projectSlug}/${PEOPLE_SEGMENT}` }]
-    : []
+  return buildClientNavItems({ ...grant, enabledModuleIds: [] }).filter((i) => i.moduleId === 'media')
 }
 
 // Phone nav helpers live in a browser-safe module (this one reaches server code).

@@ -2,11 +2,10 @@ import { cookies } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import { APP_TEXT_SIZE_COOKIE, APP_THEME_COOKIE, parseAppTextSize, parseAppTheme } from '@/lib/app-theme'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
+import { getViewerAccount } from '@/lib/api/viewer-account'
 import {
   buildClientNavItems,
   dashboardHomeHref,
-  mediaNavItems,
-  peopleNavItems,
   resolveProjectGrant,
 } from '@/lib/modules/client-navigation'
 import { ClientSidebar } from '@/components/client/ClientSidebar'
@@ -28,8 +27,11 @@ import { buildCreateMenu } from '@/lib/modules/create-menu'
  * `resolveProjectGrant`. An unmatched/ungranted slug is a `notFound()` (404) —
  * never a silent fallback to `ctx.projects[0]`. The URL is authoritative.
  *
- * The sidebar nav is module-driven: `buildClientNavItems(activeGrant)` projects
- * the active project's enabled modules into localized, href-based items.
+ * The sidebar nav comes from the tenant surface registry (ADR-029):
+ * `buildClientNavItems(activeGrant)` returns only the destinations this person
+ * may see on this project, as localized, href-based items. The signed-in
+ * person's own details and the Help link (`ABLUO_HELP_URL`, configuration) go
+ * to the account menu.
  */
 export default async function ClientProjectLayout({
   children,
@@ -51,16 +53,18 @@ export default async function ClientProjectLayout({
     notFound()
   }
 
-  const navItems = [...buildClientNavItems(activeGrant), ...mediaNavItems(activeGrant), ...peopleNavItems(activeGrant)]
+  const navItems = buildClientNavItems(activeGrant)
+  const viewer = await getViewerAccount(ctx.userId)
   const projects = ctx.projects.map((grant) => ({ projectSlug: grant.projectSlug }))
-  const theme = parseAppTheme((await cookies()).get(APP_THEME_COOKIE)?.value)
-  const textSize = parseAppTextSize((await cookies()).get(APP_TEXT_SIZE_COOKIE)?.value)
+  const jar = await cookies()
+  const theme = parseAppTheme(jar.get(APP_THEME_COOKIE)?.value)
+  const textSize = parseAppTextSize(jar.get(APP_TEXT_SIZE_COOKIE)?.value)
 
   return (
     <AddContentRoot
       projectSlug={activeGrant.projectSlug}
       menu={buildCreateMenu(activeGrant)}
-      mediaLibrary={mediaNavItems(activeGrant).length > 0}
+      mediaLibrary={navItems.some((i) => i.moduleId === 'media')}
       contactEmail={process.env.ABLUO_CONTACT_EMAIL || null}
     >
       <div className="min-h-screen md:flex">
@@ -68,8 +72,14 @@ export default async function ClientProjectLayout({
           navItems={navItems}
           projects={projects}
           activeSlug={activeGrant.projectSlug}
-          theme={theme}
-          textSize={textSize}
+          account={{
+            name: viewer.name,
+            email: viewer.email,
+            avatarUrl: viewer.avatarUrl,
+            theme,
+            textSize,
+            helpUrl: process.env.ABLUO_HELP_URL || null,
+          }}
           homeHref={dashboardHomeHref(activeGrant.projectSlug)}
         />
         {/* #client-main: the main scroll container (the floating "+" listens to it and to the window). */}
