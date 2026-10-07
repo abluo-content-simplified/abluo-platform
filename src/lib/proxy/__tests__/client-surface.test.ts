@@ -38,7 +38,7 @@ describe('isClientSurface', () => {
 
   it('matches deeper paths under a project-scoped segment', () => {
     expect(isClientSurface('/en/livener/posts/123')).toBe(true)
-    expect(isClientSurface('/livener/leads/new')).toBe(true)
+    expect(isClientSurface('/livener/galleries/new')).toBe(true)
   })
 
   it('does NOT match a bare project slug with no client sub-page', () => {

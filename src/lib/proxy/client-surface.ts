@@ -47,11 +47,10 @@ export const CLIENT_USER_SEGMENTS = new Set(['account'])
 export const CLIENT_PROJECT_SEGMENTS = new Set([
   'home',
   'posts',
-  'leads',
-  'analytics',
   'submissions',
   'galleries',
   'media',
+  'people',
 ])
 
 /**

@@ -4,7 +4,7 @@
  * Submission detail body — what the visitor sent, plus "Where it came from":
  * every piece of provenance the platform stores for the submission (entry page,
  * referrer, campaign, device, place, language, timezone, site, form, consent).
- * Shared by the desktop expanded row and the phone sheet. The visitor's IP
+ * Shown in the Forms list's SidePanel (computers and phones). The visitor's IP
  * (submitter_ip) is deliberately never read into the dashboard.
  */
 
@@ -12,6 +12,7 @@ import { useTranslations } from 'next-intl'
 import type { DashboardSubmission } from '@/lib/api/client-dashboard'
 import { buildLeadOriginRows } from '@/lib/forms/lead-origin'
 import { getLeadOriginMessages } from '@/lib/i18n/lead-origin-messages'
+import { rawValue } from '@/lib/client/submissions-filter'
 
 export function humanizeKey(key: string): string {
   const spaced = key.replace(/_/g, ' ').replace(/([a-z0-9])([A-Z])/g, '$1 $2')
@@ -27,12 +28,7 @@ export function humanizeValue(v: unknown): string {
   return s.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
 }
 
-export function rawValue(v: unknown): string {
-  if (v === null || v === undefined) return ''
-  if (Array.isArray(v)) return v.map((x) => String(x)).join('; ')
-  if (typeof v === 'object') return ''
-  return String(v)
-}
+export { rawValue }
 
 /** Locale-aware date+time in the VIEWER's timezone (render inside suppressHydrationWarning). */
 export function formatReceived(iso: string, locale: string): string {
@@ -61,7 +57,8 @@ function Row({ label, value }: { label: string; value: string }) {
   )
 }
 
-export function SubmissionDetail({ s, locale }: { s: DashboardSubmission; locale: string }) {
+/** What they sent + "Where it came from". `columns={1}` stacks the two (narrow panels). */
+export function SubmissionDetail({ s, locale, columns = 2 }: { s: DashboardSubmission; locale: string; columns?: 1 | 2 }) {
   const t = useTranslations('clientDashboard')
   const msgs = getLeadOriginMessages(locale)
   const origin = buildLeadOriginRows(s.source, msgs)
@@ -86,7 +83,7 @@ export function SubmissionDetail({ s, locale }: { s: DashboardSubmission; locale
 
   const head = 'mb-2 text-[0.75rem] font-semibold uppercase tracking-wide text-muted-foreground'
   return (
-    <div className="grid gap-6 text-[0.9375rem] md:grid-cols-2">
+    <div className={`grid gap-6 text-[0.9375rem] ${columns === 2 ? 'md:grid-cols-2' : ''}`}>
       <div>
         <p className={head}>{t('submissions.detail.submitted')}</p>
         <dl className="space-y-2">

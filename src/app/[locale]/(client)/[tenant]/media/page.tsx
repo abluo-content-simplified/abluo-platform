@@ -5,10 +5,12 @@ import { grantCanManageMedia } from '@/lib/api/media-permission'
 import { getMediaSite } from '@/lib/api/media-library'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { MediaLibraryScreen } from '@/components/client/media/MediaLibraryScreen'
+import { PageShell } from '@/components/client/ui/PageShell'
 
 /**
- * Client dashboard — Media: the project's Media Library. Search and filter by
- * tag, open a photo to edit its name, description, caption, focus point and
+ * Client dashboard — Media: the project's Media Library in the shared page
+ * frame (PageShell), as a grid or a table. Search and filter (tag, usage,
+ * description, uploaded date), open a photo to edit its name, description, caption, focus point and
  * tags and see where it is used, select several to tag or rename them.
  * "Add photos" is the media wizard (/media/add). No delete yet.
  * Owner/editor only (`canManageMedia`); anyone else gets a 404.
@@ -35,5 +37,9 @@ export default async function MediaPage({
   }
   // Old "?add=1" links: adding photos is the media wizard now.
   if ((await searchParams)?.add === '1') redirect(`/${projectSlug}/media/add`)
-  return <MediaLibraryScreen projectSlug={projectSlug} site={site} />
+  return (
+    <PageShell>
+      <MediaLibraryScreen projectSlug={projectSlug} site={site} />
+    </PageShell>
+  )
 }

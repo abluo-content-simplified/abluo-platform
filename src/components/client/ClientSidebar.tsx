@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link, usePathname, useRouter } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -11,14 +11,19 @@ import { AppVersion } from './AppVersion'
 import { useOpenAddContent } from './create/AddContentRoot'
 import type { AppTextSize, AppTheme } from '@/lib/app-theme'
 import type { ClientNavItem } from '@/lib/modules/client-navigation'
+import { isNavItemActive, phoneNavLayout } from '@/lib/modules/client-nav-layout'
 
 /**
  * Client-dashboard navigation shell (ADR-017 Phase 2, restyled in S1 / ADR-025).
  *
  * One component, two layouts, one set of destinations:
- *   • Phones: a slim top bar with the project name, and a bottom tab bar —
- *     Home · Content · [+ Add content] · Leads · More. "More" opens the drawer
- *     (project switcher, appearance, account, sign out).
+ *   • Phones: a slim top bar (menu button + project name) and a bottom tab bar —
+ *     Home · Content · [+ Add content] · Forms · More. Both the menu button and
+ *     "More" open the drawer: the same sidebar, with EVERY destination
+ *     (Galleries, Media, People… have no tab of their own, `phoneNavLayout`),
+ *     plus project switcher, appearance, account, sign out. "More" is shown
+ *     active while you are on one of those pages. The drawer closes on
+ *     navigation, a tap on the backdrop or any item, and Escape.
  *   • From md up: the fixed sidebar — Home first, then the module-driven items.
  * Content and Leads exist only when the project has the module (navItems are
  * module-driven, `buildClientNavItems`). All copy from `clientDashboard.*`.
@@ -49,7 +54,9 @@ const ICONS = {
   forms: 'M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z',
   gallery: 'M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15 9h.01',
   media: 'M3 7h4l2-3h6l2 3h4v13H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  people: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   more: 'M5 12h.01M12 12h.01M19 12h.01',
+  menu: 'M4 6h16M4 12h16M4 18h16',
   plus: 'M12 5v14M5 12h14',
   generic: 'M4 6h16M4 12h16M4 18h10',
 } as const
@@ -75,13 +82,47 @@ export function ClientSidebar({
   const t = useTranslations('clientDashboard')
   const pathname = usePathname() // locale-stripped, e.g. "/livener/posts"
   const router = useRouter()
-  // Open on the page it was opened on: navigating closes it (no effect needed).
+  // Open on the page it was opened on: navigating closes it. The page is then
+  // forgotten (adjusting state during render, no effect), so coming BACK to
+  // that page never pops the drawer open again by itself.
   const [drawerOpenOn, setDrawerOpenOn] = useState<string | null>(null)
+  if (drawerOpenOn !== null && drawerOpenOn !== pathname) setDrawerOpenOn(null)
   const drawerOpen = drawerOpenOn === pathname
   const setDrawerOpen = (next: boolean) => setDrawerOpenOn(next ? pathname : null)
+  const closeDrawer = () => setDrawerOpenOn(null)
+  const drawerRef = useRef<HTMLElement>(null)
   const openAddContent = useOpenAddContent()
 
-  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
+  // While the drawer is open (phones): Escape closes it, focus moves into it
+  // and goes back to the button that opened it, the page behind does not scroll.
+  // Widening the window to the desktop layout closes it (the sidebar is then
+  // always there, and the scroll lock must not stay behind).
+  useEffect(() => {
+    if (!drawerOpen) return
+    const panel = drawerRef.current
+    const desktop = window.matchMedia('(min-width: 48rem)')
+    const onDesktop = () => {
+      if (desktop.matches) setDrawerOpenOn(null)
+    }
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDrawerOpenOn(null)
+    }
+    const root = document.documentElement
+    const prevOverflow = root.style.overflow
+    root.style.overflow = 'hidden'
+    document.addEventListener('keydown', onKey)
+    desktop.addEventListener('change', onDesktop)
+    panel?.focus({ preventScroll: true })
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      desktop.removeEventListener('change', onDesktop)
+      root.style.overflow = prevOverflow
+      if (panel?.contains(document.activeElement)) trigger?.focus({ preventScroll: true })
+    }
+  }, [drawerOpen])
+
+  const isActive = (href: string) => isNavItemActive(pathname, href)
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -90,13 +131,24 @@ export function ClientSidebar({
     router.refresh()
   }
 
-  const contentItem = navItems.find((i) => i.moduleId === 'blog')
-  const leadsItem = navItems.find((i) => i.moduleId === 'forms')
+  const { content: contentItem, forms: leadsItem, overflow } = phoneNavLayout(navItems)
+  // "More" carries the active state for pages without a tab of their own.
+  const moreActive = drawerOpen || overflow.some((i) => isActive(i.href))
 
   return (
     <>
       {/* ── Phone top bar ─────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 flex h-14 items-center border-b border-border-subtle bg-background px-4 md:hidden">
+      <div className="sticky top-0 z-30 flex h-14 items-center gap-1 border-b border-border-subtle bg-background pl-1 pr-4 md:hidden">
+        <button
+          type="button"
+          onClick={() => setDrawerOpen(true)}
+          aria-label={t('shell.openMenu')}
+          aria-expanded={drawerOpen}
+          aria-controls="client-sidebar"
+          className="grid size-11 shrink-0 place-items-center rounded-md text-foreground hover:bg-hover"
+        >
+          <Icon d={ICONS.menu} size={22} />
+        </button>
         <span className="truncate text-[0.9375rem] font-semibold">{activeSlug}</span>
       </div>
 
@@ -105,16 +157,23 @@ export function ClientSidebar({
         <button
           type="button"
           aria-label={t('shell.closeMenu')}
-          onClick={() => setDrawerOpen(false)}
+          onClick={closeDrawer}
           className="fixed inset-0 z-40 bg-overlay md:hidden"
         />
       )}
 
       {/* ── Sidebar (md+) / drawer (phones) ──────────────────────────────── */}
+      {/* Closed on phones it is also invisible, so it leaves the tab order and the
+          screen reader. Visibility is transitioned only when closing (hidden after the
+          slide-out); opening shows it at once, so focus can move in. md+ always visible. */}
       <aside
         id="client-sidebar"
-        className={`fixed left-0 top-0 z-50 flex h-dvh w-64 flex-col border-r border-border bg-card text-card-foreground transition-transform duration-200 md:z-40 md:h-screen md:w-56 md:translate-x-0 overflow-y-auto overscroll-contain ${
-          drawerOpen ? 'translate-x-0 shadow-[var(--shadow-raise)]' : '-translate-x-full'
+        ref={drawerRef}
+        tabIndex={-1}
+        className={`fixed left-0 top-0 z-50 flex h-dvh w-64 flex-col overflow-y-auto overscroll-contain border-r border-border bg-card text-card-foreground outline-none duration-200 motion-reduce:transition-none md:visible md:z-40 md:h-screen md:w-56 md:translate-x-0 ${
+          drawerOpen
+            ? 'visible translate-x-0 shadow-[var(--shadow-raise)] transition-[translate]'
+            : 'invisible -translate-x-full transition-[translate,visibility]'
         }`}
       >
         <div className="border-b border-border-subtle px-5 py-5">
@@ -134,6 +193,7 @@ export function ClientSidebar({
                 <Link
                   key={item.moduleId}
                   href={item.href}
+                  onClick={closeDrawer}
                   aria-current={active ? 'page' : undefined}
                   className={`flex min-h-10 items-center gap-3 rounded-md px-3 text-sm transition-colors ${
                     active ? 'bg-muted font-semibold text-foreground' : 'text-muted-foreground hover:bg-hover hover:text-foreground'
@@ -153,7 +213,7 @@ export function ClientSidebar({
         <div className="space-y-3 border-t border-border-subtle px-4 py-4">
           <AppThemeSwitch initial={theme} />
           <AppTextSizeSwitch initial={textSize} />
-          <Link href="/account" className="flex min-h-8 items-center text-sm text-muted-foreground transition-colors hover:text-foreground">
+          <Link href="/account" onClick={closeDrawer} className="flex min-h-8 items-center text-sm text-muted-foreground transition-colors hover:text-foreground">
             {t('shell.account')}
           </Link>
           <button type="button" onClick={handleSignOut} className="min-h-8 text-sm text-muted-foreground transition-colors hover:text-foreground">
@@ -212,10 +272,12 @@ export function ClientSidebar({
         )}
         <button
           type="button"
-          onClick={() => setDrawerOpen(true)}
+          onClick={() => setDrawerOpen(!drawerOpen)}
           aria-expanded={drawerOpen}
           aria-controls="client-sidebar"
-          className="flex min-h-11 flex-col items-center justify-center gap-0.5 text-xs font-medium text-muted-foreground"
+          className={`flex min-h-11 flex-col items-center justify-center gap-0.5 text-xs font-medium ${
+            moreActive ? 'text-foreground' : 'text-muted-foreground'
+          }`}
         >
           <Icon d={ICONS.more} width={2.4} />
           {t('nav.more')}

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PasswordInput } from '@/components/ui/PasswordInput'
+import { permissionMessageKey } from '@/lib/authz/permissions'
 import type { InvitationView } from '@/lib/invitations/service'
 import type { InvitationMessages } from '@/lib/invitations/messages'
 import { acceptInvitationAction, registerAndAcceptAction } from './actions'
@@ -31,7 +32,7 @@ export function InviteAccept({
   const [confirm, setConfirm] = useState('')
 
   const role = view.role ? ((m.roles as Record<string, string>)[view.role] ?? view.role) : ''
-  const extras = (view.extras ?? []).map((id) => (m.extras as Record<string, string>)[id] ?? id).join(', ')
+  const extras = (view.extras ?? []).map((id) => (m.extras as Record<string, string>)[permissionMessageKey(id)] ?? id).join(', ')
   const vars = { place: view.placeName ?? '', role, inviter: view.inviterName ?? '', email: view.email ?? '', min: String(minPassword) }
   const errorText = (code: string): string => {
     const known: Record<string, string> = {

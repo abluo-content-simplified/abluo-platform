@@ -391,6 +391,47 @@ describe('POST /api/projects/[projectId]/invite — authorized from the resolved
   })
 })
 
+describe('People server actions — Owner / Site admin only, nothing touched on refusal (ADR-028)', () => {
+  const load = () => import('@/app/[locale]/(client)/[tenant]/people/actions')
+  beforeAll(async () => {
+    await load()
+  }, 30_000)
+  const grant = async (role: 'owner' | 'admin' | 'editor') => {
+    const { grantPermissions } = await import('@/lib/api/tenant-context')
+    return { projectId: 'project-a', projectSlug: 'tenant-a-site', membershipId: 'm', role, permissions: grantPermissions(role as 'owner', ['forms']), enabledModuleIds: ['forms'] }
+  }
+  const all = async (projectSlug: string) => {
+    const a = await load()
+    return [
+      await a.invitePersonAction({ projectSlug, locale: 'en', email: 'x@y.z', role: 'editor', extras: [] }),
+      await a.cancelInvitationAction({ projectSlug, locale: 'en', invitationId: '00000000-0000-4000-8000-000000000001' }),
+      await a.updatePersonAction({ projectSlug, locale: 'en', membershipId: 'pm-1', role: 'editor', extras: [] }),
+      await a.archivePersonAction({ projectSlug, locale: 'en', membershipId: 'pm-1' }),
+      await a.restorePersonAction({ projectSlug, locale: 'en', archiveId: '00000000-0000-4000-8000-000000000002' }),
+      await a.resendInvitationAction({ projectSlug, locale: 'en', invitationId: '00000000-0000-4000-8000-000000000001' }),
+    ]
+  }
+
+  it('signed out → every action refused, nothing touched', async () => {
+    for (const r of await all('tenant-a-site')) expect(r).toEqual({ ok: false, error: 'forbidden' })
+    noSideEffects()
+  })
+  it('another client’s site → refused before any service-role I/O', async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [await grant('owner')] }
+    for (const r of await all('tenant-b-site')) expect(r).toEqual({ ok: false, error: 'forbidden' })
+    expect(serviceRoleCalls).toEqual([])
+    noSideEffects()
+  })
+  it('an Editor on the site → refused, no write and no email', async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [await grant('editor')] }
+    for (const r of await all('tenant-a-site')) expect(r.ok).toBe(false)
+    expect(userWrites).toEqual([])
+    expect(sendInvite).not.toHaveBeenCalled()
+  })
+})
+
 describe('setSubmissionStatusAction — the dashboard lead-status server action', () => {
   const grantA = {
     projectId: 'project-a',
@@ -434,6 +475,27 @@ describe('setSubmissionStatusAction — the dashboard lead-status server action'
     expect(userWrites[0].table).toBe('form_submissions')
     expect(userWrites[0].filters).toContainEqual(['project_id', 'project-a'])
     expect(userWrites[0].filters).toContainEqual(['id', 's1'])
+  })
+
+  it('an Editor who may only SEE contact requests cannot change, batch-change or delete them (ADR-028)', async () => {
+    persona = 'tenantA'
+    const { grantPermissions } = await import('@/lib/api/tenant-context')
+    const permissions = grantPermissions('editor', ['forms'], undefined, { projectExtras: ['forms.submission.read'] })
+    expect(permissions).toContain('forms.submission.read')
+    expect(permissions).not.toContain('forms.submission.update')
+    expect(permissions).not.toContain('forms.submission.delete')
+    tenantCtx = {
+      userId: 'user-tenant-a',
+      platformRole: 'tenant_user',
+      projects: [{ ...grantA, membershipId: 'pm-editor', role: 'editor', permissions }],
+    }
+    const a = await import('@/app/[locale]/(client)/[tenant]/submissions/actions')
+    const base = { projectSlug: 'tenant-a-site', locale: 'en' }
+    expect((await a.setSubmissionStatusAction({ ...base, submissionId: 's1', status: 'archived' })).ok).toBe(false)
+    expect((await a.setSubmissionsStatusBatchAction({ ...base, submissionIds: ['s1'], status: 'processed' })).ok).toBe(false)
+    expect((await a.deleteSubmissionsAction({ ...base, submissionIds: ['s1'] })).ok).toBe(false)
+    expect(userWrites).toEqual([])
+    expect(serviceRoleCalls).toEqual([])
   })
 })
 

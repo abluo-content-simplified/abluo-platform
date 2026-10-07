@@ -150,6 +150,33 @@ const galleryType = defineType({
       of: [defineArrayMember({ type: 'galleryItem' })],
       validation: (Rule) => Rule.min(1),
     }),
+    defineField({
+      // Additive (client dashboard, 2026-10-07): the photo that represents the
+      // gallery in lists and cards. Optional — empty means the first photo.
+      // Weak, so it never blocks removing a photo from the Media Library; the
+      // dashboard only ever saves one of this gallery's own photos (and clears
+      // it when that photo leaves the gallery).
+      name: 'mainImage',
+      title: 'Main image',
+      type: 'reference',
+      to: [{ type: 'mediaAsset' }],
+      weak: true,
+      description: 'Optional. One of the photos above that represents this gallery. Empty = the first photo.',
+      options: {
+        disableNew: true,
+        filter: ({ document }) => {
+          const items = (document as { items?: Array<{ mediaAsset?: { _ref?: string } }> }).items ?? []
+          return { filter: '_id in $ids', params: { ids: items.map((i) => i?.mediaAsset?._ref).filter(Boolean) } }
+        },
+      },
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          const ref = (value as { _ref?: string } | undefined)?._ref
+          if (!ref) return true
+          const items = (context.document as { items?: Array<{ mediaAsset?: { _ref?: string } }> } | undefined)?.items ?? []
+          return items.some((i) => i?.mediaAsset?._ref === ref) || 'The main image must be one of this gallery\'s photos.'
+        }),
+    }),
   ],
   preview: {
     select: {

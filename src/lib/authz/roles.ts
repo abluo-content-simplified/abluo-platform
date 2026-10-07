@@ -60,3 +60,7 @@ export function moduleRoleFor(role: AccessRole): 'owner' | 'editor' | 'viewer' |
       return null
   }
 }
+
+/** Classification helpers for lists (who is shown as what) — never an access decision. */
+export const isTenantOwnerRole = (role: unknown): boolean => role === 'owner'
+export const isTenantMemberRole = (role: unknown): boolean => role === 'member'

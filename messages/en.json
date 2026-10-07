@@ -41,7 +41,8 @@
       "home": "Home",
       "more": "More",
       "add": "Add content",
-      "media": "Media"
+      "media": "Media",
+      "people": "People"
     },
     "shell": {
       "brandTagline": "Dashboard",
@@ -249,7 +250,7 @@
       }
     },
     "submissions": {
-      "title": "Submissions",
+      "title": "Forms",
       "empty": "No submissions yet.",
       "moduleNotInstalled": "The Forms module is not enabled for this project.",
       "anonymous": "Anonymous",
@@ -259,23 +260,36 @@
         "form": "Form",
         "subject": "Subject",
         "status": "Status",
-        "received": "Received"
+        "received": "Received",
+        "actions": "Actions"
       },
       "status": {
         "new": "New",
-        "processed": "Processed",
+        "processed": "Handled",
         "archived": "Archived"
       },
       "filters": {
         "allForms": "All forms",
         "allStatuses": "All statuses",
-        "search": "Search name or email…",
+        "search": "Search name, email or message…",
         "from": "From",
         "to": "To",
         "groupBy": "Summary by",
         "groupNone": "None",
         "groupForm": "Form",
-        "groupStatus": "Status"
+        "groupStatus": "Status",
+        "searchLabel": "Search requests",
+        "filters": "Filters",
+        "form": "Form",
+        "status": "Status",
+        "sentenceNoun": "Requests",
+        "dateField": "Which date",
+        "field_received": "received",
+        "date": "Date",
+        "dateChip": "Received {range}",
+        "showing": "{shown} of {total} requests",
+        "clear": "Clear filters",
+        "noMatch": "No requests match your filters."
       },
       "exportCsv": "Export CSV",
       "count": "{count} leads",
@@ -307,15 +321,20 @@
       "cancel": "Cancel",
       "deleteTitle": "{count, plural, one {Delete # submission?} other {Delete # submissions?}}",
       "deleteBody": "This can't be undone.",
-      "batchError": "Couldn't finish. Please try again."
-    },
-    "leads": {
-      "title": "Leads",
-      "comingSoon": "Leads management is coming soon."
-    },
-    "analytics": {
-      "title": "Analytics",
-      "comingSoon": "Analytics are coming soon."
+      "batchError": "Couldn't finish. Please try again.",
+      "menu": "Actions for {name}",
+      "open": "Open",
+      "close": "Close",
+      "markArchived": "Archive",
+      "exportOne": "Export (CSV)",
+      "clearSelection": "Clear",
+      "selection": "Selected requests",
+      "done": {
+        "processed": "{count, plural, one {# request marked as handled.} other {# requests marked as handled.}}",
+        "new": "{count, plural, one {# request marked as new.} other {# requests marked as new.}}",
+        "archived": "{count, plural, one {# request archived.} other {# requests archived.}}",
+        "deleted": "{count, plural, one {# request deleted.} other {# requests deleted.}}"
+      }
     },
     "theme": {
       "label": "Appearance",
@@ -961,14 +980,34 @@
           "usageUnused": "Not used",
           "showing": "{shown} of {total} galleries",
           "clear": "Clear filters",
-          "noMatch": "No galleries match these filters."
+          "noMatch": "No galleries match these filters.",
+          "filters": "Filters",
+          "status": "Status",
+          "statusAll": "All statuses",
+          "usageAny": "Used or not",
+          "sort": "Sort",
+          "sort_updated_desc": "Recently updated",
+          "sort_updated_asc": "Least recently updated",
+          "sort_created_desc": "Newest",
+          "sort_created_asc": "Oldest",
+          "sort_title_asc": "Title A–Z",
+          "sort_title_desc": "Title Z–A",
+          "sort_photos_desc": "Most photos",
+          "sort_photos_asc": "Fewest photos",
+          "date": "Date",
+          "dateField": "Which date",
+          "sentenceNoun": "Galleries",
+          "sentenceField_updated": "updated",
+          "sentenceField_created": "created",
+          "dateChip": "{field} · {range}"
         },
         "card": {
           "menu": "More for “{title}”",
           "edit": "Edit",
           "preview": "Preview",
           "delete": "Delete",
-          "previewFailed": "We couldn’t open the preview. Please try again."
+          "previewFailed": "We couldn’t open the preview. Please try again.",
+          "open": "Open"
         },
         "tags": {
           "label": "Tags",
@@ -978,6 +1017,28 @@
           "remove": "Remove tag {tag}",
           "suggested": "Tags you already use",
           "full": "Up to {max} tags"
+        },
+        "view": {
+          "label": "View",
+          "list": "List",
+          "grid": "Grid"
+        },
+        "state": {
+          "live": "Published",
+          "changes": "Unpublished changes",
+          "draft": "Not published yet"
+        },
+        "mainBadge": "Main image",
+        "columns": {
+          "preview": "Photos in the gallery",
+          "title": "Title",
+          "status": "Status",
+          "photos": "Photos",
+          "usedOn": "Used on",
+          "updated": "Updated",
+          "created": "Created",
+          "actions": "Actions",
+          "selectAll": "Select all shown"
         }
       },
       "publish": {
@@ -1093,7 +1154,8 @@
         "toolbar": "Selected galleries",
         "bar": {
           "addTags": "Add tags",
-          "delete": "Delete"
+          "delete": "Delete",
+          "clear": "Clear"
         },
         "tagsSheet": {
           "title": "Add tags",
@@ -1111,7 +1173,33 @@
         },
         "skippedInUse": "{count, plural, one {# gallery was skipped because it is shown on your website.} other {# galleries were skipped because they are shown on your website.}}",
         "someFailed": "{count, plural, one {# gallery couldn’t be changed.} other {# galleries couldn’t be changed.}}",
-        "failed": "Something went wrong. Please try again."
+        "failed": "Something went wrong. Please try again.",
+        "selectAll": "Select all"
+      },
+      "detail": {
+        "back": "Galleries",
+        "edit": "Edit gallery",
+        "preview": "Preview",
+        "previewFailed": "We couldn’t open the preview. Please try again.",
+        "saved": "Saved. Your website now shows this version.",
+        "changesNotice": "This gallery has changes that aren’t published yet.",
+        "draftNotice": "This gallery isn’t published yet.",
+        "photosTitle": "Photos",
+        "editPhotos": "Add or arrange photos",
+        "describe": "Describe photos",
+        "noPhotos": "No photos yet.",
+        "photoMenu": "More for {name}",
+        "describePhoto": "Edit description",
+        "tags": "Tags",
+        "main": {
+          "set": "Set as main image",
+          "unset": "Remove as main image",
+          "auto": "No main image chosen — the first photo represents this gallery.",
+          "chosen": "The main image represents this gallery in your lists.",
+          "saved": "Main image changed. Save to publish it.",
+          "cleared": "Main image removed. Save to publish it.",
+          "failed": "We couldn’t change the main image. Please try again."
+        }
       }
     },
     "media": {
@@ -1166,7 +1254,8 @@
         "more": "Show more",
         "tagSummary": "{count, plural, one {# tag} other {# tags}}",
         "clearAll": "Clear all",
-        "usage": "{count, plural, =0 {Not used} one {Used once} other {Used # times}}"
+        "usage": "{count, plural, =0 {Not used} one {Used once} other {Used # times}}",
+        "retry": "Try again"
       },
       "sheet": {
         "title": "Edit photo",
@@ -1212,13 +1301,67 @@
         "clear": "Clear",
         "limit": "You can select up to {max} photos at a time.",
         "saved": "{count, plural, =0 {Nothing changed} one {Saved on # photo} other {Saved on # photos}}",
-        "skipped": "{count, plural, one {# photo couldn’t be changed} other {# photos couldn’t be changed}}"
+        "skipped": "{count, plural, one {# photo couldn’t be changed} other {# photos couldn’t be changed}}",
+        "all": "Select all"
       },
       "size": {
         "label": "Photo size",
         "small": "Small",
         "medium": "Medium",
         "large": "Large"
+      },
+      "view": {
+        "label": "View",
+        "grid": "Grid",
+        "list": "List"
+      },
+      "filters": {
+        "filters": "Filters",
+        "search": "Search photos",
+        "searchPlaceholder": "Search by name, description or tag",
+        "tag": "Tag",
+        "tagAll": "All tags",
+        "usage": "Usage",
+        "usage_all": "Used or not",
+        "usage_used": "Used",
+        "usage_unused": "Not used",
+        "description": "Description",
+        "description_all": "Any description",
+        "description_missing": "No description",
+        "noun": "Photos",
+        "date": "Date",
+        "dateField": "Which date",
+        "uploaded": "uploaded",
+        "dateChip": "Uploaded · {range}",
+        "showing": "{shown} of {total} photos",
+        "loadingMore": "loading more…",
+        "clear": "Clear filters",
+        "noMatch": "No photos match these filters."
+      },
+      "columns": {
+        "image": "Photo",
+        "name": "Name",
+        "size": "Size",
+        "uploaded": "Uploaded",
+        "tags": "Tags",
+        "usage": "Used in",
+        "description": "Description",
+        "focal": "Focus point",
+        "actions": "Actions",
+        "selectAll": "Select all photos"
+      },
+      "pill": {
+        "described": "Described",
+        "missing": "Missing",
+        "focalSet": "Set",
+        "focalNone": "Not set"
+      },
+      "menu": {
+        "label": "Actions for {name}",
+        "edit": "Edit details",
+        "addTags": "Add tags",
+        "rename": "Rename",
+        "original": "Open original"
       }
     },
     "photoWizard": {
@@ -1420,6 +1563,112 @@
         "applied": "Applied filters",
         "remove": "Remove filter: {label}"
       }
+    },
+    "people": {
+      "title": "People",
+      "invite": "Invite someone",
+      "inviteTitle": "Invite someone",
+      "email": "Email",
+      "role": "Role",
+      "roles": {
+        "owner": "Owner",
+        "admin": "Site admin",
+        "editor": "Editor",
+        "member": "Member"
+      },
+      "roleHelp": {
+        "admin": "Manages the site and its people",
+        "editor": "Writes and publishes"
+      },
+      "ownerNote": "Owner of the whole client",
+      "clientMemberNote": "Access from the client account",
+      "you": "you",
+      "access": "Extra access",
+      "extras": {
+        "formsSubmissionRead": "Sees contact requests",
+        "formsSubmissionUpdate": "Manages contact requests"
+      },
+      "includedByRole": "Contact requests are included in this role.",
+      "send": "Send invitation",
+      "sending": "Sending…",
+      "sent": "Invitation sent to {email}.",
+      "sentNoEmail": "Invitation saved, but the email could not be sent. Try again later.",
+      "cancelInvite": "Cancel invitation",
+      "cancelled": "Invitation cancelled.",
+      "edit": "Change access",
+      "save": "Save",
+      "saved": "Saved.",
+      "menu": "Options for {name}",
+      "empty": "Nobody else has access yet.",
+      "errors": {
+        "invalid_email": "This email doesn’t look right.",
+        "invalid_role": "Choose a role.",
+        "forbidden": "You can’t give this access.",
+        "not_found": "This person or invitation no longer exists.",
+        "invalid": "Please check your choices.",
+        "failed": "Something went wrong. Please try again.",
+        "too_soon": "This invitation was just sent. Please wait a few minutes before sending it again."
+      },
+      "details": "Details",
+      "resend": "Resend invitation",
+      "resent": "Invitation sent again to {email}.",
+      "archive": "Archive",
+      "archived": "{name} is archived and no longer has access.",
+      "archiveConfirm": {
+        "title": "Archive {name}?",
+        "body": "They lose access to this site right away. You can restore them later with the same access."
+      },
+      "restore": "Restore access",
+      "restored": "{name} has access again.",
+      "status": {
+        "active": "Active",
+        "invited": "Invited",
+        "expired": "Expired",
+        "archived": "Archived"
+      },
+      "twoFactor": {
+        "on": "On",
+        "off": "Off"
+      },
+      "columns": {
+        "avatar": "Picture",
+        "person": "Person",
+        "role": "Role",
+        "status": "Status",
+        "invited": "Invited",
+        "joined": "Joined",
+        "lastActive": "Last active",
+        "twoFactor": "2-step",
+        "actions": "Actions"
+      },
+      "detail": {
+        "note": "Note",
+        "invitedBy": "Invited by",
+        "invitedOn": "Invited on",
+        "validUntil": "Valid until",
+        "expiredOn": "Expired on",
+        "joined": "Joined",
+        "archivedOn": "Archived on",
+        "lastActive": "Last active",
+        "never": "Not yet",
+        "twoFactor": "2-step verification"
+      },
+      "filters": {
+        "filters": "Filters",
+        "search": "Search people",
+        "searchPlaceholder": "Search name or email…",
+        "status": "Status",
+        "status_current": "Active and invited",
+        "status_active": "Active",
+        "status_invited": "Invited",
+        "status_archived": "Archived",
+        "status_all": "Everyone",
+        "role": "Role",
+        "roleAll": "All roles",
+        "showing": "{shown} of {total} people",
+        "clear": "Clear filters",
+        "noMatch": "Nobody matches these filters."
+      }
     }
   },
   "editor": {
@@ -1490,9 +1739,9 @@
       "editor": "Editor"
     },
     "extras": {
-      "forms.submission.read": "contact requests",
-      "forms.submission.update": "updating contact requests",
-      "billing.invoice.read": "invoices"
+      "formsSubmissionRead": "contact requests",
+      "formsSubmissionUpdate": "managing contact requests",
+      "billingInvoiceRead": "invoices"
     },
     "accept": {
       "title": "Invitation",
@@ -1524,6 +1773,13 @@
       "used": "This invitation has already been used.",
       "notAllowed": "This invitation can no longer be accepted, because the person who sent it no longer has the right to give this access.",
       "failed": "Something went wrong. Please try again."
+    },
+    "restored": {
+      "subject": "Your access to {place} is back",
+      "heading": "Welcome back to {place}",
+      "body": "{by} has given you back access to {place} as {role}.",
+      "button": "Open Abluo",
+      "replyHint": "Questions? Reply to this email to reach {by}."
     }
   }
 }

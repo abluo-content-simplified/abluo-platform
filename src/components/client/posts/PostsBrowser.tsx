@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useSyncExternalStore, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { usePathname, useRouter } from 'next/navigation'
 import { getPathname, useRouter as useAppRouter } from '@/i18n/navigation'
@@ -16,6 +16,7 @@ import { ViewSwitch } from '@/components/client/ui/ViewSwitch'
 import { SelectAll } from '@/components/client/ui/list/ContentCard'
 import { Toast } from '@/components/client/ui/Toast'
 import { useUndo } from '@/components/client/ui/use-undo'
+import { useViewPreference } from '@/components/client/ui/use-view-preference'
 import {
   activeFilterCount,
   applyFilters,
@@ -43,38 +44,7 @@ type Sheet = null | { kind: 'endDate'; ids: string[] } | { kind: 'categories'; i
 type View = 'list' | 'cards'
 
 const VIEW_KEY = 'abluo.posts.view'
-
-// The List / Cards choice lives in localStorage (per browser, a convenience):
-// read through useSyncExternalStore so the server render and first paint agree.
-const viewListeners = new Set<() => void>()
-let memoryView: View | null = null
-function readView(): View {
-  try {
-    const saved = window.localStorage.getItem(VIEW_KEY)
-    if (saved === 'cards' || saved === 'list') return saved
-  } catch {
-    /* storage unavailable */
-  }
-  return memoryView ?? 'list'
-}
-function writeView(v: View) {
-  try {
-    window.localStorage.setItem(VIEW_KEY, v)
-  } catch {
-    /* storage unavailable: the choice lasts until reload */
-    memoryView = v
-  }
-  viewListeners.forEach((l) => l())
-}
-function subscribeView(listener: () => void) {
-  viewListeners.add(listener)
-  const onStorage = (e: StorageEvent) => e.key === VIEW_KEY && listener()
-  window.addEventListener('storage', onStorage)
-  return () => {
-    viewListeners.delete(listener)
-    window.removeEventListener('storage', onStorage)
-  }
-}
+const VIEWS = ['list', 'cards'] as const
 
 /**
  * The Posts list — the reference pattern for every client list page.
@@ -125,8 +95,7 @@ export function PostsBrowser({
   const [, startTransition] = useTransition()
 
   // ── View (List / Cards), remembered per browser ────────────────────────────
-  const view = useSyncExternalStore(subscribeView, readView, () => 'list' as View)
-  const chooseView = (v: View) => writeView(v)
+  const [view, chooseView] = useViewPreference<View>(VIEW_KEY, VIEWS, 'list')
 
   // ── Filters (in the URL) ───────────────────────────────────────────────────
   const [filters, setFilters] = useState<PostFilters>(() => parseFilters(new URLSearchParams(initialQuery)))
@@ -313,7 +282,7 @@ export function PostsBrowser({
   const allOffline = liveSelected.length > 0 && liveSelected.every((p) => p.status === 'offline')
   const none = !selectedIds.length || busy
   return (
-    <div className="space-y-4 pb-28">
+    <div className="space-y-4">
       <PageHeader
         title={title}
         actions={

@@ -40,13 +40,16 @@ export function AddContentRoot({
 }) {
   const t = useTranslations('clientDashboard')
   const pathname = usePathname() // locale-stripped, e.g. "/livener/posts"
-  // Open on the page it was opened on: navigating closes it (no effect needed).
+  // Open on the page it was opened on: navigating closes it. The page is then
+  // forgotten (adjusting state during render, no effect), so coming BACK to it
+  // never re-opens the panel by itself.
   const [openOn, setOpenOn] = useState<string | null>(null)
+  if (openOn !== null && openOn !== pathname) setOpenOn(null)
   const open = openOn === pathname
   const openPanel = useCallback(() => setOpenOn(pathname), [pathname])
 
   // The wizard / create surfaces (post wizard, gallery editor, media wizard) get no floating "+".
-  const onCreateSurface = /\/posts\/write(\/|$)|\/galleries\/[^/]+|\/media\/add(\/|$)/.test(pathname)
+  const onCreateSurface = /\/posts\/write(\/|$)|\/galleries\/(new|[^/]+\/edit)(\/|$)|\/media\/add(\/|$)/.test(pathname)
   const fab = onCreateSurface ? null : { label: t('nav.add'), closeLabel: t('create.type.close') }
 
   return (

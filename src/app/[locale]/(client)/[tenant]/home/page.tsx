@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import { PageShell } from '@/components/client/ui/PageShell'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
@@ -161,7 +162,8 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
   const nothingYet = posts !== null && posts.length === 0 && cards.length === 0
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-7 pb-28 md:px-4 md:pb-8">
+    <PageShell>
+      <div className="flex flex-col gap-7">
       <Greeting firstName={firstName} />
 
       {domain ? (
@@ -217,6 +219,7 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
           </Link>
         </section>
       )}
-    </div>
+      </div>
+    </PageShell>
   )
 }

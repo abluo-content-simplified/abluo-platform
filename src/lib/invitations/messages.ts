@@ -6,6 +6,7 @@
 import en from '../../../messages/en.json'
 import it from '../../../messages/it.json'
 import de from '../../../messages/de.json'
+import { permissionMessageKey } from '@/lib/authz/permissions'
 
 export type InvitationMessages = typeof en.invitation
 
@@ -29,5 +30,5 @@ export function roleLabel(m: InvitationMessages, role: string): string {
 }
 
 export function extrasLabel(m: InvitationMessages, extras: readonly string[]): string {
-  return extras.map((id) => (m.extras as Record<string, string>)[id] ?? id).join(', ')
+  return extras.map((id) => (m.extras as Record<string, string>)[permissionMessageKey(id)] ?? id).join(', ')
 }

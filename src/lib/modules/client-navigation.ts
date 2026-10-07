@@ -122,6 +122,19 @@ export function mediaNavItems(grant: Pick<ProjectGrant, 'projectSlug' | 'permiss
     : []
 }
 
+/** The People screen segment (`/{projectSlug}/people`) — ADR-028. */
+export const PEOPLE_SEGMENT = 'people'
+
+/** The People nav item, for grants that may invite or manage people on the site (Owner, Site admin). */
+export function peopleNavItems(grant: Pick<ProjectGrant, 'projectSlug' | 'permissions'>): ClientNavItem[] {
+  return grant.permissions.includes('users.invite') || grant.permissions.includes('users.manage')
+    ? [{ moduleId: 'people', labelKey: 'clientDashboard.nav.people', href: `/${grant.projectSlug}/${PEOPLE_SEGMENT}` }]
+    : []
+}
+
+// Phone nav helpers live in a browser-safe module (this one reaches server code).
+export { isNavItemActive, PHONE_TAB_MODULE_IDS, phoneNavLayout, type PhoneNavLayout } from './client-nav-layout'
+
 /**
  * Resolves the `ProjectGrant` for `projectSlug` from a caller's grants, or
  * `null` if the caller holds no grant for it.

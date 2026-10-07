@@ -12,16 +12,21 @@ export function fakeAdmin(tables: Tables, users: Record<string, { id: string; em
   function from(table: string) {
     tables[table] ??= []
     const filters: Array<(r: Row) => boolean> = []
-    let op: 'select' | 'insert' | 'update' = 'select'
+    let op: 'select' | 'insert' | 'update' | 'delete' = 'select'
     let payload: Row = {}
     let returning = false
     const matched = () => tables[table].filter((r) => filters.every((f) => f(r)))
     const run = (): Row[] => {
       if (op === 'insert') {
-        const row: Row = { id: id(), expires_at: new Date(Date.now() + 14 * 864e5).toISOString(), accepted_at: null, revoked_at: null, ...payload }
+        const row: Row = { id: id(), created_at: new Date().toISOString(), expires_at: new Date(Date.now() + 14 * 864e5).toISOString(), accepted_at: null, revoked_at: null, ...payload }
         if (table === 'invitations' && tables.invitations.some((r) => r.token_hash === row.token_hash)) throw new Error('dup')
         tables[table].push(row)
         return [row]
+      }
+      if (op === 'delete') {
+        const gone = matched()
+        tables[table] = tables[table].filter((r) => !gone.includes(r))
+        return gone
       }
       if (op === 'update') {
         const rows = matched()
@@ -38,6 +43,7 @@ export function fakeAdmin(tables: Tables, users: Record<string, { id: string; em
       in: (k: string, v: unknown[]) => (filters.push((r) => v.includes(r[k])), b),
       insert: (p: Row) => ((op = 'insert'), (payload = p), b),
       update: (p: Row) => ((op = 'update'), (payload = p), b),
+      delete: () => ((op = 'delete'), b),
       maybeSingle: async () => ({ data: run()[0] ?? null, error: null }),
       single: async () => {
         const r = run()[0]

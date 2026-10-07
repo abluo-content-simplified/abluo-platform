@@ -8,6 +8,8 @@ import {
   buildClientNavItems,
   resolveProjectGrant,
   MODULE_DASHBOARD_ROUTES,
+  isNavItemActive,
+  phoneNavLayout,
 } from '../client-navigation'
 import type { ProjectGrant } from '@/lib/api/tenant-context'
 import type { ModuleManifest } from '../types'
@@ -127,5 +129,49 @@ describe('resolveProjectGrant', () => {
       // one collision cannot be allowed to break every other project.
       expect(resolveProjectGrant([mainInTenant1, mainInTenant2, b], 'nologo')).toBe(b)
     })
+  })
+})
+
+describe('phoneNavLayout', () => {
+  const item = (moduleId: string, segment: string) => ({
+    moduleId,
+    labelKey: `clientDashboard.nav.${moduleId}`,
+    href: `/livener/${segment}`,
+  })
+  const all = [
+    item('blog', 'posts'),
+    item('forms', 'submissions'),
+    item('gallery', 'galleries'),
+    item('media', 'media'),
+    item('people', 'people'),
+  ]
+
+  it('gives Posts and Forms their own tab and sends the rest to More', () => {
+    const layout = phoneNavLayout(all)
+    expect(layout.content?.moduleId).toBe('blog')
+    expect(layout.forms?.moduleId).toBe('forms')
+    expect(layout.overflow.map((i) => i.moduleId)).toEqual(['gallery', 'media', 'people'])
+  })
+
+  it('puts every item in exactly one place (nothing unreachable on a phone)', () => {
+    const layout = phoneNavLayout(all)
+    const placed = [layout.content, layout.forms, ...layout.overflow].filter(Boolean)
+    expect(placed).toHaveLength(all.length)
+  })
+
+  it('leaves the tab empty when the project lacks the module', () => {
+    const layout = phoneNavLayout([item('gallery', 'galleries')])
+    expect(layout.content).toBeNull()
+    expect(layout.forms).toBeNull()
+    expect(layout.overflow.map((i) => i.moduleId)).toEqual(['gallery'])
+  })
+})
+
+describe('isNavItemActive', () => {
+  it('matches the page and its sub-pages only', () => {
+    expect(isNavItemActive('/livener/posts', '/livener/posts')).toBe(true)
+    expect(isNavItemActive('/livener/posts/abc', '/livener/posts')).toBe(true)
+    expect(isNavItemActive('/livener/postsx', '/livener/posts')).toBe(false)
+    expect(isNavItemActive('/livener/home', '/livener/posts')).toBe(false)
   })
 })

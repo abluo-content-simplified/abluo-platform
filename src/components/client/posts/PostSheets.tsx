@@ -1,55 +1,13 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { BottomSheet } from '@/components/client/ui/BottomSheet'
 import { ICONS } from './post-bits'
 
-/** Posts list: selection-bar buttons, "More" sheet rows, and the end-date and category sheets. */
+export { BarButton, SheetItem } from '@/components/client/ui/BarButton'
 
-export function BarButton({
-  children,
-  icon,
-  onPress,
-  disabled,
-  destructive,
-  className = '',
-}: {
-  children: ReactNode
-  icon: ReactNode
-  onPress: () => void
-  disabled?: boolean
-  destructive?: boolean
-  /** e.g. "md:hidden" / "hidden md:flex" — phone and desktop bars differ. */
-  className?: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onPress}
-      disabled={disabled}
-      className={`${className} flex min-h-14 flex-col items-center justify-start gap-1 rounded-xl px-1 pt-2 pb-1.5 text-xs font-medium hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40 ${
-        destructive ? 'text-destructive' : 'text-foreground'
-      }`}
-    >
-      {icon}
-      {children}
-    </button>
-  )
-}
-
-export function SheetItem({ children, onPress, disabled }: { children: ReactNode; onPress: () => void; disabled?: boolean }) {
-  return (
-    <button
-      type="button"
-      onClick={onPress}
-      disabled={disabled}
-      className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-[0.9375rem] text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40"
-    >
-      {children}
-    </button>
-  )
-}
+/** Posts list: the end-date and category sheets. BarButton / SheetItem now live in ui/BarButton (re-exported here). */
 
 export function EndDateSheet({
   open,

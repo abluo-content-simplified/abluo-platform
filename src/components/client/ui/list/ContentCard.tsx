@@ -28,6 +28,7 @@ import { MediaFrame } from './cells'
  */
 export function ContentCard({
   media,
+  mediaContent,
   title,
   subtitle,
   href,
@@ -37,6 +38,13 @@ export function ContentCard({
   children,
 }: {
   media: { src?: string | null; alt?: string; focal?: { x: number; y: number } | null }
+  /**
+   * Custom content for the 16:10 media box instead of the single image, e.g.
+   * `<ThumbStrip srcs={…} className="absolute inset-0 size-full" />` for a
+   * collection. Fill the box (absolute inset-0). `media.src` still decides the
+   * top scrim behind the overlay chips.
+   */
+  mediaContent?: ReactNode
   title: ReactNode
   /** Muted line(s) under the title (max 2). */
   subtitle?: ReactNode
@@ -64,7 +72,7 @@ export function ContentCard({
       } ${selection?.checked ? 'border-action ring-1 ring-action' : 'border-border'}`}
     >
       <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden">
-        <MediaFrame src={media.src} alt={media.alt} focal={media.focal} className="absolute inset-0 size-full" />
+        {mediaContent ?? <MediaFrame src={media.src} alt={media.alt} focal={media.focal} className="absolute inset-0 size-full" />}
         {/* A soft top scrim so the overlay chips read on any photo. */}
         {media.src ? <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-linear-to-b from-scrim to-transparent" /> : null}
       </div>

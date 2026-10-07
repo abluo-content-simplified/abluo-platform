@@ -5,15 +5,25 @@ import { GALLERY_WRITE_PERMISSION, canDeleteGalleries, listGalleries, type Galle
 import { getGalleryStatuses, type GalleryStatus } from '@/lib/api/gallery-status'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { GalleryList } from '@/components/client/gallery/GalleryList'
+import { PageShell } from '@/components/client/ui/PageShell'
 
 /**
- * Client dashboard — Galleries (Gallery module). The project's galleries with
- * cover, photo count, where each is shown and whether it has unpublished
- * changes. Reads through `listGalleries` (gallery.gallery.read, project-scoped);
- * a project without the Gallery module gets a 404 like any unknown page.
+ * Client dashboard — Galleries (Gallery module), in the shared page frame: a
+ * grid of gallery cards (each with a strip of its photos) or a table, with
+ * the shared list toolbar. Reads through `listGalleries` (gallery.gallery.read,
+ * project-scoped); a project without the Gallery module gets a 404 like any
+ * unknown page. Filters live in the query string.
  */
-export default async function GalleriesPage({ params }: { params: Promise<{ tenant: string }> }) {
+export default async function GalleriesPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ tenant: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const { tenant: projectSlug } = await params
+  const query = new URLSearchParams()
+  for (const [k, v] of Object.entries(await searchParams)) if (typeof v === 'string') query.set(k, v)
   const ctx = await getTenantAuthorizationContext()
   if (!ctx) redirect(`/login?next=/${projectSlug}/galleries`)
   const grant = resolveProjectGrant(ctx.projects, projectSlug)
@@ -31,12 +41,15 @@ export default async function GalleriesPage({ params }: { params: Promise<{ tena
   }
 
   return (
-    <GalleryList
-      projectSlug={projectSlug}
-      galleries={galleries}
-      statuses={statuses}
-      canWrite={grant.permissions.includes(GALLERY_WRITE_PERMISSION)}
-      canDelete={canDeleteGalleries(grant)}
-    />
+    <PageShell>
+      <GalleryList
+        projectSlug={projectSlug}
+        galleries={galleries}
+        statuses={statuses}
+        canWrite={grant.permissions.includes(GALLERY_WRITE_PERMISSION)}
+        canDelete={canDeleteGalleries(grant)}
+        initialQuery={query.toString()}
+      />
+    </PageShell>
   )
 }

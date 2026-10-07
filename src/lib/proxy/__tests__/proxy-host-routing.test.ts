@@ -401,7 +401,7 @@ const GATED_PATHS: readonly string[] = [
   // are redirected to these first — see LOCALE_LESS_CLIENT_PATHS below)
   '/en/account', '/it/account',
   // (client) route group — project-scoped, /{locale}/{projectSlug}/{segment}
-  '/en/livener/leads', '/it/studiomartegani/analytics', '/de/hoffmann/posts',
+  '/en/livener/submissions', '/it/studiomartegani/galleries', '/de/hoffmann/posts',
   // Sanity Studio
   '/studio', '/studio/structure',
 ]

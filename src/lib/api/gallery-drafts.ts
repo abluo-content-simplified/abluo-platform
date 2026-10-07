@@ -13,9 +13,10 @@
  *   2. Ids must be safe document ids; documents are re-read before every
  *      mutation and must be `gallery`s of the grant's project — anything else
  *      is "not_found", so ids can't be probed.
- *   3. Patch allowlist (`title.<loc>`, `description.<loc>`, `items`), site
- *      languages only, length/count limits; items are REBUILT server-side and
- *      every photo must be a `mediaAsset` of this project.
+ *   3. Patch allowlist (`title.<loc>`, `description.<loc>`, `items`, `tags`,
+ *      `mainImage`), site languages only, length/count limits; items are
+ *      REBUILT server-side and every photo must be a `mediaAsset` of this
+ *      project; `mainImage` must be one of the gallery's own photos.
  *   4. `assertSingleSanityProject` right before every mutation; revision
  *      guards (`ifRevisionId` / transaction `ifRevisionID`) → "conflict".
  *   5. Opaque error codes (GalleryErrorCode).
@@ -219,13 +220,33 @@ export type GalleryListItem = {
   title: string
   internalName: string
   count: number
+  /** Square thumbnail of the lead photo (the main image, else the first photo). */
   coverThumb: string | null
+  /** Up to GALLERY_STRIP_SIZE square thumbnails: the lead photo first (larger crop), then the next photos in order. */
+  thumbs: string[]
+  /** The chosen main image (asset id) when it is one of the gallery's photos, else null (= first photo). */
+  mainImage: string | null
   tags: string[]
   /** Last change (ISO), for sorting. */
   updatedAt: string
+  /** When the gallery was first created (ISO; the published version's when there is one). */
+  createdAt: string
   hasDraft: boolean
   isPublished: boolean
   usedIn: GalleryUsage[]
+}
+
+/** Photos per gallery in the list's thumbnail strip (lead + 4). */
+export const GALLERY_STRIP_SIZE = 5
+
+/**
+ * The lead photo first (the main image when it is one of the photos, else the
+ * first photo), then the other photos in gallery order, at most `size`.
+ */
+export function galleryStrip(refs: readonly string[], main: string | null | undefined, size = GALLERY_STRIP_SIZE): string[] {
+  const lead = main && refs.includes(main) ? main : refs[0]
+  if (!lead) return []
+  return [lead, ...refs.filter((r) => r !== lead)].slice(0, size)
 }
 
 /** This project's galleries, most recently changed first. Read permission. */
@@ -239,25 +260,31 @@ export async function listGalleries(
   const site = await readSite(client, grant.projectSlug)
   const rows = await client.fetch<Array<{
     _id: string
+    _createdAt?: string
     _updatedAt?: string
     title?: unknown
     internalName?: unknown
     tags?: unknown
     count?: number | null
-    first?: string | null
+    refs?: unknown
+    main?: string | null
   }> | null>(
     `*[_type == "gallery" && projectSlug == $projectSlug && !(_id in path("versions.**"))]
-      | order(_updatedAt desc){ _id, _updatedAt, title, internalName, tags, "count": count(items), "first": items[0].mediaAsset._ref }`,
+      | order(_updatedAt desc){ _id, _createdAt, _updatedAt, title, internalName, tags, "count": count(items),
+        "refs": items[0...${GALLERY_STRIP_SIZE}].mediaAsset._ref,
+        "main": select(mainImage._ref in items[].mediaAsset._ref => mainImage._ref) }`,
     { projectSlug: grant.projectSlug },
     { perspective: 'raw' }
   )
   // One entry per gallery: the draft's state when there is one.
-  const byId = new Map<string, { row: NonNullable<typeof rows>[number]; hasDraft: boolean; isPublished: boolean }>()
+  const byId = new Map<string, { row: NonNullable<typeof rows>[number]; hasDraft: boolean; isPublished: boolean; createdAt: string }>()
   for (const row of rows ?? []) {
     const isDraft = row._id.startsWith('drafts.')
     const id = isDraft ? row._id.slice('drafts.'.length) : row._id
     if (!isGalleryId(id)) continue
-    const entry = byId.get(id) ?? { row, hasDraft: false, isPublished: false }
+    const entry = byId.get(id) ?? { row, hasDraft: false, isPublished: false, createdAt: '' }
+    // The earliest creation of the pair (a published gallery's draft is younger than the gallery).
+    if (row._createdAt && (!entry.createdAt || row._createdAt < entry.createdAt)) entry.createdAt = row._createdAt
     if (isDraft) {
       entry.row = row
       entry.hasDraft = true
@@ -268,7 +295,9 @@ export async function listGalleries(
     byId.set(id, entry)
   }
   const ids = [...byId.keys()]
-  const firstIds = [...new Set([...byId.values()].map((e) => e.row.first).filter((f): f is string => !!f))]
+  const refsOf = (row: { refs?: unknown }) => (Array.isArray(row.refs) ? row.refs.filter((r): r is string => typeof r === 'string') : [])
+  const strips = new Map([...byId].map(([id, e]) => [id, galleryStrip(refsOf(e.row), typeof e.row.main === 'string' ? e.row.main : null)]))
+  const firstIds = [...new Set([...strips.values()].flat())]
   const [assets, used] = await Promise.all([
     firstIds.length
       ? client.fetch<Array<{ _id: string; url?: string | null; hotspot?: { x?: number; y?: number } | null }> | null>(
@@ -280,16 +309,26 @@ export async function listGalleries(
   ])
   const assetById = new Map((assets ?? []).map((a) => [a._id, a]))
   return ids.map((id) => {
-    const { row, hasDraft, isPublished } = byId.get(id)!
-    const a = row.first ? assetById.get(row.first) : undefined
+    const { row, hasDraft, isPublished, createdAt } = byId.get(id)!
+    const strip = strips.get(id) ?? []
+    const a = strip[0] ? assetById.get(strip[0]) : undefined
+    const thumbs = strip
+      .map((ref, n) => {
+        const x = assetById.get(ref)
+        return x ? coverThumbUrl(x.url, x.hotspot, n === 0 ? 384 : 160) : null
+      })
+      .filter((u): u is string => !!u)
     return {
       id,
       title: pick(row.title, site.defaultLocale),
       internalName: typeof row.internalName === 'string' ? row.internalName : '',
       count: typeof row.count === 'number' ? row.count : 0,
       coverThumb: a ? coverThumbUrl(a.url, a.hotspot, 192) : null,
+      thumbs,
+      mainImage: typeof row.main === 'string' ? row.main : null,
       tags: Array.isArray(row.tags) ? row.tags.filter((t): t is string => typeof t === 'string') : [],
       updatedAt: row._updatedAt ?? '',
+      createdAt: createdAt || row._updatedAt || '',
       hasDraft,
       isPublished,
       usedIn: used.get(id) ?? [],
@@ -298,6 +337,17 @@ export async function listGalleries(
 }
 
 // ── Read one ──────────────────────────────────────────────────────────────────
+
+/** The asset id a gallery document's `mainImage` points at, or null. */
+function mainImageRef(doc: Doc | undefined): string | null {
+  const ref = (doc?.mainImage as { _ref?: unknown } | null | undefined)?._ref
+  return typeof ref === 'string' && ASSET_ID.test(ref) ? ref : null
+}
+
+/** The asset ids of a gallery document's items. */
+function itemRefs(items: unknown): string[] {
+  return (Array.isArray(items) ? (items as RawItem[]) : []).map((i) => i?.mediaAsset?._ref).filter((r): r is string => typeof r === 'string')
+}
 
 export type FocalPoint = { x: number; y: number }
 
@@ -333,6 +383,8 @@ export type GallerySnapshot = {
   description: Record<string, string>
   tags: string[]
   items: GalleryPhoto[]
+  /** The chosen main image (asset id) — always one of `items`; null = none chosen (the first photo leads). */
+  mainImage: string | null
   live: { rev: string } | null
   usedIn: GalleryUsage[]
   site: Site
@@ -370,7 +422,7 @@ export function photoFromAsset(a: AssetRow | undefined, assetId: string, key: st
     assetId,
     rev: typeof a?._rev === 'string' ? a._rev : '',
     url,
-    thumbUrl: url ? coverThumbUrl(url, focal, 320) : null,
+    thumbUrl: url ? coverThumbUrl(url, focal, 640) : null,
     name: typeof a?.name === 'string' ? a.name.trim() : '',
     alt: typeof a?.altText === 'string' ? (a.altText.trim() ? { en: a.altText } : {}) : localized(a?.altText),
     title: localized(a?.title),
@@ -409,6 +461,7 @@ export async function getGalleryDraft(
     usage(client, grant.projectSlug, [id], site.defaultLocale),
   ])
   const byId = new Map((assets ?? []).map((a) => [a._id, a]))
+  const main = mainImageRef(doc)
   return {
     id,
     rev: draft?._rev ?? '',
@@ -424,6 +477,7 @@ export async function getGalleryDraft(
         const key = typeof i._key === 'string' && KEY.test(i._key) ? i._key : `item-${n}`
         return photoFromAsset(byId.get(assetId), assetId, key, i)
       }),
+    mainImage: main && assetIds.includes(main) ? main : null,
     live: published?._rev ? { rev: published._rev } : null,
     usedIn: used.get(id) ?? [],
     site,
@@ -591,7 +645,7 @@ export async function patchGalleryDraft(
   // Field allowlist before any read.
   for (const path of Object.keys(input.set)) {
     const [field, locale, ...rest] = path.split('.')
-    const ok = path === 'items' || path === 'tags' || (field in LOCALIZED_FIELDS && !!locale && rest.length === 0)
+    const ok = path === 'items' || path === 'tags' || path === 'mainImage' || (field in LOCALIZED_FIELDS && !!locale && rest.length === 0)
     if (!ok) throw new GalleryError('invalid_field', `Field "${path}" cannot be changed here.`)
   }
 
@@ -620,6 +674,7 @@ export async function patchGalleryDraft(
       keys = items.map((i) => i._key as string)
       continue
     }
+    if (path === 'mainImage') continue // after the loop: it is checked against the final photos
     const [field, locale] = path.split('.')
     if (!locales.has(locale)) throw new GalleryError('invalid_field', `Language "${locale}" is not on this site.`)
     if (typeof value !== 'string' || value.length > LOCALIZED_FIELDS[field]) {
@@ -629,6 +684,21 @@ export async function patchGalleryDraft(
     const t = value.trim()
     if (t) set[path] = t
     else unset.push(path)
+  }
+
+  // Main image: one of the gallery's own photos (the new list when this patch
+  // changes the photos), or null to clear. A photo taken out of the gallery
+  // stops being its main image.
+  const photos = set.items ? itemRefs(set.items) : itemRefs(draft.items)
+  if ('mainImage' in input.set) {
+    const v = input.set.mainImage
+    if (v === null || v === '') unset.push('mainImage')
+    else if (typeof v !== 'string' || !ASSET_ID.test(v) || !photos.includes(v)) {
+      throw new GalleryError('invalid_value', 'The main image must be one of the gallery\'s photos.')
+    } else set.mainImage = { _type: 'reference', _ref: v, _weak: true }
+  } else if (set.items) {
+    const current = mainImageRef(draft)
+    if (current && !photos.includes(current)) unset.push('mainImage')
   }
 
   const result = (await commit(client, grant.projectSlug, () => {

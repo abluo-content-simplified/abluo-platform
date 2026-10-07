@@ -143,3 +143,11 @@ export function isProjectGrantable(id: string): boolean {
   const def = BY_ID.get(id)
   return Boolean(def && def.grantable && def.defaults.project)
 }
+
+/**
+ * Message key for a grantable permission's label. Message keys cannot contain
+ * dots (next-intl nests on them), so `forms.submission.read` → `formsSubmissionRead`.
+ */
+export function permissionMessageKey(id: string): string {
+  return id.replace(/\.([a-z])/g, (_, c: string) => c.toUpperCase())
+}

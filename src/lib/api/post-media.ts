@@ -141,6 +141,12 @@ export type ProjectMediaItem = {
   title: Record<string, string>
   caption: Record<string, string>
   tags: string[]
+  /** When the photo was added to the library (ISO). Optional: older callers and fixtures may omit it. */
+  createdAt?: string
+  /** File size in bytes (after optimisation), when Sanity knows it. */
+  bytes?: number
+  /** The uploaded file's name, when Sanity knows it. */
+  filename?: string
 }
 
 export type PostCover = { assetId: string; url: string; alt: Record<string, string>; focal: FocalPoint | null }
@@ -379,6 +385,8 @@ export async function listProjectMedia(
       url?: string | null
       width?: number | null
       height?: number | null
+      size?: number | null
+      filename?: string | null
     }>
   >(
     `*[_type == "mediaAsset" && projectSlug == $projectSlug && defined(image.asset) && !(_id in path("drafts.**"))]
@@ -388,7 +396,9 @@ export async function listProjectMedia(
         "hotspot": image.hotspot,
         "url": image.asset->url,
         "width": image.asset->metadata.dimensions.width,
-        "height": image.asset->metadata.dimensions.height
+        "height": image.asset->metadata.dimensions.height,
+        "size": image.asset->size,
+        "filename": image.asset->originalFilename
       }`
   )
   const all = (Array.isArray(rows) ? rows : []).filter((r) => typeof r.url === 'string' && r.url)
@@ -437,6 +447,9 @@ export async function listProjectMedia(
       title: toLocalized(r.title),
       caption: toLocalized(r.caption),
       tags: tagsOf(r),
+      ...(typeof r._createdAt === 'string' && r._createdAt ? { createdAt: r._createdAt } : {}),
+      ...(typeof r.size === 'number' && Number.isFinite(r.size) ? { bytes: r.size } : {}),
+      ...(typeof r.filename === 'string' && r.filename.trim() ? { filename: r.filename.trim() } : {}),
     })),
     nextCursor: last ? `${last._createdAt}|${last._id}` : null,
     tags,

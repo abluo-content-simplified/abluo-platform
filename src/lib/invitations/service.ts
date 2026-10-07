@@ -61,7 +61,7 @@ export function invitationOrigin(requestOrigin: string | null | undefined): stri
 }
 
 /** Single-line display text (names go into the From header and subject). */
-function oneLine(s: string, max = 80): string {
+export function oneLine(s: string, max = 80): string {
   return s.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max)
 }
 
@@ -351,7 +351,7 @@ export async function registerAndAccept(
 
 // ── Internals ───────────────────────────────────────────────────────────────
 
-async function loadPlace(admin: SupabaseClient, target: InvitationTarget): Promise<{ name: string; tenantId: string; slug?: string } | null> {
+export async function loadPlace(admin: SupabaseClient, target: InvitationTarget): Promise<{ name: string; tenantId: string; slug?: string } | null> {
   if (target.scope === 'tenant') {
     const { data } = await admin.from('tenants').select('id, display_name').eq('id', target.tenantId).maybeSingle()
     return data ? { name: (data.display_name as string) ?? '', tenantId: data.id as string } : null
@@ -360,7 +360,7 @@ async function loadPlace(admin: SupabaseClient, target: InvitationTarget): Promi
   return data ? { name: (data.name as string) ?? '', tenantId: data.tenant_id as string, slug: data.slug as string } : null
 }
 
-async function loadPerson(admin: SupabaseClient, userId: string): Promise<{ name: string; email: string | null }> {
+export async function loadPerson(admin: SupabaseClient, userId: string): Promise<{ name: string; email: string | null }> {
   const [{ data: profile }, { data: auth }] = await Promise.all([
     admin.from('profiles').select('full_name').eq('id', userId).maybeSingle(),
     admin.auth.admin.getUserById(userId),
@@ -422,6 +422,16 @@ async function applyMembership(admin: SupabaseClient, row: InvitationRow, userId
     const role = (RANK[row.role] ?? 0) > (RANK[existing.role as string] ?? 0) ? row.role : existing.role
     const merged = [...new Set([...((existing.extra_permissions as string[]) ?? []), ...extras])]
     ;({ error } = await admin.from('project_members').update({ role, extra_permissions: merged }).eq('id', existing.id))
+  }
+  if (!error) {
+    // Re-joining a site closes an open archive record (migration 031), so the
+    // People list shows them as active, not archived.
+    await admin
+      .from('project_member_archive')
+      .update({ restored_at: new Date().toISOString(), restored_by: row.invited_by ?? null })
+      .eq('project_id', row.project_id!)
+      .eq('user_id', userId)
+      .is('restored_at', null)
   }
   return { ok: !error, projectSlug: (project?.slug as string) ?? undefined }
 }

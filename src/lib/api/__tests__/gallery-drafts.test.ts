@@ -111,8 +111,14 @@ function fake(opts: { docs?: Docs; usage?: Array<{ _id: string; _type: string; t
         _id: d._id,
         title: d.title,
         internalName: d.internalName,
+        _createdAt: d._createdAt,
         count: (d.items as unknown[]).length,
-        first: ((d.items as Array<{ mediaAsset: { _ref: string } }>)[0] ?? null)?.mediaAsset._ref ?? null,
+        refs: (d.items as Array<{ mediaAsset: { _ref: string } }>).slice(0, 5).map((i) => i.mediaAsset._ref),
+        // GROQ: select(mainImage._ref in items[].mediaAsset._ref => mainImage._ref)
+        main: (() => {
+          const ref = (d.mainImage as { _ref?: string } | undefined)?._ref
+          return ref && (d.items as Array<{ mediaAsset: { _ref: string } }>).some((i) => i.mediaAsset._ref === ref) ? ref : null
+        })(),
       }))
     }
     if (q.includes('_type == "mediaAsset"')) {
@@ -212,6 +218,42 @@ describe('listGalleries', () => {
     })
     expect(g.coverThumb).toContain('crop=focalpoint')
     expect(g.coverThumb).toContain('fp-x=0.200')
+    // No main image: the first photo leads the strip, then the others in order.
+    expect(g.mainImage).toBeNull()
+    expect(g.thumbs).toHaveLength(2)
+    expect(g.thumbs[0]).toContain('/m1.jpg?w=384&h=384')
+    expect(g.thumbs[1]).toContain('/m2.jpg?w=160&h=160')
+  })
+
+  it('the main image leads the strip and the cover; created is the earliest of the pair', async () => {
+    const docs = baseDocs()
+    docs[G]._createdAt = '2026-01-01T09:00:00Z'
+    docs[`drafts.${G}`]._createdAt = '2026-10-01T09:00:00Z'
+    docs[`drafts.${G}`].mainImage = { _type: 'reference', _ref: 'm2', _weak: true }
+    const [g] = await listGalleries(ctx(grant()), 'project-a', fake({ docs }).deps)
+    expect(g.mainImage).toBe('m2')
+    expect(g.thumbs[0]).toContain('/m2.jpg?w=384')
+    expect(g.thumbs[1]).toContain('/m1.jpg?w=160')
+    expect(g.coverThumb).toContain('/m2.jpg')
+    expect(g.createdAt).toBe('2026-01-01T09:00:00Z')
+  })
+
+  it('ignores a main image that is not one of the photos', async () => {
+    const docs = baseDocs()
+    docs[`drafts.${G}`].mainImage = { _type: 'reference', _ref: 'm3' }
+    const [g] = await listGalleries(ctx(grant()), 'project-a', fake({ docs }).deps)
+    expect(g.mainImage).toBeNull()
+    expect(g.thumbs[0]).toContain('/m1.jpg')
+  })
+})
+
+describe('galleryStrip', () => {
+  it('lead first (main when it is a photo), then the rest in order, capped', async () => {
+    const { galleryStrip } = await import('../gallery-drafts')
+    expect(galleryStrip(['a', 'b', 'c'], 'c')).toEqual(['c', 'a', 'b'])
+    expect(galleryStrip(['a', 'b', 'c'], 'x')).toEqual(['a', 'b', 'c'])
+    expect(galleryStrip(['a', 'b', 'c', 'd', 'e', 'f'], null)).toEqual(['a', 'b', 'c', 'd', 'e'])
+    expect(galleryStrip([], 'a')).toEqual([])
   })
 })
 
@@ -224,6 +266,15 @@ describe('getGalleryDraft', () => {
     expect(s.items[0]).toMatchObject({ alt: { it: 'Sala' }, focal: { x: 0.2, y: 0.3 }, tags: ['studio'], titleOverride: null, rev: 'r-m1' })
     expect(s.items[1].titleOverride).toEqual({ it: 'Solo qui' })
     expect(s.site).toEqual({ defaultLocale: 'it', locales: ['it', 'de'] })
+  })
+
+  it('returns the main image only when it is one of the photos', async () => {
+    const docs = baseDocs()
+    docs[`drafts.${G}`].mainImage = { _type: 'reference', _ref: 'm2', _weak: true }
+    expect((await getGalleryDraft(ctx(grant()), 'project-a', G, fake({ docs }).deps)).mainImage).toBe('m2')
+    docs[`drafts.${G}`].mainImage = { _type: 'reference', _ref: 'm3' }
+    expect((await getGalleryDraft(ctx(grant()), 'project-a', G, fake({ docs }).deps)).mainImage).toBeNull()
+    expect((await getGalleryDraft(ctx(grant()), 'project-a', G, fake().deps)).mainImage).toBeNull()
   })
 
   it('falls back to the published version when there is no draft', async () => {
@@ -300,6 +351,53 @@ describe('patchGalleryDraft', () => {
     const f = fake()
     await expect(patch(f, set)).rejects.toMatchObject({ code: 'invalid_field' })
     expect(f.client.getDocument).not.toHaveBeenCalled()
+  })
+
+  it('sets the main image to one of its own photos (weak reference) and clears it', async () => {
+    const f = fake()
+    expect(await patch(f, { mainImage: 'm2' })).toEqual({ rev: 'd2' })
+    expect(f.patchOps).toEqual([
+      ['ifRevisionId', 'd1'],
+      ['set', { mainImage: { _type: 'reference', _ref: 'm2', _weak: true } }],
+    ])
+    const g = fake()
+    await patch(g, { mainImage: null })
+    expect(g.patchOps).toEqual([
+      ['ifRevisionId', 'd1'],
+      ['unset', ['mainImage']],
+    ])
+  })
+
+  it.each([
+    ['a photo of this project that is not in the gallery', 'm3'],
+    ["another project's photo", 'foreign'],
+    ['an unsafe id', '../x'],
+    ['not text', 42],
+    ['an object', { _ref: 'm1' }],
+  ])('refuses as main image %s, without writing', async (_l, value) => {
+    const f = fake()
+    await expect(patch(f, { mainImage: value })).rejects.toMatchObject({ code: 'invalid_value' })
+    expect(f.writes).toEqual([])
+  })
+
+  it('checks the main image against the new photos when both change together', async () => {
+    const ok = fake()
+    await patch(ok, { items: [{ key: 'a', assetId: 'm1' }, { key: 'c', assetId: 'm3' }], mainImage: 'm3' })
+    expect(ok.patchOps.find(([op]) => op === 'set')?.[1]).toMatchObject({ mainImage: { _ref: 'm3' } })
+    const bad = fake()
+    await expect(patch(bad, { items: [{ key: 'a', assetId: 'm1' }], mainImage: 'm2' })).rejects.toMatchObject({ code: 'invalid_value' })
+    expect(bad.writes).toEqual([])
+  })
+
+  it('a photo taken out of the gallery stops being its main image', async () => {
+    const docs = baseDocs()
+    docs[`drafts.${G}`].mainImage = { _type: 'reference', _ref: 'm2', _weak: true }
+    const f = fake({ docs })
+    await patch(f, { items: [{ key: 'a', assetId: 'm1' }] })
+    expect(f.patchOps).toContainEqual(['unset', ['mainImage']])
+    const kept = fake({ docs })
+    await patch(kept, { items: [{ key: 'b', assetId: 'm2' }] })
+    expect(kept.patchOps.some(([op]) => op === 'unset')).toBe(false)
   })
 
   it('refuses a language the site does not have, and over-long text', async () => {

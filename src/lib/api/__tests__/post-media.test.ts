@@ -315,6 +315,7 @@ describe('listProjectMedia', () => {
       title: {},
       caption: {},
       tags: ['studio', 'esterni'],
+      createdAt: '2026-10-03T10:00:00Z',
     })
     expect(r.items[1].focal).toBeNull()
     expect(r.items[1].alt).toEqual({ en: 'legacy text' })

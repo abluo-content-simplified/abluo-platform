@@ -41,7 +41,8 @@
       "home": "Start",
       "more": "Mehr",
       "add": "Inhalt hinzufügen",
-      "media": "Medien"
+      "media": "Medien",
+      "people": "Personen"
     },
     "shell": {
       "brandTagline": "Dashboard",
@@ -249,7 +250,7 @@
       }
     },
     "submissions": {
-      "title": "Einsendungen",
+      "title": "Formulare",
       "empty": "Noch keine Einsendungen.",
       "moduleNotInstalled": "Das Formulare-Modul ist für dieses Projekt nicht aktiviert.",
       "anonymous": "Anonym",
@@ -259,23 +260,36 @@
         "form": "Formular",
         "subject": "Betreff",
         "status": "Status",
-        "received": "Erhalten"
+        "received": "Erhalten",
+        "actions": "Aktionen"
       },
       "status": {
         "new": "Neu",
-        "processed": "Bearbeitet",
+        "processed": "Erledigt",
         "archived": "Archiviert"
       },
       "filters": {
         "allForms": "Alle Formulare",
         "allStatuses": "Alle Status",
-        "search": "Name oder E-Mail suchen…",
+        "search": "Name, E-Mail oder Nachricht suchen…",
         "from": "Von",
         "to": "Bis",
         "groupBy": "Zusammenfassung nach",
         "groupNone": "Keine",
         "groupForm": "Formular",
-        "groupStatus": "Status"
+        "groupStatus": "Status",
+        "searchLabel": "Anfragen durchsuchen",
+        "filters": "Filter",
+        "form": "Formular",
+        "status": "Status",
+        "sentenceNoun": "Anfragen",
+        "dateField": "Welches Datum",
+        "field_received": "eingegangen",
+        "date": "Datum",
+        "dateChip": "Eingegangen {range}",
+        "showing": "{shown} von {total} Anfragen",
+        "clear": "Filter zurücksetzen",
+        "noMatch": "Keine Anfragen passen zu den Filtern."
       },
       "exportCsv": "CSV exportieren",
       "count": "{count} Leads",
@@ -307,15 +321,20 @@
       "cancel": "Abbrechen",
       "deleteTitle": "{count, plural, one {# Anfrage löschen?} other {# Anfragen löschen?}}",
       "deleteBody": "Das kann nicht rückgängig gemacht werden.",
-      "batchError": "Das hat nicht geklappt. Bitte versuche es erneut."
-    },
-    "leads": {
-      "title": "Anfragen",
-      "comingSoon": "Die Verwaltung von Anfragen kommt bald."
-    },
-    "analytics": {
-      "title": "Statistiken",
-      "comingSoon": "Statistiken kommen bald."
+      "batchError": "Das hat nicht geklappt. Bitte versuche es erneut.",
+      "menu": "Aktionen für {name}",
+      "open": "Öffnen",
+      "close": "Schließen",
+      "markArchived": "Archivieren",
+      "exportOne": "Exportieren (CSV)",
+      "clearSelection": "Aufheben",
+      "selection": "Ausgewählte Anfragen",
+      "done": {
+        "processed": "{count, plural, one {# Anfrage als erledigt markiert.} other {# Anfragen als erledigt markiert.}}",
+        "new": "{count, plural, one {# Anfrage als neu markiert.} other {# Anfragen als neu markiert.}}",
+        "archived": "{count, plural, one {# Anfrage archiviert.} other {# Anfragen archiviert.}}",
+        "deleted": "{count, plural, one {# Anfrage gelöscht.} other {# Anfragen gelöscht.}}"
+      }
     },
     "theme": {
       "label": "Darstellung",
@@ -961,14 +980,34 @@
           "usageUnused": "Nicht verwendet",
           "showing": "{shown} von {total} Galerien",
           "clear": "Filter zurücksetzen",
-          "noMatch": "Keine Galerie passt zu diesen Filtern."
+          "noMatch": "Keine Galerie passt zu diesen Filtern.",
+          "filters": "Filter",
+          "status": "Status",
+          "statusAll": "Alle Status",
+          "usageAny": "Verwendet oder nicht",
+          "sort": "Sortieren",
+          "sort_updated_desc": "Zuletzt geändert",
+          "sort_updated_asc": "Am längsten nicht geändert",
+          "sort_created_desc": "Neueste",
+          "sort_created_asc": "Älteste",
+          "sort_title_asc": "Titel A–Z",
+          "sort_title_desc": "Titel Z–A",
+          "sort_photos_desc": "Meiste Fotos",
+          "sort_photos_asc": "Wenigste Fotos",
+          "date": "Datum",
+          "dateField": "Welches Datum",
+          "sentenceNoun": "Galerien",
+          "sentenceField_updated": "geändert",
+          "sentenceField_created": "erstellt",
+          "dateChip": "{field} · {range}"
         },
         "card": {
           "menu": "Mehr für „{title}“",
           "edit": "Bearbeiten",
           "preview": "Vorschau",
           "delete": "Löschen",
-          "previewFailed": "Die Vorschau konnte nicht geöffnet werden. Bitte versuche es erneut."
+          "previewFailed": "Die Vorschau konnte nicht geöffnet werden. Bitte versuche es erneut.",
+          "open": "Öffnen"
         },
         "tags": {
           "label": "Tags",
@@ -978,6 +1017,28 @@
           "remove": "Tag {tag} entfernen",
           "suggested": "Tags, die du schon nutzt",
           "full": "Bis zu {max} Tags"
+        },
+        "view": {
+          "label": "Ansicht",
+          "list": "Liste",
+          "grid": "Raster"
+        },
+        "state": {
+          "live": "Veröffentlicht",
+          "changes": "Nicht veröffentlichte Änderungen",
+          "draft": "Noch nicht veröffentlicht"
+        },
+        "mainBadge": "Hauptbild",
+        "columns": {
+          "preview": "Fotos der Galerie",
+          "title": "Titel",
+          "status": "Status",
+          "photos": "Fotos",
+          "usedOn": "Verwendet auf",
+          "updated": "Geändert",
+          "created": "Erstellt",
+          "actions": "Aktionen",
+          "selectAll": "Alle angezeigten auswählen"
         }
       },
       "publish": {
@@ -1093,7 +1154,8 @@
         "toolbar": "Ausgewählte Galerien",
         "bar": {
           "addTags": "Tags hinzufügen",
-          "delete": "Löschen"
+          "delete": "Löschen",
+          "clear": "Aufheben"
         },
         "tagsSheet": {
           "title": "Tags hinzufügen",
@@ -1111,7 +1173,33 @@
         },
         "skippedInUse": "{count, plural, one {# Galerie wurde übersprungen, weil sie auf deiner Website angezeigt wird.} other {# Galerien wurden übersprungen, weil sie auf deiner Website angezeigt werden.}}",
         "someFailed": "{count, plural, one {# Galerie konnte nicht geändert werden.} other {# Galerien konnten nicht geändert werden.}}",
-        "failed": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+        "failed": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+        "selectAll": "Alle auswählen"
+      },
+      "detail": {
+        "back": "Galerien",
+        "edit": "Galerie bearbeiten",
+        "preview": "Vorschau",
+        "previewFailed": "Die Vorschau ließ sich nicht öffnen. Bitte versuche es noch einmal.",
+        "saved": "Gespeichert. Deine Website zeigt jetzt diese Version.",
+        "changesNotice": "Diese Galerie hat Änderungen, die noch nicht veröffentlicht sind.",
+        "draftNotice": "Diese Galerie ist noch nicht veröffentlicht.",
+        "photosTitle": "Fotos",
+        "editPhotos": "Fotos hinzufügen oder ordnen",
+        "describe": "Fotos beschreiben",
+        "noPhotos": "Noch keine Fotos.",
+        "photoMenu": "Mehr für {name}",
+        "describePhoto": "Beschreibung bearbeiten",
+        "tags": "Tags",
+        "main": {
+          "set": "Als Hauptbild festlegen",
+          "unset": "Nicht mehr als Hauptbild",
+          "auto": "Kein Hauptbild gewählt – das erste Foto steht für diese Galerie.",
+          "chosen": "Das Hauptbild steht in deinen Listen für diese Galerie.",
+          "saved": "Hauptbild geändert. Speichere, um es zu veröffentlichen.",
+          "cleared": "Hauptbild entfernt. Speichere, um es zu veröffentlichen.",
+          "failed": "Das Hauptbild ließ sich nicht ändern. Bitte versuche es noch einmal."
+        }
       }
     },
     "media": {
@@ -1166,7 +1254,8 @@
         "more": "Mehr anzeigen",
         "tagSummary": "{count, plural, one {# Schlagwort} other {# Schlagwörter}}",
         "clearAll": "Alle entfernen",
-        "usage": "{count, plural, =0 {Nicht verwendet} one {Einmal verwendet} other {# Mal verwendet}}"
+        "usage": "{count, plural, =0 {Nicht verwendet} one {Einmal verwendet} other {# Mal verwendet}}",
+        "retry": "Erneut versuchen"
       },
       "sheet": {
         "title": "Foto bearbeiten",
@@ -1212,13 +1301,67 @@
         "clear": "Leeren",
         "limit": "Du kannst höchstens {max} Fotos auf einmal auswählen.",
         "saved": "{count, plural, =0 {Nichts geändert} one {Bei # Foto gespeichert} other {Bei # Fotos gespeichert}}",
-        "skipped": "{count, plural, one {# Foto konnte nicht geändert werden} other {# Fotos konnten nicht geändert werden}}"
+        "skipped": "{count, plural, one {# Foto konnte nicht geändert werden} other {# Fotos konnten nicht geändert werden}}",
+        "all": "Alle auswählen"
       },
       "size": {
         "label": "Fotogröße",
         "small": "Klein",
         "medium": "Mittel",
         "large": "Groß"
+      },
+      "view": {
+        "label": "Ansicht",
+        "grid": "Raster",
+        "list": "Liste"
+      },
+      "filters": {
+        "filters": "Filter",
+        "search": "Fotos suchen",
+        "searchPlaceholder": "Nach Name, Beschreibung oder Tag suchen",
+        "tag": "Tag",
+        "tagAll": "Alle Tags",
+        "usage": "Verwendung",
+        "usage_all": "Verwendet oder nicht",
+        "usage_used": "Verwendet",
+        "usage_unused": "Nicht verwendet",
+        "description": "Beschreibung",
+        "description_all": "Mit oder ohne Beschreibung",
+        "description_missing": "Ohne Beschreibung",
+        "noun": "Fotos",
+        "date": "Datum",
+        "dateField": "Welches Datum",
+        "uploaded": "hochgeladen",
+        "dateChip": "Hochgeladen · {range}",
+        "showing": "{shown} von {total} Fotos",
+        "loadingMore": "weitere werden geladen…",
+        "clear": "Filter zurücksetzen",
+        "noMatch": "Keine Fotos passen zu diesen Filtern."
+      },
+      "columns": {
+        "image": "Foto",
+        "name": "Name",
+        "size": "Größe",
+        "uploaded": "Hochgeladen",
+        "tags": "Tags",
+        "usage": "Verwendet in",
+        "description": "Beschreibung",
+        "focal": "Fokuspunkt",
+        "actions": "Aktionen",
+        "selectAll": "Alle Fotos auswählen"
+      },
+      "pill": {
+        "described": "Vorhanden",
+        "missing": "Fehlt",
+        "focalSet": "Gesetzt",
+        "focalNone": "Nicht gesetzt"
+      },
+      "menu": {
+        "label": "Aktionen für {name}",
+        "edit": "Details bearbeiten",
+        "addTags": "Tags hinzufügen",
+        "rename": "Umbenennen",
+        "original": "Original öffnen"
       }
     },
     "photoWizard": {
@@ -1420,6 +1563,112 @@
         "applied": "Aktive Filter",
         "remove": "Filter entfernen: {label}"
       }
+    },
+    "people": {
+      "title": "Personen",
+      "invite": "Jemanden einladen",
+      "inviteTitle": "Jemanden einladen",
+      "email": "E-Mail",
+      "role": "Rolle",
+      "roles": {
+        "owner": "Inhaber",
+        "admin": "Website-Admin",
+        "editor": "Redakteur",
+        "member": "Mitglied"
+      },
+      "roleHelp": {
+        "admin": "Verwaltet die Website und ihre Personen",
+        "editor": "Schreibt und veröffentlicht"
+      },
+      "ownerNote": "Inhaber des gesamten Kontos",
+      "clientMemberNote": "Zugriff über das Kundenkonto",
+      "you": "du",
+      "access": "Zusätzlicher Zugriff",
+      "extras": {
+        "formsSubmissionRead": "Sieht Kontaktanfragen",
+        "formsSubmissionUpdate": "Verwaltet Kontaktanfragen"
+      },
+      "includedByRole": "Kontaktanfragen sind in dieser Rolle enthalten.",
+      "send": "Einladung senden",
+      "sending": "Wird gesendet…",
+      "sent": "Einladung an {email} gesendet.",
+      "sentNoEmail": "Einladung gespeichert, aber die E-Mail konnte nicht gesendet werden. Bitte später erneut versuchen.",
+      "cancelInvite": "Einladung zurückziehen",
+      "cancelled": "Einladung zurückgezogen.",
+      "edit": "Zugriff ändern",
+      "save": "Speichern",
+      "saved": "Gespeichert.",
+      "menu": "Optionen für {name}",
+      "empty": "Noch hat niemand sonst Zugriff.",
+      "errors": {
+        "invalid_email": "Diese E-Mail sieht nicht richtig aus.",
+        "invalid_role": "Wähle eine Rolle.",
+        "forbidden": "Diesen Zugriff kannst du nicht vergeben.",
+        "not_found": "Diese Person oder Einladung gibt es nicht mehr.",
+        "invalid": "Bitte prüfe deine Auswahl.",
+        "failed": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal.",
+        "too_soon": "Diese Einladung wurde gerade gesendet. Bitte warte ein paar Minuten, bevor du sie erneut sendest."
+      },
+      "details": "Details",
+      "resend": "Einladung erneut senden",
+      "resent": "Einladung erneut an {email} gesendet.",
+      "archive": "Archivieren",
+      "archived": "{name} ist archiviert und hat keinen Zugang mehr.",
+      "archiveConfirm": {
+        "title": "{name} archivieren?",
+        "body": "Der Zugang zu dieser Website endet sofort. Du kannst ihn später mit demselben Zugang wiederherstellen."
+      },
+      "restore": "Zugang wiederherstellen",
+      "restored": "{name} hat wieder Zugang.",
+      "status": {
+        "active": "Aktiv",
+        "invited": "Eingeladen",
+        "expired": "Abgelaufen",
+        "archived": "Archiviert"
+      },
+      "twoFactor": {
+        "on": "An",
+        "off": "Aus"
+      },
+      "columns": {
+        "avatar": "Bild",
+        "person": "Person",
+        "role": "Rolle",
+        "status": "Status",
+        "invited": "Eingeladen",
+        "joined": "Dabei seit",
+        "lastActive": "Zuletzt aktiv",
+        "twoFactor": "2 Schritte",
+        "actions": "Aktionen"
+      },
+      "detail": {
+        "note": "Hinweis",
+        "invitedBy": "Eingeladen von",
+        "invitedOn": "Eingeladen am",
+        "validUntil": "Gültig bis",
+        "expiredOn": "Abgelaufen am",
+        "joined": "Dabei seit",
+        "archivedOn": "Archiviert am",
+        "lastActive": "Zuletzt aktiv",
+        "never": "Noch nicht",
+        "twoFactor": "Bestätigung in 2 Schritten"
+      },
+      "filters": {
+        "filters": "Filter",
+        "search": "Personen suchen",
+        "searchPlaceholder": "Name oder E-Mail suchen…",
+        "status": "Status",
+        "status_current": "Aktiv und eingeladen",
+        "status_active": "Aktiv",
+        "status_invited": "Eingeladen",
+        "status_archived": "Archiviert",
+        "status_all": "Alle",
+        "role": "Rolle",
+        "roleAll": "Alle Rollen",
+        "showing": "{shown} von {total} Personen",
+        "clear": "Filter löschen",
+        "noMatch": "Niemand passt zu diesen Filtern."
+      }
     }
   },
   "editor": {
@@ -1490,9 +1739,9 @@
       "editor": "Redakteur"
     },
     "extras": {
-      "forms.submission.read": "Kontaktanfragen",
-      "forms.submission.update": "Bearbeiten von Kontaktanfragen",
-      "billing.invoice.read": "Rechnungen"
+      "formsSubmissionRead": "Kontaktanfragen",
+      "formsSubmissionUpdate": "Verwalten von Kontaktanfragen",
+      "billingInvoiceRead": "Rechnungen"
     },
     "accept": {
       "title": "Einladung",
@@ -1524,6 +1773,13 @@
       "used": "Diese Einladung wurde bereits verwendet.",
       "notAllowed": "Diese Einladung kann nicht mehr angenommen werden, weil die einladende Person diesen Zugriff nicht mehr vergeben darf.",
       "failed": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal."
+    },
+    "restored": {
+      "subject": "Dein Zugang zu {place} ist wieder aktiv",
+      "heading": "Willkommen zurück bei {place}",
+      "body": "{by} hat dir den Zugang zu {place} als {role} zurückgegeben.",
+      "button": "Abluo öffnen",
+      "replyHint": "Fragen? Antworte auf diese E-Mail, um {by} zu erreichen."
     }
   }
 }

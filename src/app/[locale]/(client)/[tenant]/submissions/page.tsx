@@ -2,9 +2,16 @@ import { notFound, redirect } from 'next/navigation'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
-import { getDashboardSubmissions, type DashboardSubmission } from '@/lib/api/client-dashboard'
+import {
+  FORMS_SUBMISSION_DELETE_PERMISSION,
+  FORMS_SUBMISSION_UPDATE_PERMISSION,
+  getDashboardSubmissions,
+  type DashboardSubmission,
+} from '@/lib/api/client-dashboard'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
-import { SubmissionsTable } from './SubmissionsTable'
+import { SubmissionsBrowser } from '@/components/client/forms/SubmissionsBrowser'
+import { PageHeader } from '@/components/client/ui/PageHeader'
+import { PageShell } from '@/components/client/ui/PageShell'
 
 /**
  * Client dashboard — Submissions (leads). ADR-018 slice 6.
@@ -13,9 +20,11 @@ import { SubmissionsTable } from './SubmissionsTable'
  * silent substitute, ADR-017 decision #1), then reads via
  * `getDashboardSubmissions`, whose `assertModuleAction` gate throws
  * `TenantAuthorizationError` when the forms module isn't installed — surfaced
- * here as a localized state, not a crash. The full view (filter, breakdown,
- * detail, CSV export, status workflow) lives in the client `SubmissionsTable`;
- * this page only fetches (RLS-scoped) and gates. All copy comes from the
+ * here as a localized state, not a crash. The page renders the shared frame
+ * (PageShell + PageHeader); the list (toolbar, table / phone cards, selection
+ * bar, detail panel, summary, CSV export, status workflow) lives in the client
+ * `SubmissionsBrowser` (components/client/forms). This page only fetches
+ * (RLS-scoped) and gates. All copy comes from the
  * `clientDashboard` next-intl namespace (Multilingual-First).
  */
 export default async function SubmissionsPage({
@@ -51,15 +60,23 @@ export default async function SubmissionsPage({
   }
 
   return (
-    <div className="max-w-6xl space-y-6">
-      <h1 className="text-xl font-semibold tracking-tight">{t('submissions.title')}</h1>
+    <PageShell>
+      <PageHeader title={t('submissions.title')} />
       {moduleNotInstalled ? (
         <p className="text-sm text-muted-foreground">{t('submissions.moduleNotInstalled')}</p>
       ) : submissions.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('submissions.empty')}</p>
       ) : (
-        <SubmissionsTable submissions={submissions} projectSlug={projectSlug} locale={locale} />
+        <SubmissionsBrowser
+          submissions={submissions}
+          projectSlug={projectSlug}
+          locale={locale}
+          // UI hints only (ADR-028): hide controls the caller can't use. The
+          // server actions re-check the same permissions and RLS enforces them.
+          canUpdate={grant.permissions.includes(FORMS_SUBMISSION_UPDATE_PERMISSION)}
+          canDelete={grant.permissions.includes(FORMS_SUBMISSION_DELETE_PERMISSION)}
+        />
       )}
-    </div>
+    </PageShell>
   )
 }

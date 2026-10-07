@@ -55,3 +55,30 @@ ${extras ? p(esc(fill(m.accept.withExtras, { extras }))) : ''}
 </div></body></html>`
   return { subject, html: htmlBody, text: lines.join('\n') }
 }
+
+export type AccessRestoredEmailInput = {
+  locale: string
+  byName: string
+  placeName: string
+  role: string
+  url: string
+}
+
+/** "Your access is back" — sent when an archived person is restored on a site. */
+export function renderAccessRestoredEmail(input: AccessRestoredEmailInput): { subject: string; html: string; text: string } {
+  const locale = invitationLocale(input.locale)
+  const m = getInvitationMessages(locale)
+  const plain = { by: input.byName, place: input.placeName, role: roleLabel(m, input.role) }
+  const html = Object.fromEntries(Object.entries(plain).map(([k, v]) => [k, esc(v)]))
+  const r = m.restored
+  const subject = fill(r.subject, plain)
+  const text = [fill(r.heading, plain), '', fill(r.body, plain), '', `${r.button}: ${input.url}`, '', fill(r.replyHint, plain)].join('\n')
+  const htmlBody = `<!doctype html><html lang="${locale}"><body style="margin:0;padding:32px 16px;background:#f6f6f4;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#1c1c1a">
+<div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;padding:32px">
+<h1 style="font-size:20px;font-weight:600;margin:0 0 20px">${fill(esc(r.heading), html)}</h1>
+<p style="margin:0 0 16px;line-height:1.5">${fill(esc(r.body), html)}</p>
+<p style="margin:24px 0"><a href="${esc(input.url)}" style="display:inline-block;background:#1c1c1a;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:500">${esc(r.button)}</a></p>
+<p style="margin:0;font-size:13px;color:#6b6b66">${fill(esc(r.replyHint), html)}</p>
+</div></body></html>`
+  return { subject, html: htmlBody, text }
+}

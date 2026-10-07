@@ -9,6 +9,7 @@ import {
 } from '@/lib/api/client-dashboard'
 import { PostsBrowser } from '@/components/client/posts/PostsBrowser'
 import { PageHeader } from '@/components/client/ui/PageHeader'
+import { PageShell } from '@/components/client/ui/PageShell'
 import { NewPostLink } from '@/components/client/posts/post-bits'
 import type { BrowserPost } from '@/components/client/posts/types'
 import { postSearchText } from '@/lib/client/posts-filter'
@@ -107,7 +108,7 @@ export default async function PostsPage({
   ]
 
   return (
-    <div className="max-w-6xl space-y-5">
+    <PageShell>
       {moduleNotInstalled || posts.length === 0 ? (
         <>
           <PageHeader
@@ -130,7 +131,7 @@ export default async function PostsPage({
           canDeleteLive={canDeletePublished(grant)}
         />
       )}
-    </div>
+    </PageShell>
   )
 }
 

@@ -6,6 +6,7 @@ import {
   buildClientNavItems,
   dashboardHomeHref,
   mediaNavItems,
+  peopleNavItems,
   resolveProjectGrant,
 } from '@/lib/modules/client-navigation'
 import { ClientSidebar } from '@/components/client/ClientSidebar'
@@ -15,7 +16,7 @@ import { buildCreateMenu } from '@/lib/modules/create-menu'
 /**
  * Project-scoped client dashboard shell (ADR-017 Phase 2 / task #81).
  *
- * Wraps every `/{locale}/{projectSlug}/{posts,leads,analytics}` route. The
+ * Wraps every `/{locale}/{projectSlug}/…` client-dashboard route. The
  * dynamic folder is named `[tenant]` — NOT `[projectSlug]` — because
  * `(website)/[tenant]` already occupies the `/[locale]/[…]` position and
  * Next.js forbids two different slug names at the same dynamic path. The URL
@@ -50,7 +51,7 @@ export default async function ClientProjectLayout({
     notFound()
   }
 
-  const navItems = [...buildClientNavItems(activeGrant), ...mediaNavItems(activeGrant)]
+  const navItems = [...buildClientNavItems(activeGrant), ...mediaNavItems(activeGrant), ...peopleNavItems(activeGrant)]
   const projects = ctx.projects.map((grant) => ({ projectSlug: grant.projectSlug }))
   const theme = parseAppTheme((await cookies()).get(APP_THEME_COOKIE)?.value)
   const textSize = parseAppTextSize((await cookies()).get(APP_TEXT_SIZE_COOKIE)?.value)

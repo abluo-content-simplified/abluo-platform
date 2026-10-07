@@ -65,6 +65,12 @@ type Confirm = 'discard' | 'delete'
  * list through the one autosave engine (single request in flight, latest
  * value wins), so eight uploads finishing together stay eight. Photo texts
  * are saved on the Media Library asset by PhotoDescribeStep; Save waits for them.
+ *
+ * Routes (2026-10-07): `/galleries/new` (lazy creation; the URL becomes
+ * `/galleries/<id>/edit`) and `/galleries/<id>/edit` (an existing gallery,
+ * on its overview). The gallery's own page (`/galleries/<id>`) is the hub:
+ * it opens one part directly (`initialSection`, optionally on one photo), and
+ * "Done" / "Save & exit" bring you back to it (`exitHref`).
  */
 export function GalleryWizard({
   projectSlug,
@@ -72,6 +78,9 @@ export function GalleryWizard({
   listHref,
   canDelete,
   status = null,
+  exitHref,
+  initialSection,
+  initialPhotoKey,
 }: {
   projectSlug: string
   /** The gallery as getGalleryDraft returns it; `id: ''` for a new one (nothing created yet). */
@@ -81,6 +90,12 @@ export function GalleryWizard({
   canDelete: boolean
   /** Where the gallery is used and what needs attention (overview, existing galleries only). */
   status?: GalleryStatus | null
+  /** Where "Save & exit" / Close go (default `listHref`), e.g. the gallery's own page. */
+  exitHref?: string
+  /** Open one part of an existing gallery directly; "Done" then returns to `exitHref`. */
+  initialSection?: GallerySection['id']
+  /** With `initialSection: 'describe'`: the photo (item key) to open on. */
+  initialPhotoKey?: string
 }) {
   const t = useTranslations('clientDashboard.gallery.wizard')
   const tg = useTranslations('clientDashboard.gallery')
@@ -98,9 +113,15 @@ export function GalleryWizard({
   const [tags, setTags] = useState<string[]>(initial.tags)
   const [items, setItems] = useState<GalleryPhoto[]>(initial.items)
   const itemsRef = useRef<GalleryPhoto[]>(initial.items)
-  const [step, setStep] = useState<GalleryWizardStep>(galleryStartStep(!initial.id))
-  const [editing, setEditing] = useState(false)
-  const [describeAt, setDescribeAt] = useState(0)
+  /** Opened on one part from the gallery's page: "Done" goes back there instead of to the overview. */
+  const direct = Boolean(initial.id && initialSection && (steps as string[]).includes(initialSection))
+  const [step, setStep] = useState<GalleryWizardStep>(direct ? initialSection! : galleryStartStep(!initial.id))
+  const [editing, setEditing] = useState(direct)
+  const [describeAt, setDescribeAt] = useState(() => {
+    if (!direct || initialSection !== 'describe') return 0
+    const at = initialPhotoKey ? initial.items.findIndex((i) => i.key === initialPhotoKey) : -1
+    return at >= 0 ? at : Math.max(0, firstUndescribed(initial.items, d))
+  })
   const [choices, setChoices] = useState<Record<string, LanguageChoice>>(() =>
     Object.fromEntries(site.languages.filter((l) => l !== d).map((l) => [l, initial.title[l]?.trim() || initial.description[l]?.trim() ? 'write' : 'later']))
   )
@@ -150,7 +171,7 @@ export function GalleryWizard({
         setGalleryId(c.id)
         markDraft()
         try {
-          window.history.replaceState(window.history.state, '', window.location.pathname.replace(/\/new\/?$/, `/${c.id}`) + window.location.search)
+          window.history.replaceState(window.history.state, '', window.location.pathname.replace(/\/new\/?$/, `/${c.id}/edit`) + window.location.search)
         } catch {
           /* ignore */
         }
@@ -289,7 +310,7 @@ export function GalleryWizard({
       mainRef.current?.scrollTo?.({ top: 0 })
       return
     }
-    if (editing) return go('review')
+    if (editing) return leaveSection()
     const next = steps[index + 1]
     if (next === 'describe') return openDescribe(Math.max(0, firstUndescribed(items, d)))
     if (next) go(next)
@@ -299,14 +320,14 @@ export function GalleryWizard({
       setDescribeAt(describeIndex - 1)
       return
     }
-    if (editing) return go('review')
+    if (editing) return leaveSection()
     const prev = steps[index - 1]
     if (prev === 'describe') return openDescribe(items.length - 1)
     if (prev) go(prev)
   }
   /** "Describe later": leave the remaining photos as they are and move on. */
   const skipDescribe = () => {
-    if (editing) return go('review')
+    if (editing) return leaveSection()
     const next = steps[steps.indexOf('describe') + 1]
     if (next) go(next)
   }
@@ -316,10 +337,15 @@ export function GalleryWizard({
   const saveAndExit = async () => {
     await photoSaves.current
     await autosave.flush()
-    router.push(listHref)
+    router.push(exitHref ?? listHref)
   }
   /** Nothing created yet: just leave (no gallery is made). */
-  const closeEmpty = () => router.push(listHref)
+  const closeEmpty = () => router.push(exitHref ?? listHref)
+  /** "Done" on a part opened for editing: back to the overview, or to the gallery's page when it opened that part. */
+  function leaveSection() {
+    if (direct) void saveAndExit()
+    else go('review')
+  }
   /** The preview reads the saved draft: photo texts and gallery changes first. */
   const flushAll = useCallback(async () => {
     await photoSaves.current

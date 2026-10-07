@@ -1,42 +1,63 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import { Link, useRouter } from '@/i18n/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { getPathname, Link, useRouter as useAppRouter } from '@/i18n/navigation'
 import type { GalleryListItem } from '@/lib/api/gallery-drafts'
 import type { GalleryStatus } from '@/lib/api/gallery-status'
 import { batchGalleriesAction } from '@/app/[locale]/(client)/[tenant]/galleries/actions'
 import { mintGalleryPreviewAction } from '@/app/[locale]/(client)/[tenant]/galleries/preview-actions'
 import { draftPreviewUrl } from '@/lib/client/preview-url'
+import {
+  activeGalleryFilterCount,
+  applyGalleryFilters,
+  DEFAULT_GALLERY_FILTERS,
+  galleryFiltersToParams,
+  galleryState,
+  galleryStateCounts,
+  isDefaultGalleryFilters,
+  nextGallerySort,
+  parseGalleryFilters,
+  type GalleryFilters,
+  type GallerySortColumn,
+} from '@/lib/client/galleries-filter'
 import { ConfirmDialog } from '@/components/client/create/ConfirmDialog'
 import { PHOTO_CARD_MAX, TagEditor } from '@/components/client/media/PhotoCard'
+import { BarButton } from '@/components/client/ui/BarButton'
 import { BottomSheet } from '@/components/client/ui/BottomSheet'
-import { CardMenu, type CardMenuItem } from '@/components/client/ui/CardMenu'
-import { FilterBar, FilterSearch, FilterSegmented, FilterSelect } from '@/components/client/ui/FilterBar'
+import type { CardMenuItem } from '@/components/client/ui/CardMenu'
+import { PageHeader } from '@/components/client/ui/PageHeader'
 import { idRange, SelectionBar } from '@/components/client/ui/SelectionBar'
+import { SelectAll } from '@/components/client/ui/list/ContentCard'
 import { Toast } from '@/components/client/ui/Toast'
 import { useUndo } from '@/components/client/ui/use-undo'
-import { GalleryStatusLines } from './GalleryStatusLines'
+import { useViewPreference } from '@/components/client/ui/use-view-preference'
+import { ViewSwitch } from '@/components/client/ui/ViewSwitch'
+import { GalleriesFilters } from './GalleriesFilters'
+import { GalleriesTable } from './GalleriesTable'
+import { GalleryCardsGrid, GalleryPhoneList } from './GalleryCards'
+import { GALLERY_ICONS, useGalleryPlaces, type GalleryRow } from './gallery-bits'
 
-const LONG_PRESS_MS = 500
-const LONG_PRESS_SLOP_PX = 10
 const BATCH_MAX = 100
-
-type Usage = 'all' | 'used' | 'unused'
+const VIEW_KEY = 'abluo.galleries.view'
+const VIEWS = ['grid', 'list'] as const
+type View = (typeof VIEWS)[number]
 
 /**
- * The project's galleries, laid out like the Posts list: page header, filter
- * bar (search, tag, where used), cards with cover, title, where it is shown /
- * what needs attention (GalleryStatusLines), tags, "Unpublished changes" and a
- * ⋯ menu (Edit, Preview, Delete: only when the gallery is not used anywhere).
- * Rows are top-aligned. "New gallery" opens the gallery wizard with no
- * document yet (lazy creation).
+ * The Galleries list — the Posts pattern for galleries. Rendered inside the
+ * page's PageShell.
  *
- * Select several (same pattern as Posts): a checkbox per card on hover/focus
- * and shift-click on a computer; long-press or "Select" on a phone. The
- * floating bar has "Add tags" and "Delete". Delete only removes galleries
- * that are not used anywhere (owners); the others are reported as skipped.
- * The server checks every gallery on its own (≤ 100 at a time).
+ * Computers (md+): a grid of cards by default (each with a ThumbStrip of its
+ * photos, the main image leading) or a table (Grid / List switch, remembered
+ * per browser). Phones: cards with a checkbox on the left. Filters run in the
+ * browser on the loaded list (galleries-filter.ts) and live in the URL.
+ *
+ * Selecting is through the checkboxes (shift-click selects a range); the
+ * floating bar has Add tags, Delete (owners: canDelete) and Clear. Delete only
+ * removes galleries not used anywhere; the others are reported as skipped. The
+ * server checks every gallery on its own (≤ 100 at a time). Without
+ * gallery.gallery.write the list is read-only: no checkboxes, menus or links.
  */
 export function GalleryList({
   projectSlug,
@@ -44,109 +65,108 @@ export function GalleryList({
   statuses,
   canWrite,
   canDelete = false,
+  initialQuery = '',
 }: {
   projectSlug: string
   galleries: GalleryListItem[]
   /** Where each gallery is used and what needs attention, by gallery id. */
   statuses: Record<string, GalleryStatus>
   canWrite: boolean
-  /** Owner with gallery write (the server re-checks). */
+  /** Owner with gallery delete (the server re-checks). */
   canDelete?: boolean
+  /** The page's query string at request time. */
+  initialQuery?: string
 }) {
   const t = useTranslations('clientDashboard.gallery.list')
   const ts = useTranslations('clientDashboard.gallery.select')
   const ui = useLocale()
   const router = useRouter()
+  const appRouter = useAppRouter()
+  const pathname = usePathname()
+  const [, startTransition] = useTransition()
+  const placesOf = useGalleryPlaces()
 
-  const [q, setQ] = useState('')
-  const [tag, setTag] = useState('')
-  const [usage, setUsage] = useState<Usage>('all')
+  const [view, chooseView] = useViewPreference<View>(VIEW_KEY, VIEWS, 'grid')
+
+  // ── Filters (in the URL) ───────────────────────────────────────────────────
+  const [filters, setFilters] = useState<GalleryFilters>(() => parseGalleryFilters(new URLSearchParams(initialQuery)))
+  const update = (patch: Partial<GalleryFilters>) => {
+    const next = { ...filters, ...patch }
+    setFilters(next)
+    const qs = galleryFiltersToParams(next).toString()
+    startTransition(() => router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false }))
+  }
+  const reset = () => update({ ...DEFAULT_GALLERY_FILTERS, sort: filters.sort })
+
+  // ── Rows ───────────────────────────────────────────────────────────────────
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [localTags, setLocalTags] = useState<Record<string, string[]>>({})
-  const [selecting, setSelecting] = useState(false)
+  const rows: GalleryRow[] = useMemo(
+    () =>
+      galleries
+        .filter((g) => !hidden.has(g.id))
+        .map((g) => {
+          const places = placesOf(g, statuses[g.id])
+          return {
+            id: g.id,
+            title: g.title || g.internalName || t('untitled'),
+            internalName: g.internalName,
+            tags: localTags[g.id] ?? g.tags,
+            state: galleryState(g),
+            used: places.length > 0,
+            count: g.count,
+            updatedAt: g.updatedAt,
+            createdAt: g.createdAt,
+            thumbs: g.thumbs.length ? g.thumbs : g.coverThumb ? [g.coverThumb] : [],
+            places,
+            // The gallery's page needs write permission (it is where it is edited).
+            href: canWrite ? `/${projectSlug}/galleries/${g.id}` : null,
+          }
+        }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- placesOf/t are stable per locale
+    [galleries, hidden, localTags, statuses, canWrite, projectSlug]
+  )
+  const shown = useMemo(() => applyGalleryFilters(rows, filters), [rows, filters])
+  const counts = useMemo(() => galleryStateCounts(rows, filters), [rows, filters])
+  const allTags = useMemo(() => [...new Set(rows.flatMap((g) => g.tags))].sort(), [rows])
+  const byId = useMemo(() => new Map(rows.map((g) => [g.id, g])), [rows])
+  const isDefault = isDefaultGalleryFilters(filters)
+
+  // ── Selection ──────────────────────────────────────────────────────────────
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [lastPicked, setLastPicked] = useState<string | null>(null)
+  const selectedIds = shown.filter((g) => selected.has(g.id)).map((g) => g.id)
+  const allState: 'none' | 'some' | 'all' = selectedIds.length === 0 ? 'none' : selectedIds.length === shown.length ? 'all' : 'some'
+  const toggle = (id: string, checked: boolean, shift: boolean) => {
+    const order = shown.map((g) => g.id)
+    setSelected((s) => {
+      const n = new Set(s)
+      const ids = shift && lastPicked && lastPicked !== id ? idRange(order, lastPicked, id) : [id]
+      for (const x of ids) {
+        if (checked) n.add(x)
+        else n.delete(x)
+      }
+      return new Set([...n].slice(0, BATCH_MAX))
+    })
+    setLastPicked(id)
+  }
+  const toggleAll = (checked: boolean) => {
+    setSelected(checked ? new Set(shown.slice(0, BATCH_MAX).map((g) => g.id)) : new Set())
+    setLastPicked(null)
+  }
+  const clearSelection = () => {
+    setSelected(new Set())
+    setLastPicked(null)
+  }
+
+  // ── Actions ────────────────────────────────────────────────────────────────
   const [confirmDelete, setConfirmDelete] = useState<string[] | null>(null)
   const [tagSheet, setTagSheet] = useState<string[] | null>(null)
   const [picked, setPicked] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const { toast, show } = useUndo()
-  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pressStart = useRef<{ x: number; y: number } | null>(null)
-  const pressed = useRef(false)
-  const last = useRef<string | null>(null)
 
-  const tagsOf = (g: GalleryListItem) => localTags[g.id] ?? g.tags
-  const isUsed = (g: GalleryListItem) => {
-    const s = statuses[g.id]
-    return g.usedIn.length > 0 || (s ? s.usedOn.pages.length + s.usedOn.posts.published + s.usedOn.posts.draft > 0 : false)
-  }
-  const titleOf = (g: GalleryListItem) => g.title || g.internalName || t('untitled')
-  const byId = useMemo(() => new Map(galleries.map((g) => [g.id, g])), [galleries])
-  const allTags = useMemo(() => [...new Set(galleries.flatMap((g) => localTags[g.id] ?? g.tags))].sort(), [galleries, localTags])
-
-  const needle = q.trim().toLowerCase()
-  const shown = galleries.filter((g) => {
-    if (hidden.has(g.id)) return false
-    if (needle && !`${titleOf(g)} ${g.internalName} ${tagsOf(g).join(' ')}`.toLowerCase().includes(needle)) return false
-    if (tag && !tagsOf(g).includes(tag)) return false
-    if (usage === 'used' && !isUsed(g)) return false
-    if (usage === 'unused' && isUsed(g)) return false
-    return true
-  })
-  const order = shown.map((g) => g.id)
-  const allShownSelected = shown.length > 0 && shown.every((g) => selected.has(g.id))
-  const selectedIds = [...selected].filter((id) => !hidden.has(id))
-  const filtering = Boolean(needle || tag || usage !== 'all')
-  const clear = () => {
-    setQ('')
-    setTag('')
-    setUsage('all')
-  }
-
-  // ── Selection ───────────────────────────────────────────────────────────────
-  const exitSelect = () => {
-    setSelecting(false)
-    setSelected(new Set())
-    last.current = null
-  }
-  const pick = (id: string, shift: boolean) => {
-    setSelected((s) => {
-      const n = new Set(s)
-      if (shift && last.current && last.current !== id) {
-        const on = !s.has(id)
-        for (const x of idRange(order, last.current, id)) {
-          if (on) n.add(x)
-          else n.delete(x)
-        }
-      } else if (n.has(id)) n.delete(id)
-      else n.add(id)
-      return new Set([...n].slice(0, BATCH_MAX))
-    })
-    last.current = id
-  }
-  const startPress = (e: React.PointerEvent, id: string) => {
-    if (!canWrite || selecting || e.pointerType === 'mouse') return
-    pressed.current = false
-    pressStart.current = { x: e.clientX, y: e.clientY }
-    pressTimer.current = setTimeout(() => {
-      pressed.current = true
-      navigator.vibrate?.(10)
-      setSelecting(true)
-      setSelected(new Set([id]))
-      last.current = id
-    }, LONG_PRESS_MS)
-  }
-  const movePress = (e: React.PointerEvent) => {
-    const s = pressStart.current
-    if (s && Math.hypot(e.clientX - s.x, e.clientY - s.y) > LONG_PRESS_SLOP_PX) endPress()
-  }
-  const endPress = () => {
-    if (pressTimer.current) clearTimeout(pressTimer.current)
-    pressTimer.current = null
-  }
-
-  // ── Actions ─────────────────────────────────────────────────────────────────
-  const preview = async (g: GalleryListItem) => {
+  const preview = async (g: GalleryRow) => {
     const tab = window.open('about:blank', '_blank')
     if (tab) tab.opener = null
     try {
@@ -185,12 +205,12 @@ export function GalleryList({
           const n = { ...l }
           for (const id of ok) {
             const g = byId.get(id)
-            if (g) n[id] = [...new Set([...(l[id] ?? g.tags), ...addTags])].slice(0, PHOTO_CARD_MAX.tags)
+            if (g) n[id] = [...new Set([...g.tags, ...addTags])].slice(0, PHOTO_CARD_MAX.tags)
           }
           return n
         })
       }
-      router.refresh()
+      appRouter.refresh()
       return failed + skipped === 0
     } catch {
       show({ message: ts('failed'), tone: 'error' }, 7000)
@@ -200,244 +220,145 @@ export function GalleryList({
     }
   }
 
-  const menuFor = (g: GalleryListItem): CardMenuItem[] => [
-    { key: 'edit', label: t('card.edit'), onSelect: () => router.push(`/${projectSlug}/galleries/${g.id}`) },
+  const open = (g: GalleryRow, newTab: boolean) => {
+    if (!g.href) return
+    if (newTab) window.open(getPathname({ href: g.href, locale: ui }), '_blank', 'noopener')
+    else appRouter.push(g.href)
+  }
+
+  const menuFor = (g: GalleryRow): CardMenuItem[] => [
+    { key: 'open', label: t('card.open'), onSelect: () => appRouter.push(`/${projectSlug}/galleries/${g.id}`) },
+    { key: 'edit', label: t('card.edit'), onSelect: () => appRouter.push(`/${projectSlug}/galleries/${g.id}/edit`) },
     { key: 'preview', label: t('card.preview'), onSelect: () => void preview(g) },
-    ...(canDelete && !isUsed(g) ? [{ key: 'delete', label: t('card.delete'), onSelect: () => setConfirmDelete([g.id]), destructive: true }] : []),
+    ...(canDelete && !g.used ? [{ key: 'delete', label: t('card.delete'), onSelect: () => setConfirmDelete([g.id]), destructive: true }] : []),
   ]
 
-  return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4 pb-28 md:pb-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">{t('title')}</h1>
-          <p className="mt-1 text-[0.9375rem] leading-6 text-muted-foreground">{t('helper')}</p>
-        </div>
-        {canWrite ? (
-          <Link
-            href={`/${projectSlug}/galleries/new`}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-action px-4 text-[0.9375rem] font-semibold text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            {t('new')}
-          </Link>
-        ) : null}
-      </div>
+  const none = !selectedIds.length || busy
+  const header = (
+    <PageHeader
+      title={t('title')}
+      actions={
+        <>
+          {galleries.length > 0 ? (
+            <ViewSwitch
+              label={t('view.label')}
+              value={view}
+              onChange={chooseView}
+              options={[
+                { value: 'grid', label: t('view.grid'), icon: GALLERY_ICONS.grid },
+                { value: 'list', label: t('view.list'), icon: GALLERY_ICONS.list },
+              ]}
+            />
+          ) : null}
+          {canWrite ? (
+            <Link
+              href={`/${projectSlug}/galleries/new`}
+              className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-action px-4 text-[0.9375rem] font-semibold text-action-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+            >
+              {GALLERY_ICONS.plus}
+              {t('new')}
+            </Link>
+          ) : null}
+        </>
+      }
+    />
+  )
 
-      {galleries.length === 0 ? (
+  if (galleries.length === 0) {
+    return (
+      <div className="space-y-4">
+        {header}
         <section className="flex flex-col items-start gap-2 rounded-2xl border border-dashed border-border p-6">
           <h2 className="text-[1.0625rem] font-semibold text-foreground">{t('emptyTitle')}</h2>
           <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('emptyBody')}</p>
         </section>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {header}
+
+      <GalleriesFilters
+        filters={filters}
+        update={update}
+        reset={reset}
+        isDefault={isDefault}
+        tags={allTags}
+        counts={counts}
+        resultCount={shown.length}
+        total={rows.length}
+        activeCount={activeGalleryFilterCount(filters)}
+        showSortOnDesktop={view === 'grid'}
+        summaryExtra={
+          view === 'grid' && canWrite && shown.length > 0 ? (
+            <span className="hidden md:inline-flex">
+              <SelectAll label={ts('selectAll')} ariaLabel={t('columns.selectAll')} state={allState} onChange={toggleAll} />
+            </span>
+          ) : null
+        }
+      />
+
+      {shown.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border px-6 py-10">
+          <p className="font-medium text-foreground">{t('filters.noMatch')}</p>
+          <button
+            type="button"
+            onClick={reset}
+            className="mt-3 inline-flex h-11 items-center rounded-xl border border-border px-4 text-sm font-medium text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            {t('filters.clear')}
+          </button>
+        </div>
       ) : (
         <>
-          {canWrite ? (
-            <div className="flex min-h-11 items-start justify-between gap-3">
-              {selecting ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={exitSelect}
-                    aria-label={ts('stop')}
-                    className="grid size-11 shrink-0 place-items-center rounded-full border border-border text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                  >
-                    {ICONS.x}
-                  </button>
-                  <p className="flex-1 pt-2.5 text-[0.9375rem] font-semibold" aria-live="polite">
-                    {ts('count', { count: selectedIds.length })}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setSelected(allShownSelected ? new Set() : new Set(shown.slice(0, BATCH_MAX).map((g) => g.id)))}
-                    className="inline-flex min-h-11 items-center px-2 text-[0.9375rem] font-semibold text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                  >
-                    {allShownSelected ? ts('none') : ts('all')}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <span />
-                  <button
-                    type="button"
-                    onClick={() => setSelecting(true)}
-                    className="inline-flex min-h-11 items-center rounded-full border border-border px-4 text-[0.9375rem] font-semibold text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                  >
-                    {ts('start')}
-                  </button>
-                </>
-              )}
-            </div>
-          ) : null}
-
-          <FilterBar label={t('filters.label')}>
-            <FilterSearch value={q} onChange={setQ} placeholder={t('filters.searchPlaceholder')} label={t('filters.search')} />
-            {allTags.length > 0 ? (
-              <FilterSelect
-                label={t('filters.tag')}
-                value={tag}
-                onChange={setTag}
-                options={[{ value: '', label: t('filters.allTags') }, ...allTags.map((x) => ({ value: x, label: x }))]}
+          {/* Computers */}
+          <div className="hidden md:block">
+            {view === 'list' ? (
+              <GalleriesTable
+                rows={shown}
+                canWrite={canWrite}
+                selected={selected}
+                onToggle={toggle}
+                allState={allState}
+                onToggleAll={toggleAll}
+                sort={filters.sort}
+                onSort={(column: GallerySortColumn) => update({ sort: nextGallerySort(column, filters.sort) })}
+                onOpen={open}
+                menuFor={menuFor}
               />
-            ) : null}
-            <FilterSegmented
-              label={t('filters.usage')}
-              value={usage}
-              onChange={(v) => setUsage(v as Usage)}
-              options={[
-                { value: 'all', label: t('filters.usageAll') },
-                { value: 'used', label: t('filters.usageUsed') },
-                { value: 'unused', label: t('filters.usageUnused') },
-              ]}
-            />
-          </FilterBar>
-
-          <div className="flex items-start justify-between gap-3 text-sm text-muted-foreground">
-            <p aria-live="polite">{t('filters.showing', { shown: shown.length, total: galleries.length - hidden.size })}</p>
-            {filtering ? (
-              <button type="button" onClick={clear} className="inline-flex min-h-8 items-center font-medium text-foreground underline underline-offset-4">
-                {t('filters.clear')}
-              </button>
-            ) : null}
+            ) : (
+              <GalleryCardsGrid rows={shown} canWrite={canWrite} selected={selected} onToggle={toggle} onOpen={open} menuFor={menuFor} />
+            )}
           </div>
-
-          {shown.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border px-6 py-10 text-center">
-              <p className="font-medium text-foreground">{t('filters.noMatch')}</p>
-              <button type="button" onClick={clear} className="mt-3 inline-flex h-11 items-center rounded-xl border border-border px-4 text-[0.9375rem] font-medium text-foreground">
-                {t('filters.clear')}
-              </button>
-            </div>
-          ) : (
-            <ul className="flex flex-col gap-3">
-              {shown.map((g) => {
-                const title = titleOf(g)
-                const isSel = selected.has(g.id)
-                const tags = tagsOf(g)
-                const inner = (
-                  <>
-                    {g.coverThumb ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- Sanity CDN thumbnail, already sized
-                      <img src={g.coverThumb} alt="" width={96} height={96} loading="lazy" className="size-24 shrink-0 rounded-lg bg-muted object-cover" />
-                    ) : (
-                      <span aria-hidden="true" className="flex size-24 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-muted text-muted-foreground">
-                        {ICONS.image}
-                      </span>
-                    )}
-                    <span className="flex min-w-0 flex-1 flex-col items-start gap-1 pt-0.5">
-                      <span className="line-clamp-2 block text-[0.9375rem] leading-[1.375rem] font-semibold text-foreground">{title}</span>
-                      {statuses[g.id] ? (
-                        <GalleryStatusLines status={statuses[g.id]} />
-                      ) : (
-                        <span className="text-[0.9375rem] leading-6 text-muted-foreground">{g.count > 0 ? t('count', { count: g.count }) : t('noCover')}</span>
-                      )}
-                      {tags.length || (g.hasDraft && g.isPublished) ? (
-                        <span className="flex flex-wrap items-start gap-1.5">
-                          {g.hasDraft && g.isPublished ? (
-                            <span className="inline-flex h-6 items-center rounded-full bg-accent px-2.5 text-xs font-medium text-accent-foreground">{t('unpublished')}</span>
-                          ) : null}
-                          {tags.map((x) => (
-                            <span key={x} className="inline-flex h-6 items-center rounded-full border border-border px-2.5 text-xs text-muted-foreground">
-                              {x}
-                            </span>
-                          ))}
-                        </span>
-                      ) : null}
-                    </span>
-                  </>
-                )
-                return (
-                  <li
-                    key={g.id}
-                    className={`group relative flex items-start gap-2 rounded-xl border bg-card p-3 ${isSel ? 'border-action ring-1 ring-action' : 'border-border'}`}
-                    onPointerDown={(e) => startPress(e, g.id)}
-                    onPointerMove={movePress}
-                    onPointerUp={endPress}
-                    onPointerLeave={endPress}
-                    onPointerCancel={endPress}
-                    onContextMenu={(e) => canWrite && pressed.current && e.preventDefault()}
-                  >
-                    {selecting ? (
-                      <button
-                        type="button"
-                        role="checkbox"
-                        aria-checked={isSel}
-                        aria-label={ts('card', { title })}
-                        onClick={(e) => pick(g.id, e.shiftKey)}
-                        className="flex min-w-0 flex-1 items-start gap-3 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                      >
-                        <Tick on={isSel} className="mt-9 md:hidden" round />
-                        {inner}
-                      </button>
-                    ) : (
-                      <Link
-                        href={`/${projectSlug}/galleries/${g.id}`}
-                        onClick={(e) => {
-                          if (pressed.current) {
-                            e.preventDefault()
-                            pressed.current = false
-                          }
-                        }}
-                        className="flex min-w-0 flex-1 items-start gap-3 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                      >
-                        {inner}
-                      </Link>
-                    )}
-                    {/* Computer: a checkbox on the cover, on hover or focus (always while selecting). */}
-                    {canWrite ? (
-                      selecting ? (
-                        <span aria-hidden="true" className="pointer-events-none absolute top-5 left-5 hidden md:block">
-                          <Tick on={isSel} />
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          role="checkbox"
-                          aria-checked={false}
-                          aria-label={ts('card', { title })}
-                          onClick={(e) => {
-                            setSelecting(true)
-                            setSelected(new Set([g.id]))
-                            last.current = g.id
-                            e.stopPropagation()
-                          }}
-                          className="absolute top-3 left-3 hidden size-11 place-items-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 md:grid"
-                        >
-                          <Tick on={false} />
-                        </button>
-                      )
-                    ) : null}
-                    {canWrite && !selecting ? (
-                      <div className="-mt-1 -mr-1">
-                        <CardMenu label={t('card.menu', { title })} items={menuFor(g)} />
-                      </div>
-                    ) : null}
-                  </li>
-                )
-              })}
-            </ul>
-          )}
+          {/* Phones */}
+          <div className="md:hidden">
+            <GalleryPhoneList rows={shown} canWrite={canWrite} selected={selected} onToggle={toggle} onOpen={open} menuFor={menuFor} />
+          </div>
         </>
       )}
 
-      {selecting ? (
+      {canWrite && selectedIds.length > 0 ? (
         <SelectionBar label={ts('toolbar')} count={ts('count', { count: selectedIds.length })}>
           <BarButton
-            disabled={!selectedIds.length || busy}
+            disabled={none}
             onPress={() => {
               setPicked([])
               setTagSheet(selectedIds)
             }}
-            icon={ICONS.tag}
+            icon={GALLERY_ICONS.tag}
           >
             {ts('bar.addTags')}
           </BarButton>
           {canDelete ? (
-            <BarButton disabled={!selectedIds.length || busy} onPress={() => setConfirmDelete(selectedIds)} icon={ICONS.trash} destructive>
+            <BarButton disabled={none} onPress={() => setConfirmDelete(selectedIds)} icon={GALLERY_ICONS.trash} destructive>
               {ts('bar.delete')}
             </BarButton>
           ) : null}
+          <BarButton onPress={clearSelection} icon={GALLERY_ICONS.x}>
+            {ts('bar.clear')}
+          </BarButton>
         </SelectionBar>
       ) : null}
 
@@ -467,7 +388,7 @@ export function GalleryList({
             const ids = tagSheet ?? []
             const ok = await runBatch('tags', ids, picked)
             setTagSheet(null)
-            if (ok) exitSelect()
+            if (ok) clearSelection()
           }}
           className="mt-4 inline-flex h-12 items-center justify-center rounded-xl bg-action px-5 text-[0.9375rem] font-semibold text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40"
         >
@@ -478,14 +399,14 @@ export function GalleryList({
       <ConfirmDialog
         open={confirmDelete !== null}
         title={ts('confirm.title', { count: confirmDelete?.length ?? 0 })}
-        body={ts('confirm.body', { count: confirmDelete?.length ?? 0, title: confirmDelete?.length === 1 ? titleOf(byId.get(confirmDelete[0])!) : '' })}
+        body={ts('confirm.body', { count: confirmDelete?.length ?? 0, title: confirmDelete?.length === 1 ? (byId.get(confirmDelete[0])?.title ?? '') : '' })}
         confirmLabel={ts('confirm.confirm')}
         busy={busy}
         onConfirm={async () => {
           const ids = confirmDelete ?? []
           await runBatch('delete', ids)
           setConfirmDelete(null)
-          exitSelect()
+          clearSelection()
         }}
         onCancel={() => setConfirmDelete(null)}
       />
@@ -493,61 +414,4 @@ export function GalleryList({
       <Toast message={toast?.message ?? null} tone={toast?.tone} />
     </div>
   )
-}
-
-function Tick({ on, round, className = '' }: { on: boolean; round?: boolean; className?: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={`grid size-6 shrink-0 place-items-center border-2 ${round ? 'rounded-full' : 'rounded-md'} ${
-        on ? 'border-action bg-action text-action-foreground' : 'border-border bg-background'
-      } ${className}`}
-    >
-      {on ? ICONS.tick : null}
-    </span>
-  )
-}
-
-function BarButton({
-  children,
-  icon,
-  onPress,
-  disabled,
-  destructive,
-}: {
-  children: React.ReactNode
-  icon: React.ReactNode
-  onPress: () => void
-  disabled?: boolean
-  destructive?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onPress}
-      disabled={disabled}
-      className={`flex min-h-14 flex-col items-center justify-start gap-1 rounded-xl px-1 pt-2 pb-1.5 text-xs font-medium hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40 ${
-        destructive ? 'text-destructive' : 'text-foreground'
-      }`}
-    >
-      {icon}
-      {children}
-    </button>
-  )
-}
-
-function svg(d: string, size = 20, width = 2) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d={d} />
-    </svg>
-  )
-}
-
-const ICONS = {
-  x: svg('M6 6l12 12M18 6L6 18'),
-  tick: svg('M20 6 9 17l-5-5', 16, 2.4),
-  image: svg('M3 3h18v18H3zM9 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM21 15l-5-5L5 21', 28, 1.5),
-  trash: svg('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'),
-  tag: svg('M3 12V4h8l10 10-8 8L3 12zM7.5 8h.01'),
 }

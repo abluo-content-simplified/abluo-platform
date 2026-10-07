@@ -41,7 +41,8 @@
       "home": "Home",
       "more": "Altro",
       "add": "Aggiungi contenuto",
-      "media": "Media"
+      "media": "Media",
+      "people": "Persone"
     },
     "shell": {
       "brandTagline": "Dashboard",
@@ -249,7 +250,7 @@
       }
     },
     "submissions": {
-      "title": "Invii",
+      "title": "Moduli",
       "empty": "Ancora nessun invio.",
       "moduleNotInstalled": "Il modulo Moduli non è abilitato per questo progetto.",
       "anonymous": "Anonimo",
@@ -259,23 +260,36 @@
         "form": "Modulo",
         "subject": "Oggetto",
         "status": "Stato",
-        "received": "Ricevuto"
+        "received": "Ricevuto",
+        "actions": "Azioni"
       },
       "status": {
         "new": "Nuovo",
-        "processed": "Elaborato",
+        "processed": "Gestito",
         "archived": "Archiviato"
       },
       "filters": {
         "allForms": "Tutti i moduli",
         "allStatuses": "Tutti gli stati",
-        "search": "Cerca nome o email…",
+        "search": "Cerca nome, email o messaggio…",
         "from": "Dal",
         "to": "Al",
         "groupBy": "Riepilogo per",
         "groupNone": "Nessuno",
         "groupForm": "Modulo",
-        "groupStatus": "Stato"
+        "groupStatus": "Stato",
+        "searchLabel": "Cerca richieste",
+        "filters": "Filtri",
+        "form": "Modulo",
+        "status": "Stato",
+        "sentenceNoun": "Richieste",
+        "dateField": "Quale data",
+        "field_received": "ricevute",
+        "date": "Data",
+        "dateChip": "Ricevute {range}",
+        "showing": "{shown} di {total} richieste",
+        "clear": "Azzera filtri",
+        "noMatch": "Nessuna richiesta corrisponde ai filtri."
       },
       "exportCsv": "Esporta CSV",
       "count": "{count} contatti",
@@ -307,15 +321,20 @@
       "cancel": "Annulla",
       "deleteTitle": "{count, plural, one {Eliminare # richiesta?} other {Eliminare # richieste?}}",
       "deleteBody": "Non si può annullare.",
-      "batchError": "Non è stato possibile completare. Riprova."
-    },
-    "leads": {
-      "title": "Contatti",
-      "comingSoon": "La gestione dei contatti arriverà presto."
-    },
-    "analytics": {
-      "title": "Statistiche",
-      "comingSoon": "Le statistiche arriveranno presto."
+      "batchError": "Non è stato possibile completare. Riprova.",
+      "menu": "Azioni per {name}",
+      "open": "Apri",
+      "close": "Chiudi",
+      "markArchived": "Archivia",
+      "exportOne": "Esporta (CSV)",
+      "clearSelection": "Annulla",
+      "selection": "Richieste selezionate",
+      "done": {
+        "processed": "{count, plural, one {# richiesta segnata come gestita.} other {# richieste segnate come gestite.}}",
+        "new": "{count, plural, one {# richiesta segnata come nuova.} other {# richieste segnate come nuove.}}",
+        "archived": "{count, plural, one {# richiesta archiviata.} other {# richieste archiviate.}}",
+        "deleted": "{count, plural, one {# richiesta eliminata.} other {# richieste eliminate.}}"
+      }
     },
     "theme": {
       "label": "Aspetto",
@@ -961,14 +980,34 @@
           "usageUnused": "Non usate",
           "showing": "{shown} di {total} gallerie",
           "clear": "Rimuovi i filtri",
-          "noMatch": "Nessuna galleria corrisponde ai filtri."
+          "noMatch": "Nessuna galleria corrisponde ai filtri.",
+          "filters": "Filtri",
+          "status": "Stato",
+          "statusAll": "Tutti gli stati",
+          "usageAny": "Usate e non usate",
+          "sort": "Ordina",
+          "sort_updated_desc": "Modificate di recente",
+          "sort_updated_asc": "Modificate meno di recente",
+          "sort_created_desc": "Più recenti",
+          "sort_created_asc": "Meno recenti",
+          "sort_title_asc": "Titolo A–Z",
+          "sort_title_desc": "Titolo Z–A",
+          "sort_photos_desc": "Più foto",
+          "sort_photos_asc": "Meno foto",
+          "date": "Data",
+          "dateField": "Quale data",
+          "sentenceNoun": "Gallerie",
+          "sentenceField_updated": "modificate",
+          "sentenceField_created": "create",
+          "dateChip": "{field} · {range}"
         },
         "card": {
           "menu": "Altro per “{title}”",
           "edit": "Modifica",
           "preview": "Anteprima",
           "delete": "Elimina",
-          "previewFailed": "Non siamo riusciti ad aprire l’anteprima. Riprova."
+          "previewFailed": "Non siamo riusciti ad aprire l’anteprima. Riprova.",
+          "open": "Apri"
         },
         "tags": {
           "label": "Tag",
@@ -978,6 +1017,28 @@
           "remove": "Rimuovi il tag {tag}",
           "suggested": "Tag che usi già",
           "full": "Al massimo {max} tag"
+        },
+        "view": {
+          "label": "Vista",
+          "list": "Elenco",
+          "grid": "Griglia"
+        },
+        "state": {
+          "live": "Pubblicata",
+          "changes": "Modifiche non pubblicate",
+          "draft": "Non ancora pubblicata"
+        },
+        "mainBadge": "Immagine principale",
+        "columns": {
+          "preview": "Foto della galleria",
+          "title": "Titolo",
+          "status": "Stato",
+          "photos": "Foto",
+          "usedOn": "Usata in",
+          "updated": "Modificata",
+          "created": "Creata",
+          "actions": "Azioni",
+          "selectAll": "Seleziona tutte quelle mostrate"
         }
       },
       "publish": {
@@ -1093,7 +1154,8 @@
         "toolbar": "Gallerie selezionate",
         "bar": {
           "addTags": "Aggiungi tag",
-          "delete": "Elimina"
+          "delete": "Elimina",
+          "clear": "Annulla"
         },
         "tagsSheet": {
           "title": "Aggiungi tag",
@@ -1111,7 +1173,33 @@
         },
         "skippedInUse": "{count, plural, one {# galleria è stata saltata perché è mostrata sul tuo sito.} other {# gallerie sono state saltate perché sono mostrate sul tuo sito.}}",
         "someFailed": "{count, plural, one {# galleria non è stata modificata.} other {# gallerie non sono state modificate.}}",
-        "failed": "Qualcosa è andato storto. Riprova."
+        "failed": "Qualcosa è andato storto. Riprova.",
+        "selectAll": "Seleziona tutte"
+      },
+      "detail": {
+        "back": "Gallerie",
+        "edit": "Modifica galleria",
+        "preview": "Anteprima",
+        "previewFailed": "Non siamo riusciti ad aprire l’anteprima. Riprova.",
+        "saved": "Salvata. Il tuo sito ora mostra questa versione.",
+        "changesNotice": "Questa galleria ha modifiche non ancora pubblicate.",
+        "draftNotice": "Questa galleria non è ancora pubblicata.",
+        "photosTitle": "Foto",
+        "editPhotos": "Aggiungi o riordina le foto",
+        "describe": "Descrivi le foto",
+        "noPhotos": "Ancora nessuna foto.",
+        "photoMenu": "Altro per {name}",
+        "describePhoto": "Modifica descrizione",
+        "tags": "Tag",
+        "main": {
+          "set": "Imposta come immagine principale",
+          "unset": "Togli come immagine principale",
+          "auto": "Nessuna immagine principale scelta: la galleria è rappresentata dalla prima foto.",
+          "chosen": "L’immagine principale rappresenta questa galleria nei tuoi elenchi.",
+          "saved": "Immagine principale cambiata. Salva per pubblicarla.",
+          "cleared": "Immagine principale tolta. Salva per pubblicare.",
+          "failed": "Non siamo riusciti a cambiare l’immagine principale. Riprova."
+        }
       }
     },
     "media": {
@@ -1166,7 +1254,8 @@
         "more": "Mostra altre",
         "tagSummary": "{count, plural, one {# tag} other {# tag}}",
         "clearAll": "Rimuovi tutti",
-        "usage": "{count, plural, =0 {Non usata} one {Usata una volta} other {Usata # volte}}"
+        "usage": "{count, plural, =0 {Non usata} one {Usata una volta} other {Usata # volte}}",
+        "retry": "Riprova"
       },
       "sheet": {
         "title": "Modifica foto",
@@ -1212,13 +1301,67 @@
         "clear": "Deseleziona",
         "limit": "Puoi selezionare al massimo {max} foto alla volta.",
         "saved": "{count, plural, =0 {Nessuna modifica} one {Salvato su # foto} other {Salvato su # foto}}",
-        "skipped": "{count, plural, one {# foto non è stata modificata} other {# foto non sono state modificate}}"
+        "skipped": "{count, plural, one {# foto non è stata modificata} other {# foto non sono state modificate}}",
+        "all": "Seleziona tutte"
       },
       "size": {
         "label": "Dimensione foto",
         "small": "Piccola",
         "medium": "Media",
         "large": "Grande"
+      },
+      "view": {
+        "label": "Vista",
+        "grid": "Griglia",
+        "list": "Elenco"
+      },
+      "filters": {
+        "filters": "Filtri",
+        "search": "Cerca foto",
+        "searchPlaceholder": "Cerca per nome, descrizione o tag",
+        "tag": "Tag",
+        "tagAll": "Tutti i tag",
+        "usage": "Utilizzo",
+        "usage_all": "Usate e non usate",
+        "usage_used": "Usate",
+        "usage_unused": "Non usate",
+        "description": "Descrizione",
+        "description_all": "Con o senza descrizione",
+        "description_missing": "Senza descrizione",
+        "noun": "Foto",
+        "date": "Data",
+        "dateField": "Quale data",
+        "uploaded": "caricate",
+        "dateChip": "Caricate · {range}",
+        "showing": "{shown} di {total} foto",
+        "loadingMore": "caricamento…",
+        "clear": "Azzera filtri",
+        "noMatch": "Nessuna foto corrisponde a questi filtri."
+      },
+      "columns": {
+        "image": "Foto",
+        "name": "Nome",
+        "size": "Dimensioni",
+        "uploaded": "Caricata",
+        "tags": "Tag",
+        "usage": "Usata in",
+        "description": "Descrizione",
+        "focal": "Punto focale",
+        "actions": "Azioni",
+        "selectAll": "Seleziona tutte le foto"
+      },
+      "pill": {
+        "described": "Presente",
+        "missing": "Mancante",
+        "focalSet": "Impostato",
+        "focalNone": "Non impostato"
+      },
+      "menu": {
+        "label": "Azioni per {name}",
+        "edit": "Modifica dettagli",
+        "addTags": "Aggiungi tag",
+        "rename": "Rinomina",
+        "original": "Apri originale"
       }
     },
     "photoWizard": {
@@ -1420,6 +1563,112 @@
         "applied": "Filtri applicati",
         "remove": "Rimuovi filtro: {label}"
       }
+    },
+    "people": {
+      "title": "Persone",
+      "invite": "Invita qualcuno",
+      "inviteTitle": "Invita qualcuno",
+      "email": "Email",
+      "role": "Ruolo",
+      "roles": {
+        "owner": "Titolare",
+        "admin": "Amministratore del sito",
+        "editor": "Editor",
+        "member": "Membro"
+      },
+      "roleHelp": {
+        "admin": "Gestisce il sito e le persone",
+        "editor": "Scrive e pubblica"
+      },
+      "ownerNote": "Titolare di tutto l’account",
+      "clientMemberNote": "Accesso dall’account del cliente",
+      "you": "tu",
+      "access": "Accessi extra",
+      "extras": {
+        "formsSubmissionRead": "Vede le richieste di contatto",
+        "formsSubmissionUpdate": "Gestisce le richieste di contatto"
+      },
+      "includedByRole": "Le richieste di contatto sono incluse in questo ruolo.",
+      "send": "Invia invito",
+      "sending": "Invio…",
+      "sent": "Invito inviato a {email}.",
+      "sentNoEmail": "Invito salvato, ma non è stato possibile inviare l’email. Riprova più tardi.",
+      "cancelInvite": "Annulla invito",
+      "cancelled": "Invito annullato.",
+      "edit": "Modifica accesso",
+      "save": "Salva",
+      "saved": "Salvato.",
+      "menu": "Opzioni per {name}",
+      "empty": "Nessun altro ha ancora accesso.",
+      "errors": {
+        "invalid_email": "Questa email non sembra corretta.",
+        "invalid_role": "Scegli un ruolo.",
+        "forbidden": "Non puoi concedere questo accesso.",
+        "not_found": "Questa persona o questo invito non esiste più.",
+        "invalid": "Controlla le tue scelte.",
+        "failed": "Qualcosa non ha funzionato. Riprova.",
+        "too_soon": "Questo invito è appena stato inviato. Attendi qualche minuto prima di inviarlo di nuovo."
+      },
+      "details": "Dettagli",
+      "resend": "Invia di nuovo l’invito",
+      "resent": "Invito inviato di nuovo a {email}.",
+      "archive": "Archivia",
+      "archived": "{name} è archiviato e non ha più accesso.",
+      "archiveConfirm": {
+        "title": "Archiviare {name}?",
+        "body": "Perde subito l’accesso a questo sito. Potrai ripristinarlo in seguito con lo stesso accesso."
+      },
+      "restore": "Ripristina accesso",
+      "restored": "{name} ha di nuovo accesso.",
+      "status": {
+        "active": "Attivo",
+        "invited": "Invitato",
+        "expired": "Scaduto",
+        "archived": "Archiviato"
+      },
+      "twoFactor": {
+        "on": "Attiva",
+        "off": "Non attiva"
+      },
+      "columns": {
+        "avatar": "Foto",
+        "person": "Persona",
+        "role": "Ruolo",
+        "status": "Stato",
+        "invited": "Invitato",
+        "joined": "Entrato",
+        "lastActive": "Ultimo accesso",
+        "twoFactor": "2 passaggi",
+        "actions": "Azioni"
+      },
+      "detail": {
+        "note": "Nota",
+        "invitedBy": "Invitato da",
+        "invitedOn": "Invitato il",
+        "validUntil": "Valido fino al",
+        "expiredOn": "Scaduto il",
+        "joined": "Entrato il",
+        "archivedOn": "Archiviato il",
+        "lastActive": "Ultimo accesso",
+        "never": "Non ancora",
+        "twoFactor": "Verifica in 2 passaggi"
+      },
+      "filters": {
+        "filters": "Filtri",
+        "search": "Cerca persone",
+        "searchPlaceholder": "Cerca nome o email…",
+        "status": "Stato",
+        "status_current": "Attivi e invitati",
+        "status_active": "Attivi",
+        "status_invited": "Invitati",
+        "status_archived": "Archiviati",
+        "status_all": "Tutti",
+        "role": "Ruolo",
+        "roleAll": "Tutti i ruoli",
+        "showing": "{shown} di {total} persone",
+        "clear": "Azzera filtri",
+        "noMatch": "Nessuno corrisponde a questi filtri."
+      }
     }
   },
   "editor": {
@@ -1490,9 +1739,9 @@
       "editor": "Editor"
     },
     "extras": {
-      "forms.submission.read": "richieste di contatto",
-      "forms.submission.update": "gestione delle richieste di contatto",
-      "billing.invoice.read": "fatture"
+      "formsSubmissionRead": "richieste di contatto",
+      "formsSubmissionUpdate": "gestione delle richieste di contatto",
+      "billingInvoiceRead": "fatture"
     },
     "accept": {
       "title": "Invito",
@@ -1524,6 +1773,13 @@
       "used": "Questo invito è già stato utilizzato.",
       "notAllowed": "Questo invito non può più essere accettato: chi lo ha inviato non ha più il diritto di concedere questo accesso.",
       "failed": "Qualcosa non ha funzionato. Riprova."
+    },
+    "restored": {
+      "subject": "Il tuo accesso a {place} è di nuovo attivo",
+      "heading": "Bentornato su {place}",
+      "body": "{by} ti ha ridato l’accesso a {place} come {role}.",
+      "button": "Apri Abluo",
+      "replyHint": "Domande? Rispondi a questa email per scrivere a {by}."
     }
   }
 }
