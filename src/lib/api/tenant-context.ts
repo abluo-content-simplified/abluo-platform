@@ -60,7 +60,9 @@ import { createClient } from '@/lib/supabase/server'
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 import { getAuthenticatedActor } from '@/lib/api/auth'
 import type { PlatformRole } from '@/lib/api/auth'
-import { resolveProjectPermissions } from '@/lib/authz/resolve'
+import { resolveProjectPermissions, resolveTenantPermissions } from '@/lib/authz/resolve'
+import { isProjectGrantable } from '@/lib/authz/permissions'
+import { isTenantMembershipRole, type AccessRole, type TenantMembershipRole } from '@/lib/authz/roles'
 import { MODULE_PERMISSION_MAP } from '@/lib/modules/permissions'
 import type { ModulePermissionMap } from '@/lib/modules/types'
 import { tenantClient } from '@/lib/sanity/client'
@@ -69,8 +71,13 @@ import { asSupabaseProjectSlug, type SupabaseProjectSlug } from '@/lib/tenancy/i
 
 // ── Types (ADR-017 Decision 3, shape reproduced exactly) ───────────────────────
 
-/** A project-level role. 'owner' arrives via tenant_members; the rest via project_members. */
-export type ProjectRole = 'owner' | 'editor' | 'viewer'
+/**
+ * The role a person effectively holds on one project (ADR-028 §1):
+ * 'owner' arrives via tenant_members (Owner of the client); 'admin' / 'editor'
+ * (and the retired 'viewer') via project_members; 'member' is a tenant Member
+ * reaching the project only through tenant-level extras.
+ */
+export type ProjectRole = AccessRole
 
 export type ProjectGrant = {
   projectId: string
@@ -87,10 +94,19 @@ export type ProjectGrant = {
   enabledModuleIds: string[]
 }
 
+/** The caller's standing on a client (tenant) itself — invoices, people (ADR-028). */
+export type TenantGrant = {
+  tenantId: string
+  role: TenantMembershipRole
+  permissions: string[]
+}
+
 export type TenantAuthorizationContext = {
   userId: string
   platformRole: PlatformRole
   projects: ProjectGrant[]
+  /** Tenant-level grants. Optional so hand-built contexts in tests stay valid; absent = none. */
+  tenants?: TenantGrant[]
 }
 
 // ── Pure assembly logic (unit-testable without a live DB or Sanity) ────────────
@@ -109,7 +125,12 @@ export type RawProjectMembership = {
   projectId: string
   /** `projects.slug` — the SUPABASE namespace. */
   projectSlug: SupabaseProjectSlug
-  role: 'editor' | 'viewer'
+  /** 'member' = synthetic grant from a tenant Member's tenant-level extras (no project_members row). */
+  role: 'admin' | 'editor' | 'viewer' | 'member'
+  /** The client the project belongs to — its tenant-level extras apply here. */
+  tenantId?: string
+  /** project_members.extra_permissions (none for a synthetic 'member' grant). */
+  extraPermissions?: string[]
 }
 
 /**
@@ -139,9 +160,10 @@ export function permissionsForRole(
 export function grantPermissions(
   role: ProjectRole,
   enabledModuleIds: string[],
-  modulePermissionMap: ModulePermissionMap = MODULE_PERMISSION_MAP
+  modulePermissionMap: ModulePermissionMap = MODULE_PERMISSION_MAP,
+  extras: { projectExtras?: readonly string[]; tenantExtras?: readonly string[] } = {}
 ): string[] {
-  return resolveProjectPermissions({ role, enabledModuleIds, modulePermissionMap }).permissions
+  return resolveProjectPermissions({ role, enabledModuleIds, modulePermissionMap, ...extras }).permissions
 }
 
 /**
@@ -160,8 +182,14 @@ export function assembleProjectGrants(params: {
   memberships: RawProjectMembership[]
   enabledModuleIdsByProjectId: Record<string, string[]>
   modulePermissionMap?: ModulePermissionMap
+  /** tenant_members.extra_permissions per tenant (ADR-028 §3) — apply to every project of that tenant. */
+  tenantExtrasByTenantId?: Record<string, readonly string[]>
 }): ProjectGrant[] {
-  const { ownedProjects, memberships, enabledModuleIdsByProjectId, modulePermissionMap } = params
+  const { ownedProjects, enabledModuleIdsByProjectId, modulePermissionMap } = params
+  const tenantExtrasByTenantId = params.tenantExtrasByTenantId ?? {}
+  // Real project memberships before synthetic tenant-Member grants: a person who
+  // is both keeps their project role, with the tenant extras merged in.
+  const memberships = [...params.memberships].sort((a, b) => Number(a.role === 'member') - Number(b.role === 'member'))
   const grantsByProjectId = new Map<string, ProjectGrant>()
 
   for (const owned of ownedProjects) {
@@ -186,7 +214,10 @@ export function assembleProjectGrants(params: {
       projectSlug: membership.projectSlug,
       membershipId: membership.membershipId,
       role: membership.role,
-      permissions: grantPermissions(membership.role, enabledModuleIds, modulePermissionMap),
+      permissions: grantPermissions(membership.role, enabledModuleIds, modulePermissionMap, {
+        projectExtras: membership.extraPermissions ?? [],
+        tenantExtras: membership.tenantId ? tenantExtrasByTenantId[membership.tenantId] ?? [] : [],
+      }),
       enabledModuleIds,
     })
   }
@@ -295,55 +326,72 @@ export async function getTenantAuthorizationContext(): Promise<TenantAuthorizati
 
   const supabase = await createClient()
 
-  // Owner-via-tenant projects: read the caller's own tenant_members(role =
-  // 'owner') rows (RLS-visible to any authenticated user for their own rows,
-  // migration 003 policy), then read those tenants' projects. The `projects`
-  // SELECT policy (migration 004) permits this — owner is included in
-  // get_my_tenant_ids().
-  const { data: ownedMemberships, error: ownedMembershipsError } = await supabase
+  // ── Tenant memberships (own rows — RLS "Users can read their own memberships") ──
+  // Owners reach every project of the tenant (ADR-017 Decision 2). A Member
+  // reaches projects only through tenant-level extras that apply per project
+  // (ADR-028 §3). Extras are re-validated by the resolver: unknown or
+  // non-grantable ids are ignored, never honoured.
+  const { data: tenantRows, error: tenantRowsError } = await supabase
     .from('tenant_members')
-    .select('tenant_id')
+    .select('tenant_id, role, extra_permissions')
     .eq('user_id', actor.userId)
-    .eq('role', 'owner')
 
-  if (ownedMembershipsError) {
-    throw new Error(
-      `getTenantAuthorizationContext: failed to read tenant_members — ${ownedMembershipsError.message}`
-    )
+  if (tenantRowsError) {
+    throw new Error(`getTenantAuthorizationContext: failed to read tenant_members — ${tenantRowsError.message}`)
   }
 
-  const ownedTenantIds = (ownedMemberships ?? []).map((row) => row.tenant_id as string)
+  const tenantExtrasByTenantId: Record<string, string[]> = {}
+  const tenants: TenantGrant[] = []
+  const ownedTenantIds: string[] = []
+  const reachingMemberTenantIds: string[] = []
+  for (const row of tenantRows ?? []) {
+    const tenantId = row.tenant_id as string
+    const extras = stringArray(row.extra_permissions)
+    tenantExtrasByTenantId[tenantId] = extras
+    if (!isTenantMembershipRole(row.role)) continue // legacy values carry nothing
+    tenants.push({ tenantId, role: row.role, permissions: resolveTenantPermissions({ role: row.role, tenantExtras: extras }).permissions })
+    if (row.role === 'owner') ownedTenantIds.push(tenantId)
+    else if (extras.some(isProjectGrantable)) reachingMemberTenantIds.push(tenantId)
+  }
 
   let ownedProjects: RawOwnedProject[] = []
-  if (ownedTenantIds.length > 0) {
+  const memberTenantProjects: RawProjectMembership[] = []
+  const tenantIdsToRead = [...ownedTenantIds, ...reachingMemberTenantIds]
+  if (tenantIdsToRead.length > 0) {
     const { data: projectRows, error: projectsError } = await supabase
       .from('projects')
       .select('id, slug, tenant_id')
-      .in('tenant_id', ownedTenantIds)
+      .in('tenant_id', tenantIdsToRead)
 
     if (projectsError) {
       throw new Error(
-        `getTenantAuthorizationContext: failed to read projects for owned tenants — ${projectsError.message}`
+        `getTenantAuthorizationContext: failed to read projects for the caller's tenants — ${projectsError.message}`
       )
     }
 
-    ownedProjects = (projectRows ?? []).map((row) => ({
-      projectId: row.id as string,
+    for (const row of projectRows ?? []) {
+      const tenantId = row.tenant_id as string
       // Trust boundary: this IS `projects.slug`.
-      projectSlug: asSupabaseProjectSlug(row.slug as string),
-      tenantId: row.tenant_id as string,
-    }))
+      const projectSlug = asSupabaseProjectSlug(row.slug as string)
+      if (ownedTenantIds.includes(tenantId)) {
+        ownedProjects.push({ projectId: row.id as string, projectSlug, tenantId })
+      } else {
+        memberTenantProjects.push({
+          membershipId: `tenant-member:${tenantId}`,
+          projectId: row.id as string,
+          projectSlug,
+          role: 'member',
+          tenantId,
+          extraPermissions: [],
+        })
+      }
+    }
   }
 
-  // Explicit project_members grants (editor/viewer). Own rows are always
-  // RLS-visible (migration 007 policy). Resolving each row's slug requires a
-  // `projects` table read, which — per the module-level "Known limitation"
-  // note above — is only guaranteed visible under today's RLS for projects
-  // whose tenant the caller also belongs to via tenant_members. A grant whose
-  // slug cannot be resolved is skipped (never fabricated) and logged.
+  // ── Explicit project_members grants (own rows are always RLS-visible) ──
   const { data: membershipRows, error: membershipsError } = await supabase
     .from('project_members')
-    .select('id, project_id, role')
+    .select('id, project_id, role, extra_permissions')
     .eq('user_id', actor.userId)
 
   if (membershipsError) {
@@ -357,11 +405,11 @@ export async function getTenantAuthorizationContext(): Promise<TenantAuthorizati
     .map((row) => row.project_id as string)
     .filter((projectId) => !ownedProjectIds.has(projectId)) // owner already covers these
 
-  let slugByProjectId = new Map<string, SupabaseProjectSlug>()
+  const projectById = new Map<string, { slug: SupabaseProjectSlug; tenantId: string }>()
   if (membershipProjectIds.length > 0) {
     const { data: memberProjectRows, error: memberProjectsError } = await supabase
       .from('projects')
-      .select('id, slug')
+      .select('id, slug, tenant_id')
       .in('id', membershipProjectIds)
 
     if (memberProjectsError) {
@@ -369,29 +417,23 @@ export async function getTenantAuthorizationContext(): Promise<TenantAuthorizati
         `getTenantAuthorizationContext: failed to read projects for project_members grants — ${memberProjectsError.message}`
       )
     }
-
-    slugByProjectId = new Map(
+    for (const row of memberProjectRows ?? []) {
       // Trust boundary: `row.slug` IS `projects.slug`.
-      (memberProjectRows ?? []).map((row) => [
-        row.id as string,
-        asSupabaseProjectSlug(row.slug as string),
-      ])
-    )
+      projectById.set(row.id as string, { slug: asSupabaseProjectSlug(row.slug as string), tenantId: row.tenant_id as string })
+    }
   }
 
   const memberships: RawProjectMembership[] = []
   for (const row of membershipRows ?? []) {
     const projectId = row.project_id as string
     if (ownedProjectIds.has(projectId)) continue // owner wins, skip
+    if (!['admin', 'editor', 'viewer'].includes(row.role as string)) continue // unknown role → no grant (fail closed)
 
-    const projectSlug = slugByProjectId.get(projectId)
-    if (!projectSlug) {
-      // Known limitation (see module comment): the projects RLS policy does
-      // not yet cover project_members-only grants. Skip rather than fabricate.
+    const project = projectById.get(projectId)
+    if (!project) {
       console.warn(
-        `getTenantAuthorizationContext: could not resolve projectSlug for project ${projectId} ` +
-          `(project_members role=${row.role}) — likely blocked by the projects table's current ` +
-          `RLS policy, which is tenant_members-scoped only. Grant skipped.`
+        `getTenantAuthorizationContext: could not resolve project ${projectId} ` +
+          `(project_members role=${row.role}) — not visible to the caller's session. Grant skipped.`
       )
       continue
     }
@@ -399,10 +441,13 @@ export async function getTenantAuthorizationContext(): Promise<TenantAuthorizati
     memberships.push({
       membershipId: row.id as string,
       projectId,
-      projectSlug,
-      role: row.role as 'editor' | 'viewer',
+      projectSlug: project.slug,
+      role: row.role as 'admin' | 'editor' | 'viewer',
+      tenantId: project.tenantId,
+      extraPermissions: stringArray(row.extra_permissions),
     })
   }
+  memberships.push(...memberTenantProjects)
 
   // Shared-slug guard: a slug used by more than one projects row (any tenant)
   // would share Sanity content across tenants — drop those grants, fail closed.
@@ -446,8 +491,15 @@ export async function getTenantAuthorizationContext(): Promise<TenantAuthorizati
       ownedProjects,
       memberships,
       enabledModuleIdsByProjectId,
+      tenantExtrasByTenantId,
     }),
+    tenants,
   }
+}
+
+/** A text[] column as a string array; anything else → []. */
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
 }
 
 /**

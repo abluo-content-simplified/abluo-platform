@@ -58,6 +58,12 @@ begin
   if to_regclass('public.translation_usage') is null then
     raise exception '028: public.translation_usage missing — apply 027 first';
   end if;
+  -- Added 2026-10-07: 030 replaced four of 028's policies with permission-based
+  -- ones under the SAME names; re-running 028 would silently restore the weaker
+  -- membership-based rules. Refuse instead.
+  if to_regprocedure('public.get_my_project_ids_with(text)') is not null then
+    raise exception '028: superseded by 030 for the contact-request policies — do not re-run 028';
+  end if;
 end $$;
 
 

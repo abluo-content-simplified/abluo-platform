@@ -157,6 +157,13 @@ Each step goes `dev` → STOP → `preview` → STOP → `main`.
 2. Support mode: read-only by default, edit with the client's approval, configurable duration (default 24 h) and optional "without asking", everything visible to the client (§8).
 3. Project Admins may give Editors the Contact requests switch on their own project (§4).
 
+## Implementation log
+
+- **2026-10-07 — steps 1–2 (code).** `src/lib/authz` (registry, resolver, `can()`, grant rules); every role comparison replaced by a permission; build-failing guard test. Commit `2028e41`.
+- **2026-10-07 — migration 029 applied** (additive: extras, role values, last-Owner guard, invitations). Proven by `supabase/verify/hardening-029.verify.mjs`.
+- **2026-10-07 — production review (step 3):** every membership is an Owner held by Tom's own accounts; no Editor or Viewer exists, so changing Editor defaults removes nobody's access. Two clients (`tmz`, `cyce`) have no Owner yet — to be invited in step 6.
+- **2026-10-07 — step 4 (code + migration 030, written).** Contact requests are Owner / Site admin by default and otherwise an extra, in the code (`forms.submission.*` defaults) and in the database (`get_my_project_ids_with()` behind the submissions, form-events and inquiries policies). The resolver reads extras and tenant Member grants. Legacy role values retired. 028 now refuses to re-run over 030.
+
 ## Follow-ups noted
 
 - **"No access" page on `admin.abluo.app`** (Tom, 2026-10-07). A correctly signed-in non-admin (e.g. an Editor) lands on "No access", which is the right behaviour — authentication succeeded, authorization did not, so "wrong user or password" would be false. Improvement: offer a localized "Go to your dashboard" button to the client dashboard instead of a dead end.

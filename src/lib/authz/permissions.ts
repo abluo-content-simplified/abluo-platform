@@ -136,3 +136,10 @@ export function scopesOfPlatformPermission(def: PlatformPermissionDef): Permissi
   if (def.defaults.project) scopes.push('project')
   return scopes
 }
+
+/** May `id` be given as an extra that applies on a PROJECT (from a project or a tenant membership)? */
+export function isProjectGrantable(id: string): boolean {
+  if (id in GRANTABLE_MODULE_PERMISSIONS) return true
+  const def = BY_ID.get(id)
+  return Boolean(def && def.grantable && def.defaults.project)
+}

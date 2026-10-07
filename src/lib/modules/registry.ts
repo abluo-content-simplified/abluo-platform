@@ -511,19 +511,22 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           id: 'forms.submission.read',
           label: 'View submissions',
           description: 'View and list form submissions in the client dashboard.',
-          defaultRoles: ['owner', 'editor', 'viewer'],
+          // ADR-028: contact requests hold personal data — Owner / Site admin by
+          // default; anyone else only with the extra (database enforces the same, 030).
+          defaultRoles: ['owner'],
         },
         {
           id: 'forms.submission.update',
           label: 'Update submissions',
           description: 'Change a submission status (new → processed → archived).',
-          defaultRoles: ['owner', 'editor'],
+          defaultRoles: ['owner'],
         },
         {
           id: 'forms.submission.delete',
           label: 'Delete submissions',
           description: 'Permanently delete form submissions.',
-          defaultRoles: ['owner', 'editor'],
+          // Not grantable as an extra: deleting personal data stays with Owner / Site admin.
+          defaultRoles: ['owner'],
         },
         {
           // Admin-surface capabilities. Definitions are abluo_admin-only in V1,
