@@ -1471,5 +1471,59 @@
         "hint": "Edit in Studio · you can move or delete it here"
       }
     }
+  },
+  "invitation": {
+    "email": {
+      "subject": "{inviter} invited you to {place}",
+      "heading": "You’re invited to {place}",
+      "body": "{inviter} has invited you to work on {place} with Abluo as {role}.",
+      "button": "Accept the invitation",
+      "linkHint": "Or copy this link into your browser:",
+      "expiry": "This invitation is valid until {date}.",
+      "ignore": "If you weren’t expecting this, you can ignore this email — nothing happens unless you accept.",
+      "replyHint": "Questions? Reply to this email to reach {inviter}."
+    },
+    "roles": {
+      "owner": "Owner",
+      "member": "Member",
+      "admin": "Site admin",
+      "editor": "Editor"
+    },
+    "extras": {
+      "forms.submission.read": "contact requests",
+      "forms.submission.update": "updating contact requests",
+      "billing.invoice.read": "invoices"
+    },
+    "accept": {
+      "title": "Invitation",
+      "invitedTo": "You’ve been invited to {place} as {role}.",
+      "invitedBy": "Invited by {inviter}.",
+      "withExtras": "Includes access to: {extras}.",
+      "forEmail": "This invitation is for {email}.",
+      "signedInAs": "You’re signed in as {email}.",
+      "acceptButton": "Accept invitation",
+      "accepting": "Accepting…",
+      "accepted": "Done — you now have access.",
+      "continue": "Continue",
+      "newAccountTitle": "Create your account",
+      "newAccountIntro": "Choose a password to create your Abluo account for {email}.",
+      "fullName": "Your name",
+      "password": "Password",
+      "passwordConfirm": "Repeat password",
+      "passwordTooShort": "The password needs at least {min} characters.",
+      "passwordMismatch": "The two passwords are different.",
+      "createAndAccept": "Create account and accept",
+      "haveAccount": "Already have an Abluo account?",
+      "signIn": "Sign in to accept",
+      "wrongAccount": "You’re signed in with a different account. Sign out, then open the link again.",
+      "signOut": "Sign out",
+      "emailExists": "An account with this email already exists. Sign in to accept the invitation.",
+      "invalid": "This invitation link isn’t valid.",
+      "expired": "This invitation has expired. Ask {inviter} to send a new one.",
+      "revoked": "This invitation was cancelled.",
+      "used": "This invitation has already been used.",
+      "notAllowed": "This invitation can no longer be accepted, because the person who sent it no longer has the right to give this access.",
+      "failed": "Something went wrong. Please try again."
+    }
   }
 }

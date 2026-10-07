@@ -57,6 +57,7 @@
  * touched here) — see the handoff for the recommended next step.
  */
 import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 import { getAuthenticatedActor } from '@/lib/api/auth'
 import type { PlatformRole } from '@/lib/api/auth'
@@ -323,8 +324,22 @@ async function fetchProjectSlugUsage(slugs: string[]): Promise<Map<string, numbe
 export async function getTenantAuthorizationContext(): Promise<TenantAuthorizationContext | null> {
   const actor = await getAuthenticatedActor()
   if (!actor) return null
+  return loadTenantAuthorizationContext(await createClient(), actor)
+}
 
-  const supabase = await createClient()
+/**
+ * The resolver body, for any Supabase client. Every query filters on
+ * `actor.userId` and reads only rows that user's own session may read, so it
+ * yields the same result with the caller's RLS-scoped client (the normal
+ * path, above) or with the service role for a user who is NOT the caller —
+ * used only to re-check an inviter's standing when an invitation is accepted
+ * (ADR-028 §6, src/lib/invitations). Never pass the service role with an
+ * actor taken from request input.
+ */
+export async function loadTenantAuthorizationContext(
+  supabase: SupabaseClient,
+  actor: { userId: string; platformRole: PlatformRole }
+): Promise<TenantAuthorizationContext> {
 
   // ── Tenant memberships (own rows — RLS "Users can read their own memberships") ──
   // Owners reach every project of the tenant (ADR-017 Decision 2). A Member

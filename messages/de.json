@@ -1471,5 +1471,59 @@
         "hint": "In Studio bearbeiten · hier verschieben oder löschen"
       }
     }
+  },
+  "invitation": {
+    "email": {
+      "subject": "{inviter} hat dich zu {place} eingeladen",
+      "heading": "Du bist zu {place} eingeladen",
+      "body": "{inviter} hat dich eingeladen, mit Abluo an {place} mitzuarbeiten – als {role}.",
+      "button": "Einladung annehmen",
+      "linkHint": "Oder kopiere diesen Link in deinen Browser:",
+      "expiry": "Diese Einladung gilt bis {date}.",
+      "ignore": "Falls du das nicht erwartet hast, kannst du diese E-Mail ignorieren – ohne Annahme passiert nichts.",
+      "replyHint": "Fragen? Antworte auf diese E-Mail, um {inviter} zu erreichen."
+    },
+    "roles": {
+      "owner": "Inhaber",
+      "member": "Mitglied",
+      "admin": "Website-Admin",
+      "editor": "Redakteur"
+    },
+    "extras": {
+      "forms.submission.read": "Kontaktanfragen",
+      "forms.submission.update": "Bearbeiten von Kontaktanfragen",
+      "billing.invoice.read": "Rechnungen"
+    },
+    "accept": {
+      "title": "Einladung",
+      "invitedTo": "Du wurdest zu {place} als {role} eingeladen.",
+      "invitedBy": "Eingeladen von {inviter}.",
+      "withExtras": "Mit Zugriff auf: {extras}.",
+      "forEmail": "Diese Einladung gilt für {email}.",
+      "signedInAs": "Du bist angemeldet als {email}.",
+      "acceptButton": "Einladung annehmen",
+      "accepting": "Einen Moment…",
+      "accepted": "Erledigt – du hast jetzt Zugriff.",
+      "continue": "Weiter",
+      "newAccountTitle": "Konto erstellen",
+      "newAccountIntro": "Wähle ein Passwort, um dein Abluo-Konto für {email} zu erstellen.",
+      "fullName": "Dein Name",
+      "password": "Passwort",
+      "passwordConfirm": "Passwort wiederholen",
+      "passwordTooShort": "Das Passwort braucht mindestens {min} Zeichen.",
+      "passwordMismatch": "Die beiden Passwörter stimmen nicht überein.",
+      "createAndAccept": "Konto erstellen und annehmen",
+      "haveAccount": "Du hast schon ein Abluo-Konto?",
+      "signIn": "Zum Annehmen anmelden",
+      "wrongAccount": "Du bist mit einem anderen Konto angemeldet. Melde dich ab und öffne den Link erneut.",
+      "signOut": "Abmelden",
+      "emailExists": "Es gibt bereits ein Konto mit dieser E-Mail. Melde dich an, um die Einladung anzunehmen.",
+      "invalid": "Dieser Einladungslink ist ungültig.",
+      "expired": "Diese Einladung ist abgelaufen. Bitte {inviter} um eine neue.",
+      "revoked": "Diese Einladung wurde zurückgezogen.",
+      "used": "Diese Einladung wurde bereits verwendet.",
+      "notAllowed": "Diese Einladung kann nicht mehr angenommen werden, weil die einladende Person diesen Zugriff nicht mehr vergeben darf.",
+      "failed": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal."
+    }
   }
 }

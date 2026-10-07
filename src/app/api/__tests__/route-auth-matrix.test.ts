@@ -59,14 +59,23 @@ function builder(table: string) {
   const b: Record<string, unknown> = {
     select: () => b,
     eq: (k: string, v: unknown) => (filters.push([k, v]), b),
+    is: () => b,
+    gt: () => b,
+    in: () => b,
     neq: (k: string, v: unknown) => (filters.push(['!' + k, v]), b),
     order: () => b,
     limit: () => b,
     update: (p: unknown) => ((op = 'update'), (payload = p), b),
     insert: (p: unknown) => ((op = 'insert'), (payload = p), b),
     delete: () => ((op = 'delete'), b),
-    maybeSingle: async () => ({ data: rows()[0] ?? null, error: null }),
-    single: async () => ({ data: rows()[0] ?? null, error: rows()[0] ? null : { message: 'not found' } }),
+    maybeSingle: async () => {
+      if (op !== 'select') userWrites.push({ table, op, payload, filters: [...filters] })
+      return { data: rows()[0] ?? null, error: null }
+    },
+    single: async () => {
+      if (op !== 'select') userWrites.push({ table, op, payload, filters: [...filters] })
+      return { data: rows()[0] ?? null, error: rows()[0] ? null : { message: 'not found' } }
+    },
     then: (resolve: (v: unknown) => unknown) => {
       if (op !== 'select') userWrites.push({ table, op, payload, filters: [...filters] })
       return Promise.resolve({ data: op === 'select' ? rows() : null, error: null }).then(resolve)
@@ -94,9 +103,10 @@ vi.mock('@/lib/supabase/server', () => ({
 
 const serviceRoleCalls: string[] = []
 const inviteUserByEmail = vi.fn(async () => ({ data: { user: { id: 'invited' } }, error: null }))
+const getUserById = vi.fn(async (id: string) => ({ data: { user: { id, email: `${id}@x.y`, app_metadata: {} } }, error: null }))
 const serviceRoleClient = {
   from: (table: string) => (serviceRoleCalls.push(`from:${table}`), builder(table)),
-  auth: { admin: { inviteUserByEmail } },
+  auth: { admin: { inviteUserByEmail, getUserById } },
   rpc: async () => (serviceRoleCalls.push('rpc'), { data: 0, error: null }),
 }
 vi.mock('@/lib/supabase/admin', () => ({
@@ -137,6 +147,8 @@ vi.mock('@/lib/sanity/client', async (orig) => {
 const deliverEvent = vi.fn(async () => ({ delivered: 0 }))
 const sweepFormEvents = vi.fn(async () => ({ swept: 0 }))
 vi.mock('@/lib/notifications/consumer', () => ({ deliverEvent, sweepFormEvents }))
+const sendInvite = vi.fn(async () => ({ ok: true, id: 'mail-1' }))
+vi.mock('@/lib/notifications/resend', () => ({ sendEmail: sendInvite }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 
 let tenantCtx: unknown = null
@@ -153,6 +165,7 @@ beforeEach(() => {
   serviceRoleCalls.length = 0
   sanityCalls.length = 0
   inviteUserByEmail.mockClear()
+  sendInvite.mockClear()
   deliverEvent.mockClear()
   sweepFormEvents.mockClear()
   process.env.CRON_SECRET = 'cron-secret'
@@ -214,6 +227,11 @@ const ADMIN_ONLY: Call[] = [
 ]
 
 describe('admin-only routes refuse everyone but a two-factor admin', () => {
+  // The tenant invite route pulls in the invitation service + resolver + module
+  // registry; under full-suite load that cold import alone can exceed 5s.
+  beforeAll(async () => {
+    await import('@/app/api/tenants/[tenantId]/invite/route')
+  }, 30_000)
   for (const p of ['anon', 'tenantA', 'adminAal1'] as const) {
     for (const call of ADMIN_ONLY) {
       it(`${p} → ${call.name} is refused with no side effects`, async () => {
@@ -294,42 +312,82 @@ describe('POST /api/projects/[projectId]/invite — authorized from the resolved
     noSideEffects()
   })
 
+  const invitationWrites = () => userWrites.filter((w) => w.table === 'invitations' && w.op === 'insert')
+  const projectA = () => {
+    visible = {
+      projects: [{ id: 'project-a', name: 'Site A', slug: 'project-a-site', tenant_id: 'tenant-a' }],
+      invitations: [{ id: 'inv-1', expires_at: '2026-10-21T00:00:00Z' }],
+    }
+  }
+
   it("tenant A's owner cannot invite into tenant B's project (body tenant_id is ignored)", async () => {
     await asUser(await grantOn('project-a', 'owner'))
     const res = await call('project-b')
     expect(res.status).toBe(403)
-    expect(inviteUserByEmail).not.toHaveBeenCalled()
+    expect(sendInvite).not.toHaveBeenCalled()
+    expect(serviceRoleCalls.some((c) => c.includes('invitations'))).toBe(false) // refused before any service-role I/O
     noSideEffects()
   })
 
-  it("tenant A's owner CAN invite an Editor into tenant A's project", async () => {
+  it("tenant A's owner CAN invite an Editor into tenant A's project — a record + one email, never a membership", async () => {
     await asUser(await grantOn('project-a', 'owner'))
+    projectA()
     const res = await call('project-a')
     expect(res.status).toBe(200)
-    expect(inviteUserByEmail).toHaveBeenCalledTimes(1)
-    expect((inviteUserByEmail.mock.calls[0] as unknown[])[1]).toMatchObject({ data: { project_id: 'project-a', role: 'editor' } })
+    expect(sendInvite).toHaveBeenCalledTimes(1)
+    const mail = (sendInvite.mock.calls[0] as unknown as [{ to: string[]; fromName: string; replyTo: string; html: string }])[0]
+    expect(mail.to).toEqual(['new@x.y'])
+    expect(mail.fromName).toMatch(/via Abluo$/)
+    expect(mail.replyTo).toBe('user-tenant-a@x.y')
+    const [w] = invitationWrites()
+    expect(w.payload).toMatchObject({ email: 'new@x.y', scope_type: 'project', project_id: 'project-a', role: 'editor', invited_by: 'user-tenant-a' })
+    const stored = (w.payload as { token_hash: string }).token_hash
+    expect(stored).toMatch(/^[A-Za-z0-9_-]{43}$/)
+    // The link carries the token; the database only its hash.
+    const link = mail.html.match(/token=([A-Za-z0-9_-]{43})/)![1]
+    expect(link).not.toBe(stored)
+    expect(userWrites.some((x) => x.table === 'project_members' || x.table === 'tenant_members')).toBe(false)
   })
 
-  it('a Site admin CAN invite an Editor into their own project', async () => {
+  it('an Owner may invite a Site admin; a Site admin may invite an Editor but not a Site admin', async () => {
+    await asUser(await grantOn('project-a', 'owner'))
+    projectA()
+    expect((await call('project-a', 'admin')).status).toBe(200)
     await asUser(await grantOn('project-a', 'admin'))
-    expect((await call('project-a')).status).toBe(200)
+    expect((await call('project-a', 'editor')).status).toBe(200)
+    sendInvite.mockClear()
+    expect((await call('project-a', 'admin')).status).toBe(403)
+    expect(sendInvite).not.toHaveBeenCalled()
   })
 
   it('an Editor or Viewer cannot invite anyone', async () => {
     for (const role of ['editor', 'viewer'] as const) {
-      inviteUserByEmail.mockClear()
+      sendInvite.mockClear()
       await asUser(await grantOn('project-a', role))
+      projectA()
       expect((await call('project-a')).status).toBe(403)
-      expect(inviteUserByEmail).not.toHaveBeenCalled()
+      expect(sendInvite).not.toHaveBeenCalled()
     }
   })
 
-  it('Viewer (retired) and Site admin (not yet in the database) are not invitable', async () => {
+  it('tenant-level and retired roles are not invitable on a site', async () => {
     await asUser(await grantOn('project-a', 'owner'))
-    for (const role of ['viewer', 'admin', 'owner']) {
+    projectA()
+    for (const role of ['viewer', 'owner', 'member', 'superuser']) {
       expect((await call('project-a', role)).status).toBe(400)
     }
-    expect(inviteUserByEmail).not.toHaveBeenCalled()
+    expect(sendInvite).not.toHaveBeenCalled()
+  })
+
+  it('a bad email is refused before anything is written', async () => {
+    await asUser(await grantOn('project-a', 'owner'))
+    projectA()
+    const res = await (await import('@/app/api/projects/[projectId]/invite/route')).POST(
+      req('/api/projects/project-a/invite', json({ email: 'not an email', role: 'editor' })),
+      ctx({ projectId: 'project-a' })
+    )
+    expect(res.status).toBe(400)
+    expect(invitationWrites()).toEqual([])
   })
 })
 

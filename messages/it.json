@@ -1471,5 +1471,59 @@
         "hint": "Si modifica in Studio · qui puoi spostarlo o eliminarlo"
       }
     }
+  },
+  "invitation": {
+    "email": {
+      "subject": "{inviter} ti ha invitato su {place}",
+      "heading": "Sei invitato su {place}",
+      "body": "{inviter} ti ha invitato a lavorare su {place} con Abluo come {role}.",
+      "button": "Accetta l’invito",
+      "linkHint": "Oppure copia questo link nel browser:",
+      "expiry": "L’invito è valido fino al {date}.",
+      "ignore": "Se non te lo aspettavi, puoi ignorare questa email: non succede nulla se non accetti.",
+      "replyHint": "Domande? Rispondi a questa email per scrivere a {inviter}."
+    },
+    "roles": {
+      "owner": "Titolare",
+      "member": "Membro",
+      "admin": "Amministratore del sito",
+      "editor": "Editor"
+    },
+    "extras": {
+      "forms.submission.read": "richieste di contatto",
+      "forms.submission.update": "gestione delle richieste di contatto",
+      "billing.invoice.read": "fatture"
+    },
+    "accept": {
+      "title": "Invito",
+      "invitedTo": "Sei stato invitato su {place} come {role}.",
+      "invitedBy": "Invito di {inviter}.",
+      "withExtras": "Include l’accesso a: {extras}.",
+      "forEmail": "Questo invito è per {email}.",
+      "signedInAs": "Hai effettuato l’accesso come {email}.",
+      "acceptButton": "Accetta l’invito",
+      "accepting": "Un momento…",
+      "accepted": "Fatto: ora hai accesso.",
+      "continue": "Continua",
+      "newAccountTitle": "Crea il tuo account",
+      "newAccountIntro": "Scegli una password per creare il tuo account Abluo per {email}.",
+      "fullName": "Il tuo nome",
+      "password": "Password",
+      "passwordConfirm": "Ripeti la password",
+      "passwordTooShort": "La password deve avere almeno {min} caratteri.",
+      "passwordMismatch": "Le due password non coincidono.",
+      "createAndAccept": "Crea account e accetta",
+      "haveAccount": "Hai già un account Abluo?",
+      "signIn": "Accedi per accettare",
+      "wrongAccount": "Hai effettuato l’accesso con un altro account. Esci e riapri il link.",
+      "signOut": "Esci",
+      "emailExists": "Esiste già un account con questa email. Accedi per accettare l’invito.",
+      "invalid": "Questo link di invito non è valido.",
+      "expired": "Questo invito è scaduto. Chiedi a {inviter} di inviarne uno nuovo.",
+      "revoked": "Questo invito è stato annullato.",
+      "used": "Questo invito è già stato utilizzato.",
+      "notAllowed": "Questo invito non può più essere accettato: chi lo ha inviato non ha più il diritto di concedere questo accesso.",
+      "failed": "Qualcosa non ha funzionato. Riprova."
+    }
   }
 }
