@@ -276,20 +276,26 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
 
   return (
     <PageShell>
+      {/* DOM order = phone order (Tom, 2026-10-08): greeting, at a glance, needs your
+          attention, continue editing, latest lists, view your site. desktopOrder keeps
+          the desktop rows as they were (greeting + site status on row 1). */}
       <DashboardGrid>
         <DashboardArea span={site ? 8 : 12} desktopOrder={1}>
           <Greeting firstName={firstName} />
         </DashboardArea>
 
-        {site ? (
-          <DashboardArea span={4} desktopOrder={2}>
-            <SiteStatus state={site.state} host={site.host} url={site.url} />
-          </DashboardArea>
-        ) : null}
-
         {nothingYet ? (
           <DashboardArea desktopOrder={3}>
             <EmptyState title={th('emptyTitle')} body={th('emptyBody')} />
+          </DashboardArea>
+        ) : null}
+
+        {tiles.length ? (
+          <DashboardArea desktopOrder={4}>
+            <section aria-labelledby="at-a-glance" className="flex flex-col gap-3">
+              <SectionHeading id="at-a-glance" title={th('glance.heading')} />
+              <StatGrid>{tiles}</StatGrid>
+            </section>
           </DashboardArea>
         ) : null}
 
@@ -308,15 +314,6 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
           </DashboardArea>
         ) : null}
 
-        {tiles.length ? (
-          <DashboardArea desktopOrder={4}>
-            <section aria-labelledby="at-a-glance" className="flex flex-col gap-3">
-              <SectionHeading id="at-a-glance" title={th('glance.heading')} />
-              <StatGrid>{tiles}</StatGrid>
-            </section>
-          </DashboardArea>
-        ) : null}
-
         {latestPosts.length > 0 && postsHref ? (
           <DashboardArea span={6} desktopOrder={7}>
             <LatestList kind="post" heading={th('latestPosts')} items={latestPosts} seeAllHref={postsHref} />
@@ -326,6 +323,11 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
         {latestGalleries.length > 0 && galleriesHref ? (
           <DashboardArea span={6} desktopOrder={8}>
             <LatestList kind="gallery" heading={th('latestGalleries')} items={latestGalleries} seeAllHref={galleriesHref} />
+          </DashboardArea>
+        ) : null}
+        {site ? (
+          <DashboardArea span={4} desktopOrder={2}>
+            <SiteStatus state={site.state} host={site.host} url={site.url} />
           </DashboardArea>
         ) : null}
       </DashboardGrid>

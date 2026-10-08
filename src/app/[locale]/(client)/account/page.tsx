@@ -7,6 +7,7 @@ import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { getViewerAccount } from '@/lib/api/viewer-account'
 import { dashboardHomeHref, resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { Link } from '@/i18n/navigation'
+import { filterSwitchableProjects, loadProjectSummaries, statusesOf } from '@/lib/client/switchable-projects'
 import { AppTextSizeSwitch } from '@/components/client/AppTextSizeSwitch'
 import { AppThemeSwitch } from '@/components/client/AppThemeSwitch'
 import { SignOutButton } from '@/components/client/account/SignOutButton'
@@ -29,10 +30,11 @@ import { PageShell } from '@/components/client/ui/PageShell'
  * Authentication is checked inline (the `(client)` layout does it too); what
  * is shown here is read AS the user, so it can only ever be their own.
  */
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ id, title, hint, children }: { id?: string; title: string; hint?: string; children: ReactNode }) {
   return (
-    <section className="space-y-3">
+    <section id={id} className="scroll-mt-20 space-y-3">
       <h2 className="text-sm font-semibold text-muted-foreground">{title}</h2>
+      {hint ? <p className="-mt-2 text-sm text-muted-foreground">{hint}</p> : null}
       <div className="rounded-2xl border border-border bg-card px-4 py-3 md:px-5">{children}</div>
     </section>
   )
@@ -46,11 +48,19 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
     redirect(`/login?next=${encodeURIComponent(`/${locale}/account`)}`)
   }
 
-  const [t, viewer, jar] = await Promise.all([
+  const [t, tRoles, viewer, jar, summaries] = await Promise.all([
     getTranslations('account'),
+    getTranslations('clientDashboard.people.roles'),
     getViewerAccount(ctx.userId),
     cookies(),
+    loadProjectSummaries(ctx.projects.map((g) => g.projectId)),
   ])
+  // Every site this person works on, with their role there (inactive fixtures left out).
+  const access = filterSwitchableProjects(ctx.projects, statusesOf(summaries)).map((g) => ({
+    slug: g.projectSlug,
+    name: summaries[g.projectId]?.name?.trim() || g.projectSlug,
+    role: tRoles.has(g.role) ? tRoles(g.role) : g.role,
+  }))
   const theme = parseAppTheme(jar.get(APP_THEME_COOKIE)?.value)
   const textSize = parseAppTextSize(jar.get(APP_TEXT_SIZE_COOKIE)?.value)
 
@@ -81,7 +91,19 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
             </dl>
           </Section>
 
-          <Section title={t('preferences')}>
+          {access.length > 0 ? (
+            <Section title={t('access')} hint={t('accessHint')}>
+              <dl>
+                {access.map((a) => (
+                  <FactRow key={a.slug} label={a.name}>
+                    {a.role}
+                  </FactRow>
+                ))}
+              </dl>
+            </Section>
+          ) : null}
+
+          <Section id="preferences" title={t('preferences')}>
             <div className="space-y-4 py-1">
               <AppThemeSwitch initial={theme} />
               <AppTextSizeSwitch initial={textSize} />

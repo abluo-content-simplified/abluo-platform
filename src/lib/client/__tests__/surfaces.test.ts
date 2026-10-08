@@ -7,6 +7,8 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { MODULE_REGISTRY } from '@/lib/modules/registry'
+import { MODULES_WITHOUT_TENANT_SURFACE, TENANT_SURFACES as ALL_SURFACES } from '../surfaces'
 import {
   buildTenantSurfaces,
   CONFIGURATION_PERMISSIONS,
@@ -171,5 +173,26 @@ describe('buildTenantSurfaces', () => {
     expect(surfaceAllowed(g, { module: 'm', permission: 'b' })).toBe(false)
     expect(surfaceAllowed(g, { anyPermission: ['b', 'a'] })).toBe(true)
     expect(surfaceAllowed(g, { anyPermission: ['b', 'c'] })).toBe(false)
+  })
+})
+
+// ── Module coverage (Tom, 2026-10-08) ─────────────────────────────────────────
+// Every installable module either has tenant surfaces or is explicitly listed
+// as "not yet built" / "admin only" — never silently missing.
+
+describe('module coverage', () => {
+  const surfaced = new Set(ALL_SURFACES.map((s) => s.requires.module).filter(Boolean))
+
+  it.each(MODULE_REGISTRY.map((m) => m.id))('module "%s" has tenant surfaces or a declared reason', (id) => {
+    expect(surfaced.has(id) || id in MODULES_WITHOUT_TENANT_SURFACE).toBe(true)
+  })
+
+  it('no module is both surfaced and listed as missing', () => {
+    for (const id of Object.keys(MODULES_WITHOUT_TENANT_SURFACE)) expect(surfaced.has(id)).toBe(false)
+  })
+
+  it('the missing-list names only real modules', () => {
+    const ids = new Set(MODULE_REGISTRY.map((m) => m.id))
+    for (const id of Object.keys(MODULES_WITHOUT_TENANT_SURFACE)) expect(ids.has(id)).toBe(true)
   })
 })

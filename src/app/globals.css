@@ -345,3 +345,89 @@
 html:has(.abluo-app[data-text-size="sm"]) { font-size: 93.75%; }
 html:has(.abluo-app[data-text-size="lg"]) { font-size: 112.5%; }
 html:has(.abluo-app[data-text-size="xl"]) { font-size: 125%; }
+
+/* ── Sheets and panels slide in and out (Tom, 2026-10-08) ─────────────────────
+   BottomSheet (`.app-sheet`) and SidePanel (`.app-panel`) are native modal
+   <dialog>s. Open: slide up from the bottom on phones; from md a BottomSheet
+   fades/scales in the centre and a SidePanel slides in from the right. Close:
+   the same in reverse — `display`/`overlay` transition discretely so the exit
+   runs before the dialog leaves the top layer. Browsers without
+   @starting-style/allow-discrete simply show and hide as before.
+   Reduced motion: no movement. */
+dialog.app-sheet,
+dialog.app-panel {
+  --sheet-in: 280ms;
+  --sheet-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  translate: 0 100%;
+  transition:
+    translate var(--sheet-in) var(--sheet-ease),
+    opacity var(--sheet-in) var(--sheet-ease),
+    scale var(--sheet-in) var(--sheet-ease),
+    display var(--sheet-in) allow-discrete,
+    overlay var(--sheet-in) allow-discrete;
+}
+dialog.app-sheet[open],
+dialog.app-panel[open] {
+  translate: 0 0;
+}
+@starting-style {
+  dialog.app-sheet[open],
+  dialog.app-panel[open] {
+    translate: 0 100%;
+  }
+}
+dialog.app-sheet::backdrop,
+dialog.app-panel::backdrop {
+  opacity: 0;
+  transition:
+    opacity var(--sheet-in) ease,
+    display var(--sheet-in) allow-discrete,
+    overlay var(--sheet-in) allow-discrete;
+}
+dialog.app-sheet[open]::backdrop,
+dialog.app-panel[open]::backdrop {
+  opacity: 1;
+}
+@starting-style {
+  dialog.app-sheet[open]::backdrop,
+  dialog.app-panel[open]::backdrop {
+    opacity: 0;
+  }
+}
+@media (min-width: 48rem) {
+  dialog.app-sheet {
+    translate: none;
+    opacity: 0;
+    scale: 0.96;
+  }
+  dialog.app-sheet[open] {
+    translate: none;
+    opacity: 1;
+    scale: 1;
+  }
+  @starting-style {
+    dialog.app-sheet[open] {
+      opacity: 0;
+      scale: 0.96;
+    }
+  }
+  dialog.app-panel {
+    translate: 100% 0;
+  }
+  dialog.app-panel[open] {
+    translate: 0 0;
+  }
+  @starting-style {
+    dialog.app-panel[open] {
+      translate: 100% 0;
+    }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog.app-sheet,
+  dialog.app-panel,
+  dialog.app-sheet::backdrop,
+  dialog.app-panel::backdrop {
+    transition: none;
+  }
+}

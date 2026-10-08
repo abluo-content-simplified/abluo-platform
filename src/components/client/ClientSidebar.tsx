@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link, usePathname } from '@/i18n/navigation'
-import { ProjectSwitcher } from './ProjectSwitcher'
+import { ProjectSwitcher, type SwitcherProject } from './ProjectSwitcher'
 import { AccountMenu, type AccountMenuProps } from './AccountMenu'
 import { useOpenAddContent } from './create/AddContentRoot'
 import type { ClientNavItem } from '@/lib/modules/client-navigation'
@@ -35,8 +35,8 @@ import { isNavItemActive, phoneNavLayout } from '@/lib/modules/client-nav-layout
 
 export type ClientSidebarProps = {
   navItems: ClientNavItem[]
-  /** Projects the user may switch between (resolved slugs). */
-  projects: { projectSlug: string }[]
+  /** Projects the user may switch between (slug, name, domain). */
+  projects: SwitcherProject[]
   /** Active project slug (URL first segment). */
   activeSlug: string
   /** The signed-in person and their app preferences, for the account menu. */
@@ -118,6 +118,7 @@ export function ClientSidebar({
   }, [drawerOpen])
 
   const isActive = (href: string) => isNavItemActive(pathname, href)
+  const activeProjectName = projects.find((p) => p.projectSlug === activeSlug)?.name?.trim() || activeSlug
 
   const { content: contentItem, forms: leadsItem, overflow } = phoneNavLayout(navItems)
   // "More" carries the active state for pages without a tab of their own.
@@ -137,7 +138,7 @@ export function ClientSidebar({
         >
           <Icon d={ICONS.menu} size={22} />
         </button>
-        <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{activeSlug}</span>
+        <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{activeProjectName}</span>
         <AccountMenu variant="bar" {...account} />
       </div>
 

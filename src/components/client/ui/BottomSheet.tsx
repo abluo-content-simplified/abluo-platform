@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useRef, type ReactNode } from 'react'
+import { useExitContent } from './use-exit-content'
 
-/** A bottom sheet (native dialog): full width on phones, centred from md. */
+/** A bottom sheet (native dialog): full width on phones, centred from md. Slides in/out (`.app-sheet`, globals.css). */
 export function BottomSheet({ open, title, onClose, children }: { open: boolean; title: string; onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null)
+  const body = useExitContent(open, children)
   useEffect(() => {
     const d = ref.current
     if (!d) return
@@ -16,7 +18,7 @@ export function BottomSheet({ open, title, onClose, children }: { open: boolean;
       ref={ref}
       onClose={onClose}
       aria-label={title}
-      className="m-auto mb-0 w-full max-w-md rounded-t-2xl bg-popover p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-popover-foreground backdrop:bg-overlay md:mb-auto md:rounded-2xl"
+      className="app-sheet m-auto mb-0 w-full max-w-md rounded-t-2xl bg-popover p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-popover-foreground backdrop:bg-overlay md:mb-auto md:rounded-2xl"
     >
       <div className="flex items-start justify-between gap-3">
         <h2 className="pt-2 text-lg font-semibold">{title}</h2>
@@ -31,7 +33,7 @@ export function BottomSheet({ open, title, onClose, children }: { open: boolean;
           </svg>
         </button>
       </div>
-      <div className="mt-2 flex flex-col">{children}</div>
+      <div className="mt-2 flex flex-col">{body}</div>
     </dialog>
   )
 }

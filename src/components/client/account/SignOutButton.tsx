@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -9,7 +10,7 @@ import { createClient } from '@/lib/supabase/client'
  * the client app: the account menu and the Account page both render it, styled
  * through `className` (so each keeps its own row look).
  */
-export function SignOutButton({ className, onSignOut }: { className?: string; onSignOut?: () => void }) {
+export function SignOutButton({ className, onSignOut, icon }: { className?: string; onSignOut?: () => void; icon?: ReactNode }) {
   const t = useTranslations('clientDashboard.shell')
   const router = useRouter()
 
@@ -22,6 +23,7 @@ export function SignOutButton({ className, onSignOut }: { className?: string; on
 
   return (
     <button type="button" onClick={signOut} className={className}>
+      {icon}
       {t('signOut')}
     </button>
   )

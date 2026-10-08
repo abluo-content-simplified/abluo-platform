@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, type ReactNode } from 'react'
+import { useExitContent } from './use-exit-content'
 
 /**
  * A detail panel for one list item (a form request, a person, an order …),
@@ -35,6 +36,10 @@ export function SidePanel({
   children: ReactNode
 }) {
   const ref = useRef<HTMLDialogElement>(null)
+  const body = useExitContent(open, children)
+  const head = useExitContent(open, title)
+  const sub = useExitContent(open, subtitle ?? null)
+  const acts = useExitContent(open, actions ?? null)
   useEffect(() => {
     const d = ref.current
     if (!d) return
@@ -50,14 +55,14 @@ export function SidePanel({
         if (e.target === e.currentTarget) onClose()
       }}
       aria-labelledby="side-panel-title"
-      className="m-0 mt-auto max-h-[90dvh] w-full max-w-none overflow-hidden rounded-t-2xl bg-popover p-0 text-popover-foreground shadow-[var(--shadow-raise)] backdrop:bg-overlay open:flex open:flex-col md:mt-0 md:ml-auto md:h-dvh md:max-h-dvh md:w-[40rem] md:max-w-[calc(100vw-2rem)] md:rounded-none md:rounded-l-2xl"
+      className="app-panel m-0 mt-auto max-h-[90dvh] w-full max-w-none overflow-hidden rounded-t-2xl bg-popover p-0 text-popover-foreground shadow-[var(--shadow-raise)] backdrop:bg-overlay open:flex open:flex-col md:mt-0 md:ml-auto md:h-dvh md:max-h-dvh md:w-[40rem] md:max-w-[calc(100vw-2rem)] md:rounded-none md:rounded-l-2xl"
     >
       <div className="flex shrink-0 items-start gap-3 border-b border-border p-4 md:px-6">
         <div className="min-w-0 flex-1 pt-1.5">
           <h2 id="side-panel-title" className="truncate text-lg leading-7 font-semibold">
-            {title}
+            {head}
           </h2>
-          {subtitle ? <p className="truncate text-[0.9375rem] leading-6 text-muted-foreground">{subtitle}</p> : null}
+          {sub ? <p className="truncate text-[0.9375rem] leading-6 text-muted-foreground">{sub}</p> : null}
         </div>
         <button
           type="button"
@@ -70,8 +75,8 @@ export function SidePanel({
           </svg>
         </button>
       </div>
-      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-4 py-3 md:px-6">{actions}</div> : null}
-      <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:px-6">{children}</div>
+      {acts ? <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-4 py-3 md:px-6">{acts}</div> : null}
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:px-6">{body}</div>
     </dialog>
   )
 }

@@ -24,9 +24,11 @@
     "name": "Nome",
     "email": "Email",
     "notSet": "Non impostato",
-    "preferences": "Visualizzazione",
+    "preferences": "Preferenze",
     "security": "Sicurezza",
-    "twoStep": "Verifica in due passaggi"
+    "twoStep": "Verifica in due passaggi",
+    "access": "I tuoi accessi",
+    "accessHint": "I siti su cui puoi lavorare e il tuo ruolo in ciascuno."
   },
   "clientDashboard": {
     "nav": {
@@ -1768,7 +1770,9 @@
       "title": "Il tuo account",
       "account": "Account",
       "help": "Aiuto",
-      "opensInNewTab": "(si apre in una nuova scheda)"
+      "opensInNewTab": "(si apre in una nuova scheda)",
+      "profile": "Profilo",
+      "preferences": "Preferenze"
     }
   },
   "editor": {

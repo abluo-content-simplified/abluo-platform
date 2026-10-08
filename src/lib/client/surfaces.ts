@@ -106,6 +106,26 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   { kind: 'widget', id: 'latest.galleries', slot: 'latest', requires: { module: 'gallery', permission: 'gallery.gallery.read' } },
 ]
 
+/**
+ * Modules that are installable on a project but have NO tenant surface yet,
+ * and why (Tom, 2026-10-08: "everything that is activated should appear").
+ * The coverage test (`__tests__/surfaces.test.ts`) fails when a module in
+ * MODULE_REGISTRY has neither a surface above nor an entry here — so a new
+ * module can never silently be missing from the dashboard. Remove a module
+ * from this list the moment its surfaces are registered (the test also fails
+ * if a module is in both).
+ *
+ *   notYetBuilt — clients should see it; the client pages/widgets are backlog.
+ *   adminOnly   — configured by Abluo; nothing for the tenant to do (ADR-029).
+ */
+export const MODULES_WITHOUT_TENANT_SURFACE: Readonly<Record<string, 'notYetBuilt' | 'adminOnly'>> = {
+  events: 'notYetBuilt',
+  news: 'notYetBuilt',
+  live: 'notYetBuilt',
+  whatsapp: 'adminOnly',
+  translate: 'adminOnly',
+}
+
 /** The single visibility check. Pure. */
 export function surfaceAllowed(grant: SurfaceGrant, requires: SurfaceRequirement): boolean {
   if (requires.module && !grant.enabledModuleIds.includes(requires.module)) return false

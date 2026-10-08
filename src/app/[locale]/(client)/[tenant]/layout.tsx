@@ -8,7 +8,7 @@ import {
   dashboardHomeHref,
   resolveProjectGrant,
 } from '@/lib/modules/client-navigation'
-import { filterSwitchableProjects, loadProjectStatuses } from '@/lib/client/switchable-projects'
+import { filterSwitchableProjects, loadProjectSummaries, statusesOf } from '@/lib/client/switchable-projects'
 import { ClientSidebar } from '@/components/client/ClientSidebar'
 import { AddContentRoot } from '@/components/client/create/AddContentRoot'
 import { buildCreateMenu } from '@/lib/modules/create-menu'
@@ -56,9 +56,11 @@ export default async function ClientProjectLayout({
 
   const navItems = buildClientNavItems(activeGrant)
   const viewer = await getViewerAccount(ctx.userId)
-  const statuses = await loadProjectStatuses(ctx.projects.map((grant) => grant.projectId))
-  const projects = filterSwitchableProjects(ctx.projects, statuses, activeGrant.projectSlug).map((grant) => ({
+  const summaries = await loadProjectSummaries(ctx.projects.map((grant) => grant.projectId))
+  const projects = filterSwitchableProjects(ctx.projects, statusesOf(summaries), activeGrant.projectSlug).map((grant) => ({
     projectSlug: grant.projectSlug,
+    name: summaries[grant.projectId]?.name ?? null,
+    domain: summaries[grant.projectId]?.domain ?? null,
   }))
   const jar = await cookies()
   const theme = parseAppTheme(jar.get(APP_THEME_COOKIE)?.value)
@@ -83,6 +85,8 @@ export default async function ClientProjectLayout({
             theme,
             textSize,
             helpUrl: process.env.ABLUO_HELP_URL || null,
+            role: activeGrant.role,
+            siteName: summaries[activeGrant.projectId]?.name?.trim() || activeGrant.projectSlug,
           }}
           homeHref={dashboardHomeHref(activeGrant.projectSlug)}
         />

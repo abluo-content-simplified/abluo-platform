@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { usePathname, useRouter } from '@/i18n/navigation'
+import { BottomSheet } from './ui/BottomSheet'
 
 /**
  * Project switcher for the client dashboard shell (ADR-017 Phase 2 / task #81).
@@ -18,6 +19,10 @@ import { usePathname, useRouter } from '@/i18n/navigation'
  *   • Renders non-interactively when the user has a single project — no switcher
  *     friction where there is nothing to switch to.
  *
+ * The control is a button that opens a sheet listing the sites (name + domain),
+ * not a native <select>: a select inside the phone drawer did not respond to
+ * taps (Tom, 2026-10-08), and a select cannot show two lines per option.
+ *
  * All copy is localized via `clientDashboard.projectSwitcher.*` — no hardcoded
  * strings (Multilingual-First).
  */
@@ -30,12 +35,23 @@ function writeLastProjectCookie(slug: string) {
   document.cookie = `${LAST_PROJECT_COOKIE}=${encodeURIComponent(slug)}; path=/; max-age=${COOKIE_MAX_AGE_SECONDS}; SameSite=Lax`
 }
 
+export type SwitcherProject = {
+  /** Resolved project slug (the URL's first segment). */
+  projectSlug: string
+  /** projects.name — null falls back to the slug. */
+  name?: string | null
+  /** projects.custom_domain — shown under the name when set. */
+  domain?: string | null
+}
+
 export type ProjectSwitcherProps = {
-  /** All projects the caller may switch between — their resolved slugs. */
-  projects: { projectSlug: string }[]
+  /** All projects the caller may switch between. */
+  projects: SwitcherProject[]
   /** The currently active project slug (from the URL). */
   activeSlug: string
 }
+
+const nameOf = (p: SwitcherProject | undefined, fallback: string) => p?.name?.trim() || p?.projectSlug || fallback
 
 export function ProjectSwitcher({ projects, activeSlug }: ProjectSwitcherProps) {
   const t = useTranslations('clientDashboard.projectSwitcher')
@@ -43,6 +59,7 @@ export function ProjectSwitcher({ projects, activeSlug }: ProjectSwitcherProps) 
   // next-intl usePathname() returns the path WITHOUT the locale prefix,
   // e.g. "/livener/posts".
   const pathname = usePathname()
+  const [open, setOpen] = useState(false)
 
   // Keep the landing hint fresh: the last project the user actually viewed.
   useEffect(() => {
@@ -51,53 +68,85 @@ export function ProjectSwitcher({ projects, activeSlug }: ProjectSwitcherProps) 
 
   function subPageFor(slug: string): string {
     // Strip the leading "/{activeSlug}" to recover the sub-page ("/posts").
-    // Falls back to the posts landing if the path is unexpectedly bare.
+    // Falls back to the dashboard home if the path is unexpectedly bare.
     const prefix = `/${activeSlug}`
     const rest = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : ''
-    return `/${slug}${rest || '/posts'}`
+    return `/${slug}${rest || '/home'}`
   }
 
-  function handleChange(nextSlug: string) {
+  function choose(nextSlug: string) {
+    setOpen(false)
     if (nextSlug === activeSlug) return
     writeLastProjectCookie(nextSlug)
     router.push(subPageFor(nextSlug))
   }
 
+  const active = projects.find((p) => p.projectSlug === activeSlug)
+  const activeName = nameOf(active, activeSlug)
+  const activeDomain = active?.domain ?? null
+
   // Single project — nothing to switch to. Render the name, not a control.
   if (projects.length <= 1) {
     return (
-      <div>
-        <p className="text-xs text-muted-foreground">
-          {t('label')}
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{t('label')}</p>
+        <p className="mt-1 truncate text-sm font-semibold text-foreground" title={activeName}>
+          {activeName}
         </p>
-        <p className="mt-1 truncate text-sm font-semibold text-foreground" title={activeSlug}>
-          {activeSlug}
-        </p>
+        {activeDomain ? <p className="truncate text-xs text-muted-foreground">{activeDomain}</p> : null}
       </div>
     )
   }
 
   return (
-    <div>
-      <label
-        htmlFor="client-project-switcher"
-        className="text-xs text-muted-foreground"
-      >
-        {t('label')}
-      </label>
-      <select
-        id="client-project-switcher"
+    <div className="min-w-0">
+      <p className="text-xs text-muted-foreground">{t('label')}</p>
+      <button
+        type="button"
         aria-label={t('ariaLabel')}
-        value={activeSlug}
-        onChange={(event) => handleChange(event.target.value)}
-        className="mt-1 h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => setOpen(true)}
+        className="mt-1 flex min-h-11 w-full items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-left transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       >
-        {projects.map((project) => (
-          <option key={project.projectSlug} value={project.projectSlug}>
-            {project.projectSlug}
-          </option>
-        ))}
-      </select>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold text-foreground">{activeName}</span>
+          {activeDomain ? <span className="block truncate text-xs text-muted-foreground">{activeDomain}</span> : null}
+        </span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 text-muted-foreground">
+          <path d="m7 15 5 5 5-5M7 9l5-5 5 5" />
+        </svg>
+      </button>
+
+      <BottomSheet open={open} title={t('ariaLabel')} onClose={() => setOpen(false)}>
+        {(
+          <ul className="flex flex-col gap-0.5">
+            {projects.map((p) => {
+              const current = p.projectSlug === activeSlug
+              return (
+                <li key={p.projectSlug}>
+                  <button
+                    type="button"
+                    onClick={() => choose(p.projectSlug)}
+                    aria-current={current ? 'true' : undefined}
+                    className={`flex min-h-12 w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none ${current ? 'bg-muted' : ''}`}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[0.9375rem] font-medium text-foreground">{nameOf(p, p.projectSlug)}</span>
+                      {p.domain ? <span className="block truncate text-xs text-muted-foreground">{p.domain}</span> : null}
+                    </span>
+                    {current ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 text-foreground">
+                        <path d="M5 12.5 10 17l9-10" />
+                      </svg>
+                    ) : null}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </BottomSheet>
     </div>
   )
 }
