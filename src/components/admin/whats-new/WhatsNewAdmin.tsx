@@ -114,7 +114,19 @@ export function WhatsNewAdmin({
     router.refresh()
   }
 
+  // Date first (Tom, 2026-10-08): updates read as a timeline.
   const columns: DataTableColumn<AdminProductUpdate>[] = [
+    {
+      key: 'published',
+      header: t('columns.published'),
+      width: 'w-36',
+      className: 'whitespace-nowrap',
+      render: (u) => (
+        <span className="flex min-h-6 items-center">
+          <LocalDate iso={u.publishedAt} empty={t('notPublished')} />
+        </span>
+      ),
+    },
     {
       key: 'title',
       header: t('columns.title'),
@@ -137,17 +149,6 @@ export function WhatsNewAdmin({
         <CellPill>
           <Pill tone={STATUS_TONE[u.status]}>{statusLabel(u.status)}</Pill>
         </CellPill>
-      ),
-    },
-    {
-      key: 'published',
-      header: t('columns.published'),
-      width: 'w-36',
-      className: 'whitespace-nowrap',
-      render: (u) => (
-        <span className="flex min-h-6 items-center">
-          <LocalDate iso={u.publishedAt} empty={t('notPublished')} />
-        </span>
       ),
     },
     {
@@ -203,10 +204,12 @@ export function WhatsNewAdmin({
                   onClick={() => openEditor(u.id)}
                   className="flex w-full flex-col items-start gap-1.5 px-4 py-4 text-left transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none"
                 >
+                  <span className="text-sm text-muted-foreground">
+                    <LocalDate iso={u.publishedAt} empty={t('notPublished')} />
+                  </span>
                   <span className="line-clamp-2 text-[0.9375rem] leading-6 font-semibold text-foreground">{titleOf(u)}</span>
                   <span className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                     <Pill tone={STATUS_TONE[u.status]}>{statusLabel(u.status)}</Pill>
-                    {u.publishedAt ? <LocalDate iso={u.publishedAt} /> : null}
                     <span>{audienceOf(u).join(', ') || t('audienceEveryone')}</span>
                   </span>
                 </button>

@@ -1,7 +1,7 @@
 -- ============================================================
 -- Migration 034 — admin backlog (ADR-030 §5.5, Tom 2026-10-08)
 --
--- NOT APPLIED. Additive (one new table, two trigger functions). Safe to
+-- APPLIED 2026-10-08 to production by Tom (SQL editor) — see supabase/APPLIED.md.
 -- apply before or after the code: the admin Backlog page shows a calm
 -- "apply migration 034" state while the table is missing.
 -- Requires 005 (public.set_updated_at()).

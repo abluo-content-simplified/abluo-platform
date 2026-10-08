@@ -17,6 +17,7 @@ import type { RangePreset } from '@/lib/client/date-range'
  *      fixed width (`filterWidth`, long labels truncate). Wraps only when the
  *      window really can't fit it.
  *   B. the date sentence: "Posts [updated ▾] [last 7 days] [last 30 days] [this year] [📅]"
+ *      (+ optional `dateLineEnd` controls, right-aligned)
  *   C. "N of M posts" (+ summaryExtra) · Clear filters
  * Phones: search, a "Filters · N" sheet with the same filters and the date
  * sentence stacked, the active filters as removable chips, then line C.
@@ -76,6 +77,7 @@ export function ListToolbar({
   date,
   summary,
   summaryExtra,
+  dateLineEnd,
   clear,
   sheet,
   filterWidth = 'w-[11rem]',
@@ -90,6 +92,12 @@ export function ListToolbar({
   summary: ReactNode
   /** Next to the summary, e.g. a select-all checkbox. */
   summaryExtra?: ReactNode
+  /**
+   * Computers only: controls at the right end of line B, after the date
+   * sentence (e.g. Media's tile size and Select — Tom, 2026-10-08, to save a
+   * line). Phones keep whatever the page passes in `summaryExtra`.
+   */
+  dateLineEnd?: ReactNode
   /** "Clear filters": resets to the page's defaults. Hidden while nothing differs from them. */
   clear: { label: string; onClear: () => void; visible: boolean }
   /** Phones: the sheet trigger's count and the chips shown while it is closed. */
@@ -161,8 +169,15 @@ export function ListToolbar({
           />
           {selects(false)}
         </div>
-        {/* Line B: the date sentence */}
-        {sentence(false)}
+        {/* Line B: the date sentence (+ the page's controls, right-aligned) */}
+        {dateLineEnd ? (
+          <div className="flex flex-wrap items-center gap-3">
+            {sentence(false)}
+            <div className="ml-auto flex items-center">{dateLineEnd}</div>
+          </div>
+        ) : (
+          sentence(false)
+        )}
       </div>
 
       {/* Phones */}

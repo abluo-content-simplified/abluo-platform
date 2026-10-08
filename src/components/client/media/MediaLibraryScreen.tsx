@@ -326,7 +326,7 @@ export function MediaLibraryScreen({
 
   const addHref = fillMediaLink(links.add, { project: projectSlug })
 
-  /** Grid controls on line C: tile size, and Select / Select all. */
+  /** Grid controls: tile size, and Select / Select all (desktop: end of the date line; phones: under the count). */
   const gridExtra = (
     <span className={`items-center gap-3 ${view === 'grid' ? 'flex' : 'flex md:hidden'}`}>
       <SizeSwitch
@@ -420,7 +420,9 @@ export function MediaLibraryScreen({
           onChange: onDate,
         }}
         summary={summary}
-        summaryExtra={items.length ? gridExtra : null}
+        // Tile size + Select: on computers at the right of the date line (saves a line, Tom 2026-10-08); on phones under the count.
+        summaryExtra={items.length ? <span className="md:hidden">{gridExtra}</span> : null}
+        dateLineEnd={items.length && view === 'grid' ? gridExtra : null}
         clear={{ label: t('filters.clear'), onClear: reset, visible: !isDefault }}
         sheet={{ activeCount: activeMediaFilterCount(filters), resultCount: shown.length, chips, onRemoveChip: removeChip }}
       />

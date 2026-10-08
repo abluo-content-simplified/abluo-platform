@@ -54,12 +54,14 @@ export type AdminUpdatesResult =
   | { state: 'missing' }
   | { state: 'error'; message: string }
 
-/** Every update (drafts, published, archived), newest first, with read counts. */
+/** Every update (drafts, published, archived): drafts first, then by publish date, newest first; with read counts. */
 export async function listProductUpdatesForAdmin(limit = 200): Promise<AdminUpdatesResult> {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('product_updates')
     .select(PRODUCT_UPDATE_COLUMNS)
+    // By date, newest first; drafts (no date yet) on top so work in progress is easy to find.
+    .order('published_at', { ascending: false, nullsFirst: true })
     .order('created_at', { ascending: false })
     .limit(limit)
   if (error) return isMissingTableError(error) ? { state: 'missing' } : { state: 'error', message: error.message }

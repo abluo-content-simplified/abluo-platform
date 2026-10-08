@@ -1,7 +1,7 @@
 -- ============================================================
 -- Migration 036 — website analytics snapshots (ADR-029 §3.4, ADR-030 §5.2)
 --
--- ⚠️ NOT APPLIED BY THE SESSION THAT WROTE IT (2026-10-08). File only.
+-- APPLIED 2026-10-08 to production by Tom (SQL editor) — see supabase/APPLIED.md.
 -- Requires 030 (get_my_project_ids_with). Additive.
 -- Apply BEFORE the first cron run writes (the job only logs failures until
 -- then) — reading code treats a missing table as "not connected yet".

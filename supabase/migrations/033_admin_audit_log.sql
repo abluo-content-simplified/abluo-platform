@@ -1,7 +1,7 @@
 -- ============================================================
 -- Migration 033 — internal admin audit log (ADR-030, Tom 2026-10-08)
 --
--- NOT APPLIED. Additive. Apply AFTER the code that writes it is live
+-- APPLIED 2026-10-08 to production by Tom (SQL editor) — see supabase/APPLIED.md.
 -- (writes are best-effort: a missing table never breaks a page).
 --
 -- Every time an Abluo admin looks at a client's data in the admin dashboard

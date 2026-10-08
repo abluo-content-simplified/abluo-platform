@@ -1,7 +1,7 @@
 -- ============================================================
 -- Migration 035 — "What's new": product updates for clients (ADR-030, Tom 2026-10-08)
 --
--- NOT APPLIED. Additive. Requires 005 (public.set_updated_at). Safe to apply
+-- APPLIED 2026-10-08 to production by Tom (SQL editor) — see supabase/APPLIED.md.
 -- before or after the code: the client dashboard catches "table missing"
 -- (42P01 / PGRST205) and simply shows no "What's new" entry.
 --
