@@ -161,7 +161,7 @@ All queries accept `$tenant` and `$locale` parameters.
 
 1. Modify `src/lib/sanity/schema.ts`
 2. Run `npm run build` to regenerate manifest
-3. Run `npx sanity@latest schema deploy`
+3. Run `SANITY_AUTH_TOKEN= npx sanity@latest schema deploy` (blank the robot token from `.env.local` so the CLI uses your own login; `SANITY_AUTH_TOKEN= npx sanity login` first if needed)
 4. Schema is now live; Studio will pick it up on next refresh
 
 ### Adding a New Tenant
