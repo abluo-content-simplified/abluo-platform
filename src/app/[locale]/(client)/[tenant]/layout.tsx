@@ -8,6 +8,7 @@ import {
   dashboardHomeHref,
   resolveProjectGrant,
 } from '@/lib/modules/client-navigation'
+import { filterSwitchableProjects, loadProjectStatuses } from '@/lib/client/switchable-projects'
 import { ClientSidebar } from '@/components/client/ClientSidebar'
 import { AddContentRoot } from '@/components/client/create/AddContentRoot'
 import { buildCreateMenu } from '@/lib/modules/create-menu'
@@ -55,7 +56,10 @@ export default async function ClientProjectLayout({
 
   const navItems = buildClientNavItems(activeGrant)
   const viewer = await getViewerAccount(ctx.userId)
-  const projects = ctx.projects.map((grant) => ({ projectSlug: grant.projectSlug }))
+  const statuses = await loadProjectStatuses(ctx.projects.map((grant) => grant.projectId))
+  const projects = filterSwitchableProjects(ctx.projects, statuses, activeGrant.projectSlug).map((grant) => ({
+    projectSlug: grant.projectSlug,
+  }))
   const jar = await cookies()
   const theme = parseAppTheme(jar.get(APP_THEME_COOKIE)?.value)
   const textSize = parseAppTextSize(jar.get(APP_TEXT_SIZE_COOKIE)?.value)

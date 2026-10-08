@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
+import { filterSwitchableProjects, loadProjectStatuses } from '@/lib/client/switchable-projects'
 import { dashboardHomeHref, resolveProjectGrant } from '@/lib/modules/client-navigation'
 
 /**
@@ -45,8 +46,10 @@ export default async function ClientDashboardEntry({
   // Landing hint: last-used project, if still granted; else the first grant.
   const cookieStore = await cookies()
   const lastSlug = cookieStore.get('abluo_last_project')?.value
+  // Inactive projects are never the default landing (they stay reachable by URL).
+  const switchable = filterSwitchableProjects(ctx.projects, await loadProjectStatuses(ctx.projects.map((g) => g.projectId)))
   const target =
-    (lastSlug && resolveProjectGrant(ctx.projects, lastSlug)) || ctx.projects[0]
+    (lastSlug && resolveProjectGrant(ctx.projects, lastSlug)) || switchable[0] || ctx.projects[0]
 
   // Every project lands on its dashboard home (S1).
   redirect(`/${locale}${dashboardHomeHref(target.projectSlug)}`)
