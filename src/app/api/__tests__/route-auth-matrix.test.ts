@@ -885,6 +885,7 @@ describe('cron / webhook routes require their shared secret', () => {
   const cases: Array<{ name: string; run: (h?: Record<string, string>) => Promise<Response> }> = [
     { name: 'GET /api/cron/keep-alive', run: async (h = {}) => (await import('@/app/api/cron/keep-alive/route')).GET(req('/api/cron/keep-alive', { headers: h })) },
     { name: 'GET /api/cron/form-events-sweep', run: async (h = {}) => (await import('@/app/api/cron/form-events-sweep/route')).GET(req('/api/cron/form-events-sweep', { headers: h })) },
+    { name: 'GET /api/cron/analytics', run: async (h = {}) => (await import('@/app/api/cron/analytics/route')).GET(req('/api/cron/analytics', { headers: h })) },
   ]
   for (const c of cases) {
     it(`${c.name}: no / wrong secret → 401, nothing runs; even for an admin session`, async () => {
@@ -937,6 +938,7 @@ const CLASSIFIED: Record<string, 'admin' | 'tenant' | 'machine' | 'public-read' 
   'projects/[projectId]/invite': 'tenant',
   'cron/keep-alive': 'machine',
   'cron/form-events-sweep': 'machine',
+  'cron/analytics': 'machine',
   'webhooks/form-events': 'machine',
   'auth/me': 'public-read', // returns only the caller's own role, or null
   version: 'public-read',

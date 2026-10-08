@@ -12,7 +12,7 @@ This file is the **implementation handbook** — the *how*, within the Playbook'
 - Terminal guidance to Tom is one command at a time; evaluate the actual output before giving the next (`.claude/agents/orchestrator.md`).
 - Every configurable concept has exactly one configuration surface (ADR-014); enforced by `src/lib/sanity/__tests__/settings-structure.test.ts`.
 - Notifications fire at workflow boundaries only — completion, blocked-on-Tom, long-run finish — never per handoff (`.claude/agents/orchestrator.md`).
-- **Verification (/verify):** any change to the client dashboard, the content editor, the `post` schema or blog website queries is verified against `docs/engineering/client-dashboard/verification.md` (gates, automated checks, light+dark × phone+desktop visual review). Design authority: ADR-025 + `docs/engineering/client-dashboard/content-wizard-spec.md`.
+- **Verification (/verify):** any change to the client dashboard, the shared Abluo App layer `src/components/app` (checked on both dashboards, ADR-030), the content editor, the `post` schema or blog website queries is verified against `docs/engineering/client-dashboard/verification.md` (gates, automated checks, light+dark × phone+desktop visual review). Design authority: ADR-025 + `docs/engineering/client-dashboard/content-wizard-spec.md`.
 
 ## Where things live on disk
 

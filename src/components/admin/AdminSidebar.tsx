@@ -1,96 +1,39 @@
 'use client'
 
-import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { useTranslations } from 'next-intl'
+import type { AccountMenuProps } from '@/components/app/shell/AccountMenu'
+import { APP_ICONS } from '@/components/app/shell/AppIcon'
+import { AppSidebar } from '@/components/app/shell/AppSidebar'
 
-const nav = [
-  { label: 'Projects', href: '/en/dashboard', icon: '⬡' },
-  { label: 'Media', href: '/en/media', icon: '🖼' },
-  { label: 'Content', href: '/en/content', icon: '✦' },
-  { label: 'Settings', href: '/en/settings', icon: '◎' },
-]
+/**
+ * Abluo admin navigation (admin.abluo.app, ADR-030). A composition of the
+ * shared `AppSidebar` — the same light/dark frame, drawer and account menu as
+ * the client dashboard — replacing the old dark zinc sidebar. No phone tab bar:
+ * on phones the menu button opens the drawer.
+ *
+ * The destinations are the `(admin)` route folders; each one is also listed in
+ * `ADMIN_SURFACE_SEGMENTS` (src/lib/proxy/admin-surface.ts), which is what
+ * gates it (abluo_admin + two-factor). Copy from `admin.*`.
+ */
 
-export function AdminSidebar() {
-  const pathname = usePathname()
-  const router = useRouter()
-  const [email, setEmail] = useState<string | null>(null)
+const NAV = [
+  { key: 'home', href: '/dashboard', icon: APP_ICONS.home },
+  { key: 'projects', href: '/projects', icon: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' },
+  { key: 'analytics', href: '/analytics', icon: 'M3 3v18h18M7 16v-4M12 16V8M17 16v-7' },
+  { key: 'media', href: '/media', icon: APP_ICONS.media },
+  { key: 'backlog', href: '/backlog', icon: 'M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01' },
+  { key: 'whatsNew', href: '/whats-new', icon: 'M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5l-1.9-4.6L5.5 9l4.6-1.4zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z' },
+] as const
 
-  // The signed-in user's own address. This was hardcoded to a single person's
-  // email, so every admin saw that name in the footer regardless of who they
-  // were — misleading on a platform that is about to have more than one.
-  useEffect(() => {
-    let active = true
-    createClient()
-      .auth.getUser()
-      .then(({ data }) => {
-        if (active) setEmail(data.user?.email ?? null)
-      })
-      .catch(() => {
-        // Nothing to show is better than showing someone else's address.
-      })
-    return () => {
-      active = false
-    }
-  }, [])
-
-  // Client-side sign-out — mirrors src/app/login/page.tsx's browser client
-  // usage. Admin-only UI: label is hardcoded English, consistent with the rest
-  // of this sidebar (handbook admin-UI localization exception).
-  async function handleSignOut() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
-  }
-
+export function AdminSidebar({ account }: { account: Omit<AccountMenuProps, 'variant'> }) {
+  const t = useTranslations('admin')
   return (
-    <aside className="fixed left-0 top-0 h-screen w-52 bg-zinc-950 flex flex-col z-40">
-      {/* Logo */}
-      <div className="px-5 py-6 border-b border-zinc-800">
-        <span className="text-xs font-medium tracking-[0.25em] uppercase text-zinc-100">
-          Abluo
-        </span>
-        <p className="text-[10px] text-zinc-500 tracking-wider mt-0.5">Admin</p>
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {nav.map(({ label, href, icon }) => {
-          const active = pathname.startsWith(href)
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-3 px-3 py-2 rounded text-xs tracking-wide transition-colors ${
-                active
-                  ? 'bg-zinc-800 text-zinc-100'
-                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'
-              }`}
-            >
-              <span className="text-[10px]">{icon}</span>
-              {label}
-            </Link>
-          )
-        })}
-      </nav>
-
-      {/* Footer */}
-      <div className="px-5 py-4 border-t border-zinc-800 space-y-2">
-        {email && (
-          <p className="text-[10px] text-zinc-600 tracking-widest uppercase truncate" title={email}>
-            {email}
-          </p>
-        )}
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="text-[10px] text-zinc-500 tracking-widest uppercase transition-colors hover:text-zinc-300"
-        >
-          Sign out
-        </button>
-      </div>
-    </aside>
+    <AppSidebar
+      id="admin-sidebar"
+      tagline={t('shell.tagline')}
+      navLabel={t('shell.navLabel')}
+      items={NAV.map((item) => ({ key: item.key, href: item.href, label: t(`nav.${item.key}`), icon: item.icon }))}
+      account={account}
+    />
   )
 }

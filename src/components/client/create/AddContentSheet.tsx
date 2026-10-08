@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
-import { ChoiceCard, ChoiceCardGrid } from '@/components/client/ui/ChoiceCard'
-import { Fab } from '@/components/client/ui/Fab'
+import { ChoiceCard, ChoiceCardGrid } from '@/components/app/ui/ChoiceCard'
+import { Fab } from '@/components/app/ui/Fab'
 import type { CreateMenu } from '@/lib/modules/create-menu'
 
 /**

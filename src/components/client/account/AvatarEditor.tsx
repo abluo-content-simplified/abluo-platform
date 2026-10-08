@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
-import { Avatar } from '@/components/client/ui/Avatar'
+import { Avatar } from '@/components/app/ui/Avatar'
 import { AVATAR_EDGE_PX } from '@/lib/account/avatar'
 import { removeAvatarAction, uploadAvatarAction } from '@/app/[locale]/(client)/account/actions'
 

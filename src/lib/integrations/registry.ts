@@ -4,6 +4,7 @@ import googleAnalytics from './manifests/google-analytics'
 import googleTagManager from './manifests/google-tag-manager'
 import metaPixel from './manifests/meta-pixel'
 import customScripts from './manifests/custom-scripts'
+import googleSearchConsole from './manifests/google-search-console'
 
 // ── Integration registry ──────────────────────────────────────────────────────
 // The single authoritative definition of every third-party integration
@@ -20,6 +21,7 @@ export const INTEGRATION_REGISTRY: IntegrationManifest[] = [
   googleTagManager,
   metaPixel,
   customScripts,
+  googleSearchConsole,
 ]
 
 // ── Integration categories ────────────────────────────────────────────────────

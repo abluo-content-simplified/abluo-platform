@@ -17,7 +17,7 @@ import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 import type { ProjectGrant, TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { checkGrant, type Granter } from '@/lib/authz/grant-rules'
 import { granterForProject } from '@/lib/authz/granter'
-import { GRANTABLE_MODULE_PERMISSIONS, isProjectGrantable } from '@/lib/authz/permissions'
+import { isProjectGrantable, projectGrantableIds } from '@/lib/authz/permissions'
 import { isTenantMemberRole, isTenantOwnerRole, PROJECT_MEMBERSHIP_ROLES, type ProjectMembershipRole } from '@/lib/authz/roles'
 import { resolveProjectPermissions } from '@/lib/authz/resolve'
 import { sendEmail } from '@/lib/notifications/resend'
@@ -100,7 +100,7 @@ const mayGrant = (granter: Granter, role: string, extras: string[]) =>
 
 /** Extras the viewer may hand out here: grantable on a project AND held by the viewer. */
 function grantableExtrasFor(grant: ProjectGrant): string[] {
-  return Object.keys(GRANTABLE_MODULE_PERMISSIONS).filter((id) => isProjectGrantable(id) && grant.permissions.includes(id))
+  return projectGrantableIds().filter((id) => isProjectGrantable(id) && grant.permissions.includes(id))
 }
 
 /** Avatars only from our own Supabase storage — never an arbitrary URL that could track the viewer. */

@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { usePathname, useRouter } from '@/i18n/navigation'
-import { BottomSheet } from './ui/BottomSheet'
+import { Link, usePathname, useRouter } from '@/i18n/navigation'
+import { BottomSheet } from '@/components/app/ui/BottomSheet'
 
 /**
  * Project switcher for the client dashboard shell (ADR-017 Phase 2 / task #81).
@@ -55,6 +55,7 @@ const nameOf = (p: SwitcherProject | undefined, fallback: string) => p?.name?.tr
 
 export function ProjectSwitcher({ projects, activeSlug }: ProjectSwitcherProps) {
   const t = useTranslations('clientDashboard.projectSwitcher')
+  const tSites = useTranslations('clientDashboard.sites')
   const router = useRouter()
   // next-intl usePathname() returns the path WITHOUT the locale prefix,
   // e.g. "/livener/posts".
@@ -121,6 +122,15 @@ export function ProjectSwitcher({ projects, activeSlug }: ProjectSwitcherProps) 
       <BottomSheet open={open} title={t('ariaLabel')} onClose={() => setOpen(false)}>
         {(
           <ul className="flex flex-col gap-0.5">
+            <li className="mb-1 border-b border-border-subtle pb-1">
+              <Link
+                href="/sites"
+                onClick={() => setOpen(false)}
+                className="flex min-h-12 w-full items-center gap-3 rounded-md px-3 py-2.5 text-[0.9375rem] font-medium text-foreground transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none"
+              >
+                {tSites('allSites')}
+              </Link>
+            </li>
             {projects.map((p) => {
               const current = p.projectSlug === activeSlug
               return (

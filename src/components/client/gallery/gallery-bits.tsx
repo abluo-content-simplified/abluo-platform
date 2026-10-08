@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl'
 import type { GalleryListItem } from '@/lib/api/gallery-drafts'
 import type { GalleryStatus } from '@/lib/api/gallery-status'
 import type { FilterableGallery, GalleryState } from '@/lib/client/galleries-filter'
-import { Pill, type PillTone } from '@/components/client/ui/list/cells'
+import { Pill, type PillTone } from '@/components/app/ui/list/cells'
 
 /** One row of the Galleries list (table, cards, phone cards). */
 export type GalleryRow = FilterableGallery & {

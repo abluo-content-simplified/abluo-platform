@@ -8,14 +8,14 @@ import { getViewerAccount } from '@/lib/api/viewer-account'
 import { dashboardHomeHref, resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { Link } from '@/i18n/navigation'
 import { filterSwitchableProjects, loadProjectSummaries, statusesOf } from '@/lib/client/switchable-projects'
-import { AppTextSizeSwitch } from '@/components/client/AppTextSizeSwitch'
-import { AppThemeSwitch } from '@/components/client/AppThemeSwitch'
+import { AppTextSizeSwitch } from '@/components/app/shell/AppTextSizeSwitch'
+import { AppThemeSwitch } from '@/components/app/shell/AppThemeSwitch'
 import { AvatarEditor } from '@/components/client/account/AvatarEditor'
-import { SignOutButton } from '@/components/client/account/SignOutButton'
+import { SignOutButton } from '@/components/app/shell/SignOutButton'
 import { TwoFactorPill } from '@/components/client/people/people-bits'
-import { FactRow } from '@/components/client/ui/FactRow'
-import { PageHeader } from '@/components/client/ui/PageHeader'
-import { PageShell } from '@/components/client/ui/PageShell'
+import { FactRow } from '@/components/app/ui/FactRow'
+import { PageHeader } from '@/components/app/ui/PageHeader'
+import { PageShell } from '@/components/app/ui/PageShell'
 
 /**
  * The signed-in person's own Account page (ADR-029 §6 Phase 1) — about THEM,
@@ -51,7 +51,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
 
   const [t, tRoles, viewer, jar, summaries] = await Promise.all([
     getTranslations('account'),
-    getTranslations('clientDashboard.people.roles'),
+    getTranslations('app.roles'),
     getViewerAccount(ctx.userId),
     cookies(),
     loadProjectSummaries(ctx.projects.map((g) => g.projectId)),

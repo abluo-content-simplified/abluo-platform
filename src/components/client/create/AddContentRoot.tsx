@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useState, type ReactNode } from
 import { useTranslations } from 'next-intl'
 import { usePathname } from '@/i18n/navigation'
 import { AddContentSheet } from './AddContentSheet'
-import { Fab } from '@/components/client/ui/Fab'
+import { Fab } from '@/components/app/ui/Fab'
 import type { CreateMenu } from '@/lib/modules/create-menu'
 
 /**

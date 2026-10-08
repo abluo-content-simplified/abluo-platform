@@ -8,15 +8,18 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { GRANTABLE_MODULE_PERMISSIONS, PLATFORM_PERMISSIONS } from '../permissions'
 
-const SQL = readFileSync(join(process.cwd(), 'supabase/migrations/029_roles_extras_invitations.sql'), 'utf8')
+// 029 seeds the list; later migrations add to it (036: analytics.read).
+const SQL = ['029_roles_extras_invitations.sql', '036_analytics_snapshots.sql'].map((f) =>
+  readFileSync(join(process.cwd(), 'supabase/migrations', f), 'utf8'),
+)
 
 function seededRows(): Array<{ id: string; appliesTo: string; requires: string | null }> {
-  const block = SQL.split('insert into public.grantable_permissions')[1].split(';')[0]
-  return [...block.matchAll(/\(\s*'([^']+)'\s*,\s*'(tenant|project)'\s*,\s*(null|'[^']+')/g)].map((m) => ({
+  const blocks = SQL.flatMap((sql) => sql.split('insert into public.grantable_permissions').slice(1).map((b) => b.split(';')[0]))
+  return blocks.flatMap((block) => [...block.matchAll(/\(\s*'([^']+)'\s*,\s*'(tenant|project)'\s*,\s*(null|'[^']+')/g)].map((m) => ({
     id: m[1],
     appliesTo: m[2],
     requires: m[3] === 'null' ? null : m[3].slice(1, -1),
-  }))
+  })))
 }
 
 function codeRows(): Array<{ id: string; appliesTo: string; requires: string | null }> {

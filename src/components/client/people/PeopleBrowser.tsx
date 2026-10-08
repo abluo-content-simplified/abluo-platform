@@ -3,13 +3,13 @@
 import { useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
-import { ConfirmDialog } from '@/components/client/create/ConfirmDialog'
-import type { CardMenuItem } from '@/components/client/ui/CardMenu'
-import type { FilterChip } from '@/components/client/ui/FilterSheet'
-import { ListToolbar, type ListToolbarFilter } from '@/components/client/ui/ListToolbar'
-import { PageHeader } from '@/components/client/ui/PageHeader'
-import { Toast } from '@/components/client/ui/Toast'
-import { useUndo } from '@/components/client/ui/use-undo'
+import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
+import type { CardMenuItem } from '@/components/app/ui/CardMenu'
+import type { FilterChip } from '@/components/app/ui/FilterSheet'
+import { ListToolbar, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
+import { PageHeader } from '@/components/app/ui/PageHeader'
+import { Toast } from '@/components/app/ui/Toast'
+import { useUndo } from '@/components/app/ui/use-undo'
 import { permissionMessageKey } from '@/lib/authz/permissions'
 import type { PeopleView, Person } from '@/lib/people/service'
 import {
@@ -46,6 +46,7 @@ const ERRORS = ['invalid_email', 'invalid_role', 'forbidden', 'not_found', 'inva
  */
 export function PeopleBrowser({ title, projectSlug, locale, view }: { title: string; projectSlug: string; locale: string; view: PeopleView }) {
   const t = useTranslations('clientDashboard.people')
+  const tRoles = useTranslations('app.roles')
   const router = useRouter()
   const { toast, show } = useUndo()
 
@@ -60,7 +61,8 @@ export function PeopleBrowser({ title, projectSlug, locale, view }: { title: str
   const [busy, setBusy] = useState(false)
   const opened = view.people.find((p) => p.key === openKey) ?? null
 
-  const roleLabel = (role: string) => t(`roles.${role}` as 'roles.editor')
+  // Role names have one source, `app.roles`, shared with the account menu.
+  const roleLabel = (role: string) => tRoles(role as 'editor')
   const extraLabel = (id: string) => t(`extras.${permissionMessageKey(id)}` as 'extras.formsSubmissionRead')
   const errorText = (code: string) => (ERRORS.includes(code as never) ? t(`errors.${code}` as 'errors.failed') : t('errors.failed'))
 

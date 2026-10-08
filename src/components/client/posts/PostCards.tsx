@@ -3,9 +3,9 @@
 import type { MouseEvent } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
-import { Checkbox, isShiftChange } from '@/components/client/ui/Checkbox'
-import { CardMenu, type CardMenuItem } from '@/components/client/ui/CardMenu'
-import { CardGrid, CardGridItem, ContentCard } from '@/components/client/ui/list/ContentCard'
+import { Checkbox, isShiftChange } from '@/components/app/ui/Checkbox'
+import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
+import { CardGrid, CardGridItem, ContentCard } from '@/components/app/ui/list/ContentCard'
 import { CardDateLine, CategoryChips, FeaturedStar, LanguageTicks, LocalDate, StatusPill, Thumb } from './post-bits'
 import type { BrowserPost } from './types'
 

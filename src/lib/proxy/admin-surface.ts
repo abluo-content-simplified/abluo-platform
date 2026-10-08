@@ -18,26 +18,53 @@ export function stripLocale(pathname: string): string {
 /**
  * Abluo-admin-only dashboard surfaces (ADR-015 R6). The first path segment
  * (after any locale prefix) identifies the surface. These are the route-group
- * folders under `src/app/[locale]/(admin)/`.
+ * folders under `src/app/[locale]/(admin)/` — the admin nav (ADR-030) — and
+ * `__tests__/admin-surface.test.ts` reads that directory to keep the two in
+ * lockstep, because an admin page missing here is an ungated service-role page.
  */
 export const ADMIN_SURFACE_SEGMENTS = new Set([
   'dashboard',
-  'clients',
-  'content',
-  'media',
   'projects',
-  'settings',
+  'analytics',
+  'media',
+  'backlog',
+  'whats-new',
 ])
 
 /**
- * True when `pathname` addresses an admin dashboard surface. Pure: locale is
- * stripped first, then the leading segment is matched against the allowlist.
- * `/unauthorized`, `/login`, and tenant paths are NOT admin surfaces.
+ * Admin pages that no longer exist (ADR-030 removed the empty `clients`,
+ * `content` and `settings` placeholders). They stay GATED exactly like a live
+ * admin surface — retiring a page must not hand its path to tenant content or
+ * the i18n fallthrough — and an admin who passes the gate is sent to Home
+ * (`retiredAdminRedirect`), so an old bookmark lands somewhere useful.
+ */
+export const RETIRED_ADMIN_SEGMENTS = new Set(['clients', 'content', 'settings'])
+
+function leadingSegment(pathname: string): string {
+  return stripLocale(pathname).split('/').filter(Boolean)[0] ?? ''
+}
+
+/**
+ * True when `pathname` addresses an admin dashboard surface (live or retired).
+ * Pure: locale is stripped first, then the leading segment is matched against
+ * the allowlists. `/unauthorized`, `/login`, and tenant paths are NOT admin
+ * surfaces.
  */
 export function isAdminSurface(pathname: string): boolean {
-  const p = stripLocale(pathname)
-  const seg = p.split('/').filter(Boolean)[0] ?? ''
-  return ADMIN_SURFACE_SEGMENTS.has(seg)
+  const seg = leadingSegment(pathname)
+  return ADMIN_SURFACE_SEGMENTS.has(seg) || RETIRED_ADMIN_SEGMENTS.has(seg)
+}
+
+/**
+ * Where a retired admin path goes once the admin gate has let the request
+ * through: admin Home, keeping the locale prefix when there was one
+ * (`/it/clients/x` → `/it/dashboard`, `/settings` → `/dashboard`). Null for
+ * every other path. Pure — the caller decides that the gate passed.
+ */
+export function retiredAdminRedirect(pathname: string): string | null {
+  if (!RETIRED_ADMIN_SEGMENTS.has(leadingSegment(pathname))) return null
+  const prefix = pathname.match(/^\/[a-z]{2}(-[A-Z]{2})?(?=\/|$)/)?.[0] ?? ''
+  return `${prefix}/dashboard`
 }
 
 /** True for the Sanity Studio route (`/studio` and everything beneath it). */

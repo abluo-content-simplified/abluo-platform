@@ -102,9 +102,18 @@ describe('googleAnalyticsIntegrationValues', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const gaValues = types.find((t) => t.name === 'googleAnalyticsIntegrationValues') as any
 
-  it('has exactly one field: measurementId', () => {
-    expect(gaValues.fields).toHaveLength(1)
+  it('has two fields: measurementId (tag) and ga4PropertyId (reporting, ADR-029 §3.4)', () => {
+    expect(gaValues.fields).toHaveLength(2)
     expect(gaValues.fields[0].name).toBe('measurementId')
+    expect(gaValues.fields[1].name).toBe('ga4PropertyId')
+  })
+
+  it('ga4PropertyId is optional and numeric', () => {
+    const rules = invokeValidation(gaValues.fields[1])
+    expect(rules.some((r) => r.kind === 'required')).toBe(false)
+    const regexRule = rules.find((r) => r.kind === 'regex') as Extract<MockRuleResult, { kind: 'regex' }>
+    expect(regexRule.pattern.test('412345678')).toBe(true)
+    expect(regexRule.pattern.test('G-ABC1234')).toBe(false)
   })
 
   it('carries the required flag', () => {

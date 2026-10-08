@@ -18,9 +18,14 @@ function walk(dir: string, out: string[] = []): string[] {
 
 describe('app text scales with the text-size setting', () => {
   it('client components use rem, not px, for text and line height', () => {
-    const files = [...walk('src/components/client'), ...walk('src/app/[locale]/(client)')].filter(
-      (f) => !f.endsWith('AppTextSizeSwitch.tsx')
-    )
+    const files = [
+      ...walk('src/components/app'),
+      ...walk('src/components/client'),
+      ...walk('src/app/[locale]/(client)'),
+      ...walk('src/components/admin'),
+      // The legacy admin Media Library is exempt until it is rebuilt on the App components (ADR-030).
+      ...walk('src/app/[locale]/(admin)').filter((f) => !f.endsWith('media/page.tsx')),
+    ].filter((f) => !f.endsWith('AppTextSizeSwitch.tsx'))
     const offenders = files.filter((f) => /\b(text|leading)-\[[0-9.]+px\]/.test(readFileSync(f, 'utf8')))
     expect(offenders).toEqual([])
   })

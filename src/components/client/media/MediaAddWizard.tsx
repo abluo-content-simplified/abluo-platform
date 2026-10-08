@@ -8,6 +8,7 @@ import { PhotoAddStep, type AddedPhoto } from '@/components/client/gallery/wizar
 import { PhotoDescribeStep, type DescribeChange, type DescribedPhoto } from '@/components/client/gallery/wizard/PhotoDescribeStep'
 import { DoneScreen } from '@/components/client/gallery/wizard/kit'
 import { clampIndex, firstUndescribed } from '@/lib/client/gallery-wizard'
+import type { MediaLibraryScope } from '@/components/client/media/media-api'
 
 type Step = 'add' | 'describe' | 'done'
 type Photo = DescribedPhoto & { thumbUrl: string | null }
@@ -23,10 +24,13 @@ type Photo = DescribedPhoto & { thumbUrl: string | null }
  */
 export function MediaAddWizard({
   projectSlug,
+  scope = 'media',
   site,
   mediaHref,
 }: {
   projectSlug: string
+  /** Which actions upload and save: the client's Media Library (default) or the admin's. */
+  scope?: MediaLibraryScope
   site: { defaultLocale: string; locales: string[] }
   mediaHref: string
 }) {
@@ -146,7 +150,7 @@ export function MediaAddWizard({
       <div hidden={step !== 'add'}>
         <PhotoAddStep
           projectSlug={projectSlug}
-          scope="media"
+          scope={scope}
           title={t('addTitle')}
           helper={t('addHelper')}
           defaultLocale={d}
@@ -165,7 +169,7 @@ export function MediaAddWizard({
         <PhotoDescribeStep
           key={current.key}
           projectSlug={projectSlug}
-          scope="media"
+          scope={scope}
           site={{ defaultLocale: d, languages: site.locales }}
           photo={current}
           index={index}

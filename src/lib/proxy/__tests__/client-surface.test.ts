@@ -79,18 +79,22 @@ describe('isClientSurface', () => {
     }
   })
 
-  it('project and admin sub-page segment sets are disjoint (except media, matched at different positions)', () => {
-    // `media` is both the admin Media Library (`/media`, FIRST segment) and the
-    // client Media screen (`/{project}/media`, SECOND segment). The two
-    // predicates look at different positions, so they never claim the same path.
+  it('project and admin sub-page segment sets are disjoint (except media + analytics, matched at different positions)', () => {
+    // `media` and `analytics` are both an admin page (`/media`, `/analytics`,
+    // FIRST segment) and a client screen (`/{project}/media`, `/{project}/analytics`,
+    // SECOND segment). The two predicates look at different positions, so they
+    // never claim the same path.
+    const SHARED = new Set(['media', 'analytics'])
     for (const seg of CLIENT_PROJECT_SEGMENTS) {
-      if (seg === 'media') continue
+      if (SHARED.has(seg)) continue
       expect(ADMIN_SURFACE_SEGMENTS.has(seg)).toBe(false)
     }
-    expect(isAdminSurface('/en/media')).toBe(true)
-    expect(isClientSurface('/en/media')).toBe(false)
-    expect(isClientSurface('/en/hoffmann/media')).toBe(true)
-    expect(isAdminSurface('/en/hoffmann/media')).toBe(false)
+    for (const seg of SHARED) {
+      expect(isAdminSurface(`/en/${seg}`)).toBe(true)
+      expect(isClientSurface(`/en/${seg}`)).toBe(false)
+      expect(isClientSurface(`/en/hoffmann/${seg}`)).toBe(true)
+      expect(isAdminSurface(`/en/hoffmann/${seg}`)).toBe(false)
+    }
   })
 })
 

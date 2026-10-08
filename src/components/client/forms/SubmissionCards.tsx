@@ -2,9 +2,9 @@
 
 import { useTranslations } from 'next-intl'
 import type { DashboardSubmission } from '@/lib/api/client-dashboard'
-import { Checkbox, isShiftChange } from '@/components/client/ui/Checkbox'
-import { CardMenu, type CardMenuItem } from '@/components/client/ui/CardMenu'
-import { LocalDate } from '@/components/client/ui/list/cells'
+import { Checkbox, isShiftChange } from '@/components/app/ui/Checkbox'
+import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
+import { LocalDate } from '@/components/app/ui/list/cells'
 import { firstLine } from '@/lib/client/submissions-filter'
 import { SubmissionStatusPill } from './forms-bits'
 

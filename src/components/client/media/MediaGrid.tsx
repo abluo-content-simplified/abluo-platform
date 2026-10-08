@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useRef, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { useTranslations } from 'next-intl'
-import { AutoGrid, type AutoGridDensity } from '@/components/client/ui/list/AutoGrid'
+import { AutoGrid, type AutoGridDensity } from '@/components/app/ui/list/AutoGrid'
 import type { MediaLibraryItem } from '@/lib/api/media-library'
-import { needsDescription } from '@/lib/client/media-filter'
+import { localeFor, needsDescription, type LocaleOf } from '@/lib/client/media-filter'
 import { MEDIA_ICONS } from './MediaPhotoSheet'
 
 export type ThumbSize = AutoGridDensity
@@ -36,9 +36,11 @@ export function MediaGrid({
   onOpen,
   onToggle,
   onStartSelecting,
+  showProject = false,
 }: {
   items: MediaLibraryItem[]
-  defaultLocale: string
+  /** The site's default language, or per photo when the list spans several sites. */
+  defaultLocale: LocaleOf<MediaLibraryItem>
   size: ThumbSize
   onSize: (size: ThumbSize) => void
   /** Ticks are showing: a tap ticks instead of opening. */
@@ -49,6 +51,8 @@ export function MediaGrid({
   onToggle: (id: string, checked: boolean, shift: boolean) => void
   /** Long press: start selecting with this photo ticked. */
   onStartSelecting: (id: string) => void
+  /** Label each tile with its project (lists that span several projects). */
+  showProject?: boolean
 }) {
   const t = useTranslations('clientDashboard.media')
 
@@ -180,11 +184,16 @@ export function MediaGrid({
                 {on ? MEDIA_ICONS.tick : null}
               </span>
             ) : null}
+            {showProject && item.project ? (
+              <span className="pointer-events-none absolute top-1.5 right-1.5 max-w-[70%] truncate rounded-full bg-background px-2 py-0.5 text-xs leading-5 text-foreground">
+                {item.project.name}
+              </span>
+            ) : null}
             <span className="pointer-events-none absolute right-1.5 bottom-1.5 left-1.5 flex flex-col items-start gap-1">
               <span className="max-w-full truncate rounded-full bg-background px-2 py-0.5 text-xs leading-5 text-foreground">
                 {t('library.usage', { count: item.usedIn.length })}
               </span>
-              {needsDescription(item, defaultLocale) && size !== 'small' ? (
+              {needsDescription(item, localeFor(defaultLocale, item)) && size !== 'small' ? (
                 <span className="max-w-full truncate rounded-full bg-background px-2 py-0.5 text-xs leading-5 text-muted-foreground">{t('library.needsDescription')}</span>
               ) : null}
             </span>

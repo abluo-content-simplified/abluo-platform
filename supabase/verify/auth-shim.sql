@@ -148,3 +148,25 @@ begin
   perform set_config('request.jwt.claims', '', false);
 end;
 $$;
+
+
+-- ── storage schema (buckets only) ────────────────────────────────────────
+-- Migrations 032 (`avatars`) and 035 (`product-updates`) insert a row into
+-- `storage.buckets`, a table the real Supabase Storage service owns. Only
+-- the columns those inserts name (+ the real NOT NULL `name`, and timestamps)
+-- are reproduced; types match Supabase's storage schema
+-- (id text pk, name text, public boolean default false,
+--  file_size_limit bigint, allowed_mime_types text[]). No storage.objects,
+-- no policies — nothing in this repo's migrations touches them.
+create schema if not exists storage;
+create table if not exists storage.buckets (
+  id                  text primary key,
+  name                text not null,
+  owner               uuid,
+  public              boolean default false,
+  file_size_limit     bigint,
+  allowed_mime_types  text[],
+  created_at          timestamptz default now(),
+  updated_at          timestamptz default now()
+);
+create unique index if not exists bname on storage.buckets (name);

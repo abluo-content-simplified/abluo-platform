@@ -43,7 +43,7 @@ import { DoneStep, type DoneResult } from './steps/DoneStep'
 import { ReviewStep } from './steps/ReviewStep'
 import { CtaStep } from './steps/CtaStep'
 import { GalleryPickStep } from './steps/GalleryPickStep'
-import { ConfirmDialog } from './ConfirmDialog'
+import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 
 const LIFECYCLE_ERRORS = ['conflict', 'forbidden', 'not_found', 'invalid_value', 'unauthenticated', 'failed']
 type Confirm = 'discard' | 'deleteDraft' | 'deletePost'

@@ -34,17 +34,17 @@ describe('postLoginDestination — who goes where', () => {
     )
   })
 
-  it('tenant user → /<locale>/account (never a bare /account)', () => {
-    expect(postLoginDestination(input({}))).toBe(`/${routing.defaultLocale}/account`)
+  it('tenant user → /<locale>/sites (never a bare path)', () => {
+    expect(postLoginDestination(input({}))).toBe(`/${routing.defaultLocale}/sites`)
   })
 
   it('tenant user honours a safe next that is not admin-only', () => {
     expect(postLoginDestination(input({ next: `/${OTHER}/livener/posts` }))).toBe(`/${OTHER}/livener/posts`)
   })
 
-  it('tenant user with an admin-only next goes to their own account, in that locale', () => {
-    expect(postLoginDestination(input({ next: `/${OTHER}/dashboard` }))).toBe(`/${OTHER}/account`)
-    expect(postLoginDestination(input({ next: '/studio/structure' }))).toBe(`/${routing.defaultLocale}/account`)
+  it('tenant user with an admin-only next goes to their own sites overview, in that locale', () => {
+    expect(postLoginDestination(input({ next: `/${OTHER}/dashboard` }))).toBe(`/${OTHER}/sites`)
+    expect(postLoginDestination(input({ next: '/studio/structure' }))).toBe(`/${routing.defaultLocale}/sites`)
   })
 
   it('admin at aal1 WITH a verified factor → /mfa?next=<dashboard> (challenge)', () => {
@@ -85,7 +85,7 @@ describe('postLoginDestination — unsafe next is ignored', () => {
   ]
   it.each(unsafe)('%s', (next) => {
     expect(acceptableNext(next)).toBeNull()
-    expect(postLoginDestination(input({ next }))).toBe(`/${routing.defaultLocale}/account`)
+    expect(postLoginDestination(input({ next }))).toBe(`/${routing.defaultLocale}/sites`)
     expect(postLoginDestination(input({ platformRole: 'abluo_admin', currentLevel: 'aal2', next }))).toBe(
       `/${routing.defaultLocale}/dashboard`
     )
@@ -96,16 +96,16 @@ describe('locale selection', () => {
   it('prefers the locale named by a safe next', () => {
     expect(
       postLoginDestination(input({ next: `/${OTHER}/dashboard`, cookieLocale: THIRD }))
-    ).toBe(`/${OTHER}/account`)
+    ).toBe(`/${OTHER}/sites`)
   })
 
   it('else the NEXT_LOCALE cookie, when it is a platform locale', () => {
-    expect(postLoginDestination(input({ cookieLocale: OTHER, acceptLanguage: `${THIRD}` }))).toBe(`/${OTHER}/account`)
+    expect(postLoginDestination(input({ cookieLocale: OTHER, acceptLanguage: `${THIRD}` }))).toBe(`/${OTHER}/sites`)
   })
 
   it('else the first Accept-Language the platform offers', () => {
     expect(postLoginDestination(input({ acceptLanguage: `xx-YY, ${THIRD};q=0.9, ${OTHER};q=0.8` }))).toBe(
-      `/${THIRD}/account`
+      `/${THIRD}/sites`
     )
     expect(
       postLoginDestination(input({ platformRole: 'abluo_admin', currentLevel: 'aal2', acceptLanguage: `${OTHER}-XX` }))
@@ -114,7 +114,7 @@ describe('locale selection', () => {
 
   it('else the platform default — and an unknown cookie never leaks into the URL', () => {
     expect(postLoginDestination(input({ cookieLocale: 'xx', acceptLanguage: 'zz' }))).toBe(
-      `/${routing.defaultLocale}/account`
+      `/${routing.defaultLocale}/sites`
     )
   })
 

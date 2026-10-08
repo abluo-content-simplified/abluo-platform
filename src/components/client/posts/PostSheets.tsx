@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { BottomSheet } from '@/components/client/ui/BottomSheet'
+import { BottomSheet } from '@/components/app/ui/BottomSheet'
 import { ICONS } from './post-bits'
 
-export { BarButton, SheetItem } from '@/components/client/ui/BarButton'
+export { BarButton, SheetItem } from '@/components/app/ui/BarButton'
 
 /** Posts list: the end-date and category sheets. BarButton / SheetItem now live in ui/BarButton (re-exported here). */
 

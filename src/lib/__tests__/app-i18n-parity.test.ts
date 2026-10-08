@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
  * them shows a raw key or blank button to that client.
  */
 const LOCALES = ['en', 'it', 'de'] as const
-const NAMESPACES = ['clientDashboard', 'editor'] as const
+const NAMESPACES = ['clientDashboard', 'app', 'admin', 'editor'] as const
 
 type Tree = { [k: string]: string | Tree }
 

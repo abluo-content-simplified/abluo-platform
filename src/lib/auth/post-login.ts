@@ -113,7 +113,8 @@ export interface PostLoginInput extends PlatformLocaleConfig {
  *   tenant_user                   → <destination>, unless it is admin-only
  *
  * <destination> is a safe explicit `next`, else the role's home:
- * `/<locale>/dashboard` for an admin, `/<locale>/account` for a tenant user.
+ * `/<locale>/dashboard` for an admin, `/<locale>/sites` for a tenant user (one site →
+ * straight to it; several → the "Your websites" overview — Tom, 2026-10-08).
  * <locale> comes from the `next` path when it names one, else NEXT_LOCALE /
  * Accept-Language against the platform locales, else the platform default.
  */
@@ -141,5 +142,5 @@ export function postLoginDestination(input: PostLoginInput): string {
   // tenant_user (and any non-admin): an admin-only `next` would only bounce
   // off the admin gate to /unauthorized — send them to their own home.
   if (next && !isAdminDestination(next)) return next
-  return `/${locale}/account`
+  return `/${locale}/sites`
 }

@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import type { SubmissionStatus } from '@/lib/api/client-dashboard'
-import { Pill, type PillTone } from '@/components/client/ui/list/cells'
+import { Pill, type PillTone } from '@/components/app/ui/list/cells'
 import { SUBMISSION_STATUSES } from '@/lib/client/submissions-filter'
 
 /**

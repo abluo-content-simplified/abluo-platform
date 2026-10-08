@@ -29,7 +29,7 @@ import {
 } from '@/lib/client/gallery-wizard'
 import type { GalleryStatus } from '@/lib/api/gallery-status'
 import { WizardFrame } from '@/components/client/create/WizardFrame'
-import { ConfirmDialog } from '@/components/client/create/ConfirmDialog'
+import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import type { LanguageChoice } from '@/components/client/create/steps/LanguagesStep'
 import { PhotoAddStep, type AddedPhoto } from './wizard/PhotoAddStep'
 import { PhotoDescribeStep, type DescribeChange } from './wizard/PhotoDescribeStep'

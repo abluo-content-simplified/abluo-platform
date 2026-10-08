@@ -4,7 +4,9 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { PhotoCard, type CardChange, type CardPhoto } from '@/components/client/media/PhotoCard'
+import type { MediaLibraryScope } from '@/components/client/media/media-api'
 import type { MediaLibraryItem, MediaUsage } from '@/lib/api/media-library'
+import { mediaUsageHref, type MediaLinks } from '@/lib/client/media-links'
 
 type Site = { defaultLocale: string; locales: string[] }
 
@@ -22,20 +24,29 @@ const toCard = (i: MediaLibraryItem): CardPhoto => ({
 /** One photo: the photo card plus "Used in …". Full screen on a phone, a panel on a computer. */
 export function PhotoSheet({
   projectSlug,
+  scope = 'media',
+  links,
   site,
   item,
   tagSuggestions,
   onChange,
   onSaving,
   onClose,
+  remove,
 }: {
   projectSlug: string
+  /** Which actions save the photo (the client's Media Library, or the admin's). */
+  scope?: MediaLibraryScope
+  /** Where "Used in" links go. */
+  links: MediaLinks
   site: Site
   item: MediaLibraryItem
   tagSuggestions: readonly string[]
   onChange: (c: CardChange) => void
   onSaving: (job: Promise<unknown>) => void
   onClose: () => void
+  /** A delete button under "Used in" (admin; the client dashboard has no delete yet). */
+  remove?: { label: string; onPress: () => void } | null
 }) {
   const t = useTranslations('clientDashboard.media')
   const titleId = useId()
@@ -76,21 +87,32 @@ export function PhotoSheet({
           <PhotoCard
             key={photo.assetId}
             projectSlug={projectSlug}
-            scope="media"
+            scope={scope}
             site={{ defaultLocale: site.defaultLocale, languages: site.locales }}
             photo={photo}
             tagSuggestions={tagSuggestions}
             onChange={onChange}
             onSaving={onSaving}
           />
-          <UsedIn usedIn={item.usedIn} projectSlug={projectSlug} />
+          <UsedIn usedIn={item.usedIn} projectSlug={projectSlug} links={links} />
+          {remove ? (
+            <div className="border-t border-border-subtle pt-4">
+              <button
+                type="button"
+                onClick={remove.onPress}
+                className="inline-flex h-11 items-center rounded-xl border border-border px-4 text-sm font-medium text-destructive hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              >
+                {remove.label}
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
   )
 }
 
-function UsedIn({ usedIn, projectSlug }: { usedIn: MediaUsage[]; projectSlug: string }) {
+function UsedIn({ usedIn, projectSlug, links }: { usedIn: MediaUsage[]; projectSlug: string; links: MediaLinks }) {
   const t = useTranslations('clientDashboard.media.usedIn')
   return (
     <section aria-labelledby="media-used-in" className="flex flex-col gap-2 border-t border-border-subtle pt-4">
@@ -104,22 +126,22 @@ function UsedIn({ usedIn, projectSlug }: { usedIn: MediaUsage[]; projectSlug: st
           {usedIn.map((u) => (
             <li key={`${u.kind}-${u.id}`} className="flex items-start gap-2 text-sm text-foreground">
               <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{t(`kind.${u.kind}`)}</span>
-              {u.kind === 'gallery' ? (
-                <Link href={`/${projectSlug}/galleries/${u.id}`} className="underline underline-offset-4">
-                  {u.title || t('untitled')}
-                </Link>
-              ) : u.kind === 'post' ? (
-                <Link href={`/${projectSlug}/posts`} className="underline underline-offset-4">
-                  {u.title || t('untitled')}
-                </Link>
-              ) : (
-                <span>{u.title || t('untitled')}</span>
-              )}
+              <UsageLink href={mediaUsageHref(links, projectSlug, u)}>{u.title || t('untitled')}</UsageLink>
             </li>
           ))}
         </ul>
       )}
     </section>
+  )
+}
+
+function UsageLink({ href, children }: { href: string | null; children: string }) {
+  return href ? (
+    <Link href={href} className="underline underline-offset-4">
+      {children}
+    </Link>
+  ) : (
+    <span>{children}</span>
   )
 }
 

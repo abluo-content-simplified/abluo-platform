@@ -5,18 +5,28 @@
  * (`uploadProjectImage`, `listProjectMedia` in post-media.ts,
  * `updateGalleryPhoto` in gallery-photos.ts) with the Media Library gate
  * (`MEDIA_MANAGE_PERMISSION` — owner/editor via `canManageMedia`).
- * No delete yet.
+ * `deleteMediaAsset` exists for the admin Media screen (ADR-030); the client
+ * dashboard does not offer delete yet.
  */
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { assertProjectAccess, MEDIA_MANAGE_PERMISSION } from '@/lib/api/media-permission'
 import { listProjectMedia, type ListProjectMediaOptions, type PostMediaDeps, type ProjectMediaItem } from '@/lib/api/post-media'
-import { localized } from '@/lib/api/gallery-drafts'
+import { GalleryError, localized } from '@/lib/api/gallery-drafts'
+import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
 
 export type MediaUsage = { kind: 'gallery' | 'page' | 'post'; id: string; title: string }
-export type MediaLibraryItem = ProjectMediaItem & { usedIn: MediaUsage[] }
+/** A site's languages, default first. */
+export type MediaSite = { defaultLocale: string; locales: string[] }
+/**
+ * The project a photo belongs to — set only by lists that span several
+ * projects (the admin Media screen); the client dashboard never sets it.
+ */
+export type MediaItemProject = { slug: string; name: string; site: MediaSite }
+export type MediaLibraryItem = ProjectMediaItem & { usedIn: MediaUsage[]; project?: MediaItemProject }
 
 type Client = Pick<typeof sanityWriteClient, 'fetch'>
+type DeleteClient = Pick<typeof sanityWriteClient, 'fetch' | 'getDocument' | 'delete'>
 
 /**
  * The `sanity.imageAsset` id of a Sanity CDN image URL
@@ -91,7 +101,7 @@ export async function getMediaSite(
   ctx: TenantAuthorizationContext,
   projectId: string,
   deps: { client?: Client } = {}
-): Promise<{ defaultLocale: string; locales: string[] }> {
+): Promise<MediaSite> {
   const grant = assertProjectAccess(ctx, projectId, MEDIA_MANAGE_PERMISSION)
   const client = deps.client ?? sanityWriteClient
   const site = await client.fetch<{ defaultLocale?: string | null; supportedLocales?: string[] | null } | null>(
@@ -101,4 +111,45 @@ export async function getMediaSite(
   const locales = site?.supportedLocales?.length ? site.supportedLocales : []
   const defaultLocale = site?.defaultLocale || locales[0] || 'en'
   return { defaultLocale, locales: [defaultLocale, ...locales.filter((l) => l !== defaultLocale)] }
+}
+
+const ASSET_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/
+
+/**
+ * Deletes one Media Library photo (the `mediaAsset` document; the image binary
+ * stays in Sanity, like the legacy `DELETE /api/media/[id]`). Media Library
+ * gate first; the asset must be a published `mediaAsset` of the grant's
+ * project ("not_found" otherwise, so ids can't be probed), and nothing may
+ * reference it — published, draft or version — ("in_use"): a photo still on a
+ * page, post or gallery is never deleted from under it.
+ */
+export async function deleteMediaAsset(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: { assetId: string },
+  deps: { client?: DeleteClient } = {}
+): Promise<{ assetId: string }> {
+  const grant = assertProjectAccess(ctx, projectId, MEDIA_MANAGE_PERMISSION)
+  const client = deps.client ?? sanityWriteClient
+  const assetId = input?.assetId
+  if (typeof assetId !== 'string' || !ASSET_ID.test(assetId)) throw new GalleryError('not_found', 'Unknown photo.')
+  const asset = (await client.getDocument(assetId)) as { _type?: string; projectSlug?: string } | undefined
+  if (!asset || asset._type !== 'mediaAsset' || asset.projectSlug !== grant.projectSlug) {
+    throw new GalleryError('not_found', 'Unknown photo.')
+  }
+  // `raw`: the clients' default perspective is `published`, which would not see
+  // a draft gallery or post (or a release version) that still uses the photo —
+  // and weak draft references would not stop Sanity's delete either.
+  const refs = await client.fetch<number | null>(`count(*[references($id)])`, { id: assetId }, { perspective: 'raw' })
+  if (typeof refs !== 'number') throw new GalleryError('failed', 'Could not check where the photo is used.')
+  if (refs > 0) throw new GalleryError('in_use', 'This photo is still used.')
+  await assertSingleSanityProject((q, p) => client.fetch(q, p), grant.projectSlug)
+  try {
+    await client.delete(assetId)
+  } catch (error) {
+    // A reference that appeared meanwhile: Sanity refuses the delete.
+    if ((error as { statusCode?: number })?.statusCode === 409) throw new GalleryError('in_use', 'This photo is still used.')
+    throw new GalleryError('failed', 'Could not delete.')
+  }
+  return { assetId }
 }

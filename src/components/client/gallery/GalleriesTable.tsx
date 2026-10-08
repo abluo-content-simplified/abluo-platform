@@ -1,10 +1,10 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { CardMenu, type CardMenuItem } from '@/components/client/ui/CardMenu'
-import { DataTable, type DataTableColumn } from '@/components/client/ui/list/DataTable'
-import { CellDate, CellPill, CellText } from '@/components/client/ui/list/cells'
-import { ThumbStrip } from '@/components/client/ui/list/ThumbStrip'
+import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
+import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
+import { CellDate, CellPill, CellText } from '@/components/app/ui/list/cells'
+import { ThumbStrip } from '@/components/app/ui/list/ThumbStrip'
 import type { GallerySort, GallerySortColumn } from '@/lib/client/galleries-filter'
 import { GalleryStatePill, type GalleryRow } from './gallery-bits'
 

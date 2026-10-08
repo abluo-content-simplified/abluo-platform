@@ -56,6 +56,17 @@ export const DEFAULT_MEDIA_FILTERS: MediaFilters = {
   sort: { column: 'uploaded', dir: 'desc' },
 }
 
+/**
+ * The default language of the photos: one site's (a string), or per photo
+ * when a list spans several sites (the admin's "All projects").
+ */
+export type LocaleOf<T> = string | ((m: T) => string)
+
+/** The default language for one photo. */
+export function localeFor<T>(locale: LocaleOf<T>, m: T): string {
+  return typeof locale === 'function' ? locale(m) : locale
+}
+
 /** The display name of a photo: its name, else the file name, else its description in `locale`. */
 export function mediaName(m: Pick<FilterableMedia, 'name' | 'filename' | 'alt'>, locale: string): string {
   return m.name?.trim() || m.filename?.trim() || m.alt[locale]?.trim() || ''
@@ -78,7 +89,7 @@ export function mediaDateWindow(f: Pick<MediaFilters, 'range' | 'from' | 'to'>, 
   return presetRange(f.range, todayISO(now))
 }
 
-export function applyMediaFilters<T extends FilterableMedia>(items: T[], f: MediaFilters, defaultLocale: string, now = new Date()): T[] {
+export function applyMediaFilters<T extends FilterableMedia>(items: T[], f: MediaFilters, defaultLocale: LocaleOf<T>, now = new Date()): T[] {
   const words = normalizeSearch(f.q).split(/\s+/).filter(Boolean)
   const tag = f.tag.trim().toLowerCase()
   const window = mediaDateWindow(f, now)
@@ -86,7 +97,7 @@ export function applyMediaFilters<T extends FilterableMedia>(items: T[], f: Medi
     if (tag && !m.tags.some((t) => t.toLowerCase() === tag)) return false
     if (f.usage === 'used' && m.usedIn.length === 0) return false
     if (f.usage === 'unused' && m.usedIn.length > 0) return false
-    if (f.description === 'missing' && !needsDescription(m, defaultLocale)) return false
+    if (f.description === 'missing' && !needsDescription(m, localeFor(defaultLocale, m))) return false
     if (window) {
       const day = localDay(m.createdAt)
       if (!day || day < window.from || day > window.to) return false
@@ -105,8 +116,8 @@ export function applyMediaFilters<T extends FilterableMedia>(items: T[], f: Medi
   if (f.sort.column === 'name') {
     // Unnamed photos always come last.
     out.sort((a, b) => {
-      const x = mediaName(a, defaultLocale)
-      const y = mediaName(b, defaultLocale)
+      const x = mediaName(a, localeFor(defaultLocale, a))
+      const y = mediaName(b, localeFor(defaultLocale, b))
       if (!x || !y) return x === y ? tie(a, b) : x ? -1 : 1
       return sign * collator.compare(x, y) || tie(a, b)
     })

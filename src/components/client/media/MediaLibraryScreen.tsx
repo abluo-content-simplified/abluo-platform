@@ -5,28 +5,31 @@ import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { BATCH_MAX, BatchSheet, type BatchMode } from '@/components/client/media/BatchSheet'
 import type { CardChange } from '@/components/client/media/PhotoCard'
-import { BarButton } from '@/components/client/ui/BarButton'
-import type { CardMenuItem } from '@/components/client/ui/CardMenu'
-import type { FilterChip } from '@/components/client/ui/FilterSheet'
-import { ListToolbar, type ListDateValue, type ListToolbarFilter } from '@/components/client/ui/ListToolbar'
-import { PageHeader } from '@/components/client/ui/PageHeader'
-import { idRange, SelectionBar } from '@/components/client/ui/SelectionBar'
-import { Toast } from '@/components/client/ui/Toast'
-import { ViewSwitch } from '@/components/client/ui/ViewSwitch'
-import { SelectAll } from '@/components/client/ui/list/ContentCard'
-import { useUndo } from '@/components/client/ui/use-undo'
-import { useViewPreference } from '@/components/client/ui/use-view-preference'
-import { listMediaLibraryAction } from '@/app/[locale]/(client)/[tenant]/media/actions'
+import { BarButton } from '@/components/app/ui/BarButton'
+import type { CardMenuItem } from '@/components/app/ui/CardMenu'
+import type { FilterChip } from '@/components/app/ui/FilterSheet'
+import { ListToolbar, type ListDateValue, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
+import { PageHeader } from '@/components/app/ui/PageHeader'
+import { idRange, SelectionBar } from '@/components/app/ui/SelectionBar'
+import { Toast } from '@/components/app/ui/Toast'
+import { ViewSwitch } from '@/components/app/ui/ViewSwitch'
+import { SelectAll } from '@/components/app/ui/list/ContentCard'
+import { useUndo } from '@/components/app/ui/use-undo'
+import { useViewPreference } from '@/components/app/ui/use-view-preference'
+import { deleteFromLibrary, listLibrary, type MediaLibraryScope } from '@/components/client/media/media-api'
 import type { MediaLibraryItem } from '@/lib/api/media-library'
+import { fillMediaLink, type MediaLinks } from '@/lib/client/media-links'
 import {
   activeMediaFilterCount,
   applyMediaFilters,
   DEFAULT_MEDIA_FILTERS,
   isDefaultMediaFilters,
+  localeFor,
   mediaName,
   mediaTags,
   nextMediaSort,
   type MediaDescriptionFilter,
+  type LocaleOf,
   type MediaFilters,
   type MediaUsageFilter,
 } from '@/lib/client/media-filter'
@@ -38,8 +41,26 @@ type Site = { defaultLocale: string; locales: string[] }
 type View = 'grid' | 'list'
 
 export type MediaLibraryScreenProps = {
-  projectSlug: string
+  /**
+   * The project shown. null = several projects at once (admin "All
+   * projects"): each photo then carries its own project and site languages,
+   * "Add photos" is disabled and selecting (tags / rename) is off.
+   */
+  projectSlug: string | null
+  /** The project's languages (with `projectSlug: null`, only a fallback). */
   site: Site
+  /** Which server actions read and save: the client's Media Library (default) or the admin's. */
+  scope?: MediaLibraryScope
+  /** Where "Add photos" and "Used in" go (CLIENT_MEDIA_LINKS / ADMIN_MEDIA_LINKS). */
+  links: MediaLinks
+  /** Extra filters, first in the toolbar (the admin's project picker). */
+  toolbarFilters?: ListToolbarFilter[]
+  /** Label photos with their project: the table column header (lists across projects). */
+  projectLabel?: string
+  /** Shown on the disabled "Add photos" button when no single project is chosen. */
+  addDisabledHint?: string
+  /** Delete unused photos ("Deleted · Undo") — admin only; the client has no delete yet. */
+  remove?: { label: string; deleted: string; undo: string; failed: string }
 }
 
 const VIEW_KEY = 'abluo.media.view'
@@ -78,14 +99,30 @@ function merge(i: MediaLibraryItem, c: CardChange): MediaLibraryItem {
  *
  * Selecting: the table's checkboxes, or in the grid "Select" / press and
  * hold, then tap. The selection bar offers Add tags · Rename · Clear (≤ 100
- * at a time; the server checks each photo). Still no delete.
+ * at a time; the server checks each photo). No delete for clients; the
+ * admin (ADR-030) passes `remove` to delete unused photos, and can list every
+ * project at once (`projectSlug: null`).
  * The page itself is gated to people who may manage media (page.tsx); every
  * server action re-checks.
  */
-export function MediaLibraryScreen({ projectSlug, site }: MediaLibraryScreenProps) {
+export function MediaLibraryScreen({
+  projectSlug,
+  site,
+  scope = 'media',
+  links,
+  toolbarFilters,
+  projectLabel,
+  addDisabledHint,
+  remove,
+}: MediaLibraryScreenProps) {
   const t = useTranslations('clientDashboard.media')
-  const tr = useTranslations('clientDashboard.ui.dateRange')
+  const tr = useTranslations('app.ui.dateRange')
   const d = site.defaultLocale
+  const several = projectSlug === null
+  /** A photo's project and languages: its own when the list spans projects. */
+  const slugOf = useCallback((i: MediaLibraryItem) => i.project?.slug ?? projectSlug ?? '', [projectSlug])
+  const siteOf = useCallback((i: MediaLibraryItem): Site => i.project?.site ?? site, [site])
+  const localeOf: LocaleOf<MediaLibraryItem> = useMemo(() => (several ? (i: MediaLibraryItem) => siteOf(i).defaultLocale : d), [several, siteOf, d])
 
   // ── Library: every page, newest first ──────────────────────────────────────
   const [items, setItems] = useState<MediaLibraryItem[]>([])
@@ -98,7 +135,7 @@ export function MediaLibraryScreen({ projectSlug, site }: MediaLibraryScreenProp
       let acc: MediaLibraryItem[] = []
       try {
         for (let page = 0; page < MAX_PAGES; page++) {
-          const r = await listMediaLibraryAction({ projectSlug, cursor })
+          const r = await listLibrary(scope, { projectSlug, cursor })
           if (cancelled) return
           if (!r.ok) return setState(acc.length ? 'ready' : 'error')
           const seen = new Set(acc.map((i) => i.assetId))
@@ -116,7 +153,7 @@ export function MediaLibraryScreen({ projectSlug, site }: MediaLibraryScreenProp
     return () => {
       cancelled = true
     }
-  }, [projectSlug, reloadKey])
+  }, [projectSlug, scope, reloadKey])
 
   // ── View + tile size, remembered per browser ───────────────────────────────
   const [view, chooseView] = useViewPreference<View>(VIEW_KEY, VIEWS, 'grid')
@@ -126,14 +163,14 @@ export function MediaLibraryScreen({ projectSlug, site }: MediaLibraryScreenProp
   const [filters, setFilters] = useState<MediaFilters>(DEFAULT_MEDIA_FILTERS)
   const update = (patch: Partial<MediaFilters>) => setFilters((f) => ({ ...f, ...patch }))
   const reset = () => setFilters((f) => ({ ...DEFAULT_MEDIA_FILTERS, sort: f.sort }))
-  const shown = useMemo(() => applyMediaFilters(items, filters, d), [items, filters, d])
+  const shown = useMemo(() => applyMediaFilters(items, filters, localeOf), [items, filters, localeOf])
   const tags = useMemo(() => mediaTags(items), [items])
   const isDefault = isDefaultMediaFilters(filters)
 
   const position = useMemo(() => new Map(items.map((i, n) => [i.assetId, n + 1])), [items])
   const nameOf = useCallback(
-    (item: MediaLibraryItem) => mediaName(item, d) || t('library.photoN', { n: position.get(item.assetId) ?? 1 }),
-    [d, position, t]
+    (item: MediaLibraryItem) => mediaName(item, localeFor(localeOf, item)) || t('library.photoN', { n: position.get(item.assetId) ?? 1 }),
+    [localeOf, position, t]
   )
 
   // ── Edit one photo ─────────────────────────────────────────────────────────
@@ -148,7 +185,9 @@ export function MediaLibraryScreen({ projectSlug, site }: MediaLibraryScreenProp
   const closeSheet = useCallback(() => setOpenId(null), [])
 
   // ── Selection (both views) ─────────────────────────────────────────────────
-  const { toast, show } = useUndo()
+  const { toast, show, schedule } = useUndo()
+  /** Selecting (tags / rename) works within one project. */
+  const canSelect = !several
   const [selecting, setSelecting] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [lastPicked, setLastPicked] = useState<string | null>(null)
@@ -196,18 +235,45 @@ export function MediaLibraryScreen({ projectSlug, site }: MediaLibraryScreenProp
     return () => document.removeEventListener('keydown', onKey)
   }, [ticking, batch, open, stopSelecting])
 
+  // ── Delete (admin only): the photo goes at once, the server call waits for Undo ──
+  const canRemove = (item: MediaLibraryItem) => Boolean(remove) && item.usedIn.length === 0
+  const removePhoto = (item: MediaLibraryItem) => {
+    if (!remove) return
+    setOpenId(null)
+    const at = Math.max(0, items.findIndex((i) => i.assetId === item.assetId))
+    setItems((prev) => prev.filter((i) => i.assetId !== item.assetId))
+    setSelected((prev) => {
+      const next = new Set(prev)
+      next.delete(item.assetId)
+      return next
+    })
+    schedule({
+      id: item.assetId,
+      message: remove.deleted,
+      undoLabel: remove.undo,
+      failMessage: remove.failed,
+      run: async () => (await deleteFromLibrary(scope, { projectSlug: slugOf(item), assetId: item.assetId })).ok,
+      restore: () => setItems((prev) => (prev.some((i) => i.assetId === item.assetId) ? prev : [...prev.slice(0, at), item, ...prev.slice(at)])),
+    })
+  }
+
   const menuFor = (item: MediaLibraryItem): CardMenuItem[] => [
     { key: 'edit', label: t('menu.edit'), onSelect: () => setOpenId(item.assetId) },
-    { key: 'tags', label: t('menu.addTags'), onSelect: () => setBatch({ mode: 'tags', ids: [item.assetId] }) },
-    { key: 'rename', label: t('menu.rename'), onSelect: () => setBatch({ mode: 'rename', ids: [item.assetId] }) },
+    ...(canSelect
+      ? [
+          { key: 'tags', label: t('menu.addTags'), onSelect: () => setBatch({ mode: 'tags', ids: [item.assetId] }) },
+          { key: 'rename', label: t('menu.rename'), onSelect: () => setBatch({ mode: 'rename', ids: [item.assetId] }) },
+        ]
+      : []),
     { key: 'original', label: t('menu.original'), onSelect: () => window.open(item.url, '_blank', 'noopener,noreferrer') },
+    ...(remove && canRemove(item) ? [{ key: 'delete', label: remove.label, onSelect: () => removePhoto(item) }] : []),
   ]
   /** Batch photos in the order shown (the numbers of "Rename" follow it). */
   const byId = useMemo(() => new Map(items.map((i) => [i.assetId, i])), [items])
   const batchItems = batch ? batch.ids.map((id) => byId.get(id)).filter((i): i is MediaLibraryItem => Boolean(i)) : []
 
   // ── Toolbar ────────────────────────────────────────────────────────────────
-  const selects: ListToolbarFilter[] = []
+  const selects: ListToolbarFilter[] = [...(toolbarFilters ?? [])]
   if (tags.length || filters.tag) {
     selects.push({
       key: 'tag',
@@ -258,6 +324,8 @@ export function MediaLibraryScreen({ projectSlug, site }: MediaLibraryScreenProp
       ? t('library.loading')
       : `${t('filters.showing', { shown: shown.length, total: items.length })}${state === 'more' ? ` · ${t('filters.loadingMore')}` : ''}`
 
+  const addHref = fillMediaLink(links.add, { project: projectSlug })
+
   /** Grid controls on line C: tile size, and Select / Select all. */
   const gridExtra = (
     <span className={`items-center gap-3 ${view === 'grid' ? 'flex' : 'flex md:hidden'}`}>
@@ -268,7 +336,7 @@ export function MediaLibraryScreen({ projectSlug, site }: MediaLibraryScreenProp
         label={t('size.label')}
         names={{ small: t('size.small'), medium: t('size.medium'), large: t('size.large') }}
       />
-      {shown.length > 0 ? (
+      {shown.length > 0 && canSelect ? (
         ticking ? (
           <SelectAll label={t('select.all')} ariaLabel={t('columns.selectAll')} state={allState} onChange={toggleAll} />
         ) : (
@@ -287,7 +355,7 @@ export function MediaLibraryScreen({ projectSlug, site }: MediaLibraryScreenProp
   const grid = (
     <MediaGrid
       items={shown}
-      defaultLocale={d}
+      defaultLocale={localeOf}
       size={size}
       onSize={setSize}
       selecting={ticking}
@@ -295,7 +363,8 @@ export function MediaLibraryScreen({ projectSlug, site }: MediaLibraryScreenProp
       nameOf={nameOf}
       onOpen={(i) => setOpenId(i.assetId)}
       onToggle={toggle}
-      onStartSelecting={startSelecting}
+      onStartSelecting={canSelect ? startSelecting : () => undefined}
+      showProject={several}
     />
   )
 
@@ -314,13 +383,26 @@ export function MediaLibraryScreen({ projectSlug, site }: MediaLibraryScreenProp
                 { value: 'list', label: t('view.list'), icon: MEDIA_ICONS.list },
               ]}
             />
-            <Link
-              href={`/${projectSlug}/media/add`}
-              className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-action px-4 text-[0.9375rem] font-semibold text-action-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-            >
-              {MEDIA_ICONS.plus}
-              {t('addTitle')}
-            </Link>
+            {addHref ? (
+              <Link
+                href={addHref}
+                className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-action px-4 text-[0.9375rem] font-semibold text-action-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+              >
+                {MEDIA_ICONS.plus}
+                {t('addTitle')}
+              </Link>
+            ) : links.add ? (
+              <button
+                type="button"
+                disabled
+                title={addDisabledHint}
+                className="inline-flex h-11 shrink-0 cursor-not-allowed items-center gap-2 rounded-xl bg-action px-4 text-[0.9375rem] font-semibold text-action-foreground opacity-50"
+              >
+                {MEDIA_ICONS.plus}
+                {t('addTitle')}
+                {addDisabledHint ? <span className="sr-only">{` · ${addDisabledHint}`}</span> : null}
+              </button>
+            ) : null}
           </>
         }
       />
@@ -378,7 +460,7 @@ export function MediaLibraryScreen({ projectSlug, site }: MediaLibraryScreenProp
           <div className="hidden md:block">
             <MediaTable
               items={shown}
-              defaultLocale={d}
+              defaultLocale={localeOf}
               nameOf={nameOf}
               selected={selected}
               onToggle={toggle}
@@ -388,6 +470,8 @@ export function MediaLibraryScreen({ projectSlug, site }: MediaLibraryScreenProp
               onSort={(c) => update({ sort: nextMediaSort(c, filters.sort) })}
               onOpen={(i) => setOpenId(i.assetId)}
               menuFor={menuFor}
+              selectable={canSelect}
+              projectColumn={several ? projectLabel : undefined}
             />
           </div>
           {/* Phones: always the grid */}
@@ -409,10 +493,10 @@ export function MediaLibraryScreen({ projectSlug, site }: MediaLibraryScreenProp
         </SelectionBar>
       ) : null}
 
-      {batch && batchItems.length ? (
+      {batch && batchItems.length && projectSlug !== null ? (
         <BatchSheet
           projectSlug={projectSlug}
-          scope="media"
+          scope={scope}
           mode={batch.mode}
           assetIds={batchItems.map((i) => i.assetId)}
           thumbs={batchItems.map((i) => i.thumbUrl)}
@@ -436,10 +520,21 @@ export function MediaLibraryScreen({ projectSlug, site }: MediaLibraryScreenProp
       ) : null}
 
       {open ? (
-        <PhotoSheet projectSlug={projectSlug} site={site} item={open} tagSuggestions={tags} onChange={onPhotoChange} onSaving={onSaving} onClose={closeSheet} />
+        <PhotoSheet
+          projectSlug={slugOf(open)}
+          scope={scope}
+          links={links}
+          site={siteOf(open)}
+          item={open}
+          tagSuggestions={several ? mediaTags(items.filter((i) => slugOf(i) === slugOf(open))) : tags}
+          onChange={onPhotoChange}
+          onSaving={onSaving}
+          onClose={closeSheet}
+          remove={remove && canRemove(open) ? { label: remove.label, onPress: () => removePhoto(open) } : null}
+        />
       ) : null}
 
-      <Toast message={toast?.message ?? null} tone={toast?.tone} />
+      <Toast message={toast?.message ?? null} tone={toast?.tone} action={toast?.undo ? remove?.undo : undefined} onAction={toast?.undo} />
     </div>
   )
 }

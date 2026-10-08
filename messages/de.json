@@ -43,7 +43,8 @@
         "type": "Verwende ein JPG-, PNG- oder WebP-Bild.",
         "failed": "Das Foto konnte nicht gespeichert werden. Bitte versuche es erneut."
       }
-    }
+    },
+    "openFullPage": "Ganze Seite öffnen"
   },
   "clientDashboard": {
     "nav": {
@@ -59,16 +60,14 @@
       "more": "Mehr",
       "add": "Inhalt hinzufügen",
       "media": "Medien",
-      "people": "Personen"
+      "people": "Personen",
+      "analytics": "Statistiken"
     },
     "shell": {
       "brandTagline": "Dashboard",
-      "signOut": "Abmelden",
       "noModules": "Für dieses Projekt sind noch keine Module aktiviert.",
       "entryTitle": "Dashboard",
-      "noProjects": "Du hast noch keinen Zugriff auf Projekte.",
-      "openMenu": "Menü",
-      "closeMenu": "Menü schließen"
+      "noProjects": "Du hast noch keinen Zugriff auf Projekte."
     },
     "projectSwitcher": {
       "label": "Projekt",
@@ -352,13 +351,6 @@
         "deleted": "{count, plural, one {# Anfrage gelöscht.} other {# Anfragen gelöscht.}}"
       }
     },
-    "theme": {
-      "label": "Darstellung",
-      "system": "Auto",
-      "light": "Hell",
-      "dark": "Dunkel",
-      "ariaLabel": "Helle oder dunkle Darstellung wählen"
-    },
     "home": {
       "title": "Willkommen zurück",
       "continueEditing": "Weiterschreiben",
@@ -477,9 +469,6 @@
           "sub": "{missing, plural, =0 {Alle haben eine Beschreibung} other {# ohne Beschreibung}}"
         }
       }
-    },
-    "version": {
-      "updated": "Aktualisiert {date}"
     },
     "create": {
       "story": {
@@ -901,13 +890,6 @@
           "other": "eine Einstellung"
         }
       }
-    },
-    "textSize": {
-      "label": "Textgröße",
-      "sm": "Klein",
-      "md": "Standard",
-      "lg": "Groß",
-      "xl": "Sehr groß"
     },
     "gallery": {
       "photo": {
@@ -1602,66 +1584,7 @@
         "generic": "Speichern klappt gerade nicht. Bitte versuche es erneut."
       }
     },
-    "filterBar": {
-      "label": "Filter",
-      "search": "Suchen"
-    },
     "ui": {
-      "dateRange": {
-        "anyDate": "Beliebiges Datum",
-        "dialog": "Zeitraum wählen",
-        "clear": "Zurücksetzen",
-        "apply": "Übernehmen",
-        "prevMonth": "Vorheriger Monat",
-        "nextMonth": "Nächster Monat",
-        "presets": "Schnellauswahl",
-        "last7": "Letzte 7 Tage",
-        "last30": "Letzte 30 Tage",
-        "thisYear": "Dieses Jahr",
-        "rangeStart": "Startdatum",
-        "rangeEnd": "Enddatum",
-        "selectEnd": "Wähle jetzt das Enddatum",
-        "today": "Heute",
-        "custom": "Eigener Zeitraum",
-        "clearRange": "Zeitraum entfernen",
-        "help": "Wähle Start- und Enddatum.",
-        "inline": {
-          "last7": "letzte 7 Tage",
-          "last30": "letzte 30 Tage",
-          "thisYear": "dieses Jahr"
-        }
-      },
-      "filterSheet": {
-        "filters": "Filter",
-        "filtersCount": "Filter · {count}",
-        "title": "Filter",
-        "clearAll": "Alle löschen",
-        "showResults": "{count, plural, one {# Ergebnis} other {# Ergebnisse}} anzeigen",
-        "close": "Filter schließen",
-        "dragHandle": "Zum Schließen nach unten ziehen",
-        "applied": "Aktive Filter",
-        "remove": "Filter entfernen: {label}"
-      },
-      "section": {
-        "seeAll": "Alle ansehen",
-        "seeAllNamed": "Alle ansehen: {section}"
-      },
-      "linkCard": {
-        "opensNewTab": "(öffnet in einem neuen Tab)"
-      },
-      "stat": {
-        "up": "{percent} % mehr als {period}",
-        "down": "{percent} % weniger als {period}",
-        "flat": "Gleich wie {period}"
-      },
-      "attention": {
-        "caughtUpTitle": "Alles erledigt",
-        "caughtUpBody": "Gerade wartet nichts auf dich.",
-        "severityWarn": "Zu erledigen",
-        "severityInfo": "Zur Info",
-        "showMore": "{count} weitere anzeigen",
-        "showFewer": "Weniger anzeigen"
-      },
       "siteStatus": {
         "viewSite": "Deine Website ansehen",
         "viewPreview": "Deine Vorschau ansehen",
@@ -1680,12 +1603,6 @@
       "inviteTitle": "Jemanden einladen",
       "email": "E-Mail",
       "role": "Rolle",
-      "roles": {
-        "owner": "Inhaber",
-        "admin": "Website-Admin",
-        "editor": "Redakteur",
-        "member": "Mitglied"
-      },
       "roleHelp": {
         "admin": "Verwaltet die Website und ihre Personen",
         "editor": "Schreibt und veröffentlicht"
@@ -1696,7 +1613,8 @@
       "access": "Zusätzlicher Zugriff",
       "extras": {
         "formsSubmissionRead": "Sieht Kontaktanfragen",
-        "formsSubmissionUpdate": "Verwaltet Kontaktanfragen"
+        "formsSubmissionUpdate": "Verwaltet Kontaktanfragen",
+        "analyticsRead": "Sieht Website-Statistiken"
       },
       "includedByRole": "Kontaktanfragen sind in dieser Rolle enthalten.",
       "send": "Einladung senden",
@@ -1780,6 +1698,45 @@
         "noMatch": "Niemand passt zu diesen Filtern."
       }
     },
+    "analytics": {
+      "title": "Statistiken",
+      "notConnectedTitle": "Statistiken sind noch nicht verbunden",
+      "notConnectedBody": "Wir verbinden Google Analytics und Search Console Ihrer Website für Sie. Ihre Zahlen erscheinen hier am Tag danach.",
+      "errorTitle": "Statistiken konnten nicht geladen werden",
+      "errorBody": "Bitte versuchen Sie es gleich noch einmal.",
+      "home": {
+        "heading": "Website-Besuche",
+        "visitors": "Besucher · 28 Tage",
+        "searchClicks": "Klicks von Google · 28 Tage",
+        "pageViews": "Seitenaufrufe · 28 Tage",
+        "previousPeriod": "in den 28 Tagen davor",
+        "dailyVisitors": "Besucher pro Tag, letzte 28 Tage"
+      }
+    },
+    "whatsNew": {
+      "title": "Neuigkeiten",
+      "close": "Schließen",
+      "new": "Neu",
+      "unreadCount": "{count, plural, one {# neue Meldung} other {# neue Meldungen}}",
+      "opensInNewTab": "(öffnet in einem neuen Tab)"
+    },
+    "sites": {
+      "title": "Deine Websites",
+      "intro": "{count, plural, one {# Website} other {# Websites}}, an denen du arbeitest. Wähle eine aus.",
+      "yourRole": "Deine Rolle: {role}",
+      "openRequests": "{count, plural, one {# Kontaktanfrage wartet} other {# Kontaktanfragen warten}}",
+      "noOpenRequests": "Keine wartenden Kontaktanfragen",
+      "newThisWeek": "{count} neu diese Woche",
+      "open": "Öffnen",
+      "allSites": "Alle Websites"
+    }
+  },
+  "app": {
+    "shell": {
+      "signOut": "Abmelden",
+      "openMenu": "Menü",
+      "closeMenu": "Menü schließen"
+    },
     "accountMenu": {
       "open": "Kontomenü öffnen",
       "title": "Dein Konto",
@@ -1789,6 +1746,646 @@
       "profile": "Profil",
       "preferences": "Einstellungen",
       "close": "Schließen"
+    },
+    "theme": {
+      "label": "Darstellung",
+      "system": "Auto",
+      "light": "Hell",
+      "dark": "Dunkel",
+      "ariaLabel": "Helle oder dunkle Darstellung wählen"
+    },
+    "textSize": {
+      "label": "Textgröße",
+      "sm": "Klein",
+      "md": "Standard",
+      "lg": "Groß",
+      "xl": "Sehr groß"
+    },
+    "version": {
+      "updated": "Aktualisiert {date}"
+    },
+    "roles": {
+      "owner": "Inhaber",
+      "admin": "Website-Admin",
+      "editor": "Redakteur",
+      "member": "Mitglied",
+      "abluo_admin": "Super-Admin"
+    },
+    "filterBar": {
+      "label": "Filter",
+      "search": "Suchen"
+    },
+    "ui": {
+      "dateRange": {
+        "anyDate": "Beliebiges Datum",
+        "dialog": "Zeitraum wählen",
+        "clear": "Zurücksetzen",
+        "apply": "Übernehmen",
+        "prevMonth": "Vorheriger Monat",
+        "nextMonth": "Nächster Monat",
+        "presets": "Schnellauswahl",
+        "last7": "Letzte 7 Tage",
+        "last30": "Letzte 30 Tage",
+        "thisYear": "Dieses Jahr",
+        "rangeStart": "Startdatum",
+        "rangeEnd": "Enddatum",
+        "selectEnd": "Wähle jetzt das Enddatum",
+        "today": "Heute",
+        "custom": "Eigener Zeitraum",
+        "clearRange": "Zeitraum entfernen",
+        "help": "Wähle Start- und Enddatum.",
+        "inline": {
+          "last7": "letzte 7 Tage",
+          "last30": "letzte 30 Tage",
+          "thisYear": "dieses Jahr"
+        }
+      },
+      "filterSheet": {
+        "filters": "Filter",
+        "filtersCount": "Filter · {count}",
+        "title": "Filter",
+        "clearAll": "Alle löschen",
+        "showResults": "{count, plural, one {# Ergebnis} other {# Ergebnisse}} anzeigen",
+        "close": "Filter schließen",
+        "dragHandle": "Zum Schließen nach unten ziehen",
+        "applied": "Aktive Filter",
+        "remove": "Filter entfernen: {label}"
+      },
+      "section": {
+        "seeAll": "Alle ansehen",
+        "seeAllNamed": "Alle ansehen: {section}"
+      },
+      "linkCard": {
+        "opensNewTab": "(öffnet in einem neuen Tab)"
+      },
+      "stat": {
+        "up": "{percent} % mehr als {period}",
+        "down": "{percent} % weniger als {period}",
+        "flat": "Gleich wie {period}"
+      },
+      "attention": {
+        "caughtUpTitle": "Alles erledigt",
+        "caughtUpBody": "Gerade wartet nichts auf dich.",
+        "severityWarn": "Zu erledigen",
+        "severityInfo": "Zur Info",
+        "showMore": "{count} weitere anzeigen",
+        "showFewer": "Weniger anzeigen"
+      },
+      "confirm": {
+        "cancel": "Abbrechen"
+      }
+    },
+    "analytics": {
+      "visitors": "Besucher",
+      "pageViews": "Seitenaufrufe",
+      "searchClicks": "Klicks von Google",
+      "position": "Durchschnittliche Google-Position",
+      "positionHint": "Niedriger ist besser",
+      "impressions": "{count, plural, one {# Mal in Google gezeigt} other {# Mal in Google gezeigt}}",
+      "dailyVisitors": "Besucher pro Tag, letzte 28 Tage",
+      "previousPeriod": "in den 28 Tagen davor",
+      "window": "Letzte {days} Tage, bis {until}",
+      "updated": "Aktualisiert {when}",
+      "staleNote": "Nicht aktualisiert seit {when}",
+      "searchNotConnected": "Google-Suchdaten sind noch nicht verbunden.",
+      "trafficNotConnected": "Besucherzahlen sind noch nicht verbunden.",
+      "summary": "Website-Leistung",
+      "topPages": "Meistbesuchte Seiten",
+      "topChannels": "Wie Besucher Sie finden",
+      "topQueries": "Häufigste Google-Suchen",
+      "channels": {
+        "organicSearch": "Google & Suchmaschinen",
+        "direct": "Direkt",
+        "referral": "Links auf anderen Seiten",
+        "organicSocial": "Soziale Medien",
+        "paidSearch": "Suchanzeigen",
+        "paidSocial": "Social-Media-Anzeigen",
+        "email": "E-Mail",
+        "display": "Display-Anzeigen",
+        "organicVideo": "Video",
+        "organicMaps": "Karten",
+        "unassigned": "Sonstige",
+        "crossNetwork": "Anzeigen (netzwerkübergreifend)",
+        "affiliates": "Affiliates",
+        "organicShopping": "Shopping",
+        "paidOther": "Sonstige Anzeigen",
+        "sms": "SMS",
+        "audio": "Audio",
+        "mobilePushNotifications": "Push-Benachrichtigungen"
+      }
+    }
+  },
+  "admin": {
+    "shell": {
+      "tagline": "Admin",
+      "navLabel": "Admin-Navigation"
+    },
+    "nav": {
+      "home": "Start",
+      "projects": "Projekte",
+      "analytics": "Statistiken",
+      "media": "Medien",
+      "backlog": "Backlog",
+      "whatsNew": "Neuigkeiten"
+    },
+    "home": {
+      "title": "Start",
+      "emptyTitle": "Deine Übersicht ist unterwegs",
+      "emptyBody": "Hier erscheint eine Zusammenfassung aller Projekte – Besuche, letzte Aktivitäten und was deine Aufmerksamkeit braucht.",
+      "glance": {
+        "heading": "Auf einen Blick",
+        "live": {
+          "label": "Live-Websites",
+          "sub": "Unter eigener Adresse"
+        },
+        "preview": {
+          "label": "In der Vorschau",
+          "sub": "Noch nicht öffentlich"
+        },
+        "draft": {
+          "label": "Entwürfe",
+          "sub": "Im Aufbau"
+        },
+        "requests": {
+          "label": "Unbeantwortete Anfragen",
+          "sub": "{week, plural, =0 {Keine neuen diese Woche} other {# neu in den letzten 7 Tagen}}",
+          "subCapped": "Die neuesten {count} werden gezeigt"
+        },
+        "invitations": {
+          "label": "Offene Einladungen",
+          "sub": "Noch nicht angenommen"
+        }
+      },
+      "attentionHeading": "Braucht deine Aufmerksamkeit",
+      "attentionIncomplete": "Einige Informationen konnten nicht geladen werden, daher ist diese Liste eventuell unvollständig.",
+      "loadError": "Einige Zahlen konnten nicht geladen werden.",
+      "attention": {
+        "noOwner": {
+          "title": "{project} hat keinen Inhaber",
+          "detail": "Auf Kundenseite kann noch niemand diese Website verwalten.",
+          "action": "Projekt öffnen"
+        },
+        "requestsWaiting": {
+          "title": "{count, plural, one {# Kontaktanfrage wartet} other {# Kontaktanfragen warten}} · {project}",
+          "detail": "{days, plural, =0 {Seit über 2 Tagen unbeantwortet} one {Die älteste wartet seit # Tag} other {Die älteste wartet seit # Tagen}}",
+          "action": "Projekt öffnen"
+        },
+        "invitationExpired": {
+          "title": "Einladung abgelaufen · {email}",
+          "detail": "{project} · {days, plural, =0 {Heute abgelaufen} one {Vor # Tag abgelaufen} other {Vor # Tagen abgelaufen}}",
+          "action": "Projekt öffnen"
+        },
+        "invitationExpiring": {
+          "title": "Einladung läuft ab · {email}",
+          "detail": "{project} · {days, plural, one {Läuft innerhalb von # Tag ab} other {Läuft innerhalb von # Tagen ab}}",
+          "action": "Projekt öffnen"
+        },
+        "longPreview": {
+          "title": "{project} ist noch in der Vorschau",
+          "detail": "{days, plural, other {Vor # Tagen erstellt und noch nicht live}}",
+          "action": "Projekt öffnen"
+        }
+      }
+    },
+    "projects": {
+      "title": "Projekte",
+      "description": "Alle aktiven Kunden-Websites auf der Abluo-Plattform.",
+      "loadError": "Projekte konnten nicht geladen werden: {message}",
+      "emptyTitle": "Noch keine Projekte.",
+      "preview": "Vorschau",
+      "studio": "Studio",
+      "opensInNewTab": "(öffnet in einem neuen Tab)",
+      "status": {
+        "active": "Aktiv",
+        "preview": "Vorschau",
+        "draft": "Entwurf",
+        "inactive": "Inaktiv"
+      },
+      "search": "Projekte suchen",
+      "searchPlaceholder": "Name, Kunde, Domain suchen…",
+      "filters": "Projektfilter",
+      "statusFilter": "Status",
+      "statusFilters": {
+        "current": "Alle außer inaktiv",
+        "active": "Live",
+        "preview": "Vorschau",
+        "draft": "Entwurf",
+        "inactive": "Inaktiv",
+        "all": "Alle Projekte"
+      },
+      "showing": "{shown} von {total, plural, one {# Projekt} other {# Projekten}}",
+      "clear": "Filter zurücksetzen",
+      "noMatch": "Keine Projekte entsprechen diesen Filtern.",
+      "columns": {
+        "project": "Projekt",
+        "status": "Status",
+        "domain": "Domain",
+        "client": "Kunde",
+        "owners": "Inhaber",
+        "created": "Erstellt",
+        "actions": "Aktionen"
+      },
+      "noOwner": "Noch kein Inhaber",
+      "ownersUnknown": "Inhaber konnten nicht geladen werden",
+      "moreOwners": "+{count} weitere",
+      "menu": "Aktionen für {name}",
+      "actions": {
+        "open": "Öffnen",
+        "previewSite": "Vorschau der Website",
+        "liveSite": "Live-Website ansehen",
+        "openStudio": "Studio öffnen"
+      }
+    },
+    "analytics": {
+      "title": "Statistiken",
+      "emptyTitle": "Noch keine Live- oder Vorschau-Websites",
+      "emptyBody": "Websites erscheinen hier, sobald sie live oder in der Vorschau sind.",
+      "description": "Besuche und Google-Suche aller Live- und Vorschau-Websites, aus den täglichen Snapshots.",
+      "notReadyTitle": "Der Statistik-Speicher ist noch nicht eingerichtet",
+      "notReadyBody": "Migration 036 (analytics snapshots) anwenden, dann füllt der tägliche Job diese Seite.",
+      "status": {
+        "connected": "Verbunden",
+        "not_connected": "Nicht verbunden",
+        "error": "Fehler",
+        "stale": "Veraltet"
+      },
+      "connection": {
+        "all": "Alle Verbindungen",
+        "both": "Analytics + Search",
+        "analyticsOnly": "Nur Analytics",
+        "searchOnly": "Nur Search",
+        "none": "Nichts verbunden"
+      },
+      "filters": {
+        "label": "Websites filtern",
+        "search": "Websites suchen",
+        "searchPlaceholder": "Websites suchen…",
+        "status": "Datenstatus",
+        "statusAll": "Alle Status",
+        "connection": "Verbindung",
+        "showing": "{shown} von {total} Websites",
+        "clear": "Filter zurücksetzen",
+        "noMatch": "Keine Website passt zu diesen Filtern."
+      },
+      "columns": {
+        "site": "Website",
+        "visitors7": "Besucher 7 T.",
+        "visitors28": "Besucher 28 T.",
+        "trend": "Trend",
+        "searchClicks28": "Google-Klicks 28 T.",
+        "topChannel": "Hauptkanal",
+        "requests28": "Anfragen 28 T.",
+        "status": "Daten"
+      },
+      "trendUp": "+{percent} %",
+      "trendDown": "−{percent} %",
+      "trendFlat": "0 %",
+      "dailyVisitors": "Besucher pro Tag, letzte 28 Tage: {site}",
+      "noData": "Noch keine Daten",
+      "visitorsLine": "{count, plural, one {# Besucher} other {# Besucher}} · 28 Tage",
+      "refresh": {
+        "button": "Jetzt aktualisieren",
+        "running": "Wird aktualisiert…",
+        "done": "Aktualisiert.",
+        "doneWithErrors": "{count, plural, one {Aktualisiert, mit # Fehler.} other {Aktualisiert, mit # Fehlern.}}",
+        "refused": "Nicht erlaubt.",
+        "failed": "Aktualisierung fehlgeschlagen. Server-Log prüfen."
+      },
+      "site": {
+        "back": "← Alle Websites",
+        "errorTitle": "Google hat bei der letzten Aktualisierung einen Fehler gemeldet",
+        "source": {
+          "ga4": "Google Analytics",
+          "gsc": "Search Console"
+        },
+        "emptyTitle": "Noch keine Daten für diese Website",
+        "emptyBody": "GA4-Property-ID und/oder Search-Console-Property in Studio eintragen, prüfen, dass der Kunde das Abluo-Dienstkonto hinzugefügt hat, dann Jetzt aktualisieren.",
+        "configHeading": "Verbindung",
+        "ga4Property": "GA4-Property-ID",
+        "gscProperty": "Search-Console-Property",
+        "ga4State": "Google Analytics",
+        "gscState": "Search Console",
+        "state": {
+          "connected": "Verbunden",
+          "not_connected": "Nicht eingerichtet",
+          "error": "Fehler",
+          "missing": "Noch kein Snapshot"
+        },
+        "notSet": "Nicht gesetzt",
+        "configHint": "Wird in Studio → Project Settings → Integrations gesetzt. Siehe docs/engineering/analytics-setup.md."
+      },
+      "summary": {
+        "heading": "Website-Besuche",
+        "emptyTitle": "Noch keine Besucherdaten",
+        "emptyBody": "Websites in Studio verbinden; die Zahlen erscheinen am Tag nach dem ersten Snapshot.",
+        "visitors": "Besucher · 28 Tage",
+        "previousPeriod": "in den 28 Tagen davor",
+        "acrossSites": "{count, plural, one {Über # Website} other {Über # Websites}}",
+        "notConnected": "Nicht verbunden",
+        "ofSites": "{count, plural, one {von # Website} other {von # Websites}}",
+        "erroring": "Mit Fehlern",
+        "stale": "{count} veraltet",
+        "risers": "Steigend",
+        "fallers": "Fallend"
+      },
+      "block": {
+        "heading": "Statistiken",
+        "open": "Statistiken öffnen",
+        "visitors": "Besucher · 28 Tage",
+        "searchClicks": "Klicks von Google · 28 Tage",
+        "previousPeriod": "in den 28 Tagen davor",
+        "dailyVisitors": "Besucher pro Tag, letzte 28 Tage",
+        "emptyTitle": "Noch keine Daten",
+        "emptyBody": "Nicht verbunden oder wartet auf den ersten täglichen Snapshot."
+      }
+    },
+    "backlog": {
+      "title": "Backlog",
+      "description": "Das technische Backlog des Abluo-Teams: Fehler, Verbesserungen, Ideen und Aufgaben für Plattform, Module, Dashboards und Kunden-Websites. Nur intern.",
+      "newItem": "Neuer Eintrag",
+      "emptyTitle": "Das Backlog ist noch leer",
+      "emptyBody": "Sammle hier Fehler, Verbesserungen, Ideen und Aufgaben der Plattform — ein Eintrag pro Aufgabe, mit Bereich, Priorität, dem betroffenen Kunden und Links zu ADRs, Commits oder Feedback. Kunden sehen es nie.",
+      "notSetUpTitle": "Der Backlog-Speicher ist noch nicht eingerichtet",
+      "notSetUpBody": "Wende Migration 034 (supabase/migrations/034_admin_backlog.sql) im SQL-Editor von Supabase an und lade die Seite neu.",
+      "loadError": "Das Backlog konnte nicht geladen werden: {message}",
+      "area": {
+        "client_dashboard": "Kunden-Dashboard",
+        "admin": "Admin",
+        "module": "Modul",
+        "website": "Website",
+        "platform": "Plattform",
+        "infrastructure": "Infrastruktur",
+        "other": "Sonstiges"
+      },
+      "type": {
+        "bug": "Fehler",
+        "improvement": "Verbesserung",
+        "idea": "Idee",
+        "task": "Aufgabe"
+      },
+      "priority": {
+        "p0": "P0 · Dringend",
+        "p1": "P1 · Hoch",
+        "p2": "P2 · Normal",
+        "p3": "P3 · Niedrig"
+      },
+      "status": {
+        "inbox": "Eingang",
+        "planned": "Geplant",
+        "in_progress": "In Arbeit",
+        "blocked": "Blockiert",
+        "done": "Erledigt",
+        "wont_do": "Wird nicht gemacht"
+      },
+      "filters": {
+        "label": "Backlog-Filter",
+        "search": "Backlog durchsuchen",
+        "searchPlaceholder": "Titel, Notizen, Links durchsuchen…",
+        "status": "Status",
+        "statusOpen": "Offen (nicht erledigt)",
+        "statusAll": "Jeder Status",
+        "area": "Bereich",
+        "areaAll": "Jeder Bereich",
+        "type": "Typ",
+        "typeAll": "Jeder Typ",
+        "priority": "Priorität",
+        "priorityAll": "Jede Priorität",
+        "project": "Kundenprojekt",
+        "projectAll": "Jedes Projekt",
+        "projectNone": "Kein Kundenbezug",
+        "showing": "{shown} von {total, plural, one {# Eintrag} other {# Einträgen}}",
+        "clear": "Filter zurücksetzen",
+        "noMatch": "Keine Einträge passen zu diesen Filtern."
+      },
+      "columns": {
+        "title": "Titel",
+        "type": "Typ",
+        "area": "Bereich",
+        "priority": "Priorität",
+        "status": "Status",
+        "project": "Projekt",
+        "updated": "Aktualisiert"
+      },
+      "form": {
+        "title": "Titel",
+        "titlePlaceholder": "Was zu tun ist, in einer Zeile",
+        "type": "Typ",
+        "area": "Bereich",
+        "priority": "Priorität",
+        "status": "Status",
+        "project": "Kundenprojekt",
+        "projectNone": "Kein Kundenbezug",
+        "module": "Modul",
+        "modulePlaceholder": "z. B. forms, gallery",
+        "moduleHelp": "Optional. Die Modul-ID in Kleinbuchstaben.",
+        "body": "Notizen",
+        "bodyPlaceholder": "Details, Schritte zum Reproduzieren, Abnahmekriterien…",
+        "links": "Links",
+        "linksHelp": "ADRs, Commits, Pull Requests, Feedback-Dokumente.",
+        "linkLabel": "Bezeichnung",
+        "linkUrl": "URL",
+        "addLink": "Link hinzufügen",
+        "removeLink": "Link {n} entfernen",
+        "create": "Eintrag anlegen",
+        "save": "Änderungen speichern",
+        "cancel": "Abbrechen"
+      },
+      "detail": {
+        "close": "Schließen",
+        "newTitle": "Neuer Backlog-Eintrag",
+        "editTitle": "Eintrag bearbeiten",
+        "edit": "Bearbeiten",
+        "delete": "Löschen",
+        "changeStatus": "Status ändern",
+        "created": "Angelegt",
+        "updated": "Aktualisiert",
+        "done": "Erledigt am",
+        "noBody": "Noch keine Notizen.",
+        "links": "Links",
+        "project": "Kundenprojekt",
+        "module": "Modul",
+        "none": "—",
+        "opensInNewTab": "(öffnet in einem neuen Tab)",
+        "open": "{title} öffnen"
+      },
+      "confirmDelete": {
+        "title": "Diesen Eintrag löschen?",
+        "body": "„{title}“ wird endgültig aus dem Backlog entfernt. Das lässt sich nicht rückgängig machen.",
+        "confirm": "Eintrag löschen"
+      },
+      "toast": {
+        "created": "Eintrag angelegt",
+        "saved": "Änderungen gespeichert",
+        "statusChanged": "Verschoben nach {status}",
+        "deleted": "Eintrag gelöscht"
+      },
+      "errors": {
+        "forbidden": "Dafür musst du als Abluo-Admin mit Zwei-Faktor-Anmeldung angemeldet sein.",
+        "not_set_up": "Der Backlog-Speicher ist noch nicht eingerichtet — wende Migration 034 an.",
+        "not_found": "Diesen Eintrag gibt es nicht mehr. Lade die Seite neu.",
+        "invalid": "Einige Felder müssen geprüft werden.",
+        "failed": "Etwas ist schiefgelaufen. Es wurde nichts geändert — bitte versuche es erneut.",
+        "required": "Pflichtfeld.",
+        "tooLong": "Zu lang.",
+        "invalidValue": "Wähle einen gültigen Wert.",
+        "invalidUrl": "Jeder Link braucht eine vollständige http(s)-URL.",
+        "tooMany": "Zu viele Links (höchstens 20)."
+      }
+    },
+    "whatsNew": {
+      "title": "Neuigkeiten",
+      "emptyTitle": "Noch keine Neuigkeiten",
+      "emptyBody": "Hier erscheinen die Neuigkeiten, die du für Kunden veröffentlichst.",
+      "description": "Kurze Produktneuigkeiten, die deine Kunden in ihrem Dashboard sehen.",
+      "newUpdate": "Neue Meldung",
+      "newTitle": "Neue Meldung",
+      "editTitle": "Meldung bearbeiten",
+      "missingTitle": "Neuigkeiten sind noch nicht eingerichtet",
+      "missingBody": "Wende die Datenbankmigration 035 an, um Meldungen zu schreiben.",
+      "loadError": "Meldungen konnten nicht geladen werden: {message}",
+      "columns": {
+        "title": "Titel",
+        "status": "Status",
+        "published": "Veröffentlicht",
+        "audience": "Zielgruppe",
+        "reads": "Gelesen von"
+      },
+      "status": {
+        "draft": "Entwurf",
+        "published": "Veröffentlicht",
+        "archived": "Archiviert"
+      },
+      "notPublished": "Nicht veröffentlicht",
+      "audienceEveryone": "Alle",
+      "readCount": "{count, plural, one {# Person} other {# Personen}}",
+      "fields": {
+        "language": "Sprache",
+        "filled": "(hat einen Titel)",
+        "title": "Titel",
+        "body": "Text",
+        "bodyHelp": "Reiner Text. Lass zwischen Absätzen eine Zeile frei.",
+        "ctaLabel": "Button-Text",
+        "ctaUrl": "Button-Link",
+        "ctaHelp": "Optional. Ein https-Link; der Button braucht einen Text in mindestens einer Sprache.",
+        "image": "Bild",
+        "imageHelp": "Optional. JPEG, PNG oder WebP, bis 5 MB.",
+        "chooseImage": "Bild auswählen",
+        "replaceImage": "Bild ersetzen",
+        "removeImage": "Bild entfernen",
+        "uploading": "Wird hochgeladen…",
+        "audience": "Wer sie sieht",
+        "audienceHelp": "Lass alles leer, um sie allen Kunden zu zeigen. Wähle Module, um sie nur Websites zu zeigen, die mindestens eines davon nutzen."
+      },
+      "actions": {
+        "saveDraft": "Entwurf speichern",
+        "publish": "Veröffentlichen",
+        "saveChanges": "Änderungen speichern",
+        "archive": "Archivieren",
+        "moveToDraft": "Zurück zu Entwurf",
+        "close": "Schließen"
+      },
+      "previewTitle": "So sehen Kunden sie",
+      "previewLanguage": "Angezeigt auf {language}",
+      "previewEmpty": "Füge einen Titel hinzu, um die Vorschau zu sehen.",
+      "previewNew": "Neu",
+      "opensInNewTab": "(öffnet in einem neuen Tab)",
+      "toast": {
+        "saved": "Gespeichert",
+        "published": "Veröffentlicht",
+        "archived": "Archiviert"
+      },
+      "errors": {
+        "titleRequired": "Füge einen Titel in mindestens einer Sprache hinzu.",
+        "titleTooLong": "Ein Titel ist zu lang (höchstens 120 Zeichen).",
+        "bodyTooLong": "Ein Text ist zu lang (höchstens 4.000 Zeichen).",
+        "ctaLabelTooLong": "Ein Button-Text ist zu lang (höchstens 40 Zeichen).",
+        "ctaUrlInvalid": "Der Button-Link muss mit https:// beginnen.",
+        "ctaLabelRequired": "Füge einen Button-Text hinzu oder entferne den Link.",
+        "ctaUrlRequired": "Füge einen Button-Link hinzu oder entferne den Text.",
+        "imageInvalid": "Dieses Bild kann nicht verwendet werden. Lade es erneut hoch.",
+        "unknownModule": "Ein unbekanntes Modul wurde ausgewählt.",
+        "forbidden": "Du bist nicht mehr als Admin mit 2-Schritt-Verifizierung angemeldet.",
+        "notFound": "Diese Meldung gibt es nicht mehr.",
+        "failed": "Speichern fehlgeschlagen. Versuch es noch einmal.",
+        "image": {
+          "forbidden": "Du bist nicht mehr als Admin mit 2-Schritt-Verifizierung angemeldet.",
+          "missing": "Wähle zuerst ein Bild aus.",
+          "tooLarge": "Das Bild ist größer als 5 MB.",
+          "type": "Verwende ein JPEG-, PNG- oder WebP-Bild.",
+          "failed": "Das Bild konnte nicht hochgeladen werden. Versuch es noch einmal."
+        }
+      }
+    },
+    "projectPage": {
+      "back": "Alle Projekte",
+      "noDomain": "Noch keine Domain",
+      "clientLine": "Kunde · {name}",
+      "clientSees": {
+        "heading": "Was der Kunde sieht",
+        "body": "Die Startseite des Kunden, nur zum Lesen. Die Zahlen umfassen die auf der Website veröffentlichten Inhalte."
+      },
+      "contentError": "Die Inhalte der Website konnten nicht geladen werden.",
+      "glance": {
+        "posts": {
+          "label": "Veröffentlichte Beiträge",
+          "sub": "{scheduled, plural, =0 {Keine geplant} other {# geplant}} · {drafts, plural, =0 {keine offline} other {# nicht live}}"
+        },
+        "requests": {
+          "label": "Kontaktanfragen diese Woche",
+          "sub": "{open, plural, =0 {Alle beantwortet} other {# noch unbeantwortet}}"
+        },
+        "galleries": {
+          "label": "Galerien",
+          "sub": "Auf der Website veröffentlicht"
+        },
+        "photos": {
+          "label": "Fotos",
+          "sub": "{missing, plural, =0 {Alle haben eine Beschreibung} other {# ohne Beschreibung}}"
+        }
+      },
+      "lastWeek": "letzte Woche",
+      "latestPosts": "Neueste Beiträge",
+      "latestGalleries": "Neueste Galerien",
+      "galleryPhotos": "{count, plural, =0 {Keine Fotos} one {# Foto} other {# Fotos}}",
+      "untitled": "Ohne Titel",
+      "nothingYet": "Auf dieser Website ist noch nichts veröffentlicht.",
+      "adminHeading": "Admin",
+      "facts": {
+        "status": "Status",
+        "slug": "Slug",
+        "modules": "Module",
+        "noModules": "Keine installiert",
+        "defaultLocale": "Standardsprache",
+        "languages": "Sprachen",
+        "owners": "Inhaber",
+        "noOwner": "Noch kein Inhaber",
+        "noOwnerHint": "Auf Kundenseite kann niemand diese Website verwalten.",
+        "invitations": "Offene Einladungen",
+        "noInvitations": "Keine",
+        "invitationExpires": "{role} · läuft am {date} ab",
+        "invitationExpired": "{role} · am {date} abgelaufen",
+        "invitationClientWide": "ganzer Kunde",
+        "created": "Erstellt",
+        "unknown": "Konnte nicht geladen werden",
+        "links": "Links"
+      },
+      "links": {
+        "preview": "Vorschau der Website",
+        "studio": "Studio öffnen",
+        "live": "Live-Website ansehen",
+        "opensInNewTab": "(öffnet in einem neuen Tab)"
+      }
+    },
+    "media": {
+      "project": "Projekt",
+      "allProjects": "Alle Projekte",
+      "chooseProjectToAdd": "Wähle ein Projekt, um Fotos hinzuzufügen.",
+      "delete": "Foto löschen",
+      "deleted": "Foto gelöscht",
+      "undo": "Rückgängig",
+      "deleteFailed": "Das Foto konnte nicht gelöscht werden. Es wird möglicherweise noch verwendet.",
+      "loadError": "Die Projektliste konnte nicht geladen werden.",
+      "unknownProject": "Es gibt kein Projekt namens „{slug}“. Es werden alle Projekte angezeigt."
     }
   },
   "editor": {
@@ -1861,7 +2458,8 @@
     "extras": {
       "formsSubmissionRead": "Kontaktanfragen",
       "formsSubmissionUpdate": "Verwalten von Kontaktanfragen",
-      "billingInvoiceRead": "Rechnungen"
+      "billingInvoiceRead": "Rechnungen",
+      "analyticsRead": "Website-Statistiken"
     },
     "accept": {
       "title": "Einladung",

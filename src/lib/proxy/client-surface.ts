@@ -27,7 +27,7 @@ import { stripLocale } from './admin-surface'
  * `[tenant]` (projectSlug) dynamic segment — matched by
  * `CLIENT_PROJECT_SEGMENTS` at the SECOND position below.
  */
-export const CLIENT_USER_SEGMENTS = new Set(['account'])
+export const CLIENT_USER_SEGMENTS = new Set(['account', 'sites'])
 
 /**
  * Project-scoped client-dashboard sub-pages. In the ADR-017 Phase 2 shape these
@@ -51,6 +51,7 @@ export const CLIENT_PROJECT_SEGMENTS = new Set([
   'galleries',
   'media',
   'people',
+  'analytics',
 ])
 
 /**

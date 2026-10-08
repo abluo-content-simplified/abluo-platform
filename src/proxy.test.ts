@@ -12,8 +12,15 @@ import { isAdminSurface, isStudio, isPreAuthSurface } from '@/lib/proxy/admin-su
 
 describe('isAdminSurface', () => {
   it('matches every admin surface segment (locale-prefixed)', () => {
-    for (const seg of ['dashboard', 'clients', 'content', 'media', 'projects', 'settings']) {
+    for (const seg of ['dashboard', 'projects', 'analytics', 'media', 'backlog', 'whats-new']) {
       expect(isAdminSurface(`/en/${seg}`)).toBe(true)
+    }
+  })
+
+  it('still matches the retired admin pages (ADR-030), so they stay gated', () => {
+    for (const seg of ['clients', 'content', 'settings']) {
+      expect(isAdminSurface(`/en/${seg}`)).toBe(true)
+      expect(isAdminSurface(`/${seg}`)).toBe(true)
     }
   })
 

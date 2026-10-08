@@ -2,8 +2,8 @@
 
 import { useMemo, type ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import type { FilterChip } from '@/components/client/ui/FilterSheet'
-import { ListToolbar, type ListDateValue, type ListToolbarFilter } from '@/components/client/ui/ListToolbar'
+import type { FilterChip } from '@/components/app/ui/FilterSheet'
+import { ListToolbar, type ListDateValue, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
 import {
   activeSubmissionFilterCount,
   SUBMISSION_STATUSES,
@@ -42,7 +42,7 @@ export function SubmissionsFilters({
   summaryExtra?: ReactNode
 }) {
   const t = useTranslations('clientDashboard.submissions')
-  const tr = useTranslations('clientDashboard.ui.dateRange')
+  const tr = useTranslations('app.ui.dateRange')
   const locale = useLocale()
 
   const dayFmt = useMemo(() => new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }), [locale])

@@ -9,10 +9,10 @@ import { deleteGalleryAction, discardGalleryDraftAction, getGalleryAction } from
 import { mintGalleryPreviewAction } from '@/app/[locale]/(client)/[tenant]/galleries/preview-actions'
 import { draftPreviewUrl } from '@/lib/client/preview-url'
 import { segmentFills } from '@/lib/client/home-cards'
-import { CardMenu } from '@/components/client/ui/CardMenu'
-import { SectionHeading } from '@/components/client/ui/SectionHeading'
-import { Toast } from '@/components/client/ui/Toast'
-import { useUndo } from '@/components/client/ui/use-undo'
+import { CardMenu } from '@/components/app/ui/CardMenu'
+import { SectionHeading } from '@/components/app/ui/SectionHeading'
+import { Toast } from '@/components/app/ui/Toast'
+import { useUndo } from '@/components/app/ui/use-undo'
 
 /** One "Continue editing" card, prepared on the server. */
 export type DraftCard = {

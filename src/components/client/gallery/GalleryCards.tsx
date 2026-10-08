@@ -3,11 +3,11 @@
 import type { MouseEvent } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
-import { Checkbox, isShiftChange } from '@/components/client/ui/Checkbox'
-import { CardMenu, type CardMenuItem } from '@/components/client/ui/CardMenu'
-import { CardGrid, CardGridItem, ContentCard } from '@/components/client/ui/list/ContentCard'
-import { Chips, LocalDate } from '@/components/client/ui/list/cells'
-import { ThumbStrip } from '@/components/client/ui/list/ThumbStrip'
+import { Checkbox, isShiftChange } from '@/components/app/ui/Checkbox'
+import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
+import { CardGrid, CardGridItem, ContentCard } from '@/components/app/ui/list/ContentCard'
+import { Chips, LocalDate } from '@/components/app/ui/list/cells'
+import { ThumbStrip } from '@/components/app/ui/list/ThumbStrip'
 import { GalleryStatePill, type GalleryRow } from './gallery-bits'
 
 type CardProps = {

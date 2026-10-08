@@ -1,14 +1,5 @@
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { Inter } from 'next/font/google'
-import {
-  APP_TEXT_SIZE_COOKIE,
-  APP_THEME_COOKIE,
-  appTextSizeAttribute,
-  appThemeAttribute,
-  parseAppTextSize,
-  parseAppTheme,
-} from '@/lib/app-theme'
+import { AppRoot } from '@/components/app/AppRoot'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 
 /**
@@ -28,14 +19,10 @@ import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
  * `account` page renders directly inside this frame; project-scoped pages get
  * the sidebar from the nested `[tenant]/layout.tsx`.
  *
- * Abluo App design system (ADR-025 D7): this element is the `.abluo-app` root.
- * Its tokens are scoped here (globals.css) so tenant websites are untouched.
- * The theme comes from the `abluo-app-theme` cookie and is rendered on the
- * server, so the first paint is already right (no boot script, no flash).
- * Inter is loaded here only — tenant websites never download it.
+ * Abluo App design system (ADR-025 D7): the `.abluo-app` root (tokens, Inter,
+ * theme + text size from cookies) is the shared `AppRoot` (ADR-030), the same
+ * one the admin layout uses; `manage` names the client dashboard surface.
  */
-const inter = Inter({ subsets: ['latin'], variable: '--font-app', display: 'swap' })
-
 export default async function ClientLayout({
   children,
   params,
@@ -46,21 +33,8 @@ export default async function ClientLayout({
   const { locale } = await params
   const ctx = await getTenantAuthorizationContext()
   if (!ctx) {
-    redirect(`/login?next=${encodeURIComponent(`/${locale}/account`)}`)
+    redirect(`/login?next=${encodeURIComponent(`/${locale}/sites`)}`)
   }
 
-  const jar = await cookies()
-  const theme = parseAppTheme(jar.get(APP_THEME_COOKIE)?.value)
-  const textSize = parseAppTextSize(jar.get(APP_TEXT_SIZE_COOKIE)?.value)
-
-  return (
-    <div
-      className={`abluo-app ${inter.variable} min-h-screen`}
-      data-theme={appThemeAttribute(theme)}
-      data-text-size={appTextSizeAttribute(textSize)}
-      data-surface="manage"
-    >
-      {children}
-    </div>
-  )
+  return <AppRoot surface="manage">{children}</AppRoot>
 }

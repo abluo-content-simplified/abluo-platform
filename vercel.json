@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/form-events-sweep",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/analytics",
+      "schedule": "30 4 * * *"
     }
   ]
 }

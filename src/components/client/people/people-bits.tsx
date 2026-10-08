@@ -1,7 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { Pill, type PillTone } from '@/components/client/ui/list/cells'
+import { Pill, type PillTone } from '@/components/app/ui/list/cells'
 import type { PersonStatus } from '@/lib/people/service'
 import { svg } from '@/components/client/posts/post-bits'
 

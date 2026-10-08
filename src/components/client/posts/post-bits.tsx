@@ -4,9 +4,9 @@ import { useCallback, useEffect, useId, useRef, useState, type MouseEvent } from
 import { useTranslations } from 'next-intl'
 import { createPortal } from 'react-dom'
 import { Link } from '@/i18n/navigation'
-import { FLOATING_STYLE, portalTarget, useAnchoredPopover } from '@/components/client/ui/anchored-popover'
-import { CellIcon, CellIconButton, CellStack, Chips, LocalDate, MediaFrame, Pill, useShortDate } from '@/components/client/ui/list/cells'
-import { OVERLAY_CHIP } from '@/components/client/ui/list/overlay-chip'
+import { FLOATING_STYLE, portalTarget, useAnchoredPopover } from '@/components/app/ui/anchored-popover'
+import { CellIcon, CellIconButton, CellStack, Chips, LocalDate, MediaFrame, Pill, useShortDate } from '@/components/app/ui/list/cells'
+import { OVERLAY_CHIP } from '@/components/app/ui/list/overlay-chip'
 import type { PostStatus } from '@/lib/client/posts-filter'
 import type { LanguageState } from './types'
 

@@ -5,7 +5,8 @@ import { grantCanManageMedia } from '@/lib/api/media-permission'
 import { getMediaSite } from '@/lib/api/media-library'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { MediaLibraryScreen } from '@/components/client/media/MediaLibraryScreen'
-import { PageShell } from '@/components/client/ui/PageShell'
+import { PageShell } from '@/components/app/ui/PageShell'
+import { CLIENT_MEDIA_LINKS } from '@/lib/client/media-links'
 
 /**
  * Client dashboard — Media: the project's Media Library in the shared page
@@ -39,7 +40,7 @@ export default async function MediaPage({
   if ((await searchParams)?.add === '1') redirect(`/${projectSlug}/media/add`)
   return (
     <PageShell>
-      <MediaLibraryScreen projectSlug={projectSlug} site={site} />
+      <MediaLibraryScreen projectSlug={projectSlug} site={site} links={CLIENT_MEDIA_LINKS} />
     </PageShell>
   )
 }

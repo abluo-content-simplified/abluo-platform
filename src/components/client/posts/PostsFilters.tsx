@@ -2,9 +2,9 @@
 
 import { useMemo, type ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import type { FilterOption } from '@/components/client/ui/FilterBar'
-import type { FilterChip } from '@/components/client/ui/FilterSheet'
-import { ListToolbar, type ListDateValue, type ListToolbarFilter } from '@/components/client/ui/ListToolbar'
+import type { FilterOption } from '@/components/app/ui/FilterBar'
+import type { FilterChip } from '@/components/app/ui/FilterSheet'
+import { ListToolbar, type ListDateValue, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
 import type { DateField, PostFilters, PostSort, PostStatus } from '@/lib/client/posts-filter'
 
 const STATUSES: PostStatus[] = ['published', 'scheduled', 'draft', 'offline']
@@ -50,7 +50,7 @@ export function PostsFilters({
   summaryExtra?: ReactNode
 }) {
   const t = useTranslations('clientDashboard.posts')
-  const tr = useTranslations('clientDashboard.ui.dateRange')
+  const tr = useTranslations('app.ui.dateRange')
   const locale = useLocale()
 
   const dayFmt = useMemo(() => new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }), [locale])

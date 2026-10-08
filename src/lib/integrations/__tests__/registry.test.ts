@@ -8,10 +8,22 @@ import { describe, it, expect } from 'vitest'
 import { INTEGRATION_REGISTRY, INTEGRATION_CATEGORIES } from '../registry'
 
 describe('INTEGRATION_REGISTRY', () => {
-  it('contains exactly the four Phase A manifests', () => {
-    expect(INTEGRATION_REGISTRY).toHaveLength(4)
+  it('contains the four Phase A manifests plus Search Console (ADR-029 §3.4)', () => {
+    expect(INTEGRATION_REGISTRY).toHaveLength(5)
     const ids = INTEGRATION_REGISTRY.map((m) => m.id)
-    expect(ids).toEqual(['google-analytics', 'google-tag-manager', 'meta-pixel', 'custom-scripts'])
+    expect(ids).toEqual(['google-analytics', 'google-tag-manager', 'meta-pixel', 'custom-scripts', 'google-search-console'])
+  })
+
+  it('google-search-console is reporting only: no script, never consent-gated', () => {
+    const m = INTEGRATION_REGISTRY.find((x) => x.id === 'google-search-console')
+    expect(m?.renderContract).toBeUndefined()
+    expect(m?.consentCategory).toBe('necessary')
+    expect(m?.fields.map((f) => f.id)).toEqual(['siteUrl'])
+    const re = new RegExp(m!.fields[0].validation!.regex)
+    expect(re.test('sc-domain:example.com')).toBe(true)
+    expect(re.test('https://www.example.com/')).toBe(true)
+    expect(re.test('https://www.example.com')).toBe(false)
+    expect(re.test('example.com')).toBe(false)
   })
 
   it('google-analytics has category analytics and consentCategory analytics', () => {

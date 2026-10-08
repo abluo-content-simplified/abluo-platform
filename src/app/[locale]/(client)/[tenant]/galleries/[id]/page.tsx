@@ -5,7 +5,7 @@ import { GALLERY_WRITE_PERMISSION, GalleryError, canDeleteGalleries, getGalleryD
 import { getGalleryStatuses, type GalleryStatus } from '@/lib/api/gallery-status'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { GalleryDetail } from '@/components/client/gallery/GalleryDetail'
-import { PageShell } from '@/components/client/ui/PageShell'
+import { PageShell } from '@/components/app/ui/PageShell'
 
 /**
  * One gallery's page (client dashboard · galleries), in the shared page frame:

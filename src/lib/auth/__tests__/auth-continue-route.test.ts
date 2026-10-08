@@ -51,9 +51,9 @@ describe('GET /auth/continue', () => {
     expect(state.aalCalls).toBe(0)
   })
 
-  it('tenant user → localized account, AAL never read', async () => {
+  it('tenant user → localized sites overview, AAL never read', async () => {
     state.user = { id: 'u', app_metadata: {} }
-    expect(await land('/auth/continue', { 'accept-language': OTHER })).toBe(`/${OTHER}/account`)
+    expect(await land('/auth/continue', { 'accept-language': OTHER })).toBe(`/${OTHER}/sites`)
     expect(state.aalCalls).toBe(0)
   })
 
@@ -79,6 +79,6 @@ describe('GET /auth/continue', () => {
 
   it('NEXT_LOCALE cookie picks the locale', async () => {
     state.user = { id: 'u', app_metadata: {} }
-    expect(await land('/auth/continue', { cookie: `NEXT_LOCALE=${OTHER}` })).toBe(`/${OTHER}/account`)
+    expect(await land('/auth/continue', { cookie: `NEXT_LOCALE=${OTHER}` })).toBe(`/${OTHER}/sites`)
   })
 })

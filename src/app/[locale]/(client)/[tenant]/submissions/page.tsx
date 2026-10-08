@@ -10,8 +10,8 @@ import {
 } from '@/lib/api/client-dashboard'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { SubmissionsBrowser } from '@/components/client/forms/SubmissionsBrowser'
-import { PageHeader } from '@/components/client/ui/PageHeader'
-import { PageShell } from '@/components/client/ui/PageShell'
+import { PageHeader } from '@/components/app/ui/PageHeader'
+import { PageShell } from '@/components/app/ui/PageShell'
 
 /**
  * Client dashboard — Submissions (leads). ADR-018 slice 6.

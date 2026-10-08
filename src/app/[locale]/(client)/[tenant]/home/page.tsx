@@ -1,13 +1,13 @@
 import { notFound, redirect } from 'next/navigation'
 import { getLocale, getTranslations } from 'next-intl/server'
-import { PageShell } from '@/components/client/ui/PageShell'
-import { DashboardArea, DashboardColumn, DashboardGrid } from '@/components/client/ui/DashboardGrid'
-import { SectionHeading } from '@/components/client/ui/SectionHeading'
-import { StatGrid } from '@/components/client/ui/StatGrid'
-import { StatTile } from '@/components/client/ui/StatTile'
-import { AttentionList, type AttentionRow } from '@/components/client/ui/AttentionList'
-import { EmptyState } from '@/components/client/ui/EmptyState'
-import { SiteStatus } from '@/components/client/ui/SiteStatus'
+import { PageShell } from '@/components/app/ui/PageShell'
+import { DashboardArea, DashboardColumn, DashboardGrid } from '@/components/app/ui/DashboardGrid'
+import { SectionHeading } from '@/components/app/ui/SectionHeading'
+import { StatGrid } from '@/components/app/ui/StatGrid'
+import { StatTile } from '@/components/app/ui/StatTile'
+import { AttentionList, type AttentionRow } from '@/components/app/ui/AttentionList'
+import { EmptyState } from '@/components/app/ui/EmptyState'
+import { SiteStatus } from '@/components/client/home/SiteStatus'
 import { Greeting } from '@/components/client/home/Greeting'
 import { ContinueEditing, type DraftCard } from '@/components/client/home/ContinueEditing'
 import { LatestList, type LatestItem } from '@/components/client/home/LatestList'
@@ -26,6 +26,8 @@ import { getSiteStatus } from '@/lib/api/dashboard/site'
 import { buildTenantSurfaces, hasWidget } from '@/lib/client/surfaces'
 import { allowedAttentionRules, sortAttention, type AttentionItem } from '@/lib/client/attention'
 import { draftProgress, navHref, percentChange, timeAgo } from '@/lib/client/home-cards'
+import { getProjectAnalytics } from '@/lib/analytics/read'
+import { DailySparkline } from '@/components/app/analytics/AnalyticsOverview'
 
 /**
  * Client dashboard Home (ADR-029 §5) — an operational overview, never a
@@ -87,7 +89,7 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
   const wantMedia = show('glance.media') || rules.has('missingAltText')
   const wantPeople = rules.has('pendingInvites')
 
-  const [firstName, site, blog, forms, gallery, media, people] = await Promise.all([
+  const [firstName, site, blog, forms, gallery, media, people, traffic] = await Promise.all([
     getViewerFirstName(ctx).catch(() => null),
     show('siteStatus') ? getSiteStatus(ctx, grant.projectId) : null,
     blogList || blogDrafts
@@ -120,6 +122,8 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
       : null,
     wantMedia ? getMediaDashboard(ctx, grant.projectId, { attentionHref: rules.has('missingAltText') ? link('media') : null }) : null,
     wantPeople && link('people') ? getPeopleAttention(ctx, grant.projectId, link('people')!) : [],
+    // Website traffic (ADR-029 §3.4): the stored daily snapshot, never a live Google call.
+    show('traffic') ? getProjectAnalytics(ctx, grant.projectId).catch(() => null) : null,
   ])
 
   // ── Needs your attention ────────────────────────────────────────────────
@@ -270,6 +274,42 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
     ) : null,
   ].filter(Boolean)
 
+  // ── Website traffic (under At a glance; only once a snapshot has data) ────
+  const ta = await getTranslations('clientDashboard.analytics')
+  const analyticsHref = link('analytics')
+  const trafficTiles =
+    traffic?.hasData
+      ? [
+          traffic.visitors ? (
+            <StatTile
+              key="visitors"
+              label={ta('home.visitors')}
+              value={traffic.visitors.value}
+              delta={traffic.visitors.change === null ? null : { percent: traffic.visitors.change, period: ta('home.previousPeriod') }}
+              trend={traffic.dailyVisitors.length > 1 ? <DailySparkline points={traffic.dailyVisitors} label={ta('home.dailyVisitors')} /> : null}
+              href={analyticsHref}
+            />
+          ) : null,
+          traffic.searchClicks ? (
+            <StatTile
+              key="clicks"
+              label={ta('home.searchClicks')}
+              value={traffic.searchClicks.value}
+              delta={traffic.searchClicks.change === null ? null : { percent: traffic.searchClicks.change, period: ta('home.previousPeriod') }}
+              href={analyticsHref}
+            />
+          ) : traffic.pageViews ? (
+            <StatTile
+              key="views"
+              label={ta('home.pageViews')}
+              value={traffic.pageViews.value}
+              delta={traffic.pageViews.change === null ? null : { percent: traffic.pageViews.change, period: ta('home.previousPeriod') }}
+              href={analyticsHref}
+            />
+          ) : null,
+        ].filter(Boolean)
+      : []
+
   // First run: nothing written yet and nothing in progress.
   const nothingYet = posts !== null && posts.length === 0 && cards.length === 0
   const hasContinue = cards.length > 0
@@ -297,12 +337,21 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
           </DashboardArea>
         ) : null}
 
-        {tiles.length ? (
-          <DashboardArea phoneOrder={3} desktopOrder={4}>
-            <section aria-labelledby="at-a-glance" className="flex flex-col gap-3">
-              <SectionHeading id="at-a-glance" title={th('glance.heading')} />
-              <StatGrid>{tiles}</StatGrid>
-            </section>
+        {tiles.length || trafficTiles.length ? (
+          <DashboardArea phoneOrder={3} desktopOrder={4} className="flex flex-col gap-7">
+            {tiles.length ? (
+              <section aria-labelledby="at-a-glance" className="flex flex-col gap-3">
+                <SectionHeading id="at-a-glance" title={th('glance.heading')} />
+                <StatGrid>{tiles}</StatGrid>
+              </section>
+            ) : null}
+            {/* Website traffic sits right under At a glance, on phones and desktop. */}
+            {trafficTiles.length ? (
+              <section aria-labelledby="website-traffic" className="flex flex-col gap-3">
+                <SectionHeading id="website-traffic" title={ta('home.heading')} seeAllHref={analyticsHref} />
+                <StatGrid>{trafficTiles}</StatGrid>
+              </section>
+            ) : null}
           </DashboardArea>
         ) : null}
 

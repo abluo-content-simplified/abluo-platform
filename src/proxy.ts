@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { routing } from './i18n/routing'
 import { resolvePlatformRole } from '@/lib/api/auth'
 import { adminGateDecision, mfaRedirectPath, readAssuranceLevel } from '@/lib/auth/admin-assurance'
-import { isAdminSurface, isStudio, isPreAuthSurface } from '@/lib/proxy/admin-surface'
+import { isAdminSurface, isStudio, isPreAuthSurface, retiredAdminRedirect } from '@/lib/proxy/admin-surface'
 import { isClientSurface, localizeClientSurfacePath } from '@/lib/proxy/client-surface'
 import { platformLocale } from '@/lib/auth/post-login'
 import {
@@ -108,6 +108,24 @@ async function requireAdminInProxy(request: NextRequest) {
 
   // Admin — return the (possibly cookie-refreshed) continue response.
   return supabaseResponse
+}
+
+/** True for a pass-through (`NextResponse.next()`), i.e. the gate let the request continue. */
+function isContinue(res: NextResponse): boolean {
+  return res.headers.get('x-middleware-next') === '1'
+}
+
+/**
+ * Redirect to `pathname` on the same origin, carrying any session cookies the
+ * gate refreshed on `from` — dropping them would sign the admin out on the hop.
+ */
+function redirectKeepingCookies(request: NextRequest, pathname: string, from: NextResponse): NextResponse {
+  const url = request.nextUrl.clone()
+  url.pathname = pathname
+  url.search = ''
+  const res = NextResponse.redirect(url)
+  for (const cookie of from.cookies.getAll()) res.cookies.set(cookie)
+  return res
 }
 
 /**
@@ -266,7 +284,12 @@ async function routeRequest(request: NextRequest) {
   // a reserved platform path is answered by tenant content.
   if (host !== 'admin.abluo.app') {
     if (isAdminSurface(pathname) || isStudio(pathname)) {
-      return await requireAdminInProxy(request) // NextResponse (continue) or redirect
+      const gate = await requireAdminInProxy(request) // NextResponse (continue) or redirect
+      // A retired admin page (ADR-030) is gated like a live one; only an admin
+      // the gate let through is then moved on to Home.
+      const retired = retiredAdminRedirect(pathname)
+      if (retired && isContinue(gate)) return redirectKeepingCookies(request, retired, gate)
+      return gate
     }
     if (isClientSurface(pathname)) {
       // A locale-less client path (`/account`, `/{projectSlug}/posts`) has no
@@ -333,6 +356,10 @@ async function routeRequest(request: NextRequest) {
     // Two-factor (AAL2) for every path on the admin host.
     const mfa = await requireAdminAal2(request, supabase, supabaseResponse)
     if (mfa) return mfa
+
+    // Retired admin pages (ADR-030: clients, content, settings) → Home.
+    const retired = retiredAdminRedirect(pathname)
+    if (retired) return redirectKeepingCookies(request, retired, supabaseResponse)
 
     // Authenticated admin — apply subdomain rewrite (skip API and static paths)
     const url = request.nextUrl.clone()

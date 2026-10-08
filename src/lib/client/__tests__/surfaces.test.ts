@@ -109,7 +109,8 @@ describe('no tenant route or component reaches configuration code', () => {
     ['Studio panes', /from\s+['"]@\/lib\/sanity\/studio(\/[^'"]*)?['"]/],
     ['Studio navigation', /from\s+['"]@\/lib\/modules\/navigation['"]/],
   ]
-  const dirs = ['src/app/[locale]/(client)', 'src/components/client']
+  // The shared App layer (ADR-030) renders inside the tenant UI too.
+  const dirs = ['src/app/[locale]/(client)', 'src/components/client', 'src/components/app']
 
   function sources(dir: string): string[] {
     return readdirSync(dir).flatMap((name) => {
@@ -140,8 +141,18 @@ describe('buildTenantSurfaces', () => {
 
   it('an owner with every module sees every nav item and the module widgets', () => {
     const s = buildTenantSurfaces(grantFor('owner', ['blog', 'forms', 'gallery']))
-    expect(ids(s.nav)).toEqual(['blog', 'forms', 'gallery', 'media', 'people'])
-    expect(ids(s.widgets)).toEqual(expect.arrayContaining(['siteStatus', 'attention', 'glance.posts', 'glance.requests', 'glance.galleries', 'latest.posts']))
+    expect(ids(s.nav)).toEqual(['blog', 'forms', 'gallery', 'analytics', 'media', 'people'])
+    expect(ids(s.widgets)).toEqual(expect.arrayContaining(['siteStatus', 'attention', 'glance.posts', 'glance.requests', 'glance.galleries', 'traffic', 'latest.posts']))
+  })
+
+  it('analytics: Owner and Site admin by role; an Editor only with the extra (ADR-029 §7.1)', () => {
+    expect(ids(buildTenantSurfaces(grantFor('owner', [])).nav)).toContain('analytics')
+    const editor = grantFor('editor', ['blog'])
+    expect(ids(buildTenantSurfaces(editor).nav)).not.toContain('analytics')
+    expect(ids(buildTenantSurfaces(editor).widgets)).not.toContain('traffic')
+    const withExtra = { ...editor, permissions: [...editor.permissions, 'analytics.read'] }
+    expect(ids(buildTenantSurfaces(withExtra).nav)).toContain('analytics')
+    expect(ids(buildTenantSurfaces(withExtra).widgets)).toContain('traffic')
   })
 
   it('an editor never gets People, and never a configuration-gated surface', () => {

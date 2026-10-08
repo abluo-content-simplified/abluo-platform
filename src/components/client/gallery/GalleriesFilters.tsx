@@ -2,8 +2,8 @@
 
 import { useMemo, type ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import type { FilterChip } from '@/components/client/ui/FilterSheet'
-import { ListToolbar, type ListDateValue, type ListToolbarFilter } from '@/components/client/ui/ListToolbar'
+import type { FilterChip } from '@/components/app/ui/FilterSheet'
+import { ListToolbar, type ListDateValue, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
 import {
   GALLERY_STATES,
   type GalleryDateField,
@@ -56,7 +56,7 @@ export function GalleriesFilters({
   summaryExtra?: ReactNode
 }) {
   const t = useTranslations('clientDashboard.gallery.list')
-  const tr = useTranslations('clientDashboard.ui.dateRange')
+  const tr = useTranslations('app.ui.dateRange')
   const locale = useLocale()
   const dayFmt = useMemo(() => new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }), [locale])
   const day = (iso: string) => {

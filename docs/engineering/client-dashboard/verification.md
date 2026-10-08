@@ -1,6 +1,6 @@
 # Client dashboard — verification (read by /verify)
 
-Any change under `src/app/[locale]/(client)/`, `src/components/client/`, `src/lib/api/client-*`, the `post` schema or blog website queries **must** pass this before it is reported done. Report each item as ✅ / ❌ / ⏭ (with a reason). Never advance a slice on ❌.
+Any change under `src/app/[locale]/(client)/`, `src/components/client/`, `src/components/app/` (also the admin — §3c), `src/lib/api/client-*`, the `post` schema or blog website queries **must** pass this before it is reported done. Report each item as ✅ / ❌ / ⏭ (with a reason). Never advance a slice on ❌.
 
 ## 1. Gates (always)
 ```bash
@@ -17,7 +17,7 @@ Then run `git checkout -- next-env.d.ts` if the build touched it.
 | T1 | Token contrast: every fg/bg semantic pair ≥ 4.5:1 (text) / 3:1 (borders, focus) in **light and dark** | vitest, oklch → sRGB from `globals.css` |
 | T2 | No raw colours in client code (`zinc-`, `gray-`, `slate-`, `neutral-`, `bg-white`, `text-black`, `#hex`, `rgb(`) | vitest source scan |
 | T3 | No `<select>` / `Select` in `src/components/client/wizard/**` | vitest source scan |
-| T4 | i18n parity: `editor.*` + `clientDashboard.*` keys identical in en/it/de, none empty | vitest |
+| T4 | i18n parity: `editor.*`, `clientDashboard.*`, `app.*` + `admin.*` keys identical in en/it/de, none empty | vitest |
 | T5 | No hardcoded user-facing text in client components (JSX text nodes / aria-label literals) | vitest source scan, allowlist for symbols |
 | E1 | Each flow runs in 4 projects: `phone-light` 390×844, `phone-dark`, `desktop-light` 1280×800, `desktop-dark` | Playwright `colorScheme` |
 | E2 | axe: 0 serious/critical violations on every wizard step and dashboard page, every project | `@axe-core/playwright` |
@@ -46,6 +46,13 @@ Screenshot every wizard step plus the dashboard home in all 4 projects. Check ag
 - One-time setup: `npx playwright install chromium`, and in `.env.local` (never committed): `E2E_CLIENT_EMAIL`, `E2E_CLIENT_PASSWORD`, `E2E_PROJECT` (default `abluo`). Optional `E2E_BASE_URL` (default `http://localhost:3000`; `npm run dev` starts automatically).
 - `npm run verify:dashboard` runs `e2e/` in phone/desktop × light/dark. Report: `npx playwright show-report`.
 - Implemented in S0: T1–T4 (vitest), E1–E3 and E8 (`e2e/client/foundation.spec.ts`). E4–E7, S2, W1–W2 and T5 arrive with the slices that need them.
+
+## 3c. Admin dashboard and the shared App layer (ADR-030)
+The admin (`src/app/[locale]/(admin)/`, `src/components/admin/`) is built on the same Abluo App layer as the client dashboard.
+- **Any change under `src/components/app/` is checked on both dashboards**: the gates in §1, then the visual review in §3 on the client dashboard **and** the admin (phone + desktop × light + dark). A primitive or token change reaches both surfaces by design — verify both, never just the one you were working on.
+- `src/components/app/__tests__/boundary.test.ts` must stay green: the shared layer imports no route, no `components/client` / `components/admin`, no client nav registry, and reads no `clientDashboard.*` copy.
+- T2 (no raw colours), the rem text-scale check, the PageShell guard (`pages-use-shell.test.ts`) and T4 (en/it/de parity, now also `app.*` and `admin.*`) cover the admin; the legacy admin Media page is the listed exception until its rebuild.
+- An admin page change also checks the gate: a new `(admin)` folder needs its segment in `ADMIN_SURFACE_SEGMENTS` (`admin-surface.test.ts` enforces it), and the `(admin)` layout keeps `resolveAdminAccess`.
 
 ## 4. Test data
 - Account: the test owner of project `abluo` (see the client-dashboard handoff). Blog is installed on `abluo` for this track.

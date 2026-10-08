@@ -8,15 +8,15 @@ import {
   setSubmissionStatusAction,
   setSubmissionsStatusBatchAction,
 } from '@/app/[locale]/(client)/[tenant]/submissions/actions'
-import { ConfirmDialog } from '@/components/client/create/ConfirmDialog'
-import { BarButton, SheetItem } from '@/components/client/ui/BarButton'
-import { BottomSheet } from '@/components/client/ui/BottomSheet'
-import type { CardMenuItem } from '@/components/client/ui/CardMenu'
-import { FilterSelect } from '@/components/client/ui/FilterBar'
-import { idRange, SelectionBar } from '@/components/client/ui/SelectionBar'
-import { SidePanel } from '@/components/client/ui/SidePanel'
-import { Toast } from '@/components/client/ui/Toast'
-import { useUndo } from '@/components/client/ui/use-undo'
+import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
+import { BarButton, SheetItem } from '@/components/app/ui/BarButton'
+import { BottomSheet } from '@/components/app/ui/BottomSheet'
+import type { CardMenuItem } from '@/components/app/ui/CardMenu'
+import { FilterSelect } from '@/components/app/ui/FilterBar'
+import { idRange, SelectionBar } from '@/components/app/ui/SelectionBar'
+import { SidePanel } from '@/components/app/ui/SidePanel'
+import { Toast } from '@/components/app/ui/Toast'
+import { useUndo } from '@/components/app/ui/use-undo'
 import {
   applySubmissionFilters,
   dataKeys,

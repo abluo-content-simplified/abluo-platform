@@ -110,6 +110,16 @@ export const PLATFORM_PERMISSIONS: readonly PlatformPermissionDef[] = [
     grantable: false,
     defaults: { project: ['owner', 'admin', 'editor'] },
   },
+
+  // ── Website analytics (ADR-029 §3.4, Tom 2026-10-07) ────────────────────
+  {
+    // Not a module: the numbers come from the site's Google Analytics /
+    // Search Console snapshots (migration 036). Editors only as an extra.
+    id: 'analytics.read',
+    description: 'See website traffic and search performance.',
+    grantable: true,
+    defaults: { project: ['owner', 'admin'] },
+  },
 ]
 
 /**
@@ -135,6 +145,18 @@ export function scopesOfPlatformPermission(def: PlatformPermissionDef): Permissi
   if (def.defaults.tenant) scopes.push('tenant')
   if (def.defaults.project) scopes.push('project')
   return scopes
+}
+
+/**
+ * Every permission that may be given as an extra on a PROJECT, in display
+ * order: the grantable module permissions, then the grantable platform
+ * permissions that exist at project level (e.g. `analytics.read`).
+ */
+export function projectGrantableIds(): string[] {
+  return [
+    ...Object.keys(GRANTABLE_MODULE_PERMISSIONS),
+    ...PLATFORM_PERMISSIONS.filter((p) => p.grantable && p.defaults.project).map((p) => p.id),
+  ]
 }
 
 /** May `id` be given as an extra that applies on a PROJECT (from a project or a tenant membership)? */

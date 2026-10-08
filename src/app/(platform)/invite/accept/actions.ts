@@ -13,7 +13,7 @@ export type AcceptActionResult = { ok: true; next: string } | { ok: false; error
 
 function destination(locale: string, result: { scope: 'tenant' | 'project'; projectSlug?: string }): string {
   const l = invitationLocale(locale)
-  return result.scope === 'project' && result.projectSlug ? `/${l}/${result.projectSlug}/home` : `/${l}/account`
+  return result.scope === 'project' && result.projectSlug ? `/${l}/${result.projectSlug}/home` : `/${l}/sites`
 }
 
 export async function acceptInvitationAction(token: string, locale: string): Promise<AcceptActionResult> {

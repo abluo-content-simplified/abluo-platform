@@ -1,12 +1,12 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { CardMenu, type CardMenuItem } from '@/components/client/ui/CardMenu'
-import { DataTable, type DataTableColumn } from '@/components/client/ui/list/DataTable'
-import { CellChips, CellDate, CellImage, CellPill, CellText, Pill } from '@/components/client/ui/list/cells'
-import { CellFileInfo } from '@/components/client/ui/list/file-cells'
+import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
+import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
+import { CellChips, CellDate, CellImage, CellPill, CellText, Pill } from '@/components/app/ui/list/cells'
+import { CellFileInfo } from '@/components/app/ui/list/file-cells'
 import type { MediaLibraryItem, MediaUsage } from '@/lib/api/media-library'
-import { needsDescription, type MediaFilters, type MediaSortColumn } from '@/lib/client/media-filter'
+import { localeFor, needsDescription, type LocaleOf, type MediaFilters, type MediaSortColumn } from '@/lib/client/media-filter'
 import { MEDIA_ICONS } from './MediaPhotoSheet'
 
 /**
@@ -29,9 +29,12 @@ export function MediaTable({
   onSort,
   onOpen,
   menuFor,
+  projectColumn,
+  selectable = true,
 }: {
   items: MediaLibraryItem[]
-  defaultLocale: string
+  /** The site's default language, or per photo when the list spans several sites. */
+  defaultLocale: LocaleOf<MediaLibraryItem>
   nameOf: (item: MediaLibraryItem) => string
   selected: Set<string>
   onToggle: (id: string, checked: boolean, shift: boolean) => void
@@ -41,6 +44,10 @@ export function MediaTable({
   onSort: (column: MediaSortColumn) => void
   onOpen: (item: MediaLibraryItem) => void
   menuFor: (item: MediaLibraryItem) => CardMenuItem[]
+  /** Header of a "Project" column after the name (lists that span several projects); none when absent. */
+  projectColumn?: string
+  /** Show the select checkboxes (off when selecting is not available). */
+  selectable?: boolean
 }) {
   const t = useTranslations('clientDashboard.media')
   const tu = useTranslations('clientDashboard.media.usedIn')
@@ -68,6 +75,16 @@ export function MediaTable({
         return <CellText primary={name} secondary={i.filename && i.filename !== name ? i.filename : undefined} clamp={2} />
       },
     },
+    ...(projectColumn
+      ? [
+          {
+            key: 'project',
+            header: projectColumn,
+            width: 'min-w-36',
+            render: (i: MediaLibraryItem) => <CellText primary={i.project?.name ?? ''} clamp={1} />,
+          },
+        ]
+      : []),
     {
       key: 'size',
       header: t('columns.size'),
@@ -106,7 +123,7 @@ export function MediaTable({
       width: 'w-32',
       render: (i) => (
         <CellPill>
-          {needsDescription(i, defaultLocale) ? <Pill tone="outline">{t('pill.missing')}</Pill> : <Pill tone="success">{t('pill.described')}</Pill>}
+          {needsDescription(i, localeFor(defaultLocale, i)) ? <Pill tone="outline">{t('pill.missing')}</Pill> : <Pill tone="success">{t('pill.described')}</Pill>}
         </CellPill>
       ),
     },
@@ -141,14 +158,18 @@ export function MediaTable({
       columns={columns}
       rowKey={(i) => i.assetId}
       minWidth="min-w-[64rem]"
-      selection={{
-        selected,
-        onToggle,
-        allState,
-        onToggleAll,
-        rowLabel: (i) => t('select.photo', { name: nameOf(i) }),
-        allLabel: t('columns.selectAll'),
-      }}
+      selection={
+        selectable
+          ? {
+              selected,
+              onToggle,
+              allState,
+              onToggleAll,
+              rowLabel: (i) => t('select.photo', { name: nameOf(i) }),
+              allLabel: t('columns.selectAll'),
+            }
+          : undefined
+      }
       sort={{ column: sort.column, dir: sort.dir, onSort: (key) => onSort(key as MediaSortColumn) }}
       onRowClick={(i) => onOpen(i)}
     />

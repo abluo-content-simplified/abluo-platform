@@ -43,7 +43,8 @@
         "type": "Use a JPG, PNG or WebP picture.",
         "failed": "Could not save the photo. Please try again."
       }
-    }
+    },
+    "openFullPage": "Open full page"
   },
   "clientDashboard": {
     "nav": {
@@ -59,16 +60,14 @@
       "more": "More",
       "add": "Add content",
       "media": "Media",
-      "people": "People"
+      "people": "People",
+      "analytics": "Analytics"
     },
     "shell": {
       "brandTagline": "Dashboard",
-      "signOut": "Sign out",
       "noModules": "No modules are enabled for this project yet.",
       "entryTitle": "Dashboard",
-      "noProjects": "You don’t have access to any projects yet.",
-      "openMenu": "Menu",
-      "closeMenu": "Close menu"
+      "noProjects": "You don’t have access to any projects yet."
     },
     "projectSwitcher": {
       "label": "Project",
@@ -352,13 +351,6 @@
         "deleted": "{count, plural, one {# request deleted.} other {# requests deleted.}}"
       }
     },
-    "theme": {
-      "label": "Appearance",
-      "system": "Auto",
-      "light": "Light",
-      "dark": "Dark",
-      "ariaLabel": "Choose light or dark appearance"
-    },
     "home": {
       "title": "Welcome back",
       "continueEditing": "Continue editing",
@@ -477,9 +469,6 @@
           "sub": "{missing, plural, =0 {All have a description} other {# without a description}}"
         }
       }
-    },
-    "version": {
-      "updated": "Updated {date}"
     },
     "create": {
       "story": {
@@ -901,13 +890,6 @@
           "other": "a setting"
         }
       }
-    },
-    "textSize": {
-      "label": "Text size",
-      "sm": "Small",
-      "md": "Default",
-      "lg": "Large",
-      "xl": "Extra large"
     },
     "gallery": {
       "photo": {
@@ -1602,66 +1584,7 @@
         "generic": "We couldn’t save just now. Please try again."
       }
     },
-    "filterBar": {
-      "label": "Filters",
-      "search": "Search"
-    },
     "ui": {
-      "dateRange": {
-        "anyDate": "Any date",
-        "dialog": "Choose dates",
-        "clear": "Clear",
-        "apply": "Apply",
-        "prevMonth": "Previous month",
-        "nextMonth": "Next month",
-        "presets": "Quick ranges",
-        "last7": "Last 7 days",
-        "last30": "Last 30 days",
-        "thisYear": "This year",
-        "rangeStart": "Start date",
-        "rangeEnd": "End date",
-        "selectEnd": "Now pick the end date",
-        "today": "Today",
-        "custom": "Custom dates",
-        "clearRange": "Clear dates",
-        "help": "Choose your start and end date.",
-        "inline": {
-          "last7": "last 7 days",
-          "last30": "last 30 days",
-          "thisYear": "this year"
-        }
-      },
-      "filterSheet": {
-        "filters": "Filters",
-        "filtersCount": "Filters · {count}",
-        "title": "Filters",
-        "clearAll": "Clear all",
-        "showResults": "Show {count, plural, one {# result} other {# results}}",
-        "close": "Close filters",
-        "dragHandle": "Drag down to close",
-        "applied": "Applied filters",
-        "remove": "Remove filter: {label}"
-      },
-      "section": {
-        "seeAll": "See all",
-        "seeAllNamed": "See all: {section}"
-      },
-      "linkCard": {
-        "opensNewTab": "(opens in a new tab)"
-      },
-      "stat": {
-        "up": "Up {percent}% on {period}",
-        "down": "Down {percent}% on {period}",
-        "flat": "Same as {period}"
-      },
-      "attention": {
-        "caughtUpTitle": "All caught up",
-        "caughtUpBody": "Nothing needs you right now.",
-        "severityWarn": "Needs action",
-        "severityInfo": "For your information",
-        "showMore": "Show {count} more",
-        "showFewer": "Show fewer"
-      },
       "siteStatus": {
         "viewSite": "View your site",
         "viewPreview": "View your preview",
@@ -1680,12 +1603,6 @@
       "inviteTitle": "Invite someone",
       "email": "Email",
       "role": "Role",
-      "roles": {
-        "owner": "Owner",
-        "admin": "Site admin",
-        "editor": "Editor",
-        "member": "Member"
-      },
       "roleHelp": {
         "admin": "Manages the site and its people",
         "editor": "Writes and publishes"
@@ -1696,7 +1613,8 @@
       "access": "Extra access",
       "extras": {
         "formsSubmissionRead": "Sees contact requests",
-        "formsSubmissionUpdate": "Manages contact requests"
+        "formsSubmissionUpdate": "Manages contact requests",
+        "analyticsRead": "Sees website analytics"
       },
       "includedByRole": "Contact requests are included in this role.",
       "send": "Send invitation",
@@ -1780,6 +1698,45 @@
         "noMatch": "Nobody matches these filters."
       }
     },
+    "analytics": {
+      "title": "Analytics",
+      "notConnectedTitle": "Analytics isn’t connected yet",
+      "notConnectedBody": "We connect your website’s Google Analytics and Search Console for you. Your numbers appear here the day after.",
+      "errorTitle": "Analytics couldn’t be loaded",
+      "errorBody": "Please try again in a moment.",
+      "home": {
+        "heading": "Website traffic",
+        "visitors": "Visitors · 28 days",
+        "searchClicks": "Clicks from Google · 28 days",
+        "pageViews": "Page views · 28 days",
+        "previousPeriod": "the previous 28 days",
+        "dailyVisitors": "Daily visitors, last 28 days"
+      }
+    },
+    "whatsNew": {
+      "title": "What’s new",
+      "close": "Close",
+      "new": "New",
+      "unreadCount": "{count, plural, one {# new update} other {# new updates}}",
+      "opensInNewTab": "(opens in a new tab)"
+    },
+    "sites": {
+      "title": "Your websites",
+      "intro": "{count, plural, one {# website} other {# websites}} you work on. Pick one to start.",
+      "yourRole": "Your role: {role}",
+      "openRequests": "{count, plural, one {# contact request waiting} other {# contact requests waiting}}",
+      "noOpenRequests": "No contact requests waiting",
+      "newThisWeek": "{count} new this week",
+      "open": "Open",
+      "allSites": "All websites"
+    }
+  },
+  "app": {
+    "shell": {
+      "signOut": "Sign out",
+      "openMenu": "Menu",
+      "closeMenu": "Close menu"
+    },
     "accountMenu": {
       "open": "Open account menu",
       "title": "Your account",
@@ -1789,6 +1746,646 @@
       "profile": "Profile",
       "preferences": "Preferences",
       "close": "Close"
+    },
+    "theme": {
+      "label": "Appearance",
+      "system": "Auto",
+      "light": "Light",
+      "dark": "Dark",
+      "ariaLabel": "Choose light or dark appearance"
+    },
+    "textSize": {
+      "label": "Text size",
+      "sm": "Small",
+      "md": "Default",
+      "lg": "Large",
+      "xl": "Extra large"
+    },
+    "version": {
+      "updated": "Updated {date}"
+    },
+    "roles": {
+      "owner": "Owner",
+      "admin": "Site admin",
+      "editor": "Editor",
+      "member": "Member",
+      "abluo_admin": "Super admin"
+    },
+    "filterBar": {
+      "label": "Filters",
+      "search": "Search"
+    },
+    "ui": {
+      "dateRange": {
+        "anyDate": "Any date",
+        "dialog": "Choose dates",
+        "clear": "Clear",
+        "apply": "Apply",
+        "prevMonth": "Previous month",
+        "nextMonth": "Next month",
+        "presets": "Quick ranges",
+        "last7": "Last 7 days",
+        "last30": "Last 30 days",
+        "thisYear": "This year",
+        "rangeStart": "Start date",
+        "rangeEnd": "End date",
+        "selectEnd": "Now pick the end date",
+        "today": "Today",
+        "custom": "Custom dates",
+        "clearRange": "Clear dates",
+        "help": "Choose your start and end date.",
+        "inline": {
+          "last7": "last 7 days",
+          "last30": "last 30 days",
+          "thisYear": "this year"
+        }
+      },
+      "filterSheet": {
+        "filters": "Filters",
+        "filtersCount": "Filters · {count}",
+        "title": "Filters",
+        "clearAll": "Clear all",
+        "showResults": "Show {count, plural, one {# result} other {# results}}",
+        "close": "Close filters",
+        "dragHandle": "Drag down to close",
+        "applied": "Applied filters",
+        "remove": "Remove filter: {label}"
+      },
+      "section": {
+        "seeAll": "See all",
+        "seeAllNamed": "See all: {section}"
+      },
+      "linkCard": {
+        "opensNewTab": "(opens in a new tab)"
+      },
+      "stat": {
+        "up": "Up {percent}% on {period}",
+        "down": "Down {percent}% on {period}",
+        "flat": "Same as {period}"
+      },
+      "attention": {
+        "caughtUpTitle": "All caught up",
+        "caughtUpBody": "Nothing needs you right now.",
+        "severityWarn": "Needs action",
+        "severityInfo": "For your information",
+        "showMore": "Show {count} more",
+        "showFewer": "Show fewer"
+      },
+      "confirm": {
+        "cancel": "Cancel"
+      }
+    },
+    "analytics": {
+      "visitors": "Visitors",
+      "pageViews": "Page views",
+      "searchClicks": "Clicks from Google",
+      "position": "Average Google position",
+      "positionHint": "Lower is better",
+      "impressions": "{count, plural, one {Shown # time in Google} other {Shown # times in Google}}",
+      "dailyVisitors": "Daily visitors, last 28 days",
+      "previousPeriod": "the previous 28 days",
+      "window": "Last {days} days, up to {until}",
+      "updated": "Updated {when}",
+      "staleNote": "Not updated since {when}",
+      "searchNotConnected": "Google search data isn’t connected yet.",
+      "trafficNotConnected": "Visitor numbers aren’t connected yet.",
+      "summary": "Website performance",
+      "topPages": "Most visited pages",
+      "topChannels": "How visitors find you",
+      "topQueries": "Top Google searches",
+      "channels": {
+        "organicSearch": "Google & search engines",
+        "direct": "Direct",
+        "referral": "Links on other sites",
+        "organicSocial": "Social media",
+        "paidSearch": "Search ads",
+        "paidSocial": "Social ads",
+        "email": "Email",
+        "display": "Display ads",
+        "organicVideo": "Video",
+        "organicMaps": "Maps",
+        "unassigned": "Other",
+        "crossNetwork": "Ads (cross-network)",
+        "affiliates": "Affiliates",
+        "organicShopping": "Shopping",
+        "paidOther": "Other ads",
+        "sms": "SMS",
+        "audio": "Audio",
+        "mobilePushNotifications": "Push notifications"
+      }
+    }
+  },
+  "admin": {
+    "shell": {
+      "tagline": "Admin",
+      "navLabel": "Admin navigation"
+    },
+    "nav": {
+      "home": "Home",
+      "projects": "Projects",
+      "analytics": "Analytics",
+      "media": "Media",
+      "backlog": "Backlog",
+      "whatsNew": "What’s new"
+    },
+    "home": {
+      "title": "Home",
+      "emptyTitle": "Your overview is on its way",
+      "emptyBody": "A summary of every project — traffic, recent activity and what needs you — will appear here.",
+      "glance": {
+        "heading": "At a glance",
+        "live": {
+          "label": "Live sites",
+          "sub": "On their own address"
+        },
+        "preview": {
+          "label": "In preview",
+          "sub": "Not public yet"
+        },
+        "draft": {
+          "label": "Drafts",
+          "sub": "Being set up"
+        },
+        "requests": {
+          "label": "Unanswered requests",
+          "sub": "{week, plural, =0 {None new this week} other {# new in the last 7 days}}",
+          "subCapped": "Showing the newest {count}"
+        },
+        "invitations": {
+          "label": "Pending invitations",
+          "sub": "Not accepted yet"
+        }
+      },
+      "attentionHeading": "Needs your attention",
+      "attentionIncomplete": "Some information couldn’t be loaded, so this list may be incomplete.",
+      "loadError": "Some numbers couldn’t be loaded.",
+      "attention": {
+        "noOwner": {
+          "title": "{project} has no owner",
+          "detail": "Nobody on the client’s side can manage this site yet.",
+          "action": "Open project"
+        },
+        "requestsWaiting": {
+          "title": "{count, plural, one {# contact request} other {# contact requests}} waiting · {project}",
+          "detail": "{days, plural, =0 {Unanswered for over 2 days} one {The oldest has waited # day} other {The oldest has waited # days}}",
+          "action": "Open project"
+        },
+        "invitationExpired": {
+          "title": "Invitation expired · {email}",
+          "detail": "{project} · {days, plural, =0 {Expired today} one {Expired # day ago} other {Expired # days ago}}",
+          "action": "Open project"
+        },
+        "invitationExpiring": {
+          "title": "Invitation expiring · {email}",
+          "detail": "{project} · {days, plural, one {Expires within # day} other {Expires within # days}}",
+          "action": "Open project"
+        },
+        "longPreview": {
+          "title": "{project} is still in preview",
+          "detail": "{days, plural, other {Created # days ago and not live yet}}",
+          "action": "Open project"
+        }
+      }
+    },
+    "projects": {
+      "title": "Projects",
+      "description": "All active client websites on the Abluo platform.",
+      "loadError": "Failed to load projects: {message}",
+      "emptyTitle": "No projects yet.",
+      "preview": "Preview",
+      "studio": "Studio",
+      "opensInNewTab": "(opens in a new tab)",
+      "status": {
+        "active": "Active",
+        "preview": "Preview",
+        "draft": "Draft",
+        "inactive": "Inactive"
+      },
+      "search": "Search projects",
+      "searchPlaceholder": "Search name, client, domain…",
+      "filters": "Project filters",
+      "statusFilter": "Status",
+      "statusFilters": {
+        "current": "All but inactive",
+        "active": "Live",
+        "preview": "Preview",
+        "draft": "Draft",
+        "inactive": "Inactive",
+        "all": "All projects"
+      },
+      "showing": "{shown} of {total, plural, one {# project} other {# projects}}",
+      "clear": "Clear filters",
+      "noMatch": "No projects match these filters.",
+      "columns": {
+        "project": "Project",
+        "status": "Status",
+        "domain": "Domain",
+        "client": "Client",
+        "owners": "Owners",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "noOwner": "No owner yet",
+      "ownersUnknown": "Couldn’t load owners",
+      "moreOwners": "+{count} more",
+      "menu": "Actions for {name}",
+      "actions": {
+        "open": "Open",
+        "previewSite": "Preview site",
+        "liveSite": "View live site",
+        "openStudio": "Open Studio"
+      }
+    },
+    "analytics": {
+      "title": "Analytics",
+      "emptyTitle": "No live or preview sites yet",
+      "emptyBody": "Sites appear here as soon as they are live or in preview.",
+      "description": "Traffic and Google search across every live and preview site, from the daily snapshots.",
+      "notReadyTitle": "Analytics storage isn’t set up yet",
+      "notReadyBody": "Apply migration 036 (analytics snapshots), then the daily job fills this page.",
+      "status": {
+        "connected": "Connected",
+        "not_connected": "Not connected",
+        "error": "Error",
+        "stale": "Stale"
+      },
+      "connection": {
+        "all": "All connections",
+        "both": "Analytics + Search",
+        "analyticsOnly": "Analytics only",
+        "searchOnly": "Search only",
+        "none": "Nothing connected"
+      },
+      "filters": {
+        "label": "Filter sites",
+        "search": "Search sites",
+        "searchPlaceholder": "Search sites…",
+        "status": "Data status",
+        "statusAll": "All statuses",
+        "connection": "Connection",
+        "showing": "{shown} of {total} sites",
+        "clear": "Clear filters",
+        "noMatch": "No site matches these filters."
+      },
+      "columns": {
+        "site": "Site",
+        "visitors7": "Visitors 7d",
+        "visitors28": "Visitors 28d",
+        "trend": "Trend",
+        "searchClicks28": "Google clicks 28d",
+        "topChannel": "Top channel",
+        "requests28": "Requests 28d",
+        "status": "Data"
+      },
+      "trendUp": "+{percent}%",
+      "trendDown": "−{percent}%",
+      "trendFlat": "0%",
+      "dailyVisitors": "Daily visitors, last 28 days: {site}",
+      "noData": "No data yet",
+      "visitorsLine": "{count, plural, one {# visitor} other {# visitors}} · 28 days",
+      "refresh": {
+        "button": "Refresh now",
+        "running": "Refreshing…",
+        "done": "Updated.",
+        "doneWithErrors": "{count, plural, one {Updated, with # error.} other {Updated, with # errors.}}",
+        "refused": "Not allowed.",
+        "failed": "Refresh failed. Check the server log."
+      },
+      "site": {
+        "back": "← All sites",
+        "errorTitle": "Google returned an error on the last refresh",
+        "source": {
+          "ga4": "Google Analytics",
+          "gsc": "Search Console"
+        },
+        "emptyTitle": "No data for this site yet",
+        "emptyBody": "Set the GA4 property ID and/or the Search Console property in Studio, make sure the client added the Abluo service account, then Refresh now.",
+        "configHeading": "Connection",
+        "ga4Property": "GA4 property ID",
+        "gscProperty": "Search Console property",
+        "ga4State": "Google Analytics",
+        "gscState": "Search Console",
+        "state": {
+          "connected": "Connected",
+          "not_connected": "Not configured",
+          "error": "Error",
+          "missing": "No snapshot yet"
+        },
+        "notSet": "Not set",
+        "configHint": "Set in Studio → Project Settings → Integrations. See docs/engineering/analytics-setup.md."
+      },
+      "summary": {
+        "heading": "Website traffic",
+        "emptyTitle": "No traffic data yet",
+        "emptyBody": "Connect sites in Studio; numbers appear the day after the first snapshot.",
+        "visitors": "Visitors · 28 days",
+        "previousPeriod": "the previous 28 days",
+        "acrossSites": "{count, plural, one {Across # site} other {Across # sites}}",
+        "notConnected": "Not connected",
+        "ofSites": "{count, plural, one {of # site} other {of # sites}}",
+        "erroring": "With errors",
+        "stale": "{count} stale",
+        "risers": "Rising",
+        "fallers": "Falling"
+      },
+      "block": {
+        "heading": "Analytics",
+        "open": "Open analytics",
+        "visitors": "Visitors · 28 days",
+        "searchClicks": "Clicks from Google · 28 days",
+        "previousPeriod": "the previous 28 days",
+        "dailyVisitors": "Daily visitors, last 28 days",
+        "emptyTitle": "No analytics data yet",
+        "emptyBody": "Not connected, or waiting for the first daily snapshot."
+      }
+    },
+    "backlog": {
+      "title": "Backlog",
+      "description": "The Abluo team's technical backlog: bugs, improvements, ideas and tasks for the platform, modules, dashboards and client websites. Internal only.",
+      "newItem": "New item",
+      "emptyTitle": "Nothing in the backlog yet",
+      "emptyBody": "Collect platform bugs, improvements, ideas and tasks here — one item per thing to do, with its area, priority, the client it is about and links to ADRs, commits or feedback. Clients never see it.",
+      "notSetUpTitle": "Backlog storage isn’t set up yet",
+      "notSetUpBody": "Apply migration 034 (supabase/migrations/034_admin_backlog.sql) in the Supabase SQL editor, then reload this page.",
+      "loadError": "The backlog could not be loaded: {message}",
+      "area": {
+        "client_dashboard": "Client dashboard",
+        "admin": "Admin",
+        "module": "Module",
+        "website": "Website",
+        "platform": "Platform",
+        "infrastructure": "Infrastructure",
+        "other": "Other"
+      },
+      "type": {
+        "bug": "Bug",
+        "improvement": "Improvement",
+        "idea": "Idea",
+        "task": "Task"
+      },
+      "priority": {
+        "p0": "P0 · Urgent",
+        "p1": "P1 · High",
+        "p2": "P2 · Normal",
+        "p3": "P3 · Low"
+      },
+      "status": {
+        "inbox": "Inbox",
+        "planned": "Planned",
+        "in_progress": "In progress",
+        "blocked": "Blocked",
+        "done": "Done",
+        "wont_do": "Won’t do"
+      },
+      "filters": {
+        "label": "Backlog filters",
+        "search": "Search the backlog",
+        "searchPlaceholder": "Search titles, notes, links…",
+        "status": "Status",
+        "statusOpen": "Open (not done)",
+        "statusAll": "Any status",
+        "area": "Area",
+        "areaAll": "Any area",
+        "type": "Type",
+        "typeAll": "Any type",
+        "priority": "Priority",
+        "priorityAll": "Any priority",
+        "project": "Client project",
+        "projectAll": "Any project",
+        "projectNone": "Not about a client",
+        "showing": "{shown} of {total, plural, one {# item} other {# items}}",
+        "clear": "Clear filters",
+        "noMatch": "No items match these filters."
+      },
+      "columns": {
+        "title": "Title",
+        "type": "Type",
+        "area": "Area",
+        "priority": "Priority",
+        "status": "Status",
+        "project": "Project",
+        "updated": "Updated"
+      },
+      "form": {
+        "title": "Title",
+        "titlePlaceholder": "What needs doing, in one line",
+        "type": "Type",
+        "area": "Area",
+        "priority": "Priority",
+        "status": "Status",
+        "project": "Client project",
+        "projectNone": "Not about a client",
+        "module": "Module",
+        "modulePlaceholder": "e.g. forms, gallery",
+        "moduleHelp": "Optional. The module id, lower-case.",
+        "body": "Notes",
+        "bodyPlaceholder": "Details, steps to reproduce, acceptance criteria…",
+        "links": "Links",
+        "linksHelp": "ADRs, commits, pull requests, feedback docs.",
+        "linkLabel": "Label",
+        "linkUrl": "URL",
+        "addLink": "Add a link",
+        "removeLink": "Remove link {n}",
+        "create": "Create item",
+        "save": "Save changes",
+        "cancel": "Cancel"
+      },
+      "detail": {
+        "close": "Close",
+        "newTitle": "New backlog item",
+        "editTitle": "Edit item",
+        "edit": "Edit",
+        "delete": "Delete",
+        "changeStatus": "Change status",
+        "created": "Created",
+        "updated": "Updated",
+        "done": "Done on",
+        "noBody": "No notes yet.",
+        "links": "Links",
+        "project": "Client project",
+        "module": "Module",
+        "none": "—",
+        "opensInNewTab": "(opens in a new tab)",
+        "open": "Open {title}"
+      },
+      "confirmDelete": {
+        "title": "Delete this item?",
+        "body": "“{title}” will be removed from the backlog for good. This can't be undone.",
+        "confirm": "Delete item"
+      },
+      "toast": {
+        "created": "Item created",
+        "saved": "Changes saved",
+        "statusChanged": "Moved to {status}",
+        "deleted": "Item deleted"
+      },
+      "errors": {
+        "forbidden": "You need to be signed in as an Abluo admin with two-factor to do this.",
+        "not_set_up": "Backlog storage isn’t set up yet — apply migration 034.",
+        "not_found": "This item no longer exists. Reload the page.",
+        "invalid": "Some fields need a look.",
+        "failed": "Something went wrong. Nothing was changed — please try again.",
+        "required": "Required.",
+        "tooLong": "Too long.",
+        "invalidValue": "Choose a valid value.",
+        "invalidUrl": "Each link needs a full http(s) URL.",
+        "tooMany": "Too many links (max 20)."
+      }
+    },
+    "whatsNew": {
+      "title": "What’s new",
+      "emptyTitle": "No updates yet",
+      "emptyBody": "Updates you publish for clients will be listed here.",
+      "description": "Short product updates your clients see in their dashboard.",
+      "newUpdate": "New update",
+      "newTitle": "New update",
+      "editTitle": "Edit update",
+      "missingTitle": "What’s new is not set up yet",
+      "missingBody": "Apply database migration 035 to start writing updates.",
+      "loadError": "Couldn’t load updates: {message}",
+      "columns": {
+        "title": "Title",
+        "status": "Status",
+        "published": "Published",
+        "audience": "Audience",
+        "reads": "Read by"
+      },
+      "status": {
+        "draft": "Draft",
+        "published": "Published",
+        "archived": "Archived"
+      },
+      "notPublished": "Not published",
+      "audienceEveryone": "Everyone",
+      "readCount": "{count, plural, one {# person} other {# people}}",
+      "fields": {
+        "language": "Language",
+        "filled": "(has a title)",
+        "title": "Title",
+        "body": "Text",
+        "bodyHelp": "Plain text. Leave an empty line between paragraphs.",
+        "ctaLabel": "Button label",
+        "ctaUrl": "Button link",
+        "ctaHelp": "Optional. An https link; the button needs a label in at least one language.",
+        "image": "Image",
+        "imageHelp": "Optional. JPEG, PNG or WebP, up to 5 MB.",
+        "chooseImage": "Choose image",
+        "replaceImage": "Replace image",
+        "removeImage": "Remove image",
+        "uploading": "Uploading…",
+        "audience": "Who sees it",
+        "audienceHelp": "Leave everything unticked to show it to every client. Tick modules to show it only to sites that use at least one of them."
+      },
+      "actions": {
+        "saveDraft": "Save draft",
+        "publish": "Publish",
+        "saveChanges": "Save changes",
+        "archive": "Archive",
+        "moveToDraft": "Move to draft",
+        "close": "Close"
+      },
+      "previewTitle": "How clients see it",
+      "previewLanguage": "Shown in {language}",
+      "previewEmpty": "Add a title to see the preview.",
+      "previewNew": "New",
+      "opensInNewTab": "(opens in a new tab)",
+      "toast": {
+        "saved": "Saved",
+        "published": "Published",
+        "archived": "Archived"
+      },
+      "errors": {
+        "titleRequired": "Add a title in at least one language.",
+        "titleTooLong": "A title is too long (120 characters at most).",
+        "bodyTooLong": "A text is too long (4,000 characters at most).",
+        "ctaLabelTooLong": "A button label is too long (40 characters at most).",
+        "ctaUrlInvalid": "The button link must start with https://.",
+        "ctaLabelRequired": "Add a button label, or remove the link.",
+        "ctaUrlRequired": "Add a button link, or remove the label.",
+        "imageInvalid": "That image can’t be used. Upload it again.",
+        "unknownModule": "An unknown module was selected.",
+        "forbidden": "You’re no longer signed in as an admin with 2-step verification.",
+        "notFound": "This update no longer exists.",
+        "failed": "Couldn’t save. Try again.",
+        "image": {
+          "forbidden": "You’re no longer signed in as an admin with 2-step verification.",
+          "missing": "Choose an image first.",
+          "tooLarge": "The image is larger than 5 MB.",
+          "type": "Use a JPEG, PNG or WebP image.",
+          "failed": "Couldn’t upload the image. Try again."
+        }
+      }
+    },
+    "projectPage": {
+      "back": "All projects",
+      "noDomain": "No domain yet",
+      "clientLine": "Client · {name}",
+      "clientSees": {
+        "heading": "What the client sees",
+        "body": "The client’s Home, read-only. Counts cover published content on the site."
+      },
+      "contentError": "Couldn’t load the site’s content.",
+      "glance": {
+        "posts": {
+          "label": "Published posts",
+          "sub": "{scheduled, plural, =0 {None scheduled} other {# scheduled}} · {drafts, plural, =0 {none offline} other {# not live}}"
+        },
+        "requests": {
+          "label": "Contact requests this week",
+          "sub": "{open, plural, =0 {All answered} other {# not answered yet}}"
+        },
+        "galleries": {
+          "label": "Galleries",
+          "sub": "Published on the site"
+        },
+        "photos": {
+          "label": "Photos",
+          "sub": "{missing, plural, =0 {All have a description} other {# without a description}}"
+        }
+      },
+      "lastWeek": "last week",
+      "latestPosts": "Latest posts",
+      "latestGalleries": "Latest galleries",
+      "galleryPhotos": "{count, plural, =0 {No photos} one {# photo} other {# photos}}",
+      "untitled": "Untitled",
+      "nothingYet": "Nothing published on this site yet.",
+      "adminHeading": "Admin",
+      "facts": {
+        "status": "Status",
+        "slug": "Slug",
+        "modules": "Modules",
+        "noModules": "None installed",
+        "defaultLocale": "Default language",
+        "languages": "Languages",
+        "owners": "Owners",
+        "noOwner": "No owner yet",
+        "noOwnerHint": "Nobody on the client’s side can manage this site.",
+        "invitations": "Pending invitations",
+        "noInvitations": "None",
+        "invitationExpires": "{role} · expires {date}",
+        "invitationExpired": "{role} · expired {date}",
+        "invitationClientWide": "whole client",
+        "created": "Created",
+        "unknown": "Couldn’t load",
+        "links": "Links"
+      },
+      "links": {
+        "preview": "Preview site",
+        "studio": "Open Studio",
+        "live": "View live site",
+        "opensInNewTab": "(opens in a new tab)"
+      }
+    },
+    "media": {
+      "project": "Project",
+      "allProjects": "All projects",
+      "chooseProjectToAdd": "Choose a project to add photos to it.",
+      "delete": "Delete photo",
+      "deleted": "Photo deleted",
+      "undo": "Undo",
+      "deleteFailed": "The photo couldn't be deleted. It may be used somewhere.",
+      "loadError": "We couldn't load the list of projects.",
+      "unknownProject": "There is no project called “{slug}”. Showing all projects."
     }
   },
   "editor": {
@@ -1861,7 +2458,8 @@
     "extras": {
       "formsSubmissionRead": "contact requests",
       "formsSubmissionUpdate": "managing contact requests",
-      "billingInvoiceRead": "invoices"
+      "billingInvoiceRead": "invoices",
+      "analyticsRead": "website analytics"
     },
     "accept": {
       "title": "Invitation",

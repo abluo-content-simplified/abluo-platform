@@ -2,9 +2,9 @@
 
 import { useTranslations } from 'next-intl'
 import type { DashboardSubmission, SubmissionStatus } from '@/lib/api/client-dashboard'
-import { CardMenu, type CardMenuItem } from '@/components/client/ui/CardMenu'
-import { DataTable, type DataTableColumn } from '@/components/client/ui/list/DataTable'
-import { CellDate, CellPill, CellText } from '@/components/client/ui/list/cells'
+import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
+import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
+import { CellDate, CellPill, CellText } from '@/components/app/ui/list/cells'
 import { firstLine, type SubmissionFilters, type SubmissionSortColumn } from '@/lib/client/submissions-filter'
 import { humanizeValue } from './SubmissionDetail'
 import { SubmissionStatusPill, SubmissionStatusSelect } from './forms-bits'

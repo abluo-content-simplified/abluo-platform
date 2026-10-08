@@ -3,7 +3,7 @@ import { getLocale, getTranslations } from 'next-intl/server'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { listProjectPeople } from '@/lib/people/service'
-import { PageShell } from '@/components/client/ui/PageShell'
+import { PageShell } from '@/components/app/ui/PageShell'
 import { PeopleBrowser } from '@/components/client/people/PeopleBrowser'
 
 /**

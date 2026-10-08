@@ -8,8 +8,8 @@ import {
   type DashboardPostRow,
 } from '@/lib/api/client-dashboard'
 import { PostsBrowser } from '@/components/client/posts/PostsBrowser'
-import { PageHeader } from '@/components/client/ui/PageHeader'
-import { PageShell } from '@/components/client/ui/PageShell'
+import { PageHeader } from '@/components/app/ui/PageHeader'
+import { PageShell } from '@/components/app/ui/PageShell'
 import { NewPostLink } from '@/components/client/posts/post-bits'
 import type { BrowserPost } from '@/components/client/posts/types'
 import { postSearchText } from '@/lib/client/posts-filter'

@@ -12,6 +12,8 @@ import { filterSwitchableProjects, loadProjectSummaries, statusesOf } from '@/li
 import { ClientSidebar } from '@/components/client/ClientSidebar'
 import { AddContentRoot } from '@/components/client/create/AddContentRoot'
 import { buildCreateMenu } from '@/lib/modules/create-menu'
+import { getLocale, getTranslations } from 'next-intl/server'
+import { loadWhatsNewFeed } from '@/lib/whats-new/client-feed'
 
 /**
  * Project-scoped client dashboard shell (ADR-017 Phase 2 / task #81).
@@ -62,6 +64,25 @@ export default async function ClientProjectLayout({
     name: summaries[grant.projectId]?.name ?? null,
     domain: summaries[grant.projectId]?.domain ?? null,
   }))
+  // What's new (ADR-030): read as the user (RLS); null when unavailable — never breaks the shell.
+  const whatsNew = await loadWhatsNewFeed({
+    userId: ctx.userId,
+    locale: await getLocale(),
+    enabledModuleIds: activeGrant.enabledModuleIds,
+  })
+  // Profile panel (Tom, 2026-10-08): every site this person works on, with their role there.
+  const tRoles = await getTranslations('app.roles')
+  const profile = {
+    name: viewer.name,
+    email: viewer.email,
+    avatarUrl: viewer.avatarUrl,
+    twoFactor: viewer.twoFactor,
+    access: filterSwitchableProjects(ctx.projects, statusesOf(summaries)).map((g) => ({
+      slug: g.projectSlug,
+      name: summaries[g.projectId]?.name?.trim() || g.projectSlug,
+      role: tRoles.has(g.role) ? tRoles(g.role) : g.role,
+    })),
+  }
   const jar = await cookies()
   const theme = parseAppTheme(jar.get(APP_THEME_COOKIE)?.value)
   const textSize = parseAppTextSize(jar.get(APP_TEXT_SIZE_COOKIE)?.value)
@@ -85,10 +106,13 @@ export default async function ClientProjectLayout({
             theme,
             textSize,
             helpUrl: process.env.ABLUO_HELP_URL || null,
+            profileHref: '/account',
             role: activeGrant.role,
             siteName: summaries[activeGrant.projectId]?.name?.trim() || activeGrant.projectSlug,
           }}
           homeHref={dashboardHomeHref(activeGrant.projectSlug)}
+          whatsNew={whatsNew?.updates ?? null}
+          profile={profile}
         />
         {/* #client-main: the main scroll container (the floating "+" listens to it and to the window). */}
         <div id="client-main" className="min-h-screen min-w-0 flex-1 md:ml-56">

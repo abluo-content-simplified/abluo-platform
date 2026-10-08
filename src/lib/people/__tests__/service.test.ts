@@ -71,8 +71,8 @@ describe('who sees the People screen', () => {
     expect(asAdmin.people.find((p) => p.membershipId === 'pm-admin')).toMatchObject({ isYou: true, editableRoles: [], canArchive: false })
     expect(asAdmin.people.find((p) => p.membershipId === 'pm-admin2')).toMatchObject({ editableRoles: [], canArchive: false })
     expect(asAdmin.people.find((p) => p.membershipId === 'pm-editor')).toMatchObject({ editableRoles: ['editor'], canArchive: true })
-    expect(asAdmin.grantableExtras).toEqual(['forms.submission.read', 'forms.submission.update'])
-    expect(asAdmin.extrasForRole).toEqual({ admin: [], editor: ['forms.submission.read', 'forms.submission.update'] })
+    expect(asAdmin.grantableExtras).toEqual(['forms.submission.read', 'forms.submission.update', 'analytics.read'])
+    expect(asAdmin.extrasForRole).toEqual({ admin: [], editor: ['forms.submission.read', 'forms.submission.update', 'analytics.read'] })
     expect(asAdmin.people.filter((p) => p.kind === 'invitation')).toMatchObject([{ status: 'invited', invitedBy: 'owner@a.it', canResend: true, canCancel: true }])
   })
   it('the client’s Owners are listed read-only; an invoices-only Member is not listed on the site', async () => {

@@ -303,7 +303,9 @@ describe('preview.abluo.app does not bypass the admin gate', () => {
   // with every project name and UUID in the flight payload.
   const GATED = [
     '/dashboard', '/clients', '/content', '/media', '/projects', '/settings',
+    '/analytics', '/backlog', '/whats-new',
     '/en/dashboard', '/en/clients', '/en/content', '/en/media', '/en/projects', '/en/settings',
+    '/en/analytics', '/en/backlog', '/en/whats-new',
     '/it/dashboard', '/de/clients',
   ]
 
@@ -391,10 +393,12 @@ const ALL_HOSTS: readonly string[] = [
  * (client)/[tenant] routes actually serve.
  */
 const GATED_PATHS: readonly string[] = [
-  // (admin) route group — bare
+  // (admin) route group — bare (clients/content/settings are retired, ADR-030, and still gated)
   '/dashboard', '/clients', '/content', '/media', '/projects', '/settings',
+  '/analytics', '/backlog', '/whats-new',
   // (admin) route group — locale-prefixed, in three locales
   '/en/dashboard', '/it/clients', '/de/content', '/en/media', '/it/projects', '/de/settings',
+  '/en/analytics', '/it/backlog', '/de/whats-new',
   // nested admin paths
   '/dashboard/anything/deep', '/en/media/some-asset',
   // (client) route group — user-level (locale-prefixed; the bare spellings

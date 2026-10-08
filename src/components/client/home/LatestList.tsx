@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
-import { SectionHeading } from '@/components/client/ui/SectionHeading'
+import { SectionHeading } from '@/components/app/ui/SectionHeading'
 
 export type LatestItem = {
   id: string
