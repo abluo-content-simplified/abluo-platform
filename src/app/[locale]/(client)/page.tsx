@@ -19,7 +19,7 @@ export default async function ClientDashboardEntry({
 }) {
   const { locale } = await params
 
-  const ctx = await getTenantAuthorizationContext()
+  const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) {
     redirect(`/login?next=${encodeURIComponent(`/${locale}/sites`)}`)
   }

@@ -15,6 +15,10 @@ export type MediaLinks = {
   gallery: string | null
   post: string | null
   page: string | null
+  /** Events, Website settings and other documents: plain text unless a page injects a template. */
+  event?: string | null
+  settings?: string | null
+  other?: string | null
 }
 
 /** The client dashboard's links (unchanged from before they were injected). */
@@ -42,7 +46,7 @@ export function fillMediaLink(template: string | null | undefined, vars: { proje
 
 /** The "Used in" link of one usage, or null for plain text. */
 export function mediaUsageHref(links: MediaLinks, project: string | null, usage: Pick<MediaUsage, 'kind' | 'id'>): string | null {
-  return fillMediaLink(links[usage.kind], { project, id: usage.id })
+  return fillMediaLink(links[usage.kind] ?? null, { project, id: usage.id })
 }
 
 /** The admin Media page for one project, or for every project (null). */

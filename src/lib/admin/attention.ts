@@ -192,12 +192,6 @@ export function buildAdminAttention(
   ])
 }
 
-/** Unanswered requests: in total, and the ones that arrived in the last 7 days. */
-export function unansweredRequestCounts(requests: readonly Pick<AttentionRequest, 'createdAt'>[], now = Date.now()): { total: number; week: number } {
-  const since = now - 7 * DAY_MS
-  return { total: requests.length, week: requests.filter((r) => Date.parse(r.createdAt) >= since).length }
-}
-
 /** Open invitations that have not expired yet. */
 export function pendingInvitationCount(invitations: readonly Pick<AttentionInvitation, 'expiresAt'>[], now = Date.now()): number {
   return invitations.filter((i) => Date.parse(i.expiresAt) > now).length

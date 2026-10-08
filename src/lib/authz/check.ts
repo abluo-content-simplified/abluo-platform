@@ -12,7 +12,9 @@
  *
  * Super Admin (`abluo_admin`) holds every PLATFORM-scope permission. It does
  * NOT implicitly hold tenant or project permissions: reaching a client's data
- * requires a membership or, later, a support session (ADR-028 §8). That keeps
+ * requires a membership or a support session (ADR-028 §8, src/lib/support):
+ * in a support visit every write permission answers false unless the
+ * client's edit approval is live. That keeps
  * "Abluo looked at this client" an explicit, logged event rather than a side
  * effect of the admin flag.
  *
@@ -22,6 +24,7 @@
  */
 import { MODULE_PERMISSION_MAP } from '@/lib/modules/permissions'
 import type { ModulePermissionMap } from '@/lib/modules/types'
+import { supportRefuses, type SupportPurpose } from '@/lib/support/state'
 import { platformPermission } from './permissions'
 
 export type PermissionScopeRef =
@@ -34,6 +37,8 @@ export type AuthzSubject = {
   platformRole: 'abluo_admin' | 'tenant_user' | string
   projects: ReadonlyArray<{ projectId: string; permissions: readonly string[] }>
   tenants?: ReadonlyArray<{ tenantId: string; permissions: readonly string[] }>
+  /** Set while an Abluo admin visits a project in support mode (ADR-028 §8, src/lib/support). */
+  support?: { purpose: SupportPurpose; writesAllowed: boolean }
 }
 
 /** Does `permission` exist at all in `scope`? */
@@ -56,6 +61,8 @@ export function can(
 ): boolean {
   if (!subject) return false
   if (!permissionExistsInScope(permission, scope.kind, modulePermissionMap)) return false
+  // Support mode: no write unless the client allowed edit access and it is live.
+  if (supportRefuses(subject.support, permission)) return false
 
   switch (scope.kind) {
     case 'platform':

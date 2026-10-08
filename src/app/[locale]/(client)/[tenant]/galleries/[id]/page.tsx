@@ -19,7 +19,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function GalleryPage({ params }: { params: Promise<{ tenant: string; id: string }> }) {
   const { tenant: projectSlug, id } = await params
-  const ctx = await getTenantAuthorizationContext()
+  const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) redirect(`/login?next=/${projectSlug}/galleries/${encodeURIComponent(id)}`)
   const grant = resolveProjectGrant(ctx.projects, projectSlug)
   if (!grant || !isGalleryId(id) || !grant.permissions.includes(GALLERY_WRITE_PERMISSION)) notFound()

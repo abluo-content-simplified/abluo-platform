@@ -17,10 +17,11 @@ import { asProjectSlug } from '@/lib/tenancy/ids'
 import { hostsForProjectId } from '@/lib/tenancy/host-scope'
 import { settle } from '@/lib/api/dashboard/settle'
 import { blogGlance, type BlogGlance } from '@/lib/api/dashboard/blog'
-import { summarizeRequests, type RequestsGlance } from '@/lib/api/dashboard/forms'
+import type { RequestsGlance } from '@/lib/api/dashboard/forms'
+import { REQUEST_WEEK_DAYS } from '@/lib/client/home-cards'
 import { summarizeMedia, type MediaGlance } from '@/lib/api/dashboard/media'
 import { siteStatusFrom, type SiteStatusData } from '@/lib/api/dashboard/site'
-import { mapSubmissionRow, resolveLocalized, type DashboardPostStatus } from '@/lib/api/client-dashboard'
+import { resolveLocalized, type DashboardPostStatus } from '@/lib/api/client-dashboard'
 import { coverThumbUrl } from '@/lib/api/post-drafts'
 import { adminProjectOverviewQuery } from '@/lib/admin/project-queries'
 import { liveSiteUrl } from '@/lib/admin/projects-filter'
@@ -35,8 +36,15 @@ import {
   type AdminProject,
 } from '@/lib/api/admin-dashboard/shared'
 
-/** Requests read per project (same as the client Home). */
-export const ADMIN_PROJECT_REQUESTS_LIMIT = 200
+/** Start of the Nth request week back from `now` (1 = this week's start), ISO. Matches the client Home's 7-day windows. */
+export function requestWindowStart(now: number, weeksBack: number): string {
+  return new Date(now - weeksBack * REQUEST_WEEK_DAYS * 86400 * 1000).toISOString()
+}
+
+/** Pure: head-count results → the requests glance (a missing count reads as 0). */
+export function requestsGlanceFromCounts(c: { open: number | null; week: number | null; previousWeek: number | null }): RequestsGlance {
+  return { open: c.open ?? 0, week: c.week ?? 0, previousWeek: c.previousWeek ?? 0 }
+}
 
 export type AdminLatestPost = { id: string; title: string | null; thumb: string | null; status: 'published' | 'scheduled'; publishedAt: string | null }
 export type AdminLatestGallery = { id: string; title: string | null; thumb: string | null; count: number }
@@ -127,10 +135,11 @@ export function projectInvitations(
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }
 
-export async function getAdminProject(slug: string, opts: { locale: string }): Promise<AdminProjectDetail | null> {
+export async function getAdminProject(slug: string, opts: { locale: string; now?: number }): Promise<AdminProjectDetail | null> {
   await assertAbluoAdmin()
   if (!slug || slug.length > 200) return null
   const admin = createAdminClient()
+  const now = opts.now ?? Date.now()
 
   const { data: row, error } = await admin.from('projects').select(PROJECT_COLUMNS).eq('slug', slug).limit(2)
   if (error) throw new Error(`admin project: ${error.message}`)
@@ -158,17 +167,22 @@ export async function getAdminProject(slug: string, opts: { locale: string }): P
   const requests =
     content?.enabledModuleIds.includes('forms')
       ? await settle('admin.project.requests', async () => {
-          const { data, error: e } = await admin
-            .from('form_submissions')
-            .select('id, form_id, submission_data, source, form_version, status, created_at, locale, gdpr_consent_at')
-            .eq('project_id', base.id)
-            .eq('completion_state', 'complete')
-            .neq('status', 'spam')
-            .order('created_at', { ascending: false })
-            .limit(ADMIN_PROJECT_REQUESTS_LIMIT)
-          if (e) throw new Error(e.message)
-          const rows = ((data ?? []) as Record<string, unknown>[]).map(mapSubmissionRow)
-          return summarizeRequests(rows, { limit: ADMIN_PROJECT_REQUESTS_LIMIT, attentionHref: null }).glance
+          // Exact head counts — no rows read, so no 1000-row (or 200-row) ceiling.
+          const count = () =>
+            admin
+              .from('form_submissions')
+              .select('id', { count: 'exact', head: true })
+              .eq('project_id', base.id)
+              .eq('completion_state', 'complete')
+              .neq('status', 'spam')
+          const [open, week, previousWeek] = await Promise.all([
+            count().eq('status', 'new'),
+            count().gte('created_at', requestWindowStart(now, 1)),
+            count().gte('created_at', requestWindowStart(now, 2)).lt('created_at', requestWindowStart(now, 1)),
+          ])
+          const failed = open.error ?? week.error ?? previousWeek.error
+          if (failed) throw new Error(failed.message)
+          return requestsGlanceFromCounts({ open: open.count, week: week.count, previousWeek: previousWeek.count })
         })
       : null
 

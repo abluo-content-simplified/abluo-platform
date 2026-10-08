@@ -30,6 +30,9 @@ type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> & {
   /** Overridable for localisation; these are the only two strings here. */
   showLabel?: string
   hideLabel?: string
+  /** Presentation overrides, so a surface (e.g. the Abluo App auth pages) can draw the field in its own tokens. */
+  labelClassName?: string
+  toggleClassName?: string
 }
 
 const FIELD_CLASS =
@@ -40,6 +43,8 @@ export function PasswordInput({
   showLabel = 'Show',
   hideLabel = 'Hide',
   className,
+  labelClassName,
+  toggleClassName,
   onBlur,
   ...inputProps
 }: Props) {
@@ -49,7 +54,7 @@ export function PasswordInput({
   return (
     <div>
       {label && (
-        <label htmlFor={id} className="mb-1.5 block text-xs font-medium text-zinc-600">
+        <label htmlFor={id} className={labelClassName ?? 'mb-1.5 block text-xs font-medium text-zinc-600'}>
           {label}
         </label>
       )}
@@ -73,7 +78,10 @@ export function PasswordInput({
           onClick={() => setVisible((v) => !v)}
           aria-pressed={visible}
           aria-controls={id}
-          className="absolute inset-y-0 right-0 px-3 text-[10px] font-medium uppercase tracking-widest text-zinc-400 transition-colors hover:text-zinc-600"
+          className={
+            toggleClassName ??
+            'absolute inset-y-0 right-0 px-3 text-[10px] font-medium uppercase tracking-widest text-zinc-400 transition-colors hover:text-zinc-600'
+          }
         >
           {visible ? hideLabel : showLabel}
         </button>

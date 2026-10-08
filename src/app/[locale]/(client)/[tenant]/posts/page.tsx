@@ -45,7 +45,7 @@ export default async function PostsPage({
 }) {
   const { tenant: projectSlug } = await params
 
-  const ctx = await getTenantAuthorizationContext()
+  const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) {
     redirect(`/login?next=/${projectSlug}/posts`)
   }

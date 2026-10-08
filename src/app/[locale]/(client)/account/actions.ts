@@ -1,7 +1,7 @@
 'use server'
 
 /**
- * Account — the signed-in person's own profile photo (Tom, 2026-10-08).
+ * Account — the signed-in person's own profile photo and name (Tom, 2026-10-08).
  *
  * Only ever acts on the caller's own profile: the user id comes from the
  * server-side session, never from the request. The file is checked by its
@@ -13,6 +13,8 @@
 import { revalidatePath } from 'next/cache'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
+import { normalizeDisplayName, type DisplayNameError } from '@/lib/account/display-name'
 import {
   AVATAR_BUCKET,
   AVATAR_MAX_BYTES,
@@ -69,4 +71,36 @@ export async function removeAvatarAction(): Promise<AvatarActionResult> {
   if (previous) await admin.storage.from(AVATAR_BUCKET).remove([previous])
   revalidatePath('/', 'layout')
   return { ok: true, url: null }
+}
+
+export type NameActionResult = { ok: true; name: string } | { ok: false; error: 'unauthenticated' | DisplayNameError | 'failed' }
+
+/**
+ * The person's display name. It lives in `profiles.full_name` (what the
+ * sidebar account menu, the greeting and People read); GoTrue's
+ * `user_metadata.full_name` — the fallback those readers use — is kept in step
+ * so the two never disagree. Written AS the person: `authenticated` may update
+ * only `full_name` on their own row (migration 012 + RLS). Only when the
+ * profile row is missing (it is created at sign-up) is it created with the
+ * service role, for the session's own user id.
+ */
+export async function updateDisplayNameAction(raw: string): Promise<NameActionResult> {
+  const ctx = await getTenantAuthorizationContext()
+  if (!ctx) return { ok: false, error: 'unauthenticated' }
+  const checked = normalizeDisplayName(raw)
+  if (!checked.ok) return checked
+  const name = checked.name
+
+  const supabase = await createClient()
+  const { data, error } = await supabase.from('profiles').update({ full_name: name }).eq('id', ctx.userId).select('id')
+  if (error) return { ok: false, error: 'failed' }
+  if (!data || data.length === 0) {
+    const { error: insertError } = await createAdminClient().from('profiles').upsert({ id: ctx.userId, full_name: name }, { onConflict: 'id' })
+    if (insertError) return { ok: false, error: 'failed' }
+  }
+  // Keep the metadata fallback in step; the profile row is the source, so a failure here is not fatal.
+  await supabase.auth.updateUser({ data: { full_name: name } }).catch(() => null)
+
+  revalidatePath('/', 'layout')
+  return { ok: true, name }
 }

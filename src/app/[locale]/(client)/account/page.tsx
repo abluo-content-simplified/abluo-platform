@@ -11,6 +11,7 @@ import { filterSwitchableProjects, loadProjectSummaries, statusesOf } from '@/li
 import { AppTextSizeSwitch } from '@/components/app/shell/AppTextSizeSwitch'
 import { AppThemeSwitch } from '@/components/app/shell/AppThemeSwitch'
 import { AvatarEditor } from '@/components/client/account/AvatarEditor'
+import { NameEditor } from '@/components/client/account/NameEditor'
 import { SignOutButton } from '@/components/app/shell/SignOutButton'
 import { TwoFactorPill } from '@/components/client/people/people-bits'
 import { FactRow } from '@/components/app/ui/FactRow'
@@ -19,7 +20,7 @@ import { PageShell } from '@/components/app/ui/PageShell'
 
 /**
  * The signed-in person's own Account page (ADR-029 §6 Phase 1) — about THEM,
- * never about a project: profile (read-only for now), how the app looks to
+ * never about a project: profile (photo and name editable), how the app looks to
  * them, whether 2-step verification is on, and sign out. Switching project is
  * the project switcher's job, so no project list lives here any more.
  *
@@ -43,7 +44,7 @@ function Section({ id, title, hint, children }: { id?: string; title: string; hi
 
 export default async function AccountPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params
-  const ctx = await getTenantAuthorizationContext()
+  const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
 
   if (!ctx) {
     redirect(`/login?next=${encodeURIComponent(`/${locale}/account`)}`)
@@ -88,7 +89,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
           <Section title={t('profile')}>
             <AvatarEditor name={viewer.name} email={viewer.email} src={viewer.avatarUrl} />
             <dl>
-              <FactRow label={t('name')}>{viewer.name || <span className="text-muted-foreground">{t('notSet')}</span>}</FactRow>
+              <NameEditor name={viewer.name} />
               <FactRow label={t('email')}>{viewer.email}</FactRow>
             </dl>
           </Section>

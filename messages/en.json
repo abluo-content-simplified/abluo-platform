@@ -44,7 +44,19 @@
         "failed": "Could not save the photo. Please try again."
       }
     },
-    "openFullPage": "Open full page"
+    "openFullPage": "Open full page",
+    "edit": "Edit",
+    "editName": "Edit your name",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "nameErrors": {
+      "empty": "Please enter your name.",
+      "tooLong": "Use at most {max} characters.",
+      "invalid": "Your name contains characters that can’t be used.",
+      "unauthenticated": "Please sign in again.",
+      "failed": "Could not save your name. Please try again."
+    }
   },
   "clientDashboard": {
     "nav": {
@@ -467,6 +479,41 @@
         "media": {
           "label": "Photos",
           "sub": "{missing, plural, =0 {All have a description} other {# without a description}}"
+        }
+      },
+      "setup": {
+        "heading": "Get your site ready",
+        "progress": "{done} of {total} done",
+        "doneLabel": "Done",
+        "todoLabel": "To do",
+        "hide": "Hide checklist",
+        "hideFailed": "Couldn’t hide the checklist. Please try again.",
+        "items": {
+          "firstPost": {
+            "title": "Write your first article",
+            "detail": "Share what you know. We save as you go.",
+            "doneDetail": "Your first article is published."
+          },
+          "photos": {
+            "title": "Add photos to your media library",
+            "detail": "Upload a few photos to use on your site.",
+            "doneDetail": "Your library has photos."
+          },
+          "team": {
+            "title": "Invite your team",
+            "detail": "Give colleagues their own sign-in.",
+            "doneDetail": "Your team has access."
+          },
+          "analytics": {
+            "title": "Connect Google Analytics & Search Console",
+            "detail": "Ask Abluo to connect them. We set it up for you, and your numbers appear here.",
+            "doneDetail": "Your numbers arrive every day."
+          },
+          "domain": {
+            "title": "Your domain is connected",
+            "detail": "Abluo connects your domain when your site is ready to go live.",
+            "doneDetail": "Your site is live on its own address."
+          }
         }
       }
     },
@@ -1329,7 +1376,10 @@
         "kind": {
           "gallery": "Gallery",
           "page": "Page",
-          "post": "Post"
+          "post": "Post",
+          "event": "Event",
+          "settings": "Website settings",
+          "other": "Other"
         }
       },
       "picker": {
@@ -1729,6 +1779,35 @@
       "newThisWeek": "{count} new this week",
       "open": "Open",
       "allSites": "All websites"
+    },
+    "support": {
+      "banner": {
+        "title": "Support mode — viewing {site} as {role}",
+        "viewing": "View only. Changes are blocked until the client allows them.",
+        "requested": "Waiting for the client to allow changes…",
+        "allowed": "Changes allowed until {time}. Everything you do is logged.",
+        "declined": "The client declined. View only.",
+        "expired": "Edit access has ended. View only.",
+        "revoked": "The client ended edit access. View only.",
+        "ask": "Ask to make changes",
+        "askAgain": "Ask again",
+        "showRequests": "Show contact requests",
+        "requestsHidden": "Contact requests are hidden.",
+        "exit": "Exit",
+        "error": "That didn’t work. Try again."
+      },
+      "notice": {
+        "requestTitle": "{name} from Abluo support asks to make changes to your site",
+        "requestTitleNoName": "Abluo support asks to make changes to your site",
+        "requestBody": "If you allow it, they can edit for {minutes} minutes. You can end it at any time, and every change is recorded.",
+        "allow": "Allow",
+        "decline": "Decline",
+        "allowedTitle": "Abluo support can make changes until {time}",
+        "allowedBody": "{name} is helping with your site. Changes are recorded.",
+        "allowedBodyNoName": "Abluo support is helping with your site. Changes are recorded.",
+        "end": "End access",
+        "error": "That didn’t work. Refresh the page and try again."
+      }
     }
   },
   "app": {
@@ -1908,8 +1987,7 @@
         },
         "requests": {
           "label": "Unanswered requests",
-          "sub": "{week, plural, =0 {None new this week} other {# new in the last 7 days}}",
-          "subCapped": "Showing the newest {count}"
+          "sub": "{week, plural, =0 {None new this week} other {# new in the last 7 days}}"
         },
         "invitations": {
           "label": "Pending invitations",
@@ -1994,7 +2072,8 @@
         "previewSite": "Preview site",
         "liveSite": "View live site",
         "openStudio": "Open Studio"
-      }
+      },
+      "newProject": "New project"
     },
     "analytics": {
       "title": "Analytics",
@@ -2007,7 +2086,8 @@
         "connected": "Connected",
         "not_connected": "Not connected",
         "error": "Error",
-        "stale": "Stale"
+        "stale": "Stale",
+        "out_of_date": "Out of date"
       },
       "connection": {
         "all": "All connections",
@@ -2084,7 +2164,7 @@
         "notConnected": "Not connected",
         "ofSites": "{count, plural, one {of # site} other {of # sites}}",
         "erroring": "With errors",
-        "stale": "{count} stale",
+        "stale": "{count} not up to date",
         "risers": "Rising",
         "fallers": "Falling"
       },
@@ -2374,6 +2454,14 @@
         "studio": "Open Studio",
         "live": "View live site",
         "opensInNewTab": "(opens in a new tab)"
+      },
+      "support": {
+        "heading": "Support",
+        "body": "Open the client dashboard exactly as the client sees it. View only; to change anything, ask the client from inside. Every visit is logged.",
+        "roleLabel": "View as",
+        "open": "View as client",
+        "unavailable": "Support mode isn’t available yet (migration 038 is not applied).",
+        "failed": "Couldn’t open support mode. Try again."
       }
     },
     "media": {
@@ -2386,6 +2474,176 @@
       "deleteFailed": "The photo couldn't be deleted. It may be used somewhere.",
       "loadError": "We couldn't load the list of projects.",
       "unknownProject": "There is no project called “{slug}”. Showing all projects."
+    },
+    "newProject": {
+      "title": "New project",
+      "description": "Create a client website in five steps: client, project, design system, owner, review. The site starts on its preview address; the domain is added by hand.",
+      "back": "Projects",
+      "loadError": "Couldn’t load this setup.",
+      "clientsError": "Couldn’t load the clients. Reload the page to try again.",
+      "designSystemsError": "Couldn’t load the design systems from Sanity. Reload the page to try again.",
+      "notSetUp": {
+        "title": "Apply migration 037 first",
+        "body": "The wizard records its progress in a table that doesn’t exist yet (supabase/migrations/037_project_provisioning.sql). Nothing has been created."
+      },
+      "progress": "Step {current} of {total}",
+      "steps": {
+        "client": "Client",
+        "project": "Project",
+        "design": "Design system",
+        "owner": "Owner",
+        "review": "Review"
+      },
+      "nav": {
+        "next": "Next",
+        "back": "Back",
+        "create": "Create project",
+        "creating": "Creating…",
+        "checking": "Checking…"
+      },
+      "client": {
+        "heading": "Which client is this website for?",
+        "existing": "Existing client",
+        "new": "New client",
+        "pick": "Client",
+        "pickPlaceholder": "Choose a client",
+        "name": "Client name",
+        "namePlaceholder": "e.g. Studio Rossi",
+        "slug": "Client slug",
+        "slugHelp": "Lowercase letters, numbers and hyphens. Used internally; it can’t be changed later.",
+        "noClients": "There are no clients yet — this creates the first one."
+      },
+      "project": {
+        "heading": "About the website",
+        "name": "Project name",
+        "namePlaceholder": "e.g. Studio Rossi",
+        "slug": "Project slug",
+        "slugHelp": "The site’s platform address: preview.abluo.app/{slug}. Lowercase letters, numbers and hyphens.",
+        "defaultLocale": "Default language",
+        "defaultTag": "default",
+        "languages": "Languages",
+        "languagesHelp": "The default language is always included. More can be added later in Studio."
+      },
+      "design": {
+        "heading": "Start from a design system",
+        "help": "The new site gets its own design system, so it can be fine-tuned in Studio without changing any other site.",
+        "templates": "Templates",
+        "projects": "Other sites",
+        "templateNote": "Template — the new site inherits from it",
+        "copyNote": "Copy of the design of {project}",
+        "inherits": "based on {name}",
+        "none": "No design systems found in Sanity."
+      },
+      "owner": {
+        "heading": "Who owns the client?",
+        "help": "They get an email invitation to become the client’s Owner: every website, its people and billing.",
+        "optional": "Optional for an existing client — leave it empty if the client already has an Owner.",
+        "name": "Name",
+        "email": "Email"
+      },
+      "review": {
+        "heading": "Review",
+        "client": "Client",
+        "newClient": "{name} (new · {slug})",
+        "project": "Project",
+        "slug": "Slug",
+        "languages": "Languages",
+        "designSystem": "Design system",
+        "dsTemplate": "Own design system, inheriting from {name}",
+        "dsCopy": "Own copy of {name}",
+        "owner": "Owner",
+        "noOwner": "No invitation",
+        "status": "Starts as",
+        "statusValue": "Preview — not live",
+        "start": "Start page",
+        "startValue": "One header and one text section with placeholder text",
+        "domainNote": "The domain is not connected automatically. After the site is created you’ll see the steps to add it in Vercel."
+      },
+      "errors": {
+        "required": "Required.",
+        "tooShort": "At least {min} characters.",
+        "tooLong": "Too long.",
+        "invalidChars": "Use lowercase letters, numbers and hyphens only.",
+        "mustStartWithLetter": "Start with a letter.",
+        "hyphenEdges": "It can’t end with a hyphen.",
+        "doubleHyphen": "No double hyphens.",
+        "reserved": "This word is reserved by the platform.",
+        "taken": "Already in use.",
+        "notFound": "Not found — it may have been removed.",
+        "invalid": "Check this value.",
+        "forbidden": "Only Abluo admins with two-step verification can do this.",
+        "failed": "Something went wrong. Try again.",
+        "busy": "This setup is running right now. Wait a moment, then reload.",
+        "not_set_up": "Apply migration 037 first — nothing has been created.",
+        "not_found": "This setup no longer exists."
+      },
+      "unfinished": {
+        "heading": "Unfinished setups"
+      },
+      "run": {
+        "heading": "Setting up {name}",
+        "completedTitle": "{name} is set up",
+        "clientLine": "Client: {name}",
+        "stepsLabel": "Setup steps",
+        "status": {
+          "pending": "Not started",
+          "running": "Running",
+          "failed": "Stopped",
+          "completed": "Done"
+        },
+        "stepStatus": {
+          "done": "Done",
+          "failed": "Failed",
+          "skipped": "Skipped",
+          "waiting": "Waiting"
+        },
+        "steps": {
+          "supabaseTenant": "Client record (Supabase)",
+          "supabaseProject": "Project record (Supabase)",
+          "sanityClient": "Client document (Sanity)",
+          "sanityDesignSystem": "Design system (Sanity)",
+          "sanityProject": "Project document (Sanity)",
+          "sanitySiteConfig": "Website settings (Sanity)",
+          "sanityHomePage": "Start page (Sanity)",
+          "inviteOwner": "Owner invitation"
+        },
+        "failedAt": "Stopped at: {step}. Everything before it is saved.",
+        "retry": "Retry",
+        "resume": "Resume",
+        "retrying": "Working…",
+        "retryHelp": "Picks up at the step that didn’t finish. Nothing is created twice.",
+        "invited": "An invitation was emailed to {email}.",
+        "emailNotSent": "The invitation for {email} was created, but the email couldn’t be sent. Send it again from the project page.",
+        "openProject": "Open project",
+        "openStudio": "Open Studio",
+        "another": "New project",
+        "next": {
+          "heading": "What’s next",
+          "routes": {
+            "title": "Make the site reachable",
+            "body": "Which site answers on which address is generated at build time from Supabase. Run this, commit src/lib/tenancy/generated/route-config.ts and deploy (dev → preview → main). The site then opens at {url}."
+          },
+          "studio": {
+            "title": "Fine-tune the design and content",
+            "body": "In Studio, open {name}: its design system and start page are its own — changes don’t affect any other site."
+          },
+          "domain": {
+            "title": "Add the domain (by hand)",
+            "intro": "Domains are not automated yet. Type the domain to fill in the steps.",
+            "label": "Domain",
+            "placeholderDomain": "example.com",
+            "step1": "In Vercel → abluo-platform → Settings → Domains, add {domain} and www.{domain}.",
+            "step2": "At the domain’s DNS provider, add the records Vercel asks for. Usually:",
+            "type": "Type",
+            "name": "Name",
+            "value": "Value",
+            "recordsNote": "Vercel shows the exact records for each domain — if they differ, follow Vercel.",
+            "step3": "In Supabase, set custom_domain = {domain} on project {slug} (and Custom Domain on the project in Studio).",
+            "step4": "Regenerate the routing table, commit and deploy:",
+            "step5": "When the site is ready to go live, set the project’s status to active in Supabase, regenerate and deploy once more."
+          }
+        }
+      }
     }
   },
   "editor": {

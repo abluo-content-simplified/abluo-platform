@@ -25,7 +25,7 @@ import { SiteStatus } from '@/components/client/home/SiteStatus'
  */
 export default async function SitesOverviewPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params
-  const ctx = await getTenantAuthorizationContext()
+  const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) redirect(`/login?next=${encodeURIComponent(`/${locale}/sites`)}`)
 
   const t = await getTranslations('clientDashboard.sites')

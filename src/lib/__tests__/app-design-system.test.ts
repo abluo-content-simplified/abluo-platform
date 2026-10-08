@@ -97,13 +97,16 @@ describe('T1 — Abluo App contrast (light and dark)', () => {
   })
 })
 
-// Every Abluo App surface (ADR-030): the shared layer, the client dashboard and the admin.
+// Every Abluo App surface (ADR-030): the shared layer, the client dashboard, the admin and the auth pages.
 const CLIENT_DIRS = [
   'src/components/app',
   'src/components/client',
   'src/app/[locale]/(client)',
   'src/components/admin',
   'src/app/[locale]/(admin)',
+  // The signed-out pages render inside the same `.abluo-app` root.
+  'src/components/auth',
+  'src/app/(platform)/(auth)',
 ]
 const RAW_COLOUR =
   /\b(?:bg|text|border|ring|divide|outline|fill|stroke|from|to|via|placeholder|shadow)-(?:zinc|gray|slate|neutral|stone|white|black|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)\b|#[0-9a-fA-F]{3,8}\b|\brgba?\(/

@@ -3,8 +3,10 @@ import type { DateWindow, SnapshotWindows } from './types'
 /** Days in the main reporting window (ADR-029 §3.4: 28-day window by default). */
 export const WINDOW_DAYS = 28
 export const SHORT_WINDOW_DAYS = 7
-/** A snapshot older than this is "stale" in the admin (the job runs daily). */
+/** A snapshot older than this is "stale" in the admin (the job runs daily: a day or two of failed runs). */
 export const STALE_AFTER_MS = 2 * 24 * 60 * 60 * 1000
+/** A good snapshot older than this is "out of date" (the job has not produced data for a week). */
+export const OUT_OF_DATE_AFTER_MS = 7 * 24 * 60 * 60 * 1000
 
 const DAY_MS = 24 * 60 * 60 * 1000
 

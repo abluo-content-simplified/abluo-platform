@@ -11,7 +11,7 @@ vi.mock('@/lib/supabase/admin', () => ({
       const next = (): Resp => (table === 'projects' ? db.projects : (db.responses.shift() ?? { data: null, error: null }))
       const chain: Record<string, unknown> = {}
       const self = () => chain
-      for (const m of ['select', 'eq', 'order', 'limit']) chain[m] = self
+      for (const m of ['select', 'eq', 'order', 'limit', 'range']) chain[m] = self
       chain.insert = (arg: unknown) => (db.calls.push({ table, op: 'insert', arg }), chain)
       chain.update = (arg: unknown) => (db.calls.push({ table, op: 'update', arg }), chain)
       chain.delete = () => (db.calls.push({ table, op: 'delete' }), chain)

@@ -44,7 +44,19 @@
         "failed": "Impossibile salvare la foto. Riprova."
       }
     },
-    "openFullPage": "Apri la pagina completa"
+    "openFullPage": "Apri la pagina completa",
+    "edit": "Modifica",
+    "editName": "Modifica il tuo nome",
+    "save": "Salva",
+    "saving": "Salvataggio…",
+    "cancel": "Annulla",
+    "nameErrors": {
+      "empty": "Inserisci il tuo nome.",
+      "tooLong": "Usa al massimo {max} caratteri.",
+      "invalid": "Il nome contiene caratteri non consentiti.",
+      "unauthenticated": "Accedi di nuovo.",
+      "failed": "Impossibile salvare il nome. Riprova."
+    }
   },
   "clientDashboard": {
     "nav": {
@@ -467,6 +479,41 @@
         "media": {
           "label": "Foto",
           "sub": "{missing, plural, =0 {Tutte hanno una descrizione} other {# senza descrizione}}"
+        }
+      },
+      "setup": {
+        "heading": "Prepara il tuo sito",
+        "progress": "{done} di {total} completati",
+        "doneLabel": "Fatto",
+        "todoLabel": "Da fare",
+        "hide": "Nascondi l’elenco",
+        "hideFailed": "Impossibile nascondere l’elenco. Riprova.",
+        "items": {
+          "firstPost": {
+            "title": "Scrivi il tuo primo articolo",
+            "detail": "Condividi ciò che sai. Salviamo mentre scrivi.",
+            "doneDetail": "Il tuo primo articolo è pubblicato."
+          },
+          "photos": {
+            "title": "Aggiungi foto alla libreria media",
+            "detail": "Carica qualche foto da usare sul sito.",
+            "doneDetail": "La tua libreria contiene foto."
+          },
+          "team": {
+            "title": "Invita il tuo team",
+            "detail": "Dai ai colleghi un accesso personale.",
+            "doneDetail": "Il tuo team ha accesso."
+          },
+          "analytics": {
+            "title": "Collega Google Analytics e Search Console",
+            "detail": "Chiedi ad Abluo di collegarli. Ce ne occupiamo noi e i tuoi numeri compaiono qui.",
+            "doneDetail": "I tuoi numeri arrivano ogni giorno."
+          },
+          "domain": {
+            "title": "Il tuo dominio è collegato",
+            "detail": "Abluo collega il tuo dominio quando il sito è pronto per andare online.",
+            "doneDetail": "Il tuo sito è online al suo indirizzo."
+          }
         }
       }
     },
@@ -1329,7 +1376,10 @@
         "kind": {
           "gallery": "Galleria",
           "page": "Pagina",
-          "post": "Articolo"
+          "post": "Articolo",
+          "event": "Evento",
+          "settings": "Impostazioni del sito",
+          "other": "Altro"
         }
       },
       "picker": {
@@ -1729,6 +1779,35 @@
       "newThisWeek": "{count} nuove questa settimana",
       "open": "Apri",
       "allSites": "Tutti i siti"
+    },
+    "support": {
+      "banner": {
+        "title": "Modalità assistenza — stai vedendo {site} come {role}",
+        "viewing": "Solo visualizzazione. Le modifiche sono bloccate finché il cliente non le consente.",
+        "requested": "In attesa che il cliente consenta le modifiche…",
+        "allowed": "Modifiche consentite fino alle {time}. Tutto ciò che fai viene registrato.",
+        "declined": "Il cliente ha rifiutato. Solo visualizzazione.",
+        "expired": "L’accesso in modifica è terminato. Solo visualizzazione.",
+        "revoked": "Il cliente ha chiuso l’accesso in modifica. Solo visualizzazione.",
+        "ask": "Chiedi di poter modificare",
+        "askAgain": "Chiedi di nuovo",
+        "showRequests": "Mostra le richieste di contatto",
+        "requestsHidden": "Le richieste di contatto sono nascoste.",
+        "exit": "Esci",
+        "error": "Non è andato a buon fine. Riprova."
+      },
+      "notice": {
+        "requestTitle": "{name} dell’assistenza Abluo chiede di poter modificare il tuo sito",
+        "requestTitleNoName": "L’assistenza Abluo chiede di poter modificare il tuo sito",
+        "requestBody": "Se lo consenti, potrà modificare per {minutes} minuti. Puoi chiudere l’accesso in qualsiasi momento e ogni modifica viene registrata.",
+        "allow": "Consenti",
+        "decline": "Rifiuta",
+        "allowedTitle": "L’assistenza Abluo può modificare fino alle {time}",
+        "allowedBody": "{name} sta lavorando al tuo sito. Le modifiche vengono registrate.",
+        "allowedBodyNoName": "L’assistenza Abluo sta lavorando al tuo sito. Le modifiche vengono registrate.",
+        "end": "Chiudi l’accesso",
+        "error": "Non è andato a buon fine. Ricarica la pagina e riprova."
+      }
     }
   },
   "app": {
@@ -1908,8 +1987,7 @@
         },
         "requests": {
           "label": "Richieste senza risposta",
-          "sub": "{week, plural, =0 {Nessuna nuova questa settimana} one {# nuova negli ultimi 7 giorni} other {# nuove negli ultimi 7 giorni}}",
-          "subCapped": "Mostrate le {count} più recenti"
+          "sub": "{week, plural, =0 {Nessuna nuova questa settimana} one {# nuova negli ultimi 7 giorni} other {# nuove negli ultimi 7 giorni}}"
         },
         "invitations": {
           "label": "Inviti in sospeso",
@@ -1994,7 +2072,8 @@
         "previewSite": "Anteprima del sito",
         "liveSite": "Vedi il sito online",
         "openStudio": "Apri Studio"
-      }
+      },
+      "newProject": "Nuovo progetto"
     },
     "analytics": {
       "title": "Statistiche",
@@ -2007,7 +2086,8 @@
         "connected": "Collegato",
         "not_connected": "Non collegato",
         "error": "Errore",
-        "stale": "Non aggiornato"
+        "stale": "In ritardo",
+        "out_of_date": "Non aggiornato"
       },
       "connection": {
         "all": "Tutti i collegamenti",
@@ -2374,6 +2454,14 @@
         "studio": "Apri Studio",
         "live": "Vedi il sito online",
         "opensInNewTab": "(si apre in una nuova scheda)"
+      },
+      "support": {
+        "heading": "Assistenza",
+        "body": "Apri la dashboard del cliente esattamente come la vede il cliente. Solo visualizzazione; per modificare, chiedi al cliente dall’interno. Ogni visita viene registrata.",
+        "roleLabel": "Vedi come",
+        "open": "Vedi come il cliente",
+        "unavailable": "La modalità assistenza non è ancora disponibile (la migrazione 038 non è applicata).",
+        "failed": "Impossibile aprire la modalità assistenza. Riprova."
       }
     },
     "media": {
@@ -2386,6 +2474,176 @@
       "deleteFailed": "Non è stato possibile eliminare la foto. Potrebbe essere in uso.",
       "loadError": "Non è stato possibile caricare l'elenco dei progetti.",
       "unknownProject": "Non esiste un progetto chiamato “{slug}”. Vengono mostrati tutti i progetti."
+    },
+    "newProject": {
+      "title": "Nuovo progetto",
+      "description": "Crea il sito di un cliente in cinque passaggi: cliente, progetto, design system, titolare, riepilogo. Il sito parte sul suo indirizzo di anteprima; il dominio si aggiunge a mano.",
+      "back": "Progetti",
+      "loadError": "Impossibile caricare questa configurazione.",
+      "clientsError": "Impossibile caricare i clienti. Ricarica la pagina per riprovare.",
+      "designSystemsError": "Impossibile caricare i design system da Sanity. Ricarica la pagina per riprovare.",
+      "notSetUp": {
+        "title": "Applica prima la migrazione 037",
+        "body": "La procedura registra i progressi in una tabella che non esiste ancora (supabase/migrations/037_project_provisioning.sql). Non è stato creato nulla."
+      },
+      "progress": "Passaggio {current} di {total}",
+      "steps": {
+        "client": "Cliente",
+        "project": "Progetto",
+        "design": "Design system",
+        "owner": "Titolare",
+        "review": "Riepilogo"
+      },
+      "nav": {
+        "next": "Avanti",
+        "back": "Indietro",
+        "create": "Crea progetto",
+        "creating": "Creazione…",
+        "checking": "Verifica…"
+      },
+      "client": {
+        "heading": "Per quale cliente è questo sito?",
+        "existing": "Cliente esistente",
+        "new": "Nuovo cliente",
+        "pick": "Cliente",
+        "pickPlaceholder": "Scegli un cliente",
+        "name": "Nome del cliente",
+        "namePlaceholder": "es. Studio Rossi",
+        "slug": "Slug del cliente",
+        "slugHelp": "Lettere minuscole, numeri e trattini. Uso interno; non si potrà cambiare in seguito.",
+        "noClients": "Non ci sono ancora clienti: questo crea il primo."
+      },
+      "project": {
+        "heading": "Il sito",
+        "name": "Nome del progetto",
+        "namePlaceholder": "es. Studio Rossi",
+        "slug": "Slug del progetto",
+        "slugHelp": "L’indirizzo del sito sulla piattaforma: preview.abluo.app/{slug}. Lettere minuscole, numeri e trattini.",
+        "defaultLocale": "Lingua predefinita",
+        "defaultTag": "predefinita",
+        "languages": "Lingue",
+        "languagesHelp": "La lingua predefinita è sempre inclusa. Altre si possono aggiungere più tardi in Studio."
+      },
+      "design": {
+        "heading": "Parti da un design system",
+        "help": "Il nuovo sito riceve un design system tutto suo, così si può rifinire in Studio senza modificare nessun altro sito.",
+        "templates": "Modelli",
+        "projects": "Altri siti",
+        "templateNote": "Modello — il nuovo sito eredita da questo",
+        "copyNote": "Copia del design di {project}",
+        "inherits": "basato su {name}",
+        "none": "Nessun design system trovato in Sanity."
+      },
+      "owner": {
+        "heading": "Chi è il titolare del cliente?",
+        "help": "Riceve via email un invito a diventare titolare del cliente: tutti i siti, le persone e la fatturazione.",
+        "optional": "Facoltativo per un cliente esistente: lascia vuoto se il cliente ha già un titolare.",
+        "name": "Nome",
+        "email": "Email"
+      },
+      "review": {
+        "heading": "Riepilogo",
+        "client": "Cliente",
+        "newClient": "{name} (nuovo · {slug})",
+        "project": "Progetto",
+        "slug": "Slug",
+        "languages": "Lingue",
+        "designSystem": "Design system",
+        "dsTemplate": "Design system proprio, eredita da {name}",
+        "dsCopy": "Copia propria di {name}",
+        "owner": "Titolare",
+        "noOwner": "Nessun invito",
+        "status": "Stato iniziale",
+        "statusValue": "Anteprima — non online",
+        "start": "Pagina iniziale",
+        "startValue": "Un’intestazione e una sezione di testo con testo provvisorio",
+        "domainNote": "Il dominio non viene collegato automaticamente. Dopo la creazione vedrai i passaggi per aggiungerlo in Vercel."
+      },
+      "errors": {
+        "required": "Obbligatorio.",
+        "tooShort": "Almeno {min} caratteri.",
+        "tooLong": "Troppo lungo.",
+        "invalidChars": "Usa solo lettere minuscole, numeri e trattini.",
+        "mustStartWithLetter": "Inizia con una lettera.",
+        "hyphenEdges": "Non può finire con un trattino.",
+        "doubleHyphen": "Niente trattini doppi.",
+        "reserved": "Questa parola è riservata dalla piattaforma.",
+        "taken": "Già in uso.",
+        "notFound": "Non trovato: potrebbe essere stato rimosso.",
+        "invalid": "Controlla questo valore.",
+        "forbidden": "Solo gli admin Abluo con verifica in due passaggi possono farlo.",
+        "failed": "Qualcosa è andato storto. Riprova.",
+        "busy": "Questa configurazione è in corso. Attendi un momento e ricarica.",
+        "not_set_up": "Applica prima la migrazione 037: non è stato creato nulla.",
+        "not_found": "Questa configurazione non esiste più."
+      },
+      "unfinished": {
+        "heading": "Configurazioni non completate"
+      },
+      "run": {
+        "heading": "Configurazione di {name}",
+        "completedTitle": "{name} è pronto",
+        "clientLine": "Cliente: {name}",
+        "stepsLabel": "Passaggi della configurazione",
+        "status": {
+          "pending": "Non avviata",
+          "running": "In corso",
+          "failed": "Interrotta",
+          "completed": "Completata"
+        },
+        "stepStatus": {
+          "done": "Fatto",
+          "failed": "Non riuscito",
+          "skipped": "Saltato",
+          "waiting": "In attesa"
+        },
+        "steps": {
+          "supabaseTenant": "Record del cliente (Supabase)",
+          "supabaseProject": "Record del progetto (Supabase)",
+          "sanityClient": "Documento del cliente (Sanity)",
+          "sanityDesignSystem": "Design system (Sanity)",
+          "sanityProject": "Documento del progetto (Sanity)",
+          "sanitySiteConfig": "Impostazioni del sito (Sanity)",
+          "sanityHomePage": "Pagina iniziale (Sanity)",
+          "inviteOwner": "Invito al titolare"
+        },
+        "failedAt": "Interrotta a: {step}. Tutto ciò che precede è salvato.",
+        "retry": "Riprova",
+        "resume": "Riprendi",
+        "retrying": "In corso…",
+        "retryHelp": "Riparte dal passaggio non completato. Nulla viene creato due volte.",
+        "invited": "Un invito è stato inviato via email a {email}.",
+        "emailNotSent": "L’invito per {email} è stato creato, ma non è stato possibile inviare l’email. Invialo di nuovo dalla pagina del progetto.",
+        "openProject": "Apri il progetto",
+        "openStudio": "Apri Studio",
+        "another": "Nuovo progetto",
+        "next": {
+          "heading": "Prossimi passi",
+          "routes": {
+            "title": "Rendi raggiungibile il sito",
+            "body": "Quale sito risponde a quale indirizzo viene generato da Supabase al momento della build. Esegui questo comando, fai il commit di src/lib/tenancy/generated/route-config.ts e pubblica (dev → preview → main). Il sito si aprirà su {url}."
+          },
+          "studio": {
+            "title": "Rifinisci design e contenuti",
+            "body": "In Studio apri {name}: design system e pagina iniziale sono solo suoi, le modifiche non toccano nessun altro sito."
+          },
+          "domain": {
+            "title": "Aggiungi il dominio (a mano)",
+            "intro": "I domini non sono ancora automatici. Scrivi il dominio per completare i passaggi.",
+            "label": "Dominio",
+            "placeholderDomain": "esempio.it",
+            "step1": "In Vercel → abluo-platform → Settings → Domains, aggiungi {domain} e www.{domain}.",
+            "step2": "Presso il provider DNS del dominio, aggiungi i record richiesti da Vercel. Di solito:",
+            "type": "Tipo",
+            "name": "Nome",
+            "value": "Valore",
+            "recordsNote": "Vercel mostra i record esatti per ogni dominio: se sono diversi, segui Vercel.",
+            "step3": "In Supabase imposta custom_domain = {domain} sul progetto {slug} (e Custom Domain sul progetto in Studio).",
+            "step4": "Rigenera la tabella di instradamento, fai il commit e pubblica:",
+            "step5": "Quando il sito è pronto per andare online, imposta lo stato del progetto su active in Supabase, rigenera e pubblica di nuovo."
+          }
+        }
+      }
     }
   },
   "editor": {

@@ -15,7 +15,8 @@ import { listProjectMedia, type ListProjectMediaOptions, type PostMediaDeps, typ
 import { GalleryError, localized } from '@/lib/api/gallery-drafts'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
 
-export type MediaUsage = { kind: 'gallery' | 'page' | 'post'; id: string; title: string }
+export type MediaUsageKind = 'gallery' | 'page' | 'post' | 'event' | 'settings' | 'other'
+export type MediaUsage = { kind: MediaUsageKind; id: string; title: string }
 /** A site's languages, default first. */
 export type MediaSite = { defaultLocale: string; locales: string[] }
 /**
@@ -42,10 +43,28 @@ const pickTitle = (value: unknown, locale: string): string => {
   return v[locale] ?? v.en ?? Object.values(v)[0] ?? ''
 }
 
+/** Document types shown as a "Page" in "Used in" (the legacy `homePage` and the module listing pages included). */
+const PAGE_TYPES = new Set(['page', 'homePage', 'blogPage', 'eventsPage', 'newsPage', 'livePage'])
+
+/** How "Used in" labels a document of `type`. Pure. */
+export function mediaUsageKind(type: string): MediaUsageKind {
+  if (type === 'gallery') return 'gallery'
+  if (type === 'post') return 'post'
+  if (type === 'event') return 'event'
+  if (type === 'siteConfig') return 'settings'
+  return PAGE_TYPES.has(type) ? 'page' : 'other'
+}
+
 /**
- * Where each asset is used: published galleries, pages and posts of THIS
- * project that reference the asset (or, for a blog cover, its image).
- * One request; the query text only ever interpolates loop indices.
+ * Where each asset is used: published documents of THIS project (any type
+ * but `mediaAsset`) that reference either
+ *   - the `mediaAsset` document (galleries, Media-Library-first content), or
+ *   - its image ASSET directly (`image.asset._ref` — blog covers, and content
+ *     placed before the media-library-first rule and later backfilled).
+ * Tenant scoping is strict: every subquery filters `projectSlug == $projectSlug`,
+ * so a shared image asset (Sanity de-duplicates identical uploads across
+ * projects) never reports another project's documents. One request; the
+ * query text only ever interpolates loop indices.
  */
 export async function mediaUsage(
   client: Client,
@@ -58,21 +77,27 @@ export async function mediaUsage(
   const params: Record<string, unknown> = { projectSlug }
   const parts = assets.map((a, i) => {
     params[`a${i}`] = a.assetId
+    // '-' never matches a reference, so an unknown URL only finds mediaAsset references.
     params[`r${i}`] = imageRefFromUrl(a.url) ?? '-'
-    return `"u${i}": *[_type in ["gallery", "page", "post"] && projectSlug == $projectSlug
+    return `"u${i}": *[projectSlug == $projectSlug && _type != "mediaAsset"
       && !(_id in path("drafts.**")) && !(_id in path("versions.**"))
-      && (references($a${i}) || coverImage.asset._ref == $r${i})]{ _id, _type, title, internalName }`
+      && (references($a${i}) || references($r${i}))]{ _id, _type, title, internalName, name, siteName }`
   })
-  const rows = await client.fetch<Record<string, Array<{ _id: string; _type: string; title?: unknown; internalName?: unknown }> | null> | null>(
-    `{ ${parts.join(',\n')} }`,
-    params
-  )
+  type Row = { _id: string; _type: string; title?: unknown; internalName?: unknown; name?: unknown; siteName?: unknown }
+  const rows = await client.fetch<Record<string, Row[] | null> | null>(`{ ${parts.join(',\n')} }`, params)
+  const text = (v: unknown) => (typeof v === 'string' ? v : pickTitle(v, locale))
   assets.forEach((a, i) => {
-    const list = (rows?.[`u${i}`] ?? []).map((r) => ({
-      kind: (r._type === 'gallery' ? 'gallery' : r._type === 'post' ? 'post' : 'page') as MediaUsage['kind'],
-      id: r._id,
-      title: pickTitle(r.title, locale) || (typeof r.internalName === 'string' ? r.internalName : ''),
-    }))
+    const seen = new Set<string>()
+    const list: MediaUsage[] = []
+    for (const r of rows?.[`u${i}`] ?? []) {
+      if (!r?._id || seen.has(r._id)) continue
+      seen.add(r._id)
+      list.push({
+        kind: mediaUsageKind(r._type),
+        id: r._id,
+        title: text(r.title) || text(r.internalName) || text(r.name) || text(r.siteName) || '',
+      })
+    }
     out.set(a.assetId, list)
   })
   return out
@@ -117,7 +142,7 @@ const ASSET_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/
 
 /**
  * Deletes one Media Library photo (the `mediaAsset` document; the image binary
- * stays in Sanity, like the legacy `DELETE /api/media/[id]`). Media Library
+ * stays in Sanity, like the legacy `DELETE /api/media/[id]` did — removed 2026-10-08). Media Library
  * gate first; the asset must be a published `mediaAsset` of the grant's
  * project ("not_found" otherwise, so ids can't be probed), and nothing may
  * reference it — published, draft or version — ("in_use"): a photo still on a
@@ -133,14 +158,25 @@ export async function deleteMediaAsset(
   const client = deps.client ?? sanityWriteClient
   const assetId = input?.assetId
   if (typeof assetId !== 'string' || !ASSET_ID.test(assetId)) throw new GalleryError('not_found', 'Unknown photo.')
-  const asset = (await client.getDocument(assetId)) as { _type?: string; projectSlug?: string } | undefined
+  const asset = (await client.getDocument(assetId)) as
+    | { _type?: string; projectSlug?: string; image?: { asset?: { _ref?: unknown } } }
+    | undefined
   if (!asset || asset._type !== 'mediaAsset' || asset.projectSlug !== grant.projectSlug) {
     throw new GalleryError('not_found', 'Unknown photo.')
   }
   // `raw`: the clients' default perspective is `published`, which would not see
   // a draft gallery or post (or a release version) that still uses the photo —
   // and weak draft references would not stop Sanity's delete either.
-  const refs = await client.fetch<number | null>(`count(*[references($id)])`, { id: assetId }, { perspective: 'raw' })
+  // Content of THIS project that uses the photo's image asset directly (what
+  // "Used in" shows for backfilled photos) counts as a use too.
+  const imageRef = typeof asset.image?.asset?._ref === 'string' ? asset.image.asset._ref : null
+  const refs = imageRef
+    ? await client.fetch<number | null>(
+        `count(*[references($id) || (references($ref) && projectSlug == $projectSlug && _type != "mediaAsset")])`,
+        { id: assetId, ref: imageRef, projectSlug: grant.projectSlug },
+        { perspective: 'raw' }
+      )
+    : await client.fetch<number | null>(`count(*[references($id)])`, { id: assetId }, { perspective: 'raw' })
   if (typeof refs !== 'number') throw new GalleryError('failed', 'Could not check where the photo is used.')
   if (refs > 0) throw new GalleryError('in_use', 'This photo is still used.')
   await assertSingleSanityProject((q, p) => client.fetch(q, p), grant.projectSlug)

@@ -8,7 +8,7 @@ import { describe, it, expect, vi } from 'vitest'
 vi.mock('@/lib/sanity/server-clients', () => ({ sanityWriteClient: {} }))
 
 import { assertProjectAccess, grantCanManageMedia, MEDIA_MANAGE_PERMISSION } from '../media-permission'
-import { getMediaSite, imageRefFromUrl, listMediaLibrary, mediaUsage } from '../media-library'
+import { getMediaSite, imageRefFromUrl, listMediaLibrary, mediaUsage, mediaUsageKind } from '../media-library'
 import { updateGalleryPhoto } from '../gallery-photos'
 import { POST_MEDIA_LIMITS } from '../post-media'
 import { mediaNavItems } from '@/lib/modules/client-navigation'
@@ -82,6 +82,52 @@ describe('mediaUsage', () => {
       { kind: 'post', id: 'p1', title: 'Un articolo' },
     ])
     expect(used.get('m2')).toEqual([])
+  })
+
+  it('also finds content that references the image ASSET directly (backfilled photos), project-scoped', async () => {
+    const fetch = vi.fn(async (q: string, p: Record<string, unknown>) => {
+      // every subquery is scoped to the project and skips the mediaAsset itself
+      expect(q.match(/projectSlug == \$projectSlug/g)).toHaveLength(1)
+      expect(q).toContain('_type != "mediaAsset"')
+      expect(q).toContain('references($a0) || references($r0)')
+      expect(q).not.toContain('image-66a8') // the asset id travels as a param only
+      expect(p).toMatchObject({ projectSlug: 'livener', a0: 'mediaAsset-backfill-livener-x', r0: 'image-66a8b9bcfe43b1394d24c10e3effe6e0f5f4cb27-2560x1707-jpg' })
+      return {
+        u0: [
+          { _id: 'home', _type: 'homePage', title: { en: 'Home' } },
+          { _id: 'p2', _type: 'page', internalName: 'About' },
+          { _id: 'ev1', _type: 'event', title: { en: 'Open day', it: 'Porte aperte' } },
+          { _id: 'site', _type: 'siteConfig', siteName: 'Livener' },
+          { _id: 'cta', _type: 'callToAction', name: 'Book' },
+          { _id: 'p2', _type: 'page', internalName: 'About' }, // duplicates are dropped
+        ],
+      }
+    })
+    const used = await mediaUsage({ fetch } as never, 'livener', [{ assetId: 'mediaAsset-backfill-livener-x', url: URL1 }], 'it')
+    expect(used.get('mediaAsset-backfill-livener-x')).toEqual([
+      { kind: 'page', id: 'home', title: 'Home' },
+      { kind: 'page', id: 'p2', title: 'About' },
+      { kind: 'event', id: 'ev1', title: 'Porte aperte' },
+      { kind: 'settings', id: 'site', title: 'Livener' },
+      { kind: 'other', id: 'cta', title: 'Book' },
+    ])
+  })
+
+  it('makes no request for an empty page', async () => {
+    const fetch = vi.fn()
+    expect((await mediaUsage({ fetch } as never, 'amelie', [], 'en')).size).toBe(0)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+})
+
+describe('mediaUsageKind', () => {
+  it('labels every document type', () => {
+    expect(mediaUsageKind('gallery')).toBe('gallery')
+    expect(mediaUsageKind('post')).toBe('post')
+    for (const t of ['page', 'homePage', 'blogPage', 'eventsPage', 'newsPage', 'livePage']) expect(mediaUsageKind(t)).toBe('page')
+    expect(mediaUsageKind('event')).toBe('event')
+    expect(mediaUsageKind('siteConfig')).toBe('settings')
+    expect(mediaUsageKind('designSystem')).toBe('other')
   })
 })
 

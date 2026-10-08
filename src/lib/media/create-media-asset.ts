@@ -1,7 +1,7 @@
 /**
  * Upload one image binary to Sanity and file it as a `mediaAsset` document —
- * the Media Library write shared by the admin route (`POST /api/media`) and
- * the client dashboard's uploads (`src/lib/api/post-media.ts`).
+ * the Media Library write behind every upload (client dashboard and admin
+ * Media, both through `src/lib/api/post-media.ts`).
  *
  * Every upload is optimised first (standing rule: all images go through
  * TinyPNG/Tinify before use) — see `optimizeImage`. Optimisation never blocks

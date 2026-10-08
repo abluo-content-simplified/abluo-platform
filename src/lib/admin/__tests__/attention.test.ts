@@ -8,7 +8,6 @@ import {
   pendingInvitationCount,
   requestsWaitingRule,
   sortAdminAttention,
-  unansweredRequestCounts,
   type AttentionProject,
 } from '../attention'
 
@@ -90,8 +89,7 @@ describe('admin attention rules', () => {
     expect(buildAdminAttention({ projects: [], invitations: null, requests: null }, NOW)).toEqual([])
   })
 
-  it('counts unanswered requests and pending invitations', () => {
-    expect(unansweredRequestCounts([{ createdAt: at(-1 * DAY) }, { createdAt: at(-8 * DAY) }], NOW)).toEqual({ total: 2, week: 1 })
+  it('counts pending invitations', () => {
     expect(pendingInvitationCount([{ expiresAt: at(1) }, { expiresAt: at(-1) }], NOW)).toBe(1)
   })
 })

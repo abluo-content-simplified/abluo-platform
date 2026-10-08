@@ -5,6 +5,7 @@ import { Link } from '@/i18n/navigation'
 import { FactRow } from '@/components/app/ui/FactRow'
 import { SidePanel } from '@/components/app/ui/SidePanel'
 import { AvatarEditor } from '@/components/client/account/AvatarEditor'
+import { NameEditor } from '@/components/client/account/NameEditor'
 import { TwoFactorPill } from '@/components/client/people/people-bits'
 
 /**
@@ -29,7 +30,7 @@ export function ProfilePanel({ open, onClose, profile }: { open: boolean; onClos
       <div className="flex flex-col gap-6">
         <AvatarEditor name={profile.name} email={profile.email} src={profile.avatarUrl} />
         <dl>
-          <FactRow label={t('name')}>{profile.name || <span className="text-muted-foreground">{t('notSet')}</span>}</FactRow>
+          <NameEditor name={profile.name} />
           <FactRow label={t('email')}>{profile.email}</FactRow>
           {profile.twoFactor !== null ? (
             <FactRow label={t('twoStep')}>

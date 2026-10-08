@@ -27,7 +27,7 @@ import type { DataStatus, PortfolioRow } from '@/lib/analytics/view'
  * `/analytics/{slug}`, the same widgets the client sees. Copy: admin.analytics.
  */
 
-const STATUS_TONE: Record<DataStatus, PillTone> = { connected: 'success', stale: 'highlight', error: 'outline', not_connected: 'muted' }
+const STATUS_TONE: Record<DataStatus, PillTone> = { connected: 'success', stale: 'highlight', out_of_date: 'highlight', error: 'outline', not_connected: 'muted' }
 
 export function StatusPill({ status }: { status: DataStatus }) {
   const t = useTranslations('admin.analytics.status')

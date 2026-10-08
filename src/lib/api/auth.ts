@@ -141,16 +141,3 @@ export async function requireAbluoAdmin(): Promise<AuthenticatedActor | null> {
   const { decision, actor } = await resolveAdminAccess()
   return decision === 'allow' ? actor : null
 }
-
-/**
- * Bounds the blast radius of id-addressed mutation routes (e.g.
- * `/api/media/[id]`) to a single expected Sanity `_type`. Even an
- * authenticated caller must only be able to mutate documents of the type the
- * route is meant to manage — never an arbitrary document by id.
- */
-export function isExpectedDocType(
-  actualType: string | null | undefined,
-  expectedType: string
-): boolean {
-  return actualType === expectedType
-}

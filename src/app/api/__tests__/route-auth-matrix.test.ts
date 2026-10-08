@@ -170,7 +170,6 @@ beforeEach(() => {
   sweepFormEvents.mockClear()
   process.env.CRON_SECRET = 'cron-secret'
   process.env.FORM_EVENTS_WEBHOOK_SECRET = 'hook-secret'
-  process.env.MIGRATION_SECRET = 'migrate-secret'
 })
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -194,33 +193,11 @@ function noSideEffects() {
 
 type Call = { name: string; run: () => Promise<Response> }
 
-function multipart(fields: Record<string, string | Blob>): RequestInit {
-  const fd = new FormData()
-  for (const [k, v] of Object.entries(fields)) fd.append(k, v)
-  return { method: 'POST', body: fd }
-}
-
 const ADMIN_ONLY: Call[] = [
   { name: 'GET /api/sanity/document', run: async () => (await import('@/app/api/sanity/document/route')).GET(req('/api/sanity/document?id=x')) },
   { name: 'GET /api/sanity/projects', run: async () => (await import('@/app/api/sanity/projects/route')).GET(req('/api/sanity/projects?tenantId=t')) },
   { name: 'GET /api/sanity/tenant', run: async () => (await import('@/app/api/sanity/tenant/route')).GET(req('/api/sanity/tenant?id=t')) },
   { name: 'GET /api/sanity/tenants', run: async () => (await import('@/app/api/sanity/tenants/route')).GET(req('/api/sanity/tenants')) },
-  { name: 'GET /api/media', run: async () => (await import('@/app/api/media/route')).GET(req('/api/media')) },
-  {
-    name: 'POST /api/media',
-    run: async () =>
-      (await import('@/app/api/media/route')).POST(
-        req('/api/media', multipart({ file: new Blob(['x'], { type: 'image/png' }), tenant: 'client-b', altText: 'a' }))
-      ),
-  },
-  { name: 'PATCH /api/media/[id]', run: async () => (await import('@/app/api/media/[id]/route')).PATCH(req('/api/media/m1', { ...json({ tags: ['x'] }), method: 'PATCH' }), ctx({ id: 'm1' })) },
-  { name: 'DELETE /api/media/[id]', run: async () => (await import('@/app/api/media/[id]/route')).DELETE(req('/api/media/m1', { method: 'DELETE' }), ctx({ id: 'm1' })) },
-  { name: 'GET /api/media/tags', run: async () => (await import('@/app/api/media/tags/route')).GET(req('/api/media/tags')) },
-  { name: 'GET /api/media/scopes', run: async () => (await import('@/app/api/media/scopes/route')).GET(req('/api/media/scopes')) },
-  {
-    name: 'POST /api/media/migrate (WITH the correct secret)',
-    run: async () => (await import('@/app/api/media/migrate/route')).POST(req('/api/media/migrate', { method: 'POST', headers: { authorization: 'Bearer migrate-secret' } })),
-  },
   { name: 'POST /api/translate', run: async () => (await import('@/app/api/translate/route')).POST(req('/api/translate', json({ projectSlug: 'b', text: 'x' }))) },
   { name: 'GET /api/translate/status', run: async () => (await import('@/app/api/translate/status/route')).GET(req('/api/translate/status?projectSlug=b')) },
   { name: 'POST /api/tenants/[tenantId]/invite', run: async () => (await import('@/app/api/tenants/[tenantId]/invite/route')).POST(req('/api/tenants/t/invite', json({ email: 'x@y.z' })), ctx({ tenantId: 't' })) },
@@ -248,34 +225,6 @@ describe('admin-only routes refuse everyone but a two-factor admin', () => {
     const res = await (await import('@/app/api/sanity/document/route')).GET(req('/api/sanity/document?id=x'))
     expect(res.status).toBe(200)
     expect(sanityCalls).toEqual(['read:fetch'])
-  })
-
-  it('a leaked MIGRATION_SECRET alone is not enough: wrong/absent secret is 401 even for adminAal2', async () => {
-    persona = 'adminAal2'
-    const { POST } = await import('@/app/api/media/migrate/route')
-    expect((await POST(req('/api/media/migrate', { method: 'POST' }))).status).toBe(401)
-    expect((await POST(req('/api/media/migrate', { method: 'POST', headers: { authorization: 'Bearer nope' } }))).status).toBe(401)
-    noSideEffects()
-  })
-})
-
-// ── Media: cross-tenant reference on upload (adminAal2) ─────────────────────
-
-describe('POST /api/media refuses a project that belongs to another tenant', () => {
-  it('rejects before uploading anything', async () => {
-    persona = 'adminAal2'
-    const { sanityWriteClient } = await import('@/lib/sanity/server-clients')
-    ;(sanityWriteClient.fetch as ReturnType<typeof vi.fn>).mockImplementationOnce(async () => {
-      sanityCalls.push('write:fetch')
-      return { tenantExists: true, project: { projectSlug: 'hoffmann', clientId: 'client-b' } }
-    })
-    const { POST } = await import('@/app/api/media/route')
-    const res = await POST(
-      req('/api/media', multipart({ file: new Blob(['x'], { type: 'image/png' }), tenant: 'client-a', project: 'project-hoffmann', altText: 'a' }))
-    )
-    expect(res.status).toBe(400)
-    expect(await res.json()).toMatchObject({ error: 'project_not_owned_by_tenant' })
-    expect(sanityCalls).toEqual(['write:fetch']) // the ownership lookup only — no upload, no create
   })
 })
 
@@ -927,11 +876,6 @@ const CLASSIFIED: Record<string, 'admin' | 'tenant' | 'machine' | 'public-read' 
   'sanity/projects': 'admin',
   'sanity/tenant': 'admin',
   'sanity/tenants': 'admin',
-  media: 'admin',
-  'media/[id]': 'admin',
-  'media/tags': 'admin',
-  'media/scopes': 'admin',
-  'media/migrate': 'admin',
   translate: 'admin',
   'translate/status': 'admin',
   'tenants/[tenantId]/invite': 'admin',
@@ -964,7 +908,6 @@ describe('API route inventory', () => {
     expect(found.sort()).toEqual(Object.keys(CLASSIFIED).sort())
     expect(Object.entries(CLASSIFIED).filter(([, c]) => c === 'admin').map(([k]) => k).sort()).toEqual(
       [
-        'media', 'media/[id]', 'media/migrate', 'media/scopes', 'media/tags',
         'sanity/document', 'sanity/projects', 'sanity/tenant', 'sanity/tenants',
         'tenants/[tenantId]/invite', 'translate', 'translate/status',
       ].sort()

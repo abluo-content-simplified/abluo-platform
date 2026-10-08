@@ -22,7 +22,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function AnalyticsPage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant: projectSlug } = await params
-  const ctx = await getTenantAuthorizationContext()
+  const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) redirect(`/login?next=/${projectSlug}/analytics`)
   const grant = resolveProjectGrant(ctx.projects, projectSlug)
   if (!grant || !canReadAnalytics(grant)) notFound()

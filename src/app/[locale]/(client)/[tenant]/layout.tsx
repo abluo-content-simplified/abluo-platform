@@ -14,6 +14,11 @@ import { AddContentRoot } from '@/components/client/create/AddContentRoot'
 import { buildCreateMenu } from '@/lib/modules/create-menu'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { loadWhatsNewFeed } from '@/lib/whats-new/client-feed'
+import { can } from '@/lib/authz/check'
+import { SUPPORT_EDIT_MINUTES } from '@/lib/support/constants'
+import { listSupportNotices } from '@/lib/support/server'
+import { SupportBanner } from '@/components/client/support/SupportBanner'
+import { SupportAccessNotice } from '@/components/client/support/SupportAccessNotice'
 
 /**
  * Project-scoped client dashboard shell (ADR-017 Phase 2 / task #81).
@@ -35,6 +40,12 @@ import { loadWhatsNewFeed } from '@/lib/whats-new/client-feed'
  * may see on this project, as localized, href-based items. The signed-in
  * person's own details and the Help link (`ABLUO_HELP_URL`, configuration) go
  * to the account menu.
+ *
+ * Support mode (ADR-028 §8, docs/engineering/support-mode.md): when the
+ * context is an Abluo admin's support visit, the admin's banner sits on top of
+ * every page. Otherwise, people who decide on support access (`users.manage`:
+ * Owner, Site admin) see pending requests / live access as a notice on top of
+ * every page, Home included.
  */
 export default async function ClientProjectLayout({
   children,
@@ -45,7 +56,7 @@ export default async function ClientProjectLayout({
 }) {
   const { tenant: projectSlug } = await params
 
-  const ctx = await getTenantAuthorizationContext()
+  const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) {
     redirect(`/login?next=/${projectSlug}/home`)
   }
@@ -83,6 +94,11 @@ export default async function ClientProjectLayout({
       role: tRoles.has(g.role) ? tRoles(g.role) : g.role,
     })),
   }
+  const support = ctx.support ?? null
+  const supportNotices =
+    !support && can(ctx, 'users.manage', { kind: 'project', projectId: activeGrant.projectId })
+      ? await listSupportNotices(activeGrant.projectId, ctx.userId)
+      : []
   const jar = await cookies()
   const theme = parseAppTheme(jar.get(APP_THEME_COOKIE)?.value)
   const textSize = parseAppTextSize(jar.get(APP_TEXT_SIZE_COOKIE)?.value)
@@ -116,7 +132,25 @@ export default async function ClientProjectLayout({
         />
         {/* #client-main: the main scroll container (the floating "+" listens to it and to the window). */}
         <div id="client-main" className="min-h-screen min-w-0 flex-1 md:ml-56">
-          <main className="p-4 pb-28 md:p-6">{children}</main>
+          {support ? (
+            <SupportBanner
+              site={support.projectName}
+              role={tRoles.has(support.role) ? tRoles(support.role) : support.role}
+              status={support.status}
+              expiresAt={support.expiresAt}
+              contactRequestsHidden={!support.contactRequestsShown && activeGrant.enabledModuleIds.includes('forms')}
+            />
+          ) : null}
+          <main className="p-4 pb-28 md:p-6">
+            {supportNotices.length ? (
+              <SupportAccessNotice
+                projectSlug={activeGrant.projectSlug}
+                minutes={SUPPORT_EDIT_MINUTES}
+                notices={supportNotices.map((n) => ({ sessionId: n.sessionId, status: n.status, adminName: n.adminName, expiresAt: n.expiresAt }))}
+              />
+            ) : null}
+            {children}
+          </main>
         </div>
       </div>
     </AddContentRoot>

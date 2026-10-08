@@ -21,8 +21,11 @@ import { getBlogDashboard } from '@/lib/api/dashboard/blog'
 import { getFormsDashboard } from '@/lib/api/dashboard/forms'
 import { getGalleryDashboard } from '@/lib/api/dashboard/gallery'
 import { getMediaDashboard } from '@/lib/api/dashboard/media'
-import { getPeopleAttention } from '@/lib/api/dashboard/people'
+import { getPeopleDashboard } from '@/lib/api/dashboard/people'
 import { getSiteStatus } from '@/lib/api/dashboard/site'
+import { readDismissal, SETUP_CHECKLIST_DISMISSAL } from '@/lib/api/dashboard/dismissals'
+import { buildSetupChecklist, setupFactsWanted, type SetupItemId } from '@/lib/client/setup-checklist'
+import { SetupChecklist } from '@/components/client/home/SetupChecklist'
 import { buildTenantSurfaces, hasWidget } from '@/lib/client/surfaces'
 import { allowedAttentionRules, sortAttention, type AttentionItem } from '@/lib/client/attention'
 import { draftProgress, navHref, percentChange, timeAgo } from '@/lib/client/home-cards'
@@ -41,9 +44,10 @@ import { DailySparkline } from '@/components/app/analytics/AnalyticsOverview'
  * or is refused just leaves its block out. Links are derived from the
  * registry's nav entries, so a block never links to a page the person can't open.
  *
- * Phone: one column — greeting + site, needs your attention, continue
- * editing, at a glance, latest lists. Desktop: greeting + site · at a glance
- * · attention (8) | continue editing (4) · latest lists side by side.
+ * Phone: one column — greeting, "Get your site ready" (setup checklist),
+ * at a glance, needs your attention, continue editing, latest lists, site.
+ * Desktop: greeting + site · setup checklist · at a glance · attention (8) |
+ * continue editing (4) · latest lists side by side.
  */
 
 /** The step a draft was on ("type" = just created → the title). */
@@ -60,7 +64,7 @@ const LATEST_COUNT = 3
 export default async function DashboardHomePage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant: projectSlug } = await params
 
-  const ctx = await getTenantAuthorizationContext()
+  const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) redirect(`/login?next=/${projectSlug}/home`)
 
   const grant = resolveProjectGrant(ctx.projects, projectSlug)
@@ -79,17 +83,22 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
   const enabled = new Set(grant.enabledModuleIds)
   const canEditPosts = grant.permissions.includes('blog.post.write')
   const canEditGalleries = grant.permissions.includes(GALLERY_WRITE_PERMISSION)
+  // Setup checklist: only the items this person can act on are read at all.
+  const setup = show('setupChecklist') ? setupFactsWanted(grant) : new Set<SetupItemId>()
 
   const wantBlog = enabled.has('blog')
-  const blogList = wantBlog && (show('glance.posts') || show('latest.posts') || show('continueEditing') || rules.has('scheduledSoon') || rules.has('missingLanguage'))
+  const blogList =
+    wantBlog &&
+    (show('glance.posts') || show('latest.posts') || show('continueEditing') || rules.has('scheduledSoon') || rules.has('missingLanguage') || setup.has('firstPost'))
   const blogDrafts = wantBlog && canEditPosts && (show('continueEditing') || rules.has('stalePostDrafts'))
   const wantForms = show('glance.requests') || rules.has('newRequests')
   const wantGallery =
     enabled.has('gallery') && (show('glance.galleries') || show('latest.galleries') || (show('continueEditing') && canEditGalleries) || rules.has('staleGalleryDrafts'))
-  const wantMedia = show('glance.media') || rules.has('missingAltText')
-  const wantPeople = rules.has('pendingInvites')
+  const wantMedia = show('glance.media') || rules.has('missingAltText') || setup.has('photos')
+  const wantPeople = rules.has('pendingInvites') || setup.has('team')
+  const peopleHref = link('people')
 
-  const [firstName, site, blog, forms, gallery, media, people, traffic] = await Promise.all([
+  const [firstName, site, blog, forms, gallery, media, people, traffic, setupDismissal] = await Promise.all([
     getViewerFirstName(ctx).catch(() => null),
     show('siteStatus') ? getSiteStatus(ctx, grant.projectId) : null,
     blogList || blogDrafts
@@ -121,9 +130,12 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
         })
       : null,
     wantMedia ? getMediaDashboard(ctx, grant.projectId, { attentionHref: rules.has('missingAltText') ? link('media') : null }) : null,
-    wantPeople && link('people') ? getPeopleAttention(ctx, grant.projectId, link('people')!) : [],
+    wantPeople && peopleHref
+      ? getPeopleDashboard(ctx, grant.projectId, { attentionHref: rules.has('pendingInvites') ? peopleHref : null })
+      : null,
     // Website traffic (ADR-029 §3.4): the stored daily snapshot, never a live Google call.
-    show('traffic') ? getProjectAnalytics(ctx, grant.projectId).catch(() => null) : null,
+    show('traffic') || setup.has('analytics') ? getProjectAnalytics(ctx, grant.projectId).catch(() => null) : null,
+    setup.size ? readDismissal(ctx.userId, grant.projectId, SETUP_CHECKLIST_DISMISSAL) : null,
   ])
 
   // ── Needs your attention ────────────────────────────────────────────────
@@ -132,7 +144,7 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
     ...(blog?.attention ?? []),
     ...(gallery?.attention ?? []),
     ...(media?.attention ?? []),
-    ...people,
+    ...(people?.attention ?? []),
   ]).filter((i) => i.href)
   const attentionRows: AttentionRow[] = attentionItems.map((i) => ({
     id: i.id,
@@ -310,13 +322,36 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
         ].filter(Boolean)
       : []
 
+  // ── Get your site ready (setup checklist) ────────────────────────────────
+  const mediaHref = link('media')
+  const checklist =
+    setup.size && setupDismissal
+      ? buildSetupChecklist({
+          grant,
+          dismissed: setupDismissal.dismissed,
+          facts: {
+            publishedPosts: blog?.list ? blog.list.posts.filter((p) => p.status === 'published').length : null,
+            mediaAssets: media ? media.glance.photos : null,
+            teamSize: people ? people.teamSize : null,
+            analyticsConnected: traffic ? traffic.hasData : null,
+            domainConnected: site ? site.ownDomain : null,
+          },
+          hrefs: {
+            firstPost: link('blog'),
+            photos: mediaHref ? `${mediaHref}/add` : null,
+            team: peopleHref,
+            analytics: link('analytics'),
+          },
+        })
+      : null
+
   // First run: nothing written yet and nothing in progress.
   const nothingYet = posts !== null && posts.length === 0 && cards.length === 0
   const hasContinue = cards.length > 0
 
   return (
     <PageShell>
-      {/* Phone order (Tom, 2026-10-08): greeting, at a glance, needs your attention,
+      {/* Phone order (Tom, 2026-10-08): greeting, setup checklist, at a glance, needs your attention,
           continue editing, latest lists, view your site — set with phoneOrder because
           on desktop "Needs your attention" and the latest lists share the left column
           (no gap under the shorter one), with Continue editing on the right. */}
@@ -331,7 +366,19 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
           </DashboardArea>
         ) : null}
 
-        {nothingYet ? (
+        {/* Right after the greeting on phones; top of the main column on desktop.
+            It replaces the first-run empty state (both say "start here"). */}
+        {checklist?.visible ? (
+          <DashboardArea phoneOrder={2} desktopOrder={3}>
+            <SetupChecklist
+              projectSlug={projectSlug}
+              items={checklist.items}
+              doneCount={checklist.doneCount}
+              total={checklist.total}
+              canHide={setupDismissal?.available ?? false}
+            />
+          </DashboardArea>
+        ) : nothingYet ? (
           <DashboardArea phoneOrder={2} desktopOrder={3}>
             <EmptyState title={th('emptyTitle')} body={th('emptyBody')} />
           </DashboardArea>

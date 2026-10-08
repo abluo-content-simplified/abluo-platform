@@ -2,6 +2,7 @@
 // Client components import the pure half, `./backlog-model`.
 import type { AuthenticatedActor } from '@/lib/api/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readAllRows } from '@/lib/supabase/read-all'
 import {
   isBacklogStatus,
   isMissingTableError,
@@ -49,9 +50,11 @@ function fail(error: DbError, context: string): { ok: false; error: BacklogError
 }
 
 async function projectOptions(db: ReturnType<typeof createAdminClient>): Promise<BacklogProjectOption[]> {
-  const { data, error } = await db.from('projects').select('id, name, slug').order('name', { ascending: true })
-  if (error || !data) return []
-  return (data as BacklogProjectOption[]).map((p) => ({ id: p.id, name: p.name, slug: p.slug }))
+  const { rows, error } = await readAllRows<BacklogProjectOption>((from, to) =>
+    db.from('projects').select('id, name, slug').order('name', { ascending: true }).order('id').range(from, to),
+  )
+  if (error) return []
+  return rows.map((p) => ({ id: p.id, name: p.name, slug: p.slug }))
 }
 
 /** The whole backlog (it is small: one team's list) plus the project picker options. */
@@ -59,14 +62,15 @@ export async function loadBacklog(actor: AuthenticatedActor | null): Promise<Bac
   if (!isAdmin(actor)) return { state: 'error', message: 'forbidden', projects: [] }
   const db = createAdminClient()
   const [items, projects] = await Promise.all([
-    db.from(TABLE).select('*').order('updated_at', { ascending: false }).limit(2000),
+    // Paged: PostgREST returns at most 1000 rows per request, whatever .limit() says.
+    readAllRows<Record<string, unknown>>((from, to) => db.from(TABLE).select('*').order('updated_at', { ascending: false }).order('id').range(from, to)),
     projectOptions(db),
   ])
   if (items.error) {
     if (isMissingTableError(items.error)) return { state: 'not_set_up', projects }
     return { state: 'error', message: items.error.message, projects }
   }
-  return { state: 'ready', items: (items.data ?? []).map((r) => rowToBacklogItem(r as Record<string, unknown>)), projects }
+  return { state: 'ready', items: items.rows.map((r) => rowToBacklogItem(r)), projects }
 }
 
 /** Next sort_order at the end of a status column. */

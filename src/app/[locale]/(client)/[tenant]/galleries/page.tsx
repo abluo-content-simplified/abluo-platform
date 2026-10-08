@@ -24,7 +24,7 @@ export default async function GalleriesPage({
   const { tenant: projectSlug } = await params
   const query = new URLSearchParams()
   for (const [k, v] of Object.entries(await searchParams)) if (typeof v === 'string') query.set(k, v)
-  const ctx = await getTenantAuthorizationContext()
+  const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) redirect(`/login?next=/${projectSlug}/galleries`)
   const grant = resolveProjectGrant(ctx.projects, projectSlug)
   if (!grant) notFound()

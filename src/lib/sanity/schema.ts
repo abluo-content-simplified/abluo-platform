@@ -18,6 +18,7 @@ import { buildModuleConfigSchemaTypes, buildModuleInstallationsField } from '@/l
 import { buildIntegrationSchemaTypes, buildIntegrationConfigsField } from '@/lib/integrations/schema'
 import { activeFormReferenceFilter } from '@/lib/sanity/form-reference-filter'
 import { POST_CTA_ACTIONS, validateCtaAction, type CtaEntryInput } from '@/lib/blog/post-cta'
+import { isReservedSlug } from '@/lib/platform/reserved-slugs'
 
 // scopedRef and projectSlugField are imported from @/lib/sanity/fields/shared.
 // They live there so module schema files can import them without creating a
@@ -3370,6 +3371,16 @@ const formOverlayButtonSectionType = defineType({
 
 // ─── Platform document types (admin-only) ─────────────────────────────────────
 
+/**
+ * A tenant or project slug may not be a route segment (`analytics`, `studio`,
+ * `posts` …) — see src/lib/platform/reserved-slugs.ts. Unset slugs pass (the
+ * linkers fill them); every live slug passes (checked 2026-10-08).
+ */
+function reservedSlugRule(value: unknown): true | string {
+  if (typeof value !== 'string' || !isReservedSlug(value)) return true
+  return `"${value}" is a reserved word (it is also a page of the platform). Rename the tenant or project in Supabase and link it again.`
+}
+
 const clientType = defineType({
   name: 'client',
   title: 'Client',
@@ -3387,6 +3398,7 @@ const clientType = defineType({
       title: 'Tenant Slug',
       type: 'string',
       hidden: true,
+      validation: (Rule) => Rule.custom(reservedSlugRule),
     }),
     defineField({
       name: 'displayName',
@@ -3413,7 +3425,7 @@ const projectType = defineType({
     // ── Auto-populated by ProjectLinker (hidden from default form) ──────────
     defineField({ name: 'clientRef',    title: 'Client',       type: 'reference', to: [{ type: 'client' }], hidden: true }),
     defineField({ name: 'projectId',    title: 'Project ID',   type: 'string',    hidden: true, validation: (Rule) => Rule.required() }),
-    defineField({ name: 'projectSlug',  title: 'Project Slug', type: 'string',    hidden: true }),
+    defineField({ name: 'projectSlug',  title: 'Project Slug', type: 'string',    hidden: true, validation: (Rule) => Rule.custom(reservedSlugRule) }),
     defineField({ name: 'projectName',  title: 'Project Name', type: 'string',    hidden: true }),
     defineField({ name: 'tenantId',     title: 'Tenant ID',    type: 'string',    hidden: true }),
     // EXPAND phase of the project → tenant scope migration.

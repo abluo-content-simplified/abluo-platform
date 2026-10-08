@@ -13,6 +13,7 @@ describe('client media links (unchanged behaviour)', () => {
     expect(mediaUsageHref(CLIENT_MEDIA_LINKS, 'amelie', { kind: 'gallery', id: 'g-1' })).toBe('/amelie/galleries/g-1')
     expect(mediaUsageHref(CLIENT_MEDIA_LINKS, 'amelie', { kind: 'post', id: 'p-1' })).toBe('/amelie/posts')
     expect(mediaUsageHref(CLIENT_MEDIA_LINKS, 'amelie', { kind: 'page', id: 'x' })).toBeNull()
+    for (const kind of ['event', 'settings', 'other'] as const) expect(mediaUsageHref(CLIENT_MEDIA_LINKS, 'amelie', { kind, id: 'x' })).toBeNull()
   })
 })
 

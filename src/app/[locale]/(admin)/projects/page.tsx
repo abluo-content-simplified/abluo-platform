@@ -1,4 +1,6 @@
 import { getTranslations } from 'next-intl/server'
+import { Link } from '@/i18n/navigation'
+import { PLUS_ICON, PRIMARY_BUTTON } from '@/components/admin/backlog/backlog-bits'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { PageShell } from '@/components/app/ui/PageShell'
@@ -24,7 +26,15 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
   return (
     <PageShell>
       <div className="space-y-1">
-        <PageHeader title={t('title')} />
+        <PageHeader
+          title={t('title')}
+          actions={
+            <Link href="/projects/new" className={PRIMARY_BUTTON}>
+              {PLUS_ICON}
+              {t('newProject')}
+            </Link>
+          }
+        />
         <p className="text-sm text-muted-foreground">{t('description')}</p>
       </div>
 

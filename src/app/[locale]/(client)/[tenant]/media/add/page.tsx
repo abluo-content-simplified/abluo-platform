@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function MediaAddPage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant: projectSlug } = await params
-  const ctx = await getTenantAuthorizationContext()
+  const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) redirect(`/login?next=/${projectSlug}/media/add`)
   const grant = resolveProjectGrant(ctx.projects, projectSlug)
   if (!grant || !grantCanManageMedia(grant)) notFound()

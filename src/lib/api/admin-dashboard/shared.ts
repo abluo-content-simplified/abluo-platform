@@ -6,6 +6,7 @@
  * not exported from the providers' public surface.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { readAllRows, readAllRowsOrThrow } from '@/lib/supabase/read-all'
 
 type Row = Record<string, unknown>
 
@@ -34,8 +35,8 @@ export async function readAccounts(admin: SupabaseClient, ids: readonly string[]
   const out = new Map<string, { name: string; email: string }>()
   const unique = [...new Set(ids.filter(Boolean))]
   if (!unique.length) return out
-  const { data: profiles } = await admin.from('profiles').select('id, full_name').in('id', unique)
-  const names = new Map(((profiles ?? []) as Row[]).map((p) => [p.id as string, String(p.full_name ?? '').trim()]))
+  const { rows: profiles } = await readAllRows<Row>((from, to) => admin.from('profiles').select('id, full_name').in('id', unique).order('id').range(from, to))
+  const names = new Map(profiles.map((p) => [p.id as string, String(p.full_name ?? '').trim()]))
   await Promise.all(
     unique.map(async (uid) => {
       let email = ''
@@ -56,9 +57,9 @@ export async function readOwnersByTenant(admin: SupabaseClient, tenantIds: reado
   const out = new Map<string, AdminOwner[]>()
   const unique = [...new Set(tenantIds.filter(Boolean))]
   if (!unique.length) return out
-  const { data, error } = await admin.from('tenant_members').select('tenant_id, user_id').eq('role', 'owner').in('tenant_id', unique)
-  if (error) throw new Error(`admin owners: ${error.message}`)
-  const rows = (data ?? []) as Row[]
+  const rows = await readAllRowsOrThrow<Row>('admin owners', (from, to) =>
+    admin.from('tenant_members').select('tenant_id, user_id').eq('role', 'owner').in('tenant_id', unique).order('tenant_id').order('user_id').range(from, to),
+  )
   const who = await readAccounts(
     admin,
     rows.map((r) => r.user_id as string),

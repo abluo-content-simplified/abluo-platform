@@ -6,7 +6,7 @@ vi.mock('@/lib/sanity/server-clients', () => ({ sanityServerReadClient: { fetch:
 
 import { mapLimited, refreshAllProjects, refreshProjectAnalytics, listSnapshotProjects } from '../snapshot'
 import { getProjectAnalytics, isMissingTable } from '../read'
-import { dataStatusOf, portfolioRow, portfolioSummary, projectAnalyticsView } from '../view'
+import { dataStatusOf, portfolioRow, portfolioSummary, projectAnalyticsView, projectsMissingGoodSnapshot } from '../view'
 import { mapGa4Batch } from '../ga4'
 import { mapGsc } from '../gsc'
 import { snapshotWindows } from '../periods'
@@ -166,6 +166,26 @@ describe('projectAnalyticsView', () => {
     const v = projectAnalyticsView([snap('ga4', 'ok', '2026-10-04')], now)
     expect(v.stale).toBe(true)
     expect(dataStatusOf(v)).toBe('stale')
+    expect(v.outOfDate).toBe(false)
+  })
+
+  it('out of date after seven days without a good snapshot — not "not connected"', () => {
+    const v = projectAnalyticsView([snap('ga4', 'ok', '2026-09-25'), snap('gsc', 'ok', '2026-09-25')], now)
+    expect(v).toMatchObject({ stale: true, outOfDate: true, hasData: true })
+    expect(dataStatusOf(v)).toBe('out_of_date')
+  })
+
+  it('IDs removed since the last good snapshot → not connected, whatever the old data', () => {
+    const v = projectAnalyticsView([snap('ga4', 'ok', '2026-09-25'), snap('ga4', 'not_connected', '2026-10-07'), snap('gsc', 'not_connected', '2026-10-07')], now)
+    expect(v.hasData).toBe(true)
+    expect(dataStatusOf(v)).toBe('not_connected')
+  })
+
+  it('one fresh source is enough for connected; an error anywhere wins', () => {
+    const fresh = projectAnalyticsView([snap('ga4', 'ok'), snap('gsc', 'not_connected')], now)
+    expect(dataStatusOf(fresh)).toBe('connected')
+    const err = projectAnalyticsView([snap('ga4', 'ok', '2026-09-20'), snap('gsc', 'error')], now)
+    expect(dataStatusOf(err)).toBe('error')
   })
 
   it('portfolio rows and summary: totals, risers, fallers, counts', () => {
@@ -220,5 +240,18 @@ describe('getProjectAnalytics (client read)', () => {
     const r = reader([], { code: '42P01', message: 'relation "analytics_snapshots" does not exist' })
     const v = await getProjectAnalytics(ctx(['analytics.read']), 'p1', { client: r.client })
     expect(v.hasData).toBe(false)
+  })
+})
+
+describe('projectsMissingGoodSnapshot (admin portfolio: who needs a longer read)', () => {
+  it('lists projects lacking a good row for either source', () => {
+    const rows = [
+      { project_id: 'a', source: 'ga4' as const, status: 'ok' as const },
+      { project_id: 'a', source: 'gsc' as const, status: 'ok' as const },
+      { project_id: 'b', source: 'ga4' as const, status: 'ok' as const },
+      { project_id: 'b', source: 'gsc' as const, status: 'error' as const },
+    ]
+    expect(projectsMissingGoodSnapshot(['a', 'b', 'c'], rows)).toEqual(['b', 'c'])
+    expect(projectsMissingGoodSnapshot([], rows)).toEqual([])
   })
 })

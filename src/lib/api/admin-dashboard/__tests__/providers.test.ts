@@ -7,7 +7,7 @@ vi.mock('@/lib/api/auth', () => ({ requireAbluoAdmin: vi.fn(async () => null) })
 
 import { mapProjectRow, openInvitations } from '../shared'
 import { invitationTarget, getAdminHome } from '../home'
-import { getAdminProject, projectInvitations, summarizeOverview } from '../project'
+import { getAdminProject, projectInvitations, requestsGlanceFromCounts, requestWindowStart, summarizeOverview } from '../project'
 import { AdminAccessError, listAdminProjects } from '../projects'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -85,5 +85,16 @@ describe('admin providers (pure parts)', () => {
     expect(out.latestGalleries[0]).toEqual({ id: 'g', title: 'Studio', thumb: null, count: 7 })
     expect(out.media).toEqual({ photos: 3, missingAlt: 2 })
     expect(summarizeOverview(null, 'en')).toMatchObject({ enabledModuleIds: [], galleryCount: 0, media: { photos: 0, missingAlt: 0 } })
+  })
+})
+
+describe('admin project requests glance (exact head counts)', () => {
+  it('windows are the client Home\'s 7-day weeks', () => {
+    expect(requestWindowStart(NOW, 1)).toBe('2026-10-01T12:00:00.000Z')
+    expect(requestWindowStart(NOW, 2)).toBe('2026-09-24T12:00:00.000Z')
+  })
+
+  it('maps counts past 1000 unchanged, a missing count to 0', () => {
+    expect(requestsGlanceFromCounts({ open: 1234, week: 1500, previousWeek: null })).toEqual({ open: 1234, week: 1500, previousWeek: 0 })
   })
 })

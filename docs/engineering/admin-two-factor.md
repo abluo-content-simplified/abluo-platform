@@ -11,7 +11,7 @@ a TOTP code in the same session — to use any admin surface:
 |---|---|---|
 | `/studio` (every host), `admin.abluo.app/*`, admin dashboard pages (`/dashboard`, `/media`, `/clients`, …) | `src/proxy.ts` → `requireAdminAal2` | redirect to `/mfa?next=<path>` |
 | Admin dashboard layout (`src/app/[locale]/(admin)/layout.tsx`) | `resolveAdminAccess()` (defence in depth for the service-role pages) | redirect to `/mfa` |
-| Every admin API route (`/api/sanity/*`, `/api/media/*`, `/api/translate*`, `/api/tenants/[id]/invite`) | `requireAbluoAdmin()` | `403` |
+| Every admin API route (`/api/sanity/*`, `/api/translate*`, `/api/tenants/[id]/invite`; the legacy `/api/media/*` routes were removed 2026-10-08 — admin Media uses server actions) | `requireAbluoAdmin()` | `403` |
 
 One decision function — `adminGateDecision()` in `src/lib/auth/admin-assurance.ts` — serves all three,
 and is fail-closed: anything other than the exact claim `aal2` is "not two-factor". Pinned by

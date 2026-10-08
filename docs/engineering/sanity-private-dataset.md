@@ -221,9 +221,9 @@ means the request carries `SANITY_API_READ_TOKEN` (or the write token) when conf
 | Module entitlement (`tenant-context.ts` → `enabledModuleIdsQuery`) | server | `tenantClient` | token ✅ |
 | Form definitions (`forms/definition-source.ts`), notification branding/recipients | server | `sanityClient` | token ✅ |
 | Translate config (`translate/config.ts`) | server | `tenantClient` | token ✅ |
-| `/api/media`, `/api/media/tags`, `/api/media/scopes`, `/api/media/[id]`, `/api/media/migrate` | server | `server-clients.ts` | write token, else read token ✅ |
+| ~~`/api/media`, `/api/media/tags`, `/api/media/scopes`, `/api/media/[id]`, `/api/media/migrate`~~ — removed 2026-10-08 (unused; admin Media is server actions) | — | — | — |
 | `/api/sanity/document` | server | `sanityServerReadClient` | token ✅ (was anonymous — fixed) |
-| Admin Media page tenant/project pickers | was **browser**, now `/api/media/scopes` | server | token ✅ (was an anonymous browser read — fixed) |
+| Admin Media page tenant/project pickers | was **browser**, then `/api/media/scopes`, now admin Media server actions (ADR-030) | server | token ✅ (was an anonymous browser read — fixed) |
 | Sanity Studio (`/studio`, all `useClient()` panes/inputs/actions) | browser | Studio's own client, signed-in Sanity user | ✅ (project members) |
 | Images / files | browser | `cdn.sanity.io` URLs from `image.ts` (config only, no client) | public CDN ✅ |
 | `scripts/generate-route-config.mjs` | dev machine | uses `SANITY_API_READ_TOKEN`/write token from `.env.local` | needs a token in `.env.local` |

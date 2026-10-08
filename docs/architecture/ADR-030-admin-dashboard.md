@@ -43,7 +43,7 @@ Nav, in order:
 | Item | Route | State |
 |---|---|---|
 | Home | `/dashboard` | cross-project summary: tiles, analytics summary, needs attention |
-| Projects | `/projects` (+ `/projects/[slug]`) | searchable list; project page = what the client sees + admin facts + analytics |
+| Projects | `/projects` (+ `/projects/[slug]`, `/projects/new`) | searchable list; project page = what the client sees + admin facts + analytics; **New project** wizard (client → project → design system → Owner → create; `docs/engineering/new-project-wizard.md`) |
 | Analytics | `/analytics` (+ `/analytics/[slug]`) | portfolio table, one row per site; per-site client view + Refresh now |
 | Media | `/media` | cross-project media library — the client Media screens with an admin scope (done 2026-10-08) |
 | Backlog | `/backlog` | internal backlog (migration 034) |
@@ -57,7 +57,7 @@ Note: admin segments are matched as the first path segment on every host, so eac
 
 1. **Projects / Home / Project page** — Projects as an App list (search, status filter), a per-project page (status, domains, modules, people, links to Studio and preview), Home as the cross-project summary.
 2. **Analytics** — a cross-project Analytics page plus a Home summary, fed by stored snapshots (not live API calls per page view).
-3. **Admin audit log** — an internal log of every admin view of a client's data (who, which project, what, when). Admin-only; never shown to tenants.
+3. **Admin audit log** — an internal log of every admin view of a client's data (who, which project, what, when). Admin-only; never shown to tenants. Views are de-duplicated — one `*.view` row per admin + action + project per 10 minutes, checked before the insert — and paging, searching or tag-filtering a list is not a new view; changes (`media.asset.*`) are always recorded (`src/lib/admin/audit.ts`, amended 2026-10-08).
 4. **Cross-project Media** — an `admin` scope in media-api (all projects, filterable by project); admin-only actions guarded by `requireAbluoAdmin`. Replaces the legacy media page.
 5. **Backlog** — platform ideas, requests and fixes.
 6. **What's new** — updates Abluo publishes for clients, shown in the client dashboard.
@@ -70,3 +70,4 @@ Note: admin segments are matched as the first path segment on every host, so eac
 | 034 | backlog |
 | 035 | what's new |
 | 036 | analytics snapshots |
+| 037 | project provisioning runs — the "New project" wizard (`docs/engineering/new-project-wizard.md`), NOT APPLIED |

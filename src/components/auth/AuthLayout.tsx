@@ -1,10 +1,21 @@
+import type { ReactNode } from 'react'
+
 /**
- * AuthLayout — the shared chrome for signed-out pages.
+ * AuthLayout — the shared frame of every signed-out page (sign in, two-factor,
+ * forgot / reset password, no access).
  *
- * Extracted so sign-in, password reset and anything else that happens before a
- * session exists look like one product rather than three pages built on
- * different days. The login page's own markup is the reference.
+ * It renders inside the `.abluo-app` root that `src/app/(platform)/(auth)/layout.tsx`
+ * provides, so it is drawn with the Abluo App tokens only and follows the
+ * person's light / dark choice and text size like both dashboards (ADR-025 D7,
+ * ADR-030): a calm card, centred on the page, the same wordmark as the
+ * App sidebar above it. No side panel, no raw colours.
+ *
+ * Text sizes are rem so the App text-size preference scales them.
  */
+
+/** The product name, as the App sidebar writes it. Never translated. */
+const BRAND = 'Abluo'
+
 export function AuthLayout({
   title,
   subtitle,
@@ -12,29 +23,19 @@ export function AuthLayout({
 }: {
   title: string
   subtitle?: string
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
-    <div className="flex min-h-screen bg-zinc-50">
-      {/* Left accent */}
-      <div className="hidden w-52 bg-zinc-950 lg:flex lg:flex-col lg:justify-between lg:px-8 lg:py-10">
-        <div>
-          <p className="text-xs font-medium tracking-[0.25em] uppercase text-zinc-100">Abluo</p>
-          <p className="mt-1 text-[10px] text-zinc-500 tracking-wider">Admin</p>
-        </div>
-        <p className="text-[10px] text-zinc-700 tracking-widest uppercase">Content. Simplified.</p>
-      </div>
-
-      <div className="flex flex-1 flex-col items-center justify-center px-6">
-        <div className="w-full max-w-sm">
-          <p className="mb-10 text-xs font-medium tracking-[0.25em] uppercase text-zinc-400 lg:hidden">
-            Abluo Admin
-          </p>
-          <h1 className="mb-1 text-xl font-semibold tracking-tight text-zinc-900">{title}</h1>
-          {subtitle && <p className="mb-8 text-sm text-zinc-400">{subtitle}</p>}
-          {children}
+    <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10 sm:px-6">
+      <div className="w-full max-w-[26rem]">
+        <p className="mb-6 text-center text-base font-semibold tracking-tight text-foreground">{BRAND}</p>
+        <div className="rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-[var(--shadow-raise)] sm:p-8">
+          <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+          {subtitle ? <p className="mt-2 text-[0.9375rem] leading-6 text-muted-foreground">{subtitle}</p> : null}
+          {/* Without a subtitle the first line of the body reads as one (e.g. the MFA intro). */}
+          <div className={subtitle ? 'mt-6' : 'mt-2'}>{children}</div>
         </div>
       </div>
-    </div>
+    </main>
   )
 }

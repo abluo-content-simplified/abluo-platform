@@ -9,6 +9,7 @@
 import { requireAbluoAdmin } from '@/lib/api/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { settle } from '@/lib/api/dashboard/settle'
+import { readAllRows } from '@/lib/supabase/read-all'
 import { mapProjectRow, PROJECT_COLUMNS, readOwnersByTenant, type AdminProject } from '@/lib/api/admin-dashboard/shared'
 
 export type { AdminOwner, AdminProject } from '@/lib/api/admin-dashboard/shared'
@@ -37,9 +38,12 @@ export async function assertAbluoAdmin(): Promise<void> {
 /** For callers that already passed `assertAbluoAdmin()` (same request). */
 export async function readAllProjects(): Promise<AdminProjectsResult> {
   const admin = createAdminClient()
-  const { data, error } = await admin.from('projects').select(PROJECT_COLUMNS).order('created_at', { ascending: false })
+  // Paged: PostgREST returns at most 1000 rows per request (read-all.ts).
+  const { rows, error } = await readAllRows<Record<string, unknown>>((from, to) =>
+    admin.from('projects').select(PROJECT_COLUMNS).order('created_at', { ascending: false }).order('id').range(from, to),
+  )
   if (error) return { projects: [], ownersKnown: false, error: error.message }
-  const base = ((data ?? []) as Record<string, unknown>[]).map(mapProjectRow)
+  const base = rows.map(mapProjectRow)
   const owners = await settle('admin.owners', () => readOwnersByTenant(admin, base.map((p) => p.tenantId)))
   return {
     projects: base.map((p) => ({ ...p, owners: owners?.get(p.tenantId) ?? [] })),

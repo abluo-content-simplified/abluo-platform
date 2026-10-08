@@ -5,11 +5,13 @@ import { recordAdminAudit } from '@/lib/admin/audit'
 import { loadAnalyticsIds } from '@/lib/analytics/config'
 import { addDays, isoDay, WINDOW_DAYS } from '@/lib/analytics/periods'
 import { isMissingTable, readSnapshotRows } from '@/lib/analytics/read'
+import { readAllRows } from '@/lib/supabase/read-all'
 import { refreshProjectAnalytics, type RefreshResult } from '@/lib/analytics/snapshot'
 import type { SnapshotRow } from '@/lib/analytics/types'
 import {
   portfolioRow,
   portfolioSummary,
+  projectsMissingGoodSnapshot,
   projectAnalyticsView,
   type PortfolioRow,
   type PortfolioSummary,
@@ -27,7 +29,12 @@ import {
 
 /** Sites in the portfolio: the ones the daily job covers. */
 const PORTFOLIO_STATUSES = ['active', 'preview']
-/** Portfolio reads only recent snapshots (the job writes daily; older = stale anyway). */
+/**
+ * The portfolio reads the last week of snapshots for every site in one paged
+ * query. A site with a source that has no good snapshot in that week gets its
+ * own short read (`readSnapshotRows`), so an old good snapshot still shows as
+ * "Out of date" rather than "Not connected".
+ */
 const PORTFOLIO_LOOKBACK_DAYS = 7
 
 type ProjectRef = { id: string; slug: string; name: string; status: string }
@@ -52,21 +59,26 @@ export type AdminPortfolio = {
   ready: boolean
 }
 
-/** Contact requests per project in the last 28 days (complete, not spam). Null when the read fails. */
+/**
+ * Contact requests per project in the last 28 days (complete, not spam): one
+ * exact head count per project (no rows read, so nothing is capped at 1000).
+ * Null when any count fails.
+ */
 async function requestCounts(db: ReturnType<typeof createAdminClient>, projectIds: string[], since: string): Promise<Map<string, number> | null> {
-  if (!projectIds.length) return new Map()
-  const { data, error } = await db
-    .from('form_submissions')
-    .select('project_id')
-    .in('project_id', projectIds)
-    .eq('completion_state', 'complete')
-    .neq('status', 'spam')
-    .gte('created_at', `${since}T00:00:00Z`)
-    .limit(50000)
-  if (error) return null
-  const out = new Map<string, number>()
-  for (const r of (data ?? []) as { project_id: string }[]) out.set(r.project_id, (out.get(r.project_id) ?? 0) + 1)
-  return out
+  const results = await Promise.all(
+    projectIds.map(async (id) => {
+      const { count, error } = await db
+        .from('form_submissions')
+        .select('id', { count: 'exact', head: true })
+        .eq('project_id', id)
+        .eq('completion_state', 'complete')
+        .neq('status', 'spam')
+        .gte('created_at', `${since}T00:00:00Z`)
+      return error ? null : ([id, count ?? 0] as const)
+    }),
+  )
+  if (results.some((r) => r === null)) return null
+  return new Map(results as (readonly [string, number])[])
 }
 
 export async function getAdminPortfolio(opts: { audit?: boolean; now?: number } = {}): Promise<AdminPortfolio | null> {
@@ -75,24 +87,37 @@ export async function getAdminPortfolio(opts: { audit?: boolean; now?: number } 
   const now = opts.now ?? Date.now()
   const db = createAdminClient()
 
-  const { data: projects, error } = await db.from('projects').select('id, slug, name, status').in('status', PORTFOLIO_STATUSES).order('name')
+  const { rows: list, error } = await readAllRows<ProjectRef>((from, to) =>
+    db.from('projects').select('id, slug, name, status').in('status', PORTFOLIO_STATUSES).order('name').order('id').range(from, to),
+  )
   if (error) throw new Error(`projects read failed: ${error.message}`)
-  const list = (projects ?? []) as ProjectRef[]
   const ids = list.map((p) => p.id)
   const today = isoDay(new Date(now))
 
   let ready = true
   let snapshots: SnapshotRow[] = []
   if (ids.length) {
-    const res = await db
-      .from('analytics_snapshots')
-      .select(PORTFOLIO_COLUMNS)
-      .in('project_id', ids)
-      .gte('period_end', addDays(today, -PORTFOLIO_LOOKBACK_DAYS))
+    // Paged (PostgREST caps a response at 1000 rows); ordered by the table's unique key.
+    const res = await readAllRows<SlimRow>((from, to) =>
+      db
+        .from('analytics_snapshots')
+        .select(PORTFOLIO_COLUMNS)
+        .in('project_id', ids)
+        .gte('period_end', addDays(today, -PORTFOLIO_LOOKBACK_DAYS))
+        .order('project_id')
+        .order('source')
+        .order('period_end')
+        .range(from, to) as unknown as PromiseLike<{ data: SlimRow[] | null; error: { message: string; code?: string } | null }>, // the column aliases defeat the select-string parser
+    )
     if (res.error) {
       if (!isMissingTable(res.error)) throw new Error(`analytics_snapshots read failed: ${res.error.message}`)
       ready = false
-    } else snapshots = ((res.data ?? []) as unknown as SlimRow[]).map(fromSlim)
+    } else {
+      snapshots = res.rows.map(fromSlim)
+      // Sites without a good snapshot this week: read their latest rows, whatever their age.
+      const older = await Promise.all(projectsMissingGoodSnapshot(ids, snapshots).map((id) => readSnapshotRows(db, id)))
+      snapshots = [...snapshots, ...older.flat()]
+    }
   }
   const requests = await requestCounts(db, ids, addDays(today, -WINDOW_DAYS))
 

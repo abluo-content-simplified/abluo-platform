@@ -35,7 +35,7 @@ export type NavSurface = {
 }
 
 /** Where a Home widget sits. Each slot is laid out by the Home page. */
-export type WidgetSlot = 'header' | 'attention' | 'continue' | 'glance' | 'latest'
+export type WidgetSlot = 'header' | 'setup' | 'attention' | 'continue' | 'glance' | 'latest'
 
 export type WidgetSurface = {
   kind: 'widget'
@@ -96,6 +96,14 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   // ── Home widgets (ADR-029 §5) ───────────────────────────────────────────
   { kind: 'widget', id: 'siteStatus', slot: 'header', requires: {} },
   { kind: 'widget', id: 'attention', slot: 'attention', requires: {} },
+  // "Get your site ready" (src/lib/client/setup-checklist.ts): each item is gated
+  // again on its own; the card needs at least one of them.
+  {
+    kind: 'widget',
+    id: 'setupChecklist',
+    slot: 'setup',
+    requires: { anyPermission: ['blog.post.write', 'media.library.manage', 'users.invite', 'users.manage', 'analytics.read'] },
+  },
   {
     kind: 'widget',
     id: 'continueEditing',

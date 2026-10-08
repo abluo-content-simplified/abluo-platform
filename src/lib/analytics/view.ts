@@ -3,7 +3,7 @@
  * alike). Pure and browser-safe. The widgets never see a raw row.
  */
 import { percentChange } from '@/lib/client/home-cards'
-import { STALE_AFTER_MS } from './periods'
+import { OUT_OF_DATE_AFTER_MS, STALE_AFTER_MS } from './periods'
 import type { AnalyticsSource, Ga4Metrics, GscMetrics, SnapshotRow } from './types'
 
 /** connected = latest snapshot ok · error = latest failed · not_connected = no ID configured · missing = no snapshot yet. */
@@ -18,6 +18,8 @@ export type ProjectAnalyticsView = {
   hasData: boolean
   /** The newest good snapshot is older than two days. */
   stale: boolean
+  /** The newest good snapshot is older than seven days (implies `stale`). */
+  outOfDate: boolean
   /** When the newest snapshot (good or not) was taken. */
   fetchedAt: string | null
   /** Last day of the window shown. */
@@ -73,6 +75,7 @@ export function projectAnalyticsView(rows: readonly SnapshotRow[], now: number =
     gsc: stateOf(gsc),
     hasData: Boolean(g?.current || s?.current),
     stale: newestOk ? now - Date.parse(newestOk) > STALE_AFTER_MS : false,
+    outOfDate: newestOk ? now - Date.parse(newestOk) > OUT_OF_DATE_AFTER_MS : false,
     fetchedAt: anyDates.at(-1) ?? null,
     periodEnd: ends.at(-1) ?? null,
     visitors: g?.current ? metric(g.current.users, g.previous?.users ?? 0) : null,
@@ -100,13 +103,21 @@ export function projectAnalyticsView(rows: readonly SnapshotRow[], now: number =
 
 // ── Admin portfolio ─────────────────────────────────────────────────────────
 
-/** One status per site for the admin list. */
-export type DataStatus = 'connected' | 'not_connected' | 'error' | 'stale'
+/**
+ * One status per site for the admin list (docs/engineering/analytics-setup.md §7):
+ *   error         — the latest snapshot of a source failed;
+ *   not_connected — no source's latest snapshot is good: no IDs configured,
+ *                   never fetched, or IDs removed since;
+ *   out_of_date   — the newest good snapshot is more than 7 days old;
+ *   stale         — … more than 2 days old;
+ *   connected     — fresh.
+ */
+export type DataStatus = 'connected' | 'stale' | 'out_of_date' | 'not_connected' | 'error'
 
-export function dataStatusOf(v: ProjectAnalyticsView): DataStatus {
+export function dataStatusOf(v: Pick<ProjectAnalyticsView, 'ga4' | 'gsc' | 'stale' | 'outOfDate'>): DataStatus {
   if (v.ga4 === 'error' || v.gsc === 'error') return 'error'
-  if (!v.hasData) return 'not_connected'
-  return v.stale ? 'stale' : 'connected'
+  if (v.ga4 !== 'connected' && v.gsc !== 'connected') return 'not_connected'
+  return v.outOfDate ? 'out_of_date' : v.stale ? 'stale' : 'connected'
 }
 
 export type PortfolioRow = {
@@ -158,6 +169,7 @@ export type PortfolioSummary = {
   notConnected: number
   erroring: number
   stale: number
+  outOfDate: number
   /** Biggest relative movers among sites with a measurable change, max 3 each. */
   risers: { slug: string; name: string; change: number; visitors: number }[]
   fallers: { slug: string; name: string; change: number; visitors: number }[]
@@ -184,7 +196,14 @@ export function portfolioSummary(rows: readonly PortfolioRow[], perSite: Readonl
     notConnected: rows.filter((r) => r.status === 'not_connected').length,
     erroring: rows.filter((r) => r.status === 'error').length,
     stale: rows.filter((r) => r.status === 'stale').length,
+    outOfDate: rows.filter((r) => r.status === 'out_of_date').length,
     risers: movers.filter((m) => m.change > 0).sort((a, b) => b.change - a.change).slice(0, 3),
     fallers: movers.filter((m) => m.change < 0).sort((a, b) => a.change - b.change).slice(0, 3),
   }
+}
+
+/** Pure: projects that have a source with no good snapshot among `rows` (they need a longer read). */
+export function projectsMissingGoodSnapshot(projectIds: readonly string[], rows: readonly Pick<SnapshotRow, 'project_id' | 'source' | 'status'>[]): string[] {
+  const good = new Set(rows.filter((r) => r.status === 'ok').map((r) => `${r.project_id}:${r.source}`))
+  return projectIds.filter((id) => !good.has(`${id}:ga4`) || !good.has(`${id}:gsc`))
 }

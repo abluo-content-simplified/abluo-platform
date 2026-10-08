@@ -69,13 +69,16 @@ type ListResult = { items: MediaLibraryItem[]; nextCursor: string | null; tags: 
 /** One page of one project's library, or (projectSlug null) of every project's. Each photo carries its project. */
 export async function listAdminMediaAction(input: ListInput): Promise<Result<ListResult>> {
   const options = { q: input?.q ?? null, tags: input?.tags ?? null }
-  const first = !input?.cursor
+  // One view per opening of the library: not per page, and not per keystroke
+  // in the search or tag box (a filtered read is the same look). recordAdminAudit
+  // also de-duplicates views within a 10-minute window.
+  const logView = !input?.cursor && !options.q?.trim() && !options.tags?.length
 
   if (input?.projectSlug != null) {
     return withProject(input.projectSlug, async (ctx, project, actor) => {
       const site = await getMediaSite(ctx, project.id)
       const page = await listMediaLibrary(ctx, project.id, { ...options, cursor: input.cursor ?? null })
-      if (first) await recordAdminAudit({ actorId: actor.userId, action: 'media.project.view', projectId: project.id, detail: { projectSlug: project.slug } })
+      if (logView) await recordAdminAudit({ actorId: actor.userId, action: 'media.project.view', projectId: project.id, detail: { projectSlug: project.slug } })
       return { ...page, items: page.items.map((i) => ({ ...i, project: label(project, site) })) }
     })
   }
@@ -101,7 +104,7 @@ export async function listAdminMediaAction(input: ListInput): Promise<Result<Lis
         console.warn(`admin media: skipped project "${project.slug}" (${error instanceof Error ? error.message : String(error)})`),
     })
     if (!page) return { ok: false, error: 'invalid_value' }
-    if (first) await recordAdminAudit({ actorId: actor.userId, action: 'media.project.view', projectId: null, detail: { scope: 'all-projects' } })
+    if (logView) await recordAdminAudit({ actorId: actor.userId, action: 'media.project.view', projectId: null, detail: { scope: 'all-projects' } })
     return {
       ok: true,
       nextCursor: page.nextCursor,

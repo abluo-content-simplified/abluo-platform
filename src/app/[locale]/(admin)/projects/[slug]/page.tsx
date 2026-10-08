@@ -20,6 +20,7 @@ import { liveSiteUrl, previewSiteUrl } from '@/lib/admin/projects-filter'
 import { percentChange } from '@/lib/client/home-cards'
 import { MODULE_REGISTRY } from '@/lib/modules/registry'
 import { ProjectAnalyticsBlock } from '@/components/admin/analytics/ProjectAnalyticsBlock'
+import { ViewAsClient } from '@/components/admin/projects/ViewAsClient'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,10 +41,19 @@ const icon = (d: ReactNode) => (
  * the admin providers, read-only (no links into the client editor) — then the
  * admin facts (modules, languages, Owners, pending invitations, created,
  * links). Every view is written to the internal admin audit log. Unknown
- * slug → 404.
+ * slug → 404. "View as client" opens the client dashboard in support mode
+ * (ADR-028 §8, docs/engineering/support-mode.md).
  */
-export default async function AdminProjectPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function AdminProjectPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>
+  searchParams?: Promise<{ support?: string }>
+}) {
   const { slug: raw } = await params
+  const supportParam = (await searchParams)?.support
+  const supportNotice = supportParam === 'unavailable' || supportParam === 'failed' ? supportParam : null
   let slug = raw
   try {
     slug = decodeURIComponent(raw)
@@ -199,6 +209,8 @@ export default async function AdminProjectPage({ params }: { params: Promise<{ s
           </>
         )}
       </section>
+
+      <ViewAsClient projectId={project.id} slug={project.slug} notice={supportNotice} />
 
       <ProjectAnalyticsBlock projectId={project.id} />
 

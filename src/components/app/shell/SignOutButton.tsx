@@ -15,7 +15,7 @@ export function SignOutButton({ className, onSignOut, icon }: { className?: stri
   async function signOut() {
     onSignOut?.()
     await createClient().auth.signOut()
-    // A full navigation to the locale-less /login (src/app/(platform)/login): the
+    // A full navigation to the locale-less /login (src/app/(platform)/(auth)/login): the
     // localized router would go to /{locale}/login, which has no route, and on
     // the admin host the gate would bounce that back with ?next=/en/login.
     // A full load also drops every in-memory trace of the signed-out session.

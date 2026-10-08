@@ -1,5 +1,5 @@
 // Server-only: session-scoped Supabase reads for the client dashboard.
-import { createClient } from '@/lib/supabase/server'
+import { projectDataClient } from '@/lib/support/data-client'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { projectAnalyticsView, type ProjectAnalyticsView } from './view'
@@ -60,6 +60,6 @@ export async function getProjectAnalytics(
   if (!grant || !canReadAnalytics(grant)) {
     throw new TenantAuthorizationError(`analytics.read refused for project "${projectId}"`)
   }
-  const db = deps.client ?? ((await createClient()) as unknown as Reader)
+  const db = deps.client ?? ((await projectDataClient(ctx, projectId)) as unknown as Reader)
   return projectAnalyticsView(await readSnapshotRows(db, projectId), deps.now)
 }

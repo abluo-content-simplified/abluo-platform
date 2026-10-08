@@ -59,8 +59,12 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
-import { getAuthenticatedActor } from '@/lib/api/auth'
+import { toAuthenticatedActor } from '@/lib/api/auth'
 import type { PlatformRole } from '@/lib/api/auth'
+import { readAssuranceLevel } from '@/lib/auth/admin-assurance'
+import { buildSupportAuthorizationContext, type SupportContextInfo } from '@/lib/support/context'
+import type { SupportPurpose } from '@/lib/support/state'
+import { auditSupportAction, loadOpenVisit, readSupportCookie } from '@/lib/support/server'
 import { resolveProjectPermissions, resolveTenantPermissions } from '@/lib/authz/resolve'
 import { isProjectGrantable } from '@/lib/authz/permissions'
 import { isTenantMembershipRole, type AccessRole, type TenantMembershipRole } from '@/lib/authz/roles'
@@ -108,6 +112,12 @@ export type TenantAuthorizationContext = {
   projects: ProjectGrant[]
   /** Tenant-level grants. Optional so hand-built contexts in tests stay valid; absent = none. */
   tenants?: TenantGrant[]
+  /**
+   * Present only while an Abluo admin visits this project in support mode
+   * (ADR-028 §8). `userId` is then the ADMIN; `projects` holds the one visited
+   * project; see src/lib/support/context.ts.
+   */
+  support?: SupportContextInfo
 }
 
 // ── Pure assembly logic (unit-testable without a live DB or Sanity) ────────────
@@ -321,10 +331,70 @@ async function fetchProjectSlugUsage(slugs: string[]): Promise<Map<string, numbe
  * Not wired into any route this slice — inert per ADR-017 Implementation
  * Order step 1.
  */
-export async function getTenantAuthorizationContext(): Promise<TenantAuthorizationContext | null> {
-  const actor = await getAuthenticatedActor()
-  if (!actor) return null
-  return loadTenantAuthorizationContext(await createClient(), actor)
+export async function getTenantAuthorizationContext(
+  options: { purpose?: SupportPurpose } = {}
+): Promise<TenantAuthorizationContext | null> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return null
+  const actor = toAuthenticatedActor(user)
+
+  // ── Support mode (ADR-028 §8) — the ONE place it plugs in ────────────────
+  // An open support visit replaces the admin's own memberships for this
+  // request. Re-validated on EVERY call: the visit cookie must name an open
+  // visit of THIS user, who must still be an Abluo admin at AAL2. Anything
+  // else (no cookie, not an admin, password-only session, visit closed or
+  // expired) falls through to the normal resolution below — a client user
+  // holding a forged cookie gets exactly their own access.
+  const support = await resolveSupportContext(supabase, actor, options.purpose ?? 'mutation')
+  if (support) return support
+
+  return loadTenantAuthorizationContext(supabase, actor)
+}
+
+/**
+ * The support-mode branch of the resolver. `purpose` defaults to `mutation`
+ * at the call site: only pages and layouts pass `render` (see
+ * src/lib/support/state.ts `supportPermissions`), so a server action, route
+ * handler or any new caller that forgets is refused writes in a view-only
+ * visit. Every `mutation` resolution inside a visit is written to the admin
+ * audit log (once per request).
+ */
+async function resolveSupportContext(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  actor: { userId: string; platformRole: PlatformRole },
+  purpose: SupportPurpose
+): Promise<TenantAuthorizationContext | null> {
+  if (actor.platformRole !== 'abluo_admin') return null
+  const sessionId = await readSupportCookie()
+  if (!sessionId) return null
+  // getUser() ran above on this same client, so the decoded aal is server-validated (admin-assurance.ts).
+  if ((await readAssuranceLevel(supabase)) !== 'aal2') return null
+
+  const visit = await loadOpenVisit(sessionId, actor.userId)
+  if (!visit) return null
+
+  const projectSlug = asSupabaseProjectSlug(visit.project.slug)
+  // Same shared-slug guard as every grant (dropAmbiguousSlugGrants): fail closed.
+  const usage = await fetchProjectSlugUsage([projectSlug])
+  if (!usage || usage.get(projectSlug) !== 1) {
+    console.warn(`support: project slug "${projectSlug}" is not unique across tenants (or unverifiable) — visit not honoured`)
+    return null
+  }
+
+  const ctx = buildSupportAuthorizationContext({
+    actor,
+    session: visit.session,
+    project: { id: visit.project.id, slug: projectSlug, name: visit.project.name },
+    enabledModuleIds: await fetchEnabledModuleIds(projectSlug),
+    purpose,
+  })
+  if (purpose === 'mutation' && ctx.support) {
+    await auditSupportAction(actor.userId, ctx.support.sessionId, ctx.support.projectId, ctx.support.writesAllowed, ctx.support.role)
+  }
+  return ctx
 }
 
 /**

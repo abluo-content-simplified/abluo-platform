@@ -34,7 +34,7 @@ export default async function SubmissionsPage({
 }) {
   const { tenant: projectSlug } = await params
 
-  const ctx = await getTenantAuthorizationContext()
+  const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) {
     redirect(`/login?next=/${projectSlug}/submissions`)
   }

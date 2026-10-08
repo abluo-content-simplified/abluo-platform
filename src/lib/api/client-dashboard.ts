@@ -33,7 +33,7 @@ import {
 } from '@/lib/api/tenant-scoped-sanity'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { dashboardPostsContextQuery, dashboardPostsQuery } from '@/lib/sanity/queries'
-import { createClient } from '@/lib/supabase/server'
+import { projectDataClient } from '@/lib/support/data-client'
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 import { coverCropUrl, coverThumbUrl } from '@/lib/api/post-drafts'
 import { postSearchText } from '@/lib/client/posts-filter'
@@ -385,8 +385,9 @@ export async function getDashboardSubmissions(
   // Step 1 — entitlement + permission (module-installed check precedes it).
   assertModuleAction(ctx, projectId, FORMS_SUBMISSION_READ_PERMISSION)
 
-  // Step 2 — RLS-backed, session-scoped client (respects get_my_project_ids()).
-  const supabase = deps.client ?? (await createClient())
+  // Step 2 — the caller's RLS-backed session (respects get_my_project_ids()); in a
+  // support visit the service role scoped to this one project (projectDataClient).
+  const supabase: SubmissionsReader = deps.client ?? (await projectDataClient(ctx, projectId))
 
   // Step 3 — read this project's completed, non-spam submissions.
   const { data, error } = await supabase
@@ -426,8 +427,8 @@ export async function updateSubmissionStatus(
     throw new Error(`updateSubmissionStatus: invalid status "${status}"`)
   }
 
-  // Step 2 — RLS-backed, session-scoped client. Step 3 — scoped UPDATE.
-  const supabase = deps.client ?? (await createClient())
+  // Step 2 — RLS-backed session (support visit: projectDataClient). Step 3 — scoped UPDATE.
+  const supabase: SubmissionsReader = deps.client ?? (await projectDataClient(ctx, projectId))
   const { error } = await supabase
     .from('form_submissions')
     .update({ status })
@@ -466,7 +467,7 @@ export async function updateSubmissionsStatusBatch(
     throw new Error(`updateSubmissionsStatusBatch: invalid status "${status}"`)
   }
   const ids = cleanBatchIds(submissionIds)
-  const supabase = deps.client ?? (await createClient())
+  const supabase: SubmissionsReader = deps.client ?? (await projectDataClient(ctx, projectId))
   const { data, error } = await supabase
     .from('form_submissions')
     .update({ status })

@@ -13,24 +13,32 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { settle } from '@/lib/api/dashboard/settle'
 import { assertAbluoAdmin, readAllProjects } from '@/lib/api/admin-dashboard/projects'
 import { INVITATION_COLUMNS, openInvitations, type AdminProject, type OpenInvitationRow } from '@/lib/api/admin-dashboard/shared'
+import { readAllRows, readAllRowsOrThrow } from '@/lib/supabase/read-all'
 import {
   buildAdminAttention,
   pendingInvitationCount,
-  unansweredRequestCounts,
+  REQUEST_WAITING_HOURS,
   type AdminAttentionItem,
   type AttentionInvitation,
   type AttentionRequest,
 } from '@/lib/admin/attention'
 import { countProjectsByStatus } from '@/lib/admin/projects-filter'
 
-/** Unanswered requests read for Home (newest first). Far above today's volume; the count says "N+" past it. */
-export const ADMIN_REQUESTS_READ_LIMIT = 2000
+/**
+ * Safety net on the rows read for the "requests waiting" attention item (only
+ * requests unanswered for more than REQUEST_WAITING_HOURS are read). Past it
+ * the attention list is marked incomplete. The tile counts are exact head
+ * counts and never capped.
+ */
+export const ADMIN_WAITING_REQUESTS_MAX_ROWS = 20000
+
+const HOUR_MS = 3600 * 1000
 
 export type AdminHomeData = {
   /** null when the projects read failed. */
   projectCounts: ReturnType<typeof countProjectsByStatus> | null
-  /** Unanswered (status "new") contact requests across every project; null when the read failed. */
-  requests: { total: number; week: number; capped: boolean } | null
+  /** Unanswered (status "new") contact requests across every project (exact counts); null when the read failed. */
+  requests: { total: number; week: number } | null
   /** Open invitations that have not expired; null when the read failed. */
   pendingInvitations: number | null
   attention: AdminAttentionItem[]
@@ -55,20 +63,41 @@ export async function getAdminHome(now = Date.now()): Promise<AdminHomeData> {
       return r
     }),
     settle('admin.home.invitations', async () => {
-      const { data, error } = await admin.from('invitations').select(INVITATION_COLUMNS).is('accepted_at', null).is('revoked_at', null)
-      if (error) throw new Error(error.message)
-      return openInvitations((data ?? []) as Record<string, unknown>[])
+      const rows = await readAllRowsOrThrow<Record<string, unknown>>('invitations', (from, to) =>
+        admin.from('invitations').select(INVITATION_COLUMNS).is('accepted_at', null).is('revoked_at', null).order('id').range(from, to),
+      )
+      return openInvitations(rows)
     }),
     settle('admin.home.requests', async () => {
-      const { data, error } = await admin
-        .from('form_submissions')
-        .select('project_id, created_at')
-        .eq('status', 'new')
-        .eq('completion_state', 'complete')
-        .order('created_at', { ascending: false })
-        .limit(ADMIN_REQUESTS_READ_LIMIT)
-      if (error) throw new Error(error.message)
-      return ((data ?? []) as Record<string, unknown>[]).map((r): AttentionRequest => ({ projectId: String(r.project_id), createdAt: String(r.created_at) }))
+      // Counts are head counts (exact past PostgREST's 1000-row cap); rows are
+      // read only for the attention rule, and only the ones old enough to count.
+      const unanswered = () =>
+        admin.from('form_submissions').select('id', { count: 'exact', head: true }).eq('status', 'new').eq('completion_state', 'complete')
+      const [total, week, waiting] = await Promise.all([
+        unanswered(),
+        unanswered().gte('created_at', new Date(now - 7 * 24 * HOUR_MS).toISOString()),
+        readAllRows<Record<string, unknown>>(
+          (from, to) =>
+            admin
+              .from('form_submissions')
+              .select('id, project_id, created_at')
+              .eq('status', 'new')
+              .eq('completion_state', 'complete')
+              .lt('created_at', new Date(now - REQUEST_WAITING_HOURS * HOUR_MS).toISOString())
+              .order('created_at')
+              .order('id')
+              .range(from, to),
+          { maxRows: ADMIN_WAITING_REQUESTS_MAX_ROWS },
+        ),
+      ])
+      const failed = total.error ?? week.error
+      if (failed) throw new Error(failed.message)
+      if (waiting.error) throw new Error(waiting.error.message)
+      return {
+        counts: { total: total.count ?? 0, week: week.count ?? 0 },
+        waiting: waiting.rows.map((r): AttentionRequest => ({ projectId: String(r.project_id), createdAt: String(r.created_at) })),
+        waitingComplete: !waiting.capped,
+      }
     }),
   ])
 
@@ -86,9 +115,9 @@ export async function getAdminHome(now = Date.now()): Promise<AdminHomeData> {
 
   return {
     projectCounts: projects ? countProjectsByStatus(list) : null,
-    requests: requests ? { ...unansweredRequestCounts(requests, now), capped: requests.length >= ADMIN_REQUESTS_READ_LIMIT } : null,
+    requests: requests?.counts ?? null,
     pendingInvitations: invites ? pendingInvitationCount(invites, now) : null,
-    attention: buildAdminAttention({ projects: attentionProjects, invitations: attentionInvites, requests }, now),
-    attentionComplete: projects !== null && projects.ownersKnown && invites !== null && requests !== null,
+    attention: buildAdminAttention({ projects: attentionProjects, invitations: attentionInvites, requests: requests?.waiting ?? null }, now),
+    attentionComplete: projects !== null && projects.ownersKnown && invites !== null && requests !== null && requests.waitingComplete,
   }
 }

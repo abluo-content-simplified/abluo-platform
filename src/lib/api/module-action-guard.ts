@@ -51,6 +51,7 @@
  * `tenant-context.ts` and `tenant-scoped-sanity.ts` were on landing. Route
  * wiring is a later slice.
  */
+import { supportRefuses } from '@/lib/support/state'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { MODULE_REGISTRY } from '@/lib/modules/registry'
@@ -156,8 +157,9 @@ export function assertModuleAction(
     )
   }
 
-  // Step 5 — permission check SECOND.
-  if (!grant.permissions.includes(permissionId)) {
+  // Step 5 — permission check SECOND. In a support visit (ADR-028 §8) a write
+  // is refused unless the client's edit approval is live (src/lib/support).
+  if (!grant.permissions.includes(permissionId) || supportRefuses(ctx.support, permissionId)) {
     throw new TenantAuthorizationError(
       `assertModuleAction: role "${grant.role}" on project "${grant.projectSlug}" does not grant ` +
         `permission "${permissionId}" — access rejected.`

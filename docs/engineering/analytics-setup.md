@@ -100,10 +100,18 @@ Admin → **Analytics** shows one row per live/preview site with a data status:
 
 | Status | Meaning | What to do |
 |---|---|---|
-| Connected | Last snapshot is fresh | — |
-| Not connected | No property ID / site URL in Studio (or no snapshot yet) | Step 5, then Refresh now |
-| Error | Google refused the last call | Open the site: the error box shows Google's message |
-| Stale | Last good snapshot is more than 2 days old | Check the cron in Vercel → Cron Jobs / logs |
+| Connected | The latest snapshot is good and at most 2 days old | — |
+| Stale | The latest good snapshot is more than 2 days old (a run or two missed) | Usually fixes itself; if not, check the cron in Vercel → Cron Jobs / logs |
+| Out of date | The latest good snapshot is more than 7 days old (the job has stopped producing data for this site) | Check the cron logs, then Refresh now |
+| Not connected | No source's latest snapshot is good: no property ID / site URL in Studio, never fetched, or the IDs were removed | Step 5, then Refresh now |
+| Error | Google refused the latest call for a source (wins over the others) | Open the site: the error box shows Google's message |
+
+Old good numbers keep showing for a Stale or Out of date site; the status says
+how old they are. The rule is `dataStatusOf()` in `src/lib/analytics/view.ts`
+(thresholds `STALE_AFTER_MS` / `OUT_OF_DATE_AFTER_MS` in `periods.ts`). The
+portfolio reads the last week of snapshots for every site and, for a site with
+no good snapshot in that week, its latest rows whatever their age — so an old
+site reads Out of date, never Not connected.
 
 Common messages (shown on the site page, also in the cron logs):
 

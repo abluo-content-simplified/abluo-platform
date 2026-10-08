@@ -44,7 +44,19 @@
         "failed": "Das Foto konnte nicht gespeichert werden. Bitte versuche es erneut."
       }
     },
-    "openFullPage": "Ganze Seite öffnen"
+    "openFullPage": "Ganze Seite öffnen",
+    "edit": "Bearbeiten",
+    "editName": "Deinen Namen bearbeiten",
+    "save": "Speichern",
+    "saving": "Wird gespeichert…",
+    "cancel": "Abbrechen",
+    "nameErrors": {
+      "empty": "Bitte gib deinen Namen ein.",
+      "tooLong": "Höchstens {max} Zeichen.",
+      "invalid": "Dein Name enthält Zeichen, die nicht erlaubt sind.",
+      "unauthenticated": "Bitte melde dich erneut an.",
+      "failed": "Der Name konnte nicht gespeichert werden. Bitte versuche es noch einmal."
+    }
   },
   "clientDashboard": {
     "nav": {
@@ -467,6 +479,41 @@
         "media": {
           "label": "Fotos",
           "sub": "{missing, plural, =0 {Alle haben eine Beschreibung} other {# ohne Beschreibung}}"
+        }
+      },
+      "setup": {
+        "heading": "Mach deine Website startklar",
+        "progress": "{done} von {total} erledigt",
+        "doneLabel": "Erledigt",
+        "todoLabel": "Offen",
+        "hide": "Checkliste ausblenden",
+        "hideFailed": "Die Checkliste konnte nicht ausgeblendet werden. Bitte versuche es noch einmal.",
+        "items": {
+          "firstPost": {
+            "title": "Schreib deinen ersten Beitrag",
+            "detail": "Teile dein Wissen. Wir speichern laufend.",
+            "doneDetail": "Dein erster Beitrag ist veröffentlicht."
+          },
+          "photos": {
+            "title": "Füge Fotos zur Mediathek hinzu",
+            "detail": "Lade ein paar Fotos für deine Website hoch.",
+            "doneDetail": "Deine Mediathek enthält Fotos."
+          },
+          "team": {
+            "title": "Lade dein Team ein",
+            "detail": "Gib Kolleginnen und Kollegen einen eigenen Zugang.",
+            "doneDetail": "Dein Team hat Zugang."
+          },
+          "analytics": {
+            "title": "Google Analytics & Search Console verbinden",
+            "detail": "Bitte Abluo, sie zu verbinden. Wir richten es für dich ein, und deine Zahlen erscheinen hier.",
+            "doneDetail": "Deine Zahlen kommen jeden Tag."
+          },
+          "domain": {
+            "title": "Deine Domain ist verbunden",
+            "detail": "Abluo verbindet deine Domain, sobald deine Website live gehen kann.",
+            "doneDetail": "Deine Website ist unter ihrer eigenen Adresse online."
+          }
         }
       }
     },
@@ -1329,7 +1376,10 @@
         "kind": {
           "gallery": "Galerie",
           "page": "Seite",
-          "post": "Beitrag"
+          "post": "Beitrag",
+          "event": "Veranstaltung",
+          "settings": "Website-Einstellungen",
+          "other": "Sonstiges"
         }
       },
       "picker": {
@@ -1729,6 +1779,35 @@
       "newThisWeek": "{count} neu diese Woche",
       "open": "Öffnen",
       "allSites": "Alle Websites"
+    },
+    "support": {
+      "banner": {
+        "title": "Support-Modus — du siehst {site} als {role}",
+        "viewing": "Nur ansehen. Änderungen sind gesperrt, bis der Kunde sie erlaubt.",
+        "requested": "Warte darauf, dass der Kunde Änderungen erlaubt …",
+        "allowed": "Änderungen erlaubt bis {time}. Alles, was du tust, wird protokolliert.",
+        "declined": "Der Kunde hat abgelehnt. Nur ansehen.",
+        "expired": "Der Bearbeitungszugang ist abgelaufen. Nur ansehen.",
+        "revoked": "Der Kunde hat den Bearbeitungszugang beendet. Nur ansehen.",
+        "ask": "Um Bearbeitung bitten",
+        "askAgain": "Erneut fragen",
+        "showRequests": "Kontaktanfragen anzeigen",
+        "requestsHidden": "Kontaktanfragen sind ausgeblendet.",
+        "exit": "Beenden",
+        "error": "Das hat nicht geklappt. Versuch es noch einmal."
+      },
+      "notice": {
+        "requestTitle": "{name} vom Abluo-Support möchte Änderungen an deiner Website vornehmen",
+        "requestTitleNoName": "Der Abluo-Support möchte Änderungen an deiner Website vornehmen",
+        "requestBody": "Wenn du es erlaubst, kann der Support {minutes} Minuten lang bearbeiten. Du kannst den Zugang jederzeit beenden, und jede Änderung wird protokolliert.",
+        "allow": "Erlauben",
+        "decline": "Ablehnen",
+        "allowedTitle": "Der Abluo-Support kann bis {time} Änderungen vornehmen",
+        "allowedBody": "{name} hilft bei deiner Website. Änderungen werden protokolliert.",
+        "allowedBodyNoName": "Der Abluo-Support hilft bei deiner Website. Änderungen werden protokolliert.",
+        "end": "Zugang beenden",
+        "error": "Das hat nicht geklappt. Lade die Seite neu und versuch es noch einmal."
+      }
     }
   },
   "app": {
@@ -1908,8 +1987,7 @@
         },
         "requests": {
           "label": "Unbeantwortete Anfragen",
-          "sub": "{week, plural, =0 {Keine neuen diese Woche} other {# neu in den letzten 7 Tagen}}",
-          "subCapped": "Die neuesten {count} werden gezeigt"
+          "sub": "{week, plural, =0 {Keine neuen diese Woche} other {# neu in den letzten 7 Tagen}}"
         },
         "invitations": {
           "label": "Offene Einladungen",
@@ -1994,7 +2072,8 @@
         "previewSite": "Vorschau der Website",
         "liveSite": "Live-Website ansehen",
         "openStudio": "Studio öffnen"
-      }
+      },
+      "newProject": "Neues Projekt"
     },
     "analytics": {
       "title": "Statistiken",
@@ -2007,7 +2086,8 @@
         "connected": "Verbunden",
         "not_connected": "Nicht verbunden",
         "error": "Fehler",
-        "stale": "Veraltet"
+        "stale": "Verzögert",
+        "out_of_date": "Veraltet"
       },
       "connection": {
         "all": "Alle Verbindungen",
@@ -2374,6 +2454,14 @@
         "studio": "Studio öffnen",
         "live": "Live-Website ansehen",
         "opensInNewTab": "(öffnet in einem neuen Tab)"
+      },
+      "support": {
+        "heading": "Support",
+        "body": "Öffne das Kunden-Dashboard genau so, wie der Kunde es sieht. Nur ansehen; um etwas zu ändern, frag den Kunden von dort aus. Jeder Besuch wird protokolliert.",
+        "roleLabel": "Ansehen als",
+        "open": "Als Kunde ansehen",
+        "unavailable": "Der Support-Modus ist noch nicht verfügbar (Migration 038 ist nicht angewendet).",
+        "failed": "Support-Modus konnte nicht geöffnet werden. Versuch es noch einmal."
       }
     },
     "media": {
@@ -2386,6 +2474,176 @@
       "deleteFailed": "Das Foto konnte nicht gelöscht werden. Es wird möglicherweise noch verwendet.",
       "loadError": "Die Projektliste konnte nicht geladen werden.",
       "unknownProject": "Es gibt kein Projekt namens „{slug}“. Es werden alle Projekte angezeigt."
+    },
+    "newProject": {
+      "title": "Neues Projekt",
+      "description": "Die Website eines Kunden in fünf Schritten anlegen: Kunde, Projekt, Designsystem, Inhaber, Überblick. Die Website startet unter ihrer Vorschauadresse; die Domain wird von Hand hinzugefügt.",
+      "back": "Projekte",
+      "loadError": "Diese Einrichtung konnte nicht geladen werden.",
+      "clientsError": "Die Kunden konnten nicht geladen werden. Laden Sie die Seite neu, um es erneut zu versuchen.",
+      "designSystemsError": "Die Designsysteme konnten nicht aus Sanity geladen werden. Laden Sie die Seite neu, um es erneut zu versuchen.",
+      "notSetUp": {
+        "title": "Zuerst Migration 037 anwenden",
+        "body": "Der Assistent speichert seinen Fortschritt in einer Tabelle, die es noch nicht gibt (supabase/migrations/037_project_provisioning.sql). Es wurde nichts angelegt."
+      },
+      "progress": "Schritt {current} von {total}",
+      "steps": {
+        "client": "Kunde",
+        "project": "Projekt",
+        "design": "Designsystem",
+        "owner": "Inhaber",
+        "review": "Überblick"
+      },
+      "nav": {
+        "next": "Weiter",
+        "back": "Zurück",
+        "create": "Projekt anlegen",
+        "creating": "Wird angelegt…",
+        "checking": "Wird geprüft…"
+      },
+      "client": {
+        "heading": "Für welchen Kunden ist diese Website?",
+        "existing": "Bestehender Kunde",
+        "new": "Neuer Kunde",
+        "pick": "Kunde",
+        "pickPlaceholder": "Kunden wählen",
+        "name": "Name des Kunden",
+        "namePlaceholder": "z. B. Studio Rossi",
+        "slug": "Slug des Kunden",
+        "slugHelp": "Kleinbuchstaben, Ziffern und Bindestriche. Nur intern; kann später nicht geändert werden.",
+        "noClients": "Es gibt noch keine Kunden – so entsteht der erste."
+      },
+      "project": {
+        "heading": "Zur Website",
+        "name": "Projektname",
+        "namePlaceholder": "z. B. Studio Rossi",
+        "slug": "Projekt-Slug",
+        "slugHelp": "Die Plattformadresse der Website: preview.abluo.app/{slug}. Kleinbuchstaben, Ziffern und Bindestriche.",
+        "defaultLocale": "Standardsprache",
+        "defaultTag": "Standard",
+        "languages": "Sprachen",
+        "languagesHelp": "Die Standardsprache ist immer dabei. Weitere lassen sich später in Studio hinzufügen."
+      },
+      "design": {
+        "heading": "Mit einem Designsystem beginnen",
+        "help": "Die neue Website bekommt ihr eigenes Designsystem und lässt sich so in Studio verfeinern, ohne eine andere Website zu ändern.",
+        "templates": "Vorlagen",
+        "projects": "Andere Websites",
+        "templateNote": "Vorlage – die neue Website erbt davon",
+        "copyNote": "Kopie des Designs von {project}",
+        "inherits": "basiert auf {name}",
+        "none": "In Sanity wurden keine Designsysteme gefunden."
+      },
+      "owner": {
+        "heading": "Wer ist Inhaber des Kunden?",
+        "help": "Diese Person erhält eine E-Mail-Einladung als Inhaber des Kunden: alle Websites, deren Personen und die Abrechnung.",
+        "optional": "Bei einem bestehenden Kunden optional – leer lassen, wenn der Kunde schon einen Inhaber hat.",
+        "name": "Name",
+        "email": "E-Mail"
+      },
+      "review": {
+        "heading": "Überblick",
+        "client": "Kunde",
+        "newClient": "{name} (neu · {slug})",
+        "project": "Projekt",
+        "slug": "Slug",
+        "languages": "Sprachen",
+        "designSystem": "Designsystem",
+        "dsTemplate": "Eigenes Designsystem, erbt von {name}",
+        "dsCopy": "Eigene Kopie von {name}",
+        "owner": "Inhaber",
+        "noOwner": "Keine Einladung",
+        "status": "Startet als",
+        "statusValue": "Vorschau – nicht online",
+        "start": "Startseite",
+        "startValue": "Ein Kopfbereich und ein Textabschnitt mit Platzhaltertext",
+        "domainNote": "Die Domain wird nicht automatisch verbunden. Nach dem Anlegen sehen Sie die Schritte, um sie in Vercel hinzuzufügen."
+      },
+      "errors": {
+        "required": "Erforderlich.",
+        "tooShort": "Mindestens {min} Zeichen.",
+        "tooLong": "Zu lang.",
+        "invalidChars": "Nur Kleinbuchstaben, Ziffern und Bindestriche.",
+        "mustStartWithLetter": "Mit einem Buchstaben beginnen.",
+        "hyphenEdges": "Darf nicht mit einem Bindestrich enden.",
+        "doubleHyphen": "Keine doppelten Bindestriche.",
+        "reserved": "Dieses Wort ist von der Plattform reserviert.",
+        "taken": "Bereits vergeben.",
+        "notFound": "Nicht gefunden – möglicherweise wurde es entfernt.",
+        "invalid": "Bitte diesen Wert prüfen.",
+        "forbidden": "Nur Abluo-Admins mit Zwei-Faktor-Anmeldung können das tun.",
+        "failed": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
+        "busy": "Diese Einrichtung läuft gerade. Kurz warten, dann neu laden.",
+        "not_set_up": "Zuerst Migration 037 anwenden – es wurde nichts angelegt.",
+        "not_found": "Diese Einrichtung gibt es nicht mehr."
+      },
+      "unfinished": {
+        "heading": "Nicht abgeschlossene Einrichtungen"
+      },
+      "run": {
+        "heading": "{name} wird eingerichtet",
+        "completedTitle": "{name} ist eingerichtet",
+        "clientLine": "Kunde: {name}",
+        "stepsLabel": "Einrichtungsschritte",
+        "status": {
+          "pending": "Nicht gestartet",
+          "running": "Läuft",
+          "failed": "Angehalten",
+          "completed": "Fertig"
+        },
+        "stepStatus": {
+          "done": "Erledigt",
+          "failed": "Fehlgeschlagen",
+          "skipped": "Übersprungen",
+          "waiting": "Wartet"
+        },
+        "steps": {
+          "supabaseTenant": "Kundendatensatz (Supabase)",
+          "supabaseProject": "Projektdatensatz (Supabase)",
+          "sanityClient": "Kundendokument (Sanity)",
+          "sanityDesignSystem": "Designsystem (Sanity)",
+          "sanityProject": "Projektdokument (Sanity)",
+          "sanitySiteConfig": "Website-Einstellungen (Sanity)",
+          "sanityHomePage": "Startseite (Sanity)",
+          "inviteOwner": "Einladung an den Inhaber"
+        },
+        "failedAt": "Angehalten bei: {step}. Alles davor ist gespeichert.",
+        "retry": "Erneut versuchen",
+        "resume": "Fortsetzen",
+        "retrying": "Läuft…",
+        "retryHelp": "Setzt beim nicht abgeschlossenen Schritt fort. Nichts wird doppelt angelegt.",
+        "invited": "Eine Einladung wurde an {email} gesendet.",
+        "emailNotSent": "Die Einladung für {email} wurde angelegt, aber die E-Mail konnte nicht gesendet werden. Senden Sie sie über die Projektseite erneut.",
+        "openProject": "Projekt öffnen",
+        "openStudio": "Studio öffnen",
+        "another": "Neues Projekt",
+        "next": {
+          "heading": "Wie es weitergeht",
+          "routes": {
+            "title": "Website erreichbar machen",
+            "body": "Welche Website unter welcher Adresse antwortet, wird beim Build aus Supabase erzeugt. Führen Sie dies aus, committen Sie src/lib/tenancy/generated/route-config.ts und veröffentlichen Sie (dev → preview → main). Danach öffnet sich die Website unter {url}."
+          },
+          "studio": {
+            "title": "Design und Inhalte verfeinern",
+            "body": "Öffnen Sie in Studio {name}: Designsystem und Startseite gehören nur dieser Website – Änderungen betreffen keine andere."
+          },
+          "domain": {
+            "title": "Domain hinzufügen (von Hand)",
+            "intro": "Domains sind noch nicht automatisiert. Geben Sie die Domain ein, um die Schritte auszufüllen.",
+            "label": "Domain",
+            "placeholderDomain": "beispiel.de",
+            "step1": "In Vercel → abluo-platform → Settings → Domains {domain} und www.{domain} hinzufügen.",
+            "step2": "Beim DNS-Anbieter der Domain die von Vercel verlangten Einträge anlegen. Meist:",
+            "type": "Typ",
+            "name": "Name",
+            "value": "Wert",
+            "recordsNote": "Vercel zeigt für jede Domain die genauen Einträge – wenn sie abweichen, gilt Vercel.",
+            "step3": "In Supabase custom_domain = {domain} beim Projekt {slug} setzen (und Custom Domain beim Projekt in Studio).",
+            "step4": "Routing-Tabelle neu erzeugen, committen und veröffentlichen:",
+            "step5": "Wenn die Website online gehen soll, den Projektstatus in Supabase auf active setzen, neu erzeugen und erneut veröffentlichen."
+          }
+        }
+      }
     }
   },
   "editor": {

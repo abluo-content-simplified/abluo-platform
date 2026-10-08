@@ -39,7 +39,7 @@ export default async function AdminHomePage() {
         key="requests"
         label={t('glance.requests.label')}
         value={home.requests.total}
-        sub={home.requests.capped ? t('glance.requests.subCapped', { count: home.requests.total }) : t('glance.requests.sub', { week: home.requests.week })}
+        sub={t('glance.requests.sub', { week: home.requests.week })}
       />
     ) : null,
     home.pendingInvitations !== null ? (

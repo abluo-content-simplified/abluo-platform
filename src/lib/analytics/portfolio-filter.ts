@@ -4,7 +4,7 @@
  */
 import type { DataStatus, PortfolioRow, SourceState } from './view'
 
-export const STATUS_FILTERS = ['all', 'connected', 'not_connected', 'error', 'stale'] as const
+export const STATUS_FILTERS = ['all', 'connected', 'stale', 'out_of_date', 'not_connected', 'error'] as const
 export type StatusFilter = (typeof STATUS_FILTERS)[number]
 
 /** Which Google sources are set up (in Studio) for the site. */
@@ -27,7 +27,7 @@ export function connectionOf(r: Pick<PortfolioRow, 'ga4' | 'gsc'>): Exclude<Conn
   return a && s ? 'both' : a ? 'analyticsOnly' : s ? 'searchOnly' : 'none'
 }
 
-const STATUS_ORDER: Record<DataStatus, number> = { error: 0, stale: 1, connected: 2, not_connected: 3 }
+const STATUS_ORDER: Record<DataStatus, number> = { error: 0, out_of_date: 1, stale: 2, connected: 3, not_connected: 4 }
 
 function value(r: PortfolioRow, c: SortColumn): string | number | null {
   switch (c) {

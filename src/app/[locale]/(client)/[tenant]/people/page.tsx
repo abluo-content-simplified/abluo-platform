@@ -13,7 +13,7 @@ import { PeopleBrowser } from '@/components/client/people/PeopleBrowser'
  */
 export default async function PeoplePage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant: projectSlug } = await params
-  const ctx = await getTenantAuthorizationContext()
+  const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) redirect(`/login?next=/${projectSlug}/people`)
   const grant = resolveProjectGrant(ctx.projects, projectSlug)
   if (!grant) notFound()

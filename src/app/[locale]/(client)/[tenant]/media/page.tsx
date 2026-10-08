@@ -24,7 +24,7 @@ export default async function MediaPage({
   searchParams?: Promise<{ add?: string }>
 }) {
   const { tenant: projectSlug } = await params
-  const ctx = await getTenantAuthorizationContext()
+  const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) redirect(`/login?next=/${projectSlug}/media`)
   const grant = resolveProjectGrant(ctx.projects, projectSlug)
   if (!grant || !grantCanManageMedia(grant)) notFound()

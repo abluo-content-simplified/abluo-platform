@@ -168,6 +168,18 @@ describe('deleteMediaAsset (admin delete, Media Library gate)', () => {
     expect(c.fetch).toHaveBeenCalledWith(expect.stringContaining('references('), { id: 'm1' }, { perspective: 'raw' })
   })
 
+  it("also counts this project's content that uses the photo's image asset directly", async () => {
+    const asset = { _id: 'm1', _type: 'mediaAsset', projectSlug: 'amelie', image: { asset: { _ref: 'image-abc-10x10-jpg' } } }
+    const c = client({ asset, refs: 1 })
+    await expect(deleteMediaAsset(ctx(), 'p-a', { assetId: 'm1' }, { client: c as never })).rejects.toMatchObject({ code: 'in_use' })
+    expect(c.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('references($ref) && projectSlug == $projectSlug && _type != "mediaAsset"'),
+      { id: 'm1', ref: 'image-abc-10x10-jpg', projectSlug: 'amelie' },
+      { perspective: 'raw' }
+    )
+    expect(c.delete).not.toHaveBeenCalled()
+  })
+
   it('refuses before any read without the grant', async () => {
     const c = client()
     await expect(deleteMediaAsset(ctx(), 'p-b', { assetId: 'm1' }, { client: c as never })).rejects.toThrow(TenantAuthorizationError)

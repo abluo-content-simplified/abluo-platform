@@ -1,5 +1,6 @@
 // Server-only: writes snapshots with the service role and calls Google.
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
+import { readAllRowsOrThrow } from '@/lib/supabase/read-all'
 import { loadAnalyticsIds } from './config'
 import { fetchGa4Metrics } from './ga4'
 import { AnalyticsConfigError, getGoogleAccessToken } from './google-auth'
@@ -116,9 +117,10 @@ export async function listSnapshotProjects(
   const projects =
     (await deps.projects?.()) ??
     (await runAsTrustedSystemOperation('analytics cron: list active/preview projects to snapshot', async (db) => {
-      const { data, error } = await db.from('projects').select('id, slug').in('status', [...SNAPSHOT_PROJECT_STATUSES])
-      if (error) throw new Error(`projects read failed: ${error.message}`)
-      return (data ?? []) as ProjectRow[]
+      // Paged: PostgREST returns at most 1000 rows per request.
+      return readAllRowsOrThrow<ProjectRow>('projects read failed', (from, to) =>
+        db.from('projects').select('id, slug').in('status', [...SNAPSHOT_PROJECT_STATUSES]).order('id').range(from, to),
+      )
     }))
   const ids = await (deps.ids ?? loadAnalyticsIds)(projects.map((p) => p.slug))
   return projects.map((p) => ({

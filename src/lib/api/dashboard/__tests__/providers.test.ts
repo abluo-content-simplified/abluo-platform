@@ -8,7 +8,7 @@ import { blogAttention, blogGlance } from '../blog'
 import { summarizeRequests } from '../forms'
 import { galleryAttention, galleryGlance } from '../gallery'
 import { altMap, getMediaDashboard, summarizeMedia } from '../media'
-import { siteStatusFrom } from '../site'
+import { isOnOwnDomain, siteStatusFrom } from '../site'
 import { settle } from '../settle'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import type { DashboardPostList } from '@/lib/api/client-dashboard'
@@ -125,6 +125,14 @@ describe('site status', () => {
   it('falls back to the domain when the project is not in the table yet', () => {
     expect(siteStatusFrom([], 'example.com')).toMatchObject({ state: 'live', url: 'https://example.com' })
     expect(siteStatusFrom([], null)).toMatchObject({ state: 'offline', url: null })
+  })
+  it('own domain (setup checklist): live AND a custom domain, never only an Abluo address', () => {
+    const previewOnly = (status: string) => [{ host: 'x.preview.abluo.app', hostKind: 'preview-subdomain' as const, status }]
+    expect(isOnOwnDomain(routes('active'), null, 'live')).toBe(true)
+    expect(isOnOwnDomain(previewOnly('active'), 'example.com', 'live')).toBe(true)
+    expect(isOnOwnDomain(previewOnly('active'), null, 'live')).toBe(false)
+    expect(isOnOwnDomain(routes('preview'), 'example.com', 'preview')).toBe(false)
+    expect(isOnOwnDomain(routes('draft'), 'example.com', 'offline')).toBe(false)
   })
 })
 

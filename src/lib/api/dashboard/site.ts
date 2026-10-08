@@ -34,8 +34,22 @@ export function siteStatusFrom(routes: readonly Pick<GeneratedHostRoute, 'host' 
   return { state: 'offline', host: domain, url: null }
 }
 
-export async function getSiteStatus(ctx: TenantAuthorizationContext, projectId: string): Promise<SiteStatusData | null> {
+/**
+ * Pure. Is the site live on its OWN domain (not only on an Abluo address)?
+ * Used by the setup checklist ("Your domain is connected").
+ */
+export function isOnOwnDomain(routes: readonly Pick<GeneratedHostRoute, 'hostKind' | 'status'>[], domain: string | null, state: SiteState): boolean {
+  if (state !== 'live') return false
+  return Boolean(domain) || routes.some((r) => r.hostKind === 'custom-domain')
+}
+
+export async function getSiteStatus(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+): Promise<(SiteStatusData & { ownDomain: boolean }) | null> {
   if (!ctx.projects.some((p) => p.projectId === projectId)) return null
   const domain = await settle('site.domain', () => getProjectSiteDomain(ctx, projectId))
-  return siteStatusFrom(hostsForProjectId(projectId), domain)
+  const routes = hostsForProjectId(projectId)
+  const status = siteStatusFrom(routes, domain)
+  return { ...status, ownDomain: isOnOwnDomain(routes, domain, status.state) }
 }

@@ -30,7 +30,7 @@ export default async function GalleryEditPage({
 }) {
   const { tenant: projectSlug, id } = await params
   const query = await searchParams
-  const ctx = await getTenantAuthorizationContext()
+  const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) redirect(`/login?next=/${projectSlug}/galleries/${encodeURIComponent(id)}/edit`)
   const grant = resolveProjectGrant(ctx.projects, projectSlug)
   if (!grant || !isGalleryId(id) || id === 'new' || !grant.permissions.includes(GALLERY_WRITE_PERMISSION)) notFound()

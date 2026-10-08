@@ -166,6 +166,32 @@ Each step goes `dev` → STOP → `preview` → STOP → `main`.
 - **2026-10-07 — step 5 (invitations, code).** `src/lib/invitations` (token, email, service). Create: caller authorized by `checkGrant` before any write; a new invitation cancels the pending one for the same person and place; only the SHA-256 of the link token is stored; email from "<inviter> via Abluo" `<no-reply@mail.abluo.app>` with Reply-To = inviter, in the inviter's dashboard language. Accept (`/invite/accept`): signed in with the invited email → accept; other account → sign out; new person → set a password (account created server-side, the token being the authorization). At acceptance the inviter is re-resolved from the database and re-checked; the invitation is claimed atomically; an existing membership is never downgraded and extras only add. Link origin restricted to Abluo hosts (no Host-header injection). Both invite API routes use it; `inviteUserByEmail` is no longer called.
 - **2026-10-07 — step 6 (People list).** Built on the shared list pattern (PageHeader, ListToolbar, DataTable, phone cards, CardMenu, BottomSheet). One list: active people, invitations (Invited / Expired) and Archived. Columns: avatar, person, role + extras, status, invited, joined, last active, 2-step. Person sheet shows "invited by". **People are archived, never deleted** (Tom): archiving deletes the membership — access ends at once through the existing checks — and keeps a server-only record (migration 031, `project_member_archive`, grants nothing) for Restore. Archiving also cancels their pending invitations on that site. Restore brings back the same role and extras only if the restorer could grant them today, and emails "your access is back". Resend issues a fresh invitation (old link dies), at most once per 5 minutes and 5 per day per person and site. Cancel/resend are scoped to the site in the URL. Avatars only from Abluo storage (no tracking pixels). The Submissions page hides status/delete controls the viewer lacks (server re-checks).
 
+## Amendment — 2026-10-08: support mode built (§8)
+
+Built on a branch (not released; migration `038_support_sessions.sql` NOT APPLIED). Engineering doc:
+`docs/engineering/support-mode.md`. Where it differs from §8 as first written, Tom's 2026-10-08 decisions win:
+
+- **Entry:** admin project page → *View as client*, with a role perspective (Owner by default; Site admin,
+  Editor). View only; a persistent banner "Support mode — viewing <site> as <role>" with Exit.
+- **Edit approval:** the request appears **inside the client's dashboard** (notice on every page, Home
+  included) for the project's Owner / Site admin, with Allow / Decline / End access. **No email yet.**
+  Duration is **one constant, 60 minutes** (`SUPPORT_EDIT_MINUTES`); the per-project duration choice and
+  "may make changes without asking" settings are not built.
+- **Storage:** one table `support_sessions` (visit + edit-access state). The append-only trail is the
+  existing **admin audit log** (migration 033), not a separate `access_events` table: every visit
+  start/exit, request, decision, expiry, contact-request reveal and every server action run in a visit.
+  The client-facing **Activity page** is not built yet.
+- **Enforcement (refines §2 "Super Admin goes through the same function"):** support plugs into
+  `getTenantAuthorizationContext()` only. During a visit the context holds one synthetic project grant for
+  the visited project and no tenant grants; `userId` stays the admin (attribution). Its permissions depend
+  on the caller's declared purpose: pages/layouts (`render`) get the perspective role's set; everything else
+  (`mutation`, the default) gets reads only — writes only while the client's approval is live. `can()` and
+  `assertModuleAction()` re-check (`supportRefuses`). **People (`users.*`), `modules.manage` and
+  `billing.manage` are never writable in support mode**, even with approval.
+- **Contact requests** stay hidden until the admin's explicit, logged "Show contact requests" (as §8).
+- **Self-approval is impossible:** the requesting admin can never decide on their own request, even when the
+  same account is an Owner (enforced by `support_session_decide()` and a table CHECK).
+
 ## Follow-ups noted
 
 - **"No access" page on `admin.abluo.app`** (Tom, 2026-10-07). A correctly signed-in non-admin (e.g. an Editor) lands on "No access", which is the right behaviour — authentication succeeded, authorization did not, so "wrong user or password" would be false. Improvement: offer a localized "Go to your dashboard" button to the client dashboard instead of a dead end.

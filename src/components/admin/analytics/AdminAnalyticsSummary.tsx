@@ -63,11 +63,11 @@ export async function AdminAnalyticsSummary() {
               label={t('visitors')}
               value={s.visitors.value}
               delta={s.visitors.change === null ? null : { percent: s.visitors.change, period: t('previousPeriod') }}
-              sub={t('acrossSites', { count: s.connected + s.stale })}
+              sub={t('acrossSites', { count: s.connected + s.stale + s.outOfDate })}
               href="/analytics"
             />
             <StatTile label={t('notConnected')} value={s.notConnected} sub={t('ofSites', { count: s.sites })} href="/analytics" />
-            <StatTile label={t('erroring')} value={s.erroring} sub={s.stale ? t('stale', { count: s.stale }) : null} href="/analytics" />
+            <StatTile label={t('erroring')} value={s.erroring} sub={s.stale + s.outOfDate ? t('stale', { count: s.stale + s.outOfDate }) : null} href="/analytics" />
           </StatGrid>
           {s.risers.length || s.fallers.length ? (
             <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2">

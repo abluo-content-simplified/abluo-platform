@@ -53,7 +53,7 @@ function emptyPostDraft(): Awaited<ReturnType<typeof getPostDraft>> {
 export default async function WriteDraftPage({ params }: { params: Promise<{ tenant: string; id: string }> }) {
   const { tenant: projectSlug, id } = await params
 
-  const ctx = await getTenantAuthorizationContext()
+  const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
   if (!ctx) redirect(`/login?next=/${projectSlug}/posts/write/${encodeURIComponent(id)}`)
 
   const grant = resolveProjectGrant(ctx.projects, projectSlug)

@@ -1,6 +1,7 @@
 // Server-only: reads Supabase `projects` with the service role. Call ONLY after
 // `requireAbluoAdmin()`; never import from a client component.
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
+import { readAllRowsOrThrow } from '@/lib/supabase/read-all'
 import { pickAdminProject, usableAdminProjects, type AdminMediaProject } from '@/lib/admin/media-context'
 
 /**
@@ -9,9 +10,10 @@ import { pickAdminProject, usableAdminProjects, type AdminMediaProject } from '@
  */
 export async function loadAdminMediaProjects(): Promise<AdminMediaProject[]> {
   return runAsTrustedSystemOperation('admin media: list projects for the cross-project Media Library', async (admin) => {
-    const { data, error } = await admin.from('projects').select('id, slug, name')
-    if (error) throw new Error(error.message)
-    return usableAdminProjects(data ?? [])
+    const rows = await readAllRowsOrThrow<{ id: string; slug: string; name: string }>('admin media projects', (from, to) =>
+      admin.from('projects').select('id, slug, name').order('id').range(from, to),
+    )
+    return usableAdminProjects(rows)
   })
 }
 
