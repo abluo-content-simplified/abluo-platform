@@ -423,6 +423,25 @@ dialog.app-panel[open]::backdrop {
     }
   }
 }
+/* Closing: useSheetDialog sets data-closing, waits for the slide-out, then closes. */
+dialog.app-sheet[open][data-closing],
+dialog.app-panel[open][data-closing] {
+  translate: 0 100%;
+}
+dialog.app-sheet[open][data-closing]::backdrop,
+dialog.app-panel[open][data-closing]::backdrop {
+  opacity: 0;
+}
+@media (min-width: 48rem) {
+  dialog.app-sheet[open][data-closing] {
+    translate: none;
+    opacity: 0;
+    scale: 0.96;
+  }
+  dialog.app-panel[open][data-closing] {
+    translate: 100% 0;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   dialog.app-sheet,
   dialog.app-panel,

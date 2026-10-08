@@ -28,7 +28,22 @@
     "security": "Sicherheit",
     "twoStep": "Bestätigung in zwei Schritten",
     "access": "Dein Zugang",
-    "accessHint": "Die Websites, an denen du arbeiten kannst, und deine Rolle auf jeder."
+    "accessHint": "Die Websites, an denen du arbeiten kannst, und deine Rolle auf jeder.",
+    "avatar": {
+      "title": "Foto",
+      "add": "Foto hinzufügen",
+      "change": "Foto ändern",
+      "remove": "Entfernen",
+      "saving": "Wird gespeichert …",
+      "hint": "Es wird ein quadratischer Ausschnitt deines Bildes verwendet.",
+      "errors": {
+        "unauthenticated": "Bitte melde dich erneut an.",
+        "missing": "Wähle zuerst ein Bild.",
+        "tooLarge": "Das Bild ist zu groß.",
+        "type": "Verwende ein JPG-, PNG- oder WebP-Bild.",
+        "failed": "Das Foto konnte nicht gespeichert werden. Bitte versuche es erneut."
+      }
+    }
   },
   "clientDashboard": {
     "nav": {
@@ -1772,7 +1787,8 @@
       "help": "Hilfe",
       "opensInNewTab": "(öffnet in einem neuen Tab)",
       "profile": "Profil",
-      "preferences": "Einstellungen"
+      "preferences": "Einstellungen",
+      "close": "Schließen"
     }
   },
   "editor": {

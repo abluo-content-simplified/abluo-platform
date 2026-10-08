@@ -28,7 +28,22 @@
     "security": "Security",
     "twoStep": "2-step verification",
     "access": "Your access",
-    "accessHint": "The sites you can work on, and your role on each."
+    "accessHint": "The sites you can work on, and your role on each.",
+    "avatar": {
+      "title": "Photo",
+      "add": "Add a photo",
+      "change": "Change photo",
+      "remove": "Remove",
+      "saving": "Saving…",
+      "hint": "A square crop of your picture is used.",
+      "errors": {
+        "unauthenticated": "Please sign in again.",
+        "missing": "Choose a picture first.",
+        "tooLarge": "That picture is too large.",
+        "type": "Use a JPG, PNG or WebP picture.",
+        "failed": "Could not save the photo. Please try again."
+      }
+    }
   },
   "clientDashboard": {
     "nav": {
@@ -1772,7 +1787,8 @@
       "help": "Help",
       "opensInNewTab": "(opens in a new tab)",
       "profile": "Profile",
-      "preferences": "Preferences"
+      "preferences": "Preferences",
+      "close": "Close"
     }
   },
   "editor": {

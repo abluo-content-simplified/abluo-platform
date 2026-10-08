@@ -10,6 +10,7 @@ import { Link } from '@/i18n/navigation'
 import { filterSwitchableProjects, loadProjectSummaries, statusesOf } from '@/lib/client/switchable-projects'
 import { AppTextSizeSwitch } from '@/components/client/AppTextSizeSwitch'
 import { AppThemeSwitch } from '@/components/client/AppThemeSwitch'
+import { AvatarEditor } from '@/components/client/account/AvatarEditor'
 import { SignOutButton } from '@/components/client/account/SignOutButton'
 import { TwoFactorPill } from '@/components/client/people/people-bits'
 import { FactRow } from '@/components/client/ui/FactRow'
@@ -85,6 +86,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
 
         <div className="max-w-xl space-y-6">
           <Section title={t('profile')}>
+            <AvatarEditor name={viewer.name} email={viewer.email} src={viewer.avatarUrl} />
             <dl>
               <FactRow label={t('name')}>{viewer.name || <span className="text-muted-foreground">{t('notSet')}</span>}</FactRow>
               <FactRow label={t('email')}>{viewer.email}</FactRow>

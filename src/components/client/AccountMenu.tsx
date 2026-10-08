@@ -7,14 +7,18 @@ import { Link } from '@/i18n/navigation'
 import { AppVersion } from './AppVersion'
 import { SignOutButton } from './account/SignOutButton'
 import { Avatar } from './ui/Avatar'
+import { AppTextSizeSwitch } from './AppTextSizeSwitch'
+import { AppThemeSwitch } from './AppThemeSwitch'
 import { BottomSheet } from './ui/BottomSheet'
+import { SidePanel } from './ui/SidePanel'
 import { FLOATING_STYLE, portalTarget, useAnchoredPopover } from './ui/anchored-popover'
 import type { AppTextSize, AppTheme } from '@/lib/app-theme'
 
 /**
  * The signed-in person's own menu (ADR-029 §1, "user-level preferences ≠
  * project configuration"): Profile · Preferences · Help · Sign out (icons on
- * every row; Tom 2026-10-08 — appearance and text size live under Preferences),
+ * every row; Tom 2026-10-08 — Preferences opens a side panel with appearance and
+ * text size),
  * and the app version quietly at the bottom. Nothing in here changes the
  * project — it only affects this person's CMS experience.
  *
@@ -72,7 +76,7 @@ function RowIcon({ d }: { d: string }) {
 const ROW =
   'flex min-h-12 w-full items-start gap-3 rounded-md px-3 py-3 text-left text-[0.9375rem] text-foreground transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none md:min-h-10 md:py-2.5'
 
-function MenuBody({ name, email, helpUrl, role, siteName, onClose }: AccountMenuProps & { onClose: () => void }) {
+function MenuBody({ name, email, helpUrl, role, siteName, onClose, onPreferences }: AccountMenuProps & { onClose: () => void; onPreferences: () => void }) {
   const t = useTranslations('clientDashboard.accountMenu')
   const roleLine = useRoleLine(role, siteName)
   return (
@@ -88,10 +92,10 @@ function MenuBody({ name, email, helpUrl, role, siteName, onClose }: AccountMenu
         <RowIcon d={ROW_ICONS.profile} />
         {t('profile')}
       </Link>
-      <Link href="/account#preferences" onClick={onClose} className={ROW}>
+      <button type="button" onClick={onPreferences} className={ROW}>
         <RowIcon d={ROW_ICONS.preferences} />
         {t('preferences')}
-      </Link>
+      </button>
       {helpUrl ? (
         <a href={helpUrl} target="_blank" rel="noopener noreferrer" onClick={onClose} className={ROW}>
           <RowIcon d={ROW_ICONS.help} />
@@ -112,6 +116,8 @@ export function AccountMenu(props: AccountMenuProps) {
   const t = useTranslations('clientDashboard.accountMenu')
   const roleLine = useRoleLine(role, siteName)
   const [open, setOpen] = useState(false)
+  // Preferences (appearance, text size) open in a side panel — a bottom sheet on phones (Tom, 2026-10-08).
+  const [prefsOpen, setPrefsOpen] = useState(false)
   const [target, setTarget] = useState<HTMLElement | null>(null)
   const id = useId()
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -123,6 +129,10 @@ export function AccountMenu(props: AccountMenuProps) {
     if (refocus) buttonRef.current?.focus()
   }, [])
   const close = useCallback(() => dismiss(false), [dismiss])
+  const openPreferences = useCallback(() => {
+    setOpen(false)
+    setPrefsOpen(true)
+  }, [])
 
   useAnchoredPopover({ open: open && desktop, anchorRef: buttonRef, panelRef, align: 'left', gap: 6, onDismiss: dismiss })
 
@@ -156,11 +166,8 @@ export function AccountMenu(props: AccountMenuProps) {
         {desktop ? (
           <span className="min-w-0 flex-1 pt-0.5">
             <span className="block truncate text-sm font-medium text-foreground">{label}</span>
-            {roleLine ? (
-              <span className="block truncate text-xs text-muted-foreground">{roleLine}</span>
-            ) : name && email ? (
-              <span className="block truncate text-xs text-muted-foreground">{email}</span>
-            ) : null}
+            {roleLine ? <span className="block truncate text-xs text-muted-foreground">{roleLine}</span> : null}
+            {name && email ? <span className="block truncate text-xs text-muted-foreground">{email}</span> : null}
           </span>
         ) : null}
       </button>
@@ -176,15 +183,22 @@ export function AccountMenu(props: AccountMenuProps) {
               style={FLOATING_STYLE}
               className="z-50 w-64 rounded-2xl border border-border bg-popover p-1.5 text-popover-foreground shadow-[var(--shadow-raise)] outline-none"
             >
-              <MenuBody {...props} onClose={close} />
+              <MenuBody {...props} onClose={close} onPreferences={openPreferences} />
             </div>,
             target,
           )
         : null}
 
+      <SidePanel open={prefsOpen} title={t('preferences')} closeLabel={t('close')} onClose={() => setPrefsOpen(false)}>
+        <div className="space-y-5 py-1">
+          <AppThemeSwitch initial={props.theme} />
+          <AppTextSizeSwitch initial={props.textSize} />
+        </div>
+      </SidePanel>
+
       {!desktop ? (
         <BottomSheet open={open} title={t('title')} onClose={close}>
-          <MenuBody {...props} onClose={close} />
+          <MenuBody {...props} onClose={close} onPreferences={openPreferences} />
         </BottomSheet>
       ) : null}
     </>

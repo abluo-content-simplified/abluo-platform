@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { PageShell } from '@/components/client/ui/PageShell'
-import { DashboardArea, DashboardGrid } from '@/components/client/ui/DashboardGrid'
+import { DashboardArea, DashboardColumn, DashboardGrid } from '@/components/client/ui/DashboardGrid'
 import { SectionHeading } from '@/components/client/ui/SectionHeading'
 import { StatGrid } from '@/components/client/ui/StatGrid'
 import { StatTile } from '@/components/client/ui/StatTile'
@@ -276,22 +276,29 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
 
   return (
     <PageShell>
-      {/* DOM order = phone order (Tom, 2026-10-08): greeting, at a glance, needs your
-          attention, continue editing, latest lists, view your site. desktopOrder keeps
-          the desktop rows as they were (greeting + site status on row 1). */}
+      {/* Phone order (Tom, 2026-10-08): greeting, at a glance, needs your attention,
+          continue editing, latest lists, view your site — set with phoneOrder because
+          on desktop "Needs your attention" and the latest lists share the left column
+          (no gap under the shorter one), with Continue editing on the right. */}
       <DashboardGrid>
-        <DashboardArea span={site ? 8 : 12} desktopOrder={1}>
+        <DashboardArea span={site ? 8 : 12} phoneOrder={1} desktopOrder={1}>
           <Greeting firstName={firstName} />
         </DashboardArea>
 
+        {site ? (
+          <DashboardArea span={4} phoneOrder={8} desktopOrder={2}>
+            <SiteStatus state={site.state} host={site.host} url={site.url} />
+          </DashboardArea>
+        ) : null}
+
         {nothingYet ? (
-          <DashboardArea desktopOrder={3}>
+          <DashboardArea phoneOrder={2} desktopOrder={3}>
             <EmptyState title={th('emptyTitle')} body={th('emptyBody')} />
           </DashboardArea>
         ) : null}
 
         {tiles.length ? (
-          <DashboardArea desktopOrder={4}>
+          <DashboardArea phoneOrder={3} desktopOrder={4}>
             <section aria-labelledby="at-a-glance" className="flex flex-col gap-3">
               <SectionHeading id="at-a-glance" title={th('glance.heading')} />
               <StatGrid>{tiles}</StatGrid>
@@ -299,37 +306,34 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
           </DashboardArea>
         ) : null}
 
-        {showAttention ? (
-          <DashboardArea span={8} desktopOrder={5}>
-            <section aria-labelledby="needs-attention" className="flex flex-col gap-3">
-              <SectionHeading id="needs-attention" title={th('attention.heading')} />
-              <AttentionList items={attentionRows} />
-            </section>
-          </DashboardArea>
-        ) : null}
-
         {hasContinue ? (
-          <DashboardArea span={showAttention ? 4 : 12} desktopOrder={6}>
+          <DashboardArea span={showAttention ? 4 : 12} phoneOrder={5} desktopOrder={showAttention ? 6 : 5}>
             <ContinueEditing projectSlug={projectSlug} cards={cards} layout={showAttention ? 'stack' : 'grid'} />
           </DashboardArea>
         ) : null}
 
-        {latestPosts.length > 0 && postsHref ? (
-          <DashboardArea span={6} desktopOrder={7}>
-            <LatestList kind="post" heading={th('latestPosts')} items={latestPosts} seeAllHref={postsHref} />
-          </DashboardArea>
-        ) : null}
+        <DashboardColumn span={showAttention && hasContinue ? 8 : 12} desktopOrder={showAttention ? 5 : 6}>
+          {showAttention ? (
+            <DashboardArea phoneOrder={4}>
+              <section aria-labelledby="needs-attention" className="flex flex-col gap-3">
+                <SectionHeading id="needs-attention" title={th('attention.heading')} />
+                <AttentionList items={attentionRows} />
+              </section>
+            </DashboardArea>
+          ) : null}
 
-        {latestGalleries.length > 0 && galleriesHref ? (
-          <DashboardArea span={6} desktopOrder={8}>
-            <LatestList kind="gallery" heading={th('latestGalleries')} items={latestGalleries} seeAllHref={galleriesHref} />
-          </DashboardArea>
-        ) : null}
-        {site ? (
-          <DashboardArea span={4} desktopOrder={2}>
-            <SiteStatus state={site.state} host={site.host} url={site.url} />
-          </DashboardArea>
-        ) : null}
+          {latestPosts.length > 0 && postsHref ? (
+            <DashboardArea phoneOrder={6}>
+              <LatestList kind="post" heading={th('latestPosts')} items={latestPosts} seeAllHref={postsHref} />
+            </DashboardArea>
+          ) : null}
+
+          {latestGalleries.length > 0 && galleriesHref ? (
+            <DashboardArea phoneOrder={7}>
+              <LatestList kind="gallery" heading={th('latestGalleries')} items={latestGalleries} seeAllHref={galleriesHref} />
+            </DashboardArea>
+          ) : null}
+        </DashboardColumn>
       </DashboardGrid>
     </PageShell>
   )

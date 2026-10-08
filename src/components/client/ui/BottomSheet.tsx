@@ -1,22 +1,18 @@
 'use client'
 
-import { useEffect, useRef, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useExitContent } from './use-exit-content'
+import { useSheetDialog } from './use-sheet-dialog'
 
-/** A bottom sheet (native dialog): full width on phones, centred from md. Slides in/out (`.app-sheet`, globals.css). */
+/** A bottom sheet (native dialog): full width on phones, centred from md. Slides in/out (`.app-sheet`, globals.css); portalled to the app root (useSheetDialog). */
 export function BottomSheet({ open, title, onClose, children }: { open: boolean; title: string; onClose: () => void; children: ReactNode }) {
-  const ref = useRef<HTMLDialogElement>(null)
   const body = useExitContent(open, children)
-  useEffect(() => {
-    const d = ref.current
-    if (!d) return
-    if (open && !d.open) d.showModal()
-    if (!open && d.open) d.close()
-  }, [open])
-  return (
+  const { target, dialogProps } = useSheetDialog(open, onClose)
+  if (!target) return null
+  return createPortal(
     <dialog
-      ref={ref}
-      onClose={onClose}
+      {...dialogProps}
       aria-label={title}
       className="app-sheet m-auto mb-0 w-full max-w-md rounded-t-2xl bg-popover p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-popover-foreground backdrop:bg-overlay md:mb-auto md:rounded-2xl"
     >
@@ -34,6 +30,7 @@ export function BottomSheet({ open, title, onClose, children }: { open: boolean;
         </button>
       </div>
       <div className="mt-2 flex flex-col">{body}</div>
-    </dialog>
+    </dialog>,
+    target,
   )
 }

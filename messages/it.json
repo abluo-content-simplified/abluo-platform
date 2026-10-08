@@ -28,7 +28,22 @@
     "security": "Sicurezza",
     "twoStep": "Verifica in due passaggi",
     "access": "I tuoi accessi",
-    "accessHint": "I siti su cui puoi lavorare e il tuo ruolo in ciascuno."
+    "accessHint": "I siti su cui puoi lavorare e il tuo ruolo in ciascuno.",
+    "avatar": {
+      "title": "Foto",
+      "add": "Aggiungi una foto",
+      "change": "Cambia foto",
+      "remove": "Rimuovi",
+      "saving": "Salvataggio…",
+      "hint": "Viene usato un ritaglio quadrato della tua immagine.",
+      "errors": {
+        "unauthenticated": "Accedi di nuovo.",
+        "missing": "Scegli prima un’immagine.",
+        "tooLarge": "L’immagine è troppo grande.",
+        "type": "Usa un’immagine JPG, PNG o WebP.",
+        "failed": "Impossibile salvare la foto. Riprova."
+      }
+    }
   },
   "clientDashboard": {
     "nav": {
@@ -1772,7 +1787,8 @@
       "help": "Aiuto",
       "opensInNewTab": "(si apre in una nuova scheda)",
       "profile": "Profilo",
-      "preferences": "Preferenze"
+      "preferences": "Preferenze",
+      "close": "Chiudi"
     }
   },
   "editor": {

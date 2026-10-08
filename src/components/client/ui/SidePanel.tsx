@@ -1,7 +1,9 @@
 'use client'
 
-import { useEffect, useRef, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useExitContent } from './use-exit-content'
+import { useSheetDialog } from './use-sheet-dialog'
 
 /**
  * A detail panel for one list item (a form request, a person, an order …),
@@ -35,21 +37,15 @@ export function SidePanel({
   actions?: ReactNode
   children: ReactNode
 }) {
-  const ref = useRef<HTMLDialogElement>(null)
   const body = useExitContent(open, children)
   const head = useExitContent(open, title)
   const sub = useExitContent(open, subtitle ?? null)
   const acts = useExitContent(open, actions ?? null)
-  useEffect(() => {
-    const d = ref.current
-    if (!d) return
-    if (open && !d.open) d.showModal()
-    if (!open && d.open) d.close()
-  }, [open])
-  return (
+  const { target, dialogProps } = useSheetDialog(open, onClose)
+  if (!target) return null
+  return createPortal(
     <dialog
-      ref={ref}
-      onClose={onClose}
+      {...dialogProps}
       // A click on the backdrop (the dialog element itself, outside its box) closes it.
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
@@ -77,6 +73,7 @@ export function SidePanel({
       </div>
       {acts ? <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-4 py-3 md:px-6">{acts}</div> : null}
       <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:px-6">{body}</div>
-    </dialog>
+    </dialog>,
+    target,
   )
 }
