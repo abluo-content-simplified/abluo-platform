@@ -2789,8 +2789,9 @@
         "invited": "Eine Einladung wurde an {email} gesendet.",
         "emailNotSent": "Die Einladung für {email} wurde angelegt, aber die E-Mail konnte nicht gesendet werden. Senden Sie sie über die Projektseite erneut.",
         "openProject": "Projekt öffnen",
+        "openPreview": "Vorschau öffnen",
         "openStudio": "Studio öffnen",
-        "another": "Neues Projekt",
+        "another": "Weiteres Projekt anlegen",
         "next": {
           "heading": "Wie es weitergeht",
           "routes": {
@@ -2821,7 +2822,8 @@
             "body": "Sobald die Website auf ihrer Domain live ist, Analytics und Search Console mit einem Klick auf der Projektseite einrichten.",
             "open": "Google-Karte öffnen"
           }
-        }
+        },
+        "previewHint": "Die Vorschau funktioniert, sobald die Website erreichbar ist — siehe Schritt 1 unten."
       }
     }
   },

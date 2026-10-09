@@ -121,17 +121,29 @@ export function ProvisioningRunPanel({ run: initial }: { run: ProvisioningRunVie
             </p>
           ) : null}
 
-          <div className="flex flex-wrap gap-3">
-            <Link href={adminProjectHref(run.projectSlug)} className={PRIMARY_BUTTON}>
-              {t('openProject')}
-            </Link>
-            <a href="/studio" target="_blank" rel="noopener noreferrer" className={SECONDARY_BUTTON}>
-              {t('openStudio')}
-            </a>
-            <Link href="/projects/new" className={SECONDARY_BUTTON}>
-              {t('another')}
-            </Link>
+          {/* Tom 2026-10-09: the site itself first-class (Open preview); "start another
+              wizard" demoted to a quiet link — as a button beside the others it read as
+              part of THIS project. */}
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap gap-3">
+              <Link href={adminProjectHref(run.projectSlug)} className={PRIMARY_BUTTON}>
+                {t('openProject')}
+              </Link>
+              <a href={previewSiteUrl(run.projectSlug)} target="_blank" rel="noopener noreferrer" className={SECONDARY_BUTTON}>
+                {t('openPreview')}
+              </a>
+              <a href="/studio" target="_blank" rel="noopener noreferrer" className={SECONDARY_BUTTON}>
+                {t('openStudio')}
+              </a>
+            </div>
+            <p className="text-sm leading-5 text-muted-foreground">{t('previewHint')}</p>
           </div>
+          <Link
+            href="/projects/new"
+            className="inline-flex min-h-11 w-fit items-center rounded-md text-sm font-medium text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            {t('another')}
+          </Link>
 
           <section aria-labelledby="np-next" className="flex flex-col gap-4">
             <SectionHeading id="np-next" title={t('next.heading')} />

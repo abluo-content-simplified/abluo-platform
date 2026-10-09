@@ -2789,8 +2789,9 @@
         "invited": "An invitation was emailed to {email}.",
         "emailNotSent": "The invitation for {email} was created, but the email couldn’t be sent. Send it again from the project page.",
         "openProject": "Open project",
+        "openPreview": "Open preview",
         "openStudio": "Open Studio",
-        "another": "New project",
+        "another": "Create another project",
         "next": {
           "heading": "What’s next",
           "routes": {
@@ -2821,7 +2822,8 @@
             "body": "Once the site is live on its domain, set up Analytics and Search Console from the project page in one click.",
             "open": "Open the Google card"
           }
-        }
+        },
+        "previewHint": "The preview works once the site is reachable — see step 1 below."
       }
     }
   },

@@ -2789,8 +2789,9 @@
         "invited": "Un invito è stato inviato via email a {email}.",
         "emailNotSent": "L’invito per {email} è stato creato, ma non è stato possibile inviare l’email. Invialo di nuovo dalla pagina del progetto.",
         "openProject": "Apri il progetto",
+        "openPreview": "Apri anteprima",
         "openStudio": "Apri Studio",
-        "another": "Nuovo progetto",
+        "another": "Crea un altro progetto",
         "next": {
           "heading": "Prossimi passi",
           "routes": {
@@ -2821,7 +2822,8 @@
             "body": "Quando il sito è online sul suo dominio, configura Analytics e Search Console dalla pagina del progetto con un clic.",
             "open": "Apri la scheda Google"
           }
-        }
+        },
+        "previewHint": "L’anteprima funziona quando il sito è raggiungibile — vedi il passo 1 qui sotto."
       }
     }
   },
