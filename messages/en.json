@@ -2458,8 +2458,9 @@
       "support": {
         "heading": "Support",
         "body": "Open the client dashboard exactly as the client sees it. View only; to change anything, ask the client from inside. Every visit is logged.",
-        "roleLabel": "View as",
-        "open": "View as client",
+        "roleLabel": "See the dashboard as",
+        "roleHint": "Each role sees a different dashboard: Owner sees everything, Editor only what an editor can use.",
+        "open": "Open client dashboard",
         "unavailable": "Support mode isn’t available yet (migration 038 is not applied).",
         "failed": "Couldn’t open support mode. Try again."
       },

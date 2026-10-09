@@ -2458,8 +2458,9 @@
       "support": {
         "heading": "Support",
         "body": "Öffne das Kunden-Dashboard genau so, wie der Kunde es sieht. Nur ansehen; um etwas zu ändern, frag den Kunden von dort aus. Jeder Besuch wird protokolliert.",
-        "roleLabel": "Ansehen als",
-        "open": "Als Kunde ansehen",
+        "roleLabel": "Dashboard ansehen als",
+        "roleHint": "Jede Rolle sieht ein anderes Dashboard: der Inhaber sieht alles, der Redakteur nur, was ein Redakteur nutzen kann.",
+        "open": "Kunden-Dashboard öffnen",
         "unavailable": "Der Support-Modus ist noch nicht verfügbar (Migration 038 ist nicht angewendet).",
         "failed": "Support-Modus konnte nicht geöffnet werden. Versuch es noch einmal."
       },

@@ -2458,8 +2458,9 @@
       "support": {
         "heading": "Assistenza",
         "body": "Apri la dashboard del cliente esattamente come la vede il cliente. Solo visualizzazione; per modificare, chiedi al cliente dall’interno. Ogni visita viene registrata.",
-        "roleLabel": "Vedi come",
-        "open": "Vedi come il cliente",
+        "roleLabel": "Vedi la dashboard come",
+        "roleHint": "Ogni ruolo vede una dashboard diversa: il Titolare vede tutto, l’Editor solo ciò che un editor può usare.",
+        "open": "Apri la dashboard del cliente",
         "unavailable": "La modalità assistenza non è ancora disponibile (la migrazione 038 non è applicata).",
         "failed": "Impossibile aprire la modalità assistenza. Riprova."
       },

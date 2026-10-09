@@ -5,7 +5,7 @@ import { DEFAULT_SUPPORT_ROLE, SUPPORT_ROLES } from '@/lib/support/constants'
 
 /**
  * "View as client" on the admin project page (ADR-028 §8, support mode).
- * A plain form — the role perspective (Owner by default) and one button; the
+ * A plain form — which role's dashboard to see (segmented, Owner by default) and one button; the
  * server action checks admin + two-factor, opens the visit, logs it and lands
  * on the client's Home. `notice` is the result of a failed attempt.
  */
@@ -31,26 +31,32 @@ export async function ViewAsClient({
           {t(notice)}
         </p>
       ) : null}
-      <form action={startSupportVisitAction} className="flex flex-wrap items-end gap-3">
+      <form action={startSupportVisitAction} className="flex flex-wrap items-start gap-3">
         <input type="hidden" name="projectId" value={projectId} />
         <input type="hidden" name="slug" value={slug} />
-        <label className="flex flex-col gap-1 text-sm font-medium text-foreground">
-          {t('roleLabel')}
-          <select
-            name="role"
-            defaultValue={DEFAULT_SUPPORT_ROLE}
-            className="min-h-11 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
+        <fieldset className="flex flex-col gap-1.5">
+          <legend className="mb-1.5 text-sm font-medium text-foreground">{t('roleLabel')}</legend>
+          <div className="inline-flex h-11 rounded-lg border border-input bg-background p-1">
             {SUPPORT_ROLES.map((r) => (
-              <option key={r} value={r}>
-                {tRoles(r)}
-              </option>
+              <label key={r} className="relative">
+                <input
+                  type="radio"
+                  name="role"
+                  value={r}
+                  defaultChecked={r === DEFAULT_SUPPORT_ROLE}
+                  className="peer sr-only"
+                />
+                <span className="flex h-full cursor-pointer items-center rounded-md px-3 text-sm text-muted-foreground transition-colors peer-checked:bg-muted peer-checked:font-medium peer-checked:text-foreground peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
+                  {tRoles(r)}
+                </span>
+              </label>
             ))}
-          </select>
-        </label>
+          </div>
+          <p className="text-xs leading-4 text-muted-foreground">{t('roleHint')}</p>
+        </fieldset>
         <button
           type="submit"
-          className="inline-flex min-h-11 items-center rounded-lg bg-action px-4 text-sm font-medium text-action-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          className="mt-7 inline-flex h-11 items-center rounded-lg bg-action px-4 text-sm font-medium text-action-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
           {t('open')}
         </button>
