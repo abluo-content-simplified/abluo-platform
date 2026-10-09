@@ -21,8 +21,12 @@ import { percentChange } from '@/lib/client/home-cards'
 import { MODULE_REGISTRY } from '@/lib/modules/registry'
 import { ProjectAnalyticsBlock } from '@/components/admin/analytics/ProjectAnalyticsBlock'
 import { ViewAsClient } from '@/components/admin/projects/ViewAsClient'
+import { GoogleCard } from '@/components/admin/projects/GoogleCard'
 
 export const dynamic = 'force-dynamic'
+// "Connect Search Console" (a server action on this page) waits up to ~90 s
+// for the live site to serve the verification tag.
+export const maxDuration = 120
 
 const ICON = {
   eye: <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />,
@@ -42,7 +46,8 @@ const icon = (d: ReactNode) => (
  * admin facts (modules, languages, Owners, pending invitations, created,
  * links). Every view is written to the internal admin audit log. Unknown
  * slug → 404. "View as client" opens the client dashboard in support mode
- * (ADR-028 §8, docs/engineering/support-mode.md).
+ * (ADR-028 §8, docs/engineering/support-mode.md). "Google" sets up GA4 and
+ * Search Console with the Abluo service account (docs/engineering/analytics-setup.md).
  */
 export default async function AdminProjectPage({
   params,
@@ -213,6 +218,8 @@ export default async function AdminProjectPage({
       <ViewAsClient projectId={project.id} slug={project.slug} notice={supportNotice} />
 
       <ProjectAnalyticsBlock projectId={project.id} />
+
+      <GoogleCard projectId={project.id} />
 
       <section aria-labelledby="admin-facts" className="flex flex-col gap-3">
         <SectionHeading id="admin-facts" title={t('adminHeading')} />

@@ -2462,6 +2462,48 @@
         "open": "Vedi come il cliente",
         "unavailable": "La modalità assistenza non è ancora disponibile (la migrazione 038 non è applicata).",
         "failed": "Impossibile aprire la modalità assistenza. Riprova."
+      },
+      "google": {
+        "heading": "Google",
+        "body": "Analytics e Search Console per questo sito, configurati dall’account di servizio Abluo — senza clic in Google. Si può ripetere senza rischi.",
+        "analytics": "Google Analytics",
+        "searchConsole": "Search Console",
+        "property": "proprietà {id}",
+        "state": {
+          "connected": "Collegato",
+          "notSetUp": "Non configurato",
+          "waiting": "In attesa del sito",
+          "error": "Errore"
+        },
+        "waitingStored": "Il tag di verifica è nelle impostazioni del sito; Search Console non è ancora collegata. Riprova quando il sito è online sul suo dominio.",
+        "setUpBoth": "Configura entrambi",
+        "setUpAnalytics": "Configura Analytics",
+        "connectSearchConsole": "Collega Search Console",
+        "recheckAnalytics": "Ricontrolla Analytics",
+        "recheckSearchConsole": "Ricontrolla Search Console",
+        "working": "In corso…",
+        "pendingAnalytics": "Configurazione di Analytics…",
+        "pendingSearchConsole": "Collegamento in corso… l’attesa del sito può durare fino a due minuti.",
+        "refused": "Non consentito.",
+        "failed": "Qualcosa è andato storto. Controlla il log del server.",
+        "loadError": "Impossibile leggere le impostazioni del progetto in Sanity.",
+        "notConfigured": "L’account di servizio Google non è configurato su questo deployment (GOOGLE_ANALYTICS_SA_EMAIL / GOOGLE_ANALYTICS_SA_PRIVATE_KEY).",
+        "needsDomain": "Questo progetto non ha ancora un dominio. Search Console richiede il sito online sul suo dominio, servito da Abluo.",
+        "accountMissing": "Per creare una nuova proprietà Analytics, imposta GOOGLE_ANALYTICS_ACCOUNT_ID su questo deployment.",
+        "ownersMissing": "GOOGLE_SEARCH_CONSOLE_OWNERS non è impostato: solo l’account di servizio sarà proprietario della proprietà Search Console.",
+        "codes": {
+          "not_configured": "L’account di servizio Google non è configurato su questo deployment.",
+          "account_not_configured": "GOOGLE_ANALYTICS_ACCOUNT_ID non è impostato su questo deployment.",
+          "no_domain": "Aggiungi prima il dominio del sito.",
+          "site_unreachable": "Il dominio non risponde ancora.",
+          "tag_not_live": "Il sito non mostra ancora il tag di verifica. È servito da Abluo su questo dominio? Riprova tra qualche minuto.",
+          "verification_failed": "Google non ha trovato il tag di verifica sul sito. Riprova tra qualche minuto.",
+          "analytics_permission": "Dai a {email} l’accesso Editor all’account Analytics {account}.",
+          "api_disabled": "Un’API Google è disattivata nel progetto Cloud dell’account di servizio ({api}).",
+          "permission_denied": "Google ha rifiutato l’account di servizio ({api}).",
+          "sanity_missing": "I documenti del progetto in Sanity mancano o sono duplicati.",
+          "google_error": "Google ha restituito un errore."
+        }
       }
     },
     "media": {
@@ -2641,6 +2683,11 @@
             "step3": "In Supabase imposta custom_domain = {domain} sul progetto {slug} (e Custom Domain sul progetto in Studio).",
             "step4": "Rigenera la tabella di instradamento, fai il commit e pubblica:",
             "step5": "Quando il sito è pronto per andare online, imposta lo stato del progetto su active in Supabase, rigenera e pubblica di nuovo."
+          },
+          "google": {
+            "title": "Collega Google",
+            "body": "Quando il sito è online sul suo dominio, configura Analytics e Search Console dalla pagina del progetto con un clic.",
+            "open": "Apri la scheda Google"
           }
         }
       }

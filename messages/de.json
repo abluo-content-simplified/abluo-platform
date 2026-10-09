@@ -2462,6 +2462,48 @@
         "open": "Als Kunde ansehen",
         "unavailable": "Der Support-Modus ist noch nicht verfügbar (Migration 038 ist nicht angewendet).",
         "failed": "Support-Modus konnte nicht geöffnet werden. Versuch es noch einmal."
+      },
+      "google": {
+        "heading": "Google",
+        "body": "Analytics und Search Console für diese Website, eingerichtet vom Abluo-Dienstkonto – ohne Klicks in Google. Kann gefahrlos wiederholt werden.",
+        "analytics": "Google Analytics",
+        "searchConsole": "Search Console",
+        "property": "Property {id}",
+        "state": {
+          "connected": "Verbunden",
+          "notSetUp": "Nicht eingerichtet",
+          "waiting": "Wartet auf Website",
+          "error": "Fehler"
+        },
+        "waitingStored": "Das Bestätigungs-Tag ist in den Website-Einstellungen; die Search Console ist noch nicht verbunden. Erneut ausführen, sobald die Website auf ihrer Domain live ist.",
+        "setUpBoth": "Beides einrichten",
+        "setUpAnalytics": "Analytics einrichten",
+        "connectSearchConsole": "Search Console verbinden",
+        "recheckAnalytics": "Analytics erneut prüfen",
+        "recheckSearchConsole": "Search Console erneut prüfen",
+        "working": "Läuft…",
+        "pendingAnalytics": "Analytics wird eingerichtet…",
+        "pendingSearchConsole": "Wird verbunden… das Warten auf die Website kann bis zu zwei Minuten dauern.",
+        "refused": "Nicht erlaubt.",
+        "failed": "Etwas ist schiefgelaufen. Server-Log prüfen.",
+        "loadError": "Die Projekteinstellungen in Sanity konnten nicht gelesen werden.",
+        "notConfigured": "Das Google-Dienstkonto ist auf diesem Deployment nicht konfiguriert (GOOGLE_ANALYTICS_SA_EMAIL / GOOGLE_ANALYTICS_SA_PRIVATE_KEY).",
+        "needsDomain": "Dieses Projekt hat noch keine Domain. Die Search Console braucht die Website live auf ihrer eigenen Domain, ausgeliefert von Abluo.",
+        "accountMissing": "Um eine neue Analytics-Property anzulegen, GOOGLE_ANALYTICS_ACCOUNT_ID auf diesem Deployment setzen.",
+        "ownersMissing": "GOOGLE_SEARCH_CONSOLE_OWNERS ist nicht gesetzt: Nur das Dienstkonto wird Inhaber der Search-Console-Property.",
+        "codes": {
+          "not_configured": "Das Google-Dienstkonto ist auf diesem Deployment nicht konfiguriert.",
+          "account_not_configured": "GOOGLE_ANALYTICS_ACCOUNT_ID ist auf diesem Deployment nicht gesetzt.",
+          "no_domain": "Zuerst die Domain der Website hinzufügen.",
+          "site_unreachable": "Die Domain antwortet noch nicht.",
+          "tag_not_live": "Die Website zeigt das Bestätigungs-Tag noch nicht. Wird sie von Abluo auf dieser Domain ausgeliefert? In ein paar Minuten erneut versuchen.",
+          "verification_failed": "Google hat das Bestätigungs-Tag auf der Website nicht gefunden. In ein paar Minuten erneut versuchen.",
+          "analytics_permission": "{email} Bearbeiter-Zugriff auf das Analytics-Konto {account} geben.",
+          "api_disabled": "Eine Google-API ist im Cloud-Projekt des Dienstkontos deaktiviert ({api}).",
+          "permission_denied": "Google hat das Dienstkonto abgelehnt ({api}).",
+          "sanity_missing": "Die Projektdokumente in Sanity fehlen oder sind doppelt.",
+          "google_error": "Google hat einen Fehler gemeldet."
+        }
       }
     },
     "media": {
@@ -2641,6 +2683,11 @@
             "step3": "In Supabase custom_domain = {domain} beim Projekt {slug} setzen (und Custom Domain beim Projekt in Studio).",
             "step4": "Routing-Tabelle neu erzeugen, committen und veröffentlichen:",
             "step5": "Wenn die Website online gehen soll, den Projektstatus in Supabase auf active setzen, neu erzeugen und erneut veröffentlichen."
+          },
+          "google": {
+            "title": "Google verbinden",
+            "body": "Sobald die Website auf ihrer Domain live ist, Analytics und Search Console mit einem Klick auf der Projektseite einrichten.",
+            "open": "Google-Karte öffnen"
           }
         }
       }

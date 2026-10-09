@@ -34,7 +34,9 @@ const DNS_RECORDS = [
 /**
  * One provisioning run: its steps (done / failed / waiting), the failure and
  * "Retry" (resumes at the step that failed), and — once complete — where the
- * project is and the steps that stay manual (route table, design, domain).
+ * project is and the steps that stay manual (route table, design, domain),
+ * then "Connect Google" on the project page (never part of provisioning:
+ * it needs the live domain, and a Google hiccup must not fail a run).
  */
 export function ProvisioningRunPanel({ run: initial }: { run: ProvisioningRunView }) {
   const t = useTranslations('admin.newProject.run')
@@ -184,6 +186,12 @@ export function ProvisioningRunPanel({ run: initial }: { run: ProvisioningRunVie
                 </li>
                 <li>{t('next.domain.step5')}</li>
               </ol>
+            </NextStep>
+            <NextStep n={4} title={t('next.google.title')}>
+              <span className="block">{t('next.google.body')}</span>
+              <Link href={`${adminProjectHref(run.projectSlug)}#google`} className={`${SECONDARY_BUTTON} mt-3`}>
+                {t('next.google.open')}
+              </Link>
             </NextStep>
           </section>
         </>

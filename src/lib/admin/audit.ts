@@ -45,6 +45,10 @@ export type AdminAuditAction =
   | 'support.contact_requests.show'
   /** A server action / route handler run inside a support visit (every write attempt; `detail.writesAllowed`). */
   | 'support.action'
+  // "Connect Google" on the project page (docs/engineering/analytics-setup.md →
+  // Automatic setup). `detail.state` connected / waiting_for_site / error.
+  | 'google.analytics.setup'
+  | 'google.search_console.connect'
 
 export const ADMIN_AUDIT_ACTION_PATTERN = /^[a-z][a-z0-9_.]{2,63}$/
 

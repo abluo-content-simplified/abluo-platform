@@ -2462,6 +2462,48 @@
         "open": "View as client",
         "unavailable": "Support mode isn’t available yet (migration 038 is not applied).",
         "failed": "Couldn’t open support mode. Try again."
+      },
+      "google": {
+        "heading": "Google",
+        "body": "Analytics and Search Console for this site, set up by the Abluo service account — no clicking in Google. Safe to run again.",
+        "analytics": "Google Analytics",
+        "searchConsole": "Search Console",
+        "property": "property {id}",
+        "state": {
+          "connected": "Connected",
+          "notSetUp": "Not set up",
+          "waiting": "Waiting for site",
+          "error": "Error"
+        },
+        "waitingStored": "The verification tag is on the site settings; Search Console is not connected yet. Run it again once the site is live on its domain.",
+        "setUpBoth": "Set up both",
+        "setUpAnalytics": "Set up Analytics",
+        "connectSearchConsole": "Connect Search Console",
+        "recheckAnalytics": "Check Analytics again",
+        "recheckSearchConsole": "Check Search Console again",
+        "working": "Working…",
+        "pendingAnalytics": "Setting up Analytics…",
+        "pendingSearchConsole": "Connecting… waiting for the site can take up to two minutes.",
+        "refused": "Not allowed.",
+        "failed": "Something went wrong. Check the server log.",
+        "loadError": "Couldn’t read the project’s settings in Sanity.",
+        "notConfigured": "The Google service account is not configured on this deployment (GOOGLE_ANALYTICS_SA_EMAIL / GOOGLE_ANALYTICS_SA_PRIVATE_KEY).",
+        "needsDomain": "This project has no domain yet. Search Console needs the site live on its own domain, served by Abluo.",
+        "accountMissing": "To create a new Analytics property, set GOOGLE_ANALYTICS_ACCOUNT_ID on this deployment.",
+        "ownersMissing": "GOOGLE_SEARCH_CONSOLE_OWNERS is not set: only the service account will own the Search Console property.",
+        "codes": {
+          "not_configured": "The Google service account is not configured on this deployment.",
+          "account_not_configured": "GOOGLE_ANALYTICS_ACCOUNT_ID is not set on this deployment.",
+          "no_domain": "Add the site’s domain first.",
+          "site_unreachable": "The domain doesn’t answer yet.",
+          "tag_not_live": "The site doesn’t show the verification tag yet. Is it served by Abluo on this domain? Try again in a few minutes.",
+          "verification_failed": "Google couldn’t find the verification tag on the site. Try again in a few minutes.",
+          "analytics_permission": "Give {email} Editor access to Analytics account {account}.",
+          "api_disabled": "A Google API is switched off for the service account’s Cloud project ({api}).",
+          "permission_denied": "Google refused the service account ({api}).",
+          "sanity_missing": "The project’s documents in Sanity are missing or duplicated.",
+          "google_error": "Google returned an error."
+        }
       }
     },
     "media": {
@@ -2641,6 +2683,11 @@
             "step3": "In Supabase, set custom_domain = {domain} on project {slug} (and Custom Domain on the project in Studio).",
             "step4": "Regenerate the routing table, commit and deploy:",
             "step5": "When the site is ready to go live, set the project’s status to active in Supabase, regenerate and deploy once more."
+          },
+          "google": {
+            "title": "Connect Google",
+            "body": "Once the site is live on its domain, set up Analytics and Search Console from the project page in one click.",
+            "open": "Open the Google card"
           }
         }
       }

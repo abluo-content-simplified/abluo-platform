@@ -4,7 +4,7 @@ ADR-029 §3.4 (client dashboard) and ADR-030 §5.2 (admin). How the numbers get
 from Google into the dashboards, and what Tom and each client have to do once.
 
 ```
-Studio (property IDs) ─┐
+Studio (property IDs) ─┐   ← written by "Connect Google" (admin project page), or by hand
                        ├─► /api/cron/analytics (daily, 04:30 UTC) ─► Supabase analytics_snapshots ─► dashboards
 Env (service account) ─┘        GA4 Data API + Search Console API
 ```
@@ -53,7 +53,86 @@ Apply `supabase/migrations/036_analytics_snapshots.sql` in the Supabase SQL
 editor (it checks that 030 is applied, and runs a self-check). Until then the
 dashboards show "not connected yet" and the job only logs write errors.
 
-## 4. Each client (once per site)
+## Automatic setup — "Connect Google" (recommended)
+
+Admin → the project → **Google** card. Sections 4 and 5 below become the
+fallback for properties the client owns themselves; for sites Abluo hosts,
+the service account creates and connects everything — nobody clicks in Google.
+
+### Once (Tom)
+
+1. **Google Cloud → APIs & Services → Library** (same project as step 1), enable also:
+   - **Google Site Verification API**
+   - **Google Analytics Admin API**
+   (Data API and Search Console API from step 1.2 stay on.)
+2. **Google Analytics** → Admin → the Abluo **account** (not a property) →
+   **Account access management** → add the service-account email as **Editor**.
+   Note the **Account ID** (Admin → Account details, a number like `123456789`).
+3. **Vercel env vars** (Production, plus Preview/Development to test there), then redeploy:
+
+   | Name | Value |
+   |---|---|
+   | `GOOGLE_ANALYTICS_ACCOUNT_ID` | the GA account ID (`123456789`; `accounts/123456789` also works). Needed only to create or find a property. |
+   | `GOOGLE_SEARCH_CONSOLE_OWNERS` | comma-separated Google accounts to add as verified owners of every connected Search Console property, e.g. `thomas@tmz.it`. Optional: without it only the service account owns the property (you would not see it in your own Search Console). |
+
+   Missing values are reported on the card ("not configured"), never guessed.
+
+### Per site
+
+Prerequisite for Search Console: the site is **live on its custom domain,
+served by Abluo** (Supabase `projects.custom_domain` set, routing generated and
+deployed, DNS pointing at Vercel). Analytics can run as soon as the domain is set.
+
+Click **Set up both** (or each one). It is safe to click again at any time —
+every step checks first and only adds what is missing.
+
+**Analytics** (`src/lib/google/analytics-setup.ts`)
+1. The project's google-analytics integration already has a measurement ID and a
+   property ID → nothing is created; the entry is switched on.
+2. Neither → a GA4 property `<project name> (<domain>)` (time zone Europe/Rome,
+   currency EUR) is created under `GOOGLE_ANALYTICS_ACCOUNT_ID` — or found by that
+   name on a re-run — and a web stream for the site URL (reused if it exists).
+3. Measurement ID only → the property whose web stream has it is found in the account.
+4. Studio's google-analytics entry is written: **enabled**, measurement ID + property ID.
+   Enabling it turns on the GA tag, and with it the cookie banner's Analytics
+   category (ADR-021) — expected.
+
+**Search Console** (`src/lib/google/search-console-setup.ts`)
+1. Property = `https://` + the host the domain ends on after redirects (at most 3) + `/`,
+   e.g. `example.com` → `https://www.example.com/` (a URL-prefix property).
+2. Site Verification API → a META token, written to **Website Settings → SEO →
+   Google Site Verification** (`siteConfig.googleSiteVerification`) on the published
+   document — and on Studio's open draft, if there is one, so publishing that draft
+   cannot undo it. No draft is ever created.
+3. The live homepage is polled (≈90 s, every 7.5 s) until it shows the tag. If it
+   does not, the card says **Waiting for site** — the site is not served by Abluo
+   on that domain yet (or a cache still serves the old page). Click again later.
+4. Verified → the service account is a verified owner; the owners from
+   `GOOGLE_SEARCH_CONSOLE_OWNERS` are added (the service account stays).
+5. The property is added to Search Console, and Studio's google-search-console
+   entry is written: **enabled**, `siteUrl`.
+
+Afterwards the site's analytics refresh runs once (a brand-new GA4 property has
+no data until visitors arrive; Search Console data lags 2–3 days). Each run is
+written to the admin audit log (`google.analytics.setup`,
+`google.search_console.connect`, with the outcome).
+
+**Card states:** Connected · Not set up · Waiting for site (Search Console: the
+token is on the site settings but the property is not connected yet) · Error
+(with Google's message). Common errors:
+
+| Message | Fix |
+|---|---|
+| Give `<SA email>` Editor access to Analytics account `<id>` | Once-step 2 |
+| A Google API is switched off … | Once-step 1 (enable the named API) |
+| GOOGLE_ANALYTICS_ACCOUNT_ID is not set | Once-step 3 |
+| Add the site's domain first | set `custom_domain` (wizard → "Add the domain") |
+
+**Limit:** Search Console can only be connected for a site Abluo serves on its own
+domain (the tag must be on the live page). A Domain property (`sc-domain:…`,
+DNS verification) stays manual — enter it in Studio as in section 5.
+
+## 4. Each client (once per site) — manual fallback
 
 Send the client the service-account email and ask them to:
 
@@ -131,7 +210,8 @@ numbers (the client page says when it was last updated).
 
 | Piece | Path |
 |---|---|
-| Service-account JWT + token cache | `src/lib/analytics/google-auth.ts` |
+| Service-account JWT + token cache (per scope set) | `src/lib/analytics/google-auth.ts` |
+| Connect Google (setup) | `src/lib/google/*`, `src/lib/admin/google.ts`, `google-actions.ts`, `src/components/admin/projects/GoogleCard.tsx` |
 | GA4 / Search Console adapters (pure mappers) | `src/lib/analytics/ga4.ts`, `gsc.ts` |
 | Studio IDs → config | `src/lib/analytics/config.ts` |
 | Snapshot job | `src/lib/analytics/snapshot.ts`, `src/app/api/cron/analytics/route.ts` |

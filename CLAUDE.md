@@ -697,6 +697,8 @@ At runtime, `TrackingScripts.tsx` reads `project.integrationConfigs` + `project.
 
 Verification tokens (`googleSiteVerification`, `bingSiteVerification`) are not tracking — they live in `siteConfig`'s SEO group (**Website Settings → SEO**) and always render, in every environment.
 
+**Connect Google** (admin project page → Google card; `src/lib/google/`, docs/engineering/analytics-setup.md → Automatic setup): the Abluo service account creates/finds the GA4 property + web stream and verifies + adds the Search Console URL-prefix property, then writes the same surfaces by hand-entry would — `project.integrationConfigs` (google-analytics / google-search-console) and `siteConfig.googleSiteVerification` (published doc + any open draft, never a new draft). Idempotent; env `GOOGLE_ANALYTICS_ACCOUNT_ID`, `GOOGLE_SEARCH_CONSOLE_OWNERS`.
+
 Custom-script security rules are unchanged: admin-vetted only, disabled by default, no secrets in `code`, and a required `description` + `consentCategory` per script.
 
 Authority: ADR-014 (Integration Registry & Studio IA) plus ADR-013's carried-over policy sections (security, consent).
