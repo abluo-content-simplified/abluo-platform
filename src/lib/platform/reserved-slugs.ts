@@ -70,6 +70,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'sites',
 
   // ── Client dashboard — tenant level (/<tenant>/…) ─────────────────────────
+  'agenda',
   'galleries',
   'home',
   'people',

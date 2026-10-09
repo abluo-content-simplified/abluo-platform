@@ -276,6 +276,109 @@
         "removed": "Nicht mehr hervorgehoben."
       }
     },
+    "events": {
+      "state": {
+        "live": "Veröffentlicht",
+        "changes": "Unveröffentlichte Änderungen",
+        "draft": "Noch nicht veröffentlicht"
+      },
+      "list": {
+        "title": "Veranstaltungen",
+        "helper": "Die Veranstaltungen auf Ihrer Website. Ändern Sie die Details und veröffentlichen Sie, wenn Sie so weit sind.",
+        "new": "Neue Veranstaltung",
+        "upcoming": "Demnächst",
+        "past": "Vergangen",
+        "noUpcoming": "Keine anstehenden Veranstaltungen.",
+        "emptyTitle": "Noch keine Veranstaltungen",
+        "emptyBody": "Fügen Sie Ihre erste Veranstaltung hinzu: Name und Datum, dann den Rest.",
+        "untitled": "Veranstaltung ohne Titel"
+      },
+      "new": {
+        "back": "Veranstaltungen",
+        "title": "Neue Veranstaltung",
+        "helper": "Beginnen Sie mit dem Namen und dem Beginn. Foto, Ort und weitere Details fügen Sie danach hinzu.",
+        "name": "Name der Veranstaltung",
+        "namePlaceholder": "z. B. Tag der offenen Tür",
+        "start": "Beginn",
+        "create": "Veranstaltung anlegen",
+        "creating": "Wird angelegt…",
+        "cancel": "Abbrechen"
+      },
+      "editor": {
+        "back": "Veranstaltungen",
+        "untitled": "Veranstaltung ohne Titel",
+        "menu": "Mehr zu dieser Veranstaltung",
+        "publish": "Veröffentlichen",
+        "publishChanges": "Änderungen veröffentlichen",
+        "publishing": "Wird veröffentlicht…",
+        "published": "Ihre Veranstaltung ist auf der Website aktuell.",
+        "discard": "Änderungen verwerfen",
+        "delete": "Veranstaltung löschen",
+        "readOnly": "Sie können diese Veranstaltung ansehen, aber nicht ändern.",
+        "save": {
+          "saving": "Wird gespeichert…",
+          "saved": "Gespeichert. Veröffentlichen Sie, um es auf Ihrer Website zu zeigen.",
+          "error": "Speichern hat gerade nicht geklappt. Ihre Änderungen sind noch da – wir versuchen es erneut.",
+          "conflict": "Jemand anderes hat diese Veranstaltung geändert. Laden Sie die Seite neu, um diese Version zu sehen.",
+          "invalid": "Bitte prüfen Sie die Daten und den Link – etwas stimmt nicht."
+        },
+        "photo": {
+          "title": "Foto",
+          "helper": "Aus Ihrer Medienbibliothek.",
+          "choose": "Foto wählen",
+          "change": "Foto ändern",
+          "remove": "Entfernen",
+          "saved": "Foto aktualisiert.",
+          "removed": "Foto entfernt."
+        },
+        "words": {
+          "title": "Zur Veranstaltung",
+          "language": "Sprache",
+          "missing": "noch nicht geschrieben",
+          "original": "Auf {language}: „{title}“"
+        },
+        "fields": {
+          "title": "Name",
+          "shortDescription": "Kurzbeschreibung",
+          "shortDescriptionHelper": "Ein oder zwei Sätze, die in Veranstaltungslisten erscheinen.",
+          "location": "Wo",
+          "locationPlaceholder": "z. B. Rathaus, Hauptstraße"
+        },
+        "when": {
+          "title": "Wann",
+          "start": "Beginn",
+          "end": "Ende",
+          "helper": "Lassen Sie das Ende leer für einen einzelnen Zeitpunkt. Zeiten gelten in Ihrer Zeitzone."
+        },
+        "signup": {
+          "title": "Anmeldung",
+          "link": "Anmeldelink",
+          "linkPlaceholder": "https://…",
+          "linkHelper": "Optional. Wo man sich anmeldet – eine Webadresse oder eine Seite Ihrer Website wie /kontakt.",
+          "label": "Text auf der Schaltfläche",
+          "labelPlaceholder": "Anmelden"
+        },
+        "more": {
+          "badge": "Betreut von Abluo",
+          "body": "Diese Veranstaltung hat außerdem einen längeren Text, ein Programm, Preise oder Fotos. Sie bleiben beim Veröffentlichen unverändert. Sagen Sie uns Bescheid, wenn Sie Änderungen wünschen."
+        },
+        "confirm": {
+          "discardTitle": "Änderungen verwerfen?",
+          "discardBody": "Die Veranstaltung wird wieder so, wie sie jetzt auf Ihrer Website ist.",
+          "deleteTitle": "Diese Veranstaltung löschen?",
+          "deleteBody": "„{title}“ wurde nie veröffentlicht. Sie wird endgültig entfernt."
+        }
+      },
+      "errors": {
+        "missing_title": "Geben Sie der Veranstaltung zuerst einen Namen.",
+        "missing_date": "Wählen Sie zuerst, wann die Veranstaltung beginnt.",
+        "invalid_value": "Bei den Details stimmt etwas nicht. Bitte prüfen und erneut versuchen.",
+        "too_large": "Diese Website hat bereits sehr viele Veranstaltungen. Bitte fragen Sie uns.",
+        "conflict": "Jemand anderes hat diese Veranstaltung geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
+        "forbidden": "Dazu fehlt Ihnen die Berechtigung.",
+        "failed": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+      }
+    },
     "submissions": {
       "title": "Formulare",
       "empty": "Noch keine Einsendungen.",

@@ -276,6 +276,109 @@
         "removed": "Tolto dall’evidenza."
       }
     },
+    "events": {
+      "state": {
+        "live": "Pubblicato",
+        "changes": "Modifiche non pubblicate",
+        "draft": "Non ancora pubblicato"
+      },
+      "list": {
+        "title": "Eventi",
+        "helper": "Gli eventi del tuo sito. Modifica i dettagli e pubblica quando sei pronto.",
+        "new": "Nuovo evento",
+        "upcoming": "In arrivo",
+        "past": "Passati",
+        "noUpcoming": "Nessun evento in arrivo.",
+        "emptyTitle": "Ancora nessun evento",
+        "emptyBody": "Aggiungi il tuo primo evento: dagli un nome e una data, poi completa il resto.",
+        "untitled": "Evento senza titolo"
+      },
+      "new": {
+        "back": "Eventi",
+        "title": "Nuovo evento",
+        "helper": "Inizia dal nome e da quando comincia. Subito dopo potrai aggiungere foto, luogo e altri dettagli.",
+        "name": "Nome dell'evento",
+        "namePlaceholder": "es. Open day d'estate",
+        "start": "Inizio",
+        "create": "Crea evento",
+        "creating": "Creazione…",
+        "cancel": "Annulla"
+      },
+      "editor": {
+        "back": "Eventi",
+        "untitled": "Evento senza titolo",
+        "menu": "Altro per questo evento",
+        "publish": "Pubblica",
+        "publishChanges": "Pubblica le modifiche",
+        "publishing": "Pubblicazione…",
+        "published": "Il tuo evento è aggiornato sul sito.",
+        "discard": "Annulla le modifiche",
+        "delete": "Elimina evento",
+        "readOnly": "Puoi vedere questo evento, ma non modificarlo.",
+        "save": {
+          "saving": "Salvataggio…",
+          "saved": "Salvato. Pubblica per mostrarlo sul tuo sito.",
+          "error": "Non è stato possibile salvare. Le modifiche sono ancora qui: riproveremo.",
+          "conflict": "Qualcun altro ha modificato questo evento. Ricarica la pagina per vedere la sua versione.",
+          "invalid": "Controlla le date e il link: qualcosa non va."
+        },
+        "photo": {
+          "title": "Foto",
+          "helper": "Scelta dalla tua libreria Media.",
+          "choose": "Scegli una foto",
+          "change": "Cambia foto",
+          "remove": "Rimuovi",
+          "saved": "Foto aggiornata.",
+          "removed": "Foto rimossa."
+        },
+        "words": {
+          "title": "Sull'evento",
+          "language": "Lingua",
+          "missing": "non ancora scritto",
+          "original": "In {language}: «{title}»"
+        },
+        "fields": {
+          "title": "Nome",
+          "shortDescription": "Breve descrizione",
+          "shortDescriptionHelper": "Una o due frasi, mostrate negli elenchi degli eventi.",
+          "location": "Dove",
+          "locationPlaceholder": "es. Municipio, Via Roma"
+        },
+        "when": {
+          "title": "Quando",
+          "start": "Inizio",
+          "end": "Fine",
+          "helper": "Lascia vuota la fine per un singolo momento. Gli orari sono nel tuo fuso orario."
+        },
+        "signup": {
+          "title": "Iscrizione",
+          "link": "Link per iscriversi",
+          "linkPlaceholder": "https://…",
+          "linkHelper": "Facoltativo. Dove ci si iscrive: un indirizzo web o una pagina del tuo sito, come /contatti.",
+          "label": "Testo del pulsante",
+          "labelPlaceholder": "Iscriviti"
+        },
+        "more": {
+          "badge": "Gestito da Abluo",
+          "body": "Questo evento ha anche un testo più lungo, un programma, dei prezzi o delle foto. Restano così quando pubblichi. Scrivici se vuoi cambiarli."
+        },
+        "confirm": {
+          "discardTitle": "Annullare le modifiche?",
+          "discardBody": "L'evento torna a com'è ora sul tuo sito.",
+          "deleteTitle": "Eliminare questo evento?",
+          "deleteBody": "«{title}» non è mai stato pubblicato. Verrà eliminato definitivamente."
+        }
+      },
+      "errors": {
+        "missing_title": "Prima dai un nome all'evento.",
+        "missing_date": "Prima scegli quando inizia l'evento.",
+        "invalid_value": "Qualcosa nei dettagli non va. Controlla e riprova.",
+        "too_large": "Questo sito ha già molti eventi. Chiedici aiuto.",
+        "conflict": "Qualcun altro ha modificato questo evento. Ricarica la pagina e riprova.",
+        "forbidden": "Non hai il permesso per farlo.",
+        "failed": "Qualcosa è andato storto. Riprova."
+      }
+    },
     "submissions": {
       "title": "Moduli",
       "empty": "Ancora nessun invio.",

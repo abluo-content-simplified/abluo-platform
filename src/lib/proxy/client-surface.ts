@@ -49,6 +49,7 @@ export const CLIENT_PROJECT_SEGMENTS = new Set([
   'posts',
   'submissions',
   'galleries',
+  'agenda',
   'media',
   'people',
   'analytics',

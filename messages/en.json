@@ -276,6 +276,109 @@
         "removed": "Removed from featured."
       }
     },
+    "events": {
+      "state": {
+        "live": "Published",
+        "changes": "Unpublished changes",
+        "draft": "Not published yet"
+      },
+      "list": {
+        "title": "Events",
+        "helper": "The events on your website. Change the details and publish when you're ready.",
+        "new": "New event",
+        "upcoming": "Coming up",
+        "past": "Past",
+        "noUpcoming": "No events coming up.",
+        "emptyTitle": "No events yet",
+        "emptyBody": "Add your first event: give it a name and a date, then fill in the rest.",
+        "untitled": "Untitled event"
+      },
+      "new": {
+        "back": "Events",
+        "title": "New event",
+        "helper": "Start with the name and when it begins. You can add the photo, place and other details next.",
+        "name": "Name of the event",
+        "namePlaceholder": "e.g. Summer open day",
+        "start": "Starts",
+        "create": "Create event",
+        "creating": "Creating…",
+        "cancel": "Cancel"
+      },
+      "editor": {
+        "back": "Events",
+        "untitled": "Untitled event",
+        "menu": "More for this event",
+        "publish": "Publish",
+        "publishChanges": "Publish changes",
+        "publishing": "Publishing…",
+        "published": "Your event is up to date on the website.",
+        "discard": "Discard changes",
+        "delete": "Delete event",
+        "readOnly": "You can look at this event, but not change it.",
+        "save": {
+          "saving": "Saving…",
+          "saved": "Saved. Publish to show it on your website.",
+          "error": "Couldn't save just now. Your changes are still here — we'll try again.",
+          "conflict": "Someone else changed this event. Reload the page to see their version.",
+          "invalid": "Check the dates and the link — something isn't quite right."
+        },
+        "photo": {
+          "title": "Photo",
+          "helper": "Chosen from your Media library.",
+          "choose": "Choose a photo",
+          "change": "Change photo",
+          "remove": "Remove",
+          "saved": "Photo updated.",
+          "removed": "Photo removed."
+        },
+        "words": {
+          "title": "About the event",
+          "language": "Language",
+          "missing": "not written yet",
+          "original": "In {language}: “{title}”"
+        },
+        "fields": {
+          "title": "Name",
+          "shortDescription": "Short description",
+          "shortDescriptionHelper": "One or two sentences, shown in event lists.",
+          "location": "Where",
+          "locationPlaceholder": "e.g. Town hall, Main Street"
+        },
+        "when": {
+          "title": "When",
+          "start": "Starts",
+          "end": "Ends",
+          "helper": "Leave the end empty for a single moment. Times are in your own time zone."
+        },
+        "signup": {
+          "title": "Sign-up",
+          "link": "Sign-up link",
+          "linkPlaceholder": "https://…",
+          "linkHelper": "Optional. Where people register — a web address, or a page of your site such as /contact.",
+          "label": "Button text",
+          "labelPlaceholder": "Sign up"
+        },
+        "more": {
+          "badge": "Looked after by Abluo",
+          "body": "This event also has a longer text, programme, prices or photos. They stay as they are when you publish. Ask us if you'd like them changed."
+        },
+        "confirm": {
+          "discardTitle": "Discard your changes?",
+          "discardBody": "The event goes back to what's on your website now.",
+          "deleteTitle": "Delete this event?",
+          "deleteBody": "“{title}” was never published. It will be removed for good."
+        }
+      },
+      "errors": {
+        "missing_title": "Give the event a name first.",
+        "missing_date": "Choose when the event starts first.",
+        "invalid_value": "Something in the details isn't quite right. Please check and try again.",
+        "too_large": "This site already has a lot of events. Please ask us for help.",
+        "conflict": "Someone else changed this event. Reload the page and try again.",
+        "forbidden": "You don't have permission to do that.",
+        "failed": "Something went wrong. Please try again."
+      }
+    },
     "submissions": {
       "title": "Forms",
       "empty": "No submissions yet.",

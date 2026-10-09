@@ -49,6 +49,7 @@ describe('buildModulePermissions()', () => {
 
   it('contains all expected events permission IDs', () => {
     const map = buildModulePermissions()
+    expect(map).toHaveProperty('events.event.read')
     expect(map).toHaveProperty('events.event.write')
     expect(map).toHaveProperty('events.event.delete')
     expect(map).toHaveProperty('events.taxonomy.write')
@@ -115,15 +116,16 @@ describe('buildModulePermissions()', () => {
 // ── MODULE_PERMISSION_MAP ─────────────────────────────────────────────────────
 
 describe('MODULE_PERMISSION_MAP', () => {
-  it('contains exactly 24 permissions — guards against accidental registry removals', () => {
+  it('contains exactly 25 permissions — guards against accidental registry removals', () => {
     // ADR-016 Phase B added events.taxonomy.write (event categories) — was 6.
     // ADR-017 slice 6 added blog.post.read (client dashboard read path) — was 8.
     // ADR-018 slice 2 added the forms module's 5 permissions — was 13.
     // ADR-020 added whatsapp.config.manage — was 14 — and the News module's
     // 4 permissions — 18. ADR-022 added the Gallery module's 2 — 20.
     // ADR-023 added the Translate module's 2 — 22. ADR-028 added
-    // blog.published.delete and gallery.gallery.delete (were role checks) — now 24.
-    expect(Object.keys(MODULE_PERMISSION_MAP)).toHaveLength(24)
+    // blog.published.delete and gallery.gallery.delete (were role checks) — 24.
+    // The client dashboard's Events screen added events.event.read — now 25.
+    expect(Object.keys(MODULE_PERMISSION_MAP)).toHaveLength(25)
   })
 
   it('has the same shape as buildModulePermissions()', () => {

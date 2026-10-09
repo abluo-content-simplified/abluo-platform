@@ -86,7 +86,9 @@ export function AddContentSheet({
     router.push(
       moduleId === 'gallery'
         ? `/${projectSlug}/galleries/new`
-        : moduleId === 'media'
+        : moduleId === 'events'
+          ? `/${projectSlug}/agenda/new`
+          : moduleId === 'media'
           ? `/${projectSlug}/media/add`
           : `/${projectSlug}/posts/write/new`
     )

@@ -767,6 +767,71 @@ describe('gallery server actions — same refusals as posts', () => {
 
 // ── Media screen server actions (client dashboard) ──────────────────────────
 
+// ── Event server actions (client dashboard · agenda) ────────────────────────
+
+describe('event server actions — same refusals as galleries', () => {
+  const grantA = {
+    projectId: 'project-a',
+    projectSlug: 'tenant-a-site',
+    membershipId: 'tenant-owner:tenant-a',
+    role: 'owner',
+    permissions: ['events.event.read', 'events.event.write', 'events.event.delete'],
+    enabledModuleIds: ['events'],
+  }
+  const viewerA = { ...grantA, role: 'viewer', permissions: ['events.event.read'] }
+  const load = () => import('@/app/[locale]/(client)/[tenant]/agenda/actions')
+  const writes = async (projectSlug: string, id = 'event-x') => {
+    const a = await load()
+    return [
+      await a.openEventForEditAction({ projectSlug, id }),
+      await a.createEventAction({ projectSlug, title: 'x', startDate: '2026-11-01T10:00:00.000Z' }),
+      await a.patchEventDraftAction({ projectSlug, id, rev: 'r', set: { 'title.it': 'x' } }),
+      await a.setEventCoverAction({ projectSlug, id, rev: 'r', assetId: 'm1' }),
+      await a.publishEventDraftAction({ projectSlug, id, rev: 'r' }),
+      await a.discardEventDraftAction({ projectSlug, id, rev: 'r' }),
+    ]
+  }
+
+  beforeAll(async () => {
+    await load()
+  }, 30_000)
+
+  it('unauthenticated → refused, nothing touched', async () => {
+    const a = await load()
+    expect(await a.getEventAction({ projectSlug: 'tenant-a-site', id: 'e' })).toEqual({ ok: false, error: 'unauthenticated' })
+    for (const r of await writes('tenant-a-site')) expect(r).toEqual({ ok: false, error: 'unauthenticated' })
+    noSideEffects()
+  })
+
+  it("tenant A cannot read or write in tenant B's project", async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [grantA] }
+    const a = await load()
+    expect(await a.getEventAction({ projectSlug: 'tenant-b-site', id: 'e' })).toEqual({ ok: false, error: 'forbidden' })
+    for (const r of await writes('tenant-b-site')) expect(r).toEqual({ ok: false, error: 'forbidden' })
+    noSideEffects()
+  })
+
+  it('a viewer is refused every write', async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [viewerA] }
+    for (const r of await writes('tenant-a-site')) expect(r).toEqual({ ok: false, error: 'forbidden' })
+    noSideEffects()
+  })
+
+  it('unsafe ids are not_found before anything is read', async () => {
+    persona = 'tenantA'
+    tenantCtx = { userId: 'user-tenant-a', platformRole: 'tenant_user', projects: [grantA] }
+    const a = await load()
+    for (const id of ['drafts.x', '../x', 'a/b']) {
+      expect(await a.openEventForEditAction({ projectSlug: 'tenant-a-site', id })).toEqual({ ok: false, error: 'not_found' })
+      expect(await a.patchEventDraftAction({ projectSlug: 'tenant-a-site', id, rev: 'r', set: { 'title.it': 'x' } })).toEqual({ ok: false, error: 'not_found' })
+      expect(await a.publishEventDraftAction({ projectSlug: 'tenant-a-site', id, rev: 'r' })).toEqual({ ok: false, error: 'not_found' })
+    }
+    noSideEffects()
+  })
+})
+
 describe('media screen server actions — owner/editor only, nothing touched on refusal', () => {
   const ownerA = {
     projectId: 'project-a',

@@ -333,6 +333,12 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
 
       permissions: [
         {
+          id: 'events.event.read',
+          label: 'View events',
+          description: 'View and list events in the client dashboard.',
+          defaultRoles: ['owner', 'editor', 'viewer'],
+        },
+        {
           id: 'events.event.write',
           label: 'Create and edit events',
           description: 'Create, edit, and publish events.',

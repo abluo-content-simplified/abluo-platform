@@ -84,6 +84,8 @@ export const FEATURE_CONTROL_ALLOWLIST: readonly string[] = []
 export const TENANT_SURFACES: readonly TenantSurface[] = [
   // ── Navigation (order = sidebar order, after Home) ──────────────────────
   { kind: 'nav', id: 'blog', segment: 'posts', requires: { module: 'blog', permission: 'blog.post.read' } },
+  // `agenda`, not `events`: `/{project}/events` is the public website's events route.
+  { kind: 'nav', id: 'events', segment: 'agenda', requires: { module: 'events', permission: 'events.event.read' } },
   { kind: 'nav', id: 'forms', segment: 'submissions', requires: { module: 'forms', permission: 'forms.submission.read' } },
   { kind: 'nav', id: 'gallery', segment: 'galleries', requires: { module: 'gallery', permission: 'gallery.gallery.read' } },
   // Analytics is not a module (ADR-029 §3.4): only the permission gates it. Whether
@@ -133,7 +135,6 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
  *   adminOnly   — configured by Abluo; nothing for the tenant to do (ADR-029).
  */
 export const MODULES_WITHOUT_TENANT_SURFACE: Readonly<Record<string, 'notYetBuilt' | 'adminOnly'>> = {
-  events: 'notYetBuilt',
   news: 'notYetBuilt',
   live: 'notYetBuilt',
   whatsapp: 'adminOnly',
