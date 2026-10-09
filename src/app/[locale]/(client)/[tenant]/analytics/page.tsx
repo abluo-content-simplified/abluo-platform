@@ -7,11 +7,14 @@ import { AnalyticsOverview } from '@/components/app/analytics/AnalyticsOverview'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { canReadAnalytics, getProjectAnalytics } from '@/lib/analytics/read'
+import { getProjectRequestStats } from '@/lib/analytics/requests'
 
 /**
  * Client dashboard — Analytics (ADR-029 §3.4, Phase 3). How the website is
  * doing: visitors, page views, search clicks and position, vs the previous 28
- * days; top pages, channels and search queries. Read-only, from the daily
+ * days; trend charts, top pages, channels, searches, referring sites, AI
+ * assistants, devices — and contact requests when the reader may see them
+ * (analytics v2). Read-only, from the daily
  * snapshot (never a live Google call). Owners and Site admins see it; an
  * Editor only with the `analytics.read` extra — anyone else gets a 404.
  *
@@ -28,10 +31,17 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ tena
   if (!grant || !canReadAnalytics(grant)) notFound()
 
   const t = await getTranslations('clientDashboard.analytics')
-  const view = await getProjectAnalytics(ctx, grant.projectId).catch((e) => {
-    console.warn(`[analytics] ${projectSlug}: ${e instanceof Error ? e.message : String(e)}`)
-    return null
-  })
+  const [view, requests] = await Promise.all([
+    getProjectAnalytics(ctx, grant.projectId).catch((e) => {
+      console.warn(`[analytics] ${projectSlug}: ${e instanceof Error ? e.message : String(e)}`)
+      return null
+    }),
+    // Only for readers who may see contact requests (Forms module + forms.submission.read).
+    getProjectRequestStats(ctx, grant.projectId).catch((e) => {
+      console.warn(`[analytics] ${projectSlug} requests: ${e instanceof Error ? e.message : String(e)}`)
+      return null
+    }),
+  ])
 
   return (
     <PageShell>
@@ -39,7 +49,7 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ tena
       {view === null ? (
         <EmptyState title={t('errorTitle')} body={t('errorBody')} />
       ) : view.hasData ? (
-        <AnalyticsOverview view={view} />
+        <AnalyticsOverview view={view} requests={requests} />
       ) : (
         <EmptyState title={t('notConnectedTitle')} body={t('notConnectedBody')} />
       )}

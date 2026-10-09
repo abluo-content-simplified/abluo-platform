@@ -34,9 +34,19 @@ export type ProjectAnalyticsView = {
   /** Lower is better. Null when there were no impressions. */
   position: MetricValue | null
   dailyVisitors: { date: string; value: number }[]
+  /** The 28 days before, same length as `dailyVisitors` when present; empty on snapshots older than analytics v2. */
+  dailyVisitorsPrevious: { date: string; value: number }[]
+  dailyClicks: { date: string; value: number }[]
+  dailyClicksPrevious: { date: string; value: number }[]
   topPages: { label: string; value: number }[]
   topChannels: { label: string; value: number }[]
   topQueries: { label: string; value: number }[]
+  /** Shown often in Google, rarely clicked: value = times shown. */
+  opportunities: { label: string; value: number; position: number; clicks: number }[]
+  topReferrers: { label: string; value: number }[]
+  aiSources: { label: string; value: number }[]
+  /** Sessions by device; `share` 0..1 of all device sessions. */
+  devices: { label: string; value: number; share: number }[]
   /** Latest error per source (admin only shows these). */
   errors: { source: AnalyticsSource; message: string }[]
 }
@@ -59,6 +69,11 @@ function stateOf(r: SourceRows): SourceState {
   if (!r.latest) return 'missing'
   if (r.latest.status === 'ok') return 'connected'
   return r.latest.status === 'error' ? 'error' : 'not_connected'
+}
+
+function devicesOf(rows: readonly { device: string; sessions: number }[]) {
+  const total = rows.reduce((sum, d) => sum + d.sessions, 0)
+  return total > 0 ? rows.map((d) => ({ label: d.device, value: d.sessions, share: d.sessions / total })) : []
 }
 
 export function projectAnalyticsView(rows: readonly SnapshotRow[], now: number = Date.now()): ProjectAnalyticsView {
@@ -94,9 +109,16 @@ export function projectAnalyticsView(rows: readonly SnapshotRow[], now: number =
           }
         : null,
     dailyVisitors: (g?.daily ?? []).map((d) => ({ date: d.date, value: d.users })),
+    dailyVisitorsPrevious: (g?.daily_previous ?? []).map((d) => ({ date: d.date, value: d.users })),
+    dailyClicks: (s?.daily ?? []).map((d) => ({ date: d.date, value: d.clicks })),
+    dailyClicksPrevious: (s?.daily_previous ?? []).map((d) => ({ date: d.date, value: d.clicks })),
     topPages: (g?.top_pages ?? []).map((p) => ({ label: p.path, value: p.views })),
     topChannels: (g?.top_channels ?? []).map((c) => ({ label: c.channel, value: c.sessions })),
     topQueries: (s?.top_queries ?? []).map((q) => ({ label: q.query, value: q.clicks })),
+    opportunities: (s?.opportunities ?? []).map((q) => ({ label: q.query, value: q.impressions, position: q.position, clicks: q.clicks })),
+    topReferrers: (g?.top_referrers ?? []).map((r) => ({ label: r.source, value: r.sessions })),
+    aiSources: (g?.ai_sources ?? []).map((r) => ({ label: r.source, value: r.sessions })),
+    devices: devicesOf(g?.devices ?? []),
     errors: [ga4.latest, gsc.latest].filter((r): r is SnapshotRow => r?.status === 'error').map((r) => ({ source: r.source, message: r.error ?? '' })),
   }
 }

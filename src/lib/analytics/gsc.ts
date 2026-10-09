@@ -4,7 +4,8 @@
  *   1. by date over the previous + current 28 days — all four windows'
  *      totals are summed from it (clicks/impressions add up; CTR and the
  *      impression-weighted position are derived, the way Search Console does)
- *   2. top queries by clicks (current window)
+ *   2. queries (current window), up to QUERY_ROWS — the top 10 by clicks and
+ *      the "opportunities" (shown often, rarely clicked) both come from it
  *
  * `dataState: 'all'` includes the fresh (not yet final) last days, so the
  * window really ends yesterday. Pure mappers, tested on fixture JSON.
@@ -15,6 +16,16 @@ import type { DateWindow, GscMetrics, GscTotals, SnapshotWindows } from './types
 
 export const GSC_API = 'https://searchconsole.googleapis.com/webmasters/v3'
 export const TOP_QUERIES = 10
+export const QUERY_ROWS = 250
+export const TOP_OPPORTUNITIES = 5
+/**
+ * An opportunity: a search the site appeared for at least this often in the
+ * window, on Google's first three pages, with a click-through rate at or below
+ * OPPORTUNITY_MAX_CTR. Ranked by impressions — the most-seen first.
+ */
+export const OPPORTUNITY_MIN_IMPRESSIONS = 20
+export const OPPORTUNITY_MAX_POSITION = 30
+export const OPPORTUNITY_MAX_CTR = 0.03
 
 export type GscRow = { keys?: string[]; clicks?: number; impressions?: number; ctr?: number; position?: number }
 export type GscResponse = { rows?: GscRow[] }
@@ -24,7 +35,7 @@ export function gscDailyRequest(w: SnapshotWindows) {
 }
 
 export function gscQueriesRequest(w: SnapshotWindows) {
-  return { startDate: w.current.start, endDate: w.current.end, dimensions: ['query'], rowLimit: TOP_QUERIES, dataState: 'all' }
+  return { startDate: w.current.start, endDate: w.current.end, dimensions: ['query'], rowLimit: QUERY_ROWS, dataState: 'all' }
 }
 
 const n = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
@@ -49,19 +60,39 @@ export function gscTotals(rows: readonly GscRow[], w: DateWindow): GscTotals {
   }
 }
 
+const round1 = (v: number) => Math.round(v * 10) / 10
+
+type QueryRow = { query: string; clicks: number; impressions: number; position: number }
+
+/** Searches shown often but rarely clicked (thresholds above). Pure. */
+export function pickOpportunities(rows: readonly QueryRow[]): QueryRow[] {
+  return rows
+    .filter(
+      (q) =>
+        q.impressions >= OPPORTUNITY_MIN_IMPRESSIONS &&
+        q.position > 0 &&
+        q.position <= OPPORTUNITY_MAX_POSITION &&
+        q.clicks / q.impressions <= OPPORTUNITY_MAX_CTR,
+    )
+    .sort((a, b) => b.impressions - a.impressions || a.query.localeCompare(b.query))
+    .slice(0, TOP_OPPORTUNITIES)
+}
+
 export function mapGsc(daily: GscResponse, queries: GscResponse, w: SnapshotWindows): GscMetrics {
   const rows = daily.rows ?? []
   const byDay = new Map(rows.filter((r) => r.keys?.[0]).map((r) => [r.keys![0], r]))
+  const allQueries: QueryRow[] = (queries.rows ?? [])
+    .map((r) => ({ query: r.keys?.[0] ?? '', clicks: n(r.clicks), impressions: n(r.impressions), position: round1(n(r.position)) }))
+    .filter((q) => q.query)
   return {
     current: gscTotals(rows, w.current),
     previous: gscTotals(rows, w.previous),
     last7: gscTotals(rows, w.last7),
     previous7: gscTotals(rows, w.previous7),
-    top_queries: (queries.rows ?? [])
-      .map((r) => ({ query: r.keys?.[0] ?? '', clicks: n(r.clicks), impressions: n(r.impressions) }))
-      .filter((q) => q.query)
-      .slice(0, TOP_QUERIES),
+    top_queries: [...allQueries].sort((a, b) => b.clicks - a.clicks || b.impressions - a.impressions).slice(0, TOP_QUERIES),
     daily: daysOf(w.current).map((date) => ({ date, clicks: n(byDay.get(date)?.clicks), impressions: n(byDay.get(date)?.impressions) })),
+    daily_previous: daysOf(w.previous).map((date) => ({ date, clicks: n(byDay.get(date)?.clicks), impressions: n(byDay.get(date)?.impressions) })),
+    opportunities: pickOpportunities(allQueries),
   }
 }
 

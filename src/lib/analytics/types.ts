@@ -37,6 +37,15 @@ export type Ga4Metrics = {
   top_channels: { channel: string; sessions: number }[]
   /** Daily users in the current window, oldest first, every day present. */
   daily: { date: string; users: number }[]
+  // ── Added 2026-10-09 (analytics v2). Optional: snapshots taken before that lack them. ──
+  /** Daily users in the PREVIOUS window, oldest first, every day present (the trend chart's comparison line). */
+  daily_previous?: { date: string; users: number }[]
+  /** Other websites that sent visitors (GA4 channel "Referral"), by sessions, current window. */
+  top_referrers?: { source: string; sessions: number }[]
+  /** AI assistants that sent visitors (channel "AI Assistant" or a known assistant domain), current window. */
+  ai_sources?: { source: string; sessions: number }[]
+  /** Sessions by device category (desktop / mobile / tablet / smart tv), current window. */
+  devices?: { device: string; sessions: number }[]
 }
 
 export type GscTotals = {
@@ -53,9 +62,15 @@ export type GscMetrics = {
   previous: GscTotals
   last7: GscTotals
   previous7: GscTotals
-  top_queries: { query: string; clicks: number; impressions: number }[]
+  /** Top searches by clicks (current window). `position` added 2026-10-09 (absent on older snapshots). */
+  top_queries: { query: string; clicks: number; impressions: number; position?: number }[]
   /** Daily clicks/impressions in the current window, oldest first, every day present. */
   daily: { date: string; clicks: number; impressions: number }[]
+  // ── Added 2026-10-09 (analytics v2). Optional: snapshots taken before that lack them. ──
+  /** Daily clicks/impressions in the PREVIOUS window (the trend chart's comparison line). */
+  daily_previous?: { date: string; clicks: number; impressions: number }[]
+  /** Searches the site is shown for often but rarely clicked (see gsc.ts `pickOpportunities`). */
+  opportunities?: { query: string; clicks: number; impressions: number; position: number }[]
 }
 
 /** One `analytics_snapshots` row as written / read. */

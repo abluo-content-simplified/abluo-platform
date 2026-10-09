@@ -206,6 +206,28 @@ Common messages (shown on the site page, also in the cron logs):
 When the last snapshot is an error, the dashboards keep showing the last good
 numbers (the client page says when it was last updated).
 
+## 8. What the Analytics page shows (v2, 2026-10-09)
+
+Same page for the client and the admin (`AnalyticsOverview`). All from the
+nightly snapshot except contact requests, which are our own data.
+
+| Block | Source | Notes |
+|---|---|---|
+| Tiles: visitors, page views, Google clicks, position, contact requests | GA4 / GSC / `form_submissions` | Contact requests only for readers with `forms.submission.read` (Forms module installed). |
+| Trends: visitors, Google clicks, contact requests per day | `daily` + `daily_previous` | Last 28 days (solid) vs the 28 before (dashed). `TrendChart`, hover/←→ tooltip, hidden table for screen readers. |
+| Top Google searches (10) | GSC query report (250 rows) | By clicks. |
+| Searches to work on | same report | ≥20 impressions, position ≤30, CTR ≤3 %, top 5 by impressions (`pickOpportunities`). |
+| How visitors find you, Websites that link to you, AI assistants | GA4 channel × source report | Assistant domains GA4 still files under Referral are counted as AI everywhere (`AI_ASSISTANT_DOMAINS`). |
+| Phone or computer | GA4 `deviceCategory` | Sessions + share. |
+| Where requests come from | `form_submissions.source.page_path` | Current window, top 5. |
+
+Snapshots taken before v2 have none of the new fields; the page simply leaves
+those blocks out until the next nightly run (or "Refresh now"). The "Updated"
+time is shown in the reader's own time zone.
+
+A newly added Search Console property reports 0 impressions for its first days
+— Google fills it in afterwards. Seen on every property added 2026-10-08.
+
 ## Where the code is
 
 | Piece | Path |

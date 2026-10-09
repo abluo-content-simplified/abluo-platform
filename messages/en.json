@@ -2053,7 +2053,35 @@
         "paidOther": "Other ads",
         "sms": "SMS",
         "audio": "Audio",
-        "mobilePushNotifications": "Push notifications"
+        "mobilePushNotifications": "Push notifications",
+        "aiAssistant": "AI assistants"
+      },
+      "requests": "Contact requests",
+      "topQueriesHint": "What people searched for before clicking through to your site. Number = clicks.",
+      "opportunities": "Searches to work on",
+      "opportunitiesHint": "Your site shows up for these, but few people click. Number = times shown in Google.",
+      "positionShort": "pos. {position}",
+      "referrers": "Websites that link to you",
+      "referrersHint": "Visits that came from a link on another website.",
+      "aiSources": "AI assistants",
+      "aiSourcesHint": "Visits from people who found you through ChatGPT, Perplexity and similar.",
+      "requestPages": "Where requests come from",
+      "requestPagesHint": "The page each contact request was sent from.",
+      "chart": {
+        "heading": "Trends",
+        "visitors": "Visitors per day",
+        "clicks": "Clicks from Google per day",
+        "requests": "Contact requests per day",
+        "current": "Last 28 days",
+        "previous": "The 28 days before",
+        "date": "Day"
+      },
+      "devices": {
+        "title": "Phone or computer",
+        "desktop": "Computer",
+        "mobile": "Phone",
+        "tablet": "Tablet",
+        "smarttv": "TV"
       }
     }
   },

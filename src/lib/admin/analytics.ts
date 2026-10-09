@@ -1,4 +1,6 @@
 // Server-only: service-role reads behind requireAbluoAdmin. Never import from a client component.
+import { readRequestRows } from '@/lib/analytics/requests'
+import { requestStats, type RequestStats } from '@/lib/analytics/request-stats'
 import { requireAbluoAdmin } from '@/lib/api/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { recordAdminAudit } from '@/lib/admin/audit'
@@ -139,6 +141,8 @@ export type AdminProjectAnalytics = {
   view: ProjectAnalyticsView
   /** What is configured in Studio right now (live read, not the snapshot). */
   config: { ga4PropertyId: string | null; gscSiteUrl: string | null }
+  /** Contact requests over the same windows (null when the read failed). */
+  requests: RequestStats | null
 }
 
 async function projectBy(db: ReturnType<typeof createAdminClient>, by: { slug: string } | { id: string }): Promise<ProjectRef | null> {
@@ -160,15 +164,23 @@ export async function getAdminProjectAnalytics(
   const db = createAdminClient()
   const project = await projectBy(db, by)
   if (!project) return null
-  const [rows, ids] = await Promise.all([
+  const now = opts.now ?? Date.now()
+  const [rows, ids, requests] = await Promise.all([
     readSnapshotRows(db, project.id),
     loadAnalyticsIds([project.slug]).catch(() => new Map<string, { ga4PropertyId: string | null; gscSiteUrl: string | null }>()),
+    readRequestRows(db, project.id, requestStats([], now).since)
+      .then((r) => requestStats(r, now))
+      .catch((e) => {
+        console.warn(`[admin/analytics] ${project.slug} requests: ${e instanceof Error ? e.message : String(e)}`)
+        return null
+      }),
   ])
   if (opts.audit) await recordAdminAudit({ actorId: actor.userId, action: 'project.analytics.view', projectId: project.id })
   return {
     project,
-    view: projectAnalyticsView(rows, opts.now),
+    view: projectAnalyticsView(rows, now),
     config: ids.get(project.slug) ?? { ga4PropertyId: null, gscSiteUrl: null },
+    requests,
   }
 }
 

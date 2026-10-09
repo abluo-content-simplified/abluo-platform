@@ -2053,7 +2053,35 @@
         "paidOther": "Sonstige Anzeigen",
         "sms": "SMS",
         "audio": "Audio",
-        "mobilePushNotifications": "Push-Benachrichtigungen"
+        "mobilePushNotifications": "Push-Benachrichtigungen",
+        "aiAssistant": "KI-Assistenten"
+      },
+      "requests": "Kontaktanfragen",
+      "topQueriesHint": "Wonach Menschen gesucht haben, bevor sie auf Ihre Website kamen. Zahl = Klicks.",
+      "opportunities": "Suchen mit Potenzial",
+      "opportunitiesHint": "Ihre Website erscheint bei diesen Suchen, aber nur wenige klicken. Zahl = Einblendungen bei Google.",
+      "positionShort": "Pos. {position}",
+      "referrers": "Websites, die auf Sie verlinken",
+      "referrersHint": "Besuche über einen Link auf einer anderen Website.",
+      "aiSources": "KI-Assistenten",
+      "aiSourcesHint": "Besuche von Menschen, die Sie über ChatGPT, Perplexity und Ähnliche gefunden haben.",
+      "requestPages": "Woher die Anfragen kommen",
+      "requestPagesHint": "Die Seite, von der jede Kontaktanfrage gesendet wurde.",
+      "chart": {
+        "heading": "Verlauf",
+        "visitors": "Besucher pro Tag",
+        "clicks": "Klicks von Google pro Tag",
+        "requests": "Kontaktanfragen pro Tag",
+        "current": "Letzte 28 Tage",
+        "previous": "Die 28 Tage davor",
+        "date": "Tag"
+      },
+      "devices": {
+        "title": "Smartphone oder Computer",
+        "desktop": "Computer",
+        "mobile": "Smartphone",
+        "tablet": "Tablet",
+        "smarttv": "TV"
       }
     }
   },

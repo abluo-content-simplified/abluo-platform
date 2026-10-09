@@ -4,7 +4,10 @@ import { SectionHeading } from '@/components/app/ui/SectionHeading'
 import { Sparkline } from '@/components/app/ui/Sparkline'
 import { StatGrid } from '@/components/app/ui/StatGrid'
 import { StatTile } from '@/components/app/ui/StatTile'
+import { TrendChart } from '@/components/app/ui/TrendChart'
+import type { RequestStats } from '@/lib/analytics/request-stats'
 import type { MetricValue, ProjectAnalyticsView } from '@/lib/analytics/view'
+import { UpdatedNote } from './UpdatedNote'
 
 /**
  * The analytics widgets for ONE site (ADR-029 §3.4) — the same composition on
@@ -15,6 +18,12 @@ import type { MetricValue, ProjectAnalyticsView } from '@/lib/analytics/view'
  *
  * Render it only when `view.hasData`; the page decides what "nothing yet"
  * says to its own reader.
+ *
+ * Analytics v2 (Tom 2026-10-09): trend charts (this 28 days vs the 28 before),
+ * top 10 Google searches, searches to work on, referring websites, AI
+ * assistants, phone vs computer, and contact requests (our own data — passed
+ * in as `requests`, null when the reader may not see them). Lists a snapshot
+ * does not have yet (taken before v2, or simply empty) are left out.
  */
 
 const CHANNEL_KEY = (channel: string) =>
@@ -39,7 +48,7 @@ export function DailySparkline({ points, label }: { points: { date: string; valu
   )
 }
 
-export function AnalyticsOverview({ view }: { view: ProjectAnalyticsView }) {
+export function AnalyticsOverview({ view, requests = null }: { view: ProjectAnalyticsView; requests?: RequestStats | null }) {
   const t = useTranslations('app.analytics')
   const format = useFormatter()
   const delta = useDelta()
@@ -48,8 +57,9 @@ export function AnalyticsOverview({ view }: { view: ProjectAnalyticsView }) {
     const key = CHANNEL_KEY(raw)
     return t.has(`channels.${key}`) ? t(`channels.${key}` as 'channels.direct') : raw
   }
-  const until = view.periodEnd ? format.dateTime(new Date(`${view.periodEnd}T12:00:00Z`), { day: 'numeric', month: 'long' }) : null
-  const updated = view.fetchedAt ? format.dateTime(new Date(view.fetchedAt), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : null
+  const device = (raw: string) => (t.has(`devices.${raw.replace(/\s+/g, '')}`) ? t(`devices.${raw.replace(/\s+/g, '')}` as 'devices.desktop') : raw)
+  const until = view.periodEnd ? format.dateTime(new Date(`${view.periodEnd}T12:00:00Z`), { day: 'numeric', month: 'long', timeZone: 'UTC' }) : null
+  const percent = (share: number) => format.number(share, { style: 'percent', maximumFractionDigits: 0 })
 
   const tiles = [
     view.visitors ? (
@@ -68,35 +78,75 @@ export function AnalyticsOverview({ view }: { view: ProjectAnalyticsView }) {
     view.position ? (
       <StatTile key="position" label={t('position')} value={view.position.value} delta={delta(view.position, undefined, 'down')} sub={t('positionHint')} />
     ) : null,
+    requests ? (
+      <StatTile
+        key="requests"
+        label={t('requests')}
+        value={requests.current}
+        delta={requests.change === null ? null : { percent: requests.change, period: t('previousPeriod') }}
+      />
+    ) : null,
   ].filter(Boolean)
 
-  const lists = [
+  const chartLabels = { current: t('chart.current'), previous: t('chart.previous'), date: t('chart.date') }
+  const charts = [
+    view.dailyVisitors.length > 1 ? { id: 'visitors', title: t('chart.visitors'), current: view.dailyVisitors, previous: view.dailyVisitorsPrevious } : null,
+    view.searchClicks && view.dailyClicks.length > 1 ? { id: 'clicks', title: t('chart.clicks'), current: view.dailyClicks, previous: view.dailyClicksPrevious } : null,
+    requests && requests.current + requests.previous > 0 ? { id: 'requests', title: t('chart.requests'), current: requests.daily, previous: requests.dailyPrevious } : null,
+  ].filter((c): c is NonNullable<typeof c> => c !== null)
+
+  type List = { id: string; title: string; hint?: string; items: { label: string; value: number; detail?: string }[]; max?: number }
+  const lists = ([
     view.topPages.length ? { id: 'top-pages', title: t('topPages'), items: view.topPages } : null,
     view.topChannels.length ? { id: 'top-channels', title: t('topChannels'), items: view.topChannels.map((c) => ({ ...c, label: channel(c.label) })) } : null,
-    view.topQueries.length ? { id: 'top-queries', title: t('topQueries'), items: view.topQueries } : null,
-  ].filter((l): l is NonNullable<typeof l> => l !== null)
+    view.topQueries.length ? { id: 'top-queries', title: t('topQueries'), hint: t('topQueriesHint'), items: view.topQueries, max: 10 } : null,
+    view.opportunities.length
+      ? {
+          id: 'opportunities',
+          title: t('opportunities'),
+          hint: t('opportunitiesHint'),
+          items: view.opportunities.map((o) => ({ label: o.label, value: o.value, detail: t('positionShort', { position: format.number(o.position, { maximumFractionDigits: 1 }) }) })),
+        }
+      : null,
+    view.topReferrers.length ? { id: 'referrers', title: t('referrers'), hint: t('referrersHint'), items: view.topReferrers } : null,
+    view.aiSources.length ? { id: 'ai', title: t('aiSources'), hint: t('aiSourcesHint'), items: view.aiSources } : null,
+    view.devices.length ? { id: 'devices', title: t('devices.title'), items: view.devices.map((d) => ({ label: device(d.label), value: d.value, detail: percent(d.share) })) } : null,
+    requests?.topPages.length ? { id: 'request-pages', title: t('requestPages'), hint: t('requestPagesHint'), items: requests.topPages } : null,
+  ] as (List | null)[]).filter((l): l is List => l !== null)
 
   return (
     <div className="flex flex-col gap-7">
       <div className="flex flex-col gap-1">
         {until ? <p className="text-sm leading-5 text-muted-foreground">{t('window', { days: 28, until })}</p> : null}
-        {updated ? (
-          <p className={`text-sm leading-5 ${view.stale ? 'text-destructive' : 'text-muted-foreground'}`}>
-            {view.stale ? t('staleNote', { when: updated }) : t('updated', { when: updated })}
-          </p>
-        ) : null}
+        {view.fetchedAt ? <UpdatedNote iso={view.fetchedAt} stale={view.stale} /> : null}
         {view.gsc !== 'connected' && !view.searchClicks ? <p className="text-sm leading-5 text-muted-foreground">{t('searchNotConnected')}</p> : null}
         {view.ga4 !== 'connected' && !view.visitors ? <p className="text-sm leading-5 text-muted-foreground">{t('trafficNotConnected')}</p> : null}
       </div>
 
       {tiles.length ? <StatGrid label={t('summary')}>{tiles}</StatGrid> : null}
 
+      {charts.length ? (
+        <section aria-labelledby="analytics-trends" className="flex flex-col gap-3">
+          <SectionHeading id="analytics-trends" title={t('chart.heading')} />
+          <div className={`grid grid-cols-1 gap-4 ${charts.length > 1 ? 'lg:grid-cols-2' : ''}`}>
+            {charts.map((c) => (
+              <div key={c.id} className="rounded-xl border border-border bg-card p-4">
+                <TrendChart title={c.title} current={c.current} previous={c.previous} labels={chartLabels} />
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {lists.length ? (
-        <div className="grid grid-cols-1 items-start gap-7 lg:grid-cols-3 lg:gap-6">
+        <div className="grid grid-cols-1 items-start gap-7 md:grid-cols-2 lg:grid-cols-3 lg:gap-6">
           {lists.map((l) => (
             <section key={l.id} aria-labelledby={l.id} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
-              <SectionHeading id={l.id} title={l.title} />
-              <RankedList label={l.title} items={l.items} max={8} />
+              <div className="flex flex-col gap-1">
+                <SectionHeading id={l.id} title={l.title} />
+                {l.hint ? <p className="text-xs leading-4 text-muted-foreground">{l.hint}</p> : null}
+              </div>
+              <RankedList label={l.title} items={l.items} max={l.max ?? 8} />
             </section>
           ))}
         </div>

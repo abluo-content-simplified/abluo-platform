@@ -80,8 +80,32 @@ describe('google-auth', () => {
 describe('GA4', () => {
   it('asks for the four windows in one totals report', () => {
     const body = ga4BatchRequest(W)
-    expect(body.requests).toHaveLength(4)
+    expect(body.requests).toHaveLength(5) // the API's maximum per batch
     expect((body.requests[0].dateRanges as { name?: string }[]).map((r) => r.name)).toEqual(['current', 'previous', 'last7', 'previous7'])
+    // The daily report spans both 28-day windows (the trend chart's two lines).
+    expect(body.requests[3].dateRanges).toEqual([{ startDate: W.previous.start, endDate: W.current.end }])
+  })
+
+  it('derives channels, referring sites and AI assistants from one channel × source report', () => {
+    const m = mapGa4Batch(GA4_BATCH, W)
+    expect(m.top_channels).toEqual([
+      { channel: 'Organic Search', sessions: 900 },
+      { channel: 'Direct', sessions: 400 },
+      { channel: 'Referral', sessions: 65 },
+      { channel: 'AI Assistant', sessions: 20 },
+    ])
+    expect(m.top_referrers).toEqual([{ source: 'ordine-medici.it', sessions: 65 }]) // www. merged
+    expect(m.ai_sources).toEqual([
+      { source: 'chatgpt.com', sessions: 12 },
+      { source: 'perplexity.ai', sessions: 8 },
+    ])
+    expect(m.devices).toEqual([
+      { device: 'mobile', sessions: 1000 },
+      { device: 'desktop', sessions: 480 },
+      { device: 'tablet', sessions: 20 },
+    ])
+    expect(m.daily_previous).toHaveLength(28)
+    expect(m.daily_previous![0]).toEqual({ date: '2026-08-13', users: 30 })
   })
 
   it('maps a batch response; omitted rows count as zero; every day present', () => {
@@ -90,7 +114,6 @@ describe('GA4', () => {
     expect(m.previous.users).toBe(1000)
     expect(m.previous7).toEqual({ users: 0, sessions: 0, page_views: 0 })
     expect(m.top_pages[0]).toEqual({ path: '/', views: 2000 })
-    expect(m.top_channels.map((c) => c.channel)).toEqual(['Organic Search', 'Direct'])
     expect(m.daily).toHaveLength(28)
     expect(m.daily[0]).toEqual({ date: '2026-09-10', users: 40 })
     expect(m.daily[27]).toEqual({ date: '2026-10-07', users: 55 })
@@ -131,9 +154,20 @@ describe('Search Console', () => {
     const m = mapGsc(GSC_DAILY, GSC_QUERIES, W)
     expect(m.previous.clicks).toBe(10)
     expect(m.last7.clicks).toBe(30)
-    expect(m.top_queries[0]).toEqual({ query: 'dentista cervia', clicks: 25, impressions: 300 })
+    expect(m.top_queries[0]).toEqual({ query: 'dentista cervia', clicks: 25, impressions: 300, position: 3.2 })
+    expect(m.top_queries).toHaveLength(6)
     expect(m.daily).toHaveLength(28)
     expect(m.daily.at(-1)).toEqual({ date: '2026-10-07', clicks: 30, impressions: 600 })
+    expect(m.daily_previous).toHaveLength(28)
+    expect(m.daily_previous!.find((d) => d.date === '2026-08-20')).toEqual({ date: '2026-08-20', clicks: 10, impressions: 200 })
+  })
+
+  it('opportunities: shown often, rarely clicked, on the first three pages — most-seen first', () => {
+    const m = mapGsc(GSC_DAILY, GSC_QUERIES, W)
+    expect(m.opportunities).toEqual([
+      { query: 'impianti dentali costo', clicks: 1, impressions: 400, position: 11.5 },
+      { query: 'sbiancamento denti', clicks: 0, impressions: 90, position: 18 },
+    ])
   })
 
   it('encodes the property in the URL and asks for fresh data', async () => {

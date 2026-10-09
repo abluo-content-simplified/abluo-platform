@@ -26,7 +26,7 @@ export default async function AdminSiteAnalyticsPage({ params }: { params: Promi
   const data = await getAdminProjectAnalytics({ slug }, { audit: true })
   if (!data) notFound()
   const t = await getTranslations('admin.analytics')
-  const { project, view, config } = data
+  const { project, view, config, requests } = data
 
   return (
     <PageShell>
@@ -52,7 +52,7 @@ export default async function AdminSiteAnalyticsPage({ params }: { params: Promi
         </div>
       ) : null}
 
-      {view.hasData ? <AnalyticsOverview view={view} /> : <EmptyState title={t('site.emptyTitle')} body={t('site.emptyBody')} />}
+      {view.hasData ? <AnalyticsOverview view={view} requests={requests} /> : <EmptyState title={t('site.emptyTitle')} body={t('site.emptyBody')} />}
 
       <section aria-labelledby="analytics-config" className="flex flex-col gap-3">
         <SectionHeading id="analytics-config" title={t('site.configHeading')} />

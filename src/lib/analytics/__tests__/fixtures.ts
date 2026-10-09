@@ -25,19 +25,35 @@ export const GA4_BATCH: Ga4BatchResponse = {
       ],
     },
     {
-      dimensionHeaders: [{ name: 'sessionDefaultChannelGroup' }],
+      dimensionHeaders: [{ name: 'sessionDefaultChannelGroup' }, { name: 'sessionSource' }],
       metricHeaders: [{ name: 'sessions' }],
       rows: [
-        { dimensionValues: [{ value: 'Organic Search' }], metricValues: [{ value: '900' }] },
-        { dimensionValues: [{ value: 'Direct' }], metricValues: [{ value: '400' }] },
+        { dimensionValues: [{ value: 'Organic Search' }, { value: 'google' }], metricValues: [{ value: '850' }] },
+        { dimensionValues: [{ value: 'Direct' }, { value: '(direct)' }], metricValues: [{ value: '400' }] },
+        { dimensionValues: [{ value: 'Referral' }, { value: 'www.ordine-medici.it' }], metricValues: [{ value: '60' }] },
+        { dimensionValues: [{ value: 'Organic Search' }, { value: 'bing' }], metricValues: [{ value: '50' }] },
+        // An assistant GA4 still files under Referral → counted as AI.
+        { dimensionValues: [{ value: 'Referral' }, { value: 'chatgpt.com' }], metricValues: [{ value: '12' }] },
+        { dimensionValues: [{ value: 'AI Assistant' }, { value: 'perplexity.ai' }], metricValues: [{ value: '8' }] },
+        { dimensionValues: [{ value: 'Referral' }, { value: 'ordine-medici.it' }], metricValues: [{ value: '5' }] },
       ],
     },
     {
       dimensionHeaders: [{ name: 'date' }],
       metricHeaders: [{ name: 'activeUsers' }],
       rows: [
+        { dimensionValues: [{ value: '20260813' }], metricValues: [{ value: '30' }] },
         { dimensionValues: [{ value: '20260910' }], metricValues: [{ value: '40' }] },
         { dimensionValues: [{ value: '20261007' }], metricValues: [{ value: '55' }] },
+      ],
+    },
+    {
+      dimensionHeaders: [{ name: 'deviceCategory' }],
+      metricHeaders: [{ name: 'sessions' }],
+      rows: [
+        { dimensionValues: [{ value: 'mobile' }], metricValues: [{ value: '1000' }] },
+        { dimensionValues: [{ value: 'desktop' }], metricValues: [{ value: '480' }] },
+        { dimensionValues: [{ value: 'tablet' }], metricValues: [{ value: '20' }] },
       ],
     },
   ],
@@ -57,6 +73,10 @@ export const GSC_QUERIES: GscResponse = {
   rows: [
     { keys: ['dentista cervia'], clicks: 25, impressions: 300, ctr: 0.083, position: 3.2 },
     { keys: ['igiene dentale'], clicks: 9, impressions: 150, ctr: 0.06, position: 6.1 },
+    { keys: ['impianti dentali costo'], clicks: 1, impressions: 400, ctr: 0.0025, position: 11.46 },
+    { keys: ['sbiancamento denti'], clicks: 0, impressions: 90, ctr: 0, position: 18 },
+    { keys: ['dentista vicino'], clicks: 0, impressions: 500, ctr: 0, position: 45 }, // too deep
+    { keys: ['faccette'], clicks: 0, impressions: 10, ctr: 0, position: 8 }, // too rare
   ],
 }
 

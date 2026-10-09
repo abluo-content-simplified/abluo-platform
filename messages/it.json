@@ -2053,7 +2053,35 @@
         "paidOther": "Altri annunci",
         "sms": "SMS",
         "audio": "Audio",
-        "mobilePushNotifications": "Notifiche push"
+        "mobilePushNotifications": "Notifiche push",
+        "aiAssistant": "Assistenti AI"
+      },
+      "requests": "Richieste di contatto",
+      "topQueriesHint": "Cosa hanno cercato le persone prima di arrivare sul tuo sito. Numero = clic.",
+      "opportunities": "Ricerche su cui lavorare",
+      "opportunitiesHint": "Il tuo sito compare per queste ricerche, ma pochi cliccano. Numero = volte mostrato su Google.",
+      "positionShort": "pos. {position}",
+      "referrers": "Siti che ti linkano",
+      "referrersHint": "Visite arrivate da un link su un altro sito.",
+      "aiSources": "Assistenti AI",
+      "aiSourcesHint": "Visite di persone che ti hanno trovato tramite ChatGPT, Perplexity e simili.",
+      "requestPages": "Da dove arrivano le richieste",
+      "requestPagesHint": "La pagina da cui è stata inviata ogni richiesta di contatto.",
+      "chart": {
+        "heading": "Andamento",
+        "visitors": "Visitatori al giorno",
+        "clicks": "Clic da Google al giorno",
+        "requests": "Richieste di contatto al giorno",
+        "current": "Ultimi 28 giorni",
+        "previous": "I 28 giorni precedenti",
+        "date": "Giorno"
+      },
+      "devices": {
+        "title": "Telefono o computer",
+        "desktop": "Computer",
+        "mobile": "Telefono",
+        "tablet": "Tablet",
+        "smarttv": "TV"
       }
     }
   },
