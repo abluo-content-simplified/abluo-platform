@@ -49,7 +49,7 @@ import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 export interface CtaBannerSectionData {
   _type: 'ctaBannerSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   /** Locale-resolved by GROQ */

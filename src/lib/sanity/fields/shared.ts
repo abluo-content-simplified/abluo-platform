@@ -47,6 +47,8 @@ export const BACKGROUND_SURFACE_OPTIONS = [
   { title: '🟦 Surface 3', value: 'surface3' },
   { title: '🟢 Brand Surface', value: 'brandSurface' },
   { title: '◻ Transparent', value: 'transparent' },
+  { title: '🌈 Gradient 1', value: 'gradient1' },
+  { title: '🌈 Gradient 2', value: 'gradient2' },
   { title: '🔲 Glass', value: 'glass' },
 ]
 

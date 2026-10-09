@@ -489,6 +489,53 @@ describe('resolveDesignSystemInheritance', () => {
 
   // ── Motion token inheritance ───────────────────────────────────────────────
 
+  describe('gradient surface inheritance', () => {
+    const parent: any = {
+      _id: 'grad-parent',
+      name: 'Grad Parent',
+      sectionSurfaces: {
+        lightTheme: {
+          surface1: 'oklch(1 0 0)',
+          gradient1: { style: 'linear', angle: 135, colors: ['oklch(0.95 0.03 250)', 'oklch(0.9 0.06 300)'] },
+          gradient2: { style: 'mesh', colors: ['oklch(0.97 0 0)', 'oklch(0.85 0.1 200)', 'oklch(0.88 0.08 330)'] },
+        },
+      },
+    }
+
+    it('child inherits both gradients when it sets none', async () => {
+      const child: any = { _id: 'grad-child', parentDesignSystem: { _ref: 'grad-parent', _type: 'reference' }, sectionSurfaces: { lightTheme: { surface1: 'oklch(0.99 0 0)' } } }
+      const result = await resolveDesignSystemInheritance(child, makeFetchFn({ 'grad-parent': parent }))
+      expect(result?.sectionSurfaces?.lightTheme?.gradient1).toEqual(parent.sectionSurfaces.lightTheme.gradient1)
+      expect(result?.sectionSurfaces?.lightTheme?.gradient2).toEqual(parent.sectionSurfaces.lightTheme.gradient2)
+      expect(result?.sectionSurfaces?.lightTheme?.surface1).toBe('oklch(0.99 0 0)')
+    })
+
+    it('child gradient replaces the parent gradient whole (no colour mixing)', async () => {
+      const own = { style: 'radial', colors: ['#fde2e4', '#cddafd'] }
+      const child: any = { _id: 'grad-child', parentDesignSystem: { _ref: 'grad-parent', _type: 'reference' }, sectionSurfaces: { lightTheme: { gradient1: own } } }
+      const result = await resolveDesignSystemInheritance(child, makeFetchFn({ 'grad-parent': parent }))
+      expect(result?.sectionSurfaces?.lightTheme?.gradient1).toEqual(own)
+      expect(result?.sectionSurfaces?.lightTheme?.gradient2).toEqual(parent.sectionSurfaces.lightTheme.gradient2)
+    })
+
+    it('page gradient: child overrides parent, unset child inherits', async () => {
+      const withPage: any = { ...parent, sectionSurfaces: { lightTheme: { ...parent.sectionSurfaces.lightTheme, pageGradient: { style: 'mesh', colors: ['#f', '#a', '#b'] } } } }
+      const inherit: any = { _id: 'c1', parentDesignSystem: { _ref: 'grad-parent', _type: 'reference' } }
+      const own = { style: 'linear', angle: 180, colors: ['#1', '#2'] }
+      const override: any = { _id: 'c2', parentDesignSystem: { _ref: 'grad-parent', _type: 'reference' }, sectionSurfaces: { lightTheme: { pageGradient: own } } }
+      const r1 = await resolveDesignSystemInheritance(inherit, makeFetchFn({ 'grad-parent': withPage }))
+      const r2 = await resolveDesignSystemInheritance(override, makeFetchFn({ 'grad-parent': withPage }))
+      expect(r1?.sectionSurfaces?.lightTheme?.pageGradient).toEqual(withPage.sectionSurfaces.lightTheme.pageGradient)
+      expect(r2?.sectionSurfaces?.lightTheme?.pageGradient).toEqual(own)
+    })
+
+    it('an incomplete child gradient (one colour) does not shadow the parent', async () => {
+      const child: any = { _id: 'grad-child', parentDesignSystem: { _ref: 'grad-parent', _type: 'reference' }, sectionSurfaces: { lightTheme: { gradient1: { style: 'linear', colors: ['#fff'] } } } }
+      const result = await resolveDesignSystemInheritance(child, makeFetchFn({ 'grad-parent': parent }))
+      expect(result?.sectionSurfaces?.lightTheme?.gradient1).toEqual(parent.sectionSurfaces.lightTheme.gradient1)
+    })
+  })
+
   describe('motion token inheritance', () => {
     it('Base → Livener: inherits all motion tokens when child sets none', async () => {
       const fetch = makeFetchFn({ 'abluo-base-ds': abluo_base })

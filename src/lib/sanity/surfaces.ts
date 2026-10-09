@@ -1,6 +1,6 @@
 import type { DesignSystem, SectionSurfaces, SectionSurfacesTheme, GlassStyle } from './types'
 
-export type SurfaceType = 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass' | 'usePagePattern'
+export type SurfaceType = 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass' | 'usePagePattern'
 export type PagePattern = 'none' | 'alternate1-2' | 'alternate1-2-3'
 export type ThemeMode = 'light' | 'dark'
 
@@ -23,7 +23,13 @@ export function getCurrentTheme(): ThemeMode {
 export function computeSectionSurface(
   sectionBackground: SurfaceType | undefined,
   pagePattern: PagePattern | undefined,
-  sectionIndex: number
+  sectionIndex: number,
+  /**
+   * What a section with no surface of its own gets under the 'none' pattern.
+   * 'transparent' when the design system paints a page gradient
+   * (hasPageGradient), so the gradient shows through.
+   */
+  defaultSurface: SurfaceType = 'surface1'
 ): SurfaceType {
   // Explicit override takes precedence
   if (sectionBackground && sectionBackground !== 'usePagePattern') {
@@ -41,7 +47,7 @@ export function computeSectionSurface(
       return cycle === 0 ? 'surface1' : cycle === 1 ? 'surface2' : 'surface3'
     case 'none':
     default:
-      return 'surface1' // Default fallback
+      return defaultSurface
   }
 }
 
@@ -147,6 +153,20 @@ export function getSurfaceStyles(
       return { backgroundColor: 'var(--color-section-surface3)' }
     case 'brandSurface':
       return { backgroundColor: 'var(--color-section-brand-surface)' }
+    // Gradients are design-system tokens emitted as CSS vars by the tenant
+    // layout (gradientCssVars). Longhands, so a component that also sets
+    // backgroundImage/backgroundColor overrides cleanly instead of fighting a
+    // `background` shorthand.
+    case 'gradient1':
+      return {
+        backgroundColor: 'var(--section-gradient-1-base)',
+        backgroundImage: 'var(--section-gradient-1)',
+      }
+    case 'gradient2':
+      return {
+        backgroundColor: 'var(--section-gradient-2-base)',
+        backgroundImage: 'var(--section-gradient-2)',
+      }
     case 'glass':
       return getGlassStyles(designSystem, theme)
     case 'transparent':

@@ -2033,10 +2033,16 @@ export const DS_FIELDS_SELECTION = /* groq */ `{
   sectionSurfaces {
     lightTheme {
       surface1, surface2, surface3, brandSurface,
+      gradient1 { style, angle, colors },
+      gradient2 { style, angle, colors },
+      pageGradient { style, angle, colors },
       glass { backgroundOklch, backdropBlur, borderColor, borderWidth }
     },
     darkTheme {
       surface1, surface2, surface3, brandSurface,
+      gradient1 { style, angle, colors },
+      gradient2 { style, angle, colors },
+      pageGradient { style, angle, colors },
       glass { backgroundOklch, backdropBlur, borderColor, borderWidth }
     }
   },

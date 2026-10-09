@@ -44,6 +44,7 @@ import { asUrlProjectSegment, type UrlProjectSegment } from '@/lib/tenancy/ids'
 import { lightThemeSelector, type ThemeMode } from '@/lib/design-system/theme-mode'
 import { FALLBACK_DARK, FALLBACK_LIGHT, FALLBACK_STATE, FALLBACK_FONTS, FALLBACK_RADIUS } from '@/lib/design-system/fallback-tokens'
 import { projectScopeSlugFromUrlSegment } from '@/lib/forms/render-mapping'
+import { gradientCssVars, pageGradientCssVars, hasPageGradient, PAGE_GRADIENT_BODY_RULE } from '@/lib/sanity/gradients'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -328,6 +329,8 @@ ${lightFormVars}
       --color-section-surface2: ${sectionSurfaces?.lightTheme?.surface2 ?? 'transparent'};
       --color-section-surface3: ${sectionSurfaces?.lightTheme?.surface3 ?? 'transparent'};
       --color-section-brand-surface: ${sectionSurfaces?.lightTheme?.brandSurface ?? 'transparent'};
+${gradientCssVars(sectionSurfaces, 'lightTheme')}
+${pageGradientCssVars(sectionSurfaces, 'lightTheme')}
       --color-section-glass-bg: ${sectionSurfaces?.lightTheme?.glass?.backgroundOklch ?? 'oklch(0.97 0 0 / 0.6)'};
       /* ── Footer tokens (light theme) ── */
 ${footerThemeVars(ds?.footer?.surface, L, '      ')}
@@ -418,11 +421,14 @@ ${formMetaVars}
       --color-section-surface2: ${sectionSurfaces?.darkTheme?.surface2 ?? 'transparent'};
       --color-section-surface3: ${sectionSurfaces?.darkTheme?.surface3 ?? 'transparent'};
       --color-section-brand-surface: ${sectionSurfaces?.darkTheme?.brandSurface ?? 'transparent'};
+${gradientCssVars(sectionSurfaces, 'darkTheme')}
+${pageGradientCssVars(sectionSurfaces, 'darkTheme')}
       --color-section-glass-bg: ${sectionSurfaces?.darkTheme?.glass?.backgroundOklch ?? 'oklch(0.3 0.02 270 / 0.4)'};
       /* ── Footer tokens (dark theme) ── */
 ${footerThemeVars(ds?.footer?.surface, D, '      ')}
     }
 ${lightThemeBlock}
+${hasPageGradient(ds) ? PAGE_GRADIENT_BODY_RULE : ''}
 ${D.accentRail ? `
     /* Every section clears the rail. Scoped to the attribute rather than applied
        globally, so a tenant without a rail keeps the padding it has always had. */

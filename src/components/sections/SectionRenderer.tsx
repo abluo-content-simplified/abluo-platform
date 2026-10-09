@@ -60,6 +60,7 @@ import type {
 } from '@/lib/sanity/types'
 import { computeSectionSurface } from '@/lib/sanity/surfaces'
 import type { UrlProjectSegment } from '@/lib/tenancy/ids'
+import { hasPageGradient } from '@/lib/sanity/gradients'
 import {
   blogListingPostsNewestQuery,
   blogListingPostsOldestQuery,
@@ -379,7 +380,12 @@ export function SectionRenderer({
   enabledModuleIds,
   moduleConfig,
 }: SectionRendererProps) {
-  const surface = computeSectionSurface(section.background, backgroundPattern as any, sectionIndex)
+  const surface = computeSectionSurface(
+    section.background,
+    backgroundPattern as any,
+    sectionIndex,
+    hasPageGradient(designSystem) ? 'transparent' : 'surface1',
+  )
 
   // ── Module-installation gating (ADR-016 Phase D) ─────────────────────────
   // A module-owned section whose owning module is not installed for this

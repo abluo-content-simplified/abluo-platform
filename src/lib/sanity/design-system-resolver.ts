@@ -355,8 +355,17 @@ function mergeSectionSurfacesTheme(parent: any, child: any): any {
     surface2:     child.surface2     || parent.surface2,
     surface3:     child.surface3     || parent.surface3,
     brandSurface: child.brandSurface || parent.brandSurface,
+    // A gradient is one designed unit (style + angle + colour list), so the
+    // child replaces it whole rather than mixing its colours with the parent's.
+    gradient1:    hasGradient(child.gradient1) ? child.gradient1 : parent.gradient1,
+    gradient2:    hasGradient(child.gradient2) ? child.gradient2 : parent.gradient2,
+    pageGradient: hasGradient(child.pageGradient) ? child.pageGradient : parent.pageGradient,
     glass:        mergeGlassStyle(parent.glass, child.glass),
   }
+}
+
+function hasGradient(g: any): boolean {
+  return Array.isArray(g?.colors) && g.colors.filter(Boolean).length >= 2
 }
 
 function mergeGlassStyle(parent: any, child: any): any {

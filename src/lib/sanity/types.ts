@@ -320,11 +320,26 @@ export interface GlassStyle {
   borderWidth?: number
 }
 
+/**
+ * A gradient surface token (see src/lib/sanity/gradients.ts).
+ * linear → `angle` + colours in order; radial → from the top-left corner;
+ * mesh → colours[0] is the field, each further colour a soft blob.
+ */
+export interface SectionGradient {
+  style?: 'linear' | 'radial' | 'mesh'
+  angle?: number
+  colors?: string[]
+}
+
 export interface SectionSurfacesTheme {
   surface1?: string
   surface2?: string
   surface3?: string
   brandSurface?: string
+  gradient1?: SectionGradient
+  gradient2?: SectionGradient
+  /** One gradient behind the whole page — see hasPageGradient(). */
+  pageGradient?: SectionGradient
   glass?: GlassStyle
 }
 
@@ -975,7 +990,7 @@ export interface HeroSection {
   _type: 'heroSection'
   _key: string
   // Content
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   eyebrow?: string
@@ -1061,7 +1076,7 @@ export interface HeroStat {
 export interface HeroLiveCaptureSection {
   _type: 'heroLiveCaptureSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   /** Short overline above the headline — e.g. "Livener for Investors" */
@@ -1107,7 +1122,7 @@ export interface HeroLiveCaptureSection {
 export interface HeroLensSection {
   _type: 'heroLensSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   /** Short overline above the headline */
@@ -1148,7 +1163,7 @@ export interface MediaStyleDefinition {
 export interface MediaContentSection {
   _type: 'contentSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   eyebrow?: string
@@ -1193,7 +1208,7 @@ export interface TeamMember {
 export interface TeamSection {
   _type: 'teamSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   title?: string
@@ -1205,7 +1220,7 @@ export interface TeamSection {
 export interface TextSection {
   _type: 'textSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   eyebrow?: string
@@ -1222,7 +1237,7 @@ export interface TextSection {
 export interface VideoSection {
   _type: 'videoSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   provider: 'cloudflare' | 'youtube' | 'vimeo' | 'url'
@@ -1247,7 +1262,7 @@ export interface TreatmentCard {
 export interface TreatmentsSection {
   _type: 'treatmentsSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   eyebrow?: string
@@ -1265,7 +1280,7 @@ export interface FAQItem {
 export interface FAQSection {
   _type: 'faqSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   eyebrow?: string
@@ -1282,7 +1297,7 @@ export interface FAQSection {
 export interface ContactSection {
   _type: 'contactSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   title?: string
@@ -1306,7 +1321,7 @@ export interface ContactSection {
 export interface BlogListingSection {
   _type: 'blogListingSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   /** Locale-resolved by GROQ */
@@ -1349,7 +1364,7 @@ export interface BlogListingSection {
 export interface NewsListingSection {
   _type: 'newsListingSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   /** Locale-resolved by GROQ */
@@ -1383,7 +1398,7 @@ export interface NewsListingSection {
 export interface EventsListingSection {
   _type: 'eventsListingSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   /** Locale-resolved by GROQ */
@@ -1420,7 +1435,7 @@ export interface EventsListingSection {
 export interface LiveLatestSection {
   _type: 'liveLatestSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   /** Locale-resolved by GROQ */
@@ -1532,7 +1547,7 @@ export interface RenderableFormDefinition {
 export interface FormSection {
   _type: 'formSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   /** Dereferenced formDefinition — null if not set or not published (ADR-018 slice 4). */
@@ -1545,7 +1560,7 @@ export interface FormSection {
 export interface FormOverlayButtonSection {
   _type: 'formOverlayButtonSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   /** Dereferenced formDefinition — null if not set or not published. */
@@ -1565,7 +1580,7 @@ export interface FormOverlayButtonSection {
 export interface StatementSection {
   _type: 'statementSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   /** Locale-resolved by GROQ */
@@ -1603,7 +1618,7 @@ export interface MetricItem {
 export interface MetricsSection {
   _type: 'metricsSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   /** Locale-resolved by GROQ */
@@ -1637,7 +1652,7 @@ export interface StepItem {
 export interface StepsSection {
   _type: 'stepsSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   /** Locale-resolved by GROQ */
@@ -1685,7 +1700,7 @@ export interface FeatureCard {
 export interface FeatureGridSection {
   _type: 'featureGridSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   /** Locale-resolved by GROQ */
@@ -1745,7 +1760,7 @@ export interface VentureItem {
 export interface VentureListSection {
   _type: 'ventureListSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   anchorId?: string
   /** Locale-resolved by GROQ */
   eyebrow?: string
@@ -1762,7 +1777,7 @@ export interface VentureListSection {
 export interface ClientsFlowSection {
   _type: 'clientsFlowSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   anchorId?: string
   /** Locale-resolved by GROQ */
   eyebrow?: string
@@ -1798,7 +1813,7 @@ export interface CareerRow {
 export interface CareerTimelineSection {
   _type: 'careerTimelineSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   anchorId?: string
   /** Locale-resolved by GROQ */
   eyebrow?: string
@@ -1842,7 +1857,7 @@ export interface FeatureRow {
 export interface MediaFeatureSection {
   _type: 'mediaFeatureSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   /** Locale-resolved by GROQ */
@@ -1912,7 +1927,7 @@ export interface CategoryListCallout {
 export interface CategoryListSection {
   _type: 'categoryListSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   /** Locale-resolved by GROQ */
@@ -1939,7 +1954,7 @@ export interface CategoryListSection {
 export interface LocationsSection {
   _type: 'locationsSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for the section itself. */
   anchorId?: string
   /** Locale-resolved by GROQ */
@@ -1966,7 +1981,7 @@ export interface LocationsSection {
 export interface CtaBannerSection {
   _type: 'ctaBannerSection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   /** Locale-resolved by GROQ */
@@ -2057,7 +2072,7 @@ export interface Gallery {
 export interface PhotoGallerySection {
   _type: 'photoGallerySection'
   _key: string
-  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'transparent' | 'glass'
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
   /** Optional authored DOM id for in-page `#anchor` links (e.g. `product` → `#product`). */
   anchorId?: string
   /** Locale-resolved by GROQ */
