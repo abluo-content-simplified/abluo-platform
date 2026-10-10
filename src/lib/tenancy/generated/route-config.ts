@@ -229,7 +229,7 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectId: "1a1bcd9a-e83c-46bb-963d-775652b3b53d",
     defaultLocale: "en",
     supportedLocales: ["en"],
-    status: "preview",
+    status: "active",
   },
   {
     host: "noemi.preview.abluo.app",
@@ -239,7 +239,17 @@ export const GENERATED_HOST_ROUTES: readonly GeneratedHostRoute[] = [
     projectId: "1a1bcd9a-e83c-46bb-963d-775652b3b53d",
     defaultLocale: "en",
     supportedLocales: ["en"],
-    status: "preview",
+    status: "active",
+  },
+  {
+    host: "noemizi.com",
+    hostKind: "custom-domain",
+    tenantSlug: "noemi",
+    projectSlug: "noemi",
+    projectId: "1a1bcd9a-e83c-46bb-963d-775652b3b53d",
+    defaultLocale: "en",
+    supportedLocales: ["en"],
+    status: "active",
   },
   {
     host: "nologo.cloud",
