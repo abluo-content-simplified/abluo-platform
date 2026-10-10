@@ -3,6 +3,7 @@ import { TenantLinker } from '@/lib/sanity/fields/TenantLinker'
 import { ProjectLinker } from '@/lib/sanity/fields/ProjectLinker'
 import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, LocalizedSlugInput, LocalizedRedirectFromInput } from '@/lib/sanity/fields/LocalizedInput'
 import { slugifyNestedPath, validateNestedSlug } from '@/lib/sanity/fields/nested-slug'
+import { isUniqueInProject } from '@/lib/sanity/fields/project-unique-slug'
 import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
 import { LOCATION_KEY_PATTERN } from '@/lib/maps/locations'
 import { LocationPinInput } from '@/lib/sanity/fields/LocationPinInput'
@@ -200,6 +201,9 @@ const localizedSlugType = defineType({
         // NESTED PATHS (D1) — see src/lib/sanity/fields/nested-slug.ts for why
         // the default slugifier cannot be used here.
         slugify: (input: string) => slugifyNestedPath(input),
+        // Unique within the project, not across the whole dataset — see
+        // project-unique-slug.ts (every tenant may have its own "home").
+        isUnique: isUniqueInProject(code) as any,
       },
       validation: (Rule) =>
         Rule.custom((value?: { current?: string }) => validateNestedSlug(value?.current)),
