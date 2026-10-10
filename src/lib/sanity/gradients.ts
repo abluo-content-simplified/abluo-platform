@@ -154,8 +154,16 @@ export function pageGradientCssVars(
   ].join('\n')
 }
 
-/** The <body> rule — emitted only for design systems that have a page gradient. */
+/**
+ * The <body> rule — emitted only for design systems that have a page gradient.
+ *
+ * <html> gets the base colour on purpose: a body background with nothing on
+ * <html> propagates to the canvas, and a propagated background is sized to the
+ * viewport — the gradient stopped one screen down. With <html> painted, the
+ * body keeps its own background, sized to the body box (the whole page).
+ */
 export const PAGE_GRADIENT_BODY_RULE = `
+    html { background-color: var(--page-gradient-base); }
     body {
       background-color: var(--page-gradient-base);
       background-image: var(--page-gradient);
