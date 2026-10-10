@@ -141,33 +141,84 @@ export function hasPageGradient(ds: Pick<DesignSystem, 'sectionSurfaces'> | null
   )
 }
 
-/** CSS custom properties for one theme's page gradient. */
+/** Most blobs a page mesh can have (a gradient holds at most 5 colours). */
+export const MAX_PAGE_BLOBS = 4
+
+export interface PageBlob {
+  color: string
+  /** Centre, as % of the page width / height. */
+  x: number
+  y: number
+  /** Vertical radius, as % of the page height (horizontal radius is 70%). */
+  h: number
+}
+
+/**
+ * The blobs of a mesh page gradient, laid out exactly as buildGradientCss(…,
+ * 'page') places them. Rendered as separate elements by PageGradientBackdrop so
+ * each one can drift on its own; null for linear/radial (one flat layer).
+ */
+export function pageBlobs(g: SectionGradient | null | undefined): PageBlob[] | null {
+  const colors = usableColors(g)
+  if (colors.length < 2 || (g?.style ?? 'linear') !== 'mesh') return null
+  const blobs = colors.slice(1, 1 + MAX_PAGE_BLOBS)
+  const h = Math.max(25, Math.round(120 / blobs.length))
+  const step = blobs.length > 1 ? 100 / (blobs.length - 1) : 0
+  return blobs.map((color, i) => ({ color, x: i % 2 ? 90 : 10, y: Math.round(i * step), h }))
+}
+
+/**
+ * CSS custom properties for one theme's page gradient:
+ *   --page-gradient-base   solid colour under everything
+ *   --page-gradient        the flat layer (linear / radial), `none` for mesh
+ *   --page-blob-N-*        mesh blobs (colour, centre, height); unused blobs
+ *                          are transparent, so the markup never changes shape
+ *                          between themes.
+ */
 export function pageGradientCssVars(
   sectionSurfaces: SectionSurfaces | null | undefined,
   theme: 'lightTheme' | 'darkTheme',
   indent = '      ',
 ): string {
-  const css = buildGradientCss(sectionSurfaces?.[theme]?.pageGradient, 'page')
-  return [
+  const g = sectionSurfaces?.[theme]?.pageGradient
+  const css = buildGradientCss(g, 'page')
+  const blobs = pageBlobs(g)
+  const lines = [
     `${indent}--page-gradient-base: ${css?.base ?? 'var(--color-background)'};`,
-    `${indent}--page-gradient: ${css?.image ?? 'none'};`,
-  ].join('\n')
+    `${indent}--page-gradient: ${blobs ? 'none' : (css?.image ?? 'none')};`,
+  ]
+  for (let i = 0; i < MAX_PAGE_BLOBS; i++) {
+    const b = blobs?.[i]
+    lines.push(
+      `${indent}--page-blob-${i}-color: ${b?.color ?? 'transparent'};`,
+      `${indent}--page-blob-${i}-x: ${b?.x ?? 50}%;`,
+      `${indent}--page-blob-${i}-y: ${b?.y ?? 50}%;`,
+      `${indent}--page-blob-${i}-h: ${b?.h ?? 25}%;`,
+    )
+  }
+  return lines.join('\n')
+}
+
+export type PageGradientMotion = 'still' | 'drift' | 'scroll' | 'driftScroll'
+
+/** The design system's motion choice for the page gradient (default: still). */
+export function pageGradientMotion(ds: Pick<DesignSystem, 'sectionSurfaces'> | null | undefined): PageGradientMotion {
+  const m = ds?.sectionSurfaces?.pageGradientMotion
+  return m === 'drift' || m === 'scroll' || m === 'driftScroll' ? m : 'still'
 }
 
 /**
- * The <body> rule — emitted only for design systems that have a page gradient.
- *
- * <html> gets the base colour on purpose: a body background with nothing on
- * <html> propagates to the canvas, and a propagated background is sized to the
- * viewport — the gradient stopped one screen down. With <html> painted, the
- * body keeps its own background, sized to the body box (the whole page).
+ * Emitted only for design systems that have a page gradient. The gradient
+ * itself is drawn by PageGradientBackdrop (an absolutely positioned layer the
+ * full height of <body>); body only carries the base colour and becomes the
+ * layer's containing block and stacking context. <html> carries the base too,
+ * so overscroll and short pages never flash a different colour.
  */
 export const PAGE_GRADIENT_BODY_RULE = `
     html { background-color: var(--page-gradient-base); }
     body {
       background-color: var(--page-gradient-base);
-      background-image: var(--page-gradient);
-      background-repeat: no-repeat;
-      background-size: 100% 100%;
+      position: relative;
+      isolation: isolate;
       min-height: 100vh;
     }`

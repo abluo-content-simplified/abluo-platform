@@ -346,6 +346,8 @@ export interface SectionSurfacesTheme {
 export interface SectionSurfaces {
   lightTheme?: SectionSurfacesTheme
   darkTheme?: SectionSurfacesTheme
+  /** How the page background gradient moves — see PageGradientBackdrop. */
+  pageGradientMotion?: 'still' | 'drift' | 'scroll' | 'driftScroll'
 }
 
 /**

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildGradientCss, gradientCssVars, isSafeColor, hasPageGradient, pageGradientCssVars } from '../gradients'
+import { buildGradientCss, gradientCssVars, isSafeColor, hasPageGradient, pageGradientCssVars, pageBlobs, pageGradientMotion } from '../gradients'
 import { getSurfaceStyles, computeSectionSurface } from '../surfaces'
 
 describe('buildGradientCss', () => {
@@ -74,8 +74,32 @@ describe('page background gradient', () => {
     expect(css?.image).toContain('at 10% 100%, #c')
   })
 
-  it('pageGradientCssVars falls back to the page background colour', () => {
-    expect(pageGradientCssVars(null, 'lightTheme', '')).toBe('--page-gradient-base: var(--color-background);\n--page-gradient: none;')
+  it('pageGradientCssVars falls back to the page background colour, blobs transparent', () => {
+    const out = pageGradientCssVars(null, 'lightTheme', '')
+    expect(out).toContain('--page-gradient-base: var(--color-background);')
+    expect(out).toContain('--page-gradient: none;')
+    expect(out).toContain('--page-blob-3-color: transparent;')
+  })
+
+  it('mesh page gradients become blobs (positions match the static layout); linear stays a flat layer', () => {
+    const mesh = { style: 'mesh' as const, colors: ['#f', '#a', '#b', '#c'] }
+    expect(pageBlobs(mesh)).toEqual([
+      { color: '#a', x: 10, y: 0, h: 40 },
+      { color: '#b', x: 90, y: 50, h: 40 },
+      { color: '#c', x: 10, y: 100, h: 40 },
+    ])
+    const meshVars = pageGradientCssVars({ lightTheme: { pageGradient: mesh } }, 'lightTheme', '')
+    expect(meshVars).toContain('--page-gradient: none;')
+    expect(meshVars).toContain('--page-blob-1-color: #b;')
+    expect(meshVars).toContain('--page-blob-1-x: 90%;')
+    expect(pageBlobs({ style: 'linear', colors: ['#a', '#b'] })).toBeNull()
+    expect(pageGradientCssVars({ lightTheme: { pageGradient: { colors: ['#a', '#b'] } } }, 'lightTheme', '')).toContain('--page-gradient: linear-gradient(')
+  })
+
+  it('pageGradientMotion defaults to still and accepts only known values', () => {
+    expect(pageGradientMotion(null)).toBe('still')
+    expect(pageGradientMotion({ sectionSurfaces: { pageGradientMotion: 'driftScroll' } } as any)).toBe('driftScroll')
+    expect(pageGradientMotion({ sectionSurfaces: { pageGradientMotion: 'wobble' } } as any)).toBe('still')
   })
 
   it("sections default to transparent under a page gradient, explicit choices win", () => {

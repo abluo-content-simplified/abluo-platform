@@ -44,7 +44,8 @@ import { asUrlProjectSegment, type UrlProjectSegment } from '@/lib/tenancy/ids'
 import { lightThemeSelector, type ThemeMode } from '@/lib/design-system/theme-mode'
 import { FALLBACK_DARK, FALLBACK_LIGHT, FALLBACK_STATE, FALLBACK_FONTS, FALLBACK_RADIUS } from '@/lib/design-system/fallback-tokens'
 import { projectScopeSlugFromUrlSegment } from '@/lib/forms/render-mapping'
-import { gradientCssVars, pageGradientCssVars, hasPageGradient, PAGE_GRADIENT_BODY_RULE } from '@/lib/sanity/gradients'
+import { gradientCssVars, pageGradientCssVars, hasPageGradient, pageGradientMotion, PAGE_GRADIENT_BODY_RULE } from '@/lib/sanity/gradients'
+import { PageGradientBackdrop } from '@/components/site/PageGradientBackdrop'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -723,6 +724,8 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
         motionTokens={designSystem?.motion}
       >
         <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
+        {/* Page Background Gradient — painted (and optionally moved) behind the whole page. */}
+        {hasPageGradient(designSystem) && <PageGradientBackdrop motion={pageGradientMotion(designSystem)} />}
         {!draftPreview && <TrackingScripts data={integrations} grants={consent.grants} />}
         {livenerBgStyles && livenerBgGraphic?.scope === 'entire' && (
           <div style={livenerBgStyles} aria-hidden="true" />
@@ -855,6 +858,8 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
       motionTokens={designSystem?.motion}
     >
       <DesignSystemHead cssVars={cssVars} fontsUrl={fontsUrl} />
+      {/* Page Background Gradient — painted (and optionally moved) behind the whole page. */}
+      {hasPageGradient(designSystem) && <PageGradientBackdrop motion={pageGradientMotion(designSystem)} />}
       {accentRail && <SiteRail />}
       {!draftPreview && <TrackingScripts data={integrations} grants={consent.grants} />}
       {bgStyles && bgGraphic?.scope === 'entire' && (

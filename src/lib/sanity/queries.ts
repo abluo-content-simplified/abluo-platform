@@ -2031,6 +2031,7 @@ export const DS_FIELDS_SELECTION = /* groq */ `{
   footer { surface },
 
   sectionSurfaces {
+    pageGradientMotion,
     lightTheme {
       surface1, surface2, surface3, brandSurface,
       gradient1 { style, angle, colors },

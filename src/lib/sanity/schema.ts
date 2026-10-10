@@ -3995,6 +3995,22 @@ const sectionSurfacesType = defineType({
   description: 'Define the reusable background surfaces for page sections — theme-aware',
   fields: [
     defineField({
+      name: 'pageGradientMotion',
+      title: 'Page Gradient Motion',
+      type: 'string',
+      description: 'How the Page Background Gradient moves. The motion itself is built into the website (calm, very slow); visitors who ask their device to reduce motion always get it still, and phones get drift only.',
+      options: {
+        list: [
+          { title: 'Still', value: 'still' },
+          { title: 'Slow drift — the colours wander very slowly', value: 'drift' },
+          { title: 'Scroll depth — the colours move slower than the content', value: 'scroll' },
+          { title: 'Drift + scroll depth', value: 'driftScroll' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'still',
+    }),
+    defineField({
       name: 'lightTheme',
       title: 'Light Theme',
       type: 'sectionSurfacesTheme',

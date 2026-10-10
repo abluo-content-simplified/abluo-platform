@@ -184,6 +184,7 @@ function mergeDesignSystems(
     sectionSurfaces: {
       lightTheme: mergeSectionSurfacesTheme(parent.sectionSurfaces?.lightTheme, child.sectionSurfaces?.lightTheme),
       darkTheme:  mergeSectionSurfacesTheme(parent.sectionSurfaces?.darkTheme,  child.sectionSurfaces?.darkTheme),
+      pageGradientMotion: child.sectionSurfaces?.pageGradientMotion || parent.sectionSurfaces?.pageGradientMotion,
     },
 
     // ─── Footer: INHERIT WITH OVERRIDE ───────────────────────────────────────
