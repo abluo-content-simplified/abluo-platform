@@ -21,6 +21,7 @@ import { useFormOverlaySafe } from '@/components/forms/FormOverlayContext'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { resolveEasing } from '@/lib/motion/easing'
 import { renderHeadline, lastContentLineIndex, accentsLine } from '@/lib/headline-accent'
+import { focalObjectPosition } from '@/lib/gallery/focal'
 
 const CLOUDFLARE_ACCOUNT = 'customer-aayaptcudal3r1fx'
 
@@ -399,9 +400,14 @@ export function HeroSection({ section, surface, designSystem }: Props) {
   const { ctaBg, ctaText } = resolveHeroCtaColors(section.ctaStyle, showFullBleedMedia)
 
   // Build image URL for heroImage background
+  // Not pre-cropped to 16:9: the section's shape changes with the viewport, so
+  // the browser crops (cover) around the image's focal point instead — the
+  // Media Library hotspot, via focalObjectPosition (ADR-022). A fixed centre
+  // crop here is what cut off the subject's head on portrait photos.
   const heroImageUrl = heroImage?.asset
-    ? urlFor(heroImage).width(1920).height(1080).fit('crop').auto('format').url()
+    ? urlFor(heroImage).width(2400).fit('max').auto('format').url()
     : null
+  const heroImagePosition = focalObjectPosition(heroImage)
 
   // Build poster URL for video
   const posterUrl = posterImage?.asset
@@ -426,9 +432,10 @@ export function HeroSection({ section, surface, designSystem }: Props) {
           {/* Image background */}
           {mediaType === 'image' && heroImageUrl && (
             <div
-              className="absolute inset-0 bg-cover bg-center"
+              className="absolute inset-0 bg-cover"
               style={{
                 backgroundImage: `url(${heroImageUrl})`,
+                backgroundPosition: heroImagePosition,
                 filter: mediaFilter,
               }}
               aria-hidden="true"
@@ -456,8 +463,14 @@ export function HeroSection({ section, surface, designSystem }: Props) {
         </>
       )}
 
-      {/* ── Decorative left border accent (surface mode — no fullBleed media) ── */}
-      {!showFullBleedMedia && (
+      {/* ── Decorative left border accent (surface mode — no fullBleed media) ──
+          Suppressed when the design system draws a full-page accent rail
+          (SiteRail): the page would otherwise carry TWO orange lines a few
+          hundred pixels apart — the document spine and this per-hero stub.
+          `layout.accentRail` is the single switch, so a site either has the
+          rail or has this, never both. Only tmz sets it, so every other
+          tenant's hero renders exactly as before. */}
+      {!showFullBleedMedia && designSystem?.layout?.accentRail !== true && (
         <div
           className="absolute left-0 top-0 h-full w-[3px]"
           style={{ backgroundColor: 'var(--color-primary)' }}
@@ -667,7 +680,7 @@ export function HeroSection({ section, surface, designSystem }: Props) {
                   src={heroImageUrl}
                   alt=""
                   className="h-full w-full object-cover"
-                  style={{ filter: mediaFilter }}
+                  style={{ filter: mediaFilter, objectPosition: heroImagePosition }}
                   aria-hidden="true"
                 />
               )}

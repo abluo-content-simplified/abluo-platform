@@ -64,11 +64,18 @@ const locBody = (field: string) => /* groq */ `(${loc(field)})[]{
     }
   }`
 
+// hotspot / crop fall back to the Media Library asset's (ADR-022: focal points
+// live on mediaAsset.image) — a section image is a bare asset reference, so the
+// focus Tom sets in the Media Library was never reaching the website.
+const MEDIA_FOCAL = (key: 'hotspot' | 'crop') =>
+  `*[_type == "mediaAsset" && projectSlug == $projectSlug && image.asset._ref == ^.asset._ref][0].image.${key}`
+/** An image with its focal point (own hotspot/crop, else the Media Library's). */
+const focalImage = (field: string) => /* groq */ `${field} { asset, "hotspot": coalesce(hotspot, ${MEDIA_FOCAL('hotspot')}), "crop": coalesce(crop, ${MEDIA_FOCAL('crop')}) }`
 const locImage = (field: string) => /* groq */ `
   ${field} {
     asset,
-    hotspot,
-    crop,
+    "hotspot": coalesce(hotspot, ${MEDIA_FOCAL('hotspot')}),
+    "crop": coalesce(crop, ${MEDIA_FOCAL('crop')}),
     "alt": ${loc('alt')},
     "caption": ${loc('caption')}
   }
@@ -382,7 +389,7 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       // statementSection fields
       "description": ${loc('description')},
       alignment,
-      image { asset, hotspot, crop },
+      ${focalImage('image')},
       "intro": ${loc('intro')},
       treatments[] {
         _type, _key,
@@ -393,7 +400,7 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       "subtitle": ${loc('subtitle')},
       members[] {
         _type, _key,
-        photo { asset, hotspot, crop },
+        ${focalImage('photo')},
         name,
         "honorific": ${loc('honorific')},
         "role": ${loc('role')},
@@ -450,9 +457,9 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       buttonFullWidth,
       // heroSection media / layout / style fields
       mediaType,
-      heroImage { asset, hotspot, crop },
+      ${focalImage('heroImage')},
       heroVideo,
-      posterImage { asset, hotspot, crop },
+      ${focalImage('posterImage')},
       heroHeight,
       mediaLayout,
       contentWidth,
@@ -467,12 +474,12 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       ctaStyle,
       // heroLiveCaptureSection + heroLensSection CTA array
       ctas[] { ${CTA_FIELDS} },
-      backgroundImage { asset, hotspot, crop },
-      phoneScreenImage { asset, hotspot, crop },
+      ${focalImage('backgroundImage')},
+      ${focalImage('phoneScreenImage')},
       circleSize,
       animationIntensity,
       // heroLensSection fields
-      foregroundImage { asset, hotspot, crop },
+      ${focalImage('foregroundImage')},
       // videoSection fields — eyebrow/title already projected generically above
       provider,
       videoId,
@@ -962,7 +969,7 @@ export const postsQuery = /* groq */ `
     "author": author-> {
       name,
       "role": ${loc('role')},
-      avatar { asset, hotspot, crop }
+      ${focalImage('avatar')}
     },
     "categoryKeys": categories,
     "categoryTitles": categories[]->title.en,
@@ -1090,7 +1097,7 @@ export const postBySlugQuery = /* groq */ `
       name,
       "role": ${loc('role')},
       "bio": ${loc('bio')},
-      avatar { asset, hotspot, crop }
+      ${focalImage('avatar')}
     },
     "categoryKeys": categories,
     "categoryTitles": categories[]->title.en,
@@ -1114,7 +1121,7 @@ export const postBySlugQuery = /* groq */ `
     cta { mode, ref },
     "seoTitle": coalesce(${loc('seoTitle')}, ${loc('title')}),
     "seoDescription": coalesce(${loc('seoDescription')}, ${loc('excerpt')}),
-    seoImage { asset, hotspot, crop },
+    ${focalImage('seoImage')},
   }
 `
 
@@ -1151,7 +1158,7 @@ export const postsByCategoryQuery = /* groq */ `
     "author": author-> {
       name,
       "role": ${loc('role')},
-      avatar { asset, hotspot, crop }
+      ${focalImage('avatar')}
     },
     "categoryKeys": categories,
     "seoTitle": ${loc('seoTitle')},
@@ -1191,7 +1198,7 @@ export const relatedPostsQuery = /* groq */ `
     "author": author-> {
       name,
       "role": ${loc('role')},
-      avatar { asset, hotspot, crop }
+      ${focalImage('avatar')}
     },
     "categoryKeys": categories,
     "categoryTitles": categories[]->title.en
@@ -1225,7 +1232,7 @@ const blogListingCardFields = /* groq */ `
   "author": author-> {
     name,
     "role": coalesce(role[$locale], role[$defaultLocale], role.en, role),
-    avatar { asset, hotspot, crop }
+    ${focalImage('avatar')}
   },
   "categoryKeys": categories,
   "categoryTitles": categories[]->title.en
@@ -1391,7 +1398,7 @@ export const newsArticleBySlugQuery = /* groq */ `
     "categoryTitles": categories[]->title.en,
     "seoTitle": coalesce(${loc('seoTitle')}, ${loc('title')}),
     "seoDescription": coalesce(${loc('seoDescription')}, ${loc('excerpt')}),
-    seoImage { asset, hotspot, crop },
+    ${focalImage('seoImage')},
   }
 `
 
@@ -1746,7 +1753,7 @@ export const homePageQuery = /* groq */ `
       // statementSection fields
       "description": ${loc('description')},
       alignment,
-      image { asset, hotspot, crop },
+      ${focalImage('image')},
       "intro": ${loc('intro')},
       treatments[] {
         _type, _key,
@@ -1757,7 +1764,7 @@ export const homePageQuery = /* groq */ `
       "subtitle": ${loc('subtitle')},
       members[] {
         _type, _key,
-        photo { asset, hotspot, crop },
+        ${focalImage('photo')},
         name,
         "honorific": ${loc('honorific')},
         "role": ${loc('role')},
@@ -1789,9 +1796,9 @@ export const homePageQuery = /* groq */ `
       buttonFullWidth,
       // heroSection media / layout / style fields
       mediaType,
-      heroImage { asset, hotspot, crop },
+      ${focalImage('heroImage')},
       heroVideo,
-      posterImage { asset, hotspot, crop },
+      ${focalImage('posterImage')},
       heroHeight,
       mediaLayout,
       contentWidth,
