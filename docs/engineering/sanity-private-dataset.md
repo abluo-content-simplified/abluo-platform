@@ -1,7 +1,7 @@
 # Runbook — switching the Sanity datasets from PUBLIC to PRIVATE
 
-**Status:** code prepared, **not yet executed**. Nothing in this document has been run.
-**Sanity project:** `3n7t84j3` — datasets `production` and `staging`, both currently `aclMode: public`.
+**Status:** ✅ **EXECUTED 2026-10-11.** `staging` then `production` set to `aclMode: private` via the Sanity API. Token `SANITY_API_READ_TOKEN` in all three Vercel envs since 2026-10-04; production v1.0.51 built after it. Verified: anonymous `count(*[_type=='project'])` → 0 (was 9); abluo.app, noemizi.com, studiomartegani.com, livener.net, ameliez.com render fresh (cache MISS) with Sanity images; sitemap 30 URLs. Note: Sanity answers an anonymous query on a private dataset with **200 + empty result**, not 401 — Step 6's "expect 401" check must read the result instead.
+**Sanity project:** `3n7t84j3` — datasets `production` and `staging`, both `aclMode: private` since 2026-10-11.
 **Audience:** whoever performs the flip. Read the whole document first. Steps 1–8 are ordered and the
 order is the entire safety argument.
 
