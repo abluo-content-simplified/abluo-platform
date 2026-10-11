@@ -97,6 +97,17 @@ export const PLATFORM_PERMISSIONS: readonly PlatformPermissionDef[] = [
     defaults: { project: ['owner', 'admin'] },
   },
   {
+    // ADR-031 D2 — connect, pause and revoke partner apps (Connections) for a
+    // site. Not grantable: a Connection shares the site's data with a third
+    // party, so only the people who run the site may decide it.
+    id: 'connections.manage',
+    description: 'Connect, pause and revoke partner apps that receive this site’s data.',
+    grantable: false,
+    // Project scope only: a Connection is per site. A tenant Owner is Owner of
+    // every project of the tenant, so holds it everywhere.
+    defaults: { project: ['owner', 'admin'] },
+  },
+  {
     id: 'modules.manage',
     description: 'Add modules to a site.',
     grantable: false,

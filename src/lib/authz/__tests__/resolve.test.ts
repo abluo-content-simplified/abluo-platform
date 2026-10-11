@@ -168,3 +168,24 @@ describe('registry hygiene', () => {
     for (const p of PLATFORM_PERMISSIONS) if (p.defaults.platform) expect(p.grantable).toBe(false)
   })
 })
+
+describe('ADR-031 connections.manage', async () => {
+  const { resolveProjectPermissions } = await import('../resolve')
+  const { platformPermission } = await import('../permissions')
+  it('Owner and Site admin hold it; Editor does not; it can never be given as an extra', () => {
+    const def = platformPermission('connections.manage')!
+    expect(def.grantable).toBe(false)
+    expect(def.defaults).toEqual({ project: ['owner', 'admin'] })
+  })
+  it('is project-scoped only', () => {
+    expect(platformPermission('connections.manage')!.defaults.tenant).toBeUndefined()
+  })
+  it('resolves for Owner and Site admin, never for Editor, not even as an extra', () => {
+    const has = (role: 'owner' | 'admin' | 'editor', extras: string[] = []) =>
+      resolveProjectPermissions({ role, enabledModuleIds: [], projectExtras: extras }).permissions.includes('connections.manage')
+    expect(has('owner')).toBe(true)
+    expect(has('admin')).toBe(true)
+    expect(has('editor')).toBe(false)
+    expect(has('editor', ['connections.manage'])).toBe(false)
+  })
+})

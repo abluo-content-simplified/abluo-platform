@@ -169,3 +169,18 @@ Event occurrences (V1.1) live in Sanity beside the series (or a server-side tabl
 - Supabase Auth OAuth server vs a dedicated library (V1 plan).
 - Occurrence storage: Sanity vs server table (V1.1 plan).
 - Whether TableRes supports multi-location groups from V1.2 day one or single-location first.
+
+## Amendment A — Event place: city first, exact place optional (2026-10-11, Tom)
+
+Refines D6/D7.3 after the V1 step 2 dev review. Not yet built.
+
+1. **City (always available, optional).** The existing free-text `location` field stays, relabelled **City** in Studio and the client dashboard (localized, e.g. "Bologna" / "Bologne"). It is the basic info and is enough for most events. JSON-LD: `Place` with `address.addressLocality`; partners: `city`.
+2. **Exact place (optional).** "Add the exact place" opens an **address search with Google suggestions** (Places Autocomplete). Choosing a result fills name, structured address and pin. Choices offered first: the site's own locations and saved venues (one tap, matched as you type — no duplicate venues).
+3. **One-off vs saved.** Unticked by default, **"Save this venue for next time"**:
+   - unticked → the place is stored **inline on the event** (`place.kind = 'custom'`: name, address, mapsUrl, pin) — a full structured place, but not in the venue list;
+   - ticked → an `eventVenue` is created (with `publicId`) and the event references it.
+   A one-off place can be saved later from the same event. Editing a saved venue changes it for every event that uses it (the editor says so). Anyone with `events.event.write` may save a venue.
+4. **Event page.** With an exact place: name + address, "Open in Google Maps" link, and an **embedded map** — click-to-load through `ConsentEmbed` (vendor `google-maps`, ADR-021). The site-embed detection (`siteEmbedsQuery` / `detectSiteEmbedVendors`) is extended to events with a mapped place, so the cookie banner's External content category appears on such sites. Without an exact place: the city only, no map.
+5. **Precision for Google and partners.** Full address + geo when there is an exact place; otherwise the city.
+6. **Keys.** The dashboard address search needs a Maps JavaScript + Places key allowed on the dashboard hosts (env var only, referrer-restricted — `docs/engineering/google-maps-keys.md` gains a third key or extends the Studio key's referrers; decided in the build plan). The website embed keeps using `NEXT_PUBLIC_GOOGLE_MAPS_KEY` (Embed API only).
+7. **Migration.** None required: `place.kind` gains the value `custom`; `location` is unchanged. Existing events keep showing their city.
