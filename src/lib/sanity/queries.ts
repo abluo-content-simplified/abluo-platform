@@ -635,6 +635,24 @@ export const localeConfigQuery = /* groq */ `
   }
 `
 
+// ADR-031 — what an event page needs from Website Settings to show (and
+// describe to search engines) where and when an event happens: the website's
+// time zone, its own locations, and its name as the organiser.
+export const eventSiteContextQuery = /* groq */ `
+  *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
+    timeZone,
+    siteName,
+    locations[] {
+      _key,
+      key,
+      "name": ${loc('name')},
+      address { street, postalCode, city, state, country },
+      mapsUrl,
+      pin { lat, lng }
+    }
+  }
+`
+
 // ─── Favicon-only query (no locale params needed) ─────────────────────────────
 // Used by generateMetadata in the tenant layout. Fetches only the identity
 // fields from siteConfig for <head> metadata (favicon, OG image, apple-touch).
@@ -1442,11 +1460,40 @@ export const newsPageTitleQuery = /* groq */ `
 // filterMode — categoryId (byCategory) or eventIds (manual, via the
 // *Manual* query's $eventIds).
 
+// ─── ADR-031 — event visibility + place ─────────────────────────────────────
+// An unlisted event is reachable only by its own URL: it is excluded from every
+// automatic list (listing sections, /events, related, live/home features) and
+// from the sitemap. Absent visibility = public (every event before ADR-031).
+// A hand-picked event in a listing section (manual selection) is the editor's
+// explicit choice and is still shown.
+const EVENT_LISTED = /* groq */ `(!defined(visibility) || visibility != "unlisted")`
+
+// The authored place, with a saved venue dereferenced ONLY when it belongs to
+// the same project (a stale or hand-edited cross-project reference resolves to
+// null, never to another tenant's venue).
+const EVENT_PLACE_FIELDS = /* groq */ `
+  "place": place {
+    kind,
+    locationKey,
+    "venue": select(
+      venue->projectSlug == $projectSlug => venue->{
+        publicId,
+        "name": coalesce(name[$locale], name[$defaultLocale], name.en),
+        address { street, postalCode, city, state, country },
+        mapsUrl,
+        pin { lat, lng },
+        timeZone
+      }
+    )
+  }
+`
+
 const eventsListingCardFields = /* groq */ `
   _id,
   "title": coalesce(title[$locale], title[$defaultLocale], title.en, title),
   "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
   status,
+  eventStatus,
   startDate,
   endDate,
   "location": coalesce(location[$locale], location[$defaultLocale], location.en, location),
@@ -1481,6 +1528,7 @@ const eventsListingCardFields = /* groq */ `
 const eventsListingFilter = /* groq */ `
   _type == "event"
   && projectSlug == $projectSlug
+  && ${EVENT_LISTED}
   && (
     $timeFilter == "all"
     || ($timeFilter == "upcoming" && startDate >= now())
@@ -1528,15 +1576,16 @@ export const currentLiveEventQuery = /* groq */ `
     *[
       _type == "event"
       && projectSlug == $projectSlug
+      && ${EVENT_LISTED}
       && (featuredOnLivePage == true || isCurrentLiveEvent == true)
       && (livePageFeatureStartDate == null || now() >= livePageFeatureStartDate)
       && (livePageFeatureEndDate == null || now() <= livePageFeatureEndDate)
       && (endDate == null || now() <= endDate)
     ][0],
     // Fallback: any live-status event
-    *[_type == "event" && projectSlug == $projectSlug && status == "live" && (endDate == null || now() <= endDate)][0],
+    *[_type == "event" && projectSlug == $projectSlug && ${EVENT_LISTED} && status == "live" && (endDate == null || now() <= endDate)][0],
     // Fallback: next upcoming event
-    *[_type == "event" && projectSlug == $projectSlug && status == "upcoming" && now() < startDate]
+    *[_type == "event" && projectSlug == $projectSlug && ${EVENT_LISTED} && status == "upcoming" && now() < startDate]
       | order(startDate asc)[0]
   ) {
     _id,
@@ -1602,6 +1651,7 @@ export const homepageFeaturedEventQuery = /* groq */ `
       _type == "event"
       && projectSlug == $projectSlug
       && featuredOnHomePage == true
+      && ${EVENT_LISTED}
       && status == "live"
       && (homePageFeatureStartDate == null || now() >= homePageFeatureStartDate)
       && (homePageFeatureEndDate == null || now() <= homePageFeatureEndDate)
@@ -1611,6 +1661,7 @@ export const homepageFeaturedEventQuery = /* groq */ `
       _type == "event"
       && projectSlug == $projectSlug
       && featuredOnHomePage == true
+      && ${EVENT_LISTED}
       && status == "upcoming"
       && (homePageFeatureStartDate == null || now() >= homePageFeatureStartDate)
       && (homePageFeatureEndDate == null || now() <= homePageFeatureEndDate)
@@ -1619,12 +1670,13 @@ export const homepageFeaturedEventQuery = /* groq */ `
 `
 
 export const eventsQuery = /* groq */ `
-  *[_type == "event" && projectSlug == $projectSlug]
+  *[_type == "event" && projectSlug == $projectSlug && ${EVENT_LISTED}]
   | order(startDate desc) {
     _id,
     "title": ${loc('title')},
     "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
     status,
+    eventStatus,
     startDate,
     endDate,
     "location": ${loc('location')},
@@ -1636,7 +1688,7 @@ export const eventsQuery = /* groq */ `
 `
 
 export const pastEventsQuery = /* groq */ `
-  *[_type == "event" && projectSlug == $projectSlug && (status == "past" || now() > endDate)]
+  *[_type == "event" && projectSlug == $projectSlug && ${EVENT_LISTED} && (status == "past" || now() > endDate)]
   | order(startDate desc) [0..4] {
     _id,
     "title": ${loc('title')},
@@ -1654,7 +1706,7 @@ export const pastEventsQuery = /* groq */ `
 // Additional live events — all events with status "live" except the featured one.
 // $featuredEventId should be the _id of the currently featured live event (or "" if none).
 export const additionalLiveEventsQuery = /* groq */ `
-  *[_type == "event" && projectSlug == $projectSlug && status == "live" && _id != $featuredEventId && (endDate == null || now() <= endDate)]
+  *[_type == "event" && projectSlug == $projectSlug && ${EVENT_LISTED} && status == "live" && _id != $featuredEventId && (endDate == null || now() <= endDate)]
   | order(startDate asc) {
     _id,
     "title": ${loc('title')},
@@ -1682,6 +1734,12 @@ export const eventBySlugQuery = /* groq */ `
     "slugMap": slug,
     "redirectFrom": redirectFrom,
     status,
+    publicId,
+    visibility,
+    eventStatus,
+    attendanceMode,
+    "updatedAt": _updatedAt,
+    ${EVENT_PLACE_FIELDS},
     featuredOnLivePage,
     isCurrentLiveEvent,
     featuredOnHomePage,

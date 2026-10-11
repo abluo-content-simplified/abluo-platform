@@ -367,6 +367,34 @@
           "discardBody": "Die Veranstaltung wird wieder so, wie sie jetzt auf Ihrer Website ist.",
           "deleteTitle": "Diese Veranstaltung löschen?",
           "deleteBody": "„{title}“ wurde nie veröffentlicht. Sie wird endgültig entfernt."
+        },
+        "attendance": {
+          "title": "Teilnahme",
+          "inPerson": "Vor Ort",
+          "online": "Online",
+          "mixed": "Beides"
+        },
+        "place": {
+          "title": "Ort",
+          "elsewhere": "Anderswo",
+          "helper": "Deine Orte und Veranstaltungsorte richtet Abluo ein. Wähle einen, damit Besucher eine Karte sehen."
+        },
+        "status": {
+          "title": "Status",
+          "scheduled": "Findet statt",
+          "cancelled": "Abgesagt",
+          "postponed": "Verschoben",
+          "soldOut": "Ausverkauft",
+          "helper": "Besucher sehen das beim Event und in Listen."
+        },
+        "visibility": {
+          "title": "Wer es sehen kann",
+          "public": "Alle",
+          "websiteOnly": "Nur Website",
+          "unlisted": "Nur mit Link",
+          "publicHelper": "Auf deiner Website und für verbundene Apps freigegeben.",
+          "websiteOnlyHelper": "Auf deiner Website, nie mit verbundenen Apps geteilt.",
+          "unlistedHelper": "Nicht in Listen oder Suchmaschinen – nur wer den Link hat."
         }
       },
       "errors": {

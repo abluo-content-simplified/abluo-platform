@@ -290,13 +290,14 @@ describe('buildCollectionItems — live MODULE_REGISTRY', () => {
     expect(tracker.ids).not.toContain('livener-categories')
   })
 
-  it('flattens the Events module to its single Events list', () => {
-    // Its categories moved to module config, leaving one item — so the group
-    // wrapper collapses (see the flattening tests above).
+  it('flattens the Events module to two sibling lists: Events and Venues', () => {
+    // Its categories moved to module config. Events and Venues (ADR-031 D6)
+    // are each a one-item group, so both wrappers collapse (see the flattening
+    // tests above) and Events stays one click deep.
     const { S, tracker } = createMockS()
     const eventsModule = MODULE_REGISTRY.find((m) => m.id === 'events')!
     const result = buildCollectionItems('livener', 'tenant', S, eventsModule)
-    expect(result).toHaveLength(1)
-    expect(tracker.ids).toEqual(['livener-events'])
+    expect(result).toHaveLength(2)
+    expect(tracker.ids).toEqual(['livener-events', 'livener-event-venues'])
   })
 })

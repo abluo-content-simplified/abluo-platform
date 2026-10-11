@@ -367,6 +367,34 @@
           "discardBody": "The event goes back to what's on your website now.",
           "deleteTitle": "Delete this event?",
           "deleteBody": "“{title}” was never published. It will be removed for good."
+        },
+        "attendance": {
+          "title": "How people attend",
+          "inPerson": "In person",
+          "online": "Online",
+          "mixed": "Both"
+        },
+        "place": {
+          "title": "Place",
+          "elsewhere": "Somewhere else",
+          "helper": "Your places and venues are set up by Abluo. Pick one so visitors get a map."
+        },
+        "status": {
+          "title": "Status",
+          "scheduled": "On as planned",
+          "cancelled": "Cancelled",
+          "postponed": "Postponed",
+          "soldOut": "Sold out",
+          "helper": "Visitors see this on the event and in lists."
+        },
+        "visibility": {
+          "title": "Who can see it",
+          "public": "Everyone",
+          "websiteOnly": "Website only",
+          "unlisted": "Only with the link",
+          "publicHelper": "On your website and shared with apps you connect.",
+          "websiteOnlyHelper": "On your website, never shared with connected apps.",
+          "unlistedHelper": "Not in lists or search engines — only people with the link."
         }
       },
       "errors": {

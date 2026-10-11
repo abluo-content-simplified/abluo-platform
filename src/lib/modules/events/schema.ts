@@ -1,6 +1,7 @@
 import { defineType, defineField, defineArrayMember } from 'sanity'
 import { CategorySelectInput } from '@/lib/sanity/fields/CategorySelectInput'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField } from '@/lib/sanity/fields/shared'
+import { isValidTimeZone, timeZoneOptions } from '@/lib/time/zones'
 
 // ── Events module — Sanity schema types ───────────────────────────────────────
 //
@@ -10,6 +11,7 @@ import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField } from '@/
 //   eventsPage           — singleton document, one per project
 //   eventCategory        — collection document (taxonomy, non-routable — mirrors blogCategory)
 //   event                — collection document (routable)
+//   eventVenue           — collection document (non-routable) — ADR-031 D6 saved venues
 //
 // Cross-module references:
 //   event is referenced by: livePageType.featuredEvents, blogListingSection.event,
@@ -261,6 +263,103 @@ const eventsPageType = defineType({
   },
 })
 
+// ── ADR-031 (Connections) — shared bits ──────────────────────────────────────
+// Every shareable document gets a `publicId`: an opaque UUID, set once, never
+// changed. Partners only ever see this id — never the Sanity `_id`, which for
+// script-imported content embeds tenant and content names (ADR-031 D3).
+export const publicIdField = defineField({
+  name: 'publicId',
+  title: 'Public ID',
+  type: 'string',
+  readOnly: true,
+  group: 'meta',
+  initialValue: () => newPublicId(),
+  description: 'Permanent id used when this is shared with connected apps. Set automatically; never changes.',
+})
+
+export function newPublicId(): string {
+  // Studio (browser) and Node ≥ 19 both expose Web Crypto's randomUUID.
+  return globalThis.crypto.randomUUID()
+}
+
+// A picked location key must name a location in this website's Website
+// Settings → Contact → Locations. Mirrors validatePickedLocationKeys in
+// src/lib/sanity/schema.ts (module schema files cannot import it).
+async function validateEventLocationKey(value: unknown, context: unknown): Promise<true | string> {
+  if (typeof value !== 'string' || value === '') return true
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ctx = context as any
+  const projectSlug = ctx?.document?.projectSlug
+  if (!projectSlug || typeof ctx?.getClient !== 'function') return true
+  const keys: unknown = await ctx.getClient({ apiVersion: '2026-05-21' }).fetch(
+    `*[_type == "siteConfig" && projectSlug == $projectSlug].locations[].key`,
+    { projectSlug },
+  )
+  const known = new Set(Array.isArray(keys) ? keys.filter((k): k is string => typeof k === 'string') : [])
+  return known.has(value) ? true : `Not found in Website Settings → Contact → Locations: "${value}"`
+}
+
+// ── Event Venue (ADR-031 D6) ──────────────────────────────────────────────────
+// A reusable place where events happen when they are NOT at one of the
+// website's own locations (Website Settings → Contact → Locations) — e.g. a
+// conference centre Livener uses. Saved once per website, picked from events.
+// Non-routable. Its `publicId` is what partners see, so the same venue is the
+// same id every time.
+
+const eventVenueType = defineType({
+  name: 'eventVenue',
+  title: 'Venue',
+  type: 'document',
+  groups: [
+    { name: 'content', title: 'Venue', default: true },
+    { name: 'meta', title: 'Meta' },
+  ],
+  fields: [
+    projectSlugField,
+    publicIdField,
+    defineField({
+      name: 'name',
+      title: 'Name',
+      type: 'localizedString',
+      group: 'content',
+      description: 'What visitors call this place, e.g. "Royal Society, London".',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'address',
+      title: 'Address',
+      type: 'businessLocation',
+      group: 'content',
+      description: 'The postal address. Used on the event page and shared with connected apps.',
+    }),
+    defineField({
+      name: 'mapsUrl',
+      title: 'Google Maps link',
+      type: 'url',
+      group: 'content',
+      validation: (Rule) => Rule.uri({ scheme: ['http', 'https'] }),
+    }),
+    defineField({ name: 'pin', title: 'Map pin', type: 'geopoint', group: 'content' }),
+    defineField({
+      name: 'timeZone',
+      title: 'Time zone',
+      type: 'string',
+      group: 'content',
+      description: 'Only if this venue is in a different time zone from the website (Website Settings → Languages → Time zone).',
+      options: { list: timeZoneOptions() },
+      validation: (Rule) =>
+        Rule.custom((value?: string) => (!value || isValidTimeZone(value) ? true : 'Not a known time zone, e.g. Europe/London.')),
+    }),
+  ],
+  preview: {
+    select: { name_en: 'name.en', name_it: 'name.it', name_fr: 'name.fr', city: 'address.city' },
+    prepare: ({ name_en, name_it, name_fr, city }: { name_en?: string; name_it?: string; name_fr?: string; city?: string }) => ({
+      title: name_en ?? name_it ?? name_fr ?? 'Venue',
+      subtitle: city ?? '',
+    }),
+  },
+})
+
 // ── Event ─────────────────────────────────────────────────────────────────────
 
 const eventType = defineType({
@@ -281,6 +380,96 @@ const eventType = defineType({
     projectSlugField,
     defineField({ name: 'title', title: 'Title', type: 'localizedString', group: 'content', validation: (Rule) => Rule.required() }),
     defineField({ name: 'slug', title: 'Slug', type: 'localizedSlug', group: 'content', validation: (Rule) => Rule.required() }),
+    // ── ADR-031 (Connections) — additive, all optional for existing events ─────
+    publicIdField,
+    defineField({
+      name: 'visibility',
+      title: 'Visibility',
+      type: 'string',
+      group: 'content',
+      description:
+        'Public: on the website and shared with connected apps. Website only: on the website, never shared. Unlisted: reachable only by its link — not in lists, not in search engines, never shared.',
+      options: {
+        list: [
+          { title: 'Public', value: 'public' },
+          { title: 'Website only', value: 'websiteOnly' },
+          { title: 'Unlisted', value: 'unlisted' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'public',
+    }),
+    defineField({
+      name: 'eventStatus',
+      title: 'Event status',
+      type: 'string',
+      group: 'content',
+      description: 'Tell visitors (and connected apps) if the event is cancelled, postponed or sold out. "Past" is worked out from the dates.',
+      options: {
+        list: [
+          { title: 'Scheduled', value: 'scheduled' },
+          { title: 'Cancelled', value: 'cancelled' },
+          { title: 'Postponed', value: 'postponed' },
+          { title: 'Sold out', value: 'soldOut' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'scheduled',
+    }),
+    defineField({
+      name: 'attendanceMode',
+      title: 'Where people attend',
+      type: 'string',
+      group: 'content',
+      options: {
+        list: [
+          { title: 'In person', value: 'inPerson' },
+          { title: 'Online', value: 'online' },
+          { title: 'In person and online', value: 'mixed' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'inPerson',
+    }),
+    defineField({
+      name: 'place',
+      title: 'Place',
+      type: 'object',
+      group: 'content',
+      description:
+        'Where the event happens: one of this website\'s locations (Website Settings → Contact → Locations) or a saved venue. Leave empty to use the free-text Location below.',
+      hidden: ({ document }) => (document as { attendanceMode?: string } | undefined)?.attendanceMode === 'online',
+      fields: [
+        defineField({
+          name: 'kind',
+          title: 'Kind',
+          type: 'string',
+          options: {
+            list: [
+              { title: 'One of our locations', value: 'location' },
+              { title: 'A saved venue', value: 'venue' },
+            ],
+            layout: 'radio',
+          },
+        }),
+        defineField({
+          name: 'locationKey',
+          title: 'Location key',
+          type: 'string',
+          description: 'The key of the location, e.g. "brey".',
+          hidden: ({ parent }) => (parent as { kind?: string } | undefined)?.kind !== 'location',
+          validation: (Rule) => Rule.custom((value, context) => validateEventLocationKey(value, context)),
+        }),
+        defineField({
+          name: 'venue',
+          title: 'Venue',
+          type: 'reference',
+          to: [{ type: 'eventVenue' }],
+          options: { filter: scopedRef },
+          hidden: ({ parent }) => (parent as { kind?: string } | undefined)?.kind !== 'venue',
+        }),
+      ],
+    }),
     defineField({
       name: 'redirectFrom',
       title: 'Old Slugs (Redirects)',
@@ -347,7 +536,7 @@ const eventType = defineType({
     defineField({ name: 'isCurrentLiveEvent', title: 'Feature on /live page (deprecated)', type: 'boolean', hidden: true, initialValue: false }),
     defineField({ name: 'startDate', title: 'Start Date & Time', type: 'datetime', group: 'content', validation: (Rule) => Rule.required() }),
     defineField({ name: 'endDate', title: 'End Date & Time', type: 'datetime', group: 'content' }),
-    defineField({ name: 'location', title: 'Location', type: 'localizedString', group: 'content' }),
+    defineField({ name: 'location', title: 'Location (free text)', type: 'localizedString', group: 'content', description: 'Shown when no Place is chosen above. Prefer Place: it gives visitors a map and connected apps a real address.' }),
     defineField({ name: 'shortDescription', title: 'Short Description', type: 'localizedText', group: 'content' }),
     defineField({ name: 'fullDescription', title: 'Full Description', type: 'localizedPortableText', group: 'content' }),
     defineField({
@@ -565,5 +754,6 @@ export const eventsSchemaTypes = [
   eventsListingSectionType,
   eventsPageType,
   eventCategoryType,
+  eventVenueType,
   eventType,
 ]

@@ -768,6 +768,31 @@ export interface LocaleConfig {
 
 export type EventStatus = 'upcoming' | 'live' | 'past'
 
+// ── ADR-031 (Connections) ──────────────────────────────────────────────────────
+/** Who may see an event. Absent = 'public' (every event before ADR-031). */
+export type EventVisibility = 'public' | 'websiteOnly' | 'unlisted'
+/** schema.org eventStatus, authored. Absent = 'scheduled'. "Past" is derived from dates. */
+export type EventLifecycleStatus = 'scheduled' | 'cancelled' | 'postponed' | 'soldOut'
+/** schema.org eventAttendanceMode. Absent = 'inPerson'. */
+export type EventAttendanceMode = 'inPerson' | 'online' | 'mixed'
+
+/** A saved venue (ADR-031 D6), name resolved for the request locale. */
+export interface EventVenue {
+  publicId?: string
+  name?: string
+  address?: BusinessLocation
+  mapsUrl?: string
+  pin?: { lat?: number; lng?: number }
+  timeZone?: string
+}
+
+/** The authored place of an event; `venue` is dereferenced (project-checked) by GROQ. */
+export interface EventPlace {
+  kind?: 'location' | 'venue'
+  locationKey?: string
+  venue?: EventVenue | null
+}
+
 export interface ScheduleItem {
   _key: string
   time: string
@@ -793,6 +818,14 @@ export interface Event {
   slugMap?: LocalizedSlugMap
   redirectFrom?: Partial<Record<SupportedLocale, string[]>>
   status: EventStatus
+  /** ADR-031 — opaque id shared with connected apps. Absent until backfilled. */
+  publicId?: string
+  visibility?: EventVisibility
+  eventStatus?: EventLifecycleStatus
+  attendanceMode?: EventAttendanceMode
+  place?: EventPlace | null
+  /** Last edit (`_updatedAt`), for structured data and sync. */
+  updatedAt?: string
   /** ADR-016 Phase B — resolved from categories[]-> in GROQ */
   categories?: EventCategory[]
   // Placement — Live Page

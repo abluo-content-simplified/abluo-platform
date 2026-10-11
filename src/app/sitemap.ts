@@ -179,7 +179,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         `*[_type == "page" && defined(projectSlug) && coalesce(pageType, "") != "home" && !(noindex == true)] { projectSlug, slug, "images": ${GALLERY_SECTION_IMAGES} }`
       ),
       sanityClient.fetch<EventSitemapData[]>(
-        `*[_type == "event" && defined(projectSlug)] { projectSlug, slug }`
+        // ADR-031 — unlisted events are reachable by link only and carry a
+        // robots noindex; listing them here would contradict that.
+        `*[_type == "event" && defined(projectSlug) && (!defined(visibility) || visibility != "unlisted")] { projectSlug, slug }`
       ),
       sanityClient.fetch<PostSitemapData[]>(
         `*[_type == "post" && defined(projectSlug) && defined(publishedAt) && publishedAt <= now() && (!defined(expiresAt) || expiresAt > now())] { projectSlug, slug, "images": gallery->items[].mediaAsset->image.asset->url }`

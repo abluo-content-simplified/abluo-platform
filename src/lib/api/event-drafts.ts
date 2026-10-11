@@ -56,6 +56,28 @@ export const EVENT_TEXT_FIELDS: Record<string, { max: number; type: 'localizedSt
   registrationLabel: { max: EVENT_LIMITS.registrationLabel, type: 'localizedString' },
 }
 
+/** ADR-031 — choice fields the dashboard may change, with their allowed values. */
+export const EVENT_CHOICE_FIELDS = {
+  visibility: ['public', 'websiteOnly', 'unlisted'],
+  eventStatus: ['scheduled', 'cancelled', 'postponed', 'soldOut'],
+  attendanceMode: ['inPerson', 'online', 'mixed'],
+} as const satisfies Record<string, readonly string[]>
+type ChoiceField = keyof typeof EVENT_CHOICE_FIELDS
+const isChoiceField = (f: string): f is ChoiceField => Object.prototype.hasOwnProperty.call(EVENT_CHOICE_FIELDS, f)
+
+/**
+ * ADR-031 D6 — the place as the editor sends it: `''` (none — the free-text
+ * "Where" is used), `location:<key>` (one of the site's locations) or
+ * `venue:<id>` (a saved venue of this project).
+ */
+export type EventPlaceToken = string
+const PLACE_TOKEN = /^(location:[a-z0-9_-]{1,64}|venue:[A-Za-z0-9][A-Za-z0-9._-]{0,127})$/
+
+export type EventPlaceOptions = {
+  locations: { key: string; name: string }[]
+  venues: { id: string; name: string }[]
+}
+
 export type EventErrorCode =
   | 'forbidden'
   | 'not_found'
@@ -313,9 +335,15 @@ export type EventSnapshot = {
   publicSlug: string | null
   /** True when Studio-only content exists (full description, schedule, hosts, prices, photos) — shown as a hint. */
   hasStudioContent: boolean
+  /** ADR-031 — absent on older events reads as the default. */
+  visibility: (typeof EVENT_CHOICE_FIELDS.visibility)[number]
+  eventStatus: (typeof EVENT_CHOICE_FIELDS.eventStatus)[number]
+  attendanceMode: (typeof EVENT_CHOICE_FIELDS.attendanceMode)[number]
+  place: EventPlaceToken
+  placeOptions: EventPlaceOptions
 }
 
-function snapshotOf(id: string, doc: Doc, draft: Doc | undefined, published: Doc | undefined, site: EventSite, cover: EventCover | null, now: Date): EventSnapshot {
+function snapshotOf(id: string, doc: Doc, draft: Doc | undefined, published: Doc | undefined, site: EventSite, cover: EventCover | null, now: Date, placeOptions: EventPlaceOptions = { locations: [], venues: [] }): EventSnapshot {
   const slug = (published?.slug as Record<string, { current?: unknown }> | undefined)?.[site.defaultLocale]?.current
   const nonEmpty = (v: unknown) => (Array.isArray(v) ? v.length > 0 : v != null && typeof v === 'object' ? Object.keys(v).some((k) => !k.startsWith('_')) : false)
   return {
@@ -335,7 +363,44 @@ function snapshotOf(id: string, doc: Doc, draft: Doc | undefined, published: Doc
     cover,
     publicSlug: typeof slug === 'string' && slug ? slug : null,
     hasStudioContent: ['fullDescription', 'schedule', 'hosts', 'priceOptions', 'gallery'].some((f) => nonEmpty(doc[f])),
+    visibility: choice(doc, 'visibility'),
+    eventStatus: choice(doc, 'eventStatus'),
+    attendanceMode: choice(doc, 'attendanceMode'),
+    place: placeTokenOf(doc.place),
+    placeOptions,
   }
+}
+
+function choice<F extends ChoiceField>(doc: Doc, field: F): (typeof EVENT_CHOICE_FIELDS)[F][number] {
+  const allowed = EVENT_CHOICE_FIELDS[field] as readonly string[]
+  const v = doc[field]
+  return (typeof v === 'string' && allowed.includes(v) ? v : allowed[0]) as (typeof EVENT_CHOICE_FIELDS)[F][number]
+}
+
+/** The stored place as an editor token ('' when none or unreadable). */
+export function placeTokenOf(place: unknown): EventPlaceToken {
+  const p = place as { kind?: unknown; locationKey?: unknown; venue?: { _ref?: unknown } } | null | undefined
+  if (p?.kind === 'location' && typeof p.locationKey === 'string' && p.locationKey) return `location:${p.locationKey}`
+  if (p?.kind === 'venue' && typeof p.venue?._ref === 'string' && p.venue._ref) return `venue:${p.venue._ref}`
+  return ''
+}
+
+const PLACE_OPTIONS_QUERY = /* groq */ `{
+  "locations": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].locations[]{ key, name },
+  "venues": *[_type == "eventVenue" && projectSlug == $projectSlug && !(_id in path("drafts.**"))] | order(_createdAt asc){ _id, name }
+}`
+
+/** The site's own locations and saved venues, named in the site's default language. */
+async function readPlaceOptions(client: Client, projectSlug: string, defaultLocale: string): Promise<EventPlaceOptions> {
+  const row = await client.fetch<{ locations?: unknown; venues?: unknown } | null>(PLACE_OPTIONS_QUERY, { projectSlug })
+  const name = (v: unknown) => pick(v, defaultLocale)
+  const locations = (Array.isArray(row?.locations) ? row.locations : [])
+    .filter((l): l is { key: string; name?: unknown } => typeof (l as { key?: unknown })?.key === 'string')
+    .map((l) => ({ key: l.key, name: name(l.name) || l.key }))
+  const venues = (Array.isArray(row?.venues) ? row.venues : [])
+    .filter((v): v is { _id: string; name?: unknown } => typeof (v as { _id?: unknown })?._id === 'string')
+    .map((v) => ({ id: v._id, name: name(v.name) || v._id }))
+  return { locations, venues }
 }
 
 async function readCover(client: Client, projectSlug: string, heroImage: unknown): Promise<EventCover | null> {
@@ -366,8 +431,11 @@ export async function getEvent(ctx: TenantAuthorizationContext, projectId: strin
   const doc = draft ?? published
   if (!doc) notFound()
   const site = await readSite(client, grant.projectSlug)
-  const cover = await readCover(client, grant.projectSlug, doc.heroImage)
-  return snapshotOf(id, doc, draft, published, site, cover, (deps.now ?? (() => new Date()))())
+  const [cover, placeOptions] = await Promise.all([
+    readCover(client, grant.projectSlug, doc.heroImage),
+    readPlaceOptions(client, grant.projectSlug, site.defaultLocale),
+  ])
+  return snapshotOf(id, doc, draft, published, site, cover, (deps.now ?? (() => new Date()))(), placeOptions)
 }
 
 // ── Open / create ─────────────────────────────────────────────────────────────
@@ -428,6 +496,11 @@ export async function createEvent(
     title: { _type: 'localizedString', [site.defaultLocale]: title },
     startDate,
     status: eventTiming({ startDate }, (deps.now ?? (() => new Date()))()),
+    // ADR-031 — the permanent id partners see; same defaults as Studio's template.
+    publicId: randomUUID(),
+    visibility: 'public',
+    eventStatus: 'scheduled',
+    attendanceMode: 'inPerson',
   }
   const created = (await commit(client, grant.projectSlug, () => client.create(doc))) as { _rev?: string } | undefined
   return { id, rev: created?._rev ?? '' }
@@ -451,7 +524,13 @@ export async function patchEventDraft(
   // Field allowlist before any read.
   for (const path of Object.keys(input.set)) {
     const [field, locale, ...rest] = path.split('.')
-    const ok = path === 'startDate' || path === 'endDate' || path === 'registrationUrl' || (field in EVENT_TEXT_FIELDS && !!locale && rest.length === 0)
+    const ok =
+      path === 'startDate' ||
+      path === 'endDate' ||
+      path === 'registrationUrl' ||
+      path === 'place' ||
+      isChoiceField(path) ||
+      (field in EVENT_TEXT_FIELDS && !!locale && rest.length === 0)
     if (!ok) throw new EventError('invalid_field', `Field "${path}" cannot be changed here.`)
   }
 
@@ -478,6 +557,30 @@ export async function patchEventDraft(
       const url = cleanRegistrationUrl(value)
       if (url) set.registrationUrl = url
       else unset.push('registrationUrl')
+      continue
+    }
+    if (isChoiceField(path)) {
+      const allowed = EVENT_CHOICE_FIELDS[path] as readonly string[]
+      if (typeof value !== 'string' || !allowed.includes(value)) throw new EventError('invalid_value', `"${path}" is not an allowed value.`)
+      set[path] = value
+      continue
+    }
+    if (path === 'place') {
+      if (value === '' || value === null) {
+        unset.push('place')
+        continue
+      }
+      if (typeof value !== 'string' || !PLACE_TOKEN.test(value)) throw new EventError('invalid_value', 'Unknown place.')
+      // Only a location of THIS site, or a saved venue of THIS project.
+      const options = await readPlaceOptions(client, grant.projectSlug, site.defaultLocale)
+      const [kind, ref] = [value.slice(0, value.indexOf(':')), value.slice(value.indexOf(':') + 1)]
+      if (kind === 'location') {
+        if (!options.locations.some((l) => l.key === ref)) throw new EventError('invalid_value', 'Unknown place.')
+        set.place = { kind: 'location', locationKey: ref }
+      } else {
+        if (!options.venues.some((v) => v.id === ref)) throw new EventError('invalid_value', 'Unknown place.')
+        set.place = { kind: 'venue', venue: { _type: 'reference', _ref: ref } }
+      }
       continue
     }
     const [field, locale] = path.split('.')

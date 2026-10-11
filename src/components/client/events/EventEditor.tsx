@@ -24,7 +24,18 @@ import { EVENT_BUTTON, EVENT_ICONS, EVENT_INPUT, EVENT_LABEL, EVENT_PRIMARY, Eve
 const TEXT_FIELDS = ['title', 'shortDescription', 'location', 'registrationLabel'] as const
 type TextField = (typeof TEXT_FIELDS)[number]
 type Texts = Record<TextField, Record<string, string>>
-type Values = { texts: Texts; start: string; end: string; url: string }
+type Values = {
+  texts: Texts
+  start: string
+  end: string
+  url: string
+  // ADR-031 — visibility, status, how people attend, and the place token.
+  visibility: EventSnapshot['visibility']
+  eventStatus: EventSnapshot['eventStatus']
+  attendanceMode: EventSnapshot['attendanceMode']
+  place: string
+}
+const CHOICES = ['visibility', 'eventStatus', 'attendanceMode', 'place'] as const
 
 const SAVE_DELAY_MS = 800
 const PUBLISH_ERRORS = ['missing_title', 'missing_date', 'conflict', 'forbidden', 'failed']
@@ -36,6 +47,10 @@ function valuesOf(e: EventSnapshot): Values {
     start: isoToInput(e.startDate),
     end: isoToInput(e.endDate),
     url: e.registrationUrl,
+    visibility: e.visibility,
+    eventStatus: e.eventStatus,
+    attendanceMode: e.attendanceMode,
+    place: e.place,
   }
 }
 
@@ -52,7 +67,46 @@ function diff(from: Values, to: Values, locales: string[]): Record<string, unkno
   if (from.start !== to.start && inputToIso(to.start)) set.startDate = inputToIso(to.start)
   if (from.end !== to.end) set.endDate = to.end ? inputToIso(to.end) : null
   if (from.url.trim() !== to.url.trim()) set.registrationUrl = to.url.trim()
+  for (const f of CHOICES) if (from[f] !== to[f]) set[f] = to[f]
   return set
+}
+
+/**
+ * One row of big, tappable choices (a radio group). Used for the ADR-031
+ * fields so a phone user picks with one tap — no dropdowns.
+ */
+function ChoiceChips<V extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  disabled,
+}: {
+  label: string
+  value: V
+  options: { value: V; label: string }[]
+  onChange: (v: V) => void
+  disabled: boolean
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-2">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={value === o.value}
+          disabled={disabled}
+          onClick={() => onChange(o.value)}
+          className={`inline-flex min-h-11 items-center rounded-full border px-4 text-[0.9375rem] font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60 ${
+            value === o.value ? 'border-action bg-action text-action-foreground' : 'border-border text-foreground hover:bg-hover'
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
 }
 
 /**
@@ -68,7 +122,7 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete }: { pro
   const ui = useLocale()
   const router = useRouter()
   const ids = { title: useId(), shortDescription: useId(), location: useId(), registrationLabel: useId(), start: useId(), end: useId(), url: useId() }
-  const { site, id } = initial
+  const { site, id, placeOptions } = initial
   const d = site.defaultLocale
   const base = `/${projectSlug}/agenda`
 
@@ -342,12 +396,45 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete }: { pro
           />
           <p className="mt-1 text-sm leading-5 text-muted-foreground">{t('fields.shortDescriptionHelper')}</p>
         </div>
-        <div>
-          <label htmlFor={ids.location} className={EVENT_LABEL}>
-            {t('fields.location')}
-          </label>
-          <input id={ids.location} disabled={disabled} maxLength={160} value={values.texts.location[locale] ?? ''} onChange={(e) => setText('location', e.target.value)} placeholder={t('fields.locationPlaceholder')} className={EVENT_INPUT} />
-        </div>
+        {values.place === '' && values.attendanceMode !== 'online' ? (
+          <div>
+            <label htmlFor={ids.location} className={EVENT_LABEL}>
+              {t('fields.location')}
+            </label>
+            <input id={ids.location} disabled={disabled} maxLength={160} value={values.texts.location[locale] ?? ''} onChange={(e) => setText('location', e.target.value)} placeholder={t('fields.locationPlaceholder')} className={EVENT_INPUT} />
+          </div>
+        ) : null}
+      </section>
+
+      {/* Where — ADR-031: how people attend, and the place */}
+      <section aria-labelledby="event-place" className="space-y-4">
+        <h2 id="event-place" className="text-[1.0625rem] leading-7 font-semibold text-foreground">
+          {t('attendance.title')}
+        </h2>
+        <ChoiceChips
+          label={t('attendance.title')}
+          value={values.attendanceMode}
+          disabled={disabled}
+          onChange={(attendanceMode) => setValues((v) => ({ ...v, attendanceMode }))}
+          options={(['inPerson', 'online', 'mixed'] as const).map((m) => ({ value: m, label: t(`attendance.${m}`) }))}
+        />
+        {values.attendanceMode !== 'online' && (placeOptions.locations.length > 0 || placeOptions.venues.length > 0) ? (
+          <div className="space-y-2">
+            <p className={EVENT_LABEL}>{t('place.title')}</p>
+            <ChoiceChips
+              label={t('place.title')}
+              value={values.place}
+              disabled={disabled}
+              onChange={(place) => setValues((v) => ({ ...v, place }))}
+              options={[
+                ...placeOptions.locations.map((l) => ({ value: `location:${l.key}`, label: l.name })),
+                ...placeOptions.venues.map((v) => ({ value: `venue:${v.id}`, label: v.name })),
+                { value: '', label: t('place.elsewhere') },
+              ]}
+            />
+            <p className="text-sm leading-5 text-muted-foreground">{t('place.helper')}</p>
+          </div>
+        ) : null}
       </section>
 
       {/* When */}
@@ -399,6 +486,32 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete }: { pro
             className={EVENT_INPUT}
           />
         </div>
+      </section>
+
+      {/* Status and visibility — ADR-031 */}
+      <section aria-labelledby="event-status" className="space-y-4">
+        <h2 id="event-status" className="text-[1.0625rem] leading-7 font-semibold text-foreground">
+          {t('status.title')}
+        </h2>
+        <ChoiceChips
+          label={t('status.title')}
+          value={values.eventStatus}
+          disabled={disabled}
+          onChange={(eventStatus) => setValues((v) => ({ ...v, eventStatus }))}
+          options={(['scheduled', 'cancelled', 'postponed', 'soldOut'] as const).map((st) => ({ value: st, label: t(`status.${st}`) }))}
+        />
+        <p className="text-sm leading-5 text-muted-foreground">{t('status.helper')}</p>
+        <h2 id="event-visibility" className="pt-2 text-[1.0625rem] leading-7 font-semibold text-foreground">
+          {t('visibility.title')}
+        </h2>
+        <ChoiceChips
+          label={t('visibility.title')}
+          value={values.visibility}
+          disabled={disabled}
+          onChange={(visibility) => setValues((v) => ({ ...v, visibility }))}
+          options={(['public', 'websiteOnly', 'unlisted'] as const).map((vis) => ({ value: vis, label: t(`visibility.${vis}`) }))}
+        />
+        <p className="text-sm leading-5 text-muted-foreground">{t(`visibility.${values.visibility}Helper`)}</p>
       </section>
 
       {initial.hasStudioContent ? (

@@ -1,4 +1,5 @@
 import { defineType, defineField, defineArrayMember } from 'sanity'
+import { isValidTimeZone, timeZoneOptions } from '@/lib/time/zones'
 import { TenantLinker } from '@/lib/sanity/fields/TenantLinker'
 import { ProjectLinker } from '@/lib/sanity/fields/ProjectLinker'
 import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, LocalizedSlugInput, LocalizedRedirectFromInput } from '@/lib/sanity/fields/LocalizedInput'
@@ -5199,6 +5200,18 @@ const siteConfigType = defineType({
       of: [defineArrayMember({ type: 'string', options: { list: LOCALE_CODES.map((code) => ({ title: PLATFORM_LOCALES[code].nativeName, value: code })) } })],
       validation: (Rule) => Rule.required().min(1),
     }),
+    // ADR-031 D7 — the zone event dates are shown and shared in. A venue may
+    // override it. Unset keeps the old behaviour (server zone) until filled in.
+    defineField({
+      name: 'timeZone',
+      title: 'Time zone',
+      type: 'string',
+      group: 'locales',
+      description: 'Where this business is, e.g. Europe/Rome. Event dates and times are shown in this time zone.',
+      options: { list: timeZoneOptions() },
+      validation: (Rule) =>
+        Rule.custom((value?: string) => (!value || isValidTimeZone(value) ? true : 'Not a known time zone, e.g. Europe/Rome.')),
+    }),
     defineField({ name: 'navLinks', title: 'Navigation Links', type: 'array', group: 'navigation', of: [defineArrayMember({ type: 'navigationLink' })] }),
     defineField({ name: 'showLangSwitcherInNav', title: 'Show language switcher in nav', type: 'boolean', group: 'navigation', initialValue: false }),
     // ── Header CTA ───────────────────────────────────────────────────────────
@@ -5584,6 +5597,11 @@ export const initialValueTemplates = [
       projectSlug: params?.projectSlug,
       status: 'upcoming',
       startDate: new Date().toISOString(),
+      // ADR-031 — a template replaces field initialValues, so set them here too.
+      publicId: globalThis.crypto.randomUUID(),
+      visibility: 'public',
+      eventStatus: 'scheduled',
+      attendanceMode: 'inPerson',
     }),
   },
   {
@@ -5632,6 +5650,17 @@ export const initialValueTemplates = [
     parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
     value: (params: any) => ({
       projectSlug: params?.projectSlug,
+    }),
+  },
+  {
+    // ADR-031 D6 — saved venues (Events module).
+    id: 'eventVenueProjectOwned',
+    title: 'Venue',
+    schemaType: 'eventVenue',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+      publicId: globalThis.crypto.randomUUID(),
     }),
   },
   {

@@ -317,6 +317,22 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
             },
           ],
         },
+        {
+          // ADR-031 D6 — reusable venues for events not at the site's own
+          // locations. Its own one-item group, so it flattens to a sibling of
+          // Events (Content → Venues) instead of nesting Events one level deeper.
+          id: 'event-venues-module',
+          label: 'Venues',
+          items: [
+            {
+              id: 'event-venues',
+              label: 'Venues',
+              schemaType: 'eventVenue',
+              filter: `_type == "eventVenue" && projectSlug == $slug`,
+              initialValueTemplate: 'eventVenueProjectOwned',
+            },
+          ],
+        },
       ],
 
       // ADR-016 Phase B — eventsListingSection added.
@@ -326,6 +342,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         'eventsListingSection',
         'eventsPage',
         'eventCategory',
+        'eventVenue',
         'event',
       ],
 

@@ -10,6 +10,7 @@ import {
   localeConfigQuery,
   designSystemQuery,
   projectDomainQuery,
+  eventSiteContextQuery,
 } from '@/lib/sanity/queries'
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
@@ -27,6 +28,17 @@ import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
 import { siteBasePath } from '@/lib/sanity/href'
 import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
+import { safeJsonLd } from '@/lib/seo/safe-json-ld'
+import {
+  buildEventSchema,
+  eventAttendanceMode,
+  eventIsIndexable,
+  eventLifecycleStatus,
+  eventTimeZone,
+  formatAddressLine,
+  resolveEventPlace,
+  type EventSiteContext,
+} from '@/lib/modules/events/structured'
 interface PageProps {
   params: Promise<{ tenant: string; locale: string; slug: string }>
   searchParams?: Promise<{ from?: string }>
@@ -65,6 +77,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   return {
+    // ADR-031 — an unlisted event is reachable by its link only.
+    ...(event && !eventIsIndexable(event) && { robots: { index: false, follow: false } }),
     title: event?.seoTitle ?? event?.title ?? 'Event',
     description: event?.seoDescription ?? event?.shortDescription ?? 'Event details',
     alternates: {
@@ -114,13 +128,15 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
   // Fetch event and design system in parallel.
-  const [event, designSystem, allEvents] = await Promise.all([
+  const [event, designSystem, allEvents, siteContext, customDomain] = await Promise.all([
     fetchForTenant<Event>(eventBySlugQuery, { slug, locale: locale as SupportedLocale, defaultLocale }),
     (async () => {
       const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {})
       return resolveDesignSystemInheritance(raw, fetchDesignSystemById)
     })(),
     fetchForTenant<Event[]>(eventsQuery, { locale: locale as SupportedLocale, defaultLocale }),
+    fetchForTenant<EventSiteContext | null>(eventSiteContextQuery, { locale: locale as SupportedLocale, defaultLocale }),
+    fetchForTenant<string | null>(projectDomainQuery, {}),
   ])
 
   // Primary lookup missed — check if this slug was a redirect.
@@ -158,12 +174,38 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
   const heroSrcSet = imageSrcSet(event.heroImage, [800, 1200, 1600, 2400])
   const embedSrc = event.embedPlayerEnabled ? resolveEmbedUrl(event.embedVideoUrl) : null
 
-  const startDate = event.startDate
-    ? new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(event.startDate))
-    : null
-  const endDate = event.endDate
-    ? new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(event.endDate))
-    : null
+  // ADR-031 — where and when: the authored place (site location or saved
+  // venue), shown in that place's time zone. Falls back to the free-text
+  // location and the server zone for events/sites not yet filled in.
+  const place = resolveEventPlace(event, siteContext?.locations)
+  const timeZone = eventTimeZone(place, siteContext)
+  const lifecycle = eventLifecycleStatus(event)
+  const isOnline = eventAttendanceMode(event) === 'online'
+  const statusBadge =
+    lifecycle === 'cancelled' ? msg.statusCancelled
+      : lifecycle === 'postponed' ? msg.statusPostponed
+        : lifecycle === 'soldOut' ? msg.statusSoldOut
+          : null
+  const placeLabel = place?.name ?? (isOnline ? msg.online : event.location)
+  const placeAddress = formatAddressLine(place?.address)
+
+  const dateFormat = new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'long', year: 'numeric', ...(timeZone && { timeZone }) })
+  const startDate = event.startDate ? dateFormat.format(new Date(event.startDate)) : null
+  const endDate = event.endDate ? dateFormat.format(new Date(event.endDate)) : null
+
+  const origin = canonicalOrigin(customDomain)
+  const pageUrl = event.slugMap?.[locale as SupportedLocale]?.current
+    ? canonicalUrl(origin, locale, 'events', event.slugMap[locale as SupportedLocale]!.current)
+    : undefined
+  const eventSchema = buildEventSchema({
+    event,
+    place,
+    url: pageUrl,
+    origin,
+    locale,
+    imageUrl: event.heroImage?.asset ? ogImageUrl(event.heroImage) : null,
+    organizerName: siteContext?.siteName,
+  })
 
   return (
     <SlugMapProvider slugMap={slugMap}>
@@ -197,8 +239,20 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
             </SlideUp>
           )}
 
+          {eventSchema && (
+            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(eventSchema) }} />
+          )}
+
           {/* ── Title & metadata ──────────────────────────────────── */}
           <SlideUp delay={0.1} duration={0.6}>
+            {statusBadge && (
+              <p
+                className="mb-3 inline-block rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-primary)' }}
+              >
+                {statusBadge}
+              </p>
+            )}
             <h1
               className="text-[clamp(36px,7vw,56px)] font-bold leading-[1.05] mb-4"
               style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
@@ -210,7 +264,19 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
           <SlideUp delay={0.15} duration={0.5}>
             <div className="flex flex-wrap items-center gap-4 mb-8 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
               {startDate && <div>📅 {startDate}{endDate && endDate !== startDate ? ` – ${endDate}` : ''}</div>}
-              {event.location && <div>📍 {event.location}</div>}
+              {placeLabel && (
+                <div>
+                  📍{' '}
+                  {place?.mapsLink ? (
+                    <a href={place.mapsLink} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                      {placeLabel}
+                    </a>
+                  ) : (
+                    placeLabel
+                  )}
+                  {placeAddress && <span> · {placeAddress}</span>}
+                </div>
+              )}
             </div>
             <EventHostsLine hosts={event.hosts} locale={locale} tenantId={tenantId} className="-mt-4 mb-8 text-sm" />
           </SlideUp>

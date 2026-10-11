@@ -31,6 +31,12 @@ export interface EventMessages {
   priceFrom:            string
   /** Prefix before the host names: "Hosted by Anna, Marco". */
   hostedBy:             string
+  /** ADR-031 — authored event status badges (schema.org eventStatus). */
+  statusCancelled:      string
+  statusPostponed:      string
+  statusSoldOut:        string
+  /** ADR-031 — place line of an online-only event. */
+  online:               string
 }
 
 const MESSAGES: Record<string, EventMessages> = {
@@ -50,6 +56,10 @@ const MESSAGES: Record<string, EventMessages> = {
     pricesHeading:        'Prices',
     priceFrom:            'from {price}',
     hostedBy:             'Hosted by',
+    statusCancelled:      'Cancelled',
+    statusPostponed:      'Postponed',
+    statusSoldOut:        'Sold out',
+    online:               'Online',
   },
   it: {
     statusLive:           'In diretta',
@@ -67,6 +77,10 @@ const MESSAGES: Record<string, EventMessages> = {
     pricesHeading:        'Prezzi',
     priceFrom:            'da {price}',
     hostedBy:             'Con',
+    statusCancelled:      'Annullato',
+    statusPostponed:      'Rinviato',
+    statusSoldOut:        'Esaurito',
+    online:               'Online',
   },
   de: {
     statusLive:           'Live',
@@ -84,6 +98,10 @@ const MESSAGES: Record<string, EventMessages> = {
     pricesHeading:        'Preise',
     priceFrom:            'ab {price}',
     hostedBy:             'Mit',
+    statusCancelled:      'Abgesagt',
+    statusPostponed:      'Verschoben',
+    statusSoldOut:        'Ausverkauft',
+    online:               'Online',
   },
   fr: {
     statusLive:           'En direct',
@@ -101,6 +119,10 @@ const MESSAGES: Record<string, EventMessages> = {
     pricesHeading:        'Tarifs',
     priceFrom:            'à partir de {price}',
     hostedBy:             'Animé par',
+    statusCancelled:      'Annulé',
+    statusPostponed:      'Reporté',
+    statusSoldOut:        'Complet',
+    online:               'En ligne',
   },
   es: {
     statusLive:           'En directo',
@@ -118,6 +140,10 @@ const MESSAGES: Record<string, EventMessages> = {
     pricesHeading:        'Precios',
     priceFrom:            'desde {price}',
     hostedBy:             'Con',
+    statusCancelled:      'Cancelado',
+    statusPostponed:      'Aplazado',
+    statusSoldOut:        'Agotado',
+    online:               'En línea',
   },
   pt: {
     statusLive:           'Em direto',
@@ -135,6 +161,10 @@ const MESSAGES: Record<string, EventMessages> = {
     pricesHeading:        'Preços',
     priceFrom:            'a partir de {price}',
     hostedBy:             'Com',
+    statusCancelled:      'Cancelado',
+    statusPostponed:      'Adiado',
+    statusSoldOut:        'Esgotado',
+    online:               'Online',
   },
   nl: {
     statusLive:           'Live',
@@ -152,6 +182,10 @@ const MESSAGES: Record<string, EventMessages> = {
     pricesHeading:        'Prijzen',
     priceFrom:            'vanaf {price}',
     hostedBy:             'Met',
+    statusCancelled:      'Geannuleerd',
+    statusPostponed:      'Uitgesteld',
+    statusSoldOut:        'Uitverkocht',
+    online:               'Online',
   },
 }
 

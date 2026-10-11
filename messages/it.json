@@ -367,6 +367,34 @@
           "discardBody": "L'evento torna a com'è ora sul tuo sito.",
           "deleteTitle": "Eliminare questo evento?",
           "deleteBody": "«{title}» non è mai stato pubblicato. Verrà eliminato definitivamente."
+        },
+        "attendance": {
+          "title": "Come si partecipa",
+          "inPerson": "Di persona",
+          "online": "Online",
+          "mixed": "Entrambi"
+        },
+        "place": {
+          "title": "Luogo",
+          "elsewhere": "Altrove",
+          "helper": "I tuoi luoghi e le sedi li prepara Abluo. Scegline uno così i visitatori vedono la mappa."
+        },
+        "status": {
+          "title": "Stato",
+          "scheduled": "Confermato",
+          "cancelled": "Annullato",
+          "postponed": "Rinviato",
+          "soldOut": "Esaurito",
+          "helper": "I visitatori lo vedono sull'evento e negli elenchi."
+        },
+        "visibility": {
+          "title": "Chi può vederlo",
+          "public": "Tutti",
+          "websiteOnly": "Solo sito",
+          "unlisted": "Solo con il link",
+          "publicHelper": "Sul tuo sito e condiviso con le app che colleghi.",
+          "websiteOnlyHelper": "Sul tuo sito, mai condiviso con le app collegate.",
+          "unlistedHelper": "Non compare negli elenchi né nei motori di ricerca: solo chi ha il link."
         }
       },
       "errors": {

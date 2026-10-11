@@ -91,6 +91,12 @@ function fake(opts: { docs?: Docs; commitError?: unknown; slugRows?: unknown[] }
   const fetch = vi.fn(async (q: string, p: Record<string, unknown> = {}) => {
     if (q.includes('count(*[_type == "project"')) return 1
     if (q.includes('count(*[_type == "event"')) return 4
+    // ADR-031 — the place options (site locations + saved venues) of THIS project only.
+    if (q.includes('_type == "eventVenue"')) {
+      return p.projectSlug === 'livener'
+        ? { locations: [{ key: 'cervia', name: { en: 'Cervia' } }], venues: [{ _id: 'venue-1', name: { en: 'Royal Society' } }] }
+        : { locations: [], venues: [] }
+    }
     if (q.includes('_type == "siteConfig"')) return { defaultLocale: 'en', supportedLocales: ['en', 'it'] }
     if (q.includes('_type == "mediaAsset" && _id == $assetId')) {
       return p.assetId === 'm1' && p.projectSlug === 'livener'
@@ -217,6 +223,12 @@ describe('open, create, patch', () => {
     const f = fake()
     await createEvent(ctx(grant()), 'project-a', { title: '  Summer   day ', startDate: '2026-11-01T10:00:00.000Z' }, f.deps)
     expect(f.writes[0][1]).toMatchObject({ _id: 'drafts.new-uuid-1', _type: 'event', projectSlug: 'livener', title: { en: 'Summer day' }, status: 'upcoming' })
+    // ADR-031 — a permanent opaque publicId, distinct from the document id, plus the public defaults.
+    expect(f.writes[0][1]).toMatchObject({
+      publicId: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
+      visibility: 'public',
+      eventStatus: 'scheduled',
+    })
   })
 
   it('create needs a title and a real date', async () => {
@@ -253,6 +265,35 @@ describe('open, create, patch', () => {
     expect(f.patchOps).toContainEqual(['ifRevisionId', 'd1'])
     expect(f.patchOps).toContainEqual(['set', { 'location.it': 'Rimini', registrationUrl: 'https://example.com/join', endDate: '2026-04-14T18:00:00.000Z' }])
     expect(f.patchOps).toContainEqual(['unset', ['shortDescription.en']])
+  })
+
+  it('ADR-031: visibility, status and attendance take only their allowed values', async () => {
+    const f = fake({ docs: withDraft() })
+    await patchEventDraft(ctx(grant()), 'project-a', { id: E, rev: 'd1', set: { visibility: 'unlisted', eventStatus: 'cancelled', attendanceMode: 'online' } }, f.deps)
+    expect(f.patchOps).toContainEqual(['set', { visibility: 'unlisted', eventStatus: 'cancelled', attendanceMode: 'online' }])
+    for (const set of [{ visibility: 'secret' }, { eventStatus: 'past' }, { attendanceMode: 1 }]) {
+      await expect(patchEventDraft(ctx(grant()), 'project-a', { id: E, rev: 'd1', set }, f.deps)).rejects.toMatchObject({ code: 'invalid_value' })
+    }
+  })
+
+  it("ADR-031: a place must be this site's location or this project's venue", async () => {
+    const f = fake({ docs: withDraft() })
+    await patchEventDraft(ctx(grant()), 'project-a', { id: E, rev: 'd1', set: { place: 'location:cervia' } }, f.deps)
+    expect(f.patchOps).toContainEqual(['set', { place: { kind: 'location', locationKey: 'cervia' } }])
+    await patchEventDraft(ctx(grant()), 'project-a', { id: E, rev: 'd1', set: { place: 'venue:venue-1' } }, f.deps)
+    expect(f.patchOps).toContainEqual(['set', { place: { kind: 'venue', venue: { _type: 'reference', _ref: 'venue-1' } } }])
+    await patchEventDraft(ctx(grant()), 'project-a', { id: E, rev: 'd1', set: { place: '' } }, f.deps)
+    expect(f.patchOps).toContainEqual(['unset', ['place']])
+    for (const place of ['location:gone', 'venue:other-venue', 'venue:', 'elsewhere', { kind: 'venue' }]) {
+      await expect(patchEventDraft(ctx(grant()), 'project-a', { id: E, rev: 'd1', set: { place } }, f.deps)).rejects.toMatchObject({ code: 'invalid_value' })
+    }
+  })
+
+  it('ADR-031: the snapshot carries defaults for older events and the place options', async () => {
+    const f = fake({ docs: withDraft({ place: { kind: 'venue', venue: { _ref: 'venue-1' } } }) })
+    const e = await getEvent(ctx(grant()), 'project-a', E, f.deps)
+    expect(e).toMatchObject({ visibility: 'public', eventStatus: 'scheduled', attendanceMode: 'inPerson', place: 'venue:venue-1' })
+    expect(e.placeOptions).toEqual({ locations: [{ key: 'cervia', name: 'Cervia' }], venues: [{ id: 'venue-1', name: 'Royal Society' }] })
   })
 
   it('sign-up links: web, mailto or a site path; nothing else', () => {
