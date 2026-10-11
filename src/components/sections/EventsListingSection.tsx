@@ -18,6 +18,7 @@ import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { EventCardExtras } from '@/components/events/EventEngagement'
 import { priceSummary } from '@/lib/modules/events/engagement'
 import { getEventMessages } from '@/lib/i18n/event-messages'
+import { EventLifecycleBadge } from '@/components/events/EventLifecycleBadge'
 
 // ─── Date formatting — locale-aware (mirrors EventCard/FeaturedEventBlock) ────
 
@@ -91,7 +92,8 @@ function EventListingCard({ event, href, locale, tenantId, priority = false }: {
         borderColor: 'var(--color-border)',
       }}
     >
-      <div className="shrink-0 overflow-hidden" style={{ height: '200px' }}>
+      <div className="relative shrink-0 overflow-hidden" style={{ height: '200px' }}>
+        <EventLifecycleBadge status={event.eventStatus} locale={locale} variant="overlay" />
         {coverSrc ? (
           <img
             src={coverSrc}
@@ -149,6 +151,7 @@ function EventListingCardLarge({ event, href, locale, tenantId }: { event: Event
       }}
     >
       <div className="relative shrink-0 overflow-hidden" style={{ paddingTop: '56.25%' }}>
+        <EventLifecycleBadge status={event.eventStatus} locale={locale} variant="overlay" />
         {coverSrc ? (
           <img
             src={coverSrc}
@@ -227,6 +230,7 @@ function EventListingCardMini({ event, href, locale }: { event: Event; href: str
             {event.categories[0].title}
           </span>
         )}
+        <EventLifecycleBadge status={event.eventStatus} locale={locale} className="self-start" />
         <h4
           className="text-sm font-semibold leading-snug line-clamp-2"
           style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}

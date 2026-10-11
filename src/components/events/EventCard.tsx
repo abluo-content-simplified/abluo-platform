@@ -8,7 +8,7 @@ import { imageUrl } from '@/lib/sanity/image'
 import type { Event } from '@/lib/sanity/types'
 import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 import { EventCardExtras } from '@/components/events/EventEngagement'
-import { getEventMessages } from '@/lib/i18n/event-messages'
+import { EventLifecycleBadge } from '@/components/events/EventLifecycleBadge'
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
@@ -41,22 +41,6 @@ function StatusBadge({ status }: { status: Event['status'] }) {
       style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}
     >
       Past
-    </span>
-  )
-}
-
-// ADR-031 — an authored cancelled / postponed / sold-out status wins over the
-// date-derived badge: it is the one thing a visitor must not miss.
-function LifecycleBadge({ status, locale }: { status: Event['eventStatus']; locale: string }) {
-  if (!status || status === 'scheduled') return null
-  const msg = getEventMessages(locale)
-  const label = status === 'cancelled' ? msg.statusCancelled : status === 'postponed' ? msg.statusPostponed : msg.statusSoldOut
-  return (
-    <span
-      className="inline-flex items-center rounded-[var(--radius-btn)] border px-2 py-0.5 text-xs font-semibold uppercase tracking-widest"
-      style={{ borderColor: 'var(--color-text-primary)', color: 'var(--color-text-primary)' }}
-    >
-      {label}
     </span>
   )
 }
@@ -150,7 +134,7 @@ export function EventCard({
           {/* Status badge */}
           <div className="mb-3">
             {event.eventStatus && event.eventStatus !== 'scheduled'
-              ? <LifecycleBadge status={event.eventStatus} locale={locale} />
+              ? <EventLifecycleBadge status={event.eventStatus} locale={locale} />
               : <StatusBadge status={event.status} />}
           </div>
 

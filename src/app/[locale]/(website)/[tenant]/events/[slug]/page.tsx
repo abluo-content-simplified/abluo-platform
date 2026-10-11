@@ -247,8 +247,9 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
           <SlideUp delay={0.1} duration={0.6}>
             {statusBadge && (
               <p
-                className="mb-3 inline-block rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
-                style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-primary)' }}
+                role="status"
+                className="mb-4 inline-flex items-center rounded-full px-4 py-1.5 text-sm font-bold uppercase tracking-widest"
+                style={{ backgroundColor: 'var(--color-primary)', color: '#fff' }}
               >
                 {statusBadge}
               </p>
