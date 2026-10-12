@@ -12,6 +12,8 @@
 // by supabase/verify/hardening-040.verify.mjs.
 
 import type {
+  ApiUsageRow,
+  TombstoneRow,
   ConnectionAuditEntry,
   ConnectionRow,
   ConnectionStatus,
@@ -56,6 +58,18 @@ export interface ConnectionsStore {
 
   // projects (read-only here)
   getProject(projectId: string): Promise<ProjectRef | null>
+  /** The project whose `projects.slug` (= Sanity projectSlug) is this, or null. */
+  findProjectBySlug(slug: string): Promise<ProjectRef | null>
+
+  // removals (api_tombstones) and metering (api_usage)
+  insertTombstone(row: TombstoneRow): Promise<void>
+  /**
+   * Removals of one resource in one project after the cursor position
+   * (removed_at, public_id) — strictly greater — and at or before `upTo`,
+   * ordered by (removed_at, public_id), at most `limit`.
+   */
+  listTombstones(q: { projectId: string; resource: string; after: { t: string; id: string }; upTo: string; limit: number }): Promise<TombstoneRow[]>
+  recordUsage(row: ApiUsageRow): Promise<void>
 
   // connections
   getConnection(id: string): Promise<ConnectionRow | null>

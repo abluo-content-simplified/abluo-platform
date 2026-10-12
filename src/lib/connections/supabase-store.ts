@@ -8,7 +8,18 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 import type { ConnectionsStore, ConsumeCodeResult, NewToken, RevokeTokensFilter } from './store'
-import type { ConnectionAuditEntry, ConnectionRow, OAuthCodeRow, PartnerAppRow, ProjectRef, TokenRow } from './types'
+import type { ConnectionAuditEntry, ConnectionRow, OAuthCodeRow, PartnerAppRow, ProjectRef, TokenRow, TombstoneRow } from './types'
+
+type ProjectRow = { id: string; tenant_id: string; name: string; status: string; slug: string; custom_domain: string | null }
+const PROJECT_COLUMNS = 'id, tenant_id, name, status, slug, custom_domain'
+const toProjectRef = (p: ProjectRow): ProjectRef => ({
+  id: p.id,
+  tenantId: p.tenant_id,
+  name: p.name,
+  status: p.status,
+  slug: p.slug,
+  customDomain: p.custom_domain,
+})
 
 const REASON = 'ADR-031 connections: partner OAuth + Connection state (server-only tables, migration 040)'
 
@@ -57,11 +68,53 @@ export function createSupabaseConnectionsStore(): ConnectionsStore {
 
     getProject: (projectId) =>
       run(async (db) => {
-        const { data, error } = await db.from('projects').select('id, tenant_id, name, status').eq('id', projectId).maybeSingle()
+        const { data, error } = await db.from('projects').select(PROJECT_COLUMNS).eq('id', projectId).maybeSingle()
         if (error) fail('getProject', error)
-        if (!data) return null
-        const p = data as { id: string; tenant_id: string; name: string; status: string }
-        return { id: p.id, tenantId: p.tenant_id, name: p.name, status: p.status } satisfies ProjectRef
+        return data ? toProjectRef(data as ProjectRow) : null
+      }),
+
+    findProjectBySlug: (slug) =>
+      run(async (db) => {
+        const { data, error } = await db.from('projects').select(PROJECT_COLUMNS).eq('slug', slug).maybeSingle()
+        if (error) fail('findProjectBySlug', error)
+        return data ? toProjectRef(data as ProjectRow) : null
+      }),
+
+    insertTombstone: (row) =>
+      run(async (db) => {
+        const { error } = await db.from('api_tombstones').insert(row)
+        if (error) fail('insertTombstone', error)
+      }),
+
+    listTombstones: (q) =>
+      run(async (db) => {
+        // (removed_at, public_id) > (t, id), written as PostgREST or-filter.
+        const t = q.after.t
+        const { data, error } = await db
+          .from('api_tombstones')
+          .select('project_id, resource, public_id, reason, removed_at')
+          .eq('project_id', q.projectId)
+          .eq('resource', q.resource)
+          .lte('removed_at', q.upTo)
+          // id '~' = "nothing more at this instant"; '' = "everything at this instant".
+          .or(
+            q.after.id === '~'
+              ? `removed_at.gt.${t}`
+              : q.after.id === ''
+                ? `removed_at.gte.${t}`
+                : `removed_at.gt.${t},and(removed_at.eq.${t},public_id.gt.${q.after.id})`,
+          )
+          .order('removed_at', { ascending: true })
+          .order('public_id', { ascending: true })
+          .limit(q.limit)
+        if (error) fail('listTombstones', error)
+        return ((data ?? []) as TombstoneRow[]).map((r) => ({ ...r, removed_at: new Date(r.removed_at).toISOString() }))
+      }),
+
+    recordUsage: (row) =>
+      run(async (db) => {
+        const { error } = await db.from('api_usage').insert(row)
+        if (error) console.warn(`connections usage: not recorded: ${error.message}`)
       }),
 
     getConnection: (id) =>

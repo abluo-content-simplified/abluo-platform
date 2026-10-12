@@ -8,7 +8,7 @@
 
 import { randomUUID } from 'node:crypto'
 import type { ConnectionsStore, ConsumeCodeResult, NewToken, RevokeTokensFilter } from '../store'
-import type { ConnectionAuditEntry, ConnectionRow, OAuthCodeRow, PartnerAppRow, ProjectRef, TokenRow } from '../types'
+import type { ApiUsageRow, ConnectionAuditEntry, ConnectionRow, OAuthCodeRow, PartnerAppRow, ProjectRef, TokenRow, TombstoneRow } from '../types'
 
 const HEX64 = /^[0-9a-f]{64}$/
 
@@ -54,6 +54,32 @@ export class MemoryConnectionsStore implements ConnectionsStore {
 
   async getProject(projectId: string) {
     return this.projects.get(projectId) ?? null
+  }
+  async findProjectBySlug(slug: string) {
+    return [...this.projects.values()].find((p) => p.slug === slug) ?? null
+  }
+
+  tombstones: TombstoneRow[] = []
+  usage: ApiUsageRow[] = []
+  async insertTombstone(row: TombstoneRow) {
+    if (!['deleted', 'unpublished', 'unlisted', 'websiteOnly'].includes(row.reason)) throw new Error('check violation: reason')
+    this.tombstones.push({ ...row })
+  }
+  async listTombstones(q: { projectId: string; resource: string; after: { t: string; id: string }; upTo: string; limit: number }) {
+    const key = (r: TombstoneRow) => [Date.parse(r.removed_at), r.public_id] as const
+    const t = Date.parse(q.after.t)
+    return this.tombstones
+      .filter((r) => r.project_id === q.projectId && r.resource === q.resource)
+      .filter((r) => {
+        const [rt, id] = key(r)
+        return (rt > t || (rt === t && id > q.after.id)) && rt <= Date.parse(q.upTo)
+      })
+      .sort((a, b) => Date.parse(a.removed_at) - Date.parse(b.removed_at) || a.public_id.localeCompare(b.public_id))
+      .slice(0, q.limit)
+      .map((r) => ({ ...r }))
+  }
+  async recordUsage(row: ApiUsageRow) {
+    this.usage.push({ ...row })
   }
 
   async getConnection(id: string) {

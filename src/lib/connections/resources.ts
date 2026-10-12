@@ -36,7 +36,7 @@ interface ResourceDef {
  */
 export const SHAREABLE_RESOURCES = {
   event: {
-    core: ['id', 'url', 'createdAt', 'updatedAt'],
+    core: ['id', 'url', 'createdAt', 'updatedAt', 'timeZone'],
     public: ['name', 'description', 'startDate', 'endDate', 'eventStatus', 'attendanceMode', 'location', 'image', 'offers', 'inLanguage'],
     personal: ['performers'],
     actions: ['read'],

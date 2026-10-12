@@ -71,6 +71,29 @@ export interface ProjectRef {
   tenantId: string
   name: string
   status: string
+  /** `projects.slug` — also the value the project's Sanity documents carry. */
+  slug?: string
+  customDomain?: string | null
+}
+
+export type TombstoneReason = 'deleted' | 'unpublished' | 'unlisted' | 'websiteOnly'
+
+export interface TombstoneRow {
+  project_id: string
+  resource: string
+  public_id: string
+  reason: TombstoneReason
+  /** ISO, millisecond precision (written by us, so cursors compare exactly). */
+  removed_at: string
+}
+
+export interface ApiUsageRow {
+  connection_id: string
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  endpoint: string
+  status: number
+  duration_ms: number | null
+  request_id: string | null
 }
 
 /**

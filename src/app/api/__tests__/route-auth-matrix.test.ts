@@ -952,6 +952,9 @@ const CLASSIFIED: Record<string, 'admin' | 'tenant' | 'machine' | 'public-read' 
   // ADR-031: partner apps authenticate with client id + secret (src/lib/connections; own suites).
   'oauth/token': 'machine',
   'oauth/revoke': 'machine',
+  'v1/events': 'machine', // partner bearer token (src/lib/connections/api)
+  'webhooks/sanity-removals': 'machine', // Sanity webhook signature
+  'v1/openapi.json': 'public-read', // the public API description, no data
   'auth/me': 'public-read', // returns only the caller's own role, or null
   version: 'public-read',
   'fonts/css': 'public-read',

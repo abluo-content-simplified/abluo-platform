@@ -34,7 +34,7 @@ describe('resource permissions', () => {
     expect(normalizeResources({})).toMatchObject({ ok: false })
     expect(defaultFields('event')).not.toContain('performers')
     const withHosts = normalizeResources({ event: { fields: ['name', 'performers'] } })
-    expect(withHosts.ok && withHosts.resources.event.fields).toEqual(['id', 'url', 'createdAt', 'updatedAt', 'name', 'performers'])
+    expect(withHosts.ok && withHosts.resources.event.fields).toEqual(['id', 'url', 'createdAt', 'updatedAt', 'timeZone', 'name', 'performers'])
   })
 
   it('only granted fields leave Abluo, even if a stored grant was tampered with', () => {
@@ -76,7 +76,7 @@ describe('resource permissions', () => {
     expect(again.ok).toBe(true)
     r = await f.access(c.accessToken)
     expect(r.ok && connectionCan(r.grant, 'eventVenue', 'read', P1A)).toBe(false)
-    expect(r.ok && grantedFields(r.grant, 'event')).toEqual(['id', 'url', 'createdAt', 'updatedAt', 'name'])
+    expect(r.ok && grantedFields(r.grant, 'event')).toEqual(['id', 'url', 'createdAt', 'updatedAt', 'timeZone', 'name'])
     expect(f.store.audits.map((a) => a.action)).toContain('connection.consent.change')
   })
 
