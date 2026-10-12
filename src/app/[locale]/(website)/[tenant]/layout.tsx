@@ -32,9 +32,10 @@ import { hasWhatsAppNumber } from '@/lib/forms/whatsapp'
 // settings. These readers resolve module config first and fall back to the
 // deprecated siteConfig fields; see src/lib/modules/config.ts for why the
 // fallback exists and when it goes away.
-import { resolveWhatsAppConfig, resolveHeaderCtaConfig, isModuleEnabled, type ProjectModuleConfig } from '@/lib/modules/config'
+import { resolveWhatsAppConfig, resolveHeaderCtaConfig, isModuleEnabled, getEnabledModuleIds, type ProjectModuleConfig } from '@/lib/modules/config'
 import { SlugMapRoot } from '@/components/SlugMapContext'
 import { SiteLinkScopeProvider } from '@/components/SiteLinkScope'
+import { SiteModulesProvider } from '@/components/site/SiteModulesContext'
 import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
 import { siteBasePath } from '@/lib/sanity/href'
 import { TrackingScripts } from '@/components/TrackingScripts'
@@ -777,6 +778,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
 
     return (
       <SiteLinkScopeProvider hostScoped={hostScoped}>
+      <SiteModulesProvider moduleIds={getEnabledModuleIds(modules)}>
       <SlugMapRoot>
         {hasCtaForm ? (
           <FormOverlayWrapper
@@ -799,6 +801,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
           </EarlyAccessWrapper>
         )}
       </SlugMapRoot>
+      </SiteModulesProvider>
       </SiteLinkScopeProvider>
     )
   }
@@ -950,6 +953,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
     // Absent for every tenant without a rail, so their sections keep the exact
     // padding they have always had.
     <SiteLinkScopeProvider hostScoped={hostScoped}>
+    <SiteModulesProvider moduleIds={getEnabledModuleIds(modules)}>
     <SlugMapRoot>
       <div data-accent-rail={accentRail ? 'on' : undefined} className="contents">
       {formsModuleEnabled ? (
@@ -965,6 +969,7 @@ export default async function WebsiteLayout({ children, params }: LayoutProps) {
       )}
       </div>
     </SlugMapRoot>
+    </SiteModulesProvider>
     </SiteLinkScopeProvider>
   )
 }
