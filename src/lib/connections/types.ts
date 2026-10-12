@@ -91,6 +91,7 @@ export type ConnectionAuditAction =
   | 'connection.app.register'
   | 'connection.app.approve'
   | 'connection.app.suspend'
+  | 'connection.app.secret_rotate'
   | 'connection.connect'
   | 'connection.consent.change'
   | 'connection.pause'

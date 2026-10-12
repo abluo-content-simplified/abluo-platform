@@ -73,6 +73,7 @@
       "add": "Aggiungi contenuto",
       "media": "Media",
       "people": "Persone",
+      "connections": "App collegate",
       "analytics": "Statistiche"
     },
     "shell": {
@@ -1939,6 +1940,106 @@
         "end": "Chiudi l’accesso",
         "error": "Non è andato a buon fine. Ricarica la pagina e riprova."
       }
+    },
+    "connect": {
+      "pageTitle": "Collega un’app",
+      "heading": "{app} vuole collegarsi al tuo sito",
+      "intro": "{app} potrà leggere le informazioni che scegli qui sotto. Non può modificare nulla sul tuo sito.",
+      "site": "Sito",
+      "alreadyConnected": "Già collegata: approvando aggiorni cosa viene condiviso.",
+      "shares": "Cosa può leggere {app}",
+      "personal": "dati personali",
+      "alwaysIncluded": "Sempre inclusi: il link a ogni pagina del tuo sito e la data dell’ultimo aggiornamento.",
+      "later": "Puoi mettere in pausa o scollegare {app} in qualsiasi momento da App collegate.",
+      "sandboxNote": "Collegamento di prova: si possono collegare solo siti demo.",
+      "allow": "Consenti",
+      "update": "Aggiorna",
+      "cancel": "Annulla",
+      "working": "Collegamento…",
+      "back": "Torna a {app}",
+      "invalidTitle": "Questo link non si può usare",
+      "invalidBody": "L’app che ti ha mandato qui non è riconosciuta, oppure il link è stato modificato. Torna all’app e ricomincia.",
+      "supportTitle": "Non disponibile in modalità assistenza",
+      "supportBody": "Le app possono essere collegate solo dal Proprietario o da un Amministratore del sito.",
+      "noSiteTitle": "Solo il Proprietario o un Amministratore del sito può collegare app",
+      "noSiteBody": "Chiedi al Proprietario o a un Amministratore del tuo sito di collegare {app}.",
+      "resources": {
+        "event": "Eventi",
+        "eventVenue": "Luoghi"
+      },
+      "fields": {
+        "event": {
+          "name": "Titolo",
+          "description": "Descrizione",
+          "startDate": "Data e ora di inizio",
+          "endDate": "Data e ora di fine",
+          "eventStatus": "Stato (annullato, rinviato, esaurito)",
+          "attendanceMode": "In presenza o online",
+          "location": "Luogo",
+          "image": "Immagine",
+          "offers": "Prezzi",
+          "inLanguage": "Lingua",
+          "performers": "Ospiti e artisti (nomi)"
+        },
+        "eventVenue": {
+          "name": "Nome",
+          "address": "Indirizzo",
+          "geo": "Posizione sulla mappa",
+          "timeZone": "Fuso orario",
+          "url": "Link al sito"
+        }
+      },
+      "errors": {
+        "forbidden": "Non puoi collegare app a questo sito.",
+        "support_mode": "Non disponibile in modalità assistenza.",
+        "project_not_found": "Scegli prima un sito.",
+        "sandbox_only": "Questa versione di prova dell’app può collegare solo siti demo.",
+        "resources_invalid": "Qualcosa nella selezione non è consentito. Ricarica la pagina e riprova.",
+        "nothing_selected": "Seleziona almeno una voce da condividere.",
+        "failed": "Qualcosa è andato storto. Riprova."
+      }
+    },
+    "connections": {
+      "title": "App collegate",
+      "intro": "App a cui hai permesso di leggere informazioni da questo sito, per esempio i tuoi eventi per un sistema di prenotazione. Possono leggere, mai modificare.",
+      "emptyTitle": "Nessuna app collegata",
+      "emptyBody": "Quando colleghi un’app, per esempio un sistema di prenotazione che mostra i tuoi eventi, compare qui. Puoi metterla in pausa o scollegarla in qualsiasi momento.",
+      "status": {
+        "active": "Attiva",
+        "paused": "In pausa",
+        "needs_reconnect": "Da ricollegare"
+      },
+      "sandbox": "Prova",
+      "actionsFor": "Azioni per {app}",
+      "pause": "Metti in pausa",
+      "resume": "Riattiva",
+      "disconnect": "Scollega",
+      "paused": "{app} è in pausa",
+      "resumed": "{app} è di nuovo attiva",
+      "disconnected": "{app} è scollegata",
+      "notice": {
+        "pausedByYou": "In pausa: {app} non può leggere nulla finché non la riattivi.",
+        "pausedByAbluo": "Messa in pausa da Abluo: {app} non è disponibile per ora.",
+        "needsReconnect": "{app} deve ricollegarsi. Apri {app} e avvia di nuovo il collegamento da lì."
+      },
+      "facts": {
+        "reads": "Legge",
+        "readsItem": "{what} ({count} dettagli)",
+        "lastUsed": "Ultimo utilizzo",
+        "never": "Non ancora usata",
+        "connected": "Collegata il"
+      },
+      "disconnectConfirm": {
+        "title": "Scollegare {app}?",
+        "body": "{app} smette subito di leggere dal tuo sito. Per usarla di nuovo dovrai collegarla un’altra volta."
+      },
+      "errors": {
+        "forbidden": "Non puoi modificare le app collegate a questo sito.",
+        "support_mode": "Non disponibile in modalità assistenza.",
+        "not_found": "Questa app non è più collegata. Ricarica la pagina.",
+        "invalid_state": "Nel frattempo questa app è cambiata. Ricarica la pagina.",
+        "failed": "Qualcosa è andato storto. Riprova."
+      }
     }
   },
   "app": {
@@ -2124,7 +2225,8 @@
       "analytics": "Statistiche",
       "media": "Media",
       "backlog": "Backlog",
-      "whatsNew": "Novità"
+      "whatsNew": "Novità",
+      "partners": "App partner"
     },
     "home": {
       "title": "Home",
@@ -2852,6 +2954,70 @@
           }
         },
         "previewHint": "L’anteprima funziona quando il sito è raggiungibile — vedi il passo 1 qui sotto."
+      }
+    },
+    "partners": {
+      "title": "App partner",
+      "intro": "App autorizzate a chiedere a un cliente di collegare un sito (ADR-031). Solo le app approvate possono collegarsi; sospenderne una mette in pausa subito tutti i suoi collegamenti.",
+      "register": "Registra app",
+      "registerTitle": "Registra un’app partner",
+      "emptyTitle": "Nessuna app partner",
+      "emptyBody": "Registra la prima app (per esempio TableRes) per darle un client id e un secret.",
+      "status": {
+        "pending": "In attesa",
+        "approved": "Approvata",
+        "suspended": "Sospesa"
+      },
+      "connectionStatus": {
+        "active": "Attivo",
+        "paused": "In pausa",
+        "needs_reconnect": "Da ricollegare"
+      },
+      "sandbox": "Prova",
+      "actionsFor": "Azioni per {app}",
+      "approve": "Approva",
+      "suspend": "Sospendi",
+      "rotate": "Nuovo secret",
+      "approved": "{app} è approvata",
+      "suspended": "{app} è sospesa",
+      "copied": "Copiato",
+      "copy": "Copia",
+      "cancel": "Annulla",
+      "connectionsTitle": "Collegamenti ({count})",
+      "noConnections": "Non ancora collegata a nessun sito.",
+      "facts": {
+        "clientId": "Client id",
+        "redirects": "Indirizzi di ritorno",
+        "contact": "Contatto",
+        "registered": "Registrata il"
+      },
+      "form": {
+        "name": "Nome",
+        "redirects": "Indirizzi di ritorno (uno per riga)",
+        "redirectsHelp": "Solo indirizzi https esatti; http://localhost è ammesso per le versioni di prova.",
+        "contact": "Email del referente tecnico (facoltativa)",
+        "pendingNote": "L’app parte In attesa. Approvala quando il partner ha firmato le condizioni."
+      },
+      "secret": {
+        "title": "Secret di {app}",
+        "label": "Client secret",
+        "warning": "Copia il secret adesso e consegnalo al partner tramite un canale sicuro, mai via email. Non verrà mostrato di nuovo.",
+        "done": "L’ho copiato"
+      },
+      "suspendConfirm": {
+        "title": "Sospendere {app}?",
+        "body": "Tutti i {count} collegamenti di {app} vanno subito in pausa e i suoi token smettono di funzionare finché non la approvi di nuovo."
+      },
+      "rotateConfirm": {
+        "title": "Sostituire il secret di {app}?",
+        "body": "Il secret attuale smette subito di funzionare. Il partner deve installare quello nuovo per continuare a collegarsi."
+      },
+      "errors": {
+        "forbidden": "Solo gli amministratori Abluo possono gestire le app partner.",
+        "invalid_input": "Controlla il nome e gli indirizzi di ritorno (https esatti, oppure http://localhost).",
+        "not_found": "Questa app non esiste più. Ricarica la pagina.",
+        "invalid_state": "Nel frattempo questa app è cambiata. Ricarica la pagina.",
+        "failed": "Qualcosa è andato storto. Riprova."
       }
     }
   },

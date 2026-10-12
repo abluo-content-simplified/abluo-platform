@@ -34,6 +34,13 @@ export function createSupabaseConnectionsStore(): ConnectionsStore {
         return (data as PartnerAppRow | null) ?? null
       }),
 
+    listApps: () =>
+      run(async (db) => {
+        const { data, error } = await db.from('partner_apps').select('*').order('created_at', { ascending: false })
+        if (error) fail('listApps', error)
+        return (data ?? []) as PartnerAppRow[]
+      }),
+
     insertApp: (row) =>
       run(async (db) => {
         const { data, error } = await db.from('partner_apps').insert(row).select('*').single()
@@ -200,6 +207,20 @@ export function createSupabaseConnectionsStore(): ConnectionsStore {
     touchToken: (id, at) =>
       run(async (db) => {
         await db.from('connection_tokens').update({ last_used_at: at }).eq('id', id)
+      }),
+
+    lastUsedAt: (connectionId) =>
+      run(async (db) => {
+        const { data, error } = await db
+          .from('connection_tokens')
+          .select('last_used_at')
+          .eq('connection_id', connectionId)
+          .not('last_used_at', 'is', null)
+          .order('last_used_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (error) fail('lastUsedAt', error)
+        return (data as { last_used_at: string } | null)?.last_used_at ?? null
       }),
 
     audit: (entry: ConnectionAuditEntry) =>

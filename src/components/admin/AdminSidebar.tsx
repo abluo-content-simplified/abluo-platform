@@ -21,6 +21,7 @@ const NAV = [
   { key: 'projects', href: '/projects', icon: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' },
   { key: 'analytics', href: '/analytics', icon: 'M3 3v18h18M7 16v-4M12 16V8M17 16v-7' },
   { key: 'media', href: '/media', icon: APP_ICONS.media },
+  { key: 'partners', href: '/partners', icon: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8' },
   { key: 'backlog', href: '/backlog', icon: 'M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01' },
   { key: 'whatsNew', href: '/whats-new', icon: 'M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5l-1.9-4.6L5.5 9l4.6-1.4zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z' },
 ] as const

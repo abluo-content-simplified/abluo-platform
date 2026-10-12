@@ -61,16 +61,19 @@ export const RESERVED_SLUGS: readonly string[] = [
   'content',
   'dashboard',
   'media',
+  'partners',
   'projects',
   'settings',
   'whats-new',
 
   // ── Client dashboard — top level ──────────────────────────────────────────
   'account',
+  'connect',
   'sites',
 
   // ── Client dashboard — tenant level (/<tenant>/…) ─────────────────────────
   'agenda',
+  'apps',
   'galleries',
   'home',
   'people',

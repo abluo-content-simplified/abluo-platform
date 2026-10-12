@@ -73,6 +73,7 @@
       "add": "Add content",
       "media": "Media",
       "people": "People",
+      "connections": "Connected apps",
       "analytics": "Analytics"
     },
     "shell": {
@@ -1939,6 +1940,106 @@
         "end": "End access",
         "error": "That didn’t work. Refresh the page and try again."
       }
+    },
+    "connect": {
+      "pageTitle": "Connect an app",
+      "heading": "{app} wants to connect to your website",
+      "intro": "{app} will be able to read the information you choose below. It cannot change anything on your website.",
+      "site": "Website",
+      "alreadyConnected": "Already connected — approving updates what is shared.",
+      "shares": "What {app} can read",
+      "personal": "personal data",
+      "alwaysIncluded": "Always included: a link to each page on your website and when it was last updated.",
+      "later": "You can pause or disconnect {app} at any time under Connected apps.",
+      "sandboxNote": "Test connection: only demo websites can be connected.",
+      "allow": "Allow",
+      "update": "Update",
+      "cancel": "Cancel",
+      "working": "Connecting…",
+      "back": "Back to {app}",
+      "invalidTitle": "This link can’t be used",
+      "invalidBody": "The app that sent you here isn’t recognised, or the link was changed. Go back to the app and start again.",
+      "supportTitle": "Not available in support mode",
+      "supportBody": "Apps can only be connected by the website’s own Owner or Site admin.",
+      "noSiteTitle": "Only an Owner or Site admin can connect apps",
+      "noSiteBody": "Ask the Owner or a Site admin of your website to connect {app}.",
+      "resources": {
+        "event": "Events",
+        "eventVenue": "Venues"
+      },
+      "fields": {
+        "event": {
+          "name": "Title",
+          "description": "Description",
+          "startDate": "Start date and time",
+          "endDate": "End date and time",
+          "eventStatus": "Status (cancelled, postponed, sold out)",
+          "attendanceMode": "In person or online",
+          "location": "Place",
+          "image": "Image",
+          "offers": "Prices",
+          "inLanguage": "Language",
+          "performers": "Hosts and performers (names)"
+        },
+        "eventVenue": {
+          "name": "Name",
+          "address": "Address",
+          "geo": "Map position",
+          "timeZone": "Time zone",
+          "url": "Website link"
+        }
+      },
+      "errors": {
+        "forbidden": "You can’t connect apps to this website.",
+        "support_mode": "Not available in support mode.",
+        "project_not_found": "Choose a website first.",
+        "sandbox_only": "This test version of the app can only connect demo websites.",
+        "resources_invalid": "Something in the selection isn’t allowed. Reload the page and try again.",
+        "nothing_selected": "Tick at least one item to share.",
+        "failed": "Something went wrong. Please try again."
+      }
+    },
+    "connections": {
+      "title": "Connected apps",
+      "intro": "Apps you have allowed to read information from this website, such as your events for a booking system. They can read, never change.",
+      "emptyTitle": "No connected apps yet",
+      "emptyBody": "When you connect an app — for example a booking system that shows your events — it appears here. You can pause or disconnect it at any time.",
+      "status": {
+        "active": "Active",
+        "paused": "Paused",
+        "needs_reconnect": "Needs reconnecting"
+      },
+      "sandbox": "Test",
+      "actionsFor": "Actions for {app}",
+      "pause": "Pause",
+      "resume": "Resume",
+      "disconnect": "Disconnect",
+      "paused": "{app} is paused",
+      "resumed": "{app} is active again",
+      "disconnected": "{app} is disconnected",
+      "notice": {
+        "pausedByYou": "Paused: {app} can’t read anything until you resume it.",
+        "pausedByAbluo": "Paused by Abluo: {app} is temporarily unavailable.",
+        "needsReconnect": "{app} needs to connect again. Open {app} and start the connection from there."
+      },
+      "facts": {
+        "reads": "Reads",
+        "readsItem": "{what} ({count} details)",
+        "lastUsed": "Last used",
+        "never": "Not used yet",
+        "connected": "Connected on"
+      },
+      "disconnectConfirm": {
+        "title": "Disconnect {app}?",
+        "body": "{app} stops reading from your website at once. To use it again, you’ll need to connect it again."
+      },
+      "errors": {
+        "forbidden": "You can’t change connected apps on this website.",
+        "support_mode": "Not available in support mode.",
+        "not_found": "This app is no longer connected. Reload the page.",
+        "invalid_state": "This app has changed meanwhile. Reload the page.",
+        "failed": "Something went wrong. Please try again."
+      }
     }
   },
   "app": {
@@ -2124,7 +2225,8 @@
       "analytics": "Analytics",
       "media": "Media",
       "backlog": "Backlog",
-      "whatsNew": "What’s new"
+      "whatsNew": "What’s new",
+      "partners": "Partner apps"
     },
     "home": {
       "title": "Home",
@@ -2852,6 +2954,70 @@
           }
         },
         "previewHint": "The preview works once the site is reachable — see step 1 below."
+      }
+    },
+    "partners": {
+      "title": "Partner apps",
+      "intro": "Apps allowed to ask a client to connect a website (ADR-031). Only approved apps can connect; suspending one pauses all its connections at once.",
+      "register": "Register app",
+      "registerTitle": "Register a partner app",
+      "emptyTitle": "No partner apps yet",
+      "emptyBody": "Register the first app (for example TableRes) to give it a client id and secret.",
+      "status": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "suspended": "Suspended"
+      },
+      "connectionStatus": {
+        "active": "Active",
+        "paused": "Paused",
+        "needs_reconnect": "Needs reconnecting"
+      },
+      "sandbox": "Test",
+      "actionsFor": "Actions for {app}",
+      "approve": "Approve",
+      "suspend": "Suspend",
+      "rotate": "New secret",
+      "approved": "{app} is approved",
+      "suspended": "{app} is suspended",
+      "copied": "Copied",
+      "copy": "Copy",
+      "cancel": "Cancel",
+      "connectionsTitle": "Connections ({count})",
+      "noConnections": "Not connected to any website yet.",
+      "facts": {
+        "clientId": "Client id",
+        "redirects": "Return addresses",
+        "contact": "Contact",
+        "registered": "Registered"
+      },
+      "form": {
+        "name": "Name",
+        "redirects": "Return addresses (one per line)",
+        "redirectsHelp": "Exact https addresses only; http://localhost is allowed for test builds.",
+        "contact": "Technical contact email (optional)",
+        "pendingNote": "The app starts as Pending. Approve it once the partner terms are signed."
+      },
+      "secret": {
+        "title": "Secret for {app}",
+        "label": "Client secret",
+        "warning": "Copy the secret now and give it to the partner through a secure channel — never by email. It will not be shown again.",
+        "done": "I have copied it"
+      },
+      "suspendConfirm": {
+        "title": "Suspend {app}?",
+        "body": "All {count} connections of {app} pause at once and its tokens stop working until you approve it again."
+      },
+      "rotateConfirm": {
+        "title": "Replace the secret of {app}?",
+        "body": "The current secret stops working immediately. The partner must install the new one to keep connecting."
+      },
+      "errors": {
+        "forbidden": "Only Abluo admins can manage partner apps.",
+        "invalid_input": "Check the name and the return addresses (exact https, or http://localhost).",
+        "not_found": "This app no longer exists. Reload the page.",
+        "invalid_state": "This app has changed meanwhile. Reload the page.",
+        "failed": "Something went wrong. Please try again."
       }
     }
   },

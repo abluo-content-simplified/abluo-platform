@@ -49,8 +49,10 @@ export interface ConnectionsStore {
   // partner apps
   getAppByClientId(clientId: string): Promise<PartnerAppRow | null>
   getAppById(id: string): Promise<PartnerAppRow | null>
+  /** Every registered app, newest first (Abluo admin screen). */
+  listApps(): Promise<PartnerAppRow[]>
   insertApp(row: Omit<PartnerAppRow, 'id' | 'created_at' | 'approved_by' | 'approved_at'> & Partial<Pick<PartnerAppRow, 'approved_by' | 'approved_at'>>): Promise<PartnerAppRow>
-  updateApp(id: string, patch: Partial<Pick<PartnerAppRow, 'status' | 'approved_by' | 'approved_at' | 'redirect_uris' | 'name'>>): Promise<PartnerAppRow | null>
+  updateApp(id: string, patch: Partial<Pick<PartnerAppRow, 'status' | 'approved_by' | 'approved_at' | 'redirect_uris' | 'name' | 'client_secret_hash'>>): Promise<PartnerAppRow | null>
 
   // projects (read-only here)
   getProject(projectId: string): Promise<ProjectRef | null>
@@ -84,6 +86,8 @@ export interface ConnectionsStore {
   setReplacedBy(id: string, successorId: string): Promise<void>
   revokeTokens(filter: RevokeTokensFilter, at: string): Promise<number>
   touchToken(id: string, at: string): Promise<void>
+  /** Most recent API use by any token of the connection (null = never used). */
+  lastUsedAt(connectionId: string): Promise<string | null>
 
   // audit (best-effort: never throws)
   audit(entry: ConnectionAuditEntry): Promise<void>

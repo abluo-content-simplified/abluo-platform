@@ -17,18 +17,22 @@ export type ManageResult = { ok: true; status: ConnectionStatus } | { ok: false;
 
 export interface ConnectionSummary {
   id: string
+  appId: string
   appName: string
   status: ConnectionStatus
   statusReason: string | null
   resources: SharedResources
   sandbox: boolean
   connectedAt: string
+  /** When what is shared was last approved (consent). */
+  consentAt: string
   consentBy: string
+  /** Last API call by this app for this site; null = not used yet. */
+  lastUsedAt: string | null
 }
 
-/** Paused by the tenant (resumable by the tenant) vs paused by Abluo (app suspended). */
-export const PAUSED_BY_TENANT = 'tenant'
-export const PAUSED_BY_APP_SUSPENSION = 'app_suspended'
+import { PAUSED_BY_TENANT } from './manage-constants'
+export { PAUSED_BY_APP_SUSPENSION, PAUSED_BY_TENANT } from './manage-constants'
 
 export async function listProjectConnections(
   subject: Subject,
@@ -41,16 +45,21 @@ export async function listProjectConnections(
   for (const r of rows) {
     // Defence in depth: a store bug returning another project's row is dropped.
     if (r.project_id !== projectId) continue
+    // Disconnected ones are history (audit log); connecting again starts fresh.
+    if (r.status === 'revoked') continue
     const app = await deps.store.getAppById(r.app_id)
     out.push({
       id: r.id,
+      appId: r.app_id,
       appName: app?.name ?? '—',
       status: r.status,
       statusReason: r.status_reason,
       resources: r.resources,
       sandbox: r.sandbox,
       connectedAt: r.created_at,
+      consentAt: typeof r.consent.at === 'string' ? r.consent.at : r.created_at,
       consentBy: r.consent.by,
+      lastUsedAt: await deps.store.lastUsedAt(r.id),
     })
   }
   return { ok: true, connections: out }

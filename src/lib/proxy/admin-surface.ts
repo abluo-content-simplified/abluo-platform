@@ -29,6 +29,7 @@ export const ADMIN_SURFACE_SEGMENTS = new Set([
   'media',
   'backlog',
   'whats-new',
+  'partners',
 ])
 
 /**

@@ -56,9 +56,23 @@ Each requested property has its own suite, driving the **real library** through 
 
 The in-memory store does not prove the SQL; the database invariants are proven by `supabase/verify/hardening-040.verify.mjs`. The step-6 cross-tenant API suite (D8.7) will run the same scenarios against a real database before the API is released.
 
-## 4. Not in step 4b (next)
+## 4. Step 4c — the screens (2026-10-12)
 
-- **Step 4c — screens:** consent page `/connect/authorize` (calls `validateAuthorizeRequest` / `approveConnect` / `denyConnect`), client dashboard "Connected apps" (`manage.ts`), admin partner apps page (`admin.ts`, secret shown once), en/it/de messages. No partner can complete Connect until 4c ships; the token endpoint is live but has nothing to exchange.
+The screens only display and forward; every decision stays in the tested engine above.
+
+| Screen | Where | Engine |
+|---|---|---|
+| Consent | `/connect/authorize` (client dashboard host, signed in; the sign-in redirect now keeps the query string) | `consent-view.ts` builds the view; `approveConnect` / `denyConnect` decide |
+| Connected apps | client dashboard, sidebar after People (`/{site}/apps`), Owners and Site admins (`connections.manage`); calm empty state | `manage.ts` (list with last use, pause, resume, disconnect); the action also checks the connection belongs to the site in the URL |
+| Partner apps | admin dashboard `/partners` (abluo_admin + two-factor) | `admin.ts` (register → id + secret shown once, approve, suspend, new secret; every Connection across clients) |
+
+Copy in en/it/de (`clientDashboard.connect`, `clientDashboard.connections`, `admin.partners`). Tests: `screens.test.ts`.
+
+**Connect from either side (ADR-031 D2).** Today the partner starts: it sends the person to `/connect/authorize` with the OAuth request. Starting from Abluo is designed in, not yet switched on: the Connected apps screen will list approved apps and send the person to the app's registered *start link* with the site; the partner then comes back to the same consent page with `project=<site slug>`, which pre-selects that site (already supported and tested — only sites the person manages can be pre-selected). What is missing is the start link itself: a `start_uri` column on `partner_apps` (next Connections migration) and the "Connect an app" list on the screen.
+
+## 5. Still open
+
+- **Start from Abluo:** `partner_apps.start_uri` migration + "Connect an app" list (above).
 - **Lifecycle pauses (D8.5):** uninstalling Events, pausing the tenant or archiving the project should pause Connections automatically. Until then, step 5's API also checks module and project status per request.
 - **Vercel Firewall rule** on `/api/oauth/*` as the durable rate limit (the in-memory one is per instance).
 - **Environment:** `CONNECTIONS_SANDBOX_PROJECT_IDS` (comma-separated project ids of demo sites) when the sandbox is set up.

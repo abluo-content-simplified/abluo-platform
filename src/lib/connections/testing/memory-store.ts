@@ -36,6 +36,9 @@ export class MemoryConnectionsStore implements ConnectionsStore {
   async getAppById(id: string) {
     return this.apps.get(id) ?? null
   }
+  async listApps() {
+    return [...this.apps.values()].sort((a, b) => b.created_at.localeCompare(a.created_at)).map((a) => ({ ...a }))
+  }
   async insertApp(row: Parameters<ConnectionsStore['insertApp']>[0]) {
     if (!HEX64.test(row.client_secret_hash)) throw new Error('check violation: client_secret_hash')
     const app: PartnerAppRow = { approved_by: null, approved_at: null, ...row, id: randomUUID(), created_at: this.iso() }
@@ -165,6 +168,11 @@ export class MemoryConnectionsStore implements ConnectionsStore {
   async touchToken(id: string, at: string) {
     const t = this.tokens.get(id)
     if (t) t.last_used_at = at
+  }
+
+  async lastUsedAt(connectionId: string) {
+    const used = [...this.tokens.values()].filter((t) => t.connection_id === connectionId && t.last_used_at).map((t) => t.last_used_at as string)
+    return used.length ? used.sort().at(-1)! : null
   }
 
   async audit(entry: ConnectionAuditEntry) {

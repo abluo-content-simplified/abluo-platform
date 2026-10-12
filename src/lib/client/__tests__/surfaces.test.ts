@@ -141,7 +141,7 @@ describe('buildTenantSurfaces', () => {
 
   it('an owner with every module sees every nav item and the module widgets', () => {
     const s = buildTenantSurfaces(grantFor('owner', ['blog', 'forms', 'gallery']))
-    expect(ids(s.nav)).toEqual(['blog', 'forms', 'gallery', 'analytics', 'media', 'people'])
+    expect(ids(s.nav)).toEqual(['blog', 'forms', 'gallery', 'analytics', 'media', 'people', 'connections'])
     expect(ids(s.widgets)).toEqual(expect.arrayContaining(['siteStatus', 'attention', 'glance.posts', 'glance.requests', 'glance.galleries', 'traffic', 'latest.posts']))
   })
 
@@ -159,6 +159,7 @@ describe('buildTenantSurfaces', () => {
     const s = buildTenantSurfaces(grantFor('editor', ['blog', 'gallery']))
     expect(ids(s.nav)).toContain('blog')
     expect(ids(s.nav)).not.toContain('people')
+    expect(ids(s.nav)).not.toContain('connections') // ADR-031: connections.manage is Owner / Site admin only
     expect(ids(s.nav)).not.toContain('forms') // module not installed
   })
 

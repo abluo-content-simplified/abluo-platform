@@ -73,6 +73,7 @@
       "add": "Inhalt hinzufügen",
       "media": "Medien",
       "people": "Personen",
+      "connections": "Verbundene Apps",
       "analytics": "Statistiken"
     },
     "shell": {
@@ -1939,6 +1940,106 @@
         "end": "Zugang beenden",
         "error": "Das hat nicht geklappt. Lade die Seite neu und versuch es noch einmal."
       }
+    },
+    "connect": {
+      "pageTitle": "App verbinden",
+      "heading": "{app} möchte sich mit deiner Website verbinden",
+      "intro": "{app} kann die Informationen lesen, die du unten auswählst. Auf deiner Website kann die App nichts ändern.",
+      "site": "Website",
+      "alreadyConnected": "Bereits verbunden – mit der Bestätigung aktualisierst du, was geteilt wird.",
+      "shares": "Was {app} lesen darf",
+      "personal": "personenbezogene Daten",
+      "alwaysIncluded": "Immer enthalten: ein Link zu jeder Seite deiner Website und der Zeitpunkt der letzten Änderung.",
+      "later": "Du kannst {app} jederzeit unter „Verbundene Apps“ pausieren oder trennen.",
+      "sandboxNote": "Testverbindung: Es können nur Demo-Websites verbunden werden.",
+      "allow": "Erlauben",
+      "update": "Aktualisieren",
+      "cancel": "Abbrechen",
+      "working": "Wird verbunden …",
+      "back": "Zurück zu {app}",
+      "invalidTitle": "Dieser Link kann nicht verwendet werden",
+      "invalidBody": "Die App, die dich hierher geschickt hat, ist nicht bekannt, oder der Link wurde verändert. Gehe zurück zur App und beginne neu.",
+      "supportTitle": "Im Support-Modus nicht verfügbar",
+      "supportBody": "Apps können nur vom Inhaber oder einem Website-Admin der Website verbunden werden.",
+      "noSiteTitle": "Nur der Inhaber oder ein Website-Admin kann Apps verbinden",
+      "noSiteBody": "Bitte den Inhaber oder einen Website-Admin deiner Website, {app} zu verbinden.",
+      "resources": {
+        "event": "Veranstaltungen",
+        "eventVenue": "Veranstaltungsorte"
+      },
+      "fields": {
+        "event": {
+          "name": "Titel",
+          "description": "Beschreibung",
+          "startDate": "Beginn (Datum und Uhrzeit)",
+          "endDate": "Ende (Datum und Uhrzeit)",
+          "eventStatus": "Status (abgesagt, verschoben, ausverkauft)",
+          "attendanceMode": "Vor Ort oder online",
+          "location": "Ort",
+          "image": "Bild",
+          "offers": "Preise",
+          "inLanguage": "Sprache",
+          "performers": "Gastgeber und Mitwirkende (Namen)"
+        },
+        "eventVenue": {
+          "name": "Name",
+          "address": "Adresse",
+          "geo": "Position auf der Karte",
+          "timeZone": "Zeitzone",
+          "url": "Link zur Website"
+        }
+      },
+      "errors": {
+        "forbidden": "Du kannst mit dieser Website keine Apps verbinden.",
+        "support_mode": "Im Support-Modus nicht verfügbar.",
+        "project_not_found": "Wähle zuerst eine Website.",
+        "sandbox_only": "Diese Testversion der App kann nur Demo-Websites verbinden.",
+        "resources_invalid": "Etwas in der Auswahl ist nicht erlaubt. Lade die Seite neu und versuche es noch einmal.",
+        "nothing_selected": "Wähle mindestens einen Eintrag zum Teilen.",
+        "failed": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal."
+      }
+    },
+    "connections": {
+      "title": "Verbundene Apps",
+      "intro": "Apps, denen du erlaubt hast, Informationen dieser Website zu lesen – zum Beispiel deine Veranstaltungen für ein Reservierungssystem. Sie können lesen, nie ändern.",
+      "emptyTitle": "Noch keine verbundenen Apps",
+      "emptyBody": "Wenn du eine App verbindest – zum Beispiel ein Reservierungssystem, das deine Veranstaltungen zeigt –, erscheint sie hier. Du kannst sie jederzeit pausieren oder trennen.",
+      "status": {
+        "active": "Aktiv",
+        "paused": "Pausiert",
+        "needs_reconnect": "Neu verbinden"
+      },
+      "sandbox": "Test",
+      "actionsFor": "Aktionen für {app}",
+      "pause": "Pausieren",
+      "resume": "Fortsetzen",
+      "disconnect": "Trennen",
+      "paused": "{app} ist pausiert",
+      "resumed": "{app} ist wieder aktiv",
+      "disconnected": "{app} ist getrennt",
+      "notice": {
+        "pausedByYou": "Pausiert: {app} kann nichts lesen, bis du die App fortsetzt.",
+        "pausedByAbluo": "Von Abluo pausiert: {app} ist vorübergehend nicht verfügbar.",
+        "needsReconnect": "{app} muss sich neu verbinden. Öffne {app} und starte die Verbindung dort erneut."
+      },
+      "facts": {
+        "reads": "Liest",
+        "readsItem": "{what} ({count} Angaben)",
+        "lastUsed": "Zuletzt verwendet",
+        "never": "Noch nicht verwendet",
+        "connected": "Verbunden am"
+      },
+      "disconnectConfirm": {
+        "title": "{app} trennen?",
+        "body": "{app} liest sofort nichts mehr von deiner Website. Um die App wieder zu nutzen, musst du sie neu verbinden."
+      },
+      "errors": {
+        "forbidden": "Du kannst die verbundenen Apps dieser Website nicht ändern.",
+        "support_mode": "Im Support-Modus nicht verfügbar.",
+        "not_found": "Diese App ist nicht mehr verbunden. Lade die Seite neu.",
+        "invalid_state": "Diese App hat sich inzwischen geändert. Lade die Seite neu.",
+        "failed": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal."
+      }
     }
   },
   "app": {
@@ -2124,7 +2225,8 @@
       "analytics": "Statistiken",
       "media": "Medien",
       "backlog": "Backlog",
-      "whatsNew": "Neuigkeiten"
+      "whatsNew": "Neuigkeiten",
+      "partners": "Partner-Apps"
     },
     "home": {
       "title": "Start",
@@ -2852,6 +2954,70 @@
           }
         },
         "previewHint": "Die Vorschau funktioniert, sobald die Website erreichbar ist — siehe Schritt 1 unten."
+      }
+    },
+    "partners": {
+      "title": "Partner-Apps",
+      "intro": "Apps, die einen Kunden bitten dürfen, eine Website zu verbinden (ADR-031). Nur freigegebene Apps können sich verbinden; eine gesperrte App pausiert sofort alle ihre Verbindungen.",
+      "register": "App registrieren",
+      "registerTitle": "Partner-App registrieren",
+      "emptyTitle": "Noch keine Partner-Apps",
+      "emptyBody": "Registriere die erste App (zum Beispiel TableRes), um ihr eine Client-ID und ein Secret zu geben.",
+      "status": {
+        "pending": "Ausstehend",
+        "approved": "Freigegeben",
+        "suspended": "Gesperrt"
+      },
+      "connectionStatus": {
+        "active": "Aktiv",
+        "paused": "Pausiert",
+        "needs_reconnect": "Neu verbinden"
+      },
+      "sandbox": "Test",
+      "actionsFor": "Aktionen für {app}",
+      "approve": "Freigeben",
+      "suspend": "Sperren",
+      "rotate": "Neues Secret",
+      "approved": "{app} ist freigegeben",
+      "suspended": "{app} ist gesperrt",
+      "copied": "Kopiert",
+      "copy": "Kopieren",
+      "cancel": "Abbrechen",
+      "connectionsTitle": "Verbindungen ({count})",
+      "noConnections": "Noch mit keiner Website verbunden.",
+      "facts": {
+        "clientId": "Client-ID",
+        "redirects": "Rücksprungadressen",
+        "contact": "Kontakt",
+        "registered": "Registriert am"
+      },
+      "form": {
+        "name": "Name",
+        "redirects": "Rücksprungadressen (eine pro Zeile)",
+        "redirectsHelp": "Nur exakte https-Adressen; http://localhost ist für Testversionen erlaubt.",
+        "contact": "E-Mail des technischen Kontakts (optional)",
+        "pendingNote": "Die App startet als „Ausstehend“. Gib sie frei, sobald der Partner die Bedingungen unterschrieben hat."
+      },
+      "secret": {
+        "title": "Secret für {app}",
+        "label": "Client-Secret",
+        "warning": "Kopiere das Secret jetzt und gib es dem Partner über einen sicheren Kanal – nie per E-Mail. Es wird nicht noch einmal angezeigt.",
+        "done": "Ich habe es kopiert"
+      },
+      "suspendConfirm": {
+        "title": "{app} sperren?",
+        "body": "Alle {count} Verbindungen von {app} werden sofort pausiert und ihre Tokens funktionieren nicht mehr, bis du die App wieder freigibst."
+      },
+      "rotateConfirm": {
+        "title": "Secret von {app} ersetzen?",
+        "body": "Das aktuelle Secret funktioniert sofort nicht mehr. Der Partner muss das neue installieren, um sich weiter verbinden zu können."
+      },
+      "errors": {
+        "forbidden": "Nur Abluo-Admins können Partner-Apps verwalten.",
+        "invalid_input": "Prüfe den Namen und die Rücksprungadressen (exakte https-Adressen oder http://localhost).",
+        "not_found": "Diese App gibt es nicht mehr. Lade die Seite neu.",
+        "invalid_state": "Diese App hat sich inzwischen geändert. Lade die Seite neu.",
+        "failed": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal."
       }
     }
   },

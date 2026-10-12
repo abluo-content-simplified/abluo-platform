@@ -94,6 +94,8 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   { kind: 'nav', id: 'analytics', segment: 'analytics', requires: { permission: 'analytics.read' } },
   { kind: 'nav', id: 'media', segment: 'media', requires: { permission: 'media.library.manage' } },
   { kind: 'nav', id: 'people', segment: 'people', requires: { anyPermission: ['users.invite', 'users.manage'] } },
+  // ADR-031: partner apps reading this site. Owners and Site admins only; always listed (calm empty state).
+  { kind: 'nav', id: 'connections', segment: 'apps', requires: { permission: 'connections.manage' } },
 
   // ── Home widgets (ADR-029 §5) ───────────────────────────────────────────
   { kind: 'widget', id: 'siteStatus', slot: 'header', requires: {} },

@@ -199,7 +199,9 @@ async function requireAuthenticatedInProxy(request: NextRequest) {
 
   if (!user) {
     const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('next', pathname)
+    // Keep the query string: a consent link (/connect/authorize?client_id=…)
+    // must survive sign-in. `acceptableNext()` validates it after login.
+    loginUrl.searchParams.set('next', pathname + request.nextUrl.search)
     return NextResponse.redirect(loginUrl)
   }
 
