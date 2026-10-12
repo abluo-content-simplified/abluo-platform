@@ -60,6 +60,13 @@ export const PLATFORM_PERMISSIONS: readonly PlatformPermissionDef[] = [
     grantable: false,
     defaults: { platform: true },
   },
+  {
+    // ADR-031 D8.2 — register, approve and suspend partner apps (TableRes …).
+    id: 'partners.manage',
+    description: 'Register, approve and suspend partner apps that can request a Connection.',
+    grantable: false,
+    defaults: { platform: true },
+  },
 
   // ── People ──────────────────────────────────────────────────────────────
   {

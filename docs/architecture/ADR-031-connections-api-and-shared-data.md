@@ -166,7 +166,7 @@ Event occurrences (V1.1) live in Sanity beside the series (or a server-side tabl
 - Locations become a richer, central concept in V1.2; hours live there, ownership per location.
 
 ## 6. Open questions
-- Supabase Auth OAuth server vs a dedicated library (V1 plan).
+- ~~Supabase Auth OAuth server vs a dedicated library~~ → decided in Amendment B: `@node-oauth/oauth2-server` ≥ 5.3.0 with our own model.
 - Occurrence storage: Sanity vs server table (V1.1 plan).
 - Whether TableRes supports multi-location groups from V1.2 day one or single-location first.
 
@@ -184,3 +184,36 @@ Refines D6/D7.3 after the V1 step 2 dev review. Not yet built.
 5. **Precision for Google and partners.** Full address + geo when there is an exact place; otherwise the city.
 6. **Keys.** The dashboard address search needs a Maps JavaScript + Places key allowed on the dashboard hosts (env var only, referrer-restricted — `docs/engineering/google-maps-keys.md` gains a third key or extends the Studio key's referrers; decided in the build plan). The website embed keeps using `NEXT_PUBLIC_GOOGLE_MAPS_KEY` (Embed API only).
 7. **Migration.** None required: `place.kind` gains the value `custom`; `location` is unchanged. Existing events keep showing their city.
+
+## Amendment B — OAuth server implementation (V1 step 4a decision, 2026-10-11)
+
+Resolves the first open question in §6. **Approved by Tom, 2026-10-11.** Built in V1 step 4b — library vs Abluo responsibilities and the tests that prove them: `docs/engineering/connections/oauth-security-responsibilities.md`.
+
+### Option 1 — Supabase Auth "OAuth 2.1 Server" — **rejected for partner Connections**
+Checked against Supabase's docs and changelog (Oct 2026): authorization code + PKCE, 10-minute single-use codes, refresh rotation, developer-hosted consent page, RLS sees a `client_id` claim. But:
+- **Tokens represent a user, not a Connection.** Access tokens are ordinary Supabase JWTs (`sub` = the user who consented, role `authenticated`) — "tokens have full user privileges, rely on RLS for authorization". A token TableRes received from a Livener Owner would act *as that Owner* against the Supabase REST API: every table the Owner can read under RLS (contact requests, other projects of the tenant), not just one project's events. That contradicts D1/D2 (partners are never users; one Connection = one project, chosen resources).
+- **No custom scopes** ("not currently supported", planned with no date) — so "events, read-only, project X" cannot be expressed in the token.
+- **Revocation is user-side** (`revokeGrant` by the signed-in user); no documented admin/server revoke, no documented refresh-token reuse detection.
+- **Public beta** (GA targeted Q4 2025, not confirmed); OAuth users count toward MAU.
+It may suit a future "sign in with Abluo" for people; it is the wrong shape for machine partners.
+
+### Option 2 — `oidc-provider` (panva) — not chosen
+Certified, complete, supports rotation and resource indicators. Built around Koa and OpenID Connect; running it inside Next.js route handlers on Vercel needs a request/response bridge and a storage adapter for every model. More machinery (OIDC, sessions, interactions) than V1 needs.
+
+### Option 3 — `@node-oauth/oauth2-server` ≥ 5.3.0 with our own model — **chosen**
+Framework-agnostic: the library runs the protocol (authorization code + PKCE S256, refresh token grant, client authentication), and a *model* we write reads/writes the migration-040 tables. It fits D1/D2 exactly: the token belongs to a Connection, not a user.
+- **Pin ≥ 5.3.0.** CVE-2026-41213 (published 2026-04-23): earlier versions accepted malformed PKCE verifiers and did not consume the code on a failed attempt (online brute force). Fixed in 5.3.0.
+- **Defence in depth regardless of the library:** we validate the `code_verifier` ourselves (RFC 7636: 43–128 chars of `[A-Za-z0-9-._~]`); a code is marked `used_at` on the FIRST exchange attempt, successful or not; redirect URI must equal a registered one exactly; client secret compared in constant time against its SHA-256.
+- **Opaque tokens, not JWTs.** Every API call looks the token's hash up in `connection_tokens` and checks the Connection status → pause/revoke is immediate (D2), and nothing in the token is usable against Supabase directly.
+- **Rotation + reuse detection in the model:** each refresh issues a new refresh token and retires the old (`replaced_by`, `retired_at`); a retired token presented within a 30-second grace window, while its successor is still unused, gets a fresh pair and the unseen successor is ended (lost-response retry — tokens are stored as hashes, so the same successor cannot be returned); presented later, or after the successor was used, every token of the Connection is revoked and the Connection set to `needs_reconnect` (audited).
+- **Consent screen is ours** (`/connect/authorize`): the person signs in to Abluo, must hold `connections.manage` on the chosen project; the screen names the app (approved apps only), the site, resources and fields. Approving creates/updates the Connection, then the code.
+- **Runtime:** Node.js runtime route handlers (`/api/oauth/token`, `/api/oauth/revoke`), service-role database access only, rate-limited per client and IP.
+
+### Risks and how they are covered
+| Risk | Cover |
+|---|---|
+| Library bug (as CVE-2026-41213) | pinned version + our own verifier/code/redirect checks + cross-tenant API test suite (D8.7) + `npm audit` in CI |
+| Token theft | hashes only in DB; short access tokens (1 h); rotation with reuse detection; immediate revoke |
+| Misissued scope | token → Connection → one project + listed resources/fields; nothing else is reachable by construction |
+| Consent by the wrong person | `connections.manage` checked server-side on the project; support mode can never consent |
+| Maintenance burden | the model is ~6 functions over tables we already own; the protocol stays in the library |

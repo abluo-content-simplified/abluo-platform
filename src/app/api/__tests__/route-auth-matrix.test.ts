@@ -949,6 +949,9 @@ const CLASSIFIED: Record<string, 'admin' | 'tenant' | 'machine' | 'public-read' 
   'cron/form-events-sweep': 'machine',
   'cron/analytics': 'machine',
   'webhooks/form-events': 'machine',
+  // ADR-031: partner apps authenticate with client id + secret (src/lib/connections; own suites).
+  'oauth/token': 'machine',
+  'oauth/revoke': 'machine',
   'auth/me': 'public-read', // returns only the caller's own role, or null
   version: 'public-read',
   'fonts/css': 'public-read',
