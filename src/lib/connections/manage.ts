@@ -10,6 +10,7 @@ import { endAllCredentials, revokeConnectionNow } from './lifecycle'
 import { systemClock, type Clock } from './policy'
 import type { ConnectionsStore } from './store'
 import type { ConnectionRow, ConnectionStatus, SharedResources } from './types'
+import { SHAREABLE_RESOURCES } from './resources'
 
 type Subject = (AuthzSubject & { userId: string }) | null | undefined
 export type ManageError = 'forbidden' | 'support_mode' | 'not_found' | 'invalid_state'
@@ -29,6 +30,32 @@ export interface ConnectionSummary {
   consentBy: string
   /** Last API call by this app for this site; null = not used yet. */
   lastUsedAt: string | null
+  /** Allowed by the person, but the app has not finished connecting (no token yet). */
+  awaitingApp: boolean
+  /** What it reads, in plain terms: per resource, all public details or a selection, and whether people's names are included. */
+  reads: ReadsSummary[]
+}
+
+export interface ReadsSummary {
+  resource: string
+  scope: 'all' | 'some'
+  personal: boolean
+}
+
+/** Plain-language summary of a grant (no field counts on screen). */
+export function summarizeReads(resources: SharedResources): ReadsSummary[] {
+  const out: ReadsSummary[] = []
+  for (const [name, spec] of Object.entries(resources)) {
+    const def = (SHAREABLE_RESOURCES as Record<string, { public: readonly string[]; personal: readonly string[] } | undefined>)[name]
+    if (!def) continue
+    const fields = new Set(spec.fields)
+    out.push({
+      resource: name,
+      scope: def.public.every((f) => fields.has(f)) ? 'all' : 'some',
+      personal: def.personal.some((f) => fields.has(f)),
+    })
+  }
+  return out
 }
 
 import { PAUSED_BY_TENANT } from './manage-constants'
@@ -40,15 +67,18 @@ export async function listProjectConnections(
   deps: { store: ConnectionsStore },
 ): Promise<{ ok: true; connections: ConnectionSummary[] } | { ok: false; error: 'forbidden' }> {
   if (!subject || !can(subject, 'connections.manage', { kind: 'project', projectId })) return { ok: false, error: 'forbidden' }
-  const rows = await deps.store.listConnectionsForProject(projectId)
-  const out: ConnectionSummary[] = []
-  for (const r of rows) {
+  const rows = (await deps.store.listConnectionsForProject(projectId)).filter(
     // Defence in depth: a store bug returning another project's row is dropped.
-    if (r.project_id !== projectId) continue
     // Disconnected ones are history (audit log); connecting again starts fresh.
-    if (r.status === 'revoked') continue
-    const app = await deps.store.getAppById(r.app_id)
-    out.push({
+    (r) => r.project_id === projectId && r.status !== 'revoked',
+  )
+  const out = await Promise.all(rows.map(async (r): Promise<ConnectionSummary> => {
+    const [app, lastUsedAt, issued] = await Promise.all([
+      deps.store.getAppById(r.app_id),
+      deps.store.lastUsedAt(r.id),
+      r.status === 'active' ? deps.store.hasIssuedTokens(r.id) : Promise.resolve(true),
+    ])
+    return {
       id: r.id,
       appId: r.app_id,
       appName: app?.name ?? '—',
@@ -59,9 +89,11 @@ export async function listProjectConnections(
       connectedAt: r.created_at,
       consentAt: typeof r.consent.at === 'string' ? r.consent.at : r.created_at,
       consentBy: r.consent.by,
-      lastUsedAt: await deps.store.lastUsedAt(r.id),
-    })
-  }
+      lastUsedAt,
+      awaitingApp: !issued,
+      reads: summarizeReads(r.resources),
+    }
+  }))
   return { ok: true, connections: out }
 }
 

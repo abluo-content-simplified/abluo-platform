@@ -54,7 +54,7 @@ export function Checkbox({
       <span
         aria-hidden="true"
         className={`pointer-events-none grid size-5 place-items-center rounded-[0.3rem] border transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background peer-disabled:opacity-50 ${
-          on ? 'border-transparent bg-action text-action-foreground' : 'border-border bg-background'
+          on ? 'border-transparent bg-action text-action-foreground' : 'border-muted-foreground/60 bg-background peer-hover:border-foreground'
         }`}
       >
         {indeterminate ? (

@@ -143,7 +143,8 @@ export async function approveConnect(
 
   const { store } = deps
   const project = await store.getProject(input.projectId)
-  if (!project) return { ok: false, error: 'project_not_found' }
+  // An archived site cannot be connected (it is not offered either).
+  if (!project || project.status === 'inactive') return { ok: false, error: 'project_not_found' }
 
   const sandboxIds = deps.sandboxProjectIds ?? sandboxProjectIdsFromEnv()
   const sandbox = sandboxIds.includes(project.id)

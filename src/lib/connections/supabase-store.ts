@@ -276,6 +276,17 @@ export function createSupabaseConnectionsStore(): ConnectionsStore {
         return (data as { last_used_at: string } | null)?.last_used_at ?? null
       }),
 
+    hasIssuedTokens: (connectionId) =>
+      run(async (db) => {
+        const { count, error } = await db
+          .from('connection_tokens')
+          .select('id', { count: 'exact', head: true })
+          .eq('connection_id', connectionId)
+          .limit(1)
+        if (error) fail('hasIssuedTokens', error)
+        return (count ?? 0) > 0
+      }),
+
     audit: (entry: ConnectionAuditEntry) =>
       run(async (db) => {
         try {

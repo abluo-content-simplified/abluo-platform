@@ -2007,7 +2007,8 @@
       "status": {
         "active": "Attiva",
         "paused": "In pausa",
-        "needs_reconnect": "Da ricollegare"
+        "needs_reconnect": "Da ricollegare",
+        "awaiting": "In attesa dell’app"
       },
       "sandbox": "Prova",
       "actionsFor": "Azioni per {app}",
@@ -2020,14 +2021,16 @@
       "notice": {
         "pausedByYou": "In pausa: {app} non può leggere nulla finché non la riattivi.",
         "pausedByAbluo": "Messa in pausa da Abluo: {app} non è disponibile per ora.",
-        "needsReconnect": "{app} deve ricollegarsi. Apri {app} e avvia di nuovo il collegamento da lì."
+        "needsReconnect": "{app} deve ricollegarsi. Apri {app} e avvia di nuovo il collegamento da lì.",
+        "awaitingApp": "Hai dato il permesso a {app}. Inizia a leggere appena completa il collegamento dalla sua parte, di solito entro un minuto. Se non succede nulla, apri {app} e collegala di nuovo."
       },
       "facts": {
         "reads": "Legge",
-        "readsItem": "{what} ({count} dettagli)",
         "lastUsed": "Ultimo utilizzo",
         "never": "Non ancora usata",
-        "connected": "Collegata il"
+        "connected": "Collegata il",
+        "readsSome": "{what} (alcuni dettagli)",
+        "readsWithPeople": "{what}, inclusi i nomi delle persone"
       },
       "disconnectConfirm": {
         "title": "Scollegare {app}?",

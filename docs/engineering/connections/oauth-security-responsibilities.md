@@ -54,7 +54,7 @@ Each requested property has its own suite, driving the **real library** through 
 
 **Mutation check (2026-10-11):** removing any one of our checks (Connection status on access, client secret, reuse revocation, project match, our verifier check, our redirect check, support-mode refusal) makes at least one test fail.
 
-The in-memory store does not prove the SQL; the database invariants are proven by `supabase/verify/hardening-040.verify.mjs`. The step-6 cross-tenant API suite (D8.7) will run the same scenarios against a real database before the API is released.
+The in-memory store does not prove the SQL; the database invariants are proven by `supabase/verify/hardening-040.verify.mjs`. The step-6 cross-tenant API suite (D8.7, section 6) runs the same scenarios against the real services.
 
 ## 4. Step 4c — the screens (2026-10-12)
 
@@ -70,7 +70,24 @@ Copy in en/it/de (`clientDashboard.connect`, `clientDashboard.connections`, `adm
 
 **Connect from either side (ADR-031 D2).** Today the partner starts: it sends the person to `/connect/authorize` with the OAuth request. Starting from Abluo is designed in, not yet switched on: the Connected apps screen will list approved apps and send the person to the app's registered *start link* with the site; the partner then comes back to the same consent page with `project=<site slug>`, which pre-selects that site (already supported and tested — only sites the person manages can be pre-selected). What is missing is the start link itself: a `start_uri` column on `partner_apps` (next Connections migration) and the "Connect an app" list on the screen.
 
-## 5. Still open
+## 5. Step 6 — the cross-tenant API suite against the real services (D8.7)
+
+`src/lib/connections/__tests__/live/cross-tenant.live.test.ts`, run with `npm run verify:connections` (own config `vitest.live.config.ts`; never part of `npm test`). It runs the real Supabase store (service role, migration-040 tables), the real token / revoke / events handlers and real GROQ against a private Sanity dataset.
+
+- **Fixtures only.** Supabase: two tenants and three sites named `zz-cnv-<run>-…`, a throwaway user and app, all deleted at the end (and swept at the start if an earlier run crashed). Sanity: always the **`staging`** dataset — forced by the config; the suite refuses to start against `production`. No live website is read or written.
+- **Proves:** a person connects only the sites they manage; a connection reads exactly its own published, listed events — never a sibling site, another tenant, a draft or an unpublished draft edit, never a Sanity id, never another tenant's venue through a reference; unlisted / website-only / deleted arrive as removals of its own project only; only granted fields, personal data only when ticked; a resource not granted → 403, a request naming another project → 400; another tenant's controls cannot reach a connection; an archived site or a removed Events module → nothing read, and an archived site cannot be connected; pause / resume / revoke and the partner's own revoke apply on the very next request; every call metered to its own connection. The GROQ alone (raw, drafts-visible client) excludes drafts and other projects.
+- **Mutation-checked:** removing the drafts filter from the events query fails the suite.
+- Gate (D8.7): green before every release that touches the API. First green run: 2026-10-12 (11 tests, ~35 s).
+
+## 6. Fixes after the end-to-end run (2026-10-12)
+
+- Consent: archived (inactive) sites are not offered and cannot be connected (`consent-view.ts`, `approveConnect`).
+- Checkbox (shared component): the unticked box now has a visible border (WCAG 1.4.11 non-text contrast), everywhere it is used.
+- Connected apps: **"Waiting for the app"** until the app exchanges its code (`awaitingApp`), with a short explanation; before, it showed "Active" right after Allow.
+- Connected apps: what an app reads in plain words — "Events", "Events (some details)", "…, including people's names" — instead of a field count (`summarizeReads`).
+- Disconnect feels instant: the card disappears at once (restored if the server refuses); the action no longer renders the page twice (`revalidatePath` + `router.refresh`); tokens and codes end in parallel; the list loads per-app data in parallel.
+
+## 7. Still open
 
 - **Start from Abluo:** `partner_apps.start_uri` migration + "Connect an app" list (above).
 - **Lifecycle pauses (D8.5):** uninstalling Events, pausing the tenant or archiving the project should pause Connections automatically. Until then, step 5's API also checks module and project status per request.

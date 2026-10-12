@@ -102,6 +102,8 @@ export interface ConnectionsStore {
   touchToken(id: string, at: string): Promise<void>
   /** Most recent API use by any token of the connection (null = never used). */
   lastUsedAt(connectionId: string): Promise<string | null>
+  /** True once the app has exchanged its code (any token ever issued, live or not). */
+  hasIssuedTokens(connectionId: string): Promise<boolean>
 
   // audit (best-effort: never throws)
   audit(entry: ConnectionAuditEntry): Promise<void>

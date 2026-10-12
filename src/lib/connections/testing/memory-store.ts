@@ -201,6 +201,10 @@ export class MemoryConnectionsStore implements ConnectionsStore {
     return used.length ? used.sort().at(-1)! : null
   }
 
+  async hasIssuedTokens(connectionId: string) {
+    return [...this.tokens.values()].some((t) => t.connection_id === connectionId)
+  }
+
   async audit(entry: ConnectionAuditEntry) {
     this.audits.push(structuredClone(entry))
   }

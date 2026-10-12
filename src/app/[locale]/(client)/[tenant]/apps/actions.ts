@@ -6,7 +6,6 @@
  * then checks `connections.manage` on the connection's OWN project and refuses
  * support mode. A connection id from another site answers `not_found`.
  */
-import { revalidatePath } from 'next/cache'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { pauseConnection, resumeConnection, revokeConnection, type ManageResult } from '@/lib/connections/manage'
 import { createSupabaseConnectionsStore } from '@/lib/connections/supabase-store'
@@ -27,7 +26,8 @@ async function run(input: Input, fn: typeof pauseConnection | typeof resumeConne
   if (!row || row.project_id !== grant.projectId) return { ok: false, error: 'not_found' }
   const r: ManageResult = await fn(ctx, input.connectionId, { store })
   if (!r.ok) return r
-  revalidatePath(`/${input.locale}/${input.projectSlug}/apps`)
+  // No revalidatePath: the screen calls router.refresh() itself — doing both
+  // rendered the page twice and made every action feel slow.
   return { ok: true }
 }
 

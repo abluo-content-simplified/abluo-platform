@@ -10,8 +10,8 @@ import type { ConnectionRow, ConnectionStatus } from './types'
 /** Revoke every token and burn every unused code of a connection. Returns tokens revoked. */
 export async function endAllCredentials(store: ConnectionsStore, connectionId: string, at: Date): Promise<number> {
   const iso = at.toISOString()
-  const n = await store.revokeTokens({ connectionId }, iso)
-  await store.consumeCodesForConnection(connectionId, iso)
+  // Independent writes: run together (disconnect should feel instant).
+  const [n] = await Promise.all([store.revokeTokens({ connectionId }, iso), store.consumeCodesForConnection(connectionId, iso)])
   return n
 }
 

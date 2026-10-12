@@ -1,6 +1,6 @@
 # ADR-031 V1 step 5 — Events API for partners
 
-**Status:** built 2026-10-12, on dev. Not in production until the end-to-end run (below) passes.
+**Status:** built 2026-10-12, on dev. End-to-end run on tmz.it passed 2026-10-12; cross-tenant suite (D8.7) green 2026-10-12 (`npm run verify:connections`).
 
 ## What a partner gets
 
@@ -62,7 +62,7 @@ On dev.abluo.app: register "Test partner" on Partner apps → approve → connec
 
 ## Still open
 
-- Cross-tenant suite against a real database (D8.7, step 6) — same scenarios, gating the release.
+- ~~Cross-tenant suite against a real database (D8.7, step 6)~~ — done: `oauth-security-responsibilities.md` §5.
 - `fullDescription` (rich text as plain text + HTML) — additive later.
 - `GET /api/v1/venues` — the `eventVenue` resource; today venues travel inside `location`.
 - Location filters per Connection (V1.2).

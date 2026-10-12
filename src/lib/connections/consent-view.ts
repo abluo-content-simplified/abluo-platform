@@ -78,6 +78,9 @@ export async function buildConsentView(
 
   const projects: ConsentProject[] = []
   for (const p of eligible) {
+    // An archived (inactive) site is never offered — like the project switcher.
+    const ref = await deps.store.getProject(p.projectId)
+    if (!ref || ref.status === 'inactive') continue
     const live = await deps.store.findLiveConnection(v.app.id, p.projectId)
     projects.push({
       projectId: p.projectId,
@@ -87,6 +90,7 @@ export async function buildConsentView(
       shared: live ? structuredClone(live.resources) : null,
     })
   }
+  if (projects.length === 0) return { state: 'no_site', appName: v.app.name, cancelTo }
   projects.sort((a, b) => a.name.localeCompare(b.name))
 
   const hinted = params.project ? projects.find((p) => p.projectSlug === params.project) : undefined

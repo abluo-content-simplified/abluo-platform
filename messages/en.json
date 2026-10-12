@@ -2007,7 +2007,8 @@
       "status": {
         "active": "Active",
         "paused": "Paused",
-        "needs_reconnect": "Needs reconnecting"
+        "needs_reconnect": "Needs reconnecting",
+        "awaiting": "Waiting for the app"
       },
       "sandbox": "Test",
       "actionsFor": "Actions for {app}",
@@ -2020,14 +2021,16 @@
       "notice": {
         "pausedByYou": "Paused: {app} can’t read anything until you resume it.",
         "pausedByAbluo": "Paused by Abluo: {app} is temporarily unavailable.",
-        "needsReconnect": "{app} needs to connect again. Open {app} and start the connection from there."
+        "needsReconnect": "{app} needs to connect again. Open {app} and start the connection from there.",
+        "awaitingApp": "You allowed {app}. It starts reading as soon as it finishes connecting on its side — usually within a minute. If nothing happens, open {app} and connect again."
       },
       "facts": {
         "reads": "Reads",
-        "readsItem": "{what} ({count} details)",
         "lastUsed": "Last used",
         "never": "Not used yet",
-        "connected": "Connected on"
+        "connected": "Connected on",
+        "readsSome": "{what} (some details)",
+        "readsWithPeople": "{what}, including people’s names"
       },
       "disconnectConfirm": {
         "title": "Disconnect {app}?",

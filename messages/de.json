@@ -2007,7 +2007,8 @@
       "status": {
         "active": "Aktiv",
         "paused": "Pausiert",
-        "needs_reconnect": "Neu verbinden"
+        "needs_reconnect": "Neu verbinden",
+        "awaiting": "Wartet auf die App"
       },
       "sandbox": "Test",
       "actionsFor": "Aktionen für {app}",
@@ -2020,14 +2021,16 @@
       "notice": {
         "pausedByYou": "Pausiert: {app} kann nichts lesen, bis du die App fortsetzt.",
         "pausedByAbluo": "Von Abluo pausiert: {app} ist vorübergehend nicht verfügbar.",
-        "needsReconnect": "{app} muss sich neu verbinden. Öffne {app} und starte die Verbindung dort erneut."
+        "needsReconnect": "{app} muss sich neu verbinden. Öffne {app} und starte die Verbindung dort erneut.",
+        "awaitingApp": "Du hast {app} erlaubt. Sie beginnt zu lesen, sobald sie die Verbindung auf ihrer Seite abgeschlossen hat – meist innerhalb einer Minute. Passiert nichts, öffne {app} und verbinde sie erneut."
       },
       "facts": {
         "reads": "Liest",
-        "readsItem": "{what} ({count} Angaben)",
         "lastUsed": "Zuletzt verwendet",
         "never": "Noch nicht verwendet",
-        "connected": "Verbunden am"
+        "connected": "Verbunden am",
+        "readsSome": "{what} (einige Angaben)",
+        "readsWithPeople": "{what}, einschließlich Namen von Personen"
       },
       "disconnectConfirm": {
         "title": "{app} trennen?",

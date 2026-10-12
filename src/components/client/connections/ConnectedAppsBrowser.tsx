@@ -48,6 +48,22 @@ export function ConnectedAppsBrowser({
   const { toast, show } = useUndo()
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState<ConnectionSummary | null>(null)
+  // Disconnected cards disappear at once; restored if the server refuses.
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set())
+  const visible = connections.filter((c) => !hidden.has(c.id))
+
+  function disconnect(c: ConnectionSummary) {
+    setConfirm(null)
+    setHidden((h) => new Set(h).add(c.id))
+    void run(() => disconnectConnectionAction({ ...base, connectionId: c.id }), t('disconnected', { app: c.appName })).then((ok) => {
+      if (!ok)
+        setHidden((h) => {
+          const next = new Set(h)
+          next.delete(c.id)
+          return next
+        })
+    })
+  }
 
   async function run(action: () => Promise<ConnectionActionResult>, done: string): Promise<boolean> {
     if (busy) return false
@@ -82,6 +98,7 @@ export function ConnectedAppsBrowser({
 
   const notice = (c: ConnectionSummary): string | null => {
     if (c.status === 'needs_reconnect') return t('notice.needsReconnect', { app: c.appName })
+    if (c.awaitingApp) return t('notice.awaitingApp', { app: c.appName })
     if (c.status === 'paused') return c.statusReason === PAUSED_BY_TENANT ? t('notice.pausedByYou', { app: c.appName }) : t('notice.pausedByAbluo', { app: c.appName })
     return null
   }
@@ -91,11 +108,11 @@ export function ConnectedAppsBrowser({
       <PageHeader title={title} />
       <p className="max-w-2xl text-[0.9375rem] leading-6 text-muted-foreground">{t('intro')}</p>
 
-      {connections.length === 0 ? (
+      {visible.length === 0 ? (
         <EmptyState title={t('emptyTitle')} body={t('emptyBody')} />
       ) : (
         <ul className="grid gap-4 md:grid-cols-2">
-          {connections.map((c) => {
+          {visible.map((c) => {
             const items = menuFor(c)
             const note = notice(c)
             return (
@@ -104,7 +121,11 @@ export function ConnectedAppsBrowser({
                   <div className="flex min-w-0 flex-col gap-1.5">
                     <h2 className="truncate text-[1.0625rem] leading-6 font-semibold text-foreground">{c.appName}</h2>
                     <span className="flex flex-wrap gap-1.5">
-                      <Pill tone={TONE[c.status] ?? 'muted'}>{t(`status.${c.status}` as 'status.active')}</Pill>
+                      {c.awaitingApp ? (
+                        <Pill tone="outline">{t('status.awaiting')}</Pill>
+                      ) : (
+                        <Pill tone={TONE[c.status] ?? 'muted'}>{t(`status.${c.status}` as 'status.active')}</Pill>
+                      )}
                       {c.sandbox ? <Pill tone="muted">{t('sandbox')}</Pill> : null}
                     </span>
                   </div>
@@ -113,8 +134,12 @@ export function ConnectedAppsBrowser({
                 {note ? <p className="rounded-xl bg-muted px-3 py-2 text-sm leading-6 text-foreground">{note}</p> : null}
                 <dl>
                   <FactRow label={t('facts.reads')}>
-                    {Object.entries(c.resources)
-                      .map(([name, spec]) => t('facts.readsItem', { what: tRes(name as 'event'), count: spec.fields.length }))
+                    {c.reads
+                      .map((r) => {
+                        const what = tRes(r.resource as 'event')
+                        const label = r.scope === 'all' ? what : t('facts.readsSome', { what })
+                        return r.personal ? t('facts.readsWithPeople', { what: label }) : label
+                      })
                       .join(' · ')}
                   </FactRow>
                   <FactRow label={t('facts.lastUsed')}>
@@ -136,10 +161,7 @@ export function ConnectedAppsBrowser({
         body={t('disconnectConfirm.body', { app: confirm?.appName ?? '' })}
         confirmLabel={t('disconnect')}
         busy={busy}
-        onConfirm={() =>
-          confirm &&
-          void run(() => disconnectConnectionAction({ ...base, connectionId: confirm.id }), t('disconnected', { app: confirm.appName })).then(() => setConfirm(null))
-        }
+        onConfirm={() => confirm && disconnect(confirm)}
         onCancel={() => setConfirm(null)}
       />
 

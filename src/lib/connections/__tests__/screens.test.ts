@@ -3,6 +3,7 @@ import type { AuthzSubject } from '@/lib/authz/check'
 import { listPartnerApps, rotateAppSecret } from '../admin'
 import { buildConsentView } from '../consent-view'
 import { listProjectConnections, revokeConnection } from '../manage'
+import { SHAREABLE_RESOURCES } from '../resources'
 import { LOCAL_REDIRECT, P1A, P1B, P2, SANDBOX, abluoAdmin, editor, owner, setup } from './fixture'
 
 // ADR-031 V1 step 4c — the data behind the three screens. The screens only
@@ -27,6 +28,20 @@ describe('consent screen view', () => {
     expect(v.preselectedProjectId).toBeNull() // two choices: the person picks
     const single = await buildConsentView(withSlugs(owner('u1', P1A)), params, f.deps)
     expect(single.state === 'ready' && single.preselectedProjectId).toBe(P1A)
+  })
+
+  it('an archived (inactive) site is neither offered nor connectable', async () => {
+    const f = await setup()
+    const app = await f.newApp('TableRes')
+    const { params } = f.authorizeParams(app)
+    f.store.projects.get(P1B)!.status = 'inactive'
+    const v = await buildConsentView(withSlugs(owner('u1', P1A, P1B)), params, f.deps)
+    expect(v.state === 'ready' && v.projects.map((p) => p.projectId)).toEqual([P1A])
+    expect(v.state === 'ready' && v.preselectedProjectId).toBe(P1A)
+    const onlyArchived = await buildConsentView(withSlugs(owner('u1', P1B)), params, f.deps)
+    expect(onlyArchived.state).toBe('no_site')
+    const direct = await f.issueCode(app, owner('u1', P1B), P1B)
+    expect(direct).toMatchObject({ ok: false, error: 'project_not_found' })
   })
 
   it('started from Abluo: the site named in the link is pre-selected (only if the person manages it)', async () => {
@@ -111,6 +126,23 @@ describe('Connected apps screen data', () => {
     await revokeConnection(u, c.connectionId, f.deps)
     list = await listProjectConnections(u, P1A, f.deps)
     expect(list.ok && list.connections).toEqual([])
+  })
+
+  it('"waiting for the app" until the code is exchanged; what it reads in plain terms', async () => {
+    const f = await setup()
+    const app = await f.newApp('TableRes')
+    const u = owner('u1', P1A, P1B)
+    const allowed = await f.issueCode(app, u, P1A, { event: { fields: ['name', 'startDate', 'performers'] }, eventVenue: { fields: [...SHAREABLE_RESOURCES.eventVenue.public] } })
+    if (!allowed.ok) throw new Error(allowed.error)
+    let list = await listProjectConnections(u, P1A, f.deps)
+    expect(list.ok && list.connections[0]).toMatchObject({ status: 'active', awaitingApp: true })
+    expect(list.ok && list.connections[0].reads).toEqual([
+      { resource: 'event', scope: 'some', personal: true },
+      { resource: 'eventVenue', scope: 'all', personal: false },
+    ])
+    await f.exchange(app, allowed.code, allowed.verifier)
+    list = await listProjectConnections(u, P1A, f.deps)
+    expect(list.ok && list.connections[0].awaitingApp).toBe(false)
   })
 
   it('editors cannot list', async () => {
