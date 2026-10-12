@@ -2958,7 +2958,7 @@
     },
     "partners": {
       "title": "Partner-Apps",
-      "intro": "Apps, die einen Kunden bitten dürfen, eine Website zu verbinden (ADR-031). Nur freigegebene Apps können sich verbinden; eine gesperrte App pausiert sofort alle ihre Verbindungen.",
+      "intro": "Apps, die einen Kunden bitten dürfen, eine Website zu verbinden. Nur freigegebene Apps können sich verbinden; eine gesperrte App pausiert sofort alle ihre Verbindungen.",
       "register": "App registrieren",
       "registerTitle": "Partner-App registrieren",
       "emptyTitle": "Noch keine Partner-Apps",

@@ -2958,7 +2958,7 @@
     },
     "partners": {
       "title": "App partner",
-      "intro": "App autorizzate a chiedere a un cliente di collegare un sito (ADR-031). Solo le app approvate possono collegarsi; sospenderne una mette in pausa subito tutti i suoi collegamenti.",
+      "intro": "App autorizzate a chiedere a un cliente di collegare un sito. Solo le app approvate possono collegarsi; sospenderne una mette in pausa subito tutti i suoi collegamenti.",
       "register": "Registra app",
       "registerTitle": "Registra un’app partner",
       "emptyTitle": "Nessuna app partner",

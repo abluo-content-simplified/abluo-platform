@@ -2958,7 +2958,7 @@
     },
     "partners": {
       "title": "Partner apps",
-      "intro": "Apps allowed to ask a client to connect a website (ADR-031). Only approved apps can connect; suspending one pauses all its connections at once.",
+      "intro": "Apps allowed to ask a client to connect a website. Only approved apps can connect; suspending one pauses all its connections at once.",
       "register": "Register app",
       "registerTitle": "Register a partner app",
       "emptyTitle": "No partner apps yet",
