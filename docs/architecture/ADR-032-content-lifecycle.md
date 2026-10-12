@@ -1,0 +1,163 @@
+# ADR-032 — Content lifecycle: publish, schedule, unpublish, archive, restore, delete
+
+**Status:** Accepted (2026-10-12, Tom). Implementation phased (§6); nothing implemented at acceptance.
+**Builds on:** ADR-025 (client content editor), ADR-028 (roles & permissions, vocabulary), ADR-029 (tenant dashboard), ADR-031 (Connections — removals, tombstones, partner sync), ADR-022 (gallery module), the Publicly Routable Content pattern and the Schema Evolution Rules (CLAUDE.md), the 2026-08-14 rule (never migrate production data ahead of the reading code).
+**Related, kept separate:** `forms-deletion-retention-plan` (personal-data retention and erasure — §D10).
+**Depends on:** ADR-031 V1 step 5 (events API + `/api/webhooks/sanity-removals`) committed and deployed — at acceptance it is still uncommitted on `dev`, so the removals webhook cannot yet be live.
+
+## 1. Context
+
+Every editorial module removes content differently (audit 2026-10-12):
+
+| | Posts | Events | Galleries | Media | Pages / news (Studio) |
+|---|---|---|---|---|---|
+| Scheduled publish | `publishedAt` in future | — | — | n/a | — |
+| Unpublish now / later | "Take offline" = `expiresAt` (doc stays published) | only `visibility` | — | n/a | Sanity Unpublish; news `expiresAt` |
+| Archive / restore | — | — | — | — | — |
+| Permanent delete | incl. live posts (`blog.post.delete` + `blog.published.delete`) | draft only (dashboard) | refused while `in_use` | refused while referenced | anyone with Studio access |
+| Audit | none | none | none | none | none |
+
+Facts the design relies on:
+- Website routes are `force-dynamic`, `useCdn: false`: a date condition in GROQ is evaluated on every request.
+- `siteConfig.timeZone` (IANA) exists (`src/lib/time/zones.ts`).
+- Permissions are module-declared (`registry.ts`); writing includes publishing; no `publish` permission exists.
+- Sanity Growth plan: 90-day revision history; the latest published and draft versions are always kept. Custom roles are Enterprise-only → Studio cannot be restricted per action.
+- No `not-found.tsx` exists; tenant 404s render the Next.js default.
+- `admin_audit_log` (033) covers Abluo-admin actions only; client lifecycle actions are not logged.
+
+## 2. Decisions
+
+### D1 — Three independent concepts; no stored overloaded status
+| Concept | Fields (same names on every lifecycle type) |
+|---|---|
+| Publication window | `publishedAt`, `expiresAt` — UTC ISO. Existing names kept; UI: "Publish on" / "Unpublish on". |
+| Lifecycle | `archivedAt`, `archivedBy` — absent = active. |
+| Module-specific | event `eventStatus`, `visibility`, event dates, menu availability, … — untouched, never mixed in. |
+
+The user-facing status is **derived** (D4), never stored.
+
+### D2 — "Unpublish" never uses Sanity's Unpublish
+Abluo Unpublish = `expiresAt = now` on the document that stays published (today's post behaviour). Keeps `_id` / `publicId`, references (Sanity refuses to unpublish strongly-referenced docs), slug and history. Sanity Unpublish/Delete are used only by permanent deletion.
+
+### D3 — One public-visibility rule for every delivery path
+A GROQ fragment builder in `src/lib/lifecycle/` (pattern: `DS_FIELDS_SELECTION`):
+`<publishedAt rule> && (!defined(expiresAt) || expiresAt > now()) && !defined(archivedAt)`
+- `<publishedAt rule>`: `required` (posts, unchanged: `defined(publishedAt) && publishedAt <= now()`) or `optional` (types adopting later: `!defined(publishedAt) || publishedAt <= now()` → existing documents stay live with no migration).
+- Applies to **every public path**: list sections, detail routes, sitemap, hreflang, `generateMetadata` / OG / structured data, featured / related / "next" blocks, dereferenced references, category pages, the partner API, any future search or feed. Authenticated preview routes are exempt.
+- A test fails when a public query reads a lifecycle type without it; the test owns an inventory of delivery paths that new paths must join.
+- Visibility changes on the **first request after** the scheduled time; an already-open page does not update itself.
+
+### D4 — One status function
+`deriveStatus(published, draft, now)` → `draft | scheduled | published | unpublished | archived` plus `hasChanges`, `publishOn`, `unpublishOn`. Pure, unit-tested; every list, filter and badge uses it. Archived dominates; "published with an unpublish date" is a flag, not a state.
+
+### D5 — One lifecycle service, one permission guard
+`src/lib/lifecycle/service.ts`, generalised from `post-lifecycle.ts`, configured per module by a descriptor `{ type, permissions, publishedAtRule, dependencyCheck?, connected? }`. Operations: schedule, unpublish now, archive, restore, delete permanently. Each keeps today's guarantees: `assertModuleAction` first, ownership re-read (`not_found`, no probing), revision guard → `conflict`, `assertSingleSanityProject`, opaque errors, one audit row.
+All operation → permission mapping lives in one `lifecycleGuard`. Publishing a draft never takes lifecycle fields from the draft; publishing an archived item is refused.
+
+### D6 — State transitions
+| From → To | Rule |
+|---|---|
+| Draft → Published / Scheduled | explicit publish; optional `expiresAt` |
+| Published → Unpublished | now or at a future `expiresAt` |
+| Unpublished → Published / Scheduled | explicit action only |
+| Scheduled / Published / Unpublished → Archived | `archivedAt = now`; schedules inert (archive dominates) |
+| Archived → Unpublished (Restore) | unset `archivedAt`; `expiresAt = now` (or keep an earlier one); unset a future `publishedAt` — **always Unpublished, old schedules never reactivate** |
+| Draft (never published) → Deleted | allowed directly (`<x>.delete`) |
+| Draft → Archived | not allowed |
+| Archived → Deleted | permanent delete: permission, explicit confirmation, dependency check |
+| Scheduled / Published / Unpublished → Deleted | **refused — archive first** |
+
+Concurrent edits are caught by revision guards. Scheduling has no job to retry; what can fail (date validation, time-zone conversion, delivery queries) is covered by tests.
+
+### D7 — Permissions (ADR-028 vocabulary, no new verbs)
+| Operation | Permission |
+|---|---|
+| Edit drafts, publish, schedule, unpublish, cancel schedule, archive, restore | `<m>.<x>.write` |
+| View an item's Activity | `<m>.<x>.read` |
+| Delete a never-published draft | `<m>.<x>.delete` |
+| Delete permanently (archived only) | `<m>.<x>.delete` — Owner, Site admin |
+
+`blog.published.delete` becomes redundant (folded into `blog.post.delete`; the id stays accepted). No separate `publish` permission now; adding one later is a change to `lifecycleGuard` and the manifests. Enforced server-side; the UI only hides.
+
+### D8 — Time
+Store UTC. Show and enter dates in `siteConfig.timeZone` (an event venue zone keeps precedence for event dates, ADR-031). DST: a non-existent local time moves to the next valid minute; an ambiguous one takes the first occurrence; the UI shows the resolved time with its offset.
+
+### D9 — Version history and audit
+- **History = Sanity.** Guaranteed: the current published + draft of every non-deleted document (why archive beats delete). Best-effort: all revisions for 90 days. After permanent delete, recovery is possible only within that window by Abluo — the UI says so; it never claims "irreversible". No custom versioning.
+- **Audit = new `content_audit_log`** (Supabase), not `admin_audit_log` (different audience, actors and retention). Columns: `id, occurred_at, project_id, content_type, content_id (publicId else _id), action, actor_kind (user|system|studio), actor_id, outcome (ok|refused|failed), detail jsonb` — non-PII only, never content. Server-only (RLS on, no grants), best-effort writer, 5-year retention, survives content deletion, `actor_id` `on delete set null`.
+- Actions: `created, published, scheduled, schedule_changed, unpublished, archived, restored, deleted, delete_refused`. "Scheduled operation executed / failed" arrive with ADR-031 V1.1 push.
+- **Per-item Activity in the dashboard (now):** read-only list — action, who, when (project time zone), newest first. Actors: person's name, "Abluo support" (support mode), "Abluo team" (Studio, via a Sanity webhook). Publication boundaries shown from dates ("Went offline · 1 Nov 2026, 11:00"). Localised. Later: filters, project-wide activity screen.
+
+### D10 — Editorial lifecycle ≠ personal data
+The lifecycle service accepts only editorial Sanity types. Form submissions, inquiries, registrations and contacts follow their own retention and erasure (`forms-deletion-retention-plan`). The Submissions status "archived" is a workflow status, not D1's archive, and never extends retention. Editorial items containing personal data can always be permanently deleted by Owner / Site admin (archive → delete); audit rows hold no personal data.
+
+### D11 — Connected applications (ADR-031)
+Only content exposed through the partner API gets external removal handling (today `event`; `connected` in the descriptor). Internal types get no tombstones.
+
+**Incremental sync detects publication boundaries.** Window = `(cursor, now − settle]`. An item is returned when any of `_updatedAt`, `publishedAt`, `expiresAt`, `archivedAt` falls in the window; the latest of those ≤ window end is its effective change time, which orders pages and becomes the next cursor (exactly-once paging preserved). Items are returned in their state at window end:
+- became public → full item;
+- became unavailable (expired, archived, not yet public, unlisted, websiteOnly) → `{ id, removed: true, reason }` even if `_updatedAt` did not change; new reasons `unpublished`, `archived`;
+- published and expired between two polls → one removal (a removal for an unknown id is a no-op by contract);
+- schedule edits move `_updatedAt` and are returned with their new state;
+- late polls lose nothing — boundaries come from stored dates.
+
+**No duplicate or contradictory signals** (enforced by integration logic): one row per item per response, computed from final state; tombstones upserted per `(project_id, resource, public_id)`; the API checks the live document before the tombstone, so a republished item is never reported removed. Push (V1.1): one emitter for webhook and sweep, idempotency key `public_id + transition + effective time`, drops a removal if the last state sent to that Connection is already removed.
+
+### D12 — Unavailable content: HTTP and visitor experience
+Scheduled, unpublished, archived and deleted URLs return **404** and render the site's branded unavailable page inside the normal layout (navigation, footer, design system):
+- "This page isn't available."
+- "The page may have moved or may no longer be available. You can continue exploring the website using the links below."
+- "Go to homepage", plus "Browse articles" / "Browse events" / "Browse news" when the route identifies the type and that listing exists.
+- Never exposes the item or its lifecycle state; identical to "never existed".
+- One `not-found.tsx` in the `[tenant]` segment; strings from the website locale dictionaries; applies to every tenant 404.
+- No automatic redirect. Editors who deliberately replace content add an explicit redirect via the existing `redirectFrom`. Unavailable content leaves every public discovery channel (D3). Slugs stay reserved while a document exists, so restore + republish brings the same URL back.
+
+### D13 — Module rules
+- **Events:** event date, `eventStatus`, `visibility`, publication window and archive are independent. **Past events are never archived automatically.** `expiresAt` on events is optional and explicit.
+- **Galleries:** archiving refused while used by **public** content; the editor sees where. References from drafts or archived content are kept and don't block. Permanent delete keeps today's stricter rule (any reference blocks it).
+- **Media Library:** no archive; delete keeps the reference check.
+- **Menu (new):** adopts the lifecycle from day one.
+
+### D14 — Studio
+Studio is an Abluo-staff surface and can't be permission-restricted on Growth, so its safeguards are guardrails: for lifecycle types `document.actions` replaces Delete with Archive and Unpublish with Abluo Unpublish, and offers Delete only on archived or never-published documents. Studio lifecycle changes reach the Activity log via a Sanity webhook. The security boundary remains Sanity membership.
+
+## 3. Migration and compatibility
+- Additive only; no document is rewritten. Absent `archivedAt` = active; absent window fields on non-post types = live; posts keep their semantics.
+- Reading code ships first (dev → preview → main); Studio fields/actions after. **Nothing is archived in production until Phase 1 is on `main`** — older code ignores `archivedAt`.
+- Visible changes: live posts must be archived before deletion; "Offline" becomes "Unpublished"; Archive appears; branded 404; Activity starts empty on rollout day.
+- Partner API: new removal reasons are additive; if the contract's `reason` enum is closed, it is versioned per ADR-031.
+- Rollback: revert code; the migration only adds a table.
+
+## 4. Rejected alternatives
+- **A single stored `status` field** — mixes publication, archive and scheduling; every module would grow its own variants.
+- **Sanity Scheduled Drafts / Content Releases for scheduling** — publish whole versions, cannot express "go offline at T" on this model, live in Studio, add release documents to permissions and history.
+- **Archive = Sanity Unpublish + flag** — breaks references and partner identity.
+- **Extending `admin_audit_log`** — different audience, actors and retention.
+- **Custom versioning** — Sanity history meets the need; archive covers long-term keeping.
+- **A separate publish permission now** — no client needs it; ADR-028 defers advanced roles.
+
+## 5. Consequences
+- One place to change visibility, status and permissions for all editorial modules.
+- New delivery paths must register with the predicate test.
+- Phase 1 is larger than "Menu prerequisites" alone: it also carries the 404 page, Activity and the partner sync fix.
+
+## 6. Implementation plan
+
+**Phase 0 — gates (no code):** ADR-031 V1 step 5 committed and deployed; removals webhook registered in Sanity and verified (test delete on dev → tombstone row).
+
+**Phase 1 — foundation (before Menu):**
+1. `src/lib/lifecycle/` pure core: `deriveStatus`, public-visibility builder, time-zone conversion + validation. Tests: status matrix, DST gaps/overlaps, validation.
+2. Predicate applied to every in-scope delivery path + coverage test with path inventory.
+3. Branded unavailable page (D12).
+4. Migration `content_audit_log` + writer + per-item Activity; Studio webhook into it.
+5. Lifecycle service + `lifecycleGuard`; posts re-pointed (only change: delete after archive).
+6. Partner API: removal reasons + boundary-aware sync (D11).
+7. Shared dashboard pieces: status badge, filters (All / Draft / Scheduled / Published / Unpublished / Archived), Publication settings (Publish on / Unpublish on / time zone), Archive · Restore · Delete permanently pattern (delete separated, confirm with title).
+Acceptance: posts behave as today except delete; archive/restore keeps id, slug, references; every registered path hides unavailable content; a late-polling partner receives every removal; 404 page shows no item data and is localised.
+
+**Phase 2 — Menu module** on the foundation.
+**Phase 3 — Events and galleries adoption.**
+**Phase 4 — Studio guardrails.**
+**Later (optional):** revision view/restore in the dashboard; pages/news in the dashboard; V1.1 push sweep + execution audit; project-wide activity; 410 for deleted URLs; separate publish permission.
+
+Verification follows `docs/engineering/client-dashboard/verification.md` for every dashboard change; releases follow `docs/release-workflow.md`.
