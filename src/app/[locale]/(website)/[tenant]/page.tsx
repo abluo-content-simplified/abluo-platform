@@ -67,6 +67,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const pageOgImage = homePage?.ogImage?.asset ? ogImageUrl(homePage.ogImage as never) : undefined
 
   return {
+    // ── Every relative metadata URL resolves against this ────────────────────
+    // Next infers metadataBase when it is unset, and on a multi-tenant project
+    // it infers ONE host for all of them: every site advertised its generated
+    // card on `https://www.ameliez.com/...`, i.e. one client's page pointing at
+    // another client's domain. Pinning it to this tenant's canonical origin is
+    // what keeps a relative metadata URL on the right site.
+    //
+    // Absolute URLs (an uploaded Sanity image) ignore metadataBase, which is
+    // why only the generated card was affected.
+    ...(origin ? { metadataBase: new URL(origin) } : {}),
     title: metaTitle,
     description: metaDescription,
     alternates: seoAlternates(origin, canonical, languages, {
@@ -95,7 +105,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         const url =
           pageOgImage ??
           (config?.openGraphImage?.asset ? ogImageUrl(config.openGraphImage as never) : undefined)
-        return url ? { images: [{ url, width: 1200, height: 630 }] } : {}
+        if (url) return { images: [{ url, width: 1200, height: 630 }] }
+        // No custom domain → no metadataBase → the generated card's relative
+        // URL would resolve against whatever host Next infers, which is some
+        // other tenant's. An empty array is an OWN `images` property, so it
+        // suppresses the file convention: no card beats a wrong one.
+        return origin ? {} : { images: [] }
       })(),
     },
   }
