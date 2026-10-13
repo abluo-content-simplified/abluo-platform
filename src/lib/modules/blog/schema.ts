@@ -1,5 +1,6 @@
 import { defineType, defineField, defineArrayMember } from 'sanity'
 import { CategorySelectInput } from '@/lib/sanity/fields/CategorySelectInput'
+import { PUBLISHING_GROUP, publishingStatusField, publishOnField, unpublishOnField, archivedFields } from '@/lib/sanity/fields/publishing'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField } from '@/lib/sanity/fields/shared'
 
 // ── Blog module — Sanity schema types ─────────────────────────────────────────
@@ -356,8 +357,8 @@ const postType = defineType({
     { name: 'media', title: 'Media' },
     { name: 'relations', title: 'Relations' },
     { name: 'seo', title: 'SEO' },
-    { name: 'settings', title: 'Settings' },
-    { name: 'redirects', title: 'Redirects' },
+    // ADR-032 A22 — every "when and how is this visible" field in one tab.
+    PUBLISHING_GROUP,
   ],
   fields: [
     projectSlugField,
@@ -381,7 +382,7 @@ const postType = defineType({
       name: 'redirectFrom',
       title: 'Old Slugs (Redirects)',
       type: 'redirectFrom',
-      group: 'redirects',
+      group: 'seo',
       description: 'Fill these only when you rename a slug. Old URLs here will 301-redirect to the current slug.',
     }),
     // ADR-025 D4 — asked by the client-dashboard wizard (step "Give your story a title").
@@ -400,13 +401,11 @@ const postType = defineType({
       description: 'Short summary shown in article listings and as the default SEO description',
     }),
     defineField({ name: 'body', title: 'Body', type: 'localizedPortableText', group: 'content' }),
-    defineField({
-      name: 'publishedAt',
-      title: 'Go Live Date',
-      type: 'datetime',
-      group: 'content',
-      description: 'The post becomes visible on the website at this date and time. Leave empty to keep it as a draft.',
-    }),
+
+    // ── Publishing (ADR-032 A22) ──────────────────────────────────────────────
+    publishingStatusField('required'),
+    publishOnField('The post appears on the website from this date and time. Without it, the post is never shown.'),
+    unpublishOnField('Optional. The post comes off the website at this date and time. Leave empty to keep it online.'),
 
     // ── Media ─────────────────────────────────────────────────────────────────
     defineField({
@@ -543,48 +542,22 @@ const postType = defineType({
       description: 'Social sharing image — 1200 × 630px recommended. Falls back to Cover Image, then to the global OG image.',
     }),
 
-    // ── Settings ──────────────────────────────────────────────────────────────
-    defineField({
-      name: 'expiresAt',
-      title: 'Expiry Date',
-      type: 'datetime',
-      group: 'settings',
-      description: 'Optional. The post is automatically hidden from the website after this date. Leave empty to keep it live indefinitely.',
-      // ADR-025 D4/D5 — the dashboard's "Take offline automatically" writes this.
-      validation: (Rule) =>
-        Rule.custom((value, context) => {
-          const publishedAt = (context.document as { publishedAt?: string } | undefined)?.publishedAt
-          if (value && publishedAt && new Date(value as string) <= new Date(publishedAt)) {
-            return 'Must be after the go-live date.'
-          }
-          return true
-        }),
-    }),
-    // ADR-032 D6 — written only by the dashboard's Archive / Restore.
-    defineField({
-      name: 'archivedAt',
-      title: 'Archived at',
-      type: 'datetime',
-      group: 'settings',
-      readOnly: true,
-      description: 'Set when the post is archived from the dashboard. Archived posts never appear on the website; restore them from the dashboard.',
-    }),
-    defineField({ name: 'archivedBy', title: 'Archived by', type: 'string', group: 'settings', readOnly: true, hidden: true }),
     defineField({
       name: 'featured',
-      title: 'Featured Article',
+      title: 'Featured',
       type: 'boolean',
-      group: 'settings',
+      group: PUBLISHING_GROUP.name,
       initialValue: false,
       description: 'Pin this article at the top of the homepage, blog overview, and landing pages',
     }),
+    ...archivedFields(),
     // Call to action at the end of the post — the client's choice among the
     // project's callToAction documents (ADR-027). Absent = default.
     defineField({
       name: 'cta',
       title: 'Call to action',
       type: 'object',
-      group: 'settings',
+      group: 'content',
       description: 'Which of the website\u2019s calls to action appears at the end of this post. Empty = the website default.',
       fields: [
         defineField({

@@ -290,3 +290,25 @@ Lists no longer derive status in GROQ: the client and admin dashboards read `pub
 
 ### A21 — Lists show a change at once
 Lifecycle batch results return the post's new live state and the revision they replaced; the row shows it until the refreshed list carries a newer revision (`src/lib/client/posts-overlay.ts`). Fixes the row that updated only after a reload.
+
+---
+
+## Amendment 2026-10-13 (5) — the Studio Publishing tab (standard for every lifecycle type)
+
+**Status:** Accepted (Tom, 2026-10-13). Implemented for **posts** and **news**; **events** adopt it in Phase 3, the **Catalogue** (ADR-033) follows it from the start.
+
+### A22 — One "Publishing" tab in Studio
+Every field about *when and how a document is visible* lives in one Studio tab named **Publishing**, in this order, with the dashboard's words (A16):
+
+1. **Status** — read-only line (`publishingStatus`, never stored). Describes the *published* version — what the website shows — via the same `deriveStatus` as the dashboard, with dates in the site's time zone (`siteConfig.timeZone`). It also says when edited dates are waiting for Publish.
+2. **Publish on** (`publishedAt`).
+3. **Unpublish on** (`expiresAt`) — optional; must be after Publish on, and the message says so with the date (that rule is what blocks Publish).
+4. Type-specific visibility fields — **Featured**; for events also Visibility (listed / unlisted) and the home / live-page featuring windows.
+5. **Archived** (`archivedAt`) — read-only, hidden unless set. Archiving is an action (dashboard), never a date anyone types; there is no "archive date".
+
+Rules:
+- **Field names never change** — only titles, descriptions and the tab. No data migration; dashboard, websites and partner API are unaffected.
+- No "Settings" tab for these fields. Content-like choices go to **Content** (e.g. the post's call to action); old slugs (redirects) go to **SEO**.
+- A type's *own* dates are not publishing dates: an event's start / end / schedule stay in an **Event** tab, so "when is the event" and "when is the page visible" are never mixed.
+- Building blocks: `src/lib/sanity/fields/publishing.ts` (`PUBLISHING_GROUP`, `publishingStatusField(rule)`, `publishOnField`, `unpublishOnField`, `archivedFields`), `publishing-summary.ts` (pure, tested), `PublishingStatusInput.tsx`. Pass the type's `publishedAtRule` (`LIFECYCLE_PUBLIC_RULES`) to `publishingStatusField`.
+- Test: `src/lib/sanity/fields/__tests__/publishing-tab.test.ts` — add each new lifecycle type to the "Publishing tab" block.

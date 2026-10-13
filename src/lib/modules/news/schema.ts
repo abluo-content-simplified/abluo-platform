@@ -1,6 +1,7 @@
 import { defineType, defineField, defineArrayMember } from 'sanity'
 import { CategorySelectInput } from '@/lib/sanity/fields/CategorySelectInput'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField } from '@/lib/sanity/fields/shared'
+import { PUBLISHING_GROUP, publishingStatusField, publishOnField, unpublishOnField } from '@/lib/sanity/fields/publishing'
 
 // ── News module — Sanity schema types ─────────────────────────────────────────
 //
@@ -306,8 +307,8 @@ const newsArticleType = defineType({
     { name: 'media', title: 'Media' },
     { name: 'relations', title: 'Relations' },
     { name: 'seo', title: 'SEO' },
-    { name: 'settings', title: 'Settings' },
-    { name: 'redirects', title: 'Redirects' },
+    // ADR-032 A22 — every "when and how is this visible" field in one tab.
+    PUBLISHING_GROUP,
   ],
   fields: [
     projectSlugField,
@@ -331,7 +332,7 @@ const newsArticleType = defineType({
       name: 'redirectFrom',
       title: 'Old Slugs (Redirects)',
       type: 'redirectFrom',
-      group: 'redirects',
+      group: 'seo',
       description: 'Fill these only when you rename a slug. Old URLs here will 301-redirect to the current slug.',
     }),
     defineField({
@@ -342,13 +343,11 @@ const newsArticleType = defineType({
       description: 'Short summary shown in news listings and as the default SEO description',
     }),
     defineField({ name: 'body', title: 'Body', type: 'localizedPortableText', group: 'content' }),
-    defineField({
-      name: 'publishedAt',
-      title: 'Go Live Date',
-      type: 'datetime',
-      group: 'content',
-      description: 'The news item becomes visible on the website at this date and time. Leave empty to keep it as a draft.',
-    }),
+
+    // ── Publishing (ADR-032 A22) ──────────────────────────────────────────────
+    publishingStatusField('required'),
+    publishOnField('The news item appears on the website from this date and time. Without it, it is never shown.'),
+    unpublishOnField('Optional. The item comes off the website at this date and time, useful for time-limited announcements. Leave empty to keep it online.'),
 
     // ── Media ─────────────────────────────────────────────────────────────────
     defineField({
@@ -403,19 +402,11 @@ const newsArticleType = defineType({
       description: 'Social sharing image — 1200 × 630px recommended. Falls back to Cover Image, then to the global OG image.',
     }),
 
-    // ── Settings ──────────────────────────────────────────────────────────────
-    defineField({
-      name: 'expiresAt',
-      title: 'Expiry Date',
-      type: 'datetime',
-      group: 'settings',
-      description: 'Optional. The item is automatically hidden from the website after this date — useful for time-limited announcements. Leave empty to keep it live indefinitely.',
-    }),
     defineField({
       name: 'featured',
       title: 'Featured',
       type: 'boolean',
-      group: 'settings',
+      group: PUBLISHING_GROUP.name,
       initialValue: false,
       description: 'Pin this item at the top of news listings',
     }),
