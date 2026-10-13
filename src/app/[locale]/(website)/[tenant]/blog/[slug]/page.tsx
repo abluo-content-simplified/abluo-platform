@@ -1,5 +1,6 @@
 import { PostCallToAction } from '@/components/blog/PostCallToAction'
 import type { Metadata } from 'next'
+import { unavailableMetadata } from '@/lib/lifecycle/unavailable-metadata'
 import { notFound, permanentRedirect } from 'next/navigation'
 import { isProduction, isDev } from '@/lib/deployment'
 import { tenantClient } from '@/lib/sanity/client'
@@ -51,6 +52,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     fetchForTenant<Post>(postBySlugQuery, { slug, locale: locale as SupportedLocale, defaultLocale, charsPerMinute: DEFAULT_CHARS_PER_MINUTE }),
     fetchForTenant<string | null>(projectDomainQuery, {}),
   ])
+
+  // ADR-032 D12 — not public (or never existed): neutral, identical metadata.
+  if (!post) return unavailableMetadata(locale)
 
   const origin = canonicalOrigin(customDomain)
   const currentSlug = post?.slugMap?.[locale as SupportedLocale]?.current ?? slug

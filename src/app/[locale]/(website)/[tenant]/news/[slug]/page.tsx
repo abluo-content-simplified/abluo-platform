@@ -14,6 +14,7 @@
  */
 
 import type { Metadata } from 'next'
+import { unavailableMetadata } from '@/lib/lifecycle/unavailable-metadata'
 import { notFound, permanentRedirect } from 'next/navigation'
 import { isProduction, isDev } from '@/lib/deployment'
 import { tenantClient, fetchDesignSystemById } from '@/lib/sanity/client'
@@ -76,6 +77,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }),
     fetchForTenant<string | null>(projectDomainQuery, {}),
   ])
+
+  // ADR-032 D12 — not public (or never existed): neutral, identical metadata.
+  if (!article) return unavailableMetadata(locale)
 
   const origin = canonicalOrigin(customDomain)
   const currentSlug = article?.slugMap?.[locale as SupportedLocale]?.current ?? slug

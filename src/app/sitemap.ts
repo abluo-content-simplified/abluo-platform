@@ -6,6 +6,7 @@ import { canonicalUrl } from '@/lib/seo/canonical'
 import { normalizeHost } from '@/lib/tenancy/host-scope'
 import { withImages } from '@/lib/seo/sitemap-images'
 import { HAS_NEWS_INDEX_PROJECTION, newsIndexSitemapEntries } from '@/lib/seo/sitemap-news'
+import { SITEMAP_EVENTS_QUERY, SITEMAP_HOME_IMAGES_QUERY, SITEMAP_NEWS_QUERY, SITEMAP_PAGES_QUERY, SITEMAP_POSTS_QUERY } from '@/lib/seo/sitemap-queries'
 
 // ─── projectSlug → URL tenant slug ───────────────────────────────────────────
 // There is no longer a map here. This was `PROJECT_TO_TENANT`, the reverse of
@@ -65,15 +66,6 @@ interface NewsArticleSitemapData {
   projectSlug: string
   slug: Record<string, { current: string } | undefined>
 }
-
-// ── Gallery images (ADR-022 §7) ──────────────────────────────────────────────
-// The photos of every Photo Gallery section on a page — composed galleries and
-// the legacy single gallery — once each. Raw CDN originals: no query string, so
-// nothing needs XML-escaping in the sitemap.
-const GALLERY_SECTION_IMAGES = /* groq */ `array::compact(array::unique(
-  sections[_type == "photoGallerySection"].galleries[]->items[].mediaAsset->image.asset->url
-  + sections[_type == "photoGallerySection"].gallery->items[].mediaAsset->image.asset->url
-))`
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Never expose a sitemap on non-production environments. This alone already
@@ -167,43 +159,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // Fetch all published pages, events, posts, and news with their per-locale slugs.
     const [pages, events, posts, newsArticles, homeImages] = await Promise.all([
-      sanityClient.fetch<PageSitemapData[]>(
-        // The home page is already emitted as the bare locale URL above; listing
-        // it again under its slug (/en/home) named a duplicate of the home page.
-        //
-        // A page marked `noindex` is excluded too. It carries a robots noindex
-        // meta, and listing it here sent search engines a contradiction: "index
-        // this URL" from the sitemap, "do not index" from the page. Same filter
-        // llms.txt applies, so the two never disagree about which pages exist.
-        // `noindex` is a `page`-only field; events, posts and news have none.
-        `*[_type == "page" && defined(projectSlug) && coalesce(pageType, "") != "home" && !(noindex == true)] { projectSlug, slug, "images": ${GALLERY_SECTION_IMAGES} }`
-      ),
-      sanityClient.fetch<EventSitemapData[]>(
-        // ADR-031 — unlisted events are reachable by link only and carry a
-        // robots noindex; listing them here would contradict that.
-        `*[_type == "event" && defined(projectSlug) && (!defined(visibility) || visibility != "unlisted")] { projectSlug, slug }`
-      ),
-      sanityClient.fetch<PostSitemapData[]>(
-        `*[_type == "post" && defined(projectSlug) && defined(publishedAt) && publishedAt <= now() && (!defined(expiresAt) || expiresAt > now())] { projectSlug, slug, "images": gallery->items[].mediaAsset->image.asset->url }`
-      ),
-      // News items (ADR-020). Expired items are excluded as well as unpublished
-      // ones: a news item past its expiry is removed from the website, so
-      // advertising it in the sitemap would point search engines at a 404.
-      sanityClient.fetch<NewsArticleSitemapData[]>(
-        `*[
-          _type == "newsArticle"
-          && defined(projectSlug)
-          && defined(publishedAt)
-          && publishedAt <= now()
-          && (!defined(expiresAt) || expiresAt > now())
-        ] { projectSlug, slug }`
-      ),
-      // Gallery photos on each project's home page. The home page is emitted as
-      // the bare locale URL, not from the pages list above, so its images are
-      // fetched separately and attached there.
-      sanityClient.fetch<HomeImagesSitemapData[]>(
-        `*[_type == "page" && defined(projectSlug) && pageType == "home"] { projectSlug, "images": ${GALLERY_SECTION_IMAGES} }`
-      ),
+      // Queries and their rationale: @/lib/seo/sitemap-queries (ADR-032 D3).
+      sanityClient.fetch<PageSitemapData[]>(SITEMAP_PAGES_QUERY),
+      sanityClient.fetch<EventSitemapData[]>(SITEMAP_EVENTS_QUERY),
+      sanityClient.fetch<PostSitemapData[]>(SITEMAP_POSTS_QUERY),
+      sanityClient.fetch<NewsArticleSitemapData[]>(SITEMAP_NEWS_QUERY),
+      sanityClient.fetch<HomeImagesSitemapData[]>(SITEMAP_HOME_IMAGES_QUERY),
     ])
 
     const homeImagesByProject = new Map<string, string[]>()

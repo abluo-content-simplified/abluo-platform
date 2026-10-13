@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { publicFilterFor } from '@/lib/lifecycle/public-types'
 import { MODULE_REGISTRY } from '../registry'
 import { newsSchemaTypes } from '../news/schema'
 import { SECTION_MAP, isSectionTypeAvailable } from '../sections'
@@ -78,7 +79,8 @@ describe('news module — New Section Checklist', () => {
   it('projects its hand-picked array in the shared sections projection', () => {
     // articleIds is the one field newsListingSection does not share with
     // blogListingSection. Missing it silently breaks "Manual selection".
-    expect(queries.PAGE_SECTIONS_PROJECTION).toContain('"articleIds": articles[]->._id')
+    // Filtered to public articles (ADR-032 D3).
+    expect(queries.PAGE_SECTIONS_PROJECTION).toContain(`"articleIds": articles[${publicFilterFor('newsArticle', '@->')}]->._id`)
   })
 
   it('has initial value templates for its project-owned documents', () => {

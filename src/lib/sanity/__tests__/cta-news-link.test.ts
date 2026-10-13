@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { resolveCta, prefixCtaHref, ctaInternalPath, NEWS_ROUTE_SEGMENT } from '../cta'
+import { publicFilterFor } from '@/lib/lifecycle/public-types'
 import { resolveNavLink } from '../nav-links'
 import { CTA_FIELDS } from '../queries'
 import { resolveHeaderCtaConfig } from '@/lib/modules/config'
@@ -65,7 +66,8 @@ describe('CTA_FIELDS projects the news article slug, project-scoped and per loca
     const lookups = CTA_FIELDS.match(/\*\[_type == "newsArticle"[^\]]*\]/g) ?? []
     expect(lookups).toHaveLength(2)
     for (const l of lookups) {
-      expect(l).toBe('*[_type == "newsArticle" && ^.newsArticleRef._ref == _id && projectSlug == $projectSlug]')
+      // ADR-032 D3 — a CTA never links to a news item that is not public.
+      expect(l).toBe(`*[_type == "newsArticle" && ^.newsArticleRef._ref == _id && projectSlug == $projectSlug && ${publicFilterFor('newsArticle')}]`)
     }
     expect(CTA_FIELDS).not.toMatch(/newsArticleRef->/)
   })

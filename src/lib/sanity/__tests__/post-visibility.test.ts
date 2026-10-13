@@ -1,7 +1,6 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import * as Q from '../queries'
+import { SITEMAP_POSTS_QUERY } from '@/lib/seo/sitemap-queries'
 
 /**
  * W1 — a post is on the website only while it is live (ADR-025 D5):
@@ -26,9 +25,8 @@ describe('W1 — scheduled and expired posts never reach the website', () => {
   }
 
   it('sitemap', () => {
-    const src = readFileSync(join(process.cwd(), 'src/app/sitemap.ts'), 'utf8')
-    const postQuery = src.split('\n').find((l) => l.includes('_type == "post"')) ?? ''
-    for (const clause of LIVE) expect(postQuery).toContain(clause)
+    // Sitemap reads live in @/lib/seo/sitemap-queries since ADR-032 D3.
+    for (const clause of LIVE) expect(SITEMAP_POSTS_QUERY).toContain(clause)
   })
 })
 

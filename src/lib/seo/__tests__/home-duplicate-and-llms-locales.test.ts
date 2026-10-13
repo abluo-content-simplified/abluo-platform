@@ -16,7 +16,7 @@ const read = (p: string) => readFileSync(join(ROOT, p), 'utf8')
 
 const SLUG_ROUTE = 'src/app/[locale]/(website)/[tenant]/[...slug]/page.tsx'
 const LLMS_ROUTE = 'src/app/llms.txt/route.ts'
-const SITEMAP = 'src/app/sitemap.ts'
+const SITEMAP = 'src/lib/seo/sitemap-queries.ts' // the sitemap's reads (ADR-032 D3)
 
 describe('the home page is not reachable at its own slug', () => {
   const src = read(SLUG_ROUTE)

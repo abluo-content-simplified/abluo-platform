@@ -30,6 +30,16 @@
  */
 
 import { localePlainTexts, presentLocales } from '@/lib/sanity/groq-locales'
+import { publicFilterFor, publicFilterForAnyType } from '@/lib/lifecycle/public-types'
+
+// ─── ADR-032 D3 — the public-visibility rule ─────────────────────────────────
+// Every public read of a lifecycle type (post, newsArticle, event, gallery) —
+// lists, detail and redirect lookups, picked items, dereferenced references —
+// carries its rule. Enforced by
+// src/lib/lifecycle/__tests__/public-delivery-coverage.test.ts.
+const POST_PUBLIC = publicFilterFor('post')
+const NEWS_PUBLIC = publicFilterFor('newsArticle')
+const EVENT_PUBLIC = publicFilterFor('event')
 
 // The trailing `select(...)` is the legacy escape hatch: some older documents
 // store a plain string where the schema now declares a localizedString. A plain
@@ -57,8 +67,7 @@ const locBody = (field: string) => /* groq */ `(${loc(field)})[]{
         "internalTarget": internal->{
           _type, pageType, projectSlug,
           "slug": slug[$locale].current,
-          "live": select(_type in ["post", "newsArticle"] => defined(publishedAt) && publishedAt <= now(), true)
-            && (!defined(expiresAt) || expiresAt > now())
+          "live": ${publicFilterForAnyType()}
         }
       }
     }
@@ -255,8 +264,8 @@ const scopedFormId = (field: string) => /* groq */ `*[
 // formDefinition lookup (which must carry a tenantSlug clause). A news article
 // is PROJECT-owned, so its clause is projectSlug — cta-news-link.test.ts pins it.
 const scopedNewsArticleSlug = (field: string) => /* groq */ `coalesce(
-    *[_type == "newsArticle" && ^.${field}._ref == _id && projectSlug == $projectSlug][0].slug[$locale].current,
-    *[_type == "newsArticle" && ^.${field}._ref == _id && projectSlug == $projectSlug][0].slug[$defaultLocale].current
+    *[_type == "newsArticle" && ^.${field}._ref == _id && projectSlug == $projectSlug && ${NEWS_PUBLIC}][0].slug[$locale].current,
+    *[_type == "newsArticle" && ^.${field}._ref == _id && projectSlug == $projectSlug && ${NEWS_PUBLIC}][0].slug[$defaultLocale].current
   )`
 
 // ─── CTA fields projection ────────────────────────────────────────────────────
@@ -429,18 +438,18 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       "viewAllLabel": ${loc('viewAllLabel')},
       viewAllHref,
       "categoryKey": categoryKey[0],
-      "eventId": event->._id,
-      "postIds": posts[]->._id,
+      "eventId": select(${publicFilterFor('event', 'event->')} => event->._id),
+      "postIds": posts[${publicFilterFor('post', '@->')}]->._id,
       // newsListingSection fields — null on all other section types.
       // filterMode, sortOrder, layout, maxItems, viewAllLabel, viewAllHref and
       // categoryId above are shared field names, reused verbatim; only the
       // hand-picked array differs, since News picks newsArticle not post.
-      "articleIds": articles[]->._id,
+      "articleIds": articles[${publicFilterFor('newsArticle', '@->')}]->._id,
       // eventsListingSection fields — null on all other section types
       // (filterMode, sortOrder, layout, maxItems, viewAllLabel, viewAllHref,
       // categoryId above are shared field names, reused verbatim)
       timeFilter,
-      "eventIds": events[]->._id,
+      "eventIds": events[${publicFilterFor('event', '@->')}]->._id,
       // Shared localized empty-state fields — blogListingSection,
       // eventsListingSection, liveLatestSection (ADR-016 Phase B)
       "emptyStateHeading": ${loc('emptyStateHeading')},
@@ -505,9 +514,9 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       imageRatio,
       spacing,
       showCaptions,
-      "gallery": gallery->{ ${GALLERY_FIELDS} },
+      "gallery": select(${publicFilterFor('gallery', 'gallery->')} => gallery->{ ${GALLERY_FIELDS} }),
       // ADR-022 §3 — composed galleries, display mode, lightbox switch.
-      "galleries": galleries[]->{ ${GALLERY_FIELDS} },
+      "galleries": galleries[${publicFilterFor('gallery', '@->')}]->{ ${GALLERY_FIELDS} },
       galleryDisplay,
       showAllTab,
       lightbox,
@@ -968,9 +977,7 @@ export const postsQuery = /* groq */ `
   *[
     _type == "post"
     && projectSlug == $projectSlug
-    && defined(publishedAt)
-    && publishedAt <= now()
-    && (!defined(expiresAt) || expiresAt > now())
+    && ${POST_PUBLIC}
   ]
   | order(featured desc, publishedAt desc) [$offset...$offset + $limit] {
     _id,
@@ -1060,7 +1067,7 @@ export const dashboardPostsContextQuery = /* groq */ `{
 // A post is live when it has gone live and has not been taken offline (ADR-025
 // D5). The list queries already applied this; the detail and redirect lookups
 // did not, so a scheduled or expired post was reachable by its direct URL.
-const POST_IS_LIVE = /* groq */ `defined(publishedAt) && publishedAt <= now() && (!defined(expiresAt) || expiresAt > now())`
+const POST_IS_LIVE = POST_PUBLIC
 
 // ─── Calls to action at the end of blog posts ─────────────────────────────────
 // The project's callToAction documents (Website Settings → Calls to action,
@@ -1119,7 +1126,7 @@ export const postBySlugQuery = /* groq */ `
     },
     "categoryKeys": categories,
     "categoryTitles": categories[]->title.en,
-    "relatedEvent": relatedEvent-> {
+    "relatedEvent": select(${publicFilterFor('event', 'relatedEvent->')} => relatedEvent-> {
       _id,
       "title": ${loc('title')},
       "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
@@ -1130,9 +1137,9 @@ export const postBySlugQuery = /* groq */ `
       "shortDescription": ${loc('shortDescription')},
       ${locImage('heroImage')},
       ${EVENT_ENGAGEMENT_FIELDS}
-    },
+    }),
     // ADR-022 §6 — optional gallery below the text (Gallery module).
-    "gallery": gallery->{ ${GALLERY_FIELDS} },
+    "gallery": select(${publicFilterFor('gallery', 'gallery->')} => gallery->{ ${GALLERY_FIELDS} }),
     galleryLayout,
     // The post's call-to-action choice ({ mode, ref }); resolved against
     // postCallToActionsQuery by resolvePostCta (src/lib/blog/post-cta.ts).
@@ -1157,9 +1164,7 @@ export const postsByCategoryQuery = /* groq */ `
     _type == "post"
     && projectSlug == $projectSlug
     && $categoryKey in categories
-    && defined(publishedAt)
-    && publishedAt <= now()
-    && (!defined(expiresAt) || expiresAt > now())
+    && ${POST_PUBLIC}
   ]
   | order(featured desc, publishedAt desc) [$offset...$offset + $limit] {
     _id,
@@ -1194,9 +1199,7 @@ export const relatedPostsQuery = /* groq */ `
     _type == "post"
     && projectSlug == $projectSlug
     && _id != $excludeId
-    && defined(publishedAt)
-    && publishedAt <= now()
-    && (!defined(expiresAt) || expiresAt > now())
+    && ${POST_PUBLIC}
   ] | order(
     count(categories[@ in $categoryKeys]) desc,
     count(categories[]->title.en[@ in $categoryKeys]) desc,
@@ -1265,9 +1268,7 @@ const blogListingCardFields = /* groq */ `
 const blogListingFilter = /* groq */ `
   _type == "post"
   && projectSlug == $projectSlug
-  && defined(publishedAt)
-  && publishedAt <= now()
-  && (!defined(expiresAt) || expiresAt > now())
+  && ${POST_PUBLIC}
   && (
     $filterMode == "latest"
     || ($filterMode == "featured" && featured == true)
@@ -1299,7 +1300,7 @@ export const blogListingPostsOldestQuery = /* groq */ `
 // document: every tenant query filters by projectSlug (CLAUDE.md), and without
 // it a stale or hand-edited reference to another tenant's post would resolve.
 export const blogListingManualPostsQuery = /* groq */ `
-  *[_type == "post" && projectSlug == $projectSlug && _id in $postIds] {
+  *[_type == "post" && projectSlug == $projectSlug && _id in $postIds && ${POST_PUBLIC}] {
     ${blogListingCardFields}
   }
 `
@@ -1341,9 +1342,7 @@ const newsListingCardFields = /* groq */ `
 const newsListingFilter = /* groq */ `
   _type == "newsArticle"
   && projectSlug == $projectSlug
-  && defined(publishedAt)
-  && publishedAt <= now()
-  && (!defined(expiresAt) || expiresAt > now())
+  && ${NEWS_PUBLIC}
   && (
     $filterMode == "latest"
     || ($filterMode == "featured" && featured == true)
@@ -1370,7 +1369,7 @@ export const newsListingArticlesOldestQuery = /* groq */ `
 // document: every tenant query filters by projectSlug (CLAUDE.md), and without
 // it a stale or hand-edited reference to another tenant's item would resolve.
 export const newsListingManualArticlesQuery = /* groq */ `
-  *[_type == "newsArticle" && projectSlug == $projectSlug && _id in $articleIds] {
+  *[_type == "newsArticle" && projectSlug == $projectSlug && _id in $articleIds && ${NEWS_PUBLIC}] {
     ${newsListingCardFields}
   }
 `
@@ -1380,9 +1379,7 @@ export const newsArticlesQuery = /* groq */ `
   *[
     _type == "newsArticle"
     && projectSlug == $projectSlug
-    && defined(publishedAt)
-    && publishedAt <= now()
-    && (!defined(expiresAt) || expiresAt > now())
+    && ${NEWS_PUBLIC}
   ]
   | order(featured desc, publishedAt desc) [$offset...$offset + $limit] {
     ${newsListingCardFields},
@@ -1396,7 +1393,7 @@ export const newsArticlesQuery = /* groq */ `
 // not resolve an English slug, or two locales would serve the same content at
 // two URLs and compete in search.
 export const newsArticleBySlugQuery = /* groq */ `
-  *[_type == "newsArticle" && projectSlug == $projectSlug && slug[$locale].current == $slug][0] {
+  *[_type == "newsArticle" && projectSlug == $projectSlug && slug[$locale].current == $slug && ${NEWS_PUBLIC}][0] {
     _id,
     // Article JSON-LD dateModified — the document's own last-edit time.
     "updatedAt": _updatedAt,
@@ -1422,7 +1419,7 @@ export const newsArticleBySlugQuery = /* groq */ `
 
 // Redirect lookup — resolves an old slug to the current one for a 301.
 export const newsArticleByOldSlugQuery = /* groq */ `
-  *[_type == "newsArticle" && projectSlug == $projectSlug && $slug in redirectFrom[$locale]][0] {
+  *[_type == "newsArticle" && projectSlug == $projectSlug && $slug in redirectFrom[$locale] && ${NEWS_PUBLIC}][0] {
     "currentSlug": slug[$locale].current
   }
 `
@@ -1466,7 +1463,9 @@ export const newsPageTitleQuery = /* groq */ `
 // from the sitemap. Absent visibility = public (every event before ADR-031).
 // A hand-picked event in a listing section (manual selection) is the editor's
 // explicit choice and is still shown.
-const EVENT_LISTED = /* groq */ `(!defined(visibility) || visibility != "unlisted")`
+// Listed = public (ADR-032 D3) AND not unlisted. Detail routes use EVENT_PUBLIC
+// alone: an unlisted event stays reachable by its URL.
+const EVENT_LISTED = /* groq */ `(${EVENT_PUBLIC} && (!defined(visibility) || visibility != "unlisted"))`
 
 // The authored place, with a saved venue dereferenced ONLY when it belongs to
 // the same project (a stale or hand-edited cross-project reference resolves to
@@ -1565,7 +1564,7 @@ export const eventsListingEventsOldestQuery = /* groq */ `
 // document: every tenant query filters by projectSlug (CLAUDE.md), and without
 // it a stale or hand-edited reference to another tenant's event would resolve.
 export const eventsListingManualEventsQuery = /* groq */ `
-  *[_type == "event" && projectSlug == $projectSlug && _id in $eventIds] {
+  *[_type == "event" && projectSlug == $projectSlug && _id in $eventIds && ${EVENT_PUBLIC}] {
     ${eventsListingCardFields}
   }
 `
@@ -1722,13 +1721,13 @@ export const additionalLiveEventsQuery = /* groq */ `
 `
 
 export const eventByOldSlugQuery = /* groq */ `
-  *[_type == "event" && projectSlug == $projectSlug && $slug in redirectFrom[$locale]][0] {
+  *[_type == "event" && projectSlug == $projectSlug && $slug in redirectFrom[$locale] && ${EVENT_PUBLIC}][0] {
     "currentSlug": slug[$locale].current
   }
 `
 
 export const eventBySlugQuery = /* groq */ `
-  *[_type == "event" && projectSlug == $projectSlug && slug[$locale].current == $slug][0] {
+  *[_type == "event" && projectSlug == $projectSlug && slug[$locale].current == $slug && ${EVENT_PUBLIC}][0] {
     _id,
     "title": ${loc('title')},
     "slugMap": slug,
@@ -1878,9 +1877,9 @@ export const homePageQuery = /* groq */ `
       imageRatio,
       spacing,
       showCaptions,
-      "gallery": gallery->{ ${GALLERY_FIELDS} },
+      "gallery": select(${publicFilterFor('gallery', 'gallery->')} => gallery->{ ${GALLERY_FIELDS} }),
       // ADR-022 §3 — composed galleries, display mode, lightbox switch.
-      "galleries": galleries[]->{ ${GALLERY_FIELDS} },
+      "galleries": galleries[${publicFilterFor('gallery', '@->')}]->{ ${GALLERY_FIELDS} },
       galleryDisplay,
       showAllTab,
       lightbox,

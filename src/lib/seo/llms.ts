@@ -7,6 +7,7 @@
  */
 
 import { canonicalUrl } from '@/lib/seo/canonical'
+import { publicFilterFor } from '@/lib/lifecycle/public-types'
 
 /** A published blog post or news item — per-locale maps, like PageRow. */
 export interface EntryRow {
@@ -17,7 +18,7 @@ export interface EntryRow {
 }
 
 /**
- * Published, unexpired news items (ADR-020) — the same visibility rule the
+ * Public news items (ADR-020; ADR-032 D3 rule) — the same visibility rule the
  * sitemap applies, so llms.txt never lists a URL the sitemap does not. Newest
  * first. News and posts carry no `noindex` field (it is `page`-only), so there
  * is nothing further to skip.
@@ -25,9 +26,7 @@ export interface EntryRow {
 export const LLMS_NEWS_QUERY = /* groq */ `*[
   _type == "newsArticle"
   && projectSlug == $projectSlug
-  && defined(publishedAt)
-  && publishedAt <= now()
-  && (!defined(expiresAt) || expiresAt > now())
+  && ${publicFilterFor('newsArticle')}
 ] | order(publishedAt desc) {
   "titles": title,
   "slugs": slug,
@@ -36,15 +35,13 @@ export const LLMS_NEWS_QUERY = /* groq */ `*[
 }`
 
 /**
- * Published, unexpired blog posts — the visibility rule the blog listings
+ * Public blog posts (ADR-032 D3 rule) — the visibility rule the blog listings
  * apply. Newest first.
  */
 export const LLMS_POSTS_QUERY = /* groq */ `*[
   _type == "post"
   && projectSlug == $projectSlug
-  && defined(publishedAt)
-  && publishedAt <= now()
-  && (!defined(expiresAt) || expiresAt > now())
+  && ${publicFilterFor('post')}
 ] | order(publishedAt desc) {
   "titles": title,
   "slugs": slug,
