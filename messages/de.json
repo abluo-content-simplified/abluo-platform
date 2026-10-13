@@ -242,7 +242,8 @@
           },
           "someFailed": "{count, plural, one {Hat nicht geklappt: {titles}.} other {# haben nicht geklappt: {titles}.}}",
           "failedAll": "Das hat nicht geklappt. Nichts wurde geändert — bitte versuch es erneut."
-        }
+        },
+        "activity": "Aktivität"
       },
       "select": {
         "checkbox": "{title} auswählen",
@@ -1001,7 +1002,8 @@
         "changeDate": "Veröffentlichungsdatum ändern",
         "discard": "Änderungen verwerfen",
         "deleteDraft": "Entwurf löschen",
-        "deletePost": "Beitrag löschen"
+        "deletePost": "Beitrag löschen",
+        "activity": "Aktivität"
       },
       "confirm": {
         "cancel": "Abbrechen",
@@ -2042,6 +2044,38 @@
         "not_found": "Diese App ist nicht mehr verbunden. Lade die Seite neu.",
         "invalid_state": "Diese App hat sich inzwischen geändert. Lade die Seite neu.",
         "failed": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal."
+      }
+    },
+    "activity": {
+      "title": "Aktivität",
+      "loading": "Wird geladen…",
+      "error": "Die Aktivität konnte nicht geladen werden.",
+      "retry": "Erneut versuchen",
+      "empty": "Noch keine Aktivität.",
+      "emptyHint": "Änderungen ab jetzt erscheinen hier.",
+      "action": {
+        "created": "Erstellt",
+        "published": "Veröffentlicht",
+        "scheduled": "Geplant",
+        "schedule_changed": "Veröffentlichungsdaten geändert",
+        "unpublished": "Offline genommen",
+        "archived": "Archiviert",
+        "restored": "Wiederhergestellt",
+        "deleted": "Gelöscht",
+        "delete_refused": "Löschen abgelehnt"
+      },
+      "actor": {
+        "person": "von {name}",
+        "member": "von einem Teammitglied",
+        "formerMember": "von einem ehemaligen Teammitglied",
+        "support": "vom Abluo-Support",
+        "team": "vom Abluo-Team",
+        "system": "von Abluo erfasst"
+      },
+      "window": {
+        "goesLive": "Geht online · {date}",
+        "goesOffline": "Geht offline · {date}",
+        "wentOffline": "Offline seit · {date}"
       }
     }
   },

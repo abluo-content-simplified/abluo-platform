@@ -29,6 +29,8 @@ import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
+import { audited, type ContentAuditWriter } from '@/lib/lifecycle/audit'
+import { lifecycleAction, snapshotOf as publishedSnapshotOf } from '@/lib/lifecycle/transition'
 import { coverThumbUrl } from '@/lib/api/post-drafts'
 import { slugFromTitle, uniqueSlug } from '@/lib/api/post-publish'
 
@@ -101,7 +103,11 @@ export class EventError extends Error {
 }
 
 type Client = Pick<typeof sanityWriteClient, 'getDocument' | 'fetch' | 'create' | 'patch' | 'transaction'>
-export type EventDeps = { client?: Client; now?: () => Date; uuid?: () => string }
+export type EventDeps = { client?: Client; now?: () => Date; uuid?: () => string; audit?: ContentAuditWriter }
+
+/** Activity rows of an event are keyed by its publicId (ADR-032 D9), else its _id. */
+const eventContentId = (doc: Record<string, unknown> | null | undefined, id: string) =>
+  typeof doc?.publicId === 'string' && doc.publicId ? doc.publicId : id
 
 type Doc = Record<string, unknown> & { _id?: string; _type?: string; _rev?: string; projectSlug?: string }
 
@@ -478,6 +484,8 @@ export async function createEvent(
   input: { title?: string; startDate?: string },
   deps: EventDeps = {}
 ): Promise<{ id: string; rev: string }> {
+  const id = (deps.uuid ?? randomUUID)()
+  return audited({ ctx, projectId, contentType: 'event', contentId: id, intended: 'created', writer: deps.audit }, async (transactionId) => {
   const grant = grantFor(ctx, projectId, EVENT_WRITE_PERMISSION)
   const client = deps.client ?? sanityWriteClient
   const raw = input?.title ?? ''
@@ -488,7 +496,6 @@ export async function createEvent(
   const site = await readSite(client, grant.projectSlug)
   const count = await client.fetch<number | null>(`count(*[_type == "event" && projectSlug == $projectSlug])`, { projectSlug: grant.projectSlug }, { perspective: 'raw' })
   if ((count ?? 0) >= EVENT_LIMITS.events) throw new EventError('too_large', 'This site has too many events.')
-  const id = (deps.uuid ?? randomUUID)()
   const doc = {
     _id: `drafts.${id}`,
     _type: 'event',
@@ -502,8 +509,9 @@ export async function createEvent(
     eventStatus: 'scheduled',
     attendanceMode: 'inPerson',
   }
-  const created = (await commit(client, grant.projectSlug, () => client.create(doc))) as { _rev?: string } | undefined
-  return { id, rev: created?._rev ?? '' }
+  const created = (await commit(client, grant.projectSlug, () => client.create(doc, { transactionId }))) as { _rev?: string } | undefined
+  return { value: { id, rev: created?._rev ?? '' }, action: 'created' as const, contentId: doc.publicId, state: null }
+  })
 }
 
 // ── Patch ─────────────────────────────────────────────────────────────────────
@@ -666,6 +674,7 @@ export async function publishEventDraft(
   input: { id: string; rev: string },
   deps: EventDeps = {}
 ): Promise<{ id: string }> {
+  return audited({ ctx, projectId, contentType: 'event', contentId: isEventId(input?.id) ? input.id : null, intended: 'published', writer: deps.audit }, async (transactionId) => {
   const grant = grantFor(ctx, projectId, EVENT_WRITE_PERMISSION)
   const client = deps.client ?? sanityWriteClient
   if (!isEventId(input?.id)) notFound()
@@ -715,9 +724,17 @@ export async function publishEventDraft(
     } else {
       tx = tx.create(doc as { _id: string; _type: string })
     }
-    return tx.delete(`drafts.${input.id}`).commit()
+    return tx.delete(`drafts.${input.id}`).commit({ transactionId })
   })
-  return { id: input.id }
+  const state = publishedSnapshotOf(doc)
+  const now = (deps.now ?? (() => new Date()))()
+  return {
+    value: { id: input.id },
+    action: lifecycleAction(publishedSnapshotOf(published), state, 'optional', now),
+    contentId: eventContentId(doc, input.id),
+    state,
+  }
+  })
 }
 
 /**
@@ -730,6 +747,7 @@ export async function discardEventDraft(
   input: { id: string; rev: string },
   deps: EventDeps = {}
 ): Promise<{ deleted: boolean }> {
+  return audited({ ctx, projectId, contentType: 'event', contentId: isEventId(input?.id) ? input.id : null, intended: 'deleted', writer: deps.audit }, async (transactionId) => {
   const grant = grantFor(ctx, projectId, EVENT_WRITE_PERMISSION)
   const client = deps.client ?? sanityWriteClient
   if (!isEventId(input?.id)) notFound()
@@ -739,7 +757,10 @@ export async function discardEventDraft(
   if (draft._rev !== input.rev) throw new EventError('conflict', 'This event was edited elsewhere.')
   const draftId = `drafts.${input.id}`
   await commit(client, grant.projectSlug, () =>
-    client.transaction().patch(draftId, { ifRevisionID: input.rev, unset: ['_lifecycleGuard'] }).delete(draftId).commit()
+    client.transaction().patch(draftId, { ifRevisionID: input.rev, unset: ['_lifecycleGuard'] }).delete(draftId).commit({ transactionId })
   )
-  return { deleted: !published }
+  // Discarding the draft of a published event is not a lifecycle change;
+  // discarding a never-published one deletes the event.
+  return { value: { deleted: !published }, action: published ? null : ('deleted' as const), contentId: eventContentId(draft, input.id), state: null, detail: { draftOnly: true } }
+  })
 }

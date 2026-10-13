@@ -1,6 +1,7 @@
 # ADR-032 — Content lifecycle: publish, schedule, unpublish, archive, restore, delete
 
 **Status:** Accepted (2026-10-12, Tom). Implementation phased (§6); nothing implemented at acceptance.
+**Amended:** 2026-10-13 — D9 attribution, correlation, integrity and retention ([amendment](#amendment-2026-10-13--d9-attribution-integrity-and-retention)).
 **Builds on:** ADR-025 (client content editor), ADR-028 (roles & permissions, vocabulary), ADR-029 (tenant dashboard), ADR-031 (Connections — removals, tombstones, partner sync), ADR-022 (gallery module), the Publicly Routable Content pattern and the Schema Evolution Rules (CLAUDE.md), the 2026-08-14 rule (never migrate production data ahead of the reading code).
 **Related, kept separate:** `forms-deletion-retention-plan` (personal-data retention and erasure — §D10).
 **Depends on:** ADR-031 V1 step 5 (events API + `/api/webhooks/sanity-removals`) committed and deployed — at acceptance it is still uncommitted on `dev`, so the removals webhook cannot yet be live.
@@ -85,6 +86,7 @@ Store UTC. Show and enter dates in `siteConfig.timeZone` (an event venue zone ke
 ### D9 — Version history and audit
 - **History = Sanity.** Guaranteed: the current published + draft of every non-deleted document (why archive beats delete). Best-effort: all revisions for 90 days. After permanent delete, recovery is possible only within that window by Abluo — the UI says so; it never claims "irreversible". No custom versioning.
 - **Audit = new `content_audit_log`** (Supabase), not `admin_audit_log` (different audience, actors and retention). Columns: `id, occurred_at, project_id, content_type, content_id (publicId else _id), action, actor_kind (user|system|studio), actor_id, outcome (ok|refused|failed), detail jsonb` — non-PII only, never content. Server-only (RLS on, no grants), best-effort writer, 5-year retention, survives content deletion, `actor_id` `on delete set null`.
+- *Amended 2026-10-13:* attribution, correlation, monitoring and (provisional) retention are specified in the [amendment](#amendment-2026-10-13--d9-attribution-integrity-and-retention); the 5-year figure above is provisional.
 - Actions: `created, published, scheduled, schedule_changed, unpublished, archived, restored, deleted, delete_refused`. "Scheduled operation executed / failed" arrive with ADR-031 V1.1 push.
 - **Per-item Activity in the dashboard (now):** read-only list — action, who, when (project time zone), newest first. Actors: person's name, "Abluo support" (support mode), "Abluo team" (Studio, via a Sanity webhook). Publication boundaries shown from dates ("Went offline · 1 Nov 2026, 11:00"). Localised. Later: filters, project-wide activity screen.
 
@@ -161,3 +163,41 @@ Acceptance: posts behave as today except delete; archive/restore keeps id, slug,
 **Later (optional):** revision view/restore in the dashboard; pages/news in the dashboard; V1.1 push sweep + execution audit; project-wide activity; 410 for deleted URLs; separate publish permission.
 
 Verification follows `docs/engineering/client-dashboard/verification.md` for every dashboard change; releases follow `docs/release-workflow.md`.
+
+---
+
+## Amendment 2026-10-13 — D9 attribution, integrity and retention
+
+**Status:** Accepted (Tom, 2026-10-13). Implemented in two slices: **3a** (table, writer, dashboard recording, Activity) and **3b** (Studio webhook, author lookup, reconciliation, monitoring, retention job). 3b starts only after 3a is verified.
+
+**Principle.** Activity must be trustworthy: it never shows a wrong actor, and a record that could not be written is found and repaired, never silently lost. The client sees a simple timeline; everything below stays behind the scenes.
+
+### A1 — Attribution is exact, never inferred
+| Recorded by | `actor_kind` | Shown as |
+|---|---|---|
+| A dashboard action by a signed-in user | `user` + their id | their profile name ("a team member" without one; "a former team member" once the account is deleted) |
+| The same, in support mode | `user` + the admin's id, `detail.support = true` | "Abluo support" — never the admin's name |
+| A change made in Studio (3b), author confirmed via Sanity's History API to be a person | `studio`, Sanity user id in `detail` | "the Abluo team" |
+| Anything whose author cannot be established (3b) | `system`, `detail.unattributed = true` | not shown to clients; surfaced to Abluo admins |
+
+A person is named only when the dashboard itself recorded their authenticated action.
+
+### A2 — Correlation through the Sanity transaction id
+Every dashboard write to a lifecycle type commits with a transaction id chosen beforehand (`abluo-dash-<uuid>`; the Mutations API `transactionId`, unique per dataset — verified in Sanity's API reference). The row stores it in `sanity_transaction_id`. `(sanity_transaction_id, content_id)` is unique, so the dashboard's record and a Studio-webhook or reconciliation record of the same change can never both exist, and webhook retries (at-least-once delivery) are harmless.
+
+Dashboard recording covers every lifecycle write of posts, events and galleries — not only the type that has an Activity screen today — so a dashboard transaction without a row is an anomaly, not an expected gap. A test fails when a dashboard write path to these types commits without the audited transaction id.
+
+### A3 — Author lookup (3b)
+The webhook does not trust a prefix alone: it reads the transaction's `author` from the History API (verified 2026-10-13: each transaction carries `author`; the dashboard's write token has its own fixed identity). Dashboard token → the dashboard row is expected; a person → Studio; unknown → retry, then `system` / unattributed.
+
+### A4 — Monitoring and reconciliation (3b)
+A daily job reads the last 26 hours of Sanity transactions for lifecycle types and finds lifecycle changes without a row — **both** missing dashboard records and missing Studio records — and repairs them (Studio: as A1; dashboard token without a row: `system`, unattributed). Every repair and every write failure is visible to Abluo admins; the writer logs failures with the tag `[content-audit] not recorded`.
+
+### A5 — Retention (PROVISIONAL — pending privacy review)
+| Rows | Purpose | Retention |
+|---|---|---|
+| `ok` (including support-mode actions) | the client's history of their content; "who published or removed this" | 5 years |
+| `refused`, `failed`, unattributed | operations and security signals | 12 months |
+
+`actor_id` is nulled as soon as the user account is deleted; `project_id` is nulled (never cascaded) when a project is deleted. Both periods stay provisional until the privacy notice / DPA review; the 3b job enforces whatever is then confirmed.
+

@@ -86,7 +86,7 @@ describe('createPostDraft', () => {
       _type: 'post',
       projectSlug: 'hoffmann',
       wizard: { step: 'type', updatedAt: '2026-10-05T10:00:00.000Z' },
-    })
+    }, { transactionId: expect.stringMatching(/^abluo-dash-/) })
   })
 
   it.each([

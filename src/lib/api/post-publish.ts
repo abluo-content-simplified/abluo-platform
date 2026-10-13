@@ -46,6 +46,8 @@ import { BLOG_POST_WRITE_PERMISSION, isPostId, type PostDraftErrorCode } from '@
 import { slugifyNestedPath } from '@/lib/sanity/fields/nested-slug'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
+import { audited, type ContentAuditWriter } from '@/lib/lifecycle/audit'
+import { lifecycleAction, snapshotOf } from '@/lib/lifecycle/transition'
 
 export type PostPublishErrorCode =
   | PostDraftErrorCode
@@ -65,7 +67,7 @@ export class PostPublishError extends Error {
 }
 
 type PublishClient = Pick<typeof sanityWriteClient, 'getDocument' | 'fetch' | 'transaction'>
-export type PostPublishDeps = { client?: PublishClient; now?: () => Date }
+export type PostPublishDeps = { client?: PublishClient; now?: () => Date; audit?: ContentAuditWriter }
 
 export type PublishPostInput = {
   id: string
@@ -136,12 +138,34 @@ export function uniqueSlug(base: string, taken: Set<string>): string {
   }
 }
 
+/**
+ * Activity (ADR-032 D9): recorded as published / scheduled / schedule_changed
+ * from the published state before and after; republishing a live post with
+ * unchanged dates is a content edit and records nothing.
+ */
 export async function publishPostDraft(
   ctx: TenantAuthorizationContext,
   projectId: string,
   input: PublishPostInput,
   deps: PostPublishDeps = {}
 ): Promise<PublishPostResult> {
+  return audited(
+    { ctx, projectId, contentType: 'post', contentId: isPostId(input?.id) ? input.id : null, intended: 'published', writer: deps.audit },
+    async (transactionId) => {
+      const r = await publishPostDraftIn(ctx, projectId, input, deps, transactionId)
+      const state = snapshotOf(r.after)
+      return { value: r.result, action: lifecycleAction(snapshotOf(r.before), state, 'required', r.now), state }
+    }
+  )
+}
+
+async function publishPostDraftIn(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: PublishPostInput,
+  deps: PostPublishDeps,
+  transactionId: string
+): Promise<{ result: PublishPostResult; before: Record<string, unknown> | null; after: Record<string, unknown>; now: Date }> {
   assertModuleAction(ctx, projectId, BLOG_POST_WRITE_PERMISSION)
   const grant = ctx.projects.find((p) => p.projectId === projectId)!
   const client = deps.client ?? sanityWriteClient
@@ -296,7 +320,7 @@ export async function publishPostDraft(
       // instead of silently replacing it.
       tx = tx.create(doc as { _id: string; _type: string })
     }
-    await tx.delete(draftId).commit()
+    await tx.delete(draftId).commit({ transactionId })
   } catch (error) {
     if ((error as { statusCode?: number })?.statusCode === 409) {
       throw new PostPublishError('conflict', 'This draft was edited elsewhere.')
@@ -305,8 +329,13 @@ export async function publishPostDraft(
   }
 
   return {
-    id: input.id,
-    publishedAt: doc.publishedAt as string,
-    slugs: Object.fromEntries(locales.map((l) => [l, slugs[l]])),
+    result: {
+      id: input.id,
+      publishedAt: doc.publishedAt as string,
+      slugs: Object.fromEntries(locales.map((l) => [l, slugs[l]])),
+    },
+    before: (published as Record<string, unknown> | null | undefined) ?? null,
+    after: doc,
+    now,
   }
 }

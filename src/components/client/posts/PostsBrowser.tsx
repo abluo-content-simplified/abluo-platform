@@ -34,13 +34,14 @@ import { PostsFilters } from './PostsFilters'
 import { PostsTable } from './PostsTable'
 import { PostCardsGrid, PostPhoneList } from './PostCards'
 import { BarButton, CategorySheet, EndDateSheet, SheetItem } from './PostSheets'
+import { PostActivitySheet } from './PostActivitySheet'
 import type { BrowserPost } from './types'
 
 export type { BrowserPost } from './types'
 
 type BatchOp = 'offline' | 'online' | 'delete' | 'endDate' | 'categories' | 'featured'
 type BatchExtra = { expiresAt?: string | null; categories?: string[]; featured?: boolean }
-type Sheet = null | { kind: 'endDate'; ids: string[] } | { kind: 'categories'; ids: string[] } | { kind: 'more' }
+type Sheet = null | { kind: 'endDate'; ids: string[] } | { kind: 'categories'; ids: string[] } | { kind: 'more' } | { kind: 'activity'; id: string }
 type View = 'list' | 'cards'
 
 const VIEW_KEY = 'abluo.posts.view'
@@ -271,6 +272,7 @@ export function PostsBrowser({
     if (post.hasLive && post.status === 'offline') items.push({ key: 'online', label: tc('online'), onSelect: () => void runBatch('online', [post._id]) })
     if (post.hasLive && post.status !== 'offline') items.push({ key: 'offline', label: tc('offline'), onSelect: () => void runBatch('offline', [post._id]) })
     if (post.hasLive) items.push({ key: 'endDate', label: tc('endDate'), onSelect: () => setSheet({ kind: 'endDate', ids: [post._id] }) })
+    if (projectSlug) items.push({ key: 'activity', label: tc('activity'), onSelect: () => setSheet({ kind: 'activity', id: post._id }) })
     if (!post.hasLive || canDeleteLive) items.push({ key: 'delete', label: tc('delete'), onSelect: () => askDelete([post._id]), destructive: true })
     return items
   }
@@ -441,6 +443,15 @@ export function PostsBrowser({
         </SheetItem>
         <SheetItem onPress={() => { setSheet(null); clearSelection() }}>{tc('more.clear')}</SheetItem>
       </BottomSheet>
+
+      {projectSlug ? (
+        <PostActivitySheet
+          open={sheet?.kind === 'activity'}
+          onClose={() => setSheet(null)}
+          projectSlug={projectSlug}
+          postId={sheet?.kind === 'activity' ? sheet.id : null}
+        />
+      ) : null}
 
       <EndDateSheet
         open={sheet?.kind === 'endDate'}

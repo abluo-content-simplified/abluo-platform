@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { PostActivitySheet } from '@/components/client/posts/PostActivitySheet'
 import { useTranslations } from 'next-intl'
 import type { PortableTextBlock } from '@portabletext/editor'
 import { useRouter } from '@/i18n/navigation'
@@ -139,6 +140,7 @@ export function WizardShell({
   const [live, setLive] = useState(initialDraft.live ?? null)
   const [notice, setNotice] = useState<{ kind: 'status' | 'error'; text: string } | null>(null)
   const [confirm, setConfirm] = useState<Confirm | null>(null)
+  const [activityOpen, setActivityOpen] = useState(false)
   const [confirmBusy, setConfirmBusy] = useState(false)
   const [confirmError, setConfirmError] = useState<string | null>(null)
   const mainRef = useRef<HTMLDivElement>(null)
@@ -463,6 +465,7 @@ export function WizardShell({
           : [{ key: 'offline', label: t('menu.takeOffline'), onSelect: () => void setOnline(false) }]),
         { key: 'date', label: t('menu.changeDate'), onSelect: () => go('publish', { editing: true }) },
         { key: 'discard', label: t('menu.discard'), onSelect: () => setConfirm('discard') },
+        { key: 'activity', label: t('menu.activity'), onSelect: () => setActivityOpen(true) },
         ...(canDelete ? [{ key: 'deletePost', label: t('menu.deletePost'), onSelect: () => setConfirm('deletePost') }] : []),
       ]
     : [{ key: 'deleteDraft', label: t('menu.deleteDraft'), onSelect: () => setConfirm('deleteDraft') }]
@@ -625,6 +628,8 @@ export function WizardShell({
           </div>
         </footer>
       ) : null}
+
+      <PostActivitySheet open={activityOpen} onClose={() => setActivityOpen(false)} projectSlug={projectSlug} postId={draftIdRef.current} />
 
       <ConfirmDialog
         open={confirm !== null}

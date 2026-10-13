@@ -27,6 +27,8 @@ import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
+import { audited, type ContentAuditWriter } from '@/lib/lifecycle/audit'
+import { lifecycleAction, snapshotOf } from '@/lib/lifecycle/transition'
 import { coverThumbUrl } from '@/lib/api/post-drafts'
 import { slugFromTitle, uniqueSlug } from '@/lib/api/post-publish'
 
@@ -98,7 +100,7 @@ export function cleanGalleryTags(value: unknown): string[] {
 }
 
 type Client = Pick<typeof sanityWriteClient, 'getDocument' | 'fetch' | 'create' | 'patch' | 'transaction'>
-export type GalleryDeps = { client?: Client; now?: () => Date; uuid?: () => string }
+export type GalleryDeps = { client?: Client; now?: () => Date; uuid?: () => string; audit?: ContentAuditWriter }
 
 type Doc = Record<string, unknown> & { _id?: string; _type?: string; _rev?: string; projectSlug?: string }
 
@@ -521,6 +523,8 @@ export async function createGallery(
   input: { title?: string },
   deps: GalleryDeps = {}
 ): Promise<{ id: string; rev: string }> {
+  const id = (deps.uuid ?? randomUUID)()
+  return audited({ ctx, projectId, contentType: 'gallery', contentId: id, intended: 'created', writer: deps.audit }, async (transactionId) => {
   const grant = grantFor(ctx, projectId, GALLERY_WRITE_PERMISSION)
   const client = deps.client ?? sanityWriteClient
   const raw = input?.title ?? ''
@@ -538,7 +542,6 @@ export async function createGallery(
   if ((taken ?? []).length >= GALLERY_LIMITS.galleries) {
     throw new GalleryError('too_large', 'This site has too many galleries. Delete some first.')
   }
-  const id = (deps.uuid ?? randomUUID)()
   const slug = uniqueSlug(slugFromTitle(title) || 'gallery', new Set((taken ?? []).filter((s): s is string => !!s)))
   const doc = {
     _id: `drafts.${id}`,
@@ -549,8 +552,9 @@ export async function createGallery(
     slug: { _type: 'slug', current: slug },
     items: [],
   }
-  const created = (await commit(client, grant.projectSlug, () => client.create(doc))) as { _rev?: string } | undefined
-  return { id, rev: created?._rev ?? '' }
+  const created = (await commit(client, grant.projectSlug, () => client.create(doc, { transactionId }))) as { _rev?: string } | undefined
+  return { value: { id, rev: created?._rev ?? '' }, action: 'created' as const, state: null }
+  })
 }
 
 // ── Patch ─────────────────────────────────────────────────────────────────────
@@ -720,6 +724,7 @@ export async function publishGalleryDraft(
   input: { id: string; rev: string },
   deps: GalleryDeps = {}
 ): Promise<{ id: string }> {
+  return audited({ ctx, projectId, contentType: 'gallery', contentId: isGalleryId(input?.id) ? input.id : null, intended: 'published', writer: deps.audit }, async (transactionId) => {
   const grant = grantFor(ctx, projectId, GALLERY_WRITE_PERMISSION)
   const client = deps.client ?? sanityWriteClient
   if (!isGalleryId(input?.id)) notFound()
@@ -757,9 +762,12 @@ export async function publishGalleryDraft(
     } else {
       tx = tx.create(doc as { _id: string; _type: string })
     }
-    return tx.delete(`drafts.${input.id}`).commit()
+    return tx.delete(`drafts.${input.id}`).commit({ transactionId })
   })
-  return { id: input.id }
+  const state = snapshotOf(doc)
+  const now = (deps.now ?? (() => new Date()))()
+  return { value: { id: input.id }, action: lifecycleAction(snapshotOf(published), state, 'optional', now), state }
+  })
 }
 
 /** Throws away unpublished changes of a published gallery. */
@@ -794,6 +802,7 @@ export async function deleteGallery(
   input: { id: string; rev?: string },
   deps: GalleryDeps = {}
 ): Promise<void> {
+  return audited({ ctx, projectId, contentType: 'gallery', contentId: isGalleryId(input?.id) ? input.id : null, intended: 'deleted', writer: deps.audit }, async (transactionId) => {
   grantFor(ctx, projectId, GALLERY_WRITE_PERMISSION)
   const grant = grantFor(ctx, projectId, GALLERY_DELETE_PERMISSION)
   const client = deps.client ?? sanityWriteClient
@@ -813,7 +822,9 @@ export async function deleteGallery(
     if (draft?._rev) tx = tx.patch(`drafts.${input.id}`, { ifRevisionID: draft._rev, unset: ['_lifecycleGuard'] })
     if (published) tx = tx.delete(input.id)
     if (draft) tx = tx.delete(`drafts.${input.id}`)
-    return tx.commit()
+    return tx.commit({ transactionId })
+  })
+  return { value: undefined, action: 'deleted' as const, state: null, ...(!published && { detail: { draftOnly: true } }) }
   })
 }
 

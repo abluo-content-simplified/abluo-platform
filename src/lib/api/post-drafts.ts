@@ -35,6 +35,7 @@ import { bodyReference, cleanLink, collectInternalRefs, preserved } from '@/lib/
 import { LINK_TARGET_TYPES } from '@/lib/links/link-target'
 import { localePlainTexts, presentLocales } from '@/lib/sanity/groq-locales'
 import { postSearchText } from '@/lib/client/posts-filter'
+import { audited, type ContentAuditWriter } from '@/lib/lifecycle/audit'
 
 export const BLOG_POST_WRITE_PERMISSION = 'blog.post.write'
 
@@ -76,7 +77,7 @@ export class PostDraftError extends Error {
 }
 
 type WriteClient = Pick<typeof sanityWriteClient, 'create' | 'getDocument' | 'patch' | 'fetch'>
-export type PostDraftDeps = { client?: WriteClient; now?: () => Date; uuid?: () => string }
+export type PostDraftDeps = { client?: WriteClient; now?: () => Date; uuid?: () => string; audit?: ContentAuditWriter }
 
 export const LIMITS = {
   title: 200,
@@ -126,27 +127,35 @@ export async function createPostDraft(
   projectId: string,
   deps: PostDraftDeps = {}
 ): Promise<{ id: string; rev: string }> {
-  const grant = grantFor(ctx, projectId)
-  const client = deps.client ?? sanityWriteClient
   const id = (deps.uuid ?? randomUUID)()
-  const now = (deps.now ?? (() => new Date()))().toISOString()
-  // Cap on unpublished drafts per project (abuse / dataset-quota guard).
-  const drafts = await client.fetch<number | null>(
-    `count(*[_type == "post" && projectSlug == $projectSlug && _id in path("drafts.**")])`,
-    { projectSlug: grant.projectSlug },
-    { perspective: 'raw' }
+  return audited(
+    { ctx, projectId, contentType: 'post', contentId: id, intended: 'created', writer: deps.audit },
+    async (transactionId) => {
+      const grant = grantFor(ctx, projectId)
+      const client = deps.client ?? sanityWriteClient
+      const now = (deps.now ?? (() => new Date()))().toISOString()
+      // Cap on unpublished drafts per project (abuse / dataset-quota guard).
+      const drafts = await client.fetch<number | null>(
+        `count(*[_type == "post" && projectSlug == $projectSlug && _id in path("drafts.**")])`,
+        { projectSlug: grant.projectSlug },
+        { perspective: 'raw' }
+      )
+      if (typeof drafts !== 'number' || drafts >= LIMITS.drafts) {
+        throw new PostDraftError('too_large', 'Too many unfinished posts. Publish or delete some first.')
+      }
+      await assertSingleSanityProject((q, p) => client.fetch(q, p), grant.projectSlug)
+      const created = await client.create(
+        {
+          _id: `drafts.${id}`,
+          _type: 'post',
+          projectSlug: grant.projectSlug,
+          wizard: { step: 'type', updatedAt: now },
+        },
+        { transactionId }
+      )
+      return { value: { id, rev: (created as { _rev?: string })._rev ?? '' }, action: 'created', state: null }
+    }
   )
-  if (typeof drafts !== 'number' || drafts >= LIMITS.drafts) {
-    throw new PostDraftError('too_large', 'Too many unfinished posts. Publish or delete some first.')
-  }
-  await assertSingleSanityProject((q, p) => client.fetch(q, p), grant.projectSlug)
-  const created = await client.create({
-    _id: `drafts.${id}`,
-    _type: 'post',
-    projectSlug: grant.projectSlug,
-    wizard: { step: 'type', updatedAt: now },
-  })
-  return { id, rev: (created as { _rev?: string })._rev ?? '' }
 }
 
 /** Validates and applies one autosave patch. Returns the new revision. */

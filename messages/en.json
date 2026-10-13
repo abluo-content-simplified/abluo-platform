@@ -242,7 +242,8 @@
           },
           "someFailed": "{count, plural, one {This one didn’t work: {titles}.} other {# didn’t work: {titles}.}}",
           "failedAll": "That didn’t work. Nothing was changed — please try again."
-        }
+        },
+        "activity": "Activity"
       },
       "select": {
         "checkbox": "Select {title}",
@@ -1001,7 +1002,8 @@
         "changeDate": "Change publishing date",
         "discard": "Discard changes",
         "deleteDraft": "Delete draft",
-        "deletePost": "Delete post"
+        "deletePost": "Delete post",
+        "activity": "Activity"
       },
       "confirm": {
         "cancel": "Cancel",
@@ -2042,6 +2044,38 @@
         "not_found": "This app is no longer connected. Reload the page.",
         "invalid_state": "This app has changed meanwhile. Reload the page.",
         "failed": "Something went wrong. Please try again."
+      }
+    },
+    "activity": {
+      "title": "Activity",
+      "loading": "Loading…",
+      "error": "Couldn't load the activity.",
+      "retry": "Try again",
+      "empty": "No activity yet.",
+      "emptyHint": "Changes from now on will appear here.",
+      "action": {
+        "created": "Created",
+        "published": "Published",
+        "scheduled": "Scheduled",
+        "schedule_changed": "Publication dates changed",
+        "unpublished": "Taken offline",
+        "archived": "Archived",
+        "restored": "Restored",
+        "deleted": "Deleted",
+        "delete_refused": "Deletion refused"
+      },
+      "actor": {
+        "person": "by {name}",
+        "member": "by a team member",
+        "formerMember": "by a former team member",
+        "support": "by Abluo support",
+        "team": "by the Abluo team",
+        "system": "recorded by Abluo"
+      },
+      "window": {
+        "goesLive": "Goes live · {date}",
+        "goesOffline": "Goes offline · {date}",
+        "wentOffline": "Went offline · {date}"
       }
     }
   },

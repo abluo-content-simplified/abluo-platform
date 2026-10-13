@@ -242,7 +242,8 @@
           },
           "someFailed": "{count, plural, one {Non ha funzionato per: {titles}.} other {Non ha funzionato per #: {titles}.}}",
           "failedAll": "Non ha funzionato. Non è cambiato nulla — riprova."
-        }
+        },
+        "activity": "Attività"
       },
       "select": {
         "checkbox": "Seleziona {title}",
@@ -1001,7 +1002,8 @@
         "changeDate": "Cambia data di pubblicazione",
         "discard": "Annulla le modifiche",
         "deleteDraft": "Elimina bozza",
-        "deletePost": "Elimina articolo"
+        "deletePost": "Elimina articolo",
+        "activity": "Attività"
       },
       "confirm": {
         "cancel": "Annulla",
@@ -2042,6 +2044,38 @@
         "not_found": "Questa app non è più collegata. Ricarica la pagina.",
         "invalid_state": "Nel frattempo questa app è cambiata. Ricarica la pagina.",
         "failed": "Qualcosa è andato storto. Riprova."
+      }
+    },
+    "activity": {
+      "title": "Attività",
+      "loading": "Caricamento…",
+      "error": "Impossibile caricare l'attività.",
+      "retry": "Riprova",
+      "empty": "Nessuna attività finora.",
+      "emptyHint": "Le modifiche da ora in poi compariranno qui.",
+      "action": {
+        "created": "Creato",
+        "published": "Pubblicato",
+        "scheduled": "Programmato",
+        "schedule_changed": "Date di pubblicazione modificate",
+        "unpublished": "Messo offline",
+        "archived": "Archiviato",
+        "restored": "Ripristinato",
+        "deleted": "Eliminato",
+        "delete_refused": "Eliminazione rifiutata"
+      },
+      "actor": {
+        "person": "da {name}",
+        "member": "da un membro del team",
+        "formerMember": "da un ex membro del team",
+        "support": "dall'assistenza Abluo",
+        "team": "dal team Abluo",
+        "system": "registrato da Abluo"
+      },
+      "window": {
+        "goesLive": "Va online · {date}",
+        "goesOffline": "Va offline · {date}",
+        "wentOffline": "Andato offline · {date}"
       }
     }
   },
