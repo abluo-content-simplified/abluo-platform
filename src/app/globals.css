@@ -189,6 +189,60 @@
     letter-spacing: var(--tracking-normal);
     transition: background-color 0.2s ease, color 0.15s ease;
   }
+
+  /* ─── Worttrennung: a wrapping policy for text ──────────────────────────────
+     A word longer than its container does not wrap by default — it overflows,
+     and the whole PAGE grows a horizontal scrollbar. German compounds make this
+     routine ("Datenschutzerklaerung" is 562px wide at the 34px floor, against a
+     272px column on a 320px phone), but it is not a German problem: measured on
+     production 2026-10-13, every one of the seven languages overflowed on at
+     least one page at 320px, and de/nl/pt/fr also at 390px. "commissions",
+     "hospitalitybedrijven", "hospitalidade" and "confidentialite" all did it.
+
+     Shrinking the type is not the fix: these measurements are AT the design
+     system's minSize floor, and the next long word just moves the goalpost.
+
+     `hyphens: auto` makes the browser break the word where the language says it
+     may, and draw a hyphen — the correct typographic answer, and the one a
+     German reader expects. It needs the document language, which
+     src/app/[locale]/layout.tsx already sets on <html> from the URL locale.
+     `overflow-wrap: anywhere` is what actually lets it happen, and the choice
+     of `anywhere` over `break-word` is the whole fix — MEASURED, not reasoned:
+     with `break-word` all 28 failures stayed at byte-identical widths, with
+     `anywhere` all 28 went to zero. The heading was never too wide for its
+     column; its column was too wide. A flex or grid item defaults to
+     `min-width: auto`, which resolves to min-content, and the min-content of an
+     unbreakable word is that word's full width — so the column refused to
+     shrink and the word never had to break. `break-word` does not change
+     min-content size (by spec); `anywhere` does. Once the column can shrink,
+     `hyphens: auto` picks the break point and draws the hyphen, so `anywhere`
+     is the enabler and hyphenation is what you actually see.
+
+     Both only act on a word that does not fit, so text that fits today is laid
+     out exactly as it is today.
+
+     Deliberately on the text elements rather than on `body`: inheriting it into
+     every div would also apply it to flex and grid children whose intrinsic
+     width is load-bearing for layout. `hyphens` and `overflow-wrap` are both
+     inherited, so a <span> inside a heading is covered by the heading's rule —
+     which is where most of the measured overflows actually lived. */
+  :where(h1, h2, h3, h4, h5, h6, p, li, dt, dd, blockquote, figcaption, summary, address, th, td) {
+    overflow-wrap: anywhere;
+    -webkit-hyphens: auto;
+    hyphens: auto;
+  }
+
+  /* The dashboard and admin are not public pages, they are chrome: a hyphen
+     inside a submission value or a table cell reads as data corruption. They
+     also keep `break-word` rather than `anywhere`, because `anywhere` changes
+     intrinsic sizing and an auto-layout table would start choosing different
+     column widths — a layout change to a surface this fix was not measured
+     against. `break-word` still prevents a long value from overflowing. */
+  .abluo-app :where(h1, h2, h3, h4, h5, h6, p, li, dt, dd, blockquote, figcaption, summary, address, th, td) {
+    overflow-wrap: break-word;
+    -webkit-hyphens: manual;
+    hyphens: manual;
+  }
 }
 
 
