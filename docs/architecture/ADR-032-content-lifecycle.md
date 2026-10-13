@@ -96,7 +96,7 @@ The lifecycle service accepts only editorial Sanity types. Form submissions, inq
 ### D11 — Connected applications (ADR-031)
 Only content exposed through the partner API gets external removal handling (today `event`; `connected` in the descriptor). Internal types get no tombstones.
 
-**Incremental sync detects publication boundaries.** Window = `(cursor, now − settle]`. An item is returned when any of `_updatedAt`, `publishedAt`, `expiresAt`, `archivedAt` falls in the window; the latest of those ≤ window end is its effective change time, which orders pages and becomes the next cursor (exactly-once paging preserved). Items are returned in their state at window end:
+**Incremental sync detects publication boundaries** (as built: amendment A10–A15). Window = `(cursor, now − settle]`. An item is returned when any of `_updatedAt`, `publishedAt`, `expiresAt`, `archivedAt` falls in the window; the latest of those ≤ window end is its effective change time, which orders pages and becomes the next cursor (exactly-once paging preserved). Items are returned in their state at window end:
 - became public → full item;
 - became unavailable (expired, archived, not yet public, unlisted, websiteOnly) → `{ id, removed: true, reason }` even if `_updatedAt` did not change; new reasons `unpublished`, `archived`;
 - published and expired between two polls → one removal (a removal for an unknown id is a no-op by contract);
@@ -235,3 +235,34 @@ Supersedes the last paragraph of D7. Deleting content that was ever published ke
 
 ### A9 — Acceptance wording (replaces "posts behave as today except delete")
 Existing publication behaviour is preserved except for the explicitly approved lifecycle changes: Archive, Restore, and the permanent-delete restrictions (archive first, delete-published permission, dependency check). The dashboard's post status also gains "Archived" and shows a post taken offline before its go-live date as "Offline" instead of "Scheduled".
+
+
+---
+
+## Amendment 2026-10-13 (3) — D11 as built (slice 5)
+
+**Status:** Accepted (Tom, 2026-10-13). Implemented in slice 5. Refines D11; where they differ, this amendment wins.
+
+### A10 — Contract wording
+- Removal rows keep Event v1's existing shape `{ id, deleted: true, reason, updatedAt }` — **not** `removed: true` (v1 is additive-only, ADR-031 D8.6).
+- New reason **`archived`**, added to the v1 enum, the OpenAPI description and the `api_tombstones` CHECK (migration 042). `unpublished` already existed.
+- **Consumers must tolerate unknown removal reasons** and act on `deleted: true` alone; reasons are informational. Stated in the OpenAPI description and the partner docs.
+- Full rows: `updatedAt` = the effective change time (the last edit, or a publish date that passed since — whichever is later), so a row delivered because a date passed is never older than the row it supersedes. Unchanged today for events (no lifecycle dates until Phase 3).
+
+### A11 — Paging: fixed-window sweeps
+- A **sweep** runs from the consumer's cursor to a window end `w = now − settle` **fixed when the sweep starts** and carried in every `next_cursor` of that sweep (opaque cursor field). The last page's `next_cursor` starts the next sweep at `(w, end-of-instant)`. A cursor's window end is never later than `now − settle`; older cursors without one start a new sweep.
+- **Effective change time** `e` = latest of `_updatedAt`, `publishedAt`, `expiresAt`, `archivedAt` that is ≤ `w`, computed in GROQ in integer milliseconds (`math::max`, `round`) and ordered by `(e, publicId)` — the public id is the stable tie-breaker. Tombstones are ordered by `(removed_at, public_id)`, `removed_at` being the server time the removal was recorded.
+- **State** is evaluated at `w` (archived → unpublished → unlisted → websiteOnly); content as stored when read.
+- Paging is decided on candidates; rows are then filtered (suppressed tombstones, initial-sync removals, one row per id — the latest).
+
+### A12 — The guarantee (replaces "exactly-once paging preserved")
+**At least once, latest state wins.** Every change whose effective time is ≤ `w` is delivered in that sweep, or — when the item was edited, archived, deleted or republished during the sweep — in the next one. Items may repeat; each row is a complete state statement; consumers upsert / delete by id in arrival order; repeats and removals for unknown ids are harmless. At most one row per id per response. **Exactly-once is not promised** (it holds only for sweeps without concurrent changes).
+
+### A13 — Tombstones and republishing
+A tombstone is suppressed whenever the item's published document exists when the page is read — including a tombstone recorded *after* the republish (a late or retried webhook). The item's own row reports its current state. Proven separately: older tombstone → republish (no removal reported; a consumer polling in between sees removal then item), and republish → later deletion (the removal wins, once per response).
+
+### A14 — Initial sync
+No cursor and no `updated_since` = initial sync: **removal rows are omitted for the whole first sweep** (the consumer holds nothing; never-public items such as scheduled ones are not disclosed). With a cursor or `updated_since`, a not-yet-public item that changed is reported as `unpublished` (a no-op for a consumer that never saw it); it arrives in full when its publish date passes, with no edit.
+
+### A15 — Migration 042 and deployment order
+`supabase/migrations/042_tombstone_reason_archived.sql` widens the `api_tombstones.reason` CHECK to include `archived` (additive, re-runnable; proven by `supabase/verify/tombstone-reason-042.verify.mjs`). **Order: apply 042 to production first, then deploy slice 5** — 042 is harmless to code that never writes `archived`, and slice 5 itself derives `archived` from documents (it writes no such tombstone), so neither order breaks anything; 042 first keeps contract, code and database in agreement.

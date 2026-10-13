@@ -8,7 +8,9 @@
 // v1 is additive-only (D8.6): a field may be added, never renamed, retyped or
 // removed. A breaking change is v2.
 
+import { LIFECYCLE_PUBLIC_RULES } from '@/lib/lifecycle/public-types'
 import { canonicalUrl } from '@/lib/seo/canonical'
+import { lifecycleRemovalAt } from './sync'
 import { resolveTimeZone } from '@/lib/time/zones'
 
 export type Localized = Record<string, string>
@@ -41,7 +43,11 @@ export interface EventV1 {
 export interface EventRemovedV1 {
   id: string
   deleted: true
-  reason: 'deleted' | 'unpublished' | 'unlisted' | 'websiteOnly'
+  /**
+   * Why it is gone. Consumers must accept reasons they do not know (v1 may add
+   * more) and act on `deleted: true` alone. 'archived' added by ADR-032 D11.
+   */
+  reason: 'deleted' | 'unpublished' | 'unlisted' | 'websiteOnly' | 'archived'
   updatedAt: string
 }
 
@@ -59,10 +65,13 @@ export interface EventSiteV1 {
  * fields the contract needs and nothing else. A venue is dereferenced only
  * when it belongs to the same project.
  */
-export const EVENT_V1_PROJECTION = /* groq */ `{
+export const EVENT_V1_FIELDS = /* groq */ `
   publicId,
   _createdAt,
   _updatedAt,
+  publishedAt,
+  expiresAt,
+  archivedAt,
   visibility,
   eventStatus,
   attendanceMode,
@@ -86,13 +95,21 @@ export const EVENT_V1_PROJECTION = /* groq */ `{
     locationKey,
     "venue": select(venue->projectSlug == $projectSlug => venue->{ publicId, name, address, pin, timeZone })
   }
-}`
+`
+
+/** The projection itself. Lifecycle dates (ADR-032) are read to decide state; they are not part of Event v1. */
+export const EVENT_V1_PROJECTION = /* groq */ `{${EVENT_V1_FIELDS}}`
 
 /** The raw shape EVENT_V1_PROJECTION returns. */
 export interface EventV1Row {
   publicId?: string | null
   _createdAt?: string
   _updatedAt?: string
+  publishedAt?: string | null
+  expiresAt?: string | null
+  archivedAt?: string | null
+  /** Effective change time in ms (the page query's sort key; ADR-032 D11). */
+  _eff?: number | null
   visibility?: string | null
   eventStatus?: string | null
   attendanceMode?: string | null
@@ -142,8 +159,17 @@ function geo(pin: { lat?: unknown; lng?: unknown } | null | undefined) {
   return { latitude: pin.lat, longitude: pin.lng }
 }
 
-/** Visibility decides whether partners see an event at all (ADR-031 D7). */
-export function partnerRemovalReason(row: Pick<EventV1Row, 'visibility'>): EventRemovedV1['reason'] | null {
+/**
+ * Whether partners see an event at the window end `w`, and if not why:
+ * the lifecycle first (ADR-032 — archived, then unpublished: expired or not yet
+ * public), then visibility (ADR-031 D7 — unlisted, websiteOnly).
+ */
+export function partnerRemovalReason(
+  row: Pick<EventV1Row, 'visibility' | 'publishedAt' | 'expiresAt' | 'archivedAt'>,
+  w: Date
+): EventRemovedV1['reason'] | null {
+  const lifecycle = lifecycleRemovalAt(row, LIFECYCLE_PUBLIC_RULES.event, w)
+  if (lifecycle) return lifecycle
   if (row.visibility === 'unlisted') return 'unlisted'
   if (row.visibility === 'websiteOnly') return 'websiteOnly'
   return null

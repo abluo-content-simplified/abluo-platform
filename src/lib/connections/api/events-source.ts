@@ -10,11 +10,13 @@ import { tenantClient } from '@/lib/sanity/client'
 import { enabledModuleIdsQuery } from '@/lib/sanity/queries'
 import { asProjectSlug } from '@/lib/tenancy/ids'
 import type { EventSiteV1, EventV1Row } from './event-contract'
-import { PARTNER_EVENT_SITE_QUERY, PARTNER_EVENTS_PAGE_QUERY } from './event-queries'
+import { PARTNER_EVENT_SITE_QUERY, PARTNER_EVENTS_EXISTING_QUERY, PARTNER_EVENTS_PAGE_QUERY } from './event-queries'
 
 export interface EventsPageQuery {
   projectSlug: string
+  /** Cursor position: effective change time (ISO, ms precision) and public id ('' = start of that instant, '~' = end). */
   after: { t: string; id: string }
+  /** The sweep's fixed window end (ISO). */
   upTo: string
   limit: number
 }
@@ -22,8 +24,10 @@ export interface EventsPageQuery {
 export interface EventsSource {
   enabledModules(projectSlug: string): Promise<string[]>
   site(projectSlug: string, customDomain: string | null | undefined): Promise<EventSiteV1 | null>
-  /** Published events with (_updatedAt, publicId) > after and _updatedAt ≤ upTo, oldest first. */
+  /** Published events with (effective change time, publicId) > after, effective time ≤ upTo; ordered by both. Rows carry `_eff` (ms). */
   page(q: EventsPageQuery): Promise<EventV1Row[]>
+  /** The subset of `publicIds` that still have a published event in the project. */
+  existing(projectSlug: string, publicIds: string[]): Promise<string[]>
 }
 
 export function createSanityEventsSource(): EventsSource {
@@ -57,11 +61,15 @@ export function createSanityEventsSource(): EventsSource {
     async page(q) {
       return (
         (await client(q.projectSlug).fetchForTenant<EventV1Row[] | null>(PARTNER_EVENTS_PAGE_QUERY, {
-          afterT: q.after.t,
+          afterMs: Date.parse(q.after.t),
           afterId: q.after.id,
-          upTo: q.upTo,
+          upToMs: Date.parse(q.upTo),
         })) ?? []
       ).slice(0, q.limit)
+    },
+    async existing(projectSlug, publicIds) {
+      if (!publicIds.length) return []
+      return (await client(projectSlug).fetchForTenant<string[] | null>(PARTNER_EVENTS_EXISTING_QUERY, { publicIds })) ?? []
     },
   }
 }

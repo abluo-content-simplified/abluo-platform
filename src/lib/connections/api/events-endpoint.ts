@@ -9,7 +9,8 @@
 //      installed — a paused tenant or an uninstalled module returns nothing.
 //   5. Data: published events of THAT project only (projectSlug from the
 //      Connection's project row, never from the request), only granted fields,
-//      plus removals (tombstones + events made unlisted / website-only).
+//      plus removals (tombstones + events not public at the window end).
+//      Boundary-aware, fixed-window sweeps — the guarantee is in sync.ts.
 // Every call is metered in api_usage. Errors are RFC 9457 problem details.
 
 import { createHash } from 'node:crypto'
@@ -20,6 +21,7 @@ import type { ConnectionsStore } from '../store'
 import type { ConnectionGrant } from '../types'
 import { partnerRemovalReason, toEventV1, type EventRemovedV1, type EventV1 } from './event-contract'
 import type { EventsSource } from './events-source'
+import { buildPage, effectiveChangeMs, type Candidate } from './sync'
 
 export const API_ENDPOINT = '/api/v1/events'
 export const DEFAULT_LIMIT = 50
@@ -65,30 +67,47 @@ export function problem(status: number, slug: string, title: string, detail?: st
 }
 
 // ── Cursor ──────────────────────────────────────────────────────────────────
+// Opaque to partners. `t`/`id`: the position (effective change time, public
+// id; '' = start of that instant, '~' = end). `w`: the window end, fixed for
+// the whole sweep and present only while has_more is true. `i`: the sweep is
+// the initial sync (removals omitted). v1 cursors without `w` start a new sweep.
 export interface Cursor {
   t: string
   id: string
+  w?: string
+  i?: boolean
 }
 
 export function encodeCursor(c: Cursor): string {
-  return Buffer.from(JSON.stringify({ v: 1, t: c.t, id: c.id })).toString('base64url')
+  return Buffer.from(JSON.stringify({ v: 1, t: c.t, id: c.id, ...(c.w ? { w: c.w } : {}), ...(c.i ? { i: true } : {}) })).toString('base64url')
 }
 
 export function decodeCursor(token: string): Cursor | null {
   if (!/^[A-Za-z0-9_-]{1,400}$/.test(token)) return null
   try {
-    const o = JSON.parse(Buffer.from(token, 'base64url').toString('utf8')) as { v?: unknown; t?: unknown; id?: unknown }
+    const o = JSON.parse(Buffer.from(token, 'base64url').toString('utf8')) as { v?: unknown; t?: unknown; id?: unknown; w?: unknown; i?: unknown }
     if (o.v !== 1 || typeof o.t !== 'string' || typeof o.id !== 'string') return null
     if (Number.isNaN(Date.parse(o.t))) return null
     // '' (start of an instant), '~' (end of an instant) or a public id (UUID).
     if (o.id !== '' && o.id !== AFTER_ALL && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(o.id)) return null
-    return { t: new Date(o.t).toISOString(), id: o.id }
+    const c: Cursor = { t: new Date(o.t).toISOString(), id: o.id }
+    if (o.w !== undefined) {
+      if (typeof o.w !== 'string' || Number.isNaN(Date.parse(o.w))) return null
+      c.w = new Date(o.w).toISOString()
+      if (Date.parse(c.t) > Date.parse(c.w)) return null
+    }
+    if (o.i !== undefined) {
+      if (o.i !== true || !c.w) return null
+      c.i = true
+    }
+    return c
   } catch {
     return null
   }
 }
 
-type Item = { t: string; id: string; out: Partial<EventV1> | EventRemovedV1 }
+type Out = Partial<EventV1> | EventRemovedV1
+const iso = (ms: number) => new Date(ms).toISOString()
 const cmp = (a: { t: string; id: string }, b: { t: string; id: string }) => Date.parse(a.t) - Date.parse(b.t) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
 
 export async function handleEventsRequest(req: ApiRequest, deps: EventsDeps): Promise<ApiResponse> {
@@ -136,18 +155,25 @@ export async function handleEventsRequest(req: ApiRequest, deps: EventsDeps): Pr
   const rawLimit = url.searchParams.get('limit')
   const limit = rawLimit === null ? DEFAULT_LIMIT : Number(rawLimit)
   if (!Number.isInteger(limit) || limit < 1 || limit > MAX_LIMIT) return finish(problem(400, 'invalid-parameter', 'Invalid limit', `limit must be 1–${MAX_LIMIT}.`))
-  let after: Cursor = { t: EPOCH, id: '' }
+  let after: { t: string; id: string } = { t: EPOCH, id: '' }
+  // The sweep: a fixed window end, carried by the cursor across its pages.
+  let fixedEnd: string | null = null
+  let initial = false
   const cursorParam = url.searchParams.get('cursor')
   const since = url.searchParams.get('updated_since')
   if (cursorParam && since) return finish(problem(400, 'invalid-parameter', 'Conflicting parameters', 'Send either cursor or updated_since, not both.'))
   if (cursorParam) {
     const c = decodeCursor(cursorParam)
     if (!c) return finish(problem(400, 'invalid-cursor', 'Invalid cursor', 'Use the next_cursor value from a previous response.'))
-    after = c
+    after = { t: c.t, id: c.id }
+    fixedEnd = c.w ?? null
+    initial = c.i === true
   } else if (since) {
     const t = Date.parse(since)
     if (Number.isNaN(t) || !/^\d{4}-\d{2}-\d{2}T/.test(since)) return finish(problem(400, 'invalid-parameter', 'Invalid updated_since', 'Use an ISO 8601 date-time, e.g. 2026-10-01T00:00:00Z.'))
     after = { t: new Date(t).toISOString(), id: '' }
+  } else {
+    initial = true // no position at all: the consumer holds nothing yet
   }
 
   // 4. The project and its module, checked now (fail closed, D8.5).
@@ -161,40 +187,56 @@ export async function handleEventsRequest(req: ApiRequest, deps: EventsDeps): Pr
   const site = await deps.source.site(project.slug, project.customDomain)
   if (!site) return finish(problem(503, 'not-configured', 'Website not configured', 'The website has no languages configured yet.'))
 
-  // 5. Data: events and removals, merged in one ordered stream.
-  const upTo = new Date(clock().getTime() - SETTLE_MS).toISOString()
+  // 5. Data: events and removals, merged in one ordered stream, up to a
+  //    window end fixed for the whole sweep (never later than now − settle).
+  const settled = clock().getTime() - SETTLE_MS
+  const upTo = iso(fixedEnd ? Math.min(Date.parse(fixedEnd), settled) : settled)
   if (Date.parse(after.t) > Date.parse(upTo)) after = { t: upTo, id: AFTER_ALL }
+  const upToMs = Date.parse(upTo)
+  const w = new Date(upToMs)
   const [rows, removed] = await Promise.all([
     deps.source.page({ projectSlug: project.slug, after, upTo, limit: limit + 1 }),
     deps.store.listTombstones({ projectId: project.id, resource: 'event', after, upTo, limit: limit + 1 }),
   ])
 
-  const items: Item[] = []
+  const live: Candidate<Out | null>[] = []
   for (const row of rows) {
-    if (!row.publicId || !row._updatedAt) continue
-    const t = new Date(row._updatedAt).toISOString()
-    const reason = partnerRemovalReason(row)
+    if (!row.publicId) continue
+    const t = typeof row._eff === 'number' ? row._eff : effectiveChangeMs(row, upToMs)
+    if (t === null) continue
+    const updatedAt = iso(t)
+    const reason = partnerRemovalReason(row, w)
     if (reason) {
-      items.push({ t, id: row.publicId, out: { id: row.publicId, deleted: true, reason, updatedAt: t } })
+      live.push({ t, id: row.publicId, kind: 'live', removal: true, out: { id: row.publicId, deleted: true, reason, updatedAt } })
       continue
     }
     const ev = toEventV1(row, site)
-    if (ev) items.push({ t, id: ev.id, out: projectFields(grant, 'event', ev as unknown as Record<string, unknown>) as Partial<EventV1> })
+    // updatedAt = the effective change time, so a row delivered because a date
+    // passed is never older than the row it supersedes.
+    const out = ev ? (projectFields(grant, 'event', { ...ev, updatedAt } as unknown as Record<string, unknown>) as Partial<EventV1>) : null
+    live.push({ t, id: row.publicId, kind: 'live', removal: false, out })
   }
-  for (const r of removed) items.push({ t: r.removed_at, id: r.public_id, out: { id: r.public_id, deleted: true, reason: r.reason, updatedAt: r.removed_at } })
-  items.sort(cmp)
+  const tombstones: Candidate<Out | null>[] = removed.map((r) => ({
+    t: Date.parse(r.removed_at),
+    id: r.public_id,
+    kind: 'tombstone',
+    removal: true,
+    out: { id: r.public_id, deleted: true, reason: r.reason, updatedAt: iso(Date.parse(r.removed_at)) },
+  }))
+  // A tombstone for an item whose published document exists again is never reported.
+  const existingIds = new Set(tombstones.length ? await deps.source.existing(project.slug, [...new Set(tombstones.map((c) => c.id))]) : [])
 
-  const hasMore = items.length > limit
-  const page = items.slice(0, limit)
-  const last = page.at(-1)
-  const next: Cursor = hasMore && last ? { t: last.t, id: last.id } : { t: upTo, id: AFTER_ALL }
+  const built = buildPage([live, tombstones], { limit, existingIds, initial })
+  const page = built.rows.filter((o): o is Out => o !== null)
+  const hasMore = built.hasMore
+  const next: Cursor = hasMore && built.last ? { t: iso(built.last.t), id: built.last.id, w: upTo, ...(initial ? { i: true } : {}) } : { t: upTo, id: AFTER_ALL }
   // Never move the cursor backwards.
-  const nextCursor = encodeCursor(cmp(next, after) < 0 ? after : next)
+  const nextCursor = encodeCursor(cmp(next, after) < 0 ? { ...after, ...(hasMore ? { w: upTo, ...(initial ? { i: true } : {}) } : {}) } : next)
 
-  const body = JSON.stringify({ data: page.map((i) => i.out), has_more: hasMore, next_cursor: nextCursor })
+  const body = JSON.stringify({ data: page, has_more: hasMore, next_cursor: nextCursor })
   // The ETag covers the content, not the cursor (which moves with time): an
   // unchanged answer is 304 and the partner simply keeps its current cursor.
-  const content = JSON.stringify({ data: page.map((i) => i.out), has_more: hasMore })
+  const content = JSON.stringify({ data: page, has_more: hasMore })
   const etag = `W/"${createHash('sha256').update(content).digest('base64url').slice(0, 32)}"`
   const headers = { 'content-type': 'application/json', 'cache-control': 'private, no-cache', etag, vary: 'Authorization' }
   if (req.headers['if-none-match'] === etag) return finish({ status: 304, headers, body: null })

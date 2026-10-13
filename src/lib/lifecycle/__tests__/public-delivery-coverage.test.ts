@@ -39,7 +39,9 @@ const NON_PUBLIC: Record<string, string> = {
   'src/lib/sanity/queries.ts#galleryDocPreviewQuery': 'private draft preview of one gallery (authenticated preview route)',
   'src/lib/sanity/post-preview-query.ts#postDraftPreviewQuery': 'private draft preview of one post (authenticated preview route)',
   'src/lib/connections/api/event-queries.ts#PARTNER_EVENTS_PAGE_QUERY':
-    'partner API — PENDING ADR-032 slice 5 (D11): hiding without a removal signal would contradict D11; nothing is archivable before then',
+    'partner API sync (ADR-032 D11, slice 5) — reads every state on purpose: visibility is evaluated at the window end in code (partnerRemovalReason) and non-public events leave only as removals { id, deleted: true, reason }, never with content',
+  'src/lib/connections/api/event-queries.ts#PARTNER_EVENTS_EXISTING_QUERY':
+    'partner API tombstone suppression (ADR-032 D11) — returns only which public ids still exist, never content',
 }
 
 /** Reference fields that point at a lifecycle type, and that type. */

@@ -5,7 +5,8 @@ import { createRateLimiter } from '../rate-limit'
 import { decodeCursor, encodeCursor, handleEventsRequest, SETTLE_MS } from '../api/events-endpoint'
 import { toEventV1, type EventSiteV1, type EventV1Row } from '../api/event-contract'
 import type { EventsSource } from '../api/events-source'
-import { PARTNER_EVENTS_PAGE_QUERY } from '../api/event-queries'
+import { parse, evaluate } from 'groq-js'
+import { PARTNER_EVENTS_EXISTING_QUERY, PARTNER_EVENTS_PAGE_QUERY } from '../api/event-queries'
 import { OPENAPI_V1 } from '../api/openapi'
 import { recordRemoval, signWebhook, verifyWebhookSignature } from '../api/removals'
 import { P1A, P2, owner, setup } from './fixture'
@@ -43,8 +44,14 @@ function row(over: Partial<EventV1Row> = {}): EventV1Row {
   }
 }
 
+/**
+ * The Sanity side, in memory — and running the REAL page query through groq-js,
+ * so the effective-time ordering and cursor filter under test are the ones
+ * Sanity executes.
+ */
 function fakeSource(bySlug: Record<string, { modules?: string[]; site?: EventSiteV1 | null; rows: EventV1Row[] }>) {
   const calls: string[] = []
+  const docs = (slug: string) => (bySlug[slug]?.rows ?? []).map((r) => ({ _id: `${slug}-event-${r.publicId}`, _type: 'event', projectSlug: slug, ...r }))
   const source: EventsSource = {
     async enabledModules(slug) {
       return bySlug[slug]?.modules ?? ['events']
@@ -54,14 +61,13 @@ function fakeSource(bySlug: Record<string, { modules?: string[]; site?: EventSit
     },
     async page(q) {
       calls.push(q.projectSlug)
-      const t = Date.parse(q.after.t)
-      return (bySlug[q.projectSlug]?.rows ?? [])
-        .filter((r) => {
-          const rt = Date.parse(r._updatedAt!)
-          return rt <= Date.parse(q.upTo) && (rt > t || (rt === t && r.publicId! > q.after.id))
-        })
-        .sort((a, b) => Date.parse(a._updatedAt!) - Date.parse(b._updatedAt!) || a.publicId!.localeCompare(b.publicId!))
-        .slice(0, q.limit)
+      const params = { projectSlug: q.projectSlug, afterMs: Date.parse(q.after.t), afterId: q.after.id, upToMs: Date.parse(q.upTo) }
+      const out = (await (await evaluate(parse(PARTNER_EVENTS_PAGE_QUERY), { dataset: docs(q.projectSlug), params })).get()) as EventV1Row[]
+      return out.slice(0, q.limit)
+    },
+    async existing(slug, publicIds) {
+      const params = { projectSlug: slug, publicIds }
+      return (await (await evaluate(parse(PARTNER_EVENTS_EXISTING_QUERY), { dataset: docs(slug), params })).get()) as string[]
     },
   }
   return { source, calls }
@@ -140,14 +146,17 @@ describe('GET /api/v1/events — isolation and permissions', () => {
 })
 
 describe('GET /api/v1/events — sync', () => {
-  it('unlisted and website-only events arrive as removals; deletions come from tombstones', async () => {
+  it('unlisted and website-only events arrive as removals; deletions come from tombstones (incremental sync)', async () => {
     const hidden = row({ visibility: 'unlisted', _updatedAt: '2026-10-02T10:00:00Z' })
     const w = await world([row(), hidden, row({ visibility: 'websiteOnly', _updatedAt: '2026-10-03T10:00:00Z' })])
     const c = await w.f.connect(w.app, owner('u1', P1A), P1A)
     await w.f.store.insertTombstone({ project_id: P1A, resource: 'event', public_id: uuid(), reason: 'deleted', removed_at: '2026-10-04T10:00:00.000Z' })
     await w.f.store.insertTombstone({ project_id: P2, resource: 'event', public_id: uuid(), reason: 'deleted', removed_at: '2026-10-04T10:00:00.000Z' })
-    const data = w.body(await w.get(c.accessToken)).data
+    const data = w.body(await w.get(c.accessToken, '?updated_since=2026-01-01T00:00:00Z')).data
     expect(data.map((d: { deleted?: boolean; reason?: string }) => d.reason ?? 'live')).toEqual(['live', 'unlisted', 'websiteOnly', 'deleted'])
+    // Initial sync (no position): the consumer holds nothing, so no removals at all.
+    const initial = w.body(await w.get(c.accessToken)).data
+    expect(initial.map((d: { deleted?: boolean; reason?: string }) => d.reason ?? 'live')).toEqual(['live'])
     expect(data[1]).toEqual({ id: hidden.publicId, deleted: true, reason: 'unlisted', updatedAt: '2026-10-02T10:00:00.000Z' })
     expect(Object.keys(data[2]).sort()).toEqual(['deleted', 'id', 'reason', 'updatedAt']) // removals carry no content
   })

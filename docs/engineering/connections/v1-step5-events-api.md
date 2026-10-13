@@ -13,18 +13,35 @@
 
 ## How a partner syncs
 
-1. First call: no parameter (everything) or `updated_since=<ISO>`.
+1. First call: no parameter (initial sync — everything public now) or `updated_since=<ISO>`.
 2. While `has_more`, call again with `cursor=<next_cursor>`.
 3. Store the last `next_cursor`; send it on the next poll (every few minutes in V1; V1.1 adds push).
 
-The stream is ordered by change time and contains live events and **removals** `{ id, deleted: true, reason }`:
+The stream is ordered by **effective change time** and contains live events and **removals** `{ id, deleted: true, reason }`. Since ADR-032 slice 5 the sync is boundary-aware and works in fixed-window sweeps — the full design and guarantee are in `src/lib/connections/api/sync.ts`:
+
+- **Effective change time** = the latest of `_updatedAt`, `publishedAt`, `expiresAt`, `archivedAt` that is ≤ the sweep's window end. A stored date passing is a change: an event scheduled for tomorrow reaches partners tomorrow, with no edit. (Events carry no lifecycle dates until ADR-032 Phase 3, so today this equals `_updatedAt`.)
+- **Sweep** = the calls from one starting cursor until `has_more` is false. Its window end (`now − 5 s`) is fixed when it starts and carried in every `next_cursor` of that sweep; the last page starts the next sweep. Ties are broken by the event's public id.
+- **State** (public, or removed with a reason) is evaluated at the window end; content is what is stored when the page is read.
+
+**Guarantee — at least once, latest state wins** (not exactly once):
+
+1. Every change is delivered in the sweep that covers it, or — if the event was edited, archived, deleted or republished while the sweep ran — in the next sweep.
+2. An event may arrive more than once. Each row is its complete current state: upsert by `id`, delete by `id` on `deleted: true`, in the order received. Repeats and removals for unknown ids are harmless.
+3. At most one row per id per response. A page may hold fewer than `limit` rows (even none) while `has_more` is true.
+4. A tombstone is never reported for an event whose published document exists again (republished); its own row reports its state. A tombstone recorded after the republish (late webhook) is suppressed too.
+5. **Initial sync** (no cursor, no `updated_since`) returns no removals at all — the consumer holds nothing, and never-public events (e.g. scheduled) are not disclosed. With a cursor or `updated_since`, a not-yet-public event that changed is reported as `unpublished` (a no-op for a consumer that never saw it); when its publish date passes it arrives in full.
+6. Not promised: intermediate states inside one window (published and expired between two polls arrives as one removal).
 
 | Reason | Where it comes from |
 |---|---|
+| `archived` | The website owner archived it (`archivedAt` ≤ window end). Added in slice 5 (ADR-032 D11). |
+| `unpublished` | Taken offline / end date passed / not public yet (dates), or unpublished in Studio (tombstone). |
 | `unlisted`, `websiteOnly` | The event still exists; its visibility changed. Detected inline. |
-| `deleted`, `unpublished` | The event is gone from Sanity. Recorded as a tombstone by the removals webhook (below). |
+| `deleted` | The event is gone from Sanity. Recorded as a tombstone by the removals webhook (below). |
 
-Changes from the last 5 seconds wait for the next poll, so a slow write never slips behind a cursor. `ETag` / `If-None-Match` → 304 when nothing changed. Every call is metered in `api_usage`. Errors are RFC 9457 problem details.
+Order when several apply: archived → unpublished → unlisted → websiteOnly. **Consumers must accept reasons they do not know** (v1 may add more) and act on `deleted: true` alone.
+
+Changes from the last 5 seconds wait for the next sweep, so a slow write never slips behind a cursor. `ETag` / `If-None-Match` → 304 when nothing changed. Every call is metered in `api_usage`. Errors are RFC 9457 problem details. Cursors are opaque; cursors issued before slice 5 (no window end) are still accepted and start a new sweep.
 
 ## One-time setup — Tom
 
@@ -59,6 +76,8 @@ On dev.abluo.app: register "Test partner" on Partner apps → approve → connec
 ## Tests
 
 `src/lib/connections/__tests__/events-api.test.ts` (17): isolation (own project only, unknown parameters refused), not-shared → 403, granted fields only, personal data opt-in, pause/revoke immediate, inactive project / no Events module → nothing (not even queried), removals inline and from tombstones, exactly-once paging and cursor carry-over, settle window, bad cursors/parameters as problems, ETag 304, rate limit + metering, contract ↔ registry ↔ OpenAPI in sync, query scoped and published-only, webhook signature and tombstone recording. Mutation-checked: removing any of the scope, module, visibility, settle or field-filter checks fails a test.
+
+`src/lib/connections/__tests__/events-sync.test.ts` (ADR-032 slice 5): runs the real page query through groq-js against a simulated consumer that must end up matching the website — equal-timestamp ties, the fixed window end, edits / archive / delete / republish during paging, repeated pages, older tombstone → republish, late removal webhook after a republish, republish → later deletion, initial sync never disclosing scheduled items, a date passing without an edit, published-and-expired between polls, reason precedence, cursor validation and the OpenAPI wording. Each safeguard was removed once on purpose and a test failed.
 
 ## Still open
 
