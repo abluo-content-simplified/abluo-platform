@@ -118,12 +118,14 @@ async function events(accessToken: string, query = '') {
 }
 
 /** Every item until has_more is false. */
-async function syncAll(accessToken: string) {
+/** One full sweep. `since` → incremental sync (removals included); none → initial sync (no removals, ADR-032 A14). */
+async function syncAll(accessToken: string, since?: string) {
   const items: Record<string, unknown>[] = []
   let cursor = ''
   let raw = ''
   for (let i = 0; i < 20; i++) {
-    const r = await events(accessToken, cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=2` : '?limit=2')
+    const first = since ? `?updated_since=${encodeURIComponent(since)}&limit=2` : '?limit=2'
+    const r = await events(accessToken, cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=2` : first)
     expect(r.status, r.text).toBe(200)
     raw += r.text
     items.push(...r.json.data)
@@ -335,15 +337,16 @@ describe('D8.7 cross-tenant API suite (real Supabase, real GROQ)', () => {
     // the GROQ layer holds by itself (defence in depth).
     const rows = await sanity.fetch<{ publicId: string; title: { it: string } }[]>(
       PARTNER_EVENTS_PAGE_QUERY,
-      { projectSlug: slug('a1'), afterT: '1970-01-01T00:00:00Z', afterId: '', upTo: new Date().toISOString() },
+      { projectSlug: slug('a1'), afterMs: 0, afterId: '', upToMs: Date.now() },
       { perspective: 'raw' },
     )
     expect(rows.map((r) => r.publicId).sort()).toEqual([ids.ev.a1Public, ids.ev.a1Unlisted, ids.ev.a1WebsiteOnly, ids.ev.a1WithDraft].sort())
     expect(JSON.stringify(rows)).not.toMatch(/never published|unpublished draft edit|sibling site|other tenant/)
   })
 
-  it('unlisted and website-only events, and deletions, arrive as removals of its own project only', async () => {
-    const { items } = await syncAll(a1.access)
+  it('unlisted and website-only events, and deletions, arrive as removals of its own project only (incremental sync); initial sync has none', async () => {
+    expect((await syncAll(a1.access)).items.filter((i) => i.deleted)).toEqual([])
+    const { items } = await syncAll(a1.access, '1970-01-01T00:00:00Z')
     const removed = Object.fromEntries(items.filter((i) => i.deleted).map((i) => [i.id, i.reason]))
     expect(removed).toEqual({
       [ids.ev.a1Unlisted]: 'unlisted',
