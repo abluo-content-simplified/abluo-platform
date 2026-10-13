@@ -4,27 +4,33 @@ import { useLocale, useTranslations } from 'next-intl'
 import type { StepProps } from '@/components/client/create/types'
 import { StepHeading, languageName } from '@/components/client/create/StepHeading'
 import { languageStates, languageSummaryKey } from '@/lib/client/wizard-steps'
+import { PublicationDateField } from '@/components/app/lifecycle/PublicationDateField'
+import { editingZone, formatInZone, fromLocalInput, toLocalInput } from '@/components/app/lifecycle/zoned-time'
 
 export type PublishMode = 'now' | 'schedule' | 'draft'
 export type PublishChoice = {
   mode: PublishMode
-  /** `datetime-local` value, in the viewer's time zone. */
+  /** "Publish on" — UTC ISO ('' = not chosen). Entered in the site's time zone (ADR-032 D8). */
   at: string
   expire: boolean
+  /** "Unpublish on" — UTC ISO ('' = not chosen). */
   expireAt: string
 }
 
-/** `datetime-local` value (viewer's time zone) → ISO-8601 UTC, or null when empty/invalid. */
-export function localToIso(value: string): string | null {
+/** A UTC ISO value, or null when empty/invalid. */
+export function choiceIso(value: string): string | null {
   if (!value) return null
   const d = new Date(value)
   return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }
 
-/** A Date → `datetime-local` value in the viewer's time zone. */
-export function isoToLocalInput(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+/** The default choice: publish now; "Publish on" tomorrow 09:00 and "Unpublish on" 30 days later, both in the site's zone. */
+export function defaultPublishChoice(zone: string, now = new Date()): PublishChoice {
+  const today = toLocalInput(now.toISOString(), zone).slice(0, 10)
+  const tomorrow = new Date(Date.parse(`${today}T12:00:00Z`) + 24 * 3600 * 1000).toISOString().slice(0, 10)
+  const at = fromLocalInput(`${tomorrow}T09:00`, zone)?.utc ?? ''
+  const later = at ? new Date(Date.parse(at) + 30 * 24 * 3600 * 1000).toISOString() : ''
+  return { mode: 'now', at, expire: false, expireAt: later }
 }
 
 /**
@@ -41,13 +47,8 @@ export function PublishStep({
   error,
 }: StepProps & { choice: PublishChoice; onChange: (c: PublishChoice) => void; error: string | null }) {
   const t = useTranslations('clientDashboard.create.publish')
-  const zone = (() => {
-    try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone
-    } catch {
-      return ''
-    }
-  })()
+  const tl = useTranslations('app.lifecycle.dates')
+  const zone = editingZone(site.timeZone)
   const set = (patch: Partial<PublishChoice>) => onChange({ ...choice, ...patch })
   const options: { mode: PublishMode; label: string; help: string }[] = [
     { mode: 'now', label: t('now'), help: t('nowHelp') },
@@ -83,12 +84,7 @@ export function PublishStep({
       </div>
 
       {choice.mode === 'schedule' ? (
-        <div className="mt-6">
-          <label htmlFor="publish-at" className="text-[0.9375rem] font-medium text-foreground">
-            {t('when')}
-          </label>
-          <input id="publish-at" type="datetime-local" value={choice.at} onChange={(e) => set({ at: e.target.value })} className={inputClass} />
-        </div>
+        <PublicationDateField id="publish-at" className="mt-6" label={tl('publishOn')} value={choice.at || null} onChange={(v) => set({ at: v ?? '' })} zone={zone} inputClassName={inputClass} />
       ) : null}
 
       {choice.mode !== 'draft' ? (
@@ -117,22 +113,13 @@ export function PublishStep({
             </button>
           </div>
           {choice.expire ? (
-            <div className="mt-4">
-              <label htmlFor="expire-at" className="text-[0.9375rem] font-medium text-foreground">
-                {t('expireWhen')}
-              </label>
-              <input id="expire-at" type="datetime-local" value={choice.expireAt} onChange={(e) => set({ expireAt: e.target.value })} className={inputClass} />
-            </div>
+            <PublicationDateField id="expire-at" className="mt-4" label={tl('unpublishOn')} value={choice.expireAt || null} onChange={(v) => set({ expireAt: v ?? '' })} zone={zone} inputClassName={inputClass} />
           ) : null}
         </div>
       ) : null}
 
-      {choice.mode !== 'now' || choice.expire ? (
-        <p className="mt-3 text-sm text-muted-foreground">{t('timezone', { zone })}</p>
-      ) : null}
-
       {site.languages.length > 1 ? (
-        <LanguageSummary draft={draft} languages={site.languages} choice={choice} />
+        <LanguageSummary draft={draft} languages={site.languages} choice={choice} zone={zone} />
       ) : null}
 
       <p role="alert" className="mt-4 min-h-5 text-[0.9375rem] text-destructive">
@@ -152,20 +139,22 @@ function LanguageSummary({
   draft,
   languages,
   choice,
+  zone,
 }: {
   draft: StepProps['draft']
   languages: string[]
   choice: PublishChoice
+  zone: string
 }) {
   const t = useTranslations('clientDashboard.create.publish')
   const ui = useLocale()
-  const at = choice.mode === 'schedule' ? localToIso(choice.at) : null
+  const at = choice.mode === 'schedule' ? choiceIso(choice.at) : null
   const heading =
     choice.mode === 'draft'
       ? t('summaryDraft')
       : choice.mode === 'schedule' && at
         ? t('summarySchedule', {
-            date: new Intl.DateTimeFormat(ui, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(at)),
+            date: formatInZone(at, zone, ui),
           })
         : t('summaryNow')
   return (

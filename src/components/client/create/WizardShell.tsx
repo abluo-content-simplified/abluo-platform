@@ -41,32 +41,19 @@ import { StoryStep, type ImproveResult } from './steps/StoryStep'
 import { CoverStep } from './steps/CoverStep'
 import { LanguagesStep, type LanguageChoice } from './steps/LanguagesStep'
 import { PreviewStep } from './steps/PreviewStep'
-import { PublishStep, isoToLocalInput, localToIso, type PublishChoice } from './steps/PublishStep'
+import { PublishStep, choiceIso, defaultPublishChoice, type PublishChoice } from './steps/PublishStep'
 import { DoneStep, type DoneResult } from './steps/DoneStep'
 import { ReviewStep } from './steps/ReviewStep'
 import { CtaStep } from './steps/CtaStep'
 import { GalleryPickStep } from './steps/GalleryPickStep'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
+import { DeletePermanentlyDialog } from '@/components/app/lifecycle/DeletePermanentlyDialog'
+import { lifecycleMenu, type LifecycleAction, type LifecycleMenuEntry } from '@/components/app/lifecycle/lifecycle-menu'
+import { editingZone, formatInZone } from '@/components/app/lifecycle/zoned-time'
+import { publishedStatus } from '@/lib/lifecycle/status'
 
 const LIFECYCLE_ERRORS = ['conflict', 'forbidden', 'not_found', 'invalid_value', 'archived', 'archive_first', 'in_use', 'unauthenticated', 'failed']
 type Confirm = 'discard' | 'deleteDraft' | 'deletePost'
-
-/**
- * Where the live version stands right now (D5: dates decide, no job runner).
- * ADR-032: archived wins over every date; an end date at or before the go-live
- * date (taken offline while scheduled) is "offline", not "scheduled".
- */
-export function liveStatus(
-  live: { publishedAt: string | null; expiresAt: string | null; archivedAt?: string | null },
-  now = Date.now()
-): 'live' | 'scheduled' | 'offline' | 'archived' {
-  if (live.archivedAt) return 'archived'
-  const at = live.publishedAt ? Date.parse(live.publishedAt) : NaN
-  const until = live.expiresAt ? Date.parse(live.expiresAt) : NaN
-  if (!Number.isNaN(until) && (until <= now || (!Number.isNaN(at) && until <= at))) return 'offline'
-  if (!Number.isNaN(at) && at > now) return 'scheduled'
-  return 'live'
-}
 
 const IMPROVE_ERRORS = ['forbidden', 'invalid_value', 'too_large', 'ai_unavailable', 'unauthenticated', 'failed']
 const PUBLISH_ERRORS = [
@@ -114,6 +101,7 @@ export function WizardShell({
   aiImprove?: boolean
 }) {
   const t = useTranslations('clientDashboard.create')
+  const tl = useTranslations('app.lifecycle')
   const router = useRouter()
   const projectSlug = site.projectSlug
   const locale = site.defaultLocale
@@ -134,12 +122,7 @@ export function WizardShell({
         .map((l) => [l, initialDraft.title[l]?.trim() || (initialDraft.body[l]?.length ?? 0) > 0 ? 'write' : 'later'])
     )
   )
-  const [publish, setPublish] = useState<PublishChoice>(() => {
-    const tomorrow = new Date(Date.now() + 24 * 3600 * 1000)
-    tomorrow.setHours(9, 0, 0, 0)
-    const later = new Date(tomorrow.getTime() + 30 * 24 * 3600 * 1000)
-    return { mode: 'now', at: isoToLocalInput(tomorrow), expire: false, expireAt: isoToLocalInput(later) }
-  })
+  const [publish, setPublish] = useState<PublishChoice>(() => defaultPublishChoice(editingZone(site.timeZone)))
   const [publishError, setPublishError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<DoneResult | null>(null)
@@ -327,9 +310,9 @@ export function WizardShell({
       setStep('done')
       return
     }
-    const publishAt = publish.mode === 'schedule' ? localToIso(publish.at) : undefined
+    const publishAt = publish.mode === 'schedule' ? choiceIso(publish.at) : undefined
     if (publish.mode === 'schedule' && !publishAt) return setPublishError(publishError_('invalid_schedule'))
-    const expiresAt = publish.expire ? localToIso(publish.expireAt) : null
+    const expiresAt = publish.expire ? choiceIso(publish.expireAt) : null
     if (publish.expire && !expiresAt) return setPublishError(publishError_('invalid_expiry'))
 
     setBusy(true)
@@ -375,7 +358,7 @@ export function WizardShell({
       if (!r.ok) return fail(publishError_(r.error))
       finished.current = true
       await autosave.discard()
-      const isLive = live ? liveStatus(live) === 'live' : true
+      const isLive = live ? publishedStatus(live, 'required', new Date()) === 'published' : true
       const slug = r.slugs[locale]
       const url = isLive && site.origin && slug ? `${site.origin}/${locale}/blog/${slug}` : null
       setDone({ kind: 'updated', live: isLive, url })
@@ -398,7 +381,7 @@ export function WizardShell({
       const r = await action({ projectSlug, id: draftIdRef.current, rev: live.rev })
       if (!r.ok) return setNotice({ kind: 'error', text: lifecycleError(r.error) })
       setLive(r.live)
-      setNotice({ kind: 'status', text: online ? t('lifecycle.onlineDone') : t('lifecycle.offlineDone') })
+      setNotice({ kind: 'status', text: online ? t('lifecycle.publishedAgainDone') : t('lifecycle.unpublishedDone') })
     } catch {
       setNotice({ kind: 'error', text: lifecycleError('failed') })
     } finally {
@@ -481,36 +464,45 @@ export function WizardShell({
     onServerWrite,
   }
 
-  const state = live ? liveStatus(live) : null
-  const fmt = (iso: string | null) =>
-    iso ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso)) : ''
+  // ADR-032 D4 / D8: the one status function; dates in the site's time zone.
+  const state = live ? publishedStatus(live, 'required', new Date()) : null
+  const zone = editingZone(site.timeZone)
+  const fmt = (iso: string | null | undefined) => formatInZone(iso, zone, locale)
   const statusLine = !isEdit || !live || !state
     ? null
     : state === 'archived'
-      ? t('review.status.archived', { date: fmt(live.archivedAt ?? null) })
-      : state === 'offline'
-        ? t('review.status.offline', { date: fmt(live.expiresAt) })
+      ? t('review.status.archived', { date: fmt(live.archivedAt) })
+      : state === 'unpublished'
+        ? t('review.status.unpublished', { date: fmt(live.expiresAt) })
         : t(`review.status.${state}`, { date: fmt(live.publishedAt) })
-  // ADR-032 D6: an archived post offers only Restore (and, for Owners and Site
-  // admins, Delete permanently); everything that would put it online is hidden.
-  const menu: { key: string; label: string; onSelect: () => void }[] = isEdit
-    ? state === 'archived'
-      ? [
-          { key: 'restore', label: t('menu.restore'), onSelect: () => void setArchived(false) },
-          { key: 'discard', label: t('menu.discard'), onSelect: () => setConfirm('discard') },
-          { key: 'activity', label: t('menu.activity'), onSelect: () => setActivityOpen(true) },
-          ...(canDelete ? [{ key: 'deletePost', label: t('menu.deletePermanently'), onSelect: () => setConfirm('deletePost') }] : []),
-        ]
-      : [
-          ...(state === 'offline'
-            ? [{ key: 'online', label: t('menu.backOnline'), onSelect: () => void setOnline(true) }]
-            : [{ key: 'offline', label: t('menu.takeOffline'), onSelect: () => void setOnline(false) }]),
-          { key: 'date', label: t('menu.changeDate'), onSelect: () => go('publish', { editing: true }) },
-          { key: 'discard', label: t('menu.discard'), onSelect: () => setConfirm('discard') },
-          { key: 'activity', label: t('menu.activity'), onSelect: () => setActivityOpen(true) },
-          { key: 'archive', label: t('menu.archive'), onSelect: () => void setArchived(true) },
-        ]
-    : [{ key: 'deleteDraft', label: t('menu.deleteDraft'), onSelect: () => setConfirm('deleteDraft') }]
+  // ADR-032 slice 6: the shared Archive · Restore · Delete pattern (lifecycleMenu);
+  // an archived post offers only Restore and, for Owners and Site admins, Delete permanently.
+  const lifecycleItems = lifecycleMenu(isEdit && state ? state : 'draft', { write: true, delete: true, deletePublished: canDelete })
+  const lifecycleItem = (e: LifecycleMenuEntry) => {
+    const on: Record<LifecycleAction, () => void> = {
+      unpublish: () => void setOnline(false),
+      publishAgain: () => void setOnline(true),
+      setUnpublishDate: () => go('publish', { editing: true }),
+      archive: () => void setArchived(true),
+      restore: () => void setArchived(false),
+      delete: () => setConfirm('deleteDraft'),
+      deletePermanently: () => setConfirm('deletePost'),
+    }
+    const label = e.action === 'setUnpublishDate' ? t('menu.changeDate') : tl(`actions.${e.action}`)
+    return { key: e.action, label, onSelect: on[e.action], destructive: e.destructive, separated: e.separated }
+  }
+  const extras = isEdit
+    ? [
+        { key: 'discard', label: t('menu.discard'), onSelect: () => setConfirm('discard') },
+        { key: 'activity', label: t('menu.activity'), onSelect: () => setActivityOpen(true) },
+      ]
+    : []
+  const menu = [
+    ...lifecycleItems.filter((e) => !e.destructive && e.action !== 'archive').map(lifecycleItem),
+    ...extras,
+    ...lifecycleItems.filter((e) => e.action === 'archive').map(lifecycleItem),
+    ...lifecycleItems.filter((e) => e.destructive).map(lifecycleItem),
+  ]
   const postTitle = snap.title[locale]?.trim() || t('review.title')
 
   const ready = step !== null
@@ -673,8 +665,19 @@ export function WizardShell({
 
       <PostActivitySheet open={activityOpen} onClose={() => setActivityOpen(false)} projectSlug={projectSlug} postId={draftIdRef.current} />
 
+      <DeletePermanentlyDialog
+        open={confirm === 'deletePost'}
+        titles={[postTitle]}
+        busy={confirmBusy}
+        error={confirmError}
+        onConfirm={() => void runConfirm()}
+        onCancel={() => {
+          setConfirm(null)
+          setConfirmError(null)
+        }}
+      />
       <ConfirmDialog
-        open={confirm !== null}
+        open={confirm !== null && confirm !== 'deletePost'}
         title={confirm ? t(`confirm.${confirm}Title`) : ''}
         body={confirm ? t(`confirm.${confirm}Body`, { title: postTitle }) : ''}
         confirmLabel={confirm ? t(`confirm.${confirm}`) : ''}

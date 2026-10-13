@@ -41,6 +41,8 @@ export type SiteInfo = {
   categories: { value: string; label: string }[]
   /** `https://<customDomain>` when the site has one, else null ("View on your site" is hidden). */
   origin?: string | null
+  /** The site's IANA time zone: publication dates are shown and entered in it (ADR-032 D8). */
+  timeZone?: string | null
   /** The project's callToAction documents (empty/absent = the CTA card is hidden). */
   /** This project's galleries — present only when the Gallery module is installed (may be empty). */
   galleries?: { id: string; title: string; count: number }[]

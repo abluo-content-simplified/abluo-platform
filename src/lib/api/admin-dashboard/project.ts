@@ -21,7 +21,8 @@ import type { RequestsGlance } from '@/lib/api/dashboard/forms'
 import { REQUEST_WEEK_DAYS } from '@/lib/client/home-cards'
 import { summarizeMedia, type MediaGlance } from '@/lib/api/dashboard/media'
 import { siteStatusFrom, type SiteStatusData } from '@/lib/api/dashboard/site'
-import { resolveLocalized, type DashboardPostStatus } from '@/lib/api/client-dashboard'
+import { resolveLocalized } from '@/lib/api/client-dashboard'
+import { publishedStatus } from '@/lib/lifecycle/status'
 import { coverThumbUrl } from '@/lib/api/post-drafts'
 import { adminProjectOverviewQuery } from '@/lib/admin/project-queries'
 import { liveSiteUrl } from '@/lib/admin/projects-filter'
@@ -87,7 +88,7 @@ export type AdminProjectDetail = {
 type OverviewRow = {
   project?: { enabledModuleIds?: string[] | null; customDomain?: string | null } | null
   site?: { defaultLocale?: string | null; supportedLocales?: string[] | null } | null
-  posts?: { _id: string; status: DashboardPostStatus }[] | null
+  posts?: { _id: string; publishedAt?: string | null; expiresAt?: string | null; archivedAt?: string | null }[] | null
   latestPosts?: { _id: string; title?: unknown; publishedAt?: string | null; status?: string; coverUrl?: string | null; coverHotspot?: { x?: unknown; y?: unknown } | null }[] | null
   galleryCount?: number | null
   latestGalleries?: { _id: string; title?: unknown; internalName?: unknown; count?: number | null; coverUrl?: string | null; coverHotspot?: { x?: unknown; y?: unknown } | null }[] | null
@@ -96,7 +97,7 @@ type OverviewRow = {
 }
 
 /** Pure: the Sanity overview row → what the page shows. Titles in the viewer's language, then the site's. */
-export function summarizeOverview(row: OverviewRow | null, locale: string): AdminProjectContent {
+export function summarizeOverview(row: OverviewRow | null, locale: string, now = new Date()): AdminProjectContent {
   const defaultLocale = row?.site?.defaultLocale || null
   const lang = defaultLocale ?? locale
   const text = (v: unknown) => (typeof v === 'string' ? v.trim() || null : resolveLocalized(v as Record<string, unknown> | null, locale, lang))
@@ -104,7 +105,7 @@ export function summarizeOverview(row: OverviewRow | null, locale: string): Admi
     enabledModuleIds: [...new Set((row?.project?.enabledModuleIds ?? []).filter((m): m is string => typeof m === 'string'))],
     defaultLocale,
     supportedLocales: (row?.site?.supportedLocales ?? []).filter((l): l is string => typeof l === 'string'),
-    posts: blogGlance(row?.posts ?? [], null),
+    posts: blogGlance((row?.posts ?? []).map((p) => ({ _id: p._id, status: publishedStatus(p, 'required', now) })), null),
     latestPosts: (row?.latestPosts ?? []).map((p) => ({
       id: p._id,
       title: text(p.title),

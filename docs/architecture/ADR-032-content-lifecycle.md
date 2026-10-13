@@ -266,3 +266,27 @@ No cursor and no `updated_since` = initial sync: **removal rows are omitted for 
 
 ### A15 — Migration 042 and deployment order
 `supabase/migrations/042_tombstone_reason_archived.sql` widens the `api_tombstones.reason` CHECK to include `archived` (additive, re-runnable; proven by `supabase/verify/tombstone-reason-042.verify.mjs`). **Order: apply 042 to production first, then deploy slice 5** — 042 is harmless to code that never writes `archived`, and slice 5 itself derives `archived` from documents (it writes no such tombstone), so neither order breaks anything; 042 first keeps contract, code and database in agreement.
+
+---
+
+## Amendment 2026-10-13 (4) — slice 6, shared dashboard pieces
+
+**Status:** Accepted (Tom, 2026-10-13). Implemented in slice 6; posts adopt the pieces now, events / galleries / Menu reuse them in Phases 2–3.
+
+### A16 — Vocabulary (the ADR words, everywhere)
+Status: **Draft · Scheduled · Published · Unpublished · Archived** (+ "Pending changes" when a draft sits next to the published version — renamed from "Unpublished changes" to avoid two meanings of "unpublished"). Dates: **Publish on** / **Unpublish on**. Actions: **Unpublish**, **Publish again**, **Set / Remove unpublish date**, **Archive**, **Restore**, **Delete** (never-published drafts), **Delete permanently** (archived). Translated in en / it / de under `app.lifecycle`. Replaces the earlier Live / Offline / Take offline / Put back online copy. Internal status value `offline` → `unpublished` (old `?status=offline` links still open the Unpublished filter).
+
+### A17 — Filters
+All · Draft · Scheduled · Published · Unpublished · Archived. **"All" leaves archived items out** (archive = put away); the Archived filter shows them. Counts follow the same rule.
+
+### A18 — One status function in practice (D4)
+Lists no longer derive status in GROQ: the client and admin dashboards read `publishedAt / expiresAt / archivedAt` and call `publishedStatus()` (`src/lib/lifecycle/status.ts`), the same function the editor, the Activity log and the partner API use.
+
+### A19 — Publication settings and time zone (D8)
+`PublicationDateField` (`src/components/app/lifecycle/`) enters dates in the **site's** time zone (`siteConfig.timeZone`; the viewer's zone only if a site has none), names the zone and its offset under the field, and explains a DST gap (moved forward) or overlap (first occurrence). Used by the editor's publish step and the list's "Set unpublish date" sheet. List dates render in the site zone too (`DisplayTimeZoneContext`), so server and browser show the same dates. The list's date-range filter still compares calendar days in the viewer's zone (unchanged; follow-up if it matters).
+
+### A20 — The Archive · Restore · Delete pattern
+`lifecycleMenu(status, permissions)` decides what every module's ⋯ menu offers (draft → Delete; scheduled / published → Unpublish · Set unpublish date · Archive; unpublished → Publish again · Set unpublish date · Archive; archived → Restore · Delete permanently). Archive is never destructive; deleting is always last, **set apart by a divider** and destructive. **"Confirm with title" = the dialog names the item** (`DeletePermanentlyDialog`) and says Abluo can recover it within 90 days; one click, no typing — archiving first is the safety step. The server still decides (lifecycleGuard).
+
+### A21 — Lists show a change at once
+Lifecycle batch results return the post's new live state and the revision they replaced; the row shows it until the refreshed list carries a newer revision (`src/lib/client/posts-overlay.ts`). Fixes the row that updated only after a reload.

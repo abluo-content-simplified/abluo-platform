@@ -135,8 +135,8 @@ describe('runPostBatch', () => {
     const f = fake({ p1: post('p1'), p2: post('p2'), p3: post('p3', { projectSlug: 'livener' }) })
     const r = await runPostBatch(ctx(grant()), 'project-a', { ids: ['p1', 'p2', 'p3', 'nope', '../x'], op: 'offline' }, f.deps)
     expect(r).toEqual([
-      { id: 'p1', ok: true },
-      { id: 'p2', ok: true },
+      { id: 'p1', ok: true, previousRev: 'r-p1', live: expect.objectContaining({ rev: 'new', expiresAt: NOW.toISOString() }) },
+      { id: 'p2', ok: true, previousRev: 'r-p2', live: expect.objectContaining({ rev: 'new', expiresAt: NOW.toISOString() }) },
       { id: 'p3', ok: false, error: 'not_found' },
       { id: 'nope', ok: false, error: 'not_found' },
       { id: '../x', ok: false, error: 'not_found' },
@@ -161,9 +161,9 @@ describe('runPostBatch', () => {
 
   it('end date and topics run per post', async () => {
     const f = fake({ p1: post('p1'), p2: post('p2') })
-    expect(await runPostBatch(ctx(grant()), 'project-a', { ids: ['p1', 'p2'], op: 'endDate', expiresAt: '2026-12-01T00:00:00Z' }, f.deps)).toEqual([
-      { id: 'p1', ok: true },
-      { id: 'p2', ok: true },
+    expect(await runPostBatch(ctx(grant()), 'project-a', { ids: ['p1', 'p2'], op: 'endDate', expiresAt: '2026-12-01T00:00:00Z' }, f.deps)).toMatchObject([
+      { id: 'p1', ok: true, previousRev: 'r-p1', live: { expiresAt: '2026-12-01T00:00:00.000Z' } },
+      { id: 'p2', ok: true, previousRev: 'r-p2', live: { expiresAt: '2026-12-01T00:00:00.000Z' } },
     ])
     expect(await runPostBatch(ctx(grant()), 'project-a', { ids: ['p1'], op: 'categories', categories: ['studio'] }, f.deps)).toEqual([{ id: 'p1', ok: true }])
     expect(await runPostBatch(ctx(grant()), 'project-a', { ids: ['p1', 'p2'], op: 'featured', featured: true }, f.deps)).toEqual([

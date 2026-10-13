@@ -599,7 +599,7 @@ describe('getPostEditorSite', () => {
   it('default language first, category labels in the viewer language, origin from the domain', async () => {
     const c = readClient({
       fetchResult: {
-        site: { defaultLocale: 'it', supportedLocales: ['de', 'it'] },
+        site: { defaultLocale: 'it', supportedLocales: ['de', 'it'], timeZone: 'Europe/Rome' },
         categories: [{ value: 'cura', label: { it: 'Cura', en: 'Care' } }, { value: 'senza-label' }],
         customDomain: 'ch-psicoterapeuta.com/',
       },
@@ -614,6 +614,7 @@ describe('getPostEditorSite', () => {
         { value: 'senza-label', label: 'senza label' },
       ],
       origin: 'https://ch-psicoterapeuta.com',
+      timeZone: 'Europe/Rome',
       galleries: [],
       ctas: [],
     })

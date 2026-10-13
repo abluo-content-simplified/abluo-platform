@@ -129,6 +129,7 @@ export default async function PostsPage({
           projectSlug={projectSlug}
           canEdit={canEdit}
           canDeleteLive={canDeletePublished(grant)}
+          timeZone={list.timeZone ?? null}
         />
       )}
     </PageShell>
@@ -164,6 +165,7 @@ function toBrowserPost(post: DashboardPostRow, languages: string[], t: T): Brows
     publishedAt: post.publishedAt ?? null,
     expiresAt: post.expiresAt ?? null,
     archivedAt: post.archivedAt ?? null,
+    liveRev: post.rev ?? null,
     featured: post.featured === true,
     languageStates: states,
     translationsComplete: states.length ? states.every((s) => s.complete) : undefined,

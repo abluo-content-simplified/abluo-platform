@@ -54,3 +54,12 @@ export function deriveStatus(
   }
   return { ...base, status: 'published', unpublishOn }
 }
+
+/**
+ * The status of a document that exists in published form (lists read only
+ * published documents; never-published drafts come from their own list).
+ */
+export function publishedStatus(doc: LifecycleFields, rule: PublishedAtRule, now: Date): Exclude<LifecycleStatus, 'draft'> {
+  const s = deriveStatus({ published: doc, rule }, now).status
+  return s === 'draft' ? 'unpublished' : s
+}

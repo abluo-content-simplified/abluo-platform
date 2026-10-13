@@ -6,7 +6,15 @@ import { FLOATING_STYLE, portalTarget, useAnchoredPopover } from './anchored-pop
 import { CellIconButton } from './list/cells'
 import { OVERLAY_CHIP } from './list/overlay-chip'
 
-export type CardMenuItem = { key: string; label: string; onSelect: () => void; destructive?: boolean; href?: string }
+export type CardMenuItem = {
+  key: string
+  label: string
+  onSelect: () => void
+  destructive?: boolean
+  href?: string
+  /** Set apart from the items above it by a divider (e.g. deleting, ADR-032 slice 6). */
+  separated?: boolean
+}
 
 /**
  * The ⋯ button on a card (44px) and its small menu. The menu renders in a
@@ -78,7 +86,7 @@ export function CardMenu({ label, items, variant = 'default' }: { label: string;
               className="z-50 w-60 overflow-hidden rounded-2xl border border-border bg-popover py-1 text-popover-foreground shadow-[var(--shadow-raise)]"
             >
               {items.map((item) => (
-                <li key={item.key}>
+                <li key={item.key} className={item.separated ? 'mt-1 border-t border-border pt-1' : undefined}>
                   <button
                     type="button"
                     onClick={(e) => {

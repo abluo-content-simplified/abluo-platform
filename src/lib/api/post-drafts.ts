@@ -546,6 +546,8 @@ export type PostEditorSite = {
   categories: { value: string; label: string }[]
   /** `https://<customDomain>`, or null when the site has no domain yet. */
   origin: string | null
+  /** The site's IANA time zone (siteConfig.timeZone), or null when not set. */
+  timeZone: string | null
   /** The site's prepared calls to action, texts in the site's main language. Empty = feature hidden. */
   ctas: PostEditorCta[]
   /** This project's galleries (published or new), title in the main language. */
@@ -763,7 +765,7 @@ export async function getPostEditorSite(
   const grant = grantFor(ctx, projectId)
   const client = deps.client ?? sanityWriteClient
   const r = await client.fetch<{
-    site?: { defaultLocale?: string | null; supportedLocales?: string[] | null } | null
+    site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null } | null
     categories?: Array<{ value?: string; label?: unknown }> | null
     customDomain?: string | null
     ctas?: Array<{ _id?: unknown; internalName?: unknown; isDefault?: unknown; heading?: unknown; buttonLabel?: unknown }> | null
@@ -771,7 +773,7 @@ export async function getPostEditorSite(
     `{
       "ctas": *[_type == "callToAction" && projectSlug == $projectSlug && !(_id in path("drafts.**"))]
         | order(_createdAt asc){ _id, internalName, isDefault, heading, buttonLabel },
-      "site": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales },
+      "site": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales, timeZone },
       "categories": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]
         .moduleInstallations[moduleId == "blog"][0].config.categories[]{ value, label },
       "customDomain": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**")) && defined(customDomain)][0].customDomain
@@ -816,6 +818,7 @@ export async function getPostEditorSite(
     languages,
     categories,
     origin: domain ? `https://${domain}` : null,
+    timeZone: typeof r?.site?.timeZone === 'string' && r.site.timeZone ? r.site.timeZone : null,
     galleries: [...galleries.values()],
     ctas: (r?.ctas ?? [])
       .filter((c) => typeof c?._id === 'string' && !!c._id)

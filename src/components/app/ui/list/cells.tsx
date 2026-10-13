@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, type ButtonHTMLAttributes, type ReactNode, type Ref } from 'react'
+import { createContext, useCallback, useContext, useMemo, type ButtonHTMLAttributes, type ReactNode, type Ref } from 'react'
 import { useLocale } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 
@@ -18,9 +18,23 @@ import { Link } from '@/i18n/navigation'
 const LINE = 'flex min-h-6 items-center'
 
 /** Short local date ("6 Oct 2026") in the viewer's language and time zone. */
+/**
+ * The time zone list dates are shown in. Unset = the viewer's own zone. Lists
+ * of lifecycle content set the site's zone (ADR-032 D8), so every editor sees
+ * the same dates — and the server renders exactly what the browser will.
+ */
+export const DisplayTimeZoneContext = createContext<string | null>(null)
+
 export function useShortDate() {
   const locale = useLocale()
-  const fmt = useMemo(() => new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }), [locale])
+  const timeZone = useContext(DisplayTimeZoneContext) ?? undefined
+  const fmt = useMemo(() => {
+    try {
+      return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone })
+    } catch {
+      return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' })
+    }
+  }, [locale, timeZone])
   return useCallback(
     (iso: string | null | undefined) => {
       if (!iso) return ''

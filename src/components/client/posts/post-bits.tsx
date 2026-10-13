@@ -1,11 +1,12 @@
 'use client'
 
+import { LifecycleBadge } from '@/components/app/lifecycle/LifecycleBadge'
 import { useCallback, useEffect, useId, useRef, useState, type MouseEvent } from 'react'
 import { useTranslations } from 'next-intl'
 import { createPortal } from 'react-dom'
 import { Link } from '@/i18n/navigation'
 import { FLOATING_STYLE, portalTarget, useAnchoredPopover } from '@/components/app/ui/anchored-popover'
-import { CellIcon, CellIconButton, CellStack, Chips, LocalDate, MediaFrame, Pill, useShortDate } from '@/components/app/ui/list/cells'
+import { CellIcon, CellIconButton, CellStack, Chips, LocalDate, MediaFrame, useShortDate } from '@/components/app/ui/list/cells'
 import { OVERLAY_CHIP } from '@/components/app/ui/list/overlay-chip'
 import type { PostStatus } from '@/lib/client/posts-filter'
 import type { LanguageState } from './types'
@@ -73,32 +74,13 @@ export function NewPostLink({ href, label }: { href: string; label: string }) {
   )
 }
 
-const TONE = { published: 'success', scheduled: 'highlight', draft: 'outline', offline: 'muted', archived: 'muted' } as const
-
 /**
- * Live / Scheduled / Draft / Offline / Archived, plus "Unpublished changes" when a draft
- * exists. 1.5rem pills. `oneLine`: never wraps (the badge truncates).
+ * The status badge of a post row — the shared lifecycle badge (ADR-032 slice
+ * 6): Draft / Scheduled / Published / Unpublished / Archived, plus a second
+ * pill (e.g. "Pending changes") when `badge` is set.
  */
 export function StatusPill({ status, badge, oneLine = false }: { status: PostStatus; badge?: string | null; oneLine?: boolean }) {
-  const t = useTranslations('clientDashboard.posts.pill')
-  return (
-    <span className={`flex items-start gap-1.5 ${oneLine ? 'min-w-0 flex-nowrap overflow-hidden' : 'flex-wrap'}`}>
-      <Pill
-        tone={TONE[status]}
-        icon={status === 'published' ? <span aria-hidden="true" className="size-1.5 rounded-full bg-success" /> : status === 'scheduled' ? ICONS.clock : status === 'archived' ? ICONS.archive : undefined}
-      >
-        {t(status)}
-      </Pill>
-      {badge ? (
-        <span
-          title={badge}
-          className={`h-6 rounded-full border border-border px-2.5 text-xs leading-[1.375rem] font-medium whitespace-nowrap text-foreground ${oneLine ? 'block min-w-0 truncate' : 'inline-flex shrink-0 items-center'}`}
-        >
-          {badge}
-        </span>
-      ) : null}
-    </span>
-  )
+  return <LifecycleBadge status={status} extra={badge ?? null} oneLine={oneLine} />
 }
 
 /**
@@ -293,8 +275,8 @@ export function CardDateLine({
   const text =
     status === 'archived'
       ? t('archivedOn', { date: format(archivedAt ?? updatedAt) })
-      : status === 'offline'
-      ? t('offlineSince', { date: format(expiresAt ?? updatedAt) })
+      : status === 'unpublished'
+      ? t('unpublishedSince', { date: format(expiresAt ?? updatedAt) })
       : expiresAt
         ? t('ends', { date: format(expiresAt) })
         : status === 'scheduled'

@@ -451,11 +451,11 @@ describe('batch archive / restore', () => {
     const a = publishedPost({ _id: 'tmz-a' })
     const b = publishedPost({ _id: 'tmz-b', archivedAt: T, expiresAt: T })
     const s = memorySanity([a, b])
-    expect(await runPostBatch(ctx(editor()), 'project-a', { ids: ['tmz-a', 'tmz-b'], op: 'archive' }, s.deps)).toEqual([
-      { id: 'tmz-a', ok: true },
+    expect(await runPostBatch(ctx(editor()), 'project-a', { ids: ['tmz-a', 'tmz-b'], op: 'archive' }, s.deps)).toMatchObject([
+      { id: 'tmz-a', ok: true, previousRev: 'p1', live: { archivedAt: T } },
       { id: 'tmz-b', ok: false, error: 'archived' },
     ])
-    expect(await runPostBatch(ctx(editor()), 'project-a', { ids: ['tmz-a', 'tmz-b'], op: 'restore' }, s.deps)).toEqual([
+    expect(await runPostBatch(ctx(editor()), 'project-a', { ids: ['tmz-a', 'tmz-b'], op: 'restore' }, s.deps)).toMatchObject([
       { id: 'tmz-a', ok: true },
       { id: 'tmz-b', ok: true },
     ])

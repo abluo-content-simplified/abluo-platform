@@ -11,7 +11,7 @@ export type LatestItem = {
   thumb: string | null
   href: string | null
   /** Posts: the publish state and go-live date (ISO), formatted in the browser. */
-  status?: 'published' | 'scheduled' | 'offline'
+  status?: 'published' | 'scheduled' | 'unpublished'
   publishedAt?: string | null
   /** Galleries: a ready-made status line (where it is used). */
   line?: string
@@ -33,7 +33,7 @@ export function LatestList({ heading, items, seeAllHref, kind }: { heading: stri
   const when = (p: LatestItem): string => {
     if (p.line) return p.line
     if (!p.status) return ''
-    if (p.status === 'offline') return t('recent.offline')
+    if (p.status === 'unpublished') return t('recent.unpublished')
     if (!client || !p.publishedAt) return t(`recent.${p.status}`)
     const d = new Date(p.publishedAt)
     if (Number.isNaN(d.getTime())) return t(`recent.${p.status}`)

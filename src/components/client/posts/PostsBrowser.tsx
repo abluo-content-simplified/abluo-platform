@@ -7,7 +7,6 @@ import { getPathname, useRouter as useAppRouter } from '@/i18n/navigation'
 import { batchPostsAction, setPostFeaturedAction } from '@/app/[locale]/(client)/[tenant]/posts/lifecycle-actions'
 import { mintDraftPreviewAction } from '@/app/[locale]/(client)/[tenant]/posts/preview-actions'
 import { draftPreviewUrl } from '@/lib/client/preview-url'
-import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import type { CardMenuItem } from '@/components/app/ui/CardMenu'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
 import { idRange, SelectionBar } from '@/components/app/ui/SelectionBar'
@@ -36,11 +35,17 @@ import { PostCardsGrid, PostPhoneList } from './PostCards'
 import { BarButton, CategorySheet, EndDateSheet, SheetItem } from './PostSheets'
 import { PostActivitySheet } from './PostActivitySheet'
 import type { BrowserPost } from './types'
+import { DeletePermanentlyDialog } from '@/components/app/lifecycle/DeletePermanentlyDialog'
+import { lifecycleMenu, type LifecycleAction } from '@/components/app/lifecycle/lifecycle-menu'
+import { editingZone } from '@/components/app/lifecycle/zoned-time'
+import { DisplayTimeZoneContext } from '@/components/app/ui/list/cells'
+import { applyLiveOverlays, staleOverlays, type LiveOverlay } from '@/lib/client/posts-overlay'
 
 export type { BrowserPost } from './types'
 
 type BatchOp = 'offline' | 'online' | 'archive' | 'restore' | 'delete' | 'endDate' | 'categories' | 'featured'
 type BatchExtra = { expiresAt?: string | null; categories?: string[]; featured?: boolean }
+const LIFECYCLE_OPS: readonly BatchOp[] = ['offline', 'online', 'archive', 'restore', 'endDate']
 type Sheet = null | { kind: 'endDate'; ids: string[] } | { kind: 'categories'; ids: string[] } | { kind: 'more' } | { kind: 'activity'; id: string }
 type View = 'list' | 'cards'
 
@@ -73,6 +78,7 @@ export function PostsBrowser({
   projectSlug,
   canEdit = false,
   canDeleteLive = false,
+  timeZone = null,
 }: {
   title: string
   /** The page's query string at request time (server-provided, no Suspense needed). */
@@ -86,9 +92,12 @@ export function PostsBrowser({
   canEdit?: boolean
   /** blog.post.delete + blog.published.delete: may delete archived posts permanently (the server re-checks). */
   canDeleteLive?: boolean
+  /** The site's time zone: dates are shown and entered in it (ADR-032 D8). */
+  timeZone?: string | null
 }) {
   const t = useTranslations('clientDashboard.posts')
   const tc = useTranslations('clientDashboard.posts.card')
+  const tl = useTranslations('app.lifecycle')
   const router = useRouter()
   const appRouter = useAppRouter()
   const pathname = usePathname()
@@ -115,9 +124,21 @@ export function PostsBrowser({
     setSeenPosts(posts)
     setFeaturedNow(new Map())
   }
+  // Lifecycle changes show at once, until the refreshed list has caught up (posts-overlay.ts).
+  const [overlays, setOverlays] = useState<Map<string, LiveOverlay>>(new Map())
+  const [seenForOverlays, setSeenForOverlays] = useState(posts)
+  if (seenForOverlays !== posts) {
+    setSeenForOverlays(posts)
+    const stale = staleOverlays(posts, overlays)
+    if (stale.length) {
+      const next = new Map(overlays)
+      stale.forEach((id) => next.delete(id))
+      setOverlays(next)
+    }
+  }
   const rows = useMemo(
-    () => posts.map((p) => (featuredNow.has(p._id) ? { ...p, featured: featuredNow.get(p._id)! } : p)),
-    [posts, featuredNow]
+    () => applyLiveOverlays(posts, overlays).map((p) => (featuredNow.has(p._id) ? { ...p, featured: featuredNow.get(p._id)! } : p)),
+    [posts, overlays, featuredNow]
   )
   const visible = useMemo(() => applyFilters(rows, filters), [rows, filters])
   const counts = useMemo(() => statusCounts(rows, filters), [rows, filters])
@@ -177,6 +198,13 @@ export function PostsBrowser({
       }
       const ok = r.results.filter((x) => x.ok)
       const failed = r.results.filter((x) => !x.ok).map((x) => titleOf(x.id))
+      if (LIFECYCLE_OPS.includes(op) && ok.length) {
+        setOverlays((m) => {
+          const n = new Map(m)
+          for (const x of ok) if ('live' in x && x.live && x.previousRev) n.set(x.id, { previousRev: x.previousRev, live: { ...x.live, archivedAt: x.live.archivedAt ?? null } })
+          return n
+        })
+      }
       if (op === 'featured' && ok.length) {
         setFeaturedNow((m) => {
           const n = new Map(m)
@@ -278,28 +306,34 @@ export function PostsBrowser({
       label: post.featured ? t('featured.remove') : t('featured.mark'),
       onSelect: () => void setFeatured(post, !post.featured),
     })
-    const archived = post.status === 'archived'
-    // ADR-032 D6: an archived post only comes back through Restore.
-    if (post.hasLive && !archived && post.status === 'offline') items.push({ key: 'online', label: tc('online'), onSelect: () => void runBatch('online', [post._id]) })
-    if (post.hasLive && !archived && post.status !== 'offline') items.push({ key: 'offline', label: tc('offline'), onSelect: () => void runBatch('offline', [post._id]) })
-    if (post.hasLive && !archived) items.push({ key: 'endDate', label: tc('endDate'), onSelect: () => setSheet({ kind: 'endDate', ids: [post._id] }) })
     if (projectSlug) items.push({ key: 'activity', label: tc('activity'), onSelect: () => setSheet({ kind: 'activity', id: post._id }) })
-    if (post.hasLive && !archived) items.push({ key: 'archive', label: tc('archive'), onSelect: () => void runBatch('archive', [post._id]) })
-    if (archived) items.push({ key: 'restore', label: tc('restore'), onSelect: () => void runBatch('restore', [post._id]) })
-    if (!post.hasLive) items.push({ key: 'delete', label: tc('delete'), onSelect: () => askDelete([post._id]), destructive: true })
-    if (archived && canDeleteLive) items.push({ key: 'deletePermanently', label: tc('deletePermanently'), onSelect: () => askDelete([post._id]), destructive: true })
+    // ADR-032 slice 6: the shared Archive · Restore · Delete pattern.
+    const run: Record<LifecycleAction, () => void> = {
+      unpublish: () => void runBatch('offline', [post._id]),
+      publishAgain: () => void runBatch('online', [post._id]),
+      setUnpublishDate: () => setSheet({ kind: 'endDate', ids: [post._id] }),
+      archive: () => void runBatch('archive', [post._id]),
+      restore: () => void runBatch('restore', [post._id]),
+      delete: () => askDelete([post._id]),
+      deletePermanently: () => askDelete([post._id]),
+    }
+    for (const e of lifecycleMenu(post.status, { write: canEdit, delete: canEdit, deletePublished: canDeleteLive })) {
+      items.push({ key: e.action, label: tl(`actions.${e.action}`), onSelect: run[e.action], destructive: e.destructive, separated: e.separated })
+    }
     return items
   }
 
   const onSort = (column: SortColumn) => update({ sort: nextSort(column, filters.sort) })
   const selectedPosts = selectedIds.map((id) => byId.get(id)).filter((p): p is BrowserPost => Boolean(p))
   const liveSelected = selectedPosts.filter((p) => p.hasLive)
-  /** Every selected live post is offline: offer "Put back online" in the bar instead. */
-  const allOffline = liveSelected.length > 0 && liveSelected.every((p) => p.status === 'offline')
+  /** Every selected live post is unpublished: offer "Publish again" in the bar instead. */
+  const allUnpublished = liveSelected.length > 0 && liveSelected.every((p) => p.status === 'unpublished')
   /** Every selected post is archived: offer "Restore" instead of "Archive". */
   const allArchived = selectedPosts.length > 0 && selectedPosts.every((p) => p.status === 'archived')
   const none = !selectedIds.length || busy
+  const zone = editingZone(timeZone)
   return (
+    <DisplayTimeZoneContext.Provider value={zone}>
     <div className="space-y-4">
       <PageHeader
         title={title}
@@ -406,7 +440,7 @@ export function PostsBrowser({
             {tc('bar.more')}
           </BarButton>
           {/* Computers: everything in the bar */}
-          {allOffline ? (
+          {allUnpublished ? (
             <BarButton className="hidden md:flex" disabled={none} onPress={() => void runBatch('online', selectedIds)} icon={ICONS.online}>
               {tc('more.online')}
             </BarButton>
@@ -490,6 +524,7 @@ export function PostsBrowser({
       <EndDateSheet
         open={sheet?.kind === 'endDate'}
         busy={busy}
+        zone={zone}
         onClose={() => setSheet(null)}
         onSave={async (iso) => {
           const ids = sheet?.kind === 'endDate' ? sheet.ids : []
@@ -516,11 +551,9 @@ export function PostsBrowser({
         }}
       />
 
-      <ConfirmDialog
+      <DeletePermanentlyDialog
         open={confirmDelete !== null}
-        title={tc('confirmDelete.titlePermanent', { count: confirmDelete?.length ?? 0 })}
-        body={tc('confirmDelete.bodyPermanent', { count: confirmDelete?.length ?? 0, title: confirmDelete?.length === 1 ? titleOf(confirmDelete[0]) : '' })}
-        confirmLabel={tc('confirmDelete.confirmPermanent')}
+        titles={(confirmDelete ?? []).map(titleOf)}
         busy={busy}
         onConfirm={async () => {
           const ids = confirmDelete ?? []
@@ -533,5 +566,6 @@ export function PostsBrowser({
 
       <Toast message={toast?.message ?? null} tone={toast?.tone} action={toast?.undo ? tc('undo') : undefined} onAction={toast?.undo} />
     </div>
+    </DisplayTimeZoneContext.Provider>
   )
 }

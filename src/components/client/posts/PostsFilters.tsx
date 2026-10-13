@@ -7,7 +7,8 @@ import type { FilterChip } from '@/components/app/ui/FilterSheet'
 import { ListToolbar, type ListDateValue, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
 import type { DateField, PostFilters, PostSort, PostStatus } from '@/lib/client/posts-filter'
 
-const STATUSES: PostStatus[] = ['published', 'scheduled', 'draft', 'offline']
+/** ADR-032 slice 6: All (everything but archived) · Draft · Scheduled · Published · Unpublished · Archived. */
+const STATUSES: PostStatus[] = ['draft', 'scheduled', 'published', 'unpublished', 'archived']
 const SORTS: PostSort[] = ['newest', 'oldest', 'edited', 'edited_asc', 'title', 'title_desc', 'ends', 'ends_desc']
 const DATE_FIELDS: DateField[] = ['updated', 'published', 'ends']
 
@@ -51,6 +52,7 @@ export function PostsFilters({
 }) {
   const t = useTranslations('clientDashboard.posts')
   const tr = useTranslations('app.ui.dateRange')
+  const tl = useTranslations('app.lifecycle')
   const locale = useLocale()
 
   const dayFmt = useMemo(() => new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }), [locale])
@@ -75,7 +77,7 @@ export function PostsFilters({
     value: filters.status,
     options: [
       { value: 'all', label: `${t('filters.statusAll')} (${counts.all})` },
-      ...STATUSES.map((s) => ({ value: s, label: `${t(`pill.${s}`)} (${counts[s]})` })),
+      ...STATUSES.map((s) => ({ value: s, label: `${tl(`status.${s}`)} (${counts[s]})` })),
     ],
     onChange: (v) => update({ status: v as PostFilters['status'] }),
   })
@@ -129,7 +131,7 @@ export function PostsFilters({
 
   // Active filters as removable chips (phones, while the sheet is closed).
   const chips: FilterChip[] = []
-  if (filters.status !== 'all') chips.push({ id: 'status', label: t(`pill.${filters.status}`) })
+  if (filters.status !== 'all') chips.push({ id: 'status', label: tl(`status.${filters.status}`) })
   for (const c of filters.categories) chips.push({ id: `cat:${c}`, label: categories.find((x) => x.value === c)?.label ?? c })
   if (filters.translations) chips.push({ id: 'translations', label: t(filters.translations === 'complete' ? 'filters.translationsComplete' : 'filters.translationsMissing') })
   if (filters.missing) chips.push({ id: 'missing', label: t('filters.missingLanguage', { language: filters.missing.toUpperCase() }) })

@@ -10,7 +10,7 @@
 
 import { presetRange, todayISO, type RangePreset } from './date-range'
 
-export type PostStatus = 'published' | 'scheduled' | 'draft' | 'offline' | 'archived'
+export type PostStatus = 'published' | 'scheduled' | 'draft' | 'unpublished' | 'archived'
 /**
  * Sort order. `newest` / `oldest` = by publish date, `edited` / `edited_asc` =
  * by last edit, `title` / `title_desc`, `ends` / `ends_desc` (posts without an
@@ -80,7 +80,17 @@ export const DEFAULT_FILTERS: PostFilters = {
   range: 'last7',
 }
 
-const STATUSES: readonly string[] = ['published', 'scheduled', 'draft', 'offline', 'archived']
+const STATUSES: readonly string[] = ['draft', 'scheduled', 'published', 'unpublished', 'archived']
+/** Old URL values that still open the right filter. */
+const STATUS_ALIASES: Record<string, PostStatus> = { offline: 'unpublished' }
+
+/**
+ * ADR-032 slice 6: "All" means everything that is not put away — archived
+ * posts appear only under their own filter.
+ */
+export function inStatusFilter(status: PostStatus, filter: PostStatus | 'all'): boolean {
+  return filter === 'all' ? status !== 'archived' : status === filter
+}
 const SORTS: readonly string[] = ['newest', 'oldest', 'edited', 'edited_asc', 'title', 'title_desc', 'ends', 'ends_desc']
 const DATE_FIELDS: readonly string[] = ['published', 'updated', 'ends']
 const RANGES: readonly string[] = ['last7', 'last30', 'thisYear', 'all']
@@ -168,7 +178,8 @@ export function dateWindow(f: Pick<PostFilters, 'from' | 'to' | 'range'>, now = 
 
 /** Reads filters from URL search params; anything unknown falls back to the default. */
 export function parseFilters(params: URLSearchParams): PostFilters {
-  const status = params.get('status') ?? 'all'
+  const rawStatus = params.get('status') ?? 'all'
+  const status = STATUS_ALIASES[rawStatus] ?? rawStatus
   const sort = params.get('sort') ?? 'newest'
   const when = params.get('when') ?? 'all'
   const tr = params.get('tr') ?? ''
@@ -270,7 +281,7 @@ export function applyFilters<T extends FilterablePost>(posts: T[], f: PostFilter
   const q = normalizeSearch(f.q)
   const window = dateWindow(f, now)
   const out = posts.filter(
-    (p) => (f.status === 'all' || p.status === f.status) && matchesAllButStatus(p, f, q, now, window)
+    (p) => inStatusFilter(p.status, f.status) && matchesAllButStatus(p, f, q, now, window)
   )
   const { column, dir } = sortState(f.sort)
   const sign = dir === 'asc' ? 1 : -1
@@ -297,10 +308,10 @@ export function applyFilters<T extends FilterablePost>(posts: T[], f: PostFilter
 export function statusCounts<T extends FilterablePost>(posts: T[], f: PostFilters, now = new Date()) {
   const q = normalizeSearch(f.q)
   const window = dateWindow(f, now)
-  const counts: Record<PostStatus | 'all', number> = { all: 0, published: 0, scheduled: 0, draft: 0, offline: 0, archived: 0 }
+  const counts: Record<PostStatus | 'all', number> = { all: 0, published: 0, scheduled: 0, draft: 0, unpublished: 0, archived: 0 }
   for (const p of posts) {
     if (!matchesAllButStatus(p, f, q, now, window)) continue
-    counts.all++
+    if (inStatusFilter(p.status, 'all')) counts.all++
     counts[p.status]++
   }
   return counts

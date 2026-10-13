@@ -66,10 +66,10 @@ describe('admin providers (pure parts)', () => {
         project: { enabledModuleIds: ['blog', 'gallery', 'blog'] },
         site: { defaultLocale: 'it', supportedLocales: ['it', 'en'] },
         posts: [
-          { _id: '1', status: 'published' },
-          { _id: '2', status: 'scheduled' },
-          { _id: '3', status: 'draft' },
-          { _id: '4', status: 'published' },
+          { _id: '1', publishedAt: '2026-01-01T00:00:00Z' },
+          { _id: '2', publishedAt: '2099-01-01T00:00:00Z' },
+          { _id: '3', publishedAt: '2026-01-01T00:00:00Z', archivedAt: '2026-02-01T00:00:00Z' },
+          { _id: '4', publishedAt: '2026-01-01T00:00:00Z' },
         ],
         latestPosts: [{ _id: '2', title: { it: 'Ciao', en: 'Hello' }, publishedAt: '2026-10-10', status: 'scheduled' }],
         galleryCount: 2,
@@ -80,7 +80,7 @@ describe('admin providers (pure parts)', () => {
       'en',
     )
     expect(out.enabledModuleIds).toEqual(['blog', 'gallery'])
-    expect(out.posts).toEqual({ published: 2, scheduled: 1, drafts: 1 })
+    expect(out.posts).toEqual({ published: 2, scheduled: 1, drafts: 0 }) // archived counts as neither
     expect(out.latestPosts[0]).toMatchObject({ title: 'Hello', status: 'scheduled', thumb: null })
     expect(out.latestGalleries[0]).toEqual({ id: 'g', title: 'Studio', thumb: null, count: 7 })
     expect(out.media).toEqual({ photos: 3, missingAlt: 2 })

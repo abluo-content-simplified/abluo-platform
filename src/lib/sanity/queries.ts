@@ -1009,10 +1009,8 @@ export const postsQuery = /* groq */ `
 // query returns ALL posts for the project regardless of publish state — the
 // client needs to see drafts and scheduled posts they haven't published yet.
 //
-// A `status` field is derived so the dashboard can label each row without a
-// second pass: "draft" (no go-live date), "scheduled" (go-live in the future),
-// "offline" (expiresAt passed — ADR-025 D5), "archived" (ADR-032) or
-// "published". Ordered by
+// Each row's status is derived in code from publishedAt / expiresAt /
+// archivedAt by `publishedStatus` (ADR-032 D4 — one status function). Ordered by
 // most-recently-touched first (publishedAt when set, else _updatedAt).
 //
 // Executed ONLY through tenantScopedSanityClient (getDashboardPosts), which
@@ -1043,15 +1041,7 @@ export const dashboardPostsQuery = /* groq */ `
     // Languages whose body has content (with the title: a complete translation).
     "bodyLangs": ${presentLocales('body')},
     archivedAt,
-    // ADR-032 D1 order: archived wins over every date; a post taken offline
-    // before its go-live date (empty window) is "offline", not "scheduled".
-    "status": select(
-      !defined(publishedAt) => "draft",
-      defined(archivedAt) => "archived",
-      defined(expiresAt) && (expiresAt <= now() || expiresAt <= publishedAt) => "offline",
-      publishedAt > now() => "scheduled",
-      "published"
-    ),
+    // The status is derived in code by the one status function (ADR-032 D4).
     "updatedAt": _updatedAt
   }
 `
@@ -1063,7 +1053,8 @@ export const dashboardPostsQuery = /* groq */ `
 export const dashboardPostsContextQuery = /* groq */ `{
   "site": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{
     defaultLocale,
-    supportedLocales
+    supportedLocales,
+    timeZone
   },
   "categories": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]
     .moduleInstallations[moduleId == "blog"][0].config.categories[]{ value, label }

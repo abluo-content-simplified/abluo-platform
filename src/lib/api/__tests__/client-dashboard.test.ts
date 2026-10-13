@@ -55,8 +55,9 @@ describe('getDashboardPosts', () => {
 
   it('(c) returns posts for a valid grant', async () => {
     const rows = [
-      { _id: 'p1', title: 'Hello', slug: 'hello', status: 'published', updatedAt: '2026-08-01T00:00:00Z' },
-      { _id: 'p2', title: null, slug: null, status: 'draft', updatedAt: '2026-08-02T00:00:00Z' },
+      { _id: 'p1', title: 'Hello', slug: 'hello', publishedAt: '2026-08-01T00:00:00Z', updatedAt: '2026-08-01T00:00:00Z' },
+      { _id: 'p2', title: null, slug: null, publishedAt: '2026-08-01T00:00:00Z', archivedAt: '2026-08-03T00:00:00Z', updatedAt: '2026-08-02T00:00:00Z' },
+      { _id: 'p3', title: 'Later', slug: 'later', publishedAt: '2999-01-01T00:00:00Z', updatedAt: '2026-08-02T00:00:00Z' },
     ]
     const fetchMock = vi.fn().mockResolvedValue(rows)
     const posts = await getDashboardPosts(
@@ -65,7 +66,12 @@ describe('getDashboardPosts', () => {
       { locale: 'en' },
       { fetch: fetchMock }
     )
-    expect(posts).toEqual(rows)
+    // ADR-032 D4: the status is derived by the one status function, never read from GROQ.
+    expect(posts).toEqual([
+      { ...rows[0], status: 'published' },
+      { ...rows[1], status: 'archived' },
+      { ...rows[2], status: 'scheduled' },
+    ])
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 

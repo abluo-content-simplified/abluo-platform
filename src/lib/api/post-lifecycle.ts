@@ -297,7 +297,14 @@ export async function setPostFeatured(
 export const POST_BATCH_LIMIT = 100
 export const POST_BATCH_OPS = ['offline', 'online', 'archive', 'restore', 'delete', 'endDate', 'categories', 'featured'] as const
 export type PostBatchOp = (typeof POST_BATCH_OPS)[number]
-export type PostBatchItem = { id: string; ok: true } | { id: string; ok: false; error: PostDraftErrorCode }
+/**
+ * Per-post result. A lifecycle change returns the post's new live state and
+ * the revision it replaced, so the list can show the change at once even when
+ * its next read is a moment behind (ADR-032 slice 6).
+ */
+export type PostBatchItem =
+  | { id: string; ok: true; live?: PostLiveState; previousRev?: string }
+  | { id: string; ok: false; error: PostDraftErrorCode }
 
 /**
  * Runs one lifecycle action over several posts by looping over the per-post
@@ -324,6 +331,8 @@ export async function runPostBatch(
   for (const id of ids) {
     try {
       if (!isPostId(id)) notFound()
+      let live: PostLiveState | undefined
+      let previousRev: string | undefined
       if (input.op === 'categories') {
         await setPostCategories(ctx, projectId, { id, categories: input.categories ?? [] }, deps)
       } else if (input.op === 'featured') {
@@ -339,14 +348,15 @@ export async function runPostBatch(
           if (!published && !draft) notFound()
           if (!published) throw new PostDraftError('invalid_value', 'This post is not published.')
           const rev = published._rev ?? ''
-          if (input.op === 'offline') await takePostOffline(ctx, projectId, { id, rev }, deps)
-          else if (input.op === 'online') await putPostBackOnline(ctx, projectId, { id, rev }, deps)
-          else if (input.op === 'archive') await archivePost(ctx, projectId, { id, rev }, deps)
-          else if (input.op === 'restore') await restorePost(ctx, projectId, { id, rev }, deps)
-          else await setPostEndDate(ctx, projectId, { id, rev, expiresAt: input.expiresAt ?? null }, deps)
+          previousRev = rev
+          if (input.op === 'offline') live = await takePostOffline(ctx, projectId, { id, rev }, deps)
+          else if (input.op === 'online') live = await putPostBackOnline(ctx, projectId, { id, rev }, deps)
+          else if (input.op === 'archive') live = await archivePost(ctx, projectId, { id, rev }, deps)
+          else if (input.op === 'restore') live = await restorePost(ctx, projectId, { id, rev }, deps)
+          else live = await setPostEndDate(ctx, projectId, { id, rev, expiresAt: input.expiresAt ?? null }, deps)
         }
       }
-      results.push({ id, ok: true })
+      results.push(live ? { id, ok: true, live: { rev: live.rev, publishedAt: live.publishedAt, expiresAt: live.expiresAt, archivedAt: live.archivedAt, slugs: live.slugs }, previousRev } : { id, ok: true })
     } catch (error) {
       if (error instanceof PostDraftError) results.push({ id, ok: false, error: error.code })
       else if (error instanceof TenantAuthorizationError) results.push({ id, ok: false, error: 'forbidden' })

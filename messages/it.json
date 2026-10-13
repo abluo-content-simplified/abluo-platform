@@ -103,25 +103,24 @@
         "languages": "Lingue",
         "published": "Pubblicato",
         "scheduled": "Programmato",
-        "ends": "Termina",
+        "ends": "Fine pubblicazione",
         "actions": "Azioni"
       },
       "status": {
         "published": "Pubblicato",
         "draft": "Bozza",
         "scheduled": "Programmato",
-        "offline": "Offline",
-        "archived": "Archiviato"
+        "archived": "Archiviato",
+        "unpublished": "Non pubblicato"
       },
       "meta": {
         "published": "Pubblicato il {date}",
-        "scheduled": "Online dal {date}",
+        "scheduled": "Si pubblica il {date}",
         "created": "Iniziato il {date}",
-        "offlineOn": "Offline dal {date}",
-        "offlineSince": "Offline dal {date}",
         "edited": "Modificato il {date}",
-        "ends": "Termina il {date}",
-        "archivedOn": "Archiviato il {date}"
+        "ends": "Fine pubblicazione il {date}",
+        "archivedOn": "Archiviato il {date}",
+        "unpublishedSince": "Non pubblicato dal {date}"
       },
       "languages": "Lingue",
       "count": "{count, plural, one {# articolo} other {# articoli}}",
@@ -158,38 +157,27 @@
         "dateField": "Quale data",
         "dateField_published": "Pubblicazione",
         "dateField_updated": "Modifica",
-        "dateField_ends": "Fine",
+        "dateField_ends": "Fine pubblicazione",
         "dateRange": "Data di {field}",
         "sort_edited_asc": "Modificati meno di recente",
         "sort_title": "Titolo A–Z",
         "sort_title_desc": "Titolo Z–A",
-        "sort_ends": "Fine più vicina",
-        "sort_ends_desc": "Fine più lontana",
+        "sort_ends": "Fine pubblicazione più vicina",
+        "sort_ends_desc": "Fine pubblicazione più lontana",
         "sentenceNoun": "Articoli",
         "sentenceField_updated": "modificati",
         "sentenceField_published": "pubblicati",
-        "sentenceField_ends": "in scadenza",
+        "sentenceField_ends": "con fine pubblicazione",
         "dateChip": "{field} · {range}",
         "anyDate": "Mostra tutte le date"
       },
       "untitledDraft": "Bozza senza titolo",
-      "unpublishedChanges": "Modifiche non pubblicate",
-      "line": {
-        "live": "Online",
-        "liveEnds": "Online · Fino al {date}",
-        "scheduledFor": "Programmato per {date}",
-        "offline": "Offline",
-        "draft": "Bozza · Modificata {date}"
-      },
+      "unpublishedChanges": "Modifiche in sospeso",
       "card": {
         "menu": "Altro per “{title}”",
         "edit": "Modifica",
         "preview": "Anteprima",
         "view": "Vedi sul sito",
-        "offline": "Metti offline",
-        "online": "Rimetti online",
-        "endDate": "Imposta data di fine",
-        "delete": "Elimina",
         "select": "Seleziona",
         "selectAll": "Seleziona tutto",
         "selectNone": "Deseleziona tutto",
@@ -199,8 +187,8 @@
         "undo": "Annulla",
         "previewFailed": "Non riusciamo ad aprire l’anteprima. Riprova.",
         "bar": {
-          "offline": "Offline",
-          "endDate": "Data di fine",
+          "offline": "Annulla pubblicazione",
+          "endDate": "Fine pubblicazione",
           "delete": "Elimina",
           "more": "Altro",
           "featured": "In evidenza",
@@ -212,9 +200,9 @@
         },
         "more": {
           "title": "Altre azioni",
-          "online": "Rimetti online",
+          "online": "Pubblica di nuovo",
           "categories": "Cambia categoria",
-          "removeEndDate": "Rimuovi data di fine",
+          "removeEndDate": "Rimuovi fine pubblicazione",
           "clear": "Annulla selezione",
           "featured": "Metti in evidenza",
           "notFeatured": "Togli dall’evidenza",
@@ -222,42 +210,30 @@
           "restore": "Ripristina"
         },
         "endDateSheet": {
-          "title": "Imposta data di fine",
-          "helper": "In questa data l’articolo esce da solo dal tuo sito. Puoi rimetterlo online quando vuoi.",
-          "label": "Va offline il",
-          "save": "Salva data di fine"
+          "title": "Imposta fine pubblicazione",
+          "helper": "In questa data l’articolo smette di essere pubblicato da solo. Puoi pubblicarlo di nuovo quando vuoi.",
+          "save": "Salva fine pubblicazione"
         },
         "categorySheet": {
           "title": "Cambia categoria",
           "helper": "Gli argomenti scelti sostituiscono quelli attuali negli articoli selezionati.",
           "save": "Salva argomenti"
         },
-        "confirmDelete": {
-          "title": "{count, plural, one {Eliminare questo articolo?} other {Eliminare # articoli?}}",
-          "body": "{count, plural, one {“{title}” viene tolto dal tuo sito e non si può recuperare.} other {Gli articoli online vengono tolti dal tuo sito e non si possono recuperare.}}",
-          "confirm": "Elimina",
-          "titlePermanent": "{count, plural, one {Eliminare definitivamente questo articolo?} other {Eliminare definitivamente # articoli?}}",
-          "bodyPermanent": "{count, plural, one {«{title}» e la sua bozza vengono eliminati. Se è stato un errore, Abluo può recuperarlo entro 90 giorni.} other {Gli articoli selezionati e le loro bozze vengono eliminati. Se è stato un errore, Abluo può recuperarli entro 90 giorni.}}",
-          "confirmPermanent": "Elimina definitivamente"
-        },
         "batch": {
           "done": {
-            "offline": "{count, plural, one {# articolo messo offline.} other {# articoli messi offline.}}",
-            "online": "{count, plural, one {# articolo di nuovo online.} other {# articoli di nuovo online.}}",
+            "offline": "{count, plural, one {# articolo non più pubblicato.} other {# articoli non più pubblicati.}}",
+            "online": "{count, plural, one {# articolo pubblicato di nuovo.} other {# articoli pubblicati di nuovo.}}",
             "delete": "{count, plural, one {# articolo eliminato.} other {# articoli eliminati.}}",
-            "endDate": "{count, plural, one {Data di fine salvata per # articolo.} other {Data di fine salvata per # articoli.}}",
+            "endDate": "{count, plural, one {Fine pubblicazione salvata per # articolo.} other {Fine pubblicazione salvata per # articoli.}}",
             "categories": "{count, plural, one {Argomenti cambiati su # articolo.} other {Argomenti cambiati su # articoli.}}",
             "featured": "{count, plural, one {Evidenza cambiata su # articolo.} other {Evidenza cambiata su # articoli.}}",
             "archive": "{count, plural, one {# articolo archiviato. Non è più sul tuo sito.} other {# articoli archiviati. Non sono più sul tuo sito.}}",
-            "restore": "{count, plural, one {# articolo ripristinato. Resta offline finché non lo rimetti online.} other {# articoli ripristinati. Restano offline finché non li rimetti online.}}"
+            "restore": "{count, plural, one {# articolo ripristinato. Resta non pubblicato finché non lo pubblichi di nuovo.} other {# articoli ripristinati. Restano non pubblicati finché non li pubblichi di nuovo.}}"
           },
           "someFailed": "{count, plural, one {Non ha funzionato per: {titles}.} other {Non ha funzionato per #: {titles}.}}",
           "failedAll": "Non ha funzionato. Non è cambiato nulla — riprova."
         },
         "activity": "Attività",
-        "archive": "Archivia",
-        "restore": "Ripristina",
-        "deletePermanently": "Elimina definitivamente",
         "archiveFirst": "Gli articoli pubblicati vanno prima archiviati. Archiviali, poi eliminali definitivamente."
       },
       "select": {
@@ -272,11 +248,11 @@
         "cards": "Schede"
       },
       "pill": {
-        "published": "Online",
+        "published": "Pubblicato",
         "scheduled": "Programmato",
         "draft": "Bozza",
-        "offline": "Offline",
-        "archived": "Archiviato"
+        "archived": "Archiviato",
+        "unpublished": "Non pubblicato"
       },
       "lang": {
         "complete": "{language}: traduzione completa",
@@ -554,7 +530,7 @@
         "publishedOn": "Pubblicato · {date}",
         "scheduled": "Programmato",
         "scheduledOn": "Programmato · {date}",
-        "offline": "Offline"
+        "unpublished": "Non pubblicato"
       },
       "latestPosts": "Ultimi articoli",
       "latestGalleries": "Ultime gallerie",
@@ -585,8 +561,8 @@
           "action": "Vedi le gallerie"
         },
         "scheduledSoon": {
-          "title": "{count, plural, one {Un articolo va online a breve} other {# articoli vanno online a breve}}",
-          "detail": "{count, plural, one {“{title}” va online {when}.} other {Il primo, “{title}”, va online {when}.}}",
+          "title": "{count, plural, one {Un articolo viene pubblicato a breve} other {# articoli vengono pubblicati a breve}}",
+          "detail": "{count, plural, one {“{title}” viene pubblicato {when}.} other {Il primo, “{title}”, viene pubblicato {when}.}}",
           "action": "Vedi gli articoli programmati"
         },
         "missingLanguage": {
@@ -920,17 +896,14 @@
       "publish": {
         "title": "Cosa vuoi farne?",
         "now": "Pubblica ora",
-        "nowHelp": "Va online sul tuo sito subito.",
+        "nowHelp": "Viene pubblicato subito sul tuo sito.",
         "schedule": "Programma",
         "scheduleHelp": "Scegli il giorno e l'ora in cui deve apparire.",
         "draft": "Tieni come bozza",
-        "draftHelp": "Non va online nulla. Puoi continuare quando vuoi dalla Home.",
-        "when": "Online dal",
-        "expire": "Togli dal sito automaticamente",
+        "draftHelp": "Non viene pubblicato nulla. Puoi continuare quando vuoi dalla Home.",
+        "expire": "Termina la pubblicazione automaticamente",
         "expireHelp": "Utile per offerte o notizie con una scadenza.",
-        "expireWhen": "Offline dal",
-        "timezone": "Gli orari sono nel tuo fuso orario ({zone}).",
-        "languageLive": "va online",
+        "languageLive": "pubblicato",
         "languageMissing": "non inclusa",
         "action": {
           "now": "Pubblica",
@@ -942,7 +915,7 @@
           "missing_title": "Prima aggiungi un titolo — torna al passaggio del titolo.",
           "missing_body": "Prima scrivi il testo — torna al passaggio del testo.",
           "invalid_schedule": "Scegli una data e un'ora future, entro due anni.",
-          "invalid_expiry": "La data di fine deve essere successiva a quella di pubblicazione.",
+          "invalid_expiry": "La fine pubblicazione deve essere dopo la data di pubblicazione.",
           "conflict": "Questo articolo è stato modificato altrove. Ricarica per vedere l'ultima versione.",
           "forbidden": "Non hai il permesso di pubblicare qui.",
           "not_found": "Non troviamo più questo articolo.",
@@ -951,20 +924,20 @@
           "failed": "Qualcosa è andato storto. L'articolo è al sicuro — riprova.",
           "archived": "Questo articolo è archiviato. Ripristinalo prima di pubblicarlo."
         },
-        "summaryNow": "Va online in",
-        "summarySchedule": "Va online il {date} in",
+        "summaryNow": "Pubblicato in",
+        "summarySchedule": "Pubblicato il {date} in",
         "summaryDraft": "Salvato in",
         "languageSaved": "salvata",
         "languageInProgress": "iniziata",
         "languageNotStarted": "non iniziata"
       },
       "done": {
-        "live": "Il tuo articolo è online",
+        "live": "Il tuo articolo è pubblicato",
         "liveBody": "Chi visita il tuo sito può già leggerlo.",
         "scheduled": "Il tuo articolo è programmato",
         "scheduledBody": "Apparirà il {date}.",
         "draft": "Salvato come bozza",
-        "draftBody": "Non è ancora online. Puoi continuare quando vuoi dalla Home.",
+        "draftBody": "Non è ancora pubblicato nulla. Puoi continuare quando vuoi dalla Home.",
         "view": "Vedi sul tuo sito",
         "home": "Torna alla Home",
         "updated": "Le modifiche sono online",
@@ -1003,10 +976,10 @@
         "update": "Aggiorna articolo",
         "updating": "Aggiornamento…",
         "status": {
-          "live": "Online sul tuo sito dal {date}",
           "scheduled": "Programmato per il {date}",
-          "offline": "Offline dal {date}",
-          "archived": "Archiviato il {date}"
+          "archived": "Archiviato il {date}",
+          "published": "Pubblicato dal {date}",
+          "unpublished": "Non pubblicato dal {date}"
         },
         "editing": "Stai modificando una copia. I visitatori vedono la versione online finché non aggiorni.",
         "ctaNone": "Nessuno",
@@ -1015,16 +988,9 @@
       },
       "menu": {
         "label": "Altre azioni",
-        "takeOffline": "Togli dal sito",
-        "backOnline": "Rimetti online",
-        "changeDate": "Cambia data di pubblicazione",
+        "changeDate": "Date di pubblicazione",
         "discard": "Annulla le modifiche",
-        "deleteDraft": "Elimina bozza",
-        "deletePost": "Elimina articolo",
-        "activity": "Attività",
-        "archive": "Archivia",
-        "restore": "Ripristina",
-        "deletePermanently": "Elimina definitivamente"
+        "activity": "Attività"
       },
       "confirm": {
         "cancel": "Annulla",
@@ -1039,8 +1005,6 @@
         "deletePost": "Elimina definitivamente"
       },
       "lifecycle": {
-        "offlineDone": "L'articolo è offline. Puoi rimetterlo online quando vuoi.",
-        "onlineDone": "L'articolo è di nuovo online.",
         "errors": {
           "conflict": "Questo articolo è stato modificato altrove. Ricarica per vedere l'ultima versione.",
           "forbidden": "Non hai il permesso per farlo.",
@@ -1053,7 +1017,9 @@
           "in_use": "Altri contenuti rimandano ancora a questo articolo. Rimuovi prima quei collegamenti."
         },
         "archivedDone": "L'articolo è archiviato. Non è più sul tuo sito: puoi ripristinarlo quando vuoi.",
-        "restoredDone": "L'articolo è ripristinato. Resta offline finché non lo rimetti online."
+        "restoredDone": "L’articolo è ripristinato. Resta non pubblicato finché non lo pubblichi di nuovo.",
+        "unpublishedDone": "L’articolo non è più pubblicato. Puoi pubblicarlo di nuovo quando vuoi.",
+        "publishedAgainDone": "L’articolo è di nuovo pubblicato."
       },
       "open": {
         "title": "Stiamo aprendo il tuo articolo…",
@@ -2274,6 +2240,39 @@
         "mobile": "Telefono",
         "tablet": "Tablet",
         "smarttv": "TV"
+      }
+    },
+    "lifecycle": {
+      "status": {
+        "draft": "Bozza",
+        "scheduled": "Programmato",
+        "published": "Pubblicato",
+        "unpublished": "Non pubblicato",
+        "archived": "Archiviato"
+      },
+      "pendingChanges": "Modifiche in sospeso",
+      "actions": {
+        "unpublish": "Annulla pubblicazione",
+        "publishAgain": "Pubblica di nuovo",
+        "setUnpublishDate": "Imposta fine pubblicazione",
+        "removeUnpublishDate": "Rimuovi fine pubblicazione",
+        "archive": "Archivia",
+        "restore": "Ripristina",
+        "delete": "Elimina",
+        "deletePermanently": "Elimina definitivamente"
+      },
+      "dates": {
+        "publishOn": "Pubblica il",
+        "unpublishOn": "Fine pubblicazione il",
+        "zone": "Ora di {city} ({offset})",
+        "gap": "Quell’ora non esiste quel giorno (si passa all’ora legale): sarà {date}.",
+        "overlap": "Quell’ora capita due volte quel giorno (si torna all’ora solare): si usa la prima, {date} ({offset}).",
+        "mustBeFuture": "Scegli una data e un’ora nel futuro."
+      },
+      "deletePermanently": {
+        "title": "{count, plural, one {Eliminare definitivamente «{title}»?} other {Eliminare definitivamente # elementi?}}",
+        "body": "{count, plural, one {Viene eliminato insieme alla sua bozza. Se è stato un errore, Abluo può recuperarlo entro 90 giorni.} other {Vengono eliminati insieme alle loro bozze. Se è stato un errore, Abluo può recuperarli entro 90 giorni.}}",
+        "confirm": "Elimina definitivamente"
       }
     }
   },

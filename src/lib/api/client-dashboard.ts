@@ -26,6 +26,7 @@
  *
  * Reads-only this slice (Tom's decision) — no write helpers here yet.
  */
+import { publishedStatus } from '@/lib/lifecycle/status'
 import { assertModuleAction } from '@/lib/api/module-action-guard'
 import {
   tenantScopedSanityClient,
@@ -80,7 +81,7 @@ export type DashboardPost = {
   bodyText?: Record<string, string | null> | null
 }
 
-export type DashboardPostStatus = 'published' | 'scheduled' | 'draft' | 'offline' | 'archived'
+export type DashboardPostStatus = 'published' | 'scheduled' | 'draft' | 'unpublished' | 'archived'
 
 /** A post row ready for display: category labels and languages resolved. */
 export type DashboardPostRow = DashboardPost & {
@@ -106,6 +107,8 @@ export type DashboardPostList = {
   categories: { value: string; label: string }[]
   /** The site's main language (website URLs start with it). */
   defaultLocale?: string
+  /** The site's IANA time zone — dates are shown and entered in it (ADR-032 D8). */
+  timeZone?: string | null
 }
 
 /** Permission that gates listing posts in the client dashboard. */
@@ -146,12 +149,14 @@ export async function getDashboardPosts(
 
   // Step 3 — scoped fetch. $projectSlug is injected by the client; only the
   // locale params are supplied here.
-  const posts = await scoped.fetch<DashboardPost[] | null>(dashboardPostsQuery, {
+  const posts = await scoped.fetch<Omit<DashboardPost, 'status'>[] | null>(dashboardPostsQuery, {
     locale: params.locale,
     defaultLocale: params.defaultLocale ?? params.locale,
   })
 
-  return posts ?? []
+  // ADR-032 D4: one status function for every list, filter and badge.
+  const now = new Date()
+  return (posts ?? []).map((p) => ({ ...p, status: publishedStatus(p, 'required', now) }))
 }
 
 
@@ -203,7 +208,7 @@ export async function getDashboardPostList(
   const scoped = tenantScopedSanityClient(ctx, projectId, deps)
 
   type Context = {
-    site?: { defaultLocale?: string | null; supportedLocales?: string[] | null } | null
+    site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null } | null
     categories?: { value?: string; label?: LocalizedLabel }[] | null
   }
   const context = (await scoped.fetch<Context | null>(dashboardPostsContextQuery, {})) ?? {}
@@ -260,7 +265,7 @@ export async function getDashboardPostList(
     if (!labels.has(key)) categories.push({ value: key, label: key.replace(/-/g, ' ') })
   }
 
-  return { posts: rows, languages: supported.length > 1 ? supported : [], categories, defaultLocale }
+  return { posts: rows, languages: supported.length > 1 ? supported : [], categories, defaultLocale, timeZone: context.site?.timeZone ?? null }
 }
 
 /**

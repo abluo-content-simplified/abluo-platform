@@ -25,7 +25,7 @@ export function ReviewStep({
   onEdit: (section: OverviewSection['id']) => void
   onPreview: () => void
   /** The "…" menu: lifecycle actions (take offline, discard, delete …). */
-  menu?: { key: string; label: string; onSelect: () => void }[]
+  menu?: { key: string; label: string; onSelect: () => void; destructive?: boolean; separated?: boolean }[]
   /** Where the live version stands ("Live on your site since …"), edit mode only. */
   status?: string | null
   notice?: { kind: 'status' | 'error'; text: string } | null
@@ -104,14 +104,14 @@ export function ReviewStep({
                 className="absolute right-0 z-10 mt-2 w-64 overflow-hidden rounded-2xl border border-border bg-popover py-1 text-popover-foreground shadow-[var(--shadow-raise)]"
               >
                 {menu.map((item) => (
-                  <li key={item.key}>
+                  <li key={item.key} className={item.separated ? 'mt-1 border-t border-border pt-1' : undefined}>
                     <button
                       type="button"
                       onClick={() => {
                         setMenuOpen(false)
                         item.onSelect()
                       }}
-                      className="flex min-h-12 w-full items-center px-4 text-left text-[0.9375rem] text-foreground hover:bg-hover focus-visible:bg-hover focus-visible:outline-none"
+                      className={`flex min-h-12 w-full items-center px-4 text-left text-[0.9375rem] hover:bg-hover focus-visible:bg-hover focus-visible:outline-none ${item.destructive ? 'text-destructive' : 'text-foreground'}`}
                     >
                       {item.label}
                     </button>

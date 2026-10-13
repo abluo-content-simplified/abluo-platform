@@ -13,6 +13,8 @@ export type BrowserPost = FilterablePost & {
   expiresAt: string | null
   /** ADR-032: when the post was archived (status "archived"). */
   archivedAt?: string | null
+  /** The published version's revision (lifecycle actions and the list's live overlay). */
+  liveRev?: string | null
   featured: boolean
   /** One entry per site language; empty on single-language sites. */
   languageStates: LanguageState[]

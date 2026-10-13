@@ -103,25 +103,24 @@
         "languages": "Languages",
         "published": "Published",
         "scheduled": "Scheduled",
-        "ends": "Ends",
+        "ends": "Unpublishes",
         "actions": "Actions"
       },
       "status": {
         "published": "Published",
         "draft": "Draft",
         "scheduled": "Scheduled",
-        "offline": "Offline",
-        "archived": "Archived"
+        "archived": "Archived",
+        "unpublished": "Unpublished"
       },
       "meta": {
         "published": "Published {date}",
-        "scheduled": "Goes live {date}",
+        "scheduled": "Publishes {date}",
         "created": "Started {date}",
-        "offlineOn": "Goes offline {date}",
-        "offlineSince": "Offline since {date}",
         "edited": "Edited {date}",
-        "ends": "Ends {date}",
-        "archivedOn": "Archived {date}"
+        "ends": "Unpublishes {date}",
+        "archivedOn": "Archived {date}",
+        "unpublishedSince": "Unpublished since {date}"
       },
       "languages": "Languages",
       "count": "{count, plural, one {# post} other {# posts}}",
@@ -158,38 +157,27 @@
         "dateField": "Which date",
         "dateField_published": "Published",
         "dateField_updated": "Updated",
-        "dateField_ends": "Ends",
+        "dateField_ends": "Unpublishes",
         "dateRange": "{field} date",
         "sort_edited_asc": "Least recently edited",
         "sort_title": "Title A–Z",
         "sort_title_desc": "Title Z–A",
-        "sort_ends": "Ending soonest",
-        "sort_ends_desc": "Ending latest",
+        "sort_ends": "Unpublishing soonest",
+        "sort_ends_desc": "Unpublishing latest",
         "sentenceNoun": "Posts",
         "sentenceField_updated": "updated",
         "sentenceField_published": "published",
-        "sentenceField_ends": "ends",
+        "sentenceField_ends": "unpublishing",
         "dateChip": "{field} · {range}",
         "anyDate": "Show all dates"
       },
       "untitledDraft": "Untitled draft",
-      "unpublishedChanges": "Unpublished changes",
-      "line": {
-        "live": "Live",
-        "liveEnds": "Live · Ends {date}",
-        "scheduledFor": "Scheduled for {date}",
-        "offline": "Offline",
-        "draft": "Draft · Edited {date}"
-      },
+      "unpublishedChanges": "Pending changes",
       "card": {
         "menu": "More for “{title}”",
         "edit": "Edit",
         "preview": "Preview",
         "view": "View on website",
-        "offline": "Take offline",
-        "online": "Put back online",
-        "endDate": "Set end date",
-        "delete": "Delete",
         "select": "Select",
         "selectAll": "Select all",
         "selectNone": "Select none",
@@ -199,8 +187,8 @@
         "undo": "Undo",
         "previewFailed": "We couldn’t open the preview. Please try again.",
         "bar": {
-          "offline": "Take offline",
-          "endDate": "End date",
+          "offline": "Unpublish",
+          "endDate": "Unpublish date",
           "delete": "Delete",
           "more": "More",
           "featured": "Featured",
@@ -212,9 +200,9 @@
         },
         "more": {
           "title": "More actions",
-          "online": "Put back online",
+          "online": "Publish again",
           "categories": "Change category",
-          "removeEndDate": "Remove end date",
+          "removeEndDate": "Remove unpublish date",
           "clear": "Clear selection",
           "featured": "Mark as featured",
           "notFeatured": "Remove from featured",
@@ -222,42 +210,30 @@
           "restore": "Restore"
         },
         "endDateSheet": {
-          "title": "Set end date",
-          "helper": "On this date the post leaves your website by itself. You can put it back online any time.",
-          "label": "Goes offline on",
-          "save": "Save end date"
+          "title": "Set unpublish date",
+          "helper": "On this date the post is unpublished by itself. You can publish it again any time.",
+          "save": "Save unpublish date"
         },
         "categorySheet": {
           "title": "Change category",
           "helper": "The chosen topics replace the current ones on the selected posts.",
           "save": "Save topics"
         },
-        "confirmDelete": {
-          "title": "{count, plural, one {Delete this post?} other {Delete # posts?}}",
-          "body": "{count, plural, one {“{title}” is removed from your website and can’t be restored.} other {Live posts are removed from your website and can’t be restored.}}",
-          "confirm": "Delete",
-          "titlePermanent": "{count, plural, one {Delete this post permanently?} other {Delete # posts permanently?}}",
-          "bodyPermanent": "{count, plural, one {“{title}” and its draft are deleted. If this was a mistake, Abluo can recover it within 90 days.} other {The selected posts and their drafts are deleted. If this was a mistake, Abluo can recover them within 90 days.}}",
-          "confirmPermanent": "Delete permanently"
-        },
         "batch": {
           "done": {
-            "offline": "{count, plural, one {# post taken offline.} other {# posts taken offline.}}",
-            "online": "{count, plural, one {# post back online.} other {# posts back online.}}",
+            "offline": "{count, plural, one {# post unpublished.} other {# posts unpublished.}}",
+            "online": "{count, plural, one {# post published again.} other {# posts published again.}}",
             "delete": "{count, plural, one {# post deleted.} other {# posts deleted.}}",
-            "endDate": "{count, plural, one {End date saved for # post.} other {End date saved for # posts.}}",
+            "endDate": "{count, plural, one {Unpublish date saved for # post.} other {Unpublish date saved for # posts.}}",
             "categories": "{count, plural, one {Topics changed on # post.} other {Topics changed on # posts.}}",
             "featured": "{count, plural, one {Featured changed on # post.} other {Featured changed on # posts.}}",
             "archive": "{count, plural, one {# post archived. It’s no longer on your website.} other {# posts archived. They’re no longer on your website.}}",
-            "restore": "{count, plural, one {# post restored. It stays offline until you put it back online.} other {# posts restored. They stay offline until you put them back online.}}"
+            "restore": "{count, plural, one {# post restored. It stays unpublished until you publish it again.} other {# posts restored. They stay unpublished until you publish them again.}}"
           },
           "someFailed": "{count, plural, one {This one didn’t work: {titles}.} other {# didn’t work: {titles}.}}",
           "failedAll": "That didn’t work. Nothing was changed — please try again."
         },
         "activity": "Activity",
-        "archive": "Archive",
-        "restore": "Restore",
-        "deletePermanently": "Delete permanently",
         "archiveFirst": "Published posts are archived first. Archive them, then delete them permanently."
       },
       "select": {
@@ -272,11 +248,11 @@
         "cards": "Cards"
       },
       "pill": {
-        "published": "Live",
+        "published": "Published",
         "scheduled": "Scheduled",
         "draft": "Draft",
-        "offline": "Offline",
-        "archived": "Archived"
+        "archived": "Archived",
+        "unpublished": "Unpublished"
       },
       "lang": {
         "complete": "{language}: translation complete",
@@ -554,7 +530,7 @@
         "publishedOn": "Published · {date}",
         "scheduled": "Scheduled",
         "scheduledOn": "Scheduled · {date}",
-        "offline": "Offline"
+        "unpublished": "Unpublished"
       },
       "latestPosts": "Latest posts",
       "latestGalleries": "Latest galleries",
@@ -585,8 +561,8 @@
           "action": "See galleries"
         },
         "scheduledSoon": {
-          "title": "{count, plural, one {A post goes live soon} other {# posts go live soon}}",
-          "detail": "{count, plural, one {“{title}” goes live {when}.} other {The first, “{title}”, goes live {when}.}}",
+          "title": "{count, plural, one {A post is published soon} other {# posts are published soon}}",
+          "detail": "{count, plural, one {“{title}” is published {when}.} other {The first, “{title}”, is published {when}.}}",
           "action": "See scheduled posts"
         },
         "missingLanguage": {
@@ -920,17 +896,14 @@
       "publish": {
         "title": "What do you want to do with it?",
         "now": "Publish now",
-        "nowHelp": "It goes live on your website straight away.",
+        "nowHelp": "It’s published on your website straight away.",
         "schedule": "Schedule",
         "scheduleHelp": "Pick the day and time it should appear.",
         "draft": "Keep as draft",
-        "draftHelp": "Nothing goes live. Continue any time from Home.",
-        "when": "Goes live on",
-        "expire": "Take offline automatically",
+        "draftHelp": "Nothing is published. Continue any time from Home.",
+        "expire": "Unpublish automatically",
         "expireHelp": "Useful for offers or news with an end date.",
-        "expireWhen": "Offline from",
-        "timezone": "Times are in your time zone ({zone}).",
-        "languageLive": "goes live",
+        "languageLive": "published",
         "languageMissing": "not included",
         "action": {
           "now": "Publish",
@@ -942,7 +915,7 @@
           "missing_title": "Add a title first — go back to the title step.",
           "missing_body": "Write your story first — go back to the story step.",
           "invalid_schedule": "Pick a date and time in the future, within two years.",
-          "invalid_expiry": "The offline date must be after the go-live date.",
+          "invalid_expiry": "The unpublish date must be after the publish date.",
           "conflict": "This post was changed somewhere else. Reload to see the latest version.",
           "forbidden": "You don't have permission to publish here.",
           "not_found": "We couldn't find this post any more.",
@@ -951,20 +924,20 @@
           "failed": "Something went wrong. Your post is safe — please try again.",
           "archived": "This post is archived. Restore it before publishing."
         },
-        "summaryNow": "Goes live in",
-        "summarySchedule": "Goes live on {date} in",
+        "summaryNow": "Published in",
+        "summarySchedule": "Published on {date} in",
         "summaryDraft": "Saved in",
         "languageSaved": "saved",
         "languageInProgress": "started",
         "languageNotStarted": "not started"
       },
       "done": {
-        "live": "Your post is live",
+        "live": "Your post is published",
         "liveBody": "Visitors can read it on your website now.",
         "scheduled": "Your post is scheduled",
         "scheduledBody": "It will appear on {date}.",
         "draft": "Saved as a draft",
-        "draftBody": "Nothing is live yet. Continue any time from Home.",
+        "draftBody": "Nothing is published yet. Continue any time from Home.",
         "view": "View on your site",
         "home": "Back to home",
         "updated": "Your changes are live",
@@ -1003,10 +976,10 @@
         "update": "Update post",
         "updating": "Updating…",
         "status": {
-          "live": "Live on your site since {date}",
           "scheduled": "Scheduled for {date}",
-          "offline": "Offline since {date}",
-          "archived": "Archived on {date}"
+          "archived": "Archived on {date}",
+          "published": "Published since {date}",
+          "unpublished": "Unpublished since {date}"
         },
         "editing": "You're editing a copy. Visitors see the live version until you update.",
         "ctaNone": "None",
@@ -1015,16 +988,9 @@
       },
       "menu": {
         "label": "More actions",
-        "takeOffline": "Take offline",
-        "backOnline": "Put back online",
-        "changeDate": "Change publishing date",
+        "changeDate": "Publication dates",
         "discard": "Discard changes",
-        "deleteDraft": "Delete draft",
-        "deletePost": "Delete post",
-        "activity": "Activity",
-        "archive": "Archive",
-        "restore": "Restore",
-        "deletePermanently": "Delete permanently"
+        "activity": "Activity"
       },
       "confirm": {
         "cancel": "Cancel",
@@ -1039,8 +1005,6 @@
         "deletePost": "Delete permanently"
       },
       "lifecycle": {
-        "offlineDone": "Your post is offline. You can put it back online any time.",
-        "onlineDone": "Your post is back online.",
         "errors": {
           "conflict": "This post was changed somewhere else. Reload to see the latest version.",
           "forbidden": "You don't have permission to do this.",
@@ -1053,7 +1017,9 @@
           "in_use": "Other content still links to this post. Remove those links first."
         },
         "archivedDone": "Your post is archived. It’s no longer on your website — restore it any time.",
-        "restoredDone": "Your post is restored. It stays offline until you put it back online."
+        "restoredDone": "Your post is restored. It stays unpublished until you publish it again.",
+        "unpublishedDone": "Your post is unpublished. You can publish it again any time.",
+        "publishedAgainDone": "Your post is published again."
       },
       "open": {
         "title": "Opening your post…",
@@ -2274,6 +2240,39 @@
         "mobile": "Phone",
         "tablet": "Tablet",
         "smarttv": "TV"
+      }
+    },
+    "lifecycle": {
+      "status": {
+        "draft": "Draft",
+        "scheduled": "Scheduled",
+        "published": "Published",
+        "unpublished": "Unpublished",
+        "archived": "Archived"
+      },
+      "pendingChanges": "Pending changes",
+      "actions": {
+        "unpublish": "Unpublish",
+        "publishAgain": "Publish again",
+        "setUnpublishDate": "Set unpublish date",
+        "removeUnpublishDate": "Remove unpublish date",
+        "archive": "Archive",
+        "restore": "Restore",
+        "delete": "Delete",
+        "deletePermanently": "Delete permanently"
+      },
+      "dates": {
+        "publishOn": "Publish on",
+        "unpublishOn": "Unpublish on",
+        "zone": "{city} time ({offset})",
+        "gap": "That time doesn’t exist that day (clocks go forward) — it will be {date}.",
+        "overlap": "That time happens twice that day (clocks go back) — the first one is used: {date} ({offset}).",
+        "mustBeFuture": "Pick a date and time in the future."
+      },
+      "deletePermanently": {
+        "title": "{count, plural, one {Delete “{title}” permanently?} other {Delete # items permanently?}}",
+        "body": "{count, plural, one {It is deleted together with its draft. If this was a mistake, Abluo can recover it within 90 days.} other {They are deleted together with their drafts. If this was a mistake, Abluo can recover them within 90 days.}}",
+        "confirm": "Delete permanently"
       }
     }
   },

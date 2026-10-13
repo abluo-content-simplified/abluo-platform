@@ -103,25 +103,24 @@
         "languages": "Sprachen",
         "published": "Veröffentlicht",
         "scheduled": "Geplant",
-        "ends": "Endet",
+        "ends": "Veröffentlichungsende",
         "actions": "Aktionen"
       },
       "status": {
         "published": "Veröffentlicht",
         "draft": "Entwurf",
         "scheduled": "Geplant",
-        "offline": "Offline",
-        "archived": "Archiviert"
+        "archived": "Archiviert",
+        "unpublished": "Nicht veröffentlicht"
       },
       "meta": {
         "published": "Veröffentlicht am {date}",
-        "scheduled": "Online ab {date}",
+        "scheduled": "Wird veröffentlicht am {date}",
         "created": "Begonnen am {date}",
-        "offlineOn": "Offline ab {date}",
-        "offlineSince": "Offline seit {date}",
         "edited": "Bearbeitet am {date}",
-        "ends": "Endet am {date}",
-        "archivedOn": "Archiviert am {date}"
+        "ends": "Veröffentlichung endet am {date}",
+        "archivedOn": "Archiviert am {date}",
+        "unpublishedSince": "Nicht veröffentlicht seit {date}"
       },
       "languages": "Sprachen",
       "count": "{count, plural, one {# Beitrag} other {# Beiträge}}",
@@ -158,38 +157,27 @@
         "dateField": "Welches Datum",
         "dateField_published": "Veröffentlicht",
         "dateField_updated": "Bearbeitet",
-        "dateField_ends": "Endet",
+        "dateField_ends": "Veröffentlichungsende",
         "dateRange": "Datum: {field}",
         "sort_edited_asc": "Am längsten nicht bearbeitet",
         "sort_title": "Titel A–Z",
         "sort_title_desc": "Titel Z–A",
-        "sort_ends": "Endet zuerst",
-        "sort_ends_desc": "Endet zuletzt",
+        "sort_ends": "Veröffentlichungsende zuerst",
+        "sort_ends_desc": "Veröffentlichungsende zuletzt",
         "sentenceNoun": "Beiträge",
         "sentenceField_updated": "bearbeitet",
         "sentenceField_published": "veröffentlicht",
-        "sentenceField_ends": "endend",
+        "sentenceField_ends": "mit Veröffentlichungsende",
         "dateChip": "{field} · {range}",
         "anyDate": "Alle Daten anzeigen"
       },
       "untitledDraft": "Entwurf ohne Titel",
-      "unpublishedChanges": "Nicht veröffentlichte Änderungen",
-      "line": {
-        "live": "Live",
-        "liveEnds": "Live · Endet am {date}",
-        "scheduledFor": "Geplant für {date}",
-        "offline": "Offline",
-        "draft": "Entwurf · Bearbeitet {date}"
-      },
+      "unpublishedChanges": "Ausstehende Änderungen",
       "card": {
         "menu": "Mehr für „{title}“",
         "edit": "Bearbeiten",
         "preview": "Vorschau",
         "view": "Auf der Website ansehen",
-        "offline": "Offline nehmen",
-        "online": "Wieder online stellen",
-        "endDate": "Enddatum festlegen",
-        "delete": "Löschen",
         "select": "Auswählen",
         "selectAll": "Alle auswählen",
         "selectNone": "Keine auswählen",
@@ -199,8 +187,8 @@
         "undo": "Rückgängig",
         "previewFailed": "Die Vorschau ließ sich nicht öffnen. Bitte versuch es erneut.",
         "bar": {
-          "offline": "Offline",
-          "endDate": "Enddatum",
+          "offline": "Veröffentlichung aufheben",
+          "endDate": "Veröffentlichungsende",
           "delete": "Löschen",
           "more": "Mehr",
           "featured": "Hervorheben",
@@ -212,9 +200,9 @@
         },
         "more": {
           "title": "Weitere Aktionen",
-          "online": "Wieder online stellen",
+          "online": "Erneut veröffentlichen",
           "categories": "Kategorie ändern",
-          "removeEndDate": "Enddatum entfernen",
+          "removeEndDate": "Veröffentlichungsende entfernen",
           "clear": "Auswahl aufheben",
           "featured": "Hervorheben",
           "notFeatured": "Nicht mehr hervorheben",
@@ -222,42 +210,30 @@
           "restore": "Wiederherstellen"
         },
         "endDateSheet": {
-          "title": "Enddatum festlegen",
-          "helper": "An diesem Datum verschwindet der Beitrag von selbst von deiner Website. Du kannst ihn jederzeit wieder online stellen.",
-          "label": "Geht offline am",
-          "save": "Enddatum speichern"
+          "title": "Veröffentlichungsende festlegen",
+          "helper": "An diesem Datum endet die Veröffentlichung des Beitrags von selbst. Du kannst ihn jederzeit erneut veröffentlichen.",
+          "save": "Veröffentlichungsende speichern"
         },
         "categorySheet": {
           "title": "Kategorie ändern",
           "helper": "Die gewählten Themen ersetzen die bisherigen bei den ausgewählten Beiträgen.",
           "save": "Themen speichern"
         },
-        "confirmDelete": {
-          "title": "{count, plural, one {Diesen Beitrag löschen?} other {# Beiträge löschen?}}",
-          "body": "{count, plural, one {„{title}“ wird von deiner Website entfernt und kann nicht wiederhergestellt werden.} other {Live-Beiträge werden von deiner Website entfernt und können nicht wiederhergestellt werden.}}",
-          "confirm": "Löschen",
-          "titlePermanent": "{count, plural, one {Diesen Beitrag endgültig löschen?} other {# Beiträge endgültig löschen?}}",
-          "bodyPermanent": "{count, plural, one {„{title}“ und sein Entwurf werden gelöscht. War das ein Versehen, kann Abluo ihn innerhalb von 90 Tagen wiederherstellen.} other {Die ausgewählten Beiträge und ihre Entwürfe werden gelöscht. War das ein Versehen, kann Abluo sie innerhalb von 90 Tagen wiederherstellen.}}",
-          "confirmPermanent": "Endgültig löschen"
-        },
         "batch": {
           "done": {
-            "offline": "{count, plural, one {# Beitrag offline genommen.} other {# Beiträge offline genommen.}}",
-            "online": "{count, plural, one {# Beitrag wieder online.} other {# Beiträge wieder online.}}",
+            "offline": "{count, plural, one {Veröffentlichung von # Beitrag aufgehoben.} other {Veröffentlichung von # Beiträgen aufgehoben.}}",
+            "online": "{count, plural, one {# Beitrag erneut veröffentlicht.} other {# Beiträge erneut veröffentlicht.}}",
             "delete": "{count, plural, one {# Beitrag gelöscht.} other {# Beiträge gelöscht.}}",
-            "endDate": "{count, plural, one {Enddatum für # Beitrag gespeichert.} other {Enddatum für # Beiträge gespeichert.}}",
+            "endDate": "{count, plural, one {Veröffentlichungsende für # Beitrag gespeichert.} other {Veröffentlichungsende für # Beiträge gespeichert.}}",
             "categories": "{count, plural, one {Themen bei # Beitrag geändert.} other {Themen bei # Beiträgen geändert.}}",
             "featured": "{count, plural, one {Hervorhebung bei # Beitrag geändert.} other {Hervorhebung bei # Beiträgen geändert.}}",
             "archive": "{count, plural, one {# Beitrag archiviert. Er ist nicht mehr auf deiner Website.} other {# Beiträge archiviert. Sie sind nicht mehr auf deiner Website.}}",
-            "restore": "{count, plural, one {# Beitrag wiederhergestellt. Er bleibt offline, bis du ihn wieder online stellst.} other {# Beiträge wiederhergestellt. Sie bleiben offline, bis du sie wieder online stellst.}}"
+            "restore": "{count, plural, one {# Beitrag wiederhergestellt. Er bleibt unveröffentlicht, bis du ihn erneut veröffentlichst.} other {# Beiträge wiederhergestellt. Sie bleiben unveröffentlicht, bis du sie erneut veröffentlichst.}}"
           },
           "someFailed": "{count, plural, one {Hat nicht geklappt: {titles}.} other {# haben nicht geklappt: {titles}.}}",
           "failedAll": "Das hat nicht geklappt. Nichts wurde geändert — bitte versuch es erneut."
         },
         "activity": "Aktivität",
-        "archive": "Archivieren",
-        "restore": "Wiederherstellen",
-        "deletePermanently": "Endgültig löschen",
         "archiveFirst": "Veröffentlichte Beiträge werden zuerst archiviert. Archiviere sie und lösche sie dann endgültig."
       },
       "select": {
@@ -272,11 +248,11 @@
         "cards": "Karten"
       },
       "pill": {
-        "published": "Online",
+        "published": "Veröffentlicht",
         "scheduled": "Geplant",
         "draft": "Entwurf",
-        "offline": "Offline",
-        "archived": "Archiviert"
+        "archived": "Archiviert",
+        "unpublished": "Nicht veröffentlicht"
       },
       "lang": {
         "complete": "{language}: Übersetzung vollständig",
@@ -554,7 +530,7 @@
         "publishedOn": "Veröffentlicht · {date}",
         "scheduled": "Geplant",
         "scheduledOn": "Geplant · {date}",
-        "offline": "Offline"
+        "unpublished": "Nicht veröffentlicht"
       },
       "latestPosts": "Neueste Beiträge",
       "latestGalleries": "Neueste Galerien",
@@ -585,8 +561,8 @@
           "action": "Galerien ansehen"
         },
         "scheduledSoon": {
-          "title": "{count, plural, one {Ein Beitrag geht bald online} other {# Beiträge gehen bald online}}",
-          "detail": "{count, plural, one {„{title}“ geht {when} online.} other {Der erste, „{title}“, geht {when} online.}}",
+          "title": "{count, plural, one {Ein Beitrag wird bald veröffentlicht} other {# Beiträge werden bald veröffentlicht}}",
+          "detail": "{count, plural, one {„{title}“ wird {when} veröffentlicht.} other {Der erste, „{title}“, wird {when} veröffentlicht.}}",
           "action": "Geplante Beiträge ansehen"
         },
         "missingLanguage": {
@@ -920,17 +896,14 @@
       "publish": {
         "title": "Was möchtest du damit machen?",
         "now": "Jetzt veröffentlichen",
-        "nowHelp": "Er erscheint sofort auf deiner Website.",
+        "nowHelp": "Er wird sofort auf deiner Website veröffentlicht.",
         "schedule": "Planen",
         "scheduleHelp": "Wähle Tag und Uhrzeit, an dem er erscheinen soll.",
         "draft": "Als Entwurf behalten",
         "draftHelp": "Nichts wird veröffentlicht. Du kannst jederzeit über die Startseite weitermachen.",
-        "when": "Online ab",
-        "expire": "Automatisch offline nehmen",
+        "expire": "Veröffentlichung automatisch beenden",
         "expireHelp": "Praktisch für Angebote oder Neuigkeiten mit Enddatum.",
-        "expireWhen": "Offline ab",
-        "timezone": "Zeiten in deiner Zeitzone ({zone}).",
-        "languageLive": "wird veröffentlicht",
+        "languageLive": "veröffentlicht",
         "languageMissing": "nicht dabei",
         "action": {
           "now": "Veröffentlichen",
@@ -942,7 +915,7 @@
           "missing_title": "Füge zuerst einen Titel hinzu – geh zurück zum Titel-Schritt.",
           "missing_body": "Schreib zuerst deinen Text – geh zurück zum Text-Schritt.",
           "invalid_schedule": "Wähle ein Datum und eine Uhrzeit in der Zukunft, innerhalb von zwei Jahren.",
-          "invalid_expiry": "Das Offline-Datum muss nach dem Veröffentlichungsdatum liegen.",
+          "invalid_expiry": "Das Veröffentlichungsende muss nach dem Veröffentlichungsdatum liegen.",
           "conflict": "Dieser Beitrag wurde anderswo geändert. Lade neu, um die aktuelle Version zu sehen.",
           "forbidden": "Du hast keine Berechtigung, hier zu veröffentlichen.",
           "not_found": "Wir finden diesen Beitrag nicht mehr.",
@@ -951,20 +924,20 @@
           "failed": "Etwas ist schiefgelaufen. Dein Beitrag ist sicher – bitte versuch es noch einmal.",
           "archived": "Dieser Beitrag ist archiviert. Stelle ihn vor dem Veröffentlichen wieder her."
         },
-        "summaryNow": "Wird veröffentlicht auf",
-        "summarySchedule": "Wird am {date} veröffentlicht auf",
+        "summaryNow": "Veröffentlicht in",
+        "summarySchedule": "Veröffentlicht am {date} in",
         "summaryDraft": "Gespeichert auf",
         "languageSaved": "gespeichert",
         "languageInProgress": "begonnen",
         "languageNotStarted": "nicht begonnen"
       },
       "done": {
-        "live": "Dein Beitrag ist online",
+        "live": "Dein Beitrag ist veröffentlicht",
         "liveBody": "Besucher können ihn jetzt auf deiner Website lesen.",
         "scheduled": "Dein Beitrag ist geplant",
         "scheduledBody": "Er erscheint am {date}.",
         "draft": "Als Entwurf gespeichert",
-        "draftBody": "Noch ist nichts online. Du kannst jederzeit über die Startseite weitermachen.",
+        "draftBody": "Noch ist nichts veröffentlicht. Du kannst jederzeit über die Startseite weitermachen.",
         "view": "Auf deiner Website ansehen",
         "home": "Zur Startseite",
         "updated": "Deine Änderungen sind online",
@@ -1003,10 +976,10 @@
         "update": "Beitrag aktualisieren",
         "updating": "Wird aktualisiert …",
         "status": {
-          "live": "Seit {date} auf deiner Website",
           "scheduled": "Geplant für {date}",
-          "offline": "Offline seit {date}",
-          "archived": "Archiviert am {date}"
+          "archived": "Archiviert am {date}",
+          "published": "Veröffentlicht seit {date}",
+          "unpublished": "Nicht veröffentlicht seit {date}"
         },
         "editing": "Du bearbeitest eine Kopie. Besucher sehen die veröffentlichte Version, bis du aktualisierst.",
         "ctaNone": "Keine",
@@ -1015,16 +988,9 @@
       },
       "menu": {
         "label": "Weitere Aktionen",
-        "takeOffline": "Offline nehmen",
-        "backOnline": "Wieder online stellen",
-        "changeDate": "Veröffentlichungsdatum ändern",
+        "changeDate": "Veröffentlichungsdaten",
         "discard": "Änderungen verwerfen",
-        "deleteDraft": "Entwurf löschen",
-        "deletePost": "Beitrag löschen",
-        "activity": "Aktivität",
-        "archive": "Archivieren",
-        "restore": "Wiederherstellen",
-        "deletePermanently": "Endgültig löschen"
+        "activity": "Aktivität"
       },
       "confirm": {
         "cancel": "Abbrechen",
@@ -1039,8 +1005,6 @@
         "deletePost": "Endgültig löschen"
       },
       "lifecycle": {
-        "offlineDone": "Dein Beitrag ist offline. Du kannst ihn jederzeit wieder online stellen.",
-        "onlineDone": "Dein Beitrag ist wieder online.",
         "errors": {
           "conflict": "Dieser Beitrag wurde anderswo geändert. Lade neu, um die aktuelle Version zu sehen.",
           "forbidden": "Dazu hast du keine Berechtigung.",
@@ -1053,7 +1017,9 @@
           "in_use": "Andere Inhalte verlinken noch auf diesen Beitrag. Entferne zuerst diese Links."
         },
         "archivedDone": "Dein Beitrag ist archiviert. Er ist nicht mehr auf deiner Website – du kannst ihn jederzeit wiederherstellen.",
-        "restoredDone": "Dein Beitrag ist wiederhergestellt. Er bleibt offline, bis du ihn wieder online stellst."
+        "restoredDone": "Dein Beitrag ist wiederhergestellt. Er bleibt unveröffentlicht, bis du ihn erneut veröffentlichst.",
+        "unpublishedDone": "Die Veröffentlichung deines Beitrags ist aufgehoben. Du kannst ihn jederzeit erneut veröffentlichen.",
+        "publishedAgainDone": "Dein Beitrag ist wieder veröffentlicht."
       },
       "open": {
         "title": "Dein Beitrag wird geöffnet …",
@@ -2274,6 +2240,39 @@
         "mobile": "Smartphone",
         "tablet": "Tablet",
         "smarttv": "TV"
+      }
+    },
+    "lifecycle": {
+      "status": {
+        "draft": "Entwurf",
+        "scheduled": "Geplant",
+        "published": "Veröffentlicht",
+        "unpublished": "Nicht veröffentlicht",
+        "archived": "Archiviert"
+      },
+      "pendingChanges": "Ausstehende Änderungen",
+      "actions": {
+        "unpublish": "Veröffentlichung aufheben",
+        "publishAgain": "Erneut veröffentlichen",
+        "setUnpublishDate": "Veröffentlichungsende festlegen",
+        "removeUnpublishDate": "Veröffentlichungsende entfernen",
+        "archive": "Archivieren",
+        "restore": "Wiederherstellen",
+        "delete": "Löschen",
+        "deletePermanently": "Endgültig löschen"
+      },
+      "dates": {
+        "publishOn": "Veröffentlichen am",
+        "unpublishOn": "Veröffentlichung endet am",
+        "zone": "Zeit in {city} ({offset})",
+        "gap": "Diese Uhrzeit gibt es an dem Tag nicht (Umstellung auf Sommerzeit) – es wird {date}.",
+        "overlap": "Diese Uhrzeit gibt es an dem Tag zweimal (Umstellung auf Winterzeit) – die erste gilt: {date} ({offset}).",
+        "mustBeFuture": "Wähle ein Datum und eine Uhrzeit in der Zukunft."
+      },
+      "deletePermanently": {
+        "title": "{count, plural, one {„{title}“ endgültig löschen?} other {# Einträge endgültig löschen?}}",
+        "body": "{count, plural, one {Es wird zusammen mit seinem Entwurf gelöscht. War das ein Versehen, kann Abluo es innerhalb von 90 Tagen wiederherstellen.} other {Sie werden zusammen mit ihren Entwürfen gelöscht. War das ein Versehen, kann Abluo sie innerhalb von 90 Tagen wiederherstellen.}}",
+        "confirm": "Endgültig löschen"
       }
     }
   },

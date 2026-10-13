@@ -1,5 +1,7 @@
 'use client'
 
+import { PublicationDateField } from '@/components/app/lifecycle/PublicationDateField'
+import { validateWindow } from '@/lib/lifecycle/time'
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
@@ -9,46 +11,49 @@ export { BarButton, SheetItem } from '@/components/app/ui/BarButton'
 
 /** Posts list: the end-date and category sheets. BarButton / SheetItem now live in ui/BarButton (re-exported here). */
 
+/**
+ * "Set unpublish date" (ADR-032 slice 6): one date, entered in the site's time
+ * zone with the shared PublicationDateField; must be in the future.
+ */
 export function EndDateSheet({
   open,
   busy,
+  zone,
   onClose,
   onSave,
   onRemove,
 }: {
   open: boolean
   busy: boolean
+  /** The site's time zone. */
+  zone: string
   onClose: () => void
   onSave: (iso: string) => void
-  /** "Remove end date" (the selection can hold posts that have one). */
+  /** "Remove unpublish date" (the selection can hold posts that have one). */
   onRemove?: () => void
 }) {
   const t = useTranslations('clientDashboard.posts.card')
-  const [value, setValue] = useState('')
-  /** The chosen moment as ISO when it is in the future (checked as it changes), else ''. */
-  const [iso, setIso] = useState('')
-  const valid = !!iso
+  const tl = useTranslations('app.lifecycle')
+  const [iso, setIso] = useState<string | null>(null)
+  const problem = iso ? validateWindow({ expiresAt: iso }, new Date()) : null
+  const valid = !!iso && !problem
   return (
     <BottomSheet open={open} title={t('endDateSheet.title')} onClose={onClose}>
       <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('endDateSheet.helper')}</p>
-      <label htmlFor="posts-end-date" className="mt-4 text-[0.9375rem] font-medium">
-        {t('endDateSheet.label')}
-      </label>
-      <input
+      <PublicationDateField
         id="posts-end-date"
-        type="datetime-local"
-        value={value}
-        onChange={(e) => {
-          setValue(e.target.value)
-          const at = Date.parse(e.target.value)
-          setIso(!Number.isNaN(at) && at > Date.now() ? new Date(at).toISOString() : '')
-        }}
-        className="mt-2 h-12 w-full rounded-xl border border-border bg-background px-3 text-base text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        className="mt-4"
+        label={tl('dates.unpublishOn')}
+        value={iso}
+        onChange={setIso}
+        zone={zone}
+        inputClassName="mt-2 h-12 w-full rounded-xl border border-border bg-background px-3 text-base text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       />
+      {problem === 'unpublish_in_past' ? <p className="mt-2 text-sm text-destructive">{tl('dates.mustBeFuture')}</p> : null}
       <button
         type="button"
         disabled={!valid || busy}
-        onClick={() => onSave(iso)}
+        onClick={() => iso && onSave(iso)}
         className="mt-4 inline-flex h-12 items-center justify-center rounded-xl bg-action px-5 text-[0.9375rem] font-semibold text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40"
       >
         {t('endDateSheet.save')}
@@ -60,7 +65,7 @@ export function EndDateSheet({
           onClick={onRemove}
           className="mt-2 inline-flex h-12 items-center justify-center rounded-xl px-5 text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40"
         >
-          {t('more.removeEndDate')}
+          {tl('actions.removeUnpublishDate')}
         </button>
       ) : null}
     </BottomSheet>
