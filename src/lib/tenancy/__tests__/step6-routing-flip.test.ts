@@ -132,6 +132,10 @@ const LIVE_HOSTS: HostCase[] = [
   { host: 'noemizi.com',                  tenantSlug: 'noemi',           projectSlug: 'noemi',           projectId: '1a1bcd9a-e83c-46bb-963d-775652b3b53d', defaultLocale: 'en' },
   { host: 'noemi.preview.abluo.app',      tenantSlug: 'noemi',           projectSlug: 'noemi',           projectId: '1a1bcd9a-e83c-46bb-963d-775652b3b53d', defaultLocale: 'en' },
   { host: 'noemi.localhost',              tenantSlug: 'noemi',           projectSlug: 'noemi',           projectId: '1a1bcd9a-e83c-46bb-963d-775652b3b53d', defaultLocale: 'en' },
+  // tmz — active since 644db2d (tmz.it).
+  { host: 'tmz.it',                       tenantSlug: 'tmz',             projectSlug: 'tmz',             projectId: '3e308301-6916-4f0c-b616-97a3b7f6d9ef', defaultLocale: 'en' },
+  { host: 'tmz.preview.abluo.app',        tenantSlug: 'tmz',             projectSlug: 'tmz',             projectId: '3e308301-6916-4f0c-b616-97a3b7f6d9ef', defaultLocale: 'en' },
+  { host: 'tmz.localhost',                tenantSlug: 'tmz',             projectSlug: 'tmz',             projectId: '3e308301-6916-4f0c-b616-97a3b7f6d9ef', defaultLocale: 'en' },
 ]
 
 describe('every live host resolves to the right project and locale', () => {
@@ -229,7 +233,7 @@ describe('an unknown URL segment still produces a clean 404, not an empty 200', 
     const activeSlugs = [
       ...new Set(GENERATED_HOST_ROUTES.filter((r) => r.status === 'active').map((r) => r.projectSlug)),
     ].sort()
-    expect(activeSlugs).toEqual(['abluo', 'amelie', 'hoffmann', 'livener', 'noemi', 'nologo', 'studiomartegani'])
+    expect(activeSlugs).toEqual(['abluo', 'amelie', 'hoffmann', 'livener', 'noemi', 'nologo', 'studiomartegani', 'tmz'])
     for (const slug of activeSlugs) {
       expect(isKnownProjectSegment(asUrlProjectSegment(slug)), slug).toBe(true)
     }
