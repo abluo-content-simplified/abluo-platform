@@ -13,11 +13,13 @@ import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { PostDraftError, type PostDraftErrorCode, type PostLiveState } from '@/lib/api/post-drafts'
 import {
+  archivePost,
   deletePostDraft,
   deletePublishedPost,
   discardPostChanges,
   openPostForEdit,
   putPostBackOnline,
+  restorePost,
   runPostBatch,
   setPostFeatured,
   takePostOffline,
@@ -65,6 +67,18 @@ export async function putPostBackOnlineAction(input: Input): Promise<LiveResult>
   return r.ok ? { ok: true, live: r.value } : r
 }
 
+/** ADR-032 D6: off the website at once, kept until restored or deleted permanently. */
+export async function archivePostAction(input: Input): Promise<LiveResult> {
+  const r = await run(input?.projectSlug, (ctx, projectId) => archivePost(ctx, projectId, { id: input.id, rev: input.rev }))
+  return r.ok ? { ok: true, live: r.value } : r
+}
+
+/** ADR-032 D6: back from the archive as unpublished — going online is a separate, explicit step. */
+export async function restorePostAction(input: Input): Promise<LiveResult> {
+  const r = await run(input?.projectSlug, (ctx, projectId) => restorePost(ctx, projectId, { id: input.id, rev: input.rev }))
+  return r.ok ? { ok: true, live: r.value } : r
+}
+
 export async function discardPostChangesAction(input: Input): Promise<DoneResult> {
   const r = await run(input?.projectSlug, (ctx, projectId) => discardPostChanges(ctx, projectId, { id: input.id, rev: input.rev }))
   return r.ok ? { ok: true } : r
@@ -84,7 +98,8 @@ export type BatchResult = { ok: true; results: PostBatchItem[] } | Fail
 
 /**
  * Posts list selection: one action over up to 100 posts (take offline, put
- * back online, delete, set / remove the end date, change topics). Per-post
+ * back online, archive, restore, delete, set / remove the end date, change
+ * topics). Per-post
  * results; every post goes through its own lifecycle checks.
  */
 export async function batchPostsAction(input: {

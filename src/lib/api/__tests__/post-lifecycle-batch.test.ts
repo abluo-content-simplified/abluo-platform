@@ -48,7 +48,7 @@ function fake(docs: Record<string, Record<string, unknown>>) {
     create: vi.fn(),
     patch: vi.fn(patch),
     transaction: vi.fn(mk),
-    fetch: vi.fn(async (q: string) => (q.startsWith('count(') ? 1 : q.includes('config.categories') ? ['cura', 'studio'] : null)),
+    fetch: vi.fn(async (q: string) => (q.includes('references(') ? 0 : q.startsWith('count(') ? 1 : q.includes('config.categories') ? ['cura', 'studio'] : null)),
   }
   return { client, ops, deps: { client: client as never, now: () => NOW } }
 }
@@ -144,15 +144,19 @@ describe('runPostBatch', () => {
     expect(f.ops.filter(([o, , v]) => o === 'set' && JSON.stringify(v).includes('expiresAt'))).toHaveLength(2)
   })
 
-  it('delete: drafts go, live posts need an owner', async () => {
+  it('delete: drafts go; published posts need an owner and the archive first', async () => {
     const f = fake({ p1: post('p1'), 'drafts.d1': post('drafts.d1', { _rev: 'dr', publishedAt: undefined }) })
     const r = await runPostBatch(ctx(grant()), 'project-a', { ids: ['p1', 'd1'], op: 'delete' }, f.deps)
     expect(r).toEqual([
       { id: 'p1', ok: false, error: 'forbidden' },
       { id: 'd1', ok: true },
     ])
-    const o = fake({ p1: post('p1') })
-    expect(await runPostBatch(ctx(grant({ role: 'owner', permissions: ['blog.post.read', 'blog.post.write', 'blog.post.delete', 'blog.published.delete'] })), 'project-a', { ids: ['p1'], op: 'delete' }, o.deps)).toEqual([{ id: 'p1', ok: true }])
+    const ownerCtx = ctx(grant({ role: 'owner', permissions: ['blog.post.read', 'blog.post.write', 'blog.post.delete', 'blog.published.delete'] }))
+    const o = fake({ p1: post('p1'), p2: post('p2', { archivedAt: '2026-10-01T00:00:00Z' }) })
+    expect(await runPostBatch(ownerCtx, 'project-a', { ids: ['p1', 'p2'], op: 'delete' }, o.deps)).toEqual([
+      { id: 'p1', ok: false, error: 'archive_first' },
+      { id: 'p2', ok: true },
+    ])
   })
 
   it('end date and topics run per post', async () => {

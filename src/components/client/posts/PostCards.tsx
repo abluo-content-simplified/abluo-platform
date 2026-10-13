@@ -119,7 +119,7 @@ export function PostPhoneList({ posts, canEdit, selected, onToggle, onOpen, menu
               <StatusPill status={post.status} badge={post.badge} />
               <LanguageTicks states={post.languageStates} />
               <span className="text-sm leading-5 text-muted-foreground">
-                <CardDateLine status={post.status} publishedAt={post.publishedAt} expiresAt={post.expiresAt} updatedAt={post.updatedAt} />
+                <CardDateLine status={post.status} publishedAt={post.publishedAt} expiresAt={post.expiresAt} archivedAt={post.archivedAt} updatedAt={post.updatedAt} />
               </span>
             </span>
           </>

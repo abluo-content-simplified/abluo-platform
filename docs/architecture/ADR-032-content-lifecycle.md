@@ -78,7 +78,7 @@ Concurrent edits are caught by revision guards. Scheduling has no job to retry; 
 | Delete a never-published draft | `<m>.<x>.delete` |
 | Delete permanently (archived only) | `<m>.<x>.delete` — Owner, Site admin |
 
-`blog.published.delete` becomes redundant (folded into `blog.post.delete`; the id stays accepted). No separate `publish` permission now; adding one later is a change to `lifecycleGuard` and the manifests. Enforced server-side; the UI only hides.
+*Amended 2026-10-13 (A7): `blog.published.delete` is kept for permanently deleting previously published posts.* No separate `publish` permission now; adding one later is a change to `lifecycleGuard` and the manifests. Enforced server-side; the UI only hides.
 
 ### D8 — Time
 Store UTC. Show and enter dates in `siteConfig.timeZone` (an event venue zone keeps precedence for event dates, ADR-031). DST: a non-existent local time moves to the next valid minute; an ambiguous one takes the first occurrence; the UI shows the resolved time with its offset.
@@ -155,7 +155,7 @@ Studio is an Abluo-staff surface and can't be permission-restricted on Growth, s
 5. Lifecycle service + `lifecycleGuard`; posts re-pointed (only change: delete after archive).
 6. Partner API: removal reasons + boundary-aware sync (D11).
 7. Shared dashboard pieces: status badge, filters (All / Draft / Scheduled / Published / Unpublished / Archived), Publication settings (Publish on / Unpublish on / time zone), Archive · Restore · Delete permanently pattern (delete separated, confirm with title).
-Acceptance: posts behave as today except delete; archive/restore keeps id, slug, references; every registered path hides unavailable content; a late-polling partner receives every removal; 404 page shows no item data and is localised.
+Acceptance (wording amended, A9): existing publication behaviour is preserved except for the explicitly approved lifecycle changes; archive/restore keeps id, slug, references; every registered path hides unavailable content; a late-polling partner receives every removal; 404 page shows no item data and is localised.
 
 **Phase 2 — Menu module** on the foundation.
 **Phase 3 — Events and galleries adoption.**
@@ -207,3 +207,31 @@ A daily job reads the last 26 hours of Sanity transactions for lifecycle types a
 - **Daily job** `GET /api/cron/content-activity` (vercel.json, 05:15 UTC, `CRON_SECRET`): reconciliation of the last 26 h (settled 1 h; at most 1000 transactions per run, reported when capped), then the retention purge.
 - **Monitoring**: admin Home → "Needs your attention" → "Activity needs a look" per project (late, unattributed or failed records in the last 7 days); runtime logs tagged `[content-audit]`.
 - **Identity of the dashboard token**: resolved from Sanity (`/users/me`) once per process; `SANITY_DASHBOARD_ACTOR_ID` overrides it.
+
+---
+
+## Amendment 2026-10-13 (2) — D7 permissions and slice 4 rules
+
+**Status:** Accepted (Tom, 2026-10-13). Implemented in slice 4 (lifecycle service + `lifecycleGuard`, posts re-pointed).
+
+### A7 — D7 amended: `blog.published.delete` is kept
+Supersedes the last paragraph of D7. Deleting content that was ever published keeps its own permission, Owner and Site admin by default:
+
+| Operation | Permission |
+|---|---|
+| Edit drafts, publish, schedule, unpublish, archive, restore | `<m>.<x>.write` |
+| Delete a never-published draft | `<m>.<x>.delete` (Editors included) |
+| Delete permanently — archived content that was ever published | `<m>.<x>.delete` **and** the module's delete-published permission (`blog.published.delete` for posts; label "Delete posts permanently") |
+
+`lifecycleGuard` holds the map (`src/lib/lifecycle/service.ts`); the descriptor names the three permissions per module.
+
+### A8 — Rules enforced on the server
+- **"Previously published" comes from persisted content**, never from the menu or a client-supplied status: a published version exists, or the draft carries `publishedAt` / `archivedAt` (only copies of published documents do). Such a draft needs the delete-published permission too; a draft over a published item is "Discard changes", never a delete.
+- **Archive is safe on the shared dataset.** Archive sets `archivedAt`, `archivedBy` and `expiresAt = now` (an earlier `expiresAt` is kept) on the published **and** the draft version in one revision-guarded transaction, so code that predates `archivedAt` (production until Phase 1 ships) already hides archived content.
+- **No route back online while archived.** Publish (now / schedule / update), back online, take offline and end-date changes refuse archived content (`archived`) until it is restored. Publishing never copies `archivedAt` / `archivedBy` from the draft.
+- **Restore** unsets `archivedAt` / `archivedBy` on both versions, sets `expiresAt = now` unless an earlier one exists, removes a future `publishedAt`. Going online again is the separate, explicit "Put back online" (which publishes from now when the publish date was removed).
+- **Permanent delete** requires an archived item (`archive_first` otherwise) and no other document referencing it (`in_use`); it removes both versions in one transaction.
+- **Activity**: a row is written only after the content change succeeded (refusals and failures are recorded as such). If the Activity writer fails afterwards, the operation still reports success and the failure is logged with `[content-audit] not recorded` for investigation and reconciliation.
+
+### A9 — Acceptance wording (replaces "posts behave as today except delete")
+Existing publication behaviour is preserved except for the explicitly approved lifecycle changes: Archive, Restore, and the permanent-delete restrictions (archive first, delete-published permission, dependency check). The dashboard's post status also gains "Archived" and shows a post taken offline before its go-live date as "Offline" instead of "Scheduled".

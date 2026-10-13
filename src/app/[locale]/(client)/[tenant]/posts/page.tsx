@@ -163,6 +163,7 @@ function toBrowserPost(post: DashboardPostRow, languages: string[], t: T): Brows
     updatedAt: post.updatedAt,
     publishedAt: post.publishedAt ?? null,
     expiresAt: post.expiresAt ?? null,
+    archivedAt: post.archivedAt ?? null,
     featured: post.featured === true,
     languageStates: states,
     translationsComplete: states.length ? states.every((s) => s.complete) : undefined,

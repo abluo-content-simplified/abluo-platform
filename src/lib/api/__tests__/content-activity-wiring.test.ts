@@ -15,7 +15,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/sanity/server-clients', () => ({ sanityWriteClient: {} }))
 
-import { deletePostDraft, deletePublishedPost, putPostBackOnline, setPostEndDate, takePostOffline } from '../post-lifecycle'
+import { archivePost, deletePostDraft, deletePublishedPost, putPostBackOnline, restorePost, setPostEndDate, takePostOffline } from '../post-lifecycle'
 import { createPostDraft } from '../post-drafts'
 import type { ProjectGrant, TenantAuthorizationContext } from '../tenant-context'
 import type { ContentAuditEntry } from '@/lib/lifecycle/audit'
@@ -53,7 +53,7 @@ function fake(o: { published?: Record<string, unknown> | null; draft?: Record<st
     create: vi.fn(async (d: Record<string, unknown>, opts?: Record<string, unknown>) => (committed.push(opts), { ...d, _rev: 'd1' })),
     patch: vi.fn(() => patch),
     transaction: vi.fn(() => tx),
-    fetch: vi.fn(async (q: string) => (q.startsWith('count(*[_type == "post"') ? 0 : q.startsWith('count(') ? 1 : null)),
+    fetch: vi.fn(async (q: string) => (q.includes('references(') || q.startsWith('count(*[_type == "post"') ? 0 : q.startsWith('count(') ? 1 : null)),
   }
   const rows: ContentAuditEntry[] = []
   const deps = { client: client as never, now: () => NOW, uuid: () => ID, audit: async (e: ContentAuditEntry) => void rows.push(e) }
@@ -85,8 +85,15 @@ describe('posts: the recorded row matches the write', () => {
     expect(f.rows.map((r) => [r.action, r.outcome])).toEqual([['schedule_changed', 'ok']])
   })
 
-  it('delete live post → deleted (state: gone); delete draft → deleted (draftOnly)', async () => {
-    const a = fake()
+  it('archive → archived; restore → restored; delete archived post → deleted (state: gone); delete draft → deleted (draftOnly)', async () => {
+    const live = fake()
+    await archivePost(ctx(grant()), 'project-a', { id: ID, rev: 'p1' }, live.deps)
+    expect(live.rows[0]).toMatchObject({ action: 'archived', outcome: 'ok', transactionId: live.committed[0]?.transactionId })
+    const archived = { _id: ID, _type: 'post', _rev: 'p1', projectSlug: 'tmz', publishedAt: PAST, archivedAt: PAST, expiresAt: PAST }
+    const r = fake({ published: archived })
+    await restorePost(ctx(grant()), 'project-a', { id: ID, rev: 'p1' }, r.deps)
+    expect(r.rows[0]).toMatchObject({ action: 'restored', outcome: 'ok', transactionId: r.committed[0]?.transactionId })
+    const a = fake({ published: archived })
     await deletePublishedPost(ctx(grant()), 'project-a', { id: ID, rev: 'p1' }, a.deps)
     expect(a.rows[0]).toMatchObject({ action: 'deleted', outcome: 'ok', detail: { state: null } })
     const b = fake({ published: null, draft: { _id: `drafts.${ID}`, _type: 'post', _rev: 'd1', projectSlug: 'tmz' } })
@@ -124,10 +131,11 @@ describe('posts: the recorded row matches the write', () => {
 
 // ── 2. Every dashboard write to a lifecycle type is correlated ───────────────
 
-const FILES = ['src/lib/api/post-lifecycle.ts', 'src/lib/api/post-publish.ts', 'src/lib/api/post-drafts.ts', 'src/lib/api/event-drafts.ts', 'src/lib/api/gallery-drafts.ts']
+const FILES = ['src/lib/lifecycle/service.ts', 'src/lib/api/post-lifecycle.ts', 'src/lib/api/post-publish.ts', 'src/lib/api/post-drafts.ts', 'src/lib/api/event-drafts.ts', 'src/lib/api/gallery-drafts.ts']
 
 /** Writes that change no lifecycle state (draft edits, tags, topics, featured, discarding changes of a live item). */
 const NOT_LIFECYCLE: Record<string, string[]> = {
+  'src/lib/lifecycle/service.ts': [],
   'src/lib/api/post-lifecycle.ts': ['openPostForEdit', 'discardPostChanges', 'setPostCategories', 'setPostFeatured'],
   'src/lib/api/post-publish.ts': [],
   'src/lib/api/post-drafts.ts': ['patchPostDraft'],

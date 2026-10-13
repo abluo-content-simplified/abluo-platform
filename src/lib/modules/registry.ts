@@ -94,16 +94,18 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         },
         {
           id: 'blog.post.delete',
-          label: 'Delete posts',
-          description: 'Permanently delete blog posts.',
+          label: 'Delete drafts',
+          description: 'Delete blog post drafts that were never published.',
           defaultRoles: ['owner', 'editor'],
         },
         {
           // ADR-028: was a hard-coded Owner-only role check in post-lifecycle.ts.
           // Project Admins hold it too (owner bundle on their project).
           id: 'blog.published.delete',
-          label: 'Delete published posts',
-          description: 'Permanently delete a post that is live on the website.',
+          // ADR-032 D7 (amended): kept as the permanent-delete permission for
+          // content that was ever published — only after it has been archived.
+          label: 'Delete posts permanently',
+          description: 'Permanently delete an archived post that was published before.',
           defaultRoles: ['owner'],
         },
         {

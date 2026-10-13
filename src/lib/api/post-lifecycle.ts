@@ -16,9 +16,10 @@
  * and the dashboard shows it as "offline". Nothing is unpublished or deleted,
  * so "Put back online" (unset expiresAt) restores it with its URLs intact.
  *
- * Activity (ADR-032 D9): every lifecycle change here is recorded through
- * `audited()` — the Sanity write commits with the transaction id it hands out,
- * and the row names the action derived by `lifecycleAction()`.
+ * Lifecycle (ADR-032 D5–D7, slice 4): offline, back online, end date,
+ * archive, restore and both deletes are thin wrappers over the one lifecycle
+ * service (`@/lib/lifecycle/service`), which also writes the Activity row
+ * (D9) after the change succeeded.
  */
 import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
@@ -26,8 +27,9 @@ import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { BLOG_POST_WRITE_PERMISSION, isPostId, LIMITS, liveState, PostDraftError, type PostDraftErrorCode, type PostLiveState } from '@/lib/api/post-drafts'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
-import { audited, type ContentAuditWriter } from '@/lib/lifecycle/audit'
-import { lifecycleAction, snapshotOf } from '@/lib/lifecycle/transition'
+import type { ContentAuditWriter } from '@/lib/lifecycle/audit'
+import * as lifecycle from '@/lib/lifecycle/service'
+import { countReferences, type LifecycleDescriptor } from '@/lib/lifecycle/service'
 
 export const BLOG_POST_DELETE_PERMISSION = 'blog.post.delete'
 /** Deleting a post that is live on the website (ADR-028: Owner and Site admin). */
@@ -40,11 +42,6 @@ type Doc = Record<string, unknown> & { _id?: string; _type?: string; _rev?: stri
 
 /** Fields Sanity owns; never copied into a new document. */
 const SYSTEM_FIELDS = new Set(['_id', '_rev', '_createdAt', '_updatedAt'])
-
-/** The audit spec of one post operation (an id that is not a post id records nothing). */
-function auditSpec(ctx: TenantAuthorizationContext, projectId: string, id: unknown, intended: Parameters<typeof audited>[0]['intended'], deps: PostLifecycleDeps) {
-  return { ctx, projectId, contentType: 'post', contentId: isPostId(id) ? (id as string) : null, intended, writer: deps.audit }
-}
 
 function grantFor(ctx: TenantAuthorizationContext, projectId: string, permission: string) {
   assertModuleAction(ctx, projectId, permission)
@@ -137,60 +134,41 @@ export async function canOpenPublishedPost(
   return ours(published, grant.projectSlug)
 }
 
-/** Takes a live or scheduled post off the website now (expiresAt = now). */
-export async function takePostOffline(
-  ctx: TenantAuthorizationContext,
-  projectId: string,
-  input: { id: string; rev: string },
-  deps: PostLifecycleDeps = {}
-): Promise<PostLiveState> {
-  return audited(auditSpec(ctx, projectId, input?.id, 'unpublished', deps), async (transactionId) => {
-    const grant = grantFor(ctx, projectId, BLOG_POST_WRITE_PERMISSION)
-    const client = deps.client ?? sanityWriteClient
-    if (!isPostId(input?.id)) notFound()
-    const { published } = await read(client, input.id, grant.projectSlug)
-    if (!published) notFound()
-    if (published._rev !== input.rev) throw new PostDraftError('conflict', 'This post was changed elsewhere.')
-    const at = (deps.now ?? (() => new Date()))()
-    const now = at.toISOString()
-    let rev = ''
-    await commit(client, grant.projectSlug, async () => {
-      const r = (await client.patch(input.id).ifRevisionId(input.rev).set({ expiresAt: now }).commit({ transactionId })) as { _rev?: string }
-      rev = r._rev ?? ''
-    })
-    const next = { ...published, _rev: rev, expiresAt: now }
-    const state = snapshotOf(next)
-    return { value: liveState(next), action: lifecycleAction(snapshotOf(published), state, 'required', at), state }
-  })
+/**
+ * Posts on the one lifecycle service (ADR-032 D5, slice 4). Permissions come
+ * from `lifecycleGuard()`; "previously published" is decided from the stored
+ * documents; permanent delete needs an archived post nothing links to.
+ */
+export const POST_LIFECYCLE: LifecycleDescriptor = {
+  type: 'post',
+  rule: 'required',
+  permissions: { write: BLOG_POST_WRITE_PERMISSION, delete: BLOG_POST_DELETE_PERMISSION, deletePublished: BLOG_PUBLISHED_DELETE_PERMISSION },
+  isId: (id: unknown): id is string => isPostId(id),
+  fail: (code, message) => new PostDraftError(code, message),
+  dependencies: (client, id) => countReferences(client, id),
 }
 
-/** Puts an offline post back on the website (removes its take-offline date). */
-export async function putPostBackOnline(
-  ctx: TenantAuthorizationContext,
-  projectId: string,
-  input: { id: string; rev: string },
-  deps: PostLifecycleDeps = {}
-): Promise<PostLiveState> {
-  return audited(auditSpec(ctx, projectId, input?.id, 'published', deps), async (transactionId) => {
-    const grant = grantFor(ctx, projectId, BLOG_POST_WRITE_PERMISSION)
-    const client = deps.client ?? sanityWriteClient
-    if (!isPostId(input?.id)) notFound()
-    const { published } = await read(client, input.id, grant.projectSlug)
-    if (!published) notFound()
-    if (published._rev !== input.rev) throw new PostDraftError('conflict', 'This post was changed elsewhere.')
-    let rev = ''
-    await commit(client, grant.projectSlug, async () => {
-      const r = (await client.patch(input.id).ifRevisionId(input.rev).unset(['expiresAt']).commit({ transactionId })) as { _rev?: string }
-      rev = r._rev ?? ''
-    })
-    const next: Doc = { ...published, _rev: rev }
-    delete next.expiresAt
-    const state = snapshotOf(next)
-    const at = (deps.now ?? (() => new Date()))()
-    return { value: liveState(next), action: lifecycleAction(snapshotOf(published), state, 'required', at), state }
-  })
+type RevInput = { id: string; rev: string }
+
+/** Takes a live or scheduled post off the website now (expiresAt = now). Refused while archived. */
+export async function takePostOffline(ctx: TenantAuthorizationContext, projectId: string, input: RevInput, deps: PostLifecycleDeps = {}): Promise<PostLiveState> {
+  return liveState(await lifecycle.unpublishNow(POST_LIFECYCLE, ctx, projectId, input, deps))
 }
 
+/** Puts an offline post back on the website (removes its take-offline date). Refused while archived. */
+export async function putPostBackOnline(ctx: TenantAuthorizationContext, projectId: string, input: RevInput, deps: PostLifecycleDeps = {}): Promise<PostLiveState> {
+  return liveState(await lifecycle.backOnline(POST_LIFECYCLE, ctx, projectId, input, deps))
+}
+
+/** Archives a post (D6): off the website at once, kept with its URLs and references until restored. */
+export async function archivePost(ctx: TenantAuthorizationContext, projectId: string, input: RevInput, deps: PostLifecycleDeps = {}): Promise<PostLiveState> {
+  return liveState(await lifecycle.archive(POST_LIFECYCLE, ctx, projectId, input, deps))
+}
+
+/** Restores an archived post (D6): it comes back unpublished — never straight onto the website. */
+export async function restorePost(ctx: TenantAuthorizationContext, projectId: string, input: RevInput, deps: PostLifecycleDeps = {}): Promise<PostLiveState> {
+  return liveState(await lifecycle.restore(POST_LIFECYCLE, ctx, projectId, input, deps))
+}
 /** Throws away unpublished changes: deletes `drafts.<id>` of a published post. */
 export async function discardPostChanges(
   ctx: TenantAuthorizationContext,
@@ -210,58 +188,22 @@ export async function discardPostChanges(
   )
 }
 
-/** Deletes a draft that was never published. */
-export async function deletePostDraft(
-  ctx: TenantAuthorizationContext,
-  projectId: string,
-  input: { id: string; rev: string },
-  deps: PostLifecycleDeps = {}
-): Promise<void> {
-  return audited(auditSpec(ctx, projectId, input?.id, 'deleted', deps), async (transactionId) => {
-    const grant = grantFor(ctx, projectId, BLOG_POST_WRITE_PERMISSION)
-    const client = deps.client ?? sanityWriteClient
-    if (!isPostId(input?.id)) notFound()
-    const { published, draft } = await read(client, input.id, grant.projectSlug)
-    if (!draft) notFound()
-    // A draft over a live post is "Discard changes", never a delete of the post.
-    if (published) throw new PostDraftError('invalid_value', 'This post is published.')
-    if (draft._rev !== input.rev) throw new PostDraftError('conflict', 'This draft was edited elsewhere.')
-    const draftId = `drafts.${input.id}`
-    await commit(client, grant.projectSlug, () =>
-      client.transaction().patch(draftId, { ifRevisionID: input.rev, unset: ['_lifecycleGuard'] }).delete(draftId).commit({ transactionId })
-    )
-    return { value: undefined, action: 'deleted', state: null, detail: { draftOnly: true } }
-  })
+/**
+ * Deletes a draft that was never published (blog.post.delete). A draft whose
+ * stored fields show it was published before also needs blog.published.delete;
+ * a draft over a published post is "Discard changes", never a delete.
+ */
+export async function deletePostDraft(ctx: TenantAuthorizationContext, projectId: string, input: RevInput, deps: PostLifecycleDeps = {}): Promise<void> {
+  await lifecycle.deleteDraft(POST_LIFECYCLE, ctx, projectId, input, deps)
 }
 
 /**
- * Permanently deletes a published post (and its draft). Needs both
- * blog.post.delete and blog.published.delete (Owner / Site admin). The UI asks
- * for confirmation with the title.
+ * Permanently deletes a previously published post and its draft (D6/D7):
+ * blog.post.delete + blog.published.delete (Owner / Site admin), the post must
+ * be archived first, and no other content may still link to it.
  */
-export async function deletePublishedPost(
-  ctx: TenantAuthorizationContext,
-  projectId: string,
-  input: { id: string; rev: string },
-  deps: PostLifecycleDeps = {}
-): Promise<void> {
-  return audited(auditSpec(ctx, projectId, input?.id, 'deleted', deps), async (transactionId) => {
-    grantFor(ctx, projectId, BLOG_POST_DELETE_PERMISSION)
-    const grant = grantFor(ctx, projectId, BLOG_PUBLISHED_DELETE_PERMISSION)
-    const client = deps.client ?? sanityWriteClient
-    if (!isPostId(input?.id)) notFound()
-    const { published, draft } = await read(client, input.id, grant.projectSlug)
-    if (!published) notFound()
-    if (published._rev !== input.rev) throw new PostDraftError('conflict', 'This post was changed elsewhere.')
-    await commit(client, grant.projectSlug, () => {
-      let tx = client.transaction().patch(input.id, { ifRevisionID: input.rev, unset: ['_lifecycleGuard'] })
-      if (draft?._rev) tx = tx.patch(`drafts.${input.id}`, { ifRevisionID: draft._rev, unset: ['_lifecycleGuard'] })
-      tx = tx.delete(input.id)
-      if (draft) tx = tx.delete(`drafts.${input.id}`)
-      return tx.commit({ transactionId })
-    })
-    return { value: undefined, action: 'deleted', state: null }
-  })
+export async function deletePublishedPost(ctx: TenantAuthorizationContext, projectId: string, input: RevInput, deps: PostLifecycleDeps = {}): Promise<void> {
+  await lifecycle.deletePermanently(POST_LIFECYCLE, ctx, projectId, input, deps)
 }
 
 /** Whether this grant may delete published posts (UI hint; the server re-checks). */
@@ -271,52 +213,17 @@ export function canDeletePublished(grant: { permissions: readonly string[] }): b
 
 // ── End date and topics (Posts list, single and batch) ───────────────────────
 
-/** An ISO date-time, or null; anything else is invalid. */
-function isoOrNull(value: unknown): string | null {
-  if (value === null) return null
-  if (typeof value !== 'string' || value.length > 40) throw new PostDraftError('invalid_value', 'Unknown date.')
-  const at = Date.parse(value)
-  if (Number.isNaN(at)) throw new PostDraftError('invalid_value', 'Unknown date.')
-  return new Date(at).toISOString()
-}
-
 /**
  * Sets (or with null removes) the date a post goes offline by itself
- * (`expiresAt`, D5) — on the live version, and on its draft when there is one
- * so "Update post" keeps it. Revision-guarded on both.
+ * (`expiresAt`, D5) — on the live version and its draft. Refused while archived.
  */
 export async function setPostEndDate(
   ctx: TenantAuthorizationContext,
   projectId: string,
-  input: { id: string; rev: string; expiresAt: string | null },
+  input: RevInput & { expiresAt: string | null },
   deps: PostLifecycleDeps = {}
 ): Promise<PostLiveState> {
-  return audited(auditSpec(ctx, projectId, input?.id, 'schedule_changed', deps), async (transactionId) => {
-    const grant = grantFor(ctx, projectId, BLOG_POST_WRITE_PERMISSION)
-    const client = deps.client ?? sanityWriteClient
-    if (!isPostId(input?.id)) notFound()
-    const expiresAt = isoOrNull(input.expiresAt)
-    const at = (deps.now ?? (() => new Date()))()
-    const now = at.getTime()
-    if (expiresAt && Date.parse(expiresAt) <= now) throw new PostDraftError('invalid_value', 'The end date must be in the future.')
-    const { published, draft } = await read(client, input.id, grant.projectSlug)
-    if (!published) notFound()
-    if (published._rev !== input.rev) throw new PostDraftError('conflict', 'This post was changed elsewhere.')
-    if (expiresAt && typeof published.publishedAt === 'string' && Date.parse(expiresAt) <= Date.parse(published.publishedAt)) {
-      throw new PostDraftError('invalid_value', 'The end date must be after the publish date.')
-    }
-    const change = expiresAt ? { set: { expiresAt } } : { unset: ['expiresAt'] }
-    await commit(client, grant.projectSlug, () => {
-      let tx = client.transaction().patch(input.id, { ifRevisionID: input.rev, ...change })
-      if (draft?._rev) tx = tx.patch(`drafts.${input.id}`, { ifRevisionID: draft._rev, ...change })
-      return tx.commit({ transactionId })
-    })
-    const next: Doc = { ...published }
-    if (expiresAt) next.expiresAt = expiresAt
-    else delete next.expiresAt
-    const state = snapshotOf(next)
-    return { value: liveState(next), action: lifecycleAction(snapshotOf(published), state, 'required', at), state }
-  })
+  return liveState(await lifecycle.setEndDate(POST_LIFECYCLE, ctx, projectId, input, deps))
 }
 
 /**
@@ -384,7 +291,7 @@ export async function setPostFeatured(
 // ── Batch (Posts list selection) ─────────────────────────────────────────────
 
 export const POST_BATCH_LIMIT = 100
-export const POST_BATCH_OPS = ['offline', 'online', 'delete', 'endDate', 'categories', 'featured'] as const
+export const POST_BATCH_OPS = ['offline', 'online', 'archive', 'restore', 'delete', 'endDate', 'categories', 'featured'] as const
 export type PostBatchOp = (typeof POST_BATCH_OPS)[number]
 export type PostBatchItem = { id: string; ok: true } | { id: string; ok: false; error: PostDraftErrorCode }
 
@@ -420,6 +327,7 @@ export async function runPostBatch(
       } else {
         const { published, draft } = await read(client, id, grant.projectSlug)
         if (input.op === 'delete') {
+          // A published post: permanent delete (refused unless archived — "archive_first").
           if (published) await deletePublishedPost(ctx, projectId, { id, rev: published._rev ?? '' }, deps)
           else if (draft) await deletePostDraft(ctx, projectId, { id, rev: draft._rev ?? '' }, deps)
           else notFound()
@@ -429,6 +337,8 @@ export async function runPostBatch(
           const rev = published._rev ?? ''
           if (input.op === 'offline') await takePostOffline(ctx, projectId, { id, rev }, deps)
           else if (input.op === 'online') await putPostBackOnline(ctx, projectId, { id, rev }, deps)
+          else if (input.op === 'archive') await archivePost(ctx, projectId, { id, rev }, deps)
+          else if (input.op === 'restore') await restorePost(ctx, projectId, { id, rev }, deps)
           else await setPostEndDate(ctx, projectId, { id, rev, expiresAt: input.expiresAt ?? null }, deps)
         }
       }

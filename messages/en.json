@@ -110,7 +110,8 @@
         "published": "Published",
         "draft": "Draft",
         "scheduled": "Scheduled",
-        "offline": "Offline"
+        "offline": "Offline",
+        "archived": "Archived"
       },
       "meta": {
         "published": "Published {date}",
@@ -119,7 +120,8 @@
         "offlineOn": "Goes offline {date}",
         "offlineSince": "Offline since {date}",
         "edited": "Edited {date}",
-        "ends": "Ends {date}"
+        "ends": "Ends {date}",
+        "archivedOn": "Archived {date}"
       },
       "languages": "Languages",
       "count": "{count, plural, one {# post} other {# posts}}",
@@ -204,7 +206,9 @@
           "featured": "Featured",
           "notFeatured": "Not featured",
           "categories": "Category",
-          "clear": "Clear"
+          "clear": "Clear",
+          "archive": "Archive",
+          "restore": "Restore"
         },
         "more": {
           "title": "More actions",
@@ -213,7 +217,9 @@
           "removeEndDate": "Remove end date",
           "clear": "Clear selection",
           "featured": "Mark as featured",
-          "notFeatured": "Remove from featured"
+          "notFeatured": "Remove from featured",
+          "archive": "Archive",
+          "restore": "Restore"
         },
         "endDateSheet": {
           "title": "Set end date",
@@ -229,7 +235,10 @@
         "confirmDelete": {
           "title": "{count, plural, one {Delete this post?} other {Delete # posts?}}",
           "body": "{count, plural, one {“{title}” is removed from your website and can’t be restored.} other {Live posts are removed from your website and can’t be restored.}}",
-          "confirm": "Delete"
+          "confirm": "Delete",
+          "titlePermanent": "{count, plural, one {Delete this post permanently?} other {Delete # posts permanently?}}",
+          "bodyPermanent": "{count, plural, one {“{title}” and its draft are deleted. If this was a mistake, Abluo can recover it within 90 days.} other {The selected posts and their drafts are deleted. If this was a mistake, Abluo can recover them within 90 days.}}",
+          "confirmPermanent": "Delete permanently"
         },
         "batch": {
           "done": {
@@ -238,12 +247,18 @@
             "delete": "{count, plural, one {# post deleted.} other {# posts deleted.}}",
             "endDate": "{count, plural, one {End date saved for # post.} other {End date saved for # posts.}}",
             "categories": "{count, plural, one {Topics changed on # post.} other {Topics changed on # posts.}}",
-            "featured": "{count, plural, one {Featured changed on # post.} other {Featured changed on # posts.}}"
+            "featured": "{count, plural, one {Featured changed on # post.} other {Featured changed on # posts.}}",
+            "archive": "{count, plural, one {# post archived. It’s no longer on your website.} other {# posts archived. They’re no longer on your website.}}",
+            "restore": "{count, plural, one {# post restored. It stays offline until you put it back online.} other {# posts restored. They stay offline until you put them back online.}}"
           },
           "someFailed": "{count, plural, one {This one didn’t work: {titles}.} other {# didn’t work: {titles}.}}",
           "failedAll": "That didn’t work. Nothing was changed — please try again."
         },
-        "activity": "Activity"
+        "activity": "Activity",
+        "archive": "Archive",
+        "restore": "Restore",
+        "deletePermanently": "Delete permanently",
+        "archiveFirst": "Published posts are archived first. Archive them, then delete them permanently."
       },
       "select": {
         "checkbox": "Select {title}",
@@ -260,7 +275,8 @@
         "published": "Live",
         "scheduled": "Scheduled",
         "draft": "Draft",
-        "offline": "Offline"
+        "offline": "Offline",
+        "archived": "Archived"
       },
       "lang": {
         "complete": "{language}: translation complete",
@@ -932,7 +948,8 @@
           "not_found": "We couldn't find this post any more.",
           "unauthenticated": "Your session has ended. Please sign in again.",
           "offline": "You're offline. Your post is safe on this device — try again when you're connected.",
-          "failed": "Something went wrong. Your post is safe — please try again."
+          "failed": "Something went wrong. Your post is safe — please try again.",
+          "archived": "This post is archived. Restore it before publishing."
         },
         "summaryNow": "Goes live in",
         "summarySchedule": "Goes live on {date} in",
@@ -988,7 +1005,8 @@
         "status": {
           "live": "Live on your site since {date}",
           "scheduled": "Scheduled for {date}",
-          "offline": "Offline since {date}"
+          "offline": "Offline since {date}",
+          "archived": "Archived on {date}"
         },
         "editing": "You're editing a copy. Visitors see the live version until you update.",
         "ctaNone": "None",
@@ -1003,7 +1021,10 @@
         "discard": "Discard changes",
         "deleteDraft": "Delete draft",
         "deletePost": "Delete post",
-        "activity": "Activity"
+        "activity": "Activity",
+        "archive": "Archive",
+        "restore": "Restore",
+        "deletePermanently": "Delete permanently"
       },
       "confirm": {
         "cancel": "Cancel",
@@ -1013,9 +1034,9 @@
         "deleteDraftTitle": "Delete this draft?",
         "deleteDraftBody": "“{title}” will be deleted. This can't be undone.",
         "deleteDraft": "Delete draft",
-        "deletePostTitle": "Delete this post?",
-        "deletePostBody": "“{title}” will be removed from your website for good. This can't be undone.",
-        "deletePost": "Delete post"
+        "deletePostTitle": "Delete this post permanently?",
+        "deletePostBody": "“{title}” and its draft are deleted. If this was a mistake, Abluo can recover it within 90 days.",
+        "deletePost": "Delete permanently"
       },
       "lifecycle": {
         "offlineDone": "Your post is offline. You can put it back online any time.",
@@ -1026,8 +1047,13 @@
           "not_found": "We couldn't find this post any more.",
           "invalid_value": "This can't be done for this post.",
           "unauthenticated": "Your session has ended. Please sign in again.",
-          "failed": "Something went wrong. Please try again."
-        }
+          "failed": "Something went wrong. Please try again.",
+          "archived": "This post is archived. Restore it first.",
+          "archive_first": "Archive this post before deleting it permanently.",
+          "in_use": "Other content still links to this post. Remove those links first."
+        },
+        "archivedDone": "Your post is archived. It’s no longer on your website — restore it any time.",
+        "restoredDone": "Your post is restored. It stays offline until you put it back online."
       },
       "open": {
         "title": "Opening your post…",

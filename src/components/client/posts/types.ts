@@ -11,6 +11,8 @@ export type BrowserPost = FilterablePost & {
   /** Go-live date (ISO): the publish date, or the scheduled date. Null for drafts. */
   publishedAt: string | null
   expiresAt: string | null
+  /** ADR-032: when the post was archived (status "archived"). */
+  archivedAt?: string | null
   featured: boolean
   /** One entry per site language; empty on single-language sites. */
   languageStates: LanguageState[]

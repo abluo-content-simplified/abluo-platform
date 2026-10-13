@@ -24,15 +24,18 @@ export const adminProjectOverviewQuery = /* groq */ `{
   "site": *[_type == "siteConfig" && projectSlug == $projectSlug && ${PUBLISHED}][0]{ defaultLocale, supportedLocales },
   "posts": *[_type == "post" && projectSlug == $projectSlug && ${PUBLISHED}]{
     _id,
+    // Same order as dashboardPostsQuery (ADR-032 D1).
     "status": select(
       !defined(publishedAt) => "draft",
+      defined(archivedAt) => "archived",
+      defined(expiresAt) && (expiresAt <= now() || expiresAt <= publishedAt) => "offline",
       publishedAt > now() => "scheduled",
-      defined(expiresAt) && expiresAt <= now() => "offline",
       "published"
     )
   },
   "latestPosts": *[_type == "post" && projectSlug == $projectSlug && ${PUBLISHED}
-      && defined(publishedAt) && (!defined(expiresAt) || expiresAt > now())]
+      && defined(publishedAt) && !defined(archivedAt)
+      && (!defined(expiresAt) || (expiresAt > now() && expiresAt > publishedAt))]
     | order(publishedAt desc)[0...${ADMIN_LATEST_COUNT}]{
       _id,
       title,

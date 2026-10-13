@@ -110,7 +110,8 @@
         "published": "Veröffentlicht",
         "draft": "Entwurf",
         "scheduled": "Geplant",
-        "offline": "Offline"
+        "offline": "Offline",
+        "archived": "Archiviert"
       },
       "meta": {
         "published": "Veröffentlicht am {date}",
@@ -119,7 +120,8 @@
         "offlineOn": "Offline ab {date}",
         "offlineSince": "Offline seit {date}",
         "edited": "Bearbeitet am {date}",
-        "ends": "Endet am {date}"
+        "ends": "Endet am {date}",
+        "archivedOn": "Archiviert am {date}"
       },
       "languages": "Sprachen",
       "count": "{count, plural, one {# Beitrag} other {# Beiträge}}",
@@ -204,7 +206,9 @@
           "featured": "Hervorheben",
           "notFeatured": "Nicht hervorheben",
           "categories": "Kategorie",
-          "clear": "Aufheben"
+          "clear": "Aufheben",
+          "archive": "Archivieren",
+          "restore": "Wiederherstellen"
         },
         "more": {
           "title": "Weitere Aktionen",
@@ -213,7 +217,9 @@
           "removeEndDate": "Enddatum entfernen",
           "clear": "Auswahl aufheben",
           "featured": "Hervorheben",
-          "notFeatured": "Nicht mehr hervorheben"
+          "notFeatured": "Nicht mehr hervorheben",
+          "archive": "Archivieren",
+          "restore": "Wiederherstellen"
         },
         "endDateSheet": {
           "title": "Enddatum festlegen",
@@ -229,7 +235,10 @@
         "confirmDelete": {
           "title": "{count, plural, one {Diesen Beitrag löschen?} other {# Beiträge löschen?}}",
           "body": "{count, plural, one {„{title}“ wird von deiner Website entfernt und kann nicht wiederhergestellt werden.} other {Live-Beiträge werden von deiner Website entfernt und können nicht wiederhergestellt werden.}}",
-          "confirm": "Löschen"
+          "confirm": "Löschen",
+          "titlePermanent": "{count, plural, one {Diesen Beitrag endgültig löschen?} other {# Beiträge endgültig löschen?}}",
+          "bodyPermanent": "{count, plural, one {„{title}“ und sein Entwurf werden gelöscht. War das ein Versehen, kann Abluo ihn innerhalb von 90 Tagen wiederherstellen.} other {Die ausgewählten Beiträge und ihre Entwürfe werden gelöscht. War das ein Versehen, kann Abluo sie innerhalb von 90 Tagen wiederherstellen.}}",
+          "confirmPermanent": "Endgültig löschen"
         },
         "batch": {
           "done": {
@@ -238,12 +247,18 @@
             "delete": "{count, plural, one {# Beitrag gelöscht.} other {# Beiträge gelöscht.}}",
             "endDate": "{count, plural, one {Enddatum für # Beitrag gespeichert.} other {Enddatum für # Beiträge gespeichert.}}",
             "categories": "{count, plural, one {Themen bei # Beitrag geändert.} other {Themen bei # Beiträgen geändert.}}",
-            "featured": "{count, plural, one {Hervorhebung bei # Beitrag geändert.} other {Hervorhebung bei # Beiträgen geändert.}}"
+            "featured": "{count, plural, one {Hervorhebung bei # Beitrag geändert.} other {Hervorhebung bei # Beiträgen geändert.}}",
+            "archive": "{count, plural, one {# Beitrag archiviert. Er ist nicht mehr auf deiner Website.} other {# Beiträge archiviert. Sie sind nicht mehr auf deiner Website.}}",
+            "restore": "{count, plural, one {# Beitrag wiederhergestellt. Er bleibt offline, bis du ihn wieder online stellst.} other {# Beiträge wiederhergestellt. Sie bleiben offline, bis du sie wieder online stellst.}}"
           },
           "someFailed": "{count, plural, one {Hat nicht geklappt: {titles}.} other {# haben nicht geklappt: {titles}.}}",
           "failedAll": "Das hat nicht geklappt. Nichts wurde geändert — bitte versuch es erneut."
         },
-        "activity": "Aktivität"
+        "activity": "Aktivität",
+        "archive": "Archivieren",
+        "restore": "Wiederherstellen",
+        "deletePermanently": "Endgültig löschen",
+        "archiveFirst": "Veröffentlichte Beiträge werden zuerst archiviert. Archiviere sie und lösche sie dann endgültig."
       },
       "select": {
         "checkbox": "{title} auswählen",
@@ -260,7 +275,8 @@
         "published": "Online",
         "scheduled": "Geplant",
         "draft": "Entwurf",
-        "offline": "Offline"
+        "offline": "Offline",
+        "archived": "Archiviert"
       },
       "lang": {
         "complete": "{language}: Übersetzung vollständig",
@@ -932,7 +948,8 @@
           "not_found": "Wir finden diesen Beitrag nicht mehr.",
           "unauthenticated": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.",
           "offline": "Du bist offline. Dein Beitrag ist auf diesem Gerät sicher – versuch es erneut, sobald du verbunden bist.",
-          "failed": "Etwas ist schiefgelaufen. Dein Beitrag ist sicher – bitte versuch es noch einmal."
+          "failed": "Etwas ist schiefgelaufen. Dein Beitrag ist sicher – bitte versuch es noch einmal.",
+          "archived": "Dieser Beitrag ist archiviert. Stelle ihn vor dem Veröffentlichen wieder her."
         },
         "summaryNow": "Wird veröffentlicht auf",
         "summarySchedule": "Wird am {date} veröffentlicht auf",
@@ -988,7 +1005,8 @@
         "status": {
           "live": "Seit {date} auf deiner Website",
           "scheduled": "Geplant für {date}",
-          "offline": "Offline seit {date}"
+          "offline": "Offline seit {date}",
+          "archived": "Archiviert am {date}"
         },
         "editing": "Du bearbeitest eine Kopie. Besucher sehen die veröffentlichte Version, bis du aktualisierst.",
         "ctaNone": "Keine",
@@ -1003,7 +1021,10 @@
         "discard": "Änderungen verwerfen",
         "deleteDraft": "Entwurf löschen",
         "deletePost": "Beitrag löschen",
-        "activity": "Aktivität"
+        "activity": "Aktivität",
+        "archive": "Archivieren",
+        "restore": "Wiederherstellen",
+        "deletePermanently": "Endgültig löschen"
       },
       "confirm": {
         "cancel": "Abbrechen",
@@ -1013,9 +1034,9 @@
         "deleteDraftTitle": "Diesen Entwurf löschen?",
         "deleteDraftBody": "„{title}“ wird gelöscht. Das lässt sich nicht rückgängig machen.",
         "deleteDraft": "Entwurf löschen",
-        "deletePostTitle": "Diesen Beitrag löschen?",
-        "deletePostBody": "„{title}“ wird endgültig von deiner Website entfernt. Das lässt sich nicht rückgängig machen.",
-        "deletePost": "Beitrag löschen"
+        "deletePostTitle": "Diesen Beitrag endgültig löschen?",
+        "deletePostBody": "„{title}“ und sein Entwurf werden gelöscht. War das ein Versehen, kann Abluo ihn innerhalb von 90 Tagen wiederherstellen.",
+        "deletePost": "Endgültig löschen"
       },
       "lifecycle": {
         "offlineDone": "Dein Beitrag ist offline. Du kannst ihn jederzeit wieder online stellen.",
@@ -1026,8 +1047,13 @@
           "not_found": "Wir finden diesen Beitrag nicht mehr.",
           "invalid_value": "Das ist bei diesem Beitrag nicht möglich.",
           "unauthenticated": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.",
-          "failed": "Etwas ist schiefgelaufen. Bitte versuch es noch einmal."
-        }
+          "failed": "Etwas ist schiefgelaufen. Bitte versuch es noch einmal.",
+          "archived": "Dieser Beitrag ist archiviert. Stelle ihn zuerst wieder her.",
+          "archive_first": "Archiviere diesen Beitrag, bevor du ihn endgültig löschst.",
+          "in_use": "Andere Inhalte verlinken noch auf diesen Beitrag. Entferne zuerst diese Links."
+        },
+        "archivedDone": "Dein Beitrag ist archiviert. Er ist nicht mehr auf deiner Website – du kannst ihn jederzeit wiederherstellen.",
+        "restoredDone": "Dein Beitrag ist wiederhergestellt. Er bleibt offline, bis du ihn wieder online stellst."
       },
       "open": {
         "title": "Dein Beitrag wird geöffnet …",

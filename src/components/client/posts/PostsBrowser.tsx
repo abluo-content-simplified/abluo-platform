@@ -39,7 +39,7 @@ import type { BrowserPost } from './types'
 
 export type { BrowserPost } from './types'
 
-type BatchOp = 'offline' | 'online' | 'delete' | 'endDate' | 'categories' | 'featured'
+type BatchOp = 'offline' | 'online' | 'archive' | 'restore' | 'delete' | 'endDate' | 'categories' | 'featured'
 type BatchExtra = { expiresAt?: string | null; categories?: string[]; featured?: boolean }
 type Sheet = null | { kind: 'endDate'; ids: string[] } | { kind: 'categories'; ids: string[] } | { kind: 'more' } | { kind: 'activity'; id: string }
 type View = 'list' | 'cards'
@@ -58,8 +58,8 @@ const VIEWS = ['list', 'cards'] as const
  *
  * Selecting is only ever through the checkboxes (shift-click selects a range).
  * As soon as one post is selected the selection bar floats up: on computers
- * Take offline, Set end date, Featured, Not featured, Change category, Delete,
- * Clear; on phones the main three plus "More". Batch actions run per post on
+ * Take offline, Set end date, Featured, Not featured, Change category,
+ * Archive / Restore, Delete, Clear; on phones the main three plus "More". Batch actions run per post on
  * the server (runPostBatch) and end in one toast. The featured star in the
  * table / desktop cards opens a small confirm popover; on phone cards it is
  * display-only.
@@ -84,7 +84,7 @@ export function PostsBrowser({
   projectSlug?: string
   /** blog.post.write: menus, selection, featured and batch actions. */
   canEdit?: boolean
-  /** Owner with blog.post.delete: may delete live posts (the server re-checks). */
+  /** blog.post.delete + blog.published.delete: may delete archived posts permanently (the server re-checks). */
   canDeleteLive?: boolean
 }) {
   const t = useTranslations('clientDashboard.posts')
@@ -213,9 +213,18 @@ export function PostsBrowser({
     }
   }
 
-  /** Delete: drafts go behind "Deleted · Undo"; anything live asks first. */
+  /**
+   * Delete: never-published drafts go behind "Deleted · Undo"; a post that was
+   * published is archived first (ADR-032 D6) and then asks before it is
+   * deleted permanently. The server re-checks both rules.
+   */
   const askDelete = (ids: string[]) => {
-    if (ids.some((id) => byId.get(id)?.hasLive)) return setConfirmDelete(ids)
+    const live = ids.filter((id) => byId.get(id)?.hasLive)
+    if (live.some((id) => byId.get(id)?.status !== 'archived')) {
+      show({ message: tc('archiveFirst'), tone: 'error' }, 7000)
+      return
+    }
+    if (live.length) return setConfirmDelete(ids)
     setHidden((h) => new Set([...h, ...ids]))
     clearSelection()
     schedule({
@@ -269,11 +278,16 @@ export function PostsBrowser({
       label: post.featured ? t('featured.remove') : t('featured.mark'),
       onSelect: () => void setFeatured(post, !post.featured),
     })
-    if (post.hasLive && post.status === 'offline') items.push({ key: 'online', label: tc('online'), onSelect: () => void runBatch('online', [post._id]) })
-    if (post.hasLive && post.status !== 'offline') items.push({ key: 'offline', label: tc('offline'), onSelect: () => void runBatch('offline', [post._id]) })
-    if (post.hasLive) items.push({ key: 'endDate', label: tc('endDate'), onSelect: () => setSheet({ kind: 'endDate', ids: [post._id] }) })
+    const archived = post.status === 'archived'
+    // ADR-032 D6: an archived post only comes back through Restore.
+    if (post.hasLive && !archived && post.status === 'offline') items.push({ key: 'online', label: tc('online'), onSelect: () => void runBatch('online', [post._id]) })
+    if (post.hasLive && !archived && post.status !== 'offline') items.push({ key: 'offline', label: tc('offline'), onSelect: () => void runBatch('offline', [post._id]) })
+    if (post.hasLive && !archived) items.push({ key: 'endDate', label: tc('endDate'), onSelect: () => setSheet({ kind: 'endDate', ids: [post._id] }) })
     if (projectSlug) items.push({ key: 'activity', label: tc('activity'), onSelect: () => setSheet({ kind: 'activity', id: post._id }) })
-    if (!post.hasLive || canDeleteLive) items.push({ key: 'delete', label: tc('delete'), onSelect: () => askDelete([post._id]), destructive: true })
+    if (post.hasLive && !archived) items.push({ key: 'archive', label: tc('archive'), onSelect: () => void runBatch('archive', [post._id]) })
+    if (archived) items.push({ key: 'restore', label: tc('restore'), onSelect: () => void runBatch('restore', [post._id]) })
+    if (!post.hasLive) items.push({ key: 'delete', label: tc('delete'), onSelect: () => askDelete([post._id]), destructive: true })
+    if (archived && canDeleteLive) items.push({ key: 'deletePermanently', label: tc('deletePermanently'), onSelect: () => askDelete([post._id]), destructive: true })
     return items
   }
 
@@ -282,6 +296,8 @@ export function PostsBrowser({
   const liveSelected = selectedPosts.filter((p) => p.hasLive)
   /** Every selected live post is offline: offer "Put back online" in the bar instead. */
   const allOffline = liveSelected.length > 0 && liveSelected.every((p) => p.status === 'offline')
+  /** Every selected post is archived: offer "Restore" instead of "Archive". */
+  const allArchived = selectedPosts.length > 0 && selectedPosts.every((p) => p.status === 'archived')
   const none = !selectedIds.length || busy
   return (
     <div className="space-y-4">
@@ -416,6 +432,15 @@ export function PostsBrowser({
           >
             {tc('bar.categories')}
           </BarButton>
+          {allArchived ? (
+            <BarButton className="hidden md:flex" disabled={none} onPress={() => void runBatch('restore', selectedIds)} icon={ICONS.restore}>
+              {tc('bar.restore')}
+            </BarButton>
+          ) : liveSelected.length > 0 ? (
+            <BarButton className="hidden md:flex" disabled={none} onPress={() => void runBatch('archive', selectedIds)} icon={ICONS.archiveAction}>
+              {tc('bar.archive')}
+            </BarButton>
+          ) : null}
           <BarButton className="hidden md:flex" disabled={none} onPress={() => askDelete(selectedIds)} icon={ICONS.trash} destructive>
             {tc('bar.delete')}
           </BarButton>
@@ -429,6 +454,15 @@ export function PostsBrowser({
         <SheetItem disabled={none} onPress={() => { setSheet(null); void runBatch('online', selectedIds) }}>
           {tc('more.online')}
         </SheetItem>
+        {allArchived ? (
+          <SheetItem disabled={none} onPress={() => { setSheet(null); void runBatch('restore', selectedIds) }}>
+            {tc('more.restore')}
+          </SheetItem>
+        ) : liveSelected.length > 0 ? (
+          <SheetItem disabled={none} onPress={() => { setSheet(null); void runBatch('archive', selectedIds) }}>
+            {tc('more.archive')}
+          </SheetItem>
+        ) : null}
         <SheetItem disabled={none} onPress={() => { setSheet(null); void runBatch('featured', selectedIds, { featured: true }) }}>
           {tc('more.featured')}
         </SheetItem>
@@ -484,9 +518,9 @@ export function PostsBrowser({
 
       <ConfirmDialog
         open={confirmDelete !== null}
-        title={tc('confirmDelete.title', { count: confirmDelete?.length ?? 0 })}
-        body={tc('confirmDelete.body', { count: confirmDelete?.length ?? 0, title: confirmDelete?.length === 1 ? titleOf(confirmDelete[0]) : '' })}
-        confirmLabel={tc('confirmDelete.confirm')}
+        title={tc('confirmDelete.titlePermanent', { count: confirmDelete?.length ?? 0 })}
+        body={tc('confirmDelete.bodyPermanent', { count: confirmDelete?.length ?? 0, title: confirmDelete?.length === 1 ? titleOf(confirmDelete[0]) : '' })}
+        confirmLabel={tc('confirmDelete.confirmPermanent')}
         busy={busy}
         onConfirm={async () => {
           const ids = confirmDelete ?? []

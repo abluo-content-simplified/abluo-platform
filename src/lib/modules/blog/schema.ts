@@ -560,6 +560,16 @@ const postType = defineType({
           return true
         }),
     }),
+    // ADR-032 D6 — written only by the dashboard's Archive / Restore.
+    defineField({
+      name: 'archivedAt',
+      title: 'Archived at',
+      type: 'datetime',
+      group: 'settings',
+      readOnly: true,
+      description: 'Set when the post is archived from the dashboard. Archived posts never appear on the website; restore them from the dashboard.',
+    }),
+    defineField({ name: 'archivedBy', title: 'Archived by', type: 'string', group: 'settings', readOnly: true, hidden: true }),
     defineField({
       name: 'featured',
       title: 'Featured Article',

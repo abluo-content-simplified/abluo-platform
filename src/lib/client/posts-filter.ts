@@ -10,7 +10,7 @@
 
 import { presetRange, todayISO, type RangePreset } from './date-range'
 
-export type PostStatus = 'published' | 'scheduled' | 'draft' | 'offline'
+export type PostStatus = 'published' | 'scheduled' | 'draft' | 'offline' | 'archived'
 /**
  * Sort order. `newest` / `oldest` = by publish date, `edited` / `edited_asc` =
  * by last edit, `title` / `title_desc`, `ends` / `ends_desc` (posts without an
@@ -80,7 +80,7 @@ export const DEFAULT_FILTERS: PostFilters = {
   range: 'last7',
 }
 
-const STATUSES: readonly string[] = ['published', 'scheduled', 'draft', 'offline']
+const STATUSES: readonly string[] = ['published', 'scheduled', 'draft', 'offline', 'archived']
 const SORTS: readonly string[] = ['newest', 'oldest', 'edited', 'edited_asc', 'title', 'title_desc', 'ends', 'ends_desc']
 const DATE_FIELDS: readonly string[] = ['published', 'updated', 'ends']
 const RANGES: readonly string[] = ['last7', 'last30', 'thisYear', 'all']
@@ -297,7 +297,7 @@ export function applyFilters<T extends FilterablePost>(posts: T[], f: PostFilter
 export function statusCounts<T extends FilterablePost>(posts: T[], f: PostFilters, now = new Date()) {
   const q = normalizeSearch(f.q)
   const window = dateWindow(f, now)
-  const counts: Record<PostStatus | 'all', number> = { all: 0, published: 0, scheduled: 0, draft: 0, offline: 0 }
+  const counts: Record<PostStatus | 'all', number> = { all: 0, published: 0, scheduled: 0, draft: 0, offline: 0, archived: 0 }
   for (const p of posts) {
     if (!matchesAllButStatus(p, f, q, now, window)) continue
     counts.all++

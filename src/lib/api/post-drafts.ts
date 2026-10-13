@@ -65,6 +65,12 @@ export type PostDraftErrorCode =
   | 'too_large'
   | 'conflict'
   | 'failed'
+  /** ADR-032: the post is archived — restore it first. */
+  | 'archived'
+  /** ADR-032: a published post is archived before it can be deleted. */
+  | 'archive_first'
+  /** ADR-032: other content still links to the post. */
+  | 'in_use'
 
 export class PostDraftError extends Error {
   constructor(
@@ -479,6 +485,8 @@ export type PostLiveState = {
   rev: string
   publishedAt: string | null
   expiresAt: string | null
+  /** ADR-032: set while the post is archived. */
+  archivedAt: string | null
   /** Slug per language, for "View on your site". */
   slugs: Record<string, string>
 }
@@ -496,6 +504,7 @@ export function liveState(doc: Record<string, unknown>): PostLiveState {
     rev: typeof doc._rev === 'string' ? doc._rev : '',
     publishedAt: typeof doc.publishedAt === 'string' ? doc.publishedAt : null,
     expiresAt: typeof doc.expiresAt === 'string' ? doc.expiresAt : null,
+    archivedAt: typeof doc.archivedAt === 'string' ? doc.archivedAt : null,
     slugs,
   }
 }

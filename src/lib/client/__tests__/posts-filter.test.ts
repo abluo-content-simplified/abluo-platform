@@ -61,7 +61,7 @@ describe('posts filter', () => {
   })
   it('status counts respect the other filters', () => {
     const c = statusCounts(posts, { ...ANY_DATE, categories: ['cura'], status: 'draft' }, now)
-    expect(c).toEqual({ all: 2, published: 1, scheduled: 1, draft: 0, offline: 0 })
+    expect(c).toEqual({ all: 2, published: 1, scheduled: 1, draft: 0, offline: 0, archived: 0 })
   })
   it('URL round-trip; defaults give a clean URL; junk falls back', () => {
     const f = { ...DEFAULT_FILTERS, q: 'x', status: 'offline' as const, categories: ['a', 'b'], when: '2025', missing: 'de', sort: 'oldest' as const }

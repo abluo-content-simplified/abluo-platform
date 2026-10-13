@@ -1011,7 +1011,8 @@ export const postsQuery = /* groq */ `
 //
 // A `status` field is derived so the dashboard can label each row without a
 // second pass: "draft" (no go-live date), "scheduled" (go-live in the future),
-// "offline" (expiresAt passed — ADR-025 D5) or "published". Ordered by
+// "offline" (expiresAt passed — ADR-025 D5), "archived" (ADR-032) or
+// "published". Ordered by
 // most-recently-touched first (publishedAt when set, else _updatedAt).
 //
 // Executed ONLY through tenantScopedSanityClient (getDashboardPosts), which
@@ -1041,10 +1042,14 @@ export const dashboardPostsQuery = /* groq */ `
     "featured": featured == true,
     // Languages whose body has content (with the title: a complete translation).
     "bodyLangs": ${presentLocales('body')},
+    archivedAt,
+    // ADR-032 D1 order: archived wins over every date; a post taken offline
+    // before its go-live date (empty window) is "offline", not "scheduled".
     "status": select(
       !defined(publishedAt) => "draft",
+      defined(archivedAt) => "archived",
+      defined(expiresAt) && (expiresAt <= now() || expiresAt <= publishedAt) => "offline",
       publishedAt > now() => "scheduled",
-      defined(expiresAt) && expiresAt <= now() => "offline",
       "published"
     ),
     "updatedAt": _updatedAt

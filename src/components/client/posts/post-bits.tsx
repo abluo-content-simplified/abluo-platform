@@ -40,6 +40,9 @@ export const ICONS = {
   online: svg('M5 12.9a10 10 0 0 1 14 0M8.5 16.5a5 5 0 0 1 7 0M12 20h.01M2 9.3a15 15 0 0 1 20 0'),
   calendar: svg('M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z'),
   trash: svg('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'),
+  archive: svg('M3 4h18v4H3zM5 8v12h14V8M10 12h4', 14),
+  archiveAction: svg('M3 4h18v4H3zM5 8v12h14V8M10 12h4'),
+  restore: svg('M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5'),
   more: svg('M5 12h.01M12 12h.01M19 12h.01', 20, 2.6),
   tag: svg('M3 12V4h8l10 10-8 8zM7.5 8.5h.01'),
   x: svg('M6 6l12 12M18 6L6 18'),
@@ -70,10 +73,10 @@ export function NewPostLink({ href, label }: { href: string; label: string }) {
   )
 }
 
-const TONE = { published: 'success', scheduled: 'highlight', draft: 'outline', offline: 'muted' } as const
+const TONE = { published: 'success', scheduled: 'highlight', draft: 'outline', offline: 'muted', archived: 'muted' } as const
 
 /**
- * Live / Scheduled / Draft / Offline, plus "Unpublished changes" when a draft
+ * Live / Scheduled / Draft / Offline / Archived, plus "Unpublished changes" when a draft
  * exists. 1.5rem pills. `oneLine`: never wraps (the badge truncates).
  */
 export function StatusPill({ status, badge, oneLine = false }: { status: PostStatus; badge?: string | null; oneLine?: boolean }) {
@@ -82,7 +85,7 @@ export function StatusPill({ status, badge, oneLine = false }: { status: PostSta
     <span className={`flex items-start gap-1.5 ${oneLine ? 'min-w-0 flex-nowrap overflow-hidden' : 'flex-wrap'}`}>
       <Pill
         tone={TONE[status]}
-        icon={status === 'published' ? <span aria-hidden="true" className="size-1.5 rounded-full bg-success" /> : status === 'scheduled' ? ICONS.clock : undefined}
+        icon={status === 'published' ? <span aria-hidden="true" className="size-1.5 rounded-full bg-success" /> : status === 'scheduled' ? ICONS.clock : status === 'archived' ? ICONS.archive : undefined}
       >
         {t(status)}
       </Pill>
@@ -276,17 +279,21 @@ export function CardDateLine({
   status,
   publishedAt,
   expiresAt,
+  archivedAt = null,
   updatedAt,
 }: {
   status: PostStatus
   publishedAt: string | null
   expiresAt: string | null
+  archivedAt?: string | null
   updatedAt: string
 }) {
   const t = useTranslations('clientDashboard.posts.meta')
   const format = useShortDate()
   const text =
-    status === 'offline'
+    status === 'archived'
+      ? t('archivedOn', { date: format(archivedAt ?? updatedAt) })
+      : status === 'offline'
       ? t('offlineSince', { date: format(expiresAt ?? updatedAt) })
       : expiresAt
         ? t('ends', { date: format(expiresAt) })

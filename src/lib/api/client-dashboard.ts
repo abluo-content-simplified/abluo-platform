@@ -59,6 +59,8 @@ export type DashboardPost = {
   publishedAt?: string | null
   /** Take-offline date (ISO), if set. */
   expiresAt?: string | null
+  /** ADR-032: when the post was archived, if it is. */
+  archivedAt?: string | null
   /** Sanity `_createdAt` — ISO timestamp. */
   createdAt?: string
   /** The published document's revision (lifecycle actions guard on it). */
@@ -78,7 +80,7 @@ export type DashboardPost = {
   bodyText?: Record<string, string | null> | null
 }
 
-export type DashboardPostStatus = 'published' | 'scheduled' | 'draft' | 'offline'
+export type DashboardPostStatus = 'published' | 'scheduled' | 'draft' | 'offline' | 'archived'
 
 /** A post row ready for display: category labels and languages resolved. */
 export type DashboardPostRow = DashboardPost & {

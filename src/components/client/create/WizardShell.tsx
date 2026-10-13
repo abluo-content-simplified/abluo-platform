@@ -9,10 +9,12 @@ import { createPostDraftAction, patchPostDraftAction } from '@/app/[locale]/(cli
 import { improvePostBodyAction, improvePostLineAction } from '@/app/[locale]/(client)/[tenant]/posts/ai-actions'
 import { publishPostDraftAction } from '@/app/[locale]/(client)/[tenant]/posts/publish-actions'
 import {
+  archivePostAction,
   deletePostDraftAction,
   deletePublishedPostAction,
   discardPostChangesAction,
   putPostBackOnlineAction,
+  restorePostAction,
   takePostOfflineAction,
 } from '@/app/[locale]/(client)/[tenant]/posts/lifecycle-actions'
 import { useAutosave } from '@/lib/client/autosave/use-autosave'
@@ -46,17 +48,22 @@ import { CtaStep } from './steps/CtaStep'
 import { GalleryPickStep } from './steps/GalleryPickStep'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 
-const LIFECYCLE_ERRORS = ['conflict', 'forbidden', 'not_found', 'invalid_value', 'unauthenticated', 'failed']
+const LIFECYCLE_ERRORS = ['conflict', 'forbidden', 'not_found', 'invalid_value', 'archived', 'archive_first', 'in_use', 'unauthenticated', 'failed']
 type Confirm = 'discard' | 'deleteDraft' | 'deletePost'
 
-/** Where the live version stands right now (D5: dates decide, no job runner). */
+/**
+ * Where the live version stands right now (D5: dates decide, no job runner).
+ * ADR-032: archived wins over every date; an end date at or before the go-live
+ * date (taken offline while scheduled) is "offline", not "scheduled".
+ */
 export function liveStatus(
-  live: { publishedAt: string | null; expiresAt: string | null },
+  live: { publishedAt: string | null; expiresAt: string | null; archivedAt?: string | null },
   now = Date.now()
-): 'live' | 'scheduled' | 'offline' {
+): 'live' | 'scheduled' | 'offline' | 'archived' {
+  if (live.archivedAt) return 'archived'
   const at = live.publishedAt ? Date.parse(live.publishedAt) : NaN
   const until = live.expiresAt ? Date.parse(live.expiresAt) : NaN
-  if (!Number.isNaN(until) && until <= now) return 'offline'
+  if (!Number.isNaN(until) && (until <= now || (!Number.isNaN(at) && until <= at))) return 'offline'
   if (!Number.isNaN(at) && at > now) return 'scheduled'
   return 'live'
 }
@@ -70,6 +77,7 @@ const PUBLISH_ERRORS = [
   'conflict',
   'forbidden',
   'not_found',
+  'archived',
   'unauthenticated',
   'offline',
   'failed',
@@ -398,6 +406,24 @@ export function WizardShell({
     }
   }
 
+  /** ADR-032 D6: Archive (off the website, kept) and Restore (back as unpublished). */
+  async function setArchived(archive: boolean) {
+    if (!live || busy) return
+    setBusy(true)
+    setNotice(null)
+    try {
+      const action = archive ? archivePostAction : restorePostAction
+      const r = await action({ projectSlug, id: draftIdRef.current, rev: live.rev })
+      if (!r.ok) return setNotice({ kind: 'error', text: lifecycleError(r.error) })
+      setLive(r.live)
+      setNotice({ kind: 'status', text: archive ? t('lifecycle.archivedDone') : t('lifecycle.restoredDone') })
+    } catch {
+      setNotice({ kind: 'error', text: lifecycleError('failed') })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function runConfirm() {
     if (!confirm || confirmBusy) return
     setConfirmBusy(true)
@@ -455,19 +481,30 @@ export function WizardShell({
     iso ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso)) : ''
   const statusLine = !isEdit || !live || !state
     ? null
-    : state === 'offline'
-      ? t('review.status.offline', { date: fmt(live.expiresAt) })
-      : t(`review.status.${state}`, { date: fmt(live.publishedAt) })
+    : state === 'archived'
+      ? t('review.status.archived', { date: fmt(live.archivedAt ?? null) })
+      : state === 'offline'
+        ? t('review.status.offline', { date: fmt(live.expiresAt) })
+        : t(`review.status.${state}`, { date: fmt(live.publishedAt) })
+  // ADR-032 D6: an archived post offers only Restore (and, for Owners and Site
+  // admins, Delete permanently); everything that would put it online is hidden.
   const menu: { key: string; label: string; onSelect: () => void }[] = isEdit
-    ? [
-        ...(state === 'offline'
-          ? [{ key: 'online', label: t('menu.backOnline'), onSelect: () => void setOnline(true) }]
-          : [{ key: 'offline', label: t('menu.takeOffline'), onSelect: () => void setOnline(false) }]),
-        { key: 'date', label: t('menu.changeDate'), onSelect: () => go('publish', { editing: true }) },
-        { key: 'discard', label: t('menu.discard'), onSelect: () => setConfirm('discard') },
-        { key: 'activity', label: t('menu.activity'), onSelect: () => setActivityOpen(true) },
-        ...(canDelete ? [{ key: 'deletePost', label: t('menu.deletePost'), onSelect: () => setConfirm('deletePost') }] : []),
-      ]
+    ? state === 'archived'
+      ? [
+          { key: 'restore', label: t('menu.restore'), onSelect: () => void setArchived(false) },
+          { key: 'discard', label: t('menu.discard'), onSelect: () => setConfirm('discard') },
+          { key: 'activity', label: t('menu.activity'), onSelect: () => setActivityOpen(true) },
+          ...(canDelete ? [{ key: 'deletePost', label: t('menu.deletePermanently'), onSelect: () => setConfirm('deletePost') }] : []),
+        ]
+      : [
+          ...(state === 'offline'
+            ? [{ key: 'online', label: t('menu.backOnline'), onSelect: () => void setOnline(true) }]
+            : [{ key: 'offline', label: t('menu.takeOffline'), onSelect: () => void setOnline(false) }]),
+          { key: 'date', label: t('menu.changeDate'), onSelect: () => go('publish', { editing: true }) },
+          { key: 'discard', label: t('menu.discard'), onSelect: () => setConfirm('discard') },
+          { key: 'activity', label: t('menu.activity'), onSelect: () => setActivityOpen(true) },
+          { key: 'archive', label: t('menu.archive'), onSelect: () => void setArchived(true) },
+        ]
     : [{ key: 'deleteDraft', label: t('menu.deleteDraft'), onSelect: () => setConfirm('deleteDraft') }]
   const postTitle = snap.title[locale]?.trim() || t('review.title')
 

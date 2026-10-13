@@ -39,6 +39,7 @@
  *   missing_body     — no text in the body in the site's default language
  *   invalid_schedule — publishAt missing, malformed, in the past or > 2 years
  *   invalid_expiry   — expiresAt malformed or not after publishedAt
+ *   archived         — the published post is archived (ADR-032: restore first)
  */
 import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
@@ -99,6 +100,10 @@ const NOT_COPIED = new Set([
   'slug',
   'publishedAt',
   'expiresAt',
+  // ADR-032: archive state lives on the published version only — a stale
+  // draft copy must never archive, or un-archive, a post on publish.
+  'archivedAt',
+  'archivedBy',
 ])
 
 type PostDoc = Record<string, unknown> & {
@@ -210,6 +215,10 @@ async function publishPostDraftIn(
   const published = (await client.getDocument(input.id)) as PostDoc | undefined
   if (published && (published._type !== 'post' || published.projectSlug !== grant.projectSlug)) {
     throw new PostPublishError('not_found', 'Unknown draft id.')
+  }
+  // ADR-032 D6: an archived post goes nowhere near the website until it is restored.
+  if (published?.archivedAt != null) {
+    throw new PostPublishError('archived', 'Restore this post first.')
   }
   // Update post: the live dates stay unless the caller changes them.
   if (input.mode === 'keep' && published) {

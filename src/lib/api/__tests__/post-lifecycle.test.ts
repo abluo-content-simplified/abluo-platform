@@ -89,7 +89,7 @@ function fakeClient(o: { published?: Record<string, unknown> | null; draft?: Rec
     patch: vi.fn((id: string) => (ops.push(['patch', id]), patch)),
     transaction: vi.fn(() => tx),
     // The single-Sanity-project write guard (sanity-project-guard.ts).
-    fetch: vi.fn(async (q: string) => (q.startsWith('count(') ? (o.projectCount ?? 1) : null)),
+    fetch: vi.fn(async (q: string) => (q.includes('references(') ? 0 : q.startsWith('count(') ? (o.projectCount ?? 1) : null)),
   }
   return { client, ops }
 }
@@ -166,7 +166,7 @@ describe('take offline / put back online', () => {
     const c = fakeClient()
     const live = await takePostOffline(ctx(grant()), 'project-a', { id: ID, rev: 'p1' }, deps(c))
     expect(c.ops).toEqual([['patch', ID], ['ifRevisionId', 'p1'], ['set', { expiresAt: NOW.toISOString() }], ['commit']])
-    expect(live).toEqual({ rev: 'p2', publishedAt: '2025-11-22T18:01:44.181Z', expiresAt: NOW.toISOString(), slugs: { it: 'coltivare' } })
+    expect(live).toEqual({ rev: 'p2', publishedAt: '2025-11-22T18:01:44.181Z', expiresAt: NOW.toISOString(), archivedAt: null, slugs: { it: 'coltivare' } })
   })
 
   it('put back online = guarded unset of expiresAt', async () => {
@@ -218,12 +218,12 @@ describe('discard changes / delete draft', () => {
     await expect(discardPostChanges(ctx(grant()), 'project-a', { id: ID, rev: 'd1' }, deps(fakeClient()))).rejects.toMatchObject({ code: 'not_found' })
   })
 
-  it('delete draft removes a never-published draft; refuses when a live version exists', async () => {
+  it('delete draft removes a never-published draft; refuses when a live version exists (archive first)', async () => {
     const c = fakeClient({ published: null, draft })
     await deletePostDraft(ctx(grant()), 'project-a', { id: ID, rev: 'd1' }, deps(c))
     expect(c.ops.at(-2)).toEqual(['tx.delete', `drafts.${ID}`])
     const live = fakeClient({ draft })
-    await expect(deletePostDraft(ctx(grant()), 'project-a', { id: ID, rev: 'd1' }, deps(live))).rejects.toMatchObject({ code: 'invalid_value' })
+    await expect(deletePostDraft(ctx(grant()), 'project-a', { id: ID, rev: 'd1' }, deps(live))).rejects.toMatchObject({ code: 'archive_first' })
     expect(wrote(live)).toBe(0)
   })
 
@@ -239,8 +239,10 @@ describe('discard changes / delete draft', () => {
 })
 
 describe('delete a published post', () => {
-  it('owners with blog.post.delete: deletes the post and its draft in one guarded transaction', async () => {
-    const c = fakeClient({ draft: { _id: `drafts.${ID}`, _type: 'post', _rev: 'd1', projectSlug: 'hoffmann' } })
+  const archived = () => ({ ...published(), archivedAt: '2026-10-01T00:00:00Z', archivedBy: 'u1', expiresAt: '2026-10-01T00:00:00Z' })
+
+  it('owners with blog.post.delete: deletes the archived post and its draft in one guarded transaction', async () => {
+    const c = fakeClient({ published: archived(), draft: { _id: `drafts.${ID}`, _type: 'post', _rev: 'd1', projectSlug: 'hoffmann' } })
     await deletePublishedPost(ctx(owner()), 'project-a', { id: ID, rev: 'p1' }, deps(c))
     expect(c.ops).toEqual([
       ['tx.patch', ID, { ifRevisionID: 'p1', unset: ['_lifecycleGuard'] }],
@@ -262,9 +264,9 @@ describe('delete a published post', () => {
   })
 
   it("stale rev → conflict; another project's post → not_found", async () => {
-    await expect(deletePublishedPost(ctx(owner()), 'project-a', { id: ID, rev: 'x' }, deps(fakeClient()))).rejects.toMatchObject({ code: 'conflict' })
+    await expect(deletePublishedPost(ctx(owner()), 'project-a', { id: ID, rev: 'x' }, deps(fakeClient({ published: archived() })))).rejects.toMatchObject({ code: 'conflict' })
     await expect(
-      deletePublishedPost(ctx(owner()), 'project-a', { id: ID, rev: 'p1' }, deps(fakeClient({ published: { ...published(), projectSlug: 'livener' } })))
+      deletePublishedPost(ctx(owner()), 'project-a', { id: ID, rev: 'p1' }, deps(fakeClient({ published: { ...archived(), projectSlug: 'livener' } })))
     ).rejects.toMatchObject({ code: 'not_found' })
   })
 })
@@ -279,7 +281,10 @@ describe('single-Sanity-project write guard', () => {
         [fakeClient({ projectCount }), (c) => putPostBackOnline(ctx(grant()), 'project-a', { id: ID, rev: 'p1' }, deps(c))],
         [fakeClient({ projectCount, draft: draftDoc }), (c) => discardPostChanges(ctx(grant()), 'project-a', { id: ID, rev: 'd1' }, deps(c))],
         [fakeClient({ projectCount, published: null, draft: draftDoc }), (c) => deletePostDraft(ctx(grant()), 'project-a', { id: ID, rev: 'd1' }, deps(c))],
-        [fakeClient({ projectCount, draft: draftDoc }), (c) => deletePublishedPost(ctx(owner()), 'project-a', { id: ID, rev: 'p1' }, deps(c))],
+        [
+          fakeClient({ projectCount, draft: draftDoc, published: { ...published(), archivedAt: '2026-10-01T00:00:00Z' } }),
+          (c) => deletePublishedPost(ctx(owner()), 'project-a', { id: ID, rev: 'p1' }, deps(c)),
+        ],
       ]
       for (const [c, run] of runs) {
         await expect(run(c)).rejects.toThrow(TenantAuthorizationError)

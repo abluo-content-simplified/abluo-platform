@@ -110,7 +110,8 @@
         "published": "Pubblicato",
         "draft": "Bozza",
         "scheduled": "Programmato",
-        "offline": "Offline"
+        "offline": "Offline",
+        "archived": "Archiviato"
       },
       "meta": {
         "published": "Pubblicato il {date}",
@@ -119,7 +120,8 @@
         "offlineOn": "Offline dal {date}",
         "offlineSince": "Offline dal {date}",
         "edited": "Modificato il {date}",
-        "ends": "Termina il {date}"
+        "ends": "Termina il {date}",
+        "archivedOn": "Archiviato il {date}"
       },
       "languages": "Lingue",
       "count": "{count, plural, one {# articolo} other {# articoli}}",
@@ -204,7 +206,9 @@
           "featured": "In evidenza",
           "notFeatured": "Non in evidenza",
           "categories": "Categoria",
-          "clear": "Annulla"
+          "clear": "Annulla",
+          "archive": "Archivia",
+          "restore": "Ripristina"
         },
         "more": {
           "title": "Altre azioni",
@@ -213,7 +217,9 @@
           "removeEndDate": "Rimuovi data di fine",
           "clear": "Annulla selezione",
           "featured": "Metti in evidenza",
-          "notFeatured": "Togli dall’evidenza"
+          "notFeatured": "Togli dall’evidenza",
+          "archive": "Archivia",
+          "restore": "Ripristina"
         },
         "endDateSheet": {
           "title": "Imposta data di fine",
@@ -229,7 +235,10 @@
         "confirmDelete": {
           "title": "{count, plural, one {Eliminare questo articolo?} other {Eliminare # articoli?}}",
           "body": "{count, plural, one {“{title}” viene tolto dal tuo sito e non si può recuperare.} other {Gli articoli online vengono tolti dal tuo sito e non si possono recuperare.}}",
-          "confirm": "Elimina"
+          "confirm": "Elimina",
+          "titlePermanent": "{count, plural, one {Eliminare definitivamente questo articolo?} other {Eliminare definitivamente # articoli?}}",
+          "bodyPermanent": "{count, plural, one {«{title}» e la sua bozza vengono eliminati. Se è stato un errore, Abluo può recuperarlo entro 90 giorni.} other {Gli articoli selezionati e le loro bozze vengono eliminati. Se è stato un errore, Abluo può recuperarli entro 90 giorni.}}",
+          "confirmPermanent": "Elimina definitivamente"
         },
         "batch": {
           "done": {
@@ -238,12 +247,18 @@
             "delete": "{count, plural, one {# articolo eliminato.} other {# articoli eliminati.}}",
             "endDate": "{count, plural, one {Data di fine salvata per # articolo.} other {Data di fine salvata per # articoli.}}",
             "categories": "{count, plural, one {Argomenti cambiati su # articolo.} other {Argomenti cambiati su # articoli.}}",
-            "featured": "{count, plural, one {Evidenza cambiata su # articolo.} other {Evidenza cambiata su # articoli.}}"
+            "featured": "{count, plural, one {Evidenza cambiata su # articolo.} other {Evidenza cambiata su # articoli.}}",
+            "archive": "{count, plural, one {# articolo archiviato. Non è più sul tuo sito.} other {# articoli archiviati. Non sono più sul tuo sito.}}",
+            "restore": "{count, plural, one {# articolo ripristinato. Resta offline finché non lo rimetti online.} other {# articoli ripristinati. Restano offline finché non li rimetti online.}}"
           },
           "someFailed": "{count, plural, one {Non ha funzionato per: {titles}.} other {Non ha funzionato per #: {titles}.}}",
           "failedAll": "Non ha funzionato. Non è cambiato nulla — riprova."
         },
-        "activity": "Attività"
+        "activity": "Attività",
+        "archive": "Archivia",
+        "restore": "Ripristina",
+        "deletePermanently": "Elimina definitivamente",
+        "archiveFirst": "Gli articoli pubblicati vanno prima archiviati. Archiviali, poi eliminali definitivamente."
       },
       "select": {
         "checkbox": "Seleziona {title}",
@@ -260,7 +275,8 @@
         "published": "Online",
         "scheduled": "Programmato",
         "draft": "Bozza",
-        "offline": "Offline"
+        "offline": "Offline",
+        "archived": "Archiviato"
       },
       "lang": {
         "complete": "{language}: traduzione completa",
@@ -932,7 +948,8 @@
           "not_found": "Non troviamo più questo articolo.",
           "unauthenticated": "La sessione è scaduta. Accedi di nuovo.",
           "offline": "Sei offline. L'articolo è al sicuro su questo dispositivo — riprova quando sei connesso.",
-          "failed": "Qualcosa è andato storto. L'articolo è al sicuro — riprova."
+          "failed": "Qualcosa è andato storto. L'articolo è al sicuro — riprova.",
+          "archived": "Questo articolo è archiviato. Ripristinalo prima di pubblicarlo."
         },
         "summaryNow": "Va online in",
         "summarySchedule": "Va online il {date} in",
@@ -988,7 +1005,8 @@
         "status": {
           "live": "Online sul tuo sito dal {date}",
           "scheduled": "Programmato per il {date}",
-          "offline": "Offline dal {date}"
+          "offline": "Offline dal {date}",
+          "archived": "Archiviato il {date}"
         },
         "editing": "Stai modificando una copia. I visitatori vedono la versione online finché non aggiorni.",
         "ctaNone": "Nessuno",
@@ -1003,7 +1021,10 @@
         "discard": "Annulla le modifiche",
         "deleteDraft": "Elimina bozza",
         "deletePost": "Elimina articolo",
-        "activity": "Attività"
+        "activity": "Attività",
+        "archive": "Archivia",
+        "restore": "Ripristina",
+        "deletePermanently": "Elimina definitivamente"
       },
       "confirm": {
         "cancel": "Annulla",
@@ -1013,9 +1034,9 @@
         "deleteDraftTitle": "Eliminare questa bozza?",
         "deleteDraftBody": "«{title}» verrà eliminata. L'operazione non si può annullare.",
         "deleteDraft": "Elimina bozza",
-        "deletePostTitle": "Eliminare questo articolo?",
-        "deletePostBody": "«{title}» verrà rimosso definitivamente dal tuo sito. L'operazione non si può annullare.",
-        "deletePost": "Elimina articolo"
+        "deletePostTitle": "Eliminare definitivamente questo articolo?",
+        "deletePostBody": "«{title}» e la sua bozza vengono eliminati. Se è stato un errore, Abluo può recuperarlo entro 90 giorni.",
+        "deletePost": "Elimina definitivamente"
       },
       "lifecycle": {
         "offlineDone": "L'articolo è offline. Puoi rimetterlo online quando vuoi.",
@@ -1026,8 +1047,13 @@
           "not_found": "Non troviamo più questo articolo.",
           "invalid_value": "Per questo articolo non è possibile.",
           "unauthenticated": "La sessione è scaduta. Accedi di nuovo.",
-          "failed": "Qualcosa è andato storto. Riprova."
-        }
+          "failed": "Qualcosa è andato storto. Riprova.",
+          "archived": "Questo articolo è archiviato. Prima ripristinalo.",
+          "archive_first": "Archivia questo articolo prima di eliminarlo definitivamente.",
+          "in_use": "Altri contenuti rimandano ancora a questo articolo. Rimuovi prima quei collegamenti."
+        },
+        "archivedDone": "L'articolo è archiviato. Non è più sul tuo sito: puoi ripristinarlo quando vuoi.",
+        "restoredDone": "L'articolo è ripristinato. Resta offline finché non lo rimetti online."
       },
       "open": {
         "title": "Stiamo aprendo il tuo articolo…",
