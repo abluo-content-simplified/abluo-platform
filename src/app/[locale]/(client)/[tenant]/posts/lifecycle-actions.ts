@@ -32,6 +32,8 @@ export type LifecycleActionError = 'unauthenticated' | PostDraftErrorCode
 type Fail = { ok: false; error: LifecycleActionError }
 export type OpenForEditResult = { ok: true; id: string } | Fail
 export type LiveResult = { ok: true; live: PostLiveState } | Fail
+/** Archive / Restore also change the draft: its new revision, for an open editor. */
+export type ArchiveResult = { ok: true; live: PostLiveState; draftRev: string | null } | Fail
 export type DoneResult = { ok: true } | Fail
 
 type Input = { projectSlug: string; id: string; rev: string }
@@ -68,15 +70,19 @@ export async function putPostBackOnlineAction(input: Input): Promise<LiveResult>
 }
 
 /** ADR-032 D6: off the website at once, kept until restored or deleted permanently. */
-export async function archivePostAction(input: Input): Promise<LiveResult> {
+export async function archivePostAction(input: Input): Promise<ArchiveResult> {
   const r = await run(input?.projectSlug, (ctx, projectId) => archivePost(ctx, projectId, { id: input.id, rev: input.rev }))
-  return r.ok ? { ok: true, live: r.value } : r
+  if (!r.ok) return r
+  const { draftRev, ...live } = r.value
+  return { ok: true, live, draftRev }
 }
 
 /** ADR-032 D6: back from the archive as unpublished — going online is a separate, explicit step. */
-export async function restorePostAction(input: Input): Promise<LiveResult> {
+export async function restorePostAction(input: Input): Promise<ArchiveResult> {
   const r = await run(input?.projectSlug, (ctx, projectId) => restorePost(ctx, projectId, { id: input.id, rev: input.rev }))
-  return r.ok ? { ok: true, live: r.value } : r
+  if (!r.ok) return r
+  const { draftRev, ...live } = r.value
+  return { ok: true, live, draftRev }
 }
 
 export async function discardPostChangesAction(input: Input): Promise<DoneResult> {

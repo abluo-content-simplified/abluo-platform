@@ -91,7 +91,8 @@ function memorySanity(initial: Doc[], opts: { refs?: number } = {}) {
   function commitOps(ops: Op[], transactionId?: string) {
     const draft = new Map(docs)
     for (const op of ops) apply(draft, op)
-    const rev = `r${++n}`
+    // Like Sanity: every document a transaction touches gets the transaction id as its revision.
+    const rev = transactionId ?? `r${++n}`
     const touched = new Set(ops.map((o) => ('id' in o ? o.id : o.doc._id)))
     for (const id of touched) if (draft.has(id)) draft.set(id, { ...draft.get(id)!, _rev: rev })
     docs.clear()
@@ -223,6 +224,29 @@ describe('archive', () => {
     await expect(archivePost(ctx(editor()), 'project-a', { id: ID, rev: 'p1' }, s.deps)).rejects.toMatchObject({ code: 'conflict' })
     expect(s.get(ID)!.archivedAt).toBeUndefined()
     expect(s.get(`drafts.${ID}`)!.archivedAt).toBeUndefined()
+  })
+})
+
+describe('an open editor can keep working after Archive / Restore', () => {
+  it('returns the stored revisions: the live one and the draft one', async () => {
+    const pub = publishedPost()
+    const s = memorySanity([pub, draftOf(pub)])
+    const archived = await archivePost(ctx(editor()), 'project-a', { id: ID, rev: 'p1' }, s.deps)
+    expect(archived.rev).toBe(rev(s))
+    expect(archived.draftRev).toBe(rev(s, `drafts.${ID}`))
+    // Restore and back online with exactly what the previous calls returned — no re-read.
+    const restored = await restorePost(ctx(editor()), 'project-a', { id: ID, rev: archived.rev }, s.deps)
+    expect(restored.draftRev).toBe(rev(s, `drafts.${ID}`))
+    const online = await putPostBackOnline(ctx(editor()), 'project-a', { id: ID, rev: restored.rev }, s.deps)
+    expect(online.expiresAt).toBeNull()
+    // The draft revision from Restore is still the draft's: an update goes through.
+    await publishPostDraft(ctx(editor()), 'project-a', { id: ID, rev: restored.draftRev!, mode: 'keep' }, s.deps)
+    expect(s.get(`drafts.${ID}`)).toBeUndefined()
+  })
+
+  it('draftRev is null when there is no draft', async () => {
+    const s = memorySanity([publishedPost()])
+    expect((await archivePost(ctx(editor()), 'project-a', { id: ID, rev: 'p1' }, s.deps)).draftRev).toBeNull()
   })
 })
 

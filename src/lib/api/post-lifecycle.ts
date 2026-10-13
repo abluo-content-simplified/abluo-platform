@@ -149,25 +149,29 @@ export const POST_LIFECYCLE: LifecycleDescriptor = {
 }
 
 type RevInput = { id: string; rev: string }
+/** The live state plus the draft's new revision when the draft was changed too (the editor adopts it). */
+export type PostLiveStateWithDraft = PostLiveState & { draftRev: string | null }
 
 /** Takes a live or scheduled post off the website now (expiresAt = now). Refused while archived. */
 export async function takePostOffline(ctx: TenantAuthorizationContext, projectId: string, input: RevInput, deps: PostLifecycleDeps = {}): Promise<PostLiveState> {
-  return liveState(await lifecycle.unpublishNow(POST_LIFECYCLE, ctx, projectId, input, deps))
+  return liveState((await lifecycle.unpublishNow(POST_LIFECYCLE, ctx, projectId, input, deps)).doc)
 }
 
 /** Puts an offline post back on the website (removes its take-offline date). Refused while archived. */
 export async function putPostBackOnline(ctx: TenantAuthorizationContext, projectId: string, input: RevInput, deps: PostLifecycleDeps = {}): Promise<PostLiveState> {
-  return liveState(await lifecycle.backOnline(POST_LIFECYCLE, ctx, projectId, input, deps))
+  return liveState((await lifecycle.backOnline(POST_LIFECYCLE, ctx, projectId, input, deps)).doc)
 }
 
 /** Archives a post (D6): off the website at once, kept with its URLs and references until restored. */
-export async function archivePost(ctx: TenantAuthorizationContext, projectId: string, input: RevInput, deps: PostLifecycleDeps = {}): Promise<PostLiveState> {
-  return liveState(await lifecycle.archive(POST_LIFECYCLE, ctx, projectId, input, deps))
+export async function archivePost(ctx: TenantAuthorizationContext, projectId: string, input: RevInput, deps: PostLifecycleDeps = {}): Promise<PostLiveStateWithDraft> {
+  const r = await lifecycle.archive(POST_LIFECYCLE, ctx, projectId, input, deps)
+  return { ...liveState(r.doc), draftRev: r.draftRev }
 }
 
 /** Restores an archived post (D6): it comes back unpublished — never straight onto the website. */
-export async function restorePost(ctx: TenantAuthorizationContext, projectId: string, input: RevInput, deps: PostLifecycleDeps = {}): Promise<PostLiveState> {
-  return liveState(await lifecycle.restore(POST_LIFECYCLE, ctx, projectId, input, deps))
+export async function restorePost(ctx: TenantAuthorizationContext, projectId: string, input: RevInput, deps: PostLifecycleDeps = {}): Promise<PostLiveStateWithDraft> {
+  const r = await lifecycle.restore(POST_LIFECYCLE, ctx, projectId, input, deps)
+  return { ...liveState(r.doc), draftRev: r.draftRev }
 }
 /** Throws away unpublished changes: deletes `drafts.<id>` of a published post. */
 export async function discardPostChanges(
@@ -223,7 +227,7 @@ export async function setPostEndDate(
   input: RevInput & { expiresAt: string | null },
   deps: PostLifecycleDeps = {}
 ): Promise<PostLiveState> {
-  return liveState(await lifecycle.setEndDate(POST_LIFECYCLE, ctx, projectId, input, deps))
+  return liveState((await lifecycle.setEndDate(POST_LIFECYCLE, ctx, projectId, input, deps)).doc)
 }
 
 /**

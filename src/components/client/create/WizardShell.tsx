@@ -412,9 +412,14 @@ export function WizardShell({
     setBusy(true)
     setNotice(null)
     try {
+      // Archive / Restore change the draft too: send queued edits first, then
+      // adopt the draft's new revision so the next save, update or discard is
+      // not refused as "changed elsewhere".
+      await autosave.flush()
       const action = archive ? archivePostAction : restorePostAction
       const r = await action({ projectSlug, id: draftIdRef.current, rev: live.rev })
       if (!r.ok) return setNotice({ kind: 'error', text: lifecycleError(r.error) })
+      if (r.draftRev) autosave.adoptRev(r.draftRev)
       setLive(r.live)
       setNotice({ kind: 'status', text: archive ? t('lifecycle.archivedDone') : t('lifecycle.restoredDone') })
     } catch {

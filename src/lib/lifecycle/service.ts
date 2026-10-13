@@ -83,6 +83,14 @@ export function wasEverPublished(published: Doc | undefined | null, draft: Doc |
 
 export const isArchived = (doc: Doc | undefined | null) => doc?.archivedAt != null
 
+/**
+ * What a state-changing operation returns: the published document as stored
+ * after the change (its `_rev` is the new revision), and the draft's new
+ * revision when the draft was changed too — an open editor adopts it, or its
+ * next save would be refused as "changed elsewhere".
+ */
+export type LifecycleResult = { doc: Doc; draftRev: string | null }
+
 type Op<T> = {
   d: LifecycleDescriptor
   op: LifecycleOperation
@@ -153,6 +161,16 @@ function applyChange(doc: Doc, change: { set?: Record<string, unknown>; unset?: 
   return next
 }
 
+/**
+ * After a transaction, every document it touched carries the transaction id
+ * as its `_rev` (Sanity sets the revision to the transaction id) — so callers
+ * get the revisions they need for their next guarded write.
+ */
+function touchedBoth(published: Doc, draft: Doc | undefined, change: { set?: Record<string, unknown>; unset?: string[] }, transactionId: string) {
+  const after = { ...applyChange(published, change), _rev: transactionId }
+  return { value: { doc: after, draftRev: draft?._rev ? transactionId : null } as LifecycleResult, before: published, after }
+}
+
 // ── Operations ───────────────────────────────────────────────────────────────
 
 type Rev = { rev: string }
@@ -173,7 +191,7 @@ export function unpublishNow(d: LifecycleDescriptor, ctx: TenantAuthorizationCon
         rev = r._rev ?? ''
       })
       const after = { ...applyChange(published, change), _rev: rev }
-      return { value: after, before: published, after }
+      return { value: { doc: after, draftRev: null }, before: published, after }
     },
   })
 }
@@ -197,7 +215,7 @@ export function backOnline(d: LifecycleDescriptor, ctx: TenantAuthorizationConte
         rev = r._rev ?? ''
       })
       const after = { ...applyChange(published, change), _rev: rev }
-      return { value: after, before: published, after }
+      return { value: { doc: after, draftRev: null }, before: published, after }
     },
   })
 }
@@ -229,8 +247,7 @@ export function setEndDate(
       if (expiresAt && p !== null && Date.parse(expiresAt) <= p) throw d.fail('invalid_value', 'The end date must be after the publish date.')
       const change = expiresAt ? { set: { expiresAt } } : { unset: ['expiresAt'] }
       await commit(d, client, grant.projectSlug, () => bothVersions(client, id, published, draft, change).commit({ transactionId }))
-      const after = applyChange(published, change)
-      return { value: after, before: published, after }
+      return touchedBoth(published, draft, change, transactionId)
     },
   })
 }
@@ -251,8 +268,7 @@ export function archive(d: LifecycleDescriptor, ctx: TenantAuthorizationContext,
       const keepEarlier = notAfter(published.expiresAt, now.getTime())
       const change = { set: { archivedAt: t, archivedBy: ctx.userId, ...(keepEarlier ? {} : { expiresAt: t }) } }
       await commit(d, client, grant.projectSlug, () => bothVersions(client, id, published, draft, change).commit({ transactionId }))
-      const after = applyChange(published, change)
-      return { value: after, before: published, after }
+      return touchedBoth(published, draft, change, transactionId)
     },
   })
 }
@@ -276,8 +292,7 @@ export function restore(d: LifecycleDescriptor, ctx: TenantAuthorizationContext,
       if (p !== null && p > t) unset.push('publishedAt')
       const change = { unset, ...(notAfter(published.expiresAt, t) ? {} : { set: { expiresAt: now.toISOString() } }) }
       await commit(d, client, grant.projectSlug, () => bothVersions(client, id, published, draft, change).commit({ transactionId }))
-      const after = applyChange(published, change)
-      return { value: after, before: published, after }
+      return touchedBoth(published, draft, change, transactionId)
     },
   })
 }
