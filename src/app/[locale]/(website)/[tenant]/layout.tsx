@@ -6,7 +6,8 @@ import { headers } from 'next/headers'
 import { DRAFT_PREVIEW_HEADER } from '@/lib/proxy/draft-preview'
 import { tenantClient, fetchDesignSystemById } from '@/lib/sanity/client'
 import { isKnownProjectSegment } from '@/lib/tenancy/host-scope'
-import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, siteConfigFaviconQuery, projectIntegrationsQuery, projectModuleConfigQuery, projectConsentQuery } from '@/lib/sanity/queries'
+import { localeConfigQuery, websiteSiteConfigQuery, designSystemQuery, siteConfigFaviconQuery, projectIntegrationsQuery, projectModuleConfigQuery, projectConsentQuery, projectDomainQuery } from '@/lib/sanity/queries'
+import { canonicalOrigin } from '@/lib/seo/canonical'
 import { ogImageUrl } from '@/lib/sanity/image'
 import type { LocaleConfig, SupportedLocale, DesignSystem, FontDefinition, WebsiteSiteConfig, BackgroundGraphic, ProjectIntegrations } from '@/lib/sanity/types'
 import { imageUrl } from '@/lib/sanity/image'
@@ -546,14 +547,26 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
   if (!isKnownProjectSegment(tenantId)) notFound()
   const { fetchForTenant } = tenantClient(tenantId)
 
-  const siteConfigFavicon = await fetchForTenant<{
-    faviconSvg?:      { asset?: { _ref: string } }
-    faviconPng?:      { asset?: { _ref: string } }
-    openGraphImage?:  { asset?: { _ref: string } }
-    appleTouchIcon?:  { asset?: { _ref: string } }
-    googleSiteVerification?: string
-    bingSiteVerification?:   string
-  }>(siteConfigFaviconQuery, {})
+  const [siteConfigFavicon, customDomain] = await Promise.all([
+    fetchForTenant<{
+      faviconSvg?:      { asset?: { _ref: string } }
+      faviconPng?:      { asset?: { _ref: string } }
+      openGraphImage?:  { asset?: { _ref: string } }
+      appleTouchIcon?:  { asset?: { _ref: string } }
+      googleSiteVerification?: string
+      bingSiteVerification?:   string
+    }>(siteConfigFaviconQuery, {}),
+    fetchForTenant<string | null>(projectDomainQuery, {}),
+  ])
+
+  // ── metadataBase — the host every relative metadata URL resolves against ────
+  // Next infers this when unset, and on a multi-tenant project it infers ONE
+  // host for all tenants, so tmz.it advertised its card on www.ameliez.com.
+  // File-convention images (opengraph-image.tsx) resolve against the LAYOUT
+  // metadata chain, not page-level generateMetadata, which is why pinning it in
+  // page.tsx alone did not fix the generated card. Same canonicalOrigin() that
+  // produces the canonical tag, so card and canonical can never disagree.
+  const origin = canonicalOrigin(customDomain)
 
   // ── Favicon — first available wins ──────────────────────────────────────────
   // Identity assets are owned per-site (Website Settings), never the design system.
@@ -577,6 +590,7 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
     : undefined
 
   return {
+    ...(origin ? { metadataBase: new URL(origin) } : {}),
     ...(faviconSrc || appleTouchIconSrc ? {
       icons: {
         ...(faviconSrc ? { icon: faviconSrc } : {}),
@@ -586,7 +600,11 @@ export async function generateMetadata({ params }: { params: Promise<{ tenant: s
     ...(ogSrc ? {
       openGraph: { images: [{ url: ogSrc, width: 1200, height: 630 }] },
       twitter:   { card: 'summary_large_image', images: [ogSrc] },
-    } : {}),
+    // No uploaded card and no custom domain → there is no correct absolute URL
+    // to advertise, so stand the file convention down with an own (empty)
+    // `images` property rather than let it resolve against an inferred host.
+    // No card beats a card on another client's domain.
+    } : !origin ? { openGraph: { images: [] } } : {}),
     // Suppress indexing on all non-production environments.
     // Vercel already sends x-robots-tag: noindex on preview deployments,
     // but this ensures the meta tag is also present for belt-and-suspenders.
