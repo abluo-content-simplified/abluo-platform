@@ -53,14 +53,14 @@ beforeEach(() => {
 describe('sitemap skips noindex pages', () => {
   it('omits every locale URL of a noindex page', async () => {
     const urls = (await (await import('@/app/sitemap')).default()).map((e) => e.url)
-    expect(urls).not.toContain('https://abluo.app/en/staging-home')
-    expect(urls).not.toContain('https://abluo.app/it/staging-home')
+    expect(urls).not.toContain('https://www.abluo.app/en/staging-home')
+    expect(urls).not.toContain('https://www.abluo.app/it/staging-home')
   })
 
   it('keeps pages that are indexable, including an explicit noindex: false', async () => {
     const urls = (await (await import('@/app/sitemap')).default()).map((e) => e.url)
-    expect(urls).toContain('https://abluo.app/en/pricing')
-    expect(urls).toContain('https://abluo.app/it/prezzi')
-    expect(urls).toContain('https://abluo.app/en/about')
+    expect(urls).toContain('https://www.abluo.app/en/pricing')
+    expect(urls).toContain('https://www.abluo.app/it/prezzi')
+    expect(urls).toContain('https://www.abluo.app/en/about')
   })
 })

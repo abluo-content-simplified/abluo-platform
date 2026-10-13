@@ -31,12 +31,53 @@
  */
 
 import type { Metadata } from 'next'
+import { normalizeHost } from '@/lib/tenancy/host-scope'
 
 /** A locale code as it appears in a URL path segment. */
 type Locale = string
 
 /**
- * `https://<customDomain>`, or null when the project has no custom domain yet.
+ * The host prefix every Abluo site serves its public pages on.
+ *
+ * ── The platform convention (Tom, settled 2026-10-13) ────────────────────────
+ * Every client domain is wired the same way in Vercel: the apex 308-redirects
+ * to the `www` host, and `www` is the one assigned to Production. That is true
+ * of livener.net, nologo.cloud, studiomartegani.com, ch-psicoterapeuta.com,
+ * ameliez.com and tmz.it without exception, and it is deliberate:
+ *
+ *   - DNS. A CNAME is not allowed at a zone apex, so a naked domain must be an
+ *     A record pinned to an IP. `www` is a plain CNAME and follows Vercel if it
+ *     ever moves. One fewer thing that breaks without anyone touching it.
+ *   - Cookies. A cookie set on an apex is sent to every subdomain beneath it.
+ *     On `www` it stays put.
+ *
+ * It is NOT an SEO preference — apex and www rank identically. Do not reopen
+ * it, and do not propose flipping a project to apex-primary.
+ *
+ * ── Why this is a constant and not a stored field ────────────────────────────
+ * Because the alternative was tried and drifted. `project.customDomain` held
+ * the APEX on all nine projects, so every site declared a canonical pointing at
+ * a URL that immediately 308s to the host actually serving it — a site telling
+ * Google "the real address is X" where X is a redirect to Y. Storing the www
+ * form per project instead would fix it, but it is nine records that a tenth
+ * project can silently get wrong, which is how `customDomain`, `projectSlug`
+ * and `status` each ended up null on tmz.
+ *
+ * The convention is platform-wide, so it lives in platform code. One constant,
+ * every site correct, nothing to remember when provisioning the next one.
+ * If a client ever genuinely needs apex-primary, add an explicit per-project
+ * override THEN — not a second source of truth now, on spec.
+ */
+export const CANONICAL_HOST_PREFIX = 'www.'
+
+/**
+ * `https://www.<domain>`, or null when the project has no custom domain yet.
+ *
+ * The stored value is normalised first (`normalizeHost` strips a scheme, a
+ * port, a trailing dot, case and any existing `www.`), so this is idempotent:
+ * `tmz.it`, `www.tmz.it`, `https://TMZ.IT/` and `tmz.it.` all yield exactly
+ * `https://www.tmz.it`. A project row cannot be stored in a shape that produces
+ * the wrong canonical.
  *
  * A project without a domain has no canonical address, and emitting a guess
  * (the request host, a platform alias) would point search engines at staging.
@@ -44,9 +85,9 @@ type Locale = string
  */
 export function canonicalOrigin(customDomain: string | null | undefined): string | null {
   if (!customDomain) return null
-  const trimmed = customDomain.trim().replace(/\/+$/, '')
-  if (!trimmed) return null
-  return `https://${trimmed}`
+  const host = normalizeHost(customDomain)
+  if (!host) return null
+  return `https://${CANONICAL_HOST_PREFIX}${host}`
 }
 
 /**

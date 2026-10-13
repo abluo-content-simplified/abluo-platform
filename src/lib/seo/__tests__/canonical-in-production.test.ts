@@ -85,7 +85,7 @@ describe('the home page canonical', () => {
   it('is the locale root, with no project segment', async () => {
     const meta = await homeMeta()
 
-    expect(meta.alternates?.canonical).toBe('https://nologo.cloud/en')
+    expect(meta.alternates?.canonical).toBe('https://www.nologo.cloud/en')
     expect(String(meta.alternates?.canonical)).not.toMatch(PROJECT_SEGMENT)
   })
 
@@ -96,8 +96,8 @@ describe('the home page canonical', () => {
     expect(Object.keys(languages).sort()).toEqual(
       ['de', 'en', 'es', 'fr', 'it', 'nl', 'pt', 'x-default'].sort()
     )
-    expect(languages['x-default']).toBe('https://nologo.cloud/en')
-    expect(languages.it).toBe('https://nologo.cloud/it')
+    expect(languages['x-default']).toBe('https://www.nologo.cloud/en')
+    expect(languages.it).toBe('https://www.nologo.cloud/it')
     for (const url of Object.values(languages)) expect(url).not.toMatch(PROJECT_SEGMENT)
   })
 
@@ -116,7 +116,7 @@ describe('a landing page canonical', () => {
   it('puts the slug directly below the locale', async () => {
     const meta = await slugMetadata({ params: params('en') })
 
-    expect(meta.alternates?.canonical).toBe('https://nologo.cloud/en/restaurant-booking-system')
+    expect(meta.alternates?.canonical).toBe('https://www.nologo.cloud/en/restaurant-booking-system')
     expect(String(meta.alternates?.canonical)).not.toMatch(PROJECT_SEGMENT)
   })
 
@@ -147,8 +147,8 @@ describe('a landing page canonical', () => {
     const meta = await slugMetadata({ params: params('en') })
     const languages = meta.alternates?.languages as Record<string, string>
 
-    expect(languages.it).toBe('https://nologo.cloud/it/sistema-prenotazioni-ristorante')
-    expect(languages.de).toBe('https://nologo.cloud/de/reservierungssystem-restaurant')
+    expect(languages.it).toBe('https://www.nologo.cloud/it/sistema-prenotazioni-ristorante')
+    expect(languages.de).toBe('https://www.nologo.cloud/de/reservierungssystem-restaurant')
     // Only three locales have a slug in the fixture; the other four are absent
     // rather than pointing at a page that does not exist.
     expect(Object.keys(languages).sort()).toEqual(['de', 'en', 'it', 'x-default'])

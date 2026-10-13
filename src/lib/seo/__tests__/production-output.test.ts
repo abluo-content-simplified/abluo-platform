@@ -73,10 +73,14 @@ describe('sitemap, in production', () => {
   const domainsIn = (entries: { url: string }[]) =>
     [...new Set(entries.map((e) => new URL(e.url).host))].sort()
 
+  // Asked on the apex, answered with the www host: the sitemap names the same
+  // URL the canonical tag names, and that is the www one by platform
+  // convention (see CANONICAL_HOST_PREFIX). Still exactly ONE domain, which is
+  // what this test is really guarding.
   it('contains exactly one domain — the one it was asked on', async () => {
-    expect(domainsIn(await sitemapFor('nologo.cloud'))).toEqual(['nologo.cloud'])
-    expect(domainsIn(await sitemapFor('livener.net'))).toEqual(['livener.net'])
-    expect(domainsIn(await sitemapFor('studiomartegani.com'))).toEqual(['studiomartegani.com'])
+    expect(domainsIn(await sitemapFor('nologo.cloud'))).toEqual(['www.nologo.cloud'])
+    expect(domainsIn(await sitemapFor('livener.net'))).toEqual(['www.livener.net'])
+    expect(domainsIn(await sitemapFor('studiomartegani.com'))).toEqual(['www.studiomartegani.com'])
   })
 
   // The leak, stated as the test that would have caught it: before the fix
@@ -101,14 +105,14 @@ describe('sitemap, in production', () => {
   it('gives the No!Logo home page one URL per locale, at the locale root', async () => {
     const urls = (await sitemapFor('nologo.cloud')).map((e) => e.url)
     for (const locale of ['en', 'it', 'de', 'fr', 'es', 'nl', 'pt']) {
-      expect(urls).toContain(`https://nologo.cloud/${locale}`)
+      expect(urls).toContain(`https://www.nologo.cloud/${locale}`)
     }
   })
 
   it('places a page slug directly below the locale', async () => {
     const urls = (await sitemapFor('nologo.cloud')).map((e) => e.url)
-    expect(urls).toContain('https://nologo.cloud/en/restaurant-booking-system')
-    expect(urls).toContain('https://nologo.cloud/it/sistema-prenotazioni-ristorante')
+    expect(urls).toContain('https://www.nologo.cloud/en/restaurant-booking-system')
+    expect(urls).toContain('https://www.nologo.cloud/it/sistema-prenotazioni-ristorante')
   })
 
   it('returns nothing for a host no project claims, rather than everything', async () => {
