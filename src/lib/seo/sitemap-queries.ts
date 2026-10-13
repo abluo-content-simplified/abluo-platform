@@ -37,3 +37,16 @@ export const SITEMAP_NEWS_QUERY = /* groq */ `*[_type == "newsArticle" && define
 
 // Gallery photos on each project's home page, attached to the bare locale URL.
 export const SITEMAP_HOME_IMAGES_QUERY = /* groq */ `*[_type == "page" && defined(projectSlug) && pageType == "home"] { projectSlug, "images": ${GALLERY_SECTION_IMAGES} }`
+
+// ── Catalogue (ADR-033 D4, D11; spec §6.5) ────────────────────────────────────
+// Items and collections share the project's one configured public segment, so
+// each row carries it. A row is listed only where the document has a page,
+// passes the lifecycle rule and is not unlisted (unlisted pages are reachable
+// by link only and carry a robots noindex). Rows whose project has no enabled
+// catalogue installation (no segment) are dropped: without the module there is
+// no route. The consumer emits one URL per locale whose slug is set.
+const CATALOGUE_SEGMENT = /* groq */ `*[_type == "project" && projectSlug == ^.projectSlug][0].moduleInstallations[moduleId == "catalogue" && enabled != false][0].config.publicSegment`
+
+export const SITEMAP_CATALOGUE_ITEMS_QUERY = /* groq */ `*[_type == "catalogueItem" && defined(projectSlug) && hasPage == true && defined(slug) && ${publicFilterFor('catalogueItem')} && (!defined(visibility) || visibility != "unlisted")] { projectSlug, slug, "segment": ${CATALOGUE_SEGMENT}, "images": array::compact((images[]->)[_type == "mediaAsset" && projectSlug == ^.projectSlug].image.asset->url) }[defined(segment)]`
+
+export const SITEMAP_CATALOGUE_COLLECTIONS_QUERY = /* groq */ `*[_type == "catalogueCollection" && defined(projectSlug) && hasPage == true && defined(slug) && ${publicFilterFor('catalogueCollection')} && (!defined(visibility) || visibility != "unlisted")] { projectSlug, slug, "segment": ${CATALOGUE_SEGMENT} }[defined(segment)]`

@@ -74,7 +74,8 @@
       "media": "Medien",
       "people": "Personen",
       "connections": "Verbundene Apps",
-      "analytics": "Statistiken"
+      "analytics": "Statistiken",
+      "catalogue": "Katalog"
     },
     "shell": {
       "brandTagline": "Dashboard",
@@ -3198,6 +3199,57 @@
       "body": "{by} hat dir den Zugang zu {place} als {role} zurückgegeben.",
       "button": "Abluo öffnen",
       "replyHint": "Fragen? Antworte auf diese E-Mail, um {by} zu erreichen."
+    }
+  },
+  "catalogue": {
+    "allergens": {
+      "gluten": "Glutenhaltiges Getreide",
+      "crustaceans": "Krebstiere",
+      "eggs": "Eier",
+      "fish": "Fisch",
+      "peanuts": "Erdnüsse",
+      "soybeans": "Soja",
+      "milk": "Milch",
+      "treeNuts": "Schalenfrüchte",
+      "celery": "Sellerie",
+      "mustard": "Senf",
+      "sesame": "Sesamsamen",
+      "sulphites": "Schwefeldioxid und Sulfite",
+      "lupin": "Lupinen",
+      "molluscs": "Weichtiere"
+    },
+    "module": {
+      "label": "Katalog",
+      "description": "Artikel, Sammlungen und Preise für Ihre Website."
+    },
+    "segment": {
+      "label": "Öffentliches URL-Segment",
+      "clash": {
+        "empty": "Wählen Sie eine Webadresse für Ihren Katalog.",
+        "tooLong": "Diese Adresse ist zu lang. Verwenden Sie höchstens {max} Zeichen.",
+        "invalidSyntax": "„{value}“ ist keine gültige Adresse. Verwenden Sie nur Kleinbuchstaben, Zahlen und einzelne Bindestriche.",
+        "reserved": "„{value}“ wird bereits von der Website verwendet. Wählen Sie ein anderes Wort.",
+        "pageSlug": "„{value}“ ist bereits der Anfang einer Ihrer Seiten. Wählen Sie ein anderes Wort oder benennen Sie diese Seite um."
+      },
+      "revertNotice": "„{value}“ wurde schon einmal verwendet. Bei erneuter Verwendung endet die Weiterleitung.",
+      "redirectNotice": "Alte Adressen funktionieren weiter und leiten auf die neue um."
+    },
+    "currency": {
+      "label": "Währung",
+      "changeWarning": "{prices, plural, one {# Preis} other {# Preise}} bei {items, plural, one {# Artikel} other {# Artikeln}} werden als {currency} gelesen. Es werden keine Beträge umgerechnet.",
+      "changeConfirm": "Währung ändern",
+      "changeWarningOptions": "Außerdem {count, plural, one {# Preisänderung bei Optionen} other {# Preisänderungen bei Optionen}}."
+    },
+    "config": {
+      "categories": "Kategorien",
+      "dietaryTags": "Ernährungshinweise",
+      "serviceChannels": "Servicekanäle",
+      "showPricesByDefault": "Preise standardmäßig anzeigen",
+      "navLabel": "Name im Dashboard"
+    },
+    "errors": {
+      "inUse": "Wird noch verwendet in: {names}.",
+      "slugTaken": "Die Adresse „{slug}“ wird bereits von „{name}“ verwendet."
     }
   }
 }

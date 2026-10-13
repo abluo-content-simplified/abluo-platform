@@ -6,6 +6,8 @@ import { liveSchemaTypes } from './live/schema'
 import { formsSchemaTypes } from './forms/schema'
 import { newsSchemaTypes } from './news/schema'
 import { gallerySchemaTypes } from './gallery/schema'
+import { catalogueSchemaTypes } from './catalogue/schema'
+import { SEGMENT_REGEX_SOURCE } from './catalogue/segment'
 
 // ── Module registry ───────────────────────────────────────────────────────────
 // The single authoritative definition of every module available on the platform.
@@ -954,6 +956,249 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
     },
 
     changelog: 'V1.0.0 — ADR-023. Translate button on localized text fields, swappable provider, per-project metering and optional monthly quota.',
+  },
+
+  // ── Catalogue ──────────────────────────────────────────────────────────────
+  // ADR-033 / catalogue-module-v1-spec §3. Items, collections, option lists.
+  // The first tenant is a restaurant; nothing here knows that.
+  {
+    id: 'catalogue',
+    label: 'Catalogue',
+    version: '1.0.0',
+    status: 'released',
+    category: 'commerce',
+
+    platformContract: {
+      // ADR-033 C1 — served at /{segment}, not a fixed /catalogue.
+      pageType: 'cataloguePage',
+
+      collections: [
+        {
+          id: 'catalogue-items',
+          label: 'Items',
+          items: [
+            {
+              id: 'items',
+              label: 'Items',
+              schemaType: 'catalogueItem',
+              filter: `_type == "catalogueItem" && projectSlug == $slug`,
+              initialValueTemplate: 'catalogueItemProjectOwned',
+            },
+          ],
+        },
+        {
+          id: 'catalogue-collections',
+          label: 'Collections',
+          items: [
+            {
+              id: 'collections',
+              label: 'Collections',
+              schemaType: 'catalogueCollection',
+              filter: `_type == "catalogueCollection" && projectSlug == $slug`,
+              initialValueTemplate: 'catalogueCollectionProjectOwned',
+            },
+          ],
+        },
+        {
+          id: 'catalogue-option-lists',
+          label: 'Option lists',
+          items: [
+            {
+              id: 'option-lists',
+              label: 'Option lists',
+              schemaType: 'catalogueOptionList',
+              filter: `_type == "catalogueOptionList" && projectSlug == $slug`,
+              initialValueTemplate: 'catalogueOptionListProjectOwned',
+            },
+          ],
+        },
+      ],
+
+      // Spec lists ['catalogueListingSection']. sections.test.ts requires a
+      // SECTION_MAP entry for every declared type, and the section component
+      // lands in a later slice — declare it there, together with its renderer.
+      sectionTypes: [],
+
+      // NOTE: 'catalogueListingSection' and 'cataloguePage' are declared by the
+      // manifest but their Sanity definitions land in later slices; every other
+      // name below has a definition in catalogueSchemaTypes today.
+      schemaTypes: [
+        'catalogueListingSection',
+        'cataloguePage',
+        'catalogueItem',
+        'catalogueCollection',
+        'catalogueOptionList',
+        'catalogueOffer',
+        'catalogueItemOptionList',
+        'catalogueOption',
+        'catalogueSection',
+        'catalogueAvailability',
+      ],
+
+      schemaDefinitions: () => catalogueSchemaTypes,
+
+      // ADR-033 §8 + Amendment C4. Option lists reuse catalogue.item.*;
+      // cataloguePage reuses catalogue.collection.*.
+      permissions: [
+        {
+          id: 'catalogue.item.read',
+          label: 'View items and collections',
+          description: 'View and list catalogue items, collections and option lists in the client dashboard.',
+          defaultRoles: ['owner', 'editor', 'viewer'],
+        },
+        {
+          id: 'catalogue.item.write',
+          label: 'Create and edit items',
+          description: 'Create, edit and publish items and option lists.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          id: 'catalogue.item.delete',
+          label: 'Delete items',
+          description: 'Delete catalogue items and option lists that were never published.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          id: 'catalogue.item.deletePublished',
+          label: 'Permanently delete published items',
+          description: 'Permanently delete previously published items and option lists.',
+          defaultRoles: ['owner'],
+        },
+        {
+          id: 'catalogue.collection.write',
+          label: 'Create and edit collections',
+          description: 'Create, edit and publish collections and the catalogue landing page.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          id: 'catalogue.collection.delete',
+          label: 'Delete collections',
+          description: 'Delete collections that were never published.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          id: 'catalogue.collection.deletePublished',
+          label: 'Permanently delete published collections',
+          description: 'Permanently delete previously published collections and the landing page.',
+          defaultRoles: ['owner'],
+        },
+        {
+          id: 'catalogue.taxonomy.write',
+          label: 'Manage categories, dietary tags and service channels',
+          description: 'Create, edit and delete the catalogue vocabularies.',
+          defaultRoles: ['owner', 'editor'],
+        },
+      ],
+
+      // Spec §5. `publicSegment` is required with NO default (ADR-033 C1);
+      // `publicSegmentHistory` is module-written (see ADR-033 D11).
+      configSchema: [
+        {
+          id: 'publicSegment',
+          label: 'Public URL segment',
+          type: 'string',
+          required: true,
+          validation: {
+            regex: SEGMENT_REGEX_SOURCE,
+            message: 'Use lowercase letters, numbers and single hyphens, with no slashes or spaces (e.g. "menu").',
+          },
+          validator: 'catalogue.publicSegment',
+          description:
+            'The web address where your catalogue lives, e.g. "menu" gives /menu and /menu/pizza-margherita. Cannot be a word the website already uses. Old values keep redirecting.',
+        },
+        {
+          id: 'publicSegmentHistory',
+          label: 'Retired URL segments',
+          type: 'stringList',
+          hidden: true,
+          description: 'Maintained by the module. Every segment this website has used; each redirects to the current one.',
+        },
+        {
+          id: 'navLabel',
+          label: 'Dashboard name',
+          type: 'localizedString',
+          description: 'What your dashboard calls this section (for example "Menu" or "Books"). Presentation only.',
+        },
+        {
+          id: 'categories',
+          label: 'Categories',
+          type: 'localizedStringList',
+          supportsColor: true,
+          supportsRouting: false,
+          usage: { schemaType: 'catalogueItem', field: 'categories', noun: 'items' },
+          description:
+            'The categories an item can be filed under, in every language this website offers. Categories are labels only; they do not get pages.',
+        },
+        {
+          id: 'dietaryTags',
+          label: 'Dietary tags',
+          type: 'localizedStringList',
+          usage: { schemaType: 'catalogueItem', field: 'dietary', noun: 'items' },
+          description: 'Your own dietary vocabulary (vegetarian, vegan, …). Allergens are a fixed legal list and are not configured here.',
+        },
+        {
+          id: 'serviceChannels',
+          label: 'Service channels',
+          type: 'localizedStringList',
+          // Install seed: one entry, value 'dine-in'. The config system has no
+          // seed mechanism yet (see slice report) — to be seeded by the install flow.
+          description: 'The ways an item is sold (dine in, takeaway, …). Each price belongs to one channel.',
+        },
+        {
+          id: 'currency',
+          label: 'Currency',
+          type: 'select',
+          initialValue: 'EUR',
+          changeGuard: 'catalogue.currencyChange',
+          description:
+            'The one currency for every price on this website. Changing it does not convert any amount; existing prices are read in the new currency.',
+          options: [
+            { value: 'EUR', label: 'Euro (EUR)' },
+            { value: 'CHF', label: 'Swiss franc (CHF)' },
+            { value: 'GBP', label: 'Pound sterling (GBP)' },
+            { value: 'USD', label: 'US dollar (USD)' },
+            { value: 'CAD', label: 'Canadian dollar (CAD)' },
+            { value: 'AUD', label: 'Australian dollar (AUD)' },
+            { value: 'SEK', label: 'Swedish krona (SEK)' },
+            { value: 'NOK', label: 'Norwegian krone (NOK)' },
+            { value: 'DKK', label: 'Danish krone (DKK)' },
+            { value: 'PLN', label: 'Polish zloty (PLN)' },
+            { value: 'CZK', label: 'Czech koruna (CZK)' },
+            { value: 'HUF', label: 'Hungarian forint (HUF)' },
+            { value: 'RON', label: 'Romanian leu (RON)' },
+            { value: 'JPY', label: 'Japanese yen (JPY)' },
+          ],
+        },
+        {
+          id: 'showPricesByDefault',
+          label: 'Show prices by default',
+          type: 'boolean',
+          initialValue: true,
+          description: 'New catalogue sections show prices unless switched off for that section.',
+        },
+      ],
+
+      placement: {
+        surfaces: [
+          { kind: 'page', description: 'A catalogue landing page at the configured URL segment.' },
+          // Spec also lists a 'sections' surface; validator Rule 13 requires sectionTypes
+          // for it, so it returns together with catalogueListingSection.
+        ],
+      },
+    },
+
+    publicContract: {},
+
+    dependencies: {
+      requires: [],
+      integratesWith: ['gallery'],
+    },
+
+    dataStore: {
+      primary: 'content',
+    },
+
+    changelog: 'V1.0.0 — Items, collections, offers, options, public item and collection pages (ADR-033).',
   },
 
 ]

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildCreateMenu, CREATE_CONTENT_TYPES } from '../create-menu'
+import { buildCreateMenu, CREATE_CONTENT_TYPES } from '../add-content-sheet'
 import { MODULE_PERMISSION_MAP } from '../permissions'
 import { grantPermissions } from '@/lib/api/tenant-context'
 

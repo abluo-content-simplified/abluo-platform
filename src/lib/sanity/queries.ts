@@ -2175,3 +2175,203 @@ export const designSystemQuery = /* groq */ `
 // these two were a second, drifting copy of a projection that is maintained
 // next to the code that sends the email. Removed rather than kept as a
 // template; the live shapes are in those two files.
+
+// ─── Catalogue module (ADR-033) ───────────────────────────────────────────────
+// Delivery reads for catalogue items, collections and the landing page. The
+// resolved public shape (the DTO the routes, sections and structured data build
+// against) lives in src/lib/modules/catalogue/dto.ts; resolve.ts turns these
+// rows into it.
+//
+// Rules applied here, all of them load-bearing:
+//  - Every root filter carries projectSlug == $projectSlug, and every public
+//    read of a catalogue lifecycle type carries publicFilterFor (ADR-032 D3,
+//    enforced by public-delivery-coverage.test.ts). Never hand-written.
+//  - Items dereferenced from a collection section use the '@->' guard form, and
+//    are then re-scoped to this project: a stale or hand-edited cross-project
+//    reference resolves to nothing, never to another tenant's item.
+//  - Option lists and an option's linked item are read through scoped subqueries
+//    (the scopedFormDefinition pattern) so each carries its own rule.
+//  - Slug lookups have NO locale fallback (Publicly Routable Content, Req. 2)
+//    and require hasPage == true: an item without a page has no URL (AC 13).
+//  - Content fields fall back requested locale → site default → en (loc()).
+//  - Unlisted items/collections resolve by direct link; the sitemap excludes
+//    them. A collection is a hand-picked curation (like a manual events
+//    selection), so an unlisted item inside it is still shown.
+//  - Reserved offer fields (currency, locationKey; ADR-033 D14/A5/A6) are NEVER
+//    projected: the effective currency is the project's, resolved in code.
+//  - No Sanity _id is projected for catalogue content (ADR-031 D3): publicId is
+//    the public identity.
+const CATALOGUE_ITEM_PUBLIC = publicFilterFor('catalogueItem')
+const CATALOGUE_COLLECTION_PUBLIC = publicFilterFor('catalogueCollection')
+const CATALOGUE_OPTION_LIST_PUBLIC = publicFilterFor('catalogueOptionList')
+const CATALOGUE_PAGE_PUBLIC = publicFilterFor('cataloguePage')
+
+// Media Library images (array of references to mediaAsset), scoped to the
+// project. The focal point lives on the asset (ADR-022); the DTO turns it into
+// an object-position with focalObjectPosition().
+const CATALOGUE_IMAGE_FIELDS = /* groq */ `
+  "images": (images[]->)[_type == "mediaAsset" && projectSlug == $projectSlug && defined(image.asset)] {
+    "image": image { asset, hotspot, crop },
+    "width": image.asset->metadata.dimensions.width,
+    "height": image.asset->metadata.dimensions.height,
+    "lqip": image.asset->metadata.lqip,
+    "url": image.asset->url,
+    "alt": ${loc('altText')}
+  }
+`
+
+// An offer: price, channel (absent = unscoped, A2), note, serving hours.
+// currency / locationKey are reserved and deliberately absent.
+const CATALOGUE_OFFER_FIELDS = /* groq */ `
+  offers[] {
+    _key,
+    channel,
+    price,
+    "priceNote": ${loc('priceNote')},
+    availability[] { days, from, to }
+  }
+`
+
+const CATALOGUE_OPTION_LIST_FIELDS = /* groq */ `
+  optionLists[] {
+    _key,
+    min,
+    max,
+    "list": *[_type == "catalogueOptionList" && projectSlug == $projectSlug && _id == ^.list._ref && ${CATALOGUE_OPTION_LIST_PUBLIC}][0] {
+      "name": ${loc('name')},
+      options[] {
+        _key,
+        "label": ${loc('label')},
+        kind,
+        priceDelta,
+        "item": *[_type == "catalogueItem" && projectSlug == $projectSlug && _id == ^.item._ref && ${CATALOGUE_ITEM_PUBLIC}][0] {
+          publicId,
+          "name": ${loc('name')},
+          hasPage,
+          "slugMap": slug
+        }
+      }
+    }
+  }
+`
+
+// What an item carries wherever it is rendered (inside a collection or on its
+// own page). The lifecycle fields are read only so resolve.ts can re-check the
+// rule in TypeScript (isPublicAt); they never reach the DTO.
+const CATALOGUE_ITEM_FIELDS = /* groq */ `
+  publicId,
+  itemType,
+  visibility,
+  hasPage,
+  "name": ${loc('name')},
+  "description": ${loc('description')},
+  "slugMap": slug,
+  categories,
+  allergens,
+  dietary,
+  publishedAt,
+  expiresAt,
+  archivedAt,
+  ${CATALOGUE_IMAGE_FIELDS},
+  ${CATALOGUE_OFFER_FIELDS},
+  ${CATALOGUE_OPTION_LIST_FIELDS}
+`
+
+const CATALOGUE_COLLECTION_FIELDS = /* groq */ `
+  publicId,
+  collectionType,
+  visibility,
+  hasPage,
+  "name": ${loc('name')},
+  "description": ${loc('description')},
+  "slugMap": slug,
+  publishedAt,
+  expiresAt,
+  archivedAt,
+  sections[] {
+    _key,
+    parentKey,
+    "name": ${loc('name')},
+    "items": (items[${publicFilterFor('catalogueItem', '@->')}]->)[projectSlug == $projectSlug] {
+      ${CATALOGUE_ITEM_FIELDS}
+    }
+  }
+`
+
+/** Item page — primary lookup. No locale fallback on the slug; hasPage required. */
+export const catalogueItemBySlugQuery = /* groq */ `
+  *[_type == "catalogueItem" && projectSlug == $projectSlug && hasPage == true && slug[$locale].current == $slug && ${CATALOGUE_ITEM_PUBLIC}][0] {
+    ${CATALOGUE_ITEM_FIELDS},
+    "body": ${locBody('body')},
+    "redirectFrom": redirectFrom
+  }
+`
+
+/** Item page — redirect lookup for a retired slug in this locale. */
+export const catalogueItemByOldSlugQuery = /* groq */ `
+  *[_type == "catalogueItem" && projectSlug == $projectSlug && hasPage == true && $slug in redirectFrom[$locale] && ${CATALOGUE_ITEM_PUBLIC}][0] {
+    "currentSlug": slug[$locale].current
+  }
+`
+
+/** Collection page — primary lookup. No locale fallback on the slug; hasPage required. */
+export const catalogueCollectionBySlugQuery = /* groq */ `
+  *[_type == "catalogueCollection" && projectSlug == $projectSlug && hasPage == true && slug[$locale].current == $slug && ${CATALOGUE_COLLECTION_PUBLIC}][0] {
+    ${CATALOGUE_COLLECTION_FIELDS},
+    "redirectFrom": redirectFrom
+  }
+`
+
+/** Collection page — redirect lookup for a retired slug in this locale. */
+export const catalogueCollectionByOldSlugQuery = /* groq */ `
+  *[_type == "catalogueCollection" && projectSlug == $projectSlug && hasPage == true && $slug in redirectFrom[$locale] && ${CATALOGUE_COLLECTION_PUBLIC}][0] {
+    "currentSlug": slug[$locale].current
+  }
+`
+
+/**
+ * catalogueListingSection hydration — the referenced collection, by id
+ * ($collectionId = the section's collection._ref). The section is an explicit
+ * pick, so hasPage and unlisted do not matter here; the lifecycle rule does.
+ */
+export const catalogueCollectionByIdQuery = /* groq */ `
+  *[_type == "catalogueCollection" && projectSlug == $projectSlug && _id == $collectionId && ${CATALOGUE_COLLECTION_PUBLIC}][0] {
+    ${CATALOGUE_COLLECTION_FIELDS}
+  }
+`
+
+/**
+ * The landing page at /{segment} (ADR-033 C1). Its own lifecycle decides
+ * whether it is public; null → the route serves the branded unavailable page.
+ * It never gates the item and collection pages beneath it.
+ */
+export const cataloguePageQuery = /* groq */ `
+  *[_type == "cataloguePage" && projectSlug == $projectSlug && ${CATALOGUE_PAGE_PUBLIC}][0] {
+    "heroTitle": ${loc('heroTitle')},
+    "heroSubtitle": ${loc('heroSubtitle')},
+    "seoTitle": ${loc('seoTitle')},
+    "seoDescription": ${loc('seoDescription')},
+    ${PAGE_SECTIONS_PROJECTION}
+  }
+`
+
+/**
+ * The catalogue installation's configuration (spec §5) plus the site time zone
+ * that availability is evaluated in (ADR-033 A8 — never the server's zone).
+ * "catalogue" is null when the module is not installed or is switched off.
+ * Vocabulary labels are resolved for the request locale; values stay stable.
+ */
+export const catalogueModuleConfigQuery = /* groq */ `
+  *[_type == "project" && projectSlug == $projectSlug][0] {
+    "catalogue": moduleInstallations[moduleId == "catalogue" && enabled != false][0].config {
+      currency,
+      publicSegment,
+      publicSegmentHistory,
+      showPricesByDefault,
+      "serviceChannels": serviceChannels[] { value, "label": coalesce(label[$locale], label[$defaultLocale], label.en) },
+      "categories": categories[] { value, color, "label": coalesce(label[$locale], label[$defaultLocale], label.en) },
+      "dietaryTags": dietaryTags[] { value, "label": coalesce(label[$locale], label[$defaultLocale], label.en) }
+    },
+    "timeZone": *[_type == "siteConfig" && projectSlug == $projectSlug][0].timeZone
+  }
+`

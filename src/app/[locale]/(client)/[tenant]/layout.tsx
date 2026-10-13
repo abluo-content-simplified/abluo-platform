@@ -11,7 +11,7 @@ import {
 import { filterSwitchableProjects, loadProjectSummaries, statusesOf } from '@/lib/client/switchable-projects'
 import { ClientSidebar } from '@/components/client/ClientSidebar'
 import { AddContentRoot } from '@/components/client/create/AddContentRoot'
-import { buildCreateMenu } from '@/lib/modules/create-menu'
+import { buildCreateMenu } from '@/lib/modules/add-content-sheet'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { loadWhatsNewFeed } from '@/lib/whats-new/client-feed'
 import { can } from '@/lib/authz/check'

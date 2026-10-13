@@ -8,6 +8,7 @@
  * one of these types without it.
  *
  *   post, newsArticle — 'required': no publishedAt = never public (unchanged).
+ *   catalogue*        — 'optional' (ADR-033 D9, C1), as event and gallery.
  *   event, gallery    — 'optional': they carry no window fields yet (Phase 3),
  *                       so the rule reduces to "not archived" and every
  *                       existing document stays live with no migration.
@@ -20,6 +21,15 @@ export const LIFECYCLE_PUBLIC_RULES = {
   newsArticle: 'required',
   event: 'optional',
   gallery: 'optional',
+  // ADR-033 D9/C1 — the catalogue adopts the lifecycle from day one. 'optional':
+  // no publishedAt = live once published. `visibility` (public / websiteOnly /
+  // unlisted) is NOT part of this rule, exactly as for events: it narrows
+  // listing/sitemap/partner reach on top of it, and unlisted pages stay
+  // reachable by link.
+  catalogueItem: 'optional',
+  catalogueCollection: 'optional',
+  catalogueOptionList: 'optional',
+  cataloguePage: 'optional',
 } as const satisfies Record<string, PublishedAtRule>
 
 export type LifecycleType = keyof typeof LIFECYCLE_PUBLIC_RULES

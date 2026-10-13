@@ -53,6 +53,43 @@ const REF_FIELDS: Record<string, LifecycleType> = {
   events: 'event',
   posts: 'post',
   articles: 'newsArticle',
+  // ADR-033 — catalogue references. A collection section's items, the listing
+  // section's collection, an item's option list and an option's linked item.
+  items: 'catalogueItem',
+  item: 'catalogueItem',
+  collection: 'catalogueCollection',
+  list: 'catalogueOptionList',
+}
+
+/**
+ * The `[...]` (or `(...)`) span that encloses position `at`: the filter or
+ * condition a `_type == "…"` read sits in. Brackets inside GROQ string
+ * literals are ignored.
+ */
+function enclosingSpan(q: string, at: number): string {
+  const OPEN = '[(', CLOSE = '])'
+  let depth = 0
+  let start = -1
+  for (let i = at - 1; i >= 0; i--) {
+    const c = q[i]
+    if (CLOSE.includes(c)) depth++
+    else if (OPEN.includes(c)) {
+      if (depth === 0) { start = i; break }
+      depth--
+    }
+  }
+  if (start < 0) return q
+  depth = 0
+  for (let i = start + 1; i < q.length; i++) {
+    const c = q[i]
+    if (c === '"') { i = q.indexOf('"', i + 1); if (i < 0) break; continue }
+    if (OPEN.includes(c)) depth++
+    else if (CLOSE.includes(c)) {
+      if (depth === 0) return q.slice(start, i + 1)
+      depth--
+    }
+  }
+  return q.slice(start)
 }
 
 function stripGuards(q: string): string {
@@ -77,8 +114,15 @@ function problems(q: string): string[] {
     const reads = (s.match(new RegExp(`_type\\s*==\\s*["']${t}["']`, 'g')) ?? []).length
     const rules = s.split(publicFilterFor(t)).length - 1
     if (reads > rules) out.push(`${reads} read(s) of "${t}" but ${rules} public rule(s)`)
+    // Per read, not just per query: several 'optional' rules are the same
+    // string, so a count alone lets one subquery's rule cover another read
+    // (a catalogue item query with option-list subqueries). Each read must
+    // carry its rule inside its own filter.
+    for (const m of s.matchAll(new RegExp(`_type\\s*==\\s*["']${t}["']`, 'g'))) {
+      if (!enclosingSpan(s, m.index!).includes(publicFilterFor(t))) out.push(`a read of "${t}" whose filter lacks its public rule`)
+    }
   }
-  if (/_type\s+in\s+\[[^\]]*"(post|newsArticle|event|gallery)"/.test(s)) out.push('`_type in [...]` over a lifecycle type — use publicFilterForAnyType')
+  if (new RegExp(`_type\\s+in\\s+\\[[^\\]]*"(${LIFECYCLE_TYPES.join('|')})"`).test(s)) out.push('`_type in [...]` over a lifecycle type — use publicFilterForAnyType')
   for (const field of Object.keys(REF_FIELDS)) {
     if (new RegExp(`\\b${field}(\\[\\])?->`).test(s)) out.push(`unguarded dereference ${field}->`)
   }
@@ -110,6 +154,17 @@ describe('ADR-032 D3 — public delivery paths carry the visibility rule', () =>
       'src/lib/sanity/queries.ts#pageBySlugQuery',
       'src/lib/seo/sitemap-queries.ts#SITEMAP_POSTS_QUERY',
       'src/lib/seo/llms.ts#LLMS_NEWS_QUERY',
+      // ADR-033 D9 / AC 12 — catalogue delivery paths: item page (+ its
+      // generateMetadata and JSON-LD, which read the same query), collection
+      // page, listing section, landing page, sitemap.
+      'src/lib/sanity/queries.ts#catalogueItemBySlugQuery',
+      'src/lib/sanity/queries.ts#catalogueItemByOldSlugQuery',
+      'src/lib/sanity/queries.ts#catalogueCollectionBySlugQuery',
+      'src/lib/sanity/queries.ts#catalogueCollectionByOldSlugQuery',
+      'src/lib/sanity/queries.ts#catalogueCollectionByIdQuery',
+      'src/lib/sanity/queries.ts#cataloguePageQuery',
+      'src/lib/seo/sitemap-queries.ts#SITEMAP_CATALOGUE_ITEMS_QUERY',
+      'src/lib/seo/sitemap-queries.ts#SITEMAP_CATALOGUE_COLLECTIONS_QUERY',
     ]) expect(ids).toContain(expected)
   })
 
@@ -133,6 +188,20 @@ describe('ADR-032 D3 — public delivery paths carry the visibility rule', () =>
     expect(problems('*[_type == "page"][0]{ "g": galleries[]->{ _id } }')).not.toEqual([])
     expect(problems(`*[_type == "post" && ${publicFilterFor('post')}]`)).toEqual([])
   })
+
+  it('the scanner rejects catalogue reads that omit the rule, per read', () => {
+    const item = publicFilterFor('catalogueItem')
+    const list = publicFilterFor('catalogueOptionList')
+    // Root read without its rule, even though a subquery carries an identical
+    // 'optional' rule string.
+    expect(problems(`*[_type == "catalogueItem" && projectSlug == $projectSlug][0]{ "l": *[_type == "catalogueOptionList" && ${list}][0] }`)).not.toEqual([])
+    expect(problems(`*[_type == "catalogueItem" && ${item}][0]{ "l": *[_type == "catalogueOptionList" && ${list}][0] }`)).toEqual([])
+    // Collection items dereferenced without the '@->' guard.
+    expect(problems(`*[_type == "catalogueCollection" && ${publicFilterFor('catalogueCollection')}][0]{ sections[]{ "items": items[]->{ name } } }`)).not.toEqual([])
+    expect(problems(`*[_type == "catalogueCollection" && ${publicFilterFor('catalogueCollection')}][0]{ sections[]{ "items": (items[${publicFilterFor('catalogueItem', '@->')}]->)[projectSlug == $projectSlug]{ name } } }`)).toEqual([])
+    // A listing section's collection dereferenced without a guard.
+    expect(problems('*[_type == "page"][0]{ sections[]{ "c": collection->{ name } } }')).not.toEqual([])
+  })
 })
 
 // ── 2. File inventory — every other reader of lifecycle content ──────────────
@@ -148,9 +217,13 @@ const OTHER_READERS: Record<string, string> = {
   'src/lib/modules/types.ts': 'module typing, no query',
   'src/lib/modules/registry.ts': 'Studio structure filters (staff only)',
   'src/lib/lifecycle/visibility.ts': 'the rule itself (a path example in its docs)',
+  'src/lib/api/catalogue-lifecycle.ts': 'catalogue lifecycle descriptors — referrer checks before archive/delete (authenticated dashboard)',
+  'src/lib/modules/catalogue/validation.ts': 'catalogue save-time validation — slug namespace and currency-change counts (authenticated Studio/dashboard)',
 }
 
-const LIFECYCLE_READ = /_type\s*==\s*\\?["'](post|newsArticle|event|gallery)\\?["']|\b(relatedEvent|gallery|galleries)(\[\])?->/
+const LIFECYCLE_READ = new RegExp(
+  `_type\\s*==\\s*\\\\?["'](${LIFECYCLE_TYPES.join('|')})\\\\?["']|\\b(relatedEvent|gallery|galleries)(\\[\\])?->`,
+)
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {

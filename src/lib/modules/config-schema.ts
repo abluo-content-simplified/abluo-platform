@@ -193,6 +193,14 @@ function buildModuleConfigField(field: ModuleConfigFieldDef) {
         validation: (Rule) => (field.required ? Rule.required().min(1) : Rule),
       })
 
+    case 'stringList':
+      return defineField({
+        ...common,
+        type: 'array',
+        of: [defineArrayMember({ type: 'string' })],
+        validation: (Rule) => (field.required ? Rule.required().min(1) : Rule),
+      })
+
     case 'reference': {
       // A manifest declares `referenceFilter` as a GROQ STRING, because the
       // Modules pane (ModuleList.tsx → ReferenceSelect) runs the query itself

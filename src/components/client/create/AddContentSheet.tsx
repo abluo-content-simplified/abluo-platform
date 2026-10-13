@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { ChoiceCard, ChoiceCardGrid } from '@/components/app/ui/ChoiceCard'
 import { Fab } from '@/components/app/ui/Fab'
-import type { CreateMenu } from '@/lib/modules/create-menu'
+import type { CreateMenu } from '@/lib/modules/add-content-sheet'
 
 /**
  * Add content → "What would you like to create?" (ADR-025 D8 · the Type step).

@@ -74,7 +74,8 @@
       "media": "Media",
       "people": "People",
       "connections": "Connected apps",
-      "analytics": "Analytics"
+      "analytics": "Analytics",
+      "catalogue": "Catalogue"
     },
     "shell": {
       "brandTagline": "Dashboard",
@@ -3198,6 +3199,57 @@
       "body": "{by} has given you back access to {place} as {role}.",
       "button": "Open Abluo",
       "replyHint": "Questions? Reply to this email to reach {by}."
+    }
+  },
+  "catalogue": {
+    "allergens": {
+      "gluten": "Cereals containing gluten",
+      "crustaceans": "Crustaceans",
+      "eggs": "Eggs",
+      "fish": "Fish",
+      "peanuts": "Peanuts",
+      "soybeans": "Soybeans",
+      "milk": "Milk",
+      "treeNuts": "Nuts",
+      "celery": "Celery",
+      "mustard": "Mustard",
+      "sesame": "Sesame seeds",
+      "sulphites": "Sulphur dioxide and sulphites",
+      "lupin": "Lupin",
+      "molluscs": "Molluscs"
+    },
+    "module": {
+      "label": "Catalogue",
+      "description": "Items, collections and prices for your website."
+    },
+    "segment": {
+      "label": "Public URL segment",
+      "clash": {
+        "empty": "Choose a web address for your catalogue.",
+        "tooLong": "That address is too long. Use {max} characters or fewer.",
+        "invalidSyntax": "\"{value}\" is not a valid address. Use lowercase letters, numbers and single hyphens only.",
+        "reserved": "\"{value}\" is already used by the website. Choose another word.",
+        "pageSlug": "\"{value}\" is already the start of one of your pages. Choose another word or rename that page."
+      },
+      "revertNotice": "\"{value}\" was used before. Using it again stops its redirect.",
+      "redirectNotice": "Old addresses keep working and redirect to the new one."
+    },
+    "currency": {
+      "label": "Currency",
+      "changeWarning": "{prices, plural, one {# price} other {# prices}} across {items, plural, one {# item} other {# items}} will be read as {currency}. No amounts are converted.",
+      "changeConfirm": "Change currency",
+      "changeWarningOptions": "Also {count, plural, one {# option price change} other {# option price changes}}."
+    },
+    "config": {
+      "categories": "Categories",
+      "dietaryTags": "Dietary tags",
+      "serviceChannels": "Service channels",
+      "showPricesByDefault": "Show prices by default",
+      "navLabel": "Dashboard name"
+    },
+    "errors": {
+      "inUse": "Still used by: {names}.",
+      "slugTaken": "The address \"{slug}\" is already used by \"{name}\"."
     }
   }
 }

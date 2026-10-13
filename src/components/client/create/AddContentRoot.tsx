@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { usePathname } from '@/i18n/navigation'
 import { AddContentSheet } from './AddContentSheet'
 import { Fab } from '@/components/app/ui/Fab'
-import type { CreateMenu } from '@/lib/modules/create-menu'
+import type { CreateMenu } from '@/lib/modules/add-content-sheet'
 
 /**
  * "+ Add content" for the whole dashboard (rendered by `[tenant]/layout.tsx`,

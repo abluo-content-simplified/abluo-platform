@@ -230,6 +230,6 @@ describe('category lists declare a usage guard', () => {
       MODULE_REGISTRY.filter((m) => m.platformContract.configSchema.some((f) => f.id === 'categories'))
         .map((m) => [m.id, m.platformContract.configSchema.find((f) => f.id === 'categories')!.usage!.schemaType])
     )
-    expect(byModule).toEqual({ blog: 'post', news: 'newsArticle', events: 'event' })
+    expect(byModule).toEqual({ blog: 'post', news: 'newsArticle', events: 'event', catalogue: 'catalogueItem' })
   })
 })

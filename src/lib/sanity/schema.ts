@@ -5783,6 +5783,43 @@ export const initialValueTemplates = [
       projectSlug: params?.projectSlug,
     }),
   },
+  {
+    // Catalogue module (ADR-033) — a template replaces field initialValues,
+    // so the ones that matter are repeated here.
+    id: 'catalogueItemProjectOwned',
+    title: 'Catalogue Item',
+    schemaType: 'catalogueItem',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+      publicId: globalThis.crypto.randomUUID(),
+      itemType: 'dish',
+      hasPage: false,
+      visibility: 'public',
+    }),
+  },
+  {
+    id: 'catalogueCollectionProjectOwned',
+    title: 'Catalogue Collection',
+    schemaType: 'catalogueCollection',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+      publicId: globalThis.crypto.randomUUID(),
+      collectionType: 'list',
+      hasPage: false,
+      visibility: 'public',
+    }),
+  },
+  {
+    id: 'catalogueOptionListProjectOwned',
+    title: 'Option List',
+    schemaType: 'catalogueOptionList',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+    }),
+  },
 ]
 
 // ─── Export ───────────────────────────────────────────────────────────────────

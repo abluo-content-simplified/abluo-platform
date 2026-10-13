@@ -106,6 +106,9 @@ export type ModuleCollectionGroupDef = {
  *                      input per site locale, reorderable. The stable `value` is
  *                      what gets recorded on a submission, so renaming a label —
  *                      or translating it — never breaks historical data.
+ * stringList        — an ordered list of plain strings. Intended for module-written
+ *                      (`hidden`) bookkeeping, e.g. the catalogue's retired URL
+ *                      segments; not a general authoring control.
  * reference          — reference to one or more document types, `referenceTo` required
  */
 export type ModuleConfigFieldType =
@@ -116,6 +119,7 @@ export type ModuleConfigFieldType =
   | 'select'
   | 'localizedString'
   | 'localizedStringList'
+  | 'stringList'
   | 'reference'
 
 /** One choice in a `select` config field. */
@@ -245,6 +249,19 @@ export type ModuleConfigFieldDef = {
    * has an owner other than the person looking at the pane.
    */
   hidden?: boolean
+  /**
+   * Id of a named save-time validator the Modules pane runs for this field
+   * (e.g. 'catalogue.publicSegment'), in addition to `required` / `validation`.
+   * Declared here so the manifest names the rule; resolving the id needs project
+   * data (page slugs, history) and is wired in the Modules pane, not here.
+   */
+  validator?: string
+  /**
+   * Id of a named change guard the Modules pane resolves before it persists a
+   * CHANGED value, to warn and require confirmation (e.g. catalogue currency:
+   * 'catalogue.currencyChange'). Declared, not yet consumed by ModuleList.
+   */
+  changeGuard?: string
 }
 
 // ── Module placement ──────────────────────────────────────────────────────────

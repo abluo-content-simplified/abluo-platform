@@ -56,6 +56,28 @@ export type LifecycleDescriptor = {
   fail: (code: LifecycleErrorCode, message: string) => Error
   /** How many other documents still reference this one (permanent delete refuses while > 0). */
   dependencies?: (client: LifecycleClient, id: string, projectSlug: string) => Promise<number>
+  /**
+   * Like `dependencies`, but names the blockers (ADR-033 D9: "the refusal names
+   * the collections"). When present it replaces `dependencies` for the checks
+   * below. Return only the documents that BLOCK — a module decides what blocks
+   * (e.g. only public referrers; drafts and archived content do not).
+   */
+  referrers?: (client: LifecycleClient, id: string, projectSlug: string) => Promise<Referrer[]>
+  /** Also run `referrers` before archiving (default: only before a permanent delete). */
+  refuseArchiveWhileReferenced?: boolean
+}
+
+/** A document that blocks an archive or delete. `label` is a human name for the refusal message. */
+export type Referrer = { id: string; type: string; label: string }
+
+/** "Used by: A, B" — the message of an `in_use` refusal that names its referrers. */
+export function describeReferrers(refs: readonly Referrer[]): string {
+  return `Still used by: ${refs.map((r) => r.label).join(', ')}.`
+}
+
+/** The module's `in_use` error with the blocking documents attached as `referrers`. */
+function inUse(d: LifecycleDescriptor, refs: readonly Referrer[]): Error {
+  return Object.assign(d.fail('in_use', describeReferrers(refs)), { referrers: [...refs] })
 }
 
 export const LIFECYCLE_OPERATIONS = ['unpublishNow', 'backOnline', 'setEndDate', 'archive', 'restore', 'deleteDraft', 'deletePermanently'] as const
@@ -264,6 +286,10 @@ export function archive(d: LifecycleDescriptor, ctx: TenantAuthorizationContext,
       if (!published) throw d.fail('invalid_value', 'A draft that was never published cannot be archived.')
       if (isArchived(published)) throw d.fail('archived', 'This item is already archived.')
       if (published._rev !== input.rev) throw d.fail('conflict', 'This item was changed elsewhere.')
+      if (d.referrers && d.refuseArchiveWhileReferenced) {
+        const refs = await d.referrers(client, id, grant.projectSlug)
+        if (refs.length > 0) throw inUse(d, refs)
+      }
       const t = now.toISOString()
       const keepEarlier = notAfter(published.expiresAt, now.getTime())
       const change = { set: { archivedAt: t, archivedBy: ctx.userId, ...(keepEarlier ? {} : { expiresAt: t }) } }
@@ -333,8 +359,13 @@ export function deletePermanently(d: LifecycleDescriptor, ctx: TenantAuthorizati
       if (!published) throw d.fail('not_found', 'Unknown item.')
       if (!isArchived(published)) throw d.fail('archive_first', 'Archive this item before deleting it permanently.')
       if (published._rev !== input.rev) throw d.fail('conflict', 'This item was changed elsewhere.')
-      const refs = d.dependencies ? await d.dependencies(client, id, grant.projectSlug) : 0
-      if (refs > 0) throw d.fail('in_use', 'Other content still links to this item.')
+      if (d.referrers) {
+        const named = await d.referrers(client, id, grant.projectSlug)
+        if (named.length > 0) throw inUse(d, named)
+      } else {
+        const refs = d.dependencies ? await d.dependencies(client, id, grant.projectSlug) : 0
+        if (refs > 0) throw d.fail('in_use', 'Other content still links to this item.')
+      }
       await commit(d, client, grant.projectSlug, () => {
         let tx = client.transaction().patch(id, { ifRevisionID: input.rev, unset: ['_lifecycleGuard'] })
         if (draft?._rev) tx = tx.patch(`drafts.${id}`, { ifRevisionID: draft._rev, unset: ['_lifecycleGuard'] })

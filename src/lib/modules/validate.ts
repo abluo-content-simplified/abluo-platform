@@ -53,6 +53,7 @@ const VALID_CONFIG_FIELD_TYPES = new Set<string>([
   'select',
   'localizedString',
   'localizedStringList',
+  'stringList',
   'reference',
 ])
 
