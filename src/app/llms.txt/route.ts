@@ -72,7 +72,13 @@ export async function GET(): Promise<Response> {
     const { sanityClient } = await import('@/lib/sanity/client')
 
     const project = await sanityClient.fetch<ProjectRow | null>(
-      `*[_type == "project" && status == "active" && customDomain == $host][0] {
+      // Matched on the NORMALISED host, not the raw stored string. `host` here
+      // has already been through normalizeHost (no scheme, port, trailing dot
+      // or `www.`), so the stored customDomain is normalised to the same shape
+      // before comparing. Storing `tmz.it` or `www.tmz.it` both resolve; a raw
+      // `customDomain == $host` silently 404s whenever the two spellings differ.
+      `*[_type == "project" && status == "active" &&
+        (customDomain == $host || customDomain == "www." + $host)][0] {
         projectSlug,
         projectName,
         customDomain,

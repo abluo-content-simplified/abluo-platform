@@ -4,8 +4,32 @@ import { canonicalOrigin, canonicalUrl, hreflangAlternates, seoAlternates } from
 const LOCALES = ['en', 'it', 'de', 'fr', 'es', 'nl', 'pt']
 
 describe('canonicalOrigin', () => {
-  it('builds an https origin from a bare domain', () => {
-    expect(canonicalOrigin('nologo.cloud')).toBe('https://nologo.cloud')
+  // ── The platform convention ────────────────────────────────────────────────
+  // Every Abluo domain is wired apex -> 308 -> www, with www serving
+  // Production. The canonical must therefore name the www host: pointing it at
+  // the apex declares a canonical that immediately redirects. See the note on
+  // CANONICAL_HOST_PREFIX in ../canonical.ts before changing any of this.
+  it('names the www host, because that is what serves', () => {
+    expect(canonicalOrigin('nologo.cloud')).toBe('https://www.nologo.cloud')
+  })
+
+  // The whole point of deriving this rather than storing it per project: a row
+  // cannot be saved in a shape that produces the wrong canonical.
+  it.each([
+    ['tmz.it', 'https://www.tmz.it'],
+    ['www.tmz.it', 'https://www.tmz.it'],
+    ['WWW.TMZ.IT', 'https://www.tmz.it'],
+    ['https://tmz.it', 'https://www.tmz.it'],
+    ['https://www.tmz.it/', 'https://www.tmz.it'],
+    ['tmz.it.', 'https://www.tmz.it'],
+    ['  tmz.it  ', 'https://www.tmz.it'],
+    ['tmz.it:443', 'https://www.tmz.it'],
+  ])('normalises %s to %s', (stored, expected) => {
+    expect(canonicalOrigin(stored)).toBe(expected)
+  })
+
+  it('never doubles the prefix', () => {
+    expect(canonicalOrigin(canonicalOrigin('tmz.it'))).toBe('https://www.tmz.it')
   })
 
   it('is null when the project has no custom domain yet', () => {
@@ -16,7 +40,7 @@ describe('canonicalOrigin', () => {
   })
 
   it('tolerates a trailing slash in the stored value', () => {
-    expect(canonicalOrigin('nologo.cloud/')).toBe('https://nologo.cloud')
+    expect(canonicalOrigin('nologo.cloud/')).toBe('https://www.nologo.cloud')
   })
 })
 

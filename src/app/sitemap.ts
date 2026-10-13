@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next'
 import { headers } from 'next/headers'
 import { isProduction } from '@/lib/deployment'
 import { isStagingHost } from '@/lib/seo/indexability'
-import { canonicalUrl } from '@/lib/seo/canonical'
+import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
 import { normalizeHost } from '@/lib/tenancy/host-scope'
 import { withImages } from '@/lib/seo/sitemap-images'
 import { HAS_NEWS_INDEX_PROJECTION, newsIndexSitemapEntries } from '@/lib/seo/sitemap-news'
@@ -220,7 +220,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
       const locales = supportedLocales && supportedLocales.length > 0 ? supportedLocales : ['en']
       const primaryLocale = defaultLocale ?? locales[0]
-      const tenantBase = `https://${customDomain}`
+      // Built by canonicalOrigin, NOT interpolated here: the sitemap must name
+      // the exact URL the canonical tag names, or the two disagree about which
+      // address is the page. That helper also applies the platform's www
+      // convention, so this stays correct without the sitemap knowing it.
+      const tenantBase = canonicalOrigin(customDomain)
+      if (!tenantBase) continue
 
       // Tenant homepage — one URL per locale.
       // No project segment: see @/lib/seo/canonical. `/en/livener` and `/en`
