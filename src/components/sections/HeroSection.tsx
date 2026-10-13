@@ -7,7 +7,7 @@
 // modules this file pulls in (SlideUp, @/lib/sanity/image) were already in the
 // client bundle through those sections, so nothing new is shipped to it.
 
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import type { HeroSection, DesignSystem } from '@/lib/sanity/types'
 import { getSurfaceStyles } from '@/lib/sanity/surfaces'
@@ -520,28 +520,42 @@ export function HeroSection({ section, surface, designSystem }: Props) {
             style={{ color: textPrimary, fontFamily: 'var(--font-heading)', fontSize: 'var(--font-size-h1, var(--fs-h1))', fontWeight: 'var(--font-weight-h1, 600)', lineHeight: 'var(--line-height-h1, 1.1)', letterSpacing: 'var(--letter-spacing-h1, -0.025em)' }}
           >
             {headlineLines.length > 1
-              ? headlineLines.map((line, i) =>
-                  heroVariant === 'display' ? (
-                    // Each line is its own motion element so it can arrive on
-                    // its own beat. In 'standard' they stay one block, which is
-                    // byte-identical to what shipped before this variant.
-                    <SlideUp
-                      key={i}
-                      duration={duration}
-                      ease={ease}
-                      delay={displayLineDelay(i, d1)}
-                      className="block"
-                    >
+              ? headlineLines.map((line, i) => (
+                  // ── The explicit {' '} after each line is load-bearing ──────
+                  // A multi-line headline renders one BLOCK per line, and JSX
+                  // strips the whitespace between sibling elements. Without a
+                  // separator the h1's textContent is a single run-together
+                  // token: tmz.it's "Thomas / Marco / Zimmermann" was read by
+                  // every crawler, screen reader and answer engine as
+                  // "ThomasMarcoZimmermann" — the strongest on-page signal on
+                  // the site, destroyed by absent whitespace.
+                  //
+                  // A whitespace-only text node BETWEEN block-level siblings is
+                  // not rendered (the block formatting context drops it), so
+                  // this changes the extracted text and nothing on screen.
+                  <Fragment key={i}>
+                    {heroVariant === 'display' ? (
+                      // Each line is its own motion element so it can arrive on
+                      // its own beat. In 'standard' they stay one block, which is
+                      // byte-identical to what shipped before this variant.
+                      <SlideUp
+                        duration={duration}
+                        ease={ease}
+                        delay={displayLineDelay(i, d1)}
+                        className="block"
+                      >
+                        <span className="block">
+                          {accentsLine(headlineAccent, i, accentLineIndex) ? renderHeadline(line, headlineAccent) : line}
+                        </span>
+                      </SlideUp>
+                    ) : (
                       <span className="block">
                         {accentsLine(headlineAccent, i, accentLineIndex) ? renderHeadline(line, headlineAccent) : line}
                       </span>
-                    </SlideUp>
-                  ) : (
-                    <span key={i} className="block">
-                      {accentsLine(headlineAccent, i, accentLineIndex) ? renderHeadline(line, headlineAccent) : line}
-                    </span>
-                  ),
-                )
+                    )}
+                    {i < headlineLines.length - 1 ? ' ' : ''}
+                  </Fragment>
+                ))
               : renderHeadline(headline, headlineAccent)}
           </h1>
         </SlideUp>
