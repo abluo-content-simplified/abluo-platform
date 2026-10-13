@@ -81,11 +81,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       siteName: config?.siteName ?? tenantId,
       locale: ogLocale(locale),
       type: 'website',
-      images: (() => {
+      // ── `images` must be ABSENT, not undefined, when nothing is authored ──
+      // The generated card (./opengraph-image.tsx) is applied by Next only
+      // when this metadata object has no OWN `images` property:
+      //
+      //   if (openGraph && !source?.openGraph?.hasOwnProperty('images')) { … }
+      //
+      // `hasOwnProperty`, not a truthiness check. Returning `undefined` from a
+      // ternary here still CREATES the key, which silently disables the
+      // generated card on every site. Hence the spread: the key exists only
+      // when there is a real image behind it.
+      ...(() => {
         const url =
           pageOgImage ??
           (config?.openGraphImage?.asset ? ogImageUrl(config.openGraphImage as never) : undefined)
-        return url ? [{ url, width: 1200, height: 630 }] : undefined
+        return url ? { images: [{ url, width: 1200, height: 630 }] } : {}
       })(),
     },
   }
