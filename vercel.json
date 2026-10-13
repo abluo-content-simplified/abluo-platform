@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/analytics",
       "schedule": "30 4 * * *"
+    },
+    {
+      "path": "/api/cron/content-activity",
+      "schedule": "15 5 * * *"
     }
   ]
 }

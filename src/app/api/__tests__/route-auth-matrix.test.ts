@@ -900,6 +900,7 @@ describe('cron / webhook routes require their shared secret', () => {
     { name: 'GET /api/cron/keep-alive', run: async (h = {}) => (await import('@/app/api/cron/keep-alive/route')).GET(req('/api/cron/keep-alive', { headers: h })) },
     { name: 'GET /api/cron/form-events-sweep', run: async (h = {}) => (await import('@/app/api/cron/form-events-sweep/route')).GET(req('/api/cron/form-events-sweep', { headers: h })) },
     { name: 'GET /api/cron/analytics', run: async (h = {}) => (await import('@/app/api/cron/analytics/route')).GET(req('/api/cron/analytics', { headers: h })) },
+    { name: 'GET /api/cron/content-activity', run: async (h = {}) => (await import('@/app/api/cron/content-activity/route')).GET(req('/api/cron/content-activity', { headers: h })) },
   ]
   for (const c of cases) {
     it(`${c.name}: no / wrong secret → 401, nothing runs; even for an admin session`, async () => {
@@ -947,6 +948,7 @@ const CLASSIFIED: Record<string, 'admin' | 'tenant' | 'machine' | 'public-read' 
   'projects/[projectId]/invite': 'tenant',
   'cron/keep-alive': 'machine',
   'cron/form-events-sweep': 'machine',
+  'cron/content-activity': 'machine', // CRON_SECRET bearer (ADR-032 D9 3b)
   'cron/analytics': 'machine',
   'webhooks/form-events': 'machine',
   // ADR-031: partner apps authenticate with client id + secret (src/lib/connections; own suites).
@@ -954,6 +956,7 @@ const CLASSIFIED: Record<string, 'admin' | 'tenant' | 'machine' | 'public-read' 
   'oauth/revoke': 'machine',
   'v1/events': 'machine', // partner bearer token (src/lib/connections/api)
   'webhooks/sanity-removals': 'machine', // Sanity webhook signature
+  'webhooks/sanity-content-activity': 'machine', // Sanity webhook signature (ADR-032 D9 3b)
   'v1/openapi.json': 'public-read', // the public API description, no data
   'auth/me': 'public-read', // returns only the caller's own role, or null
   version: 'public-read',

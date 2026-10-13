@@ -201,3 +201,9 @@ A daily job reads the last 26 hours of Sanity transactions for lifecycle types a
 
 `actor_id` is nulled as soon as the user account is deleted; `project_id` is nulled (never cascaded) when a project is deleted. Both periods stay provisional until the privacy notice / DPA review; the 3b job enforces whatever is then confirmed.
 
+
+### A6 — Operations (slice 3b)
+- **Webhook** `POST /api/webhooks/sanity-content-activity` — registered in sanity.io/manage → API → Webhooks, dataset `production`, trigger on create/update/delete, drafts off, API version `v2025-02-19`, HTTP POST, secret = `SANITY_CONTENT_ACTIVITY_WEBHOOK_SECRET`. Filter and projection are `ACTIVITY_WEBHOOK_FILTER` / `ACTIVITY_WEBHOOK_PROJECTION` in `src/lib/lifecycle/studio-activity.ts` (tests evaluate both with groq-js in delta mode). dev and production may both be registered: they share the dataset and the log is idempotent per transaction.
+- **Daily job** `GET /api/cron/content-activity` (vercel.json, 05:15 UTC, `CRON_SECRET`): reconciliation of the last 26 h (settled 1 h; at most 1000 transactions per run, reported when capped), then the retention purge.
+- **Monitoring**: admin Home → "Needs your attention" → "Activity needs a look" per project (late, unattributed or failed records in the last 7 days); runtime logs tagged `[content-audit]`.
+- **Identity of the dashboard token**: resolved from Sanity (`/users/me`) once per process; `SANITY_DASHBOARD_ACTOR_ID` overrides it.

@@ -2301,6 +2301,11 @@
           "detail": "Nessuno dal lato del cliente può ancora gestire questo sito.",
           "action": "Apri progetto"
         },
+        "activityIssues": {
+          "title": "Attività da controllare · {project}",
+          "detail": "Ultimi {days} giorni: {reconciled} registrate in ritardo, {unattributed} senza autore noto, {failed} azioni non riuscite",
+          "action": "Apri progetto"
+        },
         "requestsWaiting": {
           "title": "{count, plural, one {# richiesta di contatto} other {# richieste di contatto}} in attesa · {project}",
           "detail": "{days, plural, =0 {Senza risposta da oltre 2 giorni} one {La più vecchia attende da # giorno} other {La più vecchia attende da # giorni}}",

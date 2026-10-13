@@ -2301,6 +2301,11 @@
           "detail": "Nobody on the client’s side can manage this site yet.",
           "action": "Open project"
         },
+        "activityIssues": {
+          "title": "Activity needs a look · {project}",
+          "detail": "Last {days} days: {reconciled} recorded late, {unattributed} without a known author, {failed} failed actions",
+          "action": "Open project"
+        },
         "requestsWaiting": {
           "title": "{count, plural, one {# contact request} other {# contact requests}} waiting · {project}",
           "detail": "{days, plural, =0 {Unanswered for over 2 days} one {The oldest has waited # day} other {The oldest has waited # days}}",

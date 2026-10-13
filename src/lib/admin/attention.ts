@@ -9,7 +9,7 @@
  */
 import type { AttentionSeverity } from '@/lib/client/attention'
 
-export type AdminAttentionRuleId = 'noOwner' | 'requestsWaiting' | 'invitationExpired' | 'invitationExpiring' | 'longPreview'
+export type AdminAttentionRuleId = 'noOwner' | 'activityIssues' | 'requestsWaiting' | 'invitationExpired' | 'invitationExpiring' | 'longPreview'
 
 export type AdminAttentionItem = {
   id: string
@@ -38,10 +38,11 @@ export const REQUEST_WAITING_HOURS = 48
 /** Rule priority inside a severity (lower first). */
 const RULE_ORDER: Record<AdminAttentionRuleId, number> = {
   noOwner: 0,
-  requestsWaiting: 1,
-  invitationExpired: 2,
-  invitationExpiring: 3,
-  longPreview: 4,
+  activityIssues: 1,
+  requestsWaiting: 2,
+  invitationExpired: 3,
+  invitationExpiring: 4,
+  longPreview: 5,
 }
 
 const keys = (rule: AdminAttentionRuleId) => ({
@@ -170,6 +171,47 @@ export function requestsWaitingRule(
   return out
 }
 
+/** How far back Activity problems stay on the admin Home. */
+export const ACTIVITY_ISSUE_DAYS = 7
+
+export type AttentionActivityIssue = { projectId: string; kind: 'unattributed' | 'reconciled' | 'failed'; occurredAt: string }
+
+/**
+ * ADR-032 D9 amendment A4 — Activity records that needed attention in the last
+ * ACTIVITY_ISSUE_DAYS: changes recorded late by the daily reconciliation,
+ * changes nobody could be attributed to, and dashboard actions that failed.
+ * One item per project; nothing here is ever shown to clients.
+ */
+export function activityIssuesRule(
+  issues: readonly AttentionActivityIssue[],
+  projects: readonly Pick<AttentionProject, 'id' | 'slug' | 'name'>[],
+  now = Date.now(),
+): AdminAttentionItem[] {
+  const byId = new Map(projects.map((p) => [p.id, p]))
+  const per = new Map<string, { unattributed: number; reconciled: number; failed: number }>()
+  for (const i of issues) {
+    const at = Date.parse(i.occurredAt)
+    if (Number.isNaN(at) || now - at > ACTIVITY_ISSUE_DAYS * DAY_MS) continue
+    const c = per.get(i.projectId) ?? { unattributed: 0, reconciled: 0, failed: 0 }
+    c[i.kind]++
+    per.set(i.projectId, c)
+  }
+  const out: AdminAttentionItem[] = []
+  for (const [projectId, c] of per) {
+    const p = byId.get(projectId)
+    if (!p) continue
+    out.push({
+      id: `activityIssues:${projectId}`,
+      rule: 'activityIssues',
+      severity: 'warn',
+      ...keys('activityIssues'),
+      params: { project: p.name, unattributed: c.unattributed, reconciled: c.reconciled, failed: c.failed, days: ACTIVITY_ISSUE_DAYS },
+      href: adminProjectHref(p.slug),
+    })
+  }
+  return out
+}
+
 /** warn before info, then rule priority, then the id (stable). */
 export function sortAdminAttention(items: readonly AdminAttentionItem[]): AdminAttentionItem[] {
   return [...items].sort((a, b) => {
@@ -181,11 +223,17 @@ export function sortAdminAttention(items: readonly AdminAttentionItem[]): AdminA
 
 /** Every rule at once, sorted. */
 export function buildAdminAttention(
-  input: { projects: readonly AttentionProject[]; invitations: readonly AttentionInvitation[] | null; requests: readonly AttentionRequest[] | null },
+  input: {
+    projects: readonly AttentionProject[]
+    invitations: readonly AttentionInvitation[] | null
+    requests: readonly AttentionRequest[] | null
+    activityIssues?: readonly AttentionActivityIssue[] | null
+  },
   now = Date.now(),
 ): AdminAttentionItem[] {
   return sortAdminAttention([
     ...noOwnerRule(input.projects),
+    ...(input.activityIssues ? activityIssuesRule(input.activityIssues, input.projects, now) : []),
     ...(input.requests ? requestsWaitingRule(input.requests, input.projects, now) : []),
     ...(input.invitations ? invitationRules(input.invitations, now) : []),
     ...longPreviewRule(input.projects, now),

@@ -56,6 +56,8 @@ export async function readContentActivity(
       .eq('content_type', q.contentType)
       .in('content_id', q.contentIds)
       .eq('outcome', 'ok')
+      // Unattributed records (amendment A1) are for Abluo admins, never clients.
+      .or('detail->>unattributed.is.null,detail->>unattributed.neq.true')
       .order('occurred_at', { ascending: false })
       .limit(ACTIVITY_LIMIT)
     if (error) throw new Error(`activity: ${error.message}`)

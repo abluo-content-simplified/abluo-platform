@@ -25,7 +25,7 @@ describe('readContentActivity', () => {
     const calls: Array<[string, ...unknown[]]> = []
     const chain = (table: string, data: unknown[]) => {
       const q: Record<string, unknown> = {}
-      for (const m of ['select', 'eq', 'in', 'order', 'limit']) {
+      for (const m of ['select', 'eq', 'in', 'order', 'limit', 'or']) {
         q[m] = (...args: unknown[]) => (calls.push([`${table}.${m}`, ...args]), q)
       }
       q.then = (res: (v: unknown) => unknown) => res({ data, error: null })
@@ -43,6 +43,7 @@ describe('readContentActivity', () => {
       ['content_audit_log.eq', 'content_type', 'post'],
       ['content_audit_log.in', 'content_id', ['post-1']],
       ['content_audit_log.eq', 'outcome', 'ok'],
+      ['content_audit_log.or', 'detail->>unattributed.is.null,detail->>unattributed.neq.true'],
       ['content_audit_log.order', 'occurred_at', { ascending: false }],
       ['profiles.in', 'id', ['u1']],
     ]))

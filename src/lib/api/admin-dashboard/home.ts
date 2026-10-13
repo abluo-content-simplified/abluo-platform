@@ -23,6 +23,8 @@ import {
   type AttentionRequest,
 } from '@/lib/admin/attention'
 import { countProjectsByStatus } from '@/lib/admin/projects-filter'
+import { ACTIVITY_ISSUE_DAYS } from '@/lib/admin/attention'
+import { createSupabaseActivityStore } from '@/lib/lifecycle/activity-store'
 
 /**
  * Safety net on the rows read for the "requests waiting" attention item (only
@@ -56,7 +58,7 @@ export async function getAdminHome(now = Date.now()): Promise<AdminHomeData> {
   await assertAbluoAdmin()
   const admin = createAdminClient()
 
-  const [projects, invites, requests] = await Promise.all([
+  const [projects, invites, requests, activityIssues] = await Promise.all([
     settle('admin.home.projects', async () => {
       const r = await readAllProjects()
       if (r.error) throw new Error(r.error)
@@ -99,6 +101,10 @@ export async function getAdminHome(now = Date.now()): Promise<AdminHomeData> {
         waitingComplete: !waiting.capped,
       }
     }),
+    // ADR-032 D9 A4 — Activity records repaired, unattributed or failed recently.
+    settle('admin.home.activity', () =>
+      createSupabaseActivityStore(admin as never).issuesSince(new Date(now - ACTIVITY_ISSUE_DAYS * 24 * HOUR_MS).toISOString()),
+    ),
   ])
 
   const list = projects?.projects ?? []
@@ -117,7 +123,7 @@ export async function getAdminHome(now = Date.now()): Promise<AdminHomeData> {
     projectCounts: projects ? countProjectsByStatus(list) : null,
     requests: requests?.counts ?? null,
     pendingInvitations: invites ? pendingInvitationCount(invites, now) : null,
-    attention: buildAdminAttention({ projects: attentionProjects, invitations: attentionInvites, requests: requests?.waiting ?? null }, now),
-    attentionComplete: projects !== null && projects.ownersKnown && invites !== null && requests !== null && requests.waitingComplete,
+    attention: buildAdminAttention({ projects: attentionProjects, invitations: attentionInvites, requests: requests?.waiting ?? null, activityIssues }, now),
+    attentionComplete: projects !== null && projects.ownersKnown && invites !== null && requests !== null && requests.waitingComplete && activityIssues !== null,
   }
 }

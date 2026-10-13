@@ -44,6 +44,8 @@ export type ContentAuditEntry = {
   outcome: AuditOutcome
   transactionId: string | null
   detail?: Record<string, unknown>
+  /** When the change happened (Studio / reconciliation: the Sanity transaction time). Default: now. */
+  occurredAt?: string
 }
 
 export type ContentAuditWriter = (entry: ContentAuditEntry) => Promise<void>
@@ -78,6 +80,7 @@ export function toRow(entry: ContentAuditEntry): Record<string, unknown> {
     outcome: entry.outcome,
     sanity_transaction_id: entry.transactionId,
     detail: entry.detail ?? {},
+    ...(entry.occurredAt && { occurred_at: entry.occurredAt }),
   }
 }
 

@@ -2301,6 +2301,11 @@
           "detail": "Auf Kundenseite kann noch niemand diese Website verwalten.",
           "action": "Projekt öffnen"
         },
+        "activityIssues": {
+          "title": "Aktivität prüfen · {project}",
+          "detail": "Letzte {days} Tage: {reconciled} nachträglich erfasst, {unattributed} ohne bekannten Urheber, {failed} fehlgeschlagene Aktionen",
+          "action": "Projekt öffnen"
+        },
         "requestsWaiting": {
           "title": "{count, plural, one {# Kontaktanfrage wartet} other {# Kontaktanfragen warten}} · {project}",
           "detail": "{days, plural, =0 {Seit über 2 Tagen unbeantwortet} one {Die älteste wartet seit # Tag} other {Die älteste wartet seit # Tagen}}",
