@@ -383,3 +383,43 @@ describe('option choice allergens (ADR-033 D-3a)', () => {
     expect(queries.catalogueItemBySlugQuery).toMatch(/allergenDeclaration \{ status, allergens, mayContain, confirmed \}/)
   })
 })
+
+describe('byline and links — ADR-033 Amendment F', () => {
+  it('byline: locale-resolved string or raw object with the default-locale fallback; null when empty', () => {
+    expect(resolveItem(item({ byline: 'Herbert' }), ctx())!.byline).toBe('Herbert')
+    expect(resolveItem(item({ byline: { it: 'Autore', en: 'Author' } }), ctx({ locale: 'de' }))!.byline).toBe('Autore')
+    expect(resolveItem(item({ byline: { en: 'Author' } }), ctx({ locale: 'it', defaultLocale: 'it' }))!.byline).toBe('Author')
+    expect(resolveItem(item({ byline: '   ' }), ctx())!.byline).toBeNull()
+    expect(resolveItem(item(), ctx())!.byline).toBeNull()
+  })
+
+  it('links: keep order, fall back to the default-locale label, drop unsafe or label-less entries', () => {
+    const dto = resolveItem(
+      item({
+        links: [
+          { _key: 'a', label: { it: 'Editore', en: 'Publisher' }, url: ' https://example.com/a ' },
+          { _key: 'b', label: { en: 'English only' }, url: 'http://example.com/b' },
+          { _key: 'c', label: 'Evil', url: 'javascript:alert(1)' },
+          { _key: 'd', label: 'Data', url: 'data:text/html,x' },
+          { _key: 'e', label: 'Mail', url: 'mailto:a@b.it' },
+          { _key: 'f', label: 'Relative', url: '/menu' },
+          { _key: 'g', label: '', url: 'https://example.com/g' },
+          null,
+        ],
+      }),
+      ctx({ locale: 'de', defaultLocale: 'it' }),
+    )!
+    expect(dto.links).toEqual([
+      { key: 'a', label: 'Editore', url: 'https://example.com/a' },
+      { key: 'b', label: 'English only', url: 'http://example.com/b' },
+    ])
+    expect(resolveItem(item(), ctx())!.links).toEqual([])
+  })
+
+  it('the item queries project byline and links with a per-locale label', () => {
+    for (const q of [queries.catalogueItemBySlugQuery, queries.catalogueCollectionBySlugQuery, queries.catalogueCollectionByIdQuery]) {
+      expect(q).toMatch(/"byline": coalesce\(byline\[\$locale\]/)
+      expect(q).toMatch(/links\[\] \{ _key, "label": coalesce\(label\[\$locale\]/)
+    }
+  })
+})

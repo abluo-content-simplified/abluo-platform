@@ -3383,7 +3383,22 @@
         "fields": {
           "name": "Name",
           "description": "Short description",
-          "descriptionHelp": "One or two sentences. Shown with the name."
+          "descriptionHelp": "One or two sentences. Shown with the name.",
+          "byline": "Byline (optional)",
+          "bylineHelp": "A short line under the name — e.g. who made it or when.",
+          "links": {
+            "title": "Links",
+            "helper": "Optional links shown on the item’s page, in this order.",
+            "add": "Add a link",
+            "label": "Label",
+            "labelIn": "Label in {language}",
+            "url": "Web address",
+            "up": "Move link up",
+            "down": "Move link down",
+            "remove": "Remove this link",
+            "badUrl": "Use a full web address starting with http:// or https://.",
+            "incomplete": "A link needs both a label and a web address. It is not saved until both are filled in."
+          }
         },
         "photos": {
           "main": "Main photo",
@@ -3719,7 +3734,8 @@
       "without": "Without {label}",
       "mayContainHeading": "May contain",
       "allergensNoneDeclared": "Allergen information reviewed: no EU-listed allergens declared.",
-      "containsHeading": "Contains"
+      "containsHeading": "Contains",
+      "linksHeading": "Links"
     }
   }
 }

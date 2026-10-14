@@ -18,7 +18,7 @@ import type { CatalogueCollectionDTO, CatalogueItemDTO, CatalogueSectionDTO } fr
 import { imageUrl } from '@/lib/sanity/image'
 import { resolveEasing } from '@/lib/motion/easing'
 import { SlideUp } from '@/components/animation/SlideUp'
-import { AllergensAndDietary, OfferList, OptionsSummary } from './CatalogueItemParts'
+import { AllergensAndDietary, Byline, ItemLinks, OfferList, OptionsSummary } from './CatalogueItemParts'
 import type { CatalogueWebsiteMessages } from './messages'
 
 export type CatalogueDisplay = {
@@ -28,6 +28,8 @@ export type CatalogueDisplay = {
    * "hidden" — wherever a food item is presented publicly, its declaration is.
    */
   allergens: 'compact' | 'expanded'
+  /** Hosts that count as the site's own for the link new-tab rule (siteHostsForProject). */
+  siteHosts?: readonly string[]
 }
 
 export interface CatalogueCollectionViewProps {
@@ -184,11 +186,13 @@ export function CatalogueItemRow({
           )}
           {display.showPrices && <OfferList offers={item.offers} m={messages} className="shrink-0" />}
         </div>
+        <Byline byline={item.byline} />
         {item.description && (
           <p className="mt-1 text-base leading-relaxed" style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
             {item.description}
           </p>
         )}
+        <ItemLinks links={item.links} siteHosts={display.siteHosts} compact />
         <OptionsSummary lists={item.optionLists} m={messages} showPrices={display.showPrices} allergens={display.allergens} />
         <AllergensAndDietary item={item} m={messages} compact={display.allergens === 'compact'} />
       </div>

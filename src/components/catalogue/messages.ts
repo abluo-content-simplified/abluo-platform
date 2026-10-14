@@ -32,6 +32,7 @@ export const CATALOGUE_WEBSITE_KEYS = [
   'chooseAtLeast',
   'chooseBetween',
   'without',
+  'linksHeading',
 ] as const
 
 export type CatalogueWebsiteKey = (typeof CATALOGUE_WEBSITE_KEYS)[number]

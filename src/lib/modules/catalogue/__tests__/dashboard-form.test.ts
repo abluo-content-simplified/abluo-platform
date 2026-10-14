@@ -301,3 +301,31 @@ describe('option choice declarations in the editor (ADR-033 D-3a)', () => {
     expect(isFreeTextAdd({ kind: 'add', itemId: 'x' })).toBe(false)
   })
 })
+
+describe('byline and links form logic — ADR-033 Amendment F', () => {
+  it('itemStateFromDoc reads byline and links', async () => {
+    const { itemStateFromDoc } = await import('../dashboard-form')
+    const st = itemStateFromDoc({ byline: { en: 'x', _type: 'localizedString' }, links: [{ _key: 'a', label: { en: 'L' }, url: 'https://e.com' }, { nokey: 1 }] })
+    expect(st.byline).toEqual({ en: 'x' })
+    expect(st.links).toEqual([{ key: 'a', label: { en: 'L' }, url: 'https://e.com' }])
+    expect(itemStateFromDoc(null).links).toEqual([])
+  })
+
+  it('linkFormIssues: blank rows are ignored, half rows are incomplete, bad schemes are badUrl', async () => {
+    const { linkFormIssues, linksPatch } = await import('../dashboard-form')
+    type LinkForm = import('../dashboard-form').LinkForm
+    const rows: LinkForm[] = [
+      { key: 'blank', label: {}, url: '' },
+      { key: 'noUrl', label: { en: 'L' }, url: '' },
+      { key: 'noLabel', label: { it: 'x' }, url: 'https://e.com' },
+      { key: 'bad', label: { en: 'L' }, url: 'javascript:alert(1)' },
+      { key: 'ok', label: { en: 'L' }, url: ' https://e.com ' },
+    ]
+    expect(linkFormIssues(rows, 'en')).toEqual([
+      { kind: 'incomplete', key: 'noUrl' },
+      { kind: 'incomplete', key: 'noLabel' },
+      { kind: 'badUrl', key: 'bad' },
+    ])
+    expect(linksPatch(rows, 'en')).toEqual([{ _key: 'ok', label: { en: 'L' }, url: 'https://e.com' }])
+  })
+})

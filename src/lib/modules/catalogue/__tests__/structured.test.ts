@@ -21,7 +21,7 @@ const offer = (over: Partial<CatalogueOfferDTO> = {}): CatalogueOfferDTO => ({
 })
 
 const item = (over: Partial<CatalogueItemDTO> = {}): CatalogueItemDTO => ({
-  publicId: 'i1', itemProfile: 'foodOrDrink', name: 'Margherita', description: 'Tomato, mozzarella', images: [],
+  publicId: 'i1', itemProfile: 'foodOrDrink', name: 'Margherita', byline: null, description: 'Tomato, mozzarella', links: [], images: [],
   categories: [], allergenDeclaration: { status: 'noneDeclared', mayContain: [], note: null }, dietary: [], offers: [offer()], hasOffers: true, optionLists: [],
   visibility: 'public', page: null, ...over,
 })
@@ -100,6 +100,20 @@ describe('AC17 item page', () => {
     expect((menu.hasMenuSection as Ld[])[0].hasMenuItem[0]['@type']).toBe('MenuItem')
   })
 
+  it('F-3: a Product page without an offer emits nothing; Service still emitted; collections unaffected', () => {
+    for (const itemProfile of ['foodOrDrink', 'product'] as const) {
+      expect(catalogueItemJsonLd(pageItem({ itemProfile, offers: [], hasOffers: false }), ctx)).toBeNull()
+    }
+    const svc = catalogueItemJsonLd(pageItem({ itemProfile: 'service', offers: [], hasOffers: false }), ctx)!
+    expect(svc['@type']).toBe('Service')
+    expect(svc).not.toHaveProperty('offers')
+    const bare = item({ itemProfile: 'product', offers: [], hasOffers: false })
+    const list = catalogueCollectionJsonLd(collection({ collectionType: 'list', hasOffers: false, sections: [section('s', [bare])] }), ctx)!
+    expect(list['@type']).toBe('ItemList')
+    const menu = catalogueCollectionJsonLd(collection({ sections: [section('s', [bare])] }), ctx)!
+    expect((menu.hasMenuSection as Ld[])[0].hasMenuItem[0]['@type']).toBe('MenuItem')
+  })
+
   it('service → Service', () => {
     expect(catalogueItemJsonLd(pageItem({ itemProfile: 'service' }), ctx)!['@type']).toBe('Service')
   })
@@ -125,7 +139,7 @@ describe('AC17 item page', () => {
   })
 
   it('omits offers when none, includes image/description when present', () => {
-    const ld = catalogueItemJsonLd(pageItem({ offers: [], hasOffers: false, description: null }), ctx)!
+    const ld = catalogueItemJsonLd(pageItem({ itemProfile: 'service', offers: [], hasOffers: false, description: null }), ctx)!
     expect(ld).not.toHaveProperty('offers')
     expect(ld).not.toHaveProperty('description')
   })

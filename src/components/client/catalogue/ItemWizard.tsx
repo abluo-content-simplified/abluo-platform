@@ -44,13 +44,13 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
   const channels = site.config.channels.map((c) => c.value)
   const optionCounts = useMemo(() => new Map(optionLists.map((l) => [l.id, l.optionCount])), [optionLists])
   const initial: ItemState = useMemo(
-    () => ({ itemProfile: initialItemProfile(site.config.defaultItemProfile), name: {}, description: {}, categories: [], imageIds: [], offers: [], allergenDeclaration: NOT_REVIEWED, dietary: [], options: [], hasPage: false, slug: {}, visibility: 'public' }),
+    () => ({ itemProfile: initialItemProfile(site.config.defaultItemProfile), name: {}, byline: {}, description: {}, links: [], categories: [], imageIds: [], offers: [], allergenDeclaration: NOT_REVIEWED, dietary: [], options: [], hasPage: false, slug: {}, visibility: 'public' }),
     [site.config.defaultItemProfile]
   )
   const profileRef = useRef(initial.itemProfile)
   const createExtra = useCallback(() => (profileRef.current ? { itemProfile: profileRef.current } : {}), [])
   const draft = useCatalogueDraft({ projectSlug, kind: 'item', initialId: '', initialRev: '', hasDraft: false, defaultLocale: d, create: createExtra })
-  const item = useItemState({ initial, initialPhotos: [], channels, optionCounts, update: draft.update })
+  const item = useItemState({ initial, initialPhotos: [], channels, optionCounts, defaultLocale: d, update: draft.update })
   const { s } = item
   const stray = useStrayAddress(item.setSlug)
   const setName = (l: string, v: string) => {
@@ -177,7 +177,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
           <>
             {heading('item-step-name', 'name')}
             <div className="mt-8">
-              <NameFields autoFocus locale={d} name={s.name} description={s.description} onName={setName} onDescription={(l, v) => item.setText('description', l, v)} />
+              <NameFields autoFocus locale={d} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
             </div>
           </>
         ) : step === 'category' ? (
@@ -238,14 +238,14 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
             {heading('item-step-languages', 'languages')}
             <div className="mt-8">
               <StrayAddressNotice state={stray} />
-              <LanguagesField locales={site.locales} defaultLocale={d} name={s.name} description={s.description} onName={setName} onDescription={(l, v) => item.setText('description', l, v)} />
+              <LanguagesField locales={site.locales} defaultLocale={d} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
             </div>
           </>
         ) : step === 'preview' ? (
           <>
             {heading('item-step-preview', 'preview')}
             <div className="mt-8">
-              <ItemPreview name={s.name} description={s.description} photo={item.photos[0]?.thumbUrl ?? null} offers={s.offers} channels={site.config.channels} currency={site.config.currency} declaration={s.itemProfile === 'foodOrDrink' ? s.allergenDeclaration : null} locale={ui} defaultLocale={d} />
+              <ItemPreview name={s.name} byline={s.byline} description={s.description} photo={item.photos[0]?.thumbUrl ?? null} offers={s.offers} channels={site.config.channels} currency={site.config.currency} declaration={s.itemProfile === 'foodOrDrink' ? s.allergenDeclaration : null} locale={ui} defaultLocale={d} />
             </div>
           </>
         ) : step === 'publish' ? (

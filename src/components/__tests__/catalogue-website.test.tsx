@@ -16,6 +16,7 @@ import { hydrateSections } from '@/components/sections/SectionRenderer'
 import { CatalogueListingSection } from '@/components/sections/CatalogueListingSection'
 import type { CatalogueListingSection as Section, PageSection } from '@/lib/sanity/types'
 import type { CatalogueCollectionDTO, CatalogueItemDTO } from '@/lib/modules/catalogue/dto'
+import { Byline, ItemLinks } from '@/components/catalogue/CatalogueItemParts'
 import { getCatalogueWebsiteMessages, optionRuleText, CATALOGUE_WEBSITE_KEYS } from '@/components/catalogue/messages'
 
 const ROOT = resolve(__dirname, '../../..')
@@ -288,5 +289,53 @@ describe('catalogue website messages', () => {
     const m = getCatalogueWebsiteMessages('en')
     expect(optionRuleText(m, 0, null)).toBeNull()
     expect(optionRuleText(m, 1, 1)).not.toBeNull()
+  })
+})
+
+describe('byline and links (ADR-033 Amendment F)', () => {
+  const row = itemRow('Dune', {
+    byline: 'Frank Herbert · 1965',
+    links: [
+      { _key: 'a', label: 'Publisher', url: 'https://example.com/dune' },
+      { _key: 'b', label: 'Bad', url: 'javascript:alert(1)' },
+    ],
+    offers: [],
+  })
+  const col = { ...collectionRow, sections: [{ _key: 's', name: 'Shelf', items: [row] }] }
+
+  it('a card shows the byline under the name and a compact external link in a new tab', async () => {
+    const html = render(await hydrated({}, col))
+    expect(html).toContain('Frank Herbert · 1965')
+    expect(html.indexOf('Dune')).toBeLessThan(html.indexOf('Frank Herbert'))
+    expect(html).toContain('href="https://example.com/dune"')
+    expect(html).toContain('target="_blank"')
+    expect(html).toContain('rel="noopener noreferrer"')
+    expect(html).not.toContain('javascript:')
+    expect(html).not.toContain('Bad')
+  })
+
+  it('no byline and no links render nothing extra', async () => {
+    const html = render(await hydrated({}, { ...collectionRow, sections: [{ _key: 's', name: 'Shelf', items: [itemRow('Plain')] }] }))
+    expect(html).not.toContain('data-byline')
+    expect(html).not.toContain('data-item-links')
+  })
+
+  it('ItemLinks: the site\'s own host stays in the same tab, an external one opens a new tab with rel', () => {
+    const links = [
+      { key: 'own', label: 'Home', url: 'https://www.mysite.it/page' },
+      { key: 'ext', label: 'Elsewhere', url: 'https://other.org/x' },
+    ]
+    const html = renderToStaticMarkup(<ItemLinks links={links} siteHosts={['mysite.it']} compact={false} heading="Links" />)
+    const own = html.slice(html.indexOf('mysite.it'), html.indexOf('Home'))
+    const ext = html.slice(html.indexOf('other.org'), html.indexOf('Elsewhere'))
+    expect(own).not.toContain('target=')
+    expect(ext).toContain('target="_blank"')
+    expect(ext).toContain('rel="noopener noreferrer"')
+    expect(renderToStaticMarkup(<ItemLinks links={[]} compact />)).toBe('')
+  })
+
+  it('Byline renders plain text only when present', () => {
+    expect(renderToStaticMarkup(<Byline byline={null} />)).toBe('')
+    expect(renderToStaticMarkup(<Byline byline="<b>x</b>" />)).toContain('&lt;b&gt;')
   })
 })

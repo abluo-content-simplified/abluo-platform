@@ -7,7 +7,7 @@
 //
 //   collection, collectionType 'menu'  → Menu → hasMenuSection (nested) → hasMenuItem (MenuItem) → offers
 //   collection, collectionType 'list'  → ItemList, or OfferCatalog when any item carries an offer
-//   item's own page                    → Product (foodOrDrink, product) | Service (service), nested Offer(s)
+//   item's own page                    → Product (foodOrDrink, product; only with an Offer — F-3) | Service (service), nested Offer(s)
 //
 // So the same item is a MenuItem inside a menu and a Product on its own page.
 //
@@ -166,6 +166,9 @@ export function catalogueItemJsonLd(item: CatalogueItemPageDTO, ctx: CatalogueJs
   if (!isIndexable(item.visibility) || !admits('structuredData', item.visibility)) return null
   if (!item.name) return null
   const type = ITEM_PAGE_TYPE[item.itemProfile]
+  // F-3: a Product with no offers, review or rating is flagged invalid by search
+  // engines, so an unpriced item page emits no item node. Service needs none.
+  if (type === 'Product' && item.offers.length === 0) return null
   return {
     '@context': SCHEMA,
     '@type': type,

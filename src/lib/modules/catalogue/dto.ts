@@ -167,11 +167,23 @@ export type CatalogueOptionListDTO = {
   options: CatalogueOptionDTO[]
 }
 
+/** F-2 — one external link of an item. `url` has passed the http(s) gate; never an offer. */
+export type CatalogueItemLinkDTO = {
+  key: string
+  /** Request locale, else default locale (editorial text, not an address). */
+  label: string
+  url: string
+}
+
 export type CatalogueItemDTO = {
   publicId: string | null
   itemProfile: CatalogueItemProfile
   name: string
+  /** F-1 — a short plain line under the name (author, producer, practitioner …); null when none. */
+  byline: string | null
   description: string | null
+  /** F-2 — ordered; entries without a label or with an unsafe address are already dropped. */
+  links: CatalogueItemLinkDTO[]
   images: CatalogueImageDTO[]
   categories: CatalogueTermDTO[]
   /**

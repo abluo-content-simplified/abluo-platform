@@ -13,6 +13,7 @@ import { slugifyNestedPath } from '@/lib/sanity/fields/nested-slug'
 import { offerIssues, type Offer, type OfferIssue } from './offers'
 import { ruleIssues, WEEKDAYS, type Weekday } from './availability'
 import { isDescendant, moveSection, readingOrder, removeSection, subtreeOf, type SectionNode } from './sections'
+import { catalogueLinkUrl } from './links'
 import { orderedAllergens, type AllergenDeclarationStatus, type AllergenKey } from './allergens'
 
 /** ADR-033 D-2 — what the ITEM is (not the tenant). */
@@ -510,11 +511,56 @@ export function untranslatedLocales(name: Texts, locales: readonly string[], def
   return locales.filter((l) => l !== defaultLocale && !name[l]?.trim())
 }
 
+// ── Links (Amendment F-2) ─────────────────────────────────────────────────────
+
+/** One row of the links editor: label per language + the typed address. */
+export type LinkForm = { key: string; label: Texts; url: string }
+
+export function linkFormsFromDoc(value: unknown): LinkForm[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter((l) => l && typeof l === 'object' && typeof (l as { _key?: unknown })._key === 'string')
+    .map((l) => {
+      const r = l as { _key: string; label?: unknown; url?: unknown }
+      return { key: r._key, label: textsOf(r.label), url: typeof r.url === 'string' ? r.url : '' }
+    })
+}
+
+/**
+ * What the editor can show about a row before the server speaks. A row needs
+ * BOTH a label (in the main language) and a valid http(s) address; a half-filled
+ * row is "incomplete" (kept on screen, not sent), a bad address is "badUrl".
+ */
+export type LinkIssue = { kind: 'incomplete' | 'badUrl'; key: string }
+
+export function linkFormIssues(links: readonly LinkForm[], defaultLocale: string): LinkIssue[] {
+  const out: LinkIssue[] = []
+  for (const l of links) {
+    const url = l.url.trim()
+    const hasLabel = Boolean(l.label[defaultLocale]?.trim())
+    if (!url && !hasLabel) continue
+    if (url && !catalogueLinkUrl(url)) out.push({ kind: 'badUrl', key: l.key })
+    else if (!url || !hasLabel) out.push({ kind: 'incomplete', key: l.key })
+  }
+  return out
+}
+
+/** The patch: complete rows only, in order. Blank rows are simply not stored. */
+export function linksPatch(links: readonly LinkForm[], defaultLocale: string) {
+  return links
+    .filter((l) => l.label[defaultLocale]?.trim() && catalogueLinkUrl(l.url))
+    .map((l) => ({ _key: l.key, label: l.label, url: l.url.trim() }))
+}
+
 export type ItemState = {
   /** null only in the wizard, before "What are you offering?" is answered. */
   itemProfile: ItemProfile | null
   name: Texts
+  /** F-1 — optional short line under the name. */
+  byline: Texts
   description: Texts
+  /** F-2 — edited in the item editor only (the wizard stays at its step count). */
+  links: LinkForm[]
   categories: string[]
   imageIds: string[]
   offers: OfferForm[]
@@ -531,7 +577,9 @@ export function itemStateFromDoc(doc: Record<string, unknown> | null | undefined
   return {
     itemProfile: isItemProfile(d.itemProfile) ? d.itemProfile : fallbackProfile,
     name: textsOf(d.name),
+    byline: textsOf(d.byline),
     description: textsOf(d.description),
+    links: linkFormsFromDoc(d.links),
     categories: stringsOf(d.categories),
     imageIds: refsOf(d.images),
     offers: offerFormsFromDoc(d.offers),

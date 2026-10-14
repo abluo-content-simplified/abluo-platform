@@ -116,7 +116,9 @@ Every document carries `projectSlug`. Field types follow the Localization Rules 
 | `publicId` | string | ✔ | `publicIdField` pattern from `events/schema.ts` — UUID, read-only, set once (ADR-031 D3) |
 | `itemProfile` | string | ✔ | `foodOrDrink` · `product` · `service` (ADR-033 D-2) — a classification of the item, not of the tenant. Preselected in the wizard from config `defaultItemProfile`, always changeable. Drives form shape and schema.org `@type`, never business branching |
 | `name` | localizedString | ✔ | |
+| `byline` | localizedString | | ADR-033 F-1. A short plain line under the name wherever the item is shown (card, collection page, item page): a book's author and year, a wine's producer, a practitioner. Never parsed, never used for search or structured-data typing. A missing translation falls back like other editorial text (request locale → site default → `en`); not part of the D-7 address rule. Max 160 characters |
 | `description` | localizedText | | |
+| `links` | array of `catalogueItemLink` | | ADR-033 F-2. Ordered, max 12: `{ _key, label: localizedString (required), url: url (required) }`, **http/https only** (no `mailto:`/`tel:`, relative or fragment links in V1). Shown as a list on the item page and compactly on cards. Not offers: no price, `Offer.url` stays out of V1 |
 | `body` | localizedPortableText | | long copy; only rendered on the item's own page |
 | `images` | array of `mediaAssetRef` | | Media Library; crops via `focalObjectPosition()` (ADR-022) |
 | `categories` | array of string | | stable keys from config `categories` |
@@ -347,7 +349,9 @@ are correct.
 |---|---|---|
 | Collection page, `collectionType: menu` | `Menu` → `hasMenuSection` (`MenuSection`, nested) → `hasMenuItem` (`MenuItem`) → `offers` | the collection |
 | Collection page, `collectionType: list` | `ItemList`, or `OfferCatalog` when its items carry offers | the collection |
-| Item's own page | `Product` with a nested `Offer`; `Service` for `itemProfile: service` (`foodOrDrink` and `product` → `Product`; ADR-033 D-2) | `itemProfile` |
+| Item's own page | `Product` with a nested `Offer`; `Service` for `itemProfile: service` (`foodOrDrink` and `product` → `Product`; ADR-033 D-2). **F-3: a `Product` page with no offer emits no item node at all** (a `Product` without `offers`, `review` or `aggregateRating` is flagged invalid); `Service` needs no offer and is still emitted | `itemProfile` |
+
+Collection pages are unaffected by F-3: an `ItemList` of named, linked entries is valid without offers, and a `menu` still emits `MenuItem` entries.
 
 A lookup table, never a conditional on tenant kind. The menu shape is the
 ADR-031 D3 contract vocabulary, so `Menu v1` stays a projection of what the site
@@ -444,7 +448,7 @@ Per `content-wizard-spec.md` — one decision per screen, cards not dropdowns, a
 | # | Question | Saved to | Skippable |
 |---|---|---|---|
 | 1 | What are you offering? (profile cards: food or drink · product · service) | `itemProfile` | preselected from config `defaultItemProfile`, always changeable |
-| 2 | What is it called? | `name[loc]`, `description[loc]` | name required |
+| 2 | What is it called? (name, optional byline — helper "A short line under the name — e.g. who made it or when." — and description) | `name[loc]`, `byline[loc]`, `description[loc]` | name required |
 | 3 | What kind? (category chips) | `categories[]` | yes, if none configured |
 | 4 | Add a photo | `images[0]` | yes |
 | 5 | What does it cost? (one price per channel) | `offers[]` | yes |
@@ -454,6 +458,8 @@ Per `content-wizard-spec.md` — one decision per screen, cards not dropdowns, a
 | 9 | Other languages? | `translationStatus: machine` | only when > 1 locale |
 | 10 | Here's how it will look | — | — |
 | 11 | What now? Publish · Schedule · Keep as draft | `publishedAt` | — |
+
+Links (F-2) are **not** a wizard step, so the step count does not grow: they are edited in the item editor (Content tab) with add / remove / up / down and a label per site language plus an address. A row is saved only when it has a label in the main language and a valid http(s) address; a half-filled row stays on screen with a message.
 
 Defaults never asked: `visibility: public`, currency from config, slug derived from the name per locale and unique per project.
 
@@ -579,6 +585,14 @@ D5. The dependency walk terminates on cycles and includes option lists.
 **Connections readiness (no endpoints)**
 29. `publicId` is set on creation for items and collections, is read-only, and survives edit, unpublish, archive and restore unchanged.
 30. `visibility` defaults to `public` with the same three values and copy as `event.visibility`.
+
+**Byline, links and unpriced pages (ADR-033 Amendment F)**
+F1. An item's `byline` is shown under the name on cards, on the collection page and on the item page; it is plain text (HTML in it is escaped), never parsed, absent when empty, and falls back request locale → site default → `en`. The wizard's name step and the item editor edit it; it is on the item allowlist only (a collection patch with `byline` is refused).
+F2. An item's `links` resolve in stored order with the label falling back to the default language; an entry with no label, or whose address is not a safe http(s) URL, is dropped. The dashboard patch refuses `javascript:`, `data:`, `vbscript:`, `mailto:`, `tel:`, relative, protocol-relative and malformed addresses, a missing label, and more than 12 links. Studio validates the scheme too.
+F3. Links render as a list on the item page and compactly on cards. A link to another host opens in a new tab with `rel="noopener noreferrer"` (the `link-target.ts` rule); a link to one of the site's own hosts stays in the same tab. Nothing from a link is embedded server-side.
+F4. The editor adds, removes and reorders links (up/down buttons) with a label per site language; the wizard has no extra step.
+F5. An item page whose profile is `foodOrDrink` or `product` and that has no offer emits no JSON-LD; a `service` page without an offer still emits `Service`; collection pages (`ItemList`, `Menu`) are unchanged.
+F6. No hardcoded user-facing string was added: dashboard text lives under `catalogue.dashboard.item.fields.*`, website text under `catalogue.website.*`, in en, it and de.
 
 ---
 

@@ -1,6 +1,7 @@
 import { defineType, defineField, defineArrayMember } from 'sanity'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField, BACKGROUND_SURFACE_OPTIONS } from '@/lib/sanity/fields/shared'
 import { PUBLISHING_GROUP, publishingStatusField, publishOnField, unpublishOnField, archivedFields } from '@/lib/sanity/fields/publishing'
+import { linkUrlIssue } from './links'
 import { ALLERGENS, allergenDeclarationIssues, describeDeclarationIssue, optionDeclarationIssues, unreviewedChoices, unknownAllergenKeys } from './allergens'
 
 // ── Catalogue module — Sanity schema types ────────────────────────────────────
@@ -549,6 +550,13 @@ export const catalogueItem = defineType({
       group: 'content',
       validation: (Rule) => Rule.required(),
     }),
+    defineField({
+      name: 'byline',
+      title: 'Byline',
+      type: 'localizedString',
+      group: 'content',
+      description: 'A short line under the name, e.g. who made it or when. Plain text.',
+    }),
     defineField({ name: 'description', title: 'Short description', type: 'localizedText', group: 'content' }),
     defineField({
       name: 'body',
@@ -570,6 +578,15 @@ export const catalogueItem = defineType({
         }),
       ],
       description: 'From the Media Library. The first image is used in listings.',
+    }),
+    defineField({
+      name: 'links',
+      title: 'Links',
+      type: 'array',
+      group: 'content',
+      of: [defineArrayMember({ type: 'catalogueItemLink' })],
+      description: 'Optional links shown on the item’s page, in this order. Not prices.',
+      validation: (Rule) => Rule.max(12),
     }),
     defineField({
       name: 'categories',
@@ -939,6 +956,28 @@ export const catalogueListingSection = defineType({
   },
 })
 
+// ADR-033 Amendment F-2 — one link on an item: a label per language and an
+// http(s) address. Not an offer; carries no price.
+export const catalogueItemLink = defineType({
+  name: 'catalogueItemLink',
+  title: 'Link',
+  type: 'object',
+  fields: [
+    defineField({ name: 'label', title: 'Label', type: 'localizedString', validation: (Rule) => Rule.required() }),
+    defineField({
+      name: 'url',
+      title: 'Web address',
+      type: 'url',
+      validation: (Rule) =>
+        Rule.required().custom((value) => linkUrlIssue(value)),
+    }),
+  ],
+  preview: {
+    select: { title: 'label.en', subtitle: 'url' },
+    prepare: ({ title, subtitle }: { title?: string; subtitle?: string }) => ({ title: title || subtitle || 'Link', subtitle }),
+  },
+})
+
 // Document types first, then the objects they embed.
 export const catalogueSchemaTypes = [
   catalogueItem,
@@ -949,6 +988,7 @@ export const catalogueSchemaTypes = [
   catalogueAvailability,
   catalogueOption,
   catalogueItemOptionList,
+  catalogueItemLink,
   catalogueSection,
   catalogueListingSection,
 ]

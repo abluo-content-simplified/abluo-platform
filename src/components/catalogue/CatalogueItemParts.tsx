@@ -6,14 +6,71 @@
 // Shared by the listing section, the collection page and the item page so the
 // three cannot drift apart.
 
+import { opensInNewTab } from '@/lib/links/link-target'
 import type {
   CatalogueItemDTO,
+  CatalogueItemLinkDTO,
   CatalogueOfferDTO,
   CatalogueOptionDTO,
   CatalogueOptionListDTO,
   CatalogueTermDTO,
 } from '@/lib/modules/catalogue/dto'
 import { fillMessage, optionRuleText, type CatalogueWebsiteMessages } from './messages'
+
+/** F-1 — the short line under an item's name. Plain text, never parsed. */
+export function Byline({ byline, className }: { byline: string | null; className?: string }) {
+  if (!byline) return null
+  return (
+    <p className={className ?? 'mt-0.5 text-sm'} style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }} data-byline="">
+      {byline}
+    </p>
+  )
+}
+
+/**
+ * F-2 — an item's links. External links follow the platform new-tab rule
+ * (src/lib/links/link-target.ts: `opensInNewTab`); a new tab always carries
+ * rel="noopener noreferrer". `compact` is the one-line form for cards. Never
+ * embeds anything from the address.
+ */
+export function ItemLinks({
+  links,
+  siteHosts = [],
+  compact,
+  heading,
+}: {
+  links: readonly CatalogueItemLinkDTO[]
+  siteHosts?: readonly string[]
+  compact: boolean
+  /** catalogue.website.linksHeading — labels the list on the item page. */
+  heading?: string
+}) {
+  if (links.length === 0) return null
+  const items = links.map((l) => {
+    const blank = opensInNewTab({ href: l.url }, siteHosts)
+    return (
+      <li key={l.key}>
+        <a
+          href={l.url}
+          className="underline underline-offset-4"
+          style={{ color: compact ? 'var(--color-text-secondary)' : 'var(--color-text-primary)' }}
+          {...(blank ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+        >
+          {l.label}
+        </a>
+      </li>
+    )
+  })
+  return (
+    <ul
+      className={compact ? 'mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm' : 'flex flex-col gap-2 text-base'}
+      aria-label={heading || undefined}
+      data-item-links=""
+    >
+      {items}
+    </ul>
+  )
+}
 
 /** One offer: channel label, amount (or the localized "Free"), note. */
 export function OfferPrice({ offer, m, showChannel }: { offer: CatalogueOfferDTO; m: CatalogueWebsiteMessages; showChannel: boolean }) {

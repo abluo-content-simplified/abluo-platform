@@ -34,6 +34,7 @@ import {
   resolveCatalogueEntry,
 } from '@/lib/modules/catalogue/website'
 import { isDev, isProduction } from '@/lib/deployment'
+import { siteHostsForProject } from '@/lib/links/link-target'
 import { canonicalOrigin, seoAlternates } from '@/lib/seo/canonical'
 import { ogLocale } from '@/lib/seo/og-locale'
 import { safeJsonLd } from '@/lib/seo/safe-json-ld'
@@ -47,7 +48,7 @@ import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
 import { articlePortableTextComponents } from '@/components/portable-text/article-components'
 import { CatalogueCollectionView } from './CatalogueCollectionView'
-import { AllergensAndDietary, OfferList, optionAllergenText } from './CatalogueItemParts'
+import { AllergensAndDietary, Byline, ItemLinks, OfferList, optionAllergenText } from './CatalogueItemParts'
 import { getCatalogueWebsiteMessages, optionRuleText, fillMessage } from './messages'
 
 type FetchForTenant = ReturnType<typeof tenantClient>['fetchForTenant']
@@ -192,6 +193,7 @@ export async function CatalogueRoute(
   const itemHref = (item: Parameters<typeof catalogueItemHref>[0]) => catalogueItemHref(item, siteBase, segment)
   const itemUrl = (item: Parameters<typeof catalogueItemCanonical>[0]) => catalogueItemCanonical(item, origin, locale, segment)
   const messages = getCatalogueWebsiteMessages(locale)
+  const siteHosts = siteHostsForProject(ctx.tenantId)
 
   if (entry.kind === 'item') {
     const item = entry.item
@@ -200,7 +202,7 @@ export async function CatalogueRoute(
     return (
       <SlugMapProvider slugMap={catalogueSlugMap(item.page, segment)}>
         {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />}
-        <CatalogueItemPageView item={item} designSystem={designSystem} messages={messages} showPrices={config.showPricesByDefault} />
+        <CatalogueItemPageView item={item} designSystem={designSystem} messages={messages} showPrices={config.showPricesByDefault} siteHosts={siteHosts} />
       </SlugMapProvider>
     )
   }
@@ -216,6 +218,7 @@ export async function CatalogueRoute(
         designSystem={designSystem}
         messages={messages}
         showPrices={config.showPricesByDefault}
+        siteHosts={siteHosts}
         itemHref={itemHref}
       />
     </SlugMapProvider>
@@ -252,12 +255,14 @@ function CatalogueCollectionPageView({
   designSystem,
   messages,
   showPrices,
+  siteHosts,
   itemHref,
 }: {
   collection: CatalogueCollectionDTO
   designSystem: DesignSystem | null
   messages: ReturnType<typeof getCatalogueWebsiteMessages>
   showPrices: boolean
+  siteHosts: readonly string[]
   itemHref: (item: Parameters<typeof catalogueItemHref>[0]) => string | null
 }) {
   const { duration, ease } = motionOf(designSystem)
@@ -274,7 +279,7 @@ function CatalogueCollectionPageView({
         </SlideUp>
         <CatalogueCollectionView
           collection={collection}
-          display={{ showPrices, allergens: 'compact' }}
+          display={{ showPrices, allergens: 'compact', siteHosts }}
           messages={messages}
           designSystem={designSystem}
           itemHref={itemHref}
@@ -290,11 +295,13 @@ function CatalogueItemPageView({
   designSystem,
   messages: m,
   showPrices,
+  siteHosts,
 }: {
   item: CatalogueItemPageDTO
   designSystem: DesignSystem | null
   messages: ReturnType<typeof getCatalogueWebsiteMessages>
   showPrices: boolean
+  siteHosts: readonly string[]
 }) {
   const { duration, ease } = motionOf(designSystem)
   const hero = item.images[0]
@@ -320,7 +327,10 @@ function CatalogueItemPageView({
 
         <SlideUp duration={duration} ease={ease} delay={0.05}>
           <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-            <h1 style={H1_STYLE}>{item.name}</h1>
+            <div>
+              <h1 style={H1_STYLE}>{item.name}</h1>
+              <Byline byline={item.byline} className="mt-2 text-lg" />
+            </div>
             {showPrices && item.offers.length > 0 && (
               <div className="sm:pt-3">
                 <span className="sr-only">{m.pricesHeading}</span>
@@ -334,6 +344,12 @@ function CatalogueItemPageView({
             </p>
           )}
         </SlideUp>
+
+        {item.links.length > 0 && (
+          <SlideUp duration={duration} ease={ease} delay={0.08} className="mt-8">
+            <ItemLinks links={item.links} siteHosts={siteHosts} compact={false} heading={m.linksHeading} />
+          </SlideUp>
+        )}
 
         {item.body && (
           <SlideUp duration={duration} ease={ease} delay={0.1} className="mt-10">

@@ -8,6 +8,8 @@ import {
   attachmentsPatch,
   declarationPatch,
   isBlockingAttachmentIssue,
+  linkFormIssues,
+  linksPatch,
   offerFormIssues,
   offerRows,
   offersToDoc,
@@ -15,6 +17,7 @@ import {
   type DeclarationForm,
   type ItemProfile,
   type ItemState,
+  type LinkForm,
   type OfferForm,
   type Visibility,
 } from '@/lib/modules/catalogue/dashboard-form'
@@ -33,12 +36,15 @@ export function useItemState({
   initialPhotos,
   channels,
   optionCounts,
+  defaultLocale,
   update,
 }: {
   initial: ItemState
   initialPhotos: ItemPhoto[]
   channels: readonly string[]
   optionCounts: ReadonlyMap<string, number>
+  /** The main language: a link row is saved once it has a label in it. */
+  defaultLocale: string
   update: (set: PendingSet) => void
 }) {
   const [s, setS] = useState<ItemState>(() => ({ ...initial, offers: offerRows(initial.offers, channels, newKey) }))
@@ -64,10 +70,12 @@ export function useItemState({
       patch({ itemProfile, allergenDeclaration: NOT_REVIEWED }, { itemProfile })
     },
     setDeclaration: (allergenDeclaration: DeclarationForm) => patch({ allergenDeclaration }, { allergenDeclaration: declarationPatch(allergenDeclaration) }),
-    setText: (field: 'name' | 'description', locale: string, value: string) => {
+    setText: (field: 'name' | 'byline' | 'description', locale: string, value: string) => {
       setS((prev) => ({ ...prev, [field]: { ...prev[field], [locale]: value } }))
       update({ [`${field}.${locale}`]: value })
     },
+    /** F-2 — complete rows only are sent (the server refuses an unsafe address anyway); a bad row stays on screen with its message. */
+    setLinks: (links: LinkForm[]) => patch({ links }, linkFormIssues(links, defaultLocale).length === 0 ? { links: linksPatch(links, defaultLocale) } : undefined),
     setCategories: (categories: string[]) => patch({ categories }, { categories }),
     setDietary: (dietary: string[]) => patch({ dietary }, { dietary }),
     setPhotos: (next: ItemPhoto[]) => {

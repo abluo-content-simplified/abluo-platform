@@ -17,6 +17,7 @@
 import { ALLERGEN_DECLARATION_STATUSES, isAllergenKey, orderedAllergens, type AllergenDeclarationStatus } from './allergens'
 import { offerIssues, type Offer } from './offers'
 import { ruleIssues, WEEKDAYS } from './availability'
+import { catalogueLinkUrl, CATALOGUE_LINK_LIMITS } from './links'
 import { treeIssues, type SectionNode } from './sections'
 import { COLLECTION_TYPES, ITEM_PROFILES, VISIBILITIES, newOrphans, slugFromName } from './dashboard-form'
 import type { Referrer } from '@/lib/lifecycle/service'
@@ -78,6 +79,7 @@ export class CatalogueError extends Error {
 
 export const CATALOGUE_LIMITS = {
   name: 120,
+  byline: 160,
   description: 600,
   optionLabel: 80,
   images: 10,
@@ -127,8 +129,12 @@ export type CleanedPatch = {
 
 const FIELDS: Record<CatalogueKind, { localized: Record<string, { max: number; type: 'localizedString' | 'localizedText' }>; plain: readonly string[] }> = {
   item: {
-    localized: { name: { max: CATALOGUE_LIMITS.name, type: 'localizedString' }, description: { max: CATALOGUE_LIMITS.description, type: 'localizedText' } },
-    plain: ['itemProfile', 'categories', 'images', 'offers', 'allergenDeclaration', 'dietary', 'optionLists', 'hasPage', 'visibility'],
+    localized: {
+      name: { max: CATALOGUE_LIMITS.name, type: 'localizedString' },
+      byline: { max: CATALOGUE_LIMITS.byline, type: 'localizedString' },
+      description: { max: CATALOGUE_LIMITS.description, type: 'localizedText' },
+    },
+    plain: ['itemProfile', 'categories', 'links', 'images', 'offers', 'allergenDeclaration', 'dietary', 'optionLists', 'hasPage', 'visibility'],
   },
   collection: {
     localized: { name: { max: CATALOGUE_LIMITS.name, type: 'localizedString' }, description: { max: CATALOGUE_LIMITS.description, type: 'localizedText' } },
@@ -245,6 +251,24 @@ export function cleanOffers(value: unknown, ctx: Pick<PatchContext, 'channels' |
   if (issues.some((i) => i.kind === 'overlappingOffers')) bad('Two prices for the same channel overlap in time.', 'offers')
   if (issues.length) bad('Check the prices.', 'offers')
   return offers
+}
+
+/**
+ * F-2 — rebuilds `links`: ≤ 12 entries, each with a label in at least one site
+ * language and an http(s) address that passes the platform href gate
+ * (javascript:, data:, mailto:, relative and protocol-relative are refused).
+ */
+export function cleanLinks(value: unknown, ctx: Pick<PatchContext, 'locales' | 'newKey'>): Record<string, unknown>[] {
+  if (!Array.isArray(value) || value.length > CATALOGUE_LINK_LIMITS.links) bad('Too many links.', 'links')
+  const seen = new Set<string>()
+  return (value as Record<string, unknown>[]).map((raw) => {
+    if (!raw || typeof raw !== 'object') bad('Bad link.', 'links')
+    const label = cleanLocalizedObject(raw.label, ctx.locales, CATALOGUE_LINK_LIMITS.label, 'links')
+    if (Object.keys(label).length === 0) bad('A link needs a label.', 'links')
+    const url = catalogueLinkUrl(raw.url)
+    if (!url) bad('A link needs a web address starting with http:// or https://.', 'links')
+    return { _key: keyOr(raw._key, seen, ctx.newKey), _type: 'catalogueItemLink', label: { _type: 'localizedString', ...label }, url }
+  })
 }
 
 /** Rebuilds `optionLists` (attachments): known list ids, min ≥ 0, min ≤ max (max may exceed the list — a warning, D2). */
@@ -417,6 +441,12 @@ export function cleanCatalogueSet(kind: CatalogueKind, input: Record<string, unk
         const v = cleanOffers(value, ctx)
         if (v.length) r.set.offers = v
         else r.unset.push('offers')
+        break
+      }
+      case 'links': {
+        const v = cleanLinks(value, ctx)
+        if (v.length) r.set.links = v
+        else r.unset.push('links')
         break
       }
       case 'optionLists': {

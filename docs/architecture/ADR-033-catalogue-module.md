@@ -853,3 +853,38 @@ Unchanged and restated: deleting a never-published draft that other drafts
 reference is refused, naming and linking them. A future "remove references and
 delete" operation would be explicit.
 
+---
+
+## Amendment F — generic item byline, item links, unpriced item pages (2026-10-15, Tom)
+
+Raised by the first real use (a personal bookshelf on tmz.it). All three are
+generic — nothing in the model knows about books.
+
+### F-1 — `byline`
+
+`catalogueItem.byline`: optional `localizedString`, a short line shown under the
+item's name wherever the item is presented (card, collection page, item page).
+A book's author and year, a wine's producer, a treatment's practitioner. Plain
+text: never parsed, never a structured author, never used for search or
+structured-data typing. Missing translation falls back like other editorial
+text; it is not part of the D-7 localized-address rule.
+
+### F-2 — `links[]`
+
+`catalogueItem.links`: optional ordered array of `{ _key, label: localizedString,
+url: url }` (http/https only, validated; `mailto:`/`tel:` not in V1). Shown on the
+item page and, as a compact link, on cards. External links follow the platform
+new-tab rule in `src/lib/links/link-target.ts`; never server-render an embed from
+them. A link whose label is missing in the request locale falls back to the
+default-locale label (it is editorial text, not a routable address). Links are
+not offers and carry no price; `Offer.url` remains out of V1.
+
+### F-3 — An item page without an offer emits no `Product`
+
+A `Product` with no `offers`, `review` or `aggregateRating` is flagged as
+invalid by search engines. When an item's page has no applicable offer,
+`catalogueItemJsonLd` emits **no item node** (returns null). Collection pages
+are unaffected: an `ItemList` of named, linked entries is valid without offers,
+and a `menu` still emits `MenuItem` entries (B1). `Service` is unaffected — it
+needs no offer to be valid and is still emitted.
+

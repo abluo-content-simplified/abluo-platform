@@ -20,6 +20,7 @@ import type { PortableTextContent, SanityCrop, SanityHotspot, SanityImageAsset }
 import { allergenDeclarationIssues, orderedAllergens } from './allergens'
 import { evaluate, WEEKDAYS, type AvailabilityState, type Weekday } from './availability'
 import { effectiveCurrency, type Offer } from './offers'
+import { catalogueLinkUrl } from './links'
 import { readingOrder } from './sections'
 import { normalise } from './slugs'
 import type {
@@ -30,6 +31,7 @@ import type {
   CatalogueImageDTO,
   CatalogueItemDTO,
   CatalogueItemPageDTO,
+  CatalogueItemLinkDTO,
   AllergenDeclarationDTO,
   CatalogueItemProfile,
   OptionAllergenDeclarationDTO,
@@ -120,7 +122,11 @@ export type RawCatalogueItem = LifecycleFields & {
   visibility?: string | null
   hasPage?: boolean | null
   name?: RawText
+  /** F-1 — locale-resolved by GROQ, or a raw localized object. */
+  byline?: RawText
   description?: RawText
+  /** F-2 — `label` locale-resolved by GROQ (or raw localized); `url` unchecked until resolveLinks. */
+  links?: ({ _key?: string | null; label?: RawText; url?: unknown } | null)[] | null
   slugMap?: RawSlugMap
   categories?: readonly string[] | null
   /** D-3 — as projected: status, allergens, mayContain, confirmed, note (locale-resolved). */
@@ -484,6 +490,21 @@ function optionListsOf(rows: RawCatalogueItem['optionLists'], ctx: CatalogueReso
   return out
 }
 
+// ── Links (Amendment F-2) ─────────────────────────────────────────────────────
+
+/** Stored order kept; an entry with no label in the chain, or an address failing the http(s) gate, is dropped. */
+export function resolveLinks(rows: RawCatalogueItem['links'], ctx: CatalogueResolveContext): CatalogueItemLinkDTO[] {
+  const out: CatalogueItemLinkDTO[] = []
+  for (const [i, r] of (rows ?? []).entries()) {
+    if (!r) continue
+    const url = catalogueLinkUrl(r.url)
+    const label = text(r.label, ctx.locale, ctx.defaultLocale)
+    if (!url || !label) continue
+    out.push({ key: nonEmpty(r._key) ?? `link${i}`, label, url })
+  }
+  return out
+}
+
 // ── Items ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -497,7 +518,9 @@ export function resolveItem(row: RawCatalogueItem | null | undefined, ctx: Catal
     publicId: nonEmpty(row.publicId),
     itemProfile: itemProfileOf(row.itemProfile),
     name: text(row.name, ctx.locale, ctx.defaultLocale) ?? '',
+    byline: text(row.byline, ctx.locale, ctx.defaultLocale),
     description: text(row.description, ctx.locale, ctx.defaultLocale),
+    links: resolveLinks(row.links, ctx),
     images: imagesOf(row.images, ctx),
     categories: pickTerms(row.categories, ctx.config.categories),
     allergenDeclaration: allergenDeclarationOf(row, itemProfileOf(row.itemProfile), ctx),

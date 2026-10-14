@@ -20,7 +20,7 @@ import type { CatalogueAbilities, CatalogueSite, CatalogueSnapshot } from '@/lib
 import type { Referrer } from '@/lib/lifecycle/service'
 import { attachmentIssues, declarationIssues, itemGaps, itemStateFromDoc, type ItemState } from '@/lib/modules/catalogue/dashboard-form'
 import { CAT_INPUT, CAT_PRIMARY, GapBadges, InUseNotice, SegmentTabs, UnpublishDateSheet, textIn, useCatalogueError } from './catalogue-ui'
-import { FieldBlock, FoodInfoField, ItemPreview, LanguagesField, NameFields, OptionsField, PageField, PhotoField, PriceField, ProfileField, TermChips, VisibilityField, type OptionListChoice } from './item-fields'
+import { FieldBlock, FoodInfoField, ItemPreview, LanguagesField, LinksField, NameFields, OptionsField, PageField, PhotoField, PriceField, ProfileField, TermChips, VisibilityField, type OptionListChoice } from './item-fields'
 import { usePublishTogether } from './publish-dependencies'
 import { languageName } from '@/components/client/create/StepHeading'
 import { StrayAddressNotice, focusNameField, useStrayAddress } from './stray-address'
@@ -53,6 +53,7 @@ export function ItemEditor({
 }) {
   const t = useTranslations('catalogue.dashboard.item.editor')
   const tf = useTranslations('catalogue.dashboard.item.wizard')
+  const tfl = useTranslations('catalogue.dashboard.item.fields.links')
   const tl = useTranslations('app.lifecycle')
   const ui = useLocale()
   const router = useRouter()
@@ -65,7 +66,7 @@ export function ItemEditor({
   const archived = snapshot.status.status === 'archived'
   const readOnly = archived || !can.write
   const draft = useCatalogueDraft({ projectSlug, kind: 'item', initialId: snapshot.id, initialRev: snapshot.rev, hasDraft: snapshot.hasDraft, defaultLocale: d })
-  const item = useItemState({ initial, initialPhotos: snapshot.photos.map((p) => ({ assetId: p.assetId, thumbUrl: p.thumbUrl })), channels, optionCounts, update: readOnly ? () => undefined : draft.update })
+  const item = useItemState({ initial, initialPhotos: snapshot.photos.map((p) => ({ assetId: p.assetId, thumbUrl: p.thumbUrl })), channels, optionCounts, defaultLocale: d, update: readOnly ? () => undefined : draft.update })
   const { s } = item
   const stray = useStrayAddress(item.setSlug)
   const setName = (l: string, v: string) => {
@@ -208,13 +209,16 @@ export function ItemEditor({
               <ProfileField value={s.itemProfile} onChange={item.setProfile} />
             </FieldBlock>
             <FieldBlock title={tf('name.title')}>
-              <NameFields locale={d} name={s.name} description={s.description} onName={setName} onDescription={(l, v) => item.setText('description', l, v)} />
+              <NameFields locale={d} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
             </FieldBlock>
             {site.config.categories.length ? (
               <FieldBlock title={tf('category.title')}>
                 <TermChips label={tf('category.title')} terms={site.config.categories} value={s.categories} onChange={item.setCategories} defaultLocale={d} />
               </FieldBlock>
             ) : null}
+            <FieldBlock title={tfl('title')} helper={tfl('helper')}>
+              <LinksField links={s.links} locales={site.locales} defaultLocale={d} onChange={item.setLinks} />
+            </FieldBlock>
             <FieldBlock>
               <VisibilityField value={s.visibility} onChange={item.setVisibility} />
             </FieldBlock>
@@ -241,13 +245,13 @@ export function ItemEditor({
           </FieldBlock>
         ) : tab === 'languages' ? (
           <FieldBlock title={tf('languages.title')}>
-            <LanguagesField locales={site.locales} defaultLocale={d} name={s.name} description={s.description} onName={setName} onDescription={(l, v) => item.setText('description', l, v)} />
+            <LanguagesField locales={site.locales} defaultLocale={d} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
           </FieldBlock>
         ) : (
           <>
             <FieldBlock title={t('preview')}>
               <div className="max-w-md">
-                <ItemPreview name={s.name} description={s.description} photo={item.photos[0]?.thumbUrl ?? null} offers={s.offers} channels={site.config.channels} currency={site.config.currency} declaration={isFood ? s.allergenDeclaration : null} locale={ui} defaultLocale={d} />
+                <ItemPreview name={s.name} byline={s.byline} description={s.description} photo={item.photos[0]?.thumbUrl ?? null} offers={s.offers} channels={site.config.channels} currency={site.config.currency} declaration={isFood ? s.allergenDeclaration : null} locale={ui} defaultLocale={d} />
               </div>
             </FieldBlock>
             {!readOnly && !isLive ? (

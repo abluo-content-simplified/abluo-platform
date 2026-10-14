@@ -231,3 +231,36 @@ describe('"none declared" keeps "may contain" (ADR-033 E-1)', () => {
     expect(out[0].allergenDeclaration).toEqual({ status: 'noneDeclared', confirmed: true, mayContain: ['sesame'] })
   })
 })
+
+describe('byline and links — ADR-033 Amendment F', () => {
+  it('byline is an allowed, trimmed localized string on items only', () => {
+    const r = cleanCatalogueSet('item', { 'byline.en': '  Frank Herbert ', 'byline.it': '' }, ctx())
+    expect(r.set).toEqual({ 'byline.en': 'Frank Herbert' })
+    expect(r.unset).toEqual(['byline.it'])
+    expect(r.setIfMissing.byline).toEqual({ _type: 'localizedString' })
+    expect(code(() => cleanCatalogueSet('collection', { 'byline.en': 'x' }, ctx()))).toBe('invalid_field')
+    expect(code(() => cleanCatalogueSet('item', { 'byline.en': 'x'.repeat(161) }, ctx()))).toBe('invalid_value')
+    expect(code(() => cleanCatalogueSet('item', { 'byline.fr': 'x' }, ctx()))).toBe('invalid_field')
+  })
+
+  it('links are rebuilt: keys kept, type set, url trimmed, order preserved', () => {
+    const r = cleanCatalogueSet('item', { links: [{ _key: 'a', label: { en: ' Buy ' }, url: ' https://example.com/x ' }, { label: { it: 'Sito' }, url: 'http://example.org' }] }, ctx())
+    expect(r.set.links).toEqual([
+      { _key: 'a', _type: 'catalogueItemLink', label: { _type: 'localizedString', en: 'Buy' }, url: 'https://example.com/x' },
+      { _key: 'k' + n, _type: 'catalogueItemLink', label: { _type: 'localizedString', it: 'Sito' }, url: 'http://example.org' },
+    ])
+    expect(cleanCatalogueSet('item', { links: [] }, ctx()).unset).toEqual(['links'])
+  })
+
+  it('refuses unsafe schemes, relative and malformed addresses, a missing label, too many links, and links on collections', () => {
+    const one = (url: unknown, label: unknown = { en: 'L' }) => () => cleanCatalogueSet('item', { links: [{ label, url }] }, ctx())
+    for (const url of ['javascript:alert(1)', 'JaVaScRiPt:alert(1)', 'data:text/html,x', 'vbscript:x', 'mailto:a@b.it', 'tel:+39123456', '/menu', '//evil.com', '#top', 'ftp://example.com', 'https://', 'https://exa mple.com', '', null, 5]) {
+      expect(code(one(url)), String(url)).toBe('invalid_value')
+    }
+    expect(code(one('https://example.com', {}))).toBe('invalid_value')
+    expect(code(one('https://example.com', { fr: 'x' }))).toBe('invalid_value')
+    const many = Array.from({ length: 13 }, () => ({ label: { en: 'L' }, url: 'https://example.com' }))
+    expect(code(() => cleanCatalogueSet('item', { links: many }, ctx()))).toBe('invalid_value')
+    expect(code(() => cleanCatalogueSet('collection', { links: [] }, ctx()))).toBe('invalid_field')
+  })
+})

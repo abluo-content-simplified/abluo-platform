@@ -3383,7 +3383,22 @@
         "fields": {
           "name": "Name",
           "description": "Kurzbeschreibung",
-          "descriptionHelp": "Ein oder zwei Sätze. Erscheint mit dem Namen."
+          "descriptionHelp": "Ein oder zwei Sätze. Erscheint mit dem Namen.",
+          "byline": "Untertitel (optional)",
+          "bylineHelp": "Eine kurze Zeile unter dem Namen – z. B. von wem es stammt oder wann.",
+          "links": {
+            "title": "Links",
+            "helper": "Optionale Links, die auf der Seite des Eintrags in dieser Reihenfolge angezeigt werden.",
+            "add": "Link hinzufügen",
+            "label": "Bezeichnung",
+            "labelIn": "Bezeichnung auf {language}",
+            "url": "Webadresse",
+            "up": "Link nach oben",
+            "down": "Link nach unten",
+            "remove": "Diesen Link entfernen",
+            "badUrl": "Gib eine vollständige Webadresse ein, die mit http:// oder https:// beginnt.",
+            "incomplete": "Ein Link braucht eine Bezeichnung und eine Webadresse. Er wird erst gespeichert, wenn beides ausgefüllt ist."
+          }
         },
         "photos": {
           "main": "Hauptfoto",
@@ -3719,7 +3734,8 @@
       "without": "Ohne {label}",
       "mayContainHeading": "Kann enthalten",
       "allergensNoneDeclared": "Allergenangaben geprüft: keine Allergene der EU-Liste deklariert.",
-      "containsHeading": "Enthält"
+      "containsHeading": "Enthält",
+      "linksHeading": "Links"
     }
   }
 }

@@ -2284,9 +2284,12 @@ const CATALOGUE_ITEM_FIELDS = /* groq */ `
   visibility,
   hasPage,
   "name": ${loc('name')},
+  // ADR-033 Amendment F — a short line under the name; links with a label per locale.
+  "byline": ${loc('byline')},
   "description": ${loc('description')},
   "slugMap": slug,
   categories,
+  links[] { _key, "label": ${loc('label')}, url },
   // ADR-033 D-3 — the explicit declaration; the note is tenant text (locale chain).
   allergenDeclaration { status, allergens, mayContain, confirmed, "note": ${loc('note')} },
   dietary,

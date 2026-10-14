@@ -22,6 +22,7 @@ import { SectionContainer } from '@/components/layout/SectionContainer'
 import { SectionEmptyState } from '@/components/sections/shared/SectionEmptyState'
 import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { CatalogueCollectionView } from '@/components/catalogue/CatalogueCollectionView'
+import { siteHostsForProject } from '@/lib/links/link-target'
 import { getCatalogueWebsiteMessages } from '@/components/catalogue/messages'
 import { catalogueItemHref, collectionHasItems, listingAllergenPresentation, listingShowsPrices } from '@/lib/modules/catalogue/website'
 
@@ -58,6 +59,7 @@ export function CatalogueListingSection({ section, surface, designSystem, locale
   const display = {
     showPrices: listingShowsPrices(section.showPrices, data.showPricesByDefault),
     allergens: listingAllergenPresentation(section.allergenPresentation),
+    siteHosts: siteHostsForProject(tenantSlug),
   }
 
   return (

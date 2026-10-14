@@ -14,6 +14,7 @@ import { checkCatalogueSlugsAction } from '@/app/[locale]/(client)/[tenant]/cata
 import { ALLERGENS, type AllergenKey } from '@/lib/modules/catalogue/allergens'
 import { WEEKDAYS, type Weekday } from '@/lib/modules/catalogue/availability'
 import { formatPrice } from '@/lib/modules/catalogue/resolve'
+import { CATALOGUE_LINK_LIMITS } from '@/lib/modules/catalogue/links'
 import type { CatalogueTerm } from '@/lib/api/catalogue-drafts'
 import type { NamedSlugConflict } from '@/lib/modules/catalogue/validation'
 import {
@@ -22,12 +23,15 @@ import {
   declarationIssues,
   offerFormIssues,
   parsePrice,
+  linkFormIssues,
+  moveIndex,
   slugFromName,
   slugPreview,
   wrapsMidnight,
   type AttachmentForm,
   type DeclarationForm,
   type ItemProfile,
+  type LinkForm,
   type OfferForm,
   type Texts,
   type Visibility,
@@ -67,7 +71,7 @@ export function ProfileField({ value, onChange }: { value: ItemProfile | null; o
 
 // ── Name ─────────────────────────────────────────────────────────────────────
 
-export function NameFields({ locale, name, description, onName, onDescription, autoFocus = false }: { locale: string; name: Texts; description: Texts; onName: (l: string, v: string) => void; onDescription: (l: string, v: string) => void; autoFocus?: boolean }) {
+export function NameFields({ locale, name, byline, description, onName, onByline, onDescription, autoFocus = false }: { locale: string; name: Texts; /** Items only (F-1); collections have no byline. */ byline?: Texts; description: Texts; onName: (l: string, v: string) => void; onByline?: (l: string, v: string) => void; onDescription: (l: string, v: string) => void; autoFocus?: boolean }) {
   const t = useTranslations('catalogue.dashboard.item.fields')
   const id = useId()
   return (
@@ -78,6 +82,15 @@ export function NameFields({ locale, name, description, onName, onDescription, a
         </label>
         <input id={`${id}-name`} data-name-locale={locale} data-enter-next autoFocus={autoFocus} maxLength={120} value={name[locale] ?? ''} onChange={(e) => onName(locale, e.target.value)} className={CAT_INPUT} />
       </div>
+      {byline && onByline ? (
+        <div>
+          <label htmlFor={`${id}-byline`} className={CAT_LABEL}>
+            {t('byline')}
+          </label>
+          <input id={`${id}-byline`} data-enter-next maxLength={160} value={byline[locale] ?? ''} onChange={(e) => onByline(locale, e.target.value)} className={CAT_INPUT} />
+          <p className="mt-1.5 text-sm text-muted-foreground">{t('bylineHelp')}</p>
+        </div>
+      ) : null}
       <div>
         <label htmlFor={`${id}-desc`} className={CAT_LABEL}>
           {t('description')}
@@ -85,6 +98,70 @@ export function NameFields({ locale, name, description, onName, onDescription, a
         <textarea id={`${id}-desc`} maxLength={600} value={description[locale] ?? ''} onChange={(e) => onDescription(locale, e.target.value)} className={CAT_TEXTAREA} />
         <p className="mt-1.5 text-sm text-muted-foreground">{t('descriptionHelp')}</p>
       </div>
+    </div>
+  )
+}
+
+// ── Links (Amendment F-2) — add, remove, reorder; label per language + address ─
+
+export function LinksField({ links, locales, defaultLocale, onChange }: { links: LinkForm[]; locales: readonly string[]; defaultLocale: string; onChange: (next: LinkForm[]) => void }) {
+  const t = useTranslations('catalogue.dashboard.item.fields.links')
+  const ui = useLocale()
+  const id = useId()
+  const issues = linkFormIssues(links, defaultLocale)
+  const issueOf = (key: string) => issues.find((i) => i.key === key)?.kind
+  const setLink = (key: string, next: Partial<LinkForm>) => onChange(links.map((l) => (l.key === key ? { ...l, ...next } : l)))
+  return (
+    <div className="space-y-4">
+      {links.length ? (
+        <ul className="space-y-4">
+          {links.map((l, n) => {
+            const issue = issueOf(l.key)
+            return (
+              <li key={l.key} className="rounded-2xl border border-border p-4" data-link={l.key}>
+                <div className="flex items-start gap-1">
+                  <div className="min-w-0 flex-1 space-y-3">
+                    {locales.map((loc) => (
+                      <div key={loc}>
+                        <label htmlFor={`${id}-${l.key}-${loc}`} className="text-sm text-foreground">
+                          {locales.length > 1 ? t('labelIn', { language: languageName(loc, ui) }) : t('label')}
+                        </label>
+                        <input id={`${id}-${l.key}-${loc}`} maxLength={80} value={l.label[loc] ?? ''} onChange={(e) => setLink(l.key, { label: { ...l.label, [loc]: e.target.value } })} className={CAT_INPUT} />
+                      </div>
+                    ))}
+                    <div>
+                      <label htmlFor={`${id}-${l.key}-url`} className="text-sm text-foreground">
+                        {t('url')}
+                      </label>
+                      <input id={`${id}-${l.key}-url`} type="url" inputMode="url" autoComplete="off" placeholder="https://" maxLength={2048} value={l.url} onChange={(e) => setLink(l.key, { url: e.target.value })} aria-invalid={issue === 'badUrl' || undefined} className={CAT_INPUT} />
+                      {issue ? (
+                        <p role="alert" className="mt-1.5 text-sm text-foreground">
+                          {t(issue)}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <button type="button" aria-label={t('up')} disabled={n === 0} onClick={() => onChange(moveIndex(links, n, n - 1))} className={CAT_ICON_BUTTON}>
+                    {CAT_ICONS.up}
+                  </button>
+                  <button type="button" aria-label={t('down')} disabled={n === links.length - 1} onClick={() => onChange(moveIndex(links, n, n + 1))} className={CAT_ICON_BUTTON}>
+                    {CAT_ICONS.down}
+                  </button>
+                  <button type="button" aria-label={t('remove')} onClick={() => onChange(links.filter((x) => x.key !== l.key))} className={CAT_ICON_BUTTON}>
+                    {CAT_ICONS.trash}
+                  </button>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
+      {links.length < CATALOGUE_LINK_LIMITS.links ? (
+        <button type="button" onClick={() => onChange([...links, { key: newKey(), label: {}, url: '' }])} className={CAT_BUTTON}>
+          {CAT_ICONS.plus}
+          {t('add')}
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -623,7 +700,7 @@ export function VisibilityField({ value, onChange }: { value: Visibility; onChan
 
 // ── Other languages (write them now, or later) ───────────────────────────────
 
-export function LanguagesField({ locales, defaultLocale, name, description, onName, onDescription }: { locales: readonly string[]; defaultLocale: string; name: Texts; description: Texts; onName: (l: string, v: string) => void; onDescription: (l: string, v: string) => void }) {
+export function LanguagesField({ locales, defaultLocale, name, byline, description, onName, onByline, onDescription }: { locales: readonly string[]; defaultLocale: string; name: Texts; byline?: Texts; description: Texts; onName: (l: string, v: string) => void; onByline?: (l: string, v: string) => void; onDescription: (l: string, v: string) => void }) {
   const t = useTranslations('catalogue.dashboard.item.languages')
   const ui = useLocale()
   const others = locales.filter((l) => l !== defaultLocale)
@@ -638,7 +715,7 @@ export function LanguagesField({ locales, defaultLocale, name, description, onNa
           </div>
           <p className="mt-1 text-sm text-muted-foreground">{t('original', { text: name[defaultLocale] || '—' })}</p>
           <div className="mt-3">
-            <NameFields locale={l} name={name} description={description} onName={onName} onDescription={onDescription} />
+            <NameFields locale={l} name={name} byline={byline} description={description} onName={onName} onByline={onByline} onDescription={onDescription} />
           </div>
         </div>
       ))}
@@ -650,6 +727,7 @@ export function LanguagesField({ locales, defaultLocale, name, description, onNa
 
 export function ItemPreview({
   name,
+  byline,
   description,
   photo,
   offers,
@@ -660,6 +738,7 @@ export function ItemPreview({
   defaultLocale,
 }: {
   name: Texts
+  byline?: Texts
   description: Texts
   photo: string | null
   offers: OfferForm[]
@@ -686,6 +765,7 @@ export function ItemPreview({
           <h3 className="text-xl font-semibold text-foreground">{textIn(name, locale, defaultLocale) || t('untitled')}</h3>
           {priced[0] ? <span className="text-lg font-semibold text-foreground">{formatPrice(parsePrice(priced[0].price)!, currency, locale)}</span> : null}
         </div>
+        {byline && textIn(byline, locale, defaultLocale) ? <p className="text-sm text-muted-foreground">{textIn(byline, locale, defaultLocale)}</p> : null}
         {textIn(description, locale, defaultLocale) ? <p className="text-[0.9375rem] leading-6 text-muted-foreground">{textIn(description, locale, defaultLocale)}</p> : null}
         {priced.length > 1 ? (
           <ul className="space-y-1 pt-1">

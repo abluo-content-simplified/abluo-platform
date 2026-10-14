@@ -1027,6 +1027,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         'catalogueOptionList',
         'catalogueOffer',
         'catalogueItemOptionList',
+        'catalogueItemLink',
         'catalogueOption',
         'catalogueSection',
         'catalogueAvailability',
