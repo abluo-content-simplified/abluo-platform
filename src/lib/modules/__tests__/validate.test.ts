@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { validateRegistry } from '../validate'
 import { MODULE_REGISTRY } from '../registry'
-import type { ModuleManifest } from '../types'
+import type { ModuleManifest, ModuleStarterPreset } from '../types'
 
 // ── Test helper ───────────────────────────────────────────────────────────────
 // Returns a minimal valid ModuleManifest. Every field satisfies all nine rules.
@@ -665,6 +665,49 @@ describe('validateRegistry — Rule 12 (configSchema)', () => {
       { id: 'form', label: 'Form', type: 'reference', description: 'd' },
     ]
     expect(() => validateRegistry([m])).toThrow(/declares no referenceTo targets/)
+  })
+})
+
+// ── Rule 14: starter presets (ADR-033 D-1) ───────────────────────────────────
+
+describe('validateRegistry — Rule 14 (starter presets)', () => {
+  const withPresets = (...presets: ModuleStarterPreset[]) => {
+    const m = makeManifest()
+    m.platformContract.configSchema = [
+      { id: 'seg', label: 'Seg', type: 'string', description: 'd', validation: { regex: '^[a-z]+$', message: 'bad' } },
+      { id: 'mode', label: 'Mode', type: 'select', description: 'd', options: [{ value: 'a', label: 'A' }] },
+      { id: 'title', label: 'Title', type: 'localizedString', description: 'd' },
+      { id: 'list', label: 'List', type: 'localizedStringList', description: 'd' },
+      { id: 'hid', label: 'Hid', type: 'stringList', description: 'd', hidden: true },
+    ]
+    m.platformContract.starterPresets = presets
+    return m
+  }
+  const preset = (config: Record<string, unknown>, id = 'p'): ModuleStarterPreset => ({ id, version: 1, label: 'P', config })
+
+  it('accepts a valid preset', () => {
+    const m = withPresets(
+      preset({ seg: 'menu', mode: 'a', title: { en: 'Menu' }, list: [{ value: 'x', label: { en: 'X' } }] }),
+    )
+    expect(() => validateRegistry([m])).not.toThrow()
+  })
+  it('rejects an unknown key', () => {
+    expect(() => validateRegistry([withPresets(preset({ nope: 1 }))])).toThrow(/"nope" is not a field/)
+  })
+  it('rejects a select value outside the options', () => {
+    expect(() => validateRegistry([withPresets(preset({ mode: 'z' }))])).toThrow(/config\.mode must be one of: a/)
+  })
+  it('rejects a value failing the field regex (segment syntax)', () => {
+    expect(() => validateRegistry([withPresets(preset({ seg: 'Bad Seg' }))])).toThrow(/bad/)
+  })
+  it('rejects a malformed localizedStringList and a wrong type', () => {
+    expect(() => validateRegistry([withPresets(preset({ list: [{ value: 'x', label: 'X' }] }))])).toThrow(/config\.list/)
+    expect(() => validateRegistry([withPresets(preset({ title: 'Menu' }))])).toThrow(/config\.title/)
+  })
+  it('rejects module-written (hidden) fields, bad version and duplicate ids', () => {
+    expect(() => validateRegistry([withPresets(preset({ hid: ['x'] }))])).toThrow(/module-written/)
+    expect(() => validateRegistry([withPresets({ ...preset({ seg: 'a' }), version: 0 })])).toThrow(/version/)
+    expect(() => validateRegistry([withPresets(preset({ seg: 'a' }), preset({ seg: 'b' }))])).toThrow(/more than once/)
   })
 })
 

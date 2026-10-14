@@ -12,6 +12,7 @@
 // rule, the actual invalid value, and a concrete Fix instruction.
 
 import type { ModuleManifest } from './types'
+import { presetDeclarationErrors } from './presets'
 
 // ── Internal error record ─────────────────────────────────────────────────────
 
@@ -117,6 +118,10 @@ function formatErrors(errors: ManifestError[]): string {
  *   13. platformContract.placement surfaces have recognised kinds, and any
  *       siteWide toggleFieldId resolves to a declared boolean config field
  *       (ADR-020).
+ *   14. platformContract.starterPresets (ADR-033 D-1): ids unique within the
+ *       module; every preset's config keys exist in configSchema and each value
+ *       passes that field's own rules (types, select options, localized list
+ *       shape, declared regex).
  *
  * @throws {Error} If any rule is violated. The message lists all violations.
  */
@@ -483,6 +488,31 @@ export function validateRegistry(manifests: ModuleManifest[]): void {
           rule: 12,
           message: `config field "${field.id}" declares a showWhen condition on itself.`,
           fix: `A field cannot control its own visibility — point showWhen.field at a different field.`,
+        })
+      }
+    }
+
+    // ── Rule 14: starter presets validate against configSchema ───────────────
+    // A preset is data an admin never typed, so it must clear the same bar as
+    // data they would: a typo'd key or an option that no longer exists would
+    // otherwise write an invalid config on first enable.
+    const seenPresetIds = new Set<string>()
+    for (const preset of m.platformContract.starterPresets ?? []) {
+      if (seenPresetIds.has(preset.id)) {
+        errors.push({
+          moduleId: mid,
+          rule: 14,
+          message: `starter preset id "${preset.id}" is declared more than once.`,
+          fix: `Give each starter preset a unique id.`,
+        })
+      }
+      seenPresetIds.add(preset.id)
+      for (const problem of presetDeclarationErrors(preset, m.platformContract.configSchema)) {
+        errors.push({
+          moduleId: mid,
+          rule: 14,
+          message: `starter preset "${preset.id}": ${problem}.`,
+          fix: `Make the preset's config valid against this module's configSchema.`,
         })
       }
     }

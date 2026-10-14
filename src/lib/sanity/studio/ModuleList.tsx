@@ -1,10 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useClient } from 'sanity'
 import { MODULE_REGISTRY } from '../../modules'
 import { moduleInstallationTypeNameForId, moduleConfigTypeName } from '../../modules/config-schema'
 import type {
+  AppliedPreset,
   ModuleConfigFieldDef,
   ModuleConfigListEntry,
   ModuleManifest,
@@ -20,6 +21,18 @@ import {
 } from '../../modules/whatsapp/form-sync'
 import { formFromTemplate, uniqueFormId } from '../../modules/forms/template-clone'
 import { deriveTenantSlug } from '../../tenancy/project-scope'
+import {
+  configDataNeeds,
+  loadConfigData,
+  pendingGuards,
+  persistedExtras,
+  presetValidatorErrors,
+  resolveFieldValidator,
+  type ConfigData,
+  type FieldValidationResult,
+  type PendingGuard,
+} from '../../modules/config-validators'
+import { applyPreset, previewPreset } from '../../modules/presets'
 
 /**
  * ModuleList — the Modules pane. ADR-020 Decision 1.
@@ -85,6 +98,7 @@ interface FetchedInstallation {
   enabled?: boolean
   installedAt?: string
   provenance?: 'admin' | 'auto'
+  appliedPreset?: AppliedPreset
   config?: Record<string, unknown>
 }
 
@@ -273,7 +287,7 @@ export function ModuleList({ options }: ModuleListProps) {
       }>(
         `{
           "installations": *[_type == "project" && _id == $projectId][0].moduleInstallations[] {
-            _key, _type, moduleId, version, enabled, installedAt, provenance, config
+            _key, _type, moduleId, version, enabled, installedAt, provenance, appliedPreset, config
           },
           "supportedLocales": *[_type == "siteConfig" && projectSlug == $projectSlug][0].supportedLocales,
           "defaultLocale": *[_type == "siteConfig" && projectSlug == $projectSlug][0].defaultLocale,
@@ -488,10 +502,51 @@ function ModuleDetail({
     }
     return initial
   })
+  // Starter preset chosen for the FIRST enable ('' = no preset, the default).
+  const [presetId, setPresetId] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [savedNotice, setSavedNotice] = useState(false)
+  // Project data the manifest's named validators / change guards need
+  // (config-validators.ts). Preloaded for live feedback, re-fetched on save.
+  const [configData, setConfigData] = useState<ConfigData>({})
+  const [fieldNotices, setFieldNotices] = useState<Record<string, string>>({})
+  // Change guards awaiting the admin's confirmation, and the exact changes
+  // already confirmed (a confirmation only covers the change it was shown for).
+  const [confirmation, setConfirmation] = useState<PendingGuard[] | null>(null)
+  const confirmedRef = useRef<string[]>([])
+
+  useEffect(() => {
+    const keys = configDataNeeds(configSchema, { guards: false })
+    if (!projectSlug || keys.length === 0) return
+    let cancelled = false
+    loadConfigData(client, keys, projectSlug)
+      .then((d) => !cancelled && setConfigData((prev) => ({ ...prev, ...d })))
+      .catch(() => {
+        // Save re-fetches and reports the failure; live feedback just degrades.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [client, configSchema, projectSlug])
+
+  // Starter presets are offered only while the module has never been installed.
+  const presets = useMemo(() => manifest.platformContract.starterPresets ?? [], [manifest])
+  const selectedPreset = presets.find((p) => p.id === presetId)
+  const presetPreview = useMemo(
+    () => (selectedPreset ? previewPreset(selectedPreset, configSchema, values, locales) : []),
+    [selectedPreset, configSchema, values, locales]
+  )
+  const presetClash = useMemo(
+    () =>
+      selectedPreset
+        ? presetValidatorErrors(selectedPreset, configSchema, values, installation?.config, configData, locales)[0]
+            ?.error ?? null
+        : null,
+    [selectedPreset, configSchema, values, installation, configData, locales]
+  )
+  const currencyField = configSchema.find((f) => f.id === 'currency')
 
   const status = statusOf(installation)
   const registryVersion = manifest.version
@@ -524,8 +579,24 @@ function ModuleDetail({
     [configSchema, placementFieldIds, isVisible]
   )
 
+  /** The manifest-named validator for a field (config-validators.ts), if any. */
+  const runValidator = useCallback(
+    (field: ModuleConfigFieldDef, value: unknown, data: ConfigData): FieldValidationResult | null => {
+      const validator = resolveFieldValidator(field.validator)
+      if (!validator) return null
+      return validator.validate({
+        field,
+        value,
+        values: { ...values, [field.id]: value },
+        stored: installation?.config,
+        data,
+      })
+    },
+    [values, installation]
+  )
+
   const validateField = useCallback(
-    (field: ModuleConfigFieldDef, value: unknown): string | null => {
+    (field: ModuleConfigFieldDef, value: unknown, data: ConfigData = configData): string | null => {
       const isEmpty =
         value === undefined ||
         value === null ||
@@ -536,22 +607,57 @@ function ModuleDetail({
       if (field.validation && typeof value === 'string' && value.trim() !== '') {
         if (!new RegExp(field.validation.regex).test(value)) return field.validation.message
       }
+      const named = runValidator(field, value, data)
+      if (named?.error) return named.error
       return null
     },
-    []
+    [configData, runValidator]
   )
 
   const handleChange = useCallback(
     (field: ModuleConfigFieldDef, value: unknown) => {
       setValues((prev) => ({ ...prev, [field.id]: value }))
       setFieldErrors((prev) => ({ ...prev, [field.id]: validateField(field, value) ?? '' }))
+      setFieldNotices((prev) => ({ ...prev, [field.id]: runValidator(field, value, configData)?.notice ?? '' }))
+      setConfirmation(null)
     },
-    [validateField]
+    [validateField, runValidator, configData]
   )
 
   const handleSave = useCallback(async () => {
     setSaveError(null)
     setSavedNotice(false)
+
+    // First enable only: the starter preset the admin explicitly chose
+    // (presets.ts). Never applied on a later save or upgrade; once applied it is
+    // recorded and a retry changes nothing.
+    const preset = enabled && !installation ? presets.find((p) => p.id === presetId) : undefined
+    const applied = preset
+      ? applyPreset(preset, configSchema, values, locales, installation?.appliedPreset)
+      : null
+    const vals = applied ? applied.values : values
+
+    // Project data for named validators and change guards, fetched fresh: the
+    // answer must be true at the moment of saving, not at page load.
+    let data = configData
+    const needed = configDataNeeds(configSchema, { guards: !!installation })
+    if (projectSlug && needed.length > 0) {
+      try {
+        data = { ...configData, ...(await loadConfigData(client, needed, projectSlug)) }
+        setConfigData(data)
+      } catch {
+        setSaveError('Could not check this website’s pages and prices. Nothing was saved.')
+        return
+      }
+    }
+
+    if (preset) {
+      const clashes = presetValidatorErrors(preset, configSchema, values, installation?.config, data, locales)
+      if (clashes.length > 0) {
+        setSaveError(`The ${preset.label} preset cannot be applied: ${clashes[0].error}`)
+        return
+      }
+    }
 
     // Validate config only while the module is on. An inactive module's config
     // is not in force, so blocking deactivation on an incomplete field would
@@ -560,12 +666,24 @@ function ModuleDetail({
       const errs: Record<string, string> = {}
       for (const field of configSchema) {
         if (!isVisible(field) && !placementFieldIds.has(field.id)) continue
-        const err = validateField(field, values[field.id])
+        const err = validateField(field, vals[field.id], data)
         if (err) errs[field.id] = err
       }
       setFieldErrors(errs)
       if (Object.keys(errs).length > 0) {
         setSaveError('Fix the highlighted fields before saving.')
+        return
+      }
+    }
+
+    // Change guards (e.g. currency): a changed value that reinterprets existing
+    // content is confirmed first, with the count of what it touches.
+    if (installation) {
+      const unconfirmed = pendingGuards(configSchema, vals, installation.config, data).filter(
+        (g) => !confirmedRef.current.includes(g.key)
+      )
+      if (unconfirmed.length > 0) {
+        setConfirmation(unconfirmed)
         return
       }
     }
@@ -593,11 +711,16 @@ function ModuleDetail({
     try {
       const config: Record<string, unknown> = { _type: moduleConfigTypeName(manifest) }
       for (const field of configSchema) {
-        const value = values[field.id]
+        const value = vals[field.id]
         // Omit empty optional values rather than storing empty strings — an
         // unset reference must be absent, not a malformed reference object.
         if (value === undefined || value === null || value === '') continue
         config[field.id] = value
+      }
+      // Values a field's validator maintains alongside it (segment history).
+      for (const [k, v] of Object.entries(persistedExtras(configSchema, vals, installation?.config, data))) {
+        if (v === undefined || v === null || v === '') continue
+        config[k] = v
       }
 
       // ── Silent form ownership (ADR-020 Amendment A) ──────────────────────
@@ -634,6 +757,9 @@ function ModuleDetail({
         enabled,
         installedAt: installation?.installedAt ?? new Date().toISOString(),
         provenance: installation?.provenance ?? 'admin',
+        ...((applied?.appliedPreset ?? installation?.appliedPreset)
+          ? { appliedPreset: applied?.appliedPreset ?? installation?.appliedPreset }
+          : {}),
         config,
       }
 
@@ -645,6 +771,11 @@ function ModuleDetail({
       }
       await patch.commit()
 
+      confirmedRef.current = []
+      if (applied?.applied) {
+        setValues(vals)
+        setPresetId('')
+      }
       onSaved(entry)
       setSavedNotice(true)
     } catch {
@@ -658,6 +789,11 @@ function ModuleDetail({
     values,
     enabled,
     installation,
+    locales,
+    presets,
+    presetId,
+    configData,
+    projectSlug,
     installedVersion,
     registryVersion,
     installedModuleIds,
@@ -738,7 +874,9 @@ function ModuleDetail({
             id="module-enabled-toggle"
             type="checkbox"
             checked={enabled}
-            onChange={(e) => setEnabled(e.target.checked)}
+            onChange={(e) => {
+              setEnabled(e.target.checked)
+            }}
             style={{ width: 16, height: 16 }}
           />
           Active on this website
@@ -748,6 +886,55 @@ function ModuleDetail({
           content is kept and returns unchanged when the module is turned back on.
         </div>
       </div>
+
+      {/* ── Starter preset (first enable only) ───────────────────────────────── */}
+      {enabled && !installation && presets.length > 0 && (
+        <div style={{ marginBottom: 32 }}>
+          <div style={sectionHeadingStyle}>Starter preset</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[{ id: '', label: 'No preset', description: 'Start empty and configure everything yourself.' }, ...presets].map(
+              (p) => (
+                <label key={p.id || 'none'} style={{ display: 'flex', gap: 10, fontSize: 13, cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="module-starter-preset"
+                    checked={presetId === p.id}
+                    onChange={() => setPresetId(p.id)}
+                  />
+                  <span>
+                    <span style={{ fontWeight: 500, color: '#111' }}>{p.label}</span>
+                    {p.description && <span style={{ color: '#888' }}> — {p.description}</span>}
+                  </span>
+                </label>
+              )
+            )}
+          </div>
+          {selectedPreset && (
+            <div style={{ marginTop: 14, padding: 12, fontSize: 12, background: '#fafafa', border: '1px solid #eee', borderRadius: 6 }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>Saving will write:</div>
+              {presetPreview.map((row) => (
+                <div key={row.fieldId} style={{ marginBottom: 4 }}>
+                  <strong>{row.label}:</strong> {row.to}
+                  {row.from && <span style={{ color: '#8d6e00' }}> (replaces: {row.from})</span>}
+                </div>
+              ))}
+              {currencyField && (
+                <div style={{ marginTop: 6, color: '#888' }}>
+                  Currency: {String(values.currency ?? currencyField.initialValue ?? 'not set')} — not changed.
+                </div>
+              )}
+              <div style={{ marginTop: 6, color: '#888' }}>
+                Applied once, now. Everything stays editable afterwards.
+              </div>
+              {presetClash && (
+                <div role="alert" style={{ marginTop: 8, color: '#c62828' }}>
+                  Cannot apply this preset: {presetClash}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Placement ───────────────────────────────────────────────────────── */}
       {/* Directly under Status: once a module is on, where it appears is the
@@ -778,17 +965,23 @@ function ModuleDetail({
           </div>
         ) : (
           configFields.map((field) => (
-            <ConfigField
-              key={field.id}
-              field={field}
-              value={values[field.id]}
-              error={fieldErrors[field.id]}
-              locales={locales}
-              tenantSlug={tenantSlug}
-              projectSlug={projectSlug}
-              client={client}
-              onChange={(v) => handleChange(field, v)}
-            />
+            <div key={field.id}>
+              <ConfigField
+                field={field}
+                value={values[field.id]}
+                error={fieldErrors[field.id]}
+                locales={locales}
+                tenantSlug={tenantSlug}
+                projectSlug={projectSlug}
+                client={client}
+                onChange={(v) => handleChange(field, v)}
+              />
+              {fieldNotices[field.id] && !fieldErrors[field.id] && (
+                <div role="status" style={{ fontSize: 12, color: '#8d6e00', marginTop: -14, marginBottom: 20 }}>
+                  {fieldNotices[field.id]}
+                </div>
+              )}
+            </div>
           ))
         )}
       </div>
@@ -821,6 +1014,47 @@ function ModuleDetail({
       </div>
       )}
 
+      {confirmation && (
+        <div
+          role="alertdialog"
+          aria-label="Confirm change"
+          style={{
+            padding: 12,
+            marginBottom: 16,
+            fontSize: 13,
+            color: '#8d6e00',
+            background: '#fff8e1',
+            border: '1px solid #ffe082',
+            borderRadius: 6,
+          }}
+        >
+          {confirmation.flatMap((g) => g.result.lines).map((line) => (
+            <div key={line} style={{ marginBottom: 6 }}>
+              {line}
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <button
+              type="button"
+              onClick={() => {
+                confirmedRef.current = confirmation.map((g) => g.key)
+                setConfirmation(null)
+                void handleSave()
+              }}
+              style={{ padding: '8px 14px', fontSize: 13, background: '#1a1a1a', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+            >
+              {confirmation[0].result.confirmLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmation(null)}
+              style={{ padding: '8px 14px', fontSize: 13, background: 'transparent', color: '#555', border: '1px solid #d0d0d0', borderRadius: 4, cursor: 'pointer' }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
       {saveError && (
         <div role="alert" style={{ fontSize: 13, color: '#c62828', marginBottom: 12 }}>
           {saveError}

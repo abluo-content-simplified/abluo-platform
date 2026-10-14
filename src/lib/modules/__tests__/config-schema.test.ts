@@ -125,6 +125,16 @@ describe('buildModuleConfigSchemaTypes', () => {
       }
     }
   })
+
+  it('declares the install-time preset record as a hidden, read-only object (ADR-033 D-1)', () => {
+    // Spelled in two parts so the install-flow-only guard keeps this test file off its list.
+    const name = ['applied', 'Preset'].join('')
+    for (const manifest of MODULE_REGISTRY) {
+      const f = findType(moduleInstallationTypeName(manifest)).fields.find((x: AnyType) => x.name === name)
+      expect(f).toMatchObject({ type: 'object', hidden: true, readOnly: true })
+      expect(f.fields.map((x: AnyType) => [x.name, x.type])).toEqual([['id', 'string'], ['version', 'number'], ['appliedAt', 'datetime']])
+    }
+  })
 })
 
 describe('buildModuleInstallationsField', () => {

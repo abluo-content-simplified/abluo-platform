@@ -252,17 +252,34 @@ export type ModuleConfigFieldDef = {
   /**
    * Id of a named save-time validator the Modules pane runs for this field
    * (e.g. 'catalogue.publicSegment'), in addition to `required` / `validation`.
-   * Declared here so the manifest names the rule; resolving the id needs project
-   * data (page slugs, history) and is wired in the Modules pane, not here.
+   * Declared here so the manifest names the rule; the id resolves in
+   * config-validators.ts (it needs project data: page slugs, history) and the
+   * Modules pane runs it.
    */
   validator?: string
   /**
    * Id of a named change guard the Modules pane resolves before it persists a
    * CHANGED value, to warn and require confirmation (e.g. catalogue currency:
-   * 'catalogue.currencyChange'). Declared, not yet consumed by ModuleList.
+   * 'catalogue.currencyChange'). Resolved by config-validators.ts, consumed by ModuleList.
    */
   changeGuard?: string
 }
+
+/** A named, versioned bundle of config offered at first enable (see presets.ts). */
+export type ModuleStarterPreset = {
+  /** Stable kebab-case id, recorded on the installation. */
+  id: string
+  /** Bump when the preset's content changes; recorded for audit. */
+  version: number
+  /** Admin-facing name (Studio is English). */
+  label: string
+  description?: string
+  /** configSchema field id -> value; each must pass that field's own rules. */
+  config: Record<string, unknown>
+}
+
+/** Recorded on the installation when a preset was applied. Install flow only. */
+export type AppliedPreset = { id: string; version: number; appliedAt: string }
 
 // ── Module placement ──────────────────────────────────────────────────────────
 // ADR-020 Decision 1 — "Placement: where the module surfaces (pages/sections/
@@ -445,6 +462,13 @@ export type ModuleManifest = {
      */
     configSchema: ModuleConfigFieldDef[]
     /**
+     * Starter presets (ADR-033 D-1): named, versioned configuration bundles
+     * offered once, when the module is first enabled. Optional; "No preset" is
+     * always the default. Validated against `configSchema` (validator Rule 14).
+     * Mechanics live in presets.ts.
+     */
+    starterPresets?: ModuleStarterPreset[]
+    /**
      * Where this module surfaces on a website (ADR-020 Decision 1).
      * Mostly derived facts rendered read-only by the Modules pane; see the
      * design note on ModulePlacementDef for why this is not a second
@@ -520,6 +544,8 @@ export type ModuleInstallation = {
   config: Record<string, unknown>
   /** How this installation record was created — 'admin' (manual) or 'auto' (migration). */
   provenance: 'admin' | 'auto'
+  /** Set once by the install flow when a starter preset was applied (ADR-033 D-1). */
+  appliedPreset?: AppliedPreset
 }
 
 // ModuleDef alias removed in Phase D1 — use ModuleManifest.

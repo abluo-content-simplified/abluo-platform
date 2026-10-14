@@ -326,6 +326,21 @@ function buildInstallationType(manifest: ModuleManifest): SchemaTypeDefinition {
       defineField({ name: 'enabled', title: 'Enabled', type: 'boolean', initialValue: true }),
       defineField({ name: 'installedAt', title: 'Installed At', type: 'string' }),
       defineField({ name: 'provenance', title: 'Provenance', type: 'string' }),
+      // ADR-033 D-1 — the starter preset applied at install (idempotency + audit).
+      // Written and read ONLY by the install flow (ModuleList); hidden and
+      // read-only so nothing in Studio edits it.
+      defineField({
+        name: 'appliedPreset',
+        title: 'Applied preset',
+        type: 'object',
+        hidden: true,
+        readOnly: true,
+        fields: [
+          defineField({ name: 'id', title: 'Preset', type: 'string' }),
+          defineField({ name: 'version', title: 'Version', type: 'number' }),
+          defineField({ name: 'appliedAt', title: 'Applied at', type: 'datetime' }),
+        ],
+      }),
       defineField({
         name: 'config',
         title: 'Configuration',
