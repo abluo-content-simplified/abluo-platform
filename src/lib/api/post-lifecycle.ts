@@ -144,7 +144,8 @@ export const POST_LIFECYCLE: LifecycleDescriptor = {
   rule: 'required',
   permissions: { write: BLOG_POST_WRITE_PERMISSION, delete: BLOG_POST_DELETE_PERMISSION, deletePublished: BLOG_PUBLISHED_DELETE_PERMISSION },
   isId: (id: unknown): id is string => isPostId(id),
-  fail: (code, message) => new PostDraftError(code, message),
+  // Posts declare no `references`, so publishTogether's 'unpublished_dependencies' never arises for them.
+  fail: (code, message) => new PostDraftError(code === 'unpublished_dependencies' ? 'invalid_value' : code, message),
   dependencies: (client, id) => countReferences(client, id),
 }
 

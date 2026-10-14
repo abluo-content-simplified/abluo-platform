@@ -143,6 +143,11 @@ export type AuditedResult<T> = {
   contentId?: string
   state?: PublishedSnapshot
   detail?: Record<string, unknown>
+  /**
+   * Other documents the SAME transaction changed (ADR-032 Amendment B,
+   * publishTogether): one more row each, same transaction id and actor.
+   */
+  also?: Array<{ contentType: string; contentId: string; action: ContentAction | null; state?: PublishedSnapshot }>
 }
 
 /**
@@ -209,6 +214,20 @@ export async function audited<T>(
       outcome: 'ok',
       transactionId,
       detail: { ...actor.detail, ...(result.state !== undefined && { state: result.state }), ...result.detail },
+    })
+  }
+  for (const other of result.also ?? []) {
+    if (!other.action) continue
+    await write({
+      projectId: spec.projectId,
+      contentType: other.contentType,
+      contentId: other.contentId,
+      action: other.action,
+      actorKind: actor.actorKind,
+      actorId: actor.actorId,
+      outcome: 'ok',
+      transactionId,
+      detail: { ...actor.detail, ...(other.state !== undefined && { state: other.state }), together: contentId },
     })
   }
   return result.value

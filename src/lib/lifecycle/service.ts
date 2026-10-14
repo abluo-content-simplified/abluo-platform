@@ -30,14 +30,15 @@
  *     reactivate).
  */
 import { assertModuleAction } from '@/lib/api/module-action-guard'
+import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { audited, type ContentAuditWriter } from './audit'
 import { lifecycleAction, snapshotOf, type ContentAction } from './transition'
-import { instant, type PublishedAtRule } from './visibility'
+import { instant, isPublicAt, type PublishedAtRule } from './visibility'
 
-export type LifecycleErrorCode = 'forbidden' | 'not_found' | 'conflict' | 'invalid_value' | 'archived' | 'archive_first' | 'in_use' | 'failed'
+export type LifecycleErrorCode = 'forbidden' | 'not_found' | 'conflict' | 'invalid_value' | 'archived' | 'archive_first' | 'in_use' | 'unpublished_dependencies' | 'failed'
 
 export type LifecycleDescriptor = {
   /** Sanity document type. */
@@ -65,7 +66,28 @@ export type LifecycleDescriptor = {
   referrers?: (client: LifecycleClient, id: string, projectSlug: string) => Promise<Referrer[]>
   /** Also run `referrers` before archiving (default: only before a permanent delete). */
   refuseArchiveWhileReferenced?: boolean
+  /**
+   * ADR-033 D-8 — the documents that block a PERMANENT delete (of a published
+   * document or of a never-published draft). When present it replaces
+   * `referrers` for deletes; `referrers` keeps deciding archives. Sanity
+   * refuses to delete a strongly referenced document anyway — this turns
+   * that into a named answer, and also covers weak references (drafts).
+   */
+  deleteReferrers?: (client: LifecycleClient, id: string, projectSlug: string) => Promise<Referrer[]>
+  /**
+   * ADR-032 Amendment B — the document's outgoing lifecycle references (ids
+   * without the `drafts.` prefix, with their type). Used by `publishTogether`;
+   * modules without it are unaffected.
+   */
+  references?: (doc: Doc) => LifecycleRef[]
+  /** A human name for a document, for refusals and the publish preview. */
+  label?: (doc: Doc) => string
+  /** Whether publishing this document opens a public page of its own (publish preview). */
+  opensPage?: (doc: Doc) => boolean
 }
+
+/** An outgoing reference of a document, as `references(doc)` names it. */
+export type LifecycleRef = { id: string; type: string }
 
 /** A document that blocks an archive or delete. `label` is a human name for the refusal message. */
 export type Referrer = { id: string; type: string; label: string }
@@ -338,6 +360,11 @@ export function deleteDraft(d: LifecycleDescriptor, ctx: TenantAuthorizationCont
       if (published) throw d.fail('archive_first', 'This item is published.')
       if (wasEverPublished(null, draft)) assertModuleAction(ctx, projectId, d.permissions.deletePublished)
       if (draft._rev !== input.rev) throw d.fail('conflict', 'This draft was edited elsewhere.')
+      // D-8: a never-published draft may be referenced (weakly) by other drafts.
+      if (d.deleteReferrers) {
+        const named = await d.deleteReferrers(client, id, grant.projectSlug)
+        if (named.length > 0) throw inUse(d, named)
+      }
       const draftId = `drafts.${id}`
       await commit(d, client, grant.projectSlug, () =>
         client.transaction().patch(draftId, { ifRevisionID: input.rev, unset: ['_lifecycleGuard'] }).delete(draftId).commit({ transactionId })
@@ -359,8 +386,9 @@ export function deletePermanently(d: LifecycleDescriptor, ctx: TenantAuthorizati
       if (!published) throw d.fail('not_found', 'Unknown item.')
       if (!isArchived(published)) throw d.fail('archive_first', 'Archive this item before deleting it permanently.')
       if (published._rev !== input.rev) throw d.fail('conflict', 'This item was changed elsewhere.')
-      if (d.referrers) {
-        const named = await d.referrers(client, id, grant.projectSlug)
+      const blockers = d.deleteReferrers ?? d.referrers
+      if (blockers) {
+        const named = await blockers(client, id, grant.projectSlug)
         if (named.length > 0) throw inUse(d, named)
       } else {
         const refs = d.dependencies ? await d.dependencies(client, id, grant.projectSlug) : 0
@@ -386,4 +414,239 @@ export async function countReferences(client: LifecycleClient, id: string): Prom
     { perspective: 'raw' }
   )
   return typeof n === 'number' ? n : 0
+}
+
+// ── Publishing together (ADR-032 Amendment B; ADR-033 D-4, D-5) ─────────────
+
+/** A document taking part in a publish: the root, or a never-published dependency. */
+export type PublishNode = { d: LifecycleDescriptor; id: string; draft: Doc; published: Doc | undefined; isRoot: boolean }
+
+export type PublishPlan = {
+  root: PublishNode
+  /** Never-published dependencies reachable from the root (cycles visited once), in discovery order. */
+  dependencies: PublishNode[]
+  /** Dependencies the editor may not publish (permission). */
+  forbidden: Referrer[]
+  /** References to documents that exist in no version (deleted, or another project's). */
+  missing: Referrer[]
+  /** Dependencies with a published version that will NOT be live when the root goes live (never modified). */
+  notLive: Referrer[]
+}
+
+const stripDraft = (id: string) => id.replace(/^drafts\./, '')
+const refOf = (n: { d: LifecycleDescriptor; id: string; draft?: Doc; published?: Doc }): Referrer => ({
+  id: n.id,
+  type: n.d.type,
+  label: (n.d.label?.(n.draft ?? n.published ?? {}) ?? '') || n.id,
+})
+
+/**
+ * Walks the never-published dependencies of `root` through each descriptor's
+ * `references` (read-only). Cycles are safe: every document is visited once.
+ * Dependencies that have a published version stop the walk — they are never
+ * modified, so their own references are not this publish's business — and are
+ * reported in `notLive` when they will not be live at `liveAt`. With
+ * `withDependencies: false` the walk stops at the root's direct references.
+ */
+export async function planPublish(
+  descriptors: readonly LifecycleDescriptor[],
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  client: LifecycleClient,
+  projectSlug: string,
+  root: { type: string; id: string },
+  opts: { liveAt: Date; withDependencies: boolean }
+): Promise<PublishPlan> {
+  const byType = new Map(descriptors.map((x) => [x.type, x]))
+  const rd = byType.get(root.type)
+  if (!rd) throw new Error(`planPublish: no descriptor for ${root.type}`)
+  const rootPair = await readPair(rd, client, root.id, projectSlug)
+  if (!rootPair.draft) throw rd.fail('not_found', 'Unknown item.')
+  const rootNode: PublishNode = { d: rd, id: root.id, draft: rootPair.draft, published: rootPair.published, isRoot: true }
+  const plan: PublishPlan = { root: rootNode, dependencies: [], forbidden: [], missing: [], notLive: [] }
+  const seen = new Set<string>([root.id])
+  const queue: PublishNode[] = [rootNode]
+  while (queue.length) {
+    const node = queue.shift()!
+    for (const ref of node.d.references?.(node.draft) ?? []) {
+      const id = stripDraft(ref.id)
+      if (seen.has(id)) continue
+      seen.add(id)
+      const td = byType.get(ref.type)
+      if (!td || !td.isId(id)) continue
+      let pair: { published: Doc | undefined; draft: Doc | undefined }
+      try {
+        pair = await readPair(td, client, id, projectSlug)
+      } catch {
+        pair = { published: undefined, draft: undefined }
+      }
+      if (pair.published) {
+        if (!isPublicAt(pair.published as never, td.rule, opts.liveAt)) plan.notLive.push(refOf({ d: td, id, published: pair.published }))
+        continue
+      }
+      if (!pair.draft) {
+        plan.missing.push({ id, type: td.type, label: id })
+        continue
+      }
+      const dep: PublishNode = { d: td, id, draft: pair.draft, published: undefined, isRoot: false }
+      plan.dependencies.push(dep)
+      try {
+        assertModuleAction(ctx, projectId, td.permissions.write)
+      } catch (e) {
+        if (!(e instanceof TenantAuthorizationError)) throw e
+        plan.forbidden.push(refOf(dep))
+      }
+      if (opts.withDependencies) queue.push(dep)
+    }
+  }
+  return plan
+}
+
+/** Removes `_weak` / `_strengthenOnPublish` from every reference in a document (D-4: explicit strengthening). */
+export function strengthenReferences<T>(value: T): T {
+  if (Array.isArray(value)) return value.map((v) => strengthenReferences(v)) as T
+  if (!value || typeof value !== 'object') return value
+  const out: Record<string, unknown> = {}
+  const isRef = typeof (value as Record<string, unknown>)._ref === 'string'
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (isRef && (k === '_weak' || k === '_strengthenOnPublish')) continue
+    out[k] = strengthenReferences(v)
+  }
+  return out as T
+}
+
+/** Lifecycle fields live on the published version; the service sets them (never copied blindly from a draft). */
+const PUBLISH_LIFECYCLE_FIELDS = ['publishedAt', 'expiresAt', 'archivedAt', 'archivedBy'] as const
+
+/**
+ * The module's part of a publish: validate one document and return the
+ * published version to write (without lifecycle fields — the service sets
+ * them). Throw the module's error to refuse; nothing is written then.
+ */
+export type PublishPrepare = (node: PublishNode, x: { client: LifecycleClient; projectSlug: string; now: Date; publishedAt: string }) => Promise<Doc>
+
+export type PublishTogetherInput = {
+  root: { type: string; id: string; rev: string }
+  /** Include never-published dependencies (D-5). false = refuse when there are any (D-4). */
+  withDependencies: boolean
+  /**
+   * The root's dates, decided by the caller from the stored versions (publish
+   * now / schedule / keep). Throw to refuse.
+   */
+  timing: (root: PublishNode, now: Date) => { publishedAt: string; expiresAt: string | null }
+}
+
+export type PublishTogetherResult = {
+  root: Doc
+  /** Every document published or scheduled by this call, root first. */
+  published: Array<{ type: string; id: string; publishedAt: string }>
+  /** Published-but-not-live dependencies (valid, untouched) — warn the editor. */
+  notLive: Referrer[]
+}
+
+function dependencyError(d: LifecycleDescriptor, code: LifecycleErrorCode, message: string, refs: readonly Referrer[]): Error {
+  return Object.assign(d.fail(code, message), { dependencies: [...refs] })
+}
+
+/**
+ * ADR-032 Amendment B — publish (or schedule) a document together with its
+ * never-published dependencies, or (withDependencies: false) refuse while it
+ * has any. In order, before anything is written:
+ *   1. the root's write permission (before any I/O);
+ *   2. the dependency tree (planPublish; cycles safe), refusing missing
+ *      targets, dependencies the editor may not publish, or — single publish —
+ *      any never-published dependency, NAMING each;
+ *   3. every document validated by the module (`prepare`).
+ * Then ONE transaction, revision-guarded on every version it touches:
+ * included dependencies take the root's publishedAt unless they carry their
+ * own schedule (never overwritten); documents that already have a published
+ * version are never touched; every reference of every written document is
+ * strengthened explicitly. Any failure publishes nothing. One Activity row
+ * per document, all with the transaction id.
+ */
+export function publishTogether(
+  descriptors: readonly LifecycleDescriptor[],
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: PublishTogetherInput,
+  prepare: PublishPrepare,
+  deps: LifecycleDeps = {}
+): Promise<PublishTogetherResult> {
+  const rd = descriptors.find((x) => x.type === input?.root?.type)
+  if (!rd) throw new Error(`publishTogether: no descriptor for ${String(input?.root?.type)}`)
+  const intended: ContentAction = 'published'
+  return audited(
+    { ctx, projectId, contentType: rd.type, contentId: rd.isId(input.root.id) ? input.root.id : null, intended, writer: deps.audit },
+    async (transactionId) => {
+      assertModuleAction(ctx, projectId, rd.permissions.write)
+      const grant = ctx.projects.find((p) => p.projectId === projectId)!
+      if (!rd.isId(input.root.id)) throw rd.fail('not_found', 'Unknown item.')
+      if (typeof input.root.rev !== 'string' || !input.root.rev) throw rd.fail('conflict', 'Missing revision.')
+      const client = deps.client ?? sanityWriteClient
+      const now = (deps.now ?? (() => new Date()))()
+      const rootPair = await readPair(rd, client, input.root.id, grant.projectSlug)
+      if (!rootPair.draft) throw rd.fail('not_found', 'Unknown item.')
+      if (rootPair.draft._rev !== input.root.rev) throw rd.fail('conflict', 'This item was edited elsewhere.')
+      if (isArchived(rootPair.published)) throw rd.fail('archived', 'Restore this item first.')
+      const rootNode: PublishNode = { d: rd, id: input.root.id, draft: rootPair.draft, published: rootPair.published, isRoot: true }
+      const { publishedAt, expiresAt } = input.timing(rootNode, now)
+      const plan = await planPublish(descriptors, ctx, projectId, client, grant.projectSlug, input.root, {
+        liveAt: new Date(Math.max(Date.parse(publishedAt), now.getTime())),
+        withDependencies: input.withDependencies,
+      })
+      if (plan.missing.length) throw dependencyError(rd, 'unpublished_dependencies', 'Something this links to no longer exists.', plan.missing)
+      if (!input.withDependencies && plan.dependencies.length) {
+        throw dependencyError(rd, 'unpublished_dependencies', 'This links to content that was never published.', plan.dependencies.map((n) => refOf(n)))
+      }
+      if (plan.forbidden.length) throw dependencyError(rd, 'forbidden', 'You may not publish some of what this links to.', plan.forbidden)
+      for (const n of plan.dependencies) if (isArchived(n.draft)) throw dependencyError(rd, 'archived', 'Something this links to is archived.', [refOf(n)])
+
+      // Validate EVERYTHING before writing anything.
+      const nodes = [rootNode, ...plan.dependencies]
+      const docs: Doc[] = []
+      for (const n of nodes) {
+        const own = n.isRoot ? null : { publishedAt: iso(n.draft.publishedAt), expiresAt: iso(n.draft.expiresAt) }
+        const at = own?.publishedAt ?? publishedAt
+        const doc = strengthenReferences(await prepare(n, { client, projectSlug: grant.projectSlug, now, publishedAt: at }))
+        for (const k of PUBLISH_LIFECYCLE_FIELDS) delete doc[k]
+        doc._id = n.id
+        doc._type = n.d.type
+        doc.projectSlug = grant.projectSlug
+        doc.publishedAt = at
+        const exp = n.isRoot ? expiresAt : own?.expiresAt
+        if (exp) doc.expiresAt = exp
+        docs.push(doc)
+      }
+
+      await commit(rd, client, grant.projectSlug, () => {
+        let tx = client.transaction()
+        nodes.forEach((n, i) => {
+          const doc = docs[i]
+          tx = tx.patch(`drafts.${n.id}`, { ifRevisionID: n.draft._rev ?? '', unset: ['_publishGuard'] })
+          if (n.published?._rev) {
+            tx = tx.patch(n.id, { ifRevisionID: n.published._rev, unset: ['_publishGuard'] })
+            tx = tx.createOrReplace(doc as { _id: string; _type: string })
+          } else tx = tx.create(doc as { _id: string; _type: string })
+          tx = tx.delete(`drafts.${n.id}`)
+        })
+        return tx.commit({ transactionId })
+      })
+
+      const rootDoc = { ...docs[0], _rev: transactionId }
+      const state = snapshotOf(rootDoc)
+      return {
+        value: {
+          root: rootDoc,
+          published: nodes.map((n, i) => ({ type: n.d.type, id: n.id, publishedAt: docs[i].publishedAt as string })),
+          notLive: plan.notLive,
+        },
+        action: lifecycleAction(snapshotOf(rootPair.published ?? null), state, rd.rule, now),
+        state,
+        also: plan.dependencies.map((n, i) => {
+          const st = snapshotOf(docs[i + 1])
+          return { contentType: n.d.type, contentId: n.id, action: lifecycleAction(null, st, n.d.rule, now), state: st }
+        }),
+      }
+    }
+  )
 }
