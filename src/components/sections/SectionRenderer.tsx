@@ -73,6 +73,9 @@ import {
   eventsListingManualEventsQuery,
   currentLiveEventQuery,
 } from '@/lib/sanity/queries'
+import type { CatalogueListingSection as CatalogueListingSectionType } from '@/lib/sanity/types'
+import type { CatalogueConfigDTO } from '@/lib/modules/catalogue/dto'
+import { hydrateCatalogueListing, loadCatalogueConfig } from '@/lib/modules/catalogue/website'
 
 // ─── Blog listing post fetcher ────────────────────────────────────────────────
 
@@ -285,9 +288,35 @@ export async function hydrateSections(
   }
 ): Promise<void> {
   if (!sections) return
+  // Catalogue config is read once per page, and only when a catalogue section
+  // is actually present — most pages never pay for it.
+  let catalogueConfig: Promise<CatalogueConfigDTO | null> | undefined
+  const getCatalogueConfig = () =>
+    (catalogueConfig ??= loadCatalogueConfig(ctx.fetchForTenant, { locale: ctx.locale, defaultLocale: ctx.defaultLocale }))
   await Promise.all(
     sections.map(async (section) => {
       if (!isSectionTypeAvailable(section._type, ctx.enabledModuleIds)) return
+      if (section._type === 'catalogueListingSection') {
+        // ADR-033 spec §10.5 — an error omits the section, never the page:
+        // `catalogue` stays undefined and the component renders nothing. A
+        // project without an enabled catalogue installation gets no data and
+        // renders nothing either (AC 3), even if gating failed open.
+        const cls = section as CatalogueListingSectionType
+        try {
+          const config = await getCatalogueConfig()
+          if (!config) return
+          cls.catalogue = await hydrateCatalogueListing(ctx.fetchForTenant, cls.collectionId, {
+            locale: ctx.locale,
+            defaultLocale: ctx.defaultLocale,
+            config,
+            now: new Date(),
+          })
+        } catch (err) {
+          console.error('[catalogue] listing section hydration failed; section omitted', err)
+          cls.catalogue = undefined
+        }
+        return
+      }
       if (section._type === 'blogListingSection') {
         const bls = section as BlogListingSectionType
         const posts = await fetchBlogListingPosts(bls, ctx.fetchForTenant, ctx.locale, ctx.defaultLocale, ctx.moduleConfig)

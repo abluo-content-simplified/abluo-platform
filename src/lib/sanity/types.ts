@@ -2138,6 +2138,39 @@ export interface PhotoGallerySection {
   showCaptions?: boolean
 }
 
+// ─── Catalogue Listing Section (ADR-033, spec §4.6) ───────────────────────────
+// Owned by the Catalogue module. Presentation only: renders ONE collection,
+// hydrated server-side by hydrateSections from `collectionId`.
+
+export interface CatalogueListingSection {
+  _type: 'catalogueListingSection'
+  _key: string
+  background?: 'usePagePattern' | 'surface1' | 'surface2' | 'surface3' | 'brandSurface' | 'gradient1' | 'gradient2' | 'transparent' | 'glass'
+  /** Optional authored DOM id for in-page `#anchor` links. */
+  anchorId?: string
+  /** Locale-resolved by GROQ */
+  eyebrow?: string
+  /** Locale-resolved by GROQ */
+  title?: string
+  /** Locale-resolved by GROQ */
+  subtitle?: string
+  /** `collection._ref` — never dereferenced in the page projection. */
+  collectionId?: string | null
+  /** ADR-033 D-6. 'default' (or unset) = follow the catalogue config `showPricesByDefault`, live. */
+  showPrices?: 'default' | 'show' | 'hide' | null
+  /** ADR-033 D-3. Unset = 'compact'. Food allergens are always shown; this picks how. */
+  allergenPresentation?: 'compact' | 'expanded' | null
+  /** Locale-resolved by GROQ */
+  emptyStateHeading?: string
+  /** Locale-resolved by GROQ */
+  emptyStateBody?: string
+  /**
+   * Hydrated server-side by hydrateSections — not stored in Sanity. Absent
+   * (undefined) when hydration did not run or failed: the section is omitted.
+   */
+  catalogue?: import('@/lib/modules/catalogue/website').CatalogueListingData | null
+}
+
 export type PageSection =
   | HeroSection
   | HeroLiveCaptureSection
@@ -2167,6 +2200,7 @@ export type PageSection =
   | CategoryListSection
   | CtaBannerSection
   | LocationsSection
+  | CatalogueListingSection
 
 export interface WebsiteHomePage {
   tenantSlug: string

@@ -41,6 +41,7 @@ import { newsSectionComponents } from './news/sections'
 import { eventsSectionComponents } from './events/sections'
 import { liveSectionComponents } from './live/sections'
 import { gallerySectionComponents } from './gallery/sections'
+import { catalogueSectionComponents } from './catalogue/section-components'
 
 // ── Availability gating (ADR-016 Phase D) ──────────────────────────────────────
 // MODULE_REGISTRY is safe to import statically here: this file is Next.js-route
@@ -96,6 +97,7 @@ export const SECTION_MAP: SectionComponentMap = {
   ...eventsSectionComponents,
   ...liveSectionComponents,
   ...gallerySectionComponents,
+  ...catalogueSectionComponents,
   // Future modules: spread their section component maps here.
 }
 

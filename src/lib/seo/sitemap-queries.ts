@@ -11,6 +11,7 @@
  */
 
 import { publicFilterFor } from '@/lib/lifecycle/public-types'
+import { visibilityFilter } from '@/lib/modules/catalogue/visibility'
 
 // The photos of every Photo Gallery section on a page — composed galleries and
 // the legacy single gallery — once each. Raw CDN originals: no query string, so
@@ -47,6 +48,10 @@ export const SITEMAP_HOME_IMAGES_QUERY = /* groq */ `*[_type == "page" && define
 // no route. The consumer emits one URL per locale whose slug is set.
 const CATALOGUE_SEGMENT = /* groq */ `*[_type == "project" && projectSlug == ^.projectSlug][0].moduleInstallations[moduleId == "catalogue" && enabled != false][0].config.publicSegment`
 
-export const SITEMAP_CATALOGUE_ITEMS_QUERY = /* groq */ `*[_type == "catalogueItem" && defined(projectSlug) && hasPage == true && defined(slug) && ${publicFilterFor('catalogueItem')} && (!defined(visibility) || visibility != "unlisted")] { projectSlug, slug, "segment": ${CATALOGUE_SEGMENT}, "images": array::compact((images[]->)[_type == "mediaAsset" && projectSlug == ^.projectSlug].image.asset->url) }[defined(segment)]`
+export const SITEMAP_CATALOGUE_ITEMS_QUERY = /* groq */ `*[_type == "catalogueItem" && defined(projectSlug) && hasPage == true && defined(slug) && ${publicFilterFor('catalogueItem')} && ${visibilityFilter('sitemap')}] { projectSlug, slug, "segment": ${CATALOGUE_SEGMENT}, "images": array::compact((images[]->)[_type == "mediaAsset" && projectSlug == ^.projectSlug].image.asset->url) }[defined(segment)]`
 
-export const SITEMAP_CATALOGUE_COLLECTIONS_QUERY = /* groq */ `*[_type == "catalogueCollection" && defined(projectSlug) && hasPage == true && defined(slug) && ${publicFilterFor('catalogueCollection')} && (!defined(visibility) || visibility != "unlisted")] { projectSlug, slug, "segment": ${CATALOGUE_SEGMENT} }[defined(segment)]`
+export const SITEMAP_CATALOGUE_COLLECTIONS_QUERY = /* groq */ `*[_type == "catalogueCollection" && defined(projectSlug) && hasPage == true && defined(slug) && ${publicFilterFor('catalogueCollection')} && ${visibilityFilter('sitemap')}] { projectSlug, slug, "segment": ${CATALOGUE_SEGMENT} }[defined(segment)]`
+
+// The landing page at /{segment} (ADR-033 C1) — listed only while its own
+// lifecycle makes it public, and only where the project has a segment.
+export const SITEMAP_CATALOGUE_LANDING_QUERY = /* groq */ `*[_type == "cataloguePage" && defined(projectSlug) && ${publicFilterFor('cataloguePage')}] { projectSlug, "segment": ${CATALOGUE_SEGMENT} }[defined(segment)]`

@@ -3,7 +3,16 @@ import { isProduction } from '@/lib/deployment'
 import { isStagingHost } from '@/lib/seo/indexability'
 import { canonicalUrl } from '@/lib/seo/canonical'
 import { normalizeHost } from '@/lib/tenancy/host-scope'
-import { LLMS_NEWS_QUERY, LLMS_POSTS_QUERY, entryLinesFor, type EntryRow } from '@/lib/seo/llms'
+import {
+  LLMS_CATALOGUE_COLLECTIONS_QUERY,
+  LLMS_CATALOGUE_ITEMS_QUERY,
+  LLMS_CATALOGUE_SEGMENT_QUERY,
+  LLMS_NEWS_QUERY,
+  LLMS_POSTS_QUERY,
+  catalogueLinesFor,
+  entryLinesFor,
+  type EntryRow,
+} from '@/lib/seo/llms'
 
 /**
  * `/llms.txt` — a plain-text map of the site for answer engines.
@@ -124,7 +133,7 @@ export async function GET(): Promise<Response> {
     // The whole localized objects, not one language's projection: this file
     // lists every language the site publishes, and a second read per locale
     // would be six more round trips for data already in these documents.
-    const [pages, news, posts] = await Promise.all([
+    const [pages, news, posts, catalogueCollections, catalogueItems, catalogueSegment] = await Promise.all([
       sanityClient.fetch<PageRow[]>(
         `*[_type == "page" && projectSlug == $projectSlug && !(noindex == true)] | order(pageType asc) {
           pageType,
@@ -136,6 +145,10 @@ export async function GET(): Promise<Response> {
       ),
       sanityClient.fetch<EntryRow[]>(LLMS_NEWS_QUERY, { projectSlug: project.projectSlug }),
       sanityClient.fetch<EntryRow[]>(LLMS_POSTS_QUERY, { projectSlug: project.projectSlug }),
+      // ADR-033 C10 — catalogue under the 'structuredData' context (no unlisted).
+      sanityClient.fetch<EntryRow[]>(LLMS_CATALOGUE_COLLECTIONS_QUERY, { projectSlug: project.projectSlug }),
+      sanityClient.fetch<EntryRow[]>(LLMS_CATALOGUE_ITEMS_QUERY, { projectSlug: project.projectSlug }),
+      sanityClient.fetch<string | null>(LLMS_CATALOGUE_SEGMENT_QUERY, { projectSlug: project.projectSlug }),
     ])
 
     const name = project.siteName ?? project.projectName ?? project.projectSlug
@@ -194,6 +207,21 @@ export async function GET(): Promise<Response> {
         if (lines[lines.length - 1] !== '') lines.push('')
         lines.push(loc === locale ? `## ${heading}` : `## ${heading} (${loc})`, '', ...block)
       }
+    }
+
+    // Catalogue — same per-language shape. The heading is platform text, like
+    // the others; the tenant's own label for the module (navLabel, D12) is a
+    // dashboard concern and never reaches a machine-readable surface.
+    for (const loc of [locale, ...otherLocales]) {
+      const block = catalogueLinesFor(
+        { collections: catalogueCollections ?? [], items: catalogueItems ?? [] },
+        catalogueSegment,
+        origin,
+        loc,
+      )
+      if (block.length === 0) continue
+      if (lines[lines.length - 1] !== '') lines.push('')
+      lines.push(loc === locale ? '## Catalogue' : `## Catalogue (${loc})`, '', ...block)
     }
 
     lines.push('', '## Machine-readable', '')

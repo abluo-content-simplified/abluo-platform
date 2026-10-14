@@ -6,7 +6,17 @@ import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
 import { normalizeHost } from '@/lib/tenancy/host-scope'
 import { withImages } from '@/lib/seo/sitemap-images'
 import { HAS_NEWS_INDEX_PROJECTION, newsIndexSitemapEntries } from '@/lib/seo/sitemap-news'
-import { SITEMAP_EVENTS_QUERY, SITEMAP_HOME_IMAGES_QUERY, SITEMAP_NEWS_QUERY, SITEMAP_PAGES_QUERY, SITEMAP_POSTS_QUERY } from '@/lib/seo/sitemap-queries'
+import {
+  SITEMAP_CATALOGUE_COLLECTIONS_QUERY,
+  SITEMAP_CATALOGUE_ITEMS_QUERY,
+  SITEMAP_CATALOGUE_LANDING_QUERY,
+  SITEMAP_EVENTS_QUERY,
+  SITEMAP_HOME_IMAGES_QUERY,
+  SITEMAP_NEWS_QUERY,
+  SITEMAP_PAGES_QUERY,
+  SITEMAP_POSTS_QUERY,
+} from '@/lib/seo/sitemap-queries'
+import { catalogueSitemapEntries, type CatalogueLandingSitemapRow, type CatalogueSitemapRow } from '@/lib/seo/sitemap-catalogue'
 
 // ─── projectSlug → URL tenant slug ───────────────────────────────────────────
 // There is no longer a map here. This was `PROJECT_TO_TENANT`, the reverse of
@@ -158,13 +168,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     )
 
     // Fetch all published pages, events, posts, and news with their per-locale slugs.
-    const [pages, events, posts, newsArticles, homeImages] = await Promise.all([
+    const [pages, events, posts, newsArticles, homeImages, catalogueItems, catalogueCollections, catalogueLandings] = await Promise.all([
       // Queries and their rationale: @/lib/seo/sitemap-queries (ADR-032 D3).
       sanityClient.fetch<PageSitemapData[]>(SITEMAP_PAGES_QUERY),
       sanityClient.fetch<EventSitemapData[]>(SITEMAP_EVENTS_QUERY),
       sanityClient.fetch<PostSitemapData[]>(SITEMAP_POSTS_QUERY),
       sanityClient.fetch<NewsArticleSitemapData[]>(SITEMAP_NEWS_QUERY),
       sanityClient.fetch<HomeImagesSitemapData[]>(SITEMAP_HOME_IMAGES_QUERY),
+      // ADR-033 — catalogue items, collections and the landing page. Each
+      // query already excludes hasPage false, non-public lifecycle states,
+      // unlisted documents and projects without an enabled installation.
+      sanityClient.fetch<CatalogueSitemapRow[]>(SITEMAP_CATALOGUE_ITEMS_QUERY),
+      sanityClient.fetch<CatalogueSitemapRow[]>(SITEMAP_CATALOGUE_COLLECTIONS_QUERY),
+      sanityClient.fetch<CatalogueLandingSitemapRow[]>(SITEMAP_CATALOGUE_LANDING_QUERY),
     ])
 
     const homeImagesByProject = new Map<string, string[]>()
@@ -295,6 +311,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // Per-news entries (ADR-020) — only for locales that have a slug set.
       // Requirement 4 of the Publicly Routable Content Pattern.
       entries.push(...newsIndexSitemapEntries({ hasNewsIndex, origin: tenantBase, locales, primaryLocale }))
+
+      // Catalogue (ADR-033 D4, D11, C1) — Requirement 4 of the Publicly
+      // Routable Content Pattern for items and collections, plus the landing.
+      entries.push(
+        ...catalogueSitemapEntries({
+          items: (catalogueItems ?? []).filter((r) => r.projectSlug === projectSlug),
+          collections: (catalogueCollections ?? []).filter((r) => r.projectSlug === projectSlug),
+          landing: (catalogueLandings ?? []).find((r) => r.projectSlug === projectSlug) ?? null,
+          origin: tenantBase,
+          locales,
+          primaryLocale,
+        }),
+      )
 
       const projectNews = newsByProject.get(projectSlug) ?? []
       for (const item of projectNews) {

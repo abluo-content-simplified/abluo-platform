@@ -8,6 +8,7 @@
 
 import { canonicalUrl } from '@/lib/seo/canonical'
 import { publicFilterFor } from '@/lib/lifecycle/public-types'
+import { visibilityFilter } from '@/lib/modules/catalogue/visibility'
 
 /** A published blog post or news item — per-locale maps, like PageRow. */
 export interface EntryRow {
@@ -72,4 +73,55 @@ export function entryLinesFor(
     out.push(description ? `- [${label}](${url}): ${description}` : `- [${label}](${url})`)
   }
   return out
+}
+
+// ── Catalogue (ADR-033 C5, C10) ───────────────────────────────────────────────
+// Included, under the 'structuredData' visibility context — the one ADR-033
+// C10 names for llms.txt: `unlisted` items and collections are left out (their
+// pages are noindex), `public` and `websiteOnly` are listed, exactly as the
+// sitemap lists them. Only documents with their own page (`hasPage`) have a
+// URL to list. The ADR-032 D3 lifecycle rule applies first, as everywhere.
+// Routed under the project's ONE public segment (D11), read separately below.
+
+/** Public catalogue collections with a page — `entryLinesFor` rows. */
+export const LLMS_CATALOGUE_COLLECTIONS_QUERY = /* groq */ `*[
+  _type == "catalogueCollection"
+  && projectSlug == $projectSlug
+  && hasPage == true
+  && ${publicFilterFor('catalogueCollection')}
+  && ${visibilityFilter('structuredData')}
+] | order(_createdAt asc) {
+  "titles": name,
+  "slugs": slug,
+  "descriptions": description
+}`
+
+/** Public catalogue items with a page — `entryLinesFor` rows. */
+export const LLMS_CATALOGUE_ITEMS_QUERY = /* groq */ `*[
+  _type == "catalogueItem"
+  && projectSlug == $projectSlug
+  && hasPage == true
+  && ${publicFilterFor('catalogueItem')}
+  && ${visibilityFilter('structuredData')}
+] | order(_createdAt asc) {
+  "titles": name,
+  "slugs": slug,
+  "descriptions": description
+}`
+
+/** The enabled catalogue installation's public segment, or null (no module → no routes). */
+export const LLMS_CATALOGUE_SEGMENT_QUERY = /* groq */ `*[_type == "project" && projectSlug == $projectSlug][0].moduleInstallations[moduleId == "catalogue" && enabled != false][0].config.publicSegment`
+
+/**
+ * One language's catalogue link lines: collections first, then items, all
+ * under the segment. No segment (module off) → nothing, whatever the rows say.
+ */
+export function catalogueLinesFor(
+  rows: { collections: EntryRow[]; items: EntryRow[] },
+  segment: string | null | undefined,
+  origin: string,
+  loc: string,
+): string[] {
+  if (!segment) return []
+  return [...entryLinesFor(rows.collections, origin, loc, segment), ...entryLinesFor(rows.items, origin, loc, segment)]
 }

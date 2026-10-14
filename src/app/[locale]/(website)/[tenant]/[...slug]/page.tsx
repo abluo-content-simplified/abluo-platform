@@ -17,6 +17,8 @@ import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
 import { siteBasePath } from '@/lib/sanity/href'
 import { joinSlugSegments } from '@/lib/sanity/fields/nested-slug'
+import { loadCatalogueConfig, planCatalogueRoute } from '@/lib/modules/catalogue/website'
+import { CatalogueRoute, catalogueRouteMetadata } from '@/components/catalogue/CatalogueRoute'
 
 export const dynamic = 'force-dynamic'
 
@@ -64,10 +66,26 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  const [page, config] = await Promise.all([
+  const [page, config, catalogueConfig] = await Promise.all([
     fetchForTenant<WebsitePage>(pageBySlugQuery, { locale, defaultLocale, slug }),
     fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale }),
+    loadCatalogueConfig(fetchForTenant, { locale, defaultLocale }),
   ])
+
+  // ── Catalogue dispatch (ADR-033 C2) — the same decision the page makes ──────
+  const catalogueDispatch = planCatalogueRoute(slugSegments, catalogueConfig)
+  if (catalogueDispatch && catalogueConfig) {
+    return catalogueRouteMetadata({
+      dispatch: catalogueDispatch,
+      config: catalogueConfig,
+      fetchForTenant,
+      locale,
+      defaultLocale,
+      tenantId,
+      siteBase: '',
+      siteConfig: config,
+    })
+  }
 
   if (!page) return {}
 
@@ -152,7 +170,7 @@ export default async function WebsitePageRoute({ params }: PageProps) {
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  const [page, siteConfig, designSystem, moduleConfig] = await Promise.all([
+  const [page, siteConfig, designSystem, moduleConfig, catalogueConfig] = await Promise.all([
     fetchForTenant<WebsitePage>(pageBySlugQuery, { locale, defaultLocale, slug }),
     fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale }),
     (async () => {
@@ -160,7 +178,34 @@ export default async function WebsitePageRoute({ params }: PageProps) {
       return resolveDesignSystemInheritance(raw, fetchDesignSystemById)
     })(),
     fetchForTenant<ProjectModuleConfig>(projectModuleConfigQuery, { locale, defaultLocale }),
+    loadCatalogueConfig(fetchForTenant, { locale, defaultLocale }),
   ])
+
+  // ── Catalogue dispatch (ADR-033 C2; spec §6.2) ──────────────────────────────
+  // BEFORE the page lookup, and only when the project has an enabled catalogue
+  // installation with a segment: /{segment} → landing, /{segment}/{slug} →
+  // item or collection, /{historic}/… → 301. Every other path falls through to
+  // the page lookup below, unchanged (and without the module, nothing here
+  // dispatches — AC 3).
+  const catalogueDispatch = planCatalogueRoute(slugSegments, catalogueConfig)
+  if (catalogueDispatch && catalogueConfig) {
+    return (
+      <CatalogueRoute
+        dispatch={catalogueDispatch}
+        config={catalogueConfig}
+        fetchForTenant={fetchForTenant}
+        locale={locale}
+        defaultLocale={defaultLocale}
+        tenantId={tenantId}
+        siteBase={siteBase}
+        siteConfig={siteConfig}
+        designSystem={designSystem}
+        moduleConfig={moduleConfig}
+        enabledModuleIds={getEnabledModuleIds(moduleConfig)}
+        hostScoped={hostScoped}
+      />
+    )
+  }
 
   // ── Redirect check ──────────────────────────────────────────────────────────
   // If no page was found by the current slug, check if this is an old slug
