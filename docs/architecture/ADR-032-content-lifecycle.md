@@ -312,3 +312,25 @@ Rules:
 - A type's *own* dates are not publishing dates: an event's start / end / schedule stay in an **Event** tab, so "when is the event" and "when is the page visible" are never mixed.
 - Building blocks: `src/lib/sanity/fields/publishing.ts` (`PUBLISHING_GROUP`, `publishingStatusField(rule)`, `publishOnField`, `unpublishOnField`, `archivedFields`), `publishing-summary.ts` (pure, tested), `PublishingStatusInput.tsx`. Pass the type's `publishedAtRule` (`LIFECYCLE_PUBLIC_RULES`) to `publishingStatusField`.
 - Test: `src/lib/sanity/fields/__tests__/publishing-tab.test.ts` — add each new lifecycle type to the "Publishing tab" block.
+
+---
+
+## Amendment B — publishing a document together with its dependencies (2026-10-14, Tom)
+
+Raised by the catalogue (ADR-033 D-4, D-5); generic by design.
+
+- **`publishTogether(root, descriptors)`** resolves the tree of never-published
+  dependencies of `root` through each descriptor's declared references, detects
+  cycles, validates and permission-checks every document **before** writing,
+  and publishes (or schedules) all of them in **one atomic transaction**. Any
+  failure publishes nothing.
+- Dependencies that already have a published version are never modified, even
+  when not live; the caller is warned when one will not be live at the root's
+  publication time.
+- Included never-published dependencies inherit the root's `publishedAt`; an
+  existing schedule is never overwritten.
+- Weak references to included documents are strengthened in the same
+  transaction. One Activity row per affected document.
+- Descriptors gain an optional `references(doc)` that names a document's
+  outgoing lifecycle references; modules without it are unaffected.
+

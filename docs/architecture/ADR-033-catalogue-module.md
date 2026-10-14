@@ -568,3 +568,288 @@ Option lists modify items and have no audience of their own, so they use the
 `cataloguePage` uses `catalogue.collection.*`. No `catalogue.optionList.*` ids
 exist.
 
+### C5 — Visibility is resolved by context
+
+`visibility` (`public` · `websiteOnly` · `unlisted`) never decides alone; the
+**delivery context** does, from one shared definition:
+
+| Context | Admits |
+|---|---|
+| Automatic listing (anything the platform assembles without an editor choosing the item) | `public`, `websiteOnly` |
+| Explicit reference (an editor placed the item in a collection section) | `public`, `websiteOnly`, `unlisted` |
+| Partner / Connections output | `public` only |
+| Sitemap, search indexing | `public`, `websiteOnly` — and an `unlisted` item's own page is `noindex` |
+
+The lifecycle (ADR-032 D3 fragment) is applied first and in every context:
+draft, scheduled, unpublished, expired and archived items never appear, whatever
+their visibility and however they are referenced.
+
+### C6 — An item is linked only where its page is routable in that locale
+
+A collection links an item only when the item has `hasPage` and a slug **in the
+request locale**. No default-locale fallback URL is generated — the primary
+lookup has no slug fallback, so such a link would 404. Without a routable page in
+that locale the item still renders in the collection, unlinked.
+
+### C7 — Every reference blocks option-list deletion, including drafts
+
+Archiving or deleting an option list is refused while **any non-archived item**
+attaches it — drafts included. Referential integrity protects editorial work,
+not only published content. The refusal names and links every item using the
+list. (This intentionally differs from the item and collection checks, where
+only public referrers block.)
+
+### C8 — Visibility stays in the Content tab
+
+As on events. A platform-wide move to Publishing, if ever made, is made for
+every module at once.
+
+### C9 — `deletePublished` is Owner-only
+
+Site admin is not a tenant role, and support access must not silently confer
+destructive client permissions.
+
+### C10 — Unlisted content never reaches an index, even through a collection
+
+An unlisted item shown in a collection (C5) is **omitted from that collection
+page's structured data** (`Menu` / `ItemList` / `OfferCatalog`) and from
+`llms.txt`. An **unlisted collection's own page is `noindex`**, exactly like an
+unlisted item's. Without this an indexable collection page would publish what
+the item's `noindex` withholds.
+
+### C11 — One helper decides visibility by context
+
+`src/lib/modules/catalogue/visibility.ts` holds the C5 table
+(`automaticListing`, `explicitReference`, `partner`, `sitemap`,
+`structuredData`) and exposes `visibilityFilter(context, path)` for GROQ and
+`admits(context, visibility)` / `isIndexable()` for TypeScript. Every catalogue
+delivery path calls it; a hand-written `visibility != "unlisted"` in catalogue
+code is a defect. Tested per context, with GROQ and TypeScript asserted to agree.
+
+---
+
+## Amendment D — correction round before the S4 commit (2026-10-14, Tom)
+
+Agreed after reviewing S4. Where D supersedes an earlier decision it says so.
+
+### D-1 — Starter presets; a generic installation stays business-neutral
+
+*Supersedes the spec's "seeded on install with `dine-in`".*
+
+A generic installation creates **no service channels**; an unscoped offer is a
+price that applies everywhere. Nothing assumes the project is a restaurant.
+
+**Starter presets** are declared in the module manifest, versioned, validated
+against `configSchema` by test, and offered in the Studio Modules pane when the
+module is first enabled:
+
+| Preset | `navLabel` (en · it · de) | `publicSegment` | `serviceChannels` | `defaultItemProfile` |
+|---|---|---|---|---|
+| Restaurant | Menu · Menù · Speisekarte | `menu` | `dine-in` (Dine-in · Al tavolo · Vor Ort), `takeaway` (Takeaway · Da asporto · Zum Mitnehmen) | `foodOrDrink` |
+| Bookshop | Books · Libri · Bücher | `books` | none | `product` |
+
+Rules: explicitly selected; previewed before applying (the preview runs the D11
+segment validation and shows any clash — a clash blocks applying); applied once;
+idempotent on retry; never reapplied on upgrade; fully editable afterwards.
+**Currency is not part of any preset** — it is where a business is, not what it
+is; the preview shows the currency the project already has.
+
+The installation records `appliedPreset: { id, version, appliedAt }` for
+idempotency and audit. **Only the install flow reads it** — a test fails if any
+other code does. After installation behaviour depends solely on configuration.
+Demo content packs (sample items, collections, pages, media) are a separate,
+future concept and never part of a preset.
+
+### D-2 — Item profile replaces `itemType`
+
+`itemType` (`dish | product | service`) is renamed **`itemProfile`**:
+`foodOrDrink | product | service` — a classification of the item, not of the
+tenant. A restaurant may sell books; a hotel may list food, treatments and
+products in one catalogue. Free to rename: no catalogue document exists
+(checked 2026-10-14, production dataset: 0 catalogue documents, 0 installations).
+
+The wizard asks "What are you offering?" first, preselected from the module
+setting `defaultItemProfile` (written by a preset or an admin), always
+changeable per item.
+
+**Structured data — B1 holds (confirmed by Tom 2026-10-14).** In a `menu` collection every item is a
+`MenuItem`. On an item's own page the profile maps by table:
+`foodOrDrink → Product`, `product → Product`, `service → Service`.
+
+### D-3 — Allergen declaration for food and drink
+
+When `itemProfile == 'foodOrDrink'` the item carries an explicit declaration:
+
+```ts
+type AllergenDeclaration =
+  | { status: 'notReviewed' }
+  | { status: 'containsListedAllergens'; allergens: AllergenKey[]; mayContain?: AllergenKey[]; note?: LocalizedText }
+  | { status: 'noneDeclared'; confirmed: true; note?: LocalizedText }
+```
+
+- New food items start `notReviewed`; changing an item's profile **to** food
+  resets it to `notReviewed`. `notReviewed` **blocks publishing** (including
+  inside "Publish collection and dependencies").
+- `containsListedAllergens` requires ≥ 1 allergen; `noneDeclared` requires the
+  explicit confirmation — an empty array never means "none".
+- "May contain" stays separate from "contains".
+- No safety claim is ever inferred ("allergen-free", "gluten-free", vegan).
+  This ADR records the **semantic state** `noneDeclared`; its public wording in
+  every locale is **pending legal-copy approval** and lives only in the
+  message files, never here.
+- The declaration is shown **wherever the food item is presented publicly**:
+  item page, collection page, listing section (compact, with real text for
+  assistive technology). Labels are platform messages, so they exist in every
+  locale even when the item is untranslated.
+- Products and services show no allergen interface and render nothing.
+
+**`showAllergens` is removed.** A section chooses `compact` or `expanded`
+presentation; there is no hidden option. (Supersedes spec §4.6.)
+
+### D-3a — Allergen declarations on option choices (V1)
+
+*Confirmed by Tom 2026-10-14; replaces the earlier "known gap".* An optional
+extra can change what is on the plate, so each option choice carries the same
+explicit-state declaration — never a bare optional array:
+
+```ts
+type OptionAllergenDeclaration =
+  | { status: 'notReviewed' }
+  | { status: 'containsListedAllergens'; allergens: AllergenKey[]; mayContain?: AllergenKey[] }
+  | { status: 'noneDeclared'; confirmed: true }
+```
+
+- A choice **linked to a catalogue item** derives its declaration from that item.
+- A **free-text `add`** choice requires its own reviewed declaration when the
+  option list is used by a `foodOrDrink` item; `notReviewed` blocks publishing
+  that parent item, and combined publishing validates every such choice first.
+- The rule applies only where a `foodOrDrink` item uses the list; the same list
+  on a product or service is unaffected.
+- Shown beside the choice with real text, never icons alone — e.g.
+  *Extra mozzarella — Contains: milk*, *Add anchovies — Contains: fish*.
+- A `remove` or substitution choice **never** removes the item's base allergens.
+- `contains` and `may contain` stay separate.
+
+### D-4 — Draft references with publish-time enforcement
+
+*Supersedes S4's published-only pickers.*
+
+Drafts may reference never-published items, collections and option lists.
+Such a reference is written weak, marked to strengthen on publish (the existing
+posts → gallery precedent): `{ _ref, _weak: true, _strengthenOnPublish: { type } }`.
+A reference to a document that has a published version is written strong.
+
+- **Never published** (no published document) = hard publication dependency.
+- **Published but not live** (scheduled, unpublished, expired, archived) = valid
+  reference. Publishing never changes its lifecycle state; if it will not be
+  live when the parent goes live, the editor is warned.
+- Pickers include eligible drafts, labelled as drafts, never implying they are public.
+- Publishing a document with a never-published dependency is **refused**,
+  naming and linking every unresolved dependency — unless the editor chooses D-5.
+- On every successful publish the published copy's references are
+  **strengthened explicitly** in the same transaction (weak flag and marker
+  removed). Abluo does not rely on any server-side strengthening behaviour.
+- Public queries resolve only eligible published content (unchanged).
+
+### D-5 — "Publish collection and dependencies" (and "Publish item and dependencies")
+
+One explicit action for coordinated launches. Before confirming it shows: the
+document being published or scheduled; every never-published dependency to be
+included (the full tree, option lists included, cycles detected safely); the
+publication date; any dependency the editor may not publish; items whose own
+public page would become available; and dependencies reused elsewhere.
+
+All documents are validated and permission-checked **before** anything is
+written, then published or scheduled in **one atomic Sanity transaction** —
+any failure publishes nothing. Included never-published dependencies take the
+parent's schedule; an existing schedule is never overwritten; dependencies that
+already have a published version are not touched. One Activity row per
+affected document. References are strengthened as part of the transaction.
+
+This is a **generic operation of the ADR-032 lifecycle service**
+(`publishTogether`), not catalogue code — events and galleries will need it.
+Recorded as ADR-032 Amendment B.
+
+### D-6 — Three-state price visibility
+
+`catalogueListingSection.showPrices` becomes `'default' | 'show' | 'hide'`
+(default `'default'` — "Use Catalogue default"), following
+`showPricesByDefault` live. Schema Evolution check run 2026-10-14 against the
+production dataset: 0 listing sections, 0 `showPrices` values — no migration.
+
+### D-7 — Localized addresses require a localized name
+
+A slug for a locale may exist only when `name[locale]` is written. Enforced in
+the dashboard, the server-side save **and** Studio validation. Missing languages
+show "Not translated" in the dashboard and get no link, no `hreflang`, no
+sitemap entry and no metadata claim. Editorial text fallback is unchanged but
+never manufactures a routable page. (Strengthens C6.)
+
+### D-8 — Archive and permanent delete are separate rules
+
+| Action | Refused when |
+|---|---|
+| Archive item / collection | a **public** document references it |
+| Archive option list | any **non-archived** item attaches it |
+| Permanently delete anything | **any** reference exists — draft, published, scheduled, unpublished or **archived** |
+
+Every refusal names and links each referrer. The delete rule matches what Sanity
+enforces for strong references; Abluo's check turns it into a readable answer.
+(Refines C7.)
+
+### D-9 — Delivery matrix
+
+One readable, table-driven test proves visibility × lifecycle × context ×
+language against a sample dataset with a fixed clock, plus segment redirects
+(landing, collection, item; language preserved; multiple changes; revert) and
+the currency warning. Automatic listings and partner output are tested through
+the C11 helper — no speculative query is created for them.
+
+### D-10 — Deferred, in priority order
+
+1. Full-page draft preview. 2. Drag-reordering items inside sections. 3. Bulk list actions.
+
+---
+
+## Amendment E — review corrections before commit (2026-10-14, Tom)
+
+### E-1 — `noneDeclared` may carry "may contain"
+
+"No EU-listed allergen ingredients, but cross-contamination is possible" must be
+representable. `mayContain?: AllergenKey[]` is allowed on `noneDeclared`, for
+items (D-3) and option choices (D-3a) alike, and rendered as a separate line:
+*Allergen information reviewed: no EU-listed allergens declared. May contain: nuts.*
+(Supersedes the `noneDeclared` shapes in D-3 and D-3a.)
+
+Working public wording, **pending legal-copy review**, lives only in the message
+files: en "Allergen information reviewed: no EU-listed allergens declared." ·
+it "Informazioni sugli allergeni verificate: nessun allergene dell’elenco UE
+dichiarato." · de "Allergenangaben geprüft: keine Allergene der EU-Liste deklariert."
+
+### E-2 — Studio enforces the option-list rule too
+
+No editing surface may route around food-safety validation. A
+`catalogueOptionList` carries an asynchronous Studio validation that finds every
+item referencing it (drafts and weak references included) and applies the same
+shared rule as the dashboard: while any non-archived `foodOrDrink` item uses the
+list, an unreviewed free-text `add` choice is an **error**, and Studio blocks
+publishing. Together with the existing item-side check this covers both
+directions, so a published item never needs re-validation. If the asynchronous
+check proves unreliable, option lists become read-only in Studio and editors are
+directed to the dashboard — a known gap is never shipped.
+
+### E-3 — A stray localized address refuses publication
+
+*Supersedes the "drop the slug on publish" behaviour of the D-7 implementation.*
+Publishing never rewrites editorial data. An address in a language without a name
+in that language refuses publication, naming the language and focusing its
+fields; the editor adds the name or removes the address deliberately. When a
+localized name is cleared in the dashboard, the editor is offered to clear that
+language's address too, with Undo.
+
+### E-4 — Referenced drafts are protected
+
+Unchanged and restated: deleting a never-published draft that other drafts
+reference is refused, naming and linking them. A future "remove references and
+delete" operation would be explicit.
+

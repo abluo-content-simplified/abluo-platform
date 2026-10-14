@@ -1,6 +1,6 @@
 # Catalogue module — V1 specification
 
-**Status:** Approved for implementation (2026-10-13). Aligned with ADR-033 including Amendments A–C. Pure helpers exist (`availability`, `offers`, `sections`, `slugs`); module not yet registered.
+**Status:** Approved for implementation (2026-10-13). Aligned with ADR-033 including Amendments A–D (2026-10-14). Pure helpers exist (`availability`, `offers`, `sections`, `slugs`); module not yet registered.
 **Authority:** **ADR-033** (catalogue module — items, collections, offers, options). Where this document and the ADR disagree, the ADR wins and this is corrected.
 **Also governed by:** ADR-014, ADR-020, ADR-022, ADR-023, ADR-025 + `client-dashboard/content-wizard-spec.md`, ADR-028, ADR-029, ADR-031, ADR-032; the Publicly Routable Content pattern, Schema Evolution Rules, Multilingual-First Principle, Configuration Over Hardcoding (CLAUDE.md).
 **Supersedes:** `docs/engineering/menu-module/menu-module-v1-spec.md` — delete that file; it predates the rename and the D4 reversal.
@@ -114,14 +114,14 @@ Every document carries `projectSlug`. Field types follow the Localization Rules 
 |---|---|---|---|
 | `projectSlug` | string | ✔ | |
 | `publicId` | string | ✔ | `publicIdField` pattern from `events/schema.ts` — UUID, read-only, set once (ADR-031 D3) |
-| `itemType` | string | ✔ | `dish` · `product` · `service`. `initialValue: 'dish'`. Drives form shape and schema.org `@type`, never business branching |
+| `itemProfile` | string | ✔ | `foodOrDrink` · `product` · `service` (ADR-033 D-2) — a classification of the item, not of the tenant. Preselected in the wizard from config `defaultItemProfile`, always changeable. Drives form shape and schema.org `@type`, never business branching |
 | `name` | localizedString | ✔ | |
 | `description` | localizedText | | |
 | `body` | localizedPortableText | | long copy; only rendered on the item's own page |
 | `images` | array of `mediaAssetRef` | | Media Library; crops via `focalObjectPosition()` (ADR-022) |
 | `categories` | array of string | | stable keys from config `categories` |
-| `allergens` | array of string | | platform constant (§4.7); shown when `itemType == 'dish'` |
-| `dietary` | array of string | | keys from config `dietaryTags`; shown when `itemType == 'dish'` |
+| `allergenDeclaration` | object | ✔ for `foodOrDrink` | ADR-033 D-3: `{ status: 'notReviewed' }` · `{ status: 'containsListedAllergens', allergens[] (≥ 1), mayContain[]?, note? }` · `{ status: 'noneDeclared', confirmed: true, note? }`. Keys are the §4.7 platform constant. New food items start `notReviewed`; changing the profile **to** food resets it. `notReviewed` **blocks publishing**. An empty array never means "none". Replaces the former `allergens[]`. Absent for `product` / `service` |
+| `dietary` | array of string | | keys from config `dietaryTags`; shown for `foodOrDrink` only |
 | `offers` | array of `catalogueOffer` | | §4.2 |
 | `optionLists` | array of `catalogueItemOptionList` | | ordered; §4.4 |
 | `hasPage` | boolean | ✔ | default `false`. Opt-in public page (ADR-033 D4) |
@@ -187,13 +187,15 @@ No location scoping in V1 — ADR-031 D6 places that in V1.2. Adding `locationKe
 | `parentKey` | string | | `_key` of the parent; absent = top level |
 | `items` | array of reference → `catalogueItem` | | ordered; `projectSlug` filter |
 
-**Depth is not capped** (ADR-033 D6) — the editor guides to two levels and warns beyond three. **A section may hold any `itemType`.** **A parent may hold its own items.**
+**Depth is not capped** (ADR-033 D6) — the editor guides to two levels and warns beyond three. **A section may hold any `itemProfile`.** **A parent may hold its own items.**
 
 ### 4.6 `cataloguePage` and `catalogueListingSection`
 
 `cataloguePage` mirrors `eventsPage`: `projectSlug`, `heroTitle`, `heroSubtitle`, `seoTitle`, `seoDescription`, `sections[]` — **plus the ADR-032 lifecycle fields** (ADR-033 C1). Served at `/{segment}`; its derived status decides whether that URL is public. It never gates the item and collection pages beneath it.
 
-`catalogueListingSection`: `background`, `eyebrow`, `title`, `subtitle` (localized), `collection` (reference), `showPrices` (default true), `showAllergens` (default true), `emptyStateHeading`, `emptyStateBody`.
+`catalogueListingSection`: `background`, `eyebrow`, `title`, `subtitle` (localized), `collection` (reference), `showPrices` (`'default' | 'show' | 'hide'`, default `'default'` = follow config `showPricesByDefault` live; ADR-033 D-6), `allergenPresentation` (`'compact' | 'expanded'`), `emptyStateHeading`, `emptyStateBody`.
+
+There is **no `showAllergens`** (ADR-033 D-3): a section chooses how the declaration is presented, never whether. No schema migration was needed for D-6 (production check 2026-10-14: 0 listing sections).
 
 The New Section Checklist applies in full — including hydration duplicated in **both** `[tenant]/page.tsx` and `[tenant]/[slug]/page.tsx`.
 
@@ -203,6 +205,10 @@ The fourteen EU allergens (Reg. 1169/2011 Annex II) are a **platform constant**:
 
 A closed legal list. No tenant may extend it and **no configuration may hide one** — hiding a declarable allergen to reduce clutter is a compliance risk, not a UX improvement.
 
+**The declaration is shown wherever a food item is presented publicly** — item page, collection page, listing section (compact, with real text for assistive technology) — and can never be hidden. Wording for `noneDeclared` is "No allergens from the EU list declared"; no safety claim ("allergen-free", "gluten-free", vegan) is ever inferred. Labels are platform messages, so they exist in every locale even when the item is untranslated. Products and services render no allergen interface.
+
+**Known gap (not V1):** a free-text "add" option on a food item (e.g. *add anchovies*) can introduce an allergen the base declaration does not list. An option linked to a catalogue item carries that item's declaration. Allergens on free-text options are a recorded follow-up.
+
 ---
 
 ## 5. Module configuration (`configSchema`)
@@ -211,12 +217,28 @@ A closed legal list. No tenant may extend it and **no configuration may hide one
 |---|---|---|
 | `categories` | `localizedStringList` | `supportsColor: true`, `supportsRouting: false`, `usage: { schemaType: 'catalogueItem', field: 'categories', noun: 'items' }` |
 | `dietaryTags` | `localizedStringList` | tenant's own vocabulary |
-| `serviceChannels` | `localizedStringList` | the price axis (ADR-033 D3). Seeded on install with one entry, `dine-in` |
+| `serviceChannels` | `localizedStringList` | the price axis (ADR-033 D3). **No seed**: a generic installation creates no channels, and an unscoped offer applies everywhere (ADR-033 D-1). Starter presets may add some |
+| `defaultItemProfile` | `select` | `foodOrDrink` · `product` · `service`; optional, **no default**. The wizard preselects it for "What are you offering?" (ADR-033 D-2). Written by a preset or an admin |
 | `currency` | `select` | ISO 4217 subset, default `EUR` (ADR-033 D7). The sole persisted currency; offers resolve from it at read time. Changing it warns that prices are reinterpreted, not converted, and requires confirmation |
 | `showPricesByDefault` | `boolean` | default true |
 | `publicSegment` | `string` | the public base path (ADR-033 D11). **Required at install, no default** (ADR-033 C1). Validated against reserved routes, existing routes, the first segment of every page slug **and `publicSegmentHistory`** |
 | `publicSegmentHistory` | `string[]` | hidden, module-written. Append-only list of every segment used; each one redirects to the current. Setting the segment back to a historic value removes it from the list |
 | `navLabel` | `localizedString` | what the dashboard calls this module (ADR-033 D12). Presentation only — identifiers, routes, permissions and schema terminology stay `catalogue` |
+
+### 5.1 Starter presets (ADR-033 D-1)
+
+Declared generically in the manifest — `platformContract.starterPresets?: { id, version, label, description?, config }[]`, where `config` maps `configSchema` field ids to values — and validated by the manifest validator (Rule 14) and tests: every key exists in `configSchema` and every value passes that field's own rules (types, select options, `localizedStringList` shape, segment syntax). Mechanics: `src/lib/modules/presets.ts`.
+
+| Preset | `navLabel` (en · it · de) | `publicSegment` | `serviceChannels` | `defaultItemProfile` |
+|---|---|---|---|---|
+| Restaurant | Menu · Menù · Speisekarte | `menu` | `dine-in` (Dine-in · Al tavolo · Vor Ort), `takeaway` (Takeaway · Da asporto · Zum Mitnehmen) | `foodOrDrink` |
+| Bookshop | Books · Libri · Bücher | `books` | none | `product` |
+
+- Offered in the Studio Modules pane **only when the module is first enabled**: "No preset" (default) or one preset. Explicit selection; never automatic.
+- The pane previews exactly what will be written, runs the `publicSegment` validator on the preset's segment (a clash **blocks applying**, with the clash message), and shows the project's current currency read-only ("not changed"). **No preset sets a currency.**
+- Applied once, in the same write as the installation; `publicSegmentHistory` is persisted through the validator. Localized labels are filtered to the website's locales.
+- The installation records `appliedPreset: { id, version, appliedAt }`. Re-applying the same id+version (a retry) changes nothing; it is never re-applied on a later save or upgrade; everything stays editable afterwards. **Only the install flow reads `appliedPreset`** — `applied-preset-guard.test.ts` fails if any other file does.
+- Demo content packs are a separate, future concept and never part of a preset.
 
 `supportsRouting: false` on categories — blog categories were indexed URLs on a migrated site and needed pages; catalogue categories are vocabulary and must not sprout pages because they share a field type.
 
@@ -295,7 +317,9 @@ the page lookup (which 404s). The dispatch is a pure, tested function of
 }
 ```
 **Redirect lookup:** `$slug in redirectFrom[$locale]` → `"currentSlug": slug[$locale].current`
-**List queries:** `"slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) }`
+**List queries:** `"slug": slug[$locale].current` — **no fallback** (ADR-033 C6). An item or collection is linked only when it has `hasPage` and a slug in the request locale; otherwise it renders unlinked. A default-locale URL would 404 against the no-fallback primary lookup.
+
+**Visibility by context (ADR-033 C5):** automatic listings admit `public` + `websiteOnly`; an explicit collection reference also admits `unlisted`; partner output `public` only; sitemap and indexing exclude `unlisted`. The lifecycle fragment applies first, always.
 
 Content fields keep `coalesce(field[$locale], field[$defaultLocale], field.en)`;
 the no-fallback rule applies to routing only. `<visibility fragment>` is the
@@ -323,7 +347,7 @@ are correct.
 |---|---|---|
 | Collection page, `collectionType: menu` | `Menu` → `hasMenuSection` (`MenuSection`, nested) → `hasMenuItem` (`MenuItem`) → `offers` | the collection |
 | Collection page, `collectionType: list` | `ItemList`, or `OfferCatalog` when its items carry offers | the collection |
-| Item's own page | `Product` with a nested `Offer`; `Service` for `itemType: service` | `itemType` |
+| Item's own page | `Product` with a nested `Offer`; `Service` for `itemProfile: service` (`foodOrDrink` and `product` → `Product`; ADR-033 D-2) | `itemProfile` |
 
 A lookup table, never a conditional on tenant kind. The menu shape is the
 ADR-031 D3 contract vocabulary, so `Menu v1` stays a projection of what the site
@@ -337,8 +361,9 @@ produces no JSON-LD and no sitemap entry.
 
 ## 7. Localization
 
+- **A localized slug may exist only where `name[locale]` is written** (ADR-033 D-7). Enforced in the dashboard, the server-side save and Studio validation. A language without a name shows "Not translated" and gets no link, no `hreflang`, no sitemap entry and no metadata claim; editorial text fallback is unchanged but never manufactures a routable page.
 - Localized: `name`, `description`, `body`, section names, option labels, `priceNote`, page and section copy, `slug` (`localizedSlug`).
-- Not localized: `price`, `priceDelta`, `channel`, `min`/`max`, `kind`, `itemType`, allergen and dietary keys, `days`, `from`/`to`, `visibility`, `hasPage`, `_key`s, references.
+- Not localized: `price`, `priceDelta`, `channel`, `min`/`max`, `kind`, `itemProfile`, allergen and dietary keys, `days`, `from`/`to`, `visibility`, `hasPage`, `_key`s, references.
 - Machine translation via ADR-023. **No website query may project `translationStatus`** — existing test extended.
 - Dashboard and Studio strings in `messages/{en,it,de}.json` under `catalogue.*`. No hardcoded user-facing strings.
 
@@ -367,15 +392,21 @@ Writing includes publishing. `can()` fail-closed; every dashboard route calls `a
 
 Per ADR-032, `publishedAtRule: 'optional'`, status derived by `deriveStatus()`, never stored. Lifecycle descriptors registered for `catalogueItem`, `catalogueCollection`, `catalogueOptionList` and `cataloguePage` (ADR-033 C1), each `connected: false` until `Menu v1` ships.
 
-**Dependency checks**
+**Archive and permanent delete are separate rules** (ADR-033 D-8, refining C7). Every refusal names and links each referrer.
 
-| Action | Refused when | Message |
-|---|---|---|
-| Archive/delete `catalogueItem` | referenced by a **public** collection, or by a public option list | names them |
-| Archive/delete `catalogueOptionList` | attached to any non-archived item | names the items |
-| Archive/delete `catalogueCollection` | referenced by a public `catalogueListingSection` | names the pages |
+| Action | Refused when |
+|---|---|
+| Archive item / collection | a **public** document references it |
+| Archive option list | any **non-archived** item attaches it |
+| Permanently delete anything | **any** reference exists — draft, published, scheduled, unpublished or **archived** |
 
-References from drafts or archived content are kept and do not block (Gallery rule, ADR-032 D13).
+**Draft references, enforced at publish time** (ADR-033 D-4, supersedes published-only pickers). Drafts may reference never-published items, collections and option lists; the reference is written weak and marked to strengthen on publish (`{ _ref, _weak: true, _strengthenOnPublish: { type } }`), strong when the target already has a published version. Pickers include eligible drafts, labelled as drafts.
+- *Never published* = a hard publication dependency. Publishing a parent with one is **refused**, naming and linking every unresolved dependency.
+- *Published but not live* (scheduled, unpublished, expired, archived) = a valid reference; publishing never changes its state. The editor is warned if it will not be live when the parent goes live.
+- On every successful publish the published copy's references are strengthened explicitly in the same transaction. Abluo does not rely on server-side strengthening.
+- Public queries resolve only eligible published content (unchanged). An item with `allergenDeclaration.status == 'notReviewed'` blocks publishing, including inside the action below.
+
+**"Publish collection and dependencies"** (and "Publish item and dependencies"; ADR-033 D-5). Before confirming it shows the document, every never-published dependency (full tree, option lists included, cycles detected safely), the publication date, dependencies the editor may not publish, items whose own page becomes available, and dependencies reused elsewhere. Everything is validated and permission-checked **before** anything is written, then published or scheduled in **one atomic Sanity transaction** — any failure publishes nothing. Included dependencies take the parent's schedule; an existing schedule is never overwritten; dependencies already published are untouched. One Activity row per document; references are strengthened in the transaction. This is a generic ADR-032 lifecycle operation (`publishTogether`, ADR-032 Amendment B), not catalogue code.
 
 **Slugs stay reserved** while a document exists, so restore + republish returns the same URL. No automatic redirect on slug change — the editor adds one explicitly via `redirectFrom`.
 
@@ -412,12 +443,12 @@ Per `content-wizard-spec.md` — one decision per screen, cards not dropdowns, a
 
 | # | Question | Saved to | Skippable |
 |---|---|---|---|
-| 1 | What are you adding? (type cards) | `itemType` | auto-skipped when the tenant has one type |
+| 1 | What are you offering? (profile cards: food or drink · product · service) | `itemProfile` | preselected from config `defaultItemProfile`, always changeable |
 | 2 | What is it called? | `name[loc]`, `description[loc]` | name required |
 | 3 | What kind? (category chips) | `categories[]` | yes, if none configured |
 | 4 | Add a photo | `images[0]` | yes |
 | 5 | What does it cost? (one price per channel) | `offers[]` | yes |
-| 6 | Anything people should know? (allergens, dietary) | `allergens[]`, `dietary[]` | shown for `dish` only |
+| 6 | **Food information** — allergen declaration (contains · may contain · none declared, explicit confirmation) and dietary tags | `allergenDeclaration`, `dietary[]` | shown for `foodOrDrink` only; **not skippable** — `notReviewed` blocks publishing |
 | 7 | Can people change it? (option lists + min/max) | `optionLists[]` | yes |
 | 8 | Give it its own page? (toggle → slug preview) | `hasPage`, `slug[loc]` | yes, default off |
 | 9 | Other languages? | `translationStatus: machine` | only when > 1 locale |
@@ -468,6 +499,11 @@ A direct editor, not a wizard — arranging is iterative.
 | references share `projectSlug` | collection, option | reference filter + save-time check |
 | `from` ≠ `to` | availability | blocks save — a zero-length window matches nothing. `from` > `to` is legal and wraps past midnight |
 | `parentKey` names a section that exists | collection | blocks save of a **newly created** orphan; pre-existing orphans are reported, not blocked, and stay visible (ADR-033 A7) |
+| a locale slug without `name[locale]` | item, collection | blocks save (dashboard, server and Studio; ADR-033 D-7) |
+| `allergenDeclaration` is `notReviewed` | `foodOrDrink` item | blocks **publishing** (not saving) |
+| never-published dependency | publish of any catalogue document | blocks publishing, names each dependency (D-4) |
+| `containsListedAllergens` with no allergen; `noneDeclared` without `confirmed: true` | `foodOrDrink` item | blocks save |
+| a starter preset's `publicSegment` clashes | Modules pane, first enable | blocks applying, names the clash (D-1) |
 | no photo, or no offer on any channel | item | **warns only** |
 | changing `currency` | module config | **warns and requires confirmation**, naming how many prices across how many items are reinterpreted. No amounts are converted |
 
@@ -491,7 +527,7 @@ The last row is the general rule: **gaps, not errors**. An item with no photogra
 7. A new item is `draft` and appears on no public path, including its own URL.
 8. A future `publishedAt` yields `scheduled` and appears on the first request after that time.
 9. "Unpublish" sets `expiresAt = now`; the document stays published and keeps `_id`, `publicId`, slug and references.
-10. Archiving an item referenced by a public collection is refused and names it; one referenced only by a draft collection succeeds.
+10. Archiving an item referenced by a public collection is refused and names it; one referenced only by a draft collection succeeds. Permanently deleting it is refused while **any** reference exists, including archived ones (D-8).
 11. `deriveStatus()` unit-tested across all five states plus `hasChanges`.
 12. The ADR-032 D3 inventory test lists every catalogue delivery path — item page, collection page, listing section, catalogue page, sitemap, `generateMetadata`, JSON-LD — and fails if one omits the fragment.
 
@@ -513,9 +549,25 @@ The last row is the general rule: **gaps, not errors**. An item with no photogra
 20b. An offer at 18:00–02:00 on Friday is available at 01:00 on Saturday and unavailable at 03:00, evaluated in the site's IANA timezone across a DST boundary in both directions.
 20c. A channel-specific offer wins over an unscoped one at the same instant; with no applicable offer the item is not sold on that channel; two applicable offers in one scope return `ambiguous`.
 20d. A collection whose section names a missing parent still renders every section — the orphan as a recovery root with its descendants beneath it, original order preserved, `parentKey` untouched on disk — and reports `missingParent` with both keys. A cycle renders every section and reports the participating keys without looping.
-21. All fourteen EU allergens are selectable; none can be hidden by configuration.
+21. All fourteen EU allergens are selectable on a `foodOrDrink` item, and the declaration is **always shown** wherever that item is presented publicly (item page, collection page, listing section) — no section setting, config or option can hide it. `notReviewed` blocks publishing; `noneDeclared` needs explicit confirmation; products and services render no allergen interface.
 22. Switching locale changes names, descriptions and option labels; missing translations fall back to the default locale, never to an empty string.
 23. `translationStatus` appears in no website query.
+23a. A localized slug cannot be saved for a locale without `name[locale]` (dashboard, server, Studio); that locale shows "Not translated" with no link, `hreflang` or sitemap entry (D-7).
+
+**Starter presets (ADR-033 D-1)**
+P1. A generic installation creates no service channels and sets no currency; `defaultItemProfile` is unset.
+P2. The manifest validator and a test reject any preset whose key is not in `configSchema` or whose value fails the field's own validation.
+P3. The Restaurant and Bookshop presets write exactly the D-1 table (labels filtered to the site's locales); neither writes a currency, and the preview shows the project's existing currency as unchanged.
+P4. A preset whose `publicSegment` clashes (reserved route, page slug, history) cannot be applied and shows the clash message.
+P5. Applying records `appliedPreset { id, version, appliedAt }`; re-applying the same id+version changes nothing; later saves and upgrades never re-apply; every written value remains editable.
+P6. A test fails if any file other than the install flow reads `appliedPreset`.
+
+**Draft references and publishing together (ADR-033 D-4, D-5)**
+D1. A draft collection can reference a never-published item and option list; the reference is weak with `_strengthenOnPublish`. A reference to an already-published target is strong.
+D2. Publishing a parent with a never-published dependency is refused, naming and linking each one; a dependency that is merely scheduled, unpublished, expired or archived does not block.
+D3. After a successful publish no weak flag or marker remains on the published copy's references.
+D4. "Publish collection and dependencies" is atomic: one injected failure (validation, permission, or transaction) publishes **nothing**; success publishes all, one Activity row each, existing schedules untouched, already-published dependencies not touched.
+D5. The dependency walk terminates on cycles and includes option lists.
 
 **Dashboard**
 24. The wizard autosaves; closing the browser mid-step loses nothing.
@@ -532,4 +584,6 @@ The last row is the general rule: **gaps, not errors**. An item with no photogra
 
 ## 13. Out of scope for V1
 
-Variants and stock · ordering, baskets, payments · pre-orders · ingredients · nutritional data · multi-location scoping · collection-level price overrides · cross-item offers · partner API endpoints, OAuth, webhooks, tombstones, sync · import/export · AI description generation.
+Deferred, in priority order (ADR-033 D-10): **1.** full-page draft preview · **2.** drag-reordering items inside sections · **3.** bulk list actions.
+
+Also out of scope: allergens on free-text options (known gap, §4.7) · demo content packs · variants and stock · ordering, baskets, payments · pre-orders · ingredients · nutritional data · multi-location scoping · collection-level price overrides · cross-item offers · partner API endpoints, OAuth, webhooks, tombstones, sync · import/export · AI description generation.
