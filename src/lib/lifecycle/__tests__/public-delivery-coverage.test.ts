@@ -127,13 +127,21 @@ function problems(q: string): string[] {
     if (new RegExp(`\\b${field}(\\[\\])?->`).test(s)) out.push(`unguarded dereference ${field}->`)
   }
   if (/\binternal->\{/.test(s) && !q.includes(publicFilterForAnyType())) out.push('internal link target without publicFilterForAnyType')
+  // ADR-033 Amendment G — a navigation link's pageRef may target catalogue
+  // lifecycle types. Every subquery keyed on it must either be restricted to
+  // `page` or carry publicFilterForAnyType in its OWN filter.
+  for (const m of q.matchAll(/\^\.pageRef\._ref/g)) {
+    const span = enclosingSpan(q, m.index!)
+    if (!span.includes(publicFilterForAnyType()) && !/_type\s*==\s*"page"/.test(span)) out.push('a pageRef target read without publicFilterForAnyType')
+  }
   return out
 }
 
 const readsLifecycle = (q: string) =>
   LIFECYCLE_TYPES.some((t) => new RegExp(`_type\\s*==\\s*["']${t}["']`).test(q)) ||
   Object.keys(REF_FIELDS).some((f) => new RegExp(`\\b${f}(\\[[^\\]]*\\])?->`).test(q)) ||
-  /\binternal->\{/.test(q)
+  /\binternal->\{/.test(q) ||
+  /\^\.pageRef\._ref/.test(q)
 
 const ENTRIES = Object.entries(DELIVERY_MODULES).flatMap(([file, mod]) =>
   Object.entries(mod)
@@ -165,6 +173,9 @@ describe('ADR-032 D3 — public delivery paths carry the visibility rule', () =>
       'src/lib/sanity/queries.ts#cataloguePageQuery',
       'src/lib/seo/sitemap-queries.ts#SITEMAP_CATALOGUE_ITEMS_QUERY',
       'src/lib/seo/sitemap-queries.ts#SITEMAP_CATALOGUE_COLLECTIONS_QUERY',
+      // ADR-033 Amendment G — header/footer navigation links to catalogue targets.
+      'src/lib/sanity/queries.ts#websiteSiteConfigQuery',
+      'src/lib/sanity/queries.ts#NAV_LINK_FIELDS',
     ]) expect(ids).toContain(expected)
   })
 
@@ -201,6 +212,22 @@ describe('ADR-032 D3 — public delivery paths carry the visibility rule', () =>
     expect(problems(`*[_type == "catalogueCollection" && ${publicFilterFor('catalogueCollection')}][0]{ sections[]{ "items": (items[${publicFilterFor('catalogueItem', '@->')}]->)[projectSlug == $projectSlug]{ name } } }`)).toEqual([])
     // A listing section's collection dereferenced without a guard.
     expect(problems('*[_type == "page"][0]{ sections[]{ "c": collection->{ name } } }')).not.toEqual([])
+  })
+
+  it('the scanner rejects a navigation pageRef target read without the rule (ADR-033 G)', () => {
+    expect(problems('*[_type == "siteConfig"][0]{ navLinks[]{ "t": *[^.pageRef._ref == _id && projectSlug == $projectSlug][0]{ _type } } }')).not.toEqual([])
+    expect(problems(`*[_type == "siteConfig"][0]{ navLinks[]{ "t": *[^.pageRef._ref == _id && ${publicFilterForAnyType()}][0]{ _type } } }`)).toEqual([])
+  })
+
+  it('navigation links dereference pageRef only for pages; catalogue targets go through the guarded subquery', () => {
+    const f = queries.NAV_LINK_FIELDS
+    // Remove the one permitted page-only dereference, then nothing may remain.
+    const pageOnly = 'select(pageRef->_type == "page" => coalesce(pageRef->slug[$locale].current, pageRef->slug[$defaultLocale].current))'
+    expect(f).toContain(pageOnly)
+    expect(f.split(pageOnly).join(' ')).not.toMatch(/pageRef->/)
+    expect(f).toContain('^.pageRef._ref == _id && projectSlug == $projectSlug')
+    // Every navigation link surface in the site config uses the one fragment.
+    expect(queries.websiteSiteConfigQuery.split(f).length - 1).toBe(5)
   })
 })
 

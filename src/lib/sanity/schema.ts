@@ -584,14 +584,21 @@ const navigationLinkType = defineType({
       initialValue: 'internal',
     }),
     // Primary way to link to a page — reference to any page document in this project.
-    // Studio shows only pages that belong to the same projectSlug as the siteConfig.
+    // Studio shows only documents that belong to the same projectSlug as the siteConfig.
+    //
+    // ADR-033 Amendment G — the same picker also reaches the catalogue: its
+    // landing page (/{segment}), a collection or an item (/{segment}/{slug}).
+    // One reference, one resolver (nav-links.ts); the website omits a link
+    // whose target is not public, has no page, or has no address in the
+    // visitor's language. The catalogue types are registered on every
+    // installation, so an uninstalled catalogue simply offers nothing.
     defineField({
       name: 'pageRef',
       title: 'Page',
       type: 'reference',
-      to: [{ type: 'page' }],
+      to: [{ type: 'page' }, { type: 'cataloguePage' }, { type: 'catalogueCollection' }, { type: 'catalogueItem' }],
       hidden: ({ parent }: { parent?: { linkType?: string } }) => parent?.linkType !== 'internal',
-      description: 'Pick any page from this project',
+      description: 'Pick any page from this project — or the catalogue page, a catalogue collection or a catalogue item.',
       options: { filter: scopedRef, disableNew: true },
     }),
     // Special built-in sections that are coded routes with no corresponding
@@ -678,11 +685,15 @@ const navigationLinkType = defineType({
     }),
   ],
   preview: {
-    select: { title: 'label.en', linkType: 'linkType', internalPage: 'internalPage', externalUrl: 'externalUrl', anchorId: 'anchorId', pageTitle: 'pageRef.title.en', pageSlug: 'pageRef.slug.en.current' },
-    prepare: ({ title, linkType, internalPage, externalUrl, anchorId, pageTitle, pageSlug }) => ({
+    select: { title: 'label.en', linkType: 'linkType', internalPage: 'internalPage', externalUrl: 'externalUrl', anchorId: 'anchorId', pageTitle: 'pageRef.title.en', pageSlug: 'pageRef.slug.en.current', refType: 'pageRef._type', refName: 'pageRef.name.en' },
+    prepare: ({ title, linkType, internalPage, externalUrl, anchorId, pageTitle, pageSlug, refType, refName }) => ({
       title: title ?? '—',
       subtitle: linkType === 'internal'
-        ? (pageTitle ? `📄 ${pageTitle} (/${pageSlug})` : `📄 ${internalPage}`)
+        ? (refType === 'cataloguePage'
+            ? '📄 Catalogue page'
+            : refName
+              ? `📄 ${refName}${pageSlug ? ` (/…/${pageSlug})` : ''}`
+              : pageTitle ? `📄 ${pageTitle} (/${pageSlug})` : `📄 ${internalPage}`)
         : linkType === 'anchor'
           ? `⚓ #${anchorId ?? ''}`
           : `🔗 ${externalUrl}`,
@@ -5811,6 +5822,21 @@ export const initialValueTemplates = [
       collectionType: 'list',
       hasPage: false,
       visibility: 'public',
+    }),
+  },
+  {
+    // ADR-033 C1 / Amendment G — the landing page at /{segment}. Opened from
+    // Studio's "Catalogue Page" item (sanity.config.ts buildModulePageItem →
+    // `${mod.id}PageProjectOwned`); without it that item had no template.
+    // No lifecycle values are set: like every ADR-032 type the status is
+    // derived, and a new document is a draft — not public — until published.
+    id: 'cataloguePageProjectOwned',
+    title: 'Catalogue Page',
+    schemaType: 'cataloguePage',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+      sections: [],
     }),
   },
   {

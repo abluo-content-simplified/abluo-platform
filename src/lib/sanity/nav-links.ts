@@ -2,6 +2,7 @@ import type { NavLink, ResolvedNavLink, SupportedLocale } from './types'
 import { isPassThroughHref, toPublicPath } from './href'
 import { NEWS_ROUTE_SEGMENT } from './cta'
 import { LOCALE_CODES } from '@/lib/i18n/locales'
+import { catalogueNavPath } from '@/lib/modules/catalogue/nav-target'
 
 /**
  * Locale codes recognised as a URL prefix when no project locale list is given.
@@ -59,9 +60,23 @@ export function resolveNavLink(
   supportedLocales: readonly string[] = DEFAULT_LOCALE_SEGMENTS
 ): ResolvedNavLink {
   // Internal page — two resolution paths:
-  //   1. pageRef (preferred): links to any page document by its slug
+  //   1. pageRef (preferred): links to any page document by its slug, or
+  //      (ADR-033 Amendment G) to a catalogue landing page / collection / item
   //   2. internalPage (legacy): links to special routes (homepage, live, events)
   if (link.linkType === 'internal') {
+    // Path 1b: catalogue target — /{segment} or /{segment}/{slug in this locale}.
+    // Only a public target of this project reaches here (GROQ); without a
+    // path in this locale isRenderableNavLink() omits the link.
+    const cataloguePath = catalogueNavPath(link.catalogueTarget)
+    if (cataloguePath) {
+      return {
+        label: link.label,
+        href: `/${locale}/${tenantId}/${cataloguePath}`,
+        external: false,
+        children: link.children?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
+      }
+    }
+
     // Path 1: page document reference — slug resolved by GROQ
     if (link.pageSlug) {
       return {
@@ -158,12 +173,15 @@ export function resolveNavLink(
  * ADR-021. Two kinds of link never become an <a>:
  *  - a link to a page that is not published yet (pageRef set, no slug resolves) —
  *    hidden until the page goes live, instead of silently pointing at the home
- *    page. This is how "prepare the legal pages now, show them later" works;
+ *    page. This is how "prepare the legal pages now, show them later" works.
+ *    ADR-033 Amendment G applies the same rule to a catalogue target: hidden
+ *    when it is not public, belongs to another project, has no page, has no
+ *    slug in this language, or the catalogue is not installed / switched off;
  *  - `cookieSettings`, which the footer renders as the consent-panel button.
  */
 export function isRenderableNavLink(link: NavLink): boolean {
   if (link.linkType === 'cookieSettings') return false
-  if (link.linkType === 'internal' && link.hasPageRef && !link.pageSlug) return false
+  if (link.linkType === 'internal' && link.hasPageRef && !link.pageSlug && !catalogueNavPath(link.catalogueTarget)) return false
   return true
 }
 

@@ -888,3 +888,52 @@ are unaffected: an `ItemList` of named, linked entries is valid without offers,
 and a `menu` still emits `MenuItem` entries (B1). `Service` is unaffected — it
 needs no offer to be valid and is still emitted.
 
+---
+
+## Amendment G — pre-release integration (landing-page template, navigation targets) (2026-10-14)
+
+Two gaps found while integrating V1 end to end. Neither adds a capability; both
+make existing decisions reachable.
+
+### G-1 — The landing page has a Studio template
+
+Studio opens every module page with `${mod.id}PageProjectOwned`
+(`sanity.config.ts` → `buildModulePageItem`); `cataloguePageProjectOwned` was
+missing, so "Catalogue page" could not be created. It now exists (projectSlug +
+empty sections, no lifecycle values: like every ADR-032 type its status is
+derived, and a new page is a draft until published) and is hidden from the
+global "+" menu like the other singleton pages. A guard test
+(`src/lib/modules/__tests__/module-page-templates.test.ts`) requires a template
+for **every** registered module that declares `platformContract.pageType`.
+
+### G-2 — Navigation links reach the catalogue
+
+The existing navigation link (`navigationLink`, internal) widens its one
+reference, `pageRef`, to `page | cataloguePage | catalogueCollection |
+catalogueItem` (same picker, same `scopedRef` project filter). No parallel link
+system and no new `internalPage` value: the landing page is a document with a
+lifecycle, so a reference — not a fixed route name — is what can carry it.
+
+- **URL**: `/{segment}` for the landing page, `/{segment}/{slug[locale]}` for a
+  collection or item, built by `catalogueNavPath()` and prefixed by the same
+  `resolveNavLink` / `toPublicNavLink` path as pages (project segment, or none
+  on the site's own host).
+- **Omitted** (the ADR-021 nav rule for an unpublished page — hidden, never sent
+  home) when the catalogue is not installed or is switched off; the target is not
+  public (ADR-032 rule via `publicFilterForAnyType`); it belongs to another
+  project; a collection/item has no `hasPage` or no slug **in the request
+  locale** (C6, D-7 — never another locale's slug); the landing page is not public.
+- **Visibility**: a navigation link is an editor's explicit choice, so it uses the
+  `explicitReference` context (C5) — an unlisted item may be linked; it stays
+  `noindex`.
+- **Delivery**: one shared GROQ fragment, `NAV_LINK_FIELDS`, now used by header
+  links (and their children), footer links, footer columns and the footer credit.
+  `pageSlug` dereferences `pageRef` only when it is a `page`; catalogue targets are
+  read through a project-scoped subquery that carries the lifecycle rule. The
+  public-delivery coverage test checks every `^.pageRef._ref` subquery.
+- **Side effect, intended**: header links previously used an inline copy without
+  `hasPageRef`, so a header link to an unpublished page pointed at the home page
+  while the same footer link was hidden. Both now hide it (ADR-021).
+- **Not changed**: page links keep their default-locale slug fallback; body links
+  in rich text (`src/lib/links/link-target.ts`) have their own resolver and do not
+  target the catalogue in V1.

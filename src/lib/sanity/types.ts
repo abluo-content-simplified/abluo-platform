@@ -7,6 +7,7 @@
 import type { SupportedLocale as _SupportedLocale } from '@/lib/i18n/locales'
 export type { SupportedLocale } from '@/lib/i18n/locales'
 import type { IconName } from '@/components/icons/registry'
+import type { CatalogueNavTarget } from '@/lib/modules/catalogue/nav-target'
 // Local alias so references later in this file resolve correctly.
 type SupportedLocale = _SupportedLocale
 
@@ -185,6 +186,11 @@ export interface NavLink {
   pageSlug?: string
   /** True when a page reference is set — with no pageSlug it points at an unpublished page. */
   hasPageRef?: boolean
+  /**
+   * ADR-033 Amendment G — set by GROQ when pageRef points at a public catalogue
+   * landing page, collection or item of this project; null otherwise.
+   */
+  catalogueTarget?: CatalogueNavTarget | null
   internalPage?: 'homepage' | 'live' | 'events' | 'blog' | 'news'
   externalUrl?: string
   openInNewTab?: boolean

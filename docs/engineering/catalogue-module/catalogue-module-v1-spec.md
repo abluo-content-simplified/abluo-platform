@@ -334,6 +334,25 @@ The pattern in CLAUDE.md Requirement 3: primary lookup → redirect branch →
 emits canonical plus hreflang alternates from `siteConfig.supportedLocales` × the
 slug map, only for locales where a slug is set.
 
+### 6.4a Navigation links (ADR-033 Amendment G)
+
+The site's navigation links (`navigationLink`, internal) can point at the
+landing page, a collection or an item through the existing `pageRef` picker
+(project-scoped). The website resolves them per request locale:
+
+| Target | URL | Omitted when |
+|---|---|---|
+| `cataloguePage` | `/{segment}` | not public; module not installed / switched off |
+| `catalogueCollection` | `/{segment}/{slug[locale]}` | not public; `hasPage` false; no slug in the request locale; module off |
+| `catalogueItem` | `/{segment}/{slug[locale]}` | as for collections |
+
+A target in another project never resolves. Omission follows the ADR-021 rule
+for unpublished pages (the link is hidden, never sent to the home page). Unlisted
+targets may be linked (explicit reference, C5). Implemented once:
+`NAV_LINK_FIELDS` (queries.ts) → `catalogueNavPath()` (`nav-target.ts`) →
+`resolveNavLinks()`. The landing page is created in Studio from its module page
+item (`cataloguePageProjectOwned`).
+
 ### 6.5 Sitemap
 
 One URL per locale, only where `hasPage` is true, `slug[locale].current` is set,
@@ -593,6 +612,12 @@ F3. Links render as a list on the item page and compactly on cards. A link to an
 F4. The editor adds, removes and reorders links (up/down buttons) with a label per site language; the wizard has no extra step.
 F5. An item page whose profile is `foodOrDrink` or `product` and that has no offer emits no JSON-LD; a `service` page without an offer still emits `Service`; collection pages (`ItemList`, `Menu`) are unchanged.
 F6. No hardcoded user-facing string was added: dashboard text lives under `catalogue.dashboard.item.fields.*`, website text under `catalogue.website.*`, in en, it and de.
+
+**Pre-release integration (ADR-033 Amendment G)**
+G1. Studio's "Catalogue page" item creates the landing page from `cataloguePageProjectOwned`, filed under the project, as a draft; every registered module with a `pageType` has its `${id}PageProjectOwned` template (guard test).
+G2. `/{segment}` renders the landing page in every site locale (content falls back to the default locale; canonical in the request locale, hreflang for every site locale); a landing page that is not public renders the unavailable page; another project's landing page or segment never resolves.
+G3. A navigation link (header or footer) to the landing page, a collection or an item resolves to `/{segment}` or `/{segment}/{slug[locale]}` in the request locale, host-scoped like page links.
+G4. Such a link is omitted when the module is not installed or is switched off, the target is draft-only, scheduled, unpublished, expired or archived, has no page, has no slug in the request locale, or belongs to another project.
 
 ---
 

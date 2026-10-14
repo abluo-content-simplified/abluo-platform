@@ -31,6 +31,7 @@
 
 import { localePlainTexts, presentLocales } from '@/lib/sanity/groq-locales'
 import { publicFilterFor, publicFilterForAnyType } from '@/lib/lifecycle/public-types'
+import { visibilityFilter } from '@/lib/modules/catalogue/visibility'
 
 // ─── ADR-032 D3 — the public-visibility rule ─────────────────────────────────
 // Every public read of a lifecycle type (post, newsArticle, event, gallery) —
@@ -114,21 +115,42 @@ const EVENT_ENGAGEMENT_FIELDS = /* groq */ `
 
 // ─── navigationLink fragment ──────────────────────────────────────────────────
 // Every field the navigationLink object type carries, locale-resolved, shaped
-// to match NavLink in ./types.ts. Used by the footer column / credit
-// projections added for the grouped footer. The existing navLinks[] and
-// footerLinks[] projections keep their inline copies untouched.
-const NAV_LINK_FIELDS = /* groq */ `
+// to match NavLink in ./types.ts. The ONE projection of a navigation link:
+// navLinks[] (and their children), footerLinks[], footerColumns[].links[] and
+// footerCredit all use it, so header and footer resolve a link identically.
+//
+// ADR-033 Amendment G — `pageRef` may also point at the catalogue landing page,
+// a catalogue collection or a catalogue item. Two rules keep that safe:
+//  - `pageSlug` dereferences pageRef ONLY for a `page` (the old reading would
+//    have turned a catalogue slug into a page URL, and read lifecycle content
+//    without its rule);
+//  - `catalogueTarget` reads the target through a project-scoped subquery that
+//    carries the lifecycle rule (publicFilterForAnyType, ADR-032 D3) and the
+//    explicit-reference visibility context (ADR-033 C5/C11 — a link an editor
+//    placed reaches unlisted content, as a collection does). The slug is the
+//    REQUEST locale's only (C6/D-7: no fallback) and the segment comes from the
+//    enabled catalogue installation — null when not installed or switched off.
+// `hasPageRef` (ADR-021): a link whose target is not published yet is hidden,
+// not sent home. nav-links.ts turns all of this into a URL, or omits the link.
+const NAV_CATALOGUE_TARGET = /* groq */ `select(defined(pageRef) => *[^.pageRef._ref == _id && projectSlug == $projectSlug && string::startsWith(_type, "catalogue") && ${publicFilterForAnyType()} && ${visibilityFilter('explicitReference')}][0]{
+    "type": _type,
+    hasPage,
+    "slug": slug[$locale].current,
+    "segment": *[_type == "project" && projectSlug == $projectSlug][0].moduleInstallations[moduleId == "catalogue" && enabled != false][0].config.publicSegment
+  })`
+
+export const NAV_LINK_FIELDS = /* groq */ `
   "label": ${loc('label')},
   linkType,
-  "pageSlug": coalesce(pageRef->slug[$locale].current, pageRef->slug[$defaultLocale].current),
-  // ADR-021 — a link whose page is not published yet is hidden, not sent home.
+  "pageSlug": select(pageRef->_type == "page" => coalesce(pageRef->slug[$locale].current, pageRef->slug[$defaultLocale].current)),
   "hasPageRef": defined(pageRef),
   internalPage,
   externalUrl,
   anchorId,
   openInNewTab,
   href,
-  external
+  external,
+  "catalogueTarget": ${NAV_CATALOGUE_TARGET}
 `
 
 // ─── Renderable form definition projection ────────────────────────────────────
@@ -734,27 +756,13 @@ export const websiteSiteConfigQuery = /* groq */ `
     languageSwitcherPlacement,
     themeMode,
     themeSwitcherPlacement,
+    // The shared navigation-link projection (NAV_LINK_FIELDS), one level of
+    // children. It used to be an inline copy without "hasPageRef", so a header
+    // link to an unpublished page fell through to the home page while the same
+    // link in the footer was hidden (ADR-021); one fragment, one behaviour.
     navLinks[] {
-      "label": ${loc('label')},
-      linkType,
-      "pageSlug": coalesce(pageRef->slug[$locale].current, pageRef->slug[$defaultLocale].current),
-      internalPage,
-      externalUrl,
-      anchorId,
-      openInNewTab,
-      href,
-      external,
-      children[] {
-        "label": ${loc('label')},
-        linkType,
-        "pageSlug": coalesce(pageRef->slug[$locale].current, pageRef->slug[$defaultLocale].current),
-        internalPage,
-        externalUrl,
-        anchorId,
-        openInNewTab,
-        href,
-        external
-      }
+      ${NAV_LINK_FIELDS},
+      children[] { ${NAV_LINK_FIELDS} }
     },
     // Header button. CTA_FIELDS gives label / action / internalName / targets;
     // the overlay additionally needs the whole definition, not just its id.
