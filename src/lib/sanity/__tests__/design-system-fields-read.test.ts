@@ -41,8 +41,6 @@ const META = new Set(['_id', 'name', 'role', 'description', 'parentDesignSystem'
  * Each needs a decision — wire it (today's look as the fallback) or remove it.
  */
 const NOT_YET_READ: Record<string, string> = {
-  'colors.darkTheme.accent': 'Accent colour is merged but never emitted as a CSS variable; components use primary.',
-  'colors.lightTheme.accent': 'Same as the dark theme accent.',
   'spacing.xs': 'Spacing scale (xs–xl) is not emitted; components use Tailwind spacing.',
   'spacing.m': 'Spacing scale — see spacing.xs.',
   'spacing.l': 'Spacing scale — see spacing.xs.',
