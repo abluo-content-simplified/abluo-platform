@@ -17,7 +17,8 @@ import {
   CatalogueLifecycleError,
   isCatalogueId,
 } from '../catalogue-lifecycle'
-import { LIFECYCLE_OPERATIONS, archive, deletePermanently, lifecycleGuard, type LifecycleClient } from '@/lib/lifecycle/service'
+import { LIFECYCLE_OPERATIONS, archive, deleteDraft, deletePermanently, lifecycleGuard, type LifecycleClient } from '@/lib/lifecycle/service'
+import { DELETE_REFERRERS, catalogueReferences } from '../catalogue-lifecycle'
 import { LIFECYCLE_PUBLIC_RULES, publicFilterFor } from '@/lib/lifecycle/public-types'
 import type { ProjectGrant, TenantAuthorizationContext } from '../tenant-context'
 import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
@@ -152,7 +153,20 @@ describe('catalogueItem — public collections and option lists block, and are n
     expect(w.client.transaction).not.toHaveBeenCalled()
   })
 
-  it('draft, archived, expired, scheduled and other-project collections do NOT block', async () => {
+  it('ARCHIVE: draft, archived, expired, scheduled and other-project collections do NOT block (D-8 table)', async () => {
+    const w = world([
+      liveItem(),
+      { ...coll('drafts.c-draft', 'Bozza', ['item-1']) },
+      coll('c-arch', 'Vecchio', ['item-1'], { archivedAt: PAST }),
+      coll('c-exp', 'Scaduto', ['item-1'], { publishedAt: '2026-01-01T00:00:00Z', expiresAt: PAST }),
+      coll('c-sched', 'Futuro', ['item-1'], { publishedAt: '2027-01-01T00:00:00Z' }),
+      coll('c-other', 'Altro', ['item-1'], { projectSlug: 'someone-else' }),
+    ])
+    await archive(CATALOGUE_ITEM_LIFECYCLE, ctx(), 'project-a', { id: 'item-1', rev: 'r-item-1' }, deps(w))
+    expect(w.client.transaction).toHaveBeenCalled()
+  })
+
+  it('PERMANENT DELETE: ANY reference blocks — draft, archived, expired, scheduled — each named; other projects do not (D-8)', async () => {
     const w = world([
       archivedItem(),
       { ...coll('drafts.c-draft', 'Bozza', ['item-1']) },
@@ -162,6 +176,30 @@ describe('catalogueItem — public collections and option lists block, and are n
       coll('c-other', 'Altro', ['item-1'], { projectSlug: 'someone-else' }),
       coll('c-unrelated', 'Altro ancora', ['item-2']),
     ])
+    const err = await deletePermanently(CATALOGUE_ITEM_LIFECYCLE, ctx(), 'project-a', { id: 'item-1', rev: 'r-item-1' }, deps(w)).catch((e) => e)
+    expect(err).toMatchObject({ code: 'in_use' })
+    expect(err.referrers.map((r: { id: string }) => r.id).sort()).toEqual(['c-arch', 'c-draft', 'c-exp', 'c-sched'])
+    expect(w.deleted).toEqual([])
+  })
+
+  it('PERMANENT DELETE: weak references (a draft that picked a never-published item) block too', async () => {
+    const w = world([archivedItem(), { ...coll('drafts.c1', 'Bozza', []), sections: [{ _key: 's', items: [{ _type: 'reference', _ref: 'item-1', _weak: true, _strengthenOnPublish: { type: 'catalogueItem' }, _key: 'k' }] }] }])
+    const err = await deletePermanently(CATALOGUE_ITEM_LIFECYCLE, ctx(), 'project-a', { id: 'item-1', rev: 'r-item-1' }, deps(w)).catch((e) => e)
+    expect(err).toMatchObject({ code: 'in_use', message: 'Still used by: Bozza.' })
+  })
+
+  it('deleting a never-published draft is refused while another draft references it (D-8)', async () => {
+    const w = world([
+      { _id: 'drafts.item-9', _type: 'catalogueItem', ...base, name: nm('Nuova') },
+      { ...coll('drafts.c1', 'Bozza', []), sections: [{ _key: 's', items: [{ _type: 'reference', _ref: 'item-9', _weak: true, _key: 'k' }] }] },
+    ])
+    const err = await deleteDraft(CATALOGUE_ITEM_LIFECYCLE, ctx(), 'project-a', { id: 'item-9', rev: 'r-drafts.item-9' }, deps(w)).catch((e) => e)
+    expect(err).toMatchObject({ code: 'in_use', message: 'Still used by: Bozza.' })
+    expect(w.deleted).toEqual([])
+  })
+
+  it('nothing referencing it (other project, unrelated) → deleted', async () => {
+    const w = world([archivedItem(), coll('c-other', 'Altro', ['item-1'], { projectSlug: 'someone-else' }), coll('c-unrelated', 'Altro ancora', ['item-2'])])
     await deletePermanently(CATALOGUE_ITEM_LIFECYCLE, ctx(), 'project-a', { id: 'item-1', rev: 'r-item-1' }, deps(w))
     expect(w.deleted).toEqual(['item-1'])
   })
@@ -173,17 +211,23 @@ describe('catalogueItem — public collections and option lists block, and are n
     expect(err.message).toBe('Still used by: Menu.')
   })
 
-  it('every referrer query is scoped to the grant project', async () => {
-    const w = world([archivedItem()])
-    await deletePermanently(CATALOGUE_ITEM_LIFECYCLE, ctx(), 'project-a', { id: 'item-1', rev: 'r-item-1' }, deps(w))
-    const calls = (w.client.fetch as unknown as { mock: { calls: [string, Record<string, unknown>, unknown][] } }).mock.calls
-    const refCalls = calls.filter(([q]) => q.includes('$id in'))
+  it('every referrer query is scoped to the grant project (archive: public referrers; delete: any reference)', async () => {
+    const w = world([liveItem()])
+    await archive(CATALOGUE_ITEM_LIFECYCLE, ctx(), 'project-a', { id: 'item-1', rev: 'r-item-1' }, deps(w))
+    const calls = () => (w.client.fetch as unknown as { mock: { calls: [string, Record<string, unknown>, unknown][] } }).mock.calls
+    const refCalls = calls().filter(([q]) => q.includes('$id in'))
     expect(refCalls).toHaveLength(2)
     for (const [q, p, o] of refCalls) {
       expect(q).toContain('projectSlug == $projectSlug')
       expect(p).toEqual({ id: 'item-1', projectSlug: 'lucia' })
       expect(o).toEqual({ perspective: 'raw' })
     }
+    const w2 = world([archivedItem()])
+    await deletePermanently(CATALOGUE_ITEM_LIFECYCLE, ctx(), 'project-a', { id: 'item-1', rev: 'r-item-1' }, deps(w2))
+    const del = (w2.client.fetch as unknown as { mock: { calls: [string, Record<string, unknown>, unknown][] } }).mock.calls.filter(([q]) => q === DELETE_REFERRERS)
+    expect(del).toHaveLength(1)
+    expect(del[0][1]).toEqual({ id: 'item-1', draftId: 'drafts.item-1', projectSlug: 'lucia' })
+    expect(del[0][2]).toEqual({ perspective: 'raw' })
   })
 })
 
@@ -199,8 +243,22 @@ describe('catalogueOptionList — any non-archived item that attaches it blocks'
     expect(err).toMatchObject({ code: 'in_use', message: 'Still used by: Margherita, Diavola, Bozza.' })
   })
 
-  it('archived items do not block', async () => {
+  it('ARCHIVE: archived items do not block', async () => {
+    const w = world([{ ...list(), archivedAt: undefined }, attach('i1', 'Margherita', { archivedAt: PAST })])
+    await archive(CATALOGUE_OPTION_LIST_LIFECYCLE, ctx(), 'project-a', { id: 'ol1', rev: 'r-ol1' }, deps(w))
+    expect(w.client.transaction).toHaveBeenCalled()
+  })
+
+  it('PERMANENT DELETE: an archived item still attaching it blocks, and is named (D-8, refines C7)', async () => {
     const w = world([list(), attach('i1', 'Margherita', { archivedAt: PAST })])
+    const err = await deletePermanently(CATALOGUE_OPTION_LIST_LIFECYCLE, ctx(), 'project-a', { id: 'ol1', rev: 'r-ol1' }, deps(w)).catch((e) => e)
+    expect(err).toMatchObject({ code: 'in_use', message: 'Still used by: Margherita.' })
+    expect(err.referrers[0]).toEqual({ id: 'i1', type: 'catalogueItem', label: 'Margherita' })
+    expect(w.deleted).toEqual([])
+  })
+
+  it('nothing attaches it → deleted', async () => {
+    const w = world([list()])
     await deletePermanently(CATALOGUE_OPTION_LIST_LIFECYCLE, ctx(), 'project-a', { id: 'ol1', rev: 'r-ol1' }, deps(w))
     expect(w.deleted).toEqual(['ol1'])
   })
@@ -219,11 +277,18 @@ describe('catalogueCollection — a public landing-page listing section blocks',
     expect(err).toMatchObject({ code: 'in_use', message: 'Still used by: La nostra carta.' })
   })
 
-  it('an archived or draft page, or a page showing another collection, does not block', async () => {
+  it('ARCHIVE: an archived or draft page, or a page showing another collection, does not block', async () => {
+    const w = world([{ ...archivedCollection(), archivedAt: undefined }, page('p1', 'Vecchia', { archivedAt: PAST }), page('drafts.p2', 'Bozza'),
+      { ...page('p3', 'Altra'), sections: [{ _key: 'l', _type: 'catalogueListingSection', collection: { _type: 'reference', _ref: 'other' } }] }])
+    await archive(CATALOGUE_COLLECTION_LIFECYCLE, ctx(), 'project-a', { id: 'c1', rev: 'r-c1' }, deps(w))
+    expect(w.client.transaction).toHaveBeenCalled()
+  })
+
+  it('PERMANENT DELETE: archived and draft pages block too (D-8); a page showing another collection does not', async () => {
     const w = world([archivedCollection(), page('p1', 'Vecchia', { archivedAt: PAST }), page('drafts.p2', 'Bozza'),
       { ...page('p3', 'Altra'), sections: [{ _key: 'l', _type: 'catalogueListingSection', collection: { _type: 'reference', _ref: 'other' } }] }])
-    await deletePermanently(CATALOGUE_COLLECTION_LIFECYCLE, ctx(), 'project-a', { id: 'c1', rev: 'r-c1' }, deps(w))
-    expect(w.deleted).toEqual(['c1'])
+    const err = await deletePermanently(CATALOGUE_COLLECTION_LIFECYCLE, ctx(), 'project-a', { id: 'c1', rev: 'r-c1' }, deps(w)).catch((e) => e)
+    expect(err.referrers.map((r: { id: string }) => r.id).sort()).toEqual(['p1', 'p2'])
   })
 
   it('a page with no label is still named', async () => {
@@ -249,5 +314,23 @@ describe('permissions are checked before any read', () => {
       deletePermanently(CATALOGUE_ITEM_LIFECYCLE, ctx(['catalogue.item.write', 'catalogue.item.delete']), 'project-a', { id: 'item-1', rev: 'r-item-1' }, deps(w))
     ).rejects.toThrow()
     expect(w.fetched).toEqual([])
+  })
+})
+
+describe('outgoing references for publishing (D-4/D-5)', () => {
+  it('collection → items; item → option lists; option list → linked items; page → collections; unique ids', () => {
+    expect(catalogueReferences.collection({ sections: [{ items: [{ _ref: 'a' }, { _ref: 'b' }] }, { items: [{ _ref: 'a', _weak: true }] }] })).toEqual([
+      { id: 'a', type: 'catalogueItem' },
+      { id: 'b', type: 'catalogueItem' },
+    ])
+    expect(catalogueReferences.item({ optionLists: [{ list: { _ref: 'L' } }, { list: null }] })).toEqual([{ id: 'L', type: 'catalogueOptionList' }])
+    expect(catalogueReferences.optionList({ options: [{ item: { _ref: 'x' } }, {}] })).toEqual([{ id: 'x', type: 'catalogueItem' }])
+    expect(catalogueReferences.page({ sections: [{ _type: 'catalogueListingSection', collection: { _ref: 'c' } }, { _type: 'heroSection' }] })).toEqual([{ id: 'c', type: 'catalogueCollection' }])
+    expect(catalogueReferences.item({})).toEqual([])
+  })
+  it('the item, collection and option list descriptors declare them', () => {
+    expect(CATALOGUE_ITEM_LIFECYCLE.references).toBe(catalogueReferences.item)
+    expect(CATALOGUE_COLLECTION_LIFECYCLE.references).toBe(catalogueReferences.collection)
+    expect(CATALOGUE_OPTION_LIST_LIFECYCLE.references).toBe(catalogueReferences.optionList)
   })
 })

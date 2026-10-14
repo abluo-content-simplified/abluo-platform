@@ -214,9 +214,11 @@ const OTHER_READERS: Record<string, string> = {
   'src/lib/api/post-drafts.ts': 'client dashboard post editor (authenticated)',
   'src/lib/api/post-publish.ts': 'client dashboard publish action (authenticated)',
   'src/lib/modules/gallery/schema.ts': 'Studio schema (references, not delivery)',
+  'src/lib/modules/catalogue/schema.ts': 'Studio validation only — a food item\'s attached option lists, read through the editor\'s own Studio client (ADR-033 D-3a); never delivery',
   'src/lib/modules/types.ts': 'module typing, no query',
   'src/lib/modules/registry.ts': 'Studio structure filters (staff only)',
   'src/lib/lifecycle/visibility.ts': 'the rule itself (a path example in its docs)',
+  'src/lib/modules/catalogue/dashboard-queries.ts': 'client dashboard catalogue reads (authenticated, project-scoped after assertModuleAction) — lists every state on purpose',
   'src/lib/api/catalogue-lifecycle.ts': 'catalogue lifecycle descriptors — referrer checks before archive/delete (authenticated dashboard)',
   'src/lib/modules/catalogue/validation.ts': 'catalogue save-time validation — slug namespace and currency-change counts (authenticated Studio/dashboard)',
 }

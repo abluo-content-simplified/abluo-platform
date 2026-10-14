@@ -1,7 +1,7 @@
 import { defineType, defineField, defineArrayMember } from 'sanity'
-import { scopedRef, projectSlugField, PAGE_SECTIONS_OF } from '@/lib/sanity/fields/shared'
+import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField, BACKGROUND_SURFACE_OPTIONS } from '@/lib/sanity/fields/shared'
 import { PUBLISHING_GROUP, publishingStatusField, publishOnField, unpublishOnField, archivedFields } from '@/lib/sanity/fields/publishing'
-import { ALLERGENS, unknownAllergenKeys } from './allergens'
+import { ALLERGENS, allergenDeclarationIssues, describeDeclarationIssue, optionDeclarationIssues, unreviewedChoices, unknownAllergenKeys } from './allergens'
 
 // ── Catalogue module — Sanity schema types ────────────────────────────────────
 //
@@ -215,6 +215,86 @@ export const catalogueOffer = defineType({
   },
 })
 
+// ── Allergen declaration (object, on a food-or-drink item — ADR-033 D-3) ─────
+const ALLERGEN_OPTIONS = { list: ALLERGENS.map((value) => ({ title: value, value })) }
+const allergenKeysValid = (Rule: { custom: (fn: (v: unknown) => true | string) => unknown }) =>
+  Rule.custom((value) => {
+    const unknown = unknownAllergenKeys(value as unknown[] | undefined)
+    return unknown.length === 0 || `Unknown allergen key: ${unknown.join(', ')}`
+  })
+// An inline object on the item's field (not a registered type), so the module
+// manifest's schemaTypes list stays as it is.
+const allergenDeclarationFields = [
+    defineField({
+      name: 'status',
+      title: 'Declaration',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Not reviewed yet (cannot be published)', value: 'notReviewed' },
+          { title: 'Contains allergens from the EU list', value: 'containsListedAllergens' },
+          { title: 'None of the fourteen EU allergens (confirm below)', value: 'noneDeclared' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'notReviewed',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'allergens',
+      title: 'Contains',
+      description: 'The fourteen EU allergens (Reg. 1169/2011 Annex II). A closed list — none can be hidden (ADR-033 C3).',
+      type: 'array',
+      of: [defineArrayMember({ type: 'string' })],
+      options: ALLERGEN_OPTIONS,
+      hidden: ({ parent }) => (parent as { status?: string } | undefined)?.status !== 'containsListedAllergens',
+      validation: (Rule) => allergenKeysValid(Rule as never) as never,
+    }),
+    defineField({
+      name: 'mayContain',
+      title: 'May contain',
+      description: 'Kept separate from "Contains".',
+      type: 'array',
+      of: [defineArrayMember({ type: 'string' })],
+      options: ALLERGEN_OPTIONS,
+      // E-1: also on "none declared" (cross-contamination is possible).
+      hidden: ({ parent }) => {
+        const st = (parent as { status?: string } | undefined)?.status
+        return st !== 'containsListedAllergens' && st !== 'noneDeclared'
+      },
+      validation: (Rule) => allergenKeysValid(Rule as never) as never,
+    }),
+    defineField({
+      name: 'confirmed',
+      title: 'I confirm that no allergen from the EU list is declared',
+      type: 'boolean',
+      hidden: ({ parent }) => (parent as { status?: string } | undefined)?.status !== 'noneDeclared',
+    }),
+    defineField({
+      name: 'note',
+      title: 'Note',
+      type: 'localizedText',
+      hidden: ({ parent }) => {
+        const st = (parent as { status?: string } | undefined)?.status
+        return st !== 'containsListedAllergens' && st !== 'noneDeclared'
+      },
+    }),
+]
+
+/**
+ * ADR-033 D-7 — a slug for a locale may exist only when `name[locale]` is
+ * written. Studio twin of the dashboard / server rule.
+ */
+export function slugsWithoutName(slug: unknown, name: unknown): true | string {
+  if (!slug || typeof slug !== 'object') return true
+  const names = (name && typeof name === 'object' ? name : {}) as Record<string, unknown>
+  const missing = Object.entries(slug as Record<string, unknown>)
+    .filter(([l, v]) => !l.startsWith('_') && typeof (v as { current?: unknown } | null)?.current === 'string' && (v as { current: string }).current !== '')
+    .map(([l]) => l)
+    .filter((l) => typeof names[l] !== 'string' || !(names[l] as string).trim())
+  return missing.length === 0 || `An address needs a name in the same language first (${missing.join(', ')}).`
+}
+
 // ── Option (object, inside an option list) ────────────────────────────────────
 //
 // `kind` exists because the two situations read differently even though the
@@ -258,6 +338,37 @@ export const catalogueOption = defineType({
       to: [{ type: 'catalogueItem' }],
       options: { filter: scopedRef },
     }),
+    // ADR-033 D-3a — a FREE-TEXT `add` choice declares its own allergens (no
+    // note). A linked choice takes the linked item's declaration; a `remove`
+    // choice never subtracts the item's base allergens and carries none.
+    //
+    // What Studio can enforce HERE: the shape (unknown status / key / field is
+    // an error; an incomplete declaration a warning). It cannot see which items
+    // use the list, so "not reviewed blocks publishing" is enforced on the
+    // ITEM: catalogueItem.optionLists validation (Studio) and the dashboard's
+    // item / option-list publish paths (server).
+    defineField({
+      name: 'allergenDeclaration',
+      title: 'Allergens of this choice',
+      description: 'Needed when a food or drink item uses this list.',
+      type: 'object',
+      fields: allergenDeclarationFields.filter((f) => f.name !== 'note'),
+      initialValue: { status: 'notReviewed' },
+      hidden: ({ parent }) => {
+        const p = parent as { kind?: string; item?: { _ref?: string } } | undefined
+        return p?.kind === 'remove' || typeof p?.item?._ref === 'string'
+      },
+      validation: (Rule) => [
+        Rule.custom((value) => {
+          const issue = optionDeclarationIssues(value).find((i) => i === 'unknownStatus' || i === 'unknownKey' || i === 'unexpectedField')
+          return value == null || !issue || describeDeclarationIssue(issue)
+        }).error(),
+        Rule.custom((value) => {
+          const issue = optionDeclarationIssues(value).find((i) => i === 'noAllergens' || i === 'notConfirmed')
+          return value == null || !issue || describeDeclarationIssue(issue)
+        }).warning(),
+      ],
+    }),
   ],
   preview: {
     select: { label: 'label.en', kind: 'kind', delta: 'priceDelta' },
@@ -289,7 +400,29 @@ export const catalogueOptionList = defineType({
       type: 'array',
       group: 'content',
       of: [defineArrayMember({ type: 'catalogueOption' })],
-      validation: (Rule) => Rule.min(1).error('An option list needs at least one option.'),
+      validation: (Rule) => [
+        Rule.min(1).error('An option list needs at least one option.'),
+        // ADR-033 E-2 — the other direction of the D-3a rule: while ANY
+        // non-archived food-or-drink item uses this list (draft or published,
+        // weak references included), an unreviewed free-text "add" choice is an
+        // ERROR, so Studio cannot publish it. Same shared helper as the
+        // dashboard (unreviewedChoices). Scoped to this project.
+        Rule.custom(async (value, context) => {
+          const doc = context.document as { _id?: string; projectSlug?: unknown } | undefined
+          if (!doc?._id || typeof doc.projectSlug !== 'string' || unreviewedChoices((value ?? []) as never[]).length === 0) return true
+          try {
+            const users = (await context.getClient({ apiVersion: '2026-05-21' }).fetch(
+              OPTION_LIST_FOOD_USERS_QUERY,
+              { id: doc._id.replace(/^drafts\./, ''), projectSlug: doc.projectSlug },
+              { perspective: 'raw' }
+            )) as Array<{ _id: string; name?: unknown }> | null
+            return studioOptionListProblem((value ?? []) as never[], users ?? [])
+          } catch {
+            // A failed read must not let food-safety validation pass silently.
+            return 'Could not check which food items use this list. Try again before publishing.'
+          }
+        }).error(),
+      ],
     }),
     ...lifecycleFields(),
   ],
@@ -350,11 +483,42 @@ export const catalogueItemOptionList = defineType({
   },
 })
 
+/** E-2: every non-archived food-or-drink item (drafts and published; weak references included) that attaches the list. */
+export const OPTION_LIST_FOOD_USERS_QUERY = `*[_type == "catalogueItem" && projectSlug == $projectSlug && references($id) && itemProfile == "foodOrDrink" && !defined(archivedAt) && !(_id in path("versions.**"))]{ _id, name }`
+
+const studioText = (v: unknown): string | null =>
+  typeof v === 'string' ? v : v && typeof v === 'object' ? ((Object.entries(v as Record<string, unknown>).find(([k, x]) => !k.startsWith('_') && typeof x === 'string' && x)?.[1] as string | undefined) ?? null) : null
+
+/** E-2 as Studio text: the unreviewed extras and the food items that use the list — or true. */
+export function studioOptionListProblem(options: readonly unknown[], users: ReadonlyArray<{ _id: string; name?: unknown }>): true | string {
+  const bad = unreviewedChoices(options as never[]) as Array<{ label?: unknown }>
+  if (!bad.length || !users.length) return true
+  const names = [...new Map(users.map((u) => [u._id.replace(/^drafts\./, ''), studioText(u.name) ?? 'Untitled item'])).values()]
+  const choices = bad.map((c) => `"${studioText(c.label) ?? 'a choice'}"`).join(', ')
+  return `Review the allergens of ${choices}: food items use this list (${names.join(', ')}).`
+}
+
+/** The first unreviewed free-text "add" choice of these lists (published version first), as Studio text — or true. */
+export function studioChoiceProblem(ids: readonly string[], rows: ReadonlyArray<{ _id: string; name?: unknown; options?: unknown[] }>): true | string {
+  for (const id of ids) {
+    const row = rows.find((r) => r._id === id) ?? rows.find((r) => r._id === `drafts.${id}`)
+    const bad = unreviewedChoices((row?.options ?? []) as never[])[0] as { label?: unknown } | undefined
+    if (!bad) continue
+    const text = (v: unknown) => (typeof v === 'string' ? v : v && typeof v === 'object' ? Object.entries(v as Record<string, unknown>).find(([k, x]) => !k.startsWith('_') && typeof x === 'string' && x)?.[1] : null)
+    return `Review the allergens of "${String(text(bad.label) ?? 'a choice')}" in the option list "${String(text(row?.name) ?? id)}" before publishing this food item.`
+  }
+  return true
+}
+
 // ── Item (document) ───────────────────────────────────────────────────────────
 //
-// itemType drives which fields the form shows and which schema.org @type the
-// page emits — by lookup, never by branching on what kind of business this is
-// (ADR-031 D6: "No code asks 'is this a restaurant?'").
+// itemProfile (ADR-033 D-2) classifies the ITEM, not the tenant: a restaurant
+// may sell books, a hotel may list food, treatments and products in one
+// catalogue. It drives which fields the form shows and which schema.org @type
+// the item's own page emits — by lookup, never by branching on what kind of
+// business this is (ADR-031 D6: "No code asks 'is this a restaurant?'").
+// No initial value: a generic installation stays business-neutral (D-1); the
+// dashboard preselects the module setting `defaultItemProfile`.
 export const catalogueItem = defineType({
   name: 'catalogueItem',
   title: 'Item',
@@ -364,19 +528,18 @@ export const catalogueItem = defineType({
     projectSlugField,
     publicIdField,
     defineField({
-      name: 'itemType',
-      title: 'Type',
+      name: 'itemProfile',
+      title: 'What is it?',
       type: 'string',
       group: 'content',
       options: {
         list: [
-          { title: 'Dish', value: 'dish' },
+          { title: 'Food or drink', value: 'foodOrDrink' },
           { title: 'Product', value: 'product' },
           { title: 'Service', value: 'service' },
         ],
         layout: 'radio',
       },
-      initialValue: 'dish',
       validation: (Rule) => Rule.required(),
     }),
     defineField({
@@ -416,25 +579,26 @@ export const catalogueItem = defineType({
       of: [defineArrayMember({ type: 'string' })],
       description: 'Defined in the module settings.',
     }),
-    // Shown when itemType is 'dish'. The fourteen EU allergens (Reg. 1169/2011
-    // Annex II) are a PLATFORM CONSTANT, never configuration: a closed legal
-    // list that no tenant may extend and no configuration may hide. Hiding a
-    // declarable allergen to reduce clutter is a compliance risk, not a UX
-    // improvement.
+    // ADR-033 D-3 — shown for food and drink only. An explicit declaration, never
+    // an inferred one: "not reviewed" blocks publishing (Studio too — this is a
+    // validation ERROR), "contains" needs ≥ 1 allergen, "none declared" needs the
+    // explicit confirmation. The fourteen EU allergens (Reg. 1169/2011 Annex II)
+    // are a PLATFORM CONSTANT: no tenant may extend the list and no
+    // configuration may hide one (C3).
     defineField({
-      name: 'allergens',
+      name: 'allergenDeclaration',
       title: 'Allergens',
-      description: 'The fourteen EU allergens (Reg. 1169/2011 Annex II). A closed list — none can be hidden (ADR-033 C3).',
-      type: 'array',
+      type: 'object',
+      fields: allergenDeclarationFields,
       group: 'content',
-      of: [defineArrayMember({ type: 'string' })],
-      options: { list: ALLERGENS.map((value) => ({ title: value, value })) },
+      initialValue: { status: 'notReviewed' },
+      hidden: ({ document }) => document?.itemProfile !== 'foodOrDrink',
       validation: (Rule) =>
-        Rule.custom((value) => {
-          const unknown = unknownAllergenKeys(value as unknown[] | undefined)
-          return unknown.length === 0 || `Unknown allergen key: ${unknown.join(', ')}`
+        Rule.custom((value, context) => {
+          if ((context.document as { itemProfile?: unknown } | undefined)?.itemProfile !== 'foodOrDrink') return true
+          const issues = allergenDeclarationIssues(value)
+          return issues.length === 0 || describeDeclarationIssue(issues[0])
         }),
-      hidden: ({ document }) => document?.itemType !== 'dish',
     }),
     defineField({
       name: 'dietary',
@@ -442,7 +606,7 @@ export const catalogueItem = defineType({
       type: 'array',
       group: 'content',
       of: [defineArrayMember({ type: 'string' })],
-      hidden: ({ document }) => document?.itemType !== 'dish',
+      hidden: ({ document }) => document?.itemProfile !== 'foodOrDrink',
       description: 'Defined in the module settings.',
     }),
     defineField({
@@ -461,6 +625,26 @@ export const catalogueItem = defineType({
       group: 'commerce',
       of: [defineArrayMember({ type: 'catalogueItemOptionList' })],
       description: 'In the order the guest is asked.',
+      // ADR-033 D-3a — a food item cannot be published while a free-text "add"
+      // choice of an attached list is not reviewed (the list's published
+      // version, else its draft). Studio twin of the dashboard publish check.
+      validation: (Rule) =>
+        Rule.custom(async (value, context) => {
+          if ((context.document as { itemProfile?: unknown } | undefined)?.itemProfile !== 'foodOrDrink') return true
+          const ids = [...new Set((Array.isArray(value) ? value : []).map((a) => (a as { list?: { _ref?: unknown } })?.list?._ref).filter((r): r is string => typeof r === 'string'))]
+          if (!ids.length) return true
+          try {
+            const rows = (await context.getClient({ apiVersion: '2026-05-21' }).fetch(
+              `*[_type == "catalogueOptionList" && (_id in $ids || _id in $draftIds)]{ _id, name, options }`,
+              { ids, draftIds: ids.map((i) => `drafts.${i}`) },
+              // Drafts included explicitly: newer API versions default to the published perspective.
+              { perspective: 'raw' }
+            )) as Array<{ _id: string; name?: unknown; options?: unknown[] }> | null
+            return studioChoiceProblem(ids, rows ?? [])
+          } catch {
+            return true
+          }
+        }),
     }),
     // ── Public page (ADR-033 D4, D11) ─────────────────────────────────────────
     // Opt-in. When on, the five requirements of the Publicly Routable Content
@@ -480,6 +664,7 @@ export const catalogueItem = defineType({
       type: 'localizedSlug',
       group: 'page',
       hidden: ({ document }) => !document?.hasPage,
+      validation: (Rule) => Rule.custom((value, context) => slugsWithoutName(value, (context.document as { name?: unknown } | undefined)?.name)),
     }),
     defineField({
       name: 'redirectFrom',
@@ -492,7 +677,7 @@ export const catalogueItem = defineType({
     ...lifecycleFields(),
   ],
   preview: {
-    select: { title: 'name.en', type: 'itemType', slug: 'projectSlug', media: 'images.0.image' },
+    select: { title: 'name.en', type: 'itemProfile', slug: 'projectSlug', media: 'images.0.image' },
     prepare: ({ title, type, slug, media }) => ({
       title: title ?? 'Untitled item',
       subtitle: [type, slug].filter(Boolean).join(' · '),
@@ -509,7 +694,7 @@ export const catalogueItem = defineType({
 // list is genuinely Vini → Rossi → Toscana, and the schema should not be the
 // thing that forbids it.
 //
-// A section may hold any itemType, and a parent may hold items of its own.
+// A section may hold any itemProfile, and a parent may hold items of its own.
 export const catalogueSection = defineType({
   name: 'catalogueSection',
   title: 'Section',
@@ -614,6 +799,7 @@ export const catalogueCollection = defineType({
       type: 'localizedSlug',
       group: 'page',
       hidden: ({ document }) => !document?.hasPage,
+      validation: (Rule) => Rule.custom((value, context) => slugsWithoutName(value, (context.document as { name?: unknown } | undefined)?.name)),
     }),
     defineField({
       name: 'redirectFrom',
@@ -639,7 +825,7 @@ export const catalogueCollection = defineType({
 // ADR-033 C1: served at /{segment}. Mirrors eventsPage (spec §4.6) and carries
 // the ADR-032 lifecycle: its derived status decides whether /{segment} is
 // public, and it never gates the item and collection pages beneath it.
-// `catalogueListingSection` joins `sections` with the section checklist work.
+// `sections` includes catalogueListingSection via PAGE_SECTIONS_OF.
 export const cataloguePage = defineType({
   name: 'cataloguePage',
   title: 'Catalogue page',
@@ -665,6 +851,94 @@ export const cataloguePage = defineType({
   },
 })
 
+// ── Catalogue listing section (object, embedded in page sections) ─────────────
+//
+// Spec §4.6. Presentation only (ADR-033 D13): the collection owns the items,
+// their order and their nesting; this section decides where one collection
+// appears on a page and which details it shows. It never acquires catalogue
+// data of its own.
+//
+// Module-gated (registry sectionTypes): without an enabled catalogue
+// installation the section renders nothing.
+//
+// `showPrices` is three-state (ADR-033 D-6): 'default' follows the catalogue
+// setting `showPricesByDefault` LIVE, so a project that changes that setting
+// changes every section that never chose otherwise; 'show' / 'hide' override.
+// Schema Evolution check (2026-10-14, production dataset): 0 listing sections,
+// 0 stored `showPrices` values — the boolean → string change needs no migration.
+// An unset value reads as 'default'.
+//
+// `allergenPresentation` (D-3) replaces `showAllergens`: the declaration is
+// ALWAYS shown for food and drink — a section only picks compact or expanded.
+export const catalogueListingSection = defineType({
+  name: 'catalogueListingSection',
+  title: 'Catalogue Section',
+  type: 'object',
+  fields: [
+    anchorIdField(),
+    defineField({
+      name: 'background',
+      title: 'Background Surface',
+      type: 'string',
+      options: { list: BACKGROUND_SURFACE_OPTIONS },
+      initialValue: 'usePagePattern',
+    }),
+    defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'localizedString' }),
+    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
+    defineField({ name: 'subtitle', title: 'Subtitle', type: 'localizedString' }),
+    defineField({
+      name: 'collection',
+      title: 'Collection',
+      type: 'reference',
+      to: [{ type: 'catalogueCollection' }],
+      options: { filter: scopedRef },
+      description: 'The collection to show — its sections, order and items are edited once, in the collection.',
+    }),
+    defineField({
+      name: 'showPrices',
+      title: 'Prices',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Use Catalogue default', value: 'default' },
+          { title: 'Show', value: 'show' },
+          { title: 'Hide', value: 'hide' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'default',
+    }),
+    defineField({
+      name: 'allergenPresentation',
+      title: 'Allergen information',
+      type: 'string',
+      description: 'Allergens of food and drink are always shown; choose how.',
+      options: {
+        list: [
+          { title: 'Compact', value: 'compact' },
+          { title: 'Expanded', value: 'expanded' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'compact',
+    }),
+    defineField({
+      name: 'emptyStateHeading',
+      title: 'Empty state heading',
+      type: 'localizedString',
+      description: 'Shown when the collection has no items yet. Leave empty to hide the section instead.',
+    }),
+    defineField({ name: 'emptyStateBody', title: 'Empty state text', type: 'localizedText' }),
+  ],
+  preview: {
+    select: { title: 'title.en', eyebrow: 'eyebrow.en', collection: 'collection.name.en' },
+    prepare: ({ title, eyebrow, collection }: { title?: string; eyebrow?: string; collection?: string }) => ({
+      title: title || eyebrow || collection || 'Catalogue section',
+      subtitle: `Catalogue · ${collection ?? 'no collection chosen'}`,
+    }),
+  },
+})
+
 // Document types first, then the objects they embed.
 export const catalogueSchemaTypes = [
   catalogueItem,
@@ -676,4 +950,5 @@ export const catalogueSchemaTypes = [
   catalogueOption,
   catalogueItemOptionList,
   catalogueSection,
+  catalogueListingSection,
 ]

@@ -17,7 +17,7 @@ import { focalObjectPosition } from '@/lib/gallery/focal'
 import { LIFECYCLE_PUBLIC_RULES } from '@/lib/lifecycle/public-types'
 import { isPublicAt, type LifecycleFields } from '@/lib/lifecycle/visibility'
 import type { PortableTextContent, SanityCrop, SanityHotspot, SanityImageAsset } from '@/lib/sanity/types'
-import { ALLERGENS, isAllergenKey, type AllergenKey } from './allergens'
+import { allergenDeclarationIssues, orderedAllergens } from './allergens'
 import { evaluate, WEEKDAYS, type AvailabilityState, type Weekday } from './availability'
 import { effectiveCurrency, type Offer } from './offers'
 import { readingOrder } from './sections'
@@ -30,7 +30,9 @@ import type {
   CatalogueImageDTO,
   CatalogueItemDTO,
   CatalogueItemPageDTO,
-  CatalogueItemType,
+  AllergenDeclarationDTO,
+  CatalogueItemProfile,
+  OptionAllergenDeclarationDTO,
   CatalogueLinkedItemDTO,
   CatalogueOfferDTO,
   CatalogueOptionDTO,
@@ -71,11 +73,23 @@ export type RawCatalogueOffer = {
   locationKey?: string | null
 }
 
+/** A stored allergen declaration as projected (item: with a locale-resolved note; choice: without). */
+export type RawAllergenDeclaration = {
+  status?: string | null
+  allergens?: readonly string[] | null
+  mayContain?: readonly string[] | null
+  confirmed?: boolean | null
+  note?: RawText
+} | null
+
 export type RawCatalogueOptionItem = {
   publicId?: string | null
   name?: RawText
   hasPage?: boolean | null
   slugMap?: RawSlugMap
+  /** D-3a: a linked choice derives its declaration from the item. */
+  itemProfile?: string | null
+  allergenDeclaration?: RawAllergenDeclaration
 } | null
 
 export type RawCatalogueOption = {
@@ -83,7 +97,11 @@ export type RawCatalogueOption = {
   label?: RawText
   kind?: string | null
   priceDelta?: number | null
+  /** true when the choice references an item at all (the item itself may not be public). */
+  linked?: boolean | null
   item?: RawCatalogueOptionItem
+  /** D-3a: a free-text "add" choice's own declaration (no note). */
+  allergenDeclaration?: RawAllergenDeclaration
 }
 
 export type RawCatalogueOptionListAttachment = {
@@ -98,14 +116,15 @@ export type RawCatalogueItem = LifecycleFields & {
   /** Never projected by the catalogue queries; typed so tests can prove it never leaks. */
   _id?: string
   publicId?: string | null
-  itemType?: string | null
+  itemProfile?: string | null
   visibility?: string | null
   hasPage?: boolean | null
   name?: RawText
   description?: RawText
   slugMap?: RawSlugMap
   categories?: readonly string[] | null
-  allergens?: readonly string[] | null
+  /** D-3 — as projected: status, allergens, mayContain, confirmed, note (locale-resolved). */
+  allergenDeclaration?: RawAllergenDeclaration
   dietary?: readonly string[] | null
   images?: (RawCatalogueImage | null)[] | null
   offers?: (RawCatalogueOffer | null)[] | null
@@ -243,14 +262,14 @@ export function formatPrice(amount: number, currency: string, locale: string, op
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 
-const ITEM_TYPES: readonly CatalogueItemType[] = ['dish', 'product', 'service']
+const ITEM_PROFILES: readonly CatalogueItemProfile[] = ['foodOrDrink', 'product', 'service']
 const COLLECTION_TYPES: readonly CatalogueCollectionType[] = ['menu', 'list']
 const VISIBILITIES: readonly CatalogueVisibility[] = ['public', 'websiteOnly', 'unlisted']
 
 // Defaults are the schema's own: B1 maps an item's own page to Product by
 // default; B2 makes 'list' the collection default; AC 30 makes 'public' the
 // visibility default.
-const itemTypeOf = (v: unknown): CatalogueItemType => (ITEM_TYPES.includes(v as CatalogueItemType) ? (v as CatalogueItemType) : 'product')
+const itemProfileOf = (v: unknown): CatalogueItemProfile => (ITEM_PROFILES.includes(v as CatalogueItemProfile) ? (v as CatalogueItemProfile) : 'product')
 const collectionTypeOf = (v: unknown): CatalogueCollectionType =>
   COLLECTION_TYPES.includes(v as CatalogueCollectionType) ? (v as CatalogueCollectionType) : 'list'
 const visibilityOf = (v: unknown): CatalogueVisibility =>
@@ -281,10 +300,47 @@ function pickTerms(keys: readonly string[] | null | undefined, vocabulary: reado
   return out
 }
 
-/** Valid allergen keys, deduplicated, in the legal Annex II order (C3). */
-function allergensOf(keys: readonly string[] | null | undefined): AllergenKey[] {
-  const present = new Set((keys ?? []).filter(isAllergenKey))
-  return ALLERGENS.filter((a) => present.has(a))
+/**
+ * D-3 — the declaration of a food-or-drink item; null for any other profile.
+ * Never inferred: a declaration that is not reviewed, or not valid as stored
+ * (no allergen ticked under "contains", "none" not confirmed, unknown keys),
+ * resolves to `notReviewed` — the website then shows nothing rather than a
+ * claim nobody made. Keys come back valid, deduplicated, in Annex II order.
+ */
+function allergenDeclarationOf(row: RawCatalogueItem, profile: CatalogueItemProfile, ctx: CatalogueResolveContext): AllergenDeclarationDTO | null {
+  if (profile !== 'foodOrDrink') return null
+  return declarationOf(row.allergenDeclaration, ctx)
+}
+
+function declarationOf(raw: RawAllergenDeclaration | undefined, ctx: CatalogueResolveContext): AllergenDeclarationDTO {
+  const shape = raw ? { status: raw.status, ...(raw.allergens != null && { allergens: raw.allergens }), ...(raw.mayContain != null && { mayContain: raw.mayContain }), ...(raw.confirmed != null && { confirmed: raw.confirmed }) } : null
+  if (!raw || allergenDeclarationIssues(shape).length) return { status: 'notReviewed' }
+  const note = text(raw.note, ctx.locale, ctx.defaultLocale)
+  if (raw.status === 'noneDeclared') return { status: 'noneDeclared', mayContain: orderedAllergens(raw.mayContain), note }
+  return { status: 'containsListedAllergens', allergens: orderedAllergens(raw.allergens), mayContain: orderedAllergens(raw.mayContain), note }
+}
+
+/**
+ * D-3a — a choice's declaration, only on a food-or-drink item (null elsewhere):
+ *   remove            → null (never subtracts the item's base allergens)
+ *   linked to an item → that item's declaration (no note); an item that is not
+ *                       public or not food → notReviewed / null, never guessed
+ *   free-text add     → its own declaration
+ */
+function optionDeclarationOf(o: RawCatalogueOption, parentIsFood: boolean, ctx: CatalogueResolveContext): OptionAllergenDeclarationDTO | null {
+  if (!parentIsFood || o.kind === 'remove') return null
+  if (o.linked || o.item) {
+    if (!o.item) return { status: 'notReviewed' }
+    if (o.item.itemProfile !== 'foodOrDrink') return null
+    return withoutNote(declarationOf(o.item.allergenDeclaration, ctx))
+  }
+  return withoutNote(declarationOf(o.allergenDeclaration ? { ...o.allergenDeclaration, note: undefined } : o.allergenDeclaration, ctx))
+}
+
+function withoutNote(d: AllergenDeclarationDTO): OptionAllergenDeclarationDTO {
+  if (d.status === 'containsListedAllergens') return { status: d.status, allergens: d.allergens, mayContain: d.mayContain }
+  if (d.status === 'noneDeclared') return { status: d.status, mayContain: d.mayContain }
+  return { status: d.status }
 }
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -398,7 +454,7 @@ function linkedItemOf(row: RawCatalogueOptionItem, ctx: CatalogueResolveContext)
   }
 }
 
-function optionListsOf(rows: RawCatalogueItem['optionLists'], ctx: CatalogueResolveContext): CatalogueOptionListDTO[] {
+function optionListsOf(rows: RawCatalogueItem['optionLists'], ctx: CatalogueResolveContext, parentIsFood: boolean): CatalogueOptionListDTO[] {
   const out: CatalogueOptionListDTO[] = []
   for (const a of rows ?? []) {
     // A list that is missing, foreign or not public arrives as null and is skipped.
@@ -414,6 +470,7 @@ function optionListsOf(rows: RawCatalogueItem['optionLists'], ctx: CatalogueReso
         priceDelta: delta,
         formattedDelta: delta === 0 ? null : formatPrice(delta, ctx.config.currency, ctx.locale, { signed: true }),
         item: linkedItemOf(o.item ?? null, ctx),
+        allergenDeclaration: optionDeclarationOf(o, parentIsFood, ctx),
       })
     }
     out.push({
@@ -438,16 +495,16 @@ export function resolveItem(row: RawCatalogueItem | null | undefined, ctx: Catal
   const offers = resolveOffers(row.offers, ctx)
   return {
     publicId: nonEmpty(row.publicId),
-    itemType: itemTypeOf(row.itemType),
+    itemProfile: itemProfileOf(row.itemProfile),
     name: text(row.name, ctx.locale, ctx.defaultLocale) ?? '',
     description: text(row.description, ctx.locale, ctx.defaultLocale),
     images: imagesOf(row.images, ctx),
     categories: pickTerms(row.categories, ctx.config.categories),
-    allergens: allergensOf(row.allergens),
+    allergenDeclaration: allergenDeclarationOf(row, itemProfileOf(row.itemProfile), ctx),
     dietary: pickTerms(row.dietary, ctx.config.dietaryTags),
     offers,
     hasOffers: offers.length > 0,
-    optionLists: optionListsOf(row.optionLists, ctx),
+    optionLists: optionListsOf(row.optionLists, ctx, itemProfileOf(row.itemProfile) === 'foodOrDrink'),
     visibility: visibilityOf(row.visibility),
     page: pageRefOf(row.hasPage, row.slugMap, ctx.locale),
   }

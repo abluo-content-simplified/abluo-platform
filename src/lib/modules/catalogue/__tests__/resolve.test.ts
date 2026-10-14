@@ -15,6 +15,7 @@ import { resolveOffer } from '../offers'
 import * as queries from '@/lib/sanity/queries'
 import * as sitemapQueries from '@/lib/seo/sitemap-queries'
 import type { CatalogueConfigDTO, CatalogueSectionDTO } from '../dto'
+import { visibilityFilter } from '../visibility'
 
 const NOW = new Date('2026-10-16T19:00:00Z') // Friday 21:00 in Rome
 
@@ -43,7 +44,7 @@ const ctx = (over: Partial<CatalogueResolveContext> = {}): CatalogueResolveConte
 const item = (over: Partial<RawCatalogueItem> = {}): RawCatalogueItem => ({
   _id: 'catalogueItem-livener-margherita',
   publicId: '9f1c0b4e-0000-4000-8000-000000000001',
-  itemType: 'dish',
+  itemProfile: 'foodOrDrink',
   visibility: 'public',
   hasPage: false,
   name: 'Margherita',
@@ -263,11 +264,35 @@ describe('pages and identity — AC 13, 14, ADR-031 D3', () => {
     }
   })
 
-  it('maps vocabulary keys to labels and orders allergens by Annex II', () => {
-    const dto = resolveItem(item({ categories: ['pizza', 'gone'], dietary: ['veg'], allergens: ['milk', 'gluten', 'bogus', 'milk'] }), ctx())!
+  it('maps vocabulary keys to labels and orders allergens by Annex II (D-3 declaration)', () => {
+    const dto = resolveItem(
+      item({ categories: ['pizza', 'gone'], dietary: ['veg'], allergenDeclaration: { status: 'containsListedAllergens', allergens: ['milk', 'gluten', 'milk'], mayContain: ['sesame', 'eggs'], note: 'Forno condiviso' } }),
+      ctx()
+    )!
     expect(dto.categories).toEqual([{ value: 'pizza', label: 'Pizza', color: '#c00' }])
     expect(dto.dietary.map((d) => d.label)).toEqual(['Vegetariano'])
-    expect(dto.allergens).toEqual(['gluten', 'milk'])
+    expect(dto.allergenDeclaration).toEqual({ status: 'containsListedAllergens', allergens: ['gluten', 'milk'], mayContain: ['eggs', 'sesame'], note: 'Forno condiviso' })
+  })
+
+  describe('allergen declaration (ADR-033 D-3)', () => {
+    const decl = (allergenDeclaration: RawCatalogueItem['allergenDeclaration'], over: Partial<RawCatalogueItem> = {}) => resolveItem(item({ allergenDeclaration, ...over }), ctx())!.allergenDeclaration
+    it('is null for products and services — nothing to render', () => {
+      expect(decl({ status: 'noneDeclared', confirmed: true }, { itemProfile: 'product' })).toBeNull()
+      expect(decl({ status: 'containsListedAllergens', allergens: ['milk'] }, { itemProfile: 'service' })).toBeNull()
+    })
+    it('none declared needs the explicit confirmation', () => {
+      expect(decl({ status: 'noneDeclared', confirmed: true })).toEqual({ status: 'noneDeclared', mayContain: [], note: null })
+      // E-1: "may contain" survives on none-declared, in Annex II order.
+      expect(decl({ status: 'noneDeclared', confirmed: true, mayContain: ['treeNuts', 'gluten'] })).toEqual({ status: 'noneDeclared', mayContain: ['gluten', 'treeNuts'], note: null })
+      expect(decl({ status: 'noneDeclared' })).toEqual({ status: 'notReviewed' })
+    })
+    it('never infers: missing, unreviewed, empty "contains" or unknown keys resolve to notReviewed', () => {
+      expect(decl(undefined)).toEqual({ status: 'notReviewed' })
+      expect(decl({ status: 'notReviewed' })).toEqual({ status: 'notReviewed' })
+      expect(decl({ status: 'containsListedAllergens', allergens: [] })).toEqual({ status: 'notReviewed' })
+      expect(decl({ status: 'containsListedAllergens', allergens: ['milk', 'bogus'] })).toEqual({ status: 'notReviewed' })
+      expect(decl({ status: 'allergenFree' as never })).toEqual({ status: 'notReviewed' })
+    })
   })
 
   it('option lists: min/max from the attachment, signed deltas, missing lists skipped', () => {
@@ -315,8 +340,46 @@ describe('sitemap (spec §6.5, AC 16, B4)', () => {
   it('lists only items/collections with a page, public and not unlisted', () => {
     for (const q of [sitemapQueries.SITEMAP_CATALOGUE_ITEMS_QUERY, sitemapQueries.SITEMAP_CATALOGUE_COLLECTIONS_QUERY]) {
       expect(q).toContain('hasPage == true')
-      expect(q).toContain('visibility != "unlisted"')
+      expect(q).toContain(visibilityFilter('sitemap'))
       expect(q).toContain('[defined(segment)]')
     }
+  })
+})
+
+describe('option choice allergens (ADR-033 D-3a)', () => {
+  const withList = (options: unknown[], over: Partial<RawCatalogueItem> = {}) =>
+    resolveItem(item({ optionLists: [{ _key: 'att', list: { name: 'Extra', options: options as never } }], ...over }), ctx())!.optionLists[0].options.map((o) => o.allergenDeclaration)
+  it('free-text add → its own (no note, Annex II order); remove → null; unreviewed / invalid → notReviewed', () => {
+    expect(
+      withList([
+        { _key: 'a', label: 'Mozzarella', kind: 'add', allergenDeclaration: { status: 'containsListedAllergens', allergens: ['milk', 'gluten'], mayContain: ['sesame'] } },
+        { _key: 'b', label: 'Senza', kind: 'remove', allergenDeclaration: { status: 'noneDeclared', confirmed: true } },
+        { _key: 'c', label: 'X', kind: 'add' },
+        { _key: 'd', label: 'Y', kind: 'add', allergenDeclaration: { status: 'noneDeclared', confirmed: true } },
+        { _key: 'e', label: 'Z', kind: 'add', allergenDeclaration: { status: 'noneDeclared' } },
+      ])
+    ).toEqual([
+      { status: 'containsListedAllergens', allergens: ['gluten', 'milk'], mayContain: ['sesame'] },
+      null,
+      { status: 'notReviewed' },
+      { status: 'noneDeclared', mayContain: [] },
+      { status: 'notReviewed' },
+    ])
+  })
+  it('a linked choice derives from its item; a hidden linked item is notReviewed (never guessed); a non-food linked item → null', () => {
+    expect(
+      withList([
+        { _key: 'a', label: 'Patatine', kind: 'add', linked: true, item: { name: 'Patatine', itemProfile: 'foodOrDrink', allergenDeclaration: { status: 'containsListedAllergens', allergens: ['celery'], note: 'n' } }, allergenDeclaration: { status: 'noneDeclared', confirmed: true } },
+        { _key: 'b', label: 'Hidden', kind: 'add', linked: true, item: null },
+        { _key: 'c', label: 'Libro', kind: 'add', linked: true, item: { name: 'Libro', itemProfile: 'product' } },
+      ])
+    ).toEqual([{ status: 'containsListedAllergens', allergens: ['celery'], mayContain: [] }, { status: 'notReviewed' }, null])
+  })
+  it('on a product or service item no choice carries a declaration', () => {
+    expect(withList([{ _key: 'a', label: 'X', kind: 'add', allergenDeclaration: { status: 'noneDeclared', confirmed: true } }], { itemProfile: 'product' })).toEqual([null])
+  })
+  it('the option projection carries what the derivation needs', () => {
+    expect(queries.catalogueItemBySlugQuery).toContain('"linked": defined(item._ref)')
+    expect(queries.catalogueItemBySlugQuery).toMatch(/allergenDeclaration \{ status, allergens, mayContain, confirmed \}/)
   })
 })

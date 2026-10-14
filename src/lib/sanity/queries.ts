@@ -520,6 +520,14 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       galleryDisplay,
       showAllTab,
       lightbox,
+      // catalogueListingSection (ADR-033, spec §4.6). The collection is NOT
+      // dereferenced here: hydrateSections reads it by id through
+      // catalogueCollectionByIdQuery, which carries the lifecycle rule and
+      // the project scope. eyebrow/title/subtitle/emptyState* are shared keys
+      // projected above.
+      "collectionId": collection._ref,
+      showPrices,
+      allergenPresentation,
       // ─── Platform sections added with the icon primitive ──────────────────
       // Every key below is NEW to this flat projection and resolves to null on
       // every section type that does not declare it. Fields these sections
@@ -1884,7 +1892,13 @@ export const homePageQuery = /* groq */ `
       layout,
       // locationsSection — see PAGE_SECTIONS_PROJECTION.
       selection,
-      locationKeys
+      locationKeys,
+      // catalogueListingSection — see PAGE_SECTIONS_PROJECTION.
+      "collectionId": collection._ref,
+      showPrices,
+      allergenPresentation,
+      "emptyStateHeading": ${loc('emptyStateHeading')},
+      "emptyStateBody": ${loc('emptyStateBody')}
     }
   }
 `
@@ -2244,11 +2258,17 @@ const CATALOGUE_OPTION_LIST_FIELDS = /* groq */ `
         "label": ${loc('label')},
         kind,
         priceDelta,
+        // ADR-033 D-3a — a free-text choice's own declaration; a linked choice
+        // derives its declaration from the item (projected below).
+        "linked": defined(item._ref),
+        allergenDeclaration { status, allergens, mayContain, confirmed },
         "item": *[_type == "catalogueItem" && projectSlug == $projectSlug && _id == ^.item._ref && ${CATALOGUE_ITEM_PUBLIC}][0] {
           publicId,
           "name": ${loc('name')},
           hasPage,
-          "slugMap": slug
+          "slugMap": slug,
+          itemProfile,
+          allergenDeclaration { status, allergens, mayContain, confirmed }
         }
       }
     }
@@ -2260,14 +2280,15 @@ const CATALOGUE_OPTION_LIST_FIELDS = /* groq */ `
 // rule in TypeScript (isPublicAt); they never reach the DTO.
 const CATALOGUE_ITEM_FIELDS = /* groq */ `
   publicId,
-  itemType,
+  itemProfile,
   visibility,
   hasPage,
   "name": ${loc('name')},
   "description": ${loc('description')},
   "slugMap": slug,
   categories,
-  allergens,
+  // ADR-033 D-3 — the explicit declaration; the note is tenant text (locale chain).
+  allergenDeclaration { status, allergens, mayContain, confirmed, "note": ${loc('note')} },
   dietary,
   publishedAt,
   expiresAt,

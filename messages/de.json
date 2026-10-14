@@ -780,14 +780,16 @@
           "news": "Neuigkeit",
           "events": "Veranstaltung",
           "gallery": "Galerie",
-          "media": "Zur Mediathek hinzufügen"
+          "media": "Zur Mediathek hinzufügen",
+          "catalogue": "Katalogeintrag"
         },
         "desc": {
           "blog": "Ein Artikel für deine Website, in wenigen einfachen Schritten.",
           "news": "Ein kurzes Update für deine Besucher.",
           "events": "Ein Termin, zu dem man kommen kann.",
           "gallery": "Eine Sammlung von Fotos.",
-          "media": "Fotos einmal hochladen und überall auf deiner Website verwenden."
+          "media": "Fotos einmal hochladen und überall auf deiner Website verwenden.",
+          "catalogue": "Ein Gericht, Produkt oder eine Dienstleistung für deinen Katalog."
         },
         "soon": "Bald verfügbar",
         "more": "Mehr für deine Website",
@@ -3220,23 +3222,23 @@
     },
     "module": {
       "label": "Katalog",
-      "description": "Artikel, Sammlungen und Preise für Ihre Website."
+      "description": "Einträge, Sammlungen und Preise für deine Website."
     },
     "segment": {
       "label": "Öffentliches URL-Segment",
       "clash": {
-        "empty": "Wählen Sie eine Webadresse für Ihren Katalog.",
-        "tooLong": "Diese Adresse ist zu lang. Verwenden Sie höchstens {max} Zeichen.",
-        "invalidSyntax": "„{value}“ ist keine gültige Adresse. Verwenden Sie nur Kleinbuchstaben, Zahlen und einzelne Bindestriche.",
-        "reserved": "„{value}“ wird bereits von der Website verwendet. Wählen Sie ein anderes Wort.",
-        "pageSlug": "„{value}“ ist bereits der Anfang einer Ihrer Seiten. Wählen Sie ein anderes Wort oder benennen Sie diese Seite um."
+        "empty": "Wähle eine Webadresse für deinen Katalog.",
+        "tooLong": "Diese Adresse ist zu lang. Verwende höchstens {max} Zeichen.",
+        "invalidSyntax": "„{value}“ ist keine gültige Adresse. Verwende nur Kleinbuchstaben, Zahlen und einzelne Bindestriche.",
+        "reserved": "„{value}“ wird bereits von der Website verwendet. Wähle ein anderes Wort.",
+        "pageSlug": "„{value}“ ist bereits der Anfang einer deiner Seiten. Wähle ein anderes Wort oder benenne diese Seite um."
       },
       "revertNotice": "„{value}“ wurde schon einmal verwendet. Bei erneuter Verwendung endet die Weiterleitung.",
       "redirectNotice": "Alte Adressen funktionieren weiter und leiten auf die neue um."
     },
     "currency": {
       "label": "Währung",
-      "changeWarning": "{prices, plural, one {# Preis} other {# Preise}} bei {items, plural, one {# Artikel} other {# Artikeln}} werden als {currency} gelesen. Es werden keine Beträge umgerechnet.",
+      "changeWarning": "{prices, plural, one {# Preis} other {# Preise}} bei {items, plural, one {# Eintrag} other {# Einträgen}} werden als {currency} gelesen. Es werden keine Beträge umgerechnet.",
       "changeConfirm": "Währung ändern",
       "changeWarningOptions": "Außerdem {count, plural, one {# Preisänderung bei Optionen} other {# Preisänderungen bei Optionen}}."
     },
@@ -3250,6 +3252,474 @@
     "errors": {
       "inUse": "Wird noch verwendet in: {names}.",
       "slugTaken": "Die Adresse „{slug}“ wird bereits von „{name}“ verwendet."
+    },
+    "dashboard": {
+      "glance": {
+        "label": "Katalog",
+        "sub": "{drafts, plural, =0 {Keine Entwürfe} one {# Entwurf} other {# Entwürfe}} · {noPrice, plural, =0 {alle mit Preis} one {# ohne Preis} other {# ohne Preis}}"
+      },
+      "gaps": {
+        "noPhoto": "Kein Foto",
+        "noPrice": "Kein Preis",
+        "allergensNotReviewed": "Allergene nicht geprüft"
+      },
+      "days": {
+        "mon": "Mo",
+        "tue": "Di",
+        "wed": "Mi",
+        "thu": "Do",
+        "fri": "Fr",
+        "sat": "Sa",
+        "sun": "So"
+      },
+      "visibility": {
+        "label": "Wer es finden kann",
+        "public": {
+          "title": "Öffentlich",
+          "body": "Auf der Website und mit verbundenen Apps geteilt."
+        },
+        "websiteOnly": {
+          "title": "Nur Website",
+          "body": "Auf der Website, nie mit verbundenen Apps geteilt."
+        },
+        "unlisted": {
+          "title": "Nicht gelistet",
+          "body": "Nur über den Link erreichbar — nicht in Listen, nicht in Suchmaschinen, nie geteilt."
+        }
+      },
+      "common": {
+        "inUseTitle": "Wird noch verwendet von:",
+        "dismiss": "Schließen",
+        "unpublishHelper": "An diesem Datum wird es automatisch offline genommen. Du kannst es jederzeit wieder veröffentlichen.",
+        "save": "Speichern",
+        "loadFailed": "Dein Katalog konnte nicht geladen werden. Deine Änderungen sind sicher.",
+        "retry": "Erneut versuchen"
+      },
+      "errors": {
+        "forbidden": "Dafür hast du keine Berechtigung.",
+        "not_found": "Das gibt es nicht mehr.",
+        "conflict": "Das wurde woanders geändert. Lade neu, um die aktuelle Version zu sehen.",
+        "archived": "Das ist archiviert. Stelle es zuerst wieder her.",
+        "archive_first": "Archiviere es zuerst und lösche es dann endgültig.",
+        "in_use": "Das wird noch verwendet.",
+        "missing_name": "Füge zuerst einen Namen in der Hauptsprache hinzu.",
+        "missing_slug": "Die Seite braucht eine Adresse in der Hauptsprache.",
+        "slug_taken": "Diese Adresse wird schon von etwas anderem verwendet.",
+        "no_options": "Füge zuerst mindestens eine Option hinzu.",
+        "invalid_schedule": "Wähle ein Datum und eine Uhrzeit in der Zukunft.",
+        "invalid_value": "Etwas ist noch nicht gültig. Prüfe die markierten Felder.",
+        "too_large": "Das ist zu viel auf einmal.",
+        "unauthenticated": "Bitte melde dich erneut an.",
+        "offline": "Du scheinst offline zu sein. Wir behalten deine Änderungen und versuchen es erneut.",
+        "failed": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+        "allergens_not_reviewed": "Prüfe zuerst die Allergene: Gib an, was enthalten ist, oder bestätige, dass kein Allergen der EU-Liste angegeben ist.",
+        "unpublished_dependencies": "Hier wird etwas verwendet, das noch nicht veröffentlicht ist.",
+        "option_allergens_not_reviewed": "Prüfe zuerst die Allergene der Extras.",
+        "slug_without_name": "Eine Adresse hat keinen Namen in ihrer Sprache."
+      },
+      "list": {
+        "untitled": "Ohne Titel",
+        "fromPrice": "ab {price}",
+        "collectionType": {
+          "menu": "Speisekarte",
+          "list": "Liste"
+        },
+        "sectionsCount": "{count, plural, one {# Abschnitt} other {# Abschnitte}}",
+        "itemsCount": "{count, plural, one {# Eintrag} other {# Einträge}}",
+        "optionsCount": "{count, plural, one {# Option} other {# Optionen}}",
+        "usedBy": "{count, plural, =0 {noch nicht verwendet} one {von # Eintrag verwendet} other {von # Einträgen verwendet}}",
+        "done": "Erledigt.",
+        "open": "Öffnen",
+        "new": {
+          "items": "Eintrag hinzufügen",
+          "collections": "Neue Sammlung",
+          "optionLists": "Neue Optionsliste"
+        },
+        "statusAll": "Alle",
+        "columns": {
+          "name": "Name",
+          "status": "Status",
+          "updated": "Geändert",
+          "actions": "Aktionen"
+        },
+        "menuFor": "Aktionen für {name}",
+        "display": {
+          "label": "Anzeigen als",
+          "list": "Liste",
+          "cards": "Karten"
+        },
+        "views": {
+          "label": "Katalogansichten",
+          "items": "Einträge",
+          "collections": "Sammlungen",
+          "optionLists": "Optionslisten"
+        },
+        "empty": {
+          "items": {
+            "title": "Noch keine Einträge",
+            "body": "Füge dein erstes Gericht, Produkt oder deine erste Dienstleistung hinzu. In Speisekarten und Listen ordnen kannst du sie später."
+          },
+          "collections": {
+            "title": "Noch keine Sammlungen",
+            "body": "Eine Sammlung ordnet Einträge in Abschnitte — eine Speisekarte, eine Weinkarte, eine Preisliste."
+          },
+          "optionLists": {
+            "title": "Noch keine Optionslisten",
+            "body": "Optionslisten enthalten die Auswahlmöglichkeiten, etwa Extra-Beläge oder Beilagen."
+          }
+        },
+        "filters": {
+          "label": "Filtern",
+          "search": "Suchen",
+          "status": "Status",
+          "category": "Kategorie",
+          "anyCategory": "Alle Kategorien"
+        },
+        "count": "{shown} von {total}",
+        "noMatch": "Nichts passt zu diesen Filtern.",
+        "clearFilters": "Filter zurücksetzen"
+      },
+      "item": {
+        "fields": {
+          "name": "Name",
+          "description": "Kurzbeschreibung",
+          "descriptionHelp": "Ein oder zwei Sätze. Erscheint mit dem Namen."
+        },
+        "photos": {
+          "main": "Hauptfoto",
+          "makeMain": "Als Hauptfoto festlegen",
+          "remove": "Foto entfernen",
+          "none": "Noch kein Foto. Mit einem Foto wirkt es besser.",
+          "choose": "Aus der Mediathek wählen"
+        },
+        "price": {
+          "everywhere": "Gleicher Preis überall sonst",
+          "everywhereHelp": "Ein Preis unter „überall sonst“ gilt überall dort, wo es keinen eigenen Preis gibt. Lass einen Preis leer, wenn es so nicht verkauft wird.",
+          "price": "Preis",
+          "unknownChannel": "„{channel}“ (nicht mehr angeboten)",
+          "anotherTime": "weitere Zeit",
+          "remove": "Diesen Preis entfernen",
+          "placeholder": "0,00",
+          "invalidPrice": "Gib einen Betrag wie 8,50 ein — höchstens zwei Nachkommastellen.",
+          "overlap": "Das überschneidet sich mit einem anderen Preis für denselben Kanal. Ändere die Tage oder Zeiten.",
+          "badTimes": "Start- und Endzeit müssen unterschiedlich sein.",
+          "days": "Tage",
+          "everyDay": "Keine Tage gewählt: jeden Tag.",
+          "from": "Von",
+          "to": "Bis",
+          "removeTimes": "Zeiten entfernen",
+          "overnight": "Läuft über Mitternacht in den nächsten Tag.",
+          "addTimes": "Nur zu bestimmten Zeiten",
+          "addMoreTimes": "Weitere Zeiten hinzufügen",
+          "addAnother": "Weiteren Preis hinzufügen"
+        },
+        "details": {
+          "allergens": "Allergene",
+          "allergensHelp": "Gib die Allergene anhand der EU-Liste der vierzehn Allergene an. Es werden keine Annahmen getroffen.",
+          "notReviewed": "Noch nicht geprüft",
+          "contains": "Enthält Allergene",
+          "noneDeclared": "Keine Allergene der EU-Liste deklariert",
+          "containsLegend": "Enthält",
+          "containsHelp": "Kreuze jedes enthaltene Allergen an. Alle vierzehn werden immer angezeigt.",
+          "mayContainLegend": "Kann enthalten",
+          "mayContainHelp": "Mögliche Spuren, zum Beispiel durch gemeinsam genutzte Geräte. Getrennt von „Enthält“.",
+          "confirmNone": "Ich bestätige, dass für diesen Eintrag keine Allergene der EU-Liste deklariert sind.",
+          "note": "Hinweis (optional)",
+          "noteHelp": "Wird mit den Allergenen angezeigt – zum Beispiel „In einer Küche zubereitet, in der auch Nüsse verarbeitet werden.“",
+          "issues": {
+            "notReviewed": "Wähle vor dem Veröffentlichen eine der beiden Optionen.",
+            "noAllergens": "Kreuze mindestens ein Allergen an – oder wähle „Keine Allergene der EU-Liste deklariert“.",
+            "notConfirmed": "Bestätige es, um zu veröffentlichen."
+          },
+          "dietary": "Ernährungshinweise"
+        },
+        "options": {
+          "missingName": "Eine Optionsliste, die es nicht mehr gibt",
+          "optionCount": "{count, plural, one {# Option} other {# Optionen}}",
+          "remove": "Diese Optionsliste entfernen",
+          "min": "Mindestens",
+          "max": "Höchstens",
+          "noLimit": "Keine Grenze",
+          "minAboveMax": "„Mindestens“ ist größer als „höchstens“.",
+          "maxAboveOptions": "Diese Liste hat nur {count, plural, one {# Option} other {# Optionen}} — das ist in Ordnung, wenn du weitere hinzufügst.",
+          "missingList": "Diese Optionsliste gibt es nicht mehr. Entferne sie vom Eintrag.",
+          "attach": "Optionsliste verbinden",
+          "allAttached": "Alle Optionslisten sind verbunden.",
+          "noLists": "Es gibt noch keine Optionslisten.",
+          "createList": "Optionsliste erstellen",
+          "draft": "Entwurf"
+        },
+        "page": {
+          "toggle": "Eigene Seite geben",
+          "toggleHelp": "Praktisch, wenn du einen direkten Link teilen möchtest.",
+          "noSegment": "Dein Katalog hat noch keine Webadresse. Bitte Abluo, eine einzurichten — dann erscheint die Seite.",
+          "address": "Webadresse",
+          "addressIn": "Webadresse auf {language}",
+          "needsName": "Füge zuerst einen Namen hinzu.",
+          "notInLanguage": "Keine Seite in dieser Sprache, solange kein Name da ist.",
+          "taken": "Wird schon von <link>„{name}“</link> verwendet. Wähle eine andere Adresse.",
+          "notTranslated": "Nicht übersetzt",
+          "strayAddress": "„{slug}“ hat keinen Namen in dieser Sprache.",
+          "removeAddress": "Adresse entfernen"
+        },
+        "languages": {
+          "fallback": "Was du leer lässt, erscheint auf {language}.",
+          "ready": "Fertig",
+          "missing": "Noch nicht",
+          "original": "Original: {text}"
+        },
+        "preview": {
+          "untitled": "Ohne Titel",
+          "allergens": "Enthält: {list}",
+          "mayContain": "Kann enthalten: {list}"
+        },
+        "wizard": {
+          "name": {
+            "title": "Wie heißt es?",
+            "helper": "Verwende den Namen, den deine Kundschaft kennt.",
+            "needed": "Füge einen Namen hinzu, um weiterzumachen."
+          },
+          "category": {
+            "title": "Was für eine Art ist es?",
+            "helper": "Wähle passende aus. Du kannst das überspringen."
+          },
+          "photo": {
+            "title": "Ein Foto hinzufügen",
+            "helper": "Aus deiner Mediathek. Das erste ist das Hauptfoto."
+          },
+          "price": {
+            "title": "Was kostet es?",
+            "helper": "Ein Preis pro Verkaufsweg. Preise sind in der Währung deiner Website."
+          },
+          "details": {
+            "title": "Lebensmittelinformationen",
+            "helper": "Allergene und Ernährungshinweise. Nötig, bevor Speisen oder Getränke veröffentlicht werden."
+          },
+          "options": {
+            "title": "Kann man es anpassen?",
+            "helper": "Verbinde Auswahlmöglichkeiten wie Extra-Beläge, und wie viele gewählt werden dürfen."
+          },
+          "page": {
+            "title": "Eigene Seite?",
+            "helper": "Standardmäßig aus. Schalte es ein, um einen teilbaren Link zu bekommen."
+          },
+          "languages": {
+            "title": "Weitere Sprachen?",
+            "helper": "Schreibe Name und Beschreibung in deinen anderen Sprachen, jetzt oder später."
+          },
+          "preview": {
+            "title": "So wird es aussehen",
+            "helper": "Eine Vorschau, wie es auf deiner Website erscheint."
+          },
+          "publish": {
+            "title": "Wie geht es weiter?",
+            "choiceNow": "Jetzt veröffentlichen",
+            "choiceSchedule": "Planen",
+            "choiceDraft": "Als Entwurf behalten",
+            "now": "Veröffentlichen",
+            "schedule": "Planen",
+            "draft": "Entwurf speichern"
+          },
+          "optional": "Du kannst das überspringen.",
+          "working": "Wird gespeichert…",
+          "slugTaken": "Die Adresse „{slug}“ wird schon von „{name}“ verwendet.",
+          "done": {
+            "live": "Es ist auf deiner Website",
+            "liveBody": "Man kann es jetzt sehen.",
+            "scheduled": "Es ist geplant",
+            "scheduledBody": "Es geht am {date} online.",
+            "draft": "Als Entwurf gespeichert",
+            "draftBody": "Auf deiner Website hat sich nichts geändert. Veröffentliche es, wann du willst.",
+            "open": "Öffnen",
+            "another": "Noch einen hinzufügen",
+            "list": "Zurück zur Liste"
+          },
+          "profile": {
+            "title": "Was bietest du an?",
+            "helper": "Davon hängt ab, was wir fragen. Du kannst es später ändern.",
+            "needed": "Wähle eine Option, um fortzufahren.",
+            "foodHelper": "Speisen und Getränke brauchen eine Allergenangabe, bevor sie veröffentlicht werden können."
+          },
+          "dependencies": "Noch nicht veröffentlicht: {names}. Veröffentliche diese zuerst oder öffne den Eintrag und wähle „Eintrag und Abhängigkeiten veröffentlichen“.",
+          "optionAllergens": "Prüfe zuerst die Allergene dieser Extras: {names}.",
+          "slugWithoutName": "Die Adresse auf {language} hat keinen Namen auf {language}. Füge den Namen hinzu oder entferne die Adresse."
+        },
+        "editor": {
+          "untitled": "Eintrag ohne Titel",
+          "scheduled": "Geplant.",
+          "published": "Veröffentlicht.",
+          "discard": "Änderungen verwerfen",
+          "discardTitle": "Änderungen verwerfen?",
+          "discardBody": "„{name}“ wird wieder so, wie es auf deiner Website ist.",
+          "menu": "Weitere Aktionen",
+          "publish": "Veröffentlichen",
+          "publishChanges": "Änderungen veröffentlichen",
+          "archivedNotice": "Dieser Eintrag ist archiviert. Stelle ihn wieder her, um ihn zu ändern.",
+          "missingList": "Eine verbundene Optionsliste gibt es nicht mehr. Entferne sie im Tab Optionen, bevor du veröffentlichst.",
+          "tabsLabel": "Abschnitte des Eintrags",
+          "tabs": {
+            "content": "Inhalt",
+            "photos": "Fotos",
+            "prices": "Preise",
+            "details": "Lebensmittelinformationen",
+            "options": "Optionen",
+            "page": "Seite",
+            "languages": "Sprachen",
+            "publishing": "Veröffentlichung"
+          },
+          "preview": "Vorschau",
+          "scheduleHelp": "Wähle, wann es online geht. Zeiten sind in der Zeitzone deiner Website.",
+          "schedule": "Planen"
+        }
+      },
+      "collection": {
+        "untitled": "Sammlung ohne Titel",
+        "slugTaken": "Die Adresse „{slug}“ wird schon von „{name}“ verwendet.",
+        "published": "Veröffentlicht.",
+        "menu": "Weitere Aktionen",
+        "publish": "Veröffentlichen",
+        "publishChanges": "Änderungen veröffentlichen",
+        "archivedNotice": "Diese Sammlung ist archiviert. Stelle sie wieder her, um sie zu ändern.",
+        "tabsLabel": "Abschnitte der Sammlung",
+        "tabs": {
+          "sections": "Abschnitte",
+          "details": "Details",
+          "page": "Seite"
+        },
+        "type": {
+          "title": "Welche Art von Sammlung?",
+          "helper": "Eine Speisekarte erscheint wie die Karte eines Restaurants; eine Liste passt zu Weinen, Produkten oder Dienstleistungen.",
+          "menu": "Eine Speisekarte",
+          "list": "Eine Liste"
+        },
+        "name": "Name",
+        "nameFirst": "Gib ihr zuerst einen Namen — dann kannst du Abschnitte hinzufügen.",
+        "languages": "Weitere Sprachen",
+        "page": "Eigene Seite",
+        "picker": {
+          "title": "Einträge hinzufügen",
+          "search": "Einträge suchen",
+          "category": "Kategorie",
+          "anyCategory": "Alle Kategorien",
+          "noMatch": "Keine Einträge passen.",
+          "none": "Es gibt noch keine Einträge zum Hinzufügen.",
+          "add": "{count, plural, =0 {Einträge hinzufügen} one {# Eintrag hinzufügen} other {# Einträge hinzufügen}}",
+          "draft": "Entwurf"
+        },
+        "sections": {
+          "label": "Abschnitte",
+          "unnamed": "Abschnitt ohne Titel",
+          "removed": "{count, plural, =0 {„{name}“ entfernt.} one {„{name}“ und # Unterabschnitt entfernt.} other {„{name}“ und # Unterabschnitte entfernt.}}",
+          "undo": "Rückgängig",
+          "dismiss": "Schließen",
+          "nameFirstTitle": "Gib deiner Sammlung zuerst einen Namen",
+          "emptyTitle": "Noch keine Abschnitte",
+          "emptyBody": "Abschnitte gruppieren deine Einträge — Vorspeisen, Pizza, Rotweine.",
+          "addFirst": "Ersten Abschnitt hinzufügen",
+          "broken": "Einige Abschnitte verweisen auf einen übergeordneten Abschnitt, den es nicht mehr gibt. Sie stehen oben, bis du sie verschiebst.",
+          "drag": "Ziehen, um „{name}“ zu verschieben",
+          "name": "Name des Abschnitts",
+          "namePlaceholder": "Name des Abschnitts",
+          "empty": "Leerer Abschnitt",
+          "deep": "Tief verschachtelt — zwei Ebenen sind meist am übersichtlichsten",
+          "up": "„{name}“ nach oben",
+          "down": "„{name}“ nach unten",
+          "delete": "„{name}“ löschen",
+          "unavailableItem": "Ein Eintrag, der nicht mehr verfügbar ist",
+          "itemUp": "Eintrag nach oben",
+          "itemDown": "Eintrag nach unten",
+          "removeItem": "Eintrag aus diesem Abschnitt entfernen",
+          "addItems": "Einträge hinzufügen",
+          "addSubsection": "Unterabschnitt hinzufügen",
+          "add": "Abschnitt hinzufügen"
+        },
+        "slugWithoutName": "Die Adresse auf {language} hat keinen Namen auf {language}. Füge den Namen hinzu oder entferne die Adresse."
+      },
+      "optionList": {
+        "untitled": "Optionsliste ohne Titel",
+        "published": "Veröffentlicht.",
+        "menu": "Weitere Aktionen",
+        "publish": "Veröffentlichen",
+        "publishChanges": "Änderungen veröffentlichen",
+        "archivedNotice": "Diese Optionsliste ist archiviert. Stelle sie wieder her, um sie zu ändern.",
+        "name": "Name",
+        "nameHelp": "Zum Beispiel „Extra-Beläge“ oder „Wähle eine Beilage“.",
+        "nameFirst": "Gib ihr zuerst einen Namen — dann füge Optionen hinzu.",
+        "options": "Optionen",
+        "optionsHelp": "Wie viele gewählt werden dürfen, legst du bei jedem Eintrag fest, der diese Liste verwendet.",
+        "emptyTitle": "Noch keine Optionen",
+        "emptyBody": "Füge die erste Auswahlmöglichkeit hinzu.",
+        "label": "Bezeichnung",
+        "labelIn": "Bezeichnung auf {language}",
+        "up": "Nach oben",
+        "down": "Nach unten",
+        "remove": "Option entfernen",
+        "kind": "Art",
+        "kindAdd": "Fügt hinzu",
+        "kindRemove": "Nimmt weg",
+        "delta": "Preisänderung",
+        "badDelta": "Gib einen Betrag wie 1,50 oder -1,00 ein.",
+        "linkedItem": "Auch einzeln verkauft als",
+        "noLinkedItem": "Nicht verbunden",
+        "add": "Option hinzufügen",
+        "draftLabel": "{name} (Entwurf)",
+        "allergensNotReviewed": "Allergene nicht geprüft",
+        "allergensHelp": "Nötig, wenn eine Speise oder ein Getränk diese Liste verwendet: Gib an, was dieses Extra hinzufügt.",
+        "allergensFromItem": "Die Allergene stammen vom verknüpften Eintrag."
+      },
+      "itemProfiles": {
+        "label": "Was bietest du an?",
+        "foodOrDrink": "Speise oder Getränk",
+        "product": "Ein Produkt",
+        "service": "Eine Dienstleistung"
+      },
+      "together": {
+        "notPublishedTitle": "Hier werden noch nicht veröffentlichte Inhalte verwendet:",
+        "publishItem": "Eintrag und Abhängigkeiten veröffentlichen",
+        "publishCollection": "Sammlung und Abhängigkeiten veröffentlichen",
+        "publishOptionList": "Optionsliste und Abhängigkeiten veröffentlichen",
+        "loading": "Wir prüfen, was veröffentlicht werden muss…",
+        "rootTitle": "Veröffentlichung",
+        "whenNow": "Geht sofort online.",
+        "whenScheduled": "Geht am {date} online.",
+        "includedTitle": "Wird mitveröffentlicht",
+        "includedHelp": "Noch nicht veröffentlicht – diese gehen gleichzeitig online.",
+        "nothingElse": "Sonst muss nichts veröffentlicht werden.",
+        "opensPage": "Bekommt eine eigene Seite",
+        "reused": "{count, plural, one {Auch an einer anderen Stelle verwendet} other {Auch an # anderen Stellen verwendet}}",
+        "blockedTitle": "Noch nicht bereit",
+        "forbiddenTitle": "Diese kannst du nicht veröffentlichen – frag jemanden, der es darf",
+        "missingTitle": "Fehlt",
+        "missingHelp": "{count, plural, one {# verknüpfter Inhalt existiert nicht mehr. Entferne ihn zuerst.} other {# verknüpfte Inhalte existieren nicht mehr. Entferne sie zuerst.}}",
+        "notLiveTitle": "Veröffentlicht, aber zu diesem Zeitpunkt nicht online",
+        "notLiveHelp": "Diese bleiben genau so, wie sie sind – sie erscheinen erst, wenn sie online sind.",
+        "confirmNow": "{count, plural, one {Veröffentlichen} other {Alle # veröffentlichen}}",
+        "confirmSchedule": "{count, plural, one {Planen} other {Alle # planen}}",
+        "published": "Gemeinsam veröffentlicht.",
+        "notLiveAfter": "Noch nicht online: {names}.",
+        "optionAllergensTitle": "Prüfe zuerst die Allergene dieser Extras:"
+      },
+      "strayAddress": {
+        "offer": "Der Name auf {language} ist leer, aber „{slug}“ ist noch seine Adresse.",
+        "clear": "Adresse auch löschen",
+        "cleared": "Die Adresse auf {language} wurde gelöscht.",
+        "undo": "Rückgängig"
+      }
+    },
+    "website": {
+      "free": "Kostenlos",
+      "allergensHeading": "Allergene",
+      "dietaryHeading": "Ernährungshinweise",
+      "optionsHeading": "Optionen",
+      "pricesHeading": "Preise",
+      "chooseExactly": "{min} wählen",
+      "chooseUpTo": "Bis zu {max} wählen",
+      "chooseAtLeast": "Mindestens {min} wählen",
+      "chooseBetween": "{min}–{max} wählen",
+      "without": "Ohne {label}",
+      "mayContainHeading": "Kann enthalten",
+      "allergensNoneDeclared": "Allergenangaben geprüft: keine Allergene der EU-Liste deklariert.",
+      "containsHeading": "Enthält"
     }
   }
 }

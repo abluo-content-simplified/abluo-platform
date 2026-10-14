@@ -780,14 +780,16 @@
           "news": "News",
           "events": "Event",
           "gallery": "Gallery",
-          "media": "Add to media library"
+          "media": "Add to media library",
+          "catalogue": "Catalogue item"
         },
         "desc": {
           "blog": "An article for your website, in a few easy steps.",
           "news": "A short update for your visitors.",
           "events": "A date people can come to.",
           "gallery": "A set of photos to show.",
-          "media": "Upload photos once, then use them anywhere on your site."
+          "media": "Upload photos once, then use them anywhere on your site.",
+          "catalogue": "A dish, product or service for your catalogue."
         },
         "soon": "Coming soon",
         "more": "More you can add to your site",
@@ -3250,6 +3252,474 @@
     "errors": {
       "inUse": "Still used by: {names}.",
       "slugTaken": "The address \"{slug}\" is already used by \"{name}\"."
+    },
+    "dashboard": {
+      "glance": {
+        "label": "Catalogue",
+        "sub": "{drafts, plural, =0 {No drafts} one {# draft} other {# drafts}} · {noPrice, plural, =0 {all priced} one {# without a price} other {# without a price}}"
+      },
+      "gaps": {
+        "noPhoto": "No photo",
+        "noPrice": "No price set",
+        "allergensNotReviewed": "Allergens not reviewed"
+      },
+      "days": {
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun"
+      },
+      "visibility": {
+        "label": "Who can find it",
+        "public": {
+          "title": "Public",
+          "body": "On the website and shared with connected apps."
+        },
+        "websiteOnly": {
+          "title": "Website only",
+          "body": "On the website, never shared with connected apps."
+        },
+        "unlisted": {
+          "title": "Unlisted",
+          "body": "Reachable only by its link — not in lists, not in search engines, never shared."
+        }
+      },
+      "common": {
+        "inUseTitle": "This is still used by:",
+        "dismiss": "Dismiss",
+        "unpublishHelper": "On this date it is unpublished by itself. You can publish it again any time.",
+        "save": "Save",
+        "loadFailed": "We couldn't load your catalogue. Your changes are safe.",
+        "retry": "Try again"
+      },
+      "errors": {
+        "forbidden": "You don't have permission to do that.",
+        "not_found": "This no longer exists.",
+        "conflict": "This was changed somewhere else. Reload to see the latest version.",
+        "archived": "This is archived. Restore it first.",
+        "archive_first": "Archive it first, then delete it permanently.",
+        "in_use": "This is still in use.",
+        "missing_name": "Add a name in the main language first.",
+        "missing_slug": "The page needs an address in the main language.",
+        "slug_taken": "This address is already used by something else.",
+        "no_options": "Add at least one option first.",
+        "invalid_schedule": "Pick a date and time in the future.",
+        "invalid_value": "Something here isn't valid yet. Check the highlighted fields.",
+        "too_large": "That's too much at once.",
+        "unauthenticated": "Please sign in again.",
+        "offline": "You seem to be offline. We'll keep your changes and try again.",
+        "failed": "Something went wrong. Please try again.",
+        "allergens_not_reviewed": "Review the allergens first: say what it contains, or confirm that no allergens from the EU list are declared.",
+        "unpublished_dependencies": "This uses something that isn't published yet.",
+        "option_allergens_not_reviewed": "Review the allergens of the extras first.",
+        "slug_without_name": "An address has no name in its language."
+      },
+      "list": {
+        "untitled": "Untitled",
+        "fromPrice": "from {price}",
+        "collectionType": {
+          "menu": "Menu",
+          "list": "List"
+        },
+        "sectionsCount": "{count, plural, one {# section} other {# sections}}",
+        "itemsCount": "{count, plural, one {# item} other {# items}}",
+        "optionsCount": "{count, plural, one {# option} other {# options}}",
+        "usedBy": "{count, plural, =0 {not used yet} one {used by # item} other {used by # items}}",
+        "done": "Done.",
+        "open": "Open",
+        "new": {
+          "items": "Add item",
+          "collections": "New collection",
+          "optionLists": "New option list"
+        },
+        "statusAll": "All",
+        "columns": {
+          "name": "Name",
+          "status": "Status",
+          "updated": "Updated",
+          "actions": "Actions"
+        },
+        "menuFor": "Actions for {name}",
+        "display": {
+          "label": "Show as",
+          "list": "List",
+          "cards": "Cards"
+        },
+        "views": {
+          "label": "Catalogue views",
+          "items": "Items",
+          "collections": "Collections",
+          "optionLists": "Option lists"
+        },
+        "empty": {
+          "items": {
+            "title": "No items yet",
+            "body": "Add your first dish, product or service. You can arrange items into menus and lists later."
+          },
+          "collections": {
+            "title": "No collections yet",
+            "body": "A collection arranges items into sections — a menu, a wine list, a price list."
+          },
+          "optionLists": {
+            "title": "No option lists yet",
+            "body": "Option lists hold the choices people can make, like extra toppings or sides."
+          }
+        },
+        "filters": {
+          "label": "Filter",
+          "search": "Search",
+          "status": "Status",
+          "category": "Category",
+          "anyCategory": "Any category"
+        },
+        "count": "{shown} of {total}",
+        "noMatch": "Nothing matches these filters.",
+        "clearFilters": "Clear filters"
+      },
+      "item": {
+        "fields": {
+          "name": "Name",
+          "description": "Short description",
+          "descriptionHelp": "One or two sentences. Shown with the name."
+        },
+        "photos": {
+          "main": "Main photo",
+          "makeMain": "Make main",
+          "remove": "Remove photo",
+          "none": "No photo yet. Items look better with one.",
+          "choose": "Choose from the media library"
+        },
+        "price": {
+          "everywhere": "Same price everywhere else",
+          "everywhereHelp": "A price under “everywhere else” applies wherever there's no price of its own. Leave a price empty if it isn't sold that way.",
+          "price": "Price",
+          "unknownChannel": "“{channel}” (no longer offered)",
+          "anotherTime": "another time",
+          "remove": "Remove this price",
+          "placeholder": "0.00",
+          "invalidPrice": "Enter an amount like 8.50 — no more than two decimals.",
+          "overlap": "This overlaps another price for the same channel. Change the days or times.",
+          "badTimes": "Serving times need a start and an end that differ.",
+          "days": "Days",
+          "everyDay": "No days chosen: every day.",
+          "from": "From",
+          "to": "Until",
+          "removeTimes": "Remove times",
+          "overnight": "Runs past midnight into the next day.",
+          "addTimes": "Only at certain times",
+          "addMoreTimes": "Add more times",
+          "addAnother": "Add another price"
+        },
+        "details": {
+          "allergens": "Allergens",
+          "allergensHelp": "Declare it against the EU list of fourteen allergens. Nothing is assumed.",
+          "notReviewed": "Not reviewed yet",
+          "contains": "It contains allergens",
+          "noneDeclared": "No EU-listed allergens declared",
+          "containsLegend": "Contains",
+          "containsHelp": "Tick every allergen it contains. All fourteen are always listed.",
+          "mayContainLegend": "May contain",
+          "mayContainHelp": "Possible traces, for example from shared equipment. Kept separate from “Contains”.",
+          "confirmNone": "I confirm that no allergens from the EU list are declared for this item.",
+          "note": "Note (optional)",
+          "noteHelp": "Shown with the allergens — for example “Prepared in a kitchen that also handles nuts.”",
+          "issues": {
+            "notReviewed": "Choose one of the two before publishing.",
+            "noAllergens": "Tick at least one allergen — or choose “No EU-listed allergens declared”.",
+            "notConfirmed": "Confirm it to publish."
+          },
+          "dietary": "Dietary"
+        },
+        "options": {
+          "missingName": "An option list that no longer exists",
+          "optionCount": "{count, plural, one {# option} other {# options}}",
+          "remove": "Detach this option list",
+          "min": "At least",
+          "max": "At most",
+          "noLimit": "No limit",
+          "minAboveMax": "“At least” is more than “at most”.",
+          "maxAboveOptions": "This list has only {count, plural, one {# option} other {# options}} — that's fine if you'll add more.",
+          "missingList": "This option list no longer exists. Remove it from the item.",
+          "attach": "Attach an option list",
+          "allAttached": "Every option list is attached.",
+          "noLists": "There are no option lists yet.",
+          "createList": "Create an option list",
+          "draft": "Draft"
+        },
+        "page": {
+          "toggle": "Give it its own page",
+          "toggleHelp": "Useful when you want to share a direct link to it.",
+          "noSegment": "Your catalogue has no web address yet. Ask Abluo to set one up — the page appears once it has.",
+          "address": "Web address",
+          "addressIn": "Web address in {language}",
+          "needsName": "Add a name first.",
+          "notInLanguage": "No page in this language until it has a name.",
+          "taken": "Already used by <link>“{name}”</link>. Choose another address.",
+          "notTranslated": "Not translated",
+          "strayAddress": "“{slug}” has no name in this language.",
+          "removeAddress": "Remove address"
+        },
+        "languages": {
+          "fallback": "Anything you leave empty shows in {language}.",
+          "ready": "Ready",
+          "missing": "Not yet",
+          "original": "Original: {text}"
+        },
+        "preview": {
+          "untitled": "Untitled",
+          "allergens": "Contains: {list}",
+          "mayContain": "May contain: {list}"
+        },
+        "wizard": {
+          "name": {
+            "title": "What is it called?",
+            "helper": "Use the name your customers know.",
+            "needed": "Add a name to continue."
+          },
+          "category": {
+            "title": "What kind is it?",
+            "helper": "Pick any that fit. You can skip this."
+          },
+          "photo": {
+            "title": "Add a photo",
+            "helper": "From your media library. The first one is the main photo."
+          },
+          "price": {
+            "title": "What does it cost?",
+            "helper": "One price per way you sell it. Prices are in your site's currency."
+          },
+          "details": {
+            "title": "Food information",
+            "helper": "Allergens and dietary notes. Needed before food or drink can be published."
+          },
+          "options": {
+            "title": "Can people change it?",
+            "helper": "Attach choices like extra toppings, and how many people may pick."
+          },
+          "page": {
+            "title": "Give it its own page?",
+            "helper": "Off by default. Turn it on to get a link you can share."
+          },
+          "languages": {
+            "title": "Other languages?",
+            "helper": "Write the name and description in your other languages, now or later."
+          },
+          "preview": {
+            "title": "Here's how it will look",
+            "helper": "A preview of how it shows on your website."
+          },
+          "publish": {
+            "title": "What now?",
+            "choiceNow": "Publish now",
+            "choiceSchedule": "Schedule",
+            "choiceDraft": "Keep as draft",
+            "now": "Publish",
+            "schedule": "Schedule",
+            "draft": "Save draft"
+          },
+          "optional": "You can skip this.",
+          "working": "Saving…",
+          "slugTaken": "The address “{slug}” is already used by “{name}”.",
+          "done": {
+            "live": "It's on your website",
+            "liveBody": "People can see it now.",
+            "scheduled": "It's scheduled",
+            "scheduledBody": "It goes live on {date}.",
+            "draft": "Saved as a draft",
+            "draftBody": "Nothing changed on your website. Publish it whenever you're ready.",
+            "open": "Open it",
+            "another": "Add another",
+            "list": "Back to the list"
+          },
+          "profile": {
+            "title": "What are you offering?",
+            "helper": "This decides which details we ask for. You can change it later.",
+            "needed": "Choose one to continue.",
+            "foodHelper": "Food and drink need an allergen declaration before they can be published."
+          },
+          "dependencies": "Not published yet: {names}. Publish those first, or open the item and choose “Publish item and dependencies”.",
+          "optionAllergens": "Review the allergens of these extras first: {names}.",
+          "slugWithoutName": "The {language} address has no {language} name. Add the name, or remove the address."
+        },
+        "editor": {
+          "untitled": "Untitled item",
+          "scheduled": "Scheduled.",
+          "published": "Published.",
+          "discard": "Discard changes",
+          "discardTitle": "Discard your changes?",
+          "discardBody": "“{name}” goes back to what's on your website.",
+          "menu": "More actions",
+          "publish": "Publish",
+          "publishChanges": "Publish changes",
+          "archivedNotice": "This item is archived. Restore it to make changes.",
+          "missingList": "An attached option list no longer exists. Remove it on the Options tab before publishing.",
+          "tabsLabel": "Item sections",
+          "tabs": {
+            "content": "Content",
+            "photos": "Photos",
+            "prices": "Prices",
+            "details": "Food information",
+            "options": "Options",
+            "page": "Page",
+            "languages": "Languages",
+            "publishing": "Publishing"
+          },
+          "preview": "Preview",
+          "scheduleHelp": "Choose when it goes live. Times are in your site's time zone.",
+          "schedule": "Schedule"
+        }
+      },
+      "collection": {
+        "untitled": "Untitled collection",
+        "slugTaken": "The address “{slug}” is already used by “{name}”.",
+        "published": "Published.",
+        "menu": "More actions",
+        "publish": "Publish",
+        "publishChanges": "Publish changes",
+        "archivedNotice": "This collection is archived. Restore it to make changes.",
+        "tabsLabel": "Collection sections",
+        "tabs": {
+          "sections": "Sections",
+          "details": "Details",
+          "page": "Page"
+        },
+        "type": {
+          "title": "What kind of collection?",
+          "helper": "A menu is shown as a restaurant menu; a list suits wines, products or services.",
+          "menu": "A menu",
+          "list": "A list"
+        },
+        "name": "Name",
+        "nameFirst": "Give it a name first — then you can add sections.",
+        "languages": "Other languages",
+        "page": "Its own page",
+        "picker": {
+          "title": "Add items",
+          "search": "Search items",
+          "category": "Category",
+          "anyCategory": "Any category",
+          "noMatch": "No items match.",
+          "none": "There are no items to add yet.",
+          "add": "{count, plural, =0 {Add items} one {Add # item} other {Add # items}}",
+          "draft": "Draft"
+        },
+        "sections": {
+          "label": "Sections",
+          "unnamed": "Untitled section",
+          "removed": "{count, plural, =0 {“{name}” removed.} one {“{name}” and # subsection removed.} other {“{name}” and # subsections removed.}}",
+          "undo": "Undo",
+          "dismiss": "Dismiss",
+          "nameFirstTitle": "Name your collection first",
+          "emptyTitle": "No sections yet",
+          "emptyBody": "Sections group your items — Starters, Pizza, Red wines.",
+          "addFirst": "Add the first section",
+          "broken": "Some sections point to a parent that no longer exists. They're shown at the top level until you move them.",
+          "drag": "Drag to move “{name}”",
+          "name": "Section name",
+          "namePlaceholder": "Section name",
+          "empty": "Empty section",
+          "deep": "Deeply nested — two levels usually read best",
+          "up": "Move “{name}” up",
+          "down": "Move “{name}” down",
+          "delete": "Delete “{name}”",
+          "unavailableItem": "An item that is no longer available",
+          "itemUp": "Move item up",
+          "itemDown": "Move item down",
+          "removeItem": "Remove item from this section",
+          "addItems": "Add items",
+          "addSubsection": "Add subsection",
+          "add": "Add section"
+        },
+        "slugWithoutName": "The {language} address has no {language} name. Add the name, or remove the address."
+      },
+      "optionList": {
+        "untitled": "Untitled option list",
+        "published": "Published.",
+        "menu": "More actions",
+        "publish": "Publish",
+        "publishChanges": "Publish changes",
+        "archivedNotice": "This option list is archived. Restore it to make changes.",
+        "name": "Name",
+        "nameHelp": "For example “Extra toppings” or “Choose a side”.",
+        "nameFirst": "Give it a name first — then add options.",
+        "options": "Options",
+        "optionsHelp": "How many people may pick is set on each item that uses this list.",
+        "emptyTitle": "No options yet",
+        "emptyBody": "Add the first choice people can make.",
+        "label": "Label",
+        "labelIn": "Label in {language}",
+        "up": "Move up",
+        "down": "Move down",
+        "remove": "Remove option",
+        "kind": "Kind",
+        "kindAdd": "Adds",
+        "kindRemove": "Takes away",
+        "delta": "Price change",
+        "badDelta": "Enter an amount like 1.50 or -1.00.",
+        "linkedItem": "Also sold on its own as",
+        "noLinkedItem": "Not linked",
+        "add": "Add option",
+        "draftLabel": "{name} (draft)",
+        "allergensNotReviewed": "Allergens not reviewed",
+        "allergensHelp": "Needed when a food or drink item uses this list: say what this extra adds.",
+        "allergensFromItem": "Allergens come from the linked item."
+      },
+      "itemProfiles": {
+        "label": "What are you offering?",
+        "foodOrDrink": "Food or drink",
+        "product": "A product",
+        "service": "A service"
+      },
+      "together": {
+        "notPublishedTitle": "This uses content that isn't published yet:",
+        "publishItem": "Publish item and dependencies",
+        "publishCollection": "Publish collection and dependencies",
+        "publishOptionList": "Publish option list and dependencies",
+        "loading": "Checking what needs publishing…",
+        "rootTitle": "Publishing",
+        "whenNow": "Goes live now.",
+        "whenScheduled": "Goes live on {date}.",
+        "includedTitle": "Published with it",
+        "includedHelp": "Not published yet — these go live at the same time.",
+        "nothingElse": "Nothing else needs publishing.",
+        "opensPage": "Gets its own page",
+        "reused": "{count, plural, one {Also used in # other place} other {Also used in # other places}}",
+        "blockedTitle": "Not ready yet",
+        "forbiddenTitle": "You can't publish these — ask someone who can",
+        "missingTitle": "Missing",
+        "missingHelp": "{count, plural, one {# thing it links to no longer exists. Remove it first.} other {# things it links to no longer exist. Remove them first.}}",
+        "notLiveTitle": "Published, but not live at that time",
+        "notLiveHelp": "These stay exactly as they are — they won't show until they are live.",
+        "confirmNow": "{count, plural, one {Publish} other {Publish all #}}",
+        "confirmSchedule": "{count, plural, one {Schedule} other {Schedule all #}}",
+        "published": "Published together.",
+        "notLiveAfter": "Not live yet: {names}.",
+        "optionAllergensTitle": "Review the allergens of these extras first:"
+      },
+      "strayAddress": {
+        "offer": "The {language} name is empty, but “{slug}” is still its address.",
+        "clear": "Clear the address too",
+        "cleared": "The {language} address was cleared.",
+        "undo": "Undo"
+      }
+    },
+    "website": {
+      "free": "Free",
+      "allergensHeading": "Allergens",
+      "dietaryHeading": "Dietary information",
+      "optionsHeading": "Options",
+      "pricesHeading": "Prices",
+      "chooseExactly": "Choose {min}",
+      "chooseUpTo": "Choose up to {max}",
+      "chooseAtLeast": "Choose at least {min}",
+      "chooseBetween": "Choose {min}–{max}",
+      "without": "Without {label}",
+      "mayContainHeading": "May contain",
+      "allergensNoneDeclared": "Allergen information reviewed: no EU-listed allergens declared.",
+      "containsHeading": "Contains"
     }
   }
 }

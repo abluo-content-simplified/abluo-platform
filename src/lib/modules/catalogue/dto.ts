@@ -32,8 +32,8 @@
 //   collection → collectionType ('menu' → Menu/MenuSection/MenuItem, 'list' →
 //                ItemList, or OfferCatalog when hasOffers), sections (nested),
 //                name, description, page (canonical slug map), publicId
-//   item       → itemType (Product by default, Service for 'service' on its own
-//                page), name, description, images, offers (price,
+//   item       → itemProfile (D-2: foodOrDrink/product → Product, service →
+//                Service on its own page), name, description, images, offers (price,
 //                effectiveCurrency, state → availability), page, publicId
 // Product.sku does not exist in V1 (B3).
 
@@ -42,7 +42,18 @@ import type { AllergenKey } from './allergens'
 import type { AvailabilityState, Weekday } from './availability'
 import type { TreeIssue } from './sections'
 
-export type CatalogueItemType = 'dish' | 'product' | 'service'
+export type CatalogueItemProfile = 'foodOrDrink' | 'product' | 'service'
+
+/**
+ * A food-or-drink item's allergen declaration (ADR-033 D-3), resolved for the
+ * request locale. Never inferred: the website prints only what was declared.
+ * `notReviewed` cannot be published (server + Studio), but a consumer still
+ * renders nothing for it rather than guessing.
+ */
+export type AllergenDeclarationDTO =
+  | { status: 'notReviewed' }
+  | { status: 'containsListedAllergens'; allergens: AllergenKey[]; mayContain: AllergenKey[]; note: string | null }
+  | { status: 'noneDeclared'; mayContain: AllergenKey[]; note: string | null }
 export type CatalogueCollectionType = 'menu' | 'list'
 export type CatalogueVisibility = 'public' | 'websiteOnly' | 'unlisted'
 
@@ -123,6 +134,12 @@ export type CatalogueLinkedItemDTO = {
   page: CataloguePageRefDTO | null
 }
 
+/** D-3a — a choice's declaration (never a note). */
+export type OptionAllergenDeclarationDTO =
+  | { status: 'notReviewed' }
+  | { status: 'containsListedAllergens'; allergens: AllergenKey[]; mayContain: AllergenKey[] }
+  | { status: 'noneDeclared'; mayContain: AllergenKey[] }
+
 export type CatalogueOptionDTO = {
   key: string
   label: string
@@ -131,6 +148,12 @@ export type CatalogueOptionDTO = {
   /** "+€1.50" / "−€1"; null when the delta is 0 (free choice). */
   formattedDelta: string | null
   item: CatalogueLinkedItemDTO | null
+  /**
+   * D-3a. null when the item is not food or drink, or for a "remove" choice
+   * (it never subtracts the item's base allergens). A linked choice carries
+   * its item's declaration; a free-text "add" choice its own.
+   */
+  allergenDeclaration: OptionAllergenDeclarationDTO | null
 }
 
 /** An option list as attached to an item: min/max belong to the attachment (D2). */
@@ -146,13 +169,16 @@ export type CatalogueOptionListDTO = {
 
 export type CatalogueItemDTO = {
   publicId: string | null
-  itemType: CatalogueItemType
+  itemProfile: CatalogueItemProfile
   name: string
   description: string | null
   images: CatalogueImageDTO[]
   categories: CatalogueTermDTO[]
-  /** Platform-constant keys (C3); labels from messages catalogue.allergens.*. */
-  allergens: AllergenKey[]
+  /**
+   * D-3. null for products and services (no allergen interface, nothing rendered).
+   * Keys are platform constants (C3); labels from messages catalogue.allergens.*.
+   */
+  allergenDeclaration: AllergenDeclarationDTO | null
   dietary: CatalogueTermDTO[]
   offers: CatalogueOfferDTO[]
   /** True when the item carries at least one offer (OfferCatalog vs ItemList, B1). */

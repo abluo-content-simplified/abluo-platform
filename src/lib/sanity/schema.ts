@@ -5793,7 +5793,9 @@ export const initialValueTemplates = [
     value: (params: any) => ({
       projectSlug: params?.projectSlug,
       publicId: globalThis.crypto.randomUUID(),
-      itemType: 'dish',
+      // No itemProfile: a generic installation is business-neutral (ADR-033 D-1/D-2).
+      // A food item starts "not reviewed" (D-3); the field is hidden for other profiles.
+      allergenDeclaration: { status: 'notReviewed' },
       hasPage: false,
       visibility: 'public',
     }),

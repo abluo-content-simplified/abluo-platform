@@ -780,14 +780,16 @@
           "news": "Notizia",
           "events": "Evento",
           "gallery": "Galleria",
-          "media": "Aggiungi alla libreria"
+          "media": "Aggiungi alla libreria",
+          "catalogue": "Elemento del catalogo"
         },
         "desc": {
           "blog": "Un articolo per il tuo sito, in pochi semplici passaggi.",
           "news": "Un breve aggiornamento per chi visita il sito.",
           "events": "Un appuntamento a cui partecipare.",
           "gallery": "Una raccolta di foto da mostrare.",
-          "media": "Carica le foto una volta sola e usale ovunque nel tuo sito."
+          "media": "Carica le foto una volta sola e usale ovunque nel tuo sito.",
+          "catalogue": "Un piatto, un prodotto o un servizio per il tuo catalogo."
         },
         "soon": "In arrivo",
         "more": "Altro che puoi aggiungere al tuo sito",
@@ -3220,7 +3222,7 @@
     },
     "module": {
       "label": "Catalogo",
-      "description": "Articoli, raccolte e prezzi per il tuo sito."
+      "description": "Elementi, raccolte e prezzi per il tuo sito."
     },
     "segment": {
       "label": "Segmento URL pubblico",
@@ -3236,7 +3238,7 @@
     },
     "currency": {
       "label": "Valuta",
-      "changeWarning": "{prices, plural, one {# prezzo} other {# prezzi}} in {items, plural, one {# articolo} other {# articoli}} saranno letti come {currency}. Nessun importo viene convertito.",
+      "changeWarning": "{prices, plural, one {# prezzo} other {# prezzi}} in {items, plural, one {# elemento} other {# elementi}} saranno letti come {currency}. Nessun importo viene convertito.",
       "changeConfirm": "Cambia valuta",
       "changeWarningOptions": "Anche {count, plural, one {# variazione di prezzo delle opzioni} other {# variazioni di prezzo delle opzioni}}."
     },
@@ -3250,6 +3252,474 @@
     "errors": {
       "inUse": "Ancora in uso in: {names}.",
       "slugTaken": "L'indirizzo \"{slug}\" è già usato da \"{name}\"."
+    },
+    "dashboard": {
+      "glance": {
+        "label": "Catalogo",
+        "sub": "{drafts, plural, =0 {Nessuna bozza} one {# bozza} other {# bozze}} · {noPrice, plural, =0 {tutti con prezzo} one {# senza prezzo} other {# senza prezzo}}"
+      },
+      "gaps": {
+        "noPhoto": "Nessuna foto",
+        "noPrice": "Nessun prezzo",
+        "allergensNotReviewed": "Allergeni da verificare"
+      },
+      "days": {
+        "mon": "Lun",
+        "tue": "Mar",
+        "wed": "Mer",
+        "thu": "Gio",
+        "fri": "Ven",
+        "sat": "Sab",
+        "sun": "Dom"
+      },
+      "visibility": {
+        "label": "Chi può trovarlo",
+        "public": {
+          "title": "Pubblico",
+          "body": "Sul sito web e condiviso con le app collegate."
+        },
+        "websiteOnly": {
+          "title": "Solo sito web",
+          "body": "Sul sito web, mai condiviso con le app collegate."
+        },
+        "unlisted": {
+          "title": "Non in elenco",
+          "body": "Raggiungibile solo con il suo link — non negli elenchi, non nei motori di ricerca, mai condiviso."
+        }
+      },
+      "common": {
+        "inUseTitle": "È ancora usato da:",
+        "dismiss": "Chiudi",
+        "unpublishHelper": "In questa data verrà rimosso automaticamente dal sito. Potrai ripubblicarlo in qualsiasi momento.",
+        "save": "Salva",
+        "loadFailed": "Non siamo riusciti a caricare il catalogo. Le tue modifiche sono al sicuro.",
+        "retry": "Riprova"
+      },
+      "errors": {
+        "forbidden": "Non hai il permesso di farlo.",
+        "not_found": "Non esiste più.",
+        "conflict": "È stato modificato altrove. Ricarica per vedere la versione più recente.",
+        "archived": "È archiviato. Ripristinalo prima.",
+        "archive_first": "Archivialo prima, poi eliminalo definitivamente.",
+        "in_use": "È ancora in uso.",
+        "missing_name": "Aggiungi prima un nome nella lingua principale.",
+        "missing_slug": "La pagina ha bisogno di un indirizzo nella lingua principale.",
+        "slug_taken": "Questo indirizzo è già usato da qualcos'altro.",
+        "no_options": "Aggiungi prima almeno un'opzione.",
+        "invalid_schedule": "Scegli una data e un'ora nel futuro.",
+        "invalid_value": "Qualcosa non è ancora valido. Controlla i campi evidenziati.",
+        "too_large": "Sono troppi elementi in una sola volta.",
+        "unauthenticated": "Accedi di nuovo.",
+        "offline": "Sembri offline. Conserveremo le tue modifiche e riproveremo.",
+        "failed": "Qualcosa è andato storto. Riprova.",
+        "allergens_not_reviewed": "Prima verifica gli allergeni: indica cosa contiene, oppure conferma che non è dichiarato nessun allergene della lista UE.",
+        "unpublished_dependencies": "Usa qualcosa che non è ancora pubblicato.",
+        "option_allergens_not_reviewed": "Prima verifica gli allergeni degli extra.",
+        "slug_without_name": "Un indirizzo non ha un nome nella sua lingua."
+      },
+      "list": {
+        "untitled": "Senza titolo",
+        "fromPrice": "da {price}",
+        "collectionType": {
+          "menu": "Menu",
+          "list": "Elenco"
+        },
+        "sectionsCount": "{count, plural, one {# sezione} other {# sezioni}}",
+        "itemsCount": "{count, plural, one {# elemento} other {# elementi}}",
+        "optionsCount": "{count, plural, one {# opzione} other {# opzioni}}",
+        "usedBy": "{count, plural, =0 {non ancora usato} one {usato da # elemento} other {usato da # elementi}}",
+        "done": "Fatto.",
+        "open": "Apri",
+        "new": {
+          "items": "Aggiungi elemento",
+          "collections": "Nuova raccolta",
+          "optionLists": "Nuovo elenco di opzioni"
+        },
+        "statusAll": "Tutti",
+        "columns": {
+          "name": "Nome",
+          "status": "Stato",
+          "updated": "Modificato",
+          "actions": "Azioni"
+        },
+        "menuFor": "Azioni per {name}",
+        "display": {
+          "label": "Mostra come",
+          "list": "Elenco",
+          "cards": "Schede"
+        },
+        "views": {
+          "label": "Viste del catalogo",
+          "items": "Elementi",
+          "collections": "Raccolte",
+          "optionLists": "Elenchi di opzioni"
+        },
+        "empty": {
+          "items": {
+            "title": "Ancora nessun elemento",
+            "body": "Aggiungi il tuo primo piatto, prodotto o servizio. Potrai organizzarli in menu ed elenchi dopo."
+          },
+          "collections": {
+            "title": "Ancora nessuna raccolta",
+            "body": "Una raccolta organizza gli elementi in sezioni — un menu, una carta dei vini, un listino."
+          },
+          "optionLists": {
+            "title": "Ancora nessun elenco di opzioni",
+            "body": "Gli elenchi di opzioni contengono le scelte possibili, come ingredienti extra o contorni."
+          }
+        },
+        "filters": {
+          "label": "Filtra",
+          "search": "Cerca",
+          "status": "Stato",
+          "category": "Categoria",
+          "anyCategory": "Tutte le categorie"
+        },
+        "count": "{shown} di {total}",
+        "noMatch": "Nessun risultato con questi filtri.",
+        "clearFilters": "Azzera filtri"
+      },
+      "item": {
+        "fields": {
+          "name": "Nome",
+          "description": "Breve descrizione",
+          "descriptionHelp": "Una o due frasi. Compare con il nome."
+        },
+        "photos": {
+          "main": "Foto principale",
+          "makeMain": "Rendi principale",
+          "remove": "Rimuovi foto",
+          "none": "Ancora nessuna foto. Con una foto si presenta meglio.",
+          "choose": "Scegli dalla libreria media"
+        },
+        "price": {
+          "everywhere": "Stesso prezzo altrove",
+          "everywhereHelp": "Un prezzo in “altrove” vale ovunque non ci sia un prezzo specifico. Lascia vuoto un prezzo se non lo vendi in quel modo.",
+          "price": "Prezzo",
+          "unknownChannel": "“{channel}” (non più offerto)",
+          "anotherTime": "altro orario",
+          "remove": "Rimuovi questo prezzo",
+          "placeholder": "0,00",
+          "invalidPrice": "Inserisci un importo come 8,50 — al massimo due decimali.",
+          "overlap": "Si sovrappone a un altro prezzo per lo stesso canale. Cambia giorni o orari.",
+          "badTimes": "Gli orari hanno bisogno di un inizio e di una fine diversi.",
+          "days": "Giorni",
+          "everyDay": "Nessun giorno scelto: tutti i giorni.",
+          "from": "Dalle",
+          "to": "Alle",
+          "removeTimes": "Rimuovi orari",
+          "overnight": "Prosegue dopo mezzanotte nel giorno seguente.",
+          "addTimes": "Solo in certi orari",
+          "addMoreTimes": "Aggiungi altri orari",
+          "addAnother": "Aggiungi un altro prezzo"
+        },
+        "details": {
+          "allergens": "Allergeni",
+          "allergensHelp": "Indica gli allergeni in base all’elenco UE dei quattordici allergeni. Non viene fatta alcuna supposizione.",
+          "notReviewed": "Non ancora verificato",
+          "contains": "Contiene allergeni",
+          "noneDeclared": "Nessun allergene dell’elenco UE dichiarato",
+          "containsLegend": "Contiene",
+          "containsHelp": "Seleziona ogni allergene contenuto. Sono sempre elencati tutti e quattordici.",
+          "mayContainLegend": "Può contenere",
+          "mayContainHelp": "Possibili tracce, ad esempio da attrezzature condivise. Separato da “Contiene”.",
+          "confirmNone": "Confermo che per questo elemento non sono dichiarati allergeni dell’elenco UE.",
+          "note": "Nota (facoltativa)",
+          "noteHelp": "Mostrata insieme agli allergeni, ad esempio: “Preparato in una cucina in cui si lavora anche frutta a guscio.”",
+          "issues": {
+            "notReviewed": "Scegli una delle due opzioni prima di pubblicare.",
+            "noAllergens": "Seleziona almeno un allergene, oppure scegli “Nessun allergene dell’elenco UE dichiarato”.",
+            "notConfirmed": "Conferma per poter pubblicare."
+          },
+          "dietary": "Indicazioni alimentari"
+        },
+        "options": {
+          "missingName": "Un elenco di opzioni che non esiste più",
+          "optionCount": "{count, plural, one {# opzione} other {# opzioni}}",
+          "remove": "Scollega questo elenco di opzioni",
+          "min": "Almeno",
+          "max": "Al massimo",
+          "noLimit": "Nessun limite",
+          "minAboveMax": "“Almeno” è maggiore di “al massimo”.",
+          "maxAboveOptions": "Questo elenco ha solo {count, plural, one {# opzione} other {# opzioni}} — va bene se ne aggiungerai altre.",
+          "missingList": "Questo elenco di opzioni non esiste più. Rimuovilo dall'elemento.",
+          "attach": "Collega un elenco di opzioni",
+          "allAttached": "Tutti gli elenchi di opzioni sono collegati.",
+          "noLists": "Non ci sono ancora elenchi di opzioni.",
+          "createList": "Crea un elenco di opzioni",
+          "draft": "Bozza"
+        },
+        "page": {
+          "toggle": "Dagli una pagina propria",
+          "toggleHelp": "Utile quando vuoi condividere un link diretto.",
+          "noSegment": "Il tuo catalogo non ha ancora un indirizzo web. Chiedi ad Abluo di configurarlo — la pagina comparirà allora.",
+          "address": "Indirizzo web",
+          "addressIn": "Indirizzo web in {language}",
+          "needsName": "Aggiungi prima un nome.",
+          "notInLanguage": "Nessuna pagina in questa lingua finché non ha un nome.",
+          "taken": "Già usato da <link>“{name}”</link>. Scegli un altro indirizzo.",
+          "notTranslated": "Non tradotto",
+          "strayAddress": "“{slug}” non ha un nome in questa lingua.",
+          "removeAddress": "Rimuovi indirizzo"
+        },
+        "languages": {
+          "fallback": "Quello che lasci vuoto compare in {language}.",
+          "ready": "Pronta",
+          "missing": "Non ancora",
+          "original": "Originale: {text}"
+        },
+        "preview": {
+          "untitled": "Senza titolo",
+          "allergens": "Contiene: {list}",
+          "mayContain": "Può contenere: {list}"
+        },
+        "wizard": {
+          "name": {
+            "title": "Come si chiama?",
+            "helper": "Usa il nome che conoscono i tuoi clienti.",
+            "needed": "Aggiungi un nome per continuare."
+          },
+          "category": {
+            "title": "Di che tipo è?",
+            "helper": "Scegli quelle adatte. Puoi saltare."
+          },
+          "photo": {
+            "title": "Aggiungi una foto",
+            "helper": "Dalla tua libreria media. La prima è la foto principale."
+          },
+          "price": {
+            "title": "Quanto costa?",
+            "helper": "Un prezzo per ogni modo in cui lo vendi. I prezzi sono nella valuta del sito."
+          },
+          "details": {
+            "title": "Informazioni alimentari",
+            "helper": "Allergeni e indicazioni alimentari. Servono prima di pubblicare cibi o bevande."
+          },
+          "options": {
+            "title": "Si può modificare?",
+            "helper": "Collega scelte come ingredienti extra, e quante se ne possono scegliere."
+          },
+          "page": {
+            "title": "Una pagina propria?",
+            "helper": "Disattivata per impostazione predefinita. Attivala per ottenere un link da condividere."
+          },
+          "languages": {
+            "title": "Altre lingue?",
+            "helper": "Scrivi nome e descrizione nelle altre lingue, ora o più tardi."
+          },
+          "preview": {
+            "title": "Ecco come apparirà",
+            "helper": "Un'anteprima di come appare sul tuo sito."
+          },
+          "publish": {
+            "title": "E adesso?",
+            "choiceNow": "Pubblica ora",
+            "choiceSchedule": "Programma",
+            "choiceDraft": "Tieni come bozza",
+            "now": "Pubblica",
+            "schedule": "Programma",
+            "draft": "Salva bozza"
+          },
+          "optional": "Puoi saltare questo passaggio.",
+          "working": "Salvataggio…",
+          "slugTaken": "L'indirizzo “{slug}” è già usato da “{name}”.",
+          "done": {
+            "live": "È sul tuo sito",
+            "liveBody": "Le persone possono già vederlo.",
+            "scheduled": "È programmato",
+            "scheduledBody": "Va online il {date}.",
+            "draft": "Salvato come bozza",
+            "draftBody": "Sul sito non è cambiato nulla. Pubblicalo quando vuoi.",
+            "open": "Aprilo",
+            "another": "Aggiungine un altro",
+            "list": "Torna all'elenco"
+          },
+          "profile": {
+            "title": "Cosa offri?",
+            "helper": "Da questo dipende cosa ti chiediamo. Puoi cambiarlo in seguito.",
+            "needed": "Scegline uno per continuare.",
+            "foodHelper": "Cibi e bevande richiedono una dichiarazione degli allergeni prima della pubblicazione."
+          },
+          "dependencies": "Non ancora pubblicati: {names}. Pubblicali prima, oppure apri l’elemento e scegli “Pubblica elemento e dipendenze”.",
+          "optionAllergens": "Prima verifica gli allergeni di questi extra: {names}.",
+          "slugWithoutName": "L’indirizzo in {language} non ha un nome in {language}. Aggiungi il nome o rimuovi l’indirizzo."
+        },
+        "editor": {
+          "untitled": "Elemento senza titolo",
+          "scheduled": "Programmato.",
+          "published": "Pubblicato.",
+          "discard": "Annulla modifiche",
+          "discardTitle": "Annullare le modifiche?",
+          "discardBody": "“{name}” torna com'è sul tuo sito.",
+          "menu": "Altre azioni",
+          "publish": "Pubblica",
+          "publishChanges": "Pubblica modifiche",
+          "archivedNotice": "Questo elemento è archiviato. Ripristinalo per modificarlo.",
+          "missingList": "Un elenco di opzioni collegato non esiste più. Rimuovilo nella scheda Opzioni prima di pubblicare.",
+          "tabsLabel": "Sezioni dell'elemento",
+          "tabs": {
+            "content": "Contenuto",
+            "photos": "Foto",
+            "prices": "Prezzi",
+            "details": "Informazioni alimentari",
+            "options": "Opzioni",
+            "page": "Pagina",
+            "languages": "Lingue",
+            "publishing": "Pubblicazione"
+          },
+          "preview": "Anteprima",
+          "scheduleHelp": "Scegli quando va online. Gli orari sono nel fuso orario del sito.",
+          "schedule": "Programma"
+        }
+      },
+      "collection": {
+        "untitled": "Raccolta senza titolo",
+        "slugTaken": "L'indirizzo “{slug}” è già usato da “{name}”.",
+        "published": "Pubblicata.",
+        "menu": "Altre azioni",
+        "publish": "Pubblica",
+        "publishChanges": "Pubblica modifiche",
+        "archivedNotice": "Questa raccolta è archiviata. Ripristinala per modificarla.",
+        "tabsLabel": "Sezioni della raccolta",
+        "tabs": {
+          "sections": "Sezioni",
+          "details": "Dettagli",
+          "page": "Pagina"
+        },
+        "type": {
+          "title": "Che tipo di raccolta?",
+          "helper": "Un menu appare come il menu di un ristorante; un elenco va bene per vini, prodotti o servizi.",
+          "menu": "Un menu",
+          "list": "Un elenco"
+        },
+        "name": "Nome",
+        "nameFirst": "Dagli prima un nome — poi potrai aggiungere sezioni.",
+        "languages": "Altre lingue",
+        "page": "Pagina propria",
+        "picker": {
+          "title": "Aggiungi elementi",
+          "search": "Cerca elementi",
+          "category": "Categoria",
+          "anyCategory": "Tutte le categorie",
+          "noMatch": "Nessun elemento corrisponde.",
+          "none": "Non ci sono ancora elementi da aggiungere.",
+          "add": "{count, plural, =0 {Aggiungi elementi} one {Aggiungi # elemento} other {Aggiungi # elementi}}",
+          "draft": "Bozza"
+        },
+        "sections": {
+          "label": "Sezioni",
+          "unnamed": "Sezione senza titolo",
+          "removed": "{count, plural, =0 {“{name}” rimossa.} one {“{name}” e # sottosezione rimosse.} other {“{name}” e # sottosezioni rimosse.}}",
+          "undo": "Annulla",
+          "dismiss": "Chiudi",
+          "nameFirstTitle": "Dai prima un nome alla raccolta",
+          "emptyTitle": "Ancora nessuna sezione",
+          "emptyBody": "Le sezioni raggruppano gli elementi — Antipasti, Pizze, Vini rossi.",
+          "addFirst": "Aggiungi la prima sezione",
+          "broken": "Alcune sezioni puntano a una sezione madre che non esiste più. Sono mostrate al primo livello finché non le sposti.",
+          "drag": "Trascina per spostare “{name}”",
+          "name": "Nome della sezione",
+          "namePlaceholder": "Nome della sezione",
+          "empty": "Sezione vuota",
+          "deep": "Troppi livelli — in genere due livelli sono più leggibili",
+          "up": "Sposta verso l’alto “{name}”",
+          "down": "Sposta verso il basso “{name}”",
+          "delete": "Elimina “{name}”",
+          "unavailableItem": "Un elemento non più disponibile",
+          "itemUp": "Sposta l’elemento verso l’alto",
+          "itemDown": "Sposta l’elemento verso il basso",
+          "removeItem": "Togli l'elemento da questa sezione",
+          "addItems": "Aggiungi elementi",
+          "addSubsection": "Aggiungi sottosezione",
+          "add": "Aggiungi sezione"
+        },
+        "slugWithoutName": "L’indirizzo in {language} non ha un nome in {language}. Aggiungi il nome o rimuovi l’indirizzo."
+      },
+      "optionList": {
+        "untitled": "Elenco di opzioni senza titolo",
+        "published": "Pubblicato.",
+        "menu": "Altre azioni",
+        "publish": "Pubblica",
+        "publishChanges": "Pubblica modifiche",
+        "archivedNotice": "Questo elenco di opzioni è archiviato. Ripristinalo per modificarlo.",
+        "name": "Nome",
+        "nameHelp": "Per esempio “Ingredienti extra” o “Scegli un contorno”.",
+        "nameFirst": "Dagli prima un nome — poi aggiungi le opzioni.",
+        "options": "Opzioni",
+        "optionsHelp": "Il numero di opzioni selezionabili viene impostato in ciascun elemento che usa questo elenco.",
+        "emptyTitle": "Ancora nessuna opzione",
+        "emptyBody": "Aggiungi la prima scelta possibile.",
+        "label": "Etichetta",
+        "labelIn": "Etichetta in {language}",
+        "up": "Sposta verso l’alto",
+        "down": "Sposta verso il basso",
+        "remove": "Rimuovi opzione",
+        "kind": "Tipo",
+        "kindAdd": "Aggiunge",
+        "kindRemove": "Toglie",
+        "delta": "Variazione di prezzo",
+        "badDelta": "Inserisci un importo come 1,50 o -1,00.",
+        "linkedItem": "Venduto anche da solo come",
+        "noLinkedItem": "Non collegato",
+        "add": "Aggiungi opzione",
+        "draftLabel": "{name} (bozza)",
+        "allergensNotReviewed": "Allergeni da verificare",
+        "allergensHelp": "Necessario quando un cibo o una bevanda usa questo elenco: indica cosa aggiunge questo extra.",
+        "allergensFromItem": "Gli allergeni sono quelli dell’elemento collegato."
+      },
+      "itemProfiles": {
+        "label": "Cosa offri?",
+        "foodOrDrink": "Cibo o bevanda",
+        "product": "Un prodotto",
+        "service": "Un servizio"
+      },
+      "together": {
+        "notPublishedTitle": "Usa contenuti non ancora pubblicati:",
+        "publishItem": "Pubblica elemento e dipendenze",
+        "publishCollection": "Pubblica raccolta e dipendenze",
+        "publishOptionList": "Pubblica elenco di opzioni e dipendenze",
+        "loading": "Verifichiamo cosa va pubblicato…",
+        "rootTitle": "Pubblicazione",
+        "whenNow": "Va online subito.",
+        "whenScheduled": "Va online il {date}.",
+        "includedTitle": "Pubblicati insieme",
+        "includedHelp": "Non ancora pubblicati: vanno online nello stesso momento.",
+        "nothingElse": "Non serve pubblicare altro.",
+        "opensPage": "Ottiene una pagina propria",
+        "reused": "{count, plural, one {Usato anche in # altro punto} other {Usato anche in # altri punti}}",
+        "blockedTitle": "Non ancora pronti",
+        "forbiddenTitle": "Non puoi pubblicarli: chiedi a chi può farlo",
+        "missingTitle": "Mancanti",
+        "missingHelp": "{count, plural, one {# elemento collegato non esiste più. Rimuovilo prima.} other {# elementi collegati non esistono più. Rimuovili prima.}}",
+        "notLiveTitle": "Pubblicati, ma non online in quel momento",
+        "notLiveHelp": "Restano esattamente come sono: non saranno visibili finché non vanno online.",
+        "confirmNow": "{count, plural, one {Pubblica} other {Pubblica tutti (#)}}",
+        "confirmSchedule": "{count, plural, one {Programma} other {Programma tutti (#)}}",
+        "published": "Pubblicati insieme.",
+        "notLiveAfter": "Non ancora online: {names}.",
+        "optionAllergensTitle": "Prima verifica gli allergeni di questi extra:"
+      },
+      "strayAddress": {
+        "offer": "Il nome in {language} è vuoto, ma “{slug}” è ancora il suo indirizzo.",
+        "clear": "Cancella anche l’indirizzo",
+        "cleared": "L’indirizzo in {language} è stato cancellato.",
+        "undo": "Annulla"
+      }
+    },
+    "website": {
+      "free": "Gratis",
+      "allergensHeading": "Allergeni",
+      "dietaryHeading": "Informazioni alimentari",
+      "optionsHeading": "Opzioni",
+      "pricesHeading": "Prezzi",
+      "chooseExactly": "Scegli {min}",
+      "chooseUpTo": "Scegli fino a {max}",
+      "chooseAtLeast": "Scegli almeno {min}",
+      "chooseBetween": "Scegli da {min} a {max}",
+      "without": "Senza {label}",
+      "mayContainHeading": "Può contenere",
+      "allergensNoneDeclared": "Informazioni sugli allergeni verificate: nessun allergene dell’elenco UE dichiarato.",
+      "containsHeading": "Contiene"
     }
   }
 }

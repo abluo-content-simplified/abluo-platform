@@ -1014,14 +1014,11 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         },
       ],
 
-      // Spec lists ['catalogueListingSection']. sections.test.ts requires a
-      // SECTION_MAP entry for every declared type, and the section component
-      // lands in a later slice — declare it there, together with its renderer.
-      sectionTypes: [],
+      // Spec §4.6. Rendered by catalogue/section-components.tsx via SECTION_MAP;
+      // hydrated in hydrateSections (shared by every page route).
+      sectionTypes: ['catalogueListingSection'],
 
-      // NOTE: 'catalogueListingSection' and 'cataloguePage' are declared by the
-      // manifest but their Sanity definitions land in later slices; every other
-      // name below has a definition in catalogueSchemaTypes today.
+      // Every name below has a definition in catalogueSchemaTypes.
       schemaTypes: [
         'catalogueListingSection',
         'cataloguePage',
@@ -1140,9 +1137,20 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           id: 'serviceChannels',
           label: 'Service channels',
           type: 'localizedStringList',
-          // Install seed: one entry, value 'dine-in'. The config system has no
-          // seed mechanism yet (see slice report) — to be seeded by the install flow.
-          description: 'The ways an item is sold (dine in, takeaway, …). Each price belongs to one channel.',
+          description:
+            'The ways an item is sold (dine in, takeaway, …). Each price belongs to one channel. A new catalogue has none; an unscoped price applies everywhere.',
+        },
+        {
+          id: 'defaultItemProfile',
+          label: 'Default item profile',
+          type: 'select',
+          options: [
+            { value: 'foodOrDrink', label: 'Food or drink' },
+            { value: 'product', label: 'Product' },
+            { value: 'service', label: 'Service' },
+          ],
+          description:
+            'What the new-item wizard preselects for "What are you offering?". Optional; always changeable per item.',
         },
         {
           id: 'currency',
@@ -1178,11 +1186,40 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         },
       ],
 
+      // ADR-033 D-1. No currency in any preset: it is where a business is.
+      starterPresets: [
+        {
+          id: 'restaurant',
+          version: 1,
+          label: 'Restaurant',
+          description: 'A menu: dine-in and takeaway channels, food and drink items.',
+          config: {
+            navLabel: { en: 'Menu', it: 'Menù', de: 'Speisekarte' },
+            publicSegment: 'menu',
+            serviceChannels: [
+              { value: 'dine-in', label: { en: 'Dine-in', it: 'Al tavolo', de: 'Vor Ort' } },
+              { value: 'takeaway', label: { en: 'Takeaway', it: 'Da asporto', de: 'Zum Mitnehmen' } },
+            ],
+            defaultItemProfile: 'foodOrDrink',
+          },
+        },
+        {
+          id: 'bookshop',
+          version: 1,
+          label: 'Bookshop',
+          description: 'A book list: products, no service channels.',
+          config: {
+            navLabel: { en: 'Books', it: 'Libri', de: 'Bücher' },
+            publicSegment: 'books',
+            defaultItemProfile: 'product',
+          },
+        },
+      ],
+
       placement: {
         surfaces: [
           { kind: 'page', description: 'A catalogue landing page at the configured URL segment.' },
-          // Spec also lists a 'sections' surface; validator Rule 13 requires sectionTypes
-          // for it, so it returns together with catalogueListingSection.
+          { kind: 'sections', description: 'Catalogue section — one collection, with its sections and items, in any page.' },
         ],
       },
     },
