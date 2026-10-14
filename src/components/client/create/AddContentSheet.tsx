@@ -90,6 +90,8 @@ export function AddContentSheet({
           ? `/${projectSlug}/agenda/new`
           : moduleId === 'media'
           ? `/${projectSlug}/media/add`
+          : moduleId === 'catalogue'
+          ? `/${projectSlug}/catalogue/new`
           : `/${projectSlug}/posts/write/new`
     )
     onClose()
@@ -222,6 +224,7 @@ const TYPE_ICONS: Record<string, string> = {
   events: 'M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z',
   gallery: 'M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15 9h.01',
   media: 'M3 7h4l2-3h6l2 3h4v13H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  catalogue: 'M4 6h16M4 12h16M4 18h10M18 16v4M16 18h4',
 }
 
 function TypeIcon({ moduleId }: { moduleId: string }) {

@@ -208,3 +208,16 @@ describe('module coverage', () => {
     for (const id of Object.keys(MODULES_WITHOUT_TENANT_SURFACE)) expect(ids.has(id)).toBe(true)
   })
 })
+
+describe('catalogue (ADR-033 spec §10.1)', () => {
+  const ids = (xs: readonly { id: string }[]) => xs.map((x) => x.id)
+  it('one nav entry + the glance widget, for anyone who can read items, only with the module', () => {
+    const viewer = { enabledModuleIds: ['catalogue'], permissions: grantPermissions('viewer', ['catalogue']) }
+    const s = buildTenantSurfaces(viewer)
+    expect(ids(s.nav)).toContain('catalogue')
+    expect(ids(s.widgets)).toContain('glance.catalogue')
+    const without = buildTenantSurfaces({ enabledModuleIds: [], permissions: grantPermissions('owner', []) })
+    expect(ids(without.nav)).not.toContain('catalogue')
+    expect(ids(without.widgets)).not.toContain('glance.catalogue')
+  })
+})

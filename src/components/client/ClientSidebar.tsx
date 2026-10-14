@@ -68,6 +68,7 @@ const ICONS = {
   analytics: 'M3 3v18h18M7 16v-4M12 16V8M17 16v-7',
   people: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   connections: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8',
+  catalogue: 'M4 6h16M4 12h16M4 18h10M18 16v4M16 18h4',
   more: 'M5 12h.01M12 12h.01M19 12h.01',
   plus: 'M12 5v14M5 12h14',
   generic: APP_ICONS.generic,
@@ -93,7 +94,7 @@ export function ClientSidebar({
 
   const items = [
     { key: 'home', href: homeHref, label: t('nav.home'), icon: ICONS.home },
-    ...navItems.map((i) => ({ key: i.moduleId, href: i.href, label: t(`nav.${i.moduleId}`), icon: iconFor(i.moduleId) })),
+    ...navItems.map((i) => ({ key: i.moduleId, href: i.href, label: i.label ?? t(`nav.${i.moduleId}`), icon: iconFor(i.moduleId) })),
   ]
 
   return (

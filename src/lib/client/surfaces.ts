@@ -88,6 +88,8 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   { kind: 'nav', id: 'events', segment: 'agenda', requires: { module: 'events', permission: 'events.event.read' } },
   { kind: 'nav', id: 'forms', segment: 'submissions', requires: { module: 'forms', permission: 'forms.submission.read' } },
   { kind: 'nav', id: 'gallery', segment: 'galleries', requires: { module: 'gallery', permission: 'gallery.gallery.read' } },
+  // ADR-033 D12: one entry; its label comes from the module's `navLabel` config (presentation only).
+  { kind: 'nav', id: 'catalogue', segment: 'catalogue', requires: { module: 'catalogue', permission: 'catalogue.item.read' } },
   // Analytics is not a module (ADR-029 §3.4): only the permission gates it. Whether
   // Google is connected is Abluo's configuration, which tenant code may not read
   // (boundary test) — the page itself says "not connected yet" until it is.
@@ -117,6 +119,7 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   { kind: 'widget', id: 'glance.posts', slot: 'glance', requires: { module: 'blog', permission: 'blog.post.read' } },
   { kind: 'widget', id: 'glance.requests', slot: 'glance', requires: { module: 'forms', permission: 'forms.submission.read' } },
   { kind: 'widget', id: 'glance.galleries', slot: 'glance', requires: { module: 'gallery', permission: 'gallery.gallery.read' } },
+  { kind: 'widget', id: 'glance.catalogue', slot: 'glance', requires: { module: 'catalogue', permission: 'catalogue.item.read' } },
   { kind: 'widget', id: 'glance.media', slot: 'glance', requires: { permission: 'media.library.manage' } },
   // "Website traffic" (ADR-029 §5): shown under At a glance once a snapshot has data.
   { kind: 'widget', id: 'traffic', slot: 'glance', requires: { permission: 'analytics.read' } },

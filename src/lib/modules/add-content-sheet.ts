@@ -28,6 +28,8 @@ export const CREATE_CONTENT_TYPES: CreateContentType[] = [
   { moduleId: 'news', ready: false, permission: 'news.article.write' },
   { moduleId: 'events', ready: true, permission: 'events.event.write' },
   { moduleId: 'gallery', ready: true, permission: 'gallery.gallery.write' },
+  // ADR-033 spec §10.1: a catalogue item (the wizard at /catalogue/new).
+  { moduleId: 'catalogue', ready: true, permission: 'catalogue.item.write' },
 ]
 
 export type CreateMenu = {

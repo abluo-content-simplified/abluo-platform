@@ -13,7 +13,7 @@ const SURFACES = [
     name: 'client dashboard',
     root: path.join(process.cwd(), 'src/app/[locale]/(client)/[tenant]'),
     // Wizards: full-screen flows with their own frame.
-    exempt: new Set(['media/add/page.tsx', 'posts/write/[id]/page.tsx', 'galleries/new/page.tsx', 'galleries/[id]/edit/page.tsx']),
+    exempt: new Set(['media/add/page.tsx', 'posts/write/[id]/page.tsx', 'galleries/new/page.tsx', 'galleries/[id]/edit/page.tsx', 'catalogue/new/page.tsx']),
   },
   {
     name: 'admin',

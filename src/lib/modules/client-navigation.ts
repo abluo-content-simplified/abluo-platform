@@ -70,6 +70,12 @@ export type ClientNavItem = {
    * locale-free so this function stays pure and deterministically testable.
    */
   href: string
+  /**
+   * A tenant-chosen label that replaces the messages default (ADR-033 D12:
+   * the catalogue's `navLabel`). Presentation only — set by the layout, never
+   * by this pure builder; ids, routes and permissions stay unchanged.
+   */
+  label?: string
 }
 
 /**

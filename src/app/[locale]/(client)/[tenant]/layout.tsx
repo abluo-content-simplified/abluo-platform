@@ -19,6 +19,7 @@ import { SUPPORT_EDIT_MINUTES } from '@/lib/support/constants'
 import { listSupportNotices } from '@/lib/support/server'
 import { SupportBanner } from '@/components/client/support/SupportBanner'
 import { SupportAccessNotice } from '@/components/client/support/SupportAccessNotice'
+import { loadCatalogueNavLabel } from '@/lib/api/catalogue-drafts'
 
 /**
  * Project-scoped client dashboard shell (ADR-017 Phase 2 / task #81).
@@ -67,7 +68,10 @@ export default async function ClientProjectLayout({
     notFound()
   }
 
-  const navItems = buildClientNavItems(activeGrant)
+  const uiLocale = await getLocale()
+  // ADR-033 D12: the catalogue's tenant-chosen dashboard name (presentation only).
+  const catalogueLabel = activeGrant.enabledModuleIds.includes('catalogue') ? await loadCatalogueNavLabel(activeGrant.projectSlug, uiLocale) : null
+  const navItems = buildClientNavItems(activeGrant).map((i) => (i.moduleId === 'catalogue' && catalogueLabel ? { ...i, label: catalogueLabel } : i))
   const viewer = await getViewerAccount(ctx.userId)
   const summaries = await loadProjectSummaries(ctx.projects.map((grant) => grant.projectId))
   const projects = filterSwitchableProjects(ctx.projects, statusesOf(summaries), activeGrant.projectSlug).map((grant) => ({

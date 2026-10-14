@@ -20,6 +20,7 @@ import { getViewerFirstName } from '@/lib/api/viewer-profile'
 import { getBlogDashboard } from '@/lib/api/dashboard/blog'
 import { getFormsDashboard } from '@/lib/api/dashboard/forms'
 import { getGalleryDashboard } from '@/lib/api/dashboard/gallery'
+import { getCatalogueGlance, loadCatalogueNavLabel } from '@/lib/api/catalogue-drafts'
 import { getMediaDashboard } from '@/lib/api/dashboard/media'
 import { getPeopleDashboard } from '@/lib/api/dashboard/people'
 import { getSiteStatus } from '@/lib/api/dashboard/site'
@@ -239,6 +240,11 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
       href: canEditGalleries ? `/${projectSlug}/galleries/${g.id}` : null,
     }
   })
+  // Catalogue (ADR-033 spec §10.1): items on the website, drafts, and the quiet "no price" gap.
+  const [catalogue, catalogueLabel] = show('glance.catalogue')
+    ? await Promise.all([getCatalogueGlance(ctx, grant.projectId).catch(() => null), loadCatalogueNavLabel(grant.projectSlug, locale)])
+    : [null, null]
+  const tcat = await getTranslations('catalogue.dashboard.glance')
   const postsHref = link('blog')
   const galleriesHref = link('gallery')
 
@@ -273,6 +279,15 @@ export default async function DashboardHomePage({ params }: { params: Promise<{ 
         value={gallery.glance.total}
         sub={th('glance.galleries.sub', { unpublished: gallery.glance.unpublished })}
         href={galleriesHref}
+      />
+    ) : null,
+    show('glance.catalogue') && catalogue ? (
+      <StatTile
+        key="catalogue"
+        label={catalogueLabel ?? tcat('label')}
+        value={catalogue.published}
+        sub={tcat('sub', { drafts: catalogue.drafts, noPrice: catalogue.noPrice })}
+        href={link('catalogue')}
       />
     ) : null,
     show('glance.media') && media ? (
