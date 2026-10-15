@@ -6,6 +6,7 @@
  * check lives there. Gate: MEDIA_MANAGE_PERMISSION (owner/editor).
  */
 
+import { span, traced } from '@/lib/perf/timing'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
@@ -20,19 +21,24 @@ type Result<T> = ({ ok: true } & T) | { ok: false; error: MediaScreenError }
 
 async function run<T>(
   projectSlug: unknown,
-  fn: (ctx: NonNullable<Awaited<ReturnType<typeof getTenantAuthorizationContext>>>, projectId: string) => Promise<T>
+  fn: (ctx: NonNullable<Awaited<ReturnType<typeof getTenantAuthorizationContext>>>, projectId: string) => Promise<T>,
+  op = 'media.action'
 ): Promise<Result<T>> {
-  const ctx = await getTenantAuthorizationContext()
-  if (!ctx) return { ok: false, error: 'unauthenticated' }
-  const grant = typeof projectSlug === 'string' ? resolveProjectGrant(ctx.projects, projectSlug) : null
-  if (!grant) return { ok: false, error: 'forbidden' }
-  try {
-    return { ok: true, ...(await fn(ctx, grant.projectId)) }
-  } catch (error) {
-    if (error instanceof PostMediaError || error instanceof GalleryError) return { ok: false, error: error.code }
-    if (error instanceof TenantAuthorizationError) return { ok: false, error: 'forbidden' }
-    return { ok: false, error: 'failed' }
-  }
+  // The resolver call stays in this function's body: the support-mode guard
+  // test (client-actions-guard) checks every action reaches it through a local helper.
+  return traced(op, async (): Promise<Result<T>> => {
+    const ctx = await span('auth', () => getTenantAuthorizationContext())
+    if (!ctx) return { ok: false, error: 'unauthenticated' }
+    const grant = typeof projectSlug === 'string' ? resolveProjectGrant(ctx.projects, projectSlug) : null
+    if (!grant) return { ok: false, error: 'forbidden' }
+    try {
+      return { ok: true, ...(await fn(ctx, grant.projectId)) }
+    } catch (error) {
+      if (error instanceof PostMediaError || error instanceof GalleryError) return { ok: false, error: error.code }
+      if (error instanceof TenantAuthorizationError) return { ok: false, error: 'forbidden' }
+      return { ok: false, error: 'failed' }
+    }
+  })
 }
 
 export async function listMediaLibraryAction(input: {
@@ -52,7 +58,7 @@ export async function uploadMediaImageAction(formData: FormData): Promise<Result
   return run(formData?.get?.('projectSlug'), async (ctx, pid) => {
     if (!(file instanceof File)) throw new PostMediaError('invalid_value', 'No file.')
     return uploadProjectImage(ctx, pid, file, { tag: '', permission: MEDIA_MANAGE_PERMISSION })
-  })
+  }, 'media.upload')
 }
 
 export async function updateMediaPhotoAction(

@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers'
+import { stopwatch, traced } from '@/lib/perf/timing'
 import { notFound, redirect } from 'next/navigation'
 import { APP_TEXT_SIZE_COOKIE, APP_THEME_COOKIE, parseAppTextSize, parseAppTheme } from '@/lib/app-theme'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
@@ -48,7 +49,7 @@ import { loadCatalogueNavLabel } from '@/lib/api/catalogue-drafts'
  * Owner, Site admin) see pending requests / live access as a notice on top of
  * every page, Home included.
  */
-export default async function ClientProjectLayout({
+async function ClientProjectLayoutInner({
   children,
   params,
 }: {
@@ -57,7 +58,9 @@ export default async function ClientProjectLayout({
 }) {
   const { tenant: projectSlug } = await params
 
+  const lap = stopwatch('layout')
   const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
+  lap('auth')
   if (!ctx) {
     redirect(`/login?next=/${projectSlug}/home`)
   }
@@ -71,9 +74,12 @@ export default async function ClientProjectLayout({
   const uiLocale = await getLocale()
   // ADR-033 D12: the catalogue's tenant-chosen dashboard name (presentation only).
   const catalogueLabel = activeGrant.enabledModuleIds.includes('catalogue') ? await loadCatalogueNavLabel(activeGrant.projectSlug, uiLocale) : null
+  lap('catalogueLabel')
   const navItems = buildClientNavItems(activeGrant).map((i) => (i.moduleId === 'catalogue' && catalogueLabel ? { ...i, label: catalogueLabel } : i))
   const viewer = await getViewerAccount(ctx.userId)
+  lap('viewer')
   const summaries = await loadProjectSummaries(ctx.projects.map((grant) => grant.projectId))
+  lap('projectSummaries')
   const projects = filterSwitchableProjects(ctx.projects, statusesOf(summaries), activeGrant.projectSlug).map((grant) => ({
     projectSlug: grant.projectSlug,
     name: summaries[grant.projectId]?.name ?? null,
@@ -85,6 +91,7 @@ export default async function ClientProjectLayout({
     locale: await getLocale(),
     enabledModuleIds: activeGrant.enabledModuleIds,
   })
+  lap('whatsNew')
   // Profile panel (Tom, 2026-10-08): every site this person works on, with their role there.
   const tRoles = await getTranslations('app.roles')
   const profile = {
@@ -103,6 +110,7 @@ export default async function ClientProjectLayout({
     !support && can(ctx, 'users.manage', { kind: 'project', projectId: activeGrant.projectId })
       ? await listSupportNotices(activeGrant.projectId, ctx.userId)
       : []
+  lap('supportNotices')
   const jar = await cookies()
   const theme = parseAppTheme(jar.get(APP_THEME_COOKIE)?.value)
   const textSize = parseAppTextSize(jar.get(APP_TEXT_SIZE_COOKIE)?.value)
@@ -159,4 +167,8 @@ export default async function ClientProjectLayout({
       </div>
     </AddContentRoot>
   )
+}
+
+export default function ClientProjectLayout(props: Parameters<typeof ClientProjectLayoutInner>[0]) {
+  return traced('dashboard.layout', () => ClientProjectLayoutInner(props))
 }

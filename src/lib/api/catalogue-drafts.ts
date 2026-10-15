@@ -31,6 +31,7 @@
  *
  * Never written here: `offer.currency` (D7/A6) and `offer.locationKey` (A5).
  */
+import { span } from '@/lib/perf/timing'
 import { randomUUID } from 'crypto'
 import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
@@ -121,16 +122,16 @@ const notFound = (): never => {
 }
 
 async function readPair(client: Client, kind: CatalogueKind, id: string, projectSlug: string) {
-  const [published, draft] = (await Promise.all([client.getDocument(id), client.getDocument(`drafts.${id}`)])) as [Doc | undefined, Doc | undefined]
+  const [published, draft] = (await span('sanity.readPair', () => Promise.all([client.getDocument(id), client.getDocument(`drafts.${id}`)]))) as [Doc | undefined, Doc | undefined]
   const ours = (d: Doc | undefined) => !d || (d._type === CATALOGUE_TYPE[kind] && d.projectSlug === projectSlug)
   if (!ours(published) || !ours(draft)) notFound()
   return { published, draft }
 }
 
 async function commit(client: Client, projectSlug: string, run: () => Promise<unknown>): Promise<unknown> {
-  await assertSingleSanityProject((q, p) => client.fetch(q, p), projectSlug)
+  await span('sanity.assertSingleProject', () => assertSingleSanityProject((q, p) => client.fetch(q, p), projectSlug))
   try {
-    return await run()
+    return await span('sanity.commit', run)
   } catch (error) {
     if ((error as { statusCode?: number })?.statusCode === 409) throw new CatalogueError('conflict', 'This was changed elsewhere.')
     throw new CatalogueError('failed', 'Could not save.')
@@ -187,10 +188,10 @@ const termsOf = (rows: unknown): CatalogueTerm[] =>
     .map((r) => ({ value: r.value as string, label: localized(r.label), color: typeof r.color === 'string' && r.color ? r.color : null }))
 
 async function readSite(client: Client, projectSlug: string): Promise<CatalogueSite> {
-  const r = await client.fetch<{ site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null } | null; config?: RawConfig; translate?: boolean } | null>(
+  const r = await span('sanity.readSite', () => client.fetch<{ site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null } | null; config?: RawConfig; translate?: boolean } | null>(
     CATALOGUE_SITE_QUERY,
     { projectSlug }
-  )
+  ))
   const supported = r?.site?.supportedLocales?.length ? r.site.supportedLocales : []
   const defaultLocale = r?.site?.defaultLocale || supported[0]
   if (!defaultLocale) throw new CatalogueError('failed', 'Site languages are not configured.')
@@ -497,7 +498,7 @@ export async function openCatalogueForEdit(ctx: TenantAuthorizationContext, proj
 // ── Slug namespace (D11) ──────────────────────────────────────────────────────
 
 async function namespace(client: Client, projectSlug: string) {
-  const rows = await client.fetch<SlugRow[] | null>(SLUG_NAMESPACE_QUERY, { projectSlug }, RAW)
+  const rows = await span('sanity.namespace', () => client.fetch<SlugRow[] | null>(SLUG_NAMESPACE_QUERY, { projectSlug }, RAW))
   return toSlugOwners(rows ?? [])
 }
 
@@ -526,7 +527,7 @@ export async function checkCatalogueSlugs(
  */
 async function resolveTargets(client: Client, projectSlug: string, type: string, ids: string[], opts: { offered?: boolean } = {}): Promise<Set<string>> {
   if (!ids.length) return new Set()
-  const rows = await client.fetch<Array<{ _id: string; offered?: boolean }> | null>(CATALOGUE_REF_TARGETS_QUERY, { type, projectSlug, ids, draftIds: ids.map((i) => `drafts.${i}`) }, RAW)
+  const rows = await span(`sanity.refTargets.${type}`, () => client.fetch<Array<{ _id: string; offered?: boolean }> | null>(CATALOGUE_REF_TARGETS_QUERY, { type, projectSlug, ids, draftIds: ids.map((i) => `drafts.${i}`) }, RAW))
   const published = new Map<string, { offered?: boolean }>()
   const drafts = new Map<string, { offered?: boolean }>()
   for (const r of rows ?? []) (r._id.startsWith('drafts.') ? drafts : published).set(r._id.replace(/^drafts\./, ''), r)
@@ -592,10 +593,10 @@ export async function patchCatalogueDraft(
   })
   const [, weakLists, weakItems] = await Promise.all([
     cleaned.refs.mediaAssets.length
-      ? client.fetch<string[] | null>(CATALOGUE_MEDIA_EXIST_QUERY, { projectSlug: grant.projectSlug, ids: cleaned.refs.mediaAssets }).then((found) => {
+      ? span('sanity.mediaExist', () => client.fetch<string[] | null>(CATALOGUE_MEDIA_EXIST_QUERY, { projectSlug: grant.projectSlug, ids: cleaned.refs.mediaAssets }).then((found) => {
           const ok = new Set(found ?? [])
           if (!cleaned.refs.mediaAssets.every((i) => ok.has(i))) throw new CatalogueError('invalid_value', 'A photo is no longer in the Media Library.')
-        })
+        }))
       : null,
     resolveTargets(client, grant.projectSlug, 'catalogueOptionList', cleaned.refs.optionLists),
     // Sections list items (drafts included, D-4); an option may link only to an item that is itself offered (D2).
@@ -769,7 +770,7 @@ export async function publishCatalogueDraft(
   if (input.mode !== 'now' && input.mode !== 'schedule' && input.mode !== 'keep') throw new CatalogueError('invalid_value', 'Unknown publish mode.')
   const site = await readSite(client, grant.projectSlug)
   try {
-    const r = await lifecycle.publishTogether(
+    const r = await span('lifecycle.publishTogether', () => lifecycle.publishTogether(
       PUBLISH_DESCRIPTORS,
       ctx,
       projectId,
@@ -780,7 +781,7 @@ export async function publishCatalogueDraft(
       },
       cataloguePrepare(site, deps.uuid ?? randomUUID),
       { client: client as lifecycle.LifecycleClient, now: deps.now, audit: deps.audit }
-    )
+    ))
     return { id: input.id, publishedAt: r.root.publishedAt as string, slugs: slugsOf(r.root), published: r.published, notLive: r.notLive }
   } catch (error) {
     throw asCatalogueError(error)

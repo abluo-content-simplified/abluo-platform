@@ -73,6 +73,7 @@ import type { ModulePermissionMap } from '@/lib/modules/types'
 import { tenantClient } from '@/lib/sanity/client'
 import { enabledModuleIdsQuery } from '@/lib/sanity/queries'
 import { asSupabaseProjectSlug, type SupabaseProjectSlug } from '@/lib/tenancy/ids'
+import { stopwatch } from '@/lib/perf/timing'
 
 // ── Types (ADR-017 Decision 3, shape reproduced exactly) ───────────────────────
 
@@ -334,10 +335,12 @@ async function fetchProjectSlugUsage(slugs: string[]): Promise<Map<string, numbe
 export async function getTenantAuthorizationContext(
   options: { purpose?: SupportPurpose } = {}
 ): Promise<TenantAuthorizationContext | null> {
+  const lap = stopwatch('auth')
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
+  lap('getUser')
   if (!user) return null
   const actor = toAuthenticatedActor(user)
 
@@ -349,6 +352,7 @@ export async function getTenantAuthorizationContext(
   // expired) falls through to the normal resolution below — a client user
   // holding a forged cookie gets exactly their own access.
   const support = await resolveSupportContext(supabase, actor, options.purpose ?? 'mutation')
+  lap('supportCheck')
   if (support) return support
 
   return loadTenantAuthorizationContext(supabase, actor)
@@ -416,10 +420,12 @@ export async function loadTenantAuthorizationContext(
   // reaches projects only through tenant-level extras that apply per project
   // (ADR-028 §3). Extras are re-validated by the resolver: unknown or
   // non-grantable ids are ignored, never honoured.
+  const lap = stopwatch('auth')
   const { data: tenantRows, error: tenantRowsError } = await supabase
     .from('tenant_members')
     .select('tenant_id, role, extra_permissions')
     .eq('user_id', actor.userId)
+  lap('tenantMembers')
 
   if (tenantRowsError) {
     throw new Error(`getTenantAuthorizationContext: failed to read tenant_members — ${tenantRowsError.message}`)
@@ -447,6 +453,7 @@ export async function loadTenantAuthorizationContext(
       .from('projects')
       .select('id, slug, tenant_id')
       .in('tenant_id', tenantIdsToRead)
+    lap('ownedProjects')
 
     if (projectsError) {
       throw new Error(
@@ -478,6 +485,7 @@ export async function loadTenantAuthorizationContext(
     .from('project_members')
     .select('id, project_id, role, extra_permissions')
     .eq('user_id', actor.userId)
+  lap('projectMembers')
 
   if (membershipsError) {
     throw new Error(
@@ -496,6 +504,7 @@ export async function loadTenantAuthorizationContext(
       .from('projects')
       .select('id, slug, tenant_id')
       .in('id', membershipProjectIds)
+    lap('memberProjects')
 
     if (memberProjectsError) {
       throw new Error(
@@ -552,6 +561,7 @@ export async function loadTenantAuthorizationContext(
     ownedProjects = guarded.ownedProjects
     memberships.splice(0, memberships.length, ...guarded.memberships)
   }
+  lap('slugUsage')
 
   // Enabled module ids per resolved project, via the existing Sanity path.
   const enabledModuleIdsByProjectId: Record<string, string[]> = {}
@@ -568,6 +578,7 @@ export async function loadTenantAuthorizationContext(
       enabledModuleIdsByProjectId[membership.projectId] = ids
     })
   )
+  lap(`enabledModules(${ownedProjects.length + memberships.length})`)
 
   return {
     userId: actor.userId,

@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import { span, traced } from '@/lib/perf/timing'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
@@ -16,7 +17,7 @@ import { PageShell } from '@/components/app/ui/PageShell'
  */
 export const dynamic = 'force-dynamic'
 
-export default async function CataloguePage({
+async function CataloguePageInner({
   params,
   searchParams,
 }: {
@@ -25,14 +26,14 @@ export default async function CataloguePage({
 }) {
   const { tenant: projectSlug } = await params
   const query = await searchParams
-  const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
+  const ctx = await span('auth', () => getTenantAuthorizationContext({ purpose: 'render' }))
   if (!ctx) redirect(`/login?next=/${projectSlug}/catalogue`)
   const grant = resolveProjectGrant(ctx.projects, projectSlug)
   if (!grant) notFound()
 
   let lists, site
   try {
-    ;[lists, site] = await Promise.all([listCatalogue(ctx, grant.projectId), getCatalogueSite(ctx, grant.projectId)])
+    ;[lists, site] = await Promise.all([span('listCatalogue', () => listCatalogue(ctx, grant.projectId)), span('site', () => getCatalogueSite(ctx, grant.projectId))])
   } catch (error) {
     if (error instanceof TenantAuthorizationError) notFound()
     throw error
@@ -54,4 +55,8 @@ export default async function CataloguePage({
       />
     </PageShell>
   )
+}
+
+export default function CataloguePage(props: Parameters<typeof CataloguePageInner>[0]) {
+  return traced('catalogue.listPage', () => CataloguePageInner(props))
 }

@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import { span, traced } from '@/lib/perf/timing'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
@@ -15,15 +16,15 @@ import { PageShell } from '@/components/app/ui/PageShell'
  */
 export const dynamic = 'force-dynamic'
 
-export default async function CatalogueItemPage({ params }: { params: Promise<{ tenant: string; id: string }> }) {
+async function CatalogueItemPageInner({ params }: { params: Promise<{ tenant: string; id: string }> }) {
   const { tenant: projectSlug, id } = await params
-  const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
+  const ctx = await span('auth', () => getTenantAuthorizationContext({ purpose: 'render' }))
   if (!ctx) redirect(`/login?next=/${projectSlug}/catalogue/${encodeURIComponent(id)}`)
   const grant = resolveProjectGrant(ctx.projects, projectSlug)
   if (!grant || !isCatalogueId(id)) notFound()
   let snapshot, site, lists
   try {
-    ;[snapshot, site, lists] = await Promise.all([getCatalogueDoc(ctx, grant.projectId, 'item', id), getCatalogueSite(ctx, grant.projectId), listCatalogue(ctx, grant.projectId)])
+    ;[snapshot, site, lists] = await Promise.all([span('doc', () => getCatalogueDoc(ctx, grant.projectId, 'item', id)), span('site', () => getCatalogueSite(ctx, grant.projectId)), span('listCatalogue', () => listCatalogue(ctx, grant.projectId))])
   } catch (error) {
     if (error instanceof TenantAuthorizationError) notFound()
     if (error instanceof CatalogueError && error.code === 'not_found') notFound()
@@ -42,4 +43,8 @@ export default async function CatalogueItemPage({ params }: { params: Promise<{ 
       />
     </PageShell>
   )
+}
+
+export default function CatalogueItemPage(props: Parameters<typeof CatalogueItemPageInner>[0]) {
+  return traced('catalogue.itemEditorPage', () => CatalogueItemPageInner(props))
 }

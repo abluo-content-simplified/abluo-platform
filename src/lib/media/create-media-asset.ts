@@ -12,6 +12,7 @@
  * have verified the (tenant, project, projectSlug) triple BEFORE calling it,
  * so a rejected request never leaves an orphaned binary behind.
  */
+import { span } from '@/lib/perf/timing'
 import type { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { optimizeImage, type OptimizeImageResult } from '@/lib/media/optimize-image'
 
@@ -62,7 +63,7 @@ export async function createMediaAsset(
   deps: { optimize?: OptimizeFn; log?: (message: string) => void } = {}
 ): Promise<CreatedMediaAsset> {
   const contentType = input.contentType || 'application/octet-stream'
-  const optimised = await (deps.optimize ?? optimizeImage)(input.data, contentType)
+  const optimised = await span('media.optimize', () => (deps.optimize ?? optimizeImage)(input.data, contentType))
   ;(deps.log ?? ((m: string) => console.info(m)))(
     optimised.optimized
       ? `[media] optimised ${optimised.bytesBefore} -> ${optimised.bytesAfter} bytes`
@@ -73,13 +74,13 @@ export async function createMediaAsset(
   const ext = optimised.optimized ? EXT[optimised.contentType] : undefined
   const filename = ext ? `${input.filename.replace(/\.[^.]+$/, '')}.${ext}` : input.filename
 
-  const uploadedAsset = await client.assets.upload('image', optimised.data, {
+  const uploadedAsset = await span('sanity.assetUpload', () => client.assets.upload('image', optimised.data, {
     filename,
     ...(input.contentType && { contentType: optimised.contentType }),
-  })
+  }))
 
   const { projectId, projectSlug, name, description, uploadedBy, uploadedByName } = input
-  const mediaAsset = await client.create({
+  const mediaAsset = await span('sanity.createMediaAsset', () => client.create({
     _type: 'mediaAsset',
     image: {
       _type: 'image',
@@ -94,7 +95,7 @@ export async function createMediaAsset(
     ...(description && { description }),
     ...(uploadedBy && { uploadedBy }),
     ...(uploadedByName && { uploadedByName }),
-  })
+  }))
 
   const dims = (uploadedAsset as { metadata?: { dimensions?: { width?: number; height?: number } } }).metadata
     ?.dimensions
