@@ -44,8 +44,9 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
   const channels = site.config.channels.map((c) => c.value)
   const optionCounts = useMemo(() => new Map(optionLists.map((l) => [l.id, l.optionCount])), [optionLists])
   const initial: ItemState = useMemo(
-    () => ({ itemProfile: initialItemProfile(site.config.defaultItemProfile), name: {}, byline: {}, description: {}, links: [], categories: [], imageIds: [], offers: [], allergenDeclaration: NOT_REVIEWED, dietary: [], options: [], hasPage: false, slug: {}, visibility: 'public' }),
-    [site.config.defaultItemProfile]
+    // Nothing preselected (Tom, 2026-10-16): the preset's default is only suggested.
+    () => ({ itemProfile: null, name: {}, byline: {}, description: {}, links: [], categories: [], imageIds: [], offers: [], allergenDeclaration: NOT_REVIEWED, dietary: [], options: [], hasPage: false, slug: {}, visibility: 'public' }),
+    []
   )
   const profileRef = useRef(initial.itemProfile)
   const createExtra = useCallback(() => (profileRef.current ? { itemProfile: profileRef.current } : {}), [])
@@ -166,9 +167,13 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
             <div className="mt-8">
               <ProfileField
                 value={s.itemProfile}
+                suggested={initialItemProfile(site.config.defaultItemProfile)}
                 onChange={(v) => {
                   profileRef.current = v
                   item.setProfile(v)
+                  // A tap is the answer: go straight on (the next step is always the name).
+                  const next = itemWizardSteps({ itemProfile: v, categoryCount: site.config.categories.length, locales: site.locales })[1]
+                  if (next) go(next)
                 }}
               />
             </div>

@@ -32,7 +32,15 @@ export type NavSurface = {
   /** URL segment under `/{projectSlug}/`. */
   segment: string
   requires: SurfaceRequirement
+  /**
+   * Sidebar group (Tom, 2026-10-16): content work, then managing people and
+   * apps, then insights. Groups are separated by spacing only — no headings.
+   * Home belongs to `content`.
+   */
+  group: NavGroup
 }
+
+export type NavGroup = 'content' | 'manage' | 'insights'
 
 /** Where a Home widget sits. Each slot is laid out by the Home page. */
 export type WidgetSlot = 'header' | 'setup' | 'attention' | 'continue' | 'glance' | 'latest'
@@ -83,21 +91,23 @@ export const FEATURE_CONTROL_ALLOWLIST: readonly string[] = []
 
 export const TENANT_SURFACES: readonly TenantSurface[] = [
   // ── Navigation (order = sidebar order, after Home) ──────────────────────
-  { kind: 'nav', id: 'blog', segment: 'posts', requires: { module: 'blog', permission: 'blog.post.read' } },
+  // Content: what the site publishes (Home is first, in the same group).
+  { kind: 'nav', id: 'blog', segment: 'posts', group: 'content', requires: { module: 'blog', permission: 'blog.post.read' } },
   // `agenda`, not `events`: `/{project}/events` is the public website's events route.
-  { kind: 'nav', id: 'events', segment: 'agenda', requires: { module: 'events', permission: 'events.event.read' } },
-  { kind: 'nav', id: 'forms', segment: 'submissions', requires: { module: 'forms', permission: 'forms.submission.read' } },
-  { kind: 'nav', id: 'gallery', segment: 'galleries', requires: { module: 'gallery', permission: 'gallery.gallery.read' } },
-  // ADR-033 D12: one entry; its label comes from the module's `navLabel` config (presentation only).
-  { kind: 'nav', id: 'catalogue', segment: 'catalogue', requires: { module: 'catalogue', permission: 'catalogue.item.read' } },
-  // Analytics is not a module (ADR-029 §3.4): only the permission gates it. Whether
+  { kind: 'nav', id: 'events', segment: 'agenda', group: 'content', requires: { module: 'events', permission: 'events.event.read' } },
+  // ADR-033 D12: one entry. Label "Catalogue" unless the project sets the optional `navLabel` override (presentation only).
+  { kind: 'nav', id: 'catalogue', segment: 'catalogue', group: 'content', requires: { module: 'catalogue', permission: 'catalogue.item.read' } },
+  { kind: 'nav', id: 'gallery', segment: 'galleries', group: 'content', requires: { module: 'gallery', permission: 'gallery.gallery.read' } },
+  { kind: 'nav', id: 'media', segment: 'media', group: 'content', requires: { permission: 'media.library.manage' } },
+  // Manage: what comes in, who works here, which apps read the site.
+  { kind: 'nav', id: 'forms', segment: 'submissions', group: 'manage', requires: { module: 'forms', permission: 'forms.submission.read' } },
+  { kind: 'nav', id: 'people', segment: 'people', group: 'manage', requires: { anyPermission: ['users.invite', 'users.manage'] } },
+  // ADR-031: partner apps reading this site. Owners and Site admins only; always listed (calm empty state).
+  { kind: 'nav', id: 'connections', segment: 'apps', group: 'manage', requires: { permission: 'connections.manage' } },
+  // Insights. Analytics is not a module (ADR-029 §3.4): only the permission gates it. Whether
   // Google is connected is Abluo's configuration, which tenant code may not read
   // (boundary test) — the page itself says "not connected yet" until it is.
-  { kind: 'nav', id: 'analytics', segment: 'analytics', requires: { permission: 'analytics.read' } },
-  { kind: 'nav', id: 'media', segment: 'media', requires: { permission: 'media.library.manage' } },
-  { kind: 'nav', id: 'people', segment: 'people', requires: { anyPermission: ['users.invite', 'users.manage'] } },
-  // ADR-031: partner apps reading this site. Owners and Site admins only; always listed (calm empty state).
-  { kind: 'nav', id: 'connections', segment: 'apps', requires: { permission: 'connections.manage' } },
+  { kind: 'nav', id: 'analytics', segment: 'analytics', group: 'insights', requires: { permission: 'analytics.read' } },
 
   // ── Home widgets (ADR-029 §5) ───────────────────────────────────────────
   { kind: 'widget', id: 'siteStatus', slot: 'header', requires: {} },

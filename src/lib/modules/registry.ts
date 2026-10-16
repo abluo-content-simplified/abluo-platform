@@ -1115,7 +1115,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           id: 'navLabel',
           label: 'Dashboard name',
           type: 'localizedString',
-          description: 'What your dashboard calls this section (for example "Menu" or "Books"). Presentation only.',
+          description: 'Optional. Leave empty to show "Catalogue" in the dashboard; set it only if this project should use another name (for example "Menu"). Presentation only.',
         },
         {
           id: 'categories',
@@ -1191,11 +1191,10 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
       starterPresets: [
         {
           id: 'restaurant',
-          version: 1,
+          version: 2,
           label: 'Restaurant',
           description: 'A menu: dine-in and takeaway channels, food and drink items.',
           config: {
-            navLabel: { en: 'Menu', it: 'Menù', de: 'Speisekarte' },
             publicSegment: 'menu',
             serviceChannels: [
               { value: 'dine-in', label: { en: 'Dine-in', it: 'Al tavolo', de: 'Vor Ort' } },
@@ -1206,11 +1205,10 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         },
         {
           id: 'bookshop',
-          version: 1,
+          version: 2,
           label: 'Bookshop',
           description: 'A book list: products, no service channels.',
           config: {
-            navLabel: { en: 'Books', it: 'Libri', de: 'Bücher' },
             publicSegment: 'books',
             defaultItemProfile: 'product',
           },

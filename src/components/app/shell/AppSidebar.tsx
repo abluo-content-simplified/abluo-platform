@@ -34,6 +34,8 @@ export type AppNavItem = {
   label: string
   /** An `AppIcon` path. */
   icon: string
+  /** Starts a new group: rendered with extra space above (no heading). */
+  groupStart?: boolean
 }
 
 /** What a surface's phone tab bar needs from the frame. */
@@ -188,7 +190,7 @@ export function AppSidebar({
                 href={item.href}
                 onClick={closeDrawer}
                 aria-current={active ? 'page' : undefined}
-                className={`flex min-h-10 items-center gap-3 rounded-md px-3 text-sm transition-colors ${
+                className={`${item.groupStart ? 'mt-4 ' : ''}flex min-h-10 items-center gap-3 rounded-md px-3 text-sm transition-colors ${
                   active ? 'bg-muted font-semibold text-foreground' : 'text-muted-foreground hover:bg-hover hover:text-foreground'
                 }`}
               >

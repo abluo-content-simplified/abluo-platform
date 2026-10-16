@@ -58,12 +58,13 @@ const termLabel = (t: CatalogueTerm, ui: string, d: string) => textIn(t.label, u
 
 // ── Profile (ADR-033 D-2: "What are you offering?") ──────────────────────────
 
-export function ProfileField({ value, onChange }: { value: ItemProfile | null; onChange: (v: ItemProfile) => void }) {
+export function ProfileField({ value, onChange, suggested = null }: { value: ItemProfile | null; onChange: (v: ItemProfile) => void; /** The preset's default profile: listed first and marked "Suggested". Never restricts the others (D7). */ suggested?: ItemProfile | null }) {
   const t = useTranslations('catalogue.dashboard.itemProfiles')
+  const ordered = suggested ? [suggested, ...ITEM_PROFILES.filter((p) => p !== suggested)] : ITEM_PROFILES
   return (
     <ChoiceCardGrid label={t('label')} kind="radio">
-      {ITEM_PROFILES.map((p) => (
-        <ChoiceCard key={p} icon={CAT_ICONS[p]} label={t(p)} selected={value === p} onSelect={() => onChange(p)} />
+      {ordered.map((p) => (
+        <ChoiceCard key={p} icon={CAT_ICONS[p]} label={t(p)} description={t(`${p}Help`)} badge={p === suggested ? t('suggested') : undefined} selected={value === p} onSelect={() => onChange(p)} />
       ))}
     </ChoiceCardGrid>
   )

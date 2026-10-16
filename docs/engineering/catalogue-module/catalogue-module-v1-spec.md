@@ -231,10 +231,12 @@ A closed legal list. No tenant may extend it and **no configuration may hide one
 
 Declared generically in the manifest — `platformContract.starterPresets?: { id, version, label, description?, config }[]`, where `config` maps `configSchema` field ids to values — and validated by the manifest validator (Rule 14) and tests: every key exists in `configSchema` and every value passes that field's own rules (types, select options, `localizedStringList` shape, segment syntax). Mechanics: `src/lib/modules/presets.ts`.
 
-| Preset | `navLabel` (en · it · de) | `publicSegment` | `serviceChannels` | `defaultItemProfile` |
+| Preset | `navLabel` | `publicSegment` | `serviceChannels` | `defaultItemProfile` |
 |---|---|---|---|---|
-| Restaurant | Menu · Menù · Speisekarte | `menu` | `dine-in` (Dine-in · Al tavolo · Vor Ort), `takeaway` (Takeaway · Da asporto · Zum Mitnehmen) | `foodOrDrink` |
-| Bookshop | Books · Libri · Bücher | `books` | none | `product` |
+| Restaurant | — (not written) | `menu` | `dine-in` (Dine-in · Al tavolo · Vor Ort), `takeaway` (Takeaway · Da asporto · Zum Mitnehmen) | `foodOrDrink` |
+| Bookshop | — (not written) | `books` | none | `product` |
+
+> **Update 2026-10-16 (Tom, D12):** the dashboard label defaults to "Catalogue" for every project. `navLabel` is an **optional** project-specific override (e.g. "Menu") set by an admin; presets no longer write it (preset versions bumped to 2; projects that already applied v1 keep their label until it is cleared). Dashboard names and public-facing names (landing page, collections) stay separate.
 
 - Offered in the Studio Modules pane **only when the module is first enabled**: "No preset" (default) or one preset. Explicit selection; never automatic.
 - The pane previews exactly what will be written, runs the `publicSegment` validator on the preset's segment (a clash **blocks applying**, with the clash message), and shows the project's current currency read-only ("not changed"). **No preset sets a currency.**

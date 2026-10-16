@@ -92,10 +92,12 @@ export function ClientSidebar({
   const { content: contentItem, forms: leadsItem, overflow } = phoneNavLayout(navItems)
   const news = useWhatsNew(whatsNew)
 
-  const items = [
-    { key: 'home', href: homeHref, label: t('nav.home'), icon: ICONS.home },
-    ...navItems.map((i) => ({ key: i.moduleId, href: i.href, label: i.label ?? t(`nav.${i.moduleId}`), icon: iconFor(i.moduleId) })),
+  // Home opens the content group; a new group gets extra space above it (no headings).
+  const grouped = [
+    { key: 'home', href: homeHref, label: t('nav.home'), icon: ICONS.home, group: 'content' },
+    ...navItems.map((i) => ({ key: i.moduleId, href: i.href, label: i.label ?? t(`nav.${i.moduleId}`), icon: iconFor(i.moduleId), group: i.group as string })),
   ]
+  const items = grouped.map(({ group, ...item }, n) => ({ ...item, groupStart: n > 0 && group !== grouped[n - 1].group }))
 
   return (
     <>

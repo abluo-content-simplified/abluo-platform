@@ -643,10 +643,12 @@ price that applies everywhere. Nothing assumes the project is a restaurant.
 against `configSchema` by test, and offered in the Studio Modules pane when the
 module is first enabled:
 
-| Preset | `navLabel` (en · it · de) | `publicSegment` | `serviceChannels` | `defaultItemProfile` |
+| Preset | `navLabel` | `publicSegment` | `serviceChannels` | `defaultItemProfile` |
 |---|---|---|---|---|
-| Restaurant | Menu · Menù · Speisekarte | `menu` | `dine-in` (Dine-in · Al tavolo · Vor Ort), `takeaway` (Takeaway · Da asporto · Zum Mitnehmen) | `foodOrDrink` |
-| Bookshop | Books · Libri · Bücher | `books` | none | `product` |
+| Restaurant | — (not written) | `menu` | `dine-in` (Dine-in · Al tavolo · Vor Ort), `takeaway` (Takeaway · Da asporto · Zum Mitnehmen) | `foodOrDrink` |
+| Bookshop | — (not written) | `books` | none | `product` |
+
+> **Update 2026-10-16 (Tom, D12):** the dashboard label defaults to "Catalogue" for every project. `navLabel` is an **optional** project-specific override (e.g. "Menu") set by an admin; presets no longer write it (preset versions bumped to 2; projects that already applied v1 keep their label until it is cleared). Dashboard names and public-facing names (landing page, collections) stay separate.
 
 Rules: explicitly selected; previewed before applying (the preview runs the D11
 segment validation and shows any clash — a clash blocks applying); applied once;

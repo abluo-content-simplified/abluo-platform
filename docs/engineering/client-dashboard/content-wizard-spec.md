@@ -4,6 +4,15 @@ Authority: ADR-025. This doc is the *what it looks like*. Verification lives in 
 
 **Principle:** Tap → tap → write → preview → publish. Ask only what's needed, default the rest. The user can never lose work.
 
+## Dashboard UX rules (every module, wizard and editor)
+Decided by Tom on 2026-10-16. These rules apply to Posts, Catalogue, Events, Galleries, Media and any new module. The Catalogue plan that applies them is in the Abluo project doc `claude/catalogue-ux-redesign-proposal-2026-10-16.md` (§2.0).
+1. **A disabled primary action says why.** Next, Create, Publish, Apply and the like never sit greyed out silently. Name what is missing or invalid, next to the button.
+2. **Drafts are never blocked.** An incomplete draft always autosaves. Optional fields never block Next. Only the minimum the item needs in order to exist is required to continue.
+3. **Publication blockers are listed with links.** When Publish is not possible, list every missing or invalid field by name and, where possible, link straight to the step or tab that fixes it. The check happens on publish, never on save (ADR-032).
+4. **Create without leaving.** Things an item depends on (e.g. a category, later a tag) can be created inline, without leaving the current workflow. Inline creation uses the same data, permissions and project scope as the full management screen. There is no second way to write.
+5. **Choices explain their consequences.** A choice card says what picking it means, with examples (e.g. "Book — author, cover, ISBN, buying links").
+6. **One save model.** Autosave everywhere: "Saving…" until the server confirms, then "Saved". No editor with an explicit Save button beside autosaving ones.
+
 ## Screen anatomy (every wizard step)
 ```
 ┌───────────────────────────────┐

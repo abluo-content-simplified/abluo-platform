@@ -3686,7 +3686,11 @@
         "label": "Was bietest du an?",
         "foodOrDrink": "Speise oder Getränk",
         "product": "Ein Produkt",
-        "service": "Eine Dienstleistung"
+        "service": "Eine Dienstleistung",
+        "suggested": "Empfohlen",
+        "foodOrDrinkHelp": "Speisen und Getränke — fragt nach Preisen, Allergenen und Ernährungsangaben.",
+        "productHelp": "Bücher, Olivenöl, Handgemachtes — fragt nach Preisen und Kauf-Links.",
+        "serviceHelp": "Kurse, Behandlungen, Beratungen — fragt nach Preisen."
       },
       "together": {
         "notPublishedTitle": "Hier werden noch nicht veröffentlichte Inhalte verwendet:",

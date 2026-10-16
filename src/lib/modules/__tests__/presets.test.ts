@@ -31,9 +31,9 @@ describe('catalogue manifest (ADR-033 D-1)', () => {
   it('matches the ADR table', () => {
     expect(restaurant.config.publicSegment).toBe('menu')
     expect(restaurant.config.defaultItemProfile).toBe('foodOrDrink')
-    expect(restaurant.config.navLabel).toEqual({ en: 'Menu', it: 'Menù', de: 'Speisekarte' })
+    // D12 update 2026-10-16: the dashboard label defaults to "Catalogue"; presets never write it.
+    for (const p of presets) expect(p.config).not.toHaveProperty('navLabel')
     expect((restaurant.config.serviceChannels as { value: string }[]).map((c) => c.value)).toEqual(['dine-in', 'takeaway'])
-    expect(bookshop.config.navLabel).toEqual({ en: 'Books', it: 'Libri', de: 'Bücher' })
     expect(bookshop.config.publicSegment).toBe('books')
     expect(bookshop.config.serviceChannels).toBeUndefined()
     expect(bookshop.config.defaultItemProfile).toBe('product')
@@ -43,20 +43,19 @@ describe('catalogue manifest (ADR-033 D-1)', () => {
 describe('presetValues — locale filtering', () => {
   it('restricts localized labels to the site locales', () => {
     const v = presetValues(restaurant, schema, ['en', 'it']) as Record<string, any>
-    expect(v.navLabel).toEqual({ en: 'Menu', it: 'Menù' })
     expect(v.serviceChannels[0]).toEqual({ _key: 'preset-dine-in', value: 'dine-in', label: { en: 'Dine-in', it: 'Al tavolo' } })
     expect(v.serviceChannels[1].label).toEqual({ en: 'Takeaway', it: 'Da asporto' })
   })
   it('keeps all labels when locales are unknown', () => {
     const v = presetValues(restaurant, schema, []) as Record<string, any>
-    expect(v.navLabel.de).toBe('Speisekarte')
+    expect(v.serviceChannels[0].label.de).toBe('Vor Ort')
   })
 })
 
 describe('previewPreset', () => {
   it('lists exactly what will be written, with no currency row', () => {
     const rows = previewPreset(restaurant, schema, {}, ['en', 'it'])
-    expect(rows.map((r) => r.fieldId)).toEqual(['navLabel', 'publicSegment', 'serviceChannels', 'defaultItemProfile'])
+    expect(rows.map((r) => r.fieldId)).toEqual(['publicSegment', 'serviceChannels', 'defaultItemProfile'])
     expect(rows.find((r) => r.fieldId === 'publicSegment')).toMatchObject({ to: 'menu', from: null })
     expect(rows.find((r) => r.fieldId === 'defaultItemProfile')!.to).toBe('Food or drink')
   })
@@ -72,7 +71,7 @@ describe('applyPreset', () => {
     expect(r.applied).toBe(true)
     expect(r.values.currency).toBe('CHF')
     expect(r.values.publicSegment).toBe('menu')
-    expect(r.appliedPreset).toEqual({ id: 'restaurant', version: 1, appliedAt: NOW() })
+    expect(r.appliedPreset).toEqual({ id: 'restaurant', version: 2, appliedAt: NOW() })
   })
   it('is idempotent: re-applying the same id+version changes nothing', () => {
     const first = applyPreset(restaurant, schema, {}, ['en'], undefined, NOW)

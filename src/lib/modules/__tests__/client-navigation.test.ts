@@ -34,7 +34,7 @@ function grantWith(enabledModuleIds: string[], permissions: string[] = []): Proj
 describe('buildClientNavItems', () => {
   it('yields a Blog nav item ONLY when the module is installed AND blog.post.read is held', () => {
     const items = buildClientNavItems(grantWith(['blog'], ['blog.post.read']))
-    expect(items).toEqual([{ moduleId: 'blog', labelKey: 'clientDashboard.nav.blog', href: '/livener/posts' }])
+    expect(items).toEqual([{ moduleId: 'blog', labelKey: 'clientDashboard.nav.blog', href: '/livener/posts', group: 'content' }])
   })
 
   it('yields NO Blog item when the module is not installed, even with the permission', () => {
@@ -62,12 +62,12 @@ describe('buildClientNavItems', () => {
     expect(buildClientNavItems(grantWith([], ['users.manage'])).map((i) => i.moduleId)).toEqual(['people'])
   })
 
-  it('keeps registry order: modules first, then Media, then People', () => {
+  it('keeps registry order: content (modules, Media), then manage (Forms, People)', () => {
     const all = grantWith(
       ['blog', 'forms', 'gallery'],
       ['blog.post.read', 'forms.submission.read', 'gallery.gallery.read', 'media.library.manage', 'users.invite'],
     )
-    expect(buildClientNavItems(all).map((i) => i.moduleId)).toEqual(['blog', 'forms', 'gallery', 'media', 'people'])
+    expect(buildClientNavItems(all).map((i) => i.moduleId)).toEqual(['blog', 'gallery', 'media', 'forms', 'people'])
   })
 
   it('builds the href from the grant projectSlug + the registry segment', () => {
@@ -153,6 +153,7 @@ describe('phoneNavLayout', () => {
     moduleId,
     labelKey: `clientDashboard.nav.${moduleId}`,
     href: `/livener/${segment}`,
+    group: 'content' as const,
   })
   const all = [
     item('blog', 'posts'),

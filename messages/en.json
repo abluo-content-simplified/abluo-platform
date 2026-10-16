@@ -3686,7 +3686,11 @@
         "label": "What are you offering?",
         "foodOrDrink": "Food or drink",
         "product": "A product",
-        "service": "A service"
+        "service": "A service",
+        "suggested": "Suggested",
+        "foodOrDrinkHelp": "Dishes and drinks — asks for prices, allergens and dietary info.",
+        "productHelp": "Books, olive oil, handmade goods — asks for prices and buying links.",
+        "serviceHelp": "Lessons, treatments, consultations — asks for prices."
       },
       "together": {
         "notPublishedTitle": "This uses content that isn't published yet:",

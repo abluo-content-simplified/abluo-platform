@@ -49,6 +49,7 @@ export function ChoiceCard({
   disabled = false,
   busy = false,
   badge,
+  description,
 }: {
   /** One icon, drawn at ~30px with a 1.5 stroke. */
   icon: ReactNode
@@ -61,6 +62,8 @@ export function ChoiceCard({
   busy?: boolean
   /** A small note in the top-right corner (e.g. "Coming soon"). */
   badge?: ReactNode
+  /** Optional muted line under the label: what choosing this means (UX rule 5). */
+  description?: string
 }) {
   const radio = selected !== undefined
   return (
@@ -82,6 +85,7 @@ export function ChoiceCard({
         <span className="absolute top-3 right-3 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">{badge}</span>
       ) : null}
       <span className="mt-3 text-[1.0625rem] leading-[1.375rem] font-medium">{label}</span>
+      {description ? <span className="mt-1 text-sm leading-5 text-muted-foreground">{description}</span> : null}
     </button>
   )
 }

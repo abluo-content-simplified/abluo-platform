@@ -18,6 +18,7 @@ import type { ProjectGrant } from '@/lib/api/tenant-context'
 import {
   buildTenantSurfaces,
   TENANT_SURFACES,
+  type NavGroup,
   type NavSurface,
   type TenantSurface,
 } from '@/lib/client/surfaces'
@@ -76,6 +77,8 @@ export type ClientNavItem = {
    * by this pure builder; ids, routes and permissions stay unchanged.
    */
   label?: string
+  /** Sidebar group (spacing between groups, no headings). */
+  group: NavGroup
 }
 
 /**
@@ -94,6 +97,7 @@ export function buildClientNavItems(
     moduleId: s.id,
     labelKey: `clientDashboard.nav.${s.id}`,
     href: `/${grant.projectSlug}/${s.segment}`,
+    group: s.group,
   }))
 }
 
