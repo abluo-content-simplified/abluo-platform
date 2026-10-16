@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { NextIntlClientProvider } from 'next-intl'
-import { getMessages } from 'next-intl/server'
+import { getMessages, setRequestLocale } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import '../globals.css'
 import { routing } from '@/i18n/routing'
@@ -34,11 +34,30 @@ export default async function LocaleLayout({ children, params }: Props) {
     notFound()
   }
 
-  const messages = await getMessages()
+  // The URL locale is the ONLY source of the request locale here.
+  //
+  // next-intl normally learns the locale from its own middleware. This app does
+  // not run it — `src/proxy.ts` owns host and path routing — so without this
+  // call `requestLocale` is undefined, `src/i18n/request.ts` falls back to
+  // `routing.defaultLocale`, and EVERY page in every language resolved as "en".
+  //
+  // That was not a cosmetic bug. next-intl's `usePathname()` strips the locale
+  // prefix by comparing against `useLocale()`; believing it was on "en", it
+  // left "/it" in place, and the language switcher asked the router for "/it"
+  // in French — producing /fr/it, a page that does not exist. Measured on
+  // nologo.cloud, tmz.it and studiomartegani.com, from every language except
+  // English, where the wrong guess happened to be right.
+  setRequestLocale(locale)
+
+  // `locale` passed explicitly to both, rather than relying on the call above:
+  // these two are what the browser receives, and a provider holding the wrong
+  // locale is the failure described above. Explicit here means the client is
+  // correct even if the request-scope plumbing changes under us again.
+  const messages = await getMessages({ locale })
 
   return (
     <RootDocument lang={locale}>
-      <NextIntlClientProvider messages={messages}>
+      <NextIntlClientProvider locale={locale} messages={messages}>
         {children}
       </NextIntlClientProvider>
     </RootDocument>
