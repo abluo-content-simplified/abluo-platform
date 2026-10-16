@@ -19,9 +19,8 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
 import { requireAbluoAdmin } from '@/lib/api/auth'
-import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
+import { resolveProjectAction } from '@/lib/api/project-action'
 import { can } from '@/lib/authz/check'
-import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import {
   exitSupportVisit,
   decideSupportVisit,
@@ -74,10 +73,10 @@ export async function decideSupportAction(input: { projectSlug: string; sessionI
   const decision = input?.decision as ClientDecision
   if (!DECISIONS.includes(decision) || typeof input.projectSlug !== 'string' || typeof input.sessionId !== 'string') return { ok: false }
 
-  const ctx = await getTenantAuthorizationContext()
-  if (!ctx || ctx.support) return { ok: false }
-  const grant = resolveProjectGrant(ctx.projects, input.projectSlug)
-  if (!grant || !can(ctx, 'users.manage', { kind: 'project', projectId: grant.projectId })) return { ok: false }
+  const access = await resolveProjectAction(input.projectSlug)
+  if (!access.ok || access.ctx.support) return { ok: false }
+  const { ctx, grant } = access
+  if (!can(ctx, 'users.manage', { kind: 'project', projectId: grant.projectId })) return { ok: false }
 
   const r = await decideSupportVisit({ userId: ctx.userId }, grant.projectId, input.sessionId, decision)
   refreshDashboard()

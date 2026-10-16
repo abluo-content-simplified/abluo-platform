@@ -9,8 +9,7 @@
  * suggestion the UI shows side by side (Accept → normal autosave).
  */
 
-import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
-import { resolveProjectGrant } from '@/lib/modules/client-navigation'
+import { resolveProjectAction } from '@/lib/api/project-action'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { improvePostBody, improvePostLine, PostAiError, type PostAiErrorCode } from '@/lib/api/post-ai'
 
@@ -23,10 +22,9 @@ export async function improvePostBodyAction(input: {
   locale: string
   blocks: unknown[]
 }): Promise<ImproveBodyResult> {
-  const ctx = await getTenantAuthorizationContext()
-  if (!ctx) return { ok: false, error: 'unauthenticated' }
-  const grant = resolveProjectGrant(ctx.projects, input?.projectSlug)
-  if (!grant) return { ok: false, error: 'forbidden' }
+  const access = await resolveProjectAction(input?.projectSlug)
+  if (!access.ok) return { ok: false, error: access.error }
+  const { ctx, grant } = access
   try {
     const { blocks } = await improvePostBody(ctx, grant.projectId, { locale: input.locale, blocks: input.blocks })
     return { ok: true, blocks }
@@ -47,10 +45,9 @@ export async function improvePostLineAction(input: {
   text: string
   title?: string
 }): Promise<ImproveLineActionResult> {
-  const ctx = await getTenantAuthorizationContext()
-  if (!ctx) return { ok: false, error: 'unauthenticated' }
-  const grant = resolveProjectGrant(ctx.projects, input?.projectSlug)
-  if (!grant) return { ok: false, error: 'forbidden' }
+  const access = await resolveProjectAction(input?.projectSlug)
+  if (!access.ok) return { ok: false, error: access.error }
+  const { ctx, grant } = access
   try {
     const { text } = await improvePostLine(ctx, grant.projectId, {
       locale: input.locale,

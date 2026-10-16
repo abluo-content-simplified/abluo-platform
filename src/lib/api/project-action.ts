@@ -26,10 +26,13 @@ export type ProjectActionAccess =
   | { ok: false; error: 'unauthenticated' | 'forbidden' }
 
 export async function resolveProjectAction(projectSlug: unknown): Promise<ProjectActionAccess> {
-  if (typeof projectSlug !== 'string' || projectSlug.length === 0) return { ok: false, error: 'forbidden' }
-  const ctx = await getTenantAuthorizationContext({ project: projectSlug })
+  // Identity first (an anonymous caller is 'unauthenticated' whatever it sent);
+  // a missing/non-string slug scopes to no project, so it resolves to 'forbidden'.
+  const project = typeof projectSlug === 'string' ? projectSlug : ''
+  const ctx = await getTenantAuthorizationContext({ project })
   if (!ctx) return { ok: false, error: 'unauthenticated' }
-  const grant = resolveProjectGrant(ctx.projects, projectSlug)
+  if (!project) return { ok: false, error: 'forbidden' }
+  const grant = resolveProjectGrant(ctx.projects, project)
   if (!grant) return { ok: false, error: 'forbidden' }
   return { ok: true, ctx, grant }
 }

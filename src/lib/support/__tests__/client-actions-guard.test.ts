@@ -98,7 +98,7 @@ describe('client-dashboard server actions go through the support-aware resolver'
 describe('the shared project-action helper', () => {
   it('resolves through getTenantAuthorizationContext with the default (mutation) purpose', () => {
     const src = readFileSync(join(process.cwd(), 'src', 'lib', 'api', 'project-action.ts'), 'utf8')
-    expect(src).toMatch(/getTenantAuthorizationContext\(\{\s*project:\s*projectSlug\s*\}\)/)
+    expect(src).toMatch(/getTenantAuthorizationContext\(\{\s*project\s*\}\)/)
     expect(src).not.toMatch(/purpose\s*:/)
   })
 })

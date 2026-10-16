@@ -12,8 +12,7 @@
  * read Sanity without the CDN, so the next request already sees the change.
  */
 
-import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
-import { resolveProjectGrant } from '@/lib/modules/client-navigation'
+import { resolveProjectAction } from '@/lib/api/project-action'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { PostDraftError } from '@/lib/api/post-drafts'
 import { publishPostDraft, PostPublishError, type PostPublishErrorCode } from '@/lib/api/post-publish'
@@ -38,10 +37,9 @@ export async function publishPostDraftAction(input: {
   publishAt?: string
   expiresAt?: string | null
 }): Promise<PublishDraftResult> {
-  const ctx = await getTenantAuthorizationContext()
-  if (!ctx) return { ok: false, error: 'unauthenticated' }
-  const grant = resolveProjectGrant(ctx.projects, input?.projectSlug)
-  if (!grant) return { ok: false, error: 'forbidden' }
+  const access = await resolveProjectAction(input?.projectSlug)
+  if (!access.ok) return { ok: false, error: access.error }
+  const { ctx, grant } = access
   try {
     const r = await publishPostDraft(ctx, grant.projectId, {
       id: input.id,

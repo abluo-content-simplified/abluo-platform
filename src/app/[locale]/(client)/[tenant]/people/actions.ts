@@ -8,8 +8,7 @@
  */
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
-import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
-import { resolveProjectGrant } from '@/lib/modules/client-navigation'
+import { resolveProjectAction } from '@/lib/api/project-action'
 import { createInvitation } from '@/lib/invitations/service'
 import {
   archiveProjectMember,
@@ -22,10 +21,8 @@ import {
 export type PeopleActionResult = { ok: true; emailSent?: boolean } | { ok: false; error: string }
 
 async function scope(projectSlug: string) {
-  const ctx = await getTenantAuthorizationContext()
-  if (!ctx) return null
-  const grant = resolveProjectGrant(ctx.projects, projectSlug)
-  return grant ? { ctx, grant } : null
+  const access = await resolveProjectAction(projectSlug)
+  return access.ok ? { ctx: access.ctx, grant: access.grant } : null
 }
 
 async function requestOrigin(): Promise<string | null> {

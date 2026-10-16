@@ -6,20 +6,18 @@
  * then checks `connections.manage` on the connection's OWN project and refuses
  * support mode. A connection id from another site answers `not_found`.
  */
-import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
+import { resolveProjectAction } from '@/lib/api/project-action'
 import { pauseConnection, resumeConnection, revokeConnection, type ManageResult } from '@/lib/connections/manage'
 import { createSupabaseConnectionsStore } from '@/lib/connections/supabase-store'
-import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 
 export type ConnectionActionResult = { ok: true } | { ok: false; error: string }
 
 type Input = { projectSlug: string; locale: string; connectionId: string }
 
 async function run(input: Input, fn: typeof pauseConnection | typeof resumeConnection | typeof revokeConnection): Promise<ConnectionActionResult> {
-  const ctx = await getTenantAuthorizationContext()
-  if (!ctx) return { ok: false, error: 'forbidden' }
-  const grant = resolveProjectGrant(ctx.projects, input.projectSlug)
-  if (!grant || typeof input.connectionId !== 'string') return { ok: false, error: 'forbidden' }
+  const access = await resolveProjectAction(input?.projectSlug)
+  if (!access.ok || typeof input.connectionId !== 'string') return { ok: false, error: 'forbidden' }
+  const { ctx, grant } = access
   const store = createSupabaseConnectionsStore()
   // The connection must belong to the site in the URL (not just any site the caller manages).
   const row = await store.getConnection(input.connectionId)

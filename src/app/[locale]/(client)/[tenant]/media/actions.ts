@@ -7,8 +7,8 @@
  */
 
 import { span, traced, withPerf, type PerfReport } from '@/lib/perf/timing'
-import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
-import { resolveProjectGrant } from '@/lib/modules/client-navigation'
+import { resolveProjectAction } from '@/lib/api/project-action'
+import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { MEDIA_MANAGE_PERMISSION } from '@/lib/api/media-permission'
 import { listMediaLibrary, type MediaLibraryItem } from '@/lib/api/media-library'
@@ -29,7 +29,7 @@ type Result<T> = ({ ok: true; perf?: PerfReport } & T) | { ok: false; error: Med
 
 async function run<T>(
   projectSlug: unknown,
-  fn: (ctx: NonNullable<Awaited<ReturnType<typeof getTenantAuthorizationContext>>>, projectId: string) => Promise<T>,
+  fn: (ctx: TenantAuthorizationContext, projectId: string) => Promise<T>,
   op = 'media.action'
 ): Promise<Result<T>> {
   // The resolver call stays in this function's body: the support-mode guard
@@ -37,10 +37,9 @@ async function run<T>(
   return traced(op, async (): Promise<Result<T>> =>
     withPerf(
       await (async (): Promise<Result<T>> => {
-        const ctx = await span('auth', () => getTenantAuthorizationContext())
-        if (!ctx) return { ok: false, error: 'unauthenticated' }
-        const grant = typeof projectSlug === 'string' ? resolveProjectGrant(ctx.projects, projectSlug) : null
-        if (!grant) return { ok: false, error: 'forbidden' }
+        const access = await span('auth', () => resolveProjectAction(projectSlug))
+        if (!access.ok) return { ok: false, error: access.error }
+        const { ctx, grant } = access
         try {
           return { ok: true, ...(await fn(ctx, grant.projectId)) }
         } catch (error) {

@@ -8,8 +8,7 @@
  * only picks one of the caller's own grants.
  */
 
-import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
-import { resolveProjectGrant } from '@/lib/modules/client-navigation'
+import { resolveProjectAction } from '@/lib/api/project-action'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { PostLinkSearchError, searchLinkTargets, type LinkTargetResult } from '@/lib/api/post-link-search'
 
@@ -21,10 +20,9 @@ export async function searchLinkTargetsAction(input: {
   query?: string
   ids?: string[]
 }): Promise<LinkSearchResult> {
-  const ctx = await getTenantAuthorizationContext()
-  if (!ctx) return { ok: false, error: 'unauthenticated' }
-  const grant = typeof input?.projectSlug === 'string' ? resolveProjectGrant(ctx.projects, input.projectSlug) : null
-  if (!grant) return { ok: false, error: 'forbidden' }
+  const access = await resolveProjectAction(input.projectSlug)
+  if (!access.ok) return { ok: false, error: access.error }
+  const { ctx, grant } = access
   try {
     return { ok: true, results: await searchLinkTargets(ctx, grant.projectId, { locale: input.locale, query: input.query, ids: input.ids }) }
   } catch (error) {

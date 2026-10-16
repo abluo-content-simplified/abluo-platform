@@ -7,8 +7,7 @@
  */
 
 import { headers } from 'next/headers'
-import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
-import { resolveProjectGrant } from '@/lib/modules/client-navigation'
+import { resolveProjectAction } from '@/lib/api/project-action'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { PostPreviewError, type DraftPreviewLink, type PostPreviewErrorCode } from '@/lib/api/post-preview'
 import { mintGalleryPreview } from '@/lib/api/gallery-preview'
@@ -22,10 +21,9 @@ export async function mintGalleryPreviewAction(input: {
   id: string
   pageId?: string | null
 }): Promise<GalleryPreviewResult> {
-  const ctx = await getTenantAuthorizationContext()
-  if (!ctx) return { ok: false, error: 'unauthenticated' }
-  const grant = typeof input?.projectSlug === 'string' ? resolveProjectGrant(ctx.projects, input.projectSlug) : null
-  if (!grant) return { ok: false, error: 'forbidden' }
+  const access = await resolveProjectAction(input.projectSlug)
+  if (!access.ok) return { ok: false, error: access.error }
+  const { ctx, grant } = access
   let host: string | null = null
   let proto: 'http' | 'https' = 'https'
   try {

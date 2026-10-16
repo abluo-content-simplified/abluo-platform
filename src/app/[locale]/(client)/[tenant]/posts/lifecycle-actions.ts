@@ -8,8 +8,8 @@
  * picks one of the caller's own grants. Failures collapse to opaque codes.
  */
 
-import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
-import { resolveProjectGrant } from '@/lib/modules/client-navigation'
+import { resolveProjectAction } from '@/lib/api/project-action'
+import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { PostDraftError, type PostDraftErrorCode, type PostLiveState } from '@/lib/api/post-drafts'
 import {
@@ -38,13 +38,12 @@ export type DoneResult = { ok: true } | Fail
 
 type Input = { projectSlug: string; id: string; rev: string }
 
-async function run<T>(projectSlug: string, fn: (ctx: NonNullable<Awaited<ReturnType<typeof getTenantAuthorizationContext>>>, projectId: string) => Promise<T>): Promise<
+async function run<T>(projectSlug: string, fn: (ctx: TenantAuthorizationContext, projectId: string) => Promise<T>): Promise<
   { ok: true; value: T } | Fail
 > {
-  const ctx = await getTenantAuthorizationContext()
-  if (!ctx) return { ok: false, error: 'unauthenticated' }
-  const grant = resolveProjectGrant(ctx.projects, projectSlug)
-  if (!grant) return { ok: false, error: 'forbidden' }
+  const access = await resolveProjectAction(projectSlug)
+  if (!access.ok) return { ok: false, error: access.error }
+  const { ctx, grant } = access
   try {
     return { ok: true, value: await fn(ctx, grant.projectId) }
   } catch (error) {

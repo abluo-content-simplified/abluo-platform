@@ -14,8 +14,7 @@
  * src/lib/client/upload-plan.ts), so TinyPNG compresses the original.
  */
 
-import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
-import { resolveProjectGrant } from '@/lib/modules/client-navigation'
+import { resolveProjectAction } from '@/lib/api/project-action'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import {
   getPostCover,
@@ -42,10 +41,9 @@ export type GetPostCoverResult = { ok: true; cover: PostCover | null } | { ok: f
 export type PostMediaStatusResult = { ok: true; items: MediaUploadStatus[] } | { ok: false; error: MediaActionError }
 
 async function resolve(projectSlug: unknown) {
-  const ctx = await getTenantAuthorizationContext()
-  if (!ctx) return { error: 'unauthenticated' as const }
-  const grant = typeof projectSlug === 'string' ? resolveProjectGrant(ctx.projects, projectSlug) : null
-  if (!grant) return { error: 'forbidden' as const }
+  const access = await resolveProjectAction(projectSlug)
+  if (!access.ok) return { error: access.error }
+  const { ctx, grant } = access
   return { ctx, grant }
 }
 

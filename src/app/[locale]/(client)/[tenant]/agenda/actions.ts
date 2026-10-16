@@ -8,8 +8,8 @@
  * picks one of the caller's own grants. Failures collapse to opaque codes.
  */
 
-import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
-import { resolveProjectGrant } from '@/lib/modules/client-navigation'
+import { resolveProjectAction } from '@/lib/api/project-action'
+import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import {
   createEvent,
@@ -28,11 +28,10 @@ import {
 export type EventActionError = 'unauthenticated' | EventErrorCode
 type Result<T> = ({ ok: true } & T) | { ok: false; error: EventActionError }
 
-async function run<T>(projectSlug: unknown, fn: (ctx: NonNullable<Awaited<ReturnType<typeof getTenantAuthorizationContext>>>, projectId: string) => Promise<T>): Promise<Result<T>> {
-  const ctx = await getTenantAuthorizationContext()
-  if (!ctx) return { ok: false, error: 'unauthenticated' }
-  const grant = typeof projectSlug === 'string' ? resolveProjectGrant(ctx.projects, projectSlug) : null
-  if (!grant) return { ok: false, error: 'forbidden' }
+async function run<T>(projectSlug: unknown, fn: (ctx: TenantAuthorizationContext, projectId: string) => Promise<T>): Promise<Result<T>> {
+  const access = await resolveProjectAction(projectSlug)
+  if (!access.ok) return { ok: false, error: access.error }
+  const { ctx, grant } = access
   try {
     return { ok: true, ...(await fn(ctx, grant.projectId)) }
   } catch (error) {

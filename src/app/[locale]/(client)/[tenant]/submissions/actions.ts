@@ -13,8 +13,7 @@
  */
 
 import { revalidatePath } from 'next/cache'
-import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
-import { resolveProjectGrant } from '@/lib/modules/client-navigation'
+import { resolveProjectAction } from '@/lib/api/project-action'
 import {
   deleteSubmissions,
   SUBMISSION_BATCH_MAX,
@@ -43,11 +42,9 @@ export async function setSubmissionStatusAction(input: SetStatusInput): Promise<
 
   if (!ALLOWED.includes(status)) return { ok: false, error: 'invalid_status' }
 
-  const ctx = await getTenantAuthorizationContext()
-  if (!ctx) return { ok: false, error: 'unauthenticated' }
-
-  const grant = resolveProjectGrant(ctx.projects, projectSlug)
-  if (!grant) return { ok: false, error: 'forbidden' }
+  const access = await resolveProjectAction(projectSlug)
+  if (!access.ok) return { ok: false, error: access.error }
+  const { ctx, grant } = access
 
   try {
     await updateSubmissionStatus(ctx, grant.projectId, submissionId, status)
@@ -79,10 +76,9 @@ async function resolveBatch(input: BatchInput) {
   if (ids.length === 0 || ids.length > SUBMISSION_BATCH_MAX || !ids.every((i) => typeof i === 'string')) {
     return { error: 'invalid_input' as const }
   }
-  const ctx = await getTenantAuthorizationContext()
-  if (!ctx) return { error: 'unauthenticated' as const }
-  const grant = resolveProjectGrant(ctx.projects, input.projectSlug)
-  if (!grant) return { error: 'forbidden' as const }
+  const access = await resolveProjectAction(input.projectSlug)
+  if (!access.ok) return { error: access.error }
+  const { ctx, grant } = access
   return { ctx, projectId: grant.projectId, ids }
 }
 

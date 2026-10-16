@@ -10,8 +10,7 @@
  */
 
 import { headers } from 'next/headers'
-import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
-import { resolveProjectGrant } from '@/lib/modules/client-navigation'
+import { resolveProjectAction } from '@/lib/api/project-action'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { mintDraftPreview, PostPreviewError, type DraftPreviewLink, type PostPreviewErrorCode } from '@/lib/api/post-preview'
 
@@ -19,10 +18,9 @@ export type PreviewActionError = 'unauthenticated' | PostPreviewErrorCode
 export type MintPreviewResult = ({ ok: true } & DraftPreviewLink) | { ok: false; error: PreviewActionError }
 
 export async function mintDraftPreviewAction(input: { projectSlug: string; id: string }): Promise<MintPreviewResult> {
-  const ctx = await getTenantAuthorizationContext()
-  if (!ctx) return { ok: false, error: 'unauthenticated' }
-  const grant = typeof input?.projectSlug === 'string' ? resolveProjectGrant(ctx.projects, input.projectSlug) : null
-  if (!grant) return { ok: false, error: 'forbidden' }
+  const access = await resolveProjectAction(input.projectSlug)
+  if (!access.ok) return { ok: false, error: access.error }
+  const { ctx, grant } = access
   try {
     const h = await headers()
     const host = h.get('x-forwarded-host') ?? h.get('host')

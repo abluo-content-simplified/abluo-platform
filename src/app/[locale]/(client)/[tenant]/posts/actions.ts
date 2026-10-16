@@ -9,8 +9,7 @@
  * small set of opaque codes the autosave UI understands.
  */
 
-import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
-import { resolveProjectGrant } from '@/lib/modules/client-navigation'
+import { resolveProjectAction } from '@/lib/api/project-action'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { createPostDraft, patchPostDraft, PostDraftError, type PostDraftErrorCode } from '@/lib/api/post-drafts'
 
@@ -20,10 +19,9 @@ export type CreateDraftResult = { ok: true; id: string; rev: string } | { ok: fa
 export type PatchDraftResult = { ok: true; rev: string } | { ok: false; error: DraftActionError }
 
 async function resolve(projectSlug: string) {
-  const ctx = await getTenantAuthorizationContext()
-  if (!ctx) return { error: 'unauthenticated' as const }
-  const grant = resolveProjectGrant(ctx.projects, projectSlug)
-  if (!grant) return { error: 'forbidden' as const }
+  const access = await resolveProjectAction(projectSlug)
+  if (!access.ok) return { error: access.error }
+  const { ctx, grant } = access
   return { ctx, grant }
 }
 

@@ -7,8 +7,7 @@
  * caller's own grants. Failures collapse to opaque codes.
  */
 
-import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
-import { resolveProjectGrant } from '@/lib/modules/client-navigation'
+import { resolveProjectAction } from '@/lib/api/project-action'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { PostDraftError } from '@/lib/api/post-drafts'
 import { getPostActivity, type PostActivity } from '@/lib/api/post-activity'
@@ -16,10 +15,9 @@ import { getPostActivity, type PostActivity } from '@/lib/api/post-activity'
 export type PostActivityResult = ({ ok: true } & PostActivity) | { ok: false; error: 'unauthenticated' | 'forbidden' | 'not_found' | 'failed' }
 
 export async function getPostActivityAction(input: { projectSlug: string; id: string }): Promise<PostActivityResult> {
-  const ctx = await getTenantAuthorizationContext()
-  if (!ctx) return { ok: false, error: 'unauthenticated' }
-  const grant = typeof input?.projectSlug === 'string' ? resolveProjectGrant(ctx.projects, input.projectSlug) : null
-  if (!grant) return { ok: false, error: 'forbidden' }
+  const access = await resolveProjectAction(input.projectSlug)
+  if (!access.ok) return { ok: false, error: access.error }
+  const { ctx, grant } = access
   try {
     return { ok: true, ...(await getPostActivity(ctx, grant.projectId, input.id)) }
   } catch (error) {
