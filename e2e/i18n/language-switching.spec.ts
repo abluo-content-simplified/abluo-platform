@@ -30,11 +30,54 @@ import { targets, localeSegments, type Target } from './targets'
 
 const SITES = targets()
 
-/** Open the switcher that matches `where` and choose `locale`. Returns false if absent. */
-async function switchTo(page: Page, locale: string, where: 'header' | 'footer'): Promise<boolean> {
+/**
+ * Open the switcher that matches `where` and choose `locale`. Returns false if
+ * this site does not have that switcher.
+ *
+ * There are THREE switchers, not two, and they do not share markup:
+ *   header — a dropdown, scoped by [data-lang-switch], options are native names
+ *            ("Italiano"). Hidden below the md breakpoint.
+ *   drawer — inside the mobile menu, which must be opened first via the
+ *            hamburger. Plain buttons labelled with the locale CODE ("IT"),
+ *            no [data-lang-switch] and no aria-haspopup. While the drawer is
+ *            shut its container carries aria-hidden, so every control inside
+ *            it is invisible to the browser and to us.
+ *   footer — a dropdown like the header's, but routing to the site root by
+ *            design (preservePath: false), so it cannot stack a prefix.
+ *
+ * The first version of this helper knew only about the header one and timed
+ * out on every phone run — a defect in the test, not in the site. Mobile is
+ * where the reported failure was seen, so the phone project has to drive the
+ * control a phone actually shows.
+ */
+async function switchTo(
+  page: Page,
+  locale: string,
+  where: 'header' | 'drawer' | 'footer'
+): Promise<boolean> {
+  if (where === 'drawer') {
+    const hamburger = page.locator('button[aria-label="Open menu"]').first()
+    if ((await hamburger.count()) === 0 || !(await hamburger.isVisible())) return false
+    await hamburger.click()
+    // getByRole reads the accessibility tree, which is exactly the filter we
+    // need: while the drawer is shut its container is aria-hidden, so its
+    // buttons are not in the tree — and neither is the header switcher, which
+    // CSS hides at this width. So this matches the drawer's button and only
+    // once the panel is actually open.
+    const option = page.getByRole('button', { name: CODE[locale], exact: true }).first()
+    try {
+      await option.waitFor({ state: 'visible', timeout: 5000 })
+    } catch {
+      return false
+    }
+    await option.click()
+    await page.waitForLoadState('load')
+    return true
+  }
+
   const scope = where === 'header' ? page.locator('[data-lang-switch]') : page.locator('footer')
   const toggle = scope.locator('button[aria-haspopup="listbox"]').first()
-  if ((await toggle.count()) === 0) return false
+  if ((await toggle.count()) === 0 || !(await toggle.isVisible())) return false
 
   await toggle.scrollIntoViewIfNeeded()
   await toggle.click()
@@ -49,10 +92,20 @@ async function switchTo(page: Page, locale: string, where: 'header' | 'footer'):
   return true
 }
 
+/** Whichever primary switcher this viewport actually shows. */
+async function switchToPrimary(page: Page, locale: string): Promise<boolean> {
+  if (await switchTo(page, locale, 'header')) return true
+  return switchTo(page, locale, 'drawer')
+}
+
 const NATIVE: Record<string, string> = {
   en: 'English', it: 'Italiano', de: 'Deutsch', fr: 'Français',
   es: 'Español', nl: 'Nederlands', pt: 'Português',
 }
+/** LOCALE_LABELS — the drawer switcher labels its buttons with these. */
+const CODE: Record<string, string> = Object.fromEntries(
+  Object.keys(NATIVE).map((l) => [l, l.toUpperCase()])
+)
 
 /** Everything that must agree about the locale, read off the live page. */
 async function observe(page: Page, site: Target) {
@@ -83,9 +136,9 @@ for (const site of SITES) {
       // second switch — which is exactly how this bug behaved — is caught.
       const order = [...site.locales, ...site.locales]
       for (const locale of order) {
-        const switched = await switchTo(page, locale, 'header')
+        const switched = await switchToPrimary(page, locale)
         if (!switched) {
-          test.skip(true, `${site.project} has no header switcher`)
+          test.skip(true, `${site.project} has no header or drawer switcher`)
           return
         }
         const seen = await observe(page, site)
@@ -103,8 +156,8 @@ for (const site of SITES) {
       // Test group 2. The original defect ONLY showed on routes without a
       // localized slug, because every other route takes the slugMap branch.
       const other = site.locales.find((l) => l !== site.defaultLocale)!
-      const switched = await switchTo(page, other, 'header')
-      if (!switched) { test.skip(true, 'no header switcher'); return }
+      const switched = await switchToPrimary(page, other)
+      if (!switched) { test.skip(true, 'no header or drawer switcher'); return }
 
       const seen = await observe(page, site)
       expect(seen.segments).toEqual([other])
@@ -130,8 +183,8 @@ for (const site of SITES) {
       const before = await observe(page, site)
 
       const other = site.locales.find((l) => l !== site.defaultLocale)!
-      const switched = await switchTo(page, other, 'header')
-      if (!switched) { test.skip(true, 'no header switcher'); return }
+      const switched = await switchToPrimary(page, other)
+      if (!switched) { test.skip(true, 'no header or drawer switcher'); return }
 
       const after = await observe(page, site)
       expect(after.segments, `sub-page switch to ${other}: ${after.url}`).toEqual([other])
@@ -146,7 +199,7 @@ for (const site of SITES) {
       // reach a language it does not publish.
       const scope = page.locator('[data-lang-switch]')
       const toggle = scope.locator('button[aria-haspopup="listbox"]').first()
-      if ((await toggle.count()) === 0) { test.skip(true, 'no header switcher'); return }
+      if ((await toggle.count()) === 0) { test.skip(true, 'no header or drawer switcher'); return }
       await toggle.click()
 
       const labels = (await scope.locator('div button').allTextContents())
@@ -162,8 +215,8 @@ for (const site of SITES) {
       // Test group 6. A locale that only survives client-side navigation is
       // not fixed; the server has to agree.
       const other = site.locales.find((l) => l !== site.defaultLocale)!
-      const switched = await switchTo(page, other, 'header')
-      if (!switched) { test.skip(true, 'no header switcher'); return }
+      const switched = await switchToPrimary(page, other)
+      if (!switched) { test.skip(true, 'no header or drawer switcher'); return }
 
       await page.reload({ waitUntil: 'load' })
       let seen = await observe(page, site)
