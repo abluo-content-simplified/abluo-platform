@@ -16,6 +16,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import type { StepProps } from '@/components/client/create/types'
 import {
   listProjectMediaAction,
+  postMediaStatusAction,
   setPostCoverAction,
   uploadPostImageAction,
   type MediaActionError,
@@ -47,12 +48,24 @@ export type CoverStepProps = StepProps & {
    * the person did. Must NOT queue autosave (`cover` is not an autosave path).
    */
   onCoverChange?: (cover: CoverValue | null) => void
+  /**
+   * ADR-035: true while a new photo is uploading / being optimised. The
+   * person can already describe it and set its focus point (kept locally,
+   * written with the cover once ready); the shell holds Next/Back meanwhile.
+   */
+  onPendingChange?: (pending: boolean) => void
   /** Legacy wiring — used only when `flush` / `onServerWrite` are not passed. */
   getRev?: () => string | null | Promise<string | null>
   onRevChange?: (newRev: string) => void
 }
 
-type Phase = 'idle' | 'preparing' | 'uploading' | 'saving'
+type Phase = 'idle' | 'preparing' | 'uploading' | 'processing' | 'saving'
+/** How often a background upload is checked, and when it is given up on. */
+const POLL_MS = 1500
+const GIVE_UP_MS = 2 * 60 * 1000
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+/** A Sanity CDN image at a width; a local preview (blob:) as is. */
+export const sizedSrc = (url: string, width: number) => (url.startsWith('blob:') ? url : `${url}?w=${width}&auto=format`)
 type Notice = { kind: 'error' | 'status'; text: string } | null
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'failed'
 type LibraryItem = { assetId: string; url: string; thumbUrl: string; alt: Record<string, string>; focal: FocalPoint | null }
@@ -81,7 +94,7 @@ function useTouchDevice(): boolean | null {
  * description" gate) live in the shell.
  */
 export function CoverStep(props: CoverStepProps) {
-  const { draft, site, altNeeded, flush, onServerWrite, onCoverChange, getRev, onRevChange } = props
+  const { draft, site, altNeeded, flush, onServerWrite, onCoverChange, onPendingChange, getRev, onRevChange } = props
   const t = useTranslations('clientDashboard.create.cover')
   const viewerLocale = useLocale()
   const uid = useId()
@@ -100,6 +113,16 @@ export function CoverStep(props: CoverStepProps) {
   const [lastEdited, setLastEdited] = useState<'alt' | 'focal'>('alt')
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
+  /** A new photo on its way (ADR-035): its local preview, shown and editable before the cover exists. */
+  const [pending, setPending] = useState<{ preview: string } | null>(null)
+  const pendingRef = useRef(false)
+  const alive = useRef(true)
+  useEffect(() => {
+    alive.current = true
+    return () => {
+      alive.current = false
+    }
+  }, [])
 
   // Latest values for queued / debounced writes (they run after re-renders).
   const coverRef = useRef(cover)
@@ -119,7 +142,9 @@ export function CoverStep(props: CoverStepProps) {
   const altFieldRef = useRef<HTMLTextAreaElement>(null)
 
   const busy = phase !== 'idle'
-  const showNeeded = !!altNeeded && !!cover && !(alt[defaultLocale] ?? '').trim()
+  /** What the editor shows: the cover, or the photo still on its way. */
+  const shown: CoverValue | null = pending ? { assetId: '', url: pending.preview, alt, focal } : cover
+  const showNeeded = !!altNeeded && !!cover && !pending && !(alt[defaultLocale] ?? '').trim()
 
   useEffect(() => {
     if (showNeeded) altFieldRef.current?.focus()
@@ -197,10 +222,10 @@ export function CoverStep(props: CoverStepProps) {
   )
 
   /** Makes a photo the cover right away. */
-  const applyCover = async (target: { assetId: string; url: string }, startAlt: Record<string, string>, message?: string) => {
+  const applyCover = async (target: { assetId: string; url: string }, startAlt: Record<string, string>, message?: string, startFocal?: FocalPoint) => {
     cancelPendingSave()
     setPhase('saving')
-    const saved = await writeCover(target, startAlt)
+    const saved = await writeCover(target, startAlt, startFocal)
     setPhase('idle')
     if (saved === undefined) return
     coverRef.current = saved
@@ -228,28 +253,83 @@ export function CoverStep(props: CoverStepProps) {
       return setNotice({ kind: 'error', text: errorText(code) })
     }
 
+    // ADR-035: the new photo is shown at once and can be described and
+    // focused while it uploads and is optimised; the cover is written with
+    // those once the photo is ready. A pending edit of the previous cover is
+    // sent first.
+    if (debounceRef.current) saveNow()
+    let preview = ''
+    try {
+      preview = URL.createObjectURL(prepared)
+    } catch {
+      preview = ''
+    }
+    if (preview) {
+      pendingRef.current = true
+      altRef.current = {}
+      focalRef.current = null
+      setAlt({})
+      setFocal(null)
+      setPending({ preview })
+      onPendingChange?.(true)
+    }
+    const endPending = () => {
+      pendingRef.current = false
+      setPending(null)
+      onPendingChange?.(false)
+      if (preview) URL.revokeObjectURL(preview)
+    }
+
     setPhase('uploading')
     const form = new FormData()
     form.set('projectSlug', site.projectSlug)
     form.set('file', prepared)
+    form.set('background', '1')
     let uploaded: { assetId: string; url: string } | null = null
     let message: string | undefined
     try {
       const r = await uploadPostImageAction(form)
       if (!r.ok) setNotice({ kind: 'error', text: errorText(r.error) })
       else {
-        uploaded = { assetId: r.assetId, url: r.url }
-        // "Before" is the photo the person chose, even if the browser had to resize it.
-        message = r.optimized
-          ? t('optimised', { before: formatBytes(file.size, viewerLocale), after: formatBytes(r.bytesAfter, viewerLocale) })
-          : t('notOptimised')
+        let ready: { url: string; optimized: boolean; bytesAfter: number | null } | null = r.status === 'ready' ? r : null
+        if (!ready) {
+          if (alive.current) setPhase('processing')
+          for (let attempt = 0; alive.current && !ready && attempt < GIVE_UP_MS / POLL_MS; attempt++) {
+            await sleep(POLL_MS)
+            const s = await postMediaStatusAction({ projectSlug: site.projectSlug, assetIds: [r.assetId] }).catch(() => null)
+            const item = s?.ok ? s.items.find((i) => i.assetId === r.assetId) : undefined
+            if (item?.status === 'failed') break
+            if (item?.status === 'ready') ready = item
+          }
+        }
+        if (!alive.current) return
+        if (!ready) setNotice({ kind: 'error', text: errorText('generic') })
+        else {
+          uploaded = { assetId: r.assetId, url: ready.url }
+          // "Before" is the photo the person chose, even if the browser had to resize it.
+          message = ready.optimized
+            ? t('optimised', { before: formatBytes(file.size, viewerLocale), after: formatBytes(ready.bytesAfter ?? 0, viewerLocale) })
+            : t('notOptimised')
+        }
       }
     } catch {
       // A body over the server-action limit, or the network, lands here.
       setNotice({ kind: 'error', text: errorText('generic') })
     }
+    if (!alive.current) return
     setPhase('idle')
-    if (uploaded) await applyCover(uploaded, {}, message)
+    // What was typed and placed while it was on its way goes with the cover.
+    const typedAlt = cleanAlt(altRef.current)
+    const placed = focalRef.current ?? undefined
+    endPending()
+    if (uploaded) await applyCover(uploaded, typedAlt, message, placed)
+    else if (preview) {
+      // Nothing to attach it to: back to the cover as it was.
+      altRef.current = coverRef.current?.alt ?? {}
+      focalRef.current = coverRef.current?.focal ?? null
+      setAlt(altRef.current)
+      setFocal(focalRef.current)
+    }
   }
 
   const choose = (item: LibraryItem) => {
@@ -325,7 +405,8 @@ export function CoverStep(props: CoverStepProps) {
     altRef.current = next
     setAlt(next)
     const target = coverRef.current
-    if (!target) return
+    // While a new photo is on its way, edits stay local until it is the cover.
+    if (!target || pendingRef.current) return
     // Local snapshot at once (Next gating), server write after a pause.
     onCoverChange?.({ ...target, alt: cleanAlt(next), focal: focalRef.current })
     schedule('alt')
@@ -335,7 +416,7 @@ export function CoverStep(props: CoverStepProps) {
     focalRef.current = point
     setFocal(point)
     const target = coverRef.current
-    if (!target) return
+    if (!target || pendingRef.current) return
     onCoverChange?.({ ...target, alt: cleanAlt(altRef.current), focal: point })
     schedule('focal')
   }
@@ -416,7 +497,7 @@ export function CoverStep(props: CoverStepProps) {
         </p>
       )}
 
-      {!cover ? (
+      {!shown ? (
         <>
           <div role="group" aria-label={t('choices.label')} className="mt-8 grid grid-cols-2 gap-3">
             {touch === null ? (
@@ -453,7 +534,7 @@ export function CoverStep(props: CoverStepProps) {
       ) : (
         <div className="mt-8">
           <FocalPicker
-            url={cover.url}
+            url={shown.url}
             alt={cleanAlt(alt)[defaultLocale] ?? ''}
             point={focal}
             onChange={changeFocal}
@@ -546,13 +627,15 @@ export function CoverStep(props: CoverStepProps) {
           ? t('preparing')
           : phase === 'uploading'
             ? t('uploading')
-            : phase === 'saving'
+            : phase === 'processing'
+              ? t('processing')
+              : phase === 'saving'
               ? t('saving')
               : notice?.text}
       </p>
-      {(phase === 'preparing' || phase === 'uploading') && (
+      {(phase === 'preparing' || phase === 'uploading' || phase === 'processing') && (
         <div className="h-1 w-full overflow-hidden rounded-full bg-muted" aria-hidden="true">
-          <div className={`h-full animate-pulse rounded-full bg-action transition-all ${phase === 'uploading' ? 'w-2/3' : 'w-1/4'}`} />
+          <div className={`h-full animate-pulse rounded-full bg-action transition-all ${phase === 'processing' ? 'w-5/6' : phase === 'uploading' ? 'w-2/3' : 'w-1/4'}`} />
         </div>
       )}
 
@@ -650,7 +733,7 @@ function FocalPicker({
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- Sanity CDN URL, sized by the CDN */}
-        <img src={`${url}?w=1200&auto=format`} alt={alt} width="1200" height="800" draggable={false} className="block h-auto w-full" />
+        <img src={sizedSrc(url, 1200)} alt={alt} width="1200" height="800" draggable={false} className="block h-auto w-full" />
         <div
           role="slider"
           tabIndex={0}
@@ -682,7 +765,7 @@ function FocalPicker({
             <div className={`h-20 overflow-hidden rounded-lg border border-border bg-muted ${p.className}`}>
               {/* eslint-disable-next-line @next/next/no-img-element -- Sanity CDN thumbnail */}
               <img
-                src={`${url}?w=480&auto=format`}
+                src={sizedSrc(url, 480)}
                 alt=""
                 width="160"
                 height="90"

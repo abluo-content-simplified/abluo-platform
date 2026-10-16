@@ -19,10 +19,12 @@ import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import {
   getPostCover,
+  getProjectMediaStatus,
   listProjectMedia,
   PostMediaError,
   setPostCover,
   uploadPostImage,
+  type MediaUploadStatus,
   type PostCover,
   type PostMediaErrorCode,
   type ProjectMediaItem,
@@ -37,6 +39,7 @@ export type ListProjectMediaResult =
   | { ok: false; error: MediaActionError }
 export type SetPostCoverResult = { ok: true; rev: string; cover: PostCover | null } | { ok: false; error: MediaActionError }
 export type GetPostCoverResult = { ok: true; cover: PostCover | null } | { ok: false; error: MediaActionError }
+export type PostMediaStatusResult = { ok: true; items: MediaUploadStatus[] } | { ok: false; error: MediaActionError }
 
 async function resolve(projectSlug: unknown) {
   const ctx = await getTenantAuthorizationContext()
@@ -52,14 +55,25 @@ function toError(error: unknown): MediaActionError {
   return 'failed'
 }
 
-/** FormData: `projectSlug`, `file`. */
+/** FormData: `projectSlug`, `file`, optional `background=1` (ADR-035: answer once the record exists; poll `postMediaStatusAction`). */
 export async function uploadPostImageAction(formData: FormData): Promise<UploadPostImageResult> {
   const r = await resolve(formData?.get?.('projectSlug'))
   if ('error' in r) return { ok: false, error: r.error! }
   const file = formData.get('file')
   if (!(file instanceof File)) return { ok: false, error: 'invalid_value' }
   try {
-    return { ok: true, ...(await uploadPostImage(r.ctx, r.grant.projectId, file)) }
+    return { ok: true, ...(await uploadPostImage(r.ctx, r.grant.projectId, file, {}, { background: formData.get('background') === '1' })) }
+  } catch (error) {
+    return { ok: false, error: toError(error) }
+  }
+}
+
+/** Where a background cover upload is (ADR-035). */
+export async function postMediaStatusAction(input: { projectSlug: string; assetIds: string[] }): Promise<PostMediaStatusResult> {
+  const r = await resolve(input?.projectSlug)
+  if ('error' in r) return { ok: false, error: r.error! }
+  try {
+    return { ok: true, ...(await getProjectMediaStatus(r.ctx, r.grant.projectId, input?.assetIds)) }
   } catch (error) {
     return { ok: false, error: toError(error) }
   }

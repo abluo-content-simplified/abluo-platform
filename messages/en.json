@@ -770,7 +770,8 @@
             "square": "Social",
             "tall": "Phone"
           }
-        }
+        },
+        "processing": "Optimising… you can describe it meanwhile."
       },
       "type": {
         "title": "What would you like to create?",
@@ -813,7 +814,8 @@
         "language": "Writing in {language}",
         "skip": "Skip for now",
         "done": "Done",
-        "close": "Close"
+        "close": "Close",
+        "finishingPhoto": "Finishing your photo…"
       },
       "save": {
         "saving": "Saving…",
@@ -1602,6 +1604,15 @@
         "addTags": "Add tags",
         "rename": "Rename",
         "original": "Open original"
+      },
+      "editSheet": {
+        "title": "Photo details",
+        "loading": "Loading…",
+        "error": "This photo couldn't be loaded."
+      },
+      "uploads": {
+        "stillUploading": "{count, plural, one {Finishing # photo…} other {Finishing # photos…}}",
+        "addedToLibrary": "{count, plural, one {# photo added to your Media Library.} other {# photos added to your Media Library.}}"
       }
     },
     "photoWizard": {
@@ -2271,6 +2282,17 @@
         "gap": "That time doesn’t exist that day (clocks go forward) — it will be {date}.",
         "overlap": "That time happens twice that day (clocks go back) — the first one is used: {date} ({offset}).",
         "mustBeFuture": "Pick a date and time in the future."
+      },
+      "publish": {
+        "title": "What do you want to do with it?",
+        "now": "Publish now",
+        "nowHelp": "It’s published on your website straight away.",
+        "schedule": "Schedule",
+        "scheduleHelp": "Pick the day and time it should appear.",
+        "draft": "Keep as draft",
+        "draftHelp": "Nothing is published. You can continue any time.",
+        "expire": "Unpublish automatically",
+        "expireHelp": "Useful for offers or news with an end date."
       },
       "deletePermanently": {
         "title": "{count, plural, one {Delete “{title}” permanently?} other {Delete # items permanently?}}",
@@ -3443,7 +3465,7 @@
           "makeMain": "Make main",
           "remove": "Remove photo",
           "none": "No photo yet. Items look better with one.",
-          "choose": "Choose from the media library"
+          "edit": "Description and focus point"
         },
         "price": {
           "everywhere": "Same price everywhere else",

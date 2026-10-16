@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useUploadOwner } from '@/components/client/media/use-media-uploads'
 import { useLocale, useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/navigation'
 import { PageHeader } from '@/components/app/ui/PageHeader'
@@ -70,6 +71,18 @@ export function ItemEditor({
   const readOnly = archived || !can.write
   const draft = useCatalogueDraft({ projectSlug, kind: 'item', initialId: snapshot.id, initialRev: snapshot.rev, hasDraft: snapshot.hasDraft, defaultLocale: d })
   const item = useItemState({ initial, initialPhotos: snapshot.photos.map((p) => ({ assetId: p.assetId, thumbUrl: p.thumbUrl })), channels, optionCounts, defaultLocale: d, update: readOnly ? () => undefined : draft.update })
+  // ADR-035: photos still uploading when the person switches tab join the item when ready; Publish waits for them.
+  const uploadOwner = `catalogue-item:${useId()}`
+  const photosRef = useRef(item.photos)
+  useEffect(() => {
+    photosRef.current = item.photos
+  }, [item.photos])
+  const { inFlight: photosInFlight } = useUploadOwner(uploadOwner, (p) => {
+    const current = photosRef.current
+    if (current.length >= 10 || current.some((x) => x.assetId === p.assetId)) return
+    item.setPhotos([...current, { assetId: p.assetId, thumbUrl: p.thumbUrl }])
+  })
+  const tu = useTranslations('clientDashboard.media.uploads')
   const { s } = item
   const stray = useStrayAddress(item.setSlug)
   const setName = (l: string, v: string) => {
@@ -200,8 +213,8 @@ export function ItemEditor({
   ]
 
   const primary = !readOnly ? (
-    <button type="button" disabled={busy || !canPublish} onClick={() => void publish(isLive ? 'keep' : 'now')} className={CAT_PRIMARY}>
-      {isLive ? t('publishChanges') : t('publish')}
+    <button type="button" disabled={busy || !canPublish || photosInFlight > 0} onClick={() => void publish(isLive ? 'keep' : 'now')} className={CAT_PRIMARY}>
+      {photosInFlight > 0 ? tu('stillUploading', { count: photosInFlight }) : isLive ? t('publishChanges') : t('publish')}
     </button>
   ) : null
 
@@ -272,7 +285,7 @@ export function ItemEditor({
           </>
         ) : current === 'photos' ? (
           <FieldBlock title={tf('photo.title')} helper={tf('photo.helper')}>
-            <PhotoField projectSlug={projectSlug} defaultLocale={d} photos={item.photos} onChange={item.setPhotos} />
+            <PhotoField projectSlug={projectSlug} defaultLocale={d} languages={site.locales} photos={item.photos} onChange={item.setPhotos} uploadOwner={uploadOwner} />
           </FieldBlock>
         ) : current === 'prices' ? (
           <FieldBlock title={tf('price.title')} helper={tf('price.helper')}>
@@ -304,7 +317,7 @@ export function ItemEditor({
             {!readOnly && !isLive ? (
               <FieldBlock title={tl('dates.publishOn')} helper={t('scheduleHelp')}>
                 <PublicationDateField id="item-editor-publish-on" label={tl('dates.publishOn')} value={publishAt} onChange={setPublishAt} zone={zone} inputClassName={CAT_INPUT} />
-                <button type="button" disabled={busy || !publishAt || !canPublish} onClick={() => void publish('schedule')} className={CAT_PRIMARY}>
+                <button type="button" disabled={busy || !publishAt || !canPublish || photosInFlight > 0} onClick={() => void publish('schedule')} className={CAT_PRIMARY}>
                   {t('schedule')}
                 </button>
               </FieldBlock>

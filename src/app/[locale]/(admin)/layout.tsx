@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { AdminSidebar } from '@/components/admin/AdminSidebar'
 import { AppRoot } from '@/components/app/AppRoot'
+import { UploadsProvider } from '@/components/client/media/UploadsProvider'
 import { resolveAdminAccess } from '@/lib/api/auth'
 import { getViewerAccount } from '@/lib/api/viewer-account'
 import { APP_TEXT_SIZE_COOKIE, APP_THEME_COOKIE, parseAppTextSize, parseAppTheme } from '@/lib/app-theme'
@@ -31,6 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <AppRoot surface="admin">
+      <UploadsProvider>
       <div className="min-h-screen md:flex">
         <AdminSidebar
           account={{
@@ -48,6 +50,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <main className="p-4 md:p-6">{children}</main>
         </div>
       </div>
+      </UploadsProvider>
     </AppRoot>
   )
 }

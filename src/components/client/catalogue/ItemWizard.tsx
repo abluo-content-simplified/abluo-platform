@@ -1,12 +1,11 @@
 'use client'
 
-import { useCallback, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/navigation'
 import { WizardFrame } from '@/components/client/create/WizardFrame'
 import { StepHeading } from '@/components/client/create/StepHeading'
-import { ChoiceCard, ChoiceCardGrid } from '@/components/app/ui/ChoiceCard'
-import { PublicationDateField } from '@/components/app/lifecycle/PublicationDateField'
+import { PublishChoice, publishChoiceDates, type PublishChoiceValue } from '@/components/app/lifecycle/PublishChoice'
 import { editingZone } from '@/components/app/lifecycle/zoned-time'
 import type { CatalogueSite } from '@/lib/api/catalogue-drafts'
 import { NOT_REVIEWED, canAdvanceItem, initialItemProfile, itemOptionsRelevant, itemWizardSteps, type ItemProfile, type ItemState, type ItemStep } from '@/lib/modules/catalogue/dashboard-form'
@@ -17,8 +16,8 @@ import { useCatalogueDraft, type PublishMode } from './use-catalogue-draft'
 import { StrayAddressNotice, useStrayAddress } from './stray-address'
 import { languageName } from '@/components/client/create/StepHeading'
 import { useItemState } from './use-item-state'
+import { useUploadOwner } from '@/components/client/media/use-media-uploads'
 
-type Choice = 'now' | 'schedule' | 'draft'
 type Done = { kind: 'live' } | { kind: 'scheduled'; at: string } | { kind: 'draft' }
 
 /**
@@ -56,6 +55,18 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
   const item = useItemState({ initial, initialPhotos: [], channels, optionCounts, defaultLocale: d, update: draft.update })
   const { s } = item
   const stray = useStrayAddress(item.setSlug)
+  // ADR-035: photos still uploading when the person moves on join the item when ready; Publish waits for them.
+  const uploadOwner = `catalogue-item:${useId()}`
+  const photosRef = useRef(item.photos)
+  useEffect(() => {
+    photosRef.current = item.photos
+  }, [item.photos])
+  const { inFlight: photosInFlight } = useUploadOwner(uploadOwner, (p) => {
+    const current = photosRef.current
+    if (current.length >= 10 || current.some((x) => x.assetId === p.assetId)) return
+    item.setPhotos([...current, { assetId: p.assetId, thumbUrl: p.thumbUrl }])
+  })
+  const tu = useTranslations('clientDashboard.media.uploads')
   const setName = (l: string, v: string) => {
     item.setText('name', l, v)
     stray.onNameChange(l, v, s.slug[l])
@@ -66,8 +77,8 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
     itemWizardSteps({ itemProfile, categoryCount: site.config.categories.length, locales: site.locales, showOptions: itemOptionsRelevant({ itemProfile, attachedCount, projectListCount: optionLists.length }) })
   const steps = stepsFor(s.itemProfile, s.options.length)
   const [step, setStep] = useState<ItemStep | 'done'>(steps[0])
-  const [choice, setChoice] = useState<Choice>('now')
-  const [publishAt, setPublishAt] = useState<string | null>(null)
+  const [publish, setPublish] = useState<PublishChoiceValue>({ mode: 'now', publishAt: null, expire: false, unpublishAt: null })
+  const choice = publish.mode
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState<Done | null>(null)
@@ -117,9 +128,11 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
         setDone({ kind: 'draft' })
         return go('done')
       }
+      const { publishAt, expiresAt } = publishChoiceDates(publish)
       if (choice === 'schedule' && !publishAt) return setError(tl('dates.mustBeFuture'))
+      if (publish.expire && !expiresAt) return setError(tl('dates.mustBeFuture'))
       const mode: PublishMode = choice === 'schedule' ? 'schedule' : 'now'
-      const r = await draft.publish(mode, mode === 'schedule' ? { publishAt } : {})
+      const r = await draft.publish(mode, { ...(mode === 'schedule' && { publishAt }), ...(expiresAt && { expiresAt }) })
       if (!r.ok) {
         const named = r.detail?.conflicts?.[0]
         if (named) return setError(t('slugTaken', { slug: named.slug, name: named.owner.label }))
@@ -156,7 +169,9 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
   const publishBlocked = step === 'publish' && choice !== 'draft' && issues.length > 0
   const hintIssues = step === 'done' ? [] : blocksNextOn(issues, step)
   const optional = step !== 'done' && step !== 'name' && step !== 'profile' && step !== 'preview' && step !== 'publish'
-  const primaryLabel = step === 'publish' ? (busy ? t('working') : t(`publish.${choice}`)) : tc('shell.next')
+  // Publishing waits for photos still on their way (the label says so, U1).
+  const waitForPhotos = step === 'publish' && choice !== 'draft' && photosInFlight > 0
+  const primaryLabel = step === 'publish' ? (busy ? t('working') : waitForPhotos ? tu('stillUploading', { count: photosInFlight }) : t(`publish.${choice}`)) : tc('shell.next')
 
   return (
     <WizardFrame
@@ -174,7 +189,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
               hint: error ?? (hintIssues.length ? issueText(hintIssues[0]) : publishBlocked ? ti('fixToPublish', { count: issues.length }) : optional ? t('optional') : null),
               progress: { current: index + 1, total: steps.length },
               back: index > 0 ? { onPress: goBack, disabled: busy } : null,
-              primary: { label: primaryLabel, onPress: goNext, disabled: !canNext || busy || publishBlocked || (step === 'publish' && !draft.created), busy },
+              primary: { label: primaryLabel, onPress: goNext, disabled: !canNext || busy || publishBlocked || waitForPhotos || (step === 'publish' && !draft.created), busy },
             }
       }
     >
@@ -214,7 +229,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
           <>
             {heading('item-step-photo', 'photo')}
             <div className="mt-8">
-              <PhotoField projectSlug={projectSlug} defaultLocale={d} photos={item.photos} onChange={item.setPhotos} />
+              <PhotoField projectSlug={projectSlug} defaultLocale={d} languages={site.locales} photos={item.photos} onChange={item.setPhotos} uploadOwner={uploadOwner} />
             </div>
           </>
         ) : step === 'price' ? (
@@ -275,17 +290,21 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
           <>
             {heading('item-step-publish', 'publish', false)}
             <div className="mt-8">
-              <ChoiceCardGrid label={t('publish.title')} kind="radio">
-                <ChoiceCard icon={CAT_ICONS.check} label={t('publish.choiceNow')} selected={choice === 'now'} onSelect={() => setChoice('now')} />
-                <ChoiceCard icon={CAT_ICONS.list} label={t('publish.choiceSchedule')} selected={choice === 'schedule'} onSelect={() => setChoice('schedule')} />
-                <ChoiceCard icon={CAT_ICONS.cards} label={t('publish.choiceDraft')} selected={choice === 'draft'} onSelect={() => setChoice('draft')} />
-              </ChoiceCardGrid>
-              {publishBlocked ? (
-                <div className="mt-6">
-                  <ItemIssueList issues={issues} onFix={fix} />
-                </div>
-              ) : null}
-              {choice === 'schedule' ? <PublicationDateField id="item-publish-on" className="mt-6" label={tl('dates.publishOn')} value={publishAt} onChange={setPublishAt} zone={zone} inputClassName={CAT_INPUT} /> : null}
+              <PublishChoice
+                id="item"
+                labelledBy="item-step-publish"
+                value={publish}
+                onChange={setPublish}
+                zone={zone}
+                inputClassName={CAT_INPUT}
+                text={{ title: t('publish.title'), now: t('publish.choiceNow'), schedule: t('publish.choiceSchedule'), draft: t('publish.choiceDraft') }}
+              >
+                {publishBlocked ? (
+                  <div className="mt-6">
+                    <ItemIssueList issues={issues} onFix={fix} />
+                  </div>
+                ) : null}
+              </PublishChoice>
             </div>
           </>
         ) : done ? (

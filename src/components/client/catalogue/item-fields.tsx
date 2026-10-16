@@ -8,7 +8,8 @@ import { Checkbox } from '@/components/app/ui/Checkbox'
 import { ToggleChips } from '@/components/app/ui/ToggleChips'
 import { Switch } from '@/components/app/ui/Switch'
 import { MediaFrame, Pill } from '@/components/app/ui/list/cells'
-import { MediaLibraryPicker } from '@/components/client/media/MediaLibraryPicker'
+import { PhotoSource } from '@/components/client/media/PhotoSource'
+import { PhotoEditSheet } from '@/components/client/media/PhotoEditSheet'
 import { languageName } from '@/components/client/create/StepHeading'
 import { checkCatalogueSlugsAction } from '@/app/[locale]/(client)/[tenant]/catalogue/actions'
 import { ALLERGENS, type AllergenKey } from '@/lib/modules/catalogue/allergens'
@@ -191,9 +192,32 @@ export function TermChips({ label, terms, value, onChange, defaultLocale }: { la
 
 // ── Photos (Media Library first — every image is an asset before it is used) ─
 
-export function PhotoField({ projectSlug, defaultLocale, photos, onChange, max = 10 }: { projectSlug: string; defaultLocale: string; photos: ItemPhoto[]; onChange: (next: ItemPhoto[]) => void; max?: number }) {
+/**
+ * The item's photos (quick win 2.5): the shared PhotoSource (take / upload /
+ * Media Library) to add, the shared photo card (description, focus point) to
+ * describe — both saved on the Media Library asset, not on the item.
+ */
+export function PhotoField({
+  projectSlug,
+  defaultLocale,
+  languages,
+  photos,
+  onChange,
+  max = 10,
+  uploadOwner,
+}: {
+  projectSlug: string
+  defaultLocale: string
+  /** The site's languages (the photo card describes each). */
+  languages: readonly string[]
+  photos: ItemPhoto[]
+  onChange: (next: ItemPhoto[]) => void
+  max?: number
+  /** The item screen's upload key (useUploadOwner): photos finishing after this field is gone still join the item. */
+  uploadOwner?: string
+}) {
   const t = useTranslations('catalogue.dashboard.item.photos')
-  const [picking, setPicking] = useState(false)
+  const [editing, setEditing] = useState<string | null>(null)
   return (
     <div className="space-y-4">
       {photos.length ? (
@@ -209,6 +233,9 @@ export function PhotoField({ projectSlug, defaultLocale, photos, onChange, max =
                 ) : null}
               </div>
               <div className="flex flex-wrap gap-1">
+                <button type="button" onClick={() => setEditing(p.assetId)} className={CAT_BUTTON}>
+                  {t('edit')}
+                </button>
                 {i > 0 ? (
                   <button type="button" onClick={() => onChange([p, ...photos.filter((x) => x.assetId !== p.assetId)])} className={CAT_BUTTON}>
                     {t('makeMain')}
@@ -225,25 +252,20 @@ export function PhotoField({ projectSlug, defaultLocale, photos, onChange, max =
         <p className="text-[0.9375rem] text-muted-foreground">{t('none')}</p>
       )}
       {photos.length < max ? (
-        <button type="button" onClick={() => setPicking(true)} className={CAT_BUTTON}>
-          {CAT_ICONS.photo}
-          {t('choose')}
-        </button>
-      ) : null}
-      {picking ? (
-        <MediaLibraryPicker
+        <PhotoSource
           projectSlug={projectSlug}
           scope="media"
           defaultLocale={defaultLocale}
           exclude={photos.map((p) => p.assetId)}
           room={max - photos.length}
-          onClose={() => setPicking(false)}
+          owner={uploadOwner}
           onAdd={(added) => {
-            setPicking(false)
-            onChange([...photos, ...added.map((a) => ({ assetId: a.assetId, thumbUrl: a.thumbUrl }))].slice(0, max))
+            const known = new Set(photos.map((p) => p.assetId))
+            onChange([...photos, ...added.filter((a) => !known.has(a.assetId)).map((a) => ({ assetId: a.assetId, thumbUrl: a.thumbUrl }))].slice(0, max))
           }}
         />
       ) : null}
+      <PhotoEditSheet projectSlug={projectSlug} scope="media" site={{ defaultLocale, languages }} assetId={editing} onClose={() => setEditing(null)} />
     </div>
   )
 }

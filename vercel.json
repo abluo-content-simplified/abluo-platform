@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/content-activity",
       "schedule": "15 5 * * *"
+    },
+    {
+      "path": "/api/cron/media-sweep",
+      "schedule": "45 5 * * *"
     }
   ]
 }

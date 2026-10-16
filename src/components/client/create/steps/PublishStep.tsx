@@ -4,7 +4,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import type { StepProps } from '@/components/client/create/types'
 import { StepHeading, languageName } from '@/components/client/create/StepHeading'
 import { languageStates, languageSummaryKey } from '@/lib/client/wizard-steps'
-import { PublicationDateField } from '@/components/app/lifecycle/PublicationDateField'
+import { PublishChoice } from '@/components/app/lifecycle/PublishChoice'
 import { editingZone, formatInZone, fromLocalInput, toLocalInput } from '@/components/app/lifecycle/zoned-time'
 
 export type PublishMode = 'now' | 'schedule' | 'draft'
@@ -34,8 +34,9 @@ export function defaultPublishChoice(zone: string, now = new Date()): PublishCho
 }
 
 /**
- * "What do you want to do with it?" — Publish now / Schedule / Keep as draft,
- * plus "Take offline automatically". The shell's main button performs the
+ * "What do you want to do with it?" — the shared PublishChoice (Publish now /
+ * Schedule / Keep as draft, each expanding in place with its dates), in the
+ * post's own wording. The shell's main button performs the
  * choice (it flushes autosave first). Each language is listed with whether it
  * goes live (D9: title + text).
  */
@@ -47,14 +48,7 @@ export function PublishStep({
   error,
 }: StepProps & { choice: PublishChoice; onChange: (c: PublishChoice) => void; error: string | null }) {
   const t = useTranslations('clientDashboard.create.publish')
-  const tl = useTranslations('app.lifecycle.dates')
   const zone = editingZone(site.timeZone)
-  const set = (patch: Partial<PublishChoice>) => onChange({ ...choice, ...patch })
-  const options: { mode: PublishMode; label: string; help: string }[] = [
-    { mode: 'now', label: t('now'), help: t('nowHelp') },
-    { mode: 'schedule', label: t('schedule'), help: t('scheduleHelp') },
-    { mode: 'draft', label: t('draft'), help: t('draftHelp') },
-  ]
   const inputClass =
     'mt-2 block min-h-[var(--control-height,56px)] w-full rounded-xl border border-border bg-background px-4 text-[1.0625rem] text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
 
@@ -62,61 +56,18 @@ export function PublishStep({
     <section aria-labelledby="publish-step-title">
       <StepHeading id="publish-step-title" title={t('title')} />
 
-      <div role="radiogroup" aria-labelledby="publish-step-title" className="mt-8 flex flex-col gap-3">
-        {options.map((o) => {
-          const on = choice.mode === o.mode
-          return (
-            <button
-              key={o.mode}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              onClick={() => set({ mode: o.mode })}
-              className={`flex min-h-16 w-full flex-col items-start rounded-2xl border-2 px-4 py-3 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-                on ? 'border-foreground bg-selected-tint' : 'border-border hover:bg-hover'
-              }`}
-            >
-              <span className="text-[1.0625rem] font-semibold text-foreground">{o.label}</span>
-              <span className="text-[0.9375rem] leading-6 text-muted-foreground">{o.help}</span>
-            </button>
-          )
-        })}
+      <div className="mt-8">
+        <PublishChoice
+          id="post"
+          labelledBy="publish-step-title"
+          zone={zone}
+          inputClassName={inputClass}
+          // The post's own wording ("it" = the post; drafts continue from Home).
+          text={{ now: t('now'), nowHelp: t('nowHelp'), schedule: t('schedule'), scheduleHelp: t('scheduleHelp'), draft: t('draft'), draftHelp: t('draftHelp'), expire: t('expire'), expireHelp: t('expireHelp') }}
+          value={{ mode: choice.mode, publishAt: choice.at || null, expire: choice.expire, unpublishAt: choice.expireAt || null }}
+          onChange={(v) => onChange({ mode: v.mode, at: v.publishAt ?? '', expire: v.expire, expireAt: v.unpublishAt ?? '' })}
+        />
       </div>
-
-      {choice.mode === 'schedule' ? (
-        <PublicationDateField id="publish-at" className="mt-6" label={tl('publishOn')} value={choice.at || null} onChange={(v) => set({ at: v ?? '' })} zone={zone} inputClassName={inputClass} />
-      ) : null}
-
-      {choice.mode !== 'draft' ? (
-        <div className="mt-6 rounded-2xl border border-border p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p id="expire-label" className="text-[1.0625rem] font-medium text-foreground">
-                {t('expire')}
-              </p>
-              <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('expireHelp')}</p>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={choice.expire}
-              aria-labelledby="expire-label"
-              onClick={() => set({ expire: !choice.expire })}
-              className={`relative inline-flex h-11 w-[72px] shrink-0 items-center rounded-full p-1 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-                choice.expire ? 'bg-action' : 'bg-muted'
-              }`}
-            >
-              <span
-                aria-hidden="true"
-                className={`size-9 rounded-full bg-background shadow-sm transition-transform motion-reduce:transition-none ${choice.expire ? 'translate-x-[28px]' : ''}`}
-              />
-            </button>
-          </div>
-          {choice.expire ? (
-            <PublicationDateField id="expire-at" className="mt-4" label={tl('unpublishOn')} value={choice.expireAt || null} onChange={(v) => set({ expireAt: v ?? '' })} zone={zone} inputClassName={inputClass} />
-          ) : null}
-        </div>
-      ) : null}
 
       {site.languages.length > 1 ? (
         <LanguageSummary draft={draft} languages={site.languages} choice={choice} zone={zone} />

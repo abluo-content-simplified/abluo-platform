@@ -770,7 +770,8 @@
             "square": "Social",
             "tall": "Telefono"
           }
-        }
+        },
+        "processing": "Ottimizzazione… nel frattempo puoi descriverla."
       },
       "type": {
         "title": "Cosa vuoi creare?",
@@ -813,7 +814,8 @@
         "language": "Stai scrivendo in {language}",
         "skip": "Salta per ora",
         "done": "Fatto",
-        "close": "Chiudi"
+        "close": "Chiudi",
+        "finishingPhoto": "Sto completando la foto…"
       },
       "save": {
         "saving": "Salvataggio…",
@@ -1602,6 +1604,15 @@
         "addTags": "Aggiungi tag",
         "rename": "Rinomina",
         "original": "Apri originale"
+      },
+      "editSheet": {
+        "title": "Dettagli della foto",
+        "loading": "Caricamento…",
+        "error": "Non è stato possibile caricare questa foto."
+      },
+      "uploads": {
+        "stillUploading": "{count, plural, one {Sto completando # foto…} other {Sto completando # foto…}}",
+        "addedToLibrary": "{count, plural, one {# foto aggiunta alla tua Libreria.} other {# foto aggiunte alla tua Libreria.}}"
       }
     },
     "photoWizard": {
@@ -2271,6 +2282,17 @@
         "gap": "Quell’ora non esiste quel giorno (si passa all’ora legale): sarà {date}.",
         "overlap": "Quell’ora capita due volte quel giorno (si torna all’ora solare): si usa la prima, {date} ({offset}).",
         "mustBeFuture": "Scegli una data e un’ora nel futuro."
+      },
+      "publish": {
+        "title": "Cosa vuoi farne?",
+        "now": "Pubblica ora",
+        "nowHelp": "Viene pubblicato subito sul tuo sito.",
+        "schedule": "Programma",
+        "scheduleHelp": "Scegli il giorno e l'ora in cui deve apparire.",
+        "draft": "Tieni come bozza",
+        "draftHelp": "Non viene pubblicato nulla. Puoi continuare quando vuoi.",
+        "expire": "Termina la pubblicazione automaticamente",
+        "expireHelp": "Utile per offerte o notizie con una scadenza."
       },
       "deletePermanently": {
         "title": "{count, plural, one {Eliminare definitivamente «{title}»?} other {Eliminare definitivamente # elementi?}}",
@@ -3443,7 +3465,7 @@
           "makeMain": "Rendi principale",
           "remove": "Rimuovi foto",
           "none": "Ancora nessuna foto. Con una foto si presenta meglio.",
-          "choose": "Scegli dalla libreria media"
+          "edit": "Descrizione e punto focale"
         },
         "price": {
           "everywhere": "Stesso prezzo altrove",

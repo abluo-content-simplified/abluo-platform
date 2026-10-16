@@ -114,6 +114,8 @@ export function WizardShell({
   const [editing, setEditing] = useState(false)
   /** Next was pressed on the cover step while the photo has no description: CoverStep shows why. */
   const [altNeeded, setAltNeeded] = useState(false)
+  /** A new cover photo still on its way (CoverStep, ADR-035). */
+  const [coverPending, setCoverPending] = useState(false)
   const furthestRef = useRef(initialDraft.furthest ?? initialDraft.step)
   const [choices, setChoices] = useState<Record<string, LanguageChoice>>(() =>
     Object.fromEntries(
@@ -507,10 +509,13 @@ export function WizardShell({
 
   const ready = step !== null
   const onReview = step === 'review'
+  // ADR-035: a new cover still uploading / optimising holds the step (its description is being written meanwhile).
+  const holdForCover = step === 'cover' && coverPending
   const canNext =
     ready &&
     step !== 'done' &&
     !busy &&
+    !holdForCover &&
     // The cover step stays pressable so a missing description can be explained (D).
     (onReview ? canPublish(snap, locale) : step === 'cover' || canAdvance(step, snap, locale))
   const segmentIndex = step ? segments.indexOf(step as WizardFlowStep) : 0
@@ -526,7 +531,9 @@ export function WizardShell({
             ? t('review.updating')
             : t('review.update')
           : t('review.publish')
-        : editing
+        : holdForCover
+          ? t('shell.finishingPhoto')
+          : editing
           ? t('shell.done')
           : step === 'cover' && !snap.cover
             ? t('shell.skip')
@@ -597,7 +604,7 @@ export function WizardShell({
           ) : step === 'story' ? (
             <StoryStep {...props} onImprove={aiImprove ? onImprove : undefined} />
           ) : step === 'cover' ? (
-            <CoverStep {...props} altNeeded={altNeeded} onCoverChange={(cover) => setSnap((s) => ({ ...s, cover }))} />
+            <CoverStep {...props} altNeeded={altNeeded} onPendingChange={setCoverPending} onCoverChange={(cover) => setSnap((s) => ({ ...s, cover }))} />
           ) : step === 'cta' ? (
             <CtaStep {...props} />
           ) : step === 'gallery' ? (
@@ -641,7 +648,7 @@ export function WizardShell({
                 <button
                   type="button"
                   onClick={goBack}
-                  disabled={busy}
+                  disabled={busy || holdForCover}
                   className="inline-flex min-h-11 items-center px-1 text-[1.0625rem] font-semibold text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60"
                 >
                   {t('shell.back')}

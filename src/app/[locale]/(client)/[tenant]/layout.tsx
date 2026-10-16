@@ -12,6 +12,7 @@ import {
 import { filterSwitchableProjects, loadProjectSummaries, statusesOf } from '@/lib/client/switchable-projects'
 import { ClientSidebar } from '@/components/client/ClientSidebar'
 import { AddContentRoot } from '@/components/client/create/AddContentRoot'
+import { UploadsProvider } from '@/components/client/media/UploadsProvider'
 import { buildCreateMenu } from '@/lib/modules/add-content-sheet'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { loadWhatsNewFeed } from '@/lib/whats-new/client-feed'
@@ -122,6 +123,8 @@ async function ClientProjectLayoutInner({
       mediaLibrary={navItems.some((i) => i.moduleId === 'media')}
       contactEmail={process.env.ABLUO_CONTACT_EMAIL || null}
     >
+      {/* ADR-035: one upload store — photos keep uploading while the person moves between screens. */}
+      <UploadsProvider>
       <div className="min-h-screen md:flex">
         <ClientSidebar
           navItems={navItems}
@@ -165,6 +168,7 @@ async function ClientProjectLayoutInner({
           </main>
         </div>
       </div>
+      </UploadsProvider>
     </AddContentRoot>
   )
 }

@@ -221,9 +221,10 @@ export async function uploadPostImage(
   ctx: TenantAuthorizationContext,
   projectId: string,
   file: File,
-  deps: PostMediaDeps = {}
+  deps: PostMediaDeps = {},
+  opts: { background?: boolean } = {}
 ): Promise<UploadedPostImage> {
-  return uploadProjectImage(ctx, projectId, file, { tag: 'blog', permission: BLOG_POST_WRITE_PERMISSION }, deps)
+  return uploadProjectImage(ctx, projectId, file, { tag: 'blog', permission: BLOG_POST_WRITE_PERMISSION, background: opts.background }, deps)
 }
 
 /**
@@ -366,6 +367,12 @@ export type MediaUploadStatus = {
   bytesBefore: number | null
   bytesAfter: number | null
   name: string
+  /** The asset's own facts — what the photo card edits (2.5: describe / focus point from any picker). */
+  rev: string
+  alt: Record<string, string>
+  caption: Record<string, string>
+  tags: string[]
+  focal: FocalPoint | null
 }
 
 /** Most ids one status call answers (the upload queue polls its in-flight rows). */
@@ -373,7 +380,9 @@ export const MEDIA_STATUS_MAX_IDS = 50
 
 /**
  * ADR-035 — where this project's background uploads are: `processing`,
- * `ready` (with the image URL) or `failed`. Ids that are not this project's
+ * `ready` (with the image URL) or `failed` — plus each photo's own facts
+ * (name, description, caption, tags, focus point, revision), so any picker can
+ * open the photo card for a photo it only knows by id. Ids that are not this project's
  * media are simply absent from the answer. A record without `processing`
  * (uploaded before ADR-035) reports `ready` when it has an image.
  */
@@ -401,6 +410,11 @@ export async function getProjectMediaStatus(
       bytesBefore?: number | null
       bytesAfter?: number | null
       name?: string | null
+      _rev?: string
+      alt?: unknown
+      caption?: unknown
+      tags?: unknown
+      hotspot?: unknown
     }>
   >(
     `*[_type == "mediaAsset" && projectSlug == $projectSlug && _id in $ids && !(_id in path("drafts.**"))]{
@@ -412,7 +426,7 @@ export async function getProjectMediaStatus(
       "optimized": processing.optimized,
       "bytesBefore": processing.originalBytes,
       "bytesAfter": coalesce(processing.finalBytes, image.asset->size),
-      name
+      name, _rev, "alt": altText, caption, tags, "hotspot": image.hotspot
     }`,
     { ids: assetIds }
   )
@@ -430,6 +444,11 @@ export async function getProjectMediaStatus(
       bytesBefore: typeof r.bytesBefore === 'number' ? r.bytesBefore : null,
       bytesAfter: typeof r.bytesAfter === 'number' ? r.bytesAfter : null,
       name: typeof r.name === 'string' ? r.name : '',
+      rev: typeof r._rev === 'string' ? r._rev : '',
+      alt: typeof r.alt === 'string' ? (r.alt.trim() ? { en: r.alt } : {}) : toLocalized(r.alt),
+      caption: toLocalized(r.caption),
+      tags: Array.isArray(r.tags) ? r.tags.filter((t): t is string => typeof t === 'string') : [],
+      focal: focalOf(r.hotspot),
     }
   })
   return { items }

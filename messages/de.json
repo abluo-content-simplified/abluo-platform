@@ -770,7 +770,8 @@
             "square": "Social Media",
             "tall": "Telefon"
           }
-        }
+        },
+        "processing": "Wird optimiert … du kannst es inzwischen beschreiben."
       },
       "type": {
         "title": "Was möchtest du erstellen?",
@@ -813,7 +814,8 @@
         "language": "Du schreibst auf {language}",
         "skip": "Vorerst überspringen",
         "done": "Fertig",
-        "close": "Schließen"
+        "close": "Schließen",
+        "finishingPhoto": "Foto wird fertiggestellt …"
       },
       "save": {
         "saving": "Wird gespeichert …",
@@ -1602,6 +1604,15 @@
         "addTags": "Tags hinzufügen",
         "rename": "Umbenennen",
         "original": "Original öffnen"
+      },
+      "editSheet": {
+        "title": "Fotodetails",
+        "loading": "Wird geladen …",
+        "error": "Dieses Foto konnte nicht geladen werden."
+      },
+      "uploads": {
+        "stillUploading": "{count, plural, one {# Foto wird fertiggestellt …} other {# Fotos werden fertiggestellt …}}",
+        "addedToLibrary": "{count, plural, one {# Foto wurde deiner Mediathek hinzugefügt.} other {# Fotos wurden deiner Mediathek hinzugefügt.}}"
       }
     },
     "photoWizard": {
@@ -2271,6 +2282,17 @@
         "gap": "Diese Uhrzeit gibt es an dem Tag nicht (Umstellung auf Sommerzeit) – es wird {date}.",
         "overlap": "Diese Uhrzeit gibt es an dem Tag zweimal (Umstellung auf Winterzeit) – die erste gilt: {date} ({offset}).",
         "mustBeFuture": "Wähle ein Datum und eine Uhrzeit in der Zukunft."
+      },
+      "publish": {
+        "title": "Was möchtest du damit machen?",
+        "now": "Jetzt veröffentlichen",
+        "nowHelp": "Es wird sofort auf deiner Website veröffentlicht.",
+        "schedule": "Planen",
+        "scheduleHelp": "Wähle Tag und Uhrzeit, an dem es erscheinen soll.",
+        "draft": "Als Entwurf behalten",
+        "draftHelp": "Nichts wird veröffentlicht. Du kannst jederzeit weitermachen.",
+        "expire": "Veröffentlichung automatisch beenden",
+        "expireHelp": "Praktisch für Angebote oder Neuigkeiten mit Enddatum."
       },
       "deletePermanently": {
         "title": "{count, plural, one {„{title}“ endgültig löschen?} other {# Einträge endgültig löschen?}}",
@@ -3443,7 +3465,7 @@
           "makeMain": "Als Hauptfoto festlegen",
           "remove": "Foto entfernen",
           "none": "Noch kein Foto. Mit einem Foto wirkt es besser.",
-          "choose": "Aus der Mediathek wählen"
+          "edit": "Beschreibung und Fokuspunkt"
         },
         "price": {
           "everywhere": "Gleicher Preis überall sonst",

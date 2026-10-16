@@ -1,6 +1,6 @@
 # ADR-035 — Media processing pipeline (non-blocking uploads)
 
-**Status:** Accepted — Tom, 2026-10-16 (slice 1 implemented on dev, uncommitted)
+**Status:** Accepted — Tom, 2026-10-16. Slice 1 committed on dev (`a12f34d`); slice 2 built on dev 2026-10-16.
 **Touches:** `src/lib/media/*`, `src/lib/client/gallery-upload-queue.ts`, `src/lib/client/upload-plan.ts`, `src/components/client/media/AddPhotos.tsx`, `src/lib/api/post-media.ts`, `mediaAsset` schema, blog Cover step.
 **Related:** ADR-022 (Gallery module — focal points live on the Media Library asset), standing rule "every image is a Media Library asset before use", standing rule "all images go through TinyPNG".
 
@@ -179,5 +179,12 @@ Server guard: the publish action refuses while `wizard.pendingCover` is set or a
    - One shared queue hook (`useMediaUploads`) and row list (`UploadQueueList`) replace the two copies in Add Photos and the gallery wizard: local previews, real Uploading → Optimising → Ready states (the timer guess is gone), 3 sends at once, at most 4 waiting on the server, give up after 2 min.
    - Background work logs its own `[perf] media.process` line.
    - **Not in slice 1:** the record is created when the upload arrives, not when the photo is picked — pick-time reservation only matters once metadata can be edited before upload (slice 2).
-2. Layout-level upload provider; reserve at pick time; edit-before-Ready on the record; `pendingCover` + Publish waiting; sweep cron for stuck/failed records.
+2. **Built (2026-10-16).**
+   - **One upload store per dashboard** (`src/lib/client/upload-store.ts`, mounted by `UploadsProvider` in the client and admin layouts). Uploads continue when the person changes screen; the layout says "Finishing N photos…" and then "N photos added to your Media Library" for photos whose screen is gone, and warns before the tab is closed while bytes are still only in the browser.
+   - **Owners:** each screen that adds photos subscribes as an owner. A long-lived parent (the Catalogue item wizard/editor) registers as the *fallback* owner (`useUploadOwner`), so a photo that finishes after the person moved to the next step or tab still joins the item. Primary and fallback never both receive a photo.
+   - **Publish waits:** the Catalogue wizard and editor hold Publish while the item's photos are on their way, and the button says so ("Finishing 1 photo…").
+   - **Blog cover — edit before Ready:** the new photo shows at once from a local preview; its description and focus point can be written while it uploads and is optimised; both are written with the cover once it is ready. The step holds Next/Back meanwhile (label "Finishing your photo…") — chosen over a hand-off to the wizard shell because it keeps the cover step's single save chain; in practice the hold is invisible (the person is typing the description).
+   - **Daily sweep** (`/api/cron/media-sweep`, 05:45 UTC): `processing` for over an hour → `failed`; `failed` placeholders older than a week, with no image and no references, deleted.
+   - **Changed from the plan:** no pick-time reservation and no `pendingFocal` on the record. The browser holds the description/focus point until the record is ready (cover) or the photo card opens on a ready photo (Media Library, galleries, Catalogue). `wizard.pendingCover` is not needed because the cover step waits. Revisit if editing a gallery's photos before they are ready turns out to matter.
+   - **Also in this round (Catalogue quick wins):** 2.3 the shared publishing component (`app/lifecycle/PublishChoice`, Posts + Catalogue — Schedule expands in place with Publish on and an optional Unpublish on) and 2.5 the shared photo source (`PhotoSource`: take / upload / Media Library) plus the photo card by id (`PhotoEditSheet`: description and focus point) in the Catalogue item.
 3. Media Library stats display; measure on dev with `PERF_TIMING=1` and tune thresholds.

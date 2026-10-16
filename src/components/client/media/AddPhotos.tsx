@@ -32,6 +32,8 @@ export type AddPhotosProps = {
   /** How many more photos fit (gallery limit); undefined = no limit. */
   room?: number
   disabled?: boolean
+  /** Who receives finished photos (ADR-035: a wizard passes its own key so photos still land after this block is gone). */
+  owner?: string
 }
 
 // Phone or computer — capability, evaluated after mount (no hydration mismatch).
@@ -57,7 +59,7 @@ export const useTouchDevice = () =>
  * pre-resizes when a photo would not fit the upload (planUpload).
  * No side effects on mount (safe to keep mounted while hidden).
  */
-export function AddPhotos({ projectSlug, scope, onUploaded, onOpenLibrary, room, disabled }: AddPhotosProps) {
+export function AddPhotos({ projectSlug, scope, onUploaded, onOpenLibrary, room, disabled, owner }: AddPhotosProps) {
   const t = useTranslations('clientDashboard.media.add')
   const touch = useTouchDevice()
   const cameraRef = useRef<HTMLInputElement>(null)
@@ -71,7 +73,7 @@ export function AddPhotos({ projectSlug, scope, onUploaded, onOpenLibrary, room,
     roomRef.current = room
   }, [room])
 
-  const uploads = useMediaUploads({ projectSlug, scope, onLanded: (photo) => onUploaded(photo) })
+  const uploads = useMediaUploads({ projectSlug, scope, owner, onLanded: (photo) => onUploaded(photo) })
   const inFlight = () => uploads.queue.filter((q) => q.status !== 'done' && q.status !== 'error').length
 
   const addFiles = (list: FileList | File[] | null | undefined) => {
