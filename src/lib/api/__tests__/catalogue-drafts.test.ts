@@ -88,11 +88,24 @@ function fake(docs: Docs = {}, namespace: Array<Record<string, unknown>> = []) {
   })
   const transaction = vi.fn(() => {
     const tx = {
-      patch: (id: string, v: unknown) => (txOps.push(['patch', [id, v]]), tx),
+      patch: (id: string, v: unknown) => {
+        if (typeof v === 'function') {
+          // Patch-builder form: record the operations it applies.
+          const ops: unknown[] = []
+          const b = { setIfMissing: (x: unknown) => (ops.push(['setIfMissing', x]), b), set: (x: unknown) => (ops.push(['set', x]), b), unset: (x: unknown) => (ops.push(['unset', x]), b) }
+          ;(v as (p: typeof b) => unknown)(b)
+          txOps.push(['patch', [id, ops]])
+        } else txOps.push(['patch', [id, v]])
+        return tx
+      },
       create: (d: unknown) => (txOps.push(['create', d]), tx),
       createOrReplace: (d: unknown) => (txOps.push(['createOrReplace', d]), tx),
       delete: (id: string) => (txOps.push(['delete', id]), tx),
-      commit: vi.fn(async (opts?: unknown) => (commitOpts.push(['transaction', opts]), writes.push('transaction'), {})),
+      commit: vi.fn(async (opts?: { returnDocuments?: boolean }) => {
+        commitOpts.push(['transaction', opts])
+        writes.push('transaction')
+        return opts?.returnDocuments ? txOps.filter((o) => o[0] === 'create').map((o) => ({ ...(o[1] as object), _rev: 'tx1' })) : {}
+      }),
     }
     return tx
   })
@@ -201,6 +214,42 @@ describe('patch', () => {
     const f = fake({ 'drafts.item-1': draftItem() })
     await patchCatalogueDraft(ctx(grant()), 'project-a', 'item', { id: 'item-1', rev: 'd1', set: { 'name.it': 'y' } }, f.deps)
     expect(f.commitOpts).toEqual([['patch', { visibility: 'async' }]])
+  })
+  describe('first edit of a published item opens + saves in one transaction (optimisation D)', () => {
+    const live = () => ({ ...draftItem(), _id: 'item-1', _rev: 'p1' })
+    it('creates the draft from the live version and applies the change, in one async transaction', async () => {
+      const f = fake({ 'item-1': live() })
+      const r = await patchCatalogueDraft(ctx(grant()), 'project-a', 'item', { id: 'item-1', rev: '', openFrom: 'p1', set: { 'name.it': 'Nuovo' } }, f.deps)
+      expect(r.rev).toBe('tx1')
+      expect(f.writes).toEqual(['transaction'])
+      expect(f.commitOpts).toEqual([['transaction', { visibility: 'async', returnDocuments: true }]])
+      const [create, patch] = f.txOps as Array<[string, unknown]>
+      expect(create[0]).toBe('create')
+      expect(create[1]).toMatchObject({ _id: 'drafts.item-1', _type: 'catalogueItem', projectSlug: 'trattoria' })
+      expect(create[1]).not.toHaveProperty('_rev')
+      expect(patch[0]).toBe('patch')
+      expect(patch[1]).toEqual(['drafts.item-1', expect.arrayContaining([['set', expect.objectContaining({ 'name.it': 'Nuovo' })]])])
+    })
+    it('refuses as a conflict when a draft already exists (someone else started editing) — nothing written', async () => {
+      const f = fake({ 'item-1': live(), 'drafts.item-1': draftItem() })
+      await expect(patchCatalogueDraft(ctx(grant()), 'project-a', 'item', { id: 'item-1', rev: '', openFrom: 'p1', set: { 'name.it': 'x' } }, f.deps)).rejects.toMatchObject({ code: 'conflict' })
+      expect(f.writes).toEqual([])
+    })
+    it('refuses as a conflict when the live version changed since the editor loaded it', async () => {
+      const f = fake({ 'item-1': live() })
+      await expect(patchCatalogueDraft(ctx(grant()), 'project-a', 'item', { id: 'item-1', rev: '', openFrom: 'p0', set: { 'name.it': 'x' } }, f.deps)).rejects.toMatchObject({ code: 'conflict' })
+      expect(f.writes).toEqual([])
+    })
+    it('an archived item is refused; an empty rev without openFrom is still "Missing revision"', async () => {
+      const f = fake({ 'item-1': { ...live(), archivedAt: '2026-10-01T00:00:00Z' } })
+      await expect(patchCatalogueDraft(ctx(grant()), 'project-a', 'item', { id: 'item-1', rev: '', openFrom: 'p1', set: { 'name.it': 'x' } }, f.deps)).rejects.toMatchObject({ code: 'archived' })
+      await expect(patchCatalogueDraft(ctx(grant()), 'project-a', 'item', { id: 'item-1', rev: '', set: { 'name.it': 'x' } }, f.deps)).rejects.toMatchObject({ code: 'conflict' })
+      expect(f.writes).toEqual([])
+    })
+    it("another project's item is not_found, also on the first edit", async () => {
+      const f = fake({ 'item-1': { ...live(), projectSlug: 'other' } })
+      await expect(patchCatalogueDraft(ctx(grant()), 'project-a', 'item', { id: 'item-1', rev: '', openFrom: 'p1', set: { 'name.it': 'x' } }, f.deps)).rejects.toMatchObject({ code: 'not_found' })
+    })
   })
   it('opening a published item for edit copies it with visibility async', async () => {
     const f = fake({ 'item-1': { ...draftItem(), _id: 'item-1' } })

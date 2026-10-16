@@ -30,6 +30,7 @@ import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
 import { DRAFT_SAVE } from '@/lib/sanity/draft-save'
+import { readsInOrder } from '@/lib/api/parallel-reads'
 import { audited, type ContentAuditWriter } from '@/lib/lifecycle/audit'
 import { lifecycleAction, snapshotOf as publishedSnapshotOf } from '@/lib/lifecycle/transition'
 import { coverThumbUrl } from '@/lib/api/post-drafts'
@@ -142,8 +143,12 @@ async function readPair(client: Client, id: string, projectSlug: string) {
   return { published, draft }
 }
 
-async function commit(client: Client, projectSlug: string, run: () => Promise<unknown>): Promise<unknown> {
-  await assertSingleSanityProject((q, p) => client.fetch(q, p), projectSlug)
+/** The single-project guard as a promise, so an autosave can run it alongside its reads. */
+const singleProjectGuard = (client: Client, projectSlug: string) => assertSingleSanityProject((q, p) => client.fetch(q, p), projectSlug)
+
+/** One mutation behind the single-project guard; `guard` = that check already started, awaited before the write. */
+async function commit(client: Client, projectSlug: string, run: () => Promise<unknown>, guard?: Promise<void>): Promise<unknown> {
+  await (guard ?? singleProjectGuard(client, projectSlug))
   try {
     return await run()
   } catch (error) {
@@ -543,10 +548,15 @@ export async function patchEventDraft(
     if (!ok) throw new EventError('invalid_field', `Field "${path}" cannot be changed here.`)
   }
 
-  const { draft } = await readPair(client, input.id, grant.projectSlug)
+  // Independent reads + the single-project guard at the same time (awaited again before the write).
+  const guard = singleProjectGuard(client, grant.projectSlug)
+  const [{ draft }, site] = await readsInOrder<[Awaited<ReturnType<typeof readPair>>, EventSite, void]>([
+    readPair(client, input.id, grant.projectSlug),
+    readSite(client, grant.projectSlug),
+    guard,
+  ])
   if (!draft) notFound()
-  if (draft._rev !== input.rev) throw new EventError('conflict', 'This event was edited elsewhere.')
-  const site = await readSite(client, grant.projectSlug)
+  if (draft!._rev !== input.rev) throw new EventError('conflict', 'This event was edited elsewhere.')
   const locales = new Set(site.locales)
 
   const set: Record<string, unknown> = {}
@@ -612,7 +622,7 @@ export async function patchEventDraft(
     if (Object.keys(set).length) p = p.set(set)
     if (unset.length) p = p.unset(unset)
     return p.commit(DRAFT_SAVE)
-  })) as { _rev?: string } | undefined
+  }, guard)) as { _rev?: string } | undefined
   return { rev: result?._rev ?? '' }
 }
 

@@ -38,6 +38,7 @@ import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
 import { DRAFT_SAVE } from '@/lib/sanity/draft-save'
+import { readsInOrder } from '@/lib/api/parallel-reads'
 import { audited, type ContentAuditWriter } from '@/lib/lifecycle/audit'
 import { deriveStatus, type LifecycleState } from '@/lib/lifecycle/status'
 import * as lifecycle from '@/lib/lifecycle/service'
@@ -130,8 +131,17 @@ async function readPair(client: Client, kind: CatalogueKind, id: string, project
   return { published, draft }
 }
 
-async function commit(client: Client, projectSlug: string, run: () => Promise<unknown>): Promise<unknown> {
-  await span('sanity.assertSingleProject', () => assertSingleSanityProject((q, p) => client.fetch(q, p), projectSlug))
+/** The single-project guard as a promise, so it can run alongside the pre-write reads. */
+const singleProjectGuard = (client: Client, projectSlug: string) =>
+  span('sanity.assertSingleProject', () => assertSingleSanityProject((q, p) => client.fetch(q, p), projectSlug))
+
+/**
+ * Runs one mutation behind the single-project guard. `guard` is that check
+ * already started (alongside the reads); it is awaited — and must pass — before
+ * the mutation is sent, exactly as when it ran inline.
+ */
+async function commit(client: Client, projectSlug: string, run: () => Promise<unknown>, guard?: Promise<void>): Promise<unknown> {
+  await (guard ?? singleProjectGuard(client, projectSlug))
   try {
     return await span('sanity.commit', run)
   } catch (error) {
@@ -498,6 +508,16 @@ export async function createCatalogueDoc(
   })
 }
 
+/** An exact copy of the published document as its draft (system fields dropped, type and project pinned). */
+function draftCopyOf(published: Doc, kind: CatalogueKind, id: string, projectSlug: string): Record<string, unknown> & { _id: string; _type: string } {
+  const copy: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(published)) if (!SYSTEM_FIELDS.has(k)) copy[k] = v
+  copy._id = `drafts.${id}`
+  copy._type = CATALOGUE_TYPE[kind]
+  copy.projectSlug = projectSlug
+  return copy as Record<string, unknown> & { _id: string; _type: string }
+}
+
 /** Makes sure `drafts.<id>` exists — an exact copy of the published document (never on a GET). */
 export async function openCatalogueForEdit(ctx: TenantAuthorizationContext, projectId: string, kind: CatalogueKind, id: string, deps: CatalogueDeps = {}): Promise<{ id: string; rev: string; created: boolean }> {
   const grant = grantFor(ctx, projectId, DESCRIPTOR[kind].permissions.write)
@@ -507,11 +527,7 @@ export async function openCatalogueForEdit(ctx: TenantAuthorizationContext, proj
   if (draft) return { id, rev: draft._rev ?? '', created: false }
   if (!published) notFound()
   if (published!.archivedAt != null) throw new CatalogueError('archived', 'Restore this first.')
-  const copy: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(published!)) if (!SYSTEM_FIELDS.has(k)) copy[k] = v
-  copy._id = `drafts.${id}`
-  copy._type = CATALOGUE_TYPE[kind]
-  copy.projectSlug = grant.projectSlug
+  const copy = draftCopyOf(published!, kind, id, grant.projectSlug)
   await assertSingleSanityProject((q, p) => client.fetch(q, p), grant.projectSlug)
   try {
     const r = (await span('sanity.commit', () => client.create(copy as { _id: string; _type: string }, DRAFT_SAVE))) as { _rev?: string }
@@ -600,25 +616,56 @@ export async function patchCatalogueDraft(
   ctx: TenantAuthorizationContext,
   projectId: string,
   kind: CatalogueKind,
-  input: { id: string; rev: string; set: Record<string, unknown> },
+  input: {
+    id: string
+    rev: string
+    set: Record<string, unknown>
+    /**
+     * First edit of a published document (optimisation D): `rev` is '' and this
+     * is the live revision the editor loaded. The draft is created from the
+     * live version AND the change applied in ONE transaction — no separate
+     * "open for edit" round trip. Refused as a conflict if a draft already
+     * exists (someone else started editing) or the live version changed since.
+     */
+    openFrom?: string
+  },
   deps: CatalogueDeps = {}
 ): Promise<{ rev: string }> {
   const grant = grantFor(ctx, projectId, DESCRIPTOR[kind].permissions.write)
   const client = deps.client ?? sanityWriteClient
   if (!isCatalogueId(input?.id)) notFound()
-  if (typeof input.rev !== 'string' || !input.rev) throw new CatalogueError('conflict', 'Missing revision.')
+  const opening = input.rev === '' && typeof input.openFrom === 'string' && input.openFrom.length > 0
+  if (!opening && (typeof input.rev !== 'string' || !input.rev)) throw new CatalogueError('conflict', 'Missing revision.')
   assertAllowedPaths(kind, input.set)
-  const { draft, published } = await readPair(client, kind, input.id, grant.projectSlug)
-  if (!draft) notFound()
-  if (published?.archivedAt != null) throw new CatalogueError('archived', 'Restore this first.')
-  if (draft!._rev !== input.rev) throw new CatalogueError('conflict', 'This was edited elsewhere.')
-  const site = await readSite(client, grant.projectSlug)
+  // Independent reads + the single-project guard at the same time (optimisation C);
+  // the guard is awaited again right before the mutation.
+  const guard = singleProjectGuard(client, grant.projectSlug)
+  const [{ draft, published }, site] = await readsInOrder<[Awaited<ReturnType<typeof readPair>>, CatalogueSite, void]>([
+    readPair(client, kind, input.id, grant.projectSlug),
+    readSite(client, grant.projectSlug),
+    guard,
+  ])
+  let previous: Doc
+  let openedCopy: Record<string, unknown> | null = null
+  if (opening) {
+    if (draft) throw new CatalogueError('conflict', 'This was edited elsewhere.')
+    if (!published) notFound()
+    if (published!.archivedAt != null) throw new CatalogueError('archived', 'Restore this first.')
+    if (published!._rev !== input.openFrom) throw new CatalogueError('conflict', 'This was edited elsewhere.')
+    openedCopy = draftCopyOf(published!, kind, input.id, grant.projectSlug)
+    previous = openedCopy as Doc
+  } else {
+    if (!draft) notFound()
+    if (published?.archivedAt != null) throw new CatalogueError('archived', 'Restore this first.')
+    if (draft!._rev !== input.rev) throw new CatalogueError('conflict', 'This was edited elsewhere.')
+    previous = draft!
+  }
   const cleaned = cleanCatalogueSet(kind, input.set, {
     locales: new Set(site.locales),
     channels: site.config.channels.map((c) => c.value),
     categories: site.config.categories.map((c) => c.value),
     dietary: site.config.dietaryTags.map((c) => c.value),
-    previous: draft!,
+    previous,
     newKey,
   })
   const [, weakLists, weakItems] = await Promise.all([
@@ -638,13 +685,26 @@ export async function patchCatalogueDraft(
     // invalid_value (not a request error): the autosave drops just this path; the editor names the owner via checkCatalogueSlugs.
     if (conflicts.length) throw new CatalogueError('invalid_value', 'This address is already used.', { conflicts })
   }
-  const result = (await commit(client, grant.projectSlug, () => {
-    let p = client.patch(`drafts.${input.id}`).ifRevisionId(input.rev)
+  const ops = <P extends { setIfMissing(v: Record<string, unknown>): P; set(v: Record<string, unknown>): P; unset(v: string[]): P }>(p: P): P => {
     if (Object.keys(cleaned.setIfMissing).length) p = p.setIfMissing(cleaned.setIfMissing)
     if (Object.keys(cleaned.set).length) p = p.set(cleaned.set)
     if (cleaned.unset.length) p = p.unset(cleaned.unset)
-    return p.commit(DRAFT_SAVE)
-  })) as { _rev?: string } | undefined
+    return p
+  }
+  const draftId = `drafts.${input.id}`
+  if (openedCopy) {
+    // create() fails (409 → conflict) if a draft appeared meanwhile: never written over.
+    const docs = (await commit(
+      client,
+      grant.projectSlug,
+      () => client.transaction().create(openedCopy as { _id: string; _type: string }).patch(draftId, (p) => ops(p)).commit({ ...DRAFT_SAVE, returnDocuments: true }),
+      guard
+    )) as Array<{ _id?: string; _rev?: string }> | undefined
+    return { rev: (Array.isArray(docs) ? docs.find((d) => d?._id === draftId)?._rev : undefined) ?? '' }
+  }
+  const result = (await commit(client, grant.projectSlug, () => ops(client.patch(draftId).ifRevisionId(input.rev)).commit(DRAFT_SAVE), guard)) as
+    | { _rev?: string }
+    | undefined
   return { rev: result?._rev ?? '' }
 }
 

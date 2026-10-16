@@ -67,7 +67,7 @@ export function OptionListEditor({
   const id = useId()
   const d = site.defaultLocale
   const doc = snapshot?.doc ?? {}
-  const draft = useCatalogueDraft({ projectSlug, kind: 'optionList', initialId: snapshot?.id ?? '', initialRev: snapshot?.rev ?? '', hasDraft: snapshot?.hasDraft ?? false, defaultLocale: d })
+  const draft = useCatalogueDraft({ projectSlug, kind: 'optionList', initialId: snapshot?.id ?? '', initialRev: snapshot?.rev ?? '', liveRev: snapshot?.live?.rev, hasDraft: snapshot?.hasDraft ?? false, defaultLocale: d })
   const archived = snapshot?.status.status === 'archived'
   const readOnly = archived || !can.write
   const update = readOnly ? () => undefined : draft.update

@@ -105,8 +105,12 @@ export async function patchCatalogueDraftAction(input: {
   id: string
   rev: string
   set: Record<string, unknown>
+  /** First edit of a published document: the live revision the editor loaded (rev is then ''). */
+  openFrom?: string
 }): Promise<Result<{ rev: string }>> {
-  return run('patch', input?.projectSlug, (ctx, pid) => patchCatalogueDraft(ctx, pid, kindOf(input.kind), { id: input.id, rev: input.rev, set: input.set }))
+  return run('patch', input?.projectSlug, (ctx, pid) =>
+    patchCatalogueDraft(ctx, pid, kindOf(input.kind), { id: input.id, rev: input.rev, set: input.set, openFrom: typeof input.openFrom === 'string' ? input.openFrom : undefined })
+  )
 }
 
 export async function publishCatalogueDraftAction(

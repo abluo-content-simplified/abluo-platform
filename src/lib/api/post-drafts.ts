@@ -32,6 +32,7 @@ import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { POST_CTA_MODES } from '@/lib/blog/post-cta'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
 import { DRAFT_SAVE } from '@/lib/sanity/draft-save'
+import { readsInOrder } from '@/lib/api/parallel-reads'
 import { bodyReference, cleanLink, collectInternalRefs, preserved } from '@/lib/client/normalize-blocks'
 import { LINK_TARGET_TYPES } from '@/lib/links/link-target'
 import { localePlainTexts, presentLocales } from '@/lib/sanity/groq-locales'
@@ -189,7 +190,27 @@ export async function patchPostDraft(
   }
 
   const draftId = `drafts.${input.id}`
-  const current = (await client.getDocument(draftId)) as
+  // The four pre-write reads are independent: run them together (optimisation C).
+  // Results are validated below in the original order; the single-project guard
+  // is awaited again right before the write.
+  const guard = assertSingleSanityProject((q, p) => client.fetch(q, p), grant.projectSlug)
+  const [currentDoc, publishedDoc, site] = await readsInOrder<[unknown, unknown, { locales?: string[] | null; categories?: string[] | null } | null, void]>([
+    client.getDocument(draftId),
+    client.getDocument(input.id),
+    client.fetch<{
+      locales?: string[] | null
+      categories?: string[] | null
+    } | null>(
+      `{
+      "locales": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].supportedLocales,
+      "categories": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]
+        .moduleInstallations[moduleId == "blog"][0].config.categories[].value
+    }`,
+      { projectSlug: grant.projectSlug }
+    ),
+    guard,
+  ])
+  const current = currentDoc as
     | { _type?: string; _rev?: string; projectSlug?: string }
     | undefined
   // Another project's draft and a missing draft look the same to the caller.
@@ -201,22 +222,11 @@ export async function patchPostDraft(
   }
   // The published document under the same id (edit mode) must be this
   // project's post too — same rule as getPostDraft / publish / lifecycle.
-  const published = (await client.getDocument(input.id)) as { _type?: string; projectSlug?: string } | undefined
+  const published = publishedDoc as { _type?: string; projectSlug?: string } | undefined
   if (published && (published._type !== 'post' || published.projectSlug !== grant.projectSlug)) {
     throw new PostDraftError('not_found', 'Unknown draft id.')
   }
 
-  const site = await client.fetch<{
-    locales?: string[] | null
-    categories?: string[] | null
-  } | null>(
-    `{
-      "locales": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].supportedLocales,
-      "categories": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]
-        .moduleInstallations[moduleId == "blog"][0].config.categories[].value
-    }`,
-    { projectSlug: grant.projectSlug }
-  )
   const locales = site?.locales?.length ? site.locales : []
   const categoryKeys = site?.categories ?? []
 
@@ -344,7 +354,7 @@ export async function patchPostDraft(
 
   set['wizard.updatedAt'] = (deps.now ?? (() => new Date()))().toISOString()
 
-  await assertSingleSanityProject((q, p) => client.fetch(q, p), grant.projectSlug)
+  await guard
   try {
     let patch = client.patch(draftId).ifRevisionId(input.rev)
     if (Object.keys(ensure).length) patch = patch.setIfMissing(ensure)

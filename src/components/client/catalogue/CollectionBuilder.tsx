@@ -104,6 +104,7 @@ export function CollectionBuilder({
     kind: 'collection',
     initialId: snapshot?.id ?? '',
     initialRev: snapshot?.rev ?? '',
+    liveRev: snapshot?.live?.rev,
     hasDraft: snapshot?.hasDraft ?? false,
     defaultLocale: d,
     create: () => ({ collectionType }),

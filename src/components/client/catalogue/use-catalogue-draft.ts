@@ -39,6 +39,7 @@ export function useCatalogueDraft({
   kind,
   initialId,
   initialRev,
+  liveRev,
   hasDraft: initialHasDraft,
   defaultLocale,
   create,
@@ -48,6 +49,12 @@ export function useCatalogueDraft({
   /** '' for a new document (nothing created yet). */
   initialId: string
   initialRev: string
+  /**
+   * The published revision the editor loaded (snapshot.live.rev). With it, the
+   * first change to a published document opens its draft and saves in ONE
+   * request; without it, the separate "open for edit" call is used.
+   */
+  liveRev?: string
   hasDraft: boolean
   defaultLocale: string
   /** Extra fields for the create call (item profile, collection type). */
@@ -56,6 +63,8 @@ export function useCatalogueDraft({
   const idRef = useRef(initialId)
   const [id, setId] = useState(initialId)
   const hasDraftRef = useRef(initialHasDraft)
+  // Valid only until the first draft exists (a publish makes it stale → cleared).
+  const liveRevRef = useRef(initialHasDraft ? '' : (liveRev ?? ''))
   const [hasDraft, setHasDraft] = useState(initialHasDraft)
   const heldRef = useRef<PendingSet>({})
   const sentRef = useRef(Boolean(initialId))
@@ -91,6 +100,15 @@ export function useCatalogueDraft({
         } catch {
           /* ignore */
         }
+      } else if (!hasDraftRef.current && liveRevRef.current) {
+        // First edit of a published document: open + save in one request (optimisation D).
+        const r = await timedAction('catalogue.patch (first edit)', () =>
+          patchCatalogueDraftAction({ projectSlug, kind, id: idRef.current, rev: '', openFrom: liveRevRef.current, set: input.set })
+        )
+        if (!r.ok) return { ok: false, error: r.error } as const
+        liveRevRef.current = ''
+        markDraft()
+        return { ok: true, rev: r.rev } as const
       } else if (!hasDraftRef.current || !rev) {
         const opened = await timedAction('catalogue.open', () => openCatalogueForEditAction({ projectSlug, kind, id: idRef.current }))
         if (!opened.ok) return { ok: false, error: opened.error } as const
@@ -146,6 +164,7 @@ export function useCatalogueDraft({
       if (!opts.keepEditing) finished.current = true
       await autosave.discard()
       hasDraftRef.current = false
+      liveRevRef.current = ''
       setHasDraft(false)
       return { ok: true, slugs: r.slugs, published: r.published, notLive: r.notLive }
     },

@@ -70,7 +70,7 @@ export function ItemEditor({
   const initial: ItemState = useMemo(() => itemStateFromDoc(snapshot.doc, null), [snapshot.doc])
   const archived = snapshot.status.status === 'archived'
   const readOnly = archived || !can.write
-  const draft = useCatalogueDraft({ projectSlug, kind: 'item', initialId: snapshot.id, initialRev: snapshot.rev, hasDraft: snapshot.hasDraft, defaultLocale: d })
+  const draft = useCatalogueDraft({ projectSlug, kind: 'item', initialId: snapshot.id, initialRev: snapshot.rev, liveRev: snapshot.live?.rev, hasDraft: snapshot.hasDraft, defaultLocale: d })
   const item = useItemState({ initial, initialPhotos: snapshot.photos.map((p) => ({ assetId: p.assetId, thumbUrl: p.thumbUrl })), channels, optionCounts, defaultLocale: d, update: readOnly ? () => undefined : draft.update })
   // ADR-035: photos still uploading when the person switches tab join the item when ready; Publish waits for them.
   const uploadOwner = `catalogue-item:${useId()}`
