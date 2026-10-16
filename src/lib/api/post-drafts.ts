@@ -31,6 +31,7 @@ import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { POST_CTA_MODES } from '@/lib/blog/post-cta'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
+import { DRAFT_SAVE } from '@/lib/sanity/draft-save'
 import { bodyReference, cleanLink, collectInternalRefs, preserved } from '@/lib/client/normalize-blocks'
 import { LINK_TARGET_TYPES } from '@/lib/links/link-target'
 import { localePlainTexts, presentLocales } from '@/lib/sanity/groq-locales'
@@ -349,7 +350,7 @@ export async function patchPostDraft(
     if (Object.keys(ensure).length) patch = patch.setIfMissing(ensure)
     patch = patch.set(set)
     if (unset.length) patch = patch.unset(unset)
-    const result = (await patch.commit()) as { _rev?: string }
+    const result = (await patch.commit(DRAFT_SAVE)) as { _rev?: string }
     return { rev: result._rev ?? '' }
   } catch (error) {
     if ((error as { statusCode?: number })?.statusCode === 409) {

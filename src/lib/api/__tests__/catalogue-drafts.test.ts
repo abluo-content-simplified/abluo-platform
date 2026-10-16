@@ -13,6 +13,7 @@ import {
   catalogueAbilities,
   createCatalogueDoc,
   listCatalogue,
+  openCatalogueForEdit,
   patchCatalogueDraft,
   previewCataloguePublish,
   publishCatalogueDraft,
@@ -74,13 +75,14 @@ function fake(docs: Docs = {}, namespace: Array<Record<string, unknown>> = []) {
     throw new Error(`unexpected query ${q}`)
   })
   const patchOps: unknown[] = []
+  const commitOpts: Array<[string, unknown]> = []
   const patch = vi.fn(() => {
     const pb = {
       ifRevisionId: () => pb,
       setIfMissing: (v: unknown) => (patchOps.push(['setIfMissing', v]), pb),
       set: (v: unknown) => (patchOps.push(['set', v]), pb),
       unset: (v: unknown) => (patchOps.push(['unset', v]), pb),
-      commit: vi.fn(async () => (writes.push('patch'), { _rev: 'd2' })),
+      commit: vi.fn(async (opts?: unknown) => (commitOpts.push(['patch', opts]), writes.push('patch'), { _rev: 'd2' })),
     }
     return pb
   })
@@ -90,20 +92,20 @@ function fake(docs: Docs = {}, namespace: Array<Record<string, unknown>> = []) {
       create: (d: unknown) => (txOps.push(['create', d]), tx),
       createOrReplace: (d: unknown) => (txOps.push(['createOrReplace', d]), tx),
       delete: (id: string) => (txOps.push(['delete', id]), tx),
-      commit: vi.fn(async () => (writes.push('transaction'), {})),
+      commit: vi.fn(async (opts?: unknown) => (commitOpts.push(['transaction', opts]), writes.push('transaction'), {})),
     }
     return tx
   })
   const client = {
     getDocument: vi.fn(async (id: string) => docs[id]),
     fetch,
-    create: vi.fn(async (d: Record<string, unknown>) => (created.push(d), writes.push('create'), { ...d, _rev: 'c1' })),
+    create: vi.fn(async (d: Record<string, unknown>, opts?: unknown) => (created.push(d), commitOpts.push(['create', opts]), writes.push('create'), { ...d, _rev: 'c1' })),
     patch,
     transaction,
   }
   let u = 0
   const deps = { client: client as never, uuid: () => `uuid-${++u}`, now: () => new Date('2026-10-13T10:00:00Z'), audit: vi.fn(async () => undefined) }
-  return { client, deps, writes, created, txOps, patchOps }
+  return { client, deps, writes, created, txOps, patchOps, commitOpts }
 }
 
 const draftItem = (o: Record<string, unknown> = {}) => ({
@@ -194,6 +196,16 @@ describe('patch', () => {
     await patchCatalogueDraft(ctx(grant()), 'project-a', 'item', { id: 'item-1', rev: 'd1', set: { offers: [{ _key: 'o1', channel: 'dine-in', price: 8.5, currency: 'CHF' }] } }, f.deps)
     expect(JSON.stringify(f.patchOps)).not.toContain('currency')
     expect(f.writes).toEqual(['patch'])
+  })
+  it('an autosave does not wait for the query index (visibility async); the revision guard stays', async () => {
+    const f = fake({ 'drafts.item-1': draftItem() })
+    await patchCatalogueDraft(ctx(grant()), 'project-a', 'item', { id: 'item-1', rev: 'd1', set: { 'name.it': 'y' } }, f.deps)
+    expect(f.commitOpts).toEqual([['patch', { visibility: 'async' }]])
+  })
+  it('opening a published item for edit copies it with visibility async', async () => {
+    const f = fake({ 'item-1': { ...draftItem(), _id: 'item-1' } })
+    await openCatalogueForEdit(ctx(grant()), 'project-a', 'item', 'item-1', f.deps)
+    expect(f.commitOpts).toEqual([['create', { visibility: 'async' }]])
   })
 })
 

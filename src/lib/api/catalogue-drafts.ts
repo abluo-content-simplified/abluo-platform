@@ -37,6 +37,7 @@ import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
+import { DRAFT_SAVE } from '@/lib/sanity/draft-save'
 import { audited, type ContentAuditWriter } from '@/lib/lifecycle/audit'
 import { deriveStatus, type LifecycleState } from '@/lib/lifecycle/status'
 import * as lifecycle from '@/lib/lifecycle/service'
@@ -513,7 +514,7 @@ export async function openCatalogueForEdit(ctx: TenantAuthorizationContext, proj
   copy.projectSlug = grant.projectSlug
   await assertSingleSanityProject((q, p) => client.fetch(q, p), grant.projectSlug)
   try {
-    const r = (await client.create(copy as { _id: string; _type: string })) as { _rev?: string }
+    const r = (await span('sanity.commit', () => client.create(copy as { _id: string; _type: string }, DRAFT_SAVE))) as { _rev?: string }
     return { id, rev: r?._rev ?? '', created: true }
   } catch (error) {
     if ((error as { statusCode?: number })?.statusCode === 409) {
@@ -642,7 +643,7 @@ export async function patchCatalogueDraft(
     if (Object.keys(cleaned.setIfMissing).length) p = p.setIfMissing(cleaned.setIfMissing)
     if (Object.keys(cleaned.set).length) p = p.set(cleaned.set)
     if (cleaned.unset.length) p = p.unset(cleaned.unset)
-    return p.commit()
+    return p.commit(DRAFT_SAVE)
   })) as { _rev?: string } | undefined
   return { rev: result?._rev ?? '' }
 }

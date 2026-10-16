@@ -27,6 +27,7 @@ import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
+import { DRAFT_SAVE } from '@/lib/sanity/draft-save'
 import { audited, type ContentAuditWriter } from '@/lib/lifecycle/audit'
 import { lifecycleAction, snapshotOf } from '@/lib/lifecycle/transition'
 import { coverThumbUrl } from '@/lib/api/post-drafts'
@@ -508,7 +509,7 @@ export async function openGalleryForEdit(
   copy.projectSlug = grant.projectSlug
   await assertSingleSanityProject((q, p) => client.fetch(q, p), grant.projectSlug)
   try {
-    await client.create(copy as { _id: string; _type: string })
+    await client.create(copy as { _id: string; _type: string }, DRAFT_SAVE)
   } catch (error) {
     if ((error as { statusCode?: number })?.statusCode === 409) return { id, created: false }
     throw new GalleryError('failed', 'Could not open the gallery.')
@@ -710,7 +711,7 @@ export async function patchGalleryDraft(
     if (Object.keys(ensure).length) p = p.setIfMissing(ensure)
     if (Object.keys(set).length) p = p.set(set)
     if (unset.length) p = p.unset(unset)
-    return p.commit()
+    return p.commit(DRAFT_SAVE)
   })) as { _rev?: string } | undefined
   return { rev: result?._rev ?? '', ...(keys && { keys }) }
 }

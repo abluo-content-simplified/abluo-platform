@@ -29,6 +29,7 @@ import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
+import { DRAFT_SAVE } from '@/lib/sanity/draft-save'
 import { audited, type ContentAuditWriter } from '@/lib/lifecycle/audit'
 import { lifecycleAction, snapshotOf as publishedSnapshotOf } from '@/lib/lifecycle/transition'
 import { coverThumbUrl } from '@/lib/api/post-drafts'
@@ -466,7 +467,7 @@ export async function openEventForEdit(
   copy.projectSlug = grant.projectSlug
   await assertSingleSanityProject((q, p) => client.fetch(q, p), grant.projectSlug)
   try {
-    const created = (await client.create(copy as { _id: string; _type: string })) as { _rev?: string } | undefined
+    const created = (await client.create(copy as { _id: string; _type: string }, DRAFT_SAVE)) as { _rev?: string } | undefined
     return { id, rev: created?._rev ?? '', created: true }
   } catch (error) {
     if ((error as { statusCode?: number })?.statusCode === 409) {
@@ -610,7 +611,7 @@ export async function patchEventDraft(
     if (Object.keys(ensure).length) p = p.setIfMissing(ensure)
     if (Object.keys(set).length) p = p.set(set)
     if (unset.length) p = p.unset(unset)
-    return p.commit()
+    return p.commit(DRAFT_SAVE)
   })) as { _rev?: string } | undefined
   return { rev: result?._rev ?? '' }
 }
@@ -634,7 +635,7 @@ export async function setEventCover(
   if (draft._rev !== input.rev) throw new EventError('conflict', 'This event was edited elsewhere.')
 
   if (remove) {
-    const r = (await commit(client, grant.projectSlug, () => client.patch(`drafts.${input.id}`).ifRevisionId(input.rev).unset(['heroImage']).commit())) as { _rev?: string } | undefined
+    const r = (await commit(client, grant.projectSlug, () => client.patch(`drafts.${input.id}`).ifRevisionId(input.rev).unset(['heroImage']).commit(DRAFT_SAVE))) as { _rev?: string } | undefined
     return { rev: r?._rev ?? '', cover: null }
   }
 
@@ -652,7 +653,7 @@ export async function setEventCover(
     ...(asset.crop && { crop: { ...asset.crop, _type: 'sanity.imageCrop' } }),
     ...(Object.keys(alt).length && { alt: { _type: 'localizedString', ...alt } }),
   }
-  const r = (await commit(client, grant.projectSlug, () => client.patch(`drafts.${input.id}`).ifRevisionId(input.rev).set({ heroImage }).commit())) as { _rev?: string } | undefined
+  const r = (await commit(client, grant.projectSlug, () => client.patch(`drafts.${input.id}`).ifRevisionId(input.rev).set({ heroImage }).commit(DRAFT_SAVE))) as { _rev?: string } | undefined
   return {
     rev: r?._rev ?? '',
     cover: { assetId: input.assetId!, url: asset.url ?? '', thumbUrl: coverThumbUrl(asset.url, asset.hotspot as { x?: number; y?: number } | null, 480), alt },
