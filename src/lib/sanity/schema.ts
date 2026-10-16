@@ -5653,6 +5653,17 @@ export const initialValueTemplates = [
     }),
   },
   {
+    // Brand Hub module (ADR-036) — one brand guide per project.
+    id: 'brandGuideProjectOwned',
+    title: 'Brand guide',
+    schemaType: 'brandGuide',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+      version: 1,
+    }),
+  },
+  {
     // Gallery module (ADR-022) — Content → Galleries.
     id: 'galleryProjectOwned',
     title: 'Gallery',

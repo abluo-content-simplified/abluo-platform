@@ -44,7 +44,8 @@ import { ConsentProvider } from '@/components/consent/ConsentProvider'
 import { readConsentContext, readSiteEmbedVendors } from '@/lib/consent/server'
 import { asUrlProjectSegment, type UrlProjectSegment } from '@/lib/tenancy/ids'
 import { lightThemeSelector, type ThemeMode } from '@/lib/design-system/theme-mode'
-import { FALLBACK_DARK, FALLBACK_LIGHT, FALLBACK_STATE, FALLBACK_FONTS, FALLBACK_RADIUS } from '@/lib/design-system/fallback-tokens'
+import { FALLBACK_FONTS, FALLBACK_RADIUS, FALLBACK_MOTION } from '@/lib/design-system/fallback-tokens'
+import { resolveColours } from '@/lib/design-system/resolved-colours'
 import { projectScopeSlugFromUrlSegment } from '@/lib/forms/render-mapping'
 import { gradientCssVars, pageGradientCssVars, hasPageGradient, pageGradientMotion, PAGE_GRADIENT_BODY_RULE } from '@/lib/sanity/gradients'
 import { PageGradientBackdrop } from '@/components/site/PageGradientBackdrop'
@@ -110,8 +111,6 @@ function buildCssVars(
   tenantId?: string,
   themeMode: ThemeMode = 'toggle'
 ): string {
-  const dark = ds?.colors?.darkTheme
-  const light = ds?.colors?.lightTheme
   const typo = ds?.typography
   const radius = ds?.radius
   const sectionSurfaces = ds?.sectionSurfaces
@@ -124,16 +123,19 @@ function buildCssVars(
   // Fallbacks are DELIBERATELY neutral — see fallback-tokens.ts. Until 2026-09-03
   // the literals here were Livener's brand verbatim, so any tenant with a gap in
   // their design system rendered in another client's amber, invisibly.
+  // The colour chains themselves live in resolveColours() — shared with the
+  // Brand Hub (ADR-036), which documents exactly what is emitted here.
+  const RC = resolveColours(ds)
   const D = {
-    bg: dark?.background ?? FALLBACK_DARK.background,
-    bgAlt: dark?.backgroundAlt ?? FALLBACK_DARK.backgroundAlt,
-    surface: dark?.surface ?? dark?.backgroundAlt ?? FALLBACK_DARK.surface,
-    primary: dark?.primary ?? FALLBACK_DARK.primary,
-    secondary: dark?.secondary ?? FALLBACK_DARK.secondary,
-    textPrimary: dark?.textPrimary ?? FALLBACK_DARK.textPrimary,
-    textSecondary: dark?.textSecondary ?? FALLBACK_DARK.textSecondary,
-    textMuted: dark?.textMuted ?? dark?.textSecondary ?? FALLBACK_DARK.textMuted,
-    border: dark?.border ?? FALLBACK_DARK.border,
+    bg: RC.dark.background!.value,
+    bgAlt: RC.dark.backgroundAlt!.value,
+    surface: RC.dark.surface!.value,
+    primary: RC.dark.primary!.value,
+    secondary: RC.dark.secondary!.value,
+    textPrimary: RC.dark.textPrimary!.value,
+    textSecondary: RC.dark.textSecondary!.value,
+    textMuted: RC.dark.textMuted!.value,
+    border: RC.dark.border!.value,
     headingFont: getFontName(typo?.headingFont, FALLBACK_FONTS.heading),
     bodyFont: getFontName(typo?.bodyFont, FALLBACK_FONTS.body),
     // Optional third face. No fallback family on purpose: a design system that
@@ -152,15 +154,15 @@ function buildCssVars(
   }
 
   const L = {
-    bg: light?.background ?? FALLBACK_LIGHT.background,
-    bgAlt: light?.backgroundAlt ?? FALLBACK_LIGHT.backgroundAlt,
-    surface: light?.surface ?? light?.backgroundAlt ?? FALLBACK_LIGHT.surface,
-    primary: light?.primary ?? D.primary,
-    secondary: light?.secondary ?? D.secondary,
-    textPrimary: light?.textPrimary ?? FALLBACK_LIGHT.textPrimary,
-    textSecondary: light?.textSecondary ?? FALLBACK_LIGHT.textSecondary,
-    textMuted: light?.textMuted ?? light?.textSecondary ?? FALLBACK_LIGHT.textMuted,
-    border: light?.border ?? FALLBACK_LIGHT.border,
+    bg: RC.light.background!.value,
+    bgAlt: RC.light.backgroundAlt!.value,
+    surface: RC.light.surface!.value,
+    primary: RC.light.primary!.value,
+    secondary: RC.light.secondary!.value,
+    textPrimary: RC.light.textPrimary!.value,
+    textSecondary: RC.light.textSecondary!.value,
+    textMuted: RC.light.textMuted!.value,
+    border: RC.light.border!.value,
   }
 
   // Typography scale — sizes in rem, line height unitless, letter spacing in rem
@@ -311,9 +313,9 @@ function buildCssVars(
       --color-text-secondary: ${L.textSecondary};
       --color-text-muted: ${L.textMuted};
       --color-border: ${L.border};
-      --color-success: ${light?.success ?? FALLBACK_STATE.successLight};
-      --color-warning: ${light?.warning ?? FALLBACK_STATE.warningLight};
-      --color-danger: ${light?.danger ?? FALLBACK_STATE.dangerLight};
+      --color-success: ${RC.light.success!.value};
+      --color-warning: ${RC.light.warning!.value};
+      --color-danger: ${RC.light.danger!.value};
       --background: ${L.bg};
       --foreground: ${L.textPrimary};
       /* ── Form tokens (light theme) ── */
@@ -321,12 +323,12 @@ ${lightFormVars}
       --form-label-color: ${formTypo?.labelColor ?? L.textSecondary};
       --form-help-color: ${formTypo?.helpTextColor ?? L.textMuted};
       /* ── Button tokens (light theme overrides) ── */
-      --btn-primary-bg: ${ds?.buttons?.primary?.lightTheme?.background ?? L.primary};
-      --btn-primary-text: ${ds?.buttons?.primary?.lightTheme?.text ?? L.bg};
-      --btn-primary-hover-bg: ${ds?.buttons?.primary?.lightTheme?.hover?.background ?? L.primary};
-      --btn-secondary-bg: ${ds?.buttons?.secondary?.lightTheme?.background ?? 'transparent'};
-      --btn-secondary-text: ${ds?.buttons?.secondary?.lightTheme?.text ?? L.textPrimary};
-      --btn-secondary-hover-bg: ${ds?.buttons?.secondary?.lightTheme?.hover?.background ?? 'transparent'};
+      --btn-primary-bg: ${RC.buttons.primary.light.background.value};
+      --btn-primary-text: ${RC.buttons.primary.light.text.value};
+      --btn-primary-hover-bg: ${RC.buttons.primary.light.hoverBackground.value};
+      --btn-secondary-bg: ${RC.buttons.secondary.light.background.value};
+      --btn-secondary-text: ${RC.buttons.secondary.light.text.value};
+      --btn-secondary-hover-bg: ${RC.buttons.secondary.light.hoverBackground.value};
       /* ── Section surface tokens (light theme) ── */
       --color-section-surface1: ${sectionSurfaces?.lightTheme?.surface1 ?? 'transparent'};
       --color-section-surface2: ${sectionSurfaces?.lightTheme?.surface2 ?? 'transparent'};
@@ -378,9 +380,9 @@ ${D.accentFont ? `      --font-accent: '${D.accentFont}', Georgia, serif;
       --color-text-secondary: ${D.textSecondary};
       --color-text-muted: ${D.textMuted};
       --color-border: ${D.border};
-      --color-success: ${dark?.success ?? FALLBACK_STATE.successDark};
-      --color-warning: ${dark?.warning ?? FALLBACK_STATE.warningDark};
-      --color-danger: ${dark?.danger ?? FALLBACK_STATE.dangerDark};
+      --color-success: ${RC.dark.success!.value};
+      --color-warning: ${RC.dark.warning!.value};
+      --color-danger: ${RC.dark.danger!.value};
       /* --radius-full is a constant, not a design-system token: it exists so
          genuinely-circular/pill geometry can be expressed through the same
          --radius-* vocabulary as everything else. The eyebrow pill already
@@ -391,12 +393,12 @@ ${D.accentFont ? `      --font-accent: '${D.accentFont}', Georgia, serif;
       --radius-lg: ${D.radiusLg}px;
       --radius-btn: ${ds?.buttons?.primary?.darkTheme?.borderRadius ?? ds?.buttons?.primary?.lightTheme?.borderRadius ?? D.radiusMd}px;
       /* ── Button tokens (dark theme) ── */
-      --btn-primary-bg: ${ds?.buttons?.primary?.darkTheme?.background ?? D.primary};
-      --btn-primary-text: ${ds?.buttons?.primary?.darkTheme?.text ?? D.bg};
-      --btn-primary-hover-bg: ${ds?.buttons?.primary?.darkTheme?.hover?.background ?? D.primary};
-      --btn-secondary-bg: ${ds?.buttons?.secondary?.darkTheme?.background ?? 'transparent'};
-      --btn-secondary-text: ${ds?.buttons?.secondary?.darkTheme?.text ?? D.textPrimary};
-      --btn-secondary-hover-bg: ${ds?.buttons?.secondary?.darkTheme?.hover?.background ?? 'transparent'};
+      --btn-primary-bg: ${RC.buttons.primary.dark.background.value};
+      --btn-primary-text: ${RC.buttons.primary.dark.text.value};
+      --btn-primary-hover-bg: ${RC.buttons.primary.dark.hoverBackground.value};
+      --btn-secondary-bg: ${RC.buttons.secondary.dark.background.value};
+      --btn-secondary-text: ${RC.buttons.secondary.dark.text.value};
+      --btn-secondary-hover-bg: ${RC.buttons.secondary.dark.hoverBackground.value};
       --logo-height-desktop: ${logoHeightOverride?.desktop ?? ds?.branding?.logoHeightDesktop ?? 36}px;
       --logo-height-mobile: ${logoHeightOverride?.mobile ?? ds?.branding?.logoHeightMobile ?? 28}px;
       /* The header logo follows only the per-site Website Settings heights (their
@@ -404,14 +406,14 @@ ${D.accentFont ? `      --font-accent: '${D.accentFont}', Georgia, serif;
          what every header rendered before these were honoured. */
       --header-logo-height-desktop: ${logoHeightOverride?.desktop ?? 36}px;
       --header-logo-height-mobile: ${logoHeightOverride?.mobile ?? 36}px;
-      --motion-duration-fast: ${motion?.durationFast ?? 120}ms;
-      --motion-duration-base: ${motion?.durationBase ?? 200}ms;
-      --motion-duration-slow: ${motion?.durationSlow ?? 350}ms;
-      --motion-duration-slower: ${motion?.durationSlower ?? 600}ms;
-      --motion-easing-standard: ${motion?.easingStandard ?? 'cubic-bezier(0.4, 0, 0.2, 1)'};
-      --motion-easing-decelerate: ${motion?.easingDecelerate ?? 'cubic-bezier(0, 0, 0.2, 1)'};
-      --motion-easing-accelerate: ${motion?.easingAccelerate ?? 'cubic-bezier(0.4, 0, 1, 1)'};
-      --motion-easing-emphasized: ${motion?.easingEmphasized ?? 'cubic-bezier(0.2, 0, 0, 1)'};
+      --motion-duration-fast: ${motion?.durationFast ?? FALLBACK_MOTION.durationFast}ms;
+      --motion-duration-base: ${motion?.durationBase ?? FALLBACK_MOTION.durationBase}ms;
+      --motion-duration-slow: ${motion?.durationSlow ?? FALLBACK_MOTION.durationSlow}ms;
+      --motion-duration-slower: ${motion?.durationSlower ?? FALLBACK_MOTION.durationSlower}ms;
+      --motion-easing-standard: ${motion?.easingStandard ?? FALLBACK_MOTION.easingStandard};
+      --motion-easing-decelerate: ${motion?.easingDecelerate ?? FALLBACK_MOTION.easingDecelerate};
+      --motion-easing-accelerate: ${motion?.easingAccelerate ?? FALLBACK_MOTION.easingAccelerate};
+      --motion-easing-emphasized: ${motion?.easingEmphasized ?? FALLBACK_MOTION.easingEmphasized};
       /* Bridge: wire Tailwind/shadcn tokens to our design system so bg-background etc. work */
       --background: ${D.bg};
       --foreground: ${D.textPrimary};

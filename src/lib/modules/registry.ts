@@ -7,6 +7,7 @@ import { formsSchemaTypes } from './forms/schema'
 import { newsSchemaTypes } from './news/schema'
 import { gallerySchemaTypes } from './gallery/schema'
 import { catalogueSchemaTypes } from './catalogue/schema'
+import { brandHubSchemaTypes } from './brand-hub/schema'
 import { SEGMENT_REGEX_SOURCE } from './catalogue/segment'
 
 // ── Module registry ───────────────────────────────────────────────────────────
@@ -1235,6 +1236,65 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
     },
 
     changelog: 'V1.0.0 — Items, collections, offers, options, public item and collection pages (ADR-033).',
+  },
+
+  // ── Brand Hub (ADR-036) ─────────────────────────────────────────────────────
+  // Brand guidelines generated from the design system and site settings, served
+  // at /brand on the client's own website (noindex). The module owns only the
+  // WRITTEN part — one brandGuide document per project; every design value is
+  // read live from its owner, never copied.
+  {
+    id: 'brand-hub',
+    label: 'Brand Hub',
+    version: '1.0.0',
+    status: 'released',
+    category: 'platform',
+
+    platformContract: {
+      collections: [
+        {
+          id: 'brand-hub-module',
+          label: 'Brand Hub',
+          items: [
+            {
+              id: 'brand-guide',
+              label: 'Brand guide',
+              schemaType: 'brandGuide',
+              filter: `_type == "brandGuide" && projectSlug == $slug`,
+              initialValueTemplate: 'brandGuideProjectOwned',
+            },
+          ],
+        },
+      ],
+
+      sectionTypes: [],
+
+      schemaTypes: ['brandGuideExample', 'brandGuidePage', 'brandGuide'],
+
+      schemaDefinitions: () => brandHubSchemaTypes,
+
+      permissions: [],
+
+      configSchema: [],
+
+      placement: {
+        surfaces: [],
+        note: 'Adds the brand guidelines at /brand on this website (hidden from search engines, not linked from the menu). The values come from the design system; only the written guidance is edited here.',
+      },
+    },
+
+    publicContract: {},
+
+    dependencies: {
+      requires: [],
+      integratesWith: [],
+    },
+
+    dataStore: {
+      primary: 'content',
+    },
+
+    changelog: 'V1.0.0 — ADR-036. Overview, colour, typography, shape & spacing, layout, logo & assets and motion pages generated from the design system; written guidance and do/don’t examples per page.',
   },
 
 ]

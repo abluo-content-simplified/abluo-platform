@@ -154,6 +154,8 @@ export const MODULES_WITHOUT_TENANT_SURFACE: Readonly<Record<string, 'notYetBuil
   live: 'notYetBuilt',
   whatsapp: 'adminOnly',
   translate: 'adminOnly',
+  // ADR-036 — the guide is written by Abluo in Studio; v1 has no client editing.
+  'brand-hub': 'adminOnly',
 }
 
 /** The single visibility check. Pure. */

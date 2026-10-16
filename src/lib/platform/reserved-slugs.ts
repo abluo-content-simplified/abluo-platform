@@ -83,6 +83,7 @@ export const RESERVED_SLUGS: readonly string[] = [
 
   // ── Public website — tenant level (/<tenant>/…) ───────────────────────────
   'blog',
+  'brand',     // Brand Hub (ADR-036)
   'category',
   'events',
   'live',

@@ -75,6 +75,34 @@ export const FALLBACK_FONTS = {
 export const FALLBACK_RADIUS = { small: 8, medium: 12, large: 16 } as const
 
 /**
+ * Motion — what the tenant layout emits as --motion-* when the design system
+ * sets nothing. Durations in ms, easings as CSS cubic-bezier strings. Read by
+ * buildCssVars() and shown by the Brand Hub as "Platform default" (ADR-036).
+ */
+export const FALLBACK_MOTION = {
+  durationFast: 120,
+  durationBase: 200,
+  durationSlow: 350,
+  durationSlower: 600,
+  easingStandard: 'cubic-bezier(0.4, 0, 0.2, 1)',
+  easingDecelerate: 'cubic-bezier(0, 0, 0.2, 1)',
+  easingAccelerate: 'cubic-bezier(0.4, 0, 1, 1)',
+  easingEmphasized: 'cubic-bezier(0.2, 0, 0, 1)',
+} as const
+
+/**
+ * Layout — the values SectionContainer renders through its var() fallbacks
+ * when the design system leaves `layout` empty (1120px content width, 120px
+ * section padding). Kept here so the Brand Hub can show what a site actually
+ * renders; SectionContainer's CSS fallbacks must stay equal to these
+ * (asserted by brand-hub tests).
+ */
+export const FALLBACK_LAYOUT = {
+  maxContentWidth: 1120,
+  sectionPaddingY: 120,
+} as const
+
+/**
  * Brand values that must NEVER appear as a fallback. Each is a real token from
  * a real live tenant, recorded so the guard test has something concrete to
  * assert against. Add a row when a tenant is onboarded; never remove one.

@@ -31,6 +31,13 @@ export const AA_LARGE = 3
 export interface ParsedColor {
   rgb: Rgb
   alpha: number
+  /**
+   * True when an `oklch()` value lies outside the sRGB gamut and `rgb` is the
+   * clamped, nearest displayable colour. Absent for hex/rgb inputs, which are
+   * in gamut by construction. Read by the Brand Hub (ADR-036 D4) to mark
+   * calculated HEX/RGB as approximate.
+   */
+  outOfGamut?: boolean
 }
 
 const HEX = /^#([0-9a-f]{3,8})$/i
@@ -122,7 +129,11 @@ function parseOklchFn(body: string): ParsedColor | null {
     const g = c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055
     return clamp01(g) * 255
   })
-  return { rgb: [enc[0], enc[1], enc[2]], alpha }
+  // A small tolerance: values written with 4 decimals round-trip a hair
+  // outside [0, 1] even when they were picked inside sRGB.
+  const GAMUT_EPS = 1e-3
+  const outOfGamut = lin.some((v) => v < -GAMUT_EPS || v > 1 + GAMUT_EPS)
+  return { rgb: [enc[0], enc[1], enc[2]], alpha, ...(outOfGamut ? { outOfGamut: true } : {}) }
 }
 
 /**

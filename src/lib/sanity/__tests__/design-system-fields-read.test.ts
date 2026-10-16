@@ -139,6 +139,13 @@ const EXCLUDE = [
   /src\/sanity\//,
   /src\/lib\/sanity\/actions\//,
   /\.d\.ts$/,
+  // The Brand Hub (ADR-036) DOCUMENTS every design-system value — showing a
+  // field on the hub is not the website rendering it, so it must not take a
+  // field off the backlog below.
+  /src\/lib\/modules\/brand-hub\//,
+  /src\/components\/brand-hub\//,
+  /src\/lib\/i18n\/brand-hub-messages\.ts$/,
+  /\/brand\/\[\[\.\.\.page\]\]\//,
 ]
 
 function runtimeFiles(dir: string, acc: string[] = []): string[] {
