@@ -12,7 +12,14 @@ import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { MEDIA_MANAGE_PERMISSION } from '@/lib/api/media-permission'
 import { listMediaLibrary, type MediaLibraryItem } from '@/lib/api/media-library'
-import { PostMediaError, uploadProjectImage, type PostMediaErrorCode, type UploadedPostImage } from '@/lib/api/post-media'
+import {
+  getProjectMediaStatus,
+  PostMediaError,
+  uploadProjectImage,
+  type MediaUploadStatus,
+  type PostMediaErrorCode,
+  type UploadedPostImage,
+} from '@/lib/api/post-media'
 import { GalleryError, type GalleryErrorCode } from '@/lib/api/gallery-drafts'
 import { batchUpdatePhotos, updateGalleryPhoto, type BatchPhotosInput, type UpdateGalleryPhotoInput } from '@/lib/api/gallery-photos'
 
@@ -52,13 +59,23 @@ export async function listMediaLibraryAction(input: {
   )
 }
 
-/** FormData: `projectSlug`, `file`. Files the photo in the Media Library (no tag). */
+/**
+ * FormData: `projectSlug`, `file`, optional `background=1` (ADR-035: answer
+ * once the record exists; poll `mediaStatusAction`). Files the photo in the
+ * Media Library (no tag).
+ */
 export async function uploadMediaImageAction(formData: FormData): Promise<Result<UploadedPostImage>> {
   const file = formData?.get?.('file')
+  const background = formData?.get?.('background') === '1'
   return run(formData?.get?.('projectSlug'), async (ctx, pid) => {
     if (!(file instanceof File)) throw new PostMediaError('invalid_value', 'No file.')
-    return uploadProjectImage(ctx, pid, file, { tag: '', permission: MEDIA_MANAGE_PERMISSION })
+    return uploadProjectImage(ctx, pid, file, { tag: '', permission: MEDIA_MANAGE_PERMISSION, background })
   }, 'media.upload')
+}
+
+/** Where background uploads are (ADR-035). */
+export async function mediaStatusAction(input: { projectSlug: string; assetIds: string[] }): Promise<Result<{ items: MediaUploadStatus[] }>> {
+  return run(input?.projectSlug, (ctx, pid) => getProjectMediaStatus(ctx, pid, input?.assetIds, {}, MEDIA_MANAGE_PERMISSION), 'media.status')
 }
 
 export async function updateMediaPhotoAction(

@@ -1,20 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type DragEvent, type ReactNode } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useEffect, useRef, useState, useSyncExternalStore, type DragEvent, type ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import type { FocalPoint } from '@/components/client/media/FocalPointPicker'
-import { mediaApi, thumbOf, type MediaScope } from '@/components/client/media/media-api'
-import {
-  ACCEPTED_TYPES,
-  nextToStart,
-  prepareForUpload,
-  queueProgress,
-  queueReducer,
-  uploadEstimateMs,
-  type QueueAction,
-  type QueueItem,
-} from '@/lib/client/gallery-upload-queue'
-import { formatBytes } from '@/lib/client/upload-plan'
+import type { MediaScope } from '@/components/client/media/media-api'
+import { UploadQueueList } from '@/components/client/media/UploadQueueList'
+import { useMediaUploads } from '@/components/client/media/use-media-uploads'
+import { ACCEPTED_TYPES } from '@/lib/client/gallery-upload-queue'
 
 /** A photo that was just uploaded or picked from the Media Library. */
 export type AddedPhoto = {
@@ -56,21 +48,17 @@ export const useTouchDevice = () =>
     () => null
   )
 
-/** Finished rows stay this long ("Optimised ✓ …") before they go. */
-const DONE_LINGER_MS = 4000
-
 /**
  * Add photos — the blog Cover step's choices, for many photos at once.
  * Phone: Take a photo (camera) · From this phone (multiple) · Media Library.
  * Computer: Upload or drag (multiple, the whole block is a drop zone) · Media Library.
- * Each file tells its story — Uploading → Compressing → Optimised ✓ (TinyPNG,
+ * Each file tells its story — preview, Uploading → Optimising → Optimised ✓ (TinyPNG,
  * "2.4 MB → 610 KB") — and its row goes away once done. The browser only
  * pre-resizes when a photo would not fit the upload (planUpload).
  * No side effects on mount (safe to keep mounted while hidden).
  */
 export function AddPhotos({ projectSlug, scope, onUploaded, onOpenLibrary, room, disabled }: AddPhotosProps) {
   const t = useTranslations('clientDashboard.media.add')
-  const ui = useLocale()
   const touch = useTouchDevice()
   const cameraRef = useRef<HTMLInputElement>(null)
   const pickerRef = useRef<HTMLInputElement>(null)
@@ -78,105 +66,21 @@ export function AddPhotos({ projectSlug, scope, onUploaded, onOpenLibrary, room,
   const [dragOver, setDragOver] = useState(false)
   const dragDepth = useRef(0)
 
-  const [queue, setQueue] = useState<QueueItem[]>([])
-  const qRef = useRef<QueueItem[]>([])
-  const files = useRef(new Map<string, File>())
-  const timers = useRef(new Set<ReturnType<typeof setTimeout>>())
   const roomRef = useRef(room)
   useEffect(() => {
     roomRef.current = room
   }, [room])
-  useEffect(() => {
-    const all = timers.current
-    return () => all.forEach(clearTimeout)
-  }, [])
 
-  const apply = useCallback((action: QueueAction) => {
-    qRef.current = queueReducer(qRef.current, action)
-    setQueue(qRef.current)
-  }, [])
-  const later = (fn: () => void, ms: number) => {
-    const id = setTimeout(() => {
-      timers.current.delete(id)
-      fn()
-    }, ms)
-    timers.current.add(id)
-  }
-
-  const pumpRef = useRef<() => void>(() => undefined)
-  const run = useCallback(
-    async (id: string) => {
-      const file = files.current.get(id)
-      try {
-        if (!file) throw new Error('gone')
-        const prepared = await prepareForUpload(file)
-        if (!prepared) return apply({ type: 'fail', id, error: 'unsupported_type' })
-        apply({ type: 'status', id, status: 'uploading' })
-        // The server compresses right after it has the body; say so then.
-        later(() => {
-          if (qRef.current.find((q) => q.id === id)?.status === 'uploading') apply({ type: 'status', id, status: 'compressing' })
-        }, uploadEstimateMs(prepared.size))
-        const form = new FormData()
-        form.set('projectSlug', projectSlug)
-        form.set('file', prepared)
-        const r = await mediaApi(scope).upload(form)
-        if (!r.ok) return apply({ type: 'fail', id, error: r.error })
-        apply({ type: 'done', id, result: { assetId: r.assetId, url: r.url, optimized: r.optimized, bytesBefore: r.bytesBefore, bytesAfter: r.bytesAfter } })
-        files.current.delete(id)
-        later(() => apply({ type: 'remove', id }), DONE_LINGER_MS)
-        onUploaded({ assetId: r.assetId, url: r.url, thumbUrl: thumbOf(r.url), alt: {}, focal: null, tags: [] })
-      } catch {
-        apply({ type: 'fail', id, error: 'failed' })
-      } finally {
-        pumpRef.current()
-      }
-    },
-    [apply, projectSlug, scope, onUploaded]
-  )
-  const pump = useCallback(() => {
-    for (const id of nextToStart(qRef.current)) {
-      apply({ type: 'status', id, status: 'preparing' })
-      void run(id)
-    }
-  }, [apply, run])
-  useEffect(() => {
-    pumpRef.current = pump
-  }, [pump])
+  const uploads = useMediaUploads({ projectSlug, scope, onLanded: (photo) => onUploaded(photo) })
+  const inFlight = () => uploads.queue.filter((q) => q.status !== 'done' && q.status !== 'error').length
 
   const addFiles = (list: FileList | File[] | null | undefined) => {
     const picked = Array.from(list ?? []).filter((f) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name))
     if (!picked.length) return
     setNotice(null)
-    const inFlight = qRef.current.filter((q) => q.status !== 'done' && q.status !== 'error').length
-    const free = roomRef.current === undefined ? picked.length : Math.max(0, roomRef.current - inFlight)
+    const free = roomRef.current === undefined ? picked.length : Math.max(0, roomRef.current - inFlight())
     if (picked.length > free) setNotice(t('full'))
-    const accepted = picked.slice(0, free).map((file) => {
-      const id = `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`
-      files.current.set(id, file)
-      return { id, name: file.name, size: file.size }
-    })
-    apply({ type: 'add', items: accepted })
-    pumpRef.current()
-  }
-
-  const story = (q: QueueItem): string => {
-    switch (q.status) {
-      case 'waiting':
-        return t('story.waiting')
-      case 'preparing':
-      case 'uploading':
-        return t('story.uploading')
-      case 'compressing':
-        return t('story.compressing')
-      case 'done':
-        return q.result?.optimized
-          ? t('story.optimised', { before: formatBytes(q.size, ui), after: formatBytes(q.result.bytesAfter, ui) })
-          : t('story.uploaded')
-      case 'error': {
-        const known = ['unsupported_type', 'too_large', 'rate_limited', 'forbidden']
-        return t(`story.errors.${known.includes(q.error ?? '') ? q.error : 'generic'}`)
-      }
-    }
+    uploads.enqueue(picked.slice(0, free))
   }
 
   const hasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes('Files')
@@ -270,39 +174,7 @@ export function AddPhotos({ projectSlug, scope, onUploaded, onOpenLibrary, room,
         </p>
       )}
 
-      {queue.length > 0 && (
-        <ul className="mt-4 flex flex-col gap-3" aria-live="polite">
-          {queue.map((q) => (
-            <li key={q.id} className="flex items-start gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm text-foreground">{q.name}</p>
-                {q.status !== 'done' && q.status !== 'error' && (
-                  <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
-                    <div className="h-full animate-pulse rounded-full bg-action transition-all" style={{ width: `${queueProgress(q) * 100}%` }} />
-                  </div>
-                )}
-                <p className={`mt-1 text-xs ${q.status === 'error' ? 'text-destructive' : q.status === 'done' ? 'text-success' : 'text-muted-foreground'}`}>
-                  {q.status === 'done' && <span aria-hidden="true">✓ </span>}
-                  {story(q)}
-                </p>
-              </div>
-              {q.status === 'error' && (
-                <span className="flex shrink-0 gap-1">
-                  <SmallButton
-                    onPress={() => {
-                      apply({ type: 'retry', id: q.id })
-                      pumpRef.current()
-                    }}
-                  >
-                    {t('retry')}
-                  </SmallButton>
-                  <SmallButton onPress={() => apply({ type: 'remove', id: q.id })}>{t('dismiss')}</SmallButton>
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+      <UploadQueueList uploads={uploads} />
     </div>
   )
 }
@@ -336,18 +208,6 @@ function Choice({
         {children}
         {hint && <span className="mt-0.5 block text-sm font-normal text-muted-foreground">{hint}</span>}
       </span>
-    </button>
-  )
-}
-
-function SmallButton({ children, onPress }: { children: ReactNode; onPress: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onPress}
-      className="inline-flex min-h-11 items-center rounded-full border border-border bg-background px-3 text-sm font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-    >
-      {children}
     </button>
   )
 }

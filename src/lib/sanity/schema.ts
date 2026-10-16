@@ -4255,9 +4255,35 @@ const mediaAssetType = defineType({
       validation: (Rule) =>
         Rule.custom((value, context) => {
           const mediaType = (context.document?.mediaType as string) ?? 'image'
+          // ADR-035: an upload's record exists before its image (processing in
+          // the background, or failed). Only a `ready` (or legacy) record needs one.
+          const status = (context.document?.processing as { status?: string } | undefined)?.status
+          if (status === 'processing' || status === 'failed') return true
           if (mediaType !== 'video' && !value) return 'Image is required for image assets'
           return true
         }),
+    }),
+    defineField({
+      name: 'processing',
+      title: 'Processing',
+      type: 'object',
+      description: 'Set by the upload pipeline (ADR-035): status and what optimisation did. Absent on older assets (= ready).',
+      readOnly: true,
+      options: { collapsible: true, collapsed: true },
+      fields: [
+        defineField({
+          name: 'status',
+          title: 'Status',
+          type: 'string',
+          options: { list: ['processing', 'ready', 'failed'] },
+        }),
+        defineField({ name: 'startedAt', title: 'Started', type: 'datetime' }),
+        defineField({ name: 'finishedAt', title: 'Finished', type: 'datetime' }),
+        defineField({ name: 'optimized', title: 'Optimised by TinyPNG', type: 'boolean' }),
+        defineField({ name: 'reason', title: 'Why not optimised', type: 'string' }),
+        defineField({ name: 'originalBytes', title: 'Bytes received', type: 'number' }),
+        defineField({ name: 'finalBytes', title: 'Bytes stored', type: 'number' }),
+      ],
     }),
     defineField({
       name: 'videoUrl',

@@ -1,24 +1,16 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type DragEvent, type ReactNode } from 'react'
-import { useLocale, useTranslations } from 'next-intl'
-import { mediaApi, thumbOf, type MediaScope } from '@/components/client/media/media-api'
+import { useTranslations } from 'next-intl'
+import { thumbOf, type MediaScope } from '@/components/client/media/media-api'
 import { MediaLibraryPicker } from '@/components/client/media/MediaLibraryPicker'
 import type { AddedPhoto } from '@/components/client/media/AddPhotos'
 import { BatchSheet } from '@/components/client/media/BatchSheet'
 import type { CardChange } from '@/components/client/media/PhotoCard'
 import { dropIndex, moveByKey, moveItem } from '@/lib/client/gallery-order'
-import {
-  ACCEPTED_TYPES,
-  nextToStart,
-  prepareForUpload,
-  queueProgress,
-  queueReducer,
-  uploadEstimateMs,
-  type QueueAction,
-  type QueueItem,
-} from '@/lib/client/gallery-upload-queue'
-import { formatBytes } from '@/lib/client/upload-plan'
+import { UploadQueueList } from '@/components/client/media/UploadQueueList'
+import { useMediaUploads } from '@/components/client/media/use-media-uploads'
+import { ACCEPTED_TYPES } from '@/lib/client/gallery-upload-queue'
 
 export type { AddedPhoto }
 
@@ -41,16 +33,13 @@ function useTouchDevice(): boolean | null {
   return useSyncExternalStore<boolean | null>(subscribeDevice, isTouchDevice, () => null)
 }
 
-/** Finished rows stay this long ("✓ Optimised …") before they go. */
-const DONE_LINGER_MS = 4000
-
 /**
  * "Add photos" — the blog CoverStep's choice cards (v1.0.45). Touch devices
  * (pointer: coarse — phones and tablets): Take a photo · Photo library ·
  * Media Library (gallery only); after each shot, "Take another" or "Done".
  * Computers: Upload from your computer (also a drop zone) · Media Library.
- * MANY photos at once, each with its upload story (Uploading → Compressing →
- * ✓ Optimised). When two or more photos land from one pick (or one camera
+ * MANY photos at once, each with a preview and its upload story (Uploading →
+ * Optimising → ✓ Optimised; useMediaUploads). When two or more photos land from one pick (or one camera
  * session), "Name and tag all" offers a base name and tags for all of them
  * (skippable). Below, the compact grid of the photos added so far: tap to
  * describe, × to remove, drag ⋮⋮ to reorder (arrow keys on it). No side
@@ -90,7 +79,6 @@ export function PhotoAddStep({
 }) {
   const t = useTranslations('clientDashboard.photoWizard.add')
   const ts = useTranslations('clientDashboard.media.add')
-  const ui = useLocale()
   const touch = useTouchDevice()
   const cameraRef = useRef<HTMLInputElement>(null)
   const pickerRef = useRef<HTMLInputElement>(null)
@@ -99,30 +87,10 @@ export function PhotoAddStep({
   const [dragging, setDragging] = useState(false)
   const dragDepth = useRef(0)
 
-  // ── Upload queue ──────────────────────────────────────────────────────────
-  const [queue, setQueue] = useState<QueueItem[]>([])
-  const qRef = useRef<QueueItem[]>([])
-  const files = useRef(new Map<string, File>())
-  const timers = useRef(new Set<ReturnType<typeof setTimeout>>())
   const roomRef = useRef(room)
   useEffect(() => {
     roomRef.current = room
   }, [room])
-  useEffect(() => {
-    const all = timers.current
-    return () => all.forEach(clearTimeout)
-  }, [])
-  const apply = useCallback((action: QueueAction) => {
-    qRef.current = queueReducer(qRef.current, action)
-    setQueue(qRef.current)
-  }, [])
-  const later = (fn: () => void, ms: number) => {
-    const id = setTimeout(() => {
-      timers.current.delete(id)
-      fn()
-    }, ms)
-    timers.current.add(id)
-  }
   // ── Batches → "Name and tag all" ─────────────────────────────────────────
   const batchOf = useRef(new Map<string, Batch>())
   const cameraBatch = useRef<Batch | null>(null)
@@ -155,60 +123,21 @@ export function PhotoAddStep({
     finish(b)
   }
 
-  const pumpRef = useRef<() => void>(() => undefined)
-  const run = useCallback(
-    async (id: string) => {
-      const file = files.current.get(id)
-      let got: { assetId: string; url: string } | null = null
-      try {
-        if (!file) throw new Error('gone')
-        const prepared = await prepareForUpload(file)
-        if (!prepared) return apply({ type: 'fail', id, error: 'unsupported_type' })
-        apply({ type: 'status', id, status: 'uploading' })
-        later(() => {
-          if (qRef.current.find((q) => q.id === id)?.status === 'uploading') apply({ type: 'status', id, status: 'compressing' })
-        }, uploadEstimateMs(prepared.size))
-        const form = new FormData()
-        form.set('projectSlug', projectSlug)
-        form.set('file', prepared)
-        const r = await mediaApi(scope).upload(form)
-        if (!r.ok) return apply({ type: 'fail', id, error: r.error })
-        apply({ type: 'done', id, result: { assetId: r.assetId, url: r.url, optimized: r.optimized, bytesBefore: r.bytesBefore, bytesAfter: r.bytesAfter } })
-        files.current.delete(id)
-        later(() => apply({ type: 'remove', id }), DONE_LINGER_MS)
-        got = { assetId: r.assetId, url: r.url }
-        onAdd([{ assetId: r.assetId, url: r.url, thumbUrl: thumbOf(r.url), name: r.name ?? '', alt: {}, focal: null, tags: [] }])
-      } catch {
-        apply({ type: 'fail', id, error: 'failed' })
-      } finally {
-        settle(id, got)
-        pumpRef.current()
-      }
-    },
-    [apply, projectSlug, scope, onAdd, settle]
-  )
-  const pump = useCallback(() => {
-    for (const id of nextToStart(qRef.current)) {
-      apply({ type: 'status', id, status: 'preparing' })
-      void run(id)
-    }
-  }, [apply, run])
-  useEffect(() => {
-    pumpRef.current = pump
-  }, [pump])
+  const uploads = useMediaUploads({
+    projectSlug,
+    scope,
+    onLanded: (photo) => onAdd([photo]),
+    onSettled: (id, landed) => settle(id, landed),
+  })
 
   const addFiles = (list: FileList | File[] | null | undefined, fromCamera = false) => {
     const picked = Array.from(list ?? []).filter((f) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name))
     if (!picked.length) return
     setNotice(null)
-    const inFlight = qRef.current.filter((q) => q.status !== 'done' && q.status !== 'error').length
+    const inFlight = uploads.queue.filter((q) => q.status !== 'done' && q.status !== 'error').length
     const free = roomRef.current === undefined ? picked.length : Math.max(0, roomRef.current - inFlight)
     if (picked.length > free) setNotice(ts('full'))
-    const accepted = picked.slice(0, free).map((file) => {
-      const id = `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`
-      files.current.set(id, file)
-      return { id, name: file.name, size: file.size }
-    })
+    const accepted = uploads.enqueue(picked.slice(0, free))
     if (accepted.length) {
       let b: Batch
       if (fromCamera) {
@@ -218,31 +147,9 @@ export function PhotoAddStep({
       } else {
         b = { ids: [], done: new Map(), settled: new Set(), open: false }
       }
-      for (const a of accepted) {
-        b.ids.push(a.id)
-        batchOf.current.set(a.id, b)
-      }
-    }
-    apply({ type: 'add', items: accepted })
-    pumpRef.current()
-  }
-
-  const story = (q: QueueItem): string => {
-    switch (q.status) {
-      case 'waiting':
-        return ts('story.waiting')
-      case 'preparing':
-      case 'uploading':
-        return ts('story.uploading')
-      case 'compressing':
-        return ts('story.compressing')
-      case 'done':
-        return q.result?.optimized
-          ? ts('story.optimised', { before: formatBytes(q.size, ui), after: formatBytes(q.result.bytesAfter, ui) })
-          : ts('story.uploaded')
-      case 'error': {
-        const known = ['unsupported_type', 'too_large', 'rate_limited', 'forbidden']
-        return ts(`story.errors.${known.includes(q.error ?? '') ? q.error : 'generic'}`)
+      for (const id of accepted) {
+        b.ids.push(id)
+        batchOf.current.set(id, b)
       }
     }
   }
@@ -398,39 +305,7 @@ export function PhotoAddStep({
         </p>
       ) : null}
 
-      {queue.length > 0 && (
-        <ul className="mt-4 flex flex-col gap-3" aria-live="polite">
-          {queue.map((q) => (
-            <li key={q.id} className="flex items-start gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm text-foreground">{q.name}</p>
-                {q.status !== 'done' && q.status !== 'error' && (
-                  <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
-                    <div className="h-full animate-pulse rounded-full bg-action transition-all" style={{ width: `${queueProgress(q) * 100}%` }} />
-                  </div>
-                )}
-                <p className={`mt-1 text-xs ${q.status === 'error' ? 'text-destructive' : q.status === 'done' ? 'text-success' : 'text-muted-foreground'}`}>
-                  {q.status === 'done' && <span aria-hidden="true">✓ </span>}
-                  {story(q)}
-                </p>
-              </div>
-              {q.status === 'error' && (
-                <span className="flex shrink-0 gap-1">
-                  <Pill
-                    onPress={() => {
-                      apply({ type: 'retry', id: q.id })
-                      pumpRef.current()
-                    }}
-                  >
-                    {ts('retry')}
-                  </Pill>
-                  <Pill onPress={() => apply({ type: 'remove', id: q.id })}>{ts('dismiss')}</Pill>
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+      <UploadQueueList uploads={uploads} />
 
       {shown.length > 0 && (
         <>
@@ -594,18 +469,6 @@ function Choice({
         {children}
         {hint && <span className="mt-0.5 block text-sm font-normal text-muted-foreground">{hint}</span>}
       </span>
-    </button>
-  )
-}
-
-function Pill({ children, onPress }: { children: ReactNode; onPress: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onPress}
-      className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-background px-4 text-[0.9375rem] font-medium text-foreground transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-    >
-      {children}
     </button>
   )
 }

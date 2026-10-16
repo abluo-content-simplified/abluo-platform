@@ -45,7 +45,9 @@ import {
   type SanityFetchFn,
 } from '@/lib/api/tenant-scoped-sanity'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
-import { createMediaAsset } from '@/lib/media/create-media-asset'
+import { after } from 'next/server'
+import { completeMediaAsset, createMediaAsset, reserveMediaAsset, type DecideFn } from '@/lib/media/create-media-asset'
+import { tracedDetached } from '@/lib/perf/timing'
 import type { OptimizeImageResult } from '@/lib/media/optimize-image'
 import { BLOG_POST_WRITE_PERMISSION, isPostId } from '@/lib/api/post-drafts'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
@@ -104,13 +106,23 @@ export type PostMediaDeps = {
   /** Raw fetch behind the tenant-scoped read client (tests inject a fake). */
   fetch?: SanityFetchFn
   optimize?: (data: Buffer, contentType: string) => Promise<OptimizeImageResult>
+  /** The processing policy (default: `decideProcessing` on the file's header). */
+  decide?: DecideFn
   now?: () => Date
   /** Receives the optimisation outcome (e.g. "skipped: no key" in dev). */
   log?: (message: string) => void
+  /** Runs work after the response (default: Next's `after`). Tests run it inline. */
+  defer?: (task: () => Promise<void>) => void
 }
 
 export type UploadedPostImage = {
   assetId: string
+  /**
+   * ADR-035: `processing` = the record exists, the image is still being
+   * optimised and stored (background upload) — `url` is '' until
+   * `getProjectMediaStatus` reports `ready`.
+   */
+  status: 'processing' | 'ready'
   url: string
   width: number | null
   height: number | null
@@ -224,7 +236,12 @@ export async function uploadProjectImage(
   ctx: TenantAuthorizationContext,
   projectId: string,
   file: File,
-  opts: { tag?: string; permission?: string } = {},
+  opts: {
+    tag?: string
+    permission?: string
+    /** ADR-035: answer once the record exists; optimise + store after the response. */
+    background?: boolean
+  } = {},
   deps: PostMediaDeps = {}
 ): Promise<UploadedPostImage> {
   const grant = grantFor(ctx, projectId, opts.permission ?? 'gallery.gallery.write')
@@ -280,29 +297,54 @@ export async function uploadProjectImage(
   const ext = sniffed === 'image/png' ? 'png' : sniffed === 'image/webp' ? 'webp' : 'jpg'
   const base = (file.name || 'image').replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '-').slice(0, 80) || 'image'
   const name = photoNameFromFile(file.name)
+  const client = deps.client ?? sanityWriteClient
+  const record = {
+    tenantId: project.clientId,
+    projectId: project._id,
+    projectSlug: grant.projectSlug,
+    name: name || null,
+    tags: tag ? [tag] : [],
+    uploadedBy: ctx.userId,
+  }
+  const binary = { data: bytes, filename: `${base}.${ext}`, contentType: sniffed }
+
+  if (opts.background) {
+    // The record first (the person can work with it at once), then the
+    // policy, Tinify and the Sanity upload after the response (ADR-035).
+    let reserved: { mediaAssetId: string }
+    try {
+      reserved = await reserveMediaAsset(client, record, { now: deps.now })
+    } catch {
+      throw new PostMediaError('failed', 'Could not upload.')
+    }
+    const work = () =>
+      tracedDetached('media.process', () =>
+        completeMediaAsset(client, reserved.mediaAssetId, binary, { optimize: deps.optimize, decide: deps.decide, log: deps.log, now: deps.now })
+      ).then(() => undefined)
+    ;(deps.defer ?? after)(work)
+    return {
+      assetId: reserved.mediaAssetId,
+      status: 'processing',
+      url: '',
+      width: null,
+      height: null,
+      optimized: false,
+      bytesBefore: bytes.length,
+      bytesAfter: bytes.length,
+      name,
+    }
+  }
+
   let created: Awaited<ReturnType<typeof createMediaAsset>>
   try {
-    // createMediaAsset runs Tinify first (never blocks the upload).
-    created = await createMediaAsset(
-      deps.client ?? sanityWriteClient,
-      {
-        data: bytes,
-        filename: `${base}.${ext}`,
-        contentType: sniffed,
-        tenantId: project.clientId,
-        projectId: project._id,
-        projectSlug: grant.projectSlug,
-        name: name || null,
-        tags: tag ? [tag] : [],
-        uploadedBy: ctx.userId,
-      },
-      { optimize: deps.optimize, log: deps.log }
-    )
+    // Policy, then Tinify when worth it (never blocks the upload).
+    created = await createMediaAsset(client, { ...record, ...binary }, { optimize: deps.optimize, decide: deps.decide, log: deps.log, now: deps.now })
   } catch {
     throw new PostMediaError('failed', 'Could not upload.')
   }
   return {
     assetId: created.mediaAssetId,
+    status: 'ready',
     url: created.url,
     width: created.width,
     height: created.height,
@@ -311,6 +353,86 @@ export async function uploadProjectImage(
     bytesAfter: created.optimization.bytesAfter,
     name,
   }
+}
+
+export type MediaUploadStatus = {
+  assetId: string
+  status: 'processing' | 'ready' | 'failed'
+  /** Set once `ready`. */
+  url: string
+  width: number | null
+  height: number | null
+  optimized: boolean
+  bytesBefore: number | null
+  bytesAfter: number | null
+  name: string
+}
+
+/** Most ids one status call answers (the upload queue polls its in-flight rows). */
+export const MEDIA_STATUS_MAX_IDS = 50
+
+/**
+ * ADR-035 — where this project's background uploads are: `processing`,
+ * `ready` (with the image URL) or `failed`. Ids that are not this project's
+ * media are simply absent from the answer. A record without `processing`
+ * (uploaded before ADR-035) reports `ready` when it has an image.
+ */
+export async function getProjectMediaStatus(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  assetIds: unknown,
+  deps: PostMediaDeps = {},
+  permission: string = BLOG_POST_WRITE_PERMISSION
+): Promise<{ items: MediaUploadStatus[] }> {
+  grantFor(ctx, projectId, permission)
+  if (!Array.isArray(assetIds) || assetIds.length > MEDIA_STATUS_MAX_IDS || !assetIds.every((id) => typeof id === 'string' && DOC_ID.test(id))) {
+    throw new PostMediaError('invalid_value', 'Bad asset ids.')
+  }
+  if (!assetIds.length) return { items: [] }
+  const scoped = tenantScopedSanityClient(ctx, projectId, deps.fetch ? { fetch: deps.fetch } : {})
+  const rows = await scoped.fetch<
+    Array<{
+      _id: string
+      status?: string | null
+      url?: string | null
+      width?: number | null
+      height?: number | null
+      optimized?: boolean | null
+      bytesBefore?: number | null
+      bytesAfter?: number | null
+      name?: string | null
+    }>
+  >(
+    `*[_type == "mediaAsset" && projectSlug == $projectSlug && _id in $ids && !(_id in path("drafts.**"))]{
+      _id,
+      "status": coalesce(processing.status, select(defined(image.asset) => "ready", "failed")),
+      "url": image.asset->url,
+      "width": image.asset->metadata.dimensions.width,
+      "height": image.asset->metadata.dimensions.height,
+      "optimized": processing.optimized,
+      "bytesBefore": processing.originalBytes,
+      "bytesAfter": coalesce(processing.finalBytes, image.asset->size),
+      name
+    }`,
+    { ids: assetIds }
+  )
+  const items = (Array.isArray(rows) ? rows : []).map((r): MediaUploadStatus => {
+    const url = typeof r.url === 'string' ? r.url : ''
+    // `ready` without a resolvable image can't be shown yet (asset still propagating).
+    const status = r.status === 'ready' ? (url ? 'ready' : 'processing') : r.status === 'failed' ? 'failed' : 'processing'
+    return {
+      assetId: r._id,
+      status,
+      url: status === 'ready' ? url : '',
+      width: r.width ?? null,
+      height: r.height ?? null,
+      optimized: r.optimized === true,
+      bytesBefore: typeof r.bytesBefore === 'number' ? r.bytesBefore : null,
+      bytesAfter: typeof r.bytesAfter === 'number' ? r.bytesAfter : null,
+      name: typeof r.name === 'string' ? r.name : '',
+    }
+  })
+  return { items }
 }
 
 /** Lower-case, accents removed — "Città" matches "citta". */

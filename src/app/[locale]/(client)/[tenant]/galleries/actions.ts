@@ -34,9 +34,11 @@ import {
 } from '@/lib/api/gallery-drafts'
 import { batchUpdatePhotos, updateGalleryPhoto, type BatchPhotosInput, type UpdateGalleryPhotoInput } from '@/lib/api/gallery-photos'
 import {
+  getProjectMediaStatus,
   listProjectMedia,
   PostMediaError,
   uploadProjectImage,
+  type MediaUploadStatus,
   type PostMediaErrorCode,
   type ProjectMediaItem,
   type UploadedPostImage,
@@ -113,13 +115,26 @@ export async function batchGalleryPhotosAction(
   )
 }
 
-/** FormData: `projectSlug`, `file`. Files the photo in the Media Library (tag "gallery"). */
+/**
+ * FormData: `projectSlug`, `file`, optional `background=1` (ADR-035: answer
+ * once the record exists; poll `galleryMediaStatusAction`). Files the photo in
+ * the Media Library (tag "gallery").
+ */
 export async function uploadGalleryImageAction(formData: FormData): Promise<Result<UploadedPostImage>> {
   const file = formData?.get?.('file')
+  const background = formData?.get?.('background') === '1'
   return run(formData?.get?.('projectSlug'), async (ctx, pid) => {
     if (!(file instanceof File)) throw new PostMediaError('invalid_value', 'No file.')
-    return uploadProjectImage(ctx, pid, file, { tag: 'gallery', permission: GALLERY_WRITE_PERMISSION })
+    return uploadProjectImage(ctx, pid, file, { tag: 'gallery', permission: GALLERY_WRITE_PERMISSION, background })
   })
+}
+
+/** Where background uploads are (ADR-035). */
+export async function galleryMediaStatusAction(input: {
+  projectSlug: string
+  assetIds: string[]
+}): Promise<Result<{ items: MediaUploadStatus[] }>> {
+  return run(input?.projectSlug, (ctx, pid) => getProjectMediaStatus(ctx, pid, input?.assetIds, {}, GALLERY_WRITE_PERMISSION))
 }
 
 export async function listGalleryMediaAction(input: {

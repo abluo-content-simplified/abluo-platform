@@ -4,9 +4,22 @@
  * uses the Media Library's (owner/editor); the admin Media screen (ADR-030)
  * uses the admin's (`requireAbluoAdmin`, any project). Same shapes either way.
  */
-import { batchGalleryPhotosAction, listGalleryMediaAction, updateGalleryPhotoAction, uploadGalleryImageAction } from '@/app/[locale]/(client)/[tenant]/galleries/actions'
-import { batchMediaPhotosAction, listMediaLibraryAction, updateMediaPhotoAction, uploadMediaImageAction } from '@/app/[locale]/(client)/[tenant]/media/actions'
 import {
+  batchGalleryPhotosAction,
+  galleryMediaStatusAction,
+  listGalleryMediaAction,
+  updateGalleryPhotoAction,
+  uploadGalleryImageAction,
+} from '@/app/[locale]/(client)/[tenant]/galleries/actions'
+import {
+  batchMediaPhotosAction,
+  listMediaLibraryAction,
+  mediaStatusAction,
+  updateMediaPhotoAction,
+  uploadMediaImageAction,
+} from '@/app/[locale]/(client)/[tenant]/media/actions'
+import {
+  adminMediaStatusAction,
   batchAdminMediaPhotosAction,
   deleteAdminMediaAction,
   listAdminMediaAction,
@@ -20,11 +33,17 @@ export type MediaLibraryScope = Exclude<MediaScope, 'gallery'>
 
 export function mediaApi(scope: MediaScope) {
   if (scope === 'admin') {
-    return { upload: uploadAdminMediaAction, list: listAdminMediaAction, update: updateAdminMediaPhotoAction, batch: batchAdminMediaPhotosAction }
+    return {
+      upload: uploadAdminMediaAction,
+      status: adminMediaStatusAction,
+      list: listAdminMediaAction,
+      update: updateAdminMediaPhotoAction,
+      batch: batchAdminMediaPhotosAction,
+    }
   }
   return scope === 'media'
-    ? { upload: uploadMediaImageAction, list: listMediaLibraryAction, update: updateMediaPhotoAction, batch: batchMediaPhotosAction }
-    : { upload: uploadGalleryImageAction, list: listGalleryMediaAction, update: updateGalleryPhotoAction, batch: batchGalleryPhotosAction }
+    ? { upload: uploadMediaImageAction, status: mediaStatusAction, list: listMediaLibraryAction, update: updateMediaPhotoAction, batch: batchMediaPhotosAction }
+    : { upload: uploadGalleryImageAction, status: galleryMediaStatusAction, list: listGalleryMediaAction, update: updateGalleryPhotoAction, batch: batchGalleryPhotosAction }
 }
 
 /**

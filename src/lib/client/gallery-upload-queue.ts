@@ -1,16 +1,19 @@
 /**
- * The gallery's multi-file upload queue — pure state + browser preparation.
+ * The multi-file upload queue — pure state + browser preparation (ADR-035).
  *
  * Each file goes waiting → preparing (browser pre-resize only when needed,
- * see planUpload) → uploading → compressing (TinyPNG on the server; the UI
- * switches once the body has had time to arrive, see `uploadEstimateMs`) →
- * done | error. A small number run at once so
- * the server (TinyPNG + Sanity) and the per-user upload cap are not hammered.
+ * see planUpload) → uploading (the server answers as soon as the record
+ * exists) → processing (policy, TinyPNG and the Sanity upload run on the
+ * server after that answer; the queue polls) → done | error.
+ *
+ * Two limits: `UPLOAD_CONCURRENCY` files are sent at once, and at most
+ * `PROCESSING_CONCURRENCY` wait on the server — so TinyPNG and the per-user
+ * cap are never hammered, while a batch's uploads overlap its processing.
  * Progress is per step (server actions report no byte progress).
  */
 import { planUpload } from '@/lib/client/upload-plan'
 
-export type QueueStatus = 'waiting' | 'preparing' | 'uploading' | 'compressing' | 'done' | 'error'
+export type QueueStatus = 'waiting' | 'preparing' | 'uploading' | 'processing' | 'done' | 'error'
 
 export type UploadResult = {
   assetId: string
@@ -26,21 +29,28 @@ export type QueueItem = {
   /** Size of the file the person chose ("before" in "Optimised · x → y"). */
   size: number
   status: QueueStatus
+  /** Local preview of the picked file (object URL), when the browser made one. */
+  preview?: string
+  /** The Media Library record, once the server has created it (processing). */
+  assetId?: string
   result?: UploadResult
   /** An error code (MediaActionError-like) for the UI to translate. */
   error?: string
 }
 
 export type QueueAction =
-  | { type: 'add'; items: { id: string; name: string; size: number }[] }
-  | { type: 'status'; id: string; status: Exclude<QueueStatus, 'done' | 'error'> }
+  | { type: 'add'; items: { id: string; name: string; size: number; preview?: string }[] }
+  | { type: 'status'; id: string; status: Exclude<QueueStatus, 'processing' | 'done' | 'error'> }
+  | { type: 'processing'; id: string; assetId: string }
   | { type: 'done'; id: string; result: UploadResult }
   | { type: 'fail'; id: string; error: string }
   | { type: 'retry'; id: string }
   | { type: 'clearFinished' }
   | { type: 'remove'; id: string }
 
-export const UPLOAD_CONCURRENCY = 2
+export const UPLOAD_CONCURRENCY = 3
+/** Photos waiting on the server (TinyPNG + Sanity) at once. */
+export const PROCESSING_CONCURRENCY = 4
 export const MAX_FILES_PER_BATCH = 50
 
 export function queueReducer(state: QueueItem[], action: QueueAction): QueueItem[] {
@@ -53,12 +63,17 @@ export function queueReducer(state: QueueItem[], action: QueueAction): QueueItem
     }
     case 'status':
       return state.map((i) => (i.id === action.id && i.status !== 'done' ? { ...i, status: action.status, error: undefined } : i))
+    case 'processing':
+      return state.map((i) =>
+        i.id === action.id && i.status !== 'done' ? { ...i, status: 'processing', assetId: action.assetId, error: undefined } : i
+      )
     case 'done':
       return state.map((i) => (i.id === action.id ? { ...i, status: 'done', result: action.result, error: undefined } : i))
     case 'fail':
       return state.map((i) => (i.id === action.id ? { ...i, status: 'error', error: action.error } : i))
     case 'retry':
-      return state.map((i) => (i.id === action.id && i.status === 'error' ? { ...i, status: 'waiting', error: undefined } : i))
+      // A retry sends the file again (a failed record is left behind, unseen: it has no image).
+      return state.map((i) => (i.id === action.id && i.status === 'error' ? { ...i, status: 'waiting', error: undefined, assetId: undefined } : i))
     case 'clearFinished':
       return state.filter((i) => i.status !== 'done')
     case 'remove':
@@ -66,18 +81,28 @@ export function queueReducer(state: QueueItem[], action: QueueAction): QueueItem
   }
 }
 
-/** The waiting items to start now, keeping at most `concurrency` in flight. */
-export function nextToStart(state: QueueItem[], concurrency = UPLOAD_CONCURRENCY): string[] {
-  const busy = state.filter((i) => i.status === 'preparing' || i.status === 'uploading' || i.status === 'compressing').length
+/**
+ * The waiting items to start now: at most `concurrency` being sent, and never
+ * more than `processing` in flight in total (sent + waiting on the server).
+ */
+export function nextToStart(state: QueueItem[], concurrency = UPLOAD_CONCURRENCY, processing = PROCESSING_CONCURRENCY): string[] {
+  const sending = state.filter((i) => i.status === 'preparing' || i.status === 'uploading').length
+  const onServer = state.filter((i) => i.status === 'processing').length
+  const room = Math.max(0, Math.min(concurrency - sending, processing - onServer - sending))
   return state
     .filter((i) => i.status === 'waiting')
-    .slice(0, Math.max(0, concurrency - busy))
+    .slice(0, room)
     .map((i) => i.id)
+}
+
+/** The server records to poll: rows waiting on the server. */
+export function processingAssetIds(state: QueueItem[]): string[] {
+  return state.filter((i) => i.status === 'processing' && i.assetId).map((i) => i.assetId!)
 }
 
 /** 0..1 for a progress bar. */
 export function queueProgress(item: QueueItem): number {
-  return { waiting: 0, preparing: 0.15, uploading: 0.5, compressing: 0.85, done: 1, error: 1 }[item.status]
+  return { waiting: 0, preparing: 0.15, uploading: 0.45, processing: 0.8, done: 1, error: 1 }[item.status]
 }
 
 /** True once nothing is waiting or running. */
@@ -127,9 +152,4 @@ export async function prepareForUpload(file: File): Promise<File | null> {
   } finally {
     bitmap?.close()
   }
-}
-
-/** Rough time for the browser to send `bytes` (≥ 0.6 s) — when the UI starts saying "Compressing…". */
-export function uploadEstimateMs(bytes: number, bytesPerSecond = 1_500_000): number {
-  return Math.max(600, Math.round((bytes / bytesPerSecond) * 1000))
 }

@@ -48,6 +48,20 @@ export async function span<T>(name: string, fn: () => Promise<T>): Promise<T> {
 /** Open a trace for one operation and log its steps when it settles. */
 export async function traced<T>(op: string, fn: () => Promise<T>): Promise<T> {
   if (!perfEnabled() || store.getStore()) return fn()
+  return runTrace(op, fn)
+}
+
+/**
+ * A trace of its own for work that outlives the request — `after()` callbacks
+ * (ADR-035 background processing). Inherits nothing from the request's trace,
+ * which has already been logged by the time this runs.
+ */
+export async function tracedDetached<T>(op: string, fn: () => Promise<T>): Promise<T> {
+  if (!perfEnabled()) return fn()
+  return runTrace(op, fn)
+}
+
+async function runTrace<T>(op: string, fn: () => Promise<T>): Promise<T> {
   const trace: Trace = { op, start: now(), spans: [] }
   let outcome = 'ok'
   try {

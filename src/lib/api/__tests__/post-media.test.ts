@@ -8,6 +8,7 @@ vi.mock('@/lib/sanity/server-clients', () => ({ sanityWriteClient: {} }))
 
 import {
   getPostCover,
+  getProjectMediaStatus,
   HOTSPOT_SIZE,
   listProjectMedia,
   parseFocal,
@@ -16,6 +17,7 @@ import {
   setPostCover,
   sniffImageType,
   uploadPostImage,
+  uploadProjectImage,
 } from '../post-media'
 import { optimizeImage, type OptimizeImageResult } from '@/lib/media/optimize-image'
 import { TenantAuthorizationError } from '../tenant-scoped-sanity'
@@ -146,6 +148,8 @@ function fakes(
     client: client as never,
     fetch: fetch as never,
     optimize,
+    // The test JPEG is a few bytes: force the policy to "optimise" so Tinify's path is exercised.
+    decide: () => ({ action: 'optimize' as const, reason: 'heavy' as const }),
     now: () => new Date('2026-10-05T10:00:00Z'),
     log: () => {},
   }
@@ -164,6 +168,7 @@ describe('uploadPostImage', () => {
     const r = await uploadPostImage(ctx(grant()), 'project-a', file(), f.deps)
     expect(r).toEqual({
       assetId: 'media-new',
+      status: 'ready',
       url: 'https://cdn/new.jpg',
       width: 1200,
       height: 800,
@@ -179,7 +184,9 @@ describe('uploadPostImage', () => {
     })
     expect(f.client.create).toHaveBeenCalledWith({
       _type: 'mediaAsset',
+      mediaType: 'image',
       image: { _type: 'image', asset: { _type: 'reference', _ref: 'image-new-1200x800-jpg' } },
+      processing: { status: 'ready', finishedAt: '2026-10-05T10:00:00.000Z', optimized: true, originalBytes: JPEG.length, finalBytes: 5 },
       tenant: { _type: 'reference', _ref: 'client-a' },
       project: { _type: 'reference', _ref: 'sanity-project-a' },
       projectSlug: 'hoffmann',
@@ -280,6 +287,119 @@ describe('uploadPostImage', () => {
     const r = await uploadPostImage(ctx(grant()), 'project-a', file(PNG, 'image/png', 'x.png'), f.deps)
     expect(r.optimized).toBe(false)
     expect(f.client.assets.upload.mock.calls[0][2]).toEqual({ filename: 'x.png', contentType: 'image/png' })
+  })
+})
+
+// ── Background uploads (ADR-035) ────────────────────────────────────────────
+
+describe('uploadProjectImage · background', () => {
+  it('answers once the record exists, then optimises and attaches the image after the response', async () => {
+    const f = fakes()
+    const deferred: Array<() => Promise<void>> = []
+    const r = await uploadProjectImage(ctx(grant()), 'project-a', file(), { tag: 'gallery', permission: 'blog.post.write', background: true }, { ...f.deps, defer: (task) => deferred.push(task) })
+    expect(r).toMatchObject({ assetId: 'media-new', status: 'processing', url: '', name: 'Foto mare' })
+    // Answered with the record only: no Tinify, no Sanity asset yet.
+    expect(f.client.create).toHaveBeenCalledWith(
+      expect.objectContaining({ _type: 'mediaAsset', projectSlug: 'hoffmann', tags: ['gallery'], processing: { status: 'processing', startedAt: '2026-10-05T10:00:00.000Z' } })
+    )
+    expect((f.client.create.mock.calls[0] as unknown[])[0]).not.toHaveProperty('image')
+    expect(f.optimize).not.toHaveBeenCalled()
+    expect(f.client.assets.upload).not.toHaveBeenCalled()
+
+    expect(deferred).toHaveLength(1)
+    await deferred[0]()
+    expect(f.optimize).toHaveBeenCalledTimes(1)
+    expect(f.client.assets.upload).toHaveBeenCalledWith('image', Buffer.from('small'), { filename: 'Foto-mare.jpg', contentType: 'image/jpeg' })
+    const done = f.patches.find((p) => p.id === 'media-new')
+    expect(done?.ops).toEqual([
+      [
+        'set',
+        {
+          image: { _type: 'image', asset: { _type: 'reference', _ref: 'image-new-1200x800-jpg' } },
+          processing: { status: 'ready', finishedAt: '2026-10-05T10:00:00.000Z', optimized: true, originalBytes: JPEG.length, finalBytes: 5 },
+        },
+      ],
+      ['commit', null],
+    ])
+  })
+
+  it('skips Tinify when the policy keeps the image', async () => {
+    const f = fakes()
+    const deferred: Array<() => Promise<void>> = []
+    await uploadProjectImage(ctx(grant()), 'project-a', file(), { permission: 'blog.post.write', background: true }, {
+      ...f.deps,
+      decide: () => ({ action: 'keep', reason: 'small' }),
+      defer: (task) => deferred.push(task),
+    })
+    await deferred[0]()
+    expect(f.optimize).not.toHaveBeenCalled()
+    expect((f.client.assets.upload.mock.calls[0] as unknown[])[1]).toEqual(Buffer.from(JPEG))
+    const set = f.patches.find((p) => p.id === 'media-new')?.ops[0]?.[1] as { processing: Record<string, unknown> }
+    expect(set.processing).toMatchObject({ status: 'ready', optimized: false, reason: 'small' })
+  })
+
+  it('marks the record failed when the Sanity upload fails (never throws after the response)', async () => {
+    const f = fakes()
+    f.client.assets.upload.mockRejectedValueOnce(new Error('sanity down'))
+    const deferred: Array<() => Promise<void>> = []
+    await uploadProjectImage(ctx(grant()), 'project-a', file(), { permission: 'blog.post.write', background: true }, { ...f.deps, defer: (task) => deferred.push(task) })
+    await expect(deferred[0]()).resolves.toBeUndefined()
+    const failed = f.patches.find((p) => p.id === 'media-new')?.ops[0]?.[1] as { processing: Record<string, unknown> }
+    expect(failed).toEqual({ processing: { status: 'failed', finishedAt: '2026-10-05T10:00:00.000Z' } })
+  })
+
+  it('checks everything before reserving: a rejected upload leaves no record', async () => {
+    const f = fakes({ recentUploads: POST_MEDIA_LIMITS.uploadsPerWindow })
+    const deferred: Array<() => Promise<void>> = []
+    await expect(
+      uploadProjectImage(ctx(grant()), 'project-a', file(), { permission: 'blog.post.write', background: true }, { ...f.deps, defer: (task) => deferred.push(task) })
+    ).rejects.toMatchObject({ code: 'rate_limited' })
+    expect(f.client.create).not.toHaveBeenCalled()
+    expect(deferred).toHaveLength(0)
+  })
+})
+
+describe('getProjectMediaStatus', () => {
+  const rows = [
+    { _id: 'm-ready', status: 'ready', url: 'https://cdn/r.jpg', width: 2560, height: 1920, optimized: true, bytesBefore: 1000, bytesAfter: 300, name: 'Reception' },
+    { _id: 'm-busy', status: 'processing', url: null },
+    { _id: 'm-failed', status: 'failed', url: null },
+    // `ready` whose image doesn't resolve yet: still processing to the caller.
+    { _id: 'm-propagating', status: 'ready', url: null },
+  ]
+  const run = (ids: unknown, g = grant()) => {
+    const fetch = vi.fn(async (query: string, params: Record<string, unknown> = {}) => {
+      expect(query).toContain('projectSlug == $projectSlug')
+      expect(params.projectSlug).toBe('hoffmann')
+      return rows.filter((r) => (params.ids as string[]).includes(r._id))
+    })
+    return { fetch, result: getProjectMediaStatus(ctx(g), 'project-a', ids, { fetch: fetch as never }) }
+  }
+
+  it('reports each record, scoped to the grant’s project', async () => {
+    const { result } = run(['m-ready', 'm-busy', 'm-failed', 'm-propagating'])
+    const { items } = await result
+    expect(items.map((i) => [i.assetId, i.status])).toEqual([
+      ['m-ready', 'ready'],
+      ['m-busy', 'processing'],
+      ['m-failed', 'failed'],
+      ['m-propagating', 'processing'],
+    ])
+    expect(items[0]).toMatchObject({ url: 'https://cdn/r.jpg', optimized: true, bytesBefore: 1000, bytesAfter: 300, name: 'Reception' })
+    expect(items[1].url).toBe('')
+  })
+
+  it('rejects malformed or too many ids, and asks nothing for none', async () => {
+    await expect(run('m-ready').result).rejects.toMatchObject({ code: 'invalid_value' })
+    await expect(run(['bad id!']).result).rejects.toMatchObject({ code: 'invalid_value' })
+    await expect(run(Array.from({ length: 51 }, (_, i) => `m${i}`)).result).rejects.toMatchObject({ code: 'invalid_value' })
+    const empty = run([])
+    await expect(empty.result).resolves.toEqual({ items: [] })
+    expect(empty.fetch).not.toHaveBeenCalled()
+  })
+
+  it('refuses a project the caller has no grant on', async () => {
+    await expect(getProjectMediaStatus(ctx(grant()), 'project-b', ['m-ready'])).rejects.toThrow(TenantAuthorizationError)
   })
 })
 

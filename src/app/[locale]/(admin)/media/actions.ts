@@ -26,7 +26,15 @@
 import { requireAbluoAdmin, type AuthenticatedActor } from '@/lib/api/auth'
 import { MEDIA_MANAGE_PERMISSION } from '@/lib/api/media-permission'
 import { deleteMediaAsset, getMediaSite, listMediaLibrary, type MediaLibraryItem, type MediaSite } from '@/lib/api/media-library'
-import { POST_MEDIA_LIMITS, PostMediaError, uploadProjectImage, type PostMediaErrorCode, type UploadedPostImage } from '@/lib/api/post-media'
+import {
+  getProjectMediaStatus,
+  POST_MEDIA_LIMITS,
+  PostMediaError,
+  uploadProjectImage,
+  type MediaUploadStatus,
+  type PostMediaErrorCode,
+  type UploadedPostImage,
+} from '@/lib/api/post-media'
 import { GalleryError, type GalleryErrorCode } from '@/lib/api/gallery-drafts'
 import { batchUpdatePhotos, updateGalleryPhoto, type BatchPhotosInput, type UpdateGalleryPhotoInput } from '@/lib/api/gallery-photos'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
@@ -119,12 +127,17 @@ export async function listAdminMediaAction(input: ListInput): Promise<Result<Lis
   }
 }
 
-/** FormData: `projectSlug`, `file`. Files the photo in that project's Media Library (no tag). */
+/**
+ * FormData: `projectSlug`, `file`, optional `background=1` (ADR-035: answer
+ * once the record exists; poll `adminMediaStatusAction`). Files the photo in
+ * that project's Media Library (no tag).
+ */
 export async function uploadAdminMediaAction(formData: FormData): Promise<Result<UploadedPostImage>> {
   const file = formData?.get?.('file')
+  const background = formData?.get?.('background') === '1'
   return withProject(formData?.get?.('projectSlug'), async (ctx, project, actor) => {
     if (!(file instanceof File)) throw new PostMediaError('invalid_value', 'No file.')
-    const uploaded = await uploadProjectImage(ctx, project.id, file, { tag: '', permission: MEDIA_MANAGE_PERMISSION })
+    const uploaded = await uploadProjectImage(ctx, project.id, file, { tag: '', permission: MEDIA_MANAGE_PERMISSION, background })
     await recordAdminAudit({
       actorId: actor.userId,
       action: 'media.asset.upload',
@@ -133,6 +146,11 @@ export async function uploadAdminMediaAction(formData: FormData): Promise<Result
     })
     return uploaded
   })
+}
+
+/** Where background uploads are (ADR-035). A read: not audited (polled every few seconds). */
+export async function adminMediaStatusAction(input: { projectSlug: string; assetIds: string[] }): Promise<Result<{ items: MediaUploadStatus[] }>> {
+  return withProject(input?.projectSlug, (ctx, project) => getProjectMediaStatus(ctx, project.id, input?.assetIds, {}, MEDIA_MANAGE_PERMISSION))
 }
 
 /** A photo's own facts: name, description, title, caption, tags, focal point. */

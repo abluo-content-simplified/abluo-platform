@@ -1457,7 +1457,7 @@
         "story": {
           "waiting": "Waiting…",
           "uploading": "Uploading…",
-          "compressing": "Compressing…",
+          "processing": "Optimising…",
           "optimised": "Optimised · {before} → {after}",
           "uploaded": "Uploaded",
           "errors": {
