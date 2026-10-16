@@ -56,6 +56,7 @@
  * is a follow-on, out of this slice's boundary (no existing table's RLS is
  * touched here) — see the handoff for the recommended next step.
  */
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
@@ -332,9 +333,32 @@ async function fetchProjectSlugUsage(slugs: string[]): Promise<Map<string, numbe
  * Not wired into any route this slice — inert per ADR-017 Implementation
  * Order step 1.
  */
+export type TenantContextOptions = {
+  purpose?: SupportPurpose
+  /**
+   * Resolve only this project's grant (the dashboard URL's project slug — the
+   * same value `resolveProjectGrant` matches). For server actions, which act on
+   * one project: memberships are still read in full (they decide the role), but
+   * enabled modules and the shared-slug guard run for this project only, so the
+   * cost no longer grows with the number of unrelated projects. `ctx.projects`
+   * then holds at most this project's grant. Omit for pages/layouts that list
+   * every project (the project switcher).
+   */
+  project?: string
+}
+
 export async function getTenantAuthorizationContext(
-  options: { purpose?: SupportPurpose } = {}
+  options: TenantContextOptions = {}
 ): Promise<TenantAuthorizationContext | null> {
+  // Primitive arguments so React's per-request `cache` can match them: the
+  // dashboard layout and its page resolve once per request instead of twice.
+  // Still fresh on every request (ADR-015 R1) — `cache` never outlives one.
+  // Outside a React render (server actions, route handlers) it does not
+  // memoise at all, so an action always resolves from the database.
+  return resolveForRequest(options.purpose ?? 'mutation', options.project ?? null)
+}
+
+const resolveForRequest = cache(async (purpose: SupportPurpose, project: string | null): Promise<TenantAuthorizationContext | null> => {
   const lap = stopwatch('auth')
   const supabase = await createClient()
   const {
@@ -351,12 +375,12 @@ export async function getTenantAuthorizationContext(
   // else (no cookie, not an admin, password-only session, visit closed or
   // expired) falls through to the normal resolution below — a client user
   // holding a forged cookie gets exactly their own access.
-  const support = await resolveSupportContext(supabase, actor, options.purpose ?? 'mutation')
+  const support = await resolveSupportContext(supabase, actor, purpose)
   lap('supportCheck')
   if (support) return support
 
-  return loadTenantAuthorizationContext(supabase, actor)
-}
+  return loadTenantAuthorizationContext(supabase, actor, { project })
+})
 
 /**
  * The support-mode branch of the resolver. `purpose` defaults to `mutation`
@@ -412,7 +436,8 @@ async function resolveSupportContext(
  */
 export async function loadTenantAuthorizationContext(
   supabase: SupabaseClient,
-  actor: { userId: string; platformRole: PlatformRole }
+  actor: { userId: string; platformRole: PlatformRole },
+  scope: { project?: string | null } = {}
 ): Promise<TenantAuthorizationContext> {
 
   // ── Tenant memberships (own rows — RLS "Users can read their own memberships") ──
@@ -421,11 +446,12 @@ export async function loadTenantAuthorizationContext(
   // (ADR-028 §3). Extras are re-validated by the resolver: unknown or
   // non-grantable ids are ignored, never honoured.
   const lap = stopwatch('auth')
-  const { data: tenantRows, error: tenantRowsError } = await supabase
-    .from('tenant_members')
-    .select('tenant_id, role, extra_permissions')
-    .eq('user_id', actor.userId)
-  lap('tenantMembers')
+  // Independent reads, both keyed on the caller only → one round trip, not two.
+  const [{ data: tenantRows, error: tenantRowsError }, { data: membershipRows, error: membershipsError }] = await Promise.all([
+    supabase.from('tenant_members').select('tenant_id, role, extra_permissions').eq('user_id', actor.userId),
+    supabase.from('project_members').select('id, project_id, role, extra_permissions').eq('user_id', actor.userId),
+  ])
+  lap('memberships')
 
   if (tenantRowsError) {
     throw new Error(`getTenantAuthorizationContext: failed to read tenant_members — ${tenantRowsError.message}`)
@@ -445,16 +471,25 @@ export async function loadTenantAuthorizationContext(
     else if (extras.some(isProjectGrantable)) reachingMemberTenantIds.push(tenantId)
   }
 
+  if (membershipsError) {
+    throw new Error(
+      `getTenantAuthorizationContext: failed to read project_members — ${membershipsError.message}`
+    )
+  }
+
   let ownedProjects: RawOwnedProject[] = []
   const memberTenantProjects: RawProjectMembership[] = []
   const tenantIdsToRead = [...ownedTenantIds, ...reachingMemberTenantIds]
-  if (tenantIdsToRead.length > 0) {
-    const { data: projectRows, error: projectsError } = await supabase
-      .from('projects')
-      .select('id, slug, tenant_id')
-      .in('tenant_id', tenantIdsToRead)
-    lap('ownedProjects')
-
+  // The two `projects` reads are independent too. Membership projects are read
+  // before knowing which are owned (owner still wins below; the read is RLS-scoped).
+  const membershipProjectIdsAll = [...new Set((membershipRows ?? []).map((row) => row.project_id as string))]
+  const noRows = { data: [] as Array<Record<string, unknown>>, error: null }
+  const [{ data: projectRows, error: projectsError }, { data: memberProjectRows, error: memberProjectsError }] = await Promise.all([
+    tenantIdsToRead.length > 0 ? supabase.from('projects').select('id, slug, tenant_id').in('tenant_id', tenantIdsToRead) : noRows,
+    membershipProjectIdsAll.length > 0 ? supabase.from('projects').select('id, slug, tenant_id').in('id', membershipProjectIdsAll) : noRows,
+  ])
+  lap('projects')
+  {
     if (projectsError) {
       throw new Error(
         `getTenantAuthorizationContext: failed to read projects for the caller's tenants — ${projectsError.message}`
@@ -481,31 +516,10 @@ export async function loadTenantAuthorizationContext(
   }
 
   // ── Explicit project_members grants (own rows are always RLS-visible) ──
-  const { data: membershipRows, error: membershipsError } = await supabase
-    .from('project_members')
-    .select('id, project_id, role, extra_permissions')
-    .eq('user_id', actor.userId)
-  lap('projectMembers')
-
-  if (membershipsError) {
-    throw new Error(
-      `getTenantAuthorizationContext: failed to read project_members — ${membershipsError.message}`
-    )
-  }
-
   const ownedProjectIds = new Set(ownedProjects.map((p) => p.projectId))
-  const membershipProjectIds = (membershipRows ?? [])
-    .map((row) => row.project_id as string)
-    .filter((projectId) => !ownedProjectIds.has(projectId)) // owner already covers these
 
   const projectById = new Map<string, { slug: SupabaseProjectSlug; tenantId: string }>()
-  if (membershipProjectIds.length > 0) {
-    const { data: memberProjectRows, error: memberProjectsError } = await supabase
-      .from('projects')
-      .select('id, slug, tenant_id')
-      .in('id', membershipProjectIds)
-    lap('memberProjects')
-
+  {
     if (memberProjectsError) {
       throw new Error(
         `getTenantAuthorizationContext: failed to read projects for project_members grants — ${memberProjectsError.message}`
@@ -543,6 +557,24 @@ export async function loadTenantAuthorizationContext(
   }
   memberships.push(...memberTenantProjects)
 
+  // Project scope (server actions): keep only the grant(s) for the requested
+  // project — selected by the same rule as resolveProjectGrant (slug equality).
+  // Narrowing only removes grants, it never adds one.
+  if (scope.project != null) {
+    const wanted = scope.project
+    ownedProjects = ownedProjects.filter((p) => p.projectSlug === wanted)
+    memberships.splice(0, memberships.length, ...memberships.filter((m) => m.projectSlug === wanted))
+  }
+
+  // Enabled modules are fetched alongside the slug guard (independent reads);
+  // a project the guard then drops simply has its module list discarded.
+  const enabledModuleIdsByProjectId: Record<string, string[]> = {}
+  const modulesLoaded = Promise.all(
+    [...ownedProjects, ...memberships].map(async (project) => {
+      enabledModuleIdsByProjectId[project.projectId] = await fetchEnabledModuleIds(project.projectSlug)
+    })
+  )
+
   // Shared-slug guard: a slug used by more than one projects row (any tenant)
   // would share Sanity content across tenants — drop those grants, fail closed.
   {
@@ -564,20 +596,7 @@ export async function loadTenantAuthorizationContext(
   lap('slugUsage')
 
   // Enabled module ids per resolved project, via the existing Sanity path.
-  const enabledModuleIdsByProjectId: Record<string, string[]> = {}
-
-  await Promise.all(
-    ownedProjects.map(async (project) => {
-      const ids = await fetchEnabledModuleIds(project.projectSlug)
-      enabledModuleIdsByProjectId[project.projectId] = ids
-    })
-  )
-  await Promise.all(
-    memberships.map(async (membership) => {
-      const ids = await fetchEnabledModuleIds(membership.projectSlug)
-      enabledModuleIdsByProjectId[membership.projectId] = ids
-    })
-  )
+  await modulesLoaded
   lap(`enabledModules(${ownedProjects.length + memberships.length})`)
 
   return {

@@ -12,9 +12,9 @@
  * never-published dependencies a publish needs (unpublished_dependencies →
  * dependencies, ADR-033 D-4).
  */
-import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
+import { resolveProjectAction } from '@/lib/api/project-action'
+import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { span, traced, withPerf, type PerfReport } from '@/lib/perf/timing'
-import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import {
   CatalogueError,
@@ -49,19 +49,18 @@ const KINDS: readonly CatalogueKind[] = ['item', 'collection', 'optionList']
 async function run<T>(
   op: string,
   projectSlug: unknown,
-  fn: (ctx: NonNullable<Awaited<ReturnType<typeof getTenantAuthorizationContext>>>, projectId: string) => Promise<T>
+  fn: (ctx: TenantAuthorizationContext, projectId: string) => Promise<T>
 ): Promise<Result<T>> {
-  // The resolver call stays in this function's body: the support-mode guard
-  // test (client-actions-guard) checks every action reaches it through a local helper.
+  // The resolver call (resolveProjectAction) stays in this function's body: the
+  // support-mode guard test (client-actions-guard) checks every action reaches it.
   return traced(`catalogue.${op}`, async (): Promise<Result<T>> =>
     withPerf(
       await (async (): Promise<Result<T>> => {
-        const ctx = await span('auth', () => getTenantAuthorizationContext())
-        if (!ctx) return { ok: false, error: 'unauthenticated' }
-        const grant = typeof projectSlug === 'string' ? resolveProjectGrant(ctx.projects, projectSlug) : null
-        if (!grant) return { ok: false, error: 'forbidden' }
+        // Identity + this project's grant, re-resolved from the database (shared helper, scoped to one project).
+        const access = await span('auth', () => resolveProjectAction(projectSlug))
+        if (!access.ok) return { ok: false, error: access.error }
         try {
-          return { ok: true, ...(await fn(ctx, grant.projectId)) }
+          return { ok: true, ...(await fn(access.ctx, access.grant.projectId)) }
         } catch (error) {
           if (error instanceof CatalogueError) return { ok: false, error: error.code, ...(error.detail && { detail: error.detail }) }
           if (error instanceof TenantAuthorizationError) return { ok: false, error: 'forbidden' }

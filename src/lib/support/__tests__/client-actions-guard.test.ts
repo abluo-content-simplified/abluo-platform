@@ -50,6 +50,12 @@ function topLevelFunctions(src: string): Fn[] {
   return marks.map((m, i) => ({ name: m.name, exported: m.exported, body: src.slice(m.index, marks[i + 1]?.index ?? src.length) }))
 }
 
+/**
+ * The resolver, or the shared project-scoped helper built on it
+ * (src/lib/api/project-action.ts — checked below to keep the default purpose).
+ */
+const reachesResolver = (body: string) => body.includes('getTenantAuthorizationContext(') || /\bresolveProjectAction\s*\(/.test(body)
+
 const actionFiles = files(ROOT).filter((f) => /^\s*['"]use server['"]/.test(readFileSync(f, 'utf8')))
 
 describe('client-dashboard server actions go through the support-aware resolver', () => {
@@ -61,7 +67,7 @@ describe('client-dashboard server actions go through the support-aware resolver'
     const rel = relative(ROOT, file).split(sep).join('/')
     const src = readFileSync(file, 'utf8')
     const fns = topLevelFunctions(src)
-    const helpers = new Set(fns.filter((f) => !f.exported && f.body.includes('getTenantAuthorizationContext(')).map((f) => f.name))
+    const helpers = new Set(fns.filter((f) => !f.exported && reachesResolver(f.body)).map((f) => f.name))
 
     it(`${rel}: never asks for the render purpose`, () => {
       expect(src).not.toMatch(/purpose\s*:\s*['"]render['"]/)
@@ -70,7 +76,7 @@ describe('client-dashboard server actions go through the support-aware resolver'
     for (const fn of fns.filter((f) => f.exported)) {
       it(`${rel} → ${fn.name}`, () => {
         const allowed = NOT_THROUGH_RESOLVER[rel]?.[fn.name]
-        const direct = fn.body.includes('getTenantAuthorizationContext(')
+        const direct = reachesResolver(fn.body)
         const viaHelper = [...helpers].some((h) => new RegExp(`\\b${h}\\s*[<(]`).test(fn.body))
         if (allowed) {
           expect(direct || viaHelper, `${fn.name} is allow-listed; remove the entry now that it uses the resolver`).toBe(false)
@@ -86,6 +92,14 @@ describe('client-dashboard server actions go through the support-aware resolver'
       const src = readFileSync(join(ROOT, rel), 'utf8')
       for (const name of Object.keys(fns)) expect(src, `${rel}:${name}`).toMatch(new RegExp(`export\\s+async\\s+function\\s+${name}\\b`))
     }
+  })
+})
+
+describe('the shared project-action helper', () => {
+  it('resolves through getTenantAuthorizationContext with the default (mutation) purpose', () => {
+    const src = readFileSync(join(process.cwd(), 'src', 'lib', 'api', 'project-action.ts'), 'utf8')
+    expect(src).toMatch(/getTenantAuthorizationContext\(\{\s*project:\s*projectSlug\s*\}\)/)
+    expect(src).not.toMatch(/purpose\s*:/)
   })
 })
 
