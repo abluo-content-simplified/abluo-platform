@@ -24,7 +24,7 @@ Then run `git checkout -- next-env.d.ts` if the build touched it.
 | E3 | Every control ≥ 24×24 (WCAG 2.5.8); inside `[data-surface="create"]` ≥ 44×44; Back/Next visible without scrolling; respects `env(safe-area-inset-bottom)` | Playwright bounding boxes |
 | E4 | Autosave: type title → reload → title **and step** restored | Playwright |
 | E5 | Offline: `setOffline(true)` → type → pill says offline → online → server has the text | Playwright |
-| E6 | Close mid-typing (`page.close()` < 800 ms after keystroke) → reopen → text present | Playwright |
+| E6 | Close mid-typing (`page.close()` before the autosave pause (500 ms, `DEFAULT_DEBOUNCE_MS`) after keystroke) → reopen → text present | Playwright |
 | E7 | Two tabs edit the same draft → second save shows "edited elsewhere", no silent overwrite | Playwright |
 | E8 | Theme: Auto follows `colorScheme`; manual choice persists across reload with no flash of the wrong theme | Playwright |
 | S1 | Every new write route is classified in `route-auth-matrix.test.ts` | vitest |

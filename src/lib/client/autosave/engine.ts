@@ -4,7 +4,7 @@
  *
  * Rules:
  *   • `set()` merges patch paths into one pending map (later values win) and
- *     journals it at once, then debounces (800 ms by default).
+ *     journals it at once, then debounces (500 ms by default).
  *   • One request in flight at a time, always sent with the latest revision.
  *     Edits made while a request is in flight wait for it, then go next.
  *   • `failed` / a thrown (network) error → "offline": the batch goes back into
@@ -66,7 +66,14 @@ export type Autosave = {
   dispose(): void
 }
 
-export const DEFAULT_DEBOUNCE_MS = 800
+/**
+ * Pause after the last keystroke before saving. 800 → 500 ms (performance work
+ * 2026-10-16, optimisation E) once a save itself took ~0.35 s on the server:
+ * "Saved" now follows typing by about one second. One request stays in flight
+ * at a time and edits made meanwhile are merged, so a shorter pause cannot
+ * reorder or lose changes — it only sends slightly more requests while typing slowly.
+ */
+export const DEFAULT_DEBOUNCE_MS = 500
 export const DEFAULT_RETRY_DELAYS_MS = [1000, 2000, 5000, 10_000, 30_000]
 
 /** Server refusals of a value (not of the request): isolate the path, never block the rest. */

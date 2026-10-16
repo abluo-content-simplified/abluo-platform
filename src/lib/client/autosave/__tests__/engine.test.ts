@@ -35,12 +35,12 @@ beforeEach(() => vi.useFakeTimers())
 afterEach(() => vi.useRealTimers())
 
 describe('autosave engine', () => {
-  it('debounces 800 ms and merges queued paths into one request (latest value wins)', async () => {
+  it('debounces 500 ms and merges queued paths into one request (latest value wins)', async () => {
     const h = harness()
     h.a.set({ 'title.en': 'H' })
-    await tick(500)
+    await tick(300)
     h.a.set({ 'title.en': 'Hello', 'subtitle.en': 'Sub' })
-    await tick(799)
+    await tick(499)
     expect(h.calls).toHaveLength(0)
     expect(h.a.state).toBe('saving')
     await tick(1)
@@ -76,7 +76,7 @@ describe('autosave engine', () => {
   it('a network error → offline, the batch is kept, retried with backoff, then saved', async () => {
     const h = harness([new Error('fetch failed'), { ok: false, error: 'failed' }])
     h.a.set({ 'title.en': 'X' })
-    await tick(800)
+    await tick(500) // the debounce
     expect(h.a.state).toBe('offline')
     expect(h.storage.entries.get('d1')).toEqual({ 'title.en': 'X' })
     await tick(999)
