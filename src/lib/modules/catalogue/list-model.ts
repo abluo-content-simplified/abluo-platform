@@ -3,7 +3,7 @@
 // Browser-safe, no imports beyond lifecycle types and the visibility/slug
 // rules. The list screen (CatalogueBrowser) and the list loader (listCatalogue)
 // share these so the decisions are tested once:
-//   · which columns the table shows (Price only when something has a price),
+//   · the image frame shape (portrait for book covers, landscape otherwise),
 //   · the sort of every column (empty values always last),
 //   · whether a "View on website" link exists (never a link that would 404),
 //   · which per-item action a batch operation maps to, and its result summary.
@@ -15,17 +15,27 @@ import { normalise } from './slugs'
 // ── Thumbnails ────────────────────────────────────────────────────────────────
 
 /** Sanity CDN thumbnail that is never cropped: fits inside size × size, natural aspect ratio. */
-export function containThumbUrl(url: unknown, size = 480): string | null {
+export function containThumbUrl(url: unknown, size = 720): string | null {
   if (typeof url !== 'string' || !url.startsWith('https://cdn.sanity.io/')) return null
   const params = new URLSearchParams({ w: String(size), h: String(size), fit: 'max', auto: 'format' })
   return `${url}?${params.toString()}`
 }
 
-// ── Columns ───────────────────────────────────────────────────────────────────
+// ── Image frame shape ─────────────────────────────────────────────────────────
 
-/** The Price column shows only when at least one item in the catalogue has a price. */
-export function showPriceColumn(items: ReadonlyArray<{ fromPrice: number | null }>): boolean {
-  return items.some((i) => i.fromPrice !== null)
+export type ImageShape = 'portrait' | 'landscape'
+
+/** Starter presets whose items are photographed upright (book covers). */
+const PORTRAIT_PRESETS: ReadonlySet<string> = new Set(['bookshop'])
+
+/**
+ * The frame shape of the list images. Until a Book item profile exists it
+ * follows the catalogue's starter preset (`appliedPreset.id` on the module
+ * installation): Bookshop → portrait (2:3 covers), everything else landscape.
+ * Switch to `itemProfile` here later; callers only see the shape.
+ */
+export function catalogueImageShape(input: { presetId?: string | null; itemProfile?: string | null }): ImageShape {
+  return input.presetId && PORTRAIT_PRESETS.has(input.presetId) ? 'portrait' : 'landscape'
 }
 
 // ── Sorting ───────────────────────────────────────────────────────────────────
@@ -113,7 +123,8 @@ export function sortListRows<T extends SortableRow>(rows: readonly T[], sort: Li
  * expired, archived and never-published all 404), it has a page, a slug in
  * THAT language (no fallback to another language's slug — C6/D-7), the module
  * has a public segment, the site has a domain, and its visibility admits an
- * explicitly addressed page (`unlisted` pages resolve by link, C5).
+ * explicitly addressed page (`unlisted` pages resolve by link, C5). On a
+ * path-served platform host the link stays on that host (`pathBase`).
  */
 export function publicPageUrl(input: {
   status: LifecycleStatus
@@ -124,13 +135,22 @@ export function publicPageUrl(input: {
   segment: string | null | undefined
   domain: string | null | undefined
   defaultLocale: string
+  /**
+   * Path-served platform hosts (dev.abluo.app, preview.abluo.app), e.g.
+   * `https://dev.abluo.app/tmz`: the project segment is part of the URL and
+   * the proxy adds the default language. Wins over `domain`.
+   */
+  pathBase?: string | null
 }): string | null {
   if (input.status !== 'published' || !input.hasPage) return null
   if (!admits('explicitReference', input.visibility)) return null
   const slug = normalise(input.slug ?? '')
   const segment = normalise(input.segment ?? '')
   const domain = (input.domain ?? '').trim()
-  if (!slug || !segment || !domain || !input.defaultLocale) return null
+  const pathBase = (input.pathBase ?? '').trim().replace(/\/+$/, '')
+  if (!slug || !segment) return null
+  if (pathBase) return `${pathBase}/${segment}/${slug}`
+  if (!domain || !input.defaultLocale) return null
   return `https://${domain}/${input.defaultLocale}/${segment}/${slug}`
 }
 

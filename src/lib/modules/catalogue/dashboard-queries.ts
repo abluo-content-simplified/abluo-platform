@@ -11,6 +11,7 @@
 export const CATALOGUE_SITE_QUERY = /* groq */ `{
   "site": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales, timeZone },
   "config": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].moduleInstallations[moduleId == "catalogue"][0].config,
+  "presetId": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].moduleInstallations[moduleId == "catalogue"][0].appliedPreset.id,
   "translate": count(*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].moduleInstallations[moduleId == "translate" && enabled != false]) > 0
 }`
 

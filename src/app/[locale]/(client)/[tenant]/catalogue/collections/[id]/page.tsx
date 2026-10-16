@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { span, traced } from '@/lib/perf/timing'
+import { perfBeacon } from '@/lib/perf/beacon'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
@@ -41,6 +42,7 @@ async function PageInner({ params }: { params: Promise<{ tenant: string; id: str
         can={catalogueAbilities(grant).collection}
         listHref={`/${projectSlug}/catalogue?view=collections`}
       />
+      {perfBeacon()}
     </PageShell>
   )
 }

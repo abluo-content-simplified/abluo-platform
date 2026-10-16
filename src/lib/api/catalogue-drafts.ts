@@ -170,6 +170,8 @@ export type CatalogueSite = {
   /** IANA zone of the site, or null (the dashboard falls back to the viewer's). */
   timeZone: string | null
   translate: boolean
+  /** The starter preset the catalogue was set up from (e.g. 'bookshop'), or null. */
+  presetId?: string | null
   config: {
     navLabel: Record<string, string>
     segment: string | null
@@ -189,7 +191,7 @@ const termsOf = (rows: unknown): CatalogueTerm[] =>
     .map((r) => ({ value: r.value as string, label: localized(r.label), color: typeof r.color === 'string' && r.color ? r.color : null }))
 
 async function readSite(client: Client, projectSlug: string): Promise<CatalogueSite> {
-  const r = await span('sanity.readSite', () => client.fetch<{ site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null } | null; config?: RawConfig; translate?: boolean } | null>(
+  const r = await span('sanity.readSite', () => client.fetch<{ site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null } | null; config?: RawConfig; presetId?: unknown; translate?: boolean } | null>(
     CATALOGUE_SITE_QUERY,
     { projectSlug }
   ))
@@ -203,6 +205,7 @@ async function readSite(client: Client, projectSlug: string): Promise<CatalogueS
     locales: [defaultLocale, ...supported.filter((l) => l !== defaultLocale)],
     timeZone: typeof r?.site?.timeZone === 'string' && r.site.timeZone ? r.site.timeZone : null,
     translate: r?.translate === true,
+    presetId: typeof r?.presetId === 'string' && r.presetId ? r.presetId : null,
     config: {
       navLabel: localized(c.navLabel),
       segment: typeof c.publicSegment === 'string' && c.publicSegment ? c.publicSegment : null,
@@ -303,7 +306,7 @@ function pairUp<T extends RowBase>(rows: readonly T[] | null | undefined) {
   return map
 }
 
-type PublicBase = { domain: string | null; segment: string | null; defaultLocale: string }
+type PublicBase = { domain: string | null; pathBase: string | null; segment: string | null; defaultLocale: string }
 
 function common(id: string, e: { row: RowBase; published: RowBase | null; hasDraft: boolean; createdAt: string }, locale: string, now: Date, pub?: PublicBase): Common {
   const status = deriveStatus({ published: e.published as never, draft: e.hasDraft ? e.row : null, rule: 'optional' }, now)
@@ -315,7 +318,7 @@ function common(id: string, e: { row: RowBase; published: RowBase | null; hasDra
     expiresAt: iso(live?.expiresAt),
     publicUrl:
       pub && live
-        ? publicPageUrl({ status: status.status, hasPage: live.hasPage === true, visibility: live.visibility, slug: slugMap(live.slug)[pub.defaultLocale], segment: pub.segment, domain: pub.domain, defaultLocale: pub.defaultLocale })
+        ? publicPageUrl({ status: status.status, hasPage: live.hasPage === true, visibility: live.visibility, slug: slugMap(live.slug)[pub.defaultLocale], segment: pub.segment, domain: pub.domain, pathBase: pub.pathBase, defaultLocale: pub.defaultLocale })
         : null,
     id,
     name: pick(e.row.name, locale),
@@ -331,7 +334,7 @@ function common(id: string, e: { row: RowBase; published: RowBase | null; hasDra
 const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
 
 /** Everything the catalogue screen lists, every state (archived included — the UI hides it from "All"). */
-export async function listCatalogue(ctx: TenantAuthorizationContext, projectId: string, deps: CatalogueDeps & { /** The project's public domain; without it no "View on website" link is built. */ publicDomain?: string | null } = {}): Promise<CatalogueLists> {
+export async function listCatalogue(ctx: TenantAuthorizationContext, projectId: string, deps: CatalogueDeps & { /** The project's public domain; without it no "View on website" link is built. */ publicDomain?: string | null; /** On a path-served platform host (dev/preview): `https://<host>/<project>`; wins over the domain. */ publicPathBase?: string | null } = {}): Promise<CatalogueLists> {
   const grant = grantFor(ctx, projectId, CATALOGUE_READ_PERMISSION)
   const client = deps.client ?? sanityWriteClient
   const now = (deps.now ?? (() => new Date()))()
@@ -340,13 +343,13 @@ export async function listCatalogue(ctx: TenantAuthorizationContext, projectId: 
     client.fetch<{ items?: ItemRow[]; collections?: CollectionRow[]; optionLists?: OptionListRow[] } | null>(CATALOGUE_DASHBOARD_LIST_QUERY, { projectSlug: grant.projectSlug }, RAW),
   ])
   const d = site.defaultLocale
-  const pub: PublicBase = { domain: deps.publicDomain ?? null, segment: site.config.segment, defaultLocale: d }
+  const pub: PublicBase = { domain: deps.publicDomain ?? null, pathBase: deps.publicPathBase ?? null, segment: site.config.segment, defaultLocale: d }
   const items = pairUp(raw?.items)
   const firsts = [...new Set([...items.values()].map((e) => e.row.firstImage).filter((x): x is string => typeof x === 'string'))]
   const thumbs = firsts.length
     ? await client.fetch<Array<{ _id: string; url?: string | null; hotspot?: { x?: number; y?: number } | null }> | null>(CATALOGUE_THUMBS_QUERY, { projectSlug: grant.projectSlug, ids: firsts })
     : []
-  const thumbById = new Map((thumbs ?? []).map((a) => [a._id, containThumbUrl(a.url, 480)]))
+  const thumbById = new Map((thumbs ?? []).map((a) => [a._id, containThumbUrl(a.url, 720)]))
   const itemRows: CatalogueItemListRow[] = [...items].map(([id, e]) => {
     const prices = (Array.isArray(e.row.prices) ? e.row.prices : []).filter((p): p is number => typeof p === 'number' && Number.isFinite(p))
     return {

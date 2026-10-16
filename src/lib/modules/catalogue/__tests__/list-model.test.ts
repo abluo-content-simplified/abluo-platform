@@ -9,7 +9,7 @@ import {
   nextListSort,
   parseListSort,
   publicPageUrl,
-  showPriceColumn,
+  catalogueImageShape,
   sortListRows,
   summarizeBatch,
   type SortableRow,
@@ -18,11 +18,12 @@ import {
 const st = (status: LifecycleState['status'], hasChanges = false): LifecycleState => ({ status, hasChanges, publishOn: null, unpublishOn: null })
 const row = (name: string, o: Partial<SortableRow> = {}): SortableRow => ({ name, status: st('published'), publishOn: null, unpublishOn: null, price: null, updatedAt: '2026-01-01T00:00:00Z', ...o })
 
-describe('showPriceColumn', () => {
-  it('shows only when some item has a price', () => {
-    expect(showPriceColumn([{ fromPrice: null }, { fromPrice: null }])).toBe(false)
-    expect(showPriceColumn([{ fromPrice: null }, { fromPrice: 0 }])).toBe(true)
-    expect(showPriceColumn([])).toBe(false)
+describe('catalogueImageShape', () => {
+  it('is portrait for the Bookshop preset and landscape for everything else', () => {
+    expect(catalogueImageShape({ presetId: 'bookshop' })).toBe('portrait')
+    expect(catalogueImageShape({ presetId: 'restaurant' })).toBe('landscape')
+    expect(catalogueImageShape({ presetId: null })).toBe('landscape')
+    expect(catalogueImageShape({})).toBe('landscape')
   })
 })
 
@@ -65,6 +66,11 @@ describe('publicPageUrl', () => {
   it('builds the default-language URL for a live page', () => {
     expect(publicPageUrl(ok)).toBe('https://example.com/en/books/dune')
     expect(publicPageUrl({ ...ok, visibility: 'unlisted' })).toBe('https://example.com/en/books/dune')
+  })
+  it('stays on a path-served platform host when given one (wins over the domain)', () => {
+    expect(publicPageUrl({ ...ok, pathBase: 'https://dev.abluo.app/tmz' })).toBe('https://dev.abluo.app/tmz/books/dune')
+    expect(publicPageUrl({ ...ok, domain: null, pathBase: 'https://dev.abluo.app/tmz/' })).toBe('https://dev.abluo.app/tmz/books/dune')
+    expect(publicPageUrl({ ...ok, pathBase: 'https://dev.abluo.app/tmz', status: 'draft' })).toBeNull()
   })
   it.each([
     ['not live', { status: 'scheduled' as const }],

@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers'
 import { stopwatch, traced } from '@/lib/perf/timing'
+import { perfBeacon } from '@/lib/perf/beacon'
 import { notFound, redirect } from 'next/navigation'
 import { APP_TEXT_SIZE_COOKIE, APP_THEME_COOKIE, parseAppTextSize, parseAppTheme } from '@/lib/app-theme'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
@@ -165,6 +166,7 @@ async function ClientProjectLayoutInner({
               />
             ) : null}
             {children}
+            {perfBeacon()}
           </main>
         </div>
       </div>

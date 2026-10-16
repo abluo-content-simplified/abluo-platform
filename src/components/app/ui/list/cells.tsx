@@ -65,12 +65,15 @@ export function CellText({
   secondary,
   href,
   clamp = 2,
+  secondaryLines = 2,
 }: {
   primary: ReactNode
   secondary?: ReactNode
   href?: string | null
   /** Lines of primary text before it clamps (1 or 2). */
   clamp?: 1 | 2
+  /** Lines of the muted secondary text before it truncates (1 or 2). */
+  secondaryLines?: 1 | 2
 }) {
   const cls = `${clamp === 1 ? 'line-clamp-1' : 'line-clamp-2'} text-sm leading-6 font-semibold text-foreground`
   return (
@@ -82,7 +85,7 @@ export function CellText({
       ) : (
         <span className={cls}>{primary}</span>
       )}
-      {secondary ? <p className="mt-0.5 line-clamp-2 text-sm leading-5 font-normal text-muted-foreground">{secondary}</p> : null}
+      {secondary ? <p className={`mt-0.5 ${secondaryLines === 1 ? 'line-clamp-1' : 'line-clamp-2'} text-sm leading-5 font-normal text-muted-foreground`}>{secondary}</p> : null}
     </div>
   )
 }
@@ -265,7 +268,7 @@ export function MediaFrame({
   const box = size ? { width: size.width, height: size.height, minWidth: size.width, minHeight: size.height } : undefined
   if (src) {
     // eslint-disable-next-line @next/next/no-img-element -- Sanity CDN image, already sized and focal-cropped
-    return <img src={src} alt={alt} loading="lazy" style={{ ...box, objectPosition: fit === 'cover' ? focalPosition(focal) : undefined }} className={`block shrink-0 bg-muted ${fit === 'contain' ? 'object-contain' : 'object-cover'} ${className}`} />
+    return <img src={src} alt={alt} loading="lazy" style={{ ...box, objectPosition: fit === 'cover' ? focalPosition(focal) : undefined }} className={`block shrink-0 ${fit === 'contain' ? 'object-contain' : 'bg-muted object-cover'} ${className}`} />
   }
   return (
     <span aria-hidden="true" style={box} className={`grid shrink-0 place-items-center bg-muted text-muted-foreground ${className}`}>
@@ -274,7 +277,7 @@ export function MediaFrame({
   )
 }
 
-/** The table image: 6rem × 4.5rem (image and placeholder alike), rounded-lg; its top sits on the row's top padding. */
-export function CellImage({ src, alt, focal, fit }: { src?: string | null; alt?: string; focal?: { x: number; y: number } | null; fit?: 'cover' | 'contain' }) {
-  return <MediaFrame src={src} alt={alt} focal={focal} fit={fit} size={{ width: '6rem', height: '4.5rem' }} className="rounded-lg" />
+/** The table image: 6rem × 4.5rem, or 4rem × 6rem when `shape` is portrait (image and placeholder alike), rounded-lg; its top sits on the row's top padding. */
+export function CellImage({ src, alt, focal, fit, shape = 'landscape' }: { src?: string | null; alt?: string; focal?: { x: number; y: number } | null; fit?: 'cover' | 'contain'; /** 'portrait' = 4rem × 6rem (book covers); default 6rem × 4.5rem. */ shape?: 'landscape' | 'portrait' }) {
+  return <MediaFrame src={src} alt={alt} focal={focal} fit={fit} size={shape === 'portrait' ? { width: '4rem', height: '6rem' } : { width: '6rem', height: '4.5rem' }} className="rounded-lg" />
 }

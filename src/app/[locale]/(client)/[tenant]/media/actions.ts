@@ -6,7 +6,7 @@
  * check lives there. Gate: MEDIA_MANAGE_PERMISSION (owner/editor).
  */
 
-import { span, traced } from '@/lib/perf/timing'
+import { span, traced, withPerf, type PerfReport } from '@/lib/perf/timing'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
@@ -24,7 +24,8 @@ import { GalleryError, type GalleryErrorCode } from '@/lib/api/gallery-drafts'
 import { batchUpdatePhotos, updateGalleryPhoto, type BatchPhotosInput, type UpdateGalleryPhotoInput } from '@/lib/api/gallery-photos'
 
 export type MediaScreenError = 'unauthenticated' | PostMediaErrorCode | GalleryErrorCode
-type Result<T> = ({ ok: true } & T) | { ok: false; error: MediaScreenError }
+/** `perf` is present only when perfEnabled() (never in production). */
+type Result<T> = ({ ok: true; perf?: PerfReport } & T) | { ok: false; error: MediaScreenError; perf?: PerfReport }
 
 async function run<T>(
   projectSlug: unknown,
@@ -33,19 +34,23 @@ async function run<T>(
 ): Promise<Result<T>> {
   // The resolver call stays in this function's body: the support-mode guard
   // test (client-actions-guard) checks every action reaches it through a local helper.
-  return traced(op, async (): Promise<Result<T>> => {
-    const ctx = await span('auth', () => getTenantAuthorizationContext())
-    if (!ctx) return { ok: false, error: 'unauthenticated' }
-    const grant = typeof projectSlug === 'string' ? resolveProjectGrant(ctx.projects, projectSlug) : null
-    if (!grant) return { ok: false, error: 'forbidden' }
-    try {
-      return { ok: true, ...(await fn(ctx, grant.projectId)) }
-    } catch (error) {
-      if (error instanceof PostMediaError || error instanceof GalleryError) return { ok: false, error: error.code }
-      if (error instanceof TenantAuthorizationError) return { ok: false, error: 'forbidden' }
-      return { ok: false, error: 'failed' }
-    }
-  })
+  return traced(op, async (): Promise<Result<T>> =>
+    withPerf(
+      await (async (): Promise<Result<T>> => {
+        const ctx = await span('auth', () => getTenantAuthorizationContext())
+        if (!ctx) return { ok: false, error: 'unauthenticated' }
+        const grant = typeof projectSlug === 'string' ? resolveProjectGrant(ctx.projects, projectSlug) : null
+        if (!grant) return { ok: false, error: 'forbidden' }
+        try {
+          return { ok: true, ...(await fn(ctx, grant.projectId)) }
+        } catch (error) {
+          if (error instanceof PostMediaError || error instanceof GalleryError) return { ok: false, error: error.code }
+          if (error instanceof TenantAuthorizationError) return { ok: false, error: 'forbidden' }
+          return { ok: false, error: 'failed' }
+        }
+      })()
+    )
+  )
 }
 
 export async function listMediaLibraryAction(input: {

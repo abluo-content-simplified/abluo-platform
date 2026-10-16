@@ -33,6 +33,36 @@ export function perfEnabled(env: Record<string, string | undefined> = process.en
 
 const now = () => performance.now()
 
+/**
+ * What the browser may see (PERF-2): op name, outcome, total ms and named span
+ * ms. Nothing else — no ids, values or user data. Only ever produced when
+ * `perfEnabled()`; in production no `perf` field exists anywhere.
+ */
+export type PerfReport = { op: string; ms: number; outcome: string; spans: Record<string, number> }
+
+function report(trace: Trace, outcome: string): PerfReport {
+  const spans: Record<string, number> = {}
+  for (const [name, ms] of trace.spans) spans[name] = (spans[name] ?? 0) + ms
+  return { op: trace.op, ms: Math.round(now() - trace.start), outcome, spans }
+}
+
+/** Snapshot of the open trace so far, or undefined (no trace / perf off). */
+export function currentPerf(outcome = 'ok'): PerfReport | undefined {
+  if (!perfEnabled()) return undefined
+  const trace = store.getStore()
+  return trace ? report(trace, outcome) : undefined
+}
+
+/**
+ * Attach the open trace's snapshot to a server-action result as `perf`, so the
+ * browser console can show it. Returns the result untouched when perf is off.
+ * Call it inside `traced()`, as the last step before returning.
+ */
+export function withPerf<R extends object>(result: R, outcome?: string): R & { perf?: PerfReport } {
+  const perf = currentPerf(outcome ?? ('ok' in result && (result as { ok?: unknown }).ok === false ? 'failed' : 'ok'))
+  return perf ? { ...result, perf } : result
+}
+
 /** Time one step of the current trace. A pass-through when no trace is open. */
 export async function span<T>(name: string, fn: () => Promise<T>): Promise<T> {
   const trace = store.getStore()

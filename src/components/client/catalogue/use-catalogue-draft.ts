@@ -8,6 +8,7 @@ import {
   patchCatalogueDraftAction,
   publishCatalogueDraftAction,
 } from '@/app/[locale]/(client)/[tenant]/catalogue/actions'
+import { timedAction } from '@/lib/perf/client-log'
 import { useAutosave } from '@/lib/client/autosave/use-autosave'
 import type { PendingSet } from '@/lib/client/autosave/journal'
 import { routePreDraft } from '@/lib/client/lazy-draft'
@@ -77,7 +78,7 @@ export function useCatalogueDraft({
       if (!idRef.current) {
         const first = input.set[`name.${defaultLocale}`]
         const extra = createRef.current?.() ?? {}
-        const c = await createCatalogueDocAction({ projectSlug, kind, name: typeof first === 'string' ? first.trim().slice(0, 120) : undefined, ...extra })
+        const c = await timedAction('catalogue.create', () => createCatalogueDocAction({ projectSlug, kind, name: typeof first === 'string' ? first.trim().slice(0, 120) : undefined, ...extra }))
         if (!c.ok) return { ok: false, error: c.error === 'forbidden' || c.error === 'unauthenticated' ? c.error : 'failed' } as const
         idRef.current = c.id
         rev = c.rev
@@ -91,12 +92,12 @@ export function useCatalogueDraft({
           /* ignore */
         }
       } else if (!hasDraftRef.current || !rev) {
-        const opened = await openCatalogueForEditAction({ projectSlug, kind, id: idRef.current })
+        const opened = await timedAction('catalogue.open', () => openCatalogueForEditAction({ projectSlug, kind, id: idRef.current }))
         if (!opened.ok) return { ok: false, error: opened.error } as const
         rev = opened.rev
         markDraft()
       }
-      const r = await patchCatalogueDraftAction({ projectSlug, kind, id: idRef.current, rev, set: input.set })
+      const r = await timedAction('catalogue.patch (autosave)', () => patchCatalogueDraftAction({ projectSlug, kind, id: idRef.current, rev, set: input.set }))
       return r.ok ? ({ ok: true, rev: r.rev } as const) : ({ ok: false, error: r.error } as const)
     },
     [projectSlug, kind, defaultLocale]
@@ -134,12 +135,12 @@ export function useCatalogueDraft({
       if (!idRef.current) return { ok: false, error: 'missing_name' }
       if (!hasDraftRef.current) {
         // Nothing changed on a published document: open its draft so "Update" still works.
-        const opened = await openCatalogueForEditAction({ projectSlug, kind, id: idRef.current })
+        const opened = await timedAction('catalogue.open', () => openCatalogueForEditAction({ projectSlug, kind, id: idRef.current }))
         if (!opened.ok) return { ok: false, error: opened.error }
         autosave.adoptRev(opened.rev)
         markDraft()
       }
-      const r = await publishCatalogueDraftAction({ projectSlug, kind, id: idRef.current, rev: autosave.currentRev(), mode, ...dates, withDependencies: opts.withDependencies === true })
+      const r = await timedAction('catalogue.publish', () => publishCatalogueDraftAction({ projectSlug, kind, id: idRef.current, rev: autosave.currentRev(), mode, ...dates, withDependencies: opts.withDependencies === true }))
       if (!r.ok) return { ok: false, error: r.error, detail: r.detail }
       // A wizard is done; an editor keeps going (its next change opens a fresh draft).
       if (!opts.keepEditing) finished.current = true
@@ -153,7 +154,7 @@ export function useCatalogueDraft({
 
   const discardChanges = useCallback(async () => {
     await autosave.flush()
-    const r = await discardCatalogueDraftAction({ projectSlug, kind, id: idRef.current, rev: autosave.currentRev() })
+    const r = await timedAction('catalogue.discard', () => discardCatalogueDraftAction({ projectSlug, kind, id: idRef.current, rev: autosave.currentRev() }))
     if (r.ok) {
       finished.current = true
       await autosave.discard()

@@ -27,14 +27,22 @@ import {
   uploadAdminMediaAction,
 } from '@/app/[locale]/(admin)/media/actions'
 
+import { timedAction } from '@/lib/perf/client-log'
+
 export type MediaScope = 'gallery' | 'media' | 'admin'
 /** The scopes that can show the Media Library screen. */
 export type MediaLibraryScope = Exclude<MediaScope, 'gallery'>
 
+/** Console timing for an upload call (client round trip + server breakdown; silent without `perf`). */
+const timedUpload =
+  <A extends unknown[], R>(fn: (...a: A) => Promise<R>) =>
+  (...a: A) =>
+    timedAction('media.upload', () => fn(...a))
+
 export function mediaApi(scope: MediaScope) {
   if (scope === 'admin') {
     return {
-      upload: uploadAdminMediaAction,
+      upload: timedUpload(uploadAdminMediaAction),
       status: adminMediaStatusAction,
       list: listAdminMediaAction,
       update: updateAdminMediaPhotoAction,
@@ -42,8 +50,8 @@ export function mediaApi(scope: MediaScope) {
     }
   }
   return scope === 'media'
-    ? { upload: uploadMediaImageAction, status: mediaStatusAction, list: listMediaLibraryAction, update: updateMediaPhotoAction, batch: batchMediaPhotosAction }
-    : { upload: uploadGalleryImageAction, status: galleryMediaStatusAction, list: listGalleryMediaAction, update: updateGalleryPhotoAction, batch: batchGalleryPhotosAction }
+    ? { upload: timedUpload(uploadMediaImageAction), status: mediaStatusAction, list: listMediaLibraryAction, update: updateMediaPhotoAction, batch: batchMediaPhotosAction }
+    : { upload: timedUpload(uploadGalleryImageAction), status: galleryMediaStatusAction, list: listGalleryMediaAction, update: updateGalleryPhotoAction, batch: batchGalleryPhotosAction }
 }
 
 /**

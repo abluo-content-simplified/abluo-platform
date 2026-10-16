@@ -13,7 +13,7 @@
  * dependencies, ADR-033 D-4).
  */
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
-import { span, traced } from '@/lib/perf/timing'
+import { span, traced, withPerf, type PerfReport } from '@/lib/perf/timing'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import {
@@ -40,8 +40,9 @@ import type { CatalogueErrorDetail } from '@/lib/modules/catalogue/dashboard-pat
 import type { NamedSlugConflict } from '@/lib/modules/catalogue/validation'
 
 export type CatalogueActionError = 'unauthenticated' | CatalogueErrorCode
-type Fail = { ok: false; error: CatalogueActionError; detail?: CatalogueErrorDetail }
-type Result<T> = ({ ok: true } & T) | Fail
+/** `perf` is present only when perfEnabled() (never in production): op, ms, outcome, span ms. */
+type Fail = { ok: false; error: CatalogueActionError; detail?: CatalogueErrorDetail; perf?: PerfReport }
+type Result<T> = ({ ok: true; perf?: PerfReport } & T) | Fail
 
 const KINDS: readonly CatalogueKind[] = ['item', 'collection', 'optionList']
 
@@ -52,19 +53,23 @@ async function run<T>(
 ): Promise<Result<T>> {
   // The resolver call stays in this function's body: the support-mode guard
   // test (client-actions-guard) checks every action reaches it through a local helper.
-  return traced(`catalogue.${op}`, async (): Promise<Result<T>> => {
-    const ctx = await span('auth', () => getTenantAuthorizationContext())
-    if (!ctx) return { ok: false, error: 'unauthenticated' }
-    const grant = typeof projectSlug === 'string' ? resolveProjectGrant(ctx.projects, projectSlug) : null
-    if (!grant) return { ok: false, error: 'forbidden' }
-    try {
-      return { ok: true, ...(await fn(ctx, grant.projectId)) }
-    } catch (error) {
-      if (error instanceof CatalogueError) return { ok: false, error: error.code, ...(error.detail && { detail: error.detail }) }
-      if (error instanceof TenantAuthorizationError) return { ok: false, error: 'forbidden' }
-      return { ok: false, error: 'failed' }
-    }
-  })
+  return traced(`catalogue.${op}`, async (): Promise<Result<T>> =>
+    withPerf(
+      await (async (): Promise<Result<T>> => {
+        const ctx = await span('auth', () => getTenantAuthorizationContext())
+        if (!ctx) return { ok: false, error: 'unauthenticated' }
+        const grant = typeof projectSlug === 'string' ? resolveProjectGrant(ctx.projects, projectSlug) : null
+        if (!grant) return { ok: false, error: 'forbidden' }
+        try {
+          return { ok: true, ...(await fn(ctx, grant.projectId)) }
+        } catch (error) {
+          if (error instanceof CatalogueError) return { ok: false, error: error.code, ...(error.detail && { detail: error.detail }) }
+          if (error instanceof TenantAuthorizationError) return { ok: false, error: 'forbidden' }
+          return { ok: false, error: 'failed' }
+        }
+      })()
+    )
+  )
 }
 
 const kindOf = (kind: unknown): CatalogueKind => {

@@ -833,6 +833,10 @@ describe('event server actions — same refusals as galleries', () => {
 })
 
 describe('media screen server actions — owner/editor only, nothing touched on refusal', () => {
+  // Results are compared exactly; the dev-only `perf` field (PERF-2) is covered by src/lib/perf tests.
+  beforeAll(() => {
+    vi.stubEnv('PERF_TIMING', '0')
+  })
   const ownerA = {
     projectId: 'project-a',
     projectSlug: 'tenant-a-site',

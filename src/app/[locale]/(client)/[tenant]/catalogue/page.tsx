@@ -1,11 +1,15 @@
+import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import { span, traced } from '@/lib/perf/timing'
+import { perfBeacon } from '@/lib/perf/beacon'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { getProjectSiteDomain } from '@/lib/api/client-dashboard'
 import { catalogueAbilities, getCatalogueSite, listCatalogue } from '@/lib/api/catalogue-drafts'
+import { catalogueImageShape } from '@/lib/modules/catalogue/list-model'
+import { pathServedBase } from '@/lib/modules/catalogue/site-base'
 import { CatalogueBrowser } from '@/components/client/catalogue/CatalogueBrowser'
 import { PageShell } from '@/components/app/ui/PageShell'
 
@@ -32,9 +36,14 @@ async function CataloguePageInner({
   const grant = resolveProjectGrant(ctx.projects, projectSlug)
   if (!grant) notFound()
 
+  // "View on website" points at the environment the dashboard is on: dev and
+  // preview serve the project by path; anywhere else its own domain.
+  const h = await headers()
+  const publicPathBase = pathServedBase(h.get('x-forwarded-host') ?? h.get('host'), projectSlug, h.get('x-forwarded-proto') === 'http' ? 'http' : 'https')
+
   let lists, site
   try {
-    ;[lists, site] = await Promise.all([span('listCatalogue', async () => listCatalogue(ctx, grant.projectId, { publicDomain: await getProjectSiteDomain(ctx, grant.projectId).catch(() => null) })), span('site', () => getCatalogueSite(ctx, grant.projectId))])
+    ;[lists, site] = await Promise.all([span('listCatalogue', async () => listCatalogue(ctx, grant.projectId, { publicDomain: await getProjectSiteDomain(ctx, grant.projectId).catch(() => null), publicPathBase })), span('site', () => getCatalogueSite(ctx, grant.projectId))])
   } catch (error) {
     if (error instanceof TenantAuthorizationError) notFound()
     throw error
@@ -49,12 +58,13 @@ async function CataloguePageInner({
         projectSlug={projectSlug}
         title={title}
         lists={lists}
-        site={{ defaultLocale: site.defaultLocale, timeZone: site.timeZone, currency: site.config.currency, categories: site.config.categories }}
+        site={{ imageShape: catalogueImageShape({ presetId: site.presetId }), defaultLocale: site.defaultLocale, timeZone: site.timeZone, currency: site.config.currency, categories: site.config.categories }}
         can={catalogueAbilities(grant)}
         initialView={typeof query.view === 'string' ? query.view : null}
         initialStatus={typeof query.status === 'string' ? query.status : null}
         initialSort={typeof query.sort === 'string' ? query.sort : null}
       />
+      {perfBeacon()}
     </PageShell>
   )
 }

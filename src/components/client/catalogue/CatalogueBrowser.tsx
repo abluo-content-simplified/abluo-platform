@@ -26,6 +26,7 @@ import { catalogueLifecycleAction, publishCatalogueDraftAction } from '@/app/[lo
 import type { CatalogueAbilities, CatalogueLists, CatalogueSite } from '@/lib/api/catalogue-drafts'
 import type { LifecycleState } from '@/lib/lifecycle/status'
 import type { Referrer } from '@/lib/lifecycle/service'
+import type { ImageShape } from '@/lib/modules/catalogue/list-model'
 import { formatPrice } from '@/lib/modules/catalogue/resolve'
 import { inCatalogueStatus, itemGaps, parseStatusFilter, searchable, type CatalogueStatusFilter, type ItemGap } from '@/lib/modules/catalogue/dashboard-form'
 import type { CatalogueKind } from '@/lib/modules/catalogue/dashboard-patch'
@@ -37,7 +38,6 @@ import {
   LIST_SORT_KEYS,
   nextListSort,
   parseListSort,
-  showPriceColumn,
   sortListRows,
   summarizeBatch,
   type BatchOp,
@@ -99,7 +99,7 @@ export function CatalogueBrowser({
   /** The tenant's name for the module (navLabel) or the messages default. */
   title: string
   lists: CatalogueLists
-  site: Pick<CatalogueSite, 'defaultLocale' | 'timeZone'> & { currency: string; categories: { value: string; label: Record<string, string> }[] }
+  site: Pick<CatalogueSite, 'defaultLocale' | 'timeZone'> & { currency: string; /** Frame shape of the list images (portrait for book covers). */ imageShape: ImageShape; categories: { value: string; label: Record<string, string> }[] }
   can: CatalogueAbilities
   initialView: string | null
   initialStatus: string | null
@@ -143,7 +143,7 @@ export function CatalogueBrowser({
     }
   }
 
-  const hasPrices = useMemo(() => showPriceColumn(lists.items), [lists.items])
+  const portrait = site.imageShape === 'portrait'
 
   const rows: Row[] = useMemo(() => {
     const nameOf = (names: Record<string, string>, fallback: string) => textIn(names, ui, d) || fallback
@@ -375,7 +375,7 @@ export function CatalogueBrowser({
   }))
 
   const changesPill = (r: Row) => (r.status.hasChanges && r.status.status !== 'archived' ? <Pill tone="highlight">{t('changes.pending')}</Pill> : null)
-  const showPrice = view === 'items' && hasPrices
+  const showPrice = view === 'items'
 
   const columns: DataTableColumn<Row>[] = [
     {
@@ -385,9 +385,9 @@ export function CatalogueBrowser({
       width: 'min-w-64',
       render: (r) => (
         <div className="flex items-start gap-3">
-          {r.showsMedia ? <CellImage src={r.thumb} alt="" fit="contain" /> : null}
+          {r.showsMedia ? <CellImage src={r.thumb} alt="" fit="contain" shape={site.imageShape} /> : null}
           <div className="flex min-w-0 flex-col items-start gap-1.5">
-            <CellText primary={r.name} secondary={r.details} href={r.href} />
+            <CellText primary={r.name} secondary={r.details} secondaryLines={1} href={r.href} />
             {r.chips.length ? <Chips items={r.chips} max={3} /> : null}
             <GapBadges gaps={r.gaps} />
           </div>
@@ -540,6 +540,7 @@ export function CatalogueBrowser({
                         <CardGridItem key={r.id}>
                           <ContentCard
                             media={{ src: r.thumb, fit: 'contain' }}
+                            mediaShape={r.showsMedia && portrait ? 'portrait' : 'landscape'}
                             mediaContent={r.showsMedia ? undefined : <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-muted text-muted-foreground">{r.kind === 'collection' ? CAT_ICONS.menu : CAT_ICONS.listType}</span>}
                             title={r.name}
                             subtitle={r.details}
@@ -550,7 +551,7 @@ export function CatalogueBrowser({
                             {r.chips.length ? <Chips items={r.chips} max={3} /> : null}
                             <LifecycleBadge status={r.status.status} changes={r.status.hasChanges} />
                             <GapBadges gaps={r.gaps} />
-                            {showPrice && r.priceLabel ? <span className="mt-auto text-sm font-medium text-foreground">{r.priceLabel}</span> : null}
+                            {r.priceLabel ? <span className="mt-auto text-sm font-medium text-foreground">{r.priceLabel}</span> : null}
                           </ContentCard>
                         </CardGridItem>
                       ))}
@@ -565,13 +566,13 @@ export function CatalogueBrowser({
                       <li key={r.id} className={`flex items-start gap-1 rounded-xl border bg-card py-2 pr-1 ${isSel ? 'border-action ring-1 ring-action' : 'border-border'} ${canSelect ? 'pl-1' : 'pl-3'}`}>
                         {canSelect ? <Checkbox checked={isSel} aria-label={t('select.checkbox', { name: r.name })} onChange={(checked, e) => toggle(r.id, checked, isShiftChange(e))} /> : null}
                         <Link href={r.href} className="flex min-w-0 flex-1 items-start gap-3 pt-1 pb-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
-                          {r.showsMedia ? <MediaFrame src={r.thumb} alt="" fit="contain" size={{ width: '4.5rem', height: '4.5rem' }} className="shrink-0 rounded-lg" /> : null}
+                          {r.showsMedia ? <MediaFrame src={r.thumb} alt="" fit="contain" size={portrait ? { width: '3.5rem', height: '5.25rem' } : { width: '4.5rem', height: '4.5rem' }} className="shrink-0 rounded-lg" /> : null}
                           <span className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
                             <span className="line-clamp-2 text-[0.9375rem] leading-6 font-semibold text-foreground">{r.name}</span>
-                            {r.details ? <span className="text-sm leading-5 text-muted-foreground">{r.details}</span> : null}
+                            {r.details ? <span className="line-clamp-1 max-w-full text-sm leading-5 text-muted-foreground">{r.details}</span> : null}
                             <LifecycleBadge status={r.status.status} changes={r.status.hasChanges} />
                             <GapBadges gaps={r.gaps} />
-                            {showPrice && r.priceLabel ? <span className="text-sm font-medium text-foreground">{r.priceLabel}</span> : null}
+                            {r.priceLabel ? <span className="text-sm font-medium text-foreground">{r.priceLabel}</span> : null}
                           </span>
                         </Link>
                         <CardMenu label={t('menuFor', { name: r.name })} items={menuFor(r)} />

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { timedAction } from '@/lib/perf/client-log'
 import { useUploadOwner } from '@/components/client/media/use-media-uploads'
 import { useLocale, useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/navigation'
@@ -182,7 +183,7 @@ export function ItemEditor({
     setInUse(null)
     try {
       await draft.flush()
-      const r = await catalogueLifecycleAction({ projectSlug, kind: 'item', op: action, id: snapshot.id, expiresAt })
+      const r = await timedAction(`catalogue.lifecycle.${action}`, () => catalogueLifecycleAction({ projectSlug, kind: 'item', op: action, id: snapshot.id, expiresAt }))
       if (!r.ok) {
         if (r.error === 'in_use' && r.detail?.referrers?.length) setInUse(r.detail.referrers)
         else show({ message: errorText(r.error), tone: 'error' })

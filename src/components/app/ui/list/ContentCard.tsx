@@ -29,6 +29,7 @@ import { MediaFrame } from './cells'
 export function ContentCard({
   media,
   mediaContent,
+  mediaShape = 'landscape',
   title,
   subtitle,
   href,
@@ -45,6 +46,8 @@ export function ContentCard({
    * top scrim behind the overlay chips.
    */
   mediaContent?: ReactNode
+  /** 'portrait' makes the media box 2:3 (book covers); default 16:10. */
+  mediaShape?: 'landscape' | 'portrait'
   title: ReactNode
   /** Muted line(s) under the title (max 2). */
   subtitle?: ReactNode
@@ -71,7 +74,7 @@ export function ContentCard({
         clickable ? 'cursor-pointer hover:shadow-[var(--shadow-raise)]' : ''
       } ${selection?.checked ? 'border-action ring-1 ring-action' : 'border-border'}`}
     >
-      <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden">
+      <div className={`relative w-full shrink-0 overflow-hidden ${mediaShape === 'portrait' ? 'aspect-[2/3]' : 'aspect-[16/10]'}`}>
         {mediaContent ?? <MediaFrame src={media.src} alt={media.alt} focal={media.focal} fit={media.fit} className="absolute inset-0 size-full" />}
         {/* A soft top scrim so the overlay chips read on any photo. */}
         {media.src ? <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-linear-to-b from-scrim to-transparent" /> : null}
