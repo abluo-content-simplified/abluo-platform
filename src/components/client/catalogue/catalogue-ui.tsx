@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { Pill } from '@/components/app/ui/list/cells'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
@@ -10,6 +10,8 @@ import { validateWindow } from '@/lib/lifecycle/time'
 import type { Referrer } from '@/lib/lifecycle/service'
 import type { ItemGap } from '@/lib/modules/catalogue/dashboard-form'
 import type { CatalogueKind } from '@/lib/modules/catalogue/dashboard-patch'
+import type { ItemIssue } from '@/lib/modules/catalogue/item-issues'
+import { languageName } from '@/components/client/create/StepHeading'
 
 /**
  * Catalogue dashboard — small shared pieces (ADR-033, spec §10). Styling
@@ -42,6 +44,7 @@ const svg = (d: string, size = 18) => (
 )
 export const CAT_ICONS = {
   plus: svg('M12 5v14M5 12h14'),
+  back: svg('M15 6l-6 6 6 6'),
   up: svg('M12 19V5M5 12l7-7 7 7'),
   down: svg('M12 5v14M19 12l-7 7-7-7'),
   grip: svg('M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01', 20),
@@ -183,4 +186,68 @@ export function catalogueHref(projectSlug: string, kind: CatalogueKind, id: stri
 export function textIn(texts: Record<string, string> | null | undefined, locale: string, fallback: string): string {
   const v = texts ?? {}
   return v[locale]?.trim() || v[fallback]?.trim() || Object.values(v).find((s) => s?.trim()) || ''
+}
+
+/** The sentence for one item issue, in the dashboard language. */
+export function useItemIssueText() {
+  const t = useTranslations('catalogue.dashboard.item.issues')
+  const ui = useLocale()
+  return (issue: ItemIssue) => {
+    const { locale, ...rest } = issue.values ?? {}
+    return t(issue.messageKey, { ...rest, ...(typeof locale === 'string' ? { language: languageName(locale, ui) } : {}) })
+  }
+}
+
+/**
+ * Dashboard UX rule 3: when publishing is not possible, every blocker by name,
+ * each with a button that goes to the step or tab that fixes it.
+ */
+export function ItemIssueList({ issues, onFix }: { issues: readonly ItemIssue[]; onFix?: (issue: ItemIssue) => void }) {
+  const t = useTranslations('catalogue.dashboard.item.issues')
+  const text = useItemIssueText()
+  if (!issues.length) return null
+  return (
+    <div role="group" aria-labelledby="item-issues-title" className="rounded-2xl border border-border bg-muted px-4 py-3" data-item-issues>
+      <p id="item-issues-title" className="text-[0.9375rem] font-medium text-foreground">
+        {t('title', { count: issues.length })}
+      </p>
+      <ul className="mt-2 space-y-1">
+        {issues.map((i) => (
+          <li key={i.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+            <span className="text-[0.9375rem] text-foreground">{text(i)}</span>
+            {onFix ? (
+              <button type="button" onClick={() => onFix(i)} className="min-h-11 text-[0.9375rem] font-semibold text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+                {t('fix')}
+              </button>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/** An editor tab's label with a small "things to fix" count; the count is announced, not just shown. */
+export function TabLabel({ label, count }: { label: string; count?: number }) {
+  const t = useTranslations('catalogue.dashboard.item.issues')
+  if (!count) return <>{label}</>
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {label}
+      <span aria-hidden="true" className="grid min-w-5 place-items-center rounded-full border border-foreground bg-background px-1.5 text-xs leading-5 font-semibold text-foreground">
+        {count}
+      </span>
+      <span className="sr-only">{t('tabCount', { count })}</span>
+    </span>
+  )
+}
+
+/** Focus a field after a jump (the tab or step has to render first). */
+export function focusField(selector: string | undefined) {
+  if (!selector || typeof window === 'undefined') return
+  window.setTimeout(() => {
+    const el = document.querySelector<HTMLElement>(selector)
+    el?.focus?.()
+    el?.scrollIntoView?.({ block: 'center' })
+  }, 60)
 }

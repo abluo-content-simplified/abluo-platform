@@ -4,6 +4,7 @@ import { getLocale, getTranslations } from 'next-intl/server'
 import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
+import { getProjectSiteDomain } from '@/lib/api/client-dashboard'
 import { catalogueAbilities, getCatalogueSite, listCatalogue } from '@/lib/api/catalogue-drafts'
 import { CatalogueBrowser } from '@/components/client/catalogue/CatalogueBrowser'
 import { PageShell } from '@/components/app/ui/PageShell'
@@ -33,7 +34,7 @@ async function CataloguePageInner({
 
   let lists, site
   try {
-    ;[lists, site] = await Promise.all([span('listCatalogue', () => listCatalogue(ctx, grant.projectId)), span('site', () => getCatalogueSite(ctx, grant.projectId))])
+    ;[lists, site] = await Promise.all([span('listCatalogue', async () => listCatalogue(ctx, grant.projectId, { publicDomain: await getProjectSiteDomain(ctx, grant.projectId).catch(() => null) })), span('site', () => getCatalogueSite(ctx, grant.projectId))])
   } catch (error) {
     if (error instanceof TenantAuthorizationError) notFound()
     throw error
@@ -52,6 +53,7 @@ async function CataloguePageInner({
         can={catalogueAbilities(grant)}
         initialView={typeof query.view === 'string' ? query.view : null}
         initialStatus={typeof query.status === 'string' ? query.status : null}
+        initialSort={typeof query.sort === 'string' ? query.sort : null}
       />
     </PageShell>
   )

@@ -41,6 +41,21 @@ import { CAT_BUTTON, CAT_ICON_BUTTON, CAT_ICONS, CAT_INPUT, CAT_LABEL, CAT_TEXTA
 export type ItemPhoto = { assetId: string; thumbUrl: string | null }
 export type OptionListChoice = { id: string; name: string; optionCount: number; isDraft: boolean }
 
+/**
+ * A photo shown whole (never cropped): natural aspect ratio on a neutral
+ * background — a book cover stays a book cover. `tall` caps the height
+ * (previews); otherwise a fixed-height tile (the photo grid).
+ */
+function WholeImage({ src, tile = false }: { src: string | null; tile?: boolean }) {
+  if (!src) return <MediaFrame src={null} alt="" size={{ width: '100%', height: tile ? '8rem' : '10rem' }} />
+  return (
+    <span className={`flex w-full items-center justify-center bg-muted ${tile ? 'h-32' : ''}`}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- Sanity CDN image, shown uncropped */}
+      <img src={src} alt="" loading="lazy" className={`block w-auto max-w-full object-contain ${tile ? 'h-full' : 'max-h-80'}`} />
+    </span>
+  )
+}
+
 const newKey = () => Math.random().toString(36).slice(2, 14)
 
 /** A titled block of fields (editor tabs); the wizard passes its StepHeading instead. */
@@ -186,7 +201,7 @@ export function PhotoField({ projectSlug, defaultLocale, photos, onChange, max =
           {photos.map((p, i) => (
             <li key={p.assetId} className="flex flex-col items-start gap-2">
               <div className="relative w-full overflow-hidden rounded-xl border border-border">
-                <MediaFrame src={p.thumbUrl} alt="" size={{ width: '100%', height: '8rem' }} />
+                <WholeImage src={p.thumbUrl} tile />
                 {i === 0 ? (
                   <span className="absolute top-2 left-2">
                     <Pill tone="highlight">{t('main')}</Pill>
@@ -241,6 +256,8 @@ export function PriceField({ offers, channels, currency, defaultLocale, onChange
   const ui = useLocale()
   const id = useId()
   const channelValues = channels.map((c) => c.value)
+  // "More price options" is closed until asked for — unless a price already uses serving times.
+  const [moreOpen, setMoreOpen] = useState<ReadonlySet<string>>(new Set())
   const issues = offerFormIssues(offers, channelValues)
   const issueFor = (key: string) => issues.filter((i) => ('key' in i && i.key === key) || (i.kind === 'overlappingOffers' && i.keys.includes(key)))
   const scopeLabel = (ch: string | null) => {
@@ -284,6 +301,7 @@ export function PriceField({ offers, channels, currency, defaultLocale, onChange
             <div className="mt-1.5 flex items-center gap-2">
               <input
                 id={`${id}-${o.key}`}
+                data-offer-key={o.key}
                 inputMode="decimal"
                 autoComplete="off"
                 placeholder={t('placeholder')}
@@ -326,15 +344,30 @@ export function PriceField({ offers, channels, currency, defaultLocale, onChange
               </div>
             ))}
             <div className="mt-3 flex flex-wrap gap-2">
-              <button type="button" onClick={() => set(o.key, { availability: [...o.availability, { key: newKey(), days: [], from: '', to: '' }] })} className={CAT_BUTTON}>
-                {o.availability.length ? t('addMoreTimes') : t('addTimes')}
-              </button>
-              {firstOfScope && o.price ? (
+              {firstOfScope ? (
                 <button type="button" onClick={() => addAnother(o.channel)} className={CAT_BUTTON}>
+                  {CAT_ICONS.plus}
                   {t('addAnother')}
                 </button>
               ) : null}
+              {o.availability.length ? (
+                <button type="button" onClick={() => set(o.key, { availability: [...o.availability, { key: newKey(), days: [], from: '', to: '' }] })} className={CAT_BUTTON}>
+                  {t('addMoreTimes')}
+                </button>
+              ) : !moreOpen.has(o.key) ? (
+                <button type="button" aria-expanded={false} onClick={() => setMoreOpen(new Set([...moreOpen, o.key]))} className={CAT_BUTTON}>
+                  {t('morePriceOptions')}
+                </button>
+              ) : null}
             </div>
+            {!o.availability.length && moreOpen.has(o.key) ? (
+              <div className="mt-3 space-y-2 rounded-xl bg-muted p-3">
+                <p className="text-sm text-muted-foreground">{t('timesHelp')}</p>
+                <button type="button" onClick={() => set(o.key, { availability: [{ key: newKey(), days: [], from: '', to: '' }] })} className={CAT_BUTTON}>
+                  {t('addTimes')}
+                </button>
+              </div>
+            ) : null}
           </div>
         )
       })}
@@ -518,7 +551,7 @@ export function OptionsField({ projectSlug, options, lists, onChange }: { projec
               <div className="mt-3 flex flex-wrap gap-3">
                 <label className="flex flex-col text-sm text-foreground" htmlFor={`${id}-${o.key}-min`}>
                   {t('min')}
-                  <input id={`${id}-${o.key}-min`} type="number" inputMode="numeric" min={0} max={99} value={o.min} onChange={(e) => set(o.key, { min: num(e.target.value) ?? 0 })} className={`${CAT_INPUT} w-28`} />
+                  <input id={`${id}-${o.key}-min`} data-attachment-key={o.key} type="number" inputMode="numeric" min={0} max={99} value={o.min} onChange={(e) => set(o.key, { min: num(e.target.value) ?? 0 })} className={`${CAT_INPUT} w-28`} />
                 </label>
                 <label className="flex flex-col text-sm text-foreground" htmlFor={`${id}-${o.key}-max`}>
                   {t('max')}
@@ -635,6 +668,7 @@ export function PageField({
               </label>
               <input
                 id={`${id}-${l}`}
+                data-slug-locale={l}
                 value={name[l]?.trim() ? (slug[l] ?? '') : ''}
                 disabled={!name[l]?.trim()}
                 placeholder={name[l] ? slugFromName(name[l]) : ''}
@@ -760,7 +794,7 @@ export function ItemPreview({
   const label = (ch: string | null) => (ch === null ? (channels.length ? tp('everywhere') : tp('price')) : termLabel(channels.find((c) => c.value === ch) ?? { value: ch, label: {}, color: null }, ui, defaultLocale))
   return (
     <article className="overflow-hidden rounded-2xl border border-border bg-card">
-      {photo ? <MediaFrame src={photo} alt="" size={{ width: '100%', height: '14rem' }} /> : null}
+      {photo ? <WholeImage src={photo} /> : null}
       <div className="space-y-2 p-5">
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-xl font-semibold text-foreground">{textIn(name, locale, defaultLocale) || t('untitled')}</h3>

@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useRouter } from '@/i18n/navigation'
+import { Link, useRouter } from '@/i18n/navigation'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
@@ -18,8 +18,9 @@ import { editingZone } from '@/components/app/lifecycle/zoned-time'
 import { catalogueLifecycleAction } from '@/app/[locale]/(client)/[tenant]/catalogue/actions'
 import type { CatalogueAbilities, CatalogueSite, CatalogueSnapshot } from '@/lib/api/catalogue-drafts'
 import type { Referrer } from '@/lib/lifecycle/service'
-import { attachmentIssues, declarationIssues, itemGaps, itemStateFromDoc, type ItemState } from '@/lib/modules/catalogue/dashboard-form'
-import { CAT_INPUT, CAT_PRIMARY, GapBadges, InUseNotice, SegmentTabs, UnpublishDateSheet, textIn, useCatalogueError } from './catalogue-ui'
+import { attachmentIssues, declarationIssues, itemGaps, itemOptionsRelevant, itemStateFromDoc, type ItemState } from '@/lib/modules/catalogue/dashboard-form'
+import { issueCountByTab, itemIssues, type ItemIssue, type ItemTab } from '@/lib/modules/catalogue/item-issues'
+import { CAT_ICONS, CAT_INPUT, CAT_PRIMARY, GapBadges, InUseNotice, ItemIssueList, SegmentTabs, TabLabel, UnpublishDateSheet, focusField, textIn, useCatalogueError } from './catalogue-ui'
 import { FieldBlock, FoodInfoField, ItemPreview, LanguagesField, LinksField, NameFields, OptionsField, PageField, PhotoField, PriceField, ProfileField, TermChips, VisibilityField, type OptionListChoice } from './item-fields'
 import { usePublishTogether } from './publish-dependencies'
 import { languageName } from '@/components/client/create/StepHeading'
@@ -27,7 +28,9 @@ import { StrayAddressNotice, focusNameField, useStrayAddress } from './stray-add
 import { useCatalogueDraft } from './use-catalogue-draft'
 import { useItemState } from './use-item-state'
 
-type Tab = 'content' | 'photos' | 'prices' | 'details' | 'options' | 'page' | 'languages' | 'publishing'
+type Tab = ItemTab
+type PublishResult = { kind: 'published' } | { kind: 'scheduled'; at: string | null }
+const RESULT_KEY = (id: string) => `catalogue-item-published:${id}`
 
 /**
  * The item editor (spec §10.2): the wizard's fields in tabs, on the same
@@ -79,15 +82,46 @@ export function ItemEditor({
   const [confirm, setConfirm] = useState<'delete' | 'discard' | null>(null)
   const [dateOpen, setDateOpen] = useState(false)
   const [publishAt, setPublishAt] = useState<string | null>(snapshot.status.publishOn)
+  // The result of the last publish stays on the page (a toast alone disappears). The refresh that follows
+  // re-mounts this editor, so the line is handed over through sessionStorage and read back after mounting.
+  const [result, setResult] = useState<PublishResult | null>(null)
+  useEffect(() => {
+    try {
+      const raw = window.sessionStorage.getItem(RESULT_KEY(snapshot.id))
+      if (raw) {
+        window.sessionStorage.removeItem(RESULT_KEY(snapshot.id))
+        const restored = JSON.parse(raw) as PublishResult
+        queueMicrotask(() => setResult(restored))
+      }
+    } catch {
+      /* storage can be unavailable: the toast still told them */
+    }
+  }, [snapshot.id])
   const { toast, show } = useUndo()
 
   const isFood = s.itemProfile === 'foodOrDrink'
-  const tabs: Tab[] = ['content', 'photos', 'prices', ...(isFood ? (['details'] as Tab[]) : []), 'options', 'page', ...(site.locales.length > 1 ? (['languages'] as Tab[]) : []), 'publishing']
+  // D7: Options appear when relevant — food, option lists already attached, or any option list in the project.
+  const showOptions = itemOptionsRelevant({ itemProfile: s.itemProfile, attachedCount: s.options.length, projectListCount: optionLists.length })
+  const tabs: Tab[] = ['content', 'photos', 'prices', ...(isFood ? (['details'] as Tab[]) : []), ...(showOptions ? (['options'] as Tab[]) : []), 'page', ...(site.locales.length > 1 ? (['languages'] as Tab[]) : []), 'publishing']
   const name = textIn(s.name, ui, d) || t('untitled')
+  const current: Tab = tabs.includes(tab) ? tab : 'content'
+  const issues = itemIssues(s, { defaultLocale: d, locales: site.locales, channels, optionCounts })
+  const issueCounts = issueCountByTab(issues)
+  const canPublish = issues.length === 0
+  const fix = (issue: ItemIssue) => {
+    setTab(tabs.includes(issue.tab) ? issue.tab : 'content')
+    focusField(issue.focus)
+  }
   const missingLists = attachmentIssues(s.options, optionCounts).filter((i) => i.kind === 'missingList')
   const isLive = Boolean(snapshot.live)
   const tt = useTranslations('catalogue.dashboard.together')
-  const afterPublish = (message: string, notLive: Referrer[]) => {
+  const afterPublish = (message: string, notLive: Referrer[], outcome: PublishResult = { kind: 'published' }) => {
+    setResult(outcome)
+    try {
+      window.sessionStorage.setItem(RESULT_KEY(snapshot.id), JSON.stringify(outcome))
+    } catch {
+      /* ignore */
+    }
     show({ message: notLive.length ? `${message} ${tt('notLiveAfter', { names: notLive.map((r) => r.label).join(', ') })}` : message, tone: 'status' })
     router.refresh()
   }
@@ -123,7 +157,7 @@ export function ItemEditor({
         show({ message: named ? tf('slugTaken', { slug: named.slug, name: named.owner.label }) : errorText(r.error), tone: 'error' })
         return
       }
-      afterPublish(mode === 'schedule' ? t('scheduled') : t('published'), r.notLive)
+      afterPublish(mode === 'schedule' ? t('scheduled') : t('published'), r.notLive, mode === 'schedule' ? { kind: 'scheduled', at: publishAt } : { kind: 'published' })
     } finally {
       setBusy(false)
     }
@@ -166,13 +200,20 @@ export function ItemEditor({
   ]
 
   const primary = !readOnly ? (
-    <button type="button" disabled={busy || !s.name[d]?.trim()} onClick={() => void publish(isLive ? 'keep' : 'now')} className={CAT_PRIMARY}>
+    <button type="button" disabled={busy || !canPublish} onClick={() => void publish(isLive ? 'keep' : 'now')} className={CAT_PRIMARY}>
       {isLive ? t('publishChanges') : t('publish')}
     </button>
   ) : null
 
   return (
     <div className="space-y-5">
+      <Link
+        href={listHref}
+        className="-ml-1 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      >
+        {CAT_ICONS.back}
+        {t('back')}
+      </Link>
       <PageHeader
         title={name}
         actions={
@@ -189,6 +230,12 @@ export function ItemEditor({
         <LifecycleBadge status={snapshot.status.status} changes={draft.hasDraft && isLive} />
         <GapBadges gaps={itemGaps({ imageCount: item.photos.length, offerCount: s.offers.filter((o) => o.price.trim()).length, allergensNotReviewed: isFood && declarationIssues(s.allergenDeclaration).length > 0 })} />
       </div>
+      {result && !draft.hasDraft ? (
+        <p role="status" className="rounded-2xl bg-muted px-4 py-3 text-[0.9375rem] text-foreground">
+          {result.kind === 'scheduled' && result.at ? t('resultScheduled', { date: new Intl.DateTimeFormat(ui, { dateStyle: 'full', timeStyle: 'short', timeZone: zone }).format(new Date(result.at)) }) : result.kind === 'scheduled' ? t('scheduled') : t('resultPublished')}
+        </p>
+      ) : null}
+      {!readOnly && !canPublish ? <ItemIssueList issues={issues} onFix={fix} /> : null}
       <SaveNotice state={draft.state} rejected={draft.rejected} onRetry={draft.retry} onReload={() => void draft.reload()} />
       {archived ? <p className="rounded-2xl bg-muted px-4 py-3 text-[0.9375rem] text-foreground">{t('archivedNotice')}</p> : null}
       {missingLists.length ? (
@@ -200,10 +247,10 @@ export function ItemEditor({
       {together.ui}
       <StrayAddressNotice state={stray} />
 
-      <SegmentTabs label={t('tabsLabel')} value={tab} onChange={setTab} options={tabs.map((v) => ({ value: v, label: t(`tabs.${v}`) }))} />
+      <SegmentTabs label={t('tabsLabel')} value={current} onChange={setTab} options={tabs.map((v) => ({ value: v, label: <TabLabel label={t(`tabs.${v}`)} count={issueCounts[v]} /> }))} />
 
       <fieldset disabled={readOnly} className="min-w-0 space-y-8">
-        {tab === 'content' ? (
+        {current === 'content' ? (
           <>
             <FieldBlock title={tf('profile.title')} helper={isFood ? tf('profile.foodHelper') : undefined}>
               <ProfileField value={s.itemProfile} onChange={item.setProfile} />
@@ -223,27 +270,27 @@ export function ItemEditor({
               <VisibilityField value={s.visibility} onChange={item.setVisibility} />
             </FieldBlock>
           </>
-        ) : tab === 'photos' ? (
+        ) : current === 'photos' ? (
           <FieldBlock title={tf('photo.title')} helper={tf('photo.helper')}>
             <PhotoField projectSlug={projectSlug} defaultLocale={d} photos={item.photos} onChange={item.setPhotos} />
           </FieldBlock>
-        ) : tab === 'prices' ? (
+        ) : current === 'prices' ? (
           <FieldBlock title={tf('price.title')} helper={tf('price.helper')}>
             <PriceField offers={s.offers} channels={site.config.channels} currency={site.config.currency} defaultLocale={d} onChange={item.setOffers} />
           </FieldBlock>
-        ) : tab === 'details' ? (
+        ) : current === 'details' ? (
           <FieldBlock title={tf('details.title')}>
             <FoodInfoField declaration={s.allergenDeclaration} dietary={s.dietary} dietaryTerms={site.config.dietaryTags} defaultLocale={d} onDeclaration={item.setDeclaration} onDietary={item.setDietary} />
           </FieldBlock>
-        ) : tab === 'options' ? (
+        ) : current === 'options' ? (
           <FieldBlock title={tf('options.title')} helper={tf('options.helper')}>
             <OptionsField projectSlug={projectSlug} options={s.options} lists={optionLists} onChange={item.setOptions} />
           </FieldBlock>
-        ) : tab === 'page' ? (
+        ) : current === 'page' ? (
           <FieldBlock title={tf('page.title')}>
             <PageField projectSlug={projectSlug} docId={snapshot.id} hasPage={s.hasPage} slug={s.slug} name={s.name} segment={site.config.segment} locales={site.locales} defaultLocale={d} onHasPage={item.setHasPage} onSlug={item.setSlug} />
           </FieldBlock>
-        ) : tab === 'languages' ? (
+        ) : current === 'languages' ? (
           <FieldBlock title={tf('languages.title')}>
             <LanguagesField locales={site.locales} defaultLocale={d} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
           </FieldBlock>
@@ -257,7 +304,7 @@ export function ItemEditor({
             {!readOnly && !isLive ? (
               <FieldBlock title={tl('dates.publishOn')} helper={t('scheduleHelp')}>
                 <PublicationDateField id="item-editor-publish-on" label={tl('dates.publishOn')} value={publishAt} onChange={setPublishAt} zone={zone} inputClassName={CAT_INPUT} />
-                <button type="button" disabled={busy || !publishAt || !s.name[d]?.trim()} onClick={() => void publish('schedule')} className={CAT_PRIMARY}>
+                <button type="button" disabled={busy || !publishAt || !canPublish} onClick={() => void publish('schedule')} className={CAT_PRIMARY}>
                   {t('schedule')}
                 </button>
               </FieldBlock>

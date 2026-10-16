@@ -22,17 +22,17 @@ const LIFECYCLE = `publishedAt, expiresAt, archivedAt`
 /** Every item, collection and option list of the project — published and draft copies (raw perspective). */
 export const CATALOGUE_DASHBOARD_LIST_QUERY = /* groq */ `{
   "items": *[_type == "catalogueItem" && projectSlug == $projectSlug && !(_id in path("versions.**"))]{
-    _id, _createdAt, _updatedAt, name, itemProfile, "allergenStatus": allergenDeclaration.status, categories, hasPage, visibility, ${LIFECYCLE},
+    _id, _rev, _createdAt, _updatedAt, name, byline, slug, itemProfile, "allergenStatus": allergenDeclaration.status, categories, hasPage, visibility, ${LIFECYCLE},
     "imageCount": count(images), "firstImage": images[0]._ref,
     "offerCount": count(offers), "prices": offers[].price,
     "lists": optionLists[].list._ref
   },
   "collections": *[_type == "catalogueCollection" && projectSlug == $projectSlug && !(_id in path("versions.**"))]{
-    _id, _createdAt, _updatedAt, name, collectionType, hasPage, visibility, ${LIFECYCLE},
-    "sectionCount": count(sections), "itemRefs": sections[].items[]._ref
+    _id, _rev, _createdAt, _updatedAt, name, slug, collectionType, hasPage, visibility, ${LIFECYCLE},
+    "sectionCount": count(sections), "sectionNames": sections[].name, "itemRefs": sections[].items[]._ref
   },
   "optionLists": *[_type == "catalogueOptionList" && projectSlug == $projectSlug && !(_id in path("versions.**"))]{
-    _id, _createdAt, _updatedAt, name, ${LIFECYCLE}, "optionCount": count(options)
+    _id, _rev, _createdAt, _updatedAt, name, ${LIFECYCLE}, "optionCount": count(options)
   }
 }`
 

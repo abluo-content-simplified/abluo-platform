@@ -9,8 +9,9 @@ import { ChoiceCard, ChoiceCardGrid } from '@/components/app/ui/ChoiceCard'
 import { PublicationDateField } from '@/components/app/lifecycle/PublicationDateField'
 import { editingZone } from '@/components/app/lifecycle/zoned-time'
 import type { CatalogueSite } from '@/lib/api/catalogue-drafts'
-import { NOT_REVIEWED, canAdvanceItem, initialItemProfile, itemWizardSteps, type ItemState, type ItemStep } from '@/lib/modules/catalogue/dashboard-form'
-import { CAT_BUTTON, CAT_ICONS, CAT_INPUT, CAT_PRIMARY, useCatalogueError } from './catalogue-ui'
+import { NOT_REVIEWED, canAdvanceItem, initialItemProfile, itemOptionsRelevant, itemWizardSteps, type ItemProfile, type ItemState, type ItemStep } from '@/lib/modules/catalogue/dashboard-form'
+import { blocksNextOn, itemIssues, type ItemIssue } from '@/lib/modules/catalogue/item-issues'
+import { CAT_BUTTON, CAT_ICONS, CAT_INPUT, CAT_PRIMARY, ItemIssueList, focusField, useCatalogueError, useItemIssueText } from './catalogue-ui'
 import { FoodInfoField, ItemPreview, LanguagesField, NameFields, OptionsField, PageField, PhotoField, PriceField, ProfileField, TermChips, type OptionListChoice } from './item-fields'
 import { useCatalogueDraft, type PublishMode } from './use-catalogue-draft'
 import { StrayAddressNotice, useStrayAddress } from './stray-address'
@@ -36,6 +37,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
   const t = useTranslations('catalogue.dashboard.item.wizard')
   const tc = useTranslations('clientDashboard.create')
   const tl = useTranslations('app.lifecycle')
+  const ti = useTranslations('catalogue.dashboard.item.issues')
   const ui = useLocale()
   const router = useRouter()
   const errorText = useCatalogueError()
@@ -59,7 +61,10 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
     stray.onNameChange(l, v, s.slug[l])
   }
 
-  const steps = itemWizardSteps({ itemProfile: s.itemProfile, categoryCount: site.config.categories.length, locales: site.locales })
+  // D7: the Options step is shown when it is relevant (food, or option lists attached / existing) — never by business type.
+  const stepsFor = (itemProfile: ItemProfile | null, attachedCount: number) =>
+    itemWizardSteps({ itemProfile, categoryCount: site.config.categories.length, locales: site.locales, showOptions: itemOptionsRelevant({ itemProfile, attachedCount, projectListCount: optionLists.length }) })
+  const steps = stepsFor(s.itemProfile, s.options.length)
   const [step, setStep] = useState<ItemStep | 'done'>(steps[0])
   const [choice, setChoice] = useState<Choice>('now')
   const [publishAt, setPublishAt] = useState<string | null>(null)
@@ -75,6 +80,8 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
     mainRef.current?.scrollTo?.({ top: 0 })
   }
   const ctx = { channels, optionCounts }
+  const issues = itemIssues(s, { defaultLocale: d, locales: site.locales, channels, optionCounts })
+  const issueText = useItemIssueText()
   const canNext = step !== 'done' && canAdvanceItem(step, s, d, ctx)
   const goNext = () => {
     if (step === 'done' || !canNext) return
@@ -88,7 +95,15 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
   }
   const exit = async () => {
     await draft.flush()
-    router.push(draft.created ? `/${projectSlug}/catalogue/${draft.id}` : listHref)
+    // Back to the Catalogue: whatever was typed is already saved as a draft.
+    router.push(listHref)
+  }
+  /** "Fix this" on the publish step: go to the step that fixes it, and focus the field. */
+  const fix = (issue: ItemIssue) => {
+    const target = steps.includes(issue.step) ? issue.step : steps.includes('name') ? 'name' : null
+    if (!target) return
+    go(target)
+    focusField(issue.focus)
   }
 
   async function finish() {
@@ -137,6 +152,9 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
   }
 
   const heading = (id: string, key: string, helper = true) => <StepHeading id={id} title={t(`${key}.title`)} helper={helper ? t(`${key}.helper`) : undefined} />
+  // Rule 1: a disabled Next says why — name what is missing; rule 3: on the last step, every publish blocker.
+  const publishBlocked = step === 'publish' && choice !== 'draft' && issues.length > 0
+  const hintIssues = step === 'done' ? [] : blocksNextOn(issues, step)
   const optional = step !== 'done' && step !== 'name' && step !== 'profile' && step !== 'preview' && step !== 'publish'
   const primaryLabel = step === 'publish' ? (busy ? t('working') : t(`publish.${choice}`)) : tc('shell.next')
 
@@ -153,10 +171,10 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
         step === 'done'
           ? null
           : {
-              hint: error ?? (step === 'name' && !canNext ? t('name.needed') : step === 'profile' && !canNext ? t('profile.needed') : optional ? t('optional') : null),
+              hint: error ?? (hintIssues.length ? issueText(hintIssues[0]) : publishBlocked ? ti('fixToPublish', { count: issues.length }) : optional ? t('optional') : null),
               progress: { current: index + 1, total: steps.length },
               back: index > 0 ? { onPress: goBack, disabled: busy } : null,
-              primary: { label: primaryLabel, onPress: goNext, disabled: !canNext || busy || (step === 'publish' && !draft.created), busy },
+              primary: { label: primaryLabel, onPress: goNext, disabled: !canNext || busy || publishBlocked || (step === 'publish' && !draft.created), busy },
             }
       }
     >
@@ -172,7 +190,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
                   profileRef.current = v
                   item.setProfile(v)
                   // A tap is the answer: go straight on (the next step is always the name).
-                  const next = itemWizardSteps({ itemProfile: v, categoryCount: site.config.categories.length, locales: site.locales })[1]
+                  const next = stepsFor(v, s.options.length)[1]
                   if (next) go(next)
                 }}
               />
@@ -262,6 +280,11 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
                 <ChoiceCard icon={CAT_ICONS.list} label={t('publish.choiceSchedule')} selected={choice === 'schedule'} onSelect={() => setChoice('schedule')} />
                 <ChoiceCard icon={CAT_ICONS.cards} label={t('publish.choiceDraft')} selected={choice === 'draft'} onSelect={() => setChoice('draft')} />
               </ChoiceCardGrid>
+              {publishBlocked ? (
+                <div className="mt-6">
+                  <ItemIssueList issues={issues} onFix={fix} />
+                </div>
+              ) : null}
               {choice === 'schedule' ? <PublicationDateField id="item-publish-on" className="mt-6" label={tl('dates.publishOn')} value={publishAt} onChange={setPublishAt} zone={zone} inputClassName={CAT_INPUT} /> : null}
             </div>
           </>
@@ -277,16 +300,16 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
               {done.kind === 'scheduled' ? t('done.scheduledBody', { date: new Intl.DateTimeFormat(ui, { dateStyle: 'full', timeStyle: 'short', timeZone: zone }).format(new Date(done.at)) }) : t(`done.${done.kind}Body`)}
             </p>
             <div className="mt-10 flex w-full flex-col gap-3 sm:flex-row">
-              <Link href={`/${projectSlug}/catalogue/${draft.id}`} className={CAT_PRIMARY}>
-                {t('done.open')}
+              <Link href={listHref} className={CAT_PRIMARY}>
+                {t('done.list')}
               </Link>
               <button type="button" className={CAT_BUTTON} onClick={() => window.location.assign(window.location.pathname.replace(/\/[^/]+\/?$/, '/new'))}>
                 {t('done.another')}
               </button>
-              <Link href={listHref} className={CAT_BUTTON}>
-                {t('done.list')}
-              </Link>
             </div>
+            <Link href={`/${projectSlug}/catalogue/${draft.id}`} className="mt-4 inline-flex min-h-11 items-center text-[0.9375rem] font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+              {t('done.open')}
+            </Link>
           </div>
         ) : null}
       </section>

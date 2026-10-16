@@ -2,7 +2,7 @@
 
 import { useId, useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useRouter } from '@/i18n/navigation'
+import { Link, useRouter } from '@/i18n/navigation'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { ChoiceCard, ChoiceCardGrid } from '@/components/app/ui/ChoiceCard'
@@ -58,6 +58,12 @@ import { languageName } from '@/components/client/create/StepHeading'
 
 type Tab = 'sections' | 'details' | 'page'
 const newKey = () => Math.random().toString(36).slice(2, 14)
+
+const BACK_ICON = (
+  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M15 18l-6-6 6-6" />
+  </svg>
+)
 
 /**
  * The collection builder (spec §10.4): a direct editor, not a wizard —
@@ -247,16 +253,32 @@ export function CollectionBuilder({
   ) : null
   const undoAt = undo ? Math.min(undo.index, sections.length) : -1
 
+  // UX rule 1: a disabled primary action says why.
+  const hintId = useId()
+  const publishNeedsName = !name[d]?.trim()
   const primary =
     !readOnly && draft.created ? (
-      <button type="button" disabled={busy || !name[d]?.trim()} onClick={() => void publish()} className={CAT_PRIMARY}>
+      <button type="button" disabled={busy || publishNeedsName} aria-describedby={publishNeedsName ? hintId : undefined} onClick={() => void publish()} className={CAT_PRIMARY}>
         {isLive ? t('publishChanges') : t('publish')}
       </button>
     ) : null
+  const hint = primary && publishNeedsName ? (
+    <p id={hintId} className="text-sm text-muted-foreground">
+      {t('publishNeedsName')}
+    </p>
+  ) : null
 
   return (
     <div className="space-y-5">
-      <PageHeader
+      <Link
+        href={listHref}
+        className="-ml-1 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      >
+        {BACK_ICON}
+        {t('back')}
+      </Link>
+      <div className="-mt-4">
+        <PageHeader
         title={title}
         actions={
           <>
@@ -267,7 +289,9 @@ export function CollectionBuilder({
             {menu.length ? <CardMenu label={t('menu')} items={menu} /> : null}
           </>
         }
-      />
+        />
+      </div>
+      {hint ? <div className="hidden md:block">{hint}</div> : null}
       {snapshot ? <LifecycleBadge status={snapshot.status.status} changes={draft.hasDraft && isLive} /> : null}
       <SaveNotice state={draft.state} rejected={draft.rejected} onRetry={draft.retry} onReload={() => void draft.reload()} />
       {archived ? <p className="rounded-2xl bg-muted px-4 py-3 text-[0.9375rem] text-foreground">{t('archivedNotice')}</p> : null}
@@ -287,6 +311,7 @@ export function CollectionBuilder({
                     key={ct}
                     icon={ct === 'menu' ? CAT_ICONS.menu : CAT_ICONS.listType}
                     label={t(`type.${ct}`)}
+                    description={t(`type.${ct}Description`)}
                     selected={collectionType === ct}
                     onSelect={() => {
                       setCollectionType(ct)
@@ -455,7 +480,12 @@ export function CollectionBuilder({
         )}
       </fieldset>
 
-      {primary ? <div className="md:hidden">{primary}</div> : null}
+      {primary ? (
+        <div className="flex flex-col items-start gap-2 md:hidden">
+          {primary}
+          {hint}
+        </div>
+      ) : null}
 
       <ItemPicker
         open={picker !== null}
@@ -532,9 +562,14 @@ function ItemPicker({ open, onClose, items, categories, onAdd }: { open: boolean
           </li>
         ))}
       </ul>
-      <button type="button" disabled={!picked.length} onClick={() => { onAdd(picked); setPicked([]) }} className={`mt-4 ${CAT_PRIMARY}`}>
+      <button type="button" disabled={!picked.length} aria-describedby={picked.length ? undefined : `${id}-pick`} onClick={() => { onAdd(picked); setPicked([]) }} className={`mt-4 ${CAT_PRIMARY}`}>
         {t('add', { count: picked.length })}
       </button>
+      {picked.length ? null : (
+        <p id={`${id}-pick`} className="mt-2 text-sm text-muted-foreground">
+          {t('pickHint')}
+        </p>
+      )}
     </BottomSheet>
   )
 }

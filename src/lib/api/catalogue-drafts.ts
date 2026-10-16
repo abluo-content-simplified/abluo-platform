@@ -42,6 +42,7 @@ import { deriveStatus, type LifecycleState } from '@/lib/lifecycle/status'
 import * as lifecycle from '@/lib/lifecycle/service'
 import type { LifecycleDescriptor } from '@/lib/lifecycle/service'
 import { coverThumbUrl } from '@/lib/api/post-drafts'
+import { containThumbUrl, publicPageUrl } from '@/lib/modules/catalogue/list-model'
 import {
   CATALOGUE_COLLECTION_LIFECYCLE,
   CATALOGUE_ITEM_LIFECYCLE,
@@ -237,9 +238,9 @@ export async function loadCatalogueNavLabel(projectSlug: string, locale: string,
 
 // ── Lists ─────────────────────────────────────────────────────────────────────
 
-type RowBase = { _id: string; _createdAt?: string; _updatedAt?: string; name?: unknown; publishedAt?: unknown; expiresAt?: unknown; archivedAt?: unknown }
-type ItemRow = RowBase & { itemProfile?: unknown; allergenStatus?: unknown; categories?: unknown; hasPage?: unknown; visibility?: unknown; imageCount?: number | null; firstImage?: string | null; offerCount?: number | null; prices?: unknown; lists?: unknown }
-type CollectionRow = RowBase & { collectionType?: unknown; hasPage?: unknown; visibility?: unknown; sectionCount?: number | null; itemRefs?: unknown }
+type RowBase = { _id: string; _rev?: string; slug?: unknown; _createdAt?: string; _updatedAt?: string; name?: unknown; publishedAt?: unknown; expiresAt?: unknown; archivedAt?: unknown }
+type ItemRow = RowBase & { byline?: unknown; itemProfile?: unknown; allergenStatus?: unknown; categories?: unknown; hasPage?: unknown; visibility?: unknown; imageCount?: number | null; firstImage?: string | null; offerCount?: number | null; prices?: unknown; lists?: unknown }
+type CollectionRow = RowBase & { sectionNames?: unknown; collectionType?: unknown; hasPage?: unknown; visibility?: unknown; sectionCount?: number | null; itemRefs?: unknown }
 type OptionListRow = RowBase & { optionCount?: number | null }
 
 type Common = {
@@ -252,10 +253,20 @@ type Common = {
   hasDraft: boolean
   updatedAt: string
   createdAt: string
+  /** The draft's revision when a draft exists (what a publish is guarded on), else ''. */
+  draftRev: string
+  /** "Publish on" — the live version's publish date (ISO), null when never published. */
+  publishedAt: string | null
+  /** "Unpublish on" — the live version's end date (ISO), null when none. */
+  expiresAt: string | null
+  /** Absolute public URL in the default language, only when it resolves right now (list-model publicPageUrl); else null. */
+  publicUrl: string | null
 }
 export type CatalogueItemListRow = Common & {
   /** null when not set yet (Studio-created). */
   itemProfile: ItemProfile | null
+  /** Localized byline (author, maker …); empty when none. */
+  byline: Record<string, string>
   /** D-3: a food item whose allergens are not reviewed yet (cannot be published). */
   allergensNotReviewed: boolean
   categories: string[]
@@ -267,7 +278,7 @@ export type CatalogueItemListRow = Common & {
   fromPrice: number | null
   optionLists: string[]
 }
-export type CatalogueCollectionListRow = Common & { collectionType: 'menu' | 'list'; hasPage: boolean; sectionCount: number; itemCount: number }
+export type CatalogueCollectionListRow = Common & { collectionType: 'menu' | 'list'; hasPage: boolean; sectionCount: number; itemCount: number; /** Section names (localized), in order. */ sectionNames: Record<string, string>[] }
 export type CatalogueOptionListRow = Common & { optionCount: number; usedBy: number }
 export type CatalogueLists = { items: CatalogueItemListRow[]; collections: CatalogueCollectionListRow[]; optionLists: CatalogueOptionListRow[] }
 
@@ -292,12 +303,24 @@ function pairUp<T extends RowBase>(rows: readonly T[] | null | undefined) {
   return map
 }
 
-function common(id: string, e: { row: RowBase; published: RowBase | null; hasDraft: boolean; createdAt: string }, locale: string, now: Date): Common {
+type PublicBase = { domain: string | null; segment: string | null; defaultLocale: string }
+
+function common(id: string, e: { row: RowBase; published: RowBase | null; hasDraft: boolean; createdAt: string }, locale: string, now: Date, pub?: PublicBase): Common {
+  const status = deriveStatus({ published: e.published as never, draft: e.hasDraft ? e.row : null, rule: 'optional' }, now)
+  const iso = (v: unknown) => (typeof v === 'string' && v ? v : null)
+  const live = e.published as (RowBase & { hasPage?: unknown; visibility?: unknown }) | null
   return {
+    draftRev: e.hasDraft ? (e.row._rev ?? '') : '',
+    publishedAt: iso(live?.publishedAt),
+    expiresAt: iso(live?.expiresAt),
+    publicUrl:
+      pub && live
+        ? publicPageUrl({ status: status.status, hasPage: live.hasPage === true, visibility: live.visibility, slug: slugMap(live.slug)[pub.defaultLocale], segment: pub.segment, domain: pub.domain, defaultLocale: pub.defaultLocale })
+        : null,
     id,
     name: pick(e.row.name, locale),
     names: localized(e.row.name),
-    status: deriveStatus({ published: e.published as never, draft: e.hasDraft ? e.row : null, rule: 'optional' }, now),
+    status,
     isPublished: Boolean(e.published),
     hasDraft: e.hasDraft,
     updatedAt: e.row._updatedAt ?? '',
@@ -308,7 +331,7 @@ function common(id: string, e: { row: RowBase; published: RowBase | null; hasDra
 const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
 
 /** Everything the catalogue screen lists, every state (archived included — the UI hides it from "All"). */
-export async function listCatalogue(ctx: TenantAuthorizationContext, projectId: string, deps: CatalogueDeps = {}): Promise<CatalogueLists> {
+export async function listCatalogue(ctx: TenantAuthorizationContext, projectId: string, deps: CatalogueDeps & { /** The project's public domain; without it no "View on website" link is built. */ publicDomain?: string | null } = {}): Promise<CatalogueLists> {
   const grant = grantFor(ctx, projectId, CATALOGUE_READ_PERMISSION)
   const client = deps.client ?? sanityWriteClient
   const now = (deps.now ?? (() => new Date()))()
@@ -317,16 +340,18 @@ export async function listCatalogue(ctx: TenantAuthorizationContext, projectId: 
     client.fetch<{ items?: ItemRow[]; collections?: CollectionRow[]; optionLists?: OptionListRow[] } | null>(CATALOGUE_DASHBOARD_LIST_QUERY, { projectSlug: grant.projectSlug }, RAW),
   ])
   const d = site.defaultLocale
+  const pub: PublicBase = { domain: deps.publicDomain ?? null, segment: site.config.segment, defaultLocale: d }
   const items = pairUp(raw?.items)
   const firsts = [...new Set([...items.values()].map((e) => e.row.firstImage).filter((x): x is string => typeof x === 'string'))]
   const thumbs = firsts.length
     ? await client.fetch<Array<{ _id: string; url?: string | null; hotspot?: { x?: number; y?: number } | null }> | null>(CATALOGUE_THUMBS_QUERY, { projectSlug: grant.projectSlug, ids: firsts })
     : []
-  const thumbById = new Map((thumbs ?? []).map((a) => [a._id, coverThumbUrl(a.url, a.hotspot, 192)]))
+  const thumbById = new Map((thumbs ?? []).map((a) => [a._id, containThumbUrl(a.url, 480)]))
   const itemRows: CatalogueItemListRow[] = [...items].map(([id, e]) => {
     const prices = (Array.isArray(e.row.prices) ? e.row.prices : []).filter((p): p is number => typeof p === 'number' && Number.isFinite(p))
     return {
-      ...common(id, e, d, now),
+      ...common(id, e, d, now, pub),
+      byline: localized(e.row.byline),
       itemProfile: isItemProfile(e.row.itemProfile) ? e.row.itemProfile : null,
       allergensNotReviewed: e.row.itemProfile === 'foodOrDrink' && e.row.allergenStatus !== 'containsListedAllergens' && e.row.allergenStatus !== 'noneDeclared',
       categories: strings(e.row.categories),
@@ -339,11 +364,12 @@ export async function listCatalogue(ctx: TenantAuthorizationContext, projectId: 
     }
   })
   const collections = [...pairUp(raw?.collections)].map(([id, e]) => ({
-    ...common(id, e, d, now),
+    ...common(id, e, d, now, pub),
     collectionType: (e.row.collectionType === 'menu' ? 'menu' : 'list') as 'menu' | 'list',
     hasPage: e.row.hasPage === true,
     sectionCount: typeof e.row.sectionCount === 'number' ? e.row.sectionCount : 0,
     itemCount: new Set(strings(e.row.itemRefs)).size,
+    sectionNames: (Array.isArray(e.row.sectionNames) ? e.row.sectionNames : []).map(localized).filter((n) => Object.keys(n).length > 0),
   }))
   const usage = new Map<string, number>()
   for (const i of itemRows) if (i.status.status !== 'archived') for (const l of new Set(i.optionLists)) usage.set(l, (usage.get(l) ?? 0) + 1)

@@ -2,7 +2,7 @@
 
 import { useId, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useRouter } from '@/i18n/navigation'
+import { Link, useRouter } from '@/i18n/navigation'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { EmptyState } from '@/components/app/ui/EmptyState'
@@ -30,11 +30,17 @@ import { usePublishTogether } from './publish-dependencies'
 
 const newKey = () => Math.random().toString(36).slice(2, 14)
 
+const BACK_ICON = (
+  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M15 18l-6-6 6-6" />
+  </svg>
+)
+
 /**
  * Option lists (spec §10.2, ADR-033 D2): a plain editor — the list's name and
  * its options (label per language, add or remove, a price change that may be
  * zero or negative, and optionally a linked item that is itself offered),
- * reorderable. How many people may pick (min/max) is set where an item
+ * reorderable. How many options a customer can choose (min/max) is set where an item
  * attaches the list, not here. Archiving or deleting is refused while any
  * non-archived item uses the list; the refusal links every one of them (C7).
  */
@@ -146,16 +152,31 @@ export function OptionListEditor({
           }))
       : []),
   ]
+  // UX rule 1: a disabled primary action says why.
+  const publishHint = !name[d]?.trim() ? t('publishNeedsName') : options.length === 0 ? t('publishNeedsOption') : null
   const primary =
     !readOnly && draft.created ? (
-      <button type="button" disabled={busy || !name[d]?.trim() || options.length === 0} onClick={() => void publish()} className={CAT_PRIMARY}>
+      <button type="button" disabled={busy || publishHint !== null} aria-describedby={publishHint ? `${id}-hint` : undefined} onClick={() => void publish()} className={CAT_PRIMARY}>
         {isLive ? t('publishChanges') : t('publish')}
       </button>
     ) : null
+  const hint = primary && publishHint ? (
+    <p id={`${id}-hint`} className="text-sm text-muted-foreground">
+      {publishHint}
+    </p>
+  ) : null
 
   return (
     <div className="space-y-5">
-      <PageHeader
+      <Link
+        href={listHref}
+        className="-ml-1 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      >
+        {BACK_ICON}
+        {t('back')}
+      </Link>
+      <div className="-mt-4">
+        <PageHeader
         title={title}
         actions={
           <>
@@ -166,7 +187,9 @@ export function OptionListEditor({
             {menu.length ? <CardMenu label={t('menu')} items={menu} /> : null}
           </>
         }
-      />
+        />
+      </div>
+      {hint ? <div className="hidden md:block">{hint}</div> : null}
       {snapshot ? <LifecycleBadge status={snapshot.status.status} changes={draft.hasDraft && isLive} /> : null}
       <SaveNotice state={draft.state} rejected={draft.rejected} onRetry={draft.retry} onReload={() => void draft.reload()} />
       {archived ? <p className="rounded-2xl bg-muted px-4 py-3 text-[0.9375rem] text-foreground">{t('archivedNotice')}</p> : null}
@@ -282,7 +305,12 @@ export function OptionListEditor({
         </FieldBlock>
       </fieldset>
 
-      {primary ? <div className="md:hidden">{primary}</div> : null}
+      {primary ? (
+        <div className="flex flex-col items-start gap-2 md:hidden">
+          {primary}
+          {hint}
+        </div>
+      ) : null}
 
       <DeletePermanentlyDialog open={confirmDelete} titles={[title]} busy={busy} onConfirm={() => void act(snapshot?.status.status === 'draft' ? 'delete' : 'deletePermanently')} onCancel={() => setConfirmDelete(false)} />
       <Toast message={toast?.message ?? null} tone={toast?.tone} />

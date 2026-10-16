@@ -234,6 +234,20 @@ export type ItemWizardContext = {
   itemProfile: ItemProfile | null
   categoryCount: number
   locales: readonly string[]
+  /**
+   * Whether the Options step is relevant (decision D7: by profile/capability,
+   * not by business). Omitted = shown. See `itemOptionsRelevant`.
+   */
+  showOptions?: boolean
+}
+
+/**
+ * D7 — option lists are shown when they are relevant: food and drink, OR the
+ * item already has option lists attached, OR the project has at least one
+ * option list. Never hidden by business type; stored data is never deleted.
+ */
+export function itemOptionsRelevant(c: { itemProfile: ItemProfile | null; attachedCount: number; projectListCount: number }): boolean {
+  return c.itemProfile === 'foodOrDrink' || c.attachedCount > 0 || c.projectListCount > 0
 }
 
 export function itemWizardSteps(c: ItemWizardContext): ItemStep[] {
@@ -241,7 +255,8 @@ export function itemWizardSteps(c: ItemWizardContext): ItemStep[] {
   if (c.categoryCount > 0) steps.push('category')
   steps.push('photo', 'price')
   if (c.itemProfile === 'foodOrDrink') steps.push('details')
-  steps.push('options', 'page')
+  if (c.showOptions !== false) steps.push('options')
+  steps.push('page')
   if (c.locales.length > 1) steps.push('languages')
   steps.push('preview', 'publish')
   return steps

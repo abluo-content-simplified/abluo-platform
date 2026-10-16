@@ -3340,7 +3340,11 @@
           "name": "Name",
           "status": "Status",
           "updated": "Updated",
-          "actions": "Actions"
+          "actions": "Actions",
+          "changes": "Changes",
+          "publishOn": "Publish on",
+          "unpublishOn": "Unpublish on",
+          "price": "Price"
         },
         "menuFor": "Actions for {name}",
         "display": {
@@ -3361,11 +3365,11 @@
           },
           "collections": {
             "title": "No collections yet",
-            "body": "A collection arranges items into sections — a menu, a wine list, a price list."
+            "body": "A collection arranges items into sections — a menu, a price list, a reading list."
           },
           "optionLists": {
             "title": "No option lists yet",
-            "body": "Option lists hold the choices people can make, like extra toppings or sides."
+            "body": "Option lists hold the choices customers can make, like a size, a side dish or an engraving."
           }
         },
         "filters": {
@@ -3373,11 +3377,45 @@
           "search": "Search",
           "status": "Status",
           "category": "Category",
-          "anyCategory": "Any category"
+          "anyCategory": "Any category",
+          "sort": "Sort by"
         },
         "count": "{shown} of {total}",
         "noMatch": "Nothing matches these filters.",
-        "clearFilters": "Clear filters"
+        "clearFilters": "Clear filters",
+        "changes": {
+          "pending": "Unpublished changes"
+        },
+        "menu": {
+          "publishChanges": "Publish changes",
+          "viewOnWebsite": "View on website",
+          "copyLink": "Copy link"
+        },
+        "linkCopied": "Link copied.",
+        "linkCopyFailed": "Couldn’t copy the link.",
+        "select": {
+          "checkbox": "Select {name}",
+          "allLabel": "Select all",
+          "all": "Select all",
+          "toolbar": "Selected entries",
+          "count": "{count, plural, one {# selected} other {# selected}}"
+        },
+        "bar": {
+          "publish": "Publish",
+          "unpublish": "Unpublish",
+          "archive": "Archive",
+          "restore": "Restore",
+          "clear": "Clear"
+        },
+        "batch": {
+          "done": {
+            "publish": "{count, plural, one {# published} other {# published}}",
+            "unpublish": "{count, plural, one {# unpublished} other {# unpublished}}",
+            "archive": "{count, plural, one {# archived} other {# archived}}",
+            "restore": "{count, plural, one {# restored} other {# restored}}"
+          },
+          "attention": "{count, plural, one {# needs attention: {details}} other {# need attention: {details}}}"
+        }
       },
       "item": {
         "fields": {
@@ -3426,7 +3464,9 @@
           "overnight": "Runs past midnight into the next day.",
           "addTimes": "Only at certain times",
           "addMoreTimes": "Add more times",
-          "addAnother": "Add another price"
+          "addAnother": "Add another price",
+          "morePriceOptions": "More price options",
+          "timesHelp": "For a price that only applies at certain times, e.g. a cheaper lunch price, Mon–Fri 12:00–15:00."
         },
         "details": {
           "allergens": "Allergens",
@@ -3545,7 +3585,7 @@
             "scheduledBody": "It goes live on {date}.",
             "draft": "Saved as a draft",
             "draftBody": "Nothing changed on your website. Publish it whenever you're ready.",
-            "open": "Open it",
+            "open": "Open in editor",
             "another": "Add another",
             "list": "Back to the list"
           },
@@ -3584,7 +3624,31 @@
           },
           "preview": "Preview",
           "scheduleHelp": "Choose when it goes live. Times are in your site's time zone.",
-          "schedule": "Schedule"
+          "schedule": "Schedule",
+          "back": "Back to the list",
+          "resultPublished": "Published. It's live on your website.",
+          "resultScheduled": "Scheduled. It goes live on {date}."
+        },
+        "issues": {
+          "profile": "Choose what you're offering.",
+          "name": "Add a name in {language}.",
+          "invalidPrice": "Enter the price as an amount like 8.50, with no more than two decimals.",
+          "priceTimes": "Serving times need a start and an end that differ.",
+          "priceOverlap": "Two prices overlap. Change their days or times.",
+          "priceChannel": "A price is set for a way of selling that is no longer offered. Remove it.",
+          "optionsMinMax": "On an option list, “at least” is more than “at most”.",
+          "optionListMissing": "An attached option list no longer exists. Remove it.",
+          "allergens": {
+            "notReviewed": "Review the allergens: say what it contains, or that it contains none.",
+            "noAllergens": "Pick the allergens it contains, or change your answer.",
+            "notConfirmed": "Confirm that it contains none of the listed allergens."
+          },
+          "pageAddress": "Its page needs an address. Change the name or write the address yourself.",
+          "strayAddress": "The {language} page address has no {language} name. Add the name, or remove the address.",
+          "title": "{count, plural, one {# thing to fix before you can publish} other {# things to fix before you can publish}}",
+          "fix": "Fix this",
+          "tabCount": "{count, plural, one {# thing to fix} other {# things to fix}}",
+          "fixToPublish": "{count, plural, one {# thing to fix before publishing.} other {# things to fix before publishing.}} You can still keep it as a draft."
         }
       },
       "collection": {
@@ -3603,9 +3667,11 @@
         },
         "type": {
           "title": "What kind of collection?",
-          "helper": "A menu is shown as a restaurant menu; a list suits wines, products or services.",
+          "helper": "A menu suits a restaurant; a list works for anything else — books, products, services.",
           "menu": "A menu",
-          "list": "A list"
+          "list": "A list",
+          "menuDescription": "Dishes and drinks in sections, with prices",
+          "listDescription": "Any items in an order you choose — books, products, services"
         },
         "name": "Name",
         "nameFirst": "Give it a name first — then you can add sections.",
@@ -3619,7 +3685,8 @@
           "noMatch": "No items match.",
           "none": "There are no items to add yet.",
           "add": "{count, plural, =0 {Add items} one {Add # item} other {Add # items}}",
-          "draft": "Draft"
+          "draft": "Draft",
+          "pickHint": "Select at least one item to add."
         },
         "sections": {
           "label": "Sections",
@@ -3629,7 +3696,7 @@
           "dismiss": "Dismiss",
           "nameFirstTitle": "Name your collection first",
           "emptyTitle": "No sections yet",
-          "emptyBody": "Sections group your items — Starters, Pizza, Red wines.",
+          "emptyBody": "Sections split a collection into groups — for example Starters, or Fiction.",
           "addFirst": "Add the first section",
           "broken": "Some sections point to a parent that no longer exists. They're shown at the top level until you move them.",
           "drag": "Drag to move “{name}”",
@@ -3648,7 +3715,9 @@
           "addSubsection": "Add subsection",
           "add": "Add section"
         },
-        "slugWithoutName": "The {language} address has no {language} name. Add the name, or remove the address."
+        "slugWithoutName": "The {language} address has no {language} name. Add the name, or remove the address.",
+        "back": "Collections",
+        "publishNeedsName": "Add a name to publish."
       },
       "optionList": {
         "untitled": "Untitled option list",
@@ -3658,10 +3727,10 @@
         "publishChanges": "Publish changes",
         "archivedNotice": "This option list is archived. Restore it to make changes.",
         "name": "Name",
-        "nameHelp": "For example “Extra toppings” or “Choose a side”.",
-        "nameFirst": "Give it a name first — then add options.",
+        "nameHelp": "For example “Extra toppings”, “Side dish” or “Engraving”.",
+        "nameFirst": "Name your list above, then add its options.",
         "options": "Options",
-        "optionsHelp": "How many people may pick is set on each item that uses this list.",
+        "optionsHelp": "How many options a customer can choose is set on each item that uses this list.",
         "emptyTitle": "No options yet",
         "emptyBody": "Add the first choice people can make.",
         "label": "Label",
@@ -3680,7 +3749,10 @@
         "draftLabel": "{name} (draft)",
         "allergensNotReviewed": "Allergens not reviewed",
         "allergensHelp": "Needed when a food or drink item uses this list: say what this extra adds.",
-        "allergensFromItem": "Allergens come from the linked item."
+        "allergensFromItem": "Allergens come from the linked item.",
+        "back": "Option lists",
+        "publishNeedsName": "Add a name to publish.",
+        "publishNeedsOption": "Add at least one option to publish."
       },
       "itemProfiles": {
         "label": "What are you offering?",

@@ -250,6 +250,7 @@ export function MediaFrame({
   alt = '',
   focal,
   size,
+  fit = 'cover',
   className = '',
 }: {
   src?: string | null
@@ -257,12 +258,14 @@ export function MediaFrame({
   focal?: { x: number; y: number } | null
   /** Fixed frame, e.g. { width: '6rem', height: '4.5rem' }. */
   size?: { width: string; height: string }
+  /** 'cover' (default) crops around the focal point; 'contain' shows the whole image at its natural aspect ratio on the neutral background. */
+  fit?: 'cover' | 'contain'
   className?: string
 }) {
   const box = size ? { width: size.width, height: size.height, minWidth: size.width, minHeight: size.height } : undefined
   if (src) {
     // eslint-disable-next-line @next/next/no-img-element -- Sanity CDN image, already sized and focal-cropped
-    return <img src={src} alt={alt} loading="lazy" style={{ ...box, objectPosition: focalPosition(focal) }} className={`block shrink-0 bg-muted object-cover ${className}`} />
+    return <img src={src} alt={alt} loading="lazy" style={{ ...box, objectPosition: fit === 'cover' ? focalPosition(focal) : undefined }} className={`block shrink-0 bg-muted ${fit === 'contain' ? 'object-contain' : 'object-cover'} ${className}`} />
   }
   return (
     <span aria-hidden="true" style={box} className={`grid shrink-0 place-items-center bg-muted text-muted-foreground ${className}`}>
@@ -272,6 +275,6 @@ export function MediaFrame({
 }
 
 /** The table image: 6rem × 4.5rem (image and placeholder alike), rounded-lg; its top sits on the row's top padding. */
-export function CellImage({ src, alt, focal }: { src?: string | null; alt?: string; focal?: { x: number; y: number } | null }) {
-  return <MediaFrame src={src} alt={alt} focal={focal} size={{ width: '6rem', height: '4.5rem' }} className="rounded-lg" />
+export function CellImage({ src, alt, focal, fit }: { src?: string | null; alt?: string; focal?: { x: number; y: number } | null; fit?: 'cover' | 'contain' }) {
+  return <MediaFrame src={src} alt={alt} focal={focal} fit={fit} size={{ width: '6rem', height: '4.5rem' }} className="rounded-lg" />
 }

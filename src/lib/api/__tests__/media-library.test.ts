@@ -43,7 +43,7 @@ describe('Media Library gate', () => {
   })
 
   it('shows the Media nav item to owners and editors only', () => {
-    expect(mediaNavItems(grant())).toEqual([{ moduleId: 'media', labelKey: 'clientDashboard.nav.media', href: '/amelie/media' }])
+    expect(mediaNavItems(grant())).toEqual([{ moduleId: 'media', labelKey: 'clientDashboard.nav.media', href: '/amelie/media', group: 'content' }])
     expect(mediaNavItems(grant({ role: 'viewer' }))).toEqual([])
   })
 

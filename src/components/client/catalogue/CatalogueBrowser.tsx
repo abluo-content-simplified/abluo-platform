@@ -7,8 +7,12 @@ import { PageHeader } from '@/components/app/ui/PageHeader'
 import { ViewSwitch } from '@/components/app/ui/ViewSwitch'
 import { FilterBar, FilterSearch, FilterSelect } from '@/components/app/ui/FilterBar'
 import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
-import { CardGrid, CardGridItem, ContentCard } from '@/components/app/ui/list/ContentCard'
-import { CellDate, CellImage, CellText, Chips, DisplayTimeZoneContext, MediaFrame } from '@/components/app/ui/list/cells'
+import { CardGrid, CardGridItem, ContentCard, SelectAll } from '@/components/app/ui/list/ContentCard'
+import { CellDate, CellImage, CellPill, CellText, Chips, DisplayTimeZoneContext, MediaFrame, Pill } from '@/components/app/ui/list/cells'
+import { Checkbox, isShiftChange } from '@/components/app/ui/Checkbox'
+import { idRange, SelectionBar } from '@/components/app/ui/SelectionBar'
+import { BarButton } from '@/components/app/ui/BarButton'
+import { ICONS as POST_ICONS } from '@/components/client/posts/post-bits'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import { Toast } from '@/components/app/ui/Toast'
@@ -18,13 +22,30 @@ import { LifecycleBadge } from '@/components/app/lifecycle/LifecycleBadge'
 import { lifecycleMenu, type LifecycleAction } from '@/components/app/lifecycle/lifecycle-menu'
 import { DeletePermanentlyDialog } from '@/components/app/lifecycle/DeletePermanentlyDialog'
 import { editingZone } from '@/components/app/lifecycle/zoned-time'
-import { catalogueLifecycleAction } from '@/app/[locale]/(client)/[tenant]/catalogue/actions'
+import { catalogueLifecycleAction, publishCatalogueDraftAction } from '@/app/[locale]/(client)/[tenant]/catalogue/actions'
 import type { CatalogueAbilities, CatalogueLists, CatalogueSite } from '@/lib/api/catalogue-drafts'
 import type { LifecycleState } from '@/lib/lifecycle/status'
 import type { Referrer } from '@/lib/lifecycle/service'
 import { formatPrice } from '@/lib/modules/catalogue/resolve'
 import { inCatalogueStatus, itemGaps, parseStatusFilter, searchable, type CatalogueStatusFilter, type ItemGap } from '@/lib/modules/catalogue/dashboard-form'
 import type { CatalogueKind } from '@/lib/modules/catalogue/dashboard-patch'
+import {
+  availableBatchOps,
+  batchStep,
+  canPublishChanges,
+  formatListSort,
+  LIST_SORT_KEYS,
+  nextListSort,
+  parseListSort,
+  showPriceColumn,
+  sortListRows,
+  summarizeBatch,
+  type BatchOp,
+  type BatchOutcome,
+  type BatchStep,
+  type ListSort,
+  type ListSortKey,
+} from '@/lib/modules/catalogue/list-model'
 import { CAT_ICONS, CAT_PRIMARY, GapBadges, InUseNotice, SegmentTabs, UnpublishDateSheet, catalogueHref, textIn, useCatalogueError } from './catalogue-ui'
 
 export type CatalogueView = 'items' | 'collections' | 'optionLists'
@@ -44,6 +65,17 @@ type Row = {
   gaps: ItemGap[]
   updatedAt: string
   search: string
+  categories: string[]
+  /** The draft's revision (what publishing is guarded on); '' without a draft. */
+  draftRev: string
+  hasPage: boolean
+  /** Effective publish / unpublish dates (ISO) for the columns and sorting. */
+  publishOn: string | null
+  unpublishOn: string | null
+  price: number | null
+  priceLabel: string
+  /** Where the live page is, only when it resolves right now. */
+  publicUrl: string | null
 }
 
 /**
@@ -61,6 +93,7 @@ export function CatalogueBrowser({
   can,
   initialView,
   initialStatus,
+  initialSort = null,
 }: {
   projectSlug: string
   /** The tenant's name for the module (navLabel) or the messages default. */
@@ -70,15 +103,18 @@ export function CatalogueBrowser({
   can: CatalogueAbilities
   initialView: string | null
   initialStatus: string | null
+  initialSort?: string | null
 }) {
   const t = useTranslations('catalogue.dashboard.list')
   const tl = useTranslations('app.lifecycle')
-  const tt = useTranslations('catalogue.dashboard.itemProfiles')
   const ui = useLocale()
   const router = useRouter()
   const errorText = useCatalogueError()
   const [view, setView] = useState<CatalogueView>(VIEWS.includes(initialView as CatalogueView) ? (initialView as CatalogueView) : 'items')
   const [status, setStatus] = useState<CatalogueStatusFilter>(parseStatusFilter(initialStatus))
+  const [sort, setSort] = useState<ListSort>(() => parseListSort(initialSort))
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [lastPicked, setLastPicked] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('')
   const [display, setDisplay] = useViewPreference<'list' | 'cards'>('catalogue.view', ['list', 'cards'], 'list')
@@ -93,77 +129,100 @@ export function CatalogueBrowser({
   const d = site.defaultLocale
   const catLabel = useMemo(() => new Map(site.categories.map((c) => [c.value, textIn(c.label, ui, d) || c.value])), [site.categories, ui, d])
 
-  const syncUrl = (v: CatalogueView, s: CatalogueStatusFilter) => {
+  const syncUrl = (v: CatalogueView, s: CatalogueStatusFilter, so: ListSort = sort) => {
     try {
       const u = new URL(window.location.href)
       u.searchParams.set('view', v)
       if (s === 'all') u.searchParams.delete('status')
       else u.searchParams.set('status', s)
+      if (so.key === 'name' && so.dir === 'asc') u.searchParams.delete('sort')
+      else u.searchParams.set('sort', formatListSort(so))
       window.history.replaceState(window.history.state, '', u.pathname + u.search)
     } catch {
       /* ignore */
     }
   }
 
+  const hasPrices = useMemo(() => showPriceColumn(lists.items), [lists.items])
+
   const rows: Row[] = useMemo(() => {
     const nameOf = (names: Record<string, string>, fallback: string) => textIn(names, ui, d) || fallback
+    const base = (x: { id: string; status: LifecycleState; draftRev: string; publishedAt: string | null; expiresAt: string | null; publicUrl: string | null; updatedAt: string }) => ({
+      id: x.id,
+      status: x.status,
+      draftRev: x.draftRev,
+      publishOn: x.status.status === 'draft' ? null : x.publishedAt,
+      unpublishOn: x.status.status === 'draft' ? null : x.expiresAt,
+      publicUrl: x.publicUrl,
+      updatedAt: x.updatedAt,
+    })
     if (view === 'items') {
-      return lists.items.map((i) => {
+      return lists.items.map((i): Row => {
         const name = nameOf(i.names, t('untitled'))
         const price = i.fromPrice !== null ? formatPrice(i.fromPrice, site.currency, ui) : ''
         const chips = i.categories.map((c) => catLabel.get(c) ?? c)
         return {
+          ...base(i),
           kind: 'item',
-          id: i.id,
           name,
           href: catalogueHref(projectSlug, 'item', i.id),
           thumb: i.thumb,
           showsMedia: true,
-          status: i.status,
-          details: [i.itemProfile ? tt(i.itemProfile) : null, price ? t('fromPrice', { price }) : null].filter(Boolean).join(' · '),
+          details: textIn(i.byline, ui, d),
           chips,
-          gaps: itemGaps(i),
-          updatedAt: i.updatedAt,
-          search: searchable(`${Object.values(i.names).join(' ')} ${chips.join(' ')}`),
+          gaps: itemGaps(i).filter((g) => g !== 'noPrice'),
+          search: searchable(`${Object.values(i.names).join(' ')} ${Object.values(i.byline).join(' ')} ${chips.join(' ')}`),
           categories: i.categories,
-        } as Row & { categories: string[] }
+          hasPage: i.hasPage,
+          price: i.fromPrice,
+          priceLabel: price ? (i.offerCount > 1 ? t('fromPrice', { price }) : price) : '',
+        }
       })
     }
     if (view === 'collections') {
-      return lists.collections.map((c) => ({
-        kind: 'collection' as const,
-        id: c.id,
-        name: nameOf(c.names, t('untitled')),
-        href: catalogueHref(projectSlug, 'collection', c.id),
-        thumb: null,
-        showsMedia: false,
-        status: c.status,
-        details: [t(`collectionType.${c.collectionType}`), t('sectionsCount', { count: c.sectionCount }), t('itemsCount', { count: c.itemCount })].join(' · '),
-        chips: [],
-        gaps: [],
-        updatedAt: c.updatedAt,
-        search: searchable(Object.values(c.names).join(' ')),
-      }))
+      return lists.collections.map((c): Row => {
+        const names = c.sectionNames.map((n) => textIn(n, ui, d)).filter(Boolean)
+        const shownNames = names.slice(0, 3).join(', ') + (names.length > 3 ? ` +${names.length - 3}` : '')
+        return {
+          ...base(c),
+          kind: 'collection',
+          name: nameOf(c.names, t('untitled')),
+          href: catalogueHref(projectSlug, 'collection', c.id),
+          thumb: null,
+          showsMedia: false,
+          details: [t(`collectionType.${c.collectionType}`), names.length ? shownNames : t('sectionsCount', { count: c.sectionCount }), t('itemsCount', { count: c.itemCount })].join(' · '),
+          chips: [],
+          gaps: [],
+          search: searchable(`${Object.values(c.names).join(' ')} ${names.join(' ')}`),
+          categories: [],
+          hasPage: c.hasPage,
+          price: null,
+          priceLabel: '',
+        }
+      })
     }
-    return lists.optionLists.map((o) => ({
-      kind: 'optionList' as const,
-      id: o.id,
+    return lists.optionLists.map((o): Row => ({
+      ...base(o),
+      kind: 'optionList',
       name: nameOf(o.names, t('untitled')),
       href: catalogueHref(projectSlug, 'optionList', o.id),
       thumb: null,
       showsMedia: false,
-      status: o.status,
       details: [t('optionsCount', { count: o.optionCount }), t('usedBy', { count: o.usedBy })].join(' · '),
       chips: [],
       gaps: [],
-      updatedAt: o.updatedAt,
       search: searchable(Object.values(o.names).join(' ')),
+      categories: [],
+      hasPage: false,
+      price: null,
+      priceLabel: '',
     }))
-  }, [view, lists, ui, d, t, tt, site.currency, catLabel, projectSlug])
+  }, [view, lists, ui, d, t, site.currency, catLabel, projectSlug])
 
   const q = searchable(query.trim())
-  const shown = rows.filter(
-    (r) => inCatalogueStatus(r.status.status, status) && (!q || r.search.includes(q)) && (!category || (r as Row & { categories?: string[] }).categories?.includes(category))
+  const shown = useMemo(
+    () => sortListRows(rows.filter((r) => inCatalogueStatus(r.status.status, status) && (!q || r.search.includes(q)) && (!category || r.categories.includes(category))), sort, ui),
+    [rows, status, q, category, sort, ui]
   )
   const total = rows.length
 
@@ -189,9 +248,109 @@ export function CatalogueBrowser({
     }
   }
 
+  // ── Selection (checkboxes only; shift selects a range) ─────────────────────
+  const canSelect = abilities.write
+  const selectedIds = shown.filter((r) => selected.has(r.id)).map((r) => r.id)
+  const selectedRows = shown.filter((r) => selected.has(r.id))
+  const allState: 'none' | 'some' | 'all' = selectedIds.length === 0 ? 'none' : selectedIds.length === shown.length ? 'all' : 'some'
+  const toggle = (id: string, checked: boolean, shift: boolean) => {
+    const order = shown.map((r) => r.id)
+    setSelected((cur) => {
+      const n = new Set(cur)
+      const ids = shift && lastPicked && lastPicked !== id ? idRange(order, lastPicked, id) : [id]
+      for (const x of ids) {
+        if (checked) n.add(x)
+        else n.delete(x)
+      }
+      return n
+    })
+    setLastPicked(id)
+  }
+  const toggleAll = (checked: boolean) => {
+    setSelected(checked ? new Set(shown.map((r) => r.id)) : new Set())
+    setLastPicked(null)
+  }
+  const clearSelection = () => {
+    setSelected(new Set())
+    setLastPicked(null)
+  }
+  const batchOps = availableBatchOps(selectedRows.map((r) => r.status), abilities.write)
+
+  /** One existing per-item server action — each keeps its own permission, validation and lifecycle checks. */
+  async function execStep(row: Row, step: BatchStep): Promise<{ ok: true } | { ok: false; reason: string }> {
+    try {
+      const r =
+        step.via === 'publish'
+          ? await publishCatalogueDraftAction({ projectSlug, kind: row.kind, id: row.id, rev: row.draftRev, mode: step.mode })
+          : await catalogueLifecycleAction({ projectSlug, kind: row.kind, op: step.op, id: row.id })
+      return r.ok ? { ok: true } : { ok: false, reason: errorText(r.error) }
+    } catch {
+      return { ok: false, reason: errorText('offline') }
+    }
+  }
+
+  async function runBatch(op: BatchOp) {
+    if (busy) return
+    const targets = selectedRows.map((row) => ({ row, step: batchStep(row.status, op, abilities.write) })).filter((x): x is { row: Row; step: BatchStep } => x.step !== null)
+    if (!targets.length) return
+    setBusy(true)
+    setInUse(null)
+    const outcomes: BatchOutcome[] = []
+    try {
+      // Sequential on purpose: one item at a time, so a slow or refused one never blocks the others' checks.
+      for (const { row, step } of targets) {
+        const r = await execStep(row, step)
+        outcomes.push({ id: row.id, name: row.name, ok: r.ok, reason: r.ok ? undefined : r.reason })
+      }
+    } finally {
+      setBusy(false)
+    }
+    const { done, failed } = summarizeBatch(outcomes)
+    const parts = [
+      done ? t(`batch.done.${op}`, { count: done }) : '',
+      failed.length ? t('batch.attention', { count: failed.length, details: failed.slice(0, 3).map((f) => `${f.name} — ${f.reason}`).join('; ') + (failed.length > 3 ? ` +${failed.length - 3}` : '') }) : '',
+    ].filter(Boolean)
+    setToast({ message: parts.join(' · '), tone: done === 0 ? 'error' : 'status' }, 9000)
+    clearSelection()
+    router.refresh()
+  }
+
+  async function publishChanges(row: Row) {
+    if (busy) return
+    setBusy(true)
+    setInUse(null)
+    const r = await execStep(row, { via: 'publish', mode: 'keep' })
+    setBusy(false)
+    if (r.ok) {
+      setToast({ message: t('done'), tone: 'status' })
+      router.refresh()
+    } else setToast({ message: `${row.name} — ${r.reason}`, tone: 'error' }, 7000)
+  }
+
+  async function copyLink(url: string) {
+    try {
+      await navigator.clipboard.writeText(url)
+      setToast({ message: t('linkCopied'), tone: 'status' })
+    } catch {
+      setToast({ message: t('linkCopyFailed'), tone: 'error' })
+    }
+  }
+
+  const onSort = (key: ListSortKey) => {
+    const next = nextListSort(sort, key)
+    setSort(next)
+    syncUrl(view, status, next)
+  }
+
   const menuFor = (row: Row): CardMenuItem[] => {
     const entries = lifecycleMenu(row.status.status, abilities)
     const items: CardMenuItem[] = [{ key: 'open', label: t('open'), onSelect: () => router.push(row.href), href: row.href }]
+    if (abilities.write && canPublishChanges(row.status)) items.push({ key: 'publishChanges', label: t('menu.publishChanges'), onSelect: () => void publishChanges(row) })
+    if (row.publicUrl) {
+      const url = row.publicUrl
+      items.push({ key: 'view', label: t('menu.viewOnWebsite'), onSelect: () => window.open(url, '_blank', 'noopener,noreferrer') })
+      items.push({ key: 'copyLink', label: t('menu.copyLink'), onSelect: () => void copyLink(url) })
+    }
     for (const e of entries) {
       items.push({
         key: e.action,
@@ -215,35 +374,47 @@ export function CatalogueBrowser({
     label: s === 'all' ? t('statusAll') : tl(`status.${s}`),
   }))
 
+  const changesPill = (r: Row) => (r.status.hasChanges && r.status.status !== 'archived' ? <Pill tone="highlight">{t('changes.pending')}</Pill> : null)
+  const showPrice = view === 'items' && hasPrices
+
   const columns: DataTableColumn<Row>[] = [
     {
       key: 'name',
       header: t('columns.name'),
+      sortable: true,
       width: 'min-w-64',
       render: (r) => (
         <div className="flex items-start gap-3">
-          {r.showsMedia ? <CellImage src={r.thumb} alt="" /> : null}
+          {r.showsMedia ? <CellImage src={r.thumb} alt="" fit="contain" /> : null}
           <div className="flex min-w-0 flex-col items-start gap-1.5">
             <CellText primary={r.name} secondary={r.details} href={r.href} />
             {r.chips.length ? <Chips items={r.chips} max={3} /> : null}
+            <GapBadges gaps={r.gaps} />
           </div>
         </div>
       ),
     },
+    { key: 'status', header: t('columns.status'), sortable: true, width: 'w-32', render: (r) => <LifecycleBadge status={r.status.status} /> },
     {
-      key: 'status',
-      header: t('columns.status'),
-      width: 'w-56',
-      render: (r) => (
-        <div className="flex flex-col items-start gap-1.5">
-          <LifecycleBadge status={r.status.status} changes={r.status.hasChanges} />
-          <GapBadges gaps={r.gaps} />
-        </div>
-      ),
+      key: 'changes',
+      header: t('columns.changes'),
+      sortable: true,
+      width: 'w-40',
+      render: (r) => <CellPill>{changesPill(r) ?? <CellDate iso={null} />}</CellPill>,
     },
-    { key: 'updated', header: t('columns.updated'), width: 'w-36', render: (r) => <CellDate iso={r.updatedAt} /> },
+    { key: 'publishOn', header: t('columns.publishOn'), sortable: true, width: 'w-32', render: (r) => <CellDate iso={r.publishOn} /> },
+    { key: 'unpublishOn', header: t('columns.unpublishOn'), sortable: true, width: 'w-32', render: (r) => <CellDate iso={r.unpublishOn} /> },
+    ...(showPrice
+      ? [{ key: 'price', header: t('columns.price'), sortable: true, width: 'w-28', className: 'whitespace-nowrap', render: (r: Row) => <span className="flex min-h-6 items-center text-sm leading-6 text-foreground">{r.priceLabel || <span className="text-muted-foreground">—</span>}</span> }]
+      : []),
+    { key: 'updated', header: t('columns.updated'), sortable: true, width: 'w-32', render: (r) => <CellDate iso={r.updatedAt} /> },
     { key: 'menu', header: <span className="sr-only">{t('columns.actions')}</span>, width: 'w-14', render: (r) => <CardMenu variant="cell" label={t('menuFor', { name: r.name })} items={menuFor(r)} /> },
   ]
+
+  const selection = canSelect
+    ? { selected, onToggle: toggle, allState, onToggleAll: toggleAll, rowLabel: (r: Row) => t('select.checkbox', { name: r.name }), allLabel: t('select.allLabel') }
+    : undefined
+  const sortOptions = LIST_SORT_KEYS.filter((k) => k !== 'price' || showPrice).map((k) => ({ value: k, label: t(`columns.${k}`) }))
 
   const emptyAll = total === 0
   return (
@@ -323,9 +494,22 @@ export function CatalogueBrowser({
                   options={[{ value: '', label: t('filters.anyCategory') }, ...site.categories.map((c) => ({ value: c.value, label: catLabel.get(c.value) ?? c.value }))]}
                 />
               ) : null}
+              <span className={`contents ${display === 'cards' ? '' : 'md:hidden'}`}>
+                <FilterSelect
+                  label={t('filters.sort')}
+                  value={sort.key}
+                  onChange={(v) => onSort(v as ListSortKey)}
+                  options={sortOptions}
+                />
+              </span>
             </FilterBar>
-            <p className="text-sm text-muted-foreground" aria-live="polite">
-              {t('count', { shown: shown.length, total })}
+            <p className="flex items-center gap-4 text-sm text-muted-foreground" aria-live="polite">
+              <span>{t('count', { shown: shown.length, total })}</span>
+              {canSelect && display === 'cards' && shown.length > 0 ? (
+                <span className="hidden md:inline-flex">
+                  <SelectAll label={t('select.all')} ariaLabel={t('select.allLabel')} state={allState} onChange={toggleAll} />
+                </span>
+              ) : null}
             </p>
 
             {shown.length === 0 ? (
@@ -349,22 +533,24 @@ export function CatalogueBrowser({
                 {/* Computers: a table or cards. */}
                 <div className="hidden md:block">
                   {display === 'list' ? (
-                    <DataTable rows={shown} columns={columns} rowKey={(r) => r.id} rowHref={(r) => r.href} label={title} minWidth="44rem" />
+                    <DataTable rows={shown} columns={columns} rowKey={(r) => r.id} rowHref={(r) => r.href} selection={selection} sort={{ column: sort.key, dir: sort.dir, onSort: (key) => onSort(key as ListSortKey) }} label={title} minWidth="64rem" />
                   ) : (
                     <CardGrid label={title}>
                       {shown.map((r) => (
                         <CardGridItem key={r.id}>
                           <ContentCard
-                            media={{ src: r.thumb }}
+                            media={{ src: r.thumb, fit: 'contain' }}
                             mediaContent={r.showsMedia ? undefined : <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-muted text-muted-foreground">{r.kind === 'collection' ? CAT_ICONS.menu : CAT_ICONS.listType}</span>}
                             title={r.name}
                             subtitle={r.details}
                             href={r.href}
+                            selection={canSelect ? { checked: selected.has(r.id), onChange: (checked, shift) => toggle(r.id, checked, shift), label: t('select.checkbox', { name: r.name }) } : undefined}
                             overlay={<CardMenu variant="chip" label={t('menuFor', { name: r.name })} items={menuFor(r)} />}
                           >
                             {r.chips.length ? <Chips items={r.chips} max={3} /> : null}
                             <LifecycleBadge status={r.status.status} changes={r.status.hasChanges} />
                             <GapBadges gaps={r.gaps} />
+                            {showPrice && r.priceLabel ? <span className="mt-auto text-sm font-medium text-foreground">{r.priceLabel}</span> : null}
                           </ContentCard>
                         </CardGridItem>
                       ))}
@@ -373,25 +559,58 @@ export function CatalogueBrowser({
                 </div>
                 {/* Phones: cards, top-aligned, the menu as a bottom sheet. */}
                 <ul className="flex flex-col gap-3 md:hidden" aria-label={title}>
-                  {shown.map((r) => (
-                    <li key={r.id} className="flex items-start gap-1 rounded-xl border border-border bg-card py-2 pr-1 pl-3">
-                      <Link href={r.href} className="flex min-w-0 flex-1 items-start gap-3 pt-1 pb-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
-                        {r.showsMedia ? <MediaFrame src={r.thumb} alt="" size={{ width: '4.5rem', height: '4.5rem' }} className="shrink-0 rounded-lg" /> : null}
-                        <span className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
-                          <span className="line-clamp-2 text-[0.9375rem] leading-6 font-semibold text-foreground">{r.name}</span>
-                          {r.details ? <span className="text-sm leading-5 text-muted-foreground">{r.details}</span> : null}
-                          <LifecycleBadge status={r.status.status} changes={r.status.hasChanges} />
-                          <GapBadges gaps={r.gaps} />
-                        </span>
-                      </Link>
-                      <CardMenu label={t('menuFor', { name: r.name })} items={menuFor(r)} />
-                    </li>
-                  ))}
+                  {shown.map((r) => {
+                    const isSel = selected.has(r.id)
+                    return (
+                      <li key={r.id} className={`flex items-start gap-1 rounded-xl border bg-card py-2 pr-1 ${isSel ? 'border-action ring-1 ring-action' : 'border-border'} ${canSelect ? 'pl-1' : 'pl-3'}`}>
+                        {canSelect ? <Checkbox checked={isSel} aria-label={t('select.checkbox', { name: r.name })} onChange={(checked, e) => toggle(r.id, checked, isShiftChange(e))} /> : null}
+                        <Link href={r.href} className="flex min-w-0 flex-1 items-start gap-3 pt-1 pb-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+                          {r.showsMedia ? <MediaFrame src={r.thumb} alt="" fit="contain" size={{ width: '4.5rem', height: '4.5rem' }} className="shrink-0 rounded-lg" /> : null}
+                          <span className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
+                            <span className="line-clamp-2 text-[0.9375rem] leading-6 font-semibold text-foreground">{r.name}</span>
+                            {r.details ? <span className="text-sm leading-5 text-muted-foreground">{r.details}</span> : null}
+                            <LifecycleBadge status={r.status.status} changes={r.status.hasChanges} />
+                            <GapBadges gaps={r.gaps} />
+                            {showPrice && r.priceLabel ? <span className="text-sm font-medium text-foreground">{r.priceLabel}</span> : null}
+                          </span>
+                        </Link>
+                        <CardMenu label={t('menuFor', { name: r.name })} items={menuFor(r)} />
+                      </li>
+                    )
+                  })}
                 </ul>
               </>
             )}
           </>
         )}
+
+        {canSelect && selectedIds.length > 0 ? (
+          <SelectionBar label={t('select.toolbar')} count={t('select.count', { count: selectedIds.length })}>
+            {batchOps.includes('publish') ? (
+              <BarButton disabled={busy} onPress={() => void runBatch('publish')} icon={POST_ICONS.online}>
+                {t('bar.publish')}
+              </BarButton>
+            ) : null}
+            {batchOps.includes('unpublish') ? (
+              <BarButton disabled={busy} onPress={() => void runBatch('unpublish')} icon={POST_ICONS.offline}>
+                {t('bar.unpublish')}
+              </BarButton>
+            ) : null}
+            {batchOps.includes('archive') ? (
+              <BarButton disabled={busy} onPress={() => void runBatch('archive')} icon={POST_ICONS.archiveAction}>
+                {t('bar.archive')}
+              </BarButton>
+            ) : null}
+            {batchOps.includes('restore') ? (
+              <BarButton disabled={busy} onPress={() => void runBatch('restore')} icon={POST_ICONS.restore}>
+                {t('bar.restore')}
+              </BarButton>
+            ) : null}
+            <BarButton onPress={clearSelection} icon={POST_ICONS.x}>
+              {t('bar.clear')}
+            </BarButton>
+          </SelectionBar>
+        ) : null}
 
         <DeletePermanentlyDialog
           open={confirmDelete !== null}
