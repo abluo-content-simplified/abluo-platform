@@ -21,12 +21,13 @@
  * exception to the no-hardcoded-strings rule (like /login). It is kept in one
  * object so it can move to a dictionary unchanged if that ever changes.
  */
-import { Suspense, useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { safeNextPath } from '@/lib/auth/admin-assurance'
 import { AuthLayout } from '@/components/auth/AuthLayout'
-import { AuthError, AuthField, AuthNote, authPrimaryClass, authQuietLinkClass } from '@/components/auth/auth-ui'
+import { CodeInput } from '@/components/auth/CodeInput'
+import { AuthError, AuthNote, authPrimaryClass, authQuietLinkClass } from '@/components/auth/auth-ui'
 
 const COPY = {
   title: 'Two-factor authentication',
@@ -35,6 +36,7 @@ const COPY = {
     'Admin access requires two-factor authentication. Scan this QR code with an authenticator app (1Password, Google Authenticator, Authy…), then enter the 6-digit code it shows.',
   manualSecret: 'Can’t scan? Enter this key manually:',
   codeLabel: 'Authentication code',
+  digitLabel: 'Digit {n} of {total}',
   verify: 'Verify',
   verifying: 'Verifying…',
   loading: 'Loading…',
@@ -43,6 +45,9 @@ const COPY = {
 } as const
 
 const FRIENDLY_NAME = 'Abluo admin'
+
+/** All six boxes filled (the input keeps a space for a cleared box). */
+const CODE_COMPLETE = /^\d{6}$/
 
 type Mode =
   | { kind: 'loading' }
@@ -55,6 +60,7 @@ function MfaForm() {
   const next = safeNextPath(searchParams.get('next'))
   const [mode, setMode] = useState<Mode>({ kind: 'loading' })
   const [code, setCode] = useState('')
+  const busyRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -111,17 +117,26 @@ function MfaForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    await verify(code)
+  }
+
+  // Called by the form AND by the code boxes the moment the sixth digit lands
+  // (with the value itself — state from that same keystroke is not rendered yet).
+  async function verify(value: string) {
+    if (busyRef.current || !CODE_COMPLETE.test(value)) return
     if (mode.kind !== 'challenge' && mode.kind !== 'enroll') return
+    busyRef.current = true
     setError(null)
     setBusy(true)
     const supabase = createClient()
     const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
       factorId: mode.factorId,
-      code: code.trim(),
+      code: value,
     })
     if (verifyError) {
       setError(verifyError.message)
       setBusy(false)
+      busyRef.current = false
       return
     }
     // Hard navigation: the proxy must read the upgraded (AAL2) cookies.
@@ -163,23 +178,20 @@ function MfaForm() {
         </div>
       )}
 
-      <AuthField
+      <CodeInput
         id="mfa-code"
         label={COPY.codeLabel}
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        pattern="[0-9]{6}"
-        maxLength={6}
-        required
-        autoFocus
+        digitLabel={(n, total) => COPY.digitLabel.replace('{n}', String(n)).replace('{total}', String(total))}
         value={code}
-        onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-        className="text-center text-lg tracking-[0.4em] tabular-nums"
+        onChange={(v) => { setCode(v); if (error) setError(null) }}
+        onComplete={(v) => void verify(v)}
+        disabled={busy}
+        autoFocus
       />
 
       {error && <AuthError>{error}</AuthError>}
 
-      <button type="submit" disabled={busy || code.length !== 6} aria-busy={busy || undefined} className={authPrimaryClass}>
+      <button type="submit" disabled={busy || !CODE_COMPLETE.test(code)} aria-busy={busy || undefined} className={authPrimaryClass}>
         {busy ? COPY.verifying : COPY.verify}
       </button>
 
