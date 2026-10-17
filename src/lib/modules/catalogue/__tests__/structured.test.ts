@@ -22,7 +22,7 @@ const offer = (over: Partial<CatalogueOfferDTO> = {}): CatalogueOfferDTO => ({
 
 const item = (over: Partial<CatalogueItemDTO> = {}): CatalogueItemDTO => ({
   publicId: 'i1', itemProfile: 'foodOrDrink', name: 'Margherita', byline: null, bookDetails: null, description: 'Tomato, mozzarella', links: [], images: [],
-  categories: [], allergenDeclaration: { status: 'noneDeclared', mayContain: [], note: null }, dietary: [], offers: [offer()], hasOffers: true, optionLists: [],
+  categories: [], tags: [], allergenDeclaration: { status: 'noneDeclared', mayContain: [], note: null }, dietary: [], offers: [offer()], hasOffers: true, optionLists: [],
   visibility: 'public', page: null, ...over,
 })
 

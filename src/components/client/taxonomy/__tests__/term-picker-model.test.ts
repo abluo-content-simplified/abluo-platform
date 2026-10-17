@@ -88,3 +88,20 @@ describe('newTermLabels / foldText', () => {
     expect(foldText(' Èè  Ab ')).toBe('ee ab')
   })
 })
+
+describe('tag kind (slice 7) — the model is kind-agnostic, tags are multi-select', () => {
+  const TAGS = [t('humour', { it: 'Umorismo', en: 'Humour' }), t('scifi', { it: 'Fantascienza', en: 'Science Fiction' })]
+  const tagKeys = TAGS.map((x) => x.value)
+  it('selects several tags in list order and an inline-created tag lands in the saved array', () => {
+    expect(selectKey(selectKey([], 'scifi', tagKeys), 'humour', tagKeys)).toEqual(['humour', 'scifi'])
+    const created = toPickerTerm({ key: 'cult', label: { it: 'Cult' } })
+    const merged = mergeTerms(TAGS, [created])
+    expect(selectKey(['humour'], 'cult', merged.map((x) => x.value))).toEqual(['humour', 'cult'])
+  })
+  it('searches tag labels in any language and offers + Add only for a new name', () => {
+    expect(filterTerms(TAGS, 'science').map((x) => x.value)).toEqual(['scifi'])
+    expect(findByLabel(TAGS, 'humour', 'en', 'it')?.value).toBe('humour')
+    expect(canOfferCreate({ terms: TAGS, ui: 'en', defaultLocale: 'it', canAdd: true, query: 'Noir' })).toBe(true)
+    expect(canOfferCreate({ terms: TAGS, ui: 'en', defaultLocale: 'it', canAdd: false, query: 'noir' })).toBe(false)
+  })
+})

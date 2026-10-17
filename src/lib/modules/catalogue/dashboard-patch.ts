@@ -92,6 +92,7 @@ export const CATALOGUE_LIMITS = {
   offers: 24,
   availability: 7,
   categories: 20,
+  tags: 20,
   dietary: 20,
   optionLists: 12,
   options: 60,
@@ -115,6 +116,8 @@ export type PatchContext = {
   locales: ReadonlySet<string>
   channels: readonly string[]
   categories: readonly string[]
+  /** Slice 7 — keys of the project's tag terms. */
+  tags: readonly string[]
   dietary: readonly string[]
   /** The draft as stored (for offer locationKeys and pre-existing orphan sections). */
   previous: Record<string, unknown>
@@ -140,7 +143,7 @@ const FIELDS: Record<CatalogueKind, { localized: Record<string, { max: number; t
       byline: { max: CATALOGUE_LIMITS.byline, type: 'localizedString' },
       description: { max: CATALOGUE_LIMITS.description, type: 'localizedText' },
     },
-    plain: ['itemProfile', 'bookDetails', 'categories', 'links', 'images', 'offers', 'allergenDeclaration', 'dietary', 'optionLists', 'hasPage', 'visibility'],
+    plain: ['itemProfile', 'bookDetails', 'categories', 'tags', 'links', 'images', 'offers', 'allergenDeclaration', 'dietary', 'optionLists', 'hasPage', 'visibility'],
   },
   collection: {
     localized: { name: { max: CATALOGUE_LIMITS.name, type: 'localizedString' }, description: { max: CATALOGUE_LIMITS.description, type: 'localizedText' } },
@@ -424,6 +427,12 @@ export function cleanCatalogueSet(kind: CatalogueKind, input: Record<string, unk
         const v = stringSet(value, (c) => ctx.categories.includes(c), CATALOGUE_LIMITS.categories, field)
         if (v.length) r.set.categories = v
         else r.unset.push('categories')
+        break
+      }
+      case 'tags': {
+        const v = stringSet(value, (c) => ctx.tags.includes(c), CATALOGUE_LIMITS.tags, field)
+        if (v.length) r.set.tags = v
+        else r.unset.push('tags')
         break
       }
       case 'dietary': {

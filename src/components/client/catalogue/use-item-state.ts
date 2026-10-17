@@ -87,6 +87,7 @@ export function useItemState({
       patch({ bookDetails }, { bookDetails: bookDetailsPatch(bookDetails, lastYear.current) })
     },
     setCategories: (categories: string[]) => patch({ categories }, { categories }),
+    setTags: (tags: string[]) => patch({ tags }, { tags }),
     setDietary: (dietary: string[]) => patch({ dietary }, { dietary }),
     setPhotos: (next: ItemPhoto[]) => {
       setPhotosState(next)

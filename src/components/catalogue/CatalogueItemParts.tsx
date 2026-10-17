@@ -251,6 +251,18 @@ function AllergenDeclarationText({ decl, m, compact }: { decl: Exclude<NonNullab
   )
 }
 
+/** Slice 7 — the item's tags on its own page: a small, calm list of plain words. Unknown keys never reach here (dropped by the resolver). */
+export function ItemTags({ tags, label }: { tags: readonly CatalogueTermDTO[]; label: string }) {
+  if (tags.length === 0) return null
+  return (
+    <ul className="flex flex-wrap gap-x-3 gap-y-1 text-sm" aria-label={label || undefined} style={{ color: 'var(--color-text-secondary)' }}>
+      {tags.map((t) => (
+        <li key={t.value}>{t.label}</li>
+      ))}
+    </ul>
+  )
+}
+
 function DietaryTags({ tags, label }: { tags: readonly CatalogueTermDTO[]; label: string }) {
   return (
     <ul className="flex flex-wrap gap-1.5" aria-label={label || undefined}>

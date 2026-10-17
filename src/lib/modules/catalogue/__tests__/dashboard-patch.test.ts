@@ -10,6 +10,7 @@ const ctx = (o: Partial<PatchContext> = {}): PatchContext => ({
   locales: new Set(['it', 'en']),
   channels: ['dine-in', 'takeaway'],
   categories: ['pizza'],
+  tags: ['gift'],
   dietary: ['vegan'],
   previous: {},
   newKey: () => `k${++n}`,
@@ -323,6 +324,22 @@ describe('book details (ADR-033 Amendment I-3)', () => {
   it('a book carries no allergen declaration; changing to book from food removes it (existing rule via can)', () => {
     const r = cleanCatalogueSet('item', { itemProfile: 'book' }, ctx({ previous: { itemProfile: 'foodOrDrink', allergenDeclaration: { status: 'notReviewed' } } }))
     expect(r.unset).toContain('allergenDeclaration')
+  })
+})
+
+describe('tags (Amendment J slice 7)', () => {
+  it('accepts known tag keys, in order, de-duplicated', () => {
+    expect(cleanCatalogueSet('item', { tags: ['gift', 'rare', 'gift'] }, ctx({ tags: ['gift', 'rare'] })).set.tags).toEqual(['gift', 'rare'])
+  })
+  it('rejects an unknown tag key, and a category key used as a tag', () => {
+    expect(code(() => cleanCatalogueSet('item', { tags: ['nope'] }, ctx()))).toBe('invalid_value')
+    expect(code(() => cleanCatalogueSet('item', { tags: ['pizza'] }, ctx()))).toBe('invalid_value')
+  })
+  it('an empty list unsets the field', () => {
+    expect(cleanCatalogueSet('item', { tags: [] }, ctx()).unset).toEqual(['tags'])
+  })
+  it('tags are an item field only', () => {
+    expect(code(() => cleanCatalogueSet('collection', { tags: ['gift'] }, ctx()))).toBeTruthy()
   })
 })
 

@@ -63,3 +63,15 @@ describe('catalogueCategoryTermsGroq', () => {
     expect(q).toContain('order(order asc, key asc)')
   })
 })
+
+describe('tags (slice 7)', () => {
+  it('tags come from term records only, ordered, with no config fallback', async () => {
+    const { tagVocabulary, catalogueTermsGroq } = await import('../vocabulary')
+    expect(tagVocabulary(undefined)).toEqual([])
+    expect(tagVocabulary([{ key: 'b', order: 2000, label: 'B' }, { key: 'a', order: 1000, label: 'A' }, { key: 'a', order: 1, label: 'dup' }, { label: 'nokey' }]).map((e) => e.value)).toEqual(['a', 'b'])
+    const q = catalogueTermsGroq('tag', 'label')
+    expect(q).toContain('kind == "tag"')
+    expect(q).toContain('projectSlug == $projectSlug')
+    expect(q).toContain('module == "catalogue"')
+  })
+})

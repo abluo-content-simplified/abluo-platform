@@ -29,6 +29,7 @@ const config: CatalogueConfigDTO = {
     { value: 'takeaway', label: 'Asporto', color: null },
   ],
   categories: [{ value: 'pizza', label: 'Pizza', color: '#c00' }],
+  tags: [{ value: 'gift', label: 'Regalo', color: null }],
   dietaryTags: [{ value: 'veg', label: 'Vegetariano', color: null }],
   timeZone: 'Europe/Rome',
 }
@@ -272,6 +273,19 @@ describe('pages and identity — AC 13, 14, ADR-031 D3', () => {
     expect(dto.categories).toEqual([{ value: 'pizza', label: 'Pizza', color: '#c00' }])
     expect(dto.dietary.map((d) => d.label)).toEqual(['Vegetariano'])
     expect(dto.allergenDeclaration).toEqual({ status: 'containsListedAllergens', allergens: ['gluten', 'milk'], mayContain: ['eggs', 'sesame'], note: 'Forno condiviso' })
+  })
+
+  it('resolves tag labels, drops unknown tag keys, and keeps the stored order (Amendment J slice 7)', () => {
+    const c = { ...config, tags: [{ value: 'gift', label: 'Regalo', color: null }, { value: 'rare', label: 'Raro', color: null }] }
+    const dto = resolveItem(item({ tags: ['rare', 'gone', 'gift', 'rare'] }), ctx({ config: c }))!
+    expect(dto.tags.map((t) => t.label)).toEqual(['Raro', 'Regalo'])
+    expect(resolveItem(item({}), ctx({ config: c }))!.tags).toEqual([])
+  })
+
+  it('tag terms: labels fall back to the key when a term has no label (config row)', () => {
+    const cfg = resolveCatalogueConfig({ catalogue: { currency: 'EUR' }, tagTerms: [{ key: 'gift', order: 1, label: null }, { key: 'rare', order: 2, label: 'Raro' }] } as never, 'it', 'it')!
+    expect(cfg.tags).toEqual([{ value: 'gift', label: 'gift', color: null }, { value: 'rare', label: 'Raro', color: null }])
+    expect(resolveCatalogueConfig({ catalogue: { currency: 'EUR' } } as never, 'it', 'it')!.tags).toEqual([])
   })
 
   describe('allergen declaration (ADR-033 D-3)', () => {

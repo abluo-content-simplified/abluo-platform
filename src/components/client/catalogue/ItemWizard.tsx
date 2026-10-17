@@ -48,7 +48,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
   const optionCounts = useMemo(() => new Map(optionLists.map((l) => [l.id, l.optionCount])), [optionLists])
   const initial: ItemState = useMemo(
     // Nothing preselected (Tom, 2026-10-16): the preset's default is only suggested.
-    () => ({ itemProfile: null, name: {}, byline: {}, bookDetails: EMPTY_BOOK_DETAILS, description: {}, links: [], categories: [], imageIds: [], offers: [], allergenDeclaration: NOT_REVIEWED, dietary: [], options: [], hasPage: false, slug: {}, visibility: 'public' }),
+    () => ({ itemProfile: null, name: {}, byline: {}, bookDetails: EMPTY_BOOK_DETAILS, description: {}, links: [], categories: [], tags: [], imageIds: [], offers: [], allergenDeclaration: NOT_REVIEWED, dietary: [], options: [], hasPage: false, slug: {}, visibility: 'public' }),
     []
   )
   const profileRef = useRef(initial.itemProfile)
@@ -76,7 +76,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
 
   // D7: the Options step is shown when it is relevant (food, or option lists attached / existing) — never by business type.
   const stepsFor = (itemProfile: ItemProfile | null, attachedCount: number) =>
-    itemWizardSteps({ itemProfile, categoryCount: site.config.categories.length || (canAddCategory ? 1 : 0), locales: site.locales, showOptions: itemOptionsRelevant({ itemProfile, attachedCount, projectListCount: optionLists.length }) })
+    itemWizardSteps({ itemProfile, categoryCount: site.config.categories.length + site.config.tags.length || (canAddCategory ? 1 : 0), locales: site.locales, showOptions: itemOptionsRelevant({ itemProfile, attachedCount, projectListCount: optionLists.length }) })
   const steps = stepsFor(s.itemProfile, s.options.length)
   const [step, setStep] = useState<ItemStep | 'done'>(steps[0])
   const [publish, setPublish] = useState<PublishChoiceValue>({ mode: 'now', publishAt: null, expire: false, unpublishAt: null })
@@ -227,6 +227,12 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
             {heading('item-step-category', 'category')}
             <div className="mt-8">
               <TermPicker projectSlug={projectSlug} module="catalogue" kind="category" label={t('category.title')} terms={site.config.categories} value={s.categories} onChange={item.setCategories} defaultLocale={d} canAdd={canAddCategory} />
+              {site.config.tags.length || canAddCategory ? (
+                <div className="mt-8">
+                  <p className="mb-3 text-[0.9375rem] font-semibold text-foreground">{t('tag.title')}</p>
+                  <TermPicker projectSlug={projectSlug} module="catalogue" kind="tag" label={t('tag.title')} terms={site.config.tags} value={s.tags} onChange={item.setTags} defaultLocale={d} canAdd={canAddCategory} />
+                </div>
+              ) : null}
             </div>
           </>
         ) : step === 'photo' ? (

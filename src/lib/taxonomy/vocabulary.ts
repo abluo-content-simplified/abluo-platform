@@ -79,5 +79,19 @@ export function catalogueCategoryVocabulary<C>(
  * draft exclusion is belt and braces for a Studio-created stray.
  */
 export function catalogueCategoryTermsGroq(label: string): string {
-  return `*[_type == "taxonomyTerm" && projectSlug == $projectSlug && module == "catalogue" && kind == "category" && !(_id in path("drafts.**"))] | order(order asc, key asc){ key, order, color, "label": ${label} }`
+  return catalogueTermsGroq('category', label)
+}
+
+/**
+ * Slice 7 — the same subquery for any Catalogue kind. Tags have no legacy
+ * config list, so their `taxonomyTerm` records are the whole vocabulary
+ * (`tagVocabulary`).
+ */
+export function catalogueTermsGroq(kind: 'category' | 'tag', label: string): string {
+  return `*[_type == "taxonomyTerm" && projectSlug == $projectSlug && module == "catalogue" && kind == "${kind}" && !(_id in path("drafts.**"))] | order(order asc, key asc){ key, order, color, "label": ${label} }`
+}
+
+/** The tag vocabulary: term records only (no config fallback — there never was a tag list). */
+export function tagVocabulary(terms: readonly (CategoryTermRow | null | undefined)[] | null | undefined): VocabularyEntry[] {
+  return termsToEntries(Array.isArray(terms) ? terms : [])
 }

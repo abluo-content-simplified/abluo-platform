@@ -25,6 +25,7 @@ export const CATALOGUE_WEBSITE_KEYS = [
   'containsHeading',
   'allergensNoneDeclared',
   'dietaryHeading',
+  'tagsHeading',
   'optionsHeading',
   'pricesHeading',
   'chooseExactly',

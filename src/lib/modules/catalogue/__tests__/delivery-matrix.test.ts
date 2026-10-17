@@ -943,3 +943,65 @@ describe('I. category vocabulary: term records replace the config list (Amendmen
     expect(a?.categories.map((t) => t.value)).toEqual(['dolci', 'pizza'])
   })
 })
+
+describe('J. tags on the item page (Amendment J slice 7)', () => {
+  const tagTerm = (key: string, order: number, label: Record<string, string>, project = PROJECT, kind = 'tag', module = 'catalogue') => ({
+    _id: `term.${project}.${module}.${kind}.${key}`, _type: 'taxonomyTerm', projectSlug: project, module, kind, key, order, label,
+  })
+  const itemDoc = (over: Record<string, unknown> = {}) => ({
+    _id: 'catalogueItem-tagged', _type: 'catalogueItem', projectSlug: PROJECT, publicId: 'tagged', itemProfile: 'product', hasPage: true,
+    name: { it: 'Tagged' }, slug: slugField('tagged', false), tags: ['regalo', 'rarita', 'gone'], ...lifecycleFields('live'), ...over,
+  })
+  const run = async (items: Record<string, unknown>[], terms: Record<string, unknown>[], locale: Locale = 'it') => {
+    const dataset = [...PUBLISHED, ...terms, ...items]
+    const p = { projectSlug: PROJECT, locale, defaultLocale: DEFAULT_LOCALE }
+    const cfgValue = await evaluate(parse(catalogueModuleConfigQuery, { params: p }), { dataset, params: p, timestamp: NOW })
+    const config = resolveCatalogueConfig((await cfgValue.get()) as never, locale, DEFAULT_LOCALE)!
+    const fetchOwn: CatalogueFetch = async (query, params) => {
+      const q = { ...p, ...params }
+      return (await (await evaluate(parse(query, { params: q }), { dataset, params: q, timestamp: NOW })).get()) as never
+    }
+    const e = await resolveCatalogueEntry(fetchOwn, 'tagged', { ...ctxFor(locale), config })
+    return { e, config }
+  }
+  const TERMS = [tagTerm('rarita', 2000, { it: 'Rarità', en: 'Rarity' }), tagTerm('regalo', 1000, { it: 'Regalo' })]
+
+  it('shows the item\'s tags with labels in the vocabulary order of the item, unknown keys dropped', async () => {
+    const { e } = await run([itemDoc()], TERMS)
+    expect(e.kind).toBe('item')
+    if (e.kind !== 'item') return
+    expect(e.item.tags.map((t) => t.value)).toEqual(['regalo', 'rarita'])
+    expect(e.item.tags.map((t) => t.label)).toEqual(['Regalo', 'Rarità'])
+  })
+
+  it('label fallback: a missing locale uses the default language', async () => {
+    const { e } = await run([itemDoc()], TERMS, 'en')
+    // 'en' has no slug for the item; the vocabulary itself still falls back per term.
+    const { config } = await run([itemDoc()], TERMS, 'en')
+    expect(config.tags.map((t) => t.label)).toEqual(['Regalo', 'Rarity'])
+    expect(e.kind === 'item' || e.kind === 'notFound').toBe(true)
+  })
+
+  it('terms of another project, module or kind (category) never become tags', async () => {
+    const stray = [
+      tagTerm('regalo', 1, { it: 'Regalo' }),
+      tagTerm('rarita', 1, { it: 'Altro progetto' }, 'other-project'),
+      tagTerm('gone', 1, { it: 'Blog' }, PROJECT, 'tag', 'blog'),
+      tagTerm('categoria', 1, { it: 'Cat' }, PROJECT, 'category'),
+      { ...tagTerm('bozza', 1, { it: 'Bozza' }), _id: `drafts.term.${PROJECT}.catalogue.tag.bozza` },
+    ]
+    const { config } = await run([itemDoc({ tags: ['regalo', 'rarita', 'gone', 'categoria', 'bozza'] })], stray)
+    expect(config.tags.map((t) => t.value)).toEqual(['regalo'])
+  })
+
+  it('an unpublished (archived) item with tags is not delivered', async () => {
+    const { e } = await run([itemDoc({ ...lifecycleFields('archived') })], TERMS)
+    expect(e.kind).toBe('notFound')
+  })
+
+  it('no tag terms: the item has no tags and nothing breaks', async () => {
+    const { e, config } = await run([itemDoc()], [])
+    expect(config.tags).toEqual([])
+    if (e.kind === 'item') expect(e.item.tags).toEqual([])
+  })
+})

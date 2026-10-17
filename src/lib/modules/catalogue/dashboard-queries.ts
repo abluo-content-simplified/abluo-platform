@@ -8,7 +8,7 @@
 // src/lib/sanity/queries.ts; nothing here may ever be used to render a page.
 
 import { FOOD_PROFILE_GROQ } from './profiles'
-import { catalogueCategoryTermsGroq } from '@/lib/taxonomy/vocabulary'
+import { catalogueCategoryTermsGroq, catalogueTermsGroq } from '@/lib/taxonomy/vocabulary'
 
 /** Site languages and zone (dates are entered in the site's time zone, ADR-032 D8). */
 export const CATALOGUE_SITE_QUERY = /* groq */ `{
@@ -18,7 +18,9 @@ export const CATALOGUE_SITE_QUERY = /* groq */ `{
   "translate": count(*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].moduleInstallations[moduleId == "translate" && enabled != false]) > 0,
   // ADR-033 Amendment J (dual-read): taxonomyTerm records, when present, replace config.categories
   // (catalogueCategoryVocabulary). Inside this one query — no extra round trip on the save path.
-  "categoryTerms": ${catalogueCategoryTermsGroq('label')}
+  "categoryTerms": ${catalogueCategoryTermsGroq('label')},
+  // Slice 7 — tag term records (no config list exists for tags).
+  "tagTerms": ${catalogueTermsGroq('tag', 'label')}
 }`
 
 /** Only the dashboard label (ADR-033 D12) — presentation; read for the sidebar. */

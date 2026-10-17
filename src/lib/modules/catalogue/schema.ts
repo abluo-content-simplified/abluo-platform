@@ -614,6 +614,16 @@ export const catalogueItem = defineType({
       of: [defineArrayMember({ type: 'string' })],
       description: 'Defined in the module settings.',
     }),
+    // ADR-033 Amendment J slice 7 — keys of the project's `tag` taxonomyTerm records
+    // (Categories & Tags in the dashboard). Same plain string list as categories.
+    defineField({
+      name: 'tags',
+      title: 'Tags',
+      type: 'array',
+      group: 'content',
+      of: [defineArrayMember({ type: 'string' })],
+      description: 'Keys of the tags defined under Categories & Tags.',
+    }),
     // ADR-033 D-3 — shown for food and drink only. An explicit declaration, never
     // an inferred one: "not reviewed" blocks publishing (Studio too — this is a
     // validation ERROR), "contains" needs ≥ 1 allergen, "none declared" needs the

@@ -3653,6 +3653,10 @@
             "title": "What kind is it?",
             "helper": "Pick any that fit. You can skip this."
           },
+          "tag": {
+            "title": "Tags",
+            "helper": "Add a few words that describe it"
+          },
           "photo": {
             "title": "Add a photo",
             "helper": "From your media library. The first one is the main photo."
@@ -3941,6 +3945,7 @@
       "free": "Free",
       "allergensHeading": "Allergens",
       "dietaryHeading": "Dietary information",
+      "tagsHeading": "Tags",
       "optionsHeading": "Options",
       "pricesHeading": "Prices",
       "chooseExactly": "Choose {min}",

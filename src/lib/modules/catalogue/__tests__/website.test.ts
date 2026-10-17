@@ -37,6 +37,7 @@ const CONFIG: CatalogueConfigDTO = {
   showPricesByDefault: true,
   channels: [],
   categories: [],
+  tags: [],
   dietaryTags: [],
   timeZone: null,
 }

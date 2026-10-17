@@ -11,6 +11,7 @@ const base: ItemState = {
   description: {},
   links: [],
   categories: [],
+  tags: [],
   imageIds: [],
   offers: [{ key: 'a', channel: null, price: '', availability: [] }],
   allergenDeclaration: NOT_REVIEWED,

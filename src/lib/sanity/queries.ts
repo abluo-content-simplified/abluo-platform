@@ -32,7 +32,7 @@
 import { localePlainTexts, presentLocales } from '@/lib/sanity/groq-locales'
 import { publicFilterFor, publicFilterForAnyType } from '@/lib/lifecycle/public-types'
 import { visibilityFilter } from '@/lib/modules/catalogue/visibility'
-import { catalogueCategoryTermsGroq } from '@/lib/taxonomy/vocabulary'
+import { catalogueCategoryTermsGroq, catalogueTermsGroq } from '@/lib/taxonomy/vocabulary'
 
 // ─── ADR-032 D3 — the public-visibility rule ─────────────────────────────────
 // Every public read of a lifecycle type (post, newsArticle, event, gallery) —
@@ -2300,6 +2300,7 @@ const CATALOGUE_ITEM_FIELDS = /* groq */ `
   "description": ${loc('description')},
   "slugMap": slug,
   categories,
+  tags,
   links[] { _key, "label": ${loc('label')}, url },
   // ADR-033 D-3 — the explicit declaration; the note is tenant text (locale chain).
   allergenDeclaration { status, allergens, mayContain, confirmed, "note": ${loc('note')} },
@@ -2410,6 +2411,8 @@ export const catalogueModuleConfigQuery = /* groq */ `
     // ADR-033 Amendment J (dual-read): taxonomyTerm records, when the project has any, replace
     // the config category list above entirely (catalogueCategoryVocabulary). Same query, no extra round trip.
     "categoryTerms": ${catalogueCategoryTermsGroq('coalesce(label[$locale], label[$defaultLocale], label.en)')},
+    // Slice 7 — tags come from term records only.
+    "tagTerms": ${catalogueTermsGroq('tag', 'coalesce(label[$locale], label[$defaultLocale], label.en)')},
     "timeZone": *[_type == "siteConfig" && projectSlug == $projectSlug][0].timeZone
   }
 `

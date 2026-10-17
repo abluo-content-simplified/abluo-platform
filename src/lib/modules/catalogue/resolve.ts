@@ -25,7 +25,7 @@ import { readingOrder } from './sections'
 import { normalise } from './slugs'
 import { can, profileOf } from './profiles'
 import { normalizeIsbn, parseBookYear } from './isbn'
-import { catalogueCategoryVocabulary, type CategoryTermRow } from '@/lib/taxonomy/vocabulary'
+import { catalogueCategoryVocabulary, tagVocabulary, type CategoryTermRow } from '@/lib/taxonomy/vocabulary'
 import type {
   CatalogueAvailabilityDTO,
   CatalogueCollectionDTO,
@@ -135,6 +135,8 @@ export type RawCatalogueItem = LifecycleFields & {
   links?: ({ _key?: string | null; label?: RawText; url?: unknown } | null)[] | null
   slugMap?: RawSlugMap
   categories?: readonly string[] | null
+  /** Slice 7 — keys of tag terms. */
+  tags?: readonly string[] | null
   /** D-3 — as projected: status, allergens, mayContain, confirmed, note (locale-resolved). */
   allergenDeclaration?: RawAllergenDeclaration
   dietary?: readonly string[] | null
@@ -190,6 +192,8 @@ export type RawCatalogueConfigRow = {
   } | null
   /** ADR-033 Amendment J — the project's category term records (label locale-resolved by GROQ). */
   categoryTerms?: readonly (CategoryTermRow | null)[] | null
+  /** Slice 7 — the project's tag term records. */
+  tagTerms?: readonly (CategoryTermRow | null)[] | null
   timeZone?: string | null
 } | null
 
@@ -379,6 +383,7 @@ export function resolveCatalogueConfig(
     showPricesByDefault: c.showPricesByDefault !== false,
     channels: termsOf(c.serviceChannels, locale, defaultLocale),
     categories: termsOf(catalogueCategoryVocabulary(row?.categoryTerms, c.categories), locale, defaultLocale),
+    tags: termsOf(tagVocabulary(row?.tagTerms), locale, defaultLocale),
     dietaryTags: termsOf(c.dietaryTags, locale, defaultLocale),
     timeZone: nonEmpty(row?.timeZone),
   }
@@ -551,6 +556,7 @@ export function resolveItem(row: RawCatalogueItem | null | undefined, ctx: Catal
     links: resolveLinks(row.links, ctx),
     images: imagesOf(row.images, ctx),
     categories: pickTerms(row.categories, ctx.config.categories),
+    tags: pickTerms(row.tags, ctx.config.tags),
     allergenDeclaration: allergenDeclarationOf(row, itemProfileOf(row.itemProfile), ctx),
     dietary: pickTerms(row.dietary, ctx.config.dietaryTags),
     offers,

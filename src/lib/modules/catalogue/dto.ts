@@ -198,6 +198,8 @@ export type CatalogueItemDTO = {
   links: CatalogueItemLinkDTO[]
   images: CatalogueImageDTO[]
   categories: CatalogueTermDTO[]
+  /** Slice 7 — resolved tag terms; unknown keys are dropped. */
+  tags: CatalogueTermDTO[]
   /**
    * D-3. null for products and services (no allergen interface, nothing rendered).
    * Keys are platform constants (C3); labels from messages catalogue.allergens.*.
@@ -272,6 +274,7 @@ export type CatalogueConfigDTO = {
   showPricesByDefault: boolean
   channels: CatalogueTermDTO[]
   categories: CatalogueTermDTO[]
+  tags: CatalogueTermDTO[]
   dietaryTags: CatalogueTermDTO[]
   /** Site IANA time zone for availability (A8). null = unknown. */
   timeZone: string | null

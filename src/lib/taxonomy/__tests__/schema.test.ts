@@ -25,6 +25,9 @@ describe('manifest taxonomies', () => {
   it('only catalogue declares one, a category used by catalogueItem.categories', () => {
     const declaring = MODULE_REGISTRY.filter((m) => m.taxonomies)
     expect(declaring.map((m) => m.id)).toEqual(['catalogue'])
-    expect(declaring[0].taxonomies).toEqual([{ kind: 'category', usedBy: [{ type: 'catalogueItem', field: 'categories' }] }])
+    expect(declaring[0].taxonomies).toEqual([
+      { kind: 'category', usedBy: [{ type: 'catalogueItem', field: 'categories' }] },
+      { kind: 'tag', usedBy: [{ type: 'catalogueItem', field: 'tags' }] },
+    ])
   })
 })

@@ -609,6 +609,7 @@ export type ItemState = {
   /** F-2 — edited in the item editor only (the wizard stays at its step count). */
   links: LinkForm[]
   categories: string[]
+  tags: string[]
   imageIds: string[]
   offers: OfferForm[]
   allergenDeclaration: DeclarationForm
@@ -629,6 +630,7 @@ export function itemStateFromDoc(doc: Record<string, unknown> | null | undefined
     description: textsOf(d.description),
     links: linkFormsFromDoc(d.links),
     categories: stringsOf(d.categories),
+    tags: stringsOf(d.tags),
     imageIds: refsOf(d.images),
     offers: offerFormsFromDoc(d.offers),
     allergenDeclaration: declarationFormFromDoc(d.allergenDeclaration),

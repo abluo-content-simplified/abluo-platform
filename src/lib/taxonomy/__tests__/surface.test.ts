@@ -36,6 +36,18 @@ describe('registry entry', () => {
   })
 })
 
+describe('Catalogue kinds (slice 7)', () => {
+  it('declares category and tag, each used by one item field, and the manager lists both kinds', () => {
+    const cat = MODULE_REGISTRY.find((m) => m.id === 'catalogue')!
+    expect(cat.taxonomies).toEqual([
+      { kind: 'category', usedBy: [{ type: 'catalogueItem', field: 'categories' }] },
+      { kind: 'tag', usedBy: [{ type: 'catalogueItem', field: 'tags' }] },
+    ])
+    const mod = manageableTaxonomyModules(grantFor('owner', ['catalogue']) as never).find((m) => m.module === 'catalogue')
+    expect(mod?.kinds).toEqual(['category', 'tag'])
+  })
+})
+
 describe('who sees "Categories & Tags"', () => {
   it('owner and editor of a project with the Catalogue', () => {
     expect(navIds(grantFor('owner', ['catalogue']))).toContain('taxonomy')
@@ -61,8 +73,8 @@ describe('who sees "Categories & Tags"', () => {
 
 describe('manageableTaxonomyModules', () => {
   it('lists the installed modules with a taxonomy and whether the person can change it', () => {
-    expect(manageableTaxonomyModules(grantFor('editor', ['catalogue', 'blog']))).toEqual([{ module: 'catalogue', kinds: ['category'], canWrite: true }])
-    expect(manageableTaxonomyModules(grantFor('viewer', ['catalogue']))).toEqual([{ module: 'catalogue', kinds: ['category'], canWrite: false }])
+    expect(manageableTaxonomyModules(grantFor('editor', ['catalogue', 'blog']))).toEqual([{ module: 'catalogue', kinds: ['category', 'tag'], canWrite: true }])
+    expect(manageableTaxonomyModules(grantFor('viewer', ['catalogue']))).toEqual([{ module: 'catalogue', kinds: ['category', 'tag'], canWrite: false }])
   })
 
   it('is empty without the module, without permission, or when the module declares nothing', () => {

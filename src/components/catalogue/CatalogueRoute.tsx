@@ -48,7 +48,7 @@ import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
 import { articlePortableTextComponents } from '@/components/portable-text/article-components'
 import { CatalogueCollectionView } from './CatalogueCollectionView'
-import { AllergensAndDietary, Byline, ItemLinks, OfferList, optionAllergenText } from './CatalogueItemParts'
+import { AllergensAndDietary, Byline, ItemLinks, ItemTags, OfferList, optionAllergenText } from './CatalogueItemParts'
 import { getCatalogueWebsiteMessages, optionRuleText, fillMessage } from './messages'
 
 type FetchForTenant = ReturnType<typeof tenantClient>['fetchForTenant']
@@ -344,6 +344,12 @@ function CatalogueItemPageView({
             </p>
           )}
         </SlideUp>
+
+        {item.tags.length > 0 && (
+          <SlideUp duration={duration} ease={ease} delay={0.06} className="mt-5">
+            <ItemTags tags={item.tags} label={m.tagsHeading} />
+          </SlideUp>
+        )}
 
         {item.links.length > 0 && (
           <SlideUp duration={duration} ease={ease} delay={0.08} className="mt-8">

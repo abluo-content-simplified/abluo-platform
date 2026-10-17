@@ -298,6 +298,11 @@ export function ItemEditor({
                 <TermPicker projectSlug={projectSlug} module="catalogue" kind="category" label={tf('category.title')} terms={site.config.categories} value={s.categories} onChange={item.setCategories} defaultLocale={d} canAdd={canAddCategory && can.write} />
               </FieldBlock>
             ) : null}
+            {site.config.tags.length || (canAddCategory && can.write) ? (
+              <FieldBlock title={tf('tag.title')}>
+                <TermPicker projectSlug={projectSlug} module="catalogue" kind="tag" label={tf('tag.title')} terms={site.config.tags} value={s.tags} onChange={item.setTags} defaultLocale={d} canAdd={canAddCategory && can.write} />
+              </FieldBlock>
+            ) : null}
             <FieldBlock title={tfl('title')} helper={tfl('helper')}>
               <LinksField links={s.links} locales={site.locales} defaultLocale={d} onChange={item.setLinks} />
             </FieldBlock>

@@ -67,7 +67,7 @@ import {
 } from '@/lib/modules/catalogue/dashboard-patch'
 import { initialItemProfile, type ItemProfile } from '@/lib/modules/catalogue/dashboard-form'
 import { can, isItemProfile, profileOf } from '@/lib/modules/catalogue/profiles'
-import { catalogueCategoryVocabulary, type CategoryTermRow } from '@/lib/taxonomy/vocabulary'
+import { catalogueCategoryVocabulary, tagVocabulary, type CategoryTermRow } from '@/lib/taxonomy/vocabulary'
 import { SLUG_NAMESPACE_QUERY, namedSlugConflicts, toSlugOwners, type NamedSlugConflict, type SlugRow } from '@/lib/modules/catalogue/validation'
 import {
   CATALOGUE_COUNT_QUERY,
@@ -191,6 +191,7 @@ export type CatalogueSite = {
     currency: string
     channels: CatalogueTerm[]
     categories: CatalogueTerm[]
+    tags: CatalogueTerm[]
     dietaryTags: CatalogueTerm[]
     /** D-2: the profile the item wizard preselects (module setting, e.g. from a starter preset); null = none. */
     defaultItemProfile: ItemProfile | null
@@ -204,7 +205,7 @@ const termsOf = (rows: unknown): CatalogueTerm[] =>
     .map((r) => ({ value: r.value as string, label: localized(r.label), color: typeof r.color === 'string' && r.color ? r.color : null }))
 
 async function readSite(client: Client, projectSlug: string): Promise<CatalogueSite> {
-  const r = await span('sanity.readSite', () => client.fetch<{ site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null } | null; config?: RawConfig; presetId?: unknown; translate?: boolean; categoryTerms?: CategoryTermRow[] | null } | null>(
+  const r = await span('sanity.readSite', () => client.fetch<{ site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null } | null; config?: RawConfig; presetId?: unknown; translate?: boolean; categoryTerms?: CategoryTermRow[] | null; tagTerms?: CategoryTermRow[] | null } | null>(
     CATALOGUE_SITE_QUERY,
     { projectSlug }
   ))
@@ -226,6 +227,8 @@ async function readSite(client: Client, projectSlug: string): Promise<CatalogueS
       channels: termsOf(c.serviceChannels),
       // ADR-033 Amendment J (dual-read): term records replace the config list entirely when the project has any.
       categories: termsOf(catalogueCategoryVocabulary(r?.categoryTerms, c.categories)),
+      // Slice 7: tag term records only (no config list).
+      tags: termsOf(tagVocabulary(r?.tagTerms)),
       dietaryTags: termsOf(c.dietaryTags),
       defaultItemProfile: initialItemProfile(c.defaultItemProfile),
     },
@@ -672,6 +675,7 @@ export async function patchCatalogueDraft(
     locales: new Set(site.locales),
     channels: site.config.channels.map((c) => c.value),
     categories: site.config.categories.map((c) => c.value),
+    tags: site.config.tags.map((c) => c.value),
     dietary: site.config.dietaryTags.map((c) => c.value),
     previous,
     newKey,

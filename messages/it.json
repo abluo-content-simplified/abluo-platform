@@ -3653,6 +3653,10 @@
             "title": "Di che tipo è?",
             "helper": "Scegli quelle adatte. Puoi saltare."
           },
+          "tag": {
+            "title": "Tag",
+            "helper": "Aggiungi qualche parola che lo descriva"
+          },
           "photo": {
             "title": "Aggiungi una foto",
             "helper": "Dalla tua libreria media. La prima è la foto principale."
@@ -3941,6 +3945,7 @@
       "free": "Gratis",
       "allergensHeading": "Allergeni",
       "dietaryHeading": "Informazioni alimentari",
+      "tagsHeading": "Tag",
       "optionsHeading": "Opzioni",
       "pricesHeading": "Prezzi",
       "chooseExactly": "Scegli {min}",

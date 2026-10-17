@@ -53,10 +53,11 @@ function fake(seed: Doc[] = []) {
         .sort((a, b) => Number(a.order) - Number(b.order))
     }
     if (q.includes('$key in coalesce(')) {
-      return docs.filter((d) => d._type === 'catalogueItem' && d.projectSlug === slug && ((d.categories as string[]) ?? []).includes(params.key as string)).map((d) => ({ _id: d._id, _type: d._type, name: d.name }))
+      const field = /coalesce\((\w+), \[\]\)/.exec(q)?.[1] ?? 'categories'
+      return docs.filter((d) => d._type === 'catalogueItem' && d.projectSlug === slug && ((d[field] as string[]) ?? []).includes(params.key as string)).map((d) => ({ _id: d._id, _type: d._type, name: d.name }))
     }
     if (q.includes('select(')) {
-      return docs.filter((d) => d._type === 'catalogueItem' && d.projectSlug === slug).map((d) => ({ _id: d._id, _type: d._type, keys: (d.categories as string[]) ?? [] }))
+      return docs.filter((d) => d._type === 'catalogueItem' && d.projectSlug === slug).map((d) => ({ _id: d._id, _type: d._type, keys: (d[/coalesce\((\w+), \[\]\)/.exec(q)?.[1] ?? 'categories'] as string[]) ?? [] }))
     }
     throw new Error(`unexpected query ${q}`)
   })
@@ -171,10 +172,13 @@ describe('permission matrix — checked before any I/O', () => {
     expect(f.touched()).toBe(0)
   })
 
-  it('a kind the module does not declare is refused (catalogue has no tags yet)', async () => {
+  it('a kind the module does not declare is refused', async () => {
     const f = fake()
-    expect(await code(createTerm(owner(), 'project-a', 'catalogue', 'tag', { labels: { it: 'x' } }, f.deps))).toBe('kind_not_declared')
-    expect(await code(listTerms(owner(), 'project-a', 'catalogue', 'tag', f.deps))).toBe('kind_not_declared')
+    const base = MODULE_REGISTRY.find((m) => m.id === 'catalogue')!
+    const registry: ModuleManifest[] = [{ ...base, taxonomies: [{ kind: 'category', usedBy: [{ type: 'catalogueItem', field: 'categories' }] }] }]
+    const deps = { ...f.deps, registry }
+    expect(await code(createTerm(owner(), 'project-a', 'catalogue', 'tag', { labels: { it: 'x' } }, deps))).toBe('kind_not_declared')
+    expect(await code(listTerms(owner(), 'project-a', 'catalogue', 'tag', deps))).toBe('kind_not_declared')
     expect(await code(createTerm(owner(), 'project-a', 'catalogue', 'nonsense', { labels: { it: 'x' } }, f.deps))).toBe('invalid_value')
     expect(f.touched()).toBe(0)
   })
@@ -458,5 +462,38 @@ describe('listTerms — usage and coverage per enabled language', () => {
     expect(list.terms[2].coverage.missing).toEqual(['en', 'de']) // a label in a disabled language does not count
     expect(list.summary).toEqual({ needTranslation: 2, total: 3 })
     expect(list.color).toBe(false)
+  })
+})
+
+describe('kind "tag" (slice 7) — same service, the `tags` field', () => {
+  const tagTerm = (key: string, label: Record<string, string>): Doc => term(key, label, { _id: `term.${SLUG}.catalogue.tag.${key}`, kind: 'tag' })
+  const tagged = (id: string, tags: string[], o: Record<string, unknown> = {}): Doc => ({ ...item(id, [], o), tags })
+
+  it('creates, lists (with usage from `tags`, not categories) and keeps categories apart', async () => {
+    const f = fake([tagged('i1', ['regalo']), item('i2', ['regalo'])])
+    const r = await createTerm(owner(), 'project-a', 'catalogue', 'tag', { labels: { it: 'Regalo' } }, f.deps)
+    expect(r.term.key).toBe('regalo')
+    expect(f.terms()[0]).toMatchObject({ _id: `term.${SLUG}.catalogue.tag.regalo`, kind: 'tag', module: 'catalogue' })
+    const l = await listTerms(owner(), 'project-a', 'catalogue', 'tag', f.deps)
+    expect(l.terms.map((t) => [t.key, t.usedBy])).toEqual([['regalo', 1]])
+    expect((await listTerms(owner(), 'project-a', 'catalogue', 'category', f.deps)).terms).toEqual([])
+  })
+
+  it('delete is blocked while an item (draft, published or archived) carries the tag, and allowed otherwise', async () => {
+    for (const it of [tagged('i1', ['regalo']), tagged('drafts.i2', ['regalo']), tagged('i3', ['regalo'], { archivedAt: '2026-10-01T00:00:00Z' })]) {
+      const f = fake([tagTerm('regalo', { it: 'Regalo' }), it])
+      expect(await code(deleteTerm(owner(), 'project-a', 'catalogue', 'tag', 'regalo', f.deps))).toBe('in_use')
+      expect(f.client.delete).not.toHaveBeenCalled()
+    }
+    // an item that uses a CATEGORY with the same key does not block the tag
+    const g = fake([tagTerm('regalo', { it: 'Regalo' }), item('i4', ['regalo'])])
+    await deleteTerm(owner(), 'project-a', 'catalogue', 'tag', 'regalo', g.deps)
+    expect(g.terms()).toHaveLength(0)
+  })
+
+  it('a viewer may not add tags', async () => {
+    const f = fake()
+    await expect(createTerm(viewer(), 'project-a', 'catalogue', 'tag', { labels: { it: 'x' } }, f.deps)).rejects.toBeInstanceOf(TenantAuthorizationError)
+    expect(f.client.createIfNotExists).not.toHaveBeenCalled()
   })
 })
