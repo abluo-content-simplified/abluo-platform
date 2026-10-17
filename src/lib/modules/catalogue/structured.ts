@@ -124,6 +124,7 @@ function bookFields(item: Pick<CatalogueItemDTO, 'itemProfile' | 'bookDetails'>)
   if (PROFILES[item.itemProfile].jsonLd.itemPage !== 'Book' || !b) return {}
   return {
     ...(b.author ? { author: { '@type': 'Person', name: b.author } } : {}),
+    ...(b.publisher ? { publisher: { '@type': 'Organization', name: b.publisher } } : {}),
     ...(b.isbn && isValidIsbn(b.isbn) ? { isbn: b.isbn } : {}),
     ...(b.year !== null ? { datePublished: String(b.year) } : {}),
   }

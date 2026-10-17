@@ -157,7 +157,7 @@ const render = (s: Section) =>
 describe('CatalogueListingSection — website', () => {
   it('renders nothing when not hydrated, or with no collection', () => {
     expect(render(section())).toBe('')
-    expect(render(section({ catalogue: { collection: null, segment: 'menu', showPricesByDefault: true } }))).toBe('')
+    expect(render(section({ catalogue: { collection: null, segment: 'menu', showPricesByDefault: true, affiliateDisclosure: null } }))).toBe('')
   })
 
   it('parent then children in stored order; a parent with no items still prints its heading (AC 18, 19)', async () => {
@@ -322,8 +322,8 @@ describe('byline and links (ADR-033 Amendment F)', () => {
 
   it('ItemLinks: the site\'s own host stays in the same tab, an external one opens a new tab with rel', () => {
     const links = [
-      { key: 'own', label: 'Home', url: 'https://www.mysite.it/page' },
-      { key: 'ext', label: 'Elsewhere', url: 'https://other.org/x' },
+      { key: 'own', label: 'Home', url: 'https://www.mysite.it/page', kind: 'info' as const, affiliate: false },
+      { key: 'ext', label: 'Elsewhere', url: 'https://other.org/x', kind: 'info' as const, affiliate: false },
     ]
     const html = renderToStaticMarkup(<ItemLinks links={links} siteHosts={['mysite.it']} compact={false} heading="Links" />)
     const own = html.slice(html.indexOf('mysite.it'), html.indexOf('Home'))

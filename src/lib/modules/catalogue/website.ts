@@ -137,6 +137,8 @@ export type CatalogueListingData = {
   segment: string | null
   /** Config default for sections that leave showPrices unset. */
   showPricesByDefault: boolean
+  /** Amendment K — the catalogue's own affiliate disclosure for this locale, or null. */
+  affiliateDisclosure: string | null
 }
 
 /**
@@ -150,7 +152,7 @@ export async function hydrateCatalogueListing(
   collectionId: string | null | undefined,
   ctx: CatalogueResolveContext,
 ): Promise<CatalogueListingData> {
-  const base = { segment: ctx.config.segment, showPricesByDefault: ctx.config.showPricesByDefault }
+  const base = { segment: ctx.config.segment, showPricesByDefault: ctx.config.showPricesByDefault, affiliateDisclosure: ctx.config.affiliateDisclosure }
   if (!collectionId) return { ...base, collection: null }
   const row = await fetchForTenant<RawCatalogueCollection | null>(catalogueCollectionByIdQuery, {
     collectionId,

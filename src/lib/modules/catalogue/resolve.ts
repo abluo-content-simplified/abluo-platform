@@ -129,10 +129,10 @@ export type RawCatalogueItem = LifecycleFields & {
   /** F-1 — locale-resolved by GROQ, or a raw localized object. */
   byline?: RawText
   /** Amendment I-3 — as stored; every value unchecked until resolveBookDetails. */
-  bookDetails?: { author?: unknown; year?: unknown; isbn?: unknown } | null
+  bookDetails?: { author?: unknown; publisher?: unknown; year?: unknown; isbn?: unknown } | null
   description?: RawText
   /** F-2 — `label` locale-resolved by GROQ (or raw localized); `url` unchecked until resolveLinks. */
-  links?: ({ _key?: string | null; label?: RawText; url?: unknown } | null)[] | null
+  links?: ({ _key?: string | null; label?: RawText; url?: unknown; kind?: unknown; affiliate?: unknown } | null)[] | null
   slugMap?: RawSlugMap
   categories?: readonly string[] | null
   /** Slice 7 — keys of tag terms. */
@@ -189,6 +189,8 @@ export type RawCatalogueConfigRow = {
     serviceChannels?: (RawTerm | null)[] | null
     categories?: (RawTerm | null)[] | null
     dietaryTags?: (RawTerm | null)[] | null
+    /** Amendment K — already locale-resolved by GROQ (request locale only). */
+    affiliateDisclosure?: string | null
   } | null
   /** ADR-033 Amendment J — the project's category term records (label locale-resolved by GROQ). */
   categoryTerms?: readonly (CategoryTermRow | null)[] | null
@@ -386,6 +388,7 @@ export function resolveCatalogueConfig(
     tags: termsOf(tagVocabulary(row?.tagTerms), locale, defaultLocale),
     dietaryTags: termsOf(c.dietaryTags, locale, defaultLocale),
     timeZone: nonEmpty(row?.timeZone),
+    affiliateDisclosure: typeof c.affiliateDisclosure === 'string' && c.affiliateDisclosure.trim() ? c.affiliateDisclosure.trim() : null,
   }
 }
 
@@ -511,8 +514,10 @@ export function resolveLinks(rows: RawCatalogueItem['links'], ctx: CatalogueReso
     if (!r) continue
     const url = catalogueLinkUrl(r.url)
     const label = text(r.label, ctx.locale, ctx.defaultLocale)
-    if (!url || !label) continue
-    out.push({ key: nonEmpty(r._key) ?? `link${i}`, label, url })
+    const buy = r.kind === 'buy'
+    // A buy link needs no label of its own (the website says "Buy"); any other link does.
+    if (!url || (!label && !buy)) continue
+    out.push({ key: nonEmpty(r._key) ?? `link${i}`, label: label ?? '', url, kind: buy ? 'buy' : 'info', affiliate: buy && r.affiliate === true })
   }
   return out
 }
@@ -528,10 +533,11 @@ export function resolveLinks(rows: RawCatalogueItem['links'], ctx: CatalogueReso
 export function resolveBookDetails(raw: RawCatalogueItem['bookDetails'], profile: CatalogueItemProfile): CatalogueBookDetailsDTO | null {
   if (!can(profile, 'bookDetails') || !raw || typeof raw !== 'object') return null
   const author = typeof raw.author === 'string' ? raw.author.trim().replace(/[ \t]+/g, ' ') : ''
+  const publisher = typeof raw.publisher === 'string' ? raw.publisher.trim().replace(/[ \t]+/g, ' ') : ''
   const isbn = normalizeIsbn(raw.isbn)
   const year = parseBookYear(raw.year)
-  if (!author && !isbn && year === null) return null
-  return { author: author || null, year, isbn: isbn || null }
+  if (!author && !publisher && !isbn && year === null) return null
+  return { author: author || null, publisher: publisher || null, year, isbn: isbn || null }
 }
 
 // ── Items ─────────────────────────────────────────────────────────────────────

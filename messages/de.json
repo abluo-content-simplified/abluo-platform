@@ -3541,7 +3541,13 @@
             "down": "Link nach unten",
             "remove": "Diesen Link entfernen",
             "badUrl": "Gib eine vollständige Webadresse ein, die mit http:// oder https:// beginnt.",
-            "incomplete": "Ein Link braucht eine Bezeichnung und eine Webadresse. Er wird erst gespeichert, wenn beides ausgefüllt ist."
+            "incomplete": "Ein Link braucht eine Bezeichnung und eine Webadresse. Er wird erst gespeichert, wenn beides ausgefüllt ist.",
+            "kind": "Art des Links",
+            "kindInfo": "Link",
+            "kindBuy": "Kauf-Link",
+            "kindBuyHelp": "Zeigt einen Kaufen-Button auf der Seite. Die Beschriftung ist optional.",
+            "affiliate": "Dies ist ein Affiliate-Link",
+            "affiliateHelp": "Du erhältst eine Provision, wenn jemand über diesen Link kauft."
           },
           "title": "Titel",
           "book": {
@@ -3550,7 +3556,13 @@
             "year": "Jahr",
             "yearInvalid": "Gib ein ganzes Jahr zwischen 1000 und {max} an. Es wird erst dann gespeichert.",
             "isbn": "ISBN",
-            "isbnAdvice": "Das sieht nicht nach einer gültigen ISBN aus. Du kannst sie trotzdem behalten."
+            "isbnAdvice": "Das sieht nicht nach einer gültigen ISBN aus. Du kannst sie trotzdem behalten.",
+            "publisher": "Verlag"
+          },
+          "buyLink": {
+            "url": "Kauf-Link",
+            "help": "Optional. Wo man es kaufen kann. Erscheint als Kaufen-Button auf der Seite.",
+            "label": "Button-Text (optional)"
           }
         },
         "photos": {
@@ -3956,7 +3968,10 @@
       "mayContainHeading": "Kann enthalten",
       "allergensNoneDeclared": "Allergenangaben geprüft: keine Allergene der EU-Liste deklariert.",
       "containsHeading": "Enthält",
-      "linksHeading": "Links"
+      "linksHeading": "Links",
+      "buyDefault": "Kaufen",
+      "affiliateMarker": "Affiliate-Link",
+      "affiliateDisclosureDefault": "Einige Links auf dieser Seite sind Affiliate-Links. Wenn du über sie kaufst, erhalten wir eine kleine Provision – für dich entstehen keine zusätzlichen Kosten."
     }
   }
 }

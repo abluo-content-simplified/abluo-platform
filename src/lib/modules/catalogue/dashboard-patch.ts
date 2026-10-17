@@ -84,6 +84,8 @@ export const CATALOGUE_LIMITS = {
   byline: 160,
   /** Amendment I-3.2 — one free-text line. */
   author: 120,
+  /** Amendment K — the publisher, one free-text line. */
+  publisher: 120,
   /** An ISBN is 10 or 13 characters; the rest is slack for what was typed (never refused). */
   isbn: 32,
   description: 600,
@@ -273,10 +275,23 @@ export function cleanLinks(value: unknown, ctx: Pick<PatchContext, 'locales' | '
   return (value as Record<string, unknown>[]).map((raw) => {
     if (!raw || typeof raw !== 'object') bad('Bad link.', 'links')
     const label = cleanLocalizedObject(raw.label, ctx.locales, CATALOGUE_LINK_LIMITS.label, 'links')
-    if (Object.keys(label).length === 0) bad('A link needs a label.', 'links')
+    // A buy link may go without a label: the website then shows the localized "Buy" (Amendment K).
+    if (Object.keys(label).length === 0 && raw.kind !== 'buy') bad('A link needs a label.', 'links')
     const url = catalogueLinkUrl(raw.url)
     if (!url) bad('A link needs a web address starting with http:// or https://.', 'links')
-    return { _key: keyOr(raw._key, seen, ctx.newKey), _type: 'catalogueItemLink', label: { _type: 'localizedString', ...label }, url }
+    // Amendment K — additive: `kind` is stored only for a buy link (absent = info, as every older link);
+    // `affiliate` only means something on a buy link. Anything else is refused, never guessed.
+    if (raw.kind != null && raw.kind !== 'info' && raw.kind !== 'buy') bad('Unknown link kind.', 'links')
+    if (raw.affiliate != null && typeof raw.affiliate !== 'boolean') bad('Bad affiliate flag.', 'links')
+    const buy = raw.kind === 'buy'
+    return {
+      _key: keyOr(raw._key, seen, ctx.newKey),
+      _type: 'catalogueItemLink',
+      ...(Object.keys(label).length ? { label: { _type: 'localizedString', ...label } } : {}),
+      url,
+      ...(buy ? { kind: 'buy' } : {}),
+      ...(buy && raw.affiliate === true ? { affiliate: true } : {}),
+    }
   })
 }
 
@@ -500,7 +515,7 @@ export function cleanCatalogueSet(kind: CatalogueKind, input: Record<string, unk
 
 // ── Book details (Amendment I-3) ──────────────────────────────────────────────
 
-const BOOK_INPUT_KEYS = new Set(['author', 'year', 'isbn'])
+const BOOK_INPUT_KEYS = new Set(['author', 'publisher', 'year', 'isbn'])
 
 /**
  * All three values are optional and blank is always fine. The author is one
@@ -520,6 +535,10 @@ export function cleanBookDetails(value: unknown): Record<string, unknown> | null
   if (v.author != null) {
     const author = cleanText(v.author, CATALOGUE_LIMITS.author, 'bookDetails.author')
     if (author) out.author = author
+  }
+  if (v.publisher != null) {
+    const publisher = cleanText(v.publisher, CATALOGUE_LIMITS.publisher, 'bookDetails.publisher')
+    if (publisher) out.publisher = publisher
   }
   if (v.year != null && !(typeof v.year === 'string' && v.year.trim() === '')) {
     const year = parseBookYear(v.year)

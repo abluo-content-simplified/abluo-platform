@@ -174,11 +174,17 @@ export type CatalogueItemLinkDTO = {
   /** Request locale, else default locale (editorial text, not an address). */
   label: string
   url: string
+  /** Amendment K — 'info' when absent in the data (every older link). */
+  kind: 'info' | 'buy'
+  /** Amendment K — true only for a buy link flagged as affiliate. */
+  affiliate: boolean
 }
 
 /** Amendment I-3 — a book's plain, non-localized details. Present only for a profile that carries them. */
 export type CatalogueBookDetailsDTO = {
   author: string | null
+  /** Amendment K — optional, not localized. */
+  publisher: string | null
   /** Whole number 1000 … next year. */
   year: number | null
   /** Normalised (no spaces or hyphens), exactly what was typed otherwise. May not be a valid ISBN: check with `isValidIsbn`. */
@@ -278,4 +284,6 @@ export type CatalogueConfigDTO = {
   dietaryTags: CatalogueTermDTO[]
   /** Site IANA time zone for availability (A8). null = unknown. */
   timeZone: string | null
+  /** Amendment K — the catalogue's own affiliate disclosure for the request locale; null = use the platform default. */
+  affiliateDisclosure: string | null
 }

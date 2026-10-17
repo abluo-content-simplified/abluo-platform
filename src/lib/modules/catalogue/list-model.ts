@@ -42,6 +42,18 @@ export function catalogueImageShape(input: { presetId?: string | null; itemProfi
 }
 
 /**
+ * Amendment K — "Publisher · 1979" under a book's author line (item page and
+ * dashboard preview). Only when a publisher is set; the year rides along.
+ * null otherwise (the year alone is not shown here).
+ */
+export function bookPublisherLine(input: { publisher?: string | null; year?: number | string | null }): string | null {
+  const publisher = (input.publisher ?? '').trim()
+  if (!publisher) return null
+  const year = input.year == null ? '' : String(input.year).trim()
+  return [publisher, year].filter(Boolean).join(' · ')
+}
+
+/**
  * The line under an item's name in the list. Book: "author · year" (the author
  * falls back to the byline); every other profile: the byline. Inputs are
  * already in the viewer's language; empty parts are left out.

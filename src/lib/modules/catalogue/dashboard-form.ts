@@ -529,15 +529,24 @@ export function untranslatedLocales(name: Texts, locales: readonly string[], def
 // ── Links (Amendment F-2) ─────────────────────────────────────────────────────
 
 /** One row of the links editor: label per language + the typed address. */
-export type LinkForm = { key: string; label: Texts; url: string }
+export type LinkForm = {
+  key: string
+  label: Texts
+  url: string
+  /** Amendment K — "Link" (info, the default) or "Buy link". */
+  kind: 'info' | 'buy'
+  /** Only meaningful on a buy link. */
+  affiliate: boolean
+}
 
 export function linkFormsFromDoc(value: unknown): LinkForm[] {
   if (!Array.isArray(value)) return []
   return value
     .filter((l) => l && typeof l === 'object' && typeof (l as { _key?: unknown })._key === 'string')
     .map((l) => {
-      const r = l as { _key: string; label?: unknown; url?: unknown }
-      return { key: r._key, label: textsOf(r.label), url: typeof r.url === 'string' ? r.url : '' }
+      const r = l as { _key: string; label?: unknown; url?: unknown; kind?: unknown; affiliate?: unknown }
+      const buy = r.kind === 'buy'
+      return { key: r._key, label: textsOf(r.label), url: typeof r.url === 'string' ? r.url : '', kind: buy ? 'buy' : 'info', affiliate: buy && r.affiliate === true } satisfies LinkForm
     })
 }
 
@@ -552,8 +561,9 @@ export function linkFormIssues(links: readonly LinkForm[], defaultLocale: string
   const out: LinkIssue[] = []
   for (const l of links) {
     const url = l.url.trim()
-    const hasLabel = Boolean(l.label[defaultLocale]?.trim())
-    if (!url && !hasLabel) continue
+    // A buy link needs only its address; the label is optional (the website says "Buy").
+    const hasLabel = Boolean(l.label[defaultLocale]?.trim()) || l.kind === 'buy'
+    if (!url && !Boolean(l.label[defaultLocale]?.trim())) continue
     if (url && !catalogueLinkUrl(url)) out.push({ kind: 'badUrl', key: l.key })
     else if (!url || !hasLabel) out.push({ kind: 'incomplete', key: l.key })
   }
@@ -563,20 +573,50 @@ export function linkFormIssues(links: readonly LinkForm[], defaultLocale: string
 /** The patch: complete rows only, in order. Blank rows are simply not stored. */
 export function linksPatch(links: readonly LinkForm[], defaultLocale: string) {
   return links
-    .filter((l) => l.label[defaultLocale]?.trim() && catalogueLinkUrl(l.url))
-    .map((l) => ({ _key: l.key, label: l.label, url: l.url.trim() }))
+    .filter((l) => (l.kind === 'buy' || l.label[defaultLocale]?.trim()) && catalogueLinkUrl(l.url))
+    .map((l) => ({
+      _key: l.key,
+      label: l.label,
+      url: l.url.trim(),
+      // Additive (Amendment K): an info link is written exactly as before.
+      ...(l.kind === 'buy' ? { kind: 'buy' as const, ...(l.affiliate ? { affiliate: true } : {}) } : {}),
+    }))
+}
+
+// ── The wizard's single "Buy link" (Amendment K, equivalence D9) ──────────────
+//
+// The wizard shows ONE buy link; it is the first `kind: 'buy'` entry of the
+// same `links[]` the editor's Links tab edits, so what is typed in either place
+// shows in the other and saves identically.
+
+export function buyLinkOf(links: readonly LinkForm[]): LinkForm | null {
+  return links.find((l) => l.kind === 'buy') ?? null
+}
+
+/** Applies a change to the first buy link (creating it when absent); a buy link left completely empty is removed. */
+export function withBuyLink(
+  links: readonly LinkForm[],
+  change: Partial<Pick<LinkForm, 'url' | 'label' | 'affiliate'>>,
+  newKey: () => string,
+): LinkForm[] {
+  const current = buyLinkOf(links)
+  const next: LinkForm = { key: newKey(), label: {}, url: '', affiliate: false, ...current, ...change, kind: 'buy' }
+  const empty = !next.url.trim() && Object.values(next.label).every((v) => !v?.trim())
+  if (!current) return empty ? [...links] : [...links, next]
+  return empty ? links.filter((l) => l.key !== current.key) : links.map((l) => (l.key === current.key ? next : l))
 }
 
 // ── Book details (Amendment I-3): plain values, all optional ──────────────────
 
 /** What the fields hold while typing: the year stays text so a half-typed number is not lost. */
-export type BookDetailsForm = { author: string; year: string; isbn: string }
-export const EMPTY_BOOK_DETAILS: BookDetailsForm = { author: '', year: '', isbn: '' }
+export type BookDetailsForm = { author: string; publisher: string; year: string; isbn: string }
+export const EMPTY_BOOK_DETAILS: BookDetailsForm = { author: '', publisher: '', year: '', isbn: '' }
 
 export function bookDetailsFromDoc(value: unknown): BookDetailsForm {
-  const v = (value && typeof value === 'object' ? value : {}) as { author?: unknown; year?: unknown; isbn?: unknown }
+  const v = (value && typeof value === 'object' ? value : {}) as { author?: unknown; publisher?: unknown; year?: unknown; isbn?: unknown }
   return {
     author: typeof v.author === 'string' ? v.author : '',
+    publisher: typeof v.publisher === 'string' ? v.publisher : '',
     year: typeof v.year === 'number' && Number.isInteger(v.year) ? String(v.year) : '',
     isbn: typeof v.isbn === 'string' ? v.isbn : '',
   }
@@ -587,11 +627,12 @@ export function bookDetailsFromDoc(value: unknown): BookDetailsForm {
  * that is not acceptable is not sent — `fallbackYear` (the last one that was)
  * stands in, so the author and ISBN typed meanwhile still save.
  */
-export function bookDetailsPatch(form: BookDetailsForm, fallbackYear = ''): { author?: string; year?: number; isbn?: string } {
+export function bookDetailsPatch(form: BookDetailsForm, fallbackYear = ''): { author?: string; publisher?: string; year?: number; isbn?: string } {
   const year = parseBookYear(form.year) ?? parseBookYear(fallbackYear)
   const author = form.author.trim()
+  const publisher = form.publisher.trim()
   const isbn = normalizeIsbn(form.isbn)
-  return { ...(author ? { author } : {}), ...(year !== null ? { year } : {}), ...(isbn ? { isbn } : {}) }
+  return { ...(author ? { author } : {}), ...(publisher ? { publisher } : {}), ...(year !== null ? { year } : {}), ...(isbn ? { isbn } : {}) }
 }
 
 /** The field-level error under the year input (blank is fine). */

@@ -40,6 +40,7 @@ const CONFIG: CatalogueConfigDTO = {
   tags: [],
   dietaryTags: [],
   timeZone: null,
+  affiliateDisclosure: null,
 }
 const NOW = new Date('2026-10-13T12:00:00Z')
 const CTX = { locale: 'it', defaultLocale: 'it', config: CONFIG, now: NOW }

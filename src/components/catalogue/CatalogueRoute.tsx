@@ -48,7 +48,9 @@ import { SlideUp } from '@/components/animation/SlideUp'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
 import { articlePortableTextComponents } from '@/components/portable-text/article-components'
 import { CatalogueCollectionView } from './CatalogueCollectionView'
-import { AllergensAndDietary, Byline, ItemLinks, ItemTags, OfferList, optionAllergenText } from './CatalogueItemParts'
+import { bookPublisherLine } from '@/lib/modules/catalogue/list-model'
+import { affiliateDisclosureText, collectionHasAffiliateLink, hasAffiliateLink } from '@/lib/modules/catalogue/affiliate'
+import { AffiliateDisclosure, AllergensAndDietary, BuyLinks, Byline, ItemLinks, ItemTags, OfferList, optionAllergenText } from './CatalogueItemParts'
 import { getCatalogueWebsiteMessages, optionRuleText, fillMessage } from './messages'
 
 type FetchForTenant = ReturnType<typeof tenantClient>['fetchForTenant']
@@ -202,7 +204,7 @@ export async function CatalogueRoute(
     return (
       <SlugMapProvider slugMap={catalogueSlugMap(item.page, segment)}>
         {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />}
-        <CatalogueItemPageView item={item} designSystem={designSystem} messages={messages} showPrices={config.showPricesByDefault} siteHosts={siteHosts} />
+        <CatalogueItemPageView item={item} designSystem={designSystem} messages={messages} showPrices={config.showPricesByDefault} siteHosts={siteHosts} affiliateDisclosure={config.affiliateDisclosure} />
       </SlugMapProvider>
     )
   }
@@ -220,6 +222,7 @@ export async function CatalogueRoute(
         showPrices={config.showPricesByDefault}
         siteHosts={siteHosts}
         itemHref={itemHref}
+        affiliateDisclosure={config.affiliateDisclosure}
       />
     </SlugMapProvider>
   )
@@ -257,6 +260,7 @@ function CatalogueCollectionPageView({
   showPrices,
   siteHosts,
   itemHref,
+  affiliateDisclosure,
 }: {
   collection: CatalogueCollectionDTO
   designSystem: DesignSystem | null
@@ -264,8 +268,10 @@ function CatalogueCollectionPageView({
   showPrices: boolean
   siteHosts: readonly string[]
   itemHref: (item: Parameters<typeof catalogueItemHref>[0]) => string | null
+  affiliateDisclosure: string | null
 }) {
   const { duration, ease } = motionOf(designSystem)
+  const disclosure = affiliateDisclosureText(collectionHasAffiliateLink(collection), affiliateDisclosure, messages.affiliateDisclosureDefault)
   return (
     <div style={{ backgroundColor: 'var(--color-background)' }}>
       <div className="mx-auto max-w-3xl px-5 py-12 md:px-10 md:py-20">
@@ -285,6 +291,7 @@ function CatalogueCollectionPageView({
           itemHref={itemHref}
           rootHeadingLevel={2}
         />
+        <AffiliateDisclosure text={disclosure} />
       </div>
     </div>
   )
@@ -296,14 +303,18 @@ function CatalogueItemPageView({
   messages: m,
   showPrices,
   siteHosts,
+  affiliateDisclosure,
 }: {
   item: CatalogueItemPageDTO
   designSystem: DesignSystem | null
   messages: ReturnType<typeof getCatalogueWebsiteMessages>
   showPrices: boolean
   siteHosts: readonly string[]
+  affiliateDisclosure: string | null
 }) {
   const { duration, ease } = motionOf(designSystem)
+  const disclosure = affiliateDisclosureText(hasAffiliateLink(item.links), affiliateDisclosure, m.affiliateDisclosureDefault)
+  const infoLinks = item.links.filter((l) => l.kind !== 'buy')
   const hero = item.images[0]
   const heroSource = hero ? (hero.image as unknown as ResolvedImage) : null
   const optionLists = item.optionLists.filter((l) => l.options.length > 0)
@@ -330,6 +341,8 @@ function CatalogueItemPageView({
             <div>
               <h1 style={H1_STYLE}>{item.name}</h1>
               <Byline byline={item.byline} className="mt-2 text-lg" />
+              {/* Amendment K — "Publisher · 1979" beside the author line (books only). */}
+              <Byline byline={bookPublisherLine({ publisher: item.bookDetails?.publisher, year: item.bookDetails?.year })} className="mt-1 text-base" />
             </div>
             {showPrices && item.offers.length > 0 && (
               <div className="sm:pt-3">
@@ -351,9 +364,15 @@ function CatalogueItemPageView({
           </SlideUp>
         )}
 
-        {item.links.length > 0 && (
+        {item.links.some((l) => l.kind === 'buy') && (
+          <SlideUp duration={duration} ease={ease} delay={0.07} className="mt-8">
+            <BuyLinks links={item.links} siteHosts={siteHosts} m={m} />
+          </SlideUp>
+        )}
+
+        {infoLinks.length > 0 && (
           <SlideUp duration={duration} ease={ease} delay={0.08} className="mt-8">
-            <ItemLinks links={item.links} siteHosts={siteHosts} compact={false} heading={m.linksHeading} />
+            <ItemLinks links={infoLinks} siteHosts={siteHosts} compact={false} heading={m.linksHeading} />
           </SlideUp>
         )}
 
@@ -407,6 +426,8 @@ function CatalogueItemPageView({
             <AllergensAndDietary item={item} m={m} compact={false} />
           </SlideUp>
         )}
+
+        <AffiliateDisclosure text={disclosure} />
       </article>
     </div>
   )

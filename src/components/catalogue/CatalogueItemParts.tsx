@@ -15,6 +15,7 @@ import type {
   CatalogueOptionListDTO,
   CatalogueTermDTO,
 } from '@/lib/modules/catalogue/dto'
+import { buyLabel, catalogueLinkRel } from '@/lib/modules/catalogue/affiliate'
 import { fillMessage, optionRuleText, type CatalogueWebsiteMessages } from './messages'
 
 /** F-1 — the short line under an item's name. Plain text, never parsed. */
@@ -54,7 +55,8 @@ export function ItemLinks({
           href={l.url}
           className="underline underline-offset-4"
           style={{ color: compact ? 'var(--color-text-secondary)' : 'var(--color-text-primary)' }}
-          {...(blank ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+          {...(blank ? { target: '_blank' } : {})}
+          {...relProps(l, blank)}
         >
           {l.label}
         </a>
@@ -69,6 +71,56 @@ export function ItemLinks({
     >
       {items}
     </ul>
+  )
+}
+
+function relProps(l: CatalogueItemLinkDTO, blank: boolean): { rel?: string } {
+  const rel = catalogueLinkRel(l, blank)
+  return rel ? { rel } : {}
+}
+
+/**
+ * Amendment K — an item's buy links as prominent buttons (item page only; cards
+ * keep the one-line list). The label is the link's own, else the localized
+ * "Buy". An affiliate link carries rel="sponsored nofollow noopener noreferrer"
+ * and a small localized marker under the button.
+ */
+export function BuyLinks({ links, siteHosts = [], m }: { links: readonly CatalogueItemLinkDTO[]; siteHosts?: readonly string[]; m: CatalogueWebsiteMessages }) {
+  const buy = links.filter((l) => l.kind === 'buy')
+  if (buy.length === 0) return null
+  return (
+    <ul className="flex flex-wrap items-start gap-x-6 gap-y-4" data-buy-links="">
+      {buy.map((l) => {
+        const blank = opensInNewTab({ href: l.url }, siteHosts)
+        return (
+          <li key={l.key} className="flex flex-col items-start gap-1.5">
+            <a
+              href={l.url}
+              className="inline-flex items-center gap-2 px-8 py-3.5 text-base font-semibold tracking-wide transition-all duration-200 hover:opacity-90"
+              style={{ backgroundColor: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)', borderRadius: 'var(--radius-btn)' }}
+              data-buy-link=""
+              {...(blank ? { target: '_blank' } : {})}
+              {...relProps(l, blank)}
+            >
+              {buyLabel(l.label, m.buyDefault)}
+            </a>
+            {l.affiliate && m.affiliateMarker && (
+              <span className="text-xs" style={MUTED} data-affiliate-marker="">{m.affiliateMarker}</span>
+            )}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+/** Amendment K — the catalogue's affiliate disclosure, once per page, below the content. `text` null = render nothing. */
+export function AffiliateDisclosure({ text, className }: { text: string | null; className?: string }) {
+  if (!text) return null
+  return (
+    <p className={className ?? 'mt-12 text-sm leading-relaxed'} style={MUTED} data-affiliate-disclosure="">
+      {text}
+    </p>
   )
 }
 

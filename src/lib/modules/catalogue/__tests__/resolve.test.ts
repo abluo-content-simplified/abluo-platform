@@ -32,6 +32,7 @@ const config: CatalogueConfigDTO = {
   tags: [{ value: 'gift', label: 'Regalo', color: null }],
   dietaryTags: [{ value: 'veg', label: 'Vegetariano', color: null }],
   timeZone: 'Europe/Rome',
+  affiliateDisclosure: null,
 }
 
 const ctx = (over: Partial<CatalogueResolveContext> = {}): CatalogueResolveContext => ({
@@ -453,10 +454,53 @@ describe('byline and links — ADR-033 Amendment F', () => {
       ctx({ locale: 'de', defaultLocale: 'it' }),
     )!
     expect(dto.links).toEqual([
-      { key: 'a', label: 'Editore', url: 'https://example.com/a' },
-      { key: 'b', label: 'English only', url: 'http://example.com/b' },
+      { key: 'a', label: 'Editore', url: 'https://example.com/a', kind: 'info', affiliate: false },
+      { key: 'b', label: 'English only', url: 'http://example.com/b', kind: 'info', affiliate: false },
     ])
     expect(resolveItem(item(), ctx())!.links).toEqual([])
+  })
+
+  it('Amendment K: a link without kind is info; buy / affiliate are read; unknown kinds and a stray affiliate flag are info; a buy link needs no label', () => {
+    const dto = resolveItem(
+      item({
+        links: [
+          { _key: 'a', label: 'Old', url: 'https://example.com/a' },
+          { _key: 'b', label: 'Buy it', url: 'https://example.com/b', kind: 'buy', affiliate: true },
+          { _key: 'c', label: 'Plain buy', url: 'https://example.com/c', kind: 'buy' },
+          { _key: 'd', label: 'Odd', url: 'https://example.com/d', kind: 'sponsored', affiliate: true },
+          { _key: 'e', label: 'Info flagged', url: 'https://example.com/e', kind: 'info', affiliate: true },
+          { _key: 'f', url: 'https://example.com/f', kind: 'buy', affiliate: true },
+          { _key: 'g', url: 'https://example.com/g' },
+        ],
+      }),
+      ctx(),
+    )!
+    expect(dto.links.map((l) => [l.key, l.kind, l.affiliate, l.label])).toEqual([
+      ['a', 'info', false, 'Old'],
+      ['b', 'buy', true, 'Buy it'],
+      ['c', 'buy', false, 'Plain buy'],
+      ['d', 'info', false, 'Odd'],
+      ['e', 'info', false, 'Info flagged'],
+      ['f', 'buy', true, ''],
+    ])
+  })
+
+  it('Amendment K: the publisher is read (trimmed), alone it keeps the details, and the query projects kind, affiliate and publisher', () => {
+    const b = (bookDetails: object) => resolveItem(item({ itemProfile: 'book', offers: [], bookDetails }), ctx())!.bookDetails
+    expect(b({ publisher: '  Pan   Books ' })).toEqual({ author: null, publisher: 'Pan Books', year: null, isbn: null })
+    expect(b({ author: 'A' })).toEqual({ author: 'A', publisher: null, year: null, isbn: null })
+    expect(b({ publisher: 7 })).toBeNull()
+    for (const q of [queries.catalogueItemBySlugQuery, queries.catalogueCollectionBySlugQuery, queries.catalogueCollectionByIdQuery]) {
+      expect(q).toContain('bookDetails { author, publisher, year, isbn }')
+      expect(q).toMatch(/links\[\] \{ _key, "label": [^}]*url, kind, affiliate \}/)
+    }
+  })
+
+  it('Amendment K: the config carries the affiliate disclosure of the request locale, blank = null', () => {
+    const c = (affiliateDisclosure: unknown) => resolveCatalogueConfig({ catalogue: { publicSegment: 'books', affiliateDisclosure } as never }, 'it', 'it')!.affiliateDisclosure
+    expect(c('  Link di affiliazione.  ')).toBe('Link di affiliazione.')
+    expect(c('   ')).toBeNull()
+    expect(c(undefined)).toBeNull()
   })
 
   it('the item queries project byline and links with a per-locale label', () => {
@@ -474,7 +518,7 @@ describe('book details — ADR-033 Amendment I-3', () => {
   it('reads a book: profile, details (ISBN normalised) and no food data', () => {
     const dto = resolveItem(book(), ctx())!
     expect(dto.itemProfile).toBe('book')
-    expect(dto.bookDetails).toEqual({ author: 'Douglas Adams', year: 1979, isbn: '9780345391803' })
+    expect(dto.bookDetails).toEqual({ author: 'Douglas Adams', publisher: null, year: 1979, isbn: '9780345391803' })
     expect(dto.allergenDeclaration).toBeNull()
   })
 
@@ -495,7 +539,7 @@ describe('book details — ADR-033 Amendment I-3', () => {
 
   it('drops stored values that are not acceptable and returns null when nothing is left', () => {
     expect(resolveItem(book({ bookDetails: { author: '  ', year: 1979.5, isbn: '' } }), ctx())!.bookDetails).toBeNull()
-    expect(resolveItem(book({ bookDetails: { author: 'A', year: 3000, isbn: 7 } }), ctx())!.bookDetails).toEqual({ author: 'A', year: null, isbn: null })
+    expect(resolveItem(book({ bookDetails: { author: 'A', year: 3000, isbn: 7 } }), ctx())!.bookDetails).toEqual({ author: 'A', publisher: null, year: null, isbn: null })
     expect(resolveItem(book({ bookDetails: null }), ctx())!.bookDetails).toBeNull()
     expect(resolveItem(book({ bookDetails: undefined }), ctx())!.bookDetails).toBeNull()
   })
@@ -508,7 +552,7 @@ describe('book details — ADR-033 Amendment I-3', () => {
 
   it('the item queries project bookDetails (plain, not localized)', () => {
     for (const q of [queries.catalogueItemBySlugQuery, queries.catalogueCollectionByIdQuery]) {
-      expect(q).toContain('bookDetails { author, year, isbn }')
+      expect(q).toContain('bookDetails { author, publisher, year, isbn }')
     }
   })
 })

@@ -12,7 +12,7 @@ import { can } from '@/lib/modules/catalogue/profiles'
 import { EMPTY_BOOK_DETAILS, NOT_REVIEWED, canAdvanceItem, initialItemProfile, itemOptionsRelevant, itemWizardSteps, type ItemProfile, type ItemState, type ItemStep } from '@/lib/modules/catalogue/dashboard-form'
 import { blocksNextOn, itemIssues, publishBlockers, type ItemIssue } from '@/lib/modules/catalogue/item-issues'
 import { CAT_BUTTON, CAT_ICONS, CAT_INPUT, CAT_PRIMARY, ItemIssueList, focusField, useCatalogueError, useItemIssueText } from './catalogue-ui'
-import { BookDetailsFields, FoodInfoField, ItemPreview, LanguagesField, NameFields, OptionsField, PageField, PhotoField, PriceField, ProfileField, type OptionListChoice } from './item-fields'
+import { BookDetailsFields, BuyLinkField, FoodInfoField, ItemPreview, LanguagesField, NameFields, OptionsField, PageField, PhotoField, PriceField, ProfileField, type OptionListChoice } from './item-fields'
 import { useCatalogueDraft, type PublishMode } from './use-catalogue-draft'
 import { StrayAddressNotice, useStrayAddress } from './stray-address'
 import { languageName } from '@/components/client/create/StepHeading'
@@ -219,7 +219,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
           <>
             {heading('item-step-name', s.itemProfile && can(s.itemProfile, 'bookDetails') ? 'nameBook' : 'name')}
             <div className="mt-8">
-              <NameFields autoFocus locale={d} profile={s.itemProfile} afterName={s.itemProfile && can(s.itemProfile, 'bookDetails') ? <BookDetailsFields value={s.bookDetails} onChange={item.setBookDetails} /> : null} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
+              <NameFields autoFocus locale={d} profile={s.itemProfile} afterName={s.itemProfile && can(s.itemProfile, 'bookDetails') ? <><BookDetailsFields value={s.bookDetails} onChange={item.setBookDetails} /><div className="mt-5"><BuyLinkField links={s.links} defaultLocale={d} onChange={item.setLinks} /></div></> : null} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
             </div>
           </>
         ) : step === 'category' ? (

@@ -566,6 +566,7 @@ export const catalogueItem = defineType({
       hidden: ({ document }) => !can(profileOf(document?.itemProfile), 'bookDetails'),
       fields: [
         defineField({ name: 'author', title: 'Author', type: 'string', validation: (Rule) => Rule.max(120) }),
+        defineField({ name: 'publisher', title: 'Publisher', type: 'string', description: 'Optional. Not translated.', validation: (Rule) => Rule.max(120) }),
         defineField({
           name: 'year',
           title: 'Year',
@@ -991,13 +992,34 @@ export const catalogueItemLink = defineType({
   title: 'Link',
   type: 'object',
   fields: [
-    defineField({ name: 'label', title: 'Label', type: 'localizedString', validation: (Rule) => Rule.required() }),
+    defineField({
+      name: 'label',
+      title: 'Label',
+      type: 'localizedString',
+      description: 'Optional on a buy link: the website then says "Buy".',
+      validation: (Rule) => Rule.custom((value, context) => ((context.parent as { kind?: string } | undefined)?.kind === 'buy' || value ? true : 'A link needs a label.')),
+    }),
     defineField({
       name: 'url',
       title: 'Web address',
       type: 'url',
       validation: (Rule) =>
         Rule.required().custom((value) => linkUrlIssue(value)),
+    }),
+    // Amendment K — additive. Absent = a plain info link (every link stored before this).
+    defineField({
+      name: 'kind',
+      title: 'Kind',
+      type: 'string',
+      options: { list: [{ title: 'Link', value: 'info' }, { title: 'Buy link', value: 'buy' }], layout: 'radio' },
+      initialValue: 'info',
+    }),
+    defineField({
+      name: 'affiliate',
+      title: 'This is an affiliate link',
+      type: 'boolean',
+      description: 'You earn a commission when someone buys through it. Shows a short disclosure on the page.',
+      hidden: ({ parent }) => (parent as { kind?: string } | undefined)?.kind !== 'buy',
     }),
   ],
   preview: {

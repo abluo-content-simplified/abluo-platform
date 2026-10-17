@@ -3541,7 +3541,13 @@
             "down": "Sposta il link in basso",
             "remove": "Rimuovi questo link",
             "badUrl": "Usa un indirizzo web completo che inizi con http:// o https://.",
-            "incomplete": "Un link ha bisogno sia di un’etichetta sia di un indirizzo web. Non viene salvato finché non li compili entrambi."
+            "incomplete": "Un link ha bisogno sia di un’etichetta sia di un indirizzo web. Non viene salvato finché non li compili entrambi.",
+            "kind": "Tipo di link",
+            "kindInfo": "Link",
+            "kindBuy": "Link di acquisto",
+            "kindBuyHelp": "Mostra un pulsante Acquista nella pagina. L’etichetta è facoltativa.",
+            "affiliate": "Questo è un link di affiliazione",
+            "affiliateHelp": "Guadagni una commissione quando qualcuno acquista tramite questo link."
           },
           "title": "Titolo",
           "book": {
@@ -3550,7 +3556,13 @@
             "year": "Anno",
             "yearInvalid": "Scrivi un anno intero tra 1000 e {max}. Non viene salvato finché non lo è.",
             "isbn": "ISBN",
-            "isbnAdvice": "Questo non sembra un ISBN valido. Puoi comunque tenerlo."
+            "isbnAdvice": "Questo non sembra un ISBN valido. Puoi comunque tenerlo.",
+            "publisher": "Editore"
+          },
+          "buyLink": {
+            "url": "Link di acquisto",
+            "help": "Facoltativo. Dove si può acquistare. Appare come pulsante Acquista nella pagina.",
+            "label": "Testo del pulsante (facoltativo)"
           }
         },
         "photos": {
@@ -3956,7 +3968,10 @@
       "mayContainHeading": "Può contenere",
       "allergensNoneDeclared": "Informazioni sugli allergeni verificate: nessun allergene dell’elenco UE dichiarato.",
       "containsHeading": "Contiene",
-      "linksHeading": "Link"
+      "linksHeading": "Link",
+      "buyDefault": "Acquista",
+      "affiliateMarker": "Link di affiliazione",
+      "affiliateDisclosureDefault": "Alcuni link in questa pagina sono link di affiliazione. Se acquisti tramite questi link, riceviamo una piccola commissione, senza alcun costo aggiuntivo per te."
     }
   }
 }

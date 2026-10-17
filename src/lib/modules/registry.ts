@@ -1120,6 +1120,13 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           description: 'Optional. Leave empty to show "Catalogue" in the dashboard; set it only if this project should use another name (for example "Menu"). Presentation only.',
         },
         {
+          id: 'affiliateDisclosure',
+          label: 'Affiliate disclosure',
+          type: 'localizedString',
+          description:
+            'One sentence, shown once at the bottom of a page that has at least one affiliate buy link. Leave a language empty to use the standard wording for it (for example "Some links on this page are affiliate links. If you buy through them, we receive a small commission at no extra cost to you.").',
+        },
+        {
           id: 'categories',
           label: 'Categories',
           type: 'localizedStringList',

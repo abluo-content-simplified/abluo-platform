@@ -26,6 +26,8 @@ import {
   offerFormIssues,
   parsePrice,
   linkFormIssues,
+  buyLinkOf,
+  withBuyLink,
   moveIndex,
   slugFromName,
   slugPreview,
@@ -41,7 +43,7 @@ import {
 } from '@/lib/modules/catalogue/dashboard-form'
 import { PROFILES } from '@/lib/modules/catalogue/profiles'
 import { bookYearMax, isValidIsbn, normalizeIsbn, parseBookYear } from '@/lib/modules/catalogue/isbn'
-import { itemSecondaryLine } from '@/lib/modules/catalogue/list-model'
+import { bookPublisherLine, itemSecondaryLine } from '@/lib/modules/catalogue/list-model'
 import { CAT_BUTTON, CAT_ICON_BUTTON, CAT_ICONS, CAT_INPUT, CAT_LABEL, CAT_TEXTAREA, catalogueHref, textIn } from './catalogue-ui'
 
 export type ItemPhoto = { assetId: string; thumbUrl: string | null }
@@ -141,6 +143,12 @@ export function BookDetailsFields({ value, onChange }: { value: BookDetailsForm;
         <input id={`${id}-author`} data-book-author data-enter-next maxLength={120} value={value.author} onChange={(e) => onChange({ ...value, author: e.target.value })} className={CAT_INPUT} />
         <p className="mt-1.5 text-sm text-muted-foreground">{t('authorHelp')}</p>
       </div>
+      <div>
+        <label htmlFor={`${id}-publisher`} className={CAT_LABEL}>
+          {t('publisher')}
+        </label>
+        <input id={`${id}-publisher`} data-book-publisher data-enter-next maxLength={120} value={value.publisher} onChange={(e) => onChange({ ...value, publisher: e.target.value })} className={CAT_INPUT} />
+      </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor={`${id}-year`} className={CAT_LABEL}>
@@ -183,6 +191,32 @@ export function BookDetailsFields({ value, onChange }: { value: BookDetailsForm;
 
 // ── Links (Amendment F-2) — add, remove, reorder; label per language + address ─
 
+/**
+ * Amendment K — "Link / Buy link" and, for a buy link, the affiliate tick.
+ * Shared by the item editor's Links tab and the wizard's book screen, so both
+ * write the same `links[]` entry (D9).
+ */
+export function LinkKindFields({ link, onChange }: { link: Pick<LinkForm, 'kind' | 'affiliate'>; onChange: (next: Pick<LinkForm, 'kind' | 'affiliate'>) => void }) {
+  const t = useTranslations('catalogue.dashboard.item.fields.links')
+  return (
+    <div className="space-y-3">
+      <ChoiceCardGrid label={t('kind')} kind="radio">
+        <ChoiceCard icon={CAT_ICONS.list} label={t('kindInfo')} selected={link.kind === 'info'} onSelect={() => onChange({ kind: 'info', affiliate: false })} />
+        <ChoiceCard icon={CAT_ICONS.product} label={t('kindBuy')} description={t('kindBuyHelp')} selected={link.kind === 'buy'} onSelect={() => onChange({ kind: 'buy', affiliate: link.affiliate })} />
+      </ChoiceCardGrid>
+      {link.kind === 'buy' ? (
+        <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-border p-3">
+          <Checkbox aria-label={t('affiliate')} checked={link.affiliate} onChange={(on) => onChange({ kind: 'buy', affiliate: on })} />
+          <span className="pt-2.5 text-[0.9375rem] leading-6 text-foreground">
+            {t('affiliate')}
+            <span className="block text-sm text-muted-foreground">{t('affiliateHelp')}</span>
+          </span>
+        </label>
+      ) : null}
+    </div>
+  )
+}
+
 export function LinksField({ links, locales, defaultLocale, onChange }: { links: LinkForm[]; locales: readonly string[]; defaultLocale: string; onChange: (next: LinkForm[]) => void }) {
   const t = useTranslations('catalogue.dashboard.item.fields.links')
   const ui = useLocale()
@@ -208,6 +242,7 @@ export function LinksField({ links, locales, defaultLocale, onChange }: { links:
                         <input id={`${id}-${l.key}-${loc}`} maxLength={80} value={l.label[loc] ?? ''} onChange={(e) => setLink(l.key, { label: { ...l.label, [loc]: e.target.value } })} className={CAT_INPUT} />
                       </div>
                     ))}
+                    <LinkKindFields link={l} onChange={(next) => setLink(l.key, next)} />
                     <div>
                       <label htmlFor={`${id}-${l.key}-url`} className="text-sm text-foreground">
                         {t('url')}
@@ -236,10 +271,57 @@ export function LinksField({ links, locales, defaultLocale, onChange }: { links:
         </ul>
       ) : null}
       {links.length < CATALOGUE_LINK_LIMITS.links ? (
-        <button type="button" onClick={() => onChange([...links, { key: newKey(), label: {}, url: '' }])} className={CAT_BUTTON}>
+        <button type="button" onClick={() => onChange([...links, { key: newKey(), label: {}, url: '', kind: 'info', affiliate: false }])} className={CAT_BUTTON}>
           {CAT_ICONS.plus}
           {t('add')}
         </button>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * Amendment K — the wizard's one "Buy link": address, optional label (main
+ * language) and the affiliate tick. It edits the first buy entry of `links[]`,
+ * the same entry the editor's Links tab shows.
+ */
+export function BuyLinkField({ links, defaultLocale, onChange }: { links: LinkForm[]; defaultLocale: string; onChange: (next: LinkForm[]) => void }) {
+  const t = useTranslations('catalogue.dashboard.item.fields.buyLink')
+  const tl = useTranslations('catalogue.dashboard.item.fields.links')
+  const id = useId()
+  const buy = buyLinkOf(links)
+  const bad = buy ? linkFormIssues([buy], defaultLocale).find((i) => i.kind === 'badUrl') : undefined
+  return (
+    <div className="space-y-3" data-buy-link-field>
+      <div>
+        <label htmlFor={`${id}-url`} className={CAT_LABEL}>
+          {t('url')}
+        </label>
+        <input id={`${id}-url`} data-enter-next type="url" inputMode="url" autoComplete="off" placeholder="https://" maxLength={2048} value={buy?.url ?? ''} onChange={(e) => onChange(withBuyLink(links, { url: e.target.value }, newKey))} aria-invalid={bad ? true : undefined} className={CAT_INPUT} />
+        {bad ? (
+          <p role="alert" className="mt-1.5 text-sm text-foreground">
+            {tl('badUrl')}
+          </p>
+        ) : (
+          <p className="mt-1.5 text-sm text-muted-foreground">{t('help')}</p>
+        )}
+      </div>
+      {buy ? (
+        <>
+          <div>
+            <label htmlFor={`${id}-label`} className={CAT_LABEL}>
+              {t('label')}
+            </label>
+            <input id={`${id}-label`} data-enter-next maxLength={80} value={buy.label[defaultLocale] ?? ''} onChange={(e) => onChange(withBuyLink(links, { label: { ...buy.label, [defaultLocale]: e.target.value } }, newKey))} className={CAT_INPUT} />
+          </div>
+          <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-border p-3">
+            <Checkbox aria-label={tl('affiliate')} checked={buy.affiliate} onChange={(on) => onChange(withBuyLink(links, { affiliate: on }, newKey))} />
+            <span className="pt-2.5 text-[0.9375rem] leading-6 text-foreground">
+              {tl('affiliate')}
+              <span className="block text-sm text-muted-foreground">{tl('affiliateHelp')}</span>
+            </span>
+          </label>
+        </>
       ) : null}
     </div>
   )
@@ -884,6 +966,7 @@ export function ItemPreview({
   const isBook = profile === 'book'
   const bylineText = byline ? textIn(byline, locale, defaultLocale) : ''
   const secondary = isBook ? itemSecondaryLine({ itemProfile: 'book', byline: bylineText, author: bookDetails?.author, year: parseBookYear(bookDetails?.year) }) : bylineText
+  const publisherLine = isBook ? bookPublisherLine({ publisher: bookDetails?.publisher, year: parseBookYear(bookDetails?.year) }) : null
   const isbn = isBook && bookDetails?.isbn && isValidIsbn(bookDetails.isbn) ? normalizeIsbn(bookDetails.isbn) : ''
   return (
     <article className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -898,6 +981,7 @@ export function ItemPreview({
           {priced[0] ? <span className="text-lg font-semibold text-foreground">{formatPrice(parsePrice(priced[0].price)!, currency, locale)}</span> : null}
         </div>
         {secondary ? <p className="text-sm text-muted-foreground">{secondary}</p> : null}
+        {publisherLine ? <p className="text-sm text-muted-foreground">{publisherLine}</p> : null}
         {isbn ? <p className="text-sm text-muted-foreground">ISBN {isbn}</p> : null}
         {textIn(description, locale, defaultLocale) ? <p className="text-[0.9375rem] leading-6 text-muted-foreground">{textIn(description, locale, defaultLocale)}</p> : null}
         {priced.length > 1 ? (

@@ -253,6 +253,33 @@ describe('byline and links — ADR-033 Amendment F', () => {
     expect(cleanCatalogueSet('item', { links: [] }, ctx()).unset).toEqual(['links'])
   })
 
+  it('Amendment K: kind and affiliate are additive: info is stored exactly as before; buy keeps kind, affiliate only on a buy link', () => {
+    const r = cleanCatalogueSet('item', {
+      links: [
+        { _key: 'a', label: { en: 'Old' }, url: 'https://e.com/a' },
+        { _key: 'b', label: { en: 'Info' }, url: 'https://e.com/b', kind: 'info', affiliate: true },
+        { _key: 'c', label: { en: 'Buy' }, url: 'https://e.com/c', kind: 'buy' },
+        { _key: 'd', label: { en: 'Buy' }, url: 'https://e.com/d', kind: 'buy', affiliate: true },
+        { _key: 'e', url: 'https://e.com/e', kind: 'buy', affiliate: false },
+      ],
+    }, ctx()).set.links as Record<string, unknown>[]
+    expect(r[0]).toEqual({ _key: 'a', _type: 'catalogueItemLink', label: { _type: 'localizedString', en: 'Old' }, url: 'https://e.com/a' })
+    expect(r[1]).not.toHaveProperty('kind')
+    expect(r[1]).not.toHaveProperty('affiliate')
+    expect(r[2]).toMatchObject({ kind: 'buy' })
+    expect(r[2]).not.toHaveProperty('affiliate')
+    expect(r[3]).toMatchObject({ kind: 'buy', affiliate: true })
+    expect(r[4]).toEqual({ _key: 'e', _type: 'catalogueItemLink', url: 'https://e.com/e', kind: 'buy' })
+  })
+
+  it('Amendment K: an unknown kind or a non-boolean affiliate is refused; a label-less info link still is', () => {
+    const one = (link: object) => () => cleanCatalogueSet('item', { links: [{ label: { en: 'L' }, url: 'https://e.com', ...link }] }, ctx())
+    expect(code(one({ kind: 'sponsored' }))).toBe('invalid_value')
+    expect(code(one({ kind: 'buy', affiliate: 'yes' }))).toBe('invalid_value')
+    expect(code(() => cleanCatalogueSet('item', { links: [{ url: 'https://e.com', kind: 'info' }] }, ctx()))).toBe('invalid_value')
+    expect(code(() => cleanCatalogueSet('item', { links: [{ url: 'ftp://e.com', kind: 'buy' }] }, ctx()))).toBe('invalid_value')
+  })
+
   it('refuses unsafe schemes, relative and malformed addresses, a missing label, too many links, and links on collections', () => {
     const one = (url: unknown, label: unknown = { en: 'L' }) => () => cleanCatalogueSet('item', { links: [{ label, url }] }, ctx())
     for (const url of ['javascript:alert(1)', 'JaVaScRiPt:alert(1)', 'data:text/html,x', 'vbscript:x', 'mailto:a@b.it', 'tel:+39123456', '/menu', '//evil.com', '#top', 'ftp://example.com', 'https://', 'https://exa mple.com', '', null, 5]) {
@@ -304,10 +331,17 @@ describe('book details (ADR-033 Amendment I-3)', () => {
     expect((cleanCatalogueSet('item', { bookDetails: { isbn: 'x'.repeat(500) } }, bookCtx).set.bookDetails as { isbn: string }).isbn).toHaveLength(32)
   })
 
+  it('Amendment K: the publisher is trimmed, optional, never mandatory, and alone is enough to keep the details', () => {
+    expect(cleanCatalogueSet('item', { bookDetails: { publisher: '  Pan   Books ' } }, bookCtx).set.bookDetails).toEqual({ publisher: 'Pan Books' })
+    expect(cleanCatalogueSet('item', { bookDetails: { author: 'A', publisher: '  ' } }, bookCtx).set.bookDetails).toEqual({ author: 'A' })
+    expect(cleanCatalogueSet('item', { bookDetails: { publisher: 'P'.repeat(120) } }, bookCtx).set.bookDetails).toEqual({ publisher: 'P'.repeat(120) })
+  })
+
   it('refuses unknown keys, a non-object and an over-long author', () => {
-    expect(code(() => cleanCatalogueSet('item', { bookDetails: { publisher: 'x' } }, bookCtx))).toBe('invalid_value')
+    expect(code(() => cleanCatalogueSet('item', { bookDetails: { translator: 'x' } }, bookCtx))).toBe('invalid_value')
     expect(code(() => cleanCatalogueSet('item', { bookDetails: 'Douglas Adams' }, bookCtx))).toBe('invalid_value')
     expect(code(() => cleanCatalogueSet('item', { bookDetails: { author: 'a'.repeat(121) } }, bookCtx))).toBe('invalid_value')
+    expect(code(() => cleanCatalogueSet('item', { bookDetails: { publisher: 'p'.repeat(121) } }, bookCtx))).toBe('invalid_value')
   })
 
   it('only items have book details', () => {

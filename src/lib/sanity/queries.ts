@@ -2142,6 +2142,8 @@ export const DS_FIELDS_SELECTION = /* groq */ `{
     darkImage { asset-> }
   },
 
+  brandPalette[] { _key, key, name, value, tier, usage, description, uses, cmyk, pantone },
+
   glass { backgroundOklch, backdropBlur, borderColor, borderWidth },
 
   forms {
@@ -2296,12 +2298,12 @@ const CATALOGUE_ITEM_FIELDS = /* groq */ `
   // ADR-033 Amendment F — a short line under the name; links with a label per locale.
   "byline": ${loc('byline')},
   // ADR-033 Amendment I — plain, non-localized; read only for a profile that carries it.
-  bookDetails { author, year, isbn },
+  bookDetails { author, publisher, year, isbn },
   "description": ${loc('description')},
   "slugMap": slug,
   categories,
   tags,
-  links[] { _key, "label": ${loc('label')}, url },
+  links[] { _key, "label": ${loc('label')}, url, kind, affiliate },
   // ADR-033 D-3 — the explicit declaration; the note is tenant text (locale chain).
   allergenDeclaration { status, allergens, mayContain, confirmed, "note": ${loc('note')} },
   dietary,
@@ -2404,6 +2406,8 @@ export const catalogueModuleConfigQuery = /* groq */ `
       publicSegment,
       publicSegmentHistory,
       showPricesByDefault,
+      // Amendment K — this language only; blank falls back to the platform's default sentence.
+      "affiliateDisclosure": affiliateDisclosure[$locale],
       "serviceChannels": serviceChannels[] { value, "label": coalesce(label[$locale], label[$defaultLocale], label.en) },
       "categories": categories[] { value, color, "label": coalesce(label[$locale], label[$defaultLocale], label.en) },
       "dietaryTags": dietaryTags[] { value, "label": coalesce(label[$locale], label[$defaultLocale], label.en) }

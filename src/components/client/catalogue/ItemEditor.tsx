@@ -385,7 +385,7 @@ export function ItemEditor({
       <ChangeTypeSheet
         open={typeOpen}
         current={s.itemProfile}
-        hasBookDetails={Boolean(s.bookDetails.author.trim() || s.bookDetails.year.trim() || s.bookDetails.isbn.trim())}
+        hasBookDetails={Boolean(s.bookDetails.author.trim() || s.bookDetails.publisher.trim() || s.bookDetails.year.trim() || s.bookDetails.isbn.trim())}
         onClose={() => setTypeOpen(false)}
         onChange={item.setProfile}
       />

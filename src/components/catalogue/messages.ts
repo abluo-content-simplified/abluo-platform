@@ -34,6 +34,9 @@ export const CATALOGUE_WEBSITE_KEYS = [
   'chooseBetween',
   'without',
   'linksHeading',
+  'buyDefault',
+  'affiliateMarker',
+  'affiliateDisclosureDefault',
 ] as const
 
 export type CatalogueWebsiteKey = (typeof CATALOGUE_WEBSITE_KEYS)[number]

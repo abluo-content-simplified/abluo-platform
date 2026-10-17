@@ -24,6 +24,8 @@ import { EyebrowLabel } from '@/components/sections/EyebrowLabel'
 import { CatalogueCollectionView } from '@/components/catalogue/CatalogueCollectionView'
 import { siteHostsForProject } from '@/lib/links/link-target'
 import { getCatalogueWebsiteMessages } from '@/components/catalogue/messages'
+import { AffiliateDisclosure } from '@/components/catalogue/CatalogueItemParts'
+import { affiliateDisclosureText, collectionHasAffiliateLink } from '@/lib/modules/catalogue/affiliate'
 import { catalogueItemHref, collectionHasItems, listingAllergenPresentation, listingShowsPrices } from '@/lib/modules/catalogue/website'
 
 interface Props {
@@ -62,6 +64,10 @@ export function CatalogueListingSection({ section, surface, designSystem, locale
     siteHosts: siteHostsForProject(tenantSlug),
   }
 
+  const messages = getCatalogueWebsiteMessages(locale)
+  // Amendment K — once per listing, only when it shows at least one affiliate link.
+  const disclosure = affiliateDisclosureText(collectionHasAffiliateLink(collection), data.affiliateDisclosure, messages.affiliateDisclosureDefault)
+
   return (
     <SectionContainer id={section.anchorId} style={surfaceStyles}>
       {(eyebrow || title || subtitle) && (
@@ -93,11 +99,12 @@ export function CatalogueListingSection({ section, surface, designSystem, locale
         <CatalogueCollectionView
           collection={collection}
           display={display}
-          messages={getCatalogueWebsiteMessages(locale)}
+          messages={messages}
           designSystem={designSystem}
           itemHref={(item) => catalogueItemHref(item, siteBase, data.segment)}
           rootHeadingLevel={title ? 3 : 2}
         />
+        <AffiliateDisclosure text={disclosure} className="mt-8 text-sm leading-relaxed" />
       </div>
     </SectionContainer>
   )

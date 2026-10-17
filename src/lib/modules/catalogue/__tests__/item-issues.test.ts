@@ -123,7 +123,7 @@ describe('options visibility (D7)', () => {
 })
 
 describe('book details and the advice severity (Amendment I-3.3)', () => {
-  const book = (isbn: string, over: Partial<ItemState> = {}): Partial<ItemState> => ({ itemProfile: 'book', bookDetails: { author: '', year: '', isbn }, ...over })
+  const book = (isbn: string, over: Partial<ItemState> = {}): Partial<ItemState> => ({ itemProfile: 'book', bookDetails: { author: '', publisher: '', year: '', isbn }, ...over })
 
   it('a book with only a title has no issues: nothing in the book details is mandatory', () => {
     expect(ids(book(''))).toEqual([])
@@ -162,6 +162,6 @@ describe('book details and the advice severity (Amendment I-3.3)', () => {
   })
 
   it('hidden book details (type changed away from book) raise no advice', () => {
-    expect(ids({ itemProfile: 'product', bookDetails: { author: 'x', year: '', isbn: '12345' } })).toEqual([])
+    expect(ids({ itemProfile: 'product', bookDetails: { author: 'x', publisher: '', year: '', isbn: '12345' } })).toEqual([])
   })
 })

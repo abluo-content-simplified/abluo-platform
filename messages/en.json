@@ -3541,7 +3541,13 @@
             "down": "Move link down",
             "remove": "Remove this link",
             "badUrl": "Use a full web address starting with http:// or https://.",
-            "incomplete": "A link needs both a label and a web address. It is not saved until both are filled in."
+            "incomplete": "A link needs both a label and a web address. It is not saved until both are filled in.",
+            "kind": "Type of link",
+            "kindInfo": "Link",
+            "kindBuy": "Buy link",
+            "kindBuyHelp": "Shows a Buy button on the page. The label is optional.",
+            "affiliate": "This is an affiliate link",
+            "affiliateHelp": "You earn a commission when someone buys through it."
           },
           "title": "Title",
           "book": {
@@ -3550,7 +3556,13 @@
             "year": "Year",
             "yearInvalid": "Use a whole year between 1000 and {max}. It is not saved until it is.",
             "isbn": "ISBN",
-            "isbnAdvice": "This doesn’t look like a valid ISBN. You can still keep it."
+            "isbnAdvice": "This doesn’t look like a valid ISBN. You can still keep it.",
+            "publisher": "Publisher"
+          },
+          "buyLink": {
+            "url": "Buy link",
+            "help": "Optional. Where people can buy it. Shows as a Buy button on the page.",
+            "label": "Button text (optional)"
           }
         },
         "photos": {
@@ -3956,7 +3968,10 @@
       "mayContainHeading": "May contain",
       "allergensNoneDeclared": "Allergen information reviewed: no EU-listed allergens declared.",
       "containsHeading": "Contains",
-      "linksHeading": "Links"
+      "linksHeading": "Links",
+      "buyDefault": "Buy",
+      "affiliateMarker": "Affiliate link",
+      "affiliateDisclosureDefault": "Some links on this page are affiliate links. If you buy through them, we receive a small commission at no extra cost to you."
     }
   }
 }

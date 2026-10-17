@@ -307,7 +307,7 @@ describe('byline and links form logic — ADR-033 Amendment F', () => {
     const { itemStateFromDoc } = await import('../dashboard-form')
     const st = itemStateFromDoc({ byline: { en: 'x', _type: 'localizedString' }, links: [{ _key: 'a', label: { en: 'L' }, url: 'https://e.com' }, { nokey: 1 }] })
     expect(st.byline).toEqual({ en: 'x' })
-    expect(st.links).toEqual([{ key: 'a', label: { en: 'L' }, url: 'https://e.com' }])
+    expect(st.links).toEqual([{ key: 'a', label: { en: 'L' }, url: 'https://e.com', kind: 'info', affiliate: false }])
     expect(itemStateFromDoc(null).links).toEqual([])
   })
 
@@ -315,11 +315,11 @@ describe('byline and links form logic — ADR-033 Amendment F', () => {
     const { linkFormIssues, linksPatch } = await import('../dashboard-form')
     type LinkForm = import('../dashboard-form').LinkForm
     const rows: LinkForm[] = [
-      { key: 'blank', label: {}, url: '' },
-      { key: 'noUrl', label: { en: 'L' }, url: '' },
-      { key: 'noLabel', label: { it: 'x' }, url: 'https://e.com' },
-      { key: 'bad', label: { en: 'L' }, url: 'javascript:alert(1)' },
-      { key: 'ok', label: { en: 'L' }, url: ' https://e.com ' },
+      { key: 'blank', label: {}, url: '', kind: 'info', affiliate: false },
+      { key: 'noUrl', label: { en: 'L' }, url: '', kind: 'info', affiliate: false },
+      { key: 'noLabel', label: { it: 'x' }, url: 'https://e.com', kind: 'info', affiliate: false },
+      { key: 'bad', label: { en: 'L' }, url: 'javascript:alert(1)', kind: 'info', affiliate: false },
+      { key: 'ok', label: { en: 'L' }, url: ' https://e.com ', kind: 'info', affiliate: false },
     ]
     expect(linkFormIssues(rows, 'en')).toEqual([
       { kind: 'incomplete', key: 'noUrl' },

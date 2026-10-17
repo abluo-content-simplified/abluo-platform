@@ -844,10 +844,33 @@ describe('H. a book on its own page (Amendment I)', () => {
     if (e.kind !== 'item') return
     expect(e.item.itemProfile).toBe('book')
     expect(e.item.byline).toBe('Douglas Adams')
-    expect(e.item.bookDetails).toEqual({ author: 'Douglas Adams', year: 1979, isbn: '9780345391803' })
+    expect(e.item.bookDetails).toEqual({ author: 'Douglas Adams', publisher: null, year: 1979, isbn: '9780345391803' })
     const ld = catalogueItemJsonLd(e.item, { url: `${ORIGIN}/it/menu/guida-galattica`, locale: 'it' })!
     expect(ld['@type']).toBe('Book')
     expect(ld).toMatchObject({ isbn: '9780345391803', datePublished: '1979' })
+  })
+
+  it('Amendment K: publisher, buy and affiliate links travel through the real query; an old link without kind stays info; JSON-LD names the publisher', async () => {
+    const e = await read(
+      doc({
+        bookDetails: { author: 'Douglas Adams', publisher: 'Pan Books', year: 1979 },
+        links: [
+          { _key: 'l1', _type: 'catalogueItemLink', label: { it: 'Scheda' }, url: 'https://example.com/scheda' },
+          { _key: 'l2', _type: 'catalogueItemLink', label: { it: 'Acquista su Libreria' }, url: 'https://shop.example.com/b', kind: 'buy', affiliate: true },
+          { _key: 'l3', _type: 'catalogueItemLink', url: 'https://shop.example.com/c', kind: 'buy' },
+        ],
+      }),
+    )
+    expect(e.kind).toBe('item')
+    if (e.kind !== 'item') return
+    expect(e.item.bookDetails).toEqual({ author: 'Douglas Adams', publisher: 'Pan Books', year: 1979, isbn: null })
+    expect(e.item.links.map((l) => [l.key, l.kind, l.affiliate, l.label])).toEqual([
+      ['l1', 'info', false, 'Scheda'],
+      ['l2', 'buy', true, 'Acquista su Libreria'],
+      ['l3', 'buy', false, ''],
+    ])
+    const ld = catalogueItemJsonLd(e.item, { url: `${ORIGIN}/it/menu/guida-galattica`, locale: 'it' })!
+    expect(ld).toMatchObject({ publisher: { '@type': 'Organization', name: 'Pan Books' } })
   })
 
   it('the same document read as a product (older deployment) is a plain product page with no offer: no item node, no failure', async () => {
