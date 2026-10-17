@@ -19,8 +19,9 @@ export default async function NewEventPage({ params }: { params: Promise<{ tenan
   if (!ctx) redirect(`/login?next=/${projectSlug}/agenda/new`)
   const grant = resolveProjectGrant(ctx.projects, projectSlug)
   if (!grant || !grant.permissions.includes(EVENT_WRITE_PERMISSION)) notFound()
+  let timeZone: string | null = null
   try {
-    await getEventSite(ctx, grant.projectId)
+    timeZone = (await getEventSite(ctx, grant.projectId)).timeZone
   } catch (error) {
     if (error instanceof TenantAuthorizationError) notFound()
     throw error
@@ -28,7 +29,7 @@ export default async function NewEventPage({ params }: { params: Promise<{ tenan
 
   return (
     <PageShell>
-      <NewEventForm projectSlug={projectSlug} />
+      <NewEventForm projectSlug={projectSlug} timeZone={timeZone} />
     </PageShell>
   )
 }

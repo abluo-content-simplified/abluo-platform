@@ -1,8 +1,9 @@
 'use client'
 
+import { BackLink } from '@/components/app/ui/BackLink'
 import { useId, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import { Link, useRouter } from '@/i18n/navigation'
+import { useRouter } from '@/i18n/navigation'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { EmptyState } from '@/components/app/ui/EmptyState'
@@ -28,16 +29,12 @@ import { useCatalogueDraft } from './use-catalogue-draft'
 import type { ItemChoice } from './choices'
 import { usePublishTogether } from './publish-dependencies'
 import { Button, IconButton } from '@/components/app/ui/Button'
+import { Notice } from '@/components/app/ui/Notice'
+import { Panel } from '@/components/app/ui/Panel'
 import { FieldLabel } from '@/components/app/ui/FieldLabel'
 import { TextInput } from '@/components/app/ui/TextInput'
 
 const newKey = () => Math.random().toString(36).slice(2, 14)
-
-const BACK_ICON = (
-  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M15 18l-6-6 6-6" />
-  </svg>
-)
 
 /**
  * Option lists (spec §10.2, ADR-033 D2): a plain editor — the list's name and
@@ -171,13 +168,7 @@ export function OptionListEditor({
 
   return (
     <div className="space-y-5">
-      <Link
-        href={listHref}
-        className="-ml-1 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-      >
-        {BACK_ICON}
-        {t('back')}
-      </Link>
+      <BackLink href={listHref} label={t('back')} />
       <div className="-mt-4">
         <PageHeader
         title={title}
@@ -195,7 +186,7 @@ export function OptionListEditor({
       {hint ? <div className="hidden md:block">{hint}</div> : null}
       {snapshot ? <LifecycleBadge status={snapshot.status.status} changes={draft.hasDraft && isLive} /> : null}
       <SaveNotice state={draft.state} rejected={draft.rejected} onRetry={draft.retry} onReload={() => void draft.reload()} />
-      {archived ? <p className="rounded-2xl bg-muted px-4 py-3 text-[0.9375rem] text-foreground">{t('archivedNotice')}</p> : null}
+      {archived ? <Notice tone="info">{t('archivedNotice')}</Notice> : null}
       {inUse ? <InUseNotice projectSlug={projectSlug} referrers={inUse} onClose={() => setInUse(null)} /> : null}
       {together.ui}
 
@@ -229,7 +220,7 @@ export function OptionListEditor({
               {options.map((o, n) => {
                 const delta = o.delta.trim() === '' ? 0 : parsePrice(o.delta, { signed: true })
                 return (
-                  <li key={o.key} className="rounded-2xl border border-border p-4">
+                  <Panel as="li" key={o.key}>
                     {isFreeTextAdd(o) && declarationIssues(o.declaration).length ? (
                       <p className="mb-2">
                         <Pill tone="outline">{t('allergensNotReviewed')}</Pill>
@@ -292,7 +283,7 @@ export function OptionListEditor({
                     ) : o.itemId ? (
                       <p className="mt-3 text-sm text-muted-foreground">{t('allergensFromItem')}</p>
                     ) : null}
-                  </li>
+                  </Panel>
                 )
               })}
             </ol>

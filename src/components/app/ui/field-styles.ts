@@ -2,7 +2,7 @@
 export type ControlSize = 'md' | 'lg'
 
 const INPUT_BASE =
-  'w-full rounded-xl border border-border bg-background px-3 text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60 aria-[invalid=true]:border-destructive'
+  'w-full rounded-xl border border-border bg-background px-3 text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60 read-only:bg-muted read-only:text-muted-foreground aria-[invalid=true]:border-destructive'
 
 /** lg: 48px (forms, sheets — the CAT_INPUT height). md: 44px, for inline add/search rows. */
 const INPUT_SIZE: Record<ControlSize, string> = { lg: 'h-12 text-base', md: 'h-11 min-w-0 text-base' }

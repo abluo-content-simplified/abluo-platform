@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { languageName } from '@/components/client/create/StepHeading'
-import { CAT_ICONS } from './catalogue-ui'
-import { Button, IconButton } from '@/components/app/ui/Button'
+import { Notice } from '@/components/app/ui/Notice'
+import { Button } from '@/components/app/ui/Button'
 
 /**
  * ADR-033 E-3 — when a localized NAME is cleared while that language still has
@@ -45,17 +45,19 @@ export function StrayAddressNotice({ state }: { state: ReturnType<typeof useStra
   if (!s) return null
   const language = languageName(s.locale, ui)
   return (
-    <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-border px-4 py-2.5">
-      <span className="text-[0.9375rem] text-foreground">{s.cleared ? t('cleared', { language }) : t('offer', { language, slug: s.slug })}</span>
-      <span className="flex gap-2">
-        <Button variant="secondary"  onClick={s.cleared ? state.undo : state.clear}>
+    <Notice
+      tone="dashed"
+      layout="row"
+      onDismiss={state.dismiss}
+      dismissLabel={tc('dismiss')}
+      action={
+        <Button variant="secondary" onClick={s.cleared ? state.undo : state.clear}>
           {s.cleared ? t('undo') : t('clear')}
         </Button>
-        <IconButton aria-label={tc('dismiss')}  onClick={state.dismiss}>
-          {CAT_ICONS.x}
-        </IconButton>
-      </span>
-    </div>
+      }
+    >
+      {s.cleared ? t('cleared', { language }) : t('offer', { language, slug: s.slug })}
+    </Notice>
   )
 }
 

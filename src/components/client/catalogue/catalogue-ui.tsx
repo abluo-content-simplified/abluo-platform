@@ -1,18 +1,16 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { Pill } from '@/components/app/ui/list/cells'
-import { BottomSheet } from '@/components/app/ui/BottomSheet'
-import { PublicationDateField } from '@/components/app/lifecycle/PublicationDateField'
-import { validateWindow } from '@/lib/lifecycle/time'
+import { Notice } from '@/components/app/ui/Notice'
+import { CountBadge } from '@/components/app/ui/CountBadge'
 import type { Referrer } from '@/lib/lifecycle/service'
 import type { ItemGap } from '@/lib/modules/catalogue/dashboard-form'
 import type { CatalogueKind } from '@/lib/modules/catalogue/dashboard-patch'
 import type { ItemIssue } from '@/lib/modules/catalogue/item-issues'
 import { languageName } from '@/components/client/create/StepHeading'
-import { Button, IconButton } from '@/components/app/ui/Button'
+import { Button } from '@/components/app/ui/Button'
 
 /**
  * Catalogue dashboard — small shared pieces (ADR-033, spec §10). Styling
@@ -83,34 +81,24 @@ export function referrerHref(projectSlug: string, r: Referrer): string | null {
 export function InUseNotice({ projectSlug, referrers, onClose }: { projectSlug: string; referrers: readonly Referrer[]; onClose?: () => void }) {
   const t = useTranslations('catalogue.dashboard.common')
   return (
-    <div role="alert" className="rounded-2xl border border-border bg-muted px-4 py-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[0.9375rem] font-medium text-foreground">{t('inUseTitle')}</p>
-          <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
-            {referrers.map((r) => {
-              const href = referrerHref(projectSlug, r)
-              return (
-                <li key={`${r.type}:${r.id}`}>
-                  {href ? (
-                    <Link href={href} className="text-[0.9375rem] text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
-                      {r.label}
-                    </Link>
-                  ) : (
-                    <span className="text-[0.9375rem] text-foreground">{r.label}</span>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-        {onClose ? (
-          <IconButton onClick={onClose} aria-label={t('dismiss')}>
-            {CAT_ICONS.x}
-          </IconButton>
-        ) : null}
-      </div>
-    </div>
+    <Notice tone="info" title={t('inUseTitle')} onDismiss={onClose} dismissLabel={t('dismiss')}>
+      <ul className="flex flex-wrap gap-x-3 gap-y-1">
+        {referrers.map((r) => {
+          const href = referrerHref(projectSlug, r)
+          return (
+            <li key={`${r.type}:${r.id}`}>
+              {href ? (
+                <Link href={href} className="text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+                  {r.label}
+                </Link>
+              ) : (
+                <span className="text-foreground">{r.label}</span>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </Notice>
   )
 }
 
@@ -119,51 +107,6 @@ export function useCatalogueError() {
   const t = useTranslations('catalogue.dashboard.errors')
   const known = ['forbidden', 'not_found', 'conflict', 'archived', 'archive_first', 'in_use', 'missing_name', 'missing_slug', 'slug_taken', 'no_options', 'invalid_schedule', 'allergens_not_reviewed', 'option_allergens_not_reviewed', 'slug_without_name', 'unpublished_dependencies', 'invalid_value', 'too_large', 'unauthenticated', 'offline']
   return (code: string) => t(known.includes(code) ? code : 'failed')
-}
-
-/** "Set unpublish date": one date in the site's zone, in the future. */
-export function UnpublishDateSheet({ open, busy, zone, onClose, onSave, onRemove }: { open: boolean; busy: boolean; zone: string; onClose: () => void; onSave: (iso: string) => void; onRemove?: () => void }) {
-  const t = useTranslations('catalogue.dashboard.common')
-  const tl = useTranslations('app.lifecycle')
-  const [iso, setIso] = useState<string | null>(null)
-  const problem = iso ? validateWindow({ expiresAt: iso }, new Date()) : null
-  return (
-    <BottomSheet open={open} title={tl('actions.setUnpublishDate')} onClose={onClose}>
-      <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('unpublishHelper')}</p>
-      <PublicationDateField id="catalogue-unpublish-on" className="mt-4" label={tl('dates.unpublishOn')} value={iso} onChange={setIso} zone={zone} />
-      {problem === 'unpublish_in_past' ? <p className="mt-2 text-sm text-destructive">{tl('dates.mustBeFuture')}</p> : null}
-      <Button variant="primary" className="mt-4" disabled={!iso || !!problem || busy} onClick={() => iso && onSave(iso)}>
-        {t('save')}
-      </Button>
-      {onRemove ? (
-        <Button variant="secondary" className="mt-2" disabled={busy} onClick={onRemove}>
-          {tl('actions.removeUnpublishDate')}
-        </Button>
-      ) : null}
-    </BottomSheet>
-  )
-}
-
-/** Tabs inside one page (Items · Collections · Option lists; editor tabs). Buttons with aria-pressed, 44px. */
-export function SegmentTabs<V extends string>({ label, value, onChange, options }: { label: string; value: V; onChange: (v: V) => void; options: { value: V; label: ReactNode }[] }) {
-  return (
-    <div role="tablist" aria-label={label} className="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-border p-1">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          role="tab"
-          aria-selected={value === o.value}
-          onClick={() => onChange(o.value)}
-          className={`h-10 shrink-0 rounded-lg px-3.5 text-[0.9375rem] font-medium whitespace-nowrap focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${CAT_MOTION} ${
-            value === o.value ? 'bg-action text-action-foreground' : 'text-foreground hover:bg-hover'
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  )
 }
 
 /** Dashboard href of one document. */
@@ -198,22 +141,21 @@ export function ItemIssueList({ issues, onFix }: { issues: readonly ItemIssue[];
   const text = useItemIssueText()
   if (!issues.length) return null
   return (
-    <div role="group" aria-labelledby="item-issues-title" className="rounded-2xl border border-border bg-muted px-4 py-3" data-item-issues>
-      <p id="item-issues-title" className="text-[0.9375rem] font-medium text-foreground">
-        {t('title', { count: issues.length })}
-      </p>
-      <ul className="mt-2 space-y-1">
-        {issues.map((i) => (
-          <li key={i.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-            <span className="text-[0.9375rem] text-foreground">{text(i)}</span>
-            {onFix ? (
-              <button type="button" onClick={() => onFix(i)} className="min-h-11 text-[0.9375rem] font-semibold text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
-                {t('fix')}
-              </button>
-            ) : null}
-          </li>
-        ))}
-      </ul>
+    <div data-item-issues>
+      <Notice tone="info" title={t('title', { count: issues.length })}>
+        <ul className="space-y-1">
+          {issues.map((i) => (
+            <li key={i.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              <span className="text-foreground">{text(i)}</span>
+              {onFix ? (
+                <Button variant="link" onClick={() => onFix(i)}>
+                  {t('fix')}
+                </Button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </Notice>
     </div>
   )
 }
@@ -234,10 +176,7 @@ export function TabLabel({ label, count, advice = false }: { label: string; coun
   return (
     <span className="inline-flex items-center gap-1.5">
       {label}
-      <span aria-hidden="true" className="grid min-w-5 place-items-center rounded-full border border-foreground bg-background px-1.5 text-xs leading-5 font-semibold text-foreground">
-        {count}
-      </span>
-      <span className="sr-only">{t('tabCount', { count })}</span>
+      <CountBadge count={count} srLabel={t('tabCount', { count })} />
     </span>
   )
 }

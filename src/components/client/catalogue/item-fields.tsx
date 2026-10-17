@@ -5,6 +5,8 @@ import { useLocale, useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { ChoiceCard, ChoiceCardGrid } from '@/components/app/ui/ChoiceCard'
 import { Checkbox } from '@/components/app/ui/Checkbox'
+import { CheckboxCard } from '@/components/app/ui/CheckboxCard'
+import { RadioList } from '@/components/app/ui/RadioList'
 import { ToggleChips } from '@/components/app/ui/ToggleChips'
 import { Switch } from '@/components/app/ui/Switch'
 import { MediaFrame, Pill } from '@/components/app/ui/list/cells'
@@ -47,7 +49,8 @@ import { bookPublisherLine, itemSecondaryLine } from '@/lib/modules/catalogue/li
 import { CAT_ICONS, catalogueHref, textIn } from './catalogue-ui'
 import { Button, ButtonLink, IconButton } from '@/components/app/ui/Button'
 import { LABEL_CLASS } from '@/components/app/ui/field-styles'
-import { FieldLabel } from '@/components/app/ui/FieldLabel'
+import { FieldError, FieldLabel } from '@/components/app/ui/FieldLabel'
+import { Panel } from '@/components/app/ui/Panel'
 import { TextArea, TextInput } from '@/components/app/ui/TextInput'
 
 export type ItemPhoto = { assetId: string; thumbUrl: string | null }
@@ -178,9 +181,7 @@ export function BookDetailsFields({ value, onChange }: { value: BookDetailsForm;
         </div>
       </div>
       {yearBad ? (
-        <p id={`${id}-year-err`} role="alert" className="text-sm text-foreground">
-          {t('yearInvalid', { max: bookYearMax() })}
-        </p>
+        <FieldError id={`${id}-year-err`}>{t('yearInvalid', { max: bookYearMax() })}</FieldError>
       ) : null}
       {isbnBad ? (
         <p role="status" className="text-sm text-muted-foreground">
@@ -207,13 +208,7 @@ export function LinkKindFields({ link, onChange }: { link: Pick<LinkForm, 'kind'
         <ChoiceCard icon={CAT_ICONS.product} label={t('kindBuy')} description={t('kindBuyHelp')} selected={link.kind === 'buy'} onSelect={() => onChange({ kind: 'buy', affiliate: link.affiliate })} />
       </ChoiceCardGrid>
       {link.kind === 'buy' ? (
-        <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-border p-3">
-          <Checkbox aria-label={t('affiliate')} checked={link.affiliate} onChange={(on) => onChange({ kind: 'buy', affiliate: on })} />
-          <span className="pt-2.5 text-[0.9375rem] leading-6 text-foreground">
-            {t('affiliate')}
-            <span className="block text-sm text-muted-foreground">{t('affiliateHelp')}</span>
-          </span>
-        </label>
+        <CheckboxCard label={t('affiliate')} description={t('affiliateHelp')} checked={link.affiliate} onChange={(on) => onChange({ kind: 'buy', affiliate: on })} />
       ) : null}
     </div>
   )
@@ -233,7 +228,7 @@ export function LinksField({ links, locales, defaultLocale, onChange }: { links:
           {links.map((l, n) => {
             const issue = issueOf(l.key)
             return (
-              <li key={l.key} className="rounded-2xl border border-border p-4" data-link={l.key}>
+              <Panel as="li" key={l.key} data-link={l.key}>
                 <div className="flex items-start gap-1">
                   <div className="min-w-0 flex-1 space-y-3">
                     {locales.map((loc) => (
@@ -251,9 +246,7 @@ export function LinksField({ links, locales, defaultLocale, onChange }: { links:
                       </label>
                       <TextInput id={`${id}-${l.key}-url`} type="url" inputMode="url" autoComplete="off" placeholder="https://" maxLength={2048} value={l.url} onChange={(e) => setLink(l.key, { url: e.target.value })} aria-invalid={issue === 'badUrl' || undefined} />
                       {issue ? (
-                        <p role="alert" className="mt-1.5 text-sm text-foreground">
-                          {t(issue)}
-                        </p>
+                        <FieldError>{t(issue)}</FieldError>
                       ) : null}
                     </div>
                   </div>
@@ -267,7 +260,7 @@ export function LinksField({ links, locales, defaultLocale, onChange }: { links:
                     {CAT_ICONS.trash}
                   </IconButton>
                 </div>
-              </li>
+              </Panel>
             )
           })}
         </ul>
@@ -301,9 +294,7 @@ export function BuyLinkField({ links, defaultLocale, onChange }: { links: LinkFo
         </FieldLabel>
         <TextInput id={`${id}-url`} data-enter-next type="url" inputMode="url" autoComplete="off" placeholder="https://" maxLength={2048} value={buy?.url ?? ''} onChange={(e) => onChange(withBuyLink(links, { url: e.target.value }, newKey))} aria-invalid={bad ? true : undefined} />
         {bad ? (
-          <p role="alert" className="mt-1.5 text-sm text-foreground">
-            {tl('badUrl')}
-          </p>
+          <FieldError>{tl('badUrl')}</FieldError>
         ) : (
           <p className="mt-1.5 text-sm text-muted-foreground">{t('help')}</p>
         )}
@@ -316,13 +307,7 @@ export function BuyLinkField({ links, defaultLocale, onChange }: { links: LinkFo
             </FieldLabel>
             <TextInput id={`${id}-label`} data-enter-next maxLength={80} value={buy.label[defaultLocale] ?? ''} onChange={(e) => onChange(withBuyLink(links, { label: { ...buy.label, [defaultLocale]: e.target.value } }, newKey))} />
           </div>
-          <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-border p-3">
-            <Checkbox aria-label={tl('affiliate')} checked={buy.affiliate} onChange={(on) => onChange(withBuyLink(links, { affiliate: on }, newKey))} />
-            <span className="pt-2.5 text-[0.9375rem] leading-6 text-foreground">
-              {tl('affiliate')}
-              <span className="block text-sm text-muted-foreground">{tl('affiliateHelp')}</span>
-            </span>
-          </label>
+          <CheckboxCard label={tl('affiliate')} description={tl('affiliateHelp')} checked={buy.affiliate} onChange={(on) => onChange(withBuyLink(links, { affiliate: on }, newKey))} />
         </>
       ) : null}
     </div>
@@ -454,7 +439,7 @@ export function PriceField({ offers, channels, currency, defaultLocale, onChange
         const parsed = parsePrice(o.price)
         const firstOfScope = offers.findIndex((x) => x.channel === o.channel) === n
         return (
-          <div key={o.key} className="rounded-2xl border border-border p-4">
+          <Panel key={o.key}>
             <div className="flex items-start justify-between gap-3">
               <FieldLabel htmlFor={`${id}-${o.key}`}>
                 {scopeLabel(o.channel)}
@@ -534,7 +519,7 @@ export function PriceField({ offers, channels, currency, defaultLocale, onChange
                 </Button>
               </div>
             ) : null}
-          </div>
+          </Panel>
         )
       })}
       {channels.length ? <p className="text-sm text-muted-foreground">{t('everywhereHelp')}</p> : null}
@@ -615,12 +600,7 @@ export function AllergenDeclarationField({
         <AllergenGrid legend={t('containsLegend')} help={t('containsHelp')} value={declaration.allergens} onChange={(allergens) => set({ allergens })} />
       ) : null}
       {declaration.status === 'noneDeclared' ? (
-        <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-border p-3">
-          <Checkbox aria-label={t('confirmNone')} checked={declaration.confirmed} onChange={(on) => set({ confirmed: on })} />
-          <span aria-hidden="true" className="pt-2.5 text-[0.9375rem] leading-6 text-foreground">
-            {t('confirmNone')}
-          </span>
-        </label>
+        <CheckboxCard label={t('confirmNone')} checked={declaration.confirmed} onChange={(on) => set({ confirmed: on })} />
       ) : null}
       {/* E-1: "may contain" in BOTH reviewed states (cross-contamination with no listed ingredient). */}
       {declaration.status !== 'notReviewed' ? (
@@ -692,7 +672,7 @@ export function OptionsField({ projectSlug, options, lists, onChange }: { projec
         const list = byId.get(o.listId)
         const mine = issues.filter((i) => i.key === o.key)
         return (
-          <div key={o.key} className="rounded-2xl border border-border p-4">
+          <Panel key={o.key}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 {list ? (
@@ -730,7 +710,7 @@ export function OptionsField({ projectSlug, options, lists, onChange }: { projec
                 {i.kind === 'maxAboveOptions' ? t('maxAboveOptions', { count: i.options }) : t(i.kind)}
               </p>
             ))}
-          </div>
+          </Panel>
         )
       })}
       {available.length ? (
@@ -881,20 +861,13 @@ export function VisibilityField({ value, onChange }: { value: Visibility; onChan
   const t = useTranslations('catalogue.dashboard.visibility')
   const id = useId()
   return (
-    <fieldset>
-      <FieldLabel as="legend">{t('label')}</FieldLabel>
-      <div className="mt-2 flex flex-col gap-2">
-        {(['public', 'websiteOnly', 'unlisted'] as const).map((v) => (
-          <label key={v} htmlFor={`${id}-${v}`} className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-border px-3 py-2.5">
-            <input id={`${id}-${v}`} type="radio" name={id} checked={value === v} onChange={() => onChange(v)} className="mt-1 size-5 shrink-0" />
-            <span>
-              <span className="block text-[0.9375rem] font-medium text-foreground">{t(`${v}.title`)}</span>
-              <span className="block text-sm text-muted-foreground">{t(`${v}.body`)}</span>
-            </span>
-          </label>
-        ))}
-      </div>
-    </fieldset>
+    <RadioList
+      legend={t('label')}
+      name={id}
+      value={value}
+      onChange={onChange}
+      options={(['public', 'websiteOnly', 'unlisted'] as const).map((v) => ({ value: v, label: t(`${v}.title`), description: t(`${v}.body`) }))}
+    />
   )
 }
 
@@ -908,7 +881,7 @@ export function LanguagesField({ locales, defaultLocale, profile = null, name, b
     <div className="space-y-6">
       <p className="rounded-xl bg-muted px-4 py-3 text-sm text-muted-foreground">{t('fallback', { language: languageName(defaultLocale, ui) })}</p>
       {others.map((l) => (
-        <div key={l} className="rounded-2xl border border-border p-4">
+        <Panel key={l}>
           <div className="flex items-start justify-between gap-3">
             <h3 className="text-[1.0625rem] font-semibold text-foreground">{languageName(l, ui)}</h3>
             <Pill tone={name[l]?.trim() ? 'success' : 'outline'}>{name[l]?.trim() ? t('ready') : t('missing')}</Pill>
@@ -917,7 +890,7 @@ export function LanguagesField({ locales, defaultLocale, profile = null, name, b
           <div className="mt-3">
             <NameFields locale={l} profile={profile} name={name} byline={byline} description={description} onName={onName} onByline={onByline} onDescription={onDescription} />
           </div>
-        </div>
+        </Panel>
       ))}
     </div>
   )
@@ -968,7 +941,7 @@ export function ItemPreview({
   const publisherLine = isBook ? bookPublisherLine({ publisher: bookDetails?.publisher, year: parseBookYear(bookDetails?.year) }) : null
   const isbn = isBook && bookDetails?.isbn && isValidIsbn(bookDetails.isbn) ? normalizeIsbn(bookDetails.isbn) : ''
   return (
-    <article className="overflow-hidden rounded-2xl border border-border bg-card">
+    <Panel as="article" padding="none" className="overflow-hidden">
       {isBook ? (
         <span className="flex w-full justify-center bg-muted p-4">
           <MediaFrame src={photo} alt="" fit="contain" size={{ width: '10rem', height: '15rem' }} className="rounded-lg" />
@@ -1005,6 +978,6 @@ export function ItemPreview({
           </p>
         ) : null}
       </div>
-    </article>
+    </Panel>
   )
 }

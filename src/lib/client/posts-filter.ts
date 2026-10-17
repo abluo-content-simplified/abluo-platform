@@ -8,6 +8,7 @@
  * search + paging to the server.
  */
 
+import { searchText } from './search-text'
 import { presetRange, todayISO, type RangePreset } from './date-range'
 
 export type PostStatus = 'published' | 'scheduled' | 'draft' | 'unpublished' | 'archived'
@@ -137,7 +138,7 @@ function dateFor(p: FilterablePost, field: DateField): string | null {
 
 /** Lower-case and strip accents so "perche" finds "perché". */
 export function normalizeSearch(text: string): string {
-  return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+  return searchText(text)
 }
 
 /** Body text kept per post for search, all languages together (keeps the page payload small). */

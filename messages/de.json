@@ -213,9 +213,7 @@
           "restore": "Wiederherstellen"
         },
         "endDateSheet": {
-          "title": "Veröffentlichungsende festlegen",
-          "helper": "An diesem Datum endet die Veröffentlichung des Beitrags von selbst. Du kannst ihn jederzeit erneut veröffentlichen.",
-          "save": "Veröffentlichungsende speichern"
+          "helper": "An diesem Datum endet die Veröffentlichung des Beitrags von selbst. Du kannst ihn jederzeit erneut veröffentlichen."
         },
         "categorySheet": {
           "title": "Kategorie ändern",
@@ -288,7 +286,21 @@
         "noUpcoming": "Keine anstehenden Veranstaltungen.",
         "emptyTitle": "Noch keine Veranstaltungen",
         "emptyBody": "Fügen Sie Ihre erste Veranstaltung hinzu: Name und Datum, dann den Rest.",
-        "untitled": "Veranstaltung ohne Titel"
+        "untitled": "Veranstaltung ohne Titel",
+        "filters": {
+          "label": "Veranstaltungen filtern",
+          "search": "Veranstaltungen suchen",
+          "when": "Wann",
+          "whenUpcoming": "Demnächst",
+          "whenPast": "Vergangen",
+          "whenAll": "Jederzeit",
+          "status": "Status",
+          "statusAll": "Jeder Status"
+        },
+        "count": "{shown} von {total} Veranstaltungen",
+        "clear": "Filter zurücksetzen",
+        "noMatch": "Keine Veranstaltung passt zu diesen Filtern.",
+        "showPast": "Vergangene Veranstaltungen anzeigen"
       },
       "new": {
         "back": "Veranstaltungen",
@@ -299,7 +311,8 @@
         "start": "Beginn",
         "create": "Veranstaltung anlegen",
         "creating": "Wird angelegt…",
-        "cancel": "Abbrechen"
+        "cancel": "Abbrechen",
+        "needs": "Gib einen Namen und den Beginn an, um die Veranstaltung zu erstellen."
       },
       "editor": {
         "back": "Veranstaltungen",
@@ -345,7 +358,8 @@
           "title": "Wann",
           "start": "Beginn",
           "end": "Ende",
-          "helper": "Lassen Sie das Ende leer für einen einzelnen Zeitpunkt. Zeiten gelten in Ihrer Zeitzone."
+          "helper": "Lass das Ende leer für einen einzelnen Zeitpunkt. Die Zeiten gelten in der Zeitzone der Website.",
+          "removeEnd": "Ende entfernen"
         },
         "signup": {
           "title": "Anmeldung",
@@ -2400,6 +2414,11 @@
         "title": "{count, plural, one {„{title}“ endgültig löschen?} other {# Einträge endgültig löschen?}}",
         "body": "{count, plural, one {Es wird zusammen mit seinem Entwurf gelöscht. War das ein Versehen, kann Abluo es innerhalb von 90 Tagen wiederherstellen.} other {Sie werden zusammen mit ihren Entwürfen gelöscht. War das ein Versehen, kann Abluo sie innerhalb von 90 Tagen wiederherstellen.}}",
         "confirm": "Endgültig löschen"
+      },
+      "unpublishSheet": {
+        "helper": "An diesem Datum wird es automatisch offline genommen. Du kannst es jederzeit wieder veröffentlichen.",
+        "save": "Veröffentlichungsende speichern",
+        "pickFirst": "Wähle zuerst Datum und Uhrzeit."
       }
     }
   },

@@ -33,6 +33,13 @@ export default function NoticeDemo() {
           )}
         </div>
       </DemoBlock>
+      <DemoBlock title="One line: undo or a quick offer" note='tone="dashed" layout="row" — the text, then the action and × at the end.'>
+        <div className="w-full">
+          <Notice tone="dashed" layout="row" action={<Button variant="secondary">Undo</Button>} onDismiss={() => undefined} dismissLabel="Dismiss">
+            Section “Starters” removed.
+          </Notice>
+        </div>
+      </DemoBlock>
     </DemoStack>
   )
 }

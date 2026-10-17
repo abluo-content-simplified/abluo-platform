@@ -1,11 +1,18 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import { FilterBar, FilterSegmented, FilterSelect } from '@/components/app/ui/FilterBar'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { Toast } from '@/components/app/ui/Toast'
+import { useUndo } from '@/components/app/ui/use-undo'
+import { Button, IconButton } from '@/components/app/ui/Button'
+import { Chip } from '@/components/app/ui/Chip'
+import { TextInput } from '@/components/app/ui/TextInput'
+import { FieldError } from '@/components/app/ui/FieldLabel'
+import { ListRow } from '@/components/app/ui/list/ListRow'
+import { Pill } from '@/components/app/ui/list/cells'
 import { languageName } from '@/components/client/create/StepHeading'
 import {
   createTaxonomyTermAction,
@@ -40,15 +47,6 @@ import {
 export type ModuleOption = { id: string; label: string; kinds: string[] }
 type Kind = 'category' | 'tag'
 
-const ICON_BTN =
-  'grid size-11 shrink-0 place-items-center rounded-xl text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-30 disabled:hover:bg-transparent'
-const PRIMARY_BTN =
-  'inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-action px-4 text-[0.9375rem] font-semibold text-action-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-40'
-const QUIET_BTN =
-  'inline-flex h-11 shrink-0 items-center justify-center rounded-xl px-4 text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
-const INPUT =
-  'h-11 w-full min-w-0 rounded-xl border border-border bg-background px-3 text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
-
 const svg = (d: string) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d={d} />
@@ -69,8 +67,7 @@ export function TaxonomyManager({ projectSlug, modules, initial }: { projectSlug
   const [addBusy, setAddBusy] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
   const [reordering, setReordering] = useState(false)
-  const [toast, setToast] = useState<{ message: string; tone: 'status' | 'error' } | null>(null)
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const { toast, show } = useUndo()
 
   const current = modules.find((m) => m.id === moduleId) ?? modules[0]
   const kinds = current.kinds as Kind[]
@@ -81,11 +78,7 @@ export function TaxonomyManager({ projectSlug, modules, initial }: { projectSlug
   const summary = summarize(list.terms)
   const openTerm = list.terms.find((x) => x.key === openKey) ?? null
 
-  const say = (message: string, tone: 'status' | 'error' = 'status') => {
-    clearTimeout(toastTimer.current)
-    setToast({ message, tone })
-    toastTimer.current = setTimeout(() => setToast(null), tone === 'error' ? 6000 : 3500)
-  }
+  const say = (message: string, tone: 'status' | 'error' = 'status') => show({ message, tone }, tone === 'error' ? 6000 : 3500)
   const sayError = (code: string | undefined) => say(t(`errors.${errorKey(code)}` as 'errors.failed'), 'error')
 
   async function load(nextModule: string, nextKind: Kind) {
@@ -141,7 +134,9 @@ export function TaxonomyManager({ projectSlug, modules, initial }: { projectSlug
         <label className="sr-only" htmlFor="taxonomy-add">
           {t(`${kind}.placeholder`)}
         </label>
-        <input
+        <TextInput
+          flush
+          controlSize="md"
           id="taxonomy-add"
           value={addText}
           maxLength={80}
@@ -155,34 +150,28 @@ export function TaxonomyManager({ projectSlug, modules, initial }: { projectSlug
           onKeyDown={(e) => {
             if (e.key === 'Escape') setAdding(false)
           }}
-          className={INPUT}
         />
-        {addError ? (
-          <p role="alert" className="mt-1.5 text-sm text-destructive">
-            {addError}
-          </p>
-        ) : null}
+        <FieldError>{addError}</FieldError>
       </div>
-      <button type="submit" disabled={addBusy || !addText.trim()} className={PRIMARY_BTN}>
+      <Button variant="primary" type="submit" disabled={addBusy || !addText.trim()}>
         {addBusy ? t('adding') : t('addSubmit')}
-      </button>
-      <button
-        type="button"
+      </Button>
+      <Button
+        variant="quiet"
         onClick={() => {
           setAdding(false)
           setAddText('')
           setAddError(null)
         }}
-        className={QUIET_BTN}
       >
         {t('cancel')}
-      </button>
+      </Button>
     </form>
   ) : (
-    <button type="button" onClick={() => setAdding(true)} className={PRIMARY_BTN}>
+    <Button variant="primary" onClick={() => setAdding(true)}>
       {svg('M12 5v14M5 12h14')}
       {t(`${kind}.add`)}
-    </button>
+    </Button>
   )
 
   return (
@@ -220,16 +209,9 @@ export function TaxonomyManager({ projectSlug, modules, initial }: { projectSlug
             {summary.needTranslation > 0 ? t('summary', { count: summary.needTranslation, total: summary.total }) : t('allTranslated')}
           </p>
           {summary.needTranslation > 0 || filter === 'missing' ? (
-            <button
-              type="button"
-              aria-pressed={filter === 'missing'}
-              onClick={() => setFilter((f) => (f === 'missing' ? 'all' : 'missing'))}
-              className={`inline-flex h-11 items-center rounded-full border px-4 text-[0.9375rem] font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-                filter === 'missing' ? 'border-action bg-action text-action-foreground' : 'border-border bg-card text-foreground hover:bg-hover'
-              }`}
-            >
+            <Chip selected={filter === 'missing'} onClick={() => setFilter((f) => (f === 'missing' ? 'all' : 'missing'))}>
               {t('filterMissing')}
-            </button>
+            </Chip>
           ) : null}
         </div>
       ) : null}
@@ -243,46 +225,47 @@ export function TaxonomyManager({ projectSlug, modules, initial }: { projectSlug
       ) : rows.length === 0 ? (
         <p className="text-[0.9375rem] text-muted-foreground">{t('nothingMissing')}</p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="flex flex-col gap-2">
           {rows.map((row, n) => (
-            <li key={row.key} className="flex items-start gap-1 rounded-2xl border border-border bg-card pr-1">
-              <button
-                type="button"
-                onClick={() => setOpenKey(row.key)}
-                className="min-h-14 min-w-0 flex-1 rounded-2xl p-4 text-left hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              >
-                <span className="block truncate text-[0.9375rem] leading-6 font-semibold text-foreground">{row.name}</span>
-                <span className="mt-0.5 block text-sm text-muted-foreground">{row.usedBy > 0 ? t('usedBy', { count: row.usedBy }) : t('notUsed')}</span>
-                {translations ? (
-                  <span className="mt-2 flex flex-wrap gap-1.5">
-                    {row.chips.map((c) => (
-                      <span
-                        key={c.locale}
-                        className={`inline-flex min-h-7 items-center gap-1 rounded-full px-2.5 text-xs font-medium ${c.complete ? 'bg-muted text-muted-foreground' : 'bg-accent text-accent-foreground'}`}
-                      >
-                        {c.complete ? (
+            <ListRow
+              key={row.key}
+              onOpen={() => setOpenKey(row.key)}
+              trailing={
+                canWrite && filter === 'all' && rows.length > 1 ? (
+                  <>
+                    <IconButton aria-label={t('moveUp', { name: row.name })} disabled={reordering || n === 0} onClick={() => void move(row.key, -1)}>
+                      {svg('m6 15 6-6 6 6')}
+                    </IconButton>
+                    <IconButton aria-label={t('moveDown', { name: row.name })} disabled={reordering || n === rows.length - 1} onClick={() => void move(row.key, 1)}>
+                      {svg('m6 9 6 6 6-6')}
+                    </IconButton>
+                  </>
+                ) : undefined
+              }
+            >
+              <span className="block max-w-full truncate text-[0.9375rem] leading-6 font-semibold text-foreground">{row.name}</span>
+              <span className="text-sm text-muted-foreground">{row.usedBy > 0 ? t('usedBy', { count: row.usedBy }) : t('notUsed')}</span>
+              {translations ? (
+                <span className="flex flex-wrap gap-1.5">
+                  {row.chips.map((c) => (
+                    <Pill
+                      key={c.locale}
+                      tone={c.complete ? 'muted' : 'highlight'}
+                      icon={
+                        c.complete ? (
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-success">
                             <path d="m5 12 5 5L20 7" />
                           </svg>
-                        ) : null}
-                        <span className="sr-only">{t(c.complete ? 'chipDone' : 'chipMissingLabel', { language: languageName(c.locale, ui) })}</span>
-                        <span aria-hidden="true">{c.complete ? c.code : t('chipMissing', { code: c.code })}</span>
-                      </span>
-                    ))}
-                  </span>
-                ) : null}
-              </button>
-              {canWrite && filter === 'all' && rows.length > 1 ? (
-                <div className="flex shrink-0 items-center pt-1.5">
-                  <button type="button" aria-label={t('moveUp', { name: row.name })} disabled={reordering || n === 0} onClick={() => void move(row.key, -1)} className={ICON_BTN}>
-                    {svg('m6 15 6-6 6 6')}
-                  </button>
-                  <button type="button" aria-label={t('moveDown', { name: row.name })} disabled={reordering || n === rows.length - 1} onClick={() => void move(row.key, 1)} className={ICON_BTN}>
-                    {svg('m6 9 6 6 6-6')}
-                  </button>
-                </div>
+                        ) : undefined
+                      }
+                    >
+                      <span className="sr-only">{t(c.complete ? 'chipDone' : 'chipMissingLabel', { language: languageName(c.locale, ui) })}</span>
+                      <span aria-hidden="true">{c.complete ? c.code : t('chipMissing', { code: c.code })}</span>
+                    </Pill>
+                  ))}
+                </span>
               ) : null}
-            </li>
+            </ListRow>
           ))}
         </ul>
       )}

@@ -3,14 +3,6 @@
 import { useLocale, useTranslations } from 'next-intl'
 import { Pill, type PillTone } from '@/components/app/ui/list/cells'
 
-export const EVENT_BUTTON =
-  'inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-border px-4 text-[0.9375rem] font-semibold text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40'
-export const EVENT_PRIMARY =
-  'inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-action px-4 text-[0.9375rem] font-semibold text-action-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-40'
-export const EVENT_INPUT =
-  'mt-1.5 h-12 w-full rounded-xl border border-border bg-background px-3 text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60'
-export const EVENT_LABEL = 'text-[0.9375rem] font-medium text-foreground'
-
 const svg = (d: string) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d={d} />
@@ -66,20 +58,4 @@ export function useEventDates() {
       return `${full.format(s)} – ${full.format(e)}`
     }
   }
-}
-
-/** ISO → `datetime-local` value in the viewer's time zone ('' when empty). */
-export function isoToInput(iso: string | null): string {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
-/** `datetime-local` value (viewer's time zone) → ISO-8601 UTC, or null. */
-export function inputToIso(value: string): string | null {
-  if (!value) return null
-  const d = new Date(value)
-  return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }

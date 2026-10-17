@@ -6,6 +6,9 @@ import { Link } from '@/i18n/navigation'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { SavePill } from '@/components/app/ui/SavePill'
+import { Button } from '@/components/app/ui/Button'
+import { TextInput } from '@/components/app/ui/TextInput'
+import { FieldError, FieldLabel } from '@/components/app/ui/FieldLabel'
 import { languageName } from '@/components/client/create/StepHeading'
 import type { SaveState } from '@/lib/client/autosave/engine'
 import { deleteTaxonomyTermAction, getTaxonomyTermUsageAction, updateTaxonomyTermAction } from '@/app/[locale]/(client)/[tenant]/taxonomy/actions'
@@ -21,10 +24,6 @@ import { cleanText, deleteState, errorKey, itemHref, termName, type ListState, t
  * Nothing technical is shown: the key never appears.
  */
 
-const INPUT =
-  'mt-1.5 h-12 w-full rounded-xl border border-border bg-background px-3 text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none read-only:bg-muted read-only:text-muted-foreground'
-const DANGER_BTN =
-  'inline-flex h-12 w-full items-center justify-center rounded-xl px-5 text-[0.9375rem] font-medium text-destructive hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40 disabled:hover:bg-transparent'
 const DEBOUNCE_MS = 700
 
 type Kind = 'category' | 'tag'
@@ -193,10 +192,8 @@ function TermSheetBody({
       <div className="space-y-4">
         {locales.map((l) => (
           <div key={l}>
-            <label htmlFor={`term-${term.key}-${l}`} className="text-[0.9375rem] font-medium text-foreground">
-              {locales.length > 1 ? t('nameIn', { language: languageName(l, ui) }) : t('name')}
-            </label>
-            <input
+            <FieldLabel htmlFor={`term-${term.key}-${l}`}>{locales.length > 1 ? t('nameIn', { language: languageName(l, ui) }) : t('name')}</FieldLabel>
+            <TextInput
               id={`term-${term.key}-${l}`}
               lang={l}
               maxLength={80}
@@ -206,7 +203,6 @@ function TermSheetBody({
               aria-invalid={l === defaultLocale && error === t('errors.label_required') ? true : undefined}
               onChange={(e) => edit(l, e.target.value)}
               onBlur={() => canWrite && save(l)}
-              className={INPUT}
             />
           </div>
         ))}
@@ -215,11 +211,7 @@ function TermSheetBody({
       {canWrite ? (
         <div className="flex min-h-9 flex-wrap items-center gap-3">
           <SavePill state={state} />
-          {error ? (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          ) : null}
+          <FieldError>{error}</FieldError>
         </div>
       ) : null}
 
@@ -254,9 +246,9 @@ function TermSheetBody({
 
       {canWrite ? (
         <section className="border-t border-border pt-3">
-          <button type="button" disabled={ds.kind === 'blocked'} aria-describedby={ds.kind === 'blocked' ? `term-${term.key}-blocked` : undefined} onClick={() => setConfirming(true)} className={DANGER_BTN}>
+          <Button variant="destructive" size="lg" fullWidth disabled={ds.kind === 'blocked'} aria-describedby={ds.kind === 'blocked' ? `term-${term.key}-blocked` : undefined} onClick={() => setConfirming(true)}>
             {t(`${kind}.delete`)}
-          </button>
+          </Button>
         </section>
       ) : null}
 

@@ -23,6 +23,7 @@ export function Checkbox({
   'aria-label': ariaLabel,
   disabled = false,
   variant = 'default',
+  describedBy,
   className = '',
 }: {
   checked: boolean
@@ -32,6 +33,8 @@ export function Checkbox({
   'aria-label': string
   disabled?: boolean
   variant?: 'default' | 'chip'
+  /** Id of a visible explanation (aria-describedby). */
+  describedBy?: string
   className?: string
 }) {
   const ref = useRef<HTMLInputElement>(null)
@@ -47,6 +50,7 @@ export function Checkbox({
         checked={checked}
         disabled={disabled}
         aria-label={ariaLabel}
+        aria-describedby={describedBy}
         aria-checked={indeterminate ? 'mixed' : checked}
         onChange={(e) => onChange(e.target.checked, e)}
         className="peer absolute inset-0 m-0 size-full cursor-pointer appearance-none rounded-full opacity-0 disabled:cursor-not-allowed"

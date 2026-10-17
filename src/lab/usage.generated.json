@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-17T20:11:09.337Z",
+  "generatedAt": "2026-10-17T20:54:18.699Z",
   "usage": {
     "button": [
       "src/app/[locale]/(admin)/lab/[entry]/page.tsx",
@@ -7,6 +7,7 @@
       "src/app/[locale]/(admin)/lab/todo/page.tsx",
       "src/app/[locale]/(client)/[tenant]/catalogue/error.tsx",
       "src/components/app/lifecycle/PublishChoice.tsx",
+      "src/components/app/lifecycle/UnpublishDateSheet.tsx",
       "src/components/app/ui/DateRangePicker.tsx",
       "src/components/app/ui/DateTimePicker.tsx",
       "src/components/app/ui/Notice.tsx",
@@ -32,6 +33,9 @@
       "src/components/client/create/steps/PreviewStep.tsx",
       "src/components/client/create/steps/ReviewStep.tsx",
       "src/components/client/editor/BodyEditor.tsx",
+      "src/components/client/events/EventEditor.tsx",
+      "src/components/client/events/EventList.tsx",
+      "src/components/client/events/NewEventForm.tsx",
       "src/components/client/forms/SubmissionsBrowser.tsx",
       "src/components/client/gallery/GalleryDetail.tsx",
       "src/components/client/gallery/GalleryList.tsx",
@@ -48,7 +52,10 @@
       "src/components/client/posts/PostActivitySheet.tsx",
       "src/components/client/posts/PostSheets.tsx",
       "src/components/client/posts/PostsBrowser.tsx",
-      "src/components/client/posts/post-bits.tsx"
+      "src/components/client/posts/post-bits.tsx",
+      "src/components/client/taxonomy/TaxonomyManager.tsx",
+      "src/components/client/taxonomy/TermPicker.tsx",
+      "src/components/client/taxonomy/TermSheet.tsx"
     ],
     "text-input": [
       "src/components/client/account/NameEditor.tsx",
@@ -58,10 +65,15 @@
       "src/components/client/create/steps/CoverStep.tsx",
       "src/components/client/create/steps/TitleStep.tsx",
       "src/components/client/editor/BodyEditor.tsx",
+      "src/components/client/events/EventEditor.tsx",
+      "src/components/client/events/NewEventForm.tsx",
       "src/components/client/gallery/wizard/kit.tsx",
       "src/components/client/media/BatchSheet.tsx",
       "src/components/client/media/PhotoCard.tsx",
-      "src/components/client/people/PeopleSheets.tsx"
+      "src/components/client/people/PeopleSheets.tsx",
+      "src/components/client/taxonomy/TaxonomyManager.tsx",
+      "src/components/client/taxonomy/TermPicker.tsx",
+      "src/components/client/taxonomy/TermSheet.tsx"
     ],
     "field-label": [
       "src/components/app/lifecycle/PublicationDateField.tsx",
@@ -70,14 +82,23 @@
       "src/components/client/account/NameEditor.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
       "src/components/client/catalogue/item-fields.tsx",
+      "src/components/client/events/EventEditor.tsx",
+      "src/components/client/events/NewEventForm.tsx",
       "src/components/client/media/BatchSheet.tsx",
-      "src/components/client/media/PhotoCard.tsx"
+      "src/components/client/media/PhotoCard.tsx",
+      "src/components/client/taxonomy/TaxonomyManager.tsx",
+      "src/components/client/taxonomy/TermPicker.tsx",
+      "src/components/client/taxonomy/TermSheet.tsx"
     ],
     "segmented-control": [
       "src/components/admin/lab/DemoCanvas.tsx",
+      "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/catalogue/CollectionBuilder.tsx",
+      "src/components/client/catalogue/ItemEditor.tsx",
       "src/components/client/create/steps/LanguagesStep.tsx",
       "src/components/client/create/steps/PreviewStep.tsx",
       "src/components/client/editor/BodyEditor.tsx",
+      "src/components/client/events/EventEditor.tsx",
       "src/components/client/gallery/GallerySteps.tsx",
       "src/components/client/gallery/wizard/kit.tsx",
       "src/components/client/media/MediaGrid.tsx",
@@ -105,7 +126,6 @@
       "src/components/client/catalogue/publish-dependencies.tsx",
       "src/components/client/connections/ConnectedAppsBrowser.tsx",
       "src/components/client/create/steps/ReviewStep.tsx",
-      "src/components/client/events/EventEditor.tsx",
       "src/components/client/events/event-bits.tsx",
       "src/components/client/forms/SubmissionsTable.tsx",
       "src/components/client/forms/forms-bits.tsx",
@@ -118,21 +138,28 @@
       "src/components/client/people/PeopleSheets.tsx",
       "src/components/client/people/PeopleTable.tsx",
       "src/components/client/people/people-bits.tsx",
-      "src/components/client/posts/PostsTable.tsx"
+      "src/components/client/posts/PostsTable.tsx",
+      "src/components/client/taxonomy/TaxonomyManager.tsx"
     ],
     "checkbox": [
       "src/components/admin/projects/NewProjectWizard.tsx",
       "src/components/admin/whats-new/WhatsNewAdmin.tsx",
+      "src/components/app/ui/CheckboxCard.tsx",
       "src/components/app/ui/list/ContentCard.tsx",
       "src/components/app/ui/list/DataTable.tsx",
       "src/components/app/ui/list/ListRow.tsx",
-      "src/components/client/catalogue/CatalogueBrowser.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/item-fields.tsx",
       "src/components/client/connections/ConsentScreen.tsx",
       "src/components/client/gallery/GalleryCards.tsx",
       "src/components/client/people/PeopleSheets.tsx",
       "src/components/client/posts/PostCards.tsx"
+    ],
+    "checkbox-card": [
+      "src/components/client/catalogue/item-fields.tsx"
+    ],
+    "count-badge": [
+      "src/components/client/catalogue/catalogue-ui.tsx"
     ],
     "switch": [
       "src/components/client/catalogue/item-fields.tsx",
@@ -189,6 +216,14 @@
       "src/components/client/people/PeopleBrowser.tsx",
       "src/components/client/posts/PostsBrowser.tsx",
       "src/components/client/taxonomy/TaxonomyManager.tsx"
+    ],
+    "back-link": [
+      "src/components/client/catalogue/CollectionBuilder.tsx",
+      "src/components/client/catalogue/ItemEditor.tsx",
+      "src/components/client/catalogue/OptionListEditor.tsx",
+      "src/components/client/events/EventEditor.tsx",
+      "src/components/client/events/NewEventForm.tsx",
+      "src/components/client/gallery/GalleryDetail.tsx"
     ],
     "page-header": [
       "src/app/[locale]/(admin)/analytics/[slug]/page.tsx",
@@ -260,13 +295,13 @@
     ],
     "bottom-sheet": [
       "src/components/admin/partners/PartnersBrowser.tsx",
+      "src/components/app/lifecycle/UnpublishDateSheet.tsx",
       "src/components/app/shell/AccountMenu.tsx",
       "src/components/app/ui/DateRangePicker.tsx",
       "src/components/app/ui/DateTimePicker.tsx",
       "src/components/client/ProjectSwitcher.tsx",
       "src/components/client/catalogue/ChangeTypeSheet.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
-      "src/components/client/catalogue/catalogue-ui.tsx",
       "src/components/client/catalogue/publish-dependencies.tsx",
       "src/components/client/create/steps/CoverStep.tsx",
       "src/components/client/forms/SubmissionsBrowser.tsx",
@@ -304,6 +339,8 @@
       "src/components/admin/analytics/PortfolioBrowser.tsx",
       "src/components/admin/backlog/BacklogBrowser.tsx",
       "src/components/admin/projects/ProjectsBrowser.tsx",
+      "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/events/EventList.tsx",
       "src/components/client/forms/SubmissionsFilters.tsx",
       "src/components/client/gallery/GalleriesFilters.tsx",
       "src/components/client/media/MediaLibraryScreen.tsx",
@@ -316,7 +353,6 @@
     "filter-bar": [
       "src/components/admin/lab/LabIndex.tsx",
       "src/components/app/ui/ListToolbar.tsx",
-      "src/components/client/catalogue/CatalogueBrowser.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
       "src/components/client/create/steps/CoverStep.tsx",
@@ -342,6 +378,7 @@
     "content-card": [
       "src/components/admin/analytics/PortfolioBrowser.tsx",
       "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/events/EventList.tsx",
       "src/components/client/gallery/GalleryCards.tsx",
       "src/components/client/gallery/GalleryList.tsx",
       "src/components/client/media/MediaLibraryScreen.tsx",
@@ -498,9 +535,14 @@
       "src/components/client/posts/PostsBrowser.tsx"
     ],
     "publication-date-field": [
+      "src/components/app/lifecycle/UnpublishDateSheet.tsx",
+      "src/components/client/catalogue/ItemEditor.tsx"
+    ],
+    "unpublish-date-sheet": [
+      "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/ItemEditor.tsx",
-      "src/components/client/catalogue/catalogue-ui.tsx",
-      "src/components/client/posts/PostSheets.tsx"
+      "src/components/client/posts/PostsBrowser.tsx"
     ],
     "publish-choice": [
       "src/components/client/catalogue/ItemWizard.tsx",
@@ -574,10 +616,14 @@
       "src/components/app/shell/AccountMenu.tsx"
     ],
     "list-row": [
+      "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/events/EventList.tsx",
       "src/components/client/forms/SubmissionCards.tsx",
-      "src/components/client/people/PeopleTable.tsx"
+      "src/components/client/people/PeopleTable.tsx",
+      "src/components/client/taxonomy/TaxonomyManager.tsx"
     ],
     "radio-list": [
+      "src/components/client/catalogue/item-fields.tsx",
       "src/components/client/connections/ConsentScreen.tsx",
       "src/components/client/people/PeopleSheets.tsx"
     ],
@@ -590,7 +636,8 @@
       "src/components/client/media/MediaLibraryPicker.tsx",
       "src/components/client/media/PhotoCard.tsx",
       "src/components/client/media/UploadQueueList.tsx",
-      "src/components/client/posts/PostSheets.tsx"
+      "src/components/client/posts/PostSheets.tsx",
+      "src/components/client/taxonomy/TaxonomyManager.tsx"
     ],
     "tile": [
       "src/components/client/create/steps/CoverStep.tsx",
@@ -635,13 +682,25 @@
     ],
     "notice": [
       "src/app/[locale]/(admin)/media/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/catalogue/error.tsx",
+      "src/components/client/catalogue/CollectionBuilder.tsx",
+      "src/components/client/catalogue/ItemEditor.tsx",
+      "src/components/client/catalogue/OptionListEditor.tsx",
+      "src/components/client/catalogue/catalogue-ui.tsx",
+      "src/components/client/catalogue/publish-dependencies.tsx",
+      "src/components/client/catalogue/stray-address.tsx",
       "src/components/client/create/steps/PreviewStep.tsx",
+      "src/components/client/events/EventEditor.tsx",
       "src/components/client/gallery/wizard/kit.tsx",
       "src/components/client/media/PhotoCard.tsx"
     ],
     "panel": [
       "src/app/[locale]/(admin)/lab/todo/page.tsx",
       "src/app/[locale]/(client)/account/page.tsx",
+      "src/components/client/catalogue/CollectionBuilder.tsx",
+      "src/components/client/catalogue/OptionListEditor.tsx",
+      "src/components/client/catalogue/item-fields.tsx",
+      "src/components/client/catalogue/publish-dependencies.tsx",
       "src/components/client/connections/ConnectedAppsBrowser.tsx",
       "src/components/client/connections/ConsentScreen.tsx",
       "src/components/client/create/steps/CoverStep.tsx",
@@ -662,12 +721,15 @@
     ],
     "date-time-picker": [
       "src/components/app/lifecycle/PublicationDateField.tsx",
-      "src/components/app/lifecycle/PublishChoice.tsx"
+      "src/components/app/lifecycle/PublishChoice.tsx",
+      "src/components/client/events/EventEditor.tsx",
+      "src/components/client/events/NewEventForm.tsx"
     ],
     "field": [
       "src/components/client/people/PeopleSheets.tsx"
     ],
     "skeleton": [
+      "src/app/[locale]/(client)/[tenant]/catalogue/loading.tsx",
       "src/components/client/create/OpenForEdit.tsx",
       "src/components/client/create/steps/PreviewStep.tsx",
       "src/components/client/gallery/wizard/kit.tsx"

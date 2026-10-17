@@ -213,9 +213,7 @@
           "restore": "Restore"
         },
         "endDateSheet": {
-          "title": "Set unpublish date",
-          "helper": "On this date the post is unpublished by itself. You can publish it again any time.",
-          "save": "Save unpublish date"
+          "helper": "On this date the post is unpublished by itself. You can publish it again any time."
         },
         "categorySheet": {
           "title": "Change category",
@@ -288,7 +286,21 @@
         "noUpcoming": "No events coming up.",
         "emptyTitle": "No events yet",
         "emptyBody": "Add your first event: give it a name and a date, then fill in the rest.",
-        "untitled": "Untitled event"
+        "untitled": "Untitled event",
+        "filters": {
+          "label": "Filter events",
+          "search": "Search events",
+          "when": "When",
+          "whenUpcoming": "Coming up",
+          "whenPast": "Past",
+          "whenAll": "Any time",
+          "status": "Status",
+          "statusAll": "Any status"
+        },
+        "count": "{shown} of {total} events",
+        "clear": "Clear filters",
+        "noMatch": "No events match these filters.",
+        "showPast": "Show past events"
       },
       "new": {
         "back": "Events",
@@ -299,7 +311,8 @@
         "start": "Starts",
         "create": "Create event",
         "creating": "Creating…",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "needs": "Add a name and when it starts to create the event."
       },
       "editor": {
         "back": "Events",
@@ -345,7 +358,8 @@
           "title": "When",
           "start": "Starts",
           "end": "Ends",
-          "helper": "Leave the end empty for a single moment. Times are in your own time zone."
+          "helper": "Leave the end empty for a single moment. Times are in the website's time zone.",
+          "removeEnd": "Remove the end"
         },
         "signup": {
           "title": "Sign-up",
@@ -2400,6 +2414,11 @@
         "title": "{count, plural, one {Delete “{title}” permanently?} other {Delete # items permanently?}}",
         "body": "{count, plural, one {It is deleted together with its draft. If this was a mistake, Abluo can recover it within 90 days.} other {They are deleted together with their drafts. If this was a mistake, Abluo can recover them within 90 days.}}",
         "confirm": "Delete permanently"
+      },
+      "unpublishSheet": {
+        "helper": "On this date it is unpublished by itself. You can publish it again any time.",
+        "save": "Save unpublish date",
+        "pickFirst": "Pick a date and time first."
       }
     }
   },

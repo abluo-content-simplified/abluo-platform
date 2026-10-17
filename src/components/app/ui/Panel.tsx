@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
 /**
  * The bordered box around a group of content on a page (a settings block, a
@@ -17,23 +17,31 @@ export function Panel({
   as: Tag = 'div',
   padding = 'md',
   tone = 'card',
+  highlighted = false,
+  style,
   className = '',
   children,
   ...aria
 }: {
   as?: 'div' | 'section' | 'article' | 'aside' | 'li'
   padding?: 'none' | 'md' | 'lg'
-  tone?: 'card' | 'muted'
+  /** danger: a destructive border (a group of things that block an action). */
+  tone?: 'card' | 'muted' | 'danger'
+  /** The action-coloured border (a drop target, the chosen block). */
+  highlighted?: boolean
+  style?: CSSProperties
   className?: string
   children: ReactNode
   id?: string
   'aria-labelledby'?: string
   'aria-label'?: string
+  /** data-* hooks (scroll/focus targets). */
+  [data: `data-${string}`]: string | undefined
 }) {
   const pad = padding === 'lg' ? 'p-6' : padding === 'md' ? 'p-4' : ''
   const fill = tone === 'muted' ? 'bg-muted' : 'bg-card'
   return (
-    <Tag className={`rounded-2xl border border-border ${fill} ${pad} ${className}`} {...aria}>
+    <Tag className={`rounded-2xl border ${highlighted ? 'border-action' : tone === 'danger' ? 'border-destructive' : 'border-border'} ${fill} ${pad} ${className}`} style={style} {...aria}>
       {children}
     </Tag>
   )

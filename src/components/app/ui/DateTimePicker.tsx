@@ -48,6 +48,7 @@ export function DateTimeSheet({
   value,
   zone,
   after,
+  allowPast = false,
   onDone,
   onClose,
 }: {
@@ -58,17 +59,19 @@ export function DateTimeSheet({
   zone: string
   /** The moment must be later than this (UTC ISO); default: now. */
   after?: string | null
+  /** Past moments are fine (an event that already happened); `after` still applies. */
+  allowPast?: boolean
   onDone: (utc: string) => void
   onClose: () => void
 }) {
   return (
     <BottomSheet open={open} title={title} onClose={onClose}>
-      {open ? <SheetBody value={value} zone={zone} after={after} onDone={onDone} /> : null}
+      {open ? <SheetBody value={value} zone={zone} after={after} allowPast={allowPast} onDone={onDone} /> : null}
     </BottomSheet>
   )
 }
 
-function SheetBody({ value, zone, after, onDone }: { value: string | null; zone: string; after?: string | null; onDone: (utc: string) => void }) {
+function SheetBody({ value, zone, after, allowPast, onDone }: { value: string | null; zone: string; after?: string | null; allowPast: boolean; onDone: (utc: string) => void }) {
   const t = useTranslations('app.ui.dateTime')
   const locale = useLocale()
   const zoneNote = useZoneNote(zone)
@@ -77,12 +80,12 @@ function SheetBody({ value, zone, after, onDone }: { value: string | null; zone:
   const [day, setDay] = useState<string | null>(initial ? initial.slice(0, 10) : null)
   const [time, setTime] = useState<string>(initial ? initial.slice(11, 16) : DEFAULT_TIME)
   const [openedAt] = useState(() => new Date().toISOString())
-  const limit = after ?? openedAt
-  const minDay = toLocalInput(limit, zone).slice(0, 10) || undefined
+  const limit = after ?? (allowPast ? null : openedAt)
+  const minDay = limit ? toLocalInput(limit, zone).slice(0, 10) || undefined : undefined
   const steps = useMemo(() => timeSteps(initial ? initial.slice(11, 16) : undefined), [initial])
   const timeFmt = useMemo(() => new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }), [locale])
   const parsed = day ? fromLocalInput(`${day}T${time}`, zone) : null
-  const tooEarly = !!parsed && Date.parse(parsed.utc) <= Date.parse(limit)
+  const tooEarly = !!parsed && !!limit && Date.parse(parsed.utc) <= Date.parse(limit)
   const reason = !day ? t('pickDay') : tooEarly ? (after ? t('mustBeAfter', { date: formatInZone(after, zone, locale) }) : t('mustBeFuture')) : null
 
   return (
@@ -130,8 +133,10 @@ export function DateTimePicker({
   onChange,
   zone,
   after,
+  allowPast,
   title,
   placeholder,
+  disabled,
   invalid,
   describedBy,
   showZone = true,
@@ -143,6 +148,9 @@ export function DateTimePicker({
   zone: string
   /** The moment must be later than this (UTC ISO); default: now. */
   after?: string | null
+  /** Past moments are fine; `after` still applies. */
+  allowPast?: boolean
+  disabled?: boolean
   /** The sheet's title (default "Pick a date and time"). */
   title?: string
   placeholder?: string
@@ -164,6 +172,7 @@ export function DateTimePicker({
         id={id}
         type="button"
         aria-haspopup="dialog"
+        disabled={disabled}
         aria-describedby={[showZone ? `${id}-zone` : '', describedBy ?? ''].filter(Boolean).join(' ') || undefined}
         onClick={() => setOpen(true)}
         className={inputClass({ className: `flex items-center justify-between gap-3 text-left ${invalid ? 'border-destructive' : ''}` })}
@@ -182,6 +191,7 @@ export function DateTimePicker({
         value={value}
         zone={zone}
         after={after}
+        allowPast={allowPast}
         onClose={() => setOpen(false)}
         onDone={(utc) => {
           onChange(utc)

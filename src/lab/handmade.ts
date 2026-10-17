@@ -36,6 +36,7 @@ export const HANDMADE_RULES = {
   box: { re: /\brounded-2xl border\b/g, use: 'Panel, Notice, EmptyState' },
   pill: { re: /\brounded-full\b[^"'`]*\btext-xs\b/g, use: 'Pill, LifecycleBadge' },
   pulse: { re: /\banimate-pulse\b/g, use: 'Skeleton' },
+  backLink: { re: /-ml-1 inline-flex min-h-11 items-center gap-1\b/g, use: 'BackLink' },
 } as const
 
 export type HandmadeRule = keyof typeof HANDMADE_RULES

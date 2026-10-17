@@ -22,8 +22,6 @@ const LEGACY_NAMES = new Set(['src/components/client/gallery/GalleryList.tsx', '
 
 /** Not yet on the shared parts — the migration list. Remove a line when its screen is moved over. */
 const PENDING: Record<string, string> = {
-  'src/components/client/catalogue/CatalogueBrowser.tsx': 'own segmented filters — move to ListToolbar',
-  'src/components/client/events/EventList.tsx': 'own list — move to ListToolbar + DataTable/ContentCard',
   'src/components/admin/partners/PartnersBrowser.tsx': 'own list — move to ListToolbar + DataTable',
   'src/components/admin/whats-new/WhatsNewAdmin.tsx': 'DataTable without ListToolbar',
 }

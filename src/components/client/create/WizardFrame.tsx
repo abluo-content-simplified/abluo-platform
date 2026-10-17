@@ -55,6 +55,7 @@ export function WizardFrame({
     <div
       data-surface="create"
       onKeyDown={onKeyDown}
+      data-portal-root
       className="fixed inset-0 z-[60] flex flex-col bg-background text-foreground"
     >
       <header className="mx-auto flex w-full max-w-[672px] items-center justify-between gap-3 px-4 pt-[max(12px,env(safe-area-inset-top))] pb-2">

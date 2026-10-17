@@ -1,8 +1,9 @@
 'use client'
 
+import { BackLink } from '@/components/app/ui/BackLink'
 import { useId, useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import { Link, useRouter } from '@/i18n/navigation'
+import { useRouter } from '@/i18n/navigation'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { ChoiceCard, ChoiceCardGrid } from '@/components/app/ui/ChoiceCard'
@@ -48,7 +49,9 @@ import {
   type Texts,
   type Visibility,
 } from '@/lib/modules/catalogue/dashboard-form'
-import { CAT_ICONS, CAT_MOTION, GapBadges, InUseNotice, SegmentTabs, UnpublishDateSheet, textIn, useCatalogueError } from './catalogue-ui'
+import { CAT_ICONS, CAT_MOTION, GapBadges, InUseNotice, textIn, useCatalogueError } from './catalogue-ui'
+import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
+import { UnpublishDateSheet } from '@/components/app/lifecycle/UnpublishDateSheet'
 import { FieldBlock, NameFields, PageField, VisibilityField } from './item-fields'
 import { useCatalogueDraft } from './use-catalogue-draft'
 import type { ItemChoice } from './choices'
@@ -56,16 +59,12 @@ import { usePublishTogether } from './publish-dependencies'
 import { StrayAddressNotice, focusNameField, useStrayAddress } from './stray-address'
 import { languageName } from '@/components/client/create/StepHeading'
 import { Button, IconButton } from '@/components/app/ui/Button'
+import { Notice } from '@/components/app/ui/Notice'
+import { Panel } from '@/components/app/ui/Panel'
 import { TextInput } from '@/components/app/ui/TextInput'
 
 type Tab = 'sections' | 'details' | 'page'
 const newKey = () => Math.random().toString(36).slice(2, 14)
-
-const BACK_ICON = (
-  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M15 18l-6-6 6-6" />
-  </svg>
-)
 
 /**
  * The collection builder (spec §10.4): a direct editor, not a wizard —
@@ -233,24 +232,25 @@ export function CollectionBuilder({
   }
   const sectionName = (s: SectionForm) => textIn(s.name, ui, d) || t('sections.unnamed')
   const undoStrip = undo ? (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-border px-4 py-2.5" role="status">
-      <span className="text-[0.9375rem] text-foreground">
-        {t('sections.removed', { name: sectionName(undo.removed[0]), count: undo.removed.length - 1 })}
-      </span>
-      <span className="flex gap-2">
-        <Button variant="secondary"
-          
+    <Notice
+      tone="dashed"
+      layout="row"
+      onDismiss={() => setUndo(null)}
+      dismissLabel={t('sections.dismiss')}
+      action={
+        <Button
+          variant="secondary"
           onClick={() => {
             saveSections(undoDelete(sections, undo))
             setUndo(null)
-          }}>
+          }}
+        >
           {t('sections.undo')}
         </Button>
-        <IconButton aria-label={t('sections.dismiss')}  onClick={() => setUndo(null)}>
-          {CAT_ICONS.x}
-        </IconButton>
-      </span>
-    </div>
+      }
+    >
+      {t('sections.removed', { name: sectionName(undo.removed[0]), count: undo.removed.length - 1 })}
+    </Notice>
   ) : null
   const undoAt = undo ? Math.min(undo.index, sections.length) : -1
 
@@ -271,13 +271,7 @@ export function CollectionBuilder({
 
   return (
     <div className="space-y-5">
-      <Link
-        href={listHref}
-        className="-ml-1 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-      >
-        {BACK_ICON}
-        {t('back')}
-      </Link>
+      <BackLink href={listHref} label={t('back')} />
       <div className="-mt-4">
         <PageHeader
         title={title}
@@ -295,12 +289,12 @@ export function CollectionBuilder({
       {hint ? <div className="hidden md:block">{hint}</div> : null}
       {snapshot ? <LifecycleBadge status={snapshot.status.status} changes={draft.hasDraft && isLive} /> : null}
       <SaveNotice state={draft.state} rejected={draft.rejected} onRetry={draft.retry} onReload={() => void draft.reload()} />
-      {archived ? <p className="rounded-2xl bg-muted px-4 py-3 text-[0.9375rem] text-foreground">{t('archivedNotice')}</p> : null}
+      {archived ? <Notice tone="info">{t('archivedNotice')}</Notice> : null}
       {inUse ? <InUseNotice projectSlug={projectSlug} referrers={inUse} onClose={() => setInUse(null)} /> : null}
       {together.ui}
       <StrayAddressNotice state={stray} />
 
-      <SegmentTabs label={t('tabsLabel')} value={tab} onChange={setTab} options={(['sections', 'details', 'page'] as Tab[]).map((v) => ({ value: v, label: t(`tabs.${v}`) }))} />
+      <SegmentedControl label={t('tabsLabel')} value={tab} onChange={setTab} options={(['sections', 'details', 'page'] as Tab[]).map((v) => ({ value: v, label: t(`tabs.${v}`) }))} />
 
       <fieldset disabled={readOnly} className="min-w-0 space-y-6">
         {tab === 'details' ? (
@@ -331,9 +325,9 @@ export function CollectionBuilder({
                 {site.locales
                   .filter((l) => l !== d)
                   .map((l) => (
-                    <div key={l} className="rounded-2xl border border-border p-4">
+                    <Panel key={l}>
                       <NameFields locale={l} name={name} description={description} onName={(x, v) => setText('name', x, v)} onDescription={(x, v) => setText('description', x, v)} />
-                    </div>
+                    </Panel>
                   ))}
               </FieldBlock>
             ) : null}
@@ -383,9 +377,7 @@ export function CollectionBuilder({
         ) : (
           <>
             {issues.length ? (
-              <p role="alert" className="rounded-2xl border border-border px-4 py-3 text-[0.9375rem] text-foreground">
-                {t('sections.broken')}
-              </p>
+              <Notice tone="neutral">{t('sections.broken')}</Notice>
             ) : null}
             <ol className="flex flex-col gap-3" aria-label={t('sections.label')}>
               {sections.map((s, i) => {
@@ -396,11 +388,7 @@ export function CollectionBuilder({
                 return (
                   <li key={s._key} className="flex flex-col gap-3">
                     {i === undoAt ? undoStrip : null}
-                    <div
-                      data-drag-key={s._key}
-                      style={{ marginInlineStart: `${Math.min(depth, 4) * 1.25}rem` }}
-                      className={`relative rounded-2xl border bg-card p-3 ${CAT_MOTION} ${drag.dragging === s._key ? 'opacity-50' : ''} ${isOver ? 'border-action' : 'border-border'}`}
-                    >
+                    <Panel padding="none" highlighted={isOver} data-drag-key={s._key} style={{ marginInlineStart: `${Math.min(depth, 4) * 1.25}rem` }} className={`relative p-3 ${CAT_MOTION} ${drag.dragging === s._key ? 'opacity-50' : ''}`}>
                       {isOver ? <span aria-hidden="true" className={`absolute inset-x-3 h-0.5 rounded bg-action ${drag.over?.after ? '-bottom-2' : '-top-2'}`} /> : null}
                       <div className="flex items-start gap-1">
                         <IconButton className="cursor-grab active:cursor-grabbing" aria-label={t('sections.drag', { name: sectionName(s) })}  {...drag.gripProps(s._key)}>
@@ -465,7 +453,7 @@ export function CollectionBuilder({
                           {t('sections.addSubsection')}
                         </Button>
                       </div>
-                    </div>
+                    </Panel>
                   </li>
                 )
               })}

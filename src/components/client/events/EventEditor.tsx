@@ -1,8 +1,9 @@
 'use client'
 
+import { BackLink } from '@/components/app/ui/BackLink'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import { Link, useRouter } from '@/i18n/navigation'
+import { useRouter } from '@/i18n/navigation'
 import {
   discardEventDraftAction,
   openEventForEditAction,
@@ -16,10 +17,17 @@ import { MediaLibraryPicker } from '@/components/client/media/MediaLibraryPicker
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { PageHeader } from '@/components/app/ui/PageHeader'
-import { MediaFrame, Pill } from '@/components/app/ui/list/cells'
+import { MediaFrame } from '@/components/app/ui/list/cells'
 import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
-import { EVENT_BUTTON, EVENT_ICONS, EVENT_INPUT, EVENT_LABEL, EVENT_PRIMARY, EventStatePill, eventState, inputToIso, isoToInput } from './event-bits'
+import { EVENT_ICONS, EventStatePill, eventState } from './event-bits'
+import { Button } from '@/components/app/ui/Button'
+import { FieldLabel } from '@/components/app/ui/FieldLabel'
+import { TextArea, TextInput } from '@/components/app/ui/TextInput'
+import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
+import { DateTimePicker } from '@/components/app/ui/DateTimePicker'
+import { Notice } from '@/components/app/ui/Notice'
+import { editingZone } from '@/components/app/lifecycle/zoned-time'
 
 const TEXT_FIELDS = ['title', 'shortDescription', 'location', 'registrationLabel'] as const
 type TextField = (typeof TEXT_FIELDS)[number]
@@ -44,8 +52,8 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'error' | 'conflict' | 'invalid'
 function valuesOf(e: EventSnapshot): Values {
   return {
     texts: { title: { ...e.title }, shortDescription: { ...e.shortDescription }, location: { ...e.location }, registrationLabel: { ...e.registrationLabel } },
-    start: isoToInput(e.startDate),
-    end: isoToInput(e.endDate),
+    start: e.startDate ?? '',
+    end: e.endDate ?? '',
     url: e.registrationUrl,
     visibility: e.visibility,
     eventStatus: e.eventStatus,
@@ -64,49 +72,19 @@ function diff(from: Values, to: Values, locales: string[]): Record<string, unkno
       if (a !== b) set[`${f}.${l}`] = b
     }
   }
-  if (from.start !== to.start && inputToIso(to.start)) set.startDate = inputToIso(to.start)
-  if (from.end !== to.end) set.endDate = to.end ? inputToIso(to.end) : null
+  if (from.start !== to.start && to.start) set.startDate = to.start
+  if (from.end !== to.end) set.endDate = to.end || null
   if (from.url.trim() !== to.url.trim()) set.registrationUrl = to.url.trim()
   for (const f of CHOICES) if (from[f] !== to[f]) set[f] = to[f]
   return set
 }
 
 /**
- * One row of big, tappable choices (a radio group). Used for the ADR-031
- * fields so a phone user picks with one tap — no dropdowns.
+ * One row of big, tappable choices (the ADR-031 fields): the shared
+ * SegmentedControl in its chips look, so a phone user picks with one tap.
  */
-function ChoiceChips<V extends string>({
-  label,
-  value,
-  options,
-  onChange,
-  disabled,
-}: {
-  label: string
-  value: V
-  options: { value: V; label: string }[]
-  onChange: (v: V) => void
-  disabled: boolean
-}) {
-  return (
-    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-2">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          role="radio"
-          aria-checked={value === o.value}
-          disabled={disabled}
-          onClick={() => onChange(o.value)}
-          className={`inline-flex min-h-11 items-center rounded-full border px-4 text-[0.9375rem] font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60 ${
-            value === o.value ? 'border-action bg-action text-action-foreground' : 'border-border text-foreground hover:bg-hover'
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  )
+function ChoiceChips<V extends string>({ label, value, options, onChange, disabled }: { label: string; value: V; options: { value: V; label: string }[]; onChange: (v: V) => void; disabled: boolean }) {
+  return <SegmentedControl appearance="chips" label={label} value={value} onChange={onChange} options={options.map((o) => ({ ...o, disabled }))} />
 }
 
 /**
@@ -124,6 +102,7 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete }: { pro
   const ids = { title: useId(), shortDescription: useId(), location: useId(), registrationLabel: useId(), start: useId(), end: useId(), url: useId() }
   const { site, id, placeOptions } = initial
   const d = site.defaultLocale
+  const zone = editingZone(site.timeZone)
   const base = `/${projectSlug}/agenda`
 
   const [values, setValues] = useState<Values>(() => valuesOf(initial))
@@ -292,22 +271,16 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete }: { pro
 
   return (
     <div className="max-w-2xl space-y-6">
-      <Link
-        href={base}
-        className="-ml-1 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-      >
-        {EVENT_ICONS.back}
-        {t('back')}
-      </Link>
+      <BackLink href={base} label={t('back')} />
       <div className="-mt-4">
         <PageHeader
           title={title}
           actions={
             <>
               {canPublish ? (
-                <button type="button" disabled={busy} onClick={() => void publish()} className={EVENT_PRIMARY}>
+                <Button variant="primary" disabled={busy} onClick={() => void publish()}>
                   {busy ? t('publishing') : isPublished ? t('publishChanges') : t('publish')}
-                </button>
+                </Button>
               ) : null}
               {menu.length ? <CardMenu label={t('menu')} items={menu} /> : null}
             </>
@@ -334,14 +307,14 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete }: { pro
           <MediaFrame src={cover?.thumbUrl ?? cover?.url ?? null} alt={cover?.alt[d] ?? ''} size={{ width: '12rem', height: '8rem' }} className="rounded-xl border border-border" />
           {canWrite ? (
             <div className="flex flex-wrap gap-2">
-              <button type="button" disabled={busy} onClick={() => setPicking(true)} className={EVENT_BUTTON}>
+              <Button disabled={busy} onClick={() => setPicking(true)}>
                 {EVENT_ICONS.photo}
                 {cover ? t('photo.change') : t('photo.choose')}
-              </button>
+              </Button>
               {cover ? (
-                <button type="button" disabled={busy} onClick={() => void chooseCover(null)} className={EVENT_BUTTON}>
+                <Button disabled={busy} onClick={() => void chooseCover(null)}>
                   {t('photo.remove')}
-                </button>
+                </Button>
               ) : null}
             </div>
           ) : null}
@@ -355,53 +328,51 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete }: { pro
           {t('words.title')}
         </h2>
         {others.length ? (
-          <div role="group" aria-label={t('words.language')} className="flex flex-wrap gap-2">
-            {site.locales.map((l) => (
-              <button
-                key={l}
-                type="button"
-                aria-pressed={locale === l}
-                onClick={() => setLocale(l)}
-                className={`inline-flex min-h-11 items-center rounded-full border px-4 text-[0.9375rem] font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-                  locale === l ? 'border-action bg-action text-action-foreground' : 'border-border text-foreground hover:bg-hover'
-                }`}
-              >
-                {languageName(l, ui)}
-                {l !== d && !values.texts.title[l]?.trim() ? <span className="sr-only"> · {t('words.missing')}</span> : null}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            appearance="chips"
+            label={t('words.language')}
+            value={locale}
+            onChange={setLocale}
+            options={site.locales.map((l) => ({
+              value: l,
+              label: (
+                <>
+                  {languageName(l, ui)}
+                  {l !== d && !values.texts.title[l]?.trim() ? <span className="sr-only"> · {t('words.missing')}</span> : null}
+                </>
+              ),
+            }))}
+          />
         ) : null}
         {locale !== d && values.texts.title[d] ? (
           <p className="text-sm leading-5 text-muted-foreground">{t('words.original', { language: languageName(d, ui), title: values.texts.title[d] })}</p>
         ) : null}
         <div>
-          <label htmlFor={ids.title} className={EVENT_LABEL}>
+          <FieldLabel htmlFor={ids.title}>
             {t('fields.title')}
-          </label>
-          <input id={ids.title} disabled={disabled} maxLength={160} value={values.texts.title[locale] ?? ''} onChange={(e) => setText('title', e.target.value)} className={EVENT_INPUT} />
+          </FieldLabel>
+          <TextInput id={ids.title} disabled={disabled} maxLength={160} value={values.texts.title[locale] ?? ''} onChange={(e) => setText('title', e.target.value)} />
         </div>
         <div>
-          <label htmlFor={ids.shortDescription} className={EVENT_LABEL}>
+          <FieldLabel htmlFor={ids.shortDescription}>
             {t('fields.shortDescription')}
-          </label>
-          <textarea
+          </FieldLabel>
+          <TextArea
             id={ids.shortDescription}
             disabled={disabled}
             maxLength={500}
             rows={4}
             value={values.texts.shortDescription[locale] ?? ''}
             onChange={(e) => setText('shortDescription', e.target.value)}
-            className={`${EVENT_INPUT} h-auto py-3 leading-6`}
           />
           <p className="mt-1 text-sm leading-5 text-muted-foreground">{t('fields.shortDescriptionHelper')}</p>
         </div>
         {values.place === '' && values.attendanceMode !== 'online' ? (
           <div>
-            <label htmlFor={ids.location} className={EVENT_LABEL}>
+            <FieldLabel htmlFor={ids.location}>
               {t('fields.location')}
-            </label>
-            <input id={ids.location} disabled={disabled} maxLength={160} value={values.texts.location[locale] ?? ''} onChange={(e) => setText('location', e.target.value)} placeholder={t('fields.locationPlaceholder')} className={EVENT_INPUT} />
+            </FieldLabel>
+            <TextInput id={ids.location} disabled={disabled} maxLength={160} value={values.texts.location[locale] ?? ''} onChange={(e) => setText('location', e.target.value)} placeholder={t('fields.locationPlaceholder')} />
           </div>
         ) : null}
       </section>
@@ -420,7 +391,7 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete }: { pro
         />
         {values.attendanceMode !== 'online' && (placeOptions.locations.length > 0 || placeOptions.venues.length > 0) ? (
           <div className="space-y-2">
-            <p className={EVENT_LABEL}>{t('place.title')}</p>
+            <FieldLabel as="p">{t('place.title')}</FieldLabel>
             <ChoiceChips
               label={t('place.title')}
               value={values.place}
@@ -444,16 +415,21 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete }: { pro
         </h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor={ids.start} className={EVENT_LABEL}>
+            <FieldLabel htmlFor={ids.start}>
               {t('when.start')}
-            </label>
-            <input id={ids.start} type="datetime-local" disabled={disabled} value={values.start} onChange={(e) => setValues((v) => ({ ...v, start: e.target.value }))} className={EVENT_INPUT} />
+            </FieldLabel>
+            <DateTimePicker id={ids.start} title={t('when.start')} disabled={disabled} allowPast zone={zone} value={values.start || null} onChange={(start) => setValues((v) => ({ ...v, start }))} />
           </div>
           <div>
-            <label htmlFor={ids.end} className={EVENT_LABEL}>
+            <FieldLabel htmlFor={ids.end}>
               {t('when.end')}
-            </label>
-            <input id={ids.end} type="datetime-local" disabled={disabled} value={values.end} min={values.start || undefined} onChange={(e) => setValues((v) => ({ ...v, end: e.target.value }))} className={EVENT_INPUT} />
+            </FieldLabel>
+            <DateTimePicker id={ids.end} title={t('when.end')} disabled={disabled} allowPast after={values.start || null} zone={zone} value={values.end || null} onChange={(end) => setValues((v) => ({ ...v, end }))} showZone={false} />
+            {values.end && !disabled ? (
+              <Button variant="link" className="px-0" onClick={() => setValues((v) => ({ ...v, end: '' }))}>
+                {t('when.removeEnd')}
+              </Button>
+            ) : null}
           </div>
         </div>
         <p className="text-sm leading-5 text-muted-foreground">{t('when.helper')}</p>
@@ -465,25 +441,24 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete }: { pro
           {t('signup.title')}
         </h2>
         <div>
-          <label htmlFor={ids.url} className={EVENT_LABEL}>
+          <FieldLabel htmlFor={ids.url}>
             {t('signup.link')}
-          </label>
-          <input id={ids.url} type="url" inputMode="url" disabled={disabled} maxLength={500} value={values.url} onChange={(e) => setValues((v) => ({ ...v, url: e.target.value }))} placeholder={t('signup.linkPlaceholder')} className={EVENT_INPUT} />
+          </FieldLabel>
+          <TextInput id={ids.url} type="url" inputMode="url" disabled={disabled} maxLength={500} value={values.url} onChange={(e) => setValues((v) => ({ ...v, url: e.target.value }))} placeholder={t('signup.linkPlaceholder')} />
           <p className="mt-1 text-sm leading-5 text-muted-foreground">{t('signup.linkHelper')}</p>
         </div>
         <div>
-          <label htmlFor={ids.registrationLabel} className={EVENT_LABEL}>
+          <FieldLabel htmlFor={ids.registrationLabel}>
             {t('signup.label')}
             {others.length ? <span className="font-normal text-muted-foreground"> · {languageName(locale, ui)}</span> : null}
-          </label>
-          <input
+          </FieldLabel>
+          <TextInput
             id={ids.registrationLabel}
             disabled={disabled}
             maxLength={40}
             value={values.texts.registrationLabel[locale] ?? ''}
             onChange={(e) => setText('registrationLabel', e.target.value)}
             placeholder={t('signup.labelPlaceholder')}
-            className={EVENT_INPUT}
           />
         </div>
       </section>
@@ -515,10 +490,9 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete }: { pro
       </section>
 
       {initial.hasStudioContent ? (
-        <div className="rounded-2xl border border-border-subtle bg-muted px-4 py-3">
-          <Pill tone="muted">{t('more.badge')}</Pill>
-          <p className="mt-2 text-[0.9375rem] leading-6 text-muted-foreground">{t('more.body')}</p>
-        </div>
+        <Notice tone="info" title={t('more.badge')}>
+          {t('more.body')}
+        </Notice>
       ) : null}
 
       {picking ? (

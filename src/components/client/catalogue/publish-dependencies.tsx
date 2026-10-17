@@ -9,8 +9,10 @@ import { previewCataloguePublishAction } from '@/app/[locale]/(client)/[tenant]/
 import type { CataloguePublishPreview } from '@/lib/api/catalogue-drafts'
 import type { Referrer } from '@/lib/lifecycle/service'
 import type { CatalogueKind } from '@/lib/modules/catalogue/dashboard-patch'
-import { CAT_ICONS, referrerHref, useCatalogueError } from './catalogue-ui'
-import { Button, IconButton } from '@/components/app/ui/Button'
+import { referrerHref, useCatalogueError } from './catalogue-ui'
+import { Button } from '@/components/app/ui/Button'
+import { Notice } from '@/components/app/ui/Notice'
+import { Panel } from '@/components/app/ui/Panel'
 
 /**
  * ADR-033 D-4 / D-5 in the dashboard.
@@ -60,39 +62,36 @@ export function DependenciesNotice({
   const t = useTranslations('catalogue.dashboard.together')
   const tc = useTranslations('catalogue.dashboard.common')
   return (
-    <div role="alert" className="rounded-2xl border border-border bg-muted px-4 py-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[0.9375rem] font-medium text-foreground">{title ?? t('notPublishedTitle')}</p>
-          <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
-            {dependencies.map((r) => (
-              <li key={`${r.type}:${r.id}`}>
-                <RefLink projectSlug={projectSlug} r={r} />
-              </li>
-            ))}
-          </ul>
-          {onPublishTogether ? (
-            <Button variant="secondary" className="mt-3" onClick={onPublishTogether}>
-              {t(togetherKey(kind))}
-            </Button>
-          ) : null}
-        </div>
-        {onClose ? (
-          <IconButton onClick={onClose} aria-label={tc('dismiss')}>
-            {CAT_ICONS.x}
-          </IconButton>
-        ) : null}
-      </div>
-    </div>
+    <Notice
+      tone="info"
+      title={title ?? t('notPublishedTitle')}
+      onDismiss={onClose}
+      dismissLabel={tc('dismiss')}
+      action={
+        onPublishTogether ? (
+          <Button variant="secondary" onClick={onPublishTogether}>
+            {t(togetherKey(kind))}
+          </Button>
+        ) : undefined
+      }
+    >
+      <ul className="flex flex-wrap gap-x-3 gap-y-1">
+        {dependencies.map((r) => (
+          <li key={`${r.type}:${r.id}`}>
+            <RefLink projectSlug={projectSlug} r={r} />
+          </li>
+        ))}
+      </ul>
+    </Notice>
   )
 }
 
 function Group({ title, tone = 'plain', children }: { title: string; tone?: 'plain' | 'warning' | 'blocking'; children: ReactNode }) {
   return (
-    <section className={`rounded-2xl border px-4 py-3 ${tone === 'blocking' ? 'border-destructive' : 'border-border'}`} aria-label={title}>
+    <Panel as="section" tone={tone === 'blocking' ? 'danger' : 'card'} aria-label={title}>
       <h3 className={`text-[0.9375rem] font-semibold ${tone === 'blocking' ? 'text-destructive' : 'text-foreground'}`}>{title}</h3>
       <div className="mt-2">{children}</div>
-    </section>
+    </Panel>
   )
 }
 

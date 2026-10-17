@@ -2,14 +2,16 @@
 
 import { useMemo, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import { Link, useRouter } from '@/i18n/navigation'
+import { useRouter } from '@/i18n/navigation'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { ViewSwitch } from '@/components/app/ui/ViewSwitch'
-import { FilterBar, FilterSearch, FilterSelect } from '@/components/app/ui/FilterBar'
+import { ListToolbar, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
+import type { FilterChip } from '@/components/app/ui/FilterSheet'
+import { ListRow } from '@/components/app/ui/list/ListRow'
 import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
 import { CardGrid, CardGridItem, ContentCard, SelectAll } from '@/components/app/ui/list/ContentCard'
 import { CellDate, CellImage, CellPill, CellText, Chips, DisplayTimeZoneContext, MediaFrame, Pill } from '@/components/app/ui/list/cells'
-import { Checkbox, isShiftChange } from '@/components/app/ui/Checkbox'
+import { isShiftChange } from '@/components/app/ui/Checkbox'
 import { idRange, SelectionBar } from '@/components/app/ui/SelectionBar'
 import { BarButton } from '@/components/app/ui/BarButton'
 import { ICONS as POST_ICONS } from '@/components/client/posts/post-bits'
@@ -46,8 +48,10 @@ import {
   type ListSort,
   type ListSortKey,
 } from '@/lib/modules/catalogue/list-model'
-import { CAT_ICONS, GapBadges, InUseNotice, SegmentTabs, UnpublishDateSheet, catalogueHref, textIn, useCatalogueError } from './catalogue-ui'
-import { ButtonLink } from '@/components/app/ui/Button'
+import { CAT_ICONS, GapBadges, InUseNotice, catalogueHref, textIn, useCatalogueError } from './catalogue-ui'
+import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
+import { UnpublishDateSheet } from '@/components/app/lifecycle/UnpublishDateSheet'
+import { Button, ButtonLink } from '@/components/app/ui/Button'
 
 export type CatalogueView = 'items' | 'collections' | 'optionLists'
 const VIEWS: readonly CatalogueView[] = ['items', 'collections', 'optionLists']
@@ -420,6 +424,50 @@ export function CatalogueBrowser({
     : undefined
   const sortOptions = LIST_SORT_KEYS.filter((k) => k !== 'price' || showPrice).map((k) => ({ value: k, label: t(`columns.${k}`) }))
 
+  const clearFilters = () => {
+    setQuery('')
+    setCategory('')
+    setStatus('all')
+    syncUrl(view, 'all')
+  }
+  const filtered = !!query.trim() || !!category || status !== 'all'
+  const chips: FilterChip[] = [
+    ...(status !== 'all' ? [{ id: 'status', label: statusOptions.find((o) => o.value === status)?.label ?? status }] : []),
+    ...(category ? [{ id: 'category', label: catLabel.get(category) ?? category }] : []),
+  ]
+  const removeChip = (id: string) => {
+    if (id === 'status') {
+      setStatus('all')
+      syncUrl(view, 'all')
+    } else if (id === 'category') setCategory('')
+  }
+  const toolbarFilters: ListToolbarFilter[] = [
+    {
+      key: 'status',
+      label: t('filters.status'),
+      value: status,
+      options: statusOptions,
+      onChange: (v) => {
+        const st = parseStatusFilter(v)
+        setStatus(st)
+        syncUrl(view, st)
+      },
+    },
+    ...(view === 'items' && site.categories.length
+      ? [
+          {
+            key: 'category',
+            label: t('filters.category'),
+            value: category,
+            options: [{ value: '', label: t('filters.anyCategory') }, ...site.categories.map((c) => ({ value: c.value, label: catLabel.get(c.value) ?? c.value }))],
+            onChange: setCategory,
+          },
+        ]
+      : []),
+    // Sort: in the cards view and the phone sheet (the table sorts by its headers).
+    { key: 'sort', label: t('filters.sort'), value: sort.key, options: sortOptions, onChange: (v) => onSort(v as ListSortKey), placement: display === 'cards' ? 'all' : 'sheet' },
+  ]
+
   const emptyAll = total === 0
   return (
     <DisplayTimeZoneContext.Provider value={zone}>
@@ -450,7 +498,7 @@ export function CatalogueBrowser({
           }
         />
 
-        <SegmentTabs
+        <SegmentedControl
           label={t('views.label')}
           value={view}
           onChange={(v) => {
@@ -478,60 +526,24 @@ export function CatalogueBrowser({
           />
         ) : (
           <>
-            <FilterBar label={t('filters.label')}>
-              <FilterSearch value={query} onChange={setQuery} placeholder={t('filters.search')} label={t('filters.search')} sizing="w-full md:w-72" />
-              <FilterSelect
-                label={t('filters.status')}
-                value={status}
-                onChange={(v) => {
-                  const s = parseStatusFilter(v)
-                  setStatus(s)
-                  syncUrl(view, s)
-                }}
-                options={statusOptions}
-              />
-              {view === 'items' && site.categories.length ? (
-                <FilterSelect
-                  label={t('filters.category')}
-                  value={category}
-                  onChange={setCategory}
-                  options={[{ value: '', label: t('filters.anyCategory') }, ...site.categories.map((c) => ({ value: c.value, label: catLabel.get(c.value) ?? c.value }))]}
-                />
-              ) : null}
-              <span className={`contents ${display === 'cards' ? '' : 'md:hidden'}`}>
-                <FilterSelect
-                  label={t('filters.sort')}
-                  value={sort.key}
-                  onChange={(v) => onSort(v as ListSortKey)}
-                  options={sortOptions}
-                />
-              </span>
-            </FilterBar>
-            <p className="flex items-center gap-4 text-sm text-muted-foreground" aria-live="polite">
-              <span>{t('count', { shown: shown.length, total })}</span>
-              {canSelect && display === 'cards' && shown.length > 0 ? (
-                <span className="hidden md:inline-flex">
-                  <SelectAll label={t('select.all')} ariaLabel={t('select.allLabel')} state={allState} onChange={toggleAll} />
-                </span>
-              ) : null}
-            </p>
+            <ListToolbar
+              label={t('filters.label')}
+              search={{ value: query, onChange: setQuery, placeholder: t('filters.search'), label: t('filters.search') }}
+              filters={toolbarFilters}
+              summary={t('count', { shown: shown.length, total })}
+              summaryExtra={
+                canSelect && display === 'cards' && shown.length > 0 ? (
+                  <span className="hidden md:inline-flex">
+                    <SelectAll label={t('select.all')} ariaLabel={t('select.allLabel')} state={allState} onChange={toggleAll} />
+                  </span>
+                ) : null
+              }
+              clear={{ label: t('clearFilters'), onClear: clearFilters, visible: filtered }}
+              sheet={{ activeCount: chips.length, resultCount: shown.length, chips, onRemoveChip: removeChip }}
+            />
 
             {shown.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border px-6 py-10">
-                <p className="font-medium text-foreground">{t('noMatch')}</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuery('')
-                    setCategory('')
-                    setStatus('all')
-                    syncUrl(view, 'all')
-                  }}
-                  className="mt-3 inline-flex h-11 items-center rounded-xl border border-border px-4 text-sm font-medium text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                >
-                  {t('clearFilters')}
-                </button>
-              </div>
+              <EmptyState title={t('noMatch')} titleAs="p" action={<Button onClick={clearFilters}>{t('clearFilters')}</Button>} />
             ) : (
               <>
                 {/* Computers: a table or cards. */}
@@ -564,25 +576,21 @@ export function CatalogueBrowser({
                 </div>
                 {/* Phones: cards, top-aligned, the menu as a bottom sheet. */}
                 <ul className="flex flex-col gap-3 md:hidden" aria-label={title}>
-                  {shown.map((r) => {
-                    const isSel = selected.has(r.id)
-                    return (
-                      <li key={r.id} className={`flex items-start gap-1 rounded-xl border bg-card py-2 pr-1 ${isSel ? 'border-action ring-1 ring-action' : 'border-border'} ${canSelect ? 'pl-1' : 'pl-3'}`}>
-                        {canSelect ? <Checkbox checked={isSel} aria-label={t('select.checkbox', { name: r.name })} onChange={(checked, e) => toggle(r.id, checked, isShiftChange(e))} /> : null}
-                        <Link href={r.href} className="flex min-w-0 flex-1 items-start gap-3 pt-1 pb-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
-                          {r.showsMedia ? <MediaFrame src={r.thumb} alt="" fit="contain" size={r.shape === 'portrait' ? { width: '3.5rem', height: '5.25rem' } : { width: '4.5rem', height: '4.5rem' }} className="shrink-0 rounded-lg" /> : null}
-                          <span className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
-                            <span className="line-clamp-2 text-[0.9375rem] leading-6 font-semibold text-foreground">{r.name}</span>
-                            {r.details ? <span className="line-clamp-1 max-w-full text-sm leading-5 text-muted-foreground">{r.details}</span> : null}
-                            <LifecycleBadge status={r.status.status} changes={r.status.hasChanges} />
-                            <GapBadges gaps={r.gaps} />
-                            {r.priceLabel ? <span className="text-sm font-medium text-foreground">{r.priceLabel}</span> : null}
-                          </span>
-                        </Link>
-                        <CardMenu label={t('menuFor', { name: r.name })} items={menuFor(r)} />
-                      </li>
-                    )
-                  })}
+                  {shown.map((r) => (
+                    <ListRow
+                      key={r.id}
+                      href={r.href}
+                      leading={r.showsMedia ? <MediaFrame src={r.thumb} alt="" fit="contain" size={r.shape === 'portrait' ? { width: '3.5rem', height: '5.25rem' } : { width: '4.5rem', height: '4.5rem' }} className="shrink-0 rounded-lg" /> : undefined}
+                      select={canSelect ? { checked: selected.has(r.id), label: t('select.checkbox', { name: r.name }), onChange: (checked, e) => toggle(r.id, checked, isShiftChange(e)) } : undefined}
+                      menu={{ label: t('menuFor', { name: r.name }), items: menuFor(r) }}
+                    >
+                      <span className="line-clamp-2 text-[0.9375rem] leading-6 font-semibold text-foreground">{r.name}</span>
+                      {r.details ? <span className="line-clamp-1 max-w-full text-sm leading-5 text-muted-foreground">{r.details}</span> : null}
+                      <LifecycleBadge status={r.status.status} changes={r.status.hasChanges} />
+                      <GapBadges gaps={r.gaps} />
+                      {r.priceLabel ? <span className="text-sm font-medium text-foreground">{r.priceLabel}</span> : null}
+                    </ListRow>
+                  ))}
                 </ul>
               </>
             )}
@@ -630,7 +638,6 @@ export function CatalogueBrowser({
           onCancel={() => setConfirmDelete(null)}
         />
         <UnpublishDateSheet
-          key={dateFor?.id ?? 'none'}
           open={dateFor !== null}
           busy={busy}
           zone={zone}

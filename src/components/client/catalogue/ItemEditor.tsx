@@ -1,11 +1,12 @@
 'use client'
 
+import { BackLink } from '@/components/app/ui/BackLink'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { timedAction } from '@/lib/perf/client-log'
 import { TermPicker } from '@/components/client/taxonomy/TermPicker'
 import { useUploadOwner } from '@/components/client/media/use-media-uploads'
 import { useLocale, useTranslations } from 'next-intl'
-import { Link, useRouter } from '@/i18n/navigation'
+import { useRouter } from '@/i18n/navigation'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
@@ -24,7 +25,9 @@ import type { Referrer } from '@/lib/lifecycle/service'
 import { PROFILES, can as profileCan } from '@/lib/modules/catalogue/profiles'
 import { attachmentIssues, declarationIssues, itemGaps, itemOptionsRelevant, itemStateFromDoc, type ItemState } from '@/lib/modules/catalogue/dashboard-form'
 import { adviceTabs, issueCountByTab, itemIssues, publishBlockers, type ItemIssue, type ItemTab } from '@/lib/modules/catalogue/item-issues'
-import { CAT_ICONS, GapBadges, InUseNotice, ItemIssueList, SegmentTabs, TabLabel, UnpublishDateSheet, focusField, textIn, useCatalogueError } from './catalogue-ui'
+import { CAT_ICONS, GapBadges, InUseNotice, ItemIssueList, TabLabel, focusField, textIn, useCatalogueError } from './catalogue-ui'
+import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
+import { UnpublishDateSheet } from '@/components/app/lifecycle/UnpublishDateSheet'
 import { BookDetailsFields, FieldBlock, FoodInfoField, ItemPreview, LanguagesField, LinksField, NameFields, OptionsField, PageField, PhotoField, PriceField, VisibilityField, type OptionListChoice } from './item-fields'
 import { ChangeTypeSheet } from './ChangeTypeSheet'
 import { usePublishTogether } from './publish-dependencies'
@@ -33,6 +36,7 @@ import { StrayAddressNotice, focusNameField, useStrayAddress } from './stray-add
 import { useCatalogueDraft } from './use-catalogue-draft'
 import { useItemState } from './use-item-state'
 import { Button } from '@/components/app/ui/Button'
+import { Notice } from '@/components/app/ui/Notice'
 
 type Tab = ItemTab
 type PublishResult = { kind: 'published' } | { kind: 'scheduled'; at: string | null }
@@ -235,13 +239,7 @@ export function ItemEditor({
 
   return (
     <div className="space-y-5">
-      <Link
-        href={listHref}
-        className="-ml-1 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-      >
-        {CAT_ICONS.back}
-        {t('back')}
-      </Link>
+      <BackLink href={listHref} label={t('back')} />
       <PageHeader
         title={name}
         actions={
@@ -260,9 +258,9 @@ export function ItemEditor({
           <span>{s.itemProfile ? tty(`names.${PROFILES[s.itemProfile].labelKey}`) : tty('notChosen')}</span>
         </span>
         {!readOnly ? (
-          <button type="button" onClick={() => setTypeOpen(true)} className="min-h-11 text-[0.9375rem] font-medium text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+          <Button variant="link" onClick={() => setTypeOpen(true)}>
             {s.itemProfile ? tty('change') : tty('choose')}
-          </button>
+          </Button>
         ) : null}
       </div>
       <div className="flex flex-wrap items-start gap-2">
@@ -270,23 +268,21 @@ export function ItemEditor({
         <GapBadges gaps={itemGaps({ imageCount: item.photos.length, offerCount: s.offers.filter((o) => o.price.trim()).length, allergensNotReviewed: hasFoodInfo && declarationIssues(s.allergenDeclaration).length > 0 })} />
       </div>
       {result && !draft.hasDraft ? (
-        <p role="status" className="rounded-2xl bg-muted px-4 py-3 text-[0.9375rem] text-foreground">
+        <Notice tone="info">
           {result.kind === 'scheduled' && result.at ? t('resultScheduled', { date: new Intl.DateTimeFormat(ui, { dateStyle: 'full', timeStyle: 'short', timeZone: zone }).format(new Date(result.at)) }) : result.kind === 'scheduled' ? t('scheduled') : t('resultPublished')}
-        </p>
+        </Notice>
       ) : null}
       {!readOnly && !canPublish ? <ItemIssueList issues={blockers} onFix={fix} /> : null}
       <SaveNotice state={draft.state} rejected={draft.rejected} onRetry={draft.retry} onReload={() => void draft.reload()} />
-      {archived ? <p className="rounded-2xl bg-muted px-4 py-3 text-[0.9375rem] text-foreground">{t('archivedNotice')}</p> : null}
+      {archived ? <Notice tone="info">{t('archivedNotice')}</Notice> : null}
       {missingLists.length ? (
-        <p role="alert" className="rounded-2xl border border-border px-4 py-3 text-[0.9375rem] text-foreground">
-          {t('missingList')}
-        </p>
+        <Notice tone="neutral">{t('missingList')}</Notice>
       ) : null}
       {inUse ? <InUseNotice projectSlug={projectSlug} referrers={inUse} onClose={() => setInUse(null)} /> : null}
       {together.ui}
       <StrayAddressNotice state={stray} />
 
-      <SegmentTabs label={t('tabsLabel')} value={current} onChange={setTab} options={tabs.map((v) => ({ value: v, label: <TabLabel label={t(`tabs.${v}`)} count={issueCounts[v]} advice={adviceOn.has(v)} /> }))} />
+      <SegmentedControl label={t('tabsLabel')} value={current} onChange={setTab} options={tabs.map((v) => ({ value: v, label: <TabLabel label={t(`tabs.${v}`)} count={issueCounts[v]} advice={adviceOn.has(v)} /> }))} />
 
       <fieldset disabled={readOnly} className="min-w-0 space-y-8">
         {current === 'content' ? (

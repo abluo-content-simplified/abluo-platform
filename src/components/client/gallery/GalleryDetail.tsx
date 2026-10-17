@@ -1,5 +1,6 @@
 'use client'
 
+import { BackLink } from '@/components/app/ui/BackLink'
 import { useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/navigation'
@@ -198,13 +199,7 @@ export function GalleryDetail({
 
   return (
     <div className="space-y-5">
-      <Link
-        href={base}
-        className="-ml-1 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-      >
-        {GALLERY_ICONS.back}
-        {t('back')}
-      </Link>
+      <BackLink href={base} label={t('back')} />
       <div className="-mt-3">
         <PageHeader
           title={title}

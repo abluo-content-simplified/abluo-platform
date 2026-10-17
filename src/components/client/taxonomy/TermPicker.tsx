@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import { Link } from '@/i18n/navigation'
+import { Button, ButtonLink } from '@/components/app/ui/Button'
+import { TextInput } from '@/components/app/ui/TextInput'
+import { FieldError } from '@/components/app/ui/FieldLabel'
 import { ToggleChips } from '@/components/app/ui/ToggleChips'
 import { createTaxonomyTermAction } from '@/app/[locale]/(client)/[tenant]/taxonomy/actions'
 import { errorKey } from './taxonomy-view'
@@ -27,10 +29,6 @@ import {
  * see no "+ Add". The saved value is the list of stable keys, as before.
  */
 
-const INPUT =
-  'h-11 w-full min-w-0 rounded-xl border border-border bg-background px-3 text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60'
-const ADD_BTN =
-  'inline-flex h-11 max-w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-border px-4 text-[0.9375rem] font-semibold text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40'
 /** Show the search box on its own once the list is long enough to need it. */
 const SEARCH_FROM = 8
 
@@ -117,7 +115,9 @@ export function TermPicker({
 
       {showSearch ? (
         <div className="flex flex-wrap items-start gap-2">
-          <input
+          <TextInput
+            flush
+            controlSize="md"
             ref={inputRef}
             type="text"
             value={query}
@@ -135,32 +135,25 @@ export function TermPicker({
             }}
             placeholder={t(addable ? `picker.${kind}.placeholderAdd` : 'picker.placeholderSearch')}
             aria-label={t(addable ? `picker.${kind}.placeholderAdd` : 'picker.placeholderSearch')}
-            className={`${INPUT} flex-1 basis-56`}
+            className="flex-1 basis-56"
           />
           {addable ? (
-            <button type="button" disabled={busy || (!!text && !offer)} onClick={() => (offer ? void create() : inputRef.current?.focus())} className={ADD_BTN}>
+            <Button className="max-w-full" disabled={busy || (!!text && !offer)} onClick={() => (offer ? void create() : inputRef.current?.focus())}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M12 5v14M5 12h14" />
               </svg>
               <span className="truncate">{busy ? t('adding') : offer ? t(`picker.${kind}.addNamed`, { name: text }) : t(`${kind}.add`)}</span>
-            </button>
+            </Button>
           ) : null}
         </div>
       ) : null}
 
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+      <FieldError>{error}</FieldError>
 
       {addable ? (
-        <Link
-          href={`/${projectSlug}/taxonomy?module=${encodeURIComponent(module)}&kind=${encodeURIComponent(kind)}`}
-          className="inline-flex min-h-11 items-center text-[0.9375rem] font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        >
+        <ButtonLink variant="link" className="px-0" href={`/${projectSlug}/taxonomy?module=${encodeURIComponent(module)}&kind=${encodeURIComponent(kind)}`}>
           {t('picker.manage')}
-        </Link>
+        </ButtonLink>
       ) : null}
     </div>
   )

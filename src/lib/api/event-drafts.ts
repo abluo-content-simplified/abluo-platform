@@ -173,17 +173,18 @@ const pick = (value: unknown, locale: string): string => {
   return v[locale] ?? v.en ?? Object.values(v)[0] ?? ''
 }
 
-export type EventSite = { defaultLocale: string; locales: string[] }
+/** timeZone: the site's IANA zone (null = not set; the dashboard falls back to the viewer's). Event times are entered in it. */
+export type EventSite = { defaultLocale: string; locales: string[]; timeZone: string | null }
 
 async function readSite(client: Client, projectSlug: string): Promise<EventSite> {
-  const site = await client.fetch<{ defaultLocale?: string | null; supportedLocales?: string[] | null } | null>(
-    `*[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales }`,
+  const site = await client.fetch<{ defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null } | null>(
+    `*[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales, timeZone }`,
     { projectSlug }
   )
   const locales = site?.supportedLocales?.length ? site.supportedLocales : []
   const defaultLocale = site?.defaultLocale || locales[0]
   if (!defaultLocale) throw new EventError('failed', 'Site languages are not configured.')
-  return { defaultLocale, locales: [defaultLocale, ...locales.filter((l) => l !== defaultLocale)] }
+  return { defaultLocale, locales: [defaultLocale, ...locales.filter((l) => l !== defaultLocale)], timeZone: typeof site?.timeZone === 'string' && site.timeZone ? site.timeZone : null }
 }
 
 /** The site's languages for an event that doesn't exist yet. Same gate as creating one. */

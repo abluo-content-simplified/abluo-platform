@@ -503,7 +503,9 @@ export function WizardShell({
       ]
     : []
   const menu = [
-    ...lifecycleItems.filter((e) => !e.destructive && e.action !== 'archive').map(lifecycleItem),
+    // "Publication dates" is held back until it has its own dates editor: the
+    // publish step it opened republished the copy and reset the go-live date.
+    ...lifecycleItems.filter((e) => !e.destructive && e.action !== 'archive' && e.action !== 'setUnpublishDate').map(lifecycleItem),
     ...extras,
     ...lifecycleItems.filter((e) => e.action === 'archive').map(lifecycleItem),
     ...lifecycleItems.filter((e) => e.destructive).map(lifecycleItem),
@@ -560,6 +562,7 @@ export function WizardShell({
     <div
       data-surface="create"
       onKeyDown={onKeyDown}
+      data-portal-root
       className="fixed inset-0 z-[60] flex flex-col bg-background text-foreground"
     >
       <header className="mx-auto flex w-full max-w-[672px] items-center justify-between gap-3 px-4 pt-[max(12px,env(safe-area-inset-top))] pb-2">

@@ -213,9 +213,7 @@
           "restore": "Ripristina"
         },
         "endDateSheet": {
-          "title": "Imposta fine pubblicazione",
-          "helper": "In questa data l’articolo smette di essere pubblicato da solo. Puoi pubblicarlo di nuovo quando vuoi.",
-          "save": "Salva fine pubblicazione"
+          "helper": "In questa data l’articolo smette di essere pubblicato da solo. Puoi pubblicarlo di nuovo quando vuoi."
         },
         "categorySheet": {
           "title": "Cambia categoria",
@@ -288,7 +286,21 @@
         "noUpcoming": "Nessun evento in arrivo.",
         "emptyTitle": "Ancora nessun evento",
         "emptyBody": "Aggiungi il tuo primo evento: dagli un nome e una data, poi completa il resto.",
-        "untitled": "Evento senza titolo"
+        "untitled": "Evento senza titolo",
+        "filters": {
+          "label": "Filtra eventi",
+          "search": "Cerca eventi",
+          "when": "Quando",
+          "whenUpcoming": "In arrivo",
+          "whenPast": "Passati",
+          "whenAll": "Sempre",
+          "status": "Stato",
+          "statusAll": "Qualsiasi stato"
+        },
+        "count": "{shown} di {total} eventi",
+        "clear": "Azzera filtri",
+        "noMatch": "Nessun evento corrisponde a questi filtri.",
+        "showPast": "Mostra eventi passati"
       },
       "new": {
         "back": "Eventi",
@@ -299,7 +311,8 @@
         "start": "Inizio",
         "create": "Crea evento",
         "creating": "Creazione…",
-        "cancel": "Annulla"
+        "cancel": "Annulla",
+        "needs": "Aggiungi un nome e quando inizia per creare l’evento."
       },
       "editor": {
         "back": "Eventi",
@@ -345,7 +358,8 @@
           "title": "Quando",
           "start": "Inizio",
           "end": "Fine",
-          "helper": "Lascia vuota la fine per un singolo momento. Gli orari sono nel tuo fuso orario."
+          "helper": "Lascia vuota la fine per un singolo momento. Gli orari sono nel fuso orario del sito.",
+          "removeEnd": "Rimuovi la fine"
         },
         "signup": {
           "title": "Iscrizione",
@@ -2400,6 +2414,11 @@
         "title": "{count, plural, one {Eliminare definitivamente «{title}»?} other {Eliminare definitivamente # elementi?}}",
         "body": "{count, plural, one {Viene eliminato insieme alla sua bozza. Se è stato un errore, Abluo può recuperarlo entro 90 giorni.} other {Vengono eliminati insieme alle loro bozze. Se è stato un errore, Abluo può recuperarli entro 90 giorni.}}",
         "confirm": "Elimina definitivamente"
+      },
+      "unpublishSheet": {
+        "helper": "In questa data verrà rimosso automaticamente dal sito. Potrai ripubblicarlo in qualsiasi momento.",
+        "save": "Salva fine pubblicazione",
+        "pickFirst": "Prima scegli data e ora."
       }
     }
   },

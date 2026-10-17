@@ -80,7 +80,9 @@ export function useAnchoredPopover({
 
 /** Where popovers portal to: the app root (keeps its theme tokens), else `document.body`. */
 export function portalTarget(from: HTMLElement | null): HTMLElement {
-  return (from?.closest('.abluo-app') as HTMLElement | null) ?? document.body
+  // A full-screen layer (the Create flow, z-60) marks itself data-portal-root:
+  // a menu opened inside it must render inside it, or it opens BEHIND it.
+  return (from?.closest('[data-portal-root]') as HTMLElement | null) ?? (from?.closest('.abluo-app') as HTMLElement | null) ?? document.body
 }
 
 /** Initial inline style for a portalled panel: fixed, hidden until measured. */

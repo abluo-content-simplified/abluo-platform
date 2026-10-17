@@ -10,6 +10,7 @@
 // I/O, no React — the server re-validates every value (dashboard-patch.ts).
 
 import { slugifyNestedPath } from '@/lib/sanity/fields/nested-slug'
+import { searchText } from '@/lib/client/search-text'
 import { offerIssues, type Offer, type OfferIssue } from './offers'
 import { ruleIssues, WEEKDAYS, type Weekday } from './availability'
 import { isDescendant, moveSection, readingOrder, removeSection, subtreeOf, type SectionNode } from './sections'
@@ -302,7 +303,7 @@ export function parseStatusFilter(value: string | null | undefined): CatalogueSt
 
 /** Accent- and case-insensitive search text. */
 export function searchable(text: string): string {
-  return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+  return searchText(text)
 }
 
 // ── Collection builder — section tree edits (spec §10.4, ADR-033 D6/A7) ──────

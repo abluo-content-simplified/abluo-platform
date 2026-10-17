@@ -34,7 +34,8 @@ import { ICONS, NewPostLink, StarGlyph } from './post-bits'
 import { PostsFilters } from './PostsFilters'
 import { PostsTable } from './PostsTable'
 import { PostCardsGrid, PostPhoneList } from './PostCards'
-import { BarButton, CategorySheet, EndDateSheet, SheetItem } from './PostSheets'
+import { BarButton, CategorySheet, SheetItem } from './PostSheets'
+import { UnpublishDateSheet } from '@/components/app/lifecycle/UnpublishDateSheet'
 import { PostActivitySheet } from './PostActivitySheet'
 import type { BrowserPost } from './types'
 import { DeletePermanentlyDialog } from '@/components/app/lifecycle/DeletePermanentlyDialog'
@@ -520,10 +521,11 @@ export function PostsBrowser({
         />
       ) : null}
 
-      <EndDateSheet
+      <UnpublishDateSheet
         open={sheet?.kind === 'endDate'}
         busy={busy}
         zone={zone}
+        helper={tc('endDateSheet.helper')}
         onClose={() => setSheet(null)}
         onSave={async (iso) => {
           const ids = sheet?.kind === 'endDate' ? sheet.ids : []
