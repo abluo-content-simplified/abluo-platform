@@ -23,7 +23,7 @@ export type ValueSource = 'designSystem' | 'calculated' | 'platformDefault' | 'n
 export type ThemeKey = 'light' | 'dark'
 
 /** Hub pages, in navigation order. 'overview' is served at /brand itself. */
-export const BRAND_HUB_PAGES = ['overview', 'colour', 'typography', 'shape', 'layout', 'logo', 'motion'] as const
+export const BRAND_HUB_PAGES = ['overview', 'colour', 'typography', 'shape', 'layout', 'logo', 'motion', 'voice'] as const
 export type BrandHubPageId = (typeof BRAND_HUB_PAGES)[number]
 
 /** A plain (non-colour) design value. */
@@ -64,8 +64,37 @@ export type ColourRoleKey = (typeof COLOUR_ROLE_KEYS)[number]
 
 export interface ColourRole {
   key: ColourRoleKey
+  /** The CSS variable the website emits for this role (null when it emits none). */
+  cssVar: string | null
   light: ColourValue
   dark: ColourValue
+}
+
+/** One brand-palette colour (designSystem.brandPalette, ADR-036 S2), texts in the requested language. */
+export interface BrandColour {
+  key: string
+  name: string
+  tier: 'primary' | 'secondary' | 'neutral'
+  usage: 'screen' | 'print' | 'both'
+  description: string | null
+  uses: string | null
+  /** The variable the website emits: --color-brand-{key}. */
+  cssVar: string
+  value: ColourValue
+  /** CMYK as written in the design system, else a calculated approximation. */
+  cmyk: DesignValue<string>
+  pantone: string | null
+  /** UI roles whose seen colour is this one (light or dark), e.g. primary. */
+  matchesRoles: ColourRoleKey[]
+}
+
+/** A calculated alternative that passes AA for normal text (never applied — the design system decides). */
+export interface ContrastSuggestion {
+  /** Which side of the pair changes. */
+  change: 'foreground' | 'background'
+  oklch: string
+  hex: string
+  ratio: number
 }
 
 export interface ButtonThemeSpec {
@@ -95,6 +124,8 @@ export interface ContrastCheck {
   passNormal: boolean
   /** ≥ 3.0 */
   passLarge: boolean
+  /** Only when passNormal is false: the nearest passing lightness for one side, hue and chroma kept. */
+  suggestions: ContrastSuggestion[]
 }
 
 export type TypeLevelKey = 'h1' | 'h2' | 'h3' | 'h4' | 'bodyLarge' | 'body' | 'small'
@@ -183,6 +214,8 @@ export interface DoDontItem {
 
 /** The written part of one page (from the brandGuide document). */
 export interface WrittenContent {
+  /** Status of the page's written guidance; null when the page has no text. */
+  status: BrandStatementStatus | null
   body: PortableTextContent | null
   doDont: DoDontItem[]
 }
@@ -209,6 +242,7 @@ export interface BrandHubModel {
   written: Record<Exclude<BrandHubPageId, 'overview'>, WrittenContent>
 
   colours: ColourRole[]
+  brandPalette: BrandColour[]
   buttons: ButtonSpec[]
   contrast: ContrastCheck[]
 

@@ -1,9 +1,16 @@
-import { DoDontGrid, MONO, RichText, Section, TD, TH, TableWrap, ValueLabel, ValueText, type HubPageProps } from './shared'
+import { CARD_STYLE, DoDontGrid, MONO, RichText, Section, TD, TH, TableWrap, ValueLabel, ValueText, type HubPageProps } from './shared'
 
 export function MotionPage({ model, m, locale }: HubPageProps) {
   const w = model.written.motion
+  const allDefault = [...model.motion.durations, ...model.motion.easings].every((v) => v.value.source === 'platformDefault')
   return (
     <>
+      {allDefault && (
+        <p className="mb-8 flex flex-wrap items-center gap-2 p-4 text-sm" style={{ ...CARD_STYLE, background: 'var(--color-background-alt)' }}>
+          <ValueLabel source="platformDefault" m={m} />
+          <span>{m.motionDefaults}</span>
+        </p>
+      )}
       <RichText value={w.body} />
       <Section title={m.motionDurationsTitle}>
         <TableWrap>

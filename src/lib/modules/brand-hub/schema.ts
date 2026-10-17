@@ -25,7 +25,7 @@ export const BRAND_LOGO_RULE_FIELDS = ['clearSpace', 'minimumDigital', 'minimumP
 export const BRAND_GUIDE_STATUSES = ['draft', 'review', 'published'] as const
 
 /** Hub pages that carry written guidance (Overview has `intro`). */
-export const BRAND_GUIDE_PAGE_FIELDS = ['colour', 'typography', 'shape', 'layout', 'logo', 'motion'] as const
+export const BRAND_GUIDE_PAGE_FIELDS = ['colour', 'typography', 'shape', 'layout', 'logo', 'motion', 'voice'] as const
 
 const brandGuideExampleType = defineType({
   name: 'brandGuideExample',
@@ -131,6 +131,22 @@ const brandGuidePageType = defineType({
   type: 'object',
   fields: [
     defineField({
+      name: 'status',
+      title: 'Status',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'Draft — awaiting approval', value: 'draft' },
+          { title: 'Approved', value: 'approved' },
+          { title: 'Needs a decision', value: 'needsDecision' },
+        ],
+        layout: 'radio',
+        direction: 'horizontal',
+      },
+      initialValue: 'draft',
+      description: 'Shown at the top of the page when it has guidance. Only "Approved" reads as confirmed.',
+    }),
+    defineField({
       name: 'body',
       title: 'Guidance',
       type: 'localizedPortableText',
@@ -152,6 +168,7 @@ const PAGE_TITLES: Record<(typeof BRAND_GUIDE_PAGE_FIELDS)[number], string> = {
   layout: 'Layout',
   logo: 'Logo & assets',
   motion: 'Motion',
+  voice: 'Voice and content',
 }
 
 const brandGuideType = defineType({

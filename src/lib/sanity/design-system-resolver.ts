@@ -117,6 +117,11 @@ function mergeDesignSystems(
     // Parent assets provide the base set; child assets override by key or add new ones.
     backgroundAssets: mergeArrayByKey(parent.backgroundAssets, child.backgroundAssets),
 
+    // ─── Brand palette: CHILD REPLACES PARENT (ADR-036 S2) ───────────────────
+    // A palette is one decision: a child that sets any brand colours owns the
+    // whole list; an empty or missing child list inherits the parent's.
+    brandPalette: child.brandPalette?.length ? child.brandPalette : parent.brandPalette,
+
     // ─── Colors: INHERIT WITH OVERRIDE ───────────────────────────────────────
     colors: {
       lightTheme: mergeColorTheme(parent.colors?.lightTheme, child.colors?.lightTheme),

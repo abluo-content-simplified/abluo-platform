@@ -279,6 +279,20 @@ export interface CardStyleTheme {
   border?: string
 }
 
+/** One named brand colour (designSystem.brandPalette, ADR-036 S2). Text fields are localized objects. */
+export interface BrandPaletteColour {
+  _key?: string
+  key: string
+  name?: Record<string, string | undefined> | null
+  value: string
+  tier?: 'primary' | 'secondary' | 'neutral' | null
+  usage?: 'screen' | 'print' | 'both' | null
+  description?: Record<string, string | undefined> | null
+  uses?: Record<string, string | undefined> | null
+  cmyk?: string | null
+  pantone?: string | null
+}
+
 export interface BackgroundAsset {
   key: string
   name: string
@@ -593,6 +607,8 @@ export interface DesignSystem {
     logoHeightMobile?: number
   }
   backgroundAssets?: BackgroundAsset[]
+  /** Named brand colours (ADR-036 S2). Child replaces parent as a whole. */
+  brandPalette?: BrandPaletteColour[]
 }
 
 // ─── Business Location ────────────────────────────────────────────────────────

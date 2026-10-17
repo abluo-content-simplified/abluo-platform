@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import { brandPaletteCssVars } from '@/lib/design-system/brand-palette'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
@@ -362,7 +363,7 @@ ${D.accentRail ? `      /* -- Accent rail --
          same 120 / 96 / 72px ratio it has always used. Absent, the container
          keeps those historical numbers. */
       --section-padding-y: ${D.sectionPaddingY}px;
-` : ''}      --font-heading: '${D.headingFont}', sans-serif;
+` : ''}${brandPaletteCssVars(ds)}      --font-heading: '${D.headingFont}', sans-serif;
       --font-body: '${D.bodyFont}', sans-serif;
       /* Text with no font of its own (portable-text bodies, plain <p>s) inherits
          from <html>, which Tailwind sets to var(--font-sans) — the platform's

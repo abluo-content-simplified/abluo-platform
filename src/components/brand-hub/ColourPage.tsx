@@ -3,6 +3,8 @@ import { formatBrandHubMessage } from '@/lib/i18n/brand-hub-messages'
 import type { ColourRole, ColourValue, ThemeKey } from '@/lib/modules/brand-hub/types'
 import { CopyButton } from './CopyButton'
 import { ContrastGrid } from './ContrastGrid'
+import { BrandPalette } from './BrandPalette'
+import { TokensPanel } from './TokensPanel'
 import {
   CARD_STYLE, DoDontGrid, HATCHED, HEADING_FONT, MONO, RichText, Section, Spec, ValueLabel,
   paint, themeBackground, type HubPageProps,
@@ -135,11 +137,18 @@ export function ColourPage(props: HubPageProps) {
   return (
     <>
       <RichText value={w.body} />
-      <Section title={m.rolesTitle}>
+      <BrandPalette {...props} />
+      <Section title={m.uiColoursTitle} id="interface-colours">
+        <p className="mb-6 max-w-[var(--layout-max-text-width,720px)] text-[0.9375rem]" style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>
+          {m.uiColoursIntro}
+        </p>
         <ul className="grid gap-5">
           {model.colours.map((role) => (
             <li key={role.key} className="break-inside-avoid p-5" style={CARD_STYLE}>
-              <h3 className="mb-4 text-lg font-semibold" style={HEADING_FONT}>{m.roles[role.key]}</h3>
+              <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+                <h3 className="text-lg font-semibold" style={HEADING_FONT}>{m.roles[role.key]}</h3>
+                <span className={MONO} style={{ color: 'var(--color-text-secondary)' }}>{role.cssVar ? `var(${role.cssVar})` : m.noCssVariable}</span>
+              </div>
               <div className="grid gap-6 sm:grid-cols-2">
                 {THEMES.map((t) => (
                   <ColourSide key={t} role={role} theme={t} value={role[t]} m={m} />
@@ -151,6 +160,7 @@ export function ColourPage(props: HubPageProps) {
       </Section>
       <Buttons {...props} />
       <ContrastGrid {...props} />
+      <TokensPanel {...props} />
       <Section>
         <p className="max-w-[var(--layout-max-text-width,720px)] text-sm" style={{ color: 'var(--color-text-secondary)' }}>{m.printNote}</p>
       </Section>

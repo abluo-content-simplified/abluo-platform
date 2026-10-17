@@ -65,7 +65,7 @@ export default async function BrandHubPage({ params }: PageProps) {
     isHostScopedRequest(tenantId),
   ])
 
-  const model = buildBrandHubModel(designSystem, data)
+  const model = buildBrandHubModel(designSystem, data, { locale, defaultLocale })
   const basePath = `${siteBasePath(locale, tenantId, hostScoped)}/brand`
 
   return <BrandHub model={model} page={page} locale={locale} basePath={basePath} />

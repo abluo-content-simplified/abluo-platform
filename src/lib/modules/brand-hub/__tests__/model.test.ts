@@ -186,7 +186,9 @@ describe('assets', () => {
   })
   it('passes do/don’t examples through', () => {
     expect(m.written.colour.doDont[0]).toMatchObject({ kind: 'dont', caption: 'No' })
-    expect(m.written.motion).toEqual({ body: null, doDont: [] })
+    expect(m.written.motion).toEqual({ status: null, body: null, doDont: [] })
+    // A page with content but no status reads as a draft.
+    expect(m.written.colour.status).toBe('draft')
   })
 })
 
@@ -315,3 +317,67 @@ describe('brand introduction and logo rules (amendment 2026-10-17)', () => {
     expect(m.changes.map((c) => c.date)).toEqual(['2026-06-01', '2026-05-01', '2026-04-01', '2026-03-01', '2026-02-01'])
   })
 })
+
+describe('brand palette, token names and contrast suggestions (ADR-036 S2)', () => {
+  const dsWithPalette = (): DesignSystem => ({
+    ...fixtureDs(),
+    brandPalette: [
+      { key: 'orange', name: { en: 'Orange', it: 'Arancione' }, value: ORANGE, tier: 'primary', usage: 'both', uses: { en: 'Buttons' } },
+      { key: 'logo-red', name: { en: 'Red' }, value: '#FF3454', tier: 'primary', usage: 'both', cmyk: '0 81 54 0', pantone: '1788 C' },
+      { key: 'bad key', name: { en: 'Skipped' }, value: '#000000' },
+    ],
+  } as unknown as DesignSystem)
+
+  it('shows only design-system palette colours, in the requested language, with their variable', () => {
+    const m = buildBrandHubModel(dsWithPalette(), data, { locale: 'it', defaultLocale: 'en' })
+    expect(m.brandPalette.map((c) => c.key)).toEqual(['orange', 'logo-red'])
+    expect(m.brandPalette[0]).toMatchObject({ name: 'Arancione', uses: 'Buttons', cssVar: '--color-brand-orange', tier: 'primary' })
+    expect(m.brandPalette[0].value.hex).toBe('#FFA22B')
+  })
+
+  it('CMYK: as written, else calculated (labelled); Pantone only when written', () => {
+    const m = buildBrandHubModel(dsWithPalette(), data)
+    expect(m.brandPalette[1].cmyk).toEqual({ value: '0 81 54 0', source: 'designSystem' })
+    expect(m.brandPalette[1].pantone).toBe('1788 C')
+    expect(m.brandPalette[0].cmyk.source).toBe('calculated')
+    expect(m.brandPalette[0].pantone).toBeNull()
+  })
+
+  it('links a brand colour to the UI roles that use it', () => {
+    const m = buildBrandHubModel(dsWithPalette(), data)
+    expect(m.brandPalette[0].matchesRoles).toContain('primary')
+  })
+
+  it('no palette → empty list (the hub says so, nothing invented)', () => {
+    expect(buildBrandHubModel(fixtureDs(), data).brandPalette).toEqual([])
+  })
+
+  it('every role variable the hub names is emitted by the tenant layout', () => {
+    const layout = readFileSync(resolve(__dirname, '../../../../app/[locale]/(website)/[tenant]/layout.tsx'), 'utf8')
+    const m = buildBrandHubModel(fixtureDs(), data)
+    for (const r of m.colours) if (r.cssVar) expect(layout, r.cssVar).toContain(`${r.cssVar}:`)
+  })
+
+  it('a failing pair gets a passing calculated alternative; passing pairs get none', () => {
+    const m = buildBrandHubModel(fixtureDs(), data)
+    const btn = m.contrast.find((c) => c.theme === 'dark' && c.foreground === 'buttonPrimaryText')!
+    expect(btn.passNormal).toBe(false)
+    expect(btn.suggestions.map((s) => s.change).sort()).toEqual(['background', 'foreground'])
+    for (const s of btn.suggestions) {
+      expect(s.ratio).toBeGreaterThanOrEqual(4.5)
+      expect(s.hex).toMatch(/^#[0-9A-F]{6}$/)
+    }
+    for (const c of m.contrast.filter((x) => x.passNormal)) expect(c.suggestions).toEqual([])
+  })
+})
+
+describe('written page status and the Voice page (2026-10-17)', () => {
+  it('voice is a hub page; an approved page stays approved, an empty one has no status', () => {
+    const d: BrandHubQueryResult = { ...data, guide: { ...(data.guide ?? {}), voice: { status: 'approved', body: [{ _type: 'block', _key: 'a', children: [] }] as unknown[] } } }
+    const m = buildBrandHubModel(fixtureDs(), d)
+    expect(m.written.voice.status).toBe('approved')
+    expect(buildBrandHubModel(fixtureDs(), data).written.voice.status).toBeNull()
+    expect(pageFromSegments(['voice'])).toBe('voice')
+  })
+})
+

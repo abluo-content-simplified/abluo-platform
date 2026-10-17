@@ -6,10 +6,11 @@ import { ColourPage } from './ColourPage'
 import { LayoutPage } from './LayoutPage'
 import { LogoPage } from './LogoPage'
 import { MotionPage } from './MotionPage'
+import { VoicePage } from './VoicePage'
 import { OverviewPage } from './OverviewPage'
 import { ShapePage } from './ShapePage'
 import { TypographyPage } from './TypographyPage'
-import { FOCUS_RING, GuideMeta, HEADING_FONT, Legend } from './shared'
+import { FOCUS_RING, GuideMeta, HEADING_FONT, Legend, StatementStatusPill } from './shared'
 
 const VALUE_PAGES: readonly BrandHubPageId[] = ['colour', 'typography', 'shape', 'layout', 'motion']
 
@@ -31,6 +32,7 @@ export function BrandHub({ model, page, locale, basePath }: {
     case 'layout': content = <LayoutPage {...common} />; break
     case 'logo': content = <LogoPage {...common} />; break
     case 'motion': content = <MotionPage {...common} />; break
+    case 'voice': content = <VoicePage {...common} />; break
     default: content = <OverviewPage {...common} basePath={basePath} />
   }
 
@@ -70,6 +72,9 @@ export function BrandHub({ model, page, locale, basePath }: {
               {m.pages[page].description}
             </p>
           </header>
+          {page !== 'overview' && model.written[page].status && (
+            <div className="-mt-6 mb-10"><StatementStatusPill status={model.written[page].status!} m={m} /></div>
+          )}
           {VALUE_PAGES.includes(page) && <Legend m={m} />}
           {content}
           <footer className="mt-16 pt-4 text-sm" style={{ borderTop: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>

@@ -4540,6 +4540,68 @@ const designSystemType = defineType({
       ],
     }),
 
+    // Brand palette (ADR-036 S2) — the brand's named colours, including ones the
+    // website never uses (print-only). The website emits each as
+    // --color-brand-{key}; the Brand Hub documents them. Child replaces parent.
+    defineField({
+      name: 'brandPalette',
+      title: 'Brand palette',
+      type: 'array',
+      group: 'colors',
+      description: 'Every brand colour, with its name, purpose and print references. The Brand Hub shows exactly these. UI colours (above) stay as they are.',
+      of: [
+        defineArrayMember({
+          name: 'brandColour',
+          title: 'Brand colour',
+          type: 'object',
+          fields: [
+            defineField({
+              name: 'key',
+              title: 'Key',
+              type: 'string',
+              description: 'Lowercase letters, numbers and dashes, e.g. "orange". Becomes the CSS variable --color-brand-{key}.',
+              validation: (Rule) => Rule.required().regex(/^[a-z][a-z0-9-]{0,31}$/, { name: 'css-safe key' }),
+            }),
+            defineField({ name: 'name', title: 'Name', type: 'localizedString', validation: (Rule) => Rule.required() }),
+            defineField({
+              name: 'value',
+              title: 'Colour',
+              type: 'string',
+              description: 'OKLCH (preferred, e.g. "oklch(0.7886 0.1630 66.32deg)") or #RRGGBB.',
+              validation: (Rule) => Rule.required(),
+            }),
+            defineField({
+              name: 'tier',
+              title: 'Tier',
+              type: 'string',
+              options: { list: [{ title: 'Primary', value: 'primary' }, { title: 'Secondary', value: 'secondary' }, { title: 'Neutral', value: 'neutral' }], layout: 'radio', direction: 'horizontal' },
+              initialValue: 'primary',
+            }),
+            defineField({
+              name: 'usage',
+              title: 'Used on',
+              type: 'string',
+              options: { list: [{ title: 'Screen and print', value: 'both' }, { title: 'Screen only', value: 'screen' }, { title: 'Print only', value: 'print' }], layout: 'radio', direction: 'horizontal' },
+              initialValue: 'both',
+            }),
+            defineField({ name: 'description', title: 'Description', type: 'localizedText', description: 'What the colour is, in a sentence.' }),
+            defineField({ name: 'uses', title: 'What it is for', type: 'localizedText', description: 'Where to use it — and where not.' }),
+            defineField({ name: 'cmyk', title: 'CMYK', type: 'string', description: 'Optional, e.g. "0 36 84 0". Leave empty to show a calculated approximation.' }),
+            defineField({ name: 'pantone', title: 'Pantone', type: 'string', description: 'Optional, e.g. "021 C".' }),
+          ],
+          preview: {
+            select: { title: 'name.en', key: 'key', value: 'value', tier: 'tier' },
+            prepare: ({ title, key, value, tier }) => ({ title: title || key, subtitle: [tier, value].filter(Boolean).join(' · ') }),
+          },
+        }),
+      ],
+      validation: (Rule) =>
+        Rule.custom((items: { key?: string }[] | undefined) => {
+          const keys = (items ?? []).map((i) => i?.key).filter(Boolean)
+          return new Set(keys).size === keys.length ? true : 'Each brand colour needs a different key.'
+        }),
+    }),
+
     // Typography
     defineField({
       name: 'typography',

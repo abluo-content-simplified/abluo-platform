@@ -53,20 +53,30 @@ export function ShapePage({ model, m, locale }: HubPageProps) {
               <dl className="mt-1"><Spec label="" source={r.value.source} m={m}><ValueText v={r.value} unit="px" locale={locale} m={m} /></Spec></dl>
             </li>
           ))}
-          {pillRadius !== undefined && (
-            <li className="break-inside-avoid p-4" style={CARD_STYLE}>
-              <div
-                aria-hidden="true"
-                className="mb-3 h-16 w-full"
-                style={{ border: '2px solid var(--color-text-secondary)', background: 'var(--color-background-alt)', borderRadius: 9999 }}
-              />
-              <p className="text-sm font-semibold">{m.pill}</p>
-            </li>
-          )}
         </ul>
       </Section>
 
+      {pillRadius !== undefined && (
+        <Section title={m.buttonRadiusTitle} id="button-radius">
+          <div className="flex flex-wrap items-start gap-5 p-5" style={CARD_STYLE}>
+            <span
+              className="inline-block px-6 py-2.5 text-sm font-semibold"
+              style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)', borderRadius: 9999, fontFamily: 'var(--font-body)' }}
+            >
+              {m.buttonSample}
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">{m.pill}</p>
+              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{m.buttonRadiusNote}</p>
+            </div>
+          </div>
+        </Section>
+      )}
+
       <Section title={m.shadowsTitle}>
+        {model.shadows.every((s) => s.value.source === 'notSet') ? (
+          <p className="p-5 text-sm" style={{ ...CARD_STYLE, color: 'var(--color-text-secondary)' }}>{m.noShadows}</p>
+        ) : (
         <ul className="grid gap-5 sm:grid-cols-3">
           {model.shadows.map((s) => (
             <li key={s.key} className="break-inside-avoid">
@@ -85,6 +95,7 @@ export function ShapePage({ model, m, locale }: HubPageProps) {
             </li>
           ))}
         </ul>
+        )}
       </Section>
       <DoDontGrid items={w.doDont} m={m} />
     </>

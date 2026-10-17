@@ -992,3 +992,25 @@ describe('resolveDesignSystemInheritance', () => {
   })
 
 })
+
+// ─── Brand palette (ADR-036 S2) — child replaces parent ──────────────────────
+describe('brandPalette inheritance', () => {
+  const parentPalette = [{ key: 'orange', value: '#FFA22B' }, { key: 'navy', value: '#363366' }]
+  const run = async (childPalette: any) => {
+    const parent: any = { _id: 'p', parentDesignSystem: null, brandPalette: parentPalette }
+    const child: any = { _id: 'c', parentDesignSystem: { _ref: 'p' }, ...(childPalette !== undefined && { brandPalette: childPalette }) }
+    const fetchParent = vi.fn(async () => parent)
+    return resolveDesignSystemInheritance(child, fetchParent as any)
+  }
+
+  it('child inherits the parent palette when it sets none', async () => {
+    expect((await run(undefined))?.brandPalette).toEqual(parentPalette)
+    expect((await run([]))?.brandPalette).toEqual(parentPalette)
+  })
+
+  it('a child palette replaces the parent palette as a whole', async () => {
+    const own = [{ key: 'red', value: '#FF3454' }]
+    expect((await run(own))?.brandPalette).toEqual(own)
+  })
+})
+

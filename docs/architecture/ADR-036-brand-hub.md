@@ -268,3 +268,19 @@ Trigger: review of the Livener hub ("it documents the design system more than th
 11. Revision history beyond 90 days: saved versions (D7, S3); PDF versions with a log.
 12. Password protection via the platform protected-pages feature (with CYCE).
 13. Approval workflow (v3); live component previews (Component Lab); in-page navigation as pages grow.
+
+## 10. Amendment B — S2 brand palette, tokens, contrast suggestions, Voice page (2026-10-17)
+
+Tom (2026-10-17): every reusable value — colours above all — lives in the design system; the brand guide holds only words and example images. Nothing that belongs in the design system may appear in the guide.
+
+**Design system (five-step checklist):** `designSystem.brandPalette[]` — `{ key (css-safe, unique), name localizedString, value (OKLCH or hex), tier primary|secondary|neutral, usage both|screen|print, description, uses (localizedText), cmyk?, pantone? }`.
+1. schema (Colors group), 2. `DS_FIELDS_SELECTION`, 3. `mergeDesignSystems`: **child replaces parent** (an empty child list inherits), 4. `buildCssVars` → `--color-brand-{key}` via `brandPaletteCssVars()` (`src/lib/design-system/brand-palette.ts`, shared with the hub; unsafe keys/values skipped, never fixed), 5. inheritance tests. Text fields are documentation only (listed in the fields-read guard).
+
+**Hub:**
+- Colour page: "Brand colours" (by tier: name, description, what it is for, OKLCH / HEX / RGB, CMYK as written else **calculated**, Pantone only when written, CSS variable, which UI roles use it), then "Interface colours" with each role's CSS variable.
+- Contrast: every pair failing AA gets a **calculated** passing alternative (same hue, nearest lightness; for buttons both text and background). Shown, never applied.
+- Design tokens: `tokens.css` (only variables the website emits) and `tokens.json` (every value shown), copy + download, built from the model.
+- Shape: button (pill) radius shown apart from the scale; no shadow tokens → one sentence instead of empty rows. Motion: a banner when every value is a platform default.
+- New page **Voice and content** (`voice`), written guidance only. Every written page now has a `status` (draft / approved / needs a decision), shown under its title; content without a status is a draft.
+
+**Livener (production data, 2026-10-17):** brand palette — orange, red (logo play triangle, new as a design-system colour), navy, midnight, white — with names and uses (en/it); no CMYK/Pantone written (the legacy values need validation first, so the hub shows calculated CMYK). Voice and content: first draft (English), status Draft, written from the current website and posts.

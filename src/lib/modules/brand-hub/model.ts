@@ -20,6 +20,7 @@ import {
 } from '@/lib/design-system/contrast'
 import { FALLBACK_FONTS, FALLBACK_LAYOUT, FALLBACK_MOTION, FALLBACK_RADIUS } from '@/lib/design-system/fallback-tokens'
 import { resolveColours, type ResolvedColour, type ResolvedTheme } from '@/lib/design-system/resolved-colours'
+import { brandColourVar, emittableBrandColours } from '@/lib/design-system/brand-palette'
 import type { BrandHubAssetMeta, BrandHubGuidePageRow, BrandHubQueryResult, BrandHubStatementRow } from './queries'
 import {
   BRAND_HUB_PAGES,
@@ -28,6 +29,8 @@ import {
   type BrandAsset,
   type BrandHubModel,
   type BrandHubPageId,
+  type BrandColour,
+  type ContrastSuggestion,
   type BrandGuideChange,
   type BrandGuideStatus,
   type BrandLogoRuleKey,
@@ -113,11 +116,32 @@ function themeBackgroundRgb(theme: ResolvedTheme): Rgb | null {
   return seenRgb(theme.background?.value, null)
 }
 
+/**
+ * The CSS variable the tenant layout emits per role (null = none emitted).
+ * A test checks each name against the layout source.
+ */
+export const ROLE_CSS_VARS: Record<ColourRoleKey, string | null> = {
+  background: '--color-background',
+  backgroundAlt: '--color-background-alt',
+  surface: '--color-surface',
+  primary: '--color-primary',
+  secondary: '--color-secondary',
+  accent: null,
+  textPrimary: '--color-text-primary',
+  textSecondary: '--color-text-secondary',
+  textMuted: '--color-text-muted',
+  border: '--color-border',
+  success: '--color-success',
+  warning: '--color-warning',
+  danger: '--color-danger',
+}
+
 function buildColours(light: ResolvedTheme, dark: ResolvedTheme): ColourRole[] {
   const lBg = themeBackgroundRgb(light)
   const dBg = themeBackgroundRgb(dark)
   return COLOUR_ROLE_KEYS.map((key) => ({
     key,
+    cssVar: ROLE_CSS_VARS[key],
     light: describeColour(light[key], key === 'background' ? null : lBg),
     dark: describeColour(dark[key], key === 'background' ? null : dBg),
   }))
@@ -165,11 +189,121 @@ function check(
   bg: Rgb,
 ): ContrastCheck {
   const ratio = round2(contrastRatio(fg, bg))
+  const passNormal = ratio >= AA_NORMAL
+  // Buttons: the button colour is the brand decision, so suggest both a text
+  // and a background change; for text roles, suggest changing the text.
+  const isButton = foreground === 'buttonPrimaryText' || foreground === 'buttonSecondaryText'
+  const suggestions: ContrastSuggestion[] = passNormal
+    ? []
+    : [
+        suggestLightness(fg, bg, 'foreground'),
+        ...(isButton ? [suggestLightness(bg, fg, 'background')] : []),
+      ].filter((x): x is ContrastSuggestion => x !== null)
   return {
     theme, foreground, background,
     foregroundHex: toHex(fg), backgroundHex: toHex(bg),
-    ratio, passNormal: ratio >= AA_NORMAL, passLarge: ratio >= AA_LARGE,
+    ratio, passNormal, passLarge: ratio >= AA_LARGE,
+    suggestions,
   }
+}
+
+// ── OKLCH helpers (calculated suggestions, approximate print values) ─────────
+
+const toLinear = (c: number) => {
+  const v = c / 255
+  return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+}
+
+/** sRGB (0–255) → OKLCH [L 0–1, C, H degrees]. */
+export function rgbToOklch([r, g, b]: Rgb): [number, number, number] {
+  const [lr, lg, lb] = [toLinear(r), toLinear(g), toLinear(b)]
+  const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb)
+  const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb)
+  const s = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb)
+  const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s
+  const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s
+  const B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s
+  const C = Math.sqrt(A * A + B * B)
+  let H = (Math.atan2(B, A) * 180) / Math.PI
+  if (H < 0) H += 360
+  return [L, C, H]
+}
+
+const oklchString = (L: number, C: number, H: number) => `oklch(${L.toFixed(4)} ${C.toFixed(4)} ${H.toFixed(2)}deg)`
+
+/**
+ * The nearest lightness (hue and chroma kept, chroma reduced only if the
+ * colour leaves sRGB) at which `change` reaches AA (4.5:1) against `other`.
+ * Searches both directions and returns the smaller change; null when none.
+ */
+export function suggestLightness(change: Rgb, other: Rgb, side: ContrastSuggestion['change']): ContrastSuggestion | null {
+  const [L0, C0, H] = rgbToOklch(change)
+  let best: { L: number; C: number; rgb: Rgb; ratio: number } | null = null
+  for (const dir of [-1, 1]) {
+    for (let step = 1; step <= 200; step++) {
+      const L = L0 + dir * step * 0.005
+      if (L < 0 || L > 1) break
+      let C = C0
+      let parsed = parseColor(oklchString(L, C, H))
+      while (parsed?.outOfGamut && C > 0.001) {
+        C *= 0.9
+        parsed = parseColor(oklchString(L, C, H))
+      }
+      if (!parsed) break
+      const ratio = contrastRatio(parsed.rgb, other)
+      if (ratio >= AA_NORMAL) {
+        if (!best || Math.abs(L - L0) < Math.abs(best.L - L0)) best = { L, C, rgb: parsed.rgb, ratio }
+        break
+      }
+    }
+  }
+  if (!best) return null
+  return { change: side, oklch: oklchString(best.L, best.C, H), hex: toHex(best.rgb), ratio: round2(best.ratio) }
+}
+
+/** Naive RGB → CMYK, a screen approximation only (print needs a proof). */
+export function approximateCmyk([r, g, b]: Rgb): string {
+  const [R, G, B] = [r / 255, g / 255, b / 255]
+  const k = 1 - Math.max(R, G, B)
+  if (k >= 1) return '0 0 0 100'
+  const f = (x: number) => Math.round(((1 - x - k) / (1 - k)) * 100)
+  return `${f(R)} ${f(G)} ${f(B)} ${Math.round(k * 100)}`
+}
+
+// ── Brand palette (ADR-036 S2) ───────────────────────────────────────────────
+
+const pickText = (v: Record<string, string | undefined> | null | undefined, locale: string, defaultLocale: string): string | null => {
+  if (!v || typeof v !== 'object') return null
+  const raw = v[locale] ?? v[defaultLocale] ?? v.en ?? Object.entries(v).find(([k, x]) => !k.startsWith('_') && typeof x === 'string')?.[1]
+  return typeof raw === 'string' && raw.trim() ? raw.trim() : null
+}
+
+function buildBrandPalette(ds: DesignSystem | null, colours: ColourRole[], locale: string, defaultLocale: string): BrandColour[] {
+  return emittableBrandColours(ds).map((c) => {
+    const value = describeColour({ value: c.value, source: 'designSystem', sameAs: null } as ResolvedColour, null)
+    const parsed = parseColor(c.value)
+    const cmyk: DesignValue<string> = c.cmyk?.trim()
+      ? { value: c.cmyk.trim(), source: 'designSystem' }
+      : parsed
+        ? { value: approximateCmyk(parsed.rgb), source: 'calculated' }
+        : { value: null, source: 'notSet' }
+    const matchesRoles = value.hex
+      ? colours.filter((r) => r.light.hex === value.hex || r.dark.hex === value.hex).map((r) => r.key)
+      : []
+    return {
+      key: c.key,
+      name: pickText(c.name, locale, defaultLocale) ?? c.key,
+      tier: c.tier === 'secondary' || c.tier === 'neutral' ? c.tier : 'primary',
+      usage: c.usage === 'screen' || c.usage === 'print' ? c.usage : 'both',
+      description: pickText(c.description, locale, defaultLocale),
+      uses: pickText(c.uses, locale, defaultLocale),
+      cssVar: brandColourVar(c.key),
+      value,
+      cmyk,
+      pantone: c.pantone?.trim() || null,
+      matchesRoles,
+    }
+  })
 }
 
 /** ADR-036 D4 — measured pairs, per theme. Duplicated backgrounds are measured once. */
@@ -293,7 +427,9 @@ function written(row: BrandHubGuidePageRow | null | undefined): WrittenContent {
     imageAlt: d.caption ?? null,
     caption: d.caption ?? null,
   }))
-  return { body, doDont }
+  const raw = row?.status as BrandStatementStatus | undefined
+  const status: BrandStatementStatus | null = !body && doDont.length === 0 ? null : raw && STATUSES.includes(raw) ? raw : 'draft'
+  return { status, body, doDont }
 }
 
 const STATEMENT_KEYS: BrandStatementKey[] = ['mission', 'vision', 'promise', 'audience', 'positioning', 'personality', 'values', 'story']
@@ -334,8 +470,13 @@ function latest(...isoDates: (string | null | undefined)[]): string | null {
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
-export function buildBrandHubModel(ds: DesignSystem | null, data: BrandHubQueryResult | null): BrandHubModel {
+export function buildBrandHubModel(
+  ds: DesignSystem | null,
+  data: BrandHubQueryResult | null,
+  opts: { locale?: string; defaultLocale?: string } = {},
+): BrandHubModel {
   const rc = resolveColours(ds)
+  const colours = buildColours(rc.light, rc.dark)
   const typo = ds?.typography
   const guide = data?.guide ?? null
 
@@ -360,7 +501,8 @@ export function buildBrandHubModel(ds: DesignSystem | null, data: BrandHubQueryR
     logoRules: statements(LOGO_RULE_KEYS, guide?.logoRules),
     written: writtenPages,
 
-    colours: buildColours(rc.light, rc.dark),
+    colours,
+    brandPalette: buildBrandPalette(ds, colours, opts.locale ?? 'en', opts.defaultLocale ?? opts.locale ?? 'en'),
     buttons: buildButtons(ds, rc),
     contrast: buildContrast(rc),
 

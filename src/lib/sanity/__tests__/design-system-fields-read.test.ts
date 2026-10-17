@@ -66,6 +66,14 @@ const NOT_YET_READ: Record<string, string> = {
   'layout.sectionPaddingYCompact': 'No section has a "compact" spacing option yet; Normal (sectionPaddingY) is wired.',
   'layout.sectionPaddingYLarge': 'No section has a "large" spacing option yet; Normal (sectionPaddingY) is wired.',
   'mediaStyles.label': 'Studio label for the style picker — not a visual value.',
+  'brandPalette._key': 'Array item key (Studio) — the website keys brand colours by brandPalette.key.',
+  'brandPalette.name': 'Brand palette text is documentation: shown on the Brand Hub only (ADR-036 S2). The website emits key + value.',
+  'brandPalette.tier': 'See brandPalette.name.',
+  'brandPalette.usage': 'See brandPalette.name.',
+  'brandPalette.description': 'See brandPalette.name.',
+  'brandPalette.uses': 'See brandPalette.name.',
+  'brandPalette.cmyk': 'Print reference — Brand Hub only.',
+  'brandPalette.pantone': 'Print reference — Brand Hub only.',
 }
 
 /**

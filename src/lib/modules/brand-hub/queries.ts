@@ -24,6 +24,7 @@ const assetMeta = (field: string) => /* groq */ `
 
 const page = (field: string) => /* groq */ `
   "${field}": {
+    "status": ${field}.status,
     "body": ${loc(`${field}.body`)},
     "doDont": ${field}.doDont[]{
       _key,
@@ -57,7 +58,8 @@ export const brandHubQuery = /* groq */ `{
     ${page('shape')},
     ${page('layout')},
     ${page('logo')},
-    ${page('motion')}
+    ${page('motion')},
+    ${page('voice')}
   },
   "site": *[_type == "siteConfig" && projectSlug == $projectSlug][0]{
     _updatedAt,
@@ -103,6 +105,7 @@ export interface BrandHubStatementRow {
 }
 
 export interface BrandHubGuidePageRow {
+  status?: string | null
   body?: unknown[] | null
   doDont?: { _key: string; kind?: string | null; imageUrl?: string | null; caption?: string | null }[] | null
 }
@@ -117,7 +120,7 @@ export interface BrandHubQueryResult {
     howToUse?: unknown[] | null
     changes?: { _key: string; date?: string | null; note?: string | null }[] | null
     logoRules?: Record<string, BrandHubStatementRow | null> | null
-  } & Partial<Record<'colour' | 'typography' | 'shape' | 'layout' | 'logo' | 'motion', BrandHubGuidePageRow | null>>) | null
+  } & Partial<Record<'colour' | 'typography' | 'shape' | 'layout' | 'logo' | 'motion' | 'voice', BrandHubGuidePageRow | null>>) | null
   site: {
     _updatedAt?: string
     siteName?: string | null
