@@ -76,7 +76,29 @@ describe('i18n request config — message bundle fallback', () => {
     expect(warn).not.toHaveBeenCalled()
   })
 
-  it('falls back to the default locale when none is supplied', async () => {
+  /**
+   * SCOPE, added 2026-10-16 after this assertion helped hide a platform-wide
+   * defect for months.
+   *
+   * This fallback is correct and must stay — but ONLY for the locale-less
+   * `(platform)` surfaces (login, password reset, invite acceptance, Studio),
+   * where no locale segment exists and the platform default is the right
+   * answer.
+   *
+   * It is NOT a licence for a missing locale inside a `[locale]` route. Every
+   * tenant website reaches the app through a rewrite in src/proxy.ts that never
+   * touches next-intl's middleware, so `requestLocale` was undefined there too
+   * — and this fallback quietly answered "en" for Italian, German and French
+   * pages alike. Nothing failed; the language switcher simply sent visitors to
+   * /fr/it and a 404.
+   *
+   * The contract that a [locale] route MUST establish its locale is enforced in
+   * src/lib/i18n/locale-contract.ts and asserted in
+   * src/components/__tests__/root-document-lang.test.tsx. Read this test as
+   * "a locale-less route degrades gracefully", never as "a missing locale is
+   * fine".
+   */
+  it('falls back to the default locale when none is supplied (locale-less platform routes only)', async () => {
     const cfg = await call(undefined)
     expect(cfg.locale).toBe('en')
     expect(cfg.messages).toEqual(en)

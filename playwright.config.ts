@@ -34,15 +34,36 @@ export default defineConfig({
   use: { baseURL, trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   projects: [
     { name: 'setup', testMatch: /auth\.setup\.ts/ },
+    // The i18n release gate — public pages, so no auth and no storageState,
+    // and deliberately NOT dependent on `setup`: it must be runnable against
+    // any deployment with nothing but a URL. See e2e/i18n/language-switching.
+    // retries: 1 — these run against a live deployment over the public
+    // internet, and a parallel run occasionally loses a click to a slow
+    // response. A real failure still fails twice; a flake does not hold up a
+    // release. Nothing else in this config retries.
+    {
+      name: 'i18n-desktop',
+      testMatch: /[\\/]e2e[\\/]i18n[\\/][^/\\]+\.spec\.ts$/,
+      retries: 1,
+      use: { ...devices['Desktop Chrome'], ...desktop },
+    },
+    {
+      name: 'i18n-phone',
+      testMatch: /[\\/]e2e[\\/]i18n[\\/][^/\\]+\.spec\.ts$/,
+      retries: 1,
+      use: { ...devices['Desktop Chrome'], ...phone },
+    },
     ...(['light', 'dark'] as const).flatMap((colorScheme) => [
       {
         name: `phone-${colorScheme}`,
         dependencies: ['setup'],
+        testIgnore: /[\\/]e2e[\\/]i18n[\\/][^/\\]+\.spec\.ts$/,
         use: { ...devices['Desktop Chrome'], ...phone, colorScheme, storageState: 'e2e/.auth/client.json' },
       },
       {
         name: `desktop-${colorScheme}`,
         dependencies: ['setup'],
+        testIgnore: /[\\/]e2e[\\/]i18n[\\/][^/\\]+\.spec\.ts$/,
         use: { ...devices['Desktop Chrome'], ...desktop, colorScheme, storageState: 'e2e/.auth/client.json' },
       },
     ]),
