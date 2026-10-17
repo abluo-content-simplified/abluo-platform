@@ -284,3 +284,31 @@ Tom (2026-10-17): every reusable value — colours above all — lives in the de
 - New page **Voice and content** (`voice`), written guidance only. Every written page now has a `status` (draft / approved / needs a decision), shown under its title; content without a status is a draft.
 
 **Livener (production data, 2026-10-17):** brand palette — orange, red (logo play triangle, new as a design-system colour), navy, midnight, white — with names and uses (en/it); no CMYK/Pantone written (the legacy values need validation first, so the hub shows calculated CMYK). Voice and content: first draft (English), status Draft, written from the current website and posts.
+
+## 11. Amendment C — brand foundation page, "Using the Brand Hub", grouped navigation, font links (2026-10-17)
+
+Reviewer feedback (via Tom): the flat, equal-weight "About the brand" cards did not read as a brand foundation, and the explanation of how to use the hub crowded the Overview.
+
+**Pages (`BRAND_HUB_PAGES`):** `overview`, `using`, `foundation`, `voice`, `logo`, `colour`, `typography`, `shape`, `layout`, `motion`. Navigation is grouped (`BRAND_HUB_NAV_GROUPS`): Start here (overview, using) · Brand (foundation, voice) · Visual foundations (logo … motion). `WRITTEN_PAGES` lists the pages that carry written guidance and a page status.
+
+**Brand foundation (`foundation`)** — different weight per section, not equal cards:
+- Mission and vision as lead cards; the brand promise as a highlighted block (first paragraph large, the rest supporting).
+- Statements (text + status): `mission`, `vision`, `promise`, `positioning`, `story` (prose).
+- Lists (new, `BRAND_LIST_FIELDS`): `audience`, `differentiators`, `personality`, `values` — `{ status, intro, items[{ title, text, note }], outro }`. `note` exists only for personality ("Not: …") and values ("Decision question: …"). Empty list → Needs a decision; written without status → Draft.
+- Still words only (D2 guard unchanged).
+
+**Using the Brand Hub (`using`)** — the same explanations for every project (platform dictionary, 7 locales): who the guidelines are for, what statuses mean and who approves, where values come from (value sources), light/dark previews, copy/download, versions and changes, what to do when something is missing, languages, how to propose a correction. The guide's `howToUse` now shows there under "For this brand".
+
+**Overview** — logo, name, intro, version/status, one link ("New to the Brand Hub? …"), task shortcuts (logo → Logo; colour → Colour; copy → Voice; interface → Colour#tokens; accessibility → Colour#contrast), the guideline pages grouped by purpose (Brand / Visual foundations / Resources), recent changes. "Product experience" is left out until there are pages for it (components, accessibility).
+
+**Font links** — for Google/library fonts the Typography page links to the Google Fonts specimen (`googleFontsUrl`, built from the design-system font name; never for custom fonts or unsafe names), with a licence note.
+
+**Livener (production data, 2026-10-17):** the brand foundation written by Abluo (from Tom's text) replaces the legacy mission and vision; every section is Draft. English only; other languages fall back to English.
+
+**Backlog — Livener website copy to fix later (recorded, not changed):**
+1. "Next Level Live Streaming" is repeated across pages.
+2. Mixed UK/US spelling (the foundation uses UK spelling).
+3. The Investors page repeats its opening section.
+4. Buzzwords that conflict with the personality ("Not: empty superlatives").
+5. The old "world's leading provider" vision still appears in website copy.
+6. Unsourced claims ("500+ broadcasters", market-size figures): source them or remove them.

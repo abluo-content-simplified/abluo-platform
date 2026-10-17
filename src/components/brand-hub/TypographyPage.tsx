@@ -1,5 +1,5 @@
 import type { TypeLevel } from '@/lib/modules/brand-hub/types'
-import { CARD_STYLE, DoDontGrid, RichText, Section, Spec, ValueText, type HubPageProps } from './shared'
+import { CARD_STYLE, DoDontGrid, FOCUS_RING, RichText, Section, Spec, ValueText, type HubPageProps } from './shared'
 
 const DEFAULT_SIZE: Record<TypeLevel['key'], number> = { h1: 40, h2: 32, h3: 24, h4: 20, bodyLarge: 18, body: 16, small: 14 }
 
@@ -19,6 +19,15 @@ export function TypographyPage({ model, m, locale }: HubPageProps) {
                 {f.provider && (
                   <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                     {f.provider === 'google' ? m.providerGoogle : m.providerLibrary}
+                  </p>
+                )}
+                {f.specimenUrl && (
+                  <p className="mt-2 text-sm print:hidden">
+                    <a href={f.specimenUrl} target="_blank" rel="noopener noreferrer" className={`font-semibold underline underline-offset-4 ${FOCUS_RING}`}>
+                      {m.fontLink}
+                      <span className="sr-only"> {f.name} ({m.opensNewTab})</span>
+                    </a>
+                    <span className="block text-xs" style={{ color: 'var(--color-text-secondary)' }}>{m.fontLicenceNote}</span>
                   </p>
                 )}
               </dl>

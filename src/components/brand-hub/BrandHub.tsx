@@ -1,16 +1,20 @@
 import Link from 'next/link'
 import { SectionContainer } from '@/components/layout/SectionContainer'
 import { getBrandHubMessages } from '@/lib/i18n/brand-hub-messages'
-import { BRAND_HUB_PAGES, type BrandHubModel, type BrandHubPageId } from '@/lib/modules/brand-hub/types'
+import { BRAND_HUB_NAV_GROUPS, WRITTEN_PAGES, type BrandHubModel, type BrandHubPageId, type WrittenPageId } from '@/lib/modules/brand-hub/types'
 import { ColourPage } from './ColourPage'
 import { LayoutPage } from './LayoutPage'
 import { LogoPage } from './LogoPage'
 import { MotionPage } from './MotionPage'
 import { VoicePage } from './VoicePage'
+import { FoundationPage } from './FoundationPage'
+import { UsingPage } from './UsingPage'
 import { OverviewPage } from './OverviewPage'
 import { ShapePage } from './ShapePage'
 import { TypographyPage } from './TypographyPage'
 import { FOCUS_RING, GuideMeta, HEADING_FONT, Legend, StatementStatusPill } from './shared'
+
+const isWritten = (p: BrandHubPageId): p is WrittenPageId => (WRITTEN_PAGES as readonly string[]).includes(p)
 
 const VALUE_PAGES: readonly BrandHubPageId[] = ['colour', 'typography', 'shape', 'layout', 'motion']
 
@@ -33,6 +37,8 @@ export function BrandHub({ model, page, locale, basePath }: {
     case 'logo': content = <LogoPage {...common} />; break
     case 'motion': content = <MotionPage {...common} />; break
     case 'voice': content = <VoicePage {...common} />; break
+    case 'foundation': content = <FoundationPage {...common} />; break
+    case 'using': content = <UsingPage {...common} />; break
     default: content = <OverviewPage {...common} basePath={basePath} />
   }
 
@@ -41,27 +47,34 @@ export function BrandHub({ model, page, locale, basePath }: {
       <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-12 print:block">
         <nav aria-label={m.pagesNavLabel} className="min-w-0 md:sticky md:top-28 md:w-56 md:shrink-0 print:hidden">
           <p className="mb-3 hidden text-sm font-semibold md:block" style={HEADING_FONT}>{m.navLabel}</p>
-          <ul className="-mx-6 flex gap-1 overflow-x-auto px-6 pb-2 md:mx-0 md:flex-col md:overflow-visible md:px-0 md:pb-0">
-            {BRAND_HUB_PAGES.map((p) => {
-              const current = p === page
-              return (
-                <li key={p} className="shrink-0">
-                  <Link
-                    href={hrefFor(p)}
-                    aria-current={current ? 'page' : undefined}
-                    className={`block whitespace-nowrap border-b-2 px-3 py-2 text-sm md:border-b-0 md:border-l-2 ${current ? 'font-semibold' : 'font-normal'} ${FOCUS_RING}`}
-                    style={{
-                      color: current ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
-                      borderColor: current ? 'var(--color-text-primary)' : 'transparent',
-                      textDecoration: current ? 'underline' : 'none',
-                      textUnderlineOffset: 4,
-                    }}
-                  >
-                    {m.pages[p].title}
-                  </Link>
-                </li>
-              )
-            })}
+          <ul className="-mx-6 flex gap-1 overflow-x-auto px-6 pb-2 md:mx-0 md:flex-col md:gap-5 md:overflow-visible md:px-0 md:pb-0">
+            {BRAND_HUB_NAV_GROUPS.map((g) => (
+              <li key={g.key} className="flex shrink-0 gap-1 md:flex-col md:gap-0">
+                <p className="hidden px-3 pb-1 text-xs font-semibold uppercase tracking-wide md:block" style={{ color: 'var(--color-text-secondary)' }}>{m.navGroups[g.key]}</p>
+                <ul className="flex gap-1 md:flex-col md:gap-0">
+                  {g.pages.map((p) => {
+                    const current = p === page
+                    return (
+                      <li key={p} className="shrink-0">
+                        <Link
+                          href={hrefFor(p)}
+                          aria-current={current ? 'page' : undefined}
+                          className={`block whitespace-nowrap border-b-2 px-3 py-2 text-sm md:border-b-0 md:border-l-2 ${current ? 'font-semibold' : 'font-normal'} ${FOCUS_RING}`}
+                          style={{
+                            color: current ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+                            borderColor: current ? 'var(--color-text-primary)' : 'transparent',
+                            textDecoration: current ? 'underline' : 'none',
+                            textUnderlineOffset: 4,
+                          }}
+                        >
+                          {m.pages[p].title}
+                        </Link>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </li>
+            ))}
           </ul>
         </nav>
 
@@ -72,7 +85,7 @@ export function BrandHub({ model, page, locale, basePath }: {
               {m.pages[page].description}
             </p>
           </header>
-          {page !== 'overview' && model.written[page].status && (
+          {isWritten(page) && model.written[page].status && (
             <div className="-mt-6 mb-10"><StatementStatusPill status={model.written[page].status!} m={m} /></div>
           )}
           {VALUE_PAGES.includes(page) && <Legend m={m} />}

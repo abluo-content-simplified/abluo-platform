@@ -38,7 +38,17 @@ const page = (field: string) => /* groq */ `
 const statement = (path: string, key: string) => /* groq */ `
   "${key}": select(defined(${path}) => { "text": ${loc(`${path}.text`)}, "status": ${path}.status })`
 
-const STATEMENTS = ['mission', 'vision', 'promise', 'audience', 'positioning', 'personality', 'values', 'story']
+const STATEMENTS = ['mission', 'vision', 'promise', 'positioning', 'story']
+const LISTS = ['audience', 'differentiators', 'personality', 'values']
+
+/** A foundation list: status, texts in the requested language, items in order. */
+const list = (key: string) => /* groq */ `
+  "${key}": select(defined(${key}) => {
+    "status": ${key}.status,
+    "intro": ${loc(`${key}.intro`)},
+    "outro": ${loc(`${key}.outro`)},
+    "items": ${key}.items[]{ _key, "title": ${loc('title')}, "text": ${loc('text')}, "note": ${loc('note')} }
+  })`
 const LOGO_RULES = ['clearSpace', 'minimumDigital', 'minimumPrint', 'backgrounds']
 
 export const brandHubQuery = /* groq */ `{
@@ -48,6 +58,8 @@ export const brandHubQuery = /* groq */ `{
     status,
     "intro": ${loc('intro')},
     "statements": {${STATEMENTS.map((k) => statement(k, k)).join(',')}
+    },
+    "lists": {${LISTS.map((k) => list(k)).join(',')}
     },
     "howToUse": ${loc('howToUse')},
     "changes": changes[]{ _key, date, "note": ${loc('note')} },
@@ -99,6 +111,13 @@ export interface BrandHubAssetMeta {
   height?: number | null
 }
 
+export interface BrandHubListRow {
+  status?: string | null
+  intro?: string | null
+  outro?: string | null
+  items?: { _key: string; title?: string | null; text?: string | null; note?: string | null }[] | null
+}
+
 export interface BrandHubStatementRow {
   text?: string | null
   status?: string | null
@@ -117,6 +136,7 @@ export interface BrandHubQueryResult {
     status?: string | null
     intro?: unknown[] | null
     statements?: Record<string, BrandHubStatementRow | null> | null
+    lists?: Record<string, BrandHubListRow | null> | null
     howToUse?: unknown[] | null
     changes?: { _key: string; date?: string | null; note?: string | null }[] | null
     logoRules?: Record<string, BrandHubStatementRow | null> | null

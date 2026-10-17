@@ -21,9 +21,12 @@ import {
 import { FALLBACK_FONTS, FALLBACK_LAYOUT, FALLBACK_MOTION, FALLBACK_RADIUS } from '@/lib/design-system/fallback-tokens'
 import { resolveColours, type ResolvedColour, type ResolvedTheme } from '@/lib/design-system/resolved-colours'
 import { brandColourVar, emittableBrandColours } from '@/lib/design-system/brand-palette'
-import type { BrandHubAssetMeta, BrandHubGuidePageRow, BrandHubQueryResult, BrandHubStatementRow } from './queries'
+import type { BrandHubAssetMeta, BrandHubGuidePageRow, BrandHubListRow, BrandHubQueryResult, BrandHubStatementRow } from './queries'
 import {
   BRAND_HUB_PAGES,
+  WRITTEN_PAGES,
+  type BrandList,
+  type BrandListKey,
   COLOUR_ROLE_KEYS,
   TYPE_LEVEL_KEYS,
   type BrandAsset,
@@ -346,14 +349,24 @@ export function buildContrast(rc: ReturnType<typeof resolveColours>): ContrastCh
 
 // ── Typography ────────────────────────────────────────────────────────────────
 
+/**
+ * Google Fonts page for a family. Every font in the design system's library is
+ * a Google font, and 'google' fonts are by definition; anything else gets none.
+ */
+export function googleFontsUrl(name: string, source: string | null | undefined): string | null {
+  if (source !== 'library' && source !== 'google') return null
+  if (!/^[A-Za-z0-9 ]{1,60}$/.test(name)) return null
+  return `https://fonts.google.com/specimen/${name.trim().replace(/ +/g, '+')}`
+}
+
 function fontFamily(role: FontFamily['role'], def: FontDefinition | undefined, platform: string | null): FontFamily {
   const name =
     def?.source === 'google' && def.googleFont?.trim() ? def.googleFont.trim()
       : def?.source === 'library' && def.libraryFont?.trim() ? def.libraryFont.trim()
         : null
-  if (name) return { role, name, provider: def!.source ?? null, source: 'designSystem' }
-  if (platform) return { role, name: platform, provider: null, source: 'platformDefault' }
-  return { role, name: null, provider: null, source: 'notSet' }
+  if (name) return { role, name, provider: def!.source ?? null, source: 'designSystem', specimenUrl: googleFontsUrl(name, def!.source) }
+  if (platform) return { role, name: platform, provider: null, source: 'platformDefault', specimenUrl: null }
+  return { role, name: null, provider: null, source: 'notSet', specimenUrl: null }
 }
 
 function typeLevel(key: TypeLevel['key'], t: Typescale | undefined): TypeLevel {
@@ -432,7 +445,8 @@ function written(row: BrandHubGuidePageRow | null | undefined): WrittenContent {
   return { status, body, doDont }
 }
 
-const STATEMENT_KEYS: BrandStatementKey[] = ['mission', 'vision', 'promise', 'audience', 'positioning', 'personality', 'values', 'story']
+const STATEMENT_KEYS: BrandStatementKey[] = ['mission', 'vision', 'promise', 'positioning', 'story']
+const LIST_KEYS: BrandListKey[] = ['audience', 'differentiators', 'personality', 'values']
 const LOGO_RULE_KEYS: BrandLogoRuleKey[] = ['clearSpace', 'minimumDigital', 'minimumPrint', 'backgrounds']
 const STATUSES: readonly BrandStatementStatus[] = ['draft', 'approved', 'needsDecision']
 const GUIDE_STATUSES: readonly BrandGuideStatus[] = ['draft', 'review', 'published']
@@ -450,6 +464,24 @@ function statements<K extends string>(keys: K[], rows: Record<string, BrandHubSt
     const raw = row?.status as BrandStatementStatus | undefined
     const status: BrandStatementStatus = !text ? 'needsDecision' : raw && STATUSES.includes(raw) ? raw : 'draft'
     return { key, text, status }
+  })
+}
+
+const cleanText = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null)
+
+/** Foundation lists in a fixed order; an empty list reads as needsDecision, a filled one without status as draft. */
+function lists(rows: Record<string, BrandHubListRow | null> | null | undefined): BrandList[] {
+  return LIST_KEYS.map((key) => {
+    const row = rows?.[key]
+    const items = (row?.items ?? [])
+      .map((i) => ({ key: i._key, title: cleanText(i.title) ?? '', text: cleanText(i.text), note: cleanText(i.note) }))
+      .filter((i) => i.title)
+    const intro = cleanText(row?.intro)
+    const outro = cleanText(row?.outro)
+    const empty = !intro && !outro && items.length === 0
+    const raw = row?.status as BrandStatementStatus | undefined
+    const status: BrandStatementStatus = empty ? 'needsDecision' : raw && STATUSES.includes(raw) ? raw : 'draft'
+    return { key, status, intro, items, outro }
   })
 }
 
@@ -480,12 +512,7 @@ export function buildBrandHubModel(
   const typo = ds?.typography
   const guide = data?.guide ?? null
 
-  const writtenPages = Object.fromEntries(
-    BRAND_HUB_PAGES.filter((p): p is Exclude<BrandHubPageId, 'overview'> => p !== 'overview').map((p) => [
-      p,
-      written(guide?.[p]),
-    ]),
-  ) as BrandHubModel['written']
+  const writtenPages = Object.fromEntries(WRITTEN_PAGES.map((p) => [p, written(guide?.[p])])) as BrandHubModel['written']
 
   return {
     projectName: data?.site?.siteName ?? null,
@@ -496,6 +523,7 @@ export function buildBrandHubModel(
     status: guide ? (GUIDE_STATUSES.includes(guide.status as BrandGuideStatus) ? (guide.status as BrandGuideStatus) : 'draft') : null,
     intro: portable(guide?.intro),
     statements: statements(STATEMENT_KEYS, guide?.statements),
+    lists: lists(guide?.lists),
     howToUse: portable(guide?.howToUse),
     changes: changes(guide?.changes),
     logoRules: statements(LOGO_RULE_KEYS, guide?.logoRules),

@@ -23,8 +23,20 @@ export type ValueSource = 'designSystem' | 'calculated' | 'platformDefault' | 'n
 export type ThemeKey = 'light' | 'dark'
 
 /** Hub pages, in navigation order. 'overview' is served at /brand itself. */
-export const BRAND_HUB_PAGES = ['overview', 'colour', 'typography', 'shape', 'layout', 'logo', 'motion', 'voice'] as const
+export const BRAND_HUB_PAGES = ['overview', 'using', 'foundation', 'voice', 'logo', 'colour', 'typography', 'shape', 'layout', 'motion'] as const
 export type BrandHubPageId = (typeof BRAND_HUB_PAGES)[number]
+
+/** Pages that carry written guidance from the brand guide (body + do/don't + status). */
+export const WRITTEN_PAGES = ['colour', 'typography', 'shape', 'layout', 'logo', 'motion', 'voice'] as const
+export type WrittenPageId = (typeof WRITTEN_PAGES)[number]
+
+/** Navigation groups, in order (ADR-036 Amendment C). */
+export type BrandHubNavGroupKey = 'start' | 'brand' | 'visual'
+export const BRAND_HUB_NAV_GROUPS: readonly { key: BrandHubNavGroupKey; pages: readonly BrandHubPageId[] }[] = [
+  { key: 'start', pages: ['overview', 'using'] },
+  { key: 'brand', pages: ['foundation', 'voice'] },
+  { key: 'visual', pages: ['logo', 'colour', 'typography', 'shape', 'layout', 'motion'] },
+]
 
 /** A plain (non-colour) design value. */
 export interface DesignValue<T = number | string> {
@@ -152,6 +164,8 @@ export interface FontFamily {
   name: string | null
   /** 'library' | 'google' when set by the design system. */
   provider: 'library' | 'google' | null
+  /** Google Fonts page for this family (download + licence), when it is a Google font. */
+  specimenUrl: string | null
   source: ValueSource
 }
 
@@ -182,7 +196,17 @@ export interface BrandAsset {
 
 export type BrandStatementStatus = 'draft' | 'approved' | 'needsDecision'
 export type BrandGuideStatus = 'draft' | 'review' | 'published'
-export type BrandStatementKey = 'mission' | 'vision' | 'promise' | 'audience' | 'positioning' | 'personality' | 'values' | 'story'
+export type BrandStatementKey = 'mission' | 'vision' | 'promise' | 'positioning' | 'story'
+export type BrandListKey = 'audience' | 'differentiators' | 'personality' | 'values'
+
+/** A list section of the brand foundation: optional intro and closing text around named items. */
+export interface BrandList {
+  key: BrandListKey
+  status: BrandStatementStatus
+  intro: string | null
+  items: { key: string; title: string; text: string | null; note: string | null }[]
+  outro: string | null
+}
 export type BrandLogoRuleKey = 'clearSpace' | 'minimumDigital' | 'minimumPrint' | 'backgrounds'
 
 /**
@@ -232,14 +256,16 @@ export interface BrandHubModel {
   /** Publication status of the guide; null when no guide document exists yet. */
   status: BrandGuideStatus | null
   intro: PortableTextContent | null
-  /** Overview statements in display order (always all eight; unwritten ones have text null). */
+  /** Foundation statements in display order (always all five; unwritten ones have text null). */
   statements: BrandStatement<BrandStatementKey>[]
+  /** Foundation lists (audience, differentiators, personality, values), always all four. */
+  lists: BrandList[]
   howToUse: PortableTextContent | null
   /** Newest first, at most five. */
   changes: BrandGuideChange[]
   /** Logo rules in display order (always all four). */
   logoRules: BrandStatement<BrandLogoRuleKey>[]
-  written: Record<Exclude<BrandHubPageId, 'overview'>, WrittenContent>
+  written: Record<WrittenPageId, WrittenContent>
 
   colours: ColourRole[]
   brandPalette: BrandColour[]

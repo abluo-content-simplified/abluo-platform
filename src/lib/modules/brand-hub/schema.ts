@@ -16,7 +16,10 @@ import { scopedRef, projectSlugField } from '@/lib/sanity/fields/shared'
 export const BRAND_STATEMENT_STATUSES = ['draft', 'approved', 'needsDecision'] as const
 
 /** Overview statements, in display order. Every one is optional. */
-export const BRAND_STATEMENT_FIELDS = ['mission', 'vision', 'promise', 'audience', 'positioning', 'personality', 'values', 'story'] as const
+export const BRAND_STATEMENT_FIELDS = ['mission', 'vision', 'promise', 'positioning', 'story'] as const
+
+/** Foundation lists, each { status, intro, items[{ title, text, note }], outro }. */
+export const BRAND_LIST_FIELDS = ['audience', 'differentiators', 'personality', 'values'] as const
 
 /** Logo rules (Logo page), in display order. */
 export const BRAND_LOGO_RULE_FIELDS = ['clearSpace', 'minimumDigital', 'minimumPrint', 'backgrounds'] as const
@@ -108,15 +111,68 @@ const changeMember = defineArrayMember({
 })
 
 const STATEMENT_TITLES: Record<(typeof BRAND_STATEMENT_FIELDS)[number], [string, string]> = {
-  mission: ['Mission', 'Why the brand exists.'],
-  vision: ['Vision', 'Where the brand is going.'],
-  promise: ['Brand promise', 'What people can always count on.'],
-  audience: ['Who it is for', 'The audiences the brand speaks to.'],
-  positioning: ['Positioning and differentiators', 'What makes it different from the alternatives.'],
-  personality: ['Personality', 'A few words that describe how the brand behaves.'],
-  values: ['Values', 'What the brand stands for.'],
-  story: ['Brand story', 'Where it comes from, in a few sentences.'],
+  mission: ['Mission', 'Why the brand exists. One sentence.'],
+  vision: ['Vision', 'Where the brand is going. One sentence.'],
+  promise: ['Brand promise', 'What people can always count on. First paragraph is the promise; the rest supports it.'],
+  positioning: ['Positioning', 'Who it is for, what it is, and how it differs. A few paragraphs.'],
+  story: ['Brand story', 'Where it comes from and why it matters. Paragraphs.'],
 }
+
+const LIST_TITLES: Record<(typeof BRAND_LIST_FIELDS)[number], [string, string, string | null]> = {
+  audience: ['Who it is for', 'Intro, one item per audience, and an optional closing paragraph.', null],
+  differentiators: ['Differentiators', 'What sets the brand apart: a short title and a sentence each.', null],
+  personality: ['Personality', 'One trait per item, with what it means and what it is not.', 'Not'],
+  values: ['Values', 'One value per item, with what it means and a decision question.', 'Decision question'],
+}
+
+const listField = (name: (typeof BRAND_LIST_FIELDS)[number]) =>
+  defineField({
+    name,
+    title: LIST_TITLES[name][0],
+    description: LIST_TITLES[name][1],
+    type: 'object',
+    group: 'overview',
+    options: { collapsible: true, collapsed: false },
+    fields: [
+      defineField({
+        name: 'status',
+        title: 'Status',
+        type: 'string',
+        options: {
+          list: [
+            { title: 'Draft — awaiting approval', value: 'draft' },
+            { title: 'Approved', value: 'approved' },
+            { title: 'Needs a decision', value: 'needsDecision' },
+          ],
+          layout: 'radio',
+          direction: 'horizontal',
+        },
+        initialValue: 'draft',
+      }),
+      defineField({ name: 'intro', title: 'Intro', type: 'localizedText' }),
+      defineField({
+        name: 'items',
+        title: 'Items',
+        type: 'array',
+        of: [
+          defineArrayMember({
+            name: 'brandListItem',
+            title: 'Item',
+            type: 'object',
+            fields: [
+              defineField({ name: 'title', title: 'Title', type: 'localizedString', validation: (Rule) => Rule.required() }),
+              defineField({ name: 'text', title: 'Text', type: 'localizedText' }),
+              ...(LIST_TITLES[name][2]
+                ? [defineField({ name: 'note', title: LIST_TITLES[name][2]!, type: 'localizedText' })]
+                : []),
+            ],
+            preview: { select: { title: 'title.en', subtitle: 'text.en' } },
+          }),
+        ],
+      }),
+      defineField({ name: 'outro', title: 'Closing paragraph', type: 'localizedText' }),
+    ],
+  })
 
 const LOGO_RULE_TITLES: Record<(typeof BRAND_LOGO_RULE_FIELDS)[number], [string, string]> = {
   clearSpace: ['Clear space', 'The empty space to keep around the logo, e.g. "the height of the play triangle on every side".'],
@@ -217,12 +273,13 @@ const brandGuideType = defineType({
     ...BRAND_STATEMENT_FIELDS.map((f) =>
       statementField(f, STATEMENT_TITLES[f][0], STATEMENT_TITLES[f][1], 'overview'),
     ),
+    ...BRAND_LIST_FIELDS.map((f) => listField(f)),
     defineField({
       name: 'howToUse',
       title: 'How to use these guidelines',
       type: 'localizedPortableText',
       group: 'overview',
-      description: 'Who the guide is for and how to read it. Leave empty to show the standard text.',
+      description: 'Shown on "Using the Brand Hub" under "For this brand": who approves, how languages are handled, who to contact. The standard explanations are always shown.',
     }),
     defineField({
       name: 'changes',

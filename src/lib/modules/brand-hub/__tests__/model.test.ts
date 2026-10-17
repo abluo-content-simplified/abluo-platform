@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'fs'
 import { join, resolve } from 'path'
 import type { DesignSystem } from '@/lib/sanity/types'
-import { buildBrandHubModel, describeColour, pageFromSegments } from '../model'
+import { buildBrandHubModel, describeColour, googleFontsUrl, pageFromSegments } from '../model'
 import type { BrandHubQueryResult } from '../queries'
 import { BRAND_HUB_MODULE_ID, BRAND_HUB_ROBOTS, BRAND_HUB_SEGMENT } from '../route'
 import { BRAND_GUIDE_PAGE_FIELDS, brandHubSchemaTypes } from '../schema'
@@ -284,9 +284,9 @@ describe('no tenant values in module code (CLAUDE.md, AC-16)', () => {
 describe('brand introduction and logo rules (amendment 2026-10-17)', () => {
   const withGuide = (guide: NonNullable<BrandHubQueryResult['guide']>): BrandHubQueryResult => ({ ...data, guide: { ...(data.guide ?? {}), ...guide } })
 
-  it('always lists all eight statements and four logo rules, in order, unwritten ones as needsDecision', () => {
+  it('always lists all five statements and four logo rules, in order, unwritten ones as needsDecision', () => {
     const m = buildBrandHubModel(fixtureDs(), withGuide({}))
-    expect(m.statements.map((s) => s.key)).toEqual(['mission', 'vision', 'promise', 'audience', 'positioning', 'personality', 'values', 'story'])
+    expect(m.statements.map((s) => s.key)).toEqual(['mission', 'vision', 'promise', 'positioning', 'story'])
     expect(m.logoRules.map((s) => s.key)).toEqual(['clearSpace', 'minimumDigital', 'minimumPrint', 'backgrounds'])
     expect(m.statements.every((s) => s.text === null && s.status === 'needsDecision')).toBe(true)
   })
@@ -381,3 +381,44 @@ describe('written page status and the Voice page (2026-10-17)', () => {
   })
 })
 
+
+describe('brand foundation lists, page groups and font links (ADR-036 Amendment C)', () => {
+  const withGuide = (guide: NonNullable<BrandHubQueryResult['guide']>): BrandHubQueryResult => ({ ...data, guide: { ...(data.guide ?? {}), ...guide } })
+
+  it('always has the four lists, in order; empty ones need a decision', () => {
+    const m = buildBrandHubModel(fixtureDs(), withGuide({}))
+    expect(m.lists.map((l) => l.key)).toEqual(['audience', 'differentiators', 'personality', 'values'])
+    expect(m.lists.every((l) => l.status === 'needsDecision' && l.items.length === 0 && l.intro === null && l.outro === null)).toBe(true)
+  })
+
+  it('a written list without a status is a draft; items without a title are dropped; text is trimmed', () => {
+    const m = buildBrandHubModel(fixtureDs(), withGuide({
+      lists: {
+        personality: { intro: '  Who we are. ', items: [{ _key: 'a', title: ' Practical ', text: ' Says what to do. ', note: ' technical for show ' }, { _key: 'b', title: '  ', text: 'orphan' }] },
+        values: { status: 'approved', items: [{ _key: 'v', title: 'Keep it clear' }] },
+        audience: { status: 'bogus', outro: 'Small teams.' },
+      },
+    }))
+    const p = m.lists.find((l) => l.key === 'personality')!
+    expect(p.status).toBe('draft')
+    expect(p.intro).toBe('Who we are.')
+    expect(p.items).toEqual([{ key: 'a', title: 'Practical', text: 'Says what to do.', note: 'technical for show' }])
+    expect(m.lists.find((l) => l.key === 'values')!.status).toBe('approved')
+    expect(m.lists.find((l) => l.key === 'audience')!.status).toBe('draft')
+  })
+
+  it('every page is in exactly one navigation group, in page order', async () => {
+    const { BRAND_HUB_NAV_GROUPS, BRAND_HUB_PAGES } = await import('../types')
+    expect(BRAND_HUB_NAV_GROUPS.flatMap((g) => g.pages).slice().sort()).toEqual([...BRAND_HUB_PAGES].sort())
+    expect(pageFromSegments(['using'])).toBe('using')
+    expect(pageFromSegments(['foundation'])).toBe('foundation')
+  })
+
+  it('font links: Google Fonts specimen for library/google fonts only, never for custom or odd names', () => {
+    expect(googleFontsUrl('Barlow Condensed', 'google')).toBe('https://fonts.google.com/specimen/Barlow+Condensed')
+    expect(googleFontsUrl('Inter', 'library')).toBe('https://fonts.google.com/specimen/Inter')
+    expect(googleFontsUrl('Inter', 'custom')).toBeNull()
+    expect(googleFontsUrl('Inter', null)).toBeNull()
+    expect(googleFontsUrl('Evil"><script>', 'google')).toBeNull()
+  })
+})

@@ -9,7 +9,7 @@ export function ContrastGrid({ model, m, locale }: HubPageProps) {
   const fmt = new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   return (
-    <Section title={m.contrastTitle}>
+    <Section title={m.contrastTitle} id="contrast">
       <p className="mb-6 max-w-[var(--layout-max-text-width,720px)] text-sm" style={{ color: 'var(--color-text-secondary)' }}>
         {m.contrastMethod}
       </p>
