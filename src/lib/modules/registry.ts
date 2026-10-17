@@ -9,6 +9,7 @@ import { gallerySchemaTypes } from './gallery/schema'
 import { catalogueSchemaTypes } from './catalogue/schema'
 import { brandHubSchemaTypes } from './brand-hub/schema'
 import { SEGMENT_REGEX_SOURCE } from './catalogue/segment'
+import { PROFILES, PROFILE_ORDER, profilesWith } from './catalogue/profiles'
 
 // ── Module registry ───────────────────────────────────────────────────────────
 // The single authoritative definition of every module available on the platform.
@@ -1146,11 +1147,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           id: 'defaultItemProfile',
           label: 'Default item profile',
           type: 'select',
-          options: [
-            { value: 'foodOrDrink', label: 'Food or drink' },
-            { value: 'product', label: 'Product' },
-            { value: 'service', label: 'Service' },
-          ],
+          options: PROFILE_ORDER.map((id) => ({ value: id, label: PROFILES[id].label })),
           description:
             'What the new-item wizard preselects for "What are you offering?". Optional; always changeable per item.',
         },
@@ -1201,7 +1198,8 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
               { value: 'dine-in', label: { en: 'Dine-in', it: 'Al tavolo', de: 'Vor Ort' } },
               { value: 'takeaway', label: { en: 'Takeaway', it: 'Da asporto', de: 'Zum Mitnehmen' } },
             ],
-            defaultItemProfile: 'foodOrDrink',
+            // The profile that carries food information (looked up, not named).
+            defaultItemProfile: profilesWith('foodInformation')[0],
           },
         },
         {
@@ -1211,7 +1209,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           description: 'A book list: products, no service channels.',
           config: {
             publicSegment: 'books',
-            defaultItemProfile: 'product',
+            defaultItemProfile: PROFILES.product.id,
           },
         },
       ],

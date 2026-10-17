@@ -1,9 +1,11 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import type { PendingSet } from '@/lib/client/autosave/journal'
 import {
   attachmentIssues,
+  bookDetailsPatch,
+  bookYearInvalid,
   NOT_REVIEWED,
   attachmentsPatch,
   declarationPatch,
@@ -14,6 +16,7 @@ import {
   offerRows,
   offersToDoc,
   type AttachmentForm,
+  type BookDetailsForm,
   type DeclarationForm,
   type ItemProfile,
   type ItemState,
@@ -48,6 +51,8 @@ export function useItemState({
   update: (set: PendingSet) => void
 }) {
   const [s, setS] = useState<ItemState>(() => ({ ...initial, offers: offerRows(initial.offers, channels, newKey) }))
+  // The last acceptable year, so author/ISBN typed while the year is wrong still save without losing it.
+  const lastYear = useRef(initial.bookDetails.year)
   const [photos, setPhotosState] = useState<ItemPhoto[]>(initialPhotos)
 
   const patch = useCallback(
@@ -76,6 +81,11 @@ export function useItemState({
     },
     /** F-2 — complete rows only are sent (the server refuses an unsafe address anyway); a bad row stays on screen with its message. */
     setLinks: (links: LinkForm[]) => patch({ links }, linkFormIssues(links, defaultLocale).length === 0 ? { links: linksPatch(links, defaultLocale) } : undefined),
+    /** Amendment I-3 — all optional. A year that is not acceptable is not saved (the field says why); the rest is. */
+    setBookDetails: (bookDetails: BookDetailsForm) => {
+      if (!bookYearInvalid(bookDetails)) lastYear.current = bookDetails.year
+      patch({ bookDetails }, { bookDetails: bookDetailsPatch(bookDetails, lastYear.current) })
+    },
     setCategories: (categories: string[]) => patch({ categories }, { categories }),
     setDietary: (dietary: string[]) => patch({ dietary }, { dietary }),
     setPhotos: (next: ItemPhoto[]) => {

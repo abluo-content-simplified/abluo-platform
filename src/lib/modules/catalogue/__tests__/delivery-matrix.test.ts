@@ -813,3 +813,56 @@ describe('G. currency change warning', () => {
     expect(load('de').catalogue.currency.changeWarning).toMatch(/keine Beträge umgerechnet/)
   })
 })
+
+describe('H. a book on its own page (Amendment I)', () => {
+  const doc = (over: Record<string, unknown> = {}) => ({
+    _id: 'catalogueItem-guida',
+    _type: 'catalogueItem',
+    projectSlug: PROJECT,
+    publicId: 'guida',
+    itemProfile: 'book',
+    hasPage: true,
+    name: { it: 'Guida galattica' },
+    slug: slugField('guida-galattica', false),
+    bookDetails: { author: 'Douglas Adams', year: 1979, isbn: '9780345391803' },
+    ...lifecycleFields('live'),
+    ...over,
+  })
+  const read = async (d: Record<string, unknown>) => {
+    const dataset = [...PUBLISHED, d]
+    const p = { projectSlug: PROJECT, locale: 'it', defaultLocale: 'it' }
+    const fetchOwn: CatalogueFetch = async (query, params) => {
+      const q = { ...p, ...params }
+      return (await (await evaluate(parse(query, { params: q }), { dataset, params: q, timestamp: NOW })).get()) as never
+    }
+    return resolveCatalogueEntry(fetchOwn, 'guida-galattica', ctxFor('it'))
+  }
+
+  it('a live public book resolves with its details and emits Book (valid without an offer)', async () => {
+    const e = await read(doc())
+    expect(e.kind).toBe('item')
+    if (e.kind !== 'item') return
+    expect(e.item.itemProfile).toBe('book')
+    expect(e.item.byline).toBe('Douglas Adams')
+    expect(e.item.bookDetails).toEqual({ author: 'Douglas Adams', year: 1979, isbn: '9780345391803' })
+    const ld = catalogueItemJsonLd(e.item, { url: `${ORIGIN}/it/menu/guida-galattica`, locale: 'it' })!
+    expect(ld['@type']).toBe('Book')
+    expect(ld).toMatchObject({ isbn: '9780345391803', datePublished: '1979' })
+  })
+
+  it('the same document read as a product (older deployment) is a plain product page with no offer: no item node, no failure', async () => {
+    const e = await read(doc({ itemProfile: 'pamphlet' }))
+    expect(e.kind).toBe('item')
+    if (e.kind !== 'item') return
+    expect(e.item.itemProfile).toBe('product')
+    expect(catalogueItemJsonLd(e.item, { url: ORIGIN, locale: 'it' })).toBeNull()
+  })
+
+  it('lifecycle and visibility rules are the same as for every item: draft and unlisted', async () => {
+    expect((await read(doc({ ...lifecycleFields('scheduled') }))).kind).toBe('notFound')
+    expect((await read(doc({ ...lifecycleFields('archived') }))).kind).toBe('notFound')
+    const unlisted = await read(doc({ visibility: 'unlisted' }))
+    expect(unlisted.kind).toBe('item')
+    if (unlisted.kind === 'item') expect(catalogueItemJsonLd(unlisted.item, { url: ORIGIN, locale: 'it' })).toBeNull()
+  })
+})

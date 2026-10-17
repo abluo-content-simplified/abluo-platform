@@ -22,9 +22,9 @@ import type { CatalogueAbilities, CatalogueSite, CatalogueSnapshot } from '@/lib
 import type { Referrer } from '@/lib/lifecycle/service'
 import { can as profileCan } from '@/lib/modules/catalogue/profiles'
 import { attachmentIssues, declarationIssues, itemGaps, itemOptionsRelevant, itemStateFromDoc, type ItemState } from '@/lib/modules/catalogue/dashboard-form'
-import { issueCountByTab, itemIssues, type ItemIssue, type ItemTab } from '@/lib/modules/catalogue/item-issues'
+import { adviceTabs, issueCountByTab, itemIssues, publishBlockers, type ItemIssue, type ItemTab } from '@/lib/modules/catalogue/item-issues'
 import { CAT_ICONS, CAT_INPUT, CAT_PRIMARY, GapBadges, InUseNotice, ItemIssueList, SegmentTabs, TabLabel, UnpublishDateSheet, focusField, textIn, useCatalogueError } from './catalogue-ui'
-import { FieldBlock, FoodInfoField, ItemPreview, LanguagesField, LinksField, NameFields, OptionsField, PageField, PhotoField, PriceField, ProfileField, TermChips, VisibilityField, type OptionListChoice } from './item-fields'
+import { BookDetailsFields, FieldBlock, FoodInfoField, ItemPreview, LanguagesField, LinksField, NameFields, OptionsField, PageField, PhotoField, PriceField, ProfileField, TermChips, VisibilityField, type OptionListChoice } from './item-fields'
 import { usePublishTogether } from './publish-dependencies'
 import { languageName } from '@/components/client/create/StepHeading'
 import { StrayAddressNotice, focusNameField, useStrayAddress } from './stray-address'
@@ -115,6 +115,7 @@ export function ItemEditor({
   const { toast, show } = useUndo()
 
   const hasFoodInfo = !!s.itemProfile && profileCan(s.itemProfile, 'foodInformation')
+  const hasBookInfo = !!s.itemProfile && profileCan(s.itemProfile, 'bookDetails')
   // D7: Options appear when relevant — food, option lists already attached, or any option list in the project.
   const showOptions = itemOptionsRelevant({ itemProfile: s.itemProfile, attachedCount: s.options.length, projectListCount: optionLists.length })
   const tabs: Tab[] = ['content', 'photos', 'prices', ...(hasFoodInfo ? (['details'] as Tab[]) : []), ...(showOptions ? (['options'] as Tab[]) : []), 'page', ...(site.locales.length > 1 ? (['languages'] as Tab[]) : []), 'publishing']
@@ -122,7 +123,10 @@ export function ItemEditor({
   const current: Tab = tabs.includes(tab) ? tab : 'content'
   const issues = itemIssues(s, { defaultLocale: d, locales: site.locales, channels, optionCounts })
   const issueCounts = issueCountByTab(issues)
-  const canPublish = issues.length === 0
+  const adviceOn = adviceTabs(issues)
+  // Advice (an ISBN that does not check out) is shown beside its field and never blocks anything.
+  const blockers = publishBlockers(issues)
+  const canPublish = blockers.length === 0
   const fix = (issue: ItemIssue) => {
     setTab(tabs.includes(issue.tab) ? issue.tab : 'content')
     focusField(issue.focus)
@@ -250,7 +254,7 @@ export function ItemEditor({
           {result.kind === 'scheduled' && result.at ? t('resultScheduled', { date: new Intl.DateTimeFormat(ui, { dateStyle: 'full', timeStyle: 'short', timeZone: zone }).format(new Date(result.at)) }) : result.kind === 'scheduled' ? t('scheduled') : t('resultPublished')}
         </p>
       ) : null}
-      {!readOnly && !canPublish ? <ItemIssueList issues={issues} onFix={fix} /> : null}
+      {!readOnly && !canPublish ? <ItemIssueList issues={blockers} onFix={fix} /> : null}
       <SaveNotice state={draft.state} rejected={draft.rejected} onRetry={draft.retry} onReload={() => void draft.reload()} />
       {archived ? <p className="rounded-2xl bg-muted px-4 py-3 text-[0.9375rem] text-foreground">{t('archivedNotice')}</p> : null}
       {missingLists.length ? (
@@ -262,7 +266,7 @@ export function ItemEditor({
       {together.ui}
       <StrayAddressNotice state={stray} />
 
-      <SegmentTabs label={t('tabsLabel')} value={current} onChange={setTab} options={tabs.map((v) => ({ value: v, label: <TabLabel label={t(`tabs.${v}`)} count={issueCounts[v]} /> }))} />
+      <SegmentTabs label={t('tabsLabel')} value={current} onChange={setTab} options={tabs.map((v) => ({ value: v, label: <TabLabel label={t(`tabs.${v}`)} count={issueCounts[v]} advice={adviceOn.has(v)} /> }))} />
 
       <fieldset disabled={readOnly} className="min-w-0 space-y-8">
         {current === 'content' ? (
@@ -271,7 +275,7 @@ export function ItemEditor({
               <ProfileField value={s.itemProfile} onChange={item.setProfile} />
             </FieldBlock>
             <FieldBlock title={tf('name.title')}>
-              <NameFields locale={d} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
+              <NameFields locale={d} profile={s.itemProfile} afterName={hasBookInfo ? <BookDetailsFields value={s.bookDetails} onChange={item.setBookDetails} /> : null} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
             </FieldBlock>
             {site.config.categories.length ? (
               <FieldBlock title={tf('category.title')}>
@@ -307,7 +311,7 @@ export function ItemEditor({
           </FieldBlock>
         ) : current === 'languages' ? (
           <FieldBlock title={tf('languages.title')}>
-            <LanguagesField locales={site.locales} defaultLocale={d} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
+            <LanguagesField locales={site.locales} defaultLocale={d} profile={s.itemProfile} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
           </FieldBlock>
         ) : (
           <>

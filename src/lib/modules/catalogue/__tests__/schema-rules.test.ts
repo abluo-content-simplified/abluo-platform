@@ -23,7 +23,7 @@ describe('catalogueItem (D-2, D-3)', () => {
   it('itemProfile replaces itemType, with no business default', () => {
     expect(fieldsOf(catalogueItem).some((f) => f.name === 'itemType')).toBe(false)
     const p = field(catalogueItem, 'itemProfile')
-    expect(p.options!.list!.map((o) => o.value)).toEqual(['foodOrDrink', 'product', 'service'])
+    expect(p.options!.list!.map((o) => o.value)).toEqual(['book', 'foodOrDrink', 'product', 'service'])
     expect(p.initialValue).toBeUndefined()
   })
   it('the allergen declaration replaces allergens[]; a new one starts notReviewed', () => {

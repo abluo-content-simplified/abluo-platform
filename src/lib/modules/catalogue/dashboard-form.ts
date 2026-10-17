@@ -15,6 +15,7 @@ import { ruleIssues, WEEKDAYS, type Weekday } from './availability'
 import { isDescendant, moveSection, readingOrder, removeSection, subtreeOf, type SectionNode } from './sections'
 import { catalogueLinkUrl } from './links'
 import { can, isItemProfile, offeringOf, type ItemProfile } from './profiles'
+import { bookYearProblem, normalizeIsbn, parseBookYear } from './isbn'
 import { orderedAllergens, type AllergenDeclarationStatus, type AllergenKey } from './allergens'
 
 /** ADR-033 D-2 — what the ITEM is (not the tenant). */
@@ -566,6 +567,36 @@ export function linksPatch(links: readonly LinkForm[], defaultLocale: string) {
     .map((l) => ({ _key: l.key, label: l.label, url: l.url.trim() }))
 }
 
+// ── Book details (Amendment I-3): plain values, all optional ──────────────────
+
+/** What the fields hold while typing: the year stays text so a half-typed number is not lost. */
+export type BookDetailsForm = { author: string; year: string; isbn: string }
+export const EMPTY_BOOK_DETAILS: BookDetailsForm = { author: '', year: '', isbn: '' }
+
+export function bookDetailsFromDoc(value: unknown): BookDetailsForm {
+  const v = (value && typeof value === 'object' ? value : {}) as { author?: unknown; year?: unknown; isbn?: unknown }
+  return {
+    author: typeof v.author === 'string' ? v.author : '',
+    year: typeof v.year === 'number' && Number.isInteger(v.year) ? String(v.year) : '',
+    isbn: typeof v.isbn === 'string' ? v.isbn : '',
+  }
+}
+
+/**
+ * What the autosave sends for `bookDetails` (an empty object clears it). A year
+ * that is not acceptable is not sent — `fallbackYear` (the last one that was)
+ * stands in, so the author and ISBN typed meanwhile still save.
+ */
+export function bookDetailsPatch(form: BookDetailsForm, fallbackYear = ''): { author?: string; year?: number; isbn?: string } {
+  const year = parseBookYear(form.year) ?? parseBookYear(fallbackYear)
+  const author = form.author.trim()
+  const isbn = normalizeIsbn(form.isbn)
+  return { ...(author ? { author } : {}), ...(year !== null ? { year } : {}), ...(isbn ? { isbn } : {}) }
+}
+
+/** The field-level error under the year input (blank is fine). */
+export const bookYearInvalid = (form: Pick<BookDetailsForm, 'year'>): boolean => bookYearProblem(form.year)
+
 export type ItemState = {
   /** null only in the wizard, before "What are you offering?" is answered. */
   itemProfile: ItemProfile | null
@@ -573,6 +604,8 @@ export type ItemState = {
   /** F-1 — optional short line under the name. */
   byline: Texts
   description: Texts
+  /** Amendment I-3 — author, year, ISBN; shown when the profile carries them, kept (hidden) otherwise. */
+  bookDetails: BookDetailsForm
   /** F-2 — edited in the item editor only (the wizard stays at its step count). */
   links: LinkForm[]
   categories: string[]
@@ -592,6 +625,7 @@ export function itemStateFromDoc(doc: Record<string, unknown> | null | undefined
     itemProfile: isItemProfile(d.itemProfile) ? d.itemProfile : fallbackProfile,
     name: textsOf(d.name),
     byline: textsOf(d.byline),
+    bookDetails: bookDetailsFromDoc(d.bookDetails),
     description: textsOf(d.description),
     links: linkFormsFromDoc(d.links),
     categories: stringsOf(d.categories),

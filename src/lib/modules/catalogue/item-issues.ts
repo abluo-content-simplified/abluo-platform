@@ -11,14 +11,18 @@
 //                  that is not an amount). Empty optional fields NEVER block.
 //   blocksPublish  what publishing needs and a draft does not (allergen review
 //                  for food, a usable page address, an option list that exists).
+//   advice         a hint, not an error (Amendment I-3.3: an ISBN that does not
+//                  check out). Shown beside the field; a quiet dot on its tab;
+//                  NEVER disables a button and NEVER in the publish blocker list.
 
-import { can } from './profiles'
+import { PROFILES, can } from './profiles'
+import { isValidIsbn } from './isbn'
 import { declarationIssues, attachmentIssues, isBlockingAttachmentIssue, offerFormIssues, slugFromName, type ItemState, type ItemStep } from './dashboard-form'
 
 /** The editor's tab ids (ItemEditor). */
 export type ItemTab = 'content' | 'photos' | 'prices' | 'details' | 'options' | 'page' | 'languages' | 'publishing'
 
-export type ItemIssueSeverity = 'blocksNext' | 'blocksPublish'
+export type ItemIssueSeverity = 'blocksNext' | 'blocksPublish' | 'advice'
 
 export type ItemIssue = {
   /** Stable per problem, e.g. 'name', 'price', 'allergens'. */
@@ -45,7 +49,7 @@ export type ItemIssueContext = {
 }
 
 /** The state `itemIssues` reads: an `ItemState` (the wizard's profile may still be null). */
-export type ItemIssueState = Pick<ItemState, 'itemProfile' | 'name' | 'offers' | 'options' | 'allergenDeclaration' | 'hasPage' | 'slug'>
+export type ItemIssueState = Pick<ItemState, 'itemProfile' | 'name' | 'bookDetails' | 'offers' | 'options' | 'allergenDeclaration' | 'hasPage' | 'slug'>
 
 /**
  * Everything the person should know about this item, in the order they would
@@ -61,7 +65,7 @@ export function itemIssues(s: ItemIssueState, ctx: ItemIssueContext): ItemIssue[
     out.push({ id: 'profile', severity: 'blocksNext', step: 'profile', tab: 'content', messageKey: 'profile' })
   }
   if (!s.name[d]?.trim()) {
-    out.push({ id: 'name', severity: 'blocksNext', step: 'name', tab: 'content', messageKey: 'name', values: { locale: d }, focus: `[data-name-locale="${d}"]` })
+    out.push({ id: 'name', severity: 'blocksNext', step: 'name', tab: 'content', messageKey: s.itemProfile && PROFILES[s.itemProfile].nameLabelKey === 'title' ? 'bookTitle' : 'name', values: { locale: d }, focus: `[data-name-locale="${d}"]` })
   }
 
   // ── Input that cannot be saved as typed ──
@@ -86,6 +90,10 @@ export function itemIssues(s: ItemIssueState, ctx: ItemIssueContext): ItemIssue[
   if (s.itemProfile && can(s.itemProfile, 'foodInformation')) {
     const first = declarationIssues(s.allergenDeclaration)[0]
     if (first) out.push({ id: 'allergens', severity: 'blocksPublish', step: 'details', tab: 'details', messageKey: `allergens.${first}` })
+  }
+  // ── Advice: never blocks anything ──
+  if (s.itemProfile && can(s.itemProfile, 'bookDetails') && s.bookDetails.isbn.trim() && !isValidIsbn(s.bookDetails.isbn)) {
+    out.push({ id: 'isbn', severity: 'advice', step: 'name', tab: 'content', messageKey: 'isbn', focus: '[data-book-isbn]' })
   }
   if (attIssues.some((i) => i.kind === 'missingList')) out.push({ id: 'optionList', severity: 'blocksPublish', step: 'options', tab: 'options', messageKey: 'optionListMissing' })
   if (s.hasPage) {
@@ -112,11 +120,16 @@ export function itemIssues(s: ItemIssueState, ctx: ItemIssueContext): ItemIssue[
 export const blocksNextOn = (issues: readonly ItemIssue[], step: ItemStep) => issues.filter((i) => i.severity === 'blocksNext' && i.step === step)
 
 /** Everything that stops "Publish" (both kinds: a publish needs the minimum too). */
-export const publishBlockers = (issues: readonly ItemIssue[]) => issues
+export const publishBlockers = (issues: readonly ItemIssue[]) => issues.filter((i) => i.severity !== 'advice')
 
-/** Issues per editor tab, for the count badges. */
+/** Issues per editor tab, for the count badges. Advice is not counted (see `adviceTabs`). */
 export function issueCountByTab(issues: readonly ItemIssue[]): Partial<Record<ItemTab, number>> {
   const out: Partial<Record<ItemTab, number>> = {}
-  for (const i of issues) out[i.tab] = (out[i.tab] ?? 0) + 1
+  for (const i of publishBlockers(issues)) out[i.tab] = (out[i.tab] ?? 0) + 1
   return out
+}
+
+/** The tabs holding advice only — shown as a quiet dot, never a number. */
+export function adviceTabs(issues: readonly ItemIssue[]): ReadonlySet<ItemTab> {
+  return new Set(issues.filter((i) => i.severity === 'advice').map((i) => i.tab))
 }

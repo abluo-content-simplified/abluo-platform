@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { NOT_REVIEWED, itemOptionsRelevant, itemWizardSteps, type ItemState } from '../dashboard-form'
-import { blocksNextOn, issueCountByTab, itemIssues, type ItemIssueContext } from '../item-issues'
+import { EMPTY_BOOK_DETAILS, NOT_REVIEWED, itemOptionsRelevant, itemWizardSteps, type ItemState } from '../dashboard-form'
+import { adviceTabs, blocksNextOn, issueCountByTab, itemIssues, publishBlockers, type ItemIssueContext } from '../item-issues'
 
 const ctx: ItemIssueContext = { defaultLocale: 'it', locales: ['it'], channels: [], optionCounts: new Map([['L', 3]]) }
 const base: ItemState = {
   itemProfile: 'product',
   name: { it: 'Libro' },
   byline: {},
+  bookDetails: EMPTY_BOOK_DETAILS,
   description: {},
   links: [],
   categories: [],
@@ -117,5 +118,49 @@ describe('options visibility (D7)', () => {
     expect(itemWizardSteps({ ...c, showOptions: false })).toEqual(['profile', 'name', 'photo', 'price', 'page', 'preview', 'publish'])
     expect(itemWizardSteps({ ...c, showOptions: true })).toContain('options')
     expect(itemWizardSteps(c)).toContain('options')
+  })
+})
+
+describe('book details and the advice severity (Amendment I-3.3)', () => {
+  const book = (isbn: string, over: Partial<ItemState> = {}): Partial<ItemState> => ({ itemProfile: 'book', bookDetails: { author: '', year: '', isbn }, ...over })
+
+  it('a book with only a title has no issues: nothing in the book details is mandatory', () => {
+    expect(ids(book(''))).toEqual([])
+  })
+
+  it('a valid ISBN (hyphens and spaces ignored) raises nothing', () => {
+    expect(ids(book('978-0-345-39180-3'))).toEqual([])
+    expect(ids(book('0 345 39180 2'))).toEqual([])
+  })
+
+  it('an ISBN that does not check out is advice only', () => {
+    const issues = itemIssues({ ...base, ...book('9780345391804') }, ctx)
+    expect(issues.map((i) => [i.id, i.severity, i.tab])).toEqual([['isbn', 'advice', 'content']])
+    expect(issues[0].focus).toBe('[data-book-isbn]')
+  })
+
+  it('advice never blocks Next, never blocks publishing, and is not counted on a tab', () => {
+    const issues = itemIssues({ ...base, ...book('12345') }, ctx)
+    expect(issues).toHaveLength(1)
+    expect(blocksNextOn(issues, 'name')).toEqual([])
+    expect(publishBlockers(issues)).toEqual([])
+    expect(issueCountByTab(issues)).toEqual({})
+    expect([...adviceTabs(issues)]).toEqual(['content'])
+  })
+
+  it('advice sits next to real blockers without changing them', () => {
+    const issues = itemIssues({ ...base, ...book('12345', { name: {} }) }, ctx)
+    expect(issues.map((i) => i.id)).toEqual(['name', 'isbn'])
+    expect(publishBlockers(issues).map((i) => i.id)).toEqual(['name'])
+    expect(issueCountByTab(issues)).toEqual({ content: 1 })
+  })
+
+  it('a missing book title asks for a title, not a name', () => {
+    const [i] = itemIssues({ ...base, ...book('', { name: {} }) }, ctx)
+    expect([i.id, i.messageKey]).toEqual(['name', 'bookTitle'])
+  })
+
+  it('hidden book details (type changed away from book) raise no advice', () => {
+    expect(ids({ itemProfile: 'product', bookDetails: { author: 'x', year: '', isbn: '12345' } })).toEqual([])
   })
 })

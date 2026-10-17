@@ -2,7 +2,8 @@ import { defineType, defineField, defineArrayMember } from 'sanity'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField, BACKGROUND_SURFACE_OPTIONS } from '@/lib/sanity/fields/shared'
 import { PUBLISHING_GROUP, publishingStatusField, publishOnField, unpublishOnField, archivedFields } from '@/lib/sanity/fields/publishing'
 import { linkUrlIssue } from './links'
-import { FOOD_PROFILE_GROQ, can, profileOf } from './profiles'
+import { FOOD_PROFILE_GROQ, PROFILES, PROFILE_ORDER, can, profileOf } from './profiles'
+import { BOOK_YEAR_MIN, bookYearMax } from './isbn'
 import { ALLERGENS, allergenDeclarationIssues, describeDeclarationIssue, optionDeclarationIssues, unreviewedChoices, unknownAllergenKeys } from './allergens'
 
 // ── Catalogue module — Sanity schema types ────────────────────────────────────
@@ -535,11 +536,7 @@ export const catalogueItem = defineType({
       type: 'string',
       group: 'content',
       options: {
-        list: [
-          { title: 'Food or drink', value: 'foodOrDrink' },
-          { title: 'Product', value: 'product' },
-          { title: 'Service', value: 'service' },
-        ],
+        list: PROFILE_ORDER.map((id) => ({ title: PROFILES[id].label, value: id })),
         layout: 'radio',
       },
       validation: (Rule) => Rule.required(),
@@ -557,6 +554,26 @@ export const catalogueItem = defineType({
       type: 'localizedString',
       group: 'content',
       description: 'A short line under the name, e.g. who made it or when. Plain text.',
+    }),
+    // ADR-033 Amendment I-3 — a book's plain details. NOT localized (a name on a
+    // cover does not translate). Every value optional; the ISBN only advises.
+    // Kept (hidden, not published) when the item's type is changed away from book.
+    defineField({
+      name: 'bookDetails',
+      title: 'Book details',
+      type: 'object',
+      group: 'content',
+      hidden: ({ document }) => !can(profileOf(document?.itemProfile), 'bookDetails'),
+      fields: [
+        defineField({ name: 'author', title: 'Author', type: 'string', validation: (Rule) => Rule.max(120) }),
+        defineField({
+          name: 'year',
+          title: 'Year',
+          type: 'number',
+          validation: (Rule) => Rule.integer().min(BOOK_YEAR_MIN).max(bookYearMax()),
+        }),
+        defineField({ name: 'isbn', title: 'ISBN', type: 'string', description: 'Optional. Hyphens and spaces are ignored.' }),
+      ],
     }),
     defineField({ name: 'description', title: 'Short description', type: 'localizedText', group: 'content' }),
     defineField({

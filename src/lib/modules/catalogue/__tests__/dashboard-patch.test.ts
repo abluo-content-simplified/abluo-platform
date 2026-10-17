@@ -264,3 +264,64 @@ describe('byline and links — ADR-033 Amendment F', () => {
     expect(code(() => cleanCatalogueSet('collection', { links: [] }, ctx()))).toBe('invalid_field')
   })
 })
+
+describe('book details (ADR-033 Amendment I-3)', () => {
+  const bookCtx = ctx({ previous: { itemProfile: 'book' } })
+
+  it('book is a selectable profile', () => {
+    expect(cleanCatalogueSet('item', { itemProfile: 'book' }, ctx()).set.itemProfile).toBe('book')
+  })
+
+  it('accepts partial details; every value optional', () => {
+    expect(cleanCatalogueSet('item', { bookDetails: { author: ' Douglas  Adams ' } }, bookCtx).set.bookDetails).toEqual({ author: 'Douglas Adams' })
+    expect(cleanCatalogueSet('item', { bookDetails: { year: 1979 } }, bookCtx).set.bookDetails).toEqual({ year: 1979 })
+    expect(cleanCatalogueSet('item', { bookDetails: { author: 'A', year: '1979', isbn: '978-0-345-39180-3' } }, bookCtx).set.bookDetails).toEqual({ author: 'A', year: 1979, isbn: '9780345391803' })
+  })
+
+  it('an empty object, blanks or null clear the field', () => {
+    for (const v of [{}, { author: '  ', year: '', isbn: ' ' }, { year: null }, null]) {
+      const r = cleanCatalogueSet('item', { bookDetails: v }, bookCtx)
+      expect(r.set.bookDetails).toBeUndefined()
+      expect(r.unset).toContain('bookDetails')
+    }
+  })
+
+  it('refuses a year that is not a whole number from 1000 to next year, naming the field', () => {
+    const next = new Date().getFullYear() + 1
+    for (const year of [999, next + 1, 1979.5, 'c. 1950', -3, true]) expect(code(() => cleanCatalogueSet('item', { bookDetails: { year } }, bookCtx))).toBe('invalid_value')
+    expect(cleanCatalogueSet('item', { bookDetails: { year: next } }, bookCtx).set.bookDetails).toEqual({ year: next })
+    try {
+      cleanCatalogueSet('item', { bookDetails: { year: 99 } }, bookCtx)
+    } catch (e) {
+      expect((e as CatalogueError).detail?.field).toBe('bookDetails.year')
+    }
+  })
+
+  it('never refuses an ISBN, however it looks (the editor only advises)', () => {
+    for (const isbn of ['12345', 'not an isbn', '9780345391804', 'x'.repeat(500), 7, {}]) expect(code(() => cleanCatalogueSet('item', { bookDetails: { isbn } }, bookCtx))).toBe('ok')
+    expect(cleanCatalogueSet('item', { bookDetails: { isbn: '12345' } }, bookCtx).set.bookDetails).toEqual({ isbn: '12345' })
+    expect((cleanCatalogueSet('item', { bookDetails: { isbn: 'x'.repeat(500) } }, bookCtx).set.bookDetails as { isbn: string }).isbn).toHaveLength(32)
+  })
+
+  it('refuses unknown keys, a non-object and an over-long author', () => {
+    expect(code(() => cleanCatalogueSet('item', { bookDetails: { publisher: 'x' } }, bookCtx))).toBe('invalid_value')
+    expect(code(() => cleanCatalogueSet('item', { bookDetails: 'Douglas Adams' }, bookCtx))).toBe('invalid_value')
+    expect(code(() => cleanCatalogueSet('item', { bookDetails: { author: 'a'.repeat(121) } }, bookCtx))).toBe('invalid_value')
+  })
+
+  it('only items have book details', () => {
+    expect(code(() => cleanCatalogueSet('collection', { bookDetails: { author: 'A' } }, ctx()))).toBe('invalid_field')
+  })
+
+  it('changing type away from book keeps the details (hidden, not deleted); to book starts nothing', () => {
+    const away = cleanCatalogueSet('item', { itemProfile: 'product' }, ctx({ previous: { itemProfile: 'book', bookDetails: { author: 'A' } } }))
+    expect(away.unset).not.toContain('bookDetails')
+    expect(away.set.bookDetails).toBeUndefined()
+    expect(cleanCatalogueSet('item', { itemProfile: 'book' }, ctx({ previous: { itemProfile: 'product' } })).set.allergenDeclaration).toBeUndefined()
+  })
+
+  it('a book carries no allergen declaration; changing to book from food removes it (existing rule via can)', () => {
+    const r = cleanCatalogueSet('item', { itemProfile: 'book' }, ctx({ previous: { itemProfile: 'foodOrDrink', allergenDeclaration: { status: 'notReviewed' } } }))
+    expect(r.unset).toContain('allergenDeclaration')
+  })
+})

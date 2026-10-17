@@ -9,10 +9,10 @@ import { PublishChoice, publishChoiceDates, type PublishChoiceValue } from '@/co
 import { editingZone } from '@/components/app/lifecycle/zoned-time'
 import type { CatalogueSite } from '@/lib/api/catalogue-drafts'
 import { can } from '@/lib/modules/catalogue/profiles'
-import { NOT_REVIEWED, canAdvanceItem, initialItemProfile, itemOptionsRelevant, itemWizardSteps, type ItemProfile, type ItemState, type ItemStep } from '@/lib/modules/catalogue/dashboard-form'
-import { blocksNextOn, itemIssues, type ItemIssue } from '@/lib/modules/catalogue/item-issues'
+import { EMPTY_BOOK_DETAILS, NOT_REVIEWED, canAdvanceItem, initialItemProfile, itemOptionsRelevant, itemWizardSteps, type ItemProfile, type ItemState, type ItemStep } from '@/lib/modules/catalogue/dashboard-form'
+import { blocksNextOn, itemIssues, publishBlockers, type ItemIssue } from '@/lib/modules/catalogue/item-issues'
 import { CAT_BUTTON, CAT_ICONS, CAT_INPUT, CAT_PRIMARY, ItemIssueList, focusField, useCatalogueError, useItemIssueText } from './catalogue-ui'
-import { FoodInfoField, ItemPreview, LanguagesField, NameFields, OptionsField, PageField, PhotoField, PriceField, ProfileField, TermChips, type OptionListChoice } from './item-fields'
+import { BookDetailsFields, FoodInfoField, ItemPreview, LanguagesField, NameFields, OptionsField, PageField, PhotoField, PriceField, ProfileField, TermChips, type OptionListChoice } from './item-fields'
 import { useCatalogueDraft, type PublishMode } from './use-catalogue-draft'
 import { StrayAddressNotice, useStrayAddress } from './stray-address'
 import { languageName } from '@/components/client/create/StepHeading'
@@ -47,7 +47,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
   const optionCounts = useMemo(() => new Map(optionLists.map((l) => [l.id, l.optionCount])), [optionLists])
   const initial: ItemState = useMemo(
     // Nothing preselected (Tom, 2026-10-16): the preset's default is only suggested.
-    () => ({ itemProfile: null, name: {}, byline: {}, description: {}, links: [], categories: [], imageIds: [], offers: [], allergenDeclaration: NOT_REVIEWED, dietary: [], options: [], hasPage: false, slug: {}, visibility: 'public' }),
+    () => ({ itemProfile: null, name: {}, byline: {}, bookDetails: EMPTY_BOOK_DETAILS, description: {}, links: [], categories: [], imageIds: [], offers: [], allergenDeclaration: NOT_REVIEWED, dietary: [], options: [], hasPage: false, slug: {}, visibility: 'public' }),
     []
   )
   const profileRef = useRef(initial.itemProfile)
@@ -167,7 +167,9 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
 
   const heading = (id: string, key: string, helper = true) => <StepHeading id={id} title={t(`${key}.title`)} helper={helper ? t(`${key}.helper`) : undefined} />
   // Rule 1: a disabled Next says why — name what is missing; rule 3: on the last step, every publish blocker.
-  const publishBlocked = step === 'publish' && choice !== 'draft' && issues.length > 0
+  // Advice (an ISBN that does not check out) never blocks and is not in the blocker list.
+  const blockers = publishBlockers(issues)
+  const publishBlocked = step === 'publish' && choice !== 'draft' && blockers.length > 0
   const hintIssues = step === 'done' ? [] : blocksNextOn(issues, step)
   const optional = step !== 'done' && step !== 'name' && step !== 'profile' && step !== 'preview' && step !== 'publish'
   // Publishing waits for photos still on their way (the label says so, U1).
@@ -187,7 +189,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
         step === 'done'
           ? null
           : {
-              hint: error ?? (hintIssues.length ? issueText(hintIssues[0]) : publishBlocked ? ti('fixToPublish', { count: issues.length }) : optional ? t('optional') : null),
+              hint: error ?? (hintIssues.length ? issueText(hintIssues[0]) : publishBlocked ? ti('fixToPublish', { count: blockers.length }) : optional ? t('optional') : null),
               progress: { current: index + 1, total: steps.length },
               back: index > 0 ? { onPress: goBack, disabled: busy } : null,
               primary: { label: primaryLabel, onPress: goNext, disabled: !canNext || busy || publishBlocked || waitForPhotos || (step === 'publish' && !draft.created), busy },
@@ -214,9 +216,9 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
           </>
         ) : step === 'name' ? (
           <>
-            {heading('item-step-name', 'name')}
+            {heading('item-step-name', s.itemProfile && can(s.itemProfile, 'bookDetails') ? 'nameBook' : 'name')}
             <div className="mt-8">
-              <NameFields autoFocus locale={d} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
+              <NameFields autoFocus locale={d} profile={s.itemProfile} afterName={s.itemProfile && can(s.itemProfile, 'bookDetails') ? <BookDetailsFields value={s.bookDetails} onChange={item.setBookDetails} /> : null} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
             </div>
           </>
         ) : step === 'category' ? (
@@ -277,7 +279,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
             {heading('item-step-languages', 'languages')}
             <div className="mt-8">
               <StrayAddressNotice state={stray} />
-              <LanguagesField locales={site.locales} defaultLocale={d} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
+              <LanguagesField locales={site.locales} defaultLocale={d} profile={s.itemProfile} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
             </div>
           </>
         ) : step === 'preview' ? (
@@ -302,7 +304,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
               >
                 {publishBlocked ? (
                   <div className="mt-6">
-                    <ItemIssueList issues={issues} onFix={fix} />
+                    <ItemIssueList issues={blockers} onFix={fix} />
                   </div>
                 ) : null}
               </PublishChoice>

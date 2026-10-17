@@ -3459,6 +3459,15 @@
             "remove": "Rimuovi questo link",
             "badUrl": "Usa un indirizzo web completo che inizi con http:// o https://.",
             "incomplete": "Un link ha bisogno sia di un’etichetta sia di un indirizzo web. Non viene salvato finché non li compili entrambi."
+          },
+          "title": "Titolo",
+          "book": {
+            "author": "Autore",
+            "authorHelp": "Una riga, ad esempio “Douglas Adams”. Va bene anche più di un nome.",
+            "year": "Anno",
+            "yearInvalid": "Scrivi un anno intero tra 1000 e {max}. Non viene salvato finché non lo è.",
+            "isbn": "ISBN",
+            "isbnAdvice": "Questo non sembra un ISBN valido. Puoi comunque tenerlo."
           }
         },
         "photos": {
@@ -3620,7 +3629,11 @@
           },
           "dependencies": "Non ancora pubblicati: {names}. Pubblicali prima, oppure apri l’elemento e scegli “Pubblica elemento e dipendenze”.",
           "optionAllergens": "Prima verifica gli allergeni di questi extra: {names}.",
-          "slugWithoutName": "L’indirizzo in {language} non ha un nome in {language}. Aggiungi il nome o rimuovi l’indirizzo."
+          "slugWithoutName": "L’indirizzo in {language} non ha un nome in {language}. Aggiungi il nome o rimuovi l’indirizzo.",
+          "nameBook": {
+            "title": "Qual è il titolo?",
+            "helper": "Aggiungi autore, anno e ISBN se vuoi. Serve solo il titolo."
+          }
         },
         "editor": {
           "untitled": "Elemento senza titolo",
@@ -3671,7 +3684,10 @@
           "title": "{count, plural, one {# cosa da sistemare prima di pubblicare} other {# cose da sistemare prima di pubblicare}}",
           "fix": "Sistema",
           "tabCount": "{count, plural, one {# cosa da sistemare} other {# cose da sistemare}}",
-          "fixToPublish": "{count, plural, one {# cosa da sistemare prima di pubblicare.} other {# cose da sistemare prima di pubblicare.}} Puoi comunque tenerlo come bozza."
+          "fixToPublish": "{count, plural, one {# cosa da sistemare prima di pubblicare.} other {# cose da sistemare prima di pubblicare.}} Puoi comunque tenerlo come bozza.",
+          "bookTitle": "Aggiungi un titolo in {language}.",
+          "isbn": "Questo non sembra un ISBN valido. Puoi comunque tenerlo.",
+          "adviceTab": "Un suggerimento in questa scheda"
         }
       },
       "collection": {
@@ -3785,7 +3801,9 @@
         "suggested": "Consigliato",
         "foodOrDrinkHelp": "Piatti e bevande — chiede prezzi, allergeni e info alimentari.",
         "productHelp": "Libri, olio, prodotti artigianali — chiede prezzi e link d’acquisto.",
-        "serviceHelp": "Lezioni, trattamenti, consulenze — chiede i prezzi."
+        "serviceHelp": "Lezioni, trattamenti, consulenze — chiede i prezzi.",
+        "book": "Un libro",
+        "bookHelp": "Titolo, autore, anno, ISBN, copertina, link d’acquisto."
       },
       "together": {
         "notPublishedTitle": "Usa contenuti non ancora pubblicati:",

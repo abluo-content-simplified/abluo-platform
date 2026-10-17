@@ -21,6 +21,7 @@ import type { NamedSlugConflict } from '@/lib/modules/catalogue/validation'
 import {
   ITEM_PROFILES,
   attachmentIssues,
+  bookYearInvalid,
   declarationIssues,
   offerFormIssues,
   parsePrice,
@@ -30,6 +31,7 @@ import {
   slugPreview,
   wrapsMidnight,
   type AttachmentForm,
+  type BookDetailsForm,
   type DeclarationForm,
   type ItemProfile,
   type LinkForm,
@@ -38,6 +40,7 @@ import {
   type Visibility,
 } from '@/lib/modules/catalogue/dashboard-form'
 import { PROFILES } from '@/lib/modules/catalogue/profiles'
+import { bookYearMax, isValidIsbn } from '@/lib/modules/catalogue/isbn'
 import { CAT_BUTTON, CAT_ICON_BUTTON, CAT_ICONS, CAT_INPUT, CAT_LABEL, CAT_TEXTAREA, catalogueHref, textIn } from './catalogue-ui'
 
 export type ItemPhoto = { assetId: string; thumbUrl: string | null }
@@ -89,17 +92,18 @@ export function ProfileField({ value, onChange, suggested = null }: { value: Ite
 
 // ── Name ─────────────────────────────────────────────────────────────────────
 
-export function NameFields({ locale, name, byline, description, onName, onByline, onDescription, autoFocus = false }: { locale: string; name: Texts; /** Items only (F-1); collections have no byline. */ byline?: Texts; description: Texts; onName: (l: string, v: string) => void; onByline?: (l: string, v: string) => void; onDescription: (l: string, v: string) => void; autoFocus?: boolean }) {
+export function NameFields({ locale, name, profile = null, afterName, byline, description, onName, onByline, onDescription, autoFocus = false }: { locale: string; name: Texts; /** Picks the label ("Title" for a book). */ profile?: ItemProfile | null; /** Rendered right under the name (book details). */ afterName?: ReactNode; /** Items only (F-1); collections have no byline. */ byline?: Texts; description: Texts; onName: (l: string, v: string) => void; onByline?: (l: string, v: string) => void; onDescription: (l: string, v: string) => void; autoFocus?: boolean }) {
   const t = useTranslations('catalogue.dashboard.item.fields')
   const id = useId()
   return (
     <div className="space-y-5">
       <div>
         <label htmlFor={`${id}-name`} className={CAT_LABEL}>
-          {t('name')}
+          {t(profile ? PROFILES[profile].nameLabelKey : 'name')}
         </label>
         <input id={`${id}-name`} data-name-locale={locale} data-enter-next autoFocus={autoFocus} maxLength={120} value={name[locale] ?? ''} onChange={(e) => onName(locale, e.target.value)} className={CAT_INPUT} />
       </div>
+      {afterName}
       {byline && onByline ? (
         <div>
           <label htmlFor={`${id}-byline`} className={CAT_LABEL}>
@@ -116,6 +120,62 @@ export function NameFields({ locale, name, byline, description, onName, onByline
         <textarea id={`${id}-desc`} maxLength={600} value={description[locale] ?? ''} onChange={(e) => onDescription(locale, e.target.value)} className={CAT_TEXTAREA} />
         <p className="mt-1.5 text-sm text-muted-foreground">{t('descriptionHelp')}</p>
       </div>
+    </div>
+  )
+}
+
+// ── Book details (Amendment I-3): author, year, ISBN — all optional, not localized ──
+
+export function BookDetailsFields({ value, onChange }: { value: BookDetailsForm; onChange: (next: BookDetailsForm) => void }) {
+  const t = useTranslations('catalogue.dashboard.item.fields.book')
+  const id = useId()
+  const yearBad = bookYearInvalid(value)
+  const isbnBad = value.isbn.trim() !== '' && !isValidIsbn(value.isbn)
+  return (
+    <div className="space-y-5">
+      <div>
+        <label htmlFor={`${id}-author`} className={CAT_LABEL}>
+          {t('author')}
+        </label>
+        <input id={`${id}-author`} data-book-author data-enter-next maxLength={120} value={value.author} onChange={(e) => onChange({ ...value, author: e.target.value })} className={CAT_INPUT} />
+        <p className="mt-1.5 text-sm text-muted-foreground">{t('authorHelp')}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label htmlFor={`${id}-year`} className={CAT_LABEL}>
+            {t('year')}
+          </label>
+          <input
+            id={`${id}-year`}
+            data-book-year
+            data-enter-next
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={4}
+            value={value.year}
+            aria-invalid={yearBad || undefined}
+            aria-describedby={yearBad ? `${id}-year-err` : undefined}
+            onChange={(e) => onChange({ ...value, year: e.target.value.replace(/\D/g, '') })}
+            className={CAT_INPUT}
+          />
+        </div>
+        <div>
+          <label htmlFor={`${id}-isbn`} className={CAT_LABEL}>
+            {t('isbn')}
+          </label>
+          <input id={`${id}-isbn`} data-book-isbn data-enter-next inputMode="numeric" autoComplete="off" maxLength={32} value={value.isbn} onChange={(e) => onChange({ ...value, isbn: e.target.value })} className={CAT_INPUT} />
+        </div>
+      </div>
+      {yearBad ? (
+        <p id={`${id}-year-err`} role="alert" className="text-sm text-foreground">
+          {t('yearInvalid', { max: bookYearMax() })}
+        </p>
+      ) : null}
+      {isbnBad ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          {t('isbnAdvice')}
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -758,7 +818,7 @@ export function VisibilityField({ value, onChange }: { value: Visibility; onChan
 
 // ── Other languages (write them now, or later) ───────────────────────────────
 
-export function LanguagesField({ locales, defaultLocale, name, byline, description, onName, onByline, onDescription }: { locales: readonly string[]; defaultLocale: string; name: Texts; byline?: Texts; description: Texts; onName: (l: string, v: string) => void; onByline?: (l: string, v: string) => void; onDescription: (l: string, v: string) => void }) {
+export function LanguagesField({ locales, defaultLocale, profile = null, name, byline, description, onName, onByline, onDescription }: { locales: readonly string[]; defaultLocale: string; profile?: ItemProfile | null; name: Texts; byline?: Texts; description: Texts; onName: (l: string, v: string) => void; onByline?: (l: string, v: string) => void; onDescription: (l: string, v: string) => void }) {
   const t = useTranslations('catalogue.dashboard.item.languages')
   const ui = useLocale()
   const others = locales.filter((l) => l !== defaultLocale)
@@ -773,7 +833,7 @@ export function LanguagesField({ locales, defaultLocale, name, byline, descripti
           </div>
           <p className="mt-1 text-sm text-muted-foreground">{t('original', { text: name[defaultLocale] || '—' })}</p>
           <div className="mt-3">
-            <NameFields locale={l} name={name} byline={byline} description={description} onName={onName} onByline={onByline} onDescription={onDescription} />
+            <NameFields locale={l} profile={profile} name={name} byline={byline} description={description} onName={onName} onByline={onByline} onDescription={onDescription} />
           </div>
         </div>
       ))}

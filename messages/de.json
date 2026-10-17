@@ -3459,6 +3459,15 @@
             "remove": "Diesen Link entfernen",
             "badUrl": "Gib eine vollständige Webadresse ein, die mit http:// oder https:// beginnt.",
             "incomplete": "Ein Link braucht eine Bezeichnung und eine Webadresse. Er wird erst gespeichert, wenn beides ausgefüllt ist."
+          },
+          "title": "Titel",
+          "book": {
+            "author": "Autor",
+            "authorHelp": "Eine Zeile, z. B. „Douglas Adams“. Mehrere Namen sind in Ordnung.",
+            "year": "Jahr",
+            "yearInvalid": "Gib ein ganzes Jahr zwischen 1000 und {max} an. Es wird erst dann gespeichert.",
+            "isbn": "ISBN",
+            "isbnAdvice": "Das sieht nicht nach einer gültigen ISBN aus. Du kannst sie trotzdem behalten."
           }
         },
         "photos": {
@@ -3620,7 +3629,11 @@
           },
           "dependencies": "Noch nicht veröffentlicht: {names}. Veröffentliche diese zuerst oder öffne den Eintrag und wähle „Eintrag und Abhängigkeiten veröffentlichen“.",
           "optionAllergens": "Prüfe zuerst die Allergene dieser Extras: {names}.",
-          "slugWithoutName": "Die Adresse auf {language} hat keinen Namen auf {language}. Füge den Namen hinzu oder entferne die Adresse."
+          "slugWithoutName": "Die Adresse auf {language} hat keinen Namen auf {language}. Füge den Namen hinzu oder entferne die Adresse.",
+          "nameBook": {
+            "title": "Wie lautet der Titel?",
+            "helper": "Ergänze Autor, Jahr und ISBN, wenn du magst. Nur der Titel ist nötig."
+          }
         },
         "editor": {
           "untitled": "Eintrag ohne Titel",
@@ -3671,7 +3684,10 @@
           "title": "{count, plural, one {# Punkt vor dem Veröffentlichen zu klären} other {# Punkte vor dem Veröffentlichen zu klären}}",
           "fix": "Beheben",
           "tabCount": "{count, plural, one {# Punkt zu klären} other {# Punkte zu klären}}",
-          "fixToPublish": "{count, plural, one {# Punkt vor dem Veröffentlichen zu klären.} other {# Punkte vor dem Veröffentlichen zu klären.}} Als Entwurf kannst du es trotzdem behalten."
+          "fixToPublish": "{count, plural, one {# Punkt vor dem Veröffentlichen zu klären.} other {# Punkte vor dem Veröffentlichen zu klären.}} Als Entwurf kannst du es trotzdem behalten.",
+          "bookTitle": "Füge einen Titel auf {language} hinzu.",
+          "isbn": "Das sieht nicht nach einer gültigen ISBN aus. Du kannst sie trotzdem behalten.",
+          "adviceTab": "Ein Hinweis in diesem Tab"
         }
       },
       "collection": {
@@ -3785,7 +3801,9 @@
         "suggested": "Empfohlen",
         "foodOrDrinkHelp": "Speisen und Getränke — fragt nach Preisen, Allergenen und Ernährungsangaben.",
         "productHelp": "Bücher, Olivenöl, Handgemachtes — fragt nach Preisen und Kauf-Links.",
-        "serviceHelp": "Kurse, Behandlungen, Beratungen — fragt nach Preisen."
+        "serviceHelp": "Kurse, Behandlungen, Beratungen — fragt nach Preisen.",
+        "book": "Ein Buch",
+        "bookHelp": "Titel, Autor, Jahr, ISBN, Cover, Kauf-Links."
       },
       "together": {
         "notPublishedTitle": "Hier werden noch nicht veröffentlichte Inhalte verwendet:",

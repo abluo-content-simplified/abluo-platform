@@ -21,7 +21,7 @@ const offer = (over: Partial<CatalogueOfferDTO> = {}): CatalogueOfferDTO => ({
 })
 
 const item = (over: Partial<CatalogueItemDTO> = {}): CatalogueItemDTO => ({
-  publicId: 'i1', itemProfile: 'foodOrDrink', name: 'Margherita', byline: null, description: 'Tomato, mozzarella', links: [], images: [],
+  publicId: 'i1', itemProfile: 'foodOrDrink', name: 'Margherita', byline: null, bookDetails: null, description: 'Tomato, mozzarella', links: [], images: [],
   categories: [], allergenDeclaration: { status: 'noneDeclared', mayContain: [], note: null }, dietary: [], offers: [offer()], hasOffers: true, optionLists: [],
   visibility: 'public', page: null, ...over,
 })
@@ -43,7 +43,7 @@ const ctx = { url: 'https://example.com/en/menu/lunch', locale: 'en' }
 
 describe('lookup tables', () => {
   it('maps item and collection types without branching', () => {
-    expect(ITEM_PAGE_TYPE).toEqual({ foodOrDrink: 'Product', product: 'Product', service: 'Service' })
+    expect(ITEM_PAGE_TYPE).toEqual({ book: 'Book', foodOrDrink: 'Product', product: 'Product', service: 'Service' })
     expect(COLLECTION_TYPE).toEqual({ menu: 'Menu', list: 'ItemList' })
   })
 })
@@ -119,8 +119,8 @@ describe('AC17 item page', () => {
   })
 
   it('own page by profile (D-2): foodOrDrink → Product, product → Product, service → Service; in a menu always MenuItem (B1)', () => {
-    expect(ITEM_PAGE_TYPE).toEqual({ foodOrDrink: 'Product', product: 'Product', service: 'Service' })
-    for (const itemProfile of ['foodOrDrink', 'product', 'service'] as const) {
+    expect(ITEM_PAGE_TYPE).toEqual({ book: 'Book', foodOrDrink: 'Product', product: 'Product', service: 'Service' })
+    for (const itemProfile of ['book', 'foodOrDrink', 'product', 'service'] as const) {
       const menu = catalogueCollectionJsonLd(collection({ collectionType: 'menu', sections: [section('s', [item({ itemProfile })])] }), ctx)!
       expect((menu.hasMenuSection as Array<{ hasMenuItem: Array<Record<string, unknown>> }>)[0].hasMenuItem[0]['@type']).toBe('MenuItem')
     }
@@ -175,5 +175,52 @@ describe('hidden content emits nothing (17b, C10)', () => {
     const bare = item({ offers: [], hasOffers: false })
     const ld = catalogueCollectionJsonLd(collection({ collectionType: 'list', sections: [section('a', [hidden, bare])] }), ctx)!
     expect(ld['@type']).toBe('ItemList')
+  })
+})
+
+describe('Book on its own page (Amendment I-3.5)', () => {
+  const book = (over: Partial<CatalogueItemPageDTO> = {}): CatalogueItemPageDTO =>
+    pageItem({
+      itemProfile: 'book', name: 'The Hitchhiker’s Guide to the Galaxy', byline: 'Douglas Adams', allergenDeclaration: null, offers: [], hasOffers: false,
+      bookDetails: { author: 'Douglas Adams', year: 1979, isbn: '9780345391803' }, ...over,
+    })
+
+  it('emits Book with author as Person, isbn and datePublished — valid without an offer', () => {
+    const ld = catalogueItemJsonLd(book(), ctx)!
+    expect(ld['@type']).toBe('Book')
+    expect(ld['@id']).toBe(`${ctx.url}#book`)
+    expect(ld).toMatchObject({ name: 'The Hitchhiker’s Guide to the Galaxy', author: { '@type': 'Person', name: 'Douglas Adams' }, isbn: '9780345391803', datePublished: '1979' })
+    expect(ld).not.toHaveProperty('offers')
+    expect(ld).not.toHaveProperty('sameAs')
+  })
+
+  it('includes the offer when the book has a price', () => {
+    const ld = catalogueItemJsonLd(book({ offers: [offer()], hasOffers: true }), ctx)!
+    expect(ld.offers).toMatchObject({ '@type': 'Offer' })
+  })
+
+  it('omits an ISBN that does not check out (the page still shows it)', () => {
+    const ld = catalogueItemJsonLd(book({ bookDetails: { author: 'Douglas Adams', year: 1979, isbn: '9780345391804' } }), ctx)!
+    expect(ld).not.toHaveProperty('isbn')
+    expect(ld).toMatchObject({ '@type': 'Book', datePublished: '1979' })
+  })
+
+  it('emits only what exists: a bare title is still a Book', () => {
+    const ld = catalogueItemJsonLd(book({ bookDetails: null }), ctx)!
+    expect(ld['@type']).toBe('Book')
+    for (const k of ['author', 'isbn', 'datePublished']) expect(ld).not.toHaveProperty(k)
+  })
+
+  it('unlisted book emits nothing (B4, C10 unchanged)', () => {
+    expect(catalogueItemJsonLd(book({ visibility: 'unlisted' }), ctx)).toBeNull()
+  })
+
+  it('B1: inside a menu a book is a MenuItem; inside a list it is a plain entry', () => {
+    const menu = catalogueCollectionJsonLd(collection({ collectionType: 'menu', sections: [section('s', [book()])] }), ctx)!
+    const mi = (menu.hasMenuSection as Array<{ hasMenuItem: Array<Record<string, unknown>> }>)[0].hasMenuItem[0]
+    expect(mi['@type']).toBe('MenuItem')
+    expect(mi).not.toHaveProperty('author')
+    const list = catalogueCollectionJsonLd(collection({ collectionType: 'list', hasOffers: false, sections: [section('s', [book()])] }), ctx)!
+    expect(list['@type']).toBe('ItemList')
   })
 })

@@ -229,8 +229,17 @@ export function ItemIssueList({ issues, onFix }: { issues: readonly ItemIssue[];
 }
 
 /** An editor tab's label with a small "things to fix" count; the count is announced, not just shown. */
-export function TabLabel({ label, count }: { label: string; count?: number }) {
+export function TabLabel({ label, count, advice = false }: { label: string; count?: number; /** A hint only (never a number): a quiet dot. */ advice?: boolean }) {
   const t = useTranslations('catalogue.dashboard.item.issues')
+  if (!count && advice) {
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        {label}
+        <span aria-hidden="true" className="size-1.5 rounded-full bg-muted-foreground" />
+        <span className="sr-only">{t('adviceTab')}</span>
+      </span>
+    )
+  }
   if (!count) return <>{label}</>
   return (
     <span className="inline-flex items-center gap-1.5">

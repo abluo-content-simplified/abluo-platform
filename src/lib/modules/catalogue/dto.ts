@@ -176,12 +176,23 @@ export type CatalogueItemLinkDTO = {
   url: string
 }
 
+/** Amendment I-3 — a book's plain, non-localized details. Present only for a profile that carries them. */
+export type CatalogueBookDetailsDTO = {
+  author: string | null
+  /** Whole number 1000 … next year. */
+  year: number | null
+  /** Normalised (no spaces or hyphens), exactly what was typed otherwise. May not be a valid ISBN: check with `isValidIsbn`. */
+  isbn: string | null
+}
+
 export type CatalogueItemDTO = {
   publicId: string | null
   itemProfile: CatalogueItemProfile
   name: string
-  /** F-1 — a short plain line under the name (author, producer, practitioner …); null when none. */
+  /** F-1 — a short plain line under the name (author, producer, practitioner …); for a book, falls back to its author (I-3.4). null when none. */
   byline: string | null
+  /** I-3 — null unless the profile carries book details AND at least one is set. */
+  bookDetails: CatalogueBookDetailsDTO | null
   description: string | null
   /** F-2 — ordered; entries without a label or with an unsafe address are already dropped. */
   links: CatalogueItemLinkDTO[]

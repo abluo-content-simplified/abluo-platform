@@ -23,6 +23,7 @@ import { COLLECTION_TYPES, VISIBILITIES, newOrphans, slugFromName } from './dash
 import type { Referrer } from '@/lib/lifecycle/service'
 import type { NamedSlugConflict } from './validation'
 import { can, isItemProfile } from './profiles'
+import { bookYearMax, normalizeIsbn, parseBookYear } from './isbn'
 
 export type CatalogueKind = 'item' | 'collection' | 'optionList'
 
@@ -81,6 +82,10 @@ export class CatalogueError extends Error {
 export const CATALOGUE_LIMITS = {
   name: 120,
   byline: 160,
+  /** Amendment I-3.2 — one free-text line. */
+  author: 120,
+  /** An ISBN is 10 or 13 characters; the rest is slack for what was typed (never refused). */
+  isbn: 32,
   description: 600,
   optionLabel: 80,
   images: 10,
@@ -135,7 +140,7 @@ const FIELDS: Record<CatalogueKind, { localized: Record<string, { max: number; t
       byline: { max: CATALOGUE_LIMITS.byline, type: 'localizedString' },
       description: { max: CATALOGUE_LIMITS.description, type: 'localizedText' },
     },
-    plain: ['itemProfile', 'categories', 'links', 'images', 'offers', 'allergenDeclaration', 'dietary', 'optionLists', 'hasPage', 'visibility'],
+    plain: ['itemProfile', 'bookDetails', 'categories', 'links', 'images', 'offers', 'allergenDeclaration', 'dietary', 'optionLists', 'hasPage', 'visibility'],
   },
   collection: {
     localized: { name: { max: CATALOGUE_LIMITS.name, type: 'localizedString' }, description: { max: CATALOGUE_LIMITS.description, type: 'localizedText' } },
@@ -430,6 +435,12 @@ export function cleanCatalogueSet(kind: CatalogueKind, input: Record<string, unk
       case 'allergenDeclaration':
         r.set.allergenDeclaration = cleanAllergenDeclaration(value, ctx.locales)
         break
+      case 'bookDetails': {
+        const v = cleanBookDetails(value)
+        if (v) r.set.bookDetails = v
+        else r.unset.push('bookDetails')
+        break
+      }
       case 'images': {
         const ids = stringSet(value, (id) => DOC_ID.test(id), CATALOGUE_LIMITS.images, field)
         r.refs.mediaAssets.push(...ids)
@@ -476,6 +487,39 @@ export function cleanCatalogueSet(kind: CatalogueKind, input: Record<string, unk
   if (kind === 'item') applyItemRules(r, input, ctx.previous)
   if (ROUTABLE.has(kind)) applySlugNameRule(r, input, ctx.previous)
   return r
+}
+
+// ── Book details (Amendment I-3) ──────────────────────────────────────────────
+
+const BOOK_INPUT_KEYS = new Set(['author', 'year', 'isbn'])
+
+/**
+ * All three values are optional and blank is always fine. The author is one
+ * line of text; the year, when given, is a whole number from 1000 to next year
+ * (anything else is refused, naming the field); the ISBN is NEVER refused — it
+ * is stored without spaces and hyphens, as typed otherwise (the editor only
+ * advises, structured data only emits a valid one). Null when nothing is left,
+ * which unsets the field. Whether the item's profile shows them is the
+ * reader's decision: a changed type keeps the values hidden.
+ */
+export function cleanBookDetails(value: unknown): Record<string, unknown> | null {
+  if (value === null) return null
+  if (typeof value !== 'object' || Array.isArray(value)) bad('Unknown book details.', 'bookDetails')
+  const v = value as Record<string, unknown>
+  for (const k of Object.keys(v)) if (!k.startsWith('_') && !BOOK_INPUT_KEYS.has(k)) bad('Unknown book detail.', 'bookDetails')
+  const out: Record<string, unknown> = {}
+  if (v.author != null) {
+    const author = cleanText(v.author, CATALOGUE_LIMITS.author, 'bookDetails.author')
+    if (author) out.author = author
+  }
+  if (v.year != null && !(typeof v.year === 'string' && v.year.trim() === '')) {
+    const year = parseBookYear(v.year)
+    if (year === null) bad(`The year must be a whole number from 1000 to ${bookYearMax()}.`, 'bookDetails.year')
+    out.year = year
+  }
+  const isbn = normalizeIsbn(v.isbn).slice(0, CATALOGUE_LIMITS.isbn)
+  if (isbn) out.isbn = isbn
+  return Object.keys(out).length ? out : null
 }
 
 // ── Allergen declaration (ADR-033 D-3) ────────────────────────────────────────

@@ -6,10 +6,9 @@
 // public rendering. Callers ask what a profile CAN do (`can`) instead of which
 // profile it is (ADR-031 D6).
 //
-// Slice 4a: `book` is defined here but NOT selectable and never written to
-// data — it is absent from PROFILE_ORDER, so `isItemProfile('book')` is false
-// and `profileOf('book')` is 'product' (the safe fallback an older deployment
-// would also give). Slice 4b adds it to PROFILE_ORDER.
+// Slice 4b: `book` is selectable (in PROFILE_ORDER). An older deployment that
+// reads a stored 'book' still maps it to 'product' through `profileOf`'s
+// fallback, so adding it is additive.
 
 export type ItemProfile = 'book' | 'foodOrDrink' | 'product' | 'service'
 
@@ -21,6 +20,8 @@ export type Offering = 'default' | 'onDemand' | 'off'
 
 export type ProfileDef = {
   id: ItemProfile
+  /** English label for places without i18n (Studio list, admin module settings). */
+  label: string
   /** Key into the dashboard icon set (`CAT_ICONS` in catalogue-ui). */
   icon: 'book' | 'food' | 'product' | 'service'
   /** i18n keys under `catalogue.dashboard.profile` (card label and one-line help). */
@@ -36,6 +37,7 @@ const def = (d: ProfileDef): ProfileDef => Object.freeze({ ...d, capabilities: O
 export const PROFILES: Readonly<Record<ItemProfile, ProfileDef>> = Object.freeze({
   book: def({
     id: 'book',
+    label: 'Book',
     icon: 'book',
     labelKey: 'book',
     descriptionKey: 'bookHelp',
@@ -45,6 +47,7 @@ export const PROFILES: Readonly<Record<ItemProfile, ProfileDef>> = Object.freeze
   }),
   foodOrDrink: def({
     id: 'foodOrDrink',
+    label: 'Food or drink',
     icon: 'food',
     labelKey: 'foodOrDrink',
     descriptionKey: 'foodOrDrinkHelp',
@@ -54,6 +57,7 @@ export const PROFILES: Readonly<Record<ItemProfile, ProfileDef>> = Object.freeze
   }),
   product: def({
     id: 'product',
+    label: 'Product',
     icon: 'product',
     labelKey: 'product',
     descriptionKey: 'productHelp',
@@ -65,6 +69,7 @@ export const PROFILES: Readonly<Record<ItemProfile, ProfileDef>> = Object.freeze
   }),
   service: def({
     id: 'service',
+    label: 'Service',
     icon: 'service',
     labelKey: 'service',
     descriptionKey: 'serviceHelp',
@@ -74,8 +79,8 @@ export const PROFILES: Readonly<Record<ItemProfile, ProfileDef>> = Object.freeze
   }),
 })
 
-/** Selectable profiles, default order (presets reorder, never remove). `book` joins in slice 4b. */
-export const PROFILE_ORDER: readonly ItemProfile[] = Object.freeze(['foodOrDrink', 'product', 'service'] as const)
+/** Selectable profiles, default order (presets reorder, never remove). */
+export const PROFILE_ORDER: readonly ItemProfile[] = Object.freeze(['book', 'foodOrDrink', 'product', 'service'] as const)
 
 export const isItemProfile = (v: unknown): v is ItemProfile => PROFILE_ORDER.includes(v as ItemProfile)
 

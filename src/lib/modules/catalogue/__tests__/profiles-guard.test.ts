@@ -19,13 +19,10 @@ const isTest = (rel: string) => /(^|\/)__tests__\//.test(rel) || /\.test\.tsx?$/
 
 /**
  * Allowed outright: the registry itself (tests are skipped separately).
- * Allowed per line: the schema enum declaration (`value: 'foodOrDrink'`).
- * TEMPORARY: src/lib/modules/registry.ts (module settings option + Restaurant preset
- * default) — owned by another change; convert to PROFILE_ORDER / PROFILES in the
- * follow-up and then delete this entry.
+ * Nothing else: the Studio list and the module settings read PROFILE_ORDER / PROFILES.
  */
-const ALLOW_FILE = new Set(['lib/modules/catalogue/profiles.ts', 'lib/modules/registry.ts'])
-const ALLOW_LINE: Record<string, RegExp> = { 'lib/modules/catalogue/schema.ts': /value: 'foodOrDrink'/ }
+const ALLOW_FILE = new Set(['lib/modules/catalogue/profiles.ts'])
+const ALLOW_LINE: Record<string, RegExp> = {}
 
 describe('profile registry guard', () => {
   it("forbids 'foodOrDrink' and isFood outside the registry", () => {

@@ -42,6 +42,7 @@ import type {
 } from './dto'
 import { admits, isIndexable } from './visibility'
 import { PROFILES, PROFILE_ORDER } from './profiles'
+import { isValidIsbn } from './isbn'
 
 const SCHEMA = 'https://schema.org'
 const IN_STOCK = `${SCHEMA}/InStock`
@@ -113,6 +114,21 @@ function describe(item: Pick<CatalogueItemDTO, 'name' | 'description' | 'images'
   }
 }
 
+/**
+ * Amendment I-3.5 — what a Book adds: author as a Person, datePublished (the
+ * year), isbn only when it checks out (search engines reject a malformed one;
+ * the visible page still shows what was typed). Nothing for other types.
+ */
+function bookFields(item: Pick<CatalogueItemDTO, 'itemProfile' | 'bookDetails'>): Json {
+  const b = item.bookDetails
+  if (PROFILES[item.itemProfile].jsonLd.itemPage !== 'Book' || !b) return {}
+  return {
+    ...(b.author ? { author: { '@type': 'Person', name: b.author } } : {}),
+    ...(b.isbn && isValidIsbn(b.isbn) ? { isbn: b.isbn } : {}),
+    ...(b.year !== null ? { datePublished: String(b.year) } : {}),
+  }
+}
+
 /** A item inside a collection — shape depends on the collection, not on the item (B1). */
 function menuItemOf(item: CatalogueItemDTO, ctx: CatalogueJsonLdContext): Json {
   return { '@type': 'MenuItem', ...describe(item), ...linkOf(item, ctx), ...withOffers(offersOf(item)) }
@@ -153,12 +169,12 @@ function flatten(sections: readonly CatalogueSectionDTO[]): CatalogueItemDTO[] {
 
 /** An item described standalone (as the thing offered / listed), typed by itemProfile. */
 function itemEntity(item: CatalogueItemDTO, ctx: CatalogueJsonLdContext): Json {
-  return { '@type': PROFILES[item.itemProfile].jsonLd.itemPage, ...describe(item), ...linkOf(item, ctx) }
+  return { '@type': PROFILES[item.itemProfile].jsonLd.itemPage, ...describe(item), ...bookFields(item), ...linkOf(item, ctx) }
 }
 
 /**
- * JSON-LD for an item on its own page: Product (or Service) with nested
- * Offer(s). Null when the page is `unlisted` (noindex) or not admitted to
+ * JSON-LD for an item on its own page: Product, Service or Book with nested
+ * Offer(s) when priced. Null when the page is `unlisted` (noindex) or not admitted to
  * structured data.
  */
 export function catalogueItemJsonLd(item: CatalogueItemPageDTO, ctx: CatalogueJsonLdContext): Json | null {
@@ -174,6 +190,7 @@ export function catalogueItemJsonLd(item: CatalogueItemPageDTO, ctx: CatalogueJs
     '@id': `${ctx.url}#${type.toLowerCase()}`,
     url: ctx.url,
     ...describe(item),
+    ...bookFields(item),
     inLanguage: ctx.locale,
     ...withOffers(offersOf(item)),
   }

@@ -423,3 +423,49 @@ describe('byline and links — ADR-033 Amendment F', () => {
     }
   })
 })
+
+describe('book details — ADR-033 Amendment I-3', () => {
+  const book = (over: Partial<RawCatalogueItem> = {}): RawCatalogueItem =>
+    item({ itemProfile: 'book', name: 'Guida galattica', offers: [], bookDetails: { author: 'Douglas Adams', year: 1979, isbn: '978-0-345-39180-3' }, ...over })
+
+  it('reads a book: profile, details (ISBN normalised) and no food data', () => {
+    const dto = resolveItem(book(), ctx())!
+    expect(dto.itemProfile).toBe('book')
+    expect(dto.bookDetails).toEqual({ author: 'Douglas Adams', year: 1979, isbn: '9780345391803' })
+    expect(dto.allergenDeclaration).toBeNull()
+  })
+
+  it('byline falls back to the author at read time; an explicit byline wins; nothing is copied', () => {
+    expect(resolveItem(book(), ctx())!.byline).toBe('Douglas Adams')
+    expect(resolveItem(book({ byline: 'Edizione illustrata' }), ctx())!.byline).toBe('Edizione illustrata')
+    expect(resolveItem(book({ bookDetails: { year: 1979 } }), ctx())!.byline).toBeNull()
+  })
+
+  it('details are hidden when the type is changed away from book (kept in the document, not read)', () => {
+    for (const itemProfile of ['product', 'service', 'foodOrDrink']) {
+      const dto = resolveItem(book({ itemProfile }), ctx())!
+      expect(dto.bookDetails).toBeNull()
+      expect(dto.byline).toBeNull()
+      expect(JSON.stringify(dto)).not.toContain('Douglas Adams')
+    }
+  })
+
+  it('drops stored values that are not acceptable and returns null when nothing is left', () => {
+    expect(resolveItem(book({ bookDetails: { author: '  ', year: 1979.5, isbn: '' } }), ctx())!.bookDetails).toBeNull()
+    expect(resolveItem(book({ bookDetails: { author: 'A', year: 3000, isbn: 7 } }), ctx())!.bookDetails).toEqual({ author: 'A', year: null, isbn: null })
+    expect(resolveItem(book({ bookDetails: null }), ctx())!.bookDetails).toBeNull()
+    expect(resolveItem(book({ bookDetails: undefined }), ctx())!.bookDetails).toBeNull()
+  })
+
+  it('an older deployment (profileOf fallback) reads a stored book as a plain product', () => {
+    // the production-safety pin: an unknown stored profile never breaks a reader
+    expect(resolveItem(item({ itemProfile: 'pamphlet', bookDetails: { author: 'X' } }), ctx())!.itemProfile).toBe('product')
+    expect(resolveItem(item({ itemProfile: 'pamphlet', bookDetails: { author: 'X' } }), ctx())!.bookDetails).toBeNull()
+  })
+
+  it('the item queries project bookDetails (plain, not localized)', () => {
+    for (const q of [queries.catalogueItemBySlugQuery, queries.catalogueCollectionByIdQuery]) {
+      expect(q).toContain('bookDetails { author, year, isbn }')
+    }
+  })
+})

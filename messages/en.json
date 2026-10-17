@@ -3459,6 +3459,15 @@
             "remove": "Remove this link",
             "badUrl": "Use a full web address starting with http:// or https://.",
             "incomplete": "A link needs both a label and a web address. It is not saved until both are filled in."
+          },
+          "title": "Title",
+          "book": {
+            "author": "Author",
+            "authorHelp": "One line, e.g. “Douglas Adams”. Several names are fine.",
+            "year": "Year",
+            "yearInvalid": "Use a whole year between 1000 and {max}. It is not saved until it is.",
+            "isbn": "ISBN",
+            "isbnAdvice": "This doesn’t look like a valid ISBN. You can still keep it."
           }
         },
         "photos": {
@@ -3620,7 +3629,11 @@
           },
           "dependencies": "Not published yet: {names}. Publish those first, or open the item and choose “Publish item and dependencies”.",
           "optionAllergens": "Review the allergens of these extras first: {names}.",
-          "slugWithoutName": "The {language} address has no {language} name. Add the name, or remove the address."
+          "slugWithoutName": "The {language} address has no {language} name. Add the name, or remove the address.",
+          "nameBook": {
+            "title": "What is the title?",
+            "helper": "Add the author, year and ISBN if you like. Only the title is needed."
+          }
         },
         "editor": {
           "untitled": "Untitled item",
@@ -3671,7 +3684,10 @@
           "title": "{count, plural, one {# thing to fix before you can publish} other {# things to fix before you can publish}}",
           "fix": "Fix this",
           "tabCount": "{count, plural, one {# thing to fix} other {# things to fix}}",
-          "fixToPublish": "{count, plural, one {# thing to fix before publishing.} other {# things to fix before publishing.}} You can still keep it as a draft."
+          "fixToPublish": "{count, plural, one {# thing to fix before publishing.} other {# things to fix before publishing.}} You can still keep it as a draft.",
+          "bookTitle": "Add a title in {language}.",
+          "isbn": "This doesn’t look like a valid ISBN. You can still keep it.",
+          "adviceTab": "A hint on this tab"
         }
       },
       "collection": {
@@ -3785,7 +3801,9 @@
         "suggested": "Suggested",
         "foodOrDrinkHelp": "Dishes and drinks — asks for prices, allergens and dietary info.",
         "productHelp": "Books, olive oil, handmade goods — asks for prices and buying links.",
-        "serviceHelp": "Lessons, treatments, consultations — asks for prices."
+        "serviceHelp": "Lessons, treatments, consultations — asks for prices.",
+        "book": "A book",
+        "bookHelp": "Title, author, year, ISBN, cover, buying links."
       },
       "together": {
         "notPublishedTitle": "This uses content that isn't published yet:",

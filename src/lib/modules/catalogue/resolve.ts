@@ -24,6 +24,7 @@ import { catalogueLinkUrl } from './links'
 import { readingOrder } from './sections'
 import { normalise } from './slugs'
 import { can, profileOf } from './profiles'
+import { normalizeIsbn, parseBookYear } from './isbn'
 import type {
   CatalogueAvailabilityDTO,
   CatalogueCollectionDTO,
@@ -34,6 +35,7 @@ import type {
   CatalogueItemPageDTO,
   CatalogueItemLinkDTO,
   AllergenDeclarationDTO,
+  CatalogueBookDetailsDTO,
   CatalogueItemProfile,
   OptionAllergenDeclarationDTO,
   CatalogueLinkedItemDTO,
@@ -125,6 +127,8 @@ export type RawCatalogueItem = LifecycleFields & {
   name?: RawText
   /** F-1 — locale-resolved by GROQ, or a raw localized object. */
   byline?: RawText
+  /** Amendment I-3 — as stored; every value unchecked until resolveBookDetails. */
+  bookDetails?: { author?: unknown; year?: unknown; isbn?: unknown } | null
   description?: RawText
   /** F-2 — `label` locale-resolved by GROQ (or raw localized); `url` unchecked until resolveLinks. */
   links?: ({ _key?: string | null; label?: RawText; url?: unknown } | null)[] | null
@@ -505,6 +509,23 @@ export function resolveLinks(rows: RawCatalogueItem['links'], ctx: CatalogueReso
   return out
 }
 
+// ── Book details (Amendment I-3) ─────────────────────────────────────────────
+
+/**
+ * Only a profile that carries book details shows them: after "Change type" the
+ * stored values are kept but hidden, not rendered and not in structured data.
+ * Every value is re-checked here — a stored year out of range or a blank
+ * author is simply dropped. null when nothing is left.
+ */
+export function resolveBookDetails(raw: RawCatalogueItem['bookDetails'], profile: CatalogueItemProfile): CatalogueBookDetailsDTO | null {
+  if (!can(profile, 'bookDetails') || !raw || typeof raw !== 'object') return null
+  const author = typeof raw.author === 'string' ? raw.author.trim().replace(/[ \t]+/g, ' ') : ''
+  const isbn = normalizeIsbn(raw.isbn)
+  const year = parseBookYear(raw.year)
+  if (!author && !isbn && year === null) return null
+  return { author: author || null, year, isbn: isbn || null }
+}
+
 // ── Items ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -514,11 +535,15 @@ export function resolveLinks(rows: RawCatalogueItem['links'], ctx: CatalogueReso
 export function resolveItem(row: RawCatalogueItem | null | undefined, ctx: CatalogueResolveContext): CatalogueItemDTO | null {
   if (!row || !isPublicAt(row, LIFECYCLE_PUBLIC_RULES.catalogueItem, ctx.now)) return null
   const offers = resolveOffers(row.offers, ctx)
+  const profile = itemProfileOf(row.itemProfile)
+  const bookDetails = resolveBookDetails(row.bookDetails, profile)
   return {
     publicId: nonEmpty(row.publicId),
-    itemProfile: itemProfileOf(row.itemProfile),
+    itemProfile: profile,
     name: text(row.name, ctx.locale, ctx.defaultLocale) ?? '',
-    byline: text(row.byline, ctx.locale, ctx.defaultLocale),
+    // I-3.4: the author stands in as the byline at read time; nothing is copied into `byline` on save.
+    byline: text(row.byline, ctx.locale, ctx.defaultLocale) ?? bookDetails?.author ?? null,
+    bookDetails,
     description: text(row.description, ctx.locale, ctx.defaultLocale),
     links: resolveLinks(row.links, ctx),
     images: imagesOf(row.images, ctx),

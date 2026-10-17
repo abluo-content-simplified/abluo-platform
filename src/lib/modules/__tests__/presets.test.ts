@@ -23,7 +23,7 @@ describe('catalogue manifest (ADR-033 D-1)', () => {
     expect(f.type).toBe('select')
     expect(f.required).toBeFalsy()
     expect(f.initialValue).toBeUndefined()
-    expect(f.options!.map((o) => o.value)).toEqual(['foodOrDrink', 'product', 'service'])
+    expect(f.options!.map((o) => o.value)).toEqual(['book', 'foodOrDrink', 'product', 'service'])
   })
   it('no preset carries a currency', () => {
     for (const p of presets) expect(Object.keys(p.config)).not.toContain('currency')

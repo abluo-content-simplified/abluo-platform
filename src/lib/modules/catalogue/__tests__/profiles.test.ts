@@ -11,15 +11,18 @@ describe('profile registry (ADR-033 Amendment I, slice 4a)', () => {
     expect(new Set(Object.values(PROFILES).map((p) => p.icon)).size).toBe(4)
   })
 
-  it('keeps book out of the selectable order until slice 4b', () => {
-    expect(PROFILE_ORDER).toEqual(['foodOrDrink', 'product', 'service'])
-    expect(isItemProfile('book')).toBe(false)
+  it('book is selectable (slice 4b): in PROFILE_ORDER, offered with its label', () => {
+    expect(PROFILE_ORDER).toEqual(['book', 'foodOrDrink', 'product', 'service'])
+    expect(isItemProfile('book')).toBe(true)
     expect(isItemProfile('foodOrDrink')).toBe(true)
+    expect(PROFILES.book.nameLabelKey).toBe('title')
+    expect(PROFILES.book.label).toBe('Book')
+    expect(profilesWith('bookDetails')).toEqual(['book'])
   })
 
-  it('profileOf falls back to product for unknown or not-yet-selectable values', () => {
+  it('profileOf maps book to itself and falls back to product for unknown values (what an older deployment does too)', () => {
     expect(profileOf('service')).toBe('service')
-    expect(profileOf('book')).toBe('product')
+    expect(profileOf('book')).toBe('book')
     expect(profileOf('nonsense')).toBe('product')
     expect(profileOf(undefined)).toBe('product')
   })
