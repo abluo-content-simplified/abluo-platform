@@ -32,6 +32,7 @@
 import { localePlainTexts, presentLocales } from '@/lib/sanity/groq-locales'
 import { publicFilterFor, publicFilterForAnyType } from '@/lib/lifecycle/public-types'
 import { visibilityFilter } from '@/lib/modules/catalogue/visibility'
+import { catalogueCategoryTermsGroq } from '@/lib/taxonomy/vocabulary'
 
 // ─── ADR-032 D3 — the public-visibility rule ─────────────────────────────────
 // Every public read of a lifecycle type (post, newsArticle, event, gallery) —
@@ -2406,6 +2407,9 @@ export const catalogueModuleConfigQuery = /* groq */ `
       "categories": categories[] { value, color, "label": coalesce(label[$locale], label[$defaultLocale], label.en) },
       "dietaryTags": dietaryTags[] { value, "label": coalesce(label[$locale], label[$defaultLocale], label.en) }
     },
+    // ADR-033 Amendment J (dual-read): taxonomyTerm records, when the project has any, replace
+    // the config category list above entirely (catalogueCategoryVocabulary). Same query, no extra round trip.
+    "categoryTerms": ${catalogueCategoryTermsGroq('coalesce(label[$locale], label[$defaultLocale], label.en)')},
     "timeZone": *[_type == "siteConfig" && projectSlug == $projectSlug][0].timeZone
   }
 `

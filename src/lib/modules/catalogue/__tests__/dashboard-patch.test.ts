@@ -325,3 +325,16 @@ describe('book details (ADR-033 Amendment I-3)', () => {
     expect(r.unset).toContain('allergenDeclaration')
   })
 })
+
+describe('categories vocabulary from term records (Amendment J)', () => {
+  // The caller (readSite) builds ctx.categories from catalogueCategoryVocabulary;
+  // validation itself is unchanged, so it must accept term keys and refuse the rest.
+  const termKeys = ['romanzi', 'saggi']
+  it('accepts keys that exist as term records', () => {
+    expect(cleanCatalogueSet('item', { categories: ['saggi', 'romanzi'] }, ctx({ categories: termKeys })).set.categories).toEqual(['saggi', 'romanzi'])
+  })
+  it('rejects an unknown key, and a config-list key once term records replaced the list', () => {
+    expect(code(() => cleanCatalogueSet('item', { categories: ['pizza'] }, ctx({ categories: termKeys })))).toBe('invalid_value')
+    expect(code(() => cleanCatalogueSet('item', { categories: ['romanzi', 'nope'] }, ctx({ categories: termKeys })))).toBe('invalid_value')
+  })
+})

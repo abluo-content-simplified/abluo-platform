@@ -12,6 +12,7 @@ import {
   CatalogueError,
   catalogueAbilities,
   createCatalogueDoc,
+  getCatalogueSite,
   listCatalogue,
   openCatalogueForEdit,
   patchCatalogueDraft,
@@ -493,5 +494,29 @@ describe('allergens of option choices (ADR-033 D-3a)', () => {
     }, f.deps)
     const set = (f.patchOps as Array<[string, { options?: Array<Record<string, unknown>> }]>).find(([op, v]) => op === 'set' && v.options)![1].options!
     expect(set.map((o) => o.allergenDeclaration ?? null)).toEqual([{ status: 'notReviewed' }, { status: 'containsListedAllergens', allergens: ['fish'] }, null, null])
+  })
+})
+
+describe('getCatalogueSite: category vocabulary (Amendment J dual-read)', () => {
+  const site = { defaultLocale: 'it', supportedLocales: ['it', 'en'], timeZone: 'Europe/Rome' }
+  const read = async (reply: Record<string, unknown>) => {
+    const fetch = vi.fn(async () => ({ site, config: CONFIG, translate: false, ...reply }))
+    const result = await getCatalogueSite(ctx(grant()), 'project-a', { client: { fetch } as never })
+    return { result, fetch }
+  }
+  it('no term records: the config list, in one fetch', async () => {
+    const { result, fetch } = await read({})
+    expect(result.config.categories).toEqual([{ value: 'pizza', label: { it: 'Pizza' }, color: null }])
+    expect(fetch).toHaveBeenCalledTimes(1)
+    const [query, params] = fetch.mock.calls[0] as unknown as [string, Record<string, unknown>]
+    expect(query).toContain('"categoryTerms": *[_type == "taxonomyTerm" && projectSlug == $projectSlug')
+    expect(params).toEqual({ projectSlug: 'trattoria' })
+  })
+  it('term records replace the list, ordered, with the label maps', async () => {
+    const { result } = await read({ categoryTerms: [{ key: 'b', order: 2000, label: { it: 'B' } }, { key: 'a', order: 1000, label: { it: 'A', en: 'Ay' }, color: '#111' }] })
+    expect(result.config.categories).toEqual([
+      { value: 'a', label: { it: 'A', en: 'Ay' }, color: '#111' },
+      { value: 'b', label: { it: 'B' }, color: null },
+    ])
   })
 })

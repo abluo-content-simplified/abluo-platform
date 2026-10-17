@@ -25,6 +25,7 @@ import { readingOrder } from './sections'
 import { normalise } from './slugs'
 import { can, profileOf } from './profiles'
 import { normalizeIsbn, parseBookYear } from './isbn'
+import { catalogueCategoryVocabulary, type CategoryTermRow } from '@/lib/taxonomy/vocabulary'
 import type {
   CatalogueAvailabilityDTO,
   CatalogueCollectionDTO,
@@ -187,6 +188,8 @@ export type RawCatalogueConfigRow = {
     categories?: (RawTerm | null)[] | null
     dietaryTags?: (RawTerm | null)[] | null
   } | null
+  /** ADR-033 Amendment J — the project's category term records (label locale-resolved by GROQ). */
+  categoryTerms?: readonly (CategoryTermRow | null)[] | null
   timeZone?: string | null
 } | null
 
@@ -375,7 +378,7 @@ export function resolveCatalogueConfig(
     segmentHistory: history,
     showPricesByDefault: c.showPricesByDefault !== false,
     channels: termsOf(c.serviceChannels, locale, defaultLocale),
-    categories: termsOf(c.categories, locale, defaultLocale),
+    categories: termsOf(catalogueCategoryVocabulary(row?.categoryTerms, c.categories), locale, defaultLocale),
     dietaryTags: termsOf(c.dietaryTags, locale, defaultLocale),
     timeZone: nonEmpty(row?.timeZone),
   }

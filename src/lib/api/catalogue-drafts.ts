@@ -67,6 +67,7 @@ import {
 } from '@/lib/modules/catalogue/dashboard-patch'
 import { initialItemProfile, type ItemProfile } from '@/lib/modules/catalogue/dashboard-form'
 import { can, isItemProfile, profileOf } from '@/lib/modules/catalogue/profiles'
+import { catalogueCategoryVocabulary, type CategoryTermRow } from '@/lib/taxonomy/vocabulary'
 import { SLUG_NAMESPACE_QUERY, namedSlugConflicts, toSlugOwners, type NamedSlugConflict, type SlugRow } from '@/lib/modules/catalogue/validation'
 import {
   CATALOGUE_COUNT_QUERY,
@@ -203,7 +204,7 @@ const termsOf = (rows: unknown): CatalogueTerm[] =>
     .map((r) => ({ value: r.value as string, label: localized(r.label), color: typeof r.color === 'string' && r.color ? r.color : null }))
 
 async function readSite(client: Client, projectSlug: string): Promise<CatalogueSite> {
-  const r = await span('sanity.readSite', () => client.fetch<{ site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null } | null; config?: RawConfig; presetId?: unknown; translate?: boolean } | null>(
+  const r = await span('sanity.readSite', () => client.fetch<{ site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null } | null; config?: RawConfig; presetId?: unknown; translate?: boolean; categoryTerms?: CategoryTermRow[] | null } | null>(
     CATALOGUE_SITE_QUERY,
     { projectSlug }
   ))
@@ -223,7 +224,8 @@ async function readSite(client: Client, projectSlug: string): Promise<CatalogueS
       segment: typeof c.publicSegment === 'string' && c.publicSegment ? c.publicSegment : null,
       currency,
       channels: termsOf(c.serviceChannels),
-      categories: termsOf(c.categories),
+      // ADR-033 Amendment J (dual-read): term records replace the config list entirely when the project has any.
+      categories: termsOf(catalogueCategoryVocabulary(r?.categoryTerms, c.categories)),
       dietaryTags: termsOf(c.dietaryTags),
       defaultItemProfile: initialItemProfile(c.defaultItemProfile),
     },

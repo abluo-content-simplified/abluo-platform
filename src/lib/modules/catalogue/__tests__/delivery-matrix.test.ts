@@ -65,7 +65,7 @@ import { publicFilterFor } from '@/lib/lifecycle/public-types'
 import { isPublicAt } from '@/lib/lifecycle/visibility'
 import { siteBasePath } from '@/lib/sanity/href'
 import type { CatalogueCollectionDTO, CatalogueConfigDTO, CatalogueItemDTO, CatalogueSectionDTO } from '../dto'
-import { resolveCatalogueConfig, resolveCollection, type CatalogueResolveContext, type RawCatalogueCollection } from '../resolve'
+import { resolveCatalogueConfig, resolveCollection, resolveItem, type CatalogueResolveContext, type RawCatalogueCollection } from '../resolve'
 import { admits, isIndexable, visibilityFilter, type CatalogueDeliveryContext } from '../visibility'
 import { applySegmentChange, dispatchCatalogue } from '../segment'
 import {
@@ -864,5 +864,82 @@ describe('H. a book on its own page (Amendment I)', () => {
     const unlisted = await read(doc({ visibility: 'unlisted' }))
     expect(unlisted.kind).toBe('item')
     if (unlisted.kind === 'item') expect(catalogueItemJsonLd(unlisted.item, { url: ORIGIN, locale: 'it' })).toBeNull()
+  })
+})
+
+describe('I. category vocabulary: term records replace the config list (Amendment J dual-read)', () => {
+  const CONFIG_CATEGORIES = [
+    { _key: 'c1', value: 'pizza', color: '#c00', label: { it: 'Pizze', en: 'Pizzas' } },
+    { _key: 'c2', value: 'dolci', label: { it: 'Dolci' } },
+  ]
+  const term = (key: string, order: number, label: Record<string, string>, extra: Record<string, unknown> = {}, project = PROJECT, kind = 'category', module = 'catalogue') => ({
+    _id: `term.${project}.${module}.${kind}.${key}`,
+    _type: 'taxonomyTerm',
+    projectSlug: project,
+    module,
+    kind,
+    key,
+    order,
+    label,
+    ...extra,
+  })
+  const withCategories = (extra: Record<string, unknown>[], list = CONFIG_CATEGORIES): Record<string, unknown>[] => [
+    ...PUBLISHED.map((d) =>
+      d._type === 'project'
+        ? { ...d, moduleInstallations: (d.moduleInstallations as { config: object }[]).map((m) => ({ ...m, config: { ...m.config, categories: list } })) }
+        : d,
+    ),
+    ...extra,
+  ]
+  const configFrom = async (dataset: Record<string, unknown>[], locale: Locale) => {
+    const p = { projectSlug: PROJECT, locale, defaultLocale: DEFAULT_LOCALE }
+    const value = await evaluate(parse(catalogueModuleConfigQuery, { params: p }), { dataset, params: p, timestamp: NOW })
+    return resolveCatalogueConfig((await value.get()) as never, locale, DEFAULT_LOCALE)!
+  }
+
+  it('no term records: the config list is read exactly as before', async () => {
+    const c = await configFrom(withCategories([]), 'en')
+    expect(c.categories).toEqual([
+      { value: 'pizza', label: 'Pizzas', color: '#c00' },
+      { value: 'dolci', label: 'Dolci', color: null },
+    ])
+  })
+
+  it('term records with the identical keys and labels resolve to an identical vocabulary, in every locale', async () => {
+    const terms = [
+      term('pizza', 1000, { it: 'Pizze', en: 'Pizzas' }, { color: '#c00' }),
+      term('dolci', 2000, { it: 'Dolci' }),
+    ]
+    for (const l of LOCALES) {
+      expect((await configFrom(withCategories(terms), l)).categories).toEqual((await configFrom(withCategories([]), l)).categories)
+    }
+  })
+
+  it('term records win entirely: no mixing with the config list, ordered by `order`', async () => {
+    const terms = [term('romanzi', 2000, { it: 'Romanzi' }), term('saggi', 1000, { it: 'Saggi', en: 'Essays' })]
+    const c = await configFrom(withCategories(terms), 'en')
+    expect(c.categories.map((t) => t.value)).toEqual(['saggi', 'romanzi'])
+    expect(c.categories.map((t) => t.label)).toEqual(['Essays', 'Romanzi'])
+  })
+
+  it('another project, another module, another kind and a draft never leak in', async () => {
+    const stray = [
+      term('altro', 1, { it: 'Altro' }, {}, 'other-project'),
+      term('blogcat', 1, { it: 'Blog' }, {}, PROJECT, 'category', 'blog'),
+      term('etichetta', 1, { it: 'Tag' }, {}, PROJECT, 'tag'),
+      { ...term('bozza', 1, { it: 'Bozza' }), _id: `drafts.term.${PROJECT}.catalogue.category.bozza` },
+    ]
+    const c = await configFrom(withCategories(stray), 'it')
+    expect(c.categories.map((t) => t.value)).toEqual(['pizza', 'dolci'])
+  })
+
+  it('an item resolves its categories identically from the config list and from term records', async () => {
+    const viaConfig = await configFrom(withCategories([]), 'it')
+    const viaTerms = await configFrom(withCategories([term('pizza', 1000, { it: 'Pizze', en: 'Pizzas' }, { color: '#c00' }), term('dolci', 2000, { it: 'Dolci' })]), 'it')
+    const item = { categories: ['dolci', 'pizza', 'gone'], visibility: 'public', publishedAt: LONG_AGO } as never
+    const a = resolveItem(item, { ...ctxFor('it'), config: viaConfig })
+    const b = resolveItem(item, { ...ctxFor('it'), config: viaTerms })
+    expect(b?.categories).toEqual(a?.categories)
+    expect(a?.categories.map((t) => t.value)).toEqual(['dolci', 'pizza'])
   })
 })

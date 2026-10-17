@@ -336,6 +336,35 @@ describe('config', () => {
   })
 })
 
+describe('config categories: term records vs the config list (Amendment J dual-read)', () => {
+  const list = [
+    { value: 'pizza', label: { it: 'Pizze', en: 'Pizzas' }, color: '#c00' },
+    { value: 'dolci', label: { it: 'Dolci' } },
+  ]
+  // GROQ resolves the label for the request locale in both queries; mirror that here.
+  const resolved = (l: 'it' | 'en') => list.map((e) => ({ value: e.value, color: (e as { color?: string }).color, label: (e.label as Record<string, string>)[l] ?? e.label.it }))
+  const asTerms = (l: 'it' | 'en') => list.map((e, i) => ({ key: e.value, order: (i + 1) * 1000, color: (e as { color?: string }).color, label: (e.label as Record<string, string>)[l] ?? e.label.it }))
+  const cfg = (row: object, l: 'it' | 'en') => resolveCatalogueConfig({ timeZone: 'Europe/Rome', ...row } as never, l, 'it')!
+
+  it('identical keys and labels give an identical config and identical item categories', () => {
+    for (const l of ['it', 'en'] as const) {
+      const viaList = cfg({ catalogue: { categories: resolved(l) } }, l)
+      const viaTerms = cfg({ catalogue: { categories: resolved(l) }, categoryTerms: asTerms(l) }, l)
+      const viaTermsOnly = cfg({ catalogue: {}, categoryTerms: asTerms(l) }, l)
+      expect(viaTerms.categories).toEqual(viaList.categories)
+      expect(viaTermsOnly.categories).toEqual(viaList.categories)
+    }
+  })
+  it('terms win entirely when both exist; the list is used when there are none', () => {
+    const c = cfg({ catalogue: { categories: resolved('it') }, categoryTerms: [{ key: 'romanzi', order: 1, label: 'Romanzi' }] }, 'it')
+    expect(c.categories).toEqual([{ value: 'romanzi', label: 'Romanzi', color: null }])
+    expect(cfg({ catalogue: { categories: resolved('it') }, categoryTerms: [] }, 'it').categories.map((t) => t.value)).toEqual(['pizza', 'dolci'])
+  })
+  it('a label missing for the locale falls back to the key', () => {
+    expect(cfg({ catalogue: {}, categoryTerms: [{ key: 'x', order: 1, label: null }] }, 'it').categories).toEqual([{ value: 'x', label: 'x', color: null }])
+  })
+})
+
 describe('sitemap (spec §6.5, AC 16, B4)', () => {
   it('lists only items/collections with a page, public and not unlisted', () => {
     for (const q of [sitemapQueries.SITEMAP_CATALOGUE_ITEMS_QUERY, sitemapQueries.SITEMAP_CATALOGUE_COLLECTIONS_QUERY]) {
