@@ -46,7 +46,8 @@ import {
   type ListSort,
   type ListSortKey,
 } from '@/lib/modules/catalogue/list-model'
-import { CAT_ICONS, CAT_PRIMARY, GapBadges, InUseNotice, SegmentTabs, UnpublishDateSheet, catalogueHref, textIn, useCatalogueError } from './catalogue-ui'
+import { CAT_ICONS, GapBadges, InUseNotice, SegmentTabs, UnpublishDateSheet, catalogueHref, textIn, useCatalogueError } from './catalogue-ui'
+import { ButtonLink } from '@/components/app/ui/Button'
 
 export type CatalogueView = 'items' | 'collections' | 'optionLists'
 const VIEWS: readonly CatalogueView[] = ['items', 'collections', 'optionLists']
@@ -439,11 +440,11 @@ export function CatalogueBrowser({
                 />
               </span>
               {abilities.write ? (
-                <Link href={newHref} className={CAT_PRIMARY}>
+                <ButtonLink variant="primary" href={newHref}>
                   {CAT_ICONS.plus}
                   <span className="hidden sm:inline">{newLabel}</span>
                   <span className="sr-only sm:hidden">{newLabel}</span>
-                </Link>
+                </ButtonLink>
               ) : null}
             </>
           }
@@ -468,10 +469,10 @@ export function CatalogueBrowser({
             body={t(`empty.${view}.body`)}
             action={
               abilities.write ? (
-                <Link href={newHref} className={CAT_PRIMARY}>
+                <ButtonLink variant="primary" href={newHref}>
                   {CAT_ICONS.plus}
                   {newLabel}
-                </Link>
+                </ButtonLink>
               ) : null
             }
           />

@@ -5,8 +5,9 @@ import { useTranslations } from 'next-intl'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
 import { changeTypeWarning } from '@/lib/modules/catalogue/change-type'
 import type { ItemProfile } from '@/lib/modules/catalogue/dashboard-form'
-import { CAT_BUTTON, CAT_PRIMARY } from './catalogue-ui'
+
 import { ProfileField } from './item-fields'
+import { Button } from '@/components/app/ui/Button'
 
 /**
  * "Change type" (Amendment I-4): the same type cards as the first step, current
@@ -35,12 +36,12 @@ export function ChangeTypeSheet({ open, current, hasBookDetails, onClose, onChan
             {t(warning === 'allergens' ? 'warnAllergens' : 'warnBookDetails')}
           </p>
           <div className="mt-4 flex flex-col gap-2 sm:flex-row-reverse">
-            <button type="button" onClick={() => apply(pending)} className={CAT_PRIMARY}>
+            <Button variant="primary" onClick={() => apply(pending)}>
               {t('confirm')}
-            </button>
-            <button type="button" onClick={() => setPending(null)} className={CAT_BUTTON}>
+            </Button>
+            <Button variant="secondary" onClick={() => setPending(null)}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
         </div>
       ) : (

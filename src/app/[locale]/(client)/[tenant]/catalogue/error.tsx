@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { PageShell } from '@/components/app/ui/PageShell'
-import { CAT_BUTTON } from '@/components/client/catalogue/catalogue-ui'
+import { Button } from '@/components/app/ui/Button'
 
 /** Spec §10.5 — error: surfaced, not swallowed, with a retry. */
 export default function CatalogueError({ reset }: { error: Error; reset: () => void }) {
@@ -11,9 +11,9 @@ export default function CatalogueError({ reset }: { error: Error; reset: () => v
     <PageShell>
       <div role="alert" className="rounded-2xl border border-border px-6 py-10">
         <p className="font-medium text-foreground">{t('loadFailed')}</p>
-        <button type="button" onClick={reset} className={`mt-3 ${CAT_BUTTON}`}>
+        <Button className="mt-3" onClick={reset}>
           {t('retry')}
-        </button>
+        </Button>
       </div>
     </PageShell>
   )

@@ -44,7 +44,11 @@ import {
 import { PROFILES } from '@/lib/modules/catalogue/profiles'
 import { bookYearMax, isValidIsbn, normalizeIsbn, parseBookYear } from '@/lib/modules/catalogue/isbn'
 import { bookPublisherLine, itemSecondaryLine } from '@/lib/modules/catalogue/list-model'
-import { CAT_BUTTON, CAT_ICON_BUTTON, CAT_ICONS, CAT_INPUT, CAT_LABEL, CAT_TEXTAREA, catalogueHref, textIn } from './catalogue-ui'
+import { CAT_ICONS, catalogueHref, textIn } from './catalogue-ui'
+import { Button, ButtonLink, IconButton } from '@/components/app/ui/Button'
+import { LABEL_CLASS } from '@/components/app/ui/field-styles'
+import { FieldLabel } from '@/components/app/ui/FieldLabel'
+import { TextArea, TextInput } from '@/components/app/ui/TextInput'
 
 export type ItemPhoto = { assetId: string; thumbUrl: string | null }
 export type OptionListChoice = { id: string; name: string; optionCount: number; isDraft: boolean }
@@ -101,26 +105,26 @@ export function NameFields({ locale, name, profile = null, afterName, byline, de
   return (
     <div className="space-y-5">
       <div>
-        <label htmlFor={`${id}-name`} className={CAT_LABEL}>
+        <FieldLabel htmlFor={`${id}-name`}>
           {t(profile ? PROFILES[profile].nameLabelKey : 'name')}
-        </label>
-        <input id={`${id}-name`} data-name-locale={locale} data-enter-next autoFocus={autoFocus} maxLength={120} value={name[locale] ?? ''} onChange={(e) => onName(locale, e.target.value)} className={CAT_INPUT} />
+        </FieldLabel>
+        <TextInput id={`${id}-name`} data-name-locale={locale} data-enter-next autoFocus={autoFocus} maxLength={120} value={name[locale] ?? ''} onChange={(e) => onName(locale, e.target.value)} />
       </div>
       {afterName}
       {byline && onByline ? (
         <div>
-          <label htmlFor={`${id}-byline`} className={CAT_LABEL}>
+          <FieldLabel htmlFor={`${id}-byline`}>
             {t('byline')}
-          </label>
-          <input id={`${id}-byline`} data-enter-next maxLength={160} value={byline[locale] ?? ''} onChange={(e) => onByline(locale, e.target.value)} className={CAT_INPUT} />
+          </FieldLabel>
+          <TextInput id={`${id}-byline`} data-enter-next maxLength={160} value={byline[locale] ?? ''} onChange={(e) => onByline(locale, e.target.value)} />
           <p className="mt-1.5 text-sm text-muted-foreground">{t('bylineHelp')}</p>
         </div>
       ) : null}
       <div>
-        <label htmlFor={`${id}-desc`} className={CAT_LABEL}>
+        <FieldLabel htmlFor={`${id}-desc`}>
           {t('description')}
-        </label>
-        <textarea id={`${id}-desc`} maxLength={600} value={description[locale] ?? ''} onChange={(e) => onDescription(locale, e.target.value)} className={CAT_TEXTAREA} />
+        </FieldLabel>
+        <TextArea id={`${id}-desc`} maxLength={600} value={description[locale] ?? ''} onChange={(e) => onDescription(locale, e.target.value)} />
         <p className="mt-1.5 text-sm text-muted-foreground">{t('descriptionHelp')}</p>
       </div>
     </div>
@@ -137,24 +141,24 @@ export function BookDetailsFields({ value, onChange }: { value: BookDetailsForm;
   return (
     <div className="space-y-5">
       <div>
-        <label htmlFor={`${id}-author`} className={CAT_LABEL}>
+        <FieldLabel htmlFor={`${id}-author`}>
           {t('author')}
-        </label>
-        <input id={`${id}-author`} data-book-author data-enter-next maxLength={120} value={value.author} onChange={(e) => onChange({ ...value, author: e.target.value })} className={CAT_INPUT} />
+        </FieldLabel>
+        <TextInput id={`${id}-author`} data-book-author data-enter-next maxLength={120} value={value.author} onChange={(e) => onChange({ ...value, author: e.target.value })} />
         <p className="mt-1.5 text-sm text-muted-foreground">{t('authorHelp')}</p>
       </div>
       <div>
-        <label htmlFor={`${id}-publisher`} className={CAT_LABEL}>
+        <FieldLabel htmlFor={`${id}-publisher`}>
           {t('publisher')}
-        </label>
-        <input id={`${id}-publisher`} data-book-publisher data-enter-next maxLength={120} value={value.publisher} onChange={(e) => onChange({ ...value, publisher: e.target.value })} className={CAT_INPUT} />
+        </FieldLabel>
+        <TextInput id={`${id}-publisher`} data-book-publisher data-enter-next maxLength={120} value={value.publisher} onChange={(e) => onChange({ ...value, publisher: e.target.value })} />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor={`${id}-year`} className={CAT_LABEL}>
+          <FieldLabel htmlFor={`${id}-year`}>
             {t('year')}
-          </label>
-          <input
+          </FieldLabel>
+          <TextInput
             id={`${id}-year`}
             data-book-year
             data-enter-next
@@ -164,15 +168,13 @@ export function BookDetailsFields({ value, onChange }: { value: BookDetailsForm;
             value={value.year}
             aria-invalid={yearBad || undefined}
             aria-describedby={yearBad ? `${id}-year-err` : undefined}
-            onChange={(e) => onChange({ ...value, year: e.target.value.replace(/\D/g, '') })}
-            className={CAT_INPUT}
-          />
+            onChange={(e) => onChange({ ...value, year: e.target.value.replace(/\D/g, '') })} />
         </div>
         <div>
-          <label htmlFor={`${id}-isbn`} className={CAT_LABEL}>
+          <FieldLabel htmlFor={`${id}-isbn`}>
             {t('isbn')}
-          </label>
-          <input id={`${id}-isbn`} data-book-isbn data-enter-next inputMode="numeric" autoComplete="off" maxLength={32} value={value.isbn} onChange={(e) => onChange({ ...value, isbn: e.target.value })} className={CAT_INPUT} />
+          </FieldLabel>
+          <TextInput id={`${id}-isbn`} data-book-isbn data-enter-next inputMode="numeric" autoComplete="off" maxLength={32} value={value.isbn} onChange={(e) => onChange({ ...value, isbn: e.target.value })} />
         </div>
       </div>
       {yearBad ? (
@@ -239,7 +241,7 @@ export function LinksField({ links, locales, defaultLocale, onChange }: { links:
                         <label htmlFor={`${id}-${l.key}-${loc}`} className="text-sm text-foreground">
                           {locales.length > 1 ? t('labelIn', { language: languageName(loc, ui) }) : t('label')}
                         </label>
-                        <input id={`${id}-${l.key}-${loc}`} maxLength={80} value={l.label[loc] ?? ''} onChange={(e) => setLink(l.key, { label: { ...l.label, [loc]: e.target.value } })} className={CAT_INPUT} />
+                        <TextInput id={`${id}-${l.key}-${loc}`} maxLength={80} value={l.label[loc] ?? ''} onChange={(e) => setLink(l.key, { label: { ...l.label, [loc]: e.target.value } })} />
                       </div>
                     ))}
                     <LinkKindFields link={l} onChange={(next) => setLink(l.key, next)} />
@@ -247,7 +249,7 @@ export function LinksField({ links, locales, defaultLocale, onChange }: { links:
                       <label htmlFor={`${id}-${l.key}-url`} className="text-sm text-foreground">
                         {t('url')}
                       </label>
-                      <input id={`${id}-${l.key}-url`} type="url" inputMode="url" autoComplete="off" placeholder="https://" maxLength={2048} value={l.url} onChange={(e) => setLink(l.key, { url: e.target.value })} aria-invalid={issue === 'badUrl' || undefined} className={CAT_INPUT} />
+                      <TextInput id={`${id}-${l.key}-url`} type="url" inputMode="url" autoComplete="off" placeholder="https://" maxLength={2048} value={l.url} onChange={(e) => setLink(l.key, { url: e.target.value })} aria-invalid={issue === 'badUrl' || undefined} />
                       {issue ? (
                         <p role="alert" className="mt-1.5 text-sm text-foreground">
                           {t(issue)}
@@ -255,15 +257,15 @@ export function LinksField({ links, locales, defaultLocale, onChange }: { links:
                       ) : null}
                     </div>
                   </div>
-                  <button type="button" aria-label={t('up')} disabled={n === 0} onClick={() => onChange(moveIndex(links, n, n - 1))} className={CAT_ICON_BUTTON}>
+                  <IconButton aria-label={t('up')} disabled={n === 0} onClick={() => onChange(moveIndex(links, n, n - 1))}>
                     {CAT_ICONS.up}
-                  </button>
-                  <button type="button" aria-label={t('down')} disabled={n === links.length - 1} onClick={() => onChange(moveIndex(links, n, n + 1))} className={CAT_ICON_BUTTON}>
+                  </IconButton>
+                  <IconButton aria-label={t('down')} disabled={n === links.length - 1} onClick={() => onChange(moveIndex(links, n, n + 1))}>
                     {CAT_ICONS.down}
-                  </button>
-                  <button type="button" aria-label={t('remove')} onClick={() => onChange(links.filter((x) => x.key !== l.key))} className={CAT_ICON_BUTTON}>
+                  </IconButton>
+                  <IconButton aria-label={t('remove')} onClick={() => onChange(links.filter((x) => x.key !== l.key))}>
                     {CAT_ICONS.trash}
-                  </button>
+                  </IconButton>
                 </div>
               </li>
             )
@@ -271,10 +273,10 @@ export function LinksField({ links, locales, defaultLocale, onChange }: { links:
         </ul>
       ) : null}
       {links.length < CATALOGUE_LINK_LIMITS.links ? (
-        <button type="button" onClick={() => onChange([...links, { key: newKey(), label: {}, url: '', kind: 'info', affiliate: false }])} className={CAT_BUTTON}>
+        <Button variant="secondary" onClick={() => onChange([...links, { key: newKey(), label: {}, url: '', kind: 'info', affiliate: false }])}>
           {CAT_ICONS.plus}
           {t('add')}
-        </button>
+        </Button>
       ) : null}
     </div>
   )
@@ -294,10 +296,10 @@ export function BuyLinkField({ links, defaultLocale, onChange }: { links: LinkFo
   return (
     <div className="space-y-3" data-buy-link-field>
       <div>
-        <label htmlFor={`${id}-url`} className={CAT_LABEL}>
+        <FieldLabel htmlFor={`${id}-url`}>
           {t('url')}
-        </label>
-        <input id={`${id}-url`} data-enter-next type="url" inputMode="url" autoComplete="off" placeholder="https://" maxLength={2048} value={buy?.url ?? ''} onChange={(e) => onChange(withBuyLink(links, { url: e.target.value }, newKey))} aria-invalid={bad ? true : undefined} className={CAT_INPUT} />
+        </FieldLabel>
+        <TextInput id={`${id}-url`} data-enter-next type="url" inputMode="url" autoComplete="off" placeholder="https://" maxLength={2048} value={buy?.url ?? ''} onChange={(e) => onChange(withBuyLink(links, { url: e.target.value }, newKey))} aria-invalid={bad ? true : undefined} />
         {bad ? (
           <p role="alert" className="mt-1.5 text-sm text-foreground">
             {tl('badUrl')}
@@ -309,10 +311,10 @@ export function BuyLinkField({ links, defaultLocale, onChange }: { links: LinkFo
       {buy ? (
         <>
           <div>
-            <label htmlFor={`${id}-label`} className={CAT_LABEL}>
+            <FieldLabel htmlFor={`${id}-label`}>
               {t('label')}
-            </label>
-            <input id={`${id}-label`} data-enter-next maxLength={80} value={buy.label[defaultLocale] ?? ''} onChange={(e) => onChange(withBuyLink(links, { label: { ...buy.label, [defaultLocale]: e.target.value } }, newKey))} className={CAT_INPUT} />
+            </FieldLabel>
+            <TextInput id={`${id}-label`} data-enter-next maxLength={80} value={buy.label[defaultLocale] ?? ''} onChange={(e) => onChange(withBuyLink(links, { label: { ...buy.label, [defaultLocale]: e.target.value } }, newKey))} />
           </div>
           <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-border p-3">
             <Checkbox aria-label={tl('affiliate')} checked={buy.affiliate} onChange={(on) => onChange(withBuyLink(links, { affiliate: on }, newKey))} />
@@ -377,17 +379,17 @@ export function PhotoField({
                 ) : null}
               </div>
               <div className="flex flex-wrap gap-1">
-                <button type="button" onClick={() => setEditing(p.assetId)} className={CAT_BUTTON}>
+                <Button variant="secondary" onClick={() => setEditing(p.assetId)}>
                   {t('edit')}
-                </button>
+                </Button>
                 {i > 0 ? (
-                  <button type="button" onClick={() => onChange([p, ...photos.filter((x) => x.assetId !== p.assetId)])} className={CAT_BUTTON}>
+                  <Button variant="secondary" onClick={() => onChange([p, ...photos.filter((x) => x.assetId !== p.assetId)])}>
                     {t('makeMain')}
-                  </button>
+                  </Button>
                 ) : null}
-                <button type="button" aria-label={t('remove')} onClick={() => onChange(photos.filter((x) => x.assetId !== p.assetId))} className={CAT_ICON_BUTTON}>
+                <IconButton aria-label={t('remove')} onClick={() => onChange(photos.filter((x) => x.assetId !== p.assetId))}>
                   {CAT_ICONS.trash}
-                </button>
+                </IconButton>
               </div>
             </li>
           ))}
@@ -454,18 +456,18 @@ export function PriceField({ offers, channels, currency, defaultLocale, onChange
         return (
           <div key={o.key} className="rounded-2xl border border-border p-4">
             <div className="flex items-start justify-between gap-3">
-              <label htmlFor={`${id}-${o.key}`} className={CAT_LABEL}>
+              <FieldLabel htmlFor={`${id}-${o.key}`}>
                 {scopeLabel(o.channel)}
                 {!firstOfScope ? <span className="ml-2 text-sm font-normal text-muted-foreground">{t('anotherTime')}</span> : null}
-              </label>
+              </FieldLabel>
               {o.price || o.availability.length || !firstOfScope ? (
-                <button type="button" aria-label={t('remove')} onClick={() => remove(o.key)} className={`-mt-2 -mr-2 ${CAT_ICON_BUTTON}`}>
+                <IconButton className="-mt-2 -mr-2" aria-label={t('remove')} onClick={() => remove(o.key)}>
                   {CAT_ICONS.trash}
-                </button>
+                </IconButton>
               ) : null}
             </div>
             <div className="mt-1.5 flex items-center gap-2">
-              <input
+              <TextInput flush className="max-w-40"
                 id={`${id}-${o.key}`}
                 data-offer-key={o.key}
                 inputMode="decimal"
@@ -473,9 +475,7 @@ export function PriceField({ offers, channels, currency, defaultLocale, onChange
                 placeholder={t('placeholder')}
                 value={o.price}
                 onChange={(e) => set(o.key, { price: e.target.value })}
-                aria-invalid={mine.some((i) => i.kind === 'invalidPrice') || undefined}
-                className={`${CAT_INPUT} mt-0 max-w-40`}
-              />
+                aria-invalid={mine.some((i) => i.kind === 'invalidPrice') || undefined} />
               <span className="text-[0.9375rem] text-muted-foreground">{currency}</span>
               {parsed !== null && o.price ? <span className="text-sm text-muted-foreground">{formatPrice(parsed, currency, ui)}</span> : null}
             </div>
@@ -496,42 +496,42 @@ export function PriceField({ offers, channels, currency, defaultLocale, onChange
                 <div className="flex flex-wrap items-end gap-3">
                   <label className="flex flex-col text-sm text-foreground">
                     {t('from')}
-                    <input type="time" value={a.from} onChange={(e) => set(o.key, { availability: o.availability.map((x) => (x.key === a.key ? { ...x, from: e.target.value } : x)) })} className={`${CAT_INPUT} w-36`} />
+                    <TextInput className="w-36" type="time" value={a.from} onChange={(e) => set(o.key, { availability: o.availability.map((x) => (x.key === a.key ? { ...x, from: e.target.value } : x)) })} />
                   </label>
                   <label className="flex flex-col text-sm text-foreground">
                     {t('to')}
-                    <input type="time" value={a.to} onChange={(e) => set(o.key, { availability: o.availability.map((x) => (x.key === a.key ? { ...x, to: e.target.value } : x)) })} className={`${CAT_INPUT} w-36`} />
+                    <TextInput className="w-36" type="time" value={a.to} onChange={(e) => set(o.key, { availability: o.availability.map((x) => (x.key === a.key ? { ...x, to: e.target.value } : x)) })} />
                   </label>
-                  <button type="button" onClick={() => set(o.key, { availability: o.availability.filter((x) => x.key !== a.key) })} className={CAT_BUTTON}>
+                  <Button variant="secondary" onClick={() => set(o.key, { availability: o.availability.filter((x) => x.key !== a.key) })}>
                     {t('removeTimes')}
-                  </button>
+                  </Button>
                 </div>
                 {wrapsMidnight(a) ? <p className="text-sm text-muted-foreground">{t('overnight')}</p> : null}
               </div>
             ))}
             <div className="mt-3 flex flex-wrap gap-2">
               {firstOfScope ? (
-                <button type="button" onClick={() => addAnother(o.channel)} className={CAT_BUTTON}>
+                <Button variant="secondary" onClick={() => addAnother(o.channel)}>
                   {CAT_ICONS.plus}
                   {t('addAnother')}
-                </button>
+                </Button>
               ) : null}
               {o.availability.length ? (
-                <button type="button" onClick={() => set(o.key, { availability: [...o.availability, { key: newKey(), days: [], from: '', to: '' }] })} className={CAT_BUTTON}>
+                <Button variant="secondary" onClick={() => set(o.key, { availability: [...o.availability, { key: newKey(), days: [], from: '', to: '' }] })}>
                   {t('addMoreTimes')}
-                </button>
+                </Button>
               ) : !moreOpen.has(o.key) ? (
-                <button type="button" aria-expanded={false} onClick={() => setMoreOpen(new Set([...moreOpen, o.key]))} className={CAT_BUTTON}>
+                <Button variant="secondary" aria-expanded={false} onClick={() => setMoreOpen(new Set([...moreOpen, o.key]))}>
                   {t('morePriceOptions')}
-                </button>
+                </Button>
               ) : null}
             </div>
             {!o.availability.length && moreOpen.has(o.key) ? (
               <div className="mt-3 space-y-2 rounded-xl bg-muted p-3">
                 <p className="text-sm text-muted-foreground">{t('timesHelp')}</p>
-                <button type="button" onClick={() => set(o.key, { availability: [{ key: newKey(), days: [], from: '', to: '' }] })} className={CAT_BUTTON}>
+                <Button variant="secondary" onClick={() => set(o.key, { availability: [{ key: newKey(), days: [], from: '', to: '' }] })}>
                   {t('addTimes')}
-                </button>
+                </Button>
               </div>
             ) : null}
           </div>
@@ -553,7 +553,7 @@ function AllergenGrid({ legend, help, value, onChange }: { legend: string; help?
   const ta = useTranslations('catalogue.allergens')
   return (
     <fieldset>
-      <legend className={CAT_LABEL}>{legend}</legend>
+      <FieldLabel as="legend">{legend}</FieldLabel>
       {help ? <p className="mt-1 text-sm text-muted-foreground">{help}</p> : null}
       <ul className="mt-3 grid gap-x-4 sm:grid-cols-2">
         {ALLERGENS.map((a) => (
@@ -597,7 +597,7 @@ export function AllergenDeclarationField({
   return (
     <div className="space-y-6">
       <div>
-        <p className={compactHeading ? 'text-sm font-medium text-foreground' : CAT_LABEL}>{t('allergens')}</p>
+        <p className={compactHeading ? 'text-sm font-medium text-foreground' : LABEL_CLASS}>{t('allergens')}</p>
         {!compactHeading ? <p className="mt-1 text-sm text-muted-foreground">{t('allergensHelp')}</p> : null}
         {declaration.status === 'notReviewed' ? (
           <p className="mt-2">
@@ -628,10 +628,10 @@ export function AllergenDeclarationField({
       ) : null}
       {withNote && declaration.status !== 'notReviewed' ? (
         <div>
-          <label htmlFor={`${id}-note`} className={CAT_LABEL}>
+          <FieldLabel htmlFor={`${id}-note`}>
             {t('note')}
-          </label>
-          <textarea id={`${id}-note`} maxLength={600} value={declaration.note[defaultLocale] ?? ''} onChange={(e) => set({ note: { ...declaration.note, [defaultLocale]: e.target.value } })} className={CAT_TEXTAREA} />
+          </FieldLabel>
+          <TextArea id={`${id}-note`} maxLength={600} value={declaration.note[defaultLocale] ?? ''} onChange={(e) => set({ note: { ...declaration.note, [defaultLocale]: e.target.value } })} />
           <p className="mt-1.5 text-sm text-muted-foreground">{t('noteHelp')}</p>
         </div>
       ) : null}
@@ -665,7 +665,7 @@ export function FoodInfoField({
       <AllergenDeclarationField declaration={declaration} defaultLocale={defaultLocale} onChange={onDeclaration} />
       {dietaryTerms.length ? (
         <div>
-          <p className={CAT_LABEL}>{t('dietary')}</p>
+          <FieldLabel as="p">{t('dietary')}</FieldLabel>
           <div className="mt-3">
             <TermChips label={t('dietary')} terms={dietaryTerms} value={dietary} onChange={onDietary} defaultLocale={defaultLocale} />
           </div>
@@ -709,19 +709,19 @@ export function OptionsField({ projectSlug, options, lists, onChange }: { projec
                   </p>
                 ) : null}
               </div>
-              <button type="button" aria-label={t('remove')} onClick={() => onChange(options.filter((x) => x.key !== o.key))} className={`-mt-2 -mr-2 ${CAT_ICON_BUTTON}`}>
+              <IconButton className="-mt-2 -mr-2" aria-label={t('remove')} onClick={() => onChange(options.filter((x) => x.key !== o.key))}>
                 {CAT_ICONS.trash}
-              </button>
+              </IconButton>
             </div>
             {list ? (
               <div className="mt-3 flex flex-wrap gap-3">
                 <label className="flex flex-col text-sm text-foreground" htmlFor={`${id}-${o.key}-min`}>
                   {t('min')}
-                  <input id={`${id}-${o.key}-min`} data-attachment-key={o.key} type="number" inputMode="numeric" min={0} max={99} value={o.min} onChange={(e) => set(o.key, { min: num(e.target.value) ?? 0 })} className={`${CAT_INPUT} w-28`} />
+                  <TextInput className="w-28" id={`${id}-${o.key}-min`} data-attachment-key={o.key} type="number" inputMode="numeric" min={0} max={99} value={o.min} onChange={(e) => set(o.key, { min: num(e.target.value) ?? 0 })} />
                 </label>
                 <label className="flex flex-col text-sm text-foreground" htmlFor={`${id}-${o.key}-max`}>
                   {t('max')}
-                  <input id={`${id}-${o.key}-max`} type="number" inputMode="numeric" min={1} max={99} placeholder={t('noLimit')} value={o.max ?? ''} onChange={(e) => set(o.key, { max: num(e.target.value) || null })} className={`${CAT_INPUT} w-28`} />
+                  <TextInput className="w-28" id={`${id}-${o.key}-max`} type="number" inputMode="numeric" min={1} max={99} placeholder={t('noLimit')} value={o.max ?? ''} onChange={(e) => set(o.key, { max: num(e.target.value) || null })} />
                 </label>
               </div>
             ) : null}
@@ -735,15 +735,15 @@ export function OptionsField({ projectSlug, options, lists, onChange }: { projec
       })}
       {available.length ? (
         <div>
-          <p className={CAT_LABEL}>{t('attach')}</p>
+          <FieldLabel as="p">{t('attach')}</FieldLabel>
           <ul className="mt-2 flex flex-wrap gap-2">
             {available.map((l) => (
               <li key={l.id}>
-                <button type="button" onClick={() => onChange([...options, { key: newKey(), listId: l.id, min: 0, max: null }])} className={CAT_BUTTON}>
+                <Button variant="secondary" onClick={() => onChange([...options, { key: newKey(), listId: l.id, min: 0, max: null }])}>
                   {CAT_ICONS.plus}
                   {l.name}
                   {l.isDraft ? <span className="text-sm font-normal text-muted-foreground">· {t('draft')}</span> : null}
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -751,9 +751,9 @@ export function OptionsField({ projectSlug, options, lists, onChange }: { projec
       ) : (
         <p className="text-sm text-muted-foreground">{lists.length ? t('allAttached') : t('noLists')}</p>
       )}
-      <Link href={`/${projectSlug}/catalogue/option-lists/new`} className={CAT_BUTTON}>
+      <ButtonLink variant="secondary" href={`/${projectSlug}/catalogue/option-lists/new`}>
         {t('createList')}
-      </Link>
+      </ButtonLink>
     </div>
   )
 }
@@ -816,9 +816,9 @@ export function PageField({
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p id={`${id}-label`} className={CAT_LABEL}>
+          <FieldLabel as="p" id={`${id}-label`}>
             {t('toggle')}
-          </p>
+          </FieldLabel>
           <p className="mt-1 text-sm text-muted-foreground">{t('toggleHelp')}</p>
         </div>
         <Switch checked={hasPage} onChange={onHasPage} labelledBy={`${id}-label`} />
@@ -828,30 +828,29 @@ export function PageField({
           {!segment ? <p className="text-sm text-muted-foreground">{t('noSegment')}</p> : null}
           {locales.map((l) => (
             <div key={l}>
-              <label htmlFor={`${id}-${l}`} className={`${CAT_LABEL} flex flex-wrap items-center gap-2`}>
+              <FieldLabel className="flex flex-wrap items-center gap-2" htmlFor={`${id}-${l}`}>
                 {locales.length > 1 ? t('addressIn', { language: languageName(l, ui) }) : t('address')}
                 {l !== defaultLocale && !name[l]?.trim() ? <Pill tone="outline">{t('notTranslated')}</Pill> : null}
-              </label>
-              <input
+              </FieldLabel>
+              <TextInput
                 id={`${id}-${l}`}
                 data-slug-locale={l}
                 value={name[l]?.trim() ? (slug[l] ?? '') : ''}
                 disabled={!name[l]?.trim()}
                 placeholder={name[l] ? slugFromName(name[l]) : ''}
                 onChange={(e) => onSlug(l, e.target.value)}
-                className={CAT_INPUT}
+                
                 autoCapitalize="off"
                 autoCorrect="off"
-                spellCheck={false}
-              />
+                spellCheck={false} />
               <p className="mt-1.5 text-sm break-all text-muted-foreground">{effective[l] ? slugPreview(segment, effective[l]) : l === defaultLocale ? t('needsName') : t('notInLanguage')}</p>
               {/* E-3: an address left in a language without a name — removed only deliberately. */}
               {!name[l]?.trim() && slug[l]?.trim() ? (
                 <p role="alert" className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-destructive">
                   {t('strayAddress', { slug: slug[l] })}
-                  <button type="button" onClick={() => onSlug(l, '')} className={CAT_BUTTON}>
+                  <Button variant="secondary" onClick={() => onSlug(l, '')}>
                     {t('removeAddress')}
-                  </button>
+                  </Button>
                 </p>
               ) : null}
               {shownConflicts
@@ -883,7 +882,7 @@ export function VisibilityField({ value, onChange }: { value: Visibility; onChan
   const id = useId()
   return (
     <fieldset>
-      <legend className={CAT_LABEL}>{t('label')}</legend>
+      <FieldLabel as="legend">{t('label')}</FieldLabel>
       <div className="mt-2 flex flex-col gap-2">
         {(['public', 'websiteOnly', 'unlisted'] as const).map((v) => (
           <label key={v} htmlFor={`${id}-${v}`} className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-border px-3 py-2.5">

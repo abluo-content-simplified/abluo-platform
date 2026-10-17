@@ -11,7 +11,7 @@ import type { CatalogueSite } from '@/lib/api/catalogue-drafts'
 import { can } from '@/lib/modules/catalogue/profiles'
 import { EMPTY_BOOK_DETAILS, NOT_REVIEWED, canAdvanceItem, initialItemProfile, itemOptionsRelevant, itemWizardSteps, type ItemProfile, type ItemState, type ItemStep } from '@/lib/modules/catalogue/dashboard-form'
 import { blocksNextOn, itemIssues, publishBlockers, type ItemIssue } from '@/lib/modules/catalogue/item-issues'
-import { CAT_BUTTON, CAT_ICONS, CAT_INPUT, CAT_PRIMARY, ItemIssueList, focusField, useCatalogueError, useItemIssueText } from './catalogue-ui'
+import { CAT_ICONS, ItemIssueList, focusField, useCatalogueError, useItemIssueText } from './catalogue-ui'
 import { BookDetailsFields, BuyLinkField, FoodInfoField, ItemPreview, LanguagesField, NameFields, OptionsField, PageField, PhotoField, PriceField, ProfileField, type OptionListChoice } from './item-fields'
 import { useCatalogueDraft, type PublishMode } from './use-catalogue-draft'
 import { StrayAddressNotice, useStrayAddress } from './stray-address'
@@ -19,6 +19,8 @@ import { languageName } from '@/components/client/create/StepHeading'
 import { useItemState } from './use-item-state'
 import { TermPicker } from '@/components/client/taxonomy/TermPicker'
 import { useUploadOwner } from '@/components/client/media/use-media-uploads'
+import { Button, ButtonLink } from '@/components/app/ui/Button'
+import { inputClass } from '@/components/app/ui/field-styles'
 
 type Done = { kind: 'live' } | { kind: 'scheduled'; at: string } | { kind: 'draft' }
 
@@ -306,7 +308,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
                 value={publish}
                 onChange={setPublish}
                 zone={zone}
-                inputClassName={CAT_INPUT}
+                inputClassName={inputClass()}
                 text={{ title: t('publish.title'), now: t('publish.choiceNow'), schedule: t('publish.choiceSchedule'), draft: t('publish.choiceDraft') }}
               >
                 {publishBlocked ? (
@@ -329,12 +331,12 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
               {done.kind === 'scheduled' ? t('done.scheduledBody', { date: new Intl.DateTimeFormat(ui, { dateStyle: 'full', timeStyle: 'short', timeZone: zone }).format(new Date(done.at)) }) : t(`done.${done.kind}Body`)}
             </p>
             <div className="mt-10 flex w-full flex-col gap-3 sm:flex-row">
-              <Link href={listHref} className={CAT_PRIMARY}>
+              <ButtonLink variant="primary" href={listHref}>
                 {t('done.list')}
-              </Link>
-              <button type="button" className={CAT_BUTTON} onClick={() => window.location.assign(window.location.pathname.replace(/\/[^/]+\/?$/, '/new'))}>
+              </ButtonLink>
+              <Button variant="secondary"  onClick={() => window.location.assign(window.location.pathname.replace(/\/[^/]+\/?$/, '/new'))}>
                 {t('done.another')}
-              </button>
+              </Button>
             </div>
             <Link href={`/${projectSlug}/catalogue/${draft.id}`} className="mt-4 inline-flex min-h-11 items-center text-[0.9375rem] font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
               {t('done.open')}

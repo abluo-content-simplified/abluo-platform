@@ -48,13 +48,15 @@ import {
   type Texts,
   type Visibility,
 } from '@/lib/modules/catalogue/dashboard-form'
-import { CAT_BUTTON, CAT_ICON_BUTTON, CAT_ICONS, CAT_INPUT, CAT_MOTION, CAT_PRIMARY, GapBadges, InUseNotice, SegmentTabs, UnpublishDateSheet, textIn, useCatalogueError } from './catalogue-ui'
+import { CAT_ICONS, CAT_MOTION, GapBadges, InUseNotice, SegmentTabs, UnpublishDateSheet, textIn, useCatalogueError } from './catalogue-ui'
 import { FieldBlock, NameFields, PageField, VisibilityField } from './item-fields'
 import { useCatalogueDraft } from './use-catalogue-draft'
 import type { ItemChoice } from './choices'
 import { usePublishTogether } from './publish-dependencies'
 import { StrayAddressNotice, focusNameField, useStrayAddress } from './stray-address'
 import { languageName } from '@/components/client/create/StepHeading'
+import { Button, IconButton } from '@/components/app/ui/Button'
+import { TextInput } from '@/components/app/ui/TextInput'
 
 type Tab = 'sections' | 'details' | 'page'
 const newKey = () => Math.random().toString(36).slice(2, 14)
@@ -236,19 +238,17 @@ export function CollectionBuilder({
         {t('sections.removed', { name: sectionName(undo.removed[0]), count: undo.removed.length - 1 })}
       </span>
       <span className="flex gap-2">
-        <button
-          type="button"
-          className={CAT_BUTTON}
+        <Button variant="secondary"
+          
           onClick={() => {
             saveSections(undoDelete(sections, undo))
             setUndo(null)
-          }}
-        >
+          }}>
           {t('sections.undo')}
-        </button>
-        <button type="button" aria-label={t('sections.dismiss')} className={CAT_ICON_BUTTON} onClick={() => setUndo(null)}>
+        </Button>
+        <IconButton aria-label={t('sections.dismiss')}  onClick={() => setUndo(null)}>
           {CAT_ICONS.x}
-        </button>
+        </IconButton>
       </span>
     </div>
   ) : null
@@ -259,9 +259,9 @@ export function CollectionBuilder({
   const publishNeedsName = !name[d]?.trim()
   const primary =
     !readOnly && draft.created ? (
-      <button type="button" disabled={busy || publishNeedsName} aria-describedby={publishNeedsName ? hintId : undefined} onClick={() => void publish()} className={CAT_PRIMARY}>
+      <Button variant="primary" disabled={busy || publishNeedsName} aria-describedby={publishNeedsName ? hintId : undefined} onClick={() => void publish()}>
         {isLive ? t('publishChanges') : t('publish')}
-      </button>
+      </Button>
     ) : null
   const hint = primary && publishNeedsName ? (
     <p id={hintId} className="text-sm text-muted-foreground">
@@ -368,16 +368,16 @@ export function CollectionBuilder({
             </FieldBlock>
           </>
         ) : !draft.created ? (
-          <EmptyState title={t('sections.nameFirstTitle')} body={t('nameFirst')} action={<button type="button" className={CAT_BUTTON} onClick={() => setTab('details')}>{t('tabs.details')}</button>} />
+          <EmptyState title={t('sections.nameFirstTitle')} body={t('nameFirst')} action={<Button variant="secondary"  onClick={() => setTab('details')}>{t('tabs.details')}</Button>} />
         ) : sections.length === 0 && !undo ? (
           <EmptyState
             title={t('sections.emptyTitle')}
             body={t('sections.emptyBody')}
             action={
-              <button type="button" className={CAT_PRIMARY} onClick={() => saveSections(addSection(sections, newKey()))}>
+              <Button variant="primary"  onClick={() => saveSections(addSection(sections, newKey()))}>
                 {CAT_ICONS.plus}
                 {t('sections.addFirst')}
-              </button>
+              </Button>
             }
           />
         ) : (
@@ -403,34 +403,32 @@ export function CollectionBuilder({
                     >
                       {isOver ? <span aria-hidden="true" className={`absolute inset-x-3 h-0.5 rounded bg-action ${drag.over?.after ? '-bottom-2' : '-top-2'}`} /> : null}
                       <div className="flex items-start gap-1">
-                        <button type="button" aria-label={t('sections.drag', { name: sectionName(s) })} className={`${CAT_ICON_BUTTON} cursor-grab active:cursor-grabbing`} {...drag.gripProps(s._key)}>
+                        <IconButton className="cursor-grab active:cursor-grabbing" aria-label={t('sections.drag', { name: sectionName(s) })}  {...drag.gripProps(s._key)}>
                           {CAT_ICONS.grip}
-                        </button>
+                        </IconButton>
                         <div className="min-w-0 flex-1">
                           <label className="sr-only" htmlFor={`sec-${s._key}`}>
                             {t('sections.name')}
                           </label>
-                          <input
+                          <TextInput flush
                             id={`sec-${s._key}`}
                             value={s.name[d] ?? ''}
                             placeholder={t('sections.namePlaceholder')}
-                            onChange={(e) => saveSections(sections.map((x) => (x._key === s._key ? { ...x, name: { ...x.name, [d]: e.target.value } } : x)))}
-                            className={`${CAT_INPUT} mt-0`}
-                          />
+                            onChange={(e) => saveSections(sections.map((x) => (x._key === s._key ? { ...x, name: { ...x.name, [d]: e.target.value } } : x)))} />
                           <div className="mt-2 flex flex-wrap items-start gap-1.5">
                             {s.items.length === 0 ? <Pill tone="outline">{t('sections.empty')}</Pill> : null}
                             {depth >= SECTION_DEPTH_WARNING ? <Pill tone="outline">{t('sections.deep')}</Pill> : null}
                           </div>
                         </div>
-                        <button type="button" aria-label={t('sections.up', { name: sectionName(s) })} disabled={pos <= 0} onClick={() => saveSections(moveSectionBy(sections, s._key, -1))} className={CAT_ICON_BUTTON}>
+                        <IconButton aria-label={t('sections.up', { name: sectionName(s) })} disabled={pos <= 0} onClick={() => saveSections(moveSectionBy(sections, s._key, -1))}>
                           {CAT_ICONS.up}
-                        </button>
-                        <button type="button" aria-label={t('sections.down', { name: sectionName(s) })} disabled={pos >= sibs.length - 1} onClick={() => saveSections(moveSectionBy(sections, s._key, 1))} className={CAT_ICON_BUTTON}>
+                        </IconButton>
+                        <IconButton aria-label={t('sections.down', { name: sectionName(s) })} disabled={pos >= sibs.length - 1} onClick={() => saveSections(moveSectionBy(sections, s._key, 1))}>
                           {CAT_ICONS.down}
-                        </button>
-                        <button type="button" aria-label={t('sections.delete', { name: sectionName(s) })} onClick={() => removeSection(s._key)} className={CAT_ICON_BUTTON}>
+                        </IconButton>
+                        <IconButton aria-label={t('sections.delete', { name: sectionName(s) })} onClick={() => removeSection(s._key)}>
                           {CAT_ICONS.trash}
-                        </button>
+                        </IconButton>
                       </div>
                       {s.items.length ? (
                         <ul className="mt-3 flex flex-col gap-2">
@@ -444,28 +442,28 @@ export function CollectionBuilder({
                                   {it?.isDraft ? <Pill tone="outline">{t('picker.draft')}</Pill> : null}
                                   {it ? <GapBadges gaps={itemGaps(it)} /> : null}
                                 </div>
-                                <button type="button" aria-label={t('sections.itemUp')} disabled={n === 0} onClick={() => saveSections(sections.map((x) => (x._key === s._key ? { ...x, items: moveIndex(x.items, n, n - 1) } : x)))} className={CAT_ICON_BUTTON}>
+                                <IconButton aria-label={t('sections.itemUp')} disabled={n === 0} onClick={() => saveSections(sections.map((x) => (x._key === s._key ? { ...x, items: moveIndex(x.items, n, n - 1) } : x)))}>
                                   {CAT_ICONS.up}
-                                </button>
-                                <button type="button" aria-label={t('sections.itemDown')} disabled={n === s.items.length - 1} onClick={() => saveSections(sections.map((x) => (x._key === s._key ? { ...x, items: moveIndex(x.items, n, n + 1) } : x)))} className={CAT_ICON_BUTTON}>
+                                </IconButton>
+                                <IconButton aria-label={t('sections.itemDown')} disabled={n === s.items.length - 1} onClick={() => saveSections(sections.map((x) => (x._key === s._key ? { ...x, items: moveIndex(x.items, n, n + 1) } : x)))}>
                                   {CAT_ICONS.down}
-                                </button>
-                                <button type="button" aria-label={t('sections.removeItem')} onClick={() => saveSections(sections.map((x) => (x._key === s._key ? { ...x, items: x.items.filter((_, k) => k !== n) } : x)))} className={CAT_ICON_BUTTON}>
+                                </IconButton>
+                                <IconButton aria-label={t('sections.removeItem')} onClick={() => saveSections(sections.map((x) => (x._key === s._key ? { ...x, items: x.items.filter((_, k) => k !== n) } : x)))}>
                                   {CAT_ICONS.x}
-                                </button>
+                                </IconButton>
                               </li>
                             )
                           })}
                         </ul>
                       ) : null}
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <button type="button" onClick={() => setPicker(s._key)} className={CAT_BUTTON}>
+                        <Button variant="secondary" onClick={() => setPicker(s._key)}>
                           {CAT_ICONS.plus}
                           {t('sections.addItems')}
-                        </button>
-                        <button type="button" onClick={() => saveSections(addSubsection(sections, s._key, newKey()))} className={CAT_BUTTON}>
+                        </Button>
+                        <Button variant="secondary" onClick={() => saveSections(addSubsection(sections, s._key, newKey()))}>
                           {t('sections.addSubsection')}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </li>
@@ -473,10 +471,10 @@ export function CollectionBuilder({
               })}
               {undoAt === sections.length ? <li>{undoStrip}</li> : null}
             </ol>
-            <button type="button" onClick={() => saveSections(addSection(sections, newKey()))} className={CAT_BUTTON}>
+            <Button variant="secondary" onClick={() => saveSections(addSection(sections, newKey()))}>
               {CAT_ICONS.plus}
               {t('sections.add')}
-            </button>
+            </Button>
           </>
         )}
       </fieldset>
@@ -541,7 +539,7 @@ function ItemPicker({ open, onClose, items, categories, onAdd }: { open: boolean
       <label htmlFor={`${id}-q`} className="sr-only">
         {t('search')}
       </label>
-      <input id={`${id}-q`} value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('search')} className={CAT_INPUT} />
+      <TextInput id={`${id}-q`} value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('search')} />
       {categories.length ? (
         <div className="mt-3">
           <FilterSelect label={t('category')} value={category} onChange={setCategory} options={[{ value: '', label: t('anyCategory') }, ...categories]} />
@@ -563,9 +561,9 @@ function ItemPicker({ open, onClose, items, categories, onAdd }: { open: boolean
           </li>
         ))}
       </ul>
-      <button type="button" disabled={!picked.length} aria-describedby={picked.length ? undefined : `${id}-pick`} onClick={() => { onAdd(picked); setPicked([]) }} className={`mt-4 ${CAT_PRIMARY}`}>
+      <Button variant="primary" className="mt-4" disabled={!picked.length} aria-describedby={picked.length ? undefined : `${id}-pick`} onClick={() => { onAdd(picked); setPicked([]) }}>
         {t('add', { count: picked.length })}
-      </button>
+      </Button>
       {picked.length ? null : (
         <p id={`${id}-pick`} className="mt-2 text-sm text-muted-foreground">
           {t('pickHint')}

@@ -22,11 +22,14 @@ import type { Referrer } from '@/lib/lifecycle/service'
 import { formatPrice } from '@/lib/modules/catalogue/resolve'
 import { NOT_REVIEWED, declarationIssues, isFreeTextAdd, moveIndex, optionFormsFromDoc, optionsPatch, parsePrice, textsOf, type OptionForm, type Texts } from '@/lib/modules/catalogue/dashboard-form'
 import { Pill } from '@/components/app/ui/list/cells'
-import { CAT_BUTTON, CAT_ICON_BUTTON, CAT_ICONS, CAT_INPUT, CAT_LABEL, CAT_PRIMARY, InUseNotice, textIn, useCatalogueError } from './catalogue-ui'
+import { CAT_ICONS, InUseNotice, textIn, useCatalogueError } from './catalogue-ui'
 import { AllergenDeclarationField, FieldBlock } from './item-fields'
 import { useCatalogueDraft } from './use-catalogue-draft'
 import type { ItemChoice } from './choices'
 import { usePublishTogether } from './publish-dependencies'
+import { Button, IconButton } from '@/components/app/ui/Button'
+import { FieldLabel } from '@/components/app/ui/FieldLabel'
+import { TextInput } from '@/components/app/ui/TextInput'
 
 const newKey = () => Math.random().toString(36).slice(2, 14)
 
@@ -156,9 +159,9 @@ export function OptionListEditor({
   const publishHint = !name[d]?.trim() ? t('publishNeedsName') : options.length === 0 ? t('publishNeedsOption') : null
   const primary =
     !readOnly && draft.created ? (
-      <button type="button" disabled={busy || publishHint !== null} aria-describedby={publishHint ? `${id}-hint` : undefined} onClick={() => void publish()} className={CAT_PRIMARY}>
+      <Button variant="primary" disabled={busy || publishHint !== null} aria-describedby={publishHint ? `${id}-hint` : undefined} onClick={() => void publish()}>
         {isLive ? t('publishChanges') : t('publish')}
-      </button>
+      </Button>
     ) : null
   const hint = primary && publishHint ? (
     <p id={`${id}-hint`} className="text-sm text-muted-foreground">
@@ -200,10 +203,10 @@ export function OptionListEditor({
         <FieldBlock title={t('name')} helper={t('nameHelp')}>
           {site.locales.map((l) => (
             <div key={l}>
-              <label htmlFor={`${id}-name-${l}`} className={CAT_LABEL}>
+              <FieldLabel htmlFor={`${id}-name-${l}`}>
                 {site.locales.length > 1 ? languageName(l, ui) : t('name')}
-              </label>
-              <input
+              </FieldLabel>
+              <TextInput
                 id={`${id}-name-${l}`}
                 autoFocus={!snapshot && l === d}
                 maxLength={120}
@@ -211,9 +214,7 @@ export function OptionListEditor({
                 onChange={(e) => {
                   setName((p) => ({ ...p, [l]: e.target.value }))
                   update({ [`name.${l}`]: e.target.value })
-                }}
-                className={CAT_INPUT}
-              />
+                }} />
             </div>
           ))}
         </FieldBlock>
@@ -241,19 +242,19 @@ export function OptionListEditor({
                             <label htmlFor={`${id}-${o.key}-${l}`} className="text-sm text-foreground">
                               {site.locales.length > 1 ? t('labelIn', { language: languageName(l, ui) }) : t('label')}
                             </label>
-                            <input id={`${id}-${o.key}-${l}`} maxLength={80} value={o.label[l] ?? ''} onChange={(e) => setOpt(o.key, { label: { ...o.label, [l]: e.target.value } })} className={CAT_INPUT} />
+                            <TextInput id={`${id}-${o.key}-${l}`} maxLength={80} value={o.label[l] ?? ''} onChange={(e) => setOpt(o.key, { label: { ...o.label, [l]: e.target.value } })} />
                           </div>
                         ))}
                       </div>
-                      <button type="button" aria-label={t('up')} disabled={n === 0} onClick={() => saveOptions(moveIndex(options, n, n - 1))} className={CAT_ICON_BUTTON}>
+                      <IconButton aria-label={t('up')} disabled={n === 0} onClick={() => saveOptions(moveIndex(options, n, n - 1))}>
                         {CAT_ICONS.up}
-                      </button>
-                      <button type="button" aria-label={t('down')} disabled={n === options.length - 1} onClick={() => saveOptions(moveIndex(options, n, n + 1))} className={CAT_ICON_BUTTON}>
+                      </IconButton>
+                      <IconButton aria-label={t('down')} disabled={n === options.length - 1} onClick={() => saveOptions(moveIndex(options, n, n + 1))}>
                         {CAT_ICONS.down}
-                      </button>
-                      <button type="button" aria-label={t('remove')} onClick={() => saveOptions(options.filter((x) => x.key !== o.key))} className={CAT_ICON_BUTTON}>
+                      </IconButton>
+                      <IconButton aria-label={t('remove')} onClick={() => saveOptions(options.filter((x) => x.key !== o.key))}>
                         {CAT_ICONS.trash}
-                      </button>
+                      </IconButton>
                     </div>
                     <div className="mt-3 flex flex-wrap items-end gap-3">
                       <FilterSegmented
@@ -267,7 +268,7 @@ export function OptionListEditor({
                       />
                       <label className="flex flex-col text-sm text-foreground" htmlFor={`${id}-${o.key}-delta`}>
                         {t('delta')}
-                        <input id={`${id}-${o.key}-delta`} inputMode="decimal" placeholder="0.00" value={o.delta} onChange={(e) => setOpt(o.key, { delta: e.target.value })} aria-invalid={delta === null || undefined} className={`${CAT_INPUT} w-32`} />
+                        <TextInput className="w-32" id={`${id}-${o.key}-delta`} inputMode="decimal" placeholder="0.00" value={o.delta} onChange={(e) => setOpt(o.key, { delta: e.target.value })} aria-invalid={delta === null || undefined} />
                       </label>
                       {delta !== null && delta !== 0 ? <span className="pb-3 text-sm text-muted-foreground">{formatPrice(delta, site.config.currency, ui, { signed: true })}</span> : null}
                     </div>
@@ -297,10 +298,10 @@ export function OptionListEditor({
             </ol>
           )}
           {draft.created ? (
-            <button type="button" onClick={() => saveOptions([...options, { key: newKey(), label: {}, kind: 'add', delta: '', itemId: null, declaration: NOT_REVIEWED }])} className={CAT_BUTTON}>
+            <Button variant="secondary" onClick={() => saveOptions([...options, { key: newKey(), label: {}, kind: 'add', delta: '', itemId: null, declaration: NOT_REVIEWED }])}>
               {CAT_ICONS.plus}
               {t('add')}
-            </button>
+            </Button>
           ) : null}
         </FieldBlock>
       </fieldset>

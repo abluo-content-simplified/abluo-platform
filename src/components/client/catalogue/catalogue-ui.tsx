@@ -12,6 +12,8 @@ import type { ItemGap } from '@/lib/modules/catalogue/dashboard-form'
 import type { CatalogueKind } from '@/lib/modules/catalogue/dashboard-patch'
 import type { ItemIssue } from '@/lib/modules/catalogue/item-issues'
 import { languageName } from '@/components/client/create/StepHeading'
+import { Button, IconButton } from '@/components/app/ui/Button'
+import { inputClass } from '@/components/app/ui/field-styles'
 
 /**
  * Catalogue dashboard — small shared pieces (ADR-033, spec §10). Styling
@@ -19,17 +21,6 @@ import { languageName } from '@/components/client/create/StepHeading'
  * the one primary button, focus rings everywhere. No user-facing string lives
  * here — every label comes from `catalogue.dashboard.*`.
  */
-export const CAT_BUTTON =
-  'inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-border px-4 text-[0.9375rem] font-semibold text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40'
-export const CAT_PRIMARY =
-  'inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-action px-4 text-[0.9375rem] font-semibold text-action-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-40'
-export const CAT_INPUT =
-  'mt-1.5 h-12 w-full rounded-xl border border-border bg-background px-3 text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60'
-export const CAT_TEXTAREA =
-  'mt-1.5 min-h-28 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
-export const CAT_LABEL = 'text-[0.9375rem] font-medium text-foreground'
-export const CAT_ICON_BUTTON =
-  'grid size-11 shrink-0 place-items-center rounded-xl text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-30'
 /**
  * The Abluo App's standard UI motion (200ms ease-out — ChoiceCard, Switch,
  * ToggleChips): the dashboard is not themed by a tenant design system, so the
@@ -115,9 +106,9 @@ export function InUseNotice({ projectSlug, referrers, onClose }: { projectSlug: 
           </ul>
         </div>
         {onClose ? (
-          <button type="button" onClick={onClose} aria-label={t('dismiss')} className={CAT_ICON_BUTTON}>
+          <IconButton onClick={onClose} aria-label={t('dismiss')}>
             {CAT_ICONS.x}
-          </button>
+          </IconButton>
         ) : null}
       </div>
     </div>
@@ -140,15 +131,15 @@ export function UnpublishDateSheet({ open, busy, zone, onClose, onSave, onRemove
   return (
     <BottomSheet open={open} title={tl('actions.setUnpublishDate')} onClose={onClose}>
       <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('unpublishHelper')}</p>
-      <PublicationDateField id="catalogue-unpublish-on" className="mt-4" label={tl('dates.unpublishOn')} value={iso} onChange={setIso} zone={zone} inputClassName={CAT_INPUT} />
+      <PublicationDateField id="catalogue-unpublish-on" className="mt-4" label={tl('dates.unpublishOn')} value={iso} onChange={setIso} zone={zone} inputClassName={inputClass()} />
       {problem === 'unpublish_in_past' ? <p className="mt-2 text-sm text-destructive">{tl('dates.mustBeFuture')}</p> : null}
-      <button type="button" disabled={!iso || !!problem || busy} onClick={() => iso && onSave(iso)} className={`mt-4 ${CAT_PRIMARY}`}>
+      <Button variant="primary" className="mt-4" disabled={!iso || !!problem || busy} onClick={() => iso && onSave(iso)}>
         {t('save')}
-      </button>
+      </Button>
       {onRemove ? (
-        <button type="button" disabled={busy} onClick={onRemove} className={`mt-2 ${CAT_BUTTON}`}>
+        <Button variant="secondary" className="mt-2" disabled={busy} onClick={onRemove}>
           {tl('actions.removeUnpublishDate')}
-        </button>
+        </Button>
       ) : null}
     </BottomSheet>
   )

@@ -9,7 +9,8 @@ import { previewCataloguePublishAction } from '@/app/[locale]/(client)/[tenant]/
 import type { CataloguePublishPreview } from '@/lib/api/catalogue-drafts'
 import type { Referrer } from '@/lib/lifecycle/service'
 import type { CatalogueKind } from '@/lib/modules/catalogue/dashboard-patch'
-import { CAT_BUTTON, CAT_ICON_BUTTON, CAT_ICONS, CAT_PRIMARY, referrerHref, useCatalogueError } from './catalogue-ui'
+import { CAT_ICONS, referrerHref, useCatalogueError } from './catalogue-ui'
+import { Button, IconButton } from '@/components/app/ui/Button'
 
 /**
  * ADR-033 D-4 / D-5 in the dashboard.
@@ -71,15 +72,15 @@ export function DependenciesNotice({
             ))}
           </ul>
           {onPublishTogether ? (
-            <button type="button" onClick={onPublishTogether} className={`mt-3 ${CAT_BUTTON}`}>
+            <Button variant="secondary" className="mt-3" onClick={onPublishTogether}>
               {t(togetherKey(kind))}
-            </button>
+            </Button>
           ) : null}
         </div>
         {onClose ? (
-          <button type="button" onClick={onClose} aria-label={tc('dismiss')} className={CAT_ICON_BUTTON}>
+          <IconButton onClick={onClose} aria-label={tc('dismiss')}>
             {CAT_ICONS.x}
-          </button>
+          </IconButton>
         ) : null}
       </div>
     </div>
@@ -226,9 +227,9 @@ export function PublishTogetherSheet({
               </ul>
             </Group>
           ) : null}
-          <button type="button" disabled={busy || blocking} onClick={onConfirm} className={`mt-2 w-full ${CAT_PRIMARY}`}>
+          <Button variant="primary" className="mt-2 w-full" disabled={busy || blocking} onClick={onConfirm}>
             {preview.publishAt ? t('confirmSchedule', { count: preview.dependencies.length + 1 }) : t('confirmNow', { count: preview.dependencies.length + 1 })}
-          </button>
+          </Button>
         </div>
       )}
     </BottomSheet>

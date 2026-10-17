@@ -24,7 +24,7 @@ import type { Referrer } from '@/lib/lifecycle/service'
 import { PROFILES, can as profileCan } from '@/lib/modules/catalogue/profiles'
 import { attachmentIssues, declarationIssues, itemGaps, itemOptionsRelevant, itemStateFromDoc, type ItemState } from '@/lib/modules/catalogue/dashboard-form'
 import { adviceTabs, issueCountByTab, itemIssues, publishBlockers, type ItemIssue, type ItemTab } from '@/lib/modules/catalogue/item-issues'
-import { CAT_ICONS, CAT_INPUT, CAT_PRIMARY, GapBadges, InUseNotice, ItemIssueList, SegmentTabs, TabLabel, UnpublishDateSheet, focusField, textIn, useCatalogueError } from './catalogue-ui'
+import { CAT_ICONS, GapBadges, InUseNotice, ItemIssueList, SegmentTabs, TabLabel, UnpublishDateSheet, focusField, textIn, useCatalogueError } from './catalogue-ui'
 import { BookDetailsFields, FieldBlock, FoodInfoField, ItemPreview, LanguagesField, LinksField, NameFields, OptionsField, PageField, PhotoField, PriceField, VisibilityField, type OptionListChoice } from './item-fields'
 import { ChangeTypeSheet } from './ChangeTypeSheet'
 import { usePublishTogether } from './publish-dependencies'
@@ -32,6 +32,8 @@ import { languageName } from '@/components/client/create/StepHeading'
 import { StrayAddressNotice, focusNameField, useStrayAddress } from './stray-address'
 import { useCatalogueDraft } from './use-catalogue-draft'
 import { useItemState } from './use-item-state'
+import { Button } from '@/components/app/ui/Button'
+import { inputClass } from '@/components/app/ui/field-styles'
 
 type Tab = ItemTab
 type PublishResult = { kind: 'published' } | { kind: 'scheduled'; at: string | null }
@@ -227,9 +229,9 @@ export function ItemEditor({
   ]
 
   const primary = !readOnly ? (
-    <button type="button" disabled={busy || !canPublish || photosInFlight > 0} onClick={() => void publish(isLive ? 'keep' : 'now')} className={CAT_PRIMARY}>
+    <Button variant="primary" disabled={busy || !canPublish || photosInFlight > 0} onClick={() => void publish(isLive ? 'keep' : 'now')}>
       {photosInFlight > 0 ? tu('stillUploading', { count: photosInFlight }) : isLive ? t('publishChanges') : t('publish')}
-    </button>
+    </Button>
   ) : null
 
   return (
@@ -343,10 +345,10 @@ export function ItemEditor({
             </FieldBlock>
             {!readOnly && !isLive ? (
               <FieldBlock title={tl('dates.publishOn')} helper={t('scheduleHelp')}>
-                <PublicationDateField id="item-editor-publish-on" label={tl('dates.publishOn')} value={publishAt} onChange={setPublishAt} zone={zone} inputClassName={CAT_INPUT} />
-                <button type="button" disabled={busy || !publishAt || !canPublish || photosInFlight > 0} onClick={() => void publish('schedule')} className={CAT_PRIMARY}>
+                <PublicationDateField id="item-editor-publish-on" label={tl('dates.publishOn')} value={publishAt} onChange={setPublishAt} zone={zone} inputClassName={inputClass()} />
+                <Button variant="primary" disabled={busy || !publishAt || !canPublish || photosInFlight > 0} onClick={() => void publish('schedule')}>
                   {t('schedule')}
-                </button>
+                </Button>
               </FieldBlock>
             ) : null}
           </>
