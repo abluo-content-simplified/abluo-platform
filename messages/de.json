@@ -1682,6 +1682,21 @@
         "not_found": "Das gibt es nicht mehr. Laden Sie die Seite neu.",
         "invalid_value": "Bitte prüfen Sie Ihre Eingabe.",
         "failed": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+      },
+      "picker": {
+        "noMatch": "Nichts gefunden. Prüfe die Schreibweise.",
+        "placeholderSearch": "Suchen",
+        "manage": "Kategorien & Tags verwalten",
+        "category": {
+          "empty": "Noch keine Kategorien. Gib einen Namen ein, um die erste hinzuzufügen.",
+          "placeholderAdd": "Kategorie suchen oder hinzufügen",
+          "addNamed": "„{name}“ hinzufügen"
+        },
+        "tag": {
+          "empty": "Noch keine Tags. Gib einen Namen ein, um das erste hinzuzufügen.",
+          "placeholderAdd": "Tag suchen oder hinzufügen",
+          "addNamed": "„{name}“ hinzufügen"
+        }
       }
     },
     "photoWizard": {

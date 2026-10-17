@@ -12,11 +12,12 @@ import { can } from '@/lib/modules/catalogue/profiles'
 import { EMPTY_BOOK_DETAILS, NOT_REVIEWED, canAdvanceItem, initialItemProfile, itemOptionsRelevant, itemWizardSteps, type ItemProfile, type ItemState, type ItemStep } from '@/lib/modules/catalogue/dashboard-form'
 import { blocksNextOn, itemIssues, publishBlockers, type ItemIssue } from '@/lib/modules/catalogue/item-issues'
 import { CAT_BUTTON, CAT_ICONS, CAT_INPUT, CAT_PRIMARY, ItemIssueList, focusField, useCatalogueError, useItemIssueText } from './catalogue-ui'
-import { BookDetailsFields, FoodInfoField, ItemPreview, LanguagesField, NameFields, OptionsField, PageField, PhotoField, PriceField, ProfileField, TermChips, type OptionListChoice } from './item-fields'
+import { BookDetailsFields, FoodInfoField, ItemPreview, LanguagesField, NameFields, OptionsField, PageField, PhotoField, PriceField, ProfileField, type OptionListChoice } from './item-fields'
 import { useCatalogueDraft, type PublishMode } from './use-catalogue-draft'
 import { StrayAddressNotice, useStrayAddress } from './stray-address'
 import { languageName } from '@/components/client/create/StepHeading'
 import { useItemState } from './use-item-state'
+import { TermPicker } from '@/components/client/taxonomy/TermPicker'
 import { useUploadOwner } from '@/components/client/media/use-media-uploads'
 
 type Done = { kind: 'live' } | { kind: 'scheduled'; at: string } | { kind: 'draft' }
@@ -33,7 +34,7 @@ type Done = { kind: 'live' } | { kind: 'scheduled'; at: string } | { kind: 'draf
  * Lazy creation: nothing exists until the name is typed; then the URL becomes
  * /catalogue/<id> without a reload, and closing the browser loses nothing.
  */
-export function ItemWizard({ projectSlug, site, optionLists, listHref }: { projectSlug: string; site: CatalogueSite; optionLists: OptionListChoice[]; listHref: string }) {
+export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCategory = false }: { projectSlug: string; site: CatalogueSite; optionLists: OptionListChoice[]; listHref: string; /** Holds catalogue.taxonomy.write: the category step offers "+ Add category" (and shows even with no category yet). */ canAddCategory?: boolean }) {
   const t = useTranslations('catalogue.dashboard.item.wizard')
   const tc = useTranslations('clientDashboard.create')
   const tl = useTranslations('app.lifecycle')
@@ -75,7 +76,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
 
   // D7: the Options step is shown when it is relevant (food, or option lists attached / existing) — never by business type.
   const stepsFor = (itemProfile: ItemProfile | null, attachedCount: number) =>
-    itemWizardSteps({ itemProfile, categoryCount: site.config.categories.length, locales: site.locales, showOptions: itemOptionsRelevant({ itemProfile, attachedCount, projectListCount: optionLists.length }) })
+    itemWizardSteps({ itemProfile, categoryCount: site.config.categories.length || (canAddCategory ? 1 : 0), locales: site.locales, showOptions: itemOptionsRelevant({ itemProfile, attachedCount, projectListCount: optionLists.length }) })
   const steps = stepsFor(s.itemProfile, s.options.length)
   const [step, setStep] = useState<ItemStep | 'done'>(steps[0])
   const [publish, setPublish] = useState<PublishChoiceValue>({ mode: 'now', publishAt: null, expire: false, unpublishAt: null })
@@ -225,7 +226,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
           <>
             {heading('item-step-category', 'category')}
             <div className="mt-8">
-              <TermChips label={t('category.title')} terms={site.config.categories} value={s.categories} onChange={item.setCategories} defaultLocale={d} />
+              <TermPicker projectSlug={projectSlug} module="catalogue" kind="category" label={t('category.title')} terms={site.config.categories} value={s.categories} onChange={item.setCategories} defaultLocale={d} canAdd={canAddCategory} />
             </div>
           </>
         ) : step === 'photo' ? (

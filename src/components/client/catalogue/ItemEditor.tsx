@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { timedAction } from '@/lib/perf/client-log'
+import { TermPicker } from '@/components/client/taxonomy/TermPicker'
 import { useUploadOwner } from '@/components/client/media/use-media-uploads'
 import { useLocale, useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/navigation'
@@ -24,7 +25,7 @@ import { PROFILES, can as profileCan } from '@/lib/modules/catalogue/profiles'
 import { attachmentIssues, declarationIssues, itemGaps, itemOptionsRelevant, itemStateFromDoc, type ItemState } from '@/lib/modules/catalogue/dashboard-form'
 import { adviceTabs, issueCountByTab, itemIssues, publishBlockers, type ItemIssue, type ItemTab } from '@/lib/modules/catalogue/item-issues'
 import { CAT_ICONS, CAT_INPUT, CAT_PRIMARY, GapBadges, InUseNotice, ItemIssueList, SegmentTabs, TabLabel, UnpublishDateSheet, focusField, textIn, useCatalogueError } from './catalogue-ui'
-import { BookDetailsFields, FieldBlock, FoodInfoField, ItemPreview, LanguagesField, LinksField, NameFields, OptionsField, PageField, PhotoField, PriceField, TermChips, VisibilityField, type OptionListChoice } from './item-fields'
+import { BookDetailsFields, FieldBlock, FoodInfoField, ItemPreview, LanguagesField, LinksField, NameFields, OptionsField, PageField, PhotoField, PriceField, VisibilityField, type OptionListChoice } from './item-fields'
 import { ChangeTypeSheet } from './ChangeTypeSheet'
 import { usePublishTogether } from './publish-dependencies'
 import { languageName } from '@/components/client/create/StepHeading'
@@ -49,6 +50,7 @@ export function ItemEditor({
   snapshot,
   optionLists,
   can,
+  canAddCategory = false,
   listHref,
 }: {
   projectSlug: string
@@ -56,6 +58,8 @@ export function ItemEditor({
   snapshot: CatalogueSnapshot
   optionLists: OptionListChoice[]
   can: CatalogueAbilities['item']
+  /** Holds catalogue.taxonomy.write: the category field offers "+ Add category" (and shows even with no category yet). */
+  canAddCategory?: boolean
   listHref: string
 }) {
   const t = useTranslations('catalogue.dashboard.item.editor')
@@ -289,9 +293,9 @@ export function ItemEditor({
             <FieldBlock title={hasBookInfo ? tf('nameBook.title') : tf('name.title')}>
               <NameFields locale={d} profile={s.itemProfile} afterName={hasBookInfo ? <BookDetailsFields value={s.bookDetails} onChange={item.setBookDetails} /> : null} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
             </FieldBlock>
-            {site.config.categories.length ? (
+            {site.config.categories.length || (canAddCategory && can.write) ? (
               <FieldBlock title={tf('category.title')}>
-                <TermChips label={tf('category.title')} terms={site.config.categories} value={s.categories} onChange={item.setCategories} defaultLocale={d} />
+                <TermPicker projectSlug={projectSlug} module="catalogue" kind="category" label={tf('category.title')} terms={site.config.categories} value={s.categories} onChange={item.setCategories} defaultLocale={d} canAdd={canAddCategory && can.write} />
               </FieldBlock>
             ) : null}
             <FieldBlock title={tfl('title')} helper={tfl('helper')}>

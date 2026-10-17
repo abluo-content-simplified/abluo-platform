@@ -6,6 +6,7 @@ import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { CatalogueError, catalogueAbilities, getCatalogueDoc, getCatalogueSite, listCatalogue } from '@/lib/api/catalogue-drafts'
 import { isCatalogueId } from '@/lib/api/catalogue-lifecycle'
+import { taxonomyWritePermission } from '@/lib/taxonomy/permissions'
 import { ItemEditor } from '@/components/client/catalogue/ItemEditor'
 import { optionListChoices } from '@/components/client/catalogue/choices'
 import { PageShell } from '@/components/app/ui/PageShell'
@@ -40,6 +41,7 @@ async function CatalogueItemPageInner({ params }: { params: Promise<{ tenant: st
         snapshot={snapshot}
         optionLists={optionListChoices(lists, site.defaultLocale)}
         can={catalogueAbilities(grant).item}
+        canAddCategory={grant.permissions.includes(taxonomyWritePermission('catalogue'))}
         listHref={`/${projectSlug}/catalogue`}
       />
       {perfBeacon()}

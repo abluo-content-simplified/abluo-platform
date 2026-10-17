@@ -1682,6 +1682,21 @@
         "not_found": "Non esiste più. Ricarica la pagina.",
         "invalid_value": "Controlla ciò che hai scritto.",
         "failed": "Qualcosa è andato storto. Riprova."
+      },
+      "picker": {
+        "noMatch": "Nessun risultato. Controlla come hai scritto.",
+        "placeholderSearch": "Cerca",
+        "manage": "Gestisci categorie e tag",
+        "category": {
+          "empty": "Ancora nessuna categoria. Scrivi un nome per aggiungere la prima.",
+          "placeholderAdd": "Cerca o aggiungi una categoria",
+          "addNamed": "Aggiungi “{name}”"
+        },
+        "tag": {
+          "empty": "Ancora nessun tag. Scrivi un nome per aggiungere il primo.",
+          "placeholderAdd": "Cerca o aggiungi un tag",
+          "addNamed": "Aggiungi “{name}”"
+        }
       }
     },
     "photoWizard": {

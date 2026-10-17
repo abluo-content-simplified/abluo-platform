@@ -5,6 +5,7 @@ import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { assertModuleAction } from '@/lib/api/module-action-guard'
 import { CATALOGUE_ITEM_WRITE_PERMISSION } from '@/lib/api/catalogue-lifecycle'
 import { getCatalogueSite, listCatalogue } from '@/lib/api/catalogue-drafts'
+import { taxonomyWritePermission } from '@/lib/taxonomy/permissions'
 import { ItemWizard } from '@/components/client/catalogue/ItemWizard'
 import { optionListChoices } from '@/components/client/catalogue/choices'
 
@@ -29,5 +30,5 @@ export default async function NewCatalogueItemPage({ params }: { params: Promise
     throw error
   }
   const [site, lists] = await Promise.all([getCatalogueSite(ctx, grant.projectId), listCatalogue(ctx, grant.projectId)])
-  return <ItemWizard projectSlug={projectSlug} site={site} optionLists={optionListChoices(lists, site.defaultLocale)} listHref={`/${projectSlug}/catalogue`} />
+  return <ItemWizard projectSlug={projectSlug} site={site} optionLists={optionListChoices(lists, site.defaultLocale)} listHref={`/${projectSlug}/catalogue`} canAddCategory={grant.permissions.includes(taxonomyWritePermission('catalogue'))} />
 }
