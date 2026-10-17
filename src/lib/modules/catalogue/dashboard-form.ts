@@ -14,12 +14,11 @@ import { offerIssues, type Offer, type OfferIssue } from './offers'
 import { ruleIssues, WEEKDAYS, type Weekday } from './availability'
 import { isDescendant, moveSection, readingOrder, removeSection, subtreeOf, type SectionNode } from './sections'
 import { catalogueLinkUrl } from './links'
+import { can, isItemProfile, offeringOf, type ItemProfile } from './profiles'
 import { orderedAllergens, type AllergenDeclarationStatus, type AllergenKey } from './allergens'
 
 /** ADR-033 D-2 — what the ITEM is (not the tenant). */
-export type ItemProfile = 'foodOrDrink' | 'product' | 'service'
-export const ITEM_PROFILES: readonly ItemProfile[] = ['foodOrDrink', 'product', 'service']
-export const isItemProfile = (v: unknown): v is ItemProfile => ITEM_PROFILES.includes(v as ItemProfile)
+export { PROFILE_ORDER as ITEM_PROFILES, isItemProfile, type ItemProfile } from './profiles'
 export type CollectionType = 'menu' | 'list'
 export const COLLECTION_TYPES: readonly CollectionType[] = ['menu', 'list']
 export type Visibility = 'public' | 'websiteOnly' | 'unlisted'
@@ -247,14 +246,14 @@ export type ItemWizardContext = {
  * option list. Never hidden by business type; stored data is never deleted.
  */
 export function itemOptionsRelevant(c: { itemProfile: ItemProfile | null; attachedCount: number; projectListCount: number }): boolean {
-  return c.itemProfile === 'foodOrDrink' || c.attachedCount > 0 || c.projectListCount > 0
+  return (c.itemProfile !== null && offeringOf(c.itemProfile, 'options') === 'default') || c.attachedCount > 0 || c.projectListCount > 0
 }
 
 export function itemWizardSteps(c: ItemWizardContext): ItemStep[] {
   const steps: ItemStep[] = ['profile', 'name']
   if (c.categoryCount > 0) steps.push('category')
   steps.push('photo', 'price')
-  if (c.itemProfile === 'foodOrDrink') steps.push('details')
+  if (c.itemProfile && can(c.itemProfile, 'foodInformation')) steps.push('details')
   if (c.showOptions !== false) steps.push('options')
   steps.push('page')
   if (c.locales.length > 1) steps.push('languages')

@@ -12,6 +12,7 @@
 //   blocksPublish  what publishing needs and a draft does not (allergen review
 //                  for food, a usable page address, an option list that exists).
 
+import { can } from './profiles'
 import { declarationIssues, attachmentIssues, isBlockingAttachmentIssue, offerFormIssues, slugFromName, type ItemState, type ItemStep } from './dashboard-form'
 
 /** The editor's tab ids (ItemEditor). */
@@ -82,7 +83,7 @@ export function itemIssues(s: ItemIssueState, ctx: ItemIssueContext): ItemIssue[
   if (minMax) out.push({ id: 'optionsMinMax', severity: 'blocksNext', step: 'options', tab: 'options', messageKey: 'optionsMinMax', focus: `[data-attachment-key="${minMax.key}"]` })
 
   // ── What publishing needs (a draft does not) ──
-  if (s.itemProfile === 'foodOrDrink') {
+  if (s.itemProfile && can(s.itemProfile, 'foodInformation')) {
     const first = declarationIssues(s.allergenDeclaration)[0]
     if (first) out.push({ id: 'allergens', severity: 'blocksPublish', step: 'details', tab: 'details', messageKey: `allergens.${first}` })
   }

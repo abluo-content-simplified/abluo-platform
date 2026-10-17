@@ -20,6 +20,7 @@ import { editingZone } from '@/components/app/lifecycle/zoned-time'
 import { catalogueLifecycleAction } from '@/app/[locale]/(client)/[tenant]/catalogue/actions'
 import type { CatalogueAbilities, CatalogueSite, CatalogueSnapshot } from '@/lib/api/catalogue-drafts'
 import type { Referrer } from '@/lib/lifecycle/service'
+import { can as profileCan } from '@/lib/modules/catalogue/profiles'
 import { attachmentIssues, declarationIssues, itemGaps, itemOptionsRelevant, itemStateFromDoc, type ItemState } from '@/lib/modules/catalogue/dashboard-form'
 import { issueCountByTab, itemIssues, type ItemIssue, type ItemTab } from '@/lib/modules/catalogue/item-issues'
 import { CAT_ICONS, CAT_INPUT, CAT_PRIMARY, GapBadges, InUseNotice, ItemIssueList, SegmentTabs, TabLabel, UnpublishDateSheet, focusField, textIn, useCatalogueError } from './catalogue-ui'
@@ -113,10 +114,10 @@ export function ItemEditor({
   }, [snapshot.id])
   const { toast, show } = useUndo()
 
-  const isFood = s.itemProfile === 'foodOrDrink'
+  const hasFoodInfo = !!s.itemProfile && profileCan(s.itemProfile, 'foodInformation')
   // D7: Options appear when relevant — food, option lists already attached, or any option list in the project.
   const showOptions = itemOptionsRelevant({ itemProfile: s.itemProfile, attachedCount: s.options.length, projectListCount: optionLists.length })
-  const tabs: Tab[] = ['content', 'photos', 'prices', ...(isFood ? (['details'] as Tab[]) : []), ...(showOptions ? (['options'] as Tab[]) : []), 'page', ...(site.locales.length > 1 ? (['languages'] as Tab[]) : []), 'publishing']
+  const tabs: Tab[] = ['content', 'photos', 'prices', ...(hasFoodInfo ? (['details'] as Tab[]) : []), ...(showOptions ? (['options'] as Tab[]) : []), 'page', ...(site.locales.length > 1 ? (['languages'] as Tab[]) : []), 'publishing']
   const name = textIn(s.name, ui, d) || t('untitled')
   const current: Tab = tabs.includes(tab) ? tab : 'content'
   const issues = itemIssues(s, { defaultLocale: d, locales: site.locales, channels, optionCounts })
@@ -242,7 +243,7 @@ export function ItemEditor({
       />
       <div className="flex flex-wrap items-start gap-2">
         <LifecycleBadge status={snapshot.status.status} changes={draft.hasDraft && isLive} />
-        <GapBadges gaps={itemGaps({ imageCount: item.photos.length, offerCount: s.offers.filter((o) => o.price.trim()).length, allergensNotReviewed: isFood && declarationIssues(s.allergenDeclaration).length > 0 })} />
+        <GapBadges gaps={itemGaps({ imageCount: item.photos.length, offerCount: s.offers.filter((o) => o.price.trim()).length, allergensNotReviewed: hasFoodInfo && declarationIssues(s.allergenDeclaration).length > 0 })} />
       </div>
       {result && !draft.hasDraft ? (
         <p role="status" className="rounded-2xl bg-muted px-4 py-3 text-[0.9375rem] text-foreground">
@@ -266,7 +267,7 @@ export function ItemEditor({
       <fieldset disabled={readOnly} className="min-w-0 space-y-8">
         {current === 'content' ? (
           <>
-            <FieldBlock title={tf('profile.title')} helper={isFood ? tf('profile.foodHelper') : undefined}>
+            <FieldBlock title={tf('profile.title')} helper={hasFoodInfo ? tf('profile.foodHelper') : undefined}>
               <ProfileField value={s.itemProfile} onChange={item.setProfile} />
             </FieldBlock>
             <FieldBlock title={tf('name.title')}>
@@ -312,7 +313,7 @@ export function ItemEditor({
           <>
             <FieldBlock title={t('preview')}>
               <div className="max-w-md">
-                <ItemPreview name={s.name} byline={s.byline} description={s.description} photo={item.photos[0]?.thumbUrl ?? null} offers={s.offers} channels={site.config.channels} currency={site.config.currency} declaration={isFood ? s.allergenDeclaration : null} locale={ui} defaultLocale={d} />
+                <ItemPreview name={s.name} byline={s.byline} description={s.description} photo={item.photos[0]?.thumbUrl ?? null} offers={s.offers} channels={site.config.channels} currency={site.config.currency} declaration={hasFoodInfo ? s.allergenDeclaration : null} locale={ui} defaultLocale={d} />
               </div>
             </FieldBlock>
             {!readOnly && !isLive ? (

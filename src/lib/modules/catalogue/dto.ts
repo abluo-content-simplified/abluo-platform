@@ -32,7 +32,7 @@
 //   collection → collectionType ('menu' → Menu/MenuSection/MenuItem, 'list' →
 //                ItemList, or OfferCatalog when hasOffers), sections (nested),
 //                name, description, page (canonical slug map), publicId
-//   item       → itemProfile (D-2: foodOrDrink/product → Product, service →
+//   item       → itemProfile (D-2: food or drink/product → Product, service →
 //                Service on its own page), name, description, images, offers (price,
 //                effectiveCurrency, state → availability), page, publicId
 // Product.sku does not exist in V1 (B3).
@@ -41,8 +41,9 @@ import type { PortableTextContent, SanityCrop, SanityHotspot, SanityImageAsset }
 import type { AllergenKey } from './allergens'
 import type { AvailabilityState, Weekday } from './availability'
 import type { TreeIssue } from './sections'
+import type { ItemProfile } from './profiles'
 
-export type CatalogueItemProfile = 'foodOrDrink' | 'product' | 'service'
+export type CatalogueItemProfile = ItemProfile
 
 /**
  * A food-or-drink item's allergen declaration (ADR-033 D-3), resolved for the

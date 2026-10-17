@@ -7,7 +7,7 @@
 //
 //   collection, collectionType 'menu'  → Menu → hasMenuSection (nested) → hasMenuItem (MenuItem) → offers
 //   collection, collectionType 'list'  → ItemList, or OfferCatalog when any item carries an offer
-//   item's own page                    → Product (foodOrDrink, product; only with an Offer — F-3) | Service (service), nested Offer(s)
+//   item's own page                    → Product (food or drink, product; only with an Offer — F-3) | Service (service), nested Offer(s)
 //
 // So the same item is a MenuItem inside a menu and a Product on its own page.
 //
@@ -41,17 +41,16 @@ import type {
   CatalogueSectionDTO,
 } from './dto'
 import { admits, isIndexable } from './visibility'
+import { PROFILES, PROFILE_ORDER } from './profiles'
 
 const SCHEMA = 'https://schema.org'
 const IN_STOCK = `${SCHEMA}/InStock`
 const MAX_IMAGES = 10
 
 /** The type of an item on ITS OWN page, by profile (B1, D-2). Inside a menu every item is a MenuItem. */
-export const ITEM_PAGE_TYPE: Readonly<Record<CatalogueItemProfile, 'Product' | 'Service'>> = Object.freeze({
-  foodOrDrink: 'Product',
-  product: 'Product',
-  service: 'Service',
-})
+export const ITEM_PAGE_TYPE: Readonly<Partial<Record<CatalogueItemProfile, 'Book' | 'Product' | 'Service'>>> = Object.freeze(
+  Object.fromEntries(PROFILE_ORDER.map((p) => [p, PROFILES[p].jsonLd.itemPage]))
+)
 
 /** The type of a collection page. `list` becomes OfferCatalog when it has offers (see builder). */
 export const COLLECTION_TYPE: Readonly<Record<CatalogueCollectionType, 'Menu' | 'ItemList'>> = Object.freeze({
@@ -154,7 +153,7 @@ function flatten(sections: readonly CatalogueSectionDTO[]): CatalogueItemDTO[] {
 
 /** An item described standalone (as the thing offered / listed), typed by itemProfile. */
 function itemEntity(item: CatalogueItemDTO, ctx: CatalogueJsonLdContext): Json {
-  return { '@type': ITEM_PAGE_TYPE[item.itemProfile], ...describe(item), ...linkOf(item, ctx) }
+  return { '@type': PROFILES[item.itemProfile].jsonLd.itemPage, ...describe(item), ...linkOf(item, ctx) }
 }
 
 /**
@@ -165,7 +164,7 @@ function itemEntity(item: CatalogueItemDTO, ctx: CatalogueJsonLdContext): Json {
 export function catalogueItemJsonLd(item: CatalogueItemPageDTO, ctx: CatalogueJsonLdContext): Json | null {
   if (!isIndexable(item.visibility) || !admits('structuredData', item.visibility)) return null
   if (!item.name) return null
-  const type = ITEM_PAGE_TYPE[item.itemProfile]
+  const type = PROFILES[item.itemProfile].jsonLd.itemPage
   // F-3: a Product with no offers, review or rating is flagged invalid by search
   // engines, so an unpriced item page emits no item node. Service needs none.
   if (type === 'Product' && item.offers.length === 0) return null

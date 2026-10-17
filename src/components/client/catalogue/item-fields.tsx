@@ -37,6 +37,7 @@ import {
   type Texts,
   type Visibility,
 } from '@/lib/modules/catalogue/dashboard-form'
+import { PROFILES } from '@/lib/modules/catalogue/profiles'
 import { CAT_BUTTON, CAT_ICON_BUTTON, CAT_ICONS, CAT_INPUT, CAT_LABEL, CAT_TEXTAREA, catalogueHref, textIn } from './catalogue-ui'
 
 export type ItemPhoto = { assetId: string; thumbUrl: string | null }
@@ -80,7 +81,7 @@ export function ProfileField({ value, onChange, suggested = null }: { value: Ite
   return (
     <ChoiceCardGrid label={t('label')} kind="radio">
       {ordered.map((p) => (
-        <ChoiceCard key={p} icon={CAT_ICONS[p]} label={t(p)} description={t(`${p}Help`)} badge={p === suggested ? t('suggested') : undefined} selected={value === p} onSelect={() => onChange(p)} />
+        <ChoiceCard key={p} icon={CAT_ICONS[PROFILES[p].icon]} label={t(PROFILES[p].labelKey)} description={t(PROFILES[p].descriptionKey)} badge={p === suggested ? t('suggested') : undefined} selected={value === p} onSelect={() => onChange(p)} />
       ))}
     </ChoiceCardGrid>
   )

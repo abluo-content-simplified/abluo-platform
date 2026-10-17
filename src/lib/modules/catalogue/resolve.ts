@@ -23,6 +23,7 @@ import { effectiveCurrency, type Offer } from './offers'
 import { catalogueLinkUrl } from './links'
 import { readingOrder } from './sections'
 import { normalise } from './slugs'
+import { can, profileOf } from './profiles'
 import type {
   CatalogueAvailabilityDTO,
   CatalogueCollectionDTO,
@@ -268,14 +269,13 @@ export function formatPrice(amount: number, currency: string, locale: string, op
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 
-const ITEM_PROFILES: readonly CatalogueItemProfile[] = ['foodOrDrink', 'product', 'service']
 const COLLECTION_TYPES: readonly CatalogueCollectionType[] = ['menu', 'list']
 const VISIBILITIES: readonly CatalogueVisibility[] = ['public', 'websiteOnly', 'unlisted']
 
 // Defaults are the schema's own: B1 maps an item's own page to Product by
 // default; B2 makes 'list' the collection default; AC 30 makes 'public' the
 // visibility default.
-const itemProfileOf = (v: unknown): CatalogueItemProfile => (ITEM_PROFILES.includes(v as CatalogueItemProfile) ? (v as CatalogueItemProfile) : 'product')
+const itemProfileOf = profileOf
 const collectionTypeOf = (v: unknown): CatalogueCollectionType =>
   COLLECTION_TYPES.includes(v as CatalogueCollectionType) ? (v as CatalogueCollectionType) : 'list'
 const visibilityOf = (v: unknown): CatalogueVisibility =>
@@ -314,7 +314,7 @@ function pickTerms(keys: readonly string[] | null | undefined, vocabulary: reado
  * claim nobody made. Keys come back valid, deduplicated, in Annex II order.
  */
 function allergenDeclarationOf(row: RawCatalogueItem, profile: CatalogueItemProfile, ctx: CatalogueResolveContext): AllergenDeclarationDTO | null {
-  if (profile !== 'foodOrDrink') return null
+  if (!can(profile, 'foodInformation')) return null
   return declarationOf(row.allergenDeclaration, ctx)
 }
 
@@ -337,7 +337,7 @@ function optionDeclarationOf(o: RawCatalogueOption, parentIsFood: boolean, ctx: 
   if (!parentIsFood || o.kind === 'remove') return null
   if (o.linked || o.item) {
     if (!o.item) return { status: 'notReviewed' }
-    if (o.item.itemProfile !== 'foodOrDrink') return null
+    if (!can(profileOf(o.item.itemProfile), 'foodInformation')) return null
     return withoutNote(declarationOf(o.item.allergenDeclaration, ctx))
   }
   return withoutNote(declarationOf(o.allergenDeclaration ? { ...o.allergenDeclaration, note: undefined } : o.allergenDeclaration, ctx))
@@ -527,7 +527,7 @@ export function resolveItem(row: RawCatalogueItem | null | undefined, ctx: Catal
     dietary: pickTerms(row.dietary, ctx.config.dietaryTags),
     offers,
     hasOffers: offers.length > 0,
-    optionLists: optionListsOf(row.optionLists, ctx, itemProfileOf(row.itemProfile) === 'foodOrDrink'),
+    optionLists: optionListsOf(row.optionLists, ctx, can(itemProfileOf(row.itemProfile), 'foodInformation')),
     visibility: visibilityOf(row.visibility),
     page: pageRefOf(row.hasPage, row.slugMap, ctx.locale),
   }

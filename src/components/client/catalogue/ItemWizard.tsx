@@ -8,6 +8,7 @@ import { StepHeading } from '@/components/client/create/StepHeading'
 import { PublishChoice, publishChoiceDates, type PublishChoiceValue } from '@/components/app/lifecycle/PublishChoice'
 import { editingZone } from '@/components/app/lifecycle/zoned-time'
 import type { CatalogueSite } from '@/lib/api/catalogue-drafts'
+import { can } from '@/lib/modules/catalogue/profiles'
 import { NOT_REVIEWED, canAdvanceItem, initialItemProfile, itemOptionsRelevant, itemWizardSteps, type ItemProfile, type ItemState, type ItemStep } from '@/lib/modules/catalogue/dashboard-form'
 import { blocksNextOn, itemIssues, type ItemIssue } from '@/lib/modules/catalogue/item-issues'
 import { CAT_BUTTON, CAT_ICONS, CAT_INPUT, CAT_PRIMARY, ItemIssueList, focusField, useCatalogueError, useItemIssueText } from './catalogue-ui'
@@ -283,7 +284,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
           <>
             {heading('item-step-preview', 'preview')}
             <div className="mt-8">
-              <ItemPreview name={s.name} byline={s.byline} description={s.description} photo={item.photos[0]?.thumbUrl ?? null} offers={s.offers} channels={site.config.channels} currency={site.config.currency} declaration={s.itemProfile === 'foodOrDrink' ? s.allergenDeclaration : null} locale={ui} defaultLocale={d} />
+              <ItemPreview name={s.name} byline={s.byline} description={s.description} photo={item.photos[0]?.thumbUrl ?? null} offers={s.offers} channels={site.config.channels} currency={site.config.currency} declaration={s.itemProfile && can(s.itemProfile, 'foodInformation') ? s.allergenDeclaration : null} locale={ui} defaultLocale={d} />
             </div>
           </>
         ) : step === 'publish' ? (

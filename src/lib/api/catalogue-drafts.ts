@@ -65,7 +65,8 @@ import {
   slugLocalesWithoutName,
   type CatalogueKind,
 } from '@/lib/modules/catalogue/dashboard-patch'
-import { initialItemProfile, isItemProfile, type ItemProfile } from '@/lib/modules/catalogue/dashboard-form'
+import { initialItemProfile, type ItemProfile } from '@/lib/modules/catalogue/dashboard-form'
+import { can, isItemProfile, profileOf } from '@/lib/modules/catalogue/profiles'
 import { SLUG_NAMESPACE_QUERY, namedSlugConflicts, toSlugOwners, type NamedSlugConflict, type SlugRow } from '@/lib/modules/catalogue/validation'
 import {
   CATALOGUE_COUNT_QUERY,
@@ -367,7 +368,7 @@ export async function listCatalogue(ctx: TenantAuthorizationContext, projectId: 
       ...common(id, e, d, now, pub),
       byline: localized(e.row.byline),
       itemProfile: isItemProfile(e.row.itemProfile) ? e.row.itemProfile : null,
-      allergensNotReviewed: e.row.itemProfile === 'foodOrDrink' && e.row.allergenStatus !== 'containsListedAllergens' && e.row.allergenStatus !== 'noneDeclared',
+      allergensNotReviewed: can(profileOf(e.row.itemProfile), 'foodInformation') && e.row.allergenStatus !== 'containsListedAllergens' && e.row.allergenStatus !== 'noneDeclared',
       categories: strings(e.row.categories),
       hasPage: e.row.hasPage === true,
       thumb: typeof e.row.firstImage === 'string' ? (thumbById.get(e.row.firstImage) ?? null) : null,
@@ -492,7 +493,7 @@ export async function createCatalogueDoc(
         publicId: (deps.uuid ?? randomUUID)(),
         itemProfile,
         // D-3: a new food item starts "not reviewed" — publishing waits for the editor's declaration.
-        ...(itemProfile === 'foodOrDrink' && { allergenDeclaration: { status: 'notReviewed' } }),
+        ...(can(itemProfile, 'foodInformation') && { allergenDeclaration: { status: 'notReviewed' } }),
         hasPage: false,
         visibility: 'public',
       })
@@ -748,11 +749,11 @@ function cataloguePrepare(site: CatalogueSite, uuid: () => string) {
       if (!names[d]?.trim()) throw new CatalogueError('missing_name', 'Add a name in the main language first.')
       if (kind === 'optionList' && !(Array.isArray(draft.options) && draft.options.length > 0)) throw new CatalogueError('no_options', 'Add at least one option.')
       // D-3: a food item publishes only with a reviewed, complete allergen declaration.
-      if (kind === 'item' && draft.itemProfile === 'foodOrDrink' && !isPublishableDeclaration(draft.allergenDeclaration)) {
+      if (kind === 'item' && can(profileOf(draft.itemProfile), 'foodInformation') && !isPublishableDeclaration(draft.allergenDeclaration)) {
         throw new CatalogueError('allergens_not_reviewed', 'Review the allergens first.')
       }
       // D-3a: every free-text "add" choice a food item offers must be reviewed.
-      if (kind === 'item' && draft.itemProfile === 'foodOrDrink') {
+      if (kind === 'item' && can(profileOf(draft.itemProfile), 'foodInformation')) {
         const ids = [...new Set((Array.isArray(draft.optionLists) ? draft.optionLists : []).map((a) => (a as { list?: { _ref?: unknown } })?.list?._ref).filter((r): r is string => typeof r === 'string'))]
         const blocking = await unreviewedChoicesOf(x.client as Client, x.projectSlug, ids)
         if (blocking.length) throw new CatalogueError('option_allergens_not_reviewed', 'Review the allergens of the extras first.', { dependencies: blocking })
@@ -764,7 +765,7 @@ function cataloguePrepare(site: CatalogueSite, uuid: () => string) {
       }
       const doc: Record<string, unknown> = {}
       for (const [k, v] of Object.entries(draft)) if (!SYSTEM_FIELDS.has(k) && !LIFECYCLE_FIELDS.has(k)) doc[k] = v
-      if (kind === 'item' && draft.itemProfile !== 'foodOrDrink') delete doc.allergenDeclaration
+      if (kind === 'item' && !can(profileOf(draft.itemProfile), 'foodInformation')) delete doc.allergenDeclaration
       if (kind !== 'optionList') {
         // publicId is set once (AC 29): the published one wins, a missing one is created.
         doc.publicId = (typeof node.published?.publicId === 'string' && node.published.publicId) || (typeof draft.publicId === 'string' && draft.publicId) || uuid()

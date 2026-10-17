@@ -7,6 +7,8 @@
 // managed. The website reads the catalogue through the visibility fragment in
 // src/lib/sanity/queries.ts; nothing here may ever be used to render a page.
 
+import { FOOD_PROFILE_GROQ } from './profiles'
+
 /** Site languages and zone (dates are entered in the site's time zone, ADR-032 D8). */
 export const CATALOGUE_SITE_QUERY = /* groq */ `{
   "site": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales, timeZone },
@@ -74,4 +76,4 @@ export const CATALOGUE_GLANCE_QUERY = /* groq */ `{
 export const CATALOGUE_OPTION_LIST_CHOICES_QUERY = /* groq */ `*[_type == "catalogueOptionList" && projectSlug == $projectSlug && (_id in $ids || _id in $draftIds)]{ _id, name, options[]{ _key, label, kind, item, allergenDeclaration } }`
 
 /** D-3a — whether a non-archived food-or-drink item (any version) uses this option list. */
-export const CATALOGUE_FOOD_USERS_COUNT_QUERY = /* groq */ `count(*[_type == "catalogueItem" && projectSlug == $projectSlug && itemProfile == "foodOrDrink" && $id in optionLists[].list._ref && !defined(archivedAt) && !(_id in path("versions.**"))])`
+export const CATALOGUE_FOOD_USERS_COUNT_QUERY = /* groq */ `count(*[_type == "catalogueItem" && projectSlug == $projectSlug && ${FOOD_PROFILE_GROQ} && $id in optionLists[].list._ref && !defined(archivedAt) && !(_id in path("versions.**"))])`

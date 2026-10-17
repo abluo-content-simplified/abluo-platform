@@ -2,6 +2,7 @@ import { defineType, defineField, defineArrayMember } from 'sanity'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField, BACKGROUND_SURFACE_OPTIONS } from '@/lib/sanity/fields/shared'
 import { PUBLISHING_GROUP, publishingStatusField, publishOnField, unpublishOnField, archivedFields } from '@/lib/sanity/fields/publishing'
 import { linkUrlIssue } from './links'
+import { FOOD_PROFILE_GROQ, can, profileOf } from './profiles'
 import { ALLERGENS, allergenDeclarationIssues, describeDeclarationIssue, optionDeclarationIssues, unreviewedChoices, unknownAllergenKeys } from './allergens'
 
 // ── Catalogue module — Sanity schema types ────────────────────────────────────
@@ -485,7 +486,7 @@ export const catalogueItemOptionList = defineType({
 })
 
 /** E-2: every non-archived food-or-drink item (drafts and published; weak references included) that attaches the list. */
-export const OPTION_LIST_FOOD_USERS_QUERY = `*[_type == "catalogueItem" && projectSlug == $projectSlug && references($id) && itemProfile == "foodOrDrink" && !defined(archivedAt) && !(_id in path("versions.**"))]{ _id, name }`
+export const OPTION_LIST_FOOD_USERS_QUERY = `*[_type == "catalogueItem" && projectSlug == $projectSlug && references($id) && ${FOOD_PROFILE_GROQ} && !defined(archivedAt) && !(_id in path("versions.**"))]{ _id, name }`
 
 const studioText = (v: unknown): string | null =>
   typeof v === 'string' ? v : v && typeof v === 'object' ? ((Object.entries(v as Record<string, unknown>).find(([k, x]) => !k.startsWith('_') && typeof x === 'string' && x)?.[1] as string | undefined) ?? null) : null
@@ -609,10 +610,10 @@ export const catalogueItem = defineType({
       fields: allergenDeclarationFields,
       group: 'content',
       initialValue: { status: 'notReviewed' },
-      hidden: ({ document }) => document?.itemProfile !== 'foodOrDrink',
+      hidden: ({ document }) => !can(profileOf(document?.itemProfile), 'foodInformation'),
       validation: (Rule) =>
         Rule.custom((value, context) => {
-          if ((context.document as { itemProfile?: unknown } | undefined)?.itemProfile !== 'foodOrDrink') return true
+          if (!can(profileOf((context.document as { itemProfile?: unknown } | undefined)?.itemProfile), 'foodInformation')) return true
           const issues = allergenDeclarationIssues(value)
           return issues.length === 0 || describeDeclarationIssue(issues[0])
         }),
@@ -623,7 +624,7 @@ export const catalogueItem = defineType({
       type: 'array',
       group: 'content',
       of: [defineArrayMember({ type: 'string' })],
-      hidden: ({ document }) => document?.itemProfile !== 'foodOrDrink',
+      hidden: ({ document }) => !can(profileOf(document?.itemProfile), 'foodInformation'),
       description: 'Defined in the module settings.',
     }),
     defineField({
@@ -647,7 +648,7 @@ export const catalogueItem = defineType({
       // version, else its draft). Studio twin of the dashboard publish check.
       validation: (Rule) =>
         Rule.custom(async (value, context) => {
-          if ((context.document as { itemProfile?: unknown } | undefined)?.itemProfile !== 'foodOrDrink') return true
+          if (!can(profileOf((context.document as { itemProfile?: unknown } | undefined)?.itemProfile), 'foodInformation')) return true
           const ids = [...new Set((Array.isArray(value) ? value : []).map((a) => (a as { list?: { _ref?: unknown } })?.list?._ref).filter((r): r is string => typeof r === 'string'))]
           if (!ids.length) return true
           try {

@@ -19,9 +19,10 @@ import { offerIssues, type Offer } from './offers'
 import { ruleIssues, WEEKDAYS } from './availability'
 import { catalogueLinkUrl, CATALOGUE_LINK_LIMITS } from './links'
 import { treeIssues, type SectionNode } from './sections'
-import { COLLECTION_TYPES, ITEM_PROFILES, VISIBILITIES, newOrphans, slugFromName } from './dashboard-form'
+import { COLLECTION_TYPES, VISIBILITIES, newOrphans, slugFromName } from './dashboard-form'
 import type { Referrer } from '@/lib/lifecycle/service'
 import type { NamedSlugConflict } from './validation'
+import { can, isItemProfile } from './profiles'
 
 export type CatalogueKind = 'item' | 'collection' | 'optionList'
 
@@ -398,7 +399,7 @@ export function cleanCatalogueSet(kind: CatalogueKind, input: Record<string, unk
     }
     switch (field) {
       case 'itemProfile':
-        if (!ITEM_PROFILES.includes(value as never)) bad('Unknown profile.', field)
+        if (!isItemProfile(value)) bad('Unknown profile.', field)
         r.set.itemProfile = value
         break
       case 'collectionType':
@@ -513,13 +514,13 @@ export function cleanAllergenDeclaration(value: unknown, locales: ReadonlySet<st
 function applyItemRules(r: CleanedPatch, input: Record<string, unknown>, previous: Record<string, unknown>) {
   const before = previous.itemProfile
   const after = 'itemProfile' in input ? input.itemProfile : before
-  if (after !== 'foodOrDrink') {
+  if (!(isItemProfile(after) && can(after, 'foodInformation'))) {
     // Never stored for a product or service (a queued food edit racing a profile change is dropped, not an error).
     delete r.set.allergenDeclaration
     if (('itemProfile' in input || 'allergenDeclaration' in input) && previous.allergenDeclaration != null) r.unset.push('allergenDeclaration')
     return
   }
-  if (before !== 'foodOrDrink') r.set.allergenDeclaration = { status: 'notReviewed' }
+  if (!(isItemProfile(before) && can(before, 'foodInformation'))) r.set.allergenDeclaration = { status: 'notReviewed' }
 }
 
 /**
