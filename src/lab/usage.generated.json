@@ -1,9 +1,10 @@
 {
-  "generatedAt": "2026-10-17T16:16:20.082Z",
+  "generatedAt": "2026-10-17T17:27:19.375Z",
   "usage": {
     "button": [
       "src/app/[locale]/(admin)/lab/[entry]/page.tsx",
       "src/app/[locale]/(client)/[tenant]/catalogue/error.tsx",
+      "src/components/app/ui/Notice.tsx",
       "src/components/client/catalogue/CatalogueBrowser.tsx",
       "src/components/client/catalogue/ChangeTypeSheet.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
@@ -21,6 +22,7 @@
       "src/components/client/catalogue/item-fields.tsx"
     ],
     "field-label": [
+      "src/components/app/ui/Field.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
       "src/components/client/catalogue/item-fields.tsx"
     ],
@@ -29,11 +31,11 @@
     ],
     "pill": [
       "src/app/[locale]/(admin)/lab/[entry]/page.tsx",
-      "src/app/[locale]/(admin)/lab/page.tsx",
       "src/app/[locale]/(admin)/projects/new/page.tsx",
       "src/components/admin/analytics/PortfolioBrowser.tsx",
       "src/components/admin/backlog/BacklogBrowser.tsx",
       "src/components/admin/backlog/backlog-bits.tsx",
+      "src/components/admin/lab/LabIndex.tsx",
       "src/components/admin/partners/PartnersBrowser.tsx",
       "src/components/admin/projects/GoogleSetupPanel.tsx",
       "src/components/admin/projects/ProjectStatusPill.tsx",
@@ -113,6 +115,7 @@
       "src/components/admin/analytics/AdminAnalyticsSummary.tsx",
       "src/components/admin/analytics/ProjectAnalyticsBlock.tsx",
       "src/components/admin/backlog/BacklogBrowser.tsx",
+      "src/components/admin/lab/LabIndex.tsx",
       "src/components/admin/partners/PartnersBrowser.tsx",
       "src/components/admin/whats-new/WhatsNewAdmin.tsx",
       "src/components/app/ui/AttentionList.tsx",
@@ -162,12 +165,12 @@
       "src/app/[locale]/(admin)/analytics/[slug]/page.tsx",
       "src/app/[locale]/(admin)/dashboard/page.tsx",
       "src/app/[locale]/(admin)/lab/[entry]/page.tsx",
-      "src/app/[locale]/(admin)/lab/page.tsx",
       "src/app/[locale]/(admin)/projects/[slug]/page.tsx",
       "src/app/[locale]/(admin)/projects/new/page.tsx",
       "src/app/[locale]/(client)/[tenant]/home/page.tsx",
       "src/components/admin/analytics/AdminAnalyticsSummary.tsx",
       "src/components/admin/analytics/ProjectAnalyticsBlock.tsx",
+      "src/components/admin/lab/LabIndex.tsx",
       "src/components/admin/projects/GoogleCard.tsx",
       "src/components/admin/projects/NewProjectWizard.tsx",
       "src/components/admin/projects/ProvisioningRunPanel.tsx",
@@ -228,6 +231,278 @@
       "src/components/client/people/PeopleTable.tsx",
       "src/components/client/posts/PostCards.tsx",
       "src/components/client/posts/PostsTable.tsx"
-    ]
+    ],
+    "list-toolbar": [
+      "src/components/admin/analytics/PortfolioBrowser.tsx",
+      "src/components/admin/backlog/BacklogBrowser.tsx",
+      "src/components/admin/projects/ProjectsBrowser.tsx",
+      "src/components/client/forms/SubmissionsFilters.tsx",
+      "src/components/client/gallery/GalleriesFilters.tsx",
+      "src/components/client/media/MediaLibraryScreen.tsx",
+      "src/components/client/people/PeopleBrowser.tsx",
+      "src/components/client/posts/PostsFilters.tsx"
+    ],
+    "date-range-picker": [
+      "src/components/app/ui/ListToolbar.tsx"
+    ],
+    "filter-bar": [
+      "src/components/admin/lab/LabIndex.tsx",
+      "src/components/app/ui/ListToolbar.tsx",
+      "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/catalogue/CollectionBuilder.tsx",
+      "src/components/client/catalogue/OptionListEditor.tsx",
+      "src/components/client/forms/SubmissionsBrowser.tsx",
+      "src/components/client/taxonomy/TaxonomyManager.tsx"
+    ],
+    "filter-sheet": [
+      "src/components/app/ui/ListToolbar.tsx"
+    ],
+    "data-table": [
+      "src/components/admin/analytics/PortfolioBrowser.tsx",
+      "src/components/admin/backlog/BacklogBrowser.tsx",
+      "src/components/admin/projects/ProjectsBrowser.tsx",
+      "src/components/admin/whats-new/WhatsNewAdmin.tsx",
+      "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/forms/SubmissionsTable.tsx",
+      "src/components/client/gallery/GalleriesTable.tsx",
+      "src/components/client/media/MediaTable.tsx",
+      "src/components/client/people/PeopleTable.tsx",
+      "src/components/client/posts/PostsTable.tsx"
+    ],
+    "content-card": [
+      "src/components/admin/analytics/PortfolioBrowser.tsx",
+      "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/gallery/GalleryCards.tsx",
+      "src/components/client/gallery/GalleryList.tsx",
+      "src/components/client/media/MediaLibraryScreen.tsx",
+      "src/components/client/posts/PostCards.tsx",
+      "src/components/client/posts/PostsBrowser.tsx"
+    ],
+    "table-cells": [
+      "src/app/[locale]/(admin)/projects/[slug]/page.tsx",
+      "src/components/admin/analytics/PortfolioBrowser.tsx",
+      "src/components/admin/backlog/BacklogBrowser.tsx",
+      "src/components/admin/partners/PartnersBrowser.tsx",
+      "src/components/admin/projects/ProjectsBrowser.tsx",
+      "src/components/admin/whats-new/WhatsNewAdmin.tsx",
+      "src/components/app/ui/CardMenu.tsx",
+      "src/components/app/ui/UpdateCard.tsx",
+      "src/components/app/ui/list/ContentCard.tsx",
+      "src/components/app/ui/list/DataTable.tsx",
+      "src/components/app/ui/list/ThumbStrip.tsx",
+      "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/catalogue/CollectionBuilder.tsx",
+      "src/components/client/catalogue/item-fields.tsx",
+      "src/components/client/connections/ConnectedAppsBrowser.tsx",
+      "src/components/client/events/EventEditor.tsx",
+      "src/components/client/events/EventList.tsx",
+      "src/components/client/forms/SubmissionCards.tsx",
+      "src/components/client/forms/SubmissionsTable.tsx",
+      "src/components/client/gallery/GalleriesTable.tsx",
+      "src/components/client/gallery/GalleryCards.tsx",
+      "src/components/client/gallery/GalleryDetail.tsx",
+      "src/components/client/media/MediaTable.tsx",
+      "src/components/client/people/PeopleSheets.tsx",
+      "src/components/client/people/PeopleTable.tsx",
+      "src/components/client/posts/PostsTable.tsx",
+      "src/components/client/posts/post-bits.tsx"
+    ],
+    "file-cells": [
+      "src/components/client/media/MediaTable.tsx"
+    ],
+    "selection-bar": [
+      "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/forms/SubmissionsBrowser.tsx",
+      "src/components/client/gallery/GalleryList.tsx",
+      "src/components/client/media/MediaLibraryScreen.tsx",
+      "src/components/client/posts/PostsBrowser.tsx"
+    ],
+    "view-switch": [
+      "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/gallery/GalleryList.tsx",
+      "src/components/client/media/MediaLibraryScreen.tsx",
+      "src/components/client/posts/PostsBrowser.tsx"
+    ],
+    "auto-grid": [
+      "src/components/client/gallery/GalleryDetail.tsx",
+      "src/components/client/media/MediaGrid.tsx"
+    ],
+    "thumb-strip": [
+      "src/components/client/gallery/GalleriesTable.tsx",
+      "src/components/client/gallery/GalleryCards.tsx"
+    ],
+    "page-shell": [
+      "src/app/[locale]/(admin)/analytics/[slug]/page.tsx",
+      "src/app/[locale]/(admin)/analytics/page.tsx",
+      "src/app/[locale]/(admin)/backlog/page.tsx",
+      "src/app/[locale]/(admin)/dashboard/page.tsx",
+      "src/app/[locale]/(admin)/lab/[entry]/page.tsx",
+      "src/app/[locale]/(admin)/lab/page.tsx",
+      "src/app/[locale]/(admin)/media/page.tsx",
+      "src/app/[locale]/(admin)/partners/page.tsx",
+      "src/app/[locale]/(admin)/projects/[slug]/page.tsx",
+      "src/app/[locale]/(admin)/projects/new/page.tsx",
+      "src/app/[locale]/(admin)/projects/page.tsx",
+      "src/app/[locale]/(admin)/whats-new/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/agenda/[id]/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/agenda/new/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/agenda/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/analytics/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/apps/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/catalogue/[id]/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/catalogue/collections/[id]/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/catalogue/collections/new/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/catalogue/collections/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/catalogue/error.tsx",
+      "src/app/[locale]/(client)/[tenant]/catalogue/loading.tsx",
+      "src/app/[locale]/(client)/[tenant]/catalogue/option-lists/[id]/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/catalogue/option-lists/new/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/catalogue/option-lists/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/catalogue/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/galleries/[id]/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/galleries/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/home/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/media/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/people/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/posts/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/submissions/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/taxonomy/page.tsx",
+      "src/app/[locale]/(client)/account/page.tsx",
+      "src/app/[locale]/(client)/sites/page.tsx"
+    ],
+    "dashboard-grid": [
+      "src/app/[locale]/(client)/[tenant]/home/page.tsx"
+    ],
+    "app-icon": [
+      "src/components/admin/AdminSidebar.tsx",
+      "src/components/app/shell/AppSidebar.tsx",
+      "src/components/client/ClientSidebar.tsx",
+      "src/components/client/whats-new/WhatsNew.tsx"
+    ],
+    "link-card": [
+      "src/app/[locale]/(admin)/projects/[slug]/page.tsx",
+      "src/components/admin/lab/LabIndex.tsx",
+      "src/components/client/home/SiteStatus.tsx"
+    ],
+    "fab": [
+      "src/components/app/ui/SelectionBar.tsx",
+      "src/components/client/create/AddContentRoot.tsx",
+      "src/components/client/create/AddContentSheet.tsx"
+    ],
+    "bar-button": [
+      "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/forms/SubmissionsBrowser.tsx",
+      "src/components/client/gallery/GalleryList.tsx",
+      "src/components/client/media/MediaLibraryScreen.tsx"
+    ],
+    "choice-card": [
+      "src/components/admin/projects/NewProjectWizard.tsx",
+      "src/components/client/catalogue/CollectionBuilder.tsx",
+      "src/components/client/catalogue/item-fields.tsx",
+      "src/components/client/create/AddContentSheet.tsx"
+    ],
+    "toggle-chips": [
+      "src/components/client/catalogue/item-fields.tsx",
+      "src/components/client/taxonomy/TermPicker.tsx"
+    ],
+    "side-panel": [
+      "src/components/admin/backlog/BacklogBrowser.tsx",
+      "src/components/admin/whats-new/WhatsNewAdmin.tsx",
+      "src/components/app/shell/AccountMenu.tsx",
+      "src/components/client/account/ProfilePanel.tsx",
+      "src/components/client/forms/SubmissionsBrowser.tsx",
+      "src/components/client/whats-new/WhatsNew.tsx"
+    ],
+    "delete-permanently-dialog": [
+      "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/catalogue/CollectionBuilder.tsx",
+      "src/components/client/catalogue/ItemEditor.tsx",
+      "src/components/client/catalogue/OptionListEditor.tsx",
+      "src/components/client/create/WizardShell.tsx",
+      "src/components/client/posts/PostsBrowser.tsx"
+    ],
+    "publication-date-field": [
+      "src/components/app/lifecycle/PublishChoice.tsx",
+      "src/components/client/catalogue/ItemEditor.tsx",
+      "src/components/client/catalogue/catalogue-ui.tsx",
+      "src/components/client/posts/PostSheets.tsx"
+    ],
+    "publish-choice": [
+      "src/components/client/catalogue/ItemWizard.tsx",
+      "src/components/client/create/steps/PublishStep.tsx"
+    ],
+    "lifecycle-badge": [
+      "src/components/client/catalogue/CatalogueBrowser.tsx",
+      "src/components/client/catalogue/CollectionBuilder.tsx",
+      "src/components/client/catalogue/ItemEditor.tsx",
+      "src/components/client/catalogue/OptionListEditor.tsx",
+      "src/components/client/posts/post-bits.tsx"
+    ],
+    "stat-tile": [
+      "src/app/[locale]/(admin)/dashboard/page.tsx",
+      "src/app/[locale]/(admin)/projects/[slug]/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/home/page.tsx",
+      "src/components/admin/analytics/AdminAnalyticsSummary.tsx",
+      "src/components/admin/analytics/ProjectAnalyticsBlock.tsx",
+      "src/components/app/analytics/AnalyticsOverview.tsx"
+    ],
+    "stat-grid": [
+      "src/app/[locale]/(admin)/dashboard/page.tsx",
+      "src/app/[locale]/(admin)/projects/[slug]/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/home/page.tsx",
+      "src/components/admin/analytics/AdminAnalyticsSummary.tsx",
+      "src/components/admin/analytics/ProjectAnalyticsBlock.tsx",
+      "src/components/app/analytics/AnalyticsOverview.tsx"
+    ],
+    "sparkline": [
+      "src/components/admin/analytics/PortfolioBrowser.tsx",
+      "src/components/app/analytics/AnalyticsOverview.tsx"
+    ],
+    "trend-chart": [
+      "src/components/app/analytics/AnalyticsOverview.tsx"
+    ],
+    "ranked-list": [
+      "src/components/app/analytics/AnalyticsOverview.tsx"
+    ],
+    "attention-list": [
+      "src/app/[locale]/(admin)/dashboard/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/home/page.tsx"
+    ],
+    "fact-row": [
+      "src/app/[locale]/(admin)/analytics/[slug]/page.tsx",
+      "src/app/[locale]/(admin)/lab/[entry]/page.tsx",
+      "src/app/[locale]/(admin)/projects/[slug]/page.tsx",
+      "src/app/[locale]/(client)/account/page.tsx",
+      "src/components/admin/backlog/BacklogBrowser.tsx",
+      "src/components/admin/partners/PartnersBrowser.tsx",
+      "src/components/admin/projects/NewProjectWizard.tsx",
+      "src/components/client/account/ProfilePanel.tsx",
+      "src/components/client/connections/ConnectedAppsBrowser.tsx"
+    ],
+    "update-card": [
+      "src/components/admin/whats-new/WhatsNewAdmin.tsx",
+      "src/components/client/whats-new/WhatsNew.tsx"
+    ],
+    "avatar": [
+      "src/components/app/shell/AccountMenu.tsx",
+      "src/components/client/account/AvatarEditor.tsx",
+      "src/components/client/people/PeopleSheets.tsx",
+      "src/components/client/people/PeopleTable.tsx"
+    ],
+    "analytics-overview": [
+      "src/app/[locale]/(admin)/analytics/[slug]/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/analytics/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/home/page.tsx",
+      "src/components/admin/analytics/ProjectAnalyticsBlock.tsx"
+    ],
+    "app-version": [
+      "src/components/app/shell/AccountMenu.tsx"
+    ],
+    "notice": [],
+    "panel": [],
+    "select": [],
+    "date-input": [],
+    "field": [],
+    "skeleton": []
   }
 }

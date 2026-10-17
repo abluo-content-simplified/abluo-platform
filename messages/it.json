@@ -3200,10 +3200,6 @@
     "lab": {
       "title": "Laboratorio componenti",
       "intro": "Tutti i componenti condivisi delle dashboard, dal vivo. Prima di costruire qualcosa di nuovo, controlla qui: se un componente esiste, usalo; se nessuno va bene, chiedi.",
-      "categories": {
-        "primitive": "Elementi base",
-        "composite": "Componenti composti"
-      },
       "status": {
         "canonical": "Da usare",
         "legacy": "Obsoleto",
@@ -3231,7 +3227,38 @@
         "full": "Piena",
         "phone": "Telefono"
       },
-      "notFound": "Questo componente non è nel Laboratorio."
+      "notFound": "Questo componente non è nel Laboratorio.",
+      "groups": {
+        "actions": "Azioni",
+        "inputs": "Campi e moduli",
+        "selection": "Selezione e scelte",
+        "filters": "Ricerca e filtri",
+        "lists": "Liste e tabelle",
+        "feedback": "Messaggi",
+        "overlays": "Finestre e pannelli",
+        "layout": "Pagina e layout",
+        "data": "Dati e grafici"
+      },
+      "search": "Cerca componenti",
+      "searchPlaceholder": "Cerca per nome, es. data, tabella, pulsante",
+      "noResults": "Nessun componente corrisponde alla ricerca.",
+      "todo": {
+        "title": "Ancora da fare",
+        "intro": "{files} file della dashboard contengono ancora {items} elementi fatti a mano. Ognuno viene sostituito da un componente condiviso; la lista può solo accorciarsi — la build rifiuta qualsiasi novità.",
+        "link": "Ancora da fare · {files} file",
+        "rules": {
+          "button": "{count, plural, one {# pulsante} other {# pulsanti}}",
+          "styleConstant": "{count, plural, one {# costante di stile} other {# costanti di stile}}",
+          "input": "{count, plural, one {# campo} other {# campi}}",
+          "textarea": "{count, plural, one {# area di testo} other {# aree di testo}}",
+          "select": "{count, plural, one {# menu a tendina} other {# menu a tendina}}",
+          "switchOrTabs": "{count, plural, one {# interruttore o schede} other {# interruttori o schede}}",
+          "dialog": "{count, plural, one {# finestra} other {# finestre}}",
+          "box": "{count, plural, one {# riquadro} other {# riquadri}}",
+          "pill": "{count, plural, one {# etichetta} other {# etichette}}",
+          "pulse": "{count, plural, one {# blocco di caricamento} other {# blocchi di caricamento}}"
+        }
+      }
     }
   },
   "editor": {

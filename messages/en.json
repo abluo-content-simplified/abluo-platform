@@ -3200,10 +3200,6 @@
     "lab": {
       "title": "Component Lab",
       "intro": "Every shared component of the dashboards, live. Before building something new, check here first: if a component exists, use it; if none fits, ask.",
-      "categories": {
-        "primitive": "Primitives",
-        "composite": "Composites"
-      },
       "status": {
         "canonical": "Use this",
         "legacy": "Legacy",
@@ -3231,7 +3227,38 @@
         "full": "Full",
         "phone": "Phone"
       },
-      "notFound": "This component is not in the Lab."
+      "notFound": "This component is not in the Lab.",
+      "groups": {
+        "actions": "Actions",
+        "inputs": "Inputs & forms",
+        "selection": "Selection & choices",
+        "filters": "Search & filters",
+        "lists": "Lists & tables",
+        "feedback": "Feedback",
+        "overlays": "Overlays",
+        "layout": "Page & layout",
+        "data": "Data & charts"
+      },
+      "search": "Search components",
+      "searchPlaceholder": "Search by name, e.g. date, table, button",
+      "noResults": "No component matches your search.",
+      "todo": {
+        "title": "Still to do",
+        "intro": "{files} dashboard files still contain {items} hand-made pieces of UI. Each one is replaced by a shared component; the list can only get shorter — the build refuses anything new.",
+        "link": "Still to do · {files} files",
+        "rules": {
+          "button": "{count, plural, one {# button} other {# buttons}}",
+          "styleConstant": "{count, plural, one {# style constant} other {# style constants}}",
+          "input": "{count, plural, one {# input} other {# inputs}}",
+          "textarea": "{count, plural, one {# text area} other {# text areas}}",
+          "select": "{count, plural, one {# dropdown} other {# dropdowns}}",
+          "switchOrTabs": "{count, plural, one {# switch or tab group} other {# switches or tab groups}}",
+          "dialog": "{count, plural, one {# dialog} other {# dialogs}}",
+          "box": "{count, plural, one {# box} other {# boxes}}",
+          "pill": "{count, plural, one {# pill} other {# pills}}",
+          "pulse": "{count, plural, one {# loading block} other {# loading blocks}}"
+        }
+      }
     }
   },
   "editor": {

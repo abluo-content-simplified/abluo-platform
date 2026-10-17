@@ -3200,10 +3200,6 @@
     "lab": {
       "title": "Komponenten-Labor",
       "intro": "Alle gemeinsamen Komponenten der Dashboards, live. Bevor du etwas Neues baust, schau hier nach: Gibt es eine Komponente, nutze sie; passt keine, frag nach.",
-      "categories": {
-        "primitive": "Grundelemente",
-        "composite": "Zusammengesetzte Komponenten"
-      },
       "status": {
         "canonical": "Verwenden",
         "legacy": "Veraltet",
@@ -3231,7 +3227,38 @@
         "full": "Voll",
         "phone": "Telefon"
       },
-      "notFound": "Diese Komponente ist nicht im Labor."
+      "notFound": "Diese Komponente ist nicht im Labor.",
+      "groups": {
+        "actions": "Aktionen",
+        "inputs": "Felder & Formulare",
+        "selection": "Auswahl",
+        "filters": "Suche & Filter",
+        "lists": "Listen & Tabellen",
+        "feedback": "Rückmeldungen",
+        "overlays": "Dialoge & Panels",
+        "layout": "Seite & Layout",
+        "data": "Daten & Diagramme"
+      },
+      "search": "Komponenten suchen",
+      "searchPlaceholder": "Nach Namen suchen, z. B. Datum, Tabelle, Button",
+      "noResults": "Keine Komponente passt zur Suche.",
+      "todo": {
+        "title": "Noch offen",
+        "intro": "{files} Dashboard-Dateien enthalten noch {items} selbstgebaute UI-Teile. Jedes wird durch eine gemeinsame Komponente ersetzt; die Liste kann nur kürzer werden — der Build lehnt alles Neue ab.",
+        "link": "Noch offen · {files} Dateien",
+        "rules": {
+          "button": "{count, plural, one {# Button} other {# Buttons}}",
+          "styleConstant": "{count, plural, one {# Stil-Konstante} other {# Stil-Konstanten}}",
+          "input": "{count, plural, one {# Eingabefeld} other {# Eingabefelder}}",
+          "textarea": "{count, plural, one {# Textbereich} other {# Textbereiche}}",
+          "select": "{count, plural, one {# Auswahlliste} other {# Auswahllisten}}",
+          "switchOrTabs": "{count, plural, one {# Schalter oder Tab-Gruppe} other {# Schalter oder Tab-Gruppen}}",
+          "dialog": "{count, plural, one {# Dialog} other {# Dialoge}}",
+          "box": "{count, plural, one {# Box} other {# Boxen}}",
+          "pill": "{count, plural, one {# Label} other {# Labels}}",
+          "pulse": "{count, plural, one {# Ladeblock} other {# Ladeblöcke}}"
+        }
+      }
     }
   },
   "editor": {
