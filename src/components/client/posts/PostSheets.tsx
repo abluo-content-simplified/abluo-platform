@@ -49,7 +49,6 @@ export function EndDateSheet({
         value={iso}
         onChange={setIso}
         zone={zone}
-        inputClassName="mt-2 h-12 w-full rounded-xl border border-border bg-background px-3 text-base text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       />
       {problem === 'unpublish_in_past' ? <p className="mt-2 text-sm text-destructive">{tl('dates.mustBeFuture')}</p> : null}
       <Button variant="primary" size="lg" className="mt-4" disabled={!valid || busy} onClick={() => iso && onSave(iso)}>

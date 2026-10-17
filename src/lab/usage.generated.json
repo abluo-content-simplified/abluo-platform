@@ -1,11 +1,14 @@
 {
-  "generatedAt": "2026-10-17T19:09:29.640Z",
+  "generatedAt": "2026-10-17T20:11:09.337Z",
   "usage": {
     "button": [
       "src/app/[locale]/(admin)/lab/[entry]/page.tsx",
       "src/app/[locale]/(admin)/lab/page.tsx",
       "src/app/[locale]/(admin)/lab/todo/page.tsx",
       "src/app/[locale]/(client)/[tenant]/catalogue/error.tsx",
+      "src/components/app/lifecycle/PublishChoice.tsx",
+      "src/components/app/ui/DateRangePicker.tsx",
+      "src/components/app/ui/DateTimePicker.tsx",
       "src/components/app/ui/Notice.tsx",
       "src/components/client/account/AvatarEditor.tsx",
       "src/components/client/account/NameEditor.tsx",
@@ -20,6 +23,8 @@
       "src/components/client/catalogue/publish-dependencies.tsx",
       "src/components/client/catalogue/stray-address.tsx",
       "src/components/client/connections/ConsentScreen.tsx",
+      "src/components/client/create/AddContentSheet.tsx",
+      "src/components/client/create/ImproveReview.tsx",
       "src/components/client/create/OpenForEdit.tsx",
       "src/components/client/create/WizardFrame.tsx",
       "src/components/client/create/WizardShell.tsx",
@@ -59,6 +64,8 @@
       "src/components/client/people/PeopleSheets.tsx"
     ],
     "field-label": [
+      "src/components/app/lifecycle/PublicationDateField.tsx",
+      "src/components/app/ui/DateTimePicker.tsx",
       "src/components/app/ui/Field.tsx",
       "src/components/client/account/NameEditor.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
@@ -128,7 +135,6 @@
       "src/components/client/posts/PostCards.tsx"
     ],
     "switch": [
-      "src/components/app/lifecycle/PublishChoice.tsx",
       "src/components/client/catalogue/item-fields.tsx",
       "src/components/client/editor/BodyEditor.tsx"
     ],
@@ -256,6 +262,7 @@
       "src/components/admin/partners/PartnersBrowser.tsx",
       "src/components/app/shell/AccountMenu.tsx",
       "src/components/app/ui/DateRangePicker.tsx",
+      "src/components/app/ui/DateTimePicker.tsx",
       "src/components/client/ProjectSwitcher.tsx",
       "src/components/client/catalogue/ChangeTypeSheet.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
@@ -491,7 +498,6 @@
       "src/components/client/posts/PostsBrowser.tsx"
     ],
     "publication-date-field": [
-      "src/components/app/lifecycle/PublishChoice.tsx",
       "src/components/client/catalogue/ItemEditor.tsx",
       "src/components/client/catalogue/catalogue-ui.tsx",
       "src/components/client/posts/PostSheets.tsx"
@@ -579,6 +585,7 @@
       "src/components/client/forms/forms-bits.tsx"
     ],
     "chip": [
+      "src/components/client/create/AddContentSheet.tsx",
       "src/components/client/create/steps/CoverStep.tsx",
       "src/components/client/media/MediaLibraryPicker.tsx",
       "src/components/client/media/PhotoCard.tsx",
@@ -645,8 +652,18 @@
       "src/components/client/gallery/wizard/PhotoAddStep.tsx",
       "src/components/client/gallery/wizard/kit.tsx"
     ],
-    "select": [],
+    "select": [
+      "src/components/app/ui/DateTimePicker.tsx"
+    ],
     "date-input": [],
+    "calendar": [
+      "src/components/app/ui/DateRangePicker.tsx",
+      "src/components/app/ui/DateTimePicker.tsx"
+    ],
+    "date-time-picker": [
+      "src/components/app/lifecycle/PublicationDateField.tsx",
+      "src/components/app/lifecycle/PublishChoice.tsx"
+    ],
     "field": [
       "src/components/client/people/PeopleSheets.tsx"
     ],

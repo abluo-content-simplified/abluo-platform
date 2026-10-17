@@ -897,11 +897,8 @@
         "now": "Publish now",
         "nowHelp": "It’s published on your website straight away.",
         "schedule": "Schedule",
-        "scheduleHelp": "Pick the day and time it should appear.",
         "draft": "Keep as draft",
         "draftHelp": "Nothing is published. Continue any time from Home.",
-        "expire": "Unpublish automatically",
-        "expireHelp": "Useful for offers or news with an end date.",
         "languageLive": "published",
         "languageMissing": "not included",
         "action": {
@@ -924,7 +921,6 @@
           "archived": "This post is archived. Restore it before publishing."
         },
         "summaryNow": "Published in",
-        "summarySchedule": "Published on {date} in",
         "summaryDraft": "Saved in",
         "languageSaved": "saved",
         "languageInProgress": "started",
@@ -2189,8 +2185,6 @@
         "dialog": "Choose dates",
         "clear": "Clear",
         "apply": "Apply",
-        "prevMonth": "Previous month",
-        "nextMonth": "Next month",
         "presets": "Quick ranges",
         "last7": "Last 7 days",
         "last30": "Last 30 days",
@@ -2271,6 +2265,21 @@
           "items": "photos",
           "other": "a setting"
         }
+      },
+      "calendar": {
+        "prevMonth": "Previous month",
+        "nextMonth": "Next month"
+      },
+      "dateTime": {
+        "placeholder": "Pick a date and time",
+        "time": "Time",
+        "done": "Done",
+        "pickDay": "Pick a day first.",
+        "mustBeFuture": "Pick a time in the future.",
+        "mustBeAfter": "Pick a time after {date}.",
+        "zone": "{city} time ({offset})",
+        "gap": "That time doesn’t exist that day (clocks go forward) — it will be {date}.",
+        "overlap": "That time happens twice that day (clocks go back) — the first one is used: {date} ({offset})."
       }
     },
     "analytics": {
@@ -2362,9 +2371,6 @@
       "dates": {
         "publishOn": "Publish on",
         "unpublishOn": "Unpublish on",
-        "zone": "{city} time ({offset})",
-        "gap": "That time doesn’t exist that day (clocks go forward) — it will be {date}.",
-        "overlap": "That time happens twice that day (clocks go back) — the first one is used: {date} ({offset}).",
         "mustBeFuture": "Pick a date and time in the future."
       },
       "publish": {
@@ -2372,11 +2378,23 @@
         "now": "Publish now",
         "nowHelp": "It’s published on your website straight away.",
         "schedule": "Schedule",
-        "scheduleHelp": "Pick the day and time it should appear.",
+        "scheduleHelp": "Choose when it goes live and, if you like, when it comes down.",
         "draft": "Keep as draft",
         "draftHelp": "Nothing is published. You can continue any time.",
-        "expire": "Unpublish automatically",
-        "expireHelp": "Useful for offers or news with an end date."
+        "from": "From",
+        "until": "Until",
+        "nowLabel": "Now",
+        "noEnd": "No end date",
+        "change": "Change",
+        "backToNow": "Back to now",
+        "addEnd": "Add an end date",
+        "remove": "Remove",
+        "moment": "{date} at {time}",
+        "summaryNow": "Goes live now and stays online, no end date.",
+        "summaryNowUntil": "Goes live now and stays online until {end}.",
+        "summaryAt": "Goes live on {start} and stays online, no end date.",
+        "summaryAtUntil": "Goes live on {start} and stays online until {end}.",
+        "summaryDraft": "Stays a draft — nothing goes online."
       },
       "deletePermanently": {
         "title": "{count, plural, one {Delete “{title}” permanently?} other {Delete # items permanently?}}",

@@ -13,7 +13,6 @@ import type { CatalogueKind } from '@/lib/modules/catalogue/dashboard-patch'
 import type { ItemIssue } from '@/lib/modules/catalogue/item-issues'
 import { languageName } from '@/components/client/create/StepHeading'
 import { Button, IconButton } from '@/components/app/ui/Button'
-import { inputClass } from '@/components/app/ui/field-styles'
 
 /**
  * Catalogue dashboard — small shared pieces (ADR-033, spec §10). Styling
@@ -131,7 +130,7 @@ export function UnpublishDateSheet({ open, busy, zone, onClose, onSave, onRemove
   return (
     <BottomSheet open={open} title={tl('actions.setUnpublishDate')} onClose={onClose}>
       <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('unpublishHelper')}</p>
-      <PublicationDateField id="catalogue-unpublish-on" className="mt-4" label={tl('dates.unpublishOn')} value={iso} onChange={setIso} zone={zone} inputClassName={inputClass()} />
+      <PublicationDateField id="catalogue-unpublish-on" className="mt-4" label={tl('dates.unpublishOn')} value={iso} onChange={setIso} zone={zone} />
       {problem === 'unpublish_in_past' ? <p className="mt-2 text-sm text-destructive">{tl('dates.mustBeFuture')}</p> : null}
       <Button variant="primary" className="mt-4" disabled={!iso || !!problem || busy} onClick={() => iso && onSave(iso)}>
         {t('save')}

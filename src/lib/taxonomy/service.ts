@@ -21,6 +21,7 @@
  *
  * Not here: reading terms for content (slice 2), the UI (slice 4).
  */
+import { sameTagText, websiteLabel } from '@/lib/tag-text'
 import { assertModuleAction, canModuleAction } from '@/lib/api/module-action-guard'
 import { readsInOrder } from '@/lib/api/parallel-reads'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
@@ -242,7 +243,8 @@ function cleanLabels(input: unknown, site: Site): Record<string, string> {
     if (raw === null || raw === undefined || raw === '') continue
     if (typeof raw !== 'string') throw new TaxonomyError('invalid_value', 'Labels must be text.', { field: `label.${locale}` })
     if (!site.locales.includes(locale)) throw new TaxonomyError('invalid_value', `${locale} is not a language of this website.`, { field: `label.${locale}` })
-    const text = raw.trim().replace(/\s+/g, ' ')
+    // The website-tag rule (lib/tag-text): the client's case, but no WORDS IN CAPITALS.
+    const text = websiteLabel(raw)
     if (text) out[locale] = text
   }
   return out
@@ -265,7 +267,7 @@ async function commit<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
-const sameLabel = (a: string | undefined, b: string | undefined) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase()
+const sameLabel = sameTagText
 
 // ── List ──────────────────────────────────────────────────────────────────────
 

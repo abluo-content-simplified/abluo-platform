@@ -117,7 +117,6 @@ describe('updateGalleryPhoto', () => {
     ['too long name', { name: 'x'.repeat(PHOTO_LIMITS.name + 1) }],
     ['too long caption', { caption: { it: 'x'.repeat(PHOTO_LIMITS.caption + 1) } }],
     ['too many tags', { tags: Array.from({ length: 11 }, (_, i) => `t${i}`) }],
-    ['an unsafe tag', { tags: ['" || true'] }],
     ['a bad focal point', { focal: { x: 2, y: 0 } }],
     ['nothing', {}],
   ])('refuses %s', async (_l, input) => {
@@ -136,6 +135,9 @@ describe('updateGalleryPhoto', () => {
 describe('cleanTags', () => {
   it('lower-cases, trims, de-duplicates and drops blanks', () => {
     expect(cleanTags([' A ', 'a', '', 'b c'])).toEqual(['a', 'b c'])
+  })
+  it('keeps letters with accents, numbers, spaces and hyphens and drops other characters', () => {
+    expect(cleanTags(['Café & Bar!', 'café bar', 'sommer-fest 2026', '!!', '" || true'])).toEqual(['café bar', 'sommer-fest 2026', 'true'])
   })
 })
 

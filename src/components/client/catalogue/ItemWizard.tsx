@@ -5,7 +5,8 @@ import { useLocale, useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/navigation'
 import { WizardFrame } from '@/components/client/create/WizardFrame'
 import { StepHeading } from '@/components/client/create/StepHeading'
-import { PublishChoice, publishChoiceDates, type PublishChoiceValue } from '@/components/app/lifecycle/PublishChoice'
+import { PublishChoice } from '@/components/app/lifecycle/PublishChoice'
+import { publishChoiceDates, type PublishChoiceValue } from '@/components/app/lifecycle/publish-plan'
 import { editingZone } from '@/components/app/lifecycle/zoned-time'
 import type { CatalogueSite } from '@/lib/api/catalogue-drafts'
 import { can } from '@/lib/modules/catalogue/profiles'
@@ -20,7 +21,6 @@ import { useItemState } from './use-item-state'
 import { TermPicker } from '@/components/client/taxonomy/TermPicker'
 import { useUploadOwner } from '@/components/client/media/use-media-uploads'
 import { Button, ButtonLink } from '@/components/app/ui/Button'
-import { inputClass } from '@/components/app/ui/field-styles'
 
 type Done = { kind: 'live' } | { kind: 'scheduled'; at: string } | { kind: 'draft' }
 
@@ -132,10 +132,11 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
         setDone({ kind: 'draft' })
         return go('done')
       }
-      const { publishAt, expiresAt } = publishChoiceDates(publish)
-      if (choice === 'schedule' && !publishAt) return setError(tl('dates.mustBeFuture'))
-      if (publish.expire && !expiresAt) return setError(tl('dates.mustBeFuture'))
-      const mode: PublishMode = choice === 'schedule' ? 'schedule' : 'now'
+      // Schedule with From = now is a plain publish (with its Until).
+      const plan = publishChoiceDates(publish)
+      const { publishAt, expiresAt } = plan
+      if (choice === 'schedule' && publish.expire && !expiresAt) return setError(tl('dates.mustBeFuture'))
+      const mode: PublishMode = plan.mode === 'schedule' ? 'schedule' : 'now'
       const r = await draft.publish(mode, { ...(mode === 'schedule' && { publishAt }), ...(expiresAt && { expiresAt }) })
       if (!r.ok) {
         const named = r.detail?.conflicts?.[0]
@@ -177,7 +178,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
   const optional = step !== 'done' && step !== 'name' && step !== 'profile' && step !== 'preview' && step !== 'publish'
   // Publishing waits for photos still on their way (the label says so, U1).
   const waitForPhotos = step === 'publish' && choice !== 'draft' && photosInFlight > 0
-  const primaryLabel = step === 'publish' ? (busy ? t('working') : waitForPhotos ? tu('stillUploading', { count: photosInFlight }) : t(`publish.${choice}`)) : tc('shell.next')
+  const primaryLabel = step === 'publish' ? (busy ? t('working') : waitForPhotos ? tu('stillUploading', { count: photosInFlight }) : t(`publish.${publishChoiceDates(publish).mode}`)) : tc('shell.next')
 
   return (
     <WizardFrame
@@ -308,7 +309,6 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
                 value={publish}
                 onChange={setPublish}
                 zone={zone}
-                inputClassName={inputClass()}
                 text={{ title: t('publish.title'), now: t('publish.choiceNow'), schedule: t('publish.choiceSchedule'), draft: t('publish.choiceDraft') }}
               >
                 {publishBlocked ? (

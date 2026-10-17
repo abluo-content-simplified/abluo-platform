@@ -5,6 +5,7 @@
 // No React, no I/O (vitest runs in node).
 
 import { cleanText } from './taxonomy-view'
+import { websiteLabel } from '@/lib/tag-text'
 
 /** One selectable term: stable key, label per language, optional colour. */
 export type PickerTerm = { value: string; label: Record<string, string>; color: string | null }
@@ -85,7 +86,7 @@ export function toggleKey(value: readonly string[], key: string, orderedKeys: re
 
 /** What a new term is created with: only the default language, text trimmed and collapsed. Null when empty. */
 export function newTermLabels(text: string, defaultLocale: string): Record<string, string> | null {
-  const label = cleanText(text)
+  const label = websiteLabel(text)
   return label ? { [defaultLocale]: label } : null
 }
 

@@ -33,7 +33,6 @@ import { StrayAddressNotice, focusNameField, useStrayAddress } from './stray-add
 import { useCatalogueDraft } from './use-catalogue-draft'
 import { useItemState } from './use-item-state'
 import { Button } from '@/components/app/ui/Button'
-import { inputClass } from '@/components/app/ui/field-styles'
 
 type Tab = ItemTab
 type PublishResult = { kind: 'published' } | { kind: 'scheduled'; at: string | null }
@@ -345,7 +344,7 @@ export function ItemEditor({
             </FieldBlock>
             {!readOnly && !isLive ? (
               <FieldBlock title={tl('dates.publishOn')} helper={t('scheduleHelp')}>
-                <PublicationDateField id="item-editor-publish-on" label={tl('dates.publishOn')} value={publishAt} onChange={setPublishAt} zone={zone} inputClassName={inputClass()} />
+                <PublicationDateField id="item-editor-publish-on" label={tl('dates.publishOn')} value={publishAt} onChange={setPublishAt} zone={zone} />
                 <Button variant="primary" disabled={busy || !publishAt || !canPublish || photosInFlight > 0} onClick={() => void publish('schedule')}>
                   {t('schedule')}
                 </Button>

@@ -119,3 +119,11 @@ export function weekStartForLocale(locale: string): WeekStart {
   const lang = locale.toLowerCase().split('-')[0]
   return lang === 'en' ? 0 : 1
 }
+
+/** "00:00", "00:15" … "23:45" (+ `extra` when it is off the 15-minute grid). */
+export function timeSteps(extra?: string): string[] {
+  const out: string[] = []
+  for (let m = 0; m < 24 * 60; m += 15) out.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`)
+  if (extra && /^\d{2}:\d{2}$/.test(extra) && !out.includes(extra)) out.push(extra)
+  return out.sort()
+}

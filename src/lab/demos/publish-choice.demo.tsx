@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { PublishChoice, publishChoiceDates, type PublishChoiceValue } from '@/components/app/lifecycle/PublishChoice'
+import { PublishChoice } from '@/components/app/lifecycle/PublishChoice'
+import { publishChoiceDates, type PublishChoiceValue } from '@/components/app/lifecycle/publish-plan'
 import { DemoBlock, DemoStack } from '../demo-kit'
 
 const START: PublishChoiceValue = { mode: 'draft', publishAt: null, expire: false, unpublishAt: null }
@@ -12,7 +13,7 @@ export default function PublishChoiceDemo() {
   const dates = publishChoiceDates(a)
   return (
     <DemoStack>
-      <DemoBlock title="Full choice" note="id, value, onChange, zone, children (the slot below, here a blocker note). Pick a card; it expands in place.">
+      <DemoBlock title="Full choice" note="id, value, onChange, zone, children (the slot below, here a blocker note). Schedule shows From (Now / a date) and Until (no end / a date); the sentence below says what will happen.">
         <div className="w-full max-w-lg">
           <PublishChoice id="demo-pc-a" value={a} onChange={setA} zone="Europe/Rome">
             <p className="mt-3 text-sm text-muted-foreground">Needs a title before it can go live.</p>
@@ -22,7 +23,7 @@ export default function PublishChoiceDemo() {
           {JSON.stringify({ value: a, send: dates }, null, 2)}
         </pre>
       </DemoBlock>
-      <DemoBlock title="Without auto-unpublish and custom wording" note="allowExpire={false}, text overrides.">
+      <DemoBlock title="Without an end date and custom wording" note="allowExpire={false} hides Until; text overrides.">
         <div className="w-full max-w-lg">
           <PublishChoice
             id="demo-pc-b"

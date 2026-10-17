@@ -5,33 +5,8 @@ import type { StepProps } from '@/components/client/create/types'
 import { StepHeading, languageName } from '@/components/client/create/StepHeading'
 import { languageStates, languageSummaryKey } from '@/lib/client/wizard-steps'
 import { PublishChoice } from '@/components/app/lifecycle/PublishChoice'
-import { editingZone, formatInZone, fromLocalInput, toLocalInput } from '@/components/app/lifecycle/zoned-time'
-
-export type PublishMode = 'now' | 'schedule' | 'draft'
-export type PublishChoice = {
-  mode: PublishMode
-  /** "Publish on" — UTC ISO ('' = not chosen). Entered in the site's time zone (ADR-032 D8). */
-  at: string
-  expire: boolean
-  /** "Unpublish on" — UTC ISO ('' = not chosen). */
-  expireAt: string
-}
-
-/** A UTC ISO value, or null when empty/invalid. */
-export function choiceIso(value: string): string | null {
-  if (!value) return null
-  const d = new Date(value)
-  return Number.isNaN(d.getTime()) ? null : d.toISOString()
-}
-
-/** The default choice: publish now; "Publish on" tomorrow 09:00 and "Unpublish on" 30 days later, both in the site's zone. */
-export function defaultPublishChoice(zone: string, now = new Date()): PublishChoice {
-  const today = toLocalInput(now.toISOString(), zone).slice(0, 10)
-  const tomorrow = new Date(Date.parse(`${today}T12:00:00Z`) + 24 * 3600 * 1000).toISOString().slice(0, 10)
-  const at = fromLocalInput(`${tomorrow}T09:00`, zone)?.utc ?? ''
-  const later = at ? new Date(Date.parse(at) + 30 * 24 * 3600 * 1000).toISOString() : ''
-  return { mode: 'now', at, expire: false, expireAt: later }
-}
+import { choiceValue, type PublishChoice as PostPublishChoice } from './publish-choice-model'
+import { editingZone } from '@/components/app/lifecycle/zoned-time'
 
 /**
  * "What do you want to do with it?" — the shared PublishChoice (Publish now /
@@ -46,11 +21,9 @@ export function PublishStep({
   choice,
   onChange,
   error,
-}: StepProps & { choice: PublishChoice; onChange: (c: PublishChoice) => void; error: string | null }) {
+}: StepProps & { choice: PostPublishChoice; onChange: (c: PostPublishChoice) => void; error: string | null }) {
   const t = useTranslations('clientDashboard.create.publish')
   const zone = editingZone(site.timeZone)
-  const inputClass =
-    'mt-2 block min-h-[var(--control-height,56px)] w-full rounded-xl border border-border bg-background px-4 text-[1.0625rem] text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
 
   return (
     <section aria-labelledby="publish-step-title">
@@ -61,16 +34,15 @@ export function PublishStep({
           id="post"
           labelledBy="publish-step-title"
           zone={zone}
-          inputClassName={inputClass}
           // The post's own wording ("it" = the post; drafts continue from Home).
-          text={{ now: t('now'), nowHelp: t('nowHelp'), schedule: t('schedule'), scheduleHelp: t('scheduleHelp'), draft: t('draft'), draftHelp: t('draftHelp'), expire: t('expire'), expireHelp: t('expireHelp') }}
-          value={{ mode: choice.mode, publishAt: choice.at || null, expire: choice.expire, unpublishAt: choice.expireAt || null }}
+          text={{ now: t('now'), nowHelp: t('nowHelp'), schedule: t('schedule'), draft: t('draft'), draftHelp: t('draftHelp') }}
+          value={choiceValue(choice)}
           onChange={(v) => onChange({ mode: v.mode, at: v.publishAt ?? '', expire: v.expire, expireAt: v.unpublishAt ?? '' })}
         />
       </div>
 
       {site.languages.length > 1 ? (
-        <LanguageSummary draft={draft} languages={site.languages} choice={choice} zone={zone} />
+        <LanguageSummary draft={draft} languages={site.languages} choice={choice} />
       ) : null}
 
       <p role="alert" className="mt-4 min-h-5 text-[0.9375rem] text-destructive">
@@ -83,31 +55,22 @@ export function PublishStep({
 /**
  * One line per choice, always visible on multilingual sites (D9):
  *   Publish now  → "Goes live in: English ✓ · German – not included"
- *   Schedule     → "Goes live on <date> in: …"
+ *   Schedule     → the same (the date is in PublishChoice's sentence)
  *   Keep draft   → "Saved in: English ✓ · Italian – started · German – not started"
  */
 function LanguageSummary({
   draft,
   languages,
   choice,
-  zone,
 }: {
   draft: StepProps['draft']
   languages: string[]
-  choice: PublishChoice
-  zone: string
+  choice: PostPublishChoice
 }) {
   const t = useTranslations('clientDashboard.create.publish')
   const ui = useLocale()
-  const at = choice.mode === 'schedule' ? choiceIso(choice.at) : null
-  const heading =
-    choice.mode === 'draft'
-      ? t('summaryDraft')
-      : choice.mode === 'schedule' && at
-        ? t('summarySchedule', {
-            date: formatInZone(at, zone, ui),
-          })
-        : t('summaryNow')
+  // When it goes live is said once, by PublishChoice's sentence above.
+  const heading = choice.mode === 'draft' ? t('summaryDraft') : t('summaryNow')
   return (
     <div className="mt-8 rounded-2xl bg-muted px-4 py-3" aria-live="polite">
       <h2 className="text-[0.9375rem] font-semibold text-foreground">{heading}</h2>

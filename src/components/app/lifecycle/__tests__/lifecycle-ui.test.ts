@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest'
 import { lifecycleMenu } from '../lifecycle-menu'
 import { editingZone, formatInZone, fromLocalInput, offsetLabel, toLocalInput, validZone } from '../zoned-time'
-import { defaultPublishChoice } from '@/components/client/create/steps/PublishStep'
+import { defaultPublishChoice } from '@/components/client/create/steps/publish-choice-model'
 import { applyFilters, DEFAULT_FILTERS, inStatusFilter, parseFilters, statusCounts, type PostStatus } from '@/lib/client/posts-filter'
 import { applyLiveOverlays, staleOverlays } from '@/lib/client/posts-overlay'
 import { publishedStatus } from '@/lib/lifecycle/status'
@@ -67,13 +67,8 @@ describe('dates in the site time zone (D8)', () => {
     expect(editingZone('Europe/London')).toBe('Europe/London')
   })
 
-  it('the default schedule is tomorrow 09:00 in the site zone, unpublish 30 days later', () => {
-    const now = new Date('2026-10-15T22:30:00Z') // already the 16th in Rome
-    const c = defaultPublishChoice(ROME, now)
-    expect(c.mode).toBe('now')
-    expect(toLocalInput(c.at, ROME)).toBe('2026-10-17T09:00')
-    expect(Date.parse(c.expireAt) - Date.parse(c.at)).toBe(30 * 24 * 3600 * 1000)
-    expect(toLocalInput(defaultPublishChoice('Europe/London', now).at, 'Europe/London')).toBe('2026-10-16T09:00')
+  it('the default choice is publish now; a schedule starts "From: Now" with no end date', () => {
+    expect(defaultPublishChoice()).toEqual({ mode: 'now', at: '', expire: false, expireAt: '' })
   })
 })
 

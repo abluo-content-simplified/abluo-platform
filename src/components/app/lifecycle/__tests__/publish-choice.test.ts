@@ -1,17 +1,40 @@
 import { describe, expect, it } from 'vitest'
-import { publishChoiceDates } from '../PublishChoice'
+import { publishChoiceDates, shortMoment } from '../publish-plan'
+import { timeSteps } from '@/lib/client/date-range'
 
-describe('publishChoiceDates — only the dates the choice uses are sent', () => {
-  const at = '2026-11-01T08:00:00.000Z'
-  const end = '2026-12-01T08:00:00.000Z'
-  it('publish now: no publish date, the unpublish date only when switched on', () => {
-    expect(publishChoiceDates({ mode: 'now', publishAt: at, expire: false, unpublishAt: end })).toEqual({ publishAt: null, expiresAt: null })
-    expect(publishChoiceDates({ mode: 'now', publishAt: at, expire: true, unpublishAt: end })).toEqual({ publishAt: null, expiresAt: end })
+describe('publishChoiceDates — the mode and only the dates the choice uses', () => {
+  const at = '2026-11-03T08:00:00.000Z'
+  const end = '2026-11-30T17:00:00.000Z'
+  it('Publish now asks nothing more: no dates are sent', () => {
+    expect(publishChoiceDates({ mode: 'now', publishAt: at, expire: true, unpublishAt: end })).toEqual({ mode: 'now', publishAt: null, expiresAt: null })
   })
-  it('schedule: both dates', () => {
-    expect(publishChoiceDates({ mode: 'schedule', publishAt: at, expire: true, unpublishAt: end })).toEqual({ publishAt: at, expiresAt: end })
+  it('Schedule from a date, with or without an end', () => {
+    expect(publishChoiceDates({ mode: 'schedule', publishAt: at, expire: true, unpublishAt: end })).toEqual({ mode: 'schedule', publishAt: at, expiresAt: end })
+    expect(publishChoiceDates({ mode: 'schedule', publishAt: at, expire: false, unpublishAt: end })).toEqual({ mode: 'schedule', publishAt: at, expiresAt: null })
   })
-  it('keep as draft: none, whatever was typed before', () => {
-    expect(publishChoiceDates({ mode: 'draft', publishAt: at, expire: true, unpublishAt: end })).toEqual({ publishAt: null, expiresAt: null })
+  it('Schedule from "Now" is a plain publish that keeps its end date', () => {
+    expect(publishChoiceDates({ mode: 'schedule', publishAt: null, expire: true, unpublishAt: end })).toEqual({ mode: 'now', publishAt: null, expiresAt: end })
+    expect(publishChoiceDates({ mode: 'schedule', publishAt: null, expire: false, unpublishAt: end })).toEqual({ mode: 'now', publishAt: null, expiresAt: null })
+  })
+  it('Keep as draft sends nothing', () => {
+    expect(publishChoiceDates({ mode: 'draft', publishAt: at, expire: true, unpublishAt: end })).toEqual({ mode: 'draft', publishAt: null, expiresAt: null })
+  })
+})
+
+describe('the summary moment and the time list', () => {
+  it('says "3 Nov" + "9:00" in the site zone, adding the year only when it differs', () => {
+    const now = new Date('2026-10-17T10:00:00Z')
+    const m = shortMoment('2026-11-03T08:00:00.000Z', 'Europe/Rome', 'en-GB', now)
+    expect(m.date).toBe('3 Nov')
+    expect(m.time).toMatch(/^0?9:00$/)
+    expect(shortMoment('2027-01-05T08:00:00.000Z', 'Europe/Rome', 'en-GB', now).date).toBe('5 Jan 2027')
+  })
+  it('steps every 15 minutes and keeps an off-grid time that was already chosen', () => {
+    const steps = timeSteps()
+    expect(steps).toHaveLength(96)
+    expect(steps[0]).toBe('00:00')
+    expect(steps[36]).toBe('09:00')
+    expect(timeSteps('09:07')).toContain('09:07')
+    expect(timeSteps('09:07')).toHaveLength(97)
   })
 })

@@ -897,11 +897,8 @@
         "now": "Jetzt veröffentlichen",
         "nowHelp": "Er wird sofort auf deiner Website veröffentlicht.",
         "schedule": "Planen",
-        "scheduleHelp": "Wähle Tag und Uhrzeit, an dem er erscheinen soll.",
         "draft": "Als Entwurf behalten",
         "draftHelp": "Nichts wird veröffentlicht. Du kannst jederzeit über die Startseite weitermachen.",
-        "expire": "Veröffentlichung automatisch beenden",
-        "expireHelp": "Praktisch für Angebote oder Neuigkeiten mit Enddatum.",
         "languageLive": "veröffentlicht",
         "languageMissing": "nicht dabei",
         "action": {
@@ -924,7 +921,6 @@
           "archived": "Dieser Beitrag ist archiviert. Stelle ihn vor dem Veröffentlichen wieder her."
         },
         "summaryNow": "Veröffentlicht in",
-        "summarySchedule": "Veröffentlicht am {date} in",
         "summaryDraft": "Gespeichert auf",
         "languageSaved": "gespeichert",
         "languageInProgress": "begonnen",
@@ -2189,8 +2185,6 @@
         "dialog": "Zeitraum wählen",
         "clear": "Zurücksetzen",
         "apply": "Übernehmen",
-        "prevMonth": "Vorheriger Monat",
-        "nextMonth": "Nächster Monat",
         "presets": "Schnellauswahl",
         "last7": "Letzte 7 Tage",
         "last30": "Letzte 30 Tage",
@@ -2271,6 +2265,21 @@
           "items": "Fotos",
           "other": "eine Einstellung"
         }
+      },
+      "calendar": {
+        "prevMonth": "Vorheriger Monat",
+        "nextMonth": "Nächster Monat"
+      },
+      "dateTime": {
+        "placeholder": "Datum und Uhrzeit wählen",
+        "time": "Uhrzeit",
+        "done": "Fertig",
+        "pickDay": "Wähle zuerst einen Tag.",
+        "mustBeFuture": "Wähle eine Uhrzeit in der Zukunft.",
+        "mustBeAfter": "Wähle eine Uhrzeit nach {date}.",
+        "zone": "Zeit in {city} ({offset})",
+        "gap": "Diese Uhrzeit gibt es an dem Tag nicht (Umstellung auf Sommerzeit) – es wird {date}.",
+        "overlap": "Diese Uhrzeit gibt es an dem Tag zweimal (Umstellung auf Winterzeit) – die erste gilt: {date} ({offset})."
       }
     },
     "analytics": {
@@ -2362,9 +2371,6 @@
       "dates": {
         "publishOn": "Veröffentlichen am",
         "unpublishOn": "Veröffentlichung endet am",
-        "zone": "Zeit in {city} ({offset})",
-        "gap": "Diese Uhrzeit gibt es an dem Tag nicht (Umstellung auf Sommerzeit) – es wird {date}.",
-        "overlap": "Diese Uhrzeit gibt es an dem Tag zweimal (Umstellung auf Winterzeit) – die erste gilt: {date} ({offset}).",
         "mustBeFuture": "Wähle ein Datum und eine Uhrzeit in der Zukunft."
       },
       "publish": {
@@ -2372,11 +2378,23 @@
         "now": "Jetzt veröffentlichen",
         "nowHelp": "Es wird sofort auf deiner Website veröffentlicht.",
         "schedule": "Planen",
-        "scheduleHelp": "Wähle Tag und Uhrzeit, an dem es erscheinen soll.",
+        "scheduleHelp": "Wähle, wann es online geht und, wenn du willst, wann es wieder verschwindet.",
         "draft": "Als Entwurf behalten",
         "draftHelp": "Nichts wird veröffentlicht. Du kannst jederzeit weitermachen.",
-        "expire": "Veröffentlichung automatisch beenden",
-        "expireHelp": "Praktisch für Angebote oder Neuigkeiten mit Enddatum."
+        "from": "Ab",
+        "until": "Bis",
+        "nowLabel": "Jetzt",
+        "noEnd": "Kein Enddatum",
+        "change": "Ändern",
+        "backToNow": "Zurück zu jetzt",
+        "addEnd": "Enddatum hinzufügen",
+        "remove": "Entfernen",
+        "moment": "{date} um {time}",
+        "summaryNow": "Geht jetzt online und bleibt online, ohne Enddatum.",
+        "summaryNowUntil": "Geht jetzt online und bleibt bis {end} online.",
+        "summaryAt": "Geht am {start} online und bleibt online, ohne Enddatum.",
+        "summaryAtUntil": "Geht am {start} online und bleibt bis {end} online.",
+        "summaryDraft": "Bleibt ein Entwurf – nichts geht online."
       },
       "deletePermanently": {
         "title": "{count, plural, one {„{title}“ endgültig löschen?} other {# Einträge endgültig löschen?}}",

@@ -897,11 +897,8 @@
         "now": "Pubblica ora",
         "nowHelp": "Viene pubblicato subito sul tuo sito.",
         "schedule": "Programma",
-        "scheduleHelp": "Scegli il giorno e l'ora in cui deve apparire.",
         "draft": "Tieni come bozza",
         "draftHelp": "Non viene pubblicato nulla. Puoi continuare quando vuoi dalla Home.",
-        "expire": "Termina la pubblicazione automaticamente",
-        "expireHelp": "Utile per offerte o notizie con una scadenza.",
         "languageLive": "pubblicato",
         "languageMissing": "non inclusa",
         "action": {
@@ -924,7 +921,6 @@
           "archived": "Questo articolo è archiviato. Ripristinalo prima di pubblicarlo."
         },
         "summaryNow": "Pubblicato in",
-        "summarySchedule": "Pubblicato il {date} in",
         "summaryDraft": "Salvato in",
         "languageSaved": "salvata",
         "languageInProgress": "iniziata",
@@ -2189,8 +2185,6 @@
         "dialog": "Scegli le date",
         "clear": "Cancella",
         "apply": "Applica",
-        "prevMonth": "Mese precedente",
-        "nextMonth": "Mese successivo",
         "presets": "Intervalli rapidi",
         "last7": "Ultimi 7 giorni",
         "last30": "Ultimi 30 giorni",
@@ -2271,6 +2265,21 @@
           "items": "foto",
           "other": "un'impostazione"
         }
+      },
+      "calendar": {
+        "prevMonth": "Mese precedente",
+        "nextMonth": "Mese successivo"
+      },
+      "dateTime": {
+        "placeholder": "Scegli data e ora",
+        "time": "Ora",
+        "done": "Fatto",
+        "pickDay": "Prima scegli un giorno.",
+        "mustBeFuture": "Scegli un’ora nel futuro.",
+        "mustBeAfter": "Scegli un’ora dopo {date}.",
+        "zone": "Ora di {city} ({offset})",
+        "gap": "Quell’ora non esiste quel giorno (si passa all’ora legale): sarà {date}.",
+        "overlap": "Quell’ora capita due volte quel giorno (si torna all’ora solare): si usa la prima, {date} ({offset})."
       }
     },
     "analytics": {
@@ -2362,9 +2371,6 @@
       "dates": {
         "publishOn": "Pubblica il",
         "unpublishOn": "Fine pubblicazione il",
-        "zone": "Ora di {city} ({offset})",
-        "gap": "Quell’ora non esiste quel giorno (si passa all’ora legale): sarà {date}.",
-        "overlap": "Quell’ora capita due volte quel giorno (si torna all’ora solare): si usa la prima, {date} ({offset}).",
         "mustBeFuture": "Scegli una data e un’ora nel futuro."
       },
       "publish": {
@@ -2372,11 +2378,23 @@
         "now": "Pubblica ora",
         "nowHelp": "Viene pubblicato subito sul tuo sito.",
         "schedule": "Programma",
-        "scheduleHelp": "Scegli il giorno e l'ora in cui deve apparire.",
+        "scheduleHelp": "Scegli quando va online e, se vuoi, quando viene tolto.",
         "draft": "Tieni come bozza",
         "draftHelp": "Non viene pubblicato nulla. Puoi continuare quando vuoi.",
-        "expire": "Termina la pubblicazione automaticamente",
-        "expireHelp": "Utile per offerte o notizie con una scadenza."
+        "from": "Da",
+        "until": "Fino a",
+        "nowLabel": "Adesso",
+        "noEnd": "Nessuna data di fine",
+        "change": "Cambia",
+        "backToNow": "Torna ad adesso",
+        "addEnd": "Aggiungi una data di fine",
+        "remove": "Rimuovi",
+        "moment": "{date} alle {time}",
+        "summaryNow": "Va online adesso e resta online, senza data di fine.",
+        "summaryNowUntil": "Va online adesso e resta online fino al {end}.",
+        "summaryAt": "Va online il {start} e resta online, senza data di fine.",
+        "summaryAtUntil": "Va online il {start} e resta online fino al {end}.",
+        "summaryDraft": "Resta una bozza: non va online nulla."
       },
       "deletePermanently": {
         "title": "{count, plural, one {Eliminare definitivamente «{title}»?} other {Eliminare definitivamente # elementi?}}",

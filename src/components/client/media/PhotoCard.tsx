@@ -1,5 +1,6 @@
 'use client'
 
+import { internalTag } from '@/lib/tag-text'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { Chip } from '@/components/app/ui/Chip'
@@ -338,9 +339,9 @@ export function PhotoCard({
   )
 }
 
-/** Normalises one tag the way the server does (cleanTags). */
+/** Normalises one tag the way the server does (cleanTags): the internal-tag rule (lib/tag-text). */
 export function normaliseTag(raw: string): string {
-  return raw.trim().replace(/\s+/g, ' ').toLowerCase().slice(0, PHOTO_CARD_MAX.tag)
+  return internalTag(raw).slice(0, PHOTO_CARD_MAX.tag).trim()
 }
 
 /**

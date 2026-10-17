@@ -42,7 +42,9 @@ import { StoryStep, type ImproveResult } from './steps/StoryStep'
 import { CoverStep } from './steps/CoverStep'
 import { LanguagesStep, type LanguageChoice } from './steps/LanguagesStep'
 import { PreviewStep } from './steps/PreviewStep'
-import { PublishStep, choiceIso, defaultPublishChoice, type PublishChoice } from './steps/PublishStep'
+import { PublishStep } from './steps/PublishStep'
+import { choiceValue, defaultPublishChoice, type PublishChoice } from './steps/publish-choice-model'
+import { publishChoiceDates } from '@/components/app/lifecycle/publish-plan'
 import { DoneStep, type DoneResult } from './steps/DoneStep'
 import { ReviewStep } from './steps/ReviewStep'
 import { CtaStep } from './steps/CtaStep'
@@ -125,7 +127,7 @@ export function WizardShell({
         .map((l) => [l, initialDraft.title[l]?.trim() || (initialDraft.body[l]?.length ?? 0) > 0 ? 'write' : 'later'])
     )
   )
-  const [publish, setPublish] = useState<PublishChoice>(() => defaultPublishChoice(editingZone(site.timeZone)))
+  const [publish, setPublish] = useState<PublishChoice>(() => defaultPublishChoice())
   const [publishError, setPublishError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<DoneResult | null>(null)
@@ -313,10 +315,10 @@ export function WizardShell({
       setStep('done')
       return
     }
-    const publishAt = publish.mode === 'schedule' ? choiceIso(publish.at) : undefined
-    if (publish.mode === 'schedule' && !publishAt) return setPublishError(publishError_('invalid_schedule'))
-    const expiresAt = publish.expire ? choiceIso(publish.expireAt) : null
-    if (publish.expire && !expiresAt) return setPublishError(publishError_('invalid_expiry'))
+    // Schedule with From = now is a plain publish (with its Until).
+    const { mode, publishAt, expiresAt } = publishChoiceDates(choiceValue(publish))
+    if (mode === 'draft') return
+    if (publish.mode === 'schedule' && publish.expire && !expiresAt) return setPublishError(publishError_('invalid_expiry'))
 
     setBusy(true)
     try {
@@ -329,7 +331,7 @@ export function WizardShell({
         projectSlug,
         id: draftIdRef.current,
         rev: autosave.currentRev(),
-        mode: publish.mode,
+        mode,
         publishAt: publishAt ?? undefined,
         expiresAt,
       })
@@ -341,7 +343,7 @@ export function WizardShell({
       await autosave.discard()
       const slug = r.slugs[locale]
       const url = site.origin && slug ? `${site.origin}/${locale}/blog/${slug}` : null
-      setDone(publish.mode === 'schedule' ? { kind: 'scheduled', at: r.publishedAt } : { kind: 'live', url })
+      setDone(mode === 'schedule' ? { kind: 'scheduled', at: r.publishedAt } : { kind: 'live', url })
       setStep('done')
     } catch {
       setPublishError(publishError_(typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'failed'))
@@ -525,7 +527,7 @@ export function WizardShell({
     step === 'publish'
       ? busy
         ? t('publish.working')
-        : t(`publish.action.${publish.mode}`)
+        : t(`publish.action.${publishChoiceDates(choiceValue(publish)).mode}`)
       : onReview
         ? isEdit
           ? busy

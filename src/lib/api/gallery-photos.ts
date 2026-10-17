@@ -17,6 +17,7 @@
  * Fields left `undefined` are not touched; a given field replaces the whole
  * localized value (an empty object clears it).
  */
+import { internalTag } from '@/lib/tag-text'
 import { assertProjectAccess } from '@/lib/api/media-permission'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
@@ -26,7 +27,6 @@ import { GALLERY_WRITE_PERMISSION, GalleryError, photoFromAsset, type FocalPoint
 export const PHOTO_LIMITS = { name: 120, batch: 100, alt: 200, title: 120, caption: 300, tags: 10, tagLength: 40, hotspotSize: 0.3 } as const
 
 const ASSET_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/
-const TAG = /^[\p{L}\p{N}][\p{L}\p{N} ._-]*$/u
 
 type Client = Pick<typeof sanityWriteClient, 'getDocument' | 'fetch' | 'patch'> & {
   transaction?: typeof sanityWriteClient.transaction
@@ -66,15 +66,15 @@ function texts(value: unknown, locales: Set<string>, max: number, what: string):
   return out
 }
 
-/** ≤ 10 unique lower-case tags of ≤ 40 safe characters. */
+/** ≤ 10 unique internal tags (lib/tag-text: lower case, letters, numbers, spaces, hyphens) of ≤ 40 characters. */
 export function cleanTags(value: unknown): string[] {
   if (!Array.isArray(value) || value.length > PHOTO_LIMITS.tags) throw new GalleryError('invalid_value', 'Up to 10 tags.')
   const out: string[] = []
   for (const raw of value) {
     if (typeof raw !== 'string') throw new GalleryError('invalid_value', 'Bad tag.')
-    const t = raw.trim().replace(/\s+/g, ' ').toLowerCase()
+    const t = internalTag(raw)
     if (!t) continue
-    if (t.length > PHOTO_LIMITS.tagLength || !TAG.test(t)) throw new GalleryError('invalid_value', 'Bad tag.')
+    if (t.length > PHOTO_LIMITS.tagLength) throw new GalleryError('invalid_value', 'Bad tag.')
     if (!out.includes(t)) out.push(t)
   }
   return out
