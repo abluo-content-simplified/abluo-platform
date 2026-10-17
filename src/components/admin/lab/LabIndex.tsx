@@ -46,7 +46,9 @@ export function LabIndex({ items, groups }: { items: LabIndexItem[]; groups: rea
                   icon={GLYPH}
                   title={e.name}
                   badge={e.status === 'canonical' ? undefined : <Pill tone="outline">{t(`status.${e.status}`)}</Pill>}
-                  subline={`${t('usedInCount', { count: e.used })} · ${e.summary}`}
+                  aside={t('usedInCount', { count: e.used })}
+                  subline={e.summary}
+                  sublineLines={3}
                 />
               ))}
             </div>

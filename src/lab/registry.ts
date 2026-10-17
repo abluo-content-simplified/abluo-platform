@@ -425,8 +425,8 @@ export const LAB_REGISTRY: LabEntry[] = [
     source: 'src/components/app/ui/LinkCard.tsx',
     group: 'actions',
     status: 'canonical',
-    summary: 'A card that goes somewhere: icon tile, title with optional badge, one subline and a trailing arrow.',
-    rules: ['external opens a new tab and tells screen readers so.', 'Without href it renders as a plain block with no arrow.'],
+    summary: 'A card that goes somewhere: icon tile, title with optional badge and note, a subline of up to three lines and a trailing arrow.',
+    rules: ['external opens a new tab and tells screen readers so.', 'Without href it renders as a plain block with no arrow.', 'aside puts a quiet note (e.g. a count) on the title line; sublineLines (1–3) lets the subline wrap before it is cut.'],
     demo: () => import('./demos/link-card.demo'),
   },
   {

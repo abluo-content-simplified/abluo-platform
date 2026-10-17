@@ -10,6 +10,9 @@ import { Link } from '@/i18n/navigation'
  * `external` opens a new tab and tells screen readers so. Without `href` the
  * card renders as a plain, non-interactive block with no arrow.
  */
+/** Tailwind needs literal class names, so the clamp per line count is spelled out. */
+const SUBLINE_CLAMP = { 1: 'truncate', 2: 'line-clamp-2', 3: 'line-clamp-3' } as const
+
 export function LinkCard({
   href,
   external = false,
@@ -17,6 +20,8 @@ export function LinkCard({
   title,
   badge,
   subline,
+  aside,
+  sublineLines = 1,
   className = '',
 }: {
   href?: string | null
@@ -25,6 +30,10 @@ export function LinkCard({
   title: ReactNode
   badge?: ReactNode
   subline?: ReactNode
+  /** Quiet note right-aligned on the title line (e.g. a count). */
+  aside?: ReactNode
+  /** How many lines the subline may take before it is cut (default 1). */
+  sublineLines?: 1 | 2 | 3
   className?: string
 }) {
   const t = useTranslations('app.ui.linkCard')
@@ -34,11 +43,14 @@ export function LinkCard({
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="flex flex-wrap items-start gap-x-2 gap-y-1">
-          <span className="text-[0.9375rem] leading-6 font-semibold">{title}</span>
-          {badge}
+        <span className="flex items-start gap-3">
+          <span className="flex min-w-0 flex-1 flex-wrap items-start gap-x-2 gap-y-1">
+            <span className="text-[0.9375rem] leading-6 font-semibold">{title}</span>
+            {badge}
+          </span>
+          {aside ? <span className="shrink-0 text-sm leading-6 text-muted-foreground">{aside}</span> : null}
         </span>
-        {subline ? <span className="block truncate text-sm leading-5 text-muted-foreground">{subline}</span> : null}
+        {subline ? <span className={`block text-sm leading-5 text-muted-foreground ${SUBLINE_CLAMP[sublineLines]}`}>{subline}</span> : null}
       </span>
     </>
   )

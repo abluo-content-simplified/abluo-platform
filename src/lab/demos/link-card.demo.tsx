@@ -1,6 +1,7 @@
 'use client'
 
 import { LinkCard } from '@/components/app/ui/LinkCard'
+import { Pill } from '@/components/app/ui/list/cells'
 import { DemoBlock, DemoStack } from '../demo-kit'
 
 const GLOBE = (
@@ -26,8 +27,20 @@ export default function LinkCardDemo() {
             href="/dashboard"
             icon={HELP}
             title="Help"
-            badge={<span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">New</span>}
+            badge={<Pill>New</Pill>}
             subline="Guides and answers"
+          />
+        </div>
+      </DemoBlock>
+      <DemoBlock title="Note on the title line, longer description" note="aside (right-aligned on the title line) + sublineLines={3} — as on the Lab index.">
+        <div className="w-full max-w-md">
+          <LinkCard
+            href="/lab/button"
+            icon={HELP}
+            title="Button"
+            aside="13 files"
+            subline="Every dashboard action: primary, secondary, quiet or destructive, in md (44px) or lg (48px); IconButton for icon-only actions."
+            sublineLines={3}
           />
         </div>
       </DemoBlock>
