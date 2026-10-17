@@ -10,7 +10,9 @@
  * `formatBrandHubMessage`.
  */
 
-import type { BrandHubPageId, ColourRoleKey, TypeLevelKey, ValueSource } from '@/lib/modules/brand-hub/types'
+import type {
+  BrandGuideStatus, BrandHubPageId, BrandLogoRuleKey, BrandStatementKey, BrandStatementStatus, ColourRoleKey, TypeLevelKey, ValueSource,
+} from '@/lib/modules/brand-hub/types'
 
 export type ContrastExtraKey =
   | 'buttonPrimaryText' | 'buttonSecondaryText' | 'buttonPrimaryBackground' | 'buttonSecondaryBackground'
@@ -128,6 +130,21 @@ export interface BrandHubMessages {
   enlarged: string
   intendedForLight: string
   intendedForDark: string
+
+  /** Overview: brand introduction (ADR-036 amendment, 2026-10-17). */
+  aboutTitle: string
+  guidesTitle: string
+  statements: Record<BrandStatementKey, string>
+  statementStatus: Record<BrandStatementStatus, string>
+  guideStatus: Record<BrandGuideStatus, string>
+  notWritten: string
+  howToUseTitle: string
+  howToUseDefault: string
+  changesTitle: string
+  logoRulesTitle: string
+  logoRulesIntro: string
+  logoRules: Record<BrandLogoRuleKey, string>
+  backgroundNamed: string
 
   examplesTitle: string
   doLabel: string
@@ -247,6 +264,19 @@ const en: BrandHubMessages = {
   enlarged: "4x enlarged",
   intendedForLight: "Made for light backgrounds",
   intendedForDark: "Made for dark backgrounds",
+  aboutTitle: "About the brand",
+  guidesTitle: "The guidelines",
+  statements: { mission: "Mission", vision: "Vision", promise: "Brand promise", audience: "Who it is for", positioning: "Positioning and differentiators", personality: "Personality", values: "Values", story: "Brand story" },
+  statementStatus: { draft: "Draft — awaiting approval", approved: "Approved", needsDecision: "Needs a decision" },
+  guideStatus: { draft: "Draft", review: "In review", published: "Published" },
+  notWritten: "Not written yet.",
+  howToUseTitle: "How to use these guidelines",
+  howToUseDefault: "These guidelines show how the brand looks and sounds. Colours, type, spacing and files come straight from the live design system, so they are always current. Text marked “Draft” or “Needs a decision” is not yet approved: check with the brand owner before relying on it.",
+  changesTitle: "Recent changes",
+  logoRulesTitle: "Logo rules",
+  logoRulesIntro: "How much room the logo needs, how small it may go and where it may sit.",
+  logoRules: { clearSpace: "Clear space", minimumDigital: "Minimum size on screen", minimumPrint: "Minimum size in print", backgrounds: "Backgrounds" },
+  backgroundNamed: "Background graphic · {name}",
   examplesTitle: "Examples",
   doLabel: "Do",
   dontLabel: "Don't",
@@ -365,6 +395,19 @@ const it: BrandHubMessages = {
   enlarged: "Ingrandita 4 volte",
   intendedForLight: "Pensato per sfondi chiari",
   intendedForDark: "Pensato per sfondi scuri",
+  aboutTitle: "Il brand",
+  guidesTitle: "Le linee guida",
+  statements: { mission: "Missione", vision: "Visione", promise: "Promessa del brand", audience: "A chi si rivolge", positioning: "Posizionamento e differenze", personality: "Personalità", values: "Valori", story: "Storia del brand" },
+  statementStatus: { draft: "Bozza — da approvare", approved: "Approvato", needsDecision: "Da decidere" },
+  guideStatus: { draft: "Bozza", review: "In revisione", published: "Pubblicato" },
+  notWritten: "Non ancora scritto.",
+  howToUseTitle: "Come usare queste linee guida",
+  howToUseDefault: "Queste linee guida mostrano come il brand appare e come comunica. Colori, caratteri, spaziature e file arrivano direttamente dal design system del sito, quindi sono sempre aggiornati. I testi segnati come “Bozza” o “Da decidere” non sono ancora approvati: verifica con il responsabile del brand prima di usarli.",
+  changesTitle: "Modifiche recenti",
+  logoRulesTitle: "Regole del logo",
+  logoRulesIntro: "Quanto spazio serve intorno al logo, quanto può essere piccolo e su quali sfondi può stare.",
+  logoRules: { clearSpace: "Area di rispetto", minimumDigital: "Dimensione minima a schermo", minimumPrint: "Dimensione minima in stampa", backgrounds: "Sfondi" },
+  backgroundNamed: "Grafica di sfondo · {name}",
   examplesTitle: "Esempi",
   doLabel: "Da fare",
   dontLabel: "Da evitare",
@@ -483,6 +526,19 @@ const de: BrandHubMessages = {
   enlarged: "4-fach vergrößert",
   intendedForLight: "Für helle Hintergründe gedacht",
   intendedForDark: "Für dunkle Hintergründe gedacht",
+  aboutTitle: "Über die Marke",
+  guidesTitle: "Die Richtlinien",
+  statements: { mission: "Mission", vision: "Vision", promise: "Markenversprechen", audience: "Für wen", positioning: "Positionierung und Unterschiede", personality: "Persönlichkeit", values: "Werte", story: "Markengeschichte" },
+  statementStatus: { draft: "Entwurf — wartet auf Freigabe", approved: "Freigegeben", needsDecision: "Entscheidung nötig" },
+  guideStatus: { draft: "Entwurf", review: "In Prüfung", published: "Veröffentlicht" },
+  notWritten: "Noch nicht geschrieben.",
+  howToUseTitle: "So nutzen Sie diese Richtlinien",
+  howToUseDefault: "Diese Richtlinien zeigen, wie die Marke aussieht und klingt. Farben, Schrift, Abstände und Dateien kommen direkt aus dem Live-Designsystem und sind daher immer aktuell. Texte mit „Entwurf“ oder „Entscheidung nötig“ sind noch nicht freigegeben: Bitte sprechen Sie vor der Verwendung mit der Markenverantwortlichen Person.",
+  changesTitle: "Letzte Änderungen",
+  logoRulesTitle: "Logo-Regeln",
+  logoRulesIntro: "Wie viel Platz das Logo braucht, wie klein es sein darf und auf welchen Hintergründen es stehen darf.",
+  logoRules: { clearSpace: "Schutzzone", minimumDigital: "Mindestgröße am Bildschirm", minimumPrint: "Mindestgröße im Druck", backgrounds: "Hintergründe" },
+  backgroundNamed: "Hintergrundgrafik · {name}",
   examplesTitle: "Beispiele",
   doLabel: "Empfohlen",
   dontLabel: "Vermeiden",
@@ -601,6 +657,19 @@ const fr: BrandHubMessages = {
   enlarged: "Agrandi 4 fois",
   intendedForLight: "Conçu pour les fonds clairs",
   intendedForDark: "Conçu pour les fonds sombres",
+  aboutTitle: "La marque",
+  guidesTitle: "Les lignes directrices",
+  statements: { mission: "Mission", vision: "Vision", promise: "Promesse de marque", audience: "À qui elle s'adresse", positioning: "Positionnement et différences", personality: "Personnalité", values: "Valeurs", story: "Histoire de la marque" },
+  statementStatus: { draft: "Brouillon — en attente de validation", approved: "Validé", needsDecision: "Décision à prendre" },
+  guideStatus: { draft: "Brouillon", review: "En relecture", published: "Publié" },
+  notWritten: "Pas encore rédigé.",
+  howToUseTitle: "Comment utiliser ces lignes directrices",
+  howToUseDefault: "Ces lignes directrices montrent l'apparence et le ton de la marque. Les couleurs, la typographie, les espacements et les fichiers proviennent directement du design system du site : ils sont donc toujours à jour. Les textes marqués « Brouillon » ou « Décision à prendre » ne sont pas encore validés : vérifiez auprès du responsable de la marque avant de vous y fier.",
+  changesTitle: "Modifications récentes",
+  logoRulesTitle: "Règles du logo",
+  logoRulesIntro: "L'espace à laisser autour du logo, sa taille minimale et les fonds sur lesquels il peut être placé.",
+  logoRules: { clearSpace: "Zone de protection", minimumDigital: "Taille minimale à l'écran", minimumPrint: "Taille minimale à l'impression", backgrounds: "Fonds" },
+  backgroundNamed: "Graphisme d'arrière-plan · {name}",
   examplesTitle: "Exemples",
   doLabel: "À faire",
   dontLabel: "À éviter",
@@ -719,6 +788,19 @@ const es: BrandHubMessages = {
   enlarged: "Ampliado 4 veces",
   intendedForLight: "Pensado para fondos claros",
   intendedForDark: "Pensado para fondos oscuros",
+  aboutTitle: "La marca",
+  guidesTitle: "Las directrices",
+  statements: { mission: "Misión", vision: "Visión", promise: "Promesa de marca", audience: "Para quién es", positioning: "Posicionamiento y diferencias", personality: "Personalidad", values: "Valores", story: "Historia de la marca" },
+  statementStatus: { draft: "Borrador — pendiente de aprobación", approved: "Aprobado", needsDecision: "Pendiente de decisión" },
+  guideStatus: { draft: "Borrador", review: "En revisión", published: "Publicado" },
+  notWritten: "Aún no redactado.",
+  howToUseTitle: "Cómo usar estas directrices",
+  howToUseDefault: "Estas directrices muestran cómo se ve y cómo habla la marca. Los colores, la tipografía, los espacios y los archivos vienen directamente del sistema de diseño del sitio, así que siempre están al día. Los textos marcados como «Borrador» o «Pendiente de decisión» aún no están aprobados: consúltalo con el responsable de la marca antes de usarlos.",
+  changesTitle: "Cambios recientes",
+  logoRulesTitle: "Reglas del logotipo",
+  logoRulesIntro: "Cuánto espacio necesita el logotipo, cuán pequeño puede ser y sobre qué fondos puede ir.",
+  logoRules: { clearSpace: "Área de protección", minimumDigital: "Tamaño mínimo en pantalla", minimumPrint: "Tamaño mínimo en impresión", backgrounds: "Fondos" },
+  backgroundNamed: "Gráfico de fondo · {name}",
   examplesTitle: "Ejemplos",
   doLabel: "Recomendado",
   dontLabel: "Evitar",
@@ -837,6 +919,19 @@ const pt: BrandHubMessages = {
   enlarged: "Ampliado 4 vezes",
   intendedForLight: "Pensado para fundos claros",
   intendedForDark: "Pensado para fundos escuros",
+  aboutTitle: "A marca",
+  guidesTitle: "As diretrizes",
+  statements: { mission: "Missão", vision: "Visão", promise: "Promessa da marca", audience: "Para quem é", positioning: "Posicionamento e diferenças", personality: "Personalidade", values: "Valores", story: "História da marca" },
+  statementStatus: { draft: "Rascunho — a aguardar aprovação", approved: "Aprovado", needsDecision: "Decisão pendente" },
+  guideStatus: { draft: "Rascunho", review: "Em revisão", published: "Publicado" },
+  notWritten: "Ainda não escrito.",
+  howToUseTitle: "Como usar estas diretrizes",
+  howToUseDefault: "Estas diretrizes mostram o aspeto e a voz da marca. As cores, a tipografia, os espaçamentos e os ficheiros vêm diretamente do sistema de design do site, por isso estão sempre atualizados. Os textos marcados como «Rascunho» ou «Decisão pendente» ainda não estão aprovados: confirme com o responsável pela marca antes de os usar.",
+  changesTitle: "Alterações recentes",
+  logoRulesTitle: "Regras do logótipo",
+  logoRulesIntro: "Quanto espaço o logótipo precisa, quão pequeno pode ser e sobre que fundos pode ficar.",
+  logoRules: { clearSpace: "Área de proteção", minimumDigital: "Tamanho mínimo no ecrã", minimumPrint: "Tamanho mínimo em impressão", backgrounds: "Fundos" },
+  backgroundNamed: "Gráfico de fundo · {name}",
   examplesTitle: "Exemplos",
   doLabel: "Recomendado",
   dontLabel: "Evitar",
@@ -955,6 +1050,19 @@ const nl: BrandHubMessages = {
   enlarged: "4 keer vergroot",
   intendedForLight: "Bedoeld voor lichte achtergronden",
   intendedForDark: "Bedoeld voor donkere achtergronden",
+  aboutTitle: "Over het merk",
+  guidesTitle: "De richtlijnen",
+  statements: { mission: "Missie", vision: "Visie", promise: "Merkbelofte", audience: "Voor wie", positioning: "Positionering en onderscheid", personality: "Persoonlijkheid", values: "Waarden", story: "Merkverhaal" },
+  statementStatus: { draft: "Concept — wacht op goedkeuring", approved: "Goedgekeurd", needsDecision: "Beslissing nodig" },
+  guideStatus: { draft: "Concept", review: "In review", published: "Gepubliceerd" },
+  notWritten: "Nog niet geschreven.",
+  howToUseTitle: "Zo gebruik je deze richtlijnen",
+  howToUseDefault: "Deze richtlijnen laten zien hoe het merk eruitziet en klinkt. Kleuren, typografie, ruimtes en bestanden komen rechtstreeks uit het live designsysteem en zijn dus altijd actueel. Teksten met „Concept” of „Beslissing nodig” zijn nog niet goedgekeurd: overleg met de merkeigenaar voordat je ze gebruikt.",
+  changesTitle: "Recente wijzigingen",
+  logoRulesTitle: "Logoregels",
+  logoRulesIntro: "Hoeveel ruimte het logo nodig heeft, hoe klein het mag en op welke achtergronden het mag staan.",
+  logoRules: { clearSpace: "Vrije ruimte", minimumDigital: "Minimale grootte op scherm", minimumPrint: "Minimale grootte in druk", backgrounds: "Achtergronden" },
+  backgroundNamed: "Achtergrondgrafiek · {name}",
   examplesTitle: "Voorbeelden",
   doLabel: "Doen",
   dontLabel: "Vermijden",

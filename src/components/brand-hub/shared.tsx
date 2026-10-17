@@ -2,9 +2,9 @@ import type { CSSProperties, ReactNode } from 'react'
 import { Check, X } from 'lucide-react'
 import { PortableText } from '@portabletext/react'
 import { articlePortableTextComponents } from '@/components/portable-text/article-components'
-import type { BrandHubMessages } from '@/lib/i18n/brand-hub-messages'
+import { formatBrandHubMessage, type BrandHubMessages } from '@/lib/i18n/brand-hub-messages'
 import type {
-  BrandHubModel, ColourRoleKey, ColourValue, DesignValue, DoDontItem, ThemeKey, ValueSource,
+  BrandHubModel, BrandStatement, BrandStatementStatus, ColourRoleKey, ColourValue, DesignValue, DoDontItem, ThemeKey, ValueSource,
 } from '@/lib/modules/brand-hub/types'
 import type { PortableTextContent } from '@/lib/sanity/types'
 
@@ -222,3 +222,56 @@ export function TableWrap({ children }: { children: ReactNode }) {
 
 export const TH = 'px-3 py-2 text-left text-sm font-semibold align-top'
 export const TD = 'px-3 py-2 text-sm align-top'
+
+/**
+ * Status of a written statement or rule. "Approved" reads as confirmed; a
+ * draft or an open decision is marked so it is never mistaken for an approved
+ * brand rule (ADR-036 amendment, 2026-10-17).
+ */
+export function StatementStatusPill({ status, m }: { status: BrandStatementStatus; m: BrandHubMessages }) {
+  const approved = status === 'approved'
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap"
+      style={{
+        border: `1px ${approved ? 'solid' : 'dashed'} var(--color-border)`,
+        background: approved ? 'var(--color-background-alt)' : 'transparent',
+        color: 'var(--color-text-secondary)',
+        fontFamily: 'var(--font-body)',
+      }}
+    >
+      {approved && <Check size={12} aria-hidden="true" />}
+      {m.statementStatus[status]}
+    </span>
+  )
+}
+
+/** One statement / rule card: title + status on top, text (or "Not written yet") below. */
+export function StatementCard({ title, statement, m }: { title: string; statement: BrandStatement; m: BrandHubMessages }) {
+  return (
+    <li className="break-inside-avoid p-5" style={CARD_STYLE}>
+      <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+        <h3 className="text-lg font-semibold" style={HEADING_FONT}>{title}</h3>
+        <StatementStatusPill status={statement.status} m={m} />
+      </div>
+      {statement.text ? (
+        <p className="text-[0.9375rem] whitespace-pre-line" style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-body)' }}>
+          {statement.text}
+        </p>
+      ) : (
+        <p className="text-sm" style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>{m.notWritten}</p>
+      )}
+    </li>
+  )
+}
+
+/** "Version 1 · Draft · Last updated …" — the line on Overview and in every page footer. */
+export function GuideMeta({ model, m, locale }: { model: BrandHubModel; m: BrandHubMessages; locale: string }) {
+  const date = model.lastUpdated ? formatDate(model.lastUpdated, locale, model.timeZone) : ''
+  const parts = [
+    model.version === null ? m.notVersioned : formatBrandHubMessage(m.version, { version: model.version }),
+    model.status ? m.guideStatus[model.status] : null,
+    date ? formatBrandHubMessage(m.lastUpdated, { date }) : null,
+  ].filter(Boolean)
+  return <>{parts.join(' · ')}</>
+}

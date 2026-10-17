@@ -232,3 +232,39 @@ Then **Livener content**, written by Abluo: intro, brand palette in the design s
 - **The DS "fields read" backlog test** excludes the hub: documenting a field is not the website rendering it.
 - **Model:** `buildBrandHubModel()` (pure) → `BrandHubModel` (`types.ts`); pages render only from it. Route gates on `isModuleEnabled(modules, 'brand-hub')` and sends `robots: noindex, nofollow`.
 - **Enabling for a project** = adding the `brand-hub` installation in Studio → Modules (Livener first, per §6).
+
+## 9. Amendment A — brand introduction, statuses, logo rules (2026-10-17)
+
+Trigger: review of the Livener hub ("it documents the design system more than the brand"). Tom: everything is a module feature, usable by every project that enables the hub.
+
+**Added to `brandGuide` (all text, all localized, additive — no migration):**
+- `status`: `draft | review | published` (default `draft`). Shown next to the version on Overview and in every page footer. Replaces "Not yet versioned" when a guide exists.
+- Eight **statements** on the Overview: `mission, vision, promise, audience, positioning, personality, values, story`. Each is an inline object `{ text: localizedText, status: draft | approved | needsDecision }`.
+- `howToUse` (localizedPortableText). Empty → a standard platform text from the dictionary.
+- `changes[]`: `{ date, note: localizedString }`. The hub shows the latest five, newest first.
+- `logoRules`: four statements: `clearSpace, minimumDigital, minimumPrint, backgrounds`.
+
+**Rules:**
+- All slots are always shown. Unwritten text reads "Not written yet" (statements) with a "Needs a decision" pill. A written text without a status is a **draft** — never "approved" by default. Only "Approved" text reads as a confirmed brand rule.
+- The statement and change objects are inline (not named schema types), so the module's registered `schemaTypes` are unchanged.
+- D2 still holds: none of these fields is a design value. The "no design values" test is unchanged; the rule fields are named `minimumDigital` / `minimumPrint` (not `…Size…`) for that reason.
+- Background graphics are always labelled "Background graphic · {design-system name}", so a background can no longer read as a logo.
+
+**Livener content (production, 2026-10-17):** `brandGuide-livener` created (version 1, draft): mission and vision from the legacy document, marked **Draft**, English and Italian; the nine logo-misuse examples as don'ts (images in the Media Library, tagged `brand`, `logo misuse`); one change entry. Design-system background graphic renamed "Logotype" → "Symbol watermark".
+
+**Not done, by decision:** the legacy colours (red, purple, green, blue, cyan) are not shown as a "legacy area" on the hub. D8 and Tom's 2026-10-16 decision stand: every colour comes from the design system (`brandPalette`, slice S2) and the hub only displays it; Abluo decides the palette.
+
+### Backlog (open)
+1. **S2 — `designSystem.brandPalette[]`**: named brand colours incl. print-only, CMYK/Pantone as approximate references, usage, token names; split "Brand palette" vs "UI colours" on the Colour page.
+2. Token names + copyable CSS/JSON (`tokens.css` / `tokens.json`, already planned in S3).
+3. Colour: approved uses, allowed/forbidden combinations, fixes suggested next to contrast failures.
+4. Typography: fallback stacks, approved weights, responsive sizes, letter-spacing, UI text (buttons, labels, forms), licensing/hosting, language coverage.
+5. Shape: pill button radius shown apart from the radius scale; empty shadows shown as "No shadow tokens" (or hidden).
+6. Layout: grid/columns, breakpoints, gutters, examples on real pages.
+7. Logo: variants (stacked, symbol, wordmark, mono), favicon/app-icon/social-avatar rules, video watermark, co-branding, download-all.
+8. Motion: which duration for what, reduced-motion; say clearly when the project uses platform defaults.
+9. New pages: Voice and content, Imagery, Iconography, Accessibility, Applications, Resources; Product UI (live/offline, meters, errors…) for software brands.
+10. Light / Dark / Both selector for previews, separate from the hub's own theme.
+11. Revision history beyond 90 days: saved versions (D7, S3); PDF versions with a log.
+12. Password protection via the platform protected-pages feature (with CYCE).
+13. Approval workflow (v3); live component previews (Component Lab); in-page navigation as pages grow.

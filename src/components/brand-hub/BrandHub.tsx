@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { SectionContainer } from '@/components/layout/SectionContainer'
-import { formatBrandHubMessage, getBrandHubMessages } from '@/lib/i18n/brand-hub-messages'
+import { getBrandHubMessages } from '@/lib/i18n/brand-hub-messages'
 import { BRAND_HUB_PAGES, type BrandHubModel, type BrandHubPageId } from '@/lib/modules/brand-hub/types'
 import { ColourPage } from './ColourPage'
 import { LayoutPage } from './LayoutPage'
@@ -9,7 +9,7 @@ import { MotionPage } from './MotionPage'
 import { OverviewPage } from './OverviewPage'
 import { ShapePage } from './ShapePage'
 import { TypographyPage } from './TypographyPage'
-import { FOCUS_RING, HEADING_FONT, Legend, formatDate } from './shared'
+import { FOCUS_RING, GuideMeta, HEADING_FONT, Legend } from './shared'
 
 const VALUE_PAGES: readonly BrandHubPageId[] = ['colour', 'typography', 'shape', 'layout', 'motion']
 
@@ -21,7 +21,6 @@ export function BrandHub({ model, page, locale, basePath }: {
 }) {
   const m = getBrandHubMessages(locale)
   const common = { model, m, locale }
-  const date = model.lastUpdated ? formatDate(model.lastUpdated, locale, model.timeZone) : ''
   const hrefFor = (p: BrandHubPageId) => (p === 'overview' ? basePath : `${basePath}/${p}`)
 
   let content: React.ReactNode
@@ -74,8 +73,7 @@ export function BrandHub({ model, page, locale, basePath }: {
           {VALUE_PAGES.includes(page) && <Legend m={m} />}
           {content}
           <footer className="mt-16 pt-4 text-sm" style={{ borderTop: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-            {model.version === null ? m.notVersioned : formatBrandHubMessage(m.version, { version: model.version })}
-            {date && ` · ${formatBrandHubMessage(m.lastUpdated, { date })}`}
+            <GuideMeta model={model} m={m} locale={locale} />
           </footer>
         </main>
       </div>

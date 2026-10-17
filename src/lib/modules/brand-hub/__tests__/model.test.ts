@@ -278,3 +278,40 @@ describe('no tenant values in module code (CLAUDE.md, AC-16)', () => {
     }
   })
 })
+
+describe('brand introduction and logo rules (amendment 2026-10-17)', () => {
+  const withGuide = (guide: NonNullable<BrandHubQueryResult['guide']>): BrandHubQueryResult => ({ ...data, guide: { ...(data.guide ?? {}), ...guide } })
+
+  it('always lists all eight statements and four logo rules, in order, unwritten ones as needsDecision', () => {
+    const m = buildBrandHubModel(fixtureDs(), withGuide({}))
+    expect(m.statements.map((s) => s.key)).toEqual(['mission', 'vision', 'promise', 'audience', 'positioning', 'personality', 'values', 'story'])
+    expect(m.logoRules.map((s) => s.key)).toEqual(['clearSpace', 'minimumDigital', 'minimumPrint', 'backgrounds'])
+    expect(m.statements.every((s) => s.text === null && s.status === 'needsDecision')).toBe(true)
+  })
+
+  it('a written statement without a status is a draft, never approved by default', () => {
+    const m = buildBrandHubModel(fixtureDs(), withGuide({
+      statements: { mission: { text: '  Make live easy.  ' }, vision: { text: 'Be everywhere.', status: 'approved' }, promise: { text: 'x', status: 'bogus' } },
+    }))
+    expect(m.statements[0]).toEqual({ key: 'mission', text: 'Make live easy.', status: 'draft' })
+    expect(m.statements[1].status).toBe('approved')
+    expect(m.statements[2].status).toBe('draft')
+  })
+
+  it('a status without text still reads as needing a decision', () => {
+    const m = buildBrandHubModel(fixtureDs(), withGuide({ logoRules: { clearSpace: { text: '  ', status: 'approved' } } }))
+    expect(m.logoRules[0]).toEqual({ key: 'clearSpace', text: null, status: 'needsDecision' })
+  })
+
+  it('guide status: draft by default, null without a guide', () => {
+    expect(buildBrandHubModel(fixtureDs(), withGuide({})).status).toBe('draft')
+    expect(buildBrandHubModel(fixtureDs(), withGuide({ status: 'published' })).status).toBe('published')
+    expect(buildBrandHubModel(fixtureDs(), { ...data, guide: null }).status).toBeNull()
+  })
+
+  it('recent changes: valid entries only, newest first, at most five', () => {
+    const rows = ['2026-01-01', '2026-03-01', 'bad', '2026-02-01', '2026-05-01', '2026-04-01', '2026-06-01'].map((date, i) => ({ _key: `c${i}`, date, note: `n${i}` }))
+    const m = buildBrandHubModel(fixtureDs(), withGuide({ changes: [...rows, { _key: 'empty', date: '2026-07-01', note: ' ' }] }))
+    expect(m.changes.map((c) => c.date)).toEqual(['2026-06-01', '2026-05-01', '2026-04-01', '2026-03-01', '2026-02-01'])
+  })
+})

@@ -9,7 +9,7 @@
 // platform value (read from the SAME constants/resolver the website uses), and
 // "notSet" otherwise. Nothing is ever invented.
 
-import type { DesignSystem, FontDefinition, Typescale } from '@/lib/sanity/types'
+import type { DesignSystem, FontDefinition, PortableTextContent, Typescale } from '@/lib/sanity/types'
 import {
   AA_LARGE,
   AA_NORMAL,
@@ -20,7 +20,7 @@ import {
 } from '@/lib/design-system/contrast'
 import { FALLBACK_FONTS, FALLBACK_LAYOUT, FALLBACK_MOTION, FALLBACK_RADIUS } from '@/lib/design-system/fallback-tokens'
 import { resolveColours, type ResolvedColour, type ResolvedTheme } from '@/lib/design-system/resolved-colours'
-import type { BrandHubAssetMeta, BrandHubGuidePageRow, BrandHubQueryResult } from './queries'
+import type { BrandHubAssetMeta, BrandHubGuidePageRow, BrandHubQueryResult, BrandHubStatementRow } from './queries'
 import {
   BRAND_HUB_PAGES,
   COLOUR_ROLE_KEYS,
@@ -28,6 +28,12 @@ import {
   type BrandAsset,
   type BrandHubModel,
   type BrandHubPageId,
+  type BrandGuideChange,
+  type BrandGuideStatus,
+  type BrandLogoRuleKey,
+  type BrandStatement,
+  type BrandStatementKey,
+  type BrandStatementStatus,
   type ButtonSpec,
   type ButtonThemeSpec,
   type ColourRole,
@@ -290,6 +296,37 @@ function written(row: BrandHubGuidePageRow | null | undefined): WrittenContent {
   return { body, doDont }
 }
 
+const STATEMENT_KEYS: BrandStatementKey[] = ['mission', 'vision', 'promise', 'audience', 'positioning', 'personality', 'values', 'story']
+const LOGO_RULE_KEYS: BrandLogoRuleKey[] = ['clearSpace', 'minimumDigital', 'minimumPrint', 'backgrounds']
+const STATUSES: readonly BrandStatementStatus[] = ['draft', 'approved', 'needsDecision']
+const GUIDE_STATUSES: readonly BrandGuideStatus[] = ['draft', 'review', 'published']
+const MAX_CHANGES = 5
+
+/**
+ * Statements / rules in a fixed order. Unwritten text → null; an unwritten
+ * slot reads as `needsDecision`, a written one without a status as `draft`
+ * (never "approved" by default).
+ */
+function statements<K extends string>(keys: K[], rows: Record<string, BrandHubStatementRow | null> | null | undefined): BrandStatement<K>[] {
+  return keys.map((key) => {
+    const row = rows?.[key]
+    const text = typeof row?.text === 'string' && row.text.trim() ? row.text.trim() : null
+    const raw = row?.status as BrandStatementStatus | undefined
+    const status: BrandStatementStatus = !text ? 'needsDecision' : raw && STATUSES.includes(raw) ? raw : 'draft'
+    return { key, text, status }
+  })
+}
+
+function changes(rows: NonNullable<BrandHubQueryResult['guide']>['changes']): BrandGuideChange[] {
+  return (rows ?? [])
+    .filter((r) => typeof r?.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.date) && typeof r.note === 'string' && r.note.trim())
+    .map((r) => ({ key: r._key, date: r.date as string, note: (r.note as string).trim() }))
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    .slice(0, MAX_CHANGES)
+}
+
+const portable = (v: unknown): PortableTextContent | null => (Array.isArray(v) && v.length > 0 ? (v as PortableTextContent) : null)
+
 function latest(...isoDates: (string | null | undefined)[]): string | null {
   const ts = isoDates.filter(isSet).map((d) => Date.parse(d)).filter((n) => !Number.isNaN(n))
   return ts.length ? new Date(Math.max(...ts)).toISOString() : null
@@ -315,7 +352,12 @@ export function buildBrandHubModel(ds: DesignSystem | null, data: BrandHubQueryR
     lastUpdated: latest(guide?._updatedAt, data?.site?._updatedAt, data?.ds?._updatedAt, data?.ds?.parentUpdatedAt, data?.ds?.grandparentUpdatedAt),
     timeZone: data?.site?.timeZone ?? null,
 
-    intro: Array.isArray(guide?.intro) && guide!.intro!.length > 0 ? (guide!.intro as BrandHubModel['intro']) : null,
+    status: guide ? (GUIDE_STATUSES.includes(guide.status as BrandGuideStatus) ? (guide.status as BrandGuideStatus) : 'draft') : null,
+    intro: portable(guide?.intro),
+    statements: statements(STATEMENT_KEYS, guide?.statements),
+    howToUse: portable(guide?.howToUse),
+    changes: changes(guide?.changes),
+    logoRules: statements(LOGO_RULE_KEYS, guide?.logoRules),
     written: writtenPages,
 
     colours: buildColours(rc.light, rc.dark),

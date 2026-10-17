@@ -33,11 +33,25 @@ const page = (field: string) => /* groq */ `
     }
   }`
 
+/** A statement or rule: its text in the requested language, and its status. */
+const statement = (path: string, key: string) => /* groq */ `
+  "${key}": select(defined(${path}) => { "text": ${loc(`${path}.text`)}, "status": ${path}.status })`
+
+const STATEMENTS = ['mission', 'vision', 'promise', 'audience', 'positioning', 'personality', 'values', 'story']
+const LOGO_RULES = ['clearSpace', 'minimumDigital', 'minimumPrint', 'backgrounds']
+
 export const brandHubQuery = /* groq */ `{
   "guide": *[_type == "brandGuide" && projectSlug == $projectSlug] | order(_updatedAt desc)[0]{
     _updatedAt,
     version,
+    status,
     "intro": ${loc('intro')},
+    "statements": {${STATEMENTS.map((k) => statement(k, k)).join(',')}
+    },
+    "howToUse": ${loc('howToUse')},
+    "changes": changes[]{ _key, date, "note": ${loc('note')} },
+    "logoRules": {${LOGO_RULES.map((k) => statement(`logoRules.${k}`, k)).join(',')}
+    },
     ${page('colour')},
     ${page('typography')},
     ${page('shape')},
@@ -83,6 +97,11 @@ export interface BrandHubAssetMeta {
   height?: number | null
 }
 
+export interface BrandHubStatementRow {
+  text?: string | null
+  status?: string | null
+}
+
 export interface BrandHubGuidePageRow {
   body?: unknown[] | null
   doDont?: { _key: string; kind?: string | null; imageUrl?: string | null; caption?: string | null }[] | null
@@ -92,7 +111,12 @@ export interface BrandHubQueryResult {
   guide: ({
     _updatedAt?: string
     version?: number | null
+    status?: string | null
     intro?: unknown[] | null
+    statements?: Record<string, BrandHubStatementRow | null> | null
+    howToUse?: unknown[] | null
+    changes?: { _key: string; date?: string | null; note?: string | null }[] | null
+    logoRules?: Record<string, BrandHubStatementRow | null> | null
   } & Partial<Record<'colour' | 'typography' | 'shape' | 'layout' | 'logo' | 'motion', BrandHubGuidePageRow | null>>) | null
   site: {
     _updatedAt?: string

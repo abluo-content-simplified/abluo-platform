@@ -149,6 +149,29 @@ export interface BrandAsset {
   height: number | null
 }
 
+export type BrandStatementStatus = 'draft' | 'approved' | 'needsDecision'
+export type BrandGuideStatus = 'draft' | 'review' | 'published'
+export type BrandStatementKey = 'mission' | 'vision' | 'promise' | 'audience' | 'positioning' | 'personality' | 'values' | 'story'
+export type BrandLogoRuleKey = 'clearSpace' | 'minimumDigital' | 'minimumPrint' | 'backgrounds'
+
+/**
+ * One written statement or rule. `text` null = not written yet; the hub then
+ * shows the slot as "Not written yet" (statements) or "Needs a decision"
+ * (logo rules) — never invented text.
+ */
+export interface BrandStatement<K extends string = string> {
+  key: K
+  text: string | null
+  status: BrandStatementStatus
+}
+
+export interface BrandGuideChange {
+  key: string
+  /** YYYY-MM-DD. */
+  date: string
+  note: string
+}
+
 /** Do / don't example from the guide. */
 export interface DoDontItem {
   key: string
@@ -173,7 +196,16 @@ export interface BrandHubModel {
   /** IANA zone for formatting lastUpdated (siteConfig.timeZone), null → UTC. */
   timeZone: string | null
 
+  /** Publication status of the guide; null when no guide document exists yet. */
+  status: BrandGuideStatus | null
   intro: PortableTextContent | null
+  /** Overview statements in display order (always all eight; unwritten ones have text null). */
+  statements: BrandStatement<BrandStatementKey>[]
+  howToUse: PortableTextContent | null
+  /** Newest first, at most five. */
+  changes: BrandGuideChange[]
+  /** Logo rules in display order (always all four). */
+  logoRules: BrandStatement<BrandLogoRuleKey>[]
   written: Record<Exclude<BrandHubPageId, 'overview'>, WrittenContent>
 
   colours: ColourRole[]

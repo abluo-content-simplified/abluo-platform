@@ -1,15 +1,18 @@
 import type { BrandAsset } from '@/lib/modules/brand-hub/types'
-import type { BrandHubMessages } from '@/lib/i18n/brand-hub-messages'
+import { formatBrandHubMessage, type BrandHubMessages } from '@/lib/i18n/brand-hub-messages'
 import {
-  CARD_STYLE, CHECKERBOARD, DoDontGrid, FOCUS_RING, HEADING_FONT, RichText, Section, Spec,
+  CARD_STYLE, CHECKERBOARD, DoDontGrid, FOCUS_RING, HEADING_FONT, RichText, Section, Spec, StatementCard,
   formatBytes, formatNumber, themeBackground, type HubPageProps,
 } from './shared'
 import type { BrandHubModel } from '@/lib/modules/brand-hub/types'
 
 const TRANSPARENT_EXT = new Set(['svg', 'png', 'webp', 'gif', 'avif'])
 
+/** Background graphics always read as background graphics; the design system's own name follows. */
 function assetLabel(a: BrandAsset, m: BrandHubMessages): string {
-  if (a.key.startsWith('background:')) return a.name ?? m.assetLabels.background
+  if (a.key.startsWith('background:')) {
+    return a.name ? formatBrandHubMessage(m.backgroundNamed, { name: a.name }) : m.assetLabels.background
+  }
   return m.assetLabels[a.key as Exclude<BrandAsset['key'], `background:${string}`>]
 }
 
@@ -77,6 +80,12 @@ export function LogoPage({ model, m, locale }: HubPageProps) {
   return (
     <>
       <RichText value={w.body} />
+      <Section title={m.logoRulesTitle} id="logo-rules">
+        <p className="mb-5 text-[0.9375rem]" style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)' }}>{m.logoRulesIntro}</p>
+        <ul className="grid gap-4 sm:grid-cols-2">
+          {model.logoRules.map((r) => <StatementCard key={r.key} title={m.logoRules[r.key]} statement={r} m={m} />)}
+        </ul>
+      </Section>
       {model.assets.length > 0 && (
         <Section title={m.assetsTitle}>
           <ul className="flex flex-col gap-5">
