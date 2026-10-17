@@ -364,6 +364,8 @@
 /* Surfaces change size, spacing, radius, density and motion only — never colour or font. */
 .abluo-app [data-surface="create"], .abluo-app[data-surface="create"] {
   --control-height: 56px;
+  /* Buttons are pills in the Create flow (button-styles.ts reads this). */
+  --button-radius: 9999px;
 }
 
 /* Body editor (ADR-025 D6). The Portable Text editor renders list items as

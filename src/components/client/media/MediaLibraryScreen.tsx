@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Link } from '@/i18n/navigation'
 import { BATCH_MAX, BatchSheet, type BatchMode } from '@/components/client/media/BatchSheet'
 import type { CardChange } from '@/components/client/media/PhotoCard'
 import { BarButton } from '@/components/app/ui/BarButton'
+import { Button, ButtonLink } from '@/components/app/ui/Button'
+import { EmptyState } from '@/components/app/ui/EmptyState'
 import type { CardMenuItem } from '@/components/app/ui/CardMenu'
 import type { FilterChip } from '@/components/app/ui/FilterSheet'
 import { ListToolbar, type ListDateValue, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
@@ -340,13 +341,7 @@ export function MediaLibraryScreen({
         ticking ? (
           <SelectAll label={t('select.all')} ariaLabel={t('columns.selectAll')} state={allState} onChange={toggleAll} />
         ) : (
-          <button
-            type="button"
-            onClick={() => startSelecting()}
-            className="inline-flex min-h-11 shrink-0 items-center rounded-xl border border-border bg-background px-4 text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
-            {t('select.start')}
-          </button>
+          <Button onClick={() => startSelecting()}>{t('select.start')}</Button>
         )
       ) : null}
     </span>
@@ -384,24 +379,16 @@ export function MediaLibraryScreen({
               ]}
             />
             {addHref ? (
-              <Link
-                href={addHref}
-                className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-action px-4 text-[0.9375rem] font-semibold text-action-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-              >
+              <ButtonLink variant="primary" href={addHref}>
                 {MEDIA_ICONS.plus}
                 {t('addTitle')}
-              </Link>
+              </ButtonLink>
             ) : links.add ? (
-              <button
-                type="button"
-                disabled
-                title={addDisabledHint}
-                className="inline-flex h-11 shrink-0 cursor-not-allowed items-center gap-2 rounded-xl bg-action px-4 text-[0.9375rem] font-semibold text-action-foreground opacity-50"
-              >
+              <Button variant="primary" disabled title={addDisabledHint}>
                 {MEDIA_ICONS.plus}
                 {t('addTitle')}
                 {addDisabledHint ? <span className="sr-only">{` · ${addDisabledHint}`}</span> : null}
-              </button>
+              </Button>
             ) : null}
           </>
         }
@@ -428,32 +415,26 @@ export function MediaLibraryScreen({
       />
 
       {state === 'error' ? (
-        <div className="rounded-2xl border border-dashed border-border px-6 py-10">
-          <p className="font-medium text-foreground">{t('library.error')}</p>
-          <button
-            type="button"
-            onClick={() => {
-              setState('loading')
-              setReloadKey((k) => k + 1)
-            }}
-            className="mt-3 inline-flex h-11 items-center rounded-xl border border-border px-4 text-sm font-medium text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
-            {t('library.retry')}
-          </button>
-        </div>
-      ) : state !== 'loading' && shown.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border px-6 py-10">
-          <p className="font-medium text-foreground">{items.length ? t('filters.noMatch') : t('library.empty')}</p>
-          {items.length && !isDefault ? (
-            <button
-              type="button"
-              onClick={reset}
-              className="mt-3 inline-flex h-11 items-center rounded-xl border border-border px-4 text-sm font-medium text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        <EmptyState
+          titleAs="p"
+          title={t('library.error')}
+          action={
+            <Button
+              onClick={() => {
+                setState('loading')
+                setReloadKey((k) => k + 1)
+              }}
             >
-              {t('filters.clear')}
-            </button>
-          ) : null}
-        </div>
+              {t('library.retry')}
+            </Button>
+          }
+        />
+      ) : state !== 'loading' && shown.length === 0 ? (
+        <EmptyState
+          titleAs="p"
+          title={items.length ? t('filters.noMatch') : t('library.empty')}
+          action={items.length && !isDefault ? <Button onClick={reset}>{t('filters.clear')}</Button> : undefined}
+        />
       ) : view === 'grid' ? (
         grid
       ) : (

@@ -25,6 +25,8 @@ import {
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { PHOTO_CARD_MAX, TagEditor } from '@/components/client/media/PhotoCard'
 import { BarButton } from '@/components/app/ui/BarButton'
+import { Button } from '@/components/app/ui/Button'
+import { EmptyState } from '@/components/app/ui/EmptyState'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
 import type { CardMenuItem } from '@/components/app/ui/CardMenu'
 import { PageHeader } from '@/components/app/ui/PageHeader'
@@ -38,7 +40,6 @@ import { GalleriesFilters } from './GalleriesFilters'
 import { GalleriesTable } from './GalleriesTable'
 import { GalleryCardsGrid, GalleryPhoneList } from './GalleryCards'
 import { GALLERY_ICONS, useGalleryPlaces, type GalleryRow } from './gallery-bits'
-import { EmptyState } from '@/components/app/ui/EmptyState'
 
 const BATCH_MAX = 100
 const VIEW_KEY = 'abluo.galleries.view'
@@ -299,16 +300,7 @@ export function GalleryList({
       />
 
       {shown.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border px-6 py-10">
-          <p className="font-medium text-foreground">{t('filters.noMatch')}</p>
-          <button
-            type="button"
-            onClick={reset}
-            className="mt-3 inline-flex h-11 items-center rounded-xl border border-border px-4 text-sm font-medium text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
-            {t('filters.clear')}
-          </button>
-        </div>
+        <EmptyState titleAs="p" title={t('filters.noMatch')} action={<Button onClick={reset}>{t('filters.clear')}</Button>} />
       ) : (
         <>
           {/* Computers */}
@@ -379,8 +371,10 @@ export function GalleryList({
             onChange={setPicked}
           />
         </div>
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="lg"
+          className="mt-4"
           disabled={!picked.length || busy}
           onClick={async () => {
             const ids = tagSheet ?? []
@@ -388,10 +382,9 @@ export function GalleryList({
             setTagSheet(null)
             if (ok) clearSelection()
           }}
-          className="mt-4 inline-flex h-12 items-center justify-center rounded-xl bg-action px-5 text-[0.9375rem] font-semibold text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40"
         >
           {ts('tagsSheet.save')}
-        </button>
+        </Button>
       </BottomSheet>
 
       <ConfirmDialog

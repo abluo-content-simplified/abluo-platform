@@ -50,6 +50,7 @@ export function ChoiceCard({
   busy = false,
   badge,
   description,
+  className = '',
 }: {
   /** One icon, drawn at ~30px with a 1.5 stroke. */
   icon: ReactNode
@@ -64,6 +65,8 @@ export function ChoiceCard({
   badge?: ReactNode
   /** Optional muted line under the label: what choosing this means (UX rule 5). */
   description?: string
+  /** Grid placement only (e.g. `col-span-2`). */
+  className?: string
 }) {
   const radio = selected !== undefined
   return (
@@ -74,7 +77,7 @@ export function ChoiceCard({
       aria-busy={busy || undefined}
       disabled={disabled}
       onClick={onSelect}
-      className={`relative flex min-h-[7.5rem] flex-col items-start justify-between rounded-xl text-left text-foreground transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none disabled:cursor-not-allowed disabled:text-muted-foreground motion-reduce:transition-none ${
+      className={`relative flex min-h-[7.5rem] flex-col items-start justify-between rounded-xl text-left text-foreground transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none disabled:cursor-not-allowed disabled:text-muted-foreground motion-reduce:transition-none ${className} ${
         selected ? 'border-2 border-foreground bg-muted p-[calc(1.25rem-1px)]' : 'border border-border bg-card p-5 enabled:hover:bg-accent'
       }`}
     >

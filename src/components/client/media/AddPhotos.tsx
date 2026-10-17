@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useRef, useState, useSyncExternalStore, type DragEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, type DragEvent } from 'react'
 import { useTranslations } from 'next-intl'
-import type { FocalPoint } from '@/components/client/media/FocalPointPicker'
+import { ChoiceCard, ChoiceCardGrid } from '@/components/app/ui/ChoiceCard'
+import type { FocalPoint } from '@/components/app/ui/FocalPointPicker'
 import type { MediaScope } from '@/components/client/media/media-api'
 import { UploadQueueList } from '@/components/client/media/UploadQueueList'
 import { useMediaUploads } from '@/components/client/media/use-media-uploads'
@@ -146,29 +147,21 @@ export function AddPhotos({ projectSlug, scope, onUploaded, onOpenLibrary, room,
         }}
       />
 
-      <div role="group" aria-label={t('label')} className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <ChoiceCardGrid label={t('label')}>
         {touch === null ? (
           <div className="invisible col-span-2 min-h-24" aria-hidden="true" />
         ) : touch ? (
           <>
-            <Choice icon={ICONS.camera} onPress={() => cameraRef.current?.click()} disabled={off}>
-              {t('camera')}
-            </Choice>
-            <Choice icon={ICONS.phone} onPress={() => pickerRef.current?.click()} disabled={off}>
-              {t('phone')}
-            </Choice>
+            <ChoiceCard icon={ICONS.camera} label={t('camera')} onSelect={() => cameraRef.current?.click()} disabled={off} />
+            <ChoiceCard icon={ICONS.phone} label={t('phone')} onSelect={() => pickerRef.current?.click()} disabled={off} />
           </>
         ) : (
-          <Choice icon={ICONS.upload} onPress={() => pickerRef.current?.click()} disabled={off} wide hint={dragOver ? t('dropHere') : t('computerHint')}>
-            {t('computer')}
-          </Choice>
+          <ChoiceCard icon={ICONS.upload} label={t('computer')} onSelect={() => pickerRef.current?.click()} disabled={off} description={dragOver ? t('dropHere') : t('computerHint')} className="sm:col-span-2" />
         )}
         {onOpenLibrary && (
-          <Choice icon={ICONS.library} onPress={onOpenLibrary} disabled={off}>
-            {t('library')}
-          </Choice>
+          <ChoiceCard icon={ICONS.library} label={t('library')} onSelect={onOpenLibrary} disabled={off} />
         )}
-      </div>
+      </ChoiceCardGrid>
 
       {notice && (
         <p role="status" className="mt-3 text-sm text-muted-foreground">
@@ -178,39 +171,6 @@ export function AddPhotos({ projectSlug, scope, onUploaded, onOpenLibrary, room,
 
       <UploadQueueList uploads={uploads} />
     </div>
-  )
-}
-
-function Choice({
-  children,
-  icon,
-  onPress,
-  disabled,
-  hint,
-  wide,
-}: {
-  children: ReactNode
-  icon: ReactNode
-  onPress?: () => void
-  disabled?: boolean
-  hint?: string
-  wide?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onPress}
-      disabled={disabled}
-      className={`flex min-h-24 flex-col items-start justify-start gap-3 rounded-2xl border border-border bg-background p-4 text-left text-[0.9375rem] font-medium text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none enabled:hover:bg-hover disabled:cursor-not-allowed disabled:opacity-60 ${
-        wide ? 'col-span-1 border-dashed sm:col-span-2' : ''
-      }`}
-    >
-      {icon}
-      <span>
-        {children}
-        {hint && <span className="mt-0.5 block text-sm font-normal text-muted-foreground">{hint}</span>}
-      </span>
-    </button>
   )
 }
 

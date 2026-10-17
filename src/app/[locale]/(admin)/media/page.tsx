@@ -5,6 +5,7 @@ import { getMediaSite, type MediaSite } from '@/lib/api/media-library'
 import { adminMediaContext, pickAdminProject } from '@/lib/admin/media-context'
 import { loadAdminMediaProjects } from '@/lib/admin/media-projects'
 import { AdminMediaLibrary } from '@/components/admin/media/AdminMediaLibrary'
+import { Notice } from '@/components/app/ui/Notice'
 import { PageShell } from '@/components/app/ui/PageShell'
 
 export const dynamic = 'force-dynamic'
@@ -52,14 +53,10 @@ export default async function AdminMediaPage({ searchParams }: { searchParams?: 
   return (
     <PageShell>
       {loadError ? (
-        <p role="alert" className="rounded-2xl border border-destructive px-4 py-3 text-sm text-destructive">
-          {t('loadError')}
-        </p>
+        <Notice tone="error">{t('loadError')}</Notice>
       ) : null}
       {slug && !project ? (
-        <p role="status" className="rounded-2xl border border-border px-4 py-3 text-sm text-muted-foreground">
-          {t('unknownProject', { slug })}
-        </p>
+        <Notice tone="info">{t('unknownProject', { slug })}</Notice>
       ) : null}
       <AdminMediaLibrary
         projects={projects.map((p) => ({ slug: p.slug, name: p.name }))}

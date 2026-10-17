@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import { FocalPointPicker, type FocalPoint } from '@/components/client/media/FocalPointPicker'
+import { Chip } from '@/components/app/ui/Chip'
+import { FieldLabel } from '@/components/app/ui/FieldLabel'
+import { Notice } from '@/components/app/ui/Notice'
+import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
+import { TextArea, TextInput } from '@/components/app/ui/TextInput'
+import { FocalPointPicker, type FocalPoint } from '@/components/app/ui/FocalPointPicker'
 import { languageName } from '@/components/client/create/StepHeading'
 import { mediaApi, type MediaScope } from '@/components/client/media/media-api'
 
@@ -220,32 +225,30 @@ export function PhotoCard({
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-3">
         {multilingual ? (
-          <div role="tablist" aria-label={t('languages')} className="inline-flex rounded-full border border-border bg-muted p-1">
-            {languages.map((l) => {
-              const on = l === lang
+          <SegmentedControl
+            label={t('languages')}
+            appearance="soft"
+            value={lang}
+            onChange={(l) => {
+              blur()
+              setLang(l)
+            }}
+            options={languages.map((l) => {
               const missing = photoLanguageMissing({ alt, caption }, l, dl)
-              return (
-                <button
-                  key={l}
-                  type="button"
-                  role="tab"
-                  aria-selected={on}
-                  aria-controls={`${uid}-panel`}
-                  aria-label={missing ? t('languageMissing', { language: lname(l) }) : lname(l)}
-                  onClick={() => {
-                    blur()
-                    setLang(l)
-                  }}
-                  className={`relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-full px-3 text-sm font-semibold tracking-wide uppercase focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-                    on ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {l}
-                  {missing ? <span aria-hidden="true" className="absolute top-2 right-1.5 size-1.5 rounded-full bg-action" /> : null}
-                </button>
-              )
+              return {
+                value: l,
+                label: (
+                  <>
+                    <span className="sr-only">{missing ? t('languageMissing', { language: lname(l) }) : lname(l)}</span>
+                    <span aria-hidden="true" className="relative inline-block font-semibold tracking-wide uppercase">
+                      {l}
+                      {missing ? <span className="absolute -top-1 -right-2 size-1.5 rounded-full bg-action" /> : null}
+                    </span>
+                  </>
+                ),
+              }
             })}
-          </div>
+          />
         ) : (
           <span />
         )}
@@ -253,22 +256,15 @@ export function PhotoCard({
           {statusText}
         </p>
       </div>
-      {error ? (
-        <p role="alert" className="rounded-xl bg-muted p-3 text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+      {error ? <Notice tone="error">{error}</Notice> : null}
 
-      <div id={`${uid}-panel`} role={multilingual ? 'tabpanel' : undefined} className="flex flex-col gap-6">
+      <div id={`${uid}-panel`} className="flex flex-col gap-6">
         {/* Name — the same in every language. */}
         <div>
-          <label htmlFor={`${uid}-name`} className="block text-[0.9375rem] font-medium text-foreground">
+          <FieldLabel htmlFor={`${uid}-name`} hintId={`${uid}-name-help`} hint={multilingual ? t('name.helperShared') : t('name.helper')}>
             {t('name.label')}
-          </label>
-          <p id={`${uid}-name-help`} className="mt-1 text-sm leading-6 text-muted-foreground">
-            {multilingual ? t('name.helperShared') : t('name.helper')}
-          </p>
-          <input
+          </FieldLabel>
+          <TextInput
             id={`${uid}-name`}
             type="text"
             value={name}
@@ -279,7 +275,6 @@ export function PhotoCard({
             aria-describedby={`${uid}-name-help`}
             onChange={(e) => changeName(e.target.value)}
             onBlur={blur}
-            className="mt-2 block min-h-11 w-full rounded-xl border border-border bg-background px-3 text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           />
         </div>
 
@@ -379,32 +374,25 @@ export function TagEditor({
   const offered = q ? suggestions.filter((s) => !tags.includes(s) && s.includes(q)).slice(0, 6) : []
   return (
     <div>
-      <label htmlFor={id} className="block text-[0.9375rem] font-medium text-foreground">
+      <FieldLabel htmlFor={id} hint={labels.helper}>
         {labels.label}
-      </label>
-      <p className="mt-1 text-sm leading-6 text-muted-foreground">{labels.helper}</p>
+      </FieldLabel>
       {tags.length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-2">
           {tags.map((tag) => (
             <li key={tag}>
-              <button
-                type="button"
-                onClick={() => onChange(tags.filter((x) => x !== tag))}
-                aria-label={labels.remove(tag)}
-                className="inline-flex min-h-11 items-center gap-1 rounded-full border border-ring bg-selected-tint px-3 text-sm font-medium text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              >
+              <Chip selected removable aria-label={labels.remove(tag)} onClick={() => onChange(tags.filter((x) => x !== tag))}>
                 {tag}
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                  <path d="M7 7l10 10M17 7L7 17" />
-                </svg>
-              </button>
+              </Chip>
             </li>
           ))}
         </ul>
       )}
       <div className="mt-2 flex gap-2">
-        <input
+        <TextInput
           id={id}
+          flush
+          controlSize="md"
           type="text"
           value={draft}
           maxLength={PHOTO_CARD_MAX.tag}
@@ -436,16 +424,10 @@ export function TagEditor({
               add(draft)
             }
           }}
-          className="block min-h-11 w-full rounded-full border border-border bg-background px-4 text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60"
         />
-        <button
-          type="button"
-          onClick={() => add(draft)}
-          disabled={full || !draft.trim()}
-          className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-border bg-background px-4 text-[0.9375rem] font-medium text-foreground enabled:hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60"
-        >
+        <Chip onClick={() => add(draft)} disabled={full || !draft.trim()}>
           {labels.add}
-        </button>
+        </Chip>
       </div>
       {offered.length > 0 && !full && (
         <div className="mt-2">
@@ -453,13 +435,7 @@ export function TagEditor({
           <ul className="mt-1 flex flex-wrap gap-2">
             {offered.map((s) => (
               <li key={s}>
-                <button
-                  type="button"
-                  onClick={() => add(s)}
-                  className="inline-flex min-h-11 items-center rounded-full border border-border bg-background px-3 text-sm text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                >
-                  + {s}
-                </button>
+                <Chip onClick={() => add(s)}>+ {s}</Chip>
               </li>
             ))}
           </ul>
@@ -499,14 +475,9 @@ function TextField({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="block text-[0.9375rem] font-medium text-foreground">
+      <FieldLabel htmlFor={id} hintId={`${id}-help`} hint={helper}>
         {label}
-      </label>
-      {helper ? (
-        <p id={`${id}-help`} className="mt-1 text-sm leading-6 text-muted-foreground">
-          {helper}
-        </p>
-      ) : null}
+      </FieldLabel>
       {source ? (
         <div id={`${id}-src`} className="mt-2 rounded-xl bg-muted px-4 py-3">
           <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{source.label}</p>
@@ -515,7 +486,7 @@ function TextField({
           </p>
         </div>
       ) : null}
-      <textarea
+      <TextArea
         id={id}
         rows={rows}
         lang={lang}
@@ -526,7 +497,6 @@ function TextField({
         onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
         onChange={(e) => onChange(e.target.value.replace(/\n/g, ' '))}
         onBlur={onBlur}
-        className="mt-2 block min-h-11 w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-base leading-6 text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       />
       <div className="mt-1 flex items-start justify-end gap-3 text-xs">
         <span className="text-muted-foreground" aria-hidden="true">

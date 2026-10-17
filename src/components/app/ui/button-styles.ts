@@ -6,7 +6,9 @@
  *   (people), PRIMARY_BUTTON/SECONDARY_BUTTON/DESTRUCTIVE_BUTTON (backlog).
  *
  * Majority choices:
- *  - h-11 / rounded-xl / px-4 / text-[0.9375rem] / gap-2 / justify-center (all four)
+ *  - h-11 / px-4 / text-[0.9375rem] / gap-2 / justify-center (all four)
+ *  - the corner radius comes from the surface (--button-radius): rounded-xl on
+ *    manage screens, a pill inside the Create flow (data-surface="create")
  *  - primary + secondary are font-semibold (catalogue + events), quiet +
  *    destructive font-medium (people + backlog)
  *  - ONE disabled style: opacity-40 (catalogue, events, people; backlog used 60),
@@ -17,7 +19,7 @@ export type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'destructive' | 
 export type ButtonSize = 'md' | 'lg'
 
 const BASE =
-  'inline-flex shrink-0 items-center justify-center gap-2 rounded-xl text-[0.9375rem] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40'
+  'inline-flex shrink-0 items-center justify-center gap-2 rounded-[var(--button-radius,0.75rem)] text-[0.9375rem] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40'
 
 const VARIANT: Record<ButtonVariant, string> = {
   primary: 'bg-action font-semibold text-action-foreground hover:opacity-90 focus-visible:ring-offset-2 disabled:hover:opacity-40',

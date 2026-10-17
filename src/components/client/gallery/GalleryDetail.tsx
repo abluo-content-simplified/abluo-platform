@@ -17,6 +17,8 @@ import type { GalleryStatus } from '@/lib/api/gallery-status'
 import { usagePlaces } from '@/lib/client/gallery-editor'
 import { photoNeedsAlt } from '@/lib/client/gallery-wizard'
 import { draftPreviewUrl } from '@/lib/client/preview-url'
+import { Button, ButtonLink } from '@/components/app/ui/Button'
+import { EmptyState } from '@/components/app/ui/EmptyState'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { PageHeader } from '@/components/app/ui/PageHeader'
@@ -29,11 +31,6 @@ import { GalleryStatusLines } from './GalleryStatusLines'
 
 const PUBLISH_ERRORS = ['empty', 'conflict', 'offline', 'forbidden', 'failed']
 type Confirm = 'discard' | 'delete'
-
-const BUTTON =
-  'inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-border px-4 text-[0.9375rem] font-semibold text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40'
-const PRIMARY =
-  'inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-action px-4 text-[0.9375rem] font-semibold text-action-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-40'
 
 /**
  * One gallery's page (client dashboard · galleries/<id>), in the shared page
@@ -213,18 +210,18 @@ export function GalleryDetail({
           title={title}
           actions={
             <>
-              <button type="button" onClick={() => void preview()} className={`${BUTTON} hidden md:inline-flex`}>
+              <Button onClick={() => void preview()} className="hidden md:inline-flex">
                 {GALLERY_ICONS.eye}
                 {t('preview')}
-              </button>
-              <Link href={editHref()} className={`${BUTTON} hidden md:inline-flex`}>
+              </Button>
+              <ButtonLink href={editHref()} className="hidden md:inline-flex">
                 {GALLERY_ICONS.pencil}
                 {t('edit')}
-              </Link>
+              </ButtonLink>
               {hasDraft ? (
-                <button type="button" disabled={busy || items.length === 0} onClick={() => void publish()} className={PRIMARY}>
+                <Button variant="primary" disabled={busy || items.length === 0} onClick={() => void publish()}>
                   {publishing ? tg('wizard.saving') : tg('wizard.save')}
-                </button>
+                </Button>
               ) : null}
               <CardMenu label={tg('menu.label')} items={menu} />
             </>
@@ -249,21 +246,17 @@ export function GalleryDetail({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {items.length ? (
-              <Link href={editHref('?section=describe')} className={BUTTON}>
-                {t('describe')}
-              </Link>
+              <ButtonLink href={editHref('?section=describe')}>{t('describe')}</ButtonLink>
             ) : null}
-            <Link href={editHref('?section=photos')} className={BUTTON}>
+            <ButtonLink href={editHref('?section=photos')}>
               {GALLERY_ICONS.plus}
               {t('editPhotos')}
-            </Link>
+            </ButtonLink>
           </div>
         </div>
 
         {items.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border px-6 py-10">
-            <p className="font-medium text-foreground">{t('noPhotos')}</p>
-          </div>
+          <EmptyState titleAs="p" title={t('noPhotos')} />
         ) : (
           <AutoGrid density="large" label={t('photosTitle')} className="gap-3">
             {items.map((p, n) => {

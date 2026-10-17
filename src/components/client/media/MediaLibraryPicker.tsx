@@ -4,7 +4,11 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { mediaApi, thumbOf, type MediaScope } from '@/components/client/media/media-api'
 import type { AddedPhoto } from '@/components/client/media/AddPhotos'
-import type { FocalPoint } from '@/components/client/media/FocalPointPicker'
+import { Button, IconButton } from '@/components/app/ui/Button'
+import { Chip } from '@/components/app/ui/Chip'
+import { TileBadge, TileButton } from '@/components/app/ui/list/tile'
+import { TextInput } from '@/components/app/ui/TextInput'
+import type { FocalPoint } from '@/components/app/ui/FocalPointPicker'
 
 type LibraryItem = { assetId: string; url: string; thumbUrl: string; name?: string; alt: Record<string, string>; focal: FocalPoint | null; tags?: string[] }
 
@@ -95,48 +99,35 @@ export function MediaLibraryPicker({ projectSlug, scope, defaultLocale, exclude,
           <h2 id={titleId} className="text-lg font-semibold text-foreground">
             {t('title')}
           </h2>
-          <button
-            ref={closeRef}
-            type="button"
-            onClick={onClose}
-            aria-label={t('close')}
-            className="inline-flex size-11 items-center justify-center rounded-full text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
+          <IconButton ref={closeRef} onClick={onClose} aria-label={t('close')}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <path d="M6 6l12 12M18 6L6 18" />
             </svg>
-          </button>
+          </IconButton>
         </div>
 
         <div className="flex flex-col gap-3 border-b border-border-subtle px-4 py-3">
           <label htmlFor={searchId} className="sr-only">
             {t('search')}
           </label>
-          <input
+          <TextInput
             id={searchId}
+            flush
+            controlSize="md"
             type="search"
             value={query}
             maxLength={80}
             placeholder={t('searchPlaceholder')}
             onChange={(e) => setQuery(e.target.value)}
-            className="block min-h-11 w-full rounded-full border border-border bg-background px-4 text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           />
           {tags.length > 0 && (
             <div role="group" aria-label={t('tags')} className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
               {tags.map((tag) => {
                 const on = tagFilter.includes(tag)
                 return (
-                  <button
-                    key={tag}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => setTagFilter((f) => (on ? f.filter((x) => x !== tag) : f.length >= 10 ? f : [...f, tag]))}
-                    className={`inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 text-sm font-medium text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-                      on ? 'border-ring bg-selected-tint' : 'border-border bg-background hover:bg-hover'
-                    }`}
-                  >
+                  <Chip key={tag} selected={on} onClick={() => setTagFilter((f) => (on ? f.filter((x) => x !== tag) : f.length >= 10 ? f : [...f, tag]))}>
                     {tag}
-                  </button>
+                  </Chip>
                 )
               })}
             </div>
@@ -154,26 +145,19 @@ export function MediaLibraryPicker({ projectSlug, scope, defaultLocale, exclude,
               const name = item.alt[defaultLocale] || Object.values(item.alt)[0] || t('photoN', { n: i + 1 })
               return (
                 <li key={item.assetId} className="relative">
-                  <button
-                    type="button"
+                  <TileButton
                     aria-pressed={on}
                     disabled={!on && atLimit}
                     onClick={() => toggle(item)}
                     aria-label={t('pick', { name })}
-                    className={`block aspect-square w-full overflow-hidden rounded-xl border bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50 ${
-                      on ? 'border-ring ring-2 ring-ring' : 'border-border'
-                    }`}
+                    framed
+                    selected={on}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element -- Sanity CDN thumbnail */}
                     <img src={item.thumbUrl} alt="" width="240" height="240" loading="lazy" className="size-full object-cover" />
-                  </button>
+                  </TileButton>
                   {on && (
-                    <span
-                      className="pointer-events-none absolute top-1.5 left-1.5 flex size-6 items-center justify-center rounded-full border-2 border-background bg-action text-xs font-semibold text-action-foreground"
-                      aria-hidden="true"
-                    >
-                      {picked.findIndex((p) => p.assetId === item.assetId) + 1}
-                    </span>
+                    <TileBadge className="absolute top-1.5 left-1.5">{picked.findIndex((p) => p.assetId === item.assetId) + 1}</TileBadge>
                   )}
                 </li>
               )
@@ -181,30 +165,25 @@ export function MediaLibraryPicker({ projectSlug, scope, defaultLocale, exclude,
           </ul>
           {state === 'loading' && <p className="mt-3 text-sm text-muted-foreground">{t('loading')}</p>}
           {state === 'ready' && cursor && (
-            <button
-              type="button"
-              onClick={() => void load(cursor, q, tagFilter)}
-              className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-border bg-background text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
+            <Button fullWidth className="mt-4" onClick={() => void load(cursor, q, tagFilter)}>
               {t('more')}
-            </button>
+            </Button>
           )}
         </div>
 
         <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-border-subtle bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <p className="text-sm text-muted-foreground">{atLimit ? t('full') : t('selected', { count: picked.length })}</p>
-          <button
-            type="button"
+          <Button
+            variant="primary"
             disabled={!picked.length}
             onClick={() =>
               onAdd(
                 picked.map((p) => ({ assetId: p.assetId, url: p.url, thumbUrl: thumbOf(p.url), name: p.name ?? '', alt: p.alt, focal: p.focal, tags: p.tags ?? [] }))
               )
             }
-            className="inline-flex min-h-11 items-center rounded-full bg-action px-5 text-[0.9375rem] font-semibold text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60"
           >
             {t('add', { count: picked.length })}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

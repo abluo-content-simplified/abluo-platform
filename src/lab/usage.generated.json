@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-17T18:16:41.028Z",
+  "generatedAt": "2026-10-17T18:40:11.614Z",
   "usage": {
     "button": [
       "src/app/[locale]/(admin)/lab/[entry]/page.tsx",
@@ -21,6 +21,12 @@
       "src/components/client/catalogue/stray-address.tsx",
       "src/components/client/connections/ConsentScreen.tsx",
       "src/components/client/forms/SubmissionsBrowser.tsx",
+      "src/components/client/gallery/GalleryDetail.tsx",
+      "src/components/client/gallery/GalleryList.tsx",
+      "src/components/client/media/BatchSheet.tsx",
+      "src/components/client/media/MediaLibraryPicker.tsx",
+      "src/components/client/media/MediaLibraryScreen.tsx",
+      "src/components/client/media/MediaPhotoSheet.tsx",
       "src/components/client/people/PeopleBrowser.tsx",
       "src/components/client/people/PeopleSheets.tsx"
     ],
@@ -29,16 +35,23 @@
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
       "src/components/client/catalogue/item-fields.tsx",
+      "src/components/client/media/BatchSheet.tsx",
+      "src/components/client/media/MediaLibraryPicker.tsx",
+      "src/components/client/media/PhotoCard.tsx",
       "src/components/client/people/PeopleSheets.tsx"
     ],
     "field-label": [
       "src/components/app/ui/Field.tsx",
       "src/components/client/account/NameEditor.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
-      "src/components/client/catalogue/item-fields.tsx"
+      "src/components/client/catalogue/item-fields.tsx",
+      "src/components/client/media/BatchSheet.tsx",
+      "src/components/client/media/PhotoCard.tsx"
     ],
     "segmented-control": [
-      "src/components/admin/lab/DemoCanvas.tsx"
+      "src/components/admin/lab/DemoCanvas.tsx",
+      "src/components/client/media/MediaGrid.tsx",
+      "src/components/client/media/PhotoCard.tsx"
     ],
     "pill": [
       "src/app/[locale]/(admin)/lab/[entry]/page.tsx",
@@ -68,6 +81,7 @@
       "src/components/client/gallery/GalleriesTable.tsx",
       "src/components/client/gallery/GalleryDetail.tsx",
       "src/components/client/gallery/gallery-bits.tsx",
+      "src/components/client/media/MediaPhotoSheet.tsx",
       "src/components/client/media/MediaTable.tsx",
       "src/components/client/people/PeopleSheets.tsx",
       "src/components/client/people/PeopleTable.tsx",
@@ -137,7 +151,9 @@
       "src/components/client/connections/ConsentScreen.tsx",
       "src/components/client/events/EventList.tsx",
       "src/components/client/forms/SubmissionsBrowser.tsx",
+      "src/components/client/gallery/GalleryDetail.tsx",
       "src/components/client/gallery/GalleryList.tsx",
+      "src/components/client/media/MediaLibraryScreen.tsx",
       "src/components/client/people/PeopleBrowser.tsx",
       "src/components/client/taxonomy/TaxonomyManager.tsx"
     ],
@@ -415,7 +431,8 @@
       "src/components/admin/projects/NewProjectWizard.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/item-fields.tsx",
-      "src/components/client/create/AddContentSheet.tsx"
+      "src/components/client/create/AddContentSheet.tsx",
+      "src/components/client/media/AddPhotos.tsx"
     ],
     "toggle-chips": [
       "src/components/client/catalogue/item-fields.tsx",
@@ -525,7 +542,25 @@
     "pill-select": [
       "src/components/client/forms/forms-bits.tsx"
     ],
-    "notice": [],
+    "chip": [
+      "src/components/client/media/MediaLibraryPicker.tsx",
+      "src/components/client/media/PhotoCard.tsx",
+      "src/components/client/media/UploadQueueList.tsx"
+    ],
+    "tile": [
+      "src/components/client/media/MediaGrid.tsx",
+      "src/components/client/media/MediaLibraryPicker.tsx"
+    ],
+    "progress-bar": [
+      "src/components/client/media/UploadQueueList.tsx"
+    ],
+    "focal-point-picker": [
+      "src/components/client/media/PhotoCard.tsx"
+    ],
+    "notice": [
+      "src/app/[locale]/(admin)/media/page.tsx",
+      "src/components/client/media/PhotoCard.tsx"
+    ],
     "panel": [
       "src/app/[locale]/(admin)/lab/todo/page.tsx",
       "src/app/[locale]/(client)/account/page.tsx",

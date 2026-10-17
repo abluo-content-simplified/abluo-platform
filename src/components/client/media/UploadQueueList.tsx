@@ -7,6 +7,8 @@
  */
 import type { ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
+import { Chip } from '@/components/app/ui/Chip'
+import { ProgressBar } from '@/components/app/ui/ProgressBar'
 import { queueProgress, type QueueItem } from '@/lib/client/gallery-upload-queue'
 import { useUploadStory, type UseMediaUploads } from '@/components/client/media/use-media-uploads'
 
@@ -20,8 +22,8 @@ export function UploadQueueList({ uploads }: { uploads: UseMediaUploads }) {
         <Row key={q.id} q={q} story={story(q)}>
           {q.status === 'error' && (
             <span className="flex shrink-0 gap-1">
-              <SmallButton onPress={() => uploads.retry(q.id)}>{t('retry')}</SmallButton>
-              <SmallButton onPress={() => uploads.dismiss(q.id)}>{t('dismiss')}</SmallButton>
+              <Chip onClick={() => uploads.retry(q.id)}>{t('retry')}</Chip>
+              <Chip onClick={() => uploads.dismiss(q.id)}>{t('dismiss')}</Chip>
             </span>
           )}
         </Row>
@@ -53,9 +55,7 @@ function Row({ q, story, children }: { q: QueueItem; story: string; children?: R
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm text-foreground">{q.name}</p>
         {busy && (
-          <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
-            <div className="h-full animate-pulse rounded-full bg-action transition-all" style={{ width: `${queueProgress(q) * 100}%` }} />
-          </div>
+          <ProgressBar className="mt-1" value={queueProgress(q)} pulsing decorative />
         )}
         <p className={`mt-1 text-xs ${q.status === 'error' ? 'text-destructive' : q.status === 'done' ? 'text-success' : 'text-muted-foreground'}`}>
           {q.status === 'done' && <span aria-hidden="true">✓ </span>}
@@ -64,17 +64,5 @@ function Row({ q, story, children }: { q: QueueItem; story: string; children?: R
       </div>
       {children}
     </li>
-  )
-}
-
-function SmallButton({ children, onPress }: { children: ReactNode; onPress: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onPress}
-      className="inline-flex min-h-11 items-center rounded-full border border-border bg-background px-3 text-sm font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-    >
-      {children}
-    </button>
   )
 }

@@ -14,5 +14,5 @@ export function TextInput({ controlSize, flush, className, ...rest }: Extra & Co
 }
 
 export function TextArea({ flush, className, ...rest }: Pick<Extra, 'flush'> & ComponentProps<'textarea'>) {
-  return <textarea className={textAreaClass({ flush, className })} {...rest} />
+  return <textarea className={textAreaClass({ flush, sized: rest.rows !== undefined, className })} {...rest} />
 }

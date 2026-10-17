@@ -12,8 +12,9 @@ export function inputClass({ controlSize = 'lg', flush = false, className = '' }
   return [flush ? '' : 'mt-1.5', INPUT_SIZE[controlSize], INPUT_BASE, className].filter(Boolean).join(' ')
 }
 
-export function textAreaClass({ flush = false, className = '' }: { flush?: boolean; className?: string } = {}): string {
-  return [flush ? '' : 'mt-1.5', 'min-h-28 py-2.5', INPUT_BASE, className].filter(Boolean).join(' ')
+/** `sized`: the caller sets the height with `rows`, so no minimum height is added. */
+export function textAreaClass({ flush = false, sized = false, className = '' }: { flush?: boolean; sized?: boolean; className?: string } = {}): string {
+  return [flush ? '' : 'mt-1.5', sized ? 'py-2.5' : 'min-h-28 py-2.5', INPUT_BASE, className].filter(Boolean).join(' ')
 }
 
 export const LABEL_CLASS = 'text-[0.9375rem] font-medium text-foreground'

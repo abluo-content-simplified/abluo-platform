@@ -44,8 +44,9 @@ describe('field classes', () => {
     expect(inline).toContain('h-11')
     expect(inline).not.toContain('mt-1.5')
   })
-  it('textarea keeps the minimum height', () => {
+  it('textarea keeps the minimum height unless the caller sizes it with rows', () => {
     expect(textAreaClass()).toContain('min-h-28')
+    expect(textAreaClass({ sized: true })).not.toContain('min-h-28')
   })
 })
 

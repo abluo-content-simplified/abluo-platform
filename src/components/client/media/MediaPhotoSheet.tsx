@@ -3,6 +3,8 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
+import { Button, IconButton } from '@/components/app/ui/Button'
+import { Pill } from '@/components/app/ui/list/cells'
 import { PhotoCard, type CardChange, type CardPhoto } from '@/components/client/media/PhotoCard'
 import type { MediaLibraryScope } from '@/components/client/media/media-api'
 import type { MediaLibraryItem, MediaUsage } from '@/lib/api/media-library'
@@ -73,15 +75,9 @@ export function PhotoSheet({
           <h2 id={titleId} className="flex-1 truncate px-1 text-lg font-semibold text-foreground">
             {item.name?.trim() || t('sheet.title')}
           </h2>
-          <button
-            ref={closeRef}
-            type="button"
-            onClick={onClose}
-            aria-label={t('sheet.close')}
-            className="inline-flex size-11 items-center justify-center rounded-full text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
+          <IconButton ref={closeRef} onClick={onClose} aria-label={t('sheet.close')}>
             {MEDIA_ICONS.x}
-          </button>
+          </IconButton>
         </div>
         <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <PhotoCard
@@ -97,13 +93,9 @@ export function PhotoSheet({
           <UsedIn usedIn={item.usedIn} projectSlug={projectSlug} links={links} />
           {remove ? (
             <div className="border-t border-border-subtle pt-4">
-              <button
-                type="button"
-                onClick={remove.onPress}
-                className="inline-flex h-11 items-center rounded-xl border border-border px-4 text-sm font-medium text-destructive hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              >
+              <Button variant="destructive" onClick={remove.onPress}>
                 {remove.label}
-              </button>
+              </Button>
             </div>
           ) : null}
         </div>
@@ -125,7 +117,9 @@ function UsedIn({ usedIn, projectSlug, links }: { usedIn: MediaUsage[]; projectS
         <ul className="flex flex-col gap-1">
           {usedIn.map((u) => (
             <li key={`${u.kind}-${u.id}`} className="flex items-start gap-2 text-sm text-foreground">
-              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{t(`kind.${u.kind}`)}</span>
+              <span className="shrink-0">
+                <Pill tone="muted">{t(`kind.${u.kind}`)}</Pill>
+              </span>
               <UsageLink href={mediaUsageHref(links, projectSlug, u)}>{u.title || t('untitled')}</UsageLink>
             </li>
           ))}

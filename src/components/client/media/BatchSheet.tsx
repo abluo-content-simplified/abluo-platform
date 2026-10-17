@@ -2,6 +2,9 @@
 
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { Button } from '@/components/app/ui/Button'
+import { FieldLabel } from '@/components/app/ui/FieldLabel'
+import { TextInput } from '@/components/app/ui/TextInput'
 import { mediaApi, type MediaScope } from '@/components/client/media/media-api'
 import { PHOTO_CARD_MAX, TagEditor, type CardChange } from '@/components/client/media/PhotoCard'
 
@@ -141,13 +144,14 @@ export function BatchSheet({
           <div className="mt-6 flex flex-col gap-6">
             {showName ? (
               <div>
-                <label htmlFor={`${uid}-base`} className="block text-[0.9375rem] font-medium text-foreground">
+                <FieldLabel
+                  htmlFor={`${uid}-base`}
+                  hintId={`${uid}-base-help`}
+                  hint={name ? t('baseName.preview', { first: `${name} 1`, second: `${name} 2` }) : t('baseName.helper')}
+                >
                   {t('baseName.label')}
-                </label>
-                <p id={`${uid}-base-help`} className="mt-1 text-sm leading-6 text-muted-foreground">
-                  {name ? t('baseName.preview', { first: `${name} 1`, second: `${name} 2` }) : t('baseName.helper')}
-                </p>
-                <input
+                </FieldLabel>
+                <TextInput
                   id={`${uid}-base`}
                   ref={firstRef}
                   type="text"
@@ -163,7 +167,6 @@ export function BatchSheet({
                       void apply()
                     }
                   }}
-                  className="mt-2 block min-h-11 w-full rounded-xl border border-border bg-background px-3 text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 />
               </div>
             ) : null}
@@ -193,22 +196,12 @@ export function BatchSheet({
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-border-subtle px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={busy}
-            className="inline-flex min-h-11 items-center rounded-full px-4 text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60"
-          >
+          <Button variant="quiet" onClick={onClose} disabled={busy}>
             {mode === 'all' ? t('skip') : t('cancel')}
-          </button>
-          <button
-            type="button"
-            onClick={() => void apply()}
-            disabled={!ready || busy}
-            className="inline-flex min-h-11 items-center rounded-full bg-action px-5 text-[0.9375rem] font-semibold text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60"
-          >
+          </Button>
+          <Button variant="primary" onClick={() => void apply()} disabled={!ready || busy}>
             {busy ? t('saving') : t('apply', { count })}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

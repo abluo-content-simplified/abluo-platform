@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { useTranslations } from 'next-intl'
+import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
+import { TileButton, TileLabel } from '@/components/app/ui/list/tile'
 import { AutoGrid, type AutoGridDensity } from '@/components/app/ui/list/AutoGrid'
 import type { MediaLibraryItem } from '@/lib/api/media-library'
 import { localeFor, needsDescription, type LocaleOf } from '@/lib/client/media-filter'
@@ -156,12 +158,10 @@ export function MediaGrid({
             key={item.assetId}
             className={`relative aspect-square overflow-hidden rounded-xl border bg-muted ${on ? 'border-ring ring-2 ring-ring' : 'border-border'}`}
           >
-            <button
-              type="button"
+            <TileButton
               {...pressHandlers(item)}
               aria-label={selecting ? t('select.photo', { name }) : t('library.edit', { name })}
               aria-pressed={selecting ? on : undefined}
-              className="block size-full touch-manipulation select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
             >
               {/* eslint-disable-next-line @next/next/no-img-element -- Sanity CDN thumbnail */}
               <img
@@ -173,7 +173,7 @@ export function MediaGrid({
                 draggable={false}
                 className={`size-full object-cover [-webkit-touch-callout:none] transition-transform ${on ? 'scale-[0.94] rounded-lg' : ''}`}
               />
-            </button>
+            </TileButton>
             {selecting ? (
               <span
                 aria-hidden="true"
@@ -185,16 +185,14 @@ export function MediaGrid({
               </span>
             ) : null}
             {showProject && item.project ? (
-              <span className="pointer-events-none absolute top-1.5 right-1.5 max-w-[70%] truncate rounded-full bg-background px-2 py-0.5 text-xs leading-5 text-foreground">
-                {item.project.name}
+              <span className="pointer-events-none absolute top-1.5 right-1.5 flex max-w-[70%]">
+                <TileLabel>{item.project.name}</TileLabel>
               </span>
             ) : null}
             <span className="pointer-events-none absolute right-1.5 bottom-1.5 left-1.5 flex flex-col items-start gap-1">
-              <span className="max-w-full truncate rounded-full bg-background px-2 py-0.5 text-xs leading-5 text-foreground">
-                {t('library.usage', { count: item.usedIn.length })}
-              </span>
+              <TileLabel>{t('library.usage', { count: item.usedIn.length })}</TileLabel>
               {needsDescription(item, localeFor(defaultLocale, item)) && size !== 'small' ? (
-                <span className="max-w-full truncate rounded-full bg-background px-2 py-0.5 text-xs leading-5 text-muted-foreground">{t('library.needsDescription')}</span>
+                <TileLabel muted>{t('library.needsDescription')}</TileLabel>
               ) : null}
             </span>
           </li>
@@ -231,23 +229,21 @@ export function SizeSwitch({
     </svg>
   )
   return (
-    <div role="radiogroup" aria-label={label} className={`h-11 items-stretch gap-1 rounded-xl border border-border bg-background p-1 ${className}`}>
-      {THUMB_SIZES.map((s) => (
-        <button
-          key={s}
-          type="button"
-          role="radio"
-          aria-checked={value === s}
-          aria-label={names[s]}
-          title={names[s]}
-          onClick={() => onChange(s)}
-          className={`grid w-10 place-items-center rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-            value === s ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          {icon(s === 'small' ? 3 : s === 'medium' ? 2 : 1)}
-        </button>
-      ))}
-    </div>
+    <SegmentedControl
+      appearance="soft"
+      label={label}
+      value={value}
+      onChange={onChange}
+      className={className}
+      options={THUMB_SIZES.map((s) => ({
+        value: s,
+        label: (
+          <span className="grid place-items-center">
+            {icon(s === 'small' ? 3 : s === 'medium' ? 2 : 1)}
+            <span className="sr-only">{names[s]}</span>
+          </span>
+        ),
+      }))}
+    />
   )
 }
