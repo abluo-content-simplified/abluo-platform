@@ -46,8 +46,8 @@ export function NameStep({
   const t = useTranslations('clientDashboard.gallery.wizard.name')
   const tl = useTranslations('clientDashboard.gallery.list')
   return (
-    <section aria-labelledby="gallery-name-title">
-      <StepHeading id="gallery-name-title" title={t('title')} helper={t('helper')} />
+    <section aria-labelledby="gallery-name-heading">
+      <StepHeading id="gallery-name-heading" title={t('title')} helper={t('helper')} />
       <NameFields
         idPrefix="gallery-name"
         lang={locale}

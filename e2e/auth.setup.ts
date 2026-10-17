@@ -12,7 +12,9 @@ setup('log in as the test client', async ({ page }) => {
   await page.locator('input[type="email"]').fill(email)
   await page.locator('input[autocomplete="current-password"]').fill(password)
   await page.locator('button[type="submit"]').click()
-  await expect(page).toHaveURL(/\/account(\?|$)/, { timeout: 30_000 })
+  // Signed in = we left /login and the /auth/continue hop. Where we land has changed
+  // over time (/account, then the project's home), so don't pin one destination.
+  await expect(page).toHaveURL((url) => !/\/(login|auth\/)/.test(url.pathname), { timeout: 30_000 })
   mkdirSync('e2e/.auth', { recursive: true })
   await page.context().storageState({ path: 'e2e/.auth/client.json' })
 })

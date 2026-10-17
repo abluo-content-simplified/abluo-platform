@@ -75,8 +75,8 @@ export function TitleStep({
   )
 
   return (
-    <section aria-labelledby="title-step-title">
-      <StepHeading id="title-step-title" title={t('title')} helper={t('helper')} />
+    <section aria-labelledby="title-step-heading">
+      <StepHeading id="title-step-heading" title={t('title')} helper={t('helper')} />
       <TitleFields
         idPrefix="title-step"
         title={title}
