@@ -17,6 +17,11 @@ import { StubPane } from './src/lib/sanity/studio/StubPane'
 // ADR-014 Phase B — Integrations & Privacy panes
 import { IntegrationsPane } from './src/lib/sanity/studio/IntegrationsPane'
 import { PrivacyPane } from './src/lib/sanity/studio/PrivacyPane'
+// ADR-033 Amendment J slice 6 — Categories & Tags (taxonomyTerm), superadmin only
+import { NewTermPane } from './src/sanity/components/NewTermPane'
+import { TermUsageView } from './src/sanity/components/TermUsageView'
+import { kindLabel, taxonomyModules, termListFilter } from './src/lib/taxonomy/studio'
+import { TAXONOMY_TERM_TYPE, type TermKind } from './src/lib/taxonomy/ids'
 
 // Hardcoded to match src/lib/sanity/client.ts — avoids env var dependency in the Studio
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ?? '3n7t84j3'
@@ -376,6 +381,57 @@ export default defineConfig({
           return items
         }
 
+        // ── Categories & Tags (ADR-033 Amendment J, slice 6) ──────────────────
+        // taxonomyTerm records of one project, by module and kind, in `order`.
+        // Creation goes through NewTermPane (the _id embeds the key, so the
+        // plain "+" cannot create them; the lists therefore offer no "+").
+        function termList(slug: string, title: string, module?: string, kind?: TermKind) {
+          const { filter, params } = termListFilter(slug, module, kind)
+          return S.documentList()
+            .id(`${slug}-terms-${module ?? 'all'}-${kind ?? 'all'}`)
+            .title(title)
+            .schemaType(TAXONOMY_TERM_TYPE)
+            .apiVersion('2026-05-21')
+            .filter(filter)
+            .params(params)
+            .defaultOrdering([
+              { field: 'module', direction: 'asc' },
+              { field: 'kind', direction: 'asc' },
+              { field: 'order', direction: 'asc' },
+            ])
+            .initialValueTemplates([])
+            .child((id: string) =>
+              S.document()
+                .documentId(id)
+                .schemaType(TAXONOMY_TERM_TYPE)
+                .views([S.view.form().title('Edit'), S.view.component(TermUsageView).title('Used by')])
+            )
+        }
+
+        function buildTermsItem(slug: string, enabledModuleIds: string[]) {
+          const items: ReturnType<typeof S.listItem>[] = [
+            S.listItem()
+              .id(`${slug}-terms-new`)
+              .title('+ New category or tag')
+              .child(S.component(NewTermPane).id(`${slug}-terms-new-pane`).title('New category or tag').options({ projectSlug: slug })),
+            S.listItem().id(`${slug}-terms-all`).title('All').child(termList(slug, 'All categories & tags')),
+          ]
+          for (const mod of taxonomyModules(MODULE_REGISTRY).filter((m) => enabledModuleIds.includes(m.id))) {
+            for (const t of mod.taxonomies ?? []) {
+              items.push(
+                S.listItem()
+                  .id(`${slug}-terms-${mod.id}-${t.kind}`)
+                  .title(`${mod.label} · ${kindLabel(t.kind, true)}`)
+                  .child(termList(slug, `${mod.label} · ${kindLabel(t.kind, true)}`, mod.id, t.kind))
+              )
+            }
+          }
+          return S.listItem()
+            .id(`${slug}-terms`)
+            .title('Categories & Tags')
+            .child(S.list().id(`${slug}-terms-list`).title('Categories & Tags').items(items))
+        }
+
         // ── Modules section builder ───────────────────────────────────────────
         // Every module entry opens its settings pane DIRECTLY — no "Settings"
         // child anywhere. One rule, no exceptions: Modules → X is one pane
@@ -425,6 +481,9 @@ export default defineConfig({
                             )
                           )
                       ),
+
+                    // ── Categories & Tags — taxonomyTerm records (superadmin) ──
+                    buildTermsItem(slug, enabledModuleIds),
 
                     S.divider(),
 
@@ -754,6 +813,6 @@ export default defineConfig({
     // Note: Sanity always re-sorts the menu alphabetically in the UI layer —
     // custom ordering via newDocumentOptions is not possible. Filter only.
     newDocumentOptions: (prev) =>
-      prev.filter((opt) => !['blogCategory', 'newsCategory', 'eventCategory', 'blogCategoryProjectOwned', 'newsCategoryProjectOwned', 'eventCategoryProjectOwned', 'homePage', 'homePageProjectOwned', 'livePageProjectOwned', 'eventsPageProjectOwned', 'blogPageProjectOwned', 'newsPageProjectOwned', 'cataloguePageProjectOwned', 'callToActionProjectOwned'].includes(opt.templateId)),
+      prev.filter((opt) => !['blogCategory', 'newsCategory', 'eventCategory', 'blogCategoryProjectOwned', 'newsCategoryProjectOwned', 'eventCategoryProjectOwned', 'homePage', 'homePageProjectOwned', 'livePageProjectOwned', 'eventsPageProjectOwned', 'blogPageProjectOwned', 'newsPageProjectOwned', 'cataloguePageProjectOwned', 'callToActionProjectOwned', 'taxonomyTerm', 'taxonomyTermProjectOwned'].includes(opt.templateId)),
   },
 })

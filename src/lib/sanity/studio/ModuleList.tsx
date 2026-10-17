@@ -11,6 +11,7 @@ import type {
   ModuleManifest,
   ModulePlacementSurface,
 } from '../../modules/types'
+import { isTermManagedConfigField } from '../../taxonomy/studio'
 import { PLATFORM_LOCALES } from '../../i18n/locales'
 import {
   buildWhatsAppFormDocument,
@@ -966,6 +967,12 @@ function ModuleDetail({
         ) : (
           configFields.map((field) => (
             <div key={field.id}>
+              {isTermManagedConfigField(manifest.id, field.id) ? (
+                <div style={{ marginBottom: 20, fontSize: 13, color: '#666' }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 6 }}>{field.label}</div>
+                  Catalogue categories are now managed under Categories &amp; Tags.
+                </div>
+              ) : (
               <ConfigField
                 field={field}
                 value={values[field.id]}
@@ -976,6 +983,7 @@ function ModuleDetail({
                 client={client}
                 onChange={(v) => handleChange(field, v)}
               />
+              )}
               {fieldNotices[field.id] && !fieldErrors[field.id] && (
                 <div role="status" style={{ fontSize: 12, color: '#8d6e00', marginTop: -14, marginBottom: 20 }}>
                   {fieldNotices[field.id]}
