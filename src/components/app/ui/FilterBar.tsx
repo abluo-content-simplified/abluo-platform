@@ -38,11 +38,13 @@ export function FilterSearch({
   label,
   sizing = 'w-full min-w-0 sm:w-auto sm:min-w-56 sm:flex-1',
   className = '',
+  maxLength,
 }: {
   value: string
   onChange: (value: string) => void
   placeholder?: string
   label?: string
+  maxLength?: number
   /** Width / flex classes (replaces the default). */
   sizing?: string
   className?: string
@@ -59,6 +61,7 @@ export function FilterSearch({
         type="search"
         value={value}
         placeholder={placeholder}
+        maxLength={maxLength}
         onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
         className={`${CONTROL} pl-10`}
       />

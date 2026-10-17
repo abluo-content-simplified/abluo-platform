@@ -5,6 +5,7 @@ import { PostActivitySheet } from '@/components/client/posts/PostActivitySheet'
 import { useTranslations } from 'next-intl'
 import type { PortableTextBlock } from '@portabletext/editor'
 import { useRouter } from '@/i18n/navigation'
+import { Button, IconButton } from '@/components/app/ui/Button'
 import { createPostDraftAction, patchPostDraftAction } from '@/app/[locale]/(client)/[tenant]/posts/actions'
 import { improvePostBodyAction, improvePostLineAction } from '@/app/[locale]/(client)/[tenant]/posts/ai-actions'
 import { publishPostDraftAction } from '@/app/[locale]/(client)/[tenant]/posts/publish-actions'
@@ -32,8 +33,8 @@ import {
   type WizardFlowStep,
 } from '@/lib/client/wizard-steps'
 import type { DraftSnapshot, SiteInfo, StepProps } from './types'
-import { SavePill } from './SavePill'
-import { SaveNotice } from './SaveNotice'
+import { SavePill } from '@/components/app/ui/SavePill'
+import { SaveNotice } from '@/components/app/ui/SaveNotice'
 import { applyToSnapshot } from './snapshot'
 import { CategoryStep } from './steps/CategoryStep'
 import { TitleStep, type ImproveLineResult } from './steps/TitleStep'
@@ -561,24 +562,13 @@ export function WizardShell({
     >
       <header className="mx-auto flex w-full max-w-[672px] items-center justify-between gap-3 px-4 pt-[max(12px,env(safe-area-inset-top))] pb-2">
         {step !== 'done' && !created ? (
-          <button
-            type="button"
-            onClick={closeEmpty}
-            aria-label={t('shell.close')}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
+          <IconButton onClick={closeEmpty} aria-label={t('shell.close')}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <path d="M6 6l12 12M18 6L6 18" />
             </svg>
-          </button>
+          </IconButton>
         ) : step !== 'done' ? (
-          <button
-            type="button"
-            onClick={saveAndExit}
-            className="inline-flex min-h-11 items-center rounded-full border border-border px-4 text-[0.9375rem] font-semibold text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
-            {t('shell.saveExit')}
-          </button>
+          <Button onClick={saveAndExit}>{t('shell.saveExit')}</Button>
         ) : (
           <span />
         )}
@@ -645,26 +635,15 @@ export function WizardShell({
             ) : null}
             <div className={`flex items-center justify-between gap-4 ${showProgress ? 'mt-3' : ''}`}>
               {hasBack ? (
-                <button
-                  type="button"
-                  onClick={goBack}
-                  disabled={busy || holdForCover}
-                  className="inline-flex min-h-11 items-center px-1 text-[1.0625rem] font-semibold text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60"
-                >
+                <Button variant="link" onClick={goBack} disabled={busy || holdForCover}>
                   {t('shell.back')}
-                </button>
+                </Button>
               ) : (
                 <span />
               )}
-              <button
-                type="button"
-                onClick={() => void onPrimary()}
-                disabled={!canNext}
-                aria-busy={busy || undefined}
-                className="inline-flex h-14 min-w-32 items-center justify-center rounded-xl bg-action px-8 text-[1.0625rem] font-semibold text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
-              >
+              <Button variant="primary" size="lg" className="min-w-32" onClick={() => void onPrimary()} disabled={!canNext} aria-busy={busy || undefined}>
                 {nextLabel}
-              </button>
+              </Button>
             </div>
           </div>
         </footer>

@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
+import { Button } from '@/components/app/ui/Button'
 import { getPostActivityAction, type PostActivityResult } from '@/app/[locale]/(client)/[tenant]/posts/activity-actions'
 import type { ActivityItem } from '@/lib/lifecycle/activity'
 
@@ -58,13 +59,9 @@ export function PostActivitySheet({ open, onClose, projectSlug, postId }: { open
       ) : state.kind === 'error' ? (
         <div className="mt-2" role="alert">
           <p className="text-[0.9375rem] text-muted-foreground">{t('error')}</p>
-          <button
-            type="button"
-            onClick={() => setAttempt((n) => n + 1)}
-            className="mt-3 inline-flex h-11 items-center rounded-xl border border-border px-4 text-[0.9375rem] font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
+          <Button className="mt-3" onClick={() => setAttempt((n) => n + 1)}>
             {t('retry')}
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="mt-2">

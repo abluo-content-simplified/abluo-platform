@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import { Button } from '@/components/app/ui/Button'
 import type { MediaScope } from '@/components/client/media/media-api'
 import { PhotoCard, type CardChange, type CardPhoto } from '@/components/client/media/PhotoCard'
 
@@ -49,13 +50,9 @@ export function PhotoDescribeStep({
       <p className="mt-3 text-[1.0625rem] leading-7 text-muted-foreground">{t('helperLater')}</p>
       {onSkip ? (
         <div className="mt-3">
-          <button
-            type="button"
-            onClick={onSkip}
-            className="inline-flex min-h-11 items-center rounded-lg px-1 text-[0.9375rem] font-medium text-foreground underline underline-offset-4 hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
+          <Button variant="link" onClick={onSkip}>
             {total - index > 1 ? t('skipRest', { count: total - index }) : t('skip')}
-          </button>
+          </Button>
         </div>
       ) : null}
 

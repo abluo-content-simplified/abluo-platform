@@ -3,6 +3,8 @@
 import { useState, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import type { StepProps } from '@/components/client/create/types'
+import { AssistButton } from '@/components/app/ui/AssistButton'
+import { TextArea } from '@/components/app/ui/TextInput'
 import { StepHeading } from '@/components/client/create/StepHeading'
 import { ImproveReview } from '@/components/client/create/ImproveReview'
 import { normalizeBlocks } from '@/lib/client/normalize-blocks'
@@ -64,14 +66,14 @@ export function TitleStep({
   }
 
   const button = (field: 'title' | 'subtitle') => (
-    <ImproveLineButton
-      label={field === 'title' ? t('improveTitle') : t('improveSubtitle')}
-      busyLabel={t('improving')}
-      soon={onImproveLine ? null : t('soon')}
+    <AssistButton
+      badge={onImproveLine ? undefined : t('soon')}
       busy={working === field}
       disabled={!onImproveLine || working !== null || !(field === 'title' ? title : subtitle).trim()}
-      onPress={() => void improve(field)}
-    />
+      onClick={() => void improve(field)}
+    >
+      {working === field ? t('improving') : field === 'title' ? t('improveTitle') : t('improveSubtitle')}
+    </AssistButton>
   )
 
   return (
@@ -103,42 +105,6 @@ export function TitleStep({
         }}
       />
     </section>
-  )
-}
-
-/** "Improve title" — the canvas look: 44px, rounded-xl, accent tile, sparkle. */
-function ImproveLineButton({
-  label,
-  busyLabel,
-  soon,
-  busy,
-  disabled,
-  onPress,
-}: {
-  label: string
-  busyLabel: string
-  soon: string | null
-  busy: boolean
-  disabled: boolean
-  onPress: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onPress}
-      disabled={disabled}
-      aria-busy={busy || undefined}
-      className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-accent px-3.5 text-[0.9375rem] font-semibold text-accent-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      <span className={busy ? 'animate-pulse' : undefined}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M12 3l1.8 4.7L18.5 9.5 13.8 11.3 12 16l-1.8-4.7L5.5 9.5l4.7-1.8z" />
-          <path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z" />
-        </svg>
-      </span>
-      {busy ? busyLabel : label}
-      {soon ? <span className="rounded-full bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground">{soon}</span> : null}
-    </button>
   )
 }
 
@@ -177,7 +143,8 @@ export function TitleFields({
           {t('titleLabel')}
         </label>
         {source ? <Source id={`${idPrefix}-title-src`} label={source.label} lang={source.lang} text={source.title || source.empty} /> : null}
-        <textarea
+        <TextArea
+          flush
           id={`${idPrefix}-title`}
           lang={lang}
           rows={2}
@@ -190,7 +157,8 @@ export function TitleFields({
           data-enter-next=""
           onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
           onChange={(e) => onTitle(e.target.value.replace(/\n/g, ' '))}
-          className="mt-2 block min-h-[var(--control-height,56px)] w-full resize-none rounded-xl border border-border bg-background px-4 py-3 text-2xl leading-8 font-semibold text-foreground placeholder:text-muted-foreground placeholder:font-normal focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          textSize="title"
+          className="mt-2 block"
         />
         {actions?.title ? (
           <div className="mt-2 flex items-start justify-between gap-3">
@@ -208,7 +176,8 @@ export function TitleFields({
         {source && source.subtitle ? (
           <Source id={`${idPrefix}-subtitle-src`} label={source.label} lang={source.lang} text={source.subtitle} />
         ) : null}
-        <textarea
+        <TextArea
+          flush
           id={`${idPrefix}-subtitle`}
           lang={lang}
           rows={2}
@@ -221,7 +190,8 @@ export function TitleFields({
           data-enter-next=""
           onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
           onChange={(e) => onSubtitle(e.target.value.replace(/\n/g, ' '))}
-          className="mt-2 block min-h-[var(--control-height,56px)] w-full resize-none rounded-xl border border-border bg-background px-4 py-3 text-[1.1875rem] leading-7 text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          textSize="lead"
+          className="mt-2 block"
         />
         {actions?.subtitle ? (
           <div className="mt-2 flex items-start justify-between gap-3">

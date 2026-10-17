@@ -9,10 +9,18 @@
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import { Link } from '@/i18n/navigation'
 import { StepHeading, languageName } from '@/components/client/create/StepHeading'
 import type { SectionState } from '@/lib/client/wizard-steps'
 import type { DraftPreviewLink } from '@/lib/api/post-preview'
+import { Button, ButtonLink } from '@/components/app/ui/Button'
+import { buttonClass } from '@/components/app/ui/button-styles'
+import { CardMenu } from '@/components/app/ui/CardMenu'
+import { Notice } from '@/components/app/ui/Notice'
+import { Panel } from '@/components/app/ui/Panel'
+import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
+import { Skeleton } from '@/components/app/ui/Skeleton'
+import { TextArea } from '@/components/app/ui/TextInput'
+import { Pill } from '@/components/app/ui/list/cells'
 
 // ── TitleFields (blog TitleStep) ─────────────────────────────────────────────
 
@@ -61,7 +69,13 @@ export function NameFields({
   max: { title: number; description: number }
   autoFocus?: boolean
   lang?: string
-  source?: { label: string; lang: string; title: string; description: string; empty: string }
+  source?: {
+    label: string
+    lang: string
+    title: string
+    description: string
+    empty: string
+  }
 }) {
   return (
     <div className="mt-8 flex flex-col gap-6">
@@ -70,7 +84,7 @@ export function NameFields({
           {labels.title}
         </label>
         {source ? <Source id={`${idPrefix}-title-src`} label={source.label} lang={source.lang} text={source.title || source.empty} /> : null}
-        <textarea
+        <TextArea
           id={`${idPrefix}-title`}
           lang={lang}
           rows={2}
@@ -83,7 +97,8 @@ export function NameFields({
           data-enter-next=""
           onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
           onChange={(e) => onTitle(e.target.value.replace(/\n/g, ' '))}
-          className="mt-2 block min-h-[var(--control-height,56px)] w-full resize-none overflow-x-hidden rounded-xl border border-border bg-background px-4 py-3 text-2xl leading-8 font-semibold break-words text-foreground placeholder:text-muted-foreground placeholder:font-normal focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          textSize="title"
+          className="overflow-x-hidden"
         />
         <Remaining id={`${idPrefix}-title-left`} value={title} max={max.title} />
       </div>
@@ -95,20 +110,19 @@ export function NameFields({
           <Source id={`${idPrefix}-description-src`} label={source.label} lang={source.lang} text={source.description} />
         ) : null}
         {/* Wraps long words inside the field — no horizontal scrollbar on phones. */}
-        <textarea
+        <TextArea
           id={`${idPrefix}-description`}
           lang={lang}
           rows={2}
           value={description}
           maxLength={max.description}
-          aria-describedby={
-            source?.description ? `${idPrefix}-description-src ${idPrefix}-description-left` : `${idPrefix}-description-left`
-          }
+          aria-describedby={source?.description ? `${idPrefix}-description-src ${idPrefix}-description-left` : `${idPrefix}-description-left`}
           placeholder={placeholders.description}
           data-enter-next=""
           onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
           onChange={(e) => onDescription(e.target.value.replace(/\n/g, ' '))}
-          className="mt-2 block min-h-[var(--control-height,56px)] w-full resize-none overflow-x-hidden rounded-xl border border-border bg-background px-4 py-3 text-[1.1875rem] leading-7 break-words whitespace-pre-wrap text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          textSize="lead"
+          className="overflow-x-hidden whitespace-pre-wrap"
         />
         <Remaining id={`${idPrefix}-description-left`} value={description} max={max.description} />
       </div>
@@ -120,100 +134,34 @@ export function NameFields({
 
 export type LanguageChoice = 'translate' | 'write' | 'later'
 
-export function LanguageOption({
-  on,
-  label,
-  onPress,
-  disabled,
-  badge,
-}: {
-  on: boolean
-  label: string
-  onPress?: () => void
-  disabled?: boolean
-  badge?: string
-}) {
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={on}
-      aria-disabled={disabled || undefined}
-      disabled={disabled}
-      onClick={onPress}
-      className={`flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 px-3 text-[0.9375rem] font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:text-muted-foreground ${
-        on ? 'border-foreground bg-selected-tint text-foreground' : 'border-border text-foreground enabled:hover:bg-hover'
-      }`}
-    >
-      {label}
-      {badge ? <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{badge}</span> : null}
-    </button>
-  )
-}
-
 // ── Overview pieces (blog ReviewStep) ────────────────────────────────────────
 
 export function OverviewMenu({ items, label }: { items: { key: string; label: string; onSelect: () => void }[]; label: string }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div className="relative shrink-0">
-      <button
-        type="button"
-        aria-label={label}
-        aria-expanded={open}
-        aria-controls="review-menu"
-        onClick={() => setOpen((o) => !o)}
-        className="grid size-11 place-items-center rounded-full border border-border text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
-          <path d="M5 12h.01M12 12h.01M19 12h.01" />
-        </svg>
-      </button>
-      {open ? (
-        <ul
-          id="review-menu"
-          className="absolute right-0 z-10 mt-2 w-64 overflow-hidden rounded-2xl border border-border bg-popover py-1 text-popover-foreground shadow-[var(--shadow-raise)]"
-        >
-          {items.map((item) => (
-            <li key={item.key}>
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false)
-                  item.onSelect()
-                }}
-                className="flex min-h-12 w-full items-center px-4 text-left text-[0.9375rem] text-foreground hover:bg-hover focus-visible:bg-hover focus-visible:outline-none"
-              >
-                {item.label}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
-  )
+  return <CardMenu label={label} items={items} />
 }
 
 export function StateBadge({ state, label }: { state: SectionState; label: string }) {
   if (state === 'done') {
     return (
       <span className="inline-flex items-center gap-1 text-sm font-medium text-success">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
           <path d="m5 12 5 5L20 7" />
         </svg>
         {label}
       </span>
     )
   }
-  return (
-    <span
-      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        state === 'missing' ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'
-      }`}
-    >
-      {label}
-    </span>
-  )
+  return <Pill tone={state === 'missing' ? 'highlight' : 'muted'}>{label}</Pill>
 }
 
 // ── Preview (blog PreviewStep) ───────────────────────────────────────────────
@@ -315,10 +263,14 @@ export function PreviewPane({
       <div className="mt-6 flex flex-wrap items-center gap-3">
         {controls}
         {languages.length > 1 && (
-          <Segmented
+          <SegmentedControl
+            appearance="pill"
             label={t('language')}
             value={locale}
-            options={languages.map((l) => ({ value: l, label: languageName(l, ui) }))}
+            options={languages.map((l) => ({
+              value: l,
+              label: languageName(l, ui),
+            }))}
             onChange={(l) => {
               refreshIfStale()
               setPicked(l)
@@ -326,7 +278,8 @@ export function PreviewPane({
           />
         )}
         {themes.length > 1 && theme && (
-          <Segmented
+          <SegmentedControl
+            appearance="pill"
             label={t('theme')}
             value={theme}
             options={[
@@ -339,12 +292,29 @@ export function PreviewPane({
             }}
           />
         )}
-        <Segmented
+        <SegmentedControl
+          appearance="pill"
           label={t('device')}
           value={effectiveDevice}
           options={[
-            { value: 'phone', label: t('phone'), icon: ICONS.phone },
-            { value: 'computer', label: t('computer'), icon: ICONS.computer },
+            {
+              value: 'phone',
+              label: (
+                <>
+                  {ICONS.phone}
+                  {t('phone')}
+                </>
+              ),
+            },
+            {
+              value: 'computer',
+              label: (
+                <>
+                  {ICONS.computer}
+                  {t('computer')}
+                </>
+              ),
+            },
           ]}
           onChange={(v) => {
             setDeviceChosen(true)
@@ -355,45 +325,41 @@ export function PreviewPane({
 
       <div ref={boxRef} className="mt-5 w-full">
         {error ? (
-          <div className="flex flex-col items-start gap-3 rounded-2xl border border-border bg-muted p-6" role="alert">
-            <p className="text-[0.9375rem] text-foreground">{error}</p>
-            <button
-              type="button"
-              onClick={() => void mint()}
-              className="inline-flex min-h-11 items-center rounded-full border border-border bg-background px-4 text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              {t('retry')}
-            </button>
-          </div>
+          <Notice tone="error" action={<Button onClick={() => void mint()}>{t('retry')}</Button>}>
+            {error}
+          </Notice>
         ) : (
-          <div
-            className="relative mx-auto overflow-hidden rounded-2xl border border-border bg-muted"
-            style={{ width: frameW * scale, height: FRAME_HEIGHT }}
-          >
-            {src && (
-              <iframe
-                key={effectiveDevice}
-                src={src}
-                title={t('frameTitle')}
-                onLoad={() => setLoadedSrc(src)}
-                sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-                referrerPolicy="no-referrer"
-                className="absolute top-0 left-0 origin-top-left border-0 bg-background"
-                style={{ width: frameW, height: FRAME_HEIGHT / scale, transform: `scale(${scale})` }}
-              />
-            )}
-            {(loading || !src) && (
-              <div className="absolute inset-0 flex flex-col gap-4 bg-muted p-6" aria-hidden="true">
-                <div className="h-6 w-1/3 animate-pulse rounded bg-background" />
-                <div className="h-10 w-3/4 animate-pulse rounded bg-background" />
-                <div className="aspect-video w-full animate-pulse rounded-xl bg-background" />
-                <div className="h-4 w-full animate-pulse rounded bg-background" />
-                <div className="h-4 w-5/6 animate-pulse rounded bg-background" />
-              </div>
-            )}
-            <p className="sr-only" role="status">
-              {loading || !src ? t('loading') : ''}
-            </p>
+          <div className="mx-auto" style={{ width: frameW * scale, height: FRAME_HEIGHT }}>
+            <Panel padding="none" tone="muted" className="relative size-full overflow-hidden">
+              {src && (
+                <iframe
+                  key={effectiveDevice}
+                  src={src}
+                  title={t('frameTitle')}
+                  onLoad={() => setLoadedSrc(src)}
+                  sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+                  referrerPolicy="no-referrer"
+                  className="absolute top-0 left-0 origin-top-left border-0 bg-background"
+                  style={{
+                    width: frameW,
+                    height: FRAME_HEIGHT / scale,
+                    transform: `scale(${scale})`,
+                  }}
+                />
+              )}
+              {(loading || !src) && (
+                <div className="absolute inset-0 flex flex-col gap-4 bg-muted p-6" aria-hidden="true">
+                  <Skeleton onMuted className="h-6 w-1/3" />
+                  <Skeleton onMuted className="h-10 w-3/4" />
+                  <Skeleton onMuted shape="block" className="aspect-video w-full" />
+                  <Skeleton onMuted className="h-4 w-full" />
+                  <Skeleton onMuted className="h-4 w-5/6" />
+                </div>
+              )}
+              <p className="sr-only" role="status">
+                {loading || !src ? t('loading') : ''}
+              </p>
+            </Panel>
           </div>
         )}
       </div>
@@ -401,54 +367,13 @@ export function PreviewPane({
       {src && !error && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">{t('private')}</p>
-          <a
-            href={src}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={refreshIfStale}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full px-1 text-[0.9375rem] font-semibold text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
+          <a href={src} target="_blank" rel="noopener noreferrer" onClick={refreshIfStale} className={buttonClass({ variant: 'link' })}>
             {ICONS.external}
             {t('openNewTab')}
           </a>
         </div>
       )}
     </section>
-  )
-}
-
-export function Segmented({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string
-  value: string
-  options: { value: string; label: string; icon?: ReactNode }[]
-  onChange: (value: string) => void
-}) {
-  return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-full border border-border bg-muted p-1">
-      {options.map((o) => {
-        const on = o.value === value
-        return (
-          <button
-            key={o.value}
-            type="button"
-            role="radio"
-            aria-checked={on}
-            onClick={() => !on && onChange(o.value)}
-            className={`inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-[0.9375rem] font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-              on ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {o.icon}
-            {o.label}
-          </button>
-        )
-      })}
-    </div>
   )
 }
 
@@ -459,7 +384,16 @@ export function DoneScreen({ heading, body, backHref, backLabel }: { heading: st
   return (
     <section aria-labelledby="done-step-title" className="flex flex-col items-start pt-10">
       <span aria-hidden="true" className="grid size-16 place-items-center rounded-full bg-muted text-success">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="32"
+          height="32"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="m5 12 5 5L20 7" />
         </svg>
       </span>
@@ -468,12 +402,9 @@ export function DoneScreen({ heading, body, backHref, backLabel }: { heading: st
       </h1>
       <p className="mt-3 text-[1.0625rem] leading-7 text-muted-foreground">{body}</p>
       <div className="mt-10 flex w-full flex-col gap-3 sm:flex-row">
-        <Link
-          href={backHref}
-          className="inline-flex h-14 items-center justify-center rounded-xl bg-action px-6 text-[1.0625rem] font-semibold text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        >
+        <ButtonLink href={backHref} variant="primary" size="lg">
           {backLabel}
-        </Link>
+        </ButtonLink>
       </div>
     </section>
   )
@@ -481,7 +412,17 @@ export function DoneScreen({ heading, body, backHref, backLabel }: { heading: st
 
 function svg(d: string, size = 16) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d={d} />
     </svg>
   )

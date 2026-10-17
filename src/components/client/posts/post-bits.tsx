@@ -5,6 +5,8 @@ import { useCallback, useEffect, useId, useRef, useState, type MouseEvent } from
 import { useTranslations } from 'next-intl'
 import { createPortal } from 'react-dom'
 import { Link } from '@/i18n/navigation'
+import { Button, IconButton } from '@/components/app/ui/Button'
+import { PopoverPanel } from '@/components/app/ui/PopoverPanel'
 import { FLOATING_STYLE, portalTarget, useAnchoredPopover } from '@/components/app/ui/anchored-popover'
 import { CellIcon, CellIconButton, CellStack, Chips, LocalDate, MediaFrame, useShortDate } from '@/components/app/ui/list/cells'
 import { OVERLAY_CHIP } from '@/components/app/ui/list/overlay-chip'
@@ -198,37 +200,46 @@ export function FeaturedStar({
           onClick={toggle}
           className={featured ? 'text-foreground' : 'text-muted-foreground'}
         />
-      ) : (
-        <button
+      ) : variant === 'chip' ? (
+        <IconButton
+          appearance="chip"
           ref={starRef}
-          type="button"
           aria-label={label}
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls={open ? id : undefined}
           onClick={toggle}
-          className={`${
-            variant === 'chip' ? `${OVERLAY_CHIP} transition-colors duration-200 hover:bg-background` : 'grid size-11 place-items-center rounded-full hover:bg-hover'
-          } focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${variant === 'chip' || featured ? 'text-foreground' : 'text-muted-foreground'}`}
         >
-          <StarGlyph on={featured} size={variant === 'chip' ? 18 : 20} stroke={variant === 'chip' ? 2.2 : 1.8} />
-        </button>
+          <StarGlyph on={featured} size={18} stroke={2.2} />
+        </IconButton>
+      ) : (
+        <IconButton
+          ref={starRef}
+          aria-label={label}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-controls={open ? id : undefined}
+          onClick={toggle}
+          className={featured ? '' : 'text-muted-foreground'}
+        >
+          <StarGlyph on={featured} size={20} stroke={1.8} />
+        </IconButton>
       )}
       {open && target
         ? createPortal(
-            <div
+            <PopoverPanel
               ref={panelRef}
               id={id}
               role="dialog"
               aria-label={t('dialog')}
               style={FLOATING_STYLE}
               onClick={(e) => e.stopPropagation()}
-              className="z-50 flex w-64 flex-col items-stretch gap-2 rounded-2xl border border-border bg-popover p-3 text-left text-popover-foreground shadow-[var(--shadow-raise)]"
+              className="flex w-64 flex-col items-stretch gap-2"
             >
               <p className="text-sm leading-5 text-muted-foreground">{t('help')}</p>
-              <button
+              <Button
                 ref={actionRef}
-                type="button"
+                variant="primary"
                 disabled={busy}
                 onClick={async () => {
                   setBusy(true)
@@ -236,19 +247,14 @@ export function FeaturedStar({
                   setBusy(false)
                   if (ok) close()
                 }}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-action px-4 text-[0.9375rem] font-semibold text-action-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
               >
                 <StarGlyph on={!featured} size={18} />
                 {featured ? t('remove') : t('mark')}
-              </button>
-              <button
-                type="button"
-                onClick={() => close()}
-                className="inline-flex h-11 items-center justify-center rounded-xl px-4 text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              >
+              </Button>
+              <Button variant="quiet" onClick={() => close()}>
                 {t('cancel')}
-              </button>
-            </div>,
+              </Button>
+            </PopoverPanel>,
             target
           )
         : null}

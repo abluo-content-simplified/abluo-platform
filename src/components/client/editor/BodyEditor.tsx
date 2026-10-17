@@ -20,6 +20,11 @@ import {
 import { EventListenerPlugin } from '@portabletext/editor/plugins'
 import * as selectors from '@portabletext/editor/selectors'
 import { urlFor } from '@/lib/sanity/image'
+import { SheetItem } from '@/components/app/ui/BarButton'
+import { Button, IconButton } from '@/components/app/ui/Button'
+import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
+import { Switch } from '@/components/app/ui/Switch'
+import { TextInput } from '@/components/app/ui/TextInput'
 import {
   hrefFromUserInput,
   SUPPORTED_DECORATORS,
@@ -234,20 +239,16 @@ function ToolButton({
   children: React.ReactNode
 }) {
   return (
-    <button
-      type="button"
+    <IconButton
       aria-label={label}
-      aria-pressed={active}
+      pressed={active}
       disabled={disabled}
       // Keep focus (and the phone keyboard) in the text while tapping a tool.
       onMouseDown={(e) => e.preventDefault()}
       onClick={onPress}
-      className={`grid h-11 min-w-11 place-items-center rounded-md px-2 text-[0.9375rem] font-semibold transition-colors disabled:opacity-40 ${
-        active ? 'bg-secondary text-foreground' : 'text-muted-foreground enabled:hover:bg-hover enabled:hover:text-foreground'
-      }`}
     >
       {children}
-    </button>
+    </IconButton>
   )
 }
 
@@ -280,9 +281,6 @@ function PageIcon({ size = 16 }: { size?: number }) {
     </svg>
   )
 }
-
-const optionClass =
-  'flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[0.9375rem] text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
 
 function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTools; onClose: () => void }) {
   const t = useTranslations('editor.body.linkSheet')
@@ -384,22 +382,6 @@ function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTo
     onClose()
   }
 
-  const segment = (m: 'web' | 'page', label: string) => (
-    <button
-      type="button"
-      aria-pressed={mode === m}
-      onClick={() => {
-        setMode(m)
-        setInvalid(null)
-      }}
-      className={`min-h-11 flex-1 rounded-md px-3 text-[0.9375rem] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-        mode === m ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-      }`}
-    >
-      {label}
-    </button>
-  )
-
   return (
     <form
       className="flex flex-col gap-3 border-b border-border-subtle py-3"
@@ -417,10 +399,19 @@ function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTo
     >
       <p className="text-sm font-medium text-foreground">{draft.at ? t('editTitle') : t('addTitle')}</p>
       {canPickPage && (
-        <div role="group" aria-label={t('modeLabel')} className="flex gap-1 rounded-lg bg-muted p-1">
-          {segment('web', t('modeWeb'))}
-          {segment('page', t('modePage'))}
-        </div>
+        <SegmentedControl
+          label={t('modeLabel')}
+          appearance="soft"
+          value={mode}
+          onChange={(m) => {
+            setMode(m)
+            setInvalid(null)
+          }}
+          options={[
+            { value: 'web', label: t('modeWeb') },
+            { value: 'page', label: t('modePage') },
+          ]}
+        />
       )}
 
       {mode === 'web' ? (
@@ -428,7 +419,8 @@ function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTo
           <label htmlFor={`${id}-href`} className="sr-only">
             {t('modeWeb')}
           </label>
-          <input
+          <TextInput
+            controlSize="md"
             id={`${id}-href`}
             // Site-relative paths ("/contatti") are allowed, so not type="url".
             type="text"
@@ -445,7 +437,6 @@ function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTo
               setValue(e.target.value)
               setInvalid(null)
             }}
-            className="min-h-11 w-full rounded-lg border border-border bg-background px-3 text-[1.0625rem] text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-invalid:border-destructive"
           />
           <p id={`${id}-help`} className={`text-sm ${invalid ? 'text-destructive' : 'text-muted-foreground'}`}>
             {invalid ?? t('help')}
@@ -462,23 +453,23 @@ function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTo
               <span className="block truncate text-sm text-muted-foreground">/{page.path}</span>
             ) : null}
           </span>
-          <button
-            type="button"
+          <Button
+            variant="quiet"
             onClick={() => {
               setPage(null)
               setInvalid(null)
             }}
-            className="min-h-11 rounded-lg px-3 text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             {t('change')}
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
           <label htmlFor={`${id}-search`} className="sr-only">
             {t('searchLabel')}
           </label>
-          <input
+          <TextInput
+            controlSize="md"
             id={`${id}-search`}
             type="search"
             autoFocus
@@ -487,7 +478,6 @@ function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTo
             placeholder={t('searchPlaceholder')}
             aria-describedby={`${id}-search-status`}
             onChange={(e) => setQuery(e.target.value)}
-            className="min-h-11 w-full rounded-lg border border-border bg-background px-3 text-[1.0625rem] text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           />
           <p id={`${id}-search-status`} role="status" className={`text-sm ${invalid || searchState === 'failed' ? 'text-destructive' : 'text-muted-foreground'}`}>
             {invalid ??
@@ -503,10 +493,8 @@ function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTo
             <ul className="max-h-60 overflow-y-auto" aria-label={t('searchLabel')}>
               {results.map((o) => (
                 <li key={o.id}>
-                  <button
-                    type="button"
-                    className={optionClass}
-                    onClick={() => {
+                  <SheetItem
+                    onPress={() => {
                       setPage(o)
                       setInvalid(null)
                     }}
@@ -520,7 +508,7 @@ function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTo
                         {t(`types.${o.type in TYPE_KEYS ? o.type : 'page'}`)} · /{o.path}
                       </span>
                     </span>
-                  </button>
+                  </SheetItem>
                 </li>
               ))}
             </ul>
@@ -535,43 +523,21 @@ function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTo
           </span>
           <span className="block text-sm text-muted-foreground">{newTabChoice === undefined ? t('newTabAuto') : t('newTabManual')}</span>
         </span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={newTab}
-          aria-labelledby={`${id}-tab`}
-          onClick={() => setNewTabChoice(!newTab)}
-          className="grid h-11 w-14 shrink-0 place-items-center rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        >
-          <span className={`flex h-7 w-12 items-center rounded-full p-0.5 transition-colors ${newTab ? 'bg-action' : 'bg-muted border border-border'}`}>
-            <span className={`size-6 rounded-full bg-background shadow-sm transition-transform ${newTab ? 'translate-x-5' : ''}`} />
-          </span>
-        </button>
+        <Switch checked={newTab} onChange={(next) => setNewTabChoice(next)} labelledBy={`${id}-tab`} />
       </div>
 
       <div className="flex flex-wrap justify-end gap-2">
         {draft.at && (
-          <button
-            type="button"
-            onClick={remove}
-            className="mr-auto min-h-11 rounded-lg px-3 text-[0.9375rem] font-medium text-destructive hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
+          <Button variant="destructive" className="mr-auto" onClick={remove}>
             {t('remove')}
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
-          onClick={cancel}
-          className="min-h-11 rounded-lg px-3 text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        >
+        <Button variant="quiet" onClick={cancel}>
           {t('cancel')}
-        </button>
-        <button
-          type="submit"
-          className="min-h-11 rounded-lg bg-action px-4 text-[0.9375rem] font-medium text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-        >
+        </Button>
+        <Button variant="primary" type="submit">
           {t('save')}
-        </button>
+        </Button>
       </div>
     </form>
   )

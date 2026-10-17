@@ -10,7 +10,6 @@ import {
   type DragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
-  type ReactNode,
 } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import type { StepProps } from '@/components/client/create/types'
@@ -21,6 +20,15 @@ import {
   uploadPostImageAction,
   type MediaActionError,
 } from '@/app/[locale]/(client)/[tenant]/posts/media-actions'
+import { BottomSheet } from '@/components/app/ui/BottomSheet'
+import { Button } from '@/components/app/ui/Button'
+import { ChoiceCard } from '@/components/app/ui/ChoiceCard'
+import { Chip } from '@/components/app/ui/Chip'
+import { Panel } from '@/components/app/ui/Panel'
+import { ProgressBar } from '@/components/app/ui/ProgressBar'
+import { FilterSearch } from '@/components/app/ui/FilterBar'
+import { TextArea } from '@/components/app/ui/TextInput'
+import { TileButton } from '@/components/app/ui/list/tile'
 import { formatBytes, planUpload } from '@/lib/client/upload-plan'
 
 /** Matches `POST_MEDIA_LIMITS` in src/lib/api/post-media.ts (not imported: server-only module). */
@@ -507,24 +515,21 @@ export function CoverStep(props: CoverStepProps) {
               </>
             ) : touch ? (
               <>
-                <Choice icon={ICONS.camera} onPress={() => cameraRef.current?.click()} disabled={busy}>
-                  {t('choices.camera')}
-                </Choice>
-                <Choice icon={ICONS.phone} onPress={() => pickerRef.current?.click()} disabled={busy}>
-                  {t('choices.phone')}
-                </Choice>
+                <ChoiceCard icon={ICONS.camera} label={t('choices.camera')} onSelect={() => cameraRef.current?.click()} disabled={busy} />
+                <ChoiceCard icon={ICONS.phone} label={t('choices.phone')} onSelect={() => pickerRef.current?.click()} disabled={busy} />
               </>
             ) : (
-              <Choice icon={ICONS.upload} onPress={() => pickerRef.current?.click()} disabled={busy} wide hint={t('choices.computerHint')}>
-                {t('choices.computer')}
-              </Choice>
+              <ChoiceCard
+                icon={ICONS.upload}
+                label={t('choices.computer')}
+                description={t('choices.computerHint')}
+                onSelect={() => pickerRef.current?.click()}
+                disabled={busy}
+                className="col-span-2"
+              />
             )}
-            <Choice icon={ICONS.library} onPress={() => setLibraryOpen(true)} disabled={busy}>
-              {t('choices.library')}
-            </Choice>
-            <Choice icon={ICONS.sparkle} highlight disabled badge={t('choices.soon')}>
-              {t('choices.ai')}
-            </Choice>
+            <ChoiceCard icon={ICONS.library} label={t('choices.library')} onSelect={() => setLibraryOpen(true)} disabled={busy} />
+            <ChoiceCard icon={ICONS.sparkle} label={t('choices.ai')} badge={t('choices.soon')} disabled />
           </div>
           <p className="mt-4 flex gap-2 text-sm leading-6 text-muted-foreground">
             <span className="mt-0.5 shrink-0">{ICONS.leaf}</span>
@@ -543,15 +548,18 @@ export function CoverStep(props: CoverStepProps) {
             statusError={saveStatus === 'failed'}
           />
           <div className="mt-3 flex flex-wrap gap-2">
-            <Pill onPress={() => pickerRef.current?.click()} disabled={busy} icon={ICONS.swap}>
+            <Button onClick={() => pickerRef.current?.click()} disabled={busy}>
+              {ICONS.swap}
               {t('change')}
-            </Pill>
-            <Pill onPress={() => setLibraryOpen(true)} disabled={busy} icon={ICONS.library}>
+            </Button>
+            <Button onClick={() => setLibraryOpen(true)} disabled={busy}>
+              {ICONS.library}
               {t('choices.library')}
-            </Pill>
-            <Pill onPress={remove} disabled={busy} icon={ICONS.trash}>
+            </Button>
+            <Button onClick={remove} disabled={busy}>
+              {ICONS.trash}
               {t('remove')}
-            </Pill>
+            </Button>
           </div>
 
           <div className="mt-6">
@@ -584,16 +592,15 @@ export function CoverStep(props: CoverStepProps) {
 
           {otherLocales.length > 0 && (
             <div className="mt-4">
-              <button
-                type="button"
+              <Button
+                variant="quiet"
                 aria-expanded={showOthers}
                 aria-controls={`${uid}-others`}
                 onClick={() => setShowOthers((s) => !s)}
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               >
                 <span className={`transition-transform ${showOthers ? 'rotate-90' : ''}`}>{ICONS.chevron}</span>
                 {t('alt.otherLanguages')}
-              </button>
+              </Button>
               {showOthers && (
                 <div id={`${uid}-others`} className="mt-2 space-y-4">
                   <p className="text-sm text-muted-foreground">{t('alt.otherHelper')}</p>
@@ -634,9 +641,7 @@ export function CoverStep(props: CoverStepProps) {
               : notice?.text}
       </p>
       {(phase === 'preparing' || phase === 'uploading' || phase === 'processing') && (
-        <div className="h-1 w-full overflow-hidden rounded-full bg-muted" aria-hidden="true">
-          <div className={`h-full animate-pulse rounded-full bg-action transition-all ${phase === 'processing' ? 'w-5/6' : phase === 'uploading' ? 'w-2/3' : 'w-1/4'}`} />
-        </div>
+        <ProgressBar decorative pulsing value={phase === 'processing' ? 5 / 6 : phase === 'uploading' ? 2 / 3 : 1 / 4} />
       )}
 
       {libraryOpen && <LibrarySheet projectSlug={site.projectSlug} onClose={() => setLibraryOpen(false)} onChoose={choose} />}
@@ -715,9 +720,10 @@ function FocalPicker({
       <p id={helpId} className="mt-1 mb-3 text-sm leading-6 text-muted-foreground">
         {t('focal.helper')} <span className="sr-only">{t('focal.keys')}</span>
       </p>
+      <Panel padding="none" tone="muted" className="overflow-hidden">
       <div
         ref={frameRef}
-        className="relative cursor-crosshair touch-none overflow-hidden rounded-2xl border border-border bg-muted select-none"
+        className="relative cursor-crosshair touch-none select-none"
         onPointerDown={(e) => {
           draggingRef.current = true
           e.currentTarget.setPointerCapture(e.pointerId)
@@ -754,6 +760,7 @@ function FocalPicker({
           />
         </div>
       </div>
+      </Panel>
       <p role="status" className={`mt-1 min-h-4 text-xs ${statusError ? 'text-destructive' : 'text-muted-foreground'}`}>
         {status}
       </p>
@@ -799,8 +806,6 @@ function LibrarySheet({
   onChoose: (item: LibraryItem) => void
 }) {
   const t = useTranslations('clientDashboard.create.cover')
-  const titleId = useId()
-  const searchId = useId()
   const [items, setItems] = useState<LibraryItem[]>([])
   const [tags, setTags] = useState<string[]>([])
   const [selected, setSelected] = useState<string[]>([])
@@ -808,7 +813,6 @@ function LibrarySheet({
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [cursor, setCursor] = useState<string | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
-  const closeRef = useRef<HTMLButtonElement>(null)
   const requestRef = useRef(0)
 
   const load = useCallback(
@@ -840,129 +844,69 @@ function LibrarySheet({
     void load(null, debouncedQuery, selected)
   }, [load, debouncedQuery, selected])
 
-  useEffect(() => {
-    closeRef.current?.focus()
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
-
   const filtered = !!debouncedQuery || selected.length > 0
   const toggleTag = (tag: string) =>
     setSelected((s) => (s.includes(tag) ? s.filter((x) => x !== tag) : s.length >= 10 ? s : [...s, tag]))
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/40 sm:items-center" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-t-2xl border border-border bg-background sm:rounded-2xl"
-      >
-        <div className="flex items-center justify-between border-b border-border-subtle px-4 py-2">
-          <h2 id={titleId} className="text-lg font-semibold text-foreground">
-            {t('library.title')}
-          </h2>
-          <button
-            ref={closeRef}
-            type="button"
-            onClick={onClose}
-            aria-label={t('library.close')}
-            className="inline-flex size-11 items-center justify-center rounded-full text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
-            {ICONS.close}
-          </button>
-        </div>
-
-        <div className="space-y-3 border-b border-border-subtle px-4 py-3">
-          <label htmlFor={searchId} className="sr-only">
-            {t('library.searchLabel')}
-          </label>
-          <div className="relative">
-            <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground">{ICONS.search}</span>
-            <input
-              id={searchId}
-              type="search"
-              value={query}
-              maxLength={SEARCH_MAX}
-              placeholder={t('library.searchPlaceholder')}
-              onChange={(e) => setQuery(e.target.value)}
-              className="block min-h-11 w-full rounded-full border border-border bg-background pr-3 pl-10 text-[1rem] text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            />
+    <BottomSheet open size="lg" title={t('library.title')} onClose={onClose}>
+      <div className="space-y-3 pb-3">
+        <FilterSearch sizing="w-full" label={t('library.searchLabel')} value={query} maxLength={SEARCH_MAX} placeholder={t('library.searchPlaceholder')} onChange={setQuery} />
+        {tags.length > 0 && (
+          <div role="group" aria-label={t('library.tagsLabel')} className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+            {tags.map((tag) => (
+              <Chip key={tag} selected={selected.includes(tag)} onClick={() => toggleTag(tag)}>
+                {tag}
+              </Chip>
+            ))}
           </div>
-          {tags.length > 0 && (
-            <div role="group" aria-label={t('library.tagsLabel')} className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-              {tags.map((tag) => {
-                const on = selected.includes(tag)
-                return (
-                  <button
-                    key={tag}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => toggleTag(tag)}
-                    className={`inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-                      on ? 'border-ring bg-selected-tint text-foreground' : 'border-border bg-background text-foreground hover:bg-hover'
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="overflow-y-auto p-4">
-          {state === 'error' && <p className="text-sm text-destructive">{t('errors.generic')}</p>}
-          {state === 'ready' && items.length === 0 && (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">{filtered ? t('library.noResults') : t('library.empty')}</p>
-              {filtered && (
-                <Pill
-                  onPress={() => {
-                    setQuery('')
-                    setDebouncedQuery('')
-                    setSelected([])
-                  }}
-                  icon={ICONS.close}
-                >
-                  {t('library.clear')}
-                </Pill>
-              )}
-            </div>
-          )}
-          <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-            {items.map((item, i) => {
-              const description = Object.values(item.alt)[0]
-              return (
-                <li key={item.assetId}>
-                  <button
-                    type="button"
-                    onClick={() => onChoose(item)}
-                    aria-label={`${t('library.choose', { number: i + 1 })} — ${description ?? t('library.untitled')}`}
-                    className="block aspect-square w-full overflow-hidden rounded-xl border border-border bg-muted hover:ring-2 hover:ring-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- Sanity CDN thumbnail */}
-                    <img src={item.thumbUrl} alt="" width="240" height="240" loading="lazy" className="size-full object-cover" />
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-          {state === 'loading' && <p className="mt-3 text-sm text-muted-foreground">{t('library.loading')}</p>}
-          {state === 'ready' && cursor && (
-            <button
-              type="button"
-              onClick={() => void load(cursor, debouncedQuery, selected)}
-              className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-border bg-background text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              {t('library.more')}
-            </button>
-          )}
-        </div>
+        )}
       </div>
-    </div>
+
+      <div className="max-h-[55vh] overflow-y-auto">
+        {state === 'error' && <p className="text-sm text-destructive">{t('errors.generic')}</p>}
+        {state === 'ready' && items.length === 0 && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">{filtered ? t('library.noResults') : t('library.empty')}</p>
+            {filtered && (
+              <Button
+                onClick={() => {
+                  setQuery('')
+                  setDebouncedQuery('')
+                  setSelected([])
+                }}
+              >
+                {ICONS.close}
+                {t('library.clear')}
+              </Button>
+            )}
+          </div>
+        )}
+        <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {items.map((item, i) => {
+            const description = Object.values(item.alt)[0]
+            return (
+              <li key={item.assetId}>
+                <TileButton
+                  framed
+                  onClick={() => onChoose(item)}
+                  aria-label={`${t('library.choose', { number: i + 1 })} — ${description ?? t('library.untitled')}`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Sanity CDN thumbnail */}
+                  <img src={item.thumbUrl} alt="" width="240" height="240" loading="lazy" className="size-full object-cover" />
+                </TileButton>
+              </li>
+            )
+          })}
+        </ul>
+        {state === 'loading' && <p className="mt-3 text-sm text-muted-foreground">{t('library.loading')}</p>}
+        {state === 'ready' && cursor && (
+          <Button fullWidth className="mt-4" onClick={() => void load(cursor, debouncedQuery, selected)}>
+            {t('library.more')}
+          </Button>
+        )}
+      </div>
+    </BottomSheet>
   )
 }
 
@@ -995,7 +939,8 @@ function AltField({
 }) {
   return (
     <div className="mt-2">
-      <textarea
+      <TextArea
+        flush
         id={id}
         ref={ref}
         rows={2}
@@ -1006,9 +951,7 @@ function AltField({
         aria-invalid={invalid || undefined}
         onChange={(e) => onChange(e.target.value.replace(/\n/g, ' '))}
         onBlur={onBlur}
-        className={`block min-h-11 w-full resize-none rounded-xl border bg-background px-3 py-2.5 text-[1rem] leading-6 text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-          invalid ? 'border-destructive' : 'border-border'
-        }`}
+        className="block resize-none"
       />
       <div className="mt-1 flex justify-between gap-3 text-xs">
         <span role="status" className={statusError ? 'text-destructive' : 'text-muted-foreground'}>
@@ -1019,64 +962,6 @@ function AltField({
         </span>
       </div>
     </div>
-  )
-}
-
-function Choice({
-  children,
-  icon,
-  onPress,
-  disabled,
-  highlight,
-  badge,
-  hint,
-  wide,
-}: {
-  children: ReactNode
-  icon: ReactNode
-  onPress?: () => void
-  disabled?: boolean
-  highlight?: boolean
-  badge?: string
-  hint?: string
-  wide?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onPress}
-      disabled={disabled}
-      className={`flex min-h-28 flex-col items-start justify-between gap-3 rounded-2xl border p-4 text-left text-[0.9375rem] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed ${
-        wide ? 'col-span-2 border-dashed' : ''
-      } ${
-        highlight
-          ? 'border-transparent bg-accent text-accent-foreground disabled:opacity-80'
-          : 'border-border bg-background text-foreground enabled:hover:bg-hover disabled:opacity-60'
-      }`}
-    >
-      <span className="flex w-full items-start justify-between gap-2">
-        {icon}
-        {badge && <span className="rounded-full bg-background px-2 py-0.5 text-xs text-muted-foreground">{badge}</span>}
-      </span>
-      <span>
-        {children}
-        {hint && <span className="mt-0.5 block text-sm font-normal text-muted-foreground">{hint}</span>}
-      </span>
-    </button>
-  )
-}
-
-function Pill({ children, icon, onPress, disabled }: { children: ReactNode; icon: ReactNode; onPress: () => void; disabled?: boolean }) {
-  return (
-    <button
-      type="button"
-      onClick={onPress}
-      disabled={disabled}
-      className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-background px-4 text-[0.9375rem] font-medium text-foreground transition-colors enabled:hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      {icon}
-      {children}
-    </button>
   )
 }
 
@@ -1099,7 +984,6 @@ const ICONS = {
   trash: svg('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'),
   chevron: svg('M9 6l6 6-6 6', 16),
   close: svg('M6 6l12 12M18 6L6 18', 20),
-  search: svg('M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4', 18),
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

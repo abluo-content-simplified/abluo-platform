@@ -54,6 +54,27 @@ export default function ButtonDemo() {
           </svg>
         </IconButton>
       </DemoBlock>
+      <DemoBlock title="IconButton toggles and chips" note="pressed (toolbar toggles, aria-pressed); appearance=&quot;chip&quot; on a photo.">
+        <IconButton aria-label="Bold" pressed>
+          <span className="font-bold">B</span>
+        </IconButton>
+        <IconButton aria-label="Heading 2" pressed={false}>
+          <span className="font-semibold">H2</span>
+        </IconButton>
+        <span className="relative grid h-20 w-28 place-items-start rounded-xl bg-muted p-1.5">
+          <IconButton aria-label="Feature this post" appearance="chip">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true">
+              <path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" />
+            </svg>
+          </IconButton>
+        </span>
+      </DemoBlock>
+      <DemoBlock title="Inside the Create flow" note="data-surface=&quot;create&quot; turns every button into a pill — no prop needed.">
+        <div data-surface="create" className="flex flex-wrap gap-3">
+          <Button variant="primary">Continue</Button>
+          <Button>Save &amp; exit</Button>
+        </div>
+      </DemoBlock>
       <DemoBlock title="ButtonLink" note="Navigation styled as a button (locale-aware Link).">
         <ButtonLink href="/lab" variant="secondary">Back to all components</ButtonLink>
       </DemoBlock>

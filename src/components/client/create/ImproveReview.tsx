@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
+import { Button } from '@/components/app/ui/Button'
 import { PreservedChip } from '@/components/client/editor/BodyEditor'
 import { cleanLink, isSpan, isTextBlock, type BodyBlock, type BodyItem, type BodyObject, type BodySpan } from '@/lib/client/normalize-blocks'
 
@@ -65,20 +66,12 @@ export function ImproveReview({
           </div>
 
           <footer className="flex flex-col-reverse gap-2 border-t border-border-subtle px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] md:flex-row md:justify-end md:px-8 md:pb-6">
-            <button
-              type="button"
-              onClick={onKeep}
-              className="min-h-12 rounded-xl px-5 text-[1.0625rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
+            <Button variant="quiet" size="lg" onClick={onKeep}>
               {t('keep')}
-            </button>
-            <button
-              type="button"
-              onClick={onAccept}
-              className="min-h-12 rounded-xl bg-action px-5 text-[1.0625rem] font-medium text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-            >
+            </Button>
+            <Button variant="primary" size="lg" onClick={onAccept}>
               {t('accept')}
-            </button>
+            </Button>
           </footer>
         </div>
       )}

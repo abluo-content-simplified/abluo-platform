@@ -29,7 +29,7 @@ export function SaveNotice({
   onRetry?: () => void
   onReload?: () => void
 }) {
-  const t = useTranslations('clientDashboard.create.saveNotice')
+  const t = useTranslations('app.ui.saveNotice')
 
   let text: string | null = null
   let action: { label: string; onPress: () => void } | null = null

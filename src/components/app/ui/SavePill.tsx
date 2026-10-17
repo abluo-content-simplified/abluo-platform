@@ -8,7 +8,7 @@ import type { SaveState } from '@/lib/client/autosave/engine'
  * this device / Edited elsewhere (+ Reload). There is never a Save button.
  */
 export function SavePill({ state, onReload }: { state: SaveState; onReload?: () => void }) {
-  const t = useTranslations('clientDashboard.create.save')
+  const t = useTranslations('app.ui.save')
   if (state === 'idle') return <span aria-live="polite" className="min-h-11" />
 
   const label =

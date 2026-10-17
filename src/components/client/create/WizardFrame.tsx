@@ -3,8 +3,9 @@
 import type { KeyboardEvent, ReactNode, RefObject } from 'react'
 import { useTranslations } from 'next-intl'
 import type { SaveState } from '@/lib/client/autosave/engine'
-import { SavePill } from './SavePill'
-import { SaveNotice } from './SaveNotice'
+import { SavePill } from '@/components/app/ui/SavePill'
+import { Button, IconButton } from '@/components/app/ui/Button'
+import { SaveNotice } from '@/components/app/ui/SaveNotice'
 
 /**
  * The blog wizard's chrome (WizardShell, v1.0.45) as a frame for the other
@@ -58,24 +59,13 @@ export function WizardFrame({
     >
       <header className="mx-auto flex w-full max-w-[672px] items-center justify-between gap-3 px-4 pt-[max(12px,env(safe-area-inset-top))] pb-2">
         {exit && exit.kind === 'close' ? (
-          <button
-            type="button"
-            onClick={exit.onPress}
-            aria-label={t('shell.close')}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
+          <IconButton onClick={exit.onPress} aria-label={t('shell.close')}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <path d="M6 6l12 12M18 6L6 18" />
             </svg>
-          </button>
+          </IconButton>
         ) : exit ? (
-          <button
-            type="button"
-            onClick={exit.onPress}
-            className="inline-flex min-h-11 items-center rounded-full border border-border px-4 text-[0.9375rem] font-semibold text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
-            {t('shell.saveExit')}
-          </button>
+          <Button onClick={exit.onPress}>{t('shell.saveExit')}</Button>
         ) : (
           <span />
         )}
@@ -111,26 +101,15 @@ export function WizardFrame({
             ) : null}
             <div className={`flex items-center justify-between gap-4 ${footer.progress ? 'mt-3' : ''}`}>
               {footer.back ? (
-                <button
-                  type="button"
-                  onClick={footer.back.onPress}
-                  disabled={footer.back.disabled}
-                  className="inline-flex min-h-11 items-center px-1 text-[1.0625rem] font-semibold text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60"
-                >
+                <Button variant="link" onClick={footer.back.onPress} disabled={footer.back.disabled}>
                   {t('shell.back')}
-                </button>
+                </Button>
               ) : (
                 <span />
               )}
-              <button
-                type="button"
-                onClick={footer.primary.onPress}
-                disabled={footer.primary.disabled}
-                aria-busy={footer.primary.busy || undefined}
-                className="inline-flex h-14 min-w-32 items-center justify-center rounded-xl bg-action px-8 text-[1.0625rem] font-semibold text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
-              >
+              <Button variant="primary" size="lg" className="min-w-32" onClick={footer.primary.onPress} disabled={footer.primary.disabled} aria-busy={footer.primary.busy || undefined}>
                 {footer.primary.label}
-              </button>
+              </Button>
             </div>
           </div>
         </footer>

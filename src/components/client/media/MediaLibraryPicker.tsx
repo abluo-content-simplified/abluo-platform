@@ -7,7 +7,7 @@ import type { AddedPhoto } from '@/components/client/media/AddPhotos'
 import { Button, IconButton } from '@/components/app/ui/Button'
 import { Chip } from '@/components/app/ui/Chip'
 import { TileBadge, TileButton } from '@/components/app/ui/list/tile'
-import { TextInput } from '@/components/app/ui/TextInput'
+import { FilterSearch } from '@/components/app/ui/FilterBar'
 import type { FocalPoint } from '@/components/app/ui/FocalPointPicker'
 
 type LibraryItem = { assetId: string; url: string; thumbUrl: string; name?: string; alt: Record<string, string>; focal: FocalPoint | null; tags?: string[] }
@@ -33,7 +33,6 @@ export type MediaLibraryPickerProps = {
 export function MediaLibraryPicker({ projectSlug, scope, defaultLocale, exclude, room, onClose, onAdd }: MediaLibraryPickerProps) {
   const t = useTranslations('clientDashboard.media.picker')
   const titleId = useId()
-  const searchId = useId()
   const [items, setItems] = useState<LibraryItem[]>([])
   const [tags, setTags] = useState<string[]>([])
   const [tagFilter, setTagFilter] = useState<string[]>([])
@@ -107,19 +106,7 @@ export function MediaLibraryPicker({ projectSlug, scope, defaultLocale, exclude,
         </div>
 
         <div className="flex flex-col gap-3 border-b border-border-subtle px-4 py-3">
-          <label htmlFor={searchId} className="sr-only">
-            {t('search')}
-          </label>
-          <TextInput
-            id={searchId}
-            flush
-            controlSize="md"
-            type="search"
-            value={query}
-            maxLength={80}
-            placeholder={t('searchPlaceholder')}
-            onChange={(e) => setQuery(e.target.value)}
-          />
+          <FilterSearch sizing="w-full" label={t('search')} value={query} maxLength={80} placeholder={t('searchPlaceholder')} onChange={setQuery} />
           {tags.length > 0 && (
             <div role="group" aria-label={t('tags')} className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
               {tags.map((tag) => {

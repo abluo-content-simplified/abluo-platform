@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Link, useRouter } from '@/i18n/navigation'
+import { useRouter } from '@/i18n/navigation'
+import { ButtonLink } from '@/components/app/ui/Button'
+import { Skeleton } from '@/components/app/ui/Skeleton'
 import { openPostForEditAction } from '@/app/[locale]/(client)/[tenant]/posts/lifecycle-actions'
 
 /**
@@ -30,14 +32,11 @@ export function OpenForEdit({ projectSlug, id, postsHref }: { projectSlug: strin
         {failed ? t('failed') : t('title')}
       </h1>
       {failed ? (
-        <Link
-          href={postsHref}
-          className="inline-flex h-12 items-center rounded-xl border border-border px-5 text-[0.9375rem] font-semibold text-foreground hover:bg-hover"
-        >
+        <ButtonLink href={postsHref} size="lg">
           {t('back')}
-        </Link>
+        </ButtonLink>
       ) : (
-        <span aria-hidden="true" className="h-1 w-40 animate-pulse rounded-full bg-muted motion-reduce:animate-none" />
+        <Skeleton className="h-1 w-40 rounded-full" />
       )}
     </div>
   )

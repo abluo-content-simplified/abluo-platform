@@ -5,6 +5,8 @@ import { validateWindow } from '@/lib/lifecycle/time'
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
+import { Button } from '@/components/app/ui/Button'
+import { Chip } from '@/components/app/ui/Chip'
 import { ICONS } from './post-bits'
 
 export { BarButton, SheetItem } from '@/components/app/ui/BarButton'
@@ -50,23 +52,13 @@ export function EndDateSheet({
         inputClassName="mt-2 h-12 w-full rounded-xl border border-border bg-background px-3 text-base text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       />
       {problem === 'unpublish_in_past' ? <p className="mt-2 text-sm text-destructive">{tl('dates.mustBeFuture')}</p> : null}
-      <button
-        type="button"
-        disabled={!valid || busy}
-        onClick={() => iso && onSave(iso)}
-        className="mt-4 inline-flex h-12 items-center justify-center rounded-xl bg-action px-5 text-[0.9375rem] font-semibold text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40"
-      >
+      <Button variant="primary" size="lg" className="mt-4" disabled={!valid || busy} onClick={() => iso && onSave(iso)}>
         {t('endDateSheet.save')}
-      </button>
+      </Button>
       {onRemove ? (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onRemove}
-          className="mt-2 inline-flex h-12 items-center justify-center rounded-xl px-5 text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40"
-        >
+        <Button variant="quiet" size="lg" className="mt-2" disabled={busy} onClick={onRemove}>
           {tl('actions.removeUnpublishDate')}
-        </button>
+        </Button>
       ) : null}
     </BottomSheet>
   )
@@ -94,30 +86,16 @@ export function CategorySheet({
         {categories.map((c) => {
           const on = picked.includes(c.value)
           return (
-            <button
-              key={c.value}
-              type="button"
-              role="checkbox"
-              aria-checked={on}
-              onClick={() => setPicked((p) => (on ? p.filter((x) => x !== c.value) : [...p, c.value]))}
-              className={`inline-flex h-11 items-center gap-1.5 rounded-full border px-4 text-[0.9375rem] font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-                on ? 'border-action bg-action text-action-foreground' : 'border-border bg-card text-foreground hover:bg-hover'
-              }`}
-            >
+            <Chip key={c.value} selected={on} onClick={() => setPicked((p) => (on ? p.filter((x) => x !== c.value) : [...p, c.value]))}>
               {on ? ICONS.tick : null}
               {c.label}
-            </button>
+            </Chip>
           )
         })}
       </div>
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => onSave(picked)}
-        className="mt-4 inline-flex h-12 items-center justify-center rounded-xl bg-action px-5 text-[0.9375rem] font-semibold text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40"
-      >
+      <Button variant="primary" size="lg" className="mt-4" disabled={busy} onClick={() => onSave(picked)}>
         {t('categorySheet.save')}
-      </button>
+      </Button>
     </BottomSheet>
   )
 }

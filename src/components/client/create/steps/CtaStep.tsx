@@ -2,6 +2,8 @@
 
 import { useTranslations } from 'next-intl'
 import type { StepProps } from '@/components/client/create/types'
+import { OptionCards, type OptionCard } from '@/components/app/ui/OptionCards'
+import { Panel } from '@/components/app/ui/Panel'
 import { StepHeading } from '@/components/client/create/StepHeading'
 
 /** Where calls to action are prepared (Website Settings → Calls to action). */
@@ -31,7 +33,7 @@ export function CtaStep({ draft, site, update }: StepProps) {
     return (
       <section aria-labelledby="cta-step-title">
         <StepHeading id="cta-step-title" title={t('title')} />
-        <div className="mt-8 flex flex-col items-start gap-3 rounded-2xl border border-border p-4">
+        <Panel className="mt-8 flex flex-col items-start gap-3">
           <p className="text-[1.0625rem] leading-7 font-medium text-foreground">
             {site.firstName ? t('empty.hello', { firstName: site.firstName }) : t('empty.helloNoName')}
           </p>
@@ -47,7 +49,7 @@ export function CtaStep({ draft, site, update }: StepProps) {
               <path d="M7 17 17 7M8 7h9v9" />
             </svg>
           </a>
-        </div>
+        </Panel>
       </section>
     )
   }
@@ -55,55 +57,29 @@ export function CtaStep({ draft, site, update }: StepProps) {
   return (
     <section aria-labelledby="cta-step-title">
       <StepHeading id="cta-step-title" title={t('title')} helper={t('helper')} />
-      <div role="radiogroup" aria-label={t('options')} className="mt-8 flex flex-col gap-3">
+      <div className="mt-8 flex flex-col gap-3">
         {def ? (
-          <Option value="default" selected={selected} onPick={pick} title={t('useDefault')}>
-            <CtaPreview heading={def.heading ?? def.name} button={def.buttonLabel} />
-          </Option>
+          <OptionCards
+            label={t('options')}
+            value={selected}
+            onChange={pick}
+            options={[{ value: 'default', title: t('useDefault'), body: <CtaPreview heading={def.heading ?? def.name} button={def.buttonLabel} /> }]}
+          />
         ) : null}
         {others.length > 0 ? (
           <p className="mt-3 text-[0.9375rem] font-semibold text-foreground">{def ? t('chooseAnother') : t('options')}</p>
         ) : null}
-        {others.map((c) => (
-          <Option key={c.id} value={`custom:${c.id}`} selected={selected} onPick={pick} title={c.name}>
-            <CtaPreview heading={c.heading} button={c.buttonLabel} />
-          </Option>
-        ))}
-        <Option value="none" selected={selected} onPick={pick} title={t('none')}>
-          <span className="text-[0.9375rem] leading-6 text-muted-foreground">{t('noneHelp')}</span>
-        </Option>
+        <OptionCards
+          label={def && others.length > 0 ? t('chooseAnother') : t('options')}
+          value={selected}
+          onChange={pick}
+          options={[
+            ...others.map((c): OptionCard<string> => ({ value: `custom:${c.id}`, title: c.name, body: <CtaPreview heading={c.heading} button={c.buttonLabel} /> })),
+            { value: 'none', title: t('none'), body: t('noneHelp') },
+          ]}
+        />
       </div>
     </section>
-  )
-}
-
-function Option({
-  value,
-  selected,
-  onPick,
-  title,
-  children,
-}: {
-  value: string
-  selected: string
-  onPick: (v: string) => void
-  title: string
-  children: React.ReactNode
-}) {
-  const on = selected === value
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={on}
-      onClick={() => onPick(value)}
-      className={`flex min-h-16 w-full flex-col items-start gap-2 rounded-2xl border-2 px-4 py-3 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-        on ? 'border-foreground bg-selected-tint' : 'border-border hover:bg-hover'
-      }`}
-    >
-      <span className="text-[1.0625rem] font-semibold text-foreground">{title}</span>
-      {children}
-    </button>
   )
 }
 

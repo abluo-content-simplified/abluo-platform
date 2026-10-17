@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
+import { Button } from '@/components/app/ui/Button'
+import { Chip } from '@/components/app/ui/Chip'
 import { ChoiceCard, ChoiceCardGrid } from '@/components/app/ui/ChoiceCard'
 import { Fab } from '@/components/app/ui/Fab'
 import type { CreateMenu } from '@/lib/modules/add-content-sheet'
@@ -141,13 +143,9 @@ export function AddContentSheet({
             ) : (
               <p className="mt-6 rounded-xl bg-muted p-4 text-[0.9375rem] leading-6 text-muted-foreground">{t('askUnavailable')}</p>
             )}
-            <button
-              type="button"
-              onClick={() => setAsking(null)}
-              className="mt-3 h-12 w-full rounded-xl text-[0.9375rem] font-semibold text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
+            <Button variant="link" size="lg" fullWidth className="mt-3" onClick={() => setAsking(null)}>
               {t('close')}
-            </button>
+            </Button>
           </div>
         ) : (
           <div>
@@ -189,27 +187,19 @@ export function AddContentSheet({
                 <ul className="mt-3 flex flex-wrap gap-2">
                   {menu.more.map((moduleId) => (
                     <li key={moduleId}>
-                      <button
-                        type="button"
-                        onClick={() => setAsking(moduleId)}
-                        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border px-4 text-[0.9375rem] text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                      >
+                      <Chip onClick={() => setAsking(moduleId)}>
                         {t(`items.${moduleId}`)}
-                        <span className="text-sm text-muted-foreground">{t('add')}</span>
-                      </button>
+                        <span className="text-muted-foreground">{t('add')}</span>
+                      </Chip>
                     </li>
                   ))}
                 </ul>
               </section>
             ) : null}
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="mt-6 h-12 w-full rounded-xl text-[0.9375rem] font-semibold text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
+            <Button variant="link" size="lg" fullWidth className="mt-6" onClick={onClose}>
               {t('close')}
-            </button>
+            </Button>
           </div>
         )}
       </div>

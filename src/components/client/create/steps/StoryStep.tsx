@@ -1,10 +1,11 @@
 'use client'
 
-import { useRef, useState, type ReactNode } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import type { PortableTextBlock } from '@portabletext/editor'
 import { BodyEditor } from '@/components/client/editor/BodyEditor'
 import { useLinkTools } from '@/components/client/create/use-link-tools'
+import { AssistButton } from '@/components/app/ui/AssistButton'
 import { ImproveReview } from '@/components/client/create/ImproveReview'
 import type { StepProps } from '@/components/client/create/types'
 import {
@@ -136,28 +137,26 @@ export function StoryStep({ draft, site, locale, update, onImprove }: StoryStepP
       </p>
 
       <div role="group" aria-label={t('actions.label')} className="mt-4 flex flex-wrap gap-2">
-        <Action onPress={pasteText} icon={ICONS.paste}>
+        <AssistButton tone="outline" icon={ICONS.paste} onClick={pasteText}>
           {t('actions.paste')}
-        </Action>
-        <Action disabled icon={ICONS.mic} badge={t('actions.soon')}>
+        </AssistButton>
+        <AssistButton tone="outline" icon={ICONS.mic} badge={t('actions.soon')} disabled>
           {t('actions.dictate')}
-        </Action>
+        </AssistButton>
         {onImprove && (
-          <Action
-            onPress={improve}
+          <AssistButton
+            onClick={improve}
             disabled={tooShort || improving || preservedContent}
             busy={improving}
-            icon={ICONS.sparkle}
-            describedBy={tooShort || preservedContent ? 'story-improve-hint' : undefined}
-            primary
+            aria-describedby={tooShort || preservedContent ? 'story-improve-hint' : undefined}
           >
             {improving ? t('improve.loading') : t('actions.improve')}
-          </Action>
+          </AssistButton>
         )}
         {!onImprove && (
-          <Action disabled icon={ICONS.sparkle} badge={t('actions.soon')}>
+          <AssistButton tone="outline" badge={t('actions.soon')} disabled>
             {t('actions.improve')}
-          </Action>
+          </AssistButton>
         )}
       </div>
 
@@ -196,44 +195,4 @@ function svg(d: string) {
 const ICONS = {
   paste: svg('M9 4h6v3H9zM8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2M9 12h6M9 16h4'),
   mic: svg('M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3'),
-  sparkle: svg('M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z'),
-}
-
-function Action({
-  children,
-  icon,
-  onPress,
-  disabled,
-  busy,
-  badge,
-  primary,
-  describedBy,
-}: {
-  children: ReactNode
-  icon: ReactNode
-  onPress?: () => void
-  disabled?: boolean
-  busy?: boolean
-  badge?: string
-  primary?: boolean
-  describedBy?: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onPress}
-      disabled={disabled}
-      aria-busy={busy || undefined}
-      aria-describedby={describedBy}
-      className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-[0.9375rem] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
-        primary
-          ? 'border-transparent bg-accent text-accent-foreground enabled:hover:bg-hover'
-          : 'border-border bg-background text-foreground enabled:hover:bg-hover'
-      }`}
-    >
-      <span className={busy ? 'animate-pulse' : undefined}>{icon}</span>
-      {children}
-      {badge && <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{badge}</span>}
-    </button>
-  )
 }

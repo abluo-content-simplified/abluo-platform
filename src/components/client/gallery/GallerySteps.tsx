@@ -17,15 +17,31 @@ import type { GalleryUsage } from '@/lib/api/gallery-drafts'
 import type { DraftPreviewLink } from '@/lib/api/post-preview'
 import { draftPreviewUrl } from '@/lib/client/preview-url'
 import { galleryLanguageReady, gallerySections, photoNeedsAlt, type GallerySection } from '@/lib/client/gallery-wizard'
-import { DoneScreen, LanguageOption, NameFields, OverviewMenu, PreviewPane, Segmented, StateBadge, type LanguageChoice } from './wizard/kit'
+import { Button } from '@/components/app/ui/Button'
+import { OptionCards } from '@/components/app/ui/OptionCards'
+import { Panel } from '@/components/app/ui/Panel'
+import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
+import { DoneScreen, NameFields, OverviewMenu, PreviewPane, StateBadge, type LanguageChoice } from './wizard/kit'
 
 /** Limits mirror GALLERY_LIMITS (server module). */
 export const GALLERY_TITLE_MAX = 120
 export const GALLERY_DESCRIPTION_MAX = 300
 
-export type GalleryTexts = { title: Record<string, string>; description: Record<string, string> }
-export type GallerySite = { projectSlug: string; defaultLocale: string; languages: string[] }
-type Photo = { key: string; alt: Record<string, string>; missing?: boolean; thumbUrl: string | null }
+export type GalleryTexts = {
+  title: Record<string, string>
+  description: Record<string, string>
+}
+export type GallerySite = {
+  projectSlug: string
+  defaultLocale: string
+  languages: string[]
+}
+type Photo = {
+  key: string
+  alt: Record<string, string>
+  missing?: boolean
+  thumbUrl: string | null
+}
 
 // ── Name ─────────────────────────────────────────────────────────────────────
 
@@ -56,7 +72,10 @@ export function NameStep({
         onTitle={(v) => onText('title', locale, v)}
         onDescription={(v) => onText('description', locale, v)}
         labels={{ title: t('titleLabel'), description: t('descriptionLabel') }}
-        placeholders={{ title: t('titlePlaceholder'), description: t('descriptionPlaceholder') }}
+        placeholders={{
+          title: t('titlePlaceholder'),
+          description: t('descriptionPlaceholder'),
+        }}
         max={{ title: GALLERY_TITLE_MAX, description: GALLERY_DESCRIPTION_MAX }}
         autoFocus
       />
@@ -118,33 +137,43 @@ export function GalleryLanguagesStep({
       <StepHeading id="gallery-languages-title" title={t('title')} helper={tg('languages.helper')} />
 
       <ul className="mt-8 flex flex-col gap-3">
-        <li className="flex min-h-14 items-center justify-between rounded-2xl border border-border-subtle bg-muted px-4 py-3">
+        <Panel as="li" tone="muted" className="flex min-h-14 items-center justify-between">
           <span className="text-[1.0625rem] font-medium text-foreground">{languageName(d, ui)}</span>
           <span className="text-sm text-muted-foreground">{t('original')}</span>
-        </li>
+        </Panel>
         {others.map((locale) => {
           const choice = choices[locale] ?? 'later'
           const name = languageName(locale, ui)
           const ready = galleryLanguageReady(texts, locale)
           return (
-            <li key={locale} className="rounded-2xl border border-border p-4">
+            <Panel as="li" key={locale}>
               <div className="flex items-center justify-between gap-3">
                 <span className="text-[1.0625rem] font-medium text-foreground">{name}</span>
                 <span className={`text-sm ${ready ? 'text-success' : 'text-muted-foreground'}`}>{ready ? t('ready') : t('missing')}</span>
               </div>
-              <div role="radiogroup" aria-label={name} className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <LanguageOption on={false} disabled label={t('translate')} badge={t('soon')} />
-                <LanguageOption
-                  on={choice === 'write'}
-                  label={t('write')}
-                  onPress={() => {
+              <OptionCards
+                layout="row"
+                label={name}
+                className="mt-3"
+                value={choice === 'write' ? 'write' : choice === 'later' ? 'later' : null}
+                onChange={(v) => {
+                  if (v === 'write') {
                     onChoice(locale, 'write')
                     onActive(locale)
-                  }}
-                />
-                <LanguageOption on={choice === 'later'} label={t('later')} onPress={() => onChoice(locale, 'later')} />
-              </div>
-            </li>
+                  } else if (v === 'later') onChoice(locale, 'later')
+                }}
+                options={[
+                  {
+                    value: 'translate',
+                    title: t('translate'),
+                    badge: t('soon'),
+                    disabled: true,
+                  },
+                  { value: 'write', title: t('write') },
+                  { value: 'later', title: t('later') },
+                ]}
+              />
+            </Panel>
           )
         })}
       </ul>
@@ -152,22 +181,17 @@ export function GalleryLanguagesStep({
       {current ? (
         <div className="mt-10 border-t border-border-subtle pt-8">
           {writing.length > 1 ? (
-            <div role="radiogroup" aria-label={t('write')} className="mb-6 flex flex-wrap gap-2">
-              {writing.map((l) => (
-                <button
-                  key={l}
-                  type="button"
-                  role="radio"
-                  aria-checked={l === current}
-                  onClick={() => onActive(l)}
-                  className={`inline-flex min-h-11 items-center rounded-full border-2 px-4 text-[0.9375rem] font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-                    l === current ? 'border-foreground bg-selected-tint text-foreground' : 'border-border text-foreground hover:bg-hover'
-                  }`}
-                >
-                  {languageName(l, ui)}
-                </button>
-              ))}
-            </div>
+            <SegmentedControl
+              appearance="chips"
+              label={t('write')}
+              className="mb-6"
+              value={current}
+              onChange={onActive}
+              options={writing.map((l) => ({
+                value: l,
+                label: languageName(l, ui),
+              }))}
+            />
           ) : null}
           <h2 className="text-xl font-semibold tracking-tight text-foreground">{t('editing', { language: languageName(current, ui) })}</h2>
           <div key={current}>
@@ -178,12 +202,22 @@ export function GalleryLanguagesStep({
               description={texts.description[current] ?? ''}
               onTitle={(v) => onText('title', current, v)}
               onDescription={(v) => onText('description', current, v)}
-              labels={{ title: tg('name.titleLabel'), description: tg('name.descriptionLabel') }}
-              placeholders={{
-                title: t('titlePlaceholder', { language: languageName(current, ui) }),
-                description: tg('languages.descriptionPlaceholder', { language: languageName(current, ui) }),
+              labels={{
+                title: tg('name.titleLabel'),
+                description: tg('name.descriptionLabel'),
               }}
-              max={{ title: GALLERY_TITLE_MAX, description: GALLERY_DESCRIPTION_MAX }}
+              placeholders={{
+                title: t('titlePlaceholder', {
+                  language: languageName(current, ui),
+                }),
+                description: tg('languages.descriptionPlaceholder', {
+                  language: languageName(current, ui),
+                }),
+              }}
+              max={{
+                title: GALLERY_TITLE_MAX,
+                description: GALLERY_DESCRIPTION_MAX,
+              }}
               source={{
                 label: t('sourceLabel', { language: languageName(d, ui) }),
                 lang: d,
@@ -229,11 +263,23 @@ export function GalleryPreviewStep({
   const mint = useCallback(async () => {
     // The preview reads the saved draft: make sure the last edits are saved.
     await flush()
-    return mintGalleryPreviewAction({ projectSlug: site.projectSlug, id: galleryId, pageId })
+    return mintGalleryPreviewAction({
+      projectSlug: site.projectSlug,
+      id: galleryId,
+      pageId,
+    })
   }, [flush, site.projectSlug, galleryId, pageId])
   const buildSrc = useCallback(
     (link: DraftPreviewLink, locale: string, theme: 'light' | 'dark' | null) =>
-      draftPreviewUrl({ origin: link.origin, locale, projectSlug: link.projectSlug, id: galleryId, token: link.token, theme, kind: 'gallery' }),
+      draftPreviewUrl({
+        origin: link.origin,
+        locale,
+        projectSlug: link.projectSlug,
+        id: galleryId,
+        token: link.token,
+        theme,
+        kind: 'gallery',
+      }),
     [galleryId]
   )
   return (
@@ -246,7 +292,8 @@ export function GalleryPreviewStep({
       buildSrc={buildSrc}
       controls={
         pages.length > 0 ? (
-          <Segmented
+          <SegmentedControl
+            appearance="pill"
             label={tp('on')}
             value={pageId ?? ''}
             options={[...pages.map((p) => ({ value: p.id, label: p.title })), { value: '', label: tp('alone') }]}
@@ -305,7 +352,11 @@ export function GalleryReviewStep({
       case 'photos':
         return t('photos', { count: items.length })
       case 'describe':
-        return !items.length ? t('noPhotos') : described === items.length ? t('allDescribed') : t('described', { done: described, total: items.length })
+        return !items.length
+          ? t('noPhotos')
+          : described === items.length
+            ? t('allDescribed')
+            : t('described', { done: described, total: items.length })
       case 'languages':
         return site.languages
           .filter((l) => l !== d)
@@ -347,30 +398,31 @@ export function GalleryReviewStep({
                 </div>
                 <p className="mt-1 line-clamp-3 text-[0.9375rem] leading-6 text-muted-foreground">{summary(id)}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => onEdit(id)}
-                aria-label={tr('editLabel', { section: name })}
-                className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-border px-4 text-[0.9375rem] font-semibold text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              >
+              <Button onClick={() => onEdit(id)} aria-label={tr('editLabel', { section: name })}>
                 {tr('edit')}
-              </button>
+              </Button>
             </li>
           )
         })}
       </ul>
 
-      <button
-        type="button"
-        onClick={onPreview}
-        className="mt-6 inline-flex min-h-11 items-center gap-2 text-[1.0625rem] font-semibold text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <Button variant="link" onClick={onPreview} className="mt-6">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
           <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
           <circle cx="12" cy="12" r="3" />
         </svg>
         {tr('preview')}
-      </button>
+      </Button>
     </section>
   )
 }

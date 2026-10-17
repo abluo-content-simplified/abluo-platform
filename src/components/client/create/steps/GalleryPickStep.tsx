@@ -2,7 +2,10 @@
 
 import { useTranslations } from 'next-intl'
 import type { StepProps } from '@/components/client/create/types'
+import { OptionCards } from '@/components/app/ui/OptionCards'
 import { StepHeading } from '@/components/client/create/StepHeading'
+
+const NONE = '__none'
 
 /**
  * "Add a gallery to this post?" — overview-only screen. One of this site's
@@ -18,34 +21,18 @@ export function GalleryPickStep({ draft, site, update }: StepProps) {
   return (
     <section aria-labelledby="gallery-pick-title">
       <StepHeading id="gallery-pick-title" title={t('title')} helper={t('helper')} />
-      <div role="radiogroup" aria-label={t('options')} className="mt-8 flex flex-col gap-3">
-        {galleries.map((g) => (
-          <Option key={g.id} on={selected === g.id} onPick={() => update({ gallery: g.id })} title={g.title}>
-            {tl('count', { count: g.count })}
-          </Option>
-        ))}
+      <div className="mt-8 flex flex-col gap-3">
         {galleries.length === 0 ? <p className="text-[0.9375rem] text-muted-foreground">{t('noGalleries')}</p> : null}
-        <Option on={!selected} onPick={() => update({ gallery: null })} title={t('none')}>
-          {t('noneHelp')}
-        </Option>
+        <OptionCards
+          label={t('options')}
+          value={selected ?? NONE}
+          onChange={(v) => update({ gallery: v === NONE ? null : v })}
+          options={[
+            ...galleries.map((g) => ({ value: g.id, title: g.title, body: tl('count', { count: g.count }) })),
+            { value: NONE, title: t('none'), body: t('noneHelp') },
+          ]}
+        />
       </div>
     </section>
-  )
-}
-
-function Option({ on, onPick, title, children }: { on: boolean; onPick: () => void; title: string; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={on}
-      onClick={onPick}
-      className={`flex min-h-16 w-full flex-col items-start gap-1 rounded-2xl border-2 px-4 py-3 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-        on ? 'border-foreground bg-selected-tint' : 'border-border hover:bg-hover'
-      }`}
-    >
-      <span className="text-[1.0625rem] font-semibold text-foreground">{title}</span>
-      <span className="text-[0.9375rem] leading-6 text-muted-foreground">{children}</span>
-    </button>
   )
 }

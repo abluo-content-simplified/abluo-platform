@@ -1,7 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type DragEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type DragEvent } from 'react'
 import { useTranslations } from 'next-intl'
+import { Button, IconButton } from '@/components/app/ui/Button'
+import { ChoiceCard } from '@/components/app/ui/ChoiceCard'
+import { Panel } from '@/components/app/ui/Panel'
+import { TileButton, TileLabel } from '@/components/app/ui/list/tile'
 import { thumbOf, type MediaScope } from '@/components/client/media/media-api'
 import { MediaLibraryPicker } from '@/components/client/media/MediaLibraryPicker'
 import type { AddedPhoto } from '@/components/client/media/AddPhotos'
@@ -14,10 +18,22 @@ import { ACCEPTED_TYPES } from '@/lib/client/gallery-upload-queue'
 
 export type { AddedPhoto }
 
-export type TileItem = { key: string; assetId: string; thumbUrl: string | null; name?: string; alt: Record<string, string>; missing?: boolean }
+export type TileItem = {
+  key: string
+  assetId: string
+  thumbUrl: string | null
+  name?: string
+  alt: Record<string, string>
+  missing?: boolean
+}
 
 /** One upload batch: files picked together (or one camera session) — "Name and tag all" follows when 2+ land. */
-type Batch = { ids: string[]; done: Map<string, { assetId: string; url: string }>; settled: Set<string>; open: boolean }
+type Batch = {
+  ids: string[]
+  done: Map<string, { assetId: string; url: string }>
+  settled: Set<string>
+  open: boolean
+}
 
 // Phone or computer: capability, not user agent (as the blog CoverStep).
 const COARSE = '(pointer: coarse)'
@@ -101,7 +117,13 @@ export function PhotoAddStep({
     const landed = b.ids.map((i) => b.done.get(i)).filter((x): x is { assetId: string; url: string } => Boolean(x))
     b.ids = [] // never offered twice
     if (landed.length < 2) return
-    setNameAll((q) => [...q, { assetIds: landed.map((u) => u.assetId), thumbs: landed.map((u) => thumbOf(u.url, 112) ?? '').filter(Boolean) }])
+    setNameAll((q) => [
+      ...q,
+      {
+        assetIds: landed.map((u) => u.assetId),
+        thumbs: landed.map((u) => thumbOf(u.url, 112) ?? '').filter(Boolean),
+      },
+    ])
   }, [])
   const settle = useCallback(
     (id: string, got: { assetId: string; url: string } | null) => {
@@ -141,7 +163,12 @@ export function PhotoAddStep({
     if (accepted.length) {
       let b: Batch
       if (fromCamera) {
-        b = cameraBatch.current ?? { ids: [], done: new Map(), settled: new Set(), open: true }
+        b = cameraBatch.current ?? {
+          ids: [],
+          done: new Map(),
+          settled: new Set(),
+          open: true,
+        }
         cameraBatch.current = b
         setCameraTaken((n) => n + accepted.length)
       } else {
@@ -242,57 +269,53 @@ export function PhotoAddStep({
 
       {touch && cameraTaken > 0 ? (
         // After each shot: keep shooting, or stop (then "Name and tag all" when 2+ landed).
-        <div role="group" aria-label={t('camera.label')} className="mt-8 rounded-2xl border border-border bg-background p-4">
-          <p className="flex items-start gap-2 text-[0.9375rem] font-medium text-foreground" aria-live="polite">
-            <span className="mt-0.5 shrink-0 text-success">{ICONS.check}</span>
-            {t('camera.taken', { count: cameraTaken })}
-          </p>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => cameraRef.current?.click()}
-              disabled={full}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-action px-4 text-[0.9375rem] font-semibold text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60"
-            >
-              {ICONS.cameraSmall}
-              {t('camera.another')}
-            </button>
-            <button
-              type="button"
-              onClick={endCamera}
-              className="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-background px-4 text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              {t('camera.done')}
-            </button>
-          </div>
+        <div role="group" aria-label={t('camera.label')} className="mt-8">
+          <Panel>
+            <p className="flex items-start gap-2 text-[0.9375rem] font-medium text-foreground" aria-live="polite">
+              <span className="mt-0.5 shrink-0 text-success">{ICONS.check}</span>
+              {t('camera.taken', { count: cameraTaken })}
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <Button variant="primary" onClick={() => cameraRef.current?.click()} disabled={full}>
+                {ICONS.cameraSmall}
+                {t('camera.another')}
+              </Button>
+              <Button onClick={endCamera}>{t('camera.done')}</Button>
+            </div>
+          </Panel>
         </div>
       ) : (
-      <div role="group" aria-label={t('choices.label')} className="mt-8 grid grid-cols-2 gap-3">
-        {touch === null ? (
-          <>
-            <div className="invisible min-h-28" aria-hidden="true" />
-            <div className="invisible min-h-28" aria-hidden="true" />
-          </>
-        ) : touch ? (
-          <>
-            <Choice icon={ICONS.camera} onPress={() => cameraRef.current?.click()} disabled={full}>
-              {t('choices.camera')}
-            </Choice>
-            <Choice icon={ICONS.phone} onPress={() => pickerRef.current?.click()} disabled={full}>
-              {t('choices.photoLibrary')}
-            </Choice>
-          </>
-        ) : (
-          <Choice icon={ICONS.upload} onPress={() => pickerRef.current?.click()} disabled={full} wide hint={t('choices.computerHint')}>
-            {t('choices.computer')}
-          </Choice>
-        )}
-        {library ? (
-          <Choice icon={ICONS.library} onPress={() => setLibraryOpen(true)} disabled={full} span={touch === true}>
-            {t('choices.library')}
-          </Choice>
-        ) : null}
-      </div>
+        <div role="group" aria-label={t('choices.label')} className="mt-8 grid grid-cols-2 gap-3">
+          {touch === null ? (
+            <>
+              <div className="invisible min-h-28" aria-hidden="true" />
+              <div className="invisible min-h-28" aria-hidden="true" />
+            </>
+          ) : touch ? (
+            <>
+              <ChoiceCard icon={ICONS.camera} label={t('choices.camera')} onSelect={() => cameraRef.current?.click()} disabled={full} />
+              <ChoiceCard icon={ICONS.phone} label={t('choices.photoLibrary')} onSelect={() => pickerRef.current?.click()} disabled={full} />
+            </>
+          ) : (
+            <ChoiceCard
+              icon={ICONS.upload}
+              label={t('choices.computer')}
+              description={t('choices.computerHint')}
+              onSelect={() => pickerRef.current?.click()}
+              disabled={full}
+              className="col-span-2"
+            />
+          )}
+          {library ? (
+            <ChoiceCard
+              icon={ICONS.library}
+              label={t('choices.library')}
+              onSelect={() => setLibraryOpen(true)}
+              disabled={full}
+              className={touch === true ? 'col-span-2' : undefined}
+            />
+          ) : null}
+        </div>
       )}
       <p className="mt-4 flex gap-2 text-sm leading-6 text-muted-foreground">
         <span className="mt-0.5 shrink-0">{ICONS.leaf}</span>
@@ -324,35 +347,23 @@ export function PhotoAddStep({
                     if (el) tileRefs.current.set(item.key, el)
                     else tileRefs.current.delete(item.key)
                   }}
-                  className={`relative aspect-square overflow-hidden rounded-xl border bg-muted ${
-                    dragKey === item.key ? 'z-10 border-ring opacity-80 ring-2 ring-ring' : 'border-border'
-                  }`}
+                  className={`relative aspect-square overflow-hidden rounded-xl border bg-muted ${dragKey === item.key ? 'z-10 border-ring opacity-80 ring-2 ring-ring' : 'border-border'}`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => onOpen(item.key)}
-                    aria-label={t('describePhoto', { name })}
-                    className="block size-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
-                  >
+                  <TileButton onClick={() => onOpen(item.key)} aria-label={t('describePhoto', { name })}>
                     {item.thumbUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element -- Sanity CDN thumbnail
                       <img src={item.thumbUrl} alt="" width="240" height="240" loading="lazy" draggable={false} className="size-full object-cover" />
                     ) : (
                       <span className="flex size-full items-start justify-center p-2 text-center text-xs text-muted-foreground">{t('missing')}</span>
                     )}
-                  </button>
-                  {needsAlt && (
-                    <span className="pointer-events-none absolute bottom-1.5 left-1.5 rounded-full bg-background px-2 py-0.5 text-xs font-medium text-foreground">
-                      {t('needsDescription')}
-                    </span>
-                  )}
+                  </TileButton>
+                  {needsAlt && <TileLabel className="absolute bottom-1.5 left-1.5">{t('needsDescription')}</TileLabel>}
                   {onChange ? (
                     <>
-                      <button
-                        type="button"
+                      <IconButton
                         aria-label={t('dragHandle', { name })}
                         aria-roledescription={t('dragRole')}
-                        className="absolute top-0 left-0 inline-flex size-11 cursor-grab touch-none items-center justify-center text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:cursor-grabbing"
+                        className="absolute top-0 left-0 cursor-grab touch-none active:cursor-grabbing"
                         onPointerDown={(e) => {
                           e.currentTarget.setPointerCapture(e.pointerId)
                           setDragKey(item.key)
@@ -361,7 +372,13 @@ export function PhotoAddStep({
                         onPointerMove={(e) => {
                           if (!dragKey || !preview) return
                           const rects = preview.map(
-                            (it) => tileRefs.current.get(it.key)?.getBoundingClientRect() ?? { left: 0, top: 0, width: 0, height: 0 }
+                            (it) =>
+                              tileRefs.current.get(it.key)?.getBoundingClientRect() ?? {
+                                left: 0,
+                                top: 0,
+                                width: 0,
+                                height: 0,
+                              }
                           )
                           const to = dropIndex(rects, e.clientX, e.clientY)
                           const from = preview.findIndex((it) => it.key === dragKey)
@@ -383,15 +400,14 @@ export function PhotoAddStep({
                         }}
                       >
                         <span className="flex size-7 items-center justify-center rounded-full bg-background/90">{ICONS.grip}</span>
-                      </button>
-                      <button
-                        type="button"
+                      </IconButton>
+                      <IconButton
                         aria-label={t('removePhoto', { name })}
                         onClick={() => onChange(items.filter((it) => it.key !== item.key))}
-                        className="absolute top-0 right-0 inline-flex size-11 items-center justify-center text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                        className="absolute top-0 right-0"
                       >
                         <span className="flex size-7 items-center justify-center rounded-full bg-background/90">{ICONS.x}</span>
-                      </button>
+                      </IconButton>
                     </>
                   ) : null}
                 </li>
@@ -435,47 +451,19 @@ export function PhotoAddStep({
   )
 }
 
-/** The blog CoverStep's choice card (v1.0.45). */
-function Choice({
-  children,
-  icon,
-  onPress,
-  disabled,
-  hint,
-  wide,
-  span,
-}: {
-  children: ReactNode
-  icon: ReactNode
-  onPress?: () => void
-  disabled?: boolean
-  hint?: string
-  /** The computer's drop zone: full row, dashed. */
-  wide?: boolean
-  /** Full row (the third choice on touch devices). */
-  span?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onPress}
-      disabled={disabled}
-      className={`flex min-h-28 flex-col items-start justify-between gap-3 rounded-2xl border p-4 text-left text-[0.9375rem] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed ${
-        wide ? 'col-span-2 border-dashed' : span ? 'col-span-2' : ''
-      } border-border bg-background text-foreground enabled:hover:bg-hover disabled:opacity-60`}
-    >
-      <span className="flex w-full items-start justify-between gap-2">{icon}</span>
-      <span>
-        {children}
-        {hint && <span className="mt-0.5 block text-sm font-normal text-muted-foreground">{hint}</span>}
-      </span>
-    </button>
-  )
-}
-
 function svg(d: string, size = 18) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d={d} />
     </svg>
   )

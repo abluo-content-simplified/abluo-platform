@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import { inputClass, textAreaClass, type ControlSize } from './field-styles'
+import { inputClass, textAreaClass, type ControlSize, type TextAreaSize } from './field-styles'
 
 /**
  * Single-line and multi-line text controls for dashboard forms. Pair with
@@ -13,6 +13,7 @@ export function TextInput({ controlSize, flush, className, ...rest }: Extra & Co
   return <input className={inputClass({ controlSize, flush, className })} {...rest} />
 }
 
-export function TextArea({ flush, className, ...rest }: Pick<Extra, 'flush'> & ComponentProps<'textarea'>) {
-  return <textarea className={textAreaClass({ flush, sized: rest.rows !== undefined, className })} {...rest} />
+/** `textSize`: body (default), or title / lead for the Create flow's big writing fields. */
+export function TextArea({ flush, textSize, className, ...rest }: Pick<Extra, 'flush'> & { textSize?: TextAreaSize } & ComponentProps<'textarea'>) {
+  return <textarea className={textAreaClass({ flush, sized: rest.rows !== undefined, textSize, className })} {...rest} />
 }

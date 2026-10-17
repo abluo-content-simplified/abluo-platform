@@ -41,6 +41,17 @@ export default function TextInputDemo() {
           <TextArea id="lab-desc" placeholder="A few words…" />
         </div>
       </DemoBlock>
+      <DemoBlock title="Create flow writing fields" note="TextArea textSize=&quot;title&quot; | &quot;lead&quot; (with rows).">
+        <div className="w-full max-w-md space-y-3">
+          <TextArea aria-label="Title" rows={2} textSize="title" placeholder="Your title" />
+          <TextArea aria-label="Subtitle" rows={2} textSize="lead" placeholder="A short introduction" />
+        </div>
+      </DemoBlock>
+      <DemoBlock title="Invalid" note="aria-invalid draws the red border; FieldError says why.">
+        <div className="w-full max-w-md">
+          <TextInput aria-label="Email" aria-invalid defaultValue="anna@" />
+        </div>
+      </DemoBlock>
       <DemoBlock title="Disabled">
         <div className="w-full max-w-md">
           <FieldLabel htmlFor="lab-dis">Address</FieldLabel>

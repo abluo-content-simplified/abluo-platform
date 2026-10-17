@@ -1,8 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import type { StepProps } from '@/components/client/create/types'
+import { Button } from '@/components/app/ui/Button'
+import { Notice } from '@/components/app/ui/Notice'
+import { Panel } from '@/components/app/ui/Panel'
+import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
+import { Skeleton } from '@/components/app/ui/Skeleton'
 import { StepHeading, languageName } from '@/components/client/create/StepHeading'
 import { hasText } from '@/lib/client/wizard-steps'
 import { draftPreviewUrl } from '@/lib/client/preview-url'
@@ -103,18 +108,21 @@ export function PreviewStep({ draft, site, flush }: StepProps) {
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         {withContent.length > 1 && (
-          <Segmented
+          <SegmentedControl
+            appearance="pill"
             label={t('language')}
             value={locale}
             options={withContent.map((l) => ({ value: l, label: languageName(l, ui) }))}
             onChange={(l) => {
+              if (l === locale) return
               refreshIfStale()
               setPicked(l)
             }}
           />
         )}
         {themes.length > 1 && theme && (
-          <Segmented
+          <SegmentedControl
+            appearance="pill"
             label={t('theme')}
             value={theme}
             options={[
@@ -122,19 +130,38 @@ export function PreviewStep({ draft, site, flush }: StepProps) {
               { value: 'dark', label: t('themeDark') },
             ]}
             onChange={(v) => {
+              if (v === theme) return
               refreshIfStale()
               setThemePick(v as Theme)
             }}
           />
         )}
-        <Segmented
+        <SegmentedControl
+          appearance="pill"
           label={t('device')}
           value={effectiveDevice}
           options={[
-            { value: 'phone', label: t('phone'), icon: ICONS.phone },
-            { value: 'computer', label: t('computer'), icon: ICONS.computer },
+            {
+              value: 'phone',
+              label: (
+                <>
+                  {ICONS.phone}
+                  {t('phone')}
+                </>
+              ),
+            },
+            {
+              value: 'computer',
+              label: (
+                <>
+                  {ICONS.computer}
+                  {t('computer')}
+                </>
+              ),
+            },
           ]}
           onChange={(v) => {
+            if (v === effectiveDevice) return
             setDeviceChosen(true)
             setDevice(v as Device)
           }}
@@ -143,21 +170,17 @@ export function PreviewStep({ draft, site, flush }: StepProps) {
 
       <div ref={boxRef} className="mt-5 w-full">
         {error ? (
-          <div className="flex flex-col items-start gap-3 rounded-2xl border border-border bg-muted p-6" role="alert">
-            <p className="text-[0.9375rem] text-foreground">{error}</p>
-            <button
-              type="button"
-              onClick={() => void mint()}
-              className="inline-flex min-h-11 items-center rounded-full border border-border bg-background px-4 text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              {t('retry')}
-            </button>
-          </div>
-        ) : (
-          <div
-            className="relative mx-auto overflow-hidden rounded-2xl border border-border bg-muted"
-            style={{ width: frameW * scale, height: FRAME_HEIGHT }}
+          <Notice
+            tone="error"
+            action={
+              <Button onClick={() => void mint()}>{t('retry')}</Button>
+            }
           >
+            {error}
+          </Notice>
+        ) : (
+          <div className="mx-auto" style={{ width: frameW * scale, height: FRAME_HEIGHT }}>
+          <Panel padding="none" tone="muted" className="relative h-full w-full overflow-hidden">
             {src && (
               <iframe
                 key={effectiveDevice}
@@ -174,16 +197,17 @@ export function PreviewStep({ draft, site, flush }: StepProps) {
             )}
             {(loading || !src) && (
               <div className="absolute inset-0 flex flex-col gap-4 bg-muted p-6" aria-hidden="true">
-                <div className="h-6 w-1/3 animate-pulse rounded bg-background" />
-                <div className="h-10 w-3/4 animate-pulse rounded bg-background" />
-                <div className="aspect-video w-full animate-pulse rounded-xl bg-background" />
-                <div className="h-4 w-full animate-pulse rounded bg-background" />
-                <div className="h-4 w-5/6 animate-pulse rounded bg-background" />
+                <Skeleton onMuted className="h-6 w-1/3" />
+                <Skeleton onMuted className="h-10 w-3/4" />
+                <Skeleton onMuted shape="block" className="aspect-video w-full" />
+                <Skeleton onMuted className="h-4 w-full" />
+                <Skeleton onMuted className="h-4 w-5/6" />
               </div>
             )}
             <p className="sr-only" role="status">
               {loading || !src ? t('loading') : ''}
             </p>
+          </Panel>
           </div>
         )}
       </div>
@@ -204,41 +228,6 @@ export function PreviewStep({ draft, site, flush }: StepProps) {
         </div>
       )}
     </section>
-  )
-}
-
-function Segmented({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string
-  value: string
-  options: { value: string; label: string; icon?: ReactNode }[]
-  onChange: (value: string) => void
-}) {
-  return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-full border border-border bg-muted p-1">
-      {options.map((o) => {
-        const on = o.value === value
-        return (
-          <button
-            key={o.value}
-            type="button"
-            role="radio"
-            aria-checked={on}
-            onClick={() => !on && onChange(o.value)}
-            className={`inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-[0.9375rem] font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-              on ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {o.icon}
-            {o.label}
-          </button>
-        )
-      })}
-    </div>
   )
 }
 

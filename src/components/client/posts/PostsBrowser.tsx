@@ -9,6 +9,8 @@ import { mintDraftPreviewAction } from '@/app/[locale]/(client)/[tenant]/posts/p
 import { draftPreviewUrl } from '@/lib/client/preview-url'
 import type { CardMenuItem } from '@/components/app/ui/CardMenu'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
+import { Button } from '@/components/app/ui/Button'
+import { EmptyState } from '@/components/app/ui/EmptyState'
 import { idRange, SelectionBar } from '@/components/app/ui/SelectionBar'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { ViewSwitch } from '@/components/app/ui/ViewSwitch'
@@ -375,17 +377,14 @@ export function PostsBrowser({
       />
 
       {shown.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border px-6 py-10">
-          <p className="font-medium text-foreground">{t('filters.noMatch')}</p>
-          {/* On the page-load filters ("updated, last 7 days") clearing changes nothing: widen to any date instead. */}
-          <button
-            type="button"
-            onClick={isDefault ? () => update({ range: 'all' }) : reset}
-            className="mt-3 inline-flex h-11 items-center rounded-xl border border-border px-4 text-sm font-medium text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
-            {isDefault ? t('filters.anyDate') : t('filters.clear')}
-          </button>
-        </div>
+        <EmptyState
+          title={t('filters.noMatch')}
+          titleAs="p"
+          action={
+            // On the page-load filters ("updated, last 7 days") clearing changes nothing: widen to any date instead.
+            <Button onClick={isDefault ? () => update({ range: 'all' }) : reset}>{isDefault ? t('filters.anyDate') : t('filters.clear')}</Button>
+          }
+        />
       ) : (
         <>
           {/* Computers */}

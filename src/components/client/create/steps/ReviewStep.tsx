@@ -1,8 +1,11 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import type { StepProps } from '@/components/client/create/types'
+import { Button } from '@/components/app/ui/Button'
+import { CardMenu } from '@/components/app/ui/CardMenu'
+import { Pill } from '@/components/app/ui/list/cells'
 import { StepHeading, languageName } from '@/components/client/create/StepHeading'
 import { countWords } from '@/lib/client/normalize-blocks'
 import { languageStates, languageSummaryKey, overviewSections, type OverviewSection, type SectionState } from '@/lib/client/wizard-steps'
@@ -33,7 +36,6 @@ export function ReviewStep({
   const t = useTranslations('clientDashboard.create.review')
   const tg = useTranslations('clientDashboard.gallery.post')
   const tm = useTranslations('clientDashboard.create.menu')
-  const [menuOpen, setMenuOpen] = useState(false)
   const tp = useTranslations('clientDashboard.create.publish')
   const ui = useLocale()
   const d = site.defaultLocale
@@ -84,43 +86,7 @@ export function ReviewStep({
         <div className="min-w-0 flex-1">
           <StepHeading id="review-step-title" title={draft.title[d]?.trim() || t('title')} helper={t('helper')} />
         </div>
-        {menu.length > 0 ? (
-          <div className="relative shrink-0">
-            <button
-              type="button"
-              aria-label={tm('label')}
-              aria-expanded={menuOpen}
-              aria-controls="review-menu"
-              onClick={() => setMenuOpen((o) => !o)}
-              className="grid size-11 place-items-center rounded-full border border-border text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
-                <path d="M5 12h.01M12 12h.01M19 12h.01" />
-              </svg>
-            </button>
-            {menuOpen ? (
-              <ul
-                id="review-menu"
-                className="absolute right-0 z-10 mt-2 w-64 overflow-hidden rounded-2xl border border-border bg-popover py-1 text-popover-foreground shadow-[var(--shadow-raise)]"
-              >
-                {menu.map((item) => (
-                  <li key={item.key} className={item.separated ? 'mt-1 border-t border-border pt-1' : undefined}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMenuOpen(false)
-                        item.onSelect()
-                      }}
-                      className={`flex min-h-12 w-full items-center px-4 text-left text-[0.9375rem] hover:bg-hover focus-visible:bg-hover focus-visible:outline-none ${item.destructive ? 'text-destructive' : 'text-foreground'}`}
-                    >
-                      {item.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-        ) : null}
+        {menu.length > 0 ? <CardMenu label={tm('label')} items={menu} /> : null}
       </div>
       {status ? <p className="mt-4 text-[0.9375rem] font-medium text-foreground">{status}</p> : null}
       {draft.mode === 'edit' ? <p className="mt-1 text-[0.9375rem] leading-6 text-muted-foreground">{t('editing')}</p> : null}
@@ -153,30 +119,21 @@ export function ReviewStep({
                 </div>
                 <p className="mt-1 line-clamp-3 text-[0.9375rem] leading-6 text-muted-foreground">{summary(id)}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => onEdit(id)}
-                aria-label={t('editLabel', { section: name })}
-                className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-border px-4 text-[0.9375rem] font-semibold text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              >
+              <Button onClick={() => onEdit(id)} aria-label={t('editLabel', { section: name })}>
                 {t('edit')}
-              </button>
+              </Button>
             </li>
           )
         })}
       </ul>
 
-      <button
-        type="button"
-        onClick={onPreview}
-        className="mt-6 inline-flex min-h-11 items-center gap-2 text-[1.0625rem] font-semibold text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-      >
+      <Button variant="link" onClick={onPreview} className="mt-6">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
           <circle cx="12" cy="12" r="3" />
         </svg>
         {t('preview')}
-      </button>
+      </Button>
     </section>
   )
 }
@@ -184,21 +141,17 @@ export function ReviewStep({
 function StateBadge({ state, label }: { state: SectionState; label: string }) {
   if (state === 'done') {
     return (
-      <span className="inline-flex items-center gap-1 text-sm font-medium text-success">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="m5 12 5 5L20 7" />
-        </svg>
+      <Pill
+        tone="success"
+        icon={
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="m5 12 5 5L20 7" />
+          </svg>
+        }
+      >
         {label}
-      </span>
+      </Pill>
     )
   }
-  return (
-    <span
-      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        state === 'missing' ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'
-      }`}
-    >
-      {label}
-    </span>
-  )
+  return <Pill tone={state === 'missing' ? 'highlight' : 'muted'}>{label}</Pill>
 }

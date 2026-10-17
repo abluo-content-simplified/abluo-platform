@@ -6,7 +6,8 @@ import { useExitContent } from './use-exit-content'
 import { useSheetDialog } from './use-sheet-dialog'
 
 /** A bottom sheet (native dialog): full width on phones, centred from md. Slides in/out (`.app-sheet`, globals.css); portalled to the app root (useSheetDialog). */
-export function BottomSheet({ open, title, onClose, children }: { open: boolean; title: string; onClose: () => void; children: ReactNode }) {
+/** size: md (default, short tasks) or lg (a wider picker, e.g. a photo library). */
+export function BottomSheet({ open, title, onClose, size = 'md', children }: { open: boolean; title: string; onClose: () => void; size?: 'md' | 'lg'; children: ReactNode }) {
   const body = useExitContent(open, children)
   const { target, dialogProps } = useSheetDialog(open, onClose)
   if (!target) return null
@@ -14,7 +15,7 @@ export function BottomSheet({ open, title, onClose, children }: { open: boolean;
     <dialog
       {...dialogProps}
       aria-label={title}
-      className="app-sheet m-auto mb-0 w-full max-w-md rounded-t-2xl bg-popover p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-popover-foreground backdrop:bg-overlay md:mb-auto md:rounded-2xl"
+      className={`app-sheet m-auto mb-0 w-full ${size === 'lg' ? 'max-w-2xl' : 'max-w-md'} rounded-t-2xl bg-popover p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-popover-foreground backdrop:bg-overlay md:mb-auto md:rounded-2xl`}
     >
       <div className="flex items-start justify-between gap-3">
         <h2 className="pt-2 text-lg font-semibold">{title}</h2>

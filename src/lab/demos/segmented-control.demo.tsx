@@ -7,6 +7,8 @@ import { DemoBlock, DemoStack } from '../demo-kit'
 export default function SegmentedControlDemo() {
   const [tab, setTab] = useState<'items' | 'collections' | 'offers'>('items')
   const [filter, setFilter] = useState<'all' | 'published' | 'drafts'>('all')
+  const [device, setDevice] = useState<'desktop' | 'phone'>('desktop')
+  const [lang, setLang] = useState<'en' | 'it' | 'de'>('it')
   return (
     <DemoStack>
       <DemoBlock title="Solid — page tabs" note="Tab focuses the selected option; arrows move and select; Home/End jump.">
@@ -33,6 +35,12 @@ export default function SegmentedControlDemo() {
             { value: 'drafts', label: 'Drafts', disabled: true },
           ]}
         />
+      </DemoBlock>
+      <DemoBlock title="Pill — the Create flow's view switch" note="appearance=&quot;pill&quot;">
+        <SegmentedControl label="Device" appearance="pill" value={device} onChange={setDevice} options={[{ value: 'desktop', label: 'Computer' }, { value: 'phone', label: 'Phone' }]} />
+      </DemoBlock>
+      <DemoBlock title="Chips — one choice among wrapping chips" note="appearance=&quot;chips&quot; (the Create flow's language picker)">
+        <SegmentedControl label="Write in" appearance="chips" value={lang} onChange={setLang} options={[{ value: 'en', label: 'English' }, { value: 'it', label: 'Italiano' }, { value: 'de', label: 'Deutsch' }]} />
       </DemoBlock>
     </DemoStack>
   )
