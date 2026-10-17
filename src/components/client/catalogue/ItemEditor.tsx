@@ -329,7 +329,7 @@ export function ItemEditor({
           <>
             <FieldBlock title={t('preview')}>
               <div className="max-w-md">
-                <ItemPreview name={s.name} byline={s.byline} description={s.description} photo={item.photos[0]?.thumbUrl ?? null} offers={s.offers} channels={site.config.channels} currency={site.config.currency} declaration={hasFoodInfo ? s.allergenDeclaration : null} locale={ui} defaultLocale={d} />
+                <ItemPreview profile={s.itemProfile} bookDetails={s.bookDetails} name={s.name} byline={s.byline} description={s.description} photo={item.photos[0]?.thumbUrl ?? null} offers={s.offers} channels={site.config.channels} currency={site.config.currency} declaration={hasFoodInfo ? s.allergenDeclaration : null} locale={ui} defaultLocale={d} />
               </div>
             </FieldBlock>
             {!readOnly && !isLive ? (

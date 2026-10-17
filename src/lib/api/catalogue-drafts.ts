@@ -256,7 +256,7 @@ export async function loadCatalogueNavLabel(projectSlug: string, locale: string,
 // ── Lists ─────────────────────────────────────────────────────────────────────
 
 type RowBase = { _id: string; _rev?: string; slug?: unknown; _createdAt?: string; _updatedAt?: string; name?: unknown; publishedAt?: unknown; expiresAt?: unknown; archivedAt?: unknown }
-type ItemRow = RowBase & { byline?: unknown; itemProfile?: unknown; allergenStatus?: unknown; categories?: unknown; hasPage?: unknown; visibility?: unknown; imageCount?: number | null; firstImage?: string | null; offerCount?: number | null; prices?: unknown; lists?: unknown }
+type ItemRow = RowBase & { byline?: unknown; bookAuthor?: unknown; bookYear?: unknown; itemProfile?: unknown; allergenStatus?: unknown; categories?: unknown; hasPage?: unknown; visibility?: unknown; imageCount?: number | null; firstImage?: string | null; offerCount?: number | null; prices?: unknown; lists?: unknown }
 type CollectionRow = RowBase & { sectionNames?: unknown; collectionType?: unknown; hasPage?: unknown; visibility?: unknown; sectionCount?: number | null; itemRefs?: unknown }
 type OptionListRow = RowBase & { optionCount?: number | null }
 
@@ -284,6 +284,9 @@ export type CatalogueItemListRow = Common & {
   itemProfile: ItemProfile | null
   /** Localized byline (author, maker …); empty when none. */
   byline: Record<string, string>
+  /** Slice 4d: book details for the list line ("author · year"); null when not set. */
+  bookAuthor: string | null
+  bookYear: number | null
   /** D-3: a food item whose allergens are not reviewed yet (cannot be published). */
   allergensNotReviewed: boolean
   categories: string[]
@@ -369,6 +372,8 @@ export async function listCatalogue(ctx: TenantAuthorizationContext, projectId: 
     return {
       ...common(id, e, d, now, pub),
       byline: localized(e.row.byline),
+      bookAuthor: typeof e.row.bookAuthor === 'string' && e.row.bookAuthor.trim() ? e.row.bookAuthor.trim() : null,
+      bookYear: typeof e.row.bookYear === 'number' && Number.isInteger(e.row.bookYear) ? e.row.bookYear : null,
       itemProfile: isItemProfile(e.row.itemProfile) ? e.row.itemProfile : null,
       allergensNotReviewed: can(profileOf(e.row.itemProfile), 'foodInformation') && e.row.allergenStatus !== 'containsListedAllergens' && e.row.allergenStatus !== 'noneDeclared',
       categories: strings(e.row.categories),

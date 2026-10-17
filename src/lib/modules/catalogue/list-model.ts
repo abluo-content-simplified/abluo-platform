@@ -11,6 +11,7 @@
 import type { LifecycleState, LifecycleStatus } from '@/lib/lifecycle/status'
 import { admits } from './visibility'
 import { normalise } from './slugs'
+import { PROFILES, isItemProfile } from './profiles'
 
 // ── Thumbnails ────────────────────────────────────────────────────────────────
 
@@ -29,13 +30,27 @@ export type ImageShape = 'portrait' | 'landscape'
 const PORTRAIT_PRESETS: ReadonlySet<string> = new Set(['bookshop'])
 
 /**
- * The frame shape of the list images. Until a Book item profile exists it
- * follows the catalogue's starter preset (`appliedPreset.id` on the module
- * installation): Bookshop → portrait (2:3 covers), everything else landscape.
- * Switch to `itemProfile` here later; callers only see the shape.
+ * The frame shape of an item's list image (ADR-033 Amendment I-2, slice 4d).
+ * An item with a profile follows the registry (book → portrait 2:3, the rest
+ * landscape). Only an item WITHOUT a profile (created in Studio, never typed)
+ * falls back to the catalogue's starter preset (`appliedPreset.id`): Bookshop
+ * → portrait. Collections and option lists pass neither and stay landscape.
  */
 export function catalogueImageShape(input: { presetId?: string | null; itemProfile?: string | null }): ImageShape {
+  if (isItemProfile(input.itemProfile)) return PROFILES[input.itemProfile].list.imageShape
   return input.presetId && PORTRAIT_PRESETS.has(input.presetId) ? 'portrait' : 'landscape'
+}
+
+/**
+ * The line under an item's name in the list. Book: "author · year" (the author
+ * falls back to the byline); every other profile: the byline. Inputs are
+ * already in the viewer's language; empty parts are left out.
+ */
+export function itemSecondaryLine(input: { itemProfile?: string | null; byline?: string | null; author?: string | null; year?: number | null }): string {
+  const byline = (input.byline ?? '').trim()
+  if (!isItemProfile(input.itemProfile) || PROFILES[input.itemProfile].list.secondary !== 'author') return byline
+  const year = typeof input.year === 'number' && Number.isInteger(input.year) ? String(input.year) : ''
+  return [(input.author ?? '').trim() || byline, year].filter(Boolean).join(' · ')
 }
 
 // ── Sorting ───────────────────────────────────────────────────────────────────

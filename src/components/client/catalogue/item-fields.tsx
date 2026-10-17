@@ -40,7 +40,8 @@ import {
   type Visibility,
 } from '@/lib/modules/catalogue/dashboard-form'
 import { PROFILES } from '@/lib/modules/catalogue/profiles'
-import { bookYearMax, isValidIsbn } from '@/lib/modules/catalogue/isbn'
+import { bookYearMax, isValidIsbn, normalizeIsbn, parseBookYear } from '@/lib/modules/catalogue/isbn'
+import { itemSecondaryLine } from '@/lib/modules/catalogue/list-model'
 import { CAT_BUTTON, CAT_ICON_BUTTON, CAT_ICONS, CAT_INPUT, CAT_LABEL, CAT_TEXTAREA, catalogueHref, textIn } from './catalogue-ui'
 
 export type ItemPhoto = { assetId: string; thumbUrl: string | null }
@@ -844,6 +845,8 @@ export function LanguagesField({ locales, defaultLocale, profile = null, name, b
 // ── Preview: how it will look ─────────────────────────────────────────────────
 
 export function ItemPreview({
+  profile = null,
+  bookDetails,
   name,
   byline,
   description,
@@ -855,6 +858,9 @@ export function ItemPreview({
   locale,
   defaultLocale,
 }: {
+  /** Slice 4d: a book shows as a book card (whole 2:3 cover, author · year, ISBN when valid). */
+  profile?: ItemProfile | null
+  bookDetails?: BookDetailsForm
   name: Texts
   byline?: Texts
   description: Texts
@@ -875,15 +881,24 @@ export function ItemPreview({
   const ui = useLocale()
   const priced = offers.filter((o) => parsePrice(o.price) !== null)
   const label = (ch: string | null) => (ch === null ? (channels.length ? tp('everywhere') : tp('price')) : termLabel(channels.find((c) => c.value === ch) ?? { value: ch, label: {}, color: null }, ui, defaultLocale))
+  const isBook = profile === 'book'
+  const bylineText = byline ? textIn(byline, locale, defaultLocale) : ''
+  const secondary = isBook ? itemSecondaryLine({ itemProfile: 'book', byline: bylineText, author: bookDetails?.author, year: parseBookYear(bookDetails?.year) }) : bylineText
+  const isbn = isBook && bookDetails?.isbn && isValidIsbn(bookDetails.isbn) ? normalizeIsbn(bookDetails.isbn) : ''
   return (
     <article className="overflow-hidden rounded-2xl border border-border bg-card">
-      {photo ? <WholeImage src={photo} /> : null}
+      {isBook ? (
+        <span className="flex w-full justify-center bg-muted p-4">
+          <MediaFrame src={photo} alt="" fit="contain" size={{ width: '10rem', height: '15rem' }} className="rounded-lg" />
+        </span>
+      ) : photo ? <WholeImage src={photo} /> : null}
       <div className="space-y-2 p-5">
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-xl font-semibold text-foreground">{textIn(name, locale, defaultLocale) || t('untitled')}</h3>
           {priced[0] ? <span className="text-lg font-semibold text-foreground">{formatPrice(parsePrice(priced[0].price)!, currency, locale)}</span> : null}
         </div>
-        {byline && textIn(byline, locale, defaultLocale) ? <p className="text-sm text-muted-foreground">{textIn(byline, locale, defaultLocale)}</p> : null}
+        {secondary ? <p className="text-sm text-muted-foreground">{secondary}</p> : null}
+        {isbn ? <p className="text-sm text-muted-foreground">ISBN {isbn}</p> : null}
         {textIn(description, locale, defaultLocale) ? <p className="text-[0.9375rem] leading-6 text-muted-foreground">{textIn(description, locale, defaultLocale)}</p> : null}
         {priced.length > 1 ? (
           <ul className="space-y-1 pt-1">

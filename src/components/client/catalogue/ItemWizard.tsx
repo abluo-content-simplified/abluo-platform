@@ -286,7 +286,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref }: { proje
           <>
             {heading('item-step-preview', 'preview')}
             <div className="mt-8">
-              <ItemPreview name={s.name} byline={s.byline} description={s.description} photo={item.photos[0]?.thumbUrl ?? null} offers={s.offers} channels={site.config.channels} currency={site.config.currency} declaration={s.itemProfile && can(s.itemProfile, 'foodInformation') ? s.allergenDeclaration : null} locale={ui} defaultLocale={d} />
+              <ItemPreview profile={s.itemProfile} bookDetails={s.bookDetails} name={s.name} byline={s.byline} description={s.description} photo={item.photos[0]?.thumbUrl ?? null} offers={s.offers} channels={site.config.channels} currency={site.config.currency} declaration={s.itemProfile && can(s.itemProfile, 'foodInformation') ? s.allergenDeclaration : null} locale={ui} defaultLocale={d} />
             </div>
           </>
         ) : step === 'publish' ? (

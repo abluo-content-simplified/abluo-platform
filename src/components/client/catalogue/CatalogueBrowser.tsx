@@ -26,7 +26,7 @@ import { catalogueLifecycleAction, publishCatalogueDraftAction } from '@/app/[lo
 import type { CatalogueAbilities, CatalogueLists, CatalogueSite } from '@/lib/api/catalogue-drafts'
 import type { LifecycleState } from '@/lib/lifecycle/status'
 import type { Referrer } from '@/lib/lifecycle/service'
-import type { ImageShape } from '@/lib/modules/catalogue/list-model'
+import { catalogueImageShape, itemSecondaryLine, type ImageShape } from '@/lib/modules/catalogue/list-model'
 import { formatPrice } from '@/lib/modules/catalogue/resolve'
 import { inCatalogueStatus, itemGaps, parseStatusFilter, searchable, type CatalogueStatusFilter, type ItemGap } from '@/lib/modules/catalogue/dashboard-form'
 import type { CatalogueKind } from '@/lib/modules/catalogue/dashboard-patch'
@@ -59,6 +59,8 @@ type Row = {
   href: string
   thumb: string | null
   showsMedia: boolean
+  /** Frame shape of this row's image (per item profile). */
+  shape: ImageShape
   status: LifecycleState
   details: string
   chips: string[]
@@ -99,7 +101,7 @@ export function CatalogueBrowser({
   /** The tenant's name for the module (navLabel) or the messages default. */
   title: string
   lists: CatalogueLists
-  site: Pick<CatalogueSite, 'defaultLocale' | 'timeZone'> & { currency: string; /** Frame shape of the list images (portrait for book covers). */ imageShape: ImageShape; categories: { value: string; label: Record<string, string> }[] }
+  site: Pick<CatalogueSite, 'defaultLocale' | 'timeZone'> & { currency: string; /** Frame shape for items without a profile (starter-preset fallback); items with a profile follow the registry. */ imageShape: ImageShape; categories: { value: string; label: Record<string, string> }[] }
   can: CatalogueAbilities
   initialView: string | null
   initialStatus: string | null
@@ -143,8 +145,6 @@ export function CatalogueBrowser({
     }
   }
 
-  const portrait = site.imageShape === 'portrait'
-
   const rows: Row[] = useMemo(() => {
     const nameOf = (names: Record<string, string>, fallback: string) => textIn(names, ui, d) || fallback
     const base = (x: { id: string; status: LifecycleState; draftRev: string; publishedAt: string | null; expiresAt: string | null; publicUrl: string | null; updatedAt: string }) => ({
@@ -168,10 +168,11 @@ export function CatalogueBrowser({
           href: catalogueHref(projectSlug, 'item', i.id),
           thumb: i.thumb,
           showsMedia: true,
-          details: textIn(i.byline, ui, d),
+          shape: i.itemProfile ? catalogueImageShape({ itemProfile: i.itemProfile }) : site.imageShape,
+          details: itemSecondaryLine({ itemProfile: i.itemProfile, byline: textIn(i.byline, ui, d), author: i.bookAuthor, year: i.bookYear }),
           chips,
           gaps: itemGaps(i).filter((g) => g !== 'noPrice'),
-          search: searchable(`${Object.values(i.names).join(' ')} ${Object.values(i.byline).join(' ')} ${chips.join(' ')}`),
+          search: searchable(`${Object.values(i.names).join(' ')} ${Object.values(i.byline).join(' ')} ${i.bookAuthor ?? ''} ${chips.join(' ')}`),
           categories: i.categories,
           hasPage: i.hasPage,
           price: i.fromPrice,
@@ -190,6 +191,7 @@ export function CatalogueBrowser({
           href: catalogueHref(projectSlug, 'collection', c.id),
           thumb: null,
           showsMedia: false,
+          shape: 'landscape',
           details: [t(`collectionType.${c.collectionType}`), names.length ? shownNames : t('sectionsCount', { count: c.sectionCount }), t('itemsCount', { count: c.itemCount })].join(' · '),
           chips: [],
           gaps: [],
@@ -208,6 +210,7 @@ export function CatalogueBrowser({
       href: catalogueHref(projectSlug, 'optionList', o.id),
       thumb: null,
       showsMedia: false,
+      shape: 'landscape',
       details: [t('optionsCount', { count: o.optionCount }), t('usedBy', { count: o.usedBy })].join(' · '),
       chips: [],
       gaps: [],
@@ -217,7 +220,7 @@ export function CatalogueBrowser({
       price: null,
       priceLabel: '',
     }))
-  }, [view, lists, ui, d, t, site.currency, catLabel, projectSlug])
+  }, [view, lists, ui, d, t, site.currency, site.imageShape, catLabel, projectSlug])
 
   const q = searchable(query.trim())
   const shown = useMemo(
@@ -385,7 +388,7 @@ export function CatalogueBrowser({
       width: 'min-w-64',
       render: (r) => (
         <div className="flex items-start gap-3">
-          {r.showsMedia ? <CellImage src={r.thumb} alt="" fit="contain" shape={site.imageShape} /> : null}
+          {r.showsMedia ? <CellImage src={r.thumb} alt="" fit="contain" shape={r.shape} /> : null}
           <div className="flex min-w-0 flex-col items-start gap-1.5">
             <CellText primary={r.name} secondary={r.details} secondaryLines={1} href={r.href} />
             {r.chips.length ? <Chips items={r.chips} max={3} /> : null}
@@ -540,7 +543,7 @@ export function CatalogueBrowser({
                         <CardGridItem key={r.id}>
                           <ContentCard
                             media={{ src: r.thumb, fit: 'contain' }}
-                            mediaShape={r.showsMedia && portrait ? 'portrait' : 'landscape'}
+                            mediaShape={r.showsMedia && r.shape === 'portrait' ? 'portrait' : 'landscape'}
                             mediaContent={r.showsMedia ? undefined : <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-muted text-muted-foreground">{r.kind === 'collection' ? CAT_ICONS.menu : CAT_ICONS.listType}</span>}
                             title={r.name}
                             subtitle={r.details}
@@ -566,7 +569,7 @@ export function CatalogueBrowser({
                       <li key={r.id} className={`flex items-start gap-1 rounded-xl border bg-card py-2 pr-1 ${isSel ? 'border-action ring-1 ring-action' : 'border-border'} ${canSelect ? 'pl-1' : 'pl-3'}`}>
                         {canSelect ? <Checkbox checked={isSel} aria-label={t('select.checkbox', { name: r.name })} onChange={(checked, e) => toggle(r.id, checked, isShiftChange(e))} /> : null}
                         <Link href={r.href} className="flex min-w-0 flex-1 items-start gap-3 pt-1 pb-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
-                          {r.showsMedia ? <MediaFrame src={r.thumb} alt="" fit="contain" size={portrait ? { width: '3.5rem', height: '5.25rem' } : { width: '4.5rem', height: '4.5rem' }} className="shrink-0 rounded-lg" /> : null}
+                          {r.showsMedia ? <MediaFrame src={r.thumb} alt="" fit="contain" size={r.shape === 'portrait' ? { width: '3.5rem', height: '5.25rem' } : { width: '4.5rem', height: '4.5rem' }} className="shrink-0 rounded-lg" /> : null}
                           <span className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
                             <span className="line-clamp-2 text-[0.9375rem] leading-6 font-semibold text-foreground">{r.name}</span>
                             {r.details ? <span className="line-clamp-1 max-w-full text-sm leading-5 text-muted-foreground">{r.details}</span> : null}

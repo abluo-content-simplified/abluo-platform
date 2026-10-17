@@ -10,6 +10,7 @@ import {
   parseListSort,
   publicPageUrl,
   catalogueImageShape,
+  itemSecondaryLine,
   sortListRows,
   summarizeBatch,
   type SortableRow,
@@ -24,6 +25,32 @@ describe('catalogueImageShape', () => {
     expect(catalogueImageShape({ presetId: 'restaurant' })).toBe('landscape')
     expect(catalogueImageShape({ presetId: null })).toBe('landscape')
     expect(catalogueImageShape({})).toBe('landscape')
+  })
+})
+
+describe('catalogueImageShape per item profile (slice 4d)', () => {
+  it('book is portrait, the other profiles landscape, whatever the preset', () => {
+    expect(catalogueImageShape({ itemProfile: 'book' })).toBe('portrait')
+    expect(catalogueImageShape({ itemProfile: 'book', presetId: 'restaurant' })).toBe('portrait')
+    for (const p of ['foodOrDrink', 'product', 'service']) expect(catalogueImageShape({ itemProfile: p, presetId: 'bookshop' })).toBe('landscape')
+  })
+  it('the preset only decides for items without a profile', () => {
+    expect(catalogueImageShape({ itemProfile: null, presetId: 'bookshop' })).toBe('portrait')
+    expect(catalogueImageShape({ itemProfile: 'nonsense', presetId: 'bookshop' })).toBe('portrait')
+  })
+})
+
+describe('itemSecondaryLine', () => {
+  it('book: author · year, author falls back to the byline', () => {
+    expect(itemSecondaryLine({ itemProfile: 'book', author: 'Douglas Adams', year: 1979, byline: 'x' })).toBe('Douglas Adams · 1979')
+    expect(itemSecondaryLine({ itemProfile: 'book', byline: 'D. Adams', year: 1979 })).toBe('D. Adams · 1979')
+    expect(itemSecondaryLine({ itemProfile: 'book', author: 'Adams' })).toBe('Adams')
+    expect(itemSecondaryLine({ itemProfile: 'book', year: 1979 })).toBe('1979')
+    expect(itemSecondaryLine({ itemProfile: 'book' })).toBe('')
+  })
+  it('other profiles and untyped items: the byline', () => {
+    expect(itemSecondaryLine({ itemProfile: 'product', byline: 'Hand made', author: 'A', year: 2000 })).toBe('Hand made')
+    expect(itemSecondaryLine({ itemProfile: null, byline: 'B' })).toBe('B')
   })
 })
 

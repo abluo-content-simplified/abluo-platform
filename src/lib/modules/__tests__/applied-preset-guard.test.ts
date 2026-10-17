@@ -18,13 +18,12 @@ const ALLOWED = new Set(
     'lib/sanity/studio/ModuleList.tsx', // the install flow (Modules pane)
     'lib/modules/__tests__/presets.test.ts',
     'lib/modules/__tests__/applied-preset-guard.test.ts',
-    // ⚠️ TEMPORARY EXCEPTIONS (Tom, 17 Oct 2026) — feature code reading the preset,
-    // which this rule forbids. Stopgap: book covers are shown upright when the
-    // catalogue was installed with the Bookshop preset, because the "Book" item
-    // profile does not exist yet. REMOVE both lines when catalogue step 4 (Book
-    // profile, ADR-033 Amendment I) ships and the shape follows `itemProfile`.
-    'lib/modules/catalogue/dashboard-queries.ts', // TEMPORARY — presetId for the list image shape
-    'lib/modules/catalogue/list-model.ts', // TEMPORARY — catalogueImageShape() from presetId
+    // ⚠️ NARROWED EXCEPTIONS (Amendment I slice 4d) — the image shape now follows each
+    // item's profile (registry). The preset is read ONLY as a fallback for items
+    // that have no profile yet (created in Studio). REMOVE both lines when such
+    // items are gone (every item typed) — then the shape is purely registry-driven.
+    'lib/modules/catalogue/dashboard-queries.ts', // fallback only: presetId for items WITHOUT a profile (slice 4d)
+    'lib/modules/catalogue/list-model.ts', // fallback only: catalogueImageShape() for items WITHOUT a profile (slice 4d)
   ].map((p) => p.split('/').join(sep)),
 )
 
