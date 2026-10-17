@@ -939,3 +939,99 @@ lifecycle, so a reference — not a fixed route name — is what can carry it.
 - **Not changed**: page links keep their default-locale slug fallback; body links
   in rich text (`src/lib/links/link-target.ts`) have their own resolver and do not
   target the catalogue in V1.
+
+
+---
+
+## Amendment J — Categories & Tags (taxonomyTerm)
+
+**Status: Accepted — Tom, 2026-10-17.**
+Date: 2026-10-17. Authority: `claude/taxonomy-architecture-recommendation-2026-10-16.md` (rev. 2). Supersedes the data-model and Studio parts of the Amendment H tags draft (`amendment-h-tags-translation-assessment-2026-10-15`); H is not renumbered here.
+Numbering note: the ADR text above ends at G; Amendment I lives in `ADR-033-amendment-I-profiles-and-guided-mode.md`. J follows I.
+**Correction to the recommendation document:** that document states production has no Catalogue. It does — production runs **v1.0.55, which includes the Catalogue** (and, at the time of writing, tmz's 2 category vocabulary entries plus 8 items store keys). Consequently this amendment is **additive only**: a new schema type, a manifest declaration and pure helpers. No stored document changes, no migration, no change to public rendering in slices 0–1. The dual-read and copy steps of J-8 are sequenced so that nothing already live is ever read differently before the new reading code is deployed ("never migrate data ahead of the reading code", the 2026-08-14 outage rule).
+
+### J-1 Context
+
+Vocabularies are `localizedStringList` entries inside `project.moduleInstallations[…].config.<field>` (`{_key, value, label{locale}, color?, description?, redirectFrom?, noindex?}`). Content stores the stable **key** (`categories: string[]`); `resolveCategories()` resolves labels and drops unknown keys. Only the Studio Modules pane edits these lists, and it rewrites the whole installation entry from the state it loaded (no revision guard). The tenant dashboard has no way to add a category, and an inline "+ Add category" while editing an item (Amendment I's wizard row) needs a record that can be written safely and individually.
+
+### J-2 Decisions (Tom, 2026-10-17)
+
+| # | Topic | Decision |
+|---|---|---|
+| T1 | Studio | **Superadmin only** (unchanged). Tenants, tenant admins, editors and all tenant-level users never reach Studio. Studio stays **fully editable** for the superadmin: create, modify, translate, delete taxonomy records. No read-only mode, no Studio safeguards, no extra permission infrastructure. Simple usage info only if cheap. Integrity, isolation and referential consistency come from the architecture. |
+| T2 | Dashboard | The **exclusive** working environment for tenants: content, categories & tags, translations, publishing, media, other permitted module operations, under the existing permission system. |
+| T3 | Storage | One record per category or tag (`taxonomyTerm`): stable ids, project isolation, module-specific vocabularies, multilingual labels, compatible with existing keys, no content rewrite, languages added dynamically. |
+| T4 | Central manager | One "Categories & Tags" screen in the sidebar under Content, after Media, with a module selector (Module: Catalogue → Categories \| Tags). Each module keeps its own vocabulary. No separate management screens inside Catalogue, Posts, Events or other modules. |
+| T5 | Inline creation | Mandatory. "Category: Literature · + Add category", "Tags: … · + Add tag" while creating or editing. Same records as the manager; selectable immediately; permissions and isolation respected. |
+| T6 | Multilingual | Project content languages (not dashboard UI language). Stable identity + translated labels; creating a term needs only the default language; missing translations visible in the manager; a newly activated language makes existing terms show as needing translation; renaming/translating never breaks references. |
+| T7 | Deletion (dashboard) | Blocked while in use, with the reason and the using content (links to those items). Bulk reassignment later. Studio: superadmin keeps full delete. |
+| T8 | Scope | Ordinary categories and tags only. Dietary tags, service channels and other operational settings unchanged. |
+| T9 | Rollout | Catalogue first and validated; Posts, News, Events later; Blog last (category URLs, indexing). |
+| T10 | Timing | After the performance and locale fixes are committed; avoid files those fixes touch. |
+
+### J-3 Data model — `taxonomyTerm`
+
+```
+_id         term.<projectSlug>.<module>.<kind>.<key>     deterministic
+_type       taxonomyTerm                                  liveEdit (no drafts)
+projectSlug isolation, via the shared projectSlugField
+module      'catalogue' (later 'blog' | 'news' | 'events')
+kind        'category' | 'tag'
+key         lowercase, immutable once set (= today's vocabulary `value`)
+label       localizedString — one string per project locale; default language required
+order       number (gaps of 1000)
+color?, description?, redirectFrom?, noindex?   only where the kind supports them
+createdAt/By, updatedAt/By
+```
+
+- The id is derived from its parts (`src/lib/taxonomy/ids.ts`, every part validated, none may contain "."), so there can be no duplicate and no cross-project collision; two concurrent creates of one key converge on one record (`createIfNotExists`).
+- Content keeps storing **keys**: no content rewrite; the public resolver logic stays, fed from term records.
+- **Translation coverage is derived**, never stored: for each enabled project locale, label present → complete, else missing (`translationCoverage()`). Adding a language needs no data change.
+- A module opts in with one manifest declaration, `taxonomies: [{ kind, usedBy: [{ type, field }], routable?, color? }]` (`ModuleTaxonomyDef` in `src/lib/modules/types.ts`). Catalogue declares `{ kind: 'category', usedBy: [{ type: 'catalogueItem', field: 'categories' }] }`; tag comes with slice 7.
+- Not now: strong references from content to terms (would rewrite content and add joins).
+
+### J-4 Dashboard vs Studio
+
+| | Dashboard (tenants) | Studio (superadmin only) |
+|---|---|---|
+| Who | Tenant users under existing permissions (`<module>.taxonomy.write`; viewers read only) | Abluo platform superadmin |
+| What | Create, rename, translate, reorder, delete-when-unused, inline create | Full editing incl. delete; corrections, diagnostics |
+| Writes through | One server service (`src/lib/taxonomy/service.ts`, slice 3): `assertModuleAction` + tenant-scoped client | Normal document editing of the same `taxonomyTerm` records |
+| Delete in use | **Blocked**, reason + item list with links | Allowed (trusted) |
+
+Integrity that holds whoever edits, by architecture rather than extra safeguards: deterministic ids (no duplicates); immutable keys (a rename never breaks a reference); labels per locale (a translation never touches content); `projectSlug` on every record plus scoped queries (isolation); the public resolver dropping an unknown key (a deleted term is a missing badge, never an error or a wrong label). The Studio schema enforces only: key read-only once set, `projectSlug`/`module`/`kind` required, key format, and that the document `_id` equals the deterministic id.
+
+### J-5 Server rules (pure core, slice 1)
+
+`src/lib/taxonomy/`: `ids.ts` (id build/parse/validation), `rules.ts` (key from the default-language label via the existing vocabulary slugifier `slugifySubjectValue`, collision suffix `_2`, `_3`, …; immutability; required default label; limits: 80-character labels, 200 terms per kind), `usage.ts` (where-used GROQ built from a module's `usedBy`, always `projectSlug == $projectSlug`, run with a draft-including perspective; draft + published copies of one document count once, archived items count), `coverage.ts` (`translationCoverage`). All pure: no React, no I/O.
+
+### J-6 UX
+
+- **Sidebar**: "Categories & Tags" in Content after Media; shown when the person holds `taxonomy.write` for at least one installed module that declares a taxonomy.
+- **Manager**: module selector (installed modules the person may manage), Categories | Tags, list with drag-to-order, "Used by N", one chip per enabled language (complete / "Italian missing"), header "3 of 14 need a translation" with filter; a side sheet edits labels per language (default first, required) and colour where supported; autosave confirmed by the server.
+- **Delete**: unused → confirm and delete. Used → "This category is used by 12 items and cannot be deleted until those items are reassigned.", with the first 10 items linking to their editors. Bulk "move to another term" is postponed.
+- **Inline creation** (shared `TermPicker`): search, select one or several, "+ Add category/tag" creates the term with the typed label in the default language and selects it immediately; people without `taxonomy.write` can choose but not add; a "Manage categories & tags" link leads to the manager.
+
+### J-7 Slices (each one commit on dev; typecheck, lint, tests green)
+
+| # | Slice |
+|---|---|
+| 0 | This text; the ADR-014 note |
+| 1 | Pure core: `taxonomyTerm` schema (registered, no desk entry), manifest `taxonomies` declaration, `src/lib/taxonomy/*` |
+| 2 | Reading side (dual-read: term records if present, else the config list) for Catalogue; dev script creating tmz's 2 terms with identical keys and labels; before/after comparison of resolved categories |
+| 3 | Server service and actions (`catalogue.taxonomy.write`) |
+| 4 | Central manager UI (sidebar entry, selector, list, language chips, side sheet, blocked delete); en/it/de strings |
+| 5 | Inline creation: shared `TermPicker` in the Catalogue wizard and editor (after Amendment I's editor slice) |
+| 6 | Studio desk group "Categories & Tags", fully editable; optional "used by N" |
+| 7 | Catalogue tags: kind `tag`, `catalogueItem.tags`, same manager and picker |
+
+**Postponed (explicitly):** migration of Posts/News/Events/Blog · cross-module shared vocabularies · bulk reassignment and merging · hierarchies · elaborate Studio safeguards · advanced taxonomy admin tools · dashboard UI localization.
+
+### J-8 Rollout
+
+All environments share one Sanity dataset, so order matters. Per module: (1) deploy the reading code with **dual-read** (term records if they exist, otherwise the config list) — nothing changes for existing content; (2) copy the config entries 1:1 into term records (same keys, labels, colour and routing fields; dry-run first; `createIfNotExists`, idempotent); (3) verify (resolved categories per item before/after; for Blog a crawl of `/category/<key>`); (4) stop reading the config list and remove it from the Studio Modules pane. Order: **Catalogue** (tmz: 2 terms, 8 items, validated with Tom's go) → Events (0 terms) → News (4) → Blog last (15 terms, indexed category pages, redirects). Production already runs the Catalogue (v1.0.55), so the Catalogue copy step is a live-data operation: it happens only after the dual-read code is deployed to production, never before.
+
+### J-9 Consequences
+
+- Positive: tenants get a safe, per-record writer and inline creation; no content rewrite; isolation reuses the existing machinery (`projectSlug`, scoped client, guard tests); languages are added without data changes.
+- Negative: a second place besides the config list holds vocabulary until each module is migrated (dual-read period); the deterministic id means a Studio-created term must use the matching id (enforced by validation; the slice 6 desk group creates it that way).

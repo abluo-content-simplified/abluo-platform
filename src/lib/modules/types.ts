@@ -375,6 +375,17 @@ export type ModuleDependency = {
   reason: string
 }
 
+// ── Taxonomy declaration (ADR-033 Amendment J) ────────────────────────────────
+export type ModuleTaxonomyDef = {
+  kind: 'category' | 'tag'
+  /** Document type + array field that stores this kind's term keys. */
+  usedBy: Array<{ type: string; field: string }>
+  /** Terms are public routes (category pages): enables description / redirectFrom / noindex. */
+  routable?: boolean
+  /** Terms carry a badge colour. */
+  color?: boolean
+}
+
 // ── Module manifest ───────────────────────────────────────────────────────────
 // The complete declaration of a module's capabilities, contracts, and metadata.
 //
@@ -476,6 +487,15 @@ export type ModuleManifest = {
      */
     placement: ModulePlacementDef
   }
+
+  // ── Taxonomies ─────────────────────────────────────────────────────────────
+  /**
+   * Categories / tags this module owns (ADR-033 Amendment J). Each entry
+   * declares which document fields hold the term KEYS, so the platform can
+   * count where a term is used. Terms themselves are `taxonomyTerm` records
+   * scoped to project + module + kind. Optional: most modules have none.
+   */
+  taxonomies?: ModuleTaxonomyDef[]
 
   // ── Public contract ────────────────────────────────────────────────────────
   // Reserved for future inter-module communication surface.

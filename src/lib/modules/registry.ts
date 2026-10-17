@@ -1224,6 +1224,9 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
       },
     },
 
+    // ADR-033 Amendment J — categories are taxonomyTerm records; tags arrive in slice 7.
+    taxonomies: [{ kind: 'category', usedBy: [{ type: 'catalogueItem', field: 'categories' }] }],
+
     publicContract: {},
 
     dependencies: {

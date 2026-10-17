@@ -978,6 +978,8 @@ Each phase is independently deployable (ADR-007):
 - The one-time relocation (Website Settings → Project Settings → Integrations, `analyticsEnabled` → kill switch, verification tokens → `seo`) is churn for the Abluo admin's muscle memory and requires every reference to the old `siteConfig.integrations` shape (docs, any hardcoded admin bookmarks) to be updated
 - `storage` being per-manifest rather than per-field today means an integration that needs a mixed Sanity/Supabase split (unlikely at Sprint 2's scope, but plausible for a future payments integration) will require a manifest-shape change when that need arrives
 
+**Note (2026-10-17) — taxonomy terms are records, not configuration (ADR-033 Amendment J):** categories and tags are individual `taxonomyTerm` records, not entries of a module's configuration list. This does not create a second configuration surface: there is exactly one set of records per project and module. Tenants manage them only in the dashboard (central "Categories & Tags" screen and inline creation); the platform superadmin manages the same records in Studio (Studio is superadmin-only). Neither path has a private copy.
+
 ---
 
 ## ADR-015 — Platform Authorization & Tenant Isolation
