@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
+import { ListRow } from '@/components/app/ui/list/ListRow'
 import { CellDate, CellPill, CellText, Chips } from '@/components/app/ui/list/cells'
 import { Avatar } from '@/components/app/ui/Avatar'
 import type { Person } from '@/lib/people/service'
@@ -139,28 +140,21 @@ export function PeoplePhoneList({
   return (
     <ul className="flex flex-col gap-3">
       {people.map((p) => (
-        <li key={p.key} className="flex items-start gap-1 rounded-xl border border-border bg-card py-2 pr-1 pl-3">
-          <button
-            type="button"
-            onClick={() => onOpen(p)}
-            className="flex min-w-0 flex-1 items-start gap-3 pt-2 pb-1 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
-            <Avatar name={p.name} email={p.email} src={p.avatarUrl} size="md" muted={p.status !== 'active'} />
-            <span className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
-              <span className="line-clamp-1 text-[0.9375rem] leading-[1.375rem] font-semibold text-foreground">
-                {displayName(p)}
-                {p.isYou ? <span className="font-normal text-muted-foreground"> ({t('you')})</span> : null}
-              </span>
-              {p.name ? <span className="line-clamp-1 text-sm leading-5 text-muted-foreground">{p.email}</span> : null}
-              <span className="text-sm leading-5 text-foreground">{roleLabel(p.role)}</span>
-              <Chips items={p.extras.map(extraLabel)} />
-              <StatusPill status={p.status} />
-            </span>
-          </button>
-          <span className="shrink-0">
-            <CardMenu label={t('menu', { name: displayName(p) })} items={menuFor(p)} />
+        <ListRow
+          key={p.key}
+          onOpen={() => onOpen(p)}
+          leading={<Avatar name={p.name} email={p.email} src={p.avatarUrl} size="md" muted={p.status !== 'active'} />}
+          menu={{ label: t('menu', { name: displayName(p) }), items: menuFor(p) }}
+        >
+          <span className="line-clamp-1 text-[0.9375rem] leading-[1.375rem] font-semibold text-foreground">
+            {displayName(p)}
+            {p.isYou ? <span className="font-normal text-muted-foreground"> ({t('you')})</span> : null}
           </span>
-        </li>
+          {p.name ? <span className="line-clamp-1 text-sm leading-5 text-muted-foreground">{p.email}</span> : null}
+          <span className="text-sm leading-5 text-foreground">{roleLabel(p.role)}</span>
+          <Chips items={p.extras.map(extraLabel)} />
+          <StatusPill status={p.status} />
+        </ListRow>
       ))}
     </ul>
   )

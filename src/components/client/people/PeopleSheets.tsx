@@ -3,6 +3,10 @@
 import { useState, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
+import { Button } from '@/components/app/ui/Button'
+import { Field } from '@/components/app/ui/Field'
+import { RadioList } from '@/components/app/ui/RadioList'
+import { TextInput } from '@/components/app/ui/TextInput'
 import { Checkbox } from '@/components/app/ui/Checkbox'
 import { Avatar } from '@/components/app/ui/Avatar'
 import { LocalDate, Pill } from '@/components/app/ui/list/cells'
@@ -12,32 +16,16 @@ import { StatusPill, TwoFactorPill } from './people-bits'
 
 /** People list: the invite sheet and the person sheet (details, access, actions). */
 
-export const PRIMARY_BTN =
-  'inline-flex h-12 w-full items-center justify-center rounded-xl bg-action px-5 text-[0.9375rem] font-semibold text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40'
-export const QUIET_BTN =
-  'inline-flex h-12 w-full items-center justify-center rounded-xl px-5 text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40'
-const DANGER_BTN = `${QUIET_BTN.replace('text-foreground', 'text-destructive')}`
-const INPUT =
-  'mt-2 h-12 w-full rounded-xl border border-border bg-background px-3 text-base text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
-
 function RoleChoice({ roles, value, onChange, roleLabel }: { roles: string[]; value: string; onChange: (r: string) => void; roleLabel: (r: string) => string }) {
   const t = useTranslations('clientDashboard.people')
   return (
-    <fieldset className="space-y-2">
-      <legend className="mb-2 text-[0.9375rem] font-medium text-foreground">{t('role')}</legend>
-      {roles.map((r) => (
-        <label
-          key={r}
-          className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border p-3 ${value === r ? 'border-action ring-1 ring-action' : 'border-border'}`}
-        >
-          <input type="radio" name="role" value={r} checked={value === r} onChange={() => onChange(r)} className="size-5 accent-action" />
-          <span>
-            <span className="block text-[0.9375rem] font-medium text-foreground">{roleLabel(r)}</span>
-            <span className="block text-sm text-muted-foreground">{t(`roleHelp.${r}` as 'roleHelp.editor')}</span>
-          </span>
-        </label>
-      ))}
-    </fieldset>
+    <RadioList
+      legend={t('role')}
+      name="role"
+      value={value || null}
+      onChange={onChange}
+      options={roles.map((r) => ({ value: r, label: roleLabel(r), description: t(`roleHelp.${r}` as 'roleHelp.editor') }))}
+    />
   )
 }
 
@@ -118,15 +106,14 @@ export function InviteSheet({
           }
         }}
       >
-        <label className="text-[0.9375rem] font-medium text-foreground">
-          {t('email')}
-          <input type="email" required autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} className={INPUT} />
-        </label>
+        <Field label={t('email')}>
+          {(p) => <TextInput {...p} type="email" required autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} />}
+        </Field>
         <RoleChoice roles={roles} value={role} onChange={setRole} roleLabel={roleLabel} />
         <ExtrasChoice all={extras} available={extrasForRole[role] ?? []} value={chosen} onChange={setChosen} extraLabel={extraLabel} />
-        <button type="submit" disabled={busy || !role} className={PRIMARY_BTN}>
+        <Button variant="primary" size="lg" fullWidth type="submit" disabled={busy || !role}>
           {busy ? t('sending') : t('send')}
-        </button>
+        </Button>
       </form>
     </BottomSheet>
   )
@@ -247,10 +234,11 @@ function PersonSheetBody({
         <>
           <RoleChoice roles={person.editableRoles} value={role} onChange={setRole} roleLabel={roleLabel} />
           <ExtrasChoice all={extras} available={extrasForRole[role] ?? []} value={chosen} onChange={setChosen} extraLabel={extraLabel} />
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
             disabled={busy || !dirty}
-            className={PRIMARY_BTN}
             onClick={async () => {
               setBusy(true)
               await onSave(person, role, chosen.filter((x) => (extrasForRole[role] ?? []).includes(x)))
@@ -258,7 +246,7 @@ function PersonSheetBody({
             }}
           >
             {t('save')}
-          </button>
+          </Button>
         </>
       ) : null}
 
@@ -269,8 +257,8 @@ function PersonSheetBody({
 
 export function SheetAction({ children, onPress, disabled, destructive }: { children: ReactNode; onPress: () => void; disabled?: boolean; destructive?: boolean }) {
   return (
-    <button type="button" onClick={onPress} disabled={disabled} className={destructive ? DANGER_BTN : QUIET_BTN}>
+    <Button variant="quiet" size="lg" fullWidth onClick={onPress} disabled={disabled} className={destructive ? 'text-destructive' : ''}>
       {children}
-    </button>
+    </Button>
   )
 }

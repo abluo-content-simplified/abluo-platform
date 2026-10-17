@@ -13,7 +13,7 @@
  *    and the hover treatment is switched off while disabled
  *  - primary keeps the ring offset and hover:opacity-90
  */
-export type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'destructive'
+export type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'destructive' | 'link'
 export type ButtonSize = 'md' | 'lg'
 
 const BASE =
@@ -24,6 +24,8 @@ const VARIANT: Record<ButtonVariant, string> = {
   secondary: 'border border-border font-semibold text-foreground hover:bg-hover disabled:hover:bg-transparent',
   quiet: 'font-medium text-foreground hover:bg-hover disabled:hover:bg-transparent',
   destructive: 'border border-border font-medium text-destructive hover:bg-hover disabled:hover:bg-transparent',
+  // A text action inside a row or sentence ("Edit", "Show more"): no box, the primary colour, still a 44px hit area.
+  link: 'font-medium text-primary underline-offset-4 hover:underline disabled:hover:no-underline',
 }
 
 /** md: the 44px default. lg: the 48px sheet/footer action (pair with `fullWidth` where it spans the sheet). */
@@ -38,7 +40,8 @@ export function buttonClass({
   fullWidth = false,
   className = '',
 }: { variant?: ButtonVariant; size?: ButtonSize; fullWidth?: boolean; className?: string } = {}): string {
-  return [BASE, VARIANT[variant], SIZE[size], fullWidth ? 'w-full' : '', className].filter(Boolean).join(' ')
+  const sizing = variant === 'link' ? 'min-h-11 px-1' : SIZE[size]
+  return [BASE, VARIANT[variant], sizing, fullWidth ? 'w-full' : '', className].filter(Boolean).join(' ')
 }
 
 /**

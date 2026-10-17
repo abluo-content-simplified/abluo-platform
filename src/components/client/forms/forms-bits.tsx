@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl'
 import type { SubmissionStatus } from '@/lib/api/client-dashboard'
 import { Pill, type PillTone } from '@/components/app/ui/list/cells'
+import { PillSelect } from '@/components/app/ui/PillSelect'
 import { SUBMISSION_STATUSES } from '@/lib/client/submissions-filter'
 
 /**
@@ -31,12 +32,6 @@ export const FORMS_ICONS = {
 }
 
 const TONE: Record<SubmissionStatus, PillTone> = { new: 'highlight', processed: 'success', archived: 'outline' }
-const SELECT_TONE: Record<SubmissionStatus, string> = {
-  new: 'bg-accent text-accent-foreground border-transparent',
-  processed: 'bg-success/15 text-foreground border-transparent',
-  archived: 'border-border text-muted-foreground bg-transparent',
-}
-
 /** New / Handled / Archived as a read-only 1.5rem pill. */
 export function SubmissionStatusPill({ status }: { status: SubmissionStatus }) {
   const t = useTranslations('clientDashboard.submissions.status')
@@ -64,22 +59,13 @@ export function SubmissionStatusSelect({
   size?: 'sm' | 'lg'
 }) {
   const t = useTranslations('clientDashboard.submissions.status')
-  const box = size === 'lg' ? 'h-11 rounded-xl pr-9 pl-3 text-[0.9375rem]' : 'h-6 rounded-full pr-7 pl-2.5 text-xs'
   return (
-    <label className="relative inline-flex shrink-0 items-center">
-      <span className="sr-only">{label}</span>
-      <select
-        value={status}
-        onChange={(e) => onChange(e.target.value as SubmissionStatus)}
-        className={`appearance-none border font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${box} ${SELECT_TONE[status]}`}
-      >
-        {SUBMISSION_STATUSES.map((s) => (
-          <option key={s} value={s}>
-            {t(s)}
-          </option>
-        ))}
-      </select>
-      <span className={`pointer-events-none absolute ${size === 'lg' ? 'right-3' : 'right-2'}`}>{FORMS_ICONS.chevron}</span>
-    </label>
+    <PillSelect
+      label={label}
+      value={status}
+      onChange={onChange}
+      size={size}
+      options={SUBMISSION_STATUSES.map((s) => ({ value: s, label: t(s), tone: TONE[s] }))}
+    />
   )
 }

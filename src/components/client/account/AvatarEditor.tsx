@@ -6,6 +6,7 @@ import { useRouter } from '@/i18n/navigation'
 import { Avatar } from '@/components/app/ui/Avatar'
 import { AVATAR_EDGE_PX } from '@/lib/account/avatar'
 import { removeAvatarAction, uploadAvatarAction } from '@/app/[locale]/(client)/account/actions'
+import { Button } from '@/components/app/ui/Button'
 
 /**
  * The person's own photo on the Account page (Tom, 2026-10-08): change or
@@ -64,21 +65,19 @@ export function AvatarEditor({ name, email, src }: { name: string; email: string
     })
   }
 
-  const btn =
-    'inline-flex min-h-11 items-center rounded-md border border-border bg-card px-3.5 text-[0.9375rem] font-medium text-foreground transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50'
 
   return (
     <div className="flex items-center gap-4 py-2">
       <Avatar name={name} email={email} src={src} size="lg" />
       <div className="min-w-0 space-y-2">
         <div className="flex flex-wrap gap-2">
-          <button type="button" className={btn} disabled={pending} onClick={() => input.current?.click()}>
+          <Button disabled={pending} onClick={() => input.current?.click()}>
             {pending ? t('saving') : src ? t('change') : t('add')}
-          </button>
+          </Button>
           {src ? (
-            <button type="button" className={btn} disabled={pending} onClick={onRemove}>
+            <Button disabled={pending} onClick={onRemove}>
               {t('remove')}
-            </button>
+            </Button>
           ) : null}
         </div>
         {error ? (

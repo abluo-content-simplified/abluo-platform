@@ -6,11 +6,12 @@ import { DemoBlock, DemoStack } from '../demo-kit'
 export default function ButtonDemo() {
   return (
     <DemoStack>
-      <DemoBlock title="Variants" note="variant: primary | secondary (default) | quiet | destructive">
+      <DemoBlock title="Variants" note="variant: primary | secondary (default) | quiet | destructive | link">
         <Button variant="primary">Save</Button>
         <Button>Cancel</Button>
         <Button variant="quiet">Skip</Button>
         <Button variant="destructive">Delete</Button>
+        <Button variant="link">Edit</Button>
       </DemoBlock>
       <DemoBlock title="Sizes" note="size: md (44px, default) | lg (48px)">
         <Button variant="primary">Medium</Button>

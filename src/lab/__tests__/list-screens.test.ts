@@ -25,8 +25,16 @@ const PENDING: Record<string, string> = {
   'src/components/client/catalogue/CatalogueBrowser.tsx': 'own segmented filters — move to ListToolbar',
   'src/components/client/events/EventList.tsx': 'own list — move to ListToolbar + DataTable/ContentCard',
   'src/components/admin/partners/PartnersBrowser.tsx': 'own list — move to ListToolbar + DataTable',
-  'src/components/client/connections/ConnectedAppsBrowser.tsx': 'own list — move to DataTable/ContentCard (toolbar if it grows)',
   'src/components/admin/whats-new/WhatsNewAdmin.tsx': 'DataTable without ListToolbar',
+}
+
+/**
+ * Screens named *Browser that are not browsable collections, with the reason.
+ * They still use shared components (the ban check covers them); they just do
+ * not need search and filters.
+ */
+const NOT_A_COLLECTION: Record<string, string> = {
+  'src/components/client/connections/ConnectedAppsBrowser.tsx': 'A short settings list (usually 0–3 connected apps), shown as Panels — nothing to search or filter.',
 }
 
 function files(dir: string): string[] {
@@ -69,7 +77,7 @@ describe('list screens use the shared list parts', () => {
   it('finds the list screens', () => {
     expect(screens.length).toBeGreaterThan(8)
   })
-  for (const rel of screens.filter((s) => !PENDING[s])) {
+  for (const rel of screens.filter((s) => !PENDING[s] && !NOT_A_COLLECTION[s])) {
     it(`${rel} uses ListToolbar and DataTable or ContentCard`, () => {
       const all = reachableSpecs(path.join(ROOT, rel))
       expect(all, 'ListToolbar').toMatch(/@\/components\/app\/ui\/ListToolbar['"]/)

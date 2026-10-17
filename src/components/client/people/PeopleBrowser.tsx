@@ -3,7 +3,9 @@
 import { useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
+import { Button } from '@/components/app/ui/Button'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
+import { EmptyState } from '@/components/app/ui/EmptyState'
 import type { CardMenuItem } from '@/components/app/ui/CardMenu'
 import type { FilterChip } from '@/components/app/ui/FilterSheet'
 import { ListToolbar, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
@@ -175,14 +177,10 @@ export function PeopleBrowser({ title, projectSlug, locale, view }: { title: str
         title={title}
         actions={
           view.invitableRoles.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => setInviting(true)}
-              className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-action px-4 text-[0.9375rem] font-semibold text-action-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-            >
+            <Button variant="primary" onClick={() => setInviting(true)}>
               {PEOPLE_ICONS.plus}
               {t('invite')}
-            </button>
+            </Button>
           ) : null
         }
       />
@@ -197,18 +195,11 @@ export function PeopleBrowser({ title, projectSlug, locale, view }: { title: str
       />
 
       {shown.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border px-6 py-10">
-          <p className="font-medium text-foreground">{view.people.length ? t('filters.noMatch') : t('empty')}</p>
-          {!isDefault ? (
-            <button
-              type="button"
-              onClick={reset}
-              className="mt-3 inline-flex h-11 items-center rounded-xl border border-border px-4 text-sm font-medium text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              {t('filters.clear')}
-            </button>
-          ) : null}
-        </div>
+        <EmptyState
+          titleAs="p"
+          title={view.people.length ? t('filters.noMatch') : t('empty')}
+          action={!isDefault ? <Button onClick={reset}>{t('filters.clear')}</Button> : undefined}
+        />
       ) : (
         <>
           <div className="hidden md:block">

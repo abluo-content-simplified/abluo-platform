@@ -2,18 +2,17 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { Button } from '@/components/app/ui/Button'
+import { buttonClass } from '@/components/app/ui/button-styles'
 import { Checkbox } from '@/components/app/ui/Checkbox'
+import { Panel } from '@/components/app/ui/Panel'
+import { RadioList } from '@/components/app/ui/RadioList'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import type { ConsentView } from '@/lib/connections/consent-view'
 import type { SharedResources } from '@/lib/connections/types'
 import { approveConnectAction, denyConnectAction } from '@/app/[locale]/(client)/connect/authorize/actions'
 
 const KNOWN_ERRORS = ['forbidden', 'support_mode', 'project_not_found', 'sandbox_only', 'resources_invalid', 'nothing_selected'] as const
-
-const primary =
-  'inline-flex h-11 items-center justify-center rounded-xl bg-action px-5 text-[0.9375rem] font-semibold text-action-foreground hover:opacity-90 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none'
-const secondary =
-  'inline-flex h-11 items-center justify-center rounded-xl border border-border px-5 text-[0.9375rem] font-medium text-foreground hover:bg-muted disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
 
 type Ready = Extract<ConsentView, { state: 'ready' }>
 
@@ -45,7 +44,7 @@ export function ConsentScreen({ view, params, title }: { view: ConsentView; para
         title={t(view.state === 'support_mode' ? 'supportTitle' : 'noSiteTitle')}
         body={t(view.state === 'support_mode' ? 'supportBody' : 'noSiteBody', { app: view.appName })}
         action={
-          <a href={view.cancelTo} className={secondary}>
+          <a href={view.cancelTo} className={buttonClass()}>
             {t('back', { app: view.appName })}
           </a>
         }
@@ -103,7 +102,7 @@ function ReadyForm({ view, params, title }: { view: Ready; params: Record<string
   }
 
   return (
-    <section aria-labelledby="connect-heading" className="space-y-6 rounded-2xl border border-border bg-card p-5 md:p-7">
+    <Panel as="section" aria-labelledby="connect-heading" padding="none" className="space-y-6 p-5 md:p-7">
       <header className="space-y-2">
         <p className="text-sm font-medium text-muted-foreground">{title}</p>
         <h1 id="connect-heading" className="text-[1.375rem] leading-8 font-semibold text-foreground">
@@ -113,28 +112,13 @@ function ReadyForm({ view, params, title }: { view: Ready; params: Record<string
         {view.sandboxOnly ? <p className="rounded-xl bg-muted px-3 py-2 text-sm text-foreground">{t('sandboxNote')}</p> : null}
       </header>
 
-      <fieldset className="space-y-2">
-        <legend className="mb-2 text-[0.9375rem] font-semibold text-foreground">{t('site')}</legend>
-        {view.projects.map((p) => (
-          <label
-            key={p.projectId}
-            className={`flex min-h-12 cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 ${p.projectId === projectId ? 'border-foreground' : 'border-border'}`}
-          >
-            <input
-              type="radio"
-              name="project"
-              value={p.projectId}
-              checked={p.projectId === projectId}
-              onChange={() => pickProject(p.projectId)}
-              className="mt-1 size-4 accent-current"
-            />
-            <span className="flex flex-col">
-              <span className="text-[0.9375rem] font-medium text-foreground">{p.name}</span>
-              {p.existing ? <span className="text-sm text-muted-foreground">{t('alreadyConnected')}</span> : null}
-            </span>
-          </label>
-        ))}
-      </fieldset>
+      <RadioList
+        legend={t('site')}
+        name="project"
+        value={projectId}
+        onChange={pickProject}
+        options={view.projects.map((p) => ({ value: p.projectId, label: p.name, description: p.existing ? t('alreadyConnected') : undefined }))}
+      />
 
       <div className="space-y-4">
         <h2 className="text-[0.9375rem] font-semibold text-foreground">{t('shares', { app })}</h2>
@@ -168,13 +152,13 @@ function ReadyForm({ view, params, title }: { view: Ready; params: Record<string
       ) : null}
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-        <button type="button" className={secondary} disabled={busy} onClick={() => void go(() => denyConnectAction({ params }))}>
+        <Button disabled={busy} onClick={() => void go(() => denyConnectAction({ params }))}>
           {t('cancel')}
-        </button>
-        <button type="button" className={primary} disabled={busy || !project} onClick={approve}>
+        </Button>
+        <Button variant="primary" disabled={busy || !project} onClick={approve}>
           {busy ? t('working') : project?.existing ? t('update') : t('allow')}
-        </button>
+        </Button>
       </div>
-    </section>
+    </Panel>
   )
 }

@@ -21,7 +21,7 @@ export function Panel({
   children,
   ...aria
 }: {
-  as?: 'div' | 'section' | 'article' | 'aside'
+  as?: 'div' | 'section' | 'article' | 'aside' | 'li'
   padding?: 'none' | 'md' | 'lg'
   tone?: 'card' | 'muted'
   className?: string

@@ -5,6 +5,9 @@ import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { DISPLAY_NAME_MAX, normalizeDisplayName } from '@/lib/account/display-name'
 import { updateDisplayNameAction } from '@/app/[locale]/(client)/account/actions'
+import { Button } from '@/components/app/ui/Button'
+import { TextInput } from '@/components/app/ui/TextInput'
+import { FieldError } from '@/components/app/ui/FieldLabel'
 
 /**
  * The "Name" row of the profile (Account page and profile panel), editable in
@@ -75,8 +78,6 @@ export function NameEditor({ name }: { name: string }) {
     })
   }
 
-  const textButton =
-    'inline-flex min-h-11 items-center rounded-md px-1 text-[0.9375rem] font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50'
 
   if (!editing) {
     return (
@@ -84,15 +85,9 @@ export function NameEditor({ name }: { name: string }) {
         <dt className="text-muted-foreground">{t('name')}</dt>
         <dd className="flex min-w-0 items-start gap-3 text-right text-foreground">
           <span className="min-w-0 break-words">{shown || <span className="text-muted-foreground">{t('notSet')}</span>}</span>
-          <button
-            ref={editButton}
-            type="button"
-            onClick={open}
-            aria-label={t('editName')}
-            className={`-my-2.5 shrink-0 text-primary ${textButton}`}
-          >
+          <Button ref={editButton} variant="link" onClick={open} aria-label={t('editName')} className="-my-2.5">
             {t('edit')}
-          </button>
+          </Button>
         </dd>
       </div>
     )
@@ -107,7 +102,8 @@ export function NameEditor({ name }: { name: string }) {
       </dt>
       <dd>
         <form onSubmit={save} className="mt-2 flex flex-col gap-2">
-          <input
+          <TextInput
+            flush
             ref={input}
             id={inputId}
             type="text"
@@ -127,24 +123,15 @@ export function NameEditor({ name }: { name: string }) {
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? errorId : undefined}
             disabled={pending}
-            className="h-12 w-full rounded-xl border border-border bg-background px-3 text-base text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60"
           />
-          {error ? (
-            <p id={errorId} role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          ) : null}
+          <FieldError id={errorId}>{error}</FieldError>
           <div className="flex items-center gap-2">
-            <button
-              type="submit"
-              disabled={pending}
-              className="inline-flex h-11 items-center rounded-xl bg-action px-4 text-[0.9375rem] font-semibold text-action-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
-            >
+            <Button variant="primary" type="submit" disabled={pending}>
               {pending ? t('saving') : t('save')}
-            </button>
-            <button type="button" onClick={cancel} disabled={pending} className={`px-3 text-muted-foreground hover:text-foreground ${textButton}`}>
+            </Button>
+            <Button variant="quiet" onClick={cancel} disabled={pending}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
         </form>
       </dd>

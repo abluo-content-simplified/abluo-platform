@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import { FactRow } from '@/components/app/ui/FactRow'
 import { PageHeader } from '@/components/app/ui/PageHeader'
+import { Panel } from '@/components/app/ui/Panel'
 import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
 import { LocalDate, Pill, type PillTone } from '@/components/app/ui/list/cells'
@@ -116,7 +117,7 @@ export function ConnectedAppsBrowser({
             const items = menuFor(c)
             const note = notice(c)
             return (
-              <li key={c.id} className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 md:p-5">
+              <Panel as="li" key={c.id} className="flex flex-col gap-3 md:p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 flex-col gap-1.5">
                     <h2 className="truncate text-[1.0625rem] leading-6 font-semibold text-foreground">{c.appName}</h2>
@@ -149,7 +150,7 @@ export function ConnectedAppsBrowser({
                     <LocalDate iso={c.connectedAt} />
                   </FactRow>
                 </dl>
-              </li>
+              </Panel>
             )
           })}
         </ul>

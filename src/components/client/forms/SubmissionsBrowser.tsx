@@ -8,7 +8,9 @@ import {
   setSubmissionStatusAction,
   setSubmissionsStatusBatchAction,
 } from '@/app/[locale]/(client)/[tenant]/submissions/actions'
+import { Button } from '@/components/app/ui/Button'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
+import { EmptyState } from '@/components/app/ui/EmptyState'
 import { BarButton, SheetItem } from '@/components/app/ui/BarButton'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
 import type { CardMenuItem } from '@/components/app/ui/CardMenu'
@@ -36,9 +38,6 @@ import { SubmissionsTable } from './SubmissionsTable'
 
 /** The server's batch cap (SUBMISSION_BATCH_MAX); larger selections go in chunks. */
 const BATCH = 100
-
-const SECONDARY_BTN =
-  'inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-border px-4 text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40'
 
 /**
  * The Forms list (contact requests = form submissions) — built on the shared
@@ -230,10 +229,10 @@ export function SubmissionsBrowser({
                 ...keys.map((k) => ({ value: k, label: `${t('filters.groupBy')}: ${humanizeKey(k)}` })),
               ]}
             />
-            <button type="button" onClick={() => exportCsv(shown)} disabled={shown.length === 0} className={SECONDARY_BTN}>
+            <Button onClick={() => exportCsv(shown)} disabled={shown.length === 0}>
               {FORMS_ICONS.download}
               {t('exportCsv')}
-            </button>
+            </Button>
           </span>
         }
       />
@@ -250,14 +249,11 @@ export function SubmissionsBrowser({
       ) : null}
 
       {shown.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border px-6 py-10">
-          <p className="font-medium text-foreground">{t('filters.noMatch')}</p>
-          {!isDefault ? (
-            <button type="button" onClick={reset} className={`${SECONDARY_BTN} mt-3`}>
-              {t('filters.clear')}
-            </button>
-          ) : null}
-        </div>
+        <EmptyState
+          titleAs="p"
+          title={t('filters.noMatch')}
+          action={!isDefault ? <Button onClick={reset}>{t('filters.clear')}</Button> : undefined}
+        />
       ) : (
         <>
           {/* Computers */}
@@ -364,15 +360,15 @@ export function SubmissionsBrowser({
                 <SubmissionStatusPill status={opened.status} />
               )}
               <span className="flex-1" />
-              <button type="button" onClick={() => exportCsv([opened])} className={SECONDARY_BTN}>
+              <Button onClick={() => exportCsv([opened])}>
                 {FORMS_ICONS.download}
                 {t('exportOne')}
-              </button>
+              </Button>
               {canDelete ? (
-                <button type="button" disabled={busy} onClick={() => setConfirmDelete([opened.id])} className={`${SECONDARY_BTN} text-destructive`}>
+                <Button variant="destructive" disabled={busy} onClick={() => setConfirmDelete([opened.id])}>
                   {FORMS_ICONS.trash}
                   {t('delete')}
-                </button>
+                </Button>
               ) : null}
             </>
           ) : null

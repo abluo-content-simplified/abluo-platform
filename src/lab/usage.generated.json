@@ -1,10 +1,14 @@
 {
-  "generatedAt": "2026-10-17T17:27:19.375Z",
+  "generatedAt": "2026-10-17T18:16:41.028Z",
   "usage": {
     "button": [
       "src/app/[locale]/(admin)/lab/[entry]/page.tsx",
+      "src/app/[locale]/(admin)/lab/page.tsx",
+      "src/app/[locale]/(admin)/lab/todo/page.tsx",
       "src/app/[locale]/(client)/[tenant]/catalogue/error.tsx",
       "src/components/app/ui/Notice.tsx",
+      "src/components/client/account/AvatarEditor.tsx",
+      "src/components/client/account/NameEditor.tsx",
       "src/components/client/catalogue/CatalogueBrowser.tsx",
       "src/components/client/catalogue/ChangeTypeSheet.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
@@ -14,15 +18,22 @@
       "src/components/client/catalogue/catalogue-ui.tsx",
       "src/components/client/catalogue/item-fields.tsx",
       "src/components/client/catalogue/publish-dependencies.tsx",
-      "src/components/client/catalogue/stray-address.tsx"
+      "src/components/client/catalogue/stray-address.tsx",
+      "src/components/client/connections/ConsentScreen.tsx",
+      "src/components/client/forms/SubmissionsBrowser.tsx",
+      "src/components/client/people/PeopleBrowser.tsx",
+      "src/components/client/people/PeopleSheets.tsx"
     ],
     "text-input": [
+      "src/components/client/account/NameEditor.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
-      "src/components/client/catalogue/item-fields.tsx"
+      "src/components/client/catalogue/item-fields.tsx",
+      "src/components/client/people/PeopleSheets.tsx"
     ],
     "field-label": [
       "src/components/app/ui/Field.tsx",
+      "src/components/client/account/NameEditor.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
       "src/components/client/catalogue/item-fields.tsx"
     ],
@@ -68,11 +79,11 @@
       "src/components/admin/whats-new/WhatsNewAdmin.tsx",
       "src/components/app/ui/list/ContentCard.tsx",
       "src/components/app/ui/list/DataTable.tsx",
+      "src/components/app/ui/list/ListRow.tsx",
       "src/components/client/catalogue/CatalogueBrowser.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/item-fields.tsx",
       "src/components/client/connections/ConsentScreen.tsx",
-      "src/components/client/forms/SubmissionCards.tsx",
       "src/components/client/gallery/GalleryCards.tsx",
       "src/components/client/people/PeopleSheets.tsx",
       "src/components/client/posts/PostCards.tsx"
@@ -125,7 +136,9 @@
       "src/components/client/connections/ConnectedAppsBrowser.tsx",
       "src/components/client/connections/ConsentScreen.tsx",
       "src/components/client/events/EventList.tsx",
+      "src/components/client/forms/SubmissionsBrowser.tsx",
       "src/components/client/gallery/GalleryList.tsx",
+      "src/components/client/people/PeopleBrowser.tsx",
       "src/components/client/taxonomy/TaxonomyManager.tsx"
     ],
     "page-header": [
@@ -134,6 +147,7 @@
       "src/app/[locale]/(admin)/backlog/page.tsx",
       "src/app/[locale]/(admin)/lab/[entry]/page.tsx",
       "src/app/[locale]/(admin)/lab/page.tsx",
+      "src/app/[locale]/(admin)/lab/todo/page.tsx",
       "src/app/[locale]/(admin)/projects/[slug]/page.tsx",
       "src/app/[locale]/(admin)/projects/new/page.tsx",
       "src/app/[locale]/(admin)/projects/page.tsx",
@@ -165,6 +179,7 @@
       "src/app/[locale]/(admin)/analytics/[slug]/page.tsx",
       "src/app/[locale]/(admin)/dashboard/page.tsx",
       "src/app/[locale]/(admin)/lab/[entry]/page.tsx",
+      "src/app/[locale]/(admin)/lab/todo/page.tsx",
       "src/app/[locale]/(admin)/projects/[slug]/page.tsx",
       "src/app/[locale]/(admin)/projects/new/page.tsx",
       "src/app/[locale]/(client)/[tenant]/home/page.tsx",
@@ -215,13 +230,13 @@
     "card-menu": [
       "src/components/admin/partners/PartnersBrowser.tsx",
       "src/components/admin/projects/ProjectsBrowser.tsx",
+      "src/components/app/ui/list/ListRow.tsx",
       "src/components/client/catalogue/CatalogueBrowser.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/ItemEditor.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
       "src/components/client/connections/ConnectedAppsBrowser.tsx",
       "src/components/client/events/EventEditor.tsx",
-      "src/components/client/forms/SubmissionCards.tsx",
       "src/components/client/forms/SubmissionsTable.tsx",
       "src/components/client/gallery/GalleriesTable.tsx",
       "src/components/client/gallery/GalleryCards.tsx",
@@ -338,6 +353,7 @@
       "src/app/[locale]/(admin)/dashboard/page.tsx",
       "src/app/[locale]/(admin)/lab/[entry]/page.tsx",
       "src/app/[locale]/(admin)/lab/page.tsx",
+      "src/app/[locale]/(admin)/lab/todo/page.tsx",
       "src/app/[locale]/(admin)/media/page.tsx",
       "src/app/[locale]/(admin)/partners/page.tsx",
       "src/app/[locale]/(admin)/projects/[slug]/page.tsx",
@@ -498,11 +514,29 @@
     "app-version": [
       "src/components/app/shell/AccountMenu.tsx"
     ],
+    "list-row": [
+      "src/components/client/forms/SubmissionCards.tsx",
+      "src/components/client/people/PeopleTable.tsx"
+    ],
+    "radio-list": [
+      "src/components/client/connections/ConsentScreen.tsx",
+      "src/components/client/people/PeopleSheets.tsx"
+    ],
+    "pill-select": [
+      "src/components/client/forms/forms-bits.tsx"
+    ],
     "notice": [],
-    "panel": [],
+    "panel": [
+      "src/app/[locale]/(admin)/lab/todo/page.tsx",
+      "src/app/[locale]/(client)/account/page.tsx",
+      "src/components/client/connections/ConnectedAppsBrowser.tsx",
+      "src/components/client/connections/ConsentScreen.tsx"
+    ],
     "select": [],
     "date-input": [],
-    "field": [],
+    "field": [
+      "src/components/client/people/PeopleSheets.tsx"
+    ],
     "skeleton": []
   }
 }

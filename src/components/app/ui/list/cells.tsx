@@ -136,6 +136,11 @@ const PILL_TONE: Record<PillTone, string> = {
 }
 
 /** A 1.5rem rounded pill: optional leading icon / dot. */
+/** The tone classes of a Pill, for controls that must look like one (PillSelect). */
+export function pillToneClass(tone: PillTone): string {
+  return PILL_TONE[tone]
+}
+
 export function Pill({ tone = 'muted', icon, children }: { tone?: PillTone; icon?: ReactNode; children: ReactNode }) {
   return (
     <span className={`inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium whitespace-nowrap ${PILL_TONE[tone]}`}>

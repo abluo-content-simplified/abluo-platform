@@ -17,6 +17,7 @@ import { TwoFactorPill } from '@/components/client/people/people-bits'
 import { FactRow } from '@/components/app/ui/FactRow'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { PageShell } from '@/components/app/ui/PageShell'
+import { Panel } from '@/components/app/ui/Panel'
 
 /**
  * The signed-in person's own Account page (ADR-029 §6 Phase 1) — about THEM,
@@ -37,7 +38,7 @@ function Section({ id, title, hint, children }: { id?: string; title: string; hi
     <section id={id} className="scroll-mt-20 space-y-3">
       <h2 className="text-sm font-semibold text-muted-foreground">{title}</h2>
       {hint ? <p className="-mt-2 text-sm text-muted-foreground">{hint}</p> : null}
-      <div className="rounded-2xl border border-border bg-card px-4 py-3 md:px-5">{children}</div>
+      <Panel padding="none" className="px-4 py-3 md:px-5">{children}</Panel>
     </section>
   )
 }
