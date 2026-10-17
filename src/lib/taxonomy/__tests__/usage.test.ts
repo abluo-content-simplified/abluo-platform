@@ -38,3 +38,28 @@ describe('logical items', () => {
     expect(summarizeUsage([])).toEqual({ count: 0, items: [], inUse: false })
   })
 })
+
+describe('usage counts for a whole list', () => {
+  it('builds one scoped, validated query over every declared type', async () => {
+    const { buildUsageCountsQuery } = await import('../usage')
+    const q = buildUsageCountsQuery([{ type: 'catalogueItem', field: 'categories' }, { type: 'post', field: 'tags' }])
+    expect(q.perspective).toBe('raw')
+    expect(q.query).toContain('projectSlug == $projectSlug')
+    expect(q.query).toContain('_type == "post" => coalesce(tags, [])')
+    expect(() => buildUsageCountsQuery([])).toThrow()
+    expect(() => buildUsageCountsQuery([{ type: 'x"] || true', field: 'f' }])).toThrow()
+  })
+
+  it('counts logical documents per key (draft + published once, either copy counts)', async () => {
+    const { countUsageByKey } = await import('../usage')
+    const counts = countUsageByKey([
+      { _id: 'a', _type: 't', keys: ['x', 'y'] },
+      { _id: 'drafts.a', _type: 't', keys: ['x'] },
+      { _id: 'drafts.b', _type: 't', keys: ['x', 'x'] },
+      { _id: 'c', _type: 't', keys: null },
+    ])
+    expect(counts.get('x')).toBe(2)
+    expect(counts.get('y')).toBe(1)
+    expect(counts.has('z')).toBe(false)
+  })
+})

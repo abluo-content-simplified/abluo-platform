@@ -69,3 +69,46 @@ export function summarizeUsage(rows: readonly UsageRow[]): TermUsage {
   const items = toLogicalItems(rows)
   return { count: items.length, items, inUse: items.length > 0 }
 }
+
+// ── Usage counts for a whole list ─────────────────────────────────────────────
+// One query for every term of a module (the manager's "Used by N" column), as
+// opposed to buildUsageQuery's one-key lookup used before a delete.
+
+export type UsageCountRow = { _id: string; _type: string; keys?: unknown }
+
+/**
+ * Query returning `{ _id, _type, keys }` for every document of the declared
+ * types in the project, where `keys` is the declared field's array (empty when
+ * unset). Run with the draft-including ('raw') perspective. $projectSlug is
+ * supplied by the tenant-scoped client.
+ */
+export function buildUsageCountsQuery(usedBy: readonly UsedBy[]): { query: string; perspective: 'raw' } {
+  if (usedBy.length === 0) throw new Error('buildUsageCountsQuery: usedBy must not be empty')
+  for (const { type, field } of usedBy) {
+    if (!IDENT.test(type) || !IDENT.test(field)) throw new Error(`buildUsageCountsQuery: invalid type/field "${type}.${field}"`)
+  }
+  const types = usedBy.map((u) => `"${u.type}"`).join(', ')
+  const keys = usedBy.map((u) => `_type == "${u.type}" => coalesce(${u.field}, [])`).join(', ')
+  return {
+    query: `*[projectSlug == $projectSlug && _type in [${types}]]{ _id, _type, "keys": select(${keys}, []) }`,
+    perspective: 'raw',
+  }
+}
+
+/**
+ * Per-key number of logical documents holding the key. A draft and its
+ * published copy count once (a key in EITHER copy counts); archived documents
+ * are ordinary documents and count too.
+ */
+export function countUsageByKey(rows: readonly UsageCountRow[]): Map<string, number> {
+  const keysByDoc = new Map<string, Set<string>>()
+  for (const row of rows) {
+    const id = row._id.startsWith(DRAFT_PREFIX) ? row._id.slice(DRAFT_PREFIX.length) : row._id
+    const set = keysByDoc.get(id) ?? new Set<string>()
+    if (Array.isArray(row.keys)) for (const k of row.keys) if (typeof k === 'string') set.add(k)
+    keysByDoc.set(id, set)
+  }
+  const counts = new Map<string, number>()
+  for (const set of keysByDoc.values()) for (const k of set) counts.set(k, (counts.get(k) ?? 0) + 1)
+  return counts
+}
