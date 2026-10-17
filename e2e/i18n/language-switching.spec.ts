@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { targets, localeSegments, type Target } from './targets'
+import { targets, localeSegments, publicPathname, urlFor, type Target } from './targets'
 
 /**
  * The i18n release gate.
@@ -42,7 +42,18 @@ const SITES = targets()
  */
 async function settle(page: Page, from: string): Promise<void> {
   await page.waitForURL((url) => url.href !== from, { timeout: 10_000 }).catch(() => {})
-  await page.waitForLoadState('domcontentloaded')
+  // 'load', not 'domcontentloaded'. Waiting only for the DOM lets the next
+  // click land before React has hydrated, so the drawer never opens and the
+  // option never appears — measured as "OPTION NOT VISIBLE after 5077ms" on a
+  // page whose controls work perfectly once hydrated. It costs the media, and
+  // it is the difference between a gate that works and one that invents
+  // failures.
+  await page.waitForLoadState('load')
+  // The banner comes back with each render until a choice is recorded, and on
+  // a phone it covers the controls the next switch needs. Playwright's click
+  // waits for an element to "receive events", so a covered control does not
+  // fail fast — it burns the whole test budget.
+  await dismissConsent(page)
 }
 
 /**
@@ -74,6 +85,10 @@ async function switchTo(
     const hamburger = page.locator('button[aria-label="Open menu"]').first()
     if ((await hamburger.count()) === 0 || !(await hamburger.isVisible())) return false
     await hamburger.click()
+    // Again here, not only after navigation: the banner re-renders with the
+    // page and is `fixed bottom-0`, so once we scroll down the drawer to reach
+    // the language row it is sitting on top of exactly the buttons we need.
+    await dismissConsent(page)
     // getByRole reads the accessibility tree, which is exactly the filter we
     // need: while the drawer is shut its container is aria-hidden so its
     // buttons are not in the tree, and neither is the header switcher, which
@@ -85,12 +100,47 @@ async function switchTo(
     } catch {
       return false
     }
-    await option.click()
+    // force + an explicit bound. Playwright's default click waits for the
+    // element to be "stable" — two animation frames with the same box — and
+    // these pages animate continuously, so stability never arrives: a single
+    // click silently consumed the whole 210s test budget and was reported as a
+    // hang rather than as anything diagnosable. The button only needs its
+    // onClick to fire, and 15s turns a genuine problem into a fast, legible
+    // failure instead of a timeout at the end of the test.
+    // Scroll first: on a phone the drawer's language row sits below the fold.
+    // Then a NORMAL click, bounded. `force` was tried and is wrong here — it
+    // skips the "receives events" check too, so a click on a covered button
+    // silently does nothing and the next assertion reports the old locale as
+    // if the switch had failed.
+    await option.scrollIntoViewIfNeeded({ timeout: 5000 })
+    await option.click({ timeout: 15_000 })
     await settle(page, from)
     return true
   }
 
-  const scope = where === 'header' ? page.locator('[data-lang-switch]') : page.locator('footer')
+  if (where === 'footer') {
+    // FooterLanguageSwitcher is a flat row of plain buttons labelled with
+    // native names — no dropdown, no aria-haspopup. An earlier version looked
+    // for a listbox toggle here, found the THEME switcher or nothing, and
+    // skipped every footer case on every site. The footer contract was
+    // therefore never actually tested, while the report said "skipped" as if
+    // the site simply lacked the control.
+    const option = page
+      .locator('footer')
+      .getByRole('button', { name: NATIVE[locale], exact: true })
+      .first()
+    if ((await option.count()) === 0) return false
+    await option.scrollIntoViewIfNeeded()
+    // No `force`, for the same reason as the drawer: it skips the "receives
+    // events" check, so a covered button swallows the click and the next
+    // assertion reports the old locale as though the switch had failed. That
+    // is what "footer switch to de" showed on hoffmann.
+    await option.click({ timeout: 15_000 })
+    await settle(page, from)
+    return true
+  }
+
+  const scope = page.locator('[data-lang-switch]')
   const toggle = scope.locator('button[aria-haspopup="listbox"]').first()
   if ((await toggle.count()) === 0 || !(await toggle.isVisible())) return false
 
@@ -102,7 +152,7 @@ async function switchTo(
     await page.keyboard.press('Escape')
     return false
   }
-  await option.click()
+  await option.click({ timeout: 15_000 })
   await settle(page, from)
   return true
 }
@@ -122,14 +172,40 @@ const CODE: Record<string, string> = Object.fromEntries(
   Object.keys(NATIVE).map((l) => [l, l.toUpperCase()])
 )
 
+/**
+ * Close the consent banner if one is showing.
+ *
+ * On a phone it is `fixed inset-x-0 bottom-0` and sits on top of the footer
+ * and the bottom of the drawer, so every click underneath it is intercepted
+ * and the test times out 30s later — which is what seven phone cases did
+ * before this. Its close control is the only language-independent thing in
+ * it, which is why it is matched by "×" rather than by a label.
+ *
+ * Dismissing rather than accepting: this suite has no business consenting to
+ * tracking on the client's behalf, and the banner's presence is not what it
+ * is testing.
+ *
+ * Targeted through role=dialog and DOM order, because nothing else about it is
+ * language-independent. Its close control renders "×" but carries
+ * aria-label="Close and reject", which overrides the glyph for accessible-name
+ * matching AND is translated per locale — so matching on either the text or
+ * the label silently found nothing, and seven phone cases went on timing out
+ * with the banner still sitting over the footer.
+ */
+async function dismissConsent(page: Page): Promise<void> {
+  const dialog = page.getByRole('dialog')
+  if ((await dialog.count()) === 0) return
+  // The close button is first in the banner's markup.
+  await dialog.locator('button').first().click({ timeout: 3000 }).catch(() => {})
+  await dialog.first().waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {})
+}
+
 /** Everything that must agree about the locale, read off the live page. */
 async function observe(page: Page, site: Target) {
   const url = new URL(page.url())
-  // The base may carry a path prefix (preview-path mode); strip it first.
-  const prefix = new URL(site.base).pathname.replace(/\/$/, '')
-  const pathname = prefix && url.pathname.startsWith(prefix)
-    ? url.pathname.slice(prefix.length) || '/'
-    : url.pathname
+  // Normalised to the shape a tenant's own domain would show, so one set of
+  // assertions covers both URL shapes. See publicPathname().
+  const pathname = publicPathname(url.pathname, site)
   return {
     url: page.url(),
     pathname,
@@ -140,17 +216,47 @@ async function observe(page: Page, site: Target) {
 }
 
 for (const site of SITES) {
-  test.describe(`${site.project} — ${site.base}`, () => {
+  test.describe(`${site.project} — ${urlFor(site, site.defaultLocale)}`, () => {
     test.beforeEach(async ({ page }) => {
-      const res = await page.goto(`${site.base}/${site.defaultLocale}`, { waitUntil: 'load' })
-      test.skip(!res || res.status() >= 400, `${site.base} is not reachable in this environment`)
+      // Vercel injects its preview toolbar into every non-production
+      // deployment. `<vercel-live-feedback>` is an overlay that intercepts
+      // pointer events, and on a phone it sits over the bottom of the
+      // navigation drawer — Playwright reported it by name after retrying a
+      // click for fifteen seconds:
+      //     <vercel-live-feedback></vercel-live-feedback> intercepts pointer events
+      // It is not part of the product and never reaches a visitor, so hiding
+      // it is not hiding a defect. An init script rather than addStyleTag,
+      // because this has to survive every navigation the test makes.
+      await page.addInitScript(() => {
+        const hide = () => {
+          const style = document.createElement('style')
+          style.textContent =
+            'vercel-live-feedback,vercel-toolbar{display:none!important;pointer-events:none!important}'
+          document.head?.appendChild(style)
+        }
+        if (document.head) hide()
+        else document.addEventListener('DOMContentLoaded', hide)
+      })
+
+      const res = await page.goto(urlFor(site, site.defaultLocale), { waitUntil: 'load' })
+      test.skip(!res || res.status() >= 400, `${urlFor(site, site.defaultLocale)} is not reachable in this environment`)
+      await dismissConsent(page)
     })
 
-    test('cycling every language twice never stacks a locale', async ({ page }) => {
+    test('cycling through every language never stacks a locale', async ({ page }) => {
       // Test group 1. Two full laps, so an error that only appears on the
       // second switch — which is exactly how this bug behaved — is caught.
+      // One lap of every language, ending back at the default. For a
+      // seven-language site that is seven consecutive switches, each one
+      // starting from a non-default locale — which is the state the defect
+      // needs. A second lap doubled the runtime (past nine minutes on a phone
+      // profile for this site alone) and tested nothing the first had not.
       const others = site.locales.filter((l) => l !== site.defaultLocale)
-      const order = [...others, site.defaultLocale, ...others, site.defaultLocale]
+      const order = [...others, site.defaultLocale]
+      // Each switch is a real navigation, and on a phone it opens the drawer
+      // first. 30s of headroom each, rather than the 30s the whole test gets
+      // by default.
+      test.setTimeout(30_000 * order.length)
       for (const locale of order) {
         const switched = await switchToPrimary(page, locale)
         if (!switched) {
@@ -184,8 +290,9 @@ for (const site of SITES) {
       const target = to ?? site.defaultLocale
       if (start === target) { test.skip(true, 'needs two non-default languages or a default to return to'); return }
 
-      const res = await page.goto(`${site.base}/${start}`, { waitUntil: 'load' })
+      const res = await page.goto(urlFor(site, start), { waitUntil: 'load' })
       if (!res || res.status() >= 400) { test.skip(true, `/${start} not reachable`); return }
+      await dismissConsent(page)
       expect((await observe(page, site)).segments, 'the starting page itself').toEqual([start])
 
       const switched = await switchToPrimary(page, target)
@@ -202,16 +309,22 @@ for (const site of SITES) {
       // localized slug takes the slugMap branch and never reads the pathname,
       // which is precisely why the defect looked like a home-page problem. It
       // is asserted here so the fix cannot regress it while repairing the other.
-      const prefix = new URL(site.base).pathname.replace(/\/$/, '')
+      // An internal link one level below the site root, in either URL shape:
+      //   /en/partner            (tenant's own host)
+      //   /en/nologo/partner     (project reached by path)
+      const under = site.projectSegment
+        ? `/${site.defaultLocale}/${site.projectSegment}/`
+        : `/${site.defaultLocale}/`
       const link = page
-        .locator(`a[href^="${prefix}/${site.defaultLocale}/"]`)
+        .locator(`a[href^="${under}"]`)
         .filter({ hasNot: page.locator('[data-lang-switch] a') })
         .first()
       if ((await link.count()) === 0) { test.skip(true, 'no internal sub-page link found'); return }
 
       const href = await link.getAttribute('href')
-      const res = await page.goto(new URL(href!, site.base).toString(), { waitUntil: 'load' })
+      const res = await page.goto(new URL(href!, site.origin).toString(), { waitUntil: 'load' })
       if (!res || res.status() >= 400) { test.skip(true, `sub-page ${href} not reachable`); return }
+      await dismissConsent(page)
       const before = await observe(page, site)
 
       const other = site.locales.find((l) => l !== site.defaultLocale)!
@@ -262,13 +375,15 @@ for (const site of SITES) {
       // test above: from the default locale this passed against broken sites.
       const start = site.locales.find((l) => l !== site.defaultLocale)!
       const other = site.locales.find((l) => l !== start)!
-      const res = await page.goto(`${site.base}/${start}`, { waitUntil: 'load' })
+      const res = await page.goto(urlFor(site, start), { waitUntil: 'load' })
       if (!res || res.status() >= 400) { test.skip(true, `/${start} not reachable`); return }
+      await dismissConsent(page)
 
       const switched = await switchToPrimary(page, other)
       if (!switched) { test.skip(true, 'no header or drawer switcher'); return }
 
       await page.reload({ waitUntil: 'load' })
+      await dismissConsent(page)
       let seen = await observe(page, site)
       expect(seen.segments, `after reload: ${seen.url}`).toEqual([other])
       expect(seen.htmlLang).toBe(other)

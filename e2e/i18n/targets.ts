@@ -9,14 +9,27 @@ import { GENERATED_HOST_ROUTES } from '../../src/lib/tenancy/generated/route-con
  * cover "every existing and future Abluo tenant": onboard a client, regenerate
  * the table, and the new site is tested on the next run without anyone
  * remembering to add it.
+ *
+ * ── The two URL shapes ──────────────────────────────────────────────────────
+ * A tenant on its own host has no project segment at all:
+ *     https://www.nologo.cloud/it/partner
+ * A tenant reached by path on a platform host carries one AFTER the locale:
+ *     https://preview.abluo.app/it/nologo/partner
+ *
+ * The project segment is an infix, not a prefix. An earlier version of this
+ * file modelled it as a prefix ("origin + /nologo", then append the locale),
+ * which produced /nologo/en — a 404 — and skipped all 72 tests while looking
+ * like a clean run. See `publicPathname` for the other half of that mistake.
  */
 export type Mode = 'production' | 'preview-path' | 'preview-host'
 
 export interface Target {
   /** projectSlug — the tenant's stable identifier. */
   project: string
-  /** Where the site answers, including any path prefix. No trailing slash. */
-  base: string
+  /** Scheme and host, no trailing slash. */
+  origin: string
+  /** The segment that sits between the locale and the rest, or null. */
+  projectSegment: string | null
   locales: string[]
   defaultLocale: string
 }
@@ -33,21 +46,24 @@ export function targets(mode: Mode = MODE): Target[] {
     // A site with one language has no switcher to exercise.
     if (!route.supportedLocales || route.supportedLocales.length < 2) continue
 
-    let base: string | null = null
+    let origin: string | null = null
+    let projectSegment: string | null = null
+
     if (mode === 'production' && route.hostKind === 'custom-domain') {
       // Every Abluo domain serves on www and 308s the apex there (ADR-034).
-      base = `https://www.${route.host}`
+      origin = `https://www.${route.host}`
     } else if (mode === 'preview-host' && route.hostKind === 'preview-subdomain') {
-      base = `https://${route.host}`
+      origin = `https://${route.host}`
     } else if (mode === 'preview-path' && route.hostKind === 'custom-domain') {
-      // preview.abluo.app serves each project by path.
-      base = `https://${PREVIEW_HOST}/${route.projectSlug}`
+      origin = `https://${PREVIEW_HOST}`
+      projectSegment = route.projectSlug
     }
-    if (!base) continue
+    if (!origin) continue
 
     byProject.set(route.projectSlug, {
       project: route.projectSlug,
-      base,
+      origin,
+      projectSegment,
       locales: [...route.supportedLocales],
       defaultLocale: route.defaultLocale ?? route.supportedLocales[0],
     })
@@ -56,7 +72,29 @@ export function targets(mode: Mode = MODE): Target[] {
   return [...byProject.values()].sort((a, b) => a.project.localeCompare(b.project))
 }
 
-/** The locale segment of a path, or null when there isn't exactly one leading one. */
+/** An absolute URL for this target: origin / locale / [project] / …segments */
+export function urlFor(site: Target, locale: string, ...segments: string[]): string {
+  return [site.origin, locale, site.projectSegment, ...segments]
+    .filter((part): part is string => Boolean(part))
+    .join('/')
+}
+
+/**
+ * The pathname as the tenant's own domain would show it — the project segment
+ * removed, so one set of assertions covers both URL shapes.
+ *
+ * Only removed when it sits immediately after the locale, which is where the
+ * proxy puts it. On a stacked URL like /de/it/nologo the second segment is a
+ * locale, not the project, so nothing is removed and the stack stays visible —
+ * which is the entire point of the suite.
+ */
+export function publicPathname(pathname: string, site: Target): string {
+  const parts = pathname.split('/').filter(Boolean)
+  if (site.projectSegment && parts[1] === site.projectSegment) parts.splice(1, 1)
+  return '/' + parts.join('/')
+}
+
+/** The locale segments of a path, in order. More than one means they stacked. */
 export function localeSegments(pathname: string, locales: string[]): string[] {
   return pathname.split('/').filter(Boolean).filter((s) => locales.includes(s))
 }
