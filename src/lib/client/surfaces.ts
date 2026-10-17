@@ -19,6 +19,8 @@
 export type SurfaceRequirement = {
   /** A module that must be installed + enabled on the project. */
   module?: string
+  /** At least one of these modules installed + enabled (a screen that spans modules). */
+  anyModule?: readonly string[]
   /** A permission the person must hold on the project. */
   permission?: string
   /** At least one of these permissions (e.g. "can write posts OR galleries"). */
@@ -99,6 +101,17 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   { kind: 'nav', id: 'catalogue', segment: 'catalogue', group: 'content', requires: { module: 'catalogue', permission: 'catalogue.item.read' } },
   { kind: 'nav', id: 'gallery', segment: 'galleries', group: 'content', requires: { module: 'gallery', permission: 'gallery.gallery.read' } },
   { kind: 'nav', id: 'media', segment: 'media', group: 'content', requires: { permission: 'media.library.manage' } },
+  // ADR-033 Amendment J: Categories & Tags, one manager for every module that declares a taxonomy.
+  // Shown when the person may manage terms (`<module>.taxonomy.write`) or at least read them
+  // (the module's read permission; viewers list read-only) in one of those modules. The lists are
+  // kept equal to the manifests by `lib/taxonomy/__tests__/surface.test.ts`.
+  {
+    kind: 'nav',
+    id: 'taxonomy',
+    segment: 'taxonomy',
+    group: 'content',
+    requires: { anyModule: ['catalogue'], anyPermission: ['catalogue.taxonomy.write', 'catalogue.item.read'] },
+  },
   // Manage: what comes in, who works here, which apps read the site.
   { kind: 'nav', id: 'forms', segment: 'submissions', group: 'manage', requires: { module: 'forms', permission: 'forms.submission.read' } },
   { kind: 'nav', id: 'people', segment: 'people', group: 'manage', requires: { anyPermission: ['users.invite', 'users.manage'] } },
@@ -161,6 +174,7 @@ export const MODULES_WITHOUT_TENANT_SURFACE: Readonly<Record<string, 'notYetBuil
 /** The single visibility check. Pure. */
 export function surfaceAllowed(grant: SurfaceGrant, requires: SurfaceRequirement): boolean {
   if (requires.module && !grant.enabledModuleIds.includes(requires.module)) return false
+  if (requires.anyModule && !requires.anyModule.some((m) => grant.enabledModuleIds.includes(m))) return false
   if (requires.permission && !grant.permissions.includes(requires.permission)) return false
   if (requires.anyPermission && !requires.anyPermission.some((p) => grant.permissions.includes(p))) return false
   return true

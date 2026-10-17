@@ -12,9 +12,11 @@
  * Failures collapse to opaque codes; `detail` carries the using items on
  * `in_use`. Writes are immediate (no drafts).
  */
+import { revalidatePath } from 'next/cache'
 import { resolveProjectAction } from '@/lib/api/project-action'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
+import { MODULE_DASHBOARD_ROUTES } from '@/lib/modules/client-navigation'
 import { span, traced, withPerf, type PerfReport } from '@/lib/perf/timing'
 import {
   TaxonomyError,
@@ -22,10 +24,12 @@ import {
   deleteTerm,
   listTerms,
   reorderTerms,
+  termUsage,
   updateTerm,
   type TaxonomyErrorCode,
   type TaxonomyErrorDetail,
   type TermList,
+  type TermUsageItem,
   type TermView,
 } from '@/lib/taxonomy/service'
 
@@ -60,6 +64,22 @@ async function run<T>(
 
 type Scope = { projectSlug: string; module: string; kind: string }
 
+/**
+ * After a write: the taxonomy screen and the module's own pages (the Catalogue
+ * editor reads its category choices from the terms) are rendered fresh next time.
+ * Patterns, not paths, so every language and project is covered; failures never
+ * fail the write.
+ */
+function refresh(module: unknown) {
+  try {
+    revalidatePath('/[locale]/[tenant]/taxonomy', 'page')
+    const segment = typeof module === 'string' ? MODULE_DASHBOARD_ROUTES[module] : undefined
+    if (segment) revalidatePath(`/[locale]/[tenant]/${segment}`, 'layout')
+  } catch {
+    /* not in a request (tests) — nothing to refresh */
+  }
+}
+
 /** Terms of one module + kind with usage counts and per-language coverage. */
 export async function listTaxonomyTermsAction(input: Scope): Promise<Result<{ list: TermList }>> {
   return run('list', input?.projectSlug, async (ctx, pid) => ({ list: await listTerms(ctx, pid, input.module, input.kind) }))
@@ -73,24 +93,37 @@ export async function listTaxonomyTermsAction(input: Scope): Promise<Result<{ li
 export async function createTaxonomyTermAction(
   input: Scope & { labels: Record<string, string>; color?: string | null }
 ): Promise<Result<{ term: TermView; created: boolean }>> {
-  return run('create', input?.projectSlug, (ctx, pid) => createTerm(ctx, pid, input.module, input.kind, { labels: input.labels, color: input.color }))
+  const result = await run('create', input?.projectSlug, (ctx, pid) => createTerm(ctx, pid, input.module, input.kind, { labels: input.labels, color: input.color }))
+  if (result.ok) refresh(input.module)
+  return result
 }
 
 /** Labels / colour only. The key is immutable (`nextKey` other than `key` → key_immutable). */
 export async function updateTaxonomyTermAction(
   input: Scope & { key: string; labels?: Record<string, string | null>; color?: string | null; nextKey?: string; rev?: string }
 ): Promise<Result<{ term: TermView }>> {
-  return run('update', input?.projectSlug, (ctx, pid) =>
+  const result = await run('update', input?.projectSlug, (ctx, pid) =>
     updateTerm(ctx, pid, input.module, input.kind, input.key, { labels: input.labels, color: input.color, nextKey: input.nextKey, rev: input.rev })
   )
+  if (result.ok) refresh(input.module)
+  return result
 }
 
 /** The listed keys first, in this order; unlisted terms follow. */
 export async function reorderTaxonomyTermsAction(input: Scope & { keys: string[] }): Promise<Result<{ order: Array<{ key: string; order: number }> }>> {
-  return run('reorder', input?.projectSlug, (ctx, pid) => reorderTerms(ctx, pid, input.module, input.kind, input.keys))
+  const result = await run('reorder', input?.projectSlug, (ctx, pid) => reorderTerms(ctx, pid, input.module, input.kind, input.keys))
+  if (result.ok) refresh(input.module)
+  return result
 }
 
 /** Unused terms only; a used one is refused with `in_use` + `detail.{count, items}`. */
 export async function deleteTaxonomyTermAction(input: Scope & { key: string }): Promise<Result<{ key: string }>> {
-  return run('delete', input?.projectSlug, (ctx, pid) => deleteTerm(ctx, pid, input.module, input.kind, input.key))
+  const result = await run('delete', input?.projectSlug, (ctx, pid) => deleteTerm(ctx, pid, input.module, input.kind, input.key))
+  if (result.ok) refresh(input.module)
+  return result
+}
+
+/** Where one term is used (count + the first 10 items), for the manager's sheet. Read permission; changes nothing. */
+export async function getTaxonomyTermUsageAction(input: Scope & { key: string }): Promise<Result<{ usage: { count: number; items: TermUsageItem[] } }>> {
+  return run('usage', input?.projectSlug, async (ctx, pid) => ({ usage: await termUsage(ctx, pid, input.module, input.kind, input.key) }))
 }

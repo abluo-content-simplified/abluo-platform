@@ -56,6 +56,8 @@ export const CLIENT_PROJECT_SEGMENTS = new Set([
   'apps',
   // ADR-033: the Catalogue (reserved as a public segment, so no clash with a tenant's catalogue URL).
   'catalogue',
+  // ADR-033 Amendment J: Categories & Tags (one manager for every module with a taxonomy).
+  'taxonomy',
 ])
 
 /**

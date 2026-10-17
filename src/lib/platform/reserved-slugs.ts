@@ -80,6 +80,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'people',
   'posts',
   'submissions',
+  'taxonomy',
 
   // ── Public website — tenant level (/<tenant>/…) ───────────────────────────
   'blog',

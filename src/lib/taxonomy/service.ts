@@ -42,6 +42,7 @@ import {
   type RuleIssue,
 } from './rules'
 import { buildUsageCountsQuery, buildUsageQuery, countUsageByKey, summarizeUsage, type UsageCountRow, type UsageRow } from './usage'
+import { taxonomyReadPermission, taxonomyWritePermission } from './permissions'
 import { summarizeCoverage, translationCoverage, type TranslationCoverage } from './coverage'
 
 // ── Errors ────────────────────────────────────────────────────────────────────
@@ -148,14 +149,7 @@ export const IN_USE_ITEM_LIMIT = 10
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-export const taxonomyWritePermission = (module: string) => `${module}.taxonomy.write`
-
-/** The module's read permission (`<module>.<noun>.read`), falling back to the write one. */
-export function taxonomyReadPermission(module: string, registry: readonly ModuleManifest[] = MODULE_REGISTRY): string {
-  const manifest = registry.find((m) => m.id === module)
-  const read = manifest?.platformContract.permissions.find((p) => p.id.startsWith(`${module}.`) && p.id.endsWith('.read'))
-  return read?.id ?? taxonomyWritePermission(module)
-}
+export { taxonomyReadPermission, taxonomyWritePermission }
 
 function localized(value: unknown): Record<string, string> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
@@ -494,4 +488,30 @@ export async function deleteTerm(ctx: TenantAuthorizationContext, projectId: str
   }
   await commit(() => client.delete(id))
   return { key }
+}
+
+// ── Usage (read-only) ─────────────────────────────────────────────────────────
+
+/**
+ * Where one term is used: how many items and the first 10 (draft, published and
+ * archived all count). Same query and naming as the delete refusal, but with no
+ * side effect, so the manager can show the list before anyone tries to delete.
+ * Needs the module's READ permission.
+ */
+export async function termUsage(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  module: string,
+  kind: string,
+  key: string,
+  deps: TaxonomyDeps = {}
+): Promise<{ count: number; items: TermUsageItem[] }> {
+  const a = authorize(ctx, projectId, module, kind, 'read', deps)
+  if (!isValidTermKey(key)) throw new TaxonomyError('invalid_value', 'Invalid term key.')
+  const client = deps.client ?? sanityWriteClient
+  const scoped = scopedClient(ctx, projectId, client)
+  const usage = buildUsageQuery(a.def.usedBy, key)
+  const [site, rows] = await readsInOrder([readSite(scoped), span('sanity.readUsage', () => scoped.fetch<UsageRow[] | null>(usage.query, usage.params))] as const).then(([s, r]) => [s, r] as const)
+  const used = summarizeUsage(rows ?? [])
+  return { count: used.count, items: used.items.slice(0, IN_USE_ITEM_LIMIT).map((i) => ({ id: i.id, type: i.type, name: pickName(i.name, site.defaultLocale) })) }
 }

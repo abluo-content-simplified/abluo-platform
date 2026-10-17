@@ -8,8 +8,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const access = vi.fn()
 vi.mock('@/lib/api/project-action', () => ({ resolveProjectAction: (slug: unknown) => access(slug) }))
 vi.mock('@/lib/sanity/server-clients', () => ({ sanityWriteClient: {} }))
+const revalidate = vi.hoisted(() => vi.fn())
+vi.mock('next/cache', () => ({ revalidatePath: revalidate }))
 
-const service = vi.hoisted(() => ({ listTerms: vi.fn(), createTerm: vi.fn(), updateTerm: vi.fn(), reorderTerms: vi.fn(), deleteTerm: vi.fn() }))
+const service = vi.hoisted(() => ({ listTerms: vi.fn(), createTerm: vi.fn(), updateTerm: vi.fn(), reorderTerms: vi.fn(), deleteTerm: vi.fn(), termUsage: vi.fn() }))
 vi.mock('@/lib/taxonomy/service', async (orig) => ({ ...((await orig()) as object), ...service }))
 
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
@@ -17,6 +19,7 @@ import { TaxonomyError } from '@/lib/taxonomy/service'
 import {
   createTaxonomyTermAction,
   deleteTaxonomyTermAction,
+  getTaxonomyTermUsageAction,
   listTaxonomyTermsAction,
   reorderTaxonomyTermsAction,
   updateTaxonomyTermAction,
@@ -84,5 +87,33 @@ describe('taxonomy actions', () => {
     // @ts-expect-error malformed call from a client
     expect(await listTaxonomyTermsAction(undefined)).toMatchObject({ ok: false, error: 'forbidden' })
     expect(access).toHaveBeenCalledWith(undefined)
+  })
+
+  it('a successful write refreshes the taxonomy screen and the module pages; a refused one does not', async () => {
+    service.createTerm.mockResolvedValue({ term: { key: 'poesia' }, created: true })
+    await createTaxonomyTermAction({ ...scope, labels: { it: 'Poesia' } })
+    expect(revalidate).toHaveBeenCalledWith('/[locale]/[tenant]/taxonomy', 'page')
+    expect(revalidate).toHaveBeenCalledWith('/[locale]/[tenant]/catalogue', 'layout')
+    revalidate.mockClear()
+    service.deleteTerm.mockRejectedValueOnce(new TaxonomyError('in_use', 'used', { count: 1, items: [] }))
+    await deleteTaxonomyTermAction({ ...scope, key: 'a' })
+    await listTaxonomyTermsAction(scope)
+    expect(revalidate).not.toHaveBeenCalled()
+    service.reorderTerms.mockResolvedValue({ order: [] })
+    await reorderTaxonomyTermsAction({ ...scope, keys: [] })
+    service.updateTerm.mockResolvedValue({ term: { key: 'a' } })
+    await updateTaxonomyTermAction({ ...scope, key: 'a', labels: { it: 'A' } })
+    service.deleteTerm.mockResolvedValue({ key: 'a' })
+    await deleteTaxonomyTermAction({ ...scope, key: 'a' })
+    expect(revalidate).toHaveBeenCalledTimes(6)
+  })
+
+  it('the usage action only reads: it reaches termUsage with the grant project and never refreshes', async () => {
+    service.termUsage.mockResolvedValue({ count: 2, items: [{ id: 'i1', type: 'catalogueItem', name: 'Margherita' }] })
+    expect(await getTaxonomyTermUsageAction({ ...scope, key: 'poesia' })).toMatchObject({ ok: true, usage: { count: 2 } })
+    expect(service.termUsage).toHaveBeenCalledWith(ctx, 'project-a', 'catalogue', 'category', 'poesia')
+    expect(revalidate).not.toHaveBeenCalled()
+    access.mockResolvedValue({ ok: false, error: 'unauthenticated' })
+    expect(await getTaxonomyTermUsageAction({ ...scope, key: 'poesia' })).toMatchObject({ ok: false, error: 'unauthenticated' })
   })
 })
