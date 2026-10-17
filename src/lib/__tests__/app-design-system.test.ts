@@ -107,6 +107,8 @@ const CLIENT_DIRS = [
   // The signed-out pages render inside the same `.abluo-app` root.
   'src/components/auth',
   'src/app/(platform)/(auth)',
+  // The Component Lab's registry and demos render inside the same root.
+  'src/lab',
 ]
 const RAW_COLOUR =
   /\b(?:bg|text|border|ring|divide|outline|fill|stroke|from|to|via|placeholder|shadow)-(?:zinc|gray|slate|neutral|stone|white|black|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)\b|#[0-9a-fA-F]{3,8}\b|\brgba?\(/

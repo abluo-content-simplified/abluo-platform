@@ -12,6 +12,7 @@ This file is the **implementation handbook** — the *how*, within the Playbook'
 - Terminal guidance to Tom is one command at a time; evaluate the actual output before giving the next (`.claude/agents/orchestrator.md`).
 - Every configurable concept has exactly one configuration surface (ADR-014); enforced by `src/lib/sanity/__tests__/settings-structure.test.ts`.
 - Notifications fire at workflow boundaries only — completion, blocked-on-Tom, long-run finish — never per handoff (`.claude/agents/orchestrator.md`).
+- **Component Lab — check before building UI.** Before building any dashboard UI (client dashboard or admin), read `src/lab/registry.ts` (rendered live at `/lab`, super admin only). If a component exists, use it; if none fits, say so and ask Tom — never build a one-off (no local `*_BTN` / `*_INPUT` class constants, no hand-written `bg-action` buttons). A new shared component in `src/components/app/ui` gets a registry entry + demo; `src/lab/__tests__/lab-guards.test.ts` enforces coverage and that Lab demos reach no backend. Refresh the Lab's usage lists with `npm run lab:usage`.
 - **Verification (/verify):** any change to the client dashboard, the shared Abluo App layer `src/components/app` (checked on both dashboards, ADR-030), the content editor, the `post` schema or blog website queries is verified against `docs/engineering/client-dashboard/verification.md` (gates, automated checks, light+dark × phone+desktop visual review). Design authority: ADR-025 + `docs/engineering/client-dashboard/content-wizard-spec.md`.
 
 ## Where things live on disk

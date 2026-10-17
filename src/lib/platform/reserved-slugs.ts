@@ -60,6 +60,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'clients',
   'content',
   'dashboard',
+  'lab',
   'media',
   'partners',
   'projects',

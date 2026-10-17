@@ -2397,7 +2397,8 @@
       "media": "Media",
       "backlog": "Backlog",
       "whatsNew": "Novità",
-      "partners": "App partner"
+      "partners": "App partner",
+      "lab": "Laboratorio componenti"
     },
     "home": {
       "title": "Home",
@@ -3195,6 +3196,42 @@
         "invalid_state": "Nel frattempo questa app è cambiata. Ricarica la pagina.",
         "failed": "Qualcosa è andato storto. Riprova."
       }
+    },
+    "lab": {
+      "title": "Laboratorio componenti",
+      "intro": "Tutti i componenti condivisi delle dashboard, dal vivo. Prima di costruire qualcosa di nuovo, controlla qui: se un componente esiste, usalo; se nessuno va bene, chiedi.",
+      "categories": {
+        "primitive": "Elementi base",
+        "composite": "Componenti composti"
+      },
+      "status": {
+        "canonical": "Da usare",
+        "legacy": "Obsoleto",
+        "experimental": "Sperimentale"
+      },
+      "back": "Tutti i componenti",
+      "source": "Sorgente",
+      "usedIn": "Usato in",
+      "usedInCount": "{count, plural, =0 {Non ancora usato} one {# file} other {# file}}",
+      "usageAsOf": "Utilizzo analizzato il {date}",
+      "usageMissing": "Utilizzo non ancora analizzato — esegui npm run lab:usage.",
+      "replaces": "Sostituisce",
+      "rules": "Regole",
+      "demos": "Esempi",
+      "canvas": {
+        "label": "Impostazioni anteprima",
+        "theme": "Tema",
+        "light": "Chiaro",
+        "dark": "Scuro",
+        "surface": "Superficie",
+        "manage": "Cliente",
+        "admin": "Admin",
+        "create": "Creazione",
+        "width": "Larghezza",
+        "full": "Piena",
+        "phone": "Telefono"
+      },
+      "notFound": "Questo componente non è nel Laboratorio."
     }
   },
   "editor": {

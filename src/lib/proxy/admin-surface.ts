@@ -30,6 +30,8 @@ export const ADMIN_SURFACE_SEGMENTS = new Set([
   'backlog',
   'whats-new',
   'partners',
+  // Component Lab — super-admin catalogue of the shared Abluo App components.
+  'lab',
 ])
 
 /**

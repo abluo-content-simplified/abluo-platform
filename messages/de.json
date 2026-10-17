@@ -2397,7 +2397,8 @@
       "media": "Medien",
       "backlog": "Backlog",
       "whatsNew": "Neuigkeiten",
-      "partners": "Partner-Apps"
+      "partners": "Partner-Apps",
+      "lab": "Komponenten-Labor"
     },
     "home": {
       "title": "Start",
@@ -3195,6 +3196,42 @@
         "invalid_state": "Diese App hat sich inzwischen geändert. Lade die Seite neu.",
         "failed": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal."
       }
+    },
+    "lab": {
+      "title": "Komponenten-Labor",
+      "intro": "Alle gemeinsamen Komponenten der Dashboards, live. Bevor du etwas Neues baust, schau hier nach: Gibt es eine Komponente, nutze sie; passt keine, frag nach.",
+      "categories": {
+        "primitive": "Grundelemente",
+        "composite": "Zusammengesetzte Komponenten"
+      },
+      "status": {
+        "canonical": "Verwenden",
+        "legacy": "Veraltet",
+        "experimental": "Experimentell"
+      },
+      "back": "Alle Komponenten",
+      "source": "Quelle",
+      "usedIn": "Verwendet in",
+      "usedInCount": "{count, plural, =0 {Noch nicht verwendet} one {# Datei} other {# Dateien}}",
+      "usageAsOf": "Verwendung erfasst am {date}",
+      "usageMissing": "Verwendung noch nicht erfasst — npm run lab:usage ausführen.",
+      "replaces": "Ersetzt",
+      "rules": "Regeln",
+      "demos": "Beispiele",
+      "canvas": {
+        "label": "Vorschau-Einstellungen",
+        "theme": "Design",
+        "light": "Hell",
+        "dark": "Dunkel",
+        "surface": "Oberfläche",
+        "manage": "Kunde",
+        "admin": "Admin",
+        "create": "Erstellen",
+        "width": "Breite",
+        "full": "Voll",
+        "phone": "Telefon"
+      },
+      "notFound": "Diese Komponente ist nicht im Labor."
     }
   },
   "editor": {

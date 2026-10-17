@@ -2397,7 +2397,8 @@
       "media": "Media",
       "backlog": "Backlog",
       "whatsNew": "What’s new",
-      "partners": "Partner apps"
+      "partners": "Partner apps",
+      "lab": "Component Lab"
     },
     "home": {
       "title": "Home",
@@ -3195,6 +3196,42 @@
         "invalid_state": "This app has changed meanwhile. Reload the page.",
         "failed": "Something went wrong. Please try again."
       }
+    },
+    "lab": {
+      "title": "Component Lab",
+      "intro": "Every shared component of the dashboards, live. Before building something new, check here first: if a component exists, use it; if none fits, ask.",
+      "categories": {
+        "primitive": "Primitives",
+        "composite": "Composites"
+      },
+      "status": {
+        "canonical": "Use this",
+        "legacy": "Legacy",
+        "experimental": "Experimental"
+      },
+      "back": "All components",
+      "source": "Source",
+      "usedIn": "Used in",
+      "usedInCount": "{count, plural, =0 {Not used yet} one {# file} other {# files}}",
+      "usageAsOf": "Usage scanned {date}",
+      "usageMissing": "Usage not scanned yet — run npm run lab:usage.",
+      "replaces": "Replaces",
+      "rules": "Rules",
+      "demos": "Examples",
+      "canvas": {
+        "label": "Preview settings",
+        "theme": "Theme",
+        "light": "Light",
+        "dark": "Dark",
+        "surface": "Surface",
+        "manage": "Client",
+        "admin": "Admin",
+        "create": "Create",
+        "width": "Width",
+        "full": "Full",
+        "phone": "Phone"
+      },
+      "notFound": "This component is not in the Lab."
     }
   },
   "editor": {
