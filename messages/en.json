@@ -3663,7 +3663,23 @@
           "schedule": "Schedule",
           "back": "Back to the list",
           "resultPublished": "Published. It's live on your website.",
-          "resultScheduled": "Scheduled. It goes live on {date}."
+          "resultScheduled": "Scheduled. It goes live on {date}.",
+          "type": {
+            "names": {
+              "book": "Book",
+              "foodOrDrink": "Food or drink",
+              "product": "Product",
+              "service": "Service"
+            },
+            "change": "Change type",
+            "choose": "Choose type",
+            "notChosen": "Type not chosen",
+            "current": "Current",
+            "warnAllergens": "Allergen information will be removed from this item.",
+            "warnBookDetails": "Author, year and ISBN will be hidden. They come back if you switch back.",
+            "confirm": "Change type",
+            "cancel": "Cancel"
+          }
         },
         "issues": {
           "profile": "Choose what you're offering.",

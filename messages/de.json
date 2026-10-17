@@ -3663,7 +3663,23 @@
           "schedule": "Planen",
           "back": "Zurück zur Liste",
           "resultPublished": "Veröffentlicht. Es ist auf deiner Website online.",
-          "resultScheduled": "Geplant. Es geht am {date} online."
+          "resultScheduled": "Geplant. Es geht am {date} online.",
+          "type": {
+            "names": {
+              "book": "Buch",
+              "foodOrDrink": "Speisen oder Getränke",
+              "product": "Produkt",
+              "service": "Dienstleistung"
+            },
+            "change": "Typ ändern",
+            "choose": "Typ wählen",
+            "notChosen": "Kein Typ gewählt",
+            "current": "Aktuell",
+            "warnAllergens": "Die Allergeninformationen werden von diesem Eintrag entfernt.",
+            "warnBookDetails": "Autor, Jahr und ISBN werden ausgeblendet. Sie kommen zurück, wenn du den Typ wieder zurückstellst.",
+            "confirm": "Typ ändern",
+            "cancel": "Abbrechen"
+          }
         },
         "issues": {
           "profile": "Wähle, was du anbietest.",

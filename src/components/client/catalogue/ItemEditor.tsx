@@ -20,11 +20,12 @@ import { editingZone } from '@/components/app/lifecycle/zoned-time'
 import { catalogueLifecycleAction } from '@/app/[locale]/(client)/[tenant]/catalogue/actions'
 import type { CatalogueAbilities, CatalogueSite, CatalogueSnapshot } from '@/lib/api/catalogue-drafts'
 import type { Referrer } from '@/lib/lifecycle/service'
-import { can as profileCan } from '@/lib/modules/catalogue/profiles'
+import { PROFILES, can as profileCan } from '@/lib/modules/catalogue/profiles'
 import { attachmentIssues, declarationIssues, itemGaps, itemOptionsRelevant, itemStateFromDoc, type ItemState } from '@/lib/modules/catalogue/dashboard-form'
 import { adviceTabs, issueCountByTab, itemIssues, publishBlockers, type ItemIssue, type ItemTab } from '@/lib/modules/catalogue/item-issues'
 import { CAT_ICONS, CAT_INPUT, CAT_PRIMARY, GapBadges, InUseNotice, ItemIssueList, SegmentTabs, TabLabel, UnpublishDateSheet, focusField, textIn, useCatalogueError } from './catalogue-ui'
-import { BookDetailsFields, FieldBlock, FoodInfoField, ItemPreview, LanguagesField, LinksField, NameFields, OptionsField, PageField, PhotoField, PriceField, ProfileField, TermChips, VisibilityField, type OptionListChoice } from './item-fields'
+import { BookDetailsFields, FieldBlock, FoodInfoField, ItemPreview, LanguagesField, LinksField, NameFields, OptionsField, PageField, PhotoField, PriceField, TermChips, VisibilityField, type OptionListChoice } from './item-fields'
+import { ChangeTypeSheet } from './ChangeTypeSheet'
 import { usePublishTogether } from './publish-dependencies'
 import { languageName } from '@/components/client/create/StepHeading'
 import { StrayAddressNotice, focusNameField, useStrayAddress } from './stray-address'
@@ -58,6 +59,7 @@ export function ItemEditor({
   listHref: string
 }) {
   const t = useTranslations('catalogue.dashboard.item.editor')
+  const tty = useTranslations('catalogue.dashboard.item.editor.type')
   const tf = useTranslations('catalogue.dashboard.item.wizard')
   const tfl = useTranslations('catalogue.dashboard.item.fields.links')
   const tl = useTranslations('app.lifecycle')
@@ -96,6 +98,7 @@ export function ItemEditor({
   const [inUse, setInUse] = useState<Referrer[] | null>(null)
   const [confirm, setConfirm] = useState<'delete' | 'discard' | null>(null)
   const [dateOpen, setDateOpen] = useState(false)
+  const [typeOpen, setTypeOpen] = useState(false)
   const [publishAt, setPublishAt] = useState<string | null>(snapshot.status.publishOn)
   // The result of the last publish stays on the page (a toast alone disappears). The refresh that follows
   // re-mounts this editor, so the line is handed over through sessionStorage and read back after mounting.
@@ -128,6 +131,7 @@ export function ItemEditor({
   const blockers = publishBlockers(issues)
   const canPublish = blockers.length === 0
   const fix = (issue: ItemIssue) => {
+    if (issue.id === 'profile') return setTypeOpen(true)
     setTab(tabs.includes(issue.tab) ? issue.tab : 'content')
     focusField(issue.focus)
   }
@@ -245,6 +249,17 @@ export function ItemEditor({
           </>
         }
       />
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="inline-flex items-center gap-2 text-[0.9375rem] text-muted-foreground">
+          {s.itemProfile ? <span className="[&>svg]:size-4">{CAT_ICONS[PROFILES[s.itemProfile].icon]}</span> : null}
+          <span>{s.itemProfile ? tty(`names.${PROFILES[s.itemProfile].labelKey}`) : tty('notChosen')}</span>
+        </span>
+        {!readOnly ? (
+          <button type="button" onClick={() => setTypeOpen(true)} className="min-h-11 text-[0.9375rem] font-medium text-foreground underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+            {s.itemProfile ? tty('change') : tty('choose')}
+          </button>
+        ) : null}
+      </div>
       <div className="flex flex-wrap items-start gap-2">
         <LifecycleBadge status={snapshot.status.status} changes={draft.hasDraft && isLive} />
         <GapBadges gaps={itemGaps({ imageCount: item.photos.length, offerCount: s.offers.filter((o) => o.price.trim()).length, allergensNotReviewed: hasFoodInfo && declarationIssues(s.allergenDeclaration).length > 0 })} />
@@ -271,10 +286,7 @@ export function ItemEditor({
       <fieldset disabled={readOnly} className="min-w-0 space-y-8">
         {current === 'content' ? (
           <>
-            <FieldBlock title={tf('profile.title')} helper={hasFoodInfo ? tf('profile.foodHelper') : undefined}>
-              <ProfileField value={s.itemProfile} onChange={item.setProfile} />
-            </FieldBlock>
-            <FieldBlock title={tf('name.title')}>
+            <FieldBlock title={hasBookInfo ? tf('nameBook.title') : tf('name.title')}>
               <NameFields locale={d} profile={s.itemProfile} afterName={hasBookInfo ? <BookDetailsFields value={s.bookDetails} onChange={item.setBookDetails} /> : null} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
             </FieldBlock>
             {site.config.categories.length ? (
@@ -360,6 +372,13 @@ export function ItemEditor({
           else show({ message: errorText(r.error), tone: 'error' })
         }}
         onCancel={() => setConfirm(null)}
+      />
+      <ChangeTypeSheet
+        open={typeOpen}
+        current={s.itemProfile}
+        hasBookDetails={Boolean(s.bookDetails.author.trim() || s.bookDetails.year.trim() || s.bookDetails.isbn.trim())}
+        onClose={() => setTypeOpen(false)}
+        onChange={item.setProfile}
       />
       <UnpublishDateSheet
         open={dateOpen}

@@ -3663,7 +3663,23 @@
           "schedule": "Programma",
           "back": "Torna all'elenco",
           "resultPublished": "Pubblicato. È online sul tuo sito.",
-          "resultScheduled": "Programmato. Va online il {date}."
+          "resultScheduled": "Programmato. Va online il {date}.",
+          "type": {
+            "names": {
+              "book": "Libro",
+              "foodOrDrink": "Cibo o bevanda",
+              "product": "Prodotto",
+              "service": "Servizio"
+            },
+            "change": "Cambia tipo",
+            "choose": "Scegli il tipo",
+            "notChosen": "Tipo non scelto",
+            "current": "Attuale",
+            "warnAllergens": "Le informazioni sugli allergeni verranno rimosse da questa voce.",
+            "warnBookDetails": "Autore, anno e ISBN verranno nascosti. Tornano se ripristini il tipo precedente.",
+            "confirm": "Cambia tipo",
+            "cancel": "Annulla"
+          }
         },
         "issues": {
           "profile": "Scegli cosa stai offrendo.",
