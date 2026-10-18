@@ -63,18 +63,18 @@
       "blog": "Posts",
       "events": "Events",
       "live": "Live",
-      "forms": "Contact requests",
+      "forms": "Contact Requests",
       "whatsapp": "WhatsApp",
       "news": "News",
       "gallery": "Galleries",
       "translate": "Translate",
       "home": "Home",
       "more": "More",
-      "add": "Add content",
+      "add": "Add Content",
       "media": "Media",
       "taxonomy": "Categories & Tags",
       "people": "People",
-      "connections": "Connected apps",
+      "connections": "Connected Apps",
       "analytics": "Analytics",
       "catalogue": "Catalogue",
       "brand-hub": "Brand Hub"
@@ -431,7 +431,7 @@
       }
     },
     "submissions": {
-      "title": "Contact requests",
+      "title": "Contact Requests",
       "empty": "No submissions yet.",
       "moduleNotInstalled": "The Forms module is not enabled for this project.",
       "anonymous": "Anonymous",
@@ -1998,7 +1998,7 @@
       }
     },
     "whatsNew": {
-      "title": "What’s new",
+      "title": "What’s New",
       "close": "Close",
       "new": "New",
       "unreadCount": "{count, plural, one {# new update} other {# new updates}}",
@@ -2102,7 +2102,7 @@
       }
     },
     "connections": {
-      "title": "Connected apps",
+      "title": "Connected Apps",
       "intro": "Apps you have allowed to read information from this website, such as your events for a booking system. They can read, never change.",
       "emptyTitle": "No connected apps yet",
       "emptyBody": "When you connect an app — for example a booking system that shows your events — it appears here. You can pause or disconnect it at any time.",
@@ -2181,7 +2181,7 @@
   },
   "app": {
     "shell": {
-      "signOut": "Sign out",
+      "signOut": "Sign Out",
       "openMenu": "Menu",
       "closeMenu": "Close menu"
     },
@@ -2469,8 +2469,8 @@
       "analytics": "Analytics",
       "media": "Media",
       "backlog": "Backlog",
-      "whatsNew": "What’s new",
-      "partners": "Partner apps",
+      "whatsNew": "What’s New",
+      "partners": "Partner Apps",
       "lab": "Component Lab"
     },
     "home": {
@@ -2824,7 +2824,7 @@
       }
     },
     "whatsNew": {
-      "title": "What’s new",
+      "title": "What’s New",
       "emptyTitle": "No updates yet",
       "emptyBody": "Updates you publish for clients will be listed here.",
       "description": "Short product updates your clients see in their dashboard.",
@@ -3222,7 +3222,7 @@
       }
     },
     "partners": {
-      "title": "Partner apps",
+      "title": "Partner Apps",
       "intro": "Apps allowed to ask a client to connect a website. Only approved apps can connect; suspending one pauses all its connections at once.",
       "register": "Register app",
       "registerTitle": "Register a partner app",
