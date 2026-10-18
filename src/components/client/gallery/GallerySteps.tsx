@@ -18,10 +18,10 @@ import type { DraftPreviewLink } from '@/lib/api/post-preview'
 import { draftPreviewUrl } from '@/lib/client/preview-url'
 import { galleryLanguageReady, gallerySections, photoNeedsAlt, type GallerySection } from '@/lib/client/gallery-wizard'
 import { Button } from '@/components/app/ui/Button'
-import { OptionCards } from '@/components/app/ui/OptionCards'
-import { Panel } from '@/components/app/ui/Panel'
 import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
-import { DoneScreen, NameFields, OverviewMenu, PreviewPane, StateBadge, type LanguageChoice } from './wizard/kit'
+import { DoneScreen, NameFields, OverviewMenu, StateBadge } from './wizard/kit'
+import { PreviewPane } from '@/components/client/create/PreviewPane'
+import { LanguageChoiceList, LanguageWriteSection, type LanguageChoice } from '@/components/client/create/LanguageChoices'
 
 /** Limits mirror GALLERY_LIMITS (server module). */
 export const GALLERY_TITLE_MAX = 120
@@ -136,98 +136,49 @@ export function GalleryLanguagesStep({
     <section aria-labelledby="gallery-languages-title">
       <StepHeading id="gallery-languages-title" title={t('title')} helper={tg('languages.helper')} />
 
-      <ul className="mt-8 flex flex-col gap-3">
-        <Panel as="li" tone="muted" className="flex min-h-14 items-center justify-between">
-          <span className="text-[1.0625rem] font-medium text-foreground">{languageName(d, ui)}</span>
-          <span className="text-sm text-muted-foreground">{t('original')}</span>
-        </Panel>
-        {others.map((locale) => {
-          const choice = choices[locale] ?? 'later'
-          const name = languageName(locale, ui)
-          const ready = galleryLanguageReady(texts, locale)
-          return (
-            <Panel as="li" key={locale}>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-[1.0625rem] font-medium text-foreground">{name}</span>
-                <span className={`text-sm ${ready ? 'text-success' : 'text-muted-foreground'}`}>{ready ? t('ready') : t('missing')}</span>
-              </div>
-              <OptionCards
-                layout="row"
-                label={name}
-                className="mt-3"
-                value={choice === 'write' ? 'write' : choice === 'later' ? 'later' : null}
-                onChange={(v) => {
-                  if (v === 'write') {
-                    onChoice(locale, 'write')
-                    onActive(locale)
-                  } else if (v === 'later') onChoice(locale, 'later')
-                }}
-                options={[
-                  {
-                    value: 'translate',
-                    title: t('translate'),
-                    badge: t('soon'),
-                    disabled: true,
-                  },
-                  { value: 'write', title: t('write') },
-                  { value: 'later', title: t('later') },
-                ]}
-              />
-            </Panel>
-          )
-        })}
-      </ul>
+      <LanguageChoiceList
+        defaultLocale={d}
+        others={others}
+        choices={choices}
+        isReady={(l) => galleryLanguageReady(texts, l)}
+        onChoice={onChoice}
+        onActive={onActive}
+      />
 
       {current ? (
-        <div className="mt-10 border-t border-border-subtle pt-8">
-          {writing.length > 1 ? (
-            <SegmentedControl
-              appearance="chips"
-              label={t('write')}
-              className="mb-6"
-              value={current}
-              onChange={onActive}
-              options={writing.map((l) => ({
-                value: l,
-                label: languageName(l, ui),
-              }))}
-            />
-          ) : null}
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">{t('editing', { language: languageName(current, ui) })}</h2>
-          <div key={current}>
-            <NameFields
-              idPrefix={`gallery-lang-${current}`}
-              lang={current}
-              title={texts.title[current] ?? ''}
-              description={texts.description[current] ?? ''}
-              onTitle={(v) => onText('title', current, v)}
-              onDescription={(v) => onText('description', current, v)}
-              labels={{
-                title: tg('name.titleLabel'),
-                description: tg('name.descriptionLabel'),
-              }}
-              placeholders={{
-                title: t('titlePlaceholder', {
-                  language: languageName(current, ui),
-                }),
-                description: tg('languages.descriptionPlaceholder', {
-                  language: languageName(current, ui),
-                }),
-              }}
-              max={{
-                title: GALLERY_TITLE_MAX,
-                description: GALLERY_DESCRIPTION_MAX,
-              }}
-              source={{
-                label: t('sourceLabel', { language: languageName(d, ui) }),
-                lang: d,
-                title: texts.title[d] ?? '',
-                description: texts.description[d] ?? '',
-                empty: t('sourceEmpty'),
-              }}
-            />
-          </div>
-        </div>
+        <LanguageWriteSection writing={writing} current={current} onActive={onActive}>
+          <NameFields
+            idPrefix={`gallery-lang-${current}`}
+            lang={current}
+            title={texts.title[current] ?? ''}
+            description={texts.description[current] ?? ''}
+            onTitle={(v) => onText('title', current, v)}
+            onDescription={(v) => onText('description', current, v)}
+            labels={{
+              title: tg('name.titleLabel'),
+              description: tg('name.descriptionLabel'),
+            }}
+            placeholders={{
+              title: t('titlePlaceholder', {
+                language: languageName(current, ui),
+              }),
+              description: tg('languages.descriptionPlaceholder', {
+                language: languageName(current, ui),
+              }),
+            }}
+            max={{
+              title: GALLERY_TITLE_MAX,
+              description: GALLERY_DESCRIPTION_MAX,
+            }}
+            source={{
+              label: t('sourceLabel', { language: languageName(d, ui) }),
+              lang: d,
+              title: texts.title[d] ?? '',
+              description: texts.description[d] ?? '',
+              empty: t('sourceEmpty'),
+            }}
+          />
+        </LanguageWriteSection>
       ) : null}
     </section>
   )
@@ -280,7 +231,7 @@ export function GalleryPreviewStep({
         theme,
         kind: 'gallery',
       }),
-    [galleryId]
+    [galleryId],
   )
   return (
     <PreviewPane

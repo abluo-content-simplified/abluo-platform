@@ -4176,6 +4176,11 @@
         "clear": "Clear the address too",
         "cleared": "The {language} address was cleared.",
         "undo": "Undo"
+      },
+      "dates": {
+        "title": "On your website",
+        "saved": "Dates saved.",
+        "fromNote": "A later moment takes it off the website until then."
       }
     },
     "website": {

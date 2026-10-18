@@ -10,6 +10,7 @@ import { SectionHeading } from '@/components/app/ui/SectionHeading'
 import { Button } from '@/components/app/ui/Button'
 import { Field } from '@/components/app/ui/Field'
 import { FieldError } from '@/components/app/ui/FieldLabel'
+import { ProgressBar } from '@/components/app/ui/ProgressBar'
 import { OptionCards } from '@/components/app/ui/OptionCards'
 import { Select } from '@/components/app/ui/Select'
 import { TextInput } from '@/components/app/ui/TextInput'
@@ -212,22 +213,11 @@ export function NewProjectWizard({
 
   return (
     <div className="flex max-w-[672px] flex-col gap-6">
-      <div
-        role="progressbar"
-        aria-valuemin={1}
-        aria-valuemax={WIZARD_STEPS.length}
-        aria-valuenow={index + 1}
-        aria-label={t('progress', { current: index + 1, total: WIZARD_STEPS.length })}
-        className="flex flex-col gap-2"
-      >
+      <div className="flex flex-col gap-2">
         <span className="text-sm leading-5 font-medium text-muted-foreground">
           {t('progress', { current: index + 1, total: WIZARD_STEPS.length })} · {t(`steps.${step}`)}
         </span>
-        <span className="flex gap-1.5">
-          {WIZARD_STEPS.map((s, i) => (
-            <span key={s} className={`h-1 flex-1 rounded-full ${i <= index ? 'bg-foreground' : 'bg-muted'}`} />
-          ))}
-        </span>
+        <ProgressBar value={(index + 1) / WIZARD_STEPS.length} label={t('progress', { current: index + 1, total: WIZARD_STEPS.length })} />
       </div>
 
       {step === 'client' ? (

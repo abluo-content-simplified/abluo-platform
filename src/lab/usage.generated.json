@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-18T07:10:56.063Z",
+  "generatedAt": "2026-10-18T10:28:21.600Z",
   "usage": {
     "button": [
       "src/app/(platform)/(auth)/forgot-password/page.tsx",
@@ -44,11 +44,10 @@
       "src/components/client/create/AddContentSheet.tsx",
       "src/components/client/create/ImproveReview.tsx",
       "src/components/client/create/OpenForEdit.tsx",
+      "src/components/client/create/PreviewPane.tsx",
       "src/components/client/create/WizardFooter.tsx",
-      "src/components/client/create/WizardFrame.tsx",
-      "src/components/client/create/WizardShell.tsx",
+      "src/components/client/create/WizardHeader.tsx",
       "src/components/client/create/steps/CoverStep.tsx",
-      "src/components/client/create/steps/PreviewStep.tsx",
       "src/components/client/create/steps/ReviewStep.tsx",
       "src/components/client/editor/BodyEditor.tsx",
       "src/components/client/events/EventEditor.tsx",
@@ -72,6 +71,7 @@
       "src/components/client/posts/PostSheets.tsx",
       "src/components/client/posts/PostsBrowser.tsx",
       "src/components/client/posts/post-bits.tsx",
+      "src/components/client/settings/SettingsForm.tsx",
       "src/components/client/support/SupportAccessNotice.tsx",
       "src/components/client/support/SupportBanner.tsx",
       "src/components/client/taxonomy/TaxonomyManager.tsx",
@@ -98,6 +98,7 @@
       "src/components/client/media/BatchSheet.tsx",
       "src/components/client/media/PhotoCard.tsx",
       "src/components/client/people/PeopleSheets.tsx",
+      "src/components/client/settings/SettingsForm.tsx",
       "src/components/client/taxonomy/TaxonomyManager.tsx",
       "src/components/client/taxonomy/TermPicker.tsx",
       "src/components/client/taxonomy/TermSheet.tsx"
@@ -119,6 +120,7 @@
       "src/components/client/events/NewEventForm.tsx",
       "src/components/client/media/BatchSheet.tsx",
       "src/components/client/media/PhotoCard.tsx",
+      "src/components/client/settings/SettingsForm.tsx",
       "src/components/client/taxonomy/TaxonomyManager.tsx",
       "src/components/client/taxonomy/TermPicker.tsx",
       "src/components/client/taxonomy/TermSheet.tsx"
@@ -130,12 +132,11 @@
       "src/components/client/catalogue/CatalogueBrowser.tsx",
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/ItemEditor.tsx",
-      "src/components/client/create/steps/LanguagesStep.tsx",
-      "src/components/client/create/steps/PreviewStep.tsx",
+      "src/components/client/create/LanguageChoices.tsx",
+      "src/components/client/create/PreviewPane.tsx",
       "src/components/client/editor/BodyEditor.tsx",
       "src/components/client/events/EventEditor.tsx",
       "src/components/client/gallery/GallerySteps.tsx",
-      "src/components/client/gallery/wizard/kit.tsx",
       "src/components/client/media/MediaGrid.tsx",
       "src/components/client/media/PhotoCard.tsx"
     ],
@@ -254,6 +255,7 @@
       "src/components/client/media/MediaLibraryScreen.tsx",
       "src/components/client/people/PeopleBrowser.tsx",
       "src/components/client/posts/PostsBrowser.tsx",
+      "src/components/client/settings/SettingsForm.tsx",
       "src/components/client/taxonomy/TaxonomyManager.tsx"
     ],
     "back-link": [
@@ -312,6 +314,7 @@
       "src/components/client/media/MediaLibraryScreen.tsx",
       "src/components/client/people/PeopleBrowser.tsx",
       "src/components/client/posts/PostsBrowser.tsx",
+      "src/components/client/settings/SettingsForm.tsx",
       "src/components/client/taxonomy/TaxonomyManager.tsx"
     ],
     "section-heading": [
@@ -331,7 +334,8 @@
       "src/components/admin/projects/ViewAsClient.tsx",
       "src/components/app/analytics/AnalyticsOverview.tsx",
       "src/components/client/home/ContinueEditing.tsx",
-      "src/components/client/home/LatestList.tsx"
+      "src/components/client/home/LatestList.tsx",
+      "src/components/client/settings/SettingsForm.tsx"
     ],
     "confirm-dialog": [
       "src/components/admin/backlog/BacklogBrowser.tsx",
@@ -537,6 +541,7 @@
       "src/app/[locale]/(client)/[tenant]/media/page.tsx",
       "src/app/[locale]/(client)/[tenant]/people/page.tsx",
       "src/app/[locale]/(client)/[tenant]/posts/page.tsx",
+      "src/app/[locale]/(client)/[tenant]/settings/page.tsx",
       "src/app/[locale]/(client)/[tenant]/submissions/page.tsx",
       "src/app/[locale]/(client)/[tenant]/taxonomy/page.tsx",
       "src/app/[locale]/(client)/account/page.tsx",
@@ -607,12 +612,11 @@
     ],
     "unpublish-date-sheet": [
       "src/components/client/catalogue/CatalogueBrowser.tsx",
-      "src/components/client/catalogue/CollectionBuilder.tsx",
-      "src/components/client/catalogue/ItemEditor.tsx",
       "src/components/client/posts/PostsBrowser.tsx"
     ],
     "publication-dates": [
       "src/components/app/lifecycle/PublishChoice.tsx",
+      "src/components/client/catalogue/CatalogueDates.tsx",
       "src/components/client/create/WizardShell.tsx"
     ],
     "publish-choice": [
@@ -712,7 +716,8 @@
       "src/components/client/media/MediaLibraryPicker.tsx",
       "src/components/client/media/PhotoCard.tsx",
       "src/components/client/media/UploadQueueList.tsx",
-      "src/components/client/posts/PostSheets.tsx"
+      "src/components/client/posts/PostSheets.tsx",
+      "src/components/client/settings/SettingsForm.tsx"
     ],
     "tile": [
       "src/components/client/create/steps/CoverStep.tsx",
@@ -721,6 +726,7 @@
       "src/components/client/media/MediaLibraryPicker.tsx"
     ],
     "progress-bar": [
+      "src/components/admin/projects/NewProjectWizard.tsx",
       "src/components/client/create/steps/CoverStep.tsx",
       "src/components/client/media/UploadQueueList.tsx"
     ],
@@ -729,10 +735,9 @@
     ],
     "option-cards": [
       "src/components/admin/projects/NewProjectWizard.tsx",
+      "src/components/client/create/LanguageChoices.tsx",
       "src/components/client/create/steps/CtaStep.tsx",
-      "src/components/client/create/steps/GalleryPickStep.tsx",
-      "src/components/client/create/steps/LanguagesStep.tsx",
-      "src/components/client/gallery/GallerySteps.tsx"
+      "src/components/client/create/steps/GalleryPickStep.tsx"
     ],
     "assist-button": [
       "src/components/client/create/steps/StoryStep.tsx",
@@ -745,16 +750,15 @@
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/ItemEditor.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
-      "src/components/client/create/WizardFrame.tsx",
-      "src/components/client/create/WizardShell.tsx",
+      "src/components/client/create/WizardHeader.tsx",
+      "src/components/client/settings/SettingsForm.tsx",
       "src/components/client/taxonomy/TermSheet.tsx"
     ],
     "save-notice": [
       "src/components/client/catalogue/CollectionBuilder.tsx",
       "src/components/client/catalogue/ItemEditor.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
-      "src/components/client/create/WizardFrame.tsx",
-      "src/components/client/create/WizardShell.tsx"
+      "src/components/client/create/WizardHeader.tsx"
     ],
     "notice": [
       "src/app/[locale]/(admin)/analytics/[slug]/page.tsx",
@@ -774,12 +778,16 @@
       "src/components/client/catalogue/ItemEditor.tsx",
       "src/components/client/catalogue/OptionListEditor.tsx",
       "src/components/client/catalogue/catalogue-ui.tsx",
+      "src/components/client/catalogue/item-fields.tsx",
       "src/components/client/catalogue/publish-dependencies.tsx",
       "src/components/client/catalogue/stray-address.tsx",
-      "src/components/client/create/steps/PreviewStep.tsx",
+      "src/components/client/create/PreviewPane.tsx",
+      "src/components/client/create/steps/CoverStep.tsx",
       "src/components/client/events/EventEditor.tsx",
-      "src/components/client/gallery/wizard/kit.tsx",
-      "src/components/client/media/PhotoCard.tsx"
+      "src/components/client/gallery/wizard/PhotoAddStep.tsx",
+      "src/components/client/media/AddPhotos.tsx",
+      "src/components/client/media/PhotoCard.tsx",
+      "src/components/client/settings/SettingsForm.tsx"
     ],
     "panel": [
       "src/app/[locale]/(admin)/lab/todo/page.tsx",
@@ -794,20 +802,20 @@
       "src/components/client/catalogue/publish-dependencies.tsx",
       "src/components/client/connections/ConnectedAppsBrowser.tsx",
       "src/components/client/connections/ConsentScreen.tsx",
+      "src/components/client/create/LanguageChoices.tsx",
+      "src/components/client/create/PreviewPane.tsx",
       "src/components/client/create/steps/CoverStep.tsx",
       "src/components/client/create/steps/CtaStep.tsx",
-      "src/components/client/create/steps/LanguagesStep.tsx",
-      "src/components/client/create/steps/PreviewStep.tsx",
-      "src/components/client/gallery/GallerySteps.tsx",
       "src/components/client/gallery/wizard/PhotoAddStep.tsx",
-      "src/components/client/gallery/wizard/kit.tsx",
+      "src/components/client/settings/SettingsForm.tsx",
       "src/components/client/support/SupportAccessNotice.tsx"
     ],
     "select": [
       "src/components/admin/backlog/BacklogBrowser.tsx",
       "src/components/admin/backlog/BacklogForm.tsx",
       "src/components/admin/projects/NewProjectWizard.tsx",
-      "src/components/app/ui/DateTimePicker.tsx"
+      "src/components/app/ui/DateTimePicker.tsx",
+      "src/components/client/settings/SettingsForm.tsx"
     ],
     "date-input": [],
     "calendar": [
@@ -825,13 +833,13 @@
       "src/components/admin/partners/PartnersBrowser.tsx",
       "src/components/admin/projects/NewProjectWizard.tsx",
       "src/components/admin/whats-new/WhatsNewAdmin.tsx",
-      "src/components/client/people/PeopleSheets.tsx"
+      "src/components/client/people/PeopleSheets.tsx",
+      "src/components/client/settings/SettingsForm.tsx"
     ],
     "skeleton": [
       "src/app/[locale]/(client)/[tenant]/catalogue/loading.tsx",
       "src/components/client/create/OpenForEdit.tsx",
-      "src/components/client/create/steps/PreviewStep.tsx",
-      "src/components/client/gallery/wizard/kit.tsx"
+      "src/components/client/create/PreviewPane.tsx"
     ]
   }
 }

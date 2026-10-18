@@ -11,7 +11,7 @@ import { Link } from '@/i18n/navigation'
  * desktop view of the same list is a DataTable; this is its phone twin.
  *
  *   <ul className="flex flex-col gap-3">
- *     <ListRow onOpen={() => open(p)} openLabel={…} leading={<Avatar …/>} menu={{ label, items }}
+ *     <ListRow onOpen={() => open(p)} leading={<Avatar …/>} menu={{ label, items }}
  *       select={{ checked, label, onChange: (on, e) => toggle(p.id, on, isShiftChange(e)) }}>
  *       <span className="…font-semibold">{name}</span> …
  *     </ListRow>
@@ -23,6 +23,7 @@ import { Link } from '@/i18n/navigation'
 export function ListRow({
   onOpen,
   href,
+  label,
   leading,
   select,
   menu,
@@ -32,6 +33,8 @@ export function ListRow({
   /** Opens the item (a button). Pass `href` instead when the item has its own page (a real link: new tab, copy link). */
   onOpen?: () => void
   href?: string
+  /** Screen-reader name of the tappable body, for rows whose visible text doesn't name the action well (e.g. "Open {title}"). Omit when the text reads fine. */
+  label?: string
   /** An avatar or thumbnail before the text. */
   leading?: ReactNode
   select?: { checked: boolean; label: string; onChange: (checked: boolean, event: ChangeEvent<HTMLInputElement>) => void }
@@ -52,11 +55,11 @@ export function ListRow({
     <li className={`flex items-start gap-1 rounded-xl border bg-card py-2 pr-1 ${select ? 'pl-1' : 'pl-3'} ${selected ? 'border-action ring-1 ring-action' : 'border-border'}`}>
       {select ? <Checkbox checked={select.checked} aria-label={select.label} onChange={select.onChange} /> : null}
       {href ? (
-        <Link href={href} className={bodyClass}>
+        <Link href={href} aria-label={label} className={bodyClass}>
           {body}
         </Link>
       ) : (
-        <button type="button" onClick={onOpen} className={bodyClass}>
+        <button type="button" onClick={onOpen} aria-label={label} className={bodyClass}>
           {body}
         </button>
       )}

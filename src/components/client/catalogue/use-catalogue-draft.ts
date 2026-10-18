@@ -7,6 +7,7 @@ import {
   openCatalogueForEditAction,
   patchCatalogueDraftAction,
   publishCatalogueDraftAction,
+  setCatalogueDatesAction,
 } from '@/app/[locale]/(client)/[tenant]/catalogue/actions'
 import { timedAction } from '@/lib/perf/client-log'
 import { useAutosave } from '@/lib/client/autosave/use-autosave'
@@ -171,6 +172,25 @@ export function useCatalogueDraft({
     [autosave, projectSlug, kind]
   )
 
+  /**
+   * "On your website": changes the go-live / end date of the published document at once, on both versions,
+   * without publishing the draft's content. Queued edits go first; the draft's new revision is adopted so the
+   * next save is not refused as "changed elsewhere".
+   */
+  const setDates = useCallback(
+    async (input: { rev: string; publishedAt?: string; expiresAt: string | null }) => {
+      const saved = await autosave.flush()
+      if (!saved) return { ok: false, error: autosave.currentState() === 'conflict' ? 'conflict' : 'offline' } as const
+      const r = await timedAction('catalogue.setDates', () => setCatalogueDatesAction({ projectSlug, kind, id: idRef.current, ...input }))
+      if (!r.ok) return { ok: false, error: r.error } as const
+      if (r.live.draftRev) autosave.adoptRev(r.live.draftRev)
+      // The published revision moved too: the "first edit" shortcut must not send the old one.
+      if (liveRevRef.current) liveRevRef.current = r.live.rev
+      return { ok: true, live: r.live } as const
+    },
+    [autosave, projectSlug, kind]
+  )
+
   const discardChanges = useCallback(async () => {
     await autosave.flush()
     const r = await timedAction('catalogue.discard', () => discardCatalogueDraftAction({ projectSlug, kind, id: idRef.current, rev: autosave.currentRev() }))
@@ -187,6 +207,7 @@ export function useCatalogueDraft({
     hasDraft,
     update,
     publish,
+    setDates,
     discardChanges,
     flush: autosave.flush,
     state: autosave.state,

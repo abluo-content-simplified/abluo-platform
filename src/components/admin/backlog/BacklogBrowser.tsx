@@ -377,7 +377,7 @@ export function BacklogBrowser({ items, projects }: { items: BacklogItem[]; proj
               </div>
               <ul aria-label={t('title')} className="flex flex-col gap-3 md:hidden">
                 {shown.map((i) => (
-                  <ListRow key={i.id} onOpen={() => openPanel({ kind: 'view', id: i.id })}>
+                  <ListRow key={i.id} onOpen={() => openPanel({ kind: 'view', id: i.id })} label={t('detail.open', { title: i.title })}>
                     <span className="line-clamp-2 text-[0.9375rem] leading-[1.375rem] font-semibold text-foreground">{i.title}</span>
                     <span className="line-clamp-1 text-sm leading-5 text-muted-foreground">{subtitle(i)}</span>
                     <span className="flex flex-wrap items-center gap-1.5">

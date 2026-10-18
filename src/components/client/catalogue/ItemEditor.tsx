@@ -27,8 +27,8 @@ import { PROFILES, can as profileCan } from '@/lib/modules/catalogue/profiles'
 import { attachmentIssues, declarationIssues, itemGaps, itemOptionsRelevant, itemStateFromDoc, type ItemState } from '@/lib/modules/catalogue/dashboard-form'
 import { adviceTabs, issueCountByTab, itemIssues, publishBlockers, type ItemIssue, type ItemTab } from '@/lib/modules/catalogue/item-issues'
 import { CAT_ICONS, GapBadges, InUseNotice, ItemIssueList, TabLabel, focusField, textIn, useCatalogueError } from './catalogue-ui'
+import { CatalogueDates, type CatalogueLive } from './CatalogueDates'
 import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
-import { UnpublishDateSheet } from '@/components/app/lifecycle/UnpublishDateSheet'
 import { BookDetailsFields, FieldBlock, FoodInfoField, ItemPreview, LanguagesField, LinksField, NameFields, OptionsField, PageField, PhotoField, PriceField, VisibilityField, type OptionListChoice } from './item-fields'
 import { ChangeTypeSheet } from './ChangeTypeSheet'
 import { usePublishTogether } from './publish-dependencies'
@@ -76,6 +76,7 @@ export function ItemEditor({
   const tf = useTranslations('catalogue.dashboard.item.wizard')
   const tfl = useTranslations('catalogue.dashboard.item.fields.links')
   const tl = useTranslations('app.lifecycle')
+  const td = useTranslations('catalogue.dashboard.dates')
   const ui = useLocale()
   const router = useRouter()
   const errorText = useCatalogueError()
@@ -110,9 +111,10 @@ export function ItemEditor({
   const [busy, setBusy] = useState(false)
   const [inUse, setInUse] = useState<Referrer[] | null>(null)
   const [confirm, setConfirm] = useState<'delete' | 'discard' | null>(null)
-  const [dateOpen, setDateOpen] = useState(false)
   const [typeOpen, setTypeOpen] = useState(false)
   const [publishAt, setPublishAt] = useState<string | null>(snapshot.status.publishOn)
+  // "On your website": the live dates, kept here so the next change uses the new revision.
+  const [live, setLive] = useState<CatalogueLive | null>(snapshot.live ? { rev: snapshot.live.rev, publishedAt: snapshot.live.publishedAt, expiresAt: snapshot.live.expiresAt } : null)
   // The result of the last publish stays on the page (a toast alone disappears). The refresh that follows
   // re-mounts this editor, so the line is handed over through sessionStorage and read back after mounting.
   const [result, setResult] = useState<PublishResult | null>(null)
@@ -199,13 +201,13 @@ export function ItemEditor({
     }
   }
 
-  async function act(action: LifecycleAction, expiresAt?: string | null) {
+  async function act(action: LifecycleAction) {
     if (busy) return false
     setBusy(true)
     setInUse(null)
     try {
       await draft.flush()
-      const r = await timedAction(`catalogue.lifecycle.${action}`, () => catalogueLifecycleAction({ projectSlug, kind: 'item', op: action, id: snapshot.id, expiresAt }))
+      const r = await timedAction(`catalogue.lifecycle.${action}`, () => catalogueLifecycleAction({ projectSlug, kind: 'item', op: action, id: snapshot.id }))
       if (!r.ok) {
         if (r.error === 'in_use' && r.detail?.referrers?.length) setInUse(r.detail.referrers)
         else show({ message: errorText(r.error), tone: 'error' })
@@ -226,12 +228,13 @@ export function ItemEditor({
   const menu: CardMenuItem[] = [
     ...(!readOnly ? [{ key: 'publishTogether', label: tt('publishItem'), onSelect: () => void draft.flush().then(() => together.openSheet()) }] : []),
     ...(isLive && draft.hasDraft && can.write ? [{ key: 'discard', label: t('discard'), onSelect: () => setConfirm('discard') }] : []),
-    ...lifecycleMenu(snapshot.status.status, can).map((e) => ({
+    // Dates are changed in the Publishing tab's "On your website" block, not from the menu.
+    ...lifecycleMenu(snapshot.status.status, can).filter((e) => e.action !== 'setUnpublishDate').map((e) => ({
       key: e.action,
       label: tl(`actions.${e.action}`),
       destructive: e.destructive,
       separated: e.separated,
-      onSelect: () => (e.action === 'delete' || e.action === 'deletePermanently' ? setConfirm('delete') : e.action === 'setUnpublishDate' ? setDateOpen(true) : void act(e.action)),
+      onSelect: () => (e.action === 'delete' || e.action === 'deletePermanently' ? setConfirm('delete') : void act(e.action)),
     })),
   ]
 
@@ -342,6 +345,11 @@ export function ItemEditor({
                 <ItemPreview profile={s.itemProfile} bookDetails={s.bookDetails} name={s.name} byline={s.byline} description={s.description} photo={item.photos[0]?.thumbUrl ?? null} offers={s.offers} channels={site.config.channels} currency={site.config.currency} declaration={hasFoodInfo ? s.allergenDeclaration : null} locale={ui} defaultLocale={d} />
               </div>
             </FieldBlock>
+            {!readOnly && live ? (
+              <FieldBlock title={td('title')}>
+                <CatalogueDates id="item-dates" live={live} onLive={setLive} draft={draft} zone={zone} disabled={busy} onNotice={show} />
+              </FieldBlock>
+            ) : null}
             {!readOnly && !isLive ? (
               <FieldBlock title={tl('dates.publishOn')} helper={t('scheduleHelp')}>
                 <PublicationDateField id="item-editor-publish-on" label={tl('dates.publishOn')} value={publishAt} onChange={setPublishAt} zone={zone} />
@@ -389,16 +397,6 @@ export function ItemEditor({
         hasBookDetails={Boolean(s.bookDetails.author.trim() || s.bookDetails.publisher.trim() || s.bookDetails.year.trim() || s.bookDetails.isbn.trim())}
         onClose={() => setTypeOpen(false)}
         onChange={item.setProfile}
-      />
-      <UnpublishDateSheet
-        open={dateOpen}
-        busy={busy}
-        zone={zone}
-        onClose={() => setDateOpen(false)}
-        onSave={async (iso) => {
-          if (await act('setUnpublishDate', iso)) setDateOpen(false)
-        }}
-        onRemove={snapshot.status.unpublishOn ? async () => void ((await act('setUnpublishDate', null)) && setDateOpen(false)) : undefined}
       />
       <Toast message={toast?.message ?? null} tone={toast?.tone} />
     </div>

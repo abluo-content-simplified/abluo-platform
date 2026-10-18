@@ -4176,6 +4176,11 @@
         "clear": "Adresse auch löschen",
         "cleared": "Die Adresse auf {language} wurde gelöscht.",
         "undo": "Rückgängig"
+      },
+      "dates": {
+        "title": "Auf deiner Website",
+        "saved": "Termine gespeichert.",
+        "fromNote": "Ein späterer Zeitpunkt nimmt es bis dahin von der Website."
       }
     },
     "website": {

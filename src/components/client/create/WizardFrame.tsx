@@ -2,11 +2,8 @@
 
 import { WizardFooter, type WizardFooterProps } from './WizardFooter'
 import type { KeyboardEvent, ReactNode, RefObject } from 'react'
-import { useTranslations } from 'next-intl'
 import type { SaveState } from '@/lib/client/autosave/engine'
-import { SavePill } from '@/components/app/ui/SavePill'
-import { Button, IconButton } from '@/components/app/ui/Button'
-import { SaveNotice } from '@/components/app/ui/SaveNotice'
+import { WizardHeader } from './WizardHeader'
 
 /**
  * The blog wizard's chrome (WizardShell, v1.0.45) as a frame for the other
@@ -46,7 +43,6 @@ export function WizardFrame({
   /** Dialogs (confirmations) rendered inside the surface, after the footer. */
   overlay?: ReactNode
 }) {
-  const t = useTranslations('clientDashboard.create')
   return (
     <div
       data-surface="create"
@@ -54,21 +50,7 @@ export function WizardFrame({
       data-portal-root
       className="fixed inset-0 z-[60] flex flex-col bg-background text-foreground"
     >
-      <header className="mx-auto flex w-full max-w-[672px] items-center justify-between gap-3 px-4 pt-[max(12px,env(safe-area-inset-top))] pb-2">
-        {exit && exit.kind === 'close' ? (
-          <IconButton onClick={exit.onPress} aria-label={t('shell.close')}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-              <path d="M6 6l12 12M18 6L6 18" />
-            </svg>
-          </IconButton>
-        ) : exit ? (
-          <Button onClick={exit.onPress}>{t('shell.saveExit')}</Button>
-        ) : (
-          <span />
-        )}
-        <SavePill state={saveState} onReload={onReload} />
-      </header>
-      <SaveNotice state={saveState} rejected={rejected} onRetry={onRetry} onReload={onReload} />
+      <WizardHeader exit={exit} saveState={saveState} rejected={rejected} onRetry={onRetry} onReload={onReload} />
 
       <div ref={mainRef} className="flex-1 overflow-y-auto">
         <main className={`mx-auto flex min-h-full w-full flex-col px-4 pt-6 pb-10 ${wide ? 'max-w-5xl' : 'max-w-[672px]'}`}>{children}</main>

@@ -5,7 +5,6 @@ import { PostActivitySheet } from '@/components/client/posts/PostActivitySheet'
 import { useLocale, useTranslations } from 'next-intl'
 import type { PortableTextBlock } from '@portabletext/editor'
 import { useRouter } from '@/i18n/navigation'
-import { Button, IconButton } from '@/components/app/ui/Button'
 import { createPostDraftAction, patchPostDraftAction } from '@/app/[locale]/(client)/[tenant]/posts/actions'
 import { improvePostBodyAction, improvePostLineAction } from '@/app/[locale]/(client)/[tenant]/posts/ai-actions'
 import { publishPostDraftAction } from '@/app/[locale]/(client)/[tenant]/posts/publish-actions'
@@ -34,8 +33,6 @@ import {
   type WizardFlowStep,
 } from '@/lib/client/wizard-steps'
 import type { DraftSnapshot, SiteInfo, StepProps } from './types'
-import { SavePill } from '@/components/app/ui/SavePill'
-import { SaveNotice } from '@/components/app/ui/SaveNotice'
 import { applyToSnapshot } from './snapshot'
 import { CategoryStep } from './steps/CategoryStep'
 import { TitleStep, type ImproveLineResult } from './steps/TitleStep'
@@ -48,6 +45,7 @@ import { choiceValue, defaultPublishChoice, type PublishChoice } from './steps/p
 import { datesSentence, publishChoiceDates, shortMoment } from '@/components/app/lifecycle/publish-plan'
 import { PublicationDates } from '@/components/app/lifecycle/PublicationDates'
 import { WizardFooter } from './WizardFooter'
+import { WizardHeader } from './WizardHeader'
 import { DoneStep, type DoneResult } from './steps/DoneStep'
 import { ReviewStep } from './steps/ReviewStep'
 import { CtaStep } from './steps/CtaStep'
@@ -623,21 +621,13 @@ export function WizardShell({
       data-portal-root
       className="fixed inset-0 z-[60] flex flex-col bg-background text-foreground"
     >
-      <header className="mx-auto flex w-full max-w-[672px] items-center justify-between gap-3 px-4 pt-[max(12px,env(safe-area-inset-top))] pb-2">
-        {step !== 'done' && !created ? (
-          <IconButton onClick={closeEmpty} aria-label={t('shell.close')}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-              <path d="M6 6l12 12M18 6L6 18" />
-            </svg>
-          </IconButton>
-        ) : step !== 'done' ? (
-          <Button onClick={saveAndExit}>{t('shell.saveExit')}</Button>
-        ) : (
-          <span />
-        )}
-        <SavePill state={autosave.state} onReload={reload} />
-      </header>
-      <SaveNotice state={autosave.state} rejected={autosave.rejected} onRetry={autosave.retry} onReload={reload} />
+      <WizardHeader
+        exit={step === 'done' ? null : created ? { kind: 'save', onPress: saveAndExit } : { kind: 'close', onPress: closeEmpty }}
+        saveState={autosave.state}
+        rejected={autosave.rejected}
+        onRetry={autosave.retry}
+        onReload={reload}
+      />
 
       <div ref={mainRef} className="flex-1 overflow-y-auto">
         <main className={`mx-auto flex min-h-full w-full flex-col px-4 pt-6 pb-10 ${wide ? 'max-w-5xl' : 'max-w-[672px]'}`}>

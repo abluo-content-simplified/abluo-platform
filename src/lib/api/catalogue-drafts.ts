@@ -1081,3 +1081,49 @@ export async function runCatalogueLifecycle(
     throw error
   }
 }
+
+/** The live dates of a published document, plus the draft's new revision when the draft was changed too (the editor adopts it). */
+export type CatalogueLiveDates = { rev: string; publishedAt: string | null; expiresAt: string | null; archivedAt: string | null; draftRev: string | null }
+
+/**
+ * Changes when an item or collection is on the website (go-live date, end
+ * date) on the live version and its draft, without publishing the draft's
+ * content. Same permission, ownership and revision guards as the other
+ * lifecycle operations; option lists have no website dates. `publishedAt`:
+ * an ISO moment, 'now', or left out to keep it; `expiresAt`: a moment or null.
+ */
+export async function setCatalogueDates(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  kind: CatalogueKind,
+  input: { id: string; rev?: string; publishedAt?: string; expiresAt: string | null },
+  deps: CatalogueDeps = {}
+): Promise<CatalogueLiveDates> {
+  const d = DESCRIPTOR[kind]
+  // Gate before any read (the service re-checks the exact permission set).
+  grantFor(ctx, projectId, d.permissions.write)
+  if (kind === 'optionList') throw new CatalogueError('invalid_value', 'Option lists have no website dates.')
+  const client = (deps.client ?? sanityWriteClient) as lifecycle.LifecycleClient
+  const sdeps = { client, now: deps.now, audit: deps.audit }
+  try {
+    const grant = ctx.projects.find((p) => p.projectId === projectId)!
+    if (!isCatalogueId(input?.id)) notFound()
+    // The revision the service guards on is read fresh: the editor's copy may be minutes old.
+    const { published } = await lifecycle.readPair(d, client, input.id, grant.projectSlug)
+    if (!published) notFound()
+    const rev = published?._rev ?? ''
+    if (input.rev && input.rev !== rev) throw new CatalogueError('conflict', 'This was changed elsewhere.')
+    const r = await lifecycle.setDates(
+      d,
+      ctx,
+      projectId,
+      { id: input.id, rev, ...(input.publishedAt !== undefined && { publishedAt: input.publishedAt }), expiresAt: input.expiresAt ?? null },
+      sdeps
+    )
+    const str = (v: unknown) => (typeof v === 'string' ? v : null)
+    return { rev: str(r.doc._rev) ?? '', publishedAt: str(r.doc.publishedAt), expiresAt: str(r.doc.expiresAt), archivedAt: str(r.doc.archivedAt), draftRev: r.draftRev }
+  } catch (error) {
+    if (error instanceof CatalogueLifecycleError) throw new CatalogueError(error.code, error.message)
+    throw error
+  }
+}

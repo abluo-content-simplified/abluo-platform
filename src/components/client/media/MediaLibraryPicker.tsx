@@ -79,7 +79,7 @@ export function MediaLibraryPicker({ projectSlug, scope, defaultLocale, exclude,
 
   return (
     <BottomSheet open title={t('title')} onClose={onClose} size="lg">
-      <div className="flex h-[70dvh] flex-col">
+      <div className="flex h-[min(92dvh,calc(100dvh-9rem))] flex-col md:h-[min(85vh,calc(100dvh-9rem))]">
         <div className="flex flex-col gap-3 border-b border-border-subtle px-4 py-3">
           <FilterSearch sizing="w-full" label={t('search')} value={query} maxLength={80} placeholder={t('searchPlaceholder')} onChange={setQuery} />
           {tags.length > 0 && (

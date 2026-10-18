@@ -799,7 +799,7 @@ export const LAB_REGISTRY: LabEntry[] = [
     status: 'canonical',
     traits: ['selection', 'menu'],
     summary: 'One row of a phone list: optional square checkbox, the tappable body that opens the item, and the ⋯ menu — the phone twin of a DataTable row.',
-    rules: ['The body opens; the checkbox only selects.', 'Content is top-aligned with the checkbox or leading avatar.', 'href when the item has its own page (a real link), onOpen when it opens a sheet.', 'trailing: small controls such as move up / down.'],
+    rules: ['The body opens; the checkbox only selects.', 'Content is top-aligned with the checkbox or leading avatar.', 'href when the item has its own page (a real link), onOpen when it opens a sheet.', 'trailing: small controls such as move up / down.', 'label: the screen-reader name of the row body ("Open {title}") when the visible text does not name the action.'],
     replaces: ['hand-built phone rows in People and Contact requests'],
     demo: () => import('./demos/list-row.demo'),
   },

@@ -4176,6 +4176,11 @@
         "clear": "Cancella anche l’indirizzo",
         "cleared": "L’indirizzo in {language} è stato cancellato.",
         "undo": "Annulla"
+      },
+      "dates": {
+        "title": "Sul tuo sito",
+        "saved": "Date salvate.",
+        "fromNote": "Una data successiva lo toglie dal sito fino a quel momento."
       }
     },
     "website": {

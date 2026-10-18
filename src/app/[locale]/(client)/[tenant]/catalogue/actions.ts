@@ -29,7 +29,9 @@ import {
   previewCataloguePublish,
   publishCatalogueDraft,
   runCatalogueLifecycle,
+  setCatalogueDates,
   type CatalogueErrorCode,
+  type CatalogueLiveDates,
   type CatalogueKind,
   type CatalogueLifecycleOp,
   type CatalogueLists,
@@ -155,6 +157,28 @@ export async function catalogueLifecycleAction(input: {
   expiresAt?: string | null
 }): Promise<Result<{ rev: string | null }>> {
   return run('lifecycle', input?.projectSlug, (ctx, pid) => runCatalogueLifecycle(ctx, pid, kindOf(input.kind), { op: input.op, id: input.id, rev: input.rev, expiresAt: input.expiresAt }))
+}
+
+/**
+ * When an item or collection is on the website: go-live date ('now' or a moment; omitted = keep) and
+ * end date (null = none). Applies at once on the live version and its draft, without publishing the draft.
+ */
+export async function setCatalogueDatesAction(input: {
+  projectSlug: string
+  kind: CatalogueKind
+  id: string
+  rev?: string
+  publishedAt?: string
+  expiresAt: string | null
+}): Promise<Result<{ live: CatalogueLiveDates }>> {
+  return run('setDates', input?.projectSlug, async (ctx, pid) => ({
+    live: await setCatalogueDates(ctx, pid, kindOf(input.kind), {
+      id: input.id,
+      rev: input.rev,
+      ...(input.publishedAt !== undefined && { publishedAt: input.publishedAt }),
+      expiresAt: input.expiresAt ?? null,
+    }),
+  }))
 }
 
 /** Which other item or collection already uses these addresses (named). */

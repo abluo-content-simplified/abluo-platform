@@ -19,6 +19,7 @@ import {
 } from '../catalogue-lifecycle'
 import { LIFECYCLE_OPERATIONS, archive, deleteDraft, deletePermanently, lifecycleGuard, type LifecycleClient } from '@/lib/lifecycle/service'
 import { DELETE_REFERRERS, catalogueReferences } from '../catalogue-lifecycle'
+import { CatalogueError, setCatalogueDates } from '../catalogue-drafts'
 import { LIFECYCLE_PUBLIC_RULES, publicFilterFor } from '@/lib/lifecycle/public-types'
 import type { ProjectGrant, TenantAuthorizationContext } from '../tenant-context'
 import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
@@ -332,5 +333,131 @@ describe('outgoing references for publishing (D-4/D-5)', () => {
     expect(CATALOGUE_ITEM_LIFECYCLE.references).toBe(catalogueReferences.item)
     expect(CATALOGUE_COLLECTION_LIFECYCLE.references).toBe(catalogueReferences.collection)
     expect(CATALOGUE_OPTION_LIST_LIFECYCLE.references).toBe(catalogueReferences.optionList)
+  })
+})
+
+
+// ── setCatalogueDates — "On your website" (items and collections) ─────────────
+
+describe('setCatalogueDates — when a document is on the website, without publishing its draft', () => {
+  type Stored = Record<string, unknown> & { _id: string }
+  /** A small Sanity: revision-guarded transactions, 409 on a moved revision. */
+  function memory(initial: Stored[]) {
+    const docs = new Map<string, Stored>(initial.map((d) => [d._id, { _rev: `r-${d._id}`, ...structuredClone(d) }]))
+    let n = 0
+    const transactions: string[] = []
+    type Change = { ifRevisionID?: string; set?: Record<string, unknown>; unset?: string[] }
+    const client = {
+      getDocument: vi.fn(async (id: string) => (docs.has(id) ? structuredClone(docs.get(id)!) : undefined)),
+      fetch: vi.fn(async (q: string) => (q.startsWith('count(') ? 1 : null)),
+      transaction: vi.fn(() => {
+        const ops: Array<[string, Change]> = []
+        const tx = {
+          patch: (id: string, change: Change) => (ops.push([id, change]), tx),
+          commit: async (o?: { transactionId?: string }) => {
+            const next = new Map(docs)
+            for (const [id, change] of ops) {
+              const cur = next.get(id)
+              if (!cur) throw Object.assign(new Error('missing'), { statusCode: 404 })
+              if (change.ifRevisionID !== undefined && cur._rev !== change.ifRevisionID) throw Object.assign(new Error('revision mismatch'), { statusCode: 409 })
+              const merged: Stored = { ...cur, ...(change.set ?? {}) }
+              for (const k of change.unset ?? []) delete merged[k]
+              next.set(id, merged)
+            }
+            const rev = o?.transactionId ?? `t${++n}`
+            for (const [id] of ops) next.set(id, { ...next.get(id)!, _rev: rev })
+            docs.clear()
+            for (const [k, v] of next) docs.set(k, v)
+            transactions.push(rev)
+            return { _rev: rev }
+          },
+        }
+        return tx
+      }),
+    }
+    return { client, transactions, get: (id: string) => docs.get(id), deps: { client: client as never, now: () => NOW, audit: async () => {} } }
+  }
+  const T = NOW.toISOString()
+  const live = (o: Record<string, unknown> = {}): Stored => ({ _id: 'item-1', _type: 'catalogueItem', _rev: 'p1', ...base, name: nm('Margherita'), publishedAt: '2026-09-01T08:00:00.000Z', ...o })
+  const draftOf = (d: Stored, o: Record<string, unknown> = {}): Stored => ({ ...d, _id: `drafts.${d._id}`, _rev: 'd1', ...o })
+  const pair = () => memory([live(), draftOf(live(), { name: nm('Margherita (bozza)') })])
+  const run = (s: ReturnType<typeof memory>, input: Partial<Parameters<typeof setCatalogueDates>[3]> = {}, kind: 'item' | 'collection' | 'optionList' = 'item', c = ctx()) =>
+    setCatalogueDates(c, 'project-a', kind, { id: 'item-1', rev: 'p1', expiresAt: null, ...input }, s.deps)
+
+  it('reschedules on both versions in one transaction; the draft content stays a draft', async () => {
+    const s = pair()
+    const r = await run(s, { publishedAt: '2026-10-19T07:00:00Z', expiresAt: '2026-10-23T16:00:00Z' })
+    expect(r).toMatchObject({ publishedAt: '2026-10-19T07:00:00.000Z', expiresAt: '2026-10-23T16:00:00.000Z', archivedAt: null })
+    expect(r.draftRev).toBeTruthy()
+    expect(s.get('item-1')).toMatchObject({ publishedAt: '2026-10-19T07:00:00.000Z', name: nm('Margherita') })
+    expect(s.get('drafts.item-1')).toMatchObject({ publishedAt: '2026-10-19T07:00:00.000Z', name: nm('Margherita (bozza)') })
+    expect(s.transactions).toHaveLength(1)
+  })
+
+  it('works for collections too, and without a draft', async () => {
+    const s = memory([{ _id: 'item-1', _type: 'catalogueCollection', ...base, name: nm('Menu'), publishedAt: PAST }])
+    const r = await run(s, { rev: 'r-item-1', publishedAt: 'now', expiresAt: '2026-12-01T00:00:00Z' }, 'collection')
+    expect(r).toMatchObject({ publishedAt: T, expiresAt: '2026-12-01T00:00:00.000Z', draftRev: null })
+  })
+
+  it('"now" brings a scheduled document online; leaving publishedAt out keeps it', async () => {
+    const s = memory([live({ publishedAt: '2026-11-01T08:00:00.000Z' })])
+    expect(await run(s, { publishedAt: 'now' })).toMatchObject({ publishedAt: T })
+    const s2 = memory([live()])
+    expect(await run(s2, { expiresAt: '2026-12-01T00:00:00Z' })).toMatchObject({ publishedAt: '2026-09-01T08:00:00.000Z', expiresAt: '2026-12-01T00:00:00.000Z' })
+  })
+
+  it('adds and removes the end date (null removes it)', async () => {
+    const s = memory([live({ expiresAt: '2026-12-01T00:00:00.000Z' })])
+    await run(s, { expiresAt: null })
+    expect(s.get('item-1')?.expiresAt).toBeUndefined()
+    await run(s, { rev: s.get('item-1')?._rev as string, expiresAt: '2027-01-01T00:00:00Z' })
+    expect(s.get('item-1')?.expiresAt).toBe('2027-01-01T00:00:00.000Z')
+  })
+
+  it.each([
+    ['an end before the go-live date', { publishedAt: '2026-11-10T08:00:00Z', expiresAt: '2026-11-05T08:00:00Z' }],
+    ['an end in the past', { expiresAt: '2026-10-01T08:00:00Z' }],
+    ['a go-live date more than two years ahead', { publishedAt: '2029-01-01T08:00:00Z' }],
+    ['a malformed date', { publishedAt: 'monday' }],
+  ])('refuses %s, nothing written', async (_l, dates) => {
+    const s = pair()
+    await expect(run(s, dates)).rejects.toMatchObject({ code: 'invalid_value' })
+    expect(s.transactions).toHaveLength(0)
+  })
+
+  it('an archived document is refused ("archived"), nothing written', async () => {
+    const s = memory([live({ archivedAt: T, expiresAt: T })])
+    await expect(run(s, { publishedAt: 'now' })).rejects.toMatchObject({ code: 'archived' })
+    expect(s.transactions).toHaveLength(0)
+  })
+
+  it('a moved revision is "conflict"', async () => {
+    const s = pair()
+    await expect(run(s, { rev: 'old', publishedAt: 'now' })).rejects.toMatchObject({ code: 'conflict' })
+    expect(s.transactions).toHaveLength(0)
+  })
+
+  it('a document that was never published is "not_found" (nothing to date)', async () => {
+    const s = memory([draftOf(live())])
+    await expect(run(s, { publishedAt: 'now' })).rejects.toMatchObject({ code: 'not_found' })
+  })
+
+  it('needs the kind\'s write permission, before any read', async () => {
+    const s = pair()
+    await expect(run(s, { publishedAt: 'now' }, 'item', ctx(['catalogue.item.read']))).rejects.toBeTruthy()
+    await expect(run(s, { publishedAt: 'now' }, 'collection', ctx(['catalogue.item.write']))).rejects.toBeTruthy()
+    expect(s.client.getDocument).not.toHaveBeenCalled()
+  })
+
+  it('option lists have no website dates', async () => {
+    const s = pair()
+    await expect(run(s, { publishedAt: 'now' }, 'optionList')).rejects.toBeInstanceOf(CatalogueError)
+    expect(s.transactions).toHaveLength(0)
+  })
+
+  it('another project\'s document is "not_found"', async () => {
+    const s = memory([live({ projectSlug: 'someone-else' })])
+    await expect(run(s, { publishedAt: 'now' })).rejects.toMatchObject({ code: 'not_found' })
   })
 })

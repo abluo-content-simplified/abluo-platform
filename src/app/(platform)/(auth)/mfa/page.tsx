@@ -21,7 +21,7 @@
  * exception to the no-hardcoded-strings rule (like /login). It is kept in one
  * object so it can move to a dictionary unchanged if that ever changes.
  */
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { safeNextPath } from '@/lib/auth/admin-assurance'
@@ -65,56 +65,56 @@ function MfaForm() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const prepare = useCallback(async () => {
-    const supabase = createClient()
-    const { data: userData } = await supabase.auth.getUser()
-    if (!userData.user) {
-      window.location.assign(`/login?next=${encodeURIComponent(`/mfa?next=${encodeURIComponent(next)}`)}`)
-      return
-    }
-
-    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-    if (aal?.currentLevel === 'aal2') {
-      window.location.assign(next)
-      return
-    }
-
-    const { data: factors, error: listError } = await supabase.auth.mfa.listFactors()
-    if (listError || !factors) {
-      setMode({ kind: 'error', message: listError?.message ?? COPY.genericError })
-      return
-    }
-
-    const totp = factors.all.filter((f) => f.factor_type === 'totp')
-    const verified = totp.find((f) => f.status === 'verified')
-    if (verified) {
-      setMode({ kind: 'challenge', factorId: verified.id })
-      return
-    }
-
-    // An abandoned enrollment leaves an unverified factor behind, and a second
-    // enroll with the same friendly name is rejected — clear them first.
-    for (const f of totp) await supabase.auth.mfa.unenroll({ factorId: f.id })
-
-    const { data: enrolled, error: enrollError } = await supabase.auth.mfa.enroll({
-      factorType: 'totp',
-      friendlyName: FRIENDLY_NAME,
-    })
-    if (enrollError || !enrolled) {
-      setMode({ kind: 'error', message: enrollError?.message ?? COPY.genericError })
-      return
-    }
-    setMode({
-      kind: 'enroll',
-      factorId: enrolled.id,
-      qrCode: enrolled.totp.qr_code,
-      secret: enrolled.totp.secret,
-    })
-  }, [next])
-
   useEffect(() => {
+    // Runs once on mount: all state updates happen after awaits, never in the effect body.
+    async function prepare() {
+      const supabase = createClient()
+      const { data: userData } = await supabase.auth.getUser()
+      if (!userData.user) {
+        window.location.assign(`/login?next=${encodeURIComponent(`/mfa?next=${encodeURIComponent(next)}`)}`)
+        return
+      }
+
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (aal?.currentLevel === 'aal2') {
+        window.location.assign(next)
+        return
+      }
+
+      const { data: factors, error: listError } = await supabase.auth.mfa.listFactors()
+      if (listError || !factors) {
+        setMode({ kind: 'error', message: listError?.message ?? COPY.genericError })
+        return
+      }
+
+      const totp = factors.all.filter((f) => f.factor_type === 'totp')
+      const verified = totp.find((f) => f.status === 'verified')
+      if (verified) {
+        setMode({ kind: 'challenge', factorId: verified.id })
+        return
+      }
+
+      // An abandoned enrollment leaves an unverified factor behind, and a second
+      // enroll with the same friendly name is rejected — clear them first.
+      for (const f of totp) await supabase.auth.mfa.unenroll({ factorId: f.id })
+
+      const { data: enrolled, error: enrollError } = await supabase.auth.mfa.enroll({
+        factorType: 'totp',
+        friendlyName: FRIENDLY_NAME,
+      })
+      if (enrollError || !enrolled) {
+        setMode({ kind: 'error', message: enrollError?.message ?? COPY.genericError })
+        return
+      }
+      setMode({
+        kind: 'enroll',
+        factorId: enrolled.id,
+        qrCode: enrolled.totp.qr_code,
+        secret: enrolled.totp.secret,
+      })
+    }
     void prepare()
-  }, [prepare])
+  }, [next])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

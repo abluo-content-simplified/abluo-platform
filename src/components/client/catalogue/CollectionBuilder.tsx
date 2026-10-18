@@ -51,7 +51,7 @@ import {
 } from '@/lib/modules/catalogue/dashboard-form'
 import { CAT_ICONS, CAT_MOTION, GapBadges, InUseNotice, textIn, useCatalogueError } from './catalogue-ui'
 import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
-import { UnpublishDateSheet } from '@/components/app/lifecycle/UnpublishDateSheet'
+import { CatalogueDates, type CatalogueLive } from './CatalogueDates'
 import { FieldBlock, NameFields, PageField, VisibilityField } from './item-fields'
 import { useCatalogueDraft } from './use-catalogue-draft'
 import type { ItemChoice } from './choices'
@@ -93,6 +93,7 @@ export function CollectionBuilder({
 }) {
   const t = useTranslations('catalogue.dashboard.collection')
   const tl = useTranslations('app.lifecycle')
+  const td = useTranslations('catalogue.dashboard.dates')
   const ui = useLocale()
   const router = useRouter()
   const errorText = useCatalogueError()
@@ -125,7 +126,8 @@ export function CollectionBuilder({
   const [busy, setBusy] = useState(false)
   const [inUse, setInUse] = useState<Referrer[] | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const [dateOpen, setDateOpen] = useState(false)
+  // "On your website": the live dates, kept here so the next change uses the new revision.
+  const [live, setLive] = useState<CatalogueLive | null>(snapshot?.live ? { rev: snapshot.live.rev, publishedAt: snapshot.live.publishedAt, expiresAt: snapshot.live.expiresAt } : null)
   const { toast, show } = useUndo()
   const itemById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items])
   const depths = sectionDepths(sections)
@@ -193,13 +195,13 @@ export function CollectionBuilder({
       setBusy(false)
     }
   }
-  async function act(action: LifecycleAction, expiresAt?: string | null) {
+  async function act(action: LifecycleAction) {
     if (busy || !snapshot) return false
     setBusy(true)
     setInUse(null)
     try {
       await draft.flush()
-      const r = await catalogueLifecycleAction({ projectSlug, kind: 'collection', op: action, id: snapshot.id, expiresAt })
+      const r = await catalogueLifecycleAction({ projectSlug, kind: 'collection', op: action, id: snapshot.id })
       if (!r.ok) {
         if (r.error === 'in_use' && r.detail?.referrers?.length) setInUse(r.detail.referrers)
         else show({ message: errorText(r.error), tone: 'error' })
@@ -215,12 +217,13 @@ export function CollectionBuilder({
   const menu: CardMenuItem[] = [
     ...(!readOnly && draft.created ? [{ key: 'publishTogether', label: tt('publishCollection'), onSelect: () => void draft.flush().then(() => together.openSheet()) }] : []),
     ...(snapshot
-      ? lifecycleMenu(snapshot.status.status, can).map((e) => ({
+      ? // Dates are changed in the Details tab's "On your website" block, not from the menu.
+        lifecycleMenu(snapshot.status.status, can).filter((e) => e.action !== 'setUnpublishDate').map((e) => ({
           key: e.action,
           label: tl(`actions.${e.action}`),
           destructive: e.destructive,
           separated: e.separated,
-          onSelect: () => (e.action === 'delete' || e.action === 'deletePermanently' ? setConfirmDelete(true) : e.action === 'setUnpublishDate' ? setDateOpen(true) : void act(e.action)),
+          onSelect: () => (e.action === 'delete' || e.action === 'deletePermanently' ? setConfirmDelete(true) : void act(e.action)),
         }))
       : []),
   ]
@@ -320,6 +323,11 @@ export function CollectionBuilder({
               <NameFields autoFocus={!snapshot} locale={d} name={name} description={description} onName={(l, v) => setText('name', l, v)} onDescription={(l, v) => setText('description', l, v)} />
               {!draft.created ? <p className="text-sm text-muted-foreground">{t('nameFirst')}</p> : null}
             </FieldBlock>
+            {!readOnly && live ? (
+              <FieldBlock title={td('title')}>
+                <CatalogueDates id="collection-dates" live={live} onLive={setLive} draft={draft} zone={zone} disabled={busy} onNotice={show} />
+              </FieldBlock>
+            ) : null}
             {site.locales.length > 1 && draft.created ? (
               <FieldBlock title={t('languages')}>
                 {site.locales
@@ -493,15 +501,6 @@ export function CollectionBuilder({
           setConfirmDelete(false)
         }}
         onCancel={() => setConfirmDelete(false)}
-      />
-      <UnpublishDateSheet
-        open={dateOpen}
-        busy={busy}
-        zone={zone}
-        onClose={() => setDateOpen(false)}
-        onSave={async (iso) => {
-          if (await act('setUnpublishDate', iso)) setDateOpen(false)
-        }}
       />
       <Toast message={toast?.message ?? null} tone={toast?.tone} />
     </div>
