@@ -50,6 +50,8 @@ import { articlePortableTextComponents } from '@/components/portable-text/articl
 import { CatalogueCollectionView } from './CatalogueCollectionView'
 import { bookPublisherLine } from '@/lib/modules/catalogue/list-model'
 import { affiliateDisclosureText, collectionHasAffiliateLink, hasAffiliateLink } from '@/lib/modules/catalogue/affiliate'
+import { collectionHasAmazon, collectionHasAmazonAffiliateLink, hasAmazonAffiliateLink, itemHasAmazonLink, linksHaveAmazon, localizeCollection, localizeItem } from '@/lib/modules/catalogue/amazon-delivery'
+import { visitorCountry } from '@/lib/affiliate/visitor-country'
 import { AffiliateDisclosure, AllergensAndDietary, BuyLinks, Byline, ItemLinks, ItemTags, OfferList, optionAllergenText } from './CatalogueItemParts'
 import { getCatalogueWebsiteMessages, optionRuleText, fillMessage } from './messages'
 
@@ -197,8 +199,14 @@ export async function CatalogueRoute(
   const messages = getCatalogueWebsiteMessages(locale)
   const siteHosts = siteHostsForProject(ctx.tenantId)
 
+  // Amazon buy links are rewritten for THIS request: the visitor's country picks the store, the tenant's
+  // tracking ID for it is added. This route is force-dynamic ([...slug]/page.tsx), so nothing is shared
+  // between visitors. No Amazon link on the page = no header read, nothing changes.
+  const hasAmazon = entry.kind === 'item' ? linksHaveAmazon(entry.item.links) : collectionHasAmazon(entry.collection)
+  const amazon = hasAmazon ? { country: await visitorCountry(), trackingIds: siteConfig?.amazonTrackingIds } : null
+
   if (entry.kind === 'item') {
-    const item = entry.item
+    const item = amazon ? localizeItem(entry.item, amazon) : entry.item
     const url = catalogueItemCanonical(item, origin, locale, segment)
     const jsonLd = url ? catalogueItemJsonLd(item, { url, locale, itemUrl }) : null
     return (
@@ -209,7 +217,7 @@ export async function CatalogueRoute(
     )
   }
 
-  const collection = entry.collection
+  const collection = amazon ? localizeCollection(entry.collection, amazon) : entry.collection
   const url = catalogueItemCanonical(collection, origin, locale, segment)
   const jsonLd = url ? catalogueCollectionJsonLd(collection, { url, locale, itemUrl }) : null
   return (
@@ -272,6 +280,8 @@ function CatalogueCollectionPageView({
 }) {
   const { duration, ease } = motionOf(designSystem)
   const disclosure = affiliateDisclosureText(collectionHasAffiliateLink(collection), affiliateDisclosure, messages.affiliateDisclosureDefault)
+  // Amazon's required sentence: only when an Amazon affiliate link renders on this page.
+  const amazonStatement = collectionHasAmazonAffiliateLink(collection) ? messages.amazonStatement || null : null
   return (
     <div style={{ backgroundColor: 'var(--color-background)' }}>
       <div className="mx-auto max-w-3xl px-5 py-12 md:px-10 md:py-20">
@@ -291,7 +301,7 @@ function CatalogueCollectionPageView({
           itemHref={itemHref}
           rootHeadingLevel={2}
         />
-        <AffiliateDisclosure text={disclosure} />
+        <AffiliateDisclosure text={disclosure} amazonStatement={amazonStatement} />
       </div>
     </div>
   )
@@ -314,6 +324,7 @@ function CatalogueItemPageView({
 }) {
   const { duration, ease } = motionOf(designSystem)
   const disclosure = affiliateDisclosureText(hasAffiliateLink(item.links), affiliateDisclosure, m.affiliateDisclosureDefault)
+  const amazonStatement = hasAmazonAffiliateLink(item.links) ? m.amazonStatement || null : null
   const infoLinks = item.links.filter((l) => l.kind !== 'buy')
   const hero = item.images[0]
   const heroSource = hero ? (hero.image as unknown as ResolvedImage) : null
@@ -344,7 +355,7 @@ function CatalogueItemPageView({
               {/* Amendment K — "Publisher · 1979" beside the author line (books only). */}
               <Byline byline={bookPublisherLine({ publisher: item.bookDetails?.publisher, year: item.bookDetails?.year })} className="mt-1 text-base" />
             </div>
-            {showPrices && item.offers.length > 0 && (
+            {showPrices && !itemHasAmazonLink(item) && item.offers.length > 0 && (
               <div className="sm:pt-3">
                 <span className="sr-only">{m.pricesHeading}</span>
                 <OfferList offers={item.offers} m={m} />
@@ -427,7 +438,7 @@ function CatalogueItemPageView({
           </SlideUp>
         )}
 
-        <AffiliateDisclosure text={disclosure} />
+        <AffiliateDisclosure text={disclosure} amazonStatement={amazonStatement} />
       </article>
     </div>
   )

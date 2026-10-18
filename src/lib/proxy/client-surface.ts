@@ -58,6 +58,8 @@ export const CLIENT_PROJECT_SEGMENTS = new Set([
   'catalogue',
   // ADR-033 Amendment J: Categories & Tags (one manager for every module with a taxonomy).
   'taxonomy',
+  // Settings: the client's own business facts (Amazon IDs, affiliate disclosure). `settings` is already a reserved slug.
+  'settings',
 ])
 
 /**

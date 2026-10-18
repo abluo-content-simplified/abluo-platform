@@ -37,6 +37,9 @@ export const CATALOGUE_WEBSITE_KEYS = [
   'buyDefault',
   'affiliateMarker',
   'affiliateDisclosureDefault',
+  // Amazon's required sentence (en/it/de in messages/*.json). The exact wording must be verified against
+  // the tenant's Amazon Associates agreement; shown only when an Amazon affiliate link renders.
+  'amazonStatement',
 ] as const
 
 export type CatalogueWebsiteKey = (typeof CATALOGUE_WEBSITE_KEYS)[number]

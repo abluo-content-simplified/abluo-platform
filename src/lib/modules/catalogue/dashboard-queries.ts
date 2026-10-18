@@ -12,7 +12,7 @@ import { catalogueCategoryTermsGroq, catalogueTermsGroq } from '@/lib/taxonomy/v
 
 /** Site languages and zone (dates are entered in the site's time zone, ADR-032 D8). */
 export const CATALOGUE_SITE_QUERY = /* groq */ `{
-  "site": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales, timeZone },
+  "site": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales, timeZone, amazonTrackingIds[]{ marketplace, trackingId } },
   "config": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].moduleInstallations[moduleId == "catalogue"][0].config,
   "presetId": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].moduleInstallations[moduleId == "catalogue"][0].appliedPreset.id,
   "translate": count(*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].moduleInstallations[moduleId == "translate" && enabled != false]) > 0,

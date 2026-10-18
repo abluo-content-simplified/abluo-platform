@@ -24,6 +24,7 @@ import { BottomSheet } from '@/components/app/ui/BottomSheet'
 import { Button } from '@/components/app/ui/Button'
 import { ChoiceCard } from '@/components/app/ui/ChoiceCard'
 import { Chip } from '@/components/app/ui/Chip'
+import { Notice } from '@/components/app/ui/Notice'
 import { Panel } from '@/components/app/ui/Panel'
 import { ProgressBar } from '@/components/app/ui/ProgressBar'
 import { FilterSearch } from '@/components/app/ui/FilterBar'
@@ -104,6 +105,7 @@ function useTouchDevice(): boolean | null {
 export function CoverStep(props: CoverStepProps) {
   const { draft, site, altNeeded, flush, onServerWrite, onCoverChange, onPendingChange, getRev, onRevChange } = props
   const t = useTranslations('clientDashboard.create.cover')
+  const tm = useTranslations('clientDashboard.media')
   const viewerLocale = useLocale()
   const uid = useId()
   const touch = useTouchDevice()
@@ -495,6 +497,7 @@ export function CoverStep(props: CoverStepProps) {
         {t('title')}
       </h1>
       <p className="mt-3 text-[1.0625rem] leading-7 text-muted-foreground">{t('helper')}</p>
+      <Notice tone="info" className="mt-4">{tm('uploadRights')}</Notice>
 
       <input ref={cameraRef} type="file" accept={ACCEPT} capture="environment" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={(e) => onPicked(e.target)} />
       <input ref={pickerRef} type="file" accept={ACCEPT} className="sr-only" tabIndex={-1} aria-hidden="true" onChange={(e) => onPicked(e.target)} />

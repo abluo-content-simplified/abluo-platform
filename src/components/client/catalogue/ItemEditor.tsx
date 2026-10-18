@@ -21,6 +21,7 @@ import { PublicationDateField } from '@/components/app/lifecycle/PublicationDate
 import { editingZone } from '@/components/app/lifecycle/zoned-time'
 import { catalogueLifecycleAction } from '@/app/[locale]/(client)/[tenant]/catalogue/actions'
 import type { CatalogueAbilities, CatalogueSite, CatalogueSnapshot } from '@/lib/api/catalogue-drafts'
+import { looksLikeAmazon } from '@/lib/affiliate/amazon-links'
 import type { Referrer } from '@/lib/lifecycle/service'
 import { PROFILES, can as profileCan } from '@/lib/modules/catalogue/profiles'
 import { attachmentIssues, declarationIssues, itemGaps, itemOptionsRelevant, itemStateFromDoc, type ItemState } from '@/lib/modules/catalogue/dashboard-form'
@@ -56,6 +57,7 @@ export function ItemEditor({
   optionLists,
   can,
   canAddCategory = false,
+  canOpenSettings = false,
   listHref,
 }: {
   projectSlug: string
@@ -65,6 +67,8 @@ export function ItemEditor({
   can: CatalogueAbilities['item']
   /** Holds catalogue.taxonomy.write: the category field offers "+ Add category" (and shows even with no category yet). */
   canAddCategory?: boolean
+  /** Owner or site admin: the Amazon ID hint links to Settings (others are told to ask their admin). */
+  canOpenSettings?: boolean
   listHref: string
 }) {
   const t = useTranslations('catalogue.dashboard.item.editor')
@@ -301,7 +305,7 @@ export function ItemEditor({
               </FieldBlock>
             ) : null}
             <FieldBlock title={tfl('title')} helper={tfl('helper')}>
-              <LinksField links={s.links} locales={site.locales} defaultLocale={d} onChange={item.setLinks} />
+              <LinksField links={s.links} locales={site.locales} defaultLocale={d} onChange={item.setLinks} amazon={{ projectSlug, trackingIds: site.amazonTrackingIds ?? [], canOpenSettings }} />
             </FieldBlock>
             <FieldBlock>
               <VisibilityField value={s.visibility} onChange={item.setVisibility} />
@@ -313,7 +317,7 @@ export function ItemEditor({
           </FieldBlock>
         ) : current === 'prices' ? (
           <FieldBlock title={tf('price.title')} helper={tf('price.helper')}>
-            <PriceField offers={s.offers} channels={site.config.channels} currency={site.config.currency} defaultLocale={d} onChange={item.setOffers} />
+            <PriceField offers={s.offers} channels={site.config.channels} currency={site.config.currency} defaultLocale={d} onChange={item.setOffers} hiddenByAmazon={s.links.some((l) => l.kind === 'buy' && looksLikeAmazon(l.url))} />
           </FieldBlock>
         ) : current === 'details' ? (
           <FieldBlock title={tf('details.title')}>

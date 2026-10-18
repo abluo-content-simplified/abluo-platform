@@ -15,6 +15,7 @@ import { offerIssues, type Offer, type OfferIssue } from './offers'
 import { ruleIssues, WEEKDAYS, type Weekday } from './availability'
 import { isDescendant, moveSection, readingOrder, removeSection, subtreeOf, type SectionNode } from './sections'
 import { catalogueLinkUrl } from './links'
+import { isAmazonShortLink, looksLikeAmazon, parseAmazonUrl } from '@/lib/affiliate/amazon-links'
 import { can, isItemProfile, offeringOf, type ItemProfile } from './profiles'
 import { bookYearProblem, normalizeIsbn, parseBookYear } from './isbn'
 import { orderedAllergens, type AllergenDeclarationStatus, type AllergenKey } from './allergens'
@@ -538,16 +539,22 @@ export type LinkForm = {
   kind: 'info' | 'buy'
   /** Only meaningful on a buy link. */
   affiliate: boolean
+  /** Buy link only: product URLs of other Amazon stores (one row each; may hold a half-typed one). */
+  moreUrls?: string[]
 }
+
+/** An address the server accepts as an extra Amazon store link: a readable product URL, or an app short link. */
+export const isMoreAmazonUrl = (u: string): boolean => parseAmazonUrl(u).ok || isAmazonShortLink(u)
 
 export function linkFormsFromDoc(value: unknown): LinkForm[] {
   if (!Array.isArray(value)) return []
   return value
     .filter((l) => l && typeof l === 'object' && typeof (l as { _key?: unknown })._key === 'string')
     .map((l) => {
-      const r = l as { _key: string; label?: unknown; url?: unknown; kind?: unknown; affiliate?: unknown }
+      const r = l as { _key: string; label?: unknown; url?: unknown; kind?: unknown; affiliate?: unknown; moreUrls?: unknown }
       const buy = r.kind === 'buy'
-      return { key: r._key, label: textsOf(r.label), url: typeof r.url === 'string' ? r.url : '', kind: buy ? 'buy' : 'info', affiliate: buy && r.affiliate === true } satisfies LinkForm
+      const more = buy && Array.isArray(r.moreUrls) ? r.moreUrls.filter((u): u is string => typeof u === 'string') : []
+      return { key: r._key, label: textsOf(r.label), url: typeof r.url === 'string' ? r.url : '', kind: buy ? 'buy' : 'info', affiliate: buy && r.affiliate === true, ...(more.length ? { moreUrls: more } : {}) } satisfies LinkForm
     })
 }
 
@@ -556,7 +563,7 @@ export function linkFormsFromDoc(value: unknown): LinkForm[] {
  * BOTH a label (in the main language) and a valid http(s) address; a half-filled
  * row is "incomplete" (kept on screen, not sent), a bad address is "badUrl".
  */
-export type LinkIssue = { kind: 'incomplete' | 'badUrl'; key: string }
+export type LinkIssue = { kind: 'incomplete' | 'badUrl' | 'badMore'; key: string }
 
 export function linkFormIssues(links: readonly LinkForm[], defaultLocale: string): LinkIssue[] {
   const out: LinkIssue[] = []
@@ -567,6 +574,7 @@ export function linkFormIssues(links: readonly LinkForm[], defaultLocale: string
     if (!url && !Boolean(l.label[defaultLocale]?.trim())) continue
     if (url && !catalogueLinkUrl(url)) out.push({ kind: 'badUrl', key: l.key })
     else if (!url || !hasLabel) out.push({ kind: 'incomplete', key: l.key })
+    else if (l.kind === 'buy' && (l.moreUrls ?? []).some((u) => u.trim() && !isMoreAmazonUrl(u.trim()))) out.push({ kind: 'badMore', key: l.key })
   }
   return out
 }
@@ -575,13 +583,17 @@ export function linkFormIssues(links: readonly LinkForm[], defaultLocale: string
 export function linksPatch(links: readonly LinkForm[], defaultLocale: string) {
   return links
     .filter((l) => (l.kind === 'buy' || l.label[defaultLocale]?.trim()) && catalogueLinkUrl(l.url))
-    .map((l) => ({
-      _key: l.key,
-      label: l.label,
-      url: l.url.trim(),
-      // Additive (Amendment K): an info link is written exactly as before.
-      ...(l.kind === 'buy' ? { kind: 'buy' as const, ...(l.affiliate ? { affiliate: true } : {}) } : {}),
-    }))
+    .map((l) => {
+      // Extra Amazon stores: only readable ones, and only when the main address is Amazon too (the server checks again).
+      const more = l.kind === 'buy' && looksLikeAmazon(l.url) ? (l.moreUrls ?? []).map((u) => u.trim()).filter((u) => u && isMoreAmazonUrl(u)) : []
+      return {
+        _key: l.key,
+        label: l.label,
+        url: l.url.trim(),
+        // Additive (Amendment K): an info link is written exactly as before.
+        ...(l.kind === 'buy' ? { kind: 'buy' as const, ...(l.affiliate ? { affiliate: true } : {}), ...(more.length ? { moreUrls: more } : {}) } : {}),
+      }
+    })
 }
 
 // ── The wizard's single "Buy link" (Amendment K, equivalence D9) ──────────────
@@ -597,7 +609,7 @@ export function buyLinkOf(links: readonly LinkForm[]): LinkForm | null {
 /** Applies a change to the first buy link (creating it when absent); a buy link left completely empty is removed. */
 export function withBuyLink(
   links: readonly LinkForm[],
-  change: Partial<Pick<LinkForm, 'url' | 'label' | 'affiliate'>>,
+  change: Partial<Pick<LinkForm, 'url' | 'label' | 'affiliate' | 'moreUrls'>>,
   newKey: () => string,
 ): LinkForm[] {
   const current = buyLinkOf(links)

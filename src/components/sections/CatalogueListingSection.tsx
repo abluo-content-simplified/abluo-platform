@@ -26,6 +26,7 @@ import { siteHostsForProject } from '@/lib/links/link-target'
 import { getCatalogueWebsiteMessages } from '@/components/catalogue/messages'
 import { AffiliateDisclosure } from '@/components/catalogue/CatalogueItemParts'
 import { affiliateDisclosureText, collectionHasAffiliateLink } from '@/lib/modules/catalogue/affiliate'
+import { collectionHasAmazonAffiliateLink } from '@/lib/modules/catalogue/amazon-delivery'
 import { catalogueItemHref, collectionHasItems, listingAllergenPresentation, listingShowsPrices } from '@/lib/modules/catalogue/website'
 
 interface Props {
@@ -104,7 +105,7 @@ export function CatalogueListingSection({ section, surface, designSystem, locale
           itemHref={(item) => catalogueItemHref(item, siteBase, data.segment)}
           rootHeadingLevel={title ? 3 : 2}
         />
-        <AffiliateDisclosure text={disclosure} className="mt-8 text-sm leading-relaxed" />
+        <AffiliateDisclosure text={disclosure} amazonStatement={collectionHasAmazonAffiliateLink(collection) ? messages.amazonStatement || null : null} className="mt-8 text-sm leading-relaxed" />
       </div>
     </SectionContainer>
   )

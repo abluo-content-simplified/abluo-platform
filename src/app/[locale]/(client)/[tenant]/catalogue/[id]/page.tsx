@@ -42,6 +42,7 @@ async function CatalogueItemPageInner({ params }: { params: Promise<{ tenant: st
         optionLists={optionListChoices(lists, site.defaultLocale)}
         can={catalogueAbilities(grant).item}
         canAddCategory={grant.permissions.includes(taxonomyWritePermission('catalogue'))}
+        canOpenSettings={grant.permissions.includes('site.details.write')}
         listHref={`/${projectSlug}/catalogue`}
       />
       {perfBeacon()}

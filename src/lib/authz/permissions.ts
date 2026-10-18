@@ -115,6 +115,23 @@ export const PLATFORM_PERMISSIONS: readonly PlatformPermissionDef[] = [
     defaults: { project: ['owner', 'admin'] },
   },
   {
+    // Settings page (Tom, 2026-10-18): facts the client owns about their own
+    // business (Amazon tracking IDs, affiliate disclosure, later contact and
+    // legal details). Deliberately NOT `settings.manage`, which is a
+    // configuration permission the surface boundary test refuses.
+    id: 'site.details.read',
+    description: 'See the Settings page (the client’s own business details).',
+    grantable: false,
+    defaults: { project: ['owner', 'admin', 'editor'] },
+  },
+  {
+    id: 'site.details.write',
+    description: 'Change the business details on the Settings page.',
+    grantable: false,
+    defaults: { project: ['owner', 'admin'] },
+    requires: 'site.details.read',
+  },
+  {
     id: 'modules.manage',
     description: 'Add modules to a site.',
     grantable: false,

@@ -24,6 +24,7 @@ import {
   getCatalogueDoc,
   listCatalogue,
   openCatalogueForEdit,
+  resolveAmazonLink,
   patchCatalogueDraft,
   previewCataloguePublish,
   publishCatalogueDraft,
@@ -111,6 +112,11 @@ export async function patchCatalogueDraftAction(input: {
   return run('patch', input?.projectSlug, (ctx, pid) =>
     patchCatalogueDraft(ctx, pid, kindOf(input.kind), { id: input.id, rev: input.rev, set: input.set, openFrom: typeof input.openFrom === 'string' ? input.openFrom : undefined })
   )
+}
+
+/** Amazon app link → the product URL it opens (null = could not be read; the editor keeps the link and says so). */
+export async function resolveAmazonLinkAction(input: { projectSlug: string; url: string }): Promise<Result<{ url: string | null }>> {
+  return run('resolveAmazon', input?.projectSlug, (ctx, pid) => resolveAmazonLink(ctx, pid, input.url))
 }
 
 export async function publishCatalogueDraftAction(

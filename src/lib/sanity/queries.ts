@@ -709,6 +709,11 @@ export const siteConfigFaviconQuery = /* groq */ `
   }
 `
 
+/** The tenant's Amazon tracking IDs only (listing sections hydrate without the full site config). */
+export const amazonTrackingIdsQuery = /* groq */ `
+  *[_type == "siteConfig" && projectSlug == $projectSlug][0].amazonTrackingIds[] { marketplace, trackingId }
+`
+
 export const websiteSiteConfigQuery = /* groq */ `
   *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
     projectSlug,
@@ -830,6 +835,8 @@ export const websiteSiteConfigQuery = /* groq */ `
     addressCountry,
     youtubeChannelUrl,
     socialLinks[] { platform, url },
+    // Amazon Associates — one tracking ID per marketplace (read by the catalogue buy links).
+    amazonTrackingIds[] { marketplace, trackingId },
     phone,
     email,
     whatsappNumber,
@@ -2303,7 +2310,7 @@ const CATALOGUE_ITEM_FIELDS = /* groq */ `
   "slugMap": slug,
   categories,
   tags,
-  links[] { _key, "label": ${loc('label')}, url, kind, affiliate },
+  links[] { _key, "label": ${loc('label')}, url, kind, affiliate, moreUrls },
   // ADR-033 D-3 — the explicit declaration; the note is tenant text (locale chain).
   allergenDeclaration { status, allergens, mayContain, confirmed, "note": ${loc('note')} },
   dietary,

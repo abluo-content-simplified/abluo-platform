@@ -115,11 +115,13 @@ export function BuyLinks({ links, siteHosts = [], m }: { links: readonly Catalog
 }
 
 /** Amendment K — the catalogue's affiliate disclosure, once per page, below the content. `text` null = render nothing. */
-export function AffiliateDisclosure({ text, className }: { text: string | null; className?: string }) {
-  if (!text) return null
+export function AffiliateDisclosure({ text, amazonStatement, className }: { text: string | null; /** Amazon's required sentence; pass only when an Amazon affiliate link renders. */ amazonStatement?: string | null; className?: string }) {
+  if (!text && !amazonStatement) return null
   return (
     <p className={className ?? 'mt-12 text-sm leading-relaxed'} style={MUTED} data-affiliate-disclosure="">
       {text}
+      {text && amazonStatement ? ' ' : null}
+      {amazonStatement ? <span data-amazon-statement="">{amazonStatement}</span> : null}
     </p>
   )
 }

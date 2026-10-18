@@ -9,6 +9,7 @@ import { PublishChoice } from '@/components/app/lifecycle/PublishChoice'
 import { publishChoiceDates, type PublishChoiceValue } from '@/components/app/lifecycle/publish-plan'
 import { editingZone } from '@/components/app/lifecycle/zoned-time'
 import type { CatalogueSite } from '@/lib/api/catalogue-drafts'
+import { looksLikeAmazon } from '@/lib/affiliate/amazon-links'
 import { can } from '@/lib/modules/catalogue/profiles'
 import { EMPTY_BOOK_DETAILS, NOT_REVIEWED, canAdvanceItem, initialItemProfile, itemOptionsRelevant, itemWizardSteps, type ItemProfile, type ItemState, type ItemStep } from '@/lib/modules/catalogue/dashboard-form'
 import { blocksNextOn, itemIssues, publishBlockers, type ItemIssue } from '@/lib/modules/catalogue/item-issues'
@@ -36,7 +37,7 @@ type Done = { kind: 'live' } | { kind: 'scheduled'; at: string } | { kind: 'draf
  * Lazy creation: nothing exists until the name is typed; then the URL becomes
  * /catalogue/<id> without a reload, and closing the browser loses nothing.
  */
-export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCategory = false }: { projectSlug: string; site: CatalogueSite; optionLists: OptionListChoice[]; listHref: string; /** Holds catalogue.taxonomy.write: the category step offers "+ Add category" (and shows even with no category yet). */ canAddCategory?: boolean }) {
+export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCategory = false, canOpenSettings = false }: { projectSlug: string; site: CatalogueSite; optionLists: OptionListChoice[]; listHref: string; /** Holds catalogue.taxonomy.write: the category step offers "+ Add category" (and shows even with no category yet). */ canAddCategory?: boolean; /** Owner or site admin: the Amazon ID hint links to Settings. */ canOpenSettings?: boolean }) {
   const t = useTranslations('catalogue.dashboard.item.wizard')
   const tc = useTranslations('clientDashboard.create')
   const tl = useTranslations('app.lifecycle')
@@ -222,7 +223,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
           <>
             {heading('item-step-name', s.itemProfile && can(s.itemProfile, 'bookDetails') ? 'nameBook' : 'name')}
             <div className="mt-8">
-              <NameFields autoFocus locale={d} profile={s.itemProfile} afterName={s.itemProfile && can(s.itemProfile, 'bookDetails') ? <><BookDetailsFields value={s.bookDetails} onChange={item.setBookDetails} /><div className="mt-5"><BuyLinkField links={s.links} defaultLocale={d} onChange={item.setLinks} /></div></> : null} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
+              <NameFields autoFocus locale={d} profile={s.itemProfile} afterName={s.itemProfile && can(s.itemProfile, 'bookDetails') ? <><BookDetailsFields value={s.bookDetails} onChange={item.setBookDetails} /><div className="mt-5"><BuyLinkField links={s.links} defaultLocale={d} onChange={item.setLinks} amazon={{ projectSlug, trackingIds: site.amazonTrackingIds ?? [], canOpenSettings }} /></div></> : null} name={s.name} byline={s.byline} description={s.description} onName={setName} onByline={(l, v) => item.setText('byline', l, v)} onDescription={(l, v) => item.setText('description', l, v)} />
             </div>
           </>
         ) : step === 'category' ? (
@@ -249,7 +250,7 @@ export function ItemWizard({ projectSlug, site, optionLists, listHref, canAddCat
           <>
             {heading('item-step-price', 'price')}
             <div className="mt-8">
-              <PriceField offers={s.offers} channels={site.config.channels} currency={site.config.currency} defaultLocale={d} onChange={item.setOffers} />
+              <PriceField offers={s.offers} channels={site.config.channels} currency={site.config.currency} defaultLocale={d} onChange={item.setOffers} hiddenByAmazon={s.links.some((l) => l.kind === 'buy' && looksLikeAmazon(l.url))} />
             </div>
           </>
         ) : step === 'details' ? (

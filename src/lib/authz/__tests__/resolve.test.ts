@@ -189,3 +189,25 @@ describe('ADR-031 connections.manage', async () => {
     expect(has('editor', ['connections.manage'])).toBe(false)
   })
 })
+
+describe('Settings page permissions (Tom, 2026-10-18)', async () => {
+  const { resolveProjectPermissions } = await import('../resolve')
+  const { platformPermission } = await import('../permissions')
+  const has = (role: 'owner' | 'admin' | 'editor', id: string, extras: string[] = []) =>
+    resolveProjectPermissions({ role, enabledModuleIds: [], projectExtras: extras }).permissions.includes(id)
+  it('read: Owner, Site admin and Editor; write: Owner and Site admin only', () => {
+    expect(platformPermission('site.details.read')!.defaults).toEqual({ project: ['owner', 'admin', 'editor'] })
+    expect(platformPermission('site.details.write')!.defaults).toEqual({ project: ['owner', 'admin'] })
+    expect(has('editor', 'site.details.read')).toBe(true)
+    expect(has('editor', 'site.details.write')).toBe(false)
+    expect(has('admin', 'site.details.write')).toBe(true)
+    expect(has('owner', 'site.details.write')).toBe(true)
+  })
+  it('neither can be given as an extra, and neither is a configuration permission', async () => {
+    expect(platformPermission('site.details.write')!.grantable).toBe(false)
+    expect(has('editor', 'site.details.write', ['site.details.write'])).toBe(false)
+    const { CONFIGURATION_PERMISSIONS } = await import('@/lib/client/surfaces')
+    expect(CONFIGURATION_PERMISSIONS).not.toContain('site.details.read')
+    expect(CONFIGURATION_PERMISSIONS).not.toContain('site.details.write')
+  })
+})

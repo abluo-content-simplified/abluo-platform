@@ -30,5 +30,5 @@ export default async function NewCatalogueItemPage({ params }: { params: Promise
     throw error
   }
   const [site, lists] = await Promise.all([getCatalogueSite(ctx, grant.projectId), listCatalogue(ctx, grant.projectId)])
-  return <ItemWizard projectSlug={projectSlug} site={site} optionLists={optionListChoices(lists, site.defaultLocale)} listHref={`/${projectSlug}/catalogue`} canAddCategory={grant.permissions.includes(taxonomyWritePermission('catalogue'))} />
+  return <ItemWizard projectSlug={projectSlug} site={site} optionLists={optionListChoices(lists, site.defaultLocale)} listHref={`/${projectSlug}/catalogue`} canAddCategory={grant.permissions.includes(taxonomyWritePermission('catalogue'))} canOpenSettings={grant.permissions.includes('site.details.write')} />
 }

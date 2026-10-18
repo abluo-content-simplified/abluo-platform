@@ -734,6 +734,8 @@ export interface WebsiteSiteConfig {
   foundedYear?: number
   youtubeChannelUrl?: string
   socialLinks?: SocialLink[]
+  /** Amazon Associates tracking IDs, one per marketplace (Settings). Absent = none. */
+  amazonTrackingIds?: { marketplace: string; trackingId: string }[] | null
   phone?: string
   email?: string
   /** WhatsApp channel (ADR-018): number, the subject+message form, and the floating-button toggle. */

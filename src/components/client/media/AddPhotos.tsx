@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type DragEvent } from 'react'
 import { useTranslations } from 'next-intl'
+import { Notice } from '@/components/app/ui/Notice'
 import { ChoiceCard, ChoiceCardGrid } from '@/components/app/ui/ChoiceCard'
 import type { FocalPoint } from '@/components/app/ui/FocalPointPicker'
 import type { MediaScope } from '@/components/client/media/media-api'
@@ -62,6 +63,7 @@ export const useTouchDevice = () =>
  */
 export function AddPhotos({ projectSlug, scope, onUploaded, onOpenLibrary, room, disabled, owner }: AddPhotosProps) {
   const t = useTranslations('clientDashboard.media.add')
+  const tm = useTranslations('clientDashboard.media')
   const touch = useTouchDevice()
   const cameraRef = useRef<HTMLInputElement>(null)
   const pickerRef = useRef<HTMLInputElement>(null)
@@ -162,6 +164,8 @@ export function AddPhotos({ projectSlug, scope, onUploaded, onOpenLibrary, room,
           <ChoiceCard icon={ICONS.library} label={t('library')} onSelect={onOpenLibrary} disabled={off} />
         )}
       </ChoiceCardGrid>
+
+      <Notice tone="info" className="mt-3">{tm('uploadRights')}</Notice>
 
       {notice && (
         <p role="status" className="mt-3 text-sm text-muted-foreground">

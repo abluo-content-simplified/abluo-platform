@@ -77,7 +77,8 @@
       "connections": "Verbundene Apps",
       "analytics": "Statistiken",
       "catalogue": "Katalog",
-      "brand-hub": "Brand Hub"
+      "brand-hub": "Brand Hub",
+      "settings": "Einstellungen"
     },
     "shell": {
       "brandTagline": "Dashboard",
@@ -1612,7 +1613,8 @@
       "uploads": {
         "stillUploading": "{count, plural, one {# Foto wird fertiggestellt …} other {# Fotos werden fertiggestellt …}}",
         "addedToLibrary": "{count, plural, one {# Foto wurde deiner Mediathek hinzugefügt.} other {# Fotos wurden deiner Mediathek hinzugefügt.}}"
-      }
+      },
+      "uploadRights": "Lade nur Bilder hoch, die dir gehören oder die du verwenden darfst."
     },
     "taxonomy": {
       "title": "Kategorien & Tags",
@@ -2176,6 +2178,36 @@
         "goesLive": "Geht online · {date}",
         "goesOffline": "Geht offline · {date}",
         "wentOffline": "Offline seit · {date}"
+      }
+    },
+    "settings": {
+      "title": "Einstellungen",
+      "changesLive": "Änderungen erscheinen sofort auf deiner Website.",
+      "readOnly": "Nur der Inhaber und die Website-Admins können diese Einstellungen ändern.",
+      "rejected": "Einige Änderungen konnten nicht gespeichert werden. Bitte prüfe die Werte und versuche es erneut.",
+      "amazon": {
+        "title": "Amazon",
+        "intro": "Deine Amazon-Partner-IDs, eine pro Amazon-Shop. Wir fügen automatisch die passende ID zu deinen Amazon-Links hinzu.",
+        "emptyTitle": "Noch keine Amazon-IDs",
+        "emptyBody": "Trage für jeden Amazon-Shop, auf den du verlinkst, die ID ein, die du von Amazon PartnerNet erhalten hast.",
+        "store": "Amazon-Shop",
+        "chooseStore": "Shop wählen",
+        "trackingId": "Tracking-ID",
+        "trackingIdPlaceholder": "z. B. deinname-21",
+        "looksOff": "Das sieht nicht nach einer üblichen Tracking-ID aus (wie name-21). Behalte sie, wenn sie stimmt.",
+        "incomplete": "Trage die Tracking-ID ein, um diesen Shop zu speichern.",
+        "duplicate": "Jeder Shop kann nur einmal vorkommen.",
+        "remove": "Entfernen",
+        "removeNamed": "{store} entfernen",
+        "add": "+ Amazon-Shop hinzufügen",
+        "suggested": "Passend zu den Sprachen deiner Website",
+        "quickAdd": "+ {store}"
+      },
+      "disclosure": {
+        "title": "Hinweis zu Affiliate-Links",
+        "intro": "Ein Satz, der einmal unten auf einer Seite mit Affiliate-Kauflink erscheint. Lass eine Sprache leer, um unseren Standardtext zu verwenden.",
+        "usingStandard": "Leer: Auf deiner Website erscheint der Standardtext.",
+        "useStandard": "Standardtext verwenden"
       }
     }
   },
@@ -3723,7 +3755,8 @@
             "kindBuy": "Kauf-Link",
             "kindBuyHelp": "Zeigt einen Kaufen-Button auf der Seite. Die Beschriftung ist optional.",
             "affiliate": "Dies ist ein Affiliate-Link",
-            "affiliateHelp": "Du erhältst eine Provision, wenn jemand über diesen Link kauft."
+            "affiliateHelp": "Du erhältst eine Provision, wenn jemand über diesen Link kauft.",
+            "badMore": "Verwende für die anderen Shops einen Amazon-Produktlink."
           },
           "title": "Titel",
           "book": {
@@ -3739,6 +3772,22 @@
             "url": "Kauf-Link",
             "help": "Optional. Wo man es kaufen kann. Erscheint als Kaufen-Button auf der Seite.",
             "label": "Button-Text (optional)"
+          },
+          "amazon": {
+            "finalLink": "Fertiger Link",
+            "idAdded": "✓ {store} · deine ID wurde hinzugefügt",
+            "idFromLink": "{store} · die ID aus deinem Link wird verwendet",
+            "noIdYet": "{store} · noch keine ID. Trage sie in den Einstellungen ein.",
+            "noIdAskAdmin": "{store} · noch keine ID. Bitte die Website-Admin, sie einzutragen.",
+            "openSettings": "Einstellungen öffnen",
+            "addStore": "Weiteren Amazon-Shop hinzufügen",
+            "otherLabel": "Link für einen weiteren Amazon-Shop",
+            "removeOther": "Diesen Shop entfernen",
+            "notAmazon": "Das ist kein Amazon-Produktlink.",
+            "checking": "Amazon-App-Link wird geprüft…",
+            "shortFailed": "Wir konnten diesen App-Link nicht lesen. Öffne das Produkt auf amazon.de oder amazon.it und kopiere den Link aus der Adressleiste.",
+            "unreadable": "In diesem Link haben wir kein Produkt gefunden. Öffne die Produktseite auf Amazon und kopiere den Link aus der Adressleiste.",
+            "priceHint": "Amazon erlaubt keinen Preis neben seinem Button, daher wird der hier eingetragene Preis bei diesem Eintrag nicht auf der Website angezeigt."
           }
         },
         "photos": {
@@ -4147,7 +4196,8 @@
       "linksHeading": "Links",
       "buyDefault": "Kaufen",
       "affiliateMarker": "Affiliate-Link",
-      "affiliateDisclosureDefault": "Einige Links auf dieser Seite sind Affiliate-Links. Wenn du über sie kaufst, erhalten wir eine kleine Provision – für dich entstehen keine zusätzlichen Kosten."
+      "affiliateDisclosureDefault": "Einige Links auf dieser Seite sind Affiliate-Links. Wenn du über sie kaufst, erhalten wir eine kleine Provision – für dich entstehen keine zusätzlichen Kosten.",
+      "amazonStatement": "Als Amazon-Partner verdiene ich an qualifizierten Verkäufen."
     }
   }
 }

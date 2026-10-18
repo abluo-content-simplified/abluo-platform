@@ -68,6 +68,7 @@ import type { CatalogueCollectionDTO, CatalogueConfigDTO, CatalogueItemDTO, Cata
 import { resolveCatalogueConfig, resolveCollection, resolveItem, type CatalogueResolveContext, type RawCatalogueCollection } from '../resolve'
 import { admits, isIndexable, visibilityFilter, type CatalogueDeliveryContext } from '../visibility'
 import { applySegmentChange, dispatchCatalogue } from '../segment'
+import { localizeItem } from '../amazon-delivery'
 import {
   catalogueAlternates,
   catalogueItemCanonical,
@@ -871,6 +872,29 @@ describe('H. a book on its own page (Amendment I)', () => {
     ])
     const ld = catalogueItemJsonLd(e.item, { url: `${ORIGIN}/it/menu/guida-galattica`, locale: 'it' })!
     expect(ld).toMatchObject({ publisher: { '@type': 'Organization', name: 'Pan Books' } })
+  })
+
+  it('Amazon links travel through the real query (moreUrls, old link untouched) and are rewritten per visitor country with the tenant ID', async () => {
+    const e = await read(
+      doc({
+        links: [
+          { _key: 'a1', _type: 'catalogueItemLink', url: 'https://www.amazon.it/Libro/dp/B08N5WRWNW/ref=sr_1?keywords=x', kind: 'buy', moreUrls: ['https://www.amazon.de/dp/B0DEDEDEDE'] },
+          { _key: 'a2', _type: 'catalogueItemLink', label: { it: 'Scheda' }, url: 'https://example.com/scheda' },
+          { _key: 'a3', _type: 'catalogueItemLink', url: 'https://shop.example.com/c', kind: 'buy', affiliate: true },
+        ],
+      }),
+    )
+    expect(e.kind).toBe('item')
+    if (e.kind !== 'item') return
+    expect(e.item.links[0].moreUrls).toEqual(['https://www.amazon.de/dp/B0DEDEDEDE'])
+    expect(e.item.links[1]).not.toHaveProperty('moreUrls')
+    const ids = [{ marketplace: 'amazon.it', trackingId: 'tmzit-21' }, { marketplace: 'amazon.de', trackingId: 'tmzde-21' }]
+    const hrefs = (country: string | null) => localizeItem(e.item, { country, trackingIds: ids }).links.map((l) => [l.url, l.affiliate, l.amazon ?? false])
+    expect(hrefs('DE')).toEqual([['https://www.amazon.de/dp/B0DEDEDEDE?tag=tmzde-21', true, true], ['https://example.com/scheda', false, false], ['https://shop.example.com/c', true, false]])
+    expect(hrefs('IT')[0]).toEqual(['https://www.amazon.it/dp/B08N5WRWNW?tag=tmzit-21', true, true])
+    expect(hrefs(null)[0]).toEqual(['https://www.amazon.it/dp/B08N5WRWNW?tag=tmzit-21', true, true])
+    // The delivered DTO itself is never mutated: the next visitor starts from the stored link.
+    expect(e.item.links[0].url).toContain('amazon.it/Libro/dp/B08N5WRWNW')
   })
 
   it('the same document read as a product (older deployment) is a plain product page with no offer: no item node, no failure', async () => {

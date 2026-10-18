@@ -142,8 +142,8 @@ describe('buildTenantSurfaces', () => {
   it('an owner with every module sees every nav item and the module widgets', () => {
     const s = buildTenantSurfaces(grantFor('owner', ['blog', 'forms', 'gallery']))
     // Sidebar order and groups (Tom, 2026-10-16): content · manage · insights.
-    expect(ids(s.nav)).toEqual(['blog', 'gallery', 'media', 'forms', 'people', 'connections', 'analytics'])
-    expect(s.nav.map((n) => n.group)).toEqual(['content', 'content', 'content', 'manage', 'manage', 'manage', 'insights'])
+    expect(ids(s.nav)).toEqual(['blog', 'gallery', 'media', 'forms', 'people', 'connections', 'settings', 'analytics'])
+    expect(s.nav.map((n) => n.group)).toEqual(['content', 'content', 'content', 'manage', 'manage', 'manage', 'manage', 'insights'])
     expect(ids(s.widgets)).toEqual(expect.arrayContaining(['siteStatus', 'attention', 'glance.posts', 'glance.requests', 'glance.galleries', 'traffic', 'latest.posts']))
   })
 
@@ -163,6 +163,12 @@ describe('buildTenantSurfaces', () => {
     expect(ids(s.nav)).not.toContain('people')
     expect(ids(s.nav)).not.toContain('connections') // ADR-031: connections.manage is Owner / Site admin only
     expect(ids(s.nav)).not.toContain('forms') // module not installed
+  })
+
+  it('Settings: Owner, Site admin and Editor see it; nobody without site.details.read', () => {
+    for (const role of ['owner', 'editor'] as const) expect(ids(buildTenantSurfaces(grantFor(role, ['blog'])).nav)).toContain('settings')
+    expect(ids(buildTenantSurfaces({ permissions: [], enabledModuleIds: [] }).nav)).not.toContain('settings')
+    expect(ids(buildTenantSurfaces({ permissions: ['settings.manage'], enabledModuleIds: [] }).nav)).not.toContain('settings')
   })
 
   it('a member with no extras gets only widgets that require nothing', () => {

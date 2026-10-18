@@ -12,6 +12,7 @@
 //   queries.ts     the GROQ, each read carrying publicFilterFor (ADR-032 D3)
 
 import {
+  amazonTrackingIdsQuery,
   catalogueCollectionByIdQuery,
   catalogueCollectionByOldSlugQuery,
   catalogueCollectionBySlugQuery,
@@ -41,6 +42,8 @@ import {
   type RawCataloguePage,
 } from './resolve'
 import { dispatchCatalogue, type CatalogueDispatch } from './segment'
+import { collectionHasAmazon, localizeCollection } from './amazon-delivery'
+import { visitorCountry } from '@/lib/affiliate/visitor-country'
 import { isIndexable } from './visibility'
 
 export type CatalogueFetch = <T>(query: string, params?: Record<string, unknown>) => Promise<T>
@@ -159,7 +162,12 @@ export async function hydrateCatalogueListing(
     locale: ctx.locale,
     defaultLocale: ctx.defaultLocale ?? ctx.locale,
   })
-  return { ...base, collection: resolveCollection(row, ctx) }
+  const collection = resolveCollection(row, ctx)
+  if (!collection || !collectionHasAmazon(collection)) return { ...base, collection }
+  // Amazon buy links are rewritten PER REQUEST (visitor country + the tenant's tracking IDs). The page
+  // is rendered dynamically for every request, so one visitor's pick never reaches another.
+  const [country, trackingIds] = await Promise.all([visitorCountry(), fetchForTenant<unknown>(amazonTrackingIdsQuery, {}).catch(() => null)])
+  return { ...base, collection: localizeCollection(collection, { country, trackingIds: Array.isArray(trackingIds) ? trackingIds : null }) }
 }
 
 /**

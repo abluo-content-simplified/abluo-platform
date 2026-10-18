@@ -32,6 +32,8 @@
  * Never written here: `offer.currency` (D7/A6) and `offer.locationKey` (A5).
  */
 import { span } from '@/lib/perf/timing'
+import { isAmazonMarketplace, type AmazonTrackingId } from '@/lib/affiliate/amazon-marketplaces'
+import { resolveAmazonShortLink, type ResolveFetch } from '@/lib/affiliate/amazon-resolve'
 import { randomUUID } from 'crypto'
 import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
@@ -185,6 +187,8 @@ export type CatalogueSite = {
   translate: boolean
   /** The starter preset the catalogue was set up from (e.g. 'bookshop'), or null. */
   presetId?: string | null
+  /** The project's Amazon tracking IDs (Settings), for the buy-link preview. Empty when none. */
+  amazonTrackingIds?: AmazonTrackingId[]
   config: {
     navLabel: Record<string, string>
     segment: string | null
@@ -205,7 +209,7 @@ const termsOf = (rows: unknown): CatalogueTerm[] =>
     .map((r) => ({ value: r.value as string, label: localized(r.label), color: typeof r.color === 'string' && r.color ? r.color : null }))
 
 async function readSite(client: Client, projectSlug: string): Promise<CatalogueSite> {
-  const r = await span('sanity.readSite', () => client.fetch<{ site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null } | null; config?: RawConfig; presetId?: unknown; translate?: boolean; categoryTerms?: CategoryTermRow[] | null; tagTerms?: CategoryTermRow[] | null } | null>(
+  const r = await span('sanity.readSite', () => client.fetch<{ site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null; amazonTrackingIds?: { marketplace?: unknown; trackingId?: unknown }[] | null } | null; config?: RawConfig; presetId?: unknown; translate?: boolean; categoryTerms?: CategoryTermRow[] | null; tagTerms?: CategoryTermRow[] | null } | null>(
     CATALOGUE_SITE_QUERY,
     { projectSlug }
   ))
@@ -218,6 +222,7 @@ async function readSite(client: Client, projectSlug: string): Promise<CatalogueS
     defaultLocale,
     locales: [defaultLocale, ...supported.filter((l) => l !== defaultLocale)],
     timeZone: typeof r?.site?.timeZone === 'string' && r.site.timeZone ? r.site.timeZone : null,
+    amazonTrackingIds: (r?.site?.amazonTrackingIds ?? []).flatMap((x) => (x && isAmazonMarketplace(x.marketplace) && typeof x.trackingId === 'string' && x.trackingId.trim() ? [{ marketplace: x.marketplace, trackingId: x.trackingId.trim() }] : [])),
     translate: r?.translate === true,
     presetId: typeof r?.presetId === 'string' && r.presetId ? r.presetId : null,
     config: {
@@ -239,6 +244,18 @@ async function readSite(client: Client, projectSlug: string): Promise<CatalogueS
 export async function getCatalogueSite(ctx: TenantAuthorizationContext, projectId: string, deps: CatalogueDeps = {}): Promise<CatalogueSite> {
   const grant = grantFor(ctx, projectId, CATALOGUE_READ_PERMISSION)
   return readSite(deps.client ?? sanityWriteClient, grant.projectSlug)
+}
+
+/**
+ * Amazon app links (amzn.eu/d/…) cannot be read without a request: this follows the redirects
+ * (Amazon hosts only, strict timeout, no cookies) and returns the product URL, or null. The caller
+ * needs the right to edit items. Nothing is stored here.
+ */
+export async function resolveAmazonLink(ctx: TenantAuthorizationContext, projectId: string, url: unknown, deps: { fetch?: ResolveFetch } = {}): Promise<{ url: string | null }> {
+  grantFor(ctx, projectId, catalogueKindPermissions('item').write)
+  if (typeof url !== 'string' || url.length > 2048) return { url: null }
+  const r = await resolveAmazonShortLink(url, { fetch: deps.fetch })
+  return { url: r.ok ? r.url : null }
 }
 
 /**

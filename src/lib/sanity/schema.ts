@@ -6,6 +6,7 @@ import { LocalizedStringInput, LocalizedTextInput, LocalizedPortableTextInput, L
 import { slugifyNestedPath, validateNestedSlug } from '@/lib/sanity/fields/nested-slug'
 import { isUniqueInProject } from '@/lib/sanity/fields/project-unique-slug'
 import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
+import { AMAZON_MARKETPLACE_IDS } from '@/lib/affiliate/amazon-marketplaces'
 import { LOCATION_KEY_PATTERN } from '@/lib/maps/locations'
 import { LocationPinInput } from '@/lib/sanity/fields/LocationPinInput'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField, headlineAccentField, BACKGROUND_SURFACE_OPTIONS } from '@/lib/sanity/fields/shared'
@@ -5048,6 +5049,7 @@ const siteConfigType = defineType({
     { name: 'contact', title: 'Contact' },
     { name: 'footer', title: 'Footer' },
     { name: 'social', title: 'Social' },
+    { name: 'affiliate', title: 'Affiliate' },
   ],
   fields: [
     projectSlugField,
@@ -5437,6 +5439,27 @@ const siteConfigType = defineType({
     defineField({ name: 'foundedYear', title: 'Founded Year', type: 'number', group: 'footer' }),
     defineField({ name: 'youtubeChannelUrl', title: 'YouTube Channel URL', type: 'url', group: 'social' }),
     defineField({ name: 'socialLinks', title: 'Social Links', type: 'array', group: 'social', of: [defineArrayMember({ type: 'socialLink' })] }),
+    // Amazon Associates tracking IDs, one per marketplace (shared contract:
+    // src/lib/affiliate/amazon-marketplaces.ts). Edited by the client in the
+    // dashboard's Settings page and read by the Amazon link handling. Additive.
+    defineField({
+      name: 'amazonTrackingIds',
+      title: 'Amazon tracking IDs',
+      type: 'array',
+      group: 'affiliate',
+      description: 'One Amazon Associates tracking ID per Amazon store (marketplace). The client edits these in the dashboard under Settings.',
+      of: [
+        defineArrayMember({
+          type: 'object',
+          name: 'amazonTrackingId',
+          fields: [
+            defineField({ name: 'marketplace', title: 'Marketplace', type: 'string', options: { list: AMAZON_MARKETPLACE_IDS.map((id) => ({ title: id, value: id })) } }),
+            defineField({ name: 'trackingId', title: 'Tracking ID', type: 'string' }),
+          ],
+          preview: { select: { title: 'marketplace', subtitle: 'trackingId' } },
+        }),
+      ],
+    }),
   ],
   preview: {
     select: { title: 'siteName', slug: 'projectSlug' },

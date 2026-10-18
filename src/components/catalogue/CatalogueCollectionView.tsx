@@ -20,6 +20,7 @@ import { resolveEasing } from '@/lib/motion/easing'
 import { SlideUp } from '@/components/animation/SlideUp'
 import { AllergensAndDietary, Byline, ItemLinks, OfferList, OptionsSummary } from './CatalogueItemParts'
 import type { CatalogueWebsiteMessages } from './messages'
+import { itemHasAmazonLink } from '@/lib/modules/catalogue/amazon-delivery'
 
 export type CatalogueDisplay = {
   showPrices: boolean
@@ -184,7 +185,7 @@ export function CatalogueItemRow({
           ) : (
             name
           )}
-          {display.showPrices && <OfferList offers={item.offers} m={messages} className="shrink-0" />}
+          {display.showPrices && !itemHasAmazonLink(item) && <OfferList offers={item.offers} m={messages} className="shrink-0" />}
         </div>
         <Byline byline={item.byline} />
         {item.description && (

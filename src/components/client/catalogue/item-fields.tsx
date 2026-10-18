@@ -13,7 +13,11 @@ import { MediaFrame, Pill } from '@/components/app/ui/list/cells'
 import { PhotoSource } from '@/components/client/media/PhotoSource'
 import { PhotoEditSheet } from '@/components/client/media/PhotoEditSheet'
 import { languageName } from '@/components/client/create/StepHeading'
-import { checkCatalogueSlugsAction } from '@/app/[locale]/(client)/[tenant]/catalogue/actions'
+import { checkCatalogueSlugsAction, resolveAmazonLinkAction } from '@/app/[locale]/(client)/[tenant]/catalogue/actions'
+import { describeAmazonLink } from '@/lib/affiliate/amazon-tracking'
+import { looksLikeAmazon } from '@/lib/affiliate/amazon-links'
+import { MAX_MORE_AMAZON_URLS } from '@/lib/modules/catalogue/amazon-delivery'
+import type { AmazonTrackingId } from '@/lib/affiliate/amazon-marketplaces'
 import { ALLERGENS, type AllergenKey } from '@/lib/modules/catalogue/allergens'
 import { WEEKDAYS, type Weekday } from '@/lib/modules/catalogue/availability'
 import { formatPrice } from '@/lib/modules/catalogue/resolve'
@@ -48,6 +52,7 @@ import { bookYearMax, isValidIsbn, normalizeIsbn, parseBookYear } from '@/lib/mo
 import { bookPublisherLine, itemSecondaryLine } from '@/lib/modules/catalogue/list-model'
 import { CAT_ICONS, catalogueHref, textIn } from './catalogue-ui'
 import { Button, ButtonLink, IconButton } from '@/components/app/ui/Button'
+import { Notice } from '@/components/app/ui/Notice'
 import { LABEL_CLASS } from '@/components/app/ui/field-styles'
 import { FieldError, FieldLabel } from '@/components/app/ui/FieldLabel'
 import { Panel } from '@/components/app/ui/Panel'
@@ -199,7 +204,7 @@ export function BookDetailsFields({ value, onChange }: { value: BookDetailsForm;
  * Shared by the item editor's Links tab and the wizard's book screen, so both
  * write the same `links[]` entry (D9).
  */
-export function LinkKindFields({ link, onChange }: { link: Pick<LinkForm, 'kind' | 'affiliate'>; onChange: (next: Pick<LinkForm, 'kind' | 'affiliate'>) => void }) {
+export function LinkKindFields({ link, onChange, hideAffiliate = false }: { link: Pick<LinkForm, 'kind' | 'affiliate'>; onChange: (next: Pick<LinkForm, 'kind' | 'affiliate'>) => void; /** An Amazon address is an affiliate link by itself (the tracking ID decides): no tick to set. */ hideAffiliate?: boolean }) {
   const t = useTranslations('catalogue.dashboard.item.fields.links')
   return (
     <div className="space-y-3">
@@ -207,14 +212,133 @@ export function LinkKindFields({ link, onChange }: { link: Pick<LinkForm, 'kind'
         <ChoiceCard icon={CAT_ICONS.list} label={t('kindInfo')} selected={link.kind === 'info'} onSelect={() => onChange({ kind: 'info', affiliate: false })} />
         <ChoiceCard icon={CAT_ICONS.product} label={t('kindBuy')} description={t('kindBuyHelp')} selected={link.kind === 'buy'} onSelect={() => onChange({ kind: 'buy', affiliate: link.affiliate })} />
       </ChoiceCardGrid>
-      {link.kind === 'buy' ? (
+      {link.kind === 'buy' && !hideAffiliate ? (
         <CheckboxCard label={t('affiliate')} description={t('affiliateHelp')} checked={link.affiliate} onChange={(on) => onChange({ kind: 'buy', affiliate: on })} />
       ) : null}
     </div>
   )
 }
 
-export function LinksField({ links, locales, defaultLocale, onChange }: { links: LinkForm[]; locales: readonly string[]; defaultLocale: string; onChange: (next: LinkForm[]) => void }) {
+// ── Amazon links — preview, status and extra stores under a pasted Amazon address ──
+
+/** What the editor needs to explain an Amazon link: the project's IDs and whether this person may open Settings. */
+export type AmazonEditorContext = { projectSlug: string; trackingIds: readonly AmazonTrackingId[]; canOpenSettings: boolean }
+
+/** "✓ amazon.de · your ID added" / "amazon.de · no ID yet — add it in Settings". */
+function AmazonStatus({ url, amazon }: { url: string; amazon: AmazonEditorContext }) {
+  const t = useTranslations('catalogue.dashboard.item.fields.amazon')
+  const info = describeAmazonLink(url, amazon.trackingIds)
+  if (info.state !== 'ok') return null
+  const store = info.marketplace
+  if (info.idSource === 'settings') return <Notice tone="info" layout="row">{t('idAdded', { store })}</Notice>
+  if (info.idSource === 'pasted') return <Notice tone="info" layout="row">{t('idFromLink', { store })}</Notice>
+  return (
+    <Notice
+      tone="dashed"
+      layout="row"
+      action={amazon.canOpenSettings ? <ButtonLink variant="quiet" href={`/${amazon.projectSlug}/settings`}>{t('openSettings')}</ButtonLink> : undefined}
+    >
+      {amazon.canOpenSettings ? t('noIdYet', { store }) : t('noIdAskAdmin', { store })}
+    </Notice>
+  )
+}
+
+/**
+ * Looks up an Amazon app link (amzn.eu/d/…) on the server once typing stops and swaps in the product
+ * address it opens. When that fails the address is kept and `failed` says so.
+ */
+function useShortLinkLookup(projectSlug: string, url: string, onResolved: (next: string) => void) {
+  const [failed, setFailed] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const short = describeAmazonLink(url, []).state === 'short'
+  useEffect(() => {
+    if (!short) {
+      setBusy(false)
+      return
+    }
+    let live = true
+    const timer = setTimeout(async () => {
+      setBusy(true)
+      const r = await resolveAmazonLinkAction({ projectSlug, url: url.trim() }).catch(() => null)
+      if (!live) return
+      setBusy(false)
+      if (r && r.ok && r.url) onResolved(r.url)
+      else setFailed(url)
+    }, 700)
+    return () => {
+      live = false
+      clearTimeout(timer)
+    }
+    // onResolved changes every render; the lookup is keyed on the address only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url, short, projectSlug])
+  return { busy: short && busy, failed: short && failed === url }
+}
+
+/** One extra-store row: its own address, resolved the same way, with its status line. */
+function MoreAmazonRow({ value, amazon, id, onChange, onRemove }: { value: string; amazon: AmazonEditorContext; id: string; onChange: (next: string) => void; onRemove: () => void }) {
+  const t = useTranslations('catalogue.dashboard.item.fields.amazon')
+  const lookup = useShortLinkLookup(amazon.projectSlug, value, onChange)
+  const info = describeAmazonLink(value, amazon.trackingIds)
+  const bad = value.trim() !== '' && info.state !== 'ok' && info.state !== 'short'
+  return (
+    <div className="space-y-2" data-amazon-more="">
+      <div className="flex items-start gap-1">
+        <div className="min-w-0 flex-1">
+          <FieldLabel htmlFor={id}>{t('otherLabel')}</FieldLabel>
+          <TextInput id={id} type="url" inputMode="url" autoComplete="off" placeholder="https://" maxLength={2048} value={value} onChange={(e) => onChange(e.target.value)} aria-invalid={bad || undefined} />
+        </div>
+        <IconButton aria-label={t('removeOther')} onClick={onRemove}>
+          {CAT_ICONS.trash}
+        </IconButton>
+      </div>
+      {bad ? <FieldError>{t('notAmazon')}</FieldError> : null}
+      {lookup.busy ? <Notice tone="info" layout="row">{t('checking')}</Notice> : null}
+      {lookup.failed ? <Notice tone="dashed" layout="row">{t('shortFailed')}</Notice> : null}
+      <AmazonStatus url={value} amazon={amazon} />
+    </div>
+  )
+}
+
+/**
+ * Under a buy link's address, when it is an Amazon address: the final link (read-only), the status of the
+ * tracking ID, and optional addresses for other Amazon stores. Renders nothing for any other address.
+ */
+export function AmazonLinkBlock({ url, moreUrls, amazon, onUrl, onMoreUrls }: { url: string; moreUrls: string[]; amazon: AmazonEditorContext; onUrl: (next: string) => void; onMoreUrls: (next: string[]) => void }) {
+  const t = useTranslations('catalogue.dashboard.item.fields.amazon')
+  const id = useId()
+  const lookup = useShortLinkLookup(amazon.projectSlug, url, onUrl)
+  if (!looksLikeAmazon(url)) return null
+  const info = describeAmazonLink(url, amazon.trackingIds)
+  return (
+    <div className="space-y-3" data-amazon-block="">
+      {lookup.busy ? <Notice tone="info" layout="row">{t('checking')}</Notice> : null}
+      {lookup.failed ? <Notice tone="dashed" layout="row">{t('shortFailed')}</Notice> : null}
+      {info.state === 'unreadable' ? <Notice tone="dashed" layout="row">{t('unreadable')}</Notice> : null}
+      {info.state === 'ok' ? (
+        <>
+          <div>
+            <FieldLabel htmlFor={`${id}-final`}>{t('finalLink')}</FieldLabel>
+            <TextInput id={`${id}-final`} readOnly value={info.href} onFocus={(e) => e.currentTarget.select()} />
+          </div>
+          <AmazonStatus url={url} amazon={amazon} />
+          {moreUrls.map((u, n) => (
+            <MoreAmazonRow key={n} id={`${id}-more-${n}`} value={u} amazon={amazon} onChange={(next) => onMoreUrls(moreUrls.map((x, i) => (i === n ? next : x)))} onRemove={() => onMoreUrls(moreUrls.filter((_, i) => i !== n))} />
+          ))}
+          {moreUrls.length < MAX_MORE_AMAZON_URLS ? (
+            <Button variant="quiet" onClick={() => onMoreUrls([...moreUrls, ''])}>
+              {CAT_ICONS.plus}
+              {t('addStore')}
+            </Button>
+          ) : null}
+          <Notice tone="info">{t('priceHint')}</Notice>
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+export function LinksField({ links, locales, defaultLocale, onChange, amazon }: { links: LinkForm[]; locales: readonly string[]; defaultLocale: string; onChange: (next: LinkForm[]) => void; amazon?: AmazonEditorContext }) {
   const t = useTranslations('catalogue.dashboard.item.fields.links')
   const ui = useLocale()
   const id = useId()
@@ -239,7 +363,7 @@ export function LinksField({ links, locales, defaultLocale, onChange }: { links:
                         <TextInput id={`${id}-${l.key}-${loc}`} maxLength={80} value={l.label[loc] ?? ''} onChange={(e) => setLink(l.key, { label: { ...l.label, [loc]: e.target.value } })} />
                       </div>
                     ))}
-                    <LinkKindFields link={l} onChange={(next) => setLink(l.key, next)} />
+                    <LinkKindFields link={l} onChange={(next) => setLink(l.key, next)} hideAffiliate={!!amazon && l.kind === 'buy' && looksLikeAmazon(l.url)} />
                     <div>
                       <label htmlFor={`${id}-${l.key}-url`} className="text-sm text-foreground">
                         {t('url')}
@@ -249,6 +373,7 @@ export function LinksField({ links, locales, defaultLocale, onChange }: { links:
                         <FieldError>{t(issue)}</FieldError>
                       ) : null}
                     </div>
+                    {amazon && l.kind === 'buy' ? <AmazonLinkBlock url={l.url} moreUrls={l.moreUrls ?? []} amazon={amazon} onUrl={(next) => setLink(l.key, { url: next })} onMoreUrls={(next) => setLink(l.key, { moreUrls: next })} /> : null}
                   </div>
                   <IconButton aria-label={t('up')} disabled={n === 0} onClick={() => onChange(moveIndex(links, n, n - 1))}>
                     {CAT_ICONS.up}
@@ -280,7 +405,7 @@ export function LinksField({ links, locales, defaultLocale, onChange }: { links:
  * language) and the affiliate tick. It edits the first buy entry of `links[]`,
  * the same entry the editor's Links tab shows.
  */
-export function BuyLinkField({ links, defaultLocale, onChange }: { links: LinkForm[]; defaultLocale: string; onChange: (next: LinkForm[]) => void }) {
+export function BuyLinkField({ links, defaultLocale, onChange, amazon }: { links: LinkForm[]; defaultLocale: string; onChange: (next: LinkForm[]) => void; amazon?: AmazonEditorContext }) {
   const t = useTranslations('catalogue.dashboard.item.fields.buyLink')
   const tl = useTranslations('catalogue.dashboard.item.fields.links')
   const id = useId()
@@ -299,6 +424,7 @@ export function BuyLinkField({ links, defaultLocale, onChange }: { links: LinkFo
           <p className="mt-1.5 text-sm text-muted-foreground">{t('help')}</p>
         )}
       </div>
+      {buy && amazon ? <AmazonLinkBlock url={buy.url} moreUrls={buy.moreUrls ?? []} amazon={amazon} onUrl={(next) => onChange(withBuyLink(links, { url: next }, newKey))} onMoreUrls={(next) => onChange(withBuyLink(links, { moreUrls: next }, newKey))} /> : null}
       {buy ? (
         <>
           <div>
@@ -307,7 +433,7 @@ export function BuyLinkField({ links, defaultLocale, onChange }: { links: LinkFo
             </FieldLabel>
             <TextInput id={`${id}-label`} data-enter-next maxLength={80} value={buy.label[defaultLocale] ?? ''} onChange={(e) => onChange(withBuyLink(links, { label: { ...buy.label, [defaultLocale]: e.target.value } }, newKey))} />
           </div>
-          <CheckboxCard label={tl('affiliate')} description={tl('affiliateHelp')} checked={buy.affiliate} onChange={(on) => onChange(withBuyLink(links, { affiliate: on }, newKey))} />
+          {amazon && looksLikeAmazon(buy.url) ? null : <CheckboxCard label={tl('affiliate')} description={tl('affiliateHelp')} checked={buy.affiliate} onChange={(on) => onChange(withBuyLink(links, { affiliate: on }, newKey))} />}
         </>
       ) : null}
     </div>
@@ -403,8 +529,9 @@ export function PhotoField({
 
 // ── Prices (one per channel + everywhere; optional serving times) ────────────
 
-export function PriceField({ offers, channels, currency, defaultLocale, onChange }: { offers: OfferForm[]; channels: readonly CatalogueTerm[]; currency: string; defaultLocale: string; onChange: (next: OfferForm[]) => void }) {
+export function PriceField({ offers, channels, currency, defaultLocale, onChange, hiddenByAmazon = false }: { offers: OfferForm[]; channels: readonly CatalogueTerm[]; currency: string; defaultLocale: string; onChange: (next: OfferForm[]) => void; /** The item has an Amazon buy link: the website shows no manual price next to it. */ hiddenByAmazon?: boolean }) {
   const t = useTranslations('catalogue.dashboard.item.price')
+  const ta = useTranslations('catalogue.dashboard.item.fields.amazon')
   const td = useTranslations('catalogue.dashboard.days')
   const ui = useLocale()
   const id = useId()
@@ -434,6 +561,7 @@ export function PriceField({ offers, channels, currency, defaultLocale, onChange
   const dayOptions = WEEKDAYS.map((d) => ({ value: d, label: td(d) }))
   return (
     <div className="space-y-4">
+      {hiddenByAmazon ? <Notice tone="info">{ta('priceHint')}</Notice> : null}
       {offers.map((o, n) => {
         const mine = issueFor(o.key)
         const parsed = parsePrice(o.price)

@@ -77,7 +77,8 @@
       "connections": "Connected Apps",
       "analytics": "Analytics",
       "catalogue": "Catalogue",
-      "brand-hub": "Brand Hub"
+      "brand-hub": "Brand Hub",
+      "settings": "Settings"
     },
     "shell": {
       "brandTagline": "Dashboard",
@@ -1612,7 +1613,8 @@
       "uploads": {
         "stillUploading": "{count, plural, one {Finishing # photo…} other {Finishing # photos…}}",
         "addedToLibrary": "{count, plural, one {# photo added to your Media Library.} other {# photos added to your Media Library.}}"
-      }
+      },
+      "uploadRights": "Only upload images you own or have permission to use."
     },
     "taxonomy": {
       "title": "Categories & Tags",
@@ -2176,6 +2178,36 @@
         "goesLive": "Goes live · {date}",
         "goesOffline": "Goes offline · {date}",
         "wentOffline": "Went offline · {date}"
+      }
+    },
+    "settings": {
+      "title": "Settings",
+      "changesLive": "Changes appear on your website straight away.",
+      "readOnly": "Only the owner and site admins can change these settings.",
+      "rejected": "Some changes could not be saved. Please check the values and try again.",
+      "amazon": {
+        "title": "Amazon",
+        "intro": "Your Amazon Associates IDs, one per Amazon store. We add the right one to your Amazon links automatically.",
+        "emptyTitle": "No Amazon IDs yet",
+        "emptyBody": "Add the ID you got from Amazon Associates for each Amazon store you link to.",
+        "store": "Amazon store",
+        "chooseStore": "Choose a store",
+        "trackingId": "Tracking ID",
+        "trackingIdPlaceholder": "e.g. yourname-21",
+        "looksOff": "This doesn’t look like a usual tracking ID (like name-21). Keep it if it’s right.",
+        "incomplete": "Add the tracking ID to save this store.",
+        "duplicate": "Each store can only be listed once.",
+        "remove": "Remove",
+        "removeNamed": "Remove {store}",
+        "add": "+ Add an Amazon store",
+        "suggested": "Suggested for your website languages",
+        "quickAdd": "+ {store}"
+      },
+      "disclosure": {
+        "title": "Affiliate disclosure",
+        "intro": "One sentence, shown once at the bottom of a page that has an affiliate buy link. Leave a language empty to use our standard wording.",
+        "usingStandard": "Empty: the standard wording is shown on your website.",
+        "useStandard": "Use standard wording"
       }
     }
   },
@@ -3723,7 +3755,8 @@
             "kindBuy": "Buy link",
             "kindBuyHelp": "Shows a Buy button on the page. The label is optional.",
             "affiliate": "This is an affiliate link",
-            "affiliateHelp": "You earn a commission when someone buys through it."
+            "affiliateHelp": "You earn a commission when someone buys through it.",
+            "badMore": "Use an Amazon product link for the other stores."
           },
           "title": "Title",
           "book": {
@@ -3739,6 +3772,22 @@
             "url": "Buy link",
             "help": "Optional. Where people can buy it. Shows as a Buy button on the page.",
             "label": "Button text (optional)"
+          },
+          "amazon": {
+            "finalLink": "Final link",
+            "idAdded": "✓ {store} · your ID added",
+            "idFromLink": "{store} · using the ID from your link",
+            "noIdYet": "{store} · no ID yet. Add it in Settings.",
+            "noIdAskAdmin": "{store} · no ID yet. Ask your site admin to add it.",
+            "openSettings": "Open Settings",
+            "addStore": "Add another Amazon store",
+            "otherLabel": "Link for another Amazon store",
+            "removeOther": "Remove this store",
+            "notAmazon": "This is not an Amazon product link.",
+            "checking": "Checking the Amazon app link…",
+            "shortFailed": "We could not read this app link. Open the product on amazon.de or amazon.it and copy the link from the address bar.",
+            "unreadable": "We could not find the product in this link. Open the product page on Amazon and copy the link from the address bar.",
+            "priceHint": "Amazon does not allow a price next to its button, so the price you enter here is not shown on the website for this item."
           }
         },
         "photos": {
@@ -4147,7 +4196,8 @@
       "linksHeading": "Links",
       "buyDefault": "Buy",
       "affiliateMarker": "Affiliate link",
-      "affiliateDisclosureDefault": "Some links on this page are affiliate links. If you buy through them, we receive a small commission at no extra cost to you."
+      "affiliateDisclosureDefault": "Some links on this page are affiliate links. If you buy through them, we receive a small commission at no extra cost to you.",
+      "amazonStatement": "As an Amazon Associate I earn from qualifying purchases."
     }
   }
 }

@@ -178,6 +178,10 @@ export type CatalogueItemLinkDTO = {
   kind: 'info' | 'buy'
   /** Amendment K — true only for a buy link flagged as affiliate. */
   affiliate: boolean
+  /** Extra Amazon product URLs (other marketplaces) of a buy link, as stored. Replaced by the visitor's pick before render. */
+  moreUrls?: string[]
+  /** True once the link has been localized as an Amazon link (country pick + tracking ID applied). */
+  amazon?: boolean
 }
 
 /** Amendment I-3 — a book's plain, non-localized details. Present only for a profile that carries them. */

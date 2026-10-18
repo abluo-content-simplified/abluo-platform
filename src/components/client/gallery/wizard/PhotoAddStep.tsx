@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type Dr
 import { useTranslations } from 'next-intl'
 import { Button, IconButton } from '@/components/app/ui/Button'
 import { ChoiceCard } from '@/components/app/ui/ChoiceCard'
+import { Notice } from '@/components/app/ui/Notice'
 import { Panel } from '@/components/app/ui/Panel'
 import { TileButton, TileLabel } from '@/components/app/ui/list/tile'
 import { thumbOf, type MediaScope } from '@/components/client/media/media-api'
@@ -95,6 +96,7 @@ export function PhotoAddStep({
 }) {
   const t = useTranslations('clientDashboard.photoWizard.add')
   const ts = useTranslations('clientDashboard.media.add')
+  const tm = useTranslations('clientDashboard.media')
   const touch = useTouchDevice()
   const cameraRef = useRef<HTMLInputElement>(null)
   const pickerRef = useRef<HTMLInputElement>(null)
@@ -232,6 +234,7 @@ export function PhotoAddStep({
         {title}
       </h1>
       <p className="mt-3 text-[1.0625rem] leading-7 text-muted-foreground">{helper}</p>
+      <Notice tone="info" className="mt-4">{tm('uploadRights')}</Notice>
 
       <input
         ref={cameraRef}

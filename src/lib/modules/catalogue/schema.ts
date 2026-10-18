@@ -1021,6 +1021,16 @@ export const catalogueItemLink = defineType({
       description: 'You earn a commission when someone buys through it. Shows a short disclosure on the page.',
       hidden: ({ parent }) => (parent as { kind?: string } | undefined)?.kind !== 'buy',
     }),
+    // Amazon links — additive. Product URLs of OTHER Amazon stores for the same product; the website
+    // picks the one for the visitor's country, else uses `url`. Absent on every link stored before.
+    defineField({
+      name: 'moreUrls',
+      title: 'Other Amazon stores',
+      type: 'array',
+      of: [{ type: 'url' }],
+      description: 'Amazon product links for other countries. The website picks one by the visitor’s country.',
+      hidden: ({ parent }) => (parent as { kind?: string } | undefined)?.kind !== 'buy',
+    }),
   ],
   preview: {
     select: { title: 'label.en', subtitle: 'url' },

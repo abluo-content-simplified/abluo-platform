@@ -18,6 +18,7 @@ import { ALLERGEN_DECLARATION_STATUSES, isAllergenKey, orderedAllergens, type Al
 import { offerIssues, type Offer } from './offers'
 import { ruleIssues, WEEKDAYS } from './availability'
 import { catalogueLinkUrl, CATALOGUE_LINK_LIMITS } from './links'
+import { cleanMoreAmazonUrls } from './amazon-delivery'
 import { treeIssues, type SectionNode } from './sections'
 import { COLLECTION_TYPES, VISIBILITIES, newOrphans, slugFromName } from './dashboard-form'
 import type { Referrer } from '@/lib/lifecycle/service'
@@ -284,6 +285,8 @@ export function cleanLinks(value: unknown, ctx: Pick<PatchContext, 'locales' | '
     if (raw.kind != null && raw.kind !== 'info' && raw.kind !== 'buy') bad('Unknown link kind.', 'links')
     if (raw.affiliate != null && typeof raw.affiliate !== 'boolean') bad('Bad affiliate flag.', 'links')
     const buy = raw.kind === 'buy'
+    // Amazon links — other stores' product URLs. Parsed again HERE: the client's preview is never trusted.
+    const moreUrls = buy ? cleanMoreAmazonUrls(raw.moreUrls, url!, (m) => bad(m, 'links')) : []
     return {
       _key: keyOr(raw._key, seen, ctx.newKey),
       _type: 'catalogueItemLink',
@@ -291,6 +294,7 @@ export function cleanLinks(value: unknown, ctx: Pick<PatchContext, 'locales' | '
       url,
       ...(buy ? { kind: 'buy' } : {}),
       ...(buy && raw.affiliate === true ? { affiliate: true } : {}),
+      ...(moreUrls.length ? { moreUrls } : {}),
     }
   })
 }
