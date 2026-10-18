@@ -229,3 +229,27 @@ describe('catalogue (ADR-033 spec §10.1)', () => {
     expect(ids(without.widgets)).not.toContain('glance.catalogue')
   })
 })
+
+describe('switchTarget — the project switcher never lands on a 404', async () => {
+  const { switchTarget, navSegmentsFor } = await import('../surfaces')
+  it('keeps the section when the next project has it', () => {
+    expect(switchTarget('/tmz/posts', 'tmz', 'livener', ['posts', 'agenda'])).toBe('/livener/posts')
+  })
+  it('goes to Home when the next project lacks the section (TMZ Catalogue → Livener)', () => {
+    expect(switchTarget('/tmz/catalogue', 'tmz', 'livener', ['posts', 'agenda'])).toBe('/livener/home')
+    expect(switchTarget('/tmz/settings', 'tmz', 'livener', ['posts'])).toBe('/livener/home')
+  })
+  it('opens the list, not an item of the old project', () => {
+    expect(switchTarget('/tmz/catalogue/abc-123', 'tmz', 'shop', ['catalogue'])).toBe('/shop/catalogue')
+  })
+  it('Home and bare paths go to Home', () => {
+    expect(switchTarget('/tmz/home', 'tmz', 'livener', ['posts'])).toBe('/livener/home')
+    expect(switchTarget('/tmz', 'tmz', 'livener', ['posts'])).toBe('/livener/home')
+  })
+  it('a project section list follows modules and permissions', () => {
+    const segs = navSegmentsFor({ enabledModuleIds: ['events', 'forms'], permissions: ['events.event.read', 'forms.submission.read'] })
+    expect(segs).toContain('agenda')
+    expect(segs).toContain('submissions')
+    expect(segs).not.toContain('catalogue')
+  })
+})

@@ -43,6 +43,8 @@ const COPY = {
   loading: 'Loading…',
   signOut: 'Sign out',
   genericError: 'Something went wrong. Please try again.',
+  wrongCode: 'That code didn’t work. Codes change every 30 seconds — enter the newest one.',
+  clear: 'Clear',
 } as const
 
 const FRIENDLY_NAME = 'Abluo admin'
@@ -135,7 +137,10 @@ function MfaForm() {
       code: value,
     })
     if (verifyError) {
-      setError(verifyError.message)
+      // A wrong or expired code: say so plainly and empty the boxes for the next one.
+      const wrong = /invalid|expired|totp|code/i.test(verifyError.message)
+      setError(wrong ? COPY.wrongCode : verifyError.message)
+      if (wrong) setCode('')
       setBusy(false)
       busyRef.current = false
       return
@@ -184,7 +189,8 @@ function MfaForm() {
         label={COPY.codeLabel}
         digitLabel={(n, total) => COPY.digitLabel.replace('{n}', String(n)).replace('{total}', String(total))}
         value={code}
-        onChange={(v) => { setCode(v); if (error) setError(null) }}
+        onChange={(v) => { setCode(v); if (error && v.trim() !== '') setError(null) }}
+        clearLabel={COPY.clear}
         onComplete={(v) => void verify(v)}
         disabled={busy}
         autoFocus

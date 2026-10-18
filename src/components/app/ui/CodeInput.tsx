@@ -16,13 +16,14 @@
  * (`digitLabel` receives the 1-based position and the length).
  */
 
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { FieldLabel } from './FieldLabel'
+import { Button } from './Button'
 
 const FOCUS = 'focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
 
 const BOX =
-  `h-14 w-11 sm:h-16 sm:w-12 rounded-xl border border-input bg-background text-center ` +
+  `h-14 w-full min-w-0 sm:h-16 rounded-xl border border-input bg-background text-center ` +
   `font-mono text-2xl font-semibold tabular-nums text-foreground caret-transparent ` +
   `transition-colors focus:border-ring disabled:opacity-60 ${FOCUS}`
 
@@ -39,12 +40,20 @@ export interface CodeInputProps {
   length?: number
   disabled?: boolean
   autoFocus?: boolean
+  /** Shows a "Clear" link under the boxes while any digit is filled. */
+  clearLabel?: string
 }
 
 export function CodeInput({
-  id, label, digitLabel, value, onChange, onComplete, length = 6, disabled, autoFocus,
+  id, label, digitLabel, value, onChange, onComplete, length = 6, disabled, autoFocus, clearLabel,
 }: CodeInputProps) {
   const refs = useRef<(HTMLInputElement | null)[]>([])
+  // Emptied from outside (a wrong code is cleared) or by "Clear": start again in the first box.
+  const wasFilled = useRef(false)
+  useEffect(() => {
+    if (value.trim() === '' && wasFilled.current && !disabled) refs.current[0]?.focus()
+    wasFilled.current = value.trim() !== ''
+  }, [value, disabled])
   // A cleared box in the middle stays a gap (a space) so later digits keep their place.
   const digits = Array.from({ length }, (_, i) => (value[i] ?? '').trim())
   const serialise = (arr: string[]) => arr.map((c) => c || ' ').join('').trimEnd()
@@ -76,7 +85,8 @@ export function CodeInput({
       <FieldLabel id={`${id}-label`} htmlFor={`${id}-0`}>
         {label}
       </FieldLabel>
-      <div role="group" aria-labelledby={`${id}-label`} className="flex justify-between gap-2 sm:justify-start sm:gap-3">
+      {/* The boxes share the full width (as wide as the button below), one equal column each. */}
+      <div role="group" aria-labelledby={`${id}-label`} className="grid gap-2 sm:gap-3" style={{ gridTemplateColumns: `repeat(${length}, minmax(0, 1fr))` }}>
         {digits.map((d, i) => (
           <input
             key={i}
@@ -127,6 +137,11 @@ export function CodeInput({
           />
         ))}
       </div>
+      {clearLabel && value.trim() !== '' && !disabled ? (
+        <Button variant="link" className="mt-1 px-0" onClick={() => onChange('')}>
+          {clearLabel}
+        </Button>
+      ) : null}
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers'
+import { navSegmentsFor } from '@/lib/client/surfaces'
 import { stopwatch, traced } from '@/lib/perf/timing'
 import { perfBeacon } from '@/lib/perf/beacon'
 import { notFound, redirect } from 'next/navigation'
@@ -86,6 +87,7 @@ async function ClientProjectLayoutInner({
     projectSlug: grant.projectSlug,
     name: summaries[grant.projectId]?.name ?? null,
     domain: summaries[grant.projectId]?.domain ?? null,
+    segments: navSegmentsFor(grant),
   }))
   // What's new (ADR-030): read as the user (RLS); null when unavailable — never breaks the shell.
   const whatsNew = await loadWhatsNewFeed({

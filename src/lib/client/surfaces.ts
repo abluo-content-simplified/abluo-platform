@@ -208,3 +208,23 @@ export function buildTenantSurfaces(
 export function hasWidget(surfaces: TenantSurfaces, id: string): boolean {
   return surfaces.widgets.some((w) => w.id === id)
 }
+
+/**
+ * The dashboard sections (URL segments under `/{projectSlug}/`) a grant can
+ * open. The project switcher keeps the current section only when the target
+ * project has it — otherwise it lands on Home instead of a 404 (Tom,
+ * 2026-10-18: switching from TMZ's Catalogue to Livener, which has none).
+ */
+export function navSegmentsFor(grant: SurfaceGrant): string[] {
+  return TENANT_SURFACES.filter((s): s is Extract<TenantSurface, { kind: 'nav' }> => s.kind === 'nav' && surfaceAllowed(grant, s.requires)).map((s) => s.segment)
+}
+
+/** Where the project switcher goes: the same section in the next project when it has it, else its Home. */
+export function switchTarget(pathname: string, activeSlug: string, nextSlug: string, nextSegments: readonly string[]): string {
+  const prefix = `/${activeSlug}`
+  const rest = pathname === prefix || pathname.startsWith(`${prefix}/`) ? pathname.slice(prefix.length) : ''
+  const segment = rest.split('/')[1] ?? ''
+  if (!segment || segment === 'home' || !nextSegments.includes(segment)) return `/${nextSlug}/home`
+  // A specific item (/catalogue/<id>) belongs to the old project: open the section's list.
+  return `/${nextSlug}/${segment}`
+}

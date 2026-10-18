@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { Link, usePathname, useRouter } from '@/i18n/navigation'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
 import { PickerOption, PickerTrigger } from '@/components/app/ui/PickerButton'
+import { switchTarget } from '@/lib/client/surfaces'
 
 /**
  * Project switcher for the client dashboard shell (ADR-017 Phase 2 / task #81).
@@ -43,6 +44,8 @@ export type SwitcherProject = {
   name?: string | null
   /** projects.custom_domain — shown under the name when set. */
   domain?: string | null
+  /** Sections this person can open in that project (navSegmentsFor). */
+  segments?: string[]
 }
 
 export type ProjectSwitcherProps = {
@@ -68,19 +71,11 @@ export function ProjectSwitcher({ projects, activeSlug }: ProjectSwitcherProps) 
     writeLastProjectCookie(activeSlug)
   }, [activeSlug])
 
-  function subPageFor(slug: string): string {
-    // Strip the leading "/{activeSlug}" to recover the sub-page ("/posts").
-    // Falls back to the dashboard home if the path is unexpectedly bare.
-    const prefix = `/${activeSlug}`
-    const rest = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : ''
-    return `/${slug}${rest || '/home'}`
-  }
-
   function choose(nextSlug: string) {
     setOpen(false)
     if (nextSlug === activeSlug) return
     writeLastProjectCookie(nextSlug)
-    router.push(subPageFor(nextSlug))
+    router.push(switchTarget(pathname, activeSlug, nextSlug, projects.find((p) => p.projectSlug === nextSlug)?.segments ?? []))
   }
 
   const active = projects.find((p) => p.projectSlug === activeSlug)
