@@ -160,7 +160,7 @@ function TermSheetBody({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [term.key])
-  const ds = deleteState(term.usedBy, usage)
+  const ds = deleteState(term.usedBy, usage, term.redirects ?? 0)
 
   // ── Delete ──
   const [confirming, setConfirming] = useState(false)
@@ -244,9 +244,15 @@ function TermSheetBody({
         </section>
       ) : null}
 
+      {ds.kind === 'protected' && canWrite ? (
+        <p className="text-[0.9375rem] leading-6 text-muted-foreground" id={`term-${term.key}-blocked`}>
+          {t('redirectsBlocked', { count: ds.redirects })}
+        </p>
+      ) : null}
+
       {canWrite ? (
         <section className="border-t border-border pt-3">
-          <Button variant="destructive" size="lg" fullWidth disabled={ds.kind === 'blocked'} aria-describedby={ds.kind === 'blocked' ? `term-${term.key}-blocked` : undefined} onClick={() => setConfirming(true)}>
+          <Button variant="destructive" size="lg" fullWidth disabled={ds.kind !== 'free'} aria-describedby={ds.kind !== 'free' ? `term-${term.key}-blocked` : undefined} onClick={() => setConfirming(true)}>
             {t(`${kind}.delete`)}
           </Button>
         </section>

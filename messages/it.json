@@ -1686,7 +1686,8 @@
         "in_use": "È ancora in uso e non può essere eliminato.",
         "not_found": "Non esiste più. Ricarica la pagina.",
         "invalid_value": "Controlla ciò che hai scritto.",
-        "failed": "Qualcosa è andato storto. Riprova."
+        "failed": "Qualcosa è andato storto. Riprova.",
+        "has_redirects": "Alcuni vecchi indirizzi web portano ancora a questa categoria, quindi non può essere eliminata."
       },
       "picker": {
         "noMatch": "Nessun risultato. Controlla come hai scritto.",
@@ -1713,7 +1714,8 @@
       "clear": "Azzera filtri",
       "noMatch": "Nessun risultato per la ricerca.",
       "drag": "Sposta {name}, posizione {position} di {total}. Trascina, oppure usa le frecce su e giù.",
-      "addTo": "Aggiungi a"
+      "addTo": "Aggiungi a",
+      "redirectsBlocked": "Alcuni vecchi indirizzi web portano ancora a questa categoria ({count, plural, one {# indirizzo} other {# indirizzi}}), quindi non può essere eliminata. Contattaci se vuoi rimuoverla."
     },
     "photoWizard": {
       "add": {

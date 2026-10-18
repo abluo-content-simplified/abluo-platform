@@ -43,6 +43,7 @@ export function TermPicker({
   defaultLocale,
   canAdd,
   disabled = false,
+  onCreated,
 }: {
   projectSlug: string
   module: string
@@ -56,6 +57,8 @@ export function TermPicker({
   /** Holds `<module>.taxonomy.write` (a hint; the server re-checks). */
   canAdd: boolean
   disabled?: boolean
+  /** Called with a term created inline, so the surrounding screen can show its name elsewhere (e.g. a review step). */
+  onCreated?: (term: PickerTerm) => void
 }) {
   const t = useTranslations('clientDashboard.taxonomy')
   const ui = useLocale()
@@ -91,6 +94,7 @@ export function TermPicker({
     const term = toPickerTerm(r.term)
     const nextAll = mergeTerms(all, [term])
     setAdded((a) => mergeTerms(a, [term]))
+    onCreated?.(term)
     onChange(selectKey(valueRef.current, term.value, nextAll.map((x) => x.value)))
     setQuery('')
   }

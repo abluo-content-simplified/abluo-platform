@@ -33,6 +33,7 @@ import {
   type WizardFlowStep,
 } from '@/lib/client/wizard-steps'
 import type { DraftSnapshot, SiteInfo, StepProps } from './types'
+import { pickerLabel, type PickerTerm } from '@/components/client/taxonomy/term-picker-model'
 import { applyToSnapshot } from './snapshot'
 import { CategoryStep } from './steps/CategoryStep'
 import { TitleStep, type ImproveLineResult } from './steps/TitleStep'
@@ -88,7 +89,7 @@ const PUBLISH_ERRORS = [
  */
 export function WizardShell({
   draft: initialDraft,
-  site,
+  site: initialSite,
   homeHref,
   postsHref,
   canDelete = false,
@@ -109,6 +110,18 @@ export function WizardShell({
   const tp = useTranslations('app.lifecycle.publish')
   const ui = useLocale()
   const router = useRouter()
+  // Categories created inline (Category step) join the site's list, so the Review step shows their names.
+  const [addedCategories, setAddedCategories] = useState<PickerTerm[]>([])
+  const site = useMemo<SiteInfo>(() => {
+    const fresh = addedCategories.filter((c) => !initialSite.categories.some((x) => x.value === c.value))
+    if (fresh.length === 0) return initialSite
+    return {
+      ...initialSite,
+      categories: [...initialSite.categories, ...fresh.map((c) => ({ value: c.value, label: pickerLabel(c, ui, initialSite.defaultLocale) }))],
+      categoryTerms: initialSite.categoryTerms ? [...initialSite.categoryTerms, ...fresh.filter((c) => !initialSite.categoryTerms!.some((x) => x.value === c.value))] : initialSite.categoryTerms,
+    }
+  }, [initialSite, addedCategories, ui])
+  const addCategory = useCallback((term: PickerTerm) => setAddedCategories((a) => (a.some((x) => x.value === term.value) ? a : [...a, term])), [])
   const projectSlug = site.projectSlug
   const locale = site.defaultLocale
 
@@ -503,6 +516,7 @@ export function WizardShell({
     update,
     goNext,
     goBack,
+    addCategory,
     flush: flushForStep,
     onServerWrite,
   }

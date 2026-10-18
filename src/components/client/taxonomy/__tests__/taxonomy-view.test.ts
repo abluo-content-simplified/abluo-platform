@@ -28,6 +28,7 @@ const term = (key: string, order: number, label: Record<string, string>, usedBy 
   rev: 'r1',
   coverage: translationCoverage(label, LOCALES, 'it'),
   usedBy,
+  redirects: 0,
 })
 const list = () => ({
   module: 'catalogue',
@@ -121,6 +122,11 @@ describe('delete state', () => {
     expect(deleteState(5, { count: 0, items: [] })).toEqual({ kind: 'free' }) // the server's fresh answer wins
   })
 
+  it('an unused term that old web addresses redirect to stays protected; use still wins', () => {
+    expect(deleteState(0, null, 2)).toEqual({ kind: 'protected', redirects: 2 })
+    expect(deleteState(3, null, 2)).toMatchObject({ kind: 'blocked', count: 3 })
+  })
+
   it('a used term is blocked with the count; before the list loads nothing is shown', () => {
     expect(deleteState(3, null)).toEqual({ kind: 'blocked', count: 3, shown: [], more: 3 })
   })
@@ -137,6 +143,8 @@ describe('delete state', () => {
   it('links catalogue items to their editor, other types to nothing', () => {
     expect(itemHref('tmz', { id: 'abc', type: 'catalogueItem' })).toBe('/tmz/catalogue/abc')
     expect(itemHref('tmz', { id: 'abc', type: 'somethingElse' })).toBeNull()
+    expect(itemHref('tmz', { id: 'p1', type: 'post' })).toBe('/tmz/posts/write/p1')
+    expect(itemHref('tmz', { id: 'e1', type: 'event' })).toBe('/tmz/agenda/e1')
   })
 })
 

@@ -1686,7 +1686,8 @@
         "in_use": "This is still in use and can’t be deleted.",
         "not_found": "This no longer exists. Reload the page.",
         "invalid_value": "Please check what you typed.",
-        "failed": "Something went wrong. Please try again."
+        "failed": "Something went wrong. Please try again.",
+        "has_redirects": "Old web addresses still lead to this category, so it can't be deleted."
       },
       "picker": {
         "noMatch": "Nothing matches. Check the spelling.",
@@ -1713,7 +1714,8 @@
       "clear": "Clear filters",
       "noMatch": "Nothing matches your search.",
       "drag": "Move {name}, position {position} of {total}. Drag, or use the up and down arrow keys.",
-      "addTo": "Add to"
+      "addTo": "Add to",
+      "redirectsBlocked": "Old web addresses still lead to this category ({count, plural, one {# address} other {# addresses}}), so it can't be deleted. Contact us if you want to remove it."
     },
     "photoWizard": {
       "add": {

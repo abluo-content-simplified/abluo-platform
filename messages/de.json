@@ -1686,7 +1686,8 @@
         "in_use": "Das wird noch verwendet und kann nicht gelöscht werden.",
         "not_found": "Das gibt es nicht mehr. Laden Sie die Seite neu.",
         "invalid_value": "Bitte prüfen Sie Ihre Eingabe.",
-        "failed": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+        "failed": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+        "has_redirects": "Alte Webadressen führen noch zu dieser Kategorie, deshalb kann sie nicht gelöscht werden."
       },
       "picker": {
         "noMatch": "Nichts gefunden. Prüfe die Schreibweise.",
@@ -1713,7 +1714,8 @@
       "clear": "Filter zurücksetzen",
       "noMatch": "Nichts passt zu deiner Suche.",
       "drag": "{name} verschieben, Position {position} von {total}. Ziehen oder die Pfeiltasten nach oben und unten verwenden.",
-      "addTo": "Hinzufügen zu"
+      "addTo": "Hinzufügen zu",
+      "redirectsBlocked": "Alte Webadressen führen noch zu dieser Kategorie ({count, plural, one {# Adresse} other {# Adressen}}), deshalb kann sie nicht gelöscht werden. Kontaktieren Sie uns, wenn Sie sie entfernen möchten."
     },
     "photoWizard": {
       "add": {

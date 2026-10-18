@@ -63,6 +63,8 @@ export type TaxonomyErrorCode =
   | 'conflict'
   /** Delete refused: content still uses the term; `detail` names it. */
   | 'in_use'
+  /** Delete refused: old web addresses (redirectFrom) still lead to this term's public page. */
+  | 'has_redirects'
   | 'failed'
 
 export type TermUsageItem = { id: string; name: string; type: string }
@@ -116,6 +118,7 @@ type TermDoc = {
   label?: unknown
   color?: unknown
   order?: unknown
+  redirectFrom?: unknown
   createdAt?: string
   createdBy?: string
   updatedAt?: string
@@ -130,6 +133,8 @@ export type TermView = {
   order: number
   rev: string
   coverage: TranslationCoverage
+  /** Old web addresses that redirect to this term's public page (blog categories). Blocks delete. */
+  redirects: number
 }
 export type ListedTerm = TermView & { usedBy: number }
 export type TermList = {
@@ -206,7 +211,7 @@ const singleProjectGuard = (client: Client, projectSlug: string) =>
 
 type Site = { defaultLocale: string; locales: string[] }
 const SITE_QUERY = /* groq */ `*[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales }`
-const TERMS_QUERY = /* groq */ `*[_type == "taxonomyTerm" && projectSlug == $projectSlug && module == $module && kind == $kind && !(_id in path("drafts.**"))] | order(order asc, key asc){ _id, _type, _rev, projectSlug, module, kind, key, label, color, order, createdAt, createdBy }`
+const TERMS_QUERY = /* groq */ `*[_type == "taxonomyTerm" && projectSlug == $projectSlug && module == $module && kind == $kind && !(_id in path("drafts.**"))] | order(order asc, key asc){ _id, _type, _rev, projectSlug, module, kind, key, label, color, order, redirectFrom, createdAt, createdBy }`
 
 async function readSite(scoped: TenantScopedSanityClient): Promise<Site> {
   const r = await span('sanity.readSite', () => scoped.fetch<{ defaultLocale?: string | null; supportedLocales?: string[] | null } | null>(SITE_QUERY))
@@ -224,6 +229,17 @@ function isOurs(doc: TermDoc | null | undefined, a: Access): doc is TermDoc {
   return !!doc && doc._type === TAXONOMY_TERM_TYPE && doc.projectSlug === a.projectSlug && doc.module === a.module && doc.kind === a.kind && isValidTermKey(doc.key)
 }
 
+/** Distinct non-empty old addresses in a redirectFrom object (one list per language). */
+export function redirectCount(value: unknown): number {
+  if (!value || typeof value !== 'object') return 0
+  const keys = new Set<string>()
+  for (const [k, list] of Object.entries(value as Record<string, unknown>)) {
+    if (k.startsWith('_') || !Array.isArray(list)) continue
+    for (const x of list) if (typeof x === 'string' && x.trim()) keys.add(x.trim())
+  }
+  return keys.size
+}
+
 function view(doc: TermDoc, site: Site): TermView {
   const label = localized(doc.label)
   return {
@@ -234,6 +250,7 @@ function view(doc: TermDoc, site: Site): TermView {
     order: typeof doc.order === 'number' && Number.isFinite(doc.order) ? doc.order : 0,
     rev: String(doc._rev ?? ''),
     coverage: translationCoverage(label, site.locales, site.defaultLocale),
+    redirects: redirectCount(doc.redirectFrom),
   }
 }
 
@@ -489,6 +506,9 @@ export async function deleteTerm(ctx: TenantAuthorizationContext, projectId: str
       count: used.count,
       items: used.items.slice(0, IN_USE_ITEM_LIMIT).map((i) => ({ id: i.id, type: i.type, name: pickName(i.name, site.defaultLocale) })),
     })
+  }
+  if (redirectCount(current.redirectFrom) > 0) {
+    throw new TaxonomyError('has_redirects', 'Old web addresses still lead to this term.')
   }
   await commit(() => client.delete(id))
   return { key }

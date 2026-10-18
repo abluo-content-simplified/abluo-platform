@@ -527,4 +527,16 @@ describe('Posts categories (blog, routable)', () => {
     await updateTerm(blogCtx(), 'project-a', 'blog', 'category', 'a', { labels: { en: 'A' } }, f.deps)
     expect(f.store.get(`term.${SLUG}.blog.category.a`)).toMatchObject({ description: { it: 'Testo' }, redirectFrom: { it: ['old'] }, noindex: true })
   })
+
+  it('an unused category that old web addresses still redirect to cannot be deleted', async () => {
+    const f = fake([{ ...blogTerm('a', { it: 'A' }), redirectFrom: { _type: 'redirectFrom', it: ['old-one', 'old-two'], en: ['old-one'] } }])
+    expect(await code(deleteTerm(blogCtx(), 'project-a', 'blog', 'category', 'a', f.deps))).toBe('has_redirects')
+    expect(f.client.delete).not.toHaveBeenCalled()
+    const listed = await listTerms(blogCtx(), 'project-a', 'blog', 'category', f.deps)
+    expect(listed.terms[0].redirects).toBe(2)
+    // empty redirect lists do not protect
+    const g = fake([{ ...blogTerm('b', { it: 'B' }), redirectFrom: { it: [], en: [' '] } }])
+    await deleteTerm(blogCtx(), 'project-a', 'blog', 'category', 'b', g.deps)
+    expect(g.terms()).toHaveLength(0)
+  })
 })

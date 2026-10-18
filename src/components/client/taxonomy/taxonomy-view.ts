@@ -100,6 +100,8 @@ export type UsageView = { count: number; items: Array<{ id: string; name: string
 export type DeleteState =
   | { kind: 'free' }
   | { kind: 'blocked'; count: number; shown: Array<{ id: string; name: string; type: string }>; more: number }
+  /** Unused, but old web addresses still redirect to its public page (blog categories): delete stays off. */
+  | { kind: 'protected'; redirects: number }
 
 export const USAGE_ITEMS_SHOWN = 10
 
@@ -108,21 +110,26 @@ export const USAGE_ITEMS_SHOWN = 10
  * the count and up to 10 items; "and N more" names the rest. `usage` is what the
  * server last said (it wins over the list's cached count, which may be stale).
  */
-export function deleteState(usedBy: number, usage: UsageView | null): DeleteState {
+export function deleteState(usedBy: number, usage: UsageView | null, redirects = 0): DeleteState {
   const count = usage ? usage.count : usedBy
-  if (count <= 0) return { kind: 'free' }
+  if (count <= 0) return redirects > 0 ? { kind: 'protected', redirects } : { kind: 'free' }
   const shown = (usage?.items ?? []).slice(0, USAGE_ITEMS_SHOWN)
   return { kind: 'blocked', count, shown, more: Math.max(0, count - shown.length) }
 }
 
 /** Locale-agnostic link to the editor of a used item; null when the screen has no editor for it. */
 export function itemHref(projectSlug: string, item: Pick<TermUsageItem, 'id' | 'type'>): string | null {
-  return item.type === 'catalogueItem' && item.id ? `/${projectSlug}/catalogue/${encodeURIComponent(item.id)}` : null
+  if (!item.id) return null
+  const id = encodeURIComponent(item.id)
+  if (item.type === 'catalogueItem') return `/${projectSlug}/catalogue/${id}`
+  if (item.type === 'post') return `/${projectSlug}/posts/write/${id}`
+  if (item.type === 'event') return `/${projectSlug}/agenda/${id}`
+  return null
 }
 
 // ── Errors ────────────────────────────────────────────────────────────────────
 
-const KNOWN_ERRORS = ['label_required', 'label_too_long', 'too_many_terms', 'conflict', 'forbidden', 'unauthenticated', 'in_use', 'not_found', 'invalid_value'] as const
+const KNOWN_ERRORS = ['label_required', 'label_too_long', 'too_many_terms', 'conflict', 'forbidden', 'unauthenticated', 'in_use', 'has_redirects', 'not_found', 'invalid_value'] as const
 /** Message key (`clientDashboard.taxonomy.errors.<key>`) for an action error code. */
 export function errorKey(code: string | undefined): string {
   return (KNOWN_ERRORS as readonly string[]).includes(code ?? '') ? (code as string) : 'failed'

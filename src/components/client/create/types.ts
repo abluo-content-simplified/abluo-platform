@@ -66,6 +66,8 @@ export type StepProps = {
   update: (set: Record<string, unknown>) => void
   goNext: () => void
   goBack: () => void
+  /** A category created inline in this wizard: added to `site` so later steps (Review) show its name. */
+  addCategory?: (term: { value: string; label: Record<string, string>; color: string | null }) => void
   /**
    * For steps that write through their OWN server action (e.g. Cover):
    * waits until every queued autosave is confirmed and returns the draft's

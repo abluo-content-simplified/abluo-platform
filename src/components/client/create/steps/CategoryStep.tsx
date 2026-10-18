@@ -10,7 +10,7 @@ import { StepHeading } from '@/components/client/create/StepHeading'
  * "What's this post about?" — multi-select chips (canvas: pill, ✓ + action colours when chosen) from the blog's categories.
  * With the shared TermPicker (ADR-033 Amendment J): people who may manage categories can type a new one and have it chosen at once.
  */
-export function CategoryStep({ draft, site, update }: StepProps) {
+export function CategoryStep({ draft, site, update, addCategory }: StepProps) {
   const t = useTranslations('clientDashboard.create.category')
   return (
     <section aria-labelledby="category-step-title">
@@ -27,6 +27,7 @@ export function CategoryStep({ draft, site, update }: StepProps) {
             onChange={(next) => update({ categories: next })}
             defaultLocale={site.defaultLocale}
             canAdd={site.canAddCategory === true}
+            onCreated={addCategory}
           />
         ) : (
           <ToggleChips
