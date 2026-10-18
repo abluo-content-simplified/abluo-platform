@@ -4,14 +4,23 @@ import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { BottomSheet } from '@/components/app/ui/BottomSheet'
+import { Button } from '@/components/app/ui/Button'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import { FactRow } from '@/components/app/ui/FactRow'
+import { Field } from '@/components/app/ui/Field'
+import type { FilterChip } from '@/components/app/ui/FilterSheet'
+import { ListToolbar, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
+import { Notice } from '@/components/app/ui/Notice'
 import { PageHeader } from '@/components/app/ui/PageHeader'
+import { SidePanel } from '@/components/app/ui/SidePanel'
+import { TextArea, TextInput } from '@/components/app/ui/TextInput'
 import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
-import { LocalDate, Pill, type PillTone } from '@/components/app/ui/list/cells'
+import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
+import { ListRow } from '@/components/app/ui/list/ListRow'
+import { CellDate, CellPill, CellText, LocalDate, Pill, type PillTone } from '@/components/app/ui/list/cells'
 import type { PartnerAppOverview } from '@/lib/connections/admin'
 import {
   approvePartnerAppAction,
@@ -25,12 +34,18 @@ const APP_TONE: Record<string, PillTone> = { approved: 'success', pending: 'high
 const CONN_TONE: Record<string, PillTone> = { active: 'success', paused: 'outline', needs_reconnect: 'highlight' }
 const ERRORS = ['forbidden', 'invalid_input', 'not_found', 'invalid_state'] as const
 
-const primary =
-  'inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-action px-4 text-[0.9375rem] font-semibold text-action-foreground hover:opacity-90 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none'
-const secondary =
-  'inline-flex h-11 items-center justify-center rounded-xl border border-border px-4 text-[0.9375rem] font-medium text-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
-const input =
-  'w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[0.9375rem] text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
+const STATUS_FILTERS = ['all', 'pending', 'approved', 'suspended'] as const
+type StatusFilter = (typeof STATUS_FILTERS)[number]
+type SortColumn = 'name' | 'status' | 'registered'
+type Sort = { column: SortColumn; dir: 'asc' | 'desc' }
+const STATUS_ORDER: Record<string, number> = { pending: 0, approved: 1, suspended: 2 }
+
+/** Lower-case, accent-free, so "citta" finds "Città". */
+const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
+/** Everything the search box matches: name, client id, contact, return addresses, connected sites. */
+const searchText = (a: PartnerAppOverview) =>
+  fold([a.name, a.clientId, a.contactEmail ?? '', ...a.redirectUris, ...a.connections.map((c) => c.projectName)].join(' '))
 
 type Revealed = { appName: string; clientId?: string; clientSecret: string }
 
@@ -49,6 +64,10 @@ export function PartnersBrowser({ title, apps }: { title: string; apps: PartnerA
   const [form, setForm] = useState({ name: '', redirectUris: '', contactEmail: '' })
   const [revealed, setRevealed] = useState<Revealed | null>(null)
   const [confirm, setConfirm] = useState<{ kind: 'suspend' | 'rotate'; app: PartnerAppOverview } | null>(null)
+  const [q, setQ] = useState('')
+  const [status, setStatus] = useState<StatusFilter>('all')
+  const [sort, setSort] = useState<Sort>({ column: 'name', dir: 'asc' })
+  const [openId, setOpenId] = useState<string | null>(null)
 
   async function run(action: () => Promise<PartnerActionResult>, done?: string): Promise<PartnerActionResult | null> {
     if (busy) return null
@@ -106,14 +125,86 @@ export function PartnersBrowser({ title, apps }: { title: string; apps: PartnerA
     )
   }
 
+  const terms = fold(q).split(/\s+/).filter(Boolean)
+  const matches = (a: PartnerAppOverview, st: StatusFilter, ts: string[]) =>
+    (st === 'all' || a.status === st) && (ts.length === 0 || ts.every((term) => searchText(a).includes(term)))
+  const dir = sort.dir === 'asc' ? 1 : -1
+  const sortKey = (a: PartnerAppOverview): number | string =>
+    sort.column === 'status' ? (STATUS_ORDER[a.status] ?? 3) : sort.column === 'registered' ? Date.parse(a.createdAt) || 0 : fold(a.name)
+  const shown = apps
+    .filter((a) => matches(a, status, terms))
+    .sort((a, b) => {
+      const ka = sortKey(a)
+      const kb = sortKey(b)
+      return ka === kb ? fold(a.name).localeCompare(fold(b.name)) : (ka < kb ? -1 : 1) * dir
+    })
+  const isDefault = !q.trim() && status === 'all'
+  const reset = () => {
+    setQ('')
+    setStatus('all')
+  }
+  const onSort = (key: string) =>
+    setSort((cur) => (cur.column === key ? { column: cur.column, dir: cur.dir === 'asc' ? 'desc' : 'asc' } : { column: key as SortColumn, dir: key === 'registered' ? 'desc' : 'asc' }))
+  const filters: ListToolbarFilter[] = [
+    {
+      key: 'status',
+      label: t('statusFilter'),
+      value: status,
+      options: STATUS_FILTERS.map((st) => ({ value: st, label: `${t(`statusFilters.${st}`)} (${apps.filter((a) => matches(a, st, [])).length})` })),
+      onChange: (v) => setStatus(v as StatusFilter),
+    },
+  ]
+  const chips: FilterChip[] = status !== 'all' ? [{ id: 'status', label: t(`statusFilters.${status}`) }] : []
+  const openApp = apps.find((a) => a.id === openId) ?? null
+
+  const columns: DataTableColumn<PartnerAppOverview>[] = [
+    {
+      key: 'name',
+      header: t('columns.app'),
+      sortable: true,
+      width: 'min-w-56',
+      render: (a) => <CellText clamp={1} primary={a.name} secondary={<span className="font-mono text-xs break-all">{a.clientId}</span>} secondaryLines={1} />,
+    },
+    {
+      key: 'status',
+      header: t('columns.status'),
+      sortable: true,
+      width: 'w-32',
+      render: (a) => (
+        <CellPill>
+          <Pill tone={APP_TONE[a.status] ?? 'muted'}>{t(`status.${a.status}` as 'status.approved')}</Pill>
+        </CellPill>
+      ),
+    },
+    {
+      key: 'contact',
+      header: t('columns.contact'),
+      width: 'w-52',
+      render: (a) => <span className="line-clamp-1 text-sm leading-6 break-all text-muted-foreground">{a.contactEmail ?? '—'}</span>,
+    },
+    {
+      key: 'connections',
+      header: t('columns.connections'),
+      width: 'w-28',
+      render: (a) => <span className="flex min-h-6 items-center text-sm text-foreground">{a.connections.length}</span>,
+    },
+    { key: 'registered', header: t('columns.registered'), sortable: true, width: 'w-32', render: (a) => <CellDate iso={a.createdAt} /> },
+    {
+      key: 'actions',
+      header: <span className="sr-only">{t('columns.actions')}</span>,
+      width: 'w-12',
+      render: (a) => <CardMenu variant="cell" label={t('actionsFor', { app: a.name })} items={menuFor(a)} />,
+    },
+  ]
+
   return (
     <div className="space-y-4">
       <PageHeader
         title={title}
         actions={
-          <button type="button" className={primary} onClick={() => setRegistering(true)}>
+          <Button variant="primary" onClick={() => setRegistering(true)}>
             {t('register')}
-          </button>
+          </Button>
         }
       />
       <p className="max-w-2xl text-[0.9375rem] leading-6 text-muted-foreground">{t('intro')}</p>
@@ -121,58 +212,51 @@ export function PartnersBrowser({ title, apps }: { title: string; apps: PartnerA
       {apps.length === 0 ? (
         <EmptyState title={t('emptyTitle')} body={t('emptyBody')} />
       ) : (
-        <ul className="space-y-4">
-          {apps.map((a) => (
-            <li key={a.id} className="space-y-3 rounded-2xl border border-border bg-card p-4 md:p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 flex-col gap-1.5">
-                  <h2 className="truncate text-[1.0625rem] leading-6 font-semibold text-foreground">{a.name}</h2>
-                  <span>
-                    <Pill tone={APP_TONE[a.status] ?? 'muted'}>{t(`status.${a.status}` as 'status.approved')}</Pill>
-                  </span>
-                </div>
-                <CardMenu label={t('actionsFor', { app: a.name })} items={menuFor(a)} />
+        <>
+          <ListToolbar
+            label={t('filters')}
+            search={{ value: q, onChange: setQ, label: t('search'), placeholder: t('searchPlaceholder') }}
+            filters={filters}
+            summary={t('showing', { shown: shown.length, total: apps.length })}
+            clear={{ label: t('clear'), onClear: reset, visible: !isDefault }}
+            sheet={{ activeCount: chips.length, resultCount: shown.length, chips, onRemoveChip: () => setStatus('all') }}
+          />
+
+          {shown.length === 0 ? (
+            <EmptyState titleAs="p" title={t('noMatch')} action={!isDefault ? <Button onClick={reset}>{t('clear')}</Button> : undefined} />
+          ) : (
+            <>
+              <div className="hidden md:block">
+                <DataTable
+                  label={title}
+                  rows={shown}
+                  columns={columns}
+                  rowKey={(a) => a.id}
+                  sort={{ column: sort.column, dir: sort.dir, onSort }}
+                  onRowClick={(a) => setOpenId(a.id)}
+                  minWidth="min-w-[52rem]"
+                />
               </div>
-              <dl>
-                <FactRow label={t('facts.clientId')}>
-                  <code className="text-sm break-all">{a.clientId}</code>
-                </FactRow>
-                <FactRow label={t('facts.redirects')}>
-                  <span className="flex flex-col items-end gap-0.5">
-                    {a.redirectUris.map((u) => (
-                      <code key={u} className="text-sm break-all">
-                        {u}
-                      </code>
-                    ))}
-                  </span>
-                </FactRow>
-                {a.contactEmail ? <FactRow label={t('facts.contact')}>{a.contactEmail}</FactRow> : null}
-                <FactRow label={t('facts.registered')}>
-                  <LocalDate iso={a.createdAt} />
-                </FactRow>
-              </dl>
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-foreground">{t('connectionsTitle', { count: a.connections.length })}</h3>
-                {a.connections.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">{t('noConnections')}</p>
-                ) : (
-                  <ul className="divide-y divide-border rounded-xl border border-border">
-                    {a.connections.map((c) => (
-                      <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
-                        <span className="text-[0.9375rem] text-foreground">{c.projectName}</span>
-                        <span className="flex flex-wrap items-center gap-1.5">
-                          {c.sandbox ? <Pill tone="muted">{t('sandbox')}</Pill> : null}
-                          <Pill tone={CONN_TONE[c.status] ?? 'muted'}>{t(`connectionStatus.${c.status}` as 'connectionStatus.active')}</Pill>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+              <ul aria-label={title} className="flex flex-col gap-3 md:hidden">
+                {shown.map((a) => (
+                  <ListRow key={a.id} onOpen={() => setOpenId(a.id)} menu={{ label: t('actionsFor', { app: a.name }), items: menuFor(a) }}>
+                    <span className="line-clamp-1 text-[0.9375rem] leading-[1.375rem] font-semibold text-foreground">{a.name}</span>
+                    <span className="line-clamp-1 text-sm leading-5 break-all text-muted-foreground">{a.contactEmail ?? a.clientId}</span>
+                    <span className="flex flex-wrap items-center gap-2">
+                      <Pill tone={APP_TONE[a.status] ?? 'muted'}>{t(`status.${a.status}` as 'status.approved')}</Pill>
+                      <span className="text-sm leading-5 text-muted-foreground">{t('connectionsTitle', { count: a.connections.length })}</span>
+                    </span>
+                  </ListRow>
+                ))}
+              </ul>
+            </>
+          )}
+        </>
       )}
+
+      <SidePanel open={openApp !== null} title={openApp?.name ?? ''} closeLabel={t('detail.close')} onClose={() => setOpenId(null)}>
+        {openApp ? <PartnerDetail app={openApp} /> : null}
+      </SidePanel>
 
       <BottomSheet open={registering} title={t('registerTitle')} onClose={() => setRegistering(false)}>
         <form
@@ -182,33 +266,31 @@ export function PartnersBrowser({ title, apps }: { title: string; apps: PartnerA
             void register()
           }}
         >
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-foreground">{t('form.name')}</span>
-            <input className={input} value={form.name} maxLength={120} required onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-foreground">{t('form.redirects')}</span>
-            <textarea
-              className={`${input} min-h-24 font-mono text-sm`}
-              value={form.redirectUris}
-              required
-              placeholder="https://partner.example/abluo/callback"
-              onChange={(e) => setForm({ ...form, redirectUris: e.target.value })}
-            />
-            <span className="block text-sm text-muted-foreground">{t('form.redirectsHelp')}</span>
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-foreground">{t('form.contact')}</span>
-            <input className={input} type="email" value={form.contactEmail} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} />
-          </label>
+          <Field label={t('form.name')}>
+            {(p) => <TextInput {...p} value={form.name} maxLength={120} required onChange={(e) => setForm({ ...form, name: e.target.value })} />}
+          </Field>
+          <Field label={t('form.redirects')} hint={t('form.redirectsHelp')}>
+            {(p) => (
+              <TextArea
+                {...p}
+                rows={4}
+                className="font-mono"
+                value={form.redirectUris}
+                required
+                placeholder="https://partner.example/abluo/callback"
+                onChange={(e) => setForm({ ...form, redirectUris: e.target.value })}
+              />
+            )}
+          </Field>
+          <Field label={t('form.contact')}>
+            {(p) => <TextInput {...p} type="email" value={form.contactEmail} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} />}
+          </Field>
           <p className="text-sm text-muted-foreground">{t('form.pendingNote')}</p>
           <div className="flex justify-end gap-3">
-            <button type="button" className={secondary} onClick={() => setRegistering(false)}>
-              {t('cancel')}
-            </button>
-            <button type="submit" className={primary} disabled={busy}>
+            <Button onClick={() => setRegistering(false)}>{t('cancel')}</Button>
+            <Button type="submit" variant="primary" disabled={busy}>
               {t('register')}
-            </button>
+            </Button>
           </div>
         </form>
       </BottomSheet>
@@ -216,17 +298,13 @@ export function PartnersBrowser({ title, apps }: { title: string; apps: PartnerA
       <BottomSheet open={revealed !== null} title={t('secret.title', { app: revealed?.appName ?? '' })} onClose={() => setRevealed(null)}>
         {revealed ? (
           <div className="space-y-4">
-            <p role="alert" className="rounded-xl bg-muted px-3 py-2 text-sm leading-6 text-foreground">
-              {t('secret.warning')}
-            </p>
+            <Notice tone="info">{t('secret.warning')}</Notice>
             {revealed.clientId ? (
               <div className="space-y-1.5">
                 <span className="text-sm font-medium text-foreground">{t('facts.clientId')}</span>
                 <div className="flex items-center gap-2">
                   <code className="min-w-0 flex-1 rounded-xl border border-border px-3 py-2.5 text-sm break-all">{revealed.clientId}</code>
-                  <button type="button" className={secondary} onClick={() => copy(revealed.clientId!)}>
-                    {t('copy')}
-                  </button>
+                  <Button onClick={() => copy(revealed.clientId!)}>{t('copy')}</Button>
                 </div>
               </div>
             ) : null}
@@ -234,15 +312,13 @@ export function PartnersBrowser({ title, apps }: { title: string; apps: PartnerA
               <span className="text-sm font-medium text-foreground">{t('secret.label')}</span>
               <div className="flex items-center gap-2">
                 <code className="min-w-0 flex-1 rounded-xl border border-border px-3 py-2.5 text-sm break-all">{revealed.clientSecret}</code>
-                <button type="button" className={secondary} onClick={() => copy(revealed.clientSecret)}>
-                  {t('copy')}
-                </button>
+                <Button onClick={() => copy(revealed.clientSecret)}>{t('copy')}</Button>
               </div>
             </div>
             <div className="flex justify-end">
-              <button type="button" className={primary} onClick={() => setRevealed(null)}>
+              <Button variant="primary" onClick={() => setRevealed(null)}>
                 {t('secret.done')}
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}
@@ -259,6 +335,54 @@ export function PartnersBrowser({ title, apps }: { title: string; apps: PartnerA
       />
 
       <Toast message={toast?.message ?? null} tone={toast?.tone} />
+    </div>
+  )
+}
+
+/** The detail of one partner app (SidePanel body): its facts and every Connection. */
+function PartnerDetail({ app: a }: { app: PartnerAppOverview }) {
+  const t = useTranslations('admin.partners')
+  return (
+    <div className="space-y-5">
+      <span className="block">
+        <Pill tone={APP_TONE[a.status] ?? 'muted'}>{t(`status.${a.status}` as 'status.approved')}</Pill>
+      </span>
+      <dl>
+        <FactRow label={t('facts.clientId')}>
+          <code className="text-sm break-all">{a.clientId}</code>
+        </FactRow>
+        <FactRow label={t('facts.redirects')}>
+          <span className="flex flex-col items-end gap-0.5">
+            {a.redirectUris.map((u) => (
+              <code key={u} className="text-sm break-all">
+                {u}
+              </code>
+            ))}
+          </span>
+        </FactRow>
+        {a.contactEmail ? <FactRow label={t('facts.contact')}>{a.contactEmail}</FactRow> : null}
+        <FactRow label={t('facts.registered')}>
+          <LocalDate iso={a.createdAt} />
+        </FactRow>
+      </dl>
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-foreground">{t('connectionsTitle', { count: a.connections.length })}</h3>
+        {a.connections.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t('noConnections')}</p>
+        ) : (
+          <ul className="divide-y divide-border rounded-xl border border-border">
+            {a.connections.map((c) => (
+              <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
+                <span className="text-[0.9375rem] text-foreground">{c.projectName}</span>
+                <span className="flex flex-wrap items-center gap-1.5">
+                  {c.sandbox ? <Pill tone="muted">{t('sandbox')}</Pill> : null}
+                  <Pill tone={CONN_TONE[c.status] ?? 'muted'}>{t(`connectionStatus.${c.status}` as 'connectionStatus.active')}</Pill>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   )
 }

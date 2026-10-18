@@ -21,6 +21,7 @@ import {
   putPostBackOnline,
   restorePost,
   runPostBatch,
+  setPostDates,
   setPostFeatured,
   takePostOffline,
   type PostBatchItem,
@@ -79,6 +80,16 @@ export async function archivePostAction(input: Input): Promise<ArchiveResult> {
 /** ADR-032 D6: back from the archive as unpublished — going online is a separate, explicit step. */
 export async function restorePostAction(input: Input): Promise<ArchiveResult> {
   const r = await run(input?.projectSlug, (ctx, projectId) => restorePost(ctx, projectId, { id: input.id, rev: input.rev }))
+  if (!r.ok) return r
+  const { draftRev, ...live } = r.value
+  return { ok: true, live, draftRev }
+}
+
+/** When the post is on the website: go-live date ('now' or a moment; omitted = keep) and end date (null = none). Applies at once, without publishing the draft. */
+export async function setPostDatesAction(input: Input & { publishedAt?: string; expiresAt: string | null }): Promise<ArchiveResult> {
+  const r = await run(input?.projectSlug, (ctx, projectId) =>
+    setPostDates(ctx, projectId, { id: input.id, rev: input.rev, ...(input.publishedAt !== undefined && { publishedAt: input.publishedAt }), expiresAt: input.expiresAt ?? null })
+  )
   if (!r.ok) return r
   const { draftRev, ...live } = r.value
   return { ok: true, live, draftRev }

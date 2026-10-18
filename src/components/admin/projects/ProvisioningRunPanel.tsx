@@ -2,10 +2,11 @@
 
 import { useState, useTransition, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
-import { Link } from '@/i18n/navigation'
 import { Pill, type PillTone } from '@/components/app/ui/list/cells'
 import { SectionHeading } from '@/components/app/ui/SectionHeading'
-import { CONTROL, PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/backlog/backlog-bits'
+import { Button, ButtonLink } from '@/components/app/ui/Button'
+import { buttonClass } from '@/components/app/ui/button-styles'
+import { TextInput } from '@/components/app/ui/TextInput'
 import { nextStep, type ProvisionStepId, type ProvisioningRunView, type RunStatus } from '@/lib/admin/provisioning/model'
 import { adminProjectHref } from '@/lib/admin/attention'
 import { previewSiteUrl } from '@/lib/admin/projects-filter'
@@ -106,9 +107,9 @@ export function ProvisioningRunPanel({ run: initial }: { run: ProvisioningRunVie
 
       {canRetry ? (
         <div className="flex flex-wrap items-center gap-3">
-          <button type="button" onClick={retry} disabled={pending} aria-busy={pending || undefined} className={PRIMARY_BUTTON}>
+          <Button variant="primary" onClick={retry} disabled={pending} aria-busy={pending || undefined}>
             {pending ? t('retrying') : run.status === 'failed' ? t('retry') : t('resume')}
-          </button>
+          </Button>
           <span className="text-sm leading-5 text-muted-foreground">{t('retryHelp')}</span>
         </div>
       ) : null}
@@ -126,24 +127,21 @@ export function ProvisioningRunPanel({ run: initial }: { run: ProvisioningRunVie
               part of THIS project. */}
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap gap-3">
-              <Link href={adminProjectHref(run.projectSlug)} className={PRIMARY_BUTTON}>
+              <ButtonLink variant="primary" href={adminProjectHref(run.projectSlug)}>
                 {t('openProject')}
-              </Link>
-              <a href={previewSiteUrl(run.projectSlug)} target="_blank" rel="noopener noreferrer" className={SECONDARY_BUTTON}>
+              </ButtonLink>
+              <a href={previewSiteUrl(run.projectSlug)} target="_blank" rel="noopener noreferrer" className={buttonClass()}>
                 {t('openPreview')}
               </a>
-              <a href="/studio" target="_blank" rel="noopener noreferrer" className={SECONDARY_BUTTON}>
+              <a href="/studio" target="_blank" rel="noopener noreferrer" className={buttonClass()}>
                 {t('openStudio')}
               </a>
             </div>
             <p className="text-sm leading-5 text-muted-foreground">{t('previewHint')}</p>
           </div>
-          <Link
-            href="/projects/new"
-            className="inline-flex min-h-11 w-fit items-center rounded-md text-sm font-medium text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
+          <ButtonLink variant="link" href="/projects/new" className="w-fit">
             {t('another')}
-          </Link>
+          </ButtonLink>
 
           <section aria-labelledby="np-next" className="flex flex-col gap-4">
             <SectionHeading id="np-next" title={t('next.heading')} />
@@ -158,11 +156,12 @@ export function ProvisioningRunPanel({ run: initial }: { run: ProvisioningRunVie
               <span className="block">{t('next.domain.intro')}</span>
               <label className="mt-3 block max-w-xs">
                 <span className="text-sm leading-5 font-semibold text-foreground">{t('next.domain.label')}</span>
-                <input
+                <TextInput
+                  controlSize="md"
                   value={domain}
                   onChange={(e) => setDomain(e.target.value)}
                   placeholder={t('next.domain.placeholderDomain')}
-                  className={`${CONTROL} mt-1.5 font-mono`}
+                  className="font-mono"
                   autoCapitalize="none"
                   autoComplete="off"
                   spellCheck={false}
@@ -201,9 +200,9 @@ export function ProvisioningRunPanel({ run: initial }: { run: ProvisioningRunVie
             </NextStep>
             <NextStep n={4} title={t('next.google.title')}>
               <span className="block">{t('next.google.body')}</span>
-              <Link href={`${adminProjectHref(run.projectSlug)}#google`} className={`${SECONDARY_BUTTON} mt-3`}>
+              <ButtonLink href={`${adminProjectHref(run.projectSlug)}#google`} className="mt-3">
                 {t('next.google.open')}
-              </Link>
+              </ButtonLink>
             </NextStep>
           </section>
         </>

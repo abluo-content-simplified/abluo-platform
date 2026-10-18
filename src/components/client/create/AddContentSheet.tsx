@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { Button } from '@/components/app/ui/Button'
 import { Chip } from '@/components/app/ui/Chip'
 import { ChoiceCard, ChoiceCardGrid } from '@/components/app/ui/ChoiceCard'
+import { DialogFrame } from '@/components/app/ui/DialogFrame'
 import { Fab } from '@/components/app/ui/Fab'
 import type { CreateMenu } from '@/lib/modules/add-content-sheet'
 
@@ -28,10 +29,6 @@ import type { CreateMenu } from '@/lib/modules/add-content-sheet'
  * panel (inside the dialog, so above it in the top layer) at the same spot,
  * its "+" turned 45° into an ×; tapping it closes the panel.
  */
-const SLIDE_MS = 280
-
-const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
 export function AddContentSheet({
   open,
   onClose,
@@ -54,7 +51,6 @@ export function AddContentSheet({
 }) {
   const t = useTranslations('clientDashboard.create.type')
   const router = useRouter()
-  const ref = useRef<HTMLDialogElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [asking, setAsking] = useState<string | null>(null)
@@ -62,22 +58,14 @@ export function AddContentSheet({
   const [shown, setShown] = useState(false)
 
   useEffect(() => {
-    const d = ref.current
-    if (!d) return
     if (open) {
-      if (!d.open) {
-        setError(null)
-        setAsking(null)
-        d.showModal()
-      }
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- start each opening fresh
+      setError(null)
+      setAsking(null)
       const raf = requestAnimationFrame(() => setShown(true))
       return () => cancelAnimationFrame(raf)
     }
-    if (d.open) {
-      setShown(false)
-      const id = setTimeout(() => d.close(), reducedMotion() ? 0 : SLIDE_MS)
-      return () => clearTimeout(id)
-    }
+    setShown(false)
   }, [open])
 
   /** Opens the wizard with NO document yet (lazy creation). */
@@ -108,16 +96,13 @@ export function AddContentSheet({
   const motion = 'transition-[opacity,transform] duration-[280ms] ease-out motion-reduce:transition-none'
 
   return (
-    <dialog
-      ref={ref}
+    // Escape: slide down first, then close (DialogFrame closes the dialog after the exit).
+    <DialogFrame
+      open={open}
       onClose={onClose}
-      onCancel={(e) => {
-        // Escape: slide down first, then close (the effect closes the dialog).
-        e.preventDefault()
-        onClose()
-      }}
-      aria-labelledby="add-sheet-title"
-      data-surface="create"
+      labelledBy="add-sheet-title"
+      surface="create"
+      animate={false}
       className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none overflow-hidden bg-transparent p-0 text-foreground backdrop:bg-transparent"
     >
       <div aria-hidden="true" onClick={onClose} className={`absolute inset-0 bg-scrim backdrop-blur-sm ${motion} ${shown ? 'opacity-100' : 'opacity-0'}`} />
@@ -204,7 +189,7 @@ export function AddContentSheet({
         )}
       </div>
       {fab ? <Fab label={fab.label} closeLabel={fab.closeLabel} open={shown} onPress={onClose} portal={false} /> : null}
-    </dialog>
+    </DialogFrame>
   )
 }
 

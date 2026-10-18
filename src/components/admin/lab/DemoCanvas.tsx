@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
+import { Panel } from '@/components/app/ui/Panel'
 import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
 
 type Theme = 'light' | 'dark'
@@ -38,13 +39,9 @@ export function DemoCanvas({ children }: { children: ReactNode }) {
         />
         <SegmentedControl label={t('width')} appearance="soft" value={width} onChange={setWidth} options={[{ value: 'full', label: t('full') }, { value: 'phone', label: t('phone') }]} />
       </div>
-      <div
-        className={`abluo-app rounded-2xl border border-border p-4 md:p-6 ${width === 'phone' ? 'max-w-[390px]' : 'w-full'}`}
-        data-theme={theme}
-        data-surface={surface}
-      >
+      <Panel padding="lg" className={`abluo-app ${width === 'phone' ? 'max-w-[390px]' : 'w-full'}`} data-theme={theme} data-surface={surface}>
         {children}
-      </div>
+      </Panel>
     </div>
   )
 }

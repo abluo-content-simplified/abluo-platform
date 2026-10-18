@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { Notice } from '@/components/app/ui/Notice'
 import { getTranslations } from 'next-intl/server'
 import { requireAbluoAdmin } from '@/lib/api/auth'
 import { MODULE_REGISTRY } from '@/lib/modules/registry'
@@ -34,9 +35,7 @@ export default async function AdminWhatsNewPage() {
         {result.state === 'missing' ? (
           <EmptyState title={t('missingTitle')} body={t('missingBody')} />
         ) : (
-          <div role="alert" className="rounded-2xl border border-destructive px-4 py-3 text-sm text-destructive">
-            {t('loadError', { message: result.message })}
-          </div>
+          <Notice tone="error">{t('loadError', { message: result.message })}</Notice>
         )}
       </PageShell>
     )

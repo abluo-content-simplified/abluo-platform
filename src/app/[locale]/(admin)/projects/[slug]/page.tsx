@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Notice } from '@/components/app/ui/Notice'
 import { notFound } from 'next/navigation'
 import { getFormatter, getLocale, getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
@@ -197,9 +198,7 @@ export default async function AdminProjectPage({
         </div>
 
         {content === null ? (
-          <div role="alert" className="rounded-2xl border border-destructive px-4 py-3 text-sm text-destructive">
-            {t('contentError')}
-          </div>
+          <Notice tone="error">{t('contentError')}</Notice>
         ) : (
           <>
             {tiles.length ? <StatGrid label={t('clientSees.heading')}>{tiles}</StatGrid> : null}

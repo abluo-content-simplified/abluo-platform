@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { Notice } from '@/components/app/ui/Notice'
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { EmptyState } from '@/components/app/ui/EmptyState'
@@ -124,9 +125,9 @@ export default async function NewProjectPage({ searchParams }: { searchParams: P
       ) : null}
 
       {clients === null || designSystems === null ? (
-        <div role="alert" className="max-w-[672px] rounded-2xl border border-destructive px-4 py-3 text-sm text-destructive">
+        <Notice tone="error" className="max-w-[672px]">
           {t(clients === null ? 'clientsError' : 'designSystemsError')}
-        </div>
+        </Notice>
       ) : (
         <NewProjectWizard clients={clients} designSystems={designSystems} locales={locales} defaultLocale={defaultLocale} />
       )}

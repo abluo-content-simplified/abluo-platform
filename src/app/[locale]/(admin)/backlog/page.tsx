@@ -1,4 +1,5 @@
 import { getTranslations } from 'next-intl/server'
+import { Notice } from '@/components/app/ui/Notice'
 import { redirect } from 'next/navigation'
 import { BacklogBrowser } from '@/components/admin/backlog/BacklogBrowser'
 import { EmptyState } from '@/components/app/ui/EmptyState'
@@ -38,9 +39,7 @@ export default async function AdminBacklogPage() {
     return (
       <PageShell>
         <PageHeader title={t('title')} />
-        <div role="alert" className="rounded-2xl border border-destructive px-4 py-3 text-sm text-destructive">
-          {t('loadError', { message: load.message })}
-        </div>
+        <Notice tone="error">{t('loadError', { message: load.message })}</Notice>
       </PageShell>
     )
   }

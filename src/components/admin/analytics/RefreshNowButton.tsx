@@ -3,6 +3,7 @@
 import { useActionState, useEffect } from 'react'
 import { useRouter } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
+import { Button } from '@/components/app/ui/Button'
 import { refreshAnalyticsAction, type RefreshActionState } from '@/lib/admin/analytics-actions'
 
 /** "Refresh now" for one site: runs today's snapshot immediately and reports per source. */
@@ -17,13 +18,9 @@ export function RefreshNowButton({ slug }: { slug: string }) {
   return (
     <form action={action} className="flex flex-col items-end gap-1">
       <input type="hidden" name="slug" value={slug} />
-      <button
-        type="submit"
-        disabled={pending}
-        className="inline-flex h-11 shrink-0 items-center rounded-xl border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60"
-      >
+      <Button type="submit" disabled={pending}>
         {pending ? t('running') : t('button')}
-      </button>
+      </Button>
       <p aria-live="polite" className="text-right text-xs leading-4 text-muted-foreground">
         {state.status === 'done'
           ? state.errors?.length

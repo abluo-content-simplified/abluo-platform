@@ -63,7 +63,7 @@
       "blog": "Articoli",
       "events": "Eventi",
       "live": "Live",
-      "forms": "Moduli",
+      "forms": "Richieste di contatto",
       "whatsapp": "WhatsApp",
       "news": "Notizie",
       "gallery": "Gallerie",
@@ -300,7 +300,19 @@
         "count": "{shown} di {total} eventi",
         "clear": "Azzera filtri",
         "noMatch": "Nessun evento corrisponde a questi filtri.",
-        "showPast": "Mostra eventi passati"
+        "showPast": "Mostra eventi passati",
+        "view": {
+          "label": "Vista",
+          "list": "Elenco",
+          "cards": "Schede"
+        },
+        "columns": {
+          "event": "Evento",
+          "when": "Quando",
+          "where": "Dove",
+          "status": "Stato",
+          "updated": "Aggiornato"
+        }
       },
       "new": {
         "back": "Eventi",
@@ -419,7 +431,7 @@
       }
     },
     "submissions": {
-      "title": "Moduli",
+      "title": "Richieste di contatto",
       "empty": "Ancora nessun invio.",
       "moduleNotInstalled": "Il modulo Moduli non è abilitato per questo progetto.",
       "anonymous": "Anonimo",
@@ -993,7 +1005,12 @@
         "editing": "Stai modificando una copia. I visitatori vedono la versione online finché non aggiorni.",
         "ctaNone": "Nessuno",
         "ctaDefault": "Predefinito del sito: {name}",
-        "ctaNoDefault": "Nessuno (il sito non ha un predefinito)"
+        "ctaNoDefault": "Nessuno (il sito non ha un predefinito)",
+        "dates": {
+          "title": "Sul tuo sito",
+          "saved": "Date salvate.",
+          "fromNote": "Con un momento più avanti il post viene tolto dal sito fino ad allora."
+        }
       },
       "menu": {
         "label": "Altre azioni",
@@ -1635,7 +1652,9 @@
         "confirmTitle": "Eliminare “{name}”?",
         "confirmBody": "Questa categoria non è usata da nulla. Verrà rimossa definitivamente.",
         "blocked": "{count, plural, one {Questa categoria è usata da # elemento e non può essere eliminata finché quell’elemento non viene riassegnato.} other {Questa categoria è usata da # elementi e non può essere eliminata finché quegli elementi non vengono riassegnati.}}",
-        "usedHeading": "{count, plural, one {Usata da # elemento} other {Usata da # elementi}}"
+        "usedHeading": "{count, plural, one {Usata da # elemento} other {Usata da # elementi}}",
+        "search": "Cerca categorie",
+        "count": "{shown} di {total} categorie"
       },
       "tag": {
         "tab": "Tag",
@@ -1649,7 +1668,9 @@
         "confirmTitle": "Eliminare “{name}”?",
         "confirmBody": "Questo tag non è usato da nulla. Verrà rimosso definitivamente.",
         "blocked": "{count, plural, one {Questo tag è usato da # elemento e non può essere eliminato finché quell’elemento non viene riassegnato.} other {Questo tag è usato da # elementi e non può essere eliminato finché quegli elementi non vengono riassegnati.}}",
-        "usedHeading": "{count, plural, one {Usato da # elemento} other {Usato da # elementi}}"
+        "usedHeading": "{count, plural, one {Usato da # elemento} other {Usato da # elementi}}",
+        "search": "Cerca tag",
+        "count": "{shown} di {total} tag"
       },
       "errors": {
         "label_required": "Inserisci un nome.",
@@ -1677,7 +1698,16 @@
           "placeholderAdd": "Cerca o aggiungi un tag",
           "addNamed": "Aggiungi “{name}”"
         }
-      }
+      },
+      "columns": {
+        "usedBy": "Usata da",
+        "languages": "Lingue",
+        "order": "Ordine"
+      },
+      "kindLabel": "Mostra",
+      "filterAll": "Tutte",
+      "clear": "Azzera filtri",
+      "noMatch": "Nessun risultato per la ricerca."
     },
     "photoWizard": {
       "add": {
@@ -2408,7 +2438,13 @@
         "summaryNowUntil": "Va online adesso e resta online fino al {end}.",
         "summaryAt": "Va online il {start} e resta online, senza data di fine.",
         "summaryAtUntil": "Va online il {start} e resta online fino al {end}.",
-        "summaryDraft": "Resta una bozza: non va online nulla."
+        "summaryDraft": "Resta una bozza: non va online nulla.",
+        "sinceMoment": "Dal {moment}",
+        "summarySince": "Online dal {start} e resta online, senza data di fine.",
+        "summarySinceUntil": "Online dal {start}, fino al {end}.",
+        "summaryLater": "Non è sul sito fino al {start}, poi resta online, senza data di fine.",
+        "summaryLaterUntil": "Non è sul sito fino al {start}, poi online fino al {end}.",
+        "summaryEnded": "Tolto dal sito il {end}."
       },
       "deletePermanently": {
         "title": "{count, plural, one {Eliminare definitivamente «{title}»?} other {Eliminare definitivamente # elementi?}}",
@@ -2803,7 +2839,8 @@
         "status": "Stato",
         "published": "Pubblicata",
         "audience": "Destinatari",
-        "reads": "Letta da"
+        "reads": "Letta da",
+        "actions": "Azioni"
       },
       "status": {
         "draft": "Bozza",
@@ -2869,7 +2906,21 @@
           "type": "Usa un’immagine JPEG, PNG o WebP.",
           "failed": "Impossibile caricare l’immagine. Riprova."
         }
-      }
+      },
+      "search": "Cerca novità",
+      "searchPlaceholder": "Titolo o destinatari…",
+      "filters": "Filtri novità",
+      "statusFilter": "Stato",
+      "statusFilters": {
+        "all": "Tutti gli stati",
+        "draft": "Bozza",
+        "published": "Pubblicata",
+        "archived": "Archiviata"
+      },
+      "showing": "{shown} di {total, plural, one {# novità} other {# novità}}",
+      "clear": "Azzera filtri",
+      "noMatch": "Nessuna novità corrisponde a questi filtri.",
+      "menu": "Azioni per {title}"
     },
     "projectPage": {
       "back": "Tutti i progetti",
@@ -3232,6 +3283,30 @@
         "not_found": "Questa app non esiste più. Ricarica la pagina.",
         "invalid_state": "Nel frattempo questa app è cambiata. Ricarica la pagina.",
         "failed": "Qualcosa è andato storto. Riprova."
+      },
+      "search": "Cerca app partner",
+      "searchPlaceholder": "Nome, client id, contatto, sito…",
+      "filters": "Filtri app partner",
+      "statusFilter": "Stato",
+      "statusFilters": {
+        "all": "Tutti gli stati",
+        "pending": "In attesa",
+        "approved": "Approvata",
+        "suspended": "Sospesa"
+      },
+      "showing": "{shown} di {total, plural, one {# app} other {# app}}",
+      "clear": "Azzera filtri",
+      "noMatch": "Nessuna app partner corrisponde a questi filtri.",
+      "columns": {
+        "app": "App",
+        "status": "Stato",
+        "contact": "Contatto",
+        "connections": "Connessioni",
+        "registered": "Registrata",
+        "actions": "Azioni"
+      },
+      "detail": {
+        "close": "Chiudi"
       }
     },
     "lab": {

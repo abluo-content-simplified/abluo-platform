@@ -29,6 +29,8 @@ export type DraftSnapshot = {
   mode?: 'create' | 'edit'
   /** The published version, when there is one. */
   live?: { rev: string; publishedAt: string | null; expiresAt: string | null; archivedAt?: string | null; slugs: Record<string, string> } | null
+  /** Edit mode: the copy differs from the live version (the Update bar shows only then). */
+  hasChanges?: boolean
 }
 
 export type SiteInfo = {

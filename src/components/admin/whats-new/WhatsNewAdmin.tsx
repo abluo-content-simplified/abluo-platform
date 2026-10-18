@@ -3,14 +3,26 @@
 import { useMemo, useRef, useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
+import { Button } from '@/components/app/ui/Button'
+import { buttonClass } from '@/components/app/ui/button-styles'
+import { CardMenu } from '@/components/app/ui/CardMenu'
 import { Checkbox } from '@/components/app/ui/Checkbox'
+import { Field } from '@/components/app/ui/Field'
+import { FieldLabel } from '@/components/app/ui/FieldLabel'
+import type { FilterChip } from '@/components/app/ui/FilterSheet'
+import { ListToolbar, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
+import { Notice } from '@/components/app/ui/Notice'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { EmptyState } from '@/components/app/ui/EmptyState'
+import { Panel } from '@/components/app/ui/Panel'
+import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
 import { SidePanel } from '@/components/app/ui/SidePanel'
+import { TextArea, TextInput } from '@/components/app/ui/TextInput'
 import { Toast } from '@/components/app/ui/Toast'
 import { UpdateCard } from '@/components/app/ui/UpdateCard'
 import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
-import { CellChips, CellPill, LocalDate, Pill, type PillTone } from '@/components/app/ui/list/cells'
+import { ListRow } from '@/components/app/ui/list/ListRow'
+import { CellChips, CellPill, CellText, LocalDate, Pill, type PillTone } from '@/components/app/ui/list/cells'
 import {
   saveProductUpdateAction,
   uploadProductUpdateImageAction,
@@ -42,16 +54,13 @@ type LanguageOption = { code: WhatsNewLocale; name: string }
 
 const STATUS_TONE: Record<ProductUpdateStatus, PillTone> = { draft: 'outline', published: 'success', archived: 'muted' }
 
-const INPUT =
-  'mt-2 h-12 w-full rounded-xl border border-border bg-background px-3 text-base text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
-const TEXTAREA =
-  'mt-2 min-h-40 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-base leading-6 text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
-const LABEL = 'block text-[0.9375rem] font-medium text-foreground'
 const HELP = 'mt-1 text-sm text-muted-foreground'
-const PRIMARY =
-  'inline-flex h-11 items-center justify-center rounded-xl bg-action px-4 text-[0.9375rem] font-semibold text-action-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50'
-const SECONDARY =
-  'inline-flex h-11 items-center justify-center rounded-xl border border-border px-4 text-[0.9375rem] font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50'
+
+const STATUS_FILTERS = ['all', 'draft', 'published', 'archived'] as const
+type StatusFilter = (typeof STATUS_FILTERS)[number]
+
+/** Lower-case, accent-free, so "novita" finds "Novità". */
+const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
 type Draft = ProductUpdateInput
 
@@ -90,10 +99,36 @@ export function WhatsNewAdmin({
   const [toast, setToast] = useState<{ message: string; tone: 'status' | 'error' } | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const [q, setQ] = useState('')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+
   const moduleLabel = useMemo(() => new Map(modules.map((m) => [m.id, m.label])), [modules])
   const titleOf = (u: AdminProductUpdate) => pickLocalized(u.title, 'en')?.text ?? u.slug
   const audienceOf = (u: AdminProductUpdate) => u.modules.map((m) => moduleLabel.get(m) ?? m)
   const statusLabel = (s: ProductUpdateStatus) => t(`status.${s}`)
+
+  const searchText = (u: AdminProductUpdate) =>
+    fold([...Object.values(u.title), titleOf(u), ...audienceOf(u)].filter((x): x is string => typeof x === 'string').join(' '))
+  const matches = (u: AdminProductUpdate, status: StatusFilter, terms: string[]) =>
+    (status === 'all' || u.status === status) && (terms.length === 0 || terms.every((term) => searchText(u).includes(term)))
+  const terms = fold(q).split(/\s+/).filter(Boolean)
+  const shown = updates.filter((u) => matches(u, statusFilter, terms))
+  const countFor = (s: StatusFilter) => updates.filter((u) => matches(u, s, [])).length
+  const isDefault = !q.trim() && statusFilter === 'all'
+  const reset = () => {
+    setQ('')
+    setStatusFilter('all')
+  }
+  const filters: ListToolbarFilter[] = [
+    {
+      key: 'status',
+      label: t('statusFilter'),
+      value: statusFilter,
+      options: STATUS_FILTERS.map((s) => ({ value: s, label: `${t(`statusFilters.${s}`)} (${countFor(s)})` })),
+      onChange: (v) => setStatusFilter(v as StatusFilter),
+    },
+  ]
+  const chips: FilterChip[] = statusFilter !== 'all' ? [{ id: 'status', label: t(`statusFilters.${statusFilter}`) }] : []
 
   const show = (message: string, tone: 'status' | 'error' = 'status') => {
     setToast({ message, tone })
@@ -114,6 +149,8 @@ export function WhatsNewAdmin({
     router.refresh()
   }
 
+  const menuFor = (u: AdminProductUpdate) => [{ key: 'edit', label: t('editTitle'), onSelect: () => openEditor(u.id) }]
+
   // Date first (Tom, 2026-10-08): updates read as a timeline.
   const columns: DataTableColumn<AdminProductUpdate>[] = [
     {
@@ -131,15 +168,7 @@ export function WhatsNewAdmin({
       key: 'title',
       header: t('columns.title'),
       width: 'min-w-72',
-      render: (u) => (
-        <button
-          type="button"
-          onClick={() => openEditor(u.id)}
-          className="line-clamp-2 text-left text-sm leading-6 font-semibold text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        >
-          {titleOf(u)}
-        </button>
-      ),
+      render: (u) => <CellText primary={titleOf(u)} />,
     },
     {
       key: 'status',
@@ -168,6 +197,12 @@ export function WhatsNewAdmin({
         </span>
       ),
     },
+    {
+      key: 'actions',
+      header: <span className="sr-only">{t('columns.actions')}</span>,
+      width: 'w-12',
+      render: (u) => <CardMenu variant="cell" label={t('menu', { title: titleOf(u) })} items={menuFor(u)} />,
+    },
   ]
 
   return (
@@ -175,9 +210,9 @@ export function WhatsNewAdmin({
       <PageHeader
         title={t('title')}
         actions={
-          <button type="button" onClick={() => openEditor('new')} className={PRIMARY}>
+          <Button variant="primary" onClick={() => openEditor('new')}>
             {t('newUpdate')}
-          </button>
+          </Button>
         }
       />
       <p className="text-sm text-muted-foreground">{t('description')}</p>
@@ -186,36 +221,45 @@ export function WhatsNewAdmin({
         <EmptyState title={t('emptyTitle')} body={t('emptyBody')} />
       ) : (
         <>
-          <div className="hidden md:block">
-            <DataTable
-              rows={updates}
-              rowKey={(u) => u.id}
-              columns={columns}
-              onRowClick={(u) => openEditor(u.id)}
-              minWidth="min-w-[48rem]"
-              label={t('title')}
-            />
-          </div>
-          <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border bg-card text-card-foreground md:hidden">
-            {updates.map((u) => (
-              <li key={u.id}>
-                <button
-                  type="button"
-                  onClick={() => openEditor(u.id)}
-                  className="flex w-full flex-col items-start gap-1.5 px-4 py-4 text-left transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none"
-                >
-                  <span className="text-sm text-muted-foreground">
-                    <LocalDate iso={u.publishedAt} empty={t('notPublished')} />
-                  </span>
-                  <span className="line-clamp-2 text-[0.9375rem] leading-6 font-semibold text-foreground">{titleOf(u)}</span>
-                  <span className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                    <Pill tone={STATUS_TONE[u.status]}>{statusLabel(u.status)}</Pill>
-                    <span>{audienceOf(u).join(', ') || t('audienceEveryone')}</span>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <ListToolbar
+            label={t('filters')}
+            search={{ value: q, onChange: setQ, label: t('search'), placeholder: t('searchPlaceholder') }}
+            filters={filters}
+            summary={t('showing', { shown: shown.length, total: updates.length })}
+            clear={{ label: t('clear'), onClear: reset, visible: !isDefault }}
+            sheet={{ activeCount: chips.length, resultCount: shown.length, chips, onRemoveChip: () => setStatusFilter('all') }}
+          />
+
+          {shown.length === 0 ? (
+            <EmptyState titleAs="p" title={t('noMatch')} action={!isDefault ? <Button onClick={reset}>{t('clear')}</Button> : undefined} />
+          ) : (
+            <>
+              <div className="hidden md:block">
+                <DataTable
+                  rows={shown}
+                  rowKey={(u) => u.id}
+                  columns={columns}
+                  onRowClick={(u) => openEditor(u.id)}
+                  minWidth="min-w-[48rem]"
+                  label={t('title')}
+                />
+              </div>
+              <ul aria-label={t('title')} className="flex flex-col gap-3 md:hidden">
+                {shown.map((u) => (
+                  <ListRow key={u.id} onOpen={() => openEditor(u.id)} menu={{ label: t('menu', { title: titleOf(u) }), items: menuFor(u) }}>
+                    <span className="text-sm text-muted-foreground">
+                      <LocalDate iso={u.publishedAt} empty={t('notPublished')} />
+                    </span>
+                    <span className="line-clamp-2 text-[0.9375rem] leading-6 font-semibold text-foreground">{titleOf(u)}</span>
+                    <span className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                      <Pill tone={STATUS_TONE[u.status]}>{statusLabel(u.status)}</Pill>
+                      <span>{audienceOf(u).join(', ') || t('audienceEveryone')}</span>
+                    </span>
+                  </ListRow>
+                ))}
+              </ul>
+            </>
+          )}
         </>
       )}
 
@@ -303,21 +347,21 @@ function UpdateEditor({
   const actions =
     status === 'published' ? (
       <>
-        <button type="button" disabled={busy} onClick={() => save('save')} className={PRIMARY}>
+        <Button variant="primary" disabled={busy} onClick={() => save('save')}>
           {t('actions.saveChanges')}
-        </button>
-        <button type="button" disabled={busy} onClick={() => save('archive')} className={SECONDARY}>
+        </Button>
+        <Button disabled={busy} onClick={() => save('archive')}>
           {t('actions.archive')}
-        </button>
+        </Button>
       </>
     ) : (
       <>
-        <button type="button" disabled={busy} onClick={() => save('publish')} className={PRIMARY}>
+        <Button variant="primary" disabled={busy} onClick={() => save('publish')}>
           {t('actions.publish')}
-        </button>
-        <button type="button" disabled={busy} onClick={() => save(status === 'archived' ? 'draft' : 'save')} className={SECONDARY}>
+        </Button>
+        <Button disabled={busy} onClick={() => save(status === 'archived' ? 'draft' : 'save')}>
           {status === 'archived' ? t('actions.moveToDraft') : t('actions.saveDraft')}
-        </button>
+        </Button>
       </>
     )
 
@@ -332,86 +376,65 @@ function UpdateEditor({
     >
       <div className="space-y-6">
         {errors.length ? (
-          <ul role="alert" className="space-y-1 rounded-2xl border border-destructive px-4 py-3 text-sm text-destructive">
-            {errors.map((e) => (
-              <li key={e}>{e}</li>
-            ))}
-          </ul>
+          <Notice tone="error">
+            <ul className="space-y-1">
+              {errors.map((e) => (
+                <li key={e}>{e}</li>
+              ))}
+            </ul>
+          </Notice>
         ) : null}
 
         {/* ── Per-language text ─────────────────────────────────────────── */}
         <fieldset className="space-y-4">
-          <legend className={LABEL}>{t('fields.language')}</legend>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {languages.map((l) => {
+          <FieldLabel as="legend">{t('fields.language')}</FieldLabel>
+          <SegmentedControl
+            label={t('fields.language')}
+            appearance="chips"
+            value={lang}
+            onChange={setLang}
+            options={languages.map((l) => {
               const filled = Boolean(draft.title[l.code]?.trim())
-              return (
-                <button
-                  key={l.code}
-                  type="button"
-                  aria-pressed={lang === l.code}
-                  onClick={() => setLang(l.code)}
-                  className={`inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-                    lang === l.code ? 'border-foreground bg-muted text-foreground' : 'border-border text-muted-foreground hover:bg-hover'
-                  }`}
-                >
-                  {l.name}
-                  {filled ? <span aria-hidden="true" className="size-1.5 rounded-full bg-success" /> : null}
-                  {filled ? <span className="sr-only">{t('fields.filled')}</span> : null}
-                </button>
-              )
+              return {
+                value: l.code,
+                label: (
+                  <>
+                    {l.name}
+                    {filled ? <span aria-hidden="true" className="size-1.5 rounded-full bg-success" /> : null}
+                    {filled ? <span className="sr-only">{t('fields.filled')}</span> : null}
+                  </>
+                ),
+              }
             })}
-          </div>
-          <label className={LABEL}>
-            {t('fields.title')}
-            <input
-              lang={lang}
-              value={draft.title[lang] ?? ''}
-              maxLength={WHATS_NEW_LIMITS.title}
-              onChange={(e) => setText('title', e.target.value)}
-              className={INPUT}
-            />
-          </label>
-          <label className={LABEL}>
-            {t('fields.body')}
-            <textarea
-              lang={lang}
-              value={draft.body[lang] ?? ''}
-              maxLength={WHATS_NEW_LIMITS.body}
-              onChange={(e) => setText('body', e.target.value)}
-              className={TEXTAREA}
-            />
-            <span className={`${HELP} block font-normal`}>{t('fields.bodyHelp')}</span>
-          </label>
-          <label className={LABEL}>
-            {t('fields.ctaLabel')}
-            <input
-              lang={lang}
-              value={draft.ctaLabel[lang] ?? ''}
-              maxLength={WHATS_NEW_LIMITS.ctaLabel}
-              onChange={(e) => setText('ctaLabel', e.target.value)}
-              className={INPUT}
-            />
-          </label>
+          />
+          <Field label={t('fields.title')}>
+            {(p) => <TextInput {...p} lang={lang} value={draft.title[lang] ?? ''} maxLength={WHATS_NEW_LIMITS.title} onChange={(e) => setText('title', e.target.value)} />}
+          </Field>
+          <Field label={t('fields.body')} hint={t('fields.bodyHelp')}>
+            {(p) => <TextArea {...p} lang={lang} rows={7} value={draft.body[lang] ?? ''} maxLength={WHATS_NEW_LIMITS.body} onChange={(e) => setText('body', e.target.value)} />}
+          </Field>
+          <Field label={t('fields.ctaLabel')}>
+            {(p) => <TextInput {...p} lang={lang} value={draft.ctaLabel[lang] ?? ''} maxLength={WHATS_NEW_LIMITS.ctaLabel} onChange={(e) => setText('ctaLabel', e.target.value)} />}
+          </Field>
         </fieldset>
 
         {/* ── Shared fields ─────────────────────────────────────────────── */}
-        <label className={LABEL}>
-          {t('fields.ctaUrl')}
-          <input
-            type="url"
-            inputMode="url"
-            placeholder="https://"
-            value={draft.ctaUrl}
-            maxLength={WHATS_NEW_LIMITS.url}
-            onChange={(e) => setDraft((d) => ({ ...d, ctaUrl: e.target.value }))}
-            className={INPUT}
-          />
-          <span className={`${HELP} block font-normal`}>{t('fields.ctaHelp')}</span>
-        </label>
+        <Field label={t('fields.ctaUrl')} hint={t('fields.ctaHelp')}>
+          {(p) => (
+            <TextInput
+              {...p}
+              type="url"
+              inputMode="url"
+              placeholder="https://"
+              value={draft.ctaUrl}
+              maxLength={WHATS_NEW_LIMITS.url}
+              onChange={(e) => setDraft((d) => ({ ...d, ctaUrl: e.target.value }))}
+            />
+          )}
+        </Field>
 
         <div>
-          <p className={LABEL}>{t('fields.image')}</p>
+          <FieldLabel as="p">{t('fields.image')}</FieldLabel>
           <p className={HELP}>{t('fields.imageHelp')}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <input
@@ -422,19 +445,19 @@ function UpdateEditor({
               id="whats-new-image"
               onChange={(e) => void upload(e.target.files?.[0])}
             />
-            <label htmlFor="whats-new-image" className={`${SECONDARY} cursor-pointer`} aria-disabled={busy}>
+            <label htmlFor="whats-new-image" className={buttonClass({ className: 'cursor-pointer' })} aria-disabled={busy}>
               {uploading ? t('fields.uploading') : draft.imageUrl ? t('fields.replaceImage') : t('fields.chooseImage')}
             </label>
             {draft.imageUrl ? (
-              <button type="button" disabled={busy} onClick={() => setDraft((d) => ({ ...d, imageUrl: null }))} className={SECONDARY}>
+              <Button disabled={busy} onClick={() => setDraft((d) => ({ ...d, imageUrl: null }))}>
                 {t('fields.removeImage')}
-              </button>
+              </Button>
             ) : null}
           </div>
         </div>
 
         <fieldset>
-          <legend className={LABEL}>{t('fields.audience')}</legend>
+          <FieldLabel as="legend">{t('fields.audience')}</FieldLabel>
           <p className={HELP}>{t('fields.audienceHelp')}</p>
           <ul className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
             {modules.map((m) => (
@@ -450,11 +473,11 @@ function UpdateEditor({
 
         {/* ── Preview ───────────────────────────────────────────────────── */}
         <section aria-labelledby="whats-new-preview" className="space-y-2">
-          <h3 id="whats-new-preview" className={LABEL}>
+          <h3 id="whats-new-preview" className="text-[0.9375rem] font-medium text-foreground">
             {t('previewTitle')}
           </h3>
           {previewLang ? <p className={HELP}>{t('previewLanguage', { language: previewLang })}</p> : null}
-          <div className="rounded-2xl border border-border p-4">
+          <Panel>
             {title ? (
               <UpdateCard
                 title={title.text}
@@ -469,7 +492,7 @@ function UpdateEditor({
             ) : (
               <p className="text-sm text-muted-foreground">{t('previewEmpty')}</p>
             )}
-          </div>
+          </Panel>
         </section>
       </div>
     </SidePanel>

@@ -2,10 +2,11 @@
 
 import { useMemo, useState, type ReactNode } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
+import { EmptyState } from '@/components/app/ui/EmptyState'
 import { ListToolbar, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
 import type { FilterChip } from '@/components/app/ui/FilterSheet'
 import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
-import { CardGrid, CardGridItem, ContentCard } from '@/components/app/ui/list/ContentCard'
+import { ListRow } from '@/components/app/ui/list/ListRow'
 import { CellText, Pill, type PillTone } from '@/components/app/ui/list/cells'
 import { Sparkline } from '@/components/app/ui/Sparkline'
 import {
@@ -132,9 +133,7 @@ export function PortfolioBrowser({ rows }: { rows: PortfolioRow[] }) {
       />
 
       {shown.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border px-6 py-10">
-          <p className="font-medium text-foreground">{t('filters.noMatch')}</p>
-        </div>
+        <EmptyState titleAs="p" title={t('filters.noMatch')} />
       ) : (
         <>
           <div className="hidden md:block">
@@ -148,28 +147,21 @@ export function PortfolioBrowser({ rows }: { rows: PortfolioRow[] }) {
             />
           </div>
           <div className="md:hidden">
-            <CardGrid label={t('title')}>
+            <ul className="flex flex-col gap-3" aria-label={t('title')}>
               {shown.map((r) => (
-                <CardGridItem key={r.projectId}>
-                  <ContentCard
-                    media={{}}
-                    mediaContent={
-                      <span className="absolute inset-0 flex items-end bg-muted px-3 pb-3">
-                        {r.dailyVisitors.length > 1 ? <Sparkline values={r.dailyVisitors} label={t('dailyVisitors', { site: r.name })} className="h-10 w-full" /> : null}
-                      </span>
-                    }
-                    title={r.name}
-                    subtitle={r.visitors28 === null ? connectionOf(r) === 'none' ? t('connection.none') : t('noData') : t('visitorsLine', { count: r.visitors28 })}
-                    href={href(r)}
-                  >
-                    <span className="flex flex-wrap items-center gap-2 text-sm">
-                      <TrendText percent={r.trend} />
-                      <StatusPill status={r.status} />
-                    </span>
-                  </ContentCard>
-                </CardGridItem>
+                <ListRow key={r.projectId} href={href(r)}>
+                  <span className="text-[0.9375rem] leading-6 font-semibold text-foreground">{r.name}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {r.visitors28 === null ? (connectionOf(r) === 'none' ? t('connection.none') : t('noData')) : t('visitorsLine', { count: r.visitors28 })}
+                  </span>
+                  {r.dailyVisitors.length > 1 ? <Sparkline values={r.dailyVisitors} label={t('dailyVisitors', { site: r.name })} className="h-8 w-full max-w-48" /> : null}
+                  <span className="flex flex-wrap items-center gap-2 text-sm">
+                    <TrendText percent={r.trend} />
+                    <StatusPill status={r.status} />
+                  </span>
+                </ListRow>
               ))}
-            </CardGrid>
+            </ul>
           </div>
         </>
       )}

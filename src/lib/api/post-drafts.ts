@@ -489,6 +489,8 @@ export type PostDraftSnapshot = {
   cta: { mode: 'default' | 'none' | 'custom'; ref: string | null } | null
   /** The gallery shown below the post (published id), or null. */
   gallery: string | null
+  /** Edit mode: the draft's content differs from the live version (something to "Update post" with). */
+  hasChanges: boolean
 }
 
 /** What the editor needs to know about the live version of a post. */
@@ -607,6 +609,29 @@ function blockMap(value: unknown): Record<string, unknown[]> {
   return out
 }
 
+/** Fields that are not the post's content: system fields, the wizard's position and the lifecycle dates (set on both versions alike). */
+const NOT_CONTENT = new Set(['wizard', 'publishedAt', 'expiresAt', 'archivedAt', 'archivedBy'])
+
+function stable(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stable)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.keys(value as Record<string, unknown>)
+        .filter((k) => k !== '_rev' && k !== '_updatedAt' && k !== '_createdAt' && k !== '_id')
+        .sort()
+        .map((k) => [k, stable((value as Record<string, unknown>)[k])])
+    )
+  }
+  return value
+}
+
+/** Whether a draft holds content the live version does not have (an edit copy that was changed). */
+export function contentDiffers(draft: Record<string, unknown>, published: Record<string, unknown>): boolean {
+  const content = (doc: Record<string, unknown>) =>
+    stable(Object.fromEntries(Object.entries(doc).filter(([k, v]) => !k.startsWith('_') && !NOT_CONTENT.has(k) && v !== undefined && v !== null)))
+  return JSON.stringify(content(draft)) !== JSON.stringify(content(published))
+}
+
 function asStep(value: unknown): WizardStep {
   return WIZARD_STEPS.includes(value as WizardStep) ? (value as WizardStep) : 'type'
 }
@@ -667,6 +692,7 @@ export async function getPostDraft(
     live: published ? liveState(published) : null,
     cta: ctaChoice(doc.cta),
     gallery: galleryRef(doc.gallery),
+    hasChanges: published ? contentDiffers(doc, published) : false,
   }
 }
 

@@ -47,6 +47,7 @@ function emptyPostDraft(): Awaited<ReturnType<typeof getPostDraft>> {
     live: null,
     cta: null,
     gallery: null,
+    hasChanges: false,
   }
 }
 

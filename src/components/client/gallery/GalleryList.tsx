@@ -88,7 +88,7 @@ export function GalleryList({
   const [, startTransition] = useTransition()
   const placesOf = useGalleryPlaces()
 
-  const [view, chooseView] = useViewPreference<View>(VIEW_KEY, VIEWS, 'grid')
+  const [view, chooseView] = useViewPreference<View>(VIEW_KEY, VIEWS, 'list')
 
   // ── Filters (in the URL) ───────────────────────────────────────────────────
   const [filters, setFilters] = useState<GalleryFilters>(() => parseGalleryFilters(new URLSearchParams(initialQuery)))

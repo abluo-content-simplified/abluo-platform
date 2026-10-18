@@ -1,13 +1,18 @@
 'use client'
 
-import { useId, useMemo, useState, useTransition, type ReactNode } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { Checkbox } from '@/components/app/ui/Checkbox'
 import { ChoiceCard, ChoiceCardGrid } from '@/components/app/ui/ChoiceCard'
 import { FactRow } from '@/components/app/ui/FactRow'
 import { SectionHeading } from '@/components/app/ui/SectionHeading'
-import { CONTROL, PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/backlog/backlog-bits'
+import { Button } from '@/components/app/ui/Button'
+import { Field } from '@/components/app/ui/Field'
+import { FieldError } from '@/components/app/ui/FieldLabel'
+import { OptionCards } from '@/components/app/ui/OptionCards'
+import { Select } from '@/components/app/ui/Select'
+import { TextInput } from '@/components/app/ui/TextInput'
 import {
   FIELD_STEP,
   SLUG_MIN,
@@ -236,38 +241,37 @@ export function NewProjectWizard({
           ) : (
             <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('client.noClients')}</p>
           )}
-          {errors.client && draft.clientMode === null ? <ErrorLine>{errorText(errors.client)}</ErrorLine> : null}
+          {errors.client && draft.clientMode === null ? <FieldError>{errorText(errors.client)}</FieldError> : null}
 
           {draft.clientMode === 'existing' ? (
-            <Field label={t('client.pick')} error={errorText(errors.client)}>
-              {(id, describedBy) => (
-                <select id={id} aria-describedby={describedBy} value={draft.tenantId} onChange={(e) => set({ tenantId: e.target.value })} className={`${CONTROL} truncate`}>
+            <Field className="min-w-0" label={t('client.pick')} error={errorText(errors.client)}>
+              {(p) => (
+                <Select {...p} value={draft.tenantId} onChange={(e) => set({ tenantId: e.target.value })}>
                   <option value="">{t('client.pickPlaceholder')}</option>
                   {clients.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name} ({c.slug})
                     </option>
                   ))}
-                </select>
+                </Select>
               )}
             </Field>
           ) : null}
 
           {draft.clientMode === 'new' ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label={t('client.name')} error={errorText(errors.clientName)}>
-                {(id, describedBy) => (
-                  <input id={id} aria-describedby={describedBy} value={draft.clientName} placeholder={t('client.namePlaceholder')} onChange={(e) => set({ clientName: e.target.value })} className={CONTROL} autoComplete="off" />
+              <Field className="min-w-0" label={t('client.name')} error={errorText(errors.clientName)}>
+                {(p) => (
+                  <TextInput {...p} value={draft.clientName} placeholder={t('client.namePlaceholder')} onChange={(e) => set({ clientName: e.target.value })} autoComplete="off" />
                 )}
               </Field>
-              <Field label={t('client.slug')} help={t('client.slugHelp')} error={errorText(errors.clientSlug)}>
-                {(id, describedBy) => (
-                  <input
-                    id={id}
-                    aria-describedby={describedBy}
+              <Field className="min-w-0" label={t('client.slug')} hint={t('client.slugHelp')} error={errorText(errors.clientSlug)}>
+                {(p) => (
+                  <TextInput
+                    {...p}
                     value={draft.clientSlug}
                     onChange={(e) => set({ clientSlug: e.target.value, clientSlugEdited: true })}
-                    className={`${CONTROL} font-mono`}
+                    className="font-mono"
                     autoCapitalize="none"
                     autoComplete="off"
                     spellCheck={false}
@@ -283,19 +287,18 @@ export function NewProjectWizard({
         <section aria-labelledby="np-project" className="flex flex-col gap-5">
           <SectionHeading id="np-project" title={t('project.heading')} />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label={t('project.name')} error={errorText(errors.projectName)}>
-              {(id, describedBy) => (
-                <input id={id} aria-describedby={describedBy} value={draft.projectName} placeholder={t('project.namePlaceholder')} onChange={(e) => set({ projectName: e.target.value })} className={CONTROL} autoComplete="off" />
+            <Field className="min-w-0" label={t('project.name')} error={errorText(errors.projectName)}>
+              {(p) => (
+                <TextInput {...p} value={draft.projectName} placeholder={t('project.namePlaceholder')} onChange={(e) => set({ projectName: e.target.value })} autoComplete="off" />
               )}
             </Field>
-            <Field label={t('project.slug')} help={t('project.slugHelp', { slug: draft.projectSlug || '…' })} error={errorText(errors.projectSlug)}>
-              {(id, describedBy) => (
-                <input
-                  id={id}
-                  aria-describedby={describedBy}
+            <Field className="min-w-0" label={t('project.slug')} hint={t('project.slugHelp', { slug: draft.projectSlug || '…' })} error={errorText(errors.projectSlug)}>
+              {(p) => (
+                <TextInput
+                  {...p}
                   value={draft.projectSlug}
                   onChange={(e) => set({ projectSlug: e.target.value, projectSlugEdited: true })}
-                  className={`${CONTROL} font-mono`}
+                  className="font-mono"
                   autoCapitalize="none"
                   autoComplete="off"
                   spellCheck={false}
@@ -303,15 +306,15 @@ export function NewProjectWizard({
               )}
             </Field>
           </div>
-          <Field label={t('project.defaultLocale')} error={errorText(errors.defaultLocale)}>
-            {(id, describedBy) => (
-              <select id={id} aria-describedby={describedBy} value={draft.defaultLocale} onChange={(e) => set({ defaultLocale: e.target.value as SupportedLocale })} className={`${CONTROL} truncate sm:max-w-xs`}>
+          <Field className="min-w-0" label={t('project.defaultLocale')} error={errorText(errors.defaultLocale)}>
+            {(p) => (
+              <Select {...p} value={draft.defaultLocale} onChange={(e) => set({ defaultLocale: e.target.value as SupportedLocale })} className="sm:max-w-xs">
                 {locales.map((l) => (
                   <option key={l.code} value={l.code}>
                     {l.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             )}
           </Field>
           <fieldset className="flex flex-col gap-1.5">
@@ -337,7 +340,7 @@ export function NewProjectWizard({
                 )
               })}
             </ul>
-            {errors.supportedLocales ? <ErrorLine>{errorText(errors.supportedLocales)}</ErrorLine> : null}
+            {errors.supportedLocales ? <FieldError>{errorText(errors.supportedLocales)}</FieldError> : null}
           </fieldset>
         </section>
       ) : null}
@@ -354,33 +357,27 @@ export function NewProjectWizard({
             { key: 'projects', items: others },
           ].map((group) =>
             group.items.length ? (
-              <div key={group.key} role="radiogroup" aria-label={t(`design.${group.key}`)} className="flex flex-col gap-2">
+              <div key={group.key} className="flex flex-col gap-2">
                 <h3 className="text-sm leading-5 font-semibold text-foreground">{t(`design.${group.key}`)}</h3>
-                {group.items.map((d) => {
-                  const selected = d.id === draft.designSystemId
-                  return (
-                    <button
-                      key={d.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={selected}
-                      onClick={() => set({ designSystemId: d.id })}
-                      className={`flex flex-col items-start gap-0.5 rounded-xl text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none ${
-                        selected ? 'border-2 border-foreground bg-muted px-[calc(1rem-1px)] py-[calc(0.75rem-1px)]' : 'border border-border bg-card px-4 py-3 hover:bg-accent'
-                      }`}
-                    >
-                      <span className="text-[0.9375rem] leading-6 font-semibold text-foreground">{d.name}</span>
-                      <span className="text-sm leading-5 text-muted-foreground">
+                <OptionCards
+                  label={t(`design.${group.key}`)}
+                  value={draft.designSystemId}
+                  onChange={(id) => set({ designSystemId: id })}
+                  options={group.items.map((d) => ({
+                    value: d.id,
+                    title: d.name,
+                    body: (
+                      <>
                         {d.role === 'template' ? t('design.templateNote') : t('design.copyNote', { project: d.projectSlug ?? '—' })}
                         {d.role === 'active' && d.parentName ? ` · ${t('design.inherits', { name: d.parentName })}` : ''}
-                      </span>
-                    </button>
-                  )
-                })}
+                      </>
+                    ),
+                  }))}
+                />
               </div>
             ) : null
           )}
-          {errors.designSystem ? <ErrorLine>{errorText(errors.designSystem)}</ErrorLine> : null}
+          {errors.designSystem ? <FieldError>{errorText(errors.designSystem)}</FieldError> : null}
         </section>
       ) : null}
 
@@ -392,12 +389,12 @@ export function NewProjectWizard({
             {draft.clientMode === 'existing' ? <p className="text-[0.9375rem] leading-6 text-muted-foreground">{t('owner.optional')}</p> : null}
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label={t('owner.name')} error={errorText(errors.ownerName)}>
-              {(id, describedBy) => <input id={id} aria-describedby={describedBy} value={draft.ownerName} onChange={(e) => set({ ownerName: e.target.value })} className={CONTROL} autoComplete="off" />}
+            <Field className="min-w-0" label={t('owner.name')} error={errorText(errors.ownerName)}>
+              {(p) => <TextInput {...p} value={draft.ownerName} onChange={(e) => set({ ownerName: e.target.value })} autoComplete="off" />}
             </Field>
-            <Field label={t('owner.email')} error={errorText(errors.ownerEmail)}>
-              {(id, describedBy) => (
-                <input id={id} type="email" inputMode="email" aria-describedby={describedBy} value={draft.ownerEmail} onChange={(e) => set({ ownerEmail: e.target.value })} className={CONTROL} autoCapitalize="none" autoComplete="off" spellCheck={false} />
+            <Field className="min-w-0" label={t('owner.email')} error={errorText(errors.ownerEmail)}>
+              {(p) => (
+                <TextInput {...p} type="email" inputMode="email" value={draft.ownerEmail} onChange={(e) => set({ ownerEmail: e.target.value })} autoCapitalize="none" autoComplete="off" spellCheck={false} />
               )}
             </Field>
           </div>
@@ -431,69 +428,26 @@ export function NewProjectWizard({
         </section>
       ) : null}
 
-      {formError ? <ErrorLine>{t(`errors.${formError}`)}</ErrorLine> : null}
+      {formError ? <FieldError>{t(`errors.${formError}`)}</FieldError> : null}
 
       <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
         {index > 0 ? (
-          <button type="button" onClick={() => go(WIZARD_STEPS[index - 1])} disabled={pending} className={SECONDARY_BUTTON}>
+          <Button onClick={() => go(WIZARD_STEPS[index - 1])} disabled={pending}>
             {t('nav.back')}
-          </button>
+          </Button>
         ) : (
           <span />
         )}
         {step === 'review' ? (
-          <button type="button" onClick={create} disabled={pending} aria-busy={pending || undefined} className={PRIMARY_BUTTON}>
+          <Button variant="primary" onClick={create} disabled={pending} aria-busy={pending || undefined}>
             {pending ? t('nav.creating') : t('nav.create')}
-          </button>
+          </Button>
         ) : (
-          <button type="button" onClick={next} disabled={pending} aria-busy={pending || undefined} className={PRIMARY_BUTTON}>
+          <Button variant="primary" onClick={next} disabled={pending} aria-busy={pending || undefined}>
             {pending ? t('nav.checking') : t('nav.next')}
-          </button>
+          </Button>
         )}
       </div>
-    </div>
-  )
-}
-
-function ErrorLine({ children }: { children: ReactNode }) {
-  return (
-    <p role="alert" className="text-sm leading-5 text-destructive">
-      {children}
-    </p>
-  )
-}
-
-function Field({
-  label,
-  help,
-  error,
-  children,
-}: {
-  label: string
-  help?: string
-  error?: string | null
-  children: (id: string, describedBy: string | undefined) => ReactNode
-}) {
-  const id = useId()
-  const helpId = help ? `${id}-help` : undefined
-  const errId = error ? `${id}-err` : undefined
-  const describedBy = [helpId, errId].filter(Boolean).join(' ') || undefined
-  return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm leading-5 font-semibold text-foreground">
-        {label}
-      </label>
-      {children(id, describedBy)}
-      {help ? (
-        <p id={helpId} className="text-sm leading-5 text-muted-foreground">
-          {help}
-        </p>
-      ) : null}
-      {error ? (
-        <p id={errId} role="alert" className="text-sm leading-5 text-destructive">
-          {error}
-        </p>
-      ) : null}
     </div>
   )
 }

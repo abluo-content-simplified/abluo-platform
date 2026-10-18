@@ -13,6 +13,7 @@ import { SidePanel } from '@/components/app/ui/SidePanel'
 import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
 import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
+import { ListRow } from '@/components/app/ui/list/ListRow'
 import { CellDate, CellText, LocalDate, Pill } from '@/components/app/ui/list/cells'
 import {
   BACKLOG_AREAS,
@@ -39,7 +40,10 @@ import {
   type BacklogActionResult,
 } from '@/app/[locale]/(admin)/backlog/actions'
 import { BacklogForm, type BacklogFieldErrors } from './BacklogForm'
-import { CONTROL, DESTRUCTIVE_BUTTON, PLUS_ICON, PRIMARY_BUTTON, SECONDARY_BUTTON, PriorityPill, StatusPill } from './backlog-bits'
+import { PLUS_ICON, PriorityPill, StatusPill } from './backlog-bits'
+import { Button } from '@/components/app/ui/Button'
+import { Notice } from '@/components/app/ui/Notice'
+import { Select } from '@/components/app/ui/Select'
 
 type Panel = { kind: 'new' } | { kind: 'view'; id: string } | { kind: 'edit'; id: string } | null
 
@@ -236,10 +240,10 @@ export function BacklogBrowser({ items, projects }: { items: BacklogItem[]; proj
   ]
 
   const newButton = (
-    <button type="button" onClick={() => openPanel({ kind: 'new' })} className={PRIMARY_BUTTON}>
+    <Button variant="primary" onClick={() => openPanel({ kind: 'new' })}>
       {PLUS_ICON}
       {t('newItem')}
-    </button>
+    </Button>
   )
 
   // ── Panel ──────────────────────────────────────────────────────────────────
@@ -249,12 +253,10 @@ export function BacklogBrowser({ items, projects }: { items: BacklogItem[]; proj
 
   const formActions = (submitLabel: string, onCancel: () => void) => (
     <>
-      <button type="submit" form={FORM_ID} disabled={busy} aria-busy={busy || undefined} className={PRIMARY_BUTTON}>
+      <Button type="submit" variant="primary" form={FORM_ID} disabled={busy} aria-busy={busy || undefined}>
         {submitLabel}
-      </button>
-      <button type="button" onClick={onCancel} className={SECONDARY_BUTTON}>
-        {t('form.cancel')}
-      </button>
+      </Button>
+      <Button onClick={onCancel}>{t('form.cancel')}</Button>
     </>
   )
 
@@ -298,31 +300,29 @@ export function BacklogBrowser({ items, projects }: { items: BacklogItem[]; proj
       <>
         <label className="block w-44">
           <span className="sr-only">{t('detail.changeStatus')}</span>
-          <select
+          <Select
+            controlSize="md"
+            flush
             value={openItem.status}
             onChange={(e) => void changeStatus(openItem, e.target.value as BacklogStatus)}
-            className={`${CONTROL} truncate`}
           >
             {BACKLOG_STATUSES.map((s) => (
               <option key={s} value={s}>
                 {t(`status.${s}`)}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
-        <button type="button" onClick={() => openPanel({ kind: 'edit', id: openItem.id })} className={SECONDARY_BUTTON}>
-          {t('detail.edit')}
-        </button>
-        <button
-          type="button"
+        <Button onClick={() => openPanel({ kind: 'edit', id: openItem.id })}>{t('detail.edit')}</Button>
+        <Button
+          variant="destructive"
           onClick={() => {
             setDeleteError(null)
             setConfirmDelete(openItem)
           }}
-          className={DESTRUCTIVE_BUTTON}
         >
           {t('detail.delete')}
-        </button>
+        </Button>
       </>
     )
     panelBody = <BacklogDetail item={openItem} projectName={projectName(openItem.projectId)} />
@@ -354,9 +354,7 @@ export function BacklogBrowser({ items, projects }: { items: BacklogItem[]; proj
               title={t('filters.noMatch')}
               action={
                 !isDefault ? (
-                  <button type="button" onClick={reset} className={SECONDARY_BUTTON}>
-                    {t('filters.clear')}
-                  </button>
+                  <Button onClick={reset}>{t('filters.clear')}</Button>
                 ) : undefined
               }
             />
@@ -377,24 +375,17 @@ export function BacklogBrowser({ items, projects }: { items: BacklogItem[]; proj
                   onRowClick={(i) => openPanel({ kind: 'view', id: i.id })}
                 />
               </div>
-              <ul className="flex flex-col gap-3 md:hidden">
+              <ul aria-label={t('title')} className="flex flex-col gap-3 md:hidden">
                 {shown.map((i) => (
-                  <li key={i.id}>
-                    <button
-                      type="button"
-                      onClick={() => openPanel({ kind: 'view', id: i.id })}
-                      aria-label={t('detail.open', { title: i.title })}
-                      className="flex w-full flex-col items-start gap-2 rounded-xl border border-border bg-card px-4 py-3 text-left text-card-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                    >
-                      <span className="line-clamp-2 text-[0.9375rem] leading-[1.375rem] font-semibold text-foreground">{i.title}</span>
-                      <span className="line-clamp-1 text-sm leading-5 text-muted-foreground">{subtitle(i)}</span>
-                      <span className="flex flex-wrap items-center gap-1.5">
-                        <PriorityPill priority={i.priority} />
-                        <StatusPill status={i.status} />
-                        <Pill tone="outline">{t(`type.${i.type}`)}</Pill>
-                      </span>
-                    </button>
-                  </li>
+                  <ListRow key={i.id} onOpen={() => openPanel({ kind: 'view', id: i.id })}>
+                    <span className="line-clamp-2 text-[0.9375rem] leading-[1.375rem] font-semibold text-foreground">{i.title}</span>
+                    <span className="line-clamp-1 text-sm leading-5 text-muted-foreground">{subtitle(i)}</span>
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <PriorityPill priority={i.priority} />
+                      <StatusPill status={i.status} />
+                      <Pill tone="outline">{t(`type.${i.type}`)}</Pill>
+                    </span>
+                  </ListRow>
                 ))}
               </ul>
             </>
@@ -432,9 +423,9 @@ export function BacklogBrowser({ items, projects }: { items: BacklogItem[]; proj
 
 function FormError({ text }: { text: string }) {
   return (
-    <p role="alert" className="mb-4 rounded-xl border border-destructive px-4 py-3 text-sm leading-5 text-destructive">
+    <Notice tone="error" className="mb-4">
       {text}
-    </p>
+    </Notice>
   )
 }
 

@@ -2,11 +2,13 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { Button } from '@/components/app/ui/Button'
+import { buttonClass } from '@/components/app/ui/button-styles'
 import { useRouter } from 'next/navigation'
 import type { EmailOtpType } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { AuthLayout } from '@/components/auth/AuthLayout'
-import { AuthError, AuthNote, AuthPasswordInput, authPrimaryClass } from '@/components/auth/auth-ui'
+import { AuthError, AuthNote, AuthPasswordInput } from '@/components/auth/auth-ui'
 
 /**
  * Choose a new password, arriving from a reset email.
@@ -173,7 +175,7 @@ function ResetPasswordForm() {
           'Reset links are single-use and time-limited. Some email providers open links automatically to scan them, which uses the link up before you get to it.'
         }
       >
-        <Link href="/forgot-password" className={authPrimaryClass}>
+        <Link href="/forgot-password" className={buttonClass({ variant: 'primary', size: 'lg', fullWidth: true })}>
           Request a new link
         </Link>
       </AuthLayout>
@@ -183,16 +185,17 @@ function ResetPasswordForm() {
   if (status === 'done') {
     return (
       <AuthLayout title="Password updated" subtitle="You can sign in with your new password.">
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="lg"
+          fullWidth
           onClick={() => {
             router.push('/login')
             router.refresh()
           }}
-          className={authPrimaryClass}
         >
           Go to sign in
-        </button>
+        </Button>
       </AuthLayout>
     )
   }
@@ -222,9 +225,9 @@ function ResetPasswordForm() {
 
         {error && <AuthError>{error}</AuthError>}
 
-        <button type="submit" disabled={saving} aria-busy={saving || undefined} className={authPrimaryClass}>
+        <Button type="submit" variant="primary" size="lg" fullWidth disabled={saving} aria-busy={saving || undefined}>
           {saving ? 'Saving…' : 'Update password'}
-        </button>
+        </Button>
       </form>
     </AuthLayout>
   )

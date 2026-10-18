@@ -64,12 +64,15 @@ export function CellText({
   primary,
   secondary,
   href,
+  onOpen,
   clamp = 2,
   secondaryLines = 2,
 }: {
   primary: ReactNode
   secondary?: ReactNode
   href?: string | null
+  /** Opens the row's sheet (no page of its own): the title becomes a button, reachable by keyboard. */
+  onOpen?: () => void
   /** Lines of primary text before it clamps (1 or 2). */
   clamp?: 1 | 2
   /** Lines of the muted secondary text before it truncates (1 or 2). */
@@ -82,6 +85,10 @@ export function CellText({
         <Link href={href} className={`${cls} hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none`}>
           {primary}
         </Link>
+      ) : onOpen ? (
+        <button type="button" onClick={onOpen} className={`${cls} text-left hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none`}>
+          {primary}
+        </button>
       ) : (
         <span className={cls}>{primary}</span>
       )}

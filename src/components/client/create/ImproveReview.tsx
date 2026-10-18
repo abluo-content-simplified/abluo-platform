@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useRef, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/app/ui/Button'
+import { DialogFrame } from '@/components/app/ui/DialogFrame'
 import { PreservedChip } from '@/components/client/editor/BodyEditor'
 import { cleanLink, isSpan, isTextBlock, type BodyBlock, type BodyItem, type BodyObject, type BodySpan } from '@/lib/client/normalize-blocks'
 
@@ -27,27 +28,15 @@ export function ImproveReview({
   onKeep: () => void
 }) {
   const t = useTranslations('clientDashboard.create.story.improve')
-  const ref = useRef<HTMLDialogElement>(null)
-
-  useEffect(() => {
-    const dialog = ref.current
-    if (!dialog) return
-    if (open && !dialog.open) dialog.showModal()
-    if (!open && dialog.open) dialog.close()
-  }, [open])
 
   return (
-    <dialog
-      ref={ref}
-      aria-labelledby="improve-review-title"
-      // Escape fires `cancel`: treat it as "Keep mine" so parent state stays in sync.
-      onCancel={(e) => {
-        e.preventDefault()
-        onKeep()
-      }}
+    // Escape is treated as "Keep mine" so parent state stays in sync.
+    <DialogFrame
+      open={open}
+      onClose={onKeep}
+      labelledBy="improve-review-title"
       className="m-0 h-dvh max-h-none w-full max-w-none bg-background p-0 text-foreground backdrop:bg-foreground/30 md:m-auto md:h-auto md:max-h-[85dvh] md:max-w-5xl md:rounded-2xl md:border md:border-border"
     >
-      {open && (
         <div className="flex h-full flex-col md:max-h-[85dvh]">
           <header className="px-4 pt-6 pb-4 md:px-8 md:pt-8">
             <h2 id="improve-review-title" className="text-2xl font-semibold tracking-tight">
@@ -74,8 +63,7 @@ export function ImproveReview({
             </Button>
           </footer>
         </div>
-      )}
-    </dialog>
+    </DialogFrame>
   )
 }
 

@@ -17,6 +17,7 @@ import {
   putPostBackOnline,
   restorePost,
   runPostBatch,
+  setPostDates,
   setPostEndDate,
   takePostOffline,
 } from '../post-lifecycle'
@@ -149,6 +150,7 @@ describe('lifecycleGuard (D7, amended)', () => {
       unpublishNow: [WRITE],
       backOnline: [WRITE],
       setEndDate: [WRITE],
+      setDates: [WRITE],
       archive: [WRITE],
       restore: [WRITE],
       deleteDraft: [DELETE],
@@ -263,6 +265,7 @@ describe('an archived post cannot go back online by any route', () => {
     ['take offline', (s: ReturnType<typeof memorySanity>) => takePostOffline(ctx(editor()), 'project-a', { id: ID, rev: 'p1' }, s.deps)],
     ['end date', (s: ReturnType<typeof memorySanity>) => setPostEndDate(ctx(editor()), 'project-a', { id: ID, rev: 'p1', expiresAt: '2027-01-01T00:00:00Z' }, s.deps)],
     ['remove end date', (s: ReturnType<typeof memorySanity>) => setPostEndDate(ctx(editor()), 'project-a', { id: ID, rev: 'p1', expiresAt: null }, s.deps)],
+    ['change dates', (s: ReturnType<typeof memorySanity>) => setPostDates(ctx(editor()), 'project-a', { id: ID, rev: 'p1', publishedAt: '2026-11-02T08:00:00Z', expiresAt: null }, s.deps)],
     ['publish now', (s: ReturnType<typeof memorySanity>) => publishPostDraft(ctx(editor()), 'project-a', { id: ID, rev: 'd1', mode: 'now' }, s.deps)],
     ['update post', (s: ReturnType<typeof memorySanity>) => publishPostDraft(ctx(editor()), 'project-a', { id: ID, rev: 'd1', mode: 'keep' }, s.deps)],
     [
@@ -282,6 +285,55 @@ describe('an archived post cannot go back online by any route', () => {
     for (const op of ['online', 'offline', 'endDate'] as const) {
       expect(await runPostBatch(ctx(editor()), 'project-a', { ids: [ID], op, expiresAt: null }, s.deps)).toEqual([{ id: ID, ok: false, error: 'archived' }])
     }
+  })
+})
+
+describe('setPostDates — when a post is on the website, without publishing its draft', () => {
+  const pair = () => memorySanity([publishedPost(), draftOf(publishedPost(), { title: { _type: 'localizedString', it: 'Bozza nuova' } })])
+
+  it('reschedules a live post to a future moment on both versions; the draft text stays a draft', async () => {
+    const s = pair()
+    const r = await setPostDates(ctx(editor()), 'project-a', { id: ID, rev: 'p1', publishedAt: '2026-10-19T07:00:00Z', expiresAt: '2026-10-23T16:00:00Z' }, s.deps)
+    expect(r).toMatchObject({ publishedAt: '2026-10-19T07:00:00.000Z', expiresAt: '2026-10-23T16:00:00.000Z' })
+    expect(r.draftRev).toBeTruthy()
+    expect(s.get(ID)).toMatchObject({ publishedAt: '2026-10-19T07:00:00.000Z', expiresAt: '2026-10-23T16:00:00.000Z', title: { it: 'Prova' } })
+    expect(s.get(`drafts.${ID}`)).toMatchObject({ publishedAt: '2026-10-19T07:00:00.000Z', title: { it: 'Bozza nuova' } })
+    expect(s.transactions).toHaveLength(1)
+  })
+
+  it('"now" brings a scheduled post online at once; leaving publishedAt out keeps it', async () => {
+    const s = memorySanity([publishedPost({ publishedAt: '2026-11-01T08:00:00.000Z' })])
+    expect(await setPostDates(ctx(editor()), 'project-a', { id: ID, rev: 'p1', publishedAt: 'now', expiresAt: null }, s.deps)).toMatchObject({ publishedAt: T, expiresAt: null })
+    const s2 = memorySanity([publishedPost()])
+    expect(await setPostDates(ctx(editor()), 'project-a', { id: ID, rev: 'p1', expiresAt: '2026-12-01T00:00:00Z' }, s2.deps)).toMatchObject({ publishedAt: '2026-09-01T08:00:00.000Z', expiresAt: '2026-12-01T00:00:00.000Z' })
+  })
+
+  it('removes the end date with null', async () => {
+    const s = memorySanity([publishedPost({ expiresAt: '2026-12-01T00:00:00.000Z' })])
+    await setPostDates(ctx(editor()), 'project-a', { id: ID, rev: 'p1', expiresAt: null }, s.deps)
+    expect(s.get(ID)?.expiresAt).toBeUndefined()
+  })
+
+  it.each([
+    ['an end before the go-live date', { publishedAt: '2026-11-10T08:00:00Z', expiresAt: '2026-11-05T08:00:00Z' }],
+    ['an end in the past', { expiresAt: '2026-10-01T08:00:00Z' }],
+    ['a go-live date more than two years ahead', { publishedAt: '2029-01-01T08:00:00Z', expiresAt: null }],
+    ['a malformed date', { publishedAt: 'monday', expiresAt: null }],
+  ])('refuses %s, nothing written', async (_l, dates) => {
+    const s = pair()
+    await expect(setPostDates(ctx(editor()), 'project-a', { id: ID, rev: 'p1', ...{ expiresAt: null as string | null }, ...dates }, s.deps)).rejects.toMatchObject({ code: 'invalid_value' })
+    expect(s.transactions).toHaveLength(0)
+  })
+
+  it('a moved revision is "conflict"', async () => {
+    const s = pair()
+    await expect(setPostDates(ctx(editor()), 'project-a', { id: ID, rev: 'old', publishedAt: 'now', expiresAt: null }, s.deps)).rejects.toMatchObject({ code: 'conflict' })
+  })
+
+  it('needs the write permission', async () => {
+    const s = pair()
+    await expect(setPostDates(ctx(grant([READ])), 'project-a', { id: ID, rev: 'p1', publishedAt: 'now', expiresAt: null }, s.deps)).rejects.toBeTruthy()
+    expect(s.transactions).toHaveLength(0)
   })
 })
 

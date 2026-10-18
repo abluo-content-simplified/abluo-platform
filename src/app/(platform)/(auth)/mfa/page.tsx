@@ -26,8 +26,9 @@ import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { safeNextPath } from '@/lib/auth/admin-assurance'
 import { AuthLayout } from '@/components/auth/AuthLayout'
-import { CodeInput } from '@/components/auth/CodeInput'
-import { AuthError, AuthNote, authPrimaryClass, authQuietLinkClass } from '@/components/auth/auth-ui'
+import { CodeInput } from '@/components/app/ui/CodeInput'
+import { Button } from '@/components/app/ui/Button'
+import { AuthError, AuthNote } from '@/components/auth/auth-ui'
 
 const COPY = {
   title: 'Two-factor authentication',
@@ -191,14 +192,14 @@ function MfaForm() {
 
       {error && <AuthError>{error}</AuthError>}
 
-      <button type="submit" disabled={busy || !CODE_COMPLETE.test(code)} aria-busy={busy || undefined} className={authPrimaryClass}>
+      <Button type="submit" variant="primary" size="lg" fullWidth disabled={busy || !CODE_COMPLETE.test(code)} aria-busy={busy || undefined}>
         {busy ? COPY.verifying : COPY.verify}
-      </button>
+      </Button>
 
       <div className="flex justify-center">
-        <button type="button" onClick={handleSignOut} className={authQuietLinkClass}>
+        <Button variant="link" onClick={handleSignOut}>
           {COPY.signOut}
-        </button>
+        </Button>
       </div>
     </form>
   )

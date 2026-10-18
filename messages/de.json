@@ -63,7 +63,7 @@
       "blog": "Beiträge",
       "events": "Veranstaltungen",
       "live": "Live",
-      "forms": "Formulare",
+      "forms": "Kontaktanfragen",
       "whatsapp": "WhatsApp",
       "news": "News",
       "gallery": "Galerien",
@@ -300,7 +300,19 @@
         "count": "{shown} von {total} Veranstaltungen",
         "clear": "Filter zurücksetzen",
         "noMatch": "Keine Veranstaltung passt zu diesen Filtern.",
-        "showPast": "Vergangene Veranstaltungen anzeigen"
+        "showPast": "Vergangene Veranstaltungen anzeigen",
+        "view": {
+          "label": "Ansicht",
+          "list": "Liste",
+          "cards": "Karten"
+        },
+        "columns": {
+          "event": "Veranstaltung",
+          "when": "Wann",
+          "where": "Wo",
+          "status": "Status",
+          "updated": "Aktualisiert"
+        }
       },
       "new": {
         "back": "Veranstaltungen",
@@ -419,7 +431,7 @@
       }
     },
     "submissions": {
-      "title": "Formulare",
+      "title": "Kontaktanfragen",
       "empty": "Noch keine Einsendungen.",
       "moduleNotInstalled": "Das Formulare-Modul ist für dieses Projekt nicht aktiviert.",
       "anonymous": "Anonym",
@@ -993,7 +1005,12 @@
         "editing": "Du bearbeitest eine Kopie. Besucher sehen die veröffentlichte Version, bis du aktualisierst.",
         "ctaNone": "Keine",
         "ctaDefault": "Standard der Website: {name}",
-        "ctaNoDefault": "Keine (die Website hat keinen Standard)"
+        "ctaNoDefault": "Keine (die Website hat keinen Standard)",
+        "dates": {
+          "title": "Auf deiner Website",
+          "saved": "Daten gespeichert.",
+          "fromNote": "Ein späterer Zeitpunkt nimmt den Beitrag bis dahin von der Website."
+        }
       },
       "menu": {
         "label": "Weitere Aktionen",
@@ -1635,7 +1652,9 @@
         "confirmTitle": "„{name}“ löschen?",
         "confirmBody": "Diese Kategorie wird nirgends verwendet. Sie wird endgültig entfernt.",
         "blocked": "{count, plural, one {Diese Kategorie wird von # Eintrag verwendet und kann erst gelöscht werden, wenn dieser Eintrag neu zugeordnet ist.} other {Diese Kategorie wird von # Einträgen verwendet und kann erst gelöscht werden, wenn diese Einträge neu zugeordnet sind.}}",
-        "usedHeading": "{count, plural, one {Von # Eintrag verwendet} other {Von # Einträgen verwendet}}"
+        "usedHeading": "{count, plural, one {Von # Eintrag verwendet} other {Von # Einträgen verwendet}}",
+        "search": "Kategorien suchen",
+        "count": "{shown} von {total} Kategorien"
       },
       "tag": {
         "tab": "Tags",
@@ -1649,7 +1668,9 @@
         "confirmTitle": "„{name}“ löschen?",
         "confirmBody": "Dieser Tag wird nirgends verwendet. Er wird endgültig entfernt.",
         "blocked": "{count, plural, one {Dieser Tag wird von # Eintrag verwendet und kann erst gelöscht werden, wenn dieser Eintrag neu zugeordnet ist.} other {Dieser Tag wird von # Einträgen verwendet und kann erst gelöscht werden, wenn diese Einträge neu zugeordnet sind.}}",
-        "usedHeading": "{count, plural, one {Von # Eintrag verwendet} other {Von # Einträgen verwendet}}"
+        "usedHeading": "{count, plural, one {Von # Eintrag verwendet} other {Von # Einträgen verwendet}}",
+        "search": "Tags suchen",
+        "count": "{shown} von {total} Tags"
       },
       "errors": {
         "label_required": "Bitte geben Sie einen Namen ein.",
@@ -1677,7 +1698,16 @@
           "placeholderAdd": "Tag suchen oder hinzufügen",
           "addNamed": "„{name}“ hinzufügen"
         }
-      }
+      },
+      "columns": {
+        "usedBy": "Verwendet von",
+        "languages": "Sprachen",
+        "order": "Reihenfolge"
+      },
+      "kindLabel": "Anzeigen",
+      "filterAll": "Alle",
+      "clear": "Filter zurücksetzen",
+      "noMatch": "Nichts passt zu deiner Suche."
     },
     "photoWizard": {
       "add": {
@@ -2408,7 +2438,13 @@
         "summaryNowUntil": "Geht jetzt online und bleibt bis {end} online.",
         "summaryAt": "Geht am {start} online und bleibt online, ohne Enddatum.",
         "summaryAtUntil": "Geht am {start} online und bleibt bis {end} online.",
-        "summaryDraft": "Bleibt ein Entwurf – nichts geht online."
+        "summaryDraft": "Bleibt ein Entwurf – nichts geht online.",
+        "sinceMoment": "Seit {moment}",
+        "summarySince": "Online seit {start} und bleibt online, ohne Enddatum.",
+        "summarySinceUntil": "Online seit {start}, bis {end}.",
+        "summaryLater": "Bis {start} nicht auf der Website, danach bleibt es online, ohne Enddatum.",
+        "summaryLaterUntil": "Bis {start} nicht auf der Website, danach online bis {end}.",
+        "summaryEnded": "Am {end} von der Website genommen."
       },
       "deletePermanently": {
         "title": "{count, plural, one {„{title}“ endgültig löschen?} other {# Einträge endgültig löschen?}}",
@@ -2803,7 +2839,8 @@
         "status": "Status",
         "published": "Veröffentlicht",
         "audience": "Zielgruppe",
-        "reads": "Gelesen von"
+        "reads": "Gelesen von",
+        "actions": "Aktionen"
       },
       "status": {
         "draft": "Entwurf",
@@ -2869,7 +2906,21 @@
           "type": "Verwende ein JPEG-, PNG- oder WebP-Bild.",
           "failed": "Das Bild konnte nicht hochgeladen werden. Versuch es noch einmal."
         }
-      }
+      },
+      "search": "Neuigkeiten suchen",
+      "searchPlaceholder": "Titel oder Zielgruppe suchen…",
+      "filters": "Filter für Neuigkeiten",
+      "statusFilter": "Status",
+      "statusFilters": {
+        "all": "Alle Status",
+        "draft": "Entwurf",
+        "published": "Veröffentlicht",
+        "archived": "Archiviert"
+      },
+      "showing": "{shown} von {total, plural, one {# Neuigkeit} other {# Neuigkeiten}}",
+      "clear": "Filter zurücksetzen",
+      "noMatch": "Keine Neuigkeiten entsprechen diesen Filtern.",
+      "menu": "Aktionen für {title}"
     },
     "projectPage": {
       "back": "Alle Projekte",
@@ -3232,6 +3283,30 @@
         "not_found": "Diese App gibt es nicht mehr. Lade die Seite neu.",
         "invalid_state": "Diese App hat sich inzwischen geändert. Lade die Seite neu.",
         "failed": "Etwas ist schiefgelaufen. Bitte versuche es noch einmal."
+      },
+      "search": "Partner-Apps suchen",
+      "searchPlaceholder": "Name, Client-ID, Kontakt, Website suchen…",
+      "filters": "Filter für Partner-Apps",
+      "statusFilter": "Status",
+      "statusFilters": {
+        "all": "Alle Status",
+        "pending": "Ausstehend",
+        "approved": "Freigegeben",
+        "suspended": "Gesperrt"
+      },
+      "showing": "{shown} von {total, plural, one {# App} other {# Apps}}",
+      "clear": "Filter zurücksetzen",
+      "noMatch": "Keine Partner-Apps entsprechen diesen Filtern.",
+      "columns": {
+        "app": "App",
+        "status": "Status",
+        "contact": "Kontakt",
+        "connections": "Verbindungen",
+        "registered": "Registriert",
+        "actions": "Aktionen"
+      },
+      "detail": {
+        "close": "Schließen"
       }
     },
     "lab": {

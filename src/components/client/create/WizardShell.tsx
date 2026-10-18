@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { PostActivitySheet } from '@/components/client/posts/PostActivitySheet'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import type { PortableTextBlock } from '@portabletext/editor'
 import { useRouter } from '@/i18n/navigation'
 import { Button, IconButton } from '@/components/app/ui/Button'
@@ -16,6 +16,7 @@ import {
   discardPostChangesAction,
   putPostBackOnlineAction,
   restorePostAction,
+  setPostDatesAction,
   takePostOfflineAction,
 } from '@/app/[locale]/(client)/[tenant]/posts/lifecycle-actions'
 import { useAutosave } from '@/lib/client/autosave/use-autosave'
@@ -44,7 +45,9 @@ import { LanguagesStep, type LanguageChoice } from './steps/LanguagesStep'
 import { PreviewStep } from './steps/PreviewStep'
 import { PublishStep } from './steps/PublishStep'
 import { choiceValue, defaultPublishChoice, type PublishChoice } from './steps/publish-choice-model'
-import { publishChoiceDates } from '@/components/app/lifecycle/publish-plan'
+import { datesSentence, publishChoiceDates, shortMoment } from '@/components/app/lifecycle/publish-plan'
+import { PublicationDates } from '@/components/app/lifecycle/PublicationDates'
+import { WizardFooter } from './WizardFooter'
 import { DoneStep, type DoneResult } from './steps/DoneStep'
 import { ReviewStep } from './steps/ReviewStep'
 import { CtaStep } from './steps/CtaStep'
@@ -105,6 +108,8 @@ export function WizardShell({
 }) {
   const t = useTranslations('clientDashboard.create')
   const tl = useTranslations('app.lifecycle')
+  const tp = useTranslations('app.lifecycle.publish')
+  const ui = useLocale()
   const router = useRouter()
   const projectSlug = site.projectSlug
   const locale = site.defaultLocale
@@ -137,6 +142,8 @@ export function WizardShell({
   const [notice, setNotice] = useState<{ kind: 'status' | 'error'; text: string } | null>(null)
   const [confirm, setConfirm] = useState<Confirm | null>(null)
   const [activityOpen, setActivityOpen] = useState(false)
+  /** Edit mode: the copy differs from the live version — the Update bar shows only then. */
+  const [hasChanges, setHasChanges] = useState(Boolean(initialDraft.hasChanges))
   const [confirmBusy, setConfirmBusy] = useState(false)
   const [confirmError, setConfirmError] = useState<string | null>(null)
   const mainRef = useRef<HTMLDivElement>(null)
@@ -175,6 +182,8 @@ export function WizardShell({
         }
       }
       const r = await patchPostDraftAction({ projectSlug, id: draftIdRef.current, rev, set: input.set })
+      // A content change (not just the wizard's position) is something to Update with.
+      if (r.ok && Object.keys(input.set).some((k) => !k.startsWith('wizard.'))) setHasChanges(true)
       return r.ok ? ({ ok: true, rev: r.rev } as const) : ({ ok: false, error: r.error } as const)
     },
     [projectSlug]
@@ -267,6 +276,7 @@ export function WizardShell({
     (change: { rev: string } & Partial<Omit<DraftSnapshot, 'id' | 'rev'>>) => {
       autosave.adoptRev(change.rev)
       setSnap((s) => ({ ...s, ...change }))
+      if (Object.keys(change).some((k) => k !== 'rev')) setHasChanges(true)
     },
     [autosave]
   )
@@ -417,6 +427,36 @@ export function WizardShell({
     }
   }
 
+  /**
+   * The overview's Publication block: when the post is on the website. Applies
+   * at once on both versions (setPostDatesAction) — the draft's text stays a
+   * draft until Update post.
+   */
+  async function saveDates(next: { from: string | null; until: string | null }) {
+    if (!live || busy) return
+    const keepStart = next.from !== null && next.from === live.publishedAt
+    setBusy(true)
+    setNotice(null)
+    try {
+      await autosave.flush()
+      const r = await setPostDatesAction({
+        projectSlug,
+        id: draftIdRef.current,
+        rev: live.rev,
+        ...(keepStart ? {} : { publishedAt: next.from ?? 'now' }),
+        expiresAt: next.until,
+      })
+      if (!r.ok) return setNotice({ kind: 'error', text: lifecycleError(r.error) })
+      if (r.draftRev) autosave.adoptRev(r.draftRev)
+      setLive(r.live)
+      setNotice({ kind: 'status', text: t('review.dates.saved') })
+    } catch {
+      setNotice({ kind: 'error', text: lifecycleError('failed') })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function runConfirm() {
     if (!confirm || confirmBusy) return
     setConfirmBusy(true)
@@ -473,7 +513,9 @@ export function WizardShell({
   const state = live ? publishedStatus(live, 'required', new Date()) : null
   const zone = editingZone(site.timeZone)
   const fmt = (iso: string | null | undefined) => formatInZone(iso, zone, locale)
-  const statusLine = !isEdit || !live || !state
+  // Not archived: the Publication block says where the post stands (and changes it).
+  const showDates = isEdit && !!live && !!state && state !== 'archived'
+  const statusLine = !isEdit || !live || !state || showDates
     ? null
     : state === 'archived'
       ? t('review.status.archived', { date: fmt(live.archivedAt) })
@@ -482,6 +524,23 @@ export function WizardShell({
         : t(`review.status.${state}`, { date: fmt(live.publishedAt) })
   // ADR-032 slice 6: the shared Archive · Restore · Delete pattern (lifecycleMenu);
   // an archived post offers only Restore and, for Owners and Site admins, Delete permanently.
+  const sentenceOf = (dates: { publishedAt: string | null; expiresAt: string | null }) => {
+    const sv = datesSentence(dates)
+    const m = (iso?: string) => (iso ? tp('moment', shortMoment(iso, zone, ui)) : '')
+    return tp(sv.key, { start: m(sv.start), end: m(sv.end) })
+  }
+  const publication = showDates && live ? (
+    <PublicationDates
+      id="post-dates"
+      from={live.publishedAt}
+      until={live.expiresAt}
+      zone={zone}
+      busy={busy}
+      fromNote={state === 'published' ? t('review.dates.fromNote') : undefined}
+      onChange={(next) => void saveDates(next)}
+      sentence={sentenceOf(live)}
+    />
+  ) : null
   const lifecycleItems = lifecycleMenu(isEdit && state ? state : 'draft', { write: true, delete: true, deletePublished: canDelete })
   const lifecycleItem = (e: LifecycleMenuEntry) => {
     const on: Record<LifecycleAction, () => void> = {
@@ -503,8 +562,7 @@ export function WizardShell({
       ]
     : []
   const menu = [
-    // "Publication dates" is held back until it has its own dates editor: the
-    // publish step it opened republished the copy and reset the go-live date.
+    // Dates are changed in the overview's Publication block, not from the menu.
     ...lifecycleItems.filter((e) => !e.destructive && e.action !== 'archive' && e.action !== 'setUnpublishDate').map(lifecycleItem),
     ...extras,
     ...lifecycleItems.filter((e) => e.action === 'archive').map(lifecycleItem),
@@ -591,6 +649,7 @@ export function WizardShell({
               menu={menu}
               status={statusLine}
               notice={notice}
+              publication={publication}
             />
           ) : step === 'category' ? (
             <CategoryStep {...props} />
@@ -616,45 +675,17 @@ export function WizardShell({
         </main>
       </div>
 
-      {ready && step !== 'done' ? (
-        <footer className="border-t border-border-subtle bg-background pb-[max(12px,env(safe-area-inset-bottom))]">
-          <div className={`mx-auto w-full px-4 pt-3 ${wide ? 'max-w-5xl' : 'max-w-[672px]'}`}>
-            {blockedHint ? (
-              <p role="status" className="mb-3 text-[0.9375rem] leading-6 text-muted-foreground">
-                {blockedHint}
-              </p>
-            ) : null}
-            {showProgress ? (
-            <div
-              role="progressbar"
-              aria-valuemin={1}
-              aria-valuemax={segments.length}
-              aria-valuenow={segmentIndex + 1}
-              aria-label={t('shell.progress', { current: segmentIndex + 1, total: segments.length })}
-              className="flex gap-1.5"
-            >
-              {segments.map((s, i) => (
-                <span key={s} className={`h-1 flex-1 rounded-full ${i <= segmentIndex ? 'bg-foreground' : 'bg-muted'}`} />
-              ))}
-            </div>
-            ) : null}
-            <div className={`flex items-center justify-between gap-4 ${showProgress ? 'mt-3' : ''}`}>
-              {hasBack ? (
-                <Button variant="link" onClick={goBack} disabled={busy || holdForCover}>
-                  {t('shell.back')}
-                </Button>
-              ) : (
-                <span />
-              )}
-              <Button variant="primary" size="lg" className="min-w-32" onClick={() => void onPrimary()} disabled={!canNext} aria-busy={busy || undefined}>
-                {nextLabel}
-              </Button>
-            </div>
-          </div>
-        </footer>
+      {ready && step !== 'done' && !(onReview && isEdit && !hasChanges) ? (
+        <WizardFooter
+          wide={wide}
+          hint={blockedHint}
+          progress={showProgress ? { current: segmentIndex + 1, total: segments.length } : null}
+          back={hasBack ? { onPress: goBack, disabled: busy || holdForCover } : null}
+          primary={{ label: nextLabel, onPress: () => void onPrimary(), disabled: !canNext, busy }}
+        />
       ) : null}
 
-      <PostActivitySheet open={activityOpen} onClose={() => setActivityOpen(false)} projectSlug={projectSlug} postId={draftIdRef.current} />
+      <PostActivitySheet open={activityOpen} onClose={() => setActivityOpen(false)} projectSlug={projectSlug} postId={snap.id} />
 
       <DeletePermanentlyDialog
         open={confirm === 'deletePost'}

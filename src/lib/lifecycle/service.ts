@@ -102,7 +102,7 @@ function inUse(d: LifecycleDescriptor, refs: readonly Referrer[]): Error {
   return Object.assign(d.fail('in_use', describeReferrers(refs)), { referrers: [...refs] })
 }
 
-export const LIFECYCLE_OPERATIONS = ['unpublishNow', 'backOnline', 'setEndDate', 'archive', 'restore', 'deleteDraft', 'deletePermanently'] as const
+export const LIFECYCLE_OPERATIONS = ['unpublishNow', 'backOnline', 'setEndDate', 'setDates', 'archive', 'restore', 'deleteDraft', 'deletePermanently'] as const
 export type LifecycleOperation = (typeof LIFECYCLE_OPERATIONS)[number]
 
 /**
@@ -290,6 +290,57 @@ export function setEndDate(
       const p = instant(published.publishedAt)
       if (expiresAt && p !== null && Date.parse(expiresAt) <= p) throw d.fail('invalid_value', 'The end date must be after the publish date.')
       const change = expiresAt ? { set: { expiresAt } } : { unset: ['expiresAt'] }
+      await commit(d, client, grant.projectSlug, () => bothVersions(client, id, published, draft, change).commit({ transactionId }))
+      return touchedBoth(published, draft, change, transactionId)
+    },
+  })
+}
+
+/** How far ahead a go-live date may lie (the same two years as publishing). */
+export const MAX_SCHEDULE_AHEAD_MS = 2 * 366 * 24 * 60 * 60 * 1000
+
+/**
+ * Changes when published content is on the website — its go-live date
+ * (`publishedAt`: an ISO moment, 'now', or left out to keep it) and its end
+ * date (`expiresAt`: an ISO moment or null to remove it) — on both versions,
+ * without publishing the draft's content. A future go-live date on live
+ * content takes it off the website until then. Refused while archived.
+ */
+export function setDates(
+  d: LifecycleDescriptor,
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: { id: string; publishedAt?: string; expiresAt: string | null } & Rev,
+  deps: LifecycleDeps = {}
+) {
+  return operate({
+    d, op: 'setDates', intended: 'schedule_changed', ctx, projectId, id: input?.id, deps,
+    run: async ({ grant, client, now, transactionId, id }) => {
+      const parse = (v: unknown, what: string): string => {
+        if (typeof v !== 'string' || v.length > 40 || Number.isNaN(Date.parse(v))) throw d.fail('invalid_value', `Unknown ${what}.`)
+        return new Date(Date.parse(v)).toISOString()
+      }
+      let publishedAt: string | undefined
+      if (input.publishedAt === 'now') publishedAt = now.toISOString()
+      else if (input.publishedAt !== undefined) {
+        publishedAt = parse(input.publishedAt, 'go-live date')
+        if (Date.parse(publishedAt) - now.getTime() > MAX_SCHEDULE_AHEAD_MS) throw d.fail('invalid_value', 'The go-live date must be within two years.')
+      }
+      let expiresAt: string | null = null
+      if (input.expiresAt !== null) {
+        expiresAt = parse(input.expiresAt, 'end date')
+        if (Date.parse(expiresAt) <= now.getTime()) throw d.fail('invalid_value', 'The end date must be in the future.')
+      }
+      const { published, draft } = await readPair(d, client, id, grant.projectSlug)
+      if (!published) throw d.fail('not_found', 'Unknown item.')
+      if (isArchived(published)) throw d.fail('archived', 'Restore this item first.')
+      if (published._rev !== input.rev) throw d.fail('conflict', 'This item was changed elsewhere.')
+      const start = publishedAt !== undefined ? Date.parse(publishedAt) : instant(published.publishedAt)
+      if (expiresAt && start !== null && Date.parse(expiresAt) <= start) throw d.fail('invalid_value', 'The end date must be after the go-live date.')
+      const set: Record<string, unknown> = {}
+      if (publishedAt !== undefined) set.publishedAt = publishedAt
+      if (expiresAt) set.expiresAt = expiresAt
+      const change = { ...(Object.keys(set).length ? { set } : {}), ...(expiresAt ? {} : { unset: ['expiresAt'] }) }
       await commit(d, client, grant.projectSlug, () => bothVersions(client, id, published, draft, change).commit({ transactionId }))
       return touchedBoth(published, draft, change, transactionId)
     },

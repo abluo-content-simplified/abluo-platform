@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { AuthLayout } from '@/components/auth/AuthLayout'
-import { authPrimaryClass } from '@/components/auth/auth-ui'
+import { Button } from '@/components/app/ui/Button'
 
 /**
  * Landing page for the admin gate's "authenticated but not an Abluo admin"
@@ -32,9 +32,9 @@ export default function UnauthorizedPage() {
       title="No access"
       subtitle="You don't have access to this area. If you think this is a mistake, sign in with an authorized account."
     >
-      <button type="button" onClick={handleSignOut} className={authPrimaryClass}>
+      <Button variant="primary" size="lg" fullWidth onClick={handleSignOut}>
         Sign out
-      </button>
+      </Button>
     </AuthLayout>
   )
 }

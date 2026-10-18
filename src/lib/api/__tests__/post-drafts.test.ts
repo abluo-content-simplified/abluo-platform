@@ -15,6 +15,7 @@ import {
   PostDraftError,
   sanitizeBlocks,
   LIMITS,
+  contentDiffers,
 } from '../post-drafts'
 import { TenantAuthorizationError } from '../tenant-scoped-sanity'
 import type { ProjectGrant, TenantAuthorizationContext } from '../tenant-context'
@@ -479,6 +480,7 @@ describe('getPostDraft', () => {
       live: null,
       cta: null,
       gallery: null,
+      hasChanges: false,
     })
     expect(c.getDocument).toHaveBeenCalledWith(`drafts.${ID}`)
   })
@@ -734,5 +736,17 @@ describe('createPostDraft — draft cap', () => {
       q.includes('_type == "post"') ? LIMITS.drafts : 1) as never)
     await expect(createPostDraft(ctx(grant()), 'project-a', deps(c))).rejects.toMatchObject({ code: 'too_large' })
     expect(wrote(c)).toBe(0)
+  })
+})
+
+describe('contentDiffers — is there something to "Update post" with?', () => {
+  const pub = { _id: 'x', _rev: 'p1', _type: 'post', projectSlug: 'tmz', title: { _type: 'localizedString', it: 'Ciao' }, publishedAt: '2026-01-01T00:00:00Z' }
+  it('an untouched copy has no changes (system fields, wizard position and dates ignored)', () => {
+    expect(contentDiffers({ ...pub, _id: 'drafts.x', _rev: 'd1', _updatedAt: 'now', wizard: { step: 'review' }, expiresAt: '2027-01-01T00:00:00Z' }, pub)).toBe(false)
+  })
+  it('a changed field or a new one counts; key order does not', () => {
+    expect(contentDiffers({ ...pub, title: { _type: 'localizedString', it: 'Ciao!' } }, pub)).toBe(true)
+    expect(contentDiffers({ ...pub, subtitle: { it: 'Nuovo' } }, pub)).toBe(true)
+    expect(contentDiffers({ title: { it: 'Ciao', _type: 'localizedString' }, projectSlug: 'tmz', _type: 'post' }, pub)).toBe(false)
   })
 })

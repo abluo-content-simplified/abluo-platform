@@ -8,9 +8,11 @@ import { filterSwitchableProjects, loadProjectSummaries, statusesOf } from '@/li
 import { overviewNeeded, sortSiteCards } from '@/lib/client/sites-overview'
 import { dashboardHomeHref } from '@/lib/modules/client-navigation'
 import { Link } from '@/i18n/navigation'
+import { ButtonLink } from '@/components/app/ui/Button'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { PageShell } from '@/components/app/ui/PageShell'
+import { Panel } from '@/components/app/ui/Panel'
 import { SiteStatus } from '@/components/client/home/SiteStatus'
 
 /**
@@ -76,7 +78,7 @@ export default async function SitesOverviewPage({ params }: { params: Promise<{ 
         <p className="-mt-2 text-[0.9375rem] text-muted-foreground">{t('intro', { count: cards.length })}</p>
         <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {cards.map((c) => (
-            <li key={c.projectSlug} className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
+            <Panel as="li" key={c.projectSlug} className="flex flex-col gap-3">
               <Link
                 href={dashboardHomeHref(c.projectSlug)}
                 className="group -m-1 rounded-xl p-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
@@ -97,14 +99,11 @@ export default async function SitesOverviewPage({ params }: { params: Promise<{ 
               ) : null}
               <div className="mt-auto flex flex-col gap-3">
                 {c.site ? <SiteStatus state={c.site.state} host={c.site.host} url={c.site.url} /> : null}
-                <Link
-                  href={dashboardHomeHref(c.projectSlug)}
-                  className="inline-flex min-h-11 items-center justify-center rounded-md bg-action px-4 text-[0.9375rem] font-medium text-action-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                >
+                <ButtonLink variant="primary" href={dashboardHomeHref(c.projectSlug)}>
                   {t('open')}
-                </Link>
+                </ButtonLink>
               </div>
-            </li>
+            </Panel>
           ))}
         </ul>
       </PageShell>

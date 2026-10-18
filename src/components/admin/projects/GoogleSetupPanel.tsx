@@ -4,7 +4,8 @@ import { useActionState, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { Pill, type PillTone } from '@/components/app/ui/list/cells'
-import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '@/components/admin/backlog/backlog-bits'
+import { Button } from '@/components/app/ui/Button'
+import { Notice } from '@/components/app/ui/Notice'
 import { googleSetupAction, type GoogleRowResult, type GoogleSetupActionState } from '@/lib/admin/google-actions'
 import type { GoogleCardState, GoogleRowState } from '@/lib/google/state'
 
@@ -61,25 +62,23 @@ export function GoogleSetupPanel({
     : null
 
   const button = (w: Which, label: string, primary = false) => (
-    <button
+    <Button
       type="submit"
       name="which"
       value={w}
+      variant={primary ? 'primary' : 'secondary'}
       onClick={() => setWhich(w)}
       disabled={pending || !env.serviceAccount}
       aria-busy={(pending && which === w) || undefined}
-      className={primary ? PRIMARY_BUTTON : SECONDARY_BUTTON}
     >
       {pending && which === w ? t('working') : label}
-    </button>
+    </Button>
   )
 
   return (
     <div className="flex flex-col gap-3">
       {!env.serviceAccount ? (
-        <p role="alert" className="rounded-2xl border border-destructive px-4 py-3 text-sm text-destructive">
-          {t('notConfigured')}
-        </p>
+        <Notice tone="error">{t('notConfigured')}</Notice>
       ) : null}
       {!loaded ? <p className="text-sm leading-5 text-destructive">{t('loadError')}</p> : null}
 

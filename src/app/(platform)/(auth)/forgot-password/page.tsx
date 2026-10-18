@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { Button } from '@/components/app/ui/Button'
+import { buttonClass } from '@/components/app/ui/button-styles'
 import { createClient } from '@/lib/supabase/client'
 import { AuthLayout } from '@/components/auth/AuthLayout'
-import { AuthError, AuthField, AuthNote, authPrimaryClass, authQuietLinkClass, authSecondaryClass } from '@/components/auth/auth-ui'
+import { AuthError, AuthField, AuthNote, authQuietLinkClass } from '@/components/auth/auth-ui'
 
 /**
  * Request a password reset.
@@ -57,7 +59,7 @@ export default function ForgotPasswordPage() {
           The link expires after a short time. If it does not arrive, check your spam folder,
           then request another.
         </AuthNote>
-        <Link href="/login" className={`${authSecondaryClass} mt-6`}>
+        <Link href="/login" className={buttonClass({ size: 'lg', fullWidth: true, className: 'mt-6' })}>
           Back to sign in
         </Link>
       </AuthLayout>
@@ -80,9 +82,9 @@ export default function ForgotPasswordPage() {
 
         {error && <AuthError>{error}</AuthError>}
 
-        <button type="submit" disabled={loading} aria-busy={loading || undefined} className={authPrimaryClass}>
+        <Button type="submit" variant="primary" size="lg" fullWidth disabled={loading} aria-busy={loading || undefined}>
           {loading ? 'Sending…' : 'Send reset link'}
-        </button>
+        </Button>
 
         <div className="flex justify-center">
           <Link href="/login" className={authQuietLinkClass}>

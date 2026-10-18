@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useId, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
-import { Button, IconButton } from '@/components/app/ui/Button'
+import { Button } from '@/components/app/ui/Button'
 import { Pill } from '@/components/app/ui/list/cells'
+import { SidePanel } from '@/components/app/ui/SidePanel'
 import { PhotoCard, type CardChange, type CardPhoto } from '@/components/client/media/PhotoCard'
 import type { MediaLibraryScope } from '@/components/client/media/media-api'
 import type { MediaLibraryItem, MediaUsage } from '@/lib/api/media-library'
@@ -51,56 +52,32 @@ export function PhotoSheet({
   remove?: { label: string; onPress: () => void } | null
 }) {
   const t = useTranslations('clientDashboard.media')
-  const titleId = useId()
-  const closeRef = useRef<HTMLButtonElement>(null)
-  useEffect(() => {
-    closeRef.current?.focus()
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
   // The card is mounted once per photo: it keeps its own copy while open.
   const [photo] = useState(() => toCard(item))
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-overlay" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        onClick={(e) => e.stopPropagation()}
-        className="flex h-full w-full flex-col bg-background sm:max-w-[32rem] sm:border-l sm:border-border"
-      >
-        <div className="flex items-center gap-2 border-b border-border-subtle px-3 py-2">
-          <h2 id={titleId} className="flex-1 truncate px-1 text-lg font-semibold text-foreground">
-            {item.name?.trim() || t('sheet.title')}
-          </h2>
-          <IconButton ref={closeRef} onClick={onClose} aria-label={t('sheet.close')}>
-            {MEDIA_ICONS.x}
-          </IconButton>
-        </div>
-        <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <PhotoCard
-            key={photo.assetId}
-            projectSlug={projectSlug}
-            scope={scope}
-            site={{ defaultLocale: site.defaultLocale, languages: site.locales }}
-            photo={photo}
-            tagSuggestions={tagSuggestions}
-            onChange={onChange}
-            onSaving={onSaving}
-          />
-          <UsedIn usedIn={item.usedIn} projectSlug={projectSlug} links={links} />
-          {remove ? (
-            <div className="border-t border-border-subtle pt-4">
-              <Button variant="destructive" onClick={remove.onPress}>
-                {remove.label}
-              </Button>
-            </div>
-          ) : null}
-        </div>
+    <SidePanel open title={item.name?.trim() || t('sheet.title')} closeLabel={t('sheet.close')} onClose={onClose}>
+      <div className="flex flex-col gap-6">
+        <PhotoCard
+          key={photo.assetId}
+          projectSlug={projectSlug}
+          scope={scope}
+          site={{ defaultLocale: site.defaultLocale, languages: site.locales }}
+          photo={photo}
+          tagSuggestions={tagSuggestions}
+          onChange={onChange}
+          onSaving={onSaving}
+        />
+        <UsedIn usedIn={item.usedIn} projectSlug={projectSlug} links={links} />
+        {remove ? (
+          <div className="border-t border-border-subtle pt-4">
+            <Button variant="destructive" onClick={remove.onPress}>
+              {remove.label}
+            </Button>
+          </div>
+        ) : null}
       </div>
-    </div>
+    </SidePanel>
   )
 }
 

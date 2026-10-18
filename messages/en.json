@@ -63,7 +63,7 @@
       "blog": "Posts",
       "events": "Events",
       "live": "Live",
-      "forms": "Forms",
+      "forms": "Contact requests",
       "whatsapp": "WhatsApp",
       "news": "News",
       "gallery": "Galleries",
@@ -300,7 +300,19 @@
         "count": "{shown} of {total} events",
         "clear": "Clear filters",
         "noMatch": "No events match these filters.",
-        "showPast": "Show past events"
+        "showPast": "Show past events",
+        "view": {
+          "label": "View",
+          "list": "List",
+          "cards": "Cards"
+        },
+        "columns": {
+          "event": "Event",
+          "when": "When",
+          "where": "Where",
+          "status": "Status",
+          "updated": "Updated"
+        }
       },
       "new": {
         "back": "Events",
@@ -419,7 +431,7 @@
       }
     },
     "submissions": {
-      "title": "Forms",
+      "title": "Contact requests",
       "empty": "No submissions yet.",
       "moduleNotInstalled": "The Forms module is not enabled for this project.",
       "anonymous": "Anonymous",
@@ -993,7 +1005,12 @@
         "editing": "You're editing a copy. Visitors see the live version until you update.",
         "ctaNone": "None",
         "ctaDefault": "Site default: {name}",
-        "ctaNoDefault": "None (the site has no default)"
+        "ctaNoDefault": "None (the site has no default)",
+        "dates": {
+          "title": "On your website",
+          "saved": "Dates saved.",
+          "fromNote": "A later moment takes the post off the website until then."
+        }
       },
       "menu": {
         "label": "More actions",
@@ -1635,7 +1652,9 @@
         "confirmTitle": "Delete “{name}”?",
         "confirmBody": "This category is not used by anything. It will be removed for good.",
         "blocked": "{count, plural, one {This category is used by # item and cannot be deleted until that item is reassigned.} other {This category is used by # items and cannot be deleted until those items are reassigned.}}",
-        "usedHeading": "{count, plural, one {Used by # item} other {Used by # items}}"
+        "usedHeading": "{count, plural, one {Used by # item} other {Used by # items}}",
+        "search": "Search categories",
+        "count": "{shown} of {total} categories"
       },
       "tag": {
         "tab": "Tags",
@@ -1649,7 +1668,9 @@
         "confirmTitle": "Delete “{name}”?",
         "confirmBody": "This tag is not used by anything. It will be removed for good.",
         "blocked": "{count, plural, one {This tag is used by # item and cannot be deleted until that item is reassigned.} other {This tag is used by # items and cannot be deleted until those items are reassigned.}}",
-        "usedHeading": "{count, plural, one {Used by # item} other {Used by # items}}"
+        "usedHeading": "{count, plural, one {Used by # item} other {Used by # items}}",
+        "search": "Search tags",
+        "count": "{shown} of {total} tags"
       },
       "errors": {
         "label_required": "Please enter a name.",
@@ -1677,7 +1698,16 @@
           "placeholderAdd": "Search or add a tag",
           "addNamed": "Add “{name}”"
         }
-      }
+      },
+      "columns": {
+        "usedBy": "Used by",
+        "languages": "Languages",
+        "order": "Order"
+      },
+      "kindLabel": "Show",
+      "filterAll": "All",
+      "clear": "Clear filters",
+      "noMatch": "Nothing matches your search."
     },
     "photoWizard": {
       "add": {
@@ -2408,7 +2438,13 @@
         "summaryNowUntil": "Goes live now and stays online until {end}.",
         "summaryAt": "Goes live on {start} and stays online, no end date.",
         "summaryAtUntil": "Goes live on {start} and stays online until {end}.",
-        "summaryDraft": "Stays a draft — nothing goes online."
+        "summaryDraft": "Stays a draft — nothing goes online.",
+        "sinceMoment": "Since {moment}",
+        "summarySince": "Online since {start} and stays online, no end date.",
+        "summarySinceUntil": "Online since {start}, until {end}.",
+        "summaryLater": "Not on the website until {start}, then it stays online, no end date.",
+        "summaryLaterUntil": "Not on the website until {start}, then online until {end}.",
+        "summaryEnded": "Taken off the website on {end}."
       },
       "deletePermanently": {
         "title": "{count, plural, one {Delete “{title}” permanently?} other {Delete # items permanently?}}",
@@ -2803,7 +2839,8 @@
         "status": "Status",
         "published": "Published",
         "audience": "Audience",
-        "reads": "Read by"
+        "reads": "Read by",
+        "actions": "Actions"
       },
       "status": {
         "draft": "Draft",
@@ -2869,7 +2906,21 @@
           "type": "Use a JPEG, PNG or WebP image.",
           "failed": "Couldn’t upload the image. Try again."
         }
-      }
+      },
+      "search": "Search updates",
+      "searchPlaceholder": "Title or audience…",
+      "filters": "Update filters",
+      "statusFilter": "Status",
+      "statusFilters": {
+        "all": "All statuses",
+        "draft": "Draft",
+        "published": "Published",
+        "archived": "Archived"
+      },
+      "showing": "{shown} of {total, plural, one {# update} other {# updates}}",
+      "clear": "Clear filters",
+      "noMatch": "No updates match these filters.",
+      "menu": "Actions for {title}"
     },
     "projectPage": {
       "back": "All projects",
@@ -3232,6 +3283,30 @@
         "not_found": "This app no longer exists. Reload the page.",
         "invalid_state": "This app has changed meanwhile. Reload the page.",
         "failed": "Something went wrong. Please try again."
+      },
+      "search": "Search partner apps",
+      "searchPlaceholder": "Name, client id, contact, website…",
+      "filters": "Partner app filters",
+      "statusFilter": "Status",
+      "statusFilters": {
+        "all": "All statuses",
+        "pending": "Pending",
+        "approved": "Approved",
+        "suspended": "Suspended"
+      },
+      "showing": "{shown} of {total, plural, one {# app} other {# apps}}",
+      "clear": "Clear filters",
+      "noMatch": "No partner apps match these filters.",
+      "columns": {
+        "app": "App",
+        "status": "Status",
+        "contact": "Contact",
+        "connections": "Connections",
+        "registered": "Registered",
+        "actions": "Actions"
+      },
+      "detail": {
+        "close": "Close"
       }
     },
     "lab": {

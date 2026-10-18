@@ -3,6 +3,8 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import { Button } from '@/components/app/ui/Button'
+import { Panel } from '@/components/app/ui/Panel'
 import { decideSupportAction } from '@/app/[locale]/(client)/[tenant]/support-actions'
 import { useLocalTime } from './SupportBanner'
 
@@ -56,11 +58,6 @@ function NoticeCard({ projectSlug, notice, minutes }: { projectSlug: string; not
       router.refresh()
     })
 
-  const primary =
-    'inline-flex min-h-11 items-center justify-center rounded-lg bg-action px-4 text-sm font-medium text-action-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50'
-  const secondary =
-    'inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50'
-
   const title =
     notice.status === 'requested'
       ? name
@@ -71,8 +68,8 @@ function NoticeCard({ projectSlug, notice, minutes }: { projectSlug: string; not
     notice.status === 'requested' ? t('requestBody', { minutes }) : name ? t('allowedBody', { name }) : t('allowedBodyNoName')
 
   return (
-    <section role="status" className="rounded-2xl border border-border bg-card px-4 py-4 text-card-foreground md:px-5">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <Panel as="section">
+      <div role="status" className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0 space-y-1">
           <p className="text-base font-semibold leading-6">{title}</p>
           <p className="text-sm leading-5 text-muted-foreground">{body}</p>
@@ -85,20 +82,20 @@ function NoticeCard({ projectSlug, notice, minutes }: { projectSlug: string; not
         <div className="flex flex-wrap gap-2">
           {notice.status === 'requested' ? (
             <>
-              <button type="button" className={primary} disabled={pending} onClick={() => decide('allow')}>
+              <Button variant="primary" disabled={pending} onClick={() => decide('allow')}>
                 {t('allow')}
-              </button>
-              <button type="button" className={secondary} disabled={pending} onClick={() => decide('decline')}>
+              </Button>
+              <Button disabled={pending} onClick={() => decide('decline')}>
                 {t('decline')}
-              </button>
+              </Button>
             </>
           ) : (
-            <button type="button" className={secondary} disabled={pending} onClick={() => decide('revoke')}>
+            <Button disabled={pending} onClick={() => decide('revoke')}>
               {t('end')}
-            </button>
+            </Button>
           )}
         </div>
       </div>
-    </section>
+    </Panel>
   )
 }

@@ -1,5 +1,8 @@
 import { getTranslations } from 'next-intl/server'
+import { Button } from '@/components/app/ui/Button'
+import { Notice } from '@/components/app/ui/Notice'
 import { SectionHeading } from '@/components/app/ui/SectionHeading'
+import { SupportRolePicker } from '@/components/admin/projects/SupportRolePicker'
 import { startSupportVisitAction } from '@/app/[locale]/(admin)/projects/[slug]/support-actions'
 import { DEFAULT_SUPPORT_ROLE, SUPPORT_ROLES } from '@/lib/support/constants'
 
@@ -27,39 +30,21 @@ export async function ViewAsClient({
         <p className="text-sm leading-5 text-muted-foreground">{t('body')}</p>
       </div>
       {notice ? (
-        <p role="alert" className="rounded-2xl border border-destructive px-4 py-3 text-sm text-destructive">
-          {t(notice)}
-        </p>
+        <Notice tone="error">{t(notice)}</Notice>
       ) : null}
       <form action={startSupportVisitAction} className="flex flex-wrap items-start gap-3">
         <input type="hidden" name="projectId" value={projectId} />
         <input type="hidden" name="slug" value={slug} />
-        <fieldset className="flex flex-col gap-1.5">
-          <legend className="mb-1.5 text-sm font-medium text-foreground">{t('roleLabel')}</legend>
-          <div className="inline-flex h-11 rounded-lg border border-input bg-background p-1">
-            {SUPPORT_ROLES.map((r) => (
-              <label key={r} className="relative">
-                <input
-                  type="radio"
-                  name="role"
-                  value={r}
-                  defaultChecked={r === DEFAULT_SUPPORT_ROLE}
-                  className="peer sr-only"
-                />
-                <span className="flex h-full cursor-pointer items-center rounded-md px-3 text-sm text-muted-foreground transition-colors peer-checked:bg-muted peer-checked:font-medium peer-checked:text-foreground peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
-                  {tRoles(r)}
-                </span>
-              </label>
-            ))}
-          </div>
-          <p className="text-xs leading-4 text-muted-foreground">{t('roleHint')}</p>
-        </fieldset>
-        <button
-          type="submit"
-          className="mt-7 inline-flex h-11 items-center rounded-lg bg-action px-4 text-sm font-medium text-action-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        >
+        <SupportRolePicker
+          name="role"
+          label={t('roleLabel')}
+          hint={t('roleHint')}
+          initial={DEFAULT_SUPPORT_ROLE}
+          options={SUPPORT_ROLES.map((r) => ({ value: r, label: tRoles(r) }))}
+        />
+        <Button type="submit" variant="primary" className="mt-7">
           {t('open')}
-        </button>
+        </Button>
       </form>
     </section>
   )

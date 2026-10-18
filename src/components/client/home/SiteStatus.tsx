@@ -1,5 +1,6 @@
 import { useTranslations } from 'next-intl'
 import { LinkCard } from '@/components/app/ui/LinkCard'
+import { Pill } from '@/components/app/ui/list/cells'
 
 export type SiteStatusState = 'live' | 'preview' | 'offline'
 
@@ -11,14 +12,12 @@ export type SiteStatusState = 'live' | 'preview' | 'offline'
 export function SiteStatus({ state, host, url }: { state: SiteStatusState; host: string | null; url: string | null }) {
   const t = useTranslations('clientDashboard.ui.siteStatus')
   const chip = (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs leading-4 font-medium ${
-        state === 'live' ? 'border-border text-foreground' : 'border-dashed border-border text-muted-foreground'
-      }`}
+    <Pill
+      tone={state === 'live' ? 'success' : 'outline'}
+      icon={<span aria-hidden="true" className={`size-1.5 rounded-full ${state === 'live' ? 'bg-success' : 'bg-muted-foreground'}`} />}
     >
-      <span aria-hidden="true" className={`size-1.5 rounded-full ${state === 'live' ? 'bg-success' : 'bg-muted-foreground'}`} />
       {t(`state.${state}`)}
-    </span>
+    </Pill>
   )
   return (
     <LinkCard

@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
+import { Button } from '@/components/app/ui/Button'
 import {
   exitSupportAction,
   requestSupportEditAction,
@@ -88,9 +89,6 @@ export function SupportBanner({
               : t('viewing')
   const canAsk = status === 'viewing' || status === 'declined' || status === 'expired' || status === 'revoked'
 
-  const button =
-    'inline-flex min-h-11 items-center rounded-lg border border-current px-3 text-sm font-medium hover:bg-admin-foreground/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50'
-
   return (
     <div
       role="region"
@@ -113,19 +111,19 @@ export function SupportBanner({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {canAsk ? (
-            <button type="button" className={button} disabled={pending} onClick={() => run(requestSupportEditAction)}>
+            <Button variant="primary" disabled={pending} onClick={() => run(requestSupportEditAction)}>
               {status === 'viewing' ? t('ask') : t('askAgain')}
-            </button>
+            </Button>
           ) : null}
           {contactRequestsHidden ? (
-            <button type="button" className={button} disabled={pending} onClick={() => run(showContactRequestsAction)}>
+            <Button variant="primary" disabled={pending} onClick={() => run(showContactRequestsAction)}>
               {t('showRequests')}
-            </button>
+            </Button>
           ) : null}
           <form action={exitSupportAction}>
-            <button type="submit" className={`${button} bg-admin-foreground text-admin hover:bg-admin-foreground/90`}>
+            <Button type="submit" variant="primary">
               {t('exit')}
-            </button>
+            </Button>
           </form>
         </div>
       </div>

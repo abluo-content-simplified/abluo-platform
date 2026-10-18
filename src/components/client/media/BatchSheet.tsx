@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { BottomSheet } from '@/components/app/ui/BottomSheet'
 import { Button } from '@/components/app/ui/Button'
 import { FieldLabel } from '@/components/app/ui/FieldLabel'
 import { TextInput } from '@/components/app/ui/TextInput'
@@ -62,10 +63,7 @@ export function BatchSheet({
 
   useEffect(() => {
     firstRef.current?.focus()
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !busy && onClose()
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose, busy])
+  }, [])
 
   const count = Math.min(assetIds.length, BATCH_MAX)
   const name = base.trim().replace(/\s+/g, ' ')
@@ -116,18 +114,9 @@ export function BatchSheet({
   const title = mode === 'rename' ? t('renameTitle', { count }) : mode === 'tags' ? t('tagsTitle', { count }) : t('allTitle', { count })
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-overlay sm:items-center" onClick={() => !busy && onClose()}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={`${uid}-title`}
-        onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-2xl border border-border bg-background sm:rounded-2xl"
-      >
-        <div className="flex-1 overflow-y-auto px-4 pt-5 pb-4">
-          <h2 id={`${uid}-title`} className="text-[1.375rem] leading-8 font-semibold tracking-tight text-foreground">
-            {title}
-          </h2>
+    <BottomSheet open title={title} onClose={() => !busy && onClose()} size="md">
+      <div className="flex max-h-[75dvh] flex-col">
+        <div className="flex-1 overflow-y-auto pb-4">
           <p className="mt-2 text-[0.9375rem] leading-6 text-muted-foreground">{mode === 'all' ? t('allHelper') : t('helper')}</p>
 
           {thumbs.length > 0 && (
@@ -195,7 +184,7 @@ export function BatchSheet({
           </p>
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-border-subtle px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="flex items-center justify-between gap-3 border-t border-border-subtle pt-3">
           <Button variant="quiet" onClick={onClose} disabled={busy}>
             {mode === 'all' ? t('skip') : t('cancel')}
           </Button>
@@ -204,6 +193,6 @@ export function BatchSheet({
           </Button>
         </div>
       </div>
-    </div>
+    </BottomSheet>
   )
 }

@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import { Button } from '../ui/Button'
-import { DateTimeSheet } from '../ui/DateTimePicker'
+import { PublicationDates } from './PublicationDates'
 import { publishChoiceDates, shortMoment, type PublishChoiceValue, type PublishMode } from './publish-plan'
 
 /**
@@ -55,7 +54,6 @@ export function PublishChoice({
 }) {
   const t = useTranslations('app.lifecycle.publish')
   const locale = useLocale()
-  const [editing, setEditing] = useState<'from' | 'until' | null>(null)
   const say = (k: TextKey) => text[k] ?? t(k)
   const set = (patch: Partial<PublishChoiceValue>) => onChange({ ...value, ...patch })
   const modes: PublishMode[] = ['now', 'schedule', 'draft']
@@ -90,35 +88,15 @@ export function PublishChoice({
                 <span className="text-[0.9375rem] leading-6 text-muted-foreground">{say(`${mode}Help` as TextKey)}</span>
               </button>
               {on && mode === 'schedule' ? (
-                <div className="flex flex-col px-4 pb-2">
-                  <ScheduleRow id={`${id}-from`} label={t('from')} value={value.publishAt ? moment(value.publishAt) : t('nowLabel')}>
-                    {value.publishAt ? (
-                      <Button variant="quiet" onClick={() => set({ publishAt: null })}>
-                        {t('backToNow')}
-                      </Button>
-                    ) : null}
-                    <Button variant="secondary" aria-describedby={`${id}-from`} onClick={() => setEditing('from')}>
-                      {t('change')}
-                    </Button>
-                  </ScheduleRow>
-                  {allowExpire ? (
-                    <ScheduleRow id={`${id}-until`} label={t('until')} value={until ? moment(until) : t('noEnd')}>
-                      {until ? (
-                        <>
-                          <Button variant="quiet" onClick={() => set({ expire: false })}>
-                            {t('remove')}
-                          </Button>
-                          <Button variant="secondary" aria-describedby={`${id}-until`} onClick={() => setEditing('until')}>
-                            {t('change')}
-                          </Button>
-                        </>
-                      ) : (
-                        <Button variant="secondary" onClick={() => setEditing('until')}>
-                          {t('addEnd')}
-                        </Button>
-                      )}
-                    </ScheduleRow>
-                  ) : null}
+                <div className="px-4 pb-2">
+                  <PublicationDates
+                    id={id}
+                    from={value.publishAt}
+                    until={until}
+                    allowUntil={allowExpire}
+                    zone={zone}
+                    onChange={(next) => set({ publishAt: next.from, expire: !!next.until, unpublishAt: next.until ?? value.unpublishAt })}
+                  />
                 </div>
               ) : null}
             </div>
@@ -130,44 +108,7 @@ export function PublishChoice({
         {summary}
       </p>
 
-      <DateTimeSheet
-        open={editing === 'from'}
-        title={t('from')}
-        value={value.publishAt}
-        zone={zone}
-        onClose={() => setEditing(null)}
-        onDone={(utc) => {
-          // A From after the Until drops the Until (it would be invalid).
-          const dropEnd = until && Date.parse(until) <= Date.parse(utc)
-          set({ publishAt: utc, ...(dropEnd && { expire: false }) })
-          setEditing(null)
-        }}
-      />
-      <DateTimeSheet
-        open={editing === 'until'}
-        title={t('until')}
-        value={until}
-        zone={zone}
-        after={value.publishAt}
-        onClose={() => setEditing(null)}
-        onDone={(utc) => {
-          set({ expire: true, unpublishAt: utc })
-          setEditing(null)
-        }}
-      />
       {children}
-    </div>
-  )
-}
-
-function ScheduleRow({ id, label, value, children }: { id: string; label: string; value: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border py-3">
-      <div id={id} className="min-w-0">
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="text-[1.0625rem] font-medium text-foreground">{value}</p>
-      </div>
-      <div className="flex shrink-0 items-center gap-2">{children}</div>
     </div>
   )
 }

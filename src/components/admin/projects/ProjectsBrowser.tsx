@@ -2,11 +2,14 @@
 
 import { useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Link, useRouter } from '@/i18n/navigation'
+import { useRouter } from '@/i18n/navigation'
 import { CardMenu, type CardMenuItem } from '@/components/app/ui/CardMenu'
+import { Button } from '@/components/app/ui/Button'
+import { EmptyState } from '@/components/app/ui/EmptyState'
 import type { FilterChip } from '@/components/app/ui/FilterSheet'
 import { ListToolbar, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
 import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTable'
+import { ListRow } from '@/components/app/ui/list/ListRow'
 import { CellDate, CellPill, CellText } from '@/components/app/ui/list/cells'
 import { ProjectStatusPill } from '@/components/admin/projects/ProjectStatusPill'
 import {
@@ -148,18 +151,15 @@ export function ProjectsBrowser({
       />
 
       {shown.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border px-6 py-10">
-          <p className="font-medium text-foreground">{t('noMatch')}</p>
-          {!isDefault ? (
-            <button
-              type="button"
-              onClick={reset}
-              className="mt-3 inline-flex h-11 items-center rounded-xl border border-border px-4 text-sm font-medium text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              {t('clear')}
-            </button>
-          ) : null}
-        </div>
+        <EmptyState
+          titleAs="p"
+          title={t('noMatch')}
+          action={
+            !isDefault ? (
+              <Button onClick={reset}>{t('clear')}</Button>
+            ) : undefined
+          }
+        />
       ) : (
         <>
           <div className="hidden md:block">
@@ -174,24 +174,16 @@ export function ProjectsBrowser({
           </div>
           <ul aria-label={t('title')} className="flex flex-col gap-3 md:hidden">
             {shown.map((p) => (
-              <li key={p.id} className="flex items-start gap-1 rounded-xl border border-border bg-card py-2 pr-1 pl-4">
-                <Link
-                  href={adminProjectHref(p.slug)}
-                  className="flex min-w-0 flex-1 flex-col items-start gap-1.5 pt-2 pb-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                >
-                  <span className="line-clamp-1 text-[0.9375rem] leading-[1.375rem] font-semibold text-foreground">{p.name}</span>
-                  <span className="line-clamp-1 text-sm leading-5 break-all text-muted-foreground">
-                    {[p.client?.name, p.customDomain ?? p.slug].filter(Boolean).join(' · ')}
-                  </span>
-                  <span className="flex flex-wrap items-center gap-2">
-                    <ProjectStatusPill status={p.status} />
-                    {ownersKnown && !p.owners.length ? <span className="text-sm leading-5 font-medium text-destructive">{t('noOwner')}</span> : null}
-                  </span>
-                </Link>
-                <span className="shrink-0">
-                  <CardMenu label={t('menu', { name: p.name })} items={menuFor(p)} />
+              <ListRow key={p.id} href={adminProjectHref(p.slug)} menu={{ label: t('menu', { name: p.name }), items: menuFor(p) }}>
+                <span className="line-clamp-1 text-[0.9375rem] leading-[1.375rem] font-semibold text-foreground">{p.name}</span>
+                <span className="line-clamp-1 text-sm leading-5 break-all text-muted-foreground">
+                  {[p.client?.name, p.customDomain ?? p.slug].filter(Boolean).join(' · ')}
                 </span>
-              </li>
+                <span className="flex flex-wrap items-center gap-2">
+                  <ProjectStatusPill status={p.status} />
+                  {ownersKnown && !p.owners.length ? <span className="text-sm leading-5 font-medium text-destructive">{t('noOwner')}</span> : null}
+                </span>
+              </ListRow>
             ))}
           </ul>
         </>

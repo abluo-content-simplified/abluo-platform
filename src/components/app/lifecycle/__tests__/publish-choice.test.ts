@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { publishChoiceDates, shortMoment } from '../publish-plan'
+import { datesSentence, publishChoiceDates, shortMoment } from '../publish-plan'
 import { timeSteps } from '@/lib/client/date-range'
 
 describe('publishChoiceDates — the mode and only the dates the choice uses', () => {
@@ -36,5 +36,24 @@ describe('the summary moment and the time list', () => {
     expect(steps[36]).toBe('09:00')
     expect(timeSteps('09:07')).toContain('09:07')
     expect(timeSteps('09:07')).toHaveLength(97)
+  })
+})
+
+describe('datesSentence — when existing content is on the website', () => {
+  const now = new Date('2026-10-18T10:00:00Z')
+  const past = '2026-10-17T20:22:00.000Z'
+  const future = '2026-10-20T07:00:00.000Z'
+  const later = '2026-10-24T16:00:00.000Z'
+  it('live since a past moment, with or without an end', () => {
+    expect(datesSentence({ publishedAt: past, expiresAt: null }, now)).toEqual({ key: 'summarySince', start: past })
+    expect(datesSentence({ publishedAt: past, expiresAt: later }, now)).toEqual({ key: 'summarySinceUntil', start: past, end: later })
+  })
+  it('a future go-live date: off the website until then', () => {
+    expect(datesSentence({ publishedAt: future, expiresAt: null }, now)).toEqual({ key: 'summaryLater', start: future })
+    expect(datesSentence({ publishedAt: future, expiresAt: later }, now)).toEqual({ key: 'summaryLaterUntil', start: future, end: later })
+  })
+  it('an end that has passed, and no go-live date', () => {
+    expect(datesSentence({ publishedAt: past, expiresAt: '2026-10-18T09:00:00.000Z' }, now)).toEqual({ key: 'summaryEnded', end: '2026-10-18T09:00:00.000Z' })
+    expect(datesSentence({ publishedAt: null, expiresAt: null }, now)).toEqual({ key: 'summaryNow' })
   })
 })

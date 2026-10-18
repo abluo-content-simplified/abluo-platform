@@ -549,7 +549,7 @@ export function CatalogueBrowser({
                 {/* Computers: a table or cards. */}
                 <div className="hidden md:block">
                   {display === 'list' ? (
-                    <DataTable rows={shown} columns={columns} rowKey={(r) => r.id} rowHref={(r) => r.href} selection={selection} sort={{ column: sort.key, dir: sort.dir, onSort: (key) => onSort(key as ListSortKey) }} label={title} minWidth="64rem" />
+                    <DataTable rows={shown} columns={columns} rowKey={(r) => r.id} rowHref={(r) => r.href} selection={selection} sort={{ column: sort.key, dir: sort.dir, onSort: (key) => onSort(key as ListSortKey) }} label={title} minWidth="min-w-[64rem]" />
                   ) : (
                     <CardGrid label={title}>
                       {shown.map((r) => (

@@ -6,6 +6,7 @@ import { Link } from '@/i18n/navigation'
 import { ProjectSwitcher, type SwitcherProject } from './ProjectSwitcher'
 import type { AccountMenuProps } from '@/components/app/shell/AccountMenu'
 import { AppIcon, APP_ICONS } from '@/components/app/shell/AppIcon'
+import { TabBarButton } from '@/components/app/ui/TabBarButton'
 import { AppSidebar } from '@/components/app/shell/AppSidebar'
 import { useOpenAddContent } from './create/AddContentRoot'
 import type { ClientNavItem } from '@/lib/modules/client-navigation'
@@ -149,14 +150,7 @@ export function ClientSidebar({
                 <span key={`empty-${i}`} />
               ),
             )}
-            <button
-              type="button"
-              onClick={openAddContent}
-              aria-label={t('nav.add')}
-              className="mx-auto grid size-[52px] -translate-y-3.5 place-items-center rounded-full bg-action text-action-foreground shadow-[var(--shadow-raise)]"
-            >
-              <AppIcon d={ICONS.plus} width={2.2} />
-            </button>
+            <TabBarButton appearance="add" icon={ICONS.plus} onClick={openAddContent} aria-label={t('nav.add')} />
             {leadsItem ? (
               <Link
                 href={leadsItem.href}
@@ -171,18 +165,16 @@ export function ClientSidebar({
             ) : (
               <span />
             )}
-            <button
-              type="button"
+            <TabBarButton
+              icon={ICONS.more}
+              iconWidth={2.4}
+              active={moreActive}
               onClick={() => setDrawerOpen(!drawerOpen)}
               aria-expanded={drawerOpen}
               aria-controls="client-sidebar"
-              className={`flex min-h-11 flex-col items-center justify-center gap-0.5 text-xs font-medium ${
-                moreActive ? 'text-foreground' : 'text-muted-foreground'
-              }`}
             >
-              <AppIcon d={ICONS.more} width={2.4} />
               {t('nav.more')}
-            </button>
+            </TabBarButton>
           </nav>
         )
       }}

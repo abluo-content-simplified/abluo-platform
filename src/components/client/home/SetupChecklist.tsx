@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/navigation'
+import { Button } from '@/components/app/ui/Button'
 import type { SetupItem } from '@/lib/client/setup-checklist'
 import { hideSetupChecklistAction } from '@/app/[locale]/(client)/[tenant]/home/actions'
 
@@ -113,14 +114,9 @@ export function SetupChecklist({
 
       {canHide ? (
         <div className="flex flex-col items-start border-t border-border-subtle pt-1">
-          <button
-            type="button"
-            onClick={hide}
-            disabled={pending}
-            className="inline-flex min-h-11 items-center rounded-md text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50"
-          >
+          <Button variant="link" onClick={hide} disabled={pending}>
             {t('hide')}
-          </button>
+          </Button>
           {failed ? (
             <p role="alert" className="pb-2 text-sm text-muted-foreground">
               {t('hideFailed')}

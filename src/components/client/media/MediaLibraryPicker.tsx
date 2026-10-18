@@ -1,10 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { mediaApi, thumbOf, type MediaScope } from '@/components/client/media/media-api'
 import type { AddedPhoto } from '@/components/client/media/AddPhotos'
-import { Button, IconButton } from '@/components/app/ui/Button'
+import { BottomSheet } from '@/components/app/ui/BottomSheet'
+import { Button } from '@/components/app/ui/Button'
 import { Chip } from '@/components/app/ui/Chip'
 import { TileBadge, TileButton } from '@/components/app/ui/list/tile'
 import { FilterSearch } from '@/components/app/ui/FilterBar'
@@ -32,7 +33,6 @@ export type MediaLibraryPickerProps = {
  */
 export function MediaLibraryPicker({ projectSlug, scope, defaultLocale, exclude, room, onClose, onAdd }: MediaLibraryPickerProps) {
   const t = useTranslations('clientDashboard.media.picker')
-  const titleId = useId()
   const [items, setItems] = useState<LibraryItem[]>([])
   const [tags, setTags] = useState<string[]>([])
   const [tagFilter, setTagFilter] = useState<string[]>([])
@@ -41,7 +41,6 @@ export function MediaLibraryPicker({ projectSlug, scope, defaultLocale, exclude,
   const [cursor, setCursor] = useState<string | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [picked, setPicked] = useState<LibraryItem[]>([])
-  const closeRef = useRef<HTMLButtonElement>(null)
   const req = useRef(0)
   const hidden = useMemo(() => new Set(exclude), [exclude])
 
@@ -72,13 +71,6 @@ export function MediaLibraryPicker({ projectSlug, scope, defaultLocale, exclude,
     // eslint-disable-next-line react-hooks/set-state-in-effect -- (re)load when the filters change
     void load(null, q, tagFilter)
   }, [load, q, tagFilter])
-  useEffect(() => {
-    closeRef.current?.focus()
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
-
   const visible = items.filter((i) => !hidden.has(i.assetId))
   const isPicked = (id: string) => picked.some((p) => p.assetId === id)
   const atLimit = room !== undefined && picked.length >= room
@@ -86,25 +78,8 @@ export function MediaLibraryPicker({ projectSlug, scope, defaultLocale, exclude,
     setPicked((p) => (p.some((x) => x.assetId === item.assetId) ? p.filter((x) => x.assetId !== item.assetId) : atLimit ? p : [...p, item]))
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-overlay sm:items-center" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        onClick={(e) => e.stopPropagation()}
-        className="flex h-[92dvh] w-full max-w-3xl flex-col rounded-t-2xl border border-border bg-background sm:h-[85vh] sm:rounded-2xl"
-      >
-        <div className="flex items-center justify-between border-b border-border-subtle px-4 py-2">
-          <h2 id={titleId} className="text-lg font-semibold text-foreground">
-            {t('title')}
-          </h2>
-          <IconButton ref={closeRef} onClick={onClose} aria-label={t('close')}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-              <path d="M6 6l12 12M18 6L6 18" />
-            </svg>
-          </IconButton>
-        </div>
-
+    <BottomSheet open title={t('title')} onClose={onClose} size="lg">
+      <div className="flex h-[70dvh] flex-col">
         <div className="flex flex-col gap-3 border-b border-border-subtle px-4 py-3">
           <FilterSearch sizing="w-full" label={t('search')} value={query} maxLength={80} placeholder={t('searchPlaceholder')} onChange={setQuery} />
           {tags.length > 0 && (
@@ -121,7 +96,7 @@ export function MediaLibraryPicker({ projectSlug, scope, defaultLocale, exclude,
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {state === 'error' && <p className="text-sm text-destructive">{t('error')}</p>}
           {state === 'ready' && !visible.length && (
             <p className="text-sm text-muted-foreground">{q || tagFilter.length ? t('noResults') : items.length ? t('allInGallery') : t('empty')}</p>
@@ -158,7 +133,7 @@ export function MediaLibraryPicker({ projectSlug, scope, defaultLocale, exclude,
           )}
         </div>
 
-        <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-border-subtle bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="flex items-center justify-between gap-3 border-t border-border-subtle px-4 pt-3">
           <p className="text-sm text-muted-foreground">{atLimit ? t('full') : t('selected', { count: picked.length })}</p>
           <Button
             variant="primary"
@@ -173,6 +148,6 @@ export function MediaLibraryPicker({ projectSlug, scope, defaultLocale, exclude,
           </Button>
         </div>
       </div>
-    </div>
+    </BottomSheet>
   )
 }

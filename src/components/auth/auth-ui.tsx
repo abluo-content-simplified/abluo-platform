@@ -1,12 +1,14 @@
 import type { ComponentProps, ReactNode } from 'react'
 import { PasswordInput } from '@/components/ui/PasswordInput'
+import { FieldLabel } from '@/components/app/ui/FieldLabel'
+import { TextInput } from '@/components/app/ui/TextInput'
 
 /**
  * The controls of the signed-out pages, in the Abluo App language.
  *
- * These are the same recipes the App already uses — the primary / secondary
- * buttons of `ConfirmDialog`, the field of `FilterBar` / the account forms —
- * gathered once so the five auth pages cannot drift apart. Tokens only (they
+ * Buttons and text fields come from the shared App components (Button,
+ * TextInput, FieldLabel); what is gathered here is only what is specific to
+ * these pages, so the five auth pages cannot drift apart. Tokens only (they
  * render inside `.abluo-app`), rem text, controls at `--control-height`
  * (44px) so they are comfortable to tap on a phone.
  *
@@ -23,29 +25,18 @@ export const authLabelClass = 'mb-1.5 block text-sm font-medium text-foreground'
 /** The reveal toggle inside PasswordInput. */
 export const authToggleClass = `absolute inset-y-0 right-0 rounded-r-xl px-4 text-[0.8125rem] font-medium text-muted-foreground transition-colors hover:text-foreground ${FOCUS}`
 
-const BUTTON = `inline-flex min-h-12 w-full items-center justify-center rounded-xl px-5 text-[0.9375rem] font-semibold transition-colors disabled:opacity-60 ${FOCUS}`
-
-/** Primary action — also for a Link that reads as a button. */
-export const authPrimaryClass = `${BUTTON} bg-action text-action-foreground hover:opacity-90`
-
-/** Secondary action. */
-export const authSecondaryClass = `${BUTTON} border border-border text-foreground hover:bg-hover`
-
 /** A quiet text link or link-styled button (Forgot password, Back to sign in, Sign out). */
 export const authQuietLinkClass = `inline-flex min-h-6 items-center rounded-md text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline ${FOCUS}`
 
 export function AuthField({
   id,
   label,
-  className,
   ...inputProps
-}: ComponentProps<'input'> & { id: string; label: string }) {
+}: Omit<ComponentProps<typeof TextInput>, 'id' | 'className'> & { id: string; label: string }) {
   return (
     <div>
-      <label htmlFor={id} className={authLabelClass}>
-        {label}
-      </label>
-      <input id={id} {...inputProps} className={className ? `${authInputClass} ${className}` : authInputClass} />
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <TextInput id={id} {...inputProps} />
     </div>
   )
 }

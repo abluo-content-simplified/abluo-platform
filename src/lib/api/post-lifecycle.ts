@@ -232,6 +232,21 @@ export async function setPostEndDate(
 }
 
 /**
+ * Changes when a post is on the website (go-live date, end date) on the live
+ * version and its draft — without publishing the draft's text. A future
+ * go-live date takes a live post off the website until then.
+ */
+export async function setPostDates(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  input: RevInput & { publishedAt?: string; expiresAt: string | null },
+  deps: PostLifecycleDeps = {}
+): Promise<PostLiveStateWithDraft> {
+  const r = await lifecycle.setDates(POST_LIFECYCLE, ctx, projectId, input, deps)
+  return { ...liveState(r.doc), draftRev: r.draftRev }
+}
+
+/**
  * Replaces a post's topics (blog categories of THIS site only) on whatever
  * versions exist — live and draft — revision-guarded on each.
  */

@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server'
-import { Link } from '@/i18n/navigation'
-import { PLUS_ICON, PRIMARY_BUTTON } from '@/components/admin/backlog/backlog-bits'
+import { Notice } from '@/components/app/ui/Notice'
+import { ButtonLink } from '@/components/app/ui/Button'
+import { PLUS_ICON } from '@/components/admin/backlog/backlog-bits'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { PageShell } from '@/components/app/ui/PageShell'
@@ -29,19 +30,17 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
         <PageHeader
           title={t('title')}
           actions={
-            <Link href="/projects/new" className={PRIMARY_BUTTON}>
+            <ButtonLink variant="primary" href="/projects/new">
               {PLUS_ICON}
               {t('newProject')}
-            </Link>
+            </ButtonLink>
           }
         />
         <p className="text-sm text-muted-foreground">{t('description')}</p>
       </div>
 
       {error ? (
-        <div role="alert" className="rounded-2xl border border-destructive px-4 py-3 text-sm text-destructive">
-          {t('loadError', { message: error })}
-        </div>
+        <Notice tone="error">{t('loadError', { message: error })}</Notice>
       ) : projects.length === 0 ? (
         <EmptyState title={t('emptyTitle')} />
       ) : (

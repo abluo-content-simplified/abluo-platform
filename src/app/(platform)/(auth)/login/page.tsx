@@ -3,9 +3,10 @@
 import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { Button } from '@/components/app/ui/Button'
 import { createClient } from '@/lib/supabase/client'
 import { AuthLayout } from '@/components/auth/AuthLayout'
-import { AuthError, AuthField, AuthPasswordInput, authPrimaryClass, authQuietLinkClass } from '@/components/auth/auth-ui'
+import { AuthError, AuthField, AuthPasswordInput, authQuietLinkClass } from '@/components/auth/auth-ui'
 
 function LoginForm() {
   const searchParams = useSearchParams()
@@ -78,9 +79,9 @@ function LoginForm() {
 
       {error && <AuthError>{error}</AuthError>}
 
-      <button type="submit" disabled={loading} aria-busy={loading || undefined} className={authPrimaryClass}>
+      <Button type="submit" variant="primary" size="lg" fullWidth disabled={loading} aria-busy={loading || undefined}>
         {loading ? 'Signing in…' : 'Sign in'}
-      </button>
+      </Button>
     </form>
   )
 }

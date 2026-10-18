@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { Notice } from '@/components/app/ui/Notice'
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { EmptyState } from '@/components/app/ui/EmptyState'
@@ -42,14 +43,13 @@ export default async function AdminSiteAnalyticsPage({ params }: { params: Promi
       </div>
 
       {view.errors.length ? (
-        <div role="alert" className="flex flex-col gap-1 rounded-2xl border border-destructive px-4 py-3 text-sm">
-          <p className="font-medium text-destructive">{t('site.errorTitle')}</p>
+        <Notice tone="error" title={t('site.errorTitle')}>
           {view.errors.map((e) => (
-            <p key={e.source} className="break-words text-foreground">
+            <p key={e.source} className="break-words">
               <span className="font-medium">{t(`site.source.${e.source}`)}:</span> {e.message}
             </p>
           ))}
-        </div>
+        </Notice>
       ) : null}
 
       {view.hasData ? <AnalyticsOverview view={view} requests={requests} /> : <EmptyState title={t('site.emptyTitle')} body={t('site.emptyBody')} />}

@@ -1,5 +1,6 @@
 'use client'
 
+import { WizardFooter, type WizardFooterProps } from './WizardFooter'
 import type { KeyboardEvent, ReactNode, RefObject } from 'react'
 import { useTranslations } from 'next-intl'
 import type { SaveState } from '@/lib/client/autosave/engine'
@@ -12,8 +13,8 @@ import { SaveNotice } from '@/components/app/ui/SaveNotice'
  * wizards (gallery, media): the same markup, byte for byte — full-screen
  * Create surface; top bar with "Save & exit" (or a round × while nothing has
  * been saved) and the SavePill; the step column; and the footer with the hint,
- * segmented progress, Back and the h-14 primary button. WizardShell keeps its
- * own copy of this markup; keep the two identical.
+ * segmented progress, Back and the primary button (WizardFooter, shared with
+ * WizardShell).
  */
 export function WizardFrame({
   children,
@@ -41,12 +42,7 @@ export function WizardFrame({
   onRetry?: () => void
   /** Paths the server refused (one change not saved; the rest is). */
   rejected?: string[]
-  footer: null | {
-    hint?: string | null
-    progress?: { current: number; total: number } | null
-    back?: { onPress: () => void; disabled?: boolean } | null
-    primary: { label: string; onPress: () => void; disabled?: boolean; busy?: boolean }
-  }
+  footer: null | WizardFooterProps
   /** Dialogs (confirmations) rendered inside the surface, after the footer. */
   overlay?: ReactNode
 }) {
@@ -78,43 +74,7 @@ export function WizardFrame({
         <main className={`mx-auto flex min-h-full w-full flex-col px-4 pt-6 pb-10 ${wide ? 'max-w-5xl' : 'max-w-[672px]'}`}>{children}</main>
       </div>
 
-      {footer ? (
-        <footer className="border-t border-border-subtle bg-background pb-[max(12px,env(safe-area-inset-bottom))]">
-          <div className={`mx-auto w-full px-4 pt-3 ${wide ? 'max-w-5xl' : 'max-w-[672px]'}`}>
-            {footer.hint ? (
-              <p role="status" className="mb-3 text-[0.9375rem] leading-6 text-muted-foreground">
-                {footer.hint}
-              </p>
-            ) : null}
-            {footer.progress ? (
-              <div
-                role="progressbar"
-                aria-valuemin={1}
-                aria-valuemax={footer.progress.total}
-                aria-valuenow={footer.progress.current}
-                aria-label={t('shell.progress', { current: footer.progress.current, total: footer.progress.total })}
-                className="flex gap-1.5"
-              >
-                {Array.from({ length: footer.progress.total }, (_, i) => (
-                  <span key={i} className={`h-1 flex-1 rounded-full ${i < footer.progress!.current ? 'bg-foreground' : 'bg-muted'}`} />
-                ))}
-              </div>
-            ) : null}
-            <div className={`flex items-center justify-between gap-4 ${footer.progress ? 'mt-3' : ''}`}>
-              {footer.back ? (
-                <Button variant="link" onClick={footer.back.onPress} disabled={footer.back.disabled}>
-                  {t('shell.back')}
-                </Button>
-              ) : (
-                <span />
-              )}
-              <Button variant="primary" size="lg" className="min-w-32" onClick={footer.primary.onPress} disabled={footer.primary.disabled} aria-busy={footer.primary.busy || undefined}>
-                {footer.primary.label}
-              </Button>
-            </div>
-          </div>
-        </footer>
-      ) : null}
+      {footer ? <WizardFooter wide={wide} {...footer} /> : null}
 
       {overlay}
     </div>

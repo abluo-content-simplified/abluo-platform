@@ -4,6 +4,8 @@ import { useState, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { AppIcon } from '@/components/app/shell/AppIcon'
 import type { AccountMenuRow } from '@/components/app/shell/AccountMenu'
+import { CountBadge } from '@/components/app/ui/CountBadge'
+import { SidebarRowButton } from '@/components/app/ui/SidebarRowButton'
 import { SidePanel } from '@/components/app/ui/SidePanel'
 import { UpdateCard } from '@/components/app/ui/UpdateCard'
 import { markUpdatesReadAction } from '@/app/[locale]/(client)/[tenant]/whats-new-actions'
@@ -55,21 +57,14 @@ export function useWhatsNew(updates: ClientProductUpdate[] | null): {
   }
 
   const sidebarRow = (
-    <button
-      type="button"
+    <SidebarRowButton
+      icon={<AppIcon d={WHATS_NEW_ICON} size={18} />}
+      badge={unread ? <CountBadge count={unread} srLabel={unreadLabel ?? ''} /> : null}
       onClick={openPanel}
       aria-haspopup="dialog"
-      className="flex min-h-10 w-full items-center gap-3 rounded-md px-3 text-sm text-muted-foreground transition-colors hover:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
     >
-      <AppIcon d={WHATS_NEW_ICON} size={18} />
-      <span className="flex-1 text-left">{t('title')}</span>
-      {unread ? (
-        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-action px-1.5 text-xs font-semibold text-action-foreground">
-          <span aria-hidden="true">{unread}</span>
-          <span className="sr-only">{unreadLabel}</span>
-        </span>
-      ) : null}
-    </button>
+      {t('title')}
+    </SidebarRowButton>
   )
 
   const menuRow: AccountMenuRow = {

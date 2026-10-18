@@ -24,6 +24,7 @@ export function ReviewStep({
   menu = [],
   status,
   notice,
+  publication,
 }: StepProps & {
   onEdit: (section: OverviewSection['id']) => void
   onPreview: () => void
@@ -32,6 +33,8 @@ export function ReviewStep({
   /** Where the live version stands ("Live on your site since …"), edit mode only. */
   status?: string | null
   notice?: { kind: 'status' | 'error'; text: string } | null
+  /** Edit mode, not archived: when the post is on the website (PublicationDates; changes apply at once). */
+  publication?: ReactNode
 }) {
   const t = useTranslations('clientDashboard.create.review')
   const tg = useTranslations('clientDashboard.gallery.post')
@@ -89,6 +92,14 @@ export function ReviewStep({
         {menu.length > 0 ? <CardMenu label={tm('label')} items={menu} /> : null}
       </div>
       {status ? <p className="mt-4 text-[0.9375rem] font-medium text-foreground">{status}</p> : null}
+      {publication ? (
+        <section aria-labelledby="review-dates-title" className="mt-6">
+          <h2 id="review-dates-title" className="text-[1.0625rem] font-semibold text-foreground">
+            {t('dates.title')}
+          </h2>
+          <div className="mt-2">{publication}</div>
+        </section>
+      ) : null}
       {draft.mode === 'edit' ? <p className="mt-1 text-[0.9375rem] leading-6 text-muted-foreground">{t('editing')}</p> : null}
       <p
         role={notice?.kind === 'error' ? 'alert' : 'status'}

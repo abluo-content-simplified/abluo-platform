@@ -82,7 +82,7 @@ describe('lifecycleGuard per catalogue descriptor (ADR-033 C4)', () => {
   const item = ['catalogue.item.write', 'catalogue.item.delete', 'catalogue.item.deletePublished']
   const coll = ['catalogue.collection.write', 'catalogue.collection.delete', 'catalogue.collection.deletePublished']
   const expected = (p: string[]) => ({
-    unpublishNow: [p[0]], backOnline: [p[0]], setEndDate: [p[0]], archive: [p[0]], restore: [p[0]],
+    unpublishNow: [p[0]], backOnline: [p[0]], setEndDate: [p[0]], setDates: [p[0]], archive: [p[0]], restore: [p[0]],
     deleteDraft: [p[1]], deletePermanently: [p[1], p[2]],
   })
   const map = (d: Parameters<typeof lifecycleGuard>[0]) => Object.fromEntries(LIFECYCLE_OPERATIONS.map((op) => [op, lifecycleGuard(d, op)]))
