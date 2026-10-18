@@ -16,6 +16,7 @@ const ALLOWED = new Set(
     'lib/modules/types.ts', // type declaration
     'lib/modules/config-schema.ts', // Sanity field declaration for the installation type
     'lib/sanity/studio/ModuleList.tsx', // the install flow (Modules pane)
+    'lib/sanity/studio/module-save.ts', // pure patch builder of the Modules pane's save (install flow)
     'lib/modules/__tests__/presets.test.ts',
     'lib/modules/__tests__/applied-preset-guard.test.ts',
     // ⚠️ NARROWED EXCEPTIONS (Amendment I slice 4d) — the image shape now follows each

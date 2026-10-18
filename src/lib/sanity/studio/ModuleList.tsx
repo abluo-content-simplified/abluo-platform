@@ -34,6 +34,7 @@ import {
   type PendingGuard,
 } from '../../modules/config-validators'
 import { applyPreset, previewPreset } from '../../modules/presets'
+import { buildInstallationPatch, CONFLICT_MESSAGE, isEmptyPatch, isRevisionConflict } from './module-save'
 
 /**
  * ModuleList — the Modules pane. ADR-020 Decision 1.
@@ -220,6 +221,9 @@ export function ModuleList({ options }: ModuleListProps) {
   const client = useClient({ apiVersion: '2026-05-21' })
 
   const [installations, setInstallations] = useState<FetchedInstallation[]>([])
+  // Revision of the project document these installations were read from. Saves
+  // are guarded with it, so a concurrent write (the client dashboard) is never overwritten.
+  const [projectRev, setProjectRev] = useState<string | null>(null)
   const [locales, setLocales] = useState<string[]>([])
   const [adoptedSubjects, setAdoptedSubjects] = useState<ModuleConfigListEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -282,11 +286,13 @@ export function ModuleList({ options }: ModuleListProps) {
     client
       .fetch<{
         installations: FetchedInstallation[] | null
+        projectRev: string | null
         supportedLocales: string[] | null
         defaultLocale: string | null
         whatsappForm: unknown
       }>(
         `{
+          "projectRev": *[_type == "project" && _id == $projectId][0]._rev,
           "installations": *[_type == "project" && _id == $projectId][0].moduleInstallations[] {
             _key, _type, moduleId, version, enabled, installedAt, provenance, appliedPreset, config
           },
@@ -304,6 +310,7 @@ export function ModuleList({ options }: ModuleListProps) {
       )
       .then((data) => {
         setInstallations(data?.installations ?? [])
+        setProjectRev(data?.projectRev ?? null)
         const supported = data?.supportedLocales ?? []
         const fallback = data?.defaultLocale ? [data.defaultLocale] : ['en']
         setLocales(supported.length > 0 ? supported : fallback)
@@ -326,7 +333,8 @@ export function ModuleList({ options }: ModuleListProps) {
     return map
   }, [installations])
 
-  const handleSaved = useCallback((entry: FetchedInstallation) => {
+  const handleSaved = useCallback((entry: FetchedInstallation, rev?: string | null) => {
+    if (rev) setProjectRev(rev)
     setInstallations((prev) => [...prev.filter((i) => i.moduleId !== entry.moduleId), entry])
   }, [])
 
@@ -378,6 +386,7 @@ export function ModuleList({ options }: ModuleListProps) {
         adoptedSubjects={adoptedSubjects}
         client={client}
         projectId={projectId}
+        projectRev={projectRev}
         // No back link when the module was opened from its own structure entry —
         // the sidebar is already the way back.
         onBack={pinnedModuleId ? null : () => setSelectedId(null)}
@@ -466,6 +475,7 @@ function ModuleDetail({
   adoptedSubjects,
   client,
   projectId,
+  projectRev,
   onBack,
   onSaved,
 }: {
@@ -478,8 +488,9 @@ function ModuleDetail({
   adoptedSubjects: ModuleConfigListEntry[]
   client: ReturnType<typeof useClient>
   projectId: string
+  projectRev: string | null
   onBack: (() => void) | null
-  onSaved: (entry: FetchedInstallation) => void
+  onSaved: (entry: FetchedInstallation, rev?: string | null) => void
 }) {
   const configSchema = manifest.platformContract.configSchema
 
@@ -764,23 +775,29 @@ function ModuleDetail({
         config,
       }
 
-      let patch = client.patch(projectId).setIfMissing({ moduleInstallations: [] })
-      if (installation) {
-        patch = patch.insert('replace', `moduleInstallations[moduleId=="${manifest.id}"]`, [entry])
-      } else {
-        patch = patch.append('moduleInstallations', [entry])
+      // Key-level patch + revision guard (see module-save.ts): only what this
+      // admin changed is written, and a concurrent write fails instead of being lost.
+      const change = buildInstallationPatch(installation, entry)
+      let saved: { _rev?: string } | null = null
+      if (!isEmptyPatch(change)) {
+        let patch = client.patch(projectId)
+        if (projectRev) patch = patch.ifRevisionId(projectRev)
+        patch = patch.setIfMissing({ moduleInstallations: [] })
+        if (change.append) patch = patch.append('moduleInstallations', [change.append])
+        if (Object.keys(change.set).length) patch = patch.set(change.set)
+        if (change.unset.length) patch = patch.unset(change.unset)
+        saved = (await patch.commit()) as { _rev?: string }
       }
-      await patch.commit()
 
       confirmedRef.current = []
       if (applied?.applied) {
         setValues(vals)
         setPresetId('')
       }
-      onSaved(entry)
+      onSaved(entry, saved?._rev ?? null)
       setSavedNotice(true)
-    } catch {
-      setSaveError('Failed to save. Please try again.')
+    } catch (error) {
+      setSaveError(isRevisionConflict(error) ? CONFLICT_MESSAGE : 'Failed to save. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -803,6 +820,7 @@ function ModuleDetail({
     tenantSlug,
     client,
     projectId,
+    projectRev,
     onSaved,
     validateField,
   ])
