@@ -43,7 +43,6 @@ import {
 } from './resolve'
 import { dispatchCatalogue, type CatalogueDispatch } from './segment'
 import { collectionHasAmazon, localizeCollection } from './amazon-delivery'
-import { visitorCountry } from '@/lib/affiliate/visitor-country'
 import { isIndexable } from './visibility'
 
 export type CatalogueFetch = <T>(query: string, params?: Record<string, unknown>) => Promise<T>
@@ -154,6 +153,12 @@ export async function hydrateCatalogueListing(
   fetchForTenant: CatalogueFetch,
   collectionId: string | null | undefined,
   ctx: CatalogueResolveContext,
+  /**
+   * The visitor's country for Amazon links, injected by the (server-only)
+   * caller. This module is also reached from the Studio/client bundle through
+   * the section registry, so it must never import `next/headers` itself.
+   */
+  deps: { visitorCountry?: () => Promise<string | null> } = {},
 ): Promise<CatalogueListingData> {
   const base = { segment: ctx.config.segment, showPricesByDefault: ctx.config.showPricesByDefault, affiliateDisclosure: ctx.config.affiliateDisclosure }
   if (!collectionId) return { ...base, collection: null }
@@ -166,7 +171,7 @@ export async function hydrateCatalogueListing(
   if (!collection || !collectionHasAmazon(collection)) return { ...base, collection }
   // Amazon buy links are rewritten PER REQUEST (visitor country + the tenant's tracking IDs). The page
   // is rendered dynamically for every request, so one visitor's pick never reaches another.
-  const [country, trackingIds] = await Promise.all([visitorCountry(), fetchForTenant<unknown>(amazonTrackingIdsQuery, {}).catch(() => null)])
+  const [country, trackingIds] = await Promise.all([deps.visitorCountry ? deps.visitorCountry() : Promise.resolve(null), fetchForTenant<unknown>(amazonTrackingIdsQuery, {}).catch(() => null)])
   return { ...base, collection: localizeCollection(collection, { country, trackingIds: Array.isArray(trackingIds) ? trackingIds : null }) }
 }
 

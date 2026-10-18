@@ -76,6 +76,7 @@ import {
 import type { CatalogueListingSection as CatalogueListingSectionType } from '@/lib/sanity/types'
 import type { CatalogueConfigDTO } from '@/lib/modules/catalogue/dto'
 import { hydrateCatalogueListing, loadCatalogueConfig } from '@/lib/modules/catalogue/website'
+import { visitorCountry } from '@/lib/affiliate/visitor-country'
 
 // ─── Blog listing post fetcher ────────────────────────────────────────────────
 
@@ -310,7 +311,7 @@ export async function hydrateSections(
             defaultLocale: ctx.defaultLocale,
             config,
             now: new Date(),
-          })
+          }, { visitorCountry })
         } catch (err) {
           console.error('[catalogue] listing section hydration failed; section omitted', err)
           cls.catalogue = undefined
