@@ -1622,7 +1622,6 @@
     },
     "taxonomy": {
       "title": "Kategorien & Tags",
-      "module": "Modul",
       "loading": "Wird geladen…",
       "readOnly": "Sie können alles ansehen, ändern kann es aber nur, wer Bearbeitungsrechte hat.",
       "name": "Name",
@@ -1709,13 +1708,15 @@
         "languages": "Sprachen",
         "order": "Reihenfolge"
       },
-      "kindLabel": "Anzeigen",
-      "filterAll": "Alle",
+      "filterAll": "Alle Übersetzungen",
       "clear": "Filter zurücksetzen",
       "noMatch": "Nichts passt zu deiner Suche.",
       "drag": "{name} verschieben, Position {position} von {total}. Ziehen oder die Pfeiltasten nach oben und unten verwenden.",
-      "addTo": "Hinzufügen zu",
-      "redirectsBlocked": "Alte Webadressen führen noch zu dieser Kategorie ({count, plural, one {# Adresse} other {# Adressen}}), deshalb kann sie nicht gelöscht werden. Kontaktieren Sie uns, wenn Sie sie entfernen möchten."
+      "redirectsBlocked": "Alte Webadressen führen noch zu dieser Kategorie ({count, plural, one {# Adresse} other {# Adressen}}), deshalb kann sie nicht gelöscht werden. Kontaktieren Sie uns, wenn Sie sie entfernen möchten.",
+      "tabsLabel": "Bereich",
+      "filterLabel": "Übersetzungen",
+      "searchAll": "Kategorien und Tags suchen",
+      "shownOf": "{shown} von {total}"
     },
     "photoWizard": {
       "add": {
@@ -2214,6 +2215,71 @@
         "intro": "Ein Satz, der einmal unten auf einer Seite mit Affiliate-Kauflink erscheint. Lass eine Sprache leer, um unseren Standardtext zu verwenden.",
         "usingStandard": "Leer: Auf deiner Website erscheint der Standardtext.",
         "useStandard": "Standardtext verwenden"
+      }
+    },
+    "internalTags": {
+      "undo": "Rückgängig",
+      "failed": "Das wurde nicht gespeichert. Es wurde nichts geändert.",
+      "loading": "Wird geladen…",
+      "loadError": "Die Tags konnten nicht geladen werden.",
+      "retry": "Erneut versuchen",
+      "readOnly": "Sie können sich diese ansehen, ändern kann sie aber nur, wer Bearbeitungsrechte hat.",
+      "clear": "Suche löschen",
+      "noMatch": "Kein Tag passt zu Ihrer Suche.",
+      "columns": {
+        "tag": "Tag",
+        "usedBy": "Verwendet von",
+        "actions": "Aktionen"
+      },
+      "menu": "Aktionen für {tag}",
+      "select": "{tag} auswählen",
+      "selectAll": "Alle Tags auswählen",
+      "rename": "Umbenennen",
+      "delete": "Löschen",
+      "merge": "Zusammenführen mit…",
+      "bar": {
+        "label": "Ausgewählte Tags",
+        "count": "{count, plural, one {# Tag ausgewählt} other {# Tags ausgewählt}}",
+        "clear": "Aufheben"
+      },
+      "renameTitle": "Tag umbenennen",
+      "renameLabel": "Name des Tags",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "combine": {
+        "title": "Mit „{tag}“ zusammenführen?",
+        "body": "„{from}“ wird überall zu „{tag}“. Wer beide hat, behält „{tag}“ nur einmal.",
+        "confirm": "Zusammenführen"
+      },
+      "mergeTitle": "Tags zusammenführen",
+      "mergeBody": "{count} Tags werden zu einem. Wer mehrere davon hat, behält das Tag nur einmal.",
+      "keepLabel": "Name, der bleibt",
+      "keepNew": "Ein anderer Name",
+      "mergeConfirm": "Zusammenführen",
+      "errors": {
+        "nameRequired": "Geben Sie dem Tag einen Namen."
+      },
+      "media": {
+        "note": "Nur Sie sehen diese Tags. Sie helfen Ihnen, Fotos zu finden, und erscheinen nie auf Ihrer Website.",
+        "search": "Tags durchsuchen",
+        "count": "{shown} von {total} Tags",
+        "usedBy": "{count, plural, =0 {Noch nicht verwendet} one {Bei # Foto verwendet} other {Bei # Fotos verwendet}}",
+        "emptyTitle": "Noch keine Tags",
+        "emptyBody": "Fügen Sie Ihren Fotos Tags hinzu, dann erscheinen sie hier.",
+        "renamed": "{count, plural, one {Bei # Foto in „{tag}“ umbenannt} other {Bei # Fotos in „{tag}“ umbenannt}}",
+        "merged": "{count, plural, one {Bei # Foto mit „{tag}“ zusammengeführt} other {Bei # Fotos mit „{tag}“ zusammengeführt}}",
+        "deleted": "{tags, plural, one {Tag gelöscht} other {# Tags gelöscht}} · {count, plural, one {# Foto aktualisiert} other {# Fotos aktualisiert}}"
+      },
+      "galleries": {
+        "note": "Nur Sie sehen diese Tags. Sie helfen Ihnen, Galerien zu finden, und erscheinen nie auf Ihrer Website.",
+        "search": "Tags durchsuchen",
+        "count": "{shown} von {total} Tags",
+        "usedBy": "{count, plural, =0 {Noch nicht verwendet} one {Bei # Galerie verwendet} other {Bei # Galerien verwendet}}",
+        "emptyTitle": "Noch keine Tags",
+        "emptyBody": "Fügen Sie Ihren Galerien Tags hinzu, dann erscheinen sie hier.",
+        "renamed": "{count, plural, one {Bei # Galerie in „{tag}“ umbenannt} other {Bei # Galerien in „{tag}“ umbenannt}}",
+        "merged": "{count, plural, one {Bei # Galerie mit „{tag}“ zusammengeführt} other {Bei # Galerien mit „{tag}“ zusammengeführt}}",
+        "deleted": "{tags, plural, one {Tag gelöscht} other {# Tags gelöscht}} · {count, plural, one {# Galerie aktualisiert} other {# Galerien aktualisiert}}"
       }
     }
   },

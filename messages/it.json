@@ -1622,7 +1622,6 @@
     },
     "taxonomy": {
       "title": "Categorie e tag",
-      "module": "Modulo",
       "loading": "Caricamento…",
       "readOnly": "Puoi consultarli, ma solo chi ha i permessi di modifica può cambiarli.",
       "name": "Nome",
@@ -1709,13 +1708,15 @@
         "languages": "Lingue",
         "order": "Ordine"
       },
-      "kindLabel": "Mostra",
-      "filterAll": "Tutte",
+      "filterAll": "Tutte le traduzioni",
       "clear": "Azzera filtri",
       "noMatch": "Nessun risultato per la ricerca.",
       "drag": "Sposta {name}, posizione {position} di {total}. Trascina, oppure usa le frecce su e giù.",
-      "addTo": "Aggiungi a",
-      "redirectsBlocked": "Alcuni vecchi indirizzi web portano ancora a questa categoria ({count, plural, one {# indirizzo} other {# indirizzi}}), quindi non può essere eliminata. Contattaci se vuoi rimuoverla."
+      "redirectsBlocked": "Alcuni vecchi indirizzi web portano ancora a questa categoria ({count, plural, one {# indirizzo} other {# indirizzi}}), quindi non può essere eliminata. Contattaci se vuoi rimuoverla.",
+      "tabsLabel": "Dove",
+      "filterLabel": "Traduzioni",
+      "searchAll": "Cerca categorie e tag",
+      "shownOf": "{shown} di {total}"
     },
     "photoWizard": {
       "add": {
@@ -2214,6 +2215,71 @@
         "intro": "Una frase, mostrata una volta in fondo a una pagina che contiene un link di acquisto di affiliazione. Lascia vuota una lingua per usare la nostra formula standard.",
         "usingStandard": "Vuoto: sul tuo sito compare la formula standard.",
         "useStandard": "Usa la formula standard"
+      }
+    },
+    "internalTags": {
+      "undo": "Annulla",
+      "failed": "Non è stato salvato. Non è cambiato nulla.",
+      "loading": "Caricamento…",
+      "loadError": "Non è stato possibile caricare i tag.",
+      "retry": "Riprova",
+      "readOnly": "Puoi guardarli, ma solo chi ha i permessi di modifica può cambiarli.",
+      "clear": "Cancella la ricerca",
+      "noMatch": "Nessun tag corrisponde alla ricerca.",
+      "columns": {
+        "tag": "Tag",
+        "usedBy": "Usato da",
+        "actions": "Azioni"
+      },
+      "menu": "Azioni per {tag}",
+      "select": "Seleziona {tag}",
+      "selectAll": "Seleziona tutti i tag",
+      "rename": "Rinomina",
+      "delete": "Elimina",
+      "merge": "Unisci in…",
+      "bar": {
+        "label": "Tag selezionati",
+        "count": "{count, plural, one {# tag selezionato} other {# tag selezionati}}",
+        "clear": "Deseleziona"
+      },
+      "renameTitle": "Rinomina tag",
+      "renameLabel": "Nome del tag",
+      "save": "Salva",
+      "cancel": "Annulla",
+      "combine": {
+        "title": "Unire a “{tag}”?",
+        "body": "“{from}” diventa “{tag}” ovunque. Chi li ha entrambi tiene “{tag}” una sola volta.",
+        "confirm": "Unisci"
+      },
+      "mergeTitle": "Unisci tag",
+      "mergeBody": "{count} tag diventano uno. Chi ne ha più di uno tiene il tag una sola volta.",
+      "keepLabel": "Nome da tenere",
+      "keepNew": "Un altro nome",
+      "mergeConfirm": "Unisci",
+      "errors": {
+        "nameRequired": "Dai un nome al tag."
+      },
+      "media": {
+        "note": "Solo tu li vedi. Ti aiutano a trovare le foto e non compaiono mai sul tuo sito.",
+        "search": "Cerca tag",
+        "count": "{shown} di {total} tag",
+        "usedBy": "{count, plural, =0 {Non ancora usato} one {Usato da # foto} other {Usato da # foto}}",
+        "emptyTitle": "Ancora nessun tag",
+        "emptyBody": "Aggiungi tag alle tue foto e compariranno qui.",
+        "renamed": "{count, plural, one {Rinominato in “{tag}” su # foto} other {Rinominato in “{tag}” su # foto}}",
+        "merged": "{count, plural, one {Unito in “{tag}” su # foto} other {Unito in “{tag}” su # foto}}",
+        "deleted": "{tags, plural, one {Tag eliminato} other {# tag eliminati}} · {count, plural, one {# foto aggiornata} other {# foto aggiornate}}"
+      },
+      "galleries": {
+        "note": "Solo tu li vedi. Ti aiutano a trovare le gallerie e non compaiono mai sul tuo sito.",
+        "search": "Cerca tag",
+        "count": "{shown} di {total} tag",
+        "usedBy": "{count, plural, =0 {Non ancora usato} one {Usato da # galleria} other {Usato da # gallerie}}",
+        "emptyTitle": "Ancora nessun tag",
+        "emptyBody": "Aggiungi tag alle tue gallerie e compariranno qui.",
+        "renamed": "{count, plural, one {Rinominato in “{tag}” su # galleria} other {Rinominato in “{tag}” su # gallerie}}",
+        "merged": "{count, plural, one {Unito in “{tag}” su # galleria} other {Unito in “{tag}” su # gallerie}}",
+        "deleted": "{tags, plural, one {Tag eliminato} other {# tag eliminati}} · {count, plural, one {# galleria aggiornata} other {# gallerie aggiornate}}"
       }
     }
   },

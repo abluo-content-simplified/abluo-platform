@@ -109,7 +109,7 @@ export async function listMediaLibrary(
   projectId: string,
   options: ListProjectMediaOptions = {},
   deps: PostMediaDeps & { client?: Client } = {}
-): Promise<{ items: MediaLibraryItem[]; nextCursor: string | null; tags: string[] }> {
+): Promise<{ items: MediaLibraryItem[]; nextCursor: string | null; tags: string[]; tagCounts: { tag: string; count: number }[] }> {
   const grant = assertProjectAccess(ctx, projectId, MEDIA_MANAGE_PERMISSION)
   const client = (deps.client as Client | undefined) ?? sanityWriteClient
   const page = await listProjectMedia(ctx, projectId, options, deps, MEDIA_MANAGE_PERMISSION)

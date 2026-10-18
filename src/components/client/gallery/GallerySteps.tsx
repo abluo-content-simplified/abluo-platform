@@ -11,6 +11,7 @@ import { GalleryStatusLines } from './GalleryStatusLines'
 import { useCallback, type ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { TagEditor } from '@/components/client/media/PhotoCard'
+import type { TagCount } from '@/lib/tags/internal-tags'
 import { StepHeading, languageName } from '@/components/client/create/StepHeading'
 import { mintGalleryPreviewAction } from '@/app/[locale]/(client)/[tenant]/galleries/preview-actions'
 import type { GalleryUsage } from '@/lib/api/gallery-drafts'
@@ -52,12 +53,15 @@ export function NameStep({
   onText,
   tags,
   onTags,
+  tagCounts,
 }: {
   texts: GalleryTexts
   locale: string
   onText: (field: 'title' | 'description', locale: string, value: string) => void
   tags: string[]
   onTags: (tags: string[]) => void
+  /** The galleries' tags with how many use each (most-used chips, matching). */
+  tagCounts?: readonly TagCount[]
 }) {
   const t = useTranslations('clientDashboard.gallery.wizard.name')
   const tl = useTranslations('clientDashboard.gallery.list')
@@ -84,6 +88,7 @@ export function NameStep({
           id="gallery-name-tags"
           tags={tags}
           suggestions={[]}
+          counts={tagCounts}
           labels={{
             label: tl('tags.label'),
             helper: tl('tags.helper'),

@@ -72,7 +72,7 @@ async function withProject<T>(
 const label = (project: AdminMediaProject, site: MediaSite) => ({ slug: project.slug, name: project.name, site })
 
 type ListInput = { projectSlug: string | null; cursor?: string | null; q?: string | null; tags?: string[] | null }
-type ListResult = { items: MediaLibraryItem[]; nextCursor: string | null; tags: string[] }
+type ListResult = { items: MediaLibraryItem[]; nextCursor: string | null; tags: string[]; tagCounts?: { tag: string; count: number }[] }
 
 /** One page of one project's library, or (projectSlug null) of every project's. Each photo carries its project. */
 export async function listAdminMediaAction(input: ListInput): Promise<Result<ListResult>> {

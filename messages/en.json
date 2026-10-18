@@ -1622,7 +1622,6 @@
     },
     "taxonomy": {
       "title": "Categories & Tags",
-      "module": "Module",
       "loading": "Loading…",
       "readOnly": "You can look at these, but only someone with edit access can change them.",
       "name": "Name",
@@ -1709,13 +1708,15 @@
         "languages": "Languages",
         "order": "Order"
       },
-      "kindLabel": "Show",
-      "filterAll": "All",
+      "filterAll": "All translations",
       "clear": "Clear filters",
       "noMatch": "Nothing matches your search.",
       "drag": "Move {name}, position {position} of {total}. Drag, or use the up and down arrow keys.",
-      "addTo": "Add to",
-      "redirectsBlocked": "Old web addresses still lead to this category ({count, plural, one {# address} other {# addresses}}), so it can't be deleted. Contact us if you want to remove it."
+      "redirectsBlocked": "Old web addresses still lead to this category ({count, plural, one {# address} other {# addresses}}), so it can't be deleted. Contact us if you want to remove it.",
+      "tabsLabel": "Where",
+      "filterLabel": "Translations",
+      "searchAll": "Search categories and tags",
+      "shownOf": "{shown} of {total}"
     },
     "photoWizard": {
       "add": {
@@ -2214,6 +2215,71 @@
         "intro": "One sentence, shown once at the bottom of a page that has an affiliate buy link. Leave a language empty to use our standard wording.",
         "usingStandard": "Empty: the standard wording is shown on your website.",
         "useStandard": "Use standard wording"
+      }
+    },
+    "internalTags": {
+      "undo": "Undo",
+      "failed": "That didn’t save. Nothing was changed.",
+      "loading": "Loading…",
+      "loadError": "The tags couldn’t be loaded.",
+      "retry": "Try again",
+      "readOnly": "You can look at these, but only someone with edit access can change them.",
+      "clear": "Clear search",
+      "noMatch": "No tags match your search.",
+      "columns": {
+        "tag": "Tag",
+        "usedBy": "Used by",
+        "actions": "Actions"
+      },
+      "menu": "Actions for {tag}",
+      "select": "Select {tag}",
+      "selectAll": "Select all tags",
+      "rename": "Rename",
+      "delete": "Delete",
+      "merge": "Merge into…",
+      "bar": {
+        "label": "Selected tags",
+        "count": "{count, plural, one {# tag selected} other {# tags selected}}",
+        "clear": "Clear"
+      },
+      "renameTitle": "Rename tag",
+      "renameLabel": "Tag name",
+      "save": "Save",
+      "cancel": "Cancel",
+      "combine": {
+        "title": "Combine with “{tag}”?",
+        "body": "“{from}” becomes “{tag}” everywhere. Anything that has both keeps “{tag}” once.",
+        "confirm": "Combine"
+      },
+      "mergeTitle": "Merge tags",
+      "mergeBody": "{count} tags become one. Anything that has several of them keeps the tag once.",
+      "keepLabel": "Name to keep",
+      "keepNew": "A different name",
+      "mergeConfirm": "Merge",
+      "errors": {
+        "nameRequired": "Give the tag a name."
+      },
+      "media": {
+        "note": "Only you see these. They help you find photos and never appear on your website.",
+        "search": "Search tags",
+        "count": "{shown} of {total} tags",
+        "usedBy": "{count, plural, =0 {Not used yet} one {Used by # photo} other {Used by # photos}}",
+        "emptyTitle": "No tags yet",
+        "emptyBody": "Add tags to your photos and they will show up here.",
+        "renamed": "{count, plural, one {Renamed to “{tag}” on # photo} other {Renamed to “{tag}” on # photos}}",
+        "merged": "{count, plural, one {Merged into “{tag}” on # photo} other {Merged into “{tag}” on # photos}}",
+        "deleted": "{tags, plural, one {Tag deleted} other {# tags deleted}} · {count, plural, one {# photo} other {# photos}} updated"
+      },
+      "galleries": {
+        "note": "Only you see these. They help you find galleries and never appear on your website.",
+        "search": "Search tags",
+        "count": "{shown} of {total} tags",
+        "usedBy": "{count, plural, =0 {Not used yet} one {Used by # gallery} other {Used by # galleries}}",
+        "emptyTitle": "No tags yet",
+        "emptyBody": "Add tags to your galleries and they will show up here.",
+        "renamed": "{count, plural, one {Renamed to “{tag}” on # gallery} other {Renamed to “{tag}” on # galleries}}",
+        "merged": "{count, plural, one {Merged into “{tag}” on # gallery} other {Merged into “{tag}” on # galleries}}",
+        "deleted": "{tags, plural, one {Tag deleted} other {# tags deleted}} · {count, plural, one {# gallery} other {# galleries}} updated"
       }
     }
   },

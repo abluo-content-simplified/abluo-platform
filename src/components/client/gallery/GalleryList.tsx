@@ -24,6 +24,7 @@ import {
 } from '@/lib/client/galleries-filter'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { PHOTO_CARD_MAX, TagEditor } from '@/components/client/media/PhotoCard'
+import { countTags } from '@/lib/tags/internal-tags'
 import { BarButton } from '@/components/app/ui/BarButton'
 import { Button } from '@/components/app/ui/Button'
 import { EmptyState } from '@/components/app/ui/EmptyState'
@@ -130,6 +131,7 @@ export function GalleryList({
   )
   const shown = useMemo(() => applyGalleryFilters(rows, filters), [rows, filters])
   const counts = useMemo(() => galleryStateCounts(rows, filters), [rows, filters])
+  const tagCounts = useMemo(() => countTags(rows.map((g) => ({ id: g.id, tags: g.tags }))), [rows])
   const allTags = useMemo(() => [...new Set(rows.flatMap((g) => g.tags))].sort(), [rows])
   const byId = useMemo(() => new Map(rows.map((g) => [g.id, g])), [rows])
   const isDefault = isDefaultGalleryFilters(filters)
@@ -359,6 +361,7 @@ export function GalleryList({
             id="gallery-batch-tags"
             tags={picked}
             suggestions={allTags}
+            counts={tagCounts}
             labels={{
               label: t('tags.label'),
               helper: t('tags.helper'),

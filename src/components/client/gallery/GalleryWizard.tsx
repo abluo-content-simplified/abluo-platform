@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
+import { listInternalTagsAction } from '@/app/[locale]/(client)/[tenant]/taxonomy/internal-tags-actions'
+import { countTags, type TagCount } from '@/lib/tags/internal-tags'
 import {
   createGalleryAction,
   deleteGalleryAction,
@@ -197,6 +199,19 @@ export function GalleryWizard({
   }, [])
   const autosave = useAutosave({ draftId: journalKey, rev: initial.rev, send, onReady })
   const { rekey } = autosave
+  // The galleries' own tags (a separate list from the photos'), for the tag box's most-used chips.
+  const [galleryTagCounts, setGalleryTagCounts] = useState<TagCount[]>([])
+  useEffect(() => {
+    let alive = true
+    void listInternalTagsAction({ projectSlug, scope: 'galleries' })
+      .then((r) => {
+        if (alive && r.ok) setGalleryTagCounts(countTags(r.rows))
+      })
+      .catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [projectSlug])
   useEffect(() => {
     rekeyRef.current = rekey
   }, [rekey])
@@ -503,7 +518,7 @@ export function GalleryWizard({
       </div>
 
       {step === 'name' ? (
-        <NameStep texts={texts} locale={d} onText={onText} tags={tags} onTags={onTags} />
+        <NameStep texts={texts} locale={d} onText={onText} tags={tags} onTags={onTags} tagCounts={galleryTagCounts} />
       ) : step === 'describe' ? (
         current ? (
           <PhotoDescribeStep

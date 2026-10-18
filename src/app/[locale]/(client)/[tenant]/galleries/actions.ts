@@ -141,7 +141,7 @@ export async function listGalleryMediaAction(input: {
   cursor?: string | null
   q?: string | null
   tags?: string[] | null
-}): Promise<Result<{ items: ProjectMediaItem[]; nextCursor: string | null; tags: string[] }>> {
+}): Promise<Result<{ items: ProjectMediaItem[]; nextCursor: string | null; tags: string[]; tagCounts: { tag: string; count: number }[] }>> {
   return run(input?.projectSlug, (ctx, pid) =>
     listProjectMedia(ctx, pid, { cursor: input.cursor ?? null, q: input.q ?? null, tags: input.tags ?? null }, {}, GALLERY_WRITE_PERMISSION)
   )

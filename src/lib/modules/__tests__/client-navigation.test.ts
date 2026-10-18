@@ -50,7 +50,7 @@ describe('buildClientNavItems', () => {
     const mods = ['forms', 'gallery']
     expect(buildClientNavItems(grantWith(mods, [])).map((i) => i.moduleId)).toEqual([])
     expect(buildClientNavItems(grantWith(mods, ['forms.submission.read'])).map((i) => i.moduleId)).toEqual(['forms'])
-    expect(buildClientNavItems(grantWith(mods, ['gallery.gallery.read'])).map((i) => i.moduleId)).toEqual(['gallery'])
+    expect(buildClientNavItems(grantWith(mods, ['gallery.gallery.read'])).map((i) => i.moduleId)).toEqual(['gallery', 'taxonomy']) // Categories & Tags: the galleries' internal tags
   })
 
   it('skips an enabled module that has no client-dashboard surface (events)', () => {
@@ -58,7 +58,7 @@ describe('buildClientNavItems', () => {
   })
 
   it('shows Media on the permission alone (no module) and People on invite OR manage', () => {
-    expect(buildClientNavItems(grantWith([], ['media.library.manage'])).map((i) => i.moduleId)).toEqual(['media'])
+    expect(buildClientNavItems(grantWith([], ['media.library.manage'])).map((i) => i.moduleId)).toEqual(['media', 'taxonomy']) // Categories & Tags: the media's internal tags
     expect(buildClientNavItems(grantWith([], ['users.invite'])).map((i) => i.moduleId)).toEqual(['people'])
     expect(buildClientNavItems(grantWith([], ['users.manage'])).map((i) => i.moduleId)).toEqual(['people'])
   })

@@ -8,6 +8,9 @@ import type { ListedTerm, TermList, TermUsageItem } from '@/lib/taxonomy/service
 
 export type TermsFilter = 'all' | 'missing'
 
+/** The manager's lists are keyed `module:kind`. */
+export const listKey = (module: string, kind: string) => `${module}:${kind}`
+
 export type ChipView = { locale: string; code: string; complete: boolean }
 export type RowView = {
   key: string

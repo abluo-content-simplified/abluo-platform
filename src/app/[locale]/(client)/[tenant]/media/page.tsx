@@ -21,7 +21,7 @@ export default async function MediaPage({
   searchParams,
 }: {
   params: Promise<{ tenant: string }>
-  searchParams?: Promise<{ add?: string }>
+  searchParams?: Promise<{ add?: string; tag?: string }>
 }) {
   const { tenant: projectSlug } = await params
   const ctx = await getTenantAuthorizationContext({ purpose: 'render' })
@@ -37,10 +37,12 @@ export default async function MediaPage({
     throw error
   }
   // Old "?add=1" links: adding photos is the media wizard now.
-  if ((await searchParams)?.add === '1') redirect(`/${projectSlug}/media/add`)
+  const query = await searchParams
+  if (query?.add === '1') redirect(`/${projectSlug}/media/add`)
+  const tag = typeof query?.tag === 'string' ? query.tag : ''
   return (
     <PageShell>
-      <MediaLibraryScreen projectSlug={projectSlug} site={site} links={CLIENT_MEDIA_LINKS} />
+      <MediaLibraryScreen projectSlug={projectSlug} site={site} links={CLIENT_MEDIA_LINKS} initialTag={tag} />
     </PageShell>
   )
 }

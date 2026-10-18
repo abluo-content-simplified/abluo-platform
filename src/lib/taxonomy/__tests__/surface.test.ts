@@ -30,9 +30,12 @@ describe('registry entry', () => {
   })
 
   it('is kept equal to the manifests: every module with a taxonomy, its write and read permission', () => {
-    expect([...(surface.requires.anyModule ?? [])].sort()).toEqual(declaring.map((m) => m.id).sort())
+    const [modules, media, galleries] = surface.requires.anyOf!
+    expect([...(modules.anyModule ?? [])].sort()).toEqual(declaring.map((m) => m.id).sort())
     const perms = declaring.flatMap((m) => [taxonomyWritePermission(m.id), taxonomyReadPermission(m.id)])
-    expect([...(surface.requires.anyPermission ?? [])].sort()).toEqual([...new Set(perms)].sort())
+    expect([...(modules.anyPermission ?? [])].sort()).toEqual([...new Set(perms)].sort())
+    expect(media).toEqual({ permission: 'media.library.manage' })
+    expect(galleries).toEqual({ module: 'gallery', anyPermission: ['gallery.gallery.read', 'gallery.gallery.write'] })
   })
 })
 
@@ -60,9 +63,17 @@ describe('who sees "Categories & Tags"', () => {
     expect(navIds(viewer)).toContain('taxonomy')
   })
 
-  it('nobody sees it without an installed module that declares a taxonomy', () => {
-    expect(navIds(grantFor('owner', ['gallery', 'forms']))).not.toContain('taxonomy')
-    expect(navIds(grantFor('owner', []))).not.toContain('taxonomy')
+  it('nobody sees it without a module that declares a taxonomy, or media or galleries', () => {
+    expect(buildTenantSurfaces({ enabledModuleIds: ['forms'], permissions: ['forms.submission.read'] }).nav.map((n) => n.id)).not.toContain('taxonomy')
+  })
+
+  it('the media library or galleries are enough on their own (Media and Galleries tabs)', () => {
+    expect(buildTenantSurfaces({ enabledModuleIds: [], permissions: ['media.library.manage'] }).nav.map((n) => n.id)).toContain('taxonomy')
+    expect(navIds(grantFor('owner', ['gallery']))).toContain('taxonomy')
+    expect(navIds(grantFor('editor', ['gallery']))).toContain('taxonomy')
+    expect(buildTenantSurfaces({ enabledModuleIds: ['gallery'], permissions: ['gallery.gallery.read'] }).nav.map((n) => n.id)).toContain('taxonomy')
+    // A permission without the installed module is not enough for galleries.
+    expect(buildTenantSurfaces({ enabledModuleIds: [], permissions: ['gallery.gallery.read'] }).nav.map((n) => n.id)).not.toContain('taxonomy')
   })
 
   it('needs a permission of that module, not just the install', () => {

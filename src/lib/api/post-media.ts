@@ -72,6 +72,8 @@ export const POST_MEDIA_LIMITS = {
   scan: 1000,
   /** Tag chips returned. */
   tagChips: 30,
+  /** Tags with counts returned (the tag box's usage ranking). */
+  tagCounts: 200,
   /** Uploads per user per project in a rolling window (cost / storage abuse cap). */
   uploadsPerWindow: 300,
   uploadWindowMs: 24 * 60 * 60 * 1000,
@@ -484,7 +486,7 @@ export async function listProjectMedia(
   deps: PostMediaDeps = {},
   /** The calling module's gate (default: the blog's; galleries pass gallery.gallery.write). */
   permission: string = BLOG_POST_WRITE_PERMISSION
-): Promise<{ items: ProjectMediaItem[]; nextCursor: string | null; tags: string[] }> {
+): Promise<{ items: ProjectMediaItem[]; nextCursor: string | null; tags: string[]; tagCounts: { tag: string; count: number }[] }> {
   grantFor(ctx, projectId, permission)
 
   let cursorAt = ''
@@ -557,6 +559,11 @@ export async function listProjectMedia(
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, POST_MEDIA_LIMITS.tagChips)
     .map(([t]) => t)
+  // The same ranking with how many photos use each (the tag box's most-used chips).
+  const tagCounts = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, POST_MEDIA_LIMITS.tagCounts)
+    .map(([tag, count]) => ({ tag, count }))
 
   const matching = all.filter((r) => {
     if (wanted.size && !tagsOf(r).some((t) => wanted.has(t))) return false
@@ -594,6 +601,7 @@ export async function listProjectMedia(
     })),
     nextCursor: last ? `${last._createdAt}|${last._id}` : null,
     tags,
+    tagCounts,
   }
 }
 

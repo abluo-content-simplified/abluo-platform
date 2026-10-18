@@ -8,6 +8,7 @@ import { Pill } from '@/components/app/ui/list/cells'
 import { SidePanel } from '@/components/app/ui/SidePanel'
 import { PhotoCard, type CardChange, type CardPhoto } from '@/components/client/media/PhotoCard'
 import type { MediaLibraryScope } from '@/components/client/media/media-api'
+import type { TagCount } from '@/lib/tags/internal-tags'
 import type { MediaLibraryItem, MediaUsage } from '@/lib/api/media-library'
 import { mediaUsageHref, type MediaLinks } from '@/lib/client/media-links'
 
@@ -32,6 +33,7 @@ export function PhotoSheet({
   site,
   item,
   tagSuggestions,
+  tagCounts,
   onChange,
   onSaving,
   onClose,
@@ -45,6 +47,8 @@ export function PhotoSheet({
   site: Site
   item: MediaLibraryItem
   tagSuggestions: readonly string[]
+  /** The same with usage counts (most-used chips). */
+  tagCounts?: readonly TagCount[]
   onChange: (c: CardChange) => void
   onSaving: (job: Promise<unknown>) => void
   onClose: () => void
@@ -65,6 +69,7 @@ export function PhotoSheet({
           site={{ defaultLocale: site.defaultLocale, languages: site.locales }}
           photo={photo}
           tagSuggestions={tagSuggestions}
+          tagCounts={tagCounts}
           onChange={onChange}
           onSaving={onSaving}
         />

@@ -19,6 +19,7 @@ import { useUndo } from '@/components/app/ui/use-undo'
 import { useViewPreference } from '@/components/app/ui/use-view-preference'
 import { deleteFromLibrary, listLibrary, type MediaLibraryScope } from '@/components/client/media/media-api'
 import type { MediaLibraryItem } from '@/lib/api/media-library'
+import { countTags } from '@/lib/tags/internal-tags'
 import { fillMediaLink, type MediaLinks } from '@/lib/client/media-links'
 import {
   activeMediaFilterCount,
@@ -62,6 +63,8 @@ export type MediaLibraryScreenProps = {
   addDisabledHint?: string
   /** Delete unused photos ("Deleted · Undo") — admin only; the client has no delete yet. */
   remove?: { label: string; deleted: string; undo: string; failed: string }
+  /** Open with this tag chosen (the `?tag=` of the page — "Used by N photos" in Categories & Tags). */
+  initialTag?: string
 }
 
 const VIEW_KEY = 'abluo.media.view'
@@ -115,6 +118,7 @@ export function MediaLibraryScreen({
   projectLabel,
   addDisabledHint,
   remove,
+  initialTag = '',
 }: MediaLibraryScreenProps) {
   const t = useTranslations('clientDashboard.media')
   const tr = useTranslations('app.ui.dateRange')
@@ -161,11 +165,12 @@ export function MediaLibraryScreen({
   const [size, setSize] = useViewPreference<ThumbSize>(SIZE_KEY, THUMB_SIZES, 'medium')
 
   // ── Filters ────────────────────────────────────────────────────────────────
-  const [filters, setFilters] = useState<MediaFilters>(DEFAULT_MEDIA_FILTERS)
+  const [filters, setFilters] = useState<MediaFilters>(() => (initialTag ? { ...DEFAULT_MEDIA_FILTERS, tag: initialTag.trim().toLowerCase().slice(0, 40) } : DEFAULT_MEDIA_FILTERS))
   const update = (patch: Partial<MediaFilters>) => setFilters((f) => ({ ...f, ...patch }))
   const reset = () => setFilters((f) => ({ ...DEFAULT_MEDIA_FILTERS, sort: f.sort }))
   const shown = useMemo(() => applyMediaFilters(items, filters, localeOf), [items, filters, localeOf])
   const tags = useMemo(() => mediaTags(items), [items])
+  const tagCounts = useMemo(() => countTags(items.map((i) => ({ id: i.assetId, tags: i.tags }))), [items])
   const isDefault = isDefaultMediaFilters(filters)
 
   const position = useMemo(() => new Map(items.map((i, n) => [i.assetId, n + 1])), [items])
@@ -484,6 +489,7 @@ export function MediaLibraryScreen({
           assetIds={batchItems.map((i) => i.assetId)}
           thumbs={batchItems.map((i) => i.thumbUrl)}
           tagSuggestions={tags}
+          tagCounts={tagCounts}
           onClose={() => setBatch(null)}
           onDone={(changes, skipped) => {
             const by = new Map(changes.map((c) => [c.assetId, c]))
@@ -510,6 +516,7 @@ export function MediaLibraryScreen({
           site={siteOf(open)}
           item={open}
           tagSuggestions={several ? mediaTags(items.filter((i) => slugOf(i) === slugOf(open))) : tags}
+          tagCounts={several ? countTags(items.filter((i) => slugOf(i) === slugOf(open)).map((i) => ({ id: i.assetId, tags: i.tags }))) : tagCounts}
           onChange={onPhotoChange}
           onSaving={onSaving}
           onClose={closeSheet}

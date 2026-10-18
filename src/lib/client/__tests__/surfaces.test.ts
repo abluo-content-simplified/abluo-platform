@@ -26,7 +26,7 @@ const ROOT = process.cwd()
 const LOCALES = ['en', 'it', 'de'] as const
 
 function requirementPermissions(r: SurfaceRequirement): string[] {
-  return [...(r.permission ? [r.permission] : []), ...(r.anyPermission ?? [])]
+  return [...(r.permission ? [r.permission] : []), ...(r.anyPermission ?? []), ...(r.anyOf ?? []).flatMap(requirementPermissions)]
 }
 
 describe('registry shape', () => {

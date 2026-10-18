@@ -7,6 +7,7 @@ import { Button } from '@/components/app/ui/Button'
 import { FieldLabel } from '@/components/app/ui/FieldLabel'
 import { TextInput } from '@/components/app/ui/TextInput'
 import { mediaApi, type MediaScope } from '@/components/client/media/media-api'
+import type { TagCount } from '@/lib/tags/internal-tags'
 import { PHOTO_CARD_MAX, TagEditor, type CardChange } from '@/components/client/media/PhotoCard'
 
 export type BatchMode = 'all' | 'rename' | 'tags'
@@ -28,6 +29,7 @@ export function BatchSheet({
   mode,
   thumbs = [],
   tagSuggestions,
+  tagCounts,
   onDone,
   onClose,
 }: {
@@ -39,6 +41,8 @@ export function BatchSheet({
   /** A few thumbnails to show which photos these are. */
   thumbs?: readonly string[]
   tagSuggestions?: readonly string[]
+  /** The same with usage counts (most-used chips); wins over `tagSuggestions`. */
+  tagCounts?: readonly TagCount[]
   /** Saved: the photos as they are now (only those the server accepted). */
   onDone: (changes: CardChange[], skipped: number) => void
   /** Skip / close without saving. */
@@ -49,7 +53,7 @@ export function BatchSheet({
   const uid = useId()
   const [base, setBase] = useState('')
   const [tags, setTags] = useState<string[]>([])
-  const [loaded, setLoaded] = useState<string[] | null>(null)
+  const [loaded, setLoaded] = useState<{ names: string[]; counts: TagCount[] } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const firstRef = useRef<HTMLInputElement>(null)
@@ -72,12 +76,12 @@ export function BatchSheet({
   const ready = (showName && name.length > 0) || (showTags && tags.length > 0)
 
   const loadSuggestions = () => {
-    if (tagSuggestions || loaded) return
-    setLoaded([])
+    if (tagSuggestions || tagCounts || loaded) return
+    setLoaded({ names: [], counts: [] })
     mediaApi(scope)
       .list({ projectSlug })
       .then((r) => {
-        if (alive.current && r.ok) setLoaded(r.tags)
+        if (alive.current && r.ok) setLoaded({ names: r.tags, counts: r.tagCounts ?? [] })
       })
       .catch(() => undefined)
   }
@@ -163,7 +167,8 @@ export function BatchSheet({
               <TagEditor
                 id={`${uid}-tags`}
                 tags={tags}
-                suggestions={tagSuggestions ?? loaded ?? []}
+                suggestions={tagSuggestions ?? loaded?.names ?? []}
+                counts={tagCounts ?? loaded?.counts}
                 onFocus={loadSuggestions}
                 labels={{
                   label: tc('tags.label'),

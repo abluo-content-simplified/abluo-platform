@@ -25,6 +25,8 @@ export type SurfaceRequirement = {
   permission?: string
   /** At least one of these permissions (e.g. "can write posts OR galleries"). */
   anyPermission?: readonly string[]
+  /** At least one of these whole requirements holds (a screen that spans unlike things, e.g. a module OR the media library). */
+  anyOf?: readonly SurfaceRequirement[]
 }
 
 export type NavSurface = {
@@ -103,14 +105,22 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   { kind: 'nav', id: 'media', segment: 'media', group: 'content', requires: { permission: 'media.library.manage' } },
   // ADR-033 Amendment J: Categories & Tags, one manager for every module that declares a taxonomy.
   // Shown when the person may manage terms (`<module>.taxonomy.write`) or at least read them
-  // (the module's read permission; viewers list read-only) in one of those modules. The lists are
-  // kept equal to the manifests by `lib/taxonomy/__tests__/surface.test.ts`.
+  // (the module's read permission; viewers list read-only) in one of those modules, or the internal
+  // tags of Media / Galleries (`media.library.manage`, `gallery.gallery.read|write`). The list is kept equal to the
+  // manifests (plus media and gallery) by `lib/taxonomy/__tests__/surface.test.ts`.
   {
     kind: 'nav',
     id: 'taxonomy',
     segment: 'taxonomy',
     group: 'content',
-    requires: { anyModule: ['blog', 'catalogue', 'events', 'news'], anyPermission: ['blog.taxonomy.write', 'blog.post.read', 'catalogue.taxonomy.write', 'catalogue.item.read', 'events.taxonomy.write', 'events.event.read', 'news.taxonomy.write', 'news.article.read'] },
+    requires: {
+      anyOf: [
+        { anyModule: ['blog', 'catalogue', 'events', 'news'], anyPermission: ['blog.taxonomy.write', 'blog.post.read', 'catalogue.taxonomy.write', 'catalogue.item.read', 'events.taxonomy.write', 'events.event.read', 'news.taxonomy.write', 'news.article.read'] },
+        // Internal tags of the media library and of galleries (Media and Galleries tabs).
+        { permission: 'media.library.manage' },
+        { module: 'gallery', anyPermission: ['gallery.gallery.read', 'gallery.gallery.write'] },
+      ],
+    },
   },
   // Manage: what comes in, who works here, which apps read the site.
   { kind: 'nav', id: 'forms', segment: 'submissions', group: 'manage', requires: { module: 'forms', permission: 'forms.submission.read' } },
@@ -180,6 +190,7 @@ export function surfaceAllowed(grant: SurfaceGrant, requires: SurfaceRequirement
   if (requires.anyModule && !requires.anyModule.some((m) => grant.enabledModuleIds.includes(m))) return false
   if (requires.permission && !grant.permissions.includes(requires.permission)) return false
   if (requires.anyPermission && !requires.anyPermission.some((p) => grant.permissions.includes(p))) return false
+  if (requires.anyOf && !requires.anyOf.some((r) => surfaceAllowed(grant, r))) return false
   return true
 }
 

@@ -1,6 +1,7 @@
 'use client'
 
-import { internalTag } from '@/lib/tag-text'
+import { normaliseInternalTag, type TagCount } from '@/lib/tags/internal-tags'
+import { addTags, editorCounts, editorOffers } from '@/lib/tags/tag-editor-model'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { Chip } from '@/components/app/ui/Chip'
@@ -65,6 +66,7 @@ export function PhotoCard({
   onChange,
   onSaving,
   tagSuggestions,
+  tagCounts,
   autoFocus = false,
 }: {
   projectSlug: string
@@ -76,6 +78,8 @@ export function PhotoCard({
   onSaving: (job: Promise<unknown>) => void
   /** This site's tags, when the caller already has them (else fetched on first use). */
   tagSuggestions?: readonly string[]
+  /** The same with how many photos use each (most-used chips, ranking); wins over `tagSuggestions`. */
+  tagCounts?: readonly TagCount[]
   /** Focus the name when the card opens. */
   autoFocus?: boolean
 }) {
@@ -92,7 +96,7 @@ export function PhotoCard({
   const [caption, setCaption] = useState<Texts>(photo.caption ?? {})
   const [focal, setFocal] = useState<FocalPoint | null>(photo.focal)
   const [tags, setTags] = useState<string[]>(photo.tags ?? [])
-  const [loaded, setLoaded] = useState<string[] | null>(null)
+  const [loaded, setLoaded] = useState<{ names: string[]; counts: TagCount[] } | null>(null)
   const [status, setStatus] = useState<SaveStatus>('idle')
   const [error, setError] = useState<string | null>(null)
 
@@ -198,12 +202,12 @@ export function PhotoCard({
 
   /** This site's tags only, fetched once when the tag box is first used. */
   const loadSuggestions = () => {
-    if (tagSuggestions || loaded) return
-    setLoaded([])
+    if (tagSuggestions || tagCounts || loaded) return
+    setLoaded({ names: [], counts: [] })
     mediaApi(scope)
       .list({ projectSlug })
       .then((r) => {
-        if (alive.current && r.ok) setLoaded(r.tags)
+        if (alive.current && r.ok) setLoaded({ names: r.tags, counts: r.tagCounts ?? [] })
       })
       .catch(() => undefined)
   }
@@ -305,7 +309,8 @@ export function PhotoCard({
         <TagEditor
           id={`${uid}-tags`}
           tags={tags}
-          suggestions={tagSuggestions ?? loaded ?? []}
+          suggestions={tagSuggestions ?? loaded?.names ?? []}
+          counts={tagCounts ?? loaded?.counts}
           onFocus={loadSuggestions}
           labels={{
             label: t('tags.label'),
@@ -341,17 +346,22 @@ export function PhotoCard({
 
 /** Normalises one tag the way the server does (cleanTags): the internal-tag rule (lib/tag-text). */
 export function normaliseTag(raw: string): string {
-  return internalTag(raw).slice(0, PHOTO_CARD_MAX.tag).trim()
+  return normaliseInternalTag(raw)
 }
 
 /**
- * Tags as removable chips and a box that adds as you type (Enter or comma),
- * with suggestions from this site's own tags, filtered by what is typed.
+ * Tags as removable chips and a box that adds as you type (Enter or comma).
+ * Under it: the most used tags of this list while the box is empty (tap to
+ * add), and matching tags while typing (accents and case ignored, tags that
+ * start with the text first). Typing a tag that already exists in another
+ * case or spelling with accents uses the existing one. `counts` (tag →
+ * number of items) ranks them; without it `suggestions` is used in order.
  */
 export function TagEditor({
   id,
   tags,
   suggestions,
+  counts,
   labels,
   onChange,
   onFocus,
@@ -359,20 +369,20 @@ export function TagEditor({
   id: string
   tags: string[]
   suggestions: readonly string[]
+  counts?: readonly TagCount[]
   labels: { label: string; helper: string; placeholder: string; add: string; remove: (tag: string) => string; suggested: string; full: string }
   onChange: (tags: string[]) => void
   onFocus?: () => void
 }) {
   const [draft, setDraft] = useState('')
   const full = tags.length >= PHOTO_CARD_MAX.tags
+  const known = editorCounts(counts, suggestions)
   const add = (raw: string) => {
-    const tag = normaliseTag(raw)
-    if (!tag || tags.includes(tag) || full) return
-    onChange([...tags, tag])
-    setDraft('')
+    const next = addTags(tags, [raw], known, PHOTO_CARD_MAX.tags)
+    if (next !== tags) onChange(next)
+    if (normaliseTag(raw)) setDraft('')
   }
-  const q = normaliseTag(draft)
-  const offered = q ? suggestions.filter((s) => !tags.includes(s) && s.includes(q)).slice(0, 6) : []
+  const offered = editorOffers(tags, known, draft, PHOTO_CARD_MAX.tags)
   return (
     <div>
       <FieldLabel htmlFor={id} hint={labels.helper}>
@@ -408,12 +418,8 @@ export function TagEditor({
             if (v.includes(',')) {
               const parts = v.split(',')
               const rest = parts.pop() ?? ''
-              const next = [...tags]
-              for (const p of parts) {
-                const tag = normaliseTag(p)
-                if (tag && !next.includes(tag) && next.length < PHOTO_CARD_MAX.tags) next.push(tag)
-              }
-              if (next.length !== tags.length) onChange(next)
+              const next = addTags(tags, parts, known, PHOTO_CARD_MAX.tags)
+              if (next !== tags) onChange(next)
               setDraft(rest)
               return
             }

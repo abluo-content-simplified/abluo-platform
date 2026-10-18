@@ -57,7 +57,7 @@ export async function listMediaLibraryAction(input: {
   cursor?: string | null
   q?: string | null
   tags?: string[] | null
-}): Promise<Result<{ items: MediaLibraryItem[]; nextCursor: string | null; tags: string[] }>> {
+}): Promise<Result<{ items: MediaLibraryItem[]; nextCursor: string | null; tags: string[]; tagCounts: { tag: string; count: number }[] }>> {
   return run(input?.projectSlug, (ctx, pid) =>
     listMediaLibrary(ctx, pid, { cursor: input.cursor ?? null, q: input.q ?? null, tags: input.tags ?? null })
   )
