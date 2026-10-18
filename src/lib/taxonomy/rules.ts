@@ -15,11 +15,12 @@ export const ORDER_STEP = 1000
 export type TaxonomyDeclarationLike = { kind: TermKind }
 
 /**
- * Modules whose terms are public routes (blog/news/events categories). Only
- * these show description / redirectFrom / noindex. Replaced by the manifest's
- * `routable` flag when those modules opt in (rollout after Catalogue).
+ * Modules whose category terms are public pages (blog: /category/<key>). Only
+ * these show description / redirectFrom / noindex. News has no category pages
+ * (its listing filters in place), so its terms carry label and colour only.
+ * Replaced by the manifest's `routable` flag when modules opt in.
  */
-export const ROUTABLE_TERM_MODULES: readonly string[] = ['blog', 'news', 'events']
+export const ROUTABLE_TERM_MODULES: readonly string[] = ['blog']
 
 export function termIsRoutable(module: string, kind: TermKind): boolean {
   return kind === 'category' && ROUTABLE_TERM_MODULES.includes(module)
@@ -47,6 +48,17 @@ export function deriveTermKey(defaultLabel: string, existingKeys: readonly strin
   // Reserve room for a collision suffix so the key never exceeds the limit.
   const key = slugifySubjectValue(text, [...existingKeys])
   return key.length <= TERM_KEY_MAX_LENGTH ? key : key.slice(0, TERM_KEY_MAX_LENGTH).replace(/[_-]+$/, '')
+}
+
+/**
+ * Key for a new term of a module whose terms are public pages (blog categories:
+ * /category/<key>). Same derivation, but words are joined with "-" like every
+ * URL on the old site (`prendersi-cura-di-se`), not "_". Collisions are checked
+ * in both spellings; the suffix is `-2`, `-3`, …. Always a valid term key.
+ */
+export function deriveRoutableTermKey(defaultLabel: string, existingKeys: readonly string[] = []): string {
+  const underscored = existingKeys.map((k) => k.replace(/-/g, '_'))
+  return deriveTermKey(defaultLabel, underscored).replace(/_/g, '-')
 }
 
 export type RuleIssue = { code: string; message: string }

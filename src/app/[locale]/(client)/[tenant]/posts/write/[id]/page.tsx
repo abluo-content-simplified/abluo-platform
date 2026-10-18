@@ -11,6 +11,7 @@ import { OpenForEdit } from '@/components/client/create/OpenForEdit'
 import { canDeletePublished, canOpenPublishedPost } from '@/lib/api/post-lifecycle'
 import { getAiFeatureFlags } from '@/lib/ai/features'
 import { getViewerFirstName } from '@/lib/api/viewer-profile'
+import { taxonomyWritePermission } from '@/lib/taxonomy/permissions'
 
 /**
  * The guided creation wizard for one blog-post draft (ADR-025 · S2c):
@@ -89,7 +90,7 @@ export default async function WriteDraftPage({ params }: { params: Promise<{ ten
     <WizardShell
       draft={snapshot}
       // The Gallery step shows only on sites with the Gallery module installed.
-      site={{ ...site, firstName, galleries: grant.enabledModuleIds.includes('gallery') ? site.galleries : undefined }}
+      site={{ ...site, firstName, canAddCategory: grant.permissions.includes(taxonomyWritePermission('blog')), galleries: grant.enabledModuleIds.includes('gallery') ? site.galleries : undefined }}
       homeHref={dashboardHomeHref(projectSlug)}
       postsHref={`/${projectSlug}/posts`}
       canDelete={canDeletePublished(grant)}

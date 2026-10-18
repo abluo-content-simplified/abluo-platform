@@ -37,6 +37,7 @@ import { CtaBannerSection } from '@/components/sections/CtaBannerSection'
 import { LocationsSection } from '@/components/sections/LocationsSection'
 import { SECTION_MAP, isSectionTypeAvailable } from '@/lib/modules/sections'
 import type { ProjectModuleConfig } from '@/lib/modules/config'
+import { EVENT_VOCABULARY_PUBLIC_QUERY, resolveEventCategories, type RawEventVocabulary } from '@/lib/modules/events/categories'
 import { resolveCategoriesFor, categoryKeysOf, charsPerMinute, DEFAULT_CHARS_PER_MINUTE } from '@/lib/modules/categories'
 import type {
   WebsiteSiteConfig,
@@ -344,7 +345,15 @@ export async function hydrateSections(
         const els = section as EventsListingSectionType
         const events = await fetchEventsListingEvents(els, ctx.fetchForTenant, ctx.locale, ctx.defaultLocale, ctx.moduleConfig)
         // Slice to maxItems — we fetched one extra to detect overflow for View All
-        els.events = events.slice(0, els.maxItems ?? 3)
+        // ADR-033 Amendment J (dual-read) — category labels/colours from the term
+        // records, else the module's old config list. A failed read shows no chips.
+        const vocabulary = await ctx
+          .fetchForTenant<RawEventVocabulary>(EVENT_VOCABULARY_PUBLIC_QUERY, { locale: ctx.locale, defaultLocale: ctx.defaultLocale })
+          .catch(() => null)
+        els.events = events.slice(0, els.maxItems ?? 3).map((event) => ({
+          ...event,
+          categories: resolveEventCategories(event.categoryKeys, vocabulary),
+        }))
         return
       }
       if (section._type === 'liveLatestSection') {

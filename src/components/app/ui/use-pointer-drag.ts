@@ -3,6 +3,29 @@
 import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
 export type DragOver = { key: string; after: boolean }
+export type DropEdge = 'before' | 'after'
+
+/** What a grip needs from `gripProps(key)`; DragGrip takes it as one prop. */
+export type GripProps = ReturnType<ReturnType<typeof usePointerDrag>['gripProps']>
+
+/**
+ * Where `key` ends up when dropped before/after `over.key`: its index in the
+ * resulting list (use with a splice-move such as moveIndex), or null when the
+ * key is unknown or the drop changes nothing.
+ */
+export function dropIndex(keys: readonly string[], key: string, over: DragOver): number | null {
+  const from = keys.indexOf(key)
+  if (from < 0 || keys.indexOf(over.key) < 0) return null
+  const rest = keys.filter((k) => k !== key)
+  const at = rest.indexOf(over.key) + (over.after ? 1 : 0)
+  return at === from ? null : at
+}
+
+/** The drop indicator on a table row (a rule on its top or bottom edge). Rows in lists use DropLine. */
+export function dropEdgeClass(edge: DropEdge | null): string {
+  if (!edge) return ''
+  return edge === 'before' ? 'shadow-[inset_0_2px_0_0_var(--color-action)]' : 'shadow-[inset_0_-2px_0_0_var(--color-action)]'
+}
 
 /**
  * Pointer-event drag to reorder (never HTML5 drag: `dragstart` does not fire
@@ -10,7 +33,9 @@ export type DragOver = { key: string; after: boolean }
  * `gripProps(key)`. While dragging, `over` says which row the pointer is on
  * and whether the drop lands before or after it; on release `onDrop(key,
  * over)` is called (not when released on itself or outside every row).
- * Escape cancels. Keyboard reorder is the caller's (up/down buttons).
+ * Escape cancels. Keyboard reorder is DragGrip's (ArrowUp / ArrowDown on the
+ * grip call its `onMove`). `rowProps(key)` marks a row; `edge(key)` says
+ * where the drop indicator goes on it (see DropLine / dropEdgeClass).
  */
 export function usePointerDrag(onDrop: (key: string, over: DragOver) => void) {
   const [dragging, setDragging] = useState<string | null>(null)
@@ -64,5 +89,8 @@ export function usePointerDrag(onDrop: (key: string, over: DragOver) => void) {
     style: { touchAction: 'none' as const },
   })
 
-  return { dragging, over, gripProps }
+  const rowProps = (key: string) => ({ 'data-drag-key': key })
+  const edge = (key: string): DropEdge | null => (over?.key === key ? (over.after ? 'after' : 'before') : null)
+
+  return { dragging, over, gripProps, rowProps, edge }
 }

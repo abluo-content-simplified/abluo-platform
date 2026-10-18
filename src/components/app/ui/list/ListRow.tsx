@@ -28,6 +28,7 @@ export function ListRow({
   select,
   menu,
   trailing,
+  rowProps,
   children,
 }: {
   /** Opens the item (a button). Pass `href` instead when the item has its own page (a real link: new tab, copy link). */
@@ -41,6 +42,8 @@ export function ListRow({
   menu?: { label: string; items: CardMenuItem[] }
   /** Small controls at the end instead of (or before) the menu, e.g. move up / down. */
   trailing?: ReactNode
+  /** Extra attributes for the row, e.g. `{ 'data-drag-key': key, className: dropEdgeClass(edge) }` for drag-to-reorder. */
+  rowProps?: { 'data-drag-key'?: string; className?: string }
   children: ReactNode
 }) {
   const selected = select?.checked ?? false
@@ -52,7 +55,10 @@ export function ListRow({
     </>
   )
   return (
-    <li className={`flex items-start gap-1 rounded-xl border bg-card py-2 pr-1 ${select ? 'pl-1' : 'pl-3'} ${selected ? 'border-action ring-1 ring-action' : 'border-border'}`}>
+    <li
+      data-drag-key={rowProps?.['data-drag-key']}
+      className={`flex items-start gap-1 rounded-xl border bg-card py-2 pr-1 ${select ? 'pl-1' : 'pl-3'} ${selected ? 'border-action ring-1 ring-action' : 'border-border'} ${rowProps?.className ?? ''}`}
+    >
       {select ? <Checkbox checked={select.checked} aria-label={select.label} onChange={select.onChange} /> : null}
       {href ? (
         <Link href={href} aria-label={label} className={bodyClass}>

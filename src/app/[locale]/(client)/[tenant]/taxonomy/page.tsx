@@ -48,6 +48,7 @@ async function TaxonomyPageInner({
   const modules: ModuleOption[] = manageable.map((m) => ({
     id: m.module,
     kinds: m.kinds,
+    canWrite: m.canWrite,
     label: (m.module === 'catalogue' && catalogueLabel) || (t.has(m.module) ? t(m.module) : m.module),
   }))
 

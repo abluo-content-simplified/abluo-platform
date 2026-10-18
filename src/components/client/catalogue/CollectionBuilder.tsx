@@ -15,6 +15,7 @@ import { MediaFrame, Pill } from '@/components/app/ui/list/cells'
 import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
 import { usePointerDrag } from '@/components/app/ui/use-pointer-drag'
+import { DragGrip, DropLine } from '@/components/app/ui/DragGrip'
 import { SavePill } from '@/components/app/ui/SavePill'
 import { SaveNotice } from '@/components/app/ui/SaveNotice'
 import { LifecycleBadge } from '@/components/app/lifecycle/LifecycleBadge'
@@ -396,12 +397,10 @@ export function CollectionBuilder({
                 return (
                   <li key={s._key} className="flex flex-col gap-3">
                     {i === undoAt ? undoStrip : null}
-                    <Panel padding="none" highlighted={isOver} data-drag-key={s._key} style={{ marginInlineStart: `${Math.min(depth, 4) * 1.25}rem` }} className={`relative p-3 ${CAT_MOTION} ${drag.dragging === s._key ? 'opacity-50' : ''}`}>
-                      {isOver ? <span aria-hidden="true" className={`absolute inset-x-3 h-0.5 rounded bg-action ${drag.over?.after ? '-bottom-2' : '-top-2'}`} /> : null}
+                    <Panel padding="none" highlighted={isOver} {...drag.rowProps(s._key)} style={{ marginInlineStart: `${Math.min(depth, 4) * 1.25}rem` }} className={`relative p-3 ${CAT_MOTION} ${drag.dragging === s._key ? 'opacity-50' : ''}`}>
+                      <DropLine edge={drag.edge(s._key)} />
                       <div className="flex items-start gap-1">
-                        <IconButton className="cursor-grab active:cursor-grabbing" aria-label={t('sections.drag', { name: sectionName(s) })}  {...drag.gripProps(s._key)}>
-                          {CAT_ICONS.grip}
-                        </IconButton>
+                        <DragGrip label={t('sections.drag', { name: sectionName(s) })} drag={drag.gripProps(s._key)} />
                         <div className="min-w-0 flex-1">
                           <label className="sr-only" htmlFor={`sec-${s._key}`}>
                             {t('sections.name')}

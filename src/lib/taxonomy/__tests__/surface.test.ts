@@ -61,7 +61,7 @@ describe('who sees "Categories & Tags"', () => {
   })
 
   it('nobody sees it without an installed module that declares a taxonomy', () => {
-    expect(navIds(grantFor('owner', ['blog', 'gallery']))).not.toContain('taxonomy')
+    expect(navIds(grantFor('owner', ['gallery', 'forms']))).not.toContain('taxonomy')
     expect(navIds(grantFor('owner', []))).not.toContain('taxonomy')
   })
 
@@ -73,12 +73,33 @@ describe('who sees "Categories & Tags"', () => {
 
 describe('manageableTaxonomyModules', () => {
   it('lists the installed modules with a taxonomy and whether the person can change it', () => {
-    expect(manageableTaxonomyModules(grantFor('editor', ['catalogue', 'blog']))).toEqual([{ module: 'catalogue', kinds: ['category', 'tag'], canWrite: true }])
+    expect(manageableTaxonomyModules(grantFor('editor', ['catalogue', 'gallery']))).toEqual([{ module: 'catalogue', kinds: ['category', 'tag'], canWrite: true }])
     expect(manageableTaxonomyModules(grantFor('viewer', ['catalogue']))).toEqual([{ module: 'catalogue', kinds: ['category', 'tag'], canWrite: false }])
   })
 
   it('is empty without the module, without permission, or when the module declares nothing', () => {
-    expect(manageableTaxonomyModules(grantFor('owner', ['blog']))).toEqual([])
+    expect(manageableTaxonomyModules(grantFor('owner', ['gallery']))).toEqual([])
     expect(manageableTaxonomyModules({ enabledModuleIds: ['catalogue'], permissions: [] })).toEqual([])
+  })
+})
+
+describe('Events categories (Amendment J)', () => {
+  it('owner, editor and viewer of a project with Events get Categories & Tags; the manager lists Events with category only', () => {
+    for (const role of ['owner', 'editor', 'viewer'] as const) expect(navIds(grantFor(role, ['events']))).toContain('taxonomy')
+    const owner = manageableTaxonomyModules(grantFor('owner', ['events']) as never)
+    expect(owner).toEqual([{ module: 'events', kinds: ['category'], canWrite: true }])
+    const viewer = manageableTaxonomyModules(grantFor('viewer', ['events']) as never)
+    expect(viewer).toEqual([{ module: 'events', kinds: ['category'], canWrite: false }])
+  })
+})
+
+describe('Posts and News categories (Amendment J)', () => {
+  it('owner, editor and viewer of a project with Posts or News get Categories & Tags; the manager lists category only', () => {
+    for (const module of ['blog', 'news']) {
+      for (const role of ['owner', 'editor', 'viewer'] as const) expect(navIds(grantFor(role, [module]))).toContain('taxonomy')
+      expect(manageableTaxonomyModules(grantFor('owner', [module]) as never)).toEqual([{ module, kinds: ['category'], canWrite: true }])
+      expect(manageableTaxonomyModules(grantFor('editor', [module]) as never)).toEqual([{ module, kinds: ['category'], canWrite: true }])
+      expect(manageableTaxonomyModules(grantFor('viewer', [module]) as never)).toEqual([{ module, kinds: ['category'], canWrite: false }])
+    }
   })
 })

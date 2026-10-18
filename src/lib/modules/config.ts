@@ -30,6 +30,7 @@
 
 import type { Cta, RenderableFormDefinition, WebsiteSiteConfig } from '@/lib/sanity/types'
 import { ctaInternalPath } from '@/lib/sanity/cta'
+import { termsToConfigEntries, type RoutableTermRow } from '@/lib/taxonomy/vocabulary'
 
 // ── Query result shape ────────────────────────────────────────────────────────
 
@@ -38,6 +39,12 @@ export type ModuleConfigRecord = {
   moduleId: string
   version?: string
   config?: Record<string, unknown> | null
+  /**
+   * ADR-033 Amendment J (dual-read): the project's category `taxonomyTerm`
+   * records for this module (blog, news), when the query projects them. When
+   * there are any, they replace `config.categories` in getModuleConfig().
+   */
+  categoryTerms?: RoutableTermRow[] | null
 }
 
 /** The full result of projectModuleConfigQuery — null when the project is absent. */
@@ -94,7 +101,12 @@ export function getModuleConfig(
 ): Record<string, unknown> | null {
   if (!modules) return null
   const record = modules.find((m) => m.moduleId === moduleId)
-  return record?.config ?? null
+  const config = record?.config ?? null
+  // Dual-read (ADR-033 Amendment J): if the project has category term records
+  // for this module they ARE the category list (no mixing with the old one);
+  // with none, the config is returned exactly as stored.
+  const terms = termsToConfigEntries(record?.categoryTerms)
+  return terms.length > 0 ? { ...(config ?? {}), categories: terms } : config
 }
 
 /** True when the module is installed and enabled for this website. */

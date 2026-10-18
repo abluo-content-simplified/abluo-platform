@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { deriveTermKey, keyChangeIssue, labelIssues, termLimitIssue, nextOrder, isKindDeclared, termIsRoutable, MAX_TERMS_PER_KIND, MAX_LABEL_LENGTH } from '../rules'
+import { deriveRoutableTermKey, deriveTermKey, keyChangeIssue, labelIssues, termLimitIssue, nextOrder, isKindDeclared, termIsRoutable, MAX_TERMS_PER_KIND, MAX_LABEL_LENGTH } from '../rules'
 import { isValidTermKey } from '../ids'
 
 describe('deriveTermKey', () => {
@@ -49,5 +49,16 @@ describe('rules', () => {
     expect(termIsRoutable('blog', 'category')).toBe(true)
     expect(termIsRoutable('catalogue', 'category')).toBe(false)
     expect(termIsRoutable('blog', 'tag')).toBe(false)
+  })
+})
+
+describe('deriveRoutableTermKey (blog category pages: words joined with "-")', () => {
+  it('uses hyphens, like the keys the old site already has', () => {
+    expect(deriveRoutableTermKey('Prendersi cura di sé')).toBe('prendersi-cura-di-se')
+    expect(deriveRoutableTermKey('Work')).toBe('work')
+  })
+  it('collides against both spellings and suffixes with "-2"', () => {
+    expect(deriveRoutableTermKey('Work life', ['work-life'])).toBe('work-life-2')
+    expect(deriveRoutableTermKey('Work life', ['work_life', 'work_life_2'])).toBe('work-life-3')
   })
 })

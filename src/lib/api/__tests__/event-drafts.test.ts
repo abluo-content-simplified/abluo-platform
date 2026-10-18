@@ -55,7 +55,7 @@ const baseDocs = (): Docs => ({
   other: { _id: 'other', _type: 'event', _rev: 'o1', projectSlug: 'hoffmann', title: { it: 'Altro' }, startDate: '2026-01-01T00:00:00.000Z' },
 })
 
-function fake(opts: { docs?: Docs; commitError?: unknown; slugRows?: unknown[] } = {}) {
+function fake(opts: { docs?: Docs; commitError?: unknown; slugRows?: unknown[]; vocabulary?: { terms?: unknown[]; config?: unknown[] } } = {}) {
   const docs = opts.docs ?? baseDocs()
   const writes: Array<[string, unknown]> = []
   const patchOps: Array<[string, unknown]> = []
@@ -90,6 +90,8 @@ function fake(opts: { docs?: Docs; commitError?: unknown; slugRows?: unknown[] }
   })
   const fetch = vi.fn(async (q: string, p: Record<string, unknown> = {}) => {
     if (q.includes('count(*[_type == "project"')) return 1
+    // ADR-033 Amendment J — the events category vocabulary (term records + the old config list).
+    if (q.includes('"taxonomyTerm"')) return p.projectSlug === 'livener' ? (opts.vocabulary ?? { terms: [], config: [] }) : { terms: [], config: [] }
     if (q.includes('count(*[_type == "event"')) return 4
     // ADR-031 — the place options (site locations + saved venues) of THIS project only.
     if (q.includes('_type == "eventVenue"')) {
@@ -306,6 +308,51 @@ describe('open, create, patch', () => {
   it('dates must be real and in range', () => {
     expect(parseEventDate('2026-04-12T07:00')).toMatch(/^2026-04-12T/)
     for (const bad of ['', '12/04/2026', '1999-01-01T00:00:00Z', 42]) expect(() => parseEventDate(bad)).toThrow()
+  })
+})
+
+describe('categories (ADR-033 Amendment J)', () => {
+  const terms = [
+    { key: 'talks', label: { _type: 'localizedString', en: 'Talks', it: 'Incontri' }, color: '#e94e1b', order: 1000 },
+    { key: 'workshops', label: { _type: 'localizedString', en: 'Workshops' }, order: 2000 },
+  ]
+  const config = [{ value: 'old', label: { en: 'Old one' } }]
+  const set = (categories: unknown) => ({ categories })
+  const save = (f: ReturnType<typeof fake>, categories: unknown) => patchEventDraft(ctx(grant()), 'project-a', { id: E, rev: 'd1', set: set(categories) }, f.deps)
+
+  it('the snapshot offers the term records when there are any, else the old config list', async () => {
+    const a = await getEvent(ctx(grant()), 'project-a', E, fake({ docs: withDraft({ categories: ['talks', { _ref: 'x' }] }), vocabulary: { terms, config } }).deps)
+    expect(a.categories).toEqual(['talks'])
+    expect(a.categoryOptions).toEqual([
+      { value: 'talks', label: { en: 'Talks', it: 'Incontri' }, color: '#e94e1b' },
+      { value: 'workshops', label: { en: 'Workshops' }, color: null },
+    ])
+    const b = await getEvent(ctx(grant()), 'project-a', E, fake({ docs: withDraft(), vocabulary: { terms: [], config } }).deps)
+    expect(b.categoryOptions).toEqual([{ value: 'old', label: { en: 'Old one' }, color: null }])
+    expect(b.categories).toEqual([])
+  })
+
+  it('saves keys the site offers (once each); an empty list clears the field', async () => {
+    const f = fake({ docs: withDraft(), vocabulary: { terms, config } })
+    await save(f, ['workshops', 'talks', 'talks'])
+    expect(f.patchOps).toContainEqual(['set', { categories: ['workshops', 'talks'] }])
+    await save(f, [])
+    expect(f.patchOps).toContainEqual(['unset', ['categories']])
+  })
+
+  it('refuses a key the site does not offer, unless the event already carries it', async () => {
+    const f = fake({ docs: withDraft({ categories: ['gone'] }), vocabulary: { terms, config } })
+    await expect(save(f, ['talks', 'nope'])).rejects.toMatchObject({ code: 'invalid_value' })
+    await expect(save(f, 'talks')).rejects.toMatchObject({ code: 'invalid_value' })
+    expect(f.writes).toEqual([])
+    await save(f, ['gone', 'talks'])
+    expect(f.patchOps).toContainEqual(['set', { categories: ['gone', 'talks'] }])
+  })
+
+  it('a project with no terms still accepts its old config keys (dual-read)', async () => {
+    const f = fake({ docs: withDraft(), vocabulary: { terms: [], config } })
+    await save(f, ['old'])
+    expect(f.patchOps).toContainEqual(['set', { categories: ['old'] }])
   })
 })
 

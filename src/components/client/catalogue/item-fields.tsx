@@ -5,6 +5,8 @@ import { useLocale, useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { ChoiceCard, ChoiceCardGrid } from '@/components/app/ui/ChoiceCard'
 import { Checkbox } from '@/components/app/ui/Checkbox'
+import { DragGrip, DropLine } from '@/components/app/ui/DragGrip'
+import { dropIndex, usePointerDrag } from '@/components/app/ui/use-pointer-drag'
 import { CheckboxCard } from '@/components/app/ui/CheckboxCard'
 import { RadioList } from '@/components/app/ui/RadioList'
 import { ToggleChips } from '@/components/app/ui/ToggleChips'
@@ -345,6 +347,10 @@ export function LinksField({ links, locales, defaultLocale, onChange, amazon }: 
   const issues = linkFormIssues(links, defaultLocale)
   const issueOf = (key: string) => issues.find((i) => i.key === key)?.kind
   const setLink = (key: string, next: Partial<LinkForm>) => onChange(links.map((l) => (l.key === key ? { ...l, ...next } : l)))
+  const drag = usePointerDrag((key, over) => {
+    const to = dropIndex(links.map((x) => x.key), key, over)
+    if (to !== null) onChange(moveIndex(links, links.findIndex((x) => x.key === key), to))
+  })
   return (
     <div className="space-y-4">
       {links.length ? (
@@ -352,7 +358,8 @@ export function LinksField({ links, locales, defaultLocale, onChange, amazon }: 
           {links.map((l, n) => {
             const issue = issueOf(l.key)
             return (
-              <Panel as="li" key={l.key} data-link={l.key}>
+              <Panel as="li" key={l.key} data-link={l.key} {...drag.rowProps(l.key)} className={`relative ${drag.dragging === l.key ? 'opacity-50' : ''}`}>
+                <DropLine edge={drag.edge(l.key)} />
                 <div className="flex items-start gap-1">
                   <div className="min-w-0 flex-1 space-y-3">
                     {locales.map((loc) => (
@@ -375,12 +382,9 @@ export function LinksField({ links, locales, defaultLocale, onChange, amazon }: 
                     </div>
                     {amazon && l.kind === 'buy' ? <AmazonLinkBlock url={l.url} moreUrls={l.moreUrls ?? []} amazon={amazon} onUrl={(next) => setLink(l.key, { url: next })} onMoreUrls={(next) => setLink(l.key, { moreUrls: next })} /> : null}
                   </div>
-                  <IconButton aria-label={t('up')} disabled={n === 0} onClick={() => onChange(moveIndex(links, n, n - 1))}>
-                    {CAT_ICONS.up}
-                  </IconButton>
-                  <IconButton aria-label={t('down')} disabled={n === links.length - 1} onClick={() => onChange(moveIndex(links, n, n + 1))}>
-                    {CAT_ICONS.down}
-                  </IconButton>
+                  {links.length > 1 ? (
+                    <DragGrip label={t('drag', { position: n + 1, total: links.length })} drag={drag.gripProps(l.key)} onMove={(dir) => onChange(moveIndex(links, n, n + dir))} />
+                  ) : null}
                   <IconButton aria-label={t('remove')} onClick={() => onChange(links.filter((x) => x.key !== l.key))}>
                     {CAT_ICONS.trash}
                   </IconButton>

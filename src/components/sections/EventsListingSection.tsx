@@ -45,7 +45,7 @@ function CategoryChips({ categories }: { categories?: Event['categories'] }) {
     <div className="flex flex-wrap gap-1.5 mb-3">
       {categories.map((cat) => (
         <span
-          key={cat._id}
+          key={cat.key}
           className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-btn)] text-[10px] font-semibold uppercase tracking-widest"
           style={{
             background: cat.color

@@ -10,6 +10,7 @@ import {
   hasTranslations,
   itemHref,
   moveKey,
+  moveKeyTo,
   removeTerm,
   reorderLocally,
   summarize,
@@ -84,6 +85,14 @@ describe('keeping the list in step', () => {
 
   it('remove drops the term', () => {
     expect(removeTerm(list(), 'romanzi').terms.map((t) => t.key)).toEqual(['poesia', 'saggi'])
+  })
+
+  it('moveKeyTo moves to an index (a drop) and refuses no-ops', () => {
+    expect(moveKeyTo(['a', 'b', 'c'], 'a', 2)).toEqual(['b', 'c', 'a'])
+    expect(moveKeyTo(['a', 'b', 'c'], 'c', 0)).toEqual(['c', 'a', 'b'])
+    expect(moveKeyTo(['a', 'b', 'c'], 'b', 1)).toBeNull()
+    expect(moveKeyTo(['a', 'b', 'c'], 'x', 1)).toBeNull()
+    expect(moveKeyTo(['a', 'b', 'c'], 'a', 3)).toBeNull()
   })
 
   it('moveKey moves one place and refuses the ends', () => {

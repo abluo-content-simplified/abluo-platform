@@ -419,6 +419,10 @@
           "publicHelper": "Sul tuo sito e condiviso con le app che colleghi.",
           "websiteOnlyHelper": "Sul tuo sito, mai condiviso con le app collegate.",
           "unlistedHelper": "Non compare negli elenchi né nei motori di ricerca: solo chi ha il link."
+        },
+        "categories": {
+          "title": "Categoria",
+          "helper": "Aiuta i visitatori a trovare gli eventi giusti. Aggiungine una qui, oppure gestiscile tutte in Categorie e tag."
         }
       },
       "errors": {
@@ -1632,8 +1636,6 @@
       "allTranslated": "Tutto è tradotto",
       "filterMissing": "Traduzioni mancanti",
       "nothingMissing": "Nessuna traduzione in sospeso.",
-      "moveUp": "Sposta {name} in su",
-      "moveDown": "Sposta {name} in giù",
       "addSubmit": "Aggiungi",
       "adding": "Aggiunta…",
       "cancel": "Annulla",
@@ -1709,7 +1711,9 @@
       "kindLabel": "Mostra",
       "filterAll": "Tutte",
       "clear": "Azzera filtri",
-      "noMatch": "Nessun risultato per la ricerca."
+      "noMatch": "Nessun risultato per la ricerca.",
+      "drag": "Sposta {name}, posizione {position} di {total}. Trascina, oppure usa le frecce su e giù.",
+      "addTo": "Aggiungi a"
     },
     "photoWizard": {
       "add": {
@@ -3745,8 +3749,6 @@
             "label": "Etichetta",
             "labelIn": "Etichetta in {language}",
             "url": "Indirizzo web",
-            "up": "Sposta il link in alto",
-            "down": "Sposta il link in basso",
             "remove": "Rimuovi questo link",
             "badUrl": "Usa un indirizzo web completo che inizi con http:// o https://.",
             "incomplete": "Un link ha bisogno sia di un’etichetta sia di un indirizzo web. Non viene salvato finché non li compili entrambi.",
@@ -3756,7 +3758,8 @@
             "kindBuyHelp": "Mostra un pulsante Acquista nella pagina. L’etichetta è facoltativa.",
             "affiliate": "Questo è un link di affiliazione",
             "affiliateHelp": "Guadagni una commissione quando qualcuno acquista tramite questo link.",
-            "badMore": "Usa un link di prodotto Amazon per gli altri store."
+            "badMore": "Usa un link di prodotto Amazon per gli altri store.",
+            "drag": "Sposta il link {position} di {total}. Trascina, oppure usa le frecce su e giù."
           },
           "title": "Titolo",
           "book": {
@@ -4114,8 +4117,6 @@
         "emptyBody": "Aggiungi la prima scelta possibile.",
         "label": "Etichetta",
         "labelIn": "Etichetta in {language}",
-        "up": "Sposta verso l’alto",
-        "down": "Sposta verso il basso",
         "remove": "Rimuovi opzione",
         "kind": "Tipo",
         "kindAdd": "Aggiunge",
@@ -4131,7 +4132,8 @@
         "allergensFromItem": "Gli allergeni sono quelli dell’elemento collegato.",
         "back": "Elenchi di opzioni",
         "publishNeedsName": "Aggiungi un nome per pubblicare.",
-        "publishNeedsOption": "Aggiungi almeno un’opzione per pubblicare."
+        "publishNeedsOption": "Aggiungi almeno un’opzione per pubblicare.",
+        "drag": "Sposta l’opzione {position} di {total}. Trascina, oppure usa le frecce su e giù."
       },
       "itemProfiles": {
         "label": "Cosa offri?",

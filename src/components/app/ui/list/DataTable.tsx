@@ -67,6 +67,7 @@ export function DataTable<T>({
   onRowClick,
   minWidth = 'min-w-[60rem]',
   label,
+  rowProps,
 }: {
   rows: T[]
   columns: DataTableColumn<T>[]
@@ -79,6 +80,8 @@ export function DataTable<T>({
   onRowClick?: (row: T, newTab: boolean) => void
   minWidth?: string
   label?: string
+  /** Extra attributes for a row, e.g. `{ 'data-drag-key': id, className: dropEdgeClass(edge) }` for drag-to-reorder. */
+  rowProps?: (row: T) => { 'data-drag-key'?: string; className?: string }
 }) {
   const router = useRouter()
 
@@ -150,14 +153,16 @@ export function DataTable<T>({
           {rows.map((row) => {
             const id = rowKey(row)
             const isSel = selection?.selected.has(id) ?? false
+            const extra = rowProps?.(row)
             return (
               <tr
                 key={id}
+                data-drag-key={extra?.['data-drag-key']}
                 onClick={rowClick(row)}
                 aria-selected={selection ? isSel : undefined}
                 className={`border-b border-border transition-colors duration-200 ease-out ${clickable(row) ? 'cursor-pointer' : ''} ${
                   isSel ? 'bg-selected-tint' : 'hover:bg-hover'
-                }`}
+                } ${extra?.className ?? ''}`}
               >
                 {selection ? (
                   <td className={CELL} onClick={(e) => e.stopPropagation()}>

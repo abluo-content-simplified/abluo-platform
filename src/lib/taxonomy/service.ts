@@ -33,11 +33,13 @@ import { span } from '@/lib/perf/timing'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { isTermKind, isValidTermKey, SLUG_PART_PATTERN, TAXONOMY_TERM_TYPE, termId, termIdPartIssues, type TermKind } from './ids'
 import {
+  deriveRoutableTermKey,
   deriveTermKey,
   keyChangeIssue,
   labelIssues,
   nextOrder,
   ORDER_STEP,
+  termIsRoutable,
   termLimitIssue,
   type Labels,
   type RuleIssue,
@@ -338,7 +340,7 @@ export async function createTerm(
   const nowIso = (deps.now?.() ?? new Date()).toISOString()
   const order = nextOrder(ours.map((d) => (typeof d.order === 'number' ? d.order : NaN)))
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const key = deriveTermKey(defaultLabel, taken)
+    const key = termIsRoutable(a.module, a.kind) ? deriveRoutableTermKey(defaultLabel, taken) : deriveTermKey(defaultLabel, taken)
     const doc = {
       _id: idOf(a, key),
       _type: TAXONOMY_TERM_TYPE,

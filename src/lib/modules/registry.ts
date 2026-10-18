@@ -135,7 +135,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           supportsRouting: true,
           usage: { schemaType: 'post', field: 'categories', noun: 'posts' },
           description:
-            'The categories an author can choose from, in every language this website offers. Renaming or translating a label is safe — content filed under it keeps its link.',
+            'Post categories now live in Categories & Tags (dashboard). This list is only read while a website has none there yet. Renaming or translating a label is safe — content filed under it keeps its link.',
         },
         {
           id: 'readingSpeed',
@@ -154,6 +154,11 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         ],
       },
     },
+
+    // ADR-033 Amendment J — post categories are taxonomyTerm records (no tags).
+    // They are also public pages (/category/<key>), so terms carry description,
+    // retired keys (redirectFrom) and noindex besides label and colour.
+    taxonomies: [{ kind: 'category', routable: true, color: true, usedBy: [{ type: 'post', field: 'categories' }] }],
 
     publicContract: {},
 
@@ -261,7 +266,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           supportsColor: true,
           usage: { schemaType: 'newsArticle', field: 'categories', noun: 'news items' },
           description:
-            'The categories an author can choose from, in every language this website offers. Renaming or translating a label is safe — content filed under it keeps its link.',
+            'News categories now live in Categories & Tags (dashboard). This list is only read while a website has none there yet. Renaming or translating a label is safe — content filed under it keeps its link.',
         },
         {
           id: 'readingSpeed',
@@ -280,6 +285,10 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         ],
       },
     },
+
+    // ADR-033 Amendment J — news categories are taxonomyTerm records (no tags).
+    // Labels with a badge colour; News has no category pages, so nothing routable.
+    taxonomies: [{ kind: 'category', color: true, usedBy: [{ type: 'newsArticle', field: 'categories' }] }],
 
     publicContract: {},
 
@@ -392,7 +401,7 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           supportsColor: true,
           usage: { schemaType: 'event', field: 'categories', noun: 'events' },
           description:
-            'The categories an author can choose from, in every language this website offers. Renaming or translating a label is safe — content filed under it keeps its link.',
+            'Event categories now live in Categories & Tags (dashboard). This list is only read while a website has none there yet. Renaming or translating a label is safe — content filed under it keeps its link.',
         },
       ],
 
@@ -403,6 +412,10 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
         ],
       },
     },
+
+    // ADR-033 Amendment J — event categories are taxonomyTerm records (no tags).
+    // Event categories are labels with a badge colour, not pages.
+    taxonomies: [{ kind: 'category', color: true, usedBy: [{ type: 'event', field: 'categories' }] }],
 
     publicContract: {},
 

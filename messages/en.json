@@ -419,6 +419,10 @@
           "publicHelper": "On your website and shared with apps you connect.",
           "websiteOnlyHelper": "On your website, never shared with connected apps.",
           "unlistedHelper": "Not in lists or search engines — only people with the link."
+        },
+        "categories": {
+          "title": "Category",
+          "helper": "Helps visitors find the right events. Add a new one here, or manage them all under Categories & Tags."
         }
       },
       "errors": {
@@ -1632,8 +1636,6 @@
       "allTranslated": "Everything is translated",
       "filterMissing": "Missing translations",
       "nothingMissing": "Nothing is waiting for a translation.",
-      "moveUp": "Move {name} up",
-      "moveDown": "Move {name} down",
       "addSubmit": "Add",
       "adding": "Adding…",
       "cancel": "Cancel",
@@ -1709,7 +1711,9 @@
       "kindLabel": "Show",
       "filterAll": "All",
       "clear": "Clear filters",
-      "noMatch": "Nothing matches your search."
+      "noMatch": "Nothing matches your search.",
+      "drag": "Move {name}, position {position} of {total}. Drag, or use the up and down arrow keys.",
+      "addTo": "Add to"
     },
     "photoWizard": {
       "add": {
@@ -3745,8 +3749,6 @@
             "label": "Label",
             "labelIn": "Label in {language}",
             "url": "Web address",
-            "up": "Move link up",
-            "down": "Move link down",
             "remove": "Remove this link",
             "badUrl": "Use a full web address starting with http:// or https://.",
             "incomplete": "A link needs both a label and a web address. It is not saved until both are filled in.",
@@ -3756,7 +3758,8 @@
             "kindBuyHelp": "Shows a Buy button on the page. The label is optional.",
             "affiliate": "This is an affiliate link",
             "affiliateHelp": "You earn a commission when someone buys through it.",
-            "badMore": "Use an Amazon product link for the other stores."
+            "badMore": "Use an Amazon product link for the other stores.",
+            "drag": "Move link {position} of {total}. Drag, or use the up and down arrow keys."
           },
           "title": "Title",
           "book": {
@@ -4114,8 +4117,6 @@
         "emptyBody": "Add the first choice people can make.",
         "label": "Label",
         "labelIn": "Label in {language}",
-        "up": "Move up",
-        "down": "Move down",
         "remove": "Remove option",
         "kind": "Kind",
         "kindAdd": "Adds",
@@ -4131,7 +4132,8 @@
         "allergensFromItem": "Allergens come from the linked item.",
         "back": "Option lists",
         "publishNeedsName": "Add a name to publish.",
-        "publishNeedsOption": "Add at least one option to publish."
+        "publishNeedsOption": "Add at least one option to publish.",
+        "drag": "Move option {position} of {total}. Drag, or use the up and down arrow keys."
       },
       "itemProfiles": {
         "label": "What are you offering?",

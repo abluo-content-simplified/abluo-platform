@@ -34,7 +34,8 @@ function grantWith(enabledModuleIds: string[], permissions: string[] = []): Proj
 describe('buildClientNavItems', () => {
   it('yields a Blog nav item ONLY when the module is installed AND blog.post.read is held', () => {
     const items = buildClientNavItems(grantWith(['blog'], ['blog.post.read']))
-    expect(items).toEqual([{ moduleId: 'blog', labelKey: 'clientDashboard.nav.blog', href: '/livener/posts', group: 'content' }])
+    // Posts also brings Categories & Tags (ADR-033 Amendment J), which the same permission opens.
+    expect(items.filter((i) => i.moduleId !== 'taxonomy')).toEqual([{ moduleId: 'blog', labelKey: 'clientDashboard.nav.blog', href: '/livener/posts', group: 'content' }])
   })
 
   it('yields NO Blog item when the module is not installed, even with the permission', () => {
@@ -53,7 +54,7 @@ describe('buildClientNavItems', () => {
   })
 
   it('skips an enabled module that has no client-dashboard surface (events)', () => {
-    expect(buildClientNavItems(grantWith(['events'], ['blog.post.read']))).toEqual([])
+    expect(buildClientNavItems(grantWith(['events'], ['forms.submission.read']))).toEqual([])
   })
 
   it('shows Media on the permission alone (no module) and People on invite OR manage', () => {
@@ -67,7 +68,7 @@ describe('buildClientNavItems', () => {
       ['blog', 'forms', 'gallery'],
       ['blog.post.read', 'forms.submission.read', 'gallery.gallery.read', 'media.library.manage', 'users.invite'],
     )
-    expect(buildClientNavItems(all).map((i) => i.moduleId)).toEqual(['blog', 'gallery', 'media', 'forms', 'people'])
+    expect(buildClientNavItems(all).map((i) => i.moduleId)).toEqual(['blog', 'gallery', 'media', 'taxonomy', 'forms', 'people'])
   })
 
   it('builds the href from the grant projectSlug + the registry segment', () => {

@@ -4,7 +4,7 @@
  * chain binds at the call site, with an injected fetch — no live Sanity.
  */
 import { describe, it, expect, vi } from 'vitest'
-import { getDashboardPostRows, getDashboardPosts, getProjectSiteDomain } from '../client-dashboard'
+import { getDashboardPostList, getDashboardPostRows, getDashboardPosts, getProjectSiteDomain } from '../client-dashboard'
 import { TenantAuthorizationError, type SanityFetchFn } from '../tenant-scoped-sanity'
 import type { ProjectGrant, TenantAuthorizationContext } from '../tenant-context'
 import { asSupabaseProjectSlug } from '@/lib/tenancy/ids'
@@ -118,6 +118,23 @@ describe('getDashboardPosts', () => {
     )
     const [, params] = fetchMock.mock.calls[0]
     expect(params.defaultLocale).toBe('de')
+  })
+})
+
+describe('getDashboardPostList: category dual-read (Amendment J)', () => {
+  it('term records replace the config list: labels, filter options and row chips come from them', async () => {
+    const fetch = vi.fn(async (query: string) =>
+      query.includes('"site"')
+        ? {
+            site: { defaultLocale: 'it', supportedLocales: ['it'] },
+            categories: [{ value: 'self-care', label: { it: 'Vecchio' } }],
+            categoryTerms: [{ key: 'self-care', order: 1000, label: { _type: 'localizedString', it: 'Prendersi cura' } }, { key: 'nuova', order: 2000, label: { it: 'Nuova' } }],
+          }
+        : [{ _id: 'p1', title: 'T', titleLocales: { it: 'T' }, categoryKeys: ['self-care', 'nuova'], slug: 'x', status: 'published', updatedAt: '2026-08-01T00:00:00Z', bodyLangs: [] }]
+    ) as unknown as SanityFetchFn
+    const list = await getDashboardPostList(ctxWith([validGrant]), 'project-a1', { locale: 'en' }, { fetch })
+    expect(list.posts[0].categories).toEqual(['Prendersi cura', 'Nuova'])
+    expect(list.categories).toEqual([{ value: 'self-care', label: 'Prendersi cura' }, { value: 'nuova', label: 'Nuova' }])
   })
 })
 

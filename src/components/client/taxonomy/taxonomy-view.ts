@@ -78,6 +78,15 @@ export function moveKey(keys: readonly string[], key: string, direction: -1 | 1)
   return next
 }
 
+/** The keys with `key` moved to index `to` of the result (a drop); null when it would not move. */
+export function moveKeyTo(keys: readonly string[], key: string, to: number): string[] | null {
+  const from = keys.indexOf(key)
+  if (from < 0 || to < 0 || to >= keys.length || to === from) return null
+  const next = [...keys]
+  next.splice(to, 0, ...next.splice(from, 1))
+  return next
+}
+
 /** Same terms, ordered by `keys` first (optimistic reorder); unlisted terms follow. */
 export function reorderLocally<T extends Pick<ListState, 'terms'>>(list: T, keys: readonly string[]): T {
   const rank = new Map(keys.map((k, i) => [k, i]))

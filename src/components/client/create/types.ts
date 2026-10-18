@@ -41,6 +41,10 @@ export type SiteInfo = {
   languages: string[]
   /** Blog categories configured for this site, labels in the viewer's language. */
   categories: { value: string; label: string }[]
+  /** The same categories with every language's label and the colour — what the shared TermPicker takes. */
+  categoryTerms?: { value: string; label: Record<string, string>; color: string | null }[]
+  /** Holds blog.taxonomy.write: the category step offers "+ Add category". */
+  canAddCategory?: boolean
   /** `https://<customDomain>` when the site has one, else null ("View on your site" is hidden). */
   origin?: string | null
   /** The site's IANA time zone: publication dates are shown and entered in it (ADR-032 D8). */

@@ -145,6 +145,19 @@ describe('patchPostDraft', () => {
     expect(wrote(c)).toBe(0)
   })
 
+  it('Amendment J: with category term records the keys are checked against THEM, not the config list', async () => {
+    const withTerms = () => {
+      const c = fakeClient()
+      const orig = (c.client.fetch as unknown as { getMockImplementation: () => (q: string, p?: unknown) => unknown }).getMockImplementation()
+      ;(c.client.fetch as unknown as { mockImplementation: (f: unknown) => void }).mockImplementation(async (q: string, p?: unknown) =>
+        q.includes('supportedLocales') ? { locales: ['it'], categories: ['cura'], categoryTerms: ['nuova'] } : orig(q, p)
+      )
+      return c
+    }
+    await expect(patch({ categories: ['nuova'] }, withTerms())).resolves.toEqual({ rev: 'r2' })
+    await expect(patch({ categories: ['cura'] }, withTerms())).rejects.toMatchObject({ code: 'invalid_value' })
+  })
+
   it.each([
     ['unknown category', { categories: ['not-configured'] }],
     ['too many categories', { categories: Array(LIMITS.categories + 1).fill('cura') }],
@@ -615,12 +628,30 @@ describe('getPostEditorSite', () => {
         { value: 'cura', label: 'Care' },
         { value: 'senza-label', label: 'senza label' },
       ],
+      categoryTerms: [
+        { value: 'cura', label: { it: 'Cura', en: 'Care' }, color: null },
+        { value: 'senza-label', label: {}, color: null },
+      ],
       origin: 'https://ch-psicoterapeuta.com',
       timeZone: 'Europe/Rome',
       galleries: [],
       ctas: [],
     })
     expect((c.fetch.mock.calls[0] as unknown as [string, Record<string, unknown>])[1]).toEqual({ projectSlug: 'hoffmann' })
+  })
+
+  it('Amendment J: category term records replace the config list (labels in every language, colour kept)', async () => {
+    const c = readClient({
+      fetchResult: {
+        site: { defaultLocale: 'it', supportedLocales: ['it'] },
+        categories: [{ value: 'vecchia', label: { it: 'Vecchia' } }],
+        categoryTerms: [{ key: 'nuova', order: 1000, color: '#112233', label: { _type: 'localizedString', it: 'Nuova', en: 'New' } }],
+      },
+    })
+    const site = await getPostEditorSite(ctx(grant()), 'project-a', { locale: 'en' }, rdeps(c))
+    expect(site.categories).toEqual([{ value: 'nuova', label: 'New' }])
+    expect(site.categoryTerms).toEqual([{ value: 'nuova', label: { it: 'Nuova', en: 'New' }, color: '#112233' }])
+    expect((c.fetch.mock.calls[0] as unknown as [string])[0]).toContain('taxonomyTerm')
   })
 
   it("lists the site's prepared calls to action, texts in the main language", async () => {

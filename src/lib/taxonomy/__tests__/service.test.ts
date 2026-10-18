@@ -497,3 +497,34 @@ describe('kind "tag" (slice 7) — same service, the `tags` field', () => {
     expect(f.client.createIfNotExists).not.toHaveBeenCalled()
   })
 })
+
+describe('Posts categories (blog, routable)', () => {
+  const blogCtx = () => ctxOf(grant({ permissions: ['blog.post.read', 'blog.taxonomy.write'], enabledModuleIds: ['blog'] }))
+  const blogTerm = (key: string, label: Record<string, string>): Doc => ({ ...term(key, label), _id: `term.${SLUG}.blog.category.${key}`, module: 'blog' })
+
+  it('a new category gets a hyphenated key (it is a public /category/<key> URL) and is selectable at once', async () => {
+    const f = fake([blogTerm('prendersi-cura-di-se', { it: 'Prendersi cura di sé' })])
+    const r = await createTerm(blogCtx(), 'project-a', 'blog', 'category', { labels: { it: 'Lavoro e vita' }, color: '#112233' }, f.deps)
+    expect(r.term.key).toBe('lavoro-e-vita')
+    expect(f.store.get(`term.${SLUG}.blog.category.lavoro-e-vita`)).toMatchObject({ module: 'blog', kind: 'category', color: '#112233' })
+    const again = await createTerm(blogCtx(), 'project-a', 'blog', 'category', { labels: { it: 'Lavoro e vita' } }, f.deps)
+    expect(again.created).toBe(false)
+  })
+
+  it('a clashing label gets a "-2" key, never "_2"', async () => {
+    const f = fake([blogTerm('lavoro', { it: 'Lavoro' })])
+    const r = await createTerm(blogCtx(), 'project-a', 'blog', 'category', { labels: { it: 'Lavoro!' } }, f.deps)
+    expect(r.term.key).toBe('lavoro-2')
+  })
+
+  it('tags are not declared for blog', async () => {
+    const f = fake()
+    expect(await code(createTerm(blogCtx(), 'project-a', 'blog', 'tag', { labels: { it: 'x' } }, f.deps))).toBe('kind_not_declared')
+  })
+
+  it('editing a label leaves the page fields (description, redirects, noindex) alone', async () => {
+    const f = fake([{ ...blogTerm('a', { it: 'A' }), description: { it: 'Testo' }, redirectFrom: { it: ['old'] }, noindex: true }])
+    await updateTerm(blogCtx(), 'project-a', 'blog', 'category', 'a', { labels: { en: 'A' } }, f.deps)
+    expect(f.store.get(`term.${SLUG}.blog.category.a`)).toMatchObject({ description: { it: 'Testo' }, redirectFrom: { it: ['old'] }, noindex: true })
+  })
+})

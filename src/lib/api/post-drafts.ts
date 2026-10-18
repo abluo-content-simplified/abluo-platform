@@ -38,6 +38,7 @@ import { LINK_TARGET_TYPES } from '@/lib/links/link-target'
 import { localePlainTexts, presentLocales } from '@/lib/sanity/groq-locales'
 import { postSearchText } from '@/lib/client/posts-filter'
 import { audited, type ContentAuditWriter } from '@/lib/lifecycle/audit'
+import { categoryKeyVocabulary, categoryVocabulary, moduleCategoryKeysGroq, moduleTermsGroq, type CategoryTermRow } from '@/lib/taxonomy/vocabulary'
 
 export const BLOG_POST_WRITE_PERMISSION = 'blog.post.write'
 
@@ -194,17 +195,19 @@ export async function patchPostDraft(
   // Results are validated below in the original order; the single-project guard
   // is awaited again right before the write.
   const guard = assertSingleSanityProject((q, p) => client.fetch(q, p), grant.projectSlug)
-  const [currentDoc, publishedDoc, site] = await readsInOrder<[unknown, unknown, { locales?: string[] | null; categories?: string[] | null } | null, void]>([
+  const [currentDoc, publishedDoc, site] = await readsInOrder<[unknown, unknown, { locales?: string[] | null; categories?: string[] | null; categoryTerms?: string[] | null } | null, void]>([
     client.getDocument(draftId),
     client.getDocument(input.id),
     client.fetch<{
       locales?: string[] | null
       categories?: string[] | null
+      categoryTerms?: string[] | null
     } | null>(
       `{
       "locales": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].supportedLocales,
       "categories": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]
-        .moduleInstallations[moduleId == "blog"][0].config.categories[].value
+        .moduleInstallations[moduleId == "blog"][0].config.categories[].value,
+      "categoryTerms": ${moduleCategoryKeysGroq('blog')}
     }`,
       { projectSlug: grant.projectSlug }
     ),
@@ -228,7 +231,8 @@ export async function patchPostDraft(
   }
 
   const locales = site?.locales?.length ? site.locales : []
-  const categoryKeys = site?.categories ?? []
+  // Dual-read (ADR-033 Amendment J): term keys when the project has any, else the config list.
+  const categoryKeys = categoryKeyVocabulary(site?.categoryTerms, site?.categories)
 
   const set: Record<string, unknown> = {}
   const unset: string[] = []
@@ -557,6 +561,8 @@ export type PostEditorSite = {
   defaultLocale: string
   languages: string[]
   categories: { value: string; label: string }[]
+  /** The same categories with their label in every language and their colour (the shared TermPicker's shape). */
+  categoryTerms: { value: string; label: Record<string, string>; color: string | null }[]
   /** `https://<customDomain>`, or null when the site has no domain yet. */
   origin: string | null
   /** The site's IANA time zone (siteConfig.timeZone), or null when not set. */
@@ -804,6 +810,7 @@ export async function getPostEditorSite(
   const r = await client.fetch<{
     site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null } | null
     categories?: Array<{ value?: string; label?: unknown }> | null
+    categoryTerms?: CategoryTermRow[] | null
     customDomain?: string | null
     ctas?: Array<{ _id?: unknown; internalName?: unknown; isDefault?: unknown; heading?: unknown; buttonLabel?: unknown }> | null
   } | null>(
@@ -812,7 +819,8 @@ export async function getPostEditorSite(
         | order(_createdAt asc){ _id, internalName, isDefault, heading, buttonLabel },
       "site": *[_type == "siteConfig" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]{ defaultLocale, supportedLocales, timeZone },
       "categories": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]
-        .moduleInstallations[moduleId == "blog"][0].config.categories[]{ value, label },
+        .moduleInstallations[moduleId == "blog"][0].config.categories[]{ value, color, label },
+      "categoryTerms": ${moduleTermsGroq('blog', 'category', 'label')},
       "customDomain": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**")) && defined(customDomain)][0].customDomain
     }`,
     { projectSlug: grant.projectSlug }
@@ -839,7 +847,12 @@ export async function getPostEditorSite(
       count: typeof row.count === 'number' ? row.count : 0,
     })
   }
-  const categories = (r?.categories ?? [])
+  // ADR-033 Amendment J (dual-read): term records replace the config list when the project has any.
+  const vocabulary = categoryVocabulary(r?.categoryTerms, r?.categories ?? []) as Array<{ value?: string; label?: unknown; color?: unknown }>
+  const categoryTerms = vocabulary
+    .filter((c): c is { value: string; label?: unknown; color?: unknown } => typeof c?.value === 'string' && !!c.value)
+    .map((c) => ({ value: c.value, label: textMap(c.label), color: typeof c.color === 'string' && c.color ? c.color : null }))
+  const categories = vocabulary
     .filter((c): c is { value: string; label?: unknown } => typeof c?.value === 'string' && !!c.value)
     .map((c) => {
       const labels = textMap(c.label)
@@ -854,6 +867,7 @@ export async function getPostEditorSite(
     defaultLocale,
     languages,
     categories,
+    categoryTerms,
     origin: domain ? `https://${domain}` : null,
     timeZone: typeof r?.site?.timeZone === 'string' && r.site.timeZone ? r.site.timeZone : null,
     galleries: [...galleries.values()],

@@ -34,6 +34,7 @@ import {
 } from '@/lib/api/tenant-scoped-sanity'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { dashboardPostsContextQuery, dashboardPostsQuery } from '@/lib/sanity/queries'
+import { categoryVocabulary, type CategoryTermRow } from '@/lib/taxonomy/vocabulary'
 import { projectDataClient } from '@/lib/support/data-client'
 import { runAsTrustedSystemOperation } from '@/lib/supabase/admin'
 import { coverCropUrl, coverThumbUrl } from '@/lib/api/post-drafts'
@@ -210,13 +211,15 @@ export async function getDashboardPostList(
   type Context = {
     site?: { defaultLocale?: string | null; supportedLocales?: string[] | null; timeZone?: string | null } | null
     categories?: { value?: string; label?: LocalizedLabel }[] | null
+    /** ADR-033 Amendment J: taxonomyTerm records; when present they replace `categories`. */
+    categoryTerms?: CategoryTermRow[] | null
   }
   const context = (await scoped.fetch<Context | null>(dashboardPostsContextQuery, {})) ?? {}
   const defaultLocale = context.site?.defaultLocale || params.locale
   const supported = context.site?.supportedLocales ?? []
 
   const labels = new Map<string, string>()
-  for (const c of context.categories ?? []) {
+  for (const c of (categoryVocabulary(context.categoryTerms, context.categories ?? []) as { value?: string; label?: LocalizedLabel }[])) {
     if (!c?.value) continue
     labels.set(c.value, resolveLocalized(c.label, params.locale, defaultLocale) ?? c.value)
   }

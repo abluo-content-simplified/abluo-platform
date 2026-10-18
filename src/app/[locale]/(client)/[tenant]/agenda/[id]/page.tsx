@@ -3,6 +3,7 @@ import { getTenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { resolveProjectGrant } from '@/lib/modules/client-navigation'
 import { EVENT_DELETE_PERMISSION, EVENT_WRITE_PERMISSION, EventError, getEvent, isEventId, type EventSnapshot } from '@/lib/api/event-drafts'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
+import { taxonomyWritePermission } from '@/lib/taxonomy/permissions'
 import { EventEditor } from '@/components/client/events/EventEditor'
 import { PageShell } from '@/components/app/ui/PageShell'
 
@@ -39,6 +40,7 @@ export default async function EventPage({ params }: { params: Promise<{ tenant: 
         initial={event}
         canWrite={grant.permissions.includes(EVENT_WRITE_PERMISSION)}
         canDelete={grant.permissions.includes(EVENT_DELETE_PERMISSION)}
+        canAddCategory={grant.permissions.includes(taxonomyWritePermission('events'))}
       />
     </PageShell>
   )

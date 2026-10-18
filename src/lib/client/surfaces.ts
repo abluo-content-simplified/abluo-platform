@@ -110,7 +110,7 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
     id: 'taxonomy',
     segment: 'taxonomy',
     group: 'content',
-    requires: { anyModule: ['catalogue'], anyPermission: ['catalogue.taxonomy.write', 'catalogue.item.read'] },
+    requires: { anyModule: ['blog', 'catalogue', 'events', 'news'], anyPermission: ['blog.taxonomy.write', 'blog.post.read', 'catalogue.taxonomy.write', 'catalogue.item.read', 'events.taxonomy.write', 'events.event.read', 'news.taxonomy.write', 'news.article.read'] },
   },
   // Manage: what comes in, who works here, which apps read the site.
   { kind: 'nav', id: 'forms', segment: 'submissions', group: 'manage', requires: { module: 'forms', permission: 'forms.submission.read' } },

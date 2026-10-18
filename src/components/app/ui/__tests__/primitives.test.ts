@@ -6,7 +6,11 @@
 import { describe, expect, it } from 'vitest'
 import { buttonClass, iconButtonClass } from '../button-styles'
 import { inputClass, textAreaClass } from '../field-styles'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { nextSegmentIndex } from '../segmented-keys'
+import { TAB_LIST_CLASS, tabClass, tabIds } from '../tab-styles'
+import { dropEdgeClass, dropIndex } from '../use-pointer-drag'
 
 describe('buttonClass', () => {
   it('defaults to a 44px secondary button', () => {
@@ -64,5 +68,66 @@ describe('nextSegmentIndex (radiogroup keys)', () => {
     expect(nextSegmentIndex('End', 0, none)).toBe(2)
     expect(nextSegmentIndex('Home', 2, none)).toBe(0)
     expect(nextSegmentIndex('a', 1, none)).toBeNull()
+  })
+})
+
+describe('Tabs', () => {
+  it('the row scrolls sideways and never wraps; a tab is a 44px tap target that does not shrink', () => {
+    expect(TAB_LIST_CLASS).toContain('overflow-x-auto')
+    expect(TAB_LIST_CLASS).not.toContain('flex-wrap')
+    expect(tabClass(false)).toContain('min-h-11')
+    expect(tabClass(false)).toContain('shrink-0')
+    expect(tabClass(false)).toContain('whitespace-nowrap')
+  })
+  it('the selected tab is marked with the action colour, the others are quiet', () => {
+    expect(tabClass(true)).toContain('border-action')
+    expect(tabClass(false)).toContain('border-transparent')
+    expect(tabClass(false)).not.toContain('border-action')
+  })
+  it('ties a tab to its panel by id', () => {
+    expect(tabIds('x', 'tag')).toEqual({ tab: 'x-tab-tag', panel: 'x-panel-tag' })
+  })
+  it('uses WAI-ARIA tablist semantics with roving tabindex and the shared arrow-key model', () => {
+    const src = readFileSync(path.join(__dirname, '../Tabs.tsx'), 'utf8')
+    expect(src).toContain('role="tablist"')
+    expect(src).toContain('role="tab"')
+    expect(src).toContain('aria-selected')
+    expect(src).toContain('tabIndex={i === stop ? 0 : -1}')
+    expect(src).toContain('nextSegmentIndex')
+  })
+})
+
+describe('dropIndex (drag to reorder)', () => {
+  const keys = ['a', 'b', 'c', 'd']
+  it('drops before or after the row it lands on', () => {
+    expect(dropIndex(keys, 'a', { key: 'c', after: false })).toBe(1)
+    expect(dropIndex(keys, 'a', { key: 'c', after: true })).toBe(2)
+    expect(dropIndex(keys, 'd', { key: 'a', after: false })).toBe(0)
+    expect(dropIndex(keys, 'd', { key: 'a', after: true })).toBe(1)
+  })
+  it('is null when nothing would change or a key is unknown', () => {
+    expect(dropIndex(keys, 'b', { key: 'a', after: true })).toBeNull()
+    expect(dropIndex(keys, 'b', { key: 'c', after: false })).toBeNull()
+    expect(dropIndex(keys, 'x', { key: 'a', after: true })).toBeNull()
+    expect(dropIndex(keys, 'a', { key: 'x', after: true })).toBeNull()
+  })
+  it('table rows show the drop edge as an inset rule', () => {
+    expect(dropEdgeClass(null)).toBe('')
+    expect(dropEdgeClass('before')).toContain('inset_0_2px')
+    expect(dropEdgeClass('after')).toContain('inset_0_-2px')
+  })
+})
+
+describe('DragGrip', () => {
+  const src = readFileSync(path.join(__dirname, '../DragGrip.tsx'), 'utf8')
+  it('is a button that spreads the pointer-drag props and reorders with ArrowUp / ArrowDown', () => {
+    expect(src).toContain('<button')
+    expect(src).toContain('{...drag}')
+    expect(src).toContain("'ArrowUp'")
+    expect(src).toContain("'ArrowDown'")
+  })
+  it('announces the new position and keeps focus on the grip', () => {
+    expect(src).toContain('aria-live="polite"')
+    expect(src).toContain('refocus')
   })
 })

@@ -29,6 +29,8 @@ import { useCatalogueDraft } from './use-catalogue-draft'
 import type { ItemChoice } from './choices'
 import { usePublishTogether } from './publish-dependencies'
 import { Button, IconButton } from '@/components/app/ui/Button'
+import { DragGrip, DropLine } from '@/components/app/ui/DragGrip'
+import { dropIndex, usePointerDrag } from '@/components/app/ui/use-pointer-drag'
 import { Notice } from '@/components/app/ui/Notice'
 import { Panel } from '@/components/app/ui/Panel'
 import { FieldLabel } from '@/components/app/ui/FieldLabel'
@@ -100,6 +102,10 @@ export function OptionListEditor({
     const patch = optionsPatch(next)
     if (patch) update({ options: patch })
   }
+  const drag = usePointerDrag((key, over) => {
+    const to = dropIndex(options.map((x) => x.key), key, over)
+    if (to !== null) saveOptions(moveIndex(options, options.findIndex((x) => x.key === key), to))
+  })
   const setOpt = (key: string, p: Partial<OptionForm>) => saveOptions(options.map((o) => (o.key === key ? { ...o, ...p } : o)))
 
   async function publish() {
@@ -220,7 +226,8 @@ export function OptionListEditor({
               {options.map((o, n) => {
                 const delta = o.delta.trim() === '' ? 0 : parsePrice(o.delta, { signed: true })
                 return (
-                  <Panel as="li" key={o.key}>
+                  <Panel as="li" key={o.key} {...drag.rowProps(o.key)} className={`relative ${drag.dragging === o.key ? 'opacity-50' : ''}`}>
+                    <DropLine edge={drag.edge(o.key)} />
                     {isFreeTextAdd(o) && declarationIssues(o.declaration).length ? (
                       <p className="mb-2">
                         <Pill tone="outline">{t('allergensNotReviewed')}</Pill>
@@ -237,12 +244,9 @@ export function OptionListEditor({
                           </div>
                         ))}
                       </div>
-                      <IconButton aria-label={t('up')} disabled={n === 0} onClick={() => saveOptions(moveIndex(options, n, n - 1))}>
-                        {CAT_ICONS.up}
-                      </IconButton>
-                      <IconButton aria-label={t('down')} disabled={n === options.length - 1} onClick={() => saveOptions(moveIndex(options, n, n + 1))}>
-                        {CAT_ICONS.down}
-                      </IconButton>
+                      {options.length > 1 && !readOnly ? (
+                        <DragGrip label={t('drag', { position: n + 1, total: options.length })} drag={drag.gripProps(o.key)} onMove={(dir) => saveOptions(moveIndex(options, n, n + dir))} />
+                      ) : null}
                       <IconButton aria-label={t('remove')} onClick={() => saveOptions(options.filter((x) => x.key !== o.key))}>
                         {CAT_ICONS.trash}
                       </IconButton>

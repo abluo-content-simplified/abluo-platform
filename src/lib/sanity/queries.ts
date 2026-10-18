@@ -32,7 +32,7 @@
 import { localePlainTexts, presentLocales } from '@/lib/sanity/groq-locales'
 import { publicFilterFor, publicFilterForAnyType } from '@/lib/lifecycle/public-types'
 import { visibilityFilter } from '@/lib/modules/catalogue/visibility'
-import { catalogueCategoryTermsGroq, catalogueTermsGroq } from '@/lib/taxonomy/vocabulary'
+import { catalogueCategoryTermsGroq, catalogueTermsGroq, moduleRoutableTermsGroq, moduleTermsGroq } from '@/lib/taxonomy/vocabulary'
 
 // ─── ADR-032 D3 — the public-visibility rule ─────────────────────────────────
 // Every public read of a lifecycle type (post, newsArticle, event, gallery) —
@@ -970,6 +970,12 @@ export const projectModuleConfigQuery = /* groq */ `
     "modules": moduleInstallations[enabled != false] {
       moduleId,
       version,
+      // ADR-033 Amendment J (dual-read): the category terms of Posts and News. When a project
+      // has any, getModuleConfig() serves them as the category list instead of config.categories.
+      "categoryTerms": select(
+        moduleId == "blog" => ${moduleRoutableTermsGroq('blog')},
+        moduleId == "news" => ${moduleRoutableTermsGroq('news')}
+      ),
       "config": config {
         ...,
         // TENANT-SCOPED — see scopedFormDefinition above. All three module
@@ -1081,7 +1087,9 @@ export const dashboardPostsContextQuery = /* groq */ `{
     timeZone
   },
   "categories": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]
-    .moduleInstallations[moduleId == "blog"][0].config.categories[]{ value, label }
+    .moduleInstallations[moduleId == "blog"][0].config.categories[]{ value, label },
+  // ADR-033 Amendment J (dual-read): taxonomyTerm records replace the list above when the project has any.
+  "categoryTerms": ${moduleTermsGroq('blog', 'category', 'label')}
 }`
 
 // A post is live when it has gone live and has not been taken offline (ADR-025

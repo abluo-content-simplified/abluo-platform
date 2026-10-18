@@ -419,6 +419,10 @@
           "publicHelper": "Auf deiner Website und für verbundene Apps freigegeben.",
           "websiteOnlyHelper": "Auf deiner Website, nie mit verbundenen Apps geteilt.",
           "unlistedHelper": "Nicht in Listen oder Suchmaschinen – nur wer den Link hat."
+        },
+        "categories": {
+          "title": "Kategorie",
+          "helper": "Hilft Besuchern, die passenden Veranstaltungen zu finden. Füge hier eine neue hinzu oder verwalte alle unter Kategorien & Tags."
         }
       },
       "errors": {
@@ -1632,8 +1636,6 @@
       "allTranslated": "Alles ist übersetzt",
       "filterMissing": "Fehlende Übersetzungen",
       "nothingMissing": "Keine Übersetzung steht aus.",
-      "moveUp": "{name} nach oben verschieben",
-      "moveDown": "{name} nach unten verschieben",
       "addSubmit": "Hinzufügen",
       "adding": "Wird hinzugefügt…",
       "cancel": "Abbrechen",
@@ -1709,7 +1711,9 @@
       "kindLabel": "Anzeigen",
       "filterAll": "Alle",
       "clear": "Filter zurücksetzen",
-      "noMatch": "Nichts passt zu deiner Suche."
+      "noMatch": "Nichts passt zu deiner Suche.",
+      "drag": "{name} verschieben, Position {position} von {total}. Ziehen oder die Pfeiltasten nach oben und unten verwenden.",
+      "addTo": "Hinzufügen zu"
     },
     "photoWizard": {
       "add": {
@@ -3745,8 +3749,6 @@
             "label": "Bezeichnung",
             "labelIn": "Bezeichnung auf {language}",
             "url": "Webadresse",
-            "up": "Link nach oben",
-            "down": "Link nach unten",
             "remove": "Diesen Link entfernen",
             "badUrl": "Gib eine vollständige Webadresse ein, die mit http:// oder https:// beginnt.",
             "incomplete": "Ein Link braucht eine Bezeichnung und eine Webadresse. Er wird erst gespeichert, wenn beides ausgefüllt ist.",
@@ -3756,7 +3758,8 @@
             "kindBuyHelp": "Zeigt einen Kaufen-Button auf der Seite. Die Beschriftung ist optional.",
             "affiliate": "Dies ist ein Affiliate-Link",
             "affiliateHelp": "Du erhältst eine Provision, wenn jemand über diesen Link kauft.",
-            "badMore": "Verwende für die anderen Shops einen Amazon-Produktlink."
+            "badMore": "Verwende für die anderen Shops einen Amazon-Produktlink.",
+            "drag": "Link {position} von {total} verschieben. Ziehen oder die Pfeiltasten nach oben und unten verwenden."
           },
           "title": "Titel",
           "book": {
@@ -4114,8 +4117,6 @@
         "emptyBody": "Füge die erste Auswahlmöglichkeit hinzu.",
         "label": "Bezeichnung",
         "labelIn": "Bezeichnung auf {language}",
-        "up": "Nach oben",
-        "down": "Nach unten",
         "remove": "Option entfernen",
         "kind": "Art",
         "kindAdd": "Fügt hinzu",
@@ -4131,7 +4132,8 @@
         "allergensFromItem": "Die Allergene stammen vom verknüpften Eintrag.",
         "back": "Optionslisten",
         "publishNeedsName": "Gib einen Namen ein, um zu veröffentlichen.",
-        "publishNeedsOption": "Füge mindestens eine Option hinzu, um zu veröffentlichen."
+        "publishNeedsOption": "Füge mindestens eine Option hinzu, um zu veröffentlichen.",
+        "drag": "Option {position} von {total} verschieben. Ziehen oder die Pfeiltasten nach oben und unten verwenden."
       },
       "itemProfiles": {
         "label": "Was bietest du an?",

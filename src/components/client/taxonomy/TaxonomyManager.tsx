@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { EmptyState } from '@/components/app/ui/EmptyState'
 import { ListToolbar, type ListToolbarFilter } from '@/components/app/ui/ListToolbar'
@@ -9,9 +9,13 @@ import { DataTable, type DataTableColumn } from '@/components/app/ui/list/DataTa
 import { PageHeader } from '@/components/app/ui/PageHeader'
 import { Toast } from '@/components/app/ui/Toast'
 import { useUndo } from '@/components/app/ui/use-undo'
-import { Button, IconButton } from '@/components/app/ui/Button'
+import { Button } from '@/components/app/ui/Button'
+import { DragGrip } from '@/components/app/ui/DragGrip'
+import { Select } from '@/components/app/ui/Select'
+import { Tabs, tabPanelProps } from '@/components/app/ui/Tabs'
+import { dropEdgeClass, dropIndex, usePointerDrag } from '@/components/app/ui/use-pointer-drag'
 import { TextInput } from '@/components/app/ui/TextInput'
-import { FieldError } from '@/components/app/ui/FieldLabel'
+import { FieldError, FieldLabel } from '@/components/app/ui/FieldLabel'
 import { ListRow } from '@/components/app/ui/list/ListRow'
 import { CellText, Pill } from '@/components/app/ui/list/cells'
 import { searchText } from '@/lib/client/search-text'
@@ -30,6 +34,7 @@ import {
   errorKey,
   hasTranslations,
   moveKey,
+  moveKeyTo,
   removeTerm,
   reorderLocally,
   summarize,
@@ -41,16 +46,18 @@ import {
 /**
  * Client dashboard — Categories & Tags (ADR-033 Amendment J, slice 4): one
  * place to keep the categories (and tags) of every module that has them. A
- * "records" list screen: the shared toolbar (search, module, kind, missing
- * translations), a table on computers and rows on phones, in the order people
- * chose, with how many items use each one and, per language of the website,
- * whether the name is translated. Adding is one line; a row opens a sheet to
- * rename, translate and delete. Moving up / down shows while the whole list is
- * in view (no search or filter). People who may only look get the same screen
+ * "records" list screen: a module choice under the title (only when there is
+ * more than one), Categories | Tags tabs (only when the module has both), the
+ * shared toolbar (search, missing translations), a table on computers and rows
+ * on phones, in the order people chose, with how many items use each one and,
+ * per language of the website, whether the name is translated. Adding is one
+ * line, into any module the person may change; a row opens a sheet to rename,
+ * translate and delete. The ⋮⋮ grip (drag, or arrow keys) shows while the whole
+ * list is in view (no search or filter). People who may only look get the same screen
  * without any change controls.
  */
 
-export type ModuleOption = { id: string; label: string; kinds: string[] }
+export type ModuleOption = { id: string; label: string; kinds: string[]; canWrite: boolean }
 type Kind = 'category' | 'tag'
 
 const svg = (d: string) => (
@@ -74,12 +81,18 @@ export function TaxonomyManager({ projectSlug, modules, initial }: { projectSlug
   const [addBusy, setAddBusy] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
   const [reordering, setReordering] = useState(false)
+  const [addModule, setAddModule] = useState<string | null>(null)
+  const idBase = useId()
   const { toast, show } = useUndo()
 
   const current = modules.find((m) => m.id === moduleId) ?? modules[0]
   const kinds = current.kinds as Kind[]
   const scope = { projectSlug, module: moduleId, kind }
   const canWrite = list.canWrite
+  const writable = modules.filter((m) => m.canWrite)
+  const canAdd = writable.length > 0
+  const addTarget = writable.find((m) => m.id === (addModule ?? moduleId)) ?? writable[0] ?? current
+  const addKind = (addTarget.kinds.includes(kind) ? kind : addTarget.kinds[0]) as Kind
   const translations = hasTranslations(list)
   const q = searchText(query)
   const rows = buildRows(list, filter).filter((r) => !q || searchText(Object.values(list.terms.find((x) => x.key === r.key)?.label ?? {}).join(' ')).includes(q))
@@ -110,17 +123,29 @@ export function TaxonomyManager({ projectSlug, modules, initial }: { projectSlug
     if (!text) return setAddError(t('errors.label_required'))
     setAddBusy(true)
     setAddError(null)
-    const r = await createTaxonomyTermAction({ ...scope, labels: { [list.defaultLocale]: text } })
+    const elsewhere = addTarget.id !== moduleId || addKind !== kind
+    const r = await createTaxonomyTermAction({ projectSlug, module: addTarget.id, kind: addKind, labels: { [list.defaultLocale]: text } })
     setAddBusy(false)
     if (!r.ok) return setAddError(t(`errors.${errorKey(r.error)}` as 'errors.failed'))
-    setList((l) => upsertTerm(l, r.term))
     setAddText('')
-    if (!r.created) say(t(`${kind}.exists`))
+    setAddModule(null)
+    if (!r.created) say(t(`${addKind}.exists`))
+    if (elsewhere) {
+      // Show the person where it went: that module and kind, with the new one in the list.
+      setAdding(false)
+      await load(addTarget.id, addKind)
+    } else setList((l) => upsertTerm(l, r.term))
   }
 
-  async function move(key: string, direction: -1 | 1) {
-    const keys = moveKey(list.terms.map((x) => x.key), key, direction)
-    if (!keys) return
+  const keysNow = () => list.terms.map((x) => x.key)
+  const moveBy = (key: string, direction: -1 | 1) => void reorder(moveKey(keysNow(), key, direction))
+  const drag = usePointerDrag((key, over) => {
+    const to = dropIndex(keysNow(), key, over)
+    if (to !== null) void reorder(moveKeyTo(keysNow(), key, to))
+  })
+
+  async function reorder(keys: string[] | null) {
+    if (!keys || reordering) return
     const before = list
     setReordering(true)
     setList((l) => reorderLocally(l, keys))
@@ -133,7 +158,7 @@ export function TaxonomyManager({ projectSlug, modules, initial }: { projectSlug
     }
   }
 
-  const addControl = !canWrite ? null : adding ? (
+  const addControl = !canAdd ? null : adding ? (
     <form
       className="flex flex-wrap items-start gap-2"
       onSubmit={(e) => {
@@ -141,9 +166,32 @@ export function TaxonomyManager({ projectSlug, modules, initial }: { projectSlug
         void add()
       }}
     >
+      {writable.length > 1 ? (
+        <div className="basis-44">
+          <label className="sr-only" htmlFor="taxonomy-add-module">
+            {t('addTo')}
+          </label>
+          <Select
+            flush
+            controlSize="md"
+            id="taxonomy-add-module"
+            value={addTarget.id}
+            onChange={(e) => {
+              setAddModule(e.target.value)
+              setAddError(null)
+            }}
+          >
+            {writable.map((m) => (
+              <option key={m.id} value={m.id}>
+                {t('addTo')} {m.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+      ) : null}
       <div className="min-w-0 flex-1 basis-56">
         <label className="sr-only" htmlFor="taxonomy-add">
-          {t(`${kind}.placeholder`)}
+          {t(`${addKind}.placeholder`)}
         </label>
         <TextInput
           flush
@@ -152,7 +200,7 @@ export function TaxonomyManager({ projectSlug, modules, initial }: { projectSlug
           value={addText}
           maxLength={80}
           autoFocus={adding}
-          placeholder={t(`${kind}.placeholder`)}
+          placeholder={t(`${addKind}.placeholder`)}
           aria-invalid={addError ? true : undefined}
           onChange={(e) => {
             setAddText(e.target.value)
@@ -173,6 +221,7 @@ export function TaxonomyManager({ projectSlug, modules, initial }: { projectSlug
           setAdding(false)
           setAddText('')
           setAddError(null)
+          setAddModule(null)
         }}
       >
         {t('cancel')}
@@ -185,18 +234,12 @@ export function TaxonomyManager({ projectSlug, modules, initial }: { projectSlug
     </Button>
   )
 
-  const moveButtons = (row: RowView, n: number) => (
-    <>
-      <IconButton aria-label={t('moveUp', { name: row.name })} disabled={reordering || n === 0} onClick={() => void move(row.key, -1)}>
-        {svg('m6 15 6-6 6 6')}
-      </IconButton>
-      <IconButton aria-label={t('moveDown', { name: row.name })} disabled={reordering || n === rows.length - 1} onClick={() => void move(row.key, 1)}>
-        {svg('m6 9 6 6 6-6')}
-      </IconButton>
-    </>
+  const gripFor = (row: RowView, n: number) => (
+    <DragGrip label={t('drag', { name: row.name, position: n + 1, total: rows.length })} drag={drag.gripProps(row.key)} onMove={(dir) => moveBy(row.key, dir)} disabled={reordering} />
   )
+  const rowAttrs = (key: string) => ({ ...drag.rowProps(key), className: `${dropEdgeClass(drag.edge(key))} ${drag.dragging === key ? 'opacity-50' : ''}` })
   const languageChips = (row: RowView) => (
-    <span className="flex flex-wrap gap-1.5">
+    <span className="flex flex-nowrap gap-1.5 whitespace-nowrap">
       {row.chips.map((c) => (
         <Pill
           key={c.locale}
@@ -218,37 +261,20 @@ export function TaxonomyManager({ projectSlug, modules, initial }: { projectSlug
   const columns: DataTableColumn<RowView>[] = [
     { key: 'name', header: t('name'), width: 'min-w-56', render: (r) => <CellText primary={r.name} onOpen={() => setOpenKey(r.key)} clamp={1} /> },
     { key: 'usedBy', header: t('columns.usedBy'), width: 'w-36', render: (r) => <span className="flex min-h-6 items-center text-sm leading-6 text-muted-foreground">{r.usedBy > 0 ? t('usedBy', { count: r.usedBy }) : t('notUsed')}</span> },
-    ...(translations ? [{ key: 'languages', header: t('columns.languages'), width: 'w-56', render: (r: RowView) => languageChips(r) }] : []),
+    ...(translations ? [{ key: 'languages', header: t('columns.languages'), className: 'whitespace-nowrap', render: (r: RowView) => languageChips(r) }] : []),
     ...(canWrite
       ? [
           {
             key: 'order',
             header: <span className="sr-only">{t('columns.order')}</span>,
-            width: 'w-28',
-            // Always present (no layout jump); the buttons show only while the whole list is in view.
-            render: (r: RowView) => (canMove ? <span className="-my-2.5 flex items-center">{moveButtons(r, rows.indexOf(r))}</span> : null),
+            width: 'w-14',
+            // Always present (no layout jump); the grip shows only while the whole list is in view.
+            render: (r: RowView) => (canMove ? <span className="-my-2.5 flex items-center">{gripFor(r, rows.indexOf(r))}</span> : null),
           },
         ]
       : []),
   ]
   const toolbarFilters: ListToolbarFilter[] = [
-    ...(modules.length > 1
-      ? [
-          {
-            key: 'module',
-            label: t('module'),
-            value: moduleId,
-            options: modules.map((m) => ({ value: m.id, label: m.label })),
-            onChange: (id: string) => {
-              const next = modules.find((m) => m.id === id)
-              if (next) void load(id, (next.kinds.includes(kind) ? kind : next.kinds[0]) as Kind)
-            },
-          },
-        ]
-      : []),
-    ...(kinds.length > 1
-      ? [{ key: 'kind', label: t('kindLabel'), value: kind, options: kinds.map((k) => ({ value: k, label: t(`${k}.tab`) })), onChange: (k: string) => void load(moduleId, k as Kind) }]
-      : []),
     ...(translations
       ? [
           {
@@ -271,6 +297,28 @@ export function TaxonomyManager({ projectSlug, modules, initial }: { projectSlug
       <PageHeader title={t('title')} actions={list.terms.length > 0 && !adding ? addControl : null} />
 
       {modules.length === 1 ? <p className="-mt-2 text-[0.9375rem] text-muted-foreground">{current.label}</p> : null}
+      {modules.length > 1 ? (
+        <div className="max-w-xs">
+          <FieldLabel htmlFor="taxonomy-module">{t('module')}</FieldLabel>
+          <Select
+            id="taxonomy-module"
+            controlSize="md"
+            value={moduleId}
+            disabled={loading}
+            onChange={(e) => {
+              const next = modules.find((m) => m.id === e.target.value)
+              if (next) void load(next.id, (next.kinds.includes(kind) ? kind : next.kinds[0]) as Kind)
+            }}
+          >
+            {modules.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+      ) : null}
+      {kinds.length > 1 ? <Tabs label={t('kindLabel')} idBase={idBase} value={kind} onChange={(k) => void load(moduleId, k as Kind)} items={kinds.map((k) => ({ id: k, label: t(`${k}.tab`) }))} /> : null}
       {!canWrite ? <p className="text-sm text-muted-foreground">{t('readOnly')}</p> : null}
 
       {adding && list.terms.length > 0 ? addControl : null}
@@ -291,6 +339,7 @@ export function TaxonomyManager({ projectSlug, modules, initial }: { projectSlug
         sheet={{ activeCount: chips.length, resultCount: rows.length, chips, onRemoveChip: () => setFilter('all') }}
       />
 
+      <div {...(kinds.length > 1 ? tabPanelProps(idBase, kind) : {})} className="space-y-5">
       {loading ? (
         <p className="text-[0.9375rem] text-muted-foreground" role="status">
           {t('loading')}
@@ -307,12 +356,12 @@ export function TaxonomyManager({ projectSlug, modules, initial }: { projectSlug
         <>
           {/* Computers: a table. */}
           <div className="hidden md:block">
-            <DataTable label={t('title')} rows={rows} columns={columns} rowKey={(r) => r.key} onRowClick={(r) => setOpenKey(r.key)} minWidth="min-w-[40rem]" />
+            <DataTable label={t('title')} rows={rows} columns={columns} rowKey={(r) => r.key} onRowClick={(r) => setOpenKey(r.key)} minWidth="min-w-[40rem]" rowProps={(r) => rowAttrs(r.key)} />
           </div>
           {/* Phones: rows. */}
           <ul className="flex flex-col gap-2 md:hidden" aria-label={t('title')}>
             {rows.map((row, n) => (
-              <ListRow key={row.key} onOpen={() => setOpenKey(row.key)} trailing={canMove ? moveButtons(row, n) : undefined}>
+              <ListRow key={row.key} onOpen={() => setOpenKey(row.key)} trailing={canMove ? gripFor(row, n) : undefined} rowProps={rowAttrs(row.key)}>
                 <span className="block max-w-full truncate text-[0.9375rem] leading-6 font-semibold text-foreground">{row.name}</span>
                 <span className="text-sm text-muted-foreground">{row.usedBy > 0 ? t('usedBy', { count: row.usedBy }) : t('notUsed')}</span>
                 {translations ? languageChips(row) : null}
@@ -321,6 +370,7 @@ export function TaxonomyManager({ projectSlug, modules, initial }: { projectSlug
           </ul>
         </>
       )}
+      </div>
 
       <TermSheet
         term={openTerm}

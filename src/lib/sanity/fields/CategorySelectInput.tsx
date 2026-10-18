@@ -59,14 +59,26 @@ export function CategorySelectInput(props: ArrayOfPrimitivesInputProps) {
       return
     }
     setLoading(true)
+    // ADR-033 Amendment J (dual-read): taxonomyTerm records replace the module's
+    // config list when the website has any (same rule as the dashboard and website).
     client
-      .fetch<ConfiguredCategory[] | null>(
-        `*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]
-          .moduleInstallations[moduleId == $moduleId][0]
-          .config.categories[]{ value, label, color }`,
+      .fetch<{ config?: ConfiguredCategory[] | null; terms?: { key?: string; label?: Record<string, string>; color?: string }[] | null } | null>(
+        `{
+          "config": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0]
+            .moduleInstallations[moduleId == $moduleId][0]
+            .config.categories[]{ value, label, color },
+          "terms": *[_type == "taxonomyTerm" && projectSlug == $projectSlug && module == $moduleId && kind == "category" && !(_id in path("drafts.**"))] | order(order asc, key asc){ key, label, color }
+        }`,
         { projectSlug, moduleId }
       )
-      .then((data) => setCategories(data ?? []))
+      .then((data) => {
+        const terms = (data?.terms ?? []).filter((t) => typeof t?.key === 'string' && t.key !== '')
+        setCategories(
+          terms.length > 0
+            ? terms.map((t) => ({ value: t.key as string, label: Object.fromEntries(Object.entries(t.label ?? {}).filter(([k, v]) => !k.startsWith('_') && typeof v === 'string')) as Record<string, string>, color: t.color }))
+            : (data?.config ?? [])
+        )
+      })
       .catch(() => setCategories([]))
       .finally(() => setLoading(false))
   }, [projectSlug, moduleId]) // eslint-disable-line react-hooks/exhaustive-deps

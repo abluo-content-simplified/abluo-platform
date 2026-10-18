@@ -21,6 +21,7 @@
  * service (`@/lib/lifecycle/service`), which also writes the Activity row
  * (D9) after the change succeeded.
  */
+import { categoryKeyVocabulary, moduleCategoryKeysGroq } from '@/lib/taxonomy/vocabulary'
 import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
@@ -263,11 +264,17 @@ export async function setPostCategories(
     throw new PostDraftError('invalid_value', 'Categories must be a short list.')
   }
   const keys = [...new Set(input.categories)]
-  const allowed = await client.fetch<string[] | null>(
-    `*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].moduleInstallations[moduleId == "blog"][0].config.categories[].value`,
+  // Dual-read (ADR-033 Amendment J): category term keys when the project has any, else the config list.
+  const vocab = await client.fetch<unknown>(
+    `{
+      "config": *[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].moduleInstallations[moduleId == "blog"][0].config.categories[].value,
+      "terms": ${moduleCategoryKeysGroq('blog')}
+    }`,
     { projectSlug: grant.projectSlug }
   )
-  if (!keys.every((k) => typeof k === 'string' && (allowed ?? []).includes(k))) {
+  const v = (Array.isArray(vocab) ? { config: vocab } : vocab) as { config?: string[] | null; terms?: string[] | null } | null
+  const allowed = categoryKeyVocabulary(v?.terms, v?.config)
+  if (!keys.every((k) => typeof k === 'string' && allowed.includes(k))) {
     throw new PostDraftError('invalid_value', 'Unknown category.')
   }
   const { published, draft } = await read(client, input.id, grant.projectSlug)

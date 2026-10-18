@@ -84,6 +84,13 @@ describe('setPostCategories', () => {
     await expect(setPostCategories(ctx(grant()), 'project-a', { id: 'p1', categories: ['hacked'] }, g.deps)).rejects.toMatchObject({ code: 'invalid_value' })
     expect(writes(g)).toBe(0)
   })
+  it('Amendment J: with term records the topics are checked against THEIR keys', async () => {
+    const f = fake({ p1: post('p1') })
+    f.client.fetch.mockImplementation((async (q: string) => (q.startsWith('count(') ? 1 : q.includes('config.categories') ? { config: ['cura'], terms: ['nuova'] } : null)) as never)
+    await setPostCategories(ctx(grant()), 'project-a', { id: 'p1', categories: ['nuova'] }, f.deps)
+    expect(f.ops).toContainEqual(['tx.patch', 'p1', { ifRevisionID: 'r-p1', set: { categories: ['nuova'] } }])
+    await expect(setPostCategories(ctx(grant()), 'project-a', { id: 'p1', categories: ['cura'] }, f.deps)).rejects.toMatchObject({ code: 'invalid_value' })
+  })
   it("another project's post is not_found", async () => {
     const f = fake({ p1: post('p1', { projectSlug: 'livener' }) })
     await expect(setPostCategories(ctx(grant()), 'project-a', { id: 'p1', categories: [] }, f.deps)).rejects.toMatchObject({ code: 'not_found' })

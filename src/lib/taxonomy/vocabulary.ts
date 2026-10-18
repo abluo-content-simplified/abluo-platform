@@ -88,10 +88,124 @@ export function catalogueCategoryTermsGroq(label: string): string {
  * (`tagVocabulary`).
  */
 export function catalogueTermsGroq(kind: 'category' | 'tag', label: string): string {
-  return `*[_type == "taxonomyTerm" && projectSlug == $projectSlug && module == "catalogue" && kind == "${kind}" && !(_id in path("drafts.**"))] | order(order asc, key asc){ key, order, color, "label": ${label} }`
+  return moduleTermsGroq('catalogue', kind, label)
 }
+
+/**
+ * The same subquery for any module (Events categories, …). The module id is
+ * interpolated into the GROQ text, so it must be a plain identifier.
+ */
+export function moduleTermsGroq(module: string, kind: 'category' | 'tag', label: string): string {
+  if (!/^[a-z][a-z0-9-]*$/.test(module)) throw new Error(`moduleTermsGroq: invalid module id "${module}"`)
+  return `*[_type == "taxonomyTerm" && projectSlug == $projectSlug && module == "${module}" && kind == "${kind}" && !(_id in path("drafts.**"))] | order(order asc, key asc){ key, order, color, "label": ${label} }`
+}
+
+/**
+ * The dual-read rule for any module's categories: term records replace the
+ * legacy config list entirely when the project has any, else the config list
+ * comes back untouched. (Same function as the Catalogue one — the rule is not
+ * Catalogue-specific.)
+ */
+export const categoryVocabulary = catalogueCategoryVocabulary
 
 /** The tag vocabulary: term records only (no config fallback — there never was a tag list). */
 export function tagVocabulary(terms: readonly (CategoryTermRow | null | undefined)[] | null | undefined): VocabularyEntry[] {
   return termsToEntries(Array.isArray(terms) ? terms : [])
+}
+
+// ── Posts and News (module ids `blog`, `news`) ────────────────────────────────
+// Same dual-read as Catalogue; blog categories are also public pages, so their
+// term records can be turned back into the config-entry shape the website reads.
+
+const MODULE_ID = /^[a-z][a-z0-9-]*$/
+
+/** Keys only — for validating a selection against the vocabulary. */
+export function moduleCategoryKeysGroq(module: string): string {
+  if (!MODULE_ID.test(module)) throw new Error(`moduleCategoryKeysGroq: invalid module id "${module}"`)
+  return `*[_type == "taxonomyTerm" && projectSlug == $projectSlug && module == "${module}" && kind == "category" && !(_id in path("drafts.**"))].key`
+}
+
+/**
+ * Dual-read for a list of valid keys: the term keys when the project has any,
+ * otherwise the legacy config list's keys (returned as read).
+ */
+export function categoryKeyVocabulary(termKeys: unknown, configKeys: readonly string[] | null | undefined): string[] {
+  const fromTerms = (Array.isArray(termKeys) ? termKeys : []).filter((k): k is string => typeof k === 'string' && k.trim() !== '')
+  return fromTerms.length > 0 ? fromTerms : [...(configKeys ?? [])]
+}
+
+/** A `taxonomyTerm` as the public config query projects it (raw maps, cleaned here). */
+export type RoutableTermRow = CategoryTermRow & {
+  description?: unknown
+  redirectFrom?: unknown
+  noindex?: unknown
+}
+
+/** A term in the shape of the legacy `ModuleConfigListEntry` (what the website reads). */
+export type RoutableConfigEntry = {
+  _key: string
+  value: string
+  label: Record<string, string>
+  color?: string
+  description?: Record<string, string>
+  redirectFrom?: string[]
+  noindex?: boolean
+}
+
+/** Keeps only non-empty text values; drops `_type`, `translationStatus` and nulls. */
+export function cleanTextMap(v: unknown): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return out
+  for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+    if (k.startsWith('_') || k === 'translationStatus') continue
+    if (typeof x === 'string' && x.trim() !== '') out[k] = x
+  }
+  return out
+}
+
+/**
+ * A term's `redirectFrom` is per language (`{ en: [...], it: [...] }`); a
+ * category URL is the same in every language, so the lists are merged into one
+ * de-duplicated list of retired keys. A flat list passes through.
+ */
+export function flattenRedirectKeys(v: unknown): string[] {
+  const out: string[] = []
+  const add = (x: unknown) => {
+    const s = typeof x === 'string' ? x.trim() : ''
+    if (s && !out.includes(s)) out.push(s)
+  }
+  if (Array.isArray(v)) v.forEach(add)
+  else if (v && typeof v === 'object') {
+    for (const [k, list] of Object.entries(v as Record<string, unknown>)) {
+      if (!k.startsWith('_') && Array.isArray(list)) list.forEach(add)
+    }
+  }
+  return out
+}
+
+/** Term rows → config entries, in display order. Empty when there is no usable row. */
+export function termsToConfigEntries(terms: readonly (RoutableTermRow | null | undefined)[] | null | undefined): RoutableConfigEntry[] {
+  const rows = Array.isArray(terms) ? terms : []
+  const byKey = new Map<string, RoutableTermRow>()
+  for (const r of rows) {
+    const k = typeof r?.key === 'string' ? r.key.trim() : ''
+    if (k && !byKey.has(k)) byKey.set(k, r as RoutableTermRow)
+  }
+  return termsToEntries(rows).map((e) => {
+    const row = byKey.get(e.value) as RoutableTermRow
+    const entry: RoutableConfigEntry = { _key: e.value, value: e.value, label: cleanTextMap(row.label) }
+    if (e.color) entry.color = e.color
+    const description = cleanTextMap(row.description)
+    if (Object.keys(description).length > 0) entry.description = description
+    const redirectFrom = flattenRedirectKeys(row.redirectFrom)
+    if (redirectFrom.length > 0) entry.redirectFrom = redirectFrom
+    if (row.noindex === true) entry.noindex = true
+    return entry
+  })
+}
+
+/** GROQ subquery: the module's category terms with every field the website needs (raw, cleaned by termsToConfigEntries). */
+export function moduleRoutableTermsGroq(module: string): string {
+  if (!MODULE_ID.test(module)) throw new Error(`moduleRoutableTermsGroq: invalid module id "${module}"`)
+  return `*[_type == "taxonomyTerm" && projectSlug == $projectSlug && module == "${module}" && kind == "category" && !(_id in path("drafts.**"))] | order(order asc, key asc){ key, order, color, label, description, redirectFrom, noindex }`
 }

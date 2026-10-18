@@ -27,6 +27,7 @@ import { TextArea, TextInput } from '@/components/app/ui/TextInput'
 import { SegmentedControl } from '@/components/app/ui/SegmentedControl'
 import { DateTimePicker } from '@/components/app/ui/DateTimePicker'
 import { Notice } from '@/components/app/ui/Notice'
+import { TermPicker } from '@/components/client/taxonomy/TermPicker'
 import { editingZone } from '@/components/app/lifecycle/zoned-time'
 
 const TEXT_FIELDS = ['title', 'shortDescription', 'location', 'registrationLabel'] as const
@@ -42,6 +43,8 @@ type Values = {
   eventStatus: EventSnapshot['eventStatus']
   attendanceMode: EventSnapshot['attendanceMode']
   place: string
+  /** ADR-033 Amendment J — category keys. */
+  categories: string[]
 }
 const CHOICES = ['visibility', 'eventStatus', 'attendanceMode', 'place'] as const
 
@@ -59,6 +62,7 @@ function valuesOf(e: EventSnapshot): Values {
     eventStatus: e.eventStatus,
     attendanceMode: e.attendanceMode,
     place: e.place,
+    categories: [...e.categories],
   }
 }
 
@@ -76,6 +80,7 @@ function diff(from: Values, to: Values, locales: string[]): Record<string, unkno
   if (from.end !== to.end) set.endDate = to.end || null
   if (from.url.trim() !== to.url.trim()) set.registrationUrl = to.url.trim()
   for (const f of CHOICES) if (from[f] !== to[f]) set[f] = to[f]
+  if (from.categories.join('\n') !== to.categories.join('\n')) set.categories = to.categories
   return set
 }
 
@@ -94,7 +99,7 @@ function ChoiceChips<V extends string>({ label, value, options, onChange, disabl
  * "Publish changes" updates the website. The rest of an event (full text,
  * programme, prices, photos, streaming) is kept as it is and edited by Abluo.
  */
-export function EventEditor({ projectSlug, initial, canWrite, canDelete }: { projectSlug: string; initial: EventSnapshot; canWrite: boolean; canDelete: boolean }) {
+export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddCategory = false }: { projectSlug: string; initial: EventSnapshot; canWrite: boolean; canDelete: boolean; /** Holds events.taxonomy.write: the category field offers "+ Add category" (and shows even with no category yet). */ canAddCategory?: boolean }) {
   const t = useTranslations('clientDashboard.events.editor')
   const te = useTranslations('clientDashboard.events.errors')
   const ui = useLocale()
@@ -376,6 +381,28 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete }: { pro
           </div>
         ) : null}
       </section>
+
+      {/* Category — ADR-033 Amendment J: chosen from Categories & Tags, new ones added on the spot */}
+      {initial.categoryOptions.length > 0 || initial.categories.length > 0 || (canAddCategory && canWrite) ? (
+        <section aria-labelledby="event-categories" className="space-y-3">
+          <h2 id="event-categories" className="text-[1.0625rem] leading-7 font-semibold text-foreground">
+            {t('categories.title')}
+          </h2>
+          <TermPicker
+            projectSlug={projectSlug}
+            module="events"
+            kind="category"
+            label={t('categories.title')}
+            terms={initial.categoryOptions}
+            value={values.categories}
+            onChange={(categories) => setValues((v) => ({ ...v, categories }))}
+            defaultLocale={d}
+            canAdd={canAddCategory && canWrite}
+            disabled={disabled}
+          />
+          <p className="text-sm leading-5 text-muted-foreground">{t('categories.helper')}</p>
+        </section>
+      ) : null}
 
       {/* Where — ADR-031: how people attend, and the place */}
       <section aria-labelledby="event-place" className="space-y-4">

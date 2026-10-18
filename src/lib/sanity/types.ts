@@ -826,10 +826,9 @@ export interface ScheduleItem {
 
 /** ADR-016 Phase B — mirrors BlogCategory exactly. Non-routable taxonomy. */
 export interface EventCategory {
-  _id: string
+  /** Stable key stored on the event (ADR-033 Amendment J: a taxonomyTerm key, else a config-list value). */
+  key: string
   title?: string
-  /** Locale-resolved slug — coalesced from $locale → $defaultLocale */
-  slug?: string
   color?: string
 }
 
@@ -850,7 +849,9 @@ export interface Event {
   place?: EventPlace | null
   /** Last edit (`_updatedAt`), for structured data and sync. */
   updatedAt?: string
-  /** ADR-016 Phase B — resolved from categories[]-> in GROQ */
+  /** Stable category keys as stored (projected by the listing queries). */
+  categoryKeys?: (string | { _ref?: string; _type?: string } | null)[]
+  /** Populated at render time from the term records / config list — never projected by GROQ. */
   categories?: EventCategory[]
   // Placement — Live Page
   featuredOnLivePage?: boolean

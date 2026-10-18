@@ -20,6 +20,8 @@
  *   3. Patch allowlist (EVENT_TEXT_FIELDS.<loc>, startDate, endDate,
  *      registrationUrl), site languages only, length limits; the cover must
  *      be a `mediaAsset` of this project.
+ *      `categories` (ADR-033 Amendment J) takes keys the site offers: its
+ *      taxonomyTerm records, else the old module-config list.
  *   4. `assertSingleSanityProject` right before every mutation; revision
  *      guards (`ifRevisionId` / transaction `ifRevisionID`) → "conflict".
  *   5. Opaque error codes (EventErrorCode).
@@ -35,6 +37,7 @@ import { audited, type ContentAuditWriter } from '@/lib/lifecycle/audit'
 import { lifecycleAction, snapshotOf as publishedSnapshotOf } from '@/lib/lifecycle/transition'
 import { coverThumbUrl } from '@/lib/api/post-drafts'
 import { slugFromTitle, uniqueSlug } from '@/lib/api/post-publish'
+import { EVENT_VOCABULARY_QUERY, eventCategoryOptions, type EventCategoryOption, type RawEventVocabulary } from '@/lib/modules/events/categories'
 
 export const EVENT_READ_PERMISSION = 'events.event.read'
 export const EVENT_WRITE_PERMISSION = 'events.event.write'
@@ -75,6 +78,8 @@ const isChoiceField = (f: string): f is ChoiceField => Object.prototype.hasOwnPr
  * `venue:<id>` (a saved venue of this project).
  */
 export type EventPlaceToken = string
+/** An event can carry this many categories at most. */
+const MAX_EVENT_CATEGORIES = 50
 const PLACE_TOKEN = /^(location:[a-z0-9_-]{1,64}|venue:[A-Za-z0-9][A-Za-z0-9._-]{0,127})$/
 
 export type EventPlaceOptions = {
@@ -354,9 +359,13 @@ export type EventSnapshot = {
   attendanceMode: (typeof EVENT_CHOICE_FIELDS.attendanceMode)[number]
   place: EventPlaceToken
   placeOptions: EventPlaceOptions
+  /** ADR-033 Amendment J — the stored category keys (text keys only), in the order stored. */
+  categories: string[]
+  /** The categories to choose from: the project's term records, else the old config list. */
+  categoryOptions: EventCategoryOption[]
 }
 
-function snapshotOf(id: string, doc: Doc, draft: Doc | undefined, published: Doc | undefined, site: EventSite, cover: EventCover | null, now: Date, placeOptions: EventPlaceOptions = { locations: [], venues: [] }): EventSnapshot {
+function snapshotOf(id: string, doc: Doc, draft: Doc | undefined, published: Doc | undefined, site: EventSite, cover: EventCover | null, now: Date, placeOptions: EventPlaceOptions = { locations: [], venues: [] }, categoryOptions: EventCategoryOption[] = []): EventSnapshot {
   const slug = (published?.slug as Record<string, { current?: unknown }> | undefined)?.[site.defaultLocale]?.current
   const nonEmpty = (v: unknown) => (Array.isArray(v) ? v.length > 0 : v != null && typeof v === 'object' ? Object.keys(v).some((k) => !k.startsWith('_')) : false)
   return {
@@ -381,7 +390,21 @@ function snapshotOf(id: string, doc: Doc, draft: Doc | undefined, published: Doc
     attendanceMode: choice(doc, 'attendanceMode'),
     place: placeTokenOf(doc.place),
     placeOptions,
+    categories: categoryKeysOfDoc(doc),
+    categoryOptions,
   }
+}
+
+/** The stored category keys of an event: text entries only (a legacy reference entry is not a key). */
+export function categoryKeysOfDoc(doc: Record<string, unknown>): string[] {
+  const raw = Array.isArray(doc.categories) ? doc.categories : []
+  return Array.from(new Set(raw.filter((k): k is string => typeof k === 'string' && k !== '')))
+}
+
+/** The categories an event can be filed under (term records, else the old config list). */
+async function readCategoryOptions(client: Client, projectSlug: string): Promise<EventCategoryOption[]> {
+  const row = await client.fetch<RawEventVocabulary>(EVENT_VOCABULARY_QUERY, { projectSlug })
+  return eventCategoryOptions(row)
 }
 
 function choice<F extends ChoiceField>(doc: Doc, field: F): (typeof EVENT_CHOICE_FIELDS)[F][number] {
@@ -444,11 +467,12 @@ export async function getEvent(ctx: TenantAuthorizationContext, projectId: strin
   const doc = draft ?? published
   if (!doc) notFound()
   const site = await readSite(client, grant.projectSlug)
-  const [cover, placeOptions] = await Promise.all([
+  const [cover, placeOptions, categoryOptions] = await Promise.all([
     readCover(client, grant.projectSlug, doc.heroImage),
     readPlaceOptions(client, grant.projectSlug, site.defaultLocale),
+    readCategoryOptions(client, grant.projectSlug),
   ])
-  return snapshotOf(id, doc, draft, published, site, cover, (deps.now ?? (() => new Date()))(), placeOptions)
+  return snapshotOf(id, doc, draft, published, site, cover, (deps.now ?? (() => new Date()))(), placeOptions, categoryOptions)
 }
 
 // ── Open / create ─────────────────────────────────────────────────────────────
@@ -544,6 +568,7 @@ export async function patchEventDraft(
       path === 'endDate' ||
       path === 'registrationUrl' ||
       path === 'place' ||
+      path === 'categories' ||
       isChoiceField(path) ||
       (field in EVENT_TEXT_FIELDS && !!locale && rest.length === 0)
     if (!ok) throw new EventError('invalid_field', `Field "${path}" cannot be changed here.`)
@@ -583,6 +608,19 @@ export async function patchEventDraft(
       const allowed = EVENT_CHOICE_FIELDS[path] as readonly string[]
       if (typeof value !== 'string' || !allowed.includes(value)) throw new EventError('invalid_value', `"${path}" is not an allowed value.`)
       set[path] = value
+      continue
+    }
+    if (path === 'categories') {
+      if (!Array.isArray(value) || value.length > MAX_EVENT_CATEGORIES || !value.every((k) => typeof k === 'string' && k.length > 0 && k.length <= 64)) {
+        throw new EventError('invalid_value', 'Unknown category.')
+      }
+      const keys = Array.from(new Set(value as string[]))
+      // Only categories this site offers; one the event already carries may stay (e.g. its category was since removed).
+      const stored = new Set(categoryKeysOfDoc(draft))
+      const offered = new Set((await readCategoryOptions(client, grant.projectSlug)).map((o) => o.value))
+      if (!keys.every((k) => offered.has(k) || stored.has(k))) throw new EventError('invalid_value', 'Unknown category.')
+      if (keys.length) set.categories = keys
+      else unset.push('categories')
       continue
     }
     if (path === 'place') {
