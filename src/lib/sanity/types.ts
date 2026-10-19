@@ -986,6 +986,15 @@ export interface Post {
   /** ADR-022 §6 — optional gallery shown below the article text. */
   gallery?: Gallery | null
   galleryLayout?: 'grid' | 'featured' | 'rows' | 'carousel' | null
+  /** ADR-037 D5 — public FAQ sets (FAQ_SET_FIELDS), in the editor's order. */
+  faqSets?: (FaqSetData | null)[] | null
+  /** Stored references, public or not — decides the legacy fallback. */
+  faqSetCount?: number | null
+  /** Request language only; empty = the dictionary default heading. */
+  faqTitle?: string | null
+  faqSubtitle?: string | null
+  /** Imported Hoffmann faq[] (legacy), request language only. */
+  legacyFaq?: FaqLegacyItem[] | null
   seoTitle?: string
   seoDescription?: string
   seoImage?: ResolvedImage
@@ -1351,7 +1360,40 @@ export interface FAQSection {
    * sections render unchanged. See src/lib/headline-accent.tsx.
    */
   headlineAccent?: 'none' | 'lastWord' | 'lastWordEachLine' | 'all' | null
+  /** ADR-037 D5 — optional line under the title. */
+  subtitle?: string | null
+  /** ADR-037 D5 — public FAQ sets (FAQ_SET_FIELDS), in the editor's order. */
+  faqSets?: (FaqSetData | null)[] | null
+  /** Stored references, public or not — decides the legacy fallback. */
+  faqSetCount?: number | null
+  /** With several sets, each set's title heads its group (default on). */
+  showSetTitles?: boolean | null
+  /** DEPRECATED inline questions — read only when no set is chosen. */
   items?: FAQItem[]
+}
+
+/** One FAQ set as FAQ_SET_FIELDS projects it (ADR-037). */
+export interface FaqSetData {
+  _id: string
+  projectSlug?: string | null
+  /** Public title in the request language only (no fallback). */
+  title?: string | null
+  items?: FaqEntryData[] | null
+}
+
+export interface FaqEntryData {
+  _key: string
+  /** Request language only (no fallback). */
+  question?: string | null
+  /** Restricted Portable Text in the request language only, links dereferenced. */
+  answer?: PortableTextBlock[] | null
+}
+
+/** A legacy faqItem read in the request language only. */
+export interface FaqLegacyItem {
+  _key: string
+  question?: string | null
+  answer?: string | null
 }
 
 export interface ContactSection {

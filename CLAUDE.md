@@ -295,6 +295,15 @@ Galleries are the Gallery **module** (`src/lib/modules/gallery/`), not platform 
 - **`photoGallerySection` is module-gated.** A project that shows a gallery needs the `gallery` installation, or the section stops rendering.
 - One projection (`GALLERY_FIELDS` in queries.ts) and one server entry point (`GalleryPlacement`) serve every placement.
 
+### FAQs (ADR-037)
+
+FAQs are the FAQ **module** (`src/lib/modules/faq/`): a library of `faqSet` documents (questions plain text, answers restricted rich text `faqAnswerText` with the shared `bodyLinkAnnotation`). Placements reference sets, never copy them. Rules that are easy to break:
+
+- **One field, one renderer, one projection.** Placements add `faqSetsField()`; questions render through `FaqPlacement`; sets are read with `FAQ_SET_FIELDS` (queries.ts). Which questions show is decided by `placementFaqGroups()` (`src/lib/faq/items.ts`) — the page and the JSON-LD both use it.
+- **No language fallback for items.** A question shows in a language only when its question AND answer exist there.
+- **One `FAQPage` per URL** (`buildFaqPageSchema`), merged from every rendered placement, de-duplicated.
+- **`faqSection` is module-gated.** A project that shows FAQs needs the `faq` installation (migration 007).
+
 ### Rule
 
 Animations belong to section components. Sanity stores content — not timing, easing, motion, or animation logic.
@@ -324,7 +333,7 @@ A module owns: document types, editorial collections, filtering logic, permissio
 | Hero Section | Inline content — platform section template |
 | Blog Listing Section | Renders content from the Blog Module |
 | Events Section | Renders content from the Events Module |
-| FAQ Section | Inline FAQs or content from a future FAQ Module |
+| FAQ Section | Renders FAQ sets from the FAQ Module (ADR-037); deprecated inline items only until migration 008 |
 | Team Section | Inline team members or content from a future Team Module |
 | Photo Gallery Section | Renders galleries from the Gallery Module (ADR-022) — composes several, tabs, lightbox |
 

@@ -6,15 +6,18 @@ import { fetchDesignSystemById } from '@/lib/sanity/client'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
 import { FeaturedEventBlock } from '@/components/events/FeaturedEventBlock'
 import { SectionContainer } from '@/components/layout/SectionContainer'
-import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, FAQSection as FAQSectionType, SupportedLocale, DesignSystem, Event } from '@/lib/sanity/types'
+import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, SupportedLocale, DesignSystem, Event } from '@/lib/sanity/types'
 import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
+import { collectSectionFaqItems, faqJsonLdLinks } from '@/lib/faq/collect'
+import { isSectionTypeAvailable } from '@/lib/modules/sections'
 import { isProduction, isDev } from '@/lib/deployment'
 import { ogImageUrl, imageUrl } from '@/lib/sanity/image'
 import { ogLocale } from '@/lib/seo/og-locale'
 import { canonicalOrigin, canonicalUrl, hreflangAlternates, seoAlternates } from '@/lib/seo/canonical'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
 import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
+import { siteBasePath } from '@/lib/sanity/href'
 
 export const dynamic = 'force-dynamic'
 
@@ -155,9 +158,12 @@ export default async function WebsitePage({ params }: PageProps) {
 
   await hydrateSections(homePage.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig })
 
-  const faqSection = homePage.sections?.find(
-    (s): s is FAQSectionType => s._type === 'faqSection'
-  ) ?? null
+  // ADR-037 D7 — one FAQPage from every FAQ section this page renders (none
+  // when the FAQ module is not installed: the sections do not render either).
+  const faqItems = collectSectionFaqItems(homePage.sections, {
+    available: isSectionTypeAvailable('faqSection', enabledModuleIds),
+    links: faqJsonLdLinks({ locale, siteBase: siteBasePath(locale, tenantId, hostScoped), origin: canonicalOrigin(siteConfig?.customDomain) }),
+  })
 
   // Split sections so the featured event lands between the hero and the rest.
   // Hero types are always the first section; everything else follows.
@@ -171,7 +177,7 @@ export default async function WebsitePage({ params }: PageProps) {
     <>
       <JsonLd
         siteConfig={siteConfig}
-        faqSection={faqSection}
+        faqItems={faqItems}
         locale={locale}
         tenantId={tenantId}
         pathSegments={[]}

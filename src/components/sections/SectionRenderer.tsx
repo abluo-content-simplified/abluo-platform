@@ -19,7 +19,6 @@ import { MediaContentSection } from '@/components/sections/MediaContentSection'
 import { TreatmentsSection } from '@/components/sections/TreatmentsSection'
 import { TeamSection } from '@/components/sections/TeamSection'
 import { TextSection } from '@/components/sections/TextSection'
-import { FAQSection } from '@/components/sections/FAQSection'
 import { ContactSection } from '@/components/sections/ContactSection'
 import { FormSection } from '@/components/sections/FormSection'
 import { FormOverlayButtonSection } from '@/components/sections/FormOverlayButtonSection'
@@ -465,8 +464,7 @@ export function SectionRenderer({
       return <TeamSection section={section} surface={surface} designSystem={designSystem} locale={locale} />
     case 'textSection':
       return <TextSection section={section} surface={surface} designSystem={designSystem} />
-    case 'faqSection':
-      return <FAQSection section={section} surface={surface} designSystem={designSystem} />
+    // faqSection is owned by the FAQ module (ADR-037) — rendered through SECTION_MAP above.
     case 'contactSection':
       return <ContactSection section={section} surface={surface} designSystem={designSystem} siteConfig={siteConfig} moduleConfig={moduleConfig} locale={locale} tenantSlug={tenantSlug} />
     case 'formSection':

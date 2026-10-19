@@ -61,7 +61,7 @@ const loc = (field: string) =>
  * plain text when the target is missing, unpublished or untranslated.
  * Everything else in the body passes through untouched (`...`).
  */
-const locBody = (field: string) => /* groq */ `(${loc(field)})[]{
+const bodyWithLinks = (expr: string) => /* groq */ `(${expr})[]{
     ...,
     markDefs[]{
       ...,
@@ -69,11 +69,17 @@ const locBody = (field: string) => /* groq */ `(${loc(field)})[]{
         "internalTarget": internal->{
           _type, pageType, projectSlug,
           "slug": slug[$locale].current,
-          "live": ${publicFilterForAnyType()}
+          "live": ${publicFilterForAnyType()},
+          // ADR-037 D12 — catalogue items and collections: whether the target
+          // has its own page, and the enabled installation's public segment
+          // (null when the Catalogue module is not installed or switched off).
+          hasPage,
+          "segment": select(string::startsWith(_type, "catalogue") => *[_type == "project" && projectSlug == $projectSlug][0].moduleInstallations[moduleId == "catalogue" && enabled != false][0].config.publicSegment)
         }
       }
     }
   }`
+const locBody = (field: string) => bodyWithLinks(loc(field))
 
 // hotspot / crop fall back to the Media Library asset's (ADR-022: focal points
 // live on mediaAsset.image) — a section image is a bare asset reference, so the
@@ -385,6 +391,36 @@ const GALLERY_FIELDS = /* groq */ `
         }
 `
 
+// ADR-037 D6 — the ONE projection of an FAQ set, for every placement (FAQ
+// section, blog post, later events). No language fallback for items: each
+// question and answer is read in the request language only, and an item
+// missing either is dropped in TypeScript (src/lib/faq/items.ts), so a page
+// never mixes languages and the FAQPage JSON-LD never carries the wrong one.
+// Answers are restricted rich text whose internal links are dereferenced the
+// same way as article bodies (plain text when the target is not public).
+// The set title follows the same no-fallback rule.
+// (No backticks in these comments: this is a JS template literal.)
+export const FAQ_SET_FIELDS = /* groq */ `
+        _id,
+        projectSlug,
+        "title": title[$locale],
+        items[] {
+          _key,
+          "question": question[$locale],
+          "answer": ${bodyWithLinks('answer[$locale]')}
+        }
+`
+
+/** A placement's sets: published, not archived, in the editor's order (ADR-037 D3, D6). */
+// faqSetCount counts the STORED references (public or not): a placement that
+// has chosen sets never falls back to its legacy inline questions, even while
+// those sets are drafts or archived (src/lib/faq/items.ts, placementFaqSource).
+// The trailing projectSlug filter keeps a hand-edited reference to another
+// website's set from rendering here (Studio pickers already list only this
+// project's sets); missing references drop out with it.
+const FAQ_SETS = /* groq */ `"faqSets": (faqSets[${publicFilterFor('faqSet', '@->')}]->)[projectSlug == $projectSlug]{ ${FAQ_SET_FIELDS} },
+      "faqSetCount": count(faqSets)`
+
 export const PAGE_SECTIONS_PROJECTION = /* groq */ `
     sections[] {
       _type,
@@ -446,6 +482,10 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
         "question": ${loc('question')},
         "answer": ${loc('answer')},
       },
+      // faqSection (ADR-037 D5) — referenced sets, read before the legacy
+      // inline items above; the section's own subtitle is the shared key.
+      ${FAQ_SETS},
+      showSetTitles,
       showMap, mapHeight, mapTheme,
       // contactSection message button (overlay) — reuses the form projection
       // TENANT-SCOPED — see scopedFormDefinition above.
@@ -1169,6 +1209,13 @@ export const postBySlugQuery = /* groq */ `
     // ADR-022 §6 — optional gallery below the text (Gallery module).
     "gallery": select(${publicFilterFor('gallery', 'gallery->')} => gallery->{ ${GALLERY_FIELDS} }),
     galleryLayout,
+    // ADR-037 D5 — FAQ sets below the text, after the gallery. Heading in the
+    // request language only (empty = the dictionary default); the imported
+    // legacy faq[] is read, also without fallback, only when no set is chosen.
+    ${FAQ_SETS},
+    "faqTitle": faqTitle[$locale],
+    "faqSubtitle": faqSubtitle[$locale],
+    "legacyFaq": faq[]{ _key, "question": question[$locale], "answer": answer[$locale] },
     // The post's call-to-action choice ({ mode, ref }); resolved against
     // postCallToActionsQuery by resolvePostCta (src/lib/blog/post-cta.ts).
     cta { mode, ref },
@@ -1863,6 +1910,10 @@ export const homePageQuery = /* groq */ `
         "question": ${loc('question')},
         "answer": ${loc('answer')},
       },
+      // faqSection (ADR-037 D5) — referenced sets, read before the legacy
+      // inline items above; the section's own subtitle is the shared key.
+      ${FAQ_SETS},
+      showSetTitles,
       showMap, mapHeight, mapTheme,
       // contactSection message button (overlay) — reuses the form projection
       // TENANT-SCOPED — see scopedFormDefinition above.

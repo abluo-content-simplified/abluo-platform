@@ -23,10 +23,15 @@
  */
 import { GENERATED_HOST_ROUTES } from '@/lib/tenancy/generated/route-config'
 import { normalizeHref } from '@/lib/client/normalize-blocks'
+import { catalogueNavPath } from '@/lib/modules/catalogue/nav-target'
+import { CATALOGUE_LINK_TARGET_TYPES, type LinkTargetType } from './target-types'
 
-/** Document types a body link may reference. Mirrors the Studio schema (`localizedPortableText` link). */
-export const LINK_TARGET_TYPES = ['page', 'post', 'newsArticle', 'event'] as const
-export type LinkTargetType = (typeof LINK_TARGET_TYPES)[number]
+/**
+ * Document types the dashboard link search offers. The full list a stored link
+ * may reference (catalogue items and collections too, ADR-037 D12) is
+ * `BODY_LINK_TARGET_TYPES` in ./target-types — the schema's own list.
+ */
+export { LINK_TARGET_TYPES, BODY_LINK_TARGET_TYPES, type LinkTargetType, type BodyLinkTargetType } from './target-types'
 
 /** Route segments of the module detail pages (folders under `(website)/[tenant]/`). */
 const ROUTE_PREFIX: Record<Exclude<LinkTargetType, 'page'>, string> = {
@@ -83,6 +88,10 @@ export type InternalLinkTarget = {
   projectSlug?: string | null
   /** Published and not expired (posts / news / events); pages are always live. */
   live?: boolean | null
+  /** Catalogue item / collection only: whether it has its own page (ADR-033). */
+  hasPage?: boolean | null
+  /** Catalogue only: the enabled installation's public segment; null when not installed. */
+  segment?: string | null
 }
 
 /**
@@ -95,6 +104,11 @@ export function internalTargetPath(target: InternalLinkTarget | null | undefined
   if (target._type === 'page') {
     if (target.pageType === 'home') return ''
     return target.slug ? target.slug.replace(/^\/+|\/+$/g, '') : null
+  }
+  // ADR-037 D12 — catalogue items and collections, through the module's own
+  // segment. Not installed, no page or no slug in this language → null.
+  if ((CATALOGUE_LINK_TARGET_TYPES as readonly string[]).includes(target._type ?? '')) {
+    return catalogueNavPath({ type: target._type, hasPage: target.hasPage, slug: target.slug, segment: target.segment })
   }
   const prefix = ROUTE_PREFIX[target._type as keyof typeof ROUTE_PREFIX]
   return prefix && target.slug ? `${prefix}/${target.slug}` : null

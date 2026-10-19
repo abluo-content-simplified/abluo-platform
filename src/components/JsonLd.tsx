@@ -1,10 +1,15 @@
-import type { WebsiteSiteConfig, FAQSection } from '@/lib/sanity/types'
+import type { WebsiteSiteConfig } from '@/lib/sanity/types'
 import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
 import { safeJsonLd } from '@/lib/seo/safe-json-ld'
+import { buildFaqPageSchema, type FaqJsonLdItem } from '@/lib/faq/jsonld'
 
 interface Props {
   siteConfig: WebsiteSiteConfig | null
-  faqSection?: FAQSection | null
+  /**
+   * Every FAQ item rendered on this page, in render order (ADR-037 D7 —
+   * collectSectionFaqItems). Merged into ONE FAQPage, de-duplicated.
+   */
+  faqItems?: FaqJsonLdItem[]
   locale: string
   tenantId?: string
   /** Public path segments below the locale, for the page being rendered. */
@@ -47,7 +52,7 @@ interface Props {
 // `tenantId` stays in the props for call-site symmetry with the rest of this
 // route, and because a BreadcrumbList will need it. It is deliberately absent
 // from every URL emitted below.
-export function JsonLd({ siteConfig, faqSection, locale, pathSegments = [], logoUrl }: Props) {
+export function JsonLd({ siteConfig, faqItems = [], locale, pathSegments = [], logoUrl }: Props) {
   const origin = canonicalOrigin(siteConfig?.customDomain)
   // Same URL the canonical tag names — no project segment. If these two
   // disagree, the entity is attached to a page Google is not indexing.
@@ -107,21 +112,9 @@ export function JsonLd({ siteConfig, faqSection, locale, pathSegments = [], logo
   // longer wins a snippet for most tenants. It is emitted anyway because it is
   // the cleanest question-and-answer structure an answer engine can consume,
   // and answer engines are the audience that still reads it.
-  const faqItems = faqSection?.items?.filter((i) => i.question && i.answer) ?? []
-  const faqSchema =
-    faqItems.length > 0
-      ? {
-          '@context': 'https://schema.org',
-          '@type': 'FAQPage',
-          ...(url && { '@id': `${url}#faq` }),
-          ...(origin && { isPartOf: { '@id': `${origin}#website` } }),
-          mainEntity: faqItems.map((item) => ({
-            '@type': 'Question',
-            name: item.question,
-            acceptedAnswer: { '@type': 'Answer', text: item.answer },
-          })),
-        }
-      : null
+  // ADR-037 D7: one FAQPage per URL, from every FAQ the page renders (sets
+  // and legacy inline questions alike), only those visible in this language.
+  const faqSchema = buildFaqPageSchema({ items: faqItems, url, origin })
 
   // `undefined` values are dropped by JSON.stringify; this keeps the emitted
   // JSON free of null-valued keys without each spread having to guard itself.

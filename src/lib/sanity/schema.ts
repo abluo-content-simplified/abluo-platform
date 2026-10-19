@@ -9,6 +9,7 @@ import { PLATFORM_LOCALES, LOCALE_CODES } from '@/lib/i18n/locales'
 import { AMAZON_MARKETPLACE_IDS } from '@/lib/affiliate/amazon-marketplaces'
 import { LOCATION_KEY_PATTERN } from '@/lib/maps/locations'
 import { LocationPinInput } from '@/lib/sanity/fields/LocationPinInput'
+import { bodyLinkAnnotation } from '@/lib/sanity/fields/body-link'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField, headlineAccentField, BACKGROUND_SURFACE_OPTIONS } from '@/lib/sanity/fields/shared'
 import {
   VentureListWireframe,
@@ -116,53 +117,8 @@ const localizedTextType = defineType({
   ],
 })
 
-// Body link (ADR-025 · links round 2). Replaces Sanity's default link
-// annotation with the same `href` plus:
-//   - `internal`: a reference to a page / post / news item / event of the SAME
-//     project (filtered by the document's projectSlug) — resolved to a URL in
-//     the page's language by the website, plain text if the target is gone;
-//   - `blank`: optional new-tab OVERRIDE. Empty = automatic (external sites in
-//     a new tab, the site's own pages in the same tab) — src/lib/links/link-target.ts.
-// Weak reference: deleting or unpublishing a page never fails because a post
-// links to it; the website just stops linking.
-const bodyLinkAnnotation = defineArrayMember({
-  name: 'link',
-  type: 'object',
-  title: 'Link',
-  fields: [
-    defineField({
-      name: 'href',
-      title: 'URL',
-      type: 'url',
-      description: 'An external address, mailto:, tel: or a site path starting with "/". Leave empty when linking to a page below.',
-      validation: (Rule) => Rule.uri({ scheme: ['http', 'https', 'mailto', 'tel'], allowRelative: true }),
-    }),
-    defineField({
-      name: 'internal',
-      title: 'Page on this site',
-      type: 'reference',
-      weak: true,
-      to: [{ type: 'page' }, { type: 'post' }, { type: 'newsArticle' }, { type: 'event' }],
-      options: {
-        filter: ({ document }: { document: Record<string, unknown> }) => {
-          const projectSlug = typeof document?.projectSlug === 'string' ? document.projectSlug : undefined
-          if (!projectSlug) return { filter: '_id == "@@no-project-selected@@"' }
-          return { filter: 'projectSlug == $projectSlug', params: { projectSlug } }
-        },
-      },
-    }),
-    defineField({
-      name: 'blank',
-      title: 'Open in a new tab',
-      type: 'boolean',
-      description: 'Leave unset for automatic: other websites open in a new tab, pages of this site in the same tab.',
-    }),
-  ],
-  validation: (Rule) =>
-    Rule.custom((value?: { href?: string; internal?: unknown }) =>
-      value?.href && value?.internal ? 'Use either a URL or a page on this site, not both.' : true
-    ),
-})
+// Body link annotation — moved to @/lib/sanity/fields/body-link (ADR-037), shared
+// with the FAQ module's answer text.
 
 const localizedPortableTextType = defineType({
   name: 'localizedPortableText',
@@ -1951,19 +1907,7 @@ const contactSectionType = defineType({
   },
 })
 
-const faqItemType = defineType({
-  name: 'faqItem',
-  title: 'FAQ Item',
-  type: 'object',
-  fields: [
-    defineField({ name: 'question', title: 'Question', type: 'localizedString' }),
-    defineField({ name: 'answer', title: 'Answer', type: 'localizedText' }),
-  ],
-  preview: {
-    select: { title: 'question.it' },
-    prepare: ({ title }) => ({ title: title ?? 'FAQ Item' }),
-  },
-})
+// faqItem moved to the FAQ module (src/lib/modules/faq/schema.ts, ADR-037).
 
 // ─── Metrics Section ──────────────────────────────────────────────────────────
 
@@ -3051,46 +2995,8 @@ const heroStatType = defineType({
 })
 
 
-const faqSectionType = defineType({
-  name: 'faqSection',
-  title: 'FAQ Section',
-  type: 'object',
-  fields: [
-    anchorIdField(),
-    defineField({
-      name: 'background',
-      title: 'Background Surface',
-      type: 'string',
-      options: {
-        list: [
-          { title: '⬜ Use Page Pattern', value: 'usePagePattern' },
-          { title: '⬜ Surface 1', value: 'surface1' },
-          { title: '⬜ Surface 2', value: 'surface2' },
-          { title: '🟦 Surface 3', value: 'surface3' },
-          { title: '🟢 Brand Surface', value: 'brandSurface' },
-          { title: '◻ Transparent', value: 'transparent' },
-          { title: '🌈 Gradient 1', value: 'gradient1' },
-          { title: '🌈 Gradient 2', value: 'gradient2' },
-          { title: '🔲 Glass', value: 'glass' },
-        ],
-      },
-      initialValue: 'usePagePattern',
-    }),
-    defineField({ name: 'eyebrow', title: 'Eyebrow Label', type: 'localizedString' }),
-    defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
-    headlineAccentField(),
-    defineField({
-      name: 'items',
-      title: 'Questions',
-      type: 'array',
-      of: [defineArrayMember({ type: 'faqItem' })],
-    }),
-  ],
-  preview: {
-    select: { title: 'title.it' },
-    prepare: ({ title }) => ({ title: title ?? 'FAQ', subtitle: 'FAQ Section' }),
-  },
-})
+// faqSection moved to the FAQ module (src/lib/modules/faq/schema.ts, ADR-037).
+// Type and field names are unchanged, so no stored document moves.
 
 // blogListingSection moved to src/lib/modules/blog/schema.ts (ADR-011 Phase D1)
 
@@ -5760,6 +5666,16 @@ export const initialValueTemplates = [
     }),
   },
   {
+    // FAQ module (ADR-037) — Content → FAQ Sets.
+    id: 'faqSetProjectOwned',
+    title: 'FAQ Set',
+    schemaType: 'faqSet',
+    parameters: [{ name: 'projectSlug', type: 'string', title: 'Project' }],
+    value: (params: any) => ({
+      projectSlug: params?.projectSlug,
+    }),
+  },
+  {
     id: 'postAuthorProjectOwned',
     title: 'Author',
     schemaType: 'postAuthor',
@@ -6004,8 +5920,6 @@ export const schemaTypes = [
   businessLocationType,
   siteLocationType,
   contactSectionType,
-  faqItemType,
-  faqSectionType,
   metricItemType,
   metricsSectionType,
   // ── Platform sections added alongside the icon primitive ──────────────────

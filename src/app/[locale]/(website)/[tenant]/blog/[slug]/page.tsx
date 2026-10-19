@@ -26,6 +26,7 @@ import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
 import { siteBasePath } from '@/lib/sanity/href'
 import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
 import { ArticleJsonLd } from '@/components/JsonLd'
+import { FaqPageJsonLd } from '@/components/faq/FaqPageJsonLd'
 import { getEnabledModuleIds } from '@/lib/modules/config'
 
 export const dynamic = 'force-dynamic'
@@ -150,6 +151,9 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
   const cpm = charsPerMinute(moduleConfig, 'blog')
   const enabledModuleIds = getEnabledModuleIds(moduleConfig)
   const showGallery = enabledModuleIds === null || enabledModuleIds.includes('gallery')
+  // ADR-037 D5 — a post's FAQs render only while the FAQ module is active;
+  // an unresolved module list fails open, like the gallery.
+  const showFaq = enabledModuleIds === null || enabledModuleIds.includes('faq')
 
   const [post, designSystem, customDomain] = await Promise.all([
     fetchForTenant<Post>(postBySlugQuery, {
@@ -221,6 +225,15 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
         datePublished={post.publishedAt}
         authorName={post.author?.name}
       />
+      {showFaq && (
+        <FaqPageJsonLd
+          post={post}
+          locale={locale}
+          siteBase={siteBase}
+          origin={canonicalOrigin(customDomain)}
+          pathSegments={['blog', post.slugMap?.[locale as SupportedLocale]?.current ?? slug]}
+        />
+      )}
       <PostArticle
         callToAction={
           <PostCallToAction tenantSlug={tenantId} locale={locale} defaultLocale={defaultLocale} cta={post.cta} />
@@ -233,6 +246,7 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
         backLabel={backLabel}
         backUrl={backUrl}
         showGallery={showGallery}
+        showFaq={showFaq}
       />
     </SlugMapProvider>
   )

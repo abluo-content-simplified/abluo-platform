@@ -182,6 +182,8 @@ export const MODULES_WITHOUT_TENANT_SURFACE: Readonly<Record<string, 'notYetBuil
   translate: 'adminOnly',
   // ADR-036 — the guide is written by Abluo in Studio; v1 has no client editing.
   'brand-hub': 'adminOnly',
+  // ADR-037 — slice 1 is Studio + website only; the FAQ Sets library screen is slice 3.
+  faq: 'notYetBuilt',
 }
 
 /** The single visibility check. Pure. */

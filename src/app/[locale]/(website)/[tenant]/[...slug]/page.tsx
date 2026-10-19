@@ -4,9 +4,11 @@ import { getEnabledModuleIds, type ProjectModuleConfig } from '@/lib/modules/con
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
 import { SectionRenderer, hydrateSections } from '@/components/sections/SectionRenderer'
-import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, FAQSection as FAQSectionType, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
+import type { WebsitePage, WebsiteSiteConfig, LocaleConfig, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
 import type { Metadata } from 'next'
 import { JsonLd } from '@/components/JsonLd'
+import { collectSectionFaqItems, faqJsonLdLinks } from '@/lib/faq/collect'
+import { isSectionTypeAvailable } from '@/lib/modules/sections'
 import { notFound, permanentRedirect } from 'next/navigation'
 import { SlugMapProvider } from '@/components/SlugMapContext'
 import { isProduction, isDev } from '@/lib/deployment'
@@ -263,15 +265,18 @@ export default async function WebsitePageRoute({ params }: PageProps) {
     }
   }
 
-  const faqSection = page.sections?.find(
-    (s): s is FAQSectionType => s._type === 'faqSection'
-  ) ?? null
+  // ADR-037 D7 — one FAQPage from every FAQ section this page renders (none
+  // when the FAQ module is not installed: the sections do not render either).
+  const faqItems = collectSectionFaqItems(page.sections, {
+    available: isSectionTypeAvailable('faqSection', enabledModuleIds),
+    links: faqJsonLdLinks({ locale, siteBase: siteBase, origin: canonicalOrigin(siteConfig?.customDomain) }),
+  })
 
   return (
     <SlugMapProvider slugMap={slugMap}>
       <JsonLd
         siteConfig={siteConfig}
-        faqSection={faqSection}
+        faqItems={faqItems}
         locale={locale}
         tenantId={tenantId}
         pathSegments={[slug]}

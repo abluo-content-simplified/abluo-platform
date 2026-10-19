@@ -2,6 +2,7 @@ import { defineType, defineField, defineArrayMember } from 'sanity'
 import { CategorySelectInput } from '@/lib/sanity/fields/CategorySelectInput'
 import { PUBLISHING_GROUP, publishingStatusField, publishOnField, unpublishOnField, archivedFields } from '@/lib/sanity/fields/publishing'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField } from '@/lib/sanity/fields/shared'
+import { faqSetsField } from '@/lib/modules/faq/fields'
 
 // ── Blog module — Sanity schema types ─────────────────────────────────────────
 //
@@ -21,6 +22,7 @@ import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField } from '@/
 //   post.categories             → blogCategory (same module, string ref)
 //   post.relatedEvent           → event (Events module, string ref — no TS import)
 //   post.gallery                → gallery (Gallery module, string ref — ADR-022 §6)
+//   post.faqSets                → faqSet (FAQ module, via faqSetsField — ADR-037 D5)
 //
 // ADR-011 Phase D1 — extracted from src/lib/sanity/schema.ts.
 
@@ -356,6 +358,7 @@ const postType = defineType({
     { name: 'content', title: 'Content', default: true },
     { name: 'media', title: 'Media' },
     { name: 'relations', title: 'Relations' },
+    { name: 'faq', title: 'FAQ' },
     { name: 'seo', title: 'SEO' },
     // ADR-032 A22 — every "when and how is this visible" field in one tab.
     PUBLISHING_GROUP,
@@ -446,6 +449,43 @@ const postType = defineType({
       },
       initialValue: 'grid',
       hidden: ({ document }) => !(document as { gallery?: unknown } | undefined)?.gallery,
+    }),
+    // ── FAQs (ADR-037 D5) ───────────────────────────────────────────────────
+    // References to FAQ sets of this website, shown below the text, after the
+    // gallery. One choice for all languages (the sets carry the translations);
+    // the heading belongs to the post, so one set can sit under different
+    // headings. Rendered only while the FAQ module is active for the website.
+    faqSetsField({
+      group: 'faq',
+      description: 'Optional. FAQ sets shown below the article, after the gallery. Manage them under Content → FAQ Sets.',
+    }),
+    defineField({
+      name: 'faqTitle',
+      title: 'FAQ title',
+      type: 'localizedString',
+      group: 'faq',
+      description: 'Optional. Empty = "Frequently Asked Questions" in the page’s language.',
+    }),
+    defineField({
+      name: 'faqSubtitle',
+      title: 'FAQ subtitle',
+      type: 'localizedText',
+      group: 'faq',
+      description: 'Optional. Shown under the FAQ title.',
+    }),
+    defineField({
+      // LEGACY (ADR-037 rollout step 1). The Hoffmann import (2026-08-28) stored
+      // a faq[] of faqItem on 14 posts + 1 draft with no field declared, so
+      // Studio showed an unknown field. Declared now so the data is typed;
+      // hidden and read-only, read by the website only when faqSets is empty.
+      // Migration 008 moves it into FAQ sets; removed at cleanup.
+      name: 'faq',
+      title: 'FAQ (imported — read only)',
+      type: 'array',
+      group: 'faq',
+      of: [defineArrayMember({ type: 'faqItem' })],
+      readOnly: true,
+      hidden: true,
     }),
     defineField({
       name: 'featuredVideo',

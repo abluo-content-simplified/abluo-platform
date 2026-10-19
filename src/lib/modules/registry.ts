@@ -6,6 +6,7 @@ import { liveSchemaTypes } from './live/schema'
 import { formsSchemaTypes } from './forms/schema'
 import { newsSchemaTypes } from './news/schema'
 import { gallerySchemaTypes } from './gallery/schema'
+import { faqSchemaTypes } from './faq/schema'
 import { catalogueSchemaTypes } from './catalogue/schema'
 import { brandHubSchemaTypes } from './brand-hub/schema'
 import { SEGMENT_REGEX_SOURCE } from './catalogue/segment'
@@ -165,8 +166,9 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
     dependencies: {
       requires: [],
       // blogListingSection filterMode 'byEvent' references the event type;
-      // post.gallery references the gallery type (ADR-022 §6). Both optional.
-      integratesWith: ['events', 'gallery'],
+      // post.gallery references the gallery type (ADR-022 §6); post.faqSets
+      // references faqSet (ADR-037 D5). All optional.
+      integratesWith: ['events', 'gallery', 'faq'],
     },
 
     dataStore: {
@@ -712,6 +714,94 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
     },
 
     changelog: 'V1.0.0 — ADR-022. gallery / galleryItem / photoGallerySection become a module; sections compose several galleries (tabs, All tab), focal points, fixed tile shapes, lightbox with deep links, six layouts.',
+  },
+
+  // ── FAQ ────────────────────────────────────────────────────────────────────
+  // ADR-037 — a library of reusable FAQ sets.
+  //
+  // The module owns the sets; placements (the FAQ section on a page, a blog
+  // post's FAQs, later an event's) only REFERENCE them, so editing a set
+  // updates every place that shows it. faqItem and faqSection moved here from
+  // schema.ts with their names unchanged.
+  //
+  // ⚠ ROLLOUT: faqSection is now module-gated. A project that shows an FAQ
+  // section must have the module installed BEFORE this code reaches its
+  // environment, or the section stops rendering. Migration
+  // 007-install-faq-module installs it where FAQs exist; run it first.
+  {
+    id: 'faq',
+    label: 'FAQ',
+    version: '1.0.0',
+    status: 'released',
+    category: 'content',
+
+    platformContract: {
+      collections: [
+        {
+          id: 'faq-module',
+          label: 'FAQ Sets',
+          items: [
+            {
+              id: 'faq-sets',
+              label: 'FAQ Sets',
+              schemaType: 'faqSet',
+              filter: `_type == "faqSet" && projectSlug == $slug`,
+              ordering: [{ field: 'internalName', direction: 'asc' as const }],
+              initialValueTemplate: 'faqSetProjectOwned',
+            },
+          ],
+        },
+      ],
+
+      sectionTypes: ['faqSection'],
+
+      schemaTypes: ['faqItem', 'faqAnswerText', 'faqEntry', 'faqSet', 'faqSection'],
+
+      schemaDefinitions: () => faqSchemaTypes,
+
+      permissions: [
+        {
+          id: 'faq.set.read',
+          label: 'View FAQ sets',
+          description: 'View and list FAQ sets, and see where they are used.',
+          defaultRoles: ['owner', 'editor', 'viewer'],
+        },
+        {
+          id: 'faq.set.write',
+          label: 'Create and edit FAQ sets',
+          description: 'Create, edit, reorder, duplicate, publish, archive and restore FAQ sets.',
+          defaultRoles: ['owner', 'editor'],
+        },
+        {
+          id: 'faq.set.delete',
+          label: 'Delete FAQ sets',
+          description: 'Permanently delete an archived or never-published FAQ set.',
+          defaultRoles: ['owner'],
+        },
+      ],
+
+      configSchema: [],
+
+      placement: {
+        surfaces: [
+          { kind: 'sections', description: 'FAQ section — one or more FAQ sets, in any page, with an accordion and FAQPage structured data.' },
+        ],
+        note: 'A blog post can also show FAQ sets below its text, after the gallery (Blog module, when both are active).',
+      },
+    },
+
+    publicContract: {},
+
+    dependencies: {
+      requires: [],
+      integratesWith: ['blog', 'events', 'translate'],
+    },
+
+    dataStore: {
+      primary: 'content',
+    },
+
+    changelog: 'V1.0.0 — ADR-037 slice 1. faqSet library (restricted rich-text answers), faqSection and blog posts reference sets, one merged FAQPage per URL.',
   },
 
   // ── WhatsApp ───────────────────────────────────────────────────────────────

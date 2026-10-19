@@ -9,6 +9,7 @@
  *
  *   post, newsArticle — 'required': no publishedAt = never public (unchanged).
  *   catalogue*        — 'optional' (ADR-033 D9, C1), as event and gallery.
+ *   faqSet            — 'optional' (ADR-037): a building block, no window.
  *   event, gallery    — 'optional': they carry no window fields yet (Phase 3),
  *                       so the rule reduces to "not archived" and every
  *                       existing document stays live with no migration.
@@ -30,6 +31,8 @@ export const LIFECYCLE_PUBLIC_RULES = {
   catalogueCollection: 'optional',
   catalogueOptionList: 'optional',
   cataloguePage: 'optional',
+  // ADR-037 D6/D8 — FAQ sets: published and not archived. No window (D2).
+  faqSet: 'optional',
 } as const satisfies Record<string, PublishedAtRule>
 
 export type LifecycleType = keyof typeof LIFECYCLE_PUBLIC_RULES

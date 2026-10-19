@@ -70,6 +70,7 @@ export default async function DraftPostPreviewPage({ params, searchParams }: Pag
   const cpm = charsPerMinute(moduleConfig, 'blog')
   const enabledModuleIds = getEnabledModuleIds(moduleConfig)
   const showGallery = enabledModuleIds === null || enabledModuleIds.includes('gallery')
+  const showFaq = enabledModuleIds === null || enabledModuleIds.includes('faq')
 
   const [post, designSystem] = await Promise.all([
     // The live page's projection over the draft itself (perspective "raw").
@@ -115,6 +116,7 @@ export default async function DraftPostPreviewPage({ params, searchParams }: Pag
         backLabel="Back to Home"
         backUrl={siteBase}
         showGallery={showGallery}
+        showFaq={showFaq}
       />
     </SlugMapProvider>
   )

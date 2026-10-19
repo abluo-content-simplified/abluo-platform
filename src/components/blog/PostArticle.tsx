@@ -10,6 +10,9 @@ import { resolveBodyLinks, siteHostsForProject } from '@/lib/links/link-target'
 import { PostCard } from '@/components/blog/PostCard'
 import { GalleryPlacement } from '@/components/gallery/GalleryPlacement'
 import { focalObjectPosition } from '@/lib/gallery/focal'
+import { FaqPlacement } from '@/components/faq/FaqPlacement'
+import { placementFaqGroups } from '@/lib/faq/items'
+import { getFaqMessages } from '@/lib/i18n/faq-messages'
 
 /**
  * The blog post article — everything between the site header and footer on a
@@ -29,6 +32,8 @@ export interface PostArticleProps {
   backUrl: string
   /** False when the Gallery module is off for this website. */
   showGallery: boolean
+  /** False when the FAQ module is off for this website (ADR-037 D5). Absent = off. */
+  showFaq?: boolean
   /** End-of-post call to action (rendered by the caller: `<PostCallToAction …/>`). */
   callToAction?: React.ReactNode
 }
@@ -42,6 +47,7 @@ export function PostArticle({
   backLabel,
   backUrl,
   showGallery,
+  showFaq = false,
   callToAction,
 }: PostArticleProps) {
   const coverSrc = imageUrl(post.coverImage, 1600)
@@ -55,6 +61,12 @@ export function PostArticle({
 
   const authorAvatarSrc = post.author?.avatar ? imageUrl(post.author.avatar, 80) : undefined
   const featuredVideoSrc = resolveEmbedUrl(post.featuredVideo?.youtubeUrl)
+  // ADR-037 D5 — the post's FAQ sets (else its imported legacy FAQ), only the
+  // items complete in this language. Nothing visible → no heading either.
+  const faqGroups = showFaq
+    ? placementFaqGroups({ faqSets: post.faqSets, faqSetCount: post.faqSetCount, legacyItems: post.legacyFaq })
+    : []
+  const faqHeading = post.faqTitle?.trim() || getFaqMessages(locale).defaultHeading
   return (
     <div style={{ backgroundColor: 'var(--color-background)' }}>
       <div className="mx-auto max-w-[780px] px-5 py-12 md:px-8">
@@ -208,6 +220,27 @@ export function PostArticle({
               locale={locale}
               designSystem={designSystem}
             />
+          </section>
+        )}
+
+        {/* ── FAQs (ADR-037 D5) ─────────────────────────────────────
+            Below the text, after the gallery. Rendered only while the FAQ
+            module is active for this website; the heading is the post's own
+            (empty = the localized default). */}
+        {faqGroups.length > 0 && (
+          <section className="mb-12" aria-label={faqHeading}>
+            <h2
+              className={`text-2xl font-semibold ${post.faqSubtitle?.trim() ? 'mb-3' : 'mb-6'}`}
+              style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text-primary)' }}
+            >
+              {faqHeading}
+            </h2>
+            {post.faqSubtitle?.trim() && (
+              <p className="text-base leading-relaxed mb-6" style={{ color: 'var(--color-text-secondary)' }}>
+                {post.faqSubtitle}
+              </p>
+            )}
+            <FaqPlacement groups={faqGroups} siteBase={siteBase} designSystem={designSystem} />
           </section>
         )}
 

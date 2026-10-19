@@ -5,7 +5,7 @@
 // the React components that render them — for module-owned sections only.
 //
 // Platform-owned sections (heroSection, contentSection, treatmentsSection,
-// teamSection, textSection, faqSection, contactSection, statementSection,
+// teamSection, textSection, contactSection, statementSection,
 // formSection, metricsSection, heroLiveCaptureSection, heroLensSection) are
 // NOT in this map. They remain in the SectionRenderer switch statements as
 // platform-managed registrations, consistent with the Sections vs Modules
@@ -41,6 +41,7 @@ import { newsSectionComponents } from './news/sections'
 import { eventsSectionComponents } from './events/sections'
 import { liveSectionComponents } from './live/sections'
 import { gallerySectionComponents } from './gallery/sections'
+import { faqSectionComponents } from './faq/sections'
 import { catalogueSectionComponents } from './catalogue/section-components'
 
 // ── Availability gating (ADR-016 Phase D) ──────────────────────────────────────
@@ -97,6 +98,7 @@ export const SECTION_MAP: SectionComponentMap = {
   ...eventsSectionComponents,
   ...liveSectionComponents,
   ...gallerySectionComponents,
+  ...faqSectionComponents,
   ...catalogueSectionComponents,
   // Future modules: spread their section component maps here.
 }
