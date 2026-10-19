@@ -7,6 +7,7 @@
  *   • "cta" (call to action) on every blog; skippable — with no calls to
  *     action on the site it explains where to set them up.
  *   • "gallery" only on sites with the Gallery module (`site.galleries` set).
+ *   • "faq" (ADR-037) right after it, only with the FAQ module and faq.set.read (`site.faqSets` set).
  *   • "promote" (S10) is not built yet; "done" is a screen, never a stored step.
  *   • "review" is the overview: once the first pass is over (the user reached
  *     "publish"), reopening a draft lands there; Edit opens one step and
@@ -25,6 +26,7 @@ export const WIZARD_STEP_ORDER: readonly WizardStep[] = [
   'languages',
   'cta',
   'gallery',
+  'faq',
   'preview',
   'publish',
   'promote',
@@ -35,13 +37,14 @@ export const WIZARD_STEP_ORDER: readonly WizardStep[] = [
 export type WizardFlowStep = Exclude<WizardStep, 'type' | 'promote'>
 
 /** The first-pass steps for this site, in order (the overview "review" is not one of them). */
-export function wizardSteps(site: { categories: unknown[]; languages: string[]; galleries?: unknown[] }): WizardFlowStep[] {
+export function wizardSteps(site: { categories: unknown[]; languages: string[]; galleries?: unknown[]; faqSets?: unknown[] }): WizardFlowStep[] {
   const steps: WizardFlowStep[] = []
   if (site.categories.length > 0) steps.push('category')
   steps.push('title', 'story', 'cover')
   if (site.languages.length > 1) steps.push('languages')
   steps.push('cta')
   if (site.galleries) steps.push('gallery')
+  if (site.faqSets) steps.push('faq')
   steps.push('preview', 'publish', 'done')
   return steps
 }
@@ -95,6 +98,7 @@ type Content = {
   cover?: { alt: Record<string, string> } | null
   cta?: { mode?: string | null; ref?: string | null } | null
   gallery?: string | null
+  faqSets?: string[]
 }
 
 /** True when Portable Text blocks contain any non-blank text. */
@@ -140,7 +144,7 @@ export function progressSteps(steps: WizardFlowStep[]): WizardFlowStep[] {
 // ── Overview ("review") ──────────────────────────────────────────────────────
 
 export type SectionState = 'done' | 'missing' | 'optional'
-export type OverviewSection = { id: 'category' | 'title' | 'story' | 'cover' | 'languages' | 'cta' | 'gallery'; state: SectionState }
+export type OverviewSection = { id: 'category' | 'title' | 'story' | 'cover' | 'languages' | 'cta' | 'gallery' | 'faq'; state: SectionState }
 
 /** The overview's sections for this site, each with its state. */
 export function overviewSections(
@@ -152,6 +156,8 @@ export function overviewSections(
     ctas?: { id: string; isDefault: boolean }[]
     /** Present only when the Gallery module is installed (may be empty). */
     galleries?: { id: string }[]
+    /** Present only with the FAQ module and faq.set.read (may be empty). */
+    faqSets?: { id: string }[]
   }
 ): OverviewSection[] {
   const d = site.defaultLocale
@@ -169,6 +175,10 @@ export function overviewSections(
   // Gallery below the post: only on sites with the Gallery module.
   if (site.galleries) {
     out.push({ id: 'gallery', state: draft.gallery && site.galleries.some((g) => g.id === draft.gallery) ? 'done' : 'optional' })
+  }
+  // FAQs below the post (after the gallery): only with the FAQ module.
+  if (site.faqSets) {
+    out.push({ id: 'faq', state: draft.faqSets?.length ? 'done' : 'optional' })
   }
   return out
 }
@@ -208,4 +218,28 @@ export function ctaChoiceShown(
   if (mode === 'none') return false
   if (mode === 'custom') return ctas.some((c) => c.id === choice?.ref)
   return ctas.some((c) => c.isDefault)
+}
+
+// ── FAQ sets (ADR-037 D9) ────────────────────────────────────────────────────
+
+/** The attached sets that were never published: publishing the post needs "Publish the FAQ set too". */
+export function unpublishedFaqSets<S extends { id: string; state: string }>(attached: readonly string[] | undefined, sets: readonly S[] | undefined): S[] {
+  if (!attached?.length || !sets?.length) return []
+  return attached.map((id) => sets.find((s) => s.id === id)).filter((s): s is S => Boolean(s) && s!.state === 'draft')
+}
+
+/** Overview numbers for the attached sets: how many sets (known to the editor) and questions. */
+export function faqSummary(attached: readonly string[] | undefined, sets: readonly { id: string; count: number }[] | undefined): { sets: number; questions: number } {
+  const known = (attached ?? []).map((id) => (sets ?? []).find((s) => s.id === id)).filter((s): s is { id: string; count: number } => Boolean(s))
+  return { sets: (attached ?? []).length, questions: known.reduce((n, s) => n + s.count, 0) }
+}
+
+/** Moves `id` one place up (-1) or down (1); unchanged at either end. */
+export function moveFaqSet(list: readonly string[], id: string, direction: -1 | 1): string[] {
+  const from = list.indexOf(id)
+  const to = from + direction
+  if (from < 0 || to < 0 || to >= list.length) return [...list]
+  const next = [...list]
+  next.splice(to, 0, ...next.splice(from, 1))
+  return next
 }

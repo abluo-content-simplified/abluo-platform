@@ -40,6 +40,15 @@
  *   invalid_schedule — publishAt missing, malformed, in the past or > 2 years
  *   invalid_expiry   — expiresAt malformed or not after publishedAt
  *   archived         — the published post is archived (ADR-032: restore first)
+ *   unpublished_faq_sets — the post shows FAQ sets that were never published
+ *                      (ADR-037 D9). `detail.faqSets` names them; the editor
+ *                      may publish again with `publishFaqSets: true`, which
+ *                      publishes those sets first (needs faq.set.write).
+ *
+ * FAQ sets (ADR-037): a set attached while it only existed as a draft is a weak
+ * reference with `_strengthenOnPublish`. On publish every reference to a set
+ * that is (now) published becomes a strong one; a reference to a set that no
+ * longer exists stays as it is (the website shows nothing for it).
  */
 import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
@@ -49,6 +58,11 @@ import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { assertSingleSanityProject } from '@/lib/api/sanity-project-guard'
 import { audited, type ContentAuditWriter } from '@/lib/lifecycle/audit'
 import { lifecycleAction, snapshotOf } from '@/lib/lifecycle/transition'
+import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
+import { publishFaqSetDraft } from '@/lib/api/faq-sets'
+
+/** ADR-037 D8: publishing a set together with the post needs the FAQ write permission. */
+export const FAQ_SET_WRITE_PERMISSION = 'faq.set.write'
 
 export type PostPublishErrorCode =
   | PostDraftErrorCode
@@ -56,11 +70,16 @@ export type PostPublishErrorCode =
   | 'missing_body'
   | 'invalid_schedule'
   | 'invalid_expiry'
+  | 'unpublished_faq_sets'
+
+/** A FAQ set the post shows that was never published (ADR-037 D9). */
+export type UnpublishedFaqSet = { id: string; name: string }
 
 export class PostPublishError extends Error {
   constructor(
     readonly code: PostPublishErrorCode,
-    message: string
+    message: string,
+    readonly detail?: { faqSets?: UnpublishedFaqSet[] }
   ) {
     super(message)
     this.name = 'PostPublishError'
@@ -68,7 +87,13 @@ export class PostPublishError extends Error {
 }
 
 type PublishClient = Pick<typeof sanityWriteClient, 'getDocument' | 'fetch' | 'transaction'>
-export type PostPublishDeps = { client?: PublishClient; now?: () => Date; audit?: ContentAuditWriter }
+export type PostPublishDeps = {
+  client?: PublishClient
+  now?: () => Date
+  audit?: ContentAuditWriter
+  /** Publishes one FAQ set draft (default: publishFaqSetDraft from faq-sets.ts). Injected in tests. */
+  publishFaqSet?: (input: { id: string; rev: string }) => Promise<unknown>
+}
 
 export type PublishPostInput = {
   id: string
@@ -81,6 +106,12 @@ export type PublishPostInput = {
   mode: 'now' | 'schedule' | 'keep'
   publishAt?: string
   expiresAt?: string | null
+  /**
+   * ADR-037 D9 "Publish the FAQ set too": publish every attached FAQ set that
+   * was never published, right before the post. Without it such a post is
+   * refused with `unpublished_faq_sets`.
+   */
+  publishFaqSets?: boolean
 }
 export type PublishPostResult = { id: string; publishedAt: string; slugs: Record<string, string> }
 
@@ -301,6 +332,9 @@ async function publishPostDraftIn(
     }
   }
 
+  // ── FAQ sets (ADR-037 D9) — after every other check, before the commit ────
+  const faqSets = await resolveFaqSets(ctx, projectId, grant.projectSlug, draft.faqSets, input, client, deps)
+
   // ── Published document ─────────────────────────────────────────────────────
   const doc: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(draft)) {
@@ -313,6 +347,7 @@ async function publishPostDraftIn(
     _type: 'localizedSlug',
     ...Object.fromEntries(locales.map((l) => [l, { _type: 'slug', current: slugs[l] }])),
   }
+  if (faqSets) doc.faqSets = faqSets
   doc.publishedAt = publishedAt.toISOString()
   if (expiresAt) doc.expiresAt = expiresAt.toISOString()
 
@@ -347,4 +382,78 @@ async function publishPostDraftIn(
     after: doc,
     now,
   }
+}
+
+type FaqSetPublishRow = { _id?: unknown; _rev?: unknown; internalName?: unknown }
+
+/**
+ * The post's `faqSets` as they go live: never-published sets are refused
+ * (`unpublished_faq_sets`) or, with `publishFaqSets`, published first (one
+ * call per set, faq.set.write); then every reference to a published set is
+ * strong. Returns undefined when the draft has no FAQ sets (nothing changes).
+ */
+async function resolveFaqSets(
+  ctx: TenantAuthorizationContext,
+  projectId: string,
+  projectSlug: string,
+  value: unknown,
+  input: PublishPostInput,
+  client: PublishClient,
+  deps: PostPublishDeps
+): Promise<unknown[] | undefined> {
+  if (!Array.isArray(value) || value.length === 0) return undefined
+  const refId = (r: unknown) => {
+    const ref = (r as { _ref?: unknown } | null)?._ref
+    return typeof ref === 'string' && ref ? ref.replace(/^drafts\./, '') : null
+  }
+  const ids = [...new Set(value.map(refId).filter((id): id is string => id !== null && isPostId(id)))]
+  if (ids.length === 0) return value
+  const rows = await client.fetch<FaqSetPublishRow[] | null>(
+    `*[_type == "faqSet" && projectSlug == $projectSlug && (_id in $ids || _id in $draftIds)]{ _id, _rev, internalName }`,
+    { projectSlug, ids, draftIds: ids.map((id) => `drafts.${id}`) },
+    { perspective: 'raw' }
+  )
+  const published = new Set<string>()
+  const drafts = new Map<string, { rev: string; name: string }>()
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (typeof row?._id !== 'string') continue
+    if (row._id.startsWith('drafts.')) {
+      const id = row._id.slice('drafts.'.length)
+      drafts.set(id, {
+        rev: typeof row._rev === 'string' ? row._rev : '',
+        name: typeof row.internalName === 'string' && row.internalName.trim() ? row.internalName.trim() : id,
+      })
+    } else {
+      published.add(row._id)
+    }
+  }
+  const neverPublished = ids.filter((id) => !published.has(id) && drafts.has(id))
+  if (neverPublished.length) {
+    if (!input.publishFaqSets) {
+      throw new PostPublishError('unpublished_faq_sets', 'Publish the FAQ sets this post shows first.', {
+        faqSets: neverPublished.map((id) => ({ id, name: drafts.get(id)!.name })),
+      })
+    }
+    assertModuleAction(ctx, projectId, FAQ_SET_WRITE_PERMISSION)
+    const publishSet = deps.publishFaqSet ?? ((i: { id: string; rev: string }) => publishFaqSetDraft(ctx, projectId, i))
+    for (const id of neverPublished) {
+      try {
+        await publishSet({ id, rev: drafts.get(id)!.rev })
+      } catch (error) {
+        if (error instanceof TenantAuthorizationError) throw error
+        const code = (error as { code?: unknown })?.code
+        if (code === 'conflict') throw new PostPublishError('conflict', 'A FAQ set was edited elsewhere.')
+        if (code === 'forbidden') throw new PostPublishError('forbidden', 'You cannot publish this FAQ set.')
+        throw new PostPublishError('failed', 'Could not publish the FAQ set.')
+      }
+      published.add(id)
+    }
+  }
+  // A published set is referenced strongly from the live post.
+  return value.map((r) => {
+    const id = refId(r)
+    if (!id || !published.has(id)) return r
+    const key = (r as { _key?: unknown })._key
+    return { _type: 'reference', ...(typeof key === 'string' ? { _key: key } : {}), _ref: id }
+  })
 }

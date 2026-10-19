@@ -21,12 +21,17 @@ describe('Add-content sheet (ADR-025 D8)', () => {
       { moduleId: 'blog', ready: true },
       { moduleId: 'news', ready: false },
     ])
-    expect(m.more).toEqual(['events', 'gallery', 'catalogue'])
+    expect(m.more).toEqual(['events', 'gallery', 'catalogue', 'faq'])
   })
 
   it('catalogue (ADR-033 spec §10.1): offered to writers once installed, never to viewers', () => {
     expect(buildCreateMenu(grantFor('editor', ['catalogue'])).available).toEqual([{ moduleId: 'catalogue', ready: true }])
     expect(buildCreateMenu(grantFor('viewer', ['catalogue'])).available).toEqual([])
+  })
+
+  it('faq (ADR-037 D9): offered to writers once installed, never to viewers', () => {
+    expect(buildCreateMenu(grantFor('editor', ['faq'])).available).toEqual([{ moduleId: 'faq', ready: true }])
+    expect(buildCreateMenu(grantFor('viewer', ['faq'])).available).toEqual([])
   })
 
   it('editor: same choices, never the upsell', () => {

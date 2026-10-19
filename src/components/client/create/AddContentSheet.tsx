@@ -82,6 +82,8 @@ export function AddContentSheet({
           ? `/${projectSlug}/media/add`
           : moduleId === 'catalogue'
           ? `/${projectSlug}/catalogue/new`
+          : moduleId === 'faq'
+          ? `/${projectSlug}/faq-sets?new=1`
           : `/${projectSlug}/posts/write/new`
     )
     onClose()
@@ -200,6 +202,7 @@ const TYPE_ICONS: Record<string, string> = {
   gallery: 'M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15 9h.01',
   media: 'M3 7h4l2-3h6l2 3h4v13H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   catalogue: 'M4 6h16M4 12h16M4 18h10M18 16v4M16 18h4',
+  faq: 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12zM9.6 9.5a2.5 2.5 0 0 1 4.9.8c0 1.7-2.5 2.2-2.5 2.2M12 15.5h.01',
 }
 
 function TypeIcon({ moduleId }: { moduleId: string }) {

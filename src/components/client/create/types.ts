@@ -25,6 +25,11 @@ export type DraftSnapshot = {
   cta?: { mode: 'default' | 'none' | 'custom'; ref: string | null } | null
   /** Gallery shown below the post (gallery id), null/absent = none. */
   gallery?: string | null
+  /** FAQ sets shown below the post, in order (set ids, ADR-037). */
+  faqSets?: string[]
+  /** The post's FAQ heading per language; empty = the website default ("Frequently Asked Questions"). */
+  faqTitle?: Record<string, string>
+  faqSubtitle?: Record<string, string>
   /** 'edit' = unpublished changes to a live post ("Update post"); 'create' otherwise. */
   mode?: 'create' | 'edit'
   /** The published version, when there is one. */
@@ -52,9 +57,23 @@ export type SiteInfo = {
   /** The project's callToAction documents (empty/absent = the CTA card is hidden). */
   /** This project's galleries — present only when the Gallery module is installed (may be empty). */
   galleries?: { id: string; title: string; count: number }[]
+  /** This project's FAQ sets — present only with the FAQ module and faq.set.read (may be empty). */
+  faqSets?: SiteFaqSet[]
+  /** Holds faq.set.write: the FAQ sheet offers "Create new" and publishing offers "Publish the FAQ set too". */
+  faqWrite?: boolean
   ctas?: { id: string; name: string; isDefault: boolean; heading: string | null; buttonLabel: string | null }[]
   /** The signed-in person's first name, for a friendlier message (null = unknown). */
   firstName?: string | null
+}
+
+/** One FAQ set as the post editor knows it (PostEditorFaqSet in post-drafts.ts). */
+export type SiteFaqSet = {
+  id: string
+  name: string
+  count: number
+  /** draft = never published; changes = live with unpublished changes. */
+  state: 'draft' | 'published' | 'changes' | 'archived'
+  firstQuestions: string[]
 }
 
 export type StepProps = {
@@ -68,6 +87,8 @@ export type StepProps = {
   goBack: () => void
   /** A category created inline in this wizard: added to `site` so later steps (Review) show its name. */
   addCategory?: (term: { value: string; label: Record<string, string>; color: string | null }) => void
+  /** A FAQ set created (or changed) from the post editor: added to `site.faqSets` so the step and overview show it. */
+  upsertFaqSet?: (set: SiteFaqSet) => void
   /**
    * For steps that write through their OWN server action (e.g. Cover):
    * waits until every queued autosave is confirmed and returns the draft's

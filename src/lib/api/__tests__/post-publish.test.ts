@@ -7,6 +7,8 @@
 import { describe, it, expect, vi } from 'vitest'
 
 vi.mock('@/lib/sanity/server-clients', () => ({ sanityWriteClient: {} }))
+// ADR-037: publishing FAQ sets together with a post is injected per test (deps.publishFaqSet).
+vi.mock('@/lib/api/faq-sets', () => ({ publishFaqSetDraft: vi.fn(async () => { throw new Error('use deps.publishFaqSet') }) }))
 
 import { publishPostDraft, slugFromTitle, uniqueSlug, PostPublishError, type PublishPostInput } from '../post-publish'
 import { TenantAuthorizationError } from '../tenant-scoped-sanity'
@@ -417,5 +419,89 @@ describe('publishPostDraft', () => {
     const err = await publish(c).catch((e) => e)
     expect(err).toBeInstanceOf(PostPublishError)
     expect(err).toMatchObject({ code: 'failed', message: 'Could not publish.' })
+  })
+})
+
+describe('publishPostDraft — FAQ sets (ADR-037 D9)', () => {
+  const faqGrant = (write = true) =>
+    grant({
+      enabledModuleIds: ['blog', 'faq'],
+      permissions: ['blog.post.read', 'blog.post.write', 'faq.set.read', ...(write ? ['faq.set.write'] : [])],
+    })
+  const weak = (id: string) => ({ _type: 'reference', _key: id, _ref: id, _weak: true, _strengthenOnPublish: { type: 'faqSet' } })
+  /** faq-live is published; faq-new only exists as a draft (rev d1). */
+  function faqClient(refs: unknown[], rows = [{ _id: 'faq-live', _rev: 'p1', internalName: 'Implants' }, { _id: 'drafts.faq-new', _rev: 'd1', internalName: 'Booking' }]) {
+    const c = fakeClient({ draft: { ...baseDraft(), faqSets: refs } })
+    const base = c.client.fetch.getMockImplementation()!
+    c.client.fetch.mockImplementation((async (q: string) => (q.includes('_type == "faqSet"') ? rows : base(q))) as never)
+    return c
+  }
+  const faqDeps = (c: ReturnType<typeof fakeClient>, publishFaqSet = vi.fn(async () => ({ rev: 'x' }))) => ({ ...deps(c), publishFaqSet })
+  const created = (c: ReturnType<typeof fakeClient>) => c.ops.find(([o]) => o === 'create' || o === 'createOrReplace')![1] as Record<string, unknown>
+
+  it('refuses a post showing a never-published set (unpublished_faq_sets, names it), nothing written', async () => {
+    const c = faqClient([weak('faq-new')])
+    const publishFaqSet = vi.fn()
+    const err = await publishPostDraft(ctx(faqGrant()), 'project-a', { id: ID, rev: 'r1', mode: 'now' }, faqDeps(c, publishFaqSet)).catch((e) => e)
+    expect(err).toBeInstanceOf(PostPublishError)
+    expect(err).toMatchObject({ code: 'unpublished_faq_sets', detail: { faqSets: [{ id: 'faq-new', name: 'Booking' }] } })
+    expect(publishFaqSet).not.toHaveBeenCalled()
+    expect(committed(c)).toBe(false)
+    const call = c.client.fetch.mock.calls.find(([q]) => (q as string).includes('_type == "faqSet"')) as unknown as [string, Record<string, unknown>, Record<string, unknown>]
+    expect(call[1]).toEqual({ projectSlug: 'hoffmann', ids: ['faq-new'], draftIds: ['drafts.faq-new'] })
+    expect(call[2]).toEqual({ perspective: 'raw' })
+  })
+
+  it('"Publish the FAQ set too": publishes the set first (its draft rev), then the post with a strong reference', async () => {
+    const c = faqClient([weak('faq-new'), { _type: 'reference', _key: 'faq-live', _ref: 'faq-live' }])
+    const publishFaqSet = vi.fn(async () => ({ rev: 'p2' }))
+    await publishPostDraft(ctx(faqGrant()), 'project-a', { id: ID, rev: 'r1', mode: 'now', publishFaqSets: true }, faqDeps(c, publishFaqSet))
+    expect(publishFaqSet).toHaveBeenCalledTimes(1)
+    expect(publishFaqSet).toHaveBeenCalledWith({ id: 'faq-new', rev: 'd1' })
+    expect(created(c).faqSets).toEqual([
+      { _type: 'reference', _key: 'faq-new', _ref: 'faq-new' },
+      { _type: 'reference', _key: 'faq-live', _ref: 'faq-live' },
+    ])
+  })
+
+  it('publishing sets needs faq.set.write: refused before any set or the post is written', async () => {
+    const c = faqClient([weak('faq-new')])
+    const publishFaqSet = vi.fn()
+    await expect(
+      publishPostDraft(ctx(faqGrant(false)), 'project-a', { id: ID, rev: 'r1', mode: 'now', publishFaqSets: true }, faqDeps(c, publishFaqSet))
+    ).rejects.toThrow(TenantAuthorizationError)
+    expect(publishFaqSet).not.toHaveBeenCalled()
+    expect(committed(c)).toBe(false)
+  })
+
+  it('a set published since it was attached: the weak reference becomes strong, no flag needed', async () => {
+    const c = faqClient([weak('faq-live')])
+    const publishFaqSet = vi.fn()
+    await publishPostDraft(ctx(faqGrant(false)), 'project-a', { id: ID, rev: 'r1', mode: 'now' }, faqDeps(c, publishFaqSet))
+    expect(publishFaqSet).not.toHaveBeenCalled()
+    expect(created(c).faqSets).toEqual([{ _type: 'reference', _key: 'faq-live', _ref: 'faq-live' }])
+  })
+
+  it('a set that no longer exists stays as it is (the website shows nothing for it)', async () => {
+    const c = faqClient([weak('faq-gone')], [])
+    await publishPostDraft(ctx(grant()), 'project-a', { id: ID, rev: 'r1', mode: 'now' }, faqDeps(c))
+    expect(created(c).faqSets).toEqual([weak('faq-gone')])
+  })
+
+  it('a failing set publish stops the post (opaque code, nothing committed)', async () => {
+    const c = faqClient([weak('faq-new')])
+    const publishFaqSet = vi.fn(async () => {
+      throw Object.assign(new Error('secret'), { code: 'conflict' })
+    })
+    await expect(
+      publishPostDraft(ctx(faqGrant()), 'project-a', { id: ID, rev: 'r1', mode: 'now', publishFaqSets: true }, faqDeps(c, publishFaqSet))
+    ).rejects.toMatchObject({ code: 'conflict' })
+    expect(committed(c)).toBe(false)
+  })
+
+  it('a post without FAQ sets never reads FAQ sets', async () => {
+    const c = fakeClient()
+    await publish(c)
+    expect(c.client.fetch.mock.calls.some(([q]) => (q as string).includes('faqSet'))).toBe(false)
   })
 })

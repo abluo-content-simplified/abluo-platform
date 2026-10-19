@@ -70,8 +70,25 @@ export const bodySchema = defineSchema({
   blockObjects: [],
 })
 
+/**
+ * FAQ answers (ADR-037 D12): restricted rich text — paragraphs only (no
+ * headings, no quote), bold, italic, bullet and numbered lists, links. The
+ * same link annotation as the post body.
+ */
+export const faqAnswerSchema = defineSchema({
+  decorators: [{ name: 'strong' }, { name: 'em' }],
+  styles: [{ name: 'normal' }],
+  lists: [{ name: 'bullet' }, { name: 'number' }],
+  annotations: bodySchema.annotations,
+  inlineObjects: [],
+  blockObjects: [],
+})
+
+/** Which editor: the post body (default) or an FAQ answer (restricted toolbar and schema). */
+export type BodyEditorVariant = 'body' | 'faqAnswer'
+
 /** The base schema plus whatever unsupported-but-existing types the value uses. */
-export function schemaForValue(value?: PortableTextBlock[]): SchemaDefinition {
+export function schemaForValue(value?: PortableTextBlock[], base: SchemaDefinition = bodySchema): SchemaDefinition {
   const styles = new Set<string>()
   const lists = new Set<string>()
   const decorators = new Set<string>()
@@ -99,11 +116,15 @@ export function schemaForValue(value?: PortableTextBlock[]): SchemaDefinition {
     }
   }
   const extra = (found: Set<string>, base: readonly string[]) => [...found].filter((n) => !base.includes(n)).map((name) => ({ name }))
+  const baseNames = (list: readonly { name: string }[] | undefined) => (list ?? []).map((x) => x.name)
+  // Anything the value uses beyond this editor's base (e.g. an h2 pasted into an answer in Studio) still loads untouched.
+  const extraFor = (found: Set<string>, supported: readonly string[], list: readonly { name: string }[] | undefined) =>
+    [...extra(found, supported), ...[...found].filter((n) => supported.includes(n) && !baseNames(list).includes(n)).map((name) => ({ name }))]
   return {
-    decorators: [...bodySchema.decorators!, ...extra(decorators, SUPPORTED_DECORATORS)],
-    styles: [...bodySchema.styles!, ...extra(styles, SUPPORTED_STYLES)],
-    lists: [...bodySchema.lists!, ...extra(lists, SUPPORTED_LISTS)],
-    annotations: [...bodySchema.annotations!, ...[...annotations].map((name) => ({ name }))],
+    decorators: [...(base.decorators ?? []), ...extraFor(decorators, SUPPORTED_DECORATORS, base.decorators)],
+    styles: [...(base.styles ?? []), ...extraFor(styles, SUPPORTED_STYLES, base.styles)],
+    lists: [...(base.lists ?? []), ...extraFor(lists, SUPPORTED_LISTS, base.lists)],
+    annotations: [...(base.annotations ?? []), ...[...annotations].map((name) => ({ name }))],
     inlineObjects: [...inlineObjects].map((name) => ({ name })),
     blockObjects: [...blockObjects].map((name) => ({ name })),
   }
@@ -543,9 +564,10 @@ function LinkSheet({ draft, links, onClose }: { draft: LinkDraft; links?: LinkTo
   )
 }
 
-const TYPE_KEYS = { page: 1, post: 1, newsArticle: 1, event: 1 } as const
+const TYPE_KEYS = { page: 1, post: 1, newsArticle: 1, event: 1, catalogueItem: 1, catalogueCollection: 1 } as const
 
-function Toolbar({ links }: { links?: LinkTools }) {
+function Toolbar({ links, variant = 'body' }: { links?: LinkTools; variant?: BodyEditorVariant }) {
+  const full = variant === 'body'
   const t = useTranslations('editor.body')
   const editor = useEditor()
   const isH2 = useEditorSelector(editor, selectors.isActiveStyle('h2'))
@@ -587,7 +609,7 @@ function Toolbar({ links }: { links?: LinkTools }) {
     <>
       {linkDraft && <LinkSheet draft={linkDraft} links={links} onClose={() => setLinkDraft(null)} />}
       <div role="toolbar" aria-label={t('toolbar')} className="flex items-center gap-0.5 overflow-x-auto">
-        <ToolButton label={t('heading')} active={isH2} onPress={() => send({ type: 'style.toggle', style: 'h2' })}>H</ToolButton>
+        {full ? <ToolButton label={t('heading')} active={isH2} onPress={() => send({ type: 'style.toggle', style: 'h2' })}>H</ToolButton> : null}
         <ToolButton label={t('bold')} active={isBold} onPress={() => send({ type: 'decorator.toggle', decorator: 'strong' })}>B</ToolButton>
         <ToolButton label={t('italic')} active={isItalic} onPress={() => send({ type: 'decorator.toggle', decorator: 'em' })}>
           <span className="font-medium italic">I</span>
@@ -601,9 +623,11 @@ function Toolbar({ links }: { links?: LinkTools }) {
         <ToolButton label={t('numberedList')} active={isNumber} onPress={() => send({ type: 'list item.toggle', listItem: 'number' })}>
           {icon('M10 6h11M10 12h11M10 18h11M4 6h1v4M4 10h2M6 18H4c0-1 2-2 2-3s-1-1.5-2-1')}
         </ToolButton>
-        <ToolButton label={t('quote')} active={isQuote} onPress={() => send({ type: 'style.toggle', style: 'blockquote' })}>
-          {icon('M3 21c3 0 7-1 7-8V5H3v7h4c0 4-2 5-4 5M14 21c3 0 7-1 7-8V5h-7v7h4c0 4-2 5-4 5')}
-        </ToolButton>
+        {full ? (
+          <ToolButton label={t('quote')} active={isQuote} onPress={() => send({ type: 'style.toggle', style: 'blockquote' })}>
+            {icon('M3 21c3 0 7-1 7-8V5H3v7h4c0 4-2 5-4 5M14 21c3 0 7-1 7-8V5h-7v7h4c0 4-2 5-4 5')}
+          </ToolButton>
+        ) : null}
       </div>
     </>
   )
@@ -614,6 +638,8 @@ export function BodyEditor({
   onChange,
   placeholder,
   links,
+  variant = 'body',
+  label,
 }: {
   /** Read once on mount; to replace the content (e.g. an accepted AI version) remount with a new `key`. */
   initialValue?: PortableTextBlock[]
@@ -622,12 +648,21 @@ export function BodyEditor({
   placeholder?: string
   /** Site-aware links: own hosts (new-tab rule) and the "A page on your site" search. */
   links?: LinkTools
+  /**
+   * 'body' (default): the post body — headings, quote, sticky toolbar.
+   * 'faqAnswer': an FAQ answer (ADR-037 D12) — paragraphs, bold, italic,
+   * lists and links only; a compact field with the toolbar under it.
+   */
+  variant?: BodyEditorVariant
+  /** Accessible name of the text area; defaults to "Your story". */
+  label?: string
 }) {
   const t = useTranslations('editor.body')
   const [focused, setFocused] = useState(false)
+  const answer = variant === 'faqAnswer'
   // Fixed for this mount: the initial value decides which preserved types load.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const schemaDefinition = useMemo(() => schemaForValue(initialValue), [])
+  const schemaDefinition = useMemo(() => schemaForValue(initialValue, answer ? faqAnswerSchema : bodySchema), [])
 
   return (
     <EditorProvider initialConfig={{ schemaDefinition, initialValue }}>
@@ -640,8 +675,12 @@ export function BodyEditor({
       />
       <div className="flex min-h-0 flex-1 flex-col">
         <PortableTextEditable
-          aria-label={t('label')}
-          className="abluo-body-editor min-h-[40vh] flex-1 text-[1.0625rem] leading-7 text-foreground outline-none"
+          aria-label={label ?? t('label')}
+          className={
+            answer
+              ? 'abluo-body-editor min-h-24 flex-1 text-[0.9375rem] leading-6 text-foreground outline-none'
+              : 'abluo-body-editor min-h-[40vh] flex-1 text-[1.0625rem] leading-7 text-foreground outline-none'
+          }
           renderStyle={renderStyle}
           renderDecorator={renderDecorator}
           renderAnnotation={renderAnnotation}
@@ -652,9 +691,9 @@ export function BodyEditor({
         {/* Sticky above the phone keyboard; the step's own footer stays below. */}
         <div
           data-focused={focused || undefined}
-          className="sticky bottom-0 border-t border-border-subtle bg-background py-1 pb-[env(safe-area-inset-bottom)]"
+          className={answer ? 'border-t border-border-subtle py-1' : 'sticky bottom-0 border-t border-border-subtle bg-background py-1 pb-[env(safe-area-inset-bottom)]'}
         >
-          <Toolbar links={links} />
+          <Toolbar links={links} variant={variant} />
         </div>
       </div>
     </EditorProvider>

@@ -48,6 +48,9 @@ function emptyPostDraft(): Awaited<ReturnType<typeof getPostDraft>> {
     live: null,
     cta: null,
     gallery: null,
+    faqSets: [],
+    faqTitle: {},
+    faqSubtitle: {},
     hasChanges: false,
   }
 }
@@ -90,7 +93,16 @@ export default async function WriteDraftPage({ params }: { params: Promise<{ ten
     <WizardShell
       draft={snapshot}
       // The Gallery step shows only on sites with the Gallery module installed.
-      site={{ ...site, firstName, canAddCategory: grant.permissions.includes(taxonomyWritePermission('blog')), galleries: grant.enabledModuleIds.includes('gallery') ? site.galleries : undefined }}
+      // The FAQ step (ADR-037): site.faqSets is only present with the FAQ module
+      // AND faq.set.read (getPostEditorSite); creating / publishing sets needs faq.set.write.
+      site={{
+        ...site,
+        firstName,
+        canAddCategory: grant.permissions.includes(taxonomyWritePermission('blog')),
+        galleries: grant.enabledModuleIds.includes('gallery') ? site.galleries : undefined,
+        faqSets: grant.enabledModuleIds.includes('faq') ? site.faqSets : undefined,
+        faqWrite: grant.enabledModuleIds.includes('faq') && grant.permissions.includes('faq.set.write'),
+      }}
       homeHref={dashboardHomeHref(projectSlug)}
       postsHref={`/${projectSlug}/posts`}
       canDelete={canDeletePublished(grant)}

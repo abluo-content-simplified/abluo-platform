@@ -27,7 +27,7 @@ import type { ActivityStore } from './activity-store'
 
 /** Published lifecycle documents only (drafts are ignored by Sanity by default). */
 export const ACTIVITY_WEBHOOK_FILTER =
-  '_type in ["post", "newsArticle", "event", "gallery"] && (delta::operation() != "update" || delta::changedAny((publishedAt, expiresAt, archivedAt)))'
+  '_type in ["post", "newsArticle", "event", "gallery", "faqSet"] && (delta::operation() != "update" || delta::changedAny((publishedAt, expiresAt, archivedAt)))'
 
 export const ACTIVITY_WEBHOOK_PROJECTION = `{
   "documentId": coalesce(after()._id, before()._id),

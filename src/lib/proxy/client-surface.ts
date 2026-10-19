@@ -49,6 +49,8 @@ export const CLIENT_PROJECT_SEGMENTS = new Set([
   'posts',
   'submissions',
   'galleries',
+  // ADR-037 D9: the FAQ Sets library (`/{project}/faq-sets`, `/{project}/faq-sets/{id}`).
+  'faq-sets',
   'agenda',
   'media',
   'people',

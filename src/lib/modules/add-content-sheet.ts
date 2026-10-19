@@ -30,6 +30,8 @@ export const CREATE_CONTENT_TYPES: CreateContentType[] = [
   { moduleId: 'gallery', ready: true, permission: 'gallery.gallery.write' },
   // ADR-033 spec §10.1: a catalogue item (the wizard at /catalogue/new).
   { moduleId: 'catalogue', ready: true, permission: 'catalogue.item.write' },
+  // ADR-037 D9: an FAQ set — the FAQ Sets list with "New FAQ set" open (`/faq-sets?new=1`, name only).
+  { moduleId: 'faq', ready: true, permission: 'faq.set.write' },
 ]
 
 export type CreateMenu = {

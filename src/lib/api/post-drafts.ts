@@ -26,7 +26,7 @@
  *      each other ("conflict" → the UI says "edited elsewhere").
  */
 import { randomUUID } from 'crypto'
-import { assertModuleAction } from '@/lib/api/module-action-guard'
+import { assertModuleAction, canModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
 import { POST_CTA_MODES } from '@/lib/blog/post-cta'
@@ -41,6 +41,13 @@ import { audited, type ContentAuditWriter } from '@/lib/lifecycle/audit'
 import { categoryKeyVocabulary, categoryVocabulary, moduleCategoryKeysGroq, moduleTermsGroq, type CategoryTermRow } from '@/lib/taxonomy/vocabulary'
 
 export const BLOG_POST_WRITE_PERMISSION = 'blog.post.write'
+/**
+ * ADR-037 D8: attaching FAQ sets to a post (and setting its FAQ heading) also
+ * needs the FAQ module installed and 'faq.set.read'. Spelled here (not
+ * imported from faq-sets.ts) so the post write path stays free of the FAQ
+ * library's server code; module-action-guard resolves the owner from the registry.
+ */
+export const FAQ_SET_READ_PERMISSION = 'faq.set.read'
 
 export const WIZARD_STEPS = [
   'type',
@@ -52,6 +59,7 @@ export const WIZARD_STEPS = [
   // Overview-only edit screens (never part of the first pass).
   'cta',
   'gallery',
+  'faq',
   'preview',
   'publish',
   'promote',
@@ -101,6 +109,10 @@ export const LIMITS = {
   patchBytes: 1_000_000,
   /** Post drafts (unpublished + unpublished changes) per project. */
   drafts: 500,
+  /** FAQ sets attached to one post (ADR-037). */
+  faqSets: 10,
+  faqTitle: 200,
+  faqSubtitle: 500,
 } as const
 
 /**
@@ -119,7 +131,12 @@ const LOCALIZED: Record<string, { type: string; max?: number; blocks?: true }> =
   subtitle: { type: 'localizedString', max: LIMITS.subtitle },
   excerpt: { type: 'localizedText', max: LIMITS.excerpt },
   body: { type: 'localizedPortableText', blocks: true },
+  // ADR-037 D5: the post's own FAQ heading (empty title = the website default).
+  faqTitle: { type: 'localizedString', max: LIMITS.faqTitle },
+  faqSubtitle: { type: 'localizedText', max: LIMITS.faqSubtitle },
 }
+/** Patch paths that belong to the FAQ module (checked once per patch: faq.set.read). */
+const FAQ_FIELDS = new Set(['faqSets', 'faqTitle', 'faqSubtitle'])
 const BLOCK_STYLES = ['normal', 'h2', 'h3', 'blockquote']
 const LIST_ITEMS = ['bullet', 'number']
 const DECORATORS = ['strong', 'em']
@@ -240,6 +257,11 @@ export async function patchPostDraft(
   // Links round 2: internal-link targets added in this patch (checked below in one read).
   const newInternalRefs = new Set<string>()
 
+  // ADR-037 D8: FAQ paths need the FAQ module and faq.set.read as well.
+  if (Object.keys(input.set).some((path) => FAQ_FIELDS.has(path.split('.')[0]))) {
+    assertModuleAction(ctx, projectId, FAQ_SET_READ_PERMISSION)
+  }
+
   for (const [path, value] of Object.entries(input.set)) {
     const [field, locale, ...rest] = path.split('.')
 
@@ -289,6 +311,17 @@ export async function patchPostDraft(
       set.gallery = found?.published === value
         ? { _type: 'reference', _ref: value }
         : { _type: 'reference', _ref: value, _weak: true, _strengthenOnPublish: { type: 'gallery' } }
+      continue
+    }
+    // FAQ sets below the post (ADR-037 D5): an ordered list of THIS project's
+    // sets (published, or new ones that only exist as drafts), never archived,
+    // each once. [] / null removes them.
+    if (path === 'faqSets') {
+      if (value === null || (Array.isArray(value) && value.length === 0)) {
+        unset.push('faqSets')
+        continue
+      }
+      set.faqSets = await faqSetRefs(client, grant.projectSlug, value, (current as { faqSets?: unknown }).faqSets)
       continue
     }
     if (path === 'cta.ref') {
@@ -372,6 +405,76 @@ export async function patchPostDraft(
     }
     throw new PostDraftError('failed', 'Could not save.')
   }
+}
+
+type FaqSetRow = { _id?: unknown; archivedAt?: unknown }
+
+/**
+ * Validates a post's `faqSets` choice (ADR-037 D3/D5) with ONE raw read and
+ * returns the references to store: a published set → a strong reference; a set
+ * that only exists as a draft → a weak one that Sanity strengthens on publish
+ * (the post's publish step does it too, see post-publish.ts). Refused
+ * (invalid_value): not a list, more than LIMITS.faqSets, a duplicate, a NEW id
+ * that is not a faqSet of THIS project, a NEW archived set. A set already
+ * stored on the draft is kept as stored even if it was archived or deleted
+ * since (same rule as internal links), so reordering or removing others never
+ * fails. Keys of stored references are kept, so reordering never churns `_key`s.
+ */
+export async function faqSetRefs(
+  client: Pick<WriteClient, 'fetch'>,
+  projectSlug: string,
+  value: unknown,
+  stored?: unknown
+): Promise<Array<Record<string, unknown>>> {
+  if (!Array.isArray(value) || value.length > LIMITS.faqSets) {
+    throw new PostDraftError('invalid_value', 'FAQ sets must be a short list.')
+  }
+  if (!value.every((id) => isPostId(id)) || new Set(value).size !== value.length) {
+    throw new PostDraftError('invalid_value', 'Unknown FAQ set.')
+  }
+  const ids = value as string[]
+  const rows = await client.fetch<FaqSetRow[] | null>(
+    `*[_type == "faqSet" && projectSlug == $projectSlug && (_id in $ids || _id in $draftIds)]{ _id, archivedAt }`,
+    { projectSlug, ids, draftIds: ids.map((id) => `drafts.${id}`) },
+    { perspective: 'raw' }
+  )
+  const published = new Map<string, FaqSetRow>()
+  const drafts = new Map<string, FaqSetRow>()
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (typeof row?._id !== 'string') continue
+    if (row._id.startsWith('drafts.')) drafts.set(row._id.slice('drafts.'.length), row)
+    else published.set(row._id, row)
+  }
+  const keys = new Map<string, string>()
+  const storedRefs = new Map<string, Record<string, unknown>>()
+  for (const r of Array.isArray(stored) ? stored : []) {
+    const ref = (r as { _ref?: unknown })?._ref
+    const key = (r as { _key?: unknown })?._key
+    if (typeof ref !== 'string' || !ref) continue
+    const id = ref.replace(/^drafts\./, '')
+    if (typeof key === 'string' && KEY.test(key)) keys.set(id, key)
+    const weak = (r as { _weak?: unknown })._weak === true
+    storedRefs.set(id, { _type: 'reference', _ref: id, ...(weak ? { _weak: true, _strengthenOnPublish: { type: 'faqSet' } } : {}) })
+  }
+  const used = new Set<string>()
+  return ids.map((id, i) => {
+    const live = published.get(id)
+    const draft = drafts.get(id)
+    // ADR-032: archive state lives on the published version (a draft-only set carries it too when archived).
+    const usable = Boolean(live ?? draft) && (live ?? draft)?.archivedAt == null
+    let key = keys.get(id) ?? (KEY.test(id) ? id : `faq${i}`)
+    while (used.has(key)) key = `${key.slice(0, 56)}-${i}`
+    used.add(key)
+    if (!usable) {
+      const kept = storedRefs.get(id)
+      if (kept) return { ...kept, _key: key }
+      if (!live && !draft) throw new PostDraftError('invalid_value', 'Unknown FAQ set.')
+      throw new PostDraftError('invalid_value', 'That FAQ set is archived. Restore it first.')
+    }
+    return live
+      ? { _type: 'reference', _key: key, _ref: id }
+      : { _type: 'reference', _key: key, _ref: id, _weak: true, _strengthenOnPublish: { type: 'faqSet' } }
+  })
 }
 
 /**
@@ -493,6 +596,11 @@ export type PostDraftSnapshot = {
   cta: { mode: 'default' | 'none' | 'custom'; ref: string | null } | null
   /** The gallery shown below the post (published id), or null. */
   gallery: string | null
+  /** FAQ sets shown below the post, in order (set ids, ADR-037). */
+  faqSets: string[]
+  /** The post's FAQ heading per language (empty = the website default). */
+  faqTitle: Record<string, string>
+  faqSubtitle: Record<string, string>
   /** Edit mode: the draft's content differs from the live version (something to "Update post" with). */
   hasChanges: boolean
 }
@@ -571,9 +679,27 @@ export type PostEditorSite = {
   ctas: PostEditorCta[]
   /** This project's galleries (published or new), title in the main language. */
   galleries: PostEditorGallery[]
+  /**
+   * This project's FAQ sets (published, new or archived), present ONLY when the
+   * FAQ module is installed and the caller holds faq.set.read (ADR-037 D8).
+   */
+  faqSets?: PostEditorFaqSet[]
 }
 
 export type PostEditorGallery = { id: string; title: string; count: number }
+
+/** Mirrors FaqSetState in faq-sets.ts: never published / live / live with draft changes / archived. */
+export type PostEditorFaqSetState = 'draft' | 'published' | 'changes' | 'archived'
+export type PostEditorFaqSet = {
+  id: string
+  /** The set's internal name (draft over published). */
+  name: string
+  /** Number of questions (draft over published). */
+  count: number
+  state: PostEditorFaqSetState
+  /** Up to two questions in the site's main language (else any language), for the picker preview. */
+  firstQuestions: string[]
+}
 
 export type PostEditorCta = {
   /** The callToAction document id. */
@@ -582,6 +708,18 @@ export type PostEditorCta = {
   isDefault: boolean
   heading: string | null
   buttonLabel: string | null
+}
+
+function faqSetIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  const out: string[] = []
+  for (const r of value) {
+    const ref = (r as { _ref?: unknown } | null)?._ref
+    if (typeof ref !== 'string' || !ref) continue
+    const id = ref.replace(/^drafts\./, '')
+    if (!out.includes(id)) out.push(id)
+  }
+  return out
 }
 
 function galleryRef(value: unknown): string | null {
@@ -698,6 +836,9 @@ export async function getPostDraft(
     live: published ? liveState(published) : null,
     cta: ctaChoice(doc.cta),
     gallery: galleryRef(doc.gallery),
+    faqSets: faqSetIds(doc.faqSets),
+    faqTitle: textMap(doc.faqTitle),
+    faqSubtitle: textMap(doc.faqSubtitle),
     hasChanges: published ? contentDiffers(doc, published) : false,
   }
 }
@@ -847,6 +988,9 @@ export async function getPostEditorSite(
       count: typeof row.count === 'number' ? row.count : 0,
     })
   }
+  const faqSets = canModuleAction(ctx, projectId, FAQ_SET_READ_PERMISSION)
+    ? await editorFaqSets(client, grant.projectSlug, defaultLocale)
+    : undefined
   // ADR-033 Amendment J (dual-read): term records replace the config list when the project has any.
   const vocabulary = categoryVocabulary(r?.categoryTerms, r?.categories ?? []) as Array<{ value?: string; label?: unknown; color?: unknown }>
   const categoryTerms = vocabulary
@@ -871,6 +1015,7 @@ export async function getPostEditorSite(
     origin: domain ? `https://${domain}` : null,
     timeZone: typeof r?.site?.timeZone === 'string' && r.site.timeZone ? r.site.timeZone : null,
     galleries: [...galleries.values()],
+    ...(faqSets ? { faqSets } : {}),
     ctas: (r?.ctas ?? [])
       .filter((c) => typeof c?._id === 'string' && !!c._id)
       .map((c) => {
@@ -885,4 +1030,49 @@ export async function getPostEditorSite(
         }
       }),
   }
+}
+
+type FaqSetListRow = { _id?: unknown; internalName?: unknown; archivedAt?: unknown; count?: unknown; questions?: unknown }
+
+/** This project's FAQ sets for the post editor, one entry per set (draft over published), raw perspective. */
+async function editorFaqSets(client: Pick<WriteClient, 'fetch'>, projectSlug: string, defaultLocale: string): Promise<PostEditorFaqSet[]> {
+  const rows = await client.fetch<unknown>(
+    `*[_type == "faqSet" && projectSlug == $projectSlug && !(_id in path("versions.**"))] | order(_updatedAt desc){
+      _id, internalName, archivedAt, "count": count(items), "questions": items[0...2].question
+    }`,
+    { projectSlug },
+    { perspective: 'raw' }
+  )
+  const live = new Map<string, FaqSetListRow>()
+  const drafts = new Map<string, FaqSetListRow>()
+  const order: string[] = []
+  for (const row of Array.isArray(rows) ? (rows as FaqSetListRow[]) : []) {
+    if (typeof row?._id !== 'string') continue
+    const isDraft = row._id.startsWith('drafts.')
+    const id = isDraft ? row._id.slice('drafts.'.length) : row._id
+    if (!isPostId(id)) continue
+    if (!order.includes(id)) order.push(id)
+    ;(isDraft ? drafts : live).set(id, row)
+  }
+  return order.map((id) => {
+    const p = live.get(id)
+    const d = drafts.get(id)
+    const row = (d ?? p)!
+    const archived = (p ?? d)?.archivedAt != null
+    const questions = (Array.isArray(row.questions) ? row.questions : [])
+      .map((q) => {
+        const texts = textMap(q)
+        return texts[defaultLocale]?.trim() || Object.values(texts).find((t) => t.trim())?.trim() || ''
+      })
+      .filter(Boolean)
+    const name = (typeof row.internalName === 'string' && row.internalName.trim()) ||
+      (typeof p?.internalName === 'string' && p.internalName.trim()) || id
+    return {
+      id,
+      name,
+      count: typeof row.count === 'number' ? row.count : 0,
+      state: archived ? 'archived' : p && d ? 'changes' : p ? 'published' : 'draft',
+      firstQuestions: questions.slice(0, 2),
+    }
+  })
 }

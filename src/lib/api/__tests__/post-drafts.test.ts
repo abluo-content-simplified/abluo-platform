@@ -493,6 +493,9 @@ describe('getPostDraft', () => {
       live: null,
       cta: null,
       gallery: null,
+      faqSets: [],
+      faqTitle: {},
+      faqSubtitle: {},
       hasChanges: false,
     })
     expect(c.getDocument).toHaveBeenCalledWith(`drafts.${ID}`)
@@ -779,5 +782,160 @@ describe('contentDiffers — is there something to "Update post" with?', () => {
     expect(contentDiffers({ ...pub, title: { _type: 'localizedString', it: 'Ciao!' } }, pub)).toBe(true)
     expect(contentDiffers({ ...pub, subtitle: { it: 'Nuovo' } }, pub)).toBe(true)
     expect(contentDiffers({ title: { it: 'Ciao', _type: 'localizedString' }, projectSlug: 'tmz', _type: 'post' }, pub)).toBe(false)
+  })
+})
+
+describe('FAQ sets on a post (ADR-037 D5 / D8)', () => {
+  const faqGrant = (o: Partial<ProjectGrant> = {}) =>
+    grant({ enabledModuleIds: ['blog', 'faq'], permissions: ['blog.post.read', 'blog.post.write', 'faq.set.read'], ...o })
+  /** faq-live: published (with a draft); faq-new: draft only; faq-old: archived. */
+  const FAQ_ROWS = [
+    { _id: 'faq-live', archivedAt: null },
+    { _id: 'drafts.faq-live', archivedAt: null },
+    { _id: 'drafts.faq-new' },
+    { _id: 'faq-old', archivedAt: '2026-10-01T00:00:00Z' },
+  ]
+  function faqClient(doc?: Record<string, unknown>) {
+    const c = fakeClient(doc ?? { _id: `drafts.${ID}`, _type: 'post', _rev: 'r1', projectSlug: 'hoffmann' })
+    const base = c.client.fetch.getMockImplementation()!
+    c.client.fetch.mockImplementation((async (q: string, p?: Record<string, unknown>) => {
+      if (!q.includes('_type == "faqSet"')) return base(q, p)
+      const wanted = new Set([...((p?.ids as string[]) ?? []), ...((p?.draftIds as string[]) ?? [])])
+      return p?.projectSlug === 'hoffmann' ? FAQ_ROWS.filter((r) => wanted.has(r._id)) : []
+    }) as never)
+    return c
+  }
+  const patch = (set: Record<string, unknown>, c = faqClient(), g = faqGrant()) => patchPostDraft(ctx(g), 'project-a', { id: ID, rev: 'r1', set }, deps(c))
+  const setOp = (c: ReturnType<typeof fakeClient>) => c.ops.find(([o]) => o === 'set')?.[1] as Record<string, unknown>
+
+  it('stores the sets in order: published → strong ref, draft-only → weak ref strengthened on publish (one raw read)', async () => {
+    const c = faqClient()
+    await patch({ faqSets: ['faq-new', 'faq-live'] }, c)
+    expect(setOp(c).faqSets).toEqual([
+      { _type: 'reference', _key: 'faq-new', _ref: 'faq-new', _weak: true, _strengthenOnPublish: { type: 'faqSet' } },
+      { _type: 'reference', _key: 'faq-live', _ref: 'faq-live' },
+    ])
+    const reads = c.client.fetch.mock.calls.filter(([q]) => (q as string).includes('_type == "faqSet"')) as unknown as Array<[string, Record<string, unknown>, Record<string, unknown>]>
+    expect(reads).toHaveLength(1)
+    expect(reads[0][1]).toEqual({ projectSlug: 'hoffmann', ids: ['faq-new', 'faq-live'], draftIds: ['drafts.faq-new', 'drafts.faq-live'] })
+    expect(reads[0][2]).toEqual({ perspective: 'raw' })
+  })
+
+  it('keeps the stored _key of a set when the list is reordered', async () => {
+    const c = faqClient({ _id: `drafts.${ID}`, _type: 'post', _rev: 'r1', projectSlug: 'hoffmann', faqSets: [{ _type: 'reference', _key: 'k1', _ref: 'faq-live' }] })
+    await patch({ faqSets: ['faq-new', 'faq-live'] }, c)
+    expect((setOp(c).faqSets as Array<{ _key: string }>).map((r) => r._key)).toEqual(['faq-new', 'k1'])
+  })
+
+  it('a set already on the post that was archived or deleted since is kept as stored (reordering never fails)', async () => {
+    const c = faqClient({
+      _id: `drafts.${ID}`,
+      _type: 'post',
+      _rev: 'r1',
+      projectSlug: 'hoffmann',
+      faqSets: [
+        { _type: 'reference', _key: 'k-old', _ref: 'faq-old' },
+        { _type: 'reference', _key: 'k-gone', _ref: 'faq-gone', _weak: true, _strengthenOnPublish: { type: 'faqSet' } },
+      ],
+    })
+    await patch({ faqSets: ['faq-live', 'faq-gone', 'faq-old'] }, c)
+    expect(setOp(c).faqSets).toEqual([
+      { _type: 'reference', _key: 'faq-live', _ref: 'faq-live' },
+      { _type: 'reference', _key: 'k-gone', _ref: 'faq-gone', _weak: true, _strengthenOnPublish: { type: 'faqSet' } },
+      { _type: 'reference', _key: 'k-old', _ref: 'faq-old' },
+    ])
+  })
+
+  it('an empty list (or null) removes the sets', async () => {
+    for (const value of [[], null]) {
+      const c = faqClient()
+      await patch({ faqSets: value }, c)
+      expect(c.ops.find(([o]) => o === 'unset')?.[1]).toEqual(['faqSets'])
+    }
+  })
+
+  it.each([
+    ["another project's / unknown set", ['faq-other']],
+    ['an archived set', ['faq-old']],
+    ['the same set twice', ['faq-live', 'faq-live']],
+    ['a draft id', ['drafts.faq-live']],
+    ['not a list', 'faq-live'],
+    ['more than 10 sets', Array.from({ length: 11 }, (_, i) => `faq-${i}`)],
+  ])('refuses %s, nothing written', async (_l, value) => {
+    const c = faqClient()
+    await expect(patch({ faqSets: value }, c)).rejects.toMatchObject({ code: 'invalid_value' })
+    expect(wrote(c)).toBe(0)
+  })
+
+  it.each([
+    ['FAQ module not installed', grant()],
+    ['no faq.set.read', faqGrant({ permissions: ['blog.post.read', 'blog.post.write'] })],
+  ])('faqSets / faqTitle / faqSubtitle: refused with %s, nothing read or written', async (_l, g) => {
+    for (const set of [{ faqSets: ['faq-live'] }, { 'faqTitle.it': 'Domande' }, { 'faqSubtitle.it': 'Sotto' }]) {
+      const c = faqClient()
+      await expect(patch(set, c, g)).rejects.toThrow(TenantAuthorizationError)
+      expect(wrote(c)).toBe(0)
+      expect(c.client.fetch.mock.calls.some(([q]) => (q as string).includes('faqSet'))).toBe(false)
+    }
+  })
+
+  it('the FAQ heading is localized per site language and limited in length', async () => {
+    const c = faqClient()
+    await patch({ 'faqTitle.it': 'Domande sugli impianti', 'faqSubtitle.de': 'Kurz erklärt' }, c)
+    expect(c.ops.find(([o]) => o === 'setIfMissing')?.[1]).toEqual({ faqTitle: { _type: 'localizedString' }, faqSubtitle: { _type: 'localizedText' } })
+    expect(setOp(c)).toMatchObject({ 'faqTitle.it': 'Domande sugli impianti', 'faqSubtitle.de': 'Kurz erklärt' })
+    await expect(patch({ 'faqTitle.it': 'x'.repeat(201) })).rejects.toMatchObject({ code: 'invalid_value' })
+    await expect(patch({ 'faqSubtitle.it': 'x'.repeat(501) })).rejects.toMatchObject({ code: 'invalid_value' })
+    await expect(patch({ 'faqTitle.fr': 'Questions' })).rejects.toMatchObject({ code: 'invalid_field' })
+  })
+
+  it('getPostDraft returns the attached set ids (weak refs included) and the heading', async () => {
+    const c = readClient({
+      doc: {
+        _id: `drafts.${ID}`,
+        _type: 'post',
+        _rev: 'r',
+        projectSlug: 'hoffmann',
+        faqSets: [{ _ref: 'faq-new', _weak: true }, { _ref: 'faq-live' }, { _ref: 'faq-live' }, { nope: 1 }],
+        faqTitle: { _type: 'localizedString', it: 'Domande' },
+        faqSubtitle: { _type: 'localizedText', de: 'Kurz' },
+      },
+    })
+    const d = await getPostDraft(ctx(grant()), 'project-a', ID, rdeps(c))
+    expect(d).toMatchObject({ faqSets: ['faq-new', 'faq-live'], faqTitle: { it: 'Domande' }, faqSubtitle: { de: 'Kurz' } })
+  })
+
+  it('getPostEditorSite lists FAQ sets only with the FAQ module and faq.set.read', async () => {
+    const rows = [
+      { _id: 'drafts.faq-live', internalName: 'Implants (edited)', count: 4, questions: [{ it: 'Fa male?', en: 'Does it hurt?' }, { en: 'Only English' }] },
+      { _id: 'faq-live', internalName: 'Implants', count: 3, questions: [] },
+      { _id: 'drafts.faq-new', internalName: 'Booking', count: 0 },
+      { _id: 'faq-old', internalName: 'Old', count: 2, archivedAt: '2026-10-01T00:00:00Z' },
+      { _id: 'faq-pub', internalName: 'Prices', count: 1 },
+      { _id: 'versions.r1.faq-x' },
+    ]
+    const make = () => {
+      const c = readClient()
+      c.fetch.mockImplementation((async (q: string) =>
+        q.includes('_type == "faqSet"') ? rows : q.includes('_type == "gallery"') ? [] : { site: { defaultLocale: 'it', supportedLocales: ['it', 'en'] } }) as never)
+      return c
+    }
+    const without = make()
+    expect(await getPostEditorSite(ctx(grant()), 'project-a', { locale: 'en' }, rdeps(without))).not.toHaveProperty('faqSets')
+    expect(without.fetch.mock.calls.some(([q]) => (q as string).includes('faqSet'))).toBe(false)
+    const noRead = make()
+    expect(await getPostEditorSite(ctx(faqGrant({ permissions: ['blog.post.read', 'blog.post.write'] })), 'project-a', { locale: 'en' }, rdeps(noRead))).not.toHaveProperty('faqSets')
+
+    const c = make()
+    const site = await getPostEditorSite(ctx(faqGrant()), 'project-a', { locale: 'en' }, rdeps(c))
+    expect(site.faqSets).toEqual([
+      { id: 'faq-live', name: 'Implants (edited)', count: 4, state: 'changes', firstQuestions: ['Fa male?', 'Only English'] },
+      { id: 'faq-new', name: 'Booking', count: 0, state: 'draft', firstQuestions: [] },
+      { id: 'faq-old', name: 'Old', count: 2, state: 'archived', firstQuestions: [] },
+      { id: 'faq-pub', name: 'Prices', count: 1, state: 'published', firstQuestions: [] },
+    ])
+    const call = c.fetch.mock.calls.find(([q]) => (q as string).includes('_type == "faqSet"')) as unknown as [string, Record<string, unknown>, Record<string, unknown>]
+    expect(call[1]).toEqual({ projectSlug: 'hoffmann' })
+    expect(call[2]).toEqual({ perspective: 'raw' })
   })
 })

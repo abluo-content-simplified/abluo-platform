@@ -8,7 +8,7 @@ import { CardMenu } from '@/components/app/ui/CardMenu'
 import { Pill } from '@/components/app/ui/list/cells'
 import { StepHeading, languageName } from '@/components/client/create/StepHeading'
 import { countWords } from '@/lib/client/normalize-blocks'
-import { languageStates, languageSummaryKey, overviewSections, type OverviewSection, type SectionState } from '@/lib/client/wizard-steps'
+import { faqSummary, languageStates, languageSummaryKey, overviewSections, type OverviewSection, type SectionState } from '@/lib/client/wizard-steps'
 
 /**
  * The overview (ADR-025 · "review"): once the first pass is over, a draft
@@ -25,6 +25,7 @@ export function ReviewStep({
   status,
   notice,
   publication,
+  faqChoice,
 }: StepProps & {
   onEdit: (section: OverviewSection['id']) => void
   onPreview: () => void
@@ -35,9 +36,12 @@ export function ReviewStep({
   notice?: { kind: 'status' | 'error'; text: string } | null
   /** Edit mode, not archived: when the post is on the website (PublicationDates; changes apply at once). */
   publication?: ReactNode
+  /** Edit mode: "Publish the FAQ set too" when the post shows never-published FAQ sets (ADR-037 D9). */
+  faqChoice?: ReactNode
 }) {
   const t = useTranslations('clientDashboard.create.review')
   const tg = useTranslations('clientDashboard.gallery.post')
+  const tf = useTranslations('clientDashboard.faq.post')
   const tm = useTranslations('clientDashboard.create.menu')
   const tp = useTranslations('clientDashboard.create.publish')
   const ui = useLocale()
@@ -80,6 +84,10 @@ export function ReviewStep({
       }
       case 'gallery':
         return (site.galleries ?? []).find((g) => g.id === draft.gallery)?.title ?? tg('none')
+      case 'faq': {
+        const n = faqSummary(draft.faqSets, site.faqSets)
+        return n.sets ? `${tf('summarySets', { count: n.sets })} · ${tf('summaryQuestions', { count: n.questions })}` : tf('summaryNone')
+      }
     }
   }
 
@@ -107,10 +115,11 @@ export function ReviewStep({
       >
         {notice?.text}
       </p>
+      {faqChoice ? <div className="mt-4">{faqChoice}</div> : null}
 
       <ul className="mt-8 divide-y divide-border-subtle border-y border-border-subtle">
         {overviewSections(draft, site).map(({ id, state }) => {
-          const name = id === 'gallery' ? tg('section') : t(`sections.${id}`)
+          const name = id === 'gallery' ? tg('section') : id === 'faq' ? tf('section') : t(`sections.${id}`)
           return (
             <li key={id} className="flex items-start gap-4 py-5">
               {id === 'cover' && draft.cover?.url ? (

@@ -20,6 +20,9 @@ import {
   resumeTarget,
   wizardSteps,
   WIZARD_STEP_ORDER,
+  faqSummary,
+  moveFaqSet,
+  unpublishedFaqSets,
 } from '../wizard-steps'
 
 it('the client-side step order mirrors the server allowlist', () => {
@@ -216,5 +219,49 @@ describe('gallery in the overview', () => {
     expect(
       overviewSections({ ...draft, gallery: 'gone' }, { categories: [], languages: ['it'], defaultLocale: 'it', galleries: [{ id: 'g1' }] }).at(-1)
     ).toEqual({ id: 'gallery', state: 'optional' })
+  })
+})
+
+describe('FAQs (ADR-037)', () => {
+  const draft = { title: { it: 'T' }, body: { it: block('x') } }
+  const site = { categories: [], languages: ['it'], defaultLocale: 'it' }
+  it('the faq step comes right after the gallery, only when site.faqSets is present', () => {
+    expect(wizardSteps({ categories: [], languages: ['it'] })).not.toContain('faq')
+    expect(wizardSteps({ categories: [], languages: ['it'], galleries: [], faqSets: [] })).toEqual([
+      'title', 'story', 'cover', 'cta', 'gallery', 'faq', 'preview', 'publish', 'done',
+    ])
+    expect(wizardSteps({ categories: [], languages: ['it'], faqSets: [] })).toEqual(['title', 'story', 'cover', 'cta', 'faq', 'preview', 'publish', 'done'])
+  })
+  it('a stored faq step resumes at the next step on a site without the FAQ module', () => {
+    expect(resumeStep('faq', wizardSteps({ categories: [], languages: ['it'] }))).toBe('preview')
+  })
+  it('overview: only with the FAQ module; done once a set is attached', () => {
+    expect(overviewSections(draft, site).map((s) => s.id)).not.toContain('faq')
+    expect(overviewSections(draft, { ...site, faqSets: [] }).at(-1)).toEqual({ id: 'faq', state: 'optional' })
+    expect(overviewSections({ ...draft, faqSets: ['f1'] }, { ...site, faqSets: [{ id: 'f1' }] }).at(-1)).toEqual({ id: 'faq', state: 'done' })
+    // after the gallery
+    const ids = overviewSections(draft, { ...site, galleries: [], faqSets: [] }).map((s) => s.id)
+    expect(ids.slice(-2)).toEqual(['gallery', 'faq'])
+  })
+  it('summary counts sets and their questions', () => {
+    expect(faqSummary(['a', 'b', 'gone'], [{ id: 'a', count: 4 }, { id: 'b', count: 5 }])).toEqual({ sets: 3, questions: 9 })
+    expect(faqSummary(undefined, [])).toEqual({ sets: 0, questions: 0 })
+  })
+  it('publish rule: only attached sets that were never published need "Publish the FAQ set too"', () => {
+    const sets = [
+      { id: 'new', state: 'draft' },
+      { id: 'live', state: 'published' },
+      { id: 'edited', state: 'changes' },
+      { id: 'other', state: 'draft' },
+    ]
+    expect(unpublishedFaqSets(['live', 'new', 'edited'], sets).map((s) => s.id)).toEqual(['new'])
+    expect(unpublishedFaqSets([], sets)).toEqual([])
+    expect(unpublishedFaqSets(['new'], undefined)).toEqual([])
+  })
+  it('keyboard reorder moves one place and stops at the ends', () => {
+    expect(moveFaqSet(['a', 'b', 'c'], 'b', -1)).toEqual(['b', 'a', 'c'])
+    expect(moveFaqSet(['a', 'b', 'c'], 'b', 1)).toEqual(['a', 'c', 'b'])
+    expect(moveFaqSet(['a', 'b'], 'a', -1)).toEqual(['a', 'b'])
+    expect(moveFaqSet(['a', 'b'], 'x', 1)).toEqual(['a', 'b'])
   })
 })

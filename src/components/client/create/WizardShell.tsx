@@ -28,11 +28,12 @@ import {
   laterStep,
   progressSteps,
   resumeTarget,
+  unpublishedFaqSets,
   wizardSteps,
   type OverviewSection,
   type WizardFlowStep,
 } from '@/lib/client/wizard-steps'
-import type { DraftSnapshot, SiteInfo, StepProps } from './types'
+import type { DraftSnapshot, SiteFaqSet, SiteInfo, StepProps } from './types'
 import { pickerLabel, type PickerTerm } from '@/components/client/taxonomy/term-picker-model'
 import { applyToSnapshot } from './snapshot'
 import { CategoryStep } from './steps/CategoryStep'
@@ -51,6 +52,8 @@ import { DoneStep, type DoneResult } from './steps/DoneStep'
 import { ReviewStep } from './steps/ReviewStep'
 import { CtaStep } from './steps/CtaStep'
 import { GalleryPickStep } from './steps/GalleryPickStep'
+import { FaqStep } from './steps/FaqStep'
+import { FaqPublishChoice } from '@/components/client/faq/post/FaqPublishChoice'
 import { ConfirmDialog } from '@/components/app/ui/ConfirmDialog'
 import { DeletePermanentlyDialog } from '@/components/app/lifecycle/DeletePermanentlyDialog'
 import { lifecycleMenu, type LifecycleAction, type LifecycleMenuEntry } from '@/components/app/lifecycle/lifecycle-menu'
@@ -70,6 +73,7 @@ const PUBLISH_ERRORS = [
   'forbidden',
   'not_found',
   'archived',
+  'unpublished_faq_sets',
   'unauthenticated',
   'offline',
   'failed',
@@ -108,20 +112,28 @@ export function WizardShell({
   const t = useTranslations('clientDashboard.create')
   const tl = useTranslations('app.lifecycle')
   const tp = useTranslations('app.lifecycle.publish')
+  const tf = useTranslations('clientDashboard.faq.post')
   const ui = useLocale()
   const router = useRouter()
   // Categories created inline (Category step) join the site's list, so the Review step shows their names.
   const [addedCategories, setAddedCategories] = useState<PickerTerm[]>([])
+  // FAQ sets created or changed from this editor (ADR-037): they replace the server's entry.
+  const [changedFaqSets, setChangedFaqSets] = useState<SiteFaqSet[]>([])
   const site = useMemo<SiteInfo>(() => {
     const fresh = addedCategories.filter((c) => !initialSite.categories.some((x) => x.value === c.value))
-    if (fresh.length === 0) return initialSite
+    const withFaq =
+      initialSite.faqSets && changedFaqSets.length
+        ? { ...initialSite, faqSets: [...changedFaqSets, ...initialSite.faqSets.filter((s) => !changedFaqSets.some((c) => c.id === s.id))] }
+        : initialSite
+    if (fresh.length === 0) return withFaq
     return {
-      ...initialSite,
+      ...withFaq,
       categories: [...initialSite.categories, ...fresh.map((c) => ({ value: c.value, label: pickerLabel(c, ui, initialSite.defaultLocale) }))],
       categoryTerms: initialSite.categoryTerms ? [...initialSite.categoryTerms, ...fresh.filter((c) => !initialSite.categoryTerms!.some((x) => x.value === c.value))] : initialSite.categoryTerms,
     }
-  }, [initialSite, addedCategories, ui])
+  }, [initialSite, addedCategories, changedFaqSets, ui])
   const addCategory = useCallback((term: PickerTerm) => setAddedCategories((a) => (a.some((x) => x.value === term.value) ? a : [...a, term])), [])
+  const upsertFaqSet = useCallback((set: SiteFaqSet) => setChangedFaqSets((a) => [set, ...a.filter((x) => x.id !== set.id)]), [])
   const projectSlug = site.projectSlug
   const locale = site.defaultLocale
 
@@ -145,6 +157,8 @@ export function WizardShell({
   )
   const [publish, setPublish] = useState<PublishChoice>(() => defaultPublishChoice())
   const [publishError, setPublishError] = useState<string | null>(null)
+  /** ADR-037 D9: "Publish the FAQ set too" — ticked by the editor, never by default. */
+  const [publishFaqSets, setPublishFaqSets] = useState(false)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<DoneResult | null>(null)
   const finished = useRef(false)
@@ -323,6 +337,22 @@ export function WizardShell({
 
   const publishError_ = (code: string) => t(`publish.errors.${PUBLISH_ERRORS.includes(code) ? code : 'failed'}`)
 
+  // ── FAQ sets that go live with the post (ADR-037 D9) ──────────────────────
+  const faqToPublish = unpublishedFaqSets(snap.faqSets, site.faqSets)
+  /** Publishing is held until the editor ticks "Publish the FAQ set too" (and may publish sets). */
+  const faqHolds = faqToPublish.length > 0 && !(publishFaqSets && site.faqWrite)
+  /** The server found never-published sets this editor didn't know about: show them in the choice. */
+  function markUnpublishedFaqSets(r: { error: string; faqSets?: { id: string; name: string }[] }) {
+    if (r.error !== 'unpublished_faq_sets' || !r.faqSets) return
+    for (const f of r.faqSets) {
+      const known = site.faqSets?.find((s) => s.id === f.id)
+      upsertFaqSet({ id: f.id, name: f.name, count: known?.count ?? 0, firstQuestions: known?.firstQuestions ?? [], state: 'draft' })
+    }
+  }
+  const faqChoice = faqToPublish.length ? (
+    <FaqPublishChoice sets={faqToPublish} checked={publishFaqSets} onChange={setPublishFaqSets} canWrite={Boolean(site.faqWrite)} />
+  ) : null
+
   async function runPublish(override?: 'keep') {
     if (busy) return
     setPublishError(null)
@@ -355,8 +385,10 @@ export function WizardShell({
         mode,
         publishAt: publishAt ?? undefined,
         expiresAt,
+        publishFaqSets: faqToPublish.length > 0 && publishFaqSets,
       })
       if (!r.ok) {
+        markUnpublishedFaqSets(r)
         setPublishError(publishError_(r.error))
         return
       }
@@ -380,8 +412,17 @@ export function WizardShell({
     try {
       const saved = await autosave.flush()
       if (!saved) return fail(publishError_(autosave.currentState() === 'conflict' ? 'conflict' : 'offline'))
-      const r = await publishPostDraftAction({ projectSlug, id: draftIdRef.current, rev: autosave.currentRev(), mode: 'keep' })
-      if (!r.ok) return fail(publishError_(r.error))
+      const r = await publishPostDraftAction({
+        projectSlug,
+        id: draftIdRef.current,
+        rev: autosave.currentRev(),
+        mode: 'keep',
+        publishFaqSets: faqToPublish.length > 0 && publishFaqSets,
+      })
+      if (!r.ok) {
+        markUnpublishedFaqSets(r)
+        return fail(publishError_(r.error))
+      }
       finished.current = true
       await autosave.discard()
       const isLive = live ? publishedStatus(live, 'required', new Date()) === 'published' : true
@@ -517,6 +558,7 @@ export function WizardShell({
     goNext,
     goBack,
     addCategory,
+    upsertFaqSet,
     flush: flushForStep,
     onServerWrite,
   }
@@ -586,11 +628,14 @@ export function WizardShell({
   const onReview = step === 'review'
   // ADR-035: a new cover still uploading / optimising holds the step (its description is being written meanwhile).
   const holdForCover = step === 'cover' && coverPending
+  // Going live (Publish / Schedule, or Update post) with never-published FAQ sets needs the choice.
+  const holdForFaq = faqHolds && ((step === 'publish' && publish.mode !== 'draft') || (onReview && isEdit))
   const canNext =
     ready &&
     step !== 'done' &&
     !busy &&
     !holdForCover &&
+    !holdForFaq &&
     // The cover step stays pressable so a missing description can be explained (D).
     (onReview ? canPublish(snap, locale) : step === 'cover' || canAdvance(step, snap, locale))
   const segmentIndex = step ? segments.indexOf(step as WizardFlowStep) : 0
@@ -623,7 +668,13 @@ export function WizardShell({
         : step === 'cover' && coverNeedsAlt(snap, locale)
           ? () => setAltNeeded(true)
           : goNext
-  const blockedHint = onReview && !canPublish(snap, locale) ? t('review.publishNeeds') : null
+  const blockedHint = onReview && !canPublish(snap, locale)
+    ? t('review.publishNeeds')
+    : holdForFaq
+      ? site.faqWrite
+        ? tf('publish.blocked', { count: faqToPublish.length })
+        : tf('publish.blockedNoPermission', { count: faqToPublish.length })
+      : null
   // The languages step shows the original next to the translation from md up.
   const wide = step === 'languages'
   const hasBack = editing ? step === 'publish' : !onReview && index > 0
@@ -654,6 +705,7 @@ export function WizardShell({
               status={statusLine}
               notice={notice}
               publication={publication}
+              faqChoice={isEdit ? faqChoice : null}
             />
           ) : step === 'category' ? (
             <CategoryStep {...props} />
@@ -667,12 +719,14 @@ export function WizardShell({
             <CtaStep {...props} />
           ) : step === 'gallery' ? (
             <GalleryPickStep {...props} />
+          ) : step === 'faq' ? (
+            <FaqStep {...props} />
           ) : step === 'languages' ? (
             <LanguagesStep {...props} choices={choices} onChoice={(l, c) => setChoices((s) => ({ ...s, [l]: c }))} />
           ) : step === 'preview' ? (
             <PreviewStep {...props} />
           ) : step === 'publish' ? (
-            <PublishStep {...props} choice={publish} onChange={setPublish} error={publishError} />
+            <PublishStep {...props} choice={publish} onChange={setPublish} error={publishError} faqChoice={publish.mode !== 'draft' ? faqChoice : null} />
           ) : done ? (
             <DoneStep result={done} homeHref={homeHref} />
           ) : null}

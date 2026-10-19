@@ -57,3 +57,15 @@ describe('gallery patch', () => {
     expect(applyToSnapshot(withG, { gallery: null }).gallery).toBeNull()
   })
 })
+
+describe('FAQ patch (ADR-037)', () => {
+  it('sets / clears the attached sets and the heading per language locally', () => {
+    const withF = applyToSnapshot(base, { faqSets: ['f1', 'f2'], 'faqTitle.it': 'Domande', 'faqSubtitle.de': 'Kurz' })
+    expect(withF.faqSets).toEqual(['f1', 'f2'])
+    expect(withF.faqTitle).toEqual({ it: 'Domande' })
+    expect(withF.faqSubtitle).toEqual({ de: 'Kurz' })
+    const cleared = applyToSnapshot(withF, { faqSets: null, 'faqTitle.it': '' })
+    expect(cleared.faqSets).toEqual([])
+    expect(cleared.faqTitle).toEqual({})
+  })
+})

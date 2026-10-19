@@ -816,7 +816,8 @@
           "events": "Veranstaltung",
           "gallery": "Galerie",
           "media": "Zur Mediathek hinzufügen",
-          "catalogue": "Katalogeintrag"
+          "catalogue": "Katalogeintrag",
+          "faq": "FAQ-Set"
         },
         "desc": {
           "blog": "Ein Artikel für deine Website, in wenigen einfachen Schritten.",
@@ -861,7 +862,8 @@
         "publish": "Veröffentlichen",
         "review": "Prüfen & veröffentlichen",
         "cta": "Handlungsaufforderung",
-        "gallery": "Galerie"
+        "gallery": "Galerie",
+        "faq": "FAQ"
       },
       "category": {
         "title": "Worum geht es in diesem Beitrag?",
@@ -950,7 +952,8 @@
           "unauthenticated": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.",
           "offline": "Du bist offline. Dein Beitrag ist auf diesem Gerät sicher – versuch es erneut, sobald du verbunden bist.",
           "failed": "Etwas ist schiefgelaufen. Dein Beitrag ist sicher – bitte versuch es noch einmal.",
-          "archived": "Dieser Beitrag ist archiviert. Stelle ihn vor dem Veröffentlichen wieder her."
+          "archived": "Dieser Beitrag ist archiviert. Stelle ihn vor dem Veröffentlichen wieder her.",
+          "unpublished_faq_sets": "Dieser Beitrag zeigt ein FAQ-Set, das noch nicht veröffentlicht ist. Aktivieren Sie „Das FAQ-Set ebenfalls veröffentlichen“ und versuchen Sie es erneut."
         },
         "summaryNow": "Veröffentlicht in",
         "summaryDraft": "Gespeichert auf",
@@ -2282,6 +2285,255 @@
         "merged": "{count, plural, one {Bei # Galerie mit „{tag}“ zusammengeführt} other {Bei # Galerien mit „{tag}“ zusammengeführt}}",
         "deleted": "{tags, plural, one {Tag gelöscht} other {# Tags gelöscht}} · {count, plural, one {# Galerie aktualisiert} other {# Galerien aktualisiert}}"
       }
+    },
+    "faq": {
+      "list": {
+        "title": "FAQ-Sets",
+        "untitled": "Unbenanntes FAQ-Set",
+        "new": "Neues FAQ-Set",
+        "emptyTitle": "Noch keine FAQ-Sets",
+        "emptyBody": "Ein FAQ-Set ist eine Liste von Fragen und Antworten. Sie erstellen es einmal und zeigen es auf jeder Seite oder in jedem Beitrag.",
+        "undo": "Rückgängig",
+        "copyOf": "Kopie von {name}",
+        "missing": "{languages} fehlt",
+        "allLanguages": "Alle Sprachen",
+        "notUsed": "Noch nicht verwendet",
+        "usedInCount": "{count, plural, one {An # Stelle verwendet} other {An # Stellen verwendet}}",
+        "usedInOpen": "Wo „{name}“ verwendet wird ({count})",
+        "usedInTitle": "Wo „{name}“ verwendet wird",
+        "menu": "Aktionen für {name}",
+        "questions": "{count, plural, =0 {Keine Fragen} one {# Frage} other {# Fragen}}",
+        "noQuestions": "Noch keine Fragen",
+        "columns": {
+          "name": "Name",
+          "questions": "Fragen",
+          "languages": "Sprachen",
+          "usedIn": "Verwendet in",
+          "status": "Status",
+          "updated": "Aktualisiert",
+          "actions": "Aktionen"
+        },
+        "view": {
+          "label": "Ansicht",
+          "list": "Liste",
+          "cards": "Karten"
+        },
+        "actions": {
+          "edit": "Bearbeiten",
+          "usedIn": "Wo es verwendet wird",
+          "duplicate": "Duplizieren"
+        },
+        "done": {
+          "archived": "„{name}“ archiviert.",
+          "restored": "„{name}“ wiederhergestellt.",
+          "deleted": "„{name}“ gelöscht."
+        },
+        "filters": {
+          "label": "FAQ-Sets filtern",
+          "search": "FAQ-Sets durchsuchen",
+          "searchPlaceholder": "Namen und Fragen durchsuchen…",
+          "status": "Status",
+          "statusAll": "Alle (nicht archiviert)",
+          "usage": "Verwendung",
+          "usageAny": "Verwendet oder nicht",
+          "usageUsed": "Auf der Website verwendet",
+          "usageUnused": "Noch nicht verwendet",
+          "sort": "Sortieren",
+          "sort_updated_desc": "Zuletzt aktualisiert",
+          "sort_updated_asc": "Am längsten nicht aktualisiert",
+          "sort_name_asc": "Name A–Z",
+          "sort_name_desc": "Name Z–A",
+          "sort_questions_desc": "Meiste Fragen",
+          "sort_questions_asc": "Wenigste Fragen",
+          "showing": "{shown} von {total} FAQ-Sets",
+          "clear": "Filter zurücksetzen",
+          "noMatch": "Keine FAQ-Sets entsprechen diesen Filtern."
+        }
+      },
+      "usedIn": {
+        "untitledPage": "Unbenannte Seite",
+        "untitledPost": "Unbenannter Beitrag",
+        "draft": "{title} (Entwurf)",
+        "posts": "{count, plural, one {# Beitrag} other {# Beiträge}}",
+        "none": "Noch auf keiner Seite und in keinem Beitrag verwendet.",
+        "kind": {
+          "page": "Seite",
+          "post": "Beitrag"
+        },
+        "published": "Veröffentlicht",
+        "notPublished": "Nicht veröffentlicht"
+      },
+      "errors": {
+        "forbidden": "Dafür fehlt Ihnen die Berechtigung.",
+        "unauthenticated": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
+        "not_found": "Dieses FAQ-Set gibt es nicht mehr.",
+        "invalid_field": "Etwas in diesem Set konnte nicht gespeichert werden. Bitte neu laden und erneut versuchen.",
+        "invalid_value": "Etwas in diesem Set konnte nicht gespeichert werden. Bitte neu laden und erneut versuchen.",
+        "too_large": "Dieses Set ist zu groß. Entfernen Sie einige Fragen und versuchen Sie es erneut.",
+        "conflict": "Dieses Set wurde an anderer Stelle geändert. Laden Sie neu, um die aktuelle Version zu sehen.",
+        "in_use": "Es wird noch auf Ihrer Website angezeigt: {places}. Entfernen Sie es zuerst dort.",
+        "archive_first": "Archivieren Sie das Set zuerst und löschen Sie es dann endgültig.",
+        "archived": "Dieses Set ist archiviert. Stellen Sie es wieder her, um es zu ändern.",
+        "failed": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+        "offline": "Noch nicht gespeichert – prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+        "loadFailed": "Die FAQ-Sets konnten nicht geladen werden.",
+        "retry": "Erneut versuchen"
+      },
+      "newSet": {
+        "title": "Neues FAQ-Set",
+        "intro": "Geben Sie ihm einen Namen. Die Fragen fügen Sie danach hinzu.",
+        "name": "Name",
+        "nameHint": "Den Namen sieht nur Ihr Team, z. B. „Implantate“ oder „Buchung“.",
+        "nameNeeded": "Geben Sie einen Namen ein, um das Set zu erstellen.",
+        "namePlaceholder": "z. B. Implantate",
+        "cancel": "Abbrechen",
+        "create": "Erstellen und Fragen hinzufügen",
+        "creating": "Wird erstellt…",
+        "errors": {
+          "forbidden": "Sie haben keine Berechtigung, FAQ-Sets zu erstellen.",
+          "tooMany": "Diese Website hat die maximale Anzahl an FAQ-Sets erreicht.",
+          "failed": "Das Set konnte nicht erstellt werden. Bitte versuchen Sie es erneut."
+        }
+      },
+      "editor": {
+        "untitled": "Unbenanntes FAQ-Set",
+        "back": "FAQ-Sets",
+        "publish": "Veröffentlichen",
+        "publishing": "Wird veröffentlicht…",
+        "done": "Fertig",
+        "dismiss": "Schließen",
+        "undo": "Rückgängig",
+        "copyOf": "Kopie von {name}",
+        "removed": "„{question}“ entfernt.",
+        "removedUntitled": "Frage entfernt.",
+        "published": "Veröffentlicht.",
+        "publishedShared": "Veröffentlicht. Die Änderungen erscheinen jetzt überall, wo dieses Set verwendet wird.",
+        "discarded": "Änderungen verworfen. Sie sehen wieder die veröffentlichte Version.",
+        "archived": "Archiviert.",
+        "restored": "Wiederhergestellt.",
+        "publishReason": {
+          "upToDate": "Alles ist veröffentlicht. Nehmen Sie eine Änderung vor, um erneut zu veröffentlichen.",
+          "empty": "Fügen Sie mindestens eine Frage auf {language} hinzu, um zu veröffentlichen."
+        },
+        "shared": "{count, plural, one {An # Stelle verwendet: {places}.} other {An # Stellen verwendet: {places}.}} Die Änderungen erscheinen überall, sobald Sie veröffentlichen.",
+        "sharedTitle": "Gemeinsam genutzter Inhalt",
+        "archivedTitle": "Dieses Set ist archiviert",
+        "archivedBody": "Es wird auf Ihrer Website nicht angezeigt. Stellen Sie es wieder her, um es zu ändern.",
+        "readOnly": "Sie können dieses Set ansehen. Wenden Sie sich an den Inhaber der Website, wenn Sie es ändern möchten.",
+        "usedInTitle": "Verwendet in",
+        "aboutTitle": "Über dieses Set",
+        "name": "Name",
+        "nameHint": "Den Namen sieht nur Ihr Team.",
+        "publicTitle": "Titel auf der Website ({language}, optional)",
+        "publicTitleHint": "Wird über den Fragen angezeigt. Leer lassen, um die Überschrift der Seite zu verwenden.",
+        "note": "Interne Notiz",
+        "noteHint": "Nur Ihr Team sieht diese Notiz.",
+        "questionsTitle": "Fragen",
+        "questionsHint": "Halten Sie die Antworten kurz. Ziehen Sie, um die Reihenfolge zu ändern.",
+        "language": "Sprache",
+        "languageMissing": "{language} – unvollständig",
+        "noQuestions": "Noch keine Fragen",
+        "noQuestionsBody": "Fügen Sie die Fragen hinzu, die Ihre Kunden am häufigsten stellen.",
+        "addFirst": "Erste Frage hinzufügen",
+        "add": "Frage hinzufügen",
+        "full": "Ein Set enthält höchstens {max} Fragen. Legen Sie für weitere ein neues Set an.",
+        "menu": {
+          "label": "Weitere Aktionen",
+          "discard": "Änderungen verwerfen",
+          "duplicate": "Duplizieren",
+          "activity": "Aktivität"
+        },
+        "confirm": {
+          "publishTitle": "Änderungen überall veröffentlichen?",
+          "discardTitle": "Änderungen verwerfen?",
+          "discardBody": "Das Set kehrt zur Version auf Ihrer Website zurück. Ihre nicht veröffentlichten Änderungen werden entfernt.",
+          "discard": "Änderungen verwerfen",
+          "deleteTitle": "„{name}“ löschen?",
+          "deleteBody": "Dieses Set wurde nie veröffentlicht. Es wird mit allen Fragen gelöscht."
+        },
+        "untitledQuestion": "Frage {n}",
+        "drag": "„{question}“ verschieben, Position {position} von {total}. Ziehen oder die Pfeiltasten nach oben und unten verwenden.",
+        "questionNumber": "Frage {n} von {total}",
+        "notTranslated": "Nicht übersetzt ({language})",
+        "reference": "Auf {language}: {text}",
+        "question": "Frage",
+        "questionPlaceholder": "z. B. Wie lange dauert ein Erstbesuch?",
+        "answer": "Antwort",
+        "answerHint": "Ein paar Sätze reichen. Sie können Fettdruck, Listen und Links verwenden.",
+        "answerLabel": "Antwort auf „{question}“",
+        "answerPlaceholder": "Antwort schreiben…",
+        "remove": "„{question}“ entfernen"
+      },
+      "post": {
+        "section": "FAQ",
+        "title": "FAQ zu diesem Beitrag hinzufügen?",
+        "helper": "Fragen und Antworten erscheinen unter Ihrem Text, nach der Galerie.",
+        "emptyTitle": "Noch keine FAQ in diesem Beitrag",
+        "emptyBody": "Wählen Sie ein FAQ-Set aus Ihrer Bibliothek oder erstellen Sie ein neues. Das ist optional.",
+        "add": "FAQ hinzufügen",
+        "listLabel": "FAQ-Sets in diesem Beitrag",
+        "unknownSet": "FAQ-Set nicht gefunden",
+        "move": "{name} verschieben, Position {position} von {total}. Ziehen Sie es oder verwenden Sie die Pfeiltasten nach oben und unten.",
+        "questions": "{count, plural, =0 {Noch keine Fragen} one {# Frage} other {# Fragen}}",
+        "notPublished": "Noch nicht veröffentlicht",
+        "archived": "Archiviert",
+        "menu": "Aktionen für {name}",
+        "openInLibrary": "In der Bibliothek öffnen",
+        "remove": "Aus diesem Beitrag entfernen",
+        "full": "Ein Beitrag kann höchstens {max} FAQ-Sets zeigen.",
+        "headingTitle": "Überschrift",
+        "headingHelper": "Optional. Lassen Sie den Titel leer, um die Standardüberschrift zu verwenden.",
+        "headingLanguage": "Sprache",
+        "titleLabel": "Titel",
+        "titleHint": "Erscheint über den Fragen.",
+        "subtitleLabel": "Untertitel",
+        "subtitleHint": "Optional. Eine kurze Zeile unter dem Titel.",
+        "summarySets": "{count, plural, one {# FAQ-Set} other {# FAQ-Sets}}",
+        "summaryQuestions": "{count, plural, one {# Frage} other {# Fragen}}",
+        "summaryNone": "Keine",
+        "publish": {
+          "label": "{count, plural, one {Das FAQ-Set ebenfalls veröffentlichen} other {Die FAQ-Sets ebenfalls veröffentlichen}}",
+          "help": "{count, plural, one {{names} wurde noch nie veröffentlicht. Es geht zusammen mit diesem Beitrag online und erscheint überall, wo es verwendet wird.} other {{names} wurden noch nie veröffentlicht. Sie gehen zusammen mit diesem Beitrag online und erscheinen überall, wo sie verwendet werden.}}",
+          "noPermission": "{count, plural, one {{names} wurde noch nie veröffentlicht. Bitten Sie einen Inhaber oder Redakteur, es zuerst zu veröffentlichen.} other {{names} wurden noch nie veröffentlicht. Bitten Sie einen Inhaber oder Redakteur, sie zuerst zu veröffentlichen.}}",
+          "blocked": "{count, plural, one {Aktivieren Sie „Das FAQ-Set ebenfalls veröffentlichen“, um diesen Beitrag zu veröffentlichen.} other {Aktivieren Sie „Die FAQ-Sets ebenfalls veröffentlichen“, um diesen Beitrag zu veröffentlichen.}}",
+          "blockedNoPermission": "{count, plural, one {Dieser Beitrag zeigt ein FAQ-Set, das noch nicht veröffentlicht ist.} other {Dieser Beitrag zeigt FAQ-Sets, die noch nicht veröffentlicht sind.}}"
+        },
+        "sheet": {
+          "title": "FAQ hinzufügen",
+          "editTitle": "Neues FAQ-Set",
+          "createdHelp": "Das Set wurde diesem Beitrag hinzugefügt und wird beim Tippen gespeichert. Veröffentlichen Sie es zusammen mit dem Beitrag oder unter FAQ-Sets.",
+          "modeLabel": "Wie Sie FAQ hinzufügen",
+          "existing": "Vorhandenes wählen",
+          "new": "Neu erstellen",
+          "search": "FAQ-Sets durchsuchen",
+          "searchPlaceholder": "Namen und Fragen durchsuchen",
+          "noResults": "Keine FAQ-Sets passen zu Ihrer Suche.",
+          "emptyTitle": "Noch keine FAQ-Sets",
+          "emptyBody": "Bitten Sie einen Inhaber oder Redakteur, unter FAQ-Sets eines zu erstellen.",
+          "emptyBodyCreate": "Erstellen Sie das erste mit „Neu erstellen“.",
+          "listLabel": "FAQ-Sets",
+          "questions": "{count, plural, =0 {Noch keine Fragen} one {# Frage} other {# Fragen}}",
+          "notPublished": "Noch nicht veröffentlicht",
+          "previewLabel": "Erste Fragen von {name}",
+          "add": "Hinzufügen",
+          "added": "Hinzugefügt",
+          "addLabel": "{name} zu diesem Beitrag hinzufügen",
+          "addedLabel": "{name} ist bereits in diesem Beitrag",
+          "newHelp": "Geben Sie dem Set einen Namen. Die Fragen können Sie gleich hinzufügen.",
+          "nameLabel": "Name",
+          "nameHint": "Nur Sie und Ihr Team sehen ihn.",
+          "create": "FAQ-Set erstellen",
+          "creating": "Wird erstellt…",
+          "needsName": "Geben Sie einen Namen ein, um das Set zu erstellen.",
+          "errors": {
+            "forbidden": "Sie haben keine Berechtigung, hier FAQ-Sets zu erstellen.",
+            "too_large": "Diese Website hat zu viele FAQ-Sets. Archivieren oder löschen Sie zuerst einige.",
+            "invalid_value": "Bitte prüfen Sie den Namen.",
+            "unauthenticated": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
+            "failed": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+          }
+        }
+      }
     }
   },
   "app": {
@@ -3518,7 +3770,9 @@
           "page": "Seite",
           "post": "Blogbeitrag",
           "newsArticle": "Neuigkeit",
-          "event": "Veranstaltung"
+          "event": "Veranstaltung",
+          "catalogueItem": "Katalogeintrag",
+          "catalogueCollection": "Katalogsammlung"
         }
       },
       "preserved": {

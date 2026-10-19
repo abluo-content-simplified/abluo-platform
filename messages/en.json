@@ -816,7 +816,8 @@
           "events": "Event",
           "gallery": "Gallery",
           "media": "Add to media library",
-          "catalogue": "Catalogue item"
+          "catalogue": "Catalogue item",
+          "faq": "FAQ set"
         },
         "desc": {
           "blog": "An article for your website, in a few easy steps.",
@@ -861,7 +862,8 @@
         "publish": "Publishing",
         "review": "Review & publish",
         "cta": "Call to action",
-        "gallery": "Gallery"
+        "gallery": "Gallery",
+        "faq": "FAQs"
       },
       "category": {
         "title": "What's this post about?",
@@ -950,7 +952,8 @@
           "unauthenticated": "Your session has ended. Please sign in again.",
           "offline": "You're offline. Your post is safe on this device — try again when you're connected.",
           "failed": "Something went wrong. Your post is safe — please try again.",
-          "archived": "This post is archived. Restore it before publishing."
+          "archived": "This post is archived. Restore it before publishing.",
+          "unpublished_faq_sets": "This post shows a FAQ set that isn’t published yet. Tick “Publish the FAQ set too” and try again."
         },
         "summaryNow": "Published in",
         "summaryDraft": "Saved in",
@@ -2282,6 +2285,255 @@
         "merged": "{count, plural, one {Merged into “{tag}” on # gallery} other {Merged into “{tag}” on # galleries}}",
         "deleted": "{tags, plural, one {Tag deleted} other {# tags deleted}} · {count, plural, one {# gallery} other {# galleries}} updated"
       }
+    },
+    "faq": {
+      "list": {
+        "title": "FAQ Sets",
+        "untitled": "Untitled FAQ set",
+        "new": "New FAQ set",
+        "emptyTitle": "No FAQ sets yet",
+        "emptyBody": "An FAQ set is a list of questions and answers. Create one once and show it on any page or post.",
+        "undo": "Undo",
+        "copyOf": "Copy of {name}",
+        "missing": "Missing {languages}",
+        "allLanguages": "All languages",
+        "notUsed": "Not used yet",
+        "usedInCount": "{count, plural, one {Used in # place} other {Used in # places}}",
+        "usedInOpen": "Where “{name}” is used ({count})",
+        "usedInTitle": "Where “{name}” is used",
+        "menu": "Actions for {name}",
+        "questions": "{count, plural, =0 {No questions} one {# question} other {# questions}}",
+        "noQuestions": "No questions yet",
+        "columns": {
+          "name": "Name",
+          "questions": "Questions",
+          "languages": "Languages",
+          "usedIn": "Used in",
+          "status": "Status",
+          "updated": "Updated",
+          "actions": "Actions"
+        },
+        "view": {
+          "label": "View",
+          "list": "List",
+          "cards": "Cards"
+        },
+        "actions": {
+          "edit": "Edit",
+          "usedIn": "Where it’s used",
+          "duplicate": "Duplicate"
+        },
+        "done": {
+          "archived": "“{name}” archived.",
+          "restored": "“{name}” restored.",
+          "deleted": "“{name}” deleted."
+        },
+        "filters": {
+          "label": "Filter FAQ sets",
+          "search": "Search FAQ sets",
+          "searchPlaceholder": "Search names and questions…",
+          "status": "Status",
+          "statusAll": "All (not archived)",
+          "usage": "Where used",
+          "usageAny": "Used or not",
+          "usageUsed": "Used on the site",
+          "usageUnused": "Not used yet",
+          "sort": "Sort",
+          "sort_updated_desc": "Recently updated",
+          "sort_updated_asc": "Least recently updated",
+          "sort_name_asc": "Name A–Z",
+          "sort_name_desc": "Name Z–A",
+          "sort_questions_desc": "Most questions",
+          "sort_questions_asc": "Fewest questions",
+          "showing": "{shown} of {total} FAQ sets",
+          "clear": "Clear filters",
+          "noMatch": "No FAQ sets match these filters."
+        }
+      },
+      "usedIn": {
+        "untitledPage": "Untitled page",
+        "untitledPost": "Untitled post",
+        "draft": "{title} (draft)",
+        "posts": "{count, plural, one {# post} other {# posts}}",
+        "none": "Not used on any page or post yet.",
+        "kind": {
+          "page": "Page",
+          "post": "Post"
+        },
+        "published": "Published",
+        "notPublished": "Not published"
+      },
+      "errors": {
+        "forbidden": "You don’t have permission to do this.",
+        "unauthenticated": "Your session has ended. Sign in again to continue.",
+        "not_found": "This FAQ set no longer exists.",
+        "invalid_field": "Something in this set couldn’t be saved. Reload and try again.",
+        "invalid_value": "Something in this set couldn’t be saved. Reload and try again.",
+        "too_large": "This set is too large. Remove a few questions and try again.",
+        "conflict": "This set was changed somewhere else. Reload to see the latest version.",
+        "in_use": "It’s still shown on your website: {places}. Remove it there first.",
+        "archive_first": "Archive the set first, then delete it permanently.",
+        "archived": "This set is archived. Restore it to make changes.",
+        "failed": "Something went wrong. Please try again.",
+        "offline": "Not saved yet — check your connection and try again.",
+        "loadFailed": "Couldn’t load the FAQ sets.",
+        "retry": "Try again"
+      },
+      "newSet": {
+        "title": "New FAQ set",
+        "intro": "Give it a name. You’ll add the questions next.",
+        "name": "Name",
+        "nameHint": "Only your team sees the name, e.g. “Implants” or “Booking”.",
+        "nameNeeded": "Type a name to create the set.",
+        "namePlaceholder": "e.g. Implants",
+        "cancel": "Cancel",
+        "create": "Create and add questions",
+        "creating": "Creating…",
+        "errors": {
+          "forbidden": "You don’t have permission to create FAQ sets.",
+          "tooMany": "This site has reached the maximum number of FAQ sets.",
+          "failed": "Couldn’t create the set. Please try again."
+        }
+      },
+      "editor": {
+        "untitled": "Untitled FAQ set",
+        "back": "FAQ Sets",
+        "publish": "Publish",
+        "publishing": "Publishing…",
+        "done": "Done",
+        "dismiss": "Dismiss",
+        "undo": "Undo",
+        "copyOf": "Copy of {name}",
+        "removed": "“{question}” removed.",
+        "removedUntitled": "Question removed.",
+        "published": "Published.",
+        "publishedShared": "Published. The changes now appear everywhere this set is used.",
+        "discarded": "Changes discarded. You’re back to the published version.",
+        "archived": "Archived.",
+        "restored": "Restored.",
+        "publishReason": {
+          "upToDate": "Everything is published. Make a change to publish again.",
+          "empty": "Add at least one question in {language} to publish."
+        },
+        "shared": "{count, plural, one {Used in # place: {places}.} other {Used in # places: {places}.}} Changes appear everywhere when you publish.",
+        "sharedTitle": "Shared content",
+        "archivedTitle": "This set is archived",
+        "archivedBody": "It isn’t shown on your website. Restore it to make changes.",
+        "readOnly": "You can view this set. Ask the site owner if you need to change it.",
+        "usedInTitle": "Used in",
+        "aboutTitle": "About this set",
+        "name": "Name",
+        "nameHint": "Only your team sees the name.",
+        "publicTitle": "Title on the website ({language}, optional)",
+        "publicTitleHint": "Shown above the questions. Leave it empty to use the page’s own heading.",
+        "note": "Internal note",
+        "noteHint": "Only your team sees this.",
+        "questionsTitle": "Questions",
+        "questionsHint": "Keep answers short. Drag to change the order.",
+        "language": "Language",
+        "languageMissing": "{language} – incomplete",
+        "noQuestions": "No questions yet",
+        "noQuestionsBody": "Add the questions your clients ask most often.",
+        "addFirst": "Add the first question",
+        "add": "Add a question",
+        "full": "A set holds up to {max} questions. Start a new set for more.",
+        "menu": {
+          "label": "More actions",
+          "discard": "Discard changes",
+          "duplicate": "Duplicate",
+          "activity": "Activity"
+        },
+        "confirm": {
+          "publishTitle": "Publish changes everywhere?",
+          "discardTitle": "Discard your changes?",
+          "discardBody": "The set goes back to the version on your website. Your unpublished changes are removed.",
+          "discard": "Discard changes",
+          "deleteTitle": "Delete “{name}”?",
+          "deleteBody": "This set was never published. It is deleted with all its questions."
+        },
+        "untitledQuestion": "Question {n}",
+        "drag": "Move “{question}”, position {position} of {total}. Drag, or use the up and down arrow keys.",
+        "questionNumber": "Question {n} of {total}",
+        "notTranslated": "Not translated ({language})",
+        "reference": "In {language}: {text}",
+        "question": "Question",
+        "questionPlaceholder": "e.g. How long does a first visit take?",
+        "answer": "Answer",
+        "answerHint": "A few sentences are best. You can add bold, lists and links.",
+        "answerLabel": "Answer to “{question}”",
+        "answerPlaceholder": "Write the answer…",
+        "remove": "Remove “{question}”"
+      },
+      "post": {
+        "section": "FAQs",
+        "title": "Add FAQs to this post?",
+        "helper": "Questions and answers are shown below your text, after the gallery.",
+        "emptyTitle": "No FAQs on this post yet",
+        "emptyBody": "Choose a FAQ set from your library or create a new one. It’s optional.",
+        "add": "Add FAQs",
+        "listLabel": "FAQ sets on this post",
+        "unknownSet": "FAQ set not found",
+        "move": "Move {name}, position {position} of {total}. Drag, or use the up and down arrow keys.",
+        "questions": "{count, plural, =0 {No questions yet} one {# question} other {# questions}}",
+        "notPublished": "Not published yet",
+        "archived": "Archived",
+        "menu": "Actions for {name}",
+        "openInLibrary": "Open in library",
+        "remove": "Remove from this post",
+        "full": "A post can show up to {max} FAQ sets.",
+        "headingTitle": "Heading",
+        "headingHelper": "Optional. Leave the title empty to use the default heading.",
+        "headingLanguage": "Language",
+        "titleLabel": "Title",
+        "titleHint": "Shown above the questions.",
+        "subtitleLabel": "Subtitle",
+        "subtitleHint": "Optional. A short line under the title.",
+        "summarySets": "{count, plural, one {# FAQ set} other {# FAQ sets}}",
+        "summaryQuestions": "{count, plural, one {# question} other {# questions}}",
+        "summaryNone": "None",
+        "publish": {
+          "label": "{count, plural, one {Publish the FAQ set too} other {Publish the FAQ sets too}}",
+          "help": "{count, plural, one {{names} has never been published. It goes live together with this post and shows wherever it is used.} other {{names} have never been published. They go live together with this post and show wherever they are used.}}",
+          "noPermission": "{count, plural, one {{names} has never been published. Ask an owner or editor to publish it first.} other {{names} have never been published. Ask an owner or editor to publish them first.}}",
+          "blocked": "{count, plural, one {Tick “Publish the FAQ set too” to publish this post.} other {Tick “Publish the FAQ sets too” to publish this post.}}",
+          "blockedNoPermission": "{count, plural, one {This post shows a FAQ set that isn’t published yet.} other {This post shows FAQ sets that aren’t published yet.}}"
+        },
+        "sheet": {
+          "title": "Add FAQs",
+          "editTitle": "New FAQ set",
+          "createdHelp": "The set is added to this post and saved as you type. Publish it together with the post, or from FAQ Sets.",
+          "modeLabel": "How to add FAQs",
+          "existing": "Choose existing",
+          "new": "Create new",
+          "search": "Search FAQ sets",
+          "searchPlaceholder": "Search names and questions",
+          "noResults": "No FAQ sets match your search.",
+          "emptyTitle": "No FAQ sets yet",
+          "emptyBody": "Ask an owner or editor to create one under FAQ Sets.",
+          "emptyBodyCreate": "Create the first one with “Create new”.",
+          "listLabel": "FAQ sets",
+          "questions": "{count, plural, =0 {No questions yet} one {# question} other {# questions}}",
+          "notPublished": "Not published yet",
+          "previewLabel": "First questions of {name}",
+          "add": "Add",
+          "added": "Added",
+          "addLabel": "Add {name} to this post",
+          "addedLabel": "{name} is already on this post",
+          "newHelp": "Give the set a name. You can add the questions right away.",
+          "nameLabel": "Name",
+          "nameHint": "Only you and your team see it.",
+          "create": "Create FAQ set",
+          "creating": "Creating…",
+          "needsName": "Enter a name to create the set.",
+          "errors": {
+            "forbidden": "You don’t have permission to create FAQ sets here.",
+            "too_large": "This website has too many FAQ sets. Archive or delete some first.",
+            "invalid_value": "Please check the name.",
+            "unauthenticated": "Your session has ended. Please sign in again.",
+            "failed": "Something went wrong. Please try again."
+          }
+        }
+      }
     }
   },
   "app": {
@@ -3518,7 +3770,9 @@
           "page": "Page",
           "post": "Blog post",
           "newsArticle": "News",
-          "event": "Event"
+          "event": "Event",
+          "catalogueItem": "Catalogue item",
+          "catalogueCollection": "Catalogue collection"
         }
       },
       "preserved": {

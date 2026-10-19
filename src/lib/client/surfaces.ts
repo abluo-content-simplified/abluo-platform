@@ -102,6 +102,8 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   // ADR-033 D12: one entry. Label "Catalogue" unless the project sets the optional `navLabel` override (presentation only).
   { kind: 'nav', id: 'catalogue', segment: 'catalogue', group: 'content', requires: { module: 'catalogue', permission: 'catalogue.item.read' } },
   { kind: 'nav', id: 'gallery', segment: 'galleries', group: 'content', requires: { module: 'gallery', permission: 'gallery.gallery.read' } },
+  // ADR-037 D9: the FAQ Sets library (list + editor).
+  { kind: 'nav', id: 'faq', segment: 'faq-sets', group: 'content', requires: { module: 'faq', permission: 'faq.set.read' } },
   { kind: 'nav', id: 'media', segment: 'media', group: 'content', requires: { permission: 'media.library.manage' } },
   // ADR-033 Amendment J: Categories & Tags, one manager for every module that declares a taxonomy.
   // Shown when the person may manage terms (`<module>.taxonomy.write`) or at least read them
@@ -182,8 +184,6 @@ export const MODULES_WITHOUT_TENANT_SURFACE: Readonly<Record<string, 'notYetBuil
   translate: 'adminOnly',
   // ADR-036 — the guide is written by Abluo in Studio; v1 has no client editing.
   'brand-hub': 'adminOnly',
-  // ADR-037 — slice 1 is Studio + website only; the FAQ Sets library screen is slice 3.
-  faq: 'notYetBuilt',
 }
 
 /** The single visibility check. Pure. */

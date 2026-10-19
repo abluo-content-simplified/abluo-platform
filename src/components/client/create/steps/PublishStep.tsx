@@ -1,6 +1,7 @@
 'use client'
 
 import { useLocale, useTranslations } from 'next-intl'
+import type { ReactNode } from 'react'
 import type { StepProps } from '@/components/client/create/types'
 import { StepHeading, languageName } from '@/components/client/create/StepHeading'
 import { languageStates, languageSummaryKey } from '@/lib/client/wizard-steps'
@@ -21,7 +22,14 @@ export function PublishStep({
   choice,
   onChange,
   error,
-}: StepProps & { choice: PostPublishChoice; onChange: (c: PostPublishChoice) => void; error: string | null }) {
+  faqChoice,
+}: StepProps & {
+  choice: PostPublishChoice
+  onChange: (c: PostPublishChoice) => void
+  error: string | null
+  /** "Publish the FAQ set too" (ADR-037 D9), when the post shows never-published FAQ sets and is about to go live. */
+  faqChoice?: ReactNode
+}) {
   const t = useTranslations('clientDashboard.create.publish')
   const zone = editingZone(site.timeZone)
 
@@ -44,6 +52,8 @@ export function PublishStep({
       {site.languages.length > 1 ? (
         <LanguageSummary draft={draft} languages={site.languages} choice={choice} />
       ) : null}
+
+      {faqChoice ? <div className="mt-8">{faqChoice}</div> : null}
 
       <p role="alert" className="mt-4 min-h-5 text-[0.9375rem] text-destructive">
         {error}

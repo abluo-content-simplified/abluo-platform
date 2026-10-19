@@ -15,13 +15,14 @@
 import { resolveProjectAction } from '@/lib/api/project-action'
 import { TenantAuthorizationError } from '@/lib/api/tenant-scoped-sanity'
 import { PostDraftError } from '@/lib/api/post-drafts'
-import { publishPostDraft, PostPublishError, type PostPublishErrorCode } from '@/lib/api/post-publish'
+import { publishPostDraft, PostPublishError, type PostPublishErrorCode, type UnpublishedFaqSet } from '@/lib/api/post-publish'
 
 export type PublishActionError = 'unauthenticated' | PostPublishErrorCode
 
 export type PublishDraftResult =
   | { ok: true; id: string; publishedAt: string; slugs: Record<string, string> }
-  | { ok: false; error: PublishActionError }
+  /** unpublished_faq_sets names the never-published FAQ sets (ADR-037 D9). */
+  | { ok: false; error: PublishActionError; faqSets?: UnpublishedFaqSet[] }
 
 function toError(error: unknown): PublishActionError {
   if (error instanceof PostPublishError || error instanceof PostDraftError) return error.code
@@ -36,6 +37,8 @@ export async function publishPostDraftAction(input: {
   mode: 'now' | 'schedule' | 'keep'
   publishAt?: string
   expiresAt?: string | null
+  /** ADR-037 D9 "Publish the FAQ set too". */
+  publishFaqSets?: boolean
 }): Promise<PublishDraftResult> {
   const access = await resolveProjectAction(input?.projectSlug)
   if (!access.ok) return { ok: false, error: access.error }
@@ -47,9 +50,13 @@ export async function publishPostDraftAction(input: {
       mode: input.mode,
       publishAt: input.publishAt,
       expiresAt: input.expiresAt,
+      publishFaqSets: input.publishFaqSets === true,
     })
     return { ok: true, id: r.id, publishedAt: r.publishedAt, slugs: r.slugs }
   } catch (error) {
+    if (error instanceof PostPublishError && error.code === 'unpublished_faq_sets') {
+      return { ok: false, error: error.code, faqSets: error.detail?.faqSets ?? [] }
+    }
     return { ok: false, error: toError(error) }
   }
 }

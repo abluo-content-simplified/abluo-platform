@@ -10,6 +10,7 @@ export function applyToSnapshot(snap: DraftSnapshot, set: PendingSet): DraftSnap
     else if (path === 'wizard.step') next = { ...next, step: value as WizardStep }
     else if (path === 'wizard.furthest') next = { ...next, furthest: value as WizardStep }
     else if (path === 'gallery') next = { ...next, gallery: typeof value === 'string' && value ? value : null }
+    else if (path === 'faqSets') next = { ...next, faqSets: Array.isArray(value) ? (value as string[]) : [] }
     else if (path === 'cta.mode') {
       const mode = value as 'default' | 'none' | 'custom'
       next = { ...next, cta: { mode, ref: mode === 'custom' ? (next.cta?.ref ?? null) : null } }
@@ -18,8 +19,8 @@ export function applyToSnapshot(snap: DraftSnapshot, set: PendingSet): DraftSnap
     }
     else {
       const [field, locale] = path.split('.')
-      if (!locale || !['title', 'subtitle', 'excerpt', 'body'].includes(field)) continue
-      const map = { ...(next[field as 'title'] as Record<string, unknown>) }
+      if (!locale || !['title', 'subtitle', 'excerpt', 'body', 'faqTitle', 'faqSubtitle'].includes(field)) continue
+      const map = { ...((next[field as 'title'] as Record<string, unknown> | undefined) ?? {}) }
       if (value === '' || value === null || (Array.isArray(value) && value.length === 0)) delete map[locale]
       else map[locale] = value
       next = { ...next, [field]: map }
