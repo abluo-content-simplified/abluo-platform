@@ -55,7 +55,7 @@ const baseDocs = (): Docs => ({
   other: { _id: 'other', _type: 'event', _rev: 'o1', projectSlug: 'hoffmann', title: { it: 'Altro' }, startDate: '2026-01-01T00:00:00.000Z' },
 })
 
-function fake(opts: { docs?: Docs; commitError?: unknown; slugRows?: unknown[]; vocabulary?: { terms?: unknown[]; config?: unknown[] } } = {}) {
+function fake(opts: { docs?: Docs; commitError?: unknown; slugRows?: unknown[]; vocabulary?: { terms?: unknown[]; config?: unknown[] }; eventsConfig?: Record<string, unknown> | null } = {}) {
   const docs = opts.docs ?? baseDocs()
   const writes: Array<[string, unknown]> = []
   const patchOps: Array<[string, unknown]> = []
@@ -90,6 +90,8 @@ function fake(opts: { docs?: Docs; commitError?: unknown; slugRows?: unknown[]; 
   })
   const fetch = vi.fn(async (q: string, p: Record<string, unknown> = {}) => {
     if (q.includes('count(*[_type == "project"')) return 1
+    // ADR-038 D6 — the project's Events config (capabilities).
+    if (q.includes('moduleId == "events"') && !q.includes('"taxonomyTerm"')) return p.projectSlug === 'livener' ? (opts.eventsConfig ?? null) : null
     // ADR-033 Amendment J — the events category vocabulary (term records + the old config list).
     if (q.includes('"taxonomyTerm"')) return p.projectSlug === 'livener' ? (opts.vocabulary ?? { terms: [], config: [] }) : { terms: [], config: [] }
     if (q.includes('count(*[_type == "event"')) return 4
@@ -399,5 +401,47 @@ describe('publish and discard', () => {
     await expect(discardEventDraft(ctx(editorNoDelete), 'project-a', { id: E, rev: 'd1' }, f.deps)).rejects.toThrow(TenantAuthorizationError)
     expect(f.writes).toEqual([])
     await expect(discardEventDraft(ctx(grant()), 'project-a', { id: E, rev: 'd1' }, f.deps)).resolves.toEqual({ deleted: true })
+  })
+})
+
+// ── ADR-038 D6 — project capabilities, enforced on the server ────────────────
+
+describe('capabilities (ADR-038 D6)', () => {
+  const save = (f: ReturnType<typeof fake>, set: Record<string, unknown>) => patchEventDraft(ctx(grant()), 'project-a', { id: E, rev: 'd1', set }, f.deps)
+
+  it('nothing stored → today\'s behaviour (sign-up, venues, all attendance modes)', async () => {
+    const f = fake({ docs: withDraft() })
+    await save(f, { registrationUrl: 'https://example.com/join', attendanceMode: 'mixed', place: 'venue:venue-1' })
+    const e = await getEvent(ctx(grant()), 'project-a', E, f.deps)
+    expect(e.capabilities).toMatchObject({ registration: 'externalLink', venues: 'abluoManaged', attendance: { inPerson: true, online: true, mixed: true } })
+  })
+
+  it('sign-up off → the server refuses the link and its label', async () => {
+    const f = fake({ docs: withDraft(), eventsConfig: { capRegistration: 'off' } })
+    await expect(save(f, { registrationUrl: 'https://example.com' })).rejects.toMatchObject({ code: 'invalid_field' })
+    await expect(save(f, { 'registrationLabel.en': 'Join' })).rejects.toMatchObject({ code: 'invalid_field' })
+    expect(f.writes).toEqual([])
+  })
+
+  it('online off → cannot switch an event to online; keeping the current value is allowed', async () => {
+    const f = fake({ docs: withDraft({ attendanceMode: 'online' }), eventsConfig: { capOnline: false } })
+    await save(f, { attendanceMode: 'online' }) // unchanged: allowed
+    const g = fake({ docs: withDraft({ attendanceMode: 'inPerson' }), eventsConfig: { capOnline: false } })
+    await expect(save(g, { attendanceMode: 'online' })).rejects.toMatchObject({ code: 'invalid_value' })
+  })
+
+  it('venues off → no saved venues offered (the current one stays), none can be picked, site locations still can', async () => {
+    const f = fake({ docs: withDraft(), eventsConfig: { capVenues: 'off' } })
+    await expect(save(f, { place: 'venue:venue-1' })).rejects.toMatchObject({ code: 'invalid_value' })
+    await save(f, { place: 'location:cervia' })
+    expect((await getEvent(ctx(grant()), 'project-a', E, f.deps)).placeOptions.venues).toEqual([])
+    const g = fake({ docs: withDraft({ place: { kind: 'venue', venue: { _ref: 'venue-1' } } }), eventsConfig: { capVenues: 'off' } })
+    expect((await getEvent(ctx(grant()), 'project-a', E, g.deps)).placeOptions.venues).toEqual([{ id: 'venue-1', name: 'Royal Society' }])
+  })
+
+  it('a new event starts with a way of attending the site offers', async () => {
+    const f = fake({ eventsConfig: { capInPerson: false, capHybrid: false } })
+    await createEvent(ctx(grant()), 'project-a', { title: 'Webinar', startDate: '2026-11-01T10:00:00Z' }, f.deps)
+    expect(f.writes.find(([k]) => k === 'create')?.[1]).toMatchObject({ attendanceMode: 'online' })
   })
 })

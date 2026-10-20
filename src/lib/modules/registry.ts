@@ -405,6 +405,87 @@ export const MODULE_REGISTRY: ModuleManifest[] = [
           description:
             'Event categories now live in Categories & Tags (dashboard). This list is only read while a website has none there yet. Renaming or translating a label is safe — content filed under it keeps its link.',
         },
+        // ── Capabilities (ADR-038 D6) — read only through resolveEventCapabilities()
+        // (events/capabilities.ts). Defaults = the dashboard before capabilities existed.
+        {
+          id: 'capInPerson',
+          label: 'In-person events',
+          type: 'boolean',
+          initialValue: true,
+          description: 'The client can mark events as happening in person. What the client can use in the Events screen of their dashboard. Studio always shows everything. Switching it off never deletes or changes existing content, which keeps showing on the website.',
+        },
+        {
+          id: 'capOnline',
+          label: 'Online events',
+          type: 'boolean',
+          initialValue: true,
+          description: 'The client can mark events as online. What the client can use in the Events screen of their dashboard. Studio always shows everything. Switching it off never deletes or changes existing content, which keeps showing on the website.',
+        },
+        {
+          id: 'capHybrid',
+          label: 'Hybrid events',
+          type: 'boolean',
+          initialValue: true,
+          description: 'The client can mark events as in person and online. What the client can use in the Events screen of their dashboard. Studio always shows everything. Switching it off never deletes or changes existing content, which keeps showing on the website.',
+        },
+        {
+          id: 'capVenues',
+          label: 'Venues',
+          type: 'select',
+          initialValue: 'abluoManaged',
+          options: [
+            { value: 'off', label: 'Off', description: 'No venue picker. The client types the place.' },
+            { value: 'abluoManaged', label: 'Managed by Abluo', description: 'The client picks from the venues Abluo saved.' },
+            { value: 'tenantManaged', label: 'Managed by the client', description: 'The client also creates and edits venues.' },
+          ],
+          description: 'Saved places events can use (the website\'s own locations are always offered). What the client can use in the Events screen of their dashboard. Studio always shows everything. Switching it off never deletes or changes existing content, which keeps showing on the website.',
+        },
+        {
+          id: 'capHosts',
+          label: 'Hosts',
+          type: 'boolean',
+          initialValue: false,
+          description: 'The client can add and edit the people hosting or teaching an event. What the client can use in the Events screen of their dashboard. Studio always shows everything. Switching it off never deletes or changes existing content, which keeps showing on the website.',
+        },
+        {
+          id: 'capFullDescription',
+          label: 'Full description',
+          type: 'boolean',
+          initialValue: false,
+          description: 'The client can write the long event description. What the client can use in the Events screen of their dashboard. Studio always shows everything. Switching it off never deletes or changes existing content, which keeps showing on the website.',
+        },
+        {
+          id: 'capProgramme',
+          label: 'Programme',
+          type: 'boolean',
+          initialValue: false,
+          description: 'The client can edit the event programme. What the client can use in the Events screen of their dashboard. Studio always shows everything. Switching it off never deletes or changes existing content, which keeps showing on the website.',
+        },
+        {
+          id: 'capGallery',
+          label: 'Photo gallery',
+          type: 'boolean',
+          initialValue: false,
+          description: 'The client can show a photo gallery on an event. What the client can use in the Events screen of their dashboard. Studio always shows everything. Switching it off never deletes or changes existing content, which keeps showing on the website.',
+        },
+        {
+          id: 'capPricing',
+          label: 'Prices',
+          type: 'boolean',
+          initialValue: false,
+          description: 'The client can list prices on an event. What the client can use in the Events screen of their dashboard. Studio always shows everything. Switching it off never deletes or changes existing content, which keeps showing on the website.',
+        },
+        {
+          id: 'capRegistration',
+          label: 'Sign-up',
+          type: 'select',
+          initialValue: 'externalLink',
+          options: [
+            { value: 'off', label: 'Off', description: 'No sign-up button in the client\'s editor.' },
+            { value: 'externalLink', label: 'Link', description: 'The client adds a sign-up link and button label.' },
+          ],
+          description: 'How people sign up for an event. What the client can use in the Events screen of their dashboard. Studio always shows everything. Switching it off never deletes or changes existing content, which keeps showing on the website.',
+        },
       ],
 
       placement: {

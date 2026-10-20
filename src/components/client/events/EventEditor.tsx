@@ -105,7 +105,7 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
   const ui = useLocale()
   const router = useRouter()
   const ids = { title: useId(), shortDescription: useId(), location: useId(), registrationLabel: useId(), start: useId(), end: useId(), url: useId() }
-  const { site, id, placeOptions } = initial
+  const { site, id, placeOptions, capabilities: caps } = initial
   const d = site.defaultLocale
   const zone = editingZone(site.timeZone)
   const base = `/${projectSlug}/agenda`
@@ -414,7 +414,10 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
           value={values.attendanceMode}
           disabled={disabled}
           onChange={(attendanceMode) => setValues((v) => ({ ...v, attendanceMode }))}
-          options={(['inPerson', 'online', 'mixed'] as const).map((m) => ({ value: m, label: t(`attendance.${m}`) }))}
+          // ADR-038 D6 — only the ways of attending this site offers, plus the one the event already has.
+          options={(['inPerson', 'online', 'mixed'] as const)
+            .filter((m) => caps.attendance[m] || m === initial.attendanceMode)
+            .map((m) => ({ value: m, label: t(`attendance.${m}`) }))}
         />
         {values.attendanceMode !== 'online' && (placeOptions.locations.length > 0 || placeOptions.venues.length > 0) ? (
           <div className="space-y-2">
@@ -462,7 +465,8 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
         <p className="text-sm leading-5 text-muted-foreground">{t('when.helper')}</p>
       </section>
 
-      {/* Sign-up */}
+      {/* Sign-up — only when the project offers it (ADR-038 D6) */}
+      {caps.registration === 'externalLink' ? (
       <section aria-labelledby="event-signup" className="space-y-4">
         <h2 id="event-signup" className="text-[1.0625rem] leading-7 font-semibold text-foreground">
           {t('signup.title')}
@@ -489,6 +493,7 @@ export function EventEditor({ projectSlug, initial, canWrite, canDelete, canAddC
           />
         </div>
       </section>
+      ) : null}
 
       {/* Status and visibility — ADR-031 */}
       <section aria-labelledby="event-status" className="space-y-4">

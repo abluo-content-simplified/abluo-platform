@@ -28,6 +28,13 @@
  */
 import { randomUUID } from 'crypto'
 import { eventTiming as sharedEventTiming } from '@/lib/modules/events/timing'
+import {
+  attendanceModeAllowed,
+  eventFieldAllowed,
+  placeTokenAllowed,
+  resolveEventCapabilities,
+  type EventCapabilities,
+} from '@/lib/modules/events/capabilities'
 import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
@@ -359,9 +366,11 @@ export type EventSnapshot = {
   categories: string[]
   /** The categories to choose from: the project's term records, else the old config list. */
   categoryOptions: EventCategoryOption[]
+  /** ADR-038 D6 — what this project's client can use (Studio → Modules → Events). */
+  capabilities: EventCapabilities
 }
 
-function snapshotOf(id: string, doc: Doc, draft: Doc | undefined, published: Doc | undefined, site: EventSite, cover: EventCover | null, now: Date, placeOptions: EventPlaceOptions = { locations: [], venues: [] }, categoryOptions: EventCategoryOption[] = []): EventSnapshot {
+function snapshotOf(id: string, doc: Doc, draft: Doc | undefined, published: Doc | undefined, site: EventSite, cover: EventCover | null, now: Date, placeOptions: EventPlaceOptions = { locations: [], venues: [] }, categoryOptions: EventCategoryOption[] = [], capabilities: EventCapabilities = resolveEventCapabilities(null)): EventSnapshot {
   const slug = (published?.slug as Record<string, { current?: unknown }> | undefined)?.[site.defaultLocale]?.current
   const nonEmpty = (v: unknown) => (Array.isArray(v) ? v.length > 0 : v != null && typeof v === 'object' ? Object.keys(v).some((k) => !k.startsWith('_')) : false)
   return {
@@ -388,6 +397,7 @@ function snapshotOf(id: string, doc: Doc, draft: Doc | undefined, published: Doc
     placeOptions,
     categories: categoryKeysOfDoc(doc),
     categoryOptions,
+    capabilities,
   }
 }
 
@@ -435,6 +445,23 @@ async function readPlaceOptions(client: Client, projectSlug: string, defaultLoca
   return { locations, venues }
 }
 
+const CAPABILITIES_QUERY = /* groq */ `*[_type == "project" && projectSlug == $projectSlug && !(_id in path("drafts.**"))][0].moduleInstallations[moduleId == "events"][0].config`
+
+/** ADR-038 D6 — the project's Events capabilities (defaults when nothing is stored). */
+export async function readEventCapabilities(client: Pick<Client, 'fetch'>, projectSlug: string): Promise<EventCapabilities> {
+  const config = await client.fetch<Record<string, unknown> | null>(CAPABILITIES_QUERY, { projectSlug })
+  return resolveEventCapabilities(config && typeof config === 'object' ? config : null)
+}
+
+/** The place choices the client is offered: no saved venues when the Venues capability is off (the event's current venue stays visible). */
+export function placeOptionsFor(options: EventPlaceOptions, caps: EventCapabilities, current: EventPlaceToken): EventPlaceOptions {
+  const keepCurrent = (v: { id: string }) => current === `venue:${v.id}`
+  return {
+    locations: options.locations,
+    venues: caps.venues === 'off' ? options.venues.filter(keepCurrent) : options.venues,
+  }
+}
+
 async function readCover(client: Client, projectSlug: string, heroImage: unknown): Promise<EventCover | null> {
   const ref = (heroImage as { asset?: { _ref?: unknown } } | null | undefined)?.asset?._ref
   if (typeof ref !== 'string' || !ref.startsWith('image-')) return null
@@ -463,12 +490,14 @@ export async function getEvent(ctx: TenantAuthorizationContext, projectId: strin
   const doc = draft ?? published
   if (!doc) notFound()
   const site = await readSite(client, grant.projectSlug)
-  const [cover, placeOptions, categoryOptions] = await Promise.all([
+  const [cover, placeOptions, categoryOptions, capabilities] = await Promise.all([
     readCover(client, grant.projectSlug, doc.heroImage),
     readPlaceOptions(client, grant.projectSlug, site.defaultLocale),
     readCategoryOptions(client, grant.projectSlug),
+    readEventCapabilities(client, grant.projectSlug),
   ])
-  return snapshotOf(id, doc, draft, published, site, cover, (deps.now ?? (() => new Date()))(), placeOptions, categoryOptions)
+  const offered = placeOptionsFor(placeOptions, capabilities, placeTokenOf(doc.place))
+  return snapshotOf(id, doc, draft, published, site, cover, (deps.now ?? (() => new Date()))(), offered, categoryOptions, capabilities)
 }
 
 // ── Open / create ─────────────────────────────────────────────────────────────
@@ -521,6 +550,9 @@ export async function createEvent(
   if (!title) throw new EventError('missing_title', 'Give the event a name.')
   const startDate = parseEventDate(input?.startDate)
   const site = await readSite(client, grant.projectSlug)
+  // ADR-038 D6 — a new event starts with a way of attending this site offers.
+  const caps = await readEventCapabilities(client, grant.projectSlug)
+  const firstMode = (['inPerson', 'online', 'mixed'] as const).find((m) => caps.attendance[m]) ?? 'inPerson'
   const count = await client.fetch<number | null>(`count(*[_type == "event" && projectSlug == $projectSlug])`, { projectSlug: grant.projectSlug }, { perspective: 'raw' })
   if ((count ?? 0) >= EVENT_LIMITS.events) throw new EventError('too_large', 'This site has too many events.')
   const doc = {
@@ -534,7 +566,7 @@ export async function createEvent(
     publicId: randomUUID(),
     visibility: 'public',
     eventStatus: 'scheduled',
-    attendanceMode: 'inPerson',
+    attendanceMode: firstMode,
   }
   const created = (await commit(client, grant.projectSlug, () => client.create(doc, { transactionId }))) as { _rev?: string } | undefined
   return { value: { id, rev: created?._rev ?? '' }, action: 'created' as const, contentId: doc.publicId, state: null }
@@ -580,6 +612,26 @@ export async function patchEventDraft(
   if (!draft) notFound()
   if (draft!._rev !== input.rev) throw new EventError('conflict', 'This event was edited elsewhere.')
   const locales = new Set(site.locales)
+  // ADR-038 D6 — capabilities, enforced here (the editor only hides). Keeping a
+  // value the event already has is always allowed; nothing stored is touched.
+  const caps = await readEventCapabilities(client, grant.projectSlug)
+  for (const [path, value] of Object.entries(input.set)) {
+    const field = path.split('.')[0]
+    if (field === 'attendanceMode') {
+      if (typeof value === 'string' && !attendanceModeAllowed(caps, value, typeof draft.attendanceMode === 'string' ? draft.attendanceMode : null)) {
+        throw new EventError('invalid_value', 'This way of attending is not available on this site.')
+      }
+      continue
+    }
+    if (field === 'place') {
+      const token = value === null ? '' : value
+      if (typeof token === 'string' && !placeTokenAllowed(caps, token, placeTokenOf(draft.place))) {
+        throw new EventError('invalid_value', 'This place is not available on this site.')
+      }
+      continue
+    }
+    if (!eventFieldAllowed(caps, field)) throw new EventError('invalid_field', `Field "${path}" is not available on this site.`)
+  }
 
   const set: Record<string, unknown> = {}
   const unset: string[] = []
