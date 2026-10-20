@@ -1,7 +1,8 @@
 -- ============================================================
 -- Migration 043 — event scheduling (Events 2.0, ADR-038 — Tom, 2026-10-20)
 --
--- NOT APPLIED to production. Rehearsed on Abluo Sandbox first; applied to the
+-- APPLIED 2026-10-20 to production by Tom (SQL editor) — see supabase/APPLIED.md.
+-- Rehearsed on Abluo Sandbox first; applied to the
 -- Abluo project only after Tom's explicit approval (ADR-038 D10.5).
 --
 -- Sanity owns what an event SAYS (title, texts, images, venues, hosts).
