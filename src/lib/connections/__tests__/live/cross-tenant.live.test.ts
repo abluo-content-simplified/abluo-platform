@@ -12,6 +12,7 @@
 // Fixtures only: tenants/projects `zz-cnv-<run>-…` + a throwaway user in
 // Supabase, documents in the Sanity `staging` dataset. Everything is deleted
 // at the end and swept at the start. Run: `npm run verify:connections`.
+import { assertSandboxSupabase } from '@/lib/environments/supabase-target'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createClient as createSanity, type SanityClient } from '@sanity/client'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -33,6 +34,8 @@ import { SHAREABLE_RESOURCES } from '../../resources'
 
 if (process.env.CONNECTIONS_LIVE_VERIFY !== '1') throw new Error('Run with `npm run verify:connections`.')
 if (SANITY_DATASET === 'production') throw new Error('Refusing to run: the live suite never touches the production dataset.')
+// ADR-038 D8 — the Supabase shared by dev/preview/production is never a test target.
+assertSandboxSupabase(process.env.NEXT_PUBLIC_SUPABASE_URL, 'Connections live suite')
 
 const RUN = `${Date.now().toString(36)}${randomBase62(4).toLowerCase()}`
 const PREFIX = 'zz-cnv-'

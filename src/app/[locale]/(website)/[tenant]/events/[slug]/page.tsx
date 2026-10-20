@@ -16,6 +16,9 @@ import {
 import { resolveDesignSystemInheritance } from '@/lib/sanity/design-system-resolver'
 import { fetchDesignSystemById } from '@/lib/sanity/client'
 import { resolveEmbedUrl } from '@/lib/embed'
+import { ConsentEmbed } from '@/components/consent/ConsentEmbed'
+import { embedVendorName, vendorForEmbedUrl } from '@/lib/consent/embeds'
+import { getVideoSectionMessages } from '@/lib/i18n/video-section-messages'
 import { getEventMessages } from '@/lib/i18n/event-messages'
 import type { Event, LocaleConfig, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
 import { imageUrl, imageSrcSet, ogImageUrl } from '@/lib/sanity/image'
@@ -177,6 +180,9 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
   const heroSrc = imageUrl(event.heroImage, 1600)
   const heroSrcSet = imageSrcSet(event.heroImage, [800, 1200, 1600, 2400])
   const embedSrc = event.embedPlayerEnabled ? resolveEmbedUrl(event.embedVideoUrl) : null
+  // A same-site URL (relative) needs no consent and has no vendor; anything else is gated.
+  const embedVendorId = embedSrc ? vendorForEmbedUrl(embedSrc) : null
+  const videoMsg = getVideoSectionMessages(locale)
 
   // ADR-031 — where and when: the authored place (site location or saved
   // venue), shown in that place's time zone. Falls back to the free-text
@@ -394,17 +400,38 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
             <SlideUp delay={0.4} duration={0.5}>
               <div className="mb-12">
                 {/* Embedded player — only rendered when URL resolves to a known embeddable format */}
-                {embedSrc && (
+                {embedSrc && (embedVendorId === null ? (
                   <div className="relative aspect-video overflow-hidden rounded-xl bg-black mb-6">
-                    <iframe
-                      src={embedSrc}
-                      title={event.title}
-                      className="w-full h-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
+                    <iframe src={embedSrc} title={event.title} className="w-full h-full" allowFullScreen />
                   </div>
-                )}
+                ) : (
+                  // ADR-021 — click-to-load: until the visitor accepts External
+                  // content (or always-allows this vendor) the server HTML holds
+                  // the placeholder only, never the iframe or its URL.
+                  <div className="mb-6">
+                    <ConsentEmbed
+                      vendorId={embedVendorId}
+                      vendorName={embedVendorName(embedVendorId)}
+                      locale={locale}
+                      aspectRatio="16 / 9"
+                      labels={{
+                        notice: videoMsg.videoConsentNotice(embedVendorName(embedVendorId)),
+                        load: videoMsg.showVideo,
+                        alwaysAllow: videoMsg.videoAlwaysAllow(embedVendorName(embedVendorId)),
+                      }}
+                    >
+                      <div className="relative aspect-video overflow-hidden rounded-xl bg-black">
+                        <iframe
+                          src={embedSrc}
+                          title={event.title}
+                          className="w-full h-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      </div>
+                    </ConsentEmbed>
+                  </div>
+                ))}
 
                 {/* External stream CTAs */}
                 {(event.primaryStreamUrl || event.secondaryStreamUrl) && (

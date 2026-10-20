@@ -1,4 +1,5 @@
 import { defineType, defineField, defineArrayMember } from 'sanity'
+import { validateUniquePublicId } from '@/lib/sanity/fields/public-id'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField, BACKGROUND_SURFACE_OPTIONS } from '@/lib/sanity/fields/shared'
 import { PUBLISHING_GROUP, publishingStatusField, publishOnField, unpublishOnField, archivedFields } from '@/lib/sanity/fields/publishing'
 import { linkUrlIssue } from './links'
@@ -55,6 +56,8 @@ const publicIdField = defineField({
   group: 'meta',
   initialValue: () => globalThis.crypto.randomUUID(),
   description: 'Permanent id used when this is shared with connected apps. Set automatically; never changes.',
+  // ADR-038 D2 — one document per publicId (a Studio Duplicate used to copy it).
+  validation: (Rule) => Rule.custom((value, context) => validateUniquePublicId(value, context)),
 })
 
 const visibilityField = defineField({

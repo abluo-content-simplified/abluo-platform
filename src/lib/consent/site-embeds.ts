@@ -10,7 +10,8 @@
 // fields it needs in SITE_EMBED_SECTION_FIELDS). Anything detection misses
 // fails closed: the embed keeps its click-to-load placeholder.
 
-import { embedVendor, videoSectionVendor } from './embeds'
+import { embedVendor, vendorForEmbedUrl, videoSectionVendor } from './embeds'
+import { resolveEmbedUrl } from '@/lib/embed'
 import type { ConsentVendor } from './types'
 
 /** One section as projected by siteEmbedsQuery. */
@@ -25,6 +26,8 @@ export interface EmbedSectionRow {
 /** Raw result of siteEmbedsQuery. */
 export interface SiteEmbedsData {
   docs?: { sections?: EmbedSectionRow[] | null }[] | null
+  /** Video URLs of events with the embedded player on (event pages, not sections). */
+  eventEmbeds?: (string | null)[] | null
   site?: { hasAddress?: boolean | null; mappableLocations?: number | null } | null
 }
 
@@ -71,6 +74,13 @@ export function detectSiteEmbedVendors(
       const id = fn ? fn(s, ctx) : null
       if (id) ids.add(id)
     }
+  }
+  // Event pages embed their player outside any section (same rule as the page:
+  // the resolved embed URL decides the vendor).
+  for (const raw of data.eventEmbeds ?? []) {
+    const src = resolveEmbedUrl(raw)
+    const id = src ? vendorForEmbedUrl(src) : null
+    if (id) ids.add(id)
   }
   const rank = (id: string) => {
     const i = ORDER.indexOf(id)

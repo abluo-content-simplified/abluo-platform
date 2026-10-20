@@ -955,6 +955,7 @@ export const siteEmbedsQuery = /* groq */ `
         _type, provider, videoId, videoUrl, showMap
       }
     },
+    "eventEmbeds": *[_type == "event" && projectSlug == $projectSlug && ${EVENT_PUBLIC} && embedPlayerEnabled == true && defined(embedVideoUrl)].embedVideoUrl,
     "site": *[_type == "siteConfig" && projectSlug == $projectSlug][0] {
       "hasAddress": defined(location) || defined(address),
       "mappableLocations": count(locations[defined(pin) || defined(address)])
@@ -1658,8 +1659,9 @@ export const currentLiveEventQuery = /* groq */ `
     ][0],
     // Fallback: any live-status event
     *[_type == "event" && projectSlug == $projectSlug && ${EVENT_LISTED} && status == "live" && (endDate == null || now() <= endDate)][0],
-    // Fallback: next upcoming event
-    *[_type == "event" && projectSlug == $projectSlug && ${EVENT_LISTED} && status == "upcoming" && now() < startDate]
+    // Fallback: next upcoming event — from the dates (the legacy status field is set
+    // once at creation and goes stale when dates change; see events/timing.ts).
+    *[_type == "event" && projectSlug == $projectSlug && ${EVENT_LISTED} && coalesce(status, "") != "live" && now() < startDate]
       | order(startDate asc)[0]
   ) {
     _id,
@@ -1730,13 +1732,14 @@ export const homepageFeaturedEventQuery = /* groq */ `
       && (homePageFeatureStartDate == null || now() >= homePageFeatureStartDate)
       && (homePageFeatureEndDate == null || now() <= homePageFeatureEndDate)
     ] | order(startDate asc)[0] { ${homepageFeaturedEventFields} },
-    // Upcoming events that are featured on homepage (within date window)
+    // Upcoming or ongoing events featured on homepage (within date window) — from the dates, not the legacy status
     *[
       _type == "event"
       && projectSlug == $projectSlug
       && featuredOnHomePage == true
       && ${EVENT_LISTED}
-      && status == "upcoming"
+      && coalesce(status, "") != "live"
+      && coalesce(endDate, startDate) >= now()
       && (homePageFeatureStartDate == null || now() >= homePageFeatureStartDate)
       && (homePageFeatureEndDate == null || now() <= homePageFeatureEndDate)
     ] | order(startDate asc)[0] { ${homepageFeaturedEventFields} }
@@ -1762,7 +1765,7 @@ export const eventsQuery = /* groq */ `
 `
 
 export const pastEventsQuery = /* groq */ `
-  *[_type == "event" && projectSlug == $projectSlug && ${EVENT_LISTED} && (status == "past" || now() > endDate)]
+  *[_type == "event" && projectSlug == $projectSlug && ${EVENT_LISTED} && coalesce(endDate, startDate) < now()]
   | order(startDate desc) [0..4] {
     _id,
     "title": ${loc('title')},

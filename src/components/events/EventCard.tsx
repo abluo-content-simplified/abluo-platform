@@ -9,19 +9,21 @@ import type { Event } from '@/lib/sanity/types'
 import { IMAGE_HOVER_CLASSES } from '@/lib/image-presentation'
 import { EventCardExtras } from '@/components/events/EventEngagement'
 import { EventLifecycleBadge } from '@/components/events/EventLifecycleBadge'
+import { eventTiming, type EventTiming } from '@/lib/modules/events/timing'
+import { getEventMessages } from '@/lib/i18n/event-messages'
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
-function StatusBadge({ status }: { status: Event['status'] }) {
-  if (status === 'live') {
+function StatusBadge({ timing, labels }: { timing: EventTiming; labels: { live: string; upcoming: string; past: string } }) {
+  if (timing === 'live') {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-widest text-red-400">
         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
-        Live
+        {labels.live}
       </span>
     )
   }
-  if (status === 'upcoming') {
+  if (timing === 'upcoming') {
     return (
       <span
         className="inline-flex items-center rounded-[var(--radius-btn)] border px-2 py-0.5 text-xs font-semibold uppercase tracking-widest"
@@ -31,7 +33,7 @@ function StatusBadge({ status }: { status: Event['status'] }) {
           color: 'var(--color-primary)',
         }}
       >
-        Upcoming
+        {labels.upcoming}
       </span>
     )
   }
@@ -40,7 +42,7 @@ function StatusBadge({ status }: { status: Event['status'] }) {
       className="inline-flex items-center rounded-[var(--radius-btn)] border px-2 py-0.5 text-xs font-semibold uppercase tracking-widest"
       style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}
     >
-      Past
+      {labels.past}
     </span>
   )
 }
@@ -89,6 +91,7 @@ export function EventCard({
   from,
 }: EventCardProps) {
   const hostScoped = useHostScoped()
+  const msg = getEventMessages(locale)
   const heroSrc = imageUrl(event.heroImage, 600)
 
   const startDate = event.startDate
@@ -135,7 +138,7 @@ export function EventCard({
           <div className="mb-3">
             {event.eventStatus && event.eventStatus !== 'scheduled'
               ? <EventLifecycleBadge status={event.eventStatus} locale={locale} />
-              : <StatusBadge status={event.status} />}
+              : <StatusBadge timing={eventTiming(event, new Date())} labels={{ live: msg.statusLive, upcoming: msg.statusUpcoming, past: msg.statusPast }} />}
           </div>
 
           {/* Title — max 2 lines */}

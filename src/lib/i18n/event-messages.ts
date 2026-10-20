@@ -12,6 +12,8 @@
 export interface EventMessages {
   statusLive:           string
   statusUpcoming:       string
+  /** Badge of an event that has ended (from its dates). */
+  statusPast:           string
   viewEventDetails:     string
   backToEvents:         string
   backToLive:           string
@@ -43,6 +45,7 @@ const MESSAGES: Record<string, EventMessages> = {
   en: {
     statusLive:           'Live',
     statusUpcoming:       'Upcoming',
+    statusPast:           'Past',
     viewEventDetails:     'View Event Details',
     backToEvents:         'Back to Events',
     backToLive:           'Back to Live',
@@ -64,6 +67,7 @@ const MESSAGES: Record<string, EventMessages> = {
   it: {
     statusLive:           'In diretta',
     statusUpcoming:       'Prossimamente',
+    statusPast:           'Concluso',
     viewEventDetails:     'Dettagli evento',
     backToEvents:         'Torna agli eventi',
     backToLive:           'Torna al live',
@@ -85,6 +89,7 @@ const MESSAGES: Record<string, EventMessages> = {
   de: {
     statusLive:           'Live',
     statusUpcoming:       'Demnächst',
+    statusPast:           'Vergangen',
     viewEventDetails:     'Event-Details anzeigen',
     backToEvents:         'Zurück zu Events',
     backToLive:           'Zurück zu Live',
@@ -106,6 +111,7 @@ const MESSAGES: Record<string, EventMessages> = {
   fr: {
     statusLive:           'En direct',
     statusUpcoming:       'À venir',
+    statusPast:           'Passé',
     viewEventDetails:     'Voir les détails',
     backToEvents:         'Retour aux événements',
     backToLive:           'Retour au live',
@@ -127,6 +133,7 @@ const MESSAGES: Record<string, EventMessages> = {
   es: {
     statusLive:           'En directo',
     statusUpcoming:       'Próximamente',
+    statusPast:           'Pasado',
     viewEventDetails:     'Ver detalles del evento',
     backToEvents:         'Volver a eventos',
     backToLive:           'Volver al directo',
@@ -148,6 +155,7 @@ const MESSAGES: Record<string, EventMessages> = {
   pt: {
     statusLive:           'Em direto',
     statusUpcoming:       'Brevemente',
+    statusPast:           'Terminado',
     viewEventDetails:     'Ver detalhes do evento',
     backToEvents:         'Voltar aos eventos',
     backToLive:           'Voltar ao direto',
@@ -169,6 +177,7 @@ const MESSAGES: Record<string, EventMessages> = {
   nl: {
     statusLive:           'Live',
     statusUpcoming:       'Binnenkort',
+    statusPast:           'Afgelopen',
     viewEventDetails:     'Evenementdetails bekijken',
     backToEvents:         'Terug naar evenementen',
     backToLive:           'Terug naar live',

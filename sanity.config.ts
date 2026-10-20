@@ -10,6 +10,8 @@ import { ImportDesignSystemAction } from './src/sanity/actions/ImportDesignSyste
 import { DuplicateDesignSystemAction } from './src/sanity/actions/DuplicateDesignSystemAction'
 import { AutoCreateSiteConfigAction } from './src/sanity/actions/AutoCreateSiteConfigAction'
 import { BumpFormVersionAction } from './src/sanity/actions/BumpFormVersionAction'
+import { DuplicateWithNewPublicIdAction } from './src/sanity/actions/DuplicateWithNewPublicIdAction'
+import { hasPublicIdField } from './src/sanity/actions/duplicate-with-new-public-id'
 // ADR-011 Phase C1 — Project Settings Shell
 import { ModulesOverview } from './src/lib/sanity/studio/ModulesOverview'
 import { ModuleList } from './src/lib/sanity/studio/ModuleList'
@@ -798,6 +800,10 @@ export default defineConfig({
         return prev.map((action) =>
           action.action === 'publish' ? BumpFormVersionAction : action
         )
+      }
+      // ADR-038 D2 — a copy never inherits its original's publicId.
+      if (hasPublicIdField(context.schema.get(context.schemaType))) {
+        return prev.map((action) => (action.action === 'duplicate' ? DuplicateWithNewPublicIdAction : action))
       }
       if (context.schemaType === 'project') {
         // Replace the built-in Publish with our wrapper that auto-bootstraps

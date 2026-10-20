@@ -115,7 +115,7 @@ describe('detectSiteEmbedVendors', () => {
   it('siteEmbedsQuery projects every registered section type and field, scoped to the project', () => {
     for (const t of EMBED_SECTION_TYPES) expect(siteEmbedsQuery).toContain(`"${t}"`)
     for (const f of SITE_EMBED_SECTION_FIELDS) expect(siteEmbedsQuery).toContain(f)
-    expect(siteEmbedsQuery.match(/projectSlug == \$projectSlug/g)?.length).toBe(2)
+    expect(siteEmbedsQuery.match(/projectSlug == \$projectSlug/g)?.length).toBe(3) // sections, event players, siteConfig — every read scoped
   })
 })
 
@@ -214,5 +214,22 @@ describe('purpose grant × per-vendor allow', () => {
     expect(choiceNeedsReload(none, ext)).toBe(false)
     expect(choiceNeedsReload(none, all)).toBe(true)
     expect(choiceNeedsReload(ext, ext)).toBe(false)
+  })
+})
+
+// ── Event pages embed their player outside sections (Events 2.0, Stage A) ────
+
+describe('detectSiteEmbedVendors — event players', () => {
+  const on = { mapsEmbedEnabled: true }
+  it('an event with the embedded player on puts its vendor in the banner', () => {
+    const out = detectSiteEmbedVendors({ docs: [], eventEmbeds: ['https://www.youtube.com/watch?v=dQw4w9WgXcQ', null] }, on)
+    expect(out.map((v) => v.id)).toEqual(['youtube'])
+  })
+  it('an unrecognised or empty URL adds nothing', () => {
+    expect(detectSiteEmbedVendors({ docs: [], eventEmbeds: ['', null] }, on)).toEqual([])
+  })
+  it('siteEmbedsQuery reads only events whose player is switched on', () => {
+    expect(siteEmbedsQuery).toContain('"eventEmbeds": *[_type == "event" && projectSlug == $projectSlug && ')
+    expect(siteEmbedsQuery).toContain('embedPlayerEnabled == true && defined(embedVideoUrl)].embedVideoUrl')
   })
 })

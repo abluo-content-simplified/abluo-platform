@@ -1,4 +1,5 @@
 import { defineType, defineField, defineArrayMember } from 'sanity'
+import { validateUniquePublicId } from '@/lib/sanity/fields/public-id'
 import { CategorySelectInput } from '@/lib/sanity/fields/CategorySelectInput'
 import { scopedRef, projectSlugField, PAGE_SECTIONS_OF, anchorIdField } from '@/lib/sanity/fields/shared'
 import { isValidTimeZone, timeZoneOptions } from '@/lib/time/zones'
@@ -275,6 +276,8 @@ export const publicIdField = defineField({
   group: 'meta',
   initialValue: () => newPublicId(),
   description: 'Permanent id used when this is shared with connected apps. Set automatically; never changes.',
+  // ADR-038 D2 — one document per publicId (a Studio Duplicate used to copy it).
+  validation: (Rule) => Rule.custom((value, context) => validateUniquePublicId(value, context)),
 })
 
 export function newPublicId(): string {

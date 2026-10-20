@@ -7,17 +7,18 @@ import { PlayCircle, ArrowRight } from 'lucide-react'
 import { SlideUp, FadeIn } from '@/components/animation'
 import { imageUrl, imageSrcSet } from '@/lib/sanity/image'
 import { getEventMessages } from '@/lib/i18n/event-messages'
+import { eventTiming, type EventTiming } from '@/lib/modules/events/timing'
 import type { Event, SupportedLocale, DesignSystem } from '@/lib/sanity/types'
 import { resolveEasing } from '@/lib/motion/easing'
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
-function StatusBadge({ status, liveLabel, upcomingLabel }: {
-  status: Event['status']
+function StatusBadge({ timing, liveLabel, upcomingLabel }: {
+  timing: EventTiming
   liveLabel: string
   upcomingLabel: string
 }) {
-  if (status === 'live') {
+  if (timing === 'live') {
     return (
       <span className="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-red-400">
         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
@@ -25,7 +26,7 @@ function StatusBadge({ status, liveLabel, upcomingLabel }: {
       </span>
     )
   }
-  if (status === 'upcoming') {
+  if (timing === 'upcoming') {
     return (
       <span
         className="inline-flex items-center gap-2 rounded-[var(--radius-btn)] border px-3 py-1 text-xs font-semibold uppercase tracking-widest"
@@ -116,7 +117,7 @@ export function FeaturedEventBlock({ event, designSystem, locale, tenantId }: Fe
       {/* ── Status + title ────────────────────────────────────────── */}
       <SlideUp delay={0.05} ease={easeReveal}>
         <div className="flex items-center gap-3">
-          <StatusBadge status={event.status} liveLabel={msg.statusLive} upcomingLabel={msg.statusUpcoming} />
+          <StatusBadge timing={eventTiming(event, new Date())} liveLabel={msg.statusLive} upcomingLabel={msg.statusUpcoming} />
         </div>
       </SlideUp>
 

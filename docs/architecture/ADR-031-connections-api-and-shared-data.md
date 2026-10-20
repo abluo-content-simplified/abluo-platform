@@ -217,3 +217,14 @@ Framework-agnostic: the library runs the protocol (authorization code + PKCE S25
 | Misissued scope | token → Connection → one project + listed resources/fields; nothing else is reachable by construction |
 | Consent by the wrong person | `connections.manage` checked server-side on the project; support mode can never consent |
 | Maintenance burden | the model is ~6 functions over tables we already own; the protocol stays in the library |
+
+## Amendment C — Event scheduling moves to Supabase (2026-10-20, Tom; detail in ADR-038)
+
+**Status:** architecture approved 2026-10-20; build sequence pending approval.
+
+1. **D7.3 / D7.4 / D7.6 re-homed.** An event's dates, place assignment, time zone, recurrence and occurrences are owned by Supabase (`event_series`, `event_occurrences`), keyed by `(project_id, event publicId)`. Sanity keeps the editorial event. The Event v1 contract **does not change shape**: `startDate`/`endDate`/`location`/`timeZone` are read from scheduling (the single or next occurrence).
+2. **Occurrences (D7.6)** keep every rule stated there: permanent opaque ids, `originalStart`, tombstones, and never silently dropping booked occurrences. They are materialised as rows in Supabase, so the planned `occurrence` resource reads them directly.
+3. **Amendment A refined.** The one-off "custom" place is stored as an **unlisted venue** (`eventVenue.listed = false`) instead of inline on the event, so every place has a `publicId` and editing a venue propagates. The City field and the "Save this venue for next time" UX are unchanged. Anyone holding `events.venue.write`, not `events.event.write`, may save a venue.
+4. **D7.2 event status.** Cancelling an individual session lives on the occurrence. The event-level `eventStatus` (cancelled / postponed / sold out) remains an editorial announcement on the Sanity event. A shared resource's effective status is the occurrence status if that is cancelled, otherwise the event's status.
+5. **D7.5 booking mode.** Stays a registration setting on the Sanity event (`none` / external link). "Via partner" and Abluo Reservations attach to occurrences or series, never to the Sanity document.
+6. **Removals (D4).** Occurrence tombstones live in Supabase. The existing Sanity removals webhook also tombstones the schedule of a deleted or unpublished event.

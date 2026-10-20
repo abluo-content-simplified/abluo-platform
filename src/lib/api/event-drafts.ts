@@ -27,6 +27,7 @@
  *   5. Opaque error codes (EventErrorCode).
  */
 import { randomUUID } from 'crypto'
+import { eventTiming as sharedEventTiming } from '@/lib/modules/events/timing'
 import { assertModuleAction } from '@/lib/api/module-action-guard'
 import type { TenantAuthorizationContext } from '@/lib/api/tenant-context'
 import { sanityWriteClient } from '@/lib/sanity/server-clients'
@@ -212,14 +213,9 @@ export function parseEventDate(value: unknown): string {
   return new Date(t).toISOString()
 }
 
-/** "upcoming" / "past" from the dates; an event Abluo set to "live" stays live. */
+/** "upcoming" / "past" from the dates; an event Abluo set to "live" stays live (shared rule, events/timing.ts). */
 export function eventTiming(doc: Record<string, unknown>, now: Date): 'upcoming' | 'live' | 'past' {
-  if (doc.status === 'live') return 'live'
-  const start = typeof doc.startDate === 'string' ? Date.parse(doc.startDate) : NaN
-  const end = typeof doc.endDate === 'string' ? Date.parse(doc.endDate) : NaN
-  const last = Number.isNaN(end) ? start : end
-  if (Number.isNaN(last)) return 'upcoming'
-  return last >= now.getTime() ? 'upcoming' : 'past'
+  return sharedEventTiming(doc, now)
 }
 
 /** Accepted sign-up links: https/http/mailto, or a path on this site ("/contact"). */
