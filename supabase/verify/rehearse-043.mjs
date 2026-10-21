@@ -65,8 +65,8 @@ try {
   check('move the session: ids kept, version 2', b.series_id === a.series_id && b.occurrence_id === a.occurrence_id && b.version === 2)
   const occ = (await q(`select start_local::text, starts_at, time_zone from public.event_occurrences where id = $1`, [a.occurrence_id])).rows[0]
   check('session carries local time, zone and UTC', occ.start_local === '2026-10-31 10:00:00' && occ.time_zone === 'Europe/Brussels' && new Date(occ.starts_at).toISOString() === '2026-10-31T09:00:00.000Z')
-  await expectError('stale version → version_conflict', () => save({ project: pA, event: ev, startLocal: '2026-11-01 10:00', startsAt: '2026-11-01T09:00:00Z', version: 1 }), '40001')
-  await expectError('create again (no version) → refused', () => save({ project: pA, event: ev, startLocal: '2026-11-01 10:00', startsAt: '2026-11-01T09:00:00Z' }), '40001')
+  await expectError('stale version → version_conflict', () => save({ project: pA, event: ev, startLocal: '2026-11-01 10:00', startsAt: '2026-11-01T09:00:00Z', version: 1 }), 'AB409')
+  await expectError('create again (no version) → refused', () => save({ project: pA, event: ev, startLocal: '2026-11-01 10:00', startsAt: '2026-11-01T09:00:00Z' }), 'AB409')
   // The same publicId under another project is a different schedule (isolation by project).
   const other = await save({ project: pB, event: ev, startLocal: '2026-12-01 10:00', startsAt: '2026-12-01T09:00:00Z' })
   check('same event id in another project → its own schedule', other.series_id !== a.series_id)
@@ -77,8 +77,8 @@ try {
   // Cancel and restore one session.
   const v1 = (await q(`select public.event_occurrence_set_status($1,$2,'cancelled',$3) v`, [pA, a.occurrence_id, 2])).rows[0].v
   check('cancel a session: version bumps', v1 === 3)
-  await expectError('cancel with stale version → conflict', () => q(`select public.event_occurrence_set_status($1,$2,'scheduled',$3)`, [pA, a.occurrence_id, 2]), '40001')
-  await expectError('cancel from the wrong project → conflict (not found)', () => q(`select public.event_occurrence_set_status($1,$2,'scheduled',$3)`, [pB, a.occurrence_id, 3]), '40001')
+  await expectError('cancel with stale version → conflict', () => q(`select public.event_occurrence_set_status($1,$2,'scheduled',$3)`, [pA, a.occurrence_id, 2]), 'AB409')
+  await expectError('cancel from the wrong project → conflict (not found)', () => q(`select public.event_occurrence_set_status($1,$2,'scheduled',$3)`, [pB, a.occurrence_id, 3]), 'AB409')
   // Remove → tombstones, rows kept.
   const removed = (await q(`select public.event_schedule_remove($1,$2) n`, [pA, ev])).rows[0].n
   const left = (await q(`select count(*)::int n, count(*) filter (where removed_at is not null)::int t from public.event_occurrences where project_id = $1`, [pA])).rows[0]
