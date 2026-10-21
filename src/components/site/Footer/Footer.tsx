@@ -381,15 +381,6 @@ export async function Footer({
               </ul>
             )}
 
-            {/* ADR-021 — permanent consent withdrawal path; absent when the
-                site uses nothing that needs consent. */}
-            {!hasAuthoredCookieLink && (
-              <CookieSettingsLink
-                className="text-sm font-medium hover:text-[var(--color-footer-text)]"
-                style={{ color: 'var(--color-footer-text-muted)' }}
-              />
-            )}
-
             {/* Credit link — absent until `footerCredit` is authored. */}
             {credit && (
               <Link
@@ -416,6 +407,21 @@ export async function Footer({
                 <p className="mt-1 text-xs" style={{ color: 'var(--color-footer-text-muted)' }}>
                   {config.legalAddress}
                 </p>
+              )}
+
+              {/* ADR-021 — permanent consent withdrawal path; absent when the
+                  site authors its own "Cookie settings" link in a column.
+                  It sits on this row rather than the copyright row above
+                  because it belongs with the other site control the visitor
+                  operates — the language switcher opposite it — not with the
+                  legal text. Left here, languages right. */}
+              {!hasAuthoredCookieLink && (
+                <CookieSettingsLink
+                  className={`text-sm font-medium hover:text-[var(--color-footer-text)] ${
+                    config.registrationInfo || config.legalAddress ? 'mt-2' : ''
+                  }`}
+                  style={{ color: 'var(--color-footer-text-muted)' }}
+                />
               )}
             </div>
 
