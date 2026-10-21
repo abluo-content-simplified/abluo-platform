@@ -15,6 +15,7 @@ import { offerIssues, type Offer, type OfferIssue } from './offers'
 import { ruleIssues, WEEKDAYS, type Weekday } from './availability'
 import { isDescendant, moveSection, readingOrder, removeSection, subtreeOf, type SectionNode } from './sections'
 import { catalogueLinkUrl } from './links'
+import { isEditionLanguage, readEdition, type LinkEdition } from './editions'
 import { isAmazonShortLink, looksLikeAmazon, parseAmazonUrl } from '@/lib/affiliate/amazon-links'
 import { can, isItemProfile, offeringOf, type ItemProfile } from './profiles'
 import { bookYearProblem, normalizeIsbn, parseBookYear } from './isbn'
@@ -541,6 +542,8 @@ export type LinkForm = {
   affiliate: boolean
   /** Buy link only: product URLs of other Amazon stores (one row each; may hold a half-typed one). */
   moreUrls?: string[]
+  /** Buy link only: the book edition this link is for. Absent = not an edition. */
+  edition?: LinkEdition
 }
 
 /** An address the server accepts as an extra Amazon store link: a readable product URL, or an app short link. */
@@ -551,10 +554,11 @@ export function linkFormsFromDoc(value: unknown): LinkForm[] {
   return value
     .filter((l) => l && typeof l === 'object' && typeof (l as { _key?: unknown })._key === 'string')
     .map((l) => {
-      const r = l as { _key: string; label?: unknown; url?: unknown; kind?: unknown; affiliate?: unknown; moreUrls?: unknown }
+      const r = l as { _key: string; label?: unknown; url?: unknown; kind?: unknown; affiliate?: unknown; moreUrls?: unknown; edition?: unknown }
       const buy = r.kind === 'buy'
       const more = buy && Array.isArray(r.moreUrls) ? r.moreUrls.filter((u): u is string => typeof u === 'string') : []
-      return { key: r._key, label: textsOf(r.label), url: typeof r.url === 'string' ? r.url : '', kind: buy ? 'buy' : 'info', affiliate: buy && r.affiliate === true, ...(more.length ? { moreUrls: more } : {}) } satisfies LinkForm
+      const edition = buy ? readEdition(r.edition) : undefined
+      return { key: r._key, label: textsOf(r.label), url: typeof r.url === 'string' ? r.url : '', kind: buy ? 'buy' : 'info', affiliate: buy && r.affiliate === true, ...(more.length ? { moreUrls: more } : {}), ...(edition ? { edition } : {}) } satisfies LinkForm
     })
 }
 
@@ -581,17 +585,22 @@ export function linkFormIssues(links: readonly LinkForm[], defaultLocale: string
 
 /** The patch: complete rows only, in order. Blank rows are simply not stored. */
 export function linksPatch(links: readonly LinkForm[], defaultLocale: string) {
+  // Only one edition can be the original (the editor keeps it so); if two arrive, the first wins.
+  let originalTaken = false
   return links
     .filter((l) => (l.kind === 'buy' || l.label[defaultLocale]?.trim()) && catalogueLinkUrl(l.url))
     .map((l) => {
       // Extra Amazon stores: only readable ones, and only when the main address is Amazon too (the server checks again).
       const more = l.kind === 'buy' && looksLikeAmazon(l.url) ? (l.moreUrls ?? []).map((u) => u.trim()).filter((u) => u && isMoreAmazonUrl(u)) : []
+      const ed = l.kind === 'buy' && l.edition && isEditionLanguage(l.edition.language) ? l.edition : null
+      const original = !!ed?.original && !originalTaken
+      if (original) originalTaken = true
       return {
         _key: l.key,
         label: l.label,
         url: l.url.trim(),
         // Additive (Amendment K): an info link is written exactly as before.
-        ...(l.kind === 'buy' ? { kind: 'buy' as const, ...(l.affiliate ? { affiliate: true } : {}), ...(more.length ? { moreUrls: more } : {}) } : {}),
+        ...(l.kind === 'buy' ? { kind: 'buy' as const, ...(l.affiliate ? { affiliate: true } : {}), ...(more.length ? { moreUrls: more } : {}), ...(ed ? { edition: { language: ed.language, ...(original ? { original: true as const } : {}) } } : {}) } : {}),
       }
     })
 }
@@ -609,7 +618,7 @@ export function buyLinkOf(links: readonly LinkForm[]): LinkForm | null {
 /** Applies a change to the first buy link (creating it when absent); a buy link left completely empty is removed. */
 export function withBuyLink(
   links: readonly LinkForm[],
-  change: Partial<Pick<LinkForm, 'url' | 'label' | 'affiliate' | 'moreUrls'>>,
+  change: Partial<Pick<LinkForm, 'url' | 'label' | 'affiliate' | 'moreUrls' | 'edition'>>,
   newKey: () => string,
 ): LinkForm[] {
   const current = buyLinkOf(links)

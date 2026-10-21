@@ -35,6 +35,7 @@ export const CATALOGUE_WEBSITE_KEYS = [
   'without',
   'linksHeading',
   'buyDefault',
+  'editionOriginal',
   'affiliateMarker',
   'affiliateDisclosureDefault',
   // Amazon's required sentence (en/it/de in messages/*.json). The exact wording must be verified against
@@ -46,6 +47,8 @@ export type CatalogueWebsiteKey = (typeof CATALOGUE_WEBSITE_KEYS)[number]
 
 export type CatalogueWebsiteMessages = Record<CatalogueWebsiteKey, string> & {
   allergen: (key: AllergenKey) => string
+  /** The locale these texts were read for (used to put the visitor's edition first). */
+  locale?: string
 }
 
 function pick(bundle: Dict | undefined, path: string[]): string | null {
@@ -64,7 +67,7 @@ function lookup(locale: string, path: string[]): string {
 export function getCatalogueWebsiteMessages(locale: string): CatalogueWebsiteMessages {
   const out = {} as Record<CatalogueWebsiteKey, string>
   for (const k of CATALOGUE_WEBSITE_KEYS) out[k] = lookup(locale, ['catalogue', 'website', k])
-  return { ...out, allergen: (key) => lookup(locale, ['catalogue', 'allergens', key]) || key }
+  return { ...out, locale, allergen: (key) => lookup(locale, ['catalogue', 'allergens', key]) || key }
 }
 
 /** `{name}` placeholders, inserted verbatim (React escapes on render). */

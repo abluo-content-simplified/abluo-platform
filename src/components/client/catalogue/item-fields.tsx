@@ -8,6 +8,8 @@ import { Checkbox } from '@/components/app/ui/Checkbox'
 import { DragGrip, DropLine } from '@/components/app/ui/DragGrip'
 import { dropIndex, usePointerDrag } from '@/components/app/ui/use-pointer-drag'
 import { CheckboxCard } from '@/components/app/ui/CheckboxCard'
+import { Select } from '@/components/app/ui/Select'
+import { EDITION_LANGUAGES } from '@/lib/modules/catalogue/editions'
 import { RadioList } from '@/components/app/ui/RadioList'
 import { ToggleChips } from '@/components/app/ui/ToggleChips'
 import { Switch } from '@/components/app/ui/Switch'
@@ -347,6 +349,9 @@ export function LinksField({ links, locales, defaultLocale, onChange, amazon }: 
   const issues = linkFormIssues(links, defaultLocale)
   const issueOf = (key: string) => issues.find((i) => i.key === key)?.kind
   const setLink = (key: string, next: Partial<LinkForm>) => onChange(links.map((l) => (l.key === key ? { ...l, ...next } : l)))
+  // Book editions: one language per buy link; only one link can be the original (ticking one unticks the others).
+  const setEdition = (key: string, edition: { language: string; original: boolean } | undefined) =>
+    onChange(links.map((l) => (l.key === key ? { ...l, edition } : edition?.original ? { ...l, edition: l.edition ? { ...l.edition, original: false } : l.edition } : l)))
   const drag = usePointerDrag((key, over) => {
     const to = dropIndex(links.map((x) => x.key), key, over)
     if (to !== null) onChange(moveIndex(links, links.findIndex((x) => x.key === key), to))
@@ -381,6 +386,24 @@ export function LinksField({ links, locales, defaultLocale, onChange, amazon }: 
                       ) : null}
                     </div>
                     {amazon && l.kind === 'buy' ? <AmazonLinkBlock url={l.url} moreUrls={l.moreUrls ?? []} amazon={amazon} onUrl={(next) => setLink(l.key, { url: next })} onMoreUrls={(next) => setLink(l.key, { moreUrls: next })} /> : null}
+                    {l.kind === 'buy' ? (
+                      <div className="space-y-3" data-edition-fields="">
+                        <div>
+                          <FieldLabel htmlFor={`${id}-${l.key}-edition`}>{t('editionLanguage')}</FieldLabel>
+                          <Select
+                            id={`${id}-${l.key}-edition`}
+                            value={l.edition?.language ?? ''}
+                            onChange={(e) => setEdition(l.key, e.target.value ? { language: e.target.value, original: l.edition?.original ?? false } : undefined)}
+                          >
+                            <option value="">{t('editionNone')}</option>
+                            {EDITION_LANGUAGES.map((lang) => (
+                              <option key={lang.code} value={lang.code}>{lang.name}</option>
+                            ))}
+                          </Select>
+                        </div>
+                        {l.edition ? <CheckboxCard label={t('editionOriginal')} checked={l.edition.original} onChange={(on) => setEdition(l.key, { language: l.edition!.language, original: on })} /> : null}
+                      </div>
+                    ) : null}
                   </div>
                   {links.length > 1 ? (
                     <DragGrip label={t('drag', { position: n + 1, total: links.length })} drag={drag.gripProps(l.key)} onMove={(dir) => onChange(moveIndex(links, n, n + dir))} />
@@ -395,10 +418,16 @@ export function LinksField({ links, locales, defaultLocale, onChange, amazon }: 
         </ul>
       ) : null}
       {links.length < CATALOGUE_LINK_LIMITS.links ? (
-        <Button variant="secondary" onClick={() => onChange([...links, { key: newKey(), label: {}, url: '', kind: 'info', affiliate: false }])}>
-          {CAT_ICONS.plus}
-          {t('add')}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => onChange([...links, { key: newKey(), label: {}, url: '', kind: 'info', affiliate: false }])}>
+            {CAT_ICONS.plus}
+            {t('add')}
+          </Button>
+          <Button variant="secondary" onClick={() => onChange([...links, { key: newKey(), label: {}, url: '', kind: 'buy', affiliate: false }])}>
+            {CAT_ICONS.plus}
+            {t('addEdition')}
+          </Button>
+        </div>
       ) : null}
     </div>
   )

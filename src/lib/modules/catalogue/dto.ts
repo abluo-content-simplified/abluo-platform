@@ -182,6 +182,8 @@ export type CatalogueItemLinkDTO = {
   moreUrls?: string[]
   /** True once the link has been localized as an Amazon link (country pick + tracking ID applied). */
   amazon?: boolean
+  /** Book editions — the language of this buy link's edition and whether it is the original. Absent on every older link. */
+  edition?: { language: string; original: boolean }
 }
 
 /** Amendment I-3 — a book's plain, non-localized details. Present only for a profile that carries them. */

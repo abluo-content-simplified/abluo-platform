@@ -193,7 +193,7 @@ export function CatalogueItemRow({
             {item.description}
           </p>
         )}
-        <ItemLinks links={item.links} siteHosts={display.siteHosts} compact />
+        <ItemLinks links={item.links} siteHosts={display.siteHosts} compact m={messages} />
         <OptionsSummary lists={item.optionLists} m={messages} showPrices={display.showPrices} allergens={display.allergens} />
         <AllergensAndDietary item={item} m={messages} compact={display.allergens === 'compact'} />
       </div>

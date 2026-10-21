@@ -2381,7 +2381,7 @@ const CATALOGUE_ITEM_FIELDS = /* groq */ `
   "slugMap": slug,
   categories,
   tags,
-  links[] { _key, "label": ${loc('label')}, url, kind, affiliate, moreUrls },
+  links[] { _key, "label": ${loc('label')}, url, kind, affiliate, moreUrls, edition { language, original } },
   // ADR-033 D-3 — the explicit declaration; the note is tenant text (locale chain).
   allergenDeclaration { status, allergens, mayContain, confirmed, "note": ${loc('note')} },
   dietary,

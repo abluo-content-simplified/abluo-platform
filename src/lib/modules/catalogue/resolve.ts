@@ -21,6 +21,7 @@ import { allergenDeclarationIssues, orderedAllergens } from './allergens'
 import { evaluate, WEEKDAYS, type AvailabilityState, type Weekday } from './availability'
 import { effectiveCurrency, type Offer } from './offers'
 import { catalogueLinkUrl } from './links'
+import { readEdition } from './editions'
 import { readingOrder } from './sections'
 import { normalise } from './slugs'
 import { can, profileOf } from './profiles'
@@ -132,7 +133,7 @@ export type RawCatalogueItem = LifecycleFields & {
   bookDetails?: { author?: unknown; publisher?: unknown; year?: unknown; isbn?: unknown } | null
   description?: RawText
   /** F-2 — `label` locale-resolved by GROQ (or raw localized); `url` unchecked until resolveLinks. */
-  links?: ({ _key?: string | null; label?: RawText; url?: unknown; kind?: unknown; affiliate?: unknown; moreUrls?: unknown } | null)[] | null
+  links?: ({ _key?: string | null; label?: RawText; url?: unknown; kind?: unknown; affiliate?: unknown; moreUrls?: unknown; edition?: unknown } | null)[] | null
   slugMap?: RawSlugMap
   categories?: readonly string[] | null
   /** Slice 7 — keys of tag terms. */
@@ -518,7 +519,8 @@ export function resolveLinks(rows: RawCatalogueItem['links'], ctx: CatalogueReso
     // A buy link needs no label of its own (the website says "Buy"); any other link does.
     if (!url || (!label && !buy)) continue
     const more = buy && Array.isArray(r.moreUrls) ? r.moreUrls.map(catalogueLinkUrl).filter((u): u is string => !!u) : []
-    out.push({ key: nonEmpty(r._key) ?? `link${i}`, label: label ?? '', url, kind: buy ? 'buy' : 'info', affiliate: buy && r.affiliate === true, ...(more.length ? { moreUrls: more } : {}) })
+    const edition = buy ? readEdition(r.edition) : undefined
+    out.push({ key: nonEmpty(r._key) ?? `link${i}`, label: label ?? '', url, kind: buy ? 'buy' : 'info', affiliate: buy && r.affiliate === true, ...(more.length ? { moreUrls: more } : {}), ...(edition ? { edition } : {}) })
   }
   return out
 }

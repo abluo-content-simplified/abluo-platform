@@ -4082,7 +4082,11 @@
             "affiliate": "This is an affiliate link",
             "affiliateHelp": "You earn a commission when someone buys through it.",
             "badMore": "Use an Amazon product link for the other stores.",
-            "drag": "Move link {position} of {total}. Drag, or use the up and down arrow keys."
+            "drag": "Move link {position} of {total}. Drag, or use the up and down arrow keys.",
+            "addEdition": "Add another edition",
+            "editionLanguage": "Edition language",
+            "editionNone": "—",
+            "editionOriginal": "Original edition"
           },
           "title": "Title",
           "book": {
@@ -4525,6 +4529,7 @@
       "containsHeading": "Contains",
       "linksHeading": "Links",
       "buyDefault": "Buy",
+      "editionOriginal": "Original",
       "affiliateMarker": "Affiliate link",
       "affiliateDisclosureDefault": "Some links on this page are affiliate links. If you buy through them, we receive a small commission at no extra cost to you.",
       "amazonStatement": "As an Amazon Associate I earn from qualifying purchases."

@@ -5,6 +5,7 @@ import { PUBLISHING_GROUP, publishingStatusField, publishOnField, unpublishOnFie
 import { linkUrlIssue } from './links'
 import { FOOD_PROFILE_GROQ, PROFILES, PROFILE_ORDER, can, profileOf } from './profiles'
 import { BOOK_YEAR_MIN, bookYearMax } from './isbn'
+import { EDITION_LANGUAGES } from './editions'
 import { ALLERGENS, allergenDeclarationIssues, describeDeclarationIssue, optionDeclarationIssues, unreviewedChoices, unknownAllergenKeys } from './allergens'
 
 // ── Catalogue module — Sanity schema types ────────────────────────────────────
@@ -1033,6 +1034,23 @@ export const catalogueItemLink = defineType({
       of: [{ type: 'url' }],
       description: 'Amazon product links for other countries. The website picks one by the visitor’s country.',
       hidden: ({ parent }) => (parent as { kind?: string } | undefined)?.kind !== 'buy',
+    }),
+    // Book editions — additive. The language of this edition and whether it is the original. Absent on every link stored before.
+    defineField({
+      name: 'edition',
+      title: 'Edition',
+      type: 'object',
+      description: 'For a book with several editions: one buy link per language.',
+      hidden: ({ parent }) => (parent as { kind?: string } | undefined)?.kind !== 'buy',
+      fields: [
+        defineField({
+          name: 'language',
+          title: 'Language',
+          type: 'string',
+          options: { list: EDITION_LANGUAGES.map((l) => ({ title: l.name, value: l.code })) },
+        }),
+        defineField({ name: 'original', title: 'Original edition', type: 'boolean' }),
+      ],
     }),
   ],
   preview: {

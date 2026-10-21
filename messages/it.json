@@ -4082,7 +4082,11 @@
             "affiliate": "Questo è un link di affiliazione",
             "affiliateHelp": "Guadagni una commissione quando qualcuno acquista tramite questo link.",
             "badMore": "Usa un link di prodotto Amazon per gli altri store.",
-            "drag": "Sposta il link {position} di {total}. Trascina, oppure usa le frecce su e giù."
+            "drag": "Sposta il link {position} di {total}. Trascina, oppure usa le frecce su e giù.",
+            "addEdition": "Aggiungi un’altra edizione",
+            "editionLanguage": "Lingua dell’edizione",
+            "editionNone": "—",
+            "editionOriginal": "Edizione originale"
           },
           "title": "Titolo",
           "book": {
@@ -4525,6 +4529,7 @@
       "containsHeading": "Contiene",
       "linksHeading": "Link",
       "buyDefault": "Acquista",
+      "editionOriginal": "Originale",
       "affiliateMarker": "Link di affiliazione",
       "affiliateDisclosureDefault": "Alcuni link in questa pagina sono link di affiliazione. Se acquisti tramite questi link, riceviamo una piccola commissione, senza alcun costo aggiuntivo per te.",
       "amazonStatement": "In qualità di Affiliato Amazon, ricevo un guadagno dagli acquisti idonei."

@@ -16,6 +16,7 @@ import type {
   CatalogueTermDTO,
 } from '@/lib/modules/catalogue/dto'
 import { buyLabel, catalogueLinkRel } from '@/lib/modules/catalogue/affiliate'
+import { editionLabel, editionLanguageName, editionLinks, orderBuyLinks } from '@/lib/modules/catalogue/editions'
 import { fillMessage, optionRuleText, type CatalogueWebsiteMessages } from './messages'
 
 /** F-1 — the short line under an item's name. Plain text, never parsed. */
@@ -39,13 +40,20 @@ export function ItemLinks({
   siteHosts = [],
   compact,
   heading,
+  m,
 }: {
   links: readonly CatalogueItemLinkDTO[]
   siteHosts?: readonly string[]
   compact: boolean
   /** catalogue.website.linksHeading — labels the list on the item page. */
   heading?: string
+  /** Card form only: lets a book with several editions show ONE buy link (the visitor's language first). */
+  m?: CatalogueWebsiteMessages
 }) {
+  if (compact && m && editionLinks(links).length >= 2) {
+    const primary = orderBuyLinks(links, m.locale)[0]
+    links = links.filter((l) => l.kind !== 'buy' || l === primary)
+  }
   if (links.length === 0) return null
   const items = links.map((l) => {
     const blank = opensInNewTab({ href: l.url }, siteHosts)
@@ -58,7 +66,7 @@ export function ItemLinks({
           {...(blank ? { target: '_blank' } : {})}
           {...relProps(l, blank)}
         >
-          {l.label}
+          {compact && m && l.edition && l.kind === 'buy' ? buyText(l, m, false) : l.label}
         </a>
       </li>
     )
@@ -86,8 +94,10 @@ function relProps(l: CatalogueItemLinkDTO, blank: boolean): { rel?: string } {
  * and a small localized marker under the button.
  */
 export function BuyLinks({ links, siteHosts = [], m }: { links: readonly CatalogueItemLinkDTO[]; siteHosts?: readonly string[]; m: CatalogueWebsiteMessages }) {
-  const buy = links.filter((l) => l.kind === 'buy')
+  // Book editions: with two or more edition links, one button per edition, the visitor's language first.
+  const buy = orderBuyLinks(links, m.locale)
   if (buy.length === 0) return null
+  const manyEditions = editionLinks(buy).length >= 2
   return (
     <ul className="flex flex-wrap items-start gap-x-6 gap-y-4" data-buy-links="">
       {buy.map((l) => {
@@ -102,7 +112,7 @@ export function BuyLinks({ links, siteHosts = [], m }: { links: readonly Catalog
               {...(blank ? { target: '_blank' } : {})}
               {...relProps(l, blank)}
             >
-              {buyLabel(l.label, m.buyDefault)}
+              {buyText(l, m, manyEditions)}
             </a>
             {l.affiliate && m.affiliateMarker && (
               <span className="text-xs" style={MUTED} data-affiliate-marker="">{m.affiliateMarker}</span>
@@ -112,6 +122,16 @@ export function BuyLinks({ links, siteHosts = [], m }: { links: readonly Catalog
       })}
     </ul>
   )
+}
+
+/**
+ * The words on a buy button. Several editions: the language's own name (+ "Original"). One edition (or none):
+ * the usual label, with the language as a small secondary part ("Buy · English").
+ */
+function buyText(l: CatalogueItemLinkDTO, m: CatalogueWebsiteMessages, manyEditions: boolean): string {
+  if (l.edition && manyEditions) return editionLabel(l.edition, m.editionOriginal)
+  const base = buyLabel(l.label, m.buyDefault)
+  return l.edition ? `${base} · ${editionLanguageName(l.edition.language)}` : base
 }
 
 /** Amendment K — the catalogue's affiliate disclosure, once per page, below the content. `text` null = render nothing. */

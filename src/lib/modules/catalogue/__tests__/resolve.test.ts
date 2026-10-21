@@ -492,7 +492,7 @@ describe('byline and links — ADR-033 Amendment F', () => {
     expect(b({ publisher: 7 })).toBeNull()
     for (const q of [queries.catalogueItemBySlugQuery, queries.catalogueCollectionBySlugQuery, queries.catalogueCollectionByIdQuery]) {
       expect(q).toContain('bookDetails { author, publisher, year, isbn }')
-      expect(q).toMatch(/links\[\] \{ _key, "label": [^}]*url, kind, affiliate, moreUrls \}/)
+      expect(q).toMatch(/links\[\] \{ _key, "label": [^}]*url, kind, affiliate, moreUrls, edition \{ language, original \} \}/)
     }
   })
 

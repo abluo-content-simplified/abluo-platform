@@ -18,6 +18,7 @@ import { ALLERGEN_DECLARATION_STATUSES, isAllergenKey, orderedAllergens, type Al
 import { offerIssues, type Offer } from './offers'
 import { ruleIssues, WEEKDAYS } from './availability'
 import { catalogueLinkUrl, CATALOGUE_LINK_LIMITS } from './links'
+import { cleanEdition } from './editions'
 import { cleanMoreAmazonUrls } from './amazon-delivery'
 import { treeIssues, type SectionNode } from './sections'
 import { COLLECTION_TYPES, VISIBILITIES, newOrphans, slugFromName } from './dashboard-form'
@@ -273,6 +274,7 @@ export function cleanOffers(value: unknown, ctx: Pick<PatchContext, 'channels' |
 export function cleanLinks(value: unknown, ctx: Pick<PatchContext, 'locales' | 'newKey'>): Record<string, unknown>[] {
   if (!Array.isArray(value) || value.length > CATALOGUE_LINK_LIMITS.links) bad('Too many links.', 'links')
   const seen = new Set<string>()
+  let originals = 0
   return (value as Record<string, unknown>[]).map((raw) => {
     if (!raw || typeof raw !== 'object') bad('Bad link.', 'links')
     const label = cleanLocalizedObject(raw.label, ctx.locales, CATALOGUE_LINK_LIMITS.label, 'links')
@@ -287,6 +289,9 @@ export function cleanLinks(value: unknown, ctx: Pick<PatchContext, 'locales' | '
     const buy = raw.kind === 'buy'
     // Amazon links — other stores' product URLs. Parsed again HERE: the client's preview is never trusted.
     const moreUrls = buy ? cleanMoreAmazonUrls(raw.moreUrls, url!, (m) => bad(m, 'links')) : []
+    // Book editions — the language must be on the platform list; only a buy link has one; one original per item.
+    const edition = cleanEdition(raw.edition, buy, (m) => bad(m, 'links'))
+    if (edition?.original && ++originals > 1) bad('Only one edition can be the original.', 'links')
     return {
       _key: keyOr(raw._key, seen, ctx.newKey),
       _type: 'catalogueItemLink',
@@ -295,6 +300,7 @@ export function cleanLinks(value: unknown, ctx: Pick<PatchContext, 'locales' | '
       ...(buy ? { kind: 'buy' } : {}),
       ...(buy && raw.affiliate === true ? { affiliate: true } : {}),
       ...(moreUrls.length ? { moreUrls } : {}),
+      ...(edition ? { edition } : {}),
     }
   })
 }
