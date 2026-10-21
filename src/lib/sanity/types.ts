@@ -179,9 +179,13 @@ export interface NavLink {
   /** 'anchor' is additive — 'internal' and 'external' behave exactly as before.
    *  'cookieSettings' (ADR-021) renders the button that reopens the consent panel;
    *  it is footer-only and never resolved to an href. */
-  linkType?: 'internal' | 'external' | 'anchor' | 'cookieSettings'
-  /** Only used when linkType === 'anchor'. Resolves to `#<anchorId>`. */
+  linkType?: 'internal' | 'external' | 'anchor' | 'cookieSettings' | 'module'
+  /** Only used when linkType === 'anchor'. Resolves to `<home href>#<anchorId>`. */
   anchorId?: string
+  /** Only used when linkType === 'module': the module whose public page to link (e.g. 'catalogue'). */
+  moduleId?: string
+  /** Set by GROQ for a 'module' link: enabled installations' public segments. */
+  moduleSegments?: Array<{ moduleId?: string | null; segment?: string | null }> | null
   // Resolved slug from pageRef — set by GROQ query, not stored directly
   pageSlug?: string
   /** True when a page reference is set — with no pageSlug it points at an unpublished page. */

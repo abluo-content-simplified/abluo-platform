@@ -163,7 +163,7 @@ describe('resolveNavLink legacy href prefixing', () => {
 
   it('keeps the other link types unchanged', () => {
     expect(resolveNavLink({ label: 'x', linkType: 'internal', pageSlug: 'about' }, L, T).href).toBe('/en/nologo/about')
-    expect(resolveNavLink({ label: 'x', linkType: 'anchor', anchorId: 'faq' }, L, T).href).toBe('#faq')
+    expect(resolveNavLink({ label: 'x', linkType: 'anchor', anchorId: 'faq' }, L, T).href).toBe('/en/nologo#faq')
     expect(
       resolveNavLink({ label: 'x', linkType: 'external', externalUrl: 'mailto:hello@nologo.io' }, L, T).href
     ).toBe('mailto:hello@nologo.io')

@@ -53,7 +53,7 @@ describe('resolveNavLink — seven-locale project', () => {
     expect(nav('#anchor', 'fr', T, SEVEN)).toBe('#anchor')
     expect(
       resolveNavLink({ label: 'x', linkType: 'anchor', anchorId: 'anchor' }, 'fr' as SupportedLocale, T, SEVEN).href
-    ).toBe('#anchor')
+    ).toBe('/fr/' + T + '#anchor')
   })
 
   it('threads supportedLocales into children', () => {

@@ -154,6 +154,8 @@ export const NAV_LINK_FIELDS = /* groq */ `
   internalPage,
   externalUrl,
   anchorId,
+  moduleId,
+  "moduleSegments": select(linkType == "module" => *[_type == "project" && projectSlug == $projectSlug][0].moduleInstallations[enabled != false]{ moduleId, "segment": config.publicSegment }),
   openInNewTab,
   href,
   external,

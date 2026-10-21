@@ -530,7 +530,9 @@ const navigationLinkType = defineType({
         list: [
           { title: 'Internal Page', value: 'internal' },
           { title: 'External URL', value: 'external' },
-          { title: 'Anchor on this page', value: 'anchor' },
+          { title: 'Section on the home page', value: 'anchor' },
+          // Public page of an installed module (e.g. the Catalogue). Additive.
+          { title: 'Module page', value: 'module' },
           // ADR-021 — footer only: the button that reopens the cookie consent panel.
           { title: 'Cookie settings (footer only)', value: 'cookieSettings' },
         ],
@@ -614,6 +616,20 @@ const navigationLinkType = defineType({
         }),
     }),
     defineField({
+      name: 'moduleId',
+      title: 'Module',
+      type: 'string',
+      options: { list: [{ title: 'Catalogue', value: 'catalogue' }] },
+      hidden: ({ parent }: { parent?: { linkType?: string } }) => parent?.linkType !== 'module',
+      description: 'Links to the public page of this module in the visitor\'s language. Hidden on the site if the module is not installed.',
+      validation: (Rule) =>
+        Rule.custom((moduleId, context) => {
+          const parent = context.parent as { linkType?: string } | undefined
+          if (parent?.linkType === 'module' && !moduleId) return 'Pick a module'
+          return true
+        }),
+    }),
+    defineField({
       name: 'openInNewTab',
       title: 'Open in New Tab',
       type: 'boolean',
@@ -643,8 +659,8 @@ const navigationLinkType = defineType({
     }),
   ],
   preview: {
-    select: { title: 'label.en', linkType: 'linkType', internalPage: 'internalPage', externalUrl: 'externalUrl', anchorId: 'anchorId', pageTitle: 'pageRef.title.en', pageSlug: 'pageRef.slug.en.current', refType: 'pageRef._type', refName: 'pageRef.name.en' },
-    prepare: ({ title, linkType, internalPage, externalUrl, anchorId, pageTitle, pageSlug, refType, refName }) => ({
+    select: { title: 'label.en', linkType: 'linkType', moduleId: 'moduleId', internalPage: 'internalPage', externalUrl: 'externalUrl', anchorId: 'anchorId', pageTitle: 'pageRef.title.en', pageSlug: 'pageRef.slug.en.current', refType: 'pageRef._type', refName: 'pageRef.name.en' },
+    prepare: ({ title, linkType, moduleId, internalPage, externalUrl, anchorId, pageTitle, pageSlug, refType, refName }) => ({
       title: title ?? '—',
       subtitle: linkType === 'internal'
         ? (refType === 'cataloguePage'
@@ -652,6 +668,8 @@ const navigationLinkType = defineType({
             : refName
               ? `📄 ${refName}${pageSlug ? ` (/…/${pageSlug})` : ''}`
               : pageTitle ? `📄 ${pageTitle} (/${pageSlug})` : `📄 ${internalPage}`)
+        : linkType === 'module'
+          ? `🧩 ${moduleId ?? ''}`
         : linkType === 'anchor'
           ? `⚓ #${anchorId ?? ''}`
           : `🔗 ${externalUrl}`,

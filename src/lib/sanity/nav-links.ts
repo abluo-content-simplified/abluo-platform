@@ -42,6 +42,17 @@ function resolveInternalPage(page: string | undefined): string {
 }
 
 /**
+ * Public segment of the module a `module` link points at, or null when the
+ * module is not installed / switched off / has no public segment.
+ */
+export function moduleNavSegment(link: NavLink): string | null {
+  if (!link.moduleId) return null
+  const hit = link.moduleSegments?.find((m) => m?.moduleId === link.moduleId)
+  const segment = typeof hit?.segment === 'string' ? hit.segment.replace(/^\/+|\/+$/g, '').trim() : ''
+  return segment || null
+}
+
+/**
  * Resolve a single navigation link to its final href
  * Handles both internal page selection and external URLs
  *
@@ -98,13 +109,29 @@ export function resolveNavLink(
     }
   }
 
-  // Same-page anchor — resolves to `#<anchorId>`. Purely additive: no link
-  // stored before this existed can have linkType 'anchor', so the 'internal'
-  // and 'external' paths above/below are unreachable from here and unchanged.
+  // Anchor on the home page — resolves to `<home href>#<anchorId>`, built the
+  // same way as the 'homepage' internal link above (`/{locale}/{tenantId}`;
+  // toPublicNavLink() drops the tenant segment on a site's own host). A bare
+  // `#id` did nothing on any page but the home page. On the home page itself
+  // the href is the current path plus a hash, which Next's <Link> scrolls to
+  // without a reload. Purely additive: no link stored before this existed can
+  // have linkType 'anchor'.
   if (link.linkType === 'anchor') {
     return {
       label: link.label,
-      href: link.anchorId ? `#${link.anchorId}` : '#',
+      href: link.anchorId ? `/${locale}/${tenantId}#${link.anchorId}` : '#',
+      external: false,
+      children: link.children?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
+    }
+  }
+
+  // Module public page — `/{locale}/{tenantId}/{segment}`, where the segment is
+  // the enabled installation's public segment (GROQ: moduleSegments). Additive.
+  if (link.linkType === 'module') {
+    const segment = moduleNavSegment(link)
+    return {
+      label: link.label,
+      href: segment ? `/${locale}/${tenantId}/${segment}` : '#',
       external: false,
       children: link.children?.map((child) => resolveNavLink(child, locale, tenantId, supportedLocales)),
     }
@@ -181,6 +208,8 @@ export function resolveNavLink(
  */
 export function isRenderableNavLink(link: NavLink): boolean {
   if (link.linkType === 'cookieSettings') return false
+  // A module link whose module is not installed / enabled has no page: hide it.
+  if (link.linkType === 'module' && !moduleNavSegment(link)) return false
   if (link.linkType === 'internal' && link.hasPageRef && !link.pageSlug && !catalogueNavPath(link.catalogueTarget)) return false
   return true
 }
