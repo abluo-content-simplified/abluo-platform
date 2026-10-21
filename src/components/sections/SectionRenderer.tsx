@@ -314,7 +314,7 @@ export async function hydrateSections(
             defaultLocale: ctx.defaultLocale,
             config,
             now: new Date(),
-          }, { visitorCountry })
+          }, { visitorCountry }, cls.source)
         } catch (err) {
           console.error('[catalogue] listing section hydration failed; section omitted', err)
           cls.catalogue = undefined

@@ -591,6 +591,7 @@ export const PAGE_SECTIONS_PROJECTION = /* groq */ `
       // the project scope. eyebrow/title/subtitle/emptyState* are shared keys
       // projected above.
       "collectionId": collection._ref,
+      source,
       showPrices,
       allergenPresentation,
       // ─── Platform sections added with the icon primitive ──────────────────
@@ -1982,6 +1983,7 @@ export const homePageQuery = /* groq */ `
       locationKeys,
       // catalogueListingSection — see PAGE_SECTIONS_PROJECTION.
       "collectionId": collection._ref,
+      source,
       showPrices,
       allergenPresentation,
       "emptyStateHeading": ${loc('emptyStateHeading')},
@@ -2453,6 +2455,23 @@ export const catalogueCollectionByOldSlugQuery = /* groq */ `
 export const catalogueCollectionByIdQuery = /* groq */ `
   *[_type == "catalogueCollection" && projectSlug == $projectSlug && _id == $collectionId && ${CATALOGUE_COLLECTION_PUBLIC}][0] {
     ${CATALOGUE_COLLECTION_FIELDS}
+  }
+`
+
+/**
+ * catalogueListingSection with source "all" — every publicly visible item of
+ * the project, newest first (publishedAt, then name in the request locale).
+ * Same lifecycle rule as collection items (publicFilterFor) and the
+ * `automaticListing` visibility context (public + websiteOnly; the platform
+ * assembles this list, so `unlisted` is not admitted). Capped at
+ * CATALOGUE_ALL_ITEMS_LIMIT.
+ */
+const CATALOGUE_ALL_ITEMS_LIMIT = 200
+export const catalogueAllItemsQuery = /* groq */ `
+  *[_type == "catalogueItem" && projectSlug == $projectSlug && ${CATALOGUE_ITEM_PUBLIC} && ${visibilityFilter('automaticListing')}]
+    | order(publishedAt desc, coalesce(name[$locale], name[$defaultLocale], name.en) asc)
+    [0...${CATALOGUE_ALL_ITEMS_LIMIT}] {
+    ${CATALOGUE_ITEM_FIELDS}
   }
 `
 

@@ -937,11 +937,26 @@ export const catalogueListingSection = defineType({
     defineField({ name: 'title', title: 'Title', type: 'localizedString' }),
     defineField({ name: 'subtitle', title: 'Subtitle', type: 'localizedString' }),
     defineField({
+      name: 'source',
+      title: 'What to show',
+      type: 'string',
+      description: 'Show every published item, or just one collection. A section saved before this choice existed shows its collection, or everything if it has none.',
+      options: {
+        list: [
+          { title: 'All published items', value: 'all' },
+          { title: 'One collection', value: 'collection' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'all',
+    }),
+    defineField({
       name: 'collection',
       title: 'Collection',
       type: 'reference',
       to: [{ type: 'catalogueCollection' }],
       options: { filter: scopedRef },
+      hidden: ({ parent }) => (parent as { source?: string } | undefined)?.source === 'all',
       description: 'The collection to show — its sections, order and items are edited once, in the collection.',
     }),
     defineField({

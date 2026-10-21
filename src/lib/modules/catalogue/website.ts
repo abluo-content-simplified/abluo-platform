@@ -13,6 +13,7 @@
 
 import {
   amazonTrackingIdsQuery,
+  catalogueAllItemsQuery,
   catalogueCollectionByIdQuery,
   catalogueCollectionByOldSlugQuery,
   catalogueCollectionBySlugQuery,
@@ -37,6 +38,7 @@ import {
   resolveItemPage,
   type CatalogueResolveContext,
   type RawCatalogueCollection,
+  type RawCatalogueItem,
   type RawCatalogueConfigRow,
   type RawCatalogueItemPage,
   type RawCataloguePage,
@@ -159,20 +161,53 @@ export async function hydrateCatalogueListing(
    * the section registry, so it must never import `next/headers` itself.
    */
   deps: { visitorCountry?: () => Promise<string | null> } = {},
+  /**
+   * 'all' = every published item of the project; 'collection' = `collectionId`.
+   * Unset (a section saved before the choice existed): the collection if one
+   * is set, otherwise everything.
+   */
+  source?: 'all' | 'collection' | null,
 ): Promise<CatalogueListingData> {
   const base = { segment: ctx.config.segment, showPricesByDefault: ctx.config.showPricesByDefault, affiliateDisclosure: ctx.config.affiliateDisclosure }
-  if (!collectionId) return { ...base, collection: null }
-  const row = await fetchForTenant<RawCatalogueCollection | null>(catalogueCollectionByIdQuery, {
-    collectionId,
-    locale: ctx.locale,
-    defaultLocale: ctx.defaultLocale ?? ctx.locale,
-  })
+  const params = { locale: ctx.locale, defaultLocale: ctx.defaultLocale ?? ctx.locale }
+  const wantsAll = listingSourceIsAll(source, collectionId)
+  if (!wantsAll && !collectionId) return { ...base, collection: null }
+  const row = wantsAll
+    ? await fetchAllItemsAsCollection(fetchForTenant, params, ctx.now)
+    : await fetchForTenant<RawCatalogueCollection | null>(catalogueCollectionByIdQuery, { collectionId, ...params })
   const collection = resolveCollection(row, ctx)
   if (!collection || !collectionHasAmazon(collection)) return { ...base, collection }
   // Amazon buy links are rewritten PER REQUEST (visitor country + the tenant's tracking IDs). The page
   // is rendered dynamically for every request, so one visitor's pick never reaches another.
   const [country, trackingIds] = await Promise.all([deps.visitorCountry ? deps.visitorCountry() : Promise.resolve(null), fetchForTenant<unknown>(amazonTrackingIdsQuery, {}).catch(() => null)])
   return { ...base, collection: localizeCollection(collection, { country, trackingIds: Array.isArray(trackingIds) ? trackingIds : null }) }
+}
+
+/** 'all' wins when chosen; a legacy section (no source) is 'all' only when it has no collection. */
+export function listingSourceIsAll(source: unknown, collectionId: string | null | undefined): boolean {
+  if (source === 'all') return true
+  if (source === 'collection') return false
+  return !collectionId
+}
+
+/**
+ * Every publicly visible item as ONE unnamed section of a synthetic collection,
+ * so the "all" listing renders through exactly the collection path (cards,
+ * Amazon localisation, disclosure). Capped by CATALOGUE_ALL_ITEMS_LIMIT in GROQ;
+ * resolveCollection still re-checks the lifecycle rule per item.
+ */
+async function fetchAllItemsAsCollection(
+  fetchForTenant: CatalogueFetch,
+  params: Record<string, unknown>,
+  now: Date,
+): Promise<RawCatalogueCollection> {
+  const items = await fetchForTenant<RawCatalogueItem[]>(catalogueAllItemsQuery, params)
+  return {
+    publishedAt: new Date(now.getTime() - 1000).toISOString(),
+    visibility: 'public',
+    hasPage: false,
+    sections: [{ _key: 'all-items', items: Array.isArray(items) ? items : [] }],
+  } as RawCatalogueCollection
 }
 
 /**

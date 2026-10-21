@@ -172,6 +172,7 @@ describe('ADR-032 D3 — public delivery paths carry the visibility rule', () =>
       'src/lib/sanity/queries.ts#catalogueCollectionBySlugQuery',
       'src/lib/sanity/queries.ts#catalogueCollectionByOldSlugQuery',
       'src/lib/sanity/queries.ts#catalogueCollectionByIdQuery',
+      'src/lib/sanity/queries.ts#catalogueAllItemsQuery',
       'src/lib/sanity/queries.ts#cataloguePageQuery',
       'src/lib/seo/sitemap-queries.ts#SITEMAP_CATALOGUE_ITEMS_QUERY',
       'src/lib/seo/sitemap-queries.ts#SITEMAP_CATALOGUE_COLLECTIONS_QUERY',

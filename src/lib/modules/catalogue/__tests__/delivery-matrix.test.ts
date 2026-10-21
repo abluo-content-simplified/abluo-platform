@@ -75,6 +75,7 @@ import {
   catalogueItemHref,
   catalogueRobots,
   catalogueSlugMap,
+  hydrateCatalogueListing,
   planCatalogueRoute,
   resolveCatalogueEntry,
   type CatalogueEntry,
@@ -1051,4 +1052,16 @@ describe('J. tags on the item page (Amendment J slice 7)', () => {
     expect(config.tags).toEqual([])
     if (e.kind === 'item') expect(e.item.tags).toEqual([])
   })
+})
+
+// ── Listing section source "all": the automaticListing column, through the real query ──
+describe('listing section, source "all" — automaticListing through catalogueAllItemsQuery', () => {
+  for (const l of LOCALES) {
+    it(`${l}: exactly the live public + websiteOnly items (unlisted and non-live absent)`, async () => {
+      const d = await hydrateCatalogueListing(fetchForTenant, null, ctxFor(l), {}, 'all')
+      const got = new Set(flatItems(d.collection?.sections ?? []).map((i) => i.publicId))
+      const want = new Set(KINDS.filter((k) => reachesContext('automaticListing', k)).map(idOf))
+      expect(got).toEqual(want)
+    })
+  }
 })

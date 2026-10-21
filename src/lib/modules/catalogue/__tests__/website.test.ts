@@ -185,9 +185,9 @@ describe('loadCataloguePage — C1 landing', () => {
 })
 
 describe('hydrateCatalogueListing — the listing section', () => {
-  it('no collection chosen → collection null (section renders nothing)', async () => {
+  it('source "collection" with no collection chosen → collection null (section renders nothing)', async () => {
     const { fetch, calls } = fakeFetch(new Map())
-    const d = await hydrateCatalogueListing(fetch, null, CTX)
+    const d = await hydrateCatalogueListing(fetch, null, CTX, {}, 'collection')
     expect(d.collection).toBeNull()
     expect(calls).toEqual([])
   })

@@ -2228,6 +2228,8 @@ export interface CatalogueListingSection {
   subtitle?: string
   /** `collection._ref` — never dereferenced in the page projection. */
   collectionId?: string | null
+  /** 'all' = every published item; 'collection' = the chosen collection. Unset = legacy: collection if set, else all. */
+  source?: 'all' | 'collection' | null
   /** ADR-033 D-6. 'default' (or unset) = follow the catalogue config `showPricesByDefault`, live. */
   showPrices?: 'default' | 'show' | 'hide' | null
   /** ADR-033 D-3. Unset = 'compact'. Food allergens are always shown; this picks how. */
