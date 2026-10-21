@@ -29,6 +29,7 @@ import { BackButton } from '@/components/events/BackButton'
 import { EventHostsLine, EventPriceList, EventRegisterButton } from '@/components/events/EventEngagement'
 import { validPriceOptions } from '@/lib/modules/events/engagement'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { withSchedule, withSchedules } from '@/lib/scheduling/read.server'
 import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
 import { siteBasePath } from '@/lib/sanity/href'
 import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
@@ -61,10 +62,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
   const supportedLocales: SupportedLocale[] = localeConfig?.supportedLocales ?? [defaultLocale]
 
-  const [event, customDomain] = await Promise.all([
+  const [sanityEvent, customDomain] = await Promise.all([
     fetchForTenant<Event>(eventBySlugQuery, { slug, locale: locale as SupportedLocale, defaultLocale }),
     fetchForTenant<string | null>(projectDomainQuery, {}),
   ])
+  // ADR-038 C3 — dates from the schedule (Supabase) when one exists; Sanity's otherwise.
+  const event = await withSchedule(String(tenantId), sanityEvent)
 
   // ADR-032 D12 — not public (or never existed): neutral, identical metadata.
   if (!event) return unavailableMetadata(locale)
@@ -135,7 +138,7 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
   // Fetch event and design system in parallel.
-  const [event, designSystem, allEvents, siteContext, customDomain] = await Promise.all([
+  const [sanityEvent, designSystem, sanityEvents, siteContext, customDomain] = await Promise.all([
     fetchForTenant<Event>(eventBySlugQuery, { slug, locale: locale as SupportedLocale, defaultLocale }),
     (async () => {
       const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {})
@@ -144,6 +147,11 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
     fetchForTenant<Event[]>(eventsQuery, { locale: locale as SupportedLocale, defaultLocale }),
     fetchForTenant<EventSiteContext | null>(eventSiteContextQuery, { locale: locale as SupportedLocale, defaultLocale }),
     fetchForTenant<string | null>(projectDomainQuery, {}),
+  ])
+  // ADR-038 C3 — dates from the schedule (Supabase) when one exists; Sanity's otherwise.
+  const [event, allEvents] = await Promise.all([
+    withSchedule(String(tenantId), sanityEvent),
+    withSchedules(String(tenantId), sanityEvents ?? []),
   ])
 
   // Primary lookup missed — check if this slug was a redirect.

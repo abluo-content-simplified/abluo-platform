@@ -22,6 +22,7 @@ import { ogImageUrl } from '@/lib/sanity/image'
 import { PostArticle } from '@/components/blog/PostArticle'
 import { SlugMapProvider, type SlugMap } from '@/components/SlugMapContext'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { withSchedule } from '@/lib/scheduling/read.server'
 import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
 import { siteBasePath } from '@/lib/sanity/href'
 import { canonicalOrigin, canonicalUrl } from '@/lib/seo/canonical'
@@ -181,6 +182,10 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
     notFound()
   }
 
+  // ADR-038 C3 — the related event's dates from its schedule (Supabase) when one exists.
+  const relatedEvent = await withSchedule(String(tenantId), post.relatedEvent)
+  const articlePost: Post = relatedEvent ? { ...post, relatedEvent } : post
+
   // Related posts — prioritise shared categories, exclude current post.
   const categoryKeys = categoryKeysOf(post)
   const relatedPosts = (await fetchForTenant<Post[]>(relatedPostsQuery, {
@@ -238,7 +243,7 @@ export default async function BlogDetailPage({ params, searchParams }: PageProps
         callToAction={
           <PostCallToAction tenantSlug={tenantId} locale={locale} defaultLocale={defaultLocale} cta={post.cta} />
         }
-        post={post}
+        post={articlePost}
         relatedPosts={relatedPosts}
         designSystem={designSystem}
         locale={locale}

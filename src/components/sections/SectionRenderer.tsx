@@ -11,6 +11,7 @@
 // Module-owned sections continue to require zero changes here — they are
 // derived from SECTION_MAP (src/lib/modules/sections.ts).
 
+import { withSchedule, withSchedules } from '@/lib/scheduling/read.server'
 import type { tenantClient } from '@/lib/sanity/client'
 import { HeroSection } from '@/components/sections/HeroSection'
 import { HeroLiveCaptureSection } from '@/components/sections/HeroLiveCaptureSection'
@@ -277,6 +278,8 @@ export async function hydrateSections(
   sections: PageSection[] | undefined,
   ctx: {
     fetchForTenant: ReturnType<typeof tenantClient>['fetchForTenant']
+    /** ADR-038 C3 — the Sanity projectSlug, to lay Supabase schedules over event dates. Without it events keep their Sanity dates. */
+    projectSlug?: string
     locale: SupportedLocale
     defaultLocale: SupportedLocale
     enabledModuleIds?: string[] | null
@@ -342,7 +345,8 @@ export async function hydrateSections(
       }
       if (section._type === 'eventsListingSection') {
         const els = section as EventsListingSectionType
-        const events = await fetchEventsListingEvents(els, ctx.fetchForTenant, ctx.locale, ctx.defaultLocale, ctx.moduleConfig)
+        const fetched = await fetchEventsListingEvents(els, ctx.fetchForTenant, ctx.locale, ctx.defaultLocale, ctx.moduleConfig)
+        const events = ctx.projectSlug ? await withSchedules(ctx.projectSlug, fetched) : fetched
         // Slice to maxItems — we fetched one extra to detect overflow for View All
         // ADR-033 Amendment J (dual-read) — category labels/colours from the term
         // records, else the module's old config list. A failed read shows no chips.
@@ -357,10 +361,11 @@ export async function hydrateSections(
       }
       if (section._type === 'liveLatestSection') {
         const lls = section as LiveLatestSectionType
-        lls.event = await ctx.fetchForTenant<Event | null>(currentLiveEventQuery, {
+        const live = await ctx.fetchForTenant<Event | null>(currentLiveEventQuery, {
           locale: ctx.locale,
           defaultLocale: ctx.defaultLocale,
         })
+        lls.event = ctx.projectSlug ? await withSchedule(ctx.projectSlug, live) : live
         return
       }
     })

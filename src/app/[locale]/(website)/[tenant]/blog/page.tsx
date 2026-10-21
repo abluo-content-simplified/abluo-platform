@@ -138,7 +138,7 @@ export default async function NewsListingPage({ params }: PageProps) {
   // contract depends on (unresolved fails open; resolved-empty gates).
   const enabledModuleIds = getEnabledModuleIds(moduleConfig)
 
-  await hydrateSections(blogPage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig })
+  await hydrateSections(blogPage?.sections, { fetchForTenant, projectSlug: String(tenantId), locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig })
 
   // The /blog segment is the same in every language; registering it lets
   // both language switchers keep the visitor on this index (see

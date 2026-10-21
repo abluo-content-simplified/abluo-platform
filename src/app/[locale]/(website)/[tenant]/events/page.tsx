@@ -86,7 +86,7 @@ export default async function EventsListPage({ params }: PageProps) {
   // contract depends on (unresolved fails open; resolved-empty gates).
   const enabledModuleIds = getEnabledModuleIds(moduleConfig)
 
-  await hydrateSections(eventsPage?.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig })
+  await hydrateSections(eventsPage?.sections, { fetchForTenant, projectSlug: String(tenantId), locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig })
 
   // The /events segment is the same in every language; registering it lets
   // both language switchers keep the visitor on this index (see

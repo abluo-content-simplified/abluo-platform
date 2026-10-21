@@ -151,6 +151,7 @@ export default async function NewsIndexPage({ params }: PageProps) {
 
   await hydrateSections(newsPage?.sections, {
     fetchForTenant,
+    projectSlug: String(tenantId),
     locale: locale as SupportedLocale,
     defaultLocale,
     enabledModuleIds,

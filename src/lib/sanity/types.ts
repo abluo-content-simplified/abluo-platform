@@ -974,6 +974,7 @@ export interface Post {
   categories?: BlogCategory[]
   relatedEvent?: {
     _id: string
+    publicId?: string
     title?: string
     slug: { current: string }
     status?: string

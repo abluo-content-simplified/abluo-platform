@@ -87,7 +87,7 @@ export default async function GalleryPreviewPage({ params, searchParams }: PageP
   const enabledModuleIds = getEnabledModuleIds(moduleConfig)
   let sections: PageSection[]
   if (page) {
-    await hydrateSections(page.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig })
+    await hydrateSections(page.sections, { fetchForTenant, projectSlug: String(tenantId), locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig })
     sections = substituteGallery(page.sections as never[], claims.draftId, draft) as unknown as PageSection[]
   } else {
     sections = [standaloneGallerySection(draft, claims.draftId) as unknown as PageSection]

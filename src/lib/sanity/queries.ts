@@ -1197,6 +1197,7 @@ export const postBySlugQuery = /* groq */ `
     "categoryTitles": categories[]->title.en,
     "relatedEvent": select(${publicFilterFor('event', 'relatedEvent->')} => relatedEvent-> {
       _id,
+      publicId, // ADR-038 — key of the event's schedule in Supabase
       "title": ${loc('title')},
       "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
       status,
@@ -1565,6 +1566,7 @@ const EVENT_PLACE_FIELDS = /* groq */ `
 
 const eventsListingCardFields = /* groq */ `
   _id,
+  publicId, // ADR-038 — key of the event's schedule in Supabase
   "title": coalesce(title[$locale], title[$defaultLocale], title.en, title),
   "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
   status,
@@ -1665,6 +1667,7 @@ export const currentLiveEventQuery = /* groq */ `
       | order(startDate asc)[0]
   ) {
     _id,
+    publicId, // ADR-038 — key of the event's schedule in Supabase
     "title": ${loc('title')},
     "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
     status,
@@ -1702,6 +1705,7 @@ export const currentLiveEventQuery = /* groq */ `
 // Sorting: live events first, then upcoming by nearest start date.
 const homepageFeaturedEventFields = /* groq */ `
   _id,
+    publicId, // ADR-038 — key of the event's schedule in Supabase
   "title": ${loc('title')},
   "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
   status,
@@ -1750,6 +1754,7 @@ export const eventsQuery = /* groq */ `
   *[_type == "event" && projectSlug == $projectSlug && ${EVENT_LISTED}]
   | order(startDate desc) {
     _id,
+    publicId, // ADR-038 — key of the event's schedule in Supabase
     "title": ${loc('title')},
     "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
     status,
@@ -1768,6 +1773,7 @@ export const pastEventsQuery = /* groq */ `
   *[_type == "event" && projectSlug == $projectSlug && ${EVENT_LISTED} && coalesce(endDate, startDate) < now()]
   | order(startDate desc) [0..4] {
     _id,
+    publicId, // ADR-038 — key of the event's schedule in Supabase
     "title": ${loc('title')},
     "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
     status,
@@ -1786,6 +1792,7 @@ export const additionalLiveEventsQuery = /* groq */ `
   *[_type == "event" && projectSlug == $projectSlug && ${EVENT_LISTED} && status == "live" && _id != $featuredEventId && (endDate == null || now() <= endDate)]
   | order(startDate asc) {
     _id,
+    publicId, // ADR-038 — key of the event's schedule in Supabase
     "title": ${loc('title')},
     "slug": { "current": coalesce(slug[$locale].current, slug[$defaultLocale].current) },
     status,

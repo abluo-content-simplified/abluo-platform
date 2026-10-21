@@ -16,6 +16,7 @@ import { ogImageUrl, imageUrl } from '@/lib/sanity/image'
 import { ogLocale } from '@/lib/seo/og-locale'
 import { canonicalOrigin, canonicalUrl, hreflangAlternates, seoAlternates } from '@/lib/seo/canonical'
 import { asUrlProjectSegment } from '@/lib/tenancy/ids'
+import { withSchedule } from '@/lib/scheduling/read.server'
 import { isHostScopedRequest } from '@/lib/tenancy/link-scope.server'
 import { siteBasePath } from '@/lib/sanity/href'
 
@@ -134,13 +135,15 @@ export default async function WebsitePage({ params }: PageProps) {
   const localeConfig = await fetchForTenant<LocaleConfig>(localeConfigQuery, {})
   const defaultLocale: SupportedLocale = localeConfig?.defaultLocale ?? 'en'
 
-  const [homePage, siteConfig, designSystem, featuredEvent, moduleConfig] = await Promise.all([
+  const [homePage, siteConfig, designSystem, sanityFeaturedEvent, moduleConfig] = await Promise.all([
     fetchForTenant<WebsitePage>(pageHomeQuery, { locale, defaultLocale }),
     fetchForTenant<WebsiteSiteConfig>(websiteSiteConfigQuery, { locale, defaultLocale }),
     (async () => { const raw = await fetchForTenant<DesignSystem>(designSystemQuery, {}); return resolveDesignSystemInheritance(raw, fetchDesignSystemById); })(),
     fetchForTenant<Event>(homepageFeaturedEventQuery, { locale, defaultLocale }),
     fetchForTenant<ProjectModuleConfig>(projectModuleConfigQuery, { locale, defaultLocale }),
   ])
+  // ADR-038 C3 — dates from the schedule (Supabase) when one exists; Sanity's otherwise.
+  const featuredEvent = await withSchedule(String(tenantId), sanityFeaturedEvent)
 
   if (!homePage) {
     return (
@@ -156,7 +159,7 @@ export default async function WebsitePage({ params }: PageProps) {
   // contract depends on (unresolved fails open; resolved-empty gates).
   const enabledModuleIds = getEnabledModuleIds(moduleConfig)
 
-  await hydrateSections(homePage.sections, { fetchForTenant, locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig })
+  await hydrateSections(homePage.sections, { fetchForTenant, projectSlug: String(tenantId), locale: locale as SupportedLocale, defaultLocale, enabledModuleIds, moduleConfig })
 
   // ADR-037 D7 — one FAQPage from every FAQ section this page renders (none
   // when the FAQ module is not installed: the sections do not render either).

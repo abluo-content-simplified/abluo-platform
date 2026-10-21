@@ -9,6 +9,7 @@
 import { tenantClient } from '@/lib/sanity/client'
 import { enabledModuleIdsQuery } from '@/lib/sanity/queries'
 import { asProjectSlug } from '@/lib/tenancy/ids'
+import { withSchedules } from '@/lib/scheduling/read.server'
 import type { EventSiteV1, EventV1Row } from './event-contract'
 import { PARTNER_EVENT_SITE_QUERY, PARTNER_EVENTS_EXISTING_QUERY, PARTNER_EVENTS_PAGE_QUERY } from './event-queries'
 
@@ -59,13 +60,17 @@ export function createSanityEventsSource(): EventsSource {
       }
     },
     async page(q) {
-      return (
+      const rows = (
         (await client(q.projectSlug).fetchForTenant<EventV1Row[] | null>(PARTNER_EVENTS_PAGE_QUERY, {
           afterMs: Date.parse(q.after.t),
           afterId: q.after.id,
           upToMs: Date.parse(q.upTo),
         })) ?? []
       ).slice(0, q.limit)
+      // ADR-038 C3 — dates from the schedule (Supabase) when one exists; Sanity's
+      // otherwise (fails soft). The cursor still follows Sanity's change time:
+      // C6 adds the schedule's updated_at so a date-only change re-syncs.
+      return withSchedules(q.projectSlug, rows)
     },
     async existing(projectSlug, publicIds) {
       if (!publicIds.length) return []
