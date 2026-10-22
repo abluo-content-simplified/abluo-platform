@@ -22,9 +22,10 @@ const grantFor = (role: 'owner' | 'editor' | 'viewer', modules: string[], extra:
 const navIds = (g: ReturnType<typeof grantFor>) => buildClientNavItems(g).map((i) => i.moduleId)
 
 describe('registry entry', () => {
-  it('sits in the content group directly after Media', () => {
+  it('closes the content group (Tom, 2026-10-22: after People and FAQ Sets)', () => {
     const nav = TENANT_SURFACES.filter((s) => s.kind === 'nav')
-    expect(nav[nav.findIndex((s) => s.id === 'media') + 1].id).toBe('taxonomy')
+    const content = nav.filter((s) => s.group === 'content')
+    expect(content[content.length - 1].id).toBe('taxonomy')
     expect(surface.group).toBe('content')
     expect(surface.segment).toBe('taxonomy')
   })

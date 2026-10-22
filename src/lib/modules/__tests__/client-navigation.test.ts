@@ -32,43 +32,53 @@ function grantWith(enabledModuleIds: string[], permissions: string[] = []): Proj
 }
 
 describe('buildClientNavItems', () => {
+  // Support (Tom, 2026-10-22) is listed for everyone on the project; the gating tests below look past it.
+  const navWithoutSupport = (grant: Parameters<typeof buildClientNavItems>[0]) =>
+    buildClientNavItems(grant).filter((i) => i.moduleId !== 'support')
+
+  it('always lists Support, in the support & configuration group', () => {
+    expect(buildClientNavItems(grantWith([], []))).toEqual([
+      { moduleId: 'support', labelKey: 'clientDashboard.nav.support', href: '/livener/support', group: 'support' },
+    ])
+  })
+
   it('yields a Blog nav item ONLY when the module is installed AND blog.post.read is held', () => {
-    const items = buildClientNavItems(grantWith(['blog'], ['blog.post.read']))
+    const items = navWithoutSupport(grantWith(['blog'], ['blog.post.read']))
     // Posts also brings Categories & Tags (ADR-033 Amendment J), which the same permission opens.
     expect(items.filter((i) => i.moduleId !== 'taxonomy')).toEqual([{ moduleId: 'blog', labelKey: 'clientDashboard.nav.blog', href: '/livener/posts', group: 'content' }])
   })
 
   it('yields NO Blog item when the module is not installed, even with the permission', () => {
-    expect(buildClientNavItems(grantWith([], ['blog.post.read']))).toEqual([])
+    expect(navWithoutSupport(grantWith([], ['blog.post.read']))).toEqual([])
   })
 
   it('yields NO Blog item when the module is installed but the permission is missing', () => {
-    expect(buildClientNavItems(grantWith(['blog'], []))).toEqual([])
+    expect(navWithoutSupport(grantWith(['blog'], []))).toEqual([])
   })
 
   it('gates Forms on forms.submission.read and Galleries on gallery.gallery.read', () => {
     const mods = ['forms', 'gallery']
-    expect(buildClientNavItems(grantWith(mods, [])).map((i) => i.moduleId)).toEqual([])
-    expect(buildClientNavItems(grantWith(mods, ['forms.submission.read'])).map((i) => i.moduleId)).toEqual(['forms'])
-    expect(buildClientNavItems(grantWith(mods, ['gallery.gallery.read'])).map((i) => i.moduleId)).toEqual(['gallery', 'taxonomy']) // Categories & Tags: the galleries' internal tags
+    expect(navWithoutSupport(grantWith(mods, [])).map((i) => i.moduleId)).toEqual([])
+    expect(navWithoutSupport(grantWith(mods, ['forms.submission.read'])).map((i) => i.moduleId)).toEqual(['forms'])
+    expect(navWithoutSupport(grantWith(mods, ['gallery.gallery.read'])).map((i) => i.moduleId)).toEqual(['gallery', 'taxonomy']) // Categories & Tags: the galleries' internal tags
   })
 
   it('skips an enabled module that has no client-dashboard surface (events)', () => {
-    expect(buildClientNavItems(grantWith(['events'], ['forms.submission.read']))).toEqual([])
+    expect(navWithoutSupport(grantWith(['events'], ['forms.submission.read']))).toEqual([])
   })
 
   it('shows Media on the permission alone (no module) and People on invite OR manage', () => {
-    expect(buildClientNavItems(grantWith([], ['media.library.manage'])).map((i) => i.moduleId)).toEqual(['media', 'taxonomy']) // Categories & Tags: the media's internal tags
-    expect(buildClientNavItems(grantWith([], ['users.invite'])).map((i) => i.moduleId)).toEqual(['people'])
-    expect(buildClientNavItems(grantWith([], ['users.manage'])).map((i) => i.moduleId)).toEqual(['people'])
+    expect(navWithoutSupport(grantWith([], ['media.library.manage'])).map((i) => i.moduleId)).toEqual(['media', 'taxonomy']) // Categories & Tags: the media's internal tags
+    expect(navWithoutSupport(grantWith([], ['users.invite'])).map((i) => i.moduleId)).toEqual(['people'])
+    expect(navWithoutSupport(grantWith([], ['users.manage'])).map((i) => i.moduleId)).toEqual(['people'])
   })
 
-  it('keeps registry order: content (modules, Media), then manage (Forms, People)', () => {
+  it('keeps registry order: content (modules, Media, People), then activity (Forms)', () => {
     const all = grantWith(
       ['blog', 'forms', 'gallery'],
       ['blog.post.read', 'forms.submission.read', 'gallery.gallery.read', 'media.library.manage', 'users.invite'],
     )
-    expect(buildClientNavItems(all).map((i) => i.moduleId)).toEqual(['blog', 'gallery', 'media', 'taxonomy', 'forms', 'people'])
+    expect(navWithoutSupport(all).map((i) => i.moduleId)).toEqual(['blog', 'gallery', 'media', 'people', 'taxonomy', 'forms'])
   })
 
   it('builds the href from the grant projectSlug + the registry segment', () => {

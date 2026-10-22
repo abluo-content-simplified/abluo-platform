@@ -79,7 +79,8 @@
       "analytics": "Statistiken",
       "catalogue": "Katalog",
       "brand-hub": "Brand Hub",
-      "settings": "Einstellungen"
+      "settings": "Einstellungen",
+      "support": "Support"
     },
     "shell": {
       "brandTagline": "Dashboard",
@@ -2565,6 +2566,12 @@
           }
         }
       }
+    },
+    "supportPage": {
+      "title": "Support",
+      "greeting": "Hallo {name}, wir bauen gerade das Support-System",
+      "greetingNoName": "Wir bauen gerade das Support-System",
+      "body": "Es ist hier bald verfügbar. Du kannst uns dann eine Anfrage senden, Screenshots anhängen und den Status verfolgen, bis sie gelöst ist."
     }
   },
   "app": {
@@ -2868,7 +2875,8 @@
       "whatsNew": "Neuigkeiten",
       "partners": "Partner-Apps",
       "translations": "Übersetzungen",
-      "lab": "Komponenten-Labor"
+      "lab": "Komponenten-Labor",
+      "support": "Support-Tickets"
     },
     "home": {
       "title": "Start",
@@ -3891,6 +3899,17 @@
         "english": "Englisch",
         "empty": "Nicht übersetzt"
       }
+    },
+    "navGroups": {
+      "platform": "Plattform",
+      "operations": "Betrieb",
+      "product": "Produkt"
+    },
+    "supportTickets": {
+      "title": "Support-Tickets",
+      "greeting": "Hallo {name}, wir bauen gerade das Support-System",
+      "greetingNoName": "Wir bauen gerade das Support-System",
+      "body": "Es ist hier bald verfügbar. Anfragen aller Websites kommen dann hier an, mit ihren Screenshots, damit du sie an einem Ort verfolgen und beantworten kannst."
     }
   },
   "editor": {

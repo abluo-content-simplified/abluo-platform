@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { Link, usePathname } from '@/i18n/navigation'
 import { AccountMenu, type AccountMenuProps } from './AccountMenu'
@@ -36,7 +36,27 @@ export type AppNavItem = {
   icon: string
   /** Starts a new group: rendered with extra space above (no heading). */
   groupStart?: boolean
+  /**
+   * Starts a new group WITH a small heading above it (already translated). The
+   * admin uses headings; the client dashboard separates groups by space only.
+   */
+  groupHeading?: string
 }
+
+/**
+ * A row that is not a link (e.g. the client's "What's new", which opens a
+ * panel): rendered as given, in its place in the list. Same grouping fields.
+ */
+export type AppNavSlot = {
+  key: string
+  node: ReactNode
+  groupStart?: boolean
+  groupHeading?: string
+}
+
+export type AppNavEntry = AppNavItem | AppNavSlot
+
+const isSlot = (entry: AppNavEntry): entry is AppNavSlot => 'node' in entry
 
 /** What a surface's phone tab bar needs from the frame. */
 export type AppSidebarBottomBar = {
@@ -53,7 +73,7 @@ export type AppSidebarProps = {
   navLabel?: string
   /** Phone top bar title. Defaults to the active item's label (then the tagline). */
   title?: string
-  items: AppNavItem[]
+  items: AppNavEntry[]
   /** Between the brand and the nav (md+ and in the drawer). */
   top?: ReactNode
   /** After the nav items, inside the nav (e.g. "no modules yet"). */
@@ -130,7 +150,8 @@ export function AppSidebar({
   }, [drawerOpen])
 
   const isActive = (href: string) => isActiveFor(pathname, href)
-  const heading = title ?? items.find((i) => isActive(i.href))?.label ?? tagline
+  const links = items.filter((i): i is AppNavItem => !isSlot(i))
+  const heading = title ?? links.find((i) => isActive(i.href))?.label ?? tagline
 
   return (
     <>
@@ -183,20 +204,37 @@ export function AppSidebar({
 
         <nav aria-label={navLabel ?? tagline} className="flex-1 space-y-0.5 px-3 py-4">
           {items.map((item) => {
+            // A heading or a plain group start puts space above the row; a heading also labels it.
+            const groupHead = item.groupHeading ? (
+              <p className="mt-5 mb-1 px-3 text-[0.6875rem] font-medium tracking-wider text-muted-foreground uppercase">
+                {item.groupHeading}
+              </p>
+            ) : null
+            const spaced = !item.groupHeading && item.groupStart
+            if (isSlot(item)) {
+              return (
+                <Fragment key={item.key}>
+                  {groupHead}
+                  <div className={spaced ? 'mt-4' : undefined}>{item.node}</div>
+                </Fragment>
+              )
+            }
             const active = isActive(item.href)
             return (
-              <Link
-                key={item.key}
-                href={item.href}
-                onClick={closeDrawer}
-                aria-current={active ? 'page' : undefined}
-                className={`${item.groupStart ? 'mt-4 ' : ''}flex min-h-10 items-center gap-3 rounded-md px-3 text-sm transition-colors ${
-                  active ? 'bg-muted font-semibold text-foreground' : 'text-muted-foreground hover:bg-hover hover:text-foreground'
-                }`}
-              >
-                <AppIcon d={item.icon} size={18} />
-                {item.label}
-              </Link>
+              <Fragment key={item.key}>
+                {groupHead}
+                <Link
+                  href={item.href}
+                  onClick={closeDrawer}
+                  aria-current={active ? 'page' : undefined}
+                  className={`${spaced ? 'mt-4 ' : ''}flex min-h-10 items-center gap-3 rounded-md px-3 text-sm transition-colors ${
+                    active ? 'bg-muted font-semibold text-foreground' : 'text-muted-foreground hover:bg-hover hover:text-foreground'
+                  }`}
+                >
+                  <AppIcon d={item.icon} size={18} />
+                  {item.label}
+                </Link>
+              </Fragment>
             )
           })}
           {navFooter}

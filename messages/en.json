@@ -79,7 +79,8 @@
       "analytics": "Analytics",
       "catalogue": "Catalogue",
       "brand-hub": "Brand Hub",
-      "settings": "Settings"
+      "settings": "Settings",
+      "support": "Support"
     },
     "shell": {
       "brandTagline": "Dashboard",
@@ -2565,6 +2566,12 @@
           }
         }
       }
+    },
+    "supportPage": {
+      "title": "Support",
+      "greeting": "Hi {name}, we’re building the support system",
+      "greetingNoName": "We’re building the support system",
+      "body": "It will be online here soon. You’ll be able to send us a request, attach screenshots and follow its status until it’s resolved."
     }
   },
   "app": {
@@ -2868,7 +2875,8 @@
       "whatsNew": "What’s New",
       "partners": "Partner Apps",
       "translations": "Translations",
-      "lab": "Component Lab"
+      "lab": "Component Lab",
+      "support": "Support Tickets"
     },
     "home": {
       "title": "Home",
@@ -3891,6 +3899,17 @@
         "english": "English",
         "empty": "Not translated"
       }
+    },
+    "navGroups": {
+      "platform": "Platform",
+      "operations": "Operations",
+      "product": "Product"
+    },
+    "supportTickets": {
+      "title": "Support Tickets",
+      "greeting": "Hi {name}, we’re building the support system",
+      "greetingNoName": "We’re building the support system",
+      "body": "It will be online here soon. Requests from every site will arrive here with their screenshots, so you can follow and answer each one from one place."
     }
   },
   "editor": {

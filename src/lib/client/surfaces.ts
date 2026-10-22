@@ -37,14 +37,15 @@ export type NavSurface = {
   segment: string
   requires: SurfaceRequirement
   /**
-   * Sidebar group (Tom, 2026-10-16): content work, then managing people and
-   * apps, then insights. Groups are separated by spacing only — no headings.
-   * Home belongs to `content`.
+   * Sidebar group (Tom, 2026-10-22): content work, then activity (what comes in,
+   * how the site is doing), then support & configuration. Groups are separated
+   * by spacing only — no headings. Home belongs to `content`; the client's
+   * "What's new" row opens the `support` group.
    */
   group: NavGroup
 }
 
-export type NavGroup = 'content' | 'manage' | 'insights'
+export type NavGroup = 'content' | 'activity' | 'support'
 
 /** Where a Home widget sits. Each slot is laid out by the Home page. */
 export type WidgetSlot = 'header' | 'setup' | 'attention' | 'continue' | 'glance' | 'latest'
@@ -102,9 +103,11 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
   // ADR-033 D12: one entry. Label "Catalogue" unless the project sets the optional `navLabel` override (presentation only).
   { kind: 'nav', id: 'catalogue', segment: 'catalogue', group: 'content', requires: { module: 'catalogue', permission: 'catalogue.item.read' } },
   { kind: 'nav', id: 'gallery', segment: 'galleries', group: 'content', requires: { module: 'gallery', permission: 'gallery.gallery.read' } },
+  { kind: 'nav', id: 'media', segment: 'media', group: 'content', requires: { permission: 'media.library.manage' } },
+  // People sits with the content work (Tom, 2026-10-22).
+  { kind: 'nav', id: 'people', segment: 'people', group: 'content', requires: { anyPermission: ['users.invite', 'users.manage'] } },
   // ADR-037 D9: the FAQ Sets library (list + editor).
   { kind: 'nav', id: 'faq', segment: 'faq-sets', group: 'content', requires: { module: 'faq', permission: 'faq.set.read' } },
-  { kind: 'nav', id: 'media', segment: 'media', group: 'content', requires: { permission: 'media.library.manage' } },
   // ADR-033 Amendment J: Categories & Tags, one manager for every module that declares a taxonomy.
   // Shown when the person may manage terms (`<module>.taxonomy.write`) or at least read them
   // (the module's read permission; viewers list read-only) in one of those modules, or the internal
@@ -124,18 +127,20 @@ export const TENANT_SURFACES: readonly TenantSurface[] = [
       ],
     },
   },
-  // Manage: what comes in, who works here, which apps read the site.
-  { kind: 'nav', id: 'forms', segment: 'submissions', group: 'manage', requires: { module: 'forms', permission: 'forms.submission.read' } },
-  { kind: 'nav', id: 'people', segment: 'people', group: 'manage', requires: { anyPermission: ['users.invite', 'users.manage'] } },
-  // ADR-031: partner apps reading this site. Owners and Site admins only; always listed (calm empty state).
-  { kind: 'nav', id: 'connections', segment: 'apps', group: 'manage', requires: { permission: 'connections.manage' } },
-  // Settings (Tom, 2026-10-18): the client's own business facts (Amazon IDs, affiliate disclosure; contact and legal later).
-  // Never technical configuration: gated on its own content-style permission, NOT `settings.manage`.
-  { kind: 'nav', id: 'settings', segment: 'settings', group: 'manage', requires: { permission: 'site.details.read' } },
-  // Insights. Analytics is not a module (ADR-029 §3.4): only the permission gates it. Whether
+  // Activity: what comes in, and how the site is doing.
+  { kind: 'nav', id: 'forms', segment: 'submissions', group: 'activity', requires: { module: 'forms', permission: 'forms.submission.read' } },
+  // Analytics is not a module (ADR-029 §3.4): only the permission gates it. Whether
   // Google is connected is Abluo's configuration, which tenant code may not read
   // (boundary test) — the page itself says "not connected yet" until it is.
-  { kind: 'nav', id: 'analytics', segment: 'analytics', group: 'insights', requires: { permission: 'analytics.read' } },
+  { kind: 'nav', id: 'analytics', segment: 'analytics', group: 'activity', requires: { permission: 'analytics.read' } },
+  // Support & configuration ("What's new" opens this group in the sidebar).
+  // Support (Tom, 2026-10-22): a "coming soon" page for everyone on the project until ticketing exists.
+  { kind: 'nav', id: 'support', segment: 'support', group: 'support', requires: {} },
+  // ADR-031: partner apps reading this site. Owners and Site admins only; always listed (calm empty state).
+  { kind: 'nav', id: 'connections', segment: 'apps', group: 'support', requires: { permission: 'connections.manage' } },
+  // Settings (Tom, 2026-10-18): the client's own business facts (Amazon IDs, affiliate disclosure; contact and legal later).
+  // Never technical configuration: gated on its own content-style permission, NOT `settings.manage`.
+  { kind: 'nav', id: 'settings', segment: 'settings', group: 'support', requires: { permission: 'site.details.read' } },
 
   // ── Home widgets (ADR-029 §5) ───────────────────────────────────────────
   { kind: 'widget', id: 'siteStatus', slot: 'header', requires: {} },

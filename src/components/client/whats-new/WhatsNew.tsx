@@ -19,7 +19,7 @@ import { countUnread, selectPopupUpdate, type ClientProductUpdate } from '@/lib/
  * language (read server-side in `[tenant]/layout.tsx`).
  *
  * One state, two entry points, designed per device:
- *   • desktop: a row in the sidebar footer, above the account (`sidebarRow`);
+ *   • sidebar: a row in the nav, opening the support & configuration group (`sidebarRow`, ClientSidebar places it);
  *   • phone: a row in the account menu sheet (`menuRow`, bar variant only),
  *     with a dot on the avatar.
  * Opening the panel marks the shown updates read (own session, RLS); the "New"

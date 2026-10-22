@@ -18,5 +18,7 @@ export const APP_ICONS = {
   home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
   media: 'M3 7h4l2-3h6l2 3h4v13H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   menu: 'M4 6h16M4 12h16M4 18h16',
+  // Support (life buoy): the client's Support page and the admin's Support Tickets.
+  support: 'M2 12a10 10 0 1 0 20 0 10 10 0 1 0-20 0M8 12a4 4 0 1 0 8 0 4 4 0 1 0-8 0M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M14.83 9.17l4.24-4.24M4.93 19.07l4.24-4.24',
   generic: 'M4 6h16M4 12h16M4 18h10',
 } as const

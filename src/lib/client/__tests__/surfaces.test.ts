@@ -45,9 +45,10 @@ describe('registry shape', () => {
   })
 
   it('every entry that reaches content or people names a module or a permission', () => {
-    // Only Home-level widgets (site status, attention) may be open to every member.
+    // Only Home-level widgets (site status, attention) may be open to every member —
+    // and the Support page (Tom, 2026-10-22), which reads no data: it says ticketing is coming.
     const open = TENANT_SURFACES.filter((s) => requirementPermissions(s.requires).length === 0 && !s.requires.module)
-    expect(open.every((s) => s.kind === 'widget')).toBe(true)
+    expect(open.filter((s) => s.kind !== 'widget').map((s) => s.id)).toEqual(['support'])
   })
 
   it('no entry is gated on a configuration permission', () => {
@@ -141,9 +142,9 @@ describe('buildTenantSurfaces', () => {
 
   it('an owner with every module sees every nav item and the module widgets', () => {
     const s = buildTenantSurfaces(grantFor('owner', ['blog', 'forms', 'gallery']))
-    // Sidebar order and groups (Tom, 2026-10-16): content · manage · insights. Categories & Tags follows Media when Posts is installed.
-    expect(ids(s.nav)).toEqual(['blog', 'gallery', 'media', 'taxonomy', 'forms', 'people', 'connections', 'settings', 'analytics'])
-    expect(s.nav.map((n) => n.group)).toEqual(['content', 'content', 'content', 'content', 'manage', 'manage', 'manage', 'manage', 'insights'])
+    // Sidebar order and groups (Tom, 2026-10-22): content · activity · support & configuration. Categories & Tags closes the content group.
+    expect(ids(s.nav)).toEqual(['blog', 'gallery', 'media', 'people', 'taxonomy', 'forms', 'analytics', 'support', 'connections', 'settings'])
+    expect(s.nav.map((n) => n.group)).toEqual(['content', 'content', 'content', 'content', 'content', 'activity', 'activity', 'support', 'support', 'support'])
     expect(ids(s.widgets)).toEqual(expect.arrayContaining(['siteStatus', 'attention', 'glance.posts', 'glance.requests', 'glance.galleries', 'traffic', 'latest.posts']))
   })
 
@@ -173,7 +174,7 @@ describe('buildTenantSurfaces', () => {
 
   it('a member with no extras gets only widgets that require nothing', () => {
     const s = buildTenantSurfaces({ permissions: [], enabledModuleIds: [] })
-    expect(s.nav).toEqual([])
+    expect(ids(s.nav)).toEqual(['support']) // the Support page is for everyone on the project
     expect(s.featureControls).toEqual([])
     expect(s.widgets.length).toBeGreaterThan(0)
     expect(s.widgets.every((w) => requirementPermissions(w.requires).length === 0 && !w.requires.module)).toBe(true)

@@ -7,7 +7,7 @@ import { ProjectSwitcher, type SwitcherProject } from './ProjectSwitcher'
 import type { AccountMenuProps } from '@/components/app/shell/AccountMenu'
 import { AppIcon, APP_ICONS } from '@/components/app/shell/AppIcon'
 import { TabBarButton } from '@/components/app/ui/TabBarButton'
-import { AppSidebar } from '@/components/app/shell/AppSidebar'
+import { AppSidebar, type AppNavEntry } from '@/components/app/shell/AppSidebar'
 import { useOpenAddContent } from './create/AddContentRoot'
 import type { ClientNavItem } from '@/lib/modules/client-navigation'
 import { isNavItemActive, phoneNavLayout } from '@/lib/modules/client-nav-layout'
@@ -75,6 +75,7 @@ const ICONS = {
   catalogue: 'M4 6h16M4 12h16M4 18h10M18 16v4M16 18h4',
   faq: 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12zM9.6 9.5a2.5 2.5 0 0 1 4.9.8c0 1.7-2.5 2.2-2.5 2.2M12 15.5h.01',
   taxonomy: 'M3 10V4h6l11 11-6 6zM7.5 7.5h.01',
+  support: APP_ICONS.support,
   more: 'M5 12h.01M12 12h.01M19 12h.01',
   plus: 'M12 5v14M5 12h14',
   generic: APP_ICONS.generic,
@@ -100,11 +101,18 @@ export function ClientSidebar({
   const news = useWhatsNew(whatsNew, { popup: whatsNewPopup })
 
   // Home opens the content group; a new group gets extra space above it (no headings).
-  const grouped = [
+  // "What's new" (a panel, not a page) opens the support & configuration group (Tom, 2026-10-22).
+  const links: (AppNavEntry & { group: string })[] = [
     { key: 'home', href: homeHref, label: t('nav.home'), icon: ICONS.home, group: 'content' },
     ...navItems.map((i) => ({ key: i.moduleId, href: i.href, label: i.label ?? t(`nav.${i.moduleId}`), icon: iconFor(i.moduleId), group: i.group as string })),
   ]
-  const items = grouped.map(({ group, ...item }, n) => ({ ...item, groupStart: n > 0 && group !== grouped[n - 1].group }))
+  const supportAt = links.findIndex((i) => i.group === 'support')
+  const grouped: (AppNavEntry & { group: string })[] = news.sidebarRow
+    ? supportAt === -1
+      ? [...links, { key: 'whatsNew', node: news.sidebarRow, group: 'support' }]
+      : [...links.slice(0, supportAt), { key: 'whatsNew', node: news.sidebarRow, group: 'support' }, ...links.slice(supportAt)]
+    : links
+  const items: AppNavEntry[] = grouped.map(({ group, ...item }, n) => ({ ...item, groupStart: n > 0 && group !== grouped[n - 1].group }))
 
   return (
     <>
@@ -124,7 +132,6 @@ export function ClientSidebar({
         ...(news.menuRow ? { extraRows: [news.menuRow] } : {}),
         ...(profile ? { onProfile: () => setProfileOpen(true) } : {}),
       }}
-      footer={news.sidebarRow}
       isActive={isNavItemActive}
       bottomBar={({ drawerOpen, setDrawerOpen, isActive }) => {
         // "More" carries the active state for pages without a tab of their own.

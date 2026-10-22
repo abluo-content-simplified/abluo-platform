@@ -21,6 +21,7 @@ const ROOT = join(process.cwd(), 'src', 'app', '[locale]', '(client)')
 const NOT_THROUGH_RESOLVER: Record<string, Record<string, string>> = {
   '[tenant]/whats-new-actions.ts': {
     markUpdatesReadAction: "marks the signed-in person's OWN read receipts under RLS (user_id = auth.uid()); touches no client data",
+    dismissNoticeAction: "records the signed-in person's OWN dismissal of an info announcement under RLS (user_id = auth.uid()); touches no client data",
   },
   '[tenant]/support-actions.ts': {
     exitSupportAction: 'admin-only (requireAbluoAdmin); closes the admin’s own visit named by their own cookie',

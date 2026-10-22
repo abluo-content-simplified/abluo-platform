@@ -65,6 +65,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'partners',
   'projects',
   'settings',
+  'support',   // admin Support Tickets and the client's Support page (/<tenant>/support)
   'translations',
   'whats-new',
 
